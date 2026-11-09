@@ -122,6 +122,10 @@ pub(crate) struct LayerPlan {
     /// A world panel's render target (its texture index), drawn instead of
     /// a target of the UI pass's own.
     pub target: Option<usize>,
+    /// Where it composites (0: the output; k + 1: layer k), or for a layer
+    /// only a filter reads ([`crate::ui::UiFilterOp::Layer`]), that
+    /// filter's layer's.
+    pub parent: u32,
 }
 
 /// The overlay's sorted instances and runs for one frame.
@@ -135,6 +139,8 @@ pub(crate) struct OverlayFrame {
     pub layers: Vec<LayerPlan>,
     /// The gradient of each layer's gradient mask, by layer.
     pub layer_masks: HashMap<u32, u32>,
+    /// The backdrop layers drawn ([`crate::ui::UiLayer::backdrop`]).
+    pub backdrops: Vec<u32>,
     pub sprites: u32,
     pub glyphs: u32,
     pub missing_glyphs: u32,
@@ -160,11 +166,23 @@ impl OverlayFrame {
     }
 
     /// Whether the output's runs read what is under them (glass, a
-    /// backdrop, a blend that reads the destination).
+    /// backdrop, a blend that reads the destination, a backdrop layer's
+    /// capture).
     pub fn reads_backdrop(&self) -> bool {
         self.main_runs()
             .iter()
-            .any(|r| r.source.needs_pyramid() || r.source.needs_copy())
+            .any(|r| r.source.needs_pyramid() || r.source.needs_copy() || self.capture(r).is_some())
+    }
+
+    /// The backdrop layer whose composite `run` is: what is under it is
+    /// captured before it draws.
+    pub fn capture(&self, run: &OverlayRun) -> Option<u32> {
+        match run.source {
+            OverlaySource::Ui(ShapeSource::Composite(k, _)) if self.backdrops.contains(&k) => {
+                Some(k)
+            }
+            _ => None,
+        }
     }
 }
 
@@ -586,9 +604,23 @@ pub(crate) fn build<'a>(
             .find(|(_, _, s, _)| matches!(s, OverlaySource::Ui(ShapeSource::Composite(j, _)) if *j == k))
             .map(|(t, ..)| *t)
     };
+    // A layer a filter reads (an element's feImage) and composites
+    // nowhere draws before that filter's layer, as if inside it.
+    let read_by = |k: u32| {
+        layers.iter().position(|l| {
+            l.filter.as_ref().is_some_and(|f| {
+                f.primitives
+                    .iter()
+                    .any(|p| matches!(p.op, crate::ui::UiFilterOp::Layer { layer } if layer == k))
+            })
+        })
+    };
+    let owner = |k: u32| {
+        composite_target(k).or_else(|| read_by(k).filter(|&j| j as u32 != k).map(|j| j as u32 + 1))
+    };
     let mut depth = vec![0u32; layers.len()];
     for k in 0..layers.len() as u32 {
-        let mut t = composite_target(k);
+        let mut t = owner(k);
         let mut d = 0;
         while let Some(parent) = t.filter(|&t| t > 0) {
             d += 1;
@@ -597,8 +629,9 @@ pub(crate) fn build<'a>(
                     "ui layer {k}: composited inside its own capture"
                 )));
             }
-            t = composite_target(parent - 1);
+            t = owner(parent - 1);
         }
+        let parent = owner(k).unwrap_or(0);
         depth[k as usize] = d;
         let [x, y, w, h] = layers[k as usize].rect;
         if let Some(t) = layers[k as usize].target {
@@ -619,6 +652,7 @@ pub(crate) fn build<'a>(
                     rect: [x, y, w, h],
                     scale: tt.width as f32 / w,
                     target: Some(t.index()),
+                    parent,
                 });
             }
             continue;
@@ -654,6 +688,7 @@ pub(crate) fn build<'a>(
                     rect: [x, y, w, h],
                     scale: s,
                     target: None,
+                    parent,
                 });
             }
             continue;
@@ -667,7 +702,7 @@ pub(crate) fn build<'a>(
         let y1 = ((y + h.max(0.0)) * s)
             .ceil()
             .clamp(0.0, target.height as f32);
-        if x1 > x0 && y1 > y0 && composite_target(k).is_some() {
+        if x1 > x0 && y1 > y0 && owner(k).is_some() {
             plans.push(LayerPlan {
                 index: k,
                 origin: [x0 / s, y0 / s],
@@ -675,6 +710,7 @@ pub(crate) fn build<'a>(
                 rect: [x0 / s, y0 / s, (x1 - x0) / s, (y1 - y0) / s],
                 scale: s,
                 target: None,
+                parent,
             });
         }
     }
@@ -752,6 +788,14 @@ pub(crate) fn build<'a>(
         ui_instances,
         tables,
         runs,
+        backdrops: plans
+            .iter()
+            .filter(|p| {
+                let l = &layers[p.index as usize];
+                l.backdrop && p.target.is_none() && l.ground.is_none()
+            })
+            .map(|p| p.index)
+            .collect(),
         layers: plans,
         layer_masks,
         sprites,

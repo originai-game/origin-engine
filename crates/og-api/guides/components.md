@@ -203,7 +203,7 @@ What every kind takes: its box, layout, paint, motion and input.
 | `mask-border-outset:` | `<n>px \| <n>%` | CSS `mask-border-outset`, as `border-image-outset`. |
 | `mask-border-repeat:` | `<n>px \| <n>%` | CSS `mask-border-repeat`, as `border-image-repeat`. |
 | `mask-border-mode:` | `<n>px \| <n>%` | CSS `mask-border-mode`: `alpha` (default) or `luminance`. |
-| `backdrop-filter:` | `blur(<n>px) brightness(<n>) contrast(<n>) drop-shadow([<colour>] <x> <y> [<blur>]) grayscale(<n>) hue-rotate(<angle>) invert(<n>) opacity(<n>) saturate(<n>) sepia(<n>) … \| none` | CSS `backdrop-filter`: what is under the element blurred and its colour adjusted (glass), with `filter`'s functions; the colour functions fold into one matrix and `drop-shadow()` casts nothing on the opaque backdrop. |
+| `backdrop-filter:` | `blur(<n>px) brightness(<n>) contrast(<n>) drop-shadow([<colour>] <x> <y> [<blur>]) grayscale(<n>) hue-rotate(<angle>) invert(<n>) opacity(<n>) saturate(<n>) sepia(<n>) … \| none` | CSS `backdrop-filter`: what is really under the element (the screen, or the group it is drawn in) through `filter`'s functions and `url(#id)` in order, laid in its border-box shape under its background. |
 | `filter:` | `blur(<n>px) brightness(<n>) contrast(<n>) drop-shadow([<colour>] <x> <y> [<blur>]) grayscale(<n>) hue-rotate(<angle>) invert(<n>) opacity(<n>) saturate(<n>) sepia(<n>) … \| none` | CSS `filter`: `blur()`, `brightness()`, `contrast()`, `drop-shadow()` (of the alpha, not the box), `grayscale()`, `hue-rotate()`, `invert()`, `opacity()`, `saturate()` and `sepia()` on the element and its subtree, applied in the order written (`filter: drop-shadow(0 4px 6px #0008) saturate(1.4)`). |
 | `mix-blend-mode:` | `normal \| multiply \| screen \| plus-lighter \| overlay \| soft-light \| color-dodge` | CSS `mix-blend-mode`: any of CSS Compositing's modes (normal, multiply, screen, overlay, darken, lighten, color-dodge, color-burn, hard-light, soft-light, difference, exclusion, hue, saturation, color, luminosity) or plus-lighter. The element and its subtree composite as one group over what is under it. |
 | `isolation:` | `auto \| isolate` | CSS `isolation`, `auto` or `isolate`: `isolate` makes the element a group its descendants' blends blend within, over a transparent backdrop. |
@@ -953,7 +953,7 @@ Its own props, beside every element's:
 | `marker-start` | `text` | SVG `marker-start="url(#id)"`: the `<marker>` drawn at a shape's first vertex. |
 | `marker-mid` | `text` | SVG `marker-mid`: the `<marker>` drawn at every vertex between the first and the last. |
 | `marker-end` | `text` | SVG `marker-end`: the `<marker>` drawn at a shape's last vertex (an arrowhead). |
-| `href` | `text` | SVG `href`: an `<image>`'s atlas icon by name or render texture handle (`href={$target}`), what a `<use>` draws (`#id` of a symbol, group or shape), or the gradient a gradient takes its stops from. |
+| `href` | `text` | SVG `href`: an `<image>`'s atlas icon by name or render texture handle (`href={$target}`), what a `<use>` draws (`#id` of a symbol, group or shape), the gradient a gradient takes its stops from, or an `feImage`'s atlas image, texture handle or element (`#id` of a shape or group, drawn as `<use>` draws it). |
 | `clip-path` | `text` | SVG `clip-path="url(#id)"`: the `<clipPath>` whose shapes cut it. |
 | `mask` | `text` | SVG `mask="url(#id)"`: the `<mask>` whose luminance cuts it (white shapes, or one gradient-filled shape). |
 | `clip-rule` | `text` | SVG `clip-rule` of a shape in a `<clipPath>`: nonzero or evenodd (a ring cuts a hole). |
@@ -1079,7 +1079,7 @@ Its own props, beside every element's:
 | `marker-start` | `text` | SVG `marker-start="url(#id)"`: the `<marker>` drawn at a shape's first vertex. |
 | `marker-mid` | `text` | SVG `marker-mid`: the `<marker>` drawn at every vertex between the first and the last. |
 | `marker-end` | `text` | SVG `marker-end`: the `<marker>` drawn at a shape's last vertex (an arrowhead). |
-| `href` | `text` | SVG `href`: an `<image>`'s atlas icon by name or render texture handle (`href={$target}`), what a `<use>` draws (`#id` of a symbol, group or shape), or the gradient a gradient takes its stops from. |
+| `href` | `text` | SVG `href`: an `<image>`'s atlas icon by name or render texture handle (`href={$target}`), what a `<use>` draws (`#id` of a symbol, group or shape), the gradient a gradient takes its stops from, or an `feImage`'s atlas image, texture handle or element (`#id` of a shape or group, drawn as `<use>` draws it). |
 | `clip-path` | `text` | SVG `clip-path="url(#id)"`: the `<clipPath>` whose shapes cut it. |
 | `mask` | `text` | SVG `mask="url(#id)"`: the `<mask>` whose luminance cuts it (white shapes, or one gradient-filled shape). |
 | `clip-rule` | `text` | SVG `clip-rule` of a shape in a `<clipPath>`: nonzero or evenodd (a ring cuts a hole). |
@@ -1136,7 +1136,7 @@ Its own props, beside every element's:
 | `gradientUnits` | `text` | A gradient's `gradientUnits`. |
 | `gradientTransform` | `text` | A gradient's `gradientTransform`. |
 | `spreadMethod` | `text` | A gradient's `spreadMethod`. |
-| `href` | `text` | SVG `href`: an `<image>`'s atlas icon by name or render texture handle (`href={$target}`), what a `<use>` draws (`#id` of a symbol, group or shape), or the gradient a gradient takes its stops from. |
+| `href` | `text` | SVG `href`: an `<image>`'s atlas icon by name or render texture handle (`href={$target}`), what a `<use>` draws (`#id` of a symbol, group or shape), the gradient a gradient takes its stops from, or an `feImage`'s atlas image, texture handle or element (`#id` of a shape or group, drawn as `<use>` draws it). |
 | `filterUnits` | `text` | A `<filter>`'s `filterUnits`: `objectBoundingBox` (default; its region in fractions of the box) or `userSpaceOnUse`. |
 | `primitiveUnits` | `text` | A `<filter>`'s `primitiveUnits`: `userSpaceOnUse` (default) or `objectBoundingBox`. |
 | `color-interpolation-filters` | `text` | A `<filter>`'s or primitive's `color-interpolation-filters`: `linearRGB` (default) or `sRGB`. |
@@ -1175,7 +1175,7 @@ Its own props, beside every element's:
 | `targetY` | `text` | `feConvolveMatrix`'s `targetY`. |
 | `edgeMode` | `text` | `feConvolveMatrix`'s `edgeMode`: duplicate, wrap or none. |
 | `preserveAlpha` | `text` | `feConvolveMatrix`'s `preserveAlpha`. |
-| `kernelUnitLength` | `text` | `kernelUnitLength` of `feConvolveMatrix` and the lighting primitives: read past (one device px a cell). |
+| `kernelUnitLength` | `text` | `kernelUnitLength` of `feConvolveMatrix` and the lighting primitives: a cell's size in primitive units (left out, one device px). |
 | `surfaceScale` | `text` | A lighting primitive's `surfaceScale`. |
 | `diffuseConstant` | `text` | `feDiffuseLighting`'s `diffuseConstant`. |
 | `specularConstant` | `text` | `feSpecularLighting`'s `specularConstant`. |

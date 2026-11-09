@@ -374,6 +374,7 @@ fn plain_layer(mask: Option<og_render::UiMask>) -> DrawCmd {
         expand: 0.0,
         rect: Rect::default(),
         filter: None,
+        role: Default::default(),
     }
 }
 
@@ -432,6 +433,10 @@ pub enum Effect {
     },
     /// Blurs the element and its subtree (a layer with the blur material).
     LayerBlur { radius: f32 },
+    /// CSS `backdrop-filter`: what is really under the element (the
+    /// screen, or the group it is drawn in) through these stages in order,
+    /// laid in its shape ([`og_render::UiLayer::backdrop`]).
+    BackdropFilter(std::sync::Arc<Vec<BackdropStage>>),
     /// What is under the element blurred, its saturation and brightness
     /// scaled and tinted: glass, with its material ([`GlassParts`]).
     Backdrop {
@@ -441,6 +446,150 @@ pub enum Effect {
         tint: ColorRef,
         glass: GlassParts,
     },
+}
+
+/// One function of a `backdrop-filter`.
+#[derive(Clone, Debug, PartialEq)]
+pub enum BackdropStage {
+    /// A Gaussian of this standard deviation, CSS px.
+    Blur(f32),
+    /// A run of colour functions (over sRGB-encoded straight colour).
+    Matrix(og_render::UiColorMatrix),
+    /// `drop-shadow()`: its offset, its blur (twice the deviation) and colour.
+    DropShadow {
+        offset: [f32; 2],
+        blur: f32,
+        color: ColorRef,
+    },
+    /// `url(#id)`: an inline SVG `<filter>` in the box's user space.
+    Url(std::sync::Arc<FilterUse>),
+}
+
+/// A `backdrop-filter`'s stages as one graph over what is under a box
+/// of `size` (CSS px), in the box's user space: its region (the box grown
+/// by what its stages reach, and the url filters' regions), the graph, and
+/// each url stage's first element image.
+fn backdrop_graph(
+    stages: &[BackdropStage],
+    size: [f32; 2],
+    theme: &Theme,
+) -> (Rect, Vec<og_render::UiFilterPrimitive>, Vec<u32>) {
+    use og_render::{UiFilterInput as I, UiFilterOp as Op, UiFilterPrimitive};
+    let mut prims: Vec<UiFilterPrimitive> = Vec::new();
+    let mut reach = 0.0f32;
+    let mut regions: Vec<[f32; 4]> = Vec::new();
+    let mut images = Vec::new();
+    let mut elements = 0u32;
+    let all = [-1.0e6, -1.0e6, 2.0e6, 2.0e6];
+    let last = |prims: &[UiFilterPrimitive]| match prims.len() {
+        0 => I::Source,
+        n => I::Result(n as u32 - 1),
+    };
+    let push = |prims: &mut Vec<UiFilterPrimitive>, op, inputs, srgb| {
+        prims.push(UiFilterPrimitive {
+            op,
+            inputs,
+            subregion: all,
+            srgb,
+        });
+        I::Result(prims.len() as u32 - 1)
+    };
+    for stage in stages {
+        let from = last(&prims);
+        match stage {
+            BackdropStage::Blur(sd) => {
+                reach += 3.0 * sd;
+                push(
+                    &mut prims,
+                    Op::Blur { std_dev: [*sd; 2] },
+                    [from, I::Source],
+                    false,
+                );
+            }
+            BackdropStage::Matrix(m) => {
+                let r = m.rows;
+                let mut v = [0.0; 20];
+                for (i, row) in r.iter().enumerate() {
+                    v[i * 5..i * 5 + 3].copy_from_slice(&row[..3]);
+                    v[i * 5 + 4] = row[3];
+                }
+                v[18] = m.opacity;
+                push(&mut prims, Op::ColorMatrix(v), [from, I::Source], true);
+            }
+            BackdropStage::DropShadow {
+                offset,
+                blur,
+                color,
+            } => {
+                let sd = blur / 2.0;
+                reach += 3.0 * sd + offset[0].abs().max(offset[1].abs());
+                let c = color.resolve(theme);
+                let soft = push(
+                    &mut prims,
+                    Op::Blur { std_dev: [sd; 2] },
+                    [from, I::Source],
+                    false,
+                );
+                let moved = push(
+                    &mut prims,
+                    Op::Offset { d: *offset },
+                    [soft, I::Source],
+                    false,
+                );
+                let fill = push(&mut prims, Op::Flood { color: c }, [I::Source; 2], false);
+                let shadow = push(
+                    &mut prims,
+                    Op::Composite {
+                        op: og_render::UiFilterComposite::In,
+                        k: [0.0; 4],
+                    },
+                    [fill, moved],
+                    false,
+                );
+                push(&mut prims, Op::Merge, [from, shadow], false);
+            }
+            BackdropStage::Url(u) => {
+                let (region, graph) = u.filter.resolve([0.0, 0.0, size[0], size[1]]);
+                regions.push([region.x, region.y, region.width, region.height]);
+                images.push(elements);
+                // Its SourceAlpha is the alpha of what came before.
+                let alpha = (from != I::Source).then(|| {
+                    let mut a = [0.0; 20];
+                    a[18] = 1.0;
+                    push(&mut prims, Op::ColorMatrix(a), [from, I::Source], false)
+                });
+                let base = prims.len() as u32;
+                for mut p in graph.primitives {
+                    for i in &mut p.inputs {
+                        *i = match *i {
+                            I::Source => from,
+                            I::SourceAlpha => alpha.unwrap_or(I::SourceAlpha),
+                            I::Result(k) => I::Result(k + base),
+                        };
+                    }
+                    if let Op::Layer { layer } = &mut p.op
+                        && let Some(n) = crate::svg::filter::element_of(*layer)
+                    {
+                        *layer = crate::svg::filter::element_layer(n + elements);
+                    }
+                    prims.push(p);
+                }
+                elements += u.images.len() as u32;
+            }
+        }
+    }
+    let mut r = [-reach, -reach, size[0] + 2.0 * reach, size[1] + 2.0 * reach];
+    for g in regions {
+        let x = r[0].min(g[0]);
+        let y = r[1].min(g[1]);
+        r = [
+            x,
+            y,
+            (r[0] + r[2]).max(g[0] + g[2]) - x,
+            (r[1] + r[3]).max(g[1] + g[3]) - y,
+        ];
+    }
+    (Rect::new(r[0], r[1], r[2], r[3]), prims, images)
 }
 
 /// A backdrop's material beyond its blur and tint (og-render's
@@ -606,6 +755,20 @@ impl Default for ShapeKind {
 }
 
 impl ShapeKind {
+    /// A path under `m` (its points and its stroke's width); any other
+    /// shape as it is.
+    fn mapped(&self, m: &crate::svg::Affine) -> ShapeKind {
+        let mut out = self.clone();
+        if let ShapeKind::Path { points, width, .. } = &mut out {
+            for p in points.iter_mut() {
+                let v = m.apply(Vec2::from(*p));
+                *p = [v.x, v.y];
+            }
+            *width *= m.scale();
+        }
+        out
+    }
+
     /// The geometry of an element of `radius` (its default corner radius)
     /// and `size` (CSS px).
     pub fn geometry(&self, radius: f32, size: [f32; 2]) -> og_render::UiGeometry {
@@ -780,6 +943,9 @@ pub struct FilterUse {
     /// user space is CSS px from its border box's top left and whose
     /// bounding box is its border box.
     pub svg: Option<(crate::svg::Affine, [f32; 4])>,
+    /// What its `feImage`s of elements draw ([`crate::svg::filter::Filter::elements`]),
+    /// in order: shapes in its user space.
+    pub images: Vec<Vec<(ShapeKind, Paint)>>,
 }
 
 impl FilterUse {
@@ -821,6 +987,71 @@ impl FilterUse {
         let (region, mut graph) = self.filter.resolve(bbox);
         crate::svg::filter::map(&mut graph, &map);
         (map.map_rect(&region), graph)
+    }
+
+    /// Its element images' layers for an element drawn by `draw` in `at`:
+    /// each one's shapes in the element's own units (its view box's, or
+    /// CSS px from its box), moved by its `feImage`'s `x` and `y` when it
+    /// gives them, as `<use>` is.
+    fn image_layers(
+        &self,
+        draw: &ElementDraw,
+        theme: &Theme,
+        at: &Placed,
+        base: u32,
+    ) -> Vec<DrawCmd> {
+        let mut out = Vec::new();
+        let (to_units, bbox) = match &self.svg {
+            Some((t, bbox)) => (*t, *bbox),
+            None => (
+                crate::svg::Affine::IDENTITY,
+                [0.0, 0.0, at.rect.width, at.rect.height],
+            ),
+        };
+        for (n, shapes) in self.images.iter().enumerate() {
+            let layer = crate::svg::filter::element_layer(n as u32);
+            let sub = self
+                .filter
+                .primitives
+                .iter()
+                .find(|p| matches!(p.op, og_render::UiFilterOp::Layer { layer: l } if l == layer))
+                .map_or([f32::NAN; 4], |p| p.subregion);
+            let at_edge = |v: f32, k: usize| match (v.is_nan(), self.filter.primitive_bbox) {
+                (true, _) => 0.0,
+                (false, true) => bbox[k] + v * bbox[k + 2],
+                (false, false) => v,
+            };
+            let m = to_units.then(&crate::svg::Affine([
+                1.0,
+                0.0,
+                0.0,
+                1.0,
+                at_edge(sub[0], 0),
+                at_edge(sub[1], 1),
+            ]));
+            out.push(DrawCmd::BeginLayer {
+                material: og_render::UiMaterial::Plain,
+                params: [[0.0; 4]; og_render::UI_MATERIAL_PARAMS],
+                mask: None,
+                expand: 0.0,
+                rect: Rect::default(),
+                filter: None,
+                role: crate::draw::LayerRole::Image(base + n as u32),
+            });
+            for (kind, paint) in shapes {
+                let kind = kind.mapped(&m);
+                out.push(draw.shape_of(
+                    &kind,
+                    at,
+                    draw.paint(paint, theme, at),
+                    og_render::UiMode::Fill,
+                    1.0,
+                    Blend::Normal,
+                ));
+            }
+            out.push(end_layer(None, at, 1.0, Blend::Normal));
+        }
+        out
     }
 }
 
@@ -1334,6 +1565,58 @@ impl ElementDraw {
         }
     }
 
+    /// A `backdrop-filter`: a backdrop layer over its region, its url
+    /// filters' element images inside it, composited in its shape.
+    fn backdrop_filter(
+        &self,
+        stages: &[BackdropStage],
+        theme: &Theme,
+        at: &Placed,
+        opacity: f32,
+    ) -> Vec<DrawCmd> {
+        let (region, primitives, bases) =
+            backdrop_graph(stages, [at.rect.width, at.rect.height], theme);
+        if primitives.is_empty() {
+            return Vec::new();
+        }
+        let map = crate::element::Affine::translate(at.rect.x, at.rect.y);
+        let mut graph = og_render::UiFilter {
+            primitives,
+            ..Default::default()
+        };
+        crate::svg::filter::map(&mut graph, &map);
+        let mut out = vec![DrawCmd::BeginLayer {
+            material: og_render::UiMaterial::Plain,
+            params: [[0.0; 4]; og_render::UI_MATERIAL_PARAMS],
+            mask: None,
+            expand: 0.0,
+            rect: Rect::default(),
+            filter: Some(Box::new((map.map_rect(&region), graph))),
+            role: crate::draw::LayerRole::Backdrop,
+        }];
+        let urls = stages.iter().filter_map(|s| match s {
+            BackdropStage::Url(u) => Some(u),
+            _ => None,
+        });
+        for (u, base) in urls.zip(bases) {
+            out.extend(u.image_layers(self, theme, at, base));
+        }
+        let rect = if matches!(self.shape, ShapeKind::Path { .. }) {
+            at.rect
+        } else {
+            self.frame(at)
+        };
+        out.push(DrawCmd::EndLayer {
+            geometry: Some(self.geometry(&self.shape, at)),
+            rect,
+            opacity,
+            blend: Blend::Normal,
+            clip: at.clip,
+            ground: None,
+        });
+        out
+    }
+
     /// What draws before the element's own commands: a layer's start, then
     /// its shadows, outer glows and backdrops, then its fills, inner
     /// shadows and inner glows.
@@ -1388,6 +1671,11 @@ impl ElementDraw {
                 let f = l?.filter.as_ref()?;
                 Some(Box::new(f.resolve(at, self.fit(at))))
             };
+            // A filter's element images draw first inside its layer.
+            let images = |l: Option<&Layer>| {
+                l.and_then(|l| l.filter.as_ref())
+                    .map_or(Vec::new(), |f| f.image_layers(self, theme, at, 0))
+            };
             out.push(DrawCmd::BeginLayer {
                 material,
                 params,
@@ -1395,7 +1683,9 @@ impl ElementDraw {
                 expand: expand_of(material, &params),
                 rect: Rect::default(),
                 filter: filter(outer),
+                role: Default::default(),
             });
+            out.extend(images(outer));
             // The inner stages open inside it, the first innermost.
             for l in inner.iter().rev() {
                 let material = l.material.into();
@@ -1406,7 +1696,9 @@ impl ElementDraw {
                     expand: expand_of(material, &l.params),
                     rect: Rect::default(),
                     filter: filter(Some(l)),
+                    role: Default::default(),
                 });
+                out.extend(images(Some(l)));
             }
         }
         // Inside a layer the composite carries the opacity and blend.
@@ -1454,6 +1746,9 @@ impl ElementDraw {
             ));
         }
         for e in &self.effects {
+            if let Effect::BackdropFilter(stages) = e {
+                out.extend(self.backdrop_filter(stages, theme, at, opacity));
+            }
             if let Effect::Backdrop {
                 blur,
                 saturation,

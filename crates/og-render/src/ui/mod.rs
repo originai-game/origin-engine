@@ -751,6 +751,14 @@ pub struct UiLayer {
     /// An SVG filter run over what it drew before it composites
     /// ([`filter`]); `rect` is then the filter region.
     pub filter: Option<UiFilter>,
+    /// A backdrop (CSS `backdrop-filter`): the layer draws nothing of its
+    /// own. Where its composite draws, what its target (the output, or
+    /// the layer it composites into) holds under `rect` so far is its
+    /// source, `filter` runs over that (reads past the capture take its
+    /// edge), and the composite lays the result: what is really under the
+    /// element, a group's backdrop inside a layer (Filter Effects 2's
+    /// backdrop root).
+    pub backdrop: bool,
 }
 
 /// Where a projected layer ([`UiLayer::ground`]) lies: its rect on a

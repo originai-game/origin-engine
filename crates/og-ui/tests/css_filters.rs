@@ -229,3 +229,180 @@ fn css_filters_match_their_reference_frames() {
         println!("{name}: RMSE {rmse:.6}");
     }
 }
+
+const SPACE: &str = r##"<meta name="component" content="filter-space">
+<column id="Center">
+<div id="Card">
+  <h2 id="Title">Backdrops and filter space</h2>
+  <div id="Row">
+    <div class="ground"><div class="pane" id="Frost">blur</div></div>
+    <div class="ground"><div class="pane" id="Warp">url()</div></div>
+    <div class="ground" id="Group"><div class="pane" id="Inner">group</div></div>
+    <div class="ground"><div class="pane" id="Shift">mixed</div></div>
+  </div>
+  <div id="Row2">
+    <div class="t" id="TurnBlur"></div>
+    <div class="t" id="TurnMorph"></div>
+    <div class="t" id="TurnLight"></div>
+    <div class="t" id="Unit"></div>
+    <div class="t" id="UnitLight"></div>
+    <div class="t" id="Element"></div>
+  </div>
+  <svg id="Defs" width="0" height="0">
+    <path id="Star" d="M32 4 L40 24 L60 24 L44 36 L50 56 L32 44 L14 56 L20 36 L4 24 L24 24 Z" fill="#ffd166" stroke="#ff7b72" stroke-width="2"/>
+    <filter id="Ripple" x="0" y="0" width="1" height="1">
+      <feTurbulence type="turbulence" baseFrequency="0.05" numOctaves="2" seed="4" result="t"/>
+      <feDisplacementMap in="SourceGraphic" in2="t" scale="18" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="Streak"><feGaussianBlur stdDeviation="8 0"/></filter>
+    <filter id="Spread" x="-20%" y="-20%" width="140%" height="140%"><feMorphology operator="dilate" radius="8 1"/></filter>
+    <filter id="Raised">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="3" result="bump"/>
+      <feDiffuseLighting in="bump" surfaceScale="6" diffuseConstant="1" lighting-color="#ffffff" result="lit">
+        <feDistantLight azimuth="0" elevation="35"/>
+      </feDiffuseLighting>
+      <feComposite in="lit" in2="SourceGraphic" operator="arithmetic" k1="1"/>
+    </filter>
+    <filter id="Edges"><feConvolveMatrix order="3" kernelUnitLength="4" kernelMatrix="-1 -1 -1 -1 8 -1 -1 -1 -1" preserveAlpha="true"/></filter>
+    <filter id="Coarse">
+      <feSpecularLighting in="SourceAlpha" surfaceScale="3" specularConstant="1.2" specularExponent="12" kernelUnitLength="3" lighting-color="#58a6ff" result="s">
+        <fePointLight x="10" y="6" z="40"/>
+      </feSpecularLighting>
+      <feComposite in="s" in2="SourceAlpha" operator="in" result="lit"/>
+      <feComposite in="lit" in2="SourceGraphic" operator="arithmetic" k2="1" k3="1"/>
+    </filter>
+    <filter id="Stamp" x="0" y="0" width="1" height="1">
+      <feImage href="#Star" x="0" y="-6" result="star"/>
+      <feComposite in="star" in2="SourceGraphic" operator="over"/>
+    </filter>
+  </svg>
+</div>
+</column>
+<style>
+#Center { width: 100%; height: 100%; align-items: center; justify-content: center; }
+#Card { padding: 24px; display: flex; flex-direction: column; gap: 18px;
+  background: linear-gradient(160deg, #1f2a44, #0d1117 70%); border-radius: 16px; }
+#Title { margin: 0; }
+#Row, #Row2 { display: flex; flex-direction: row; gap: 20px; align-items: center; }
+.ground { position: relative; width: 120px; height: 84px; border-radius: 12px;
+  background: repeating-linear-gradient(45deg, #f0b429 0 8px, #58a6ff 8px 16px); }
+.pane { position: absolute; inset: 14px; border-radius: 10px; display: flex; align-items: center;
+  justify-content: center; background: #ffffff22; }
+#Frost { backdrop-filter: blur(6px) saturate(1.8); }
+#Warp { backdrop-filter: url(#Ripple); }
+#Group { opacity: 0.9; }
+#Inner { backdrop-filter: blur(3px) invert(1); }
+#Shift { backdrop-filter: url(#Ripple) grayscale(0.7) drop-shadow(0 0 4px #000); }
+.t { width: 64px; height: 48px; border-radius: 8px;
+  background: linear-gradient(90deg, #ff7b72, #f0b429 50%, #58a6ff); }
+#TurnBlur { transform: rotate(35deg); filter: url(#Streak); }
+#TurnMorph { width: 40px; height: 20px; transform: rotate(-30deg); filter: url(#Spread); }
+#TurnLight { border-radius: 24px; transform: rotate(90deg); filter: url(#Raised); }
+#Unit { filter: url(#Edges); }
+#UnitLight { border-radius: 24px; filter: url(#Coarse); }
+#Element { transform: rotate(15deg); filter: url(#Stamp); }
+@media (max-width: 500px) {
+  #Row, #Row2 { flex-wrap: wrap; gap: 12px; width: 300px; }
+}
+</style>"##;
+
+fn render_space(width: u32, height: u32) -> (Vec<u8>, og_render::RenderInfo) {
+    use og_render::*;
+    let mut scene = RenderScene::new();
+    let font = add_test_font(&mut scene);
+    let mut ui = ui_with_font(font);
+    ui.define_document(UiDocument::parse("ui/filter_space.svelte", SPACE).unwrap());
+    ui.mount_document(
+        reactive::SourceId::new("test", "filter-space"),
+        "filter-space",
+        Default::default(),
+        Default::default(),
+        &bind::NoEnv,
+    )
+    .unwrap();
+    let vp = Viewport::new(width as f32, height as f32);
+    let mut stats = None;
+    for _ in 0..4 {
+        ui.begin(InputFrame::default(), vp);
+        ui.build_retained_documents(&bind::NoEnv).unwrap();
+        stats = Some(ui.end().stats);
+    }
+    assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+    let stats = stats.unwrap();
+    assert_eq!(
+        (stats.bindings, stats.reconciled),
+        (0, 0),
+        "idle: {stats:?}"
+    );
+    let mut overlay = Overlay::new(width as f32, height as f32, 1.0);
+    ui.frame().emit(&EmitDesc::default(), &mut overlay);
+    let layers = &overlay.ui.layers;
+    assert_eq!(
+        layers.iter().filter(|l| l.backdrop).count(),
+        4,
+        "a backdrop layer per backdrop-filter"
+    );
+    // The element image is a layer the stamp's filter reads.
+    let stamp = layers
+        .iter()
+        .filter_map(|l| l.filter.as_ref())
+        .flat_map(|f| &f.primitives)
+        .find_map(|p| match p.op {
+            UiFilterOp::Layer { layer } => Some(layer),
+            _ => None,
+        })
+        .expect("feImage of #Star reads a layer");
+    assert!((stamp as usize) < layers.len(), "placed: {stamp}");
+    scene.overlay = Some(overlay);
+    let bg = ui.theme().palette.backdrop.linear();
+    scene.environment.background = Background::Color(og_core::glam::Vec3::new(bg[0], bg[1], bg[2]));
+    scene.post.tonemap = Tonemap::None;
+    let mut renderer = Renderer::new_blocking(&RenderDesc {
+        width,
+        height,
+        ..Default::default()
+    })
+    .expect("a headless adapter");
+    renderer.render(&scene, &RenderTarget::Offscreen).unwrap();
+    let pixels = renderer.read_offscreen().unwrap().pixels;
+    (pixels, renderer.info().clone())
+}
+
+/// Backdrops read what is really under them (the screen, or the group
+/// they are drawn in) through functions and `url()` alike; a turned
+/// element's blur, dilation and lighting turn with it; `kernelUnitLength`
+/// sizes a convolution's and a light's cells; `feImage` draws an element.
+///
+/// Ways it could fail: a backdrop reading the layer drawn so far instead
+/// of the screen (a pane over nothing), a backdrop in an opacity group
+/// reading the screen instead of the group, a turned streak still
+/// horizontal, a kernel unit read as a device px, or the star drawn
+/// where it is defined instead of in the filtered element's space.
+#[test]
+#[ignore = "requires GPU"]
+fn css_filter_space_matches_its_reference_frames() {
+    for (width, height) in [(1280u32, 720u32), (390, 844)] {
+        let (pixels, info) = render_space(width, height);
+        let name = format!("css-filter-space-{width}.png");
+        image::save_buffer(
+            out_dir().join(&name),
+            &pixels,
+            width,
+            height,
+            image::ColorType::Rgba8,
+        )
+        .unwrap();
+        let own = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("references/metal")
+            .join(&name);
+        if std::env::var_os("OG_UI_CAPTURE").is_some() {
+            record_reference(&own, width, height, &pixels);
+        }
+        let expected = image::open(&own)
+            .unwrap_or_else(|e| panic!("{}: {e} (OG_UI_CAPTURE=1 records it)", own.display()))
+            .to_rgba8();
+        let (rmse, _) = compare(&pixels, expected.as_raw(), &info, &own)
+            .unwrap_or_else(|e| panic!("{name}: {e}"));
+        println!("{name}: RMSE {rmse:.6}");
+    }
+}

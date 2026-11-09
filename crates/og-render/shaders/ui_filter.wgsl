@@ -3,15 +3,24 @@
 // primitive's result (premultiplied, linear unless the primitive asks for
 // sRGB) from its inputs, which share the layer's target size. Pixels
 // outside the primitive's subregion are transparent, and an input read
-// outside its texture is transparent (Filter Effects 1 §9).
+// outside its texture is transparent (Filter Effects 1 §9), or takes its
+// edge for a backdrop (FLAG_CLAMP). Subregions, lengths and lights are in
+// the filter's space (`space`, its map to CSS px): every primitive runs
+// along that space's axes, so a turned element's blur turns with it.
 
 struct FilterParams {
   // x: the op (FilterOp's code), y: flags (FLAG_*), z: x channel, w: y channel.
   op: vec4<u32>,
   // The layer target's top left (CSS px) and device px per CSS px.
   origin: vec4<f32>,
-  // The subregion, CSS px.
+  // The subregion, in the filter's space.
   subregion: vec4<f32>,
+  // The filter's space to CSS px: the linear part (a, b, c, d; x' =
+  // a x + c y + e) and the translation (xy), then its inverse's.
+  space: vec4<f32>,
+  space_t: vec4<f32>,
+  inverse: vec4<f32>,
+  inverse_t: vec4<f32>,
   a: vec4<f32>,
   b: vec4<f32>,
   c: vec4<f32>,
@@ -30,10 +39,9 @@ struct FilterParams {
 const FLAG_SRGB: u32 = 1u;
 const FLAG_IN1_ALPHA: u32 = 2u;
 const FLAG_IN2_ALPHA: u32 = 4u;
-// A two-pass op's second pass: along y.
-const FLAG_Y: u32 = 8u;
 const FLAG_STITCH: u32 = 16u;
 const FLAG_FRACTAL: u32 = 32u;
+const FLAG_CLAMP: u32 = 64u;
 
 @vertex
 fn vs_filter(@builtin(vertex_index) i: u32) -> @builtin(position) vec4<f32> {
@@ -77,6 +85,9 @@ fn space_out(c: vec4<f32>) -> vec4<f32> {
 
 fn texel(t: texture_2d<f32>, p: vec2<i32>) -> vec4<f32> {
   let size = vec2<i32>(textureDimensions(t));
+  if ((f.op.y & FLAG_CLAMP) != 0u) {
+    return textureLoad(t, clamp(p, vec2<i32>(0), size - 1), 0);
+  }
   if (any(p < vec2<i32>(0)) || any(p >= size)) {
     return vec4<f32>(0.0);
   }
@@ -113,6 +124,34 @@ fn in2_at(p: vec2<f32>) -> vec4<f32> {
 // The CSS position of device position `p`.
 fn css(p: vec2<f32>) -> vec2<f32> {
   return f.origin.xy + p / f.origin.z;
+}
+
+fn linear_part(m: vec4<f32>) -> mat2x2<f32> {
+  return mat2x2<f32>(m.xy, m.zw);
+}
+
+// The point of the filter's space at CSS position `q`.
+fn local(q: vec2<f32>) -> vec2<f32> {
+  return linear_part(f.inverse) * q + f.inverse_t.xy;
+}
+
+// The device position of a point of the filter's space.
+fn device_of(l: vec2<f32>) -> vec2<f32> {
+  return (linear_part(f.space) * l + f.space_t.xy - f.origin.xy) * f.origin.z;
+}
+
+// A vector of the filter's space in device px.
+fn device_vec(v: vec2<f32>) -> vec2<f32> {
+  return linear_part(f.space) * v * f.origin.z;
+}
+
+// in1 at the texel nearest `p` (a morphology keeps the values it finds).
+fn in1_near(p: vec2<f32>) -> vec4<f32> {
+  var c = texel(in1_tex, vec2<i32>(floor(p)));
+  if ((f.op.y & FLAG_IN1_ALPHA) != 0u) {
+    c = vec4<f32>(0.0, 0.0, 0.0, c.a);
+  }
+  return space_in(c);
 }
 
 // ---- feTurbulence (Filter Effects 1 §15.24, the reference implementation)
@@ -220,42 +259,47 @@ fn turbulence(k: i32, point: vec2<f32>) -> f32 {
   return sum;
 }
 
-// ---- lighting (Filter Effects 1 §15.13): the surface from in1's alpha
+// ---- lighting (Filter Effects 1 §15.13): the surface from in1's alpha,
+// in the filter's space
 
-fn alpha_at(p: vec2<i32>) -> f32 {
-  return texel(in1_tex, p).a;
+fn alpha_at(p: vec2<f32>) -> f32 {
+  return bilinear(in1_tex, p).a;
 }
 
-fn surface_normal(p: vec2<i32>, scale: f32) -> vec3<f32> {
-  let a00 = alpha_at(p + vec2<i32>(-1, -1));
-  let a10 = alpha_at(p + vec2<i32>(0, -1));
-  let a20 = alpha_at(p + vec2<i32>(1, -1));
-  let a01 = alpha_at(p + vec2<i32>(-1, 0));
-  let a21 = alpha_at(p + vec2<i32>(1, 0));
-  let a02 = alpha_at(p + vec2<i32>(-1, 1));
-  let a12 = alpha_at(p + vec2<i32>(0, 1));
-  let a22 = alpha_at(p + vec2<i32>(1, 1));
-  let nx = -scale * 0.25 * ((a20 + 2.0 * a21 + a22) - (a00 + 2.0 * a01 + a02));
-  let ny = -scale * 0.25 * ((a02 + 2.0 * a12 + a22) - (a00 + 2.0 * a10 + a20));
+// The Sobel normal over cells whose edges are m[2] (device px), each
+// step's slope scaled by m[3].xy (into slope per unit of the space).
+fn surface_normal(p: vec2<f32>, scale: f32) -> vec3<f32> {
+  let u = f.m[2].xy;
+  let v = f.m[2].zw;
+  let a00 = alpha_at(p - u - v);
+  let a10 = alpha_at(p - v);
+  let a20 = alpha_at(p + u - v);
+  let a01 = alpha_at(p - u);
+  let a21 = alpha_at(p + u);
+  let a02 = alpha_at(p - u + v);
+  let a12 = alpha_at(p + v);
+  let a22 = alpha_at(p + u + v);
+  let nx = -scale * 0.25 * f.m[3].x * ((a20 + 2.0 * a21 + a22) - (a00 + 2.0 * a01 + a02));
+  let ny = -scale * 0.25 * f.m[3].y * ((a02 + 2.0 * a12 + a22) - (a00 + 2.0 * a10 + a20));
   return normalize(vec3<f32>(nx, ny, 1.0));
 }
 
 // a: surface scale, constant, exponent, light kind (0 distant, 1 point,
-// 2 spot); b: azimuth, elevation (rad) or the light's x, y, z (device px);
-// c: spot's points-at x, y, z, specular exponent; m[0]: the colour
-// (linear), m[1].x: the cone's cosine (-2: none).
-fn lighting(p: vec2<f32>, specular: bool) -> vec4<f32> {
-  let ip = vec2<i32>(floor(p));
+// 2 spot); b: azimuth, elevation (rad) or the light's x, y, z (the
+// filter's space); c: spot's points-at x, y, z, specular exponent; m[0]:
+// the colour (linear), m[1].x: the cone's cosine (-2: none), m[1].y: a
+// cell's height in units; m[2], m[3]: the cells (surface_normal).
+fn lighting(p: vec2<f32>, q: vec2<f32>, specular: bool) -> vec4<f32> {
   let surface = f.a.x;
-  let n = surface_normal(ip, surface);
-  let z = surface * alpha_at(ip);
+  let n = surface_normal(p, surface);
+  let z = surface * f.m[1].y * alpha_at(p);
   var l: vec3<f32>;
   var color = f.m[0].rgb;
   let kind = i32(f.a.w);
   if (kind == 0) {
     l = vec3<f32>(cos(f.b.x) * cos(f.b.y), sin(f.b.x) * cos(f.b.y), sin(f.b.y));
   } else {
-    l = normalize(f.b.xyz - vec3<f32>(p, z));
+    l = normalize(f.b.xyz - vec3<f32>(local(q), z));
     if (kind == 2) {
       let s = normalize(f.c.xyz - f.b.xyz);
       let minus_l_dot_s = -dot(l, s);
@@ -316,18 +360,20 @@ fn transfer(c: f32, ch: u32) -> f32 {
 fn fs_filter(@builtin(position) at: vec4<f32>) -> @location(0) vec4<f32> {
   let p = at.xy;
   let q = css(p);
+  let l = local(q);
   let r = f.subregion;
-  if (q.x < r.x || q.y < r.y || q.x > r.x + r.z || q.y > r.y + r.w) {
+  if (l.x < r.x || l.y < r.y || l.x > r.x + r.z || l.y > r.y + r.w) {
     return vec4<f32>(0.0);
   }
   var out = vec4<f32>(0.0);
   switch f.op.x {
     case 0u: {
-      // Blur: one axis of a Gaussian of standard deviation a.x (device
-      // px), at most 64 taps a side (wider ones step between texels).
-      let sigma = select(f.a.x, f.a.y, (f.op.y & FLAG_Y) != 0u);
-      let dir = select(vec2<f32>(1.0, 0.0), vec2<f32>(0.0, 1.0), (f.op.y & FLAG_Y) != 0u);
-      if (sigma <= 0.0) {
+      // Blur: one axis of a Gaussian, a.xy the image of the space's axis
+      // scaled by the standard deviation (device px), at most 64 taps a
+      // side (wider ones step between texels).
+      let sigma = length(f.a.xy);
+      let dir = f.a.xy / max(sigma, 1e-6);
+      if (sigma <= 1e-4) {
         out = in1_at(p);
       } else {
         let reach = ceil(3.0 * sigma);
@@ -343,7 +389,7 @@ fn fs_filter(@builtin(position) at: vec4<f32>) -> @location(0) vec4<f32> {
       }
     }
     case 1u: {
-      // Offset by a.xy device px.
+      // Offset by a.xy device px (the space's offset on the screen).
       out = in1_at(p - f.a.xy);
     }
     case 2u: {
@@ -410,38 +456,39 @@ fn fs_filter(@builtin(position) at: vec4<f32>) -> @location(0) vec4<f32> {
       out = vec4<f32>(o.rgb * o.a, o.a);
     }
     case 7u: {
-      // Morphology along one axis: the min (erode) or max (dilate) of
-      // each channel within radius a.x / a.y device px.
-      let radius = select(f.a.x, f.a.y, (f.op.y & FLAG_Y) != 0u);
-      let dir = select(vec2<f32>(1.0, 0.0), vec2<f32>(0.0, 1.0), (f.op.y & FLAG_Y) != 0u);
+      // Morphology along one axis of the space: the min (erode) or max
+      // (dilate) of each channel within a.xy (the radius along it,
+      // device px), a device px a step.
+      let radius = length(f.a.xy);
+      let dir = f.a.xy / max(radius, 1e-6);
       let dilate = f.a.z > 0.5;
-      let reach = min(floor(radius), 128.0);
-      var o = in1_at(p);
+      let reach = min(floor(radius + 1e-3), 128.0);
+      var o = in1_near(p);
       for (var i = -reach; i <= reach; i += 1.0) {
-        let c = in1_at(p + dir * i);
+        let c = in1_near(p + dir * i);
         o = select(min(o, c), max(o, c), dilate);
       }
       out = o;
     }
     case 8u: {
       // Displacement of in1 by in2's channels (unpremultiplied), a.x
-      // device px per unit.
+      // units of the space per unit.
       let m = unpremul(bilinear(in2_tex, p));
       let d = vec2<f32>(m[f.op.z], m[f.op.w]) - 0.5;
-      out = in1_at(p + f.a.x * d);
+      out = in1_at(p + device_vec(f.a.x * d));
     }
     case 9u: {
-      // Turbulence at the user-space point: b.xy the user origin's CSS
-      // px, b.z user units per CSS px.
-      let point = (q - f.b.xy) * f.b.z;
+      // Turbulence at the noise point: b.xy its origin in the space, b.z
+      // noise units per unit.
+      let point = (l - f.b.xy) * f.b.z;
       var o = vec4<f32>(turbulence(0, point), turbulence(1, point), turbulence(2, point), turbulence(3, point));
       o = clamp(o, vec4<f32>(0.0), vec4<f32>(1.0));
       out = vec4<f32>(o.rgb * o.a, o.a);
     }
     case 10u: {
-      // Image: aux_tex's uv rect b over CSS rect a, straight sRGB-decoded
-      // colour as the sampler reads it, transparent outside.
-      let t = (q - f.a.xy) / max(f.a.zw, vec2<f32>(1e-4));
+      // Image: aux_tex's uv rect b over rect a of the space, straight
+      // sRGB-decoded colour as the sampler reads it, transparent outside.
+      let t = (l - f.a.xy) / max(f.a.zw, vec2<f32>(1e-4));
       if (all(t >= vec2<f32>(0.0)) && all(t <= vec2<f32>(1.0))) {
         let size = vec2<f32>(textureDimensions(aux_tex));
         let c = bilinear(aux_tex, mix(f.b.xy, f.b.zw, t) * size);
@@ -449,36 +496,59 @@ fn fs_filter(@builtin(position) at: vec4<f32>) -> @location(0) vec4<f32> {
       }
     }
     case 11u: {
-      // Tile: in1's subregion a (CSS px) repeated.
+      // Tile: in1's subregion a (the space) repeated.
       let t = f.a;
-      let k = t.xy + (q - t.xy) - floor((q - t.xy) / max(t.zw, vec2<f32>(1e-4))) * t.zw;
-      out = in1_at((k - f.origin.xy) * f.origin.z);
+      let k = t.xy + (l - t.xy) - floor((l - t.xy) / max(t.zw, vec2<f32>(1e-4))) * t.zw;
+      out = in1_at(device_of(k));
     }
-    case 12u: { out = lighting(p, false); }
-    case 13u: { out = lighting(p, true); }
+    case 12u: { out = lighting(p, q, false); }
+    case 13u: { out = lighting(p, q, true); }
+    case 16u: {
+      // An element's layer (aux_tex), its top left a.xy (CSS px) and a.z
+      // device px per CSS px; transparent outside it.
+      if (f.a.z > 0.0) {
+        let at = (q - f.a.xy) * f.a.z;
+        let size = vec2<f32>(textureDimensions(aux_tex));
+        if (all(at >= vec2<f32>(0.0)) && all(at <= size)) {
+          let c = textureLoad(aux_tex, clamp(vec2<i32>(floor(at)), vec2<i32>(0), vec2<i32>(size) - 1), 0);
+          out = space_in(c);
+        }
+      }
+    }
+    case 17u: {
+      // A backdrop's capture: in1 is the target under the layer, its top
+      // left a.xy (CSS px) and a.z device px per CSS px, sRGB-encoded
+      // when a.w is 1; premultiplied linear out.
+      var c = bilinear(in1_tex, (q - f.a.xy) * f.a.z);
+      if (f.a.w > 0.5) {
+        let u = unpremul(c);
+        c = vec4<f32>(to_linear(u.rgb) * u.a, u.a);
+      }
+      return c;
+    }
     case 15u: {
       // Convolve matrix (§15.12): op.zw the order, a the divisor, bias and
       // target, b.x the edge mode (0 duplicate, 1 wrap, 2 none), b.y
-      // preserve alpha; the kernel in table, row-major, one device px a
-      // cell.
+      // preserve alpha, m[2] a cell's edges (device px); the kernel in
+      // table, row-major.
       let order = vec2<i32>(i32(f.op.z), i32(f.op.w));
-      let size = vec2<i32>(textureDimensions(in1_tex));
-      let ip = vec2<i32>(floor(p));
+      let size = vec2<f32>(textureDimensions(in1_tex));
       let keep = f.b.y > 0.5;
+      let edge = u32(f.b.x);
       var sum = vec4<f32>(0.0);
       for (var i = 0; i < order.y; i++) {
         for (var j = 0; j < order.x; j++) {
-          var s = ip + vec2<i32>(j, i) - vec2<i32>(i32(f.a.z), i32(f.a.w));
-          let edge = u32(f.b.x);
+          var s = p + f32(j - i32(f.a.z)) * f.m[2].xy + f32(i - i32(f.a.w)) * f.m[2].zw;
           if (edge == 0u) {
-            s = clamp(s, vec2<i32>(0), size - 1);
+            s = clamp(s, vec2<f32>(0.5), size - 0.5);
           } else if (edge == 1u) {
-            s = ((s % size) + size) % size;
+            s = s - floor(s / size) * size;
           }
-          var c = space_in(texel(in1_tex, s));
+          var c = bilinear(in1_tex, s);
           if ((f.op.y & FLAG_IN1_ALPHA) != 0u) {
             c = vec4<f32>(0.0, 0.0, 0.0, c.a);
           }
+          c = space_in(c);
           if (keep) {
             c = unpremul(c);
           }

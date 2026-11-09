@@ -479,6 +479,7 @@ impl Ui {
                             expand: 0.0,
                             rect: Rect::default(),
                             filter: None,
+                            role: Default::default(),
                         }],
                         leave: vec![DrawCmd::EndLayer {
                             geometry: None,
@@ -716,6 +717,7 @@ fn meta_cmds(kind: &MetaKind, screen: Rect, alpha: f32) -> Vec<DrawCmd> {
                     expand: 0.0,
                     rect: screen,
                     filter: None,
+                    role: Default::default(),
                 },
                 DrawCmd::Shape {
                     shape: Box::new(back),

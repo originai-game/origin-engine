@@ -3280,6 +3280,7 @@ impl Renderer {
                 (
                     &g.pyramid_view,
                     &g.behind_view,
+                    &g.source_view,
                     !self.output_format.is_srgb() && self.output_format != HDR_FORMAT,
                 )
             });
@@ -3313,6 +3314,7 @@ impl Renderer {
                 u,
                 backdrop,
                 |t| textures.get(t.index()).map(|g| g.view.clone()),
+                |i| textures.get(i).map(|g| g.view.clone()),
                 depth,
                 camera,
                 &self.mips,
@@ -5291,8 +5293,15 @@ impl Renderer {
         // source is copied to the output at the end. Otherwise the source is
         // copied and blurred once, before the overlay, which draws into the
         // output. A UI blend that reads what is under it always draws into
-        // the source, copied before it to what it reads.
+        // the source, copied before it to what it reads, and so does a
+        // backdrop layer, which captures the source before its composite.
         let runs: &[overlay::OverlayRun] = overlay_frame.as_ref().map_or(&[], |f| f.main_runs());
+        let captures: Vec<(usize, u32)> = overlay_frame.as_ref().map_or(Vec::new(), |f| {
+            runs.iter()
+                .enumerate()
+                .filter_map(|(i, r)| f.capture(r).map(|k| (i, k)))
+                .collect()
+        });
         let decode = !self.output_format.is_srgb() && self.output_format != HDR_FORMAT;
         let mut rebuilds = Vec::new();
         let mut copies = Vec::new();
@@ -5314,6 +5323,7 @@ impl Renderer {
             let over_content = rebuilds.first().is_some_and(|&i| i > 0)
                 || rebuilds.len() > 1
                 || !copies.is_empty()
+                || !captures.is_empty()
                 || color_filter.is_some();
             // The overlay draws into the source through the view it blends in.
             layered = match (over_content, overlay_view) {
@@ -5375,7 +5385,12 @@ impl Renderer {
                 .chain(copies.iter().map(|&i| (i, false)))
                 .collect();
             og_core::sort::sort_by_key(&mut events, |e| *e);
-            let mut cuts: Vec<usize> = events.iter().map(|e| e.0).collect();
+            let mut cuts: Vec<usize> = events
+                .iter()
+                .map(|e| e.0)
+                .chain(captures.iter().map(|c| c.0))
+                .collect();
+            og_core::sort::sort_by_key(&mut cuts, |c| *c);
             cuts.dedup();
             cuts.push(runs.len());
             let mut from = 0;
@@ -5408,6 +5423,11 @@ impl Renderer {
                         } else {
                             self.glass.copy_behind(&mut encoder, g)
                         };
+                    }
+                    if layered.is_some() {
+                        for &(_, k) in captures.iter().filter(|c| c.0 == to) {
+                            stats.draw_calls += self.record_capture(&mut encoder, k);
+                        }
                     }
                 }
                 from = to;

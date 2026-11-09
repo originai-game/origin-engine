@@ -343,6 +343,7 @@ pub fn layers() -> RenderScene {
                 target: None,
                 ground: None,
                 filter: None,
+                backdrop: false,
             });
             let n = o.ui.layers.len() as u32 - 1;
             o.ui.shapes.push(UiShape {
@@ -535,6 +536,7 @@ pub fn blur_detail(radius: f32) -> RenderScene {
             target: None,
             ground: None,
             filter: None,
+            backdrop: false,
         });
         o.ui.shapes.push(UiShape {
             layer: 50,
@@ -743,6 +745,7 @@ pub fn ground() -> RenderScene {
         mask: None,
         target: None,
         filter: None,
+        backdrop: false,
         ground: Some(og_render::UiGround {
             corners: Some(seen),
             drape: og_render::UiDrape::new(

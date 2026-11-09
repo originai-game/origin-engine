@@ -141,7 +141,7 @@ pub enum DrawCmd {
     /// `rect` (the union of what it draws, grown by `expand`) is set when
     /// levels are assigned. With a `filter` (an SVG `<filter>`'s region
     /// and graph, CSS px) the layer is the filter region instead and
-    /// composites the graph's result.
+    /// composites the graph's result. `role` says what it is for.
     BeginLayer {
         material: UiMaterial,
         params: [[f32; 4]; og_render::UI_MATERIAL_PARAMS],
@@ -149,6 +149,7 @@ pub enum DrawCmd {
         expand: f32,
         rect: Rect,
         filter: Option<Box<(Rect, og_render::UiFilter)>>,
+        role: LayerRole,
     },
     /// The layer's composite: `geometry` over `rect` (`None`: the layer's
     /// whole rectangle), at `opacity` with `blend`. With `ground`, the
@@ -166,6 +167,22 @@ pub enum DrawCmd {
     /// World-space UI's commands (`crate::world`): occlusion brackets,
     /// mass elements and particles, a world panel's target.
     World(Box<crate::world::WorldCmd>),
+}
+
+/// What a [`DrawCmd::BeginLayer`] is for.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum LayerRole {
+    /// It draws what follows until its end and composites it.
+    #[default]
+    Draw,
+    /// CSS `backdrop-filter`: it draws nothing; its filter runs over what
+    /// is under its composite where the composite draws
+    /// ([`og_render::UiLayer::backdrop`]), its region its filter's.
+    Backdrop,
+    /// The `n`-th element an `feImage` of the enclosing layer's filter
+    /// reads ([`crate::svg::filter::element_layer`]): what follows is
+    /// drawn and composited nowhere; the filter reads it.
+    Image(u32),
 }
 
 /// Where a layer's composite is laid by a quad of the frame
@@ -610,17 +627,30 @@ fn collect(
                     *rect = r;
                     bounds = r;
                 }
-                if let (
-                    DrawCmd::EndLayer {
-                        ground: Some(Ground::Panel(_)),
+                let image = matches!(
+                    begin,
+                    DrawCmd::BeginLayer {
+                        role: LayerRole::Image(_),
                         ..
-                    },
-                    _,
-                ) = &end
+                    }
+                );
+                if image
+                    || matches!(
+                        &end,
+                        (
+                            DrawCmd::EndLayer {
+                                ground: Some(Ground::Panel(_)),
+                                ..
+                            },
+                            _,
+                        )
+                    )
                 {
                     // Laid onto a quad that moves with the camera, in the
                     // grounds' band under the screen's levels (`emit`): it
                     // levels nothing here, so a moving camera levels nothing.
+                    // An element image composites nowhere and levels
+                    // nothing either.
                     entries.push(Entry::Panel {
                         begin: Box::new((begin, m)),
                         items,
@@ -1459,6 +1489,20 @@ impl Clips {
 struct Space {
     base: i32,
     layer: Option<u32>,
+    role: LayerRole,
+    /// Draws nothing (an element image with no layer to draw into).
+    hidden: bool,
+}
+
+impl Space {
+    fn new(base: i32, layer: Option<u32>) -> Space {
+        Space {
+            base,
+            layer,
+            role: LayerRole::Draw,
+            hidden: false,
+        }
+    }
 }
 
 /// A UI shape, laid on `layer` and clip `clip`.
@@ -1637,10 +1681,7 @@ pub(crate) fn emit(
     };
     overlay.ui.time = desc.time;
     let sorted = depth_order(items, grounds);
-    let mut spaces = vec![Space {
-        base: desc.layer,
-        layer: None,
-    }];
+    let mut spaces = vec![Space::new(desc.layer, None)];
     for item in items {
         if let DrawCmd::World(w) = &item.cmd {
             match **w {
@@ -1665,6 +1706,17 @@ pub(crate) fn emit(
             _ => item,
         };
         let space = spaces.last().expect("the frame's space");
+        // An element image with no layer draws nothing; its spaces still
+        // open and close.
+        let hidden = space.hidden;
+        if hidden
+            && !matches!(
+                item.cmd,
+                DrawCmd::BeginLayer { .. } | DrawCmd::EndLayer { .. }
+            )
+        {
+            continue;
+        }
         let layer = space.base + item.level;
         let m = &item.transform;
         // A shape laid on this item's layer and clip, under its map.
@@ -1709,10 +1761,7 @@ pub(crate) fn emit(
                     let k = overlay.ui.layers.len() as u32;
                     if k >= MAX_LAYERS {
                         // No room: its items draw nowhere visible (off the screen).
-                        spaces.push(Space {
-                            base: layer,
-                            layer: None,
-                        });
+                        spaces.push(Space::new(layer, None));
                         continue;
                     }
                     let base = desc.layer + LAYER_BASE + k as i32 * LAYER_SPAN;
@@ -1725,11 +1774,9 @@ pub(crate) fn emit(
                         target: Some(*target),
                         ground: None,
                         filter: None,
+                        backdrop: false,
                     });
-                    spaces.push(Space {
-                        base,
-                        layer: Some(k),
-                    });
+                    spaces.push(Space::new(base, Some(k)));
                 }
                 WorldCmd::EndPanel => {
                     // Composited nowhere: the mesh shows its target.
@@ -1744,16 +1791,35 @@ pub(crate) fn emit(
                 mask,
                 rect,
                 filter,
+                role,
                 ..
             } => {
                 let k = overlay.ui.layers.len() as u32;
-                if k >= MAX_LAYERS || rect.is_empty() {
-                    // Drawn in place, over what its composite would be over.
+                let parent = spaces.last().and_then(|s| s.layer);
+                if k >= MAX_LAYERS
+                    || rect.is_empty()
+                    || hidden
+                    || matches!(role, LayerRole::Image(_)) && parent.is_none()
+                {
+                    // Drawn in place, over what its composite would be over;
+                    // an element image or a backdrop, nowhere.
                     spaces.push(Space {
-                        base: layer,
-                        layer: None,
+                        hidden: hidden || *role != LayerRole::Draw,
+                        ..Space::new(layer, None)
                     });
                     continue;
+                }
+                if let (LayerRole::Image(n), Some(j)) = (role, parent)
+                    && let Some(f) = &mut overlay.ui.layers[j as usize].filter
+                {
+                    // The filter reads this layer for its n-th element.
+                    for p in &mut f.primitives {
+                        if let og_render::UiFilterOp::Layer { layer } = &mut p.op
+                            && *layer == crate::svg::filter::element_layer(*n)
+                        {
+                            *layer = k;
+                        }
+                    }
                 }
                 let base = desc.layer + LAYER_BASE + k as i32 * LAYER_SPAN;
                 overlay.ui.layers.push(og_render::UiLayer {
@@ -1765,10 +1831,11 @@ pub(crate) fn emit(
                     target: None,
                     ground: None,
                     filter: filter.as_ref().map(|f| f.1.clone()),
+                    backdrop: *role == LayerRole::Backdrop,
                 });
                 spaces.push(Space {
-                    base,
-                    layer: Some(k),
+                    role: *role,
+                    ..Space::new(base, Some(k))
                 });
             }
             DrawCmd::EndLayer {
@@ -1785,6 +1852,10 @@ pub(crate) fn emit(
                 let Some(k) = done.layer else {
                     continue;
                 };
+                // An element image composites nowhere: its filter reads it.
+                if matches!(done.role, LayerRole::Image(_)) {
+                    continue;
+                }
                 if let Some(Ground::Plane(key)) = ground {
                     // Laid through its map where it stands; nowhere when it
                     // shows its hidden back face (no quad).
@@ -2273,6 +2344,7 @@ mod levels {
             expand: 4.0,
             rect: Rect::default(),
             filter: None,
+            role: Default::default(),
         }
     }
 

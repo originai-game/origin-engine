@@ -99,9 +99,19 @@ fn rv3(r: &mut R) -> Option<og_core::glam::Vec3> {
     Some(og_core::glam::Vec3::new(r.f32()?, r.f32()?, r.f32()?))
 }
 
+/// A `kernelUnitLength`, or none.
+fn unit(w: &mut W, u: &Option<[f32; 2]>) {
+    floats(w, u.as_ref().map_or(&[][..], |u| &u[..]));
+}
+fn runit(r: &mut R) -> Option<Option<[f32; 2]>> {
+    let v = rfloats(r)?;
+    Some(v.try_into().ok())
+}
+
 /// A layer's filter region and graph.
 fn filter(w: &mut W, (region, f): &(crate::layout::Rect, UiFilter)) {
     w.rect(region);
+    floats(w, &f.space);
     w.u32(f.primitives.len() as u32);
     for p in &f.primitives {
         input(w, p.inputs[0]);
@@ -200,6 +210,10 @@ fn filter(w: &mut W, (region, f): &(crate::layout::Rect, UiFilter)) {
                 w.u8(11);
                 f4(w, tile);
             }
+            UiFilterOp::Layer { layer } => {
+                w.u8(15);
+                w.u32(*layer);
+            }
             UiFilterOp::Lighting {
                 specular,
                 surface_scale,
@@ -207,8 +221,10 @@ fn filter(w: &mut W, (region, f): &(crate::layout::Rect, UiFilter)) {
                 exponent,
                 color,
                 light,
+                kernel_unit,
             } => {
                 w.u8(12);
+                unit(w, kernel_unit);
                 w.u8(u8::from(*specular));
                 floats(w, &[*surface_scale, *constant, *exponent]);
                 floats(w, color);
@@ -244,8 +260,10 @@ fn filter(w: &mut W, (region, f): &(crate::layout::Rect, UiFilter)) {
                 target,
                 edge,
                 preserve_alpha,
+                kernel_unit,
             } => {
                 w.u8(14);
+                unit(w, kernel_unit);
                 w.u32(order[0]);
                 w.u32(order[1]);
                 floats(w, kernel);
@@ -261,6 +279,7 @@ fn filter(w: &mut W, (region, f): &(crate::layout::Rect, UiFilter)) {
 
 fn rfilter(r: &mut R) -> Option<(crate::layout::Rect, UiFilter)> {
     let region = r.rect()?;
+    let space: [f32; 6] = rfloats(r)?.try_into().ok()?;
     let n = r.u32()? as usize;
     if n > 4096 {
         return None;
@@ -344,6 +363,7 @@ fn rfilter(r: &mut R) -> Option<(crate::layout::Rect, UiFilter)> {
             },
             11 => UiFilterOp::Tile { tile: rf4(r)? },
             12 => {
+                let kernel_unit = runit(r)?;
                 let specular = r.u8()? != 0;
                 let [surface_scale, constant, exponent] = rfloats(r)?.try_into().ok()?;
                 let color = rfloats(r)?.try_into().ok()?;
@@ -368,10 +388,12 @@ fn rfilter(r: &mut R) -> Option<(crate::layout::Rect, UiFilter)> {
                     exponent,
                     color,
                     light,
+                    kernel_unit,
                 }
             }
             13 => UiFilterOp::Merge,
             14 => {
+                let kernel_unit = runit(r)?;
                 let order = [r.u32()?, r.u32()?];
                 let kernel = rfloats(r)?;
                 let [divisor, bias] = two(r)?;
@@ -383,8 +405,10 @@ fn rfilter(r: &mut R) -> Option<(crate::layout::Rect, UiFilter)> {
                     target: [r.i32()?, r.i32()?],
                     edge: r.u8()?,
                     preserve_alpha: r.u8()? != 0,
+                    kernel_unit,
                 }
             }
+            15 => UiFilterOp::Layer { layer: r.u32()? },
             _ => return None,
         };
         primitives.push(UiFilterPrimitive {
@@ -394,7 +418,7 @@ fn rfilter(r: &mut R) -> Option<(crate::layout::Rect, UiFilter)> {
             srgb,
         });
     }
-    Some((region, UiFilter { primitives }))
+    Some((region, UiFilter { primitives, space }))
 }
 
 const BLENDS: [UiBlend; 21] = [
@@ -1195,6 +1219,7 @@ impl W<'_> {
                 expand,
                 rect,
                 filter: f,
+                role,
             } => {
                 w.u8(5);
                 material(w, m);
@@ -1220,6 +1245,14 @@ impl W<'_> {
                     Some(f) => {
                         w.u8(1);
                         filter(w, f);
+                    }
+                }
+                match role {
+                    crate::LayerRole::Draw => w.u8(0),
+                    crate::LayerRole::Backdrop => w.u8(1),
+                    crate::LayerRole::Image(n) => {
+                        w.u8(2);
+                        w.u32(*n);
                     }
                 }
             }
@@ -1310,6 +1343,12 @@ impl R<'_> {
                     filter: match r.u8()? {
                         0 => None,
                         _ => Some(Box::new(rfilter(r)?)),
+                    },
+                    role: match r.u8()? {
+                        0 => crate::LayerRole::Draw,
+                        1 => crate::LayerRole::Backdrop,
+                        2 => crate::LayerRole::Image(r.u32()?),
+                        _ => return None,
                     },
                 }
             }

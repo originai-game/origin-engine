@@ -1912,7 +1912,9 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
         | "clip-path" | "-og-material" => {
             use super::paint_css as p;
             let prop = match name {
-                "backdrop-filter" => p::backdrop(value).map(|_| "backdropFilter"),
+                "backdrop-filter" => {
+                    p::filter_fns(value, "backdrop-filter").map(|_| "backdropFilter")
+                }
                 "filter" => p::filter_fns(value, "filter").map(|_| "filter"),
                 "mix-blend-mode" => p::blend(value).map(|_| "mixBlendMode"),
                 "isolation" => p::isolation(value).map(|_| "isolation"),

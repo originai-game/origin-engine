@@ -665,7 +665,7 @@ pub const PROPS: &[PropSpec] = &[
     svg!(
         "svgHref",
         On::Kinds(&["svgDef", "svgUse", "svgShape"]),
-        "SVG `href`: an `<image>`'s atlas icon by name or render texture handle (`href={$target}`), what a `<use>` draws (`#id` of a symbol, group or shape), or the gradient a gradient takes its stops from."
+        "SVG `href`: an `<image>`'s atlas icon by name or render texture handle (`href={$target}`), what a `<use>` draws (`#id` of a symbol, group or shape), the gradient a gradient takes its stops from, or an `feImage`'s atlas image, texture handle or element (`#id` of a shape or group, drawn as `<use>` draws it)."
     ),
     svg!(
         "svgClipPath",
@@ -816,7 +816,7 @@ pub const PROPS: &[PropSpec] = &[
     svg!(
         "svgKernelUnitLength",
         DEFS,
-        "`kernelUnitLength` of `feConvolveMatrix` and the lighting primitives: read past (one device px a cell)."
+        "`kernelUnitLength` of `feConvolveMatrix` and the lighting primitives: a cell's size in primitive units (left out, one device px)."
     ),
     svg!(
         "svgSurfaceScale",
@@ -1070,7 +1070,7 @@ pub const PROPS: &[PropSpec] = &[
         ty: Ty::Text,
         on: On::All,
         two_way: false,
-        doc: "CSS `backdrop-filter`: what is under the element blurred and its colour adjusted (glass), with `filter`'s functions; the colour functions fold into one matrix and `drop-shadow()` casts nothing on the opaque backdrop.",
+        doc: "CSS `backdrop-filter`: what is really under the element (the screen, or the group it is drawn in) through `filter`'s functions and `url(#id)` in order, laid in its border-box shape under its background.",
     },
     PropSpec {
         name: "filter",

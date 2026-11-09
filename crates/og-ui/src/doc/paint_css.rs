@@ -1792,34 +1792,38 @@ fn px(t: &Tok) -> Result<f32, String> {
     }
 }
 
-/// `backdrop-filter`: the backdrop blurred (blurs add as Gaussians do)
-/// and its colour functions folded into one matrix over it; a
-/// `drop-shadow()` has nothing to cast (the backdrop is opaque), and a
-/// `url(#id)` is not drawn yet.
-pub(crate) fn backdrop(text: &str) -> Result<Option<Effect>, String> {
-    let fns = filter_fns(text, "backdrop-filter")?;
-    if fns.is_empty() {
-        return Ok(None);
-    }
-    let mut var = 0.0f32;
-    let mut matrix: Option<og_render::UiColorMatrix> = None;
-    for f in &fns {
+/// `backdrop-filter`'s functions as its stages, in order: a run of
+/// colour functions is one matrix while it keeps colour in 0..1 (as
+/// `filter`'s layers fold), a `drop-shadow()` with no colour takes
+/// `current`, and a `url(#id)` is the `<filter>` `url` finds; one that
+/// names none drops the list. `None` for no functions.
+pub(crate) fn backdrop_stages(
+    fns: &[FilterFn],
+    current: ColorRef,
+    mut url: impl FnMut(&str) -> Option<std::sync::Arc<crate::paint::FilterUse>>,
+) -> Option<Vec<crate::paint::BackdropStage>> {
+    use crate::paint::BackdropStage as S;
+    let mut out: Vec<S> = Vec::new();
+    for f in fns {
         match f {
-            FilterFn::Blur(s) => var += s * s,
-            FilterFn::Matrix(m) => matrix = Some(matrix.map_or(*m, |r| then(&r, m))),
-            FilterFn::DropShadow { .. } | FilterFn::Url(_) => {}
+            FilterFn::Matrix(m) => match out.last_mut() {
+                Some(S::Matrix(r)) if contained(r) => *r = then(r, m),
+                _ => out.push(S::Matrix(*m)),
+            },
+            FilterFn::Blur(s) => out.push(S::Blur(*s)),
+            FilterFn::DropShadow {
+                offset,
+                blur,
+                color,
+            } => out.push(S::DropShadow {
+                offset: *offset,
+                blur: *blur,
+                color: color.clone().unwrap_or_else(|| current.clone()),
+            }),
+            FilterFn::Url(u) => out.push(S::Url(url(u)?)),
         }
     }
-    Ok(Some(Effect::Backdrop {
-        blur: var.sqrt(),
-        saturation: 1.0,
-        brightness: 1.0,
-        tint: ColorRef::Literal(Srgba::TRANSPARENT),
-        glass: crate::paint::GlassParts {
-            matrix,
-            ..Default::default()
-        },
-    }))
+    (!out.is_empty()).then_some(out)
 }
 
 /// `isolation`: whether it isolates.

@@ -1,11 +1,21 @@
 //! SVG filter graphs over UI layers (Filter Effects 1 §9-15): a
 //! [`UiFilter`] on a [`super::UiLayer`] runs its primitives over what the
-//! layer drew (SourceGraphic) once it is drawn, each a full-target pass
-//! into a result of the layer's size (`shaders/ui_filter.wgsl`), and the
-//! layer composites the last result instead of what it drew. The layer's
-//! rect is the filter region. Results are premultiplied linear light,
-//! as the layers are (`color-interpolation-filters: linearRGB`); a
-//! primitive marked `srgb` works on sRGB-encoded values.
+//! layer drew (SourceGraphic) once it is drawn, or over what lies under it
+//! for a backdrop layer ([`super::UiLayer::backdrop`]), each a full-target
+//! pass into a result of the layer's size (`shaders/ui_filter.wgsl`), and
+//! the layer composites the last result instead of what it drew. The
+//! layer's rect is the filter region on the screen. Results are
+//! premultiplied linear light, as the layers are
+//! (`color-interpolation-filters: linearRGB`); a primitive marked `srgb`
+//! works on sRGB-encoded values.
+//!
+//! A filter is written in its own space ([`UiFilter::space`], the
+//! element's user space): subregions, lengths, positions and lights are
+//! in its units, and every primitive runs there, whatever turn, skew or
+//! scale takes that space onto the screen. A blur or a morphology runs
+//! along the space's axes (a Gaussian's two passes along the images of
+//! its axes are the turned Gaussian exactly); lighting computes its
+//! surface and its lights in it.
 
 use super::UiBlend;
 use crate::TextureHandle;
@@ -13,14 +23,32 @@ use og_core::glam::Vec3;
 
 /// A filter: its primitives in order, each reading the source or earlier
 /// results; the last one's result is the filter's.
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct UiFilter {
     pub primitives: Vec<UiFilterPrimitive>,
+    /// The affine map from the filter's space to CSS px, `[a, b, c, d, e,
+    /// f]` (x' = a·x + c·y + e, y' = b·x + d·y + f); [`UiFilter::CSS`] is
+    /// CSS px itself. A map that cannot be inverted draws nothing.
+    pub space: [f32; 6],
+}
+
+impl UiFilter {
+    /// The identity space: a filter written in CSS px.
+    pub const CSS: [f32; 6] = [1.0, 0.0, 0.0, 1.0, 0.0, 0.0];
+}
+
+impl Default for UiFilter {
+    fn default() -> UiFilter {
+        UiFilter {
+            primitives: Vec::new(),
+            space: UiFilter::CSS,
+        }
+    }
 }
 
 /// One primitive: what it does, its inputs (`in`, `in2`), its subregion
-/// (`[x, y, width, height]`, CSS px; outside it the result is
-/// transparent) and whether it works on sRGB-encoded values.
+/// (`[x, y, width, height]` in the filter's space; outside it the result
+/// is transparent) and whether it works on sRGB-encoded values.
 #[derive(Clone, Debug, PartialEq)]
 pub struct UiFilterPrimitive {
     pub op: UiFilterOp,
@@ -32,7 +60,8 @@ pub struct UiFilterPrimitive {
 /// What a primitive reads.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum UiFilterInput {
-    /// What the layer drew (SourceGraphic).
+    /// What the layer drew (SourceGraphic), or for a backdrop layer what
+    /// is under it.
     #[default]
     Source,
     /// Its alpha, black (SourceAlpha).
@@ -75,10 +104,11 @@ pub enum UiTransfer {
     },
 }
 
-/// A lighting primitive's light, CSS px (z above the surface).
+/// A lighting primitive's light in the filter's space (z above the
+/// surface, in its units).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum UiLight {
-    /// Radians.
+    /// Radians, from the space's x axis towards its y axis.
     Distant {
         azimuth: f32,
         elevation: f32,
@@ -95,10 +125,10 @@ pub enum UiLight {
     },
 }
 
-/// What a primitive does. Lengths are CSS px.
+/// What a primitive does. Lengths and positions are in the filter's space.
 #[derive(Clone, Debug, PartialEq)]
 pub enum UiFilterOp {
-    /// `feGaussianBlur`: the standard deviation along x and y.
+    /// `feGaussianBlur`: the standard deviation along the space's x and y.
     Blur { std_dev: [f32; 2] },
     /// `feOffset`.
     Offset { d: [f32; 2] },
@@ -112,13 +142,13 @@ pub enum UiFilterOp {
     ColorMatrix([f32; 20]),
     /// `feComponentTransfer`: R, G, B, A.
     ComponentTransfer(Box<[UiTransfer; 4]>),
-    /// `feMorphology`.
+    /// `feMorphology`: the radius along the space's x and y.
     Morphology { radius: [f32; 2], dilate: bool },
     /// `feDisplacementMap` of `in` by `in2`'s channels (0 R … 3 A).
     Displacement { scale: f32, channels: [u8; 2] },
-    /// `feTurbulence` at user-space points: `user` maps a CSS point to
-    /// them (origin x, y in CSS px, user units per CSS px); `tile` is the
-    /// stitch tile in user units.
+    /// `feTurbulence` at noise points: `user` maps a point of the space
+    /// to them (origin x, y, noise units per unit); `tile` is the stitch
+    /// tile in noise units.
     Turbulence {
         base_frequency: [f32; 2],
         octaves: u32,
@@ -134,11 +164,18 @@ pub enum UiFilterOp {
         uv: [f32; 4],
         rect: [f32; 4],
     },
+    /// `feImage` of an element (`href="#id"`): layer `layer` of the
+    /// list, drawn where it lies on the screen and composited nowhere
+    /// else; transparent outside its rect. It draws before this filter
+    /// runs.
+    Layer { layer: u32 },
     /// `feTile` of `in`, whose subregion is `tile`.
     Tile { tile: [f32; 4] },
     /// `feDiffuseLighting` (`specular` false: `constant` is kd) or
     /// `feSpecularLighting` (ks and its exponent), lit by `light` in
-    /// linear `color`, from `in`'s alpha as a surface.
+    /// linear `color`, from `in`'s alpha as a surface. The surface's
+    /// normal is taken over cells of `kernel_unit` along the space's x
+    /// and y (`kernelUnitLength`); `None` is one device px a cell.
     Lighting {
         specular: bool,
         surface_scale: f32,
@@ -146,12 +183,14 @@ pub enum UiFilterOp {
         exponent: f32,
         color: [f32; 3],
         light: UiLight,
+        kernel_unit: Option<[f32; 2]>,
     },
     /// One step of `feMerge`: `in` over `in2`.
     Merge,
     /// `feConvolveMatrix`: `order` columns and rows (at most 64 cells),
-    /// the kernel row-major, one device px a cell; `edge` 0 duplicate, 1
-    /// wrap, 2 none.
+    /// the kernel row-major, a cell `kernel_unit` along the space's x and
+    /// y (`kernelUnitLength`; `None` is one device px); `edge` 0
+    /// duplicate, 1 wrap, 2 none.
     Convolve {
         order: [u32; 2],
         kernel: Vec<f32>,
@@ -160,6 +199,7 @@ pub enum UiFilterOp {
         target: [i32; 2],
         edge: u8,
         preserve_alpha: bool,
+        kernel_unit: Option<[f32; 2]>,
     },
 }
 
@@ -170,6 +210,12 @@ struct FilterParams {
     op: [u32; 4],
     origin: [f32; 4],
     subregion: [f32; 4],
+    /// The filter's space to CSS px: its linear part (a, b, c, d) and
+    /// its translation (e, f), then the inverse's.
+    space: [f32; 4],
+    space_t: [f32; 4],
+    inverse: [f32; 4],
+    inverse_t: [f32; 4],
     a: [f32; 4],
     b: [f32; 4],
     c: [f32; 4],
@@ -180,25 +226,90 @@ struct FilterParams {
 const FLAG_SRGB: u32 = 1;
 const FLAG_IN1_ALPHA: u32 = 2;
 const FLAG_IN2_ALPHA: u32 = 4;
-const FLAG_Y: u32 = 8;
 const FLAG_STITCH: u32 = 16;
 const FLAG_FRACTAL: u32 = 32;
+/// Reads past an input's edge take its edge (a backdrop: what is under
+/// the element goes on past what was captured of it).
+const FLAG_CLAMP: u32 = 64;
+
+/// The ops' codes in ui_filter.wgsl beyond a primitive's.
+const OP_LAYER: u32 = 16;
+const OP_CAPTURE: u32 = 17;
 
 /// UiBlend's code in the shaders (src/ui/build.rs).
 fn blend_code(b: UiBlend) -> f32 {
     b as u32 as f32
 }
 
+/// Where a layer's filter runs: the layer target's top left (CSS px), its
+/// device px per CSS px, and the filter's space.
+#[derive(Clone, Copy, Debug)]
+struct Frame {
+    origin: [f32; 2],
+    scale: f32,
+    space: [f32; 6],
+}
+
+impl Frame {
+    /// A vector of the filter's space in device px.
+    fn device(&self, v: [f32; 2]) -> [f32; 2] {
+        let [a, b, c, d, ..] = self.space;
+        [
+            (a * v[0] + c * v[1]) * self.scale,
+            (b * v[0] + d * v[1]) * self.scale,
+        ]
+    }
+
+    /// A cell's two edges in device px: `unit` along the space's axes, or
+    /// one device px along each; and how much a step along each is in
+    /// cells of the surface's normal (1 for a given unit, else the space
+    /// units a device px is, the normal then per unit).
+    fn cells(&self, unit: Option<[f32; 2]>) -> ([f32; 4], [f32; 2]) {
+        match unit {
+            Some([x, y]) => {
+                let (u, v) = (self.device([x, 0.0]), self.device([0.0, y]));
+                ([u[0], u[1], v[0], v[1]], [1.0, 1.0])
+            }
+            None => {
+                let (u, v) = (self.device([1.0, 0.0]), self.device([0.0, 1.0]));
+                let (lu, lv) = (u[0].hypot(u[1]).max(1e-6), v[0].hypot(v[1]).max(1e-6));
+                ([u[0] / lu, u[1] / lu, v[0] / lv, v[1] / lv], [lu, lv])
+            }
+        }
+    }
+}
+
+/// The affine map's inverse, `None` when it has none.
+fn invert(m: [f32; 6]) -> Option<[f32; 6]> {
+    let [a, b, c, d, e, f] = m;
+    let det = a * d - b * c;
+    if !det.is_finite() || det.abs() < 1e-12 {
+        return None;
+    }
+    let (ia, ib, ic, id) = (d / det, -b / det, -c / det, a / det);
+    Some([ia, ib, ic, id, -(ia * e + ic * f), -(ib * e + id * f)])
+}
+
 /// The parameters of each pass of a primitive (two for a blur or a
-/// morphology, one axis each) at a layer's `origin` (CSS px) and `scale`
-/// (device px per CSS px).
-fn passes(p: &UiFilterPrimitive, origin: [f32; 2], scale: f32) -> Vec<FilterParams> {
+/// morphology, one axis of the space each) in `frame`, every read past
+/// an input's edge taking the edge when `clamp`.
+fn passes(p: &UiFilterPrimitive, frame: &Frame, clamp: bool) -> Vec<FilterParams> {
+    let scale = frame.scale;
+    let space = frame.space;
+    let inverse = invert(space).unwrap_or([0.0; 6]);
     let mut f = FilterParams {
-        origin: [origin[0], origin[1], scale, 0.0],
+        origin: [frame.origin[0], frame.origin[1], scale, 0.0],
         subregion: p.subregion,
+        space: [space[0], space[1], space[2], space[3]],
+        space_t: [space[4], space[5], 0.0, 0.0],
+        inverse: [inverse[0], inverse[1], inverse[2], inverse[3]],
+        inverse_t: [inverse[4], inverse[5], 0.0, 0.0],
         ..Default::default()
     };
     let mut flags = if p.srgb { FLAG_SRGB } else { 0 };
+    if clamp {
+        flags |= FLAG_CLAMP;
+    }
     let alpha = |i: UiFilterInput, flag| {
         if i == UiFilterInput::SourceAlpha {
             flag
@@ -208,30 +319,36 @@ fn passes(p: &UiFilterPrimitive, origin: [f32; 2], scale: f32) -> Vec<FilterPara
     };
     flags |= alpha(p.inputs[0], FLAG_IN1_ALPHA) | alpha(p.inputs[1], FLAG_IN2_ALPHA);
     let code = |f: &mut FilterParams, op: u32| f.op = [op, flags, 0, 0];
+    // Two passes along the images of the space's axes: the second reads
+    // the first's result, not the source.
+    let axes = |f: FilterParams, x: [f32; 2], y: [f32; 2]| {
+        let mut first = f;
+        first.a[0] = x[0];
+        first.a[1] = x[1];
+        let mut second = f;
+        second.a[0] = y[0];
+        second.a[1] = y[1];
+        second.op[1] = flags & (FLAG_SRGB | FLAG_CLAMP);
+        vec![first, second]
+    };
     match &p.op {
         UiFilterOp::Blur { std_dev } => {
             code(&mut f, 0);
-            f.a = [std_dev[0] * scale, std_dev[1] * scale, 0.0, 0.0];
-            let mut y = f;
-            // The second pass reads the first's result, not the source.
-            y.op[1] = (flags & FLAG_SRGB) | FLAG_Y;
-            return vec![f, y];
+            let x = frame.device([std_dev[0].max(0.0), 0.0]);
+            let y = frame.device([0.0, std_dev[1].max(0.0)]);
+            return axes(f, x, y);
         }
         UiFilterOp::Morphology { radius, dilate } => {
             code(&mut f, 7);
-            f.a = [
-                radius[0] * scale,
-                radius[1] * scale,
-                f32::from(u8::from(*dilate)),
-                0.0,
-            ];
-            let mut y = f;
-            y.op[1] = (flags & FLAG_SRGB) | FLAG_Y;
-            return vec![f, y];
+            f.a[2] = f32::from(u8::from(*dilate));
+            let x = frame.device([radius[0].max(0.0), 0.0]);
+            let y = frame.device([0.0, radius[1].max(0.0)]);
+            return axes(f, x, y);
         }
         UiFilterOp::Offset { d } => {
             code(&mut f, 1);
-            f.a = [d[0] * scale, d[1] * scale, 0.0, 0.0];
+            let [x, y] = frame.device(*d);
+            f.a = [x, y, 0.0, 0.0];
         }
         UiFilterOp::Flood { color } => {
             code(&mut f, 2);
@@ -283,7 +400,7 @@ fn passes(p: &UiFilterPrimitive, origin: [f32; 2], scale: f32) -> Vec<FilterPara
             code(&mut f, 8);
             f.op[2] = u32::from(channels[0].min(3));
             f.op[3] = u32::from(channels[1].min(3));
-            f.a[0] = s * scale;
+            f.a[0] = *s;
         }
         UiFilterOp::Turbulence {
             base_frequency,
@@ -310,6 +427,8 @@ fn passes(p: &UiFilterPrimitive, origin: [f32; 2], scale: f32) -> Vec<FilterPara
             f.a = *rect;
             f.b = *uv;
         }
+        // Written by `prepare`, which knows where the layer is.
+        UiFilterOp::Layer { .. } => code(&mut f, OP_LAYER),
         UiFilterOp::Tile { tile } => {
             code(&mut f, 11);
             f.a = *tile;
@@ -321,27 +440,25 @@ fn passes(p: &UiFilterPrimitive, origin: [f32; 2], scale: f32) -> Vec<FilterPara
             exponent,
             color,
             light,
+            kernel_unit,
         } => {
             code(&mut f, if *specular { 13 } else { 12 });
-            // The surface in device px: its slopes and heights scale.
-            f.a = [surface_scale * scale, *constant, *exponent, 0.0];
-            let device = |v: Vec3| {
-                [
-                    (v.x - origin[0]) * scale,
-                    (v.y - origin[1]) * scale,
-                    v.z * scale,
-                ]
-            };
+            let (cells, per) = frame.cells(*kernel_unit);
+            // The surface's height is surface scale × alpha in cells: a
+            // cell of a given unit is that many units tall.
+            let tall = kernel_unit.map_or(1.0, |[x, y]| (x * y).abs().sqrt());
+            f.a = [*surface_scale, *constant, *exponent, 0.0];
             f.m[0] = [color[0], color[1], color[2], 1.0];
-            f.m[1][0] = -2.0;
+            f.m[1] = [-2.0, tall, 0.0, 0.0];
+            f.m[2] = cells;
+            f.m[3] = [per[0] * tall, per[1] * tall, 0.0, 0.0];
             match light {
                 UiLight::Distant { azimuth, elevation } => {
                     f.b = [*azimuth, *elevation, 0.0, 0.0];
                 }
                 UiLight::Point { at } => {
                     f.a[3] = 1.0;
-                    let [x, y, z] = device(*at);
-                    f.b = [x, y, z, 0.0];
+                    f.b = [at.x, at.y, at.z, 0.0];
                 }
                 UiLight::Spot {
                     at,
@@ -350,10 +467,8 @@ fn passes(p: &UiFilterPrimitive, origin: [f32; 2], scale: f32) -> Vec<FilterPara
                     cone,
                 } => {
                     f.a[3] = 2.0;
-                    let [x, y, z] = device(*at);
-                    f.b = [x, y, z, 0.0];
-                    let [x, y, z] = device(*points_at);
-                    f.c = [x, y, z, *exponent];
+                    f.b = [at.x, at.y, at.z, 0.0];
+                    f.c = [points_at.x, points_at.y, points_at.z, *exponent];
                     if let Some(c) = cone {
                         f.m[1][0] = c.cos();
                     }
@@ -369,6 +484,7 @@ fn passes(p: &UiFilterPrimitive, origin: [f32; 2], scale: f32) -> Vec<FilterPara
             target,
             edge,
             preserve_alpha,
+            kernel_unit,
         } => {
             code(&mut f, 15);
             let n = kernel.len().min(64);
@@ -387,6 +503,7 @@ fn passes(p: &UiFilterPrimitive, origin: [f32; 2], scale: f32) -> Vec<FilterPara
                 0.0,
                 0.0,
             ];
+            f.m[2] = frame.cells(*kernel_unit).0;
             for (k, v) in kernel.iter().take(64).enumerate() {
                 f.table[k / 4][k % 4] = *v;
             }
@@ -475,6 +592,35 @@ struct Pass {
 pub(crate) struct Prepared {
     passes: Vec<Pass>,
     pub result: wgpu::TextureView,
+}
+
+/// What a layer's filter reads as its source.
+pub(crate) enum Source<'a> {
+    /// What the layer drew.
+    Drawn(&'a wgpu::TextureView),
+    /// What is under a backdrop layer.
+    Capture(Capture<'a>),
+}
+
+/// The target a backdrop layer's composite draws into, as drawn so far:
+/// its view, its top left (CSS px), its device px per CSS px, and whether
+/// it holds sRGB-encoded values (a non-sRGB output, which the tonemap
+/// encodes).
+pub(crate) struct Capture<'a> {
+    pub view: &'a wgpu::TextureView,
+    pub origin: [f32; 2],
+    pub scale: f32,
+    pub decode: bool,
+}
+
+/// What a filter's primitives read besides their inputs: `white` for a
+/// texture a pass does not read, an image's texture by handle, and a
+/// layer drawn this frame by index (its target's view, top left in CSS
+/// px, and device px per CSS px).
+pub(crate) struct Inputs<'a> {
+    pub white: &'a wgpu::TextureView,
+    pub texture_view: &'a dyn Fn(TextureHandle) -> Option<wgpu::TextureView>,
+    pub layer: &'a dyn Fn(u32) -> Option<(wgpu::TextureView, [f32; 2], f32)>,
 }
 
 /// The filter pipeline, its result targets and parameters, and the
@@ -642,61 +788,122 @@ impl FilterRunner {
         view
     }
 
-    /// Writes `filter`'s passes over a layer drawn into `source`, of
-    /// `size` device px at `origin` (CSS px) and `scale`. `white` stands
-    /// for a texture a pass does not read; `texture_view` finds an
-    /// image's.
+    fn uniform(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        params: &FilterParams,
+    ) -> usize {
+        if self.next_uniform == self.uniforms.len() {
+            self.uniforms
+                .push(device.create_buffer(&wgpu::BufferDescriptor {
+                    label: Some("ui filter"),
+                    size: std::mem::size_of::<FilterParams>() as u64,
+                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                }));
+        }
+        self.next_uniform += 1;
+        queue.write_buffer(
+            &self.uniforms[self.next_uniform - 1],
+            0,
+            bytemuck::bytes_of(params),
+        );
+        self.next_uniform - 1
+    }
+
+    /// Writes a layer's passes: for a backdrop (`source` a [`Source::Capture`])
+    /// the copy of what is under it first, then `filter`'s over it or over
+    /// what the layer drew, for a layer of `size` device px at `origin`
+    /// (CSS px) and `scale`. `None` when there is nothing to run.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn prepare(
         &mut self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        filter: &super::UiFilter,
-        source: &wgpu::TextureView,
+        filter: Option<&super::UiFilter>,
+        source: Source<'_>,
         size: (u32, u32),
         origin: [f32; 2],
         scale: f32,
-        white: &wgpu::TextureView,
-        texture_view: &dyn Fn(TextureHandle) -> Option<wgpu::TextureView>,
+        inputs: &Inputs<'_>,
     ) -> Option<Prepared> {
-        if filter.primitives.is_empty() {
-            return None;
-        }
-        let mut results: Vec<usize> = Vec::new();
         let mut passes = Vec::new();
-        for p in &filter.primitives {
+        let clamp = matches!(source, Source::Capture(_));
+        let source = match source {
+            Source::Drawn(v) if filter.is_some_and(|f| !f.primitives.is_empty()) => v.clone(),
+            Source::Drawn(_) => return None,
+            Source::Capture(c) => {
+                let params = FilterParams {
+                    op: [OP_CAPTURE, FLAG_CLAMP, 0, 0],
+                    origin: [origin[0], origin[1], scale, 0.0],
+                    subregion: [-1.0e9, -1.0e9, 2.0e9, 2.0e9],
+                    space: [1.0, 0.0, 0.0, 1.0],
+                    inverse: [1.0, 0.0, 0.0, 1.0],
+                    a: [
+                        c.origin[0],
+                        c.origin[1],
+                        c.scale,
+                        f32::from(u8::from(c.decode)),
+                    ],
+                    ..Default::default()
+                };
+                let out = self.take(device, size);
+                let u = self.uniform(device, queue, &params);
+                let group = crate::bind_group(
+                    device,
+                    "ui filter capture",
+                    &self.layout,
+                    &[
+                        wgpu::BindingResource::TextureView(c.view),
+                        wgpu::BindingResource::TextureView(inputs.white),
+                        wgpu::BindingResource::TextureView(inputs.white),
+                        self.uniforms[u].as_entire_binding(),
+                    ],
+                );
+                passes.push(Pass { group, target: out });
+                self.pool[out].view.clone()
+            }
+        };
+        let primitives = filter.map_or(&[][..], |f| &f.primitives);
+        let frame = Frame {
+            origin,
+            scale,
+            space: filter.map_or(super::UiFilter::CSS, |f| f.space),
+        };
+        // A space that cannot be inverted draws nothing.
+        let draws = invert(frame.space).is_some();
+        let mut results: Vec<usize> = Vec::new();
+        for p in primitives.iter().filter(|_| draws) {
             let input = |i: UiFilterInput, results: &[usize], pool: &[Pooled]| match i {
                 UiFilterInput::Result(k) if (k as usize) < results.len() => {
                     pool[results[k as usize]].view.clone()
                 }
                 _ => source.clone(),
             };
+            let mut steps = self::passes(p, &frame, clamp);
             let aux = match &p.op {
                 UiFilterOp::Turbulence { seed, .. } => self.lattice(device, queue, *seed),
                 UiFilterOp::Image { texture, .. } => {
-                    texture_view(*texture).unwrap_or_else(|| white.clone())
+                    (inputs.texture_view)(*texture).unwrap_or_else(|| inputs.white.clone())
                 }
-                _ => white.clone(),
+                UiFilterOp::Layer { layer } => match (inputs.layer)(*layer) {
+                    Some((view, at, s)) => {
+                        steps[0].a = [at[0], at[1], s, 0.0];
+                        view
+                    }
+                    // Not drawn: transparent.
+                    None => inputs.white.clone(),
+                },
+                _ => inputs.white.clone(),
             };
             let mut in1 = input(p.inputs[0], &results, &self.pool);
             let in2 = input(p.inputs[1], &results, &self.pool);
-            let steps = self::passes(p, origin, scale);
             let last = steps.len() - 1;
             let mut out = 0;
             for (n, params) in steps.into_iter().enumerate() {
                 out = self.take(device, size);
-                if self.next_uniform == self.uniforms.len() {
-                    self.uniforms
-                        .push(device.create_buffer(&wgpu::BufferDescriptor {
-                            label: Some("ui filter"),
-                            size: std::mem::size_of::<FilterParams>() as u64,
-                            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                            mapped_at_creation: false,
-                        }));
-                }
-                let buffer = &self.uniforms[self.next_uniform];
-                self.next_uniform += 1;
-                queue.write_buffer(buffer, 0, bytemuck::bytes_of(&params));
+                let u = self.uniform(device, queue, &params);
                 let group = crate::bind_group(
                     device,
                     "ui filter",
@@ -705,7 +912,7 @@ impl FilterRunner {
                         wgpu::BindingResource::TextureView(&in1),
                         wgpu::BindingResource::TextureView(&in2),
                         wgpu::BindingResource::TextureView(&aux),
-                        buffer.as_entire_binding(),
+                        self.uniforms[u].as_entire_binding(),
                     ],
                 );
                 passes.push(Pass { group, target: out });
@@ -715,10 +922,35 @@ impl FilterRunner {
             }
             results.push(out);
         }
-        Some(Prepared {
-            passes,
-            result: self.pool[*results.last()?].view.clone(),
-        })
+        let result = match (results.last(), passes.last()) {
+            (Some(&r), _) => self.pool[r].view.clone(),
+            // A capture with no primitives (or a space that draws
+            // nothing: transparent) composites what it captured.
+            (None, Some(p)) if draws => self.pool[p.target].view.clone(),
+            (None, _) => {
+                let out = self.take(device, size);
+                let params = FilterParams {
+                    op: [2, 0, 0, 0],
+                    origin: [origin[0], origin[1], scale, 0.0],
+                    ..Default::default()
+                };
+                let u = self.uniform(device, queue, &params);
+                let group = crate::bind_group(
+                    device,
+                    "ui filter",
+                    &self.layout,
+                    &[
+                        wgpu::BindingResource::TextureView(inputs.white),
+                        wgpu::BindingResource::TextureView(inputs.white),
+                        wgpu::BindingResource::TextureView(inputs.white),
+                        self.uniforms[u].as_entire_binding(),
+                    ],
+                );
+                passes.push(Pass { group, target: out });
+                self.pool[out].view.clone()
+            }
+        };
+        Some(Prepared { passes, result })
     }
 
     /// Records a prepared filter's passes.

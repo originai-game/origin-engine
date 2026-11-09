@@ -871,14 +871,22 @@ it (each `in`/`in2` names `SourceGraphic`, `SourceAlpha` or an earlier
 the border box's CSS px from its top left, and objectBoundingBox units
 are fractions of the border box. A `url()` that names no `<filter>`
 drops the whole list, as Filter Effects 1 says. `backdrop-filter`
-takes the same functions over what is under the element (glass): blurs
-add as Gaussians do, the colour functions fold into one matrix over the
-blurred backdrop (its `opacity()` mixes over the unblurred one), and
-`drop-shadow()` casts nothing on the opaque backdrop. The backdrop is
-read from the blur pyramid, so a backdrop with no blur is as soft as
-its finest level. Its `url(#id)` is not drawn yet (a warning names it;
-the functions beside it are): a layer's backdrop is the layer drawn so
-far, not the screen under it. `mix-blend-mode`
+takes the same functions and `url(#id)` over what is really under the
+element, in order (Filter Effects 2): og-render's backdrop layer
+captures its target as drawn so far under the region where the
+element's composite draws (the screen, or the group the element is drawn
+in when an ancestor's opacity, filter, mask or clip makes a layer, the
+specification's backdrop root), runs the stages as one filter graph over
+it in the box's user space, and lays the result in the element's
+border-box shape under its own background. The region is the border box
+grown by three deviations of each blur and a drop shadow's reach (and
+each `url()` filter's region); reads past the capture take its edge, so
+a pane at the screen's edge blurs no dark rim in. A colour run is one
+matrix while it stays in 0..1, each matrix clamps as CSS does, its
+`opacity()` fades the result over the unfiltered backdrop, and a
+`drop-shadow()` casts where the backdrop is transparent (inside a
+group). The blur is an exact Gaussian, not the glass pyramid; the
+theme's `-og-effect: backdrop` glass keeps the pyramid. `mix-blend-mode`
 takes every mode of CSS Compositing 1: normal, multiply, screen, overlay,
 darken, lighten, color-dodge, color-burn, hard-light, soft-light,
 difference, exclusion, hue, saturation, color, luminosity and
@@ -1367,16 +1375,26 @@ objectBoundingBox units draws nothing. Every primitive is drawn:
 `feDisplacementMap`, `feTurbulence` (the reference implementation's
 noise, stitched or not), `feDropShadow` (its blur, offset, flood,
 composite and merge), `feImage` (an atlas image or texture handle by
-`href`, stretched over its subregion; not an element), `feTile` (filling
-the region), `feConvolveMatrix` (up to 64 cells, one device px each) and
+`href`, stretched over its subregion, or an element by `href="#id"`:
+as `<use>` draws it, a shape or a group's literal shapes with their solid
+fills and strokes, in the filtered element's user space, moved by the
+`feImage`'s `x` and `y` when it gives them; og-render draws it into a
+layer that composites nowhere and the filter reads), `feTile` (filling
+the region), `feConvolveMatrix` (up to 64 cells) and
 `feDiffuseLighting`/`feSpecularLighting` with a distant, point or spot
 light; `primitiveUnits`, subregions (`x`, `y`, `width`, `height`, by
-default the union of the inputs' or the region) and
-`color-interpolation-filters` (`linearRGB` by default, `sRGB`) are
-read. `BackgroundImage`, `BackgroundAlpha`, `FillPaint` and
-`StrokePaint` read as transparent black; `kernelUnitLength` is read past.
-Each primitive is one or two full-region passes; a blur, morphology or
-lighting under a turn runs along the screen's axes.
+default the union of the inputs' or the region),
+`color-interpolation-filters` (`linearRGB` by default, `sRGB`) and
+`kernelUnitLength` (a convolution's cell, and the cell a light's surface
+normal is taken over, whose slope is then per cell; left out, one device
+px) are read. `BackgroundImage`, `BackgroundAlpha`, `FillPaint` and
+`StrokePaint` read as transparent black. Each primitive is one or two
+full-region passes, run in the filter's own space (the element's user
+space; og-render's `UiFilter::space` maps it to the screen): a blur or
+a morphology under a turn or skew runs along the element's axes, a
+subregion is its own parallelogram on the screen, and lighting computes
+its surface and lights in that space, so a turned element is filtered
+as it would be unturned and then turned.
 
 Definition attributes (gradients, clips, markers, masks, patterns,
 filters) are literal. Cost: re-tessellating one

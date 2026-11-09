@@ -1,9 +1,12 @@
 //! SVG `<filter>` (Filter Effects 1 §9-15) as og-render's filter graph
 //! ([`UiFilter`]): a definition read once ([`parse`]) into primitives in
 //! its primitive units, then resolved for an element's bounding box
-//! ([`Filter::resolve`]) into user space and mapped to CSS px ([`map`]).
-//! An element's filter draws its subtree into a layer over the filter
-//! region, which composites the graph's last result.
+//! ([`Filter::resolve`]) into user space, whose map to CSS px is the
+//! graph's space ([`map`]): og-render runs every primitive in it. An
+//! element's filter draws its subtree into a layer over the filter
+//! region, which composites the graph's last result; an `feImage` of an
+//! element (`href="#id"`) reads a layer of that element's shapes drawn
+//! in the same user space ([`Filter::elements`]).
 //!
 //! Each primitive's `in`/`in2` names `SourceGraphic`, `SourceAlpha` or an
 //! earlier `result`; `BackgroundImage`, `BackgroundAlpha`, `FillPaint` and
@@ -26,13 +29,28 @@ pub type FindImage<'a> = &'a dyn Fn(&str) -> Result<(TextureHandle, [f32; 4]), S
 /// the bounding box when `region_bbox`, else user units) and its
 /// primitives, whose lengths and subregions are in primitive units
 /// (fractions of the box when `primitive_bbox`); a subregion's NaN is
-/// left to its default.
+/// left to its default. `elements` are the ids its `feImage`s name, in
+/// order: the n-th one's primitive reads [`UiFilterOp::Layer`] of
+/// [`element_layer`]`(n)` until the layers are placed.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Filter {
     pub region: [f32; 4],
     pub region_bbox: bool,
     pub primitive_bbox: bool,
     pub primitives: Vec<UiFilterPrimitive>,
+    pub elements: Vec<String>,
+}
+
+/// The stand-in layer index of a filter's `n`-th element image, which the
+/// UI's emit replaces with the layer it draws the element into.
+pub const fn element_layer(n: u32) -> u32 {
+    u32::MAX - n
+}
+
+/// Which element image a stand-in layer index is, if it is one.
+pub fn element_of(layer: u32) -> Option<u32> {
+    let n = u32::MAX - layer;
+    (n < 1024).then_some(n)
 }
 
 /// An element of a filter as the document holds it: its tag, attributes
@@ -143,6 +161,7 @@ pub fn parse(filter: &Node, viewport: [f32; 2], image: FindImage) -> Result<Filt
         names: Vec::new(),
         last: None,
         clear: None,
+        elements: Vec::new(),
     };
     for n in &filter.children {
         let mut sub = [f32::NAN; 4];
@@ -166,6 +185,7 @@ pub fn parse(filter: &Node, viewport: [f32; 2], image: FindImage) -> Result<Filt
         region_bbox,
         primitive_bbox,
         primitives: out.primitives,
+        elements: out.elements,
     })
 }
 
@@ -183,6 +203,7 @@ struct Graph {
     names: Vec<(String, UiFilterInput)>,
     last: Option<UiFilterInput>,
     clear: Option<UiFilterInput>,
+    elements: Vec<String>,
 }
 
 impl Graph {
@@ -372,8 +393,10 @@ fn primitive(
         }
         "feImage" => {
             let href = n.get("href").unwrap_or_default();
-            if href.starts_with('#') {
-                return Err("<feImage> href names an image (an atlas name or a texture handle), not an element".into());
+            if let Some(id) = href.strip_prefix('#') {
+                g.elements.push(id.trim().to_string());
+                let layer = element_layer(g.elements.len() as u32 - 1);
+                return Ok(g.push(UiFilterOp::Layer { layer }, one, at));
             }
             let (texture, uv) = image(href).map_err(|e| format!("<feImage> {e}"))?;
             UiFilterOp::Image {
@@ -423,6 +446,7 @@ fn primitive(
                 },
                 preserve_alpha: n.get("preserveAlpha") == Some("true"),
                 kernel,
+                kernel_unit: kernel_unit(n)?,
             }
         }
         "feDiffuseLighting" | "feSpecularLighting" => {
@@ -452,6 +476,7 @@ fn primitive(
                     [linear(c[0]), linear(c[1]), linear(c[2])]
                 },
                 light,
+                kernel_unit: kernel_unit(n)?,
             }
         }
         "feMerge" => {
@@ -505,6 +530,17 @@ fn primitive(
         }
     };
     Ok(g.push(op, one, at))
+}
+
+/// `kernelUnitLength` (§15.12, §15.13): one or two lengths in primitive
+/// units; left out, or not positive, a device px (as Filter Effects 1
+/// says, the default is used).
+fn kernel_unit(n: &Node) -> Result<Option<[f32; 2]>, String> {
+    if n.get("kernelUnitLength").is_none() {
+        return Ok(None);
+    }
+    let [x, y] = n.pair("kernelUnitLength", 0.0)?;
+    Ok((x > 0.0 && y > 0.0).then_some([x, y]))
 }
 
 /// `feColorMatrix`'s matrix (§15.10), rows R, G, B, A of five.
@@ -687,6 +723,7 @@ impl Filter {
                 UiFilterOp::Flood { .. }
                 | UiFilterOp::Turbulence { .. }
                 | UiFilterOp::Image { .. }
+                | UiFilterOp::Layer { .. }
                 | UiFilterOp::Tile { .. } => 0,
                 UiFilterOp::Composite { .. }
                 | UiFilterOp::Blend(_)
@@ -736,27 +773,38 @@ impl Filter {
         }
         (
             Rect::new(region[0], region[1], region[2], region[3]),
-            UiFilter { primitives },
+            UiFilter {
+                primitives,
+                space: UiFilter::CSS,
+            },
         )
     }
 }
 
-/// `f`, in some space, mapped by `m` into another: its subregions,
-/// positions and lengths (an axis's lengths by that axis's scale, others
-/// by the mean scale). A turn or skew turns offsets but not the axes
-/// blurs and morphologies run along.
+/// `f`'s space mapped on by `m` (its space to CSS px is then `m` after
+/// it): og-render runs it there, turns and skews included.
 pub fn map(f: &mut UiFilter, m: &Affine) {
     if m.is_identity() {
         return;
     }
-    for p in &mut f.primitives {
-        let [x, y, w, h] = p.subregion;
-        let r = m.map_rect(&Rect::new(x, y, w, h));
-        p.subregion = [r.x, r.y, r.width, r.height];
-        map_op(&mut p.op, m);
-    }
+    let [a, b, c, d, e, g] = f.space;
+    let s = Affine {
+        a,
+        b,
+        c,
+        d,
+        e,
+        f: g,
+        ..Affine::IDENTITY
+    };
+    let t = m.mul(&s);
+    f.space = [t.a, t.b, t.c, t.d, t.e, t.f];
 }
 
+/// An op in primitive units (objectBoundingBox: `m` scales and moves the
+/// box's fractions to user units, axis-aligned) into user units: its
+/// positions and lengths (an axis's lengths by that axis's scale, others
+/// by the mean scale).
 fn map_op(op: &mut UiFilterOp, m: &Affine) {
     let s = m.determinant().abs().sqrt();
     let sx = m.a.hypot(m.b);
@@ -768,6 +816,11 @@ fn map_op(op: &mut UiFilterOp, m: &Affine) {
     let rect = |r: &mut [f32; 4]| {
         let o = m.map_rect(&Rect::new(r[0], r[1], r[2], r[3]));
         *r = [o.x, o.y, o.width, o.height];
+    };
+    let unit = |u: &mut Option<[f32; 2]>| {
+        if let Some(u) = u {
+            *u = [u[0] * sx, u[1] * sy];
+        }
     };
     match op {
         UiFilterOp::Blur { std_dev } => *std_dev = [std_dev[0] * sx, std_dev[1] * sy],
@@ -786,8 +839,10 @@ fn map_op(op: &mut UiFilterOp, m: &Affine) {
         UiFilterOp::Lighting {
             surface_scale,
             light,
+            kernel_unit,
             ..
         } => {
+            unit(kernel_unit);
             *surface_scale *= s;
             match light {
                 UiLight::Distant { .. } => {}
@@ -798,12 +853,13 @@ fn map_op(op: &mut UiFilterOp, m: &Affine) {
                 }
             }
         }
+        UiFilterOp::Convolve { kernel_unit, .. } => unit(kernel_unit),
         UiFilterOp::Flood { .. }
         | UiFilterOp::Composite { .. }
         | UiFilterOp::Blend(_)
         | UiFilterOp::ColorMatrix(_)
         | UiFilterOp::ComponentTransfer(_)
-        | UiFilterOp::Merge
-        | UiFilterOp::Convolve { .. } => {}
+        | UiFilterOp::Layer { .. }
+        | UiFilterOp::Merge => {}
     }
 }

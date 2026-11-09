@@ -429,15 +429,18 @@ impl Ui {
             }
         };
         let mut fails = Vec::new();
-        if let Some(v) = r.str("backdropFilter") {
-            if v.contains("url(") {
-                fails.push(
-                    "backdrop-filter: url(#id) is not drawn yet; its other functions are".into(),
-                );
-            }
-            if let Ok(Some(e)) = p::backdrop(v) {
-                c.effects.push(e);
-            }
+        if let Some(Ok(fns)) = r
+            .str("backdropFilter")
+            .map(|v| p::filter_fns(v, "backdrop-filter"))
+            && let Some(stages) =
+                p::backdrop_stages(&fns, crate::paint::ColorRef::Literal(current), |u| {
+                    url(&mut fails, "backdrop-filter", u)
+                })
+        {
+            c.effects
+                .push(crate::paint::Effect::BackdropFilter(std::sync::Arc::new(
+                    stages,
+                )));
         }
         if let Some(Ok(fns)) = r.str("filter").map(|v| p::filter_fns(v, "filter")) {
             let theme = self.theme();

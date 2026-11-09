@@ -1,0 +1,38 @@
+{
+  "added": [
+    {
+      "member": "UI: backdrop-filter reads what is really under the element, url(#id) included",
+      "summary": "backdrop-filter's functions and url(#id) now run in order as one SVG filter graph over a capture of what is under the element where its composite draws: the screen, or the group it is drawn in (the backdrop root). og-render's UiLayer::backdrop captures it; the blur is an exact Gaussian rather than the glass pyramid, so a backdrop with no blur is sharp."
+    },
+    {
+      "member": "UI: kernelUnitLength and feImage href=\"#id\"",
+      "summary": "feConvolveMatrix and the lighting primitives read kernelUnitLength. feImage takes an element of the document by href=\"#id\", drawn as <use> would draw it in the filtered element's user space (og-render's UiFilterOp::Layer)."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "UI: SVG filters run in the element's own space",
+      "summary": "A blur, morphology, lighting, subregion, tile, image and turbulence of a turned, skewed or scaled element now run along the element's axes instead of the screen's."
+    }
+  ],
+  "breaking": [
+    {
+      "member": "og_render::UiFilter",
+      "change": "UiFilter has a space (its map to CSS px, UiFilter::CSS the identity), and its primitives' subregions, lengths, positions and lights are in that space instead of CSS px. UiFilterOp::Lighting and UiFilterOp::Convolve take kernel_unit, and UiFilterOp::Layer is new.",
+      "fix": "Build a UiFilter with ..Default::default() or space: UiFilter::CSS, and add kernel_unit: None to Lighting and Convolve.",
+      "find": ["UiFilter", "UiFilterOp"]
+    },
+    {
+      "member": "og_render::UiLayer",
+      "change": "UiLayer has backdrop: a layer that draws nothing and filters what is under its composite.",
+      "fix": "Add backdrop: false to UiLayer literals.",
+      "find": ["UiLayer"]
+    },
+    {
+      "member": "og_ui::DrawCmd::BeginLayer",
+      "change": "BeginLayer takes a role (LayerRole: Draw, Backdrop, Image).",
+      "fix": "Add role: LayerRole::Draw to BeginLayer literals.",
+      "find": ["BeginLayer"]
+    }
+  ]
+}

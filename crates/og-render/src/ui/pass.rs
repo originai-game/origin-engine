@@ -818,8 +818,10 @@ impl UiRenderer {
 
     /// Writes the frame's tables and uniforms and makes its groups: the
     /// output's (`uniform`), each layer's, their targets and composite
-    /// groups; `backdrop`: the glass pyramid and the copy of the target,
-    /// when the frame has them, with `decode`.
+    /// groups; `backdrop`: the glass pyramid, the copy of the target and
+    /// the target the overlay draws into when it reads what is under it
+    /// (the glass source), when the frame has them, with `decode`;
+    /// `panel_view` finds a world panel's target by its texture index.
     #[allow(clippy::too_many_arguments)]
     pub fn upload(
         &mut self,
@@ -829,8 +831,14 @@ impl UiRenderer {
         scene: &RenderScene,
         frame: &OverlayFrame,
         uniform: [f32; 8],
-        backdrop: Option<(&wgpu::TextureView, &wgpu::TextureView, bool)>,
+        backdrop: Option<(
+            &wgpu::TextureView,
+            &wgpu::TextureView,
+            &wgpu::TextureView,
+            bool,
+        )>,
         texture_view: impl Fn(crate::TextureHandle) -> Option<wgpu::TextureView>,
+        panel_view: impl Fn(usize) -> Option<wgpu::TextureView>,
         depth: &wgpu::TextureView,
         camera: super::mass::MassCameraGpu,
         mips: &crate::mips::MipGenerator,
@@ -973,8 +981,9 @@ impl UiRenderer {
             layer_mips(overlay.ui.layers[plan.index as usize].material)
         };
         for plan in &frame.layers {
-            if plan.target.is_some() {
-                // A world panel draws into its own render target.
+            // A world panel draws into its own render target; a backdrop
+            // draws nothing of its own.
+            if plan.target.is_some() || frame.backdrops.contains(&plan.index) {
                 target_of.push(usize::MAX);
                 continue;
             }
@@ -1038,7 +1047,7 @@ impl UiRenderer {
             target_of.clear();
             let mut taken = vec![false; self.targets.len()];
             for plan in &frame.layers {
-                if plan.target.is_some() {
+                if plan.target.is_some() || frame.backdrops.contains(&plan.index) {
                     target_of.push(usize::MAX);
                     continue;
                 }
@@ -1055,6 +1064,22 @@ impl UiRenderer {
             }
         }
         self.filters.begin();
+        // A layer's target as it is sampled: its view, top left and scale.
+        let plan_of = |k: u32| frame.layers.iter().position(|p| p.index == k);
+        let sampled = |n: usize| -> Option<(wgpu::TextureView, [f32; 2], f32)> {
+            let plan = &frame.layers[n];
+            let view = match plan.target {
+                Some(t) => panel_view(t)?,
+                None => self.targets.get(target_of[n])?.sampled.clone(),
+            };
+            Some((view, plan.origin, plan.scale))
+        };
+        let layer_input = |k: u32| plan_of(k).and_then(sampled);
+        let inputs = super::filter::Inputs {
+            white: &self.white,
+            texture_view: &texture_view,
+            layer: &layer_input,
+        };
         for (n, plan) in frame.layers.iter().enumerate() {
             let layer = &overlay.ui.layers[plan.index as usize];
             let u = [
@@ -1110,24 +1135,48 @@ impl UiRenderer {
                 .targets
                 .get(target_of[n])
                 .map_or(&self.white, |t| &t.sampled);
-            // A filter's result instead of what the layer drew.
-            if let (Some(filter), Some(t)) = (&layer.filter, self.targets.get(target_of[n]))
+            // A filter's result instead of what the layer drew; a
+            // backdrop's over what is under it where it composites, and
+            // nothing when that cannot be read.
+            let backdrop_of = frame.backdrops.contains(&plan.index);
+            let parent = match plan.parent {
+                _ if !backdrop_of => None,
+                0 => backdrop
+                    .map(|(_, _, source, decode)| (source.clone(), [0.0; 2], plan.scale, decode)),
+                j => plan_of(j - 1)
+                    .and_then(sampled)
+                    .map(|(v, o, s)| (v, o, s, false)),
+            };
+            let source = match (&parent, self.targets.get(target_of[n])) {
+                (Some((view, origin, scale, decode)), _) => {
+                    Some(super::filter::Source::Capture(super::filter::Capture {
+                        view,
+                        origin: *origin,
+                        scale: *scale,
+                        decode: *decode,
+                    }))
+                }
+                (None, Some(t)) if !backdrop_of => Some(super::filter::Source::Drawn(&t.sampled)),
+                _ => None,
+            };
+            if let Some(source) = source
                 && let Some(p) = self.filters.prepare(
                     device,
                     queue,
-                    filter,
-                    &t.sampled,
+                    layer.filter.as_ref(),
+                    source,
                     plan.size,
                     plan.origin,
                     plan.scale,
-                    &self.white,
-                    &texture_view,
+                    &inputs,
                 )
             {
                 groups.filters.insert(plan.index, p);
             }
             if let Some(p) = groups.filters.get(&plan.index) {
                 target = &p.result;
+            } else if backdrop_of {
+                continue;
             }
             let composite = crate::bind_group(
                 device,
@@ -1194,7 +1243,7 @@ impl UiRenderer {
                 ],
             ));
         }
-        if let Some((pyramid, behind, decode)) = backdrop {
+        if let Some((pyramid, behind, _, decode)) = backdrop {
             queue.write_buffer(
                 &self.backdrop_params,
                 0,
@@ -1440,6 +1489,10 @@ impl Renderer {
     ) -> u32 {
         let mut draws = 0;
         for plan in &frame.layers {
+            // A backdrop runs where its composite draws (`record_capture`).
+            if frame.backdrops.contains(&plan.index) {
+                continue;
+            }
             let Some((group0, target, _)) = self.ui.frame.layers.get(&plan.index) else {
                 continue;
             };
@@ -1447,11 +1500,12 @@ impl Renderer {
                 Some(t) => &self.cache.textures[t].view,
                 None => &self.ui.targets[*target].view,
             };
-            // The runs between the copies its blends read, each in a pass
-            // of its own (the first clears the target).
+            // The runs between the copies its blends read and its
+            // backdrops' captures, each in a pass of its own (the first
+            // clears the target).
             let runs = frame.layer_runs(plan.index);
             let mut cuts: Vec<usize> = (0..runs.len())
-                .filter(|&i| runs[i].source.needs_copy())
+                .filter(|&i| runs[i].source.needs_copy() || frame.capture(&runs[i]).is_some())
                 .collect();
             cuts.push(runs.len());
             let mut from = 0;
@@ -1486,7 +1540,10 @@ impl Renderer {
                     TargetKind::Layer,
                 );
                 drop(pass);
-                if to < runs.len()
+                if let Some(k) = runs.get(to).and_then(|r| frame.capture(r)) {
+                    draws += self.record_capture(encoder, k);
+                }
+                if runs.get(to).is_some_and(|r| r.source.needs_copy())
                     && let (Some((behind, _)), None) = (&self.ui.layer_behind, plan.target)
                 {
                     encoder.copy_texture_to_texture(
@@ -1514,6 +1571,16 @@ impl Renderer {
             }
         }
         draws
+    }
+
+    /// Records backdrop layer `k`'s capture of what is under it and its
+    /// filter, before its composite draws. Returns the passes.
+    pub(crate) fn record_capture(&self, encoder: &mut crate::Encoder, k: u32) -> u32 {
+        self.ui
+            .frame
+            .filters
+            .get(&k)
+            .map_or(0, |p| self.ui.filters.record(encoder, p))
     }
 
     /// The frame's group 0 for the output.

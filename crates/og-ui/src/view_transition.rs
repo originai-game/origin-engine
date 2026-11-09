@@ -253,6 +253,7 @@ fn begin_layer() -> DrawCmd {
         expand: 0.0,
         rect: Rect::default(),
         filter: None,
+        role: Default::default(),
     }
 }
 

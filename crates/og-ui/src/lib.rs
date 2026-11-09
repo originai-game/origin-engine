@@ -79,7 +79,9 @@ pub use a11y::{A11yNode, A11yTree, ANNOUNCEMENTS, Announcement, ROLES, Semantics
 pub use actions::{ActionDesc, ActionHint, ActionTrigger, Device, Glyph};
 pub use doc::UiDocument;
 pub use doc::build::{DocEvent, DocResponse};
-pub use draw::{DrawCmd, DrawItem, EmitDesc, LAYER_BASE, LAYER_SPAN, MAX_LAYERS, drawn_lines};
+pub use draw::{
+    DrawCmd, DrawItem, EmitDesc, LAYER_BASE, LAYER_SPAN, LayerRole, MAX_LAYERS, drawn_lines,
+};
 pub use dress::{DressFrame, Dressing, Selector};
 pub mod text_path;
 pub mod transform3d;

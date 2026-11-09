@@ -729,10 +729,102 @@ pub(crate) fn css_filter(
     reference: &str,
     image: crate::svg::filter::FindImage,
 ) -> Result<std::sync::Arc<crate::paint::FilterUse>, String> {
+    let vb = [0.0, 0.0, 100.0, 100.0];
+    let filter = filter_def(doc, reference, [vb[2], vb[3]], image)?;
+    let images = element_images(doc, &filter, vb)?;
     Ok(std::sync::Arc::new(crate::paint::FilterUse {
-        filter: filter_def(doc, reference, [100.0, 100.0], image)?,
+        filter,
         svg: None,
+        images,
     }))
+}
+
+/// What a filter's `feImage`s of elements draw, in order: each element as
+/// `<use>` would draw it (Filter Effects 1 §15.17), in the filtered
+/// element's user space: a shape, or a group's literal shapes under
+/// their transforms, with their solid fills and strokes.
+fn element_images(
+    doc: &UiDocument,
+    filter: &crate::svg::filter::Filter,
+    vb: [f32; 4],
+) -> Result<Vec<Vec<(ShapeKind, Paint)>>, String> {
+    filter
+        .elements
+        .iter()
+        .map(|id| {
+            let node = doc
+                .nodes
+                .iter()
+                .find(|n| n.id == *id && n.selector_tag.is_some())
+                .ok_or_else(|| format!("<feImage> href=\"#{id}\" names no element"))?;
+            let tag = node.selector_tag.as_deref().unwrap_or_default();
+            let attrs = literal_attrs(node)?;
+            let own = match attrs.iter().find(|(k, _)| k == "transform") {
+                Some((_, v)) => Affine::parse(v)?,
+                None => Affine::IDENTITY,
+            };
+            let mut shapes = Vec::new();
+            if crate::doc::extern_element::SVG_SHAPES.contains(&tag) {
+                shapes.push((tag.to_string(), attrs, own));
+            } else {
+                def_shapes(doc, node, own, &mut shapes)?;
+            }
+            let mut out = Vec::new();
+            for (tag, attrs, t) in &shapes {
+                let get = |a: &str| attrs.iter().find(|(k, _)| k == a).map(|(_, v)| v.as_str());
+                let mut style = Style::default();
+                for attr in PRESENTATION {
+                    if let Some(v) = get(attr) {
+                        let parent = style.clone();
+                        style
+                            .apply(attr, v, &parent)
+                            .map_err(|e| format!("#{id} {attr}: {e}"))?;
+                    }
+                }
+                let Some(local) = shape_path(tag, &get, vb)? else {
+                    continue;
+                };
+                let parts = subpaths(&local.transformed(t));
+                let alpha = style.opacity;
+                if let Some(paint) = solid(&style.fill, style.fill_opacity * alpha) {
+                    let rule = if style.even_odd {
+                        crate::paint::FillRule::EvenOdd
+                    } else {
+                        crate::paint::FillRule::NonZero
+                    };
+                    out.push((filled(parts.clone(), rule), paint));
+                }
+                let width = style.stroke_width * t.scale();
+                if let Some(paint) =
+                    solid(&style.stroke, style.stroke_opacity * alpha).filter(|_| width > 0.0)
+                {
+                    for (points, closed) in parts {
+                        out.push((
+                            ShapeKind::Path {
+                                contours: vec![points.len() as u32],
+                                points,
+                                closed,
+                                filled: false,
+                                curves: true,
+                                fill_rule: crate::paint::FillRule::NonZero,
+                                width,
+                                cap: cap_of(style.cap),
+                                join: match style.join {
+                                    crate::svg::Join::Miter => {
+                                        crate::paint::Join::Miter(style.miter_limit)
+                                    }
+                                    crate::svg::Join::Round => crate::paint::Join::Round,
+                                    crate::svg::Join::Bevel => crate::paint::Join::Bevel,
+                                },
+                            },
+                            paint.clone(),
+                        ));
+                    }
+                }
+            }
+            Ok(out)
+        })
+        .collect()
 }
 
 /// A pattern's tiles under a shape of local bounds `bbox` and transform
@@ -1706,6 +1798,7 @@ impl Ui {
             }
         };
         let filter = filter_def(&b.doc, reference, [vb[2], vb[3]], &image)?;
+        let images = element_images(&b.doc, &filter, vb)?;
         let union = |a: [f32; 4], b: [f32; 4]| {
             if a[2] <= 0.0 && a[3] <= 0.0 {
                 return b;
@@ -1748,6 +1841,7 @@ impl Ui {
         Ok(std::sync::Arc::new(crate::paint::FilterUse {
             filter,
             svg: Some((*t, bbox)),
+            images,
         }))
     }
 
