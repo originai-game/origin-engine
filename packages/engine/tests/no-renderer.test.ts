@@ -167,6 +167,11 @@ test("a refused adapter is reported without hiding other renderer failures", () 
   const reason = "no GPU adapter: Auto: no suitable adapter found";
   const refused = () => JSON.stringify({ ok: false, reason });
   const saved = process.env.OG_RENDERER;
+  // The warnings are kept, not printed: the gate reads a missing-GPU warning
+  // on this process's stderr as GPU tests left unchecked.
+  const write = process.stderr.write;
+  const warnings: string[] = [];
+  process.stderr.write = ((text: string) => warnings.push(text) > 0) as typeof write;
   try {
     delete process.env.OG_RENDERER;
     expect(attachRenderer(1, 64, 64, refused)).toEqual({ ok: true, value: "none", adapterError: reason });
@@ -174,7 +179,13 @@ test("a refused adapter is reported without hiding other renderer failures", () 
     expect(attachRenderer(1, 64, 64, refused)).toEqual({ ok: true, value: "none", adapterError: reason });
     expect(attachRenderer(1, 64, 64, () => JSON.stringify({ ok: false, reason: "device lost" }))).toEqual({ ok: false, reason: "device lost" });
   } finally {
+    process.stderr.write = write;
     if (saved === undefined) delete process.env.OG_RENDERER;
     else process.env.OG_RENDERER = saved;
   }
+  // Unexpected without OG_RENDERER=none, expected with it; nothing for another failure.
+  expect(warnings).toEqual([
+    `WARNING unexpected missing GPU: ${reason}; GPU checks are skipped/unchecked, not passed\n`,
+    `WARNING missing GPU: ${reason}; GPU checks are skipped/unchecked, not passed\n`,
+  ]);
 });
