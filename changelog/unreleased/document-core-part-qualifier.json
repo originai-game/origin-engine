@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "Document `part` attribute",
+      "summary": "A document may name a core frame with qualifiers as its part without listing it in its `parts` line, such as `part=\"Slot.frame[rarity=epic]\"` or a bound `part={\"Slot.frame[rarity=\" + item.rarity + \"]\"}`, so a kit's slots take every style's rarity dressing. The `parts` line lists only the document's own parts."
+    }
+  ]
+}

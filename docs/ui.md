@@ -2485,7 +2485,7 @@ and gives it only a token background as the fallback. A kit's own `-og-frame`,
 `-og-slice` or `-og-stroke` on the element outranks the pack's dressing of
 that part, so a kit that paints its own frame leaves the pack nothing to
 dress. Rarity, selection and other states a pack dresses reach the part as
-qualifiers or classes, such as ``part={`Slot.frame[rarity=${item.rarity}]`}``
+qualifiers or classes, such as `part={"Slot.frame[rarity=" + item.rarity + "]"}`
 or `class:selected`; the kit does not draw its own band or rim for them.
 
 Missing art uses a small mark fitted to the slot's shorter side and capped
