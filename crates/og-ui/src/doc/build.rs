@@ -1582,8 +1582,15 @@ impl Ui {
         (spec, resolved_later)
     }
 
-    /// Element fields depend only on resolved values, not a binding scope.
+    /// Document event ownership is separate from a box's computed style.
     fn resolved_props(n: &DocNode, r: &Resolved) -> Props {
+        let mut p = Self::box_props(&n.kind, r);
+        gestures::props(n, r, &mut p);
+        p
+    }
+
+    /// Shared layout and presentation for document boxes and widget parts.
+    fn box_props(kind: &NodeKind, r: &Resolved) -> Props {
         let mut p = Props::default();
         let t = &mut p.transform;
         if let Some(v) = r.num("x") {
@@ -1670,11 +1677,11 @@ impl Ui {
         // A `<div>` with `display: grid` lays out as a `<grid>` does; a
         // table lays its cells out in a grid of its own.
         let grid_box =
-            n.kind == NodeKind::Element("box") && inner_display(r.str("display")) == "grid";
-        if n.kind == NodeKind::Element("box") && inner_display(r.str("display")) == "table" {
+            *kind == NodeKind::Element("box") && inner_display(r.str("display")) == "grid";
+        if *kind == NodeKind::Element("box") && inner_display(r.str("display")) == "table" {
             p.layout = LayoutMode::Grid;
         }
-        match n.kind {
+        match kind {
             NodeKind::Element("stack") => p.layout = LayoutMode::Stack,
             NodeKind::Element("grid") => {
                 p.layout = LayoutMode::Grid;
@@ -1719,7 +1726,6 @@ impl Ui {
         if let Some(V::Strs(o)) = r.get("overlaps") {
             p.overlaps = o.clone();
         }
-        gestures::props(n, r, &mut p);
         if let Some(m) = r.str("match") {
             p.match_key = m.to_string();
         }
