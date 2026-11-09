@@ -445,3 +445,16 @@ fn positioning_places_as_css_positioning_does() {
         );
     });
 }
+
+#[test]
+fn the_root_element_fills_its_viewport() {
+    // The root is a block of the viewport: a wider child's min-content does
+    // not widen it, so `max-width: 100%` holds the child to the root's
+    // content box and its aspect ratio follows the clamped width.
+    let text = r#"<meta name="component" content="t">
+<div><div id="Pad" style="padding:16px"><div id="Card" style="width:1000px;max-width:100%"><div id="Media" style="aspect-ratio:16/9"></div></div></div></div>"#;
+    both(text, &[], |d| {
+        assert_eq!(d.get("Pad").width, 800.0);
+        assert_eq!(wh(d, "Media"), (768.0, 432.0));
+    });
+}

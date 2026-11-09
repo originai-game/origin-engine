@@ -638,11 +638,20 @@ impl Ui {
                 let fills = !super::outer_inline(r.str("display"))
                     && !matches!(display, "table")
                     && el.table == crate::TablePart::None;
+                // The document's root element is a block of the initial
+                // containing block (CSS 2 §10.1): it fills the column or
+                // stack it is mounted in.
+                let host = |p: &crate::layout::Node| {
+                    n.parent == crate::layout::NONE
+                        && p.props.layout != crate::LayoutMode::Grid
+                        && (p.props.layout == crate::LayoutMode::Stack
+                            || p.el.direction == Direction::Column)
+                };
                 if base.kind == "box"
                     && fills
                     && !r.has("width")
                     && parent != crate::layout::NONE
-                    && self.nodes[parent].el.block
+                    && (self.nodes[parent].el.block || host(&self.nodes[parent]))
                 {
                     el.width = Size::grow();
                 }

@@ -1,0 +1,13 @@
+{
+  "breaking": [
+    {
+      "member": "UI document scoped CSS (the root element's auto width)",
+      "change": "A document's root element with width: auto now fills the column or stack it is mounted in, as CSS's root block fills the initial containing block, instead of shrinking to fit its content. A wider child's min-content no longer widens the whole document past the viewport, so max-width: 100% and aspect-ratio below it hold to the viewport (a 640px card with max-width: 100% in a 16px-padded root at a 390 viewport is 358×201, not 640×360).",
+      "fix": "Where a component should size to its content, give its root element `width: fit-content`.",
+      "find": [
+        "max-width: 100%",
+        "aspect-ratio"
+      ]
+    }
+  ]
+}

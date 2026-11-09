@@ -799,7 +799,10 @@ detents are the engine prefix because no CSS standard has them.
 
 A `display: block` box with an auto width fills its block parent's
 content width, as in CSS block flow, so a `<div>` inside a `<section>` is
-as wide as the section.
+as wide as the section. The document's root element is a block of the
+initial containing block: with an auto width it fills the column or
+stack it is mounted in (the screen, a panel), never widened by a wider
+child's min-content.
 
 Sizes follow CSS Sizing 3. `width` and `height` (and the logical
 `inline-size` and `block-size`) take `auto` (the element's own size: a
