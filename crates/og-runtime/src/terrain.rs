@@ -19,7 +19,7 @@
 
 use super::engine::{Engine, engine};
 use super::extract::{Hierarchy, RenderState};
-use super::fx::{color, f, on, rows, u};
+use super::fx::{color, f, kept_rows, on, u};
 use super::{ok, parse, refuse};
 use glam::{Mat3, Mat4, Quat, Vec2, Vec3};
 use og_core::IdMap;
@@ -1266,7 +1266,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
     let mut settle = std::mem::take(&mut rs.terrain.settle) || rs.terrain.resident;
     let budget = rs.terrain.budget;
     let mut streamed = Vec::new();
-    for (e, v) in rows(world, layout.as_ref()) {
+    for (e, v) in kept_rows(world, layout.as_ref()) {
         let Some(i) = super::assets::index_of(v["data"].as_f64().unwrap_or(0.0)) else {
             continue;
         };
@@ -1322,7 +1322,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
     rs.scene.scatters.clear();
     rs.terrain.scatter_issues.clear();
     let layout = rs.draw.scatter.clone();
-    for (e, v) in rows(world, layout.as_ref()) {
+    for (e, v) in kept_rows(world, layout.as_ref()) {
         let Some(i) = super::assets::index_of(v["data"].as_f64().unwrap_or(0.0)) else {
             continue;
         };
@@ -1400,7 +1400,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
     rs.scene.terrain_stamps.clear();
     rs.ids.stamps.clear();
     let layout = rs.draw.stamp.clone();
-    for (e, v) in rows(world, layout.as_ref()) {
+    for (e, v) in kept_rows(world, layout.as_ref()) {
         if !on(&v, "visible", true) {
             continue;
         }
@@ -1434,23 +1434,24 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
     rs.ids.grass.clear();
     let layout = rs.draw.grass.clone();
     // og.GrassType: the kinds of blade fields list in `types`, by entity.
-    let kinds: og_core::IdMap<u64, og_render::GrassType> = rows(world, rs.draw.grass_type.as_ref())
-        .into_iter()
-        .map(|(e, v)| {
-            let d = og_render::GrassType::default();
-            let kind = og_render::GrassType {
-                height: f(&v, "height", d.height),
-                width: f(&v, "width", d.width),
-                curve: f(&v, "curve", d.curve),
-                base_color: color(&v["baseColor"], d.base_color),
-                tip_color: color(&v["tipColor"], d.tip_color),
-                share: f(&v, "share", d.share),
-            };
-            (e, kind)
-        })
-        .collect();
+    let kinds: og_core::IdMap<u64, og_render::GrassType> =
+        kept_rows(world, rs.draw.grass_type.as_ref())
+            .into_iter()
+            .map(|(e, v)| {
+                let d = og_render::GrassType::default();
+                let kind = og_render::GrassType {
+                    height: f(&v, "height", d.height),
+                    width: f(&v, "width", d.width),
+                    curve: f(&v, "curve", d.curve),
+                    base_color: color(&v["baseColor"], d.base_color),
+                    tip_color: color(&v["tipColor"], d.tip_color),
+                    share: f(&v, "share", d.share),
+                };
+                (e, kind)
+            })
+            .collect();
     let texture = |v: &Value| super::fx::handle_index(v).and_then(|i| rs.textures.get(i).copied());
-    for (e, v) in rows(world, layout.as_ref()) {
+    for (e, v) in kept_rows(world, layout.as_ref()) {
         let Some(i) = super::assets::index_of(v["data"].as_f64().unwrap_or(0.0)) else {
             continue;
         };
@@ -1514,7 +1515,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
     // renderer's trample map), placed by their entities' drawn transforms.
     rs.scene.grass_pushers.clear();
     let layout = rs.draw.grass_pusher.clone();
-    for (e, v) in rows(world, layout.as_ref()) {
+    for (e, v) in kept_rows(world, layout.as_ref()) {
         let m = h.world_of(e);
         rs.scene.grass_pushers.push(og_render::GrassPusher {
             position: m.transform_point3(glam::Vec3::ZERO),

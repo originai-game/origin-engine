@@ -343,6 +343,52 @@ pub(crate) fn rows(world: &World, layout: Option<&Layout>) -> Vec<(u64, Value)> 
         .collect()
 }
 
+/// [`rows`] of a component extraction reads every frame whose rows are few
+/// and seldom change (the terrains and what they draw over them, the
+/// atmosphere's water, ropes, cloth, soft bodies, fluids and wind motors):
+/// each row's JSON is kept with its bytes ([`Layout::kept_rows`], shared by
+/// the layout's clones) and decoded again only when its bytes differ from
+/// those of the row at its place in the last read, as [`resource`] keeps a
+/// resource's. The same rows in the same order as [`rows`], each the JSON
+/// its bytes decode to; the kept rows are this read's, so a row gone is
+/// dropped with it (engine s110: decoding these rows, and dropping their
+/// JSON after, was most of terrain and atmosphere extraction on the web).
+pub(crate) fn kept_rows(world: &World, layout: Option<&Layout>) -> Vec<(u64, Arc<Value>)> {
+    let Some(layout) = layout else {
+        return Vec::new();
+    };
+    let Ok(id) = world.id_by_name(&layout.schema) else {
+        return Vec::new();
+    };
+    let q = QueryDesc {
+        read: vec![layout.schema.clone()],
+        ..QueryDesc::default()
+    };
+    let Ok(all) = world.query(&q) else {
+        return Vec::new();
+    };
+    let mut entities: Vec<Entity> = all.flat_map(|a| a.entities().to_vec()).collect();
+    og_core::sort::sort_by_key(&mut entities, |e| e.index());
+    let mut kept = layout
+        .kept_rows
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let last = std::mem::take(&mut *kept);
+    let mut out = Vec::with_capacity(entities.len());
+    for e in entities {
+        let Ok(bytes) = world.get_bytes(e, id) else {
+            continue;
+        };
+        let value = match last.get(out.len()) {
+            Some((b, v)) if *b == bytes => v.clone(),
+            _ => Arc::new(layout.decode(&bytes)),
+        };
+        kept.push((bytes, value.clone()));
+        out.push((e.to_bits(), value));
+    }
+    out
+}
+
 /// `PostEffects` and `Lighting2D` into the scene's post stack, shake and 2D lighting.
 pub(crate) fn settings(world: &World, rs: &mut RenderState) {
     let RenderState {
@@ -2085,6 +2131,74 @@ pub(crate) fn particle_mesh(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// `kept_rows` answers what `rows` decodes, row for row, after each
+    /// change it can see.
+    fn kept_rows_decode(world: &World, layout: &Layout, kept: &[(u64, Arc<Value>)]) {
+        let fresh = rows(world, Some(layout));
+        assert_eq!(kept.len(), fresh.len());
+        for ((ke, kv), (fe, fv)) in kept.iter().zip(&fresh) {
+            assert_eq!((ke, &**kv), (fe, fv));
+        }
+    }
+
+    /// A row's JSON is kept while its bytes stay those of the row at its
+    /// place in the last read, decoded again when they change, and the kept
+    /// rows are only the last read's: a row gone, or a new one, never leaves
+    /// a row with another's JSON (engine s110).
+    #[test]
+    fn kept_rows_are_what_decoding_every_row_gives() {
+        let decl = og_api::host::RECORDS
+            .iter()
+            .find(|d| d.schema == "og.WindMotor")
+            .expect("og.WindMotor");
+        let layout = Layout::from_decl(decl).unwrap();
+        let mut world = World::new(&og_ecs::WorldDesc::default()).unwrap();
+        let id = world.register_schema(layout.schema()).unwrap();
+        let base = layout.encode(None, None).unwrap();
+        let radius = |r: f64| {
+            layout
+                .encode(Some(&base), Some(&serde_json::json!({ "radius": r })))
+                .unwrap()
+        };
+        let a = world.spawn_bytes(vec![(id, radius(1.0))]).unwrap();
+        let b = world.spawn_bytes(vec![(id, radius(2.0))]).unwrap();
+        world.spawn_bytes(vec![(id, radius(3.0))]).unwrap();
+        let first = kept_rows(&world, Some(&layout));
+        kept_rows_decode(&world, &layout, &first);
+        assert_eq!(first.len(), 3);
+        // Unchanged: every row's JSON is the one kept, by the layout's clones too.
+        let again = kept_rows(&world, Some(&layout.clone()));
+        kept_rows_decode(&world, &layout, &again);
+        for (k, (f, g)) in first.iter().zip(&again).enumerate() {
+            assert!(Arc::ptr_eq(&f.1, &g.1), "row {k} decoded again");
+        }
+        // One row changes: it alone is decoded again.
+        world.insert_bytes(b, id, &radius(5.0)).unwrap();
+        let changed = kept_rows(&world, Some(&layout));
+        kept_rows_decode(&world, &layout, &changed);
+        assert_eq!(changed[1].1["radius"], serde_json::json!(5.0));
+        assert!(!Arc::ptr_eq(&again[1].1, &changed[1].1));
+        assert!(Arc::ptr_eq(&again[0].1, &changed[0].1));
+        assert!(Arc::ptr_eq(&again[2].1, &changed[2].1));
+        // A row gone and a new one: the rows after them move.
+        world.despawn(a).unwrap();
+        let gone = kept_rows(&world, Some(&layout));
+        kept_rows_decode(&world, &layout, &gone);
+        world.spawn_bytes(vec![(id, radius(2.0))]).unwrap();
+        let new = kept_rows(&world, Some(&layout));
+        kept_rows_decode(&world, &layout, &new);
+        assert_eq!(new.len(), 3);
+        let kept = layout.kept_rows.lock().unwrap().len();
+        assert_eq!(kept, 3, "the kept rows are the last read's");
+        let again = kept_rows(&world, Some(&layout));
+        assert!(Arc::ptr_eq(&new[1].1, &again[1].1));
+        for (e, _) in again {
+            world.despawn(Entity::from_bits(e)).unwrap();
+        }
+        assert!(kept_rows(&world, Some(&layout)).is_empty());
+        assert!(layout.kept_rows.lock().unwrap().is_empty());
+    }
 
     /// A look's MaterialStyle.shadowDarkness reaches the renderer's
     /// material style; unset it is 0 (off), so no look moves without it.

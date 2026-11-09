@@ -11,7 +11,7 @@
 use super::codec::Layout;
 use super::engine::engine;
 use super::extract::{Hierarchy, RenderState};
-use super::fx::{color, f, on, resource, rows, u, vec2};
+use super::fx::{color, f, kept_rows, on, resource, rows, u, vec2};
 use super::{ok, ok_void, parse, refuse};
 use glam::{Mat4, Vec2, Vec3};
 use og_core::IdMap;
@@ -312,7 +312,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
     // og.WindMotor: local pushes on the simulated wind field, placed by
     // their entities (wind_field.rs keeps the nearest).
     scene.wind_motors.clear();
-    for (e, v) in rows(world, layouts.wind_motor.as_ref()) {
+    for (e, v) in kept_rows(world, layouts.wind_motor.as_ref()) {
         let m = h.world_of(e);
         let kind = match v["kind"].as_str() {
             Some("directional") => og_render::WindMotorKind::Directional,
@@ -627,7 +627,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
     #[cfg(feature = "profile2d")]
     let terrain_layout = None;
     // 3D water, with its wave heights when the entity has them.
-    for (e, v) in rows(world, layouts.water.as_ref()) {
+    for (e, v) in kept_rows(world, layouts.water.as_ref()) {
         let entity = Entity::from_bits(e);
         let field = physics.and_then(|p| p.water_heights(entity));
         let wakes = physics.and_then(|p| p.water_wakes(entity)).map(|w| {
@@ -725,8 +725,9 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         });
     }
     // 2D water over its spring line.
-    let lines: IdMap<u64, Value> = IdMap::from_iter(rows(world, layouts.water_line.as_ref()));
-    for (e, v) in rows(world, layouts.water_2d.as_ref()) {
+    let lines: IdMap<u64, Arc<Value>> =
+        IdMap::from_iter(kept_rows(world, layouts.water_line.as_ref()));
+    for (e, v) in kept_rows(world, layouts.water_2d.as_ref()) {
         let (Some(line), Some(p)) = (lines.get(&e), physics) else {
             continue;
         };
@@ -753,7 +754,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         return keys;
     };
     // Fluids as metaballs.
-    for (e, v) in rows(world, layouts.fluid.as_ref()) {
+    for (e, v) in kept_rows(world, layouts.fluid.as_ref()) {
         if !on(&v, "visible", true) {
             continue;
         }
@@ -792,7 +793,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         true => super::fx::vec3(&v["color"]),
         false => Vec3::new(0.2, 0.55, 0.9),
     };
-    let fluids3 = rows(world, layouts.fluid3d.as_ref());
+    let fluids3 = kept_rows(world, layouts.fluid3d.as_ref());
     let mut lanes: BTreeMap<(u32, u32), Vec3> = BTreeMap::new();
     let mut mixes = BTreeMap::new();
     for (e, v) in &fluids3 {
@@ -886,7 +887,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         });
     }
     // Ropes: a strip through their points in 3D, a sprite per segment in 2D.
-    for (e, v) in rows(world, layouts.rope.as_ref()) {
+    for (e, v) in kept_rows(world, layouts.rope.as_ref()) {
         if !on(&v, "visible", true) {
             continue;
         }
@@ -928,7 +929,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
     // og.Physics.gravity, for the bodies the renderer simulates.
     let gravity = physics.gravity().unwrap_or(Vec3::new(0.0, -9.81, 0.0));
     // Cloth: a double-sided mesh of its points, replaced every frame.
-    for (e, v) in rows(world, layouts.cloth.as_ref()) {
+    for (e, v) in kept_rows(world, layouts.cloth.as_ref()) {
         if !on(&v, "visible", true) {
             continue;
         }
@@ -986,7 +987,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         keys.push((e, u32::MAX));
     }
     // Soft volumes: their surface, smooth-shaded, replaced every frame.
-    for (e, v) in rows(world, layouts.soft.as_ref()) {
+    for (e, v) in kept_rows(world, layouts.soft.as_ref()) {
         if !on(&v, "visible", true) {
             continue;
         }
