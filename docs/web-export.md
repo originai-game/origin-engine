@@ -986,33 +986,6 @@ determinism, icons) is.
   canvas, cores, memory, isolation) and the headers served. A missing
   Chrome, adb or safaridriver is told in one line before the build; the
   phone paths' prerequisites are in tests/evidence/P3/device/NOTES.md.
-- The publish build has no command channel, so its scripted check runs
-  through what it keeps: `bun tests/web/published.ts --project <dir>
-  [--no-build] [--no-isolation]` in `packages/engine` publishes the project,
-  serves it as the platform opens a release (`tests/web/play-origin.ts`:
-  the top-level page with `window.__OG_GAME`, a stand-in play origin
-  answering Player protocol 2 over HTTP with a store, the build's
-  `_headers`), and plays a script of the playtests' syntax in headless
-  Chrome: input steps (`key_down`, `key_up`, `type`, `touch_move_to` and
-  `move_to_text` found in the accessibility mirror, `touch_move`,
-  `touch_start`, `touch_end`, `scroll`) as real input events, `screenshot`
-  as the probe's `capture` compared with the project's references (its
-  tier's, else metal's) under og-tests' rule, `state` and `mirror` as the
-  probe's `state()` and the mirror's nodes and focus, and relaunches (a
-  playtest's `then`) as reloads under the service worker; a command-channel
-  step is refused, never skipped. The engine Worker's display clock is the
-  harness's (its `requestAnimationFrame` and `performance.now`, replaced
-  through the DevTools protocol before its first line runs), so every step
-  lands on its tick and every frame is the tick it names; nothing of the
-  build changes. It checks that the game boots, its title is in the mirror
-  behind the gate, a real click opens the gate, the frames match, the
-  plan's checks hold, and the page, its Workers and Chrome (with its
-  accessibility tree on) log no warning or error. Its built-in plan is
-  the former test sample's; `--script "<steps>" --title
-  <node> [--then "<steps>"] [--references <dir> --prefix <p>]` runs
-  another, and `--playtest <file>` a playtest's own commands (its `then` as
-  reloads; dump and game-command steps are refused, and its `check` is not
-  run). Run by hand, one Chrome at a time; no gate lane runs it.
 - `og doctor` (no arguments) checks what the author's loop needs: bun (node
   is optional when bun is present), the engine package, its native addon,
   both web host wasm files, and whether a 64×64 frame renders headless
