@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "UI part reflection and og style check",
+      "summary": "UI reflection exposes built-in host, part and state declarations through documentSchema, the probe and the generated UI catalogue. og style check validates selectors against the same declarations and accepts explicit custom parts from Svelte markup and custom-element hosts. Button part constructors use the reflected lowercase host while retaining legacy StylePart recognition. Default CSS no longer advertises part selectors that no widget emits."
+    }
+  ]
+}

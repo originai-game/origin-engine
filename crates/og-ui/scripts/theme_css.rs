@@ -8,24 +8,13 @@ use std::fmt::Write;
 /// mapping next to the declarations: it is also emitted for migration review.
 const PART_RULES: &[(&str, &str, &str)] = &[
     ("Panel::frame", "panel.glass::part(frame)", GLASS_LIFT),
-    ("Sheet::frame", "sheet::part(frame)", GLASS_LIFT),
-    ("Radial::frame", "radial::part(frame)", GLASS_LIFT),
-    ("Menu::frame", "menu::part(frame)", GLASS_FLOAT),
-    ("Popover::frame", "popover::part(frame)", GLASS_FLOAT),
     ("Tooltip::frame", "tooltip::part(frame)", GLASS_FLOAT),
-    ("Chart::tooltip", "chart::part(tooltip)", GLASS_FLOAT),
     ("Hud::frame", "hud::part(frame)", GLASS_REGULAR),
     (
         "Minimap::frame",
         "minimap::part(frame)",
         "background: #16161899; border: 0.5px solid #ffffff14; box-shadow: 0 6px 16px 0 #00000073;",
     ),
-    (
-        "ScrollArea::frame",
-        "scroll::part(frame)",
-        "border: none; box-shadow: none;",
-    ),
-    ("ActionBar::hint", "actionbar::part(hint)", GLASS_REGULAR),
     (
         "Card::frame",
         "panel::part(frame)",
@@ -474,10 +463,7 @@ const FALLBACKS: &str = r#"
       opacity var(--motion-ui-duration) var(--motion-ui-easing);
   }
   /* Panel / Dialog / Card / Tooltip */
-  panel::part(frame), sheet::part(frame), radial::part(frame),
-  menu::part(frame), popover::part(frame), tooltip::part(frame),
-  chart::part(tooltip), dialog::part(panel),
-  scroll::part(frame),
+  panel::part(frame), tooltip::part(frame), dialog::part(panel),
   select::part(list), input[type=range]::part(bubble) {
     box-sizing: border-box;
     border: 1px solid var(--line);
@@ -487,7 +473,7 @@ const FALLBACKS: &str = r#"
     box-shadow: var(--elevation-floating);
   }
   /* Hud */
-  hud::part(frame), actionbar::part(hint), minimap::part(frame) {
+  hud::part(frame), minimap::part(frame) {
     border: 1px solid var(--line-70);
     border-radius: var(--radius-button);
   }
@@ -516,22 +502,21 @@ const FALLBACKS: &str = r#"
   /* Field: text boxes, checkbox marks and radio wells. */
   input::part(frame), textarea::part(frame), select::part(trigger),
   stepper::part(frame), stepper::part(value), input[type=checkbox]::part(box),
-  input[type=radio]::part(box), input[type=radio]::part(ring) {
+  input[type=radio]::part(ring) {
     box-sizing: border-box;
     border: 1.5px solid var(--line);
     border-radius: var(--radius-button);
     box-shadow: inset 0 1px 3px 0 var(--shadow-30);
   }
-  input[type=checkbox]::part(box), input[type=radio]::part(box), input[type=radio]::part(ring) {
+  input[type=checkbox]::part(box), input[type=radio]::part(ring) {
     border: 1px solid var(--well-rim);
   }
   input[type=checkbox]::part(box):checked,
   input[type=checkbox][aria-checked=mixed]::part(box),
-  input[type=radio]::part(box):checked, input[type=radio]::part(ring):checked {
+  input[type=radio]::part(ring):checked {
     border: none; box-shadow: none;
   }
   input[type=checkbox][aria-invalid=true]::part(box),
-  input[type=radio][aria-invalid=true]::part(box),
   select[aria-invalid=true]::part(trigger),
   stepper[aria-invalid=true]::part(frame), stepper[aria-invalid=true]::part(value) {
     border: 1.5px solid var(--danger);
@@ -542,7 +527,6 @@ const FALLBACKS: &str = r#"
     border-radius: var(--radius-control);
     box-shadow: inset 0 1px 3px 0 var(--shadow-30);
   }
-  avatar::part(frame) { border: 1.5px solid var(--line-strong); border-radius: var(--radius-control); }
   chip::part(base), input[type=range]::part(knob), input[type=checkbox][switch]::part(track),
   input[type=checkbox][switch]::part(knob) {
     border: 1px solid var(--line); border-radius: var(--radius-button);

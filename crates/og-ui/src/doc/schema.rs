@@ -6,6 +6,10 @@
 
 use std::sync::LazyLock;
 
+#[path = "schema_parts.rs"]
+pub mod parts;
+pub use parts::{PARTS, PartSpec, part};
+
 /// A prop's value type, as a document line writes it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Ty {
@@ -1966,6 +1970,7 @@ pub fn kind(name: &str) -> Option<&'static KindSpec> {
 pub fn to_json() -> serde_json::Value {
     use serde_json::json;
     json!({
+        "parts": parts::to_json(),
         "kinds": KINDS.iter().map(|k| json!({ "name": k.name, "container": k.container, "doc": k.doc })).collect::<Vec<_>>(),
         "props": PROPS.iter().map(|p| {
             let mut v = json!({ "name": p.name, "type": p.ty.name(), "doc": p.doc, "twoWay": p.two_way });

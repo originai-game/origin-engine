@@ -223,6 +223,7 @@ impl Ui {
     pub fn probe_extra(&self) -> serde_json::Map<String, serde_json::Value> {
         use serde_json::{Value, json};
         let mut m = serde_json::Map::new();
+        m.insert("parts".into(), crate::doc::schema::parts::to_json());
         m.insert(
             "layers".into(),
             Value::Array(

@@ -4,7 +4,7 @@ use super::selectors::Selector;
 use super::syntax::{Attr, Error};
 use super::*;
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 struct Rule {
     selector: String,
     body: String,
@@ -143,6 +143,72 @@ pub(crate) fn part_rules_from(
         });
     }
     Ok((out, sheet))
+}
+
+/// Visit this source's selectors using the stylesheet tokenizer and nesting
+/// expansion. Imports are visited by the caller under their own filenames.
+pub(crate) fn check_part_selectors(
+    source: &str,
+    css: &str,
+    check: &impl Fn(&Selector) -> Result<(), String>,
+) -> Vec<String> {
+    fn walk(
+        text: &str,
+        base: usize,
+        parent: Option<&str>,
+        check: &impl Fn(&Selector) -> Result<(), String>,
+        errors: &mut Vec<Error>,
+    ) -> Result<(), Error> {
+        for item in items(text, base)? {
+            let Item::Block {
+                prelude,
+                block,
+                at,
+                block_at,
+            } = item
+            else {
+                continue;
+            };
+            if let Some((name, _)) = at_rule(prelude) {
+                if matches!(
+                    name.as_str(),
+                    "media" | "supports" | "container" | "layer" | "scope" | "starting-style"
+                ) {
+                    walk(block, block_at, parent, check, errors)?;
+                }
+                continue;
+            }
+            if prelude.trim_start().starts_with("--") {
+                continue;
+            }
+            let combined = resolve_nested(prelude, parent);
+            let rule = Rule {
+                selector: combined.clone(),
+                at,
+                ..Default::default()
+            };
+            match parsed_rules(vec![rule], &[]) {
+                Ok(selectors) => {
+                    for (selector, _) in selectors {
+                        if let Err(error) = check(&selector) {
+                            errors.push((at, error));
+                        }
+                    }
+                }
+                Err(error) => errors.push(error),
+            }
+            walk(block, block_at, Some(&combined), check, errors)?;
+        }
+        Ok(())
+    }
+    let mut errors = Vec::new();
+    if let Err(error) = walk(css, 0, None, check, &mut errors) {
+        errors.push(error);
+    }
+    errors
+        .into_iter()
+        .map(|e| syntax::diagnostic(source, css, e))
+        .collect()
 }
 
 pub(crate) fn pack_extensions(source: &str, css: &str) -> Result<(), String> {

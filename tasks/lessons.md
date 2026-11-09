@@ -123,3 +123,10 @@ A locale label on a review cell is not proof of localization. Load the
 sheet's translated string tables before its document, install the locale's
 font pack, and inspect translated glyphs and RTL geometry in the output.
 English fallback under a Chinese or Arabic cell label is missing coverage.
+
+## 2026-11-10 — A coordination update is not a stopping point
+
+When an assigned stream has authorized work remaining, consume handoffs and
+continue implementation in the same turn. A provisional API, successful rebase,
+or reproduced failure is a milestone, not a blocker. Report each requested
+landing with evidence; do not require the coordinator to repeat “keep going.”

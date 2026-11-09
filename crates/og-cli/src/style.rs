@@ -37,6 +37,30 @@ fn files(
     Ok(())
 }
 
+fn document_parts(directory: &Path, out: &mut Vec<(String, String)>) -> Result<(), String> {
+    for entry in
+        std::fs::read_dir(directory).map_err(|e| format!("{}: {e}", directory.display()))?
+    {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let path = entry.path();
+        let ty = entry.file_type().map_err(|e| e.to_string())?;
+        if ty.is_symlink() {
+            continue;
+        }
+        if ty.is_dir() {
+            document_parts(&path, out)?;
+        } else if path.extension().is_some_and(|e| e == "svelte") {
+            let text =
+                std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+            out.extend(og_ui::doc::schema::parts::authored_parts(
+                &path.to_string_lossy(),
+                &text,
+            )?);
+        }
+    }
+    Ok(())
+}
+
 fn check(args: &[&str]) -> Result<(), String> {
     let (directory, json) = match args {
         [directory] => (Path::new(directory), false),
@@ -59,15 +83,19 @@ fn check(args: &[&str]) -> Result<(), String> {
     let mut sources = Vec::new();
     files(directory, directory, &namespace, &mut sources)?;
     sources.sort();
+    let mut authored = Vec::new();
+    document_parts(asset_root.unwrap_or(directory), &mut authored)?;
     let mut findings = Vec::new();
     for (id, text) in &sources {
         if let Err(error) = og_ui::style_pack::StylePack::validate_source(id, text, sources.clone())
         {
             findings.push(error.replace(&prefix, &format!("{}/", directory.display())));
         }
-        // TODO(ui-css-registry): validate built-in host/part selectors here using
-        // og_ui::doc::schema's forthcoming registry, preserving file:line errors.
-        // Author-defined custom parts remain valid; do not add a local name list.
+        findings.extend(
+            og_ui::doc::schema::parts::validate_source(id, text, &authored)
+                .into_iter()
+                .map(|error| error.replace(&prefix, &format!("{}/", directory.display()))),
+        );
         for url in og_ui::doc::at_rules::urls(text) {
             if url.starts_with('#') || url.starts_with("data:") {
                 continue;

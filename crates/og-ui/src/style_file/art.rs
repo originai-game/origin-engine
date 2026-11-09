@@ -89,10 +89,16 @@ impl StylePart {
         let p = match self {
             StylePart::Panel => PartRef::new("panel", "frame", C::Panel).flag("glass"),
             StylePart::Card => PartRef::new("panel", "frame", C::Card).at_level(Level::Raised),
-            StylePart::Button => PartRef::new("Button", "base", C::Button),
-            StylePart::ButtonHover => PartRef::new("Button", "base", C::Button).flag("hover"),
-            StylePart::ButtonPressed => PartRef::new("Button", "base", C::Button).flag("pressed"),
-            StylePart::ButtonDisabled => PartRef::new("Button", "base", C::Button).flag("disabled"),
+            StylePart::Button => crate::doc::schema::parts::BUTTON_BASE.reference(Some(C::Button)),
+            StylePart::ButtonHover => crate::doc::schema::parts::BUTTON_BASE
+                .reference(Some(C::Button))
+                .flag("hover"),
+            StylePart::ButtonPressed => crate::doc::schema::parts::BUTTON_BASE
+                .reference(Some(C::Button))
+                .flag("pressed"),
+            StylePart::ButtonDisabled => crate::doc::schema::parts::BUTTON_BASE
+                .reference(Some(C::Button))
+                .flag("disabled"),
             StylePart::Field => PartRef::new("Field", "frame", C::Field),
             StylePart::Slot => PartRef::new("Slot", "frame", C::Slot),
             StylePart::Tooltip => {
@@ -114,10 +120,12 @@ impl StylePart {
         Some(match (p.component, p.part) {
             ("panel", "frame") if state("glass") => StylePart::Panel,
             ("panel", "frame") => StylePart::Card,
-            ("Button", "base") if state("disabled") => StylePart::ButtonDisabled,
-            ("Button", "base") if state("pressed") => StylePart::ButtonPressed,
-            ("Button", "base") if state("hover") => StylePart::ButtonHover,
-            ("Button", "base") => StylePart::Button,
+            ("Button" | "button", "base") if state("disabled") => StylePart::ButtonDisabled,
+            ("Button" | "button", "base") if state("pressed") || state("active") => {
+                StylePart::ButtonPressed
+            }
+            ("Button" | "button", "base") if state("hover") => StylePart::ButtonHover,
+            ("Button" | "button", "base") => StylePart::Button,
             ("Field", "frame") => StylePart::Field,
             ("Slot", "frame") => StylePart::Slot,
             ("Tooltip", "frame") => StylePart::Tooltip,

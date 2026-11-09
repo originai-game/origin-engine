@@ -264,11 +264,10 @@ impl Ui {
             ButtonVariant::Danger => "danger",
             ButtonVariant::Ghost => "ghost",
         };
-        let named = desc.part.unwrap_or(crate::dress::PartRef::new(
-            "Button",
-            "base",
-            crate::tokens::ElementClass::Button,
-        ));
+        let named = desc.part.unwrap_or_else(|| {
+            crate::doc::schema::parts::BUTTON_BASE
+                .reference(Some(crate::tokens::ElementClass::Button))
+        });
         let mut part = crate::dress::PartRef {
             class: Some(crate::tokens::ElementClass::Button),
             ..named

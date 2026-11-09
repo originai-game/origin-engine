@@ -154,13 +154,7 @@ fn the_default_css_puts_glass_on_floating_chrome_only() {
             })
     };
     use og_render::UiGlassWeight::{Regular, Thick};
-    for s in [
-        "panel.glass::part(frame)",
-        "sheet::part(frame)",
-        "menu::part(frame)",
-        "popover::part(frame)",
-        "tooltip::part(frame)",
-    ] {
+    for s in ["panel.glass::part(frame)", "tooltip::part(frame)"] {
         assert_eq!(glass(s), Some(Thick), "{s}");
     }
     assert_eq!(glass("hud::part(frame)"), Some(Regular));

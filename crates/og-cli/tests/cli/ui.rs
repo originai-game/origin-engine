@@ -67,6 +67,23 @@ fn css_style_authoring_checks_sources_and_installs_without_a_manifest() {
     for (css, expected) in [
         ("button::part(base) {\n -og-mystery: 1;\n}", "main.css:2:"),
         ("button::part(base) {\n -OG-MYSTERY: 1;\n}", "main.css:2:"),
+        ("\nbutton::part(bsae) { color: red; }", "main.css:2:"),
+        (
+            "@media (min-width: 1px) {\n button {\n &::part(bsae) { color: red; }\n }\n}",
+            "main.css:3:",
+        ),
+        (
+            "\nbuton::part(base) { color: red; }",
+            "unknown UI host `buton`",
+        ),
+        (
+            "\nbutton::part(base):checked { color: red; }",
+            "state `checked`",
+        ),
+        (
+            "\ninput[type=radio]::part(knob) { color: red; }",
+            "unknown part `knob`",
+        ),
         (
             "button::part(base) { background-image: url(missing.svg); }",
             "unresolved url(missing.svg)",
@@ -78,6 +95,31 @@ fn css_style_authoring_checks_sources_and_installs_without_a_manifest() {
         assert!(!invalid.status.success(), "{}", text(&invalid));
         assert!(text(&invalid).contains(expected), "{}", text(&invalid));
     }
+    std::fs::write(
+        pack.join("example.svelte"),
+        "<button part=\"authored\">OK</button>",
+    )
+    .unwrap();
+    std::fs::write(
+        pack.join("main.css"),
+        "button::part(authored):hover { color: red; } game-card::part(trim) { color: blue; }",
+    )
+    .unwrap();
+    let custom = run(&["style", "check", pack.to_str().unwrap()]);
+    assert!(custom.status.success(), "{}", text(&custom));
+    std::fs::write(pack.join("main.css"), "@import 'nested.css';").unwrap();
+    std::fs::write(
+        pack.join("nested.css"),
+        "\n\nbutton::part(bsae) { color: red; }",
+    )
+    .unwrap();
+    let imported = run(&["style", "check", pack.to_str().unwrap()]);
+    assert!(!imported.status.success(), "{}", text(&imported));
+    assert!(
+        text(&imported).contains("nested.css:3:"),
+        "{}",
+        text(&imported)
+    );
 }
 
 /// `og ui add <directory>` installs an editable copy of a fixture kit;

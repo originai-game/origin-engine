@@ -1,6 +1,7 @@
 /* CSS laboratory: intentionally conspicuous state colours for the core sheet.
    No manifest, atlas or engine appearance properties beyond -og-sound.
-   Host font inheritance and host data-* propagation are pending parts-as-nodes. */
+   Host font inheritance, host data-* propagation and text-field hover/active
+   part states are pending parts-as-nodes. */
 @font-face {
   font-family: "Laboratory";
   src: url(fonts/InstrumentSans-Regular.ttf);
@@ -44,7 +45,7 @@ input[type=range]::part(track), input[type=range]::part(knob), details::part(sum
 }
 button::part(base):hover, input[type=checkbox]::part(box):hover,
 input[type=checkbox][switch]::part(track):hover, input[type=radio]::part(option):hover,
-input::part(frame):hover, textarea::part(frame):hover, select::part(trigger):hover,
+select::part(trigger):hover,
 stepper::part(button):hover, tabs::part(tab):hover, input[type=range]::part(knob):hover {
   background: var(--lab-hover);
   border-color: #78efff;
@@ -52,7 +53,7 @@ stepper::part(button):hover, tabs::part(tab):hover, input[type=range]::part(knob
 }
 button::part(base):active, input[type=checkbox]::part(box):active,
 input[type=checkbox][switch]::part(track):active, input[type=radio]::part(option):active,
-input::part(frame):active, textarea::part(frame):active, select::part(trigger):active,
+select::part(trigger):active,
 stepper::part(button):active, tabs::part(tab):active, input[type=range]::part(knob):active {
   background: var(--lab-pressed);
   border-color: #ffabdf;
@@ -96,7 +97,7 @@ button.primary::part(base):active, button.secondary::part(base):active, button.q
 button.ghost::part(base):active, button.danger::part(base):active { background: var(--lab-pressed); border-color: #ffabdf; color: #fff0fa; }
 button.primary::part(base):disabled, button.secondary::part(base):disabled, button.quiet::part(base):disabled,
 button.ghost::part(base):disabled, button.danger::part(base):disabled { background: repeating-linear-gradient(135deg, var(--lab-disabled) 0px, var(--lab-disabled) 5px, #717280 6px); border: 2px dashed #9e9ba5; color: #d9d7df; box-shadow: none; }
-panel::part(frame), dialog::part(panel), tooltip::part(frame), sheet::part(frame) {
+panel::part(frame), dialog::part(panel), tooltip::part(frame) {
   background: var(--lab-ground);
   border: 10px solid transparent;
   border-image: url(frame.svg) 10 fill / 10px / 0 stretch;

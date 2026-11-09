@@ -943,3 +943,58 @@ fn css_parts_render_their_background_border_and_shadow() {
         "the outer shadow darkens the ground"
     );
 }
+
+#[test]
+fn reflected_part_constructors_keep_typed_hosts_and_state_semantics() {
+    use og_ui::doc::schema;
+    use og_ui::paint::{ColorRef, Paint};
+    let ui = dressed(
+        "input[type=checkbox]::part(track) { background: #112233; }
+         input[type=checkbox][switch]::part(track):checked { background: #345678; }
+         tabs::part(tab):checked { background: #456789; }
+         select[aria-selected=true]::part(option) { background: #56789a; }",
+    );
+    for (host, name, flag, expected) in [
+        ("input[type=checkbox][switch]", "track", "on", "#345678"),
+        ("tabs", "tab", "selected", "#456789"),
+        ("select", "option", "selected", "#56789a"),
+    ] {
+        let spec = schema::part(host, name).unwrap();
+        let part = spec.reference(None).flag(flag);
+        let draw = ui.resolve_part(&part, [100.0, 40.0]).unwrap();
+        assert_eq!(
+            draw.fills,
+            vec![Paint::Solid(ColorRef::Literal(
+                og_ui::style_file::parse_color(expected).unwrap()
+            ))],
+            "{}",
+            spec.selector
+        );
+    }
+    assert!(schema::part("input[type=checkbox]", "track").is_none());
+    for (state, expected) in [
+        ("", StylePart::Button),
+        ("hover", StylePart::ButtonHover),
+        ("active", StylePart::ButtonPressed),
+        ("pressed", StylePart::ButtonPressed),
+        ("disabled", StylePart::ButtonDisabled),
+    ] {
+        let part = schema::parts::BUTTON_BASE.reference(None).flag(state);
+        assert_eq!(StylePart::from_part(&part), Some(expected));
+        let legacy = dress::PartRef {
+            component: "Button",
+            ..part
+        };
+        assert_eq!(StylePart::from_part(&legacy), Some(expected));
+    }
+    let json = schema::to_json();
+    assert!(json["parts"].as_array().unwrap().iter().any(|p| {
+        p["host"] == "tabs"
+            && p["name"] == "tab"
+            && p["states"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|s| s == "checked")
+    }));
+}

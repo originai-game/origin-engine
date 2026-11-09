@@ -92,7 +92,7 @@ fn css(look: &str, scheme: &str, finish: Option<&str>) -> Result<String, String>
         }
         _ => unreachable!(),
     };
-    out.push_str(&format!("button::part(base), panel::part(frame), sheet::part(frame), dialog::part(panel), input::part(frame), textarea::part(frame), select::part(trigger), slot::part(frame) {{ {treatment} }}\n"));
+    out.push_str(&format!("button::part(base), panel::part(frame), dialog::part(panel), input::part(frame), textarea::part(frame), select::part(trigger), slot::part(frame) {{ {treatment} }}\n"));
     out.push_str(":root { -og-sound: press url(/@styles/shared/sfx-tap.ogt) url(/@styles/shared/sfx-tap2.ogt) volume(0.24 0.3) pitch(0.98 1.02), select url(/@styles/shared/sfx-confirm.ogt) volume(0.3), confirm url(/@styles/shared/sfx-confirm.ogt) volume(0.3), cancel url(/@styles/shared/sfx-back.ogt) volume(0.25), back url(/@styles/shared/sfx-back.ogt) volume(0.25), open url(/@styles/shared/sfx-open.ogt) volume(0.2), close url(/@styles/shared/sfx-back.ogt) volume(0.2), error url(/@styles/shared/sfx-error.ogt) volume(0.3), reward url(/@styles/shared/sfx-reward.ogt) volume(0.3); }\n");
     out.push_str("button::part(base) { -og-sound: press url(/@styles/shared/sfx-tap.ogt) volume(0.24 0.3) pitch(0.98 1.02), hover url(/@styles/shared/sfx-tap2.ogt) volume(0.12); }\n@media (prefers-reduced-motion: reduce) { button::part(base) { transition: none; animation: none; } }\n");
     og_ui::style_pack::StylePack::parse("pack", vec![("pack/main.css".into(), out.clone())])?;

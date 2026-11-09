@@ -261,6 +261,148 @@ What every kind takes: its box, layout, paint, motion and input.
 
 Style interaction with `#Buy:hover { scale: 1.04 }`. The screens guide lists state selectors and their scoped cascade. Bind game state with `class:active={$selected}` and style `.active`. Custom properties inherit computed values from the mounted parent; `var(--name, fallback)` resolves after specificity and `!important`. CSS motion uses shared timing values; markup contains no state blocks or timelines. `transition` and its longhands (`transition-property`, `-duration`, `-timing-function`, `-delay`) and `animation` and its longhands (`animation-name`, `-duration`, `-timing-function`, `-delay`, `-iteration-count`, `-direction`, `-fill-mode`, `-play-state`) follow CSS Transitions and Animations Level 1 over the animatable values: opacity, translate, scale, rotate, -og-skew, border-radius, background, color and z-index (keyframes animate the scalar ones).
 
+### Exposed widget parts
+
+These declarations also construct widget part identities and are exported by documentSchema and dump_ui. Classes (such as primary), ARIA attributes (such as aria-selected), and author-declared custom parts are separate from state pseudo-classes. Native API styling hosts and their markup counterparts are listed separately where their names differ.
+
+| Host | Part | State pseudo-classes |
+|---|---|---|
+| `button` | `base` | `:enabled`, `:disabled`, `:hover`, `:active`, `:focus-visible` |
+| `button` | `focus` | `:enabled`, `:disabled`, `:hover`, `:active`, `:focus-visible` |
+| `input[type=checkbox][switch]` | `row` | `:enabled`, `:disabled`, `:hover`, `:active`, `:focus-visible`, `:checked` |
+| `input[type=checkbox][switch]` | `track` | `:enabled`, `:disabled`, `:hover`, `:active`, `:focus-visible`, `:checked` |
+| `input[type=checkbox][switch]` | `knob` | `:enabled`, `:checked` |
+| `input[type=checkbox]` | `row` | `:enabled`, `:disabled`, `:hover`, `:active`, `:focus-visible`, `:checked`, `:invalid` |
+| `input[type=checkbox]` | `box` | `:enabled`, `:disabled`, `:hover`, `:active`, `:focus-visible`, `:checked`, `:invalid` |
+| `input[type=checkbox]` | `mark` | `:enabled` |
+| `input[type=radio]` | `option` | `:enabled`, `:disabled`, `:hover`, `:active`, `:focus-visible`, `:checked` |
+| `input[type=radio]` | `card` | `:enabled`, `:disabled`, `:hover`, `:active`, `:focus-visible`, `:checked` |
+| `input[type=radio]` | `ring` | `:enabled`, `:disabled`, `:hover`, `:active`, `:focus-visible`, `:checked` |
+| `input[type=radio]` | `dot` | `:enabled` |
+| `input[type=radio]` | `chosen` | `:enabled` |
+| `tabs` | `track` | `:enabled`, `:disabled` |
+| `tabs` | `indicator` | `:enabled` |
+| `tabs` | `tab` | `:enabled`, `:disabled`, `:hover`, `:active`, `:focus-visible`, `:checked` |
+| `tabs` | `focus` | `:enabled`, `:disabled`, `:hover`, `:active`, `:focus-visible`, `:checked` |
+| `input[type=range]` | `track` | `:enabled` |
+| `input[type=range]` | `fill` | `:enabled` |
+| `input[type=range]` | `tick` | `:enabled` |
+| `input[type=range]` | `core` | `:enabled` |
+| `input[type=range]` | `bubble` | `:enabled` |
+| `input[type=range]` | `reach` | `:enabled`, `:disabled`, `:hover`, `:active`, `:focus-visible` |
+| `input[type=range]` | `knob` | `:enabled`, `:disabled`, `:hover`, `:active`, `:focus-visible` |
+| `select` | `trigger` | `:enabled`, `:disabled`, `:hover`, `:active`, `:focus-visible`, `:open`, `:invalid` |
+| `select` | `list` | `:enabled` |
+| `select` | `option` | `:enabled`, `:disabled`, `:hover`, `:active`, `:focus-visible` |
+| `select` | `group` | `:enabled` |
+| `details` | `root` | `:enabled` |
+| `details` | `summary` | `:enabled`, `:disabled`, `:hover`, `:active`, `:focus-visible`, `:open` |
+| `details` | `content` | `:enabled` |
+| `stepper` | `frame` | `:enabled` |
+| `stepper` | `value` | `:enabled`, `:disabled`, `:hover`, `:active`, `:focus-visible` |
+| `stepper` | `button` | `:enabled`, `:disabled`, `:hover`, `:active`, `:focus-visible` |
+| `keyboard` | `panel` | `:enabled` |
+| `keyboard` | `preview` | `:enabled` |
+| `keyboard` | `candidates` | `:enabled` |
+| `keyboard` | `candidate` | `:enabled`, `:disabled`, `:hover`, `:active`, `:focus-visible` |
+| `keyboard` | `key` | `:enabled`, `:disabled`, `:hover`, `:active`, `:focus-visible` |
+| `input` | `frame` | `:enabled`, `:disabled`, `:focus-visible`, `:invalid` |
+| `input` | `text` | `:enabled`, `:disabled`, `:focus-visible`, `:invalid` |
+| `input` | `placeholder` | `:enabled`, `:disabled`, `:focus-visible`, `:invalid` |
+| `input` | `reveal` | `:enabled`, `:disabled`, `:hover`, `:active`, `:focus-visible`, `:invalid` |
+| `input` | `reveal-icon` | `:enabled`, `:disabled`, `:focus-visible`, `:invalid` |
+| `input` | `clear` | `:enabled`, `:disabled`, `:hover`, `:active`, `:focus-visible`, `:invalid` |
+| `input` | `clear-icon` | `:enabled`, `:disabled`, `:focus-visible`, `:invalid` |
+| `textarea` | `frame` | `:enabled`, `:disabled`, `:focus-visible`, `:invalid` |
+| `textarea` | `text` | `:enabled`, `:disabled`, `:focus-visible`, `:invalid` |
+| `textarea` | `placeholder` | `:enabled`, `:disabled`, `:focus-visible`, `:invalid` |
+| `textarea` | `selection` | `:enabled` |
+| `panel` | `frame` | `:enabled` |
+| `slot` | `frame` | `:enabled`, `:hover`, `:active`, `:focus-visible` |
+| `tooltip` | `frame` | `:enabled` |
+| `hud` | `frame` | `:enabled` |
+| `progress` | `track` | `:enabled` |
+| `progress` | `fill` | `:enabled` |
+| `meter` | `track` | `:enabled` |
+| `meter` | `fill` | `:enabled` |
+| `meter` | `trail` | `:enabled` |
+| `meter` | `separator` | `:enabled` |
+| `meter` | `label` | `:enabled` |
+| `chip` | `base` | `:enabled`, `:disabled`, `:hover`, `:active`, `:focus-visible` |
+| `badge` | `base` | `:enabled` |
+| `skeleton` | `frame` | `:enabled` |
+| `skeleton` | `sheen` | `:enabled` |
+| `skeleton` | `line` | `:enabled` |
+| `spinner` | `base` | `:enabled` |
+| `spinner` | `dot` | `:enabled` |
+| `icon` | `image` | `:enabled` |
+| `artslot` | `icon` | `:enabled` |
+| `artslot` | `placeholder` | `:enabled` |
+| `artslot` | `label` | `:enabled` |
+| `dialog` | `backdrop` | `:enabled` |
+| `dialog` | `panel` | `:enabled` |
+| `popover` | `arrow` | `:enabled` |
+| `toast` | `indicator` | `:enabled` |
+| `spotlight` | `edge` | `:enabled` |
+| `cooldown` | `track` | `:enabled` |
+| `cooldown` | `sweep` | `:enabled` |
+| `cooldown` | `mask` | `:enabled` |
+| `cooldown` | `core` | `:enabled`, `:active` |
+| `cooldown` | `icon` | `:enabled` |
+| `cooldown` | `label` | `:enabled` |
+| `minimap` | `frame` | `:enabled` |
+| `minimap` | `image` | `:enabled` |
+| `minimap` | `markerOutline` | `:enabled` |
+| `minimap` | `marker` | `:enabled` |
+| `minimap` | `north` | `:enabled` |
+| `dialogue` | `portraitIcon` | `:enabled` |
+| `dialogue` | `initial` | `:enabled` |
+| `dialogue` | `continue` | `:enabled` |
+| `joystick` | `base` | `:enabled`, `:disabled` |
+| `joystick` | `rim` | `:enabled`, `:disabled`, `:active` |
+| `joystick` | `knob` | `:enabled`, `:disabled`, `:active` |
+| `joystick` | `direction` | `:enabled`, `:disabled`, `:active` |
+| `dpad` | `base` | `:enabled`, `:disabled` |
+| `dpad` | `indicator` | `:enabled`, `:active` |
+| `dpad` | `chevron` | `:enabled`, `:active` |
+| `actionbutton` | `face` | `:enabled`, `:disabled`, `:active` |
+| `actionbutton` | `icon` | `:enabled`, `:disabled`, `:active` |
+| `actionbutton` | `track` | `:enabled` |
+| `actionbutton` | `sweep` | `:enabled` |
+| `actionbutton` | `mask` | `:enabled` |
+| `actionbutton` | `core` | `:enabled`, `:disabled`, `:active` |
+| `actionbutton` | `label` | `:enabled`, `:disabled`, `:active` |
+| `heading` | `flourish` | `:enabled` |
+| `scroll` | `bar` | `:enabled` |
+| `textarea` | `caret` | `:enabled` |
+| `textarea` | `composition` | `:enabled` |
+| `input` | `selection` | `:enabled` |
+| `input` | `caret` | `:enabled` |
+| `input` | `composition` | `:enabled` |
+| `input` | `focus` | `:enabled`, `:disabled`, `:hover`, `:active`, `:focus-visible`, `:invalid` |
+| `input[type=checkbox]` | `focus` | `:enabled`, `:disabled`, `:hover`, `:active`, `:focus-visible`, `:checked`, `:invalid` |
+| `input[type=checkbox][switch]` | `focus` | `:enabled`, `:disabled`, `:hover`, `:active`, `:focus-visible`, `:checked` |
+| `input[type=radio]` | `focus` | `:enabled`, `:disabled`, `:hover`, `:active`, `:focus-visible`, `:checked` |
+| `input[type=range]` | `focus` | `:enabled`, `:disabled`, `:hover`, `:active`, `:focus-visible` |
+| `textarea` | `focus` | `:enabled`, `:disabled`, `:focus-visible`, `:invalid` |
+| `select` | `focus` | `:enabled`, `:disabled`, `:hover`, `:active`, `:focus-visible`, `:open`, `:invalid` |
+| `details` | `focus` | `:enabled`, `:disabled`, `:hover`, `:active`, `:focus-visible`, `:open` |
+| `stepper` | `focus` | `:enabled`, `:disabled`, `:hover`, `:active`, `:focus-visible` |
+| `keyboard` | `focus` | `:enabled`, `:disabled`, `:hover`, `:active`, `:focus-visible` |
+| `slot` | `focus` | `:enabled`, `:hover`, `:active`, `:focus-visible` |
+| `art` | `icon` | `:enabled` |
+| `art` | `placeholder` | `:enabled` |
+| `art` | `label` | `:enabled` |
+| `h1` | `flourish` | `:enabled` |
+| `h2` | `flourish` | `:enabled` |
+| `h3` | `flourish` | `:enabled` |
+| `h4` | `flourish` | `:enabled` |
+| `h5` | `flourish` | `:enabled` |
+| `h6` | `flourish` | `:enabled` |
+| `input[type=number]` | `frame` | `:enabled` |
+| `input[type=number]` | `value` | `:enabled`, `:disabled`, `:hover`, `:active`, `:focus-visible` |
+| `input[type=number]` | `button` | `:enabled`, `:disabled`, `:hover`, `:active`, `:focus-visible` |
+
 <a id="guide-components-2"></a>
 ### `components §2` `<column>` (`column`): Children top to bottom
 
