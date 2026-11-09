@@ -179,16 +179,7 @@ impl Ui {
     ) -> (crate::ui::Response, bool) {
         // Its place in the tree, as a modal dialog's: a retained document
         // finds the element's node by its id under its parent.
-        self.leaf(
-            "dialog",
-            crate::Id::from(id),
-            Element {
-                width: Size::Fixed(0.0),
-                height: Size::Fixed(0.0),
-                ..Element::default()
-            },
-        );
-        let at = self.last_closed;
+        let at = self.layer_place(&crate::Id::from(id), key);
         self.nodes[at].props.position = crate::element::Position::Absolute;
         let found = self
             .nodes

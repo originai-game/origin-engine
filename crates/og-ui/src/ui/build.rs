@@ -590,6 +590,27 @@ impl Ui {
         self.floating.push(index);
     }
 
+    /// A top-layer element's place in the tree (a modal dialog's, a
+    /// spotlight's): a zero-size leaf `id` under the open parent, named
+    /// `<id>~place` where its key would be `layer`'s, the key of the layer
+    /// that draws the element (a modal dialog under the root, a spotlight's
+    /// callout keyed as the element itself). One key names one node: the
+    /// trees' index, motion and interaction state find the layer by it.
+    pub(crate) fn layer_place(&mut self, id: &Id, layer: u64) -> usize {
+        let parent = self.nodes[self.parent()].key;
+        let id = if child_key(parent, id.as_str()) == layer {
+            Id::from(format!("{}~place", id.as_str()))
+        } else {
+            id.clone()
+        };
+        let el = Element {
+            width: Size::Fixed(0.0),
+            height: Size::Fixed(0.0),
+            ..Element::default()
+        };
+        self.leaf("dialog", id, el)
+    }
+
     /// Opens a layer outside the tree (an anchored HUD group, a dialog's
     /// backdrop, a menu, the toast stack): it lays out and draws over the
     /// tree in its rank, and its children follow until [`Ui::close`]. Its

@@ -571,7 +571,7 @@ impl Ui {
             let enter = self.nodes[i].props.enter.clone();
             let entering = enter.is_some() && !m.seen.contains_key(&key);
             if enter.is_some() {
-                m.seen.insert(key, now);
+                m.seen.entry(key).or_insert(now);
             }
             let motion = self.nodes[i].props.motion;
             let css_transitions = self.nodes[i].props.transitions.clone();

@@ -171,7 +171,8 @@ pub(crate) struct MotionState {
     pub flip: IdMap<u64, Rect>,
     /// Shared elements by match key hash.
     pub matches: IdMap<u64, Matched>,
-    /// Elements with an entrance seen last tick.
+    /// Elements with an entrance, by the tick it was first seen (kept
+    /// while the element stays in the trees).
     pub seen: IdMap<u64, u64>,
     pub gestures: IdMap<u64, Gesture>,
     pub bursts: Vec<BurstRun>,

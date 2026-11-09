@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "Document <dialog modal> and -og-spotlight",
+      "summary": "A modal dialog directly under the root, and a spotlight dialog, no longer give their place in the tree the key of the layer that draws them: the probe lists that place as <id>~place and the layer as <id>, so each key names one element and the bounded frame's index holds both. An element's entrance (-og-enter) is remembered from the tick it was first seen, so a restored snapshot matches the frame that wrote it."
+    }
+  ]
+}

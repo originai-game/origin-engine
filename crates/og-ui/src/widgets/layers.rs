@@ -341,16 +341,9 @@ impl Ui {
         if desc.modal {
             // Its place in the tree: a retained document finds the dialog's
             // node by its id under its parent, and the backdrop is a layer
-            // outside the tree.
-            self.leaf(
-                "dialog",
-                id.clone(),
-                Element {
-                    width: Size::Fixed(0.0),
-                    height: Size::Fixed(0.0),
-                    ..Element::default()
-                },
-            );
+            // outside the tree (keyed as `open_layer` keys it).
+            let layer = crate::id::child_key(self.nodes[0].key, &id.as_str().replace('/', "_"));
+            self.layer_place(&id, layer);
             let r = self.open_modal(
                 id,
                 open,
