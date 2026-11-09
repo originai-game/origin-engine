@@ -349,6 +349,7 @@ impl Ui {
                 n.ordered_children.clear();
                 n.children.clear();
                 n.out.clear();
+                n.floats.clear();
                 n.table = None;
                 continue;
             }
@@ -365,6 +366,19 @@ impl Ui {
                 (draw, flow, Some(t))
             } else {
                 (shown, inside, None)
+            };
+            // A block's floated children leave its flow (CSS 2 §9.5); in
+            // a flex, grid or multi-column container `float` does not apply.
+            let floats: Vec<usize> = if crate::layout::float::container(&self.nodes[i]) {
+                let floats = flow
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.nodes[c].el.float != crate::layout::FloatSide::None)
+                    .collect();
+                flow.retain(|&c| self.nodes[c].el.float == crate::layout::FloatSide::None);
+                floats
+            } else {
+                Vec::new()
             };
             for &c in &kept {
                 self.nodes[c].up = i;
@@ -385,6 +399,7 @@ impl Ui {
             n.ordered_children = kept;
             n.children = flow;
             n.out = out;
+            n.floats = floats;
             n.baseline_items = baseline_items;
             n.table = table;
         }

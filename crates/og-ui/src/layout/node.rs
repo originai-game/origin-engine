@@ -664,6 +664,23 @@ pub(crate) struct Node {
     /// Its content box's size when it last laid its contents out, for
     /// `contain-intrinsic-size: auto` (CSS Sizing 4 §5.1).
     pub remembered: Option<[f32; 2]>,
+    /// Its floated children (CSS 2 §9.5): out of the flow, in
+    /// `ordered_children`, placed by [`crate::layout::float`].
+    pub floats: Vec<usize>,
+    /// A float's border box from its parent's content box.
+    pub float_at: [f32; 2],
+    /// The room put above it in its parent's flow to clear floats (or to
+    /// move a box that does not overlap floats below them).
+    pub clearance: f32,
+    /// A text whose lines are shortened around floats: per line, its
+    /// shift right and down from where its box puts it and the width its
+    /// line box has.
+    pub wrap_lines: Vec<[f32; 3]>,
+    /// A block formatting context root: the bottom of its floats below its
+    /// content box's top (its height holds them).
+    pub float_h: f32,
+    /// Floats narrowed or moved it, or shortened its lines, last layout.
+    pub beside: bool,
 }
 
 impl Node {
@@ -776,6 +793,12 @@ impl Node {
             cv_skip: false,
             cv_far: false,
             remembered: None,
+            floats: Vec::new(),
+            float_at: [0.0; 2],
+            clearance: 0.0,
+            wrap_lines: Vec::new(),
+            float_h: 0.0,
+            beside: false,
         }
     }
 
@@ -797,6 +820,7 @@ impl Node {
         self.frag.clone_from(&previous.frag);
         self.stuck = previous.stuck;
         self.laid_clip = previous.laid_clip;
+        self.float_at = previous.float_at;
         if !clean {
             return;
         }
@@ -807,6 +831,10 @@ impl Node {
         self.content_w = previous.content_w;
         self.content_h = previous.content_h;
         self.lines.clone_from(&previous.lines);
+        self.wrap_lines.clone_from(&previous.wrap_lines);
+        self.clearance = previous.clearance;
+        self.float_h = previous.float_h;
+        self.beside = previous.beside;
         self.rich_lines.clone_from(&previous.rich_lines);
         self.rows.clone_from(&previous.rows);
         self.grid.clone_from(&previous.grid);

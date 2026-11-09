@@ -282,6 +282,11 @@ pub(super) fn outer_inline(d: Option<&str>) -> bool {
     )
 }
 
+/// Its CSS `float` side as written, when it floats.
+fn floated(r: &Resolved) -> Option<&str> {
+    r.str("float").filter(|f| *f != "none")
+}
+
 /// A box's table part from its `display` word.
 pub(super) fn table_part(d: Option<&str>, caption_side: Option<&str>) -> crate::TablePart {
     use crate::TablePart as T;

@@ -208,6 +208,8 @@ pub(super) fn element(theme: &Theme, d: &Value) -> Element {
         flip: false,
         contain: Default::default(),
         resize: 0,
+        float: og_ui::FloatSide::None,
+        clear: 0,
     }
 }
 

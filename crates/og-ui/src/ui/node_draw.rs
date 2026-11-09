@@ -368,7 +368,10 @@ impl Ui {
                         rect.width - pad.horizontal() * sk,
                         rect.height - pad.vertical() * sk,
                     );
-                    let block = lh * n.lines.len() as f32;
+                    // Lines shortened around floats (`Node::wrap_lines`):
+                    // the last one's drop adds to the block.
+                    let drop = n.wrap_lines.last().map_or(0.0, |w| w[1]) * sk;
+                    let block = lh * n.lines.len() as f32 + drop;
                     let top = inner.y + ((inner.height - block) / 2.0).max(0.0);
                     // Text overflows its own box (a snapped edge must not eat a glyph)
                     // except in a field, which scrolls its text and clips.
@@ -386,11 +389,19 @@ impl Ui {
                     for (k, line) in n.lines.iter().enumerate() {
                         // A line a column break moved (`Node::frag`).
                         let [fx, fy] = n.frag_at(k);
-                        let ly = top + (k as f32 * lh) + fy * sk;
-                        let free = inner.width - line.width * sk;
                         // Right to left, start is the right edge.
                         let (rtl, para) = self.text_flow(i);
-                        let x = inner.x
+                        // Its line box: the room floats leave it, or its box.
+                        let (bx, bw, dy) = match n.wrap_lines.get(k) {
+                            Some(&[dx, dy, w]) if rtl => {
+                                (inner.x + inner.width - (dx + w) * sk, w * sk, dy * sk)
+                            }
+                            Some(&[dx, dy, w]) => (inner.x + dx * sk, w * sk, dy * sk),
+                            None => (inner.x, inner.width, 0.0),
+                        };
+                        let ly = top + (k as f32 * lh) + fy * sk + dy;
+                        let free = bw - line.width * sk;
+                        let x = bx
                             + if rtl { -fx } else { fx } * sk
                             + match (tc.align, rtl) {
                                 (TextAlign::Start | TextAlign::Justify, false)

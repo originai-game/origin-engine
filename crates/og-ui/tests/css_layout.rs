@@ -44,6 +44,17 @@
 //!   does not grow its line, a length or percentage on an inline-block not
 //!   taken from the line's baseline, `middle` centred in the line instead
 //!   of on the parent's x-height → `vertical_align_places_inline_boxes_as_css_does`
+//! - a float not taken out of the flow, not shifted to its side (or a
+//!   second one not beside the first, or one that does not fit not moved
+//!   below), the lines beside a float not shortened, a formatting context
+//!   box overlapping a float (not narrowed beside it, or a fixed-width one
+//!   not moved below), `clear` ignored, a float in a nested block not
+//!   reaching the boxes after it, a flow-root not holding its floats, or a
+//!   `<p>` only as wide as its text → `floats_lay_out_as_css_floats_do`
+//! - `inline-start` not following the containing block's direction, `left`
+//!   turned round under a right-to-left surface, or a box narrowed beside
+//!   floats not mirrored whole in a right-to-left block →
+//!   `floats_take_their_sides_from_the_direction`
 
 use crate::html_text::{Doc, both};
 use og_core::glam::Vec2;
@@ -684,6 +695,122 @@ fn direction_lays_out_as_css_writing_modes_does() {
             assert_eq!(at(d, "Ab", "Abs"), 10.0, "{s}");
             // A left-to-right element in a right-to-left surface.
             assert_eq!(at(d, "B1", "Back"), 0.0, "{s}");
+        }
+    });
+}
+
+#[test]
+fn floats_lay_out_as_css_floats_do() {
+    let words = "one two three four five six seven eight nine ten eleven twelve";
+    let text = format!(
+        r#"<meta name="component" content="t">
+<div><div id="Root">
+  <div id="Ref"><p id="RefP">{words}</p></div>
+  <div id="Ctx">
+    <div id="L"></div><div id="L2"></div><div id="Rt"></div>
+    <p id="P">{words}</p>
+    <div id="Fr"></div>
+    <div id="Wide"></div>
+    <div id="Clr"></div>
+    <span id="S">fits</span>
+  </div>
+  <div id="Nb"><div id="In"></div></div>
+  <div id="After"></div>
+  <div id="Holds"><div id="Hf"></div></div>
+</div></div>
+<style>
+#Root {{ width: 400px; }}
+p {{ margin: 0; }}
+#Ref {{ width: 160px; }}
+#L {{ float: left; width: 100px; height: 300px; }}
+#L2 {{ float: inline-start; width: 100px; height: 20px; }}
+#Rt {{ float: right; width: 40px; height: 300px; }}
+#Fr {{ display: flow-root; height: 10px; }}
+#Wide {{ display: flow-root; width: 300px; height: 10px; }}
+#Clr {{ clear: both; height: 10px; }}
+#Nb {{ height: 0; }}
+#In {{ float: left; width: 50px; height: 40px; }}
+#After {{ display: flow-root; height: 10px; }}
+#Hf {{ float: right; width: 30px; height: 25px; }}
+#Holds {{ display: flow-root; }}
+</style>"#
+    );
+    both(&text, &[], |d| {
+        let at = |id: &str, of: &str| {
+            let (e, p) = (d.get(id), d.get(of));
+            (e.x - p.x, e.y - p.y)
+        };
+        // Floats side by side at their sides, out of the flow.
+        assert_eq!(at("L", "Ctx"), (0.0, 0.0));
+        assert_eq!(at("L2", "Ctx"), (100.0, 0.0), "beside the first");
+        assert_eq!(at("Rt", "Ctx"), (360.0, 0.0));
+        assert_eq!(at("P", "Ctx").1, 0.0, "the flow starts at the top");
+        // The paragraph fills the line; under the short float its lines
+        // have 400 − 200 − 40 = 160px, then 400 − 100 − 40 = 260px.
+        let (p, rp) = (d.get("P"), d.get("RefP"));
+        assert_eq!(p.width, 400.0, "a <p> fills its line");
+        assert_eq!(rp.width, 160.0);
+        assert!(
+            p.height < rp.height && p.height > 20.0,
+            "lines beside the floats: {} against {} at 160px",
+            p.height,
+            rp.height
+        );
+        // A flow-root narrows beside the floats; a wider one moves below.
+        assert_eq!(at("Fr", "Ctx").0, 100.0);
+        assert_eq!(d.get("Fr").width, 260.0);
+        assert_eq!(at("Wide", "Ctx"), (0.0, 300.0), "below the floats");
+        // clear: both, below every float; an inline text still fits.
+        assert_eq!(at("Clr", "Ctx").1, 310.0);
+        assert!(d.get("S").width < 100.0);
+        // The block does not hold its float; the box after it keeps clear.
+        assert_eq!(d.get("Nb").height, 0.0);
+        assert_eq!(at("After", "Nb"), (50.0, 0.0));
+        assert_eq!(d.get("After").width, 350.0);
+        // A flow-root holds its floats (and is narrowed beside the one
+        // from the block above that reaches it).
+        assert_eq!((d.get("Holds").width, d.get("Holds").height), (350.0, 25.0));
+        assert_eq!(at("Hf", "Holds"), (320.0, 0.0));
+    });
+}
+
+#[test]
+fn floats_take_their_sides_from_the_direction() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root">
+  <div id="C"><div id="L"></div><div id="S"></div><p id="P">one two three four five six seven</p></div>
+  <div id="D" dir="rtl"><div id="L2"></div><div id="S2"></div><div id="F2"></div></div>
+</div></div>
+<style>
+#Root { width: 300px; }
+p { margin: 0; }
+#L, #L2 { float: left; width: 50px; height: 20px; }
+#S, #S2 { float: inline-start; width: 30px; height: 20px; }
+#F2 { display: flow-root; height: 10px; }
+</style>"#;
+    both(text, &[], |d| {
+        for rtl in [false, true] {
+            if rtl {
+                d.ui.set_direction(og_i18n::Direction::Rtl);
+                d.step(InputFrame::default());
+                d.step(InputFrame::default());
+            }
+            let at = |id: &str, of: &str| d.get(id).x - d.get(of).x;
+            // `left` stays left; `inline-start` follows the block's direction
+            // (the surface's in C, `dir="rtl"` in D).
+            let s = if rtl { 270.0 } else { 50.0 };
+            assert_eq!((at("L", "C"), at("S", "C")), (0.0, s), "rtl surface {rtl}");
+            assert_eq!(
+                (at("L2", "D"), at("S2", "D")),
+                (0.0, 270.0),
+                "rtl surface {rtl}"
+            );
+            // The flow-root between them, narrowed and mirrored whole.
+            assert_eq!(
+                (at("F2", "D"), d.get("F2").width),
+                (50.0, 220.0),
+                "rtl surface {rtl}"
+            );
         }
     });
 }

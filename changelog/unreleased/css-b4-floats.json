@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "UI document scoped CSS",
+      "summary": "CSS 2 floats: float (left, right, inline-start, inline-end) and clear (left, right, both, inline-start, inline-end) in a block's flow. A float shrinks to fit and is shifted to its side as high as it fits, beside earlier floats or below them; the lines of a text beside it are shortened (a line no word fits moves below it); a box that starts a formatting context of its own (flow-root, flex, grid, an image, a scroller) is narrowed beside it or moved below it; clear places a box below the earlier floats on its sides; a flow-root holds its floats, a plain block does not and its floats reach the boxes after it."
+    }
+  ]
+}

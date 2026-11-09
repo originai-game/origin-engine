@@ -19,6 +19,7 @@
 pub mod anchor;
 mod cache;
 mod flex;
+pub(crate) mod float;
 pub mod flow;
 mod grid;
 pub(crate) mod multicol;
@@ -804,6 +805,13 @@ pub struct Element {
     /// CSS `resize`: the axes a handle in its corner resizes (bit 0
     /// across, bit 1 down).
     pub resize: u8,
+    /// CSS `float` (CSS 2 §9.5), its side resolved against the direction:
+    /// in a block's flow it is taken out of the flow and shifted to that
+    /// side ([`float`]).
+    pub float: FloatSide,
+    /// CSS `clear`: bits [`float::LEFT`] and [`float::RIGHT`], the sides
+    /// whose earlier floats it is placed below.
+    pub clear: u8,
 }
 
 /// CSS `contain` (CSS Containment 2 §3), `content-visibility` (§4) and
@@ -845,6 +853,15 @@ pub enum ContentVisibility {
     /// Its contents are always skipped: not laid out, drawn, hit or in
     /// the accessibility tree.
     Hidden,
+}
+
+/// The side a float is shifted to (CSS 2 §9.5.1).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum FloatSide {
+    #[default]
+    None,
+    Left,
+    Right,
 }
 
 /// What a box is to the CSS table layout (CSS 2 §17.2).
@@ -1056,7 +1073,7 @@ pub(crate) fn preorder(nodes: &[Node], root: usize) -> Vec<usize> {
     while let Some(i) = stack.pop() {
         order.push(i);
         let n = &nodes[i];
-        if n.out.is_empty() {
+        if n.out.is_empty() && n.floats.is_empty() {
             stack.extend(n.children.iter().rev());
         } else {
             stack.extend(all_children(n).into_iter().rev());

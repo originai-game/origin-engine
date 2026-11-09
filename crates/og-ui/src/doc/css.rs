@@ -239,6 +239,8 @@ pub const STYLE: &[(&str, &str)] = &[
     ("breakBefore", "break-before"),
     ("breakAfter", "break-after"),
     ("breakInside", "break-inside"),
+    ("float", "float"),
+    ("clear", "clear"),
     ("anchorHeight", "height"),
     ("hitSlop", "-og-hit-slop"),
     ("columns", "grid-template-columns"),
@@ -422,9 +424,8 @@ fn conv(prop: &str) -> Conv {
         | "positionAnchor" | "positionArea" | "positionTry" | "positionTryOrder"
         | "positionVisibility" | "anchorWidth" | "anchorHeight" => Conv::Raw,
         "columnCount" | "columnWidth" | "columnSpan" | "columnFill" | "columnRuleWidth"
-        | "columnRuleStyle" | "columnRuleColor" | "breakBefore" | "breakAfter" | "breakInside" => {
-            Conv::Raw
-        }
+        | "columnRuleStyle" | "columnRuleColor" | "breakBefore" | "breakAfter" | "breakInside"
+        | "float" | "clear" => Conv::Raw,
         "viewTransitionName" | "viewTransitionClass" => Conv::Raw,
         "backgroundImage"
         | "backgroundSize"
@@ -624,9 +625,6 @@ fn neutral(key: &str) -> Option<&'static str> {
 /// CSS that is not part of the subset, and what to write instead.
 pub(crate) fn unsupported(name: &str) -> Option<&'static str> {
     Some(match name {
-        "float" | "clear" => {
-            "floats are not laid out yet: place it with `display: flex` or `grid`, or `position: absolute`"
-        }
         "visibility" => "write the attribute `visible false` (or `visible bind …`)",
         _ => return None,
     })

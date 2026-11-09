@@ -1346,6 +1346,20 @@ pub const PROPS: &[PropSpec] = &[
         doc: "CSS `column-width`: `auto` or the least width of a column; with `column-count`, as many columns as fit, at most that count.",
     },
     PropSpec {
+        name: "float",
+        ty: Ty::Text,
+        on: On::All,
+        two_way: false,
+        doc: "CSS `float` (`none`, `left`, `right`, `inline-start`, `inline-end`): in a block's flow it leaves the flow for that side of its containing block, shrinking to fit; the lines beside it shorten and boxes that start a formatting context of their own keep clear of it.",
+    },
+    PropSpec {
+        name: "clear",
+        ty: Ty::Text,
+        on: On::All,
+        two_way: false,
+        doc: "CSS `clear` (`none`, `left`, `right`, `both`, `inline-start`, `inline-end`): it is placed below the earlier floats on those sides.",
+    },
+    PropSpec {
         name: "columnSpan",
         ty: Ty::Text,
         on: On::All,

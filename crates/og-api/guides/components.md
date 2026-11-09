@@ -238,6 +238,8 @@ What every kind takes: its box, layout, paint, motion and input.
 | `position-visibility:` | `<n>px \| <n>%` | CSS `position-visibility`: always, anchors-visible (the default) or no-overflow. |
 | `column-count:` | `<n>px \| <n>%` | CSS `column-count`: `auto` or how many columns its flow lays out in (a multi-column container). |
 | `column-width:` | `<n>px \| <n>%` | CSS `column-width`: `auto` or the least width of a column; with `column-count`, as many columns as fit, at most that count. |
+| `float:` | `<n>px \| <n>%` | CSS `float` (`none`, `left`, `right`, `inline-start`, `inline-end`): in a block's flow it leaves the flow for that side of its containing block, shrinking to fit; the lines beside it shorten and boxes that start a formatting context of their own keep clear of it. |
+| `clear:` | `<n>px \| <n>%` | CSS `clear` (`none`, `left`, `right`, `both`, `inline-start`, `inline-end`): it is placed below the earlier floats on those sides. |
 | `column-span:` | `<n>px \| <n>%` | CSS `column-span: none \| all`: in a multi-column container, `all` spans every column and starts a new set of columns below it. |
 | `column-fill:` | `<n>px \| <n>%` | CSS `column-fill`: `balance` (and `balance-all`) evens the columns' heights; `auto` fills them in turn to the container's definite height. |
 | `column-rule-width:` | `<n>px \| <n>%` | CSS `column-rule-width`: a px length, `thin`, `medium` or `thick`. |

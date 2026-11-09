@@ -753,6 +753,7 @@ impl Ui {
                 // table shrink to fit (§10.3.9, §17.5.2).
                 let parent = self.nodes[i].parent;
                 let fills = !super::outer_inline(r.str("display"))
+                    && super::floated(r).is_none()
                     && !matches!(display, "table")
                     && el.table == crate::TablePart::None;
                 // The document's root element is a block of the initial
@@ -827,6 +828,36 @@ impl Ui {
         // `display: inline-*` (any element): it lies in its parent's lines,
         // and `vertical-align` places it there.
         el.inline = super::outer_inline(r.str("display"));
+        // `float` and `clear` (CSS 2 §9.5), their sides in layout space:
+        // a right-to-left containing block's content (its floats with it)
+        // ends up mirrored, by its flip or the surface's mirror
+        // (`layout::flow`), so `inline-start` lays out on the left and,
+        // in a right-to-left one, `left` on the right. A float is
+        // block-level.
+        let parent = self.nodes[i].parent;
+        let rtl = if parent == crate::layout::NONE {
+            r.flow.rtl
+        } else {
+            self.nodes[parent].props.flow.rtl
+        };
+        el.float = match r.str("float") {
+            Some("left") if rtl => crate::layout::FloatSide::Right,
+            Some("right") if !rtl => crate::layout::FloatSide::Right,
+            Some("inline-end") => crate::layout::FloatSide::Right,
+            Some("left" | "right" | "inline-start") => crate::layout::FloatSide::Left,
+            _ => crate::layout::FloatSide::None,
+        };
+        el.clear = match r.str("clear") {
+            Some("both") => crate::layout::float::LEFT | crate::layout::float::RIGHT,
+            Some("left") if rtl => crate::layout::float::RIGHT,
+            Some("right") if !rtl => crate::layout::float::RIGHT,
+            Some("inline-end") => crate::layout::float::RIGHT,
+            Some("left" | "right" | "inline-start") => crate::layout::float::LEFT,
+            _ => 0,
+        };
+        if el.float != crate::layout::FloatSide::None {
+            el.inline = false;
+        }
         // A block-level text (`<p>`, a heading, a text displayed `block`)
         // in a block's flow fills its line, as a CSS block box does (CSS 2
         // §10.3.3); an inline-level one keeps fitting its text.
@@ -841,6 +872,7 @@ impl Ui {
             };
             let parent = self.nodes[i].parent;
             if el.block
+                && el.float == crate::layout::FloatSide::None
                 && !r.has("width")
                 && !r.has("textPath")
                 && parent != crate::layout::NONE

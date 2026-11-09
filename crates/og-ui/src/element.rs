@@ -2142,7 +2142,8 @@ impl Ui {
                     && a.float == b.float
                     && a.float == Float::None
                     && a.children == b.children
-                    && a.out == b.out;
+                    && a.out == b.out
+                    && a.floats == b.floats;
                 let same = same_layout
                     && a.el == b.el
                     && a.content == b.content
@@ -2159,8 +2160,13 @@ impl Ui {
             k.clean[i] = !fresh
                 && same_layout
                 && !afresh.get(i).copied().unwrap_or(false)
-                && a.children.iter().chain(&a.out).all(|&c| {
+                && a.children.iter().chain(&a.out).chain(&a.floats).all(|&c| {
                     let child = &nodes[c];
+                    // A box among floats changes what they shorten and
+                    // move; its size alone is not all it gives its parent.
+                    if child.beside || !child.floats.is_empty() {
+                        return k.clean[c];
+                    }
                     // A fixed box still lays out its dirty contents, but
                     // those contents cannot change its parent's sizing.
                     k.clean[c]

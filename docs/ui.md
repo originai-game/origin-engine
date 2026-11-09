@@ -472,8 +472,31 @@ block wins, else the box's own; `position-try-order` (`most-width`,
 `position-visibility: anchors-visible` (the default) hides the box while
 its default anchor is clipped out of view, `no-overflow` while no option
 fits. The option that won and the anchor side it sits on are kept per
-frame for a popover's arrow. `float` and `clear` are refused: floats are
-not laid out yet.
+frame for a popover's arrow.
+
+`float` (`left`, `right`, `inline-start`, `inline-end`) and `clear`
+(`left`, `right`, `both`, `inline-start`, `inline-end`) follow CSS 2
+§9.5 in a block's flow; in a flex, grid, table or multi-column container
+`float` does not apply. A float leaves the flow, shrinks to fit (its
+`auto` margins are 0) and is shifted to its side of its parent's content
+box, as high as it fits: beside the earlier floats on that side, else
+below the first that leaves room, never above an earlier float. Floats
+belong to their block formatting context, so one in a plain block
+reaches the boxes after that block. The lines of a text beside a float
+are shortened to the room it leaves (each line broken at its own room;
+a line no word fits moves down past the float). A box that starts a
+formatting context of its own (`flow-root`, a flex or grid box, a
+table, a scroller, an image, a widget, rich text and a block laying out
+inline-level children in lines) does not overlap a float: one whose
+width fills the line is narrowed to the room beside the floats, one
+whose width is fixed moves down until it fits. `clear` places a box
+below the earlier floats on its sides. A formatting context root (a
+`flow-root`, a float, a flex or grid item, a cell) is as tall as its
+floats; a plain block is not, and its floats overflow it. A
+right-to-left containing block (its `direction`, or the surface's)
+puts `inline-start` floats on the right; `left` and `right` stay where
+they say. The lines of inline-level boxes and of rich text
+are laid out whole beside floats, not shortened line by line.
 
 CSS Multi-column Layout 1 lays a block's flow in columns. `column-count`,
 `column-width` and the `columns` shorthand make it a multi-column

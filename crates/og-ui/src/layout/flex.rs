@@ -113,7 +113,7 @@ fn gaps(gap: f32, n: usize) -> f32 {
 
 /// A collapsing margin set (CSS 2 §8.3.1): its largest positive and its
 /// most negative margin; it spans their sum.
-type MarginSet = (f32, f32);
+pub(super) type MarginSet = (f32, f32);
 
 fn margin_set(m: f32) -> MarginSet {
     (m.max(0.0), m.min(0.0))
@@ -123,7 +123,7 @@ fn joined(a: MarginSet, b: MarginSet) -> MarginSet {
     (a.0.max(b.0), a.1.min(b.1))
 }
 
-fn span(m: MarginSet) -> f32 {
+pub(super) fn span(m: MarginSet) -> f32 {
     m.0 + m.1
 }
 
@@ -213,7 +213,7 @@ fn collapse_margins(nodes: &mut [Node], i: usize) {
 /// the first, between each pair, and after the last. A block's adjacent
 /// margins collapse, through any child that collapses through itself; a
 /// flex column's add.
-fn column_spacing(nodes: &[Node], i: usize) -> (f32, Vec<f32>, f32) {
+pub(super) fn column_spacing(nodes: &[Node], i: usize) -> (f32, Vec<f32>, f32) {
     let n = &nodes[i];
     let kids = &n.children;
     if kids.is_empty() {
@@ -232,7 +232,7 @@ fn column_spacing(nodes: &[Node], i: usize) -> (f32, Vec<f32>, f32) {
         if n.el.block {
             let set = joined(run, k.margin_sets[0]);
             let total = if outside { 0.0 } else { span(set) };
-            before.push(gap + total - used);
+            before.push(gap + total - used + k.clearance);
             if k.through {
                 (run, used) = (set, total);
             } else {
@@ -270,7 +270,7 @@ pub(super) fn side_margins(n: &Node) -> f32 {
 /// A child's left and right margins against `basis`, with its `auto` ones
 /// taking `free` (CSS 2 §10.3.3 in a block, CSS Flexbox §8.1 in a line):
 /// split between two, all to one. Free space under 0 gives them none.
-fn place_sides(n: &Node, basis: f32, free: f32) -> [f32; 2] {
+pub(super) fn place_sides(n: &Node, basis: f32, free: f32) -> [f32; 2] {
     let [l, r] = [n.el.margin[3], n.el.margin[1]];
     let free = free.max(0.0);
     match (l.auto, r.auto) {
@@ -469,6 +469,17 @@ pub(super) fn size_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'_>) {
             }
         }
     };
+    // Floats lie beside the flow's lines (CSS 2 §9.5): at most all of
+    // them on one line with it.
+    let (pref, min) = if n.floats.is_empty() {
+        (pref, min)
+    } else {
+        let f = n.floats.iter().map(|&c| &nodes[c]);
+        (
+            pref + f.clone().map(|c| c.pref_w + side_margins(c)).sum::<f32>(),
+            f.map(|c| c.min_w + side_margins(c)).fold(min, f32::max),
+        )
+    };
     // A fixed height and an aspect ratio give the width.
     let (pref, min) = match (n.el.aspect > 0.0, n.el.height, n.el.width) {
         (true, Size::Fixed(h), Size::Fit { .. }) => {
@@ -496,7 +507,7 @@ pub(super) fn size_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'_>) {
 
 /// A child's width across a column (or height across a row), within its
 /// bounds against `basis` (the parent's inner size, its percentages' basis).
-fn cross_size(n: &Node, axis: usize, inner: f32, basis: f32, stretch: bool) -> f32 {
+pub(super) fn cross_size(n: &Node, axis: usize, inner: f32, basis: f32, stretch: bool) -> f32 {
     let (size, pref, min) = if axis == 0 {
         (n.el.width, n.pref_w, n.min_w)
     } else {
@@ -817,6 +828,7 @@ pub(super) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'
                 lines
             });
         nodes[i].lines = lines;
+        nodes[i].wrap_lines.clear();
         return;
     }
     if let Content::Rich(rc) = &nodes[i].content {
@@ -825,6 +837,13 @@ pub(super) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'
         return;
     }
     let el = nodes[i].el;
+    // A float shrinks to fit (CSS 2 §10.3.5); its `auto` margins are 0.
+    for c in nodes[i].floats.clone() {
+        let n = &nodes[c];
+        let fill = (inner - n.el.margin[1].of(inner) - n.el.margin[3].of(inner)).max(0.0);
+        nodes[c].w = cross_size(n, 0, fill, inner, false);
+        nodes[c].margin_x = place_sides(&nodes[c], inner, 0.0);
+    }
     let kids = nodes[i].children.clone();
     if kids.is_empty() {
         return;
@@ -1013,7 +1032,9 @@ pub(super) fn size_h(nodes: &mut [Node], i: usize) {
         // An empty text that collapses through itself has no line.
         Content::Text(_) if n.through => (0.0, 0.0),
         Content::Text(t) => {
-            let h = n.lines.len().max(1) as f32 * t.line_height();
+            // Lines moved down past floats add their drop.
+            let drop = n.wrap_lines.last().map_or(0.0, |l| l[1]);
+            let h = n.lines.len().max(1) as f32 * t.line_height() + drop;
             (h, h)
         }
         Content::Rich(_) => {
@@ -1072,6 +1093,8 @@ pub(super) fn size_h(nodes: &mut [Node], i: usize) {
             }
         }
     };
+    // A formatting context's height holds its floats (CSS 2 §10.6.7).
+    let (pref, min) = (pref.max(n.float_h), min.max(n.float_h));
     // An aspect ratio gives a fitting height from the laid-out width.
     let (pref, min) = match (n.el.aspect > 0.0, n.el.height) {
         (true, Size::Fit { .. }) => {
@@ -1105,6 +1128,16 @@ pub(super) fn distribute_h(nodes: &mut [Node], i: usize) {
             nodes[c].props.insets.bottom,
         );
         nodes[c].h = clamp_to(&nodes[c], 1, Some(outer), h);
+    }
+    for c in nodes[i].floats.clone() {
+        let n = &nodes[c];
+        let h = match n.el.height {
+            Size::Fit { .. } | Size::Grow { .. } => n.pref_h,
+            size => size
+                .definite(n.pref_h, n.min_h, Some(inner))
+                .unwrap_or(n.pref_h),
+        };
+        nodes[c].h = clamp_to(n, 1, Some(inner), h);
     }
     let kids = nodes[i].children.clone();
     if kids.is_empty() {
@@ -1262,7 +1295,7 @@ fn main_offsets(align: Align, free: f32, k: usize, safe: bool) -> (f32, f32) {
     }
 }
 
-fn cross_offset(cross: Cross, room: f32, size: f32, safe: bool) -> f32 {
+pub(super) fn cross_offset(cross: Cross, room: f32, size: f32, safe: bool) -> f32 {
     if safe && room < size {
         return 0.0;
     }
@@ -1757,6 +1790,11 @@ fn place_children(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f32, f3
         }
     }
     mirror_lines(nodes, i, x0, y0, inner_w, inner_h);
+    for c in nodes[i].floats.clone() {
+        let [fx, fy] = nodes[c].float_at;
+        nodes[c].x = x0 + fx;
+        nodes[c].y = y0 + fy;
+    }
 }
 
 /// Its width with its left and right margins as laid out.

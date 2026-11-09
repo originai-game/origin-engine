@@ -405,6 +405,7 @@ pub(crate) fn draw_eq(a: &Node, b: &Node) -> bool {
         && a.rich_lines == b.rich_lines
         && a.col_rules == b.col_rules
         && a.frag == b.frag
+        && a.wrap_lines == b.wrap_lines
 }
 
 impl LayoutCache {
@@ -550,6 +551,8 @@ pub(crate) fn el_layout_eq(a: &Element, b: &Element) -> bool {
         && a.breaks == b.breaks
         && a.flip == b.flip
         && a.contain == b.contain
+        && a.float == b.float
+        && a.clear == b.clear
 }
 
 /// The content layout measures is equal (an ink may differ).
@@ -655,11 +658,22 @@ pub(crate) fn layout(
         }
         k += 1;
     }
+    let mut touched = Vec::new();
     for &i in order.iter().rev() {
         if same_w(nodes, kept, i) {
             continue;
         }
         size_h(nodes, i);
+        super::float::flow(nodes, i, measure, &mut touched);
+    }
+    // What floats moved, narrowed or shortened lays out again below.
+    for i in touched {
+        if let Some(c) = kept.clean.get_mut(i)
+            && *c
+        {
+            *c = false;
+            kept.unclean.push(i);
+        }
     }
     let r = &nodes[root];
     let h = match r.el.height {

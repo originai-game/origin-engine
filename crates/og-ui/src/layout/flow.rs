@@ -110,7 +110,13 @@ pub(super) fn flip_children(nodes: &mut [super::Node], i: usize, sx: f32) {
                 && c.props.insets.across.is_none()
                 && c.props.anchor.is_none())
     };
-    let kids: Vec<usize> = n.children.iter().chain(&n.out).copied().collect();
+    let kids: Vec<usize> = n
+        .children
+        .iter()
+        .chain(&n.out)
+        .chain(&n.floats)
+        .copied()
+        .collect();
     for c in kids {
         let k = &nodes[c];
         if !free(k) {

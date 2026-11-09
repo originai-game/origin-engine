@@ -57,6 +57,23 @@ pub(crate) fn lower(name: &str, value: &str) -> Option<Result<Vec<Lowered>, Stri
             .collect()
     };
     Some(match name {
+        // CSS 2 §9.5 and CSS Logical Properties 1 §2.2.
+        "float" => match v {
+            "none" | "left" | "right" | "inline-start" | "inline-end" => {
+                Ok(vec![("float", text(v))])
+            }
+            v => Err(format!(
+                "'{v}' is no float: none, left, right, inline-start or inline-end"
+            )),
+        },
+        "clear" => match v {
+            "none" | "left" | "right" | "both" | "inline-start" | "inline-end" => {
+                Ok(vec![("clear", text(v))])
+            }
+            v => Err(format!(
+                "'{v}' is no clear: none, left, right, both, inline-start or inline-end"
+            )),
+        },
         "top" | "inset-block-start" => sides(&[v], [0; 4]),
         "right" | "inset-inline-end" => sides(&[v], [1; 4]),
         "bottom" | "inset-block-end" => sides(&[v], [2; 4]),
