@@ -105,3 +105,12 @@ second lane.
 to the new main: if main moved, the next commit stages a revert of every
 change that landed meanwhile. Squash with
 `git reset --soft "$(git merge-base HEAD origin/main)"`, then rebase.
+
+## 2026-11-10 — CSS foundation replaces the style system
+
+The CSS foundation must remove the dressing resolver, not feed CSS into
+it or retain it as a fallback. Core controls, document elements, kits and
+packs use the document CSS cascade. The default CSS is the sole generated
+style source; do not keep a generated Rust theme beside it. Audit callers
+and delete the old parser, token source and part-name grammar in the same
+change that replaces them.
