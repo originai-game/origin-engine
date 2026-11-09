@@ -150,6 +150,23 @@ pub fn read(directory: &Path, installed: bool) -> Result<Extension, String> {
         ));
     }
     let path = directory.join("extension.json");
+    if !path.exists() && css_pack(directory) {
+        let name = directory
+            .file_name()
+            .and_then(|n| n.to_str())
+            .ok_or("style directory needs a UTF-8 basename")?;
+        let manifest = serde_json::from_value(serde_json::json!({
+            "format": 1, "kind": "style", "name": name,
+            "version": "0.0.0", "description": "CSS style pack"
+        }))
+        .map_err(|e| e.to_string())?;
+        return Ok(Extension {
+            manifest,
+            directory: directory.into(),
+            installed,
+            documents: Vec::new(),
+        });
+    }
     let manifest: Manifest = serde_json::from_slice(
         &std::fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))?,
     )
@@ -210,7 +227,6 @@ pub fn read(directory: &Path, installed: bool) -> Result<Extension, String> {
         .into_iter()
         .chain(m.entry.as_deref())
         .chain(m.types.as_deref())
-        .chain((m.kind == "style").then_some("style.ogt"))
         .chain(m.faces.iter().flatten().map(String::as_str))
     {
         if !relative(file) || !all.iter().any(|p| p == Path::new(file)) {
@@ -235,6 +251,14 @@ pub fn read(directory: &Path, installed: bool) -> Result<Extension, String> {
         directory: directory.into(),
         installed,
         documents,
+    })
+}
+
+pub fn css_pack(directory: &Path) -> bool {
+    std::fs::read_dir(directory).is_ok_and(|entries| {
+        entries
+            .flatten()
+            .any(|e| e.path().is_file() && e.path().extension().is_some_and(|ext| ext == "css"))
     })
 }
 
@@ -265,7 +289,7 @@ pub fn discover(project: &Path) -> Result<Vec<Extension>, String> {
             .map_err(|e| e.to_string())?;
         dirs.sort();
         for dir in dirs {
-            if !dir.join("extension.json").is_file() {
+            if !dir.join("extension.json").is_file() && !css_pack(&dir) {
                 continue;
             }
             let extension = read(&dir, installed)?;
@@ -378,7 +402,9 @@ pub fn add(args: &[&str], kind: &str) -> ExitCode {
                 );
             }
         };
-        let found = if Path::new(name).join("extension.json").is_file() {
+        let found = if Path::new(name).join("extension.json").is_file()
+            || (kind == "style" && css_pack(Path::new(name)))
+        {
             Some(read(Path::new(name), false)?)
         } else {
             discover(project)?
@@ -467,7 +493,7 @@ fn add_extension(
     Ok(())
 }
 
-pub fn list(args: &[&str]) -> ExitCode {
+pub fn list(args: &[&str], kind: Option<&str>) -> ExitCode {
     let result = (|| {
         let (project, json) = match args {
             [] => (".", false),
@@ -476,7 +502,10 @@ pub fn list(args: &[&str]) -> ExitCode {
             [p, "--json"] => (*p, true),
             _ => return Err("usage: og ui list [project] [--json]".into()),
         };
-        let extensions = discover(Path::new(project))?;
+        let extensions: Vec<_> = discover(Path::new(project))?
+            .into_iter()
+            .filter(|e| kind.is_none_or(|kind| e.manifest.kind == kind))
+            .collect();
         if json {
             println!(
                 "{}",

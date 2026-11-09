@@ -126,7 +126,7 @@ async function main(argv: string[], process: RunOutput, control: UiRunControl, c
     const eq = s.indexOf("=");
     return eq < 0 ? { name: s, commands: show.replaceAll("{screen}", s) } : { name: s.slice(0, eq), commands: s.slice(eq + 1) };
   });
-  if (mode === "sheet" && argv.includes("--baseline")) screens.push(...BASELINE);
+  if ((mode === "sheet" || review) && argv.includes("--baseline")) screens.push(...BASELINE);
   const styles = list("--styles", "");
   const styleCmd = opt("--style-cmd") ?? "style:{style}";
   // A review is §12's matrix: every state of every screen, at 1920×1080 and on a phone both ways, 100 % and 150 %, in four locales.
@@ -182,7 +182,7 @@ async function main(argv: string[], process: RunOutput, control: UiRunControl, c
   };
 
   /** One run: an engine of its own, the script, then its UI frame and the frames it captured. */
-  const runCell = async (bp: string, locale: string, steps: string[], shots: Array<{ at: number; name: string }>, scale = 100): Promise<{ frame: UiFrameSnapshot | null; images: Map<string, Image>; warnings: string[] }> => {
+  const runCell = async (bp: string, locale: string, steps: string[], shots: Array<{ at: number; name: string }>, scale = 100): Promise<{ frame: UiFrameSnapshot | null; images: Map<string, Image>; warnings: string[]; pages: Array<{ frame: UiFrameSnapshot; image: Image }> }> => {
     const game = await freshGame();
     const vp = BREAKPOINTS[bp]!;
     let engine: Engine | undefined;
@@ -219,7 +219,34 @@ async function main(argv: string[], process: RunOutput, control: UiRunControl, c
       }
       for (const l of engine.takeLog()) if (l.warning) warnings.push(`tick ${l.tick}: ${l.text}`);
       const f = JSON.parse(extras.og_node_ui_frame(engine.id)) as UiFrameSnapshot & { error?: string };
-      return { frame: f.error ? null : f, images, warnings };
+      const pages: Array<{ frame: UiFrameSnapshot; image: Image }> = [];
+      if (!f.error && argv.includes("--baseline")) {
+        // Keep the real viewport, breakpoint and text scale. Overlapping scroll
+        // pages prove the controls below the fold instead of changing their layout.
+        let current: UiFrameSnapshot = f;
+        for (const initial of f.scrolls ?? []) {
+          let scroll = initial;
+          for (let page = 0; scroll.offsetY + scroll.viewHeight < scroll.contentHeight - 1; page++) {
+            cancelled();
+            if (page >= 100) fail(`scroll sheet exceeded 100 pages: ${scroll.path}`);
+            const [x, y, w, h] = scroll.rect;
+            const deltaY = Math.max(1, scroll.viewHeight * 0.8);
+            if (!engine.probe.input({ kind: "wheel", x: x + Math.min(4, w / 2), y: y + h / 2, deltaX: 0, deltaY })) fail(`scroll input refused: ${scroll.path}`);
+            for (let tick = 0; tick < 12; tick++) {
+              const advanced = engine.frame(1000 / engine.rate);
+              if (!advanced.ok) fail(advanced.reason ?? "scroll frame failed");
+            }
+            current = JSON.parse(extras.og_node_ui_frame(engine.id)) as UiFrameSnapshot;
+            const next = current.scrolls?.find((s) => s.path === scroll.path);
+            if (!next || next.offsetY <= scroll.offsetY + 0.5) fail(`scroll did not advance: ${scroll.path}`);
+            const capture = engine.probe.capture(vp.width * vp.dpr, vp.height * vp.dpr, 0);
+            if (!capture?.png) fail(`missing scroll capture: ${scroll.path}`);
+            pages.push({ frame: current, image: decodePng(Uint8Array.from(atob(capture.png), (c) => c.charCodeAt(0))) });
+            scroll = next;
+          }
+        }
+      }
+      return { frame: f.error ? null : f, images, warnings, pages };
     } finally {
       engine?.destroy();
     }
@@ -288,53 +315,57 @@ async function main(argv: string[], process: RunOutput, control: UiRunControl, c
   const images: Image[] = [];
   const t0 = performance.now();
   for (const screen of screens) for (const state of states.length ? states : [""]) for (const style of styles.length ? styles : [""]) for (const bp of bps) {
-    let base: UiFrameSnapshot | null = null;
+    const bases = new Map<number, UiFrameSnapshot>();
     for (const locale of locales) {
-      let unscaled: UiFrameSnapshot | null = null;
+      const unscaledPages = new Map<number, UiFrameSnapshot>();
       for (const scale of scales) {
         if (scale !== 100 && !scalesGiven && locale !== "" && locale !== "pseudo") continue;
-        const cell: UiCell = { screen: screen.name, breakpoint: bp, locale, style, scale, highContrast, ...(state ? { state } : {}) };
-        const index = cells.length;
-        const uiFrame = join("cells", `${index}.uiframe.json`);
         const steps = [...(style ? timed(styleCmd.replaceAll("{style}", style)) : []), ...timed(screen.commands), ...(state ? timed(stateCmd.replaceAll("{state}", state)) : [])];
-        const r = await runCell(bp, locale, steps, [{ at: screen.at ?? settle, name: "cell" }], scale);
-        const img = r.images.get("cell") ?? null;
-        if (mode === "sheet") {
-          if (!img || !r.frame?.elements.length) fail(`${cellName(cell)}: missing capture or empty page`);
-          const expected = argv.includes("--baseline") ? BASELINE.find((p) => p.name === screen.name)?.root : undefined;
-          if (expected && !r.frame!.elements.some((e) => e.id === expected || e.id.startsWith(`${expected}/`) || e.id.endsWith(`/${expected}`))) {
-            fail(`${cellName(cell)}: baseline root '${expected}' was not built`);
+        const run = await runCell(bp, locale, steps, [{ at: screen.at ?? settle, name: "cell" }], scale);
+        for (const [page, r] of [{ frame: run.frame, image: run.images.get("cell") ?? null }, ...run.pages].entries()) {
+          const cell: UiCell = { screen: page === 0 ? screen.name : `${screen.name}/scroll-${page + 1}`, breakpoint: bp, locale, style, scale, highContrast, ...(state ? { state } : {}) };
+          const index = cells.length;
+          const uiFrame = join("cells", `${index}.uiframe.json`);
+          const img = r.image;
+          if (mode === "sheet" || argv.includes("--baseline")) {
+            if (!img || !r.frame?.elements.length) fail(`${cellName(cell)}: missing capture or empty page`);
+            const expected = argv.includes("--baseline") ? BASELINE.find((p) => p.name === screen.name)?.root : undefined;
+            if (expected && !r.frame!.elements.some((e) => e.id === expected || e.id.startsWith(`${expected}/`) || e.id.endsWith(`/${expected}`))) {
+              fail(`${cellName(cell)}: baseline root '${expected}' was not built`);
+            }
           }
-        }
-        let frame: string | null = null;
-        if (img) {
-          frame = join("cells", `${index}.png`);
-          writeFileSync(join(outDir, frame), encodePng(img));
-        }
-        let found: UiFinding[] = [];
-        if (r.frame) {
-          writeFileSync(join(outDir, uiFrame), JSON.stringify(r.frame));
-          if (review) measures.push(...measureFrame(r.frame, cell, { image: img }), ...measureLayout(r.frame, cell, grid));
-          else if (mode !== "sheet") {
-            found = checkFrame(r.frame, cell);
-            measures.push(...measureFrame(r.frame, cell, { image: img }));
+          let frame: string | null = null;
+          if (img) {
+            frame = join("cells", `${index}.png`);
+            writeFileSync(join(outDir, frame), encodePng(img));
           }
-          if (review) {
-            if (scale === 100) unscaled = r.frame;
-            else if (unscaled) measures.push(...measureScale(unscaled, r.frame, cell));
-          } else if (mode !== "sheet" && scale === 100) {
-            unscaled = r.frame;
-            if (locale === "") base = r.frame;
-            else if (base) found.push(...checkLocales(base, r.frame, cell));
-          } else if (mode !== "sheet" && unscaled) measures.push(...measureScale(unscaled, r.frame, cell));
+          let found: UiFinding[] = [];
+          if (r.frame) {
+            writeFileSync(join(outDir, uiFrame), JSON.stringify(r.frame));
+            if (review) measures.push(...measureFrame(r.frame, cell, { image: img }), ...measureLayout(r.frame, cell, grid));
+            else if (mode !== "sheet") {
+              found = checkFrame(r.frame, cell);
+              measures.push(...measureFrame(r.frame, cell, { image: img }));
+            }
+            const unscaled = unscaledPages.get(page);
+            const base = bases.get(page);
+            if (review) {
+              if (scale === 100) unscaledPages.set(page, r.frame);
+              else if (unscaled) measures.push(...measureScale(unscaled, r.frame, cell));
+            } else if (mode !== "sheet" && scale === 100) {
+              unscaledPages.set(page, r.frame);
+              if (locale === "") bases.set(page, r.frame);
+              else if (base) found.push(...checkLocales(base, r.frame, cell));
+            } else if (mode !== "sheet" && unscaled) measures.push(...measureScale(unscaled, r.frame, cell));
+          }
+          // Each finding's place carries the cell's frame, so a reviewer opens the frame the box is on.
+          const size = BREAKPOINTS[bp]!;
+          for (const x of found) x.at = (x.at ?? [{ cell: cellName(cell), viewport: [size.width, size.height], rect: null }]).map((a) => ({ ...a, frame: frame ? join(outDir, frame) : null }));
+          if (page === 0) for (const w of run.warnings) process.stderr.write(`og ui ${mode}: ${cellName(cell)}: ${w}\n`);
+          all.push(...found);
+          cells.push({ ...cell, index, dpr: BREAKPOINTS[bp]!.dpr, commands: steps.join(";"), frame, uiFrame: r.frame ? uiFrame : "", findings: found.length });
+          images.push(img as Image);
         }
-        // Each finding's place carries the cell's frame, so a reviewer opens the frame the box is on.
-        const size = BREAKPOINTS[bp]!;
-        for (const x of found) x.at = (x.at ?? [{ cell: cellName(cell), viewport: [size.width, size.height], rect: null }]).map((a) => ({ ...a, frame: frame ? join(outDir, frame) : null }));
-        for (const w of r.warnings) process.stderr.write(`og ui ${mode}: ${cellName(cell)}: ${w}\n`);
-        all.push(...found);
-        cells.push({ ...cell, index, dpr: BREAKPOINTS[bp]!.dpr, commands: steps.join(";"), frame, uiFrame: r.frame ? uiFrame : "", findings: found.length });
-        images.push(img as Image);
       }
     }
   }
@@ -391,17 +422,17 @@ async function main(argv: string[], process: RunOutput, control: UiRunControl, c
   function writeReview(): number {
     const sheets: string[] = [];
     const device = (bp: string) => `${bp} ${BREAKPOINTS[bp]!.width}×${BREAKPOINTS[bp]!.height}`;
-    for (const screen of screens) for (const state of states.length ? states : [""]) for (const style of styles.length ? styles : [""]) {
+    for (const screen of new Set(cells.map((c) => c.screen))) for (const state of states.length ? states : [""]) for (const style of styles.length ? styles : [""]) {
       // A row per device and scale, a column per locale.
       const order = (c: Cell) => (bps.indexOf(c.breakpoint) * scales.length + scales.indexOf(c.scale)) * locales.length + locales.indexOf(c.locale);
-      const mine = cells.filter((c) => c.screen === screen.name && (c.state ?? "") === state && c.style === style).sort((a, b) => order(a) - order(b));
+      const mine = cells.filter((c) => c.screen === screen && (c.state ?? "") === state && c.style === style).sort((a, b) => order(a) - order(b));
       const page = sheet(
         mine.map((c) => ({ image: images[c.index] ?? null, lines: [`${device(c.breakpoint)} ${c.scale}%`, `${c.locale || "game"} #${c.index}`] })),
         locales.length,
         300,
-        `${screen.name} / ${state || "as opened"} / ${style || "default style"}`.slice(0, 120),
+        `${screen} / ${state || "as opened"} / ${style || "default style"}`.slice(0, 120),
       );
-      const file = `review-${[screen.name, state, style].filter(Boolean).join("-").replace(/[^\w.-]+/g, "_")}.png`;
+      const file = `review-${[screen, state, style].filter(Boolean).join("-").replace(/[^\w.-]+/g, "_")}.png`;
       writeFileSync(join(outDir, file), encodePng(page));
       sheets.push(file);
     }

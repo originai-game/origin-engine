@@ -54,7 +54,11 @@ fn pages(screens: &[(String, String)]) -> (Vec<(String, String)>, Vec<String>) {
 /// `--locales` names, installed into the sheet as `og create --lang`
 /// installs a game's (docs/ui.md §3.4): without them a Japanese or Arabic
 /// cell draws its translated labels in no face at all.
-fn install_font_packs(root: &Path, demo: &Path, forward: &[String]) -> Result<(), String> {
+pub(super) fn install_font_packs(
+    root: &Path,
+    demo: &Path,
+    forward: &[String],
+) -> Result<(), String> {
     let mut locales: Vec<String> = std::fs::read_dir(demo.join("assets/strings"))
         .into_iter()
         .flatten()
@@ -135,18 +139,21 @@ fn review(args: &[&str]) -> Result<ExitCode, String> {
         i += 1;
     }
     let package = project::engine_package(Some(root)).ok_or(project::NO_ENGINE)?;
-    let matches: Vec<_> = extensions::discover(root)?
-        .into_iter()
-        .filter(|e| e.manifest.name == name)
-        .collect();
+    let matches: Vec<_> = if Path::new(name).is_dir() {
+        vec![extensions::read(Path::new(name), false)?]
+    } else {
+        extensions::discover(root)?
+            .into_iter()
+            .filter(|e| e.manifest.name == name)
+            .collect()
+    };
     if matches.len() != 1 {
         return Err(format!("`{name}` must identify one extension (og ui list)"));
     }
     let kit = &matches[0];
     if kit.manifest.kind == "style" {
-        return Err(format!(
-            "`{name}` is a style pack: review a kit in it with og ui review <kit> --style {name}"
-        ));
+        super::sheet::sheet(args, true)?;
+        return Ok(ExitCode::SUCCESS);
     }
     let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
     let out = cwd.join(out.unwrap_or_else(|| root.join("og-out/ui-review").join(name)));

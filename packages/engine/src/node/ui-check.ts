@@ -82,6 +82,8 @@ export interface UiFrameSnapshot {
   dense?: string[];
   /** Paths of the scroll containers that scroll sideways: a line their edge cuts across scrolls into view. */
   sideways?: string[];
+  /** Scroll extents in CSS pixels, for complete state-sheet captures. */
+  scrolls?: Array<{ path: string; rect: Rect4; offsetY: number; viewHeight: number; contentHeight: number }>;
   stats: { elements: number; rebuilt: number; laidOut: number; keptCommands: number };
   draws: number;
   /** Every drawn line of text: the string as drawn, its size and line box, and its clip. */

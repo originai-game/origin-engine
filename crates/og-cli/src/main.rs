@@ -206,23 +206,17 @@ commands:
                       effects imported there; asset ids from --root, default the
                       nearest assets/ above <out-dir>), listing what did not convert; an
                       Effekseer file in assets/ is converted the same way by og cook
-  style list          the built-in UI styles' slugs, each with its signature
-  style eject <slug> [<name>] [--project <dir>] [--force]
-                      write the built-in style <slug> (style.ogt, atlas, icons, fonts and their
-                      import settings, licences) into the game's assets/styles/<name>/ (default
-                      <slug>) to change at will, refusing to overwrite without --force; the look
-                      names it as ui \"styles/<name>/style.ogt\"
-  style upgrade <style.ogt> [--out <file>] [--check]
-                      write a version 1 UI style as version 3 (tokens derived from its palette);
-                      --check only fails on v1
-  style pack <dir> [--out <dir>]
-                      pack a UI style's art drawn by hand (<part>.9.png nine-patches, other PNGs)
-                      into atlas.png and the style file's atlas, soft and ornament lines;
-                      part slice lines are written only for version 1 styles
-  style art <pack dir> [--art <dir>] [--check]
-                      verify and pack painted corner, divider, flourish, crest and edge ornaments;
-                      other art requests are reported as skipped (part appearance belongs to CSS)
-  style check [project] [--title <commands>] [--play <commands>] [--results <commands>] [--size WxH]
+  style list [project] [--json]
+                      list bundled and installed CSS style directories
+  style add <directory> [project]
+                      install a CSS pack under assets/styles/<name>, without overwriting it
+  style new <name> [--look <preset>] [--scheme dark|light] [--finish <treatment>] [--out DIR]
+                      write editable CSS with both palettes, core-control states and shared sounds;
+                      finishes: flat, gradient, glass, hologram, neon, paper, bevel, brush
+  style check <directory> [--json]
+                      validate CSS and asset URLs; report root-token contrast ratios without grading
+                      (style upgrade, art and pack are removed; use CSS images and border-image)
+  style check-project [project] [--title <commands>] [--play <commands>] [--results <commands>] [--size WxH]
       [--no-frames] [--json]
                       cook, then measure every cooked asset against the art contract of the look
                       project.ogt names (palette hit rate, colours, pixel grid, texel density,
@@ -233,6 +227,9 @@ commands:
   ui sheet <pack|kit> [project] [--out DIR] [--json]
                       render fixed baseline pages on the pack's own ground at desktop and phone,
                       100% and 150%; frames, UI dumps and sheets for review, never a gate step
+  ui review <pack-directory> [project] [--locales game,pseudo,zh,ar] [--out DIR] [--json]
+                      render the core-control sheet at desktopHd and phonePortrait, 100% and 150%,
+                      across locales; packs need no extension.json
   ui check [project] [--screen <name>[=<commands>]]... [--show <template>] [--styles a,b]
       [--style-cmd <template>] [--breakpoints desktop,phonePortrait,phoneLandscape,tablet]
       [--locales game,pseudo,<cjk>,<rtl>] [--scales 100,150] [--high-contrast] [--settle S]

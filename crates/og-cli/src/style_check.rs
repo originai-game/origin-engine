@@ -1,4 +1,4 @@
-//! `og style check [project] [--title <commands>] [--play <commands>]
+//! `og style check-project [project] [--title <commands>] [--play <commands>]
 //! [--results <commands>] [--size WxH] [--no-frames] [--json]`:
 //! the project's style measured against its look's art contract
 //! (docs/art.md §2.5).
@@ -81,7 +81,7 @@ mod measures;
 pub use measures::*;
 use measures::{LINE_RGB, pct, srgb8};
 
-const USAGE: &str = "usage: og style check [project] [--title <commands>] [--play <commands>] [--results <commands>] [--size WxH | --sizes desktop,phone,...] [--no-frames] [--json]";
+const USAGE: &str = "usage: og style check-project [project] [--title <commands>] [--play <commands>] [--results <commands>] [--size WxH | --sizes desktop,phone,...] [--no-frames] [--json]";
 
 /// The catalogue of styles (the knowledge package's), to name the slug a look builds on.
 const CATALOGUE: &str = include_str!("../../../packages/knowledge/looks/catalogue.json");
@@ -1135,7 +1135,7 @@ pub fn warnings(m: &Measured, max: usize) -> Vec<String> {
         return Vec::new();
     }
     let mut out = vec![format!(
-        "style: {} of {} asset(s) off the look's art contract ({}); `og style check` says what",
+        "style: {} of {} asset(s) off the look's art contract ({}); `og style check-project` says what",
         off.len(),
         m.assets.len(),
         m.contract.look
@@ -1222,14 +1222,14 @@ pub fn run(args: &[&str]) -> ExitCode {
     let a = match parse(args) {
         Ok(a) => a,
         Err(e) => {
-            eprintln!("og style check: {e}");
+            eprintln!("og style check-project: {e}");
             return ExitCode::from(2);
         }
     };
     let root = PathBuf::from(&a.project);
     if !root.join("project.ogt").is_file() {
         eprintln!(
-            "og style check: {} is not a project (no project.ogt)",
+            "og style check-project: {} is not a project (no project.ogt)",
             root.display()
         );
         return ExitCode::FAILURE;
@@ -1241,19 +1241,19 @@ pub fn run(args: &[&str]) -> ExitCode {
             if a.json {
                 println!("{}", json!({ "contract": null, "message": NO_CONTRACT }));
             } else {
-                println!("og style check: {NO_CONTRACT}");
+                println!("og style check-project: {NO_CONTRACT}");
             }
             return ExitCode::SUCCESS;
         }
         Err(e) => {
-            eprintln!("og style check: {e}");
+            eprintln!("og style check-project: {e}");
             return ExitCode::FAILURE;
         }
     };
     let cooked = match crate::cook::cook(&root, 0, false) {
         Ok(r) => r,
         Err(e) => {
-            eprintln!("og style check: {e}");
+            eprintln!("og style check-project: {e}");
             return ExitCode::FAILURE;
         }
     };
@@ -1261,7 +1261,7 @@ pub fn run(args: &[&str]) -> ExitCode {
         match contract_of(&root, &look).and_then(|c| measure(&root, c, opt_outs_of(&cooked))) {
             Ok(m) => m,
             Err(e) => {
-                eprintln!("og style check: {e}");
+                eprintln!("og style check-project: {e}");
                 return ExitCode::FAILURE;
             }
         };
@@ -1271,7 +1271,7 @@ pub fn run(args: &[&str]) -> ExitCode {
         (Some(s), _) => match viewports(s, portrait(&root)) {
             Ok(v) => v,
             Err(e) => {
-                eprintln!("og style check: {e}");
+                eprintln!("og style check-project: {e}");
                 return ExitCode::from(2);
             }
         },
@@ -1286,7 +1286,7 @@ pub fn run(args: &[&str]) -> ExitCode {
     let scripts = match screens(&root, &a.flags) {
         Ok(s) => s,
         Err(e) => {
-            eprintln!("og style check: {e}");
+            eprintln!("og style check-project: {e}");
             return ExitCode::FAILURE;
         }
     };
@@ -1294,7 +1294,7 @@ pub fn run(args: &[&str]) -> ExitCode {
     match uncovered_scenes(&root, &cov.screens) {
         Ok(u) => cov.uncovered = u,
         Err(e) => {
-            eprintln!("og style check: {e}");
+            eprintln!("og style check-project: {e}");
             return ExitCode::FAILURE;
         }
     }
@@ -1343,7 +1343,7 @@ pub fn run(args: &[&str]) -> ExitCode {
     if a.json {
         println!("{}", to_json(&measured, &frames, &frame_errors, &cov));
     } else {
-        println!("og style check {}", root.display());
+        println!("og style check-project {}", root.display());
         print!("{}", report(&measured, &frames, &frame_errors, &cov));
     }
     let camera_off = frames.iter().any(|f| f.camera_checks.iter().any(|c| !c.ok));
@@ -1376,7 +1376,7 @@ pub fn doctor_finding(root: &Path, report: Option<&Value>) -> Value {
             return line(
                 "warning",
                 format!("style: the art contract could not be read: {e}"),
-                "run `og cook` in the project, then `og style check`",
+                "run `og cook` in the project, then `og style check-project`",
             );
         }
     };
@@ -1415,7 +1415,7 @@ pub fn doctor_finding(root: &Path, report: Option<&Value>) -> Value {
                         m.assets.len(),
                         m.contract.look
                     ),
-                    "run `og style check` for the frames and the numbers",
+                    "run `og style check-project` for the frames and the numbers",
                 )
             } else {
                 let names: Vec<&str> = off.iter().take(5).map(|a| a.id.as_str()).collect();
@@ -1429,14 +1429,14 @@ pub fn doctor_finding(root: &Path, report: Option<&Value>) -> Value {
                         names.join(", "),
                         if off.len() > 5 { ", ..." } else { "" }
                     ),
-                    "run `og style check` to see each number against the contract",
+                    "run `og style check-project` to see each number against the contract",
                 )
             }
         }
         Err(e) => line(
             "warning",
             format!("style: the cooked assets could not be measured: {e}"),
-            "run `og cook` in the project, then `og style check`",
+            "run `og cook` in the project, then `og style check-project`",
         ),
     }
 }

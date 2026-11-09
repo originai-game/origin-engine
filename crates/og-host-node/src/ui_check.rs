@@ -134,6 +134,12 @@ fn frame(engine: u32) -> Value {
         })).collect::<Vec<_>>(),
         "dense": ui.dense(),
         "sideways": ui.sideways(),
+        "scrolls": ui.elements().iter().filter_map(|e| {
+            let s = ui.scroll_state(&e.path)?;
+            Some(json!({ "path": e.path, "rect": [e.x * u, e.y * u, e.width * u, e.height * u],
+                "offsetY": s.offset_y * u, "viewHeight": s.view_height * u,
+                "contentHeight": s.content_height * u }))
+        }).collect::<Vec<_>>(),
         "stats": {
             "elements": f.stats.elements, "rebuilt": f.stats.rebuilt,
             "laidOut": f.stats.laid_out, "keptCommands": f.stats.kept_commands,

@@ -59,10 +59,9 @@ export default og.game({
   },
   commands: {
     style(world, args) {
-      const loaded = og.load.style(world, `styles/${args[0]}/style.ogt`);
+      const loaded = og.load.style(world, `styles/${args[0]}`);
       if (!loaded.ok) throw new Error(loaded.reason);
-      // The pack's own fonts and icons, not the sheet's default ones.
-      og.ui.configure(world, { style: loaded.value, font: null, icons: null });
+      og.ui.configure(world, { style: loaded.value });
     },
     page(world, args) {
       const page = ["fields", "surfaces", "overlays"].includes(args[0] ?? "") ? args[0]! : "controls";

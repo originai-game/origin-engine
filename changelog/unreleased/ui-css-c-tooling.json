@@ -1,0 +1,15 @@
+{
+  "breaking": [
+    {
+      "member": "og style authoring commands",
+      "change": "og style new writes an editable CSS directory with both palettes, core-control states, finish treatments and shared interaction sounds. og style check validates that directory; the project art-contract checker moves to og style check-project. Legacy upgrade, art and pack commands are removed.",
+      "fix": "Author main.css and companion assets under assets/styles/<name>, without extension.json or style.ogt. Use standard CSS images, border-image and mask-image instead of atlas conversion. Load the directory with og.load.style and select it with og.ui.configure. Use check-project for game art-contract measurements."
+    }
+  ],
+  "added": [
+    {
+      "member": "og ui sheet and og ui review",
+      "summary": "Accept CSS pack directories or discovered names. Pack sheets cover the core controls at desktopHd and phonePortrait, 100% and 150% text, including overlapping scroll captures below the fold. Pack review adds locales. CSS source errors name their file and line; style check reports unresolved URLs and root-token contrast ratios without grading."
+    }
+  ]
+}

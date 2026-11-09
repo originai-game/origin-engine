@@ -2560,16 +2560,28 @@ characters are not finished icons. Shared resources and CJK fonts are not
 genre kits or style choices. Core font fixtures must not depend on the
 survival of a commercial style pack.
 
-`style.ogt` is authored data. `og style new` reads pack-owned `choices.json`
-and produces a starting style, procedural dressings, feedback, and
-`art-requests.json`. It neither paints finished art nor regenerates the
-built-in collection. Unknown families still receive a parseable starting
-style. Generated references must resolve to existing resources.
+`og style new <name> [--look <preset>] [--scheme dark|light] [--finish
+<treatment>] [--out DIR]` writes a CSS directory, normally under
+`assets/styles/<name>`. It includes both schemes, core-control rules,
+transitions and shared sounds through `-og-sound`. Existing directories
+are never overwritten. Edit the CSS directly after creation. Finish
+treatments are flat, gradient, glass, hologram, neon, paper, bevel and brush.
+`--scheme` chooses the fallback root palette; an explicit `data-scheme`
+still selects the corresponding runtime palette.
 
-Palette and scheme, shape, ornament, motion, and finish are seed choices.
-Authored packs are not required to equal generator output. Art requests
-use the [art contract](art.md); the
-[art-review guide](../crates/og-api/guides/art-review.md) owns review advice.
+`og style check <directory> [--json]` checks CSS and asset URLs and reports
+root-token contrast ratios as facts. Ratios do not describe text over an
+image or gradient. The separate `og style check-project` retains the
+game's art-contract checker. `og style upgrade`, `art` and `pack` are
+removed: CSS uses images directly without style-file or atlas conversion.
+
+`og ui sheet <directory>` renders the core-control pages at desktopHd and
+phonePortrait with 100% and 150% text, capturing overlapping scroll pages
+to the bottom. `og ui review <directory> --locales
+game,pseudo,zh,ar` adds locale coverage. Both accept `--out DIR` and
+`--json`. Review the frames before recording references. The
+[screens guide](../crates/og-api/guides/screens.md#3-style-packs) shows
+directory loading, selectors, tokens and asset URLs.
 
 ### 3.4 Font packs
 

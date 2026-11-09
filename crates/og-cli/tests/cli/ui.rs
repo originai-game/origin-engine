@@ -1,5 +1,85 @@
 use super::*;
 
+#[test]
+fn css_style_authoring_checks_sources_and_installs_without_a_manifest() {
+    let dir = scratch_root();
+    let pack = dir.join("laboratory");
+    let run = |args: &[&str]| og().args(args).output().unwrap();
+    let generated = run(&[
+        "style",
+        "new",
+        "laboratory",
+        "--look",
+        "neon-vector",
+        "--out",
+        pack.to_str().unwrap(),
+    ]);
+    assert!(generated.status.success(), "{}", text(&generated));
+    assert!(pack.join("main.css").is_file());
+    assert!(!pack.join("style.ogt").exists());
+    assert!(!pack.join("extension.json").exists());
+    let valid = run(&["style", "check", pack.to_str().unwrap(), "--json"]);
+    assert!(valid.status.success(), "{}", text(&valid));
+    let report: serde_json::Value = serde_json::from_slice(&valid.stdout).unwrap();
+    assert_eq!(report["rootTokenContrast"].as_array().unwrap().len(), 6);
+    let original = std::fs::read_to_string(pack.join("main.css")).unwrap();
+    assert!(
+        !run(&[
+            "style",
+            "new",
+            "laboratory",
+            "--out",
+            pack.to_str().unwrap()
+        ])
+        .status
+        .success()
+    );
+    assert_eq!(
+        std::fs::read_to_string(pack.join("main.css")).unwrap(),
+        original
+    );
+    std::fs::write(
+        dir.join("project.ogt"),
+        "type project\nversion 1\n---\nname \"Test\"\nentry \"src/main.ts\"\n",
+    )
+    .unwrap();
+    let installed = run(&[
+        "style",
+        "add",
+        pack.to_str().unwrap(),
+        dir.to_str().unwrap(),
+    ]);
+    assert!(installed.status.success(), "{}", text(&installed));
+    assert_eq!(
+        std::fs::read_to_string(dir.join("assets/styles/laboratory/main.css")).unwrap(),
+        original
+    );
+    let listed = run(&["style", "list", dir.to_str().unwrap(), "--json"]);
+    assert!(listed.status.success(), "{}", text(&listed));
+    let entries: serde_json::Value = serde_json::from_slice(&listed.stdout).unwrap();
+    let entries = entries.as_array().unwrap();
+    assert!(entries.iter().all(|e| e["manifest"]["kind"] == "style"));
+    assert!(
+        entries
+            .iter()
+            .any(|e| e["manifest"]["name"] == "laboratory")
+    );
+    for (css, expected) in [
+        ("button::part(base) {\n -og-mystery: 1;\n}", "main.css:2:"),
+        ("button::part(base) {\n -OG-MYSTERY: 1;\n}", "main.css:2:"),
+        (
+            "button::part(base) { background-image: url(missing.svg); }",
+            "unresolved url(missing.svg)",
+        ),
+        ("button::part(base) { background: red;", "close"),
+    ] {
+        std::fs::write(pack.join("main.css"), css).unwrap();
+        let invalid = run(&["style", "check", pack.to_str().unwrap()]);
+        assert!(!invalid.status.success(), "{}", text(&invalid));
+        assert!(text(&invalid).contains(expected), "{}", text(&invalid));
+    }
+}
+
 /// `og ui add <directory>` installs an editable copy of a fixture kit;
 /// eject then copies the installed copy's document (the game's edit with
 /// it) into assets/ui/fixture/, with no second copy of the

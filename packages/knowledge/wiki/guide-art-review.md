@@ -51,7 +51,7 @@ the generator is asked for what the cook would otherwise force.
 ### `art-review §3` Conformance and its measures
 
 The cook conforms every asset to the look's art contract (palette,
-pixel grid, texel density, face budget, normals, line). `og style check`
+pixel grid, texel density, face budget, normals, line). `og style check-project`
 measures every cooked asset and the title, play and results screens
 against the contract and lists each opt-out. Hold assets to:
 

@@ -43,33 +43,72 @@ the retained shader finishes are documented in ui-materials §1.
 <a id="guide-screens-3"></a>
 ### `screens §3` Style packs
 
-A style pack (`assets/styles/<name>/style.ogt`, or a bundled one named by
-slug) sets tokens (colours, type, radii, spacing, motion), part dressings,
-sounds and haptics for every component. The look's `ui "<slug>"` picks it;
-`og style list` names the bundled ones.
+A style pack is a directory of CSS and assets, with no manifest or
+`style.ogt`. Structure stays in `.svelte` documents. Haptics stay in `og.*`.
 
-Creation offers only `ui "default"` during the rebuild. This selects the
-core style and adds no pack assets. No genre style packs are bundled yet;
-local styles and `og style new` remain available.
+1. Run `og style new my-style --look neon-vector --scheme dark` in your
+   project. It writes `assets/styles/my-style/main.css` and refuses to
+   overwrite an existing directory. `--out` chooses another directory.
+2. Edit its `:root` custom properties and part rules. The generated file
+   includes dark and light palettes and core-control states. `--finish`
+   accepts flat, gradient, glass, hologram, neon, paper, bevel, or brush.
+   `--scheme` selects the fallback palette; the UI's explicit `data-scheme`
+   selects its dark or light palette at runtime.
+3. Run `og style check assets/styles/my-style`. Fix parser diagnostics
+   and unresolved URLs. Contrast reports root-token ratios, not a grade
+   or a guarantee about text over images and gradients.
+4. Run `og ui sheet assets/styles/my-style` to inspect every core-control
+   page at desktopHd and phonePortrait, at 100% and 150% text scale.
+   Use `og ui review assets/styles/my-style --locales game,pseudo,zh,ar`
+   for locale coverage. Scrollable pages produce overlapping captures down
+   to the bottom without changing the viewport. Review frames before
+   recording references.
 
-- Change a style by ejecting it (`og style eject <slug>`) and editing the
-  copy, or by `og style add`. Never restyle components one by one in code:
-  a style change then misses them.
-- `og style new` makes a game its own style from the look and a few
-  choices, then fills its art slots through the art brief (art-review §2).
-- Hand-painted frames go through `og style pack <dir>` (nine-patches named
-  `<part>.9.png`), which writes the atlas and slice lines.
-- In a pack, `style.ogt` is the data, in the CSS dialect (docs/ui.md
-  §3.2): palette custom properties set colour (`--primary: #d4993a`),
-  `typography` sets text roles, selector blocks paint named parts and
-  states (`Button::base.primary:hover { -og-fill: var(--primary-hover) }`). Edit it directly and run `og cook`; never regenerate a pack.
-  `choices.json` only seeds `og style new` and overwrites nothing.
-- Fonts, atlases, import settings and their licences stay with the pack;
-  asset paths are relative to the style unless they share `@styles/`
-  assets. `og style add ./path` installs a local pack.
-- A results screen is a document, not style: eject it
-  (`og ui eject --list`), edit it under `assets/ui/` and keep game data in
-  its named stores.
+Load and select the directory in your game's startup function:
+
+```ts
+const style = og.load.style(engine, "styles/my-style");
+if (!style.ok) throw new Error(style.reason);
+og.ui.configure(engine, { style: style.value });
+```
+
+Write lowercase markup hosts before `::part(name)` and states after it:
+
+```css
+:root { --my-accent: #72e8dc; }
+:root[data-scheme=light] { --my-accent: #14675f; }
+button.primary::part(base) {
+  background: var(--my-accent);
+  border: 2px solid #184d55;
+  box-shadow: inset 0 1px 0 #ffffff60, 0 3px 6px #00000040;
+  transition: background 140ms ease-out;
+  -og-sound: press url(/@styles/shared/sfx-tap.ogt) volume(0.2 0.3);
+}
+button.primary::part(base):hover { background: #a9fff2; }
+@media (prefers-reduced-motion: reduce) {
+  button::part(base) { transition: none; }
+}
+```
+
+Use `@font-face` for fonts, `mask-image` for icons, `border-image` for
+painted frames, and `@keyframes` for animation. Asset URLs resolve beside
+the CSS file that contains them. `/@styles/shared/` addresses shared
+assets. Copy fonts with their licences. `og style add ./my-style` installs
+a local pack without overwriting an installed one.
+
+Direct-child CSS files load in lexical filename order. Put sheets that
+need explicit ordering in a subdirectory and use `@import`. Normal
+declarations increase in priority from `og-default` through `og-kit`,
+`og-pack`, `og-game`, then unlayered CSS. Important declarations reverse
+layer priority. Custom properties belong to authors, not a second token
+language. The only appearance extensions are `-og-material` and
+`-og-sound`; unknown `-og-*` declarations are errors.
+
+Core-widget host rules and inheritance require parts-as-nodes. Until that
+lands, style their exposed parts directly. `og style upgrade`, `art`, and
+`pack` are removed: CSS images need no style-file conversion or atlas
+writer. The game's art-contract measurements remain available through
+`og style check-project`.
 
 <a id="guide-screens-4"></a>
 ### `screens §4` Structure and data

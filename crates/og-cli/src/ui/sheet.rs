@@ -12,13 +12,14 @@ fn copy_tree(from: &Path, to: &Path) -> Result<(), String> {
     Ok(())
 }
 
-fn sheet(args: &[&str]) -> Result<(), String> {
+pub(super) fn sheet(args: &[&str], review: bool) -> Result<(), String> {
     let Some((&name, rest)) = args.split_first().filter(|(n, _)| !n.starts_with('-')) else {
         return Err("usage: og ui sheet <pack|kit> [project] [--out DIR] [--json]".into());
     };
     let mut root = Path::new(".");
     let mut out = None;
     let mut json = false;
+    let mut locales = if review { "game,pseudo,zh,ar" } else { "game" };
     let mut i = 0;
     while i < rest.len() {
         match rest[i] {
@@ -27,24 +28,34 @@ fn sheet(args: &[&str]) -> Result<(), String> {
                 out = Some(PathBuf::from(rest[i]));
             }
             "--json" => json = true,
+            "--locales" if review && i + 1 < rest.len() => {
+                i += 1;
+                locales = rest[i];
+            }
             a if a.starts_with('-') => return Err(format!("unknown option `{a}`")),
             a => root = Path::new(a),
         }
         i += 1;
     }
     let package = project::engine_package(Some(root)).ok_or(project::NO_ENGINE)?;
-    let matches: Vec<_> = extensions::discover(root)?
-        .into_iter()
-        .filter(|e| e.manifest.name == name)
-        .collect();
+    let matches: Vec<_> = if Path::new(name).is_dir() {
+        vec![extensions::read(Path::new(name), false)?]
+    } else {
+        extensions::discover(root)?
+            .into_iter()
+            .filter(|e| e.manifest.name == name)
+            .collect()
+    };
     if matches.len() != 1 {
         return Err(format!("`{name}` must identify one extension (og ui list)"));
     }
     let extension = &matches[0];
+    let name = extension.manifest.name.as_str();
     let pack = extension.manifest.kind == "style";
+    let mode = if review { "review" } else { "sheet" };
     let out = std::env::current_dir()
         .map_err(|e| e.to_string())?
-        .join(out.unwrap_or_else(|| root.join("og-out/ui-sheet").join(name)));
+        .join(out.unwrap_or_else(|| root.join(format!("og-out/ui-{mode}")).join(name)));
     let scratch = std::env::temp_dir().join(format!("og-ui-sheet-{}", std::process::id()));
     std::fs::create_dir(&scratch).map_err(|e| format!("{}: {e}", scratch.display()))?;
     let result = (|| {
@@ -75,6 +86,9 @@ fn sheet(args: &[&str]) -> Result<(), String> {
             extensions::install(extension, &demo)?;
             demo
         };
+        if review {
+            super::review::install_font_packs(root, &demo, &["--locales".into(), locales.into()])?;
+        }
         let p = Project::open(&demo)?;
         crate::cook::cook(&p.root, 0, false)?;
         let bundle = project::bundle_native(&p, &package)?;
@@ -84,7 +98,7 @@ fn sheet(args: &[&str]) -> Result<(), String> {
             "--scales",
             "100,150",
             "--locales",
-            "game",
+            locales,
             "--settle",
             "2",
         ];
@@ -94,7 +108,7 @@ fn sheet(args: &[&str]) -> Result<(), String> {
         if json {
             forward.push("--json");
         }
-        let status = spawn("sheet", &p, &package, &bundle, &out, &forward)?;
+        let status = spawn(mode, &p, &package, &bundle, &out, &forward)?;
         if status != ExitCode::SUCCESS {
             return Err(format!("renderer exited {status:?}"));
         }
@@ -105,7 +119,7 @@ fn sheet(args: &[&str]) -> Result<(), String> {
 }
 
 pub(super) fn run(args: &[&str]) -> ExitCode {
-    match sheet(args) {
+    match sheet(args, false) {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
             eprintln!("og ui sheet: {e}");

@@ -77,7 +77,7 @@ pub fn run(args: &[&str]) -> ExitCode {
         return extensions::add(rest, "kit");
     }
     if let ["list", rest @ ..] = args {
-        return extensions::list(rest);
+        return extensions::list(rest, None);
     }
     if let ["literals", rest @ ..] = args {
         return literals::run(rest);

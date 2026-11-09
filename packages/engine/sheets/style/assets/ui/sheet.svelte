@@ -80,7 +80,7 @@
       </div>
       <div id="Slots" class="wrap" role="list" aria-label={t("sheet.slots")}>
         <div id="SlotEmpty" class="slot" role="listitem" aria-label={t("sheet.slot.empty")}></div>
-        <div id="SlotItem" class="slot" role="listitem" aria-label={t("sheet.slot.item")}><icon icon="sword"></icon></div>
+        <div id="SlotItem" class="slot" data-rarity="epic" role="listitem" aria-label={t("sheet.slot.item")}><icon icon="sword"></icon></div>
         <div id="SlotStack" class="slot" role="listitem" aria-label={t("sheet.slot.stack")}><icon icon="potion"></icon><badge class="count" tone="neutral">12</badge></div>
         <div id="SlotLocked" class="slot locked" role="listitem" aria-label={t("sheet.slot.locked")}><icon icon="lock"></icon></div>
       </div>
@@ -296,7 +296,7 @@
 .tip { border-radius: var(--radius-panel); backdrop-filter: blur(32px) saturate(var(--surface-saturation)); -og-material: glass thick float;  }
 .hud { border-radius: var(--radius-button); backdrop-filter: blur(22px) saturate(var(--surface-saturation)); -og-material: glass regular float;  display: flex; gap: var(--space-sm); align-items: center; width: auto; }
 .title { margin: 0; }
-.slot { -og-frame: slot; width: var(--size-xl); height: var(--size-xl); background: var(--well); align-items: center; justify-content: center; }
+.slot { border: 1px solid var(--line); border-radius: var(--radius-control); width: var(--size-xl); height: var(--size-xl); background: var(--well); align-items: center; justify-content: center; }
 .locked { opacity: 0.5; }
 .count { position: absolute; right: var(--space-xxs); bottom: var(--space-xxs); }
 .accordion { width: stretch; padding: var(--space-sm); gap: var(--space-xs);  border-radius: var(--radius-panel); backdrop-filter: blur(32px) saturate(var(--surface-saturation)); -og-material: glass thick lift; }
