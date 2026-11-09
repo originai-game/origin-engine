@@ -22,6 +22,8 @@ pub(crate) trait Metrics {
 pub(crate) struct Measure<'a> {
     pub fonts: &'a dyn Metrics,
     pub texts: &'a mut TextCache,
+    /// The body step: the strut of a line whose block holds no text.
+    pub body: TypeStep,
 }
 
 /// Everything a text's measurement depends on besides its string and the
@@ -663,6 +665,7 @@ pub(crate) fn layout(
         if same_w(nodes, kept, i) {
             continue;
         }
+        inline_rows(nodes, i, measure);
         size_h(nodes, i);
         super::float::flow(nodes, i, measure, &mut touched);
     }

@@ -681,6 +681,12 @@ pub(crate) struct Node {
     pub float_h: f32,
     /// Floats narrowed or moved it, or shortened its lines, last layout.
     pub beside: bool,
+    /// A block laying out lines that hold a box with a `vertical-align`:
+    /// per line, its height as its line box holds them (CSS 2.1 §10.8);
+    /// `None` (or empty): the line is its tallest child's height.
+    pub inline_rows: Vec<Option<f32>>,
+    /// Its border box's top below its line's top, in such a line.
+    pub inline_y: f32,
 }
 
 impl Node {
@@ -799,6 +805,8 @@ impl Node {
             wrap_lines: Vec::new(),
             float_h: 0.0,
             beside: false,
+            inline_rows: Vec::new(),
+            inline_y: 0.0,
         }
     }
 
@@ -821,6 +829,7 @@ impl Node {
         self.stuck = previous.stuck;
         self.laid_clip = previous.laid_clip;
         self.float_at = previous.float_at;
+        self.inline_y = previous.inline_y;
         if !clean {
             return;
         }
@@ -835,6 +844,7 @@ impl Node {
         self.clearance = previous.clearance;
         self.float_h = previous.float_h;
         self.beside = previous.beside;
+        self.inline_rows.clone_from(&previous.inline_rows);
         self.rich_lines.clone_from(&previous.rich_lines);
         self.rows.clone_from(&previous.rows);
         self.grid.clone_from(&previous.grid);

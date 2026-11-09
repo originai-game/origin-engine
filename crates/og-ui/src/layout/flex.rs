@@ -1076,16 +1076,21 @@ pub(super) fn size_h(nodes: &mut [Node], i: usize) {
                     };
                     let rows = n.rows.len();
                     let gap = n.el.line_gap();
+                    // A line box that holds a `vertical-align` is as tall
+                    // as `inline_rows` says.
+                    let held = |r: usize| n.inline_rows.get(r).copied().flatten();
                     let pref = n
                         .rows
                         .iter()
-                        .map(|&(s, e)| line_h(s, e, &|c| c.pref_h))
+                        .enumerate()
+                        .map(|(r, &(s, e))| held(r).unwrap_or_else(|| line_h(s, e, &|c| c.pref_h)))
                         .sum::<f32>()
                         + gaps(gap, rows);
                     let min = n
                         .rows
                         .iter()
-                        .map(|&(s, e)| line_h(s, e, &|c| c.min_h))
+                        .enumerate()
+                        .map(|(r, &(s, e))| held(r).unwrap_or_else(|| line_h(s, e, &|c| c.min_h)))
                         .sum::<f32>()
                         + gaps(gap, rows);
                     (pref, min)
@@ -1223,13 +1228,15 @@ pub(super) fn distribute_h(nodes: &mut [Node], i: usize) {
         Direction::Row => {
             let rows = nodes[i].rows.clone();
             let extra = line_extra(nodes, i, inner);
-            for (s, e) in rows {
+            for (r, (s, e)) in rows.into_iter().enumerate() {
                 let line = &kids[s..e];
-                let line_h = line
-                    .iter()
-                    .map(|&c| nodes[c].pref_h + cross_margins(&nodes[c]))
-                    .fold(0.0, f32::max)
-                    + extra;
+                let line_h = match nodes[i].inline_rows.get(r).copied().flatten() {
+                    Some(h) => h,
+                    None => line
+                        .iter()
+                        .map(|&c| nodes[c].pref_h + cross_margins(&nodes[c]))
+                        .fold(0.0, f32::max),
+                } + extra;
                 for &c in line {
                     let n = &nodes[c];
                     let line_h = line_h - cross_margins(n);
@@ -1272,6 +1279,107 @@ fn line_extra(nodes: &[Node], i: usize, inner: f32) -> f32 {
         .sum::<f32>()
         + gaps(n.el.line_gap(), n.rows.len());
     ((inner - used) / n.rows.len() as f32).max(0.0)
+}
+
+/// The baseline of node `c` below its border box's top as layout sizes it
+/// (its first line's, as `Ui::first_baseline` reads it once drawn), if it
+/// or its first descendant in the flow has text.
+fn layout_baseline(nodes: &[Node], c: usize, fonts: &dyn Metrics) -> Option<f32> {
+    let n = &nodes[c];
+    match &n.content {
+        Content::Text(t) => {
+            let line = n.lines.first()?;
+            let lh = t.line_height();
+            let inner = (n.pref_h - n.el.padding.vertical()).max(0.0);
+            let block = lh * n.lines.len() as f32;
+            let top = n.el.padding.top + ((inner - block) / 2.0).max(0.0);
+            Some(t.metrics(fonts).baseline(&line.text, top, lh, t.step.size))
+        }
+        Content::Rich(_) => Some(n.el.padding.top + n.rich_lines.first()?.baseline),
+        Content::Image { .. } => None,
+        Content::None => {
+            let &k = n.children.first()?;
+            let lead = if n.el.direction == Direction::Column && n.props.layout == LayoutMode::Flex
+            {
+                column_spacing(nodes, c).0
+            } else {
+                0.0
+            };
+            Some(n.el.padding.top + lead + layout_baseline(nodes, k, fonts)?)
+        }
+    }
+}
+
+/// Node `i`'s line boxes (CSS 2.1 §10.8) where they hold a box with a
+/// `vertical-align` other than `baseline`, `top` or `bottom`: each such
+/// line as tall as its strut, its baseline-aligned boxes and its shifted
+/// boxes reach (`Node::inline_rows`), each box's place in it
+/// (`Node::inline_y`). Other lines keep their tallest child's height.
+pub(super) fn inline_rows(nodes: &mut [Node], i: usize, measure: &Measure<'_>) {
+    use crate::VerticalAlign as V;
+    let n = &nodes[i];
+    let shifted =
+        |nodes: &[Node], c: usize| !matches!(nodes[c].el.valign, V::Baseline | V::Top | V::Bottom);
+    if n.line_box.is_none() || !n.children.iter().any(|&c| shifted(nodes, c)) {
+        if !nodes[i].inline_rows.is_empty() {
+            nodes[i].inline_rows.clear();
+        }
+        return;
+    }
+    let fonts = measure.fonts;
+    // The parent's text: the block's first text (an anonymous inline box
+    // carries the block's font), else the body step.
+    let (step, font) = n
+        .children
+        .iter()
+        .find_map(|&c| match &nodes[c].content {
+            Content::Text(t) => Some((t.step, t.font)),
+            Content::Rich(rc) => Some(rc.base),
+            _ => None,
+        })
+        .unwrap_or((measure.body, FontRole::Body));
+    let m = fonts.metrics_styled(font, step.weight, false, "");
+    let strut = Strut {
+        size: step.size,
+        ascent: m.ascender * step.size,
+        descent: -m.descender * step.size,
+        x_height: m.x_height() * step.size,
+    };
+    let half = (step.line_height - strut.ascent - strut.descent) / 2.0;
+    let strut_reach = (half + strut.ascent, step.line_height - half - strut.ascent);
+    let kids = n.children.clone();
+    let rows = n.rows.clone();
+    let mut heights = Vec::with_capacity(rows.len());
+    for (s, e) in rows {
+        let line = &kids[s..e];
+        if !line.iter().any(|&c| shifted(nodes, c)) {
+            heights.push(None);
+            continue;
+        }
+        let mut base = strut_reach;
+        let mut items = Vec::with_capacity(line.len());
+        for &c in line {
+            let k = &nodes[c];
+            let (mt, mb) = (span(k.margin_sets[0]), span(k.margin_sets[1]));
+            let b = layout_baseline(nodes, c, fonts).unwrap_or(k.pref_h);
+            let (above, below) = (mt + b, k.pref_h - b + mb);
+            let place = match k.el.valign {
+                V::Top => InlinePlace::Top,
+                V::Bottom => InlinePlace::Bottom,
+                va => va.place(&strut, step.size, step.line_height, above, below),
+            };
+            if place == InlinePlace::Raised(0.0) {
+                base = (base.0.max(above), base.1.max(below));
+            }
+            items.push((place, above, below));
+        }
+        let (height, _, at) = line_box(base, &items);
+        for ((&c, &(_, above, _)), at) in line.iter().zip(&items).zip(at) {
+            nodes[c].inline_y = at - above + span(nodes[c].margin_sets[0]);
+        }
+        heights.push(Some(height));
+    }
+    nodes[i].inline_rows = heights;
 }
 
 /// Where `k` items (or lines) start along an axis with `free` room left,
@@ -1650,17 +1758,28 @@ fn place_children(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f32, f3
     } else {
         0.0
     };
+    let held: Vec<Option<f32>> = (0..rows.len())
+        .map(|r| {
+            if wrapped && row {
+                n.inline_rows.get(r).copied().flatten()
+            } else {
+                None
+            }
+        })
+        .collect();
     let rooms: Vec<f32> = rows
         .iter()
-        .map(|&(s, e)| match (wrapped, row) {
+        .zip(&held)
+        .map(|(&(s, e), h)| match (wrapped, row) {
             (false, true) => inner_h,
             (false, false) => inner_w,
             (true, _) => {
-                kids[s..e]
-                    .iter()
-                    .map(|&c| across(c, row))
-                    .fold(0.0, f32::max)
-                    + extra
+                h.unwrap_or_else(|| {
+                    kids[s..e]
+                        .iter()
+                        .map(|&c| across(c, row))
+                        .fold(0.0, f32::max)
+                }) + extra
             }
         })
         .collect();
@@ -1696,9 +1815,13 @@ fn place_children(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f32, f3
                     nodes[c].x = x + ml;
                     nodes[c].y = y0
                         + line_at
-                        + top
-                        + auto_offset(&nodes[c], 0, room - around - h)
-                            .unwrap_or_else(|| cross_offset(cross, room - around, h, safe));
+                        + if held[line_k].is_some() {
+                            // Where its line box put it (`inline_rows`).
+                            nodes[c].inline_y
+                        } else {
+                            top + auto_offset(&nodes[c], 0, room - around - h)
+                                .unwrap_or_else(|| cross_offset(cross, room - around, h, safe))
+                        };
                     x += ml + w + mr + gap + between;
                 }
                 line_at += room + el.line_gap() + line_between;

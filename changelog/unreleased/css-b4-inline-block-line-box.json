@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "UI document scoped CSS (vertical-align on inline-level boxes)",
+      "summary": "An inline-block (or other inline-level box) with a vertical-align other than baseline is placed by layout while heights are computed, and its line box grows to hold it (CSS 2.1 §10.8), instead of being moved only where it is drawn and overflowing its line. The boxes after its line move down with it."
+    }
+  ]
+}

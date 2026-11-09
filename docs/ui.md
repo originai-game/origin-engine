@@ -383,9 +383,10 @@ lines align on their baseline, by the block's `text-align`, and an
 inline-level child's `vertical-align` places it in its line: `top` and
 `bottom` on the line's top or bottom, the other values as a text run's
 (below) against the line's baseline and the block's first text, a box
-with no text taking its bottom edge as its baseline. Such a box is
-moved where it is drawn; its line keeps the height of its tallest
-child, so a box moved past the line's edge overflows it. A `<p>`, a
+with no text taking its bottom edge as its baseline. Layout places it
+while it computes heights: its line box is as tall as the block's strut,
+its baseline-aligned boxes and its shifted and top- or bottom-aligned
+boxes reach (CSS 2.1 §10.8), so a raised box grows its line. A `<p>`, a
 heading or a text displayed `block` is block-level: in a block's flow it
 is as wide as the block's content box (CSS 2 §10.3.3), as a block box
 is, and on a line of its own among inline-level children; `<span>`,

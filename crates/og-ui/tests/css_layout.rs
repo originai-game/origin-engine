@@ -43,7 +43,8 @@
 //!   `<sup>`/`<sub>` raised by its own smaller size, a raised span that
 //!   does not grow its line, a length or percentage on an inline-block not
 //!   taken from the line's baseline, `middle` centred in the line instead
-//!   of on the parent's x-height → `vertical_align_places_inline_boxes_as_css_does`
+//!   of on the parent's x-height, or a raised inline-block that does not
+//!   grow its line box → `vertical_align_places_inline_boxes_as_css_does`
 //! - a float not taken out of the flow, not shifted to its side (or a
 //!   second one not beside the first, or one that does not fit not moved
 //!   below), the lines beside a float not shortened, a formatting context
@@ -561,6 +562,7 @@ fn vertical_align_places_inline_boxes_as_css_does() {
   <p id="Sub">x<sub>i</sub></p>
   <p id="Part">x<span part="lift">y</span></p>
   <div id="Line">ab<div id="Mid" class="ib"></div><div id="Up" class="ib"></div><div id="Pc" class="ib"></div><div id="Tp" class="ib"></div></div>
+  <div id="Grow">ab<div id="Big" class="ib"></div></div>
 </div></div>
 <style>
 #Root { width: 300px; }
@@ -569,6 +571,7 @@ fn vertical_align_places_inline_boxes_as_css_does() {
 #Up { vertical-align: 4px; }
 #Pc { vertical-align: -50%; }
 #Tp { vertical-align: top; }
+#Big { vertical-align: 30px; }
 #Part::part(lift) { vertical-align: 6px; }
 </style>"#;
     for mounted in [false, true] {
@@ -638,6 +641,34 @@ fn vertical_align_places_inline_boxes_as_css_does() {
             b - mid
         );
         assert_eq!(d.get("Tp").y, d.get("Line").y, "top: the line's top");
+        // A box raised past the line's top grows its line box (CSS 2.1
+        // §10.8): its top is the line's, the text's baseline 30px under
+        // its bottom edge.
+        let (grow, big) = (d.get("Grow"), d.get("Big"));
+        assert_eq!(big.y, grow.y, "the raised box tops its line");
+        assert!(
+            grow.height >= 40.0 && grow.height > line + 20.0,
+            "{}",
+            grow.height
+        );
+        let ab =
+            d.ui.frame()
+                .items
+                .iter()
+                .find_map(|i| match &i.cmd {
+                    og_ui::DrawCmd::Text { text, baseline, .. }
+                        if text == "ab" && *baseline > grow.y =>
+                    {
+                        Some(*baseline)
+                    }
+                    _ => None,
+                })
+                .expect("its ab");
+        assert!(
+            (ab - (big.y + 10.0 + 30.0)).abs() <= 0.5,
+            "{ab} vs {}",
+            big.y
+        );
     }
 }
 

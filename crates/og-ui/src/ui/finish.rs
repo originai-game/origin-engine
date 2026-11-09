@@ -457,6 +457,7 @@ impl Ui {
             let mut measure = Measure {
                 fonts: &self.fonts,
                 texts: &mut self.texts,
+                body: self.theme.type_ramp.body,
             };
             layout(
                 &mut self.nodes,

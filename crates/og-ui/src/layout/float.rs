@@ -444,6 +444,7 @@ fn relayout(nodes: &mut [Node], k: usize, w: f32, cx: &mut Context<'_, '_>) {
         distribute_w(nodes, j, cx.measure);
     }
     for &j in order.iter().rev() {
+        super::flex::inline_rows(nodes, j, cx.measure);
         size_h(nodes, j);
         flow(nodes, j, cx.measure, cx.touched);
     }

@@ -1653,7 +1653,6 @@ impl Ui {
                 continue;
             }
             let parent = n.el.cross;
-            let lines_box = n.line_box.is_some();
             let kids = n.children.clone();
             let lines = if n.el.wrap && !n.rows.is_empty() {
                 n.rows.clone()
@@ -1662,22 +1661,26 @@ impl Ui {
             };
             // A line's first-baseline items share their first baselines, and
             // its last-baseline ones their last (CSS Box Alignment §9.3).
+            // A line whose line box holds a `vertical-align` was placed by
+            // layout (`Node::inline_rows`), its baselines with it.
+            let held: Vec<bool> = (0..lines.len())
+                .map(|r| n.inline_rows.get(r).copied().flatten().is_some())
+                .collect();
             for (s, e, last) in lines
                 .into_iter()
-                .flat_map(|(s, e)| [(s, e, false), (s, e, true)])
+                .zip(held)
+                .filter(|&(_, held)| !held)
+                .flat_map(|((s, e), _)| [(s, e, false), (s, e, true)])
             {
                 let want = if last {
                     Cross::LastBaseline
                 } else {
                     Cross::Baseline
                 };
-                let moved = |c: usize| {
-                    lines_box && self.nodes[c].el.valign != crate::VerticalAlign::Baseline
-                };
                 let bs: Vec<Option<f32>> = kids[s..e]
                     .iter()
                     .map(|&c| {
-                        if self.nodes[c].el.align_self.unwrap_or(parent) != want || moved(c) {
+                        if self.nodes[c].el.align_self.unwrap_or(parent) != want {
                             None
                         } else if last {
                             self.last_baseline(c)
@@ -1686,11 +1689,7 @@ impl Ui {
                         }
                     })
                     .collect();
-                let max = bs.iter().flatten().copied().reduce(f32::max);
-                if !last && kids[s..e].iter().any(|&c| moved(c)) {
-                    self.align_inline(i, &kids[s..e], max);
-                }
-                let Some(max) = max else {
+                let Some(max) = bs.iter().flatten().copied().reduce(f32::max) else {
                     continue;
                 };
                 // Where it draws only: a clean row keeps its children's
@@ -1703,57 +1702,6 @@ impl Ui {
                         self.shift_subtree(c, 0.0, max - b, false);
                     }
                 }
-            }
-        }
-    }
-
-    /// The inline-level boxes of one line of block `i` whose
-    /// `vertical-align` is neither `baseline`, `top` nor `bottom`, moved
-    /// against the line's baseline `at` (CSS 2.1 §10.8.1): its
-    /// baseline-aligned items' shared one, else the block's own text's
-    /// (its strut) from the line's top. The parent's text they align
-    /// against is the block's first text (an anonymous inline box carries
-    /// the block's font), else the body step. A box's baseline is its
-    /// first line's, else its bottom edge. Where it draws only, as the
-    /// baseline shift is; the line keeps the height layout gave it.
-    fn align_inline(&mut self, i: usize, line: &[usize], at: Option<f32>) {
-        let (step, font) = self.nodes[i]
-            .children
-            .iter()
-            .find_map(|&c| match &self.nodes[c].content {
-                Content::Text(tc) => Some((tc.step, tc.font)),
-                Content::Rich(rc) => Some(rc.base),
-                _ => None,
-            })
-            .unwrap_or((self.theme.type_ramp.body, crate::FontRole::Body));
-        let m = &self
-            .fonts
-            .for_styled(font, step.weight, false, "")
-            .0
-            .metrics;
-        let strut = crate::layout::Strut {
-            size: step.size,
-            ascent: m.ascender * step.size,
-            descent: -m.descender * step.size,
-            x_height: m.x_height() * step.size,
-        };
-        let at = at.unwrap_or_else(|| {
-            let top = line
-                .iter()
-                .map(|&c| self.nodes[c].rect.y)
-                .fold(f32::INFINITY, f32::min);
-            top + (step.line_height - strut.ascent - strut.descent) / 2.0 + strut.ascent
-        });
-        for &c in line {
-            let va = self.nodes[c].el.valign;
-            if va == crate::VerticalAlign::Baseline {
-                continue;
-            }
-            let r = self.nodes[c].rect;
-            let b = self.first_baseline(c).unwrap_or(r.bottom());
-            let place = va.place(&strut, step.size, step.line_height, b - r.y, r.bottom() - b);
-            if let crate::layout::InlinePlace::Raised(raise) = place {
-                self.shift_subtree(c, 0.0, at - raise - b, false);
             }
         }
     }
