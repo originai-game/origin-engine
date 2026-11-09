@@ -156,17 +156,27 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
     };
     let (text, copy) = text_entry(&eng);
     // `cursor`: the pointer's shape the UI resolved (og.ui.frameCursor, a
-    // CSS cursor name): the web shell sets the canvas's, a native host
-    // with a window its own.
-    let cursor =
-        eng.state
-            .borrow()
-            .ui
-            .clone()
-            .map_or("default", |ui| match ui.lock().frame().cursor {
-                og_ui::Cursor::Auto => "default",
-                c => c.css(),
-            });
+    // CSS cursor name): the web shell sets the canvas's. `cursorImage`, on
+    // the frames where it changed: the first of its `url()` images that
+    // loads (`{width, height, rgba: <base64>, hotspot: [x, y]}`), or null.
+    let shape = crate::ui_cursor::shape(&eng);
+    if let Some(b) = eng.render.borrow_mut().backend.as_mut() {
+        b.cursor(&shape);
+    }
+    let cursor = shape.keyword;
+    let cursor_image = {
+        let mut st = eng.state.borrow_mut();
+        let id = shape.id();
+        (st.cursor_sent.map(|(_, i)| i) != Some(id.1)).then(|| {
+            st.cursor_sent = Some(id);
+            shape.image.as_ref().map_or(Value::Null, |i| {
+                json!({
+                    "width": i.width, "height": i.height,
+                    "rgba": og_probe::base64::encode(&i.rgba), "hotspot": i.hotspot,
+                })
+            })
+        })
+    };
     let a11y = a11y_changed(&eng);
     let pointer_lock = eng
         .world()
@@ -201,6 +211,9 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
     });
     if let Some(c) = copy {
         answer["copy"] = json!(c);
+    }
+    if let Some(image) = cursor_image {
+        answer["cursorImage"] = image;
     }
     // `haptics`: the patterns the UI's feedback played since the last
     // frame, at the player's strength (og.ui.setHaptics), each a list of

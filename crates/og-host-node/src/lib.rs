@@ -511,6 +511,9 @@ struct OffscreenBackend {
     frames: Option<og_render::shared_frames::FrameLink>,
     #[cfg(any(target_os = "macos", target_os = "linux", windows))]
     accessibility: (Option<u64>, og_ui::native_a11y::Bridge),
+    /// The cursor last handed to the window (its keyword and image id).
+    #[cfg(any(target_os = "macos", target_os = "linux", windows))]
+    cursor: Option<(&'static str, u64)>,
 }
 
 impl OffscreenBackend {
@@ -634,6 +637,28 @@ impl RenderBackend for OffscreenBackend {
     }
     fn set_clock(&mut self, clock: Option<fn() -> f64>) {
         self.renderer.set_clock(clock);
+    }
+    /// The pointer's shape over the frame (CSS `cursor`), handed to the
+    /// window when it changes; the window sets the OS cursor.
+    fn cursor(&mut self, shape: &og_runtime::ui_cursor::CursorShape) {
+        #[cfg(any(target_os = "macos", target_os = "linux", windows))]
+        if let Some(frames) = self.frames.as_mut()
+            && self.cursor != Some(shape.id())
+        {
+            self.cursor = Some(shape.id());
+            let image = shape
+                .image
+                .as_ref()
+                .map(|i| og_render::shared_frames::CursorImage {
+                    width: i.width,
+                    height: i.height,
+                    rgba: og_probe::base64::encode(&i.rgba),
+                    hotspot: i.hotspot,
+                });
+            frames.set_cursor(shape.keyword, image);
+        }
+        #[cfg(not(any(target_os = "macos", target_os = "linux", windows)))]
+        let _ = shape;
     }
     fn pass_timings(&self) -> Vec<og_render::PassTiming> {
         self.renderer.pass_timings().to_vec()
@@ -798,6 +823,8 @@ pub fn og_node_attach_offscreen(env: Env, engine: u32, width: u32, height: u32) 
                     frames,
                     #[cfg(any(target_os = "macos", target_os = "linux", windows))]
                     accessibility: Default::default(),
+                    #[cfg(any(target_os = "macos", target_os = "linux", windows))]
+                    cursor: None,
                 })),
             )?;
             DEVICES.with(|d| d.borrow_mut().insert(engine, device));

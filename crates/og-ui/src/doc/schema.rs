@@ -923,7 +923,7 @@ pub const CORE_PROPS: &[PropSpec] = &[
     p!(
         "cursor",
         Ty::Text,
-        "CSS `cursor`: the pointer's shape over it and its subtree, any CSS keyword. `url(<icon or texture>) [<x> <y>]` images before it are accepted and kept; the keyword is what the host shows."
+        "CSS `cursor`: the pointer's shape over it and its subtree, any CSS keyword. `url(<icon or texture>) [<x> <y>]` images before it are tried in order and the first that loads is shown at its hotspot (at most 128x128), the keyword where none does."
     ),
     p!(
         "pointerEvents",

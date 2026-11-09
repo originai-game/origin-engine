@@ -135,6 +135,28 @@ pub enum Msg {
         version: u32,
         request: serde_json::Value,
     },
+    /// Host opts into the cursor extension (version 1): it shows the
+    /// pointer's shape the engine's UI resolved over the frame.
+    CursorSubscribe { version: u32 },
+    /// Engine: the pointer's shape changed (and once after a subscription):
+    /// a CSS cursor keyword, and the image to show instead when there is
+    /// one (CSS `cursor: url()`), with the keyword its fallback.
+    Cursor {
+        version: u32,
+        keyword: String,
+        image: Option<CursorImage>,
+    },
+}
+
+/// A cursor image on the wire: `rgba` is row-major RGBA8 (sRGB, straight
+/// alpha) in standard base64, `hotspot` the pixel that is the pointer's
+/// position.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct CursorImage {
+    pub width: u32,
+    pub height: u32,
+    pub rgba: String,
+    pub hotspot: [u32; 2],
 }
 
 /// One message on `stream`.
@@ -263,6 +285,9 @@ struct Generation {
 struct Host {
     connection: u64,
     accessibility: bool,
+    /// It subscribed to the cursor, and has been sent the current one.
+    cursor: bool,
+    cursor_sent: bool,
     writer: Arc<Mutex<UnixStream>>,
     /// The generation drawn into, once its Hello has gone.
     current: Option<Generation>,
@@ -281,6 +306,8 @@ pub struct FrameLink {
     resize: Option<(u32, u32)>,
     seq: u64,
     actions: Vec<serde_json::Value>,
+    /// The cursor to show ([`FrameLink::set_cursor`]).
+    cursor: Option<(String, Option<CursorImage>)>,
 }
 
 impl FrameLink {
@@ -306,6 +333,7 @@ impl FrameLink {
             resize: None,
             seq: 0,
             actions: Vec::new(),
+            cursor: None,
         }
     }
 
@@ -353,6 +381,47 @@ impl FrameLink {
                 },
             });
         }
+    }
+
+    /// The pointer's shape to show over the frame: a CSS cursor keyword
+    /// and the image to show instead, if any. When it differs from the last
+    /// one, a host that subscribed (`CursorSubscribe`) hears it as a
+    /// `Cursor` message after its `Hello`, and a host that subscribes later
+    /// hears the current one. Never blocks.
+    pub fn set_cursor(&mut self, keyword: &str, image: Option<CursorImage>) {
+        if self
+            .cursor
+            .as_ref()
+            .is_some_and(|(k, i)| k == keyword && *i == image)
+        {
+            return;
+        }
+        self.cursor = Some((keyword.to_owned(), image));
+        if let Some(h) = self.host.as_mut() {
+            h.cursor_sent = false;
+        }
+        self.send_cursor();
+    }
+
+    /// The current cursor to a subscribed host past its `Hello` that has
+    /// not been sent it.
+    fn send_cursor(&mut self) {
+        let (Some(host), Some((keyword, image))) = (self.host.as_mut(), self.cursor.as_ref())
+        else {
+            return;
+        };
+        if !host.cursor || host.cursor_sent || host.current.is_none() {
+            return;
+        }
+        host.cursor_sent = true;
+        let _ = self.requests.send(Request::Message {
+            connection: host.connection,
+            msg: Msg::Cursor {
+                version: 1,
+                keyword: keyword.clone(),
+                image: image.clone(),
+            },
+        });
     }
 
     /// Shows the frame `renderer` drew last offscreen in the host's window:
@@ -438,6 +507,8 @@ impl FrameLink {
                     if let Some(old) = self.host.replace(Host {
                         connection,
                         accessibility: false,
+                        cursor: false,
+                        cursor_sent: false,
                         writer,
                         current: None,
                         pending: None,
@@ -489,6 +560,9 @@ impl FrameLink {
                         Msg::AccessibilitySubscribe { version: 1 } => {
                             host.accessibility = true;
                         }
+                        Msg::CursorSubscribe { version: 1 } => {
+                            host.cursor = true;
+                        }
                         Msg::AccessibilityAction {
                             version: 1,
                             request,
@@ -501,7 +575,9 @@ impl FrameLink {
                         | Msg::Rehello
                         | Msg::AccessibilitySubscribe { .. }
                         | Msg::AccessibilityAction { .. }
-                        | Msg::AccessibilityUpdate { .. } => {}
+                        | Msg::AccessibilityUpdate { .. }
+                        | Msg::CursorSubscribe { .. }
+                        | Msg::Cursor { .. } => {}
                     }
                 }
                 Event::Closed { connection } => {
@@ -516,6 +592,8 @@ impl FrameLink {
                 }
             }
         }
+        // A subscription, or the slots after the Hello, may let it go now.
+        self.send_cursor();
     }
 }
 

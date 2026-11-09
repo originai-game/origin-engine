@@ -1001,12 +1001,13 @@ impl Ui {
         self.state.hits = hits;
         self.note_groups();
         self.note_taps();
-        let cursor = if self.state.vcursor.shown && self.state.vcursor.desc.is_some() {
-            // The pad's cursor is drawn; the system's is hidden.
-            crate::Cursor::None
-        } else {
-            self.resolve_cursor()
-        };
+        let (cursor, cursor_images) =
+            if self.state.vcursor.shown && self.state.vcursor.desc.is_some() {
+                // The pad's cursor is drawn; the system's is hidden.
+                (crate::Cursor::None, Vec::new())
+            } else {
+                self.resolve_cursor()
+            };
 
         // A button narrower than an ornament's span is `[narrow]`, laid
         // out: a style draws it plain (fantasy's hairline and bevel, no
@@ -1197,6 +1198,7 @@ impl Ui {
             },
             unit: self.unit,
             cursor,
+            cursor_images,
         };
         self.inspection = Default::default();
         Ok(&self.frame)

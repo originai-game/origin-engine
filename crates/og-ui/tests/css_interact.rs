@@ -7,6 +7,8 @@
 //!   it → `the_pointer_passes_through_none_and_hidden`
 //! - `visibility: hidden` drawing or taking the pointer, or not letting a
 //!   child that says `visible` take it → the same test
+//! - `cursor: url()` images lost before the host, or images over `auto`
+//!   taking the parent's keyword → the same test
 //! - `object-fit` or `object-position` not reaching an `<image>`, or
 //!   `image-rendering` not inherited (or `auto` not resetting it) →
 //!   `images_take_object_fit_position_and_inherited_image_rendering`
@@ -26,12 +28,12 @@ const DOC: &str = r#"<meta name="component" content="ix">
 </div>
 <style>
 #Root { width: 600px; height: 400px; cursor: help; }
-#Under { width: 200px; height: 60px; cursor: crosshair; }
+#Under { width: 200px; height: 60px; cursor: url(arrow) 3 4, url(7), crosshair; }
 #Over { position: absolute; top: 0; inset-inline-start: 0; width: 300px; height: 60px; pointer-events: none; cursor: wait; }
 #Again { position: absolute; top: 0; inset-inline-start: 220px; width: 60px; height: 60px; pointer-events: auto; cursor: copy; }
 #Ghost { visibility: hidden; cursor: no-drop; }
 #Lost { width: 100px; height: 40px; }
-#Shown { width: 100px; height: 40px; visibility: visible; cursor: nwse-resize; }
+#Shown { width: 100px; height: 40px; visibility: visible; cursor: url(grip), auto; }
 </style>"#;
 
 fn frame(ui: &mut Ui, p: Vec2) -> Cursor {
@@ -68,18 +70,32 @@ fn the_pointer_passes_through_none_and_hidden() {
         el(&ui, "Lost"),
         el(&ui, "Shown"),
     );
-    // Over the button the overlay covers: the overlay passes it on.
+    // Over the button the overlay covers: the overlay passes it on. Its
+    // images come with its keyword, in order, for the host to try.
     frame(&mut ui, under);
     assert_eq!(frame(&mut ui, under), Cursor::Crosshair);
+    let urls = |ui: &Ui| {
+        let f = ui.frame();
+        f.cursor_images
+            .iter()
+            .map(|c| (c.url.clone(), c.hotspot))
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(
+        urls(&ui),
+        [("arrow".into(), Some([3.0, 4.0])), ("7".into(), None)]
+    );
     // Its child that says auto takes the pointer again.
     frame(&mut ui, again);
     assert_eq!(frame(&mut ui, again), Cursor::Copy);
     // A hidden button takes nothing: the pointer is on the root.
     frame(&mut ui, lost);
     assert_eq!(frame(&mut ui, lost), Cursor::Default);
-    // A visible child of a hidden parent takes it.
+    // A visible child of a hidden parent takes it. Images over `auto` are
+    // its own value: the keyword is its kind's, not its parent's no-drop.
     frame(&mut ui, shown);
-    assert_eq!(frame(&mut ui, shown), Cursor::ResizeNwse);
+    assert_eq!(frame(&mut ui, shown), Cursor::Default);
+    assert_eq!(urls(&ui), [("grip".into(), None)]);
     let a11y = format!("{:?}", ui.a11y());
     assert!(a11y.contains("Shown") && !a11y.contains("Lost"), "{a11y}");
 }

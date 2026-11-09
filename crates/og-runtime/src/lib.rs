@@ -100,6 +100,7 @@ mod terrain;
 mod terrain_stream;
 mod timeline;
 mod trace;
+pub mod ui_cursor;
 mod ui_draw;
 mod uncooked;
 mod vfx;

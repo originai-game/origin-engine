@@ -1662,9 +1662,22 @@ CSS `cursor` takes every CSS UI 4 keyword (`context-menu`, `cell`,
 `vertical-text`, `alias`, `copy`, `no-drop`, `all-scroll`, `col-resize`,
 `row-resize`, the eight edge and corner resizes beside the earlier ones),
 inherited by the subtree, and `og.ui.frameCursor` answers it. `url(<icon
-or texture>) [<x> <y>]` images listed before the keyword are accepted and
-kept on the element; the host shows the keyword (the fallback CSS takes
-when an image does not load).
+or texture>) [<x> <y>]` images listed before the keyword are tried in
+order and the first that loads is shown at its hotspot (default its top
+left, clamped into the image), the keyword where none does: the property
+inherits whole, so images over `auto` stop the parent's keyword and fall
+back to the element's own kind's. An image is an atlas icon by name or a
+texture by its asset handle, cut from the pixels the engine holds: an RGBA
+texture, or a cooked one read again from the bundle (any natively; on the
+web a lossless one, `kind pixel`, since the Worker's Basis textures stay on
+the GPU). A glyph icon, an image larger than 128×128 (the browsers' limit)
+or one that cannot be read falls through, with a note. The frame answer
+carries the keyword as `cursor` and, on the frames where it changed,
+`cursorImage` (`{width, height, rgba: <base64>, hotspot}` or null); the
+web shell sets the canvas's CSS cursor to the image as a PNG with the
+keyword after it. Origin Desktop's shared frame hears it as the `Cursor`
+message (docs/design.md §2.6) and sets the OS cursor. Decoded images are
+kept by their source, eight at most.
 
 `pointer-events` inherits: `none` lets the pointer through to what lies
 under the element (keys and pads still reach it), and a descendant saying

@@ -927,6 +927,9 @@ pub struct UiFrame {
     /// ([`crate::Cursor`]; never `Auto`): the web shell sets the canvas's
     /// CSS cursor from it.
     pub cursor: crate::Cursor,
+    /// The `cursor: url()` images declared with that keyword, tried in
+    /// order before it (CSS UI 4 §5.1): a host shows the first that loads.
+    pub cursor_images: Vec<crate::CursorImage>,
     /// Where this tick's grounds are seen: each world panel the UI lays
     /// onto the screen itself, no render target ([`crate::DrawCmd::EndLayer`]'s
     /// `ground`). A panel behind the camera has none and is not drawn.

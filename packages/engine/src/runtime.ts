@@ -131,6 +131,14 @@ function declare(call: (abi: HostAbi<Uint32Array, unknown>) => void): void {
 
 // ── results ───────────────────────────────────────────────────────────────
 
+/** A CSS `cursor: url()` image the engine read from its texture: row-major RGBA8 (sRGB, straight alpha) in base64, and the pixel that is the pointer's position. */
+export interface CursorImage {
+  width: number;
+  height: number;
+  rgba: string;
+  hotspot: [number, number];
+}
+
 export type Result<T> = { readonly ok: true; readonly value: T } | { readonly ok: false; readonly reason: string };
 
 function parse<T>(text: string): T {
@@ -1703,6 +1711,8 @@ export class Engine {
     pointerLock?: boolean;
     /** The pointer's shape the UI resolved over what it is on (a CSS cursor name: og.ui.frameCursor). */
     cursor?: string;
+    /** On the frames where it changed: the first of the cursor's CSS `url()` images that loads, row-major RGBA8 in base64 with its hotspot, or null for none (`cursor` is its fallback). */
+    cursorImage?: CursorImage | null;
     /** The frame cap og.render.setDisplay resolved to (0: the display's rate): the web Worker draws at most this many frames a second (web/pacing.ts). */
     maxFps?: number;
     /** The player's graphics settings ask the page to be fullscreen (og.render.setDisplay's `fullscreen`; the web shell enters or leaves it). */

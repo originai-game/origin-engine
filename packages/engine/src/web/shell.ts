@@ -59,6 +59,7 @@
 // (keyboard-layout.ts).
 
 import { createRing, writeRing, type InjectedInput } from "./input.ts";
+import type { CursorImage } from "../runtime.ts";
 import { TextEntry, type TextTarget } from "./text-input.ts";
 import { A11yMirror, type A11yTree } from "./a11y.ts";
 import { playHaptics, type HapticPulse } from "./haptics.ts";
@@ -70,6 +71,25 @@ import { createRpcRings, readFrames, waitForFrames, writeFrame, type RpcRings } 
 import { localPlatform, storagePersistence, type PlatformAnswer, type PlatformCall, type PlatformHost, type PlatformLink, type PlatformNotice } from "../platform-local.ts";
 import type { BootPhases } from "./worker.ts";
 import type { TraceDocument } from "../trace.ts";
+
+/** The PNG data URL of the last cursor image drawn, by the image it was drawn from. */
+let cursorUrl: [CursorImage, string] | null = null;
+
+/** CSS `cursor` for the UI's shape: its `url()` image (RGBA from the engine) as a PNG at its hotspot, then the keyword. */
+function cursorCss(keyword: string, image: CursorImage | null): string {
+  if (!image) return keyword;
+  let url = cursorUrl?.[0] === image ? cursorUrl[1] : "";
+  if (!url) {
+    const canvas = document.createElement("canvas");
+    canvas.width = image.width;
+    canvas.height = image.height;
+    const bytes = Uint8ClampedArray.from(atob(image.rgba), (ch) => ch.charCodeAt(0));
+    canvas.getContext("2d")?.putImageData(new ImageData(bytes, image.width, image.height), 0, 0);
+    url = canvas.toDataURL("image/png");
+    cursorUrl = [image, url];
+  }
+  return `url(${url}) ${image.hotspot[0]} ${image.hotspot[1]}, ${keyword}`;
+}
 
 export interface ShellOptions {
   /** The play surface. Its pixel size is set from its CSS size and the device pixel ratio. */
@@ -485,8 +505,10 @@ export class Shell {
         return;
       }
       if (m.type === "cursor") {
-        // The UI's pointer shape over what the pointer is on (og.ui.frameCursor).
-        if (this.#canvas) this.#canvas.style.cursor = String((m as unknown as { cursor: string }).cursor || "default");
+        // The UI's pointer shape over what the pointer is on (og.ui.frameCursor):
+        // its url() image at its hotspot, the keyword after it as CSS falls back.
+        const c = m as unknown as { cursor: string; image?: CursorImage | null };
+        if (this.#canvas) this.#canvas.style.cursor = cursorCss(c.cursor || "default", c.image ?? null);
         return;
       }
       if (m.type === "pointer-lock") {

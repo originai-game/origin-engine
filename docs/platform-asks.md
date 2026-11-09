@@ -381,3 +381,20 @@ declares the entity (`scenes/main.ogt:12`), and outside a publish build it
 carries the same UI element as an extra `ui` field. The platform highlights
 the element's `rect` and opens its `source`, then the rule's. Nothing in
 protocol 5 changes.
+
+## The cursor over Origin Desktop's Preview
+
+**Ask 31, open.** Origin Desktop sets the OS cursor over its Preview from
+the engine's UI. After each shared-frame `Hello` on a new connection it
+sends `{"CursorSubscribe":{"version":1}}`; the engine answers with
+`{"Cursor":{"version":1,"keyword":"<css keyword>","image":<image or null>}}`
+for the current shape, then again whenever it changes (docs/design.md
+§2.6). `keyword` is a CSS cursor keyword (`default`, `pointer`, `text`,
+`grab`, `nwse-resize`, `none`…); `image`, when not null, is
+`{"width","height","rgba","hotspot":[x,y]}` with `rgba` the base64 of
+`width × height` RGBA8 pixels, rows top first, sRGB, straight alpha, at most
+128×128. Desktop shows the image with its hotspot while the pointer is over
+the Preview (winit's `CustomCursor::from_rgba`, scaled by the window's
+scale factor), else the keyword's OS cursor (winit `CursorIcon` by CSS
+name), and its own cursor outside the Preview. Until then the Preview
+keeps Desktop's arrow, and the web shell alone shows the UI's cursor.

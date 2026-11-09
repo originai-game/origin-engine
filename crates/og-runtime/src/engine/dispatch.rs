@@ -191,6 +191,12 @@ pub(crate) struct State {
     /// The tree the last frame answer carried and the UI's semantic frame
     /// then, which live regions announce against (`A11yTree::announcements`).
     pub a11y_sent: Option<(u64, og_ui::A11yTree)>,
+    /// Cursor images decoded from their textures, by source
+    /// ([`crate::ui_cursor`]).
+    pub cursor_images: crate::ui_cursor::Kept,
+    /// The cursor the last frame answer carried (its keyword and image id),
+    /// so its image is sent only when it changes.
+    pub cursor_sent: Option<(&'static str, u64)>,
     /// Undeclared accesses already logged (`system access name`), so each is
     /// logged once per system (`api::undeclared`), and the calls handed a
     /// bare index for an entity (`api::live`), once per system and call.

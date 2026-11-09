@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "UI: CSS cursor url() images shown on both hosts",
+      "summary": "cursor: url(<icon or texture>) [<x> <y>], …, <keyword> now shows the first image that loads at its hotspot (an atlas icon by name or a texture by its asset handle, at most 128x128), the keyword where none does; images over auto stop the parent's keyword. og.ui's frame answer carries cursorImage when it changes and the web shell sets the canvas's CSS cursor from it. UiFrame gains cursor_images."
+    },
+    {
+      "member": "og-render shared_frames: CursorSubscribe and Cursor",
+      "summary": "A window that sends {\"CursorSubscribe\":{\"version\":1}} after Hello hears {\"Cursor\":{\"version\":1,\"keyword\",\"image\"}} once and whenever the UI's cursor changes; FrameLink::set_cursor hands it over. Nothing changes for a window that does not subscribe."
+    }
+  ]
+}

@@ -50,6 +50,12 @@ pub trait RenderBackend {
     fn antialias(&self) -> String {
         "off".into()
     }
+    /// The pointer's shape the UI resolved this frame ([`crate::ui_cursor`]),
+    /// given every frame: a backend that shows the frames in a window (the
+    /// native host's shared frame) hands it on when it changes.
+    fn cursor(&mut self, shape: &crate::ui_cursor::CursorShape) {
+        let _ = shape;
+    }
     /// The frames drawn so far and the frames TAA's history holds
     /// (og-render's `Renderer::history`); `None` for a backend without one.
     fn history(&self) -> Option<(u64, u64)> {

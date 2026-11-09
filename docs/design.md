@@ -1432,6 +1432,15 @@ transform. `generation` and `seq` identify the frame; updates and `Ready`
 may arrive in either order. Apply every incremental update in socket order,
 even if the window skips the image.
 
+The socket carries an opt-in cursor extension the same way. After `Hello`
+the window sends `{"CursorSubscribe":{"version":1}}`; the engine then sends
+`{"Cursor":{"version":1,"keyword":"<css keyword>","image":null}}`, or with
+`"image":{"width":w,"height":h,"rgba":"<base64>","hotspot":[x,y]}` (RGBA8
+rows, sRGB, straight alpha), once for the current shape and again only
+when it changes: the UI's resolved CSS `cursor` and the first of its
+`url()` images that loads (docs/ui.md §2), the keyword its fallback.
+Nothing is sent without a subscription; a reconnection subscribes again.
+
 The engine accepts focus, click, set-value, increment, decrement,
 scroll-into-view and directional page-scroll actions, queued between frames
 and applied in the next UI tick after checking the focus scope, disabled

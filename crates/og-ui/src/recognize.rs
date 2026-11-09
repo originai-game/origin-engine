@@ -388,8 +388,22 @@ impl Ui {
     /// The pointer's shape this frame: over the element the press holds,
     /// else the one under the pointer, the first cursor set on it or around
     /// it, else its own kind's (a text control's I-beam, a draggable
-    /// element's hand, a link's), else the arrow.
-    pub(crate) fn resolve_cursor(&self) -> crate::Cursor {
+    /// element's hand, a link's), else the arrow. With it, the `url()`
+    /// images declared beside the keyword that won (CSS UI 4 §5.1: the
+    /// property inherits whole, images and keyword together).
+    pub(crate) fn resolve_cursor(&self) -> (crate::Cursor, Vec<crate::CursorImage>) {
+        let (cursor, at) = self.cursor_at();
+        let images = if at == NONE {
+            Vec::new()
+        } else {
+            self.nodes[at].props.cursor_images.clone()
+        };
+        (cursor, images)
+    }
+
+    /// The resolved keyword and the node that declared it (`NONE`: a
+    /// default of the element's kind).
+    fn cursor_at(&self) -> (crate::Cursor, usize) {
         use crate::Cursor;
         let key = if self.state.active != 0 {
             self.state.active
@@ -405,36 +419,25 @@ impl Ui {
                 .flatten()
         }) && let Some(i) = self.tree.find(t)
         {
-            let mut j = i;
-            while j != NONE && j < self.nodes.len() {
-                let c = self.nodes[j].props.cursor;
-                if c != Cursor::Auto {
-                    return c;
-                }
-                let n = &self.nodes[j];
-                j = if n.parent == NONE { n.anchor } else { n.parent };
-            }
-            return Cursor::Text;
+            return match self.declared_cursor(i) {
+                (Cursor::Auto, at) => (Cursor::Text, at),
+                c => c,
+            };
         }
         let Some(i) = self.tree.find(key) else {
-            return Cursor::Default;
+            return (Cursor::Default, NONE);
         };
-        let mut j = i;
-        while j != NONE && j < self.nodes.len() {
-            let c = self.nodes[j].props.cursor;
-            if c != Cursor::Auto {
-                return c;
-            }
-            let n = &self.nodes[j];
-            j = if n.parent == NONE { n.anchor } else { n.parent };
+        let (c, at) = self.declared_cursor(i);
+        if c != Cursor::Auto {
+            return (c, at);
         }
         let n = &self.nodes[i];
         if key != n.key {
             // A rich text's link.
-            return Cursor::Pointer;
+            return (Cursor::Pointer, at);
         }
         if n.focusable {
-            return Cursor::Text;
+            return (Cursor::Text, at);
         }
         if n.props.drag.is_some() {
             let dragging = self
@@ -444,11 +447,26 @@ impl Ui {
                 .get(&key)
                 .is_some_and(|g| g.dragging || (g.held && self.input.down));
             return if dragging {
-                Cursor::Grabbing
+                (Cursor::Grabbing, at)
             } else {
-                Cursor::Grab
+                (Cursor::Grab, at)
             };
         }
-        Cursor::Default
+        (Cursor::Default, at)
+    }
+
+    /// The `cursor` declared on node `i` or the nearest element around it
+    /// that declares one (a keyword other than `auto`, or images over
+    /// `auto`), and that element (`NONE`: none does).
+    fn declared_cursor(&self, i: usize) -> (crate::Cursor, usize) {
+        let mut j = i;
+        while j != NONE && j < self.nodes.len() {
+            let n = &self.nodes[j];
+            if n.props.cursor != crate::Cursor::Auto || !n.props.cursor_images.is_empty() {
+                return (n.props.cursor, j);
+            }
+            j = if n.parent == NONE { n.anchor } else { n.parent };
+        }
+        (crate::Cursor::Auto, NONE)
     }
 }

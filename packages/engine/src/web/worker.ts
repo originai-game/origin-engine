@@ -33,7 +33,7 @@
 // 200); { type: "text", target } when the UI's focused text control changes
 // and { type: "copy", text } when a copy took text (text-input.ts); { type: "saved", scenes } when the inspector saved scenes this page cannot write (page.ts routes them: wire.ts routeSavedScenes); { type: "haptics", patterns } when the UI's feedback played haptics (haptics.ts); { type: "rumble", rumble } when og.input.rumble asked for one (gamepad.ts playRumble); { type: "a11y", tree } when the UI's
 // accessibility tree changed (a11y.ts); { type: "load-failure", file, reason } when a file
-// of the bundle did not arrive (loadFailure: field telemetry's load failures); { type: "cursor", cursor } when the UI's pointer shape changed (og.ui.frameCursor); { type: "pointer-lock", wanted } when og.PointerLock.wanted
+// of the bundle did not arrive (loadFailure: field telemetry's load failures); { type: "cursor", cursor, image } when the UI's pointer shape changed (og.ui.frameCursor, and its CSS url() image or null); { type: "pointer-lock", wanted } when og.PointerLock.wanted
 // changed (the shell requests the lock on the next press on the canvas, or exits it);
 // { type: "result", id, value | error } for `call` (`advance`,
 // `command`, `hash`, `frame`, `probe`, `timings`: the played frames'
@@ -48,7 +48,7 @@
 // Worker's animation frames while the clock played, so isolated pages never
 // answered.
 
-import { boundHost, createEngine, systemClock, type Engine, type GameToken } from "../runtime.ts";
+import { boundHost, createEngine, systemClock, type CursorImage, type Engine, type GameToken } from "../runtime.ts";
 import type { PlatformAnswer, PlatformHost, PlatformNotice } from "../platform-local.ts";
 import { loadWebHost, type WebGlue } from "./host.ts";
 import { FrameCounter } from "./frames.ts";
@@ -1028,8 +1028,9 @@ export function startWorker(game: GameToken): void {
   /** og.PointerLock.wanted as last sent to the shell. */
   let lockWanted = false;
   let lockRaw = true;
-  /** The canvas's CSS cursor as the last frame answer set it. */
+  /** The canvas's CSS cursor as the last frame answer set it, and its `url()` image. */
   let cursor = "default";
+  let cursorImage: CursorImage | null = null;
   /** The page asks the last frame relayed ([fullscreen, lowPower]), so only a change is posted. */
   let pageAsks = "";
   /**
@@ -1086,9 +1087,11 @@ export function startWorker(game: GameToken): void {
     if (answered.haptics?.length) self.postMessage({ type: "haptics", patterns: answered.haptics });
     if (answered.rumble?.length) self.postMessage({ type: "rumble", rumble: answered.rumble });
     const shape = typeof answered.cursor === "string" ? answered.cursor : "default";
-    if (shape !== cursor) {
+    const image = answered.cursorImage !== undefined && answered.cursorImage !== cursorImage;
+    if (shape !== cursor || image) {
       cursor = shape;
-      self.postMessage({ type: "cursor", cursor });
+      if (image) cursorImage = answered.cursorImage ?? null;
+      self.postMessage({ type: "cursor", cursor, image: cursorImage });
     }
     const wanted = answered.pointerLock === true;
     const raw = answered.rawMouse !== false;
