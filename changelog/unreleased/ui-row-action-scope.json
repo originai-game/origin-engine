@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "declared action handlers",
+      "summary": "A declared action's handler inside an `{#each}` row (`ondetails={equip}` on each row) takes the action only while the focus is within that row, so it acts for the focused row with its row key; before, every row's handler fired at once. A handler outside the rows still takes the action wherever the focus is, and an exclusive `<details name>` group still closes its other members."
+    }
+  ]
+}

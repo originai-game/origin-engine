@@ -1869,7 +1869,13 @@ impl Ui {
                 When::Hold => held,
                 When::ContextMenu => context,
                 When::Toggle | When::Close | When::Revealed => happened.contains(&t.when),
-                When::Action(a) => self.docs.accepts && self.action_fired(a),
+                When::Action(a) => {
+                    self.docs.accepts
+                        && self.action_fired(a)
+                        // An exclusive `<details name>`'s own action
+                        // reaches every disclosure of its name.
+                        && (a.starts_with('~') || self.focus_in_row(path, &b.row_key))
+                }
                 When::Change(e) => {
                     let v = b.eval(e);
                     let old = self.docs.last.insert((key, k), v.clone());
@@ -1954,4 +1960,51 @@ pub(super) fn bound(n: &DocNode, prop: &str) -> bool {
 /// which the others of its name listen to (they close).
 pub(crate) fn details_action(name: &str) -> String {
     format!("~details/{name}")
+}
+
+impl Ui {
+    /// Whether a declared action's handler at `path` takes the action: a
+    /// handler outside any `{#each}` row is the page's and always does; one
+    /// inside a row does only while a focus (shared or a pad's) is within
+    /// that row, as a key event reaches only the focused element and its
+    /// ancestors, so `ondetails` on every row acts on the focused row alone.
+    /// The row is the innermost element of `path` named `…#row_key` (an
+    /// `{#each}` child, or a virtual list's `Row#`/`Cell#` with the key
+    /// escaped); the handler's own last segment may still hold the raw key.
+    fn focus_in_row(&self, path: &str, row_key: &str) -> bool {
+        if row_key.is_empty() {
+            return true;
+        }
+        let named = row_key.replace('/', "_");
+        let escaped = row_key
+            .replace('%', "%25")
+            .replace('/', "%2F")
+            .replace('#', "%23");
+        let Some(at) = [row_key, &named, &escaped]
+            .into_iter()
+            .filter_map(|key| {
+                let mark = format!("#{key}");
+                path.rmatch_indices(mark.as_str())
+                    .map(|(at, _)| at)
+                    .find(|&at| {
+                        let end = at + mark.len();
+                        end == path.len() || path[end..].starts_with('/')
+                    })
+            })
+            .max()
+        else {
+            return true;
+        };
+        // The row's element as a focus path names it: a key's `/` taken as
+        // `_` (an immediate build) or escaped (a mounted one).
+        let rows = [named, escaped].map(|key| format!("{}#{key}", &path[..at]));
+        (0..4).any(|pad| {
+            let focus = self.focus_path(pad);
+            rows.iter().any(|row| {
+                focus
+                    .strip_prefix(row.as_str())
+                    .is_some_and(|rest| rest.is_empty() || rest.starts_with('/'))
+            })
+        })
+    }
 }

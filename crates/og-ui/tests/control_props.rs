@@ -789,6 +789,70 @@ fn a_button_grows_to_hold_tall_content() {
     });
 }
 
+/// A declared action's handler on each `{#each}` row acts for the row
+/// holding the focus only, as a key event reaches the focused element and
+/// its ancestors; a handler outside the rows is the page's and acts
+/// wherever the focus is. Ways it could fail: every row's handler firing
+/// at once (the loadout's per-row Equip), the focused row's handler
+/// missed when the focus is on an element inside the row rather than the
+/// row itself, a row firing while the focus is outside every row, or the
+/// page's handler scoped away.
+#[test]
+fn row_action_handlers_take_the_action_for_the_focused_row() {
+    // A screen on a layer: a mounted document takes actions through its layer.
+    let text = r#"<meta name="screen" content="t" data-layer="hud">
+<meta name="action:details" content="Equip">
+<meta name="action:back" content="Back">
+<div id="Page">
+  {#each $rows as r (r.id)}
+    <div id="Row" ondetails={equip}><button id="Pick">{r.id}</button></div>
+  {/each}
+  <button id="Back" onback={back}>Back</button>
+</div>"#;
+    let rows = json!([{"id": "a"}, {"id": "b/2"}, {"id": "c"}]);
+    both(text, &[("rows", rows.clone())], |d| {
+        let fire = |d: &mut Doc, focus: &str, action: &str| -> Vec<(String, String)> {
+            let path =
+                d.ui.probe_elements()
+                    .into_iter()
+                    .find(|e| {
+                        let (row, leaf) = focus.split_once(' ').unwrap_or(("", focus));
+                        e.path.contains(row) && e.path.ends_with(leaf)
+                    })
+                    .unwrap_or_else(|| panic!("no {focus}"))
+                    .path;
+            d.focus = Some(path.clone());
+            d.step(InputFrame::default());
+            d.step(InputFrame::default());
+            assert_eq!(d.ui.focus_path(0), path);
+            d.events.clear();
+            d.ui.fire_action(action);
+            d.step(InputFrame::default());
+            d.step(InputFrame::default());
+            d.events
+                .drain(..)
+                .filter(|e| e.kind == "emit")
+                .map(|e| (e.name, e.row_key))
+                .collect()
+        };
+        assert_eq!(
+            fire(d, "/Row#b /Pick", "details"),
+            [("equip".to_string(), "b/2".to_string())],
+            "the focused row's handler alone, its key holding a slash"
+        );
+        assert_eq!(
+            fire(d, "/Row#c /Pick", "details"),
+            [("equip".into(), "c".into())]
+        );
+        assert_eq!(fire(d, "/Back", "details"), [], "no row holds the focus");
+        assert_eq!(
+            fire(d, "/Row#a /Pick", "back"),
+            [("back".to_string(), String::new())],
+            "the page's handler acts from inside a row"
+        );
+    });
+}
+
 /// `<tabs icons badges>`: each tab draws its icon before its label and its
 /// count badge after it; an empty entry draws none. The tabPrev and tabNext
 /// actions (Q and E, LB and RB) step through the tabs.

@@ -68,6 +68,8 @@ pub(crate) struct Doc {
     pub(crate) events: Vec<DocEvent>,
     /// The viewport each step lays out in (800 × 900 unless a test resizes it).
     pub(crate) viewport: Viewport,
+    /// A path the next step focuses once it is built (`Ui::set_focus`).
+    pub(crate) focus: Option<String>,
 }
 
 impl Doc {
@@ -92,6 +94,7 @@ impl Doc {
             mounted,
             events: Vec::new(),
             viewport: Viewport::new(800.0, 900.0),
+            focus: None,
             // An immediate build reads the stores as `$name` from its viewmodel.
             vm: Value::Object(
                 stores
@@ -186,6 +189,9 @@ impl Doc {
             let name = self.name.clone();
             let r = self.ui.component("T", &name, &mut self.vm, &bind::NoEnv);
             self.events.extend(r.events);
+        }
+        if let Some(path) = self.focus.take() {
+            self.ui.set_focus(&path);
         }
         self.ui.end();
         self.events.extend(self.ui.take_doc_events());

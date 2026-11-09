@@ -67,6 +67,11 @@ The document contract has these requirements:
 - Declared input actions also dispatch named markup events independently
   of clicks. `<meta name="action:confirm" content="Start">` enables
   `onconfirm={start}`; `onclick` is not a substitute for that binding.
+  A handler outside any `{#each}` row is the page's and takes its action
+  wherever the focus is. A handler inside a row takes it only while a
+  focus (the shared one or a pad's) is within that row, as a key event
+  reaches the focused element and its ancestors: `ondetails={equip}` on
+  every row of a list acts for the focused row alone, with its row key.
 - Each loop requires stable, nonempty string keys and supports an empty
   branch. Missing, index-based, empty, and duplicate keys are errors.
   `selected` and `mark` identify collection keys, never row indices.
