@@ -31,7 +31,7 @@
         "note": "Painted by the origin generate service, trimmed to its alpha and downscaled to 3.5 texels per CSS px of its cell (no other edit).",
         "prompt": "Scene:\nIsolated UI element on a transparent background.\n\nSubject:\nA large rectangular window panel frame: a dark leather plate (#1c1611) inset in a slim burnished brass rim with a fine inner bead line; each corner carries a small filigree brass bracket with a tiny rivet. The plate interior is calm, low-contrast dark leather with no motifs, so dense text stays readable on it.\n\nImportant details:\nHand-painted dark fantasy RPG interface material, original design. Aged burnished brass (#8f7650) with warm highlights (#d9b45f) and dark recesses, soft top-left key light, slight patina, no glow. Orthographic flat front view, centred, filling the canvas with a small even margin. Straight, uniform rim along every edge between the corners so the piece stretches as a nine-slice; ornament stays inside the four corners.\n\nUse case:\nNine-slice UI window frame for a game interface style pack.\n\nConstraints:\nTransparent background. No text, no letters, no runes, no logos, no watermark, no scenery, no shadow outside the object, no perspective.",
         "references": [],
-        "request": "d30a08e6d0f8c771"
+        "request": "a9dbc25067721be5"
       },
       "size": [
         158,
@@ -68,7 +68,7 @@
         "note": "Painted by the origin generate service, trimmed to its alpha and downscaled to 3.5 texels per CSS px of its cell (no other edit).",
         "prompt": "Scene:\nIsolated UI element on a transparent background.\n\nSubject:\nA card frame, lighter than a window: a dark walnut plate with a thin brass rim and one fine engraved line inset from it; plain mitred corners with one small brass stud each. Interior calm, even and low contrast.\n\nImportant details:\nHand-painted dark fantasy RPG interface material, original design. Palette: lamp-black stained leather and dark walnut (#1c1611 to #241c15) for the inner plate, aged burnished brass (#8f7650) with warm highlights (#d9b45f) for the rim. Soft top-left key light, subtle bevel, slight wear and patina, no glow. Straight, uniform rim along every edge between the corners so the piece can be stretched as a nine-slice; all ornament stays inside the four corners. Orthographic flat front view, square to the canvas, centred, filling the canvas with a small even margin.\n\nUse case:\nNine-slice UI frame for a game interface style pack.\n\nConstraints:\nTransparent background outside the frame. No text, no letters, no runes, no logos, no watermark, no scenery, no shadow outside the frame, no perspective.",
         "references": [],
-        "request": "71f7dee71b53a951"
+        "request": "5bbe87755f96a06c"
       },
       "size": [
         96,
@@ -149,9 +149,7 @@
         224
       ],
       "to": [
-        "Slot.frame",
-        "Inventory.item",
-        "Equipment.slot"
+        "Slot.frame"
       ]
     },
     {
@@ -170,7 +168,7 @@
         "note": "Painted by the origin generate service, trimmed to its alpha and downscaled to 3.5 texels per CSS px of its cell (no other edit).",
         "prompt": "Scene:\nIsolated UI element on a transparent background.\n\nSubject:\nA tooltip frame: a near-black plate (#15100c) with a thin brass rim and small cut corners, lighter in weight than a panel. Interior plain and even.\n\nImportant details:\nHand-painted dark fantasy RPG interface material, original design. Palette: lamp-black stained leather and dark walnut (#1c1611 to #241c15) for the inner plate, aged burnished brass (#8f7650) with warm highlights (#d9b45f) for the rim. Soft top-left key light, subtle bevel, slight wear and patina, no glow. Straight, uniform rim along every edge between the corners so the piece can be stretched as a nine-slice; all ornament stays inside the four corners. Orthographic flat front view, square to the canvas, centred, filling the canvas with a small even margin.\n\nUse case:\nNine-slice UI frame for a game interface style pack.\n\nConstraints:\nTransparent background outside the frame. No text, no letters, no runes, no logos, no watermark, no scenery, no shadow outside the frame, no perspective.",
         "references": [],
-        "request": "c1972b77ad6c45b2"
+        "request": "bf80ee058ad0f395"
       },
       "size": [
         64,
@@ -206,7 +204,7 @@
         "note": "Painted by the origin generate service, trimmed to its alpha and downscaled to 3.5 texels per CSS px of its cell (no other edit).",
         "prompt": "Scene:\nIsolated UI element on a transparent background.\n\nSubject:\nA compact heads-up display plate, about 1.6 times as wide as tall: a dark smoked plate (#140f0b) with a thin brass rim and tiny cut corners; minimal and low-interference. Interior plain and even.\n\nImportant details:\nHand-painted dark fantasy RPG interface material, original design. Palette: lamp-black stained leather and dark walnut (#1c1611 to #241c15) for the inner plate, aged burnished brass (#8f7650) with warm highlights (#d9b45f) for the rim. Soft top-left key light, subtle bevel, slight wear and patina, no glow. Straight, uniform rim along every edge between the corners so the piece can be stretched as a nine-slice; all ornament stays inside the four corners. Orthographic flat front view, square to the canvas, centred, filling the canvas with a small even margin.\n\nUse case:\nNine-slice UI frame for a game interface style pack.\n\nConstraints:\nTransparent background outside the frame. No text, no letters, no runes, no logos, no watermark, no scenery, no shadow outside the frame, no perspective.",
         "references": [],
-        "request": "e837ce1d25b8d6dd"
+        "request": "41f6992241db6666"
       },
       "size": [
         80,
@@ -488,12 +486,6 @@
       ]
     }
   ],
-  "stale": [
-    "fantasy/panel",
-    "fantasy/card",
-    "fantasy/slot",
-    "fantasy/tooltip",
-    "fantasy/hud"
-  ],
+  "stale": [],
   "style": "fantasy"
 }

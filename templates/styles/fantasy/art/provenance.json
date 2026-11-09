@@ -11,7 +11,7 @@
   "fantasy/slot": {
     "model": "gpt-image-2.6-sunburst",
     "prompt": "Scene:\nIsolated UI element on a transparent background.\n\nSubject:\nAn inventory item slot: a square recessed well, darker in the middle (#0d0a07) as if sunk into the leather, framed by a slim bevelled brass rim with small mitred corners. The well interior is plain and even, ready for an item icon.\n\nImportant details:\nHand-painted dark fantasy RPG interface material, original design. Palette: lamp-black stained leather and dark walnut (#1c1611 to #241c15) for the inner plate, aged burnished brass (#8f7650) with warm highlights (#d9b45f) for the rim. Soft top-left key light, subtle bevel, slight wear and patina, no glow. Straight, uniform rim along every edge between the corners so the piece can be stretched as a nine-slice; all ornament stays inside the four corners. Orthographic flat front view, square to the canvas, centred, filling the canvas with a small even margin.\n\nUse case:\nNine-slice UI frame for a game interface style pack.\n\nConstraints:\nTransparent background outside the frame. No text, no letters, no runes, no logos, no watermark, no scenery, no shadow outside the frame, no perspective.",
-    "request": "32401861fc38d272",
+    "request": "afe17b7e19cf2261",
     "generation": "954e4e7a-58fe-417a-aac1-e6d430860107",
     "date": "2026-11-09",
     "references": [],

@@ -170,11 +170,7 @@
       "aspect": "free",
       "cells": null,
       "dress": [
-        [
-          "Slot.frame",
-          "Inventory.item",
-          "Equipment.slot"
-        ]
+        "Slot.frame"
       ],
       "file": "art/slot.png",
       "fit": "nineSlice",
@@ -183,7 +179,7 @@
         0.5
       ],
       "generated": true,
-      "hash": "32401861fc38d272",
+      "hash": "afe17b7e19cf2261",
       "insets": [
         0.25,
         0.25,

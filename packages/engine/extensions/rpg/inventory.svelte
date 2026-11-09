@@ -1,6 +1,6 @@
 <meta name="component" content="RpgInventory">
 <meta name="strings" content="./rpg.en.ogt">
-<meta name="parts" content="Inventory.item Inventory.category Inventory.frame Inventory.card">
+<meta name="parts" content="Inventory.rarity Inventory.category Inventory.frame Inventory.card">
 <meta name="prop:title" content="string" data-doc="The bag's heading (Backpack, Stash, a container's name).">
 <meta name="prop:filters" content="list" data-doc="The category tabs, a keyed collection of { id, label, count }: count is the game's number of items in it.">
 <meta name="prop:filter" content="string" data-doc="The id of the category shown.">
@@ -59,10 +59,9 @@
         <scroll id="Scroll">
           <div id="Grid" role="grid" aria-label={title}>
             {#each items as i (i.id)}
-              <button id="Item" part="Inventory.item" class="item" class:uncommon={i.rarity == "uncommon"} class:rare={i.rarity == "rare"} class:epic={i.rarity == "epic"} class:legendary={i.rarity == "legendary"} class:mythic={i.rarity == "mythic"} class:broken={i.broken} role="gridcell" aria-selected={i.id == selected} aria-label={i.name} aria-description={i.kind} onclick={choose}>
+              <button id="Item" part="Slot.frame[rarity={i.rarity}]" class="item" class:uncommon={i.rarity == "uncommon"} class:rare={i.rarity == "rare"} class:epic={i.rarity == "epic"} class:legendary={i.rarity == "legendary"} class:mythic={i.rarity == "mythic"} class:broken={i.broken} role="gridcell" aria-selected={i.id == selected} aria-label={i.name} aria-description={i.kind} onclick={choose}>
                 <icon class="art" icon={i.icon}></icon>
-                <div class="ring"></div>
-                <div class="rarity" hidden={i.rarity == "common"}></div>
+                <div class="rarity" part="Inventory.rarity" hidden={i.rarity == "common"}></div>
                 <span class="quantity" hidden={!(i.quantity > 1)}>{formatNumber(i.quantity)}</span>
                 <div class="flag equipped" hidden={!i.equipped} aria-label={t("rpg.inventory.equipped")}><icon icon="check"></icon></div>
                 <div class="flag fresh" hidden={!i.fresh} aria-label={t("rpg.inventory.new")}></div>
@@ -82,7 +81,7 @@
     </div>
     <aside id="Card" part="Inventory.card" hidden={!detailName} aria-label={detailName}>
       <div id="CardHead">
-        <div id="CardArt" part="Inventory.item" class="item large" class:uncommon={detailRarity == "uncommon"} class:rare={detailRarity == "rare"} class:epic={detailRarity == "epic"} class:legendary={detailRarity == "legendary"} class:mythic={detailRarity == "mythic"}><icon class="art" icon={detailIcon}></icon></div>
+        <div id="CardArt" part="Slot.frame[rarity={detailRarity}]" class="item large" class:uncommon={detailRarity == "uncommon"} class:rare={detailRarity == "rare"} class:epic={detailRarity == "epic"} class:legendary={detailRarity == "legendary"} class:mythic={detailRarity == "mythic"}><icon class="art" icon={detailIcon}></icon></div>
         <div id="CardTitle">
           <h3 id="Name" class:uncommon={detailRarity == "uncommon"} class:rare={detailRarity == "rare"} class:epic={detailRarity == "epic"} class:legendary={detailRarity == "legendary"} class:mythic={detailRarity == "mythic"}>{detailName}</h3>
           <p class="quiet">{detailKind}</p>
@@ -129,8 +128,6 @@
 #Grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--size-xl), 1fr)); gap: var(--space-xs); width: stretch; }
 .item { position: relative; aspect-ratio: 1; width: stretch; min-width: var(--size-touch); padding: var(--space-sm); align-items: center; justify-content: center; background: var(--well); border-radius: var(--radius-sm); }
 .item.broken .art { opacity: 0.45; }
-.ring { display: none; position: absolute; left: 0; top: 0; width: stretch; height: stretch; border: 2px solid var(--highlight); border-radius: var(--radius-sm); box-shadow: inset 0 0 10px 0 var(--highlight); }
-.item[aria-selected=true] .ring { display: block; }
 .rarity { position: absolute; left: 22%; right: 22%; bottom: var(--space-xxs); height: 3px; border-radius: var(--radius-pill); background: var(--ink-faint); }
 .uncommon .rarity { background: var(--uncommon); }
 .rare .rarity { background: var(--rare); }

@@ -83,6 +83,11 @@
         <div id="SlotItem" class="slot" role="listitem" aria-label={t("sheet.slot.item")}><icon icon="sword"></icon></div>
         <div id="SlotStack" class="slot" role="listitem" aria-label={t("sheet.slot.stack")}><icon icon="potion"></icon><badge class="count" tone="neutral">12</badge></div>
         <div id="SlotLocked" class="slot locked" role="listitem" aria-label={t("sheet.slot.locked")}><icon icon="lock"></icon></div>
+        <div id="SlotUncommon" class="slot" part="Slot.frame[rarity=uncommon]" role="listitem" aria-label={t("sheet.slot.uncommon")}><icon icon="shield"></icon></div>
+        <div id="SlotRare" class="slot" part="Slot.frame[rarity=rare]" role="listitem" aria-label={t("sheet.slot.rare")}><icon icon="sword"></icon></div>
+        <div id="SlotEpic" class="slot" part="Slot.frame[rarity=epic]" role="listitem" aria-label={t("sheet.slot.epic")}><icon icon="gem"></icon></div>
+        <div id="SlotLegendary" class="slot" part="Slot.frame[rarity=legendary]" role="listitem" aria-label={t("sheet.slot.legendary")}><icon icon="crown"></icon></div>
+        <div id="SlotMythic" class="slot" part="Slot.frame[rarity=mythic]" role="listitem" aria-label={t("sheet.slot.mythic")}><icon icon="star"></icon></div>
       </div>
     </section>
     </div>

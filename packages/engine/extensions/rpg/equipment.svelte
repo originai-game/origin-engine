@@ -1,6 +1,6 @@
 <meta name="component" content="RpgEquipment">
 <meta name="strings" content="./rpg.en.ogt">
-<meta name="parts" content="Equipment.slot Equipment.portrait Equipment.frame">
+<meta name="parts" content="Equipment.rarity Equipment.portrait Equipment.frame">
 <meta name="prop:name" content="string" data-doc="The character's name.">
 <meta name="prop:subtitle" content="string" data-doc="The line under it (Level 7 Fighter · Human).">
 <meta name="prop:portrait" content="number" data-doc="A texture for the portrait (og.load.texture); 0 draws the person icon.">
@@ -21,10 +21,9 @@
   <div id="Doll">
     <div id="Slots" class="column" role="list">
       {#each slots as s (s.id)}
-        <button id="Slot" part="Equipment.slot" class="slot" class:empty={s.empty} class:uncommon={s.rarity == "uncommon"} class:rare={s.rarity == "rare"} class:epic={s.rarity == "epic"} class:legendary={s.rarity == "legendary"} class:mythic={s.rarity == "mythic"} role="listitem" aria-selected={s.id == selected} aria-label={s.empty ? s.label : s.label + ": " + s.name} disabled={s.locked} onclick={choose}>
+        <button id="Slot" part="Slot.frame[rarity={s.empty ? 'common' : s.rarity}]" class="slot" class:empty={s.empty} class:uncommon={s.rarity == "uncommon"} class:rare={s.rarity == "rare"} class:epic={s.rarity == "epic"} class:legendary={s.rarity == "legendary"} class:mythic={s.rarity == "mythic"} role="listitem" aria-selected={s.id == selected} aria-label={s.empty ? s.label : s.label + ": " + s.name} disabled={s.locked} onclick={choose}>
           <icon class="art" icon={s.icon} hidden={s.empty}></icon>
-          <div class="ring"></div>
-          <div class="rarity" hidden={s.empty || s.rarity == "common"}></div>
+          <div class="rarity" part="Equipment.rarity" hidden={s.empty || s.rarity == "common"}></div>
           <span class="hint" hidden={!s.empty}>{s.label}</span>
         </button>
       {/each}
@@ -59,8 +58,6 @@
 .slot { width: var(--size-xl); height: var(--size-xl); padding: var(--space-xs); align-items: center; justify-content: center; background: var(--well); border-radius: var(--radius-sm); }
 .slot { position: relative; }
 .slot.empty { opacity: 0.8; }
-.ring { display: none; position: absolute; left: 0; top: 0; width: stretch; height: stretch; border: 2px solid var(--highlight); border-radius: var(--radius-sm); box-shadow: inset 0 0 10px 0 var(--highlight); }
-.slot[aria-selected=true] .ring { display: block; }
 .rarity { position: absolute; left: 22%; right: 22%; bottom: var(--space-xxs); height: 3px; border-radius: var(--radius-pill); }
 .uncommon .rarity { background: var(--uncommon); }
 .rare .rarity { background: var(--rare); }
