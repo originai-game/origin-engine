@@ -18,8 +18,8 @@
 #                                           2.31, from macOS or Linux; on a Linux
 #                                           x86_64 host that is the only native
 #                                           build); always release
-#   OG_GATE=1 sh scripts/build.sh --native  the dev addon and og only (the gate's
-#                                           ui-styles step, which runs og test)
+#   OG_GATE=1 sh scripts/build.sh --native  the gate's dev addon and og only (its
+#                                           fixtures step, which runs og test)
 #   OG_RELEASE=1 sh scripts/build.sh --native [--linux-x64]
 #                                           the native addon and og only, no wasm:
 #                                           what a platform's job of the release
@@ -29,12 +29,13 @@
 #
 # Three modes (AGENTS.md §Build and gate discipline, docs/ci.md):
 # - OG_GATE=1 (scripts/check.sh's bun-test): the addon and og are the dev
-#   profile the test step already built, the wasm is what the gate's
-#   wasm-build and wasm-bindgen steps left in $OG_WASM_OUT (default
-#   <target>/og-wasm).
+#   profile the gate's rust-build step already built, copied without running
+#   cargo; the wasm is what the gate's wasm-build and wasm-bindgen steps left
+#   in $OG_WASM_OUT (default <target>/og-wasm).
 # - Standalone, when the gate has run here (<target>/og-wasm/dev-all.txt and
-#   the dev addon and og exist) and OG_RELEASE is not 1: exactly the OG_GATE=1
-#   mode, announced in one line.
+#   the dev addon and og exist) and OG_RELEASE is not 1: the OG_GATE=1 mode,
+#   announced in one line, after a cargo build brings the dev addon and og up
+#   to date.
 # - Otherwise, OG_RELEASE=1 or --linux-x64: release addon and og and the wasm
 #   compiled here, holding the gate lock (scripts/lock.sh) so it never
 #   compiles beside a running gate.
@@ -63,6 +64,8 @@ if [ "$native_only" = 1 ] && [ "${OG_RELEASE:-}" != 1 ] && [ "${OG_GATE:-}" != 1
   echo "build.sh: --native is a release build (OG_RELEASE=1 sh scripts/build.sh --native), or the gate's dev addon and og (OG_GATE=1)" >&2
   exit 2
 fi
+gate_built=0
+[ "${OG_GATE:-}" != 1 ] || gate_built=1
 if [ "${OG_GATE:-}" != 1 ] && [ "${OG_RELEASE:-}" != 1 ] && [ "$linux_x64" != 1 ] \
     && [ -s "$gate_wasm/dev-all.txt" ] && [ -f "$target/debug/og$exe" ] \
     && { [ -f "$target/debug/libog_host_node.dylib" ] || [ -f "$target/debug/libog_host_node.so" ] || [ -f "$target/debug/og_host_node.dll" ]; }; then
@@ -81,7 +84,12 @@ platform="$(node -p 'process.platform + "-" + process.arch' 2>/dev/null || bun -
 host_build=1
 [ "$linux_x64" = 1 ] && [ "$platform" = linux-x64 ] && [ "${OG_GATE:-}" != 1 ] && host_build=0
 if [ "${OG_GATE:-}" = 1 ]; then
-  cargo build -q -p og-host-node -p og-cli
+  # Under the gate, rust-build (scripts/gate/native.py) built the dev addon
+  # and og before any step that runs this one: a cargo build here re-linked
+  # target/debug/og while other steps ran it. Standalone, the same command
+  # brings them up to date, compiling only what changed since the gate.
+  [ "$gate_built" = 1 ] || cargo build -q -p og-host-node -p og-cli
+  [ -f "$target/debug/og$exe" ] || { echo "build.sh: no dev og in $target/debug: the gate's rust-build (scripts/check.sh) builds it" >&2; exit 1; }
   bindir="$target/debug"
   profile=dev
 else

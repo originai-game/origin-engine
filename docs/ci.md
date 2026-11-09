@@ -245,8 +245,7 @@ test -- --test-threads=1` when running them directly. Filters use
 `package(..) & test(/^module::/)`.
 
 The test build (`--workspace`) and the gate's dev `og` and addon (`cargo
-build -p og-host-node -p og-cli`, `packages/engine/scripts/build.sh`)
-share every library build. Cargo resolves features per command, so a
+build -p og-host-node -p og-cli`, in `rust-build`) share every library build. Cargo resolves features per command, so a
 feature that turns on in only one graph gives that crate and every crate
 above it a second build. Two are aligned on purpose:
 
@@ -267,7 +266,7 @@ split, and the lowest such crate is its cause.
 |---|---|---|
 | `fmt` | `cargo fmt --all --check` | quick, full |
 | `clippy` | `cargo clippy --workspace --all-targets -- -D warnings` | quick, full |
-| `rust-build` | nextest builds and lists native test binaries; quick excludes og-tests. | quick, full |
+| `rust-build` | nextest builds and lists native test binaries; quick excludes og-tests. Then `cargo build -p og-host-node -p og-cli`, the dev addon and `og` every later step uses: `packages/engine/scripts/build.sh` under the gate copies them and runs no cargo, since every cargo build re-links `target/debug/og`. | quick, full |
 | `rust-cpu`, `rust-gpu` | nextest executes the discovered tests with separate reports and bounded workers. | quick, full |
 | `doc-tests` | `cargo test --workspace --doc` | full |
 | `drift` | The dev `og api check` checks generated declarations, wiki, schema and Rust glue against the IDL. | quick, full |
@@ -540,8 +539,8 @@ single-threaded.
 Standalone (`bun run build`, `bun run test` in `packages/engine`),
 build.sh does what it does under the gate whenever the gate has built in
 this target directory (`<target>/og-wasm/dev-all.txt` and the dev addon
-and `og` exist): the dev addon and `og`, the gate's wasm, and one line
-saying so. It compiles release and its own wasm only with `OG_RELEASE=1`,
+and `og` exist): the dev addon and `og` (brought up to date by the same
+`cargo build` as `rust-build`'s), the gate's wasm, and one line saying so. It compiles release and its own wasm only with `OG_RELEASE=1`,
 with `--linux-x64`, or when the gate has not built here; a release build
 holds the gate lock. `OG_RELEASE=1` calls `scripts/release-wasm.sh`, including
 the shipping-size check before packing. The publish and lanes modules it

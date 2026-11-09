@@ -76,8 +76,9 @@ python3 scripts/vfx-pack.py preview <pack> [--cover <effect.ogt>] [--only <a.ogt
 
 The spec names the provenance of each file by glob and each effect's
 title, category, element and keywords (the script's docstring has its
-shape). `preview` needs the native addon (`OG_GATE=1 sh
-packages/engine/scripts/build.sh --native`) and takes its GPU locks itself
+shape). `preview` needs the native addon the gate builds
+(`OG_GATE=1 sh packages/engine/scripts/build.sh --native` copies it after
+`scripts/check.sh`) and takes its GPU locks itself
 (scripts/lock.sh), each for one `og run`, so run it without a lock of your
 own. It installs the pack into a scratch game, then:
 

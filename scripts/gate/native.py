@@ -17,6 +17,12 @@ def build():
         command += ['--exclude', 'og-tests']
     with (LOGS / 'binaries.json').open('w') as out:
         subprocess.run(command, stdout=out, check=True)
+    # The dev addon and og every later step uses (packages/engine/scripts/
+    # build.sh copies them, drift and fixtures run target/debug/og), built
+    # here once: features match the test build (docs/ci.md §Tests), so only
+    # the addon compiles. Each cargo build re-links target/debug/og, so no
+    # step after this one runs cargo for them.
+    subprocess.run(['cargo', 'build', '--locked', '-q', '-p', 'og-host-node', '-p', 'og-cli'], check=True)
     listing = json.loads((LOGS / 'binaries.json').read_text())
     binaries = listing['rust-binaries']
     meta = listing['rust-build-meta']
