@@ -1,6 +1,6 @@
 import { og, defineComponent, defineResource, defineSystem, f32, u32 } from "@origingame/engine";
 
-const Tuning = defineComponent("Tuning", { speedMax: f32(8, { min: 4, max: 20 }) });
+const Tuning = defineComponent("Tuning", { speedMax: f32(8, { min: 4, max: 20, tunable: true }) });
 const Store = defineResource("Store", { request: u32(), best: u32() });
 const Read = defineSystem("Read", { writes: [Store] }, (_q, time, world) => {
   const state = world.resource(Store);
