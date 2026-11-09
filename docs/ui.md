@@ -2739,6 +2739,11 @@ for the applicable cases below. An inapplicable case needs a reason.
 | Accessibility and localization | 100% and 150% text; pseudo-locale +40%, CJK, RTL; semantic names, roles, states, focus order, and safe areas |
 | Motion | Start, midpoint, completion, interruption, and reduced motion; a short clip as well as stills |
 
+A kit's sheet loads its strings in the review's CJK and right-to-left
+locales from its own `assets/strings/`, as a game does, and `og ui
+review` installs those locales' font packs into its copy of the sheet.
+A sheet without them repeats the game locale in those cells.
+
 Core tests use small self-contained styles for core behaviour, including
 specificity, font pixel snapping, and probe paths. Pack tests check pack
 art and resources. Removing a pack cannot remove core regression coverage.

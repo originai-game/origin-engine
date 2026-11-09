@@ -35,12 +35,27 @@ fn with<T>(engine: u32, f: impl FnOnce(&mut State) -> T) -> T {
     STATES.with(|s| f(s.borrow_mut().entry(engine).or_default()))
 }
 
+/// Adds a document's or a dialogue's authored strings to the base table.
+/// The base table can take over from a loaded translation (a game that
+/// loaded its `ar` table before its first document, with no locale asked
+/// for, had `ar` active until the documents' English base arrived), so the
+/// UI then takes the active locale's fonts and direction again. Without a
+/// table before, nothing was applied and nothing is.
 pub(crate) fn base_strings(
-    engine: u32,
+    eng: &Engine,
     locale: &str,
     strings: &BTreeMap<String, String>,
 ) -> Result<(), String> {
-    with(engine, |s| s.catalog.extend_base(locale, strings))
+    let active = |s: &mut State| s.catalog.active().map(|t| t.locale.clone());
+    let moved = with(eng.id, |s| -> Result<bool, String> {
+        let before = active(s);
+        s.catalog.extend_base(locale, strings)?;
+        Ok(before.is_some() && active(s) != before)
+    })?;
+    if moved {
+        apply(eng)?;
+    }
+    Ok(())
 }
 
 fn info(engine: u32) -> Value {

@@ -1,0 +1,12 @@
+{
+  "fixed": [
+    {
+      "member": "og.i18n",
+      "summary": "A document's or a dialogue's base strings that take over the active table from a translation loaded before them (a game that loaded `strings/ar.ogt` before its first document, with no locale asked for) now give the UI the base table's fonts and direction; before, the UI kept the translation's right-to-left direction and fonts over English text."
+    },
+    {
+      "member": "og ui review",
+      "summary": "Installs the font packs of the locales the kit's sheet has strings for and those `--locales` names into its copy of the sheet, as `og create --lang` does, so CJK and Arabic cells draw their text. The shooter sheet now loads the kit's strings in Japanese, Simplified Chinese and Arabic."
+    }
+  ]
+}

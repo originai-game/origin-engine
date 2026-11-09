@@ -50,6 +50,58 @@ fn pages(screens: &[(String, String)]) -> (Vec<(String, String)>, Vec<String>) {
     (pages, styles)
 }
 
+/// The font packs of the locales the sheet has strings for and those
+/// `--locales` names, installed into the sheet as `og create --lang`
+/// installs a game's (docs/ui.md §3.4): without them a Japanese or Arabic
+/// cell draws its translated labels in no face at all.
+fn install_font_packs(root: &Path, demo: &Path, forward: &[String]) -> Result<(), String> {
+    let mut locales: Vec<String> = std::fs::read_dir(demo.join("assets/strings"))
+        .into_iter()
+        .flatten()
+        .filter_map(|e| {
+            let name = e.ok()?.file_name().into_string().ok()?;
+            name.strip_suffix(".ogt").map(str::to_owned)
+        })
+        .collect();
+    if let Some(i) = forward.iter().position(|a| a == "--locales") {
+        locales.extend(forward[i + 1].split(',').map(str::trim).map(str::to_owned));
+    }
+    let packs: Vec<_> = extensions::discover(root)?
+        .into_iter()
+        .filter(|e| e.manifest.kind == "font")
+        .collect();
+    let tags: Vec<String> = packs
+        .iter()
+        .flat_map(|p| p.manifest.languages.clone().unwrap_or_default())
+        .collect();
+    let mut chosen: Vec<&extensions::Extension> = Vec::new();
+    for locale in locales
+        .iter()
+        .filter(|l| !matches!(l.as_str(), "" | "game" | "pseudo"))
+    {
+        let Some(tag) = og_i18n::negotiate(&[locale.as_str()], &tags) else {
+            continue;
+        };
+        if let Some(pack) = packs.iter().find(|p| {
+            p.manifest
+                .languages
+                .as_deref()
+                .unwrap_or_default()
+                .iter()
+                .any(|l| l == tag)
+        }) && !chosen.iter().any(|c| c.manifest.name == pack.manifest.name)
+        {
+            chosen.push(pack);
+        }
+    }
+    for pack in chosen {
+        if !demo.join("assets/fonts").join(&pack.manifest.name).exists() {
+            extensions::install(pack, demo)?;
+        }
+    }
+    Ok(())
+}
+
 fn review(args: &[&str]) -> Result<ExitCode, String> {
     let Some((&name, rest)) = args.split_first().filter(|(n, _)| !n.starts_with('-')) else {
         return Err(USAGE.into());
@@ -124,6 +176,7 @@ fn review(args: &[&str]) -> Result<ExitCode, String> {
         ));
     }
     extensions::install(kit, &demo)?;
+    install_font_packs(root, &demo, &forward)?;
     let (pages, worn) = pages(&screens);
     let styles = if styles.is_empty() { worn } else { styles };
     let p = Project::open(&demo)?;

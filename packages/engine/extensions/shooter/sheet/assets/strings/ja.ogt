@@ -1,0 +1,24 @@
+type strings
+version 1
+---
+# The shooter kit's strings in Japanese, as a game ships them, so the
+# review's CJK cells (og ui review --locales …,ja) show them.
+locale "ja"
+string "shooter.crosshair.name" "照準"
+string "shooter.ammo.name" "弾薬"
+string "shooter.ammo.value" "{magazine}/{capacity}、予備 {reserve}"
+string "shooter.ammo.auto" "フルオート"
+string "shooter.ammo.burst" "バースト"
+string "shooter.ammo.single" "単発"
+string "shooter.ammo.reloading" "リロード中"
+string "shooter.ammo.empty" "リロード"
+string "shooter.damage.name" "被弾方向"
+string "shooter.killfeed.name" "キルログ"
+string "shooter.killfeed.headshot" "ヘッドショット"
+string "shooter.killfeed.row" "{killer} が {weapon} で {victim} を倒した"
+string "shooter.loadout.equipped" "装備中"
+string "shooter.loadout.locked" "ロック中"
+string "shooter.loadout.equip" "装備"
+string "shooter.loadout.back" "戻る"
+string "shooter.loadout.empty" "アイテムなし"
+string "shooter.hud.health" "体力"

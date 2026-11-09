@@ -1,0 +1,24 @@
+type strings
+version 1
+---
+# The shooter kit's strings in Simplified Chinese, as a game ships them, so
+# the review's CJK cells (og ui review's default) show them.
+locale "zh-CN"
+string "shooter.crosshair.name" "准星"
+string "shooter.ammo.name" "弹药"
+string "shooter.ammo.value" "{magazine}/{capacity}，备弹 {reserve}"
+string "shooter.ammo.auto" "全自动"
+string "shooter.ammo.burst" "点射"
+string "shooter.ammo.single" "单发"
+string "shooter.ammo.reloading" "换弹中"
+string "shooter.ammo.empty" "换弹"
+string "shooter.damage.name" "受击方向"
+string "shooter.killfeed.name" "击杀信息"
+string "shooter.killfeed.headshot" "爆头"
+string "shooter.killfeed.row" "{killer} 使用 {weapon} 击败了 {victim}"
+string "shooter.loadout.equipped" "已装备"
+string "shooter.loadout.locked" "未解锁"
+string "shooter.loadout.equip" "装备"
+string "shooter.loadout.back" "返回"
+string "shooter.loadout.empty" "没有物品"
+string "shooter.hud.health" "生命值"

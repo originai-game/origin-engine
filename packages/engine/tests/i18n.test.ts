@@ -5,13 +5,14 @@
 // base, a key no table has answers itself with one warning, and the active
 // locale sets the UI's font chain and direction (Arabic: right to left).
 import { expect, test } from "bun:test";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { og } from "@origingame/engine";
 import { loadNativeHost } from "../src/node/index.ts";
 import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
-import { ogBin } from "./support/og-bin.ts";
+import { cookProject, ogBin } from "./support/og-bin.ts";
 
 declare const Bun: { spawnSync(cmd: string[]): { exitCode: number; stderr: Uint8Array } };
 
@@ -123,4 +124,51 @@ test("og.i18n: format functions follow the active locale, else the requested one
   // English translations are loaded, but must not erase pseudo formatting.
   expect(og.i18n.formatNumber(w, 1234.5, {})).toBe("[1,234.5~~~]");
   expect(og.i18n.formatDuration(w, 125)).toBe("[2:05~~]");
+});
+
+test("og.i18n: a document's English base takes over from a translation loaded before it, and the UI's direction follows", () => {
+  // A game that loads its Arabic table before its documents, with no locale
+  // asked for: Arabic is active (the only table) until the documents' English
+  // strings arrive as the base, which then is. Wrong: the UI kept the
+  // Arabic table's right-to-left direction (and fonts) over English text.
+  const root = mkdtempSync(join(tmpdir(), "og-i18n-base-"));
+  try {
+    mkdirSync(join(root, "assets/ui"), { recursive: true });
+    mkdirSync(join(root, "assets/strings"), { recursive: true });
+    writeFileSync(join(root, "project.ogt"), 'type project\nversion 1\n---\nname "Base"\nid "base"\nentry "main.ts"\n');
+    writeFileSync(join(root, "main.ts"), 'import { og } from "@origingame/engine"; export default og.game({});\n');
+    writeFileSync(join(root, "assets/ui/card.svelte"), '<meta name="component" content="Card">\n<meta name="strings" content="./card.en.ogt">\n<div id="Row"><span id="A">{t("card.title")}</span><span id="B">b</span></div>\n<style>#Row { display: flex; width: stretch; }</style>\n');
+    writeFileSync(join(root, "assets/ui/card.en.ogt"), 'type strings\nversion 1\n---\nlocale "en"\nstring "card.title" "Title"\n');
+    writeFileSync(join(root, "assets/strings/ar.ogt"), 'type strings\nversion 1\n---\nlocale "ar"\nstring "card.title" "العنوان"\n');
+    cookProject(root, root);
+    const seen: string[] = [];
+    const run = (locale?: string) => {
+      const r = createEngine(og.game({
+        start(world) {
+          const ar = og.i18n.load(world, "strings/ar.ogt");
+          if (!ar.ok) throw new Error(ar.reason);
+          const doc = og.load.document(world, "ui/card.svelte");
+          if (!doc.ok) throw new Error(doc.reason);
+          const info = og.i18n.locale(world) as unknown as Info;
+          seen.push(`${info.active} ${info.direction} ${og.i18n.t(world, "card.title")}`);
+        },
+        ui(world) {
+          const mounted = og.ui.scope(world, "t").mount("card", "Card", {});
+          if (!mounted.ok) throw new Error(mounted.reason);
+        },
+      }) as GameToken, { root, ...(locale ? { locale } : {}) });
+      if (!r.ok) throw new Error(r.reason);
+      r.value.advance(3);
+      // The row runs from the right under a right-to-left UI.
+      const els = (r.value.probe.dump({ what: "ui" }) as unknown as { elements: { path: string; x: number }[] }).elements;
+      const x = (id: string) => els.find((e) => e.path.endsWith(`/${id}`))!.x;
+      seen.push(x("A") < x("B") ? "ltr" : "rtl");
+      r.value.destroy();
+    };
+    run();
+    run("ar-EG");
+    expect(seen).toEqual(["en ltr Title", "ltr", "ar rtl العنوان", "rtl"]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });

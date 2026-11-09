@@ -54,6 +54,12 @@ export default og.game({
     const camera = world.resource(og.Camera);
     if (camera.ok) camera.value.background = { r: 0.05, g: 0.06, b: 0.08 };
     setStyle(world, "clean");
+    // The kit's strings in the review's CJK and right-to-left locales, as a
+    // game ships them (English comes with the kit).
+    for (const locale of ["ja", "zh-CN", "ar"]) {
+      const loaded = og.i18n.load(world, `strings/${locale}.ogt`);
+      if (!loaded.ok) throw new Error(loaded.reason);
+    }
     for (const path of DOCUMENTS) {
       const loaded = og.load.document(world, path);
       if (!loaded.ok) throw new Error(`${path}: ${loaded.reason}`);

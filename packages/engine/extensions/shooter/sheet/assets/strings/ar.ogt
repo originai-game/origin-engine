@@ -1,0 +1,24 @@
+type strings
+version 1
+---
+# The shooter kit's strings in Arabic, as a game ships them, so the
+# review's right-to-left cells (og ui review --locales …,ar) show them.
+locale "ar"
+string "shooter.crosshair.name" "علامة التصويب"
+string "shooter.ammo.name" "الذخيرة"
+string "shooter.ammo.value" "{magazine} من {capacity}، و{reserve} في الاحتياط"
+string "shooter.ammo.auto" "تلقائي"
+string "shooter.ammo.burst" "رشقة"
+string "shooter.ammo.single" "طلقة مفردة"
+string "shooter.ammo.reloading" "جارٍ إعادة التلقيم"
+string "shooter.ammo.empty" "أعد التلقيم"
+string "shooter.damage.name" "اتجاه الضرر"
+string "shooter.killfeed.name" "عمليات الإقصاء"
+string "shooter.killfeed.headshot" "طلقة في الرأس"
+string "shooter.killfeed.row" "أقصى {killer} {victim} بسلاح {weapon}"
+string "shooter.loadout.equipped" "مُجهَّز"
+string "shooter.loadout.locked" "مقفل"
+string "shooter.loadout.equip" "تجهيز"
+string "shooter.loadout.back" "رجوع"
+string "shooter.loadout.empty" "لا توجد عناصر"
+string "shooter.hud.health" "الصحة"

@@ -166,7 +166,7 @@ fn read_document(eng: &Engine, id: &str) -> Result<UiDocument, String> {
             .into_iter()
             .map(|(key, (text, _))| (key, text))
             .collect();
-        super::super::i18n::base_strings(eng.id, &table.locale, &strings)?;
+        super::super::i18n::base_strings(eng, &table.locale, &strings)?;
     }
     Ok(doc)
 }
