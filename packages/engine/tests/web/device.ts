@@ -69,7 +69,6 @@ interface Stats {
 }
 interface DeviceReport {
   target: string;
-  scores: { firstFrame: number; frameTime: number };
   findings: Array<{ measure: string; detail: string; fix: string }>;
   fps: number;
   measured: {
@@ -102,7 +101,7 @@ for (const [name, extra, tiers] of [
   if (!existsSync(json)) continue;
   const d = JSON.parse(readFileSync(json, "utf8")) as DeviceReport;
   const m = d.measured;
-  results[name] = { tier: m.tier, firstFrameMs: m.firstFrameMs, interval: m.interval, work: m.work, fps: d.fps, scores: d.scores, findings: d.findings.map((f) => f.measure) };
+  results[name] = { tier: m.tier, firstFrameMs: m.firstFrameMs, interval: m.interval, work: m.work, fps: d.fps, findings: d.findings.map((f) => f.measure) };
   check(m.firstFrameMs > 0 && m.startMs >= m.firstFrameMs, `${name}: first frame after navigation, play after it`, { firstFrameMs: m.firstFrameMs, startMs: m.startMs });
   check((tiers as readonly string[]).includes(m.tier), `${name}: tier ${m.tier}`, tiers);
   check(ordered(m.interval) && m.interval.count === Math.min(m.frames, 4096), `${name}: display interval p50 ≤ p95 ≤ p99 ≤ max, all > 0`, m.interval);
@@ -112,14 +111,14 @@ for (const [name, extra, tiers] of [
   check(/Chrome\//.test(dev.userAgent) && dev.dpr > 0 && dev.viewport.width > 0 && dev.viewport.height > 0 && (dev.hardwareConcurrency ?? 0) > 0, `${name}: device info (user agent, DPR, viewport, cores)`, dev);
   check(dev.crossOriginIsolated && dev.isSecureContext, `${name}: the page is cross-origin isolated in a secure context`, dev);
   const page = d.served["/"] ?? {};
-  // The engine module the page loaded: the lanes module where it was cross-origin isolated, the single-threaded one elsewhere.
-  const wasm = Object.entries(d.served).find(([p]) => /^\/origin-engine(-lanes)?_bg\.wasm$/.test(p))?.[1] ?? {};
+  // The engine module the page loaded, by its content-hashed name: the lanes module where it was cross-origin isolated, the single-threaded one elsewhere.
+  const wasm = Object.entries(d.served).find(([p]) => /^\/origin-engine(-lanes)?_bg\.[0-9a-f]{12}\.wasm$/.test(p))?.[1] ?? {};
   check(
     page["cross-origin-opener-policy"] === "same-origin" && page["cross-origin-embedder-policy"] === "require-corp" && wasm["cross-origin-embedder-policy"] === "require-corp",
     `${name}: COOP/COEP served on the page and the wasm`,
     d.served,
   );
-  check(typeof d.scores.firstFrame === "number" && typeof d.scores.frameTime === "number" && d.findings.every((f) => f.fix.length > 0), `${name}: scores and a fix per finding`, d);
+  check(d.findings.every((f) => f.fix.length > 0), `${name}: a fix per finding`, d.findings);
 }
 
 // A missing prerequisite: one line naming the fix, exit 1.
