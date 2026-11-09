@@ -64,6 +64,40 @@ fn ui_eject_takes_the_installed_kit_document_and_only_its_companions() {
     std::fs::remove_dir_all(source).unwrap();
 }
 
+/// `og ui add shooter` installs the shipped kit's documents and nothing of
+/// its review sheet or behaviour tests (docs/ui.md §6), and the game cooks.
+///
+/// Ways it could fail: `sheet/` installed (the game cooks the sheet's sample
+/// art and a nested project), `tests/` installed (kit tests shipped in a
+/// game), or a document left out.
+#[test]
+fn ui_add_installs_a_kit_without_its_sheet_or_tests() {
+    let dir = scratch_root();
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    std::fs::write(dir.join("src/main.ts"), "export default 0;\n").unwrap();
+    std::fs::write(
+        dir.join("project.ogt"),
+        "type project\nversion 1\n---\nname \"T\"\nentry \"src/main.ts\"\n",
+    )
+    .unwrap();
+    let out = og()
+        .args(["ui", "add", "shooter"])
+        .arg(&dir)
+        .output()
+        .unwrap();
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out));
+    let installed = dir.join("assets/ui-kits/shooter");
+    assert!(installed.join("combat-hud.svelte").is_file());
+    for review in ["sheet", "tests"] {
+        assert!(
+            !installed.join(review).exists(),
+            "{review}/ was installed into the game"
+        );
+    }
+    let out = og().arg("cook").arg(&dir).output().unwrap();
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out));
+}
+
 /// `og ui add materials` installs the material presets (each a `type
 /// ui-material` naming its WGSL beside it), and the game cooks every one:
 /// the source is read relative to the material file, as a kit's relative

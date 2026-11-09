@@ -61,6 +61,20 @@ pub struct VfxTags {
 /// never installed into a game.
 const PREVIEW_DIR: &str = "preview";
 
+/// A kit's review sheet and behaviour tests (docs/ui.md §6): stored with the
+/// kit, never installed into a game, so no game cooks the sheet's sample
+/// art or a second project beside its own.
+const KIT_REVIEW_DIRS: [&str; 2] = ["sheet", "tests"];
+
+/// Whether `file` (relative to the package) goes into a game on install.
+fn installs(kind: &str, file: &Path) -> bool {
+    match kind {
+        "vfx" => !file.starts_with(PREVIEW_DIR),
+        "kit" => !KIT_REVIEW_DIRS.iter().any(|d| file.starts_with(d)),
+        _ => true,
+    }
+}
+
 fn semver(v: &str) -> bool {
     v.split('.').count() == 3
         && v.split('.')
@@ -295,7 +309,7 @@ pub(super) fn install(extension: &Extension, project: &Path) -> Result<PathBuf, 
     }
     let all: Vec<PathBuf> = files(&extension.directory)?
         .into_iter()
-        .filter(|f| extension.manifest.kind != "vfx" || !f.starts_with(PREVIEW_DIR))
+        .filter(|f| installs(&extension.manifest.kind, f))
         .collect();
     std::fs::create_dir_all(target.parent().unwrap()).map_err(|e| e.to_string())?;
     // Stage next to the destination: a failed copy cannot leave an installed half-kit.
@@ -546,13 +560,14 @@ pub fn eject(name: &str, project: &Path, force: bool) -> Result<PathBuf, String>
     }
     // Keep sibling documents/assets at the same relative paths. Existing game
     // edits of companions stay; --force replaces only the requested document.
-    // A kit's code, manifest, skill and review sheet are not a document's
-    // companions: `og ui add` installs those.
+    // A kit's code, manifest, skill, review sheet and tests are not a
+    // document's companions: `og ui add` installs the first three, and the
+    // sheet and tests stay with the kit.
     let skill = extension.manifest.skill.as_deref().map(Path::new);
     let skill_dir = skill.and_then(Path::parent);
     for companion in files(&extension.directory)? {
         let kit_only = companion == Path::new("extension.json")
-            || companion.starts_with("sheet")
+            || KIT_REVIEW_DIRS.iter().any(|d| companion.starts_with(d))
             || companion.extension().is_some_and(|e| e == "ts")
             || skill_dir.is_some_and(|d| !d.as_os_str().is_empty() && companion.starts_with(d))
             || skill == Some(companion.as_path());

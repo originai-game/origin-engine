@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og ui add",
+      "summary": "Installing a kit no longer copies its review `sheet/` or its `tests/` into the game, so a game no longer cooks the sheet's sample art and nested project. The sheet and tests stay with the kit, as a vfx pack's `preview/` does."
+    }
+  ]
+}
