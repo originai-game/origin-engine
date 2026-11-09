@@ -152,15 +152,15 @@ route beat {
   point 6 0 2
 }
 tree {
-  selector {
-    sequence attack {
+  ReactiveFallback {
+    ReactiveSequence attack {
       check sees
       check targetDistance below 1.2
       command bite {
         cooldown 1
       }
     }
-    sequence chase {
+    ReactiveSequence chase {
       check sees
       chase {
         speed Pace.chase
@@ -466,7 +466,7 @@ version 1
 ---
 name "reloader"
 tree {
-  sequence {
+  ReactiveSequence {
     action reload 2 fast
     set reloaded true
   }
