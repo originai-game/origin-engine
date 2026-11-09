@@ -250,6 +250,8 @@
 <style>
 #Page { width: stretch; height: stretch; background: var(--backdrop); }
 #StyleSheet, #FieldSheet, #SurfaceSheet, #OverlaySheet { width: stretch; height: stretch; padding: var(--space-xl); }
+/* Headings in the pack's display face (the generic family picks the role). */
+#Display, #Heading { font-family: fantasy; }
 #Matrix { display: grid; width: stretch; gap: var(--space-sm); }
 .line { display: grid; grid-template-columns: 7rem repeat(7, minmax(0, 1fr)); gap: var(--space-md); align-items: center; width: stretch; }
 .label, .state { font: var(--text-caption); color: var(--ink-muted); margin: 0; }

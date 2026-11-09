@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og ui sheet <pack>",
+      "summary": "The core-control state sheet draws in the pack's own fonts and icons (it kept the sheet's default font over them) and sets its display and heading samples in the pack's display face."
+    }
+  ]
+}
