@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og ui sheet",
+      "summary": "Desktop cells are captured at 1920×1080 (desktopHd), the frame size docs/ui.md §6.2 sets for kit and pack references; they were 1280×720."
+    }
+  ]
+}

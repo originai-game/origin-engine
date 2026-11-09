@@ -80,7 +80,7 @@ fn sheet(args: &[&str]) -> Result<(), String> {
         let bundle = project::bundle_native(&p, &package)?;
         let mut forward = vec![
             "--breakpoints",
-            "desktop,phonePortrait",
+            "desktopHd,phonePortrait",
             "--scales",
             "100,150",
             "--locales",
