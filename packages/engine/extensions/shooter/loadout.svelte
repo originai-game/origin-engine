@@ -1,21 +1,21 @@
 <meta name="component" content="Loadout">
 <meta name="strings" content="./shooter.en.ogt">
-<meta name="prop:title" content="string" data-doc="The page's heading (Loadout).">
-<meta name="prop:categories" content="list" data-doc="The slot groups in order, a keyed collection of { id, label } (primary, secondary, melee, utility).">
+<meta name="prop:title" content="string" data-doc="The page's heading; empty takes the kit's (shooter.loadout.title, Loadout).">
+<meta name="prop:categories" content="list" data-doc="The slot groups in order, a keyed collection of { id, label }: an empty label takes the kit's string for the id (shooter.loadout.category.<id>), which has primary, secondary, melee and utility.">
 <meta name="prop:slots" content="list" data-doc="What can be carried, a keyed collection of { id, category, name, icon, detail, equipped, locked, cost }: category a category's id; icon an icon of the style's atlas; detail a short line under the name (ammunition, damage); equipped it is carried now; locked it cannot be chosen yet (shown with its cost); cost text, empty for none.">
 <meta name="prop:selected" content="string" data-doc="The slot id selected now (empty: none).">
 <meta name="action:details" content="Equip">
 <meta name="action:back" content="Back">
 <meta name="parts" content="Loadout.item Loadout.category Loadout.detail Loadout.price">
-<meta name="fixture:default" content='{"title":"Loadout","selected":"strider","categories":[{"id":"primary","label":"Primary"},{"id":"secondary","label":"Secondary"},{"id":"melee","label":"Melee"}],"slots":[{"id":"strider","category":"primary","name":"Strider AR","icon":"sword","detail":"25 / 75","equipped":true,"locked":false,"cost":"2,900"},{"id":"halcyon","category":"primary","name":"Halcyon","icon":"sword","detail":"30 / 90","equipped":false,"locked":false,"cost":"2,900"},{"id":"pike","category":"primary","name":"Pike .50","icon":"sword","detail":"5 / 10","equipped":false,"locked":true,"cost":"4,700"},{"id":"wren","category":"secondary","name":"Wren Pistol","icon":"bolt","detail":"15 / 45","equipped":true,"locked":false,"cost":"500"},{"id":"knife","category":"melee","name":"Field Knife","icon":"sword","detail":"","equipped":true,"locked":false,"cost":""}]}'>
-<meta name="fixture:empty" content='{"title":"Loadout","selected":"","categories":[{"id":"primary","label":"Primary"}],"slots":[]}'>
+<meta name="fixture:default" content='{"title":"","selected":"strider","categories":[{"id":"primary","label":""},{"id":"secondary","label":""},{"id":"melee","label":""}],"slots":[{"id":"strider","category":"primary","name":"Strider AR","icon":"sword","detail":"25 / 75","equipped":true,"locked":false,"cost":"2,900"},{"id":"halcyon","category":"primary","name":"Halcyon","icon":"sword","detail":"30 / 90","equipped":false,"locked":false,"cost":"2,900"},{"id":"pike","category":"primary","name":"Pike .50","icon":"sword","detail":"5 / 10","equipped":false,"locked":true,"cost":"4,700"},{"id":"wren","category":"secondary","name":"Wren Pistol","icon":"bolt","detail":"15 / 45","equipped":true,"locked":false,"cost":"500"},{"id":"knife","category":"melee","name":"Field Knife","icon":"sword","detail":"","equipped":true,"locked":false,"cost":""}]}'>
+<meta name="fixture:empty" content='{"title":"","selected":"","categories":[{"id":"primary","label":""}],"slots":[]}'>
 
-<section id="Loadout" aria-label={title}>
-  <h2 id="Title">{title}</h2>
+<section id="Loadout" aria-label={title != '' ? title : t("shooter.loadout.title")}>
+  <h2 id="Title">{title != '' ? title : t("shooter.loadout.title")}</h2>
   <div id="Groups">
     {#each categories as c (c.id)}
-      <section class="group" aria-label={c.label}>
-        <h3 class="category" part="Loadout.category">{c.label}</h3>
+      <section class="group" aria-label={c.label != '' ? c.label : t("shooter.loadout.category." + c.id)}>
+        <h3 class="category" part="Loadout.category">{c.label != '' ? c.label : t("shooter.loadout.category." + c.id)}</h3>
         <div class="items">
           {#each slots as s (s.id)}
             {#if s.category == c.id}

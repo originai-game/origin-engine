@@ -32,7 +32,8 @@ const SLOTS = [
   { id: "pike", category: "primary", name: "Pike .50", icon: "sword", detail: "5 / 10", equipped: false, locked: true, cost: "4,700" },
   { id: "wren", category: "secondary", name: "Wren Pistol", icon: "bolt", detail: "15 / 45", equipped: true, locked: false, cost: "500" },
 ];
-const CATEGORIES = [{ id: "primary", label: "Primary" }, { id: "secondary", label: "Secondary" }];
+// A game's own label wins; an empty one (and the empty title) takes the kit's string.
+const CATEGORIES = [{ id: "primary", label: "Rifles" }, { id: "secondary", label: "" }];
 const FEED = ["k4", "k3", "k2", "k1"].map((id, i) => ({ id, killer: `Killer${i}`, victim: `Victim${i}`, weapon: "Halcyon", headshot: i === 0, self: i === 1, team: i % 2 ? "enemy" : "ally" }));
 
 const PAGES: Record<string, string> = {
@@ -99,7 +100,7 @@ const tap = (e: Engine, el: El): void => {
 };
 const store = (e: Engine) => og.ui.scope(e.world, "t");
 const loadout = (events: Event[] = [], selected = "halcyon", slots: unknown[] = SLOTS) =>
-  engine("loadoutTest", { title: "Loadout", categories: CATEGORIES, slots, selected }, events);
+  engine("loadoutTest", { title: "", categories: CATEGORIES, slots, selected }, events);
 const intents = (events: Event[]) => events.filter((e) => ["select", "equip", "back"].includes(e.name)).map((e) => `${e.name}:${e.rowKey}`);
 
 test("Loadout: a tap selects by row key, a locked slot sends nothing, and Equip and Back send once", () => {
@@ -107,6 +108,8 @@ test("Loadout: a tap selects by row key, a locked slot sends nothing, and Equip 
   const e = loadout(events);
   try {
     e.advance(3);
+    expect(find(e, /\/Title$/)!.text).toBe("Loadout");
+    expect(elements(e).filter((x) => x.role === "heading" && x.path.includes("/Groups/")).map((x) => x.text)).toEqual(["RIFLES", "SECONDARY"]);
     tap(e, find(e, /#strider$/)!);
     expect(intents(events)).toEqual(["select:strider"]);
     events.length = 0;

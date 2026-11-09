@@ -25,13 +25,15 @@ export const FEED = [
 ];
 
 export const LOADOUT = {
-  title: "Loadout",
+  // The heading and the category labels are the kit's own strings (empty
+  // takes them), so they translate in every locale cell.
+  title: "",
   selected: "halcyon",
   categories: [
-    { id: "primary", label: "Primary" },
-    { id: "secondary", label: "Secondary" },
-    { id: "melee", label: "Melee" },
-    { id: "utility", label: "Utility" },
+    { id: "primary", label: "" },
+    { id: "secondary", label: "" },
+    { id: "melee", label: "" },
+    { id: "utility", label: "" },
   ],
   items: [
     { id: "strider", category: "primary", name: "Strider AR", icon: "sword", detail: "25 / 75", equipped: true, locked: false, cost: "2,900" },

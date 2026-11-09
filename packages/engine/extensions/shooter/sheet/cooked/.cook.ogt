@@ -1,0 +1,249 @@
+type cook
+version 1
+---
+cooker "og-cook 0.7.7 r15"
+options {
+  font "charset latin chars \"\" em 32 range 4 page 1024 mtsdf ec kern"
+  mesh "lods 3 ratio 0.5 error 0.05 overdraw 1.05 tangents true (bitangent up the image) quantize 16/oct16/uv16/rgba8 codec meshopt-v1 flat levels by position (S6)"
+  texture "etc1s 128 uastc 1 rdo 1 zstd true mips true normal y in alpha encoder basisu 1.16 (basis-universal crate)"
+}
+asset "@styles/cjk/NotoSansSC-Bold.ttf" {
+  kind font
+  source "d3de86ea45026678"
+  bytes 2245278
+  output "@styles/cjk/NotoSansSC-Bold.ttf" {
+    type og.Font
+    file "@styles/cjk/NotoSansSC-Bold.ttf.ogb"
+    stamp "fb61440498002ece"
+    hash "fcb7e9ee89bf82ba"
+    bytes 3136948
+  }
+}
+asset "@styles/cjk/NotoSansSC-Regular.ttf" {
+  kind font
+  source "f02a2a5b33f69e93"
+  bytes 2246054
+  output "@styles/cjk/NotoSansSC-Regular.ttf" {
+    type og.Font
+    file "@styles/cjk/NotoSansSC-Regular.ttf.ogb"
+    stamp "050c62afe180d8c4"
+    hash "9e3d3cb9e0518321"
+    bytes 3084092
+  }
+}
+asset "@styles/clean/sfx-back.ogt" {
+  kind sound
+  source "ffdedd3f622c8881"
+  bytes 120
+  output "@styles/clean/sfx-back.ogt" {
+    type og.Sound
+    file "@styles/clean/sfx-back.ogt.ogb"
+    stamp "6c9432be9484af8e"
+    hash "55093ac478dd22eb"
+    bytes 2832
+  }
+}
+asset "@styles/clean/sfx-confirm.ogt" {
+  kind sound
+  source "1e855a9458f3ce90"
+  bytes 116
+  output "@styles/clean/sfx-confirm.ogt" {
+    type og.Sound
+    file "@styles/clean/sfx-confirm.ogt.ogb"
+    stamp "70b3065ddb9bac2a"
+    hash "f72a0b2668283ead"
+    bytes 3160
+  }
+}
+asset "@styles/clean/sfx-error.ogt" {
+  kind sound
+  source "fbebad06150476f9"
+  bytes 113
+  output "@styles/clean/sfx-error.ogt" {
+    type og.Sound
+    file "@styles/clean/sfx-error.ogt.ogb"
+    stamp "487bad1d1507cb4e"
+    hash "9eaaa2191372cbd9"
+    bytes 5776
+  }
+}
+asset "@styles/clean/sfx-open.ogt" {
+  kind sound
+  source "690a06ef343e7281"
+  bytes 124
+  output "@styles/clean/sfx-open.ogt" {
+    type og.Sound
+    file "@styles/clean/sfx-open.ogt.ogb"
+    stamp "182ba9b36398b31f"
+    hash "9aabdbbbc057507c"
+    bytes 9112
+  }
+}
+asset "@styles/clean/sfx-reward.ogt" {
+  kind sound
+  source "0f131fadf2e9640d"
+  bytes 117
+  output "@styles/clean/sfx-reward.ogt" {
+    type og.Sound
+    file "@styles/clean/sfx-reward.ogt.ogb"
+    stamp "3c6db69ab93ba755"
+    hash "3ac26c39350cc9eb"
+    bytes 3024
+  }
+}
+asset "@styles/clean/sfx-tap.ogt" {
+  kind sound
+  source "c36611628c5039a6"
+  bytes 114
+  output "@styles/clean/sfx-tap.ogt" {
+    type og.Sound
+    file "@styles/clean/sfx-tap.ogt.ogb"
+    stamp "988f22478e4327c4"
+    hash "85bfce3b8b6b7239"
+    bytes 920
+  }
+}
+asset "@styles/clean/sfx-tap2.ogt" {
+  kind sound
+  source "13c07cdebd0aff85"
+  bytes 134
+  output "@styles/clean/sfx-tap2.ogt" {
+    type og.Sound
+    file "@styles/clean/sfx-tap2.ogt.ogb"
+    stamp "64a212b0e66a2f2f"
+    hash "e5e5aa83ecf01d72"
+    bytes 976
+  }
+}
+asset "@styles/clean/style.ogt" {
+  kind style
+  source "fbc6da7b4d780ba2"
+  bytes 16636
+  output "@styles/clean/style.ogt" {
+    type og.UiStyle
+    file "@styles/clean/style.ogt.ogb"
+    stamp "3e311292b0ff6fa1"
+    hash "fc665d63bfe4ae13"
+    bytes 16828
+  }
+}
+asset "@styles/shared/BarlowSemiCondensed-SemiBold.ttf" {
+  kind font
+  source "3ea139aff23ee826"
+  bytes 32765
+  output "@styles/shared/BarlowSemiCondensed-SemiBold.ttf" {
+    type og.Font
+    file "@styles/shared/BarlowSemiCondensed-SemiBold.ttf.ogb"
+    stamp "c2f1e8b5f1f0c626"
+    hash "c637a7c4bffa8ede"
+    bytes 445980
+  }
+}
+asset "@styles/shared/InstrumentSans-Regular.ttf" {
+  kind font
+  source "16ddaa01cbe4cad7"
+  bytes 68275
+  output "@styles/shared/InstrumentSans-Regular.ttf" {
+    type og.Font
+    file "@styles/shared/InstrumentSans-Regular.ttf.ogb"
+    stamp "07304837ce124a78"
+    hash "0c3293f24aa00389"
+    bytes 655208
+  }
+}
+asset "@styles/shared/ink-icons.png" {
+  kind texture
+  source "e42f9a3d817a314d"
+  bytes 27792
+  output "@styles/shared/ink-icons.png" {
+    type og.Texture
+    file "@styles/shared/ink-icons.png.ogb"
+    stamp "834034dcb530d41d"
+    hash "84d002dd6dc2eb34"
+    bytes 44894
+  }
+}
+asset "looks/clean.ogt" {
+  kind look
+  source "4baf9d7bd1a963a7"
+  bytes 163
+  output "looks/clean.ogt" {
+    type og.Look
+    file "looks/clean.ogt.ogb"
+    stamp "4dc9b673dceca4f4"
+    hash "51df940f0ccdb61b"
+    bytes 272
+  }
+}
+asset "strings/ar.ogt" {
+  kind strings
+  source "ecf989f5affbe4cd"
+  bytes 1445
+  output "strings/ar.ogt" {
+    type og.Strings
+    file "strings/ar.ogt.ogb"
+    stamp "a583ff9fc7ae8ca5"
+    hash "6485e9b46a67b164"
+    bytes 1637
+  }
+}
+asset "strings/ja.ogt" {
+  kind strings
+  source "ee2e97a7779eb189"
+  bytes 1319
+  output "strings/ja.ogt" {
+    type og.Strings
+    file "strings/ja.ogt.ogb"
+    stamp "818b9ac738e9cfc6"
+    hash "00ea9305dee0cc1c"
+    bytes 1511
+  }
+}
+asset "strings/zh-CN.ogt" {
+  kind strings
+  source "b277ba6d205d7266"
+  bytes 1243
+  output "strings/zh-CN.ogt" {
+    type og.Strings
+    file "strings/zh-CN.ogt.ogb"
+    stamp "d65b5fd0c4b5f58f"
+    hash "6df1ac91d14b2d1d"
+    bytes 1435
+  }
+}
+asset "ui/combat.svelte" {
+  kind document
+  source "d281cf59dbfdc45f"
+  bytes 873
+  output "ui/combat.svelte" {
+    type og.UiDocument
+    file "ui/combat.svelte.ogb"
+    stamp "ddf96cd1b6336b77"
+    hash "bb3add7c2230754c"
+    bytes 1065
+  }
+}
+asset "ui/loadout.svelte" {
+  kind document
+  source "6a247ca8c91f89e2"
+  bytes 782
+  output "ui/loadout.svelte" {
+    type og.UiDocument
+    file "ui/loadout.svelte.ogb"
+    stamp "d2a7b659827d3584"
+    hash "3818fc1e38888567"
+    bytes 974
+  }
+}
+asset "ui/sheet.svelte" {
+  kind document
+  source "d1320a313d37ddd0"
+  bytes 218
+  output "ui/sheet.svelte" {
+    type og.UiDocument
+    file "ui/sheet.svelte.ogb"
+    stamp "156f36c1fd9948cd"
+    hash "30df7729379d9619"
+    bytes 410
+  }
+}

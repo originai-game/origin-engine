@@ -1,0 +1,191 @@
+type assets
+version 1
+---
+roots "@styles/cjk/NotoSansSC-Bold.ttf" "@styles/cjk/NotoSansSC-Regular.ttf" "@styles/clean/sfx-back.ogt" "@styles/clean/sfx-confirm.ogt" "@styles/clean/sfx-error.ogt" "@styles/clean/sfx-open.ogt" "@styles/clean/sfx-reward.ogt" "@styles/clean/sfx-tap.ogt" "@styles/clean/sfx-tap2.ogt" "@styles/clean/style.ogt" "@styles/shared/BarlowSemiCondensed-SemiBold.ttf" "@styles/shared/InstrumentSans-Regular.ttf" "@styles/shared/ink-icons.png" "looks/clean.ogt" "strings/ar.ogt" "strings/ja.ogt" "strings/zh-CN.ogt" "ui/combat.svelte" "ui/loadout.svelte" "ui/sheet.svelte"
+asset "@styles/cjk/NotoSansSC-Bold.ttf" {
+  source "@styles/cjk/NotoSansSC-Bold.ttf"
+  kind "font"
+  file "@styles/cjk/NotoSansSC-Bold.ttf.ogb"
+  hash "fcb7e9ee89bf82ba"
+  bytes "3136948"
+  refs
+}
+asset "@styles/cjk/NotoSansSC-Regular.ttf" {
+  source "@styles/cjk/NotoSansSC-Regular.ttf"
+  kind "font"
+  file "@styles/cjk/NotoSansSC-Regular.ttf.ogb"
+  hash "9e3d3cb9e0518321"
+  bytes "3084092"
+  refs
+}
+asset "@styles/clean/sfx-back.ogt" {
+  source "@styles/clean/sfx-back.ogt"
+  kind "sound"
+  file "@styles/clean/sfx-back.ogt.ogb"
+  hash "55093ac478dd22eb"
+  bytes "2832"
+  perceptual "2ffffffffeb198cc"
+  refs
+}
+asset "@styles/clean/sfx-confirm.ogt" {
+  source "@styles/clean/sfx-confirm.ogt"
+  kind "sound"
+  file "@styles/clean/sfx-confirm.ogt.ogb"
+  hash "f72a0b2668283ead"
+  bytes "3160"
+  perceptual "ffffffffffd9999a"
+  refs
+}
+asset "@styles/clean/sfx-error.ogt" {
+  source "@styles/clean/sfx-error.ogt"
+  kind "sound"
+  file "@styles/clean/sfx-error.ogt.ogb"
+  hash "9eaaa2191372cbd9"
+  bytes "5776"
+  perceptual "fffe25240ffed34a"
+  refs
+}
+asset "@styles/clean/sfx-open.ogt" {
+  source "@styles/clean/sfx-open.ogt"
+  kind "sound"
+  file "@styles/clean/sfx-open.ogt.ogb"
+  hash "9aabdbbbc057507c"
+  bytes "9112"
+  perceptual "7ffff6f5cd50a0a0"
+  refs
+}
+asset "@styles/clean/sfx-reward.ogt" {
+  source "@styles/clean/sfx-reward.ogt"
+  kind "sound"
+  file "@styles/clean/sfx-reward.ogt.ogb"
+  hash "3ac26c39350cc9eb"
+  bytes "3024"
+  perceptual "5fffffffffde3c78"
+  refs
+}
+asset "@styles/clean/sfx-tap.ogt" {
+  source "@styles/clean/sfx-tap.ogt"
+  kind "sound"
+  file "@styles/clean/sfx-tap.ogt.ogb"
+  hash "85bfce3b8b6b7239"
+  bytes "920"
+  perceptual "00003ffffff777ba"
+  refs
+}
+asset "@styles/clean/sfx-tap2.ogt" {
+  source "@styles/clean/sfx-tap2.ogt"
+  kind "sound"
+  file "@styles/clean/sfx-tap2.ogt.ogb"
+  hash "e5e5aa83ecf01d72"
+  bytes "976"
+  perceptual "0000ffffeaaafffe"
+  refs
+}
+asset "@styles/clean/style.ogt" {
+  source "@styles/clean/style.ogt"
+  kind "uistyle"
+  file "@styles/clean/style.ogt.ogb"
+  hash "fc665d63bfe4ae13"
+  bytes "16828"
+  refs "@styles/cjk/NotoSansSC-Bold.ttf" "@styles/cjk/NotoSansSC-Regular.ttf" "@styles/clean/sfx-back.ogt" "@styles/clean/sfx-confirm.ogt" "@styles/clean/sfx-error.ogt" "@styles/clean/sfx-open.ogt" "@styles/clean/sfx-reward.ogt" "@styles/clean/sfx-tap.ogt" "@styles/clean/sfx-tap2.ogt" "@styles/shared/BarlowSemiCondensed-SemiBold.ttf" "@styles/shared/InstrumentSans-Regular.ttf" "@styles/shared/ink-icons.png"
+}
+asset "@styles/shared/BarlowSemiCondensed-SemiBold.ttf" {
+  source "@styles/shared/BarlowSemiCondensed-SemiBold.ttf"
+  kind "font"
+  file "@styles/shared/BarlowSemiCondensed-SemiBold.ttf.ogb"
+  hash "c637a7c4bffa8ede"
+  bytes "445980"
+  refs
+}
+asset "@styles/shared/InstrumentSans-Regular.ttf" {
+  source "@styles/shared/InstrumentSans-Regular.ttf"
+  kind "font"
+  file "@styles/shared/InstrumentSans-Regular.ttf.ogb"
+  hash "0c3293f24aa00389"
+  bytes "655208"
+  refs
+}
+asset "@styles/shared/ink-icons.png" {
+  source "@styles/shared/ink-icons.png"
+  kind "texture"
+  file "@styles/shared/ink-icons.png.ogb"
+  hash "84d002dd6dc2eb34"
+  bytes "44894"
+  perceptual "0000000000000000"
+  refs
+}
+asset "looks/clean.ogt" {
+  source "looks/clean.ogt"
+  kind "look"
+  file "looks/clean.ogt.ogb"
+  hash "51df940f0ccdb61b"
+  bytes "272"
+  refs "@styles/clean/style.ogt"
+}
+asset "strings/ar.ogt" {
+  source "strings/ar.ogt"
+  kind "strings"
+  file "strings/ar.ogt.ogb"
+  hash "6485e9b46a67b164"
+  bytes "1637"
+  refs
+}
+asset "strings/ja.ogt" {
+  source "strings/ja.ogt"
+  kind "strings"
+  file "strings/ja.ogt.ogb"
+  hash "00ea9305dee0cc1c"
+  bytes "1511"
+  refs
+}
+asset "strings/zh-CN.ogt" {
+  source "strings/zh-CN.ogt"
+  kind "strings"
+  file "strings/zh-CN.ogt.ogb"
+  hash "6df1ac91d14b2d1d"
+  bytes "1435"
+  refs
+}
+asset "ui/combat.svelte" {
+  source "ui/combat.svelte"
+  kind "uidocument"
+  file "ui/combat.svelte.ogb"
+  hash "bb3add7c2230754c"
+  bytes "1065"
+  refs
+}
+asset "ui/loadout.svelte" {
+  source "ui/loadout.svelte"
+  kind "uidocument"
+  file "ui/loadout.svelte.ogb"
+  hash "3818fc1e38888567"
+  bytes "974"
+  refs
+}
+asset "ui/sheet.svelte" {
+  source "ui/sheet.svelte"
+  kind "uidocument"
+  file "ui/sheet.svelte.ogb"
+  hash "30df7729379d9619"
+  bytes "410"
+  refs
+}
+user "project.ogt" {
+  refs
+}
+user "src/fixtures.ts" {
+  refs
+}
+user "src/main.ts" {
+  refs "@styles/cjk/NotoSansSC-Bold.ttf" "@styles/cjk/NotoSansSC-Regular.ttf" "@styles/clean/sfx-back.ogt" "@styles/clean/sfx-confirm.ogt" "@styles/clean/sfx-error.ogt" "@styles/clean/sfx-open.ogt" "@styles/clean/sfx-reward.ogt" "@styles/clean/sfx-tap.ogt" "@styles/clean/sfx-tap2.ogt" "@styles/clean/style.ogt" "@styles/shared/BarlowSemiCondensed-SemiBold.ttf" "@styles/shared/InstrumentSans-Regular.ttf" "@styles/shared/ink-icons.png" "looks/clean.ogt" "strings/ar.ogt" "strings/ja.ogt" "strings/zh-CN.ogt" "ui/combat.svelte" "ui/loadout.svelte" "ui/sheet.svelte"
+}
+computed "src/main.ts" {
+  line "34"
+  prefix "@styles/"
+  reason "computed og.load path"
+}
+computed "src/main.ts" {
+  line "64"
+  prefix ""
+  reason "computed og.load path"
+}

@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "shooter kit: Loadout",
+      "summary": "The loadout's heading and category labels come from the kit's string table: an empty title takes shooter.loadout.title and an empty category label takes shooter.loadout.category.<id> (primary, secondary, melee, utility), so they translate with Back and Equip. A game's own non-empty title or label is shown as given."
+    }
+  ]
+}

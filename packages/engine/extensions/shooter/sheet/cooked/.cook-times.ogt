@@ -1,0 +1,23 @@
+type cook-times
+version 1
+---
+asset "@styles/cjk/NotoSansSC-Bold.ttf" 508.261
+asset "@styles/cjk/NotoSansSC-Regular.ttf" 513.353
+asset "@styles/clean/sfx-back.ogt" 3.06
+asset "@styles/clean/sfx-confirm.ogt" 1.688
+asset "@styles/clean/sfx-error.ogt" 1.685
+asset "@styles/clean/sfx-open.ogt" 1.754
+asset "@styles/clean/sfx-reward.ogt" 1.613
+asset "@styles/clean/sfx-tap.ogt" 1.928
+asset "@styles/clean/sfx-tap2.ogt" 3.083
+asset "@styles/clean/style.ogt" 9.104
+asset "@styles/shared/BarlowSemiCondensed-SemiBold.ttf" 386.414
+asset "@styles/shared/InstrumentSans-Regular.ttf" 404.807
+asset "@styles/shared/ink-icons.png" 2.457
+asset "looks/clean.ogt" 4.114
+asset "strings/ar.ogt" 3.658
+asset "strings/ja.ogt" 3.711
+asset "strings/zh-CN.ogt" 4.286
+asset "ui/combat.svelte" 5.271
+asset "ui/loadout.svelte" 6.067
+asset "ui/sheet.svelte" 5.744
