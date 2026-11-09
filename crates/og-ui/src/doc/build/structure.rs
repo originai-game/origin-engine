@@ -73,8 +73,12 @@ impl Tree for Levels<'_> {
     fn facts(&self, at: &At) -> Facts<'_> {
         let e = self.entry(at);
         Facts {
-            document: &e.document,
-            node: e.node,
+            scope: &e.document.name,
+            tag: e.document.nodes[e.node]
+                .selector_tag
+                .as_deref()
+                .unwrap_or_default(),
+            root: e.node == e.document.root,
             attributes: &e.attributes,
             states: &NO_STATES,
             text: &e.text,
@@ -221,7 +225,7 @@ impl Ui {
         };
         matching::matches(
             &Levels(levels),
-            doc,
+            Some(&doc.name),
             selector,
             &(top, current, Vec::new()),
             &mut MatchWork::default(),
