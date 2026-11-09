@@ -850,7 +850,9 @@ impl Ui {
         }
         // Popovers' arrows (`::-og-arrow`): a square turned 45° across the
         // edge facing the anchor, over the anchor's middle where the box
-        // allows, hidden while no side faces it.
+        // allows, hidden while no side faces it. A context menu (opened at
+        // a point) draws none: its corner is at the point, as a desktop's
+        // and a game's context menus are.
         for k in 0..self.floating.len() {
             let f = self.floating[k];
             let n = &self.nodes[f];
@@ -864,12 +866,12 @@ impl Ui {
                     None => continue,
                 },
             };
-            let (b, placed) = (n.rect, n.anchor_placed);
+            let (b, placed, point) = (n.rect, n.anchor_placed, n.anchor_point);
             self.nodes[f].shapes.retain(|s| {
                 !matches!(s, crate::layout::Shape::Bar { part, .. }
                     if part.component == "Popover" && part.part == "arrow")
             });
-            let (Some(side), false) = (placed.side, placed.hidden) else {
+            let (Some(side), false, None) = (placed.side, placed.hidden, point) else {
                 continue;
             };
             // Kept a side's length in from the corners.

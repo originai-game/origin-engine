@@ -356,10 +356,17 @@ against the control that opened it (its implicit anchor) by anchor
 positioning: `position-area` picks the side and alignment, an inset
 offsets it, `position-try-fallbacks` flips it inside the safe area; with
 none of them it hangs under the control (above it where there is more
-room, kept on screen). Its box and look come from its CSS; its
+room, kept on screen). It is a raised panel (`--panel-raised`, the
+panel radius; a `hint` the tooltip's), as a browser's popover has its
+own canvas, and its CSS overrides that box and look; its
 `::-og-arrow { width; background }` draws on the side facing the anchor.
-`contextmenu="id"` on an element opens popover `id` at the point of a
-secondary press or long press on it, that zero-size point its anchor. A control's
+Its content keeps HTML's margins, so a `<p>` in it has a line's margin
+above and below, as in a browser (`margin: 0` or a `<span>` for a tight
+tip). `contextmenu="id"` on an element opens popover `id` at the point of
+a secondary press or long press on it, that zero-size point its anchor:
+its corner sits at the point and it draws no arrow, as a desktop's and a
+game's context menus do. A `<menu>`'s buttons are menu items, each as
+wide as the menu. A control's
 `popovertarget="id"` opens, closes or toggles it on a press
 (`popovertargetaction="show|hide|toggle"`, default toggle) and reports
 `expanded`. An `auto` popover closes on a press outside it or Back and

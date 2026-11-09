@@ -217,9 +217,18 @@ impl Ui {
         let t = self.theme;
         let content = Self::box_of(
             r,
+            // A raised panel, as a browser's popover has its own canvas
+            // and border (and the plain tooltip its bubble): its CSS
+            // background, radius and padding override it.
             Element {
                 direction: Direction::Column,
                 padding: Insets::xy(t.space.sm, t.space.xs),
+                background: Some(t.palette.panel_raised),
+                radius: if mode == Mode::Hint {
+                    t.radius.control
+                } else {
+                    t.radius.panel
+                },
                 frame: Some(if mode == Mode::Hint {
                     crate::style_file::StylePart::Tooltip
                 } else {

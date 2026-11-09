@@ -1096,7 +1096,8 @@ fn arrow_at(d: &Doc) -> Option<(f32, f32)> {
 /// Ways it could fail: an authored area ignored (today's hang-below
 /// placement), an offset dropped, a fallback that never flips, an arrow on
 /// the wrong edge or kept while closed, a context menu at its element
-/// rather than the pointer, or a primary press opening it.
+/// rather than the pointer, with an arrow or with items of their labels'
+/// widths, or a primary press opening it.
 #[test]
 fn popovers_take_their_area_offset_fallback_arrow_and_point() {
     let text = r#"<meta name="component" content="t">
@@ -1107,7 +1108,7 @@ fn popovers_take_their_area_offset_fallback_arrow_and_point() {
   <div id="Gap"></div>
   <button id="Edge" popovertarget="Flip">Edge</button>
   <div id="Flip" popover><p id="FlipText">Flipped</p><p>over</p><p>it</p></div>
-  <menu id="Ctx" popover><button id="Copy">Copy</button></menu>
+  <menu id="Ctx" popover><button id="Copy">Copy</button><button id="PasteAll">Paste all</button></menu>
 </div>
 <style>
 #Page { padding: 40px; gap: 40px; }
@@ -1115,6 +1116,7 @@ fn popovers_take_their_area_offset_fallback_arrow_and_point() {
 #Side { position-area: right; left: 12px; }
 #Side::-og-arrow { width: 10px; background: #ff0000; }
 #Flip { position-area: bottom; position-try-fallbacks: flip-block; }
+#Ctx::-og-arrow { width: 10px; background: #ff0000; }
 </style>"#;
     both(text, &[], |d| {
         for _ in 0..3 {
@@ -1162,6 +1164,14 @@ fn popovers_take_their_area_offset_fallback_arrow_and_point() {
         assert!(
             (copy.x - at.x).abs() < 24.0 && copy.y >= at.y - 0.5 && copy.y < at.y + 24.0,
             "at the point: {copy:?} vs {at:?}"
+        );
+        // Its corner at the point, as a desktop's: no arrow, and its items
+        // as wide as each other (a menu's rows).
+        assert!(arrow_at(d).is_none(), "a context menu draws no arrow");
+        assert_eq!(
+            copy.width,
+            d.get("PasteAll").width,
+            "menu items span the menu"
         );
     });
 }

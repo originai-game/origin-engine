@@ -1,0 +1,17 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "UI document popover",
+      "summary": "A popover is a raised panel again (--panel-raised and the panel radius; a hint the tooltip's), as a browser's popover has its own canvas: one without a CSS background no longer draws its text straight over the page. Its CSS overrides that box."
+    },
+    {
+      "member": "UI document contextmenu",
+      "summary": "A context menu, opened at a point, draws no ::-og-arrow: its corner sits at the point, as a desktop's and a game's context menus do."
+    },
+    {
+      "member": "UI document <menu>",
+      "summary": "A <menu>'s buttons (its menu items) each span the menu, so a context menu's rows are as wide as each other instead of their labels' widths."
+    }
+  ]
+}
