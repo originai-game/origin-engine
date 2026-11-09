@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "UI: CSS contain, content-visibility and contain-intrinsic-size in documents",
+      "summary": "contain takes size, inline-size, layout, style, paint, strict and content: size containment sizes a box as if empty or by contain-intrinsic-size, layout and paint make it a formatting context, paint clips its subtree, style scopes counters and quotes. content-visibility hidden skips its contents; auto skips them while far from the screen with no focus inside, sized by contain-intrinsic-size (auto: its last laid-out size)."
+    },
+    {
+      "member": "UI: CSS resize and will-change in documents",
+      "summary": "resize (both, horizontal, vertical, block, inline) on an element whose overflow is not visible puts a grab handle in its bottom end corner whose drag sets its width or height; will-change naming a property that makes a stacking context draws the element on a layer of its own."
+    }
+  ]
+}

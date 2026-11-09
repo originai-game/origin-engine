@@ -207,6 +207,7 @@ pub(super) fn element(theme: &Theme, d: &Value) -> Element {
         breaks: 0,
         flip: false,
         contain: Default::default(),
+        resize: 0,
     }
 }
 

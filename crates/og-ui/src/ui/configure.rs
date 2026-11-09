@@ -80,6 +80,7 @@ impl Ui {
             cover: None,
             style_name: String::new(),
             gesture: false,
+            resize_moved: None,
             direction: og_i18n::Direction::Ltr,
             locale: String::new(),
             accent: None,
@@ -515,7 +516,8 @@ impl Ui {
         // Scrolling first: a press on a scrollbar grabs it before anything
         // under it, two touches scroll or zoom what is under them.
         let grabbed = self.scroll_input(&input);
-        if self.gesture {
+        // A press on a resize handle holds the pointer while it drags.
+        if self.gesture || self.resize_input(&input) {
             input.pressed = false;
             input.released = false;
             input.down = false;

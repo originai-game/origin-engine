@@ -425,7 +425,21 @@ impl Ui {
             };
         }
         let Some(i) = self.tree.find(key) else {
-            return (Cursor::Default, NONE);
+            // A resize handle: the resize cursor of its axes.
+            return match self
+                .orders
+                .with(crate::ui::visit::feat::RESIZE)
+                .iter()
+                .map(|&i| &self.nodes[i])
+                .find(|n| crate::ui::resize::grip_key(n.key) == key)
+                .map(|n| n.el.resize)
+            {
+                Some(1) => (Cursor::ResizeEw, NONE),
+                Some(2) => (Cursor::ResizeNs, NONE),
+                Some(_) if self.direction == og_i18n::Direction::Rtl => (Cursor::ResizeNesw, NONE),
+                Some(_) => (Cursor::ResizeNwse, NONE),
+                None => (Cursor::Default, NONE),
+            };
         };
         let (c, at) = self.declared_cursor(i);
         if c != Cursor::Auto {

@@ -281,6 +281,7 @@ impl Ui {
         // node keeps what they set; a new viewport emits it again).
         self.apply_variants();
         self.apply_part_appearances();
+        self.apply_resized();
         // Hidden slots (a closed dialog, a finished transition) take no room.
         // A node's lists follow from its built children and their own
         // props: derived again where those were written or a child left.

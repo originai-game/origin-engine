@@ -12,6 +12,7 @@ mod dressing;
 mod finish;
 mod inspect;
 mod node_draw;
+pub(crate) mod resize;
 pub(crate) mod select;
 pub(crate) mod settlement;
 mod snapshot;
@@ -334,6 +335,10 @@ pub(crate) struct State {
     pub drag_v: Vec2,
     /// A scrollbar the press grabbed.
     pub thumb: Option<crate::scroll::Thumb>,
+    /// A resize handle the press grabbed (CSS `resize`), and the sizes
+    /// the user gave resizable elements, by key (CSS px, per axis).
+    pub resizing: Option<resize::Resizing>,
+    pub resized: crate::id::KeyMap<[Option<f32>; 2]>,
     /// Last frame's interactive rectangles in draw order, for hit testing.
     pub hits: Vec<Hit>,
     /// Frames begun: the clock of every animation.
@@ -560,6 +565,8 @@ pub struct Ui {
     /// Two touches move a scroller or zoom view this tick: the primary
     /// pointer presses nothing.
     pub(crate) gesture: bool,
+    /// The element a resize drag moved this tick (written again).
+    pub(crate) resize_moved: Option<u64>,
     /// The writing direction: right to left mirrors the layout and turns
     /// text alignment round (og.i18n's locale, or og.ui.configure).
     pub(crate) direction: og_i18n::Direction,

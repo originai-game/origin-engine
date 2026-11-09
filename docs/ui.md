@@ -1704,6 +1704,44 @@ attribute stays: `visible false` removes the element from layout as
 `display: none` does. These are read from the frame's orders as
 `user-select` is, so a declared value costs nothing while idle.
 
+#### Containment, resize and will-change
+
+CSS `contain` (CSS Containment 2 §3) takes `none`, `strict`, `content`
+and any of `size` or `inline-size`, `layout`, `style` and `paint`. Size
+containment sizes the box as if it were empty, or as
+`contain-intrinsic-size` (and `-width`, `-height`, `-inline-size`,
+`-block-size`: `none`, a px length, or `auto` before either) says; its
+contents still lay out inside it. Layout and paint containment make it a
+formatting context of its own (no margin collapses through it), and paint
+containment clips what it and its subtree draw to its box. Style
+containment keeps counters and quotes inside it: an increment or set there
+makes a counter of its own, and nothing it does is seen after it.
+
+`content-visibility` (§4): `hidden` skips the element's contents always,
+`auto` from the frame after it was found far from the screen (more than
+half a viewport past what its clip shows) with no focus inside it. Skipped
+contents are not laid out, drawn or hit; `hidden` ones also leave the
+accessibility tree, `auto` ones stay in it. Both add layout, style and
+paint containment, and while skipping, size containment, sized by
+`contain-intrinsic-size`; with `auto` there it takes the content size it
+had when it last laid its contents out. The layout walk leaves a skipped
+subtree out, so it costs nothing while idle; an element that starts laying
+its contents out again lays them out afresh.
+
+`resize` (CSS UI 4 §5.2) on an element whose overflow is not `visible`:
+`both`, `horizontal` (`inline`) or `vertical` (`block`) puts a grab handle
+in its bottom end corner, three rows of dots in the style's strong control
+ink with the matching resize cursor over it. A press there holds the
+pointer, and its drag sets the element's width or height in CSS px under
+its `min-` and `max-` bounds, as a browser writes the element's size. The
+size stays on the element (presentation state, not saved) while it says
+`resize`; only the element being dragged is written again.
+
+`will-change` accepts `auto` or a list of properties; one that makes a
+stacking context (`transform`, `opacity`, `filter`, `mix-blend-mode`,
+`clip-path`, `mask`…) draws the element as a group on a layer of its own,
+as `isolation: isolate` does, so its change composites one texture.
+
 #### Images
 
 CSS `object-fit` on an `<img>` takes `fill` (the default: stretched to

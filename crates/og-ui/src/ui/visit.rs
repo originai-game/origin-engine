@@ -47,7 +47,9 @@ pub(crate) mod feat {
     /// CSS `content-visibility` other than `visible`: it may skip its
     /// contents (`Ui::content_visibility`).
     pub const SKIPS: u32 = 1 << 18;
-    pub const COUNT: usize = 19;
+    /// CSS `resize`: a grab handle in its corner.
+    pub const RESIZE: u32 = 1 << 19;
+    pub const COUNT: usize = 20;
 }
 
 /// A row whose items (all, or those with an `align-self` of their own)
@@ -94,6 +96,9 @@ pub(crate) fn features(n: &Node) -> u32 {
     }
     if n.el.contain.visibility != crate::layout::ContentVisibility::Visible || n.cv_skip {
         f |= feat::SKIPS;
+    }
+    if n.el.resize != 0 {
+        f |= feat::RESIZE;
     }
     if p.focus_group.is_some() {
         f |= feat::GROUP;
@@ -670,7 +675,7 @@ impl Ui {
             if n.scope {
                 flags |= HIT_SCOPE;
             }
-            if flags == 0 && n.links.is_empty() {
+            if flags == 0 && n.links.is_empty() && n.el.resize == 0 {
                 break 'node;
             }
             if pass {
@@ -735,6 +740,21 @@ impl Ui {
             }
             if (!visible.is_empty() || reaches) && flags != 0 && !n.inert {
                 hits.push(hit(visible, flags));
+            }
+            // CSS `resize`: its handle, a hit of its own over it.
+            if n.el.resize != 0 && !n.inert && !pass && !transformed {
+                let rtl = self.direction == og_i18n::Direction::Rtl;
+                let g = super::resize::grip_rect(n, rtl).intersect(&n.clip);
+                if !g.is_empty() {
+                    hits.push(Hit {
+                        key: super::resize::grip_key(n.key),
+                        rect: g,
+                        full: g,
+                        flags: HIT_POINTER,
+                        local: g,
+                        ..hit(g, HIT_POINTER)
+                    });
+                }
             }
             // A rich text's links are controls of their own.
             if !n.links.is_empty() && !n.inert {

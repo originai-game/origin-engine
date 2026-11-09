@@ -799,6 +799,7 @@ impl Ui {
                 "columnSpan",
                 "contain",
                 "contentVisibility",
+                "resize",
                 "breakBefore",
                 "breakAfter",
                 "breakInside",

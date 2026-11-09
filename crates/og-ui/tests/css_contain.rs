@@ -1,5 +1,6 @@
 //! CSS Containment 2 in documents (docs/ui.md §2): `contain`,
-//! `content-visibility` and `contain-intrinsic-size`, built both ways.
+//! `content-visibility` and `contain-intrinsic-size`, and CSS UI 4's
+//! `resize`, built both ways.
 //!
 //! Ways these could fail, each covered below:
 //! - size containment sizing by the contents anyway, or ignoring
@@ -10,6 +11,10 @@
 //!   it out once it comes near, or forgetting its last size under
 //!   `contain-intrinsic-size: auto` (or remembering without it) →
 //!   `content_visibility_skips_contents_off_screen`
+//! - a resize handle not taking the press, its drag not reaching the
+//!   element's size (or lost when it builds again), an axis it does not
+//!   resize moved, `max-width` ignored, or `resize` applied with overflow
+//!   visible → `a_resize_handle_drags_the_size_onto_the_element`
 
 use crate::html_text::{Doc, both};
 use og_ui::InputFrame;
@@ -94,5 +99,68 @@ fn content_visibility_skips_contents_off_screen() {
         d.step(InputFrame::default());
         assert_eq!(far_h(d), 10.0);
         assert_eq!(kept_h(d), 150.0);
+    });
+}
+
+#[test]
+fn a_resize_handle_drags_the_size_onto_the_element() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root">
+  <div id="Both"><div id="BothIn"></div></div>
+  <div id="Across"></div>
+  <div id="Visible"></div>
+</div></div>
+<style>
+#Root { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+#Both { width: 100px; height: 60px; overflow: auto; resize: both; max-width: 130px; }
+#Across { width: 100px; height: 60px; overflow: hidden; resize: horizontal; }
+#Visible { width: 100px; height: 60px; resize: both; }
+</style>"#;
+    both(text, &[], |d| {
+        d.step(InputFrame::default());
+        let corner = |d: &Doc, id: &str| {
+            let e = d.get(id);
+            og_core::glam::Vec2::new(e.x + e.width - 3.0, e.y + e.height - 3.0)
+        };
+        let drag = |d: &mut Doc, at: og_core::glam::Vec2, by: og_core::glam::Vec2| {
+            let at_input = |pointer, pressed, down, released| InputFrame {
+                pointer,
+                pointer_inside: true,
+                pressed,
+                down,
+                released,
+                ..InputFrame::default()
+            };
+            d.step(at_input(at, false, false, false));
+            d.step(at_input(at, true, true, false));
+            d.step(at_input(at + by * 0.5, false, true, false));
+            d.step(at_input(at + by, false, true, false));
+            d.step(at_input(at + by, false, false, true));
+            d.step(InputFrame::default());
+        };
+        let wh = |d: &Doc, id: &str| {
+            let e = d.get(id);
+            (e.width, e.height)
+        };
+        let at = corner(d, "Both");
+        d.step(InputFrame {
+            pointer: at,
+            pointer_inside: true,
+            ..InputFrame::default()
+        });
+        assert_eq!(d.ui.frame().cursor, og_ui::Cursor::ResizeNwse);
+        drag(d, at, og_core::glam::Vec2::new(60.0, 25.0));
+        // Its width held by max-width; its height as dragged.
+        assert_eq!(wh(d, "Both"), (130.0, 85.0));
+        // It stays when built again with nothing held.
+        d.step(InputFrame::default());
+        assert_eq!(wh(d, "Both"), (130.0, 85.0));
+        let at = corner(d, "Across");
+        drag(d, at, og_core::glam::Vec2::new(20.0, 30.0));
+        assert_eq!(wh(d, "Across"), (120.0, 60.0), "across only");
+        // With overflow visible, resize does not apply.
+        let at = corner(d, "Visible");
+        drag(d, at, og_core::glam::Vec2::new(20.0, 30.0));
+        assert_eq!(wh(d, "Visible"), (100.0, 60.0));
     });
 }

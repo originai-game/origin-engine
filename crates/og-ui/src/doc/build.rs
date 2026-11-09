@@ -1282,6 +1282,15 @@ impl Ui {
         {
             el.bfc = true;
         }
+        // CSS `resize` applies where overflow is not `visible` (CSS UI 4
+        // §5.2).
+        let clips = ["overflowX", "overflowY"]
+            .iter()
+            .any(|p| r.str(p).is_some_and(|v| v != "visible"));
+        el.resize = match r.str("resize").map(crate::doc::contain_css::resize) {
+            Some(Ok([x, y])) if clips => u8::from(x) | u8::from(y) << 1,
+            _ => 0,
+        };
         el.safe = u8::from(r.flag("safeJustify")) | u8::from(r.flag("safeAlign")) << 1;
         if let Some(c) = r.color("background") {
             el.background = Some(c);

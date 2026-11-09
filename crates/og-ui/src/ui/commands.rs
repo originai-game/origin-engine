@@ -656,6 +656,15 @@ impl Ui {
                     let w = self.nodes[j].world;
                     cmds.extend(bars.into_iter().map(|c| (c, w)));
                 }
+                // CSS `resize`: its handle over everything it drew.
+                if self.nodes[j].el.resize != 0
+                    && self.orders.skip_of.get(j).is_none_or(|&s| s == 0)
+                {
+                    let mut grip = Vec::new();
+                    self.resizer_commands(j, &mut grip);
+                    let w = self.nodes[j].world;
+                    cmds.extend(grip.into_iter().map(|c| (c, w)));
+                }
                 let w = self.nodes[j].world;
                 if let Some(d) = self.draw_of(j) {
                     let at = placed(&self.nodes[j]);
@@ -981,7 +990,8 @@ impl Ui {
             || node.fx.is_some_and(|f| f.glitch > 0.0)
             || node.sampled.blur > 0.0
             || node.decor.as_ref().is_some_and(|d| d.fixed())
-            || (node.scrolls() && (node.el.fade > 0.0 || !node.el.hide_bars));
+            || (node.scrolls() && (node.el.fade > 0.0 || !node.el.hide_bars))
+            || node.el.resize != 0;
         let outline =
             self.theme.outline && (node.nav || node.focusable) && node.sampled.background.is_some();
         let field_ring = match &node.widget {

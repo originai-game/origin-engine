@@ -799,6 +799,9 @@ pub struct Element {
     pub flip: bool,
     /// Its CSS containment and `content-visibility` ([`Contain`]).
     pub contain: Contain,
+    /// CSS `resize`: the axes a handle in its corner resizes (bit 0
+    /// across, bit 1 down).
+    pub resize: u8,
 }
 
 /// CSS `contain` (CSS Containment 2 §3), `content-visibility` (§4) and
