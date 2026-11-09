@@ -305,7 +305,8 @@ generates art.
    (a button sheet's cells, left to right: normal, hover, pressed,
    disabled, focused), `pixels` (the least to deliver: the 3× cell times
    the states), `dress` (the dressing each cell goes to, such as
-   `Button.base[primary][hover]`) and `hash` (over the rest). A value
+   `Button.base[primary][hover]`, or a list of the dressings it goes to
+   alike, such as `["Panel.frame", "Dialog.panel"]`, packed once) and `hash` (over the rest). A value
    already in the file wins, so a pack retunes a slot by editing it, and
    the hash moves with it.
 2. **Fulfilment.** The fulfiller turns each slot into a prompt through

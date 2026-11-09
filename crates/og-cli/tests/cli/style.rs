@@ -261,7 +261,8 @@ fn style_art_packs_painted_slots_at_three_densities() {
         serde_json::json!({"name": "arena/bar"}),
         serde_json::json!({
             "name": "arena/selected-tab", "kind": "styleFrame", "size": [80, 32],
-            "insets": [0.1, 0.25, 0.1, 0.25], "dress": ["Tabs.tab[selected]"]
+            "insets": [0.1, 0.25, 0.1, 0.25],
+            "dress": [["Tabs.tab[selected]", "Chip.base[selected]"]]
         }),
     ]);
     std::fs::write(pack.join("art-requests.json"), custom.to_string()).unwrap();
@@ -351,6 +352,8 @@ fn style_art_packs_painted_slots_at_three_densities() {
         &dress("Tabs.tab[selected]")[3..],
         &["80", "32", "8", "8", "8", "8", "authored"]
     );
+    // One painted cell dresses both parts its request lists, packed once.
+    assert_eq!(dress("Chip.base[selected]"), dress("Tabs.tab[selected]"));
     let s = dress("Panel.frame");
     let n = |i: usize| -> u32 { s[i].parse().unwrap() };
     assert_eq!(

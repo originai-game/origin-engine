@@ -206,15 +206,17 @@ struct Slot {
     /// The dressings each state cell goes to (one for a frame, four for a
     /// button) or the ornament line it sets.
     target: Target,
-    dress: Vec<(usize, String)>,
+    /// Each cell's dressings: one painted cell may dress several parts
+    /// (a window's frame and a dialog's), packed once.
+    dress: Vec<(usize, Vec<String>)>,
     hash: String,
 }
 
 /// A converted slot: its cells at each density, ready to pack.
 struct Piece {
     slot: usize,
-    /// The dressing (or ornament key) this cell goes to.
-    to: String,
+    /// The dressings (or the ornament key) this cell goes to.
+    to: Vec<String>,
     /// The cell at 1×, 2× and 3×.
     images: [RgbaImage; 3],
     insets: [u32; 4],
@@ -409,7 +411,7 @@ pub fn run(args: &[&str]) -> Result<(), String> {
             else {
                 continue;
             };
-            tos.push(to.clone());
+            tos.extend(to.iter().cloned());
             pieces.push(Piece {
                 slot: *k,
                 to,
@@ -670,23 +672,44 @@ fn complete_requests(old: &Json, name: &str, doc: &Document) -> Result<(Json, Ve
                     f(px[3], size[1]),
                 ]
             });
-        let dress: Vec<(usize, String)> = match o.get("dress").and_then(Json::as_array) {
+        // A cell's dressing is a selector, or a list of the selectors it
+        // dresses alike; "" or [] leaves the cell unpacked.
+        let dress: Vec<(usize, Vec<String>)> = match o.get("dress").and_then(Json::as_array) {
             Some(a) => a
                 .iter()
                 .enumerate()
-                .filter_map(|(i, v)| Some((i, v.as_str()?.to_string())))
-                .filter(|(_, v)| !v.is_empty())
-                .collect(),
+                .map(|(i, v)| {
+                    let sels: Vec<String> = match v {
+                        Json::Array(list) => list
+                            .iter()
+                            .map(|s| s.as_str().map(str::to_string))
+                            .collect::<Option<_>>()
+                            .ok_or_else(|| {
+                                format!("{slot_name}: dress cell {i} lists selectors as strings")
+                            })?,
+                        Json::String(s) => vec![s.clone()],
+                        _ => {
+                            return Err(format!(
+                                "{slot_name}: dress cell {i} is a selector or a list of them"
+                            ));
+                        }
+                    };
+                    Ok((i, sels.into_iter().filter(|s| !s.is_empty()).collect()))
+                })
+                .filter(|r: &Result<(usize, Vec<String>), String>| {
+                    r.as_ref().map_or(true, |(_, v)| !v.is_empty())
+                })
+                .collect::<Result<_, _>>()?,
             None => match d.target {
                 Target::Frame(sel) | Target::Piece(sel) | Target::Tinted(sel) => {
-                    vec![(0, sel.to_string())]
+                    vec![(0, vec![sel.to_string()])]
                 }
                 Target::Button(sel) => BUTTON_STATES
                     .iter()
                     .enumerate()
-                    .filter_map(|(i, (_, q))| Some((i, format!("{sel}{}", (*q)?))))
+                    .filter_map(|(i, (_, q))| Some((i, vec![format!("{sel}{}", (*q)?)])))
                     .collect(),
-                Target::Ornament(key) => vec![(0, key.to_string())],
+                Target::Ornament(key) => vec![(0, vec![key.to_string()])],
             },
         };
         let states: Vec<&str> = match d.target {
@@ -699,8 +722,10 @@ fn complete_requests(old: &Json, name: &str, doc: &Document) -> Result<(Json, Ve
                     "{slot_name}: a painted part needs at least one dress selector"
                 ));
             }
-            for (cell, selector) in &dress {
-                og_ui::Selector::parse(selector).map_err(|e| format!("{slot_name}: {e}"))?;
+            for (cell, selectors) in &dress {
+                for selector in selectors {
+                    og_ui::Selector::parse(selector).map_err(|e| format!("{slot_name}: {e}"))?;
+                }
                 if *cell >= states.len() {
                     return Err(format!(
                         "{slot_name}: dress has more cells than its kind supplies"
@@ -725,10 +750,13 @@ fn complete_requests(old: &Json, name: &str, doc: &Document) -> Result<(Json, Ve
         );
         // The dressings a sheet's cells go to, left to right ("" for a
         // cell read but not packed: a button's focused one).
-        let mut by_cell = vec![String::new(); states.len()];
-        for (c, sel) in &dress {
+        let mut by_cell = vec![json!(""); states.len()];
+        for (c, sels) in &dress {
             if let Some(v) = by_cell.get_mut(*c) {
-                v.clone_from(sel);
+                *v = match sels.as_slice() {
+                    [one] => json!(one),
+                    many => json!(many),
+                };
             }
         }
         o.insert("dress".into(), json!(by_cell));
@@ -1121,51 +1149,55 @@ fn packed_style(mut doc: Document, pieces: &[Piece], slots: &[Slot], size: (u32,
                 }
             }
             Target::Frame(_) | Target::Button(_) | Target::Piece(_) | Target::Tinted(_) => {
-                let i = match body.entries.iter().position(|e| {
-                    e.key == "dress" && e.values.first().and_then(Value::as_str) == Some(&p.to)
-                }) {
-                    Some(i) => i,
-                    None => {
-                        body.push(
-                            Entry::new("dress")
-                                .with(Value::String(p.to.clone()))
-                                .with_block(Block::new()),
+                for to in &p.to {
+                    let i = match body.entries.iter().position(|e| {
+                        e.key == "dress" && e.values.first().and_then(Value::as_str) == Some(to)
+                    }) {
+                        Some(i) => i,
+                        None => {
+                            body.push(
+                                Entry::new("dress")
+                                    .with(Value::String(to.clone()))
+                                    .with_block(Block::new()),
+                            );
+                            body.entries.len() - 1
+                        }
+                    };
+                    let block = body.entries[i].block.get_or_insert_with(Block::new);
+                    let mut slice = Entry::new("slice");
+                    slice.values = region(p).to_vec();
+                    slice.values.extend(p.insets.map(|v| num(f64::from(v))));
+                    let tint = matches!(slots[p.slot].target, Target::Tinted(_));
+                    slice
+                        .values
+                        .push(Value::Word(if tint { "tint" } else { "authored" }.into()));
+                    // Its fill words (stretch, repeat, round) stay; painted art is authored.
+                    if let Some(old) = block.entries.iter().find(|e| e.key == "slice") {
+                        slice.values.extend(
+                            old.values
+                                .iter()
+                                .filter(|v| {
+                                    matches!(v.as_word(), Some("stretch" | "repeat" | "round"))
+                                })
+                                .cloned(),
                         );
-                        body.entries.len() - 1
                     }
-                };
-                let block = body.entries[i].block.get_or_insert_with(Block::new);
-                let mut slice = Entry::new("slice");
-                slice.values = region(p).to_vec();
-                slice.values.extend(p.insets.map(|v| num(f64::from(v))));
-                let tint = matches!(slots[p.slot].target, Target::Tinted(_));
-                slice
-                    .values
-                    .push(Value::Word(if tint { "tint" } else { "authored" }.into()));
-                // Its fill words (stretch, repeat, round) stay; painted art is authored.
-                if let Some(old) = block.entries.iter().find(|e| e.key == "slice") {
-                    slice.values.extend(
-                        old.values
-                            .iter()
-                            .filter(|v| matches!(v.as_word(), Some("stretch" | "repeat" | "round")))
-                            .cloned(),
-                    );
+                    let t = tone(&p.images[0], p.insets);
+                    let mut tone_e = Entry::new("tone");
+                    tone_e.values = t
+                        .iter()
+                        .enumerate()
+                        .map(|(k, v)| {
+                            let d = if k == 3 { 100.0 } else { 1000.0 };
+                            num((f64::from(*v) * d).round() / d)
+                        })
+                        .collect();
+                    block
+                        .entries
+                        .retain(|e| e.key != "slice" && e.key != "tone");
+                    block.entries.insert(0, tone_e);
+                    block.entries.insert(0, slice);
                 }
-                let t = tone(&p.images[0], p.insets);
-                let mut tone_e = Entry::new("tone");
-                tone_e.values = t
-                    .iter()
-                    .enumerate()
-                    .map(|(k, v)| {
-                        let d = if k == 3 { 100.0 } else { 1000.0 };
-                        num((f64::from(*v) * d).round() / d)
-                    })
-                    .collect();
-                block
-                    .entries
-                    .retain(|e| e.key != "slice" && e.key != "tone");
-                block.entries.insert(0, tone_e);
-                block.entries.insert(0, slice);
             }
         }
     }

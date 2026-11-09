@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og style art: a dress cell lists several selectors",
+      "summary": "A slot's `dress` cell in art-requests.json may be a list of the dressings it goes to alike (`[\"Panel.frame\", \"Dialog.panel\"]`): the painted cell is packed once and each dressing gets its slice and tone, so a pack's window art dresses its dialogs and its field art its select and stepper without a copied slice going stale when the atlas is packed again."
+    }
+  ]
+}
