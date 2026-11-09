@@ -2459,6 +2459,14 @@ an error rather than publish an intermediate frame. Container queries use
 this hook for immediate and mounted documents. Retained rendering limits and
 TypeScript integration are tracked separately in §2.1.
 
+A document names a part with the `part` attribute (`<div part="Killfeed.row"
+class:self={row.self}>`). Its classes, `aria-selected` (`:selected`) and
+`aria-pressed` or `aria-checked` (`:checked`) qualify it, so
+`Killfeed::row.self` and `Loadout::item:selected` dress it. A control keeps
+its own variant and states: `<button part="Loadout.item">` is
+`Loadout::item.secondary:hover` under the pointer, and its label's ink reads
+against that dressing.
+
 Core parts keep their existing names and meanings. Each kit documents its
 additional parts with its own API, so packs can dress them without private
 imports. A missing custom dressing uses the readable core token fallback.

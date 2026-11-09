@@ -264,17 +264,24 @@ impl Ui {
             ButtonVariant::Danger => "danger",
             ButtonVariant::Ghost => "ghost",
         };
-        let mut part =
-            crate::dress::PartRef::new("Button", "base", crate::tokens::ElementClass::Button)
-                .flag(variant)
-                .flag_if(desc.disabled, "disabled")
-                .flag_if(!desc.disabled && r.pressed, "pressed")
-                .flag_if(!desc.disabled && r.hovered && !r.pressed, "hover")
-                .flag_if(r.focused, "focused")
-                .flag_if(desc.size == ControlSize::Small, "small")
-                .flag_if(desc.size == ControlSize::Large, "large")
-                .flag_if(desc.square, "square")
-                .flag_if(self.narrow_button(key, width), "narrow");
+        let named = desc.part.unwrap_or(crate::dress::PartRef::new(
+            "Button",
+            "base",
+            crate::tokens::ElementClass::Button,
+        ));
+        let mut part = crate::dress::PartRef {
+            class: Some(crate::tokens::ElementClass::Button),
+            ..named
+        }
+        .flag(variant)
+        .flag_if(desc.disabled, "disabled")
+        .flag_if(!desc.disabled && r.pressed, "pressed")
+        .flag_if(!desc.disabled && r.hovered && !r.pressed, "hover")
+        .flag_if(r.focused, "focused")
+        .flag_if(desc.size == ControlSize::Small, "small")
+        .flag_if(desc.size == ControlSize::Large, "large")
+        .flag_if(desc.square, "square")
+        .flag_if(self.narrow_button(key, width), "narrow");
         part.hover = amounts.0;
         part.press = amounts.1;
         let resolved = self.dress.resolve(&part);

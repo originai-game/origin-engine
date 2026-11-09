@@ -367,3 +367,103 @@ fn a_draw_strokes_over_its_elements_background() {
         );
     }
 }
+
+/// A document element's `part` attribute is the part its style dresses
+/// (docs/ui.md §3.2), with its classes and ARIA states as qualifiers and a
+/// control's own states kept: a kit's `<button part="Loadout.item">` is
+/// `Loadout::item:hover` under the pointer. Wrong: the attribute reached no
+/// draw (a bare box, a `Button::base` button), a class or `aria-selected`
+/// never qualified it, or the control lost its hover and variant.
+#[test]
+fn a_document_part_takes_its_dressing_classes_and_states() {
+    use og_ui::reactive::SourceId;
+    let mut ui = dressed(concat!(
+        "Kit::box {\n  -og-fill: #00ff00\n}\n",
+        "Kit::box.hot {\n  -og-fill: #ffff00\n}\n",
+        "Kit::item {\n  -og-fill: #00ffff\n}\n",
+        "Kit::item:hover {\n  -og-fill: #ffffff\n}\n",
+        "Kit::item:selected {\n  -og-fill: #ff8800\n}\n",
+    ));
+    let doc = r#"<meta name="component" content="kit">
+<meta name="parts" content="Kit.box Kit.item">
+<div id="Root">
+  <div id="Box" part="Kit.box">a</div>
+  <div id="Hot" part="Kit.box" class:hot={true}>b</div>
+  <button id="Item" part="Kit.item">c</button>
+  <button id="Picked" part="Kit.item" aria-selected={true}>d</button>
+</div>
+<style>
+#Root { width: stretch; padding: 8px; gap: 8px; }
+#Box, #Hot { width: 100px; height: 30px; }
+</style>"#;
+    ui.define_document(UiDocument::parse("ui/kit.svelte", doc).unwrap());
+    ui.mount_document(
+        SourceId::new("test", "kit"),
+        "kit",
+        Default::default(),
+        Default::default(),
+        &bind::NoEnv,
+    )
+    .unwrap();
+    let step = |ui: &mut Ui, pointer: Option<(f32, f32)>| {
+        let input = InputFrame {
+            pointer: pointer.map_or(Default::default(), |(x, y)| og_core::glam::Vec2::new(x, y)),
+            pointer_inside: pointer.is_some(),
+            ..InputFrame::default()
+        };
+        ui.begin(input, Viewport::new(600.0, 400.0));
+        ui.build_retained_documents(&bind::NoEnv).unwrap();
+        ui.end();
+    };
+    for _ in 0..3 {
+        step(&mut ui, None);
+    }
+    let part = |ui: &Ui, id: &str| -> String {
+        let k = ui
+            .elements()
+            .iter()
+            .position(|e| e.path.ends_with(&format!("/{id}")))
+            .unwrap_or_else(|| panic!("{id}"));
+        ui.parts()[k].map(|p| p.to_string()).unwrap_or_default()
+    };
+    let fill = |ui: &Ui, id: &str| -> Vec<[f32; 4]> {
+        let e = ui
+            .elements()
+            .iter()
+            .find(|e| e.path.ends_with(&format!("/{id}")))
+            .unwrap()
+            .clone();
+        fills_in(ui, Rect::new(e.x, e.y, e.width, e.height))
+    };
+    let has = |fills: Vec<[f32; 4]>, hex: &str| {
+        let c = og_ui::style_file::parse_color(hex).unwrap();
+        fills.iter().any(|f| near(*f, c))
+    };
+    assert_eq!(part(&ui, "Box"), "Kit.box");
+    assert!(has(fill(&ui, "Box"), "#00ff00"), "{:?}", fill(&ui, "Box"));
+    assert!(part(&ui, "Hot").contains("[hot]"), "{}", part(&ui, "Hot"));
+    assert!(has(fill(&ui, "Hot"), "#ffff00"));
+    let item = part(&ui, "Item");
+    assert!(
+        item.starts_with("Kit.item[secondary]"),
+        "the control's variant stays: {item}"
+    );
+    assert!(has(fill(&ui, "Item"), "#00ffff"));
+    assert!(part(&ui, "Picked").contains("[selected]"));
+    assert!(has(fill(&ui, "Picked"), "#ff8800"));
+    let e = ui
+        .elements()
+        .iter()
+        .find(|e| e.path.ends_with("/Item"))
+        .unwrap()
+        .clone();
+    for _ in 0..30 {
+        step(&mut ui, Some((e.x + e.width / 2.0, e.y + e.height / 2.0)));
+    }
+    assert!(
+        part(&ui, "Item").contains("[hover]"),
+        "{}",
+        part(&ui, "Item")
+    );
+    assert!(has(fill(&ui, "Item"), "#ffffff"), "{:?}", fill(&ui, "Item"));
+}

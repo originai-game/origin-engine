@@ -1048,6 +1048,28 @@ impl Ui {
             self.nodes[i].a11y.name = Some(name.to_string());
         }
         self.apply_aria(i, r);
+        // The part its `part` attribute names, over the control's own: the
+        // control's states, variant, class and motion stay.
+        if let Some(named) = r.part {
+            let el = &mut self.nodes[i].el;
+            el.part = Some(match el.part {
+                Some(own) => {
+                    let mut p = crate::dress::PartRef {
+                        component: named.component,
+                        part: named.part,
+                        ..own
+                    };
+                    for f in named.flags() {
+                        p = p.flag(f);
+                    }
+                    for (k, v) in named.attrs.iter().filter(|(k, _)| !k.is_empty()) {
+                        p = p.attr(k, v);
+                    }
+                    p
+                }
+                None => named,
+            });
+        }
         if !self.building {
             self.apply_part_appearance(i);
             self.prepare_layout_node(i);
@@ -1225,6 +1247,7 @@ impl Resolved {
             autofocus: self.flag("autofocus"),
             square: self.flag("square"),
             align: self.text_align(self.flow.rtl),
+            part: self.part,
         }
     }
 }

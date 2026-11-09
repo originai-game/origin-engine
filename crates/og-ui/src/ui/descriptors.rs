@@ -1124,6 +1124,11 @@ pub struct ButtonDesc {
     /// Where its label sits across it (CSS `text-align`); `None`: centred,
     /// as HTML's user-agent sheet has a button.
     pub align: Option<TextAlign>,
+    /// The part its style dresses it as (a document's `part`, such as
+    /// `Loadout.item` with its qualifiers); `None`: `Button.base`. Its
+    /// variant and states are qualifiers of that part, and its label's ink
+    /// reads against that part's dressing.
+    pub part: Option<crate::dress::PartRef>,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]

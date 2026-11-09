@@ -583,7 +583,7 @@ impl Dressing {
 // ───────────────────────────────────────────── parts and their resolution
 
 /// Qualifiers a [`PartRef`] carries (variants and states).
-pub const MAX_FLAGS: usize = 6;
+pub const MAX_FLAGS: usize = 8;
 /// Attributes a [`PartRef`] carries (`rarity=epic`, `tone=success`).
 pub const MAX_ATTRS: usize = 3;
 

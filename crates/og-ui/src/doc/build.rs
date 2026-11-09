@@ -84,6 +84,9 @@ struct Resolved {
     flow: crate::layout::Flow,
     /// `dir="auto"`: its direction is its text's.
     dir_auto: bool,
+    /// The part its `part` attribute names, with its classes and ARIA
+    /// states as qualifiers ([`Ui::document_part`]).
+    part: Option<crate::dress::PartRef>,
 }
 
 #[derive(Clone)]
@@ -534,6 +537,34 @@ impl Ui {
         })
     }
 
+    /// The part an element's `part` attribute names (docs/ui.md §3.2), as a
+    /// style's selector reads it: `part="Killfeed.row"` with `class:self`
+    /// is `Killfeed::row.self`, its `aria-selected` `:selected` and its
+    /// `aria-pressed` or `aria-checked` `:checked`. A control keeps its own
+    /// states and variant ([`Ui::apply`] merges them), so a kit's
+    /// `<button part="Loadout.item">` is `Loadout::item:hover` when hovered.
+    fn document_part(r: &Resolved, n: &DocNode, b: &Build<'_>) -> Option<crate::dress::PartRef> {
+        use crate::dress::intern;
+        let mut part = crate::dress::PartRef::parse(r.str("part")?, None).ok()?;
+        for (name, e) in &n.selector_attrs {
+            if name == "class" {
+                if let Value::String(s) = b.eval(e) {
+                    for c in s.split_whitespace() {
+                        part = part.flag(intern(c));
+                    }
+                }
+            } else if let Some(c) = name.strip_prefix("class:")
+                && truthy(&b.eval(e))
+            {
+                part = part.flag(intern(c));
+            }
+        }
+        Some(
+            part.flag_if(r.flag("ariaSelected"), "selected")
+                .flag_if(r.flag("ariaPressed") || r.flag("ariaChecked"), "on"),
+        )
+    }
+
     /// Apply a part's presentation with the same values documents use.
     pub(crate) fn apply_part_appearances(&mut self) {
         if !self
@@ -908,6 +939,7 @@ impl Ui {
                 built.edits.push((e.prop.clone(), e.source.clone()));
             }
         }
+        r.part = Self::document_part(&r, n, b);
         if let Some(V::Spans(Ok(spans))) = r.get("spans") {
             let rules: Vec<_> = n
                 .span_rules

@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "document part attribute",
+      "summary": "An element's part attribute now takes its style's dressing: its classes and aria-selected, aria-pressed or aria-checked qualify the part, and a control keeps its own variant and states, so a kit's <button part=\"Loadout.item\"> is dressed as Loadout::item:hover under the pointer and its label reads against that dressing. Before, the attribute was parsed but nothing drew it."
+    }
+  ]
+}
