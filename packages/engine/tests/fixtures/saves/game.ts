@@ -6,7 +6,7 @@
 // It keeps what an engine upgrade could break in a player's save: game
 // components and a resource, engine components (og.Transform, og.Parent,
 // a physics body and its collider), og.Rng draws, names, and the UI's
-// state block (a button, a slider, a toast).
+// state block (a toast).
 import { og, defineComponent, defineResource, defineSystem, f32, u32 } from "@origingame/engine";
 import type { World } from "@origingame/engine";
 
@@ -21,12 +21,6 @@ const Earn = defineSystem("Earn", { reads: [Wallet], writes: [Run, og.Rng] }, (q
     const w = a.column(Wallet);
     for (let i = 0; i < a.count; i++) run.value.score += w.gold[i]! + rng.value.integer(0, 2);
   }
-});
-
-const Menu = defineSystem("Menu", { writes: [Run] }, (_q, _time, world) => {
-  const run = world.resource(Run);
-  if (!run.ok) return;
-  if (og.ui.row("Play", { interactive: true, focusable: true }, () => og.ui.label("Label", "Play")).clicked) run.value.presses += 1;
 });
 
 export function start(world: World): void {
@@ -48,4 +42,4 @@ export function start(world: World): void {
   og.ui.toast(world, "Welcome back", {});
 }
 
-export default og.game({ tick: 60, seed: 7, systems: [Earn, Menu], resources: [Run], start });
+export default og.game({ tick: 60, seed: 7, systems: [Earn], resources: [Run], start });

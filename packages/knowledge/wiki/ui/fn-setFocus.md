@@ -14,7 +14,7 @@ og.ui.setFocus(path: string): void
 
 | Parameter | Type | Optional | Doc |
 |---|---|---|---|
-| `path` | `string` | no | The element's full path (og.ui.lastPath, og.ui.focus). |
+| `path` | `string` | no | The element's full path (og.ui.focus, the probe's dump). |
 
 **Returns** `void`.
 
@@ -23,9 +23,9 @@ Binding symbol `og_ui_set_focus` · publish builds: kept
 ```ogt
 fn setFocus {
   doc "Move the focus (the pointer's, the keys' and pad 0's) to the element at a full path when this frame ends, if a focusable control is there then: a component moving the focus with its choice (a radio group's arrow keys, a list opening at its chosen option, a keyboard's first key). The ring shows as navigation's does. The last call in a frame wins; a path with no focusable control leaves the focus where it is."
-  param path String "The element's full path (og.ui.lastPath, og.ui.focus)."
+  param path String "The element's full path (og.ui.focus, the probe's dump)."
   returns Void
 }
 ```
 
-<sub>Module `ui` line 875</sub>
+<sub>Module `ui` line 653</sub>

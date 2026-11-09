@@ -41,22 +41,6 @@ module ui {
     variant rounded "The rounded font, for levels and scores."
   }
 
-  enum ButtonVariant {
-    doc "Button roles: how the style draws each."
-    variant secondary "A neutral fill (the default)."
-    variant primary "The primary action: one per screen."
-    variant quiet "Text until hovered."
-    variant danger "A destructive action: danger ink on the danger tint."
-    variant ghost "Clear inside a strong outline until hovered: a second action beside a primary that still reads as a button."
-  }
-
-  enum ControlSize {
-    doc "Control heights from the density (h-control-sm, -md, -lg)."
-    variant medium "The medium control height."
-    variant small "The small control height."
-    variant large "The large control height."
-  }
-
   enum Scheme {
     doc "The palette: games run on a stage, so dark is the default."
     variant dark "The dark palette."
@@ -204,47 +188,6 @@ module ui {
     }
   }
 
-  struct ArrowClaim {
-    doc "Which arrows a focused element claims (ElementDesc.arrows); none by default."
-    desc true
-    field left bool "Left steps it."
-    field right bool "Right steps it."
-    field up bool "Up steps it."
-    field down bool "Down steps it."
-  }
-
-  struct ElementDesc {
-    doc "A container: its layout and its look."
-    desc true
-    field direction Direction "Which way it lays out its children."
-    field width Option.Size "Its width; null fits the content."
-    field height Option.Size "Its height; null fits the content."
-    field padding Insets "Space inside its edges."
-    field gap f32 "Space between children." {
-      unit cssPx
-    }
-    field align Align "Where children sit along the main axis."
-    field cross Cross "Where children sit across it."
-    field wrap bool "Break a row into lines at its inner width."
-    field scroll bool "Scroll its content vertically and clip it."
-    field scrollX bool "Scroll its content horizontally and clip it (with scroll: both ways)."
-    field interactive bool "Report a Response from close(), as a button does."
-    field focusable bool "With interactive: keys and pads reach it (a card, a menu item, a component's tab), it takes the focus ring, and Enter, Space and the pad's A press it, as a button. Its role is button unless og.ui.semantics gives another."
-    field adjustable bool "With focusable: Left and Right (a pad's left and right) are its own while it has the focus: they step it (Response.adjust) instead of moving the focus, as a slider's do (a menu row opening its submenu, a carousel, a divider)."
-    field arrows ArrowClaim "With focusable: the arrows (a pad's d-pad and stick) it claims one by one while it has the focus: each steps it (Response.adjust for Left and Right, Response.adjustY for Up and Down) instead of moving the focus. A grid's own cursor (an inventory, a level map) claims the ones that keep it inside, so the focus leaves it at its edges."
-    field ownRing bool "With focusable: the component draws its own focus (a hand rings its focused card, a grid its cursor cell) while Response.ring says the ring is up; og-ui draws no ring around the element."
-    field background Option.Paint "Its fill; null draws none."
-    field radius f32 "Corner radius." {
-      unit cssPx
-    }
-    field frame Option.StylePart "The style frame its background takes (a HUD element, a card); null is a plain fill. Without a style the fill is drawn either way."
-    field part Option.String "The part its style dresses it as, a selector with its variant, state and attributes (`ShopCard.frame[rarity=epic][selected]`): the style's most specific matching `dress` blocks draw it, and a part the style does not dress draws from the tokens (docs/ui.md §3.2). Overrides frame; null keeps frame's."
-    field partClass Option.String "The element class whose corner, outline and elevation an undressed part takes from the tokens: panel, dialog, card, tooltip, button, field, chip, badge, tab, slot, bar, hud, avatar. Null: a decoration (a scrim, a sweep, a node's art), which takes nothing from the tokens, only what a style dresses it with; a part that is a card or a panel names its class."
-    field aspect f32 "Width over height (0: none): with the height left to fit, it is as tall as its laid-out width over this; with a fixed height and the width left to fit, as wide as the height times it." {
-      min 0
-    }
-  }
-
   struct LabelDesc {
     doc "How a label draws its text."
     desc true
@@ -262,45 +205,6 @@ module ui {
     field fitMin Option.TypeStepName "Auto-fit: where the text does not fit its width (one line with nowrap, else its words and maxLines), it takes the ramp's smaller sizes, largest first, down to this step, keeping its own step's tracking and features; at the smallest, ellipsis cuts what still does not fit. Null keeps its step. A translation longer than the source (German on a button) shrinks instead of wrapping or overflowing."
   }
 
-  enum ScrollAxes {
-    doc "Which ways a scroll container scrolls."
-    variant vertical "Up and down (the default)."
-    variant horizontal "Left and right."
-    variant both "Both ways."
-  }
-
-  struct ScrollDesc {
-    doc "A scroll container: the wheel (both axes, deltaX and deltaY) or a drag scrolls it, and a released drag keeps its momentum, slowing over motion.spring.momentum's response (none under reduced motion); it clips its content; a scrollbar on each scrolling axis shows the position, and a press on one grabs and drags it. Nested containers hand off: what the innermost under the pointer cannot take (it reached its end, or does not scroll that way) goes to the one around it."
-    desc true
-    field width Option.Size "Its width; null fits the content."
-    field height Option.Size "Its height; null fits the content."
-    field padding Insets "Space inside."
-    field gap f32 "Space between children." {
-      unit cssPx
-    }
-    field axes ScrollAxes "Which ways it scrolls."
-    field hideBars bool "Draws no scrollbars: a row of chips or tabs that shows its overflow by its cut edge (a resting thumb under it reads as a selection underline). It still scrolls by the wheel, a drag and focus."
-    field fade f32 "How far the content fades into `fadeInto` over an edge where more of it lies beyond, as strong as the content past that edge reaches this length (a log's top row cut mid-glyph reads as \"there is more\"); 0 draws no fade." {
-      unit cssPx
-      min 0
-    }
-    field fadeInto Option.ThemeColor "The surface the content fades into; null is panel."
-  }
-
-  struct ImageDesc {
-    doc "A texture region, or a solid rectangle without a texture."
-    desc true
-    field texture Option.Texture "The texture; null draws a solid rectangle of the tint."
-    field uv Option.Array.f32.4 "The region drawn, [u0, v0, u1, v1] with v down; null is the whole texture."
-    field tint Option.Paint "Multiplies the texture; null is white."
-    field width Option.Size "Its width; null fits."
-    field height Option.Size "Its height; null fits."
-    field aspect f32 "Width over height (0: none): with the height left to fit, the image is as tall as its laid-out width over this (a growing column keeps a picture's proportions); with a fixed height and the width left to fit, as wide as the height times it." {
-      min 0
-    }
-    field label String "What a screen reader calls it (and the probe's text): a picture that means something (a portrait, a star earned) names it in the game's words; empty is decoration."
-  }
-
   struct Response {
     doc "What happened to an element this tick. Edges (clicked, changed, submitted) are true for exactly one tick."
     field hovered bool "The pointer is over it and no other element holds the press."
@@ -311,12 +215,12 @@ module ui {
     field submitted bool "Enter was pressed in it (text field)."
     field dropped Option.u32 "A list row or grid cell a press started on was released over this one: that row's or cell's index (drag and drop)."
     field pad Option.u32 "The gamepad (0 to 3) whose A pressed it this tick; null when the pointer or the keyboard did. Pads 1 to 3 press only while og.ui.setPlayers allows them (local multiplayer)."
-    field player Option.u32 "The split screen region (ElementProps.player) it is in, on the ticks it is pressed or clicked; null outside every region or when not pressed."
+    field player Option.u32 "The split screen region (its `player` attribute) it is in, on the ticks it is pressed or clicked; null outside every region or when not pressed."
     field focusedBy u32 "Bit k: pad k's focus is on it (bit 0 is the shared focus of the pointer, the keyboard and pad 0; bits 1 to 3 the other players' pads)."
-    field adjust i32 "An adjustable element's (ElementDesc.adjustable) Left and Right this tick while it has the focus: +1 for each press of Right, -1 for Left (the screen's directions; a right-to-left screen reads Left as forward); 0 otherwise."
-    field adjustY i32 "An element claiming Up and Down (ElementDesc.arrows) this tick while it has the focus: +1 for each press of Down, -1 for Up; 0 otherwise."
+    field adjust i32 "An adjustable element's (a slider's) Left and Right this tick while it has the focus: +1 for each press of Right, -1 for Left (the screen's directions; a right-to-left screen reads Left as forward); 0 otherwise."
+    field adjustY i32 "An element claiming Up and Down (a vertical slider) this tick while it has the focus: +1 for each press of Down, -1 for Up; 0 otherwise."
     field ring bool "The focus ring is up on it: the focus is on it and keys or a pad put it there (a press of the pointer, or a focus returned by a closing dialog to a pointer's player, puts it away). With ElementDesc.ownRing the component draws its own ring and what keys show (a cursor's card lifted)."
-    field tapped bool "Its tap was recognised this tick (ElementProps.gestures): a press and a release inside it within the slop and, where it declares a double tap, once that double tap's window has passed without a second tap. Keys and pads tap it by activating it."
+    field tapped bool "Its tap was recognised this tick (its `tap` attribute): a press and a release inside it within the slop and, where it declares a double tap, once that double tap's window has passed without a second tap. Keys and pads tap it by activating it."
     field doubleTapped bool "The second tap of its double tap landed this tick."
     field longPressed bool "Its long press fired this tick; the press it took clicks and taps nothing when released."
     field longPress f32 "How far into its long press the held press is, 0 to 1 (0: none): a ring that fills while a touch is held." {
@@ -409,8 +313,8 @@ module ui {
       max 1
       unit ratio
     }
-    field icons Option.IconAtlasDesc "The icon atlas og.ui.icon draws from; null takes the style's."
-    field fallbackIcons Option.IconAtlasDesc "The icon set that draws the names the atlas lacks (icons, or the style's when icons is null): a game's whole set, such as the UI kit's iconoir set, under a style pack's few painted icons, which keep the names they paint. og.ui.icon, rich text's [icon=], an action's glyph and an art slot's placeholder all look in it; a name in neither warns. null is none."
+    field icons Option.IconAtlasDesc "The icon atlas a document's `<icon>` draws from; null takes the style's."
+    field fallbackIcons Option.IconAtlasDesc "The icon set that draws the names the atlas lacks (icons, or the style's when icons is null): a game's whole set, such as the UI kit's iconoir set, under a style pack's few painted icons, which keep the names they paint. A document's `<icon>`, rich text's [icon=], an action's glyph and an art slot's placeholder all look in it; a name in neither warns. null is none."
     field images List.UiInlineImage "Pictures rich text draws inline by name ([img=<name>]): a portrait in a line of dialogue, an item's art in a tooltip. Any texture, not only the icon atlas's cells; each one em tall at its aspect, in its own colours."
     field toastAnchor Option.Anchor "Where toasts stack; null is the bottom centre."
     field hudMaxAspect f32 "The widest the HUD band is, over its height: on a wider surface (a 21:9 or 32:9 ultrawide monitor) the anchored groups (og.ui.anchor, the HUD corners) and the toasts lay out in a band this wide, centred in the safe area, so the player's eyes stay near the play; og.ui.viewport's hud is that band. 16/9 keeps a 16:9 game's HUD where it was designed; 0 is the whole safe area (a HUD at the screen's edges). Full-screen layers (dialogs, menus, scrims, world-space markers and their edge clamping) keep the whole surface. The UI itself never stretches: it lays out in CSS pixels at every aspect." {
@@ -532,59 +436,9 @@ module ui {
     returns UiTheme
   }
 
-  fn open {
-    doc "Open a container; the calls until its close() build its children."
-    param id String "Its id, unique among its siblings."
-    param desc ElementDesc "Its layout and look."
-    returns Void
-  }
-
-  fn openScroll {
-    doc "Open a vertical scroll container, closed by close()."
-    param id String "Its id."
-    param desc ScrollDesc "Its size and spacing."
-    returns Void
-  }
-
   fn close {
     doc "Close the open container."
     returns Response "Its response, for an interactive container; the zero response otherwise."
-  }
-
-  fn row {
-    doc "A row built by `build`: open(id, {...desc, direction: row}), build(), close()."
-    host false
-    param id String "Its id."
-    param desc ElementDesc "Its layout and look; direction is row."
-    param build UiBuild "Makes its children."
-    returns Response "Its response, for an interactive row."
-  }
-
-  fn column {
-    doc "A column built by `build`: open(id, {...desc, direction: column}), build(), close()."
-    host false
-    param id String "Its id."
-    param desc ElementDesc "Its layout and look; direction is column."
-    param build UiBuild "Makes its children."
-    returns Response "Its response, for an interactive column."
-  }
-
-  struct RichTextDesc {
-    doc "How a rich text paragraph draws: its defaults, which its markup's spans override."
-    desc true
-    field step Option.TypeStepName "The type step; null is body."
-    field color Option.Paint "The ink; null is ink."
-    field align TextAlign "How the lines align."
-    field nowrap bool "Keep to one line (breaking only at `\\n`)."
-    field width Option.Size "Its width; null fits the text."
-    field font FontRole "Which font."
-  }
-
-  struct RichTextResult {
-    doc "What a rich text's links did this tick."
-    field response Response "Its links together: hovered while one is, clicked when one was."
-    field link Option.String "The link clicked this tick: its `[link=…]` id."
-    field hovered Option.String "The link under the pointer."
   }
 
   struct TextSpan {
@@ -595,35 +449,12 @@ module ui {
     field properties Map.OneOf.String.OneOf.f64.bool "Typed attribute properties: only string, finite number or boolean, never nested data or null."
   }
 
-  fn richText {
-    doc "A paragraph of inline spans from markup, for a string-table message (og.i18n.t) so a translation carries its own emphasis: `[b]bold[/b]` (thickened in the distance field as far as it reaches, plus a second copy one device pixel right), `[color=danger]` or `[color=#ff8800]` (a ThemeColor follows the style), `[size=xl]` (a TypeStepName), `[font=mono]`, `[icon=coin]` (a cell of the icon atlas, one em), `[link=shop]Open the shop[/link]` (accent ink, underlined, focusable by keys and pads; a child element `<id>/shop` of kind link for the probe) and per-glyph motion `[wave]`, `[shake]`, `[pulse]` (by the tick; still under reduced motion). `[[` is a literal bracket. Lines break between the spans' words (a word restyled mid-way stays whole), each as tall as its tallest span on one baseline. Markup it cannot read shows as text and logs a warning."
-    param id String "Its id."
-    param markup String "The markup."
-    param desc RichTextDesc "Defaults for its spans: type step, ink, alignment, wrapping, width and font."
-    returns RichTextResult
-  }
-
   fn label {
     doc "MSDF text that wraps at its width (word breaks; between CJK characters under kinsoku, katakana words kept whole; long words between characters) unless nowrap. The probe reads its text."
     param id String "Its id."
     param text String "The text."
     param desc LabelDesc "Type step, ink, alignment, wrapping, width and font."
     returns Void
-  }
-
-  fn image {
-    doc "A texture region, or a solid rectangle; with ImageDesc.aspect, a fitting side follows the other."
-    param id String "Its id."
-    param desc ImageDesc "Texture, region, tint, size and aspect ratio."
-    returns Void
-  }
-
-  fn idi {
-    doc "The id of the index-th of several siblings of one name: `idi(\"Slot\", 3)` is `Slot#3`."
-    host false
-    param name String "The name."
-    param index u32 "The index."
-    returns String
   }
 
   # ── the game widget set ─────────────────────────────────────────────────
@@ -639,18 +470,6 @@ module ui {
     variant bottomLeft "The bottom left corner."
     variant bottom "The middle of the bottom edge."
     variant bottomRight "The bottom right corner."
-  }
-
-  enum TransitionKind {
-    doc "How a transition moves its content in and out. Under reduced motion every kind only fades."
-    variant fade "Opacity only."
-    variant slideUp "Rises into place from below."
-    variant slideDown "Drops into place from above."
-    variant slideLeft "Enters from the right."
-    variant slideRight "Enters from the left."
-    variant scale "Grows from slightly smaller around its centre."
-    variant pop "Springs up from smaller around its centre, overshoots and settles."
-    variant glitch "Tears in: the content draws through the glitch material (slices pushed sideways, colours split) as it fades in or out, over 150 to 180 ms whatever the style's base duration; as deterministic as every frame (from the element's id and the tick-counted UI clock). A style sets its strength (`enter glitch 0.8`)."
   }
 
   enum Tone {
@@ -733,7 +552,7 @@ module ui {
       default 1
       min 1
     }
-    field names List.String "Each cell's name, in reading order: og.ui.icon draws a cell by its name."
+    field names List.String "Each cell's name, in reading order: a document's `<icon>` draws a cell by its name."
   }
 
   struct UiInlineImage {
@@ -778,24 +597,6 @@ module ui {
     field instant bool "Shown settled the first time it is built: no style entrance or stagger, its controls answering at once. For the screen a game opens on while it is that: the web draws it behind the play gate, where an entrance would stay part-way until the tap."
   }
 
-  struct ModalDesc {
-    doc "A dialog: a scrim over everything and a centred panel. Focus moves in and stays while it is the topmost; Back and the backdrop dismiss it unless locked."
-    desc true
-    field title String "A title over the content, set in the style's heading type role (its step and face); empty is none."
-    field width Option.Size "The panel's width; null is 420 CSS px, at most the surface less its gutters."
-    field locked bool "Back and the backdrop do not dismiss it (a choice must be made)."
-    field ignoreBackdrop bool "A press on the backdrop does not dismiss it."
-    field transition Option.TransitionKind "How it enters and leaves; null is scale."
-    field backdrop Option.Paint "The backdrop's fill; null is scrim."
-    field bare bool "No panel: the content sits centred on the backdrop (full-screen menus, loading)."
-  }
-
-  struct ModalResult {
-    doc "A dialog's answer this tick."
-    field visible bool "Build its content (open, or leaving)."
-    field dismissed bool "Back or a press on the backdrop asked to close it: set your open flag false."
-  }
-
   struct ToastDesc {
     doc "A toast's tone and time."
     desc true
@@ -804,24 +605,6 @@ module ui {
       unit ms
       min 0
     }
-  }
-
-  struct IconDesc {
-    doc "An icon's size, ink and name."
-    desc true
-    field size f32 "Its size; 0 is 24." {
-      unit cssPx
-      min 0
-    }
-    field tint Option.Paint "Its ink; null is ink."
-    field secondary Option.String "A second atlas icon, overlaid in the same em square: author the two silhouettes as separate named layers. Null draws one layer."
-    field secondaryTint Option.Paint "The second layer's ink; null is accent."
-    field label Option.String "What a screen reader calls it (and the probe's text): null is the icon's name in the atlas (an English word: `star`); empty is decoration, named by nothing, so a card or button it sits on is named by its other text. A localised game names a meaningful icon from its string table."
-  }
-
-  callback UiItemBuild {
-    doc "Builds one row or cell of a virtualised list or grid: ui calls made inside nest under it."
-    param index u32 "Its index."
   }
 
   struct UiPointer {
@@ -867,20 +650,15 @@ module ui {
     returns f64
   }
 
-  fn lastPath {
-    doc "The full path of the element built just before (a container just closed, or a widget), as og.ui.bounds, og.ui.gesture, og.ui.forceState and the probe name it: a component reads its own parts' rectangles and gestures by it. Empty when nothing was built before it."
-    returns String
-  }
-
   fn setFocus {
     doc "Move the focus (the pointer's, the keys' and pad 0's) to the element at a full path when this frame ends, if a focusable control is there then: a component moving the focus with its choice (a radio group's arrow keys, a list opening at its chosen option, a keyboard's first key). The ring shows as navigation's does. The last call in a frame wins; a path with no focusable control leaves the focus where it is."
-    param path String "The element's full path (og.ui.lastPath, og.ui.focus)."
+    param path String "The element's full path (og.ui.focus, the probe's dump)."
     returns Void
   }
 
   fn scrollIntoView {
     doc "Scroll the scroll container around a control (an interactive or focusable element, by its full path) so the control is in its view, by where both were in the last frame: by the least that shows it whole, or centred in the view (a saga map opening on the current level, a list on its chosen row). The offset stays in the container's range and stops a fling. Nothing for a path the last frame had no control at or that is in no scroll container."
-    param path String "The control's full path (og.ui.lastPath, og.ui.focus)."
+    param path String "The control's full path (og.ui.focus, the probe's dump)."
     param center bool "Centre it in the view, as far as the range allows; false scrolls by the least that shows it."
     returns Void
   }
@@ -908,19 +686,6 @@ module ui {
     param id String "Its id."
     param desc AnchorDesc "Where it sits and how it lays out."
     param build UiBuild "Makes its children."
-    returns Void
-  }
-
-  fn openModal {
-    doc "Open a dialog, closed by closeModal(); build its content only while the answer is visible. The probe sees the backdrop as `<id>` and the panel as `<id>/Panel`."
-    param id String "Its id."
-    param open bool "Whether it should be open."
-    param desc ModalDesc "Title, width and dismissal rules."
-    returns ModalResult
-  }
-
-  fn closeModal {
-    doc "Close a dialog opened with openModal (its panel and backdrop)."
     returns Void
   }
 
@@ -953,31 +718,9 @@ module ui {
   }
 
   fn scrollState {
-    doc "A scroll container's offset, view and whole content, by its full path (og.ui.lastPath after closing it): what a component virtualises its rows by, since og.ui.bounds is cut to the view and a row scrolled away has none. The offset is this tick's; the sizes are the last frame's. Null for a path that was no scroll container."
+    doc "A scroll container's offset, view and whole content, by its full path (as the probe's dump names it): what a component virtualises its rows by, since og.ui.bounds is cut to the view and a row scrolled away has none. The offset is this tick's; the sizes are the last frame's. Null for a path that was no scroll container."
     param path String "Its full path."
     returns Option.ScrollState
-  }
-
-  fn divider {
-    doc "A hairline in the border colour across its parent."
-    param id String "Its id."
-    param vertical bool "Stand it up (in a row)."
-    returns Void
-  }
-
-  fn spacer {
-    doc "Empty space."
-    param id String "Its id."
-    param size Option.Size "Its size along both axes; null grows into the free space."
-    returns Void
-  }
-
-  fn icon {
-    doc "An icon of the atlas (UiDesc.icons) by name: a texture cell, or an icon set's distance-field glyph fitted to its square; an unknown name draws an empty slot and warns. Rich text takes the same icons inline with `[icon=name]`. The probe reads the name."
-    param id String "Its id."
-    param name String "The icon's name."
-    param desc IconDesc "Size and ink."
-    returns Void
   }
 
   fn toast {
@@ -1081,7 +824,7 @@ module ui {
   }
 
   fn setHudEdit {
-    doc "Turns the HUD edit mode on or off (docs/ui.md §2.1; kept until changed). While it is on, elements with ElementProps.customize stop answering their own presses and show their outlines: a press selects one and a drag moves it, two touches or the wheel scale it, and with no virtual cursor pad 0's left stick moves the selected one. The hud-editor screen document (og ui eject hud-editor) gives the steps, Next, Reset and Done."
+    doc "Turns the HUD edit mode on or off (docs/ui.md §2.1; kept until changed). While it is on, elements with the `customize` attribute stop answering their own presses and show their outlines: a press selects one and a drag moves it, two touches or the wheel scale it, and with no virtual cursor pad 0's left stick moves the selected one. The hud-editor screen document (og ui eject hud-editor) gives the steps, Next, Reset and Done."
     param on bool "On or off."
     returns Void
   }
@@ -1193,20 +936,6 @@ module ui {
   fn setNavigation {
     doc "Whether keyboard and gamepad navigation moves focus on this screen (on by default). A gameplay HUD whose keys move the player turns it off; an open dialog or menu turns it back on while it is open. Takes effect from the next tick."
     param on bool "On or off."
-    returns Void
-  }
-
-  fn memory {
-    doc "A number the UI keeps for an id under the open element (a component's tab, a count-up's start tick), in snapshots like the rest of the UI state. Read it every tick it is used: an unused memory is dropped."
-    param id String "The id, unique among its siblings' memories."
-    param initial f64 "Its value the first time."
-    returns f64
-  }
-
-  fn remember {
-    doc "Set a number memory (see memory)."
-    param id String "The id."
-    param value f64 "The value."
     returns Void
   }
 

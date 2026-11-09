@@ -33,13 +33,13 @@ let hovered = false;
 let focused = false;
 let value: UiWritable<number>;
 const Tick = defineSystem("CheckpointInput", { reads: [Confirm], writes: [Intents, Confirm, og.PauseIntent] }, (_q, _t, world) => {
-  // Exercise the core control while the template parser is being replaced.
-  // Simulation consumes the recorded input event, never the control response.
+  // The confirm document's press (presentation) becomes a recorded intent:
+  // simulation consumes the input event, never the control's events.
   if (show) {
-    const response = og.ui.row("Confirm", { interactive: true, focusable: true, width: { kind: "fixed", px: 160 } }, () => og.ui.label("Label", "Confirm"));
-    hovered ||= response.hovered;
-    focused ||= response.focused;
-    if (response.clicked && emit) {
+    const events = og.ui.docEvents(world).filter((e) => e.path.endsWith("Confirm"));
+    hovered ||= events.some((e) => e.kind === "emit" && e.name === "over");
+    const clicked = events.some((e) => e.kind === "click");
+    if (clicked && emit) {
       const confirmed = og.input.intent(world, Confirm, { amount: 3 });
       const paused = og.ui.push(world, "boundaryPause");
       if (!confirmed.ok || !paused.ok) throw new Error("intent refused");
@@ -72,14 +72,20 @@ function replay(presentation: boolean, confirm: boolean, recorded: readonly Reco
     resources: [Intents],
     systems: [Tick],
     start(world) {
-      const document = og.load.document(world, "pause.svelte");
-      if (!document.ok) throw new Error(document.reason);
+      for (const file of ["pause.svelte", "confirm.svelte"]) {
+        const document = og.load.document(world, file);
+        if (!document.ok) throw new Error(document.reason);
+      }
       const sound = og.audio.createSound(world, { samples: new Float32Array([0.5, -0.5, 0.25, -0.25]) });
       if (!sound.ok) throw new Error(sound.reason);
       const configured = og.ui.configure(world, { sounds: { hover: sound.value, press: sound.value } });
       if (!configured.ok) throw new Error(configured.reason);
     },
-    ui(world) { value = og.ui.scope(world, "checkpoint").writable("value", 7); },
+    ui(world) {
+      const scope = og.ui.scope(world, "checkpoint");
+      value = scope.writable("value", 7);
+      if (show && !scope.mount("confirm", "confirm", {}).ok) throw new Error("confirm not mounted");
+    },
   }) as unknown as GameToken, { root });
   if (!created.ok) throw new Error(created.reason);
   const engine = created.value;
@@ -95,6 +101,9 @@ function replay(presentation: boolean, confirm: boolean, recorded: readonly Reco
       }
       const advanced = engine.advance(1);
       if (!advanced.ok) throw new Error(advanced.reason);
+      const states = (engine.probe.dump({ what: "ui" }) as unknown as { elements: Array<{ id: string; states: string[] }> })
+        .elements.find((e) => e.id === "Confirm")?.states ?? [];
+      focused ||= states.includes("focused");
       intentsRecorded.push(...og.input.takeIntents(engine.world));
       // Inputs emitted during a tick enter pending event queues at its end.
       // Replay them at that same boundary before comparing the pending hash.

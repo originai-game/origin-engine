@@ -465,7 +465,7 @@ amount, a field's text, a select's choice, a cooldown's remaining share)
 and **states** (`disabled`, `focused`, `focusable`, `checked`, `selected`,
 `expanded`, `collapsed` (expandable and closed), `pressed`, `busy`; `offscreen` in the tree for a control a
 scroll container cuts out of view). A component built from containers (a menu, a tree, a
-table) names its own with `Ui::semantics` (`og.ui.semantics`): one of
+table) names its own with `Ui::semantics` (a document's `role` and `aria-*`): one of
 `a11y::ROLES` (menu, menuitem, tree, treeitem, table, row, cell,
 tabpanel, toolbar, region…), a name, a value, its states and a range;
 an unknown role is refused with a frame warning. The probe's `dump_ui` carries them on
@@ -1162,34 +1162,15 @@ shows the components, the patterns and the genre showcases, and is the
 reference source of `references/<tier>/kit-*.png`; the `screens` guide
 (`og api show screens`) tells an agent which to pick and how to check it.
 
-**The component library** (`packages/engine/src/ui/containers` and
-`ui/data`, merged into `og.ui`, docs/ui.md §2): `host false` components
-built from the public calls only (open/close with `ElementDesc.focusable`
-and `part`, `props`, `setDraw`, `semantics`, `animate`, `memory`, `gesture`,
-the modal layer). Containers and navigation: `card`,
-`dialog`, `confirm`,
-`sheet`, `pagination` (popovers and context menus are document
-`popover`/`contextmenu` attributes; the menu, tooltip card, action bar, split view, carousel,
-breadcrumbs and radial menu are component documents in
-`packages/engine/src/ui/components`, `og ui eject <name>`). Data: `dataList`, `dataGrid`, `table` (sorted
-and filtered once per change of its rows, only the rows in view built),
-`tree`, `chart` (line, area, bar, radar, pie, donut over
-`DrawShape.filled` paths and arcs), `keyValueRows`, `statCompare`,
-`calendar`. Each draws named parts a style dresses (`Card.frame`,
-`Card.media`, `Dialog.tone`,
-`Popover.frame`, `Popover.arrow`, `Menu.frame`, `Menu.item`, `Sheet.frame`,
-`Sheet.handle`,
-`Pagination.page`, `Pagination.step`,
-`List.row`, `Grid.cell`, `Table.frame`,
-`Table.header`, `Table.column`, `Table.row`, `Tree.item`, `Tree.toggle`,
-`Graph.node`, `Graph.zoom`, `Chart.frame`, `Chart.bar`, `Chart.wedge`,
-`Chart.tooltip`, `Chart.legend`, `KeyValue.row`, `StatCompare.row`,
-`StatCompare.delta`, `Calendar.day`, `Calendar.step`, `Data.stateMark`)
-with selector flags for its states (`[hover]`, `[pressed]`, `[focused]`,
-`[disabled]`, `[selected]`, `[expanded]`, `[collapsed]`, `[current]`,
-`[sorted]`, `[today]`, `[better]`). `templates/ui-kit`'s `containers`,
-`navigation`, `overlays`, `data`, `charts` and `graph` screens show them
-(`tests/components*.og.ts` draw their states).
+**The component library** (docs/ui.md §2) is documents: the screens in
+`packages/engine/src/ui/screens` (card, dialog and confirm, pagination,
+data lists, tables, trees, calendars, key-value rows, notifications,
+settings) and the components in `packages/engine/src/ui/components` (the
+menu, tooltip card, action bar, split view, carousel, breadcrumbs, radial
+menu, charts, data grid, HUD meters and world tags), each copied into a
+game with `og ui eject <name>` and dressed by its CSS and the style's
+tokens. Popovers and context menus are the document `popover` and
+`contextmenu` attributes.
 
 ## Tests
 

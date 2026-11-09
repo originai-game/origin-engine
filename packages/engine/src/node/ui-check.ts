@@ -206,7 +206,7 @@ export const RULES: readonly UiRule[] = [
   { id: "motion", kind: "finding", title: "durations outside the style's bounds, missing reduced-motion fallbacks, input refused longer than the entrance", status: "not checkable yet", note: "the style's motion bounds and per-element fallbacks are U4's style v2 tokens on U2's states; the frame does not carry a transition's duration or its reduced variant yet" },
   { id: "art-slot", kind: "finding", title: "art slots still on their placeholder; focal points outside the crop", status: "not checkable yet", note: "slots are specified (og_ui::slot) but not built into a frame or drawn from the style yet (U1, U4); nothing lists a slot's art" },
   { id: "contrast", kind: "measure", title: "each live text's contrast on the drawn pixels, :1", status: "checked", note: "dimmed, disabled, decorative and over-the-scene text is not measured: its ground is not the UI's" },
-  { id: "text-size", kind: "measure", title: "each text's size, CSS px (dense when its element declares ElementProps.dense)", status: "checked" },
+  { id: "text-size", kind: "measure", title: "each text's size, CSS px (dense when its element is marked dense, og-ui's Props::dense)", status: "checked" },
   { id: "touch-target", kind: "measure", title: "each control's shorter side on a coarse pointer, CSS px", status: "checked", note: "an element's hitSlop is not in the frame; a link inside a rich text's sentence is marked inline" },
   { id: "text-scale", kind: "measure", title: "each text's size at the cell's text scale, as a percentage of its size at 100 %", status: "checked", note: "a scale cell configures UiDesc.textScale (og.ui.configure); a text cut there is a text-cut finding of that cell" },
   { id: "primary-actions", kind: "measure", title: "the buttons filled with the palette's primary, per layer", status: "partial", note: "a button is primary when its fill is the palette's primary; the layers are approximated by the base and each modal until U3's layer stack" },
@@ -487,7 +487,7 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
       value: r1(o.rect[2] * o.rect[3]),
       unit: "CSS px²",
       measured: `${r1(o.rect[2])}×${r1(o.rect[3])} CSS px overlap at ${r1(o.rect[0])},${r1(o.rect[1])}${o.inFlow ? " (siblings in the flow)" : ""}${pseudo}`,
-      prop: o.inFlow ? `${o.path}: size, gap or wrap of its row` : `${o.path}: anchor, offset or insets (or \`overlaps: ["${o.other}"]\` in og.ui.props when it is meant)`,
+      prop: o.inFlow ? `${o.path}: size, gap or wrap of its row` : `${o.path}: anchor, offset or insets (or \`-og-overlaps: ${o.other}\` in its CSS when it is meant)`,
       fix: o.inFlow
         ? `siblings in the flow never overlap: give their row room (wrap, a smaller step, grow) at ${v.breakpoint}`
         : `move ${o.path} off ${o.other} at ${v.breakpoint} (a breakpoint variant of its anchor or offset, or one group for both), or declare the overlap when it is the design`,
@@ -520,7 +520,7 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
         paths: [path],
         rect: t.bounds,
         measured: `"${t.text.slice(0, 32)}" cut by its clip: ${cut}${pseudo}`,
-        prop: `${path}: ellipsis and maxLines (og.ui.label), or its box's width`,
+        prop: `${path}: text-overflow: ellipsis and line-clamp, or its box's width`,
         fix: "let the box grow with its text, wrap it, or cut it with an ellipsis and give it a tooltip",
       });
     } else if (e && !PICTURES.has(e.kind ?? "") && w > e.width + 1.5 && (e.kind === "label" || e.kind === "button")) {
@@ -538,7 +538,7 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
       add("text-truncated", {
         paths: [path],
         measured: `"${e.text.slice(0, 40)}" drawn as "${t.text.slice(0, 40)}"${pseudo}`,
-        prop: `${path}: a title= on it, or its width`,
+        prop: `${path}: a title= tooltip on it, or its width`,
         fix: "give it a tooltip (title= on the element) or room for the whole text; a tooltip cannot be seen in the frame data yet, so check that one exists",
       });
     }
@@ -672,7 +672,7 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
     add("feedback", {
       paths: [paths[i]!],
       measured: `a custom ${e.role} (${e.kind || "container"}) with no visual states`,
-      prop: `${paths[i]!}: states (a \`press\` group: og.ui.props({ states }))`,
+      prop: `${paths[i]!}: :hover and :active rules in its CSS`,
       fix: "give it hover and press states (§7.3), or make it a document <button>",
     });
   }
@@ -1273,7 +1273,7 @@ const ACCENTS: Record<string, string> = {
   a: "á", e: "é", i: "í", o: "ö", u: "ü", c: "ç", n: "ñ", y: "ý", A: "Á", E: "É", I: "Í", O: "Ö", U: "Ü", C: "Ç", N: "Ñ", Y: "Ý",
 };
 
-/** A rich text tag (og.ui.richText's: `[b]`, `[color=info]`, `[/color]`): markup, not words. */
+/** A rich text tag (`[b]`, `[color=info]`, `[/color]`): markup, not words. */
 const TAG = /\[\/?(?:b|i|u|s|outline|color|size|font|icon|img|action|link|wave|shake|pulse)(?:=[^\][]*)?\]/g;
 
 /**

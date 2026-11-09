@@ -1013,18 +1013,10 @@ pub trait UiApi: Wire {
     fn og_ui_viewport(&self, world: u32) -> String;
     /// `og.ui.theme`
     fn og_ui_theme(&self, world: u32) -> String;
-    /// `og.ui.open`
-    fn og_ui_open(&self, id: String, desc: Option<String>);
-    /// `og.ui.openScroll`
-    fn og_ui_open_scroll(&self, id: String, desc: Option<String>);
     /// `og.ui.close`
     fn og_ui_close(&self) -> String;
-    /// `og.ui.richText`
-    fn og_ui_rich_text(&self, id: String, markup: String, desc: Option<String>) -> String;
     /// `og.ui.label`
     fn og_ui_label(&self, id: String, text: String, desc: Option<String>);
-    /// `og.ui.image`
-    fn og_ui_image(&self, id: String, desc: Option<String>);
     /// `og.ui.framePointer`
     fn og_ui_frame_pointer(&self) -> String;
     /// `og.ui.frameCursor`
@@ -1035,8 +1027,6 @@ pub trait UiApi: Wire {
     fn og_ui_has_icon(&self, name: String) -> bool;
     /// `og.ui.seconds`
     fn og_ui_seconds(&self) -> f64;
-    /// `og.ui.lastPath`
-    fn og_ui_last_path(&self) -> String;
     /// `og.ui.setFocus`
     fn og_ui_set_focus(&self, path: String);
     /// `og.ui.scrollIntoView`
@@ -1047,20 +1037,10 @@ pub trait UiApi: Wire {
     fn og_ui_frame_theme(&self) -> String;
     /// `og.ui.openAnchor`
     fn og_ui_open_anchor(&self, id: String, desc: Option<String>);
-    /// `og.ui.openModal`
-    fn og_ui_open_modal(&self, id: String, open: bool, desc: Option<String>) -> String;
-    /// `og.ui.closeModal`
-    fn og_ui_close_modal(&self);
     /// `og.ui.bounds`
     fn og_ui_bounds(&self, path: String) -> String;
     /// `og.ui.scrollState`
     fn og_ui_scroll_state(&self, path: String) -> String;
-    /// `og.ui.divider`
-    fn og_ui_divider(&self, id: String, vertical: bool);
-    /// `og.ui.spacer`
-    fn og_ui_spacer(&self, id: String, size: String);
-    /// `og.ui.icon`
-    fn og_ui_icon(&self, id: String, name: String, desc: Option<String>);
     /// `og.ui.toast`
     fn og_ui_toast(&self, world: u32, text: String, desc: Option<String>) -> u32;
     /// `og.ui.dismissToast`
@@ -1101,16 +1081,10 @@ pub trait UiApi: Wire {
     fn og_ui_set_haptics(&self, intensity: f64);
     /// `og.ui.setNavigation`
     fn og_ui_set_navigation(&self, on: bool);
-    /// `og.ui.memory`
-    fn og_ui_memory(&self, id: String, initial: f64) -> f64;
-    /// `og.ui.remember`
-    fn og_ui_remember(&self, id: String, value: f64);
     /// `og.ui.tick`
     fn og_ui_tick(&self) -> u32;
     /// `og.ui.previewViewport`
     fn og_ui_preview_viewport(&self, world: u32, viewport: String);
-    /// `og.ui.props`
-    fn og_ui_props(&self, desc: Option<String>) -> bool;
     /// `og.ui.defineTimeline`
     fn og_ui_define_timeline(&self, name: String, timeline: Option<String>);
     /// `og.ui.play`
@@ -1131,8 +1105,6 @@ pub trait UiApi: Wire {
     fn og_ui_play_info(&self, play: u32) -> String;
     /// `og.ui.forceState`
     fn og_ui_force_state(&self, path: String, group: String, state: String);
-    /// `og.ui.openPath`
-    fn og_ui_open_path(&self) -> String;
     /// `og.ui.visualState`
     fn og_ui_visual_state(&self, path: String, group: String) -> String;
     /// `og.ui.animate`
@@ -1145,10 +1117,6 @@ pub trait UiApi: Wire {
     fn og_ui_overlaps(&self) -> String;
     /// `og.ui.layoutStats`
     fn og_ui_layout_stats(&self) -> String;
-    /// `og.ui.semantics`
-    fn og_ui_semantics(&self, desc: Option<String>) -> bool;
-    /// `og.ui.setDraw`
-    fn og_ui_set_draw(&self, desc: Option<String>);
     /// `og.ui.defineMass`
     fn og_ui_define_mass(&self, name: String, desc: Option<String>) -> String;
     /// `og.ui.spawnMass`
@@ -1894,30 +1862,20 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_configure",
     "og_ui_viewport",
     "og_ui_theme",
-    "og_ui_open",
-    "og_ui_open_scroll",
     "og_ui_close",
-    "og_ui_rich_text",
     "og_ui_label",
-    "og_ui_image",
     "og_ui_frame_pointer",
     "og_ui_frame_cursor",
     "og_ui_frame_viewport",
     "og_ui_has_icon",
     "og_ui_seconds",
-    "og_ui_last_path",
     "og_ui_set_focus",
     "og_ui_scroll_into_view",
     "og_ui_frame_direction",
     "og_ui_frame_theme",
     "og_ui_open_anchor",
-    "og_ui_open_modal",
-    "og_ui_close_modal",
     "og_ui_bounds",
     "og_ui_scroll_state",
-    "og_ui_divider",
-    "og_ui_spacer",
-    "og_ui_icon",
     "og_ui_toast",
     "og_ui_dismiss_toast",
     "og_ui_navigate",
@@ -1938,11 +1896,8 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_feedback",
     "og_ui_set_haptics",
     "og_ui_set_navigation",
-    "og_ui_memory",
-    "og_ui_remember",
     "og_ui_tick",
     "og_ui_preview_viewport",
-    "og_ui_props",
     "og_ui_define_timeline",
     "og_ui_play",
     "og_ui_play_timeline",
@@ -1953,15 +1908,12 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_stop",
     "og_ui_play_info",
     "og_ui_force_state",
-    "og_ui_open_path",
     "og_ui_visual_state",
     "og_ui_animate",
     "og_ui_gesture",
     "og_ui_motion_events",
     "og_ui_overlaps",
     "og_ui_layout_stats",
-    "og_ui_semantics",
-    "og_ui_set_draw",
     "og_ui_define_mass",
     "og_ui_spawn_mass",
     "og_ui_mass_count",

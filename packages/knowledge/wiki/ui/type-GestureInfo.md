@@ -24,7 +24,7 @@ What a drag or pinch on an element is doing (last tick's answer, as responses ar
 | `droppedOn` | `string` | `""` | — | — | — | The drop target it was dropped on this tick (empty: none). |
 | `hovering` | `boolean` | `false` | — | — | — | For a drop target: a drag is over it. |
 | `received` | `string` | `""` | — | — | — | For a drop target: the element dropped on it this tick (empty: none). |
-| `tapped` | `boolean` | `false` | — | — | — | Its tap this tick (ElementProps.gestures), as Response.tapped. |
+| `tapped` | `boolean` | `false` | — | — | — | Its tap this tick (its `tap` attribute), as Response.tapped. |
 | `doubleTapped` | `boolean` | `false` | — | — | — | Its double tap this tick. |
 | `longPressed` | `boolean` | `false` | — | — | — | Its long press this tick. |
 | `longPress` | `number` | `0` | — | `ratio` | — | How far into its long press the held press is, 0 to 1. |
@@ -50,7 +50,7 @@ struct GestureInfo {
   field droppedOn String "The drop target it was dropped on this tick (empty: none)."
   field hovering bool "For a drop target: a drag is over it."
   field received String "For a drop target: the element dropped on it this tick (empty: none)."
-  field tapped bool "Its tap this tick (ElementProps.gestures), as Response.tapped."
+  field tapped bool "Its tap this tick (its `tap` attribute), as Response.tapped."
   field doubleTapped bool "Its double tap this tick."
   field longPressed bool "Its long press this tick."
   field longPress f32 "How far into its long press the held press is, 0 to 1." {
@@ -59,4 +59,4 @@ struct GestureInfo {
 }
 ```
 
-<sub>Module `ui` line 1988</sub>
+<sub>Module `ui` line 1284</sub>

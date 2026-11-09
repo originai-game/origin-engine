@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `og.ui.setHudEdit`
 
-Turns the HUD edit mode on or off (docs/ui.md §2.1; kept until changed). While it is on, elements with ElementProps.customize stop answering their own presses and show their outlines: a press selects one and a drag moves it, two touches or the wheel scale it, and with no virtual cursor pad 0's left stick moves the selected one. The hud-editor screen document (og ui eject hud-editor) gives the steps, Next, Reset and Done.
+Turns the HUD edit mode on or off (docs/ui.md §2.1; kept until changed). While it is on, elements with the `customize` attribute stop answering their own presses and show their outlines: a press selects one and a drag moves it, two touches or the wheel scale it, and with no virtual cursor pad 0's left stick moves the selected one. The hud-editor screen document (og ui eject hud-editor) gives the steps, Next, Reset and Done.
 
 ```ts
 og.ui.setHudEdit(on: boolean): void
@@ -22,10 +22,10 @@ Binding symbol `og_ui_set_hud_edit` · publish builds: kept
 
 ```ogt
 fn setHudEdit {
-  doc "Turns the HUD edit mode on or off (docs/ui.md §2.1; kept until changed). While it is on, elements with ElementProps.customize stop answering their own presses and show their outlines: a press selects one and a drag moves it, two touches or the wheel scale it, and with no virtual cursor pad 0's left stick moves the selected one. The hud-editor screen document (og ui eject hud-editor) gives the steps, Next, Reset and Done."
+  doc "Turns the HUD edit mode on or off (docs/ui.md §2.1; kept until changed). While it is on, elements with the `customize` attribute stop answering their own presses and show their outlines: a press selects one and a drag moves it, two touches or the wheel scale it, and with no virtual cursor pad 0's left stick moves the selected one. The hud-editor screen document (og ui eject hud-editor) gives the steps, Next, Reset and Done."
   param on bool "On or off."
   returns Void
 }
 ```
 
-<sub>Module `ui` line 1083</sub>
+<sub>Module `ui` line 826</sub>

@@ -685,7 +685,7 @@ const dirtyRecords: RecordCopy[] = [];
 let inGame = 0;
 
 // Read from globalThis, not the DOM lib's globals: kits import this module
-// (through @origingame/engine/ui-parts) into games typechecked with lib
+// (through @origingame/engine) into games typechecked with lib
 // ES2022 alone, which has no TextEncoder.
 const utf8 = globalThis as unknown as {
   TextEncoder: new () => { encode(text: string): Uint8Array };
@@ -2112,41 +2112,17 @@ export const atmosphere = Object.freeze({
   timeOfDay: (world: WorldImpl) => abi().og_atmosphere_time_of_day(world.id),
 });
 
-/** Runs `build` between an open and its close, closing even when it throws. */
-function within<T>(open: () => void, build: () => void): T {
-  open();
-  try {
-    build();
-  } catch (e) {
-    abi().og_ui_close();
-    throw e;
-  }
-  return parse<T>(abi().og_ui_close());
-}
-
 export const ui = Object.freeze({
   scope: (world: WorldImpl, id: string): Api.UiScope => uiReactor(world).scope(id),
   configure: (world: WorldImpl, desc?: unknown) => parse(abi().og_ui_configure(world.id, json(desc))),
   filePicker: (world: WorldImpl): boolean => abi().og_ui_file_picker(world.id),
   viewport: (world: WorldImpl) => parse(abi().og_ui_viewport(world.id)),
   theme: (world: WorldImpl) => parse(abi().og_ui_theme(world.id)),
-  open: (id: string, desc?: unknown) => abi().og_ui_open(id, json(desc)),
-  setDraw: (desc?: unknown) => abi().og_ui_set_draw(json(desc)),
-  semantics: (desc?: unknown): boolean => abi().og_ui_semantics(json(desc)),
   frameDirection: (): "ltr" | "rtl" => abi().og_ui_frame_direction() as "ltr" | "rtl",
   frameCursor: (): Api.Cursor => abi().og_ui_frame_cursor() as Api.Cursor,
-  lastPath: (): string => abi().og_ui_last_path(),
   scrollIntoView: (path: string, center: boolean): void => abi().og_ui_scroll_into_view(path, center),
+  close: () => parse(abi().og_ui_close()),
+  label: (id: string, text: string, desc?: unknown) => abi().og_ui_label(id, text, json(desc)),
   feedback: (event: string, rise: number) => abi().og_ui_feedback(event, rise),
   setHaptics: (intensity: number) => abi().og_ui_set_haptics(intensity),
-  openScroll: (id: string, desc?: unknown) => abi().og_ui_open_scroll(id, json(desc)),
-  close: () => parse(abi().og_ui_close()),
-  row: (id: string, desc: Record<string, unknown> | undefined, build: () => void) =>
-    within(() => abi().og_ui_open(id, JSON.stringify({ ...(desc ?? {}), direction: "row" })), build),
-  column: (id: string, desc: Record<string, unknown> | undefined, build: () => void) =>
-    within(() => abi().og_ui_open(id, JSON.stringify({ ...(desc ?? {}), direction: "column" })), build),
-  label: (id: string, text: string, desc?: unknown) => abi().og_ui_label(id, text, json(desc)),
-  richText: (id: string, markup: string, desc?: unknown) => parse(abi().og_ui_rich_text(id, markup, json(desc))),
-  image: (id: string, desc?: unknown) => abi().og_ui_image(id, json(desc)),
-  idi: (name: string, index: number) => `${name}#${index}`,
 });

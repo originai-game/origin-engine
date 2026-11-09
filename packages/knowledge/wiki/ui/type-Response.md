@@ -18,12 +18,12 @@ What happened to an element this tick. Edges (clicked, changed, submitted) are t
 | `submitted` | `boolean` | `false` | — | — | — | Enter was pressed in it (text field). |
 | `dropped` | `number \| null` | `null` | — | — | — | A list row or grid cell a press started on was released over this one: that row's or cell's index (drag and drop). |
 | `pad` | `number \| null` | `null` | — | — | — | The gamepad (0 to 3) whose A pressed it this tick; null when the pointer or the keyboard did. Pads 1 to 3 press only while og.ui.setPlayers allows them (local multiplayer). |
-| `player` | `number \| null` | `null` | — | — | — | The split screen region (ElementProps.player) it is in, on the ticks it is pressed or clicked; null outside every region or when not pressed. |
+| `player` | `number \| null` | `null` | — | — | — | The split screen region (its `player` attribute) it is in, on the ticks it is pressed or clicked; null outside every region or when not pressed. |
 | `focusedBy` | `number` | `0` | — | — | — | Bit k: pad k's focus is on it (bit 0 is the shared focus of the pointer, the keyboard and pad 0; bits 1 to 3 the other players' pads). |
-| `adjust` | `number` | `0` | — | — | — | An adjustable element's (ElementDesc.adjustable) Left and Right this tick while it has the focus: +1 for each press of Right, -1 for Left (the screen's directions; a right-to-left screen reads Left as forward); 0 otherwise. |
-| `adjustY` | `number` | `0` | — | — | — | An element claiming Up and Down (ElementDesc.arrows) this tick while it has the focus: +1 for each press of Down, -1 for Up; 0 otherwise. |
+| `adjust` | `number` | `0` | — | — | — | An adjustable element's (a slider's) Left and Right this tick while it has the focus: +1 for each press of Right, -1 for Left (the screen's directions; a right-to-left screen reads Left as forward); 0 otherwise. |
+| `adjustY` | `number` | `0` | — | — | — | An element claiming Up and Down (a vertical slider) this tick while it has the focus: +1 for each press of Down, -1 for Up; 0 otherwise. |
 | `ring` | `boolean` | `false` | — | — | — | The focus ring is up on it: the focus is on it and keys or a pad put it there (a press of the pointer, or a focus returned by a closing dialog to a pointer's player, puts it away). With ElementDesc.ownRing the component draws its own ring and what keys show (a cursor's card lifted). |
-| `tapped` | `boolean` | `false` | — | — | — | Its tap was recognised this tick (ElementProps.gestures): a press and a release inside it within the slop and, where it declares a double tap, once that double tap's window has passed without a second tap. Keys and pads tap it by activating it. |
+| `tapped` | `boolean` | `false` | — | — | — | Its tap was recognised this tick (its `tap` attribute): a press and a release inside it within the slop and, where it declares a double tap, once that double tap's window has passed without a second tap. Keys and pads tap it by activating it. |
 | `doubleTapped` | `boolean` | `false` | — | — | — | The second tap of its double tap landed this tick. |
 | `longPressed` | `boolean` | `false` | — | — | — | Its long press fired this tick; the press it took clicks and taps nothing when released. |
 | `longPress` | `number` | `0` | — | `ratio` | — | How far into its long press the held press is, 0 to 1 (0: none): a ring that fills while a touch is held. |
@@ -39,12 +39,12 @@ struct Response {
   field submitted bool "Enter was pressed in it (text field)."
   field dropped Option.u32 "A list row or grid cell a press started on was released over this one: that row's or cell's index (drag and drop)."
   field pad Option.u32 "The gamepad (0 to 3) whose A pressed it this tick; null when the pointer or the keyboard did. Pads 1 to 3 press only while og.ui.setPlayers allows them (local multiplayer)."
-  field player Option.u32 "The split screen region (ElementProps.player) it is in, on the ticks it is pressed or clicked; null outside every region or when not pressed."
+  field player Option.u32 "The split screen region (its `player` attribute) it is in, on the ticks it is pressed or clicked; null outside every region or when not pressed."
   field focusedBy u32 "Bit k: pad k's focus is on it (bit 0 is the shared focus of the pointer, the keyboard and pad 0; bits 1 to 3 the other players' pads)."
-  field adjust i32 "An adjustable element's (ElementDesc.adjustable) Left and Right this tick while it has the focus: +1 for each press of Right, -1 for Left (the screen's directions; a right-to-left screen reads Left as forward); 0 otherwise."
-  field adjustY i32 "An element claiming Up and Down (ElementDesc.arrows) this tick while it has the focus: +1 for each press of Down, -1 for Up; 0 otherwise."
+  field adjust i32 "An adjustable element's (a slider's) Left and Right this tick while it has the focus: +1 for each press of Right, -1 for Left (the screen's directions; a right-to-left screen reads Left as forward); 0 otherwise."
+  field adjustY i32 "An element claiming Up and Down (a vertical slider) this tick while it has the focus: +1 for each press of Down, -1 for Up; 0 otherwise."
   field ring bool "The focus ring is up on it: the focus is on it and keys or a pad put it there (a press of the pointer, or a focus returned by a closing dialog to a pointer's player, puts it away). With ElementDesc.ownRing the component draws its own ring and what keys show (a cursor's card lifted)."
-  field tapped bool "Its tap was recognised this tick (ElementProps.gestures): a press and a release inside it within the slop and, where it declares a double tap, once that double tap's window has passed without a second tap. Keys and pads tap it by activating it."
+  field tapped bool "Its tap was recognised this tick (its `tap` attribute): a press and a release inside it within the slop and, where it declares a double tap, once that double tap's window has passed without a second tap. Keys and pads tap it by activating it."
   field doubleTapped bool "The second tap of its double tap landed this tick."
   field longPressed bool "Its long press fired this tick; the press it took clicks and taps nothing when released."
   field longPress f32 "How far into its long press the held press is, 0 to 1 (0: none): a ring that fills while a touch is held." {
@@ -53,4 +53,4 @@ struct Response {
 }
 ```
 
-<sub>Module `ui` line 304</sub>
+<sub>Module `ui` line 208</sub>

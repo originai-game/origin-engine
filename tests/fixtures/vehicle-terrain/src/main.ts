@@ -27,7 +27,6 @@ export const Drive = defineResource("Drive", { kmh: f32(), slip: f32(), marks: u
 /** A skid mark's place in the ring. */
 const Mark = defineComponent("Mark", { slot: u32() });
 
-const GROW = { kind: "grow" } as const;
 
 /** v turned by the unit quaternion q. */
 function rotate(v: Vector3, q: Quaternion): Vector3 {
@@ -203,12 +202,10 @@ const Chase = defineSystem("Chase", { reads: [og.Transform], writes: [og.Camera]
 const Hud = defineSystem("Hud", { reads: [Drive] }, (_q, _t, world) => {
   const d = must(world.resource(Drive));
   const theme = og.ui.theme(world);
-  og.ui.column("Hud", { width: GROW, height: GROW, padding: { left: 24, top: 24, right: 24, bottom: 24 }, align: "end", cross: "end" }, () =>
-    og.ui.column("Speed", { padding: { left: 16, top: 10, right: 16, bottom: 10 }, gap: theme.space.md, background: { token: "panel" }, radius: theme.radius.panel, frame: "card" }, () => {
-      og.ui.label("Value", `${Math.round(d.kmh)}`, { step: "displaySm", font: "mono", nowrap: true });
-      og.ui.label("Unit", "km/h", { step: "meta", color: { token: "inkMuted" } });
-    }),
-  );
+  og.ui.anchor("Speed", { anchor: "bottomRight", margin: 24, instant: true, direction: "column", padding: { left: 16, top: 10, right: 16, bottom: 10 }, gap: theme.space.md, background: { token: "panel" }, radius: theme.radius.panel, frame: "card" }, () => {
+    og.ui.label("Value", `${Math.round(d.kmh)}`, { step: "displaySm", font: "mono", nowrap: true });
+    og.ui.label("Unit", "km/h", { step: "meta", color: { token: "inkMuted" } });
+  });
 });
 
 export default og.game({

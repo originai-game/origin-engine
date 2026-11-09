@@ -16,7 +16,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `texture` | `Texture \| null` | `null` | — | — | — | The atlas texture, from og.load.texture. |
 | `columns` | `number` | `1` | ≥ 1 | — | — | Cells across. |
 | `rows` | `number` | `1` | ≥ 1 | — | — | Cells down. |
-| `names` | `readonly string[]` | `[]` | — | — | — | Each cell's name, in reading order: og.ui.icon draws a cell by its name. |
+| `names` | `readonly string[]` | `[]` | — | — | — | Each cell's name, in reading order: a document's `<icon>` draws a cell by its name. |
 
 ```ogt
 struct IconAtlasDesc {
@@ -32,8 +32,8 @@ struct IconAtlasDesc {
     default 1
     min 1
   }
-  field names List.String "Each cell's name, in reading order: og.ui.icon draws a cell by its name."
+  field names List.String "Each cell's name, in reading order: a document's `<icon>` draws a cell by its name."
 }
 ```
 
-<sub>Module `ui` line 723</sub>
+<sub>Module `ui` line 542</sub>

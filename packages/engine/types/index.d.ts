@@ -12941,7 +12941,9 @@ export interface EnvironmentInfo {
 
 /** What a ready uncooked image holds. */
 export interface ImageInfo {
-  /** The texture: og.render.sprite, og.ui.image and material maps draw it like a cooked one. */
+  /**
+   * The texture: og.render.sprite, a document's `<img>` and material maps draw it like a cooked one.
+   */
   readonly texture: Texture;
   /** Its width in texels. */
   readonly width: number;
@@ -24046,24 +24048,6 @@ export type TextAlign = "start" | "center" | "end";
 export type FontRole = "body" | "display" | "mono" | "rounded";
 
 /**
- * Button roles: how the style draws each.
- * - `"secondary"`: A neutral fill (the default).
- * - `"primary"`: The primary action: one per screen.
- * - `"quiet"`: Text until hovered.
- * - `"danger"`: A destructive action: danger ink on the danger tint.
- * - `"ghost"`: Clear inside a strong outline until hovered: a second action beside a primary that still reads as a button.
- */
-export type ButtonVariant = "secondary" | "primary" | "quiet" | "danger" | "ghost";
-
-/**
- * Control heights from the density (h-control-sm, -md, -lg).
- * - `"medium"`: The medium control height.
- * - `"small"`: The small control height.
- * - `"large"`: The large control height.
- */
-export type ControlSize = "medium" | "small" | "large";
-
-/**
  * The palette: games run on a stage, so dark is the default.
  * - `"dark"`: The dark palette.
  * - `"light"`: The light palette.
@@ -24259,175 +24243,6 @@ export interface Paint {
 }
 
 /**
- * Which arrows a focused element claims (ElementDesc.arrows); none by default.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface ArrowClaim {
-  /**
-   * Left steps it.
-   *
-   * @default false
-   */
-  readonly left?: boolean;
-  /**
-   * Right steps it.
-   *
-   * @default false
-   */
-  readonly right?: boolean;
-  /**
-   * Up steps it.
-   *
-   * @default false
-   */
-  readonly up?: boolean;
-  /**
-   * Down steps it.
-   *
-   * @default false
-   */
-  readonly down?: boolean;
-}
-
-/**
- * A container: its layout and its look.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface ElementDesc {
-  /**
-   * Which way it lays out its children.
-   *
-   * @default "row"
-   */
-  readonly direction?: Direction;
-  /**
-   * Its width; null fits the content.
-   *
-   * @default null
-   */
-  readonly width?: Size | null;
-  /**
-   * Its height; null fits the content.
-   *
-   * @default null
-   */
-  readonly height?: Size | null;
-  /**
-   * Space inside its edges.
-   *
-   * @default { left: 0, top: 0, right: 0, bottom: 0 }
-   */
-  readonly padding?: Insets;
-  /**
-   * Space between children.
-   *
-   * @default 0
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly gap?: number;
-  /**
-   * Where children sit along the main axis.
-   *
-   * @default "start"
-   */
-  readonly align?: Align;
-  /**
-   * Where children sit across it.
-   *
-   * @default "start"
-   */
-  readonly cross?: Cross;
-  /**
-   * Break a row into lines at its inner width.
-   *
-   * @default false
-   */
-  readonly wrap?: boolean;
-  /**
-   * Scroll its content vertically and clip it.
-   *
-   * @default false
-   */
-  readonly scroll?: boolean;
-  /**
-   * Scroll its content horizontally and clip it (with scroll: both ways).
-   *
-   * @default false
-   */
-  readonly scrollX?: boolean;
-  /**
-   * Report a Response from close(), as a button does.
-   *
-   * @default false
-   */
-  readonly interactive?: boolean;
-  /**
-   * With interactive: keys and pads reach it (a card, a menu item, a component's tab), it takes the focus ring, and Enter, Space and the pad's A press it, as a button. Its role is button unless og.ui.semantics gives another.
-   *
-   * @default false
-   */
-  readonly focusable?: boolean;
-  /**
-   * With focusable: Left and Right (a pad's left and right) are its own while it has the focus: they step it (Response.adjust) instead of moving the focus, as a slider's do (a menu row opening its submenu, a carousel, a divider).
-   *
-   * @default false
-   */
-  readonly adjustable?: boolean;
-  /**
-   * With focusable: the arrows (a pad's d-pad and stick) it claims one by one while it has the focus: each steps it (Response.adjust for Left and Right, Response.adjustY for Up and Down) instead of moving the focus. A grid's own cursor (an inventory, a level map) claims the ones that keep it inside, so the focus leaves it at its edges.
-   *
-   * @default {}
-   */
-  readonly arrows?: ArrowClaim;
-  /**
-   * With focusable: the component draws its own focus (a hand rings its focused card, a grid its cursor cell) while Response.ring says the ring is up; og-ui draws no ring around the element.
-   *
-   * @default false
-   */
-  readonly ownRing?: boolean;
-  /**
-   * Its fill; null draws none.
-   *
-   * @default null
-   */
-  readonly background?: Paint | null;
-  /**
-   * Corner radius.
-   *
-   * @default 0
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly radius?: number;
-  /**
-   * The style frame its background takes (a HUD element, a card); null is a plain fill. Without a style the fill is drawn either way.
-   *
-   * @default null
-   */
-  readonly frame?: StylePart | null;
-  /**
-   * The part its style dresses it as, a selector with its variant, state and attributes (`ShopCard.frame[rarity=epic][selected]`): the style's most specific matching `dress` blocks draw it, and a part the style does not dress draws from the tokens (docs/ui.md §3.2). Overrides frame; null keeps frame's.
-   *
-   * @default null
-   */
-  readonly part?: string | null;
-  /**
-   * The element class whose corner, outline and elevation an undressed part takes from the tokens: panel, dialog, card, tooltip, button, field, chip, badge, tab, slot, bar, hud, avatar. Null: a decoration (a scrim, a sweep, a node's art), which takes nothing from the tokens, only what a style dresses it with; a part that is a card or a panel names its class.
-   *
-   * @default null
-   */
-  readonly partClass?: string | null;
-  /**
-   * Width over height (0: none): with the height left to fit, it is as tall as its laid-out width over this; with a fixed height and the width left to fit, as wide as the height times it.
-   *
-   * @default 0
-   * @range 0..
-   */
-  readonly aspect?: number;
-}
-
-/**
  * How a label draws its text.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
@@ -24508,124 +24323,6 @@ export interface LabelDesc {
 }
 
 /**
- * Which ways a scroll container scrolls.
- * - `"vertical"`: Up and down (the default).
- * - `"horizontal"`: Left and right.
- * - `"both"`: Both ways.
- */
-export type ScrollAxes = "vertical" | "horizontal" | "both";
-
-/**
- * A scroll container: the wheel (both axes, deltaX and deltaY) or a drag scrolls it, and a released drag keeps its momentum, slowing over motion.spring.momentum's response (none under reduced motion); it clips its content; a scrollbar on each scrolling axis shows the position, and a press on one grabs and drags it. Nested containers hand off: what the innermost under the pointer cannot take (it reached its end, or does not scroll that way) goes to the one around it.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface ScrollDesc {
-  /**
-   * Its width; null fits the content.
-   *
-   * @default null
-   */
-  readonly width?: Size | null;
-  /**
-   * Its height; null fits the content.
-   *
-   * @default null
-   */
-  readonly height?: Size | null;
-  /**
-   * Space inside.
-   *
-   * @default { left: 0, top: 0, right: 0, bottom: 0 }
-   */
-  readonly padding?: Insets;
-  /**
-   * Space between children.
-   *
-   * @default 0
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly gap?: number;
-  /**
-   * Which ways it scrolls.
-   *
-   * @default "vertical"
-   */
-  readonly axes?: ScrollAxes;
-  /**
-   * Draws no scrollbars: a row of chips or tabs that shows its overflow by its cut edge (a resting thumb under it reads as a selection underline). It still scrolls by the wheel, a drag and focus.
-   *
-   * @default false
-   */
-  readonly hideBars?: boolean;
-  /**
-   * How far the content fades into `fadeInto` over an edge where more of it lies beyond, as strong as the content past that edge reaches this length (a log's top row cut mid-glyph reads as "there is more"); 0 draws no fade.
-   *
-   * @default 0
-   * @range 0..
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly fade?: number;
-  /**
-   * The surface the content fades into; null is panel.
-   *
-   * @default null
-   */
-  readonly fadeInto?: ThemeColor | null;
-}
-
-/**
- * A texture region, or a solid rectangle without a texture.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface ImageDesc {
-  /**
-   * The texture; null draws a solid rectangle of the tint.
-   *
-   * @default null
-   */
-  readonly texture?: Texture | null;
-  /**
-   * The region drawn, [u0, v0, u1, v1] with v down; null is the whole texture.
-   *
-   * @default null
-   */
-  readonly uv?: [number, number, number, number] | null;
-  /**
-   * Multiplies the texture; null is white.
-   *
-   * @default null
-   */
-  readonly tint?: Paint | null;
-  /**
-   * Its width; null fits.
-   *
-   * @default null
-   */
-  readonly width?: Size | null;
-  /**
-   * Its height; null fits.
-   *
-   * @default null
-   */
-  readonly height?: Size | null;
-  /**
-   * Width over height (0: none): with the height left to fit, the image is as tall as its laid-out width over this (a growing column keeps a picture's proportions); with a fixed height and the width left to fit, as wide as the height times it.
-   *
-   * @default 0
-   * @range 0..
-   */
-  readonly aspect?: number;
-  /**
-   * What a screen reader calls it (and the probe's text): a picture that means something (a portrait, a star earned) names it in the game's words; empty is decoration.
-   *
-   * @default ""
-   */
-  readonly label?: string;
-}
-
-/**
  * What happened to an element this tick. Edges (clicked, changed, submitted) are true for exactly one tick.
  */
 export interface Response {
@@ -24652,7 +24349,7 @@ export interface Response {
    */
   readonly pad: number | null;
   /**
-   * The split screen region (ElementProps.player) it is in, on the ticks it is pressed or clicked; null outside every region or when not pressed.
+   * The split screen region (its `player` attribute) it is in, on the ticks it is pressed or clicked; null outside every region or when not pressed.
    */
   readonly player: number | null;
   /**
@@ -24660,11 +24357,11 @@ export interface Response {
    */
   readonly focusedBy: number;
   /**
-   * An adjustable element's (ElementDesc.adjustable) Left and Right this tick while it has the focus: +1 for each press of Right, -1 for Left (the screen's directions; a right-to-left screen reads Left as forward); 0 otherwise.
+   * An adjustable element's (a slider's) Left and Right this tick while it has the focus: +1 for each press of Right, -1 for Left (the screen's directions; a right-to-left screen reads Left as forward); 0 otherwise.
    */
   readonly adjust: number;
   /**
-   * An element claiming Up and Down (ElementDesc.arrows) this tick while it has the focus: +1 for each press of Down, -1 for Up; 0 otherwise.
+   * An element claiming Up and Down (a vertical slider) this tick while it has the focus: +1 for each press of Down, -1 for Up; 0 otherwise.
    */
   readonly adjustY: number;
   /**
@@ -24672,7 +24369,7 @@ export interface Response {
    */
   readonly ring: boolean;
   /**
-   * Its tap was recognised this tick (ElementProps.gestures): a press and a release inside it within the slop and, where it declares a double tap, once that double tap's window has passed without a second tap. Keys and pads tap it by activating it.
+   * Its tap was recognised this tick (its `tap` attribute): a press and a release inside it within the slop and, where it declares a double tap, once that double tap's window has passed without a second tap. Keys and pads tap it by activating it.
    */
   readonly tapped: boolean;
   /** The second tap of its double tap landed this tick. */
@@ -24878,13 +24575,13 @@ export interface UiDesc {
    */
   readonly colorVisionStrength?: number;
   /**
-   * The icon atlas og.ui.icon draws from; null takes the style's.
+   * The icon atlas a document's `<icon>` draws from; null takes the style's.
    *
    * @default null
    */
   readonly icons?: IconAtlasDesc | null;
   /**
-   * The icon set that draws the names the atlas lacks (icons, or the style's when icons is null): a game's whole set, such as the UI kit's iconoir set, under a style pack's few painted icons, which keep the names they paint. og.ui.icon, rich text's [icon=], an action's glyph and an art slot's placeholder all look in it; a name in neither warns. null is none.
+   * The icon set that draws the names the atlas lacks (icons, or the style's when icons is null): a game's whole set, such as the UI kit's iconoir set, under a style pack's few painted icons, which keep the names they paint. A document's `<icon>`, rich text's [icon=], an action's glyph and an art slot's placeholder all look in it; a name in neither warns. null is none.
    *
    * @default null
    */
@@ -25126,64 +24823,6 @@ export type UiBuild = () => void;
 
 
 
-
-
-
-
-/**
- * How a rich text paragraph draws: its defaults, which its markup's spans override.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface RichTextDesc {
-  /**
-   * The type step; null is body.
-   *
-   * @default null
-   */
-  readonly step?: TypeStepName | null;
-  /**
-   * The ink; null is ink.
-   *
-   * @default null
-   */
-  readonly color?: Paint | null;
-  /**
-   * How the lines align.
-   *
-   * @default "start"
-   */
-  readonly align?: TextAlign;
-  /**
-   * Keep to one line (breaking only at `\n`).
-   *
-   * @default false
-   */
-  readonly nowrap?: boolean;
-  /**
-   * Its width; null fits the text.
-   *
-   * @default null
-   */
-  readonly width?: Size | null;
-  /**
-   * Which font.
-   *
-   * @default "body"
-   */
-  readonly font?: FontRole;
-}
-
-/** What a rich text's links did this tick. */
-export interface RichTextResult {
-  /** Its links together: hovered while one is, clicked when one was. */
-  readonly response: Response;
-  /** The link clicked this tick: its `[link=…]` id. */
-  readonly link: string | null;
-  /** The link under the pointer. */
-  readonly hovered: string | null;
-}
-
 /**
  * A named attribute range in plain text for a store and the Svelte text spans binding. Offsets count Unicode scalar values, not UTF-8 bytes, JavaScript UTF-16 code units or grapheme clusters. Unknown names and properties remain game data. A character span may cover the complete Speaker: prefix, including its separator. Names select text::part(name) styles; text is never reinterpreted as markup.
  */
@@ -25201,9 +24840,6 @@ export interface TextSpan {
 }
 
 
-
-
-
 /**
  * A point of the safe area an anchored group sits at.
  * - `"topLeft"`: The top left corner.
@@ -25217,19 +24853,6 @@ export interface TextSpan {
  * - `"bottomRight"`: The bottom right corner.
  */
 export type Anchor = "topLeft" | "top" | "topRight" | "left" | "center" | "right" | "bottomLeft" | "bottom" | "bottomRight";
-
-/**
- * How a transition moves its content in and out. Under reduced motion every kind only fades.
- * - `"fade"`: Opacity only.
- * - `"slideUp"`: Rises into place from below.
- * - `"slideDown"`: Drops into place from above.
- * - `"slideLeft"`: Enters from the right.
- * - `"slideRight"`: Enters from the left.
- * - `"scale"`: Grows from slightly smaller around its centre.
- * - `"pop"`: Springs up from smaller around its centre, overshoots and settles.
- * - `"glitch"`: Tears in: the content draws through the glitch material (slices pushed sideways, colours split) as it fades in or out, over 150 to 180 ms whatever the style's base duration; as deterministic as every frame (from the element's id and the tick-counted UI clock). A style sets its strength (`enter glitch 0.8`).
- */
-export type TransitionKind = "fade" | "slideUp" | "slideDown" | "slideLeft" | "slideRight" | "scale" | "pop" | "glitch";
 
 /**
  * A status tone of badges, toasts and map markers.
@@ -25349,7 +24972,7 @@ export interface IconAtlasDesc {
    */
   readonly rows?: number;
   /**
-   * Each cell's name, in reading order: og.ui.icon draws a cell by its name.
+   * Each cell's name, in reading order: a document's `<icon>` draws a cell by its name.
    *
    * @default []
    */
@@ -25510,64 +25133,6 @@ export interface AnchorDesc {
 }
 
 /**
- * A dialog: a scrim over everything and a centred panel. Focus moves in and stays while it is the topmost; Back and the backdrop dismiss it unless locked.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface ModalDesc {
-  /**
-   * A title over the content, set in the style's heading type role (its step and face); empty is none.
-   *
-   * @default ""
-   */
-  readonly title?: string;
-  /**
-   * The panel's width; null is 420 CSS px, at most the surface less its gutters.
-   *
-   * @default null
-   */
-  readonly width?: Size | null;
-  /**
-   * Back and the backdrop do not dismiss it (a choice must be made).
-   *
-   * @default false
-   */
-  readonly locked?: boolean;
-  /**
-   * A press on the backdrop does not dismiss it.
-   *
-   * @default false
-   */
-  readonly ignoreBackdrop?: boolean;
-  /**
-   * How it enters and leaves; null is scale.
-   *
-   * @default null
-   */
-  readonly transition?: TransitionKind | null;
-  /**
-   * The backdrop's fill; null is scrim.
-   *
-   * @default null
-   */
-  readonly backdrop?: Paint | null;
-  /**
-   * No panel: the content sits centred on the backdrop (full-screen menus, loading).
-   *
-   * @default false
-   */
-  readonly bare?: boolean;
-}
-
-/** A dialog's answer this tick. */
-export interface ModalResult {
-  /** Build its content (open, or leaving). */
-  readonly visible: boolean;
-  /** Back or a press on the backdrop asked to close it: set your open flag false. */
-  readonly dismissed: boolean;
-}
-
-/**
  * A toast's tone and time.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
@@ -25588,53 +25153,6 @@ export interface ToastDesc {
    */
   readonly durationMs?: number;
 }
-
-/**
- * An icon's size, ink and name.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface IconDesc {
-  /**
-   * Its size; 0 is 24.
-   *
-   * @default 0
-   * @range 0..
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly size?: number;
-  /**
-   * Its ink; null is ink.
-   *
-   * @default null
-   */
-  readonly tint?: Paint | null;
-  /**
-   * A second atlas icon, overlaid in the same em square: author the two silhouettes as separate named layers. Null draws one layer.
-   *
-   * @default null
-   */
-  readonly secondary?: string | null;
-  /**
-   * The second layer's ink; null is accent.
-   *
-   * @default null
-   */
-  readonly secondaryTint?: Paint | null;
-  /**
-   * What a screen reader calls it (and the probe's text): null is the icon's name in the atlas (an English word: `star`); empty is decoration, named by nothing, so a card or button it sits on is named by its other text. A localised game names a meaningful icon from its string table.
-   *
-   * @default null
-   */
-  readonly label?: string | null;
-}
-
-/**
- * Builds one row or cell of a virtualised list or grid: ui calls made inside nest under it.
- *
- * @param index Its index.
- */
-export type UiItemBuild = (index: number) => void;
 
 /** The primary pointer as the UI reads it this tick. */
 export interface UiPointer {
@@ -25669,9 +25187,6 @@ export interface UiPointer {
   /** An Alt (Option) key is held. */
   readonly alt: boolean;
 }
-
-
-
 
 
 
@@ -25724,9 +25239,6 @@ export interface ScrollState {
    */
   readonly contentHeight: number;
 }
-
-
-
 
 
 
@@ -25948,58 +25460,6 @@ export interface A11yTree {
 
 
 
-
-
-/**
- * What a data view shows instead of its rows: loading, an error, or nothing.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface DataStateDesc {
-  /**
-   * Loading: skeleton rows.
-   *
-   * @default false
-   */
-  readonly loading?: boolean;
-  /**
-   * An error to show with Retry; empty is none.
-   *
-   * @default ""
-   */
-  readonly error?: string;
-  /**
-   * What it says when there is nothing; empty is Nothing here yet.
-   *
-   * @default ""
-   */
-  readonly emptyLabel?: string;
-  /**
-   * A line under it (what to do).
-   *
-   * @default ""
-   */
-  readonly emptyHint?: string;
-  /**
-   * The error has a Retry button.
-   *
-   * @default true
-   */
-  readonly retry?: boolean;
-  /**
-   * Retry's label; empty is Retry.
-   *
-   * @default ""
-   */
-  readonly retryLabel?: string;
-  /**
-   * What a screen reader hears while loading; empty is Loading.
-   *
-   * @default ""
-   */
-  readonly loadingLabel?: string;
-}
-
 /**
  * An animatable value of an element (docs/ui.md §3.1): a state, a timeline key, a presence or og.ui.animate moves it. Colours are sRGB components 0 to 1; rotation and skew are radians.
  * - `"x"`: Its horizontal offset, CSS px (the transform's x).
@@ -26028,14 +25488,6 @@ export interface DataStateDesc {
 export type UiProp = "x" | "y" | "scaleX" | "scaleY" | "scale" | "rotate" | "skewX" | "skewY" | "opacity" | "radius" | "backgroundR" | "backgroundG" | "backgroundB" | "backgroundA" | "inkR" | "inkG" | "inkB" | "inkA" | "z" | "inert" | "blur" | "draw";
 
 /**
- * How a container lays out its children.
- * - `"flex"`: The row and column walks of its direction (the default).
- * - `"stack"`: Children overlaid in the same rectangle, each placed by its insets, else by the container's align (across) and cross (down): a card's art, frame, cost gem and name.
- * - `"grid"`: Tracks and cells (ElementProps.grid).
- */
-export type LayoutMode = "flex" | "stack" | "grid";
-
-/**
  * How an element is placed.
  * - `"flow"`: In its parent's flow (the default).
  * - `"absolute"`: Out of the flow, placed by its insets inside its parent's padding box.
@@ -26043,22 +25495,6 @@ export type LayoutMode = "flex" | "stack" | "grid";
  * - `"anchored"`: Out of the flow, its anchorSelf point on the anchorAt point of the element at anchorTo, moved by its start and top insets.
  */
 export type Position = "flow" | "absolute" | "screen" | "anchored";
-
-/**
- * Which way auto-placed items fill a grid.
- * - `"row"`: Along rows, adding rows (the default).
- * - `"column"`: Down columns, adding columns.
- */
-export type GridFlow = "row" | "column";
-
-/**
- * Which way a drag moves its element.
- * - `"both"`: Both ways.
- * - `"x"`: Across only.
- * - `"y"`: Down only.
- * - `"lock"`: Either, locked to the first one the drag moves along.
- */
-export type DragAxis = "both" | "x" | "y" | "lock";
 
 /**
  * A named motion of the style (docs/ui.md §3.1): components use these, so a style's personality changes every motion at once.
@@ -26072,439 +25508,12 @@ export type DragAxis = "both" | "x" | "y" | "lock";
 export type MotionToken = "ui" | "panel" | "emphasis" | "playful" | "enter" | "exit";
 
 /**
- * What an animation does under reduced motion (docs/ui.md §3.1).
- * - `"fade"`: Movement and scale jump; opacity and colour fade quickly (the default).
- * - `"none"`: Everything jumps.
- * - `"keep"`: Plays as authored: motion that carries meaning, kept small.
- */
-export type ReducedMotion = "fade" | "none" | "keep";
-
-/**
- * A screen orientation.
- * - `"portrait"`: Taller than wide.
- * - `"landscape"`: Wider than tall.
- */
-export type Orientation = "portrait" | "landscape";
-
-/**
  * How a play repeats.
  * - `"once"`: Once (the default).
  * - `"loop"`: Over and over.
  * - `"pingPong"`: Forward then back, over and over.
  */
 export type Repeat = "once" | "loop" | "pingPong";
-
-/**
- * A transform applied after layout, about its pivot: CSS's translate(x, y) rotate(r) skew(kx, ky) scale(sx, sy) with its transform-origin. Hit tests, the probe's rectangles and the accessibility tree's bounds follow it; layout does not.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface UiTransform {
-  /**
-   * Moves it across.
-   *
-   * @default 0
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly x?: number;
-  /**
-   * Moves it down.
-   *
-   * @default 0
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly y?: number;
-  /**
-   * Its horizontal scale.
-   *
-   * @default 1
-   */
-  readonly scaleX?: number;
-  /**
-   * Its vertical scale.
-   *
-   * @default 1
-   */
-  readonly scaleY?: number;
-  /**
-   * Its turn, radians, clockwise on screen.
-   *
-   * @default 0
-   */
-  readonly rotate?: number;
-  /**
-   * Its horizontal skew, radians.
-   *
-   * @default 0
-   */
-  readonly skewX?: number;
-  /**
-   * Its vertical skew, radians.
-   *
-   * @default 0
-   */
-  readonly skewY?: number;
-  /**
-   * The pivot across its box (0 its start edge, 1 its end).
-   *
-   * @default 0.5
-   * @unit ratio (a fraction between 0 and 1)
-   */
-  readonly pivotX?: number;
-  /**
-   * The pivot down its box.
-   *
-   * @default 0.5
-   * @unit ratio (a fraction between 0 and 1)
-   */
-  readonly pivotY?: number;
-}
-
-/**
- * Insets of an absolute or anchored element from its parent's edges; an absent one is not set. start and end follow the writing direction: a right-to-left layout mirrors them.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface Edges {
-  /**
-   * From the start edge.
-   *
-   * @default null
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly start?: number | null;
-  /**
-   * From the top.
-   *
-   * @default null
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly top?: number | null;
-  /**
-   * From the end edge.
-   *
-   * @default null
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly end?: number | null;
-  /**
-   * From the bottom.
-   *
-   * @default null
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly bottom?: number | null;
-  /**
-   * Centred across the parent (start, if given, moves it).
-   *
-   * @default false
-   */
-  readonly centerX?: boolean;
-  /**
-   * Centred down the parent (top, if given, moves it).
-   *
-   * @default false
-   */
-  readonly centerY?: boolean;
-}
-
-/** A fixed track. */
-export interface TrackPx {
-  /**
-   * Its size.
-   *
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly px: number;
-}
-
-/** A share of the space the other tracks leave. */
-export interface TrackFr {
-  /**
-   * Its share.
-   *
-   * @default 1
-   */
-  readonly fr: number;
-}
-
-/** A track sized by its content, within bounds. */
-export interface TrackRange {
-  /**
-   * The smallest it gets.
-   *
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly min: number;
-  /**
-   * The largest it gets.
-   *
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly max: number;
-}
-
-/** A fraction of the grid's inner size. */
-export interface TrackPercent {
-  /**
-   * The fraction.
-   *
-   * @unit ratio (a fraction between 0 and 1)
-   */
-  readonly fraction: number;
-}
-
-/** Its largest single-cell item. */
-export interface TrackAuto {
-}
-
-/** A grid track's size. */
-export type Track =
-  /** A fixed size. */
-  | ({ readonly kind: "px" } & TrackPx)
-  /** A share of the free space. */
-  | ({ readonly kind: "fr" } & TrackFr)
-  /** Its largest single-cell item. */
-  | ({ readonly kind: "auto" } & TrackAuto)
-  /** Its content between min and max. */
-  | ({ readonly kind: "minMax" } & TrackRange)
-  /** A fraction of the grid. */
-  | ({ readonly kind: "percent" } & TrackPercent);
-
-/**
- * A grid's tracks and areas.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface GridSpec {
-  /**
-   * The column tracks.
-   *
-   * @default []
-   */
-  readonly columns?: readonly Track[];
-  /**
-   * The row tracks; items past them add autoTrack rows.
-   *
-   * @default []
-   */
-  readonly rows?: readonly Track[];
-  /**
-   * The track added for items past the declared ones; null is auto.
-   *
-   * @default null
-   */
-  readonly autoTrack?: Track | null;
-  /**
-   * Space between columns; absent is the element's gap.
-   *
-   * @default null
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly columnGap?: number | null;
-  /**
-   * Space between rows; absent is the element's gap.
-   *
-   * @default null
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly rowGap?: number | null;
-  /**
-   * Named areas, one string per row of space-separated cell names, as CSS grid-template-areas (`.` is an unnamed cell).
-   *
-   * @default []
-   */
-  readonly areas?: readonly string[];
-  /**
-   * Which way auto-placed items fill it.
-   *
-   * @default "row"
-   */
-  readonly flow?: GridFlow;
-  /**
-   * Auto-placement back-fills holes left by spanning items.
-   *
-   * @default false
-   */
-  readonly dense?: boolean;
-}
-
-/**
- * Where an item sits in its parent grid; the zero value is auto-placed in one cell.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface GridPlace {
-  /**
-   * Its first column, 1-based (0: auto).
-   *
-   * @default 0
-   */
-  readonly column?: number;
-  /**
-   * Its first row, 1-based (0: auto).
-   *
-   * @default 0
-   */
-  readonly row?: number;
-  /**
-   * Columns spanned (0: 1).
-   *
-   * @default 0
-   */
-  readonly columnSpan?: number;
-  /**
-   * Rows spanned (0: 1).
-   *
-   * @default 0
-   */
-  readonly rowSpan?: number;
-  /**
-   * A named area of the grid (wins over the numbers).
-   *
-   * @default ""
-   */
-  readonly area?: string;
-}
-
-/** A value for an animatable prop. */
-export interface PropValue {
-  /** The prop. */
-  readonly prop: UiProp;
-  /** Its value. */
-  readonly value: number;
-}
-
-/**
- * When a variant applies: every condition given must hold.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface UiQuery {
-  /**
-   * The size classes it applies on (empty: any).
-   *
-   * @default []
-   */
-  readonly breakpoints?: readonly Breakpoint[];
-  /**
-   * The orientation it applies in; null is either.
-   *
-   * @default null
-   */
-  readonly orientation?: Orientation | null;
-  /**
-   * The narrowest width it applies at (0: unbounded): the viewport's, or with container the element's own laid-out width.
-   *
-   * @default 0
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly minWidth?: number;
-  /**
-   * The widest (0: unbounded).
-   *
-   * @default 0
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly maxWidth?: number;
-  /**
-   * A container query: the widths are the element's own (the same card in a four-column shop and a one-column phone list).
-   *
-   * @default false
-   */
-  readonly container?: boolean;
-}
-
-/**
- * What a variant changes: the box's layout, its arrangement and animatable values; absent fields are unchanged.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface UiPatch {
-  /**
-   * Its direction.
-   *
-   * @default null
-   */
-  readonly direction?: Direction | null;
-  /**
-   * Its width.
-   *
-   * @default null
-   */
-  readonly width?: Size | null;
-  /**
-   * Its height.
-   *
-   * @default null
-   */
-  readonly height?: Size | null;
-  /**
-   * Its padding.
-   *
-   * @default null
-   */
-  readonly padding?: Insets | null;
-  /**
-   * Its gap.
-   *
-   * @default null
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly gap?: number | null;
-  /**
-   * Its main-axis alignment.
-   *
-   * @default null
-   */
-  readonly align?: Align | null;
-  /**
-   * Its cross-axis alignment.
-   *
-   * @default null
-   */
-  readonly cross?: Cross | null;
-  /**
-   * Its wrapping.
-   *
-   * @default null
-   */
-  readonly wrap?: boolean | null;
-  /**
-   * Its layout mode.
-   *
-   * @default null
-   */
-  readonly layout?: LayoutMode | null;
-  /**
-   * Its grid columns (empty: unchanged).
-   *
-   * @default []
-   */
-  readonly columns?: readonly Track[];
-  /**
-   * Hide it and its subtree where the variant applies.
-   *
-   * @default null
-   */
-  readonly hidden?: boolean | null;
-  /**
-   * Animatable values it sets.
-   *
-   * @default []
-   */
-  readonly values?: readonly PropValue[];
-}
-
-/**
- * A prop override under a condition (docs/ui.md §2: breakpoint variants and container queries). Later variants win.
- */
-export interface UiVariant {
-  /** When it applies. */
-  readonly when: UiQuery;
-  /** What it changes. */
-  readonly set: UiPatch;
-}
 
 /**
  * A spring by how it feels: about how long it takes to settle and how much it overshoots. Retargeting it keeps its value and velocity, so an interrupted motion never jumps.
@@ -26577,416 +25586,6 @@ export type Transition =
   | ({ readonly kind: "token" } & TokenRef);
 
 /**
- * Swipe to dismiss: a release past distance (or faster than velocity) along the drag's axis throws the element off.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface DismissSpec {
-  /**
-   * 0: 40 % of its size along the axis.
-   *
-   * @default 0
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly distance?: number;
-  /**
-   * CSS px per second (0: 800).
-   *
-   * @default 0
-   */
-  readonly velocity?: number;
-}
-
-/** An offset a released drag can settle on. */
-export interface SnapPoint {
-  /**
-   * Its x offset.
-   *
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly x: number;
-  /**
-   * Its y offset.
-   *
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly y: number;
-}
-
-/**
- * The element moves with a drag that starts on it (a card, a sheet, a carousel), released onto a spring that keeps the drag's velocity.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface DragSpec {
-  /**
-   * Which way it moves.
-   *
-   * @default "both"
-   */
-  readonly axis?: DragAxis;
-  /**
-   * Bounds of its offset (x to x + width, y to y + height); null is free.
-   *
-   * @default null
-   */
-  readonly bounds?: UiRect | null;
-  /**
-   * Past the bounds it follows with resistance, iOS's rubber band with this constant (0 stops at the bounds; 0.55 is iOS's).
-   *
-   * @default 0
-   */
-  readonly rubber?: number;
-  /**
-   * Offsets a release settles on: the nearest to where its momentum would carry it.
-   *
-   * @default []
-   */
-  readonly snap?: readonly SnapPoint[];
-  /**
-   * A release projects the offset by its velocity (0.3 s of it) before choosing a snap point: a flick.
-   *
-   * @default false
-   */
-  readonly momentum?: boolean;
-  /**
-   * Without snap points, a release goes back to offset 0.
-   *
-   * @default false
-   */
-  readonly returnHome?: boolean;
-  /**
-   * Swipe to dismiss; null never throws it off.
-   *
-   * @default null
-   */
-  readonly dismiss?: DismissSpec | null;
-  /**
-   * Pointer travel before a press becomes a drag (0: 4).
-   *
-   * @default 0
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly threshold?: number;
-  /**
-   * The release spring; null is the style's ui spring.
-   *
-   * @default null
-   */
-  readonly spring?: Transition | null;
-  /**
-   * What a drop target matches in DropSpec.accept.
-   *
-   * @default ""
-   */
-  readonly tag?: string;
-}
-
-/**
- * Two touches on the element scale (and turn) it.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface PinchSpec {
-  /**
-   * 0: 0.5.
-   *
-   * @default 0
-   */
-  readonly minScale?: number;
-  /**
-   * 0: 4.
-   *
-   * @default 0
-   */
-  readonly maxScale?: number;
-  /**
-   * The touches turn it too.
-   *
-   * @default false
-   */
-  readonly rotate?: boolean;
-}
-
-/**
- * The element takes drops of dragged elements.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface DropSpec {
-  /**
-   * The drag tags it takes (empty: any).
-   *
-   * @default []
-   */
-  readonly accept?: readonly string[];
-}
-
-/**
- * How an element arrives or leaves (docs/ui.md §3.1): the values it enters from or exits to, and how it moves between them and its own.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface PresenceSpec {
-  /**
-   * Where it starts (entering) or ends (leaving).
-   *
-   * @default []
-   */
-  readonly values?: readonly PropValue[];
-  /**
-   * A transition kind's values in place of values: what the kind enters from and exits to.
-   *
-   * @default null
-   */
-  readonly kind?: TransitionKind | null;
-  /**
-   * A slide kind's distance (0: 24).
-   *
-   * @default 0
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly distance?: number;
-  /**
-   * How it moves; null is the style's enter or exit token.
-   *
-   * @default null
-   */
-  readonly transition?: Transition | null;
-  /**
-   * Wait this long before moving (a hand-built stagger).
-   *
-   * @default 0
-   * @unit ms (milliseconds)
-   */
-  readonly delayMs?: number;
-}
-
-/** One state of a group: the values it sets, and timelines it starts. */
-export interface VisualState {
-  /** Its name. */
-  readonly name: string;
-  /** The values it sets. */
-  readonly values: readonly PropValue[];
-  /**
-   * A timeline (og.ui.defineTimeline) played on the element when the state is entered (empty: none).
-   */
-  readonly onEnter: string;
-  /** One played when it is left. */
-  readonly onExit: string;
-}
-
-/**
- * The transition between two states of a group (`*` matches any state). The exact pair wins, then `* -> to`, `from -> *`, `* -> *`.
- */
-export interface StateTransition {
-  /** The state left. */
-  readonly from: string;
-  /** The state entered. */
-  readonly to: string;
-  /** How the values move. */
-  readonly transition: Transition;
-}
-
-/**
- * A visual state group (docs/ui.md §3.1): one of its states is current, and moving between them animates every value that changes. A group named interaction is derived from input: normal, hover, pressed, focused and disabled (a state the group lacks falls back: pressed to hover to normal, focused to hover). Other groups take their state from ElementProps.state, a timeline's state event or og.ui.forceState; the first state is the default.
- */
-export interface StateGroup {
-  /** Its name. */
-  readonly name: string;
-  /** Its states. */
-  readonly states: readonly VisualState[];
-  /**
-   * Its transitions; a pair without one moves on the element's motion, else the style's ui spring.
-   */
-  readonly transitions: readonly StateTransition[];
-}
-
-/** The current state of a group. */
-export interface StateValue {
-  /** The group. */
-  readonly group: string;
-  /** Its state. */
-  readonly state: string;
-}
-
-/**
- * Explicit focus moves from an element (docs/ui.md §2.1), over the spatial pick: each a path (a full one, `Hud/Bag`, or a sibling's id); empty leaves that move to the layout. A path to a focus group lands on its remembered member (or its first); one to any other container, on its first focusable control.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface NavLinks {
-  /**
-   * Where Up goes.
-   *
-   * @default ""
-   */
-  readonly up?: string;
-  /**
-   * Where Down goes.
-   *
-   * @default ""
-   */
-  readonly down?: string;
-  /**
-   * Where Left goes (the screen's left, also under a right-to-left layout).
-   *
-   * @default ""
-   */
-  readonly left?: string;
-  /**
-   * Where Right goes.
-   *
-   * @default ""
-   */
-  readonly right?: string;
-  /**
-   * Where Tab goes.
-   *
-   * @default ""
-   */
-  readonly next?: string;
-  /**
-   * Where Shift+Tab goes.
-   *
-   * @default ""
-   */
-  readonly prev?: string;
-}
-
-/**
- * A container whose focusable controls are one group for keys and pads (docs/ui.md §2.1): arrows move among its members first. At its edge a group that wraps goes round to its far side; one that does not leaves for the nearest control outside that way (the group around it first) and stays put when there is none. The zero value neither wraps nor remembers.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface FocusGroup {
-  /**
-   * At its edge the focus wraps round inside it.
-   *
-   * @default false
-   */
-  readonly wrap?: boolean;
-  /**
-   * Focus coming into it from outside lands on the member it last had.
-   *
-   * @default false
-   */
-  readonly memory?: boolean;
-}
-
-/**
- * Tap, double tap and long press on any element (docs/ui.md §2.1), answered by Response (tapped, doubleTapped, longPressed, longPress), og.ui.gesture and the frame's motion events. Nested elements compete for one press: of those that declare a gesture, the highest priority wins it, the innermost of equals. A tap waits for a double tap only where one is declared; a long press that fires takes the press, so its release clicks nothing; travel past the slop (a drag, a scroll) fails all three. The zero value recognises nothing.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface GestureSpec {
-  /**
-   * Recognise a tap.
-   *
-   * @default false
-   */
-  readonly tap?: boolean;
-  /**
-   * Recognise a double tap (its tap then waits for the double tap's window).
-   *
-   * @default false
-   */
-  readonly doubleTap?: boolean;
-  /**
-   * Recognise a long press (the touch tooltip, a context menu).
-   *
-   * @default false
-   */
-  readonly longPress?: boolean;
-  /**
-   * How long a long press is held; 0 is 500.
-   *
-   * @default 0
-   * @range 0..
-   * @unit ms (milliseconds)
-   */
-  readonly longPressMs?: number;
-  /**
-   * The longest gap between a double tap's taps; 0 is 300.
-   *
-   * @default 0
-   * @range 0..
-   * @unit ms (milliseconds)
-   */
-  readonly doubleTapMs?: number;
-  /**
-   * Pointer travel that fails a tap and a long press; 0 is 10.
-   *
-   * @default 0
-   * @range 0..
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly slop?: number;
-  /**
-   * Among nested elements' recognisers of one press: higher wins (ties: the innermost).
-   *
-   * @default 0
-   */
-  readonly priority?: number;
-}
-
-/**
- * An element the player can move, scale and fade in the HUD edit mode (docs/ui.md §2.1): a HUD group, a touch stick or button. Its placement is kept per player under key (og.ui.hudLayout). The zero value allows all three, from half to twice its size and down to a fifth of its opacity.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface Customize {
-  /**
-   * Its name in the saved layout; empty is its path. Name it when its path may change between versions of the game.
-   *
-   * @default ""
-   */
-  readonly key?: string;
-  /**
-   * It stays where it is laid out.
-   *
-   * @default false
-   */
-  readonly lockMove?: boolean;
-  /**
-   * It keeps its size.
-   *
-   * @default false
-   */
-  readonly lockScale?: boolean;
-  /**
-   * It stays opaque.
-   *
-   * @default false
-   */
-  readonly lockOpacity?: boolean;
-  /**
-   * The smallest it scales to; 0 is 0.5.
-   *
-   * @default 0
-   * @range 0..
-   * @unit ratio (a fraction between 0 and 1)
-   */
-  readonly minScale?: number;
-  /**
-   * The largest it scales to; 0 is 2.
-   *
-   * @default 0
-   * @range 0..
-   * @unit ratio (a fraction between 0 and 1)
-   */
-  readonly maxScale?: number;
-  /**
-   * The faintest it fades to; 0 is 0.2.
-   *
-   * @default 0
-   * @range 0..1
-   * @unit ratio (a fraction between 0 and 1)
-   */
-  readonly minOpacity?: number;
-}
-
-/**
  * The pointer's shape over an element (CSS cursor's keywords, CSS UI 4 §5.1, docs/ui.md §2), inherited by its subtree.
  * - `"auto"`: Its parent's; with none set above it, a text control's I-beam, a draggable element's open hand (closed while dragged), a link's hand, else the arrow.
  * - `"default"`: The arrow.
@@ -27026,281 +25625,6 @@ export interface Customize {
  * - `"resizeSw"`: Its bottom left corner moves.
  */
 export type Cursor = "auto" | "default" | "pointer" | "text" | "grab" | "grabbing" | "move" | "notAllowed" | "crosshair" | "help" | "wait" | "progress" | "resizeEw" | "resizeNs" | "resizeNesw" | "resizeNwse" | "zoomIn" | "zoomOut" | "none" | "contextMenu" | "cell" | "verticalText" | "alias" | "copy" | "noDrop" | "allScroll" | "resizeCol" | "resizeRow" | "resizeN" | "resizeE" | "resizeS" | "resizeW" | "resizeNe" | "resizeNw" | "resizeSe" | "resizeSw";
-
-/**
- * An element's text set along a path (CSS -og-text-path, SVG 2 textPath, docs/ui.md §2): each character turned to the path where it sits, its baseline on the path. One line; the element's textAlign anchors it at offset. CSS offset-path moves the element itself; this moves its text.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface TextPathSpec {
-  /**
-   * SVG path data (M L H V C S Q T A Z), CSS px from the element's content box; empty is a circle. Data that does not parse sets the text in lines.
-   *
-   * @default ""
-   */
-  readonly data?: string;
-  /**
-   * With empty data: the circle's radius, centred in the content box from its top, clockwise; 0 is the box's closest side.
-   *
-   * @default 0
-   * @range 0..
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly radius?: number;
-  /**
-   * Where the anchor sits along the path: CSS px, or with percent a share of its length (0 to 1).
-   *
-   * @default 0
-   */
-  readonly offset?: number;
-  /**
-   * offset is a share of the path's length.
-   *
-   * @default false
-   */
-  readonly percent?: boolean;
-  /**
-   * Runs the path backwards (SVG side=right): on a circle, counter-clockwise inside it.
-   *
-   * @default false
-   */
-  readonly reverse?: boolean;
-}
-
-/**
- * Whether the player can select an element's text and copy it (CSS user-select, docs/ui.md §2).
- * - `"auto"`: Its parent's; with none set above it, or under a control (a button's label is pressed, not selected), none.
- * - `"none"`: Not selectable.
- * - `"text"`: A press and drag selects characters, a double press a word, a triple press a line, a long press on a touch screen a word; Ctrl or Cmd+C copies.
- * - `"all"`: A press selects its whole text at once.
- */
-export type UserSelect = "auto" | "none" | "text" | "all";
-
-/**
- * Everything an element carries beyond its box (docs/ui.md §2): set with og.ui.props right after the element. The zero value is an element in the flow, unmoved and opaque, with no motion.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface ElementProps {
-  /**
-   * Its transform after layout.
-   *
-   * @default {}
-   */
-  readonly transform?: UiTransform;
-  /**
-   * Its opacity, multiplied down the tree.
-   *
-   * @default 1
-   * @range 0..1
-   */
-  readonly opacity?: number;
-  /**
-   * Its drawing and hit-testing order among its siblings: higher draws over lower without leaving the flow.
-   *
-   * @default 0
-   */
-  readonly z?: number;
-  /**
-   * How it is placed.
-   *
-   * @default "flow"
-   */
-  readonly position?: Position;
-  /**
-   * Its insets, for an absolute or anchored element.
-   *
-   * @default {}
-   */
-  readonly insets?: Edges;
-  /**
-   * The path of the element an anchored element is placed against.
-   *
-   * @default ""
-   */
-  readonly anchorTo?: string;
-  /**
-   * The target's point it sits on.
-   *
-   * @default "topLeft"
-   */
-  readonly anchorAt?: Anchor;
-  /**
-   * Its own point that sits there.
-   *
-   * @default "topLeft"
-   */
-  readonly anchorSelf?: Anchor;
-  /**
-   * Extra pointer reach around its box.
-   *
-   * @default 0
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly hitSlop?: number;
-  /**
-   * How it lays out its children.
-   *
-   * @default "flex"
-   */
-  readonly layout?: LayoutMode;
-  /**
-   * Its tracks and areas, for a grid.
-   *
-   * @default {}
-   */
-  readonly grid?: GridSpec;
-  /**
-   * Its place in a grid parent.
-   *
-   * @default {}
-   */
-  readonly place?: GridPlace;
-  /**
-   * Its container queries read its own width.
-   *
-   * @default false
-   */
-  readonly container?: boolean;
-  /**
-   * Prop overrides by breakpoint, orientation and width; later ones win.
-   *
-   * @default []
-   */
-  readonly variants?: readonly UiVariant[];
-  /**
-   * Paths of elements it overlaps on purpose (an ancestor path covers its subtree; `*` covers everything, for what follows the pointer across the screen: a targeting arc, a dragged ghost). Undeclared overlaps are reported (og.ui.overlaps).
-   *
-   * @default []
-   */
-  readonly overlaps?: readonly string[];
-  /**
-   * Its text and its subtree's are a dense HUD's readouts (strategy, MMO, simulation: docs/ui.md §6.1): og ui check holds them to 12 px at 1080p instead of 18, still growing with the player's text scale and passing the contrast rule. Never for menus, body text or controls.
-   *
-   * @default false
-   */
-  readonly dense?: boolean;
-  /**
-   * A shared-element key: the element with the same key on the screen being left morphs into this one.
-   *
-   * @default ""
-   */
-  readonly match?: string;
-  /**
-   * It moves with a drag.
-   *
-   * @default null
-   */
-  readonly drag?: DragSpec | null;
-  /**
-   * Two touches scale and turn it.
-   *
-   * @default null
-   */
-  readonly pinch?: PinchSpec | null;
-  /**
-   * It takes drops.
-   *
-   * @default null
-   */
-  readonly drop?: DropSpec | null;
-  /**
-   * Where keys and pads move the focus from it, over the spatial pick.
-   *
-   * @default {}
-   */
-  readonly nav?: NavLinks;
-  /**
-   * Its focusable controls are one focus group: arrows move among them first; at its edge it wraps or is left; it can remember its last member.
-   *
-   * @default null
-   */
-  readonly focusGroup?: FocusGroup | null;
-  /**
-   * Tap, double tap and long press on it.
-   *
-   * @default null
-   */
-  readonly gestures?: GestureSpec | null;
-  /**
-   * The pointer's shape over it and its subtree; auto takes its parent's.
-   *
-   * @default "auto"
-   */
-  readonly cursor?: Cursor;
-  /**
-   * Its text set along a path instead of in lines (CSS -og-text-path); null is in lines.
-   *
-   * @default null
-   */
-  readonly textPath?: TextPathSpec | null;
-  /**
-   * A split screen region: player k's view (0 to 3). Pad k's focus moves only among the controls inside it, its first move lands at the region's centre, and a press inside it reports k (Response.player). Controls outside every region belong to the pads without one; null is in no region.
-   *
-   * @default null
-   */
-  readonly player?: number | null;
-  /**
-   * Whether its text and its subtree's can be selected and copied (CSS user-select); auto takes its parent's.
-   *
-   * @default "auto"
-   */
-  readonly userSelect?: UserSelect;
-  /**
-   * The player can move, scale and fade it in the HUD edit mode (og.ui.setHudEdit); its placement applies on every frame (og.ui.setHudLayout).
-   *
-   * @default null
-   */
-  readonly customize?: Customize | null;
-  /**
-   * How its animatable values move when they change; null is at once.
-   *
-   * @default null
-   */
-  readonly motion?: Transition | null;
-  /**
-   * Moves from its last laid-out rectangle to its new one (FLIP); null jumps.
-   *
-   * @default null
-   */
-  readonly layoutMotion?: Transition | null;
-  /**
-   * How it arrives.
-   *
-   * @default null
-   */
-  readonly enter?: PresenceSpec | null;
-  /**
-   * How it leaves: kept, inert and out of hit tests and the accessibility tree, while it plays after the element leaves the tree.
-   *
-   * @default null
-   */
-  readonly exit?: PresenceSpec | null;
-  /**
-   * Its visual state groups.
-   *
-   * @default []
-   */
-  readonly states?: readonly StateGroup[];
-  /**
-   * The current state of its groups that are not derived from input.
-   *
-   * @default []
-   */
-  readonly state?: readonly StateValue[];
-  /**
-   * Its reduced-motion fallback; null is the style's.
-   *
-   * @default null
-   */
-  readonly reduced?: ReducedMotion | null;
-  /**
-   * It and its subtree take no input.
-   *
-   * @default false
-   */
-  readonly inert?: boolean;
-}
 
 /** A named ease into a key. */
 export interface EaseKey {
@@ -27661,7 +25985,7 @@ export interface GestureInfo {
   readonly hovering: boolean;
   /** For a drop target: the element dropped on it this tick (empty: none). */
   readonly received: string;
-  /** Its tap this tick (ElementProps.gestures), as Response.tapped. */
+  /** Its tap this tick (its `tap` attribute), as Response.tapped. */
   readonly tapped: boolean;
   /** Its double tap this tick. */
   readonly doubleTapped: boolean;
@@ -27678,7 +26002,7 @@ export interface GestureInfo {
 /** What happened in the UI's motion this tick. */
 export interface UiMotionEvent {
   /**
-   * sound, haptic, burst, state, callback, end (a play finished), dismiss (a swipe threw an element off), drop (a drag was dropped on a target), snap (a released drag chose a snap point), or tap, doubleTap and longPress (an element's ElementProps.gestures recognised one).
+   * sound, haptic, burst, state, callback, end (a play finished), dismiss (a swipe threw an element off), drop (a drag was dropped on a target), snap (a released drag chose a snap point), or tap, doubleTap and longPress (an element's `tap`, `doubleTap` or `longPress` attribute recognised one).
    */
   readonly kind: string;
   /**
@@ -27720,8 +26044,6 @@ export interface UiLayoutStats {
   /** Elements whose draw commands were kept from the tick before. */
   readonly keptCommands: number;
 }
-
-
 
 
 
@@ -27839,189 +26161,6 @@ export declare function VectorArt(value?: VectorArt, options?: FieldOptions): Fi
 export declare function UiMaterial(value?: UiMaterial, options?: FieldOptions): FieldSpec<"UiMaterial">;
 
 /**
- * An element's outline (DrawShape.kind).
- * - `"rect"`: Its rectangle, with DrawShape.radii (or its radius) and corner.
- * - `"ellipse"`: The ellipse inscribed in its rectangle (a circle when square; a capsule is a rect with radii of half its height).
- * - `"polygon"`: A regular polygon of sides vertices on the circle in its rectangle, the first at the top; inner under 1 makes a star.
- * - `"arc"`: A ring segment on the circle in its rectangle: start, sweep and thickness (a ring at a full turn), with caps.
- * - `"path"`: A line through points (CSS px from its top left), Béziers with curves; its fills draw the line.
- */
-export type ShapeType = "rect" | "ellipse" | "polygon" | "arc" | "path";
-
-/**
- * How a rect's corners turn.
- * - `"round"`: Circular arcs.
- * - `"squircle"`: Continuous corners: a superellipse of DrawShape.squircle.
- * - `"bevel"`: A straight cut across, the radius along each edge.
- * - `"notch"`: A concave quarter circle cut in (an inset notch).
- */
-export type CornerShape = "round" | "squircle" | "bevel" | "notch";
-
-/**
- * The end of an open line, an arc or a dash.
- * - `"butt"`: Cut square at the end.
- * - `"round"`: A half disc past the end.
- * - `"square"`: Cut square half the width past the end.
- */
-export type LineCap = "butt" | "round" | "square";
-
-/**
- * Where a line's segments meet.
- * - `"miter"`: Sharp, cut to a bevel past DrawShape.miterLimit half widths.
- * - `"round"`: Rounded.
- * - `"bevel"`: Cut across.
- */
-export type LineJoin = "miter" | "round" | "bevel";
-
-/**
- * Which points a filled path (DrawShape.filled) covers where its contours overlap or cross.
- * - `"evenOdd"`: Where a ray from the point crosses the outline an odd number of times: every inner contour is a hole.
- * - `"nonzero"`: Where the outline winds round the point at all: an inner contour is a hole only when it runs the other way (SVG's and Rive's default).
- */
-export type FillRule = "evenOdd" | "nonzero";
-
-/**
- * An element's outline; its fills, strokes, effects and clip take it.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface DrawShape {
-  /**
-   * Which outline.
-   *
-   * @default "rect"
-   */
-  readonly kind?: ShapeType;
-  /**
-   * A rect's corner radii, top left, top right, bottom right, bottom left; null is the element's radius at every corner.
-   *
-   * @default null
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly radii?: [number, number, number, number] | null;
-  /**
-   * A rect's corner shape.
-   *
-   * @default "round"
-   */
-  readonly corner?: CornerShape;
-  /**
-   * A squircle corner's exponent: 2 is round, 4 the iOS look.
-   *
-   * @default 4
-   * @range 2..12
-   */
-  readonly squircle?: number;
-  /**
-   * A polygon's vertices.
-   *
-   * @default 6
-   * @range 3..64
-   */
-  readonly sides?: number;
-  /**
-   * A star's inner vertices as a fraction of its radius; 1 (or more) is a plain polygon.
-   *
-   * @default 1
-   * @range 0..
-   * @unit ratio (a fraction between 0 and 1)
-   */
-  readonly inner?: number;
-  /**
-   * A polygon's corner rounding.
-   *
-   * @default 0
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly rounding?: number;
-  /**
-   * A polygon's turn, clockwise.
-   *
-   * @default 0
-   * @unit rad (radians)
-   */
-  readonly rotation?: number;
-  /**
-   * An arc's start, clockwise from 3 o'clock.
-   *
-   * @default 0
-   * @unit rad (radians)
-   */
-  readonly start?: number;
-  /**
-   * An arc's sweep, clockwise (a full turn or more: a ring).
-   *
-   * @default 6.2831855
-   * @unit rad (radians)
-   */
-  readonly sweep?: number;
-  /**
-   * An arc's thickness, inwards from the circle.
-   *
-   * @default 4
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly thickness?: number;
-  /**
-   * An arc's or a path's ends.
-   *
-   * @default "butt"
-   */
-  readonly cap?: LineCap;
-  /**
-   * A path's points, CSS px from the element's top left.
-   *
-   * @default []
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly points?: readonly Vector2[];
-  /**
-   * A path's points after the first come in threes: a cubic Bézier's two controls and its end.
-   *
-   * @default false
-   */
-  readonly curves?: boolean;
-  /**
-   * A path returns to its first point.
-   *
-   * @default false
-   */
-  readonly closed?: boolean;
-  /**
-   * A path is an area: its fills cover the inside of its closed contours by fillRule, drawn from the curves themselves (Béziers are not flattened), instead of drawing its line, and its strokes outline it, as any other shape's (an area chart, a radar's polygon, a pie's wedge, an icon with a hole).
-   *
-   * @default false
-   */
-  readonly filled?: boolean;
-  /**
-   * How a filled path's overlapping contours fill.
-   *
-   * @default "evenOdd"
-   */
-  readonly fillRule?: FillRule;
-  /**
-   * A filled path's contours: how many of points each takes, in order (with curves, each counts its first point and three per Bézier); empty is one contour of every point. An unfilled path ignores it.
-   *
-   * @default []
-   */
-  readonly contours?: readonly number[];
-  /**
-   * A path's line width.
-   *
-   * @default 2
-   * @range 0..
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly width?: number;
-  /**
-   * Where a path's segments meet.
-   *
-   * @default "miter"
-   */
-  readonly join?: LineJoin;
-}
-
-/**
  * How a gradient (Gradient.type) runs over the element's box (fractions: 0,0 top left, 1,1 bottom right).
  * - `"linear"`: From `from` to `to`.
  * - `"radial"`: Centred on `from`, `to` its x and y radii.
@@ -28105,750 +26244,6 @@ export interface Gradient {
    */
   readonly noDither?: boolean;
 }
-
-/**
- * How an image fills the element's box.
- * - `"fill"`: Stretched to the box.
- * - `"cover"`: Scaled to cover the box, cropped around the focal point.
- * - `"contain"`: Scaled to fit inside the box, placed by the focal point.
- * - `"none"`: At its own size (one image pixel per CSS px), placed by the focal point.
- * - `"nineSlice"`: Nine-slice: corners kept at slice, edges and centre filled by edges.
- * - `"pattern"`: Tiled at tile CSS px, turned, offset and scrolling.
- */
-export type ImageFit = "fill" | "cover" | "contain" | "none" | "nineSlice" | "pattern";
-
-/**
- * How a nine-slice's edges and centre fill their length.
- * - `"stretch"`: Stretched.
- * - `"repeat"`: Tiled at the border's scale, cut at the end.
- * - `"round"`: Tiled a whole number of times, stretched to fit.
- */
-export type SliceEdges = "stretch" | "repeat" | "round";
-
-/**
- * A colour.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface SolidFill {
-  /**
-   * The colour: a theme token, resolved when the frame is drawn, or a literal.
-   *
-   * @default {}
-   */
-  readonly color?: Paint;
-}
-
-/**
- * A texture region with a fit.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface ImageFill {
-  /**
-   * The texture (og.load.texture).
-   *
-   * @default 0
-   */
-  readonly texture?: Texture;
-  /**
-   * The region, [u0, v0, u1, v1] with v down; null is the whole texture.
-   *
-   * @default null
-   */
-  readonly uv?: [number, number, number, number] | null;
-  /**
-   * The region's size in image pixels (none, nineSlice and pattern read it); zero is the texture's.
-   *
-   * @default { x: 0, y: 0 }
-   */
-  readonly size?: Vector2;
-  /**
-   * Multiplies it; null is white.
-   *
-   * @default null
-   */
-  readonly tint?: Paint | null;
-  /**
-   * How it fills the box.
-   *
-   * @default "fill"
-   */
-  readonly fit?: ImageFit;
-  /**
-   * Where cover crops and contain or none place it, fractions of the free space.
-   *
-   * @default { x: 0.5, y: 0.5 }
-   * @unit ratio (a fraction between 0 and 1)
-   */
-  readonly focal?: Vector2;
-  /**
-   * A nine-slice's border in image pixels: left, top, right, bottom.
-   *
-   * @default [0, 0, 0, 0]
-   */
-  readonly slice?: [number, number, number, number];
-  /**
-   * A nine-slice's border as drawn, CSS px; null is slice.
-   *
-   * @default null
-   */
-  readonly border?: [number, number, number, number] | null;
-  /**
-   * A nine-slice's edges and centre.
-   *
-   * @default "stretch"
-   */
-  readonly edges?: SliceEdges;
-  /**
-   * A nine-slice leaves its centre empty.
-   *
-   * @default false
-   */
-  readonly hollow?: boolean;
-  /**
-   * A pattern's tile, CSS px; zero is size.
-   *
-   * @default { x: 0, y: 0 }
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly tile?: Vector2;
-  /**
-   * A pattern's turn.
-   *
-   * @default 0
-   * @unit rad (radians)
-   */
-  readonly patternRotation?: number;
-  /**
-   * A pattern's offset.
-   *
-   * @default { x: 0, y: 0 }
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly offset?: Vector2;
-  /**
-   * A pattern's scroll, CSS px a second of the UI clock.
-   *
-   * @default { x: 0, y: 0 }
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly scroll?: Vector2;
-}
-
-/**
- * A cooked vector contained and centred in the box.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface VectorFill {
-  /**
-   * The vector (og.load.vector).
-   *
-   * @default 0
-   */
-  readonly vector?: VectorArt;
-  /**
-   * Multiplies its paints; null is white.
-   *
-   * @default null
-   */
-  readonly tint?: Paint | null;
-}
-
-/** One layer of an element's fill, or a stroke's paint. */
-export type Fill =
-  /** A colour. */
-  | ({ readonly kind: "solid" } & SolidFill)
-  /** A gradient. */
-  | ({ readonly kind: "gradient" } & Gradient)
-  /** An image with a fit, a nine-slice or a pattern. */
-  | ({ readonly kind: "image" } & ImageFill)
-  /** A cooked vector (as a stroke's paint, its tint). */
-  | ({ readonly kind: "vector" } & VectorFill);
-
-/**
- * Which side of the outline a stroke lies on.
- * - `"center"`: Across the outline.
- * - `"inside"`: Inside it.
- * - `"outside"`: Outside it.
- */
-export type StrokeAlign = "center" | "inside" | "outside";
-
-/**
- * A stroke along the element's outline with a paint of its own (a gradient border is one stroke).
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface Stroke {
-  /**
-   * Its width.
-   *
-   * @default 1
-   * @range 0..
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly width?: number;
-  /**
-   * Which side of the outline.
-   *
-   * @default "center"
-   */
-  readonly align?: StrokeAlign;
-  /**
-   * A dash's length; 0 is solid.
-   *
-   * @default 0
-   * @range 0..
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly dash?: number;
-  /**
-   * The gap between dashes; 0 is the dash's length.
-   *
-   * @default 0
-   * @range 0..
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly gap?: number;
-  /**
-   * Where the dashes start along the outline (move it by the tick for marching ants).
-   *
-   * @default 0
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly dashOffset?: number;
-  /**
-   * The dashes' ends.
-   *
-   * @default "butt"
-   */
-  readonly dashCap?: LineCap;
-  /**
-   * Its paint; null is the theme's line colour.
-   *
-   * @default null
-   */
-  readonly paint?: Fill | null;
-}
-
-/**
- * A shadow: a drop shadow under the element, or an inner shadow cast inwards.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface ShadowEffect {
-  /**
-   * How far it falls.
-   *
-   * @default { x: 0, y: 4 }
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly offset?: Vector2;
-  /**
-   * Its softness (CSS blur: the Gaussian's deviation is half of it).
-   *
-   * @default 12
-   * @range 0..
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly blur?: number;
-  /**
-   * How far it grows (or with a negative value shrinks) past the shape.
-   *
-   * @default 0
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly spread?: number;
-  /**
-   * Its colour; null is the theme's shadow.
-   *
-   * @default null
-   */
-  readonly color?: Paint | null;
-}
-
-/**
- * A glow: around the element, or along its inside.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface GlowEffect {
-  /**
-   * Its softness.
-   *
-   * @default 12
-   * @range 0..
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly blur?: number;
-  /**
-   * How far it grows past the shape.
-   *
-   * @default 0
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly spread?: number;
-  /**
-   * Its colour; null is the theme's primary.
-   *
-   * @default null
-   */
-  readonly color?: Paint | null;
-}
-
-/**
- * The element and its subtree blurred (drawn offscreen).
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface BlurEffect {
-  /**
-   * The blur.
-   *
-   * @default 4
-   * @range 0..
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly radius?: number;
-}
-
-/**
- * What is under the element (the scene and the UI below it) blurred, its saturation and brightness scaled and tinted: glass.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface BackdropEffect {
-  /**
-   * The blur.
-   *
-   * @default 16
-   * @range 0..
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly blur?: number;
-  /**
-   * Multiplies the saturation.
-   *
-   * @default 1
-   * @range 0..
-   * @unit ratio (a fraction between 0 and 1)
-   */
-  readonly saturation?: number;
-  /**
-   * Multiplies the brightness.
-   *
-   * @default 1
-   * @range 0..
-   * @unit ratio (a fraction between 0 and 1)
-   */
-  readonly brightness?: number;
-  /**
-   * Over the blur, by its alpha; null is the theme's panel at 60 % (with a glass weight, the weight's tint).
-   *
-   * @default null
-   */
-  readonly tint?: Paint | null;
-  /**
-   * One of flat glass's weights (docs/ui.md §3.3): it sets the blur, 200 % saturation, the tint (unless tint is given), a 0.5 px hairline inside the edge and CSS mixing, in the theme's scheme; under reduced transparency the solid raised surface, under high contrast solid with a strong 1 px edge. none is the fields as given.
-   *
-   * @default "none"
-   */
-  readonly glass?: GlassWeight;
-  /**
-   * The soft shadow outside it, as the design language's shadows (with a glass weight, raised by default).
-   *
-   * @default "none"
-   */
-  readonly elevation?: Elevation;
-  /**
-   * A hairline just inside the edge (CSS inset 0 0 0 <edge>px); 0 is none, or the weight's.
-   *
-   * @default 0
-   * @range 0..
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly edge?: number;
-  /**
-   * The hairline's colour; null is the weight's (or the theme's line).
-   *
-   * @default null
-   */
-  readonly edgeColor?: Paint | null;
-  /**
-   * The tint drawn opaque, with the hairline and shadow: nothing under it is read (reduced transparency, increased contrast).
-   *
-   * @default false
-   */
-  readonly solid?: boolean;
-  /**
-   * Mix the tint, hairline and shadow in sRGB-encoded values, as CSS does, so a tint reads as it does on a web page (glass weights always do).
-   *
-   * @default false
-   */
-  readonly cssMix?: boolean;
-}
-
-/**
- * How heavy a glass surface is: flat glass, clear and coloured by what passes under it, with no rim, sheen or refraction.
- * - `"none"`: No weight: the backdrop's own fields.
- * - `"thin"`: 10 px of blur and the lightest tint: icons and play discs over art, never text (it does not hold text at 4.5:1).
- * - `"regular"`: 22 px: bars, tab bars, capsules; holds the scheme's text at 4.5:1.
- * - `"thick"`: 32 px and a denser tint: menus, popovers, dialogs, sheets, toasts.
- */
-export type GlassWeight = "none" | "thin" | "regular" | "thick";
-
-/**
- * The soft shadow a glass surface casts.
- * - `"none"`: No shadow (with a glass weight: raised).
- * - `"raised"`: The hairline alone (an outer one in the light scheme).
- * - `"float"`: One soft, short shadow: capsules and menus.
- * - `"lift"`: Two deeper shadows: dialogs and sheets.
- */
-export type Elevation = "none" | "raised" | "float" | "lift";
-
-/** An effect of the element. */
-export type Effect =
-  /** A drop shadow (several layer). */
-  | ({ readonly kind: "dropShadow" } & ShadowEffect)
-  /** An inner shadow. */
-  | ({ readonly kind: "innerShadow" } & ShadowEffect)
-  /** A glow around it. */
-  | ({ readonly kind: "outerGlow" } & GlowEffect)
-  /** A glow along its inside. */
-  | ({ readonly kind: "innerGlow" } & GlowEffect)
-  /** Its subtree blurred. */
-  | ({ readonly kind: "layerBlur" } & BlurEffect)
-  /** Glass: what is under it blurred. */
-  | ({ readonly kind: "backdrop" } & BackdropEffect);
-
-/**
- * How an element cuts its children.
- * - `"none"`: Not at all (a scroll container still clips to its rectangle).
- * - `"shape"`: To its shape, antialiased (a round avatar, a hex frame).
- * - `"mask"`: By DrawDesc.mask's alpha (the subtree draws offscreen).
- */
-export type ClipMode = "none" | "shape" | "mask";
-
-/**
- * An alpha mask over an element's subtree: a gradient's alpha, else an image's.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface MaskDesc {
-  /**
-   * The gradient whose alpha masks (a list fading at its edge).
-   *
-   * @default null
-   */
-  readonly gradient?: Gradient | null;
-  /**
-   * The image whose alpha masks, stretched over the element.
-   *
-   * @default null
-   */
-  readonly texture?: Texture | null;
-  /**
-   * The image's region; null is the whole texture.
-   *
-   * @default null
-   */
-  readonly uv?: [number, number, number, number] | null;
-}
-
-/**
- * What a layer composites through: a built-in UI material, or a custom one. params is read per material.
- * - `"plain"`: The layer as drawn.
- * - `"dissolve"`: [threshold 0–1, edge width, noise scale (CSS px), _], [edge colour rgba].
- * - `"shine"`: [position 0–1 across the diagonal (negative sweeps by the clock at -position a second), width, angle (rad), intensity], [colour rgba].
- * - `"hologram"`: [scanline spacing (CSS px), flicker 0–1, chromatic split (CSS px), scanline strength], [tint rgba].
- * - `"glitch"`: [strength 0–1, slice height (CSS px), split (CSS px), rate (Hz)].
- * - `"ripple"`: [amplitude (CSS px), wavelength (CSS px), speed (CSS px/s), _], [centre x, y as fractions].
- * - `"pixelate"`: [cell size (CSS px)].
- * - `"colorAdjust"`: [hue (rad), saturation, brightness, grayscale 0–1].
- * - `"outline"`: [width (CSS px), _, _, _], [colour rgba]: an outline of the layer's alpha.
- * - `"blur"`: [radius (CSS px)].
- * - `"custom"`: LayerDesc.custom, a `type ui-material`.
- */
-export type MaterialName = "plain" | "dissolve" | "shine" | "hologram" | "glitch" | "ripple" | "pixelate" | "colorAdjust" | "outline" | "blur" | "custom";
-
-/**
- * The element's subtree drawn offscreen, then composited through a material (a card that dissolves, a hologram panel).
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface LayerDesc {
-  /**
-   * The material.
-   *
-   * @default "plain"
-   */
-  readonly material?: MaterialName;
-  /**
-   * The custom material, for material custom.
-   *
-   * @default null
-   */
-  readonly custom?: UiMaterial | null;
-  /**
-   * Its parameters: up to four vec4s, flattened (16 numbers); for a custom material, missing ones are its defaults.
-   *
-   * @default []
-   */
-  readonly params?: readonly number[];
-}
-
-/**
- * A shadow under an element's text.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface TextShadowDesc {
-  /**
-   * How far it falls.
-   *
-   * @default { x: 0, y: 2 }
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly offset?: Vector2;
-  /**
-   * Its softness.
-   *
-   * @default 2
-   * @range 0..
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly blur?: number;
-  /**
-   * Its colour; null is the theme's shadow.
-   *
-   * @default null
-   */
-  readonly color?: Paint | null;
-}
-
-/**
- * An outline around an element's glyphs.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface TextOutlineDesc {
-  /**
-   * Its width (up to the font's distance range).
-   *
-   * @default 2
-   * @range 0..
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly width?: number;
-  /**
-   * Its colour; null is the theme's shadow.
-   *
-   * @default null
-   */
-  readonly color?: Paint | null;
-  /**
-   * Across the glyph's edge, inside it or outside it.
-   *
-   * @default "center"
-   */
-  readonly align?: StrokeAlign;
-}
-
-/**
- * Effects of the text an element holds (its labels and rich text).
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface TextEffectsDesc {
-  /**
-   * Shadows, under everything, in order.
-   *
-   * @default []
-   */
-  readonly shadows?: readonly TextShadowDesc[];
-  /**
-   * An outline.
-   *
-   * @default null
-   */
-  readonly outline?: TextOutlineDesc | null;
-  /**
-   * A gradient fill over each line's box instead of its colour.
-   *
-   * @default null
-   */
-  readonly fill?: Gradient | null;
-}
-
-/**
- * What an element draws with (og.ui.setDraw), over its background: its shape, fills and strokes in order, effects, opacity and blend, how it clips its children, and whether its subtree draws offscreen through a material. Colours given as theme tokens follow the style; every value is data an agent can read and set.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface DrawDesc {
-  /**
-   * Its outline; null is its rectangle with its radius.
-   *
-   * @default null
-   */
-  readonly shape?: DrawShape | null;
-  /**
-   * Fills, bottom first.
-   *
-   * @default []
-   */
-  readonly fills?: readonly Fill[];
-  /**
-   * Strokes, over the fills and the children, bottom first.
-   *
-   * @default []
-   */
-  readonly strokes?: readonly Stroke[];
-  /**
-   * Shadows, glows, blurs and backdrops.
-   *
-   * @default []
-   */
-  readonly effects?: readonly Effect[];
-  /**
-   * Multiplies its paints (with a layer, its composite).
-   *
-   * @default 1
-   * @range 0..1
-   */
-  readonly opacity?: number;
-  /**
-   * How its paints (or its layer) mix with what is under them.
-   *
-   * @default "normal"
-   */
-  readonly blend?: BlendMode;
-  /**
-   * How it cuts its children.
-   *
-   * @default "none"
-   */
-  readonly clip?: ClipMode;
-  /**
-   * The mask, for clip mask.
-   *
-   * @default null
-   */
-  readonly mask?: MaskDesc | null;
-  /**
-   * Its subtree drawn offscreen and composited through a material.
-   *
-   * @default null
-   */
-  readonly layer?: LayerDesc | null;
-  /**
-   * Effects of its text.
-   *
-   * @default null
-   */
-  readonly text?: TextEffectsDesc | null;
-  /**
-   * The draw is a component's own look for the part its element names (ElementDesc.part): where the style dresses that part, each list the dressing sets (fills, strokes, effects, material, mask, blend) replaces the draw's, a rect takes the dressing's corner, and atlas art replaces the draw. The draw's shape stays, so a ring, a star or a segment keeps its geometry in every style. False: the draw is the game's and the style never touches it.
-   *
-   * @default false
-   */
-  readonly dressable?: boolean;
-}
-
-/**
- * How a paint mixes with what is under it.
- * - `"normal"`: Over it.
- * - `"multiply"`: Multiplied: darkens.
- * - `"screen"`: Screened: lightens.
- * - `"add"`: Added: glows.
- * - `"overlay"`: Multiply under half grey, screen over it.
- * - `"softLight"`: A gentle overlay.
- * - `"colorDodge"`: Brightens what is under it by the paint.
- */
-export type BlendMode = "normal" | "multiply" | "screen" | "add" | "overlay" | "softLight" | "colorDodge";
-
-/**
- * What a component tells the accessibility tree about an element it built from containers (docs/ui.md §2): a role other than its kind's, a name, a value and states. Absent fields leave what the element's kind gives it.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface SemanticsDesc {
-  /**
-   * Its role: button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, tabpanel, radiogroup, progressbar, meter, timer, status, alert, log (a feed whose new lines are read: a killfeed, subtitles), dialog, alertdialog, tooltip, separator, group, region, navigation, toolbar, menu, menubar, menuitem, menuitemcheckbox, menuitemradio, list, listitem, tree, treeitem, table, grid, row, rowheader, columnheader, cell, gridcell, figure or scrollbar; empty keeps its kind's.
-   *
-   * @default ""
-   */
-  readonly role?: string;
-  /**
-   * Its accessible name; null keeps what it shows.
-   *
-   * @default null
-   */
-  readonly name?: string | null;
-  /**
-   * Read after the name; null is none.
-   *
-   * @default null
-   */
-  readonly description?: string | null;
-  /**
-   * Its value as people read it (`3 of 12`, `Sorted ascending`); null is none.
-   *
-   * @default null
-   */
-  readonly value?: string | null;
-  /**
-   * Checked (a menu item's check); null is not checkable.
-   *
-   * @default null
-   */
-  readonly checked?: boolean | null;
-  /**
-   * Selected (a tab, a row, an option); null is not selectable.
-   *
-   * @default null
-   */
-  readonly selected?: boolean | null;
-  /**
-   * Expanded (an accordion header, a tree item, a menu button); null is not expandable.
-   *
-   * @default null
-   */
-  readonly expanded?: boolean | null;
-  /**
-   * Loading.
-   *
-   * @default false
-   */
-  readonly busy?: boolean;
-  /**
-   * Shown but inert (a disabled menu item, a locked tab): disabled in the tree, and its interaction state group's disabled state.
-   *
-   * @default false
-   */
-  readonly disabled?: boolean;
-  /**
-   * A range's smallest value.
-   *
-   * @default null
-   */
-  readonly valueMin?: number | null;
-  /**
-   * A range's largest value.
-   *
-   * @default null
-   */
-  readonly valueMax?: number | null;
-  /**
-   * A range's value as a number (a scroll position, a page); null is no range.
-   *
-   * @default null
-   */
-  readonly valueNow?: number | null;
-}
-
-
 
 /**
  * What the scene in front of an anchored element does to it: a depth test of its point against the frame's depth, on the GPU.
@@ -36172,7 +33567,7 @@ export declare namespace og {
      */
     function uiMaterial(world: World, path: string): Result<UiMaterial>;
     /**
-     * Load a cooked texture for og.render.sprite and og.ui.image, as three.js TextureLoader.load.
+     * Load a cooked texture for og.render.sprite and a document's `<img>`, as three.js TextureLoader.load.
      * Sources are PNG, JPEG or KTX2 files under assets/ (`texture { kind color|normal|linear|pixel }` in `<file>.ogt`). A KTX2's `KTXorientation` and `KTXswizzle` are honoured: one that is not `rd` and `rgba` is decoded, flipped to rows top to bottom and swizzled, and cooked again; one that is (Basis ETC1S or UASTC, or RGBA8, of a colour or linear kind) is taken as it is.
      *
      * @param world The world whose renderer owns the texture.
@@ -38197,51 +35592,11 @@ export declare namespace og {
      */
     function theme(world: World): UiTheme;
     /**
-     * Open a container; the calls until its close() build its children.
-     *
-     * @param id Its id, unique among its siblings.
-     * @param desc Its layout and look.
-     */
-    function open(id: string, desc?: ElementDesc): void;
-    /**
-     * Open a vertical scroll container, closed by close().
-     *
-     * @param id Its id.
-     * @param desc Its size and spacing.
-     */
-    function openScroll(id: string, desc?: ScrollDesc): void;
-    /**
      * Close the open container.
      *
      * @returns Its response, for an interactive container; the zero response otherwise.
      */
     function close(): Response;
-    /**
-     * A row built by `build`: open(id, {...desc, direction: row}), build(), close().
-     *
-     * @param id Its id.
-     * @param desc Its layout and look; direction is row.
-     * @param build Makes its children.
-     * @returns Its response, for an interactive row.
-     */
-    function row(id: string, desc: ElementDesc, build: UiBuild): Response;
-    /**
-     * A column built by `build`: open(id, {...desc, direction: column}), build(), close().
-     *
-     * @param id Its id.
-     * @param desc Its layout and look; direction is column.
-     * @param build Makes its children.
-     * @returns Its response, for an interactive column.
-     */
-    function column(id: string, desc: ElementDesc, build: UiBuild): Response;
-    /**
-     * A paragraph of inline spans from markup, for a string-table message (og.i18n.t) so a translation carries its own emphasis: `[b]bold[/b]` (thickened in the distance field as far as it reaches, plus a second copy one device pixel right), `[color=danger]` or `[color=#ff8800]` (a ThemeColor follows the style), `[size=xl]` (a TypeStepName), `[font=mono]`, `[icon=coin]` (a cell of the icon atlas, one em), `[link=shop]Open the shop[/link]` (accent ink, underlined, focusable by keys and pads; a child element `<id>/shop` of kind link for the probe) and per-glyph motion `[wave]`, `[shake]`, `[pulse]` (by the tick; still under reduced motion). `[[` is a literal bracket. Lines break between the spans' words (a word restyled mid-way stays whole), each as tall as its tallest span on one baseline. Markup it cannot read shows as text and logs a warning.
-     *
-     * @param id Its id.
-     * @param markup The markup.
-     * @param desc Defaults for its spans: type step, ink, alignment, wrapping, width and font.
-     */
-    function richText(id: string, markup: string, desc?: RichTextDesc): RichTextResult;
     /**
      * MSDF text that wraps at its width (word breaks; between CJK characters under kinsoku, katakana words kept whole; long words between characters) unless nowrap. The probe reads its text.
      *
@@ -38250,20 +35605,6 @@ export declare namespace og {
      * @param desc Type step, ink, alignment, wrapping, width and font.
      */
     function label(id: string, text: string, desc?: LabelDesc): void;
-    /**
-     * A texture region, or a solid rectangle; with ImageDesc.aspect, a fitting side follows the other.
-     *
-     * @param id Its id.
-     * @param desc Texture, region, tint, size and aspect ratio.
-     */
-    function image(id: string, desc?: ImageDesc): void;
-    /**
-     * The id of the index-th of several siblings of one name: `idi("Slot", 3)` is `Slot#3`.
-     *
-     * @param name The name.
-     * @param index The index.
-     */
-    function idi(name: string, index: number): string;
     /**
      * The primary pointer of the frame being built, without the world: for a component that hit-tests a shape it draws itself (a pie's wedges, a wheel's slices) by angle and radius rather than by rectangles. Keys and pads reach the same choices through focusable parts.
      */
@@ -38287,19 +35628,15 @@ export declare namespace og {
      */
     function seconds(): number;
     /**
-     * The full path of the element built just before (a container just closed, or a widget), as og.ui.bounds, og.ui.gesture, og.ui.forceState and the probe name it: a component reads its own parts' rectangles and gestures by it. Empty when nothing was built before it.
-     */
-    function lastPath(): string;
-    /**
      * Move the focus (the pointer's, the keys' and pad 0's) to the element at a full path when this frame ends, if a focusable control is there then: a component moving the focus with its choice (a radio group's arrow keys, a list opening at its chosen option, a keyboard's first key). The ring shows as navigation's does. The last call in a frame wins; a path with no focusable control leaves the focus where it is.
      *
-     * @param path The element's full path (og.ui.lastPath, og.ui.focus).
+     * @param path The element's full path (og.ui.focus, the probe's dump).
      */
     function setFocus(path: string): void;
     /**
      * Scroll the scroll container around a control (an interactive or focusable element, by its full path) so the control is in its view, by where both were in the last frame: by the least that shows it whole, or centred in the view (a saga map opening on the current level, a list on its chosen row). The offset stays in the container's range and stops a fling. Nothing for a path the last frame had no control at or that is in no scroll container.
      *
-     * @param path The control's full path (og.ui.lastPath, og.ui.focus).
+     * @param path The control's full path (og.ui.focus, the probe's dump).
      * @param center Centre it in the view, as far as the range allows; false scrolls by the least that shows it.
      */
     function scrollIntoView(path: string, center: boolean): void;
@@ -38327,49 +35664,17 @@ export declare namespace og {
      */
     function anchor(id: string, desc: AnchorDesc, build: UiBuild): void;
     /**
-     * Open a dialog, closed by closeModal(); build its content only while the answer is visible. The probe sees the backdrop as `<id>` and the panel as `<id>/Panel`.
-     *
-     * @param id Its id.
-     * @param open Whether it should be open.
-     * @param desc Title, width and dismissal rules.
-     */
-    function openModal(id: string, open: boolean, desc?: ModalDesc): ModalResult;
-    /** Close a dialog opened with openModal (its panel and backdrop). */
-    function closeModal(): void;
-    /**
      * Where an element was in the last frame, by id or `Parent/Child` path (topmost first), as touch_move_to resolves it.
      *
      * @param path The id or path.
      */
     function bounds(path: string): UiRect | null;
     /**
-     * A scroll container's offset, view and whole content, by its full path (og.ui.lastPath after closing it): what a component virtualises its rows by, since og.ui.bounds is cut to the view and a row scrolled away has none. The offset is this tick's; the sizes are the last frame's. Null for a path that was no scroll container.
+     * A scroll container's offset, view and whole content, by its full path (as the probe's dump names it): what a component virtualises its rows by, since og.ui.bounds is cut to the view and a row scrolled away has none. The offset is this tick's; the sizes are the last frame's. Null for a path that was no scroll container.
      *
      * @param path Its full path.
      */
     function scrollState(path: string): ScrollState | null;
-    /**
-     * A hairline in the border colour across its parent.
-     *
-     * @param id Its id.
-     * @param vertical Stand it up (in a row).
-     */
-    function divider(id: string, vertical: boolean): void;
-    /**
-     * Empty space.
-     *
-     * @param id Its id.
-     * @param size Its size along both axes; null grows into the free space.
-     */
-    function spacer(id: string, size: Size | null): void;
-    /**
-     * An icon of the atlas (UiDesc.icons) by name: a texture cell, or an icon set's distance-field glyph fitted to its square; an unknown name draws an empty slot and warns. Rich text takes the same icons inline with `[icon=name]`. The probe reads the name.
-     *
-     * @param id Its id.
-     * @param name The icon's name.
-     * @param desc Size and ink.
-     */
-    function icon(id: string, name: string, desc?: IconDesc): void;
     /**
      * Queue a toast: it stacks at UiDesc.toastAnchor, enters, stays its time and leaves; at most three are up (older ones leave first); a press dismisses it. Callable anywhere (systems, commands, start); it is world state, so snapshots carry it.
      *
@@ -38412,7 +35717,7 @@ export declare namespace og {
     /** The virtual cursor as the last frame left it; null when none is declared. */
     function virtualCursor(): VirtualCursor | null;
     /**
-     * Turns the HUD edit mode on or off (docs/ui.md §2.1; kept until changed). While it is on, elements with ElementProps.customize stop answering their own presses and show their outlines: a press selects one and a drag moves it, two touches or the wheel scale it, and with no virtual cursor pad 0's left stick moves the selected one. The hud-editor screen document (og ui eject hud-editor) gives the steps, Next, Reset and Done.
+     * Turns the HUD edit mode on or off (docs/ui.md §2.1; kept until changed). While it is on, elements with the `customize` attribute stop answering their own presses and show their outlines: a press selects one and a drag moves it, two touches or the wheel scale it, and with no virtual cursor pad 0's left stick moves the selected one. The hud-editor screen document (og ui eject hud-editor) gives the steps, Next, Reset and Done.
      *
      * @param on On or off.
      */
@@ -38486,20 +35791,6 @@ export declare namespace og {
      * @param on On or off.
      */
     function setNavigation(on: boolean): void;
-    /**
-     * A number the UI keeps for an id under the open element (a component's tab, a count-up's start tick), in snapshots like the rest of the UI state. Read it every tick it is used: an unused memory is dropped.
-     *
-     * @param id The id, unique among its siblings' memories.
-     * @param initial Its value the first time.
-     */
-    function memory(id: string, initial: number): number;
-    /**
-     * Set a number memory (see memory).
-     *
-     * @param id The id.
-     * @param value The value.
-     */
-    function remember(id: string, value: number): void;
     /** Frames the UI has built: its clock, for animations by the tick. */
     function tick(): number;
     /**
@@ -38509,13 +35800,6 @@ export declare namespace og {
      * @param viewport The surface to lay out for; null returns to the host's.
      */
     function previewViewport(world: World, viewport: Viewport | null): void;
-    /**
-     * Give the element built just before (any widget, or a container just closed) the element model's props: transform, opacity, z, placement, grid, variants, overlaps, motion, states, presence, gestures (docs/ui.md §2, §3.1). Call it right after the element.
-     *
-     * @param desc Its props.
-     * @returns False when no element was built before it.
-     */
-    function props(desc?: ElementProps): boolean;
     /**
      * Define a timeline by name: configuration, like the theme, defined once at start. Plays and state groups name it.
      *
@@ -38585,10 +35869,6 @@ export declare namespace og {
      */
     function forceState(path: string, group: string, state: string | null): void;
     /**
-     * The full path of the innermost open container (an open row, panel, anchor or world anchor), as bounds, visualState, forceState, playTimeline and the probe name it; empty at the top level. A component reads its root's path right after opening it, to name its parts in those calls.
-     */
-    function openPath(): string;
-    /**
      * The state a group of an element is in (last tick); empty for none.
      *
      * @param path The element's full path.
@@ -38626,18 +35906,6 @@ export declare namespace og {
      * @param format How to write it.
      */
     function formatNumber(value: number, format?: NumberFormatDesc): string;
-    /**
-     * Give the element built just before (a container just closed, or a widget) a role, a name, a value and states for the accessibility tree and the probe's dump (dump_ui's role, name, value, states). Components built from containers call it so a screen reader meets a menu, a tree or a table, not rows of buttons. Answers false, with a frame warning, when no element was built before it or the role is unknown.
-     *
-     * @param desc Its role, name, value and states.
-     */
-    function semantics(desc?: SemanticsDesc): boolean;
-    /**
-     * Draws the element added last (a container just opened, or the last control) with desc: shapes beyond rectangles, layered gradient, image and vector fills, strokes with their own paints, shadows, glows, glass, clipping to its shape, masks, blend modes and materials (docs/ui.md §3.3). Call it right after the element's open or control; immediate mode, so every tick it is drawn.
-     *
-     * @param desc What it draws with.
-     */
-    function setDraw(desc?: DrawDesc): void;
     /**
      * Declare a mass element template by name and answer its handle; declaring the name again replaces it and keeps the handle. Invalid timing text returns an error naming the text and required syntax; it never falls back to linear.
      *

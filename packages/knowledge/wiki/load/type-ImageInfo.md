@@ -10,14 +10,14 @@ What a ready uncooked image holds.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `texture` | `Texture` | `0` | — | — | — | The texture: og.render.sprite, og.ui.image and material maps draw it like a cooked one. |
+| `texture` | `Texture` | `0` | — | — | — | The texture: og.render.sprite, a document's `<img>` and material maps draw it like a cooked one. |
 | `width` | `number` | `0` | — | — | — | Its width in texels. |
 | `height` | `number` | `0` | — | — | — | Its height in texels. |
 
 ```ogt
 struct ImageInfo {
   doc "What a ready uncooked image holds."
-  field texture Texture "The texture: og.render.sprite, og.ui.image and material maps draw it like a cooked one."
+  field texture Texture "The texture: og.render.sprite, a document's `<img>` and material maps draw it like a cooked one."
   field width u32 "Its width in texels."
   field height u32 "Its height in texels."
 }

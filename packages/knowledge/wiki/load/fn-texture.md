@@ -6,7 +6,7 @@ Module [`load`](../load.md) · [index](../index.md)
 
 ### `og.load.texture`
 
-Load a cooked texture for og.render.sprite and og.ui.image, as three.js TextureLoader.load.
+Load a cooked texture for og.render.sprite and a document's `<img>`, as three.js TextureLoader.load.
 
 Sources are PNG, JPEG or KTX2 files under assets/ (`texture { kind color|normal|linear|pixel }` in `<file>.ogt`). A KTX2's `KTXorientation` and `KTXswizzle` are honoured: one that is not `rd` and `rgba` is decoded, flipped to rows top to bottom and swizzled, and cooked again; one that is (Basis ETC1S or UASTC, or RGBA8, of a colour or linear kind) is taken as it is.
 
@@ -27,7 +27,7 @@ Binding symbol `og_load_texture` · publish builds: kept
 
 ```ogt
 fn texture {
-  doc "Load a cooked texture for og.render.sprite and og.ui.image, as three.js TextureLoader.load."
+  doc "Load a cooked texture for og.render.sprite and a document's `<img>`, as three.js TextureLoader.load."
   doc "Sources are PNG, JPEG or KTX2 files under assets/ (`texture { kind color|normal|linear|pixel }` in `<file>.ogt`). A KTX2's `KTXorientation` and `KTXswizzle` are honoured: one that is not `rd` and `rgba` is decoded, flipped to rows top to bottom and swizzled, and cooked again; one that is (Basis ETC1S or UASTC, or RGBA8, of a colour or linear kind) is taken as it is."
   aliases "image, picture, Texture2D, three.js TextureLoader, load a PNG, sprite image"
   param world World "The world whose renderer owns the texture."

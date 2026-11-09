@@ -114,7 +114,7 @@ Godot, Unreal, three.js). The wiki prints it as "Also known as:" and
 
 | Declaration | Form | Means |
 |---|---|---|
-| `fn` | `fn name { doc; generic N Bound; param ...; returns Type "doc"; publish bool; host bool }` | a function; in an interface or resource, a method; `host false` is TypeScript sugar the runtime implements over other members (`og.ui.column`): no binding symbol, no trait method |
+| `fn` | `fn name { doc; generic N Bound; param ...; returns Type "doc"; publish bool; host bool }` | a function; in an interface or resource, a method; `host false` is TypeScript sugar the runtime implements over other members (`og.ui.anchor`): no binding symbol, no trait method |
 | `value` | `value name Type "doc"` | a value the TypeScript runtime provides under the module's path (`og.systems.cameras`); no binding symbol |
 | `param` | `param name Type "doc" { default ...; optional true; flatten true }` | a parameter; `flatten` spreads a desc's fields into the wire params |
 | `const` | `const NAME Type value "doc"` | a constant (u32, i32, f32, f64, String or bool) |

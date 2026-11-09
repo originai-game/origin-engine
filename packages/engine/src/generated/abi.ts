@@ -899,18 +899,10 @@ export interface HostAbi<A, V> {
   og_ui_viewport(world: number): string;
   /** `og.ui.theme` */
   og_ui_theme(world: number): string;
-  /** `og.ui.open` */
-  og_ui_open(id: string, desc: string | undefined): void;
-  /** `og.ui.openScroll` */
-  og_ui_open_scroll(id: string, desc: string | undefined): void;
   /** `og.ui.close` */
   og_ui_close(): string;
-  /** `og.ui.richText` */
-  og_ui_rich_text(id: string, markup: string, desc: string | undefined): string;
   /** `og.ui.label` */
   og_ui_label(id: string, text: string, desc: string | undefined): void;
-  /** `og.ui.image` */
-  og_ui_image(id: string, desc: string | undefined): void;
   /** `og.ui.framePointer` */
   og_ui_frame_pointer(): string;
   /** `og.ui.frameCursor` */
@@ -921,8 +913,6 @@ export interface HostAbi<A, V> {
   og_ui_has_icon(name: string): boolean;
   /** `og.ui.seconds` */
   og_ui_seconds(): number;
-  /** `og.ui.lastPath` */
-  og_ui_last_path(): string;
   /** `og.ui.setFocus` */
   og_ui_set_focus(path: string): void;
   /** `og.ui.scrollIntoView` */
@@ -933,20 +923,10 @@ export interface HostAbi<A, V> {
   og_ui_frame_theme(): string;
   /** `og.ui.openAnchor` */
   og_ui_open_anchor(id: string, desc: string | undefined): void;
-  /** `og.ui.openModal` */
-  og_ui_open_modal(id: string, open: boolean, desc: string | undefined): string;
-  /** `og.ui.closeModal` */
-  og_ui_close_modal(): void;
   /** `og.ui.bounds` */
   og_ui_bounds(path: string): string;
   /** `og.ui.scrollState` */
   og_ui_scroll_state(path: string): string;
-  /** `og.ui.divider` */
-  og_ui_divider(id: string, vertical: boolean): void;
-  /** `og.ui.spacer` */
-  og_ui_spacer(id: string, size: string): void;
-  /** `og.ui.icon` */
-  og_ui_icon(id: string, name: string, desc: string | undefined): void;
   /** `og.ui.toast` */
   og_ui_toast(world: number, text: string, desc: string | undefined): number;
   /** `og.ui.dismissToast` */
@@ -987,16 +967,10 @@ export interface HostAbi<A, V> {
   og_ui_set_haptics(intensity: number): void;
   /** `og.ui.setNavigation` */
   og_ui_set_navigation(on: boolean): void;
-  /** `og.ui.memory` */
-  og_ui_memory(id: string, initial: number): number;
-  /** `og.ui.remember` */
-  og_ui_remember(id: string, value: number): void;
   /** `og.ui.tick` */
   og_ui_tick(): number;
   /** `og.ui.previewViewport` */
   og_ui_preview_viewport(world: number, viewport: string): void;
-  /** `og.ui.props` */
-  og_ui_props(desc: string | undefined): boolean;
   /** `og.ui.defineTimeline` */
   og_ui_define_timeline(name: string, timeline: string | undefined): void;
   /** `og.ui.play` */
@@ -1017,8 +991,6 @@ export interface HostAbi<A, V> {
   og_ui_play_info(play: number): string;
   /** `og.ui.forceState` */
   og_ui_force_state(path: string, group: string, state: string): void;
-  /** `og.ui.openPath` */
-  og_ui_open_path(): string;
   /** `og.ui.visualState` */
   og_ui_visual_state(path: string, group: string): string;
   /** `og.ui.animate` */
@@ -1031,10 +1003,6 @@ export interface HostAbi<A, V> {
   og_ui_overlaps(): string;
   /** `og.ui.layoutStats` */
   og_ui_layout_stats(): string;
-  /** `og.ui.semantics` */
-  og_ui_semantics(desc: string | undefined): boolean;
-  /** `og.ui.setDraw` */
-  og_ui_set_draw(desc: string | undefined): void;
   /** `og.ui.defineMass` */
   og_ui_define_mass(name: string, desc: string | undefined): string;
   /** `og.ui.spawnMass` */
@@ -1723,30 +1691,20 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_configure",
   "og_ui_viewport",
   "og_ui_theme",
-  "og_ui_open",
-  "og_ui_open_scroll",
   "og_ui_close",
-  "og_ui_rich_text",
   "og_ui_label",
-  "og_ui_image",
   "og_ui_frame_pointer",
   "og_ui_frame_cursor",
   "og_ui_frame_viewport",
   "og_ui_has_icon",
   "og_ui_seconds",
-  "og_ui_last_path",
   "og_ui_set_focus",
   "og_ui_scroll_into_view",
   "og_ui_frame_direction",
   "og_ui_frame_theme",
   "og_ui_open_anchor",
-  "og_ui_open_modal",
-  "og_ui_close_modal",
   "og_ui_bounds",
   "og_ui_scroll_state",
-  "og_ui_divider",
-  "og_ui_spacer",
-  "og_ui_icon",
   "og_ui_toast",
   "og_ui_dismiss_toast",
   "og_ui_navigate",
@@ -1767,11 +1725,8 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_feedback",
   "og_ui_set_haptics",
   "og_ui_set_navigation",
-  "og_ui_memory",
-  "og_ui_remember",
   "og_ui_tick",
   "og_ui_preview_viewport",
-  "og_ui_props",
   "og_ui_define_timeline",
   "og_ui_play",
   "og_ui_play_timeline",
@@ -1782,15 +1737,12 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_stop",
   "og_ui_play_info",
   "og_ui_force_state",
-  "og_ui_open_path",
   "og_ui_visual_state",
   "og_ui_animate",
   "og_ui_gesture",
   "og_ui_motion_events",
   "og_ui_overlaps",
   "og_ui_layout_stats",
-  "og_ui_semantics",
-  "og_ui_set_draw",
   "og_ui_define_mass",
   "og_ui_spawn_mass",
   "og_ui_mass_count",

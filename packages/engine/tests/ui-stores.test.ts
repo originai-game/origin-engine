@@ -72,6 +72,9 @@ test("focus and hover stay outside simulation while recorded confirmation replay
   <text id="Title" i18n="pause.title">Paused</text>
 </column>
 `);
+  writeFileSync(join(root, "assets", "confirm.svelte"), `<meta name="component" content="confirm">
+<column><button id="Confirm" style="width: 160px" onpointermove={over}>Confirm</button></column>
+`);
   cookProject(root, root);
   const run = (host: string) => {
     const result = Bun.spawnSync(["bun", fileURLToPath(new URL("./support/ui-checkpoint-round.ts", import.meta.url)), host, root]);

@@ -30,31 +30,6 @@ pub fn og_ui_open_anchor(id: String, desc: Option<String>) {
     });
 }
 
-pub fn og_ui_open_modal(id: String, open: bool, desc: Option<String>) -> String {
-    let d = desc_of(desc);
-    let r = with_ui("og.ui.openModal", |ui| {
-        ui.open_modal(
-            id.as_str(),
-            open,
-            &ModalDesc {
-                title: d["title"].as_str().unwrap_or_default().to_string(),
-                width: size(&d["width"]),
-                locked: d["locked"].as_bool().unwrap_or(false),
-                ignore_backdrop: d["ignoreBackdrop"].as_bool().unwrap_or(false),
-                transition: transition_kind(&d["transition"]),
-                backdrop: paint(ui.theme(), &d["backdrop"]),
-                bare: d["bare"].as_bool().unwrap_or(false),
-            },
-        )
-    })
-    .unwrap_or_default();
-    json!({ "visible": r.visible, "dismissed": r.dismissed }).to_string()
-}
-
-pub fn og_ui_close_modal() {
-    with_ui("og.ui.closeModal", |ui| ui.close_modal());
-}
-
 pub fn og_ui_bounds(path: String) -> String {
     let b = with_ui("og.ui.bounds", |ui| {
         ui.element(&path)
@@ -74,33 +49,6 @@ pub fn og_ui_scroll_state(path: String) -> String {
         })
     })
     .to_string()
-}
-
-pub fn og_ui_divider(id: String, vertical: bool) {
-    with_ui("og.ui.divider", |ui| ui.divider(id.as_str(), vertical));
-}
-
-pub fn og_ui_spacer(id: String, s: String) {
-    let v = parse(Some(&s)).unwrap_or(Value::Null);
-    with_ui("og.ui.spacer", |ui| ui.spacer(id.as_str(), size(&v)));
-}
-
-pub fn og_ui_icon(id: String, name: String, desc: Option<String>) {
-    let d = desc_of(desc);
-    with_ui("og.ui.icon", |ui| {
-        let t = *ui.theme();
-        ui.icon(
-            id.as_str(),
-            &name,
-            IconDesc {
-                size: f(&d, "size", 0.0),
-                tint: paint(&t, &d["tint"]),
-                secondary: d["secondary"].as_str().map(str::to_owned),
-                secondary_tint: paint(&t, &d["secondaryTint"]),
-                label: d["label"].as_str().map(str::to_owned),
-            },
-        )
-    });
 }
 
 /// The UI of an engine, for calls that work between ticks too.
@@ -266,14 +214,6 @@ pub(crate) fn a11y_json(t: &og_ui::A11yTree, unit: f32) -> Value {
 pub fn og_ui_a11y() -> String {
     with_ui("og.ui.a11y", |ui| a11y_json(ui.a11y(), 1.0).to_string())
         .unwrap_or_else(|| r#"{"nodes":[],"focusOrder":[],"focused":""}"#.to_string())
-}
-
-pub fn og_ui_memory(id: String, initial: f64) -> f64 {
-    with_ui("og.ui.memory", |ui| ui.memory(&id, initial)).unwrap_or(initial)
-}
-
-pub fn og_ui_remember(id: String, value: f64) {
-    with_ui("og.ui.remember", |ui| ui.remember(&id, value));
 }
 
 pub fn og_ui_tick() -> u32 {

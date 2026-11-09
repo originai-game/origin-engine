@@ -33,8 +33,6 @@
     "./schema.json": "./schema/api.schema.json",
     "./playtest": "./src/playtest.ts",
     "./ui-extensions": "./src/ui-extensions.ts",
-    "./ui-parts/hud": "./src/ui-parts/hud.ts",
-    "./ui-parts/screen": "./src/ui-parts/screen.ts",
     "./extensions/*": "./extensions/*",
     "./ui-check": "./src/node/ui-check.ts"
   },

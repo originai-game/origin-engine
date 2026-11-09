@@ -11,8 +11,20 @@ struct Disk;
 impl Hooks for Disk {
     fn dispatch(&self, call: &Dispatch) -> Result<String, String> {
         if call.kind == 0 && call.id == 1 {
-            og_runtime::og_ui_open("Swatch".into(), Some(json!({ "frame": "card", "background": { "token": "panel" }, "width": { "kind": "fixed", "px": 64 }, "height": { "kind": "fixed", "px": 64 } }).to_string()));
-            og_runtime::og_ui_close();
+            let ui = og_runtime::shared_ui(call.engine).expect("the engine's UI");
+            let mut ui = ui.lock();
+            let panel = ui.theme().palette.panel;
+            ui.open(
+                "Swatch",
+                og_ui::Element {
+                    frame: Some(og_ui::StylePart::Card),
+                    background: Some(panel),
+                    width: og_ui::Size::Fixed(64.0),
+                    height: og_ui::Size::Fixed(64.0),
+                    ..og_ui::Element::default()
+                },
+            );
+            ui.close();
         }
         Ok(String::new())
     }

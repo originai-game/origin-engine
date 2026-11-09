@@ -3,8 +3,7 @@
 # times (crates/og-tests/perf/<tier>-<adapter>/) and og-runtime's
 # extraction cost (crates/og-runtime/perf/<cpu>/), release profile, each
 # against this machine's committed baseline with a 15 % tolerance; og-ui's
-# CPU budgets (docs/ui.md §6.3) and the TypeScript side of them
-# (packages/engine/tests/ui-perf.test.ts on the release addon) and the
+# CPU budgets (docs/ui.md §6.3) and the
 # wall-clock room stall (packages/engine/tests/rooms.test.ts). The
 # release test binaries are built first with no GPU slot; then one test runs
 # at a time (cargo test's parallel threads skew each other's frame times)
@@ -55,8 +54,6 @@ if [ "$rc" = 0 ]; then
   og_say "perf: holding every GPU slot"
   cargo test -p og-tests -p og-runtime -p og-audio -p og-ui --release --no-fail-fast -- --ignored perf --nocapture --test-threads=1 2>&1 | tee -a "$out/perf.log"
   rc="${PIPESTATUS[0]}"
-  (cd packages/engine && OG_PERF=1 bun test tests/ui-perf.test.ts) 2>&1 | tee -a "$out/perf.log"
-  [ "${PIPESTATUS[0]}" = 0 ] || rc=1
   # Real-time room behaviour paced on the wall clock (a peer stalled past
   # stallTimeout), which a loaded gate cannot pace.
   (cd packages/engine && OG_PERF=1 bun test tests/rooms.test.ts -t "frozen past stallTimeout") 2>&1 | tee -a "$out/perf.log"

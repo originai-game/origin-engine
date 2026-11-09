@@ -298,7 +298,7 @@ module load {
   }
 
   fn texture {
-    doc "Load a cooked texture for og.render.sprite and og.ui.image, as three.js TextureLoader.load."
+    doc "Load a cooked texture for og.render.sprite and a document's `<img>`, as three.js TextureLoader.load."
     doc "Sources are PNG, JPEG or KTX2 files under assets/ (`texture { kind color|normal|linear|pixel }` in `<file>.ogt`). A KTX2's `KTXorientation` and `KTXswizzle` are honoured: one that is not `rd` and `rgba` is decoded, flipped to rows top to bottom and swizzled, and cooked again; one that is (Basis ETC1S or UASTC, or RGBA8, of a colour or linear kind) is taken as it is."
     aliases "image, picture, Texture2D, three.js TextureLoader, load a PNG, sprite image"
     param world World "The world whose renderer owns the texture."
@@ -506,7 +506,7 @@ module load {
 
   struct ImageInfo {
     doc "What a ready uncooked image holds."
-    field texture Texture "The texture: og.render.sprite, og.ui.image and material maps draw it like a cooked one."
+    field texture Texture "The texture: og.render.sprite, a document's `<img>` and material maps draw it like a cooked one."
     field width u32 "Its width in texels."
     field height u32 "Its height in texels."
   }

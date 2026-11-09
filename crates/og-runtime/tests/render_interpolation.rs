@@ -323,11 +323,19 @@ impl Hooks for Tagger {
                 ..og_ui::WorldAnchorDesc::default()
             };
             let ui = og_runtime::shared_ui(w).expect("the engine's UI");
-            ui.lock().open_world_anchor("Tag", desc);
-            let block = json!({ "width": { "kind": "fixed", "px": 40 }, "height": { "kind": "fixed", "px": 20 }, "background": { "color": { "r": 1, "g": 0, "b": 0 } } });
-            og_runtime::og_ui_open("Block".into(), Some(block.to_string()));
-            og_runtime::og_ui_close();
-            og_runtime::og_ui_close();
+            let mut ui = ui.lock();
+            ui.open_world_anchor("Tag", desc);
+            ui.open(
+                "Block",
+                og_ui::Element {
+                    width: og_ui::Size::Fixed(40.0),
+                    height: og_ui::Size::Fixed(20.0),
+                    background: Some(og_ui::Srgba::rgb(255, 0, 0)),
+                    ..og_ui::Element::default()
+                },
+            );
+            ui.close();
+            ui.close();
         }
         Ok(String::new())
     }

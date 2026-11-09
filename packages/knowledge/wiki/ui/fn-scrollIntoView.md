@@ -14,7 +14,7 @@ og.ui.scrollIntoView(path: string, center: boolean): void
 
 | Parameter | Type | Optional | Doc |
 |---|---|---|---|
-| `path` | `string` | no | The control's full path (og.ui.lastPath, og.ui.focus). |
+| `path` | `string` | no | The control's full path (og.ui.focus, the probe's dump). |
 | `center` | `boolean` | no | Centre it in the view, as far as the range allows; false scrolls by the least that shows it. |
 
 **Returns** `void`.
@@ -24,10 +24,10 @@ Binding symbol `og_ui_scroll_into_view` · publish builds: kept
 ```ogt
 fn scrollIntoView {
   doc "Scroll the scroll container around a control (an interactive or focusable element, by its full path) so the control is in its view, by where both were in the last frame: by the least that shows it whole, or centred in the view (a saga map opening on the current level, a list on its chosen row). The offset stays in the container's range and stops a fling. Nothing for a path the last frame had no control at or that is in no scroll container."
-  param path String "The control's full path (og.ui.lastPath, og.ui.focus)."
+  param path String "The control's full path (og.ui.focus, the probe's dump)."
   param center bool "Centre it in the view, as far as the range allows; false scrolls by the least that shows it."
   returns Void
 }
 ```
 
-<sub>Module `ui` line 881</sub>
+<sub>Module `ui` line 659</sub>

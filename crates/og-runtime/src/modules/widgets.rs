@@ -4,35 +4,6 @@ pub(super) fn desc_of(desc: Option<String>) -> Value {
     parse(desc.as_deref()).unwrap_or(Value::Null)
 }
 
-pub fn og_ui_open(id: String, desc: Option<String>) {
-    let d = desc_of(desc);
-    with_ui("og.ui.open", |ui| {
-        let el = element(ui.theme(), &d);
-        ui.open(id.as_str(), el)
-    });
-}
-
-pub fn og_ui_open_scroll(id: String, desc: Option<String>) {
-    let d = desc_of(desc);
-    with_ui("og.ui.openScroll", |ui| {
-        let s = ScrollDesc {
-            width: size_or(&d["width"], Size::fit()),
-            height: size_or(&d["height"], Size::fit()),
-            padding: insets(&d["padding"]),
-            gap: f(&d, "gap", 0.0),
-            axes: match d["axes"].as_str() {
-                Some("horizontal") => og_ui::ScrollAxes::Horizontal,
-                Some("both") => og_ui::ScrollAxes::Both,
-                _ => og_ui::ScrollAxes::Vertical,
-            },
-            hide_bars: d["hideBars"].as_bool().unwrap_or(false),
-            fade: f(&d, "fade", 0.0),
-            fade_into: d["fadeInto"].as_str().and_then(|n| ui.theme().color(n)),
-        };
-        ui.open_scroll(id.as_str(), s)
-    });
-}
-
 pub fn og_ui_close() -> String {
     response(with_ui("og.ui.close", |ui| ui.close()).unwrap_or_default()).to_string()
 }
@@ -63,58 +34,6 @@ pub fn og_ui_label(id: String, text: String, desc: Option<String>) {
             fit_min: d["fitMin"].as_str().and_then(|s| step(&t, s)),
         };
         ui.label(id.as_str(), &text, l)
-    });
-}
-
-pub fn og_ui_rich_text(id: String, markup: String, desc: Option<String>) -> String {
-    let d = desc_of(desc);
-    let r = with_ui("og.ui.richText", |ui| {
-        let t = *ui.theme();
-        let desc = og_ui::RichTextDesc {
-            step: d["step"].as_str().and_then(|s| step(&t, s)),
-            color: paint(&t, &d["color"]),
-            align: match d["align"].as_str() {
-                Some("center") => TextAlign::Center,
-                Some("end") => TextAlign::End,
-                _ => TextAlign::Start,
-            },
-            nowrap: d["nowrap"].as_bool().unwrap_or(false),
-            width: size_or(&d["width"], Size::fit()),
-            font: d["font"]
-                .as_str()
-                .and_then(FontRole::from_name)
-                .unwrap_or(FontRole::Body),
-        };
-        ui.rich_text(id.as_str(), &markup, desc)
-    })
-    .unwrap_or_default();
-    json!({ "response": response(r.response), "link": r.link, "hovered": r.hovered }).to_string()
-}
-
-pub fn og_ui_image(id: String, desc: Option<String>) {
-    let d = desc_of(desc);
-    let texture = d["texture"].as_f64().and_then(|t| {
-        let eng = engine(BUILDING.with(Cell::get)?).ok()?;
-        let rs = eng.render.borrow();
-        super::assets::index_of(t).and_then(|i| rs.textures.get(i).copied())
-    });
-    with_ui("og.ui.image", |ui| {
-        let t = *ui.theme();
-        let uv = d["uv"].as_array().filter(|a| a.len() == 4).map(|a| {
-            let n = |i: usize| a[i].as_f64().unwrap_or(0.0) as f32;
-            [n(0), n(1), n(2), n(3)]
-        });
-        let i = ImageDesc {
-            // A texture-less image is a solid rectangle.
-            texture,
-            uv,
-            tint: paint(&t, &d["tint"]),
-            width: size_or(&d["width"], Size::fit()),
-            height: size_or(&d["height"], Size::fit()),
-            aspect: f(&d, "aspect", 0.0).max(0.0),
-            label: d["label"].as_str().unwrap_or_default().to_string(),
-        };
-        ui.image(id.as_str(), i)
     });
 }
 

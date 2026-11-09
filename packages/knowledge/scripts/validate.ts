@@ -376,6 +376,8 @@ export const NOT_API: Record<string, string> = {};
 /** `` `key: value` `` spans a guide may write whose key is no field of the generated API: each with why. */
 export const NOT_FIELDS: Record<string, string> = {
   runs: "PlaytestDesc.runs (packages/engine/src/playtest.ts)",
+  container: "the CSS container shorthand (document stylesheets)",
+  transition: "the CSS transition shorthand (document stylesheets)",
 };
 
 export function readApiNames(engine: string): ApiNames | undefined {

@@ -7,7 +7,7 @@
 // AV1 decoded as it plays) on the screen from its current time.
 // `surfaces` takes the sprite away and shows the player's texture twice:
 // as the map of an unlit og.Mesh plane on the left half of the view, and
-// on an og.ui image on the right half (Surfaces draws it every tick).
+// on a UI document's image on the right half (Surfaces binds it every tick).
 import { og, defineSystem } from "@origingame/engine";
 import type { Video, World } from "@origingame/engine";
 
@@ -37,10 +37,7 @@ export const Surfaces = defineSystem("Surfaces", { reads: [og.VideoPlayer] }, (_
   if (!surfaces) return;
   const screen = world.find("screen");
   if (screen == null) return;
-  const texture = must(world.get(screen, og.VideoPlayer)).texture;
-  og.ui.row("Right", { padding: { left: 640, top: 180, right: 0, bottom: 0 } }, () => {
-    og.ui.image("Frame", { texture: texture as never, width: { kind: "fixed", px: 640 }, height: { kind: "fixed", px: 360 } });
-  });
+  must(og.ui.scope(world, "video").writable("texture", 0).set(must(world.get(screen, og.VideoPlayer)).texture as number));
 });
 
 export default og.game({
@@ -58,6 +55,11 @@ export default og.game({
     must(world.insert(screen, og.Sprite, { texture: info.texture, width: 16, height: 9 }));
     must(world.insert(screen, og.VideoPlayer, { video: info.video }));
     must(world.insert(screen, og.AudioSource, {}));
+    must(og.load.document(world, "ui/frame.svelte"));
+  },
+  ui(world) {
+    const scope = og.ui.scope(world, "video");
+    must(scope.mount("frame", "frame", { texture: scope.writable("texture", 0) }));
   },
   commands: {
     stream: (world: World) => {

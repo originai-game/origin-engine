@@ -1088,9 +1088,7 @@ room left. `justify-content` and `align-content` align the tracks,
 `justify-items`, `justify-self`, `align-items` and `align-self` align
 an item in its area, and `normal` and `stretch` fill the area.
 
-Kits use `@origingame/engine`, `@origingame/engine/ui-extensions`, and the
-public helpers in `@origingame/engine/ui-parts/hud` and
-`@origingame/engine/ui-parts/screen`. Private source-path imports, unsafe
+Kits use `@origingame/engine` and `@origingame/engine/ui-extensions`. Private source-path imports, unsafe
 casts that evade the API, and game-side Rust are not kit extension points.
 
 `registerUiExtension` returns a shallow-frozen typed namespace. Games
@@ -1790,7 +1788,7 @@ decimal keyboard.
 
 #### Selectable text
 
-CSS `user-select` (`ElementProps.userSelect` in TypeScript) makes read-only
+CSS `user-select` makes read-only
 text selectable: `text` selects by characters, `all` takes the element's
 whole text with one press, `none` turns it off, and `auto` takes the
 parent's. Nothing is selectable by default, and a control's subtree (a
@@ -1919,7 +1917,7 @@ and `smooth`. All three are read as the element is built.
 
 #### Text on a path
 
-`-og-text-path` (`ElementProps.textPath` in TypeScript) sets an element's
+`-og-text-path` sets an element's
 text along a path instead of in lines, as SVG 2's `<textPath>` does: each
 grapheme cluster sits with the middle of its advance on the path, turned to
 the path's direction there, its baseline on the path. CSS `offset-path`
@@ -2080,8 +2078,7 @@ range and `optimum` defaults to its middle. Role meter with its range.
 Local multiplayer turns pads 1 to 3 on with `og.ui.setPlayers(n)`. Each pad
 then moves a focus of its own (`Response.focusedBy`, bit `k`) and presses
 with A (`Response.pad`). A split screen gives each player a region of the
-screen: `player="k"` on an element (`ElementProps.player`, Rust
-`Props::player`) makes its subtree player `k`'s view, from 0 to 3. Each region
+screen: `player="k"` on an element (Rust `Props::player`) makes its subtree player `k`'s view, from 0 to 3. Each region
 can be its own `og.ui` scene viewport.
 
 - Pad `k`'s focus moves only among the controls inside player `k`'s region.

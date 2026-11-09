@@ -1,9 +1,0 @@
-// The feedback components (docs/ui.md §2 "Feedback"), merged into og.ui
-// by the package entry. Each is declared in crates/og-api/api.ogt (module
-// `ui`, `host false`) and built only from og.ui's public members.
-
-import { formatNumber } from "./core.ts";
-
-export const feedback = Object.freeze({
-  formatNumber,
-});

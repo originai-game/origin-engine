@@ -52,7 +52,7 @@ export function parseStrings(text: string): StringTableText {
 const ACCENTS: Readonly<Record<string, string>> = {
   a: "á", e: "é", i: "í", o: "ö", u: "ü", c: "ç", n: "ñ", y: "ý", A: "Á", E: "É", I: "Í", O: "Ö", U: "Ü", C: "Ç", N: "Ñ", Y: "Ý",
 };
-/** og.ui.richText's tags: markup, not words. */
+/** Rich text tags (`[b]`, `[color=info]`): markup, not words. */
 const TAG = /^\[\/?(?:b|i|u|s|outline|color|size|font|icon|img|action|link|wave|shake|pulse)(?:=[^\][]*)?\]/;
 
 /** The message with its words accented; `letters` collects the words' characters (not syntax or markup). */

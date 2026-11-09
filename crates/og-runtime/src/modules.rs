@@ -25,32 +25,28 @@ pub use ui_config::{og_load_style, og_ui_configure};
 mod ui_desc;
 pub use ui_desc::{
     THEME_COLORS, TYPE_STEPS, og_ui_frame_cursor, og_ui_frame_direction, og_ui_frame_pointer,
-    og_ui_frame_theme, og_ui_frame_viewport, og_ui_has_icon, og_ui_last_path,
-    og_ui_scroll_into_view, og_ui_seconds, og_ui_set_focus, og_ui_theme, og_ui_viewport,
+    og_ui_frame_theme, og_ui_frame_viewport, og_ui_has_icon, og_ui_scroll_into_view, og_ui_seconds,
+    og_ui_set_focus, og_ui_theme, og_ui_viewport,
 };
 use ui_desc::{
-    align, cross, customize, element, f, frame_part, insets, opt_f, paint, rect_json, response,
-    size, size_or, tone, transition_kind, ui_rect,
+    align, cross, f, frame_part, insets, opt_f, paint, rect_json, response, size_or, tone, ui_rect,
 };
 pub(crate) use ui_desc::{anchor_of, step, texture_of, ui_engine, with_ui};
 mod widgets;
 use widgets::desc_of;
 pub(crate) use widgets::emit;
-pub use widgets::{
-    og_ui_close, og_ui_image, og_ui_label, og_ui_open, og_ui_open_scroll, og_ui_rich_text,
-};
+pub use widgets::{og_ui_close, og_ui_label};
 mod game_widgets;
 use crate::{art, assets, extract, ui_draw};
 pub(crate) use game_widgets::a11y_json;
 use game_widgets::ui_of;
 pub use game_widgets::{
-    og_ui_a11y, og_ui_back, og_ui_bounds, og_ui_close_modal, og_ui_dismiss_toast, og_ui_divider,
-    og_ui_feedback, og_ui_focus, og_ui_hud_edit, og_ui_hud_layout, og_ui_hud_reset,
-    og_ui_hud_select, og_ui_hud_step, og_ui_icon, og_ui_memory, og_ui_navigate, og_ui_open_anchor,
-    og_ui_open_modal, og_ui_preview_viewport, og_ui_remember, og_ui_scroll_state,
+    og_ui_a11y, og_ui_back, og_ui_bounds, og_ui_dismiss_toast, og_ui_feedback, og_ui_focus,
+    og_ui_hud_edit, og_ui_hud_layout, og_ui_hud_reset, og_ui_hud_select, og_ui_hud_step,
+    og_ui_navigate, og_ui_open_anchor, og_ui_preview_viewport, og_ui_scroll_state,
     og_ui_set_haptics, og_ui_set_hud_edit, og_ui_set_hud_layout, og_ui_set_hud_player,
-    og_ui_set_navigation, og_ui_set_players, og_ui_set_virtual_cursor, og_ui_spacer, og_ui_tick,
-    og_ui_toast, og_ui_virtual_cursor,
+    og_ui_set_navigation, og_ui_set_players, og_ui_set_virtual_cursor, og_ui_tick, og_ui_toast,
+    og_ui_virtual_cursor,
 };
 
 pub(crate) mod docs;
@@ -65,9 +61,8 @@ mod motion;
 pub(crate) mod ui_world;
 pub use motion::{
     og_ui_animate, og_ui_define_timeline, og_ui_force_state, og_ui_gesture, og_ui_layout_stats,
-    og_ui_motion_events, og_ui_open_path, og_ui_overlaps, og_ui_pause, og_ui_play, og_ui_play_info,
-    og_ui_play_timeline, og_ui_props, og_ui_resume, og_ui_reverse, og_ui_seek, og_ui_semantics,
-    og_ui_stop, og_ui_visual_state,
+    og_ui_motion_events, og_ui_overlaps, og_ui_pause, og_ui_play, og_ui_play_info,
+    og_ui_play_timeline, og_ui_resume, og_ui_reverse, og_ui_seek, og_ui_stop, og_ui_visual_state,
 };
 
 use super::engine::{Engine, engine, running};
@@ -79,10 +74,9 @@ use og_physics::{
     ShapeCastDesc, ShapeDesc,
 };
 use og_ui::{
-    Align, Anchor, AnchorDesc, Cross, DensityMode, Direction, Element, FontRole, Fonts, IconAtlas,
-    IconDesc, ImageDesc, InputFrame, Insets, LabelDesc, ModalDesc, Nav, Response, Scheme,
-    ScrollDesc, SharedUi, Size, Srgba, StylePart, TextAlign, Theme, ToastDesc, Tone,
-    TransitionKind, TypeStep, Ui, UiDesc, UiFont, Viewport,
+    Align, Anchor, AnchorDesc, Cross, DensityMode, Direction, FontRole, Fonts, IconAtlas,
+    InputFrame, Insets, LabelDesc, Nav, Response, Scheme, SharedUi, Size, Srgba, StylePart,
+    TextAlign, Theme, ToastDesc, Tone, TypeStep, Ui, UiDesc, UiFont, Viewport,
 };
 use serde_json::{Map, Value, json};
 use std::cell::Cell;

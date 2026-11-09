@@ -10,7 +10,7 @@ What happened in the UI's motion this tick.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `kind` | `string` | `""` | — | — | — | sound, haptic, burst, state, callback, end (a play finished), dismiss (a swipe threw an element off), drop (a drag was dropped on a target), snap (a released drag chose a snap point), or tap, doubleTap and longPress (an element's ElementProps.gestures recognised one). |
+| `kind` | `string` | `""` | — | — | — | sound, haptic, burst, state, callback, end (a play finished), dismiss (a swipe threw an element off), drop (a drag was dropped on a target), snap (a released drag chose a snap point), or tap, doubleTap and longPress (an element's `tap`, `doubleTap` or `longPress` attribute recognised one). |
 | `name` | `string` | `""` | — | — | — | The sound, haptic, callback or state's name; for drop the target's path; for snap the point's index. |
 | `target` | `string` | `""` | — | — | — | The element's path. |
 | `play` | `number` | `0` | — | — | — | The play (0: none). |
@@ -20,7 +20,7 @@ What happened in the UI's motion this tick.
 ```ogt
 struct UiMotionEvent {
   doc "What happened in the UI's motion this tick."
-  field kind String "sound, haptic, burst, state, callback, end (a play finished), dismiss (a swipe threw an element off), drop (a drag was dropped on a target), snap (a released drag chose a snap point), or tap, doubleTap and longPress (an element's ElementProps.gestures recognised one)."
+  field kind String "sound, haptic, burst, state, callback, end (a play finished), dismiss (a swipe threw an element off), drop (a drag was dropped on a target), snap (a released drag chose a snap point), or tap, doubleTap and longPress (an element's `tap`, `doubleTap` or `longPress` attribute recognised one)."
   field name String "The sound, haptic, callback or state's name; for drop the target's path; for snap the point's index."
   field target String "The element's path."
   field play u32 "The play (0: none)."
@@ -29,4 +29,4 @@ struct UiMotionEvent {
 }
 ```
 
-<sub>Module `ui` line 2016</sub>
+<sub>Module `ui` line 1312</sub>

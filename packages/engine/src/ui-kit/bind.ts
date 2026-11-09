@@ -1,11 +1,9 @@
-// The game widget set's host calls (IDL module `ui`, crates/og-ui) and the
-// TypeScript sugar over them: anchor takes a build
-// callback and close what they open even when it throws. The
-// components (../ui) are written against `kit`, which is og.ui with these
-// members added.
+// og.ui's host calls beyond the core ones in runtime.ts (IDL module `ui`,
+// crates/og-ui): the frame's queries, input and focus, the HUD layout,
+// motion, probes and the document layer stack.
 
 import type * as Api from "@origingame/engine";
-import { boundHost, ui as base } from "../runtime.ts";
+import { boundHost } from "../runtime.ts";
 
 type HostAbi = NonNullable<ReturnType<typeof boundHost>>["abi"];
 
@@ -34,16 +32,6 @@ function parsedOnce<T>(key: string, text: string): T {
   return value;
 }
 
-/** Runs `build` between an open and its close, closing even when it throws. */
-function within(open: () => void, build: () => void, close: () => void): void {
-  open();
-  try {
-    build();
-  } finally {
-    close();
-  }
-}
-
 export const widgets = {
   frameViewport: (): Api.Viewport => parsedOnce("viewport", abi().og_ui_frame_viewport()),
   frameTheme: (): Api.UiTheme => parsedOnce("theme", abi().og_ui_frame_theme()),
@@ -52,16 +40,19 @@ export const widgets = {
   frameGlyph: (action: string): Api.UiGlyph | null => parse(abi().og_ui_frame_glyph(action)),
   hasIcon: (name: string): boolean => abi().og_ui_has_icon(name),
   seconds: (): number => abi().og_ui_seconds(),
+  // An anchored HUD group: the one placement that keeps clear of the host's
+  // own controls (Viewport.covered), which documents do not do yet.
   openAnchor: (id: string, desc?: Api.AnchorDesc): void => abi().og_ui_open_anchor(id, json(desc)),
-  anchor: (id: string, desc: Api.AnchorDesc, build: Api.UiBuild): void =>
-    within(() => abi().og_ui_open_anchor(id, json(desc)), build, () => abi().og_ui_close()),
-  openModal: (id: string, open: boolean, desc?: Api.ModalDesc): Api.ModalResult => parse(abi().og_ui_open_modal(id, open, json(desc))),
-  closeModal: (): void => abi().og_ui_close_modal(),
+  anchor: (id: string, desc: Api.AnchorDesc, build: Api.UiBuild): void => {
+    abi().og_ui_open_anchor(id, json(desc));
+    try {
+      build();
+    } finally {
+      abi().og_ui_close();
+    }
+  },
   bounds: (path: string): Api.UiRect | null => parse(abi().og_ui_bounds(path)),
   scrollState: (path: string): Api.ScrollState | null => parse(abi().og_ui_scroll_state(path)),
-  divider: (id: string, vertical: boolean): void => abi().og_ui_divider(id, vertical),
-  spacer: (id: string, size: Api.Size | null): void => abi().og_ui_spacer(id, JSON.stringify(size ?? null)),
-  icon: (id: string, name: string, desc?: Api.IconDesc): void => abi().og_ui_icon(id, name, json(desc)),
   toast: (world: Api.World, text: string, desc?: Api.ToastDesc): number => abi().og_ui_toast(worldId(world), text, json(desc)),
   dismissToast: (world: Api.World, toastId: number): void => abi().og_ui_dismiss_toast(worldId(world), toastId),
   navigate: (world: Api.World, intent: Api.NavIntent): void => abi().og_ui_navigate(worldId(world), intent),
@@ -82,8 +73,6 @@ export const widgets = {
   hudStep: (scale: number, opacity: number): void => abi().og_ui_hud_step(scale, opacity),
   hudReset: (key: string): void => abi().og_ui_hud_reset(key),
   a11y: (): Api.A11yTree => parse(abi().og_ui_a11y()),
-  memory: (id: string, initial: number): number => abi().og_ui_memory(id, initial),
-  remember: (id: string, value: number): void => abi().og_ui_remember(id, value),
   tick: (): number => abi().og_ui_tick(),
   // World-space UI (docs/ui.md §1, §3.3).
   defineMass: (name: string, desc?: Api.MassTemplateDesc): Api.Result<number> => parse(abi().og_ui_define_mass(name, json(desc))),
@@ -93,7 +82,6 @@ export const widgets = {
   previewViewport: (world: Api.World, viewport: Api.Viewport | null): void =>
     abi().og_ui_preview_viewport(worldId(world), JSON.stringify(viewport ?? null)),
   // The element model and motion (docs/ui.md §2, §3.1).
-  props: (desc?: Api.ElementProps): boolean => abi().og_ui_props(json(desc)),
   defineTimeline: (name: string, timeline?: Api.UiTimeline): void => abi().og_ui_define_timeline(name, json(timeline)),
   play: (path: string, choreo: Api.Choreo, desc?: Api.PlayDesc): number => abi().og_ui_play(path, JSON.stringify(choreo), json(desc)),
   playTimeline: (path: string, timeline: string, desc?: Api.PlayDesc): number => abi().og_ui_play_timeline(path, timeline, json(desc)),
@@ -106,7 +94,6 @@ export const widgets = {
   forceState: (path: string, group: string, state: string | null): void =>
     abi().og_ui_force_state(path, group, JSON.stringify(state ?? null)),
   visualState: (path: string, group: string): string => abi().og_ui_visual_state(path, group),
-  openPath: (): string => abi().og_ui_open_path(),
   animate: (id: string, target: number, transition: Api.Transition): number => abi().og_ui_animate(id, target, JSON.stringify(transition)),
   gesture: (path: string): Api.GestureInfo => parse(abi().og_ui_gesture(path)),
   motionEvents: (): Api.UiMotionEvent[] => parse(abi().og_ui_motion_events()),
@@ -137,7 +124,3 @@ export const widgets = {
     parse(abi().og_ui_set_prop(worldId(world), path, prop, value)),
   saveEdits: (world: Api.World): Api.Result<readonly string[]> => parse(abi().og_ui_save_edits(worldId(world))),
 };
-
-/** og.ui as the templates use it: the core calls and the widget set. */
-export const kit = { ...base, ...widgets };
-export type Kit = typeof kit;

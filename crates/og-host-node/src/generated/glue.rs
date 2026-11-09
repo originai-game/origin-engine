@@ -2685,40 +2685,16 @@ pub fn og_ui_theme(env: Env, world: u32) -> String {
     <Host as UiApi>::og_ui_theme(&Host, world)
 }
 
-#[napi(js_name = "og_ui_open")]
-pub fn og_ui_open(env: Env, id: String, desc: Option<String>) {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_open(&Host, id, desc)
-}
-
-#[napi(js_name = "og_ui_open_scroll")]
-pub fn og_ui_open_scroll(env: Env, id: String, desc: Option<String>) {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_open_scroll(&Host, id, desc)
-}
-
 #[napi(js_name = "og_ui_close")]
 pub fn og_ui_close(env: Env) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as UiApi>::og_ui_close(&Host)
 }
 
-#[napi(js_name = "og_ui_rich_text")]
-pub fn og_ui_rich_text(env: Env, id: String, markup: String, desc: Option<String>) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_rich_text(&Host, id, markup, desc)
-}
-
 #[napi(js_name = "og_ui_label")]
 pub fn og_ui_label(env: Env, id: String, text: String, desc: Option<String>) {
     let _env = crate::EnvScope::enter(&env);
     <Host as UiApi>::og_ui_label(&Host, id, text, desc)
-}
-
-#[napi(js_name = "og_ui_image")]
-pub fn og_ui_image(env: Env, id: String, desc: Option<String>) {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_image(&Host, id, desc)
 }
 
 #[napi(js_name = "og_ui_frame_pointer")]
@@ -2751,12 +2727,6 @@ pub fn og_ui_seconds(env: Env) -> f64 {
     <Host as UiApi>::og_ui_seconds(&Host)
 }
 
-#[napi(js_name = "og_ui_last_path")]
-pub fn og_ui_last_path(env: Env) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_last_path(&Host)
-}
-
 #[napi(js_name = "og_ui_set_focus")]
 pub fn og_ui_set_focus(env: Env, path: String) {
     let _env = crate::EnvScope::enter(&env);
@@ -2787,18 +2757,6 @@ pub fn og_ui_open_anchor(env: Env, id: String, desc: Option<String>) {
     <Host as UiApi>::og_ui_open_anchor(&Host, id, desc)
 }
 
-#[napi(js_name = "og_ui_open_modal")]
-pub fn og_ui_open_modal(env: Env, id: String, open: bool, desc: Option<String>) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_open_modal(&Host, id, open, desc)
-}
-
-#[napi(js_name = "og_ui_close_modal")]
-pub fn og_ui_close_modal(env: Env) {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_close_modal(&Host)
-}
-
 #[napi(js_name = "og_ui_bounds")]
 pub fn og_ui_bounds(env: Env, path: String) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -2809,24 +2767,6 @@ pub fn og_ui_bounds(env: Env, path: String) -> String {
 pub fn og_ui_scroll_state(env: Env, path: String) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as UiApi>::og_ui_scroll_state(&Host, path)
-}
-
-#[napi(js_name = "og_ui_divider")]
-pub fn og_ui_divider(env: Env, id: String, vertical: bool) {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_divider(&Host, id, vertical)
-}
-
-#[napi(js_name = "og_ui_spacer")]
-pub fn og_ui_spacer(env: Env, id: String, size: String) {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_spacer(&Host, id, size)
-}
-
-#[napi(js_name = "og_ui_icon")]
-pub fn og_ui_icon(env: Env, id: String, name: String, desc: Option<String>) {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_icon(&Host, id, name, desc)
 }
 
 #[napi(js_name = "og_ui_toast")]
@@ -2949,18 +2889,6 @@ pub fn og_ui_set_navigation(env: Env, on: bool) {
     <Host as UiApi>::og_ui_set_navigation(&Host, on)
 }
 
-#[napi(js_name = "og_ui_memory")]
-pub fn og_ui_memory(env: Env, id: String, initial: f64) -> f64 {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_memory(&Host, id, initial)
-}
-
-#[napi(js_name = "og_ui_remember")]
-pub fn og_ui_remember(env: Env, id: String, value: f64) {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_remember(&Host, id, value)
-}
-
 #[napi(js_name = "og_ui_tick")]
 pub fn og_ui_tick(env: Env) -> u32 {
     let _env = crate::EnvScope::enter(&env);
@@ -2971,12 +2899,6 @@ pub fn og_ui_tick(env: Env) -> u32 {
 pub fn og_ui_preview_viewport(env: Env, world: u32, viewport: String) {
     let _env = crate::EnvScope::enter(&env);
     <Host as UiApi>::og_ui_preview_viewport(&Host, world, viewport)
-}
-
-#[napi(js_name = "og_ui_props")]
-pub fn og_ui_props(env: Env, desc: Option<String>) -> bool {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_props(&Host, desc)
 }
 
 #[napi(js_name = "og_ui_define_timeline")]
@@ -3039,12 +2961,6 @@ pub fn og_ui_force_state(env: Env, path: String, group: String, state: String) {
     <Host as UiApi>::og_ui_force_state(&Host, path, group, state)
 }
 
-#[napi(js_name = "og_ui_open_path")]
-pub fn og_ui_open_path(env: Env) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_open_path(&Host)
-}
-
 #[napi(js_name = "og_ui_visual_state")]
 pub fn og_ui_visual_state(env: Env, path: String, group: String) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -3079,18 +2995,6 @@ pub fn og_ui_overlaps(env: Env) -> String {
 pub fn og_ui_layout_stats(env: Env) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as UiApi>::og_ui_layout_stats(&Host)
-}
-
-#[napi(js_name = "og_ui_semantics")]
-pub fn og_ui_semantics(env: Env, desc: Option<String>) -> bool {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_semantics(&Host, desc)
-}
-
-#[napi(js_name = "og_ui_set_draw")]
-pub fn og_ui_set_draw(env: Env, desc: Option<String>) {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_set_draw(&Host, desc)
 }
 
 #[napi(js_name = "og_ui_define_mass")]

@@ -130,90 +130,6 @@ pub(super) fn paint(theme: &Theme, v: &Value) -> Option<Srgba> {
     Some(base.fade(alpha))
 }
 
-pub(super) fn element(theme: &Theme, d: &Value) -> Element {
-    Element {
-        direction: match d["direction"].as_str() {
-            Some("column") => Direction::Column,
-            _ => Direction::Row,
-        },
-        width: size_or(&d["width"], Size::fit()),
-        height: size_or(&d["height"], Size::fit()),
-        padding: insets(&d["padding"]),
-        gap: f(d, "gap", 0.0),
-        align: align(&d["align"]),
-        cross: cross(&d["cross"]),
-        wrap: d["wrap"].as_bool().unwrap_or(false),
-        scroll: d["scroll"].as_bool().unwrap_or(false),
-        scroll_x: d["scrollX"].as_bool().unwrap_or(false),
-        hide_bars: false,
-        snap: 0,
-        snap_align: 0,
-        scroll_css: og_ui::ScrollCss::default(),
-        // Margins are a document's (CSS); the builder's boxes have none.
-        margin: Default::default(),
-        block: false,
-        fade: 0.0,
-        fade_into: None,
-        interactive: d["interactive"].as_bool().unwrap_or(false),
-        focusable: d["focusable"].as_bool().unwrap_or(false),
-        adjustable: d["adjustable"].as_bool().unwrap_or(false),
-        own_ring: d["ownRing"].as_bool().unwrap_or(false),
-        arrows: {
-            let a = &d["arrows"];
-            [
-                ("left", og_ui::ARROW_LEFT),
-                ("right", og_ui::ARROW_RIGHT),
-                ("up", og_ui::ARROW_UP),
-                ("down", og_ui::ARROW_DOWN),
-            ]
-            .into_iter()
-            .filter(|(k, _)| a[*k].as_bool().unwrap_or(false))
-            .fold(0, |m, (_, bit)| m | bit)
-        },
-        background: paint(theme, &d["background"]),
-        radius: f(d, "radius", 0.0),
-        frame: frame_part(&d["frame"]),
-        // No partClass: a decoration, which takes nothing from the tokens
-        // (no outline, corner or elevation); a card or panel names its class.
-        part: d["part"].as_str().and_then(|sel| {
-            let class = d["partClass"]
-                .as_str()
-                .and_then(og_ui::tokens::ElementClass::from_name);
-            og_ui::dress::PartRef::parse(sel, class).ok()
-        }),
-        aspect: f(d, "aspect", 0.0).max(0.0),
-        // CSS min-/max- bounds and flex and grid item fields are a
-        // document's.
-        bounds: Default::default(),
-        reverse: false,
-        wrap_reverse: false,
-        align_logical: false,
-        align_content: None,
-        justify_items: None,
-        align_self: None,
-        justify_self: None,
-        gaps: [None; 2],
-        flex: None,
-        order: 0,
-        safe: 0,
-        inline: false,
-        valign: og_ui::VerticalAlign::Baseline,
-        bfc: false,
-        contents: false,
-        table: og_ui::TablePart::None,
-        line_align: Align::Start,
-        multicol: None,
-        span_all: false,
-        breaks: 0,
-        flip: false,
-        contain: Default::default(),
-        resize: 0,
-        float: og_ui::FloatSide::None,
-        clear: 0,
-        vertical: None,
-    }
-}
-
 pub(super) fn frame_part(v: &Value) -> Option<StylePart> {
     StylePart::from_name(v.as_str()?)
 }
@@ -367,10 +283,6 @@ pub fn og_ui_scroll_into_view(path: String, center: bool) {
     with_ui("og.ui.scrollIntoView", |ui| {
         ui.scroll_into_view_path(&path, center)
     });
-}
-
-pub fn og_ui_last_path() -> String {
-    with_ui("og.ui.lastPath", |ui| ui.last_path()).unwrap_or_default()
 }
 
 pub fn og_ui_has_icon(name: String) -> bool {
@@ -606,19 +518,6 @@ fn tokens_json(t: &og_ui::StyleTokens) -> Value {
     })
 }
 
-/// An `og.ui.Customize` desc (null: not customisable).
-pub(super) fn customize(v: &Value) -> Option<og_ui::Customize> {
-    v.is_object().then(|| og_ui::Customize {
-        key: v["key"].as_str().unwrap_or_default().to_owned(),
-        lock_move: v["lockMove"].as_bool().unwrap_or(false),
-        lock_scale: v["lockScale"].as_bool().unwrap_or(false),
-        lock_opacity: v["lockOpacity"].as_bool().unwrap_or(false),
-        min_scale: f(v, "minScale", 0.0).max(0.0),
-        max_scale: f(v, "maxScale", 0.0).max(0.0),
-        min_opacity: f(v, "minOpacity", 0.0).clamp(0.0, 1.0),
-    })
-}
-
 pub(super) fn opt_f(v: &Value, k: &str) -> Option<f32> {
     v[k].as_f64().map(|x| x as f32)
 }
@@ -650,20 +549,6 @@ pub(crate) fn anchor_of(v: &Value) -> Option<Anchor> {
     })
 }
 
-pub(super) fn transition_kind(v: &Value) -> Option<TransitionKind> {
-    Some(match v.as_str()? {
-        "fade" => TransitionKind::Fade,
-        "slideUp" => TransitionKind::SlideUp,
-        "slideDown" => TransitionKind::SlideDown,
-        "slideLeft" => TransitionKind::SlideLeft,
-        "slideRight" => TransitionKind::SlideRight,
-        "scale" => TransitionKind::Scale,
-        "pop" => TransitionKind::Pop,
-        "glitch" => TransitionKind::Glitch,
-        _ => return None,
-    })
-}
-
 pub(super) fn rect_json(r: &og_ui::Rect) -> Value {
     json!({ "x": r.x, "y": r.y, "width": r.width, "height": r.height })
 }
@@ -678,22 +563,4 @@ pub(crate) fn texture_of(v: &Value) -> Option<og_render::TextureHandle> {
     let eng = engine(ui_engine()?).ok()?;
     let rs = eng.render.borrow();
     super::assets::index_of(t).and_then(|i| rs.textures.get(i).copied())
-}
-
-#[cfg(test)]
-mod tests {
-    use og_ui::tokens::ElementClass;
-    use serde_json::json;
-
-    /// A part with no partClass is a decoration (no class, so nothing from
-    /// the tokens); one that names its class keeps it. Defaulting to card
-    /// drew every undressed scrim, sweep and node as a hairline card.
-    #[test]
-    fn a_part_without_a_class_is_a_decoration() {
-        let theme = og_ui::Theme::dark();
-        let el = super::element(&theme, &json!({ "part": "UnitFrame.scrim" }));
-        assert_eq!(el.part.map(|p| p.class), Some(None));
-        let el = super::element(&theme, &json!({ "part": "Shop.card", "partClass": "card" }));
-        assert_eq!(el.part.map(|p| p.class), Some(Some(ElementClass::Card)));
-    }
 }

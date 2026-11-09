@@ -23,19 +23,110 @@
       "member": "og.ui.popover, og.ui.PopoverDesc, og.ui.PopoverResult, og.ui.FloatSide, og.ui.FloatAlign",
       "change": "The popover builder is removed.",
       "fix": "Write `<button popovertarget=\"Tip\">?</button><div id=\"Tip\" popover>…</div>` in a document, and place it with `#Tip { position-area: right; left: 10px; position-try-fallbacks: flip-inline; } #Tip::-og-arrow { width: 10px; }`.",
-      "find": ["og.ui.popover", "PopoverDesc", "PopoverResult", "FloatSide", "FloatAlign"]
+      "find": [
+        "og.ui.popover",
+        "PopoverDesc",
+        "PopoverResult",
+        "FloatSide",
+        "FloatAlign"
+      ]
     },
     {
       "member": "og.ui.menu, og.ui.contextMenu, og.ui.MenuDesc, og.ui.MenuEntry, og.ui.MenuEntryKind, og.ui.MenuChoice",
       "change": "The menu and context menu builders are removed.",
       "fix": "Write `<menu id=\"Menu\" popover>` with buttons opened by `popovertarget=\"Menu\"`. For a context menu, put `contextmenu=\"Menu\"` on the element that is right-clicked or long-pressed. For entries from a store, eject the `menu` component document and read the choice from og.ui.docEvents.",
-      "find": ["og.ui.menu", "og.ui.contextMenu", "MenuDesc", "MenuEntry", "MenuEntryKind", "MenuChoice"]
+      "find": [
+        "og.ui.menu",
+        "og.ui.contextMenu",
+        "MenuDesc",
+        "MenuEntry",
+        "MenuEntryKind",
+        "MenuChoice"
+      ]
     },
     {
       "member": "og.ui.tooltipCard, og.ui.TooltipCardDesc, og.ui.TooltipCardResult, og.ui.TooltipStat, og.ui.TooltipLink, og.ui.Rarity",
       "change": "The rich tooltip card builder is removed.",
       "fix": "Put a `popover=\"hint\"` element opened by `interestfor` on its trigger, holding the `tooltip-card` component document (`og ui eject tooltip-card`) bound to stores. A nested keyword card is a hint popover of its own, opened by `interestfor` on the keyword.",
-      "find": ["og.ui.tooltipCard", "TooltipCardDesc", "TooltipCardResult", "TooltipStat", "TooltipLink"]
+      "find": [
+        "og.ui.tooltipCard",
+        "TooltipCardDesc",
+        "TooltipCardResult",
+        "TooltipStat",
+        "TooltipLink"
+      ]
+    },
+    {
+      "member": "og.ui.open, og.ui.row, og.ui.column, og.ui.openScroll, og.ui.idi, og.ui.lastPath, og.ui.openPath, og.ui.ElementDesc, og.ui.ScrollDesc, og.ui.UiItemBuild",
+      "change": "The immediate-mode element builders are removed: a system no longer builds boxes, rows, columns or scroll containers by calls each tick.",
+      "fix": "Write the layout as a document (`<div>`, `<column>`, `<row>`, CSS `display: flex`, `overflow: auto` for a scroll container), load it with og.load.document and mount it with og.ui.scope(world, id).mount(...), binding what changes to stores. A path is the one og.ui.docEvents and the probe's dump give.",
+      "find": [
+        "og.ui.open(",
+        "og.ui.row(",
+        "og.ui.column(",
+        "og.ui.openScroll",
+        "og.ui.idi",
+        "og.ui.lastPath",
+        "og.ui.openPath",
+        "ElementDesc",
+        "ScrollDesc"
+      ]
+    },
+    {
+      "member": "og.ui.richText, og.ui.image, og.ui.icon, og.ui.divider, og.ui.spacer, og.ui.RichTextDesc, og.ui.RichTextResult, og.ui.ImageDesc, og.ui.IconDesc",
+      "change": "The content builders are removed.",
+      "fix": "In a document: `<p>` with inline `<b>`, `<span>` and `<a href>` (or `spans={$spans}`) for rich text, `<img src={$texture}>` for an image, `<icon icon=\"name\">` for an icon, `<hr>` for a divider and a `<div>` with a size or `gap` for a spacer. og.ui.label stays for an og.ui.anchor HUD group.",
+      "find": [
+        "og.ui.richText",
+        "og.ui.image",
+        "og.ui.icon(",
+        "og.ui.divider",
+        "og.ui.spacer",
+        "RichTextDesc",
+        "ImageDesc",
+        "IconDesc"
+      ]
+    },
+    {
+      "member": "og.ui.openModal, og.ui.closeModal, og.ui.ModalDesc, og.ui.ModalResult",
+      "change": "The modal builder is removed.",
+      "fix": "Write a `<dialog>` in a document (shown modal with its `open` bound to a store), or a screen document with data-layer=\"modal\" pushed with og.ui.push; Back and a press outside close it.",
+      "find": [
+        "og.ui.openModal",
+        "og.ui.closeModal",
+        "ModalDesc",
+        "ModalResult"
+      ]
+    },
+    {
+      "member": "og.ui.props, og.ui.setDraw, og.ui.semantics, og.ui.ElementProps, og.ui.DrawDesc, og.ui.SemanticsDesc, og.ui.Fill, og.ui.Stroke, og.ui.Effect and the element model's other types",
+      "change": "Setting an element's props, draw and accessibility by call is removed, with the types only they used (Edges, GridSpec, Track, StateGroup, DragSpec, GestureSpec, TextEffectsDesc, DrawShape, UiTransform and the rest).",
+      "fix": "Write them as the document's CSS (transform, opacity, grid, transitions, :hover states, background, border, box-shadow, filter, -og-material) and attributes (role, aria-*, draggable, tap, customize, player).",
+      "find": [
+        "og.ui.props",
+        "og.ui.setDraw",
+        "og.ui.semantics",
+        "ElementProps",
+        "DrawDesc",
+        "SemanticsDesc"
+      ]
+    },
+    {
+      "member": "og.ui.memory, og.ui.remember",
+      "change": "The UI's numeric memory for immediate builders is removed.",
+      "fix": "Keep the value in a store (og.ui.scope(world, id).writable) or in a resource.",
+      "find": [
+        "og.ui.memory",
+        "og.ui.remember"
+      ]
+    },
+    {
+      "member": "@origingame/engine/ui-parts/hud, @origingame/engine/ui-parts/screen",
+      "change": "The kit helper entries for TypeScript components are removed with the components.",
+      "fix": "Write a kit's components as documents and register code-side helpers with @origingame/engine/ui-extensions.",
+      "find": [
+        "@origingame/engine/ui-parts"
+      ]
     }
   ]
 }

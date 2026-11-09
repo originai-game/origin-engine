@@ -1314,12 +1314,6 @@ impl UiApi for WebHost {
     fn og_ui_theme(&self, world: u32) -> String {
         rt::og_ui_theme(world)
     }
-    fn og_ui_open(&self, id: String, desc: Option<String>) {
-        rt::og_ui_open(id, desc)
-    }
-    fn og_ui_set_draw(&self, desc: Option<String>) {
-        rt::og_ui_set_draw(desc)
-    }
     fn og_ui_define_mass(&self, name: String, desc: Option<String>) -> String {
         rt::og_ui_define_mass(name, desc)
     }
@@ -1329,17 +1323,11 @@ impl UiApi for WebHost {
     fn og_ui_mass_count(&self, template: u32) -> u32 {
         rt::og_ui_mass_count(template)
     }
-    fn og_ui_open_scroll(&self, id: String, desc: Option<String>) {
-        rt::og_ui_open_scroll(id, desc)
-    }
     fn og_ui_close(&self) -> String {
         rt::og_ui_close()
     }
     fn og_ui_label(&self, id: String, text: String, desc: Option<String>) {
         rt::og_ui_label(id, text, desc)
-    }
-    fn og_ui_image(&self, id: String, desc: Option<String>) {
-        rt::og_ui_image(id, desc)
     }
     fn og_ui_frame_theme(&self) -> String {
         rt::og_ui_frame_theme()
@@ -1355,9 +1343,6 @@ impl UiApi for WebHost {
     }
     fn og_ui_frame_direction(&self) -> String {
         rt::og_ui_frame_direction()
-    }
-    fn og_ui_last_path(&self) -> String {
-        rt::og_ui_last_path()
     }
     fn og_ui_frame_pointer(&self) -> String {
         rt::og_ui_frame_pointer()
@@ -1375,26 +1360,11 @@ impl UiApi for WebHost {
     fn og_ui_open_anchor(&self, id: String, desc: Option<String>) {
         rt::og_ui_open_anchor(id, desc)
     }
-    fn og_ui_open_modal(&self, id: String, open: bool, desc: Option<String>) -> String {
-        rt::og_ui_open_modal(id, open, desc)
-    }
-    fn og_ui_close_modal(&self) {
-        rt::og_ui_close_modal()
-    }
     fn og_ui_bounds(&self, path: String) -> String {
         rt::og_ui_bounds(path)
     }
     fn og_ui_scroll_state(&self, path: String) -> String {
         rt::og_ui_scroll_state(path)
-    }
-    fn og_ui_divider(&self, id: String, vertical: bool) {
-        rt::og_ui_divider(id, vertical)
-    }
-    fn og_ui_spacer(&self, id: String, size: String) {
-        rt::og_ui_spacer(id, size)
-    }
-    fn og_ui_icon(&self, id: String, name: String, desc: Option<String>) {
-        rt::og_ui_icon(id, name, desc)
     }
     fn og_ui_toast(&self, world: u32, text: String, desc: Option<String>) -> u32 {
         rt::og_ui_toast(world, text, desc)
@@ -1416,9 +1386,6 @@ impl UiApi for WebHost {
     }
     fn og_ui_set_haptics(&self, intensity: f64) {
         rt::og_ui_set_haptics(intensity)
-    }
-    fn og_ui_rich_text(&self, id: String, markup: String, desc: Option<String>) -> String {
-        rt::og_ui_rich_text(id, markup, desc)
     }
     fn og_ui_set_players(&self, count: u32) {
         rt::og_ui_set_players(count)
@@ -1460,23 +1427,11 @@ impl UiApi for WebHost {
     fn og_ui_a11y(&self) -> String {
         rt::og_ui_a11y()
     }
-    fn og_ui_memory(&self, id: String, initial: f64) -> f64 {
-        rt::og_ui_memory(id, initial)
-    }
-    fn og_ui_remember(&self, id: String, value: f64) {
-        rt::og_ui_remember(id, value)
-    }
     fn og_ui_tick(&self) -> u32 {
         rt::og_ui_tick()
     }
     fn og_ui_preview_viewport(&self, world: u32, viewport: String) {
         rt::og_ui_preview_viewport(world, viewport)
-    }
-    fn og_ui_props(&self, desc: Option<String>) -> bool {
-        rt::og_ui_props(desc)
-    }
-    fn og_ui_semantics(&self, desc: Option<String>) -> bool {
-        rt::og_ui_semantics(desc)
     }
     fn og_ui_define_timeline(&self, name: String, timeline: Option<String>) {
         rt::og_ui_define_timeline(name, timeline)
@@ -1507,9 +1462,6 @@ impl UiApi for WebHost {
     }
     fn og_ui_force_state(&self, path: String, group: String, state: String) {
         rt::og_ui_force_state(path, group, state)
-    }
-    fn og_ui_open_path(&self) -> String {
-        rt::og_ui_open_path()
     }
 
     fn og_ui_visual_state(&self, path: String, group: String) -> String {

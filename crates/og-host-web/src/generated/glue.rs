@@ -2239,33 +2239,13 @@ pub fn og_ui_theme(world: u32) -> String {
 }
 
 #[wasm_bindgen]
-pub fn og_ui_open(id: String, desc: Option<String>) {
-    <Host as UiApi>::og_ui_open(&Host, id, desc)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_open_scroll(id: String, desc: Option<String>) {
-    <Host as UiApi>::og_ui_open_scroll(&Host, id, desc)
-}
-
-#[wasm_bindgen]
 pub fn og_ui_close() -> String {
     <Host as UiApi>::og_ui_close(&Host)
 }
 
 #[wasm_bindgen]
-pub fn og_ui_rich_text(id: String, markup: String, desc: Option<String>) -> String {
-    <Host as UiApi>::og_ui_rich_text(&Host, id, markup, desc)
-}
-
-#[wasm_bindgen]
 pub fn og_ui_label(id: String, text: String, desc: Option<String>) {
     <Host as UiApi>::og_ui_label(&Host, id, text, desc)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_image(id: String, desc: Option<String>) {
-    <Host as UiApi>::og_ui_image(&Host, id, desc)
 }
 
 #[wasm_bindgen]
@@ -2294,11 +2274,6 @@ pub fn og_ui_seconds() -> f64 {
 }
 
 #[wasm_bindgen]
-pub fn og_ui_last_path() -> String {
-    <Host as UiApi>::og_ui_last_path(&Host)
-}
-
-#[wasm_bindgen]
 pub fn og_ui_set_focus(path: String) {
     <Host as UiApi>::og_ui_set_focus(&Host, path)
 }
@@ -2324,16 +2299,6 @@ pub fn og_ui_open_anchor(id: String, desc: Option<String>) {
 }
 
 #[wasm_bindgen]
-pub fn og_ui_open_modal(id: String, open: bool, desc: Option<String>) -> String {
-    <Host as UiApi>::og_ui_open_modal(&Host, id, open, desc)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_close_modal() {
-    <Host as UiApi>::og_ui_close_modal(&Host)
-}
-
-#[wasm_bindgen]
 pub fn og_ui_bounds(path: String) -> String {
     <Host as UiApi>::og_ui_bounds(&Host, path)
 }
@@ -2341,21 +2306,6 @@ pub fn og_ui_bounds(path: String) -> String {
 #[wasm_bindgen]
 pub fn og_ui_scroll_state(path: String) -> String {
     <Host as UiApi>::og_ui_scroll_state(&Host, path)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_divider(id: String, vertical: bool) {
-    <Host as UiApi>::og_ui_divider(&Host, id, vertical)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_spacer(id: String, size: String) {
-    <Host as UiApi>::og_ui_spacer(&Host, id, size)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_icon(id: String, name: String, desc: Option<String>) {
-    <Host as UiApi>::og_ui_icon(&Host, id, name, desc)
 }
 
 #[wasm_bindgen]
@@ -2459,16 +2409,6 @@ pub fn og_ui_set_navigation(on: bool) {
 }
 
 #[wasm_bindgen]
-pub fn og_ui_memory(id: String, initial: f64) -> f64 {
-    <Host as UiApi>::og_ui_memory(&Host, id, initial)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_remember(id: String, value: f64) {
-    <Host as UiApi>::og_ui_remember(&Host, id, value)
-}
-
-#[wasm_bindgen]
 pub fn og_ui_tick() -> u32 {
     <Host as UiApi>::og_ui_tick(&Host)
 }
@@ -2476,11 +2416,6 @@ pub fn og_ui_tick() -> u32 {
 #[wasm_bindgen]
 pub fn og_ui_preview_viewport(world: u32, viewport: String) {
     <Host as UiApi>::og_ui_preview_viewport(&Host, world, viewport)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_props(desc: Option<String>) -> bool {
-    <Host as UiApi>::og_ui_props(&Host, desc)
 }
 
 #[wasm_bindgen]
@@ -2534,11 +2469,6 @@ pub fn og_ui_force_state(path: String, group: String, state: String) {
 }
 
 #[wasm_bindgen]
-pub fn og_ui_open_path() -> String {
-    <Host as UiApi>::og_ui_open_path(&Host)
-}
-
-#[wasm_bindgen]
 pub fn og_ui_visual_state(path: String, group: String) -> String {
     <Host as UiApi>::og_ui_visual_state(&Host, path, group)
 }
@@ -2566,16 +2496,6 @@ pub fn og_ui_overlaps() -> String {
 #[wasm_bindgen]
 pub fn og_ui_layout_stats() -> String {
     <Host as UiApi>::og_ui_layout_stats(&Host)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_semantics(desc: Option<String>) -> bool {
-    <Host as UiApi>::og_ui_semantics(&Host, desc)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_set_draw(desc: Option<String>) {
-    <Host as UiApi>::og_ui_set_draw(&Host, desc)
 }
 
 #[wasm_bindgen]

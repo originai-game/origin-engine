@@ -337,8 +337,8 @@ reports findings and measures; it never passes or fails a screen. The
 bars it does not hold, this guide does:
 
 - **Text size**: at least 18 px at 1080p for menus, body and controls. A
-  dense HUD readout may go to 12 px if its group sets
-  `ElementProps.dense` and it still grows with the player's text scale.
+  dense HUD readout may go to 12 px if its group is marked dense
+  (og-ui's `Props::dense`) and it still grows with the player's text scale.
 - **Text scale**: every screen usable at 150 % text, nothing cut or
   overlapping.
 - **Contrast**: live text at least 4.5:1 against what it is drawn on,

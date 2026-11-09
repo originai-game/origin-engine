@@ -1,19 +1,13 @@
-// The feedback components (docs/ui.md §2, U6c) on the native host, read
-// through dump_ui and the accessibility fields: what each shows, when it
-// leaves, what a screen reader is told, and the number notations.
+// og.ui's number notations and the core formats on the native host.
 //
-// Ways they could fail, each covered below:
-// - a notation rounds 999,950 to "1000K", runs out of letters past T,
-//   loses numbers past 1e308, or drops the sign;
-// - a tooltip shows before its delay, never pins, or sits on top of
-//   its trigger or the panel it is in instead of beside it (or off the
-//   safe area at the edge), or under a surface built after it.
+// Ways they could fail, each covered below: a notation rounds 999,950 to
+// "1000K", runs out of letters past T, loses numbers past 1e308, or drops
+// the sign; a format ignores the engine's current locale.
 import { beforeAll, expect, test } from "bun:test";
 import { og } from "@origingame/engine";
 import { loadNativeHost } from "../src/node/index.ts";
-import { at, dump, engineFor } from "./support/ui.ts";
-import { groupNumber } from "../src/ui/data/format.ts";
-import { countdown, shortTime } from "../src/ui/feedback/core.ts";
+import { engineFor } from "./support/ui.ts";
+import { groupNumber, localizedDuration } from "../src/ui/data/format.ts";
 
 beforeAll(() => {
   loadNativeHost();
@@ -53,7 +47,7 @@ test("core data and feedback formatting follows the current engine locale", () =
   let values: string[] = [];
   const e = engineFor("LocalizedCore", (world) => {
     og.i18n.setLocale(world, locale);
-    values = [groupNumber(1234.5, 1), countdown(125), shortTime(120), og.ui.formatNumber(12345, { notation: "compact" })];
+    values = [groupNumber(1234.5, 1), localizedDuration(125), localizedDuration(120, true), og.ui.formatNumber(12345, { notation: "compact" })];
   });
   e.advance(3);
   expect(values).toEqual(["1.234,5", "2:05", "2 Min.", "12.345"]);
