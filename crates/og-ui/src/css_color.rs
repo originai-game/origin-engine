@@ -385,31 +385,8 @@ fn srgb_color(c: [f32; 3], a: f32) -> Color {
 }
 
 fn hex(h: &str) -> Option<Color> {
-    let h = h.strip_prefix('#')?;
-    let d: Vec<f32> = h
-        .chars()
-        .map(|c| c.to_digit(16).map(|v| v as f32))
-        .collect::<Option<_>>()?;
-    let (c, a) = match d.len() {
-        3 | 4 => (
-            [d[0] / 15.0, d[1] / 15.0, d[2] / 15.0],
-            d.get(3).map_or(1.0, |a| a / 15.0),
-        ),
-        6 | 8 => (
-            [
-                (d[0] * 16.0 + d[1]) / 255.0,
-                (d[2] * 16.0 + d[3]) / 255.0,
-                (d[4] * 16.0 + d[5]) / 255.0,
-            ],
-            if d.len() == 8 {
-                (d[6] * 16.0 + d[7]) / 255.0
-            } else {
-                1.0
-            },
-        ),
-        _ => return None,
-    };
-    Some(srgb_color(c, a))
+    let c = crate::style_file::parse_color(h)?;
+    Some(srgb_color(c.rgb.map(|v| f32::from(v) / 255.0), c.alpha))
 }
 
 /// A number of a component: its value with `percent` the value 100%

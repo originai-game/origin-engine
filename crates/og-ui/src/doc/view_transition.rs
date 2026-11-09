@@ -332,7 +332,7 @@ pub(super) fn apply(
     let color = match color {
         Some(value) => Some(
             crate::style_file::parse_color(&value)
-                .ok_or((rules[0].2, format!("'{value}' is not a #rrggbb[aa] colour")))?,
+                .ok_or((rules[0].2, format!("'{value}' is not a hex colour")))?,
         ),
         None => None,
     };

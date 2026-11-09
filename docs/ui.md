@@ -726,7 +726,9 @@ are CSS Color 4's (`crates/og-ui/src/css_color.rs`), and a colour outside
 sRGB is gamut mapped by OKLCh chroma reduction, not clipped. A colour that
 reads no role, `currentColor` or `light-dark()` reduces to sRGB at cook;
 one that does is resolved against the active style when drawn, so a
-style switch recolours it.
+style switch recolours it. One parse (`style_file::parse_color`) reads
+every hex literal, in a document, a paint entry or a style file, so the
+four forms hold wherever a colour is read.
 
 Transforms. Elements take CSS Transforms 1 and 2 whole beside the
 individual `translate`, `scale`, `rotate` and `-og-skew`, which stay and

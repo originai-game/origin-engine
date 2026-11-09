@@ -482,7 +482,7 @@ fn multi_column_lays_out_as_css_multicol_does() {
 </div></div>
 <style>
 #Root { width: 400px; }
-#Mc { columns: 3; column-gap: 20px; width: 340px; column-rule: 2px solid red; }
+#Mc { columns: 3; column-gap: 20px; width: 340px; column-rule: 2px solid #e33f; }
 #A, #B, #C, #D, #E, #F { height: 30px; }
 #Span { column-span: all; height: 10px; }
 #G, #H { height: 20px; }

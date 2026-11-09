@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "UI document scoped CSS (hex colours)",
+      "summary": "Every colour a document or style file reads takes all four CSS hex forms, #rgb, #rgba, #rrggbb and #rrggbbaa: column-rule-color: #e33 and other paint properties no longer refuse the short forms."
+    }
+  ]
+}

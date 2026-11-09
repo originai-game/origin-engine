@@ -185,7 +185,7 @@ impl<'a> Cursor<'a> {
     fn color(&mut self) -> Result<ColorRef, String> {
         let mut c = match self.peek() {
             Some(Value::String(s)) => ColorRef::Literal(parse_color(s).ok_or_else(|| {
-                self.err(&format!("takes \"#rrggbb\" or \"#rrggbbaa\", not \"{s}\""))
+                self.err(&format!("takes a hex colour (\"#rgb\", \"#rgba\", \"#rrggbb\" or \"#rrggbbaa\"), not \"{s}\""))
             })?),
             Some(Value::Word(w)) if self.is_role(w) => ColorRef::token(w),
             Some(Value::Word(w)) => {

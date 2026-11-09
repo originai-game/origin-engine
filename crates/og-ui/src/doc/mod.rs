@@ -816,7 +816,9 @@ fn parse_paint(vals: &[Value]) -> Result<Paint, String> {
         [Value::String(s)] | [Value::Word(s)] if s.starts_with('#') => {
             crate::style_file::parse_color(s)
                 .map(Paint::Color)
-                .ok_or_else(|| format!("'{s}' is not a colour (#rrggbb or #rrggbbaa)"))
+                .ok_or_else(|| {
+                    format!("'{s}' is not a hex colour (#rgb, #rgba, #rrggbb or #rrggbbaa)")
+                })
         }
         [Value::String(s)] if s.contains('(') || crate::css_color::is_named(s) => {
             let c = crate::css_color::parse_str(s)?;

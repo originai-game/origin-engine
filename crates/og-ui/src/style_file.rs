@@ -462,20 +462,22 @@ fn kind_of(w: &str) -> Option<TransitionKind> {
     })
 }
 
-/// `#rrggbb` or `#rrggbbaa`.
+/// A CSS hex colour: `#rgb`, `#rgba`, `#rrggbb` or `#rrggbbaa` (CSS Color 4
+/// §5.2). Every reader of a literal colour parses it here.
 pub fn parse_color(s: &str) -> Option<Srgba> {
     let h = s.strip_prefix('#')?;
-    if !(h.len() == 6 || h.len() == 8) || !h.is_ascii() {
-        return None;
-    }
-    let byte = |i: usize| u8::from_str_radix(&h[i..i + 2], 16).ok();
+    let d: Vec<u8> = h
+        .chars()
+        .map(|c| c.to_digit(16).map(|v| v as u8))
+        .collect::<Option<_>>()?;
+    let v: Vec<u8> = match d.len() {
+        3 | 4 => d.iter().map(|x| x * 17).collect(),
+        6 | 8 => d.chunks(2).map(|p| p[0] * 16 + p[1]).collect(),
+        _ => return None,
+    };
     Some(Srgba {
-        rgb: [byte(0)?, byte(2)?, byte(4)?],
-        alpha: if h.len() == 8 {
-            f32::from(byte(6)?) / 255.0
-        } else {
-            1.0
-        },
+        rgb: [v[0], v[1], v[2]],
+        alpha: v.get(3).map_or(1.0, |&a| f32::from(a) / 255.0),
     })
 }
 
@@ -554,7 +556,7 @@ impl<'a> P<'a> {
     pub(crate) fn color(&self, i: usize) -> Result<Srgba, String> {
         let s = self.string(i)?;
         parse_color(s)
-            .ok_or_else(|| self.err(&format!("takes \"#rrggbb\" or \"#rrggbbaa\", not \"{s}\"")))
+            .ok_or_else(|| self.err(&format!("takes a hex colour (\"#rgb\", \"#rgba\", \"#rrggbb\" or \"#rrggbbaa\"), not \"{s}\"")))
     }
     pub(crate) fn block(&self) -> Result<&'a og_core::ogt::Block, String> {
         self.e
