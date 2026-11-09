@@ -19,6 +19,7 @@ pub mod matching;
 pub mod media;
 pub(crate) mod mf2;
 pub(crate) mod motion;
+pub(crate) mod multicol_css;
 pub(crate) mod paint_css;
 pub(crate) mod position_css;
 pub mod schema;

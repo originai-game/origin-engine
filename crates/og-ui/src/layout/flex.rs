@@ -449,12 +449,17 @@ pub(super) fn size_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'_>) {
                     };
                     (pref, min)
                 }
-                Direction::Column => (
-                    kids.clone()
+                Direction::Column => {
+                    let pref = kids
+                        .clone()
                         .map(|c| c.pref_w + side_margins(c))
-                        .fold(0.0, f32::max),
-                    kids.map(|c| c.min_w + side_margins(c)).fold(0.0, f32::max),
-                ),
+                        .fold(0.0, f32::max);
+                    let min = kids.map(|c| c.min_w + side_margins(c)).fold(0.0, f32::max);
+                    match n.el.multicol {
+                        Some(m) => super::multicol::intrinsic(&m, pref, min),
+                        None => (pref, min),
+                    }
+                }
             }
         }
     };
@@ -840,8 +845,18 @@ pub(super) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'
     }
     match el.direction {
         Direction::Column => {
+            // A multi-column container's children lay out at the column
+            // width, a spanning one at the whole.
+            let col = el.multicol.map(|m| super::multicol::used(&m, inner));
+            if let Some(cols) = col {
+                nodes[i].cols = cols;
+            }
             for &c in &kids {
                 let n = &nodes[c];
+                let inner = match col {
+                    Some((_, w)) if super::multicol::in_column(n) => w,
+                    _ => inner,
+                };
                 // A percentage, a calc() or a fixed width reads the column's
                 // content width; a stretched or growing one fills what its
                 // margins leave.
@@ -1001,6 +1016,13 @@ pub(super) fn size_h(nodes: &mut [Node], i: usize) {
         Content::None => {
             let kids = || n.children.iter().map(|&c| &nodes[c]);
             match n.el.direction {
+                Direction::Column if n.el.multicol.is_some() => {
+                    let (lead, between, trail) = column_spacing(nodes, i);
+                    let at = |f: &dyn Fn(&Node) -> f32| {
+                        super::multicol::height(nodes, i, f, (lead, &between, trail))
+                    };
+                    (at(&|c| c.pref_h), at(&|c| c.min_h))
+                }
                 Direction::Column => {
                     let room = column_room(nodes, i);
                     (
@@ -1129,6 +1151,13 @@ pub(super) fn distribute_h(nodes: &mut [Node], i: usize) {
                 }
             }
             nodes[i].rows = rows;
+        }
+        // A column's flow is as tall as its content: columns hold it.
+        Direction::Column if el.multicol.is_some() => {
+            for &c in &kids {
+                let h = clamp_to(&nodes[c], 1, Some(inner), nodes[c].pref_h);
+                nodes[c].h = h;
+            }
         }
         Direction::Column => {
             let avail = inner - column_room(nodes, i);
@@ -1276,6 +1305,7 @@ fn mirror_lines(nodes: &mut [Node], i: usize, x0: f32, y0: f32, inner_w: f32, in
 
 pub(super) fn position(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f32, f32)) {
     place_children(nodes, i, scroll);
+    super::multicol::place(nodes, i);
     // Relative and sticky children (CSS Position 3 §3.3–3.4): moved from
     // where the flow put them, their siblings unmoved. Each placement
     // above starts them from the flow again, so this never adds up.
@@ -1372,6 +1402,18 @@ pub(super) fn position(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f3
         };
         nodes[c].x += dx;
         nodes[c].y += dy;
+        // The edges a sticky box is held to (`scroll-state(stuck)`).
+        use crate::doc::media::scroll::{BOTTOM, LEFT, RIGHT, TOP};
+        nodes[c].stuck = if nodes[c].props.position == Position::Sticky {
+            let edge = |d: f32, lo: u16, hi: u16| match d {
+                d if d > 0.01 => lo,
+                d if d < -0.01 => hi,
+                _ => 0,
+            };
+            (edge(dy, TOP, BOTTOM) | edge(dx, LEFT, RIGHT)) as u8
+        } else {
+            0
+        };
     }
 }
 

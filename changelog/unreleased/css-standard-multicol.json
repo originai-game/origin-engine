@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "UI document scoped CSS",
+      "summary": "CSS Multi-column Layout 1: columns, column-count, column-width, column-gap, column-fill (balance, balance-all, auto), column-span: all and column-rule with its longhands. The flow breaks between children and between a paragraph's lines (two kept on each side); break-before, break-after and break-inside (and page-break-*) control the breaks."
+    }
+  ]
+}

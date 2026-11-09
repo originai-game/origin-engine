@@ -235,6 +235,16 @@ What every kind takes: its box, layout, paint, motion and input.
 | `position-try-fallbacks:` | `<n>px \| <n>%` | CSS `position-try-fallbacks`: flips (`flip-block`, `flip-inline`, `flip-start`), `@position-try` names and position-areas tried in order while it overflows. |
 | `position-try-order:` | `<n>px \| <n>%` | CSS `position-try-order`: normal, most-width or most-height. |
 | `position-visibility:` | `<n>px \| <n>%` | CSS `position-visibility`: always, anchors-visible (the default) or no-overflow. |
+| `column-count:` | `<n>px \| <n>%` | CSS `column-count`: `auto` or how many columns its flow lays out in (a multi-column container). |
+| `column-width:` | `<n>px \| <n>%` | CSS `column-width`: `auto` or the least width of a column; with `column-count`, as many columns as fit, at most that count. |
+| `column-span:` | `<n>px \| <n>%` | CSS `column-span: none \| all`: in a multi-column container, `all` spans every column and starts a new set of columns below it. |
+| `column-fill:` | `<n>px \| <n>%` | CSS `column-fill`: `balance` (and `balance-all`) evens the columns' heights; `auto` fills them in turn to the container's definite height. |
+| `column-rule-width:` | `<n>px \| <n>%` | CSS `column-rule-width`: a px length, `thin`, `medium` or `thick`. |
+| `column-rule-style:` | `<n>px \| <n>%` | CSS `column-rule-style`: a line style (`none`, `solid`, `dashed`, `dotted`, `double`…). |
+| `column-rule-color:` | `<n>px \| <n>%` | CSS `column-rule-color` (`currentcolor`: its text colour). |
+| `break-before:` | `<n>px \| <n>%` | CSS `break-before` (and `page-break-before`): `column`, `page` or `always` starts a new column in a multi-column flow. |
+| `break-after:` | `<n>px \| <n>%` | CSS `break-after` (and `page-break-after`): `column`, `page` or `always` puts what follows in a new column. |
+| `break-inside:` | `<n>px \| <n>%` | CSS `break-inside` (and `page-break-inside`): `avoid` keeps a text's lines in one column. |
 
 Style interaction with `#Buy:hover { scale: 1.04 }`. The screens guide lists state selectors and their scoped cascade. Bind game state with `class:active={$selected}` and style `.active`. Custom properties inherit computed values from the mounted parent; `var(--name, fallback)` resolves after specificity and `!important`. CSS motion uses shared timing values; markup contains no state blocks or timelines. `transition` and its longhands (`transition-property`, `-duration`, `-timing-function`, `-delay`) and `animation` and its longhands (`animation-name`, `-duration`, `-timing-function`, `-delay`, `-iteration-count`, `-direction`, `-fill-mode`, `-play-state`) follow CSS Transitions and Animations Level 1 over the animatable values: opacity, translate, scale, rotate, -og-skew, border-radius, background, color and z-index (keyframes animate the scalar ones).
 

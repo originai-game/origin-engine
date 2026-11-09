@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "UI document scoped CSS",
+      "summary": "@container scroll-state(stuck: top | right | bottom | left | block-start\u2026) now matches a position: sticky container held to that edge of its scrollport; before, only stuck: none matched."
+    }
+  ]
+}

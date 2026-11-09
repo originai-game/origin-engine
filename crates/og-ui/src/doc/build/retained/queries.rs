@@ -213,6 +213,7 @@ panel { width: 10px; height: 10px; }
                 "list.svelte",
                 r#"<meta name="component" content="list">
 <column id="List">
+  <column id="Head"><panel id="Mark"/></column>
   <panel id="Gap"/><panel id="Up"/><panel id="Down"/><panel id="Tall"/>
 </column>
 <style>
@@ -222,6 +223,8 @@ panel { width: 10px; height: 10px; }
 #Tall { height: 300px; }
 @container scroll-state(scrollable: top) { #Up { width: 44px; } }
 @container scroll-state(scrolled: bottom) { #Down { width: 33px; } }
+#Head { position: sticky; top: 0px; container-type: scroll-state; }
+@container scroll-state(stuck: top) { #Mark { width: 22px; } }
 </style>"#,
             )
             .unwrap(),
@@ -245,18 +248,26 @@ panel { width: 10px; height: 10px; }
                     .unwrap()
                     .width
             };
-            ([width("Up"), width("Down")], ui.docs.retained.resolved)
+            (
+                [width("Up"), width("Down"), width("Head/Mark")],
+                ui.docs.retained.resolved,
+            )
         };
         frame(&mut ui);
-        assert_eq!(frame(&mut ui).0, [10.0, 10.0]);
-        assert_eq!(frame(&mut ui), ([10.0, 10.0], 0));
-        // The one container its readers read.
-        let list = *ui.docs.scroll_states.keys().next().unwrap();
-        // As a wheel scroll leaves it (the test does not paint, so the
-        // range `scroll_by` clamps to is never recorded).
-        ui.state.scroll.insert(list, 40.0);
-        assert_eq!(frame(&mut ui), ([44.0, 33.0], 2));
-        assert_eq!(frame(&mut ui), ([44.0, 33.0], 0));
+        assert_eq!(frame(&mut ui).0, [10.0, 10.0, 10.0]);
+        assert_eq!(frame(&mut ui), ([10.0, 10.0, 10.0], 0));
+        // As a wheel scroll leaves the list (the test does not paint, so
+        // the range `scroll_by` clamps to is never recorded); the sticky
+        // header, a container that does not scroll, ignores its offset.
+        let keys: Vec<u64> = ui.docs.scroll_states.keys().copied().collect();
+        for k in keys {
+            ui.state.scroll.insert(k, 40.0);
+        }
+        let (now, _) = frame(&mut ui);
+        assert_eq!(now[..2], [44.0, 33.0]);
+        // The header is held at the top from the frame that laid it out so.
+        assert_eq!(frame(&mut ui).0, [44.0, 33.0, 22.0], "stuck: top");
+        assert_eq!(frame(&mut ui).1, 0);
         assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
     }
 }

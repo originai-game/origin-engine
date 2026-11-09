@@ -20,6 +20,7 @@ pub mod anchor;
 mod cache;
 mod flex;
 mod grid;
+pub(crate) mod multicol;
 mod node;
 
 pub(crate) use cache::{
@@ -30,6 +31,7 @@ pub(crate) use flex::on_screen;
 use flex::*;
 pub(crate) use grid::{GridLayout, Table, derive_table, shown_children};
 use grid::{grid_columns, grid_intrinsic, grid_rows, place_grid};
+pub use multicol::Multicol;
 use node::truncate_lines;
 pub(crate) use node::{
     Content, EditView, NONE, Node, Shape, Stagger, TextContent, Widget, WrapStyle, ellipsis_of,
@@ -629,6 +631,15 @@ pub struct Element {
     pub table: TablePart,
     /// CSS `text-align` of the lines it lays its inline-level children in.
     pub line_align: Align,
+    /// CSS multi-column layout (`columns`, `column-*`): it is a
+    /// multi-column container ([`multicol`]).
+    pub multicol: Option<Multicol>,
+    /// CSS `column-span: all`: in a multi-column container, it spans
+    /// every column.
+    pub span_all: bool,
+    /// Its CSS `break-before`, `break-after` and `break-inside` in a
+    /// fragmented flow ([`multicol::BREAK_BEFORE`] …).
+    pub breaks: u8,
 }
 
 /// What a box is to the CSS table layout (CSS 2 §17.2).

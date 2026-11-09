@@ -100,7 +100,7 @@ pub use layers::{LayerInfo, LayerOp};
 pub use layout::anchor;
 pub use layout::{
     Align, Anchor, Calc, CalcOp, Cross, Direction, Element, Family, FlexItem, FontRole, Insets,
-    Length, Margin, Rect, Size, TablePart, TextAlign,
+    Length, Margin, Multicol, Rect, Size, TablePart, TextAlign,
 };
 pub use motion::{
     Choreo, Ease, EventKind, GestureInfo, Key, KeyEase, MotionDump, MotionToken, MotionTokens,

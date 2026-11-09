@@ -201,6 +201,9 @@ pub(super) fn element(theme: &Theme, d: &Value) -> Element {
         contents: false,
         table: og_ui::TablePart::None,
         line_align: Align::Start,
+        multicol: None,
+        span_all: false,
+        breaks: 0,
     }
 }
 

@@ -33,6 +33,12 @@
 //!   colspan or rowspan placing a cell in the wrong slot, a spanning cell's
 //!   width not spread over its columns, a row box not over its row, or a
 //!   bottom caption on top → `display_lays_out_as_css_display_does`
+//! - columns laid out unbalanced or at the container's width, a spanning
+//!   child kept in a column (or the set below it not starting again),
+//!   `column-width` not fitting as many columns as there is room for,
+//!   `column-fill: auto` balancing, `break-before: column` ignored, or a
+//!   paragraph moved whole instead of broken between its lines →
+//!   `multi_column_lays_out_as_css_multicol_does`
 
 use crate::html_text::{Doc, both};
 use og_core::glam::Vec2;
@@ -456,5 +462,76 @@ fn the_root_element_fills_its_viewport() {
     both(text, &[], |d| {
         assert_eq!(d.get("Pad").width, 800.0);
         assert_eq!(wh(d, "Media"), (768.0, 432.0));
+    });
+}
+
+#[test]
+fn multi_column_lays_out_as_css_multicol_does() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root">
+  <div id="Mc"><div id="A"></div><div id="B"></div><div id="C"></div><div id="D"></div><div id="E"></div><div id="F"></div><div id="Span"></div><div id="G"></div><div id="H"></div></div>
+  <div id="W"><div id="W1"></div><div id="W2"></div><div id="W3"></div></div>
+  <div id="Fa"><div id="F1"></div><div id="F2"></div><div id="F3"></div></div>
+  <div id="Bk"><div id="X"></div><div id="Y"></div><div id="Z"></div></div>
+  <div id="Tx"><p id="P">one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty</p></div>
+</div></div>
+<style>
+#Root { width: 400px; }
+#Mc { columns: 3; column-gap: 20px; width: 340px; column-rule: 2px solid red; }
+#A, #B, #C, #D, #E, #F { height: 30px; }
+#Span { column-span: all; height: 10px; }
+#G, #H { height: 20px; }
+#W { column-width: 100px; column-gap: 10px; width: 320px; }
+#W1, #W2, #W3, #X, #Y, #Z { height: 10px; }
+#Fa { column-count: 2; column-fill: auto; column-gap: 10px; width: 210px; height: 50px; }
+#F1, #F2, #F3 { height: 20px; }
+#Bk { columns: 2; column-gap: 0; width: 200px; }
+#Y { break-before: column; }
+#Tx { columns: 2; column-gap: 0; width: 160px; }
+p { margin: 0; }
+</style>"#;
+    both(text, &[], |d| {
+        let at = |id: &str, of: &str| {
+            let (e, p) = (d.get(id), d.get(of));
+            (e.x - p.x, e.y - p.y)
+        };
+        // Three columns of (340 − 2·20) / 3 = 100, two blocks in each.
+        for (id, xy) in [
+            ("A", (0.0, 0.0)),
+            ("B", (0.0, 30.0)),
+            ("C", (120.0, 0.0)),
+            ("D", (120.0, 30.0)),
+            ("E", (240.0, 0.0)),
+            ("F", (240.0, 30.0)),
+        ] {
+            assert_eq!((at(id, "Mc"), d.get(id).width), (xy, 100.0), "{id}");
+        }
+        // The spanning block below the balanced set, a new set under it.
+        assert_eq!(
+            (at("Span", "Mc"), wh(d, "Span")),
+            ((0.0, 60.0), (340.0, 10.0))
+        );
+        assert_eq!((at("G", "Mc"), at("H", "Mc")), ((0.0, 70.0), (120.0, 70.0)));
+        assert_eq!(d.get("Mc").height, 90.0);
+        // column-width: as many 100px columns as fit, widened to fill.
+        assert_eq!(
+            [at("W2", "W"), at("W3", "W")],
+            [(110.0, 0.0), (220.0, 0.0)],
+            "column-width"
+        );
+        assert_eq!(d.get("W").height, 10.0);
+        // Filled in turn to the 50px height: two blocks, then the next column.
+        assert_eq!(at("F3", "Fa"), (110.0, 0.0), "column-fill: auto");
+        // break-before starts a column: X alone, Y and Z in the next.
+        assert_eq!(
+            [at("Y", "Bk"), at("Z", "Bk")],
+            [(100.0, 0.0), (100.0, 10.0)],
+            "break-before: column"
+        );
+        // Fifteen 20px lines at the 80px column width break between lines
+        // 8 and 9 (balanced): the box is the first column's fragment and
+        // the container that tall; the rest are in the second column.
+        let (p, tx) = (d.get("P"), d.get("Tx"));
+        assert_eq!((p.width, p.height, tx.height), (80.0, 160.0, 160.0));
     });
 }

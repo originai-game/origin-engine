@@ -431,6 +431,26 @@ fits. The option that won and the anchor side it sits on are kept per
 frame for a popover's arrow. `float` and `clear` are refused: floats are
 not laid out yet.
 
+CSS Multi-column Layout 1 lays a block's flow in columns. `column-count`,
+`column-width` and the `columns` shorthand make it a multi-column
+container; the used count and width follow §3.4 (as many `column-width`
+columns as fit, at most `column-count`, widened to fill), with
+`column-gap` between them (`normal`: 1em). Each child lays out at the
+column width. `column-fill: balance` (the default, and `balance-all`)
+evens the columns' heights; `auto` fills them in turn to the container's
+definite height, and columns past the count overflow inline. A
+`column-span: all` child spans every column and starts a new balanced set
+below it. `column-rule` (and its `-width`, `-style` and `-color`
+longhands; `solid`, `dashed`, `dotted` and `double` drawn, the 3D styles
+as `solid`) is drawn in the middle of each gap between two columns that
+hold content, as tall as the set. The flow breaks between children and
+between a text's lines, two lines kept on each side of a break (`orphans`
+and `widows` at their initial value); `break-inside: avoid` keeps a text
+whole, `break-before` and `break-after` `column`, `page` or `always`
+force a break (and the legacy `page-break-*`). Any other box is
+monolithic: it moves to the next column whole. A split text's box is its
+first fragment; its later lines are drawn in the columns they fell in.
+
 HTML's user-agent rules come first in every document's cascade: `ul, ol`
 indent 40px, `<ul>` markers are `disc` (then `circle`, then `square` when
 nested), `<ol>` markers `decimal`, and headings take the type steps in the
@@ -1948,7 +1968,8 @@ read the nearest `scroll-state` container, as the last frame laid it out.
 `scrollable` gives the edges it can still scroll toward. `snapped` gives the
 axes on which the container, as a snap area, sits at its scroller's snap
 position. `scrolled` gives the direction of its latest scroll on each axis.
-`stuck` matches only `none` until sticky positioning exists. A change restyles
+`stuck` gives the edges of its scrollport a `position: sticky` container is
+held to (its offset from its flow place, on the last frame). A change restyles
 only its readers, on the next frame. `anchored` is accepted for anchor
 positioning's fallback queries. Other features fail at cook with the feature
 named.

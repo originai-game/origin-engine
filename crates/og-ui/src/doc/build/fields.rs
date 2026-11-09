@@ -709,6 +709,10 @@ impl Ui {
                 "focusable",
                 "adjustable",
                 "wrap",
+                "columnSpan",
+                "breakBefore",
+                "breakAfter",
+                "breakInside",
             ] {
                 if r.has(name) {
                     el = Self::box_of(

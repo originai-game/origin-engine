@@ -618,6 +618,17 @@ pub(crate) struct Node {
     /// Positioning 1): the position option that won, the side of its
     /// anchor it sits on, and whether `position-visibility` hides it.
     pub anchor_placed: crate::anchor::Placed,
+    /// A multi-column container's used column count and width.
+    pub cols: (usize, f32),
+    /// A multi-column container's rules between columns, from its box's
+    /// top left: each one's middle x, its top and its length.
+    pub col_rules: Vec<[f32; 3]>,
+    /// A text a column break splits: from each line on, how far its lines
+    /// move from where its box puts them (into the next column).
+    pub frag: Vec<(u32, [f32; 2])>,
+    /// A sticky box's edges of its scrollport it is held to this frame
+    /// (bits of `doc::media::scroll::TOP` …).
+    pub stuck: u8,
 }
 
 impl Node {
@@ -723,6 +734,10 @@ impl Node {
             laid_rect: Rect::default(),
             laid_clip: Rect::default(),
             anchor_placed: crate::anchor::Placed::default(),
+            cols: (1, 0.0),
+            col_rules: Vec::new(),
+            frag: Vec::new(),
+            stuck: 0,
         }
     }
 
@@ -739,6 +754,10 @@ impl Node {
         self.laid_xy = previous.laid_xy;
         self.laid_rect = previous.laid_rect;
         self.anchor_placed = previous.anchor_placed;
+        self.cols = previous.cols;
+        self.col_rules.clone_from(&previous.col_rules);
+        self.frag.clone_from(&previous.frag);
+        self.stuck = previous.stuck;
         self.laid_clip = previous.laid_clip;
         if !clean {
             return;
@@ -758,6 +777,15 @@ impl Node {
         self.collapse_in = previous.collapse_in;
         self.through = previous.through;
         self.margin_x = previous.margin_x;
+    }
+
+    /// How far a column break moved line `k` of its text ([`Node::frag`]).
+    pub(crate) fn frag_at(&self, k: usize) -> [f32; 2] {
+        self.frag
+            .iter()
+            .rev()
+            .find(|f| f.0 as usize <= k)
+            .map_or([0.0; 2], |f| f.1)
     }
 
     /// The scroll range: how far the content overflows the inner height.

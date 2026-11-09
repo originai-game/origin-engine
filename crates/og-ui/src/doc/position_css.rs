@@ -11,7 +11,7 @@ use crate::anchor;
 const SIDES: [&str; 4] = ["insetTop", "insetRight", "insetBottom", "insetLeft"];
 
 /// `value` split at its top-level spaces (a function's spaces kept).
-fn words(value: &str) -> Vec<&str> {
+pub(crate) fn words(value: &str) -> Vec<&str> {
     let mut out = Vec::new();
     let (mut depth, mut start) = (0, None);
     for (k, c) in value.char_indices() {

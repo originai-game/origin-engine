@@ -235,6 +235,39 @@ impl Ui {
                 }
             }
         }
+        // A multi-column container's rules, in the middle of its gaps.
+        if let Some(m) = n.el.multicol
+            && let Some(line) = m.rule
+        {
+            let w = line.width;
+            let rtl = self.direction == og_i18n::Direction::Rtl;
+            for &[x, y, h] in &n.col_rules {
+                let x = rect.x + if rtl { rect.width - x } else { x } - w / 2.0;
+                let color = if m.current { t.palette.ink } else { line.color };
+                let y = rect.y + y;
+                let strip = |x: f32, w: f32, cmds: &mut Vec<DrawCmd>| match line.style {
+                    crate::decor::LineStyle::Dashed | crate::decor::LineStyle::Dotted => {
+                        let on = if line.style == crate::decor::LineStyle::Dashed {
+                            3.0 * w
+                        } else {
+                            w
+                        };
+                        let mut at = 0.0;
+                        while at < h {
+                            cmds.push(quad(Rect::new(x, y + at, w, on.min(h - at)), 0.0, color));
+                            at += 2.0 * on.max(0.5);
+                        }
+                    }
+                    _ => cmds.push(quad(Rect::new(x, y, w, h), 0.0, color)),
+                };
+                if line.style == crate::decor::LineStyle::Double && w >= 3.0 {
+                    strip(x, w / 3.0, cmds);
+                    strip(x + 2.0 * w / 3.0, w / 3.0, cmds);
+                } else {
+                    strip(x, w, cmds);
+                }
+            }
+        }
     }
 
     /// The element's content and selection markers (after its background).
@@ -351,11 +384,14 @@ impl Ui {
                     // The first character of each line, for its selection.
                     let mut first = 0u32;
                     for (k, line) in n.lines.iter().enumerate() {
-                        let ly = top + k as f32 * lh;
+                        // A line a column break moved (`Node::frag`).
+                        let [fx, fy] = n.frag_at(k);
+                        let ly = top + (k as f32 * lh) + fy * sk;
                         let free = inner.width - line.width * sk;
                         // Right to left, start is the right edge.
                         let rtl = self.direction == og_i18n::Direction::Rtl;
                         let x = inner.x
+                            + if rtl { -fx } else { fx } * sk
                             + match (tc.align, rtl) {
                                 (TextAlign::Start | TextAlign::Justify, false)
                                 | (TextAlign::End, true) => 0.0,

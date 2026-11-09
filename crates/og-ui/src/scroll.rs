@@ -406,8 +406,8 @@ impl Ui {
     /// Element `key`'s `scroll-state()` flags ([`crate::doc::media::scroll`])
     /// as the last frame laid it out: the edges a scroll container can still
     /// scroll toward, and the axes on which a snap area sits at its
-    /// scroller's snap position. `stuck` stays clear: no element is
-    /// sticky-positioned. `scrolled` is the document layer's.
+    /// scroller's snap position, and the edges a sticky box is held to.
+    /// `scrolled` is the document layer's.
     pub(crate) fn scroll_flags_now(&self, key: u64) -> u16 {
         use crate::doc::media::scroll::*;
         let get = |i: usize| {
@@ -450,6 +450,7 @@ impl Ui {
                 0
             };
         }
+        flags |= u16::from(n.stuck) << STUCK.trailing_zeros();
         let align = n.el.snap_align;
         let mut p = n.parent;
         while align != 0 && p != crate::layout::NONE {

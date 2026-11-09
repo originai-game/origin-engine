@@ -396,6 +396,8 @@ pub(crate) fn draw_eq(a: &Node, b: &Node) -> bool {
         && a.selected == b.selected
         && a.props.text_path == b.props.text_path
         && a.rich_lines == b.rich_lines
+        && a.col_rules == b.col_rules
+        && a.frag == b.frag
 }
 
 impl LayoutCache {
@@ -528,6 +530,10 @@ pub(crate) fn el_layout_eq(a: &Element, b: &Element) -> bool {
         && a.contents == b.contents
         && a.table == b.table
         && a.line_align == b.line_align
+        && a.multicol.map(|m| (m.count, m.width, m.gap, m.fill_auto))
+            == b.multicol.map(|m| (m.count, m.width, m.gap, m.fill_auto))
+        && a.span_all == b.span_all
+        && a.breaks == b.breaks
 }
 
 /// The content layout measures is equal (an ink may differ).

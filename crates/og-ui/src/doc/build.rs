@@ -1145,6 +1145,76 @@ impl Ui {
         el.align_content = r.str("alignContent").map(align_of);
         el.justify_items = r.str("justifyItems").map(cross_of);
         el.gaps = [r.num("columnGap"), r.num("rowGap")];
+        // CSS Multi-column: a column count or width makes it a
+        // multi-column container; its gap is the column gap (`normal`: 1em).
+        let px = |v: &str| match v {
+            "thin" => Some(1.0),
+            "medium" => Some(3.0),
+            "thick" => Some(5.0),
+            v => v.strip_suffix("px").unwrap_or(v).parse::<f32>().ok(),
+        };
+        let count = r
+            .str("columnCount")
+            .and_then(|v| v.parse::<u16>().ok())
+            .unwrap_or(0);
+        let width = r.str("columnWidth").and_then(px).unwrap_or(0.0);
+        el.multicol = (count > 0 || width > 0.0).then(|| {
+            let rule = r
+                .str("columnRuleStyle")
+                .and_then(crate::decor::LineStyle::from_css)
+                .zip(
+                    r.str("columnRuleWidth")
+                        .map_or(Some(3.0), px)
+                        .filter(|w| *w > 0.0),
+                )
+                .map(|(style, width)| crate::decor::Line {
+                    width,
+                    style,
+                    color: r
+                        .color("columnRuleColor")
+                        .or(r.color("color"))
+                        .unwrap_or(crate::theme::LIGHT.ink),
+                });
+            let current = r.color("columnRuleColor").or(r.color("color")).is_none();
+            crate::Multicol {
+                count,
+                width,
+                gap: el.gaps[0].or(r.num("gap")).unwrap_or(em),
+                fill_auto: r.str("columnFill") == Some("auto"),
+                rule,
+                current,
+            }
+        });
+        if let Some(v) = r.str("columnSpan") {
+            el.span_all = v == "all";
+        }
+        let forced = |v: Option<&str>| {
+            matches!(
+                v,
+                Some("column" | "page" | "always" | "all" | "left" | "right" | "recto" | "verso")
+            )
+        };
+        {
+            use crate::layout::multicol::{AVOID_INSIDE, BREAK_AFTER, BREAK_BEFORE};
+            for (name, bit) in [
+                ("breakBefore", BREAK_BEFORE),
+                ("breakAfter", BREAK_AFTER),
+                ("breakInside", AVOID_INSIDE),
+            ] {
+                if let Some(v) = r.str(name) {
+                    let on = if bit == AVOID_INSIDE {
+                        v.starts_with("avoid")
+                    } else {
+                        forced(Some(v))
+                    };
+                    el.breaks = if on {
+                        el.breaks | bit
+                    } else {
+                        el.breaks & !bit
+                    };
+                }
+            }
+        }
         el.safe = u8::from(r.flag("safeJustify")) | u8::from(r.flag("safeAlign")) << 1;
         if let Some(c) = r.color("background") {
             el.background = Some(c);

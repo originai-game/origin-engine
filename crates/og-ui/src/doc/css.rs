@@ -227,6 +227,16 @@ pub const STYLE: &[(&str, &str)] = &[
     ("positionTryOrder", "position-try-order"),
     ("positionVisibility", "position-visibility"),
     ("anchorWidth", "width"),
+    ("columnCount", "column-count"),
+    ("columnWidth", "column-width"),
+    ("columnSpan", "column-span"),
+    ("columnFill", "column-fill"),
+    ("columnRuleWidth", "column-rule-width"),
+    ("columnRuleStyle", "column-rule-style"),
+    ("columnRuleColor", "column-rule-color"),
+    ("breakBefore", "break-before"),
+    ("breakAfter", "break-after"),
+    ("breakInside", "break-inside"),
     ("anchorHeight", "height"),
     ("hitSlop", "-og-hit-slop"),
     ("columns", "grid-template-columns"),
@@ -301,6 +311,11 @@ pub(crate) fn targets(name: &str) -> impl Iterator<Item = &'static str> + '_ {
         "inset-inline-start" => vec!["insetLeft"],
         "inset-inline-end" => vec!["insetRight"],
         "position-try" => vec!["positionTry", "positionTryOrder"],
+        "columns" => vec!["columnWidth", "columnCount"],
+        "column-rule" => vec!["columnRuleWidth", "columnRuleStyle", "columnRuleColor"],
+        "page-break-before" => vec!["breakBefore"],
+        "page-break-after" => vec!["breakAfter"],
+        "page-break-inside" => vec!["breakInside"],
         "margin-inline" => vec!["marginRight", "marginLeft"],
         "margin-inline-start" => vec!["marginLeft"],
         "margin-inline-end" => vec!["marginRight"],
@@ -391,6 +406,10 @@ fn conv(prop: &str) -> Conv {
         "insetTop" | "insetRight" | "insetBottom" | "insetLeft" | "anchorName"
         | "positionAnchor" | "positionArea" | "positionTry" | "positionTryOrder"
         | "positionVisibility" | "anchorWidth" | "anchorHeight" => Conv::Raw,
+        "columnCount" | "columnWidth" | "columnSpan" | "columnFill" | "columnRuleWidth"
+        | "columnRuleStyle" | "columnRuleColor" | "breakBefore" | "breakAfter" | "breakInside" => {
+            Conv::Raw
+        }
         "backgroundImage"
         | "backgroundSize"
         | "backgroundPosition"
@@ -1664,6 +1683,9 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
         return Ok(parts?.into_iter().map(|(k, v)| e(k, v)).collect());
     }
     if let Some(parts) = super::position_css::lower(name, value) {
+        return Ok(parts?.into_iter().map(|(k, v)| e(k, v)).collect());
+    }
+    if let Some(parts) = super::multicol_css::lower(name, value) {
         return Ok(parts?.into_iter().map(|(k, v)| e(k, v)).collect());
     }
     let t = tokens(value)?;
