@@ -222,8 +222,8 @@ What every kind takes: its box, layout, paint, motion and input.
 | `scroll-padding-right:` | `auto \| <length> \| <n>%` | CSS `scroll-padding-right` (`scroll-padding`, `-inline`, `-inline-end`). |
 | `scroll-padding-bottom:` | `auto \| <length> \| <n>%` | CSS `scroll-padding-bottom` (`scroll-padding`, `-block`, `-block-end`). |
 | `scroll-padding-left:` | `auto \| <length> \| <n>%` | CSS `scroll-padding-left` (`scroll-padding`, `-inline`, `-inline-start`). |
-| `scroll-snap-stop:` | `normal \| always` | CSS `scroll-snap-stop: normal \| always` of a snap area: always stops a fling at it rather than passing it for a farther one. |
-| `scrollbar-color:` | `auto \| <thumb colour> <track colour>` | CSS `scrollbar-color: auto \| <thumb> <track>` of a scroll container: the scrollbars' thumb colour and a track drawn under it. |
+| `scroll-snap-stop:` | `normal \| always` | CSS `scroll-snap-stop: normal \| always` of a snap area: always stops a fling or a settling wheel at it rather than passing it for a farther one. |
+| `scrollbar-color:` | `auto \| <thumb colour> <track colour>` | CSS `scrollbar-color: auto \| <thumb> <track>` of a scroll container: the scrollbars' thumb colour and a track drawn under it; inherited. |
 | `scrollbar-gutter:` | `auto \| stable [both-edges]` | CSS `scrollbar-gutter: auto \| stable [both-edges]` of a vertical scroll container: stable keeps the scrollbar's room on its end side whether or not it overflows (both-edges on its start side too), so its content does not shift when it starts to. |
 | `right:` | `<n>px \| <n>%` | CSS `right` / `inset-inline-end` as written (see insetTop). |
 | `left:` | `<n>px \| <n>%` | CSS `left` / `inset-inline-start` as written (see insetTop). |

@@ -81,8 +81,16 @@ pub(crate) fn inherited_property(name: &str) -> bool {
                 | "ruby-position"
                 | "dominant-baseline"
                 | "-og-color-vision"
+                | "scrollbar-color"
         )
 }
+
+/// The inherited properties an element reads as it is built rather than
+/// from the frame's orders: with nothing declared, each takes its
+/// parent's value through the cascade (CSS Scrollbars 1 §2:
+/// `scrollbar-color` inherits). A document declaring one carries its
+/// values, as one writing `inherit` does.
+pub(crate) const CARRIED_BY_DEFAULT: &[&str] = &["scrollbar-color"];
 
 /// The computed-map key that carries a property's value to the children
 /// that write `inherit` (or `unset` on an inherited property).
@@ -387,6 +395,16 @@ pub(crate) fn values_with(
         }
     }
     if o.carry {
+        for name in CARRIED_BY_DEFAULT {
+            if out.values.iter().any(|(n, ..)| n == name) {
+                continue;
+            }
+            let key = carried(name);
+            out.inherited_reads.insert(key.clone());
+            if let Some(value) = o.inherited.get(&key).cloned().flatten() {
+                out.values.push(((*name).into(), value, 0));
+            }
+        }
         let computed = Arc::make_mut(&mut out.computed);
         for (name, value, _) in &out.values {
             computed.insert(carried(name), Some(value.clone()));

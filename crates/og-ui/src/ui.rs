@@ -321,6 +321,10 @@ pub(crate) struct State {
     pub scroll_info: IdMap<u64, crate::scroll::ScrollInfo>,
     /// A released drag's momentum: the container and its velocity per tick.
     pub fling: Option<(u64, Vec2)>,
+    /// A snapping container the wheel moves and its offset before the
+    /// wheel did, until it settles: `scroll-snap-stop: always` areas
+    /// between there and where it settles stop it.
+    pub wheel_from: Option<(u64, Vec2)>,
     /// Two touches held at once (og.Pointers): the scroll container or
     /// zoom view they move, and their centre and spread last tick.
     pub pinch: Option<crate::scroll::Pinch>,

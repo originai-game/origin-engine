@@ -979,14 +979,14 @@ pub const PROPS: &[PropSpec] = &[
         ty: Ty::Text,
         on: On::All,
         two_way: false,
-        doc: "CSS `scroll-snap-stop: normal | always` of a snap area: always stops a fling at it rather than passing it for a farther one.",
+        doc: "CSS `scroll-snap-stop: normal | always` of a snap area: always stops a fling or a settling wheel at it rather than passing it for a farther one.",
     },
     PropSpec {
         name: "scrollbarColor",
         ty: Ty::Text,
         on: On::All,
         two_way: false,
-        doc: "CSS `scrollbar-color: auto | <thumb> <track>` of a scroll container: the scrollbars' thumb colour and a track drawn under it.",
+        doc: "CSS `scrollbar-color: auto | <thumb> <track>` of a scroll container: the scrollbars' thumb colour and a track drawn under it; inherited.",
     },
     PropSpec {
         name: "scrollbarGutter",

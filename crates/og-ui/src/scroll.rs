@@ -570,7 +570,10 @@ impl Ui {
     /// its view, else `projected`. Read from last frame's boxes, which were
     /// laid out at its offset now. Walks only down to the snap areas, and
     /// only while the container settles.
-    fn snap_target(&self, key: u64, projected: Vec2) -> Option<Vec2> {
+    /// `from` is where the scroll started (the offset before the wheel
+    /// moved it, else now): it does not pass a `scroll-snap-stop: always`
+    /// area on its way from there.
+    fn snap_target(&self, key: u64, projected: Vec2, from: Vec2) -> Option<Vec2> {
         let i = self.tree.find(key)?;
         let n = &self.nodes[i];
         let snap = n.el.snap;
@@ -620,9 +623,9 @@ impl Ui {
             else {
                 continue;
             };
-            // CSS Scroll Snap 1 §6.2: a fling does not pass an area that
-            // says always; it stops at the first one on its way.
-            let now = at[axis];
+            // CSS Scroll Snap 1 §6.2: a fling or a wheel does not pass an
+            // area that says always; it stops at the first one on its way.
+            let now = from[axis];
             if let Some(stop) = found[axis]
                 .iter()
                 .filter(|c| c.1)
@@ -754,6 +757,7 @@ impl Ui {
         if input.pressed {
             // A press stops a fling; one on a scrollbar grabs it.
             self.state.fling = None;
+            self.state.wheel_from = None;
             self.state.thumb = input.pointer_inside.then(|| self.thumb_at(p)).flatten();
             grabbed = self.state.thumb.map(|t| t.key);
             self.state.drag_v = Vec2::ZERO;
@@ -802,8 +806,12 @@ impl Ui {
                     let k = 0.9985f32.powf(input.wheel.y);
                     self.zoom_by(key, k, p, Vec2::ZERO);
                 } else {
+                    let from = self.offset(key);
                     self.scroll_chain_by(key, input.wheel);
                     wheel_snap = self.snaps(key).then_some(key);
+                    if wheel_snap.is_some() && self.state.wheel_from.is_none_or(|w| w.0 != key) {
+                        self.state.wheel_from = Some((key, from));
+                    }
                 }
             }
         }
@@ -821,6 +829,7 @@ impl Ui {
                 self.scroll_chain_by(active, d);
                 self.state.drag_v = self.state.drag_v * 0.5 + d * 0.5;
             } else if input.released {
+                self.state.wheel_from = None;
                 let v = self.state.drag_v;
                 let reduced = self.theme().reduced_motion;
                 if self.snaps(active) {
@@ -846,16 +855,23 @@ impl Ui {
                 // (target − offset)·(1 − decay) decays onto the target
                 // exactly, so the next tick projects the same target and the
                 // fling needs no state beyond its velocity.
-                if let Some(target) = self.snap_target(key, at + v / keep) {
+                let from = self
+                    .state
+                    .wheel_from
+                    .filter(|w| w.0 == key)
+                    .map_or(at, |w| w.1);
+                if let Some(target) = self.snap_target(key, at + v / keep, from) {
                     if self.theme().reduced_motion {
                         self.scroll_by(key, target - at);
                         self.state.fling = None;
+                        self.state.wheel_from = None;
                     } else {
                         self.scroll_by(key, (target - at) * keep);
                         let rest = target - self.offset(key);
                         if rest.length() < 0.25 {
                             self.scroll_by(key, rest);
                             self.state.fling = None;
+                            self.state.wheel_from = None;
                         } else {
                             self.state.fling = Some((key, rest * keep));
                         }

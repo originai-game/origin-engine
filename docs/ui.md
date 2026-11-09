@@ -826,7 +826,8 @@ computes to `auto`. `auto` and `scroll` make the box scroll on that axis,
 them at half the width, with a half-width grab strip and gutter.
 `scrollbar-color: <thumb> <track>` paints the thumb in the first colour
 and a track along the whole edge under it in the second (`auto`: the
-style's thumb, no track). `scrollbar-gutter: stable` keeps a vertical
+style's thumb, no track); it inherits, so a colour set on a panel paints
+every scroller inside it. `scrollbar-gutter: stable` keeps a vertical
 scroller's bar room at its end whether or not it overflows, so its content
 does not shift when it starts to; `stable both-edges` keeps the same room
 at its start too.
@@ -838,8 +839,10 @@ the snap position nearest where it would stop, as CSS Scroll Snap 1 does;
 (px or % of the view, all its longhands, logical sides and shorthands) on
 the scroller insets the view the areas line up in, and `scroll-margin*` on
 an area grows the box that lines up; both apply to a scroll into view too.
-`scroll-snap-stop: always` on an area stops a fling at it rather than
-passing it for a farther one. The fling is steered
+`scroll-snap-stop: always` on an area stops a fling or a wheel at it
+rather than passing it for a farther one: a wheel settles no farther than
+the first such area past the offset it started from, however far the
+wheel itself carried the box (the start is UI state, saved with it). The fling is steered
 onto the target and decays onto it exactly, and the areas are read from
 last frame's boxes only while the box settles. `overscroll-behavior` (and `-x`, `-y`, `-inline`, `-block`)
 `contain` or `none` on a scroller stops what a wheel, a drag or two

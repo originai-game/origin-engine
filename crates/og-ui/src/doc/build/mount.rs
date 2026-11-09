@@ -223,11 +223,12 @@ impl Ui {
             .merge(&crate::doc::matching::Profile::of_document(&doc));
         self.docs.wide_keywords |= doc.nodes.iter().any(|n| {
             n.rules.iter().flat_map(|r| &r.declarations).any(|d| {
-                !d.name.starts_with("--")
-                    && matches!(
-                        crate::doc::stylesheet::wide_keyword(&d.source),
-                        Some("inherit" | "unset" | "revert" | "revert-layer")
-                    )
+                super::cascade::CARRIED_BY_DEFAULT.contains(&d.name.as_str())
+                    || !d.name.starts_with("--")
+                        && matches!(
+                            crate::doc::stylesheet::wide_keyword(&d.source),
+                            Some("inherit" | "unset" | "revert" | "revert-layer")
+                        )
             })
         });
         let mut retained = std::mem::take(&mut self.docs.retained);

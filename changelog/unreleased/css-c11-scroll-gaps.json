@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "UI: CSS scrollbar-color and scroll-snap-stop in documents",
+      "summary": "scrollbar-color inherits, as CSS Scrollbars 1 says, so a colour on a panel paints the scrollers inside it; scroll-snap-stop always also stops a wheel when it settles, not only a fling: it settles no farther than the first such area past where the wheel started."
+    }
+  ]
+}

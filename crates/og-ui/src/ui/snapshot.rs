@@ -321,6 +321,9 @@ impl Ui {
         if !s.virtual_lists.is_empty() {
             docs["virtualLists"] = serde_json::to_value(&s.virtual_lists).expect("finite extents");
         }
+        if let Some((key, at)) = s.wheel_from {
+            docs["wheelFrom"] = serde_json::json!({ "key": key.to_string(), "at": [at.x, at.y] });
+        }
         text(&mut b, &docs.to_string());
         b
     }
@@ -370,6 +373,19 @@ impl Ui {
             if !s.virtual_lists.values().all(|v| v.valid_snapshot()) {
                 return Err(bad("invalid virtual list extents".into()));
             }
+        }
+        if let Some(w) = docs.get("wheelFrom") {
+            let key = w["key"].as_str().and_then(|k| k.parse::<u64>().ok());
+            let at = w["at"].as_array().and_then(|a| {
+                Some(Vec2::new(
+                    a.first()?.as_f64()? as f32,
+                    a.get(1)?.as_f64()? as f32,
+                ))
+            });
+            s.wheel_from = Some(
+                key.zip(at)
+                    .ok_or_else(|| bad("malformed wheel origin".into()))?,
+            );
         }
         self.restore_docs_state(&docs).map_err(bad)?;
         self.state = s;

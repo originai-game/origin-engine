@@ -22,6 +22,9 @@
 //!   container around it (or `auto` no longer chaining), and
 //!   `scroll-padding` not insetting where a snap lines its area up →
 //!   `overscroll_contains_and_scroll_padding_insets_snaps`
+//! - a wheel settling past a `scroll-snap-stop: always` area it crossed,
+//!   or `scrollbar-color` not inherited →
+//!   `a_wheel_stops_at_snap_stop_always_and_scrollbar_color_inherits`
 
 use crate::html_text::{Doc, both};
 use og_core::glam::Vec2;
@@ -315,6 +318,46 @@ fn overscroll_contains_and_scroll_padding_insets_snaps() {
             assert!((at(d, "Snap") - 40.0).abs() < 0.5, "{}", at(d, "Snap"));
         });
     }
+}
+
+#[test]
+fn a_wheel_stops_at_snap_stop_always_and_scrollbar_color_inherits() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root">
+  <div id="Snap"><div></div><div class="stop"></div><div></div><div></div><div></div></div>
+</div></div>
+<style>
+#Root { width: 400px; scrollbar-color: red blue; }
+#Snap { height: 100px; overflow-y: auto; scroll-snap-type: y mandatory; }
+#Snap div { height: 60px; scroll-snap-align: start; }
+.stop { scroll-snap-stop: always; }
+</style>"#;
+    both(text, &[], |d| {
+        // Snap positions 0, 60, 120…: a wheel of 150 in three ticks would
+        // settle on 120, but it may not pass the area at 60, even though
+        // the wheel has carried it past that area by the time it settles.
+        let s = d.get("Snap");
+        for _ in 0..3 {
+            d.step(InputFrame {
+                wheel: Vec2::new(0.0, 50.0),
+                ..InputFrame::hover(s.x + 10.0, s.y + 10.0)
+            });
+        }
+        for _ in 0..300 {
+            d.step(InputFrame::hover(s.x + 10.0, s.y + 10.0));
+        }
+        let at = d.ui.scroll_state(&d.get("Snap").path).unwrap().offset_y;
+        assert!((at - 60.0).abs() < 0.5, "{at}");
+        // The scroller inherits its ancestor's thumb and track colours.
+        let red = Srgba::rgb(255, 0, 0).linear();
+        let painted = d.ui.frame().items.iter().any(|i| match &i.cmd {
+            DrawCmd::Quad { color, .. } => {
+                (color[0] - red[0]).abs() < 1e-3 && color[1] < 1e-3 && color[3] > 0.9
+            }
+            _ => false,
+        });
+        assert!(painted, "no red thumb");
+    });
 }
 
 #[test]
