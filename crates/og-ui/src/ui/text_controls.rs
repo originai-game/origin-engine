@@ -95,7 +95,8 @@ impl Ui {
         self.last_closed = i;
         let mut r = self.respond(key);
         r.changed |= cleared;
-        if r.focused {
+        // Only the real focus edits; a forced one (the probe's) only shows.
+        if self.state.focus == key {
             let inner = self.hit(key).map(|h| h.full.inset(&padding));
             let e = self.edit(
                 key,
@@ -151,7 +152,7 @@ impl Ui {
         if let Some(target) = self
             .text_target
             .as_mut()
-            .filter(|t| focused && t.rect.width > 0.0)
+            .filter(|t| focused && self.state.focus == key && t.rect.width > 0.0)
         {
             target.input_type = desc.input_type;
             target.inputmode = desc.inputmode.unwrap_or(desc.input_type.default_mode());
@@ -417,7 +418,8 @@ impl Ui {
         self.nodes[i].multiline = true;
         let key = self.nodes[i].key;
         let mut r = self.respond(key);
-        if r.focused {
+        // Only the real focus edits; a forced one (the probe's) only shows.
+        if self.state.focus == key {
             let inner = self.hit(key).map(|h| h.full.inset(&pad));
             let e = self.edit(
                 key,
@@ -444,7 +446,11 @@ impl Ui {
         let mut edit = self.edit_view(key, focused, value, composition, true);
         edit.placeholder = shown.is_empty();
         let invalid = desc.invalid || desc.constraints.fails(crate::InputType::Text, value);
-        if let Some(target) = self.text_target.as_mut().filter(|_| focused) {
+        if let Some(target) = self
+            .text_target
+            .as_mut()
+            .filter(|_| focused && self.state.focus == key)
+        {
             target.readonly = desc.readonly;
         }
         let disabled = self.nodes[i].disabled;

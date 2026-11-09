@@ -276,9 +276,26 @@ impl Ui {
         self.path_of(i)
     }
 
+    /// The interaction state the probe or an agent forced on the element
+    /// of render key `key` (`og.ui.forceState(path, "interaction", …)`):
+    /// `hover`, `pressed`, `focused` or `disabled`.
+    pub(crate) fn forced_interaction(&self, key: u64) -> Option<&str> {
+        let forced = &self.state.motion.forced;
+        if forced.is_empty() || key == 0 {
+            return None;
+        }
+        forced
+            .get(&crate::motion::state::group_key(key, "interaction"))
+            .map(String::as_str)
+    }
+
     pub(crate) fn respond(&self, key: u64) -> Response {
         let s = &self.state;
-        let hovered = s.hot == key && (s.active == 0 || s.active == key);
+        // A forced state is drawn and matched as the real one is, and
+        // activates nothing: it never clicks.
+        let forced = self.forced_interaction(key);
+        let hovered = (s.hot == key && (s.active == 0 || s.active == key))
+            || matches!(forced, Some("hover" | "pressed"));
         let by_pad = (key != 0)
             .then(|| self.nav.pad_activate.iter().position(|&k| k == key))
             .flatten();
@@ -293,10 +310,11 @@ impl Ui {
                 focused_by |= 2 << k;
             }
         }
-        let pressed = s.active == key && self.input.down;
-        let clicked = (s.active == key && self.input.released && s.hot == key && !s.tap.taken)
-            || (self.nav.activate == key && key != 0)
-            || by_pad.is_some();
+        let pressed = (s.active == key && self.input.down) || forced == Some("pressed");
+        let clicked = forced.is_none()
+            && ((s.active == key && self.input.released && s.hot == key && !s.tap.taken)
+                || (self.nav.activate == key && key != 0)
+                || by_pad.is_some());
         // Read only on the frames it is pressed: the hits are a list.
         let player = (pressed || clicked)
             .then(|| self.hit(key).map(|h| h.player).filter(|&p| p != 0))
@@ -307,7 +325,7 @@ impl Ui {
             player,
             pressed,
             clicked,
-            focused: s.focus == key,
+            focused: s.focus == key || forced == Some("focused"),
             pad,
             focused_by,
             tapped: key != 0 && (self.nav.tapped == key || self.tapped_by_keys(key)),
@@ -323,11 +341,12 @@ impl Ui {
     pub(crate) fn nav_target(&mut self, i: usize, adjust: bool) -> Response {
         let key = self.nodes[i].key;
         let r = self.respond(key);
+        let ring = (self.state.focus == key && self.state.focus_visible)
+            || self.forced_interaction(key) == Some("focused");
         let n = &mut self.nodes[i];
         n.nav = true;
         n.adjust = adjust;
         let own = n.el.own_ring;
-        let ring = self.state.focus == key && self.state.focus_visible;
         n.ring = !own && ring;
         n.pad_rings = if own { 0 } else { (r.focused_by >> 1) as u8 };
         Response { ring, ..r }

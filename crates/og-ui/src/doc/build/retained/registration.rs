@@ -35,6 +35,13 @@ impl Ui {
             }
             source.validate()?;
         }
+        // Every mount reads the engine's `$ui` unless it binds its own, as
+        // `Ui::mount_document`'s do.
+        let mut inputs = inputs;
+        if !inputs.contains_key("ui") {
+            self.publish_ui_store();
+            inputs.insert("ui".into(), crate::doc::UI_STORE.clone());
+        }
         let registration = Registration {
             document,
             inputs,
@@ -230,5 +237,41 @@ mod tests {
         assert_eq!(tick(&mut ui), ["First"]);
         send(&mut ui, json!({"op":"dispose", "scope":"test"}));
         assert!(tick(&mut ui).is_empty());
+    }
+
+    /// A mount registered over the host protocol (TypeScript's
+    /// `scope.mount`) reads the engine's `$ui` as `Ui::mount_document`'s
+    /// do: an action glyph follows the device through it.
+    #[test]
+    fn binary_mounts_read_the_engine_s_ui_store() {
+        let mut ui = Ui::default();
+        ui.define_document(
+            UiDocument::parse(
+                "device.svelte",
+                r#"
+            <meta name="component" content="device">
+            <column><text id="Device">{$ui.device}</text></column>
+        "#,
+            )
+            .unwrap(),
+        );
+        let command = json!({"op":"mount", "mount":SourceId::new("test", "view"),
+            "document":"device", "inputs":{}});
+        let reply =
+            wire::decode(&ui.apply_reactive(&wire::encode(&json!([command])).unwrap())).unwrap();
+        assert_eq!(reply[0]["ok"], true, "{reply}");
+        ui.begin(
+            crate::InputFrame::default(),
+            crate::Viewport::new(640.0, 480.0),
+        );
+        let warnings = ui.end().warnings.clone();
+        let text: Vec<_> = ui
+            .probe_elements()
+            .into_iter()
+            .filter(|e| e.kind == "label")
+            .map(|e| e.text)
+            .collect();
+        assert_eq!(text, ["keyboardMouse"]);
+        assert!(warnings.is_empty(), "{warnings:?}");
     }
 }

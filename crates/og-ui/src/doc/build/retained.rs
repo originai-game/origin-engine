@@ -132,7 +132,10 @@ pub struct RetainedHost {
     dirty: BTreeSet<MountedNode>,
     inherited: BTreeMap<(MountedNode, String), BTreeSet<MountedNode>>,
     by_key: BTreeMap<u64, MountedNode>,
-    interaction: [u64; 4],
+    /// The elements matching `:hover`, `:active`, `:focus` and
+    /// `:focus-visible` last frame: the pointer's, the focus's and any the
+    /// probe forced.
+    interaction: [Vec<u64>; 4],
     /// Popover elements by their popover key, for `:popover-open`.
     popover_nodes: BTreeMap<u64, MountedNode>,
     /// The `:target` element last applied, and the fragment it was for.
@@ -1129,27 +1132,51 @@ impl RetainedHost {
         }
     }
 
+    /// The mounted elements whose interaction state the probe forced.
+    fn forced_keys(&self, ui: &Ui) -> Vec<u64> {
+        if ui.state.motion.forced.is_empty() {
+            return Vec::new();
+        }
+        self.by_key
+            .keys()
+            .copied()
+            .filter(|&k| ui.forced_interaction(k).is_some())
+            .collect()
+    }
+
     fn sync_interaction(&mut self, ui: &mut Ui) -> Result<(), String> {
         use crate::bind::InteractionState::{
             Active, Focus, FocusVisible, FocusWithin, Hover, PopoverOpen, Target,
         };
-        let next = [
-            ui.state.hot,
-            if ui.input.down { ui.state.active } else { 0 },
-            ui.state.focus,
-            if ui.state.focus_visible {
+        let mut next: [Vec<u64>; 4] = [
+            vec![ui.state.hot],
+            vec![if ui.input.down { ui.state.active } else { 0 }],
+            vec![ui.state.focus],
+            vec![if ui.state.focus_visible {
                 ui.state.focus
             } else {
                 0
-            },
+            }],
         ];
-        let previous = std::mem::replace(&mut self.interaction, next);
-        for (i, state) in [Hover, Active, Focus, FocusVisible].into_iter().enumerate() {
-            if previous[i] == next[i] {
-                continue;
+        for key in self.forced_keys(ui) {
+            match ui.forced_interaction(key) {
+                Some("hover") => next[0].push(key),
+                Some("pressed") => next[0..2].iter_mut().for_each(|s| s.push(key)),
+                Some("focused") => next[2..4].iter_mut().for_each(|s| s.push(key)),
+                _ => {}
             }
-            for (key, enabled) in [(previous[i], false), (next[i], true)] {
-                if let Some(node) = self.by_key.get(&key) {
+        }
+        for keys in &mut next {
+            keys.retain(|&k| k != 0);
+            keys.sort_unstable();
+            keys.dedup();
+        }
+        let previous = std::mem::replace(&mut self.interaction, next.clone());
+        for (i, state) in [Hover, Active, Focus, FocusVisible].into_iter().enumerate() {
+            let off = previous[i].iter().filter(|k| !next[i].contains(k));
+            let on = next[i].iter().filter(|k| !previous[i].contains(k));
+            for (key, enabled) in off.map(|k| (k, false)).chain(on.map(|k| (k, true))) {
+                if let Some(node) = self.by_key.get(key) {
                     self.topology.set_state(node, state, enabled)?;
                     ui.reactive.graph.interaction_changed(node, state);
                 }
@@ -1204,7 +1231,9 @@ impl RetainedHost {
             self.target = (id, new);
         }
         if previous[2] != next[2] {
-            for (key, enabled) in [(previous[2], false), (next[2], true)] {
+            let off = previous[2].iter().filter(|k| !next[2].contains(k));
+            let on = next[2].iter().filter(|k| !previous[2].contains(k));
+            for (key, enabled) in off.map(|k| (*k, false)).chain(on.map(|k| (*k, true))) {
                 let mut ancestor = self.by_key.get(&key).cloned();
                 while let Some(node) = ancestor {
                     self.topology.set_state(&node, FocusWithin, enabled)?;
@@ -1919,6 +1948,8 @@ impl RetainedHost {
                 }
             }
         }
+        // A forced state is drawn by its element's widget: it builds again.
+        input.extend(self.forced_keys(ui));
         input.retain(|&key| key != 0);
         for key in input.iter().chain(&self.input) {
             if let Some(owner) = self.owner_of.get(key) {

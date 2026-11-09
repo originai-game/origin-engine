@@ -374,4 +374,94 @@ mod tests {
         let stats = ui.frame().stats;
         assert_eq!((stats.bindings, stats.reconciled), (0, 0), "{stats:?}");
     }
+
+    const PAD: &str = r#"
+<meta name="component" content="pad">
+<div id="Pad">
+  <button id="Go" onclick={go}>Go</button>
+  <button id="Other" onclick={go}>Other</button>
+</div>
+<style>
+#Pad { padding: 0; }
+#Go, #Other { width: 100px; }
+#Go:hover, #Other:hover { width: 140px; }
+#Go:active { width: 180px; }
+#Go:focus-visible { width: 210px; }
+</style>
+"#;
+
+    /// `og.ui.forceState(path, "interaction", …)` is how a sheet draws every
+    /// state at once: a forced state reaches the element's CSS state and its
+    /// widget's response as the pointer's and the focus's do, on several
+    /// elements together, and never activates anything.
+    #[test]
+    fn forced_interaction_states_reach_css_and_never_click() {
+        let mut ui = Ui::new(UiDesc::default());
+        ui.define_document(UiDocument::parse("pad.svelte", PAD).unwrap());
+        ui.mount_document(
+            SourceId::new("test", "pad"),
+            "pad",
+            BTreeMap::new(),
+            BTreeMap::new(),
+            &crate::bind::NoEnv,
+        )
+        .unwrap();
+        let away = Vec2::new(390.0, 290.0);
+        let width = |ui: &Ui, id: &str| {
+            let path = format!("test:pad/{id}");
+            ui.probe_elements()
+                .into_iter()
+                .find(|e| e.path == path)
+                .map(|e| e.width)
+        };
+        let mut clicks = 0;
+        let mut run = |ui: &mut Ui, frames: usize| {
+            for _ in 0..frames {
+                ui.begin(
+                    InputFrame {
+                        pointer: away,
+                        pointer_inside: true,
+                        ..Default::default()
+                    },
+                    Viewport::new(400.0, 300.0),
+                );
+                ui.build_retained_documents(&crate::bind::NoEnv).unwrap();
+                ui.end();
+                clicks += ui
+                    .take_doc_events()
+                    .iter()
+                    .filter(|e| e.kind == "click")
+                    .count();
+            }
+        };
+        run(&mut ui, 2);
+        assert_eq!(
+            (width(&ui, "Go"), width(&ui, "Other")),
+            (Some(100.0), Some(100.0))
+        );
+        // Two hovered at once, which the pointer alone never makes.
+        ui.force_state("test:pad/Go", "interaction", Some("hover"));
+        ui.force_state("test:pad/Other", "interaction", Some("hover"));
+        run(&mut ui, 2);
+        assert_eq!(
+            (width(&ui, "Go"), width(&ui, "Other")),
+            (Some(140.0), Some(140.0))
+        );
+        ui.force_state("test:pad/Go", "interaction", Some("pressed"));
+        run(&mut ui, 2);
+        assert_eq!(width(&ui, "Go"), Some(180.0));
+        ui.force_state("test:pad/Go", "interaction", Some("focused"));
+        run(&mut ui, 2);
+        assert_eq!(width(&ui, "Go"), Some(210.0));
+        // Released, each goes back to rest.
+        ui.force_state("test:pad/Go", "interaction", None);
+        ui.force_state("test:pad/Other", "interaction", None);
+        run(&mut ui, 2);
+        assert_eq!(
+            (width(&ui, "Go"), width(&ui, "Other")),
+            (Some(100.0), Some(100.0))
+        );
+        drop(run);
+        assert_eq!(clicks, 0, "a forced press or focus activated a button");
+    }
 }

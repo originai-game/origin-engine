@@ -1,0 +1,19 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "og ui sheet <pack>",
+      "summary": "A style pack's core-control state sheet (docs/ui.md §6.2) covers the whole control set: four pages (controls, fields, surfaces, overlays), every button variant, tab, checkbox, switch, radio, text field, select, stepper and range in rest, hover, pressed, focus-visible, selected, disabled and selected+disabled, with the type, frames, slots, dialog, disclosures, meters and badges they sit on; each page fits a 390 × 844 phone by touch, where hover and focus have no column."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "og.ui.forceState",
+      "summary": "A forced interaction state (hover, pressed, focused) reaches a document element's :hover, :active, :focus and :focus-visible rules and its control's drawing, on any number of elements at once, as the pointer's and the focus's do; it never clicks, and a text field forced to focus shows it without taking the keyboard."
+    },
+    {
+      "member": "UiScope.mount",
+      "summary": "A document mounted from TypeScript reads the engine's $ui store as a natively mounted one does: <kbd data-action> glyphs and $ui.device no longer warn `mount has no input store 'ui'`."
+    }
+  ]
+}
