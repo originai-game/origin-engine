@@ -1195,6 +1195,7 @@ impl Resolved {
             outlines: Vec::new(),
             view_box: None,
             view_rect: None,
+            boxes: None,
         }
     }
 }

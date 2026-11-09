@@ -161,6 +161,13 @@ pub enum Paint {
     /// as an image of [`crate::style_file::Art::atlas`] when the frame is
     /// drawn; nothing without an atlas.
     Atlas(AtlasPaint),
+    /// A gradient as an image `size` CSS px (the size its geometry was
+    /// resolved against) fitted as an image is: a CSS gradient tile.
+    GradientImage {
+        gradient: Gradient,
+        size: [f32; 2],
+        fit: Fit,
+    },
 }
 
 /// [`Paint::Atlas`]: `uv` the region `[u0, v0, u1, v1]`, `size` its CSS px
@@ -186,6 +193,7 @@ impl Paint {
                 tint: im.tint.resolve(theme),
                 fit: im.fit,
                 focal: Vec2::from(im.focal),
+                luminance: false,
             }),
             Paint::Vector { tint, .. } => og_render::UiPaint::Solid(tint.resolve(theme)),
             Paint::Atlas(a) => match theme.art.atlas {
@@ -196,10 +204,182 @@ impl Paint {
                     tint: a.tint.resolve(theme),
                     fit: a.fit,
                     focal: Vec2::from(a.focal),
+                    luminance: false,
                 }),
                 None => og_render::UiPaint::Solid([0.0; 4]),
             },
+            Paint::GradientImage {
+                gradient,
+                size,
+                fit,
+            } => og_render::UiPaint::GradientImage(Box::new(og_render::UiGradientImage {
+                gradient: gradient.resolve(theme),
+                size: Vec2::from(*size),
+                fit: *fit,
+                luminance: false,
+            })),
         }
+    }
+}
+
+/// A CSS layer of a box: a background layer (CSS Backgrounds 3 §3) or a
+/// mask layer (CSS Masking 1 §6), drawn over the box and cut to its
+/// painting area.
+#[derive(Clone, Debug, PartialEq)]
+pub struct BoxLayer {
+    /// An image's or a gradient tile's fit is a CSS background's, its
+    /// positioning area `area`.
+    pub paint: Paint,
+    /// The positioning area's edges in from the box's (left, top, right,
+    /// bottom; CSS px, negative outside it), or a fixed one's rectangle
+    /// on the screen.
+    pub area: Area,
+    pub clip: LayerClip,
+    /// How it combines with the layers under it: a background's blend
+    /// mode, a mask layer's Porter-Duff operator.
+    pub blend: Blend,
+    /// Its luminance is its alpha (`mask-mode: luminance`).
+    pub luminance: bool,
+}
+
+/// [`BoxLayer::area`].
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Area {
+    /// Edges in from the box's: left, top, right, bottom.
+    Box([f32; 4]),
+    /// `background-attachment: fixed`: `[x, y, width, height]` on the
+    /// screen (the viewport), whatever moves the box.
+    Fixed([f32; 4]),
+}
+
+/// [`BoxLayer::clip`]: where a layer is painted.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum LayerClip {
+    /// The box, its edges in by these (left, top, right, bottom; CSS px),
+    /// its corners curving as the box's do less the inset (CSS
+    /// Backgrounds 3 §5.3). A mask's is a plain rectangle.
+    Box([f32; 4]),
+    /// A plain rectangle, its edges in by these (a mask's, a border
+    /// image's; far out for `mask-clip: no-clip`).
+    Rect([f32; 4]),
+    /// The element's own text (`background-clip: text`).
+    Text,
+}
+
+/// An element's CSS background and mask layers ([`ElementDraw::boxes`]).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct BoxLayers {
+    /// Its background layers, the bottom (its colour) first: drawn after
+    /// its fills, under its inner shadows.
+    pub backgrounds: Vec<BoxLayer>,
+    /// The backgrounds blend inside a group of their own, not with what is
+    /// behind the element (`background-blend-mode`).
+    pub isolate: bool,
+    /// Its mask layers, the bottom first, each combined with those under it
+    /// by its Porter-Duff operator: its subtree is drawn offscreen and kept
+    /// where their result is (CSS Masking 1 §6).
+    pub masks: Vec<BoxLayer>,
+    /// Its border image, over its backgrounds and inner shadows.
+    pub border: Option<BoxLayer>,
+}
+
+impl BoxLayer {
+    /// Its paint drawn in `d`, `inset` (left, top, right, bottom) in from
+    /// the box `b`: its fit's positioning area made `d`'s.
+    fn resolve(&self, theme: &Theme, b: Rect, d: Rect) -> og_render::UiPaint {
+        let mut p = self.paint.resolve(theme);
+        let area = match self.area {
+            Area::Box([l, t, r, bt]) => [
+                l - (d.x - b.x),
+                t - (d.y - b.y),
+                r - (b.right() - d.right()),
+                bt - (b.bottom() - d.bottom()),
+            ],
+            Area::Fixed([x, y, w, h]) => {
+                [x - d.x, y - d.y, d.right() - (x + w), d.bottom() - (y + h)]
+            }
+        };
+        let fit = match &mut p {
+            og_render::UiPaint::Image(im) => {
+                im.luminance = self.luminance;
+                Some(&mut im.fit)
+            }
+            og_render::UiPaint::GradientImage(g) => {
+                g.luminance = self.luminance;
+                Some(&mut g.fit)
+            }
+            _ => None,
+        };
+        if let Some(og_render::UiFit::Background(bg)) = fit {
+            bg.area = area;
+        }
+        p
+    }
+}
+
+/// `geometry` inset by `inset` (left, top, right, bottom): a rectangle's
+/// corners less the inset across each (CSS Backgrounds 3 §5.3).
+fn inset_geometry(g: og_render::UiGeometry, inset: [f32; 4]) -> og_render::UiGeometry {
+    match g {
+        og_render::UiGeometry::Rect { radii, corner } if inset != [0.0; 4] => {
+            let (vertical, shape) = match corner {
+                Corner::Css(c) => (c.vertical, c.shape),
+                Corner::Round => (radii, [1.0; 4]),
+                Corner::Squircle(n) => (radii, [n.max(1e-3).log2(); 4]),
+                Corner::Bevel => (radii, [0.0; 4]),
+                Corner::Notch => (radii, [-1.0; 4]),
+            };
+            let [l, t, r, b] = inset;
+            og_render::UiGeometry::Rect {
+                radii: [radii[0] - l, radii[1] - r, radii[2] - r, radii[3] - l].map(|v| v.max(0.0)),
+                corner: Corner::Css(og_render::UiCssCorners {
+                    vertical: [
+                        vertical[0] - t,
+                        vertical[1] - t,
+                        vertical[2] - b,
+                        vertical[3] - b,
+                    ]
+                    .map(|v| v.max(0.0)),
+                    shape,
+                }),
+            }
+        }
+        g => g,
+    }
+}
+
+fn inset_rect(r: Rect, [l, t, rt, b]: [f32; 4]) -> Rect {
+    Rect::new(
+        r.x + l,
+        r.y + t,
+        (r.width - l - rt).max(0.0),
+        (r.height - t - b).max(0.0),
+    )
+}
+
+fn plain_layer(mask: Option<og_render::UiMask>) -> DrawCmd {
+    DrawCmd::BeginLayer {
+        material: og_render::UiMaterial::Plain,
+        params: [[0.0; 4]; og_render::UI_MATERIAL_PARAMS],
+        mask,
+        expand: 0.0,
+        rect: Rect::default(),
+    }
+}
+
+fn end_layer(
+    geometry: Option<og_render::UiGeometry>,
+    at: &Placed,
+    opacity: f32,
+    blend: Blend,
+) -> DrawCmd {
+    DrawCmd::EndLayer {
+        geometry,
+        rect: at.rect,
+        opacity,
+        blend,
+        clip: at.clip,
+        ground: None,
     }
 }
 
@@ -633,6 +813,9 @@ pub struct ElementDraw {
     /// instead of the whole box (an SVG `<image>`, a rect or ellipse
     /// clip); a rect's radii are then view-box units too.
     pub view_rect: Option<[f32; 4]>,
+    /// Its CSS background and mask layers beyond its fills (a document
+    /// element's `background-*` and `mask-*`).
+    pub boxes: Option<Box<BoxLayers>>,
 }
 
 impl From<Material> for og_render::UiMaterial {
@@ -701,6 +884,7 @@ impl Default for ElementDraw {
             outlines: Vec::new(),
             view_box: None,
             view_rect: None,
+            boxes: None,
         }
     }
 }
@@ -725,6 +909,147 @@ impl ElementDraw {
                 .effects
                 .iter()
                 .any(|e| matches!(e, Effect::LayerBlur { .. }))
+    }
+
+    /// Whether CSS mask layers cut its subtree: it draws in a plain layer
+    /// of its own, outside its other layers, which the masks are applied
+    /// to and which carries its opacity and blend.
+    fn masked(&self) -> bool {
+        self.boxes.as_ref().is_some_and(|b| !b.masks.is_empty())
+    }
+
+    /// Whether a layer's composite carries its opacity and blend.
+    fn composited(&self) -> bool {
+        self.layered() || self.masked()
+    }
+
+    /// Its background or mask layers drawn in `at` with `blend`, each cut
+    /// to its painting area; `text`'s clip is drawn as the box's (the
+    /// caller cuts those layers to the text).
+    fn box_layers(
+        &self,
+        layers: &[BoxLayer],
+        theme: &Theme,
+        at: &Placed,
+        opacity: f32,
+        blend: impl Fn(&BoxLayer) -> Blend,
+    ) -> Vec<DrawCmd> {
+        let mut out = Vec::new();
+        for l in layers {
+            let (inset, mask_rect) = match l.clip {
+                LayerClip::Box(i) => (i, false),
+                LayerClip::Text => ([0.0; 4], false),
+                LayerClip::Rect(i) => (i, true),
+            };
+            let r = inset_rect(at.rect, inset);
+            if r.is_empty() {
+                continue;
+            }
+            let geometry = if mask_rect {
+                og_render::UiGeometry::Rect {
+                    radii: [0.0; 4],
+                    corner: Corner::Round,
+                }
+            } else {
+                inset_geometry(self.geometry(&self.shape, at), inset)
+            };
+            out.push(DrawCmd::Shape {
+                shape: Box::new(og_render::UiShape {
+                    geometry,
+                    center: Vec2::new(r.x + r.width / 2.0, r.y + r.height / 2.0),
+                    half: Vec2::new(r.width / 2.0, r.height / 2.0),
+                    transform: [1.0, 0.0, 0.0, 1.0],
+                    paint: l.resolve(theme, at.rect, r),
+                    mode: og_render::UiMode::Fill,
+                    opacity,
+                    blend: blend(l),
+                    layer: 0,
+                    clip: None,
+                }),
+                clip: at.clip,
+            });
+        }
+        out
+    }
+
+    /// Its backgrounds cut to its text (`background-clip: text`) around
+    /// `text`, the commands that draw it: the glyphs' coverage drawn
+    /// opaque in a layer of their own, the layers kept only there, then
+    /// the text as it is drawn (CSS Backgrounds 4 §2.1). `text` unchanged
+    /// when it has none.
+    pub(crate) fn clip_to_text(
+        &self,
+        theme: &Theme,
+        at: &Placed,
+        text: Vec<DrawCmd>,
+    ) -> Vec<DrawCmd> {
+        let Some(b) = self
+            .boxes
+            .as_ref()
+            .filter(|b| b.backgrounds.iter().any(|l| l.clip == LayerClip::Text))
+        else {
+            return text;
+        };
+        let mut out = vec![plain_layer(None)];
+        let opaque = |c: &mut DrawCmd| {
+            if let DrawCmd::StyledText { text, .. } = c {
+                *c = (**text).clone();
+            }
+            if let DrawCmd::Text { color, glow, .. } = c {
+                *color = [1.0; 4];
+                *glow = None;
+            }
+        };
+        let mut glyphs = 0;
+        for c in &text {
+            if matches!(c, DrawCmd::Text { .. } | DrawCmd::StyledText { .. }) {
+                let mut c = c.clone();
+                opaque(&mut c);
+                out.push(c);
+                glyphs += 1;
+            }
+        }
+        if glyphs == 0 {
+            return text;
+        }
+        let on_text: Vec<BoxLayer> = b
+            .backgrounds
+            .iter()
+            .filter(|l| l.clip == LayerClip::Text)
+            .cloned()
+            .collect();
+        // The bottom layer keeps itself on the glyphs; the rest blend over
+        // it there as they do in the box.
+        for (k, cmd) in self
+            .box_layers(&on_text, theme, at, 1.0, |l| l.blend)
+            .into_iter()
+            .enumerate()
+        {
+            let mut cmd = cmd;
+            if k == 0
+                && let DrawCmd::Shape { shape, .. } = &mut cmd
+            {
+                shape.blend = Blend::SourceIn;
+            }
+            out.push(cmd);
+        }
+        if on_text.len() > 1 {
+            // Later layers drew over the glyphs' edges too: the glyphs cut
+            // them again.
+            out.push(plain_layer(None));
+            for c in &text {
+                if matches!(c, DrawCmd::Text { .. } | DrawCmd::StyledText { .. }) {
+                    let mut c = c.clone();
+                    opaque(&mut c);
+                    out.push(c);
+                }
+            }
+            out.push(end_layer(None, at, 1.0, Blend::DestinationIn));
+        }
+        let o = if self.composited() { 1.0 } else { self.opacity };
+        out.push(end_layer(None, at, o, Blend::Normal));
+        out.extend(text);
+        out
     }
 
     /// Its layers: the outer one (its own, else its last filter's), which
@@ -944,6 +1269,9 @@ impl ElementDraw {
     /// shadows and inner glows.
     pub(crate) fn enter(&self, theme: &Theme, at: &Placed) -> Vec<DrawCmd> {
         let mut out = Vec::new();
+        if self.masked() {
+            out.push(plain_layer(None));
+        }
         if self.layered() {
             let (outer, inner) = self.stages();
             let (material, params) = match outer {
@@ -1001,7 +1329,7 @@ impl ElementDraw {
             }
         }
         // Inside a layer the composite carries the opacity and blend.
-        let (opacity, blend) = if self.layered() {
+        let (opacity, blend) = if self.composited() {
             (at.alpha, Blend::Normal)
         } else {
             (self.opacity * at.alpha, self.blend)
@@ -1085,6 +1413,24 @@ impl ElementDraw {
             }
             out.push(self.shape(at, self.paint(f, theme, at), o, opacity, blend));
         }
+        if let Some(b) = &self.boxes {
+            // The backgrounds, cut to the text drawn with it
+            // (`clip_to_text`) left out here; blending among themselves in a
+            // group of their own when a layer blends.
+            let boxed: Vec<BoxLayer> = b
+                .backgrounds
+                .iter()
+                .filter(|l| l.clip != LayerClip::Text)
+                .cloned()
+                .collect();
+            if b.isolate {
+                out.push(plain_layer(None));
+                out.extend(self.box_layers(&boxed, theme, at, 1.0, |l| l.blend));
+                out.push(end_layer(None, at, opacity, blend));
+            } else {
+                out.extend(self.box_layers(&boxed, theme, at, opacity, |_| blend));
+            }
+        }
         for e in &self.effects {
             let (mode, color) = match e {
                 Effect::InnerShadow {
@@ -1121,6 +1467,9 @@ impl ElementDraw {
                 opacity,
                 Blend::Normal,
             ));
+        }
+        if let Some(b) = self.boxes.as_ref().and_then(|b| b.border.as_ref()) {
+            out.extend(self.box_layers(std::slice::from_ref(b), theme, at, opacity, |_| blend));
         }
         if let Some(RiveDraw(player)) = &self.rive {
             let r = at.rect;
@@ -1174,7 +1523,7 @@ impl ElementDraw {
             out.push(DrawCmd::PopClip);
         }
         out.extend(self.strokes(theme, at));
-        out.extend(self.composite(at));
+        out.extend(self.composite(theme, at));
         out
     }
 
@@ -1182,19 +1531,19 @@ impl ElementDraw {
     /// fills ([`ElementDraw::strokes`] after [`ElementDraw::enter`]): a
     /// style part's border, under its label, so the two batch on their
     /// levels (docs/ui.md §3.3).
-    pub(crate) fn leave_stroked(&self, at: &Placed) -> Vec<DrawCmd> {
+    pub(crate) fn leave_stroked(&self, theme: &Theme, at: &Placed) -> Vec<DrawCmd> {
         let mut out = Vec::new();
         if self.clip == Clip::Shape {
             out.push(DrawCmd::PopClip);
         }
-        out.extend(self.composite(at));
+        out.extend(self.composite(theme, at));
         out
     }
 
     /// Its strokes.
     pub(crate) fn strokes(&self, theme: &Theme, at: &Placed) -> Vec<DrawCmd> {
         let mut out = Vec::new();
-        let (opacity, blend) = if self.layered() {
+        let (opacity, blend) = if self.composited() {
             (at.alpha, Blend::Normal)
         } else {
             (self.opacity * at.alpha, self.blend)
@@ -1228,8 +1577,9 @@ impl ElementDraw {
     }
 
     /// The layer's composite, when it draws offscreen.
-    fn composite(&self, at: &Placed) -> Vec<DrawCmd> {
+    fn composite(&self, theme: &Theme, at: &Placed) -> Vec<DrawCmd> {
         let mut out = Vec::new();
+        let masked = self.masked();
         if self.layered() {
             // Each inner stage composites its whole layer into the next.
             for _ in self.stages().1 {
@@ -1248,11 +1598,26 @@ impl ElementDraw {
             out.push(DrawCmd::EndLayer {
                 geometry: shaped.then(|| self.geometry(&self.shape, at)),
                 rect: at.rect,
-                opacity: self.opacity,
-                blend: self.blend,
+                opacity: if masked { 1.0 } else { self.opacity },
+                blend: if masked { Blend::Normal } else { self.blend },
                 clip: at.clip,
                 ground: None,
             });
+        }
+        if let Some(b) = self.boxes.as_ref().filter(|_| masked) {
+            // The mask (CSS Masking 1 §6.1): its layers, the bottom first,
+            // each combined with those under it by its operator, in a
+            // layer that keeps the subtree's where its alpha is.
+            out.push(plain_layer(None));
+            out.extend(self.box_layers(&b.masks, theme, at, 1.0, |l| l.blend));
+            out.push(end_layer(None, at, 1.0, Blend::DestinationIn));
+            let shaped = matches!(self.clip, Clip::Shape);
+            out.push(end_layer(
+                shaped.then(|| self.geometry(&self.shape, at)),
+                at,
+                self.opacity,
+                self.blend,
+            ));
         }
         out
     }

@@ -359,13 +359,53 @@ main { width: 100%; height: 100%; padding: 24px; gap: 16px; background: #4a5060;
 #[test]
 #[ignore = "requires GPU"]
 fn box_decor_matches_its_reference_frames() {
+    frames(PAGE, "box-decor", &[(1280, 720), (390, 844)]);
+}
+
+/// Background, mask and border image layers.
+const LAYERS: &str = r#"<meta name="component" content="t">
+<main id="Page">
+  <div class="grid">
+    <div class="card tiles"><p i18n="a">Tiles</p></div>
+    <div class="card origin"><p i18n="b">Content</p></div>
+    <div class="card blend"><p i18n="c">Blend</p></div>
+    <p class="clipped" i18n="d">Clipped text</p>
+    <div class="card framed"><p i18n="e">Frame</p></div>
+    <div class="card cut"><p i18n="f">Masks</p></div>
+    <div class="card notched"><p i18n="g">Mask border</p></div>
+    <div class="card fixed"></div>
+  </div>
+</main>
+<style>
+main { width: 100%; height: 100%; padding: 24px; background: #4a5060; }
+.grid { display: grid; grid-template-columns: 150px 150px 150px 150px; gap: 24px; }
+.card { height: 90px; padding: 12px; background: var(--panel); border-radius: 12px; }
+.card p { margin: 0; }
+.tiles { background: radial-gradient(circle, #ffd166 30%, transparent 32%) 0 0 / 20px 20px, #264653; }
+.origin { border: 8px dashed #ffffff66; padding: 16px; background: linear-gradient(90deg, #e76f51, #2a9d8f) content-box no-repeat; }
+.blend { background: linear-gradient(#ff0000, #0000ff), linear-gradient(90deg, #ffffff, #000000); background-blend-mode: multiply; }
+.clipped { font: var(--text-display); background: linear-gradient(90deg, #ffd166, #ef476f); background-clip: text; color: transparent; }
+.framed { border: 14px solid; border-image: repeating-linear-gradient(45deg, #ffd166 0 6px, #264653 6px 12px) 14 round; }
+.cut { background: #2a9d8f; mask: linear-gradient(#000, transparent), radial-gradient(circle at 70% 50%, #000 30%, transparent 32%) add; mask-composite: exclude, add; }
+.notched { background: #ef476f; mask-border: linear-gradient(#000, #000) 20 / 20px; mask-border-mode: alpha; }
+.fixed { background: linear-gradient(#ffffff22, #00000055), repeating-linear-gradient(90deg, #e9c46a 0 10px, #f4a261 10px 20px) fixed; }
+</style>"#;
+
+#[test]
+#[ignore = "requires GPU"]
+fn box_layers_match_their_reference_frames() {
+    frames(LAYERS, "box-layers", &[(1280, 720)]);
+}
+
+/// Renders `page` at each size and compares it with `references/metal/<name>-<width>.png`.
+fn frames(page: &str, stem: &str, sizes: &[(u32, u32)]) {
     use crate::support::*;
     use og_render::*;
-    for (width, height) in [(1280u32, 720u32), (390, 844)] {
+    for &(width, height) in sizes {
         let mut scene = RenderScene::new();
         let font = add_test_font(&mut scene);
         let mut ui = ui_with_font(font);
-        ui.define_document(UiDocument::parse("ui/t.svelte", PAGE).unwrap());
+        ui.define_document(UiDocument::parse("ui/t.svelte", page).unwrap());
         ui.mount_document(
             og_ui::reactive::SourceId::new("test", "t"),
             "t",
@@ -396,7 +436,7 @@ fn box_decor_matches_its_reference_frames() {
         let stats = renderer.render(&scene, &RenderTarget::Offscreen).unwrap();
         assert_eq!(stats.missing_glyphs, 0);
         let image = renderer.read_offscreen().unwrap();
-        let name = format!("box-decor-{width}.png");
+        let name = format!("{stem}-{width}.png");
         image::save_buffer(
             out_dir().join(&name),
             &image.pixels,

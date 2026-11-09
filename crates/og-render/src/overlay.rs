@@ -580,7 +580,7 @@ pub(crate) fn build<'a>(
     let composite_target = |k: u32| {
         keyed
             .iter()
-            .find(|(_, _, s, _)| *s == OverlaySource::Ui(ShapeSource::Composite(k)))
+            .find(|(_, _, s, _)| matches!(s, OverlaySource::Ui(ShapeSource::Composite(j, _)) if *j == k))
             .map(|(t, ..)| *t)
     };
     let mut depth = vec![0u32; layers.len()];
@@ -682,7 +682,7 @@ pub(crate) fn build<'a>(
     keyed.retain(|(t, _, s, _)| {
         let in_layer_ok = *t == 0 || !(s.needs_pyramid() || s.needs_copy());
         let composite_ok = match s {
-            OverlaySource::Ui(ShapeSource::Composite(k)) => drawn.contains(k),
+            OverlaySource::Ui(ShapeSource::Composite(k, _)) => drawn.contains(k),
             _ => true,
         };
         let target_ok = *t == 0 || drawn.contains(&(*t - 1));

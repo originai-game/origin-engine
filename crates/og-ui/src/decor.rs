@@ -91,6 +91,9 @@ pub struct BoxDecor {
     pub css: Option<Box<crate::doc::paint_css::CssPaint>>,
     /// Per-corner, elliptical or % `border-radius`, or a `corner-shape`.
     pub corners: Option<Corners>,
+    /// Its content box's edges in from its border box (its border and
+    /// padding), left, top, right, bottom: a layer's `content-box`.
+    pub content: [f32; 4],
 }
 
 /// CSS corners as written: each corner's horizontal and vertical radius
@@ -142,20 +145,82 @@ fn grow((h, c): Resolved, k: f32) -> Resolved {
 }
 
 impl BoxDecor {
+    /// Whether a layer is fixed to the viewport: moving the element moves
+    /// it over the layer, so its last commands cannot be moved instead.
+    pub(crate) fn fixed(&self) -> bool {
+        self.css.as_ref().is_some_and(|c| {
+            c.images
+                .iter()
+                .any(|l| l.attach == crate::doc::paint_css::Attach::Fixed)
+        })
+    }
+
     /// The draw it paints over: `base` (the element's draw or dressing)
     /// with its background, shadows and clip added; a plain rectangle
     /// when there is none.
     /// `size` is the placed box's, which a gradient's line and a clip
     /// path's percentages are resolved against.
-    pub(crate) fn over(&self, base: Option<&ElementDraw>, size: [f32; 2]) -> ElementDraw {
+    /// `frame` places its layers: its size, the viewport and its scroll.
+    pub(crate) fn over(
+        &self,
+        base: Option<&ElementDraw>,
+        frame: crate::doc::paint_css::LayerFrame,
+    ) -> ElementDraw {
+        let size = frame.size;
+        let frame = crate::doc::paint_css::LayerFrame {
+            borders: [3, 0, 1, 2].map(|k| self.borders[k].map_or(0.0, |b| b.width)),
+            padding: self.content,
+            ..frame
+        };
         let mut d = base.cloned().unwrap_or_default();
-        if let Some(bg) = &self.background {
-            d.fills.insert(0, bg.clone());
+        let layered = self.css.as_ref().is_some_and(|c| {
+            !c.images.is_empty()
+                || !c.masks.is_empty()
+                || c.mask_border.is_some()
+                || c.border_image.is_some()
+        });
+        match &self.background {
+            Some(bg) if layered => {
+                // The colour is the bottom layer, cut by the last layer's clip.
+                let clip = self.css.as_ref().map(|c| c.color_clip).unwrap_or_default();
+                let l = frame.colour(bg.clone(), clip);
+                d.boxes.get_or_insert_default().backgrounds.push(l);
+            }
+            Some(bg) => d.fills.insert(0, bg.clone()),
+            None => {}
         }
         if let Some(c) = &self.css {
             let [w, h] = size;
-            // The first image listed is on top: drawn last.
-            d.fills.extend(c.images.iter().rev().map(|l| l.paint(w, h)));
+            if layered {
+                let b = d.boxes.get_or_insert_default();
+                // The first listed is on top: drawn last.
+                b.backgrounds
+                    .extend(c.images.iter().rev().map(|l| frame.layer(l)));
+                b.isolate = c
+                    .images
+                    .iter()
+                    .any(|l| l.blend != crate::paint::Blend::Normal);
+                // The bottom of the group blends with nothing (a transparent
+                // backdrop leaves the source, Compositing 1 §5.1).
+                if let Some(first) = b.backgrounds.first_mut() {
+                    first.blend = crate::paint::Blend::Normal;
+                }
+                // The bottom mask layer combines with nothing: its operator
+                // is ignored (CSS Masking 1 §6.9).
+                b.masks.extend(c.masks.iter().rev().map(|l| frame.layer(l)));
+                if let Some(first) = b.masks.first_mut() {
+                    first.blend = crate::paint::Blend::Normal;
+                }
+                // The mask border and the mask layers both cut it.
+                if let Some(m) = &c.mask_border {
+                    let mut l = frame.border(m);
+                    if !b.masks.is_empty() {
+                        l.blend = crate::paint::Blend::SourceIn;
+                    }
+                    b.masks.push(l);
+                }
+                b.border = c.border_image.as_ref().map(|i| frame.border(i));
+            }
             d.effects.extend(c.effects.iter().cloned());
             d.filters.extend(c.filters.iter().cloned());
             if let Some(b) = c.blend {
@@ -170,9 +235,6 @@ impl BoxDecor {
             if let Some(shape) = &c.clip {
                 d.shape = shape.resolve(w, h);
                 d.clip = crate::paint::Clip::Shape;
-            }
-            if let Some(m) = &c.mask {
-                d.clip = crate::paint::Clip::Mask(crate::paint::Mask::Gradient(m.resolve(w, h)));
             }
         }
         // The first listed on top: drawn last.
@@ -220,7 +282,11 @@ impl BoxDecor {
             .map(|c| c.resolve(r.width, r.height))
             .unwrap_or(([at.radius; 4], round()));
         let uniform = self.borders.iter().all(|b| *b == self.borders[0]);
+        // A border image is drawn instead of the border's lines (CSS
+        // Backgrounds 3 §6), with the background.
+        let imaged = self.css.as_ref().is_some_and(|c| c.border_image.is_some());
         match self.borders[0] {
+            _ if imaged => {}
             Some(b) if uniform && !b.style.shaded() => {
                 ring(&mut out, at, r, corners, b, Inside);
             }

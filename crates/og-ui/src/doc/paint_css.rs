@@ -1,5 +1,5 @@
-//! CSS paint on a document element's box: gradients (`background`,
-//! `mask-image`), `backdrop-filter`, `filter`, `mix-blend-mode`,
+//! CSS paint on a document element's box: background, mask and border
+//! image layers, `backdrop-filter`, `filter`, `mix-blend-mode`,
 //! `text-shadow`, `clip-path` and `-og-material`. Each is parsed from its
 //! text when the stylesheet is read (a bad value is named there) and again
 //! when the element builds; what depends on the box (a gradient's angle, a
@@ -69,52 +69,250 @@ pub(crate) struct CssGradient {
     stops: Vec<(ColorRef, Option<Pos>)>,
 }
 
-/// A background layer as drawn: a gradient filling the box, or an image
-/// its texture region resolved.
+/// A layer's image as drawn: a gradient, or a texture region.
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) enum BgLayer {
+pub(crate) enum BgImage {
     Gradient(CssGradient),
-    Image {
+    Texture {
         texture: og_render::TextureHandle,
         uv: [f32; 4],
-        size: BgSize,
-        position: [BgPos; 2],
-        repeat: [og_render::UiRepeat; 2],
     },
 }
 
+/// A background or mask layer as drawn: its image and how it is sized,
+/// placed, repeated, cut and combined.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct BgLayer {
+    pub image: BgImage,
+    pub size: BgSize,
+    pub position: [BgPos; 2],
+    pub repeat: [og_render::UiRepeat; 2],
+    pub origin: BoxEdge,
+    pub clip: BoxEdge,
+    pub attach: Attach,
+    /// A background's blend mode, a mask's Porter-Duff operator.
+    pub blend: Blend,
+    /// A mask layer's luminance is its alpha (`mask-mode: luminance`).
+    pub luminance: bool,
+}
+
+/// A border image or mask border as drawn (CSS Backgrounds 3 §6, CSS
+/// Masking 1 §7).
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct BorderImg {
+    pub image: BgImage,
+    pub spec: BorderSpec,
+}
+
 impl BgLayer {
-    /// Its paint over a `w` × `h` box.
-    pub(crate) fn paint(&self, w: f32, h: f32) -> crate::paint::Paint {
+    /// Its paint for a positioning area `area` CSS px: a gradient is drawn
+    /// as a tile of its concrete size (CSS Images 3 §5.3: no natural size,
+    /// so `auto` takes the area's).
+    fn paint(&self, area: [f32; 2]) -> crate::paint::Paint {
         use crate::paint::{ImagePaint, Paint};
-        match self {
-            BgLayer::Gradient(g) => Paint::Gradient(g.resolve(w, h)),
-            BgLayer::Image {
-                texture,
-                uv,
-                size,
-                position,
-                repeat,
-            } => Paint::Image(ImagePaint {
+        let [aw, ah] = area;
+        let bg = |size| og_render::UiBackground {
+            size,
+            align: og_core::glam::Vec2::new(self.position[0].0, self.position[1].0),
+            offset: og_core::glam::Vec2::new(self.position[0].1, self.position[1].1),
+            repeat: self.repeat,
+            area: [0.0; 4],
+        };
+        match &self.image {
+            BgImage::Gradient(g) => {
+                let [w, h] = match self.size {
+                    BgSize::Cover | BgSize::Contain => [aw, ah],
+                    BgSize::Given([x, y]) => {
+                        [x.map_or(aw, |p| p.at(aw)), y.map_or(ah, |p| p.at(ah))]
+                    }
+                };
+                let (w, h) = (w.max(1e-3), h.max(1e-3));
+                Paint::GradientImage {
+                    gradient: g.resolve(w, h),
+                    size: [w, h],
+                    fit: og_render::UiFit::Background(bg(og_render::UiBackgroundSize::Given([
+                        Some(w),
+                        Some(h),
+                    ]))),
+                }
+            }
+            BgImage::Texture { texture, uv } => Paint::Image(ImagePaint {
                 texture: *texture,
                 uv: *uv,
                 size: [0.0; 2],
                 tint: ColorRef::Literal(Srgba::WHITE),
-                fit: og_render::UiFit::Background(og_render::UiBackground {
-                    size: match size {
-                        BgSize::Cover => og_render::UiBackgroundSize::Cover,
-                        BgSize::Contain => og_render::UiBackgroundSize::Contain,
-                        BgSize::Given([x, y]) => og_render::UiBackgroundSize::Given([
-                            x.map(|p| p.at(w)),
-                            y.map(|p| p.at(h)),
-                        ]),
-                    },
-                    align: og_core::glam::Vec2::new(position[0].0, position[1].0),
-                    offset: og_core::glam::Vec2::new(position[0].1, position[1].1),
-                    repeat: *repeat,
-                }),
+                fit: og_render::UiFit::Background(bg(match self.size {
+                    BgSize::Cover => og_render::UiBackgroundSize::Cover,
+                    BgSize::Contain => og_render::UiBackgroundSize::Contain,
+                    BgSize::Given([x, y]) => og_render::UiBackgroundSize::Given([
+                        x.map(|p| p.at(aw)),
+                        y.map(|p| p.at(ah)),
+                    ]),
+                })),
                 focal: [0.5; 2],
             }),
+        }
+    }
+}
+
+/// What a layer is drawn in, as the box around it: its border box, the
+/// edges of its padding and content boxes in from it (left, top, right,
+/// bottom), and where the screen and a local scroll put it.
+#[derive(Clone, Copy, Debug, Default)]
+pub(crate) struct LayerFrame {
+    pub size: [f32; 2],
+    pub borders: [f32; 4],
+    pub padding: [f32; 4],
+    /// The viewport's size (`fixed`).
+    pub viewport: [f32; 2],
+    /// Its scroll offset and its scrolled content's padding box size
+    /// (`local`), when it scrolls.
+    pub scroll: Option<([f32; 2], [f32; 2])>,
+}
+
+impl LayerFrame {
+    fn edge(&self, e: BoxEdge) -> [f32; 4] {
+        match e {
+            BoxEdge::Border | BoxEdge::Text | BoxEdge::NoClip => [0.0; 4],
+            BoxEdge::Padding => self.borders,
+            BoxEdge::Content => self.padding,
+        }
+    }
+
+    /// `l` as a box layer of an element.
+    pub(crate) fn layer(&self, l: &BgLayer) -> crate::paint::BoxLayer {
+        use crate::paint::{Area, BoxLayer, LayerClip};
+        let [w, h] = self.size;
+        let [ol, ot, or, ob] = self.edge(l.origin);
+        let (area, size) = match (l.attach, self.scroll) {
+            (Attach::Fixed, _) => {
+                let [vw, vh] = self.viewport;
+                (Area::Fixed([0.0, 0.0, vw, vh]), [vw, vh])
+            }
+            (Attach::Local, Some(([sx, sy], [cw, ch]))) => {
+                // The scrolled content's padding box, moved by the scroll;
+                // a content origin within it by the padding.
+                let [bl, bt, _, _] = self.borders;
+                let (dl, dt) = (ol - bl, ot - bt);
+                let (dr, db) = (or - self.borders[2], ob - self.borders[3]);
+                let (x0, y0) = (bl - sx + dl.max(0.0), bt - sy + dt.max(0.0));
+                let (aw, ah) = (
+                    (cw - dl.max(0.0) - dr.max(0.0)).max(0.0),
+                    (ch - dt.max(0.0) - db.max(0.0)).max(0.0),
+                );
+                (Area::Box([x0, y0, w - x0 - aw, h - y0 - ah]), [aw, ah])
+            }
+            _ => (
+                Area::Box([ol, ot, or, ob]),
+                [(w - ol - or).max(0.0), (h - ot - ob).max(0.0)],
+            ),
+        };
+        let clip = match l.clip {
+            BoxEdge::Text => LayerClip::Text,
+            BoxEdge::NoClip => LayerClip::Rect([-1e5; 4]),
+            e if l.luminance
+                || matches!(
+                    l.blend,
+                    Blend::SourceIn | Blend::SourceOut | Blend::Xor | Blend::DestinationIn
+                ) =>
+            {
+                LayerClip::Rect(self.edge(e))
+            }
+            e => LayerClip::Box(self.edge(e)),
+        };
+        BoxLayer {
+            paint: l.paint(size),
+            area,
+            clip,
+            blend: l.blend,
+            luminance: l.luminance,
+        }
+    }
+
+    /// The background colour `paint` as the bottom box layer, cut by `clip`.
+    pub(crate) fn colour(
+        &self,
+        paint: crate::paint::Paint,
+        clip: BoxEdge,
+    ) -> crate::paint::BoxLayer {
+        use crate::paint::{Area, BoxLayer, LayerClip};
+        BoxLayer {
+            paint,
+            area: Area::Box([0.0; 4]),
+            clip: match clip {
+                BoxEdge::Text => LayerClip::Text,
+                e => LayerClip::Box(self.edge(e)),
+            },
+            blend: Blend::Normal,
+            luminance: false,
+        }
+    }
+
+    /// A border image as a box layer: its slices, widths and outsets
+    /// resolved against the border widths and its area.
+    pub(crate) fn border(&self, b: &BorderImg) -> crate::paint::BoxLayer {
+        use crate::paint::{Area, BoxLayer, LayerClip};
+        let [w, h] = self.size;
+        let s = &b.spec;
+        // CSS order (top, right, bottom, left) to the renderer's (left,
+        // top, right, bottom); the border widths are left, top, right, bottom.
+        let bw = [
+            self.borders[1],
+            self.borders[2],
+            self.borders[3],
+            self.borders[0],
+        ];
+        let len = |v: BiLen, k: usize, whole: f32| match v {
+            BiLen::Px(p) => p,
+            BiLen::Frac(f) => f * whole,
+            BiLen::Times(n) => n * bw[k],
+            BiLen::Auto => -1.0,
+        };
+        let out: Vec<f32> = (0..4).map(|k| len(s.outset[k], k, 0.0).max(0.0)).collect();
+        let (aw, ah) = (w + out[1] + out[3], h + out[0] + out[2]);
+        let whole = |k: usize| if k % 2 == 0 { ah } else { aw };
+        let width: Vec<f32> = (0..4).map(|k| len(s.width[k], k, whole(k))).collect();
+        let gradient = matches!(b.image, BgImage::Gradient(_));
+        let slice: Vec<f32> = (0..4)
+            .map(|k| match s.slice[k] {
+                Pos::Px(p) => p.max(0.0),
+                // A fraction of a texture is the renderer's (negative); of
+                // a gradient, of its area.
+                Pos::Frac(f) if gradient => f.max(0.0) * whole(k),
+                Pos::Frac(f) => -f.max(0.0),
+            })
+            .collect();
+        let lt = |v: &[f32]| [v[3], v[0], v[1], v[2]];
+        let fit = og_render::UiFit::BorderImage(og_render::UiBorderImage {
+            slice: lt(&slice),
+            width: lt(&width),
+            repeat: s.repeat,
+            fill: s.fill,
+        });
+        let paint = match &b.image {
+            BgImage::Gradient(g) => crate::paint::Paint::GradientImage {
+                gradient: g.resolve(aw.max(1e-3), ah.max(1e-3)),
+                size: [aw.max(1e-3), ah.max(1e-3)],
+                fit,
+            },
+            BgImage::Texture { texture, uv } => {
+                crate::paint::Paint::Image(crate::paint::ImagePaint {
+                    texture: *texture,
+                    uv: *uv,
+                    size: [0.0; 2],
+                    tint: ColorRef::Literal(Srgba::WHITE),
+                    fit,
+                    focal: [0.5; 2],
+                })
+            }
+        };
+        let o = [-out[3], -out[0], -out[1], -out[2]];
+        BoxLayer {
+            paint,
+            area: Area::Box(o),
+            clip: LayerClip::Rect(o),
+            blend: Blend::Normal,
+            luminance: s.luminance,
         }
     }
 }
@@ -134,7 +332,12 @@ pub(crate) enum CssClip {
 pub(crate) struct CssPaint {
     /// `background` layers over its colour, the first on top.
     pub images: Vec<BgLayer>,
-    pub mask: Option<CssGradient>,
+    /// The colour's `background-clip` (the last layer's).
+    pub color_clip: BoxEdge,
+    /// `mask` layers, the first on top.
+    pub masks: Vec<BgLayer>,
+    pub mask_border: Option<BorderImg>,
+    pub border_image: Option<BorderImg>,
     pub effects: Vec<Effect>,
     /// `filter`'s layers, the first innermost.
     pub filters: Vec<Layer>,
@@ -407,24 +610,102 @@ pub(crate) enum BgSize {
 /// CSS px (`right 10px` is (1, −10), `30%` is (0.3, 0)).
 pub(crate) type BgPos = (f32, f32);
 
-/// One `background` layer (CSS Backgrounds 3 §3): its image and how it
-/// is sized, placed and repeated (a gradient fills the box).
+/// A box a layer is placed in or cut to (CSS Backgrounds 3 §3.7, 3.8;
+/// CSS Masking 1 §6.7, 6.8).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) enum BoxEdge {
+    #[default]
+    Border,
+    Padding,
+    Content,
+    /// `background-clip: text`.
+    Text,
+    /// `mask-clip: no-clip`.
+    NoClip,
+}
+
+/// `background-attachment`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) enum Attach {
+    #[default]
+    Scroll,
+    Fixed,
+    Local,
+}
+
+/// One `background` or `mask` layer (CSS Backgrounds 3 §3, CSS Masking 1
+/// §6): its image and how it is sized, placed, repeated, cut and combined.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct CssLayer {
     pub image: CssImage,
     pub size: BgSize,
     pub position: [BgPos; 2],
     pub repeat: [og_render::UiRepeat; 2],
+    pub origin: BoxEdge,
+    pub clip: BoxEdge,
+    pub attach: Attach,
+    pub blend: Blend,
+    /// `mask-mode: luminance`.
+    pub luminance: bool,
 }
 
 impl CssLayer {
-    fn new(image: CssImage) -> CssLayer {
+    pub(crate) fn new(image: CssImage, mask: bool) -> CssLayer {
         CssLayer {
             image,
             size: BgSize::Given([None; 2]),
             position: [(0.0, 0.0); 2],
             repeat: [og_render::UiRepeat::Repeat; 2],
+            origin: if mask {
+                BoxEdge::Border
+            } else {
+                BoxEdge::Padding
+            },
+            clip: BoxEdge::Border,
+            attach: Attach::Scroll,
+            blend: Blend::Normal,
+            luminance: false,
         }
+    }
+}
+
+/// A box keyword of a layer (`mask`: the SVG boxes as the border box).
+fn box_edge(w: &str, mask: bool) -> Option<BoxEdge> {
+    Some(match w {
+        "border-box" => BoxEdge::Border,
+        "padding-box" => BoxEdge::Padding,
+        "content-box" => BoxEdge::Content,
+        "fill-box" | "stroke-box" | "view-box" if mask => BoxEdge::Border,
+        _ => return None,
+    })
+}
+
+fn attach(w: &str) -> Option<Attach> {
+    Some(match w {
+        "scroll" => Attach::Scroll,
+        "fixed" => Attach::Fixed,
+        "local" => Attach::Local,
+        _ => return None,
+    })
+}
+
+/// `mask-composite`: its Porter-Duff operator over the layers under it.
+fn composite(w: &str) -> Option<Blend> {
+    Some(match w {
+        "add" => Blend::Normal,
+        "subtract" => Blend::SourceOut,
+        "intersect" => Blend::SourceIn,
+        "exclude" => Blend::Xor,
+        _ => return None,
+    })
+}
+
+/// `mask-mode`: luminance or not.
+fn mask_mode(w: &str) -> Option<bool> {
+    match w {
+        "luminance" => Some(true),
+        "alpha" | "match-source" => Some(false),
+        _ => None,
     }
 }
 
@@ -611,13 +892,15 @@ fn bg_repeat(t: &[Tok]) -> Result<[og_render::UiRepeat; 2], String> {
 }
 
 /// One layer of the `background` shorthand; `last` may end in a colour.
-fn layer(item: &str, last: bool) -> Result<(CssLayer, Option<Tok>), String> {
+fn layer(item: &str, last: bool, mask: bool) -> Result<(CssLayer, Option<Tok>), String> {
     let t = tokens(item)?;
     let mut img = None;
     let mut colour = None;
     let mut place = Vec::new();
     let mut size = None;
     let mut repeat = Vec::new();
+    let mut boxes = Vec::new();
+    let mut l = CssLayer::new(CssImage::None, mask);
     let mut k = 0;
     while k < t.len() {
         let tok = &t[k];
@@ -655,17 +938,18 @@ fn layer(item: &str, last: bool) -> Result<(CssLayer, Option<Tok>), String> {
             .is_some_and(|w| repeat_word(w).is_some() || w == "repeat-x" || w == "repeat-y")
         {
             repeat.push(tok.clone());
-        } else if ident == Some("scroll") {
-            // background-attachment's default.
-        } else if matches!(
-            ident,
-            Some("fixed" | "local" | "border-box" | "padding-box" | "content-box" | "text")
-        ) {
-            return Err(format!(
-                "'{}' is not supported here: a layer is placed in and cut to the element's box",
-                ident.unwrap()
-            ));
-        } else if last && colour.is_none() && is_color(tok) {
+        } else if let Some(e) = ident.and_then(|w| box_edge(w, mask)) {
+            boxes.push(e);
+        } else if ident == Some(if mask { "no-clip" } else { "text" }) {
+            l.clip = if mask { BoxEdge::NoClip } else { BoxEdge::Text };
+            boxes.push(l.clip);
+        } else if let Some(a) = ident.filter(|_| !mask).and_then(attach) {
+            l.attach = a;
+        } else if let Some(c) = ident.filter(|_| mask).and_then(composite) {
+            l.blend = c;
+        } else if let Some(m) = ident.filter(|_| mask).and_then(mask_mode) {
+            l.luminance = m;
+        } else if last && !mask && colour.is_none() && is_color(tok) {
             colour = Some(tok.clone());
         } else {
             return Err(format!(
@@ -680,7 +964,16 @@ fn layer(item: &str, last: bool) -> Result<(CssLayer, Option<Tok>), String> {
         }
         k += 1;
     }
-    let mut l = CssLayer::new(img.unwrap_or(CssImage::None));
+    l.image = img.unwrap_or(CssImage::None);
+    // One box is the origin and the clip; two the origin, then the clip
+    // (`text` and `no-clip` the clip only).
+    match boxes.as_slice() {
+        [] => {}
+        [BoxEdge::Text | BoxEdge::NoClip] => {}
+        [e] => (l.origin, l.clip) = (*e, *e),
+        [o, c] if !matches!(o, BoxEdge::Text | BoxEdge::NoClip) => (l.origin, l.clip) = (*o, *c),
+        _ => return Err("a layer takes one or two boxes: <origin> [<clip>]".into()),
+    }
     l.position = bg_position(&place)?;
     if let Some(s) = size {
         l.size = s;
@@ -705,7 +998,7 @@ pub(crate) fn background(text: &str) -> Option<Result<Background, String>> {
         let mut layers = Vec::new();
         let mut colour = None;
         for (k, item) in items.into_iter().enumerate() {
-            let (l, c) = layer(item, k + 1 == n)?;
+            let (l, c) = layer(item, k + 1 == n, false)?;
             layers.push(l);
             colour = colour.or(c);
         }
@@ -713,14 +1006,15 @@ pub(crate) fn background(text: &str) -> Option<Result<Background, String>> {
     })())
 }
 
-/// The longhands over a `background`'s layers: `background-size`,
-/// `-position` and `-repeat`, each a comma list repeated to the layers'
-/// count (CSS Backgrounds 3 §3); an empty value is the shorthand's own.
+/// The longhands over a `background`'s or `mask`'s layers, by their
+/// names after `background-` or `mask-` (`size`, `position`, `repeat`,
+/// `origin`, `clip`, `attachment`, `blend-mode`, `mode`, `composite`),
+/// each a comma list repeated to the layers' count (CSS Backgrounds 3
+/// §3); an empty value is the shorthand's own.
 pub(crate) fn longhands(
     layers: &mut [CssLayer],
-    size: Option<&str>,
-    position: Option<&str>,
-    repeat: Option<&str>,
+    values: &[(&str, Option<&str>)],
+    mask: bool,
 ) -> Result<(), String> {
     fn each<T: Copy>(
         text: Option<&str>,
@@ -740,32 +1034,430 @@ pub(crate) fn longhands(
         }
         Ok(())
     }
-    each(size, layers, bg_size, |l, v| l.size = v)?;
-    each(position, layers, bg_position, |l, v| l.position = v)?;
-    each(repeat, layers, bg_repeat, |l, v| l.repeat = v)?;
+    fn word<T>(
+        what: &'static str,
+        f: impl Fn(&str) -> Option<T>,
+    ) -> impl Fn(&[Tok]) -> Result<T, String> {
+        move |t: &[Tok]| {
+            match t {
+                [Tok::Ident(w)] => f(w),
+                _ => None,
+            }
+            .ok_or_else(|| format!("not a {what}"))
+        }
+    }
+    for (name, text) in values {
+        match *name {
+            "size" => each(*text, layers, bg_size, |l, v| l.size = v)?,
+            "position" => each(*text, layers, bg_position, |l, v| l.position = v)?,
+            "repeat" => each(*text, layers, bg_repeat, |l, v| l.repeat = v)?,
+            "origin" => each(*text, layers, word("box", |w| box_edge(w, mask)), |l, v| {
+                l.origin = v
+            })?,
+            "clip" => each(
+                *text,
+                layers,
+                word("clip box", |w| match w {
+                    "text" if !mask => Some(BoxEdge::Text),
+                    "no-clip" if mask => Some(BoxEdge::NoClip),
+                    w => box_edge(w, mask),
+                }),
+                |l, v| l.clip = v,
+            )?,
+            "attachment" => each(
+                *text,
+                layers,
+                word("attachment: scroll, fixed, local", attach),
+                |l, v| l.attach = v,
+            )?,
+            "blend-mode" => each(
+                *text,
+                layers,
+                word("blend mode", |w| blend(w).ok()),
+                |l, v| l.blend = v,
+            )?,
+            "mode" => each(
+                *text,
+                layers,
+                word("mask mode: alpha, luminance, match-source", mask_mode),
+                |l, v| l.luminance = v,
+            )?,
+            "composite" => each(
+                *text,
+                layers,
+                word("composite: add, subtract, intersect, exclude", composite),
+                |l, v| l.blend = v,
+            )?,
+            _ => {}
+        }
+    }
     Ok(())
 }
 
-/// Checks a `background-size`, `-position` or `-repeat` list (`name`).
-pub(crate) fn longhand(name: &str, text: &str) -> Result<(), String> {
-    let mut l = [CssLayer::new(CssImage::None)];
-    match name {
-        "background-size" => longhands(&mut l, Some(text), None, None),
-        "background-position" => longhands(&mut l, None, Some(text), None),
-        _ => longhands(&mut l, None, None, Some(text)),
+/// The props of the layer, border image and mask border longhands, in
+/// [`super::css::STYLE`]'s order.
+pub(crate) const C4_PROPS: [&str; 22] = [
+    "backgroundOrigin",
+    "backgroundClip",
+    "backgroundAttachment",
+    "backgroundBlendMode",
+    "maskSize",
+    "maskPosition",
+    "maskRepeat",
+    "maskOrigin",
+    "maskClip",
+    "maskMode",
+    "maskComposite",
+    "borderImageSource",
+    "borderImageSlice",
+    "borderImageWidth",
+    "borderImageOutset",
+    "borderImageRepeat",
+    "maskBorderSource",
+    "maskBorderSlice",
+    "maskBorderWidth",
+    "maskBorderOutset",
+    "maskBorderRepeat",
+    "maskBorderMode",
+];
+
+/// The layer longhands (after `background-` or `mask-`), each with its
+/// element prop.
+pub(crate) const BACKGROUND_LONGHANDS: [(&str, &str); 7] = [
+    ("size", "backgroundSize"),
+    ("position", "backgroundPosition"),
+    ("repeat", "backgroundRepeat"),
+    ("origin", "backgroundOrigin"),
+    ("clip", "backgroundClip"),
+    ("attachment", "backgroundAttachment"),
+    ("blend-mode", "backgroundBlendMode"),
+];
+pub(crate) const MASK_LONGHANDS: [(&str, &str); 7] = [
+    ("size", "maskSize"),
+    ("position", "maskPosition"),
+    ("repeat", "maskRepeat"),
+    ("origin", "maskOrigin"),
+    ("clip", "maskClip"),
+    ("mode", "maskMode"),
+    ("composite", "maskComposite"),
+];
+
+/// `mask-image` or the `mask` shorthand: its layers, the first on top
+/// (a `none` layer draws nothing and is left out).
+pub(crate) fn masks(text: &str) -> Result<Vec<CssLayer>, String> {
+    if text.trim() == "none" {
+        return Ok(Vec::new());
+    }
+    let mut out = Vec::new();
+    for item in super::boxes::items(text) {
+        let (l, _) = layer(item, false, true)?;
+        if l.image != CssImage::None {
+            out.push(l);
+        }
+    }
+    Ok(out)
+}
+
+/// A `border-image-width` or `-outset` value.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) enum BiLen {
+    Px(f32),
+    /// Of the border image area's side.
+    Frac(f32),
+    /// Times the border's width.
+    Times(f32),
+    Auto,
+}
+
+/// `border-image-*` or `mask-border-*` other than its source, top, right,
+/// bottom, left as CSS writes them.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct BorderSpec {
+    /// Image px (`Px`, a number) or a fraction of the image.
+    pub slice: [Pos; 4],
+    pub fill: bool,
+    pub width: [BiLen; 4],
+    pub outset: [BiLen; 4],
+    pub repeat: [og_render::UiEdge; 2],
+    pub luminance: bool,
+}
+
+/// One to four values as CSS's sides: top, right, bottom, left.
+fn sides<T: Copy>(t: &[Tok], f: impl Fn(&Tok) -> Result<T, String>) -> Result<[T; 4], String> {
+    let v: Vec<T> = t.iter().map(f).collect::<Result<_, _>>()?;
+    Ok(match v.as_slice() {
+        [a] => [*a; 4],
+        [a, b] => [*a, *b, *a, *b],
+        [a, b, c] => [*a, *b, *c, *b],
+        [a, b, c, d] => [*a, *b, *c, *d],
+        _ => return Err("one to four values: top, right, bottom, left".into()),
+    })
+}
+
+fn bi_len(t: &Tok, pct: bool, auto: bool) -> Result<BiLen, String> {
+    match t {
+        Tok::Ident(w) if w == "auto" && auto => Ok(BiLen::Auto),
+        t => match number(t)? {
+            (v, _) if v < 0.0 => Err("a border image's width or outset is not negative".into()),
+            (v, "") => Ok(BiLen::Times(v)),
+            (v, "px") => Ok(BiLen::Px(v)),
+            (v, "%") if pct => Ok(BiLen::Frac(v / 100.0)),
+            _ => Err(format!(
+                "'{}' is not <n>px, <n>{}",
+                describe(t),
+                if pct { ", <n>% or auto" } else { "" }
+            )),
+        },
     }
 }
 
-/// `mask-image`: one gradient, or `none`.
-pub(crate) fn mask(text: &str) -> Result<Option<CssGradient>, String> {
-    let t = tokens(text)?;
-    match t.as_slice() {
-        [Tok::Ident(w)] if w == "none" => Ok(None),
-        [g] => gradient(g)
-            .unwrap_or_else(|| Err("a mask-image is a gradient or none".into()))
-            .map(Some),
-        _ => Err("a mask-image is one gradient or none".into()),
+/// A border image's parts by longhand: source, slice, width, outset,
+/// repeat (and a mask border's mode), each `None` when not written.
+/// `mask` reads `mask-border`'s initial values.
+pub(crate) fn border_spec(
+    parts: [Option<&str>; 5],
+    mode: Option<&str>,
+    mask: bool,
+) -> Result<BorderSpec, String> {
+    use og_render::UiEdge as E;
+    let toks = |t: Option<&str>| -> Result<Option<Vec<Tok>>, String> {
+        t.filter(|t| !t.trim().is_empty()).map(tokens).transpose()
+    };
+    let mut b = BorderSpec {
+        slice: [if mask { Pos::Px(0.0) } else { Pos::Frac(1.0) }; 4],
+        fill: false,
+        width: [if mask { BiLen::Auto } else { BiLen::Times(1.0) }; 4],
+        outset: [BiLen::Times(0.0); 4],
+        repeat: [E::Stretch; 2],
+        luminance: false,
+    };
+    if let Some(t) = toks(parts[1])? {
+        b.fill = t.iter().any(|t| matches!(t, Tok::Ident(w) if w == "fill"));
+        let n: Vec<Tok> = t
+            .into_iter()
+            .filter(|t| !matches!(t, Tok::Ident(w) if w == "fill"))
+            .collect();
+        b.slice = sides(&n, |t| match number(t)? {
+            (v, _) if v < 0.0 => Err("a slice is not negative".into()),
+            (v, "") => Ok(Pos::Px(v)),
+            (v, "%") => Ok(Pos::Frac(v / 100.0)),
+            _ => Err(format!("'{}' is not a slice: <n> or <n>%", describe(t))),
+        })?;
     }
+    if let Some(t) = toks(parts[2])? {
+        b.width = sides(&t, |t| bi_len(t, true, true))?;
+    }
+    if let Some(t) = toks(parts[3])? {
+        b.outset = sides(&t, |t| bi_len(t, false, false))?;
+    }
+    if let Some(t) = toks(parts[4])? {
+        let w = |t: &Tok| match t {
+            Tok::Ident(w) => Ok(match w.as_str() {
+                "stretch" => E::Stretch,
+                "repeat" => E::Repeat,
+                "round" => E::Round,
+                "space" => E::Space,
+                _ => return Err(format!("'{w}' is not stretch, repeat, round or space")),
+            }),
+            t => Err(format!("'{}' is not a repeat", describe(t))),
+        };
+        b.repeat = match t.as_slice() {
+            [a] => [w(a)?; 2],
+            [a, b] => [w(a)?, w(b)?],
+            _ => return Err("one or two of stretch, repeat, round, space".into()),
+        };
+    }
+    if let Some(m) = mode.filter(|m| !m.trim().is_empty()) {
+        b.luminance = match m.trim() {
+            "luminance" => true,
+            "alpha" => false,
+            m => return Err(format!("'{m}' is not a mask border mode: alpha, luminance")),
+        };
+    }
+    Ok(b)
+}
+
+/// A `border-image` or `mask-border` shorthand split into its longhands'
+/// text: source, slice, width, outset, repeat, then a mask border's mode.
+pub(crate) fn border_shorthand(text: &str, mask: bool) -> Result<[String; 6], String> {
+    let t = tokens(text)?;
+    let mut out: [String; 6] = Default::default();
+    let push = |s: &mut String, tok: &Tok| {
+        if !s.is_empty() {
+            s.push(' ');
+        }
+        s.push_str(&tok_text(tok));
+    };
+    // 0 before the slice, 1 in it, 2 the width, 3 the outset.
+    let mut part = 0;
+    for tok in &t {
+        let ident = match tok {
+            Tok::Ident(w) => Some(w.as_str()),
+            _ => None,
+        };
+        if is_image(tok) || ident == Some("none") {
+            if !out[0].is_empty() {
+                return Err("one image".into());
+            }
+            push(&mut out[0], tok);
+            if part > 0 {
+                part = 4;
+            }
+        } else if matches!(tok, Tok::Slash) {
+            if !(1..3).contains(&part) {
+                return Err(
+                    "a width or outset follows the slice: <slice> / <width> / <outset>".into(),
+                );
+            }
+            part += 1;
+        } else if matches!(ident, Some("stretch" | "repeat" | "round" | "space")) {
+            push(&mut out[4], tok);
+            part = 4;
+        } else if mask && matches!(ident, Some("alpha" | "luminance")) {
+            push(&mut out[5], tok);
+        } else if matches!(tok, Tok::Num(..)) || ident == Some("fill") || ident == Some("auto") {
+            if part == 0 || part == 4 {
+                if !out[1].is_empty() {
+                    return Err("one slice".into());
+                }
+                part = 1;
+            }
+            push(&mut out[part.min(3)], tok);
+        } else {
+            return Err(format!("'{}' is not part of a border image", describe(tok)));
+        }
+    }
+    border_spec(
+        [
+            None,
+            Some(&out[1]),
+            Some(&out[2]),
+            Some(&out[3]),
+            Some(&out[4]),
+        ],
+        Some(&out[5]),
+        mask,
+    )?;
+    if !out[0].is_empty() && out[0] != "none" {
+        image(&tokens(&out[0])?[0])?;
+    }
+    Ok(out)
+}
+
+/// A token as CSS text again.
+fn tok_text(t: &Tok) -> String {
+    match t {
+        Tok::Ident(s) | Tok::Hash(s) => s.clone(),
+        Tok::Num(n, u) => format!("{n}{u}"),
+        Tok::Str(s) => format!("{s:?}"),
+        Tok::Func(f, args) => format!(
+            "{f}({})",
+            args.iter()
+                .map(|a| a.iter().map(tok_text).collect::<Vec<_>>().join(" "))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+        Tok::Slash => "/".into(),
+    }
+}
+
+/// A border image source: `none`, `url(…)` or a gradient.
+pub(crate) fn border_source(text: &str) -> Result<CssImage, String> {
+    match tokens(text)?.as_slice() {
+        [t] => image(t),
+        _ => Err("one image: url(…), a gradient or none".into()),
+    }
+}
+
+/// The longhands of `border-image` and `mask-border`: (CSS name after the
+/// prefix, prop). `mode` is the mask border's only.
+pub(crate) const BORDER_IMAGE_PROPS: [(&str, &str); 5] = [
+    ("source", "borderImageSource"),
+    ("slice", "borderImageSlice"),
+    ("width", "borderImageWidth"),
+    ("outset", "borderImageOutset"),
+    ("repeat", "borderImageRepeat"),
+];
+pub(crate) const MASK_BORDER_PROPS: [(&str, &str); 6] = [
+    ("source", "maskBorderSource"),
+    ("slice", "maskBorderSlice"),
+    ("width", "maskBorderWidth"),
+    ("outset", "maskBorderOutset"),
+    ("repeat", "maskBorderRepeat"),
+    ("mode", "maskBorderMode"),
+];
+
+/// The props a C4 declaration writes, each with its text, or `None` when
+/// `name` is not one of them: the background and mask layer longhands,
+/// `mask` and `mask-image`, and `border-image`, `mask-border` and their
+/// longhands. A bad value is named.
+pub(crate) fn lower(
+    name: &str,
+    value: &str,
+) -> Option<Result<Vec<(&'static str, String)>, String>> {
+    let v = value.trim().to_owned();
+    let one = |prop: &'static str| vec![(prop, v.clone())];
+    let check_layer = |mask: bool, key: &str| -> Result<(), String> {
+        let mut l = [CssLayer::new(CssImage::None, mask)];
+        longhands(&mut l, &[(key, Some(value))], mask)
+    };
+    let border = |props: &[(&'static str, &'static str)],
+                  mask: bool|
+     -> Result<Vec<(&'static str, String)>, String> {
+        let parts = border_shorthand(value, mask)?;
+        Ok(props.iter().zip(parts).map(|((_, p), v)| (*p, v)).collect())
+    };
+    Some(match name {
+        "mask" | "mask-image" => masks(value).map(|_| {
+            let mut out = one("maskImage");
+            if name == "mask" {
+                // The shorthand resets the longhands and the mask border.
+                out.extend(MASK_LONGHANDS.iter().map(|(_, p)| (*p, String::new())));
+                out.extend(MASK_BORDER_PROPS.iter().map(|(_, p)| (*p, String::new())));
+            }
+            out
+        }),
+        "border-image" => border(&BORDER_IMAGE_PROPS, false),
+        "mask-border" => border(&MASK_BORDER_PROPS, true),
+        n => {
+            if let Some(key) = n.strip_prefix("background-")
+                && let Some((_, prop)) = BACKGROUND_LONGHANDS.iter().find(|(k, _)| *k == key)
+            {
+                check_layer(false, key).map(|_| one(prop))
+            } else if let Some(key) = n.strip_prefix("mask-border-")
+                && let Some((_, prop)) = MASK_BORDER_PROPS.iter().find(|(k, _)| *k == key)
+            {
+                border_check(key, value, true).map(|_| one(prop))
+            } else if let Some(key) = n.strip_prefix("mask-")
+                && let Some((_, prop)) = MASK_LONGHANDS.iter().find(|(k, _)| *k == key)
+            {
+                check_layer(true, key).map(|_| one(prop))
+            } else if let Some(key) = n.strip_prefix("border-image-")
+                && let Some((_, prop)) = BORDER_IMAGE_PROPS.iter().find(|(k, _)| *k == key)
+            {
+                border_check(key, value, false).map(|_| one(prop))
+            } else {
+                return None;
+            }
+        }
+    })
+}
+
+fn border_check(key: &str, value: &str, mask: bool) -> Result<(), String> {
+    let mut parts = [None; 5];
+    let mut mode = None;
+    match key {
+        "source" => return border_source(value).map(|_| ()),
+        "mode" => mode = Some(value),
+        k => {
+            let i = ["source", "slice", "width", "outset", "repeat"]
+                .iter()
+                .position(|p| *p == k)
+                .unwrap_or(1);
+            parts[i] = Some(value);
+        }
+    }
+    border_spec(parts, mode, mask).map(|_| ())
 }
 
 /// One CSS filter function (Filter Effects 1 §13), in the order written.
@@ -1748,10 +2440,81 @@ mod tests {
         assert!(background("url(a) left left").unwrap().is_err());
         // Longhands repeat their lists over the layers.
         let mut l = background("url(a), url(b), url(c)").unwrap().unwrap().0;
-        longhands(&mut l, Some("cover, 50%"), None, Some("space round")).unwrap();
+        longhands(
+            &mut l,
+            &[
+                ("size", Some("cover, 50%")),
+                ("repeat", Some("space round")),
+            ],
+            false,
+        )
+        .unwrap();
         assert_eq!(l[0].size, BgSize::Cover);
         assert_eq!(l[1].size, BgSize::Given([Some(Pos::Frac(0.5)), None]));
         assert_eq!(l[2].size, BgSize::Cover);
         assert!(l.iter().all(|l| l.repeat == [R::Space, R::Round]));
+    }
+
+    /// Mask layers, border images and the layer boxes as CSS Masking 1 and
+    /// Backgrounds 3 read them. Ways it could fail: one box keyword not
+    /// taken as both origin and clip, `text` taken as an origin, a slice's
+    /// `fill` read as a value, three slice values not mirrored left from
+    /// right, `/ / 2px` (a skipped width) not reaching the outset, a mask
+    /// layer's composite or mode lost, a mask's default origin the padding
+    /// box (a background's), or `local` read on a mask.
+    #[test]
+    fn mask_and_border_image_layers_read_as_css_does() {
+        use og_render::UiEdge as E;
+        let m = masks(
+            "url(a) content-box subtract luminance, linear-gradient(red, blue) padding-box no-clip",
+        )
+        .unwrap();
+        assert_eq!(m.len(), 2);
+        assert_eq!(
+            (m[0].origin, m[0].clip),
+            (BoxEdge::Content, BoxEdge::Content)
+        );
+        assert_eq!((m[0].blend, m[0].luminance), (Blend::SourceOut, true));
+        assert_eq!(
+            (m[1].origin, m[1].clip),
+            (BoxEdge::Padding, BoxEdge::NoClip)
+        );
+        assert_eq!(masks("url(a)").unwrap()[0].origin, BoxEdge::Border);
+        assert!(masks("url(a) local").is_err());
+        let (l, _) = background("url(a) content-box text fixed")
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            (l[0].origin, l[0].clip, l[0].attach),
+            (BoxEdge::Content, BoxEdge::Text, Attach::Fixed)
+        );
+        assert!(background("url(a) text content-box").unwrap().is_err());
+        let b = border_shorthand("url(f) 10 20% 30 fill / / 2px round space", false).unwrap();
+        assert_eq!(b[0], "url(f)");
+        let spec = border_spec(
+            [None, Some(&b[1]), Some(&b[2]), Some(&b[3]), Some(&b[4])],
+            None,
+            false,
+        )
+        .unwrap();
+        assert!(spec.fill);
+        assert_eq!(
+            spec.slice,
+            [Pos::Px(10.0), Pos::Frac(0.2), Pos::Px(30.0), Pos::Frac(0.2)]
+        );
+        assert_eq!(
+            spec.width,
+            [BiLen::Times(1.0); 4],
+            "the skipped width keeps its initial 1"
+        );
+        assert_eq!(spec.outset, [BiLen::Px(2.0); 4]);
+        assert_eq!(spec.repeat, [E::Round, E::Space]);
+        let mb = border_spec([None; 5], Some("luminance"), true).unwrap();
+        assert_eq!(
+            (mb.slice[0], mb.width[0], mb.luminance),
+            (Pos::Px(0.0), BiLen::Auto, true)
+        );
+        assert!(border_shorthand("url(f) 10 / -1px", false).is_err());
+        assert!(border_spec([None, None, None, None, Some("tile")], None, false).is_err());
     }
 }

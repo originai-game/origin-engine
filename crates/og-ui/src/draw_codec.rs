@@ -62,7 +62,7 @@ fn ralign(r: &mut R) -> Option<UiAlign> {
     })
 }
 
-const BLENDS: [UiBlend; 17] = [
+const BLENDS: [UiBlend; 21] = [
     UiBlend::Normal,
     UiBlend::Multiply,
     UiBlend::Screen,
@@ -80,6 +80,10 @@ const BLENDS: [UiBlend; 17] = [
     UiBlend::Saturation,
     UiBlend::Color,
     UiBlend::Luminosity,
+    UiBlend::SourceIn,
+    UiBlend::SourceOut,
+    UiBlend::DestinationIn,
+    UiBlend::Xor,
 ];
 const REPEATS: [UiRepeat; 4] = [
     UiRepeat::Repeat,
@@ -336,7 +340,126 @@ fn edge(e: UiEdge) -> u8 {
         UiEdge::Stretch => 0,
         UiEdge::Repeat => 1,
         UiEdge::Round => 2,
+        UiEdge::Space => 3,
     }
+}
+
+fn redge(r: &mut R) -> Option<UiEdge> {
+    Some(match r.u8()? {
+        0 => UiEdge::Stretch,
+        1 => UiEdge::Repeat,
+        2 => UiEdge::Round,
+        3 => UiEdge::Space,
+        _ => return None,
+    })
+}
+
+fn fit(w: &mut W, f: &UiFit) {
+    match *f {
+        UiFit::Fill => w.u8(0),
+        UiFit::Cover => w.u8(1),
+        UiFit::Contain => w.u8(2),
+        UiFit::None => w.u8(3),
+        UiFit::NineSlice {
+            source,
+            dest,
+            edges,
+            center,
+        } => {
+            w.u8(4);
+            f4(w, &source);
+            f4(w, &dest);
+            w.u8(edge(edges));
+            w.u8(u8::from(center));
+        }
+        UiFit::Pattern {
+            tile,
+            rotation,
+            offset,
+            scroll,
+        } => {
+            w.u8(5);
+            v2(w, tile);
+            w.f32(rotation);
+            v2(w, offset);
+            v2(w, scroll);
+        }
+        UiFit::Background(b) => {
+            // The positioning area, when it is not the box, after a tag
+            // of its own (6 stays what it was).
+            w.u8(if b.area == [0.0; 4] { 6 } else { 8 });
+            match b.size {
+                UiBackgroundSize::Cover => w.u8(1),
+                UiBackgroundSize::Contain => w.u8(2),
+                UiBackgroundSize::Given(g) => {
+                    w.u8(0);
+                    for v in g {
+                        w.f32(v.unwrap_or(-1.0));
+                    }
+                }
+            }
+            v2(w, b.align);
+            v2(w, b.offset);
+            for r in b.repeat {
+                w.u8(index_of(&REPEATS, &r));
+            }
+            if b.area != [0.0; 4] {
+                f4(w, &b.area);
+            }
+        }
+        UiFit::BorderImage(b) => {
+            w.u8(7);
+            f4(w, &b.slice);
+            f4(w, &b.width);
+            w.u8(edge(b.repeat[0]));
+            w.u8(edge(b.repeat[1]));
+            w.u8(u8::from(b.fill));
+        }
+    }
+}
+
+fn rfit(r: &mut R) -> Option<UiFit> {
+    let tag = r.u8()?;
+    Some(match tag {
+        0 => UiFit::Fill,
+        1 => UiFit::Cover,
+        2 => UiFit::Contain,
+        3 => UiFit::None,
+        4 => UiFit::NineSlice {
+            source: rf4(r)?,
+            dest: rf4(r)?,
+            edges: redge(r)?,
+            center: r.u8()? != 0,
+        },
+        5 => UiFit::Pattern {
+            tile: rv2(r)?,
+            rotation: r.f32()?,
+            offset: rv2(r)?,
+            scroll: rv2(r)?,
+        },
+        6 | 8 => UiFit::Background(og_render::UiBackground {
+            size: match r.u8()? {
+                0 => UiBackgroundSize::Given([r.f32()?, r.f32()?].map(|v| (v >= 0.0).then_some(v))),
+                1 => UiBackgroundSize::Cover,
+                2 => UiBackgroundSize::Contain,
+                _ => return None,
+            },
+            align: rv2(r)?,
+            offset: rv2(r)?,
+            repeat: [
+                *REPEATS.get(r.u8()? as usize)?,
+                *REPEATS.get(r.u8()? as usize)?,
+            ],
+            area: if tag == 8 { rf4(r)? } else { [0.0; 4] },
+        }),
+        7 => UiFit::BorderImage(og_render::UiBorderImage {
+            slice: rf4(r)?,
+            width: rf4(r)?,
+            repeat: [redge(r)?, redge(r)?],
+            fill: r.u8()? != 0,
+        }),
+        _ => return None,
+    })
 }
 
 fn paint(w: &mut W, p: &UiPaint) {
@@ -350,117 +473,40 @@ fn paint(w: &mut W, p: &UiPaint) {
             gradient(w, g);
         }
         UiPaint::Image(im) => {
-            w.u8(2);
+            // A luminance image is its own tag (2 stays what it was).
+            w.u8(if im.luminance { 4 } else { 2 });
             w.u32(im.texture.slot());
             f4(w, &im.uv);
             v2(w, im.size);
             f4(w, &im.tint);
-            match im.fit {
-                UiFit::Fill => w.u8(0),
-                UiFit::Cover => w.u8(1),
-                UiFit::Contain => w.u8(2),
-                UiFit::None => w.u8(3),
-                UiFit::NineSlice {
-                    source,
-                    dest,
-                    edges,
-                    center,
-                } => {
-                    w.u8(4);
-                    f4(w, &source);
-                    f4(w, &dest);
-                    w.u8(edge(edges));
-                    w.u8(u8::from(center));
-                }
-                UiFit::Pattern {
-                    tile,
-                    rotation,
-                    offset,
-                    scroll,
-                } => {
-                    w.u8(5);
-                    v2(w, tile);
-                    w.f32(rotation);
-                    v2(w, offset);
-                    v2(w, scroll);
-                }
-                UiFit::Background(b) => {
-                    w.u8(6);
-                    match b.size {
-                        UiBackgroundSize::Cover => w.u8(1),
-                        UiBackgroundSize::Contain => w.u8(2),
-                        UiBackgroundSize::Given(g) => {
-                            w.u8(0);
-                            for v in g {
-                                w.f32(v.unwrap_or(-1.0));
-                            }
-                        }
-                    }
-                    v2(w, b.align);
-                    v2(w, b.offset);
-                    for r in b.repeat {
-                        w.u8(index_of(&REPEATS, &r));
-                    }
-                }
-            }
+            fit(w, &im.fit);
             v2(w, im.focal);
         }
         UiPaint::Layer(k) => {
             w.u8(3);
             w.u32(*k);
         }
+        UiPaint::GradientImage(g) => {
+            w.u8(5);
+            gradient(w, &g.gradient);
+            v2(w, g.size);
+            fit(w, &g.fit);
+            w.u8(u8::from(g.luminance));
+        }
     }
 }
 
 fn rpaint(r: &mut R) -> Option<UiPaint> {
-    Some(match r.u8()? {
+    let tag = r.u8()?;
+    Some(match tag {
         0 => UiPaint::Solid(rf4(r)?),
         1 => UiPaint::Gradient(rgradient(r)?),
-        2 => {
+        2 | 4 => {
             let texture = TextureHandle::from_slot(r.u32()?)?;
             let uv = rf4(r)?;
             let size = rv2(r)?;
             let tint = rf4(r)?;
-            let fit = match r.u8()? {
-                0 => UiFit::Fill,
-                1 => UiFit::Cover,
-                2 => UiFit::Contain,
-                3 => UiFit::None,
-                4 => UiFit::NineSlice {
-                    source: rf4(r)?,
-                    dest: rf4(r)?,
-                    edges: match r.u8()? {
-                        0 => UiEdge::Stretch,
-                        1 => UiEdge::Repeat,
-                        2 => UiEdge::Round,
-                        _ => return None,
-                    },
-                    center: r.u8()? != 0,
-                },
-                5 => UiFit::Pattern {
-                    tile: rv2(r)?,
-                    rotation: r.f32()?,
-                    offset: rv2(r)?,
-                    scroll: rv2(r)?,
-                },
-                6 => UiFit::Background(og_render::UiBackground {
-                    size: match r.u8()? {
-                        0 => UiBackgroundSize::Given(
-                            [r.f32()?, r.f32()?].map(|v| (v >= 0.0).then_some(v)),
-                        ),
-                        1 => UiBackgroundSize::Cover,
-                        2 => UiBackgroundSize::Contain,
-                        _ => return None,
-                    },
-                    align: rv2(r)?,
-                    offset: rv2(r)?,
-                    repeat: [
-                        *REPEATS.get(r.u8()? as usize)?,
-                        *REPEATS.get(r.u8()? as usize)?,
-                    ],
-                }),
-                _ => return None,
-            };
+            let fit = rfit(r)?;
             UiPaint::Image(UiImage {
                 texture,
                 uv,
@@ -468,9 +514,16 @@ fn rpaint(r: &mut R) -> Option<UiPaint> {
                 tint,
                 fit,
                 focal: rv2(r)?,
+                luminance: tag == 4,
             })
         }
         3 => UiPaint::Layer(r.u32()?),
+        5 => UiPaint::GradientImage(Box::new(og_render::UiGradientImage {
+            gradient: rgradient(r)?,
+            size: rv2(r)?,
+            fit: rfit(r)?,
+            luminance: r.u8()? != 0,
+        })),
         _ => return None,
     })
 }

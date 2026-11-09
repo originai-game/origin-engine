@@ -190,7 +190,13 @@ fn composite(in: UiOut, c: vec4<f32>) -> vec4<f32> {
     mask = mask_weight(mask, c.rgb);
   }
   let a = clamp(cov * c.a * mask * s.extra.x * instance_clip(s, in.position.xy), 0.0, 1.0);
-  return finish_color(c.rgb, a);
+  let out = finish_color(c.rgb, a);
+  // A Porter-Duff composite (src/ui/build.rs codes 17 to 20) blends premultiplied.
+  let op = (s.kinds.z >> 4u) & 31u;
+  if (op >= 17u && op <= 20u) {
+    return vec4<f32>(out.rgb * a, a);
+  }
+  return out;
 }
 
 fn material_input(in: UiOut) -> MaterialInput {

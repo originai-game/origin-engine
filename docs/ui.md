@@ -657,11 +657,37 @@ longhands take a comma list repeated over the layers, and a shorthand
 with an image resets them. og-render draws each layer as one image fill
 (`UiFit::Background`): its size, placement and repeat are resolved per
 pixel from the texture's own size, so a host never tells the UI an
-image's size. Layers are placed in and cut to the element's box, so
-`border-radius` and `clip-path` cut them; `background-origin`, `-clip`
-and `-attachment` other than `scroll` are not taken, and a gradient
-layer fills the box (its size, position and repeat are not taken). `mask-image: <gradient>`
-fades the element and its subtree by the gradient's alpha. `clip-path`
+image's size. A gradient has no natural size (CSS Images 3 §5.3): it is
+drawn as a tile of its concrete size (`auto` the positioning area's), its
+geometry resolved against the tile, then sized, placed and repeated as an
+image is (`UiPaint::GradientImage`). `background-origin` (`padding-box`
+by default) is the positioning area and `background-clip` (`border-box`,
+`padding-box`, `content-box`, `text`) where a layer paints, its corners
+following the border radius less the inset; the last layer's clip cuts
+the colour. `text` paints the layers only in the element's own glyphs (a
+coverage layer and a source-in composite). `background-attachment:
+fixed` places a layer in the viewport and `local` in a scroller's
+scrolled content; a fixed layer's element paints again when it moves.
+`background-blend-mode` blends each layer with those under it inside an
+isolated group (the bottom one, over nothing, draws normal). The shorthand
+takes the boxes, `text` and the attachment in a layer.
+
+`border-image` and its longhands (`-source` a gradient or `url()`,
+`-slice` numbers or percentages and `fill`, `-width` px, %, numbers or
+`auto`, `-outset`, `-repeat` `stretch`, `repeat`, `round`, `space`) draw
+the image's nine parts over the border box grown by the outset instead of
+the border lines (CSS Backgrounds 3 §6): the edges scaled to their widths,
+the middle as the top and left edges, widths that overlap scaled down
+together (`UiFit::BorderImage`). Masks follow CSS Masking 1: `mask` and
+`mask-image` take layers of `url()` and gradients with `mask-size`,
+`-position`, `-repeat`, `-origin` (`border-box` by default), `-clip`
+(`no-clip` too), `-mode` (`luminance` reads the colour's luminance) and
+`-composite` (`add`, `subtract`, `intersect`, `exclude`, each over the
+layers under it). `mask-border` and its longhands cut by a border image's
+nine parts, `slice 0` and `width auto` by default, with `mask-border-mode`.
+The subtree draws offscreen and is kept where the mask is; the layers
+combine through og-render's Porter-Duff blends (`UiBlend::SourceIn`,
+`SourceOut`, `DestinationIn`, `Xor`). `clip-path`
 takes `inset(… [round r])`, `circle()`, `ellipse()`, `polygon([rule,]
 …)` and `path([rule,] "…")` and cuts the element, its background and its
 children by the shape's analytic coverage (the path clip of inline SVG),

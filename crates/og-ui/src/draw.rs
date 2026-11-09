@@ -1893,6 +1893,7 @@ pub(crate) fn emit(
                         tint: *color,
                         fit: og_render::UiFit::Fill,
                         focal: Vec2::splat(0.5),
+                        luminance: false,
                     });
                 }
                 put(overlay, s, c);

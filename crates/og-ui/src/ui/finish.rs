@@ -915,10 +915,42 @@ impl Ui {
         for k in 0..self.orders.with(visit::feat::DECOR).len() {
             let i = self.orders.with(visit::feat::DECOR)[k];
             if let Some(decor) = &self.nodes[i].decor {
-                let r = self.nodes[i].rect;
+                let n = &self.nodes[i];
+                let r = n.rect;
+                // A scroller's content as a `local` layer's area: its
+                // scrolled padding box.
+                let scroll = n.scrolls().then(|| {
+                    let p = decor.content;
+                    let b = [3, 0, 1, 2].map(|k| decor.borders[k].map_or(0.0, |b| b.width));
+                    (
+                        [
+                            self.state
+                                .scroll_x
+                                .get(&n.key)
+                                .copied()
+                                .unwrap_or(0.0)
+                                .clamp(0.0, n.max_scroll_x()),
+                            self.state
+                                .scroll
+                                .get(&n.key)
+                                .copied()
+                                .unwrap_or(0.0)
+                                .clamp(0.0, n.max_scroll()),
+                        ],
+                        [
+                            (r.width - b[0] - b[2]).max(n.content_w + p[0] - b[0] + p[2] - b[2]),
+                            (r.height - b[1] - b[3]).max(n.content_h + p[1] - b[1] + p[3] - b[3]),
+                        ],
+                    )
+                });
                 let d = decor.over(
                     self.draws.get(&i).or_else(|| self.part_draws.get(&i)),
-                    [r.width, r.height],
+                    crate::doc::paint_css::LayerFrame {
+                        size: [r.width, r.height],
+                        viewport: [self.viewport.width, self.viewport.height],
+                        scroll,
+                        ..Default::default()
+                    },
                 );
                 self.decor_draws.insert(i, d);
             }

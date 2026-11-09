@@ -472,6 +472,7 @@ pub fn paints() -> RenderScene {
                 tint: [1.0; 4],
                 fit,
                 focal: Vec2::splat(0.5),
+                luminance: false,
             })
         };
         let pic_size = Vec2::new(128.0, 64.0);

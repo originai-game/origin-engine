@@ -31,6 +31,7 @@ const FIT_NONE: u32 = 3u;
 const FIT_NINE: u32 = 4u;
 const FIT_PATTERN: u32 = 5u;
 const FIT_BACKGROUND: u32 = 6u;
+const FIT_BORDER: u32 = 7u;
 
 struct ImageUv {
   // Where to sample.
@@ -42,35 +43,92 @@ struct ImageUv {
   mask: f32,
 };
 
+// Tiles across a middle `mid` CSS px long, `q` CSS px into it: `tile`
+// long, repeated (1, from its start or, `centered`, one tile centred),
+// rounded to a whole number (2) or spaced (3: whole tiles, the room left
+// shared out between and around them). The fraction of the tile, its
+// unwrapped twin (tiles), and 1 where a tile is drawn.
+fn tile_mid(q: f32, mid: f32, tile: f32, rep: u32, centered: bool) -> vec3<f32> {
+  var w = max(tile, 1e-4);
+  var o = 0.0;
+  var pitch = w;
+  var n = 1e9;
+  if (rep == 2u) {
+    w = mid / max(round(mid / w), 1.0);
+    pitch = w;
+  } else if (rep == 3u) {
+    n = floor(mid / w);
+    let gap = (mid - n * w) / (n + 1.0);
+    pitch = w + gap;
+    o = gap;
+  } else if (centered) {
+    o = (mid - w) * 0.5;
+  }
+  let k = (q - o) / pitch;
+  let t = fract(k) * pitch / w;
+  var drawn = select(0.0, 1.0, t <= 1.0);
+  if (rep == 3u && (k < 0.0 || k >= n)) {
+    drawn = 0.0;
+  }
+  return vec3<f32>(min(t, 1.0), k * pitch / w, drawn);
+}
+
 // One axis of a nine-slice: `x` CSS px from the box's start of `len`, the
 // border `a`, `b` drawn (CSS px) of source border `sa`, `sb` (fractions of
 // the region) — the fraction of the region to sample, its unwrapped twin,
-// and 1 in the centre.
-fn nine_axis(x: f32, len: f32, a: f32, b: f32, sa: f32, sb: f32, edges: u32, src_len: f32) -> vec3<f32> {
+// 1 in the centre, and 1 where it draws (not in a space's gap).
+fn nine_axis(x: f32, len: f32, a: f32, b: f32, sa: f32, sb: f32, edges: u32, src_len: f32) -> vec4<f32> {
   if (x < a) {
-    return vec3<f32>(x / max(a, 1e-4) * sa, x / max(a, 1e-4) * sa, 0.0);
+    return vec4<f32>(x / max(a, 1e-4) * sa, x / max(a, 1e-4) * sa, 0.0, 1.0);
   }
   if (x > len - b) {
     let t = (x - (len - b)) / max(b, 1e-4);
     let f = 1.0 - sb + t * sb;
-    return vec3<f32>(f, f, 0.0);
+    return vec4<f32>(f, f, 0.0, 1.0);
   }
   let mid = max(len - a - b, 1e-4);
   let src_mid = max(1.0 - sa - sb, 1e-4);
   let t = (x - a) / mid;
   if (edges == 0u) {
     let f = sa + t * src_mid;
-    return vec3<f32>(f, f, 1.0);
+    return vec4<f32>(f, f, 1.0, 1.0);
   }
   // A tile is the source's middle at the border's scale (its pixels per
-  // CSS px); round fits a whole number of them.
+  // CSS px).
   let scale = select(sa * src_len / max(a, 1e-4), sb * src_len / max(b, 1e-4), a <= 0.0);
-  var tile = src_mid * src_len / max(scale, 1e-4);
-  if (edges == 2u) {
-    tile = mid / max(round(mid / max(tile, 1e-4)), 1.0);
+  let r = tile_mid(x - a, mid, src_mid * src_len / max(scale, 1e-4), edges, false);
+  return vec4<f32>(sa + r.x * src_mid, sa + r.y * src_mid, 1.0, r.z);
+}
+
+// One axis of a CSS border image (CSS Backgrounds 3 §6.2): `x` CSS px
+// across `len`, the widths `a`, `b` drawn of the slices `sa`, `sb` (image
+// px of `src`), the middle at `scale` CSS px an image px filled by `rep`
+// (0 stretch, 1 repeat centred, 2 round, 3 space). The fraction of the
+// image, its unwrapped twin, 1 where it draws, and 1 in the middle.
+fn border_axis(x: f32, len: f32, a: f32, b: f32, sa: f32, sb: f32, src: f32, scale: f32, rep: u32) -> vec4<f32> {
+  let n = max(src, 1e-4);
+  if (x < a) {
+    let f = x / max(a, 1e-4) * sa / n;
+    return vec4<f32>(f, f, 1.0, 0.0);
   }
-  let k = (x - a) / max(tile, 1e-4);
-  return vec3<f32>(sa + fract(k) * src_mid, sa + k * src_mid, 1.0);
+  if (x > len - b) {
+    let f = (src - sb + (x - (len - b)) / max(b, 1e-4) * sb) / n;
+    return vec4<f32>(f, f, 1.0, 0.0);
+  }
+  let mid = max(len - a - b, 1e-4);
+  let smid = max(src - sa - sb, 1e-4);
+  if (rep == 0u) {
+    let f = (sa + (x - a) / mid * smid) / n;
+    return vec4<f32>(f, f, 1.0, 1.0);
+  }
+  let r = tile_mid(x - a, mid, smid * scale, rep, true);
+  return vec4<f32>((sa + r.x * smid) / n, (sa + r.y * smid) / n, r.z, 1.0);
+}
+
+// A border width over its slice: the CSS px an image px of that edge is
+// drawn at; 0 when either is (no scale).
+fn border_scale(w: f32, slice: f32) -> f32 {
+  return select(0.0, w / max(slice, 1e-6), w > 0.0 && slice > 0.0);
 }
 
 // One axis of a CSS background layer: `x` CSS px from the box's start of
@@ -136,6 +194,7 @@ fn image_uv(s: UiInstance, p: vec2<f32>) -> ImageUv {
       let ax = nine_axis(pos.x, size.x, s.paint4.x, s.paint4.z, src.x, src.z, edges, img.x);
       let ay = nine_axis(pos.y, size.y, s.paint4.y, s.paint4.w, src.y, src.w, edges, img.y);
       let center = ((s.kinds.y >> 12u) & 1u) == 1u;
+      out.mask = ax.w * ay.w;
       if (!center && ax.z > 0.5 && ay.z > 0.5) {
         out.mask = 0.0;
       }
@@ -161,7 +220,14 @@ fn image_uv(s: UiInstance, p: vec2<f32>) -> ImageUv {
       // region's texels, sized (paint2.xy given, -1 auto; cover 1,
       // contain 2 in the centre's bits), rounded, placed (paint3) and
       // repeated per axis (the edges' bits).
-      let nat = max(abs(s.paint.zw - s.paint.xy) * vec2<f32>(textureDimensions(sprite_tex, 0)), vec2<f32>(1.0));
+      // A gradient's natural size is its own (paint2.zw); the
+      // positioning area is paint4's edges in from the box's.
+      var nat = max(abs(s.paint.zw - s.paint.xy) * vec2<f32>(textureDimensions(sprite_tex, 0)), vec2<f32>(1.0));
+      if ((s.kinds.y & 15u) == PAINT_GRADIENT_IMAGE) {
+        nat = s.paint2.zw;
+      }
+      let pos = pos - s.paint4.xy;
+      let size = size - s.paint4.xy - s.paint4.zw;
       let sizing = (s.kinds.y >> 12u) & 3u;
       let g = s.paint2.xy;
       var w = nat;
@@ -200,6 +266,48 @@ fn image_uv(s: UiInstance, p: vec2<f32>) -> ImageUv {
       out.raw = mix(s.paint.xy, s.paint.zw, vec2<f32>(ax.y, ay.y));
       return out;
     }
+    case 7u: {
+      // A CSS border image (UiBorderImage): slices paint3 (image px; a
+      // negative one a fraction of the image), widths paint4 (CSS px; a
+      // negative one its slice's px), left, top, right, bottom, scaled
+      // down together where they overlap. The middle of the top and
+      // bottom rows tiles at its own edge's scale, the middle row at the
+      // top's (else the bottom's); columns likewise from the left and
+      // right (CSS Backgrounds 3 §6.2).
+      var nat = max(abs(s.paint.zw - s.paint.xy) * vec2<f32>(textureDimensions(sprite_tex, 0)), vec2<f32>(1.0));
+      if ((s.kinds.y & 15u) == PAINT_GRADIENT_IMAGE) {
+        nat = s.paint2.zw;
+      }
+      let img = nat;
+      let natv = vec4<f32>(nat.x, nat.y, nat.x, nat.y);
+      let sl = min(select(s.paint3, -s.paint3 * natv, s.paint3 < vec4<f32>(0.0)), natv);
+      var wd = select(s.paint4, sl, s.paint4 < vec4<f32>(0.0));
+      let fit = min(min(size.x / max(wd.x + wd.z, 1e-4), size.y / max(wd.y + wd.w, 1e-4)), 1.0);
+      wd = wd * fit;
+      let top = border_scale(wd.y, sl.y);
+      let bottom = border_scale(wd.w, sl.w);
+      let left = border_scale(wd.x, sl.x);
+      let right = border_scale(wd.z, sl.z);
+      var fx = select(top, bottom, pos.y > size.y - wd.w);
+      if (fx <= 0.0) {
+        fx = select(bottom, top, pos.y > size.y - wd.w);
+      }
+      var fy = select(left, right, pos.x > size.x - wd.z);
+      if (fy <= 0.0) {
+        fy = select(right, left, pos.x > size.x - wd.z);
+      }
+      let rx = (s.kinds.y >> 8u) & 3u;
+      let ry = (s.kinds.y >> 10u) & 3u;
+      let ax = border_axis(pos.x, size.x, wd.x, wd.z, sl.x, sl.z, img.x, select(1.0, fx, fx > 0.0), rx);
+      let ay = border_axis(pos.y, size.y, wd.y, wd.w, sl.y, sl.w, img.y, select(1.0, fy, fy > 0.0), ry);
+      out.mask = ax.z * ay.z;
+      if (((s.kinds.y >> 12u) & 1u) == 0u && ax.w > 0.5 && ay.w > 0.5) {
+        out.mask = 0.0;
+      }
+      out.uv = mix(s.paint.xy, s.paint.zw, vec2<f32>(ax.x, ay.x));
+      out.raw = mix(s.paint.xy, s.paint.zw, vec2<f32>(ax.y, ay.y));
+      return out;
+    }
     default: {}
   }
   let c = clamp(f, vec2<f32>(0.0), vec2<f32>(1.0));
@@ -218,16 +326,27 @@ fn blend_out(rgb: vec3<f32>, a: f32, blend: u32) -> vec4<f32> {
   }
   switch blend {
     case 1u: { return vec4<f32>(mix(vec3<f32>(1.0), col, a), 1.0); }
-    case 2u, 3u: { return vec4<f32>(col * a, a); }
+    // Screen, add and the Porter-Duff operators blend premultiplied.
+    case 2u, 3u, 17u, 18u, 19u, 20u: { return vec4<f32>(col * a, a); }
     default: { return vec4<f32>(col, a); }
   }
 }
 
 fn shape_color(s: UiInstance, in: UiOut, im: ImageUv, gx: vec2<f32>, gy: vec2<f32>) -> vec4<f32> {
   var c = flat_paint(s, in.local, in.position.xy);
-  if ((s.kinds.y & 15u) == PAINT_IMAGE) {
+  let kind = s.kinds.y & 15u;
+  if (kind == PAINT_IMAGE) {
     let t = textureSampleGrad(sprite_tex, sprite_sampler, im.uv, gx, gy);
     c = t * s.color * vec4<f32>(1.0, 1.0, 1.0, im.mask);
+  } else if (kind == PAINT_GRADIENT_IMAGE) {
+    c = gradient_color(u32(s.extra.y), im.uv, s.paint2.zw, in.position.xy);
+    c.a *= im.mask;
+  }
+  if (((s.kinds.y >> 16u) & 1u) == 1u && (kind == PAINT_IMAGE || kind == PAINT_GRADIENT_IMAGE)) {
+    // A luminance mask (CSS Masking 1 §7.1): the luminance of its
+    // sRGB-encoded colour times its alpha.
+    let l = dot(encode(clamp(c.rgb, vec3<f32>(0.0), vec3<f32>(1.0))), vec3<f32>(0.2125, 0.7154, 0.0721));
+    c = vec4<f32>(1.0, 1.0, 1.0, c.a * l);
   }
   return c;
 }

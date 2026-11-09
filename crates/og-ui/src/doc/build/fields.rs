@@ -74,16 +74,23 @@ impl RenderFields {
 /// `background` names by `url(<handle>)`: settlement resolves its fields
 /// again without the host, so they are looked up when it builds.
 fn css_textures(r: &Resolved, env: &dyn crate::bind::Env) -> Vec<(f64, og_render::TextureHandle)> {
-    let Some(Ok((layers, _))) = r
-        .str("backgroundImage")
-        .and_then(crate::doc::paint_css::background)
-    else {
-        return Vec::new();
-    };
-    layers
+    use crate::doc::paint_css as p;
+    let mut images = Vec::new();
+    if let Some(Ok((layers, _))) = r.str("backgroundImage").and_then(p::background) {
+        images.extend(layers.into_iter().map(|l| l.image));
+    }
+    if let Some(Ok(layers)) = r.str("maskImage").map(p::masks) {
+        images.extend(layers.into_iter().map(|l| l.image));
+    }
+    for prop in ["borderImageSource", "maskBorderSource"] {
+        if let Some(Ok(i)) = r.str(prop).filter(|v| !v.is_empty()).map(p::border_source) {
+            images.push(i);
+        }
+    }
+    images
         .iter()
-        .filter_map(|l| match &l.image {
-            crate::doc::paint_css::CssImage::Url(u) => {
+        .filter_map(|i| match i {
+            p::CssImage::Url(u) => {
                 let h = u.parse::<f64>().ok()?;
                 Some((h, env.texture(h)?))
             }
@@ -208,7 +215,12 @@ impl Ui {
         // background too: it is drawn with them.
         if (css.as_ref().is_some_and(|c| {
             c.clip.is_some()
-                || c.mask.is_some()
+                || !c.masks.is_empty()
+                || c.mask_border.is_some()
+                || c.color_clip != crate::doc::paint_css::BoxEdge::Border
+                || c.images
+                    .iter()
+                    .any(|l| l.blend != crate::paint::Blend::Normal)
                 || c.blend.is_some()
                 || c.layer.is_some()
                 || !c.filters.is_empty()
@@ -260,6 +272,10 @@ impl Ui {
         if r.has("radius") && (el.part.is_some() || el.frame.is_some()) {
             d.radius = Some(el.radius);
         }
+        if d.css.is_some() {
+            let p = el.padding;
+            d.content = [p.left, p.top, p.right, p.bottom];
+        }
         (d != BoxDecor::default()).then_some(d)
     }
 
@@ -274,57 +290,100 @@ impl Ui {
     ) -> Option<crate::doc::paint_css::CssPaint> {
         use crate::doc::paint_css as p;
         let mut c = p::CssPaint::default();
-        if let Some(Ok((mut layers, _))) = r.str("backgroundImage").and_then(p::background) {
-            if let Err(e) = p::longhands(
-                &mut layers,
-                r.str("backgroundSize"),
-                r.str("backgroundPosition"),
-                r.str("backgroundRepeat"),
-            ) {
-                warn.push(e);
-            }
-            for l in layers {
-                let (texture, uv) = match l.image {
-                    p::CssImage::None => continue,
-                    p::CssImage::Gradient(g) => {
-                        c.images.push(p::BgLayer::Gradient(g));
-                        continue;
-                    }
-                    // A texture by its handle, else an atlas icon by name,
-                    // as `<image href>` resolves one.
-                    p::CssImage::Url(u) => match u.parse::<f64>() {
-                        Ok(h) => match textures.iter().find(|(k, _)| *k == h) {
-                            Some((_, t)) => (*t, [0.0, 0.0, 1.0, 1.0]),
-                            None => {
-                                warn.push(format!("background: url({u}) names no texture"));
-                                continue;
-                            }
+        // A layer's image: a gradient, a texture by its handle, else an
+        // atlas icon by name, as `<image href>` resolves one.
+        let mut image = |what: &str, i: p::CssImage| -> Option<p::BgImage> {
+            Some(match i {
+                p::CssImage::None => return None,
+                p::CssImage::Gradient(g) => p::BgImage::Gradient(g),
+                p::CssImage::Url(u) => match u.parse::<f64>() {
+                    Ok(h) => match textures.iter().find(|(k, _)| *k == h) {
+                        Some((_, t)) => p::BgImage::Texture {
+                            texture: *t,
+                            uv: [0.0, 0.0, 1.0, 1.0],
                         },
-                        Err(_) => match self.icons().find(&u) {
-                            Some(crate::ui::IconCell::Image(t, uv)) => (t, uv),
-                            Some(_) => {
-                                warn.push(format!(
-                                    "background: url({u}) is a glyph icon, not an image: write <icon name=\"{u}\">"
-                                ));
-                                continue;
-                            }
-                            None => {
-                                warn.push(format!("background: url({u}) names no atlas image"));
-                                continue;
-                            }
-                        },
+                        None => {
+                            warn.push(format!("{what}: url({u}) names no texture"));
+                            return None;
+                        }
                     },
-                };
-                c.images.push(p::BgLayer::Image {
-                    texture,
-                    uv,
-                    size: l.size,
-                    position: l.position,
-                    repeat: l.repeat,
-                });
+                    Err(_) => match self.icons().find(&u) {
+                        Some(crate::ui::IconCell::Image(texture, uv)) => {
+                            p::BgImage::Texture { texture, uv }
+                        }
+                        Some(_) => {
+                            warn.push(format!(
+                                "{what}: url({u}) is a glyph icon, not an image: write <icon name=\"{u}\">"
+                            ));
+                            return None;
+                        }
+                        None => {
+                            warn.push(format!("{what}: url({u}) names no atlas image"));
+                            return None;
+                        }
+                    },
+                },
+            })
+        };
+        let layer = |l: p::CssLayer, image: p::BgImage| p::BgLayer {
+            image,
+            size: l.size,
+            position: l.position,
+            repeat: l.repeat,
+            origin: l.origin,
+            clip: l.clip,
+            attach: l.attach,
+            blend: l.blend,
+            luminance: l.luminance,
+        };
+        let mut errors = Vec::new();
+        let mut longhands = |layers: &mut [p::CssLayer], props: &[(&str, &str)], mask: bool| {
+            let values: Vec<(&str, Option<&str>)> =
+                props.iter().map(|(k, prop)| (*k, r.str(prop))).collect();
+            if let Err(e) = p::longhands(layers, &values, mask) {
+                errors.push(e);
+            }
+        };
+        if let Some(Ok((mut layers, _))) = r.str("backgroundImage").and_then(p::background) {
+            longhands(&mut layers, &p::BACKGROUND_LONGHANDS, false);
+            c.color_clip = layers.last().map(|l| l.clip).unwrap_or_default();
+            for l in layers {
+                if let Some(i) = image("background", l.image.clone()) {
+                    c.images.push(layer(l, i));
+                }
+            }
+        } else if let Some(v) = r.str("backgroundClip").filter(|v| !v.is_empty()) {
+            // A colour alone, cut by its clip.
+            let mut l = [p::CssLayer::new(p::CssImage::None, false)];
+            if p::longhands(&mut l, &[("clip", Some(v))], false).is_ok() {
+                c.color_clip = l[0].clip;
             }
         }
-        c.mask = r.str("maskImage").and_then(|v| p::mask(v).ok()).flatten();
+        if let Some(Ok(mut layers)) = r.str("maskImage").map(p::masks) {
+            longhands(&mut layers, &p::MASK_LONGHANDS, true);
+            for l in layers {
+                if let Some(i) = image("mask", l.image.clone()) {
+                    c.masks.push(layer(l, i));
+                }
+            }
+        }
+        let mut border = |props: &[(&str, &str)], mask: bool| -> Option<p::BorderImg> {
+            let get = |k: usize| r.str(props[k].1).filter(|v| !v.trim().is_empty());
+            let source = image(props[0].1, p::border_source(get(0)?).ok()?)?;
+            p::border_spec(
+                [None, get(1), get(2), get(3), get(4)],
+                props.get(5).and_then(|_| get(5)),
+                mask,
+            )
+            .ok()
+            .map(|spec| p::BorderImg {
+                image: source,
+                spec,
+            })
+        };
+        c.border_image = border(&p::BORDER_IMAGE_PROPS, false);
+        c.mask_border = border(&p::MASK_BORDER_PROPS, true);
+        warn.extend(errors);
         if let Some(Ok(Some(e))) = r.str("backdropFilter").map(p::backdrop) {
             c.effects.push(e);
         }

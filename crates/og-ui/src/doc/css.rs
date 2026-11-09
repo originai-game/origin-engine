@@ -130,6 +130,28 @@ pub const STYLE: &[(&str, &str)] = &[
     ("backgroundPosition", "background-position"),
     ("backgroundRepeat", "background-repeat"),
     ("maskImage", "mask-image"),
+    ("backgroundOrigin", "background-origin"),
+    ("backgroundClip", "background-clip"),
+    ("backgroundAttachment", "background-attachment"),
+    ("backgroundBlendMode", "background-blend-mode"),
+    ("maskSize", "mask-size"),
+    ("maskPosition", "mask-position"),
+    ("maskRepeat", "mask-repeat"),
+    ("maskOrigin", "mask-origin"),
+    ("maskClip", "mask-clip"),
+    ("maskMode", "mask-mode"),
+    ("maskComposite", "mask-composite"),
+    ("borderImageSource", "border-image-source"),
+    ("borderImageSlice", "border-image-slice"),
+    ("borderImageWidth", "border-image-width"),
+    ("borderImageOutset", "border-image-outset"),
+    ("borderImageRepeat", "border-image-repeat"),
+    ("maskBorderSource", "mask-border-source"),
+    ("maskBorderSlice", "mask-border-slice"),
+    ("maskBorderWidth", "mask-border-width"),
+    ("maskBorderOutset", "mask-border-outset"),
+    ("maskBorderRepeat", "mask-border-repeat"),
+    ("maskBorderMode", "mask-border-mode"),
     ("backdropFilter", "backdrop-filter"),
     ("filter", "filter"),
     ("mixBlendMode", "mix-blend-mode"),
@@ -271,6 +293,14 @@ pub(crate) fn targets(name: &str) -> impl Iterator<Item = &'static str> + '_ {
         "place-content" => vec!["alignContent", "align", "safeJustify"],
         "place-items" => vec!["cross", "justifyItems", "safeAlign"],
         "place-self" => vec!["alignSelf", "justifySelf", "safeAlign"],
+        "mask" => ["maskImage"]
+            .iter()
+            .chain(&super::paint_css::C4_PROPS[4..11])
+            .chain(&super::paint_css::C4_PROPS[16..])
+            .copied()
+            .collect(),
+        "border-image" => super::paint_css::C4_PROPS[11..16].to_vec(),
+        "mask-border" => super::paint_css::C4_PROPS[16..].to_vec(),
         "padding-block" => vec!["paddingTop", "paddingBottom"],
         "padding-inline" => vec!["paddingRight", "paddingLeft"],
         "padding-block-start" => vec!["paddingTop"],
@@ -317,6 +347,7 @@ fn conv(prop: &str) -> Conv {
         "outlineColor" => Conv::Paint,
         "outlineStyle" | "overflowX" | "overflowY" | "scrollbarWidth" => Conv::Kebab,
         "boxShadow" | "uv" => Conv::Raw,
+        p if super::paint_css::C4_PROPS.contains(&p) => Conv::Raw,
         "backgroundImage"
         | "backgroundSize"
         | "backgroundPosition"
@@ -1709,7 +1740,7 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
             // empty value), so an earlier `background-size` stops applying
             // and a later one still does.
             if name == "background" {
-                for prop in ["backgroundSize", "backgroundPosition", "backgroundRepeat"] {
+                for (_, prop) in super::paint_css::BACKGROUND_LONGHANDS {
                     out.push(e(prop, vec![Value::String(String::new())]));
                 }
             }
@@ -1754,20 +1785,14 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
             }?;
             Ok(vec![e(prop, vec![Value::String(value.trim().to_owned())])])
         }
-        "background-size" | "background-position" | "background-repeat" if !state => {
-            super::paint_css::longhand(name, value)?;
-            let prop = match name {
-                "background-size" => "backgroundSize",
-                "background-position" => "backgroundPosition",
-                _ => "backgroundRepeat",
-            };
-            Ok(vec![e(prop, vec![Value::String(value.trim().to_owned())])])
-        }
-        "mask-image" | "backdrop-filter" | "filter" | "mix-blend-mode" | "text-shadow"
-        | "clip-path" | "-og-material" => {
+        n if !state && let Some(parts) = super::paint_css::lower(n, value) => Ok(parts?
+            .into_iter()
+            .map(|(prop, v)| e(prop, vec![Value::String(v)]))
+            .collect()),
+        "backdrop-filter" | "filter" | "mix-blend-mode" | "text-shadow" | "clip-path"
+        | "-og-material" => {
             use super::paint_css as p;
             let prop = match name {
-                "mask-image" => p::mask(value).map(|_| "maskImage"),
                 "backdrop-filter" => p::backdrop(value).map(|_| "backdropFilter"),
                 "filter" => p::filter_fns(value, "filter").map(|_| "filter"),
                 "mix-blend-mode" => p::blend(value).map(|_| "mixBlendMode"),

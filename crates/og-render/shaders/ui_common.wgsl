@@ -87,6 +87,7 @@ const PAINT_SOLID: u32 = 0u;
 const PAINT_GRADIENT: u32 = 1u;
 const PAINT_IMAGE: u32 = 2u;
 const PAINT_LAYER: u32 = 3u;
+const PAINT_GRADIENT_IMAGE: u32 = 4u;
 // Blends.
 const BLEND_NORMAL: u32 = 0u;
 const BLEND_MULTIPLY: u32 = 1u;

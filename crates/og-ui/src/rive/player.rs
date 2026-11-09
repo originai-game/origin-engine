@@ -418,6 +418,7 @@ impl Player {
                                     tint: [1.0, 1.0, 1.0, alpha],
                                     fit: og_render::UiFit::Fill,
                                     focal: Vec2::splat(0.5),
+                                    luminance: false,
                                 }),
                                 mode: UiMode::Fill,
                                 opacity: 1.0,

@@ -228,6 +228,9 @@ pub enum UiEdge {
     Repeat,
     /// Tiled a whole number of times, stretched to fit.
     Round,
+    /// As many whole tiles as fit, the room left shared out between and
+    /// around them (CSS `border-image-repeat: space`).
+    Space,
 }
 
 /// How an image fills the shape's box.
@@ -261,6 +264,28 @@ pub enum UiFit {
     },
     /// A CSS background layer's image (CSS Backgrounds 3 §3.6–3.9).
     Background(UiBackground),
+    /// A CSS border image (CSS Backgrounds 3 §6) over the shape's box (its
+    /// border image area).
+    BorderImage(UiBorderImage),
+}
+
+/// A CSS border image: the image cut by `slice` into nine parts, its
+/// corners drawn `width` wide, its edges and middle scaled as CSS scales
+/// them (an edge to its border's width, the middle as the top and left
+/// edges) and filled by `repeat`.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct UiBorderImage {
+    /// Image pixels in from each side: left, top, right, bottom; a
+    /// negative value is that fraction of the image (−0.25: 25%).
+    pub slice: [f32; 4],
+    /// CSS px drawn on each side: left, top, right, bottom; a negative
+    /// value is its slice's size (`auto`). Widths that overlap are scaled
+    /// down together.
+    pub width: [f32; 4],
+    /// Along x (the top and bottom edges and the middle), then y.
+    pub repeat: [UiEdge; 2],
+    /// Draws the middle (`fill`); false leaves it empty.
+    pub fill: bool,
 }
 
 /// A CSS background layer's image in the shape's box: sized, placed and
@@ -276,6 +301,10 @@ pub struct UiBackground {
     pub offset: Vec2,
     /// x, then y.
     pub repeat: [UiRepeat; 2],
+    /// The positioning area (`background-origin`, `-attachment`): its
+    /// left, top, right and bottom edges in from the box's, CSS px
+    /// (negative: outside it). Size, position and repeat are of it.
+    pub area: [f32; 4],
 }
 
 /// `background-size`.
@@ -323,6 +352,20 @@ pub struct UiImage {
     /// Where cover crops and contain or none place the image, fractions of
     /// the free space (0.5, 0.5: centred).
     pub focal: Vec2,
+    /// Its luminance is its alpha (a CSS `luminance` mask).
+    pub luminance: bool,
+}
+
+/// A gradient drawn as an image `size` CSS px (its concrete size, which
+/// its geometry was resolved against) fitted into the shape's box as an
+/// image is: a CSS gradient background tile or border image.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct UiGradientImage {
+    pub gradient: UiGradient,
+    pub size: Vec2,
+    pub fit: UiFit,
+    /// Its luminance is its alpha (a CSS `luminance` mask).
+    pub luminance: bool,
 }
 
 /// What fills a shape's coverage.
@@ -332,6 +375,7 @@ pub enum UiPaint {
     Solid([f32; 4]),
     Gradient(UiGradient),
     Image(UiImage),
+    GradientImage(Box<UiGradientImage>),
     /// [`UiList::layers`]' layer `n`, drawn offscreen, through its material.
     Layer(u32),
 }
@@ -508,6 +552,16 @@ pub enum UiBlend {
     Saturation,
     Color,
     Luminosity,
+    /// Porter-Duff operators (Compositing and Blending 1 §9.1) on the
+    /// premultiplied colour, for a layer's own contents (a CSS mask's
+    /// layers, a background cut to its text): the shape kept where the
+    /// destination is, where it is not, the destination kept where the
+    /// shape is, and either where the other is not. Under the shape's
+    /// quad they clear what they do not keep.
+    SourceIn,
+    SourceOut,
+    DestinationIn,
+    Xor,
 }
 
 impl UiBlend {
@@ -517,7 +571,14 @@ impl UiBlend {
     pub fn reads_destination(self) -> bool {
         !matches!(
             self,
-            UiBlend::Normal | UiBlend::Multiply | UiBlend::Screen | UiBlend::Add
+            UiBlend::Normal
+                | UiBlend::Multiply
+                | UiBlend::Screen
+                | UiBlend::Add
+                | UiBlend::SourceIn
+                | UiBlend::SourceOut
+                | UiBlend::DestinationIn
+                | UiBlend::Xor
         )
     }
 }

@@ -64,6 +64,11 @@ pub(crate) enum ShapePipe {
     Add,
     /// The blends that read the destination.
     Destination,
+    /// The Porter-Duff operators ([`UiBlend::SourceIn`] …).
+    SourceIn,
+    SourceOut,
+    DestinationIn,
+    Xor,
 }
 
 /// How a UI instance draws.
@@ -74,8 +79,9 @@ pub(crate) enum ShapeSource {
     /// A solid backdrop ([`UiGlass::solid`]): the backdrop's shader, which
     /// reads no pyramid for it.
     SolidBackdrop,
-    /// A layer's composite.
-    Composite(u32),
+    /// A layer's composite, through the Porter-Duff operator's pipe or
+    /// the normal one.
+    Composite(u32, ShapePipe),
 }
 
 /// No clip: far outside any output.
@@ -602,6 +608,10 @@ pub(crate) fn shape(
         UiBlend::Saturation => 14,
         UiBlend::Color => 15,
         UiBlend::Luminosity => 16,
+        UiBlend::SourceIn => 17,
+        UiBlend::SourceOut => 18,
+        UiBlend::DestinationIn => 19,
+        UiBlend::Xor => 20,
     };
     g.kinds[2] = mode_word | blend << 4;
     let mut texture = None;
@@ -632,62 +642,16 @@ pub(crate) fn shape(
                 im.size.x.max(1.0),
                 im.size.y.max(1.0),
             ];
-            let (fit, edges, center) = match im.fit {
-                UiFit::Fill => (0, 0, 0),
-                UiFit::Cover => (1, 0, 0),
-                UiFit::Contain => (2, 0, 0),
-                UiFit::None => (3, 0, 0),
-                UiFit::NineSlice {
-                    source,
-                    dest,
-                    edges,
-                    center,
-                } => {
-                    g.paint3 = source.map(|v| v.max(0.0));
-                    g.paint4 = dest.map(|v| v.max(0.0));
-                    let e = match edges {
-                        UiEdge::Stretch => 0,
-                        UiEdge::Repeat => 1,
-                        UiEdge::Round => 2,
-                    };
-                    (4, e, u32::from(center))
-                }
-                UiFit::Pattern {
-                    tile,
-                    rotation,
-                    offset,
-                    scroll,
-                } => {
-                    g.paint2[0] = tile.x;
-                    g.paint2[1] = tile.y;
-                    g.paint3 = [offset.x, offset.y, scroll.x, scroll.y];
-                    g.geo2[3] = rotation;
-                    (5, 0, 0)
-                }
-                UiFit::Background(b) => {
-                    // paint2.xy the given size (-1: auto), paint3 the
-                    // position; the repeats in the edges' bits, the size's
-                    // kind in the centre's.
-                    let (kind, given) = match b.size {
-                        UiBackgroundSize::Given(g) => {
-                            (0, g.map(|v| v.map_or(-1.0, |v| v.max(0.0))))
-                        }
-                        UiBackgroundSize::Cover => (1, [-1.0; 2]),
-                        UiBackgroundSize::Contain => (2, [-1.0; 2]),
-                    };
-                    g.paint2[0] = given[0];
-                    g.paint2[1] = given[1];
-                    g.paint3 = [b.align.x, b.align.y, b.offset.x, b.offset.y];
-                    let r = |r: UiRepeat| match r {
-                        UiRepeat::Repeat => 0,
-                        UiRepeat::NoRepeat => 1,
-                        UiRepeat::Space => 2,
-                        UiRepeat::Round => 3,
-                    };
-                    (6, r(b.repeat[0]) | r(b.repeat[1]) << 2, kind)
-                }
-            };
-            g.kinds[1] = 2 | fit << 4 | edges << 8 | center << 12;
+            g.kinds[1] = 2 | fit_word(&mut g, im.fit) | u32::from(im.luminance) << 16;
+        }
+        UiPaint::GradientImage(gi) => {
+            // An image without texels: the uv is the fraction of the
+            // gradient's own box (paint2.zw its size, CSS px).
+            g.color = [1.0; 4];
+            g.paint = [0.0, 0.0, 1.0, 1.0];
+            g.paint2 = [0.5, 0.5, gi.size.x.max(1e-3), gi.size.y.max(1e-3)];
+            g.extra[1] = tables.gradient(&gi.gradient, None) as f32;
+            g.kinds[1] = 4 | fit_word(&mut g, gi.fit) | u32::from(gi.luminance) << 16;
         }
         UiPaint::Layer(k) => {
             if *k as usize >= layer_count {
@@ -713,8 +677,15 @@ pub(crate) fn shape(
         tables.points.extend(m.params());
         g.kinds[1] |= (first + 1) << 8;
     }
+    let op = match s.blend {
+        UiBlend::SourceIn => Some(ShapePipe::SourceIn),
+        UiBlend::SourceOut => Some(ShapePipe::SourceOut),
+        UiBlend::DestinationIn => Some(ShapePipe::DestinationIn),
+        UiBlend::Xor => Some(ShapePipe::Xor),
+        _ => None,
+    };
     let source = if let Some(k) = composite {
-        ShapeSource::Composite(k)
+        ShapeSource::Composite(k, op.unwrap_or(ShapePipe::Normal))
     } else if let UiMode::Backdrop { glass, .. } = s.mode {
         if glass.solid {
             ShapeSource::SolidBackdrop
@@ -725,6 +696,7 @@ pub(crate) fn shape(
         ShapeSource::Shape(ShapePipe::Destination, texture)
     } else {
         let pipe = match s.blend {
+            _ if op.is_some() => op.unwrap(),
             UiBlend::Multiply => ShapePipe::Multiply,
             UiBlend::Screen => ShapePipe::Screen,
             UiBlend::Add => ShapePipe::Add,
@@ -733,6 +705,83 @@ pub(crate) fn shape(
         ShapeSource::Shape(pipe, texture)
     };
     Ok((g, source))
+}
+
+fn edge_code(e: UiEdge) -> u32 {
+    match e {
+        UiEdge::Stretch => 0,
+        UiEdge::Repeat => 1,
+        UiEdge::Round => 2,
+        UiEdge::Space => 3,
+    }
+}
+
+/// An image fit's word in `kinds.y` (above the paint's kind) and its
+/// fields in `g`'s paint vectors (paint.xyzw and paint2.zw are the
+/// image's region and size, written before).
+fn fit_word(g: &mut UiGpu, fit: UiFit) -> u32 {
+    let (fit, edges, center) = match fit {
+        UiFit::Fill => (0, 0, 0),
+        UiFit::Cover => (1, 0, 0),
+        UiFit::Contain => (2, 0, 0),
+        UiFit::None => (3, 0, 0),
+        UiFit::NineSlice {
+            source,
+            dest,
+            edges,
+            center,
+        } => {
+            g.paint3 = source.map(|v| v.max(0.0));
+            g.paint4 = dest.map(|v| v.max(0.0));
+            (4, edge_code(edges), u32::from(center))
+        }
+        UiFit::Pattern {
+            tile,
+            rotation,
+            offset,
+            scroll,
+        } => {
+            g.paint2[0] = tile.x;
+            g.paint2[1] = tile.y;
+            g.paint3 = [offset.x, offset.y, scroll.x, scroll.y];
+            g.geo2[3] = rotation;
+            (5, 0, 0)
+        }
+        UiFit::Background(b) => {
+            // paint2.xy the given size (-1: auto), paint3 the
+            // position; the repeats in the edges' bits, the size's
+            // kind in the centre's.
+            let (kind, given) = match b.size {
+                UiBackgroundSize::Given(g) => (0, g.map(|v| v.map_or(-1.0, |v| v.max(0.0)))),
+                UiBackgroundSize::Cover => (1, [-1.0; 2]),
+                UiBackgroundSize::Contain => (2, [-1.0; 2]),
+            };
+            g.paint2[0] = given[0];
+            g.paint2[1] = given[1];
+            g.paint3 = [b.align.x, b.align.y, b.offset.x, b.offset.y];
+            g.paint4 = b.area;
+            let r = |r: UiRepeat| match r {
+                UiRepeat::Repeat => 0,
+                UiRepeat::NoRepeat => 1,
+                UiRepeat::Space => 2,
+                UiRepeat::Round => 3,
+            };
+            (6, r(b.repeat[0]) | r(b.repeat[1]) << 2, kind)
+        }
+        UiFit::BorderImage(b) => {
+            // paint3 the slices (image px), paint4 the widths (CSS px),
+            // left, top, right, bottom; each axis's repeat in the edges'
+            // bits, the fill in the centre's.
+            g.paint3 = b.slice.map(|v| v.max(0.0));
+            g.paint4 = b.width.map(|v| v.max(0.0));
+            (
+                7,
+                edge_code(b.repeat[0]) | edge_code(b.repeat[1]) << 2,
+                u32::from(b.fill),
+            )
+        }
+    };
+    fit << 4 | edges << 8 | center << 12
 }
 
 /// A vector's fitted scale and the box it fills: the view box contained

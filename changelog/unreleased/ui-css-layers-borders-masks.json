@@ -1,0 +1,26 @@
+{
+  "added": [
+    {
+      "member": "UI: CSS background-origin, background-clip (with text), background-attachment and background-blend-mode",
+      "summary": "Background layers take their positioning box, their clip box or the element's glyphs, fixed and local attachment, and a blend mode per layer inside an isolated group; gradient layers take size, position and repeat as tiles of their concrete size."
+    },
+    {
+      "member": "UI: CSS border-image and every border-image-* longhand",
+      "summary": "A gradient or url() image cut into nine parts by its slice and drawn over the border box with its widths, outset and repeat (stretch, repeat, round, space) instead of the border lines."
+    },
+    {
+      "member": "UI: CSS mask layers, every mask-* longhand and mask-border",
+      "summary": "mask and mask-image take several url() and gradient layers with size, position, repeat, origin, clip, mode and composite; mask-border and its longhands cut by a border image's nine parts."
+    },
+    {
+      "member": "og-render UiPaint::GradientImage, UiFit::BorderImage, UiEdge::Space, UiBackground::area, UiImage::luminance and the Porter-Duff UiBlend variants",
+      "summary": "A gradient drawn as an image tile, a CSS border image fit, space repeats, a background's positioning area, luminance images, and SourceIn, SourceOut, DestinationIn and Xor blends for shapes and layer composites."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "UI: a background gradient on an element with a border",
+      "summary": "It is placed in the padding box and repeats under the border, as CSS's background-origin default does, instead of stretching over the border box."
+    }
+  ]
+}

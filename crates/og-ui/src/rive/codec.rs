@@ -76,6 +76,10 @@ fn blend(b: UiBlend) -> u8 {
         UiBlend::Saturation => 14,
         UiBlend::Color => 15,
         UiBlend::Luminosity => 16,
+        UiBlend::SourceIn => 17,
+        UiBlend::SourceOut => 18,
+        UiBlend::DestinationIn => 19,
+        UiBlend::Xor => 20,
     }
 }
 
@@ -98,6 +102,10 @@ fn rblend(v: u8) -> Option<UiBlend> {
         14 => UiBlend::Saturation,
         15 => UiBlend::Color,
         16 => UiBlend::Luminosity,
+        17 => UiBlend::SourceIn,
+        18 => UiBlend::SourceOut,
+        19 => UiBlend::DestinationIn,
+        20 => UiBlend::Xor,
         _ => return None,
     })
 }

@@ -38,6 +38,10 @@ pub(crate) struct UiPipelines {
     screen: Deferred<wgpu::RenderPipeline>,
     add: Deferred<wgpu::RenderPipeline>,
     destination: Deferred<wgpu::RenderPipeline>,
+    /// The Porter-Duff operators, for shapes and for composites, in
+    /// [`OPERATORS`]' order.
+    operators: [Deferred<wgpu::RenderPipeline>; 4],
+    composite_operators: [Deferred<wgpu::RenderPipeline>; 4],
     backdrop: Deferred<wgpu::RenderPipeline>,
     vector: Deferred<wgpu::RenderPipeline>,
     composite: Deferred<wgpu::RenderPipeline>,
@@ -200,7 +204,26 @@ const UI_WGSL: &str = wgsl!("ui.wgsl");
 const UI_BUILTIN_WGSL: &str = wgsl!("ui_builtin.wgsl");
 const UI_MASS_WGSL: &str = wgsl!("ui_mass.wgsl");
 
+/// The Porter-Duff pipes, in the order of their pipelines.
+const OPERATORS: [ShapePipe; 4] = [
+    ShapePipe::SourceIn,
+    ShapePipe::SourceOut,
+    ShapePipe::DestinationIn,
+    ShapePipe::Xor,
+];
+
 fn blend_state(pipe: Option<ShapePipe>) -> wgpu::BlendState {
+    // The operators' factors on premultiplied colour (the shaders write
+    // it for them), alike for colour and alpha.
+    let op = |src_factor, dst_factor| {
+        let c = wgpu::BlendComponent {
+            src_factor,
+            dst_factor,
+            operation: wgpu::BlendOperation::Add,
+        };
+        wgpu::BlendState { color: c, alpha: c }
+    };
+    use wgpu::BlendFactor as F;
     let keep_alpha = wgpu::BlendComponent {
         src_factor: wgpu::BlendFactor::Zero,
         dst_factor: wgpu::BlendFactor::One,
@@ -231,6 +254,10 @@ fn blend_state(pipe: Option<ShapePipe>) -> wgpu::BlendState {
             },
             alpha: keep_alpha,
         },
+        Some(ShapePipe::SourceIn) => op(F::DstAlpha, F::Zero),
+        Some(ShapePipe::SourceOut) => op(F::OneMinusDstAlpha, F::Zero),
+        Some(ShapePipe::DestinationIn) => op(F::Zero, F::SrcAlpha),
+        Some(ShapePipe::Xor) => op(F::OneMinusDstAlpha, F::OneMinusSrcAlpha),
         _ => wgpu::BlendState::ALPHA_BLENDING,
     }
 }
@@ -450,6 +477,20 @@ impl UiRenderer {
                 screen: p("ui screen", "fs_shape", Some(ShapePipe::Screen)),
                 add: p("ui add", "fs_shape", Some(ShapePipe::Add)),
                 destination: p("ui blends", "fs_shape_dst", None),
+                operators: OPERATORS.map(|o| p("ui operator", "fs_shape", Some(o))),
+                composite_operators: OPERATORS.map(|o| {
+                    pipeline(
+                        device,
+                        "ui composite operator",
+                        &composite_layout,
+                        &builtin,
+                        "vs_shape",
+                        "fs_layer",
+                        format,
+                        blend_state(Some(o)),
+                        false,
+                    )
+                }),
                 backdrop: p("ui backdrop", "fs_backdrop", None),
                 vector: pipeline(
                     device,
@@ -1074,6 +1115,11 @@ impl UiRenderer {
     }
 }
 
+/// A Porter-Duff pipe's index in [`OPERATORS`].
+fn operator(pipe: ShapePipe) -> usize {
+    OPERATORS.iter().position(|o| *o == pipe).unwrap_or(0)
+}
+
 /// A built-in material's code in ui_builtin.wgsl.
 fn builtin_code(b: UiBuiltin) -> f32 {
     match b {
@@ -1192,6 +1238,7 @@ impl Renderer {
                         ShapePipe::Screen => &ui.screen,
                         ShapePipe::Add => &ui.add,
                         ShapePipe::Destination => &ui.destination,
+                        op => &ui.operators[operator(op)],
                     });
                     pass.set_bind_group(1, sprite_group(t), &[]);
                     pass.set_bind_group(2, backdrop, &[]);
@@ -1203,9 +1250,13 @@ impl Renderer {
                     pass.set_bind_group(2, backdrop, &[]);
                     pass.draw(0..6, range);
                 }
-                OverlaySource::Ui(ShapeSource::Composite(k)) => {
+                OverlaySource::Ui(ShapeSource::Composite(k, op)) => {
                     let Some((_, _, group)) = self.ui.frame.layers.get(&k) else {
                         continue;
+                    };
+                    let plain = match op {
+                        ShapePipe::Normal => &ui.composite,
+                        op => &ui.composite_operators[operator(op)],
                     };
                     let pipeline = match materials
                         .and_then(|l| l.get(k as usize))
@@ -1215,10 +1266,10 @@ impl Renderer {
                             match self.ui.custom_pipeline(scene.id(), h, kind) {
                                 Some(p) => p,
                                 // A material that failed (or is compiling) draws plain.
-                                None => &ui.composite,
+                                None => plain,
                             }
                         }
-                        _ => &ui.composite,
+                        _ => plain,
                     };
                     pass.set_pipeline(pipeline);
                     pass.set_bind_group(1, group, &[]);

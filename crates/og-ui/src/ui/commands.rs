@@ -525,7 +525,13 @@ impl Ui {
                 let behind = cmds.len();
                 cmds.extend(over_background(self));
                 let over = cmds.len();
-                cmds.extend(local);
+                // Its text, with the backgrounds cut to it when it has them.
+                let text: Vec<DrawCmd> = local.map(|(c, _)| c).collect();
+                let text = match &draw {
+                    Some(d) => d.clip_to_text(&theme, &placed(&self.nodes[i]), text),
+                    None => text,
+                };
+                cmds.extend(text.into_iter().map(|c| (c, world)));
                 // Kept commands were read for missing glyphs when painted.
                 if kept_at.is_some() {
                     self.kept_spans.push(from..behind);
@@ -653,7 +659,7 @@ impl Ui {
                     let mut leave = if marked(&self.nodes[j]) {
                         d.leave(&theme, &at)
                     } else {
-                        d.leave_stroked(&at)
+                        d.leave_stroked(&theme, &at)
                     };
                     undraw(&mut leave, self.nodes[j].sampled.draw);
                     cmds.extend(leave.into_iter().map(|c| (c, w)));
@@ -946,6 +952,7 @@ impl Ui {
             || !node.links.is_empty()
             || node.fx.is_some_and(|f| f.glitch > 0.0)
             || node.sampled.blur > 0.0
+            || node.decor.as_ref().is_some_and(|d| d.fixed())
             || (node.scrolls() && (node.el.fade > 0.0 || !node.el.hide_bars));
         let outline =
             self.theme.outline && (node.nav || node.focusable) && node.sampled.background.is_some();
