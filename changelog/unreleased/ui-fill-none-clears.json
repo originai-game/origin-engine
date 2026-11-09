@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "-og-fill: none",
+      "summary": "A dressing whose only change is `fill none` now clears the control's own fill: a pack's `Button::base.quiet:disabled { -og-fill: none }` keeps a disabled quiet button clear. Before, a dressing that drew nothing was skipped and the control's fill stayed."
+    }
+  ]
+}
