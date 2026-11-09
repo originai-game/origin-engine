@@ -297,6 +297,10 @@ pub struct Transform {
     /// CSS px.
     pub x: f32,
     pub y: f32,
+    /// Fractions of the box's own width and height, added to `x` and `y`
+    /// (CSS `translate`'s percentages: -0.5 centres the box on its place).
+    pub shift_x: f32,
+    pub shift_y: f32,
     /// 1: unscaled.
     pub scale_x: f32,
     pub scale_y: f32,
@@ -320,6 +324,8 @@ impl Transform {
     pub const IDENTITY: Transform = Transform {
         x: 0.0,
         y: 0.0,
+        shift_x: 0.0,
+        shift_y: 0.0,
         scale_x: 1.0,
         scale_y: 1.0,
         rotate: 0.0,
@@ -333,6 +339,8 @@ impl Transform {
     pub fn is_identity(&self) -> bool {
         self.x == 0.0
             && self.y == 0.0
+            && self.shift_x == 0.0
+            && self.shift_y == 0.0
             && self.scale_x == 1.0
             && self.scale_y == 1.0
             && self.rotate == 0.0
@@ -347,7 +355,10 @@ impl Transform {
         }
         let px = rect.x + self.pivot_x * rect.width;
         let py = rect.y + self.pivot_y * rect.height;
-        let mut m = Affine::translate(self.x, self.y);
+        let mut m = Affine::translate(
+            self.x + self.shift_x * rect.width,
+            self.y + self.shift_y * rect.height,
+        );
         if self.rotate != 0.0 {
             m = m.mul(&Affine::rotate(self.rotate));
         }
@@ -362,6 +373,7 @@ impl Transform {
     pub fn mirrored(&self) -> Transform {
         Transform {
             x: -self.x,
+            shift_x: -self.shift_x,
             rotate: -self.rotate,
             skew_x: -self.skew_x,
             skew_y: -self.skew_y,

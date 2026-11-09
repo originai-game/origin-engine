@@ -88,7 +88,7 @@ What every kind takes: its box, layout, paint, motion and input.
 | `aria-live` | `off \| polite \| assertive` | `aria-live`: a screen reader announces what changes in it, after what it is reading (`polite`) or at once (`assertive`); over its role's. |
 | `aria-atomic` | `bool` | `aria-atomic`: a live region announces its whole text when any of it changes, not only what changed; over its role's. |
 | `part` | `name` | Its part name a style dresses (`ShopCard.frame`); the document's `parts` lists them. |
-| `translate:` | `<x>px [<y>px]` | `x`: Moved right after layout, CSS px. `y`: Moved down after layout, CSS px. |
+| `translate:` | `<x> [<y>]: px, or % of its own box` | `x`: Moved right after layout, CSS px. `y`: Moved down after layout, CSS px. `xShift`: Moved right after layout, a fraction of its own width (`translate`'s %). `yShift`: Moved down after layout, a fraction of its own height (`translate`'s %). |
 | `scale:` | `<both> \| <x> <y>` | `scale`: Both scales. `scaleX`: Its horizontal scale. `scaleY`: Its vertical scale. |
 | `rotate:` | `<n>deg \| <n>rad \| <n>turn` | A turn, radians, clockwise. |
 | `-og-skew:` | `<x>deg [<y>deg]` | `skewX`: A skew, radians. `skewY`: A skew, radians. |

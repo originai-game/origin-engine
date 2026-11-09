@@ -748,6 +748,16 @@ pub const CORE_PROPS: &[PropSpec] = &[
     // The element model.
     p!("x", Ty::Num, "Moved right after layout, CSS px."),
     p!("y", Ty::Num, "Moved down after layout, CSS px."),
+    p!(
+        "xShift",
+        Ty::Num,
+        "Moved right after layout, a fraction of its own width (`translate`'s %)."
+    ),
+    p!(
+        "yShift",
+        Ty::Num,
+        "Moved down after layout, a fraction of its own height (`translate`'s %)."
+    ),
     p!("scale", Ty::Num, "Both scales."),
     p!("scaleX", Ty::Num, "Its horizontal scale."),
     p!("scaleY", Ty::Num, "Its vertical scale."),

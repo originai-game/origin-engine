@@ -728,6 +728,7 @@ pub(crate) fn keyframes(frames: &[(String, String)]) -> Result<Keyframes, String
                 .and_then(|entries| {
                     entries
                         .into_iter()
+                        .filter(|entry| !super::css::zero_shift(entry))
                         .map(|entry| {
                             let prop = Prop::from_name(&entry.key)?;
                             let value = entry

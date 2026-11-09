@@ -192,6 +192,8 @@ pub const STYLE: &[(&str, &str)] = &[
     ("fadeInto", "-og-scroll-fade-into"),
     ("x", "translate"),
     ("y", "translate"),
+    ("xShift", "translate"),
+    ("yShift", "translate"),
     ("scale", "scale"),
     ("scaleX", "scale"),
     ("scaleY", "scale"),
@@ -595,7 +597,7 @@ pub fn value_form(prop: &str, words: &[&str]) -> Option<String> {
 /// How a property that sets several props at once is written.
 fn joint_form(css: &str) -> Option<&'static str> {
     Some(match css {
-        "translate" => "<x>px [<y>px]",
+        "translate" => "<x> [<y>]: px, or % of its own box",
         "scale" => "<both> | <x> <y>",
         "-og-skew" => "<x>deg [<y>deg]",
         "grid-column" => "<n> | <n> / span <n> | span <n>",
@@ -1810,7 +1812,38 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
                 [x, y] => (x.clone(), y.clone()),
                 _ => return Err(format!("{name}: <x> <y>")),
             };
-            Ok(vec![e(a, part(a, &x)?), e(b, part(b, &y)?)])
+            if name == "-og-skew" {
+                return Ok(vec![e(a, part(a, &x)?), e(b, part(b, &y)?)]);
+            }
+            // A percentage is of the element's own box, as CSS's: its
+            // fraction moves it after layout beside the px (`xShift`), so
+            // `translate: -50% -50%` centres it on its place.
+            // The px pair first, as every reader of `translate` takes it;
+            // the shifts after.
+            let (mut px, mut shifts) = (Vec::new(), Vec::new());
+            for (k, shift, t) in [("x", "xShift", &x), ("y", "yShift", &y)] {
+                let fraction = match t {
+                    Tok::Num(n, u) if u == "%" && state => {
+                        return Err(format!("a state's translate takes px, not {n}%"));
+                    }
+                    Tok::Num(n, u) if u == "%" => {
+                        px.push(e(k, vec![number("0")?]));
+                        let f = n
+                            .parse::<f64>()
+                            .map_err(|_| format!("'{n}%' is not a number"))?;
+                        (f / 100.0).to_string()
+                    }
+                    t => {
+                        px.push(e(k, part(k, t)?));
+                        "0".to_string()
+                    }
+                };
+                if !state {
+                    shifts.push(e(shift, vec![number(&fraction)?]));
+                }
+            }
+            px.extend(shifts);
+            Ok(px)
         }
         "scale" => match t.as_slice() {
             [s] => Ok(vec![e("scale", part("scale", s)?)]),
@@ -2623,6 +2656,18 @@ type SizeParts = (
     Option<Vec<Value>>,
     usize,
 );
+
+/// A `translate` written in px also writes its shifts as 0, so it replaces
+/// an earlier percentage in a document's cascade; readers that hold no
+/// shift (a dressing, a keyframe's channels) skip these.
+pub(crate) fn zero_shift(entry: &Entry) -> bool {
+    matches!(entry.key.as_str(), "xShift" | "yShift")
+        && entry
+            .values
+            .first()
+            .and_then(og_core::ogt::Value::as_number)
+            .is_some_and(|n| n.as_f32() == 0.0)
+}
 
 pub(crate) fn declarations(text: &str, line: usize) -> Result<Vec<Entry>, String> {
     declarations_at([(line, text)])

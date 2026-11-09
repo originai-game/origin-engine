@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "translate: <x>% <y>%",
+      "summary": "A document's `translate` takes percentages of the element's own box, as CSS's does: `translate: -50% -50%` centres a map marker or a compass mark on the point a game projects, for the probe, the pointer and the paint. A px `translate` that wins the cascade replaces an earlier percentage. States and dressings keep px."
+    }
+  ]
+}

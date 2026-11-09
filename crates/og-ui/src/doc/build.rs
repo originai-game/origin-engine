@@ -619,6 +619,12 @@ impl Ui {
         if let Some(y) = r.num("y") {
             n.props.transform.y = y;
         }
+        if let Some(x) = r.num("xShift") {
+            n.props.transform.shift_x = x;
+        }
+        if let Some(y) = r.num("yShift") {
+            n.props.transform.shift_y = y;
+        }
         if let Some(opacity) = r.num("opacity") {
             n.props.opacity = opacity.clamp(0.0, 1.0);
         }
@@ -1569,6 +1575,12 @@ impl Ui {
         }
         if let Some(v) = r.num("y") {
             t.y = v;
+        }
+        if let Some(v) = r.num("xShift") {
+            t.shift_x = v;
+        }
+        if let Some(v) = r.num("yShift") {
+            t.shift_y = v;
         }
         if let Some(v) = r.num("scale") {
             t.scale_x = v;

@@ -336,6 +336,8 @@ the kinds'. Kinds: `column`, `row`, `stack`, `grid`, `panel`, `scroll`,
 | `part` | name | all | Its part name a style dresses (`ShopCard.frame`); the document's `parts` lists them. |
 | `x` | number | all | Moved right after layout, CSS px. |
 | `y` | number | all | Moved down after layout, CSS px. |
+| `xShift` | number | all | Moved right after layout, a fraction of its own width (`translate`'s %). |
+| `yShift` | number | all | Moved down after layout, a fraction of its own height (`translate`'s %). |
 | `scale` | number | all | Both scales. |
 | `scaleX` | number | all | Its horizontal scale. |
 | `scaleY` | number | all | Its vertical scale. |

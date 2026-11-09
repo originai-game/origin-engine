@@ -155,3 +155,50 @@ fn images_take_object_fit_position_and_inherited_image_rendering() {
     );
     assert!(im.nearest);
 }
+
+/// `translate`'s percentages are of the element's own box, as CSS's: a
+/// pin at `left: 300px; top: 200px` with `translate: -50% -50%` is centred
+/// on that point for the probe and for the pointer, and the place its box
+/// would have without the shift takes nothing. A px translate that wins
+/// the cascade replaces an earlier percentage.
+#[test]
+fn translate_percentages_move_by_the_elements_own_box() {
+    const PIN: &str = r#"<meta name="component" content="ix">
+<div id="Root">
+  <button id="Pin">Pin</button>
+  <button id="Back" class="centred">Back</button>
+</div>
+<style>
+#Root { width: 600px; height: 400px; }
+#Pin { position: absolute; left: 300px; top: 200px; width: 80px; height: 40px; translate: -50% -50%; cursor: copy; }
+.centred { translate: -50% -50%; }
+#Back { position: absolute; left: 100px; top: 300px; width: 80px; height: 40px; translate: 10px 0; }
+</style>"#;
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.define_document(UiDocument::parse("ui/ix.svelte", PIN).expect("parses"));
+    frame(&mut ui, Vec2::ZERO);
+    let pin = ui
+        .probe_elements()
+        .into_iter()
+        .find(|e| e.id == "Pin")
+        .unwrap();
+    assert_eq!(
+        (pin.x + pin.width / 2.0, pin.y + pin.height / 2.0),
+        (300.0, 200.0)
+    );
+    // A winning px translate replaces a percentage, as CSS's does.
+    let back = ui
+        .probe_elements()
+        .into_iter()
+        .find(|e| e.id == "Back")
+        .unwrap();
+    assert_eq!((back.x, back.y), (110.0, 300.0));
+    let centre = Vec2::new(300.0, 200.0);
+    frame(&mut ui, centre);
+    assert_eq!(frame(&mut ui, centre), Cursor::Copy);
+    // Inside the unshifted box (300..380, 200..240), outside the shifted
+    // one: the pointer is on the root, as over a hidden button.
+    let unshifted = Vec2::new(370.0, 232.0);
+    frame(&mut ui, unshifted);
+    assert_eq!(frame(&mut ui, unshifted), Cursor::Default);
+}

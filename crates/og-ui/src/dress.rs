@@ -508,6 +508,9 @@ impl DressDraw {
                 }
                 for entry in &p.block()?.entries {
                     let q = crate::style_file::P { e: entry };
+                    if crate::doc::css::zero_shift(entry) {
+                        continue;
+                    }
                     if !APPEARANCE_PROPS.contains(&entry.key.as_str()) {
                         return Err(q.err(&format!("takes {}", APPEARANCE_PROPS.join(", "))));
                     }
