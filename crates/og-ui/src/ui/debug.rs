@@ -192,11 +192,14 @@ pub fn debug_overlay(
             width: (r.width - i.left - i.right).max(0.0),
             height: (r.height - i.top - i.bottom).max(0.0),
         };
+        // Each box is drawn as the ring between it and the next box in,
+        // as Chrome does, so the content keeps one tint and reads under it.
         let padding = shrink(b, e.border);
-        for (part, r, c) in [
+        for (part, r, inner, c) in [
             (
                 "Margin",
                 grow(b, e.margin),
+                Some(b),
                 crate::Srgba {
                     rgb: [245, 178, 107],
                     alpha: 0.45,
@@ -205,6 +208,7 @@ pub fn debug_overlay(
             (
                 "Border",
                 b,
+                Some(padding),
                 crate::Srgba {
                     rgb: [252, 217, 140],
                     alpha: 0.55,
@@ -213,6 +217,7 @@ pub fn debug_overlay(
             (
                 "Padding",
                 padding,
+                Some(e.content),
                 crate::Srgba {
                     rgb: [194, 207, 138],
                     alpha: 0.6,
@@ -221,13 +226,17 @@ pub fn debug_overlay(
             (
                 "Content",
                 e.content,
+                None,
                 crate::Srgba {
                     rgb: [138, 178, 201],
                     alpha: 0.65,
                 },
             ),
         ] {
-            fill(ui, &format!("{id}{part}"), r, u, c);
+            match inner {
+                Some(inner) => ring(ui, &format!("{id}{part}"), r, inner, u, c),
+                None => fill(ui, &format!("{id}{part}"), r, u, c),
+            }
         }
     }
 }
@@ -259,22 +268,49 @@ fn fill(ui: &mut Ui, id: &str, r: Rect, u: f32, color: crate::Srgba) {
 }
 
 fn outline(ui: &mut Ui, id: &str, r: Rect, u: f32, color: crate::Srgba) {
-    let w = u;
+    let inner = Rect {
+        x: r.x + u,
+        y: r.y + u,
+        width: (r.width - 2.0 * u).max(0.0),
+        height: (r.height - 2.0 * u).max(0.0),
+    };
+    ring(ui, id, r, inner, u, color);
+}
+
+/// Fills `outer` less `inner` (inside it): its four bands.
+fn ring(ui: &mut Ui, id: &str, outer: Rect, inner: Rect, u: f32, color: crate::Srgba) {
+    let (top, bottom) = (
+        inner.y - outer.y,
+        outer.y + outer.height - inner.y - inner.height,
+    );
+    let left = inner.x - outer.x;
+    let right = outer.x + outer.width - inner.x - inner.width;
     let sides = [
-        Rect { height: w, ..r },
         Rect {
-            y: r.y + r.height - w,
-            height: w,
-            ..r
+            height: top,
+            ..outer
         },
-        Rect { width: w, ..r },
         Rect {
-            x: r.x + r.width - w,
-            width: w,
-            ..r
+            y: inner.y + inner.height,
+            height: bottom,
+            ..outer
+        },
+        Rect {
+            y: inner.y,
+            width: left,
+            height: inner.height,
+            ..outer
+        },
+        Rect {
+            x: inner.x + inner.width,
+            y: inner.y,
+            width: right,
+            height: inner.height,
         },
     ];
     for (k, side) in sides.into_iter().enumerate() {
-        fill(ui, &format!("{id}.{k}"), side, u, color);
+        if side.width > 0.0 && side.height > 0.0 {
+            fill(ui, &format!("{id}.{k}"), side, u, color);
+        }
     }
 }
