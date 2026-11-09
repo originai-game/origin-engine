@@ -97,47 +97,47 @@ fn unzigzag(v: u32) -> u32 {
     (0u32.wrapping_sub(v & 1)) ^ (v >> 1)
 }
 
-/// `decodeDeltas1` for one 4-byte channel group, element width `width`.
-#[allow(clippy::too_many_arguments)]
-fn decode_deltas(
+/// `decodeDeltas1` for one 4-byte channel group, element width `W` (1, 2 or
+/// 4 bytes). The width is a const so that each width's byte loops unroll and
+/// each plane and vertex is bounds-checked once: with the width read at run
+/// time this was the costliest step of decoding a model in the wasm build.
+fn decode_deltas<const W: usize>(
     buffer: &[u8],
     transposed: &mut [u8],
     k: usize,
     vertex_count: usize,
     vertex_size: usize,
     last_vertex: &[u8],
-    width: usize,
     xor_rot: Option<u32>,
 ) {
-    let mask: u32 = if width == 4 {
+    let mask: u32 = if W == 4 {
         u32::MAX
     } else {
-        (1u32 << (width * 8)) - 1
+        (1u32 << (W * 8)) - 1
     };
+    let out = &mut transposed[..vertex_count * vertex_size];
     let mut sub = 0;
     while sub < 4 {
         let mut p: u32 = 0;
-        for j in 0..width {
+        for j in 0..W {
             p |= (last_vertex[k + sub + j] as u32) << (8 * j);
         }
-        let plane = &buffer[sub * vertex_count..];
-        let mut offset = k + sub;
-        for i in 0..vertex_count {
+        // The element's W byte planes, `vertex_count` bytes each.
+        let planes: [&[u8]; W] =
+            std::array::from_fn(|j| &buffer[(sub + j) * vertex_count..][..vertex_count]);
+        for (i, vertex) in (0..vertex_count).zip(out.chunks_exact_mut(vertex_size)) {
             let mut v: u32 = 0;
-            for j in 0..width {
-                v |= (plane[i + vertex_count * j] as u32) << (8 * j);
+            for (j, plane) in planes.iter().enumerate() {
+                v |= (plane[i] as u32) << (8 * j);
             }
             v = match xor_rot {
                 Some(rot) => v.rotate_left(rot) ^ p,
-                None => unzigzag_width(v, width).wrapping_add(p) & mask,
+                None => unzigzag_width(v, W).wrapping_add(p) & mask,
             };
-            for j in 0..width {
-                transposed[offset + j] = (v >> (j * 8)) as u8;
-            }
+            vertex[k + sub..k + sub + W].copy_from_slice(&v.to_le_bytes()[..W]);
             p = v;
-            offset += vertex_size;
         }
-        sub += width;
+        sub += W;
     }
 }
 
@@ -202,34 +202,31 @@ fn decode_vertex_block(
         }
         let channel = channels.map_or(0, |c| c[k / 4]);
         match channel & 3 {
-            0 => decode_deltas(
+            0 => decode_deltas::<1>(
                 buffer,
                 transposed,
                 k,
                 vertex_count,
                 vertex_size,
                 last_vertex,
-                1,
                 None,
             ),
-            1 => decode_deltas(
+            1 => decode_deltas::<2>(
                 buffer,
                 transposed,
                 k,
                 vertex_count,
                 vertex_size,
                 last_vertex,
-                2,
                 None,
             ),
-            2 => decode_deltas(
+            2 => decode_deltas::<4>(
                 buffer,
                 transposed,
                 k,
                 vertex_count,
                 vertex_size,
                 last_vertex,
-                4,
                 Some((32 - (channel as u32 >> 4)) & 31),
             ),
             _ => return None,
@@ -477,4 +474,118 @@ pub fn decode_index_buffer(encoded: &[u8], index_count: usize) -> Result<Vec<u32
         return Err(malformed());
     }
     Ok(out)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// `decodeDeltas1` byte by byte with the width read at run time (the
+    /// scalar decoder as ported from meshoptimizer before it took the width as
+    /// a const): what `decode_deltas::<W>` must write for every width.
+    #[allow(clippy::too_many_arguments)]
+    fn deltas_byte_by_byte(
+        buffer: &[u8],
+        transposed: &mut [u8],
+        k: usize,
+        vertex_count: usize,
+        vertex_size: usize,
+        last_vertex: &[u8],
+        width: usize,
+        xor_rot: Option<u32>,
+    ) {
+        let mask: u32 = if width == 4 {
+            u32::MAX
+        } else {
+            (1u32 << (width * 8)) - 1
+        };
+        let mut sub = 0;
+        while sub < 4 {
+            let mut p: u32 = 0;
+            for j in 0..width {
+                p |= (last_vertex[k + sub + j] as u32) << (8 * j);
+            }
+            let plane = &buffer[sub * vertex_count..];
+            let mut offset = k + sub;
+            for i in 0..vertex_count {
+                let mut v: u32 = 0;
+                for j in 0..width {
+                    v |= (plane[i + vertex_count * j] as u32) << (8 * j);
+                }
+                v = match xor_rot {
+                    Some(rot) => v.rotate_left(rot) ^ p,
+                    None => unzigzag_width(v, width).wrapping_add(p) & mask,
+                };
+                for j in 0..width {
+                    transposed[offset + j] = (v >> (j * 8)) as u8;
+                }
+                p = v;
+                offset += vertex_size;
+            }
+            sub += width;
+        }
+    }
+
+    /// `decode_deltas::<W>` for one width.
+    type Deltas = fn(&[u8], &mut [u8], usize, usize, usize, &[u8], Option<u32>);
+
+    #[test]
+    fn every_width_decodes_the_deltas_the_byte_by_byte_decoder_does() {
+        let mut x: u32 = 0x9e37_79b9;
+        let mut byte = move || {
+            x ^= x << 13;
+            x ^= x >> 17;
+            x ^= x << 5;
+            x as u8
+        };
+        // Blocks as decode_vertex_buffer makes them: full ones of 4- to 256-byte
+        // vertices (vertex_block_size), short last ones and a single vertex.
+        for (vertex_count, vertex_size) in [
+            (1, 4),
+            (3, 8),
+            (16, 12),
+            (160, 48),
+            (255, 16),
+            (256, 32),
+            (32, 256),
+        ] {
+            let buffer: Vec<u8> = (0..VERTEX_BLOCK_MAX_SIZE * 4 + BYTE_GROUP_SIZE)
+                .map(|_| byte())
+                .collect();
+            let last: Vec<u8> = (0..VERTEX_BLOCK_MAX_SIZE).map(|_| byte()).collect();
+            for k in (0..vertex_size).step_by(4) {
+                for (width, rot) in [
+                    (1, None),
+                    (2, None),
+                    (4, None),
+                    (4, Some(0)),
+                    (4, Some(9)),
+                    (4, Some(31)),
+                ] {
+                    let mut want = vec![0xa5u8; VERTEX_BLOCK_SIZE_BYTES];
+                    let mut got = want.clone();
+                    deltas_byte_by_byte(
+                        &buffer,
+                        &mut want,
+                        k,
+                        vertex_count,
+                        vertex_size,
+                        &last,
+                        width,
+                        rot,
+                    );
+                    let decode: Deltas = match width {
+                        1 => decode_deltas::<1>,
+                        2 => decode_deltas::<2>,
+                        _ => decode_deltas::<4>,
+                    };
+                    decode(&buffer, &mut got, k, vertex_count, vertex_size, &last, rot);
+                    assert!(
+                        got == want,
+                        "{vertex_count} vertices of {vertex_size} bytes, group {k}, width {width}, rotation {rot:?}"
+                    );
+                }
+            }
+        }
+    }
 }
