@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "web: render passes (publish { pipelines async })",
+      "summary": "A render pass on the web draws with the browser's own draw methods. Before, every page replaced GPURenderPassEncoder's draw, drawIndexed, drawIndirect and drawIndexedIndirect with wrappers that checked for a skipped stand-in pipeline, so every draw of every frame went through one. Now only a pass whose setPipeline skips a stand-in that is not made yet drops its draws, until its next made pipeline. What is drawn and skipped does not change. A garden of 1072 cells, 8.9k draws a frame: 0.17-0.42 ms less engine Worker time a frame."
+    }
+  ]
+}

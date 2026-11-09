@@ -8,6 +8,8 @@
 // - the requests sent in one task again → PER_TASK a task
 // - a pass draws with no pipeline (a validation error) or waits for it →
 //   its draws skipped and counted until a made pipeline is set
+// - every draw of every frame through a wrapper again (one on the prototype)
+//   → the prototype keeps the browser's draws; only a skipping pass has its own
 // - a pass whose output later frames keep (encoded outside a span: a static
 //   shadow map, a probe capture, a bake) skips a draw → it makes the
 //   pipeline at once instead, as a harness's frame (drawnWhole) does, and as
@@ -74,6 +76,10 @@ class FakeDevice {
 }
 // What a wgpu that bypassed the wrappers would call: the browser's own function, taken before install.
 const browserCreate = FakeDevice.prototype.createRenderPipeline;
+// The browser's own draw methods, taken before install.
+const DRAWS = ["draw", "drawIndexed", "drawIndirect", "drawIndexedIndirect"];
+const passProto = FakePass.prototype as unknown as Record<string, unknown>;
+const browserDraws = DRAWS.map((name) => passProto[name]);
 const device = new FakeDevice();
 
 let p: typeof import("../src/web/pipelines.ts");
@@ -145,6 +151,40 @@ test("frame pipelines compile asynchronously, PER_TASK a task, their modules mad
   expect((after.pipeline as { pipeline: string; desc: { label: string } }).pipeline).toBe("async");
   expect((after.pipeline as { desc: { label: string } }).desc.label).toBe("p3");
   expect(made("createRenderPipeline").length).toBe(0);
+});
+
+test("a pass that skips nothing draws with the browser's own methods; one that skips drops every kind of draw until a made pipeline", async () => {
+  calls.length = 0;
+  p.enable(true);
+  // No wrapper on the prototype: every draw of a pass that skips nothing (every pass once the
+  // pipelines are made, every pass of a sync page) is the browser's call itself (s105).
+  DRAWS.forEach((name, i) => expect(passProto[name]).toBe(browserDraws[i]));
+  p.frameSpan(true);
+  const stand = device.createRenderPipeline(desc({ module: "m" }, "skipping"));
+  const pass = new FakePass();
+  const drawAll = (q: FakePass) => (q.draw(3), q.drawIndexed(3), q.drawIndirect(null, 0), q.drawIndexedIndirect(null, 0));
+  pass.setPipeline(stand);
+  pass.setPipeline(stand);
+  drawAll(pass);
+  expect(pass.draws).toBe(0);
+  // Another pass meanwhile draws.
+  const other = new FakePass();
+  other.setPipeline({ pipeline: "ready" });
+  drawAll(other);
+  expect(other.draws).toBe(4);
+  // A made pipeline gives the skipping pass its draws back, and the next stand-in takes them again.
+  pass.setPipeline({ pipeline: "ready" });
+  drawAll(pass);
+  expect(pass.draws).toBe(4);
+  pass.setPipeline(stand);
+  drawAll(pass);
+  expect(pass.draws).toBe(4);
+  p.frameSpan(false);
+  expect(p.takeSkipped()).toBe(3);
+  DRAWS.forEach((name, i) => expect(passProto[name]).toBe(browserDraws[i]));
+  await tasks(0);
+  await tasks(0);
+  expect(p.compiling()).toBe(0);
 });
 
 test("a pass outside a span makes a stand-in at once instead of skipping its draws", async () => {
