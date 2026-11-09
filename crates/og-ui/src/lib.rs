@@ -55,7 +55,7 @@ mod recognize;
 mod rich;
 pub mod rive;
 mod scroll;
-pub use scroll::ScrollState;
+pub use scroll::{Overscroll, ScrollCss, ScrollState};
 pub mod shape;
 pub mod slot;
 mod style;

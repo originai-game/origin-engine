@@ -18,8 +18,12 @@
 //! - `overflow: auto` not scrolling a box, or the shorthand's axes swapped
 //!   → `overflow_scrolls_and_clips`
 //! - a malformed value accepted → `bad_decorations_are_refused`
+//! - `overscroll-behavior: contain` still chaining the wheel's rest to the
+//!   container around it (or `auto` no longer chaining), and
+//!   `scroll-padding` not insetting where a snap lines its area up →
+//!   `overscroll_contains_and_scroll_padding_insets_snaps`
 
-use crate::html_text::both;
+use crate::html_text::{Doc, both};
 use og_core::glam::Vec2;
 use og_render::{UiAlign, UiMode};
 use og_ui::*;
@@ -267,6 +271,50 @@ fn corners_take_css_radii_and_shapes() {
         assert!(near(h, [100.0; 4]), "{h:?}");
         assert!(near(c.vertical, [20.0, 10.0, 20.0, 10.0]), "{c:?}");
     });
+}
+
+#[test]
+fn overscroll_contains_and_scroll_padding_insets_snaps() {
+    for (behaviour, outer) in [("auto", 30.0), ("contain", 0.0)] {
+        let text = format!(
+            r#"<meta name="component" content="t">
+<div><div id="Root">
+  <div id="Out"><div id="In"><div></div><div></div><div></div></div><div id="Fill"></div></div>
+  <div id="Snap"><div></div><div></div><div></div><div></div></div>
+</div></div>
+<style>
+#Root {{ width: 400px; }}
+#Out {{ height: 100px; overflow-y: auto; scrollbar-width: none; }}
+#In {{ height: 50px; overflow-y: auto; scrollbar-width: none; overscroll-behavior: {behaviour}; }}
+#In div {{ height: 40px; }}
+#Fill {{ height: 300px; }}
+#Snap {{ height: 100px; overflow-y: auto; scrollbar-width: none; scroll-snap-type: y mandatory; scroll-padding: 20px 0 0; }}
+#Snap div {{ height: 60px; scroll-snap-align: start; }}
+</style>"#
+        );
+        both(&text, &[], |d| {
+            // The inner box's range is 70: a wheel of 100 leaves 30.
+            let b = d.get("In");
+            d.step(InputFrame {
+                wheel: Vec2::new(0.0, 100.0),
+                ..InputFrame::hover(b.x + 10.0, b.y + 10.0)
+            });
+            d.step(InputFrame::hover(b.x + 10.0, b.y + 10.0));
+            let at = |d: &mut Doc, id: &str| d.ui.scroll_state(&d.get(id).path).unwrap().offset_y;
+            assert_eq!((at(d, "In"), at(d, "Out")), (70.0, outer), "{behaviour}");
+            // Snap positions sit 20 px down the view: 0, 40, 100…; 50
+            // settles on 40 (without the padding 0, 60…: on 60).
+            let s = d.get("Snap");
+            d.step(InputFrame {
+                wheel: Vec2::new(0.0, 50.0),
+                ..InputFrame::hover(s.x + 10.0, s.y + 10.0)
+            });
+            for _ in 0..80 {
+                d.step(InputFrame::hover(s.x + 10.0, s.y + 10.0));
+            }
+            assert!((at(d, "Snap") - 40.0).abs() < 0.5, "{}", at(d, "Snap"));
+        });
+    }
 }
 
 #[test]

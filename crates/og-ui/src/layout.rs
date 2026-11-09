@@ -527,6 +527,9 @@ pub struct Element {
     /// CSS `scroll-snap-align` of a snap area: x in bits 0–1, y in bits
     /// 2–3, each 0 none, 1 start, 2 center, 3 end.
     pub snap_align: u8,
+    /// Its CSS overscroll, scroll behaviour, scroll margin and padding,
+    /// snap stop and scrollbar properties.
+    pub scroll_css: crate::scroll::ScrollCss,
     /// A scroll container's edge fade (CSS px, 0: none) where more content
     /// lies beyond, into `fade_into` (`None`: `panel`).
     pub fade: f32,

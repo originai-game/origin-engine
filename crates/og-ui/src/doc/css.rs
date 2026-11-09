@@ -162,6 +162,20 @@ pub const STYLE: &[(&str, &str)] = &[
     ("material", "-og-material"),
     ("scrollSnapType", "scroll-snap-type"),
     ("scrollSnapAlign", "scroll-snap-align"),
+    ("overscrollBehaviorX", "overscroll-behavior-x"),
+    ("overscrollBehaviorY", "overscroll-behavior-y"),
+    ("scrollBehavior", "scroll-behavior"),
+    ("scrollMarginTop", "scroll-margin-top"),
+    ("scrollMarginRight", "scroll-margin-right"),
+    ("scrollMarginBottom", "scroll-margin-bottom"),
+    ("scrollMarginLeft", "scroll-margin-left"),
+    ("scrollPaddingTop", "scroll-padding-top"),
+    ("scrollPaddingRight", "scroll-padding-right"),
+    ("scrollPaddingBottom", "scroll-padding-bottom"),
+    ("scrollPaddingLeft", "scroll-padding-left"),
+    ("scrollSnapStop", "scroll-snap-stop"),
+    ("scrollbarColor", "scrollbar-color"),
+    ("scrollbarGutter", "scrollbar-gutter"),
     ("sheetDetents", "-og-sheet-detents"),
     ("overflowX", "overflow-x"),
     ("overflowY", "overflow-y"),
@@ -332,6 +346,9 @@ pub(crate) fn targets(name: &str) -> impl Iterator<Item = &'static str> + '_ {
         "max-width" | "max-inline-size" => vec!["maxWidth"],
         "min-height" | "min-block-size" => vec!["minHeight"],
         "max-height" | "max-block-size" => vec!["maxHeight"],
+        n if n.starts_with("scroll-") || n.starts_with("overscroll-") => {
+            super::scroll_css::targets(n)
+        }
         _ => super::boxes::longhands(name),
     };
     let target = match name {
@@ -354,6 +371,7 @@ pub(crate) fn targets(name: &str) -> impl Iterator<Item = &'static str> + '_ {
 fn conv(prop: &str) -> Conv {
     match prop {
         p if super::interact_css::form(p).is_some() => Conv::Raw,
+        p if super::scroll_css::form(p).is_some() => Conv::Raw,
         "width" | "height" | "minWidth" | "maxWidth" | "minHeight" | "maxHeight" => Conv::Size,
         "padding" => Conv::Insets,
         "paddingTop" | "paddingRight" | "paddingBottom" | "paddingLeft" => Conv::Len,
@@ -447,6 +465,7 @@ pub fn value_form(prop: &str, words: &[&str]) -> Option<String> {
         Conv::Insets => "1 to 4 lengths (top right bottom left)".into(),
         Conv::Margin => "<n>px | <n>em | <n>% | auto | calc(…)".into(),
         Conv::Raw if let Some(f) = super::interact_css::form(prop) => f.into(),
+        Conv::Raw if let Some(f) = super::scroll_css::form(prop) => f.into(),
         Conv::Raw if prop == "boxShadow" => {
             "[inset] <x> <y> [<blur> [<spread>]] [<colour>], … | none".into()
         }
@@ -1792,6 +1811,10 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
             "backgroundImage",
             vec![Value::String("none".into())],
         )]),
+        n if let Some(parts) = super::scroll_css::lower(n, value) => Ok(parts?
+            .into_iter()
+            .map(|(k, v)| e(k, vec![Value::String(v)]))
+            .collect()),
         n if let Some(prop) = super::interact_css::prop_of(n) => {
             super::interact_css::check(n, value)?;
             Ok(vec![e(prop, vec![Value::String(value.trim().to_owned())])])

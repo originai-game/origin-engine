@@ -1175,7 +1175,30 @@ impl Ui {
         let dpr = self.viewport.dpr();
         let sn = &self.nodes[s];
         let clip = self.scroll_clip(s);
-        let bar = |axis, rect: Rect, cmds: &mut Vec<DrawCmd>| {
+        // CSS `scrollbar-width: thin` halves the bar; `scrollbar-color`
+        // paints its thumb and a track along the whole edge under it.
+        let css = sn.el.scroll_css;
+        let thick = if css.thin {
+            t.space.xs / 2.0
+        } else {
+            t.space.xs
+        };
+        let bar = |axis, rect: Rect, track: Rect, cmds: &mut Vec<DrawCmd>| {
+            if let Some([thumb, ground]) = css.colors {
+                cmds.push(DrawCmd::Quad {
+                    rect: track.snapped(dpr),
+                    radius: t.radius.bar,
+                    color: ground.linear(),
+                    clip,
+                });
+                cmds.push(DrawCmd::Quad {
+                    rect: rect.snapped(dpr),
+                    radius: t.radius.bar,
+                    color: thumb.linear(),
+                    clip,
+                });
+                return;
+            }
             let part = crate::dress::PartRef::of("Scroll", "bar", None).attr("axis", axis);
             let dressing = self.dress.resolve(&part);
             if dressing.matched == 0 {
@@ -1204,10 +1227,12 @@ impl Ui {
             let bar_w = crate::scroll::bar_len(track.width, inner_w, sn.content_w, t.space.xl);
             let off = self.state.scroll_x.get(&sn.key).copied().unwrap_or(0.0);
             let x = crate::scroll::bar_start(track.x, track.width, bar_w, off, max_x);
-            let h = t.space.xs;
+            let h = thick;
+            let y = track.bottom() - h - t.space.xxs;
             bar(
                 "horizontal",
-                Rect::new(x, track.bottom() - h - t.space.xxs, bar_w, h),
+                Rect::new(x, y, bar_w, h),
+                Rect::new(track.x, y, track.width, h),
                 cmds,
             );
         }
@@ -1224,10 +1249,12 @@ impl Ui {
                 .unwrap_or(0.0)
                 .clamp(0.0, max);
             let y = track.y + (track.height - bar_h) * off / max;
-            let w = t.space.xs;
+            let w = thick;
+            let x = track.right() - w - t.space.xxs;
             bar(
                 "vertical",
-                Rect::new(track.right() - w - t.space.xxs, y, w, bar_h),
+                Rect::new(x, y, w, bar_h),
+                Rect::new(x, track.y, w, track.height),
                 cmds,
             );
         }

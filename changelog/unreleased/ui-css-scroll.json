@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "UI: CSS overscroll-behavior, scroll-behavior, scroll-margin, scroll-padding, scroll-snap-stop and the scrollbar properties in documents",
+      "summary": "overscroll-behavior contain and none (and its axes) stop scroll chaining; scroll-behavior smooth glides a scroll into view; scroll-margin* and scroll-padding* (longhands, logical sides, shorthands) apply to snapping and scrolling into view; scroll-snap-stop always stops a fling; scrollbar-width thin draws half-width bars; scrollbar-color paints the thumb and a track; scrollbar-gutter stable [both-edges] keeps the bar's room."
+    }
+  ]
+}

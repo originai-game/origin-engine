@@ -268,6 +268,13 @@ impl Ui {
         if r.str("scrollbarWidth") == Some("none") {
             el.hide_bars = true;
         }
+        el.scroll_css = crate::doc::scroll_css::build(
+            |p| r.str(p),
+            &crate::css_color::Context {
+                current,
+                ..crate::css_color::Context::of(theme)
+            },
+        );
         // A dressed part takes the style's corner unless CSS writes one.
         if r.has("radius") && (el.part.is_some() || el.frame.is_some()) {
             d.radius = Some(el.radius);

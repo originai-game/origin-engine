@@ -73,7 +73,7 @@ What every kind takes: its box, layout, paint, motion and input.
 | `box-shadow:` | `[inset] <x> <y> [<blur> [<spread>]] [<colour>], … \| none` | Its shadows, as CSS box-shadow: `[inset] <x> <y> [<blur> [<spread>]] [<colour>]`, comma-separated, the first on top. |
 | `overflow-x:` | `visible \| hidden \| clip \| scroll \| auto` | What its content past its left and right edges does: visible, hidden or clip (cut), scroll or auto (scrolls). |
 | `overflow-y:` | `visible \| hidden \| clip \| scroll \| auto` | What its content past its top and bottom edges does: visible, hidden or clip (cut), scroll or auto (scrolls). |
-| `scrollbar-width:` | `auto \| thin \| none` | Its scroll bars: none hides them (it still scrolls). |
+| `scrollbar-width:` | `auto \| thin \| none` | CSS `scrollbar-width`: thin draws its scrollbars at half the width (a half-width grab strip); none hides them (it still scrolls). |
 | `-og-frame:` | `panel \| card \| button \| button-hover \| button-pressed \| button-disabled \| field \| slot \| tooltip \| hud \| track \| fill` | The style frame its background takes. |
 | `aspect-ratio:` | `<number>` | Width over height (0: none). |
 | `interactive` | `bool` | It reports clicks (`on click`). |
@@ -210,6 +210,20 @@ What every kind takes: its box, layout, paint, motion and input.
 | `-og-material:` | `<material>(<n> …[, <colour>]) \| none` | `-og-material: <name>(<n> …[, <colour>])`: the element and its subtree composited through one of the engine's built-in materials (dissolve, shine, hologram, glitch, ripple, pixelate, color-adjust, outline, blur), its parameters in the material's order. No CSS standard has shader materials. |
 | `scroll-snap-type:` | `none \| x \| y \| block \| inline \| both [mandatory \| proximity]` | CSS `scroll-snap-type: x \| y \| both [mandatory \| proximity]` on a scroll container: a drag, fling or wheel settles on the snap position of the area nearest where it would stop (`proximity`: only within a third of the view). |
 | `scroll-snap-align:` | `none \| start \| center \| end [<inline>]` | CSS `scroll-snap-align: start \| center \| end` (block, then inline) of an area inside a snapping scroll container: the edge or centre that lines up with its view's. |
+| `overscroll-behavior-x:` | `auto \| contain \| none` | CSS `overscroll-behavior-x` (and `overscroll-behavior`'s first, `-inline`) of a scroll container: `contain` or `none` keeps a wheel, drag or fling that reaches its end from scrolling the container around it; `auto` hands the rest on. |
+| `overscroll-behavior-y:` | `auto \| contain \| none` | CSS `overscroll-behavior-y` (and `overscroll-behavior`'s second, `-block`): as `overscrollBehaviorX`, vertically. |
+| `scroll-behavior:` | `auto \| smooth` | CSS `scroll-behavior: auto \| smooth` of a scroll container: smooth glides a scroll into view (a focus move, a pad's step, og.ui.scrollIntoView) there along the momentum curve; the player's reduced motion jumps. |
+| `scroll-margin-top:` | `<length>` | CSS `scroll-margin-top` (`scroll-margin`, `-block`, `-block-start`): the element's box grown by it where a scroll into view or a snap position lines it up. |
+| `scroll-margin-right:` | `<length>` | CSS `scroll-margin-right` (`scroll-margin`, `-inline`, `-inline-end`). |
+| `scroll-margin-bottom:` | `<length>` | CSS `scroll-margin-bottom` (`scroll-margin`, `-block`, `-block-end`). |
+| `scroll-margin-left:` | `<length>` | CSS `scroll-margin-left` (`scroll-margin`, `-inline`, `-inline-start`). |
+| `scroll-padding-top:` | `auto \| <length> \| <n>%` | CSS `scroll-padding-top` (`scroll-padding`, `-block`, `-block-start`) of a scroll container: px or % of its view inset from its top where a scroll into view or a snap position lines things up (under a sticky header). |
+| `scroll-padding-right:` | `auto \| <length> \| <n>%` | CSS `scroll-padding-right` (`scroll-padding`, `-inline`, `-inline-end`). |
+| `scroll-padding-bottom:` | `auto \| <length> \| <n>%` | CSS `scroll-padding-bottom` (`scroll-padding`, `-block`, `-block-end`). |
+| `scroll-padding-left:` | `auto \| <length> \| <n>%` | CSS `scroll-padding-left` (`scroll-padding`, `-inline`, `-inline-start`). |
+| `scroll-snap-stop:` | `normal \| always` | CSS `scroll-snap-stop: normal \| always` of a snap area: always stops a fling at it rather than passing it for a farther one. |
+| `scrollbar-color:` | `auto \| <thumb colour> <track colour>` | CSS `scrollbar-color: auto \| <thumb> <track>` of a scroll container: the scrollbars' thumb colour and a track drawn under it. |
+| `scrollbar-gutter:` | `auto \| stable [both-edges]` | CSS `scrollbar-gutter: auto \| stable [both-edges]` of a vertical scroll container: stable keeps the scrollbar's room on its end side whether or not it overflows (both-edges on its start side too), so its content does not shift when it starts to. |
 | `right:` | `<n>px \| <n>%` | CSS `right` / `inset-inline-end` as written (see insetTop). |
 | `left:` | `<n>px \| <n>%` | CSS `left` / `inset-inline-start` as written (see insetTop). |
 | `anchor-name:` | `<n>px \| <n>%` | CSS `anchor-name`: the dashed names (`--menu`) other elements anchor to it by. |

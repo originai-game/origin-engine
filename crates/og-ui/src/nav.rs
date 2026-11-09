@@ -854,29 +854,37 @@ impl Ui {
         let Some(view) = self.hit(h.scroller).map(|s| s.rect) else {
             return;
         };
-        let range = self
-            .state
-            .scroll_info
-            .get(&h.scroller)
-            .map_or(og_core::glam::Vec2::ZERO, |i| i.range);
+        let (view, area) = self.scroll_areas(key, h.full, h.scroller, view);
         let at = self.offset(h.scroller);
         let d = og_core::glam::Vec2::new(
-            (h.full.x + h.full.width / 2.0) - (view.x + view.width / 2.0),
-            (h.full.y + h.full.height / 2.0) - (view.y + view.height / 2.0),
+            (area.x + area.width / 2.0) - (view.x + view.width / 2.0),
+            (area.y + area.height / 2.0) - (view.y + view.height / 2.0),
         );
-        let to = (at + d).clamp(
-            og_core::glam::Vec2::ZERO,
-            range.max(og_core::glam::Vec2::ZERO),
-        );
-        if range.y > 0.0 {
-            self.state.scroll.insert(h.scroller, to.y);
-        }
-        if range.x > 0.0 {
-            self.state.scroll_x.insert(h.scroller, to.x);
-        }
-        if self.state.fling.is_some_and(|(k, _)| k == h.scroller) {
-            self.state.fling = None;
-        }
+        self.scroll_to(h.scroller, at + d);
+    }
+
+    /// Scroll container `scroller`'s `view` inset by its CSS
+    /// `scroll-padding`, and element `key`'s box `full` grown by its
+    /// `scroll-margin`: what a scroll into view lines up.
+    fn scroll_areas(&self, key: u64, full: Rect, scroller: u64, view: Rect) -> (Rect, Rect) {
+        let [t, r, b, l] = self
+            .scroll_css(scroller)
+            .padding_px(view.width, view.height);
+        let [mt, mr, mb, ml] = self.scroll_css(key).margin;
+        (
+            Rect::new(
+                view.x + l,
+                view.y + t,
+                (view.width - l - r).max(0.0),
+                (view.height - t - b).max(0.0),
+            ),
+            Rect::new(
+                full.x - ml,
+                full.y - mt,
+                full.width + ml + mr,
+                full.height + mt + mb,
+            ),
+        )
     }
 
     /// Scrolls the containers around `key` so it is in their view.
@@ -908,27 +916,19 @@ impl Ui {
             return;
         };
         let pad = self.theme().space.xs;
-        let off = self.state.scroll.entry(h.scroller).or_insert(0.0);
-        if h.full.y < view.y {
-            *off -= view.y - h.full.y + pad;
-        } else if h.full.bottom() > view.bottom() {
-            *off += h.full.bottom() - view.bottom() + pad;
+        let (view, full) = self.scroll_areas(key, h.full, h.scroller, view);
+        let mut to = self.offset(h.scroller);
+        if full.y < view.y {
+            to.y -= view.y - full.y + pad;
+        } else if full.bottom() > view.bottom() {
+            to.y += full.bottom() - view.bottom() + pad;
         }
-        *off = off.max(0.0);
-        let scrolls_x = self
-            .state
-            .scroll_info
-            .get(&h.scroller)
-            .is_some_and(|i| i.range.x > 0.0);
-        if scrolls_x {
-            let off = self.state.scroll_x.entry(h.scroller).or_insert(0.0);
-            if h.full.x < view.x {
-                *off -= view.x - h.full.x + pad;
-            } else if h.full.right() > view.right() {
-                *off += h.full.right() - view.right() + pad;
-            }
-            *off = off.max(0.0);
+        if full.x < view.x {
+            to.x -= view.x - full.x + pad;
+        } else if full.right() > view.right() {
+            to.x += full.right() - view.right() + pad;
         }
+        self.scroll_to(h.scroller, to.max(og_core::glam::Vec2::ZERO));
     }
 }
 

@@ -783,15 +783,34 @@ idle retained element builds nothing.
 `clip`, `scroll` and `auto`; as in CSS, `visible` beside a non-visible axis
 computes to `auto`. `auto` and `scroll` make the box scroll on that axis,
 `hidden` and `clip` clip its children to the padding box.
-`scrollbar-width: none` hides the bars of a scrolling box (`auto` and
-`thin` show them).
+`scrollbar-width: none` hides the bars of a scrolling box; `thin` draws
+them at half the width, with a half-width grab strip and gutter.
+`scrollbar-color: <thumb> <track>` paints the thumb in the first colour
+and a track along the whole edge under it in the second (`auto`: the
+style's thumb, no track). `scrollbar-gutter: stable` keeps a vertical
+scroller's bar room at its end whether or not it overflows, so its content
+does not shift when it starts to; `stable both-edges` keeps the same room
+at its start too.
 `scroll-snap-type: x | y | both [mandatory | proximity]` on a scrolling
 box and `scroll-snap-align: start | center | end` (block, then inline) on
 the areas inside it settle a released drag, a fling or a stopped wheel on
 the snap position nearest where it would stop, as CSS Scroll Snap 1 does;
-`proximity` snaps only within a third of the view. The fling is steered
+`proximity` snaps only within a third of the view. `scroll-padding*`
+(px or % of the view, all its longhands, logical sides and shorthands) on
+the scroller insets the view the areas line up in, and `scroll-margin*` on
+an area grows the box that lines up; both apply to a scroll into view too.
+`scroll-snap-stop: always` on an area stops a fling at it rather than
+passing it for a farther one. The fling is steered
 onto the target and decays onto it exactly, and the areas are read from
-last frame's boxes only while the box settles. A modal `<dialog>` with
+last frame's boxes only while the box settles. `overscroll-behavior` (and `-x`, `-y`, `-inline`, `-block`)
+`contain` or `none` on a scroller stops what a wheel, a drag or two
+fingers it cannot take at its end from scrolling the scroller around it
+on that axis (og-ui draws no overscroll glow or bounce, so the two act
+alike). `scroll-behavior: smooth` on a scroller makes a scroll into view
+(a focus move, a pad's step, `og.ui.scrollIntoView`) glide there along
+the momentum curve and land on it exactly; reduced motion jumps. A glide
+is a fling aimed at its target, so it lives in the snapshotted fling.
+A modal `<dialog>` with
 `-og-sheet-detents: 40% 90%` is a bottom sheet: docked to the bottom at
 full width, as tall as its tallest detent, opened at its first, dragged
 onto its detents and swiped down to close, which writes `open` back. The

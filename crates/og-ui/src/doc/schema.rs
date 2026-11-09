@@ -664,7 +664,7 @@ pub const CORE_PROPS: &[PropSpec] = &[
     p!(
         "scrollbarWidth",
         Ty::Word(&["auto", "thin", "none"]),
-        "Its scroll bars: none hides them (it still scrolls)."
+        "CSS `scrollbar-width`: thin draws its scrollbars at half the width (a half-width grab strip); none hides them (it still scrolls)."
     ),
     p!(
         "frame",

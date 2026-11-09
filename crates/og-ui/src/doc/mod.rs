@@ -24,6 +24,7 @@ pub(crate) mod position_css;
 pub mod schema;
 mod schema_extra;
 mod script;
+pub(crate) mod scroll_css;
 pub mod selectors;
 mod spans;
 pub(crate) mod stylesheet;

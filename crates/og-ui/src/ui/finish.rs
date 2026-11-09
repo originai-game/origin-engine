@@ -83,12 +83,17 @@ impl Ui {
     pub(crate) fn apply_gutter(&mut self, i: usize) {
         let node = &self.nodes[i];
         let gutter = if node.el.scroll && !node.el.scroll_x && !node.el.hide_bars {
-            self.bar_gutter(node.key)
+            self.bar_gutter(node.key, node.el.scroll_css)
         } else {
             0.0
         };
+        // `scrollbar-gutter: stable both-edges`: the same room at the start.
+        let both = node.el.scroll_css.gutter == 2;
         let node = &mut self.nodes[i];
         node.el.padding.right += gutter - node.gutter;
+        if both {
+            node.el.padding.left += gutter - node.gutter;
+        }
         node.gutter = gutter;
     }
 

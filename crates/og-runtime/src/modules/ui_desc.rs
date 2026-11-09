@@ -148,6 +148,7 @@ pub(super) fn element(theme: &Theme, d: &Value) -> Element {
         hide_bars: false,
         snap: 0,
         snap_align: 0,
+        scroll_css: og_ui::ScrollCss::default(),
         // Margins are a document's (CSS); the builder's boxes have none.
         margin: Default::default(),
         block: false,

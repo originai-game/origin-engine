@@ -78,6 +78,59 @@ pub struct ScrollState {
     pub content_height: f32,
 }
 
+/// CSS `overscroll-behavior` on one axis (CSS Overscroll 1 §2).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Overscroll {
+    /// What it cannot take goes on to the scroll container around it.
+    #[default]
+    Auto,
+    /// Scroll chaining stops at it (og-ui draws no overscroll affordance,
+    /// so `none` is the same).
+    Contain,
+    None,
+}
+
+/// An element's CSS scroll and scrollbar properties beyond `overflow` and
+/// snap's type and alignment ([`crate::doc::scroll_css`]).
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct ScrollCss {
+    /// `overscroll-behavior-x` and `-y` of a scroll container.
+    pub overscroll: [Overscroll; 2],
+    /// `scroll-behavior: smooth`: a scroll into view (a focus move, a pad's
+    /// step, `og.ui.scrollIntoView`) glides there instead of jumping.
+    pub smooth: bool,
+    /// `scroll-snap-stop: always` on a snap area: a fling does not pass it.
+    pub snap_stop: bool,
+    /// `scroll-margin` (top, right, bottom, left, CSS px): the area a scroll
+    /// into view or a snap position lines up is its box grown by these.
+    pub margin: [f32; 4],
+    /// `scroll-padding` of a scroll container (top, right, bottom, left):
+    /// each side's px and fraction of its view, inset from the view where
+    /// a scroll into view or snapping lines things up.
+    pub padding: [(f32, f32); 4],
+    /// `scrollbar-width: thin`.
+    pub thin: bool,
+    /// `scrollbar-color`: the thumb's and the track's (`None`: the style's
+    /// thumb and no track).
+    pub colors: Option<[crate::Srgba; 2]>,
+    /// `scrollbar-gutter`: 0 auto, 1 stable, 2 stable both-edges.
+    pub gutter: u8,
+}
+
+impl ScrollCss {
+    /// Its scroll padding in px for a view `w` × `h` (top, right, bottom,
+    /// left).
+    pub(crate) fn padding_px(&self, w: f32, h: f32) -> [f32; 4] {
+        let p = self.padding;
+        [
+            p[0].0 + p[0].1 * h,
+            p[1].0 + p[1].1 * w,
+            p[2].0 + p[2].1 * h,
+            p[3].0 + p[3].1 * w,
+        ]
+    }
+}
+
 /// A grabbed scrollbar: its container, the axis (0 x, 1 y) and where on
 /// the bar the press landed.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -94,14 +147,22 @@ impl Ui {
     /// stat's figure, a grade) never lies under the bar; else 0. Narrower,
     /// the content is no shorter, so it keeps overflowing and the gutter
     /// holds. Layout gives it to every vertical-only scroller with bars.
-    pub(crate) fn bar_gutter(&self, key: u64) -> f32 {
-        if self
-            .state
-            .scroll_info
-            .get(&key)
-            .is_some_and(|s| s.range.y > 0.0)
+    /// CSS `scrollbar-gutter: stable` keeps it while nothing overflows,
+    /// and `scrollbar-width: thin` halves the bar's part of it.
+    pub(crate) fn bar_gutter(&self, key: u64, css: ScrollCss) -> f32 {
+        if css.gutter != 0
+            || self
+                .state
+                .scroll_info
+                .get(&key)
+                .is_some_and(|s| s.range.y > 0.0)
         {
-            self.theme.space.xs + 2.0 * self.theme.space.xxs
+            let bar = if css.thin {
+                self.theme.space.xs / 2.0
+            } else {
+                self.theme.space.xs
+            };
+            bar + 2.0 * self.theme.space.xxs
         } else {
             0.0
         }
@@ -397,27 +458,15 @@ impl Ui {
                 p = s.parent;
                 continue;
             }
-            let pad = s.el.padding;
             let at = self.offset(s.key);
             let max = [s.max_scroll_x(), s.max_scroll()];
-            let r = n.rect;
+            let view = snapport(s);
             for axis in 0..2 {
                 let a = (align >> (2 * axis)) & 3;
                 if s.el.snap & (1 << axis) == 0 || a == 0 {
                     continue;
                 }
-                let (lo, len, vlo, vlen) = if axis == 0 {
-                    let v = s.rect.width - pad.horizontal();
-                    (r.x, r.width, s.rect.x + pad.left, v.max(0.0))
-                } else {
-                    let v = s.rect.height - pad.vertical();
-                    (r.y, r.height, s.rect.y + pad.top, v.max(0.0))
-                };
-                let d = match a {
-                    1 => lo - vlo,
-                    2 => (lo + len / 2.0) - (vlo + vlen / 2.0),
-                    _ => (lo + len) - (vlo + vlen),
-                };
+                let d = snap_delta(axis, a, n, view);
                 let now = at[axis];
                 if ((now + d).clamp(0.0, max[axis].max(0.0)) - now).abs() < 0.5 {
                     flags |= 1 << (4 + axis);
@@ -426,6 +475,56 @@ impl Ui {
             break;
         }
         flags
+    }
+
+    /// Element `key`'s CSS scroll properties, as last laid out.
+    pub(crate) fn scroll_css(&self, key: u64) -> crate::scroll::ScrollCss {
+        self.tree
+            .find(key)
+            .and_then(|i| self.nodes.get(i))
+            .map(|n| n.el.scroll_css)
+            .unwrap_or_default()
+    }
+
+    /// The fraction of a fling's velocity a tick keeps off (1 − its decay).
+    fn fling_keep(&self) -> f32 {
+        let response = (crate::theme::SPRING_MOMENTUM.response_ms / 1000.0).max(1e-3);
+        let decay = (1.0 - 1.0 / (self.ticks_per_second() as f32 * response)).max(0.0);
+        1.0 - decay
+    }
+
+    /// Scrolls container `key` to offset `to` (clamped to its range) as
+    /// a program does (CSSOM View): with `scroll-behavior: smooth` a glide
+    /// there along the momentum curve (a fling aimed at it, which lands on
+    /// it exactly), else, or with reduced motion, at once. Stops a fling.
+    pub(crate) fn scroll_to(&mut self, key: u64, to: Vec2) {
+        let range = self
+            .state
+            .scroll_info
+            .get(&key)
+            .map_or(Vec2::ZERO, |i| i.range)
+            .max(Vec2::ZERO);
+        let at = self.offset(key);
+        let to = Vec2::new(
+            if range.x > 0.0 { to.x } else { at.x },
+            if range.y > 0.0 { to.y } else { at.y },
+        )
+        .clamp(Vec2::ZERO, range.max(at));
+        if self.state.fling.is_some_and(|(k, _)| k == key) {
+            self.state.fling = None;
+        }
+        if self.scroll_css(key).smooth && !self.theme().reduced_motion {
+            if (to - at).length() > 0.25 {
+                self.state.fling = Some((key, (to - at) * self.fling_keep()));
+            }
+            return;
+        }
+        if to.x != at.x {
+            self.state.scroll_x.insert(key, to.x);
+        }
+        if to.y != at.y {
+            self.state.scroll.insert(key, to.y);
+        }
     }
 
     /// The offset of scroll container `key` (x, y).
@@ -477,15 +576,11 @@ impl Ui {
         if snap & 3 == 0 {
             return None;
         }
-        let pad = n.el.padding;
-        let view = crate::layout::Rect::new(
-            n.rect.x + pad.left,
-            n.rect.y + pad.top,
-            (n.rect.width - pad.horizontal()).max(0.0),
-            (n.rect.height - pad.vertical()).max(0.0),
-        );
+        let view = snapport(n);
         let at = self.offset(key);
-        let mut found: [Vec<f32>; 2] = Default::default();
+        // Each axis's snap positions, and whether the area says
+        // `scroll-snap-stop: always`.
+        let mut found: [Vec<(f32, bool)>; 2] = Default::default();
         let mut stack: Vec<usize> = n.children.clone();
         while let Some(c) = stack.pop() {
             let cn = &self.nodes[c];
@@ -499,23 +594,13 @@ impl Ui {
                 }
                 continue;
             }
-            let r = cn.rect;
             for (axis, found) in found.iter_mut().enumerate() {
                 let align = (a >> (2 * axis)) & 3;
                 if snap & (1 << axis) == 0 || align == 0 {
                     continue;
                 }
-                let (lo, len, vlo, vlen) = if axis == 0 {
-                    (r.x, r.width, view.x, view.width)
-                } else {
-                    (r.y, r.height, view.y, view.height)
-                };
-                let d = match align {
-                    1 => lo - vlo,
-                    2 => (lo + len / 2.0) - (vlo + vlen / 2.0),
-                    _ => (lo + len) - (vlo + vlen),
-                };
-                found.push(if axis == 0 { at.x } else { at.y } + d);
+                let d = snap_delta(axis, align, cn, view);
+                found.push((at[axis] + d, cn.el.scroll_css.snap_stop));
             }
         }
         let range = self
@@ -527,13 +612,26 @@ impl Ui {
         let mut out = projected.clamp(Vec2::ZERO, range);
         for axis in 0..2 {
             let p = out[axis];
-            let Some(best) = found[axis]
+            let Some(mut best) = found[axis]
                 .iter()
-                .map(|c| c.clamp(0.0, range[axis]))
+                .map(|c| c.0.clamp(0.0, range[axis]))
                 .min_by(|a, b| (a - p).abs().total_cmp(&(b - p).abs()))
             else {
                 continue;
             };
+            // CSS Scroll Snap 1 §6.2: a fling does not pass an area that
+            // says always; it stops at the first one on its way.
+            let now = at[axis];
+            if let Some(stop) = found[axis]
+                .iter()
+                .filter(|c| c.1)
+                .map(|c| c.0.clamp(0.0, range[axis]))
+                .filter(|&c| (c - now).abs() > 0.5 && (c - now) * (p - now) > 0.0)
+                .filter(|&c| (c - now).abs() < (best - now).abs())
+                .min_by(|a, b| (a - now).abs().total_cmp(&(b - now).abs()))
+            {
+                best = stop;
+            }
             let size = if axis == 0 { view.width } else { view.height };
             if snap & 4 == 0 || (best - p).abs() <= size / 3.0 {
                 out[axis] = best;
@@ -562,6 +660,17 @@ impl Ui {
                 break;
             }
             rest = self.scroll_by(k, rest);
+            // CSS `overscroll-behavior` contain or none: no chaining past
+            // it on an axis it scrolls.
+            if let Some(n) = self.tree.find(k).and_then(|i| self.nodes.get(i)) {
+                let o = n.el.scroll_css.overscroll;
+                if n.el.scroll_x && o[0] != Overscroll::Auto {
+                    rest.x = 0.0;
+                }
+                if n.el.scroll && o[1] != Overscroll::Auto {
+                    rest.y = 0.0;
+                }
+            }
         }
         rest
     }
@@ -573,9 +682,14 @@ impl Ui {
                 return None;
             }
             let info = self.state.scroll_info.get(&h.key)?;
+            let grab_w = if self.scroll_css(h.key).thin {
+                BAR_GRAB / 2.0
+            } else {
+                BAR_GRAB
+            };
             let r = h.full;
             let off = self.offset(h.key);
-            if info.range.y > 0.0 && p.x >= h.rect.right() - BAR_GRAB {
+            if info.range.y > 0.0 && p.x >= h.rect.right() - grab_w {
                 let start = bar_start(r.y, r.height, info.bar.y, off.y, info.range.y);
                 let grab = (p.y - start).clamp(0.0, info.bar.y);
                 return Some(Thumb {
@@ -584,7 +698,7 @@ impl Ui {
                     grab,
                 });
             }
-            if info.range.x > 0.0 && p.y >= h.rect.bottom() - BAR_GRAB {
+            if info.range.x > 0.0 && p.y >= h.rect.bottom() - grab_w {
                 let start = bar_start(r.x, r.width, info.bar.x, off.x, info.range.x);
                 let grab = (p.x - start).clamp(0.0, info.bar.x);
                 return Some(Thumb {
@@ -723,9 +837,8 @@ impl Ui {
             if self.hit(key).is_none() {
                 self.state.fling = None;
             } else {
-                let response = (crate::theme::SPRING_MOMENTUM.response_ms / 1000.0).max(1e-3);
-                let decay = (1.0 - 1.0 / (self.ticks_per_second() as f32 * response)).max(0.0);
-                let keep = 1.0 - decay;
+                let keep = self.fling_keep();
+                let decay = 1.0 - keep;
                 let at = self.offset(key);
                 // A snapping container steers its fling onto the snap
                 // position nearest where it would stop: a velocity of
@@ -761,13 +874,57 @@ impl Ui {
                 if left.y.abs() > 1e-3 {
                     next.y = 0.0;
                 }
-                self.state.fling = (next.length() >= FLING_STOP).then_some((key, next));
+                if next.length() >= FLING_STOP {
+                    self.state.fling = Some((key, next));
+                } else {
+                    self.state.fling = None;
+                    // A smooth scroll's glide lands exactly where it was
+                    // aimed: the rest a decaying fling still had to go.
+                    if self.scroll_css(key).smooth && keep > 0.0 {
+                        self.scroll_by(key, next / keep);
+                    }
+                }
             }
         }
         if let Some(k) = wheel_snap {
             self.state.fling = Some((k, Vec2::ZERO));
         }
         grabbed
+    }
+}
+
+/// A scroll container's snapport (CSS Scroll Snap 1 §5.1): its view inside
+/// its padding, inset by its `scroll-padding`.
+fn snapport(n: &crate::layout::Node) -> crate::layout::Rect {
+    let pad = n.el.padding;
+    let (w, h) = (
+        (n.rect.width - pad.horizontal()).max(0.0),
+        (n.rect.height - pad.vertical()).max(0.0),
+    );
+    let [t, r, b, l] = n.el.scroll_css.padding_px(w, h);
+    crate::layout::Rect::new(
+        n.rect.x + pad.left + l,
+        n.rect.y + pad.top + t,
+        (w - l - r).max(0.0),
+        (h - t - b).max(0.0),
+    )
+}
+
+/// How far snap area `n`'s box, grown by its `scroll-margin`, lies from
+/// its aligned place in snapport `view` on `axis` (`align` 1 start, 2
+/// centre, 3 end).
+fn snap_delta(axis: usize, align: u8, n: &crate::layout::Node, view: crate::layout::Rect) -> f32 {
+    let [mt, mr, mb, ml] = n.el.scroll_css.margin;
+    let r = n.rect;
+    let (lo, len, vlo, vlen) = if axis == 0 {
+        (r.x - ml, r.width + ml + mr, view.x, view.width)
+    } else {
+        (r.y - mt, r.height + mt + mb, view.y, view.height)
+    };
+    match align {
+        1 => lo - vlo,
+        2 => (lo + len / 2.0) - (vlo + vlen / 2.0),
+        _ => (lo + len) - (vlo + vlen),
     }
 }
 
