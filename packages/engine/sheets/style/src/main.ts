@@ -11,8 +11,8 @@ import { og, defineSystem } from "@origingame/engine";
 type Forced = "hover" | "pressed" | "focus";
 const FORCED: ReadonlyArray<readonly [Forced, string]> = [["hover", "hover"], ["pressed", "pressed"], ["focus", "focused"]];
 /** Each row's cells (assets/ui/sheet.svelte) by page, as the probe paths name them. */
-const MATRIX = ["primary", "secondary", "quiet", "ghost", "danger", "tab", "checkbox", "switch", "radio"];
-const FIELDS = ["field", "select", "stepper", "range"];
+const MATRIX = ["primary", "secondary", "quiet", "ghost", "danger", "checkbox", "switch", "radio"];
+const FIELDS = ["tab", "field", "select", "stepper", "range"];
 const cells = (): Array<[string, string, Forced]> => [
   ...MATRIX.flatMap((row) => FORCED.map(([c]) => [row, `StyleSheet/Matrix/${row}/${row}-${c}`, c] as [string, string, Forced])),
   ...FIELDS.flatMap((row) => FORCED.map(([c]) => [row, `FieldSheet/${row}/${row}-boxes/${row}-${c}-box/${row}-${c}`, c] as [string, string, Forced])),

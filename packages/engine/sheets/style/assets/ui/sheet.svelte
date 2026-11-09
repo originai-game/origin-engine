@@ -1,6 +1,6 @@
 <meta name="component" content="styleSheet">
 <meta name="strings" content="./sheet.en.ogt">
-<meta name="prop:page" content="string" data-doc="The page shown: controls (buttons, tabs and toggles in every state), fields (text, select, stepper and range in every state) surfaces (type, frames and slots) or overlays (dialog, disclosures, meters and badges).">
+<meta name="prop:page" content="string" data-doc="The page shown: controls (buttons and toggles in every state), fields (tabs, text, select, stepper and range in every state) surfaces (type, frames and slots) or overlays (dialog, disclosures, meters and badges).">
 <meta name="fixture:default" content='{"page":"controls"}'>
 <meta name="fixture:fields" content='{"page":"fields"}'>
 <meta name="fixture:surfaces" content='{"page":"surfaces"}'>
@@ -9,8 +9,8 @@
 <!--
   A style pack's core-control state sheet (docs/ui.md §6.2), rendered with
   the core default and with each pack by `og ui sheet <pack>`. Controls:
-  a row per button variant, tab and toggle, a column per state. Fields: the
-  wide controls, a captioned box per state that wraps. Hover, pressed and
+  a row per button variant and toggle, a column per state. Fields: the
+  wide controls (tabs among them), a captioned box per state that wraps. Hover, pressed and
   focus-visible are forced by src/main.ts (og.ui.forceState), so every
   state is drawn at once; a dash marks a state the control does not have.
   On a touch screen (`hover: none`) hover and focus go: a phone draws
@@ -32,8 +32,10 @@
           <button id="DialogConfirm" variant="primary">{t("sheet.confirm")}</button>
         </div>
       </dialog>
-      <details id="Closed"><summary>{t("sheet.details.closed")}</summary><p>{t("sheet.details.body")}</p></details>
-      <details id="Opened" open><summary>{t("sheet.details.open")}</summary><p class="muted">{t("sheet.details.body")}</p></details>
+      <div id="Accordion" class="accordion">
+        <details id="Closed"><summary>{t("sheet.details.closed")}</summary><p>{t("sheet.details.body")}</p></details>
+        <details id="Opened" open><summary>{t("sheet.details.open")}</summary><p class="muted">{t("sheet.details.body")}</p></details>
+      </div>
     </section>
     <section id="Feedback" class="group" aria-label={t("sheet.group.feedback")}>
       <h2 class="caption">{t("sheet.group.feedback")}</h2>
@@ -86,6 +88,18 @@
   </scroll>
   {:else if $page == "fields"}
   <scroll id="FieldSheet">
+    <section id="tab" class="field-row" aria-label={t("sheet.row.tab")}>
+      <h3 class="label">{t("sheet.row.tab")}</h3>
+      <div id="tab-boxes" class="boxes">
+        <div id="tab-rest-box" class="box rest"><small class="state">{t("sheet.state.rest")}</small><tabs id="tab-rest" class="cell rest" items="Tab Tab" keys="sheet.tab sheet.tab" selected={1}></tabs></div>
+        <div id="tab-hover-box" class="box hover"><small class="state">{t("sheet.state.hover")}</small><tabs id="tab-hover" class="cell hover" items="Tab Tab" keys="sheet.tab sheet.tab" selected={1}></tabs></div>
+        <div id="tab-pressed-box" class="box pressed"><small class="state">{t("sheet.state.pressed")}</small><tabs id="tab-pressed" class="cell pressed" items="Tab Tab" keys="sheet.tab sheet.tab" selected={1}></tabs></div>
+        <div id="tab-focus-box" class="box focus"><small class="state">{t("sheet.state.focus")}</small><tabs id="tab-focus" class="cell focus" items="Tab Tab" keys="sheet.tab sheet.tab" selected={1}></tabs></div>
+        <div id="tab-selected-box" class="box selected"><small class="state">{t("sheet.state.selected")}</small><tabs id="tab-selected" class="cell selected" items="Tab Tab" keys="sheet.tab sheet.tab" selected={0}></tabs></div>
+        <div id="tab-disabled-box" class="box disabled"><small class="state">{t("sheet.state.disabled")}</small><tabs id="tab-disabled" class="cell disabled" items="Tab Tab" keys="sheet.tab sheet.tab" selected={1} disabled></tabs></div>
+        <div id="tab-selected-disabled-box" class="box selected-disabled"><small class="state">{t("sheet.state.selected-disabled")}</small><tabs id="tab-selected-disabled" class="cell selected-disabled" items="Tab Tab" keys="sheet.tab sheet.tab" selected={0} disabled></tabs></div>
+      </div>
+    </section>
     <section id="field" class="field-row" aria-label={t("sheet.row.field")}>
       <h3 class="label">{t("sheet.row.field")}</h3>
       <div id="field-boxes" class="boxes">
@@ -198,16 +212,6 @@
         <button id="danger-disabled" class="cell disabled" variant="danger" disabled>{t("sheet.action")}</button>
         <div id="danger-selected-disabled" class="cell selected-disabled na"></div>
       </div>
-      <div id="tab" class="line" role="row" aria-label={t("sheet.row.tab")}>
-        <span class="label">{t("sheet.row.tab")}</span>
-        <tabs id="tab-rest" class="cell rest" items="Tab Tab" keys="sheet.tab sheet.tab" selected={1}></tabs>
-        <tabs id="tab-hover" class="cell hover" items="Tab Tab" keys="sheet.tab sheet.tab" selected={1}></tabs>
-        <tabs id="tab-pressed" class="cell pressed" items="Tab Tab" keys="sheet.tab sheet.tab" selected={1}></tabs>
-        <tabs id="tab-focus" class="cell focus" items="Tab Tab" keys="sheet.tab sheet.tab" selected={1}></tabs>
-        <tabs id="tab-selected" class="cell selected" items="Tab Tab" keys="sheet.tab sheet.tab" selected={0}></tabs>
-        <tabs id="tab-disabled" class="cell disabled" items="Tab Tab" keys="sheet.tab sheet.tab" selected={1} disabled></tabs>
-        <tabs id="tab-selected-disabled" class="cell selected-disabled" items="Tab Tab" keys="sheet.tab sheet.tab" selected={0} disabled></tabs>
-      </div>
       <div id="checkbox" class="line" role="row" aria-label={t("sheet.row.checkbox")}>
         <span class="label">{t("sheet.row.checkbox")}</span>
         <input id="checkbox-rest" class="cell rest" type="checkbox" aria-label={t("sheet.row.checkbox")} />
@@ -287,6 +291,7 @@ button.cell, tabs.cell { width: stretch; }
 .slot { -og-frame: slot; width: var(--size-xl); height: var(--size-xl); background: var(--well); align-items: center; justify-content: center; }
 .locked { opacity: 0.5; }
 .count { position: absolute; right: var(--space-xxs); bottom: var(--space-xxs); }
+.accordion { width: stretch; padding: var(--space-sm); gap: var(--space-xs); background: var(--panel); -og-frame: panel; }
 .actions { display: flex; gap: var(--space-sm); justify-content: end; }
 meter, progress { width: stretch; }
 .meters { display: grid; grid-template-columns: auto 1fr; gap: var(--space-sm) var(--space-md); align-items: center; width: stretch; }

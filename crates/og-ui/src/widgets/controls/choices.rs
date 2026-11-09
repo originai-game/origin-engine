@@ -838,8 +838,8 @@ impl Ui {
     /// has the focus, skipping disabled segments, mirrored right to left.
     /// The segments never shrink below their labels: when they do not fit,
     /// the track scrolls sideways under a fade at the cut edge. Plays tab.
-    /// Parts: `Segmented.track`, `Segmented.thumb`,
-    /// `Segmented.item[selected]`. Role radiogroup of radios. Probe:
+    /// Parts: `Tabs.track`, `Tabs.indicator` (the mark that slides to the
+    /// selected tab) and `Tabs.tab[selected]`. Role radiogroup of radios. Probe:
     /// `<id>`, `<id>/Strip/Track/Item#i`, `<id>/Strip/Track/Thumb`.
     pub fn segmented(&mut self, id: impl Into<Id>, desc: &SegmentedDesc) -> ChoiceIndexResult {
         let id = id.into();
@@ -905,7 +905,7 @@ impl Ui {
             },
         );
         let track_part = format!(
-            "Segmented.track{}",
+            "Tabs.track{}",
             flags(&[desc.disabled.then_some("disabled")])
         );
         self.open(
@@ -933,7 +933,7 @@ impl Ui {
                     height: Size::px(sel.height),
                     radius: t.radius.control,
                     background: Some(raised.srgba()),
-                    part: crate::dress::PartRef::parse("Segmented.thumb", ElementClass::Tab).ok(),
+                    part: crate::dress::PartRef::parse("Tabs.indicator", ElementClass::Tab).ok(),
                     ..Element::default()
                 },
             );
@@ -969,7 +969,7 @@ impl Ui {
             let built = self.ctl(
                 crate::ui_idi("Item", i as u32),
                 Ctl {
-                    part: "Segmented.item",
+                    part: "Tabs.tab",
                     cls: ElementClass::Tab,
                     disabled: off,
                     flags: vec![on.then_some("selected")],

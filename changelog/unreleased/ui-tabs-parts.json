@@ -1,0 +1,16 @@
+{
+  "breaking": [
+    {
+      "member": "<tabs> parts",
+      "change": "A <tabs> element's parts are Tabs.track, Tabs.indicator (the mark that slides to the selected tab) and Tabs.tab[selected], the names the core default and og style new already dress; they were Segmented.track, Segmented.thumb and Segmented.item since og.ui.tabBar went, so every Tabs.tab dressing was ignored.",
+      "fix": "Rename a style's Segmented.track, Segmented.thumb and Segmented.item[selected] selectors to Tabs::track, Tabs::indicator and Tabs::tab:selected.",
+      "find": ["Segmented"]
+    }
+  ],
+  "fixed": [
+    {
+      "member": "og ui sheet <pack>",
+      "summary": "The state sheet's tabs move to the fields page, where a two-tab bar fits a phone cell by touch, and its disclosures sit in a panel as an accordion."
+    }
+  ]
+}
