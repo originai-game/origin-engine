@@ -593,6 +593,13 @@ fn css_parts_share_the_css_cascade_and_markup_hosts() {
     use og_ui::paint::{ColorRef, Effect, Paint, ShapeKind};
     let mut ui = ui_with_font(test_font_metrics());
     ui.set_part_css(include_str!("fixtures/parts.css")).unwrap();
+    let mut rebuilt = ui_with_font(test_font_metrics());
+    rebuilt
+        .set_part_css("button::part(base) { background: red; }")
+        .unwrap();
+    rebuilt.inherit_part_css(&ui);
+    ui.set_part_css("").unwrap();
+    let mut ui = rebuilt;
     let part = PartRef::of("Button", "base", None);
     let color = |hex: &str| Paint::Solid(ColorRef::Literal(style_file::parse_color(hex).unwrap()));
     let draw = ui.resolve_part(&part, [120.0, 40.0]).unwrap();

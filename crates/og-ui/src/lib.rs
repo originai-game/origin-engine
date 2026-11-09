@@ -21,6 +21,9 @@
 //! the unit of `og.Input` and the probe. README.md has the widget set, the
 //! layout rules, the id grammar, the theme generation and the probe contract.
 
+/// The engine's default CSS, generated from the shared design tokens.
+pub const DEFAULT_CSS: &str = include_str!("../default.css");
+
 mod a11y;
 pub mod actions;
 pub mod bind;

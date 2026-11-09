@@ -96,7 +96,7 @@ pub struct Recolour {
 
 /// An atlas region (`[u0, v0, u1, v1]`) the cook recolours, with each
 /// accent's colour as painted and as the palette now has it.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct RecolourRegion {
     pub uv: [f32; 4],
     pub map: Vec<(Srgba, Srgba)>,

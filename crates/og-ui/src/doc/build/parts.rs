@@ -14,6 +14,13 @@ impl Ui {
         Ok(())
     }
 
+    /// Preserve the installed part stylesheet when rebuilding a UI.
+    pub fn inherit_part_css(&mut self, source: &Ui) {
+        self.part_rules.clone_from(&source.part_rules);
+        self.part_sheet.clone_from(&source.part_sheet);
+        self.kept.epoch += 1;
+    }
+
     /// Resolve a part's CSS for its placed size. The result has no implicit
     /// class-dependent fill, outline, radius or shadow.
     pub fn resolve_part(
