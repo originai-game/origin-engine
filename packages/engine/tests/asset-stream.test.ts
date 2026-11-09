@@ -462,7 +462,7 @@ test("og build --publish ships each group as its pack beside the first group, an
   for (const f of first) expect([f, existsSync(join(dist, "cooked", f))]).toEqual([f, true]);
   const packs = ["cooked/stream/cave.ogb", "cooked/stream/meadow.ogb", "cooked/stream/tower.ogb"];
   // og-build.json lists the groups' packs with their bytes, hashes and what they take.
-  const m = JSON.parse(readFileSync(join(dist, "og-build.json"), "utf8")) as { files: Array<{ path: string }>; stream: { first: { files: number; bytes: number }; groups: Array<{ name: string; file: string; bytes: number; sha256: string; priority: number; memory: number; assets: string[] }> } };
+  const m = JSON.parse(readFileSync(join(dist, "og-build.json"), "utf8")) as { files: Array<{ path: string }>; total: { files: number; bytes: number }; stream: { first: { files: number; bytes: number }; groups: Array<{ name: string; file: string; bytes: number; sha256: string; priority: number; memory: number; assets: string[] }> } };
   expect(m.stream.groups.map((g) => [g.name, g.file, g.priority, g.memory, g.assets])).toEqual([
     ["cave", packs[0], 2, runtime.cave, ["models/hut-b.glb", "audio/blip.wav"]],
     ["meadow", packs[1], 1, runtime.meadow, ["models/hut-a.glb", "textures/sign.png"]],
@@ -482,5 +482,5 @@ test("og build --publish ships each group as its pack beside the first group, an
   // The shell's boot progress expects the first group's bytes only (the manifest is not counted).
   const html = readFileSync(join(dist, "index.html"), "utf8");
   expect(html).toContain(`"cooked":${firstBytes - statSync(join(dist, "cooked", ".cook.ogt")).size}`);
-  writeFileSync(join(evidence, "publish.json"), JSON.stringify({ firstGroup: m.stream.first, groups: m.stream.groups, precachedCooked: cooked, lazy: config.lazy, total: b.total }, null, 1) + "\n");
+  writeFileSync(join(evidence, "publish.json"), JSON.stringify({ firstGroup: m.stream.first, groups: m.stream.groups, precachedCooked: cooked, lazy: config.lazy, total: m.total }, null, 1) + "\n");
 }, slow(120_000));

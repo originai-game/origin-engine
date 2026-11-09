@@ -28,7 +28,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { settingsOf, webBuild, type BuildManifest } from "../../src/node/web-build.ts";
+import { settingsOf, sizesOf, webBuild, type BuildManifest } from "../../src/node/web-build.ts";
 import { Browser, chromePath, type Page } from "./cdp.ts";
 import { serve } from "./serve.ts";
 import { LANES_POOL_DEADLINE_MS } from "../../src/web/host.ts";
@@ -69,7 +69,7 @@ for (const game of ["runner", "match3"]) {
   const dist = join(work, game);
   const b = await webBuild(project, join(project, "src", "main.ts"), dist, true, settingsOf(project));
   if (!b.ok) throw new Error(b.reason);
-  builds[game] = { dist, manifest: b.manifest!, total: b.total, files: b.files };
+  builds[game] = { dist, manifest: b.manifest!, ...(await sizesOf(dist)) };
   // og-build.json names every file with its bytes and sha256.
   const m = b.manifest!;
   const bad = m.files.filter((f) => {

@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og build",
+      "summary": "The size table compresses the build's files at once, one per core, where it compressed them one after another: a publish build's two engine modules no longer double the wait for a Brotli -q 11 the size cache does not hold."
+    }
+  ]
+}

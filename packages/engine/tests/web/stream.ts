@@ -136,7 +136,7 @@ try {
 }
 
 results.requests = requests.filter((r) => r.path.includes("/cooked/"));
-results.build = { stream: b.manifest!.stream, total: b.total };
+results.build = { stream: b.manifest!.stream, total: b.manifest!.total };
 writeFileSync(join(out, "stream-result.json"), JSON.stringify({ failures, checks, results }, null, 1) + "\n");
 console.log(`${failures === 0 ? "PASS" : "FAIL"} web streaming groups: ${checks.length} checks, ${failures} failed; ${join(out, "stream-result.json")}`);
 process.exit(failures === 0 ? 0 : 1);

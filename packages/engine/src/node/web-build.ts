@@ -46,6 +46,7 @@
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { availableParallelism } from "node:os";
 import { bundleGame, ENGINE_ROOT } from "./build.ts";
 import { unhashed } from "../sourcemap.ts";
 import { bootMark, engineMark, motionSubset, shellTokens, SHELL_MOTIONS, BRAND_DIR } from "../../shell/brand.ts";
@@ -54,6 +55,9 @@ declare module "node:fs" {
   export function cpSync(from: string, to: string, options?: { recursive?: boolean }): void;
   export function readdirSync(path: string): string[];
   export function realpathSync(path: string): string;
+}
+declare module "node:os" {
+  export function availableParallelism(): number;
 }
 declare module "node:path" {
   export function relative(from: string, to: string): string;
@@ -64,6 +68,7 @@ declare module "node:path" {
 declare const Bun: {
   build(o: { entrypoints: string[]; target: string; format: string; minify?: boolean }): Promise<{ success: boolean; logs: unknown[]; outputs: Array<{ text(): Promise<string> }> }>;
   spawnSync(cmd: string[], o?: { stdin?: Uint8Array; stdout?: string; stderr?: string }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array };
+  spawn(cmd: string[], o: { stdin: Uint8Array; stdout: "pipe"; stderr: "ignore" }): { exited: Promise<number>; stdout: ReadableStream<Uint8Array> };
   gzipSync(data: Uint8Array, o?: { level?: number }): Uint8Array;
   which(cmd: string): string | null;
   CryptoHasher: new (algorithm: string) => { update(data: Uint8Array | string): unknown; digest(encoding: "hex"): string };
@@ -443,10 +448,6 @@ export interface WebBuild {
   readonly ok: boolean;
   readonly out: string;
   readonly publish: boolean;
-  readonly files: SizeRow[];
-  readonly total: { bytes: number; compressed: number };
-  /** What each page downloads (boot and later); `total` is every file of the directory. */
-  readonly downloads?: Downloads;
   readonly probe: { build: string; members: string[] } | null;
   readonly manifest?: BuildManifest;
   readonly reason?: string;
@@ -469,8 +470,8 @@ function sha256(data: Uint8Array | string): string {
 }
 
 // Facts that depend only on a file's bytes and are slow to recompute (brotli
-// -q 11 of the 8 MB wasm is about 12 s; the host's hello needs a bun process
-// that loads it) are kept by sha256 in dist/.build-cache.json across builds,
+// -q 11 of an engine module takes a core for a minute or more; the host's
+// hello needs a bun process that loads it) are kept by sha256 in dist/.build-cache.json across builds,
 // so a test that builds four times or a `og build` after an edit to game code
 // pays for the engine once. The cache keeps its newest 2000 entries.
 const CACHE_FILE = join(here, "..", "..", "dist", ".build-cache.json");
@@ -499,19 +500,20 @@ function cachePut(key: string, value: unknown): void {
   }
 }
 
-function compressedSize(bytes: Uint8Array): { size: number; codec: SizeRow["codec"] } {
+async function compressedSize(bytes: Uint8Array): Promise<{ bytes: number; size: number; codec: SizeRow["codec"] }> {
   const brotli = Boolean(Bun.which("brotli"));
   const key = `size:${brotli ? "brotli-11" : "gzip-9"}:${sha256(bytes)}`;
   const hit = cacheGet(key) as { size: number; codec: SizeRow["codec"] } | undefined;
-  if (hit) return hit;
+  if (hit) return { bytes: bytes.length, ...hit };
   let out: { size: number; codec: SizeRow["codec"] } | null = null;
   if (brotli) {
-    const r = Bun.spawnSync(["brotli", "-q", "11", "-c"], { stdin: bytes, stdout: "pipe", stderr: "pipe" });
-    if (r.exitCode === 0) out = { size: r.stdout.length, codec: "brotli-11" };
+    const p = Bun.spawn(["brotli", "-q", "11", "-c"], { stdin: bytes, stdout: "pipe", stderr: "ignore" });
+    const [code, compressed] = await Promise.all([p.exited, new Response(p.stdout).arrayBuffer()]);
+    if (code === 0) out = { size: compressed.byteLength, codec: "brotli-11" };
   }
   out ??= { size: Bun.gzipSync(bytes, { level: 9 }).length, codec: "gzip-9" };
   cachePut(key, out);
-  return out;
+  return { bytes: bytes.length, ...out };
 }
 
 /**
@@ -752,7 +754,7 @@ export async function webBuild(project: string, entry: string, out: string, publ
   let replaced = false;
   const fail = (reason: string): WebBuild => {
     if (replaced) rmSync(out, { recursive: true, force: true });
-    return { ok: false, out, publish, files: [], total: { bytes: 0, compressed: 0 }, probe: null, reason };
+    return { ok: false, out, publish, probe: null, reason };
   };
   const refusal = outRefusal(project, out);
   if (refusal) return fail(refusal);
@@ -988,18 +990,40 @@ export async function webBuild(project: string, entry: string, out: string, publ
           },
   };
   writeFileSync(join(out, BUILD_MANIFEST), JSON.stringify(manifest, null, 2) + "\n");
-
-  // The size table is what a player can fetch: source maps are the developer's (and a publish build's are never served).
-  const files = walk(out).filter((path) => !path.endsWith(".map")).map((path): SizeRow => {
-    const bytes = new Uint8Array(readFileSync(path));
-    const c = compressedSize(bytes);
-    return { path: relative(out, path), bytes: bytes.length, compressed: c.size, codec: c.codec };
-  });
-  const total = files.reduce((t, f) => ({ bytes: t.bytes + f.bytes, compressed: t.compressed + f.compressed }), { bytes: 0, compressed: 0 });
-  return { ok: true, out, publish, files, total, downloads: downloadsOf(files), probe, manifest };
+  return { ok: true, out, publish, probe, manifest };
 }
 
-function table(b: WebBuild): string {
+/** A build's size table (sizesOf): every file, their sum, and what each page downloads. */
+export interface BuildSizes {
+  readonly files: SizeRow[];
+  readonly total: { bytes: number; compressed: number };
+  /** What each page downloads (boot and later); `total` is every file of the directory. */
+  readonly downloads: Downloads;
+}
+
+/**
+ * The size table of a build in `out`: what a player can fetch, each file
+ * compressed as it is served. Source maps are the developer's (and a
+ * publish build's are never served). Measured apart from webBuild, which
+ * does not need it: brotli -q 11 of an engine module takes a core for a
+ * minute or more, so the files are compressed at once, one per core.
+ */
+export async function sizesOf(out: string): Promise<BuildSizes> {
+  const paths = walk(out).filter((path) => !path.endsWith(".map"));
+  const files: SizeRow[] = new Array(paths.length);
+  let next = 0;
+  const worker = async () => {
+    for (let i = next++; i < paths.length; i = next++) {
+      const c = await compressedSize(new Uint8Array(readFileSync(paths[i]!)));
+      files[i] = { path: relative(out, paths[i]!), bytes: c.bytes, compressed: c.size, codec: c.codec };
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(paths.length, availableParallelism()) }, worker));
+  const total = files.reduce((t, f) => ({ bytes: t.bytes + f.bytes, compressed: t.compressed + f.compressed }), { bytes: 0, compressed: 0 });
+  return { files, total, downloads: downloadsOf(files) };
+}
+
+function table(b: BuildSizes): string {
   const codec = b.files[0]?.codec ?? "brotli-11";
   const rows = [["file", "bytes", codec], ...b.files.map((f) => [f.path, String(f.bytes), String(f.compressed)]), ["total (every file; not a download)", String(b.total.bytes), String(b.total.compressed)]];
   const w = [0, 1, 2].map((i) => Math.max(...rows.map((r) => r[i]!.length)));
@@ -1027,14 +1051,15 @@ if (import.meta.main) {
   }
   const b = await webBuild(resolve(project!), resolve(entry!), resolve(out!), argv.includes("--publish"), settings);
   if (!b.ok) {
-    if (argv.includes("--json")) process.stdout.write(JSON.stringify(b) + "\n");
+    if (argv.includes("--json")) process.stdout.write(JSON.stringify({ ...b, files: [], total: { bytes: 0, compressed: 0 } }) + "\n");
     process.stderr.write(`og build: ${b.reason}\n`);
     process.exit(1);
   }
-  if (argv.includes("--json")) process.stdout.write(JSON.stringify(b) + "\n");
+  const sizes = await sizesOf(b.out);
+  if (argv.includes("--json")) process.stdout.write(JSON.stringify({ ok: b.ok, out: b.out, publish: b.publish, ...sizes, probe: b.probe, manifest: b.manifest }) + "\n");
   else {
-    process.stdout.write(table(b));
-    if (b.downloads) process.stdout.write(downloadLines(b.downloads, b.files[0]?.codec ?? "brotli-11"));
+    process.stdout.write(table(sizes));
+    process.stdout.write(downloadLines(sizes.downloads, sizes.files[0]?.codec ?? "brotli-11"));
     if (b.probe) process.stdout.write(`probe: ${b.probe.build} build, ${b.probe.members.length} members: ${b.probe.members.join(", ")}\n`);
     process.stdout.write(`${BUILD_MANIFEST}: ${b.manifest!.build} build of ${b.manifest!.game.name}, engine ${b.manifest!.engine.version}, isolation ${b.manifest!.crossOriginIsolation}, version ${b.manifest!.version.slice(0, 16)}\n`);
   }

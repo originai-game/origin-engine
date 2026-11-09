@@ -137,5 +137,5 @@ for (const [member, value] of Object.entries(answer.members ?? {})) {
   if (png) writePng(png.replace(/\.png$/, `.${member}.png`), value.png);
   value.png = `<${value.png.length} base64 chars>`;
 }
-console.log(JSON.stringify({ entry, build: { total: built.total, probe: built.probe }, ...answer }, null, 2));
+console.log(JSON.stringify({ entry, build: { total: built.manifest!.total, probe: built.probe }, ...answer }, null, 2));
 process.exit(answer.error || !answer.capture ? 1 : 0);
