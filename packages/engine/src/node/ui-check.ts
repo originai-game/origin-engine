@@ -194,7 +194,7 @@ export const RULES: readonly UiRule[] = [
   { id: "text-cut", kind: "finding", title: "text clipped without an ellipsis, or drawn past its box (at any text scale)", status: "checked" },
   { id: "text-truncated", kind: "finding", title: "text truncated with an ellipsis but without a tooltip", status: "partial", note: "the ellipsis is read from the drawn text; a tooltip exists only while hovered (og-ui builds it then), so a truncated text is reported until U3's dump_ui lists an element's tooltip" },
   { id: "offscreen", kind: "finding", title: "an interactive element laid out past the screen with nothing to scroll to it", status: "checked" },
-  { id: "pseudo-overflow", kind: "finding", title: "overflow under the pseudo-locale (+40 % length, accents, brackets)", status: "checked", note: "the pseudo cells run every rule above on text lengthened in process (og.i18n.t and the text arguments of og.ui's widgets)" },
+  { id: "pseudo-overflow", kind: "finding", title: "overflow under the pseudo-locale (+40 % length, accents, brackets)", status: "checked", note: "the pseudo cells run every rule above in og-i18n's pseudo-locale, which lengthens og.i18n.t's text and a document's t() and i18n keys" },
   { id: "safe-area", kind: "finding", title: "elements outside the safe area", status: "checked" },
   { id: "covered", kind: "finding", title: "elements under the shell's covered region", status: "checked" },
   { id: "focus-reach", kind: "finding", title: "an interactive element unreachable by pad from the default focus", status: "checked" },
@@ -1265,34 +1265,4 @@ export function screensFromPlaytest(playtest: string, commands: string): Array<{
     out.push({ name: `${playtest}-${shot}`, commands: steps.slice(0, k).filter((x) => !OBSERVE.test(x.split(":")[1] ?? "")).join(";"), at: Number(t) || 0 });
   }
   return out;
-}
-
-// ── the pseudo-locale ──────────────────────────────────────────────────────
-
-const ACCENTS: Record<string, string> = {
-  a: "á", e: "é", i: "í", o: "ö", u: "ü", c: "ç", n: "ñ", y: "ý", A: "Á", E: "É", I: "Í", O: "Ö", U: "Ü", C: "Ç", N: "Ñ", Y: "Ý",
-};
-
-/** A rich text tag (`[b]`, `[color=info]`, `[/color]`): markup, not words. */
-const TAG = /\[\/?(?:b|i|u|s|outline|color|size|font|icon|img|action|link|wave|shake|pulse)(?:=[^\][]*)?\]/g;
-
-/**
- * The pseudo-locale (§15.3): accents on the Latin letters, 40 % longer
- * (padded with the text's own letters), then in brackets. Rich text tags
- * stay as they are and count for nothing: `[color=info]` accented was no
- * tag, and printed. Text without letters (a score, a time) is data and
- * stays as it is.
- */
-export function pseudo(text: string): string {
-  const words = text.replace(TAG, "");
-  if (!/\p{L}/u.test(words) || /^\[.*\]$/su.test(words)) return text;
-  const accented = text
-    .split(new RegExp(`(${TAG.source})`, "g"))
-    .map((run, k) => (k % 2 ? run : [...run].map((c) => ACCENTS[c] ?? c).join("")))
-    .join("");
-  const letters = [...words].filter((c) => /\p{L}/u.test(c));
-  const extra = Math.max(1, Math.round([...words].length * 0.4));
-  let pad = "";
-  for (let k = 0; k < extra; k++) pad += (ACCENTS[letters[k % letters.length]!] ?? letters[k % letters.length]!).toLowerCase();
-  return `[${accented} ${pad}]`;
 }

@@ -78,7 +78,9 @@ The document contract has these requirements:
   static `i18n="key"` with fallback content. Unlocalized visible literals
   produce cook warnings and publish errors. Object expressions are allowed
   only for translation parameters and classes. Companion English messages
-  use cooked string tables.
+  use cooked string tables. In the pseudo-locale (`og ui check`'s pseudo
+  cells, `og run --locale pseudo`) their text is shown accented, 40 %
+  longer and in brackets, as og.i18n.t's is (`og_i18n::pseudo_text`).
 - JSX, `$state`, `$effect`, `$bindable` outside a prop's default,
   statements, imports and functions in a script, `{@html}`, `on:click`,
   `<svelte:document>`, `<svelte:boundary>` and the Svelte 4 elements are

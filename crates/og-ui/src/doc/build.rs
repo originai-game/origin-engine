@@ -290,7 +290,9 @@ fn positioned(r: &Resolved) -> bool {
         Some("absolute" | "screen" | "anchored") => true,
         Some("relative" | "sticky") => false,
         _ => {
-            ["start", "top", "end", "bottom"].iter().any(|k| r.num(k).is_some())
+            ["start", "top", "end", "bottom"]
+                .iter()
+                .any(|k| r.num(k).is_some())
                 || r.flag("centerX")
                 || r.flag("centerY")
                 || r.has("anchorTo")
@@ -948,6 +950,7 @@ impl Ui {
             && let Some(t) = r
                 .str("key")
                 .and_then(|k| b.env.translate(k))
+                .map(|t| b.env.shown(t))
                 .filter(|t| super::mf2::has_markup(t))
         {
             let mut spans = Vec::new();
@@ -987,6 +990,7 @@ impl Ui {
             let translated = r
                 .str("key")
                 .and_then(|k| b.env.translate(k))
+                .map(|t| b.env.shown(t))
                 .filter(|_| n.inline.len() == 1);
             for run in &n.inline {
                 let text = match &run.text {

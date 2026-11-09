@@ -305,7 +305,7 @@ impl Ui {
         let t = self.theme;
         let raw_of = |r: &Resolved, b: &Build<'_>| -> String {
             if let Some(k) = r.str("key")
-                && let Some(s) = b.env.translate(k)
+                && let Some(s) = b.env.translate(k).map(|t| b.env.shown(t))
             {
                 // Its markup styles runs; the text is without it.
                 if crate::doc::mf2::has_markup(&s) {
@@ -850,6 +850,7 @@ impl Ui {
                             .get(k)
                             .filter(|key| !key.is_empty())
                             .and_then(|key| b.env.translate(key))
+                            .map(|t| b.env.shown(t))
                             .unwrap_or_else(|| item.clone()),
                         group: groups.get(k).cloned().unwrap_or_default(),
                         disabled: off.iter().any(|o| o == &k.to_string()),
@@ -1125,7 +1126,12 @@ impl Ui {
                 let items: Vec<String> = strs("items")
                     .into_iter()
                     .enumerate()
-                    .map(|(i, item)| keys.get(i).and_then(|k| b.env.translate(k)).unwrap_or(item))
+                    .map(|(i, item)| {
+                        keys.get(i)
+                            .and_then(|k| b.env.translate(k))
+                            .map(|t| b.env.shown(t))
+                            .unwrap_or(item)
+                    })
                     .collect();
                 // With values, `current` holds the selected tab's name (a screen's mode) instead of `selected`'s index.
                 let values = strs("values");

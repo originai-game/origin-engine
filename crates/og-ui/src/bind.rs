@@ -102,6 +102,15 @@ pub trait Env {
         let _ = key;
         None
     }
+    /// A translated `text` as it is shown: lengthened in the pseudo-locale
+    /// (`og ui check`'s pseudo cells), as og.i18n.t's is.
+    fn shown(&self, text: String) -> String {
+        if og_i18n::is_pseudo_locale(self.language()) {
+            og_i18n::pseudo_text(&text)
+        } else {
+            text
+        }
+    }
     /// The texture of an asset handle a document's `texture` binds (`og.load.texture`).
     fn texture(&self, handle: f64) -> Option<og_render::TextureHandle> {
         let _ = handle;
@@ -747,7 +756,7 @@ impl Expr {
                         (name.clone(), arg)
                     })
                     .collect();
-                Value::String(message.format(scope.env.language(), &args))
+                Value::String(scope.env.shown(message.format(scope.env.language(), &args)))
             }
             Expr::Format(format, value) => Value::String(format_value(
                 &value.eval(scope),

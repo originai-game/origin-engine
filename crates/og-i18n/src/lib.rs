@@ -34,7 +34,7 @@ pub mod text;
 pub use font_pack::FontPack;
 pub use format::{
     DateStyle, TimeStyle, format_compact, format_currency, format_date, format_decimal,
-    format_duration, format_locales, format_time, is_pseudo_locale,
+    format_duration, format_locales, format_time, is_pseudo_locale, pseudo_text,
 };
 pub use locale::{Direction, direction_of_locale, negotiate};
 pub use message::{Arg, Message, MessageError};

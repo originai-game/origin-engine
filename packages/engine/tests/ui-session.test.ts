@@ -16,9 +16,10 @@ test.skipIf(process.platform === "win32")("UI checks share a host without sharin
   const root = join(dir, "game");
   mkdirSync(root);
   writeFileSync(join(root, "project.ogt"), 'type project\nversion 1\n---\nname "UI Session"\nentry "main.ts"\nseed 83\n');
-  // The menu's text passes og.i18n.t, which the pseudo cell lengthens.
+  // The menu's text passes og.i18n.t and the document's own t(), which the
+  // pseudo cell lengthens alike.
   mkdirSync(join(root, "assets"));
-  writeFileSync(join(root, "assets", "menu.svelte"), '<meta name="component" content="menu">\n<meta name="prop:play" content="string">\n<button id="Play">{$play}</button>\n');
+  writeFileSync(join(root, "assets", "menu.svelte"), '<meta name="component" content="menu">\n<meta name="prop:play" content="string">\n<div id="Menu"><button id="Play">{$play}</button><span id="Quit">{t("Quit")}</span></div>\n');
   const source = `import {og} from "@origingame/engine";
 let starts=0;
 export default og.game({start(world){if(++starts!==1)throw new Error("cell state leaked");console.log(JSON.stringify({uiHost:process.pid}));const d=og.load.document(world,"menu.svelte");if(!d.ok)throw new Error(d.reason);og.ui.scope(world,"menu").writable("play","").set(og.i18n.t(world,"Play"));},ui(world){const s=og.ui.scope(world,"menu");const m=s.mount("menu","menu",{play:s.writable("play","")});if(!m.ok)throw new Error(m.reason);}});`;
@@ -48,7 +49,10 @@ export default og.game({start(world){if(++starts!==1)throw new Error("cell state
     expect(result.uncheckedCount).toBe(2);
     const frames = [0, 1].map((index) => JSON.parse(readFileSync(join(out, "cells", `${index}.uiframe.json`), "utf8")));
     expect(frames[0].elements.some((element: { text: string }) => element.text === "Play")).toBe(true);
-    expect(frames[1].elements.some((element: { text: string }) => element.text.includes("[") && element.text.includes("]"))).toBe(true);
+    const shown = (index: number, id: string) => frames[index].elements.find((element: { id: string }) => element.id === id)?.text;
+    expect([shown(0, "Play"), shown(0, "Quit")]).toEqual(["Play", "Quit"]);
+    expect(shown(1, "Play")).toStartWith("[Pláý ");
+    expect(shown(1, "Quit")).toStartWith("[Qüít ");
     return { pid: pids[0], result, frames };
   };
   try {

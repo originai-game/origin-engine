@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og ui check pseudo-locale",
+      "summary": "A document's t() text, its i18n keys and its controls' item keys are pseudo-localised too (accented, 40 % longer, in brackets), not only og.i18n.t's: the pseudo cells run in og-i18n's pseudo-locale, which lengthens every translated text alike, instead of wrapping og.i18n.t in process. og.i18n.t under the pseudo-locale (`og run --locale pseudo`) is lengthened the same way."
+    }
+  ]
+}

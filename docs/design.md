@@ -2328,8 +2328,9 @@ reply is disconnected after ten seconds.
 UI matrices use `ui::spawn` and `runUi(argv, output, control)` in
 `src/node/ui-run.ts`, on the same sequential queue as game runs. Each cell
 imports fresh declarations and creates its own world, platform, and renderer
-state. Cancellation, errors, and normal completion destroy the engine and
-restore pseudo-locale hooks. The invocation removes module copies and source
+state. Cancellation, errors, and normal completion destroy the engine. The
+pseudo cells create theirs in og-i18n's pseudo-locale, which lengthens
+og.i18n.t's text and a document's `t()` and `i18n` keys alike. The invocation removes module copies and source
 maps and clears the frozen asset root. Screen discovery reads playtests from
 the frozen project too. Frames and check measures come from one cell pass;
 review commands can use this entry point without running the matrix twice.

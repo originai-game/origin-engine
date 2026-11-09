@@ -182,6 +182,105 @@ pub fn is_pseudo_locale(locale: &str) -> bool {
     matches!(canonical(locale).as_str(), "pseudo" | "en-XA" | "ar-XB")
 }
 
+/// The rich text tags `og.ui` reads (`[b]`, `[color=info]`, `[/color]`):
+/// markup, not words.
+const TAGS: [&str; 15] = [
+    "b", "i", "u", "s", "outline", "color", "size", "font", "icon", "img", "action", "link",
+    "wave", "shake", "pulse",
+];
+
+/// The byte length of the markup `text` starts with: a rich text tag, or
+/// a `{…}` group (a message's MessageFormat 2 markup, `{#b}`, or an
+/// argument left in it); 0 when it starts with neither.
+fn markup_len(text: &str) -> usize {
+    if text.starts_with('{') {
+        return text.find('}').map_or(0, |e| e + 1);
+    }
+    let Some(rest) = text.strip_prefix('[') else {
+        return 0;
+    };
+    let body = rest.strip_prefix('/').unwrap_or(rest);
+    let name_end = body.find(['=', ']']).unwrap_or(body.len());
+    if !TAGS.contains(&&body[..name_end]) {
+        return 0;
+    }
+    let after = &body[name_end..];
+    let close = match after.strip_prefix('=') {
+        Some(v) => match v.find(['[', ']']) {
+            Some(k) if v[k..].starts_with(']') => name_end + 1 + k,
+            _ => return 0,
+        },
+        None if after.starts_with(']') => name_end,
+        None => return 0,
+    };
+    (text.len() - body.len()) + close + 1
+}
+
+fn accent(c: char) -> char {
+    match c {
+        'a' => 'á',
+        'e' => 'é',
+        'i' => 'í',
+        'o' => 'ö',
+        'u' => 'ü',
+        'c' => 'ç',
+        'n' => 'ñ',
+        'y' => 'ý',
+        'A' => 'Á',
+        'E' => 'É',
+        'I' => 'Í',
+        'O' => 'Ö',
+        'U' => 'Ü',
+        'C' => 'Ç',
+        'N' => 'Ñ',
+        'Y' => 'Ý',
+        c => c,
+    }
+}
+
+/// `text` in the pseudo-locale, for layout testing (`og ui check`'s pseudo
+/// cells): accents on the Latin letters, 40 % longer (padded with the
+/// text's own letters) and in brackets. Rich text tags and `{…}` markup
+/// stay as they are and count for nothing; text without letters (a score,
+/// a time) is data and stays as it is, as does text already in brackets.
+pub fn pseudo_text(text: &str) -> String {
+    // Its runs: (markup, text) in turn.
+    let mut runs: Vec<(bool, &str)> = Vec::new();
+    let (mut at, mut start) = (0, 0);
+    while at < text.len() {
+        let n = markup_len(&text[at..]);
+        if n == 0 {
+            at += text[at..].chars().next().map_or(1, char::len_utf8);
+            continue;
+        }
+        runs.push((false, &text[start..at]));
+        runs.push((true, &text[at..at + n]));
+        at += n;
+        start = at;
+    }
+    runs.push((false, &text[start..]));
+    let words: String = runs.iter().filter(|r| !r.0).map(|r| r.1).collect();
+    let letters: Vec<char> = words.chars().filter(|c| c.is_alphabetic()).collect();
+    if letters.is_empty() || (words.starts_with('[') && words.ends_with(']')) {
+        return text.to_string();
+    }
+    let accented: String = runs
+        .iter()
+        .map(|&(markup, run)| {
+            if markup {
+                run.to_string()
+            } else {
+                run.chars().map(accent).collect()
+            }
+        })
+        .collect();
+    let extra = ((words.chars().count() as f64 * 0.4).round() as usize).max(1);
+    let pad: String = (0..extra)
+        .flat_map(|k| accent(letters[k % letters.len()]).to_lowercase())
+        .collect();
+    format!("[{accented} {pad}]")
+}
+
 fn finish(text: String, locale: &str) -> String {
     if !is_pseudo_locale(locale) {
         return text;
@@ -583,6 +682,37 @@ mod tests {
         assert_eq!(format_compact(1e15, "en"), "1000T");
         assert_eq!(format_duration_short(3601.0, "en"), "2h");
         assert_eq!(format_duration_short(125.0, "ar"), "3 د");
+    }
+
+    #[test]
+    fn pseudo_text_is_longer_accented_and_bracketed_around_its_markup() {
+        let p = pseudo_text("Settings");
+        assert!(
+            p.starts_with('[') && p.ends_with(']') && p.contains("Séttíñgs"),
+            "{p}"
+        );
+        // Eight letters, three more (40 %), a space and the brackets.
+        assert_eq!(p.chars().count(), 8 + 3 + 1 + 2);
+        assert_eq!(pseudo_text("4,250"), "4,250", "data stays");
+        assert_eq!(pseudo_text(&p), p, "once only");
+        // Rich text tags and MessageFormat 2 markup stay whole and count
+        // for nothing: "Gain Energy now" is 15 characters, 6 more.
+        let p = pseudo_text("Gain [color=info]Energy[/color] now");
+        assert!(p.contains("[color=info]Éñérgý[/color]"), "{p}");
+        assert_eq!(
+            p.replace("[color=info]", "")
+                .replace("[/color]", "")
+                .chars()
+                .count(),
+            15 + 6 + 1 + 2
+        );
+        let bold = pseudo_text("[b]Play[/b]");
+        assert!(bold.contains("[b]Pláý[/b]"), "{bold}");
+        assert_eq!(pseudo_text(&bold), bold);
+        let marked = pseudo_text("{#i}Nice{/i} one");
+        assert!(marked.contains("{#i}Ñíçé{/i} öñé"), "{marked}");
+        // A bracket that is no tag is text.
+        assert!(pseudo_text("a [note] here").contains("[ñöté]"));
     }
 
     #[test]

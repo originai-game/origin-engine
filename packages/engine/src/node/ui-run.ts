@@ -17,9 +17,9 @@
 // A screen's commands are `t:action[:args];...` from the cell's start (a
 // bare action is at 0); without a screen the game's first screen is the
 // one cell row. The viewport of each breakpoint is set through
-// og.ui.previewViewport (the size the kit's `viewport:` command sets), the
-// pseudo-locale by lengthening text in process (og.i18n.t and the text of
-// og.ui's widgets), the other locales by the engine's locale.
+// og.ui.previewViewport (the size the kit's `viewport:` command sets), each
+// locale by the engine's locale: `pseudo` is og-i18n's pseudo-locale, which
+// lengthens og.i18n.t's text and a document's t() and i18n keys alike.
 
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
@@ -28,10 +28,10 @@ import { attachRenderer, loadNativeHost, native } from "./index.ts";
 import { nativePlatform } from "./platform.ts";
 import { decodePng, encodePng, type Image } from "./png.ts";
 import { collectPlaytests } from "./playtest-files.ts";
-import { beginBundle, boundHost, createEngine, type Engine, type GameToken } from "../runtime.ts";
+import { beginBundle, createEngine, type Engine, type GameToken } from "../runtime.ts";
 import type { RunControl, RunOutput } from "./run.ts";
 import { og } from "../index.ts";
-import { cellName, checkFrame, checkLocales, formatText, measureFrame, measureLayout, measureScale, mergeFindings, pseudo, RULES, screensFromHelp, screensFromPlaytest, type UiCell, type UiFinding, type UiFrameSnapshot, type UiMeasure } from "./ui-check.ts";
+import { cellName, checkFrame, checkLocales, formatText, measureFrame, measureLayout, measureScale, mergeFindings, RULES, screensFromHelp, screensFromPlaytest, type UiCell, type UiFinding, type UiFrameSnapshot, type UiMeasure } from "./ui-check.ts";
 import { sheet, type SheetCell } from "./ui-sheet.ts";
 import { BASELINE } from "./ui-baseline.ts";
 
@@ -94,20 +94,6 @@ interface Cell extends UiCell {
   frame: string | null;
   uiFrame: string;
   findings: number;
-}
-
-/** The text arguments of og.ui's widgets and og.i18n.t, lengthened while `on`. */
-function pseudoAbi(on: boolean): () => void {
-  if (!on) return () => {};
-  const abi = boundHost()!.abi as unknown as Record<string, (...a: unknown[]) => unknown>;
-  const saved: Record<string, (...a: unknown[]) => unknown> = {};
-  const wrap = (name: string, f: (orig: (...a: unknown[]) => unknown) => (...a: unknown[]) => unknown) => {
-    if (typeof abi[name] !== "function") return;
-    saved[name] = abi[name]!;
-    abi[name] = f(saved[name]!);
-  };
-  wrap("og_i18n_t", (o) => (...a) => pseudo(String(o(...a))));
-  return () => Object.assign(abi, saved);
 }
 
 async function main(argv: string[], process: RunOutput, control: UiRunControl, cleanup: Array<() => void>): Promise<number> {
@@ -199,12 +185,11 @@ async function main(argv: string[], process: RunOutput, control: UiRunControl, c
   const runCell = async (bp: string, locale: string, steps: string[], shots: Array<{ at: number; name: string }>, scale = 100): Promise<{ frame: UiFrameSnapshot | null; images: Map<string, Image>; warnings: string[] }> => {
     const game = await freshGame();
     const vp = BREAKPOINTS[bp]!;
-    const restore = pseudoAbi(locale === "pseudo");
     let engine: Engine | undefined;
     const warnings: string[] = [];
     const images = new Map<string, Image>();
     try {
-      const created = createEngine(game, { root: resolve(root!), deferStart: true, ...(project === undefined ? {} : { project }), ...(profile ? { profile } : {}), ...(locale && locale !== "pseudo" ? { locale } : {}) });
+      const created = createEngine(game, { root: resolve(root!), deferStart: true, ...(project === undefined ? {} : { project }), ...(profile ? { profile } : {}), ...(locale ? { locale } : {}) });
       if (!created.ok) fail(created.reason);
       engine = created.value;
       engine.attachPlatform(nativePlatform());
@@ -236,8 +221,7 @@ async function main(argv: string[], process: RunOutput, control: UiRunControl, c
       const f = JSON.parse(extras.og_node_ui_frame(engine.id)) as UiFrameSnapshot & { error?: string };
       return { frame: f.error ? null : f, images, warnings };
     } finally {
-      try { engine?.destroy(); }
-      finally { restore(); }
+      engine?.destroy();
     }
   };
 

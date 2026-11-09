@@ -354,8 +354,16 @@ pub fn og_i18n_t(world: u32, key: String, args: Option<String>) -> String {
             }))
         })
         .unwrap_or_default();
+    // The pseudo-locale lengthens the text, as a document's t() does.
+    let shown = |text: String| {
+        if og_i18n::is_pseudo_locale(&tag(world)) {
+            og_i18n::pseudo_text(&text)
+        } else {
+            text
+        }
+    };
     match with(world, |s| s.catalog.t(&key, &args)) {
-        Some(text) => text,
+        Some(text) => shown(text),
         None => {
             note(
                 world,
@@ -363,7 +371,7 @@ pub fn og_i18n_t(world: u32, key: String, args: Option<String>) -> String {
                     "og.i18n.t: no table has '{key}': add `string \"{key}\" \"...\"` to the base table"
                 ),
             );
-            key
+            shown(key)
         }
     }
 }

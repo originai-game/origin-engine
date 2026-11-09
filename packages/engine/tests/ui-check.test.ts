@@ -6,7 +6,7 @@
 // for its value, its path and what it leaves out. The rules that wait for
 // later phases are listed as such, never dropped.
 import { expect, test } from "bun:test";
-import { checkFrame, checkLocales, elementPaths, formatText, measureExtremes, measureFrame, measureLayout, measureScale, mergeFindings, neighbour, padFindings, padGraph, pseudo, RULES, screensFromHelp, screensFromPlaytest, type Rect4, type UiCell, type UiElementDump, type UiFrameSnapshot, type UiMeasure } from "../src/node/ui-check.ts";
+import { checkFrame, checkLocales, elementPaths, formatText, measureExtremes, measureFrame, measureLayout, measureScale, mergeFindings, neighbour, padFindings, padGraph, RULES, screensFromHelp, screensFromPlaytest, type Rect4, type UiCell, type UiElementDump, type UiFrameSnapshot, type UiMeasure } from "../src/node/ui-check.ts";
 
 const cell: UiCell = { screen: "s", breakpoint: "phonePortrait", locale: "", style: "", scale: 100, highContrast: false };
 
@@ -371,28 +371,6 @@ test("the element count is measured on every frame, with its draws", () => {
   expect(count(301).map((m) => [m.value, m.detail])).toEqual([[301, "7 draw commands"]]);
   expect(count(12).map((m) => m.value)).toEqual([12]);
   expect(rules(frame({ stats: { elements: 301, rebuilt: 0, laidOut: 0, keptCommands: 0 } }))).not.toContain("elements");
-});
-
-test("the pseudo-locale is 40 % longer, accented and bracketed; numbers stay as they are", () => {
-  const p = pseudo("Settings");
-  expect(p.startsWith("[") && p.endsWith("]")).toBeTrue();
-  expect(p).toContain("Séttíñgs");
-  // Eight letters, three more (40 %), a space and the brackets.
-  expect([...p].length).toBe(8 + 3 + 1 + 2);
-  expect(pseudo("4,250")).toBe("4,250");
-  expect(pseudo(p)).toBe(p);
-});
-
-test("the pseudo-locale leaves rich text's tags whole and counts only their words", () => {
-  const p = pseudo("Gain [color=info]Energy[/color] now");
-  expect(p).toContain("[color=info]");
-  expect(p).toContain("[/color]");
-  expect(p).toContain("Éñérgý");
-  // "Gain Energy now": 15 characters, 6 more (40 %), none from the tags.
-  expect([...p.replace(/\[\/?color(=info)?\]/g, "")].length).toBe(15 + 6 + 1 + 2);
-  const bold = pseudo("[b]Play[/b]");
-  expect(bold).toContain("[b]Pláý[/b]");
-  expect(pseudo(bold)).toBe(bold);
 });
 
 test("paths come from the accessibility tree, else the parent chain; findings merge across cells", () => {

@@ -109,6 +109,7 @@ impl Ui {
             keys.get(k)
                 .filter(|key| !key.is_empty())
                 .and_then(|key| b.env.translate(key))
+                .map(|t| b.env.shown(t))
                 .unwrap_or_else(|| items.get(k).cloned().unwrap_or_default())
         };
         let text = label(now);
