@@ -497,7 +497,9 @@ UAX #50) and lays other scripts down turned clockwise, `upright` stands
 every character up, `sideways` (and the `sideways-*` modes) lays every one
 down, `sideways-lr` turned counter-clockwise. An upright character
 advances by its font's vertical metrics (`vmtx`, else one em) and takes
-its vertical form (`vert`) where the font's atlas has it; without one,
+its vertical form (`vert`, `vrt2`) from the face that draws it, the
+first face of the font chain or a fallback's (the cook keeps every
+face's vertical forms of its characters in its atlas); without one,
 brackets and dashes turn and the ideographic comma and full stop move to
 the em's upper right. `text-combine-upright: all` (and `digits <n>` for a
 text of up to n digits) sets an element's text side by side in one upright

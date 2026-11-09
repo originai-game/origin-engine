@@ -1953,12 +1953,43 @@ pub(crate) fn vertical_run(
         }
         return at + len;
     }
-    let forms = m
-        .file
-        .as_ref()
-        .filter(|_| !m.is_mixed() && r.draw)
-        .and_then(|f| f.vertical_forms(run, &|key| m.in_atlas_key(key)));
     let bytes: Vec<usize> = run.char_indices().map(|(b, _)| b).collect();
+    // The run's vertical forms (`vert`, `vrt2`): each stretch of it one
+    // face of a mixed text's chain draws, shaped down the line with that
+    // face (another face's characters are no glyphs of it). Each form:
+    // its character's byte, its face and its glyph.
+    let mut forms: Vec<(usize, u8, u16)> = Vec::new();
+    if r.draw {
+        let mut stretch: Option<(std::ops::Range<usize>, u8)> = None;
+        let mut shape = |(range, face): (std::ops::Range<usize>, u8)| {
+            let fm = m.part(face.into()).unwrap_or(m);
+            let shaped = fm
+                .file
+                .as_ref()
+                .and_then(|f| f.vertical_forms(&run[range.clone()], &|key| fm.in_atlas_key(key)));
+            for (at, g) in shaped.into_iter().flatten() {
+                if let Some(g) = g {
+                    forms.push((range.start + at as usize, face, g));
+                }
+            }
+        };
+        let byte = |c: usize| bytes.get(c).copied().unwrap_or(run.len());
+        for (cb, ce) in og_i18n::graphemes(run) {
+            let (b0, b1) = (byte(cb), byte(ce));
+            let face = m.face_of(&run[b0..b1]);
+            stretch = match stretch.take() {
+                Some((r, f)) if f == face && r.end == b0 => Some((r.start..b1, f)),
+                Some(done) => {
+                    shape(done);
+                    Some((b0..b1, face))
+                }
+                None => Some((b0..b1, face)),
+            };
+        }
+        if let Some(last) = stretch {
+            shape(last);
+        }
+    }
     for (a, b) in og_i18n::graphemes(run) {
         let cluster: String = chars[a..b].iter().collect();
         let after = gap();
@@ -1983,13 +2014,13 @@ pub(crate) fn vertical_run(
         }
         let bounds = Rect::new(col, y0, lh, adv);
         let wh = m.measure_with(&cluster, size, 0.0, Features::NONE);
-        let form = forms.as_ref().and_then(|f| {
-            f.iter()
-                .find(|(c, _)| *c as usize == bytes[a])
-                .and_then(|(_, g)| *g)
-        });
+        let form = forms
+            .iter()
+            .find(|(at, ..)| *at == bytes[a])
+            .filter(|_| b - a == 1)
+            .map(|&(_, face, id)| (face, id));
         let (x, baseline) = (mid - wh / 2.0, y0 + adv / 2.0 + centre);
-        if let Some(id) = form.filter(|_| b - a == 1) {
+        if let Some((face, id)) = form {
             let placement = og_render::GlyphPlacement {
                 advance: wh / size.max(1e-3),
                 x: 0.0,
@@ -2000,7 +2031,7 @@ pub(crate) fn vertical_run(
                 x,
                 baseline,
                 cluster,
-                font.handle,
+                font.handle_of(face),
                 vec![placement],
                 STRAIGHT,
                 bounds,

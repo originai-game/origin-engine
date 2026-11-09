@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "Vertical text vert forms",
+      "summary": "A character a fallback face of the font chain draws takes that face's vertical form (vert, vrt2) in a vertical line instead of always turning: vertical_run shapes each stretch of a mixed text with the face that draws it. The cook keeps every face's vertical forms of its characters in its atlas (font stamp 8; fonts re-cook)."
+    }
+  ]
+}

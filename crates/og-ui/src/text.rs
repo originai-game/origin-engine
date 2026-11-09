@@ -322,7 +322,7 @@ impl FontMetrics {
     }
 
     /// Font `k` of a mixed text (0: this one).
-    fn part(&self, k: usize) -> Option<&FontMetrics> {
+    pub(crate) fn part(&self, k: usize) -> Option<&FontMetrics> {
         match k {
             0 => Some(self),
             k => self.runs.as_ref()?.get(k - 1).map(|f| &f.metrics),
@@ -359,6 +359,13 @@ impl FontMetrics {
         (self.prefer > 0)
             .then(|| (0..=self.prefer).find(|&k| takes(k)))
             .flatten()
+    }
+
+    /// The font (0: this one, `k`: the `k`-th of `runs`, as
+    /// [`UiFont::handle_of`] numbers them) that draws the grapheme cluster
+    /// `cluster` on its own.
+    pub(crate) fn face_of(&self, cluster: &str) -> u8 {
+        self.font_of_cluster(cluster, None) as u8
     }
 
     /// The font (as [`FontMetrics::font_of`]) that draws a grapheme

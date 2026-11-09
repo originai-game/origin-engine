@@ -611,10 +611,13 @@ pub fn cook(
         wanted.dedup();
     } else if s.pixel == 0 {
         // HarfRust's common/horizontal features, directional mirroring,
-        // and automatic fractions (ot_shape.rs collect_features).
+        // automatic fractions (ot_shape.rs collect_features), and the
+        // vertical forms a vertical line draws (`vert`, `vrt2`: CJK
+        // brackets and punctuation, og-ui's vertical_run).
         let defaults = [
             "abvm", "blwm", "ccmp", "locl", "mark", "mkmk", "rlig", "calt", "clig", "curs", "dist",
             "kern", "liga", "rclt", "rvrn", "ltra", "ltrm", "rtla", "rtlm", "frac", "numr", "dnom",
+            "vert", "vrt2",
         ]
         .map(String::from);
         let lookups = feature_lookups(&face, &defaults);
