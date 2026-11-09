@@ -740,10 +740,10 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
                         }
                         k if DRAW_KEYS.contains(&k) => {
                             if matches!(k, "ink" | "step")
-                                && !crate::dress::TEXT_PARTS.contains(&d.selector.part.as_str())
+                                && crate::dress::BOX_PARTS.contains(&d.selector.part.as_str())
                             {
                                 return Err(q.err(&format!(
-                                    "`{k}` dresses a text part ({}.text, {}.placeholder), not .{}",
+                                    "`{k}` dresses a text part ({}.text, {}.placeholder, or a kit's text element naming its part), not the box part .{}",
                                     d.selector.component, d.selector.component, d.selector.part
                                 )));
                             }

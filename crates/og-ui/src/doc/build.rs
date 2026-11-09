@@ -571,7 +571,7 @@ impl Ui {
             .dress
             .dressings()
             .iter()
-            .any(|d| !d.draw.appearance.is_empty())
+            .any(|d| !d.draw.appearance.is_empty() || d.draw.ink.is_some() || d.draw.step.is_some())
         {
             return;
         }
@@ -588,21 +588,28 @@ impl Ui {
         else {
             return;
         };
-        let appearance = self.dress.resolve(&part).draw.appearance;
-        if appearance.is_empty() {
+        let draw = self.dress.resolve(&part).draw;
+        if draw.appearance.is_empty() && draw.ink.is_none() && draw.step.is_none() {
             return;
         }
         let r = Resolved {
-            vals: appearance
+            vals: draw
+                .appearance
                 .iter()
                 .filter_map(|(index, value)| lit(self, value).map(|v| (*index, v)))
                 .collect(),
             ..Default::default()
         };
         let mut ramp = self.theme.type_ramp;
+        // A text part's `ink` and `step` (`-og-ink`, `-og-step`) dress its
+        // text where its appearance sets no `color` or `step` of its own.
         let step = r
             .str("step")
+            .or(draw.step)
             .and_then(|name| crate::style_file::ramp_step(&mut ramp, name).copied());
+        let ink = r
+            .color("color")
+            .or_else(|| draw.ink.as_ref().and_then(|ink| ink.srgb(&self.theme)));
         let em = step.map_or(self.theme.type_ramp.body.size, |s| s.size);
         let n = &mut self.nodes[i];
         n.el = Self::box_of(&r, n.el, em);
@@ -619,7 +626,7 @@ impl Ui {
             n.props.motion = Some(*t);
         }
         if let crate::layout::Content::Text(text) = &mut n.content {
-            if let Some(color) = r.color("color") {
+            if let Some(color) = ink {
                 text.color = color;
             }
             if let Some(step) = step {

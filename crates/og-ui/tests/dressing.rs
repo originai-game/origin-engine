@@ -505,3 +505,73 @@ fn a_document_part_takes_its_dressing_classes_and_states() {
     );
     assert!(has(fill(&ui, "Item"), "#ffffff"), "{:?}", fill(&ui, "Item"));
 }
+
+/// A kit's text element that names its part takes the part's `-og-ink` and
+/// `-og-step` (docs/ui.md §3.2), qualified by its classes, as a field's
+/// `text` part does: a pack inks a killfeed's names by team. Wrong: the
+/// style refused `ink` on a kit part, the ink reached no text or every
+/// part's text, a qualified dressing lost to the bare one, or text that
+/// names no part took it.
+#[test]
+fn a_kit_text_part_takes_its_ink_and_step() {
+    use og_ui::reactive::SourceId;
+    let mut ui = ui_with_font(add_test_font(&mut og_render::RenderScene::new()));
+    let file = parse_style(&format!(
+        "{CORE_STYLE}{}",
+        concat!(
+            "Kit::name {\n  -og-ink: #c0392b\n  -og-step: lg\n}\n",
+            "Kit::name.ally {\n  -og-ink: #2e86de\n}\n",
+        )
+    ))
+    .unwrap_or_else(|e| panic!("{e}"));
+    ui.set_theme(file.theme(None, [0; 6]));
+    ui.set_dressings(file.dressings.clone());
+    let doc = r#"<meta name="component" content="kit">
+<meta name="parts" content="Kit.name">
+<div id="Root">
+  <span id="Foe" part="Kit.name">Foe</span>
+  <span id="Ally" part="Kit.name" class:ally={true}>Ally</span>
+  <span id="Free">Free</span>
+</div>"#;
+    ui.define_document(UiDocument::parse("ui/kit.svelte", doc).unwrap());
+    ui.mount_document(
+        SourceId::new("test", "kit"),
+        "kit",
+        Default::default(),
+        Default::default(),
+        &bind::NoEnv,
+    )
+    .unwrap();
+    for _ in 0..3 {
+        ui.begin(InputFrame::default(), Viewport::new(600.0, 400.0));
+        ui.build_retained_documents(&bind::NoEnv).unwrap();
+        ui.end();
+    }
+    let text = |want: &str| -> (f32, [f32; 4]) {
+        ui.frame()
+            .items
+            .iter()
+            .find_map(|it| match &it.cmd {
+                DrawCmd::Text {
+                    text, size, color, ..
+                } if text == want => Some((*size, *color)),
+                _ => None,
+            })
+            .unwrap_or_else(|| panic!("no text {want}"))
+    };
+    let colour = |hex: &str| og_ui::style_file::parse_color(hex).unwrap();
+    let (lg, body) = (ui.theme().type_ramp.lg.size, ui.theme().type_ramp.body.size);
+    let foe = text("Foe");
+    assert!(near(foe.1, colour("#c0392b")), "{:?}", foe.1);
+    assert_eq!(foe.0, lg, "the part's step");
+    let ally = text("Ally");
+    assert!(
+        near(ally.1, colour("#2e86de")),
+        "the qualified ink wins: {:?}",
+        ally.1
+    );
+    assert_eq!(ally.0, lg, "the bare dressing's step still applies");
+    let free = text("Free");
+    assert!(near(free.1, ui.theme().palette.ink), "{:?}", free.1);
+    assert_eq!(free.0, body);
+}

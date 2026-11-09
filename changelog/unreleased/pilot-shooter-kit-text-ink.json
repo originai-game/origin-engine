@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "style dressings: -og-ink, -og-step",
+      "summary": "A document's text element that names its part (`<span part=\"Killfeed.name\">`) takes the part's `-og-ink` and `-og-step`, qualified by its classes like any part, so a pack sets a kit's text colours (`Killfeed::name.ally { -og-ink: var(--team1) }`). Before, only a field's `text` and `placeholder` parts took them; now only the core box parts (`frame`, `base`, `track`, `fill`) refuse them."
+    },
+    {
+      "member": "shooter kit",
+      "summary": "New text parts `Killfeed.name`, `Ammo.mode`, `Loadout.detail` and `Loadout.price`; the team colours of the killfeed's names and the muted ink of the weapon, reserve, fire mode and slot figures moved from the kit into the clean pack's dressings."
+    }
+  ]
+}

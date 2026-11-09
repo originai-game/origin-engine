@@ -6,7 +6,7 @@
 <meta name="prop:selected" content="string" data-doc="The slot id selected now (empty: none).">
 <meta name="action:details" content="Equip">
 <meta name="action:back" content="Back">
-<meta name="parts" content="Loadout.item Loadout.category">
+<meta name="parts" content="Loadout.item Loadout.category Loadout.detail Loadout.price">
 <meta name="fixture:default" content='{"title":"Loadout","selected":"strider","categories":[{"id":"primary","label":"Primary"},{"id":"secondary","label":"Secondary"},{"id":"melee","label":"Melee"}],"slots":[{"id":"strider","category":"primary","name":"Strider AR","icon":"sword","detail":"25 / 75","equipped":true,"locked":false,"cost":"2,900"},{"id":"halcyon","category":"primary","name":"Halcyon","icon":"sword","detail":"30 / 90","equipped":false,"locked":false,"cost":"2,900"},{"id":"pike","category":"primary","name":"Pike .50","icon":"sword","detail":"5 / 10","equipped":false,"locked":true,"cost":"4,700"},{"id":"wren","category":"secondary","name":"Wren Pistol","icon":"bolt","detail":"15 / 45","equipped":true,"locked":false,"cost":"500"},{"id":"knife","category":"melee","name":"Field Knife","icon":"sword","detail":"","equipped":true,"locked":false,"cost":""}]}'>
 <meta name="fixture:empty" content='{"title":"Loadout","selected":"","categories":[{"id":"primary","label":"Primary"}],"slots":[]}'>
 
@@ -24,11 +24,11 @@
                 <div class="text">
                   <span class="name">{s.name}</span>
                   <div class="sub" hidden={s.detail == '' && !s.equipped}>
-                    <span class="detail" hidden={s.detail == ''}>{s.detail}</span>
+                    <span class="detail" part="Loadout.detail" hidden={s.detail == ''}>{s.detail}</span>
                     <span class="badge" hidden={!s.equipped}>{t("shooter.loadout.equipped")}</span>
                   </div>
                 </div>
-                {#if s.cost != ''}<div class="cost"><icon class="coin" icon="coin"></icon><span class="price">{s.cost}</span></div>{/if}
+                {#if s.cost != ''}<div class="cost"><icon class="coin" icon="coin"></icon><span class="price" part="Loadout.price">{s.cost}</span></div>{/if}
               </div></button>
             {/if}
           {/each}
@@ -63,12 +63,12 @@
 .text { width: stretch; gap: var(--space-xxs); align-items: flex-start; }
 .name { font: var(--text-body); text-align: start; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: stretch; }
 .sub { display: flex; align-items: center; gap: var(--space-sm); }
-.detail { text-align: start; font: var(--text-caption); font-family: var(--font-mono); color: var(--ink-muted); }
+.detail { text-align: start; font: var(--text-caption); font-family: var(--font-mono); }
 /* Equipped is a tag on the detail line, so every row's price stands alone at its end
    and the name keeps the row's width. */
 .badge { flex: none; font: var(--text-caption); color: var(--accent); text-transform: uppercase; white-space: nowrap; padding: 0 var(--space-xs); border: 1px solid var(--accent); border-radius: var(--radius-xs); }
 .cost { display: flex; flex: none; align-items: center; gap: var(--space-xxs); }
-.price { font: var(--text-caption); font-family: var(--font-mono); color: var(--ink-muted); white-space: nowrap; }
+.price { font: var(--text-caption); font-family: var(--font-mono); white-space: nowrap; }
 .coin { width: var(--size-xs); height: var(--size-xs); color: var(--gold); }
 .locked .name, .locked .icon { color: var(--ink-faint); }
 #Empty { font: var(--text-body); color: var(--ink-muted); }

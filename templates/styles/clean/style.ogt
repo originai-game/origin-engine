@@ -688,6 +688,29 @@ Killfeed::row.self {
   -og-fill: #0b0e13fa
   -og-stroke: 1px #f2f4f7b3 inside
 }
+# Names by the side they fought on; weapon, reserve, fire mode and a
+# slot's figures a step quieter than the readout they sit beside.
+Killfeed::name.ally {
+  -og-ink: var(--team1)
+}
+Killfeed::name.enemy {
+  -og-ink: var(--team2)
+}
+Killfeed::weapon {
+  -og-ink: var(--ink-muted)
+}
+Ammo::reserve {
+  -og-ink: var(--ink-muted)
+}
+Ammo::mode {
+  -og-ink: var(--ink-muted)
+}
+Loadout::detail {
+  -og-ink: var(--ink-muted)
+}
+Loadout::price {
+  -og-ink: var(--ink-muted)
+}
 Loadout::item {
   -og-fill: var(--panel-raised)
   -og-stroke: 1px var(--line) inside

@@ -37,9 +37,11 @@
 //!   lineStrong inside`, `effect innerShadow 0 2 4 "#00000066"` (the
 //!   grammar is [`crate::paint_entry`]'s). `fill`, `stroke` and `effect`
 //!   lines stack in order; a later block of the same selector that sets
-//!   one of them replaces the earlier block's list. On a text part
-//!   ([`TEXT_PARTS`]: `Field.text`, `Field.placeholder`), `ink <colour>`
-//!   and `step <TypeStepName>` set the text's colour and type step.
+//!   one of them replaces the earlier block's list. On a text part (a
+//!   field's `Field.text` and `Field.placeholder`, or a kit's text element
+//!   that names its part, `<span part="Killfeed.name">`), `ink <colour>`
+//!   and `step <TypeStepName>` set the text's colour and type step; a box
+//!   part ([`BOX_PARTS`]) refuses them.
 
 use crate::paint::{Blend, Effect, Layer, Mask, Paint, Stroke};
 use crate::paint_entry::AtlasContext;
@@ -295,8 +297,8 @@ pub struct DressDraw {
     /// `segments <count> <gap> [ramp <from> <to>]`, on a slider's or a
     /// meter's track: the track drawn as segments, filled whole ones.
     pub segments: Option<Segments>,
-    /// `ink <colour>`, on a text part (`Field.text`, `Field.placeholder`):
-    /// the text's colour.
+    /// `ink <colour>`, on a text part (`Field.text`, `Field.placeholder`,
+    /// a kit's text element naming its part): the text's colour.
     pub ink: Option<crate::paint::ColorRef>,
     /// `step <TypeStepName>`, on a text part: the text's type step, scaled
     /// with the player's text size as every step is.
@@ -305,9 +307,12 @@ pub struct DressDraw {
     pub appearance: Vec<(usize, crate::doc::Lit)>,
 }
 
-/// The parts the `ink` and `step` dress keys apply to: the text a widget
-/// draws as a part of its own (a field's value and placeholder).
-pub const TEXT_PARTS: [&str; 2] = ["text", "placeholder"];
+/// The box parts the core widgets draw (a panel's or a field's `frame`, a
+/// button's `base`, a meter's `track` and `fill`), which refuse the `ink`
+/// and `step` dress keys. Any other part takes them: a field's `text` and
+/// `placeholder`, and a kit element that names its part, whose own text
+/// they dress (an element without text ignores them).
+pub const BOX_PARTS: [&str; 4] = ["frame", "base", "track", "fill"];
 
 /// A track drawn as `count` segments `gap` CSS px apart, its fill a whole
 /// number of segments (the nearest to the value); with `ramp`, filled

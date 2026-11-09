@@ -46,12 +46,17 @@ the Back and Equip buttons drop their keycaps.
 
 `Crosshair.arm`, `Crosshair.dot`, `Crosshair.hit[headshot|kill|shieldBreak]`
 (the arms and dot take `.aimed`), `Ammo.frame`, `Ammo.count[low|empty]`,
-`Ammo.reserve`, `Ammo.reload`, `DamageDirection.arc[shield|critical]`,
-`Killfeed.row[self]`, `Killfeed.weapon`, `Loadout.item[equipped][locked]`
-(a button, so hover, pressed, focused, selected and disabled come from the
-control), and `Loadout.category`. Text colour comes from tokens (`--warn`,
-`--danger`, `--ink-muted`, `--team1`, `--team2`). A pack sets those tokens;
-`-og-ink` dresses only core text parts. A `Killfeed.row` plate stays at
+`Ammo.reserve`, `Ammo.mode`, `Ammo.reload`,
+`DamageDirection.arc[shield|critical]`, `Killfeed.row[self]`,
+`Killfeed.name[killer|victim][ally|enemy]`, `Killfeed.weapon`,
+`Loadout.item[equipped][locked]` (a button, so hover, pressed, focused,
+selected and disabled come from the control), `Loadout.category`,
+`Loadout.detail` and `Loadout.price`. A pack inks the text parts with
+`-og-ink`: the killfeed's names by team (`Killfeed::name.ally`, `.enemy`),
+and the weapon, reserve, fire mode and a slot's figures a step quieter.
+Undressed, they take the scene's or the menu's ink. The low and empty
+count keeps the `--warn` and `--danger` tokens, since it is a signal
+every pack must show. A `Killfeed.row` plate stays at
 about 97 % opacity or more: rows sit over open sky, and the compositor
 blends in linear light, so a lighter plate drops a team name under 4.5:1.
 
