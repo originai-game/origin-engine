@@ -1,0 +1,73 @@
+{
+  "name": "clean",
+  "look": "minimal modern",
+  "premise": "a clean tactical shooter and racing HUD",
+  "scheme": "dark",
+  "seed": [
+    "#3452ff",
+    1.0
+  ],
+  "ground": null,
+  "ink": null,
+  "accent": [
+    "#0f9d8a",
+    1.0
+  ],
+  "onPrimary": null,
+  "shadow": null,
+  "shape": "squircle",
+  "ornament": "none",
+  "motion": "calm",
+  "finish": "flat",
+  "fonts": [
+    "@styles/shared/InstrumentSans-Regular.ttf",
+    "@styles/shared/InstrumentSans-Regular.ttf",
+    "@styles/shared/PTMono-Regular.ttf",
+    "@styles/cjk/NotoSansSC-Regular.ttf",
+    "@styles/cjk/NotoSansSC-Bold.ttf"
+  ],
+  "icons": "@styles/shared/ink-icons.png",
+  "body": 15.0,
+  "labelTracking": 0.0,
+  "displayTracking": null,
+  "sound": {
+    "tap": [
+      "click",
+      16,
+      1.1
+    ],
+    "confirm": [
+      "select",
+      17,
+      1.0
+    ],
+    "back": [
+      "back",
+      18,
+      1.0
+    ],
+    "open": [
+      "whoosh",
+      16,
+      1.1
+    ],
+    "error": [
+      "error",
+      13,
+      1.0
+    ],
+    "reward": [
+      "select",
+      19,
+      1.2
+    ],
+    "volume": 0.4,
+    "hover": false,
+    "spread": 0.03
+  },
+  "glitch": 0.0,
+  "danger": null,
+  "info": null,
+  "dressings": [],
+  "displayMin": null
+}
