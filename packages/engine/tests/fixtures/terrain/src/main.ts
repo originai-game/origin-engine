@@ -1,11 +1,10 @@
 // The fixture terrain.test.ts cooks for its assets (the tests drive their
 // own worlds). Run on its own it shows the hill from above, and `hole`
 // cuts a pit into it (R6's holes):
-// (--no-check: the fixture has no src/ for og check to read)
-//   og run packages/engine/tests/fixtures/terrain --no-check --size 1280x720 --out og-out \
+//   og run packages/engine/tests/fixtures/terrain --size 1280x720 --out og-out \
 //     --commands "0.2:screenshot:hill.png;0.3:hole:20:20:4;0.6:screenshot:hole.png;0.7:quit"
 // `grass` grows a default og.Grass over it, and `wind` blows og.Wind (R6's grass):
-//   og run packages/engine/tests/fixtures/terrain --no-check --size 1280x720 --out og-out \
+//   og run packages/engine/tests/fixtures/terrain --size 1280x720 --out og-out \
 //     --commands "0.2:grass;0.4:screenshot:grass.png;0.5:wind:0.3;1.0:screenshot:grass-wind.png;1.1:quit"
 import { og, SHAPE_HEIGHTFIELD, type World } from "@origingame/engine";
 

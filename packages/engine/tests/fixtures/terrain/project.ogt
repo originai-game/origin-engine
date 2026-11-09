@@ -5,7 +5,7 @@ version 1
 name "Terrain fixture"
 id "terrain-fixture"
 engine "0.7.7"
-entry "main.ts"
+entry "src/main.ts"
 profile "3d"
 tick 60
 seed 1
