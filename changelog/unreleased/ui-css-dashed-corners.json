@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "UI: dashed borders on round corners",
+      "summary": "A uniform dashed border or outline is dashed side by side with a dash on every corner; the pattern no longer laps the outline and leaves its remainder as a thick arc on the top-left corner."
+    }
+  ]
+}

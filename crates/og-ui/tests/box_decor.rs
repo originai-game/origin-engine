@@ -130,13 +130,19 @@ fn decorations_paint_in_css_order_over_any_draw() {
         assert_eq!(a.half, Vec2::new(25.0, 15.0));
         assert!(matches!(a.paint, og_render::UiPaint::Solid(c) if close(c, lin("#ff0000"))));
         // C: its outline outside a box grown by the offset, in its text
-        // colour (currentColor), dashed.
+        // colour (currentColor), dashed: dashes and gaps about three
+        // widths long, fitted to each side.
         let c = s
             .iter()
             .find(|x| x.center == at("C") && stroke(x).is_some_and(|st| st.width == 3.0))
             .expect("C's outline");
         let st = stroke(c).unwrap();
-        assert_eq!((st.align, st.dash), (UiAlign::Outside, [9.0, 9.0]));
+        assert_eq!(st.align, UiAlign::Outside);
+        assert!(
+            st.dash[0] == st.dash[1] && (st.dash[0] / 9.0 - 1.0).abs() < 0.5,
+            "{:?}",
+            st.dash
+        );
         assert_eq!(c.half, Vec2::new(22.0, 12.0));
         assert!(matches!(c.paint, og_render::UiPaint::Solid(k) if close(k, lin("#00ff00"))));
         // S: outer shadow, then its background, then the inset shadow.
@@ -475,10 +481,10 @@ main { width: 100%; height: 100%; padding: 24px; background: #4a5060; }
 .tiles { background: radial-gradient(circle, #ffd166 30%, transparent 32%) 0 0 / 20px 20px, #264653; }
 .origin { border: 8px dashed #ffffff66; padding: 16px; background: linear-gradient(90deg, #e76f51, #2a9d8f) content-box no-repeat; }
 .blend { background: linear-gradient(#ff0000, #0000ff), linear-gradient(90deg, #ffffff, #000000); background-blend-mode: multiply; }
-.clipped { font: var(--text-display); background: linear-gradient(90deg, #ffd166, #ef476f); background-clip: text; color: transparent; }
+.clipped { width: max-content; font: var(--text-display); background: linear-gradient(90deg, #ffd166, #ef476f); background-clip: text; color: transparent; }
 .framed { border: 14px solid; border-image: repeating-linear-gradient(45deg, #ffd166 0 6px, #264653 6px 12px) 14 round; }
 .cut { background: #2a9d8f; mask: linear-gradient(#000, transparent), radial-gradient(circle at 70% 50%, #000 30%, transparent 32%) add; mask-composite: exclude, add; }
-.notched { background: #ef476f; mask-border: linear-gradient(#000, #000) 20 / 20px; mask-border-mode: alpha; }
+.notched { padding: 1px 12px; background: #ef476f; mask-border: linear-gradient(#000, #000) 20 / 20px; mask-border-mode: alpha; }
 .fixed { background: linear-gradient(#ffffff22, #00000055), repeating-linear-gradient(90deg, #e9c46a 0 10px, #f4a261 10px 20px) fixed; }
 </style>"#;
 

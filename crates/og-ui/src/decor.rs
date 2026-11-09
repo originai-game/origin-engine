@@ -420,7 +420,11 @@ fn ring(
         LineStyle::Dotted => ([w, w], og_render::UiCap::Butt),
         _ => ([0.0; 2], og_render::UiCap::Butt),
     };
-    let mut stroke = |rect: Rect, (radii, css): Resolved, width: f32| {
+    let mut stroke = |rect: Rect,
+                      (radii, css): Resolved,
+                      width: f32,
+                      (dash, dash_offset): ([f32; 2], f32),
+                      clip: Rect| {
         out.push(DrawCmd::Shape {
             shape: Box::new(og_render::UiShape {
                 geometry: og_render::UiGeometry::Rect {
@@ -439,7 +443,7 @@ fn ring(
                     width,
                     align,
                     dash,
-                    dash_offset: 0.0,
+                    dash_offset,
                     dash_cap: cap,
                 }),
                 opacity: at.alpha,
@@ -447,13 +451,20 @@ fn ring(
                 layer: 0,
                 clip: None,
             }),
-            clip: at.clip,
+            clip,
         });
     };
-    if line.style == LineStyle::Double && w >= 3.0 {
+    if line.style == LineStyle::Dashed && plain {
+        for (region, dash, offset) in dash_regions(rect, corners.0, w, align) {
+            let clip = at.clip.intersect(&region);
+            if !clip.is_empty() {
+                stroke(rect, corners, w, (dash, offset), clip);
+            }
+        }
+    } else if line.style == LineStyle::Double && w >= 3.0 {
         // Two lines a third as wide, a third apart (CSS's double).
         let third = w / 3.0;
-        stroke(rect, corners, third);
+        stroke(rect, corners, third, (dash, 0.0), at.clip);
         let k = if align == Inside {
             2.0 * third
         } else {
@@ -465,8 +476,115 @@ fn ring(
             rect.width - 2.0 * k,
             rect.height - 2.0 * k,
         );
-        stroke(inner, grow(corners, -k), third);
+        stroke(inner, grow(corners, -k), third, (dash, 0.0), at.clip);
     } else {
-        stroke(rect, corners, w);
+        stroke(rect, corners, w, (dash, 0.0), at.clip);
     }
+}
+
+/// A dashed line round `rect` (round corners `radii`, top left first) cut
+/// into its sides and corners, each with dashes of its own, as browsers
+/// draw CSS's `dashed` (CSS Backgrounds 3 §4.3): a side runs whole dashes
+/// and gaps about three widths long that start and end in half a dash, so
+/// every corner is the middle of one dash, and one dash laid once round
+/// the outline leaves no odd remainder on the corner where it closes. A
+/// corner whose arc is no longer than a dash and its gap is solid (that
+/// dash); a longer one is dashed as a side is. Each piece is its clip
+/// region and the dash pattern there, measured as og-render measures a
+/// rounded rectangle's outline: clockwise from the end of the top left arc.
+fn dash_regions(
+    rect: Rect,
+    radii: [f32; 4],
+    w: f32,
+    align: og_render::UiAlign,
+) -> Vec<(Rect, [f32; 2], f32)> {
+    let (l, t, rr, b) = (rect.x, rect.y, rect.right(), rect.bottom());
+    let (ww, hh) = (rect.width, rect.height);
+    let half = (ww / 2.0).min(hh / 2.0);
+    let r = radii.map(|r| r.clamp(0.0, half.max(0.0)));
+    // How far each corner's region reaches along both of its sides: its
+    // arc, and a line drawn inside the box no less than its width.
+    let c = r.map(|r| match align {
+        Inside => r.max(w).min(half.max(0.0)),
+        _ => r,
+    });
+    let q = std::f32::consts::FRAC_PI_2;
+    let top = ww - r[0] - r[1];
+    let right = hh - r[1] - r[2];
+    let bottom = ww - r[2] - r[3];
+    let left = hh - r[3] - r[0];
+    let s_right = top + q * r[1];
+    let s_bottom = s_right + right + q * r[2];
+    let s_left = s_bottom + bottom + q * r[3];
+    let corner = |k: usize| q * r[k] + 2.0 * (c[k] - r[k]);
+    let big = 1.0e5;
+    let span = |x0: f32, y0: f32, x1: f32, y1: f32| Rect::new(x0, y0, x1 - x0, y1 - y0);
+    let (mx, my) = (l + ww / 2.0, t + hh / 2.0);
+    // (region, along where it starts, its length along, a corner).
+    let pieces = [
+        (
+            span(l + c[0], t - big, rr - c[1], my),
+            c[0] - r[0],
+            ww - c[0] - c[1],
+            false,
+        ),
+        (
+            span(rr - c[1], t - big, rr + big, t + c[1]),
+            top - (c[1] - r[1]),
+            corner(1),
+            true,
+        ),
+        (
+            span(mx, t + c[1], rr + big, b - c[2]),
+            s_right + c[1] - r[1],
+            hh - c[1] - c[2],
+            false,
+        ),
+        (
+            span(rr - c[2], b - c[2], rr + big, b + big),
+            s_right + right - (c[2] - r[2]),
+            corner(2),
+            true,
+        ),
+        (
+            span(l + c[3], my, rr - c[2], b + big),
+            s_bottom + c[2] - r[2],
+            ww - c[2] - c[3],
+            false,
+        ),
+        (
+            span(l - big, b - c[3], l + c[3], b + big),
+            s_bottom + bottom - (c[3] - r[3]),
+            corner(3),
+            true,
+        ),
+        (
+            span(l - big, t + c[0], mx, b - c[3]),
+            s_left + c[3] - r[3],
+            hh - c[3] - c[0],
+            false,
+        ),
+        (
+            span(l - big, t - big, l + c[0], t + c[0]),
+            s_left + left - (c[0] - r[0]),
+            corner(0),
+            true,
+        ),
+    ];
+    let period = 6.0 * w.max(0.5);
+    pieces
+        .into_iter()
+        .filter(|(region, _, length, is_corner)| {
+            !region.is_empty() && (*is_corner || *length > 0.0)
+        })
+        .map(|(region, start, length, is_corner)| {
+            if is_corner && length <= period {
+                return (region, [0.0; 2], 0.0);
+            }
+            // Whole periods from the middle of a dash to the middle of one.
+            let n = (length / period).round().max(1.0);
+            let d = length / n / 2.0;
+            (region, [d, d], (d / 2.0 - start).rem_euclid(2.0 * d))
+        })
+        .collect()
 }

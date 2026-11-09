@@ -619,7 +619,12 @@ edge, grown by its offset, so `:focus-visible { outline: 2px solid
 var(--focus) }` replaces the core focus ring for that element. A uniform
 border follows `border-radius`, which also replaces a dressed control's
 corner (a `<button>`'s plate); sides that differ are drawn as strips, and
-`inset`/`outset`/`groove`/`ridge` darken their shaded sides.
+`inset`/`outset`/`groove`/`ridge` darken their shaded sides. A uniform
+`dashed` border or outline on round corners is dashed side by side, as
+browsers draw it: each side's dashes and gaps, about three widths long,
+fit it whole and start and end in half a dash, so every corner sits in
+the middle of a dash (a corner whose arc is no longer than a dash and
+its gap is drawn solid, a longer one dashed as a side is).
 `border-radius` takes one to four corners, the elliptical `/` form and
 `%` of the box's sides, with the longhands `border-top-left-radius` (and
 the other three, `<h> [<v>]`) and the logical `border-start-start-radius`
