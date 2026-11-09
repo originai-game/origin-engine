@@ -809,13 +809,25 @@ sRGB-encoded straight colour, split where a function can leave 0..1
 (`brightness(2)`), so the clamp CSS does after each one stays where CSS
 has it. The last layer carries the element's opacity, blend and mask; as
 in CSS, `clip-path` cuts after the filter, so a drop shadow on a clipped
-element is cut with it (put the filter on its parent). `backdrop-filter`
+element is cut with it (put the filter on its parent). `url(#id)` in the
+list is an inline SVG `<filter>` anywhere in the document, a layer like
+the functions around it (`filter: url(#glow) grayscale(1)` glows, then
+greys the glow): the element is drawn into a layer over the filter
+region (by default the border box grown by 10 % a side, `filterUnits`,
+`x`, `y`, `width`, `height`), og-render runs the primitives' graph over
+it (each `in`/`in2` names `SourceGraphic`, `SourceAlpha` or an earlier
+`result`) and the layer composites the last result. The user space is
+the border box's CSS px from its top left, and objectBoundingBox units
+are fractions of the border box. A `url()` that names no `<filter>`
+drops the whole list, as Filter Effects 1 says. `backdrop-filter`
 takes the same functions over what is under the element (glass): blurs
 add as Gaussians do, the colour functions fold into one matrix over the
 blurred backdrop (its `opacity()` mixes over the unblurred one), and
 `drop-shadow()` casts nothing on the opaque backdrop. The backdrop is
 read from the blur pyramid, so a backdrop with no blur is as soft as
-its finest level. `mix-blend-mode`
+its finest level. Its `url(#id)` is not drawn yet (a warning names it;
+the functions beside it are): a layer's backdrop is the layer drawn so
+far, not the screen under it. `mix-blend-mode`
 takes every mode of CSS Compositing 1: normal, multiply, screen, overlay,
 darken, lighten, color-dodge, color-burn, hard-light, soft-light,
 difference, exclusion, hue, saturation, color, luminosity and
@@ -1267,9 +1279,31 @@ icon by name (`href="gem"`) or a render texture by handle
 (`href={$target}`), filling its rect (contained by default, `slice`
 covers, `none` stretches); it takes no turn or skew.
 
-Definition attributes (gradients, clips, markers, masks, patterns) are
-literal. Filters (`<filter>` and the fe* primitives) are refused with the
-element named. Cost: re-tessellating one
+`filter="url(#id)"` on a `<g>` or a shape draws it (and a group's
+children) through a `<filter>` (Filter Effects 1 §9-15), as CSS
+`filter: url(#id)` does a box (above): in the element's user space (its
+`transform` and the view box's fit to CSS px), its bounding box its
+geometry's (a group's literal shapes'), so a zero-height line under
+objectBoundingBox units draws nothing. Every primitive is drawn:
+`feGaussianBlur`, `feOffset`, `feFlood`, `feComposite` (all operators),
+`feMerge`, `feBlend` (every `mix-blend-mode`), `feColorMatrix`,
+`feComponentTransfer` (tables keep 16 values), `feMorphology`,
+`feDisplacementMap`, `feTurbulence` (the reference implementation's
+noise, stitched or not), `feDropShadow` (its blur, offset, flood,
+composite and merge), `feImage` (an atlas image or texture handle by
+`href`, stretched over its subregion; not an element), `feTile` (filling
+the region), `feConvolveMatrix` (up to 64 cells, one device px each) and
+`feDiffuseLighting`/`feSpecularLighting` with a distant, point or spot
+light; `primitiveUnits`, subregions (`x`, `y`, `width`, `height`, by
+default the union of the inputs' or the region) and
+`color-interpolation-filters` (`linearRGB` by default, `sRGB`) are
+read. `BackgroundImage`, `BackgroundAlpha`, `FillPaint` and
+`StrokePaint` read as transparent black; `kernelUnitLength` is read past.
+Each primitive is one or two full-region passes; a blur, morphology or
+lighting under a turn runs along the screen's axes.
+
+Definition attributes (gradients, clips, markers, masks, patterns,
+filters) are literal. Cost: re-tessellating one
 dashed ring as a cooked vector takes 438 µs and 840 vertices; changing a
 bound attribute on one of 64 inline rings costs 69–150 µs of the frame
 (dev profile), and unchanged shapes cost nothing.

@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "UI: SVG <filter> through CSS filter: url(#id) and the SVG filter attribute",
+      "summary": "An inline SVG <filter> and its primitives (feGaussianBlur, feOffset, feFlood, feComposite, feMerge, feBlend, feColorMatrix, feComponentTransfer, feMorphology, feDisplacementMap, feTurbulence, feDropShadow, feImage, feTile, feConvolveMatrix, feDiffuseLighting and feSpecularLighting with distant, point and spot lights) now draw, with their in/in2/result graph, filter region, filterUnits, primitiveUnits, subregions and color-interpolation-filters. CSS filter takes url(#id) mixed with the filter functions in order; a <g> or shape takes filter=\"url(#id)\". backdrop-filter: url(#id) is not drawn yet and warns."
+    }
+  ]
+}

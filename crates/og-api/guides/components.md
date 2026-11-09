@@ -902,6 +902,7 @@ Its own props, beside every element's:
 | `marker-end` | `text` | SVG `marker-end`: the `<marker>` drawn at a shape's last vertex (an arrowhead). |
 | `clip-path` | `text` | SVG `clip-path="url(#id)"`: the `<clipPath>` whose shapes cut it. |
 | `mask` | `text` | SVG `mask="url(#id)"`: the `<mask>` whose luminance cuts it (white shapes, or one gradient-filled shape). |
+| `filter` | `text` | SVG `filter="url(#id)"`: the `<filter>` the element and its subtree are drawn through. |
 
 ## 42. `<path>`, `<circle>`, `<rect>`, `<polygon>` (`svgShape`): An SVG shape (`<path>`, `<rect>`, `<circle>`, `<ellipse>`, `<line>`, `<polyline>`, `<polygon>`): one element drawn as an analytic path, its attributes bindable
 
@@ -946,6 +947,7 @@ Its own props, beside every element's:
 | `clip-path` | `text` | SVG `clip-path="url(#id)"`: the `<clipPath>` whose shapes cut it. |
 | `mask` | `text` | SVG `mask="url(#id)"`: the `<mask>` whose luminance cuts it (white shapes, or one gradient-filled shape). |
 | `clip-rule` | `text` | SVG `clip-rule` of a shape in a `<clipPath>`: nonzero or evenodd (a ring cuts a hole). |
+| `filter` | `text` | SVG `filter="url(#id)"`: the `<filter>` the element and its subtree are drawn through. |
 | `preserveAspectRatio` | `text` | SVG `preserveAspectRatio` of a `<symbol>`, a `<pattern>` or an `<image>`. |
 
 ## 43. `<svgText>` (`svgText`): SVG's `<text x y text-anchor dominant-baseline font-size white-space>`: a line shaped by og-ui's text, its anchor on the point fitted into the `<svg>`'s box and scaled with the view box; `<tspan>` runs inside it take `font-weight`, `font-style`, `text-decoration` and `fill`, a `<tspan x>` (with `y` or `dy`) starts another line, and a `<textPath>` runs it along a path
@@ -969,8 +971,8 @@ Its own props, beside every element's:
 | `stroke-miterlimit` | `text` | SVG `stroke-miterlimit`. |
 | `x` | `text` | SVG `x`. |
 | `y` | `text` | SVG `y`. |
-| `dx` | `text` | A `<text>`'s `dx`: added to `x`, user units or `em`. |
-| `dy` | `text` | A `<text>`'s `dy`: added to `y`, user units or `em` (`1.2em`: a line down). |
+| `dx` | `text` | A `<text>`'s `dx` (added to `x`, user units or `em`), or `feOffset`'s and `feDropShadow`'s. |
+| `dy` | `text` | A `<text>`'s `dy` (added to `y`, user units or `em`; `1.2em`: a line down), or `feOffset`'s and `feDropShadow`'s. |
 | `font-size` | `text` | SVG `font-size`, user units (scaled with the view box; default 16). |
 | `font-weight` | `text` | SVG `font-weight`: normal, bold or 100–900 (600 and up is bold). |
 | `font-style` | `text` | SVG `font-style`: normal or italic. |
@@ -1071,6 +1073,7 @@ Its own props, beside every element's:
 | `clip-path` | `text` | SVG `clip-path="url(#id)"`: the `<clipPath>` whose shapes cut it. |
 | `mask` | `text` | SVG `mask="url(#id)"`: the `<mask>` whose luminance cuts it (white shapes, or one gradient-filled shape). |
 | `clip-rule` | `text` | SVG `clip-rule` of a shape in a `<clipPath>`: nonzero or evenodd (a ring cuts a hole). |
+| `filter` | `text` | SVG `filter="url(#id)"`: the `<filter>` the element and its subtree are drawn through. |
 
 ## 46. `<linearGradient>`, `<symbol>` (`svgDef`): An SVG definition (`<defs>`, `<symbol>`, `<clipPath>`, `<mask>`, `<pattern>`, `<linearGradient>`, `<radialGradient>`, `<stop>`, `<title>`, `<desc>`): not drawn where written; `<use>`, `clip-path`, `mask` and paints reference them by `#id`, and a `<title>` names its parent
 
@@ -1095,6 +1098,8 @@ Its own props, beside every element's:
 | `stroke-miterlimit` | `text` | SVG `stroke-miterlimit`. |
 | `x` | `text` | SVG `x`. |
 | `y` | `text` | SVG `y`. |
+| `dx` | `text` | A `<text>`'s `dx` (added to `x`, user units or `em`), or `feOffset`'s and `feDropShadow`'s. |
+| `dy` | `text` | A `<text>`'s `dy` (added to `y`, user units or `em`; `1.2em`: a line down), or `feOffset`'s and `feDropShadow`'s. |
 | `width` | `text` | SVG `width` (a `<rect>`, `<use>`, `<pattern>`, `<mask>`). |
 | `height` | `text` | SVG `height`. |
 | `cx` | `text` | SVG `cx`. |
@@ -1122,6 +1127,57 @@ Its own props, beside every element's:
 | `gradientTransform` | `text` | A gradient's `gradientTransform`. |
 | `spreadMethod` | `text` | A gradient's `spreadMethod`. |
 | `href` | `text` | SVG `href`: an `<image>`'s atlas icon by name or render texture handle (`href={$target}`), what a `<use>` draws (`#id` of a symbol, group or shape), or the gradient a gradient takes its stops from. |
+| `filterUnits` | `text` | A `<filter>`'s `filterUnits`: `objectBoundingBox` (default; its region in fractions of the box) or `userSpaceOnUse`. |
+| `primitiveUnits` | `text` | A `<filter>`'s `primitiveUnits`: `userSpaceOnUse` (default) or `objectBoundingBox`. |
+| `color-interpolation-filters` | `text` | A `<filter>`'s or primitive's `color-interpolation-filters`: `linearRGB` (default) or `sRGB`. |
+| `in` | `text` | A filter primitive's `in`: `SourceGraphic`, `SourceAlpha` or an earlier `result` (left out: the previous result). |
+| `in2` | `text` | A filter primitive's second input `in2` (`feComposite`, `feBlend`, `feDisplacementMap`). |
+| `result` | `text` | A filter primitive's `result` name, read by later `in`/`in2`. |
+| `stdDeviation` | `text` | `feGaussianBlur`'s or `feDropShadow`'s `stdDeviation`: one or two numbers. |
+| `flood-color` | `text` | `feFlood`'s or `feDropShadow`'s `flood-color`. |
+| `flood-opacity` | `text` | `feFlood`'s or `feDropShadow`'s `flood-opacity`. |
+| `operator` | `text` | `feComposite`'s `operator` (over, in, out, atop, xor, lighter, arithmetic) or `feMorphology`'s (erode, dilate). |
+| `k1` | `text` | `feComposite` arithmetic's `k1`. |
+| `k2` | `text` | `feComposite` arithmetic's `k2`. |
+| `k3` | `text` | `feComposite` arithmetic's `k3`. |
+| `k4` | `text` | `feComposite` arithmetic's `k4`. |
+| `mode` | `text` | `feBlend`'s `mode`: a `mix-blend-mode` name. |
+| `type` | `text` | `feColorMatrix`'s `type` (matrix, saturate, hueRotate, luminanceToAlpha), a `feFunc*`'s (identity, table, discrete, linear, gamma) or `feTurbulence`'s (turbulence, fractalNoise). |
+| `values` | `text` | `feColorMatrix`'s `values`. |
+| `tableValues` | `text` | A `feFunc*`'s `tableValues` (at most 16 are read). |
+| `slope` | `text` | A linear `feFunc*`'s `slope`. |
+| `intercept` | `text` | A linear `feFunc*`'s `intercept`. |
+| `amplitude` | `text` | A gamma `feFunc*`'s `amplitude`. |
+| `exponent` | `text` | A gamma `feFunc*`'s `exponent`. |
+| `radius` | `text` | `feMorphology`'s `radius`: one or two numbers. |
+| `scale` | `text` | `feDisplacementMap`'s `scale`. |
+| `xChannelSelector` | `text` | `feDisplacementMap`'s `xChannelSelector`: R, G, B or A. |
+| `yChannelSelector` | `text` | `feDisplacementMap`'s `yChannelSelector`: R, G, B or A. |
+| `baseFrequency` | `text` | `feTurbulence`'s `baseFrequency`: one or two numbers. |
+| `numOctaves` | `text` | `feTurbulence`'s `numOctaves`. |
+| `seed` | `text` | `feTurbulence`'s `seed`. |
+| `stitchTiles` | `text` | `feTurbulence`'s `stitchTiles`: stitch or noStitch. |
+| `order` | `text` | `feConvolveMatrix`'s `order`: one or two numbers. |
+| `kernelMatrix` | `text` | `feConvolveMatrix`'s `kernelMatrix` (at most 64 values). |
+| `divisor` | `text` | `feConvolveMatrix`'s `divisor`. |
+| `bias` | `text` | `feConvolveMatrix`'s `bias`. |
+| `targetX` | `text` | `feConvolveMatrix`'s `targetX`. |
+| `targetY` | `text` | `feConvolveMatrix`'s `targetY`. |
+| `edgeMode` | `text` | `feConvolveMatrix`'s `edgeMode`: duplicate, wrap or none. |
+| `preserveAlpha` | `text` | `feConvolveMatrix`'s `preserveAlpha`. |
+| `kernelUnitLength` | `text` | `kernelUnitLength` of `feConvolveMatrix` and the lighting primitives: read past (one device px a cell). |
+| `surfaceScale` | `text` | A lighting primitive's `surfaceScale`. |
+| `diffuseConstant` | `text` | `feDiffuseLighting`'s `diffuseConstant`. |
+| `specularConstant` | `text` | `feSpecularLighting`'s `specularConstant`. |
+| `specularExponent` | `text` | `feSpecularLighting`'s or `feSpotLight`'s `specularExponent`. |
+| `lighting-color` | `text` | A lighting primitive's `lighting-color`. |
+| `azimuth` | `text` | `feDistantLight`'s `azimuth`, degrees. |
+| `elevation` | `text` | `feDistantLight`'s `elevation`, degrees. |
+| `z` | `text` | `fePointLight`'s or `feSpotLight`'s `z`. |
+| `pointsAtX` | `text` | `feSpotLight`'s `pointsAtX`. |
+| `pointsAtY` | `text` | `feSpotLight`'s `pointsAtY`. |
+| `pointsAtZ` | `text` | `feSpotLight`'s `pointsAtZ`. |
+| `limitingConeAngle` | `text` | `feSpotLight`'s `limitingConeAngle`, degrees. |
 | `clipPathUnits` | `text` | A clip path's `clipPathUnits`. |
 | `maskContentUnits` | `text` | A mask's `maskContentUnits`. |
 | `patternUnits` | `text` | A pattern's `patternUnits`. |

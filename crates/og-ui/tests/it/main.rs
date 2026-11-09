@@ -18,6 +18,8 @@ mod component_documents;
 mod control_props;
 #[path = "../css_effects.rs"]
 mod css_effects;
+#[path = "../css_filters.rs"]
+mod css_filters;
 #[path = "../css_interact.rs"]
 mod css_interact;
 #[path = "../css_layout.rs"]

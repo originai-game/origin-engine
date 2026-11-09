@@ -1328,6 +1328,7 @@ fn glitch_layer(
         mask: None,
         expand: split + 2.0,
         rect: Rect::default(),
+        filter: None,
     };
     let end = DrawCmd::EndLayer {
         geometry: None,
@@ -1353,6 +1354,7 @@ fn blur_layer(sigma: f32, rect: Rect, clip: Rect) -> (DrawCmd, DrawCmd) {
         mask: None,
         expand: 3.0 * sigma,
         rect: Rect::default(),
+        filter: None,
     };
     let end = DrawCmd::EndLayer {
         geometry: None,
@@ -1764,6 +1766,7 @@ fn plane_begin() -> DrawCmd {
         mask: None,
         expand: 0.0,
         rect: Rect::default(),
+        filter: None,
     }
 }
 

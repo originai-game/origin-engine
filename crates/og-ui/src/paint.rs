@@ -373,6 +373,7 @@ fn plain_layer(mask: Option<og_render::UiMask>) -> DrawCmd {
         mask,
         expand: 0.0,
         rect: Rect::default(),
+        filter: None,
     }
 }
 
@@ -765,6 +766,62 @@ pub enum Material {
 pub struct Layer {
     pub material: Material,
     pub params: [[f32; 4]; og_render::UI_MATERIAL_PARAMS],
+    /// An SVG `<filter>` run over what the layer drew before it
+    /// composites; the layer is then the filter region.
+    pub filter: Option<std::sync::Arc<FilterUse>>,
+}
+
+/// An SVG `<filter>` on an element ([`crate::svg::filter`]).
+#[derive(Clone, Debug, PartialEq)]
+pub struct FilterUse {
+    pub filter: crate::svg::filter::Filter,
+    /// An SVG element's user space: its map into the view box (its
+    /// transform) and its bounding box in it. `None`: a CSS box, whose
+    /// user space is CSS px from its border box's top left and whose
+    /// bounding box is its border box.
+    pub svg: Option<(crate::svg::Affine, [f32; 4])>,
+}
+
+impl FilterUse {
+    /// Its region and graph in CSS px, for an element drawn in `at`
+    /// through `fit` (its view box's scale, centre and the box point the
+    /// centre lands on).
+    fn resolve(&self, at: &Placed, fit: Option<(f32, Vec2, Vec2)>) -> (Rect, og_render::UiFilter) {
+        let (bbox, map) = match (&self.svg, fit) {
+            (Some((t, bbox)), Some((k, mid, half))) => {
+                let o = Vec2::new(at.rect.x, at.rect.y) + half - mid * k;
+                let [a, b, c, d, e, f] = t.0;
+                let fit = crate::element::Affine {
+                    a: k,
+                    d: k,
+                    e: o.x,
+                    f: o.y,
+                    ..crate::element::Affine::IDENTITY
+                };
+                let t = crate::element::Affine {
+                    a,
+                    b,
+                    c,
+                    d,
+                    e,
+                    f,
+                    ..crate::element::Affine::IDENTITY
+                };
+                (*bbox, fit.mul(&t))
+            }
+            _ => (
+                [0.0, 0.0, at.rect.width, at.rect.height],
+                crate::element::Affine {
+                    e: at.rect.x,
+                    f: at.rect.y,
+                    ..crate::element::Affine::IDENTITY
+                },
+            ),
+        };
+        let (region, mut graph) = self.filter.resolve(bbox);
+        crate::svg::filter::map(&mut graph, &map);
+        (map.map_rect(&region), graph)
+    }
 }
 
 /// Effects of the element's text (§5.6).
@@ -1327,12 +1384,17 @@ impl ElementDraw {
                     .map(|texture| og_render::UiMask::Image { texture, uv: *uv }),
                 _ => None,
             };
+            let filter = |l: Option<&Layer>| {
+                let f = l?.filter.as_ref()?;
+                Some(Box::new(f.resolve(at, self.fit(at))))
+            };
             out.push(DrawCmd::BeginLayer {
                 material,
                 params,
                 mask,
                 expand: expand_of(material, &params),
                 rect: Rect::default(),
+                filter: filter(outer),
             });
             // The inner stages open inside it, the first innermost.
             for l in inner.iter().rev() {
@@ -1343,6 +1405,7 @@ impl ElementDraw {
                     mask: None,
                     expand: expand_of(material, &l.params),
                     rect: Rect::default(),
+                    filter: filter(Some(l)),
                 });
             }
         }

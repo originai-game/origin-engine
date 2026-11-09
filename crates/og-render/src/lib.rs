@@ -154,15 +154,16 @@ pub mod ui;
 pub use ui::{
     UI_GRADIENT_STOPS, UI_MASS_KEYS, UI_MASS_QUADS, UI_MATERIAL_PARAMS, UI_QUAD_LAYER_MAX, UiAlign,
     UiBackground, UiBackgroundSize, UiBlend, UiBorderImage, UiBuiltin, UiCap, UiClip,
-    UiColorMatrix, UiCorner, UiCssCorners, UiDrape, UiEdge, UiElevation, UiFillRule, UiFit,
-    UiGeometry, UiGlass, UiGlassFallback, UiGlassShadow, UiGlassStyle, UiGlassWeight, UiGradient,
-    UiGradientImage, UiGradientKind, UiGround, UiImage, UiJoin, UiLayer, UiList, UiMask,
-    UiMassBatch, UiMassInstance, UiMassKey, UiMassKind, UiMassSpace, UiMassTemplate, UiMaterial,
+    UiColorMatrix, UiCorner, UiCssCorners, UiDrape, UiEdge, UiElevation, UiFillRule, UiFilter,
+    UiFilterComposite, UiFilterInput, UiFilterOp, UiFilterPrimitive, UiFit, UiGeometry, UiGlass,
+    UiGlassFallback, UiGlassShadow, UiGlassStyle, UiGlassWeight, UiGradient, UiGradientImage,
+    UiGradientKind, UiGround, UiImage, UiJoin, UiLayer, UiLight, UiList, UiMask, UiMassBatch,
+    UiMassInstance, UiMassKey, UiMassKind, UiMassSpace, UiMassTemplate, UiMaterial,
     UiMaterialHandle, UiMaterialShader, UiMode, UiOccluder, UiOcclusion, UiPaint, UiParticleShape,
     UiPath, UiRepeat, UiShape, UiSpread, UiStop, UiStroke, UiTextEffects, UiTextOutline,
-    UiTextShadow, UiVectorData, UiVectorDraw, UiVectorHandle, UiVectorPaint, UiVectorStroke,
-    UiVectorVertex, UiVerb, example_ui_material, flatten_cubic, flatten_quad, format_number, oklab,
-    oklab_to_linear, square_to_quad, ui_material_module_source, ui_scrim,
+    UiTextShadow, UiTransfer, UiVectorData, UiVectorDraw, UiVectorHandle, UiVectorPaint,
+    UiVectorStroke, UiVectorVertex, UiVerb, example_ui_material, flatten_cubic, flatten_quad,
+    format_number, oklab, oklab_to_linear, square_to_quad, ui_material_module_source, ui_scrim,
 };
 mod particles_gpu;
 mod pipeline_cache;

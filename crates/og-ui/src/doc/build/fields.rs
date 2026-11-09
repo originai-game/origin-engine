@@ -398,14 +398,49 @@ impl Ui {
         c.border_image = border(&p::BORDER_IMAGE_PROPS, false);
         c.mask_border = border(&p::MASK_BORDER_PROPS, true);
         warn.extend(errors);
-        if let Some(Ok(Some(e))) = r.str("backdropFilter").map(p::backdrop) {
-            c.effects.push(e);
+        // `url(#id)`: an inline SVG `<filter>` of the document.
+        let fe_image = |href: &str| -> Result<(og_render::TextureHandle, [f32; 4]), String> {
+            match href.parse::<f64>() {
+                Ok(h) => textures
+                    .iter()
+                    .find(|(k, _)| *k == h)
+                    .map(|(_, t)| (*t, [0.0, 0.0, 1.0, 1.0]))
+                    .ok_or_else(|| format!("href {h} names no texture")),
+                Err(_) => match self.icons().find(href) {
+                    Some(crate::ui::IconCell::Image(texture, uv)) => Ok((texture, uv)),
+                    _ => Err(format!("href \"{href}\" names no atlas image")),
+                },
+            }
+        };
+        let url = |warn: &mut Vec<String>, what: &str, u: &str| match super::svg::css_filter(
+            doc, u, &fe_image,
+        ) {
+            Ok(f) => Some(f),
+            Err(e) => {
+                warn.push(format!("{what}: {e}"));
+                None
+            }
+        };
+        let mut fails = Vec::new();
+        if let Some(v) = r.str("backdropFilter") {
+            if v.contains("url(") {
+                fails.push(
+                    "backdrop-filter: url(#id) is not drawn yet; its other functions are".into(),
+                );
+            }
+            if let Ok(Some(e)) = p::backdrop(v) {
+                c.effects.push(e);
+            }
         }
         if let Some(Ok(fns)) = r.str("filter").map(|v| p::filter_fns(v, "filter")) {
             let theme = self.theme();
-            c.filters =
-                p::filter_layers(&fns, |c| c.map_or(current.linear(), |c| c.resolve(theme)));
+            c.filters = p::filter_layers(
+                &fns,
+                |c| c.map_or(current.linear(), |c| c.resolve(theme)),
+                |u| url(&mut fails, "filter", u),
+            );
         }
+        warn.extend(fails);
         c.blend = r.str("mixBlendMode").and_then(|v| p::blend(v).ok());
         c.isolate = r.str("isolation").and_then(|v| p::isolation(v).ok()) == Some(true);
         if let Some(Ok(s)) = r

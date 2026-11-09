@@ -246,6 +246,7 @@ impl BoxDecor {
                 d.layer = Some(crate::paint::Layer {
                     material: crate::paint::Material::Plain,
                     params: [[0.0; 4]; og_render::UI_MATERIAL_PARAMS],
+                    filter: None,
                 });
             }
         }

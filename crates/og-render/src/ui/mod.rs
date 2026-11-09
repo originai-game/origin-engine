@@ -32,11 +32,15 @@
 //! glass does (src/glass.rs).
 
 pub(crate) mod build;
+pub mod filter;
 pub mod glass;
 pub mod mass;
 pub(crate) mod pass;
 pub mod path;
 
+pub use filter::{
+    UiFilter, UiFilterComposite, UiFilterInput, UiFilterOp, UiFilterPrimitive, UiLight, UiTransfer,
+};
 pub use glass::{
     GLASS_BLUR_SCALE, UiElevation, UiGlassFallback, UiGlassStyle, UiGlassWeight, ui_scrim,
 };
@@ -744,6 +748,9 @@ pub struct UiLayer {
     pub mask: Option<UiMask>,
     pub target: Option<TextureHandle>,
     pub ground: Option<UiGround>,
+    /// An SVG filter run over what it drew before it composites
+    /// ([`filter`]); `rect` is then the filter region.
+    pub filter: Option<UiFilter>,
 }
 
 /// Where a projected layer ([`UiLayer::ground`]) lies: its rect on a
@@ -1125,11 +1132,13 @@ impl crate::RenderScene {
 
 pub(crate) const UI_MATERIAL_WGSL: &str = wgsl!("ui_material.wgsl");
 pub(crate) const UI_BLEND_WGSL: &str = wgsl!("ui_blend.wgsl");
+pub(crate) const UI_BLEND_MODES_WGSL: &str = wgsl!("ui_blend_modes.wgsl");
 
 /// The module a custom UI material compiles to: the UI pass's common code,
 /// the composite's prelude, its `Params` and its code.
 pub fn ui_material_module_source(material: &UiMaterialShader) -> String {
     let mut s = String::from(UI_COMMON_WGSL);
+    s.push_str(UI_BLEND_MODES_WGSL);
     s.push_str(UI_BLEND_WGSL);
     s.push_str(UI_MATERIAL_WGSL);
     s.push_str("struct Params {\n");

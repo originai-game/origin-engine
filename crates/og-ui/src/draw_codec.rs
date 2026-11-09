@@ -9,9 +9,10 @@ use crate::motion::codec::{R, W};
 use og_core::glam::Vec2;
 use og_render::{
     TextureHandle, UiAlign, UiBackgroundSize, UiBlend, UiBuiltin, UiCap, UiCorner, UiEdge,
-    UiFillRule, UiFit, UiGeometry, UiGradient, UiGradientKind, UiImage, UiJoin, UiMask, UiMaterial,
+    UiFillRule, UiFilter, UiFilterComposite, UiFilterInput, UiFilterOp, UiFilterPrimitive, UiFit,
+    UiGeometry, UiGradient, UiGradientKind, UiImage, UiJoin, UiLight, UiMask, UiMaterial,
     UiMaterialHandle, UiMode, UiPaint, UiPath, UiRepeat, UiShape, UiSpread, UiStop, UiStroke,
-    UiTextEffects, UiTextOutline, UiTextShadow, UiVectorHandle, UiVerb,
+    UiTextEffects, UiTextOutline, UiTextShadow, UiTransfer, UiVectorHandle, UiVerb,
 };
 
 fn v2(w: &mut W, v: Vec2) {
@@ -60,6 +61,340 @@ fn ralign(r: &mut R) -> Option<UiAlign> {
         2 => UiAlign::Outside,
         _ => return None,
     })
+}
+
+fn input(w: &mut W, i: UiFilterInput) {
+    w.u32(match i {
+        UiFilterInput::Source => 0,
+        UiFilterInput::SourceAlpha => 1,
+        UiFilterInput::Result(k) => k + 2,
+    });
+}
+fn rinput(r: &mut R) -> Option<UiFilterInput> {
+    Some(match r.u32()? {
+        0 => UiFilterInput::Source,
+        1 => UiFilterInput::SourceAlpha,
+        k => UiFilterInput::Result(k - 2),
+    })
+}
+fn floats(w: &mut W, v: &[f32]) {
+    w.u32(v.len() as u32);
+    for x in v {
+        w.f32(*x);
+    }
+}
+fn rfloats(r: &mut R) -> Option<Vec<f32>> {
+    let n = r.u32()? as usize;
+    if n > 4096 {
+        return None;
+    }
+    (0..n).map(|_| r.f32()).collect()
+}
+fn v3(w: &mut W, v: og_core::glam::Vec3) {
+    w.f32(v.x);
+    w.f32(v.y);
+    w.f32(v.z);
+}
+fn rv3(r: &mut R) -> Option<og_core::glam::Vec3> {
+    Some(og_core::glam::Vec3::new(r.f32()?, r.f32()?, r.f32()?))
+}
+
+/// A layer's filter region and graph.
+fn filter(w: &mut W, (region, f): &(crate::layout::Rect, UiFilter)) {
+    w.rect(region);
+    w.u32(f.primitives.len() as u32);
+    for p in &f.primitives {
+        input(w, p.inputs[0]);
+        input(w, p.inputs[1]);
+        f4(w, &p.subregion);
+        w.u8(u8::from(p.srgb));
+        match &p.op {
+            UiFilterOp::Blur { std_dev } => {
+                w.u8(0);
+                floats(w, std_dev);
+            }
+            UiFilterOp::Offset { d } => {
+                w.u8(1);
+                floats(w, d);
+            }
+            UiFilterOp::Flood { color } => {
+                w.u8(2);
+                f4(w, color);
+            }
+            UiFilterOp::Composite { op, k } => {
+                w.u8(3);
+                w.u8(*op as u8);
+                f4(w, k);
+            }
+            UiFilterOp::Blend(b) => {
+                w.u8(4);
+                w.u8(index_of(&BLENDS, b));
+            }
+            UiFilterOp::ColorMatrix(m) => {
+                w.u8(5);
+                floats(w, m);
+            }
+            UiFilterOp::ComponentTransfer(funcs) => {
+                w.u8(6);
+                for t in funcs.iter() {
+                    match t {
+                        UiTransfer::Identity => w.u8(0),
+                        UiTransfer::Table(v) => {
+                            w.u8(1);
+                            floats(w, v);
+                        }
+                        UiTransfer::Discrete(v) => {
+                            w.u8(2);
+                            floats(w, v);
+                        }
+                        UiTransfer::Linear { slope, intercept } => {
+                            w.u8(3);
+                            floats(w, &[*slope, *intercept]);
+                        }
+                        UiTransfer::Gamma {
+                            amplitude,
+                            exponent,
+                            offset,
+                        } => {
+                            w.u8(4);
+                            floats(w, &[*amplitude, *exponent, *offset]);
+                        }
+                    }
+                }
+            }
+            UiFilterOp::Morphology { radius, dilate } => {
+                w.u8(7);
+                floats(w, radius);
+                w.u8(u8::from(*dilate));
+            }
+            UiFilterOp::Displacement { scale, channels } => {
+                w.u8(8);
+                w.f32(*scale);
+                w.u8(channels[0]);
+                w.u8(channels[1]);
+            }
+            UiFilterOp::Turbulence {
+                base_frequency,
+                octaves,
+                seed,
+                stitch,
+                fractal,
+                user,
+                tile,
+            } => {
+                w.u8(9);
+                floats(w, base_frequency);
+                w.u32(*octaves);
+                w.f32(*seed);
+                w.u8(u8::from(*stitch) | u8::from(*fractal) << 1);
+                floats(w, user);
+                f4(w, tile);
+            }
+            UiFilterOp::Image { texture, uv, rect } => {
+                w.u8(10);
+                w.u32(texture.slot());
+                f4(w, uv);
+                f4(w, rect);
+            }
+            UiFilterOp::Tile { tile } => {
+                w.u8(11);
+                f4(w, tile);
+            }
+            UiFilterOp::Lighting {
+                specular,
+                surface_scale,
+                constant,
+                exponent,
+                color,
+                light,
+            } => {
+                w.u8(12);
+                w.u8(u8::from(*specular));
+                floats(w, &[*surface_scale, *constant, *exponent]);
+                floats(w, color);
+                match light {
+                    UiLight::Distant { azimuth, elevation } => {
+                        w.u8(0);
+                        floats(w, &[*azimuth, *elevation]);
+                    }
+                    UiLight::Point { at } => {
+                        w.u8(1);
+                        v3(w, *at);
+                    }
+                    UiLight::Spot {
+                        at,
+                        points_at,
+                        exponent,
+                        cone,
+                    } => {
+                        w.u8(2);
+                        v3(w, *at);
+                        v3(w, *points_at);
+                        w.f32(*exponent);
+                        w.f32(cone.unwrap_or(f32::NAN));
+                    }
+                }
+            }
+            UiFilterOp::Merge => w.u8(13),
+            UiFilterOp::Convolve {
+                order,
+                kernel,
+                divisor,
+                bias,
+                target,
+                edge,
+                preserve_alpha,
+            } => {
+                w.u8(14);
+                w.u32(order[0]);
+                w.u32(order[1]);
+                floats(w, kernel);
+                floats(w, &[*divisor, *bias]);
+                w.i32(target[0]);
+                w.i32(target[1]);
+                w.u8(*edge);
+                w.u8(u8::from(*preserve_alpha));
+            }
+        }
+    }
+}
+
+fn rfilter(r: &mut R) -> Option<(crate::layout::Rect, UiFilter)> {
+    let region = r.rect()?;
+    let n = r.u32()? as usize;
+    if n > 4096 {
+        return None;
+    }
+    let two = |r: &mut R| -> Option<[f32; 2]> { rfloats(r)?.try_into().ok() };
+    let mut primitives = Vec::with_capacity(n);
+    for _ in 0..n {
+        let inputs = [rinput(r)?, rinput(r)?];
+        let subregion = rf4(r)?;
+        let srgb = r.u8()? != 0;
+        let op = match r.u8()? {
+            0 => UiFilterOp::Blur { std_dev: two(r)? },
+            1 => UiFilterOp::Offset { d: two(r)? },
+            2 => UiFilterOp::Flood { color: rf4(r)? },
+            3 => UiFilterOp::Composite {
+                op: match r.u8()? {
+                    0 => UiFilterComposite::Over,
+                    1 => UiFilterComposite::In,
+                    2 => UiFilterComposite::Out,
+                    3 => UiFilterComposite::Atop,
+                    4 => UiFilterComposite::Xor,
+                    5 => UiFilterComposite::Lighter,
+                    6 => UiFilterComposite::Arithmetic,
+                    _ => return None,
+                },
+                k: rf4(r)?,
+            },
+            4 => UiFilterOp::Blend(*BLENDS.get(r.u8()? as usize)?),
+            5 => UiFilterOp::ColorMatrix(rfloats(r)?.try_into().ok()?),
+            6 => {
+                let mut funcs: [UiTransfer; 4] = Default::default();
+                for t in &mut funcs {
+                    *t = match r.u8()? {
+                        0 => UiTransfer::Identity,
+                        1 => UiTransfer::Table(rfloats(r)?),
+                        2 => UiTransfer::Discrete(rfloats(r)?),
+                        3 => {
+                            let [slope, intercept] = rfloats(r)?.try_into().ok()?;
+                            UiTransfer::Linear { slope, intercept }
+                        }
+                        4 => {
+                            let [amplitude, exponent, offset] = rfloats(r)?.try_into().ok()?;
+                            UiTransfer::Gamma {
+                                amplitude,
+                                exponent,
+                                offset,
+                            }
+                        }
+                        _ => return None,
+                    };
+                }
+                UiFilterOp::ComponentTransfer(Box::new(funcs))
+            }
+            7 => UiFilterOp::Morphology {
+                radius: two(r)?,
+                dilate: r.u8()? != 0,
+            },
+            8 => UiFilterOp::Displacement {
+                scale: r.f32()?,
+                channels: [r.u8()?, r.u8()?],
+            },
+            9 => {
+                let base_frequency = two(r)?;
+                let octaves = r.u32()?;
+                let seed = r.f32()?;
+                let flags = r.u8()?;
+                UiFilterOp::Turbulence {
+                    base_frequency,
+                    octaves,
+                    seed,
+                    stitch: flags & 1 != 0,
+                    fractal: flags & 2 != 0,
+                    user: rfloats(r)?.try_into().ok()?,
+                    tile: rf4(r)?,
+                }
+            }
+            10 => UiFilterOp::Image {
+                texture: TextureHandle::from_slot(r.u32()?)?,
+                uv: rf4(r)?,
+                rect: rf4(r)?,
+            },
+            11 => UiFilterOp::Tile { tile: rf4(r)? },
+            12 => {
+                let specular = r.u8()? != 0;
+                let [surface_scale, constant, exponent] = rfloats(r)?.try_into().ok()?;
+                let color = rfloats(r)?.try_into().ok()?;
+                let light = match r.u8()? {
+                    0 => {
+                        let [azimuth, elevation] = two(r)?;
+                        UiLight::Distant { azimuth, elevation }
+                    }
+                    1 => UiLight::Point { at: rv3(r)? },
+                    2 => UiLight::Spot {
+                        at: rv3(r)?,
+                        points_at: rv3(r)?,
+                        exponent: r.f32()?,
+                        cone: Some(r.f32()?).filter(|c| !c.is_nan()),
+                    },
+                    _ => return None,
+                };
+                UiFilterOp::Lighting {
+                    specular,
+                    surface_scale,
+                    constant,
+                    exponent,
+                    color,
+                    light,
+                }
+            }
+            13 => UiFilterOp::Merge,
+            14 => {
+                let order = [r.u32()?, r.u32()?];
+                let kernel = rfloats(r)?;
+                let [divisor, bias] = two(r)?;
+                UiFilterOp::Convolve {
+                    order,
+                    kernel,
+                    divisor,
+                    bias,
+                    target: [r.i32()?, r.i32()?],
+                    edge: r.u8()?,
+                    preserve_alpha: r.u8()? != 0,
+                }
+            }
+            _ => return None,
+        };
+        primitives.push(UiFilterPrimitive {
+            op,
+            inputs,
+            subregion,
+            srgb,
+        });
+    }
+    Some((region, UiFilter { primitives }))
 }
 
 const BLENDS: [UiBlend; 21] = [
@@ -859,6 +1194,7 @@ impl W<'_> {
                 mask,
                 expand,
                 rect,
+                filter: f,
             } => {
                 w.u8(5);
                 material(w, m);
@@ -879,6 +1215,13 @@ impl W<'_> {
                 }
                 w.f32(*expand);
                 w.rect(rect);
+                match f {
+                    None => w.u8(0),
+                    Some(f) => {
+                        w.u8(1);
+                        filter(w, f);
+                    }
+                }
             }
             // A ground's quad is the frame's, not the element's: a frozen
             // drawing keeps none (it leaves where it was laid out, unseen).
@@ -964,6 +1307,10 @@ impl R<'_> {
                     mask,
                     expand: r.f32()?,
                     rect: r.rect()?,
+                    filter: match r.u8()? {
+                        0 => None,
+                        _ => Some(Box::new(rfilter(r)?)),
+                    },
                 }
             }
             6 => {

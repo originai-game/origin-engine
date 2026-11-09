@@ -490,6 +490,7 @@ pub fn panel() -> RenderScene {
         mask: None,
         target: Some(target.color),
         ground: None,
+        filter: None,
     });
     let mut put = |s: UiShape| {
         o.ui.shapes.push(UiShape { layer: 200, ..s });

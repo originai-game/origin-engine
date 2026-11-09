@@ -198,6 +198,7 @@ pub(crate) fn bind_style_materials(
             material.layer = Layer {
                 material: Material::Custom(handle),
                 params: defaults,
+                filter: None,
             };
         }
     }
@@ -649,7 +650,11 @@ impl Reader<'_> {
                 }
             }
         }
-        Some(Layer { material, params })
+        Some(Layer {
+            material,
+            params,
+            filter: None,
+        })
     }
 
     fn text(v: &Value) -> Option<TextEffects> {

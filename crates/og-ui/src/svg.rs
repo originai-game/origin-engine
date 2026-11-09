@@ -11,6 +11,7 @@
 
 use og_core::glam::Vec2;
 
+pub mod filter;
 mod path;
 pub mod smil;
 

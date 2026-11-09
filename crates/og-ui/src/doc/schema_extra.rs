@@ -186,6 +186,61 @@ const SVG_ATTRS: &[(&str, &str)] = &[
     ("method", "svgMethod"),
     ("spacing", "svgSpacing"),
     ("path", "svgPath"),
+    ("filter", "svgFilter"),
+    ("filterUnits", "svgFilterUnits"),
+    ("primitiveUnits", "svgPrimitiveUnits"),
+    (
+        "color-interpolation-filters",
+        "svgColorInterpolationFilters",
+    ),
+    ("in", "svgIn"),
+    ("in2", "svgIn2"),
+    ("result", "svgResult"),
+    ("stdDeviation", "svgStdDeviation"),
+    ("flood-color", "svgFloodColor"),
+    ("flood-opacity", "svgFloodOpacity"),
+    ("operator", "svgOperator"),
+    ("k1", "svgK1"),
+    ("k2", "svgK2"),
+    ("k3", "svgK3"),
+    ("k4", "svgK4"),
+    ("mode", "svgMode"),
+    ("type", "svgType"),
+    ("values", "svgValues"),
+    ("tableValues", "svgTableValues"),
+    ("slope", "svgSlope"),
+    ("intercept", "svgIntercept"),
+    ("amplitude", "svgAmplitude"),
+    ("exponent", "svgExponent"),
+    ("radius", "svgRadius"),
+    ("scale", "svgScale"),
+    ("xChannelSelector", "svgXChannelSelector"),
+    ("yChannelSelector", "svgYChannelSelector"),
+    ("baseFrequency", "svgBaseFrequency"),
+    ("numOctaves", "svgNumOctaves"),
+    ("seed", "svgSeed"),
+    ("stitchTiles", "svgStitchTiles"),
+    ("order", "svgOrder"),
+    ("kernelMatrix", "svgKernelMatrix"),
+    ("divisor", "svgDivisor"),
+    ("bias", "svgBias"),
+    ("targetX", "svgTargetX"),
+    ("targetY", "svgTargetY"),
+    ("edgeMode", "svgEdgeMode"),
+    ("preserveAlpha", "svgPreserveAlpha"),
+    ("kernelUnitLength", "svgKernelUnitLength"),
+    ("surfaceScale", "svgSurfaceScale"),
+    ("diffuseConstant", "svgDiffuseConstant"),
+    ("specularConstant", "svgSpecularConstant"),
+    ("specularExponent", "svgSpecularExponent"),
+    ("lighting-color", "svgLightingColor"),
+    ("azimuth", "svgAzimuth"),
+    ("elevation", "svgElevation"),
+    ("z", "svgZ"),
+    ("pointsAtX", "svgPointsAtX"),
+    ("pointsAtY", "svgPointsAtY"),
+    ("pointsAtZ", "svgPointsAtZ"),
+    ("limitingConeAngle", "svgLimitingConeAngle"),
 ];
 
 /// The prop SVG's attribute `attr` sets.
@@ -475,13 +530,13 @@ pub const PROPS: &[PropSpec] = &[
     svg!("svgY", ALL, "SVG `y`."),
     svg!(
         "svgDx",
-        On::Kinds(&["svgText"]),
-        "A `<text>`'s `dx`: added to `x`, user units or `em`."
+        On::Kinds(&["svgText", "svgDef"]),
+        "A `<text>`'s `dx` (added to `x`, user units or `em`), or `feOffset`'s and `feDropShadow`'s."
     ),
     svg!(
         "svgDy",
-        On::Kinds(&["svgText"]),
-        "A `<text>`'s `dy`: added to `y`, user units or `em` (`1.2em`: a line down)."
+        On::Kinds(&["svgText", "svgDef"]),
+        "A `<text>`'s `dy` (added to `y`, user units or `em`; `1.2em`: a line down), or `feOffset`'s and `feDropShadow`'s."
     ),
     svg!(
         "svgFontSize",
@@ -626,6 +681,182 @@ pub const PROPS: &[PropSpec] = &[
         "svgClipRule",
         SHAPES,
         "SVG `clip-rule` of a shape in a `<clipPath>`: nonzero or evenodd (a ring cuts a hole)."
+    ),
+    svg!(
+        "svgFilter",
+        PAINTED,
+        "SVG `filter=\"url(#id)\"`: the `<filter>` the element and its subtree are drawn through."
+    ),
+    svg!(
+        "svgFilterUnits",
+        DEFS,
+        "A `<filter>`'s `filterUnits`: `objectBoundingBox` (default; its region in fractions of the box) or `userSpaceOnUse`."
+    ),
+    svg!(
+        "svgPrimitiveUnits",
+        DEFS,
+        "A `<filter>`'s `primitiveUnits`: `userSpaceOnUse` (default) or `objectBoundingBox`."
+    ),
+    svg!(
+        "svgColorInterpolationFilters",
+        DEFS,
+        "A `<filter>`'s or primitive's `color-interpolation-filters`: `linearRGB` (default) or `sRGB`."
+    ),
+    svg!(
+        "svgIn",
+        DEFS,
+        "A filter primitive's `in`: `SourceGraphic`, `SourceAlpha` or an earlier `result` (left out: the previous result)."
+    ),
+    svg!(
+        "svgIn2",
+        DEFS,
+        "A filter primitive's second input `in2` (`feComposite`, `feBlend`, `feDisplacementMap`)."
+    ),
+    svg!(
+        "svgResult",
+        DEFS,
+        "A filter primitive's `result` name, read by later `in`/`in2`."
+    ),
+    svg!(
+        "svgStdDeviation",
+        DEFS,
+        "`feGaussianBlur`'s or `feDropShadow`'s `stdDeviation`: one or two numbers."
+    ),
+    svg!(
+        "svgFloodColor",
+        DEFS,
+        "`feFlood`'s or `feDropShadow`'s `flood-color`."
+    ),
+    svg!(
+        "svgFloodOpacity",
+        DEFS,
+        "`feFlood`'s or `feDropShadow`'s `flood-opacity`."
+    ),
+    svg!(
+        "svgOperator",
+        DEFS,
+        "`feComposite`'s `operator` (over, in, out, atop, xor, lighter, arithmetic) or `feMorphology`'s (erode, dilate)."
+    ),
+    svg!("svgK1", DEFS, "`feComposite` arithmetic's `k1`."),
+    svg!("svgK2", DEFS, "`feComposite` arithmetic's `k2`."),
+    svg!("svgK3", DEFS, "`feComposite` arithmetic's `k3`."),
+    svg!("svgK4", DEFS, "`feComposite` arithmetic's `k4`."),
+    svg!(
+        "svgMode",
+        DEFS,
+        "`feBlend`'s `mode`: a `mix-blend-mode` name."
+    ),
+    svg!(
+        "svgType",
+        DEFS,
+        "`feColorMatrix`'s `type` (matrix, saturate, hueRotate, luminanceToAlpha), a `feFunc*`'s (identity, table, discrete, linear, gamma) or `feTurbulence`'s (turbulence, fractalNoise)."
+    ),
+    svg!("svgValues", DEFS, "`feColorMatrix`'s `values`."),
+    svg!(
+        "svgTableValues",
+        DEFS,
+        "A `feFunc*`'s `tableValues` (at most 16 are read)."
+    ),
+    svg!("svgSlope", DEFS, "A linear `feFunc*`'s `slope`."),
+    svg!("svgIntercept", DEFS, "A linear `feFunc*`'s `intercept`."),
+    svg!("svgAmplitude", DEFS, "A gamma `feFunc*`'s `amplitude`."),
+    svg!("svgExponent", DEFS, "A gamma `feFunc*`'s `exponent`."),
+    svg!(
+        "svgRadius",
+        DEFS,
+        "`feMorphology`'s `radius`: one or two numbers."
+    ),
+    svg!("svgScale", DEFS, "`feDisplacementMap`'s `scale`."),
+    svg!(
+        "svgXChannelSelector",
+        DEFS,
+        "`feDisplacementMap`'s `xChannelSelector`: R, G, B or A."
+    ),
+    svg!(
+        "svgYChannelSelector",
+        DEFS,
+        "`feDisplacementMap`'s `yChannelSelector`: R, G, B or A."
+    ),
+    svg!(
+        "svgBaseFrequency",
+        DEFS,
+        "`feTurbulence`'s `baseFrequency`: one or two numbers."
+    ),
+    svg!("svgNumOctaves", DEFS, "`feTurbulence`'s `numOctaves`."),
+    svg!("svgSeed", DEFS, "`feTurbulence`'s `seed`."),
+    svg!(
+        "svgStitchTiles",
+        DEFS,
+        "`feTurbulence`'s `stitchTiles`: stitch or noStitch."
+    ),
+    svg!(
+        "svgOrder",
+        DEFS,
+        "`feConvolveMatrix`'s `order`: one or two numbers."
+    ),
+    svg!(
+        "svgKernelMatrix",
+        DEFS,
+        "`feConvolveMatrix`'s `kernelMatrix` (at most 64 values)."
+    ),
+    svg!("svgDivisor", DEFS, "`feConvolveMatrix`'s `divisor`."),
+    svg!("svgBias", DEFS, "`feConvolveMatrix`'s `bias`."),
+    svg!("svgTargetX", DEFS, "`feConvolveMatrix`'s `targetX`."),
+    svg!("svgTargetY", DEFS, "`feConvolveMatrix`'s `targetY`."),
+    svg!(
+        "svgEdgeMode",
+        DEFS,
+        "`feConvolveMatrix`'s `edgeMode`: duplicate, wrap or none."
+    ),
+    svg!(
+        "svgPreserveAlpha",
+        DEFS,
+        "`feConvolveMatrix`'s `preserveAlpha`."
+    ),
+    svg!(
+        "svgKernelUnitLength",
+        DEFS,
+        "`kernelUnitLength` of `feConvolveMatrix` and the lighting primitives: read past (one device px a cell)."
+    ),
+    svg!(
+        "svgSurfaceScale",
+        DEFS,
+        "A lighting primitive's `surfaceScale`."
+    ),
+    svg!(
+        "svgDiffuseConstant",
+        DEFS,
+        "`feDiffuseLighting`'s `diffuseConstant`."
+    ),
+    svg!(
+        "svgSpecularConstant",
+        DEFS,
+        "`feSpecularLighting`'s `specularConstant`."
+    ),
+    svg!(
+        "svgSpecularExponent",
+        DEFS,
+        "`feSpecularLighting`'s or `feSpotLight`'s `specularExponent`."
+    ),
+    svg!(
+        "svgLightingColor",
+        DEFS,
+        "A lighting primitive's `lighting-color`."
+    ),
+    svg!("svgAzimuth", DEFS, "`feDistantLight`'s `azimuth`, degrees."),
+    svg!(
+        "svgElevation",
+        DEFS,
+        "`feDistantLight`'s `elevation`, degrees."
+    ),
+    svg!("svgZ", DEFS, "`fePointLight`'s or `feSpotLight`'s `z`."),
+    svg!("svgPointsAtX", DEFS, "`feSpotLight`'s `pointsAtX`."),
+    svg!("svgPointsAtY", DEFS, "`feSpotLight`'s `pointsAtY`."),
+    svg!("svgPointsAtZ", DEFS, "`feSpotLight`'s `pointsAtZ`."),
+    svg!(
+        "svgLimitingConeAngle",
+        DEFS,
+        "`feSpotLight`'s `limitingConeAngle`, degrees."
     ),
     svg!("svgClipPathUnits", DEFS, "A clip path's `clipPathUnits`."),
     svg!("svgMaskContentUnits", DEFS, "A mask's `maskContentUnits`."),

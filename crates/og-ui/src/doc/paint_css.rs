@@ -1531,6 +1531,8 @@ pub(crate) enum FilterFn {
         blur: f32,
         color: Option<ColorRef>,
     },
+    /// `url(#id)`: an inline SVG `<filter>`, written `url(#id)`.
+    Url(String),
 }
 
 /// `filter` or `backdrop-filter` (`what`): its functions in order, or none.
@@ -1578,6 +1580,11 @@ fn filter_fn(f: &str, a: &[Tok]) -> Result<FilterFn, String> {
         opacity: 1.0,
     };
     Ok(match f {
+        "url" => FilterFn::Url(match a {
+            [Tok::Hash(h)] => format!("url({h})"),
+            [Tok::Str(s)] if s.starts_with('#') => format!("url({s})"),
+            _ => return Err("url(#id) names a <filter>".into()),
+        }),
         "blur" => FilterFn::Blur(match a {
             [] => 0.0,
             [t] => px(t)?.max(0.0),
@@ -1680,7 +1687,7 @@ fn filter_fn(f: &str, a: &[Tok]) -> Result<FilterFn, String> {
         }
         f => {
             return Err(format!(
-                "not a filter: blur, brightness, contrast, drop-shadow, grayscale, hue-rotate, invert, opacity, saturate, sepia (writing {f})"
+                "not a filter: url(#id), blur, brightness, contrast, drop-shadow, grayscale, hue-rotate, invert, opacity, saturate, sepia (writing {f})"
             ));
         }
     })
@@ -1712,16 +1719,20 @@ fn contained(m: &og_render::UiColorMatrix) -> bool {
 }
 
 /// `filter`'s functions as layers, the first innermost: a blur, a drop
-/// shadow (its colour resolved by `color`), and each run of colour
-/// functions as one colour matrix, split where a function could leave
-/// 0..1 so the clamp CSS does after each one still falls between them.
+/// shadow (its colour resolved by `color`), an SVG `<filter>` (found by
+/// `url`), and each run of colour functions as one colour matrix, split
+/// where a function could leave 0..1 so the clamp CSS does after each one
+/// still falls between them. A `url(#id)` that names no filter drops the
+/// whole list, as Filter Effects 1 §11 says.
 pub(crate) fn filter_layers(
     fns: &[FilterFn],
     color: impl Fn(Option<&ColorRef>) -> [f32; 4],
+    mut url: impl FnMut(&str) -> Option<std::sync::Arc<crate::paint::FilterUse>>,
 ) -> Vec<Layer> {
     let layer = |b: Builtin, params| Layer {
         material: Material::Builtin(b),
         params,
+        filter: None,
     };
     let mut out = Vec::new();
     let mut run: Option<og_render::UiColorMatrix> = None;
@@ -1756,6 +1767,15 @@ pub(crate) fn filter_layers(
                 p[1] = color(c.as_ref());
                 out.push(layer(Builtin::DropShadow, p));
             }
+            FilterFn::Url(u) => {
+                let Some(f) = url(u) else {
+                    return Vec::new();
+                };
+                out.push(Layer {
+                    filter: Some(f),
+                    ..Layer::default()
+                });
+            }
             FilterFn::Matrix(_) => unreachable!("folded above"),
         }
     }
@@ -1774,7 +1794,8 @@ fn px(t: &Tok) -> Result<f32, String> {
 
 /// `backdrop-filter`: the backdrop blurred (blurs add as Gaussians do)
 /// and its colour functions folded into one matrix over it; a
-/// `drop-shadow()` has nothing to cast (the backdrop is opaque).
+/// `drop-shadow()` has nothing to cast (the backdrop is opaque), and a
+/// `url(#id)` is not drawn yet.
 pub(crate) fn backdrop(text: &str) -> Result<Option<Effect>, String> {
     let fns = filter_fns(text, "backdrop-filter")?;
     if fns.is_empty() {
@@ -1786,7 +1807,7 @@ pub(crate) fn backdrop(text: &str) -> Result<Option<Effect>, String> {
         match f {
             FilterFn::Blur(s) => var += s * s,
             FilterFn::Matrix(m) => matrix = Some(matrix.map_or(*m, |r| then(&r, m))),
-            FilterFn::DropShadow { .. } => {}
+            FilterFn::DropShadow { .. } | FilterFn::Url(_) => {}
         }
     }
     Ok(Some(Effect::Backdrop {
@@ -2175,6 +2196,7 @@ pub(crate) fn material(text: &str) -> Result<Option<Layer>, String> {
     let mut layer = Layer {
         material: Material::Builtin(builtin),
         params: Default::default(),
+        filter: None,
     };
     if args.len() > layer.params.len() {
         return Err(format!(
@@ -2655,9 +2677,11 @@ mod tests {
     #[test]
     fn filter_functions_chain_in_order() {
         let layers = |s: &str| {
-            filter_layers(&filter_fns(s, "filter").unwrap(), |c| {
-                c.map_or([0.0, 0.0, 0.0, 1.0], |_| [1.0, 0.0, 0.0, 1.0])
-            })
+            filter_layers(
+                &filter_fns(s, "filter").unwrap(),
+                |c| c.map_or([0.0, 0.0, 0.0, 1.0], |_| [1.0, 0.0, 0.0, 1.0]),
+                |_| None,
+            )
         };
         let kinds = |l: &[Layer]| -> Vec<Builtin> {
             l.iter()
@@ -2714,7 +2738,7 @@ mod tests {
         assert_eq!(l[2].params[0][0], 10.0, "blur(5px) is σ 5: radius 10");
         assert_eq!(l[3].params[3][0], 0.5);
         assert!(filter_fns("grayscale(-1)", "filter").is_err());
-        assert!(filter_fns("url(#f)", "filter").is_err());
+        assert!(filter_fns("url(f)", "filter").is_err());
     }
 
     /// Background layers as CSS Backgrounds 3 reads them. Ways it could

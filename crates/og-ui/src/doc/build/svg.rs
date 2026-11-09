@@ -691,6 +691,50 @@ pub(crate) fn css_clip(
     Ok((rule, parts, units))
 }
 
+/// A `<filter>` and its descendants as the filter reader takes them.
+fn filter_node<'d>(
+    doc: &'d UiDocument,
+    n: &'d DocNode,
+) -> Result<crate::svg::filter::Node<'d>, String> {
+    Ok(crate::svg::filter::Node {
+        tag: n.selector_tag.as_deref().unwrap_or_default(),
+        attrs: literal_attrs(n)?,
+        children: n
+            .children
+            .iter()
+            .map(|&c| filter_node(doc, &doc.nodes[c]))
+            .collect::<Result<_, _>>()?,
+    })
+}
+
+/// The `<filter>` `reference` (`url(#id)`) names; a user-unit percentage
+/// is of `viewport`.
+fn filter_def(
+    doc: &UiDocument,
+    reference: &str,
+    viewport: [f32; 2],
+    image: crate::svg::filter::FindImage,
+) -> Result<crate::svg::filter::Filter, String> {
+    let id = url_id(reference).ok_or_else(|| format!("\"{reference}\" is not url(#id)"))?;
+    let node = def(doc, id, &["filter"]).ok_or_else(|| format!("url(#{id}) names no <filter>"))?;
+    crate::svg::filter::parse(&filter_node(doc, node)?, viewport, image)
+        .map_err(|e| format!("#{id}: {e}"))
+}
+
+/// CSS `filter: url(#id)` or `backdrop-filter: url(#id)` on a box: the
+/// `<filter>` in the box's user space (CSS px from its border box's top
+/// left; a percentage of user units is of 100 px).
+pub(crate) fn css_filter(
+    doc: &UiDocument,
+    reference: &str,
+    image: crate::svg::filter::FindImage,
+) -> Result<std::sync::Arc<crate::paint::FilterUse>, String> {
+    Ok(std::sync::Arc::new(crate::paint::FilterUse {
+        filter: filter_def(doc, reference, [100.0, 100.0], image)?,
+        svg: None,
+    }))
+}
+
 /// A pattern's tiles under a shape of local bounds `bbox` and transform
 /// `t`: for each of its shapes, all its tiles as one filled path, with
 /// that shape's paint. At most 4096 tiles.
@@ -1634,6 +1678,79 @@ impl Ui {
 
     /// An `<image href x y width height preserveAspectRatio>`: an atlas
     /// icon by name, or a render texture by handle, filling its rect.
+    /// An SVG element's `filter` reference: the `<filter>` in its user
+    /// space (`t` takes it into the view box) and its bounding box there:
+    /// a shape's geometry, a group's shapes' (literal ones).
+    #[allow(clippy::too_many_arguments)]
+    fn svg_filter(
+        &self,
+        b: &Build<'_>,
+        n: &DocNode,
+        kind: &str,
+        r: &Resolved,
+        reference: &str,
+        t: &Affine,
+        vb: [f32; 4],
+    ) -> Result<std::sync::Arc<crate::paint::FilterUse>, String> {
+        let image = |href: &str| -> Result<(og_render::TextureHandle, [f32; 4]), String> {
+            match href.parse::<f64>() {
+                Ok(h) => b
+                    .env
+                    .texture(h)
+                    .map(|t| (t, [0.0, 0.0, 1.0, 1.0]))
+                    .ok_or_else(|| format!("href {h} names no texture")),
+                Err(_) => match self.icons.find(href) {
+                    Some(crate::ui::IconCell::Image(texture, uv)) => Ok((texture, uv)),
+                    _ => Err(format!("href \"{href}\" names no atlas image")),
+                },
+            }
+        };
+        let filter = filter_def(&b.doc, reference, [vb[2], vb[3]], &image)?;
+        let union = |a: [f32; 4], b: [f32; 4]| {
+            if a[2] <= 0.0 && a[3] <= 0.0 {
+                return b;
+            }
+            let x = a[0].min(b[0]);
+            let y = a[1].min(b[1]);
+            [
+                x,
+                y,
+                (a[0] + a[2]).max(b[0] + b[2]) - x,
+                (a[1] + a[3]).max(b[1] + b[3]) - y,
+            ]
+        };
+        let mut bbox = [0.0; 4];
+        let tag = n.selector_tag.as_deref().unwrap_or("path");
+        if kind == "svgShape" {
+            let get = |attr: &str| svg_prop(attr).and_then(|p| r.str(p));
+            if tag == "image" {
+                let len =
+                    |a: &str, whole: f32| get(a).map_or(Ok(0.0), |v| crate::svg::length(v, whole));
+                bbox = [
+                    len("x", vb[2])?,
+                    len("y", vb[3])?,
+                    len("width", vb[2])?,
+                    len("height", vb[3])?,
+                ];
+            } else if let Some(local) = shape_path(tag, &get, vb)? {
+                bbox = bounds(&local);
+            }
+        } else {
+            let mut shapes = Vec::new();
+            def_shapes(&b.doc, n, Affine::IDENTITY, &mut shapes)?;
+            for (tag, attrs, own) in &shapes {
+                let get = |a: &str| attrs.iter().find(|(k, _)| k == a).map(|(_, v)| v.as_str());
+                if let Some(local) = shape_path(tag, &get, vb)? {
+                    bbox = union(bbox, bounds(&local.transformed(own)));
+                }
+            }
+        }
+        Ok(std::sync::Arc::new(crate::paint::FilterUse {
+            filter,
+            svg: Some((*t, bbox)),
+        }))
+    }
+
     fn image_draw(
         &self,
         b: &Build<'_>,
@@ -1937,8 +2054,40 @@ impl Ui {
                 None
             }
         };
+        // `filter="url(#id)"`: the element and its subtree drawn through
+        // an SVG `<filter>`, the innermost of its layers.
+        let filter = match r.str("svgFilter").map(str::trim) {
+            Some(v) if kind != "svg" && v != "none" && !v.is_empty() => {
+                match self.svg_filter(b, n, kind, r, v, &t, vb) {
+                    Ok(f) => Some(f),
+                    Err(e) => {
+                        warn(self, format!("filter: {e}"));
+                        None
+                    }
+                }
+            }
+            _ => None,
+        };
+        let filtered = |mut d: ElementDraw| {
+            if let Some(f) = &filter {
+                d.filters.insert(
+                    0,
+                    crate::paint::Layer {
+                        filter: Some(f.clone()),
+                        ..Default::default()
+                    },
+                );
+            }
+            d
+        };
+        if cut.is_none() && filter.is_some() && kind != "svgShape" {
+            self.set_draw(filtered(ElementDraw {
+                view_box: Some(vb),
+                ..ElementDraw::default()
+            }));
+        }
         if let Some(c) = &cut {
-            self.set_draw(ElementDraw {
+            self.set_draw(filtered(ElementDraw {
                 shape: match c {
                     Cut::Shape(s) | Cut::Box(s, _) => s.clone(),
                     Cut::Gradient(_) => ShapeKind::default(),
@@ -1955,7 +2104,7 @@ impl Ui {
                     _ => None,
                 },
                 ..ElementDraw::default()
-            });
+            }));
         }
         let over = |ui: &mut Ui, id: &str| {
             ui.open(
@@ -1978,6 +2127,7 @@ impl Ui {
         };
         if kind == "svgShape" && n.selector_tag.as_deref() == Some("image") {
             match self.image_draw(b, r, &t, vb) {
+                Ok(Some(draw)) if cut.is_none() => self.set_draw(filtered(draw)),
                 Ok(Some(draw)) => self.set_draw(draw),
                 Ok(None) => {}
                 Err(e) => warn(self, e),
@@ -1993,8 +2143,10 @@ impl Ui {
                 }) => {
                     if cut.is_some() {
                         over(self, "~shape");
+                        self.set_draw(draw);
+                    } else {
+                        self.set_draw(filtered(draw));
                     }
-                    self.set_draw(draw);
                     let boxed = !tiles.is_empty();
                     if boxed {
                         over(self, "~pattern");

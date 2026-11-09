@@ -139,13 +139,16 @@ pub enum DrawCmd {
     PopClip,
     /// What follows, until its [`DrawCmd::EndLayer`], draws offscreen.
     /// `rect` (the union of what it draws, grown by `expand`) is set when
-    /// levels are assigned.
+    /// levels are assigned. With a `filter` (an SVG `<filter>`'s region
+    /// and graph, CSS px) the layer is the filter region instead and
+    /// composites the graph's result.
     BeginLayer {
         material: UiMaterial,
         params: [[f32; 4]; og_render::UI_MATERIAL_PARAMS],
         mask: Option<og_render::UiMask>,
         expand: f32,
         rect: Rect,
+        filter: Option<Box<(Rect, og_render::UiFilter)>>,
     },
     /// The layer's composite: `geometry` over `rect` (`None`: the layer's
     /// whole rectangle), at `opacity` with `blend`. With `ground`, the
@@ -588,8 +591,22 @@ fn collect(
                 ));
                 // The layer's rectangle is on the screen: the union of what
                 // its items draw there, whatever their maps.
-                if let DrawCmd::BeginLayer { rect, expand, .. } = &mut begin {
-                    let r = bounds.outset(*expand);
+                if let DrawCmd::BeginLayer {
+                    rect,
+                    expand,
+                    filter,
+                    ..
+                } = &mut begin
+                {
+                    let r = match filter {
+                        // The filter region, under the element's map.
+                        Some(f) => {
+                            crate::svg::filter::map(&mut f.1, &m);
+                            f.0 = m.map_rect(&f.0);
+                            f.0
+                        }
+                        None => bounds.outset(*expand),
+                    };
                     *rect = r;
                     bounds = r;
                 }
@@ -1488,9 +1505,18 @@ pub(crate) fn zoom_items(mut items: Vec<DrawItem>, unit: f32) -> Vec<DrawItem> {
                     *blur *= unit;
                 }
             }
-            DrawCmd::BeginLayer { rect, expand, .. } => {
+            DrawCmd::BeginLayer {
+                rect,
+                expand,
+                filter,
+                ..
+            } => {
                 *rect = s.map_rect(rect);
                 *expand *= unit;
+                if let Some(f) = filter {
+                    f.0 = s.map_rect(&f.0);
+                    crate::svg::filter::map(&mut f.1, &s);
+                }
             }
             DrawCmd::World(w) => match &mut **w {
                 WorldCmd::Occlude { at, .. } => *at = (at.0 * unit, at.1 * unit),
@@ -1698,6 +1724,7 @@ pub(crate) fn emit(
                         mask: None,
                         target: Some(*target),
                         ground: None,
+                        filter: None,
                     });
                     spaces.push(Space {
                         base,
@@ -1716,6 +1743,7 @@ pub(crate) fn emit(
                 params,
                 mask,
                 rect,
+                filter,
                 ..
             } => {
                 let k = overlay.ui.layers.len() as u32;
@@ -1736,6 +1764,7 @@ pub(crate) fn emit(
                     mask: mask.clone(),
                     target: None,
                     ground: None,
+                    filter: filter.as_ref().map(|f| f.1.clone()),
                 });
                 spaces.push(Space {
                     base,
@@ -2243,6 +2272,7 @@ mod levels {
             mask: None,
             expand: 4.0,
             rect: Rect::default(),
+            filter: None,
         }
     }
 

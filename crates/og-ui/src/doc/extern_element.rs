@@ -9,7 +9,8 @@ pub(crate) const SVG_SHAPES: &[&str] = &[
 
 /// What SVG elements read past: definitions drawn only where referenced
 /// (`<symbol>` by a `<use>`, `<clipPath>` by `clip-path`, `<mask>` by
-/// `mask`, `<pattern>` and gradients by a paint), and text for people
+/// `mask`, `<pattern>` and gradients by a paint, `<filter>` and its
+/// primitives by `filter`), and text for people
 /// (`<title>` names its parent, see [`finish`]).
 const SVG_DEFS: &[&str] = &[
     "defs",
@@ -22,11 +23,49 @@ const SVG_DEFS: &[&str] = &[
     "radialGradient",
     "stop",
     "metadata",
+    "filter",
+    "feBlend",
+    "feColorMatrix",
+    "feComponentTransfer",
+    "feComposite",
+    "feConvolveMatrix",
+    "feDiffuseLighting",
+    "feDisplacementMap",
+    "feDistantLight",
+    "feDropShadow",
+    "feFlood",
+    "feFuncA",
+    "feFuncB",
+    "feFuncG",
+    "feFuncR",
+    "feGaussianBlur",
+    "feImage",
+    "feMerge",
+    "feMergeNode",
+    "feMorphology",
+    "feOffset",
+    "fePointLight",
+    "feSpecularLighting",
+    "feSpotLight",
+    "feTile",
+    "feTurbulence",
 ];
 
 /// The elements whose children are SVG.
 const SVG_PARENTS: &[&str] = &[
-    "svg", "g", "defs", "symbol", "clipPath", "mask", "pattern", "marker",
+    "svg",
+    "g",
+    "defs",
+    "symbol",
+    "clipPath",
+    "mask",
+    "pattern",
+    "marker",
+    "filter",
+    "feComponentTransfer",
+    "feDiffuseLighting",
+    "feSpecularLighting",
+    "feMerge",
 ];
 
 /// What a `<tspan>` inside a `<text>` takes: the run's look.
@@ -198,7 +237,7 @@ pub(super) fn kind(tag: &str, parent_tag: Option<&str>) -> Option<Result<&'stati
             Err("<mpath> names an <animateMotion>'s path; write it there".into())
         }),
         t if in_svg(parent_tag) => Some(Err(format!(
-            "<{t}> is not in the inline SVG subset: g, use, text, tspan, textPath, path, rect, circle, ellipse, line, polyline, polygon, image, foreignObject, defs, symbol, marker, animate, set, animateTransform, animateMotion, mpath, clipPath, mask, pattern, linearGradient, radialGradient, stop, title and desc (docs/ui.md §3.3)"
+            "<{t}> is not in the inline SVG subset: g, use, text, tspan, textPath, path, rect, circle, ellipse, line, polyline, polygon, image, foreignObject, defs, symbol, marker, animate, set, animateTransform, animateMotion, mpath, clipPath, mask, pattern, linearGradient, radialGradient, stop, filter and its fe* primitives, title and desc (docs/ui.md §3.3)"
         ))),
         _ => None,
     }
@@ -249,7 +288,7 @@ pub(super) fn property(kind: &str, attr: &str) -> Option<String> {
                 || TEXT_PRESENTATION.contains(&attr)
         }
         "svgGroup" => {
-            matches!(attr, "transform" | "clip-path" | "mask")
+            matches!(attr, "transform" | "clip-path" | "mask" | "filter")
                 || PRESENTATION.contains(&attr)
                 || TEXT_PRESENTATION.contains(&attr)
         }

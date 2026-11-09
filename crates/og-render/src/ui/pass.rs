@@ -108,6 +108,8 @@ pub(crate) struct UiFrameGroups {
     backdrop: Option<wgpu::BindGroup>,
     /// What a layer's blends read: [`UiRenderer::layer_behind`].
     layer_backdrop: Option<wgpu::BindGroup>,
+    /// The filters of the layers that have one, by layer index.
+    filters: HashMap<u32, super::filter::Prepared>,
     /// The mass elements' camera, templates, table and instances.
     mass: Option<wgpu::BindGroup>,
 }
@@ -130,6 +132,7 @@ pub(crate) struct UiRenderer {
     /// as the largest layer that has them; its group's parameters.
     layer_behind: Option<(wgpu::Texture, (u32, u32))>,
     layer_backdrop_params: wgpu::Buffer,
+    filters: super::filter::FilterRunner,
     instances: wgpu::Buffer,
     gradients: wgpu::Buffer,
     clips: wgpu::Buffer,
@@ -190,8 +193,9 @@ const VECTOR_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayou
 /// The shape family's module.
 pub(crate) fn ui_source() -> String {
     format!(
-        "{}{}{}",
+        "{}{}{}{}",
         super::UI_COMMON_WGSL,
+        super::UI_BLEND_MODES_WGSL,
         super::UI_BLEND_WGSL,
         UI_WGSL
     )
@@ -205,8 +209,9 @@ pub(crate) fn mass_source() -> String {
 /// The built-in materials' composite module.
 pub(crate) fn builtin_source() -> String {
     format!(
-        "{}{}{}{}",
+        "{}{}{}{}{}",
         super::UI_COMMON_WGSL,
+        super::UI_BLEND_MODES_WGSL,
         super::UI_BLEND_WGSL,
         super::UI_MATERIAL_WGSL,
         UI_BUILTIN_WGSL
@@ -600,6 +605,7 @@ impl UiRenderer {
             dummy_backdrop,
             backdrop_params,
             layer_behind: None,
+            filters: super::filter::FilterRunner::new(device),
             layer_backdrop_params: uniform_buffer(device, "ui layer backdrop", 16),
             instances: storage_buffer(device, "ui instances", 256),
             gradients: storage_buffer(device, "ui gradients", 256),
@@ -1048,6 +1054,7 @@ impl UiRenderer {
                 target_of.push(i);
             }
         }
+        self.filters.begin();
         for (n, plan) in frame.layers.iter().enumerate() {
             let layer = &overlay.ui.layers[plan.index as usize];
             let u = [
@@ -1099,10 +1106,29 @@ impl UiRenderer {
             }
             queue.write_buffer(&self.layer_params[n], 0, bytemuck::bytes_of(&params));
             // A world panel composites nowhere: its group samples white.
-            let target = self
+            let mut target = self
                 .targets
                 .get(target_of[n])
                 .map_or(&self.white, |t| &t.sampled);
+            // A filter's result instead of what the layer drew.
+            if let (Some(filter), Some(t)) = (&layer.filter, self.targets.get(target_of[n]))
+                && let Some(p) = self.filters.prepare(
+                    device,
+                    queue,
+                    filter,
+                    &t.sampled,
+                    plan.size,
+                    plan.origin,
+                    plan.scale,
+                    &self.white,
+                    &texture_view,
+                )
+            {
+                groups.filters.insert(plan.index, p);
+            }
+            if let Some(p) = groups.filters.get(&plan.index) {
+                target = &p.result;
+            }
             let composite = crate::bind_group(
                 device,
                 "ui layer composite",
@@ -1475,6 +1501,9 @@ impl Renderer {
                     draws += 1;
                 }
                 from = to;
+            }
+            if let Some(p) = self.ui.frame.filters.get(&plan.index) {
+                draws += self.ui.filters.record(encoder, p);
             }
             // A blur's levels, from what the layer drew.
             if plan.target.is_none()
