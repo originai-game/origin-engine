@@ -1,0 +1,196 @@
+{
+  "cells": [
+    {
+      "screen": "controls",
+      "breakpoint": "desktopHd",
+      "scale": 100,
+      "locale": "",
+      "style": "css-laboratory",
+      "frame": "cells/0.png"
+    },
+    {
+      "screen": "controls",
+      "breakpoint": "desktopHd",
+      "scale": 150,
+      "locale": "",
+      "style": "css-laboratory",
+      "frame": "cells/1.png"
+    },
+    {
+      "screen": "controls/scroll-2",
+      "breakpoint": "desktopHd",
+      "scale": 150,
+      "locale": "",
+      "style": "css-laboratory",
+      "frame": "cells/2.png"
+    },
+    {
+      "screen": "controls",
+      "breakpoint": "phonePortrait",
+      "scale": 100,
+      "locale": "",
+      "style": "css-laboratory",
+      "frame": "cells/3.png"
+    },
+    {
+      "screen": "controls/scroll-2",
+      "breakpoint": "phonePortrait",
+      "scale": 100,
+      "locale": "",
+      "style": "css-laboratory",
+      "frame": "cells/4.png"
+    },
+    {
+      "screen": "controls/scroll-3",
+      "breakpoint": "phonePortrait",
+      "scale": 100,
+      "locale": "",
+      "style": "css-laboratory",
+      "frame": "cells/5.png"
+    },
+    {
+      "screen": "controls",
+      "breakpoint": "phonePortrait",
+      "scale": 150,
+      "locale": "",
+      "style": "css-laboratory",
+      "frame": "cells/6.png"
+    },
+    {
+      "screen": "controls/scroll-2",
+      "breakpoint": "phonePortrait",
+      "scale": 150,
+      "locale": "",
+      "style": "css-laboratory",
+      "frame": "cells/7.png"
+    },
+    {
+      "screen": "controls/scroll-3",
+      "breakpoint": "phonePortrait",
+      "scale": 150,
+      "locale": "",
+      "style": "css-laboratory",
+      "frame": "cells/8.png"
+    },
+    {
+      "screen": "fields",
+      "breakpoint": "desktopHd",
+      "scale": 100,
+      "locale": "",
+      "style": "css-laboratory",
+      "frame": "cells/9.png"
+    },
+    {
+      "screen": "fields",
+      "breakpoint": "desktopHd",
+      "scale": 150,
+      "locale": "",
+      "style": "css-laboratory",
+      "frame": "cells/10.png"
+    },
+    {
+      "screen": "fields",
+      "breakpoint": "phonePortrait",
+      "scale": 100,
+      "locale": "",
+      "style": "css-laboratory",
+      "frame": "cells/11.png"
+    },
+    {
+      "screen": "fields/scroll-2",
+      "breakpoint": "phonePortrait",
+      "scale": 100,
+      "locale": "",
+      "style": "css-laboratory",
+      "frame": "cells/12.png"
+    },
+    {
+      "screen": "fields",
+      "breakpoint": "phonePortrait",
+      "scale": 150,
+      "locale": "",
+      "style": "css-laboratory",
+      "frame": "cells/13.png"
+    },
+    {
+      "screen": "fields/scroll-2",
+      "breakpoint": "phonePortrait",
+      "scale": 150,
+      "locale": "",
+      "style": "css-laboratory",
+      "frame": "cells/14.png"
+    },
+    {
+      "screen": "surfaces",
+      "breakpoint": "desktopHd",
+      "scale": 100,
+      "locale": "",
+      "style": "css-laboratory",
+      "frame": "cells/15.png"
+    },
+    {
+      "screen": "surfaces",
+      "breakpoint": "desktopHd",
+      "scale": 150,
+      "locale": "",
+      "style": "css-laboratory",
+      "frame": "cells/16.png"
+    },
+    {
+      "screen": "surfaces",
+      "breakpoint": "phonePortrait",
+      "scale": 100,
+      "locale": "",
+      "style": "css-laboratory",
+      "frame": "cells/17.png"
+    },
+    {
+      "screen": "surfaces",
+      "breakpoint": "phonePortrait",
+      "scale": 150,
+      "locale": "",
+      "style": "css-laboratory",
+      "frame": "cells/18.png"
+    },
+    {
+      "screen": "surfaces/scroll-2",
+      "breakpoint": "phonePortrait",
+      "scale": 150,
+      "locale": "",
+      "style": "css-laboratory",
+      "frame": "cells/19.png"
+    },
+    {
+      "screen": "overlays",
+      "breakpoint": "desktopHd",
+      "scale": 100,
+      "locale": "",
+      "style": "css-laboratory",
+      "frame": "cells/20.png"
+    },
+    {
+      "screen": "overlays",
+      "breakpoint": "desktopHd",
+      "scale": 150,
+      "locale": "",
+      "style": "css-laboratory",
+      "frame": "cells/21.png"
+    },
+    {
+      "screen": "overlays",
+      "breakpoint": "phonePortrait",
+      "scale": 100,
+      "locale": "",
+      "style": "css-laboratory",
+      "frame": "cells/22.png"
+    },
+    {
+      "screen": "overlays",
+      "breakpoint": "phonePortrait",
+      "scale": 150,
+      "locale": "",
+      "style": "css-laboratory",
+      "frame": "cells/23.png"
+    }
+  ]
+}

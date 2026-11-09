@@ -1,0 +1,129 @@
+/* CSS laboratory: intentionally conspicuous state colours for the core sheet.
+   No manifest, atlas or engine appearance properties beyond -og-sound.
+   Host font inheritance and host data-* propagation are pending parts-as-nodes. */
+@font-face {
+  font-family: "Laboratory";
+  src: url(fonts/InstrumentSans-Regular.ttf);
+}
+:root {
+  --lab-ink: #fff5d5;
+  --lab-ground: #152733;
+  --lab-edge: #eebd63;
+  --lab-hover: #285a70;
+  --lab-pressed: #713e66;
+  --lab-selected: #246c57;
+  --lab-disabled: #414552;
+  --ink: var(--lab-ink);
+  --panel: var(--lab-ground);
+  --font-sans: "Laboratory";
+}
+:root[data-scheme=light] {
+  --lab-ink: #182d36;
+  --lab-ground: #f5e8c8;
+  --lab-edge: #805216;
+  --lab-hover: #bde7ed;
+  --lab-pressed: #ebbed8;
+  --lab-selected: #a7e0bf;
+  --lab-disabled: #c4c4bc;
+}
+/* Pending parts-as-nodes: font-family inherited by internal labels. */
+button, input, select, textarea, stepper, tabs, panel, dialog {
+  font-family: "Laboratory";
+}
+button::part(base), input[type=checkbox]::part(box),
+input[type=checkbox][switch]::part(track), input[type=radio]::part(ring),
+input[type=radio]::part(option), input::part(frame), textarea::part(frame),
+select::part(trigger), stepper::part(button), stepper::part(frame), tabs::part(tab),
+input[type=range]::part(track), input[type=range]::part(knob), details::part(summary) {
+  background: linear-gradient(150deg, #31566a, var(--lab-ground));
+  color: var(--lab-ink);
+  border: 2px solid var(--lab-edge);
+  border-radius: 8px 2px 8px 2px;
+  box-shadow: inset 0 1px 0 #fff3b840, inset 0 -2px 0 #030e1680, 2px 3px 0 #030e1670;
+  transition: background 140ms ease-out, box-shadow 140ms ease-out;
+}
+button::part(base):hover, input[type=checkbox]::part(box):hover,
+input[type=checkbox][switch]::part(track):hover, input[type=radio]::part(option):hover,
+input::part(frame):hover, textarea::part(frame):hover, select::part(trigger):hover,
+stepper::part(button):hover, tabs::part(tab):hover, input[type=range]::part(knob):hover {
+  background: var(--lab-hover);
+  border-color: #78efff;
+  box-shadow: inset 0 0 0 2px #78efff50, 0 0 8px #78efff50;
+}
+button::part(base):active, input[type=checkbox]::part(box):active,
+input[type=checkbox][switch]::part(track):active, input[type=radio]::part(option):active,
+input::part(frame):active, textarea::part(frame):active, select::part(trigger):active,
+stepper::part(button):active, tabs::part(tab):active, input[type=range]::part(knob):active {
+  background: var(--lab-pressed);
+  border-color: #ffabdf;
+  box-shadow: inset 0 3px 4px #16051b99;
+}
+button::part(base):focus-visible, input[type=checkbox]::part(box):focus-visible,
+input[type=checkbox][switch]::part(track):focus-visible, input[type=radio]::part(option):focus-visible,
+input::part(frame):focus-visible, textarea::part(frame):focus-visible, select::part(trigger):focus-visible,
+stepper::part(button):focus-visible, tabs::part(tab):focus-visible, input[type=range]::part(knob):focus-visible {
+  outline: 3px dashed #ffde65;
+  outline-offset: 2px;
+}
+input[type=checkbox]::part(box):checked, input[type=checkbox][switch]::part(track):checked,
+input[type=radio]::part(ring):checked, tabs::part(tab):checked {
+  background: var(--lab-selected);
+  border-color: #8effb0;
+}
+button::part(base):disabled, input[type=checkbox]::part(box):disabled,
+input[type=checkbox][switch]::part(track):disabled, input[type=radio]::part(option):disabled,
+input::part(frame):disabled, textarea::part(frame):disabled, select::part(trigger):disabled,
+stepper::part(button):disabled, tabs::part(tab):disabled, input[type=range]::part(knob):disabled {
+  background: repeating-linear-gradient(135deg, var(--lab-disabled) 0px, var(--lab-disabled) 5px, #717280 6px);
+  border: 2px dashed #9e9ba5;
+  box-shadow: none;
+  opacity: 0.65;
+}
+input[type=checkbox]::part(box):checked:disabled, input[type=checkbox][switch]::part(track):checked:disabled,
+input[type=radio]::part(ring):checked:disabled, tabs::part(tab):checked:disabled {
+  background: #355448;
+  border: 2px dashed #88ba96;
+}
+/* Explicit classes prove each markup variant reaches the pack cascade. */
+button.primary::part(base) { background: linear-gradient(150deg, #f2cc78, #b87726); border-color: #fff1b4; color: #20140b; }
+button.secondary::part(base) { background: linear-gradient(150deg, #31566a, #152733); border-color: #72d4de; color: #c7f8ff; }
+button.quiet::part(base) { background: #28352e; border: 1px solid #738f7a; color: #d8ecd0; box-shadow: none; }
+button.ghost::part(base) { background: #29233d; border: 2px dotted #bd9af0; color: #eedbff; box-shadow: none; }
+button.danger::part(base) { background: linear-gradient(150deg, #792d39, #401c29); border-color: #ff9681; color: #ffe0cc; }
+button.primary::part(base):hover, button.secondary::part(base):hover, button.quiet::part(base):hover,
+button.ghost::part(base):hover, button.danger::part(base):hover { background: var(--lab-hover); border-color: #78efff; color: #d9fbff; }
+button.primary::part(base):active, button.secondary::part(base):active, button.quiet::part(base):active,
+button.ghost::part(base):active, button.danger::part(base):active { background: var(--lab-pressed); border-color: #ffabdf; color: #fff0fa; }
+button.primary::part(base):disabled, button.secondary::part(base):disabled, button.quiet::part(base):disabled,
+button.ghost::part(base):disabled, button.danger::part(base):disabled { background: repeating-linear-gradient(135deg, var(--lab-disabled) 0px, var(--lab-disabled) 5px, #717280 6px); border: 2px dashed #9e9ba5; color: #d9d7df; box-shadow: none; }
+panel::part(frame), dialog::part(panel), tooltip::part(frame), sheet::part(frame) {
+  background: var(--lab-ground);
+  border: 10px solid transparent;
+  border-image: url(frame.svg) 10 fill / 10px / 0 stretch;
+  box-shadow: 0 4px 12px #00000060, inset 0 0 12px #65c7d320;
+}
+progress::part(track), meter::part(track) { background: #0b1928; border: 1px solid #c59651; }
+progress::part(fill), meter::part(fill) { background: linear-gradient(90deg, #37a890, #e2c26f); }
+badge::part(base) { background: #59355f; color: #ffe4ae; border: 1px solid #d49de0; }
+badge[tone=neutral]::part(base) { background: #35414b; color: #e2e8ed; }
+badge[tone=info]::part(base) { background: #173f76; color: #bceaff; }
+badge[tone=success]::part(base) { background: #174e33; color: #b9ffd0; }
+badge[tone=warn]::part(base) { background: #e4af46; color: #362100; }
+badge[tone=danger]::part(base) { background: #792b3c; color: #ffd4c7; }
+badge[tone=accent]::part(base) { background: #59355f; color: #f1c5ff; }
+/* Pending parts-as-nodes: a data-* cue reaches a core widget's own part. */
+slot[data-rarity=epic]::part(frame) { border: 3px double #df9bff; }
+/* Document boxes already support data-*; the cue includes shape, not colour alone. */
+[data-rarity=epic] { outline: 3px double #df9bff; }
+.slot::before { content: ""; display: block; width: 24px; height: 24px; background: #ffdc85; mask-image: url(flask.svg); mask-size: contain; }
+@keyframes laboratory-signal {
+  from { opacity: 0.65; }
+  to { opacity: 1; }
+}
+/* Pending parts-as-nodes: cached virtual progress fills currently freeze this animation. */
+progress::part(fill) { animation: laboratory-signal 1200ms ease-in-out infinite alternate; }
+button::part(base) { -og-sound: press url(/@styles/shared/sfx-tap.ogt) volume(0.2 0.28) pitch(0.96 1.04); }
+@media (prefers-reduced-motion: reduce) {
+  progress::part(fill) { animation: none; }
+  button::part(base), input::part(frame), tabs::part(tab) { transition: none; }
+}

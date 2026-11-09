@@ -105,3 +105,16 @@ second lane.
 to the new main: if main moved, the next commit stages a revert of every
 change that landed meanwhile. Squash with
 `git reset --soft "$(git merge-base HEAD origin/main)"`, then rebase.
+
+## 2026-11-10 — A state sheet must capture offscreen states
+
+A scrollable page is not complete visual evidence when only its first
+viewport is captured. UI sheet and pack review must capture every scroll
+page, including the desktop 150% and phone cells. A CSS test pack must
+also distinguish each button variant through its class selector: matching
+states alone do not prove that primary, secondary, quiet, ghost and danger
+variants reach the cascade.
+
+The same rule applies to semantic tones: neutral, info, success, warning,
+danger and accent badges need different fills and inks from their own
+selectors, or a broken tone selector disappears in a uniform sample.
