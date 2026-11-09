@@ -115,6 +115,9 @@ pub(crate) struct Basis {
     pub ex: f32,
     /// The safe area's insets (top, right, bottom, left), for `env()`.
     pub safe: [f32; 4],
+    /// The HUD band's insets (top, right, bottom, left), for
+    /// `env(-og-hud-inset-*)` ([`crate::Viewport::hud_insets`]).
+    pub hud: [f32; 4],
     /// The nearest query container eligible on each axis (width, height,
     /// its own inline and block axes: `container::unit_basis`) and its
     /// settled size along it (0 until measured); none, and the container
@@ -278,7 +281,8 @@ pub(crate) fn absolute(text: &str, basis: Basis, name: &str) -> (String, Read) {
 
 /// `text` with each `env(<name>[, <fallback>])` replaced (CSS Environment
 /// Variables): the safe-area insets as px (the `max` ones too, one safe
-/// area here), any other name by its fallback, else nothing.
+/// area here) and the HUD band's (`-og-hud-inset-*`), any other name by
+/// its fallback, else nothing.
 fn env(text: &str, basis: Basis, read: &mut Read) -> String {
     let mut out = String::with_capacity(text.len());
     let mut rest = text;
@@ -300,18 +304,19 @@ fn env(text: &str, basis: Basis, read: &mut Read) -> String {
         };
         let side = name
             .strip_prefix("safe-area-inset-")
-            .or_else(|| name.strip_prefix("safe-area-max-inset-"));
-        let value = match side {
-            Some(s) => ["top", "right", "bottom", "left"]
+            .or_else(|| name.strip_prefix("safe-area-max-inset-"))
+            .map(|s| (s, &basis.safe))
+            .or_else(|| name.strip_prefix("-og-hud-inset-").map(|s| (s, &basis.hud)));
+        let value = side.and_then(|(s, insets)| {
+            ["top", "right", "bottom", "left"]
                 .iter()
                 .position(|w| *w == s)
                 .map(|k| {
                     read.width = true;
                     read.height = true;
-                    format!("{}px", number(basis.safe[k] as f64))
-                }),
-            None => None,
-        };
+                    format!("{}px", number(insets[k] as f64))
+                })
+        });
         out.push_str(&value.unwrap_or_else(|| fallback.unwrap_or("").to_string()));
         rest = &rest[close + 1..];
     }

@@ -10,9 +10,8 @@
 <style>
 #Speed {
   position: fixed;
-  right: calc(env(safe-area-inset-right) + 24px);
-  bottom: calc(env(safe-area-inset-bottom) + 24px);
-  width: max-content;
+  right: calc(env(-og-hud-inset-right) + 24px);
+  bottom: calc(env(-og-hud-inset-bottom) + 24px);
   display: flex;
   flex-direction: column;
   gap: var(--space-md);

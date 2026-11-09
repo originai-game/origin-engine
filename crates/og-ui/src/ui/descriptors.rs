@@ -163,6 +163,27 @@ impl Viewport {
         s
     }
 
+    /// What CSS `env(-og-hud-inset-*)` reads: [`Viewport::env_insets`]
+    /// with the left and right insets grown alike until the area between
+    /// them is at most `max_aspect` times its height wide (UiDesc.hudMaxAspect;
+    /// 0 or not finite: no narrower), so a HUD document placed at them sits
+    /// in the HUD band on an ultrawide and stays clear of the host's
+    /// covered region everywhere.
+    pub fn hud_insets(&self, max_aspect: f32) -> Insets {
+        let mut s = self.env_insets();
+        if !(max_aspect.is_finite() && max_aspect > 0.0) {
+            return s;
+        }
+        let width = self.width - s.left - s.right;
+        let widest = max_aspect * (self.height - s.top - s.bottom).max(0.0);
+        if width > widest {
+            let grow = (width - widest) / 2.0;
+            s.left += grow;
+            s.right += grow;
+        }
+        s
+    }
+
     /// The safe area, in CSS pixels.
     pub fn safe_rect(&self) -> Rect {
         Rect::new(

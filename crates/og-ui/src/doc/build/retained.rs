@@ -138,9 +138,10 @@ pub struct RetainedHost {
     /// The `:target` element last applied, and the fragment it was for.
     target: (Option<String>, Vec<MountedNode>),
     viewport: Option<crate::doc::media::Context>,
-    /// The safe area and the small and large viewports last build: a
-    /// change re-resolves what read the viewport (`env()`, `svh`, `lvh`).
-    surface: [f32; 8],
+    /// The safe area, the small and large viewports and the HUD band's
+    /// sides last build: a change re-resolves what read the viewport
+    /// (`env()`, `svh`, `lvh`).
+    surface: [f32; 10],
     theme: Option<crate::Theme>,
     /// The surface's direction last build: a document's root takes it.
     direction: Option<og_i18n::Direction>,
@@ -962,8 +963,10 @@ impl RetainedHost {
         let viewport = ui.media_context();
         let [small, large] = ui.viewport.extremes();
         let sa = ui.viewport.env_insets();
+        let hud = ui.viewport.hud_insets(ui.hud_max_aspect);
         let surface = [
-            sa.top, sa.right, sa.bottom, sa.left, small[0], small[1], large[0], large[1],
+            sa.top, sa.right, sa.bottom, sa.left, small[0], small[1], large[0], large[1], hud.left,
+            hud.right,
         ];
         let moved = std::mem::replace(&mut self.surface, surface) != surface;
         if let Some(old) = self.viewport.replace(viewport) {

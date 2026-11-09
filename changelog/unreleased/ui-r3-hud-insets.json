@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "UI document CSS env(-og-hud-inset-top | right | bottom | left)",
+      "summary": "The HUD band's insets: env(safe-area-inset-*) (the host's covered region folded in) with the left and right insets grown alike until the area between them is at most UiDesc.hudMaxAspect times its height wide. A HUD document placed at them (`position: fixed; right: calc(env(-og-hud-inset-right) + 24px)`) stays clear of Back and, on a 21:9 or 32:9 ultrawide, sits in the centred band the toasts use. A change of the surface or of hudMaxAspect re-resolves what reads them."
+    }
+  ]
+}

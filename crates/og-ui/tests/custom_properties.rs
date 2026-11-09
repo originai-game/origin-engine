@@ -12,7 +12,9 @@
 //!   variable, or a mixed-unit calc() accepted → `calc_reduces_once_its_variables_are_known`
 //! - env(safe-area-inset-*) blind to the host's covered control, folding it
 //!   into the wrong edge for the surface's shape, or not re-read when the
-//!   surface or the control changes → `safe_area_insets_clear_the_hosts_covered_control`
+//!   surface or the control changes; env(-og-hud-inset-*) not narrowing
+//!   to the HUD band on an ultrawide (or narrowing a 16:9 surface), or not
+//!   following UiDesc.hudMaxAspect → `safe_area_insets_clear_the_hosts_covered_control`
 
 use crate::html_text::{Doc, both};
 use og_ui::*;
@@ -146,11 +148,12 @@ fn safe_area_insets_clear_the_hosts_covered_control() {
     // over its notch's 47), and a change of surface re-resolves it.
     let text = r#"<meta name="component" content="t">
 <div><div id="Hud">
-  <div id="TL"></div><div id="BL"></div>
+  <div id="TL"></div><div id="BL"></div><div id="HR"></div>
 </div></div>
 <style>
 #TL { position: fixed; left: env(safe-area-inset-left); top: env(safe-area-inset-top); width: 100px; height: 20px; }
 #BL { position: fixed; left: max(8px, env(safe-area-inset-left)); bottom: calc(env(safe-area-inset-bottom) + 4px); width: 100px; height: 20px; }
+#HR { position: fixed; right: calc(env(-og-hud-inset-right) + 24px); top: env(-og-hud-inset-top); width: 10px; height: 10px; }
 </style>"#;
     let back = Rect::new(12.0, 12.0, 40.0, 40.0);
     both(text, &[], |d| {
@@ -212,5 +215,15 @@ fn safe_area_insets_clear_the_hosts_covered_control() {
         d.viewport.covered = Rect::default();
         d.step(InputFrame::default());
         assert_eq!(d.get("TL").x, 47.0, "cleared: the notch's inset alone");
+        let right = |d: &Doc| d.get("HR").x + d.get("HR").width;
+        assert_eq!(right(d), 844.0 - 47.0 - 24.0, "under 21:9: the safe area");
+        // 32:9: the band is 21/9 × 720 = 1680 wide, centred.
+        d.viewport = Viewport::new(2560.0, 720.0);
+        d.step(InputFrame::default());
+        assert_eq!(right(d), 2560.0 - 440.0 - 24.0, "an ultrawide: the band");
+        assert_eq!(d.get("HR").y, 0.0);
+        d.ui.set_hud_max_aspect(0.0);
+        d.step(InputFrame::default());
+        assert_eq!(right(d), 2560.0 - 24.0, "hudMaxAspect 0: the whole width");
     });
 }

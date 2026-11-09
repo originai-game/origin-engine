@@ -710,11 +710,16 @@ folded into the one edge whose inset clears it for the least surface, as
 a phone folds its status bar into the top inset in portrait and its notch
 into a side inset in landscape. On a landscape or desktop surface Back
 widens the left inset to its right edge; on a portrait one it deepens the
-top inset to its bottom. A HUD is a document placed at the insets, so
-it is clear of Back at every corner:
-`position: fixed; left: calc(env(safe-area-inset-left) + 16px); top:
-calc(env(safe-area-inset-top) + 16px); width: max-content`. Any other
-name takes its fallback. A change to the safe area, the covered region or
+top inset to its bottom. `env(-og-hud-inset-top)` and the other HUD
+insets are those insets with the left and right ones grown alike until
+the area between them is at most `UiDesc.hudMaxAspect` times its height
+wide (21:9 by default; 0 is the whole safe area): the HUD band, centred,
+so on a 32:9 ultrawide a HUD's corners sit where a 21:9 screen's do and
+the player's eyes stay near the play. A HUD is a document placed at the
+HUD insets, so it is clear of Back at every corner and inside the band:
+`position: fixed; left: calc(env(-og-hud-inset-left) + 16px); top:
+calc(env(-og-hud-inset-top) + 16px)`; full-screen art and dialogs read
+the safe-area insets. Any other name takes its fallback. A change to the safe area, the covered region, the HUD band or
 the small or large viewport re-resolves the elements that read them.
 `attr(data-size px, 4px)` reads the element's attribute (CSS Values 5):
 untyped, it is a string; `number`, a unit keyword or `type(…)` make it a

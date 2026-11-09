@@ -10,7 +10,7 @@
     {
       "member": "og.ui.anchor, og.ui.openAnchor, og.ui.label, og.ui.close, og.ui.AnchorDesc, og.ui.LabelDesc, og.ui.Response, og.ui.UiBuild, og.ui.Size, og.ui.Direction, og.ui.Align, og.ui.Cross, og.ui.FontRole, og.ui.StylePart",
       "change": "The last immediate-mode UI builders and the types only they used are removed: a HUD group is a document now that its CSS insets clear the host's controls.",
-      "fix": "Write the HUD as a component document mounted with og.ui.scope(world, id).mount(...) and its values in stores. Place each corner with `position: fixed; width: max-content` and insets read from env(): `left: calc(env(safe-area-inset-left) + 24px); top: calc(env(safe-area-inset-top) + 24px)` (right and bottom alike); a label is a `<span>` styled with `font: var(--text-display-sm)`, `font-family: var(--font-mono)` and `color: var(--ink-muted)`, the group's look `background: var(--panel); border-radius: var(--radius-panel); -og-frame: card`.",
+      "fix": "Write the HUD as a component document mounted with og.ui.scope(world, id).mount(...) and its values in stores. Place each corner with `position: fixed` and insets read from env(): `left: calc(env(-og-hud-inset-left) + 24px); top: calc(env(-og-hud-inset-top) + 24px)` (right and bottom alike), which keep it clear of Back and inside the HUD band on an ultrawide; a label is a `<span>` styled with `font: var(--text-display-sm)`, `font-family: var(--font-mono)` and `color: var(--ink-muted)`, the group's look `background: var(--panel); border-radius: var(--radius-panel); -og-frame: card`.",
       "find": [
         "og.ui.anchor",
         "og.ui.openAnchor",

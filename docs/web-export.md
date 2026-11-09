@@ -606,8 +606,9 @@ and the boot telemetry sample's `pipelines` (§Telemetry).
   fills every shape between them and is letterboxed at the bound past it
   (`layoutCanvas`); without them it fills 4:3 to 32:9 and the camera widens
   its view (Hor+: the vertical field of view is held), while og-ui keeps
-  HUD anchors in a centred band no wider than `UiDesc.hudMaxAspect` (21:9
-  by default) and never stretches a widget. The canvas is drawn at
+  a HUD document placed at `env(-og-hud-inset-*)` in a centred band no
+  wider than `UiDesc.hudMaxAspect` (21:9 by default) and never stretches
+  a widget. The canvas is drawn at
   `min(devicePixelRatio, dpr_cap)`; resizes, orientation changes and a
   change of devicePixelRatio (`watchPixelRatio`) resize the render target
   in the Worker (`og_web_resize`) and og-ui's scale before the next frame.

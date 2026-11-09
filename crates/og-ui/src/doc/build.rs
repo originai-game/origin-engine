@@ -709,6 +709,10 @@ impl Ui {
                 let s = vp.env_insets();
                 [s.top, s.right, s.bottom, s.left]
             },
+            hud: {
+                let s = vp.hud_insets(self.hud_max_aspect);
+                [s.top, s.right, s.bottom, s.left]
+            },
             containers: super::container::unit_basis(&chain, &self.docs.container_sizes),
             vertical: cascade::root_vertical(inherited).unwrap_or(false),
             ..Default::default()

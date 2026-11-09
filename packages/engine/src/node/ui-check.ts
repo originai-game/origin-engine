@@ -578,7 +578,7 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
         unit: "CSS px²",
         measured: `${r1(outside)} CSS px² outside the safe area (${safe.map(r1).join(", ")})`,
         prop: `${paths[i]!}: its insets`,
-        fix: "inset it by env(safe-area-inset-*) in its document's CSS (position: fixed; left: calc(env(safe-area-inset-left) + 16px))",
+        fix: "inset it by env(-og-hud-inset-*) (a HUD: the safe area, narrowed to the HUD band on an ultrawide) or env(safe-area-inset-*) in its document's CSS (position: fixed; left: calc(env(-og-hud-inset-left) + 16px))",
       });
     }
     const c = v.covered;
@@ -589,7 +589,7 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
         rect: under,
         measured: `${r1(under[2])}×${r1(under[3])} CSS px under the shell's control at ${c.map(r1).join(", ")}`,
         prop: `${paths[i]!}: its placement`,
-        fix: "inset it by env(safe-area-inset-*) in its document's CSS: the insets clear the player shell's Back (Viewport.covered)",
+        fix: "inset it by env(-og-hud-inset-*) or env(safe-area-inset-*) in its document's CSS: the insets clear the player shell's Back (Viewport.covered)",
       });
     }
   }
