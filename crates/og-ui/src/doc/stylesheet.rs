@@ -52,6 +52,39 @@ struct Reader<'a> {
     depth: usize,
 }
 
+fn rank(layers: &[String], layer: &Option<String>) -> u32 {
+    match layer {
+        None => u32::MAX,
+        Some(name) => layers
+            .iter()
+            .position(|l| l == name)
+            .map_or(u32::MAX - 1, |k| k as u32 + 1),
+    }
+}
+
+fn parsed_rules(mut rules: Vec<Rule>, layers: &[String]) -> Result<Vec<(Selector, Rule)>, Error> {
+    for rule in &mut rules {
+        pseudo_element(rule)?;
+    }
+    let mut parsed = Vec::new();
+    for rule in rules {
+        for selector in Selector::parse_list(&rule.selector).map_err(|e| (rule.at, e))? {
+            let mut rule = rule.clone();
+            rule.selector = selector.source.clone();
+            parsed.push((selector, rule));
+        }
+    }
+    parsed.sort_by_key(|(selector, rule)| {
+        let layer = if rule.ua {
+            0
+        } else {
+            rank(layers, &rule.layer)
+        };
+        (!rule.ua, layer, selector.specificity(), rule.order)
+    });
+    Ok(parsed)
+}
+
 /// The CSS-wide keywords every property takes.
 pub(super) fn wide_keyword(value: &str) -> Option<&'static str> {
     let v = value.trim();
@@ -60,18 +93,17 @@ pub(super) fn wide_keyword(value: &str) -> Option<&'static str> {
         .find(|k| v.eq_ignore_ascii_case(k))
 }
 
-pub(super) fn apply(
-    doc: &mut UiDocument,
-    elements: &[(usize, String, Vec<Attr>)],
+fn read(
+    source: &str,
+    sheet: &mut super::at_rules::Sheet,
     styles: &[(String, usize)],
-) -> Result<(), Error> {
+) -> Result<Vec<Rule>, Error> {
     let mut rules = Vec::new();
-    let mut sheet = std::mem::take(&mut doc.sheet);
     let mut reader = Reader {
-        sheet: &mut sheet,
+        sheet,
         layers: Vec::new(),
         anonymous: 0,
-        base: doc.source.clone(),
+        base: source.to_owned(),
         imports_open: true,
         depth: 0,
     };
@@ -101,17 +133,6 @@ pub(super) fn apply(
     let mut layers = Vec::new();
     post_order("", &reader.layers, &mut layers);
     sheet.layers = layers;
-    doc.sheet = sheet;
-    let layers = doc.sheet.layers.clone();
-    let rank = |layer: &Option<String>| -> u32 {
-        match layer {
-            None => u32::MAX,
-            Some(name) => layers
-                .iter()
-                .position(|l| l == name)
-                .map_or(u32::MAX - 1, |k| k as u32 + 1),
-        }
-    };
     for rule in &rules {
         if let Some(name) = rule
             .selector
@@ -138,16 +159,27 @@ pub(super) fn apply(
             let key = if rule.query == AtQuery::default() {
                 name.to_string()
             } else {
-                format!("{name}@{}", doc.keyframe_rules.len())
+                format!("{name}@{}", sheet.keyframe_rules.len())
             };
-            doc.keyframe_rules.retain(|(_, _, k)| *k != key);
-            doc.keyframes.retain(|(k, _)| *k != key);
-            doc.keyframe_rules
+            sheet.keyframe_rules.retain(|(_, _, k)| *k != key);
+            sheet.keyframes.retain(|(k, _)| *k != key);
+            sheet
+                .keyframe_rules
                 .push((name.to_string(), rule.query.clone(), key.clone()));
-            doc.keyframes.push((key, parsed));
+            sheet.keyframes.push((key, parsed));
         }
     }
     rules.retain(|rule| !rule.selector.to_ascii_lowercase().starts_with("@keyframes"));
+    Ok(rules)
+}
+
+pub(super) fn apply(
+    doc: &mut UiDocument,
+    elements: &[(usize, String, Vec<Attr>)],
+    styles: &[(String, usize)],
+) -> Result<(), Error> {
+    let mut rules = read(&doc.source, &mut doc.sheet, styles)?;
+    let layers = doc.sheet.layers.clone();
     let transitions: Vec<(&str, &str, usize, bool)> = rules
         .iter()
         .filter(|r| super::view_transition::selects(&r.selector))
@@ -158,21 +190,7 @@ pub(super) fn apply(
         .collect();
     super::view_transition::apply(doc, &transitions)?;
     rules.retain(|r| !super::view_transition::selects(&r.selector));
-    for rule in &mut rules {
-        pseudo_element(rule)?;
-    }
-    let mut parsed = Vec::new();
-    for rule in rules {
-        for selector in Selector::parse_list(&rule.selector).map_err(|e| (rule.at, e))? {
-            let mut rule = rule.clone();
-            rule.selector = selector.source.clone();
-            parsed.push((selector, rule));
-        }
-    }
-    parsed.sort_by_key(|(selector, rule)| {
-        let layer = if rule.ua { 0 } else { rank(&rule.layer) };
-        (!rule.ua, layer, selector.specificity(), rule.order)
-    });
+    let parsed = parsed_rules(rules, &layers)?;
     for (parsed, rule) in parsed {
         let structure = parsed
             .structural()
@@ -207,7 +225,12 @@ pub(super) fn apply(
             }
             continue;
         }
-        let known: Vec<String> = doc.keyframe_rules.iter().map(|(n, ..)| n.clone()).collect();
+        let known: Vec<String> = doc
+            .sheet
+            .keyframe_rules
+            .iter()
+            .map(|(n, ..)| n.clone())
+            .collect();
         let line = syntax::location(&doc.text, rule.at).0;
         let lowered = |body: &str| -> Result<_, Error> {
             let (declarations, body) =
@@ -263,7 +286,11 @@ pub(super) fn apply(
                 }
                 let props = rule_props(entries, kind).map_err(|e| (rule.at, e))?;
                 doc.nodes[node].rules.push(StyleRule {
-                    layer: if rule.ua { 0 } else { rank(&rule.layer) },
+                    layer: if rule.ua {
+                        0
+                    } else {
+                        rank(&layers, &rule.layer)
+                    },
                     starting: rule.starting,
                     query: rule.query.clone(),
                     condition: condition.clone(),
@@ -1332,7 +1359,12 @@ pub(super) fn inline(
     body: &str,
     at: usize,
 ) -> Result<Vec<StyleDeclaration>, Error> {
-    let known: Vec<String> = doc.keyframe_rules.iter().map(|(n, ..)| n.clone()).collect();
+    let known: Vec<String> = doc
+        .sheet
+        .keyframe_rules
+        .iter()
+        .map(|(n, ..)| n.clone())
+        .collect();
     let mut out = Vec::new();
     for declaration in variables::declarations(body).map_err(|e| (at, e))? {
         for d in super::container::expand(declaration)

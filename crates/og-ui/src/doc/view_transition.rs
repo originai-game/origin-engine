@@ -308,7 +308,12 @@ pub(super) fn apply(
     // pseudo-class), as a class does a name and a name `*`; then source
     // order.
     let mut parts: Vec<((usize, bool), Rule)> = Vec::new();
-    let known: Vec<String> = doc.keyframe_rules.iter().map(|(n, ..)| n.clone()).collect();
+    let known: Vec<String> = doc
+        .sheet
+        .keyframe_rules
+        .iter()
+        .map(|(n, ..)| n.clone())
+        .collect();
     let keyframes = |name: &str| builtin(name) || known.iter().any(|k| k == name);
     let rules: Vec<(&str, &str, usize, bool)> = rules
         .iter()

@@ -24,8 +24,6 @@ pub(super) fn parse(
                 parts: Vec::new(),
                 actions: Vec::new(),
                 timelines: Vec::new(),
-                keyframes: Vec::new(),
-                keyframe_rules: Vec::new(),
                 fixtures: Vec::new(),
                 derived: Vec::new(),
                 sheet: at_rules::Sheet {

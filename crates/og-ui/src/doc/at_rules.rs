@@ -20,6 +20,11 @@ pub struct Sheet {
     /// Cascade layer names in precedence order, lowest first (a layer's
     /// sublayers before its own rules).
     pub layers: Vec<String>,
+    /// Keyframes by key; conditional definitions use `<name>@<n>`.
+    pub keyframes: Vec<(String, crate::motion::css::Keyframes)>,
+    /// Definitions in source order: name, enclosing conditions and key.
+    /// The last definition whose conditions hold defines the name.
+    pub keyframe_rules: Vec<(String, super::AtQuery, String)>,
 }
 
 /// One `@font-face`: a family the document names in `font-family`, drawn

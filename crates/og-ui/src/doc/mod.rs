@@ -583,14 +583,6 @@ pub struct UiDocument {
     pub actions: Vec<(String, String)>,
     /// Timelines by their own names (the UI defines them as `<doc>/<name>`).
     pub timelines: Vec<(String, Timeline)>,
-    /// Scoped `@keyframes` by key (the UI defines them as `<doc>/<key>`): a
-    /// top-level definition's key is its name, a conditional one's
-    /// `<name>@<n>`.
-    pub keyframes: Vec<(String, crate::motion::css::Keyframes)>,
-    /// Every `@keyframes` definition in source order: its name, the
-    /// `@media`/`@container` conditions around it and its key. The last
-    /// whose conditions hold defines the name.
-    pub keyframe_rules: Vec<(String, AtQuery, String)>,
     /// Viewmodels to preview and push it with (`ui:push:shop:rich`).
     pub fixtures: Vec<(String, serde_json::Value)>,
     /// The script's `$derived` values, in order: names the whole tree reads.
