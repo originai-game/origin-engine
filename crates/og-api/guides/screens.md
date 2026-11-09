@@ -209,7 +209,10 @@ local styles and `og style new` remain available.
   `@view-transition { navigation: auto; }`: it cross-fades by default, and
   `::view-transition-new(root) { animation: 300ms rise; }` or the engine's
   covers (`::view-transition-old(root) { animation: 400ms -og-iris; }`)
-  change how.
+  change how. An element with `view-transition-name: hero` on both screens
+  morphs from its old box to its new one; style it with
+  `::view-transition-group(hero)` (or `(*)`, or `(.card)` for a
+  `view-transition-class`).
 - Compose with components and snippets, not code callbacks:
   `<Card title={item.name}>{#snippet body()}<p>{item.desc}</p>{/snippet}</Card>`,
   rendered in `Card` with `{@render body?.()}`. Pass content to a mount by

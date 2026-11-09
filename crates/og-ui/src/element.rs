@@ -1318,6 +1318,11 @@ pub struct Props {
     /// A shared-element key: the element with the same key on the screen
     /// being left morphs into this one.
     pub match_key: String,
+    /// CSS `view-transition-name` (empty: none): its group in a view
+    /// transition (`auto` and `match-element` name it by its key).
+    pub view_transition_name: String,
+    /// CSS `view-transition-class`: what its group is styled by.
+    pub view_transition_class: Vec<String>,
     pub drag: Option<DragSpec>,
     pub pinch: Option<PinchSpec>,
     pub drop: Option<DropSpec>,
@@ -1408,6 +1413,8 @@ impl Default for Props {
             overlaps: Vec::new(),
             dense: false,
             match_key: String::new(),
+            view_transition_name: String::new(),
+            view_transition_class: Vec::new(),
             drag: None,
             pinch: None,
             drop: None,

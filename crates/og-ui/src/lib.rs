@@ -69,6 +69,7 @@ pub mod vcursor;
 pub mod theme;
 pub mod particles;
 mod ui;
+mod view_transition;
 pub mod viewport;
 mod virtualize;
 mod widgets;

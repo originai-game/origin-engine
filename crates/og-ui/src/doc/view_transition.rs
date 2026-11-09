@@ -1,6 +1,6 @@
 //! CSS View Transitions for layers (docs/ui.md §2.1, CSS View Transitions
-//! Level 2). A screen document opts in with `@view-transition { navigation:
-//! auto; }`: its layer joining the stack and leaving it are its
+//! Levels 1 and 2). A screen document opts in with `@view-transition {
+//! navigation: auto; }`: its layer joining the stack and leaving it are its
 //! navigations, and the layer is the `root` snapshot. By default the layer
 //! cross-fades (the UA's `-ua-view-transition-fade-in` and `-fade-out`,
 //! 0.25s). `::view-transition-old(root)` animates the outgoing view (the
@@ -11,13 +11,18 @@
 //! longhands but the name). `types` are labels that
 //! `:active-view-transition-type()` matches, as in the spec.
 //!
+//! Elements with a `view-transition-name` are shared elements: each name is
+//! a group of its own ([`crate::view_transition`] runs them), styled by
+//! `::view-transition-group`, `-image-pair`, `-old` and `-new` with `(name)`,
+//! `(*)` and `(.class)` arguments (`view-transition-class`), cascaded by
+//! the spec's specificity: `*` under a name under a class.
+//!
 //! The engine's full-frame covers are the only `-og-` part: the built-in
 //! keyframes `-og-iris`, `-og-dissolve`, `-og-wipe` and `-og-slide` (with
 //! `-from-right`, `-from-top` or `-from-bottom`). On `old` a cover closes
 //! over the outgoing view, and the incoming view shows once it has closed;
 //! on `new` it opens on the incoming view. `::view-transition
-//! { background-color }` is the cover's colour. Shared-element morphs
-//! (`view-transition-name`) are not read.
+//! { background-color }` is the cover's colour.
 
 use super::syntax::Error;
 use super::*;
@@ -33,11 +38,64 @@ pub struct ViewTransition {
     pub new: Vec<CssAnimation>,
     /// The covers' colour (`None`: the style's backdrop).
     pub color: Option<Srgba>,
+    /// The pseudo-element rules that apply (their types among the
+    /// declared ones), in cascade order: what styles the named groups.
+    pub rules: Vec<Rule>,
+    /// The document, which qualifies its keyframes' names.
+    pub document: String,
+}
+
+/// Which pseudo-element a rule styles.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Part {
+    Overlay,
+    Group,
+    ImagePair,
+    Old,
+    New,
+}
+
+/// A named pseudo-element's argument: `*` (no name) or a name, and the
+/// classes it asks for (`*.card`, `hero.card`, `.card`).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Select {
+    pub name: Option<String>,
+    pub classes: Vec<String>,
+}
+
+impl Select {
+    /// Whether it selects the group of `name` with `classes`.
+    pub fn matches(&self, name: &str, classes: &[String]) -> bool {
+        self.name.as_deref().is_none_or(|n| n == name)
+            && self.classes.iter().all(|c| classes.contains(c))
+    }
+}
+
+/// One `::view-transition-*` rule.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Rule {
+    pub part: Part,
+    pub select: Select,
+    /// Its animation longhands, `(name, value)` in source order.
+    pub longhands: Vec<(String, String)>,
+}
+
+/// A named group's animations: the group's, its image pair's, and its
+/// old and new images'.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct GroupStyle {
+    pub group: Vec<CssAnimation>,
+    pub pair: Vec<CssAnimation>,
+    pub old: Vec<CssAnimation>,
+    pub new: Vec<CssAnimation>,
 }
 
 /// The UA's cross-fade keyframes.
 pub const FADE_IN: &str = "-ua-view-transition-fade-in";
 pub const FADE_OUT: &str = "-ua-view-transition-fade-out";
+/// The UA's group animation: from the old element's box to the new one's
+/// (the spec's `-ua-view-transition-group-anim-<name>`).
+pub const GROUP_ANIM: &str = "-ua-view-transition-group-anim";
 
 /// The cover a built-in keyframes name plays, and where it comes from.
 pub fn cover(name: &str) -> Option<(ScreenWipe, Side)> {
@@ -65,7 +123,7 @@ pub fn cover(name: &str) -> Option<(ScreenWipe, Side)> {
 
 /// The built-in keyframes names (the UA's and the covers).
 fn builtin(name: &str) -> bool {
-    name == FADE_IN || name == FADE_OUT || cover(name).is_some()
+    name == FADE_IN || name == FADE_OUT || name == GROUP_ANIM || cover(name).is_some()
 }
 
 /// The keyframes of the UA's cross-fade (`None` for any other name).
@@ -96,16 +154,59 @@ pub(super) fn selects(selector: &str) -> bool {
     selector.starts_with("@view-transition") || selector.contains("::view-transition")
 }
 
-/// A rule's animation longhands, `(name, value)` in source order.
-type Longhands = Vec<(String, String)>;
+/// `view-transition-name` and `view-transition-class` on an element, as
+/// the props `viewTransitionName` (empty: none) and `viewTransitionClass`.
+pub(super) fn lower(
+    name: &str,
+    value: &str,
+) -> Option<Result<Vec<super::tracks::Lowered>, String>> {
+    if !matches!(name, "view-transition-name" | "view-transition-class") || value.contains("bind(")
+    {
+        return None;
+    }
+    let words = match super::css::tokens(value) {
+        Ok(t) => t,
+        Err(e) => return Some(Err(e)),
+    };
+    let mut idents = Vec::new();
+    for t in &words {
+        match t {
+            super::css::Tok::Ident(w) => idents.push(w.clone()),
+            t => {
+                return Some(Err(format!(
+                    "'{}' is not a name: {name} takes {}",
+                    super::css::describe(t),
+                    form(name).unwrap_or_default()
+                )));
+            }
+        }
+    }
+    let text = |s: String| vec![Value::String(s)];
+    Some(match (name, idents.as_slice()) {
+        ("view-transition-name", [w]) if w == "none" => {
+            Ok(vec![("viewTransitionName", text(String::new()))])
+        }
+        ("view-transition-name", [w]) if w == "root" => Err(
+            "view-transition-name: root is the layer's own name; name the element otherwise".into(),
+        ),
+        ("view-transition-name", [w]) => Ok(vec![("viewTransitionName", text(w.clone()))]),
+        ("view-transition-class", [w]) if w == "none" => {
+            Ok(vec![("viewTransitionClass", text(String::new()))])
+        }
+        ("view-transition-class", ws) if !ws.is_empty() && !ws.iter().any(|w| w == "none") => {
+            Ok(vec![("viewTransitionClass", text(ws.join(" ")))])
+        }
+        _ => Err(format!("{name} takes {}", form(name).unwrap_or_default())),
+    })
+}
 
-/// Which part a pseudo-element rule styles.
-#[derive(Clone, Copy, PartialEq)]
-enum Part {
-    Overlay,
-    Group,
-    Old,
-    New,
+/// How the element properties are written (the catalogue's column).
+pub(super) fn form(prop: &str) -> Option<&'static str> {
+    Some(match prop {
+        "viewTransitionName" | "view-transition-name" => "none | auto | match-element | <name>",
+        "viewTransitionClass" | "view-transition-class" => "none | <name>+",
+        _ => return None,
+    })
 }
 
 /// Reads a screen's view-transition rules, `(selector, body, at,
@@ -146,9 +247,10 @@ pub(super) fn apply(
             }
         }
     }
-    // (part, typed, longhands) in cascade order: a type-qualified rule
-    // outranks a plain one (its pseudo-class), then source order.
-    let mut parts: Vec<(Part, bool, Longhands)> = Vec::new();
+    // (specificity, rule): a type-qualified rule outranks a plain one (its
+    // pseudo-class), as a class does a name and a name `*`; then source
+    // order.
+    let mut parts: Vec<((usize, bool), Rule)> = Vec::new();
     let known: Vec<String> = doc.keyframe_rules.iter().map(|(n, ..)| n.clone()).collect();
     let keyframes = |name: &str| builtin(name) || known.iter().any(|k| k == name);
     let rules: Vec<(&str, &str, usize, bool)> = rules
@@ -159,7 +261,8 @@ pub(super) fn apply(
         if selector == "@view-transition" {
             continue;
         }
-        let Some((part, typed, applies)) = pseudo(selector, &types).map_err(|e| (at, e))? else {
+        let Some((part, select, typed, applies)) = pseudo(selector, &types).map_err(|e| (at, e))?
+        else {
             return Err((
                 at,
                 format!("{selector}: write @view-transition or a ::view-transition pseudo-element"),
@@ -172,8 +275,7 @@ pub(super) fn apply(
         for d in variables::declarations(body).map_err(|e| (at, e))? {
             let allowed = match part {
                 Part::Overlay => matches!(d.name.as_str(), "background" | "background-color"),
-                Part::Group => d.name.starts_with("animation") && d.name != "animation-name",
-                Part::Old | Part::New => d.name.starts_with("animation"),
+                _ => d.name.starts_with("animation"),
             };
             if !allowed {
                 return Err((
@@ -182,8 +284,7 @@ pub(super) fn apply(
                         "{selector} takes {}, not {}",
                         match part {
                             Part::Overlay => "background-color (the cover's colour)",
-                            Part::Group => "the animation timing its old and new images inherit",
-                            Part::Old | Part::New => "animation",
+                            _ => "animation",
                         },
                         d.name
                     ),
@@ -197,7 +298,18 @@ pub(super) fn apply(
                 longhands.push((d.name, d.source));
             }
         }
-        parts.push((part, typed, longhands));
+        let rank = (
+            usize::from(typed) + select.classes.len(),
+            select.name.is_some(),
+        );
+        parts.push((
+            rank,
+            Rule {
+                part,
+                select,
+                longhands,
+            },
+        ));
     }
     if !opted {
         doc.layer.transition = None;
@@ -210,54 +322,107 @@ pub(super) fn apply(
                 .into(),
         ));
     }
-    parts.sort_by_key(|(_, typed, _)| *typed);
-    let of = |want: Part| -> Vec<(String, String)> {
-        parts
-            .iter()
-            .filter(|(p, ..)| *p == want)
-            .flat_map(|(_, _, l)| l.clone())
-            .collect()
-    };
-    let group = of(Part::Group);
-    let mut diagnostics = Vec::new();
-    let mut images = |own: Part, ua: &str| -> Vec<CssAnimation> {
-        let mut winners = vec![
-            ("animation-name".to_string(), ua.to_string()),
-            ("animation-duration".to_string(), "0.25s".to_string()),
-            ("animation-fill-mode".to_string(), "both".to_string()),
-        ];
-        winners.extend(group.clone());
-        winners.extend(of(own));
-        let (_, mut animations) = super::motion::resolve(&winners, &doc.name, &mut diagnostics);
-        for a in &mut animations {
-            if let Some(bare) = a.name.split_once('/').map(|(_, n)| n.to_string())
-                && builtin(&bare)
-            {
-                a.name = bare;
-            }
-        }
-        animations
-    };
-    let old = images(Part::Old, FADE_OUT);
-    let new = images(Part::New, FADE_IN);
-    if let Some(error) = diagnostics.first() {
-        return Err((rules[0].2, error.clone()));
-    }
-    let color = match of(Part::Overlay).last() {
-        Some((_, value)) => Some(
-            crate::style_file::parse_color(value)
+    parts.sort_by_key(|(rank, _)| *rank);
+    let color = parts
+        .iter()
+        .filter(|(_, r)| r.part == Part::Overlay)
+        .flat_map(|(_, r)| r.longhands.last())
+        .next_back()
+        .map(|(_, v)| v.clone());
+    let color = match color {
+        Some(value) => Some(
+            crate::style_file::parse_color(&value)
                 .ok_or((rules[0].2, format!("'{value}' is not a #rrggbb[aa] colour")))?,
         ),
         None => None,
     };
-    doc.layer.transition = Some(ViewTransition { old, new, color });
+    let mut t = ViewTransition {
+        old: Vec::new(),
+        new: Vec::new(),
+        color,
+        rules: parts
+            .into_iter()
+            .map(|(_, r)| r)
+            .filter(|r| r.part != Part::Overlay)
+            .collect(),
+        document: doc.name.clone(),
+    };
+    // The root: the layer's own animations. Its group and image pair give
+    // only their timing (the layer is its group and its images at once).
+    let mut diagnostics = Vec::new();
+    let root = t.cascade("root", &[], &mut diagnostics);
+    if let Some(error) = diagnostics.first() {
+        return Err((rules[0].2, error.clone()));
+    }
+    (t.old, t.new) = (root.old, root.new);
+    doc.layer.transition = Some(t);
     Ok(())
 }
 
-/// A pseudo-element selector: its part, whether it names a transition
-/// type, and whether it applies (its types are among the declared ones).
-/// `None` when it is no view-transition selector.
-fn pseudo(selector: &str, types: &[String]) -> Result<Option<(Part, bool, bool)>, String> {
+impl ViewTransition {
+    /// The animations of the group `name` with `classes`, cascaded from
+    /// the UA's stylesheet and the rules: the group plays the UA's box
+    /// animation for 0.25s (fill both), the image pair and the images
+    /// inherit its timing (but its name), the old image fades out and the
+    /// new one in.
+    pub fn group(&self, name: &str, classes: &[String]) -> GroupStyle {
+        self.cascade(name, classes, &mut Vec::new())
+    }
+
+    fn cascade(&self, name: &str, classes: &[String], diagnostics: &mut Vec<String>) -> GroupStyle {
+        let of = |part: Part| -> Vec<(String, String)> {
+            self.rules
+                .iter()
+                .filter(|r| r.part == part && r.select.matches(name, classes))
+                .flat_map(|r| r.longhands.iter().cloned())
+                .collect()
+        };
+        let timing = |w: &[(String, String)]| -> Vec<(String, String)> {
+            w.iter()
+                .filter(|(n, _)| n != "animation-name")
+                .cloned()
+                .collect()
+        };
+        let pair_of = |n: &str, v: &str| (n.to_string(), v.to_string());
+        let mut group = vec![
+            pair_of("animation-name", GROUP_ANIM),
+            pair_of("animation-duration", "0.25s"),
+            pair_of("animation-fill-mode", "both"),
+        ];
+        group.extend(of(Part::Group));
+        let mut pair = timing(&group);
+        pair.extend(of(Part::ImagePair));
+        let image = |own: Part, ua: &str| {
+            let mut w = timing(&pair);
+            w.push(pair_of("animation-name", ua));
+            w.extend(of(own));
+            w
+        };
+        let (old, new) = (image(Part::Old, FADE_OUT), image(Part::New, FADE_IN));
+        let mut resolve = |winners: &[(String, String)]| {
+            let (_, mut animations) = super::motion::resolve(winners, &self.document, diagnostics);
+            for a in &mut animations {
+                if let Some(bare) = a.name.split_once('/').map(|(_, n)| n.to_string())
+                    && builtin(&bare)
+                {
+                    a.name = bare;
+                }
+            }
+            animations
+        };
+        GroupStyle {
+            group: resolve(&group),
+            pair: resolve(&pair),
+            old: resolve(&old),
+            new: resolve(&new),
+        }
+    }
+}
+
+/// A pseudo-element selector: its part and argument, whether it names a
+/// transition type, and whether it applies (its types are among the
+/// declared ones). `None` when it is no view-transition selector.
+fn pseudo(selector: &str, types: &[String]) -> Result<Option<(Part, Select, bool, bool)>, String> {
     let at = selector.find("::view-transition").ok_or("")?;
     let (prefix, element) = selector.split_at(at);
     let prefix = prefix
@@ -278,27 +443,50 @@ fn pseudo(selector: &str, types: &[String]) -> Result<Option<(Part, bool, bool)>
         }
     };
     let element = element.trim();
-    let part = match element {
-        "::view-transition" => Part::Overlay,
+    if element == "::view-transition" {
+        return Ok(Some((Part::Overlay, Select::default(), typed, applies)));
+    }
+    let (name, arg) = element
+        .strip_suffix(')')
+        .and_then(|e| e.split_once('('))
+        .ok_or_else(|| format!("{element}: name its group, as (root), (*), (card) or (.card)"))?;
+    let part = match name {
+        "::view-transition-group" => Part::Group,
+        "::view-transition-image-pair" => Part::ImagePair,
+        "::view-transition-old" => Part::Old,
+        "::view-transition-new" => Part::New,
+        _ => return Ok(None),
+    };
+    let mut words = arg.trim().split('.');
+    let head = words.next().unwrap_or_default();
+    let classes: Vec<String> = words.map(str::to_string).collect();
+    let ident = |w: &str| {
+        let mut c = w.chars();
+        c.next()
+            .is_some_and(|f| f.is_alphabetic() || f == '_' || f == '-')
+            && w.chars()
+                .all(|c| c.is_alphanumeric() || c == '_' || c == '-')
+    };
+    let name = match head {
+        "*" => None,
+        "" if !classes.is_empty() => None,
+        n if ident(n) => Some(n.to_string()),
         _ => {
-            let (name, arg) = element
-                .strip_suffix(')')
-                .and_then(|e| e.split_once('('))
-                .ok_or_else(|| format!("{element}: name its snapshot, as (root)"))?;
-            if !matches!(arg.trim(), "root" | "*") {
-                return Err(format!(
-                    "{element}: only the root transitions; view-transition-name morphs are not read"
-                ));
-            }
-            match name {
-                "::view-transition-group" | "::view-transition-image-pair" => Part::Group,
-                "::view-transition-old" => Part::Old,
-                "::view-transition-new" => Part::New,
-                _ => return Ok(None),
-            }
+            return Err(format!(
+                "{element}: its argument is *, a name or classes (card, *.card, .card)"
+            ));
         }
     };
-    Ok(Some((part, typed, applies)))
+    if classes.iter().any(|c| !ident(c)) {
+        return Err(format!(
+            "{element}: '.{}' is not a class",
+            classes.join(".")
+        ));
+    }
+    if name.as_deref() == Some("root") && !classes.is_empty() {
+        return Err(format!("{element}: the root has no view-transition-class"));
+    }
+    Ok(Some((part, Select { name, classes }, typed, applies)))
 }
 
 #[cfg(test)]
@@ -309,7 +497,7 @@ mod tests {
         UiDocument::parse(
             "t.svelte",
             &format!(
-                "<meta name=\"screen\" content=\"s\"><column/><style>@keyframes rise {{ from {{ translate: 0 40px; opacity: 0; }} }}\n{css}</style>"
+                "<meta name=\"screen\" content=\"s\"><column id=\"C\"/><style>@keyframes rise {{ from {{ translate: 0 40px; opacity: 0; }} }}\n{css}</style>"
             ),
         )
         .map(|d| d.layer.transition)
@@ -363,8 +551,17 @@ mod tests {
         );
         for (css, wanted) in [
             (
-                "@view-transition { navigation: auto; } ::view-transition-old(card) { animation: 1s rise; }",
-                "only the root",
+                "@view-transition { navigation: auto; } ::view-transition-old(card.) { animation: 1s rise; }",
+                "is not a class",
+            ),
+            (
+                "@view-transition { navigation: auto; } ::view-transition-old(1up) { animation: 1s rise; }",
+                "its argument is",
+            ),
+            ("#C { view-transition-name: root; }", "the layer's own name"),
+            (
+                "#C { view-transition-class: none card; }",
+                "view-transition-class takes",
             ),
             (
                 "@view-transition { navigation: auto; } ::view-transition-new(root) { opacity: 0; }",
@@ -382,6 +579,37 @@ mod tests {
             let error = spec(css).unwrap_err();
             assert!(error.contains(wanted), "{css}: {error}");
         }
+        // Named groups: `*` under a name under a class, whatever the order;
+        // the images inherit the group's timing; the root takes `*` too.
+        let t = spec(
+            "@view-transition { navigation: auto; }
+             ::view-transition-group(*) { animation-duration: 1s; }
+             ::view-transition-group(*.card) { animation-duration: 700ms; }
+             ::view-transition-group(hero) { animation-duration: 300ms; }
+             ::view-transition-new(hero) { animation: 200ms rise; }
+             ::view-transition-image-pair(.card.big) { animation-delay: 50ms; }",
+        )
+        .unwrap()
+        .unwrap();
+        let g = t.group("hero", &["card".into()]);
+        assert_eq!(
+            (g.group[0].name.as_str(), g.group[0].duration_ms),
+            (GROUP_ANIM, 700.0)
+        );
+        assert_eq!(
+            (g.old[0].name.as_str(), g.old[0].duration_ms),
+            (FADE_OUT, 700.0)
+        );
+        assert_eq!(
+            (g.new[0].name.as_str(), g.new[0].duration_ms),
+            ("s/rise", 200.0)
+        );
+        assert_eq!(g.old[0].delay_ms, 0.0, "one class of two is no match");
+        let g = t.group("hero", &["big".into(), "card".into()]);
+        assert_eq!((g.pair.len(), g.old[0].delay_ms), (0, 50.0));
+        assert_eq!(t.group("hero", &[]).group[0].duration_ms, 300.0);
+        assert_eq!(t.group("other", &[]).new[0].duration_ms, 1000.0);
+        assert_eq!(t.new[0].duration_ms, 1000.0, "the root is one of *");
         let error = UiDocument::parse(
             "c.svelte",
             "<meta name=\"component\" content=\"c\"><column/><style>@view-transition { navigation: auto; }</style>",

@@ -230,6 +230,8 @@ What every kind takes: its box, layout, paint, motion and input.
 | `scrollbar-gutter:` | `auto \| stable [both-edges]` | CSS `scrollbar-gutter: auto \| stable [both-edges]` of a vertical scroll container: stable keeps the scrollbar's room on its end side whether or not it overflows (both-edges on its start side too), so its content does not shift when it starts to. |
 | `right:` | `<n>px \| <n>%` | CSS `right` / `inset-inline-end` as written (see insetTop). |
 | `left:` | `<n>px \| <n>%` | CSS `left` / `inset-inline-start` as written (see insetTop). |
+| `view-transition-name:` | `none \| auto \| match-element \| <name>` | CSS `view-transition-name`: the shared element's name in a view transition (empty: none; `auto` and `match-element` name it by its identity). Its old and new selves morph as one `::view-transition-group(name)`. |
+| `view-transition-class:` | `none \| <name>+` | CSS `view-transition-class`: the classes its view-transition group is styled by (`::view-transition-group(*.card)`), space-separated. |
 | `anchor-name:` | `<n>px \| <n>%` | CSS `anchor-name`: the dashed names (`--menu`) other elements anchor to it by. |
 | `position-anchor:` | `<n>px \| <n>%` | CSS `position-anchor`: its default anchor's dashed name (empty: its implicit anchor, a popover's invoker). |
 | `position-area:` | `<n>px \| <n>%` | CSS `position-area`: the cell or span of the 3×3 grid its anchor cuts its containing block into (`bottom center`, `span-right top`, `block-end`). |

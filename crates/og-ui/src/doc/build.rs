@@ -1575,6 +1575,12 @@ impl Ui {
         if let Some(m) = r.str("match") {
             p.match_key = m.to_string();
         }
+        if let Some(n) = r.str("viewTransitionName") {
+            p.view_transition_name = n.to_string();
+        }
+        if let Some(c) = r.str("viewTransitionClass") {
+            p.view_transition_class = c.split_whitespace().map(str::to_string).collect();
+        }
         if let Some(V::Transition(t)) = r.get("motion") {
             p.motion = Some(*t);
         }

@@ -5,6 +5,11 @@
 //! `references/metal/mounted-layers-{1280,390}.png` and
 //! `mounted-layers-iris-{1280,390}.png` (`OG_UI_CAPTURE=1` records them).
 //!
+//! A third frame, `mounted-layers-morph-{1280,390}.png`, is a shared
+//! element halfway through its view transition: a list card named `hero`
+//! morphing into the detail screen's larger card, both images cross-faded
+//! (plus-lighter) on the group's box, the live cards hidden.
+//!
 //! Ways it could fail: the mounted screen drawn as a plain overlay (no dim
 //! under it), its store input unread (the volume line empty), or the cover
 //! drawn over nothing because the leaving layer was removed at once.
@@ -38,6 +43,26 @@ const PAUSE: &str = r#"<meta name="screen" content="pause" data-layer="modal" da
 ::view-transition { background-color: #0b1220; }
 </style>"#;
 
+const LIST: &str = r#"<meta name="screen" content="list">
+<column id="Page"><panel id="Card"><h3 id="Name">Ember blade</h3><p id="Kind">Sword, rare</p></panel></column>
+<style>
+@view-transition { navigation: auto; }
+#Page { width: 100%; height: 100%; padding: 32px; }
+#Card { width: 240px; padding: 16px; gap: 4px; view-transition-name: hero; }
+#Name, #Kind { margin: 0; }
+::view-transition-group(hero) { animation-duration: 600ms; animation-timing-function: linear; }
+</style>"#;
+
+const DETAIL: &str = r#"<meta name="screen" content="detail">
+<column id="Page"><panel id="Card"><h2 id="Name">Ember blade</h2><p id="Kind">Sword, rare, 42 attack</p></panel></column>
+<style>
+@view-transition { navigation: auto; }
+#Page { width: 100%; height: 100%; padding: 32px; align-items: center; justify-content: center; }
+#Card { width: 320px; padding: 32px; gap: 12px; view-transition-name: hero; }
+#Name, #Kind { margin: 0; }
+::view-transition-group(hero) { animation-duration: 600ms; animation-timing-function: linear; }
+</style>"#;
+
 fn send(ui: &mut Ui, command: serde_json::Value) {
     let reply = reactive::wire::decode(
         &ui.apply_reactive(&reactive::wire::encode(&json!([command])).unwrap()),
@@ -53,7 +78,7 @@ fn mounted_layers_match_their_reference_frames() {
     for (width, height) in [(1280u32, 720u32), (390, 844)] {
         let mut scene = RenderScene::new();
         let font = add_test_font(&mut scene);
-        let mut ui = ui_with_font(font);
+        let mut ui = ui_with_font(font.clone());
         ui.define_document(UiDocument::parse("ui/hud.svelte", HUD).unwrap());
         ui.define_document(UiDocument::parse("ui/pause.svelte", PAUSE).unwrap());
         let volume = reactive::SourceId::new("test", "volume");
@@ -98,6 +123,24 @@ fn mounted_layers_match_their_reference_frames() {
         );
         frames.push((
             "mounted-layers-iris",
+            capture(&ui, &mut scene, width, height),
+        ));
+        // A shared element halfway from the list's card to the detail's.
+        let mut ui = ui_with_font(font);
+        ui.define_document(UiDocument::parse("ui/list.svelte", LIST).unwrap());
+        ui.define_document(UiDocument::parse("ui/detail.svelte", DETAIL).unwrap());
+        ui.push_screen("list", serde_json::Value::Null).unwrap();
+        for _ in 0..30 {
+            step(&mut ui);
+        }
+        ui.replace_screen("detail", serde_json::Value::Null)
+            .unwrap();
+        for _ in 0..=ui.ticks_for(300.0) {
+            step(&mut ui);
+        }
+        assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+        frames.push((
+            "mounted-layers-morph",
             capture(&ui, &mut scene, width, height),
         ));
         for (stem, (pixels, info)) in frames {

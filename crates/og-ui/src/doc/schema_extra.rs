@@ -1262,6 +1262,20 @@ pub const PROPS: &[PropSpec] = &[
         doc: "CSS `left` / `inset-inline-start` as written (see insetTop).",
     },
     PropSpec {
+        name: "viewTransitionName",
+        ty: Ty::Text,
+        on: On::All,
+        two_way: false,
+        doc: "CSS `view-transition-name`: the shared element's name in a view transition (empty: none; `auto` and `match-element` name it by its identity). Its old and new selves morph as one `::view-transition-group(name)`.",
+    },
+    PropSpec {
+        name: "viewTransitionClass",
+        ty: Ty::Text,
+        on: On::All,
+        two_way: false,
+        doc: "CSS `view-transition-class`: the classes its view-transition group is styled by (`::view-transition-group(*.card)`), space-separated.",
+    },
+    PropSpec {
         name: "anchorName",
         ty: Ty::Text,
         on: On::All,

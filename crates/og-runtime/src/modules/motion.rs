@@ -332,6 +332,9 @@ pub(crate) fn props(d: &Value) -> Props {
         overlaps: strings(&d["overlaps"]),
         dense: d["dense"].as_bool().unwrap_or(false),
         match_key: string(&d["match"]),
+        // View transitions are a screen document's (its CSS).
+        view_transition_name: String::new(),
+        view_transition_class: Vec::new(),
         drag: drag(&d["drag"]),
         pinch: d["pinch"].is_object().then(|| PinchSpec {
             min_scale: f(&d["pinch"], "minScale", 0.0),

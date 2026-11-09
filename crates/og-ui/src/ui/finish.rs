@@ -1096,11 +1096,17 @@ impl Ui {
         self.note_semantics(repainted.as_deref());
         let matched = self.orders.with(visit::feat::MATCH).to_vec();
         self.record_matches(&matched);
+        // A view transition's groups draw over the trees (and a cover);
+        // the live elements taking part are left out of the items.
+        let view = self.view_transition_frame(&trees);
         let mut tail = Vec::new();
         if let Some(c) = self.cover {
             let mut cover = Vec::new();
             self.cover_commands(&c, &mut cover);
             tail.extend(cover.into_iter().map(|c| (c, Affine::IDENTITY)));
+        }
+        if let Some((groups, _)) = &view {
+            tail.extend(groups.iter().cloned());
         }
         let mut over = Vec::new();
         self.hud_edit_commands(&mut over);
@@ -1108,21 +1114,45 @@ impl Ui {
         tail.extend(over.into_iter().map(|c| (c, Affine::IDENTITY)));
         // Every tree drew as last frame, and what is over them too: the
         // frame's items are last frame's.
-        let kept_items =
-            self.kept.reused_all && tail == self.kept.last_tail && self.frame.unit == self.unit;
+        let kept_items = view.is_none()
+            && self.kept.reused_all
+            && tail == self.kept.last_tail
+            && self.frame.unit == self.unit;
         let (items, missing_glyphs) = if kept_items {
             (std::mem::take(&mut self.frame.items), Vec::new())
-        } else if let Some(relevelled) = self.relevel(&trees, &tail) {
+        } else if let Some(relevelled) = view
+            .is_none()
+            .then(|| self.relevel(&trees, &tail))
+            .flatten()
+        {
             relevelled
-        } else if let Some(spliced) = self.splice_levels(&trees, &tail) {
+        } else if let Some(spliced) = view
+            .is_none()
+            .then(|| self.splice_levels(&trees, &tail))
+            .flatten()
+        {
             spliced
         } else {
             let mut cmds = trees.clone();
             cmds.extend(tail.iter().cloned());
-            let cmds: Vec<(DrawCmd, Affine)> = cmds.into_iter().map(|(c, m)| bake(c, m)).collect();
+            let mut cmds: Vec<(DrawCmd, Affine)> =
+                cmds.into_iter().map(|(c, m)| bake(c, m)).collect();
             let missing_glyphs = self.missing_glyphs(&cmds);
+            if let Some((_, hidden)) = &view {
+                let mut shown = vec![true; cmds.len()];
+                for r in hidden {
+                    shown[r.clone()].fill(false);
+                }
+                let mut k = 0;
+                cmds.retain(|_| {
+                    k += 1;
+                    shown[k - 1]
+                });
+            }
             let (items, levels) = crate::draw::assign_levels_kept(cmds);
-            self.kept.levels = Some(levels);
+            // Levels of a list with elements left out are no base for the
+            // next frame's.
+            self.kept.levels = view.is_none().then_some(levels);
             (crate::draw::zoom_items(items, self.unit), missing_glyphs)
         };
         self.kept.prev_cmds = Vec::new();

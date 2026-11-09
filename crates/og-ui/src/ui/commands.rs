@@ -307,6 +307,7 @@ impl Ui {
         let mut cmds: Vec<(DrawCmd, Affine)> = Vec::with_capacity(last.len());
         let ghosts = std::mem::take(&mut self.state.motion.ghosts);
         let mut drawn = vec![false; ghosts.len()];
+        self.kept.named.clear();
         let mut frozen: IdMap<u64, crate::motion::state::Frozen> = IdMap::new();
         // Open subtrees: (node, its first command, the order position past
         // it, where its commands began in last frame's list).
@@ -739,6 +740,7 @@ impl Ui {
                     // Every later command moves one place: no span is kept.
                     self.kept_spans.retain(|r| r.end <= first);
                     self.kept.aligned.retain(|r| r.end <= first);
+                    shift_named(&mut self.kept.named, first);
                     cmds.insert(first, (begin, nj.world));
                     cmds.push((end, nj.world));
                 }
@@ -749,8 +751,31 @@ impl Ui {
                     let (begin, end) = blur_layer(nj.sampled.blur, nj.rect, nj.clip);
                     self.kept_spans.retain(|r| r.end <= first);
                     self.kept.aligned.retain(|r| r.end <= first);
+                    shift_named(&mut self.kept.named, first);
                     cmds.insert(first, (begin, nj.world));
                     cmds.push((end, nj.world));
+                }
+                // A shared element of a view transition: where its drawing
+                // is in this frame's list (crate::view_transition).
+                let nj = &self.nodes[j];
+                if !nj.props.view_transition_name.is_empty() {
+                    let name = match nj.props.view_transition_name.as_str() {
+                        "auto" | "match-element" => crate::view_transition::element_name(key),
+                        n => n.to_string(),
+                    };
+                    self.kept.named.push(crate::view_transition::Named {
+                        node: j,
+                        key,
+                        name,
+                        classes: nj.props.view_transition_class.clone(),
+                        range: first..cmds.len(),
+                        screen: nj.screen,
+                        inherited: if nj.parent == NONE {
+                            1.0
+                        } else {
+                            self.nodes[nj.parent].alpha
+                        },
+                    });
                 }
                 // Its range for the next frame, from its parent's start.
                 let base = open.last().map_or(0, |o| o.1);
@@ -950,6 +975,7 @@ impl Ui {
         let node = &self.nodes[i];
         let volatile = node.props.exit.is_some()
             || !node.props.match_key.is_empty()
+            || !node.props.view_transition_name.is_empty()
             || !node.links.is_empty()
             || node.fx.is_some_and(|f| f.glitch > 0.0)
             || node.sampled.blur > 0.0
@@ -1262,7 +1288,7 @@ impl Ui {
 }
 
 /// A command's colours faded by `k` (a leaving element's opacity).
-fn fade_cmd(c: &mut DrawCmd, k: f32) {
+pub(crate) fn fade_cmd(c: &mut DrawCmd, k: f32) {
     match c {
         DrawCmd::Glass { alpha, .. } => *alpha *= k,
         DrawCmd::Quad { color, .. }
@@ -1756,6 +1782,13 @@ fn reference_box(n: &crate::layout::Node, b: crate::transform3d::TransformBox) -
                 (r.height - p.top - p.bottom).max(0.0),
             )
         }
+    }
+}
+
+/// The shared elements' ranges after a command was inserted at `at`.
+fn shift_named(named: &mut [crate::view_transition::Named], at: usize) {
+    for n in named.iter_mut().filter(|n| n.range.start >= at) {
+        n.range = n.range.start + 1..n.range.end + 1;
     }
 }
 

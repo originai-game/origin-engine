@@ -19,7 +19,7 @@ mod text_controls;
 mod tree;
 pub(crate) mod visit;
 
-pub(crate) use commands::bake;
+pub(crate) use commands::{bake, fade_cmd};
 pub(crate) use debug::DebugBindings;
 pub use debug::{UiDebugElement, UiDebugStyle, debug_overlay};
 pub use descriptors::*;
@@ -274,6 +274,8 @@ pub(crate) struct RiveSlot {
 /// What persists between ticks (and in [`Ui::save_state`]).
 #[derive(Clone, Debug, Default, PartialEq)]
 pub(crate) struct State {
+    /// The view transition running (its shared elements' groups).
+    pub view_transition: Option<crate::view_transition::Running>,
     pub hot: u64,
     pub active: u64,
     pub focus: u64,

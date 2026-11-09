@@ -318,6 +318,9 @@ impl Ui {
             docs["cssTransitions"] =
                 serde_json::to_value(&s.motion.styles).expect("finite CSS transitions");
         }
+        if let Some(v) = &s.view_transition {
+            docs["viewTransition"] = v.save();
+        }
         if !s.virtual_lists.is_empty() {
             docs["virtualLists"] = serde_json::to_value(&s.virtual_lists).expect("finite extents");
         }
@@ -366,6 +369,12 @@ impl Ui {
         if let Some(runs) = docs.get("cssTransitions") {
             s.motion.styles = serde_json::from_value(runs.clone())
                 .map_err(|_| bad("malformed CSS transitions".into()))?;
+        }
+        if let Some(v) = docs.get("viewTransition") {
+            s.view_transition = Some(
+                crate::view_transition::Running::restore(v)
+                    .ok_or_else(|| bad("malformed view transition".into()))?,
+            );
         }
         if let Some(lists) = docs.get("virtualLists") {
             s.virtual_lists = serde_json::from_value(lists.clone())

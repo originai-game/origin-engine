@@ -1174,9 +1174,34 @@ outgoing view, and the incoming view shows once it has closed. On
 `::view-transition-new(root)` it opens on the incoming view.
 `::view-transition { background-color }` is the covers' colour. Reduced
 motion ends finite animations at once and makes covers fade. A component
-cannot declare a view transition. Shared-element morphs
-(`view-transition-name`, `::view-transition-old(card)`) are refused for now
-and are a follow-up.
+cannot declare a view transition.
+
+Shared elements follow CSS View Transitions 1 and 2. An element with
+`view-transition-name: hero` (or `auto` and `match-element`, which name it
+by its identity) is a group of its own. When a layer starts its view
+transition, every named element of last frame is captured as its frozen
+draw commands: that is its old image. Its new image is the element of the
+same name drawn this frame, outside a leaving layer. In the top layer
+(over covers too) `::view-transition-group(hero)` moves from the old box to
+the new one (the UA's `-ua-view-transition-group-anim`, 0.25s, fill both).
+`::view-transition-image-pair(hero)` holds both images, which fade out and
+in (`-ua-view-transition-fade-out` and `-fade-in`) and add with
+`plus-lighter` when both exist. A name only in the old view fades out
+where it was, and a name only in the new view fades in. The live elements
+taking part are hidden until the transition ends. The new screen's rules
+style the groups (the leaving screen's when nothing joins).
+`::view-transition-group`, `-image-pair`, `-old` and `-new` take `(name)`,
+`(*)`, `(.class)` and `(name.class)`, where the classes are the element's
+`view-transition-class`. They cascade as the spec has it: `*`, then a name,
+then each class and an `:active-view-transition-type()` qualifier, then
+source order. The image pair and the images inherit the group's timing.
+Each takes `animation` with the document's `@keyframes` (transform and
+opacity channels). A name on two elements of the old or the new view skips
+the transition with a warning (the spec's `InvalidStateError`), and the
+layers change at once. Reduced motion skips the shared elements unless the
+style keeps motion. Capturing costs nothing until a transition starts: a
+frame records only where its named elements drew. A running transition is
+saved with the UI state.
 
 Inline SVG draws data-bound vector graphics in a document: `<svg viewBox>`
 with `<g>`, `<path>`, `<rect>`, `<circle>`, `<ellipse>`, `<line>`,

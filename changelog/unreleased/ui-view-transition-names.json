@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "UI: CSS shared-element view transitions (view-transition-name, view-transition-class)",
+      "summary": "Elements named with view-transition-name (a name, auto or match-element) morph across a screen's view transition: the old element's frozen drawing and the new live element cross-fade with plus-lighter in a ::view-transition-group that moves from the old box to the new one. ::view-transition-group, -image-pair, -old and -new take (name), (*), (.class) and (name.class) with view-transition-class, cascaded by the spec's specificity, with the UA's default animations and author @keyframes. A name on two elements skips the transition with a warning; reduced motion skips it unless the style keeps motion."
+    }
+  ]
+}

@@ -82,7 +82,7 @@ fn is_cover(a: &CssAnimation) -> bool {
 }
 
 /// When the last of `animations` ends, ms after they start.
-fn ends(animations: &[CssAnimation]) -> f32 {
+pub(crate) fn ends(animations: &[CssAnimation]) -> f32 {
     animations
         .iter()
         .map(|a| {
@@ -284,7 +284,19 @@ impl Ui {
         let (mut since, leaving, serial) = (l.since, l.leaving, l.serial);
         if since == STARTS {
             since = self.state.tick;
+            let screen = l.screen.clone();
             self.docs.layers.layers[k].since = since;
+            self.start_view_transition(&screen, !leaving);
+        }
+        if self.view_transition_skipped(since) {
+            // Skipped (a shared element's name twice): the update happens
+            // without its animations.
+            if leaving {
+                self.docs.ops.push(LayerOp::Drop(serial));
+                return (false, Vec::new());
+            }
+            self.docs.layers.layers[k].since = 0;
+            return (true, Vec::new());
         }
         let t = self.state.tick.saturating_sub(since) as f32 * 1000.0
             / self.ticks_per_second.max(1) as f32;
@@ -900,7 +912,7 @@ impl Ui {
 
 /// A layer's node id: its screen's name (its probe path's first segment),
 /// or for a mounted layer its mount's (`scope:id`).
-fn layer_id(l: &Layer) -> String {
+pub(crate) fn layer_id(l: &Layer) -> String {
     match &l.mount {
         Some(m) => format!("{}:{}", m.scope, m.id),
         None => l.screen.clone(),
@@ -1151,5 +1163,160 @@ mod tests {
         assert_eq!(seen[gone].2, Some(true));
         assert!(seen.last().unwrap().2.is_none(), "{seen:?}");
         assert!(ui.document_mount_inputs().as_array().unwrap().len() == 1);
+    }
+
+    /// The frame's solid red shapes (the shared element), on the screen.
+    fn reds(ui: &Ui) -> Vec<crate::layout::Rect> {
+        ui.frame
+            .items
+            .iter()
+            .filter_map(|it| match &it.cmd {
+                crate::DrawCmd::Quad { rect, color, .. }
+                    if color[0] > 0.9 && color[1] < 0.05 && color[2] < 0.05 =>
+                {
+                    Some(*rect)
+                }
+                crate::DrawCmd::Shape { shape, .. } => match shape.paint {
+                    og_render::UiPaint::Solid(c) if c[0] > 0.9 && c[1] < 0.05 && c[2] < 0.05 => {
+                        Some(crate::layout::Rect::new(
+                            shape.center.x - shape.half.x,
+                            shape.center.y - shape.half.y,
+                            2.0 * shape.half.x,
+                            2.0 * shape.half.y,
+                        ))
+                    }
+                    _ => None,
+                },
+                _ => None,
+            })
+            .collect()
+    }
+
+    /// A named element morphs from its old box to its new one across a
+    /// navigation: its group starts on the old element, moves by its
+    /// timing (styled by class here), cross-fades the two images there,
+    /// and hides both live elements until it ends. A name on two elements
+    /// skips the transition, as reduced motion does.
+    #[test]
+    fn a_view_transition_name_morphs_one_element_into_another() {
+        const LIST: &str = r#"<meta name="screen" content="list"><column id="Page"><column id="Card"></column></column>
+<style>@view-transition { navigation: auto; } #Page { padding: 40px; }
+#Card { width: 100px; height: 50px; background: #ff0000; view-transition-name: hero; }</style>"#;
+        let detail = |twice: bool| {
+            format!(
+                r#"<meta name="screen" content="detail"><column id="Page"><column id="Card"></column>{}</column>
+<style>@view-transition {{ navigation: auto; }} #Page {{ padding: 200px 0 0 300px; }}
+#Card, #Again {{ width: 200px; height: 100px; background: #ff0000; view-transition-name: hero; view-transition-class: card; }}
+::view-transition-group(*.card) {{ animation-duration: 400ms; animation-timing-function: linear; }}</style>"#,
+                if twice {
+                    r#"<column id="Again"></column>"#
+                } else {
+                    ""
+                }
+            )
+        };
+        let run = |twice: bool, reduced: bool| {
+            let mut ui = ui_with(&[("list.svelte", LIST), ("detail.svelte", &detail(twice))]);
+            let step = |ui: &mut Ui, _: InputFrame| {
+                let mut viewport = Viewport::new(640.0, 480.0);
+                viewport.reduced_motion = reduced;
+                ui.begin(InputFrame::default(), viewport);
+                ui.end();
+            };
+            ui.push_screen("list", Value::Null).unwrap();
+            for _ in 0..ui.ticks_for(300.0) + 2 {
+                step(&mut ui, InputFrame::default());
+            }
+            let before = reds(&ui);
+            ui.replace_screen("detail", Value::Null).unwrap();
+            let mut seen = Vec::new();
+            for _ in 0..ui.ticks_for(400.0) + 3 {
+                step(&mut ui, InputFrame::default());
+                seen.push((reds(&ui), ui.frame.warnings.clone(), ui.layer_stack().len()));
+            }
+            (before, seen)
+        };
+        let (before, seen) = run(false, false);
+        assert_eq!(before.len(), 1, "{before:?}");
+        let (old, after) = (before[0], seen.last().unwrap().0[0]);
+        assert_eq!(seen.last().unwrap().0.len(), 1, "{seen:?}");
+        assert!(
+            after.x > old.x + 100.0 && after.width > 1.5 * old.width,
+            "{old:?} {after:?}"
+        );
+        let near = |a: &crate::layout::Rect, b: &crate::layout::Rect| {
+            (a.x - b.x).abs() < 1.0
+                && (a.y - b.y).abs() < 1.0
+                && (a.width - b.width).abs() < 1.0
+                && (a.height - b.height).abs() < 1.0
+        };
+        // Its first tick: the old image on the old box (the new one at 0),
+        // and neither live element.
+        assert!(
+            seen[0].0.len() == 1 && near(&seen[0].0[0], &old),
+            "{seen:?}"
+        );
+        // Halfway, linear: both images on the box halfway.
+        let half = ui_ticks(400.0) / 2;
+        let mid = crate::layout::Rect::new(
+            (old.x + after.x) / 2.0,
+            (old.y + after.y) / 2.0,
+            (old.width + after.width) / 2.0,
+            (old.height + after.height) / 2.0,
+        );
+        assert_eq!(seen[half].0.len(), 2, "{seen:?}");
+        assert!(
+            seen[half].0.iter().all(|r| near(r, &mid)),
+            "{mid:?} {:?}",
+            seen[half].0
+        );
+        assert!(seen.iter().all(|(_, w, _)| w.is_empty()), "{seen:?}");
+        // A restore halfway lands on the same frames.
+        let mut ui = ui_with(&[("list.svelte", LIST), ("detail.svelte", &detail(false))]);
+        ui.push_screen("list", Value::Null).unwrap();
+        for _ in 0..ui.ticks_for(300.0) + 2 {
+            step(&mut ui, InputFrame::default());
+        }
+        ui.replace_screen("detail", Value::Null).unwrap();
+        for _ in 0..=half {
+            step(&mut ui, InputFrame::default());
+        }
+        let saved = ui.save_state();
+        step(&mut ui, InputFrame::default());
+        let next = reds(&ui);
+        ui.restore_state(&saved).unwrap();
+        step(&mut ui, InputFrame::default());
+        assert_eq!(
+            (reds(&ui), &next),
+            (seen[half + 1].0.clone(), &seen[half + 1].0)
+        );
+
+        // Two elements named hero in the new view: skipped, with a warning;
+        // the leaving layer goes at once and both cards show where they are.
+        let (_, seen) = run(true, false);
+        assert!(
+            seen[0]
+                .1
+                .iter()
+                .any(|w| w.contains("'hero' is on two elements of the new view")),
+            "{seen:?}"
+        );
+        assert!(
+            seen[2..].iter().all(|(r, _, n)| r.len() == 2 && *n == 1),
+            "{seen:?}"
+        );
+
+        // Reduced motion: no morph; the new card is where it is at once
+        // (the leaving layer's card where it was, until the layer goes).
+        let (_, seen) = run(false, true);
+        assert!(
+            seen.iter().all(|(r, ..)| r.iter().any(|r| near(r, &after))
+                && r.iter().all(|r| near(r, &after) || near(r, &old))),
+            "{seen:?}"
+        );
+    }
+
+    fn ui_ticks(ms: f32) -> usize {
+        Ui::new(UiDesc::default()).ticks_for(ms) as usize
     }
 }

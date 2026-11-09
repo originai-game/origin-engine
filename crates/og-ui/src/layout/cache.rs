@@ -278,6 +278,9 @@ pub(crate) struct LayoutCache {
     /// and each painted subtree's range in them: its start from its
     /// parent's (a layer's from the list's), its length and its nodes.
     pub last_cmds: Vec<(crate::DrawCmd, crate::element::Affine)>,
+    /// Last frame's shared elements of view transitions and where each
+    /// drew in `last_cmds` (crate::view_transition).
+    pub named: Vec<crate::view_transition::Named>,
     pub ranges: crate::id::KeyMap<(usize, usize, u32)>,
     /// Per slot: the key and signature it was last painted with.
     pub sigs: Vec<Option<(u64, DrawSig)>>,

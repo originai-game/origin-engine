@@ -221,6 +221,8 @@ pub const STYLE: &[(&str, &str)] = &[
     ("insetBottom", "bottom"),
     ("insetLeft", "left"),
     ("anchorName", "anchor-name"),
+    ("viewTransitionName", "view-transition-name"),
+    ("viewTransitionClass", "view-transition-class"),
     ("positionAnchor", "position-anchor"),
     ("positionArea", "position-area"),
     ("positionTry", "position-try-fallbacks"),
@@ -413,6 +415,7 @@ fn conv(prop: &str) -> Conv {
         | "columnRuleStyle" | "columnRuleColor" | "breakBefore" | "breakAfter" | "breakInside" => {
             Conv::Raw
         }
+        "viewTransitionName" | "viewTransitionClass" => Conv::Raw,
         "backgroundImage"
         | "backgroundSize"
         | "backgroundPosition"
@@ -491,6 +494,7 @@ pub fn value_form(prop: &str, words: &[&str]) -> Option<String> {
         Conv::Raw if let Some(f) = super::interact_css::form(prop) => f.into(),
         Conv::Raw if let Some(f) = super::scroll_css::form(prop) => f.into(),
         Conv::Raw if let Some(f) = super::image_css::form(prop) => f.into(),
+        Conv::Raw if let Some(f) = super::view_transition::form(prop) => f.into(),
         Conv::Raw if prop == "boxShadow" => {
             "[inset] <x> <y> [<blur> [<spread>]] [<colour>], … | none".into()
         }
@@ -1690,6 +1694,9 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
         return Ok(parts?.into_iter().map(|(k, v)| e(k, v)).collect());
     }
     if let Some(parts) = super::multicol_css::lower(name, value) {
+        return Ok(parts?.into_iter().map(|(k, v)| e(k, v)).collect());
+    }
+    if let Some(parts) = super::view_transition::lower(name, value) {
         return Ok(parts?.into_iter().map(|(k, v)| e(k, v)).collect());
     }
     let t = tokens(value)?;
