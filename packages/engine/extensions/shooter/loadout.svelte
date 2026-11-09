@@ -19,7 +19,7 @@
         <div class="items">
           {#each slots as s (s.id)}
             {#if s.category == c.id}
-              <button class="item" part="Loadout.item" aria-selected={s.id == selected} aria-label={s.name} class:equipped={s.equipped} class:locked={s.locked} disabled={s.locked} onclick={select}><div class="face">
+              <button class="item" part="Loadout.item" aria-selected={s.id == selected} aria-label={s.name} class:equipped={s.equipped} class:locked={s.locked} disabled={s.locked} onclick={select} ondetails={equip}><div class="face">
                 <icon class="icon" icon={s.locked ? 'lock' : s.icon}></icon>
                 <div class="text">
                   <span class="name">{s.name}</span>
@@ -44,7 +44,7 @@
     <button id="Back" variant="ghost" onclick={back} onback={back}><kbd id="BackKey" data-action="back"></kbd><span id="BackLabel">{t("shooter.loadout.back")}</span></button>
     {#each slots as s (s.id)}
       {#if s.id == selected}
-        <button id="Equip" variant="primary" disabled={s.locked || s.equipped} onclick={equip} ondetails={equip}><kbd id="EquipKey" data-action="details"></kbd><span id="EquipLabel">{t("shooter.loadout.equip")}</span></button>
+        <button id="Equip" variant="primary" disabled={s.locked || s.equipped} onclick={equip}><kbd id="EquipKey" data-action="details"></kbd><span id="EquipLabel">{t("shooter.loadout.equip")}</span></button>
       {/if}
     {/each}
   </footer>

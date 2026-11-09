@@ -143,7 +143,7 @@ test("Loadout: Equip is disabled for the equipped slot, and the empty loadout sa
   }
 });
 
-test("Loadout: keyboard and pad select the focused slot, and the Equip action equips the selected one", () => {
+test("Loadout: keyboard and pad select the focused slot, and the Equip action equips it", () => {
   const devices = [
     { name: "keyboard", move: "key_down:ArrowDown;0.05:key_up:ArrowDown", select: "key_down:Enter;0.05:key_up:Enter", equip: "key_down:KeyX;0.05:key_up:KeyX", back: "key_down:Escape;0.05:key_up:Escape" },
     { name: "pad", move: "gamepad:-:0,1;0.05:gamepad:-", select: "gamepad:a;0.05:gamepad:-", equip: "gamepad:y;0.05:gamepad:-", back: "gamepad:b;0.05:gamepad:-" },
@@ -175,6 +175,28 @@ test("Loadout: keyboard and pad select the focused slot, and the Equip action eq
   }
   // The Equip keycap follows the device used last (core prompts, docs/ui.md §3.2).
   expect(prompts).toEqual(["X", "Y"]);
+});
+
+test("Loadout: the Equip action on a focused slot equips that slot, not the selected one", () => {
+  const events: Event[] = [];
+  const e = loadout(events, "halcyon");
+  try {
+    e.advance(3);
+    // Focus Wren, a row other than the selected one, then fire Equip once:
+    // only the focused row's handler takes it, so one intent, Wren's.
+    const focused = () => elements(e).find((x) => x.states?.includes("focused"))?.path ?? "";
+    for (let i = 0; i < 8 && !/#wren$/.test(focused()); i++) {
+      e.probe.commands("0:key_down:ArrowDown;0.05:key_up:ArrowDown");
+      e.advance(8);
+    }
+    expect(focused()).toMatch(/#wren$/);
+    expect(intents(events)).toEqual([]);
+    e.probe.commands("0:key_down:KeyX;0.05:key_up:KeyX");
+    e.advance(8);
+    expect(intents(events)).toEqual(["equip:wren"]);
+  } finally {
+    e.destroy();
+  }
 });
 
 test("Loadout: selection keeps its slot through a reorder, a removal and a restore", () => {

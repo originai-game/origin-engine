@@ -30,11 +30,13 @@ never for its art, brand or layout.
 | `AmmoCounter` | `weapon`, `mode` (auto, burst, single), `magazine`, `capacity`, `reserve`, `reloading` 0–1 (negative: not reloading), `low` (a fraction of capacity) | none |
 | `DamageDirection` | `hits` keyed `{ id, angle (rad, 0 ahead, clockwise), strength 0–1, kind (normal, shield, critical) }` | none |
 | `Killfeed` | `rows` keyed `{ id, killer, victim, weapon, headshot, self, team (ally or enemy, the killer's side) }`, newest first; a phone shows the three newest | none |
-| `Loadout` | `title`, `categories` keyed `{ id, label }`, `slots` keyed `{ id, category, name, icon, detail, equipped, locked, cost }`, `selected` (a slot id) | `select` (row key: a tap, Enter or A on a slot), `equip` (row key of the selected slot: the Equip button, X or pad Y), `back` (the Back button, Escape or B) |
+| `Loadout` | `title`, `categories` keyed `{ id, label }`, `slots` keyed `{ id, category, name, icon, detail, equipped, locked, cost }`, `selected` (a slot id) | `select` (row key: a tap, Enter or A on a slot), `equip` (row key: the Equip button sends the selected slot's, X or pad Y the focused slot's), `back` (the Back button, Escape or B) |
 | `CombatHud` | the members' inputs, plus `health`, `healthMax`, `shield`, `shieldMax` over core `StatBar`, and `feed` for the killfeed | none |
 
-A locked slot is disabled and sends nothing. Equip is disabled for a
-locked or equipped slot. An empty loadout says so and keeps Back.
+A locked slot is disabled and sends nothing. The Equip button is disabled
+for a locked or equipped slot; X or pad Y on an equipped slot still sends
+`equip`, and the game, which owns legality, ignores it. An empty loadout
+says so and keeps Back.
 Equipped is a tag on a slot's detail line, so every row's price is one
 right-aligned column. The slot list keeps a gutter for its scrollbar and
 fades its bottom edge while there is more to scroll. Under a coarse pointer

@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "shooter kit: Loadout",
+      "summary": "X or pad Y equips the focused slot again, sending `equip` with that slot's row key. Since declared action handlers became row-scoped, the Equip button's `ondetails` sat in a row the focus never reached, so the keys equipped nothing; the handler is now on each slot and the Equip button keeps its click."
+    }
+  ]
+}

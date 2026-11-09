@@ -98,3 +98,10 @@ it runs, so stop editing there until it returns instead of borrowing a
 second lane.
 
 - 2026-11-09 (P1b, lane-11): never `git stash` / `git stash pop` in a lane. The stash list is shared by every worktree, so a stash with nothing to save makes `pop` apply another lane's entry. With untracked work, rebase with `git rebase origin/main` directly, or commit first.
+
+## 2026-11-10 — Squash against the merge base, never against a fetched main
+
+`git reset --soft origin/main` after a fetch keeps your tree but moves HEAD
+to the new main: if main moved, the next commit stages a revert of every
+change that landed meanwhile. Squash with
+`git reset --soft "$(git merge-base HEAD origin/main)"`, then rebase.
