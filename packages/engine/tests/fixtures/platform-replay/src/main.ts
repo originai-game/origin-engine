@@ -6,23 +6,26 @@
 import { og, defineResource, defineSystem, u32 } from "@origingame/engine";
 
 const Wallet = defineResource("Wallet", { gems: u32(), cancelled: u32(), notices: u32() });
-let request = 0;
+/** The purchase's request number. */
+const Pending = defineResource("Pending", { request: u32() });
 
-const Buy = defineSystem("Buy", {}, (_q, time, world) => {
+const Buy = defineSystem("Buy", { writes: [Pending] }, (_q, time, world) => {
   if (time.tick !== 10) return;
   const r = og.platform.purchase(world, { product: "gems" });
-  if (r.ok) request = r.value;
+  const p = world.resource(Pending);
+  if (r.ok && p.ok) p.value.request = r.value;
 });
 
-const Credit = defineSystem("Credit", { reads: [og.PlatformAnswered, og.PlatformNotice], writes: [Wallet] }, (_q, _time, world) => {
+const Credit = defineSystem("Credit", { reads: [og.PlatformAnswered, og.PlatformNotice, Pending], writes: [Wallet] }, (_q, _time, world) => {
   const w = world.resource(Wallet);
-  if (!w.ok) return;
+  const p = world.resource(Pending);
+  if (!w.ok || !p.ok) return;
   for (const e of world.events(og.PlatformAnswered)) {
-    if (e.request !== request) continue;
+    if (e.request !== p.value.request) continue;
     if (e.ok) w.value.gems += 100;
     else w.value.cancelled += 1;
   }
   w.value.notices += world.events(og.PlatformNotice).length;
 });
 
-export default og.game({ tick: 60, seed: 1, resources: [Wallet], systems: [Buy, Credit] });
+export default og.game({ tick: 60, seed: 1, resources: [Wallet, Pending], systems: [Buy, Credit] });

@@ -20,12 +20,9 @@ const Order = defineComponent("Order", { player: u32(), unit: u32(), x: f32(), y
 const Unit = defineComponent("Unit", { owner: u32(), index: u32(), x: f32(), y: f32(), tx: f32(), ty: f32() });
 const Tally = defineResource("Tally", { orders0: u32(), orders1: u32(), lastTick: u32(), cursor: f32() });
 
-/** Gives orders with lockstep off too (`alone`), as seat 0. */
-let alone = false;
-
 const Give = defineSystem("Give", { reads: [og.Lockstep] }, (_q, time, world) => {
   const lock = must(world.resource(og.Lockstep));
-  if (!lock.running && !alone) return;
+  if (!lock.running) return;
   const seat = lock.localPlayer;
   const t = time.tick;
   // Still for the first 60 ticks, so any session that starts before then plays the same inputs.
@@ -90,9 +87,6 @@ export default og.game({
       const lock = must(world.resource(og.Lockstep));
       lock.mode = "rollback";
       lock.maxPrediction = Number(args[0] ?? 8);
-    },
-    alone: () => {
-      alone = true;
     },
   },
   facts: (world) => {

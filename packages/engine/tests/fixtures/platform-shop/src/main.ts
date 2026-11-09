@@ -5,13 +5,20 @@
 // consumes it, credits a pending purchase when its notice settles it, shows
 // a rewarded ad on `ad` and pays only a completed one, and unlocks an
 // achievement at 100 gems. Entitlements are the host's word, never a save.
-import { og, defineResource, defineSystem, u32 } from "@origingame/engine";
+import { og, defineResource, defineSystem, list, u32 } from "@origingame/engine";
 import type { World } from "@origingame/engine";
 
 export const Wallet = defineResource("Wallet", { gems: u32(), cancelled: u32(), skipped: u32(), delivered: u32(), unlocked: u32() });
 
-/** Requests in flight, by what the game asked (between ticks and systems: host state, not world state). */
-const asked = { entitlements: 0, buys: new Set<number>(), ads: new Set<number>() };
+/** Requests in flight, by what the game asked: world state, so a save, a restore or a replay keeps them. */
+const Asked = defineResource("Asked", { entitlements: u32(), buys: list(u32(), 64), ads: list(u32(), 64) });
+
+/** Takes `request` off the list it was asked on; whether it was there. */
+function settle(asked: { buys: readonly number[]; ads: readonly number[] }, key: "buys" | "ads", request: number): boolean {
+  if (!asked[key].includes(request)) return false;
+  asked[key] = asked[key].filter((r) => r !== request);
+  return true;
+}
 
 type Purchase = { purchase: string; product: string; quantity: number; state?: string };
 
@@ -28,19 +35,21 @@ function deliver(world: World, w: { gems: number; delivered: number; unlocked: n
   }
 }
 
-const Shop = defineSystem("Shop", { reads: [og.PlatformAnswered, og.PlatformNotice], writes: [Wallet, og.PlatformGrants] }, (_q, time, world) => {
+const Shop = defineSystem("Shop", { reads: [og.PlatformAnswered, og.PlatformNotice], writes: [Wallet, Asked, og.PlatformGrants] }, (_q, time, world) => {
   const w = world.resource(Wallet);
-  if (!w.ok) return;
+  const a = world.resource(Asked);
+  if (!w.ok || !a.ok) return;
+  const asked = a.value;
   if (time.tick === 1) asked.entitlements = og.platform.entitlements(world);
   for (const e of world.events(og.PlatformAnswered)) {
     const r = og.platform.result(world, e.request);
     if (!r) continue;
     if (e.request === asked.entitlements && r.ok) {
       for (const p of (r.data as { entitlements: Purchase[] }).entitlements) deliver(world, w.value, p);
-    } else if (asked.buys.delete(e.request)) {
+    } else if (settle(asked, "buys", e.request)) {
       if (!r.ok) w.value.cancelled += r.error?.code === "cancelled" ? 1 : 0;
       else if ((r.data as Purchase).state === "completed") deliver(world, w.value, r.data as Purchase);
-    } else if (asked.ads.delete(e.request) && r.ok) {
+    } else if (settle(asked, "ads", e.request) && r.ok) {
       if ((r.data as { outcome: string }).outcome === "completed") w.value.gems += 10;
       else w.value.skipped += 1;
     }
@@ -55,16 +64,18 @@ const Shop = defineSystem("Shop", { reads: [og.PlatformAnswered, og.PlatformNoti
 export default og.game({
   tick: 60,
   seed: 1,
-  resources: [Wallet],
+  resources: [Wallet, Asked],
   systems: [Shop],
   commands: {
     buy(world) {
       const r = og.platform.purchase(world, { product: "gems" });
-      if (r.ok) asked.buys.add(r.value);
+      const a = world.resource(Asked);
+      if (r.ok && a.ok) a.value.buys = [...a.value.buys, r.value];
     },
     ad(world) {
       const r = og.platform.showAd(world, { kind: "rewarded" as never, placement: "shop" });
-      if (r.ok) asked.ads.add(r.value);
+      const a = world.resource(Asked);
+      if (r.ok && a.ok) a.value.ads = [...a.value.ads, r.value];
     },
   },
 });
