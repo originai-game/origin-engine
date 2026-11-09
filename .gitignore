@@ -1,10 +1,6 @@
 target/
-/.og/tmp/
-**/.og/check/
-**/.og/bundle/
-**/.og/review/
-**/.og/cook-index
-**/.og/publish-assets.json
+# og's generated project state, in every project and fixture.
+**/.og/
 tests/install/node_modules/
 .spike-out/
 .DS_Store
