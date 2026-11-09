@@ -1192,7 +1192,13 @@ mod tests {
 </style>"#;
         let mut ui = Ui::new(UiDesc::default());
         let parsed = UiDocument::parse("fx.svelte", doc).unwrap();
-        let pop = &parsed.keyframes.iter().find(|(k, _)| k == "pop").unwrap().1;
+        let pop = &parsed
+            .sheet
+            .keyframes
+            .iter()
+            .find(|(k, _)| k == "pop")
+            .unwrap()
+            .1;
         assert!(matches!(
             pop.events.as_slice(),
             [(o, crate::motion::EventKind::Burst { count: 24, duration_ms, .. })] if *o == 0.5 && *duration_ms == 600.0
