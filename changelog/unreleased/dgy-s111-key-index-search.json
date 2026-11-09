@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.Input key sets",
+      "summary": "A key code's place in og.Input's key sets is found by a binary search of the codes, built once, instead of a scan of the 106-code table; the UI's input read asks it about 300 times a tick. The answers do not change. A garden at its gate, web, from a profile: 28 of the UI input read's 38 ms per 10 s."
+    }
+  ]
+}
