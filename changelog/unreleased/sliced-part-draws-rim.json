@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "Style dressings on painted parts",
+      "summary": "Moves frames: a part a style paints with `-og-slice` now draws its dressing's `-og-stroke` and `-og-effect` over the slice, so a rarity rim (`Slot::frame[rarity=epic]`) or a selection glow shows on a painted slot. They were dropped before. The slice stays the part's fill, and a dressing's fill does not cover it."
+    }
+  ]
+}
