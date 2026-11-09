@@ -1346,6 +1346,81 @@ mod tests {
         );
     }
 
+    /// The image pair keeps each image's aspect at the group's width, so a
+    /// new image taller than the group overflows it, as the UA stylesheet
+    /// has it; `overflow` on the group or the image pair cuts what it
+    /// holds to its box, along the axes it names.
+    #[test]
+    fn overflow_on_a_view_transition_group_clips_its_images() {
+        const LIST: &str = r#"<meta name="screen" content="list"><column id="Page"><column id="Card"></column></column>
+<style>@view-transition { navigation: auto; } #Page { padding: 40px; }
+#Card { width: 100px; height: 50px; background: #ff0000; view-transition-name: hero; }</style>"#;
+        let detail = |rule: &str| {
+            format!(
+                r#"<meta name="screen" content="detail"><column id="Page"><column id="Card"></column></column>
+<style>@view-transition {{ navigation: auto; }} #Page {{ padding: 40px; }}
+#Card {{ width: 100px; height: 100px; background: #ff0000; view-transition-name: hero; }}
+::view-transition-group(hero) {{ animation-duration: 400ms; animation-timing-function: linear; }}
+{rule}</style>"#
+            )
+        };
+        // The cuts of the frame halfway, as (centre, half extent).
+        let halfway = |rule: &str| {
+            let mut ui = ui_with(&[("list.svelte", LIST), ("detail.svelte", &detail(rule))]);
+            let step = |ui: &mut Ui| {
+                ui.begin(InputFrame::default(), Viewport::new(640.0, 480.0));
+                ui.end();
+            };
+            ui.push_screen("list", Value::Null).unwrap();
+            for _ in 0..ui.ticks_for(300.0) + 2 {
+                step(&mut ui);
+            }
+            ui.replace_screen("detail", Value::Null).unwrap();
+            for _ in 0..=ui_ticks(400.0) / 2 {
+                step(&mut ui);
+            }
+            let cuts: Vec<((f32, f32), (f32, f32))> = ui
+                .frame
+                .items
+                .iter()
+                .filter_map(|it| match it.cmd {
+                    crate::DrawCmd::PushClip { center, half, .. } => Some((center, half)),
+                    _ => None,
+                })
+                .collect();
+            (cuts, reds(&ui))
+        };
+        // Unclipped: the new image (100 × 100) reaches below the group.
+        let (cuts, reds) = halfway("");
+        assert!(cuts.is_empty(), "{cuts:?}");
+        let top = reds.iter().map(|r| r.y).fold(f32::MAX, f32::min);
+        assert!(
+            reds.iter().any(|r| (r.height - 100.0).abs() < 1.0),
+            "{reds:?}"
+        );
+        // The group halfway is 100 × 75 at the cards' top left.
+        let near =
+            |a: (f32, f32), b: (f32, f32)| (a.0 - b.0).abs() < 1.0 && (a.1 - b.1).abs() < 1.0;
+        for rule in [
+            "::view-transition-group(hero) { overflow: clip; }",
+            "::view-transition-image-pair(*) { overflow: hidden; }",
+        ] {
+            let (cuts, _) = halfway(rule);
+            assert!(
+                cuts.len() == 1
+                    && near(cuts[0].0, (90.0, top + 37.5))
+                    && near(cuts[0].1, (50.0, 37.5)),
+                "{rule}: {cuts:?}"
+            );
+        }
+        // One axis: the other is left open.
+        let (cuts, _) = halfway("::view-transition-group(hero) { overflow-y: clip; }");
+        assert!(
+            cuts.len() == 1 && cuts[0].1.0 > 1e6 && near((0.0, cuts[0].1.1), (0.0, 37.5)),
+            "{cuts:?}"
+        );
+    }
+
     fn ui_ticks(ms: f32) -> usize {
         Ui::new(UiDesc::default()).ticks_for(ms) as usize
     }

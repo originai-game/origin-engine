@@ -86,13 +86,44 @@ pub struct Rule {
 }
 
 /// A named group's animations: the group's, its image pair's, and its
-/// old and new images'.
+/// old and new images'; and the axes (across, down) along which the group
+/// and the image pair clip what they hold to their box (`overflow` other
+/// than `visible`: by the UA's stylesheet neither does, and an image
+/// taller than its group by its aspect overflows it).
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct GroupStyle {
     pub group: Vec<CssAnimation>,
     pub pair: Vec<CssAnimation>,
     pub old: Vec<CssAnimation>,
     pub new: Vec<CssAnimation>,
+    pub group_clip: [bool; 2],
+    pub pair_clip: [bool; 2],
+}
+
+/// `overflow`, `overflow-x` or `overflow-y` (and the logical
+/// `overflow-inline` and `overflow-block`) on a group or an image pair, as
+/// its `overflow-x` and `overflow-y` longhands.
+fn overflow(name: &str, value: &str) -> Result<Vec<(String, String)>, String> {
+    let words: Vec<&str> = value.split_whitespace().collect();
+    if words.is_empty()
+        || words.len() > 2
+        || !words
+            .iter()
+            .all(|w| matches!(*w, "visible" | "hidden" | "clip" | "scroll" | "auto"))
+    {
+        return Err(format!(
+            "{name} takes visible, hidden, clip, scroll or auto, not '{value}'"
+        ));
+    }
+    let x = |v: &str| ("overflow-x".to_string(), v.to_string());
+    let y = |v: &str| ("overflow-y".to_string(), v.to_string());
+    Ok(match (name, words.as_slice()) {
+        ("overflow", [a]) => vec![x(a), y(a)],
+        ("overflow", [a, b]) => vec![x(a), y(b)],
+        ("overflow-x" | "overflow-inline", [a]) => vec![x(a)],
+        ("overflow-y" | "overflow-block", [a]) => vec![y(a)],
+        _ => return Err(format!("{name} takes one value, not '{value}'")),
+    })
 }
 
 /// The UA's cross-fade keyframes.
@@ -278,12 +309,17 @@ pub(super) fn apply(
         }
         let mut longhands = Vec::new();
         for d in variables::declarations(body).map_err(|e| (at, e))? {
+            let clips = matches!(part, Part::Group | Part::ImagePair)
+                && matches!(
+                    d.name.as_str(),
+                    "overflow" | "overflow-x" | "overflow-y" | "overflow-inline" | "overflow-block"
+                );
             let allowed = match part {
                 Part::Overlay => matches!(
                     d.name.as_str(),
                     "background" | "background-color" | "background-image"
                 ),
-                _ => d.name.starts_with("animation"),
+                _ => clips || d.name.starts_with("animation"),
             };
             if !allowed {
                 return Err((
@@ -293,6 +329,9 @@ pub(super) fn apply(
                         match part {
                             Part::Overlay => {
                                 "background-color (the cover's colour) and background-image (its texture)"
+                            }
+                            Part::Group | Part::ImagePair => {
+                                "animation and overflow (a clip to its box)"
                             }
                             _ => "animation",
                         },
@@ -311,6 +350,10 @@ pub(super) fn apply(
                     "background-color"
                 };
                 longhands.push((name.into(), value));
+                continue;
+            }
+            if clips {
+                longhands.extend(overflow(&d.name, d.source.trim()).map_err(|e| (at, e))?);
                 continue;
             }
             for d in super::motion::expand(d, &keyframes).map_err(|e| (at, e))? {
@@ -413,12 +456,30 @@ impl ViewTransition {
     }
 
     fn cascade(&self, name: &str, classes: &[String], diagnostics: &mut Vec<String>) -> GroupStyle {
-        let of = |part: Part| -> Vec<(String, String)> {
+        let declared = |part: Part| {
             self.rules
                 .iter()
-                .filter(|r| r.part == part && r.select.matches(name, classes))
+                .filter(move |r| r.part == part && r.select.matches(name, classes))
                 .flat_map(|r| r.longhands.iter().cloned())
+        };
+        let of = |part: Part| -> Vec<(String, String)> {
+            declared(part)
+                .filter(|(n, _)| n.starts_with("animation"))
                 .collect()
+        };
+        // The last `overflow-x` and `overflow-y` the cascade gives a part
+        // (an inherited property it is not: the pair's is its own).
+        let clip = |part: Part| {
+            let mut axes = [false; 2];
+            for (n, v) in declared(part) {
+                let axis = match n.as_str() {
+                    "overflow-x" => 0,
+                    "overflow-y" => 1,
+                    _ => continue,
+                };
+                axes[axis] = v != "visible";
+            }
+            axes
         };
         let timing = |w: &[(String, String)]| -> Vec<(String, String)> {
             w.iter()
@@ -458,6 +519,8 @@ impl ViewTransition {
             pair: resolve(&pair),
             old: resolve(&old),
             new: resolve(&new),
+            group_clip: clip(Part::Group),
+            pair_clip: clip(Part::ImagePair),
         }
     }
 }
@@ -619,6 +682,14 @@ mod tests {
                 "@media (width > 1px) { @view-transition { navigation: auto; } }",
                 "top level",
             ),
+            (
+                "@view-transition { navigation: auto; } ::view-transition-old(*) { overflow: clip; }",
+                "takes animation",
+            ),
+            (
+                "@view-transition { navigation: auto; } ::view-transition-group(*) { overflow: cut; }",
+                "takes visible, hidden, clip",
+            ),
         ] {
             let error = spec(css).unwrap_err();
             assert!(error.contains(wanted), "{css}: {error}");
@@ -654,6 +725,20 @@ mod tests {
         assert_eq!(t.group("hero", &[]).group[0].duration_ms, 300.0);
         assert_eq!(t.group("other", &[]).new[0].duration_ms, 1000.0);
         assert_eq!(t.new[0].duration_ms, 1000.0, "the root is one of *");
+        // `overflow` cascades like the rest, axis by axis; the pair's is
+        // its own (not inherited from the group).
+        let t = spec(
+            "@view-transition { navigation: auto; }
+             ::view-transition-group(*) { overflow: clip; }
+             ::view-transition-group(hero) { overflow-x: visible; }
+             ::view-transition-image-pair(.card) { overflow: hidden visible; }",
+        )
+        .unwrap()
+        .unwrap();
+        let g = t.group("hero", &["card".into()]);
+        assert_eq!((g.group_clip, g.pair_clip), ([false, true], [true, false]));
+        let g = t.group("other", &[]);
+        assert_eq!((g.group_clip, g.pair_clip), ([true, true], [false, false]));
         let error = UiDocument::parse(
             "c.svelte",
             "<meta name=\"component\" content=\"c\"><column/><style>@view-transition { navigation: auto; }</style>",

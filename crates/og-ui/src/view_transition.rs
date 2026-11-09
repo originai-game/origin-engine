@@ -245,6 +245,23 @@ const EVERYWHERE: Rect = Rect {
     height: 2e9,
 };
 
+/// The cut to box `at` along the axes that clip (across, down); `None`
+/// when neither does.
+fn clip_to(at: &Rect, axes: [bool; 2]) -> Option<DrawCmd> {
+    if axes == [false, false] {
+        return None;
+    }
+    let half = |clips: bool, len: f32| if clips { len / 2.0 } else { 1e9 };
+    Some(DrawCmd::PushClip {
+        geometry: og_render::UiGeometry::Rect {
+            radii: [0.0; 4],
+            corner: og_render::UiCorner::Round,
+        },
+        center: (at.x + at.width / 2.0, at.y + at.height / 2.0),
+        half: (half(axes[0], at.width), half(axes[1], at.height)),
+    })
+}
+
 fn begin_layer() -> DrawCmd {
     DrawCmd::BeginLayer {
         material: og_render::UiMaterial::Plain,
@@ -419,6 +436,8 @@ impl Ui {
                 pair,
                 old: old_anim,
                 new: new_anim,
+                group_clip,
+                pair_clip,
             } = style.group(name, &classes);
             end = end.max(ends(&[&group, &pair, &old_anim, &new_anim]));
             let at = match (old, live) {
@@ -432,6 +451,16 @@ impl Ui {
             let around = transform(&g, &at).mul(&transform(&p, &at));
             let both = old.is_some() && live.is_some();
             tail.push((begin_layer(), Affine::IDENTITY));
+            // `overflow` on the group, then on the image pair: what they
+            // hold is cut to their box, turned with it.
+            let clips = [(group_clip, transform(&g, &at)), (pair_clip, around)];
+            let mut cuts = 0;
+            for (axes, map) in clips {
+                if let Some(cut) = clip_to(&at, axes) {
+                    tail.push((cut, map));
+                    cuts += 1;
+                }
+            }
             // The new image is drawn live: this frame's commands, without
             // what its ancestors fade (none to recover while they are at 0).
             let live_cmds = live
@@ -467,6 +496,9 @@ impl Ui {
                     end_layer(to, row[7].min(1.0), blend(both, list)),
                     Affine::IDENTITY,
                 ));
+            }
+            for _ in 0..cuts {
+                tail.push((DrawCmd::PopClip, Affine::IDENTITY));
             }
             tail.push((
                 end_layer(

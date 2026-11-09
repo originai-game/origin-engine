@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "UI document scoped CSS",
+      "summary": "overflow (clip, hidden, scroll, auto; overflow-x, overflow-y and the logical longhands) on ::view-transition-group() and ::view-transition-image-pair() clips the old and new images to that pseudo-element's box, turned with its transform. Unset, the images stay unclipped as in the spec's UA stylesheet."
+    }
+  ]
+}

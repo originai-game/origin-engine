@@ -1249,7 +1249,15 @@ source order. The image pair and the images inherit the group's timing.
 Each takes `animation` with the document's `@keyframes` (transform and
 opacity channels). A name on two elements of the old or the new view skips
 the transition with a warning (the spec's `InvalidStateError`), and the
-layers change at once. Reduced motion skips the shared elements unless the
+layers change at once. Each image is as wide as the group, with its height
+from its own aspect, from the group's top. As in the spec's UA stylesheet
+and in browsers, nothing clips it there: an image taller than its group
+overflows it. `overflow` (`clip`, `hidden`, `scroll` or `auto`; also
+`overflow-x`, `overflow-y` and the logical longhands) on
+`::view-transition-group()` or `::view-transition-image-pair()` clips what
+that pseudo-element holds to its box, along the axes it names, and turns
+with its transform. The pair's `overflow` is its own, not inherited from
+the group, and `-old` and `-new` refuse it. Reduced motion skips the shared elements unless the
 style keeps motion. Capturing costs nothing until a transition starts: a
 frame records only where its named elements drew. A running transition is
 saved with the UI state.
