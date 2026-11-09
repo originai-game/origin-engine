@@ -188,15 +188,14 @@ pub(crate) fn span_width(s: &RichSpan, text: &str, fonts: &dyn Metrics) -> f32 {
     m.measure_tracked(text, s.step.size, span_tracking(s, text)) + bold_overhang(s, text)
 }
 
-/// A span's tracking (em): its step's, and for a bold run one
-/// [`bold_weight`] more per glyph, as a bold face's advance grows by about
-/// its added stem: its letters stay apart without reading letter-spaced. A
+/// A span's tracking (em): its step's, and for a bold run [`BOLD_GROWTH`]
+/// more per glyph, as a bold face's advance grows by about its added stem: its letters stay apart without reading letter-spaced. A
 /// shaped run takes none (its joins would break). Either keeps
 /// [`bold_overhang`] after it.
 pub(crate) fn span_tracking(s: &RichSpan, text: &str) -> f32 {
     let step = crate::layout::step_tracking(&s.step, text);
     if s.synth.bold && !text.chars().any(og_i18n::needs_shaping) {
-        step + bold_weight(s.step.size) / s.step.size
+        step + BOLD_GROWTH
     } else {
         step
     }
@@ -208,15 +207,23 @@ pub(crate) fn span_tracking(s: &RichSpan, text: &str) -> f32 {
 /// space after it does not close up.
 fn bold_overhang(s: &RichSpan, text: &str) -> f32 {
     if s.synth.bold && !text.trim().is_empty() {
-        bold_weight(s.step.size) + 1.0
+        bold_weight(s.step.size, 1.0) + 1.0
     } else {
         0.0
     }
 }
 
-/// A bold span's thickening at `size` (CSS px).
-fn bold_weight(size: f32) -> f32 {
-    (size * 0.045).max(0.4)
+/// How much wider a bold face's stems are than its regular's, em (Noto
+/// Sans: 0.092 em to 0.148 em). A faux bold heavier than that closes the
+/// counters of an `a` or an `A`.
+const BOLD_GROWTH: f32 = 0.056;
+
+/// A bold span's thickening at `size`, each side, when its second copy is
+/// `smear` to the right (both in the text's units): together they grow its
+/// stems by [`BOLD_GROWTH`], and small text by at least a quarter of the
+/// copy's offset more.
+fn bold_weight(size: f32, smear: f32) -> f32 {
+    ((size * BOLD_GROWTH - smear) * 0.5).max(smear * 0.25)
 }
 
 pub(crate) fn span_metrics(s: &RichSpan, fonts: &dyn Metrics) -> (f32, f32, f32) {
@@ -1058,9 +1065,17 @@ impl Ui {
             let tracking = span_tracking(s, &text);
             // Bold: thickened in the shader (as far as the field reaches)
             // and drawn twice, the second copy one device pixel to the
-            // right, so small text whose field is thin is bold too.
-            let weight = if s.synth.bold { bold_weight(size) } else { 0.0 };
-            let smear = if s.synth.bold { 1.0 / dpr } else { 0.0 };
+            // right, so small text whose field is thin is bold too: a
+            // device pixel in the text's units (an SVG's text is laid out
+            // in its view box's and scaled).
+            let w = &n.world;
+            let device = dpr * (w.a * w.d - w.b * w.c).abs().sqrt().max(1e-3);
+            let smear = if s.synth.bold { 1.0 / device } else { 0.0 };
+            let weight = if s.synth.bold {
+                bold_weight(size, smear)
+            } else {
+                0.0
+            };
             let glyph = |x: f32,
                          dy: f32,
                          a: f32,
@@ -1641,7 +1656,11 @@ impl Ui {
             if font.handle.is_none() {
                 continue;
             }
-            let weight = if s.synth.bold { bold_weight(size) } else { 0.0 };
+            let weight = if s.synth.bold {
+                bold_weight(size, 0.0)
+            } else {
+                0.0
+            };
             let run = self.span_run(i, s, font, &text, size, v, (mid, r.x, r.width), true);
             let top = |at: f32, len: f32| {
                 if from_bottom {

@@ -1332,10 +1332,10 @@ fn bold_rich_text_is_heavier_ink_never_a_box() {
         let (plain, w, h, bg) = rich_frame(LINE, step);
         let (bold, ..) = rich_frame(&format!("[b]{LINE}[/b]"), step);
         // Each glyph's advance in the plain line (from the card's padding, at
-        // 1 device pixel a CSS px) and how far bold moves it: one weight
-        // (og-ui's 0.045 em, at least 0.4 px) for each glyph before it.
+        // 1 device pixel a CSS px) and how far bold moves it: a bold
+        // face's added stem (og-ui's 0.056 em) for each glyph before it.
         let s = step(&theme.type_ramp);
-        let weight = (s.size * 0.045).max(0.4);
+        let weight = s.size * 0.056;
         let x0 = theme.space.md;
         let glyphs: Vec<(f32, f32, f32)> = LINE
             .char_indices()
@@ -1367,8 +1367,8 @@ fn bold_rich_text_is_heavier_ink_never_a_box() {
             "bold is heavier at the {name} size: {b} against {p} px"
         );
         // Every bold ink pixel lies within three pixels of its glyph's plain
-        // ink, moved by its tracked advance (the weight, at most 0.045 em,
-        // and the one-pixel second copy).
+        // ink, moved by its tracked advance (the added stem, 0.056 em, and
+        // the one-pixel second copy).
         let near_plain = |x: i64, y: usize| {
             (y.saturating_sub(3)..=(y + 3).min(h - 1)).any(|yy| {
                 (x - 3..=x + 3)
