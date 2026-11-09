@@ -444,10 +444,14 @@ impl Ui {
                 continue;
             }
             let d = self.part_draw(&part, n.sampled.background);
+            // A dressing that clears (`fill none`) draws its nothing in
+            // place of the element's own background: a quiet button stays
+            // clear when disabled, as its rest is.
             if d.fills.is_empty()
                 && d.strokes.is_empty()
                 && d.effects.is_empty()
                 && d.layer.is_none()
+                && r.draw.cleared & crate::dress::CLEAR_FILLS == 0
             {
                 continue;
             }

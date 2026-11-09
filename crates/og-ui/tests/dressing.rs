@@ -311,6 +311,44 @@ fn a_disabled_touch_controls_opacity_is_authored_by_its_state_dressing() {
     }
 }
 
+/// `fill none` on a control's state clears the control's own fill: a quiet
+/// button's disabled state, dressed `fill none`, draws no box (it drew the
+/// control fill, louder than the clear quiet button at rest), while a
+/// disabled secondary button the rule does not name keeps its fill.
+#[test]
+fn fill_none_clears_a_controls_own_fill() {
+    let mut ui = dressed("Button::base.quiet:disabled {\n -og-fill: none\n}\n");
+    ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+    for (id, variant) in [
+        ("Quiet", ButtonVariant::Quiet),
+        ("Plain", ButtonVariant::Secondary),
+    ] {
+        ui.button(
+            id,
+            "Equip",
+            ButtonDesc {
+                variant,
+                disabled: true,
+                ..ButtonDesc::default()
+            },
+        );
+    }
+    ui.end();
+    let fills = |ui: &Ui, id: &str| {
+        let e = ui.element(id).unwrap();
+        fills_in(ui, Rect::new(e.x, e.y, e.width, e.height))
+    };
+    assert_eq!(
+        fills(&ui, "Quiet"),
+        Vec::<[f32; 4]>::new(),
+        "the cleared quiet button"
+    );
+    assert!(
+        !fills(&ui, "Plain").is_empty(),
+        "a disabled secondary keeps its fill"
+    );
+}
+
 /// A game's draw (`set_draw`) paints over its element's background: a rim
 /// stroked on an element with a background draws after the background
 /// quad, so the background never covers it (it showed only at the corners
