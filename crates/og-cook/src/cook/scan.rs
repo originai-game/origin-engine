@@ -14,11 +14,6 @@ fn walk(dir: &Path, rel: &str, out: &mut Vec<(String, PathBuf)>) -> std::io::Res
             format!("{rel}/{name}")
         };
         if e.file_type()?.is_dir() {
-            // A style pack's `art/` holds the painted sources `og style art`
-            // packs into its atlases (docs/art.md §2.7): never the bundle's.
-            if name == "art" && dir.join("style.ogt").is_file() {
-                continue;
-            }
             // An installed kit's `sheet/` is a review project of its own
             // (docs/ui.md §6), `og ui sheet` cooks it apart.
             if name == "sheet" && dir.join("extension.json").is_file() {
@@ -72,17 +67,12 @@ pub(super) fn scan_with(
                 builtins.insert(id.to_string(), bytes);
             }
         }
-        // A game's own style may name the built-in packs' fonts and icons
-        // (a generated one does) and the shared Chinese companions too.
-        if ext(rel) == "ogt"
+        // CSS can explicitly reference the shared asset roots, including CJK.
+        if ext(rel) == "css"
             && let Ok(text) =
                 read_file(path).and_then(|b| String::from_utf8(b).map_err(std::io::Error::other))
-            && Document::parse_header(&text).is_ok_and(|d| d.ty == og_ui::style_file::STYLE_TYPE)
         {
-            for (id, bytes) in look::shared_files(&text) {
-                builtins.insert(id.to_string(), bytes);
-            }
-            for (id, bytes) in look::companion_files(&text, &look::shown_cjk(assets_dir)) {
+            for (id, bytes) in look::shared_files(rel, &text) {
                 builtins.insert(id.to_string(), bytes);
             }
         }
@@ -114,7 +104,9 @@ pub(super) fn scan_with(
         }
         let kind = match ext(rel).as_str() {
             "glb" | "gltf" | "vox" | "fbx" | "obj" => Kind::Model,
-            "png" | "jpg" | "jpeg" | "ktx2" | "webp" | "tga" | "psd" | "dds" => Kind::Texture,
+            "png" | "jpg" | "jpeg" | "ktx2" | "webp" | "tga" | "psd" | "dds" | "svg" => {
+                Kind::Texture
+            }
             e if audio::EXTENSIONS.contains(&e) => Kind::Sound,
             "ttf" | "otf" => Kind::Font,
             "riv" => Kind::Rive,
@@ -132,7 +124,7 @@ pub(super) fn scan_with(
                 // declarations): their header says what they are.
                 let own_lines = Document::parse_header(&text).is_ok_and(|h| {
                     [
-                        og_ui::style_file::STYLE_TYPE,
+                        "style",
                         og_ui::doc::SCREEN_TYPE,
                         og_ui::doc::COMPONENT_TYPE,
                         vfx2d::VFX2D_TYPE,
@@ -163,7 +155,10 @@ pub(super) fn scan_with(
                     Ok(doc) if doc.ty == crate::fx::EMITTER_TYPE => Kind::Emitter,
                     Ok(doc) if doc.ty == og_bundle::effect::EFFECT_TYPE => Kind::Effect,
                     Ok(doc) if doc.ty == og_bundle::vfx::VFX_TYPE => Kind::Vfx,
-                    Ok(doc) if doc.ty == og_ui::style_file::STYLE_TYPE => Kind::Style,
+                    Ok(doc) if doc.ty == "style" => {
+                        early_errors.push((rel.clone(), "style", "style.ogt is removed; author a directory of .css files and load its directory with og.load.style".into()));
+                        continue;
+                    }
                     Ok(doc)
                         if doc.ty == og_ui::doc::SCREEN_TYPE
                             || doc.ty == og_ui::doc::COMPONENT_TYPE =>
@@ -236,6 +231,54 @@ pub(super) fn scan_with(
             fracture: None,
         });
     }
+    // Each directory with direct CSS children is a pack. Its cooked source
+    // contains those files and their imports, never a generated author manifest.
+    let directories: BTreeSet<_> = files
+        .iter()
+        .filter(|(id, _)| ext(id) == "css")
+        .filter_map(|(id, _)| id.rsplit_once('/').map(|(dir, _)| dir.to_string()))
+        .collect();
+    for dir in directories {
+        let mut css = BTreeMap::new();
+        let mut pending: Vec<_> = files
+            .iter()
+            .filter(|(id, _)| {
+                ext(id) == "css" && id.rsplit_once('/').is_some_and(|(parent, _)| parent == dir)
+            })
+            .map(|(id, _)| id.clone())
+            .collect();
+        while let Some(id) = pending.pop() {
+            if css.contains_key(&id) {
+                continue;
+            }
+            let bytes = read(&id, &assets_dir.join(&id))?;
+            let text = String::from_utf8(bytes)
+                .map_err(|_| CookError(format!("{id}: CSS must be UTF-8")))?;
+            pending.extend(
+                og_ui::UiDocument::imports(&text)
+                    .iter()
+                    .map(|path| og_ui::doc::at_rules::resolve(&id, path)),
+            );
+            css.insert(id, text);
+        }
+        let css: Vec<_> = css.into_iter().collect();
+        let bytes = serde_json::to_vec(&css).expect("CSS sources serialize");
+        sources.push(Source {
+            path: assets_dir.join(&dir),
+            rel: dir,
+            kind: Kind::Style,
+            bytes,
+            settings: None,
+            hash: 0,
+            gltf: None,
+            error: None,
+            encoded: Default::default(),
+            whole: Default::default(),
+            conformed: None,
+            fracture: None,
+        });
+    }
+    ignored.retain(|id| ext(id) != "css");
     for s in sources.iter_mut() {
         s.settings = settings.remove(&s.rel);
     }

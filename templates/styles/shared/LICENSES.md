@@ -9,7 +9,8 @@ not a style.
 |---|---|---|
 | `ink-icons.png` | CC0 1.0 | self-made by the Origin Engine authors: the kit's 32 icons (`templates/ui-kit/tools/make-assets.py`) restyled in ink by `templates/ui-kit/tools/make-styles.py` (deterministic) |
 | `glow-icons.png` | CC0 1.0 | self-made: the same icons restyled as glowing tubes by the same script |
-| `*.ogt` | CC0 1.0 | import settings written by the same script |
+| `*.ogt` except `sfx-*.ogt` | CC0 1.0 | import settings written by the same script |
+| `sfx-*.ogt` | Engine licence | Original engine sound-synthesis presets, moved from the removed clean style; no recordings are bundled. |
 | `InstrumentSans-Regular.ttf` | SIL Open Font License 1.1 (`OFL.txt`) | Instrument Sans (github.com/Instrument/instrument-sans); unmodified. Copyright 2022 The Instrument Sans Project Authors (https://github.com/Instrument/instrument-sans) |
 | `Newsreader-SemiBold.ttf` | SIL Open Font License 1.1 (`OFL.txt`) | Newsreader (github.com/productiontype/Newsreader); a static instance (wght 600, opsz 24) of the variable font, subset to Latin-1 with fontTools. Copyright 2020 The Newsreader Project Authors (http://github.com/productiontype/Newsreader) |
 | `PTMono-Regular.ttf` | SIL Open Font License 1.1 (`OFL.txt`) | PT Mono (ParaType); unmodified. Copyright © 2010 ParaType Inc., ParaType Ltd. All rights reserved. |

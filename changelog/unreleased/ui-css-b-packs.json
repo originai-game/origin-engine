@@ -1,0 +1,9 @@
+{
+  "breaking": [
+    {
+      "member": "og.load.style and style.ogt",
+      "change": "Style packs are directories of CSS and assets. style.ogt, its parser and writers, atlas recolouring, and the clean pack are removed. The cook stores CSS sources and cooks external SVG images as textures.",
+      "fix": "Pass a directory such as styles/my-pack to og.load.style. Direct-child CSS files load in lexical order in og-pack; nested CSS uses @import. URLs resolve beside their CSS source. Use :root variables, @font-face, images, masks, border-image, media queries, transitions and keyframes. Interaction audio uses -og-sound with event sample sets and volume/pitch ranges. CLI pack authoring and migration replacements follow in phase C. Core widget host rules and inheritance land with parts-as-nodes."
+    }
+  ]
+}

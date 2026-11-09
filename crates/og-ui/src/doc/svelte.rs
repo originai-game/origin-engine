@@ -10,6 +10,21 @@ pub(super) fn parse(
     text: &str,
     imports: Vec<(String, String)>,
 ) -> Result<UiDocument, Vec<String>> {
+    parse_with_pack(source, text, imports, None)
+}
+
+pub(crate) fn parse_with_pack(
+    source: &str,
+    text: &str,
+    mut imports: Vec<(String, String)>,
+    pack: Option<&crate::style_pack::StylePack>,
+) -> Result<UiDocument, Vec<String>> {
+    if let Some(pack) = pack {
+        for (id, css) in &pack.sheet.imports {
+            imports.retain(|(old, _)| old != id);
+            imports.push((id.clone(), css.clone()));
+        }
+    }
     let run = || -> Result<UiDocument, Error> {
         let nodes = syntax::parse(text)?;
         let mut p = Parser {
@@ -127,7 +142,12 @@ pub(super) fn parse(
         p.join_lists()?;
         p.join_aria()?;
         super::extern_element::finish(&mut p.doc, &mut p.selectors).map_err(|e| (0, e))?;
-        super::stylesheet::apply(&mut p.doc, &p.selectors, &p.styles)?;
+        super::stylesheet::apply(
+            &mut p.doc,
+            &p.selectors,
+            &p.styles,
+            pack.map(|p| p.css.as_str()),
+        )?;
         // Inline declarations come last: they win over every rule but an
         // `!important` one, which an `|important` one wins over in turn.
         for (i, declarations) in std::mem::take(&mut p.inline_styles) {

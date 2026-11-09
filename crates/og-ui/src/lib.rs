@@ -61,9 +61,10 @@ mod scroll;
 pub use scroll::{Overscroll, ScrollCss, ScrollState};
 pub mod shape;
 pub mod slot;
+pub mod sound_css;
 mod style;
 pub mod style_file;
-pub mod style_gen;
+pub mod style_pack;
 pub mod svg;
 mod text;
 pub mod tokens;
@@ -123,10 +124,7 @@ pub use style::{
     Breakpoint, Contrast, Density, DensityMode, Durations, Palette, READABLE, Radius, Roles,
     Scheme, Space, Spring, Srgba, Theme, TypeRamp, TypeStep,
 };
-pub use style_file::{
-    Art, Slice, SliceFill, StyleFile, StylePart, UiSound, migrate_style, parse_style,
-    read_style_doc, upgrade_style, write_style_doc,
-};
+pub use style_file::{Art, Slice, SliceFill, StylePart, UiSound};
 pub use text::{
     FontMetrics, Piece, UiFont, VisualGlyph, bidi_runs, needs_visual, pieces, pieces_with,
 };

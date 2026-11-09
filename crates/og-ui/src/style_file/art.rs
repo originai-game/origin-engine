@@ -206,18 +206,6 @@ pub enum Ink {
 }
 
 impl Ink {
-    pub(super) fn parse(w: &str) -> Option<Ink> {
-        Some(match w {
-            "authored" => Ink::Authored,
-            "primary" => Ink::Primary,
-            "ink" => Ink::Ink,
-            "muted" => Ink::Muted,
-            "line" => Ink::Line,
-            "focus" => Ink::Focus,
-            _ => return None,
-        })
-    }
-
     pub fn color(self, p: &Palette) -> Srgba {
         match self {
             Ink::Authored => Srgba::WHITE,

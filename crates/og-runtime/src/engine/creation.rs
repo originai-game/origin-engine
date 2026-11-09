@@ -348,7 +348,7 @@ pub(crate) fn assemble(
 
     // The modules' systems before the game's (physics' collider recording,
     // the UI's begin), then the game's, then the modules' after them.
-    let ui = super::modules::new_ui(game.tick, previous.as_ref().map(|p| p.0))?;
+    let ui = super::modules::new_ui(game.tick, u64::from(seed), previous.as_ref().map(|p| p.0))?;
     let (physics, actions) = super::modules::mount_front(&mut world, engine_id, profile, &ui)?;
     let record_names: Vec<String> = layouts
         .keys()

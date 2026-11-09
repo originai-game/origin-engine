@@ -317,6 +317,15 @@ impl Ui {
             Some(match i {
                 p::CssImage::None => return None,
                 p::CssImage::Gradient(g) => p::BgImage::Gradient(g),
+                p::CssImage::Url(ref u)
+                    if self.docs.textures.contains_key(u.trim_start_matches('/')) =>
+                {
+                    p::BgImage::Texture {
+                        texture: self.docs.textures[u.trim_start_matches('/')],
+                        uv: [0.0, 0.0, 1.0, 1.0],
+                        nearest,
+                    }
+                }
                 p::CssImage::Url(u) => match u.parse::<f64>() {
                     Ok(h) => match textures.iter().find(|(k, _)| *k == h) {
                         Some((_, t)) => p::BgImage::Texture {
@@ -329,7 +338,11 @@ impl Ui {
                             return None;
                         }
                     },
-                    Err(_) => match self.icons().find(&u) {
+                    Err(_) => match self
+                        .icons()
+                        .find(&u)
+                        .or_else(|| self.icons().find(u.rsplit('/').next().unwrap_or(&u)))
+                    {
                         Some(crate::ui::IconCell::Image(texture, uv)) => p::BgImage::Texture {
                             texture,
                             uv,

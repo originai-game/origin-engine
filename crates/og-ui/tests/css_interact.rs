@@ -83,7 +83,7 @@ fn the_pointer_passes_through_none_and_hidden() {
     };
     assert_eq!(
         urls(&ui),
-        [("arrow".into(), Some([3.0, 4.0])), ("7".into(), None)]
+        [("/ui/arrow".into(), Some([3.0, 4.0])), ("7".into(), None)]
     );
     // Its child that says auto takes the pointer again.
     frame(&mut ui, again);
@@ -95,7 +95,7 @@ fn the_pointer_passes_through_none_and_hidden() {
     // its own value: the keyword is its kind's, not its parent's no-drop.
     frame(&mut ui, shown);
     assert_eq!(frame(&mut ui, shown), Cursor::Default);
-    assert_eq!(urls(&ui), [("grip".into(), None)]);
+    assert_eq!(urls(&ui), [("/ui/grip".into(), None)]);
     let a11y = format!("{:?}", ui.a11y());
     assert!(a11y.contains("Shown") && !a11y.contains("Lost"), "{a11y}");
 }

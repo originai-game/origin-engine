@@ -1,19 +1,5 @@
 use super::*;
 
-/// `assets/`, from a source's path and its path under it.
-/// The atlas bytes a style names: a built-in style's from the engine's styles,
-/// a game's from its assets.
-pub(super) fn style_atlas(id: &str, root: &Path) -> Option<Vec<u8>> {
-    if id.starts_with('@') {
-        look::styles()
-            .iter()
-            .find(|f| f.id() == id)
-            .map(|f| f.bytes().to_vec())
-    } else {
-        std::fs::read(root.join(id)).ok()
-    }
-}
-
 pub(super) fn run(
     p: &Planned,
     options: &CookOptions,
@@ -374,28 +360,25 @@ pub(super) fn run(
             Ok((w.finish(), notes))
         }
         Work::Style(s) => {
-            let text = std::str::from_utf8(&s.bytes)
-                .map_err(|_| CookError("a style is text (UTF-8)".into()))?;
-            let mut file = og_ui::parse_style(text).map_err(CookError)?;
-            file.resolve(&s.rel, |id| known.contains(crate::runtime::asset_id(id)));
-            let companions: Vec<String> = file.companions().into_iter().map(|(_, p)| p).collect();
-            let missing: Vec<String> = file
-                .references()
-                .into_iter()
-                // A CJK companion is cooked in only for a game that shows its locale.
-                .filter(|r| !known.contains(crate::runtime::asset_id(r)) && !companions.contains(r))
+            let files = serde_json::from_slice(&s.bytes)
+                .map_err(|e| CookError(format!("{}: {e}", s.rel)))?;
+            let pack = og_ui::style_pack::StylePack::parse(&s.rel, files).map_err(CookError)?;
+            let missing: Vec<_> = pack
+                .assets
+                .iter()
+                .filter(|r| !known.contains(r.as_str()))
                 .collect();
             if !missing.is_empty() {
-                let dir = s.rel.rsplit_once('/').map_or("", |(d, _)| d);
                 return Err(CookError(format!(
-                    "the style names asset(s) neither beside it in {dir}/ nor under assets/: {} (an id is read relative to the style file first, then from assets/; a `fallback` font is the project's own: point it at a CJK font the game has, or remove the line)",
-                    missing.join(", ")
+                    "{}: CSS url() assets are missing: {} (URLs resolve beside the CSS file)",
+                    s.rel,
+                    missing
+                        .iter()
+                        .map(|s| s.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ")
                 )));
             }
-            // Ornament art recoloured to the palette uses the cooked atlas.
-            let recoloured = (!super::style_recolour::atlases(s, known).is_empty())
-                .then(|| super::style_recolour::cooked_text(text, &s.rel));
-            let text = recoloured.as_deref().unwrap_or(text);
             let mut w = og_blob::BlobWriter::new(
                 format::Style::type_hash(),
                 format::Style::schema_version(),
@@ -404,17 +387,17 @@ pub(super) fn run(
             w.table(
                 "meta",
                 &[format::StyleMeta {
-                    text_bytes: text.len() as u32,
+                    text_bytes: s.bytes.len() as u32,
                 }],
                 format::row_hash::<format::StyleMeta>(),
             )
-            .raw("text", text.as_bytes().to_vec(), 16);
-            let parts = file.theme.art.slices.iter().flatten().count();
+            .raw("text", s.bytes.clone(), 16);
             Ok((
                 w.finish(),
                 vec![format!(
-                    "style '{}' version {}, {parts} frame(s)",
-                    file.name, file.version,
+                    "CSS pack '{}', {} asset(s)",
+                    pack.name,
+                    pack.assets.len()
                 )],
             ))
         }
@@ -437,34 +420,6 @@ pub(super) fn run(
             p.stamp,
         ),
         Work::Rig2d(s) => rig2d::cook(s, p.stamp),
-        Work::StyleAtlas(s, density, k) => {
-            let file = super::style_recolour::parsed(s, known)
-                .ok_or_else(|| CookError("the style does not parse".into()))?;
-            let id = match density {
-                1 => file.atlas.clone(),
-                d => file.atlas_dense[*d as usize - 2].clone(),
-            }
-            .ok_or_else(|| CookError(format!("the style names no atlas at {density}×")))?;
-            let bytes = style_atlas(crate::runtime::asset_id(&id), &assets_root(s))
-                .ok_or_else(|| CookError(format!("{id}: not found")))?;
-            let img = image::load_from_memory(&bytes)
-                .map_err(|e| CookError(format!("{id}: {e}")))?
-                .to_rgba8();
-            let regions = super::style_recolour::regions(&file);
-            let img = super::style_recolour::recolour(&img, &regions, *density);
-            let note = format!(
-                "{}x{} {id} recoloured to the palette ({} regions)",
-                img.width(),
-                img.height(),
-                regions.len()
-            );
-            let img = super::texture::Image {
-                width: img.width(),
-                height: img.height(),
-                rgba: img.into_raw(),
-            };
-            texture::cook(&img, *k, &options.texture, p.stamp).map(|b| (b, vec![note]))
-        }
         Work::Rig2dAtlas(s) => {
             rig2d::cook_atlas(s, &options.texture, p.stamp).map(|b| (b, Vec::new()))
         }
@@ -640,17 +595,17 @@ pub(super) fn document_imports(s: &Source, text: &str) -> Result<Vec<(String, St
         .map(|p| (s.rel.clone(), p))
         .collect();
     while let Some((from, path)) = pending.pop() {
-        if out.iter().any(|(p, _)| *p == path) {
+        let rel = og_ui::doc::at_rules::resolve(&from, &path);
+        if out.iter().any(|(p, _)| *p == rel) {
             continue;
         }
-        let rel = og_ui::doc::at_rules::resolve(&from, &path);
         let css = read_sibling(s, &rel).map_err(|e| format!("@import \"{path}\" ({rel}): {e}"))?;
         pending.extend(
             og_ui::UiDocument::imports(&css)
                 .into_iter()
                 .map(|p| (rel.clone(), p)),
         );
-        out.push((path, css));
+        out.push((rel, css));
     }
     Ok(out)
 }

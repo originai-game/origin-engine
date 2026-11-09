@@ -323,15 +323,15 @@ row!(
 );
 
 row!(
-    /// The root of a UI style blob (an `.ogt` of `type style`).
-    StyleMeta, "og.UiStyle", 1 {
-        /// Bytes of the validated style text in `text`.
+    /// The root of a CSS pack blob, named by its directory.
+    StyleMeta, "og.UiStyle", 2 {
+        /// Bytes of the JSON array of (CSS asset ID, source text) pairs.
         text_bytes: u32,
     }
 );
 
-/// The UI style blob: `text` holds the style file the cook validated
-/// (og-ui's `parse_style`), parsed again at load with the bundle's assets.
+/// The CSS pack blob: `text` holds source pairs validated with the same
+/// CSS parser the runtime uses. There is no author-facing manifest.
 pub struct Style;
 impl BlobKind for Style {
     const NAME: &'static str = "og.UiStyle";

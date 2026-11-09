@@ -42,32 +42,32 @@ use std::path::Path;
 pub fn style_slugs() -> Vec<&'static str> {
     let mut out: Vec<&'static str> = styles()
         .iter()
-        .filter_map(|f| f.id().strip_prefix("@styles/")?.strip_suffix("/style.ogt"))
+        .filter_map(|f| {
+            let (dir, file) = f.id().strip_prefix("@styles/")?.rsplit_once('/')?;
+            (!dir.contains('/') && file.ends_with(".css")).then_some(dir)
+        })
         .collect();
     out.sort();
+    out.dedup();
     out
 }
 
-/// What a look's `ui "<name>"` names: an asset id as written (a path or an
-/// `.ogt`), else by slug the game's own `styles/<slug>/style.ogt` when
-/// `own` answers it exists, else the built-in `@styles/<slug>/style.ogt`.
+/// A look's UI pack directory, either an explicit asset ID or a slug.
+/// A game's `styles/<slug>` takes precedence over `@styles/<slug>`.
 pub fn resolve_style(name: &str, own: &dyn Fn(&str) -> bool) -> Result<String, String> {
-    if name.contains('/') || name.ends_with(".ogt") {
-        let id = crate::runtime::asset_id(name);
-        if !id.ends_with(".ogt") {
-            return Err(format!(
-                "ui \"{name}\": a UI style's .ogt (styles/<name>/style.ogt) or a built-in style's slug ({})",
-                style_slugs().join(", ")
-            ));
-        }
-        return Ok(id.to_string());
+    if name.ends_with(".ogt") {
+        return Err("style.ogt is removed; a UI style is a directory of CSS and assets".into());
     }
-    let mine = format!("styles/{name}/style.ogt");
+    if name.contains('/') {
+        let id = crate::runtime::asset_id(name);
+        return Ok(id.trim_end_matches('/').to_string());
+    }
+    let mine = format!("styles/{name}");
     if own(&mine) {
         return Ok(mine);
     }
-    let builtin = format!("@styles/{name}/style.ogt");
-    if styles().iter().any(|f| f.id() == builtin) {
+    let builtin = format!("@styles/{name}");
+    if style_slugs().contains(&name) {
         return Ok(builtin);
     }
     if styles_dir().is_none() {
@@ -81,61 +81,25 @@ pub fn resolve_style(name: &str, own: &dyn Fn(&str) -> bool) -> Result<String, S
     ))
 }
 
-/// The files of the built-in style `id` (`@styles/<name>/style.ogt`)
-/// names, by bundle id: the whole pack.
+/// The files of a built-in pack directory, by bundle ID.
 pub fn style_files(id: &str) -> Vec<(&'static str, &'static [u8])> {
-    let Some(dir) = id
-        .strip_suffix("style.ogt")
-        .filter(|d| d.starts_with("@styles/"))
-    else {
+    if !id.starts_with("@styles/") {
         return Vec::new();
-    };
+    }
+    let dir = format!("{}/", id.trim_end_matches('/'));
     styles()
         .iter()
-        .filter(|f| f.id().starts_with(dir))
+        .filter(|f| f.id().starts_with(&dir))
         .map(StyleFile::pair)
         .collect()
 }
 
-/// The shared built-in CJK companions (`@styles/cjk/`, each with its
-/// import settings) a style's text names as `cjk` and `cjkDisplay` for the
-/// locales in `shown` (each companion is 1 to 3 MB of outlines, so a game
-/// carries only those of the locales it shows: [`shown_cjk`]).
-pub fn companion_files(
-    style_text: &str,
-    shown: &[og_ui::CjkLocale],
-) -> Vec<(&'static str, &'static [u8])> {
-    let Ok(file) = og_ui::parse_style(style_text) else {
-        return Vec::new();
-    };
+/// Shared built-in assets explicitly referenced by CSS URLs, together
+/// with their import settings. Unreferenced CJK fonts stay out of the bundle.
+pub fn shared_files(source: &str, css: &str) -> Vec<(&'static str, &'static [u8])> {
     let mut out: Vec<(&'static str, &'static [u8])> = Vec::new();
-    for (_, r) in file.companions().iter().filter(|(l, _)| shown.contains(l)) {
-        let settings = format!("{r}.ogt");
-        for f in styles()
-            .iter()
-            .filter(|f| f.id() == r || f.id() == settings)
-        {
-            let f = f.pair();
-            if !out.contains(&f) {
-                out.push(f);
-            }
-        }
-    }
-    out
-}
-
-/// The built-in files of other packs a style's text draws with: its body,
-/// display, numeric and fallback fonts and its icon sheet where they name a
-/// built-in `@styles/` file (each with its import settings). A generated
-/// style (`og style new`) shares the packs' fonts and icons this way; they
-/// join the bundle whatever the game's languages.
-pub fn shared_files(style_text: &str) -> Vec<(&'static str, &'static [u8])> {
-    let Ok(file) = og_ui::parse_style(style_text) else {
-        return Vec::new();
-    };
-    let icons = file.icons.as_ref().map(|i| &i.0);
-    let mut out: Vec<(&'static str, &'static [u8])> = Vec::new();
-    for r in file.fonts[..4].iter().flatten().chain(icons) {
+    for url in og_ui::doc::at_rules::urls(css) {
+        let r = og_ui::doc::at_rules::resolve(source, &url);
         let settings = format!("{r}.ogt");
         for f in styles()
             .iter()
@@ -236,22 +200,20 @@ pub(super) fn builtin_files(
     }
     if let Some(ui) = &look.ui
         && ui != "default"
-        && let Ok(id) = resolve_style(ui, &|id| root.join(id).is_file())
+        && let Ok(id) = resolve_style(ui, &|id| root.join(id).is_dir())
     {
         let files = style_files(&id);
-        let style = files
-            .iter()
-            .find(|(f, _)| *f == id)
-            .map(|(_, b)| String::from_utf8_lossy(b).to_string());
-        out.extend(files);
-        if let Some(text) = style {
-            for f in shared_files(&text) {
+        for (source, bytes) in &files {
+            if !source.ends_with(".css") {
+                continue;
+            }
+            for f in shared_files(source, &String::from_utf8_lossy(bytes)) {
                 if !out.contains(&f) {
                     out.push(f);
                 }
             }
-            out.extend(companion_files(&text, &shown_cjk(root)));
         }
+        out.extend(files);
     }
     out
 }

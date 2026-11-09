@@ -27,13 +27,12 @@ fn every_asset_type_reports_its_figures_and_its_budgets_flag_it() {
     let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-cook-report");
     let _ = std::fs::remove_dir_all(&root);
     support::stage_template(&root.join("assets"));
-    let choices =
-        og_ui::style_gen::StyleChoices::for_look("core-test", "minimal modern", "report test");
-    let generated = og_ui::style_gen::generate(&choices).unwrap();
-    for (name, text) in &generated.sounds {
-        std::fs::write(root.join("assets").join(name), text).unwrap();
-    }
-    std::fs::write(root.join("assets/core-style.ogt"), generated.text).unwrap();
+    std::fs::create_dir_all(root.join("assets/core-test")).unwrap();
+    std::fs::write(
+        root.join("assets/core-test/main.css"),
+        ":root { --example: #123456; }",
+    )
+    .unwrap();
     let report = cook_project(&root, &CookOptions::default()).unwrap();
     assert!(report.ok(), "{:?}", report.errors());
     let cooked = root.join("cooked");
@@ -85,7 +84,7 @@ fn every_asset_type_reports_its_figures_and_its_budgets_flag_it() {
         polygons > 0 && nav["vertices"].as_u64() >= Some(polygons * 3 / 2),
         "{nav}"
     );
-    let style = &asset(&json, "core-style.ogt")["style"];
+    let style = &asset(&json, "core-test")["style"];
     assert_eq!(style["name"], "core-test");
     for a in json["assets"].as_array().unwrap() {
         assert!(a.get("unread").is_none(), "{a}");
@@ -127,47 +126,36 @@ fn every_asset_type_reports_its_figures_and_its_budgets_flag_it() {
 }
 
 #[test]
-fn style_cook_recolours_ornaments_without_recolouring_or_measuring_part_slices() {
-    let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-cook-ornament-recolour");
+fn css_pack_cooks_svg_images_as_regular_texture_assets() {
+    let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-cook-css-svg");
     let _ = std::fs::remove_dir_all(&root);
-    std::fs::create_dir_all(root.join("assets")).unwrap();
-    let style = include_str!("../../og-cli/tests/fixtures/style-pack/style.ogt")
-        .replace("styles/handmade/atlas.png", "atlas.png")
-        .replace("primary \"#ffb000\"", "primary \"#3d7eff\"")
-        .replace(
-            "corner 24 0 8 8 12 12 primary 2",
-            "corner 24 0 8 8 12 12 authored 2",
-        )
-        + "recolour \"#ffb000\" primary\n";
-    std::fs::write(root.join("assets/style.ogt"), &style).unwrap();
-    image::RgbaImage::from_pixel(64, 64, image::Rgba([255, 176, 0, 255]))
-        .save(root.join("assets/atlas.png"))
-        .unwrap();
+    std::fs::create_dir_all(root.join("assets/example")).unwrap();
+    std::fs::write(
+        root.join("assets/example/main.css"),
+        "button::part(body) { mask-image: url(icon.svg); }",
+    )
+    .unwrap();
+    std::fs::write(root.join("assets/example/icon.svg"), r##"<svg xmlns="http://www.w3.org/2000/svg" width="32" height="16"><rect width="16" height="16" fill="#ff0000" fill-opacity="0.5"/></svg>"##).unwrap();
     let report = cook_project(&root, &CookOptions::default()).unwrap();
     assert!(report.ok(), "{:?}", report.errors());
     let bundle = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
     let text = bundle
-        .style_text("style.ogt", &bundle.read("style.ogt").unwrap())
+        .style_text("example", &bundle.read("example").unwrap())
         .unwrap();
-    assert_eq!(
-        text,
-        style.replace("\"atlas.png\"", "\"style.ogt#atlas.png\""),
-        "the cook rewrites the atlas, not part tones or rules"
-    );
+    let pack = og_ui::style_pack::StylePack::parse("example", serde_json::from_str(&text).unwrap())
+        .unwrap();
+    assert_eq!(pack.assets, ["example/icon.svg"]);
     let atlas = bundle
-        .load_texture("style.ogt#atlas.png")
+        .load_texture("example/icon.svg")
         .unwrap()
         .to_texture_data()
         .unwrap();
-    let pixel = |x: usize, y: usize| &atlas.rgba[(y * 64 + x) * 4..][..3];
-    let part = pixel(4, 4);
-    let ornament = pixel(28, 4);
+    assert_eq!((atlas.width, atlas.height), (32, 16));
+    let pixel = |x: usize, y: usize| &atlas.rgba[(y * 32 + x) * 4..][..4];
+    let painted = pixel(4, 4);
     assert!(
-        part[0] > 230 && part[1] > 150 && part[2] < 25,
-        "part moved: {part:?}"
+        painted[0] > 230 && painted[1] < 25 && (115..=140).contains(&painted[3]),
+        "straight alpha: {painted:?}"
     );
-    assert!(
-        ornament[2] > 230 && ornament[0] < 90,
-        "ornament not blue: {ornament:?}"
-    );
+    assert!(pixel(28, 4)[3] < 10, "outside the SVG shape is transparent");
 }

@@ -1,14 +1,7 @@
-//! The engine's built-in UI styles: every file of `templates/styles/<name>/`
-//! (its `style.ogt`, atlases, icons, fonts and their import settings), read
-//! from disk, not compiled into `og` (the coordinator, 2026-11-02: a painted
-//! pack's atlases at three densities are megabytes each, and every sandbox
-//! installs `og`). A published engine carries them as files in
-//! `@origingame/engine`'s `styles/` (packages/engine/scripts/pack.sh); a
-//! checkout reads `templates/styles/` itself. A look names one by its slug
-//! (`ui "pixel"`); a game that names one has that pack, and no other, cooked
-//! into its bundle under `@styles/<name>/`, where `og.load.style` finds it
-//! too (`@styles/pixel/style.ogt`). A game's own
-//! `assets/styles/<slug>/style.ogt` wins over the built-in of that slug.
+//! Built-in CSS packs and shared assets under `templates/styles/`, read
+//! from disk rather than compiled into `og`. Published engines carry them
+//! in `styles/`. A look names a pack directory by slug; the game's own
+//! `assets/styles/<slug>/` wins over `@styles/<slug>/`.
 //!
 //! The directory is the first of: `OG_STYLES_DIR`; `styles/` of the engine
 //! package `OG_ENGINE_PACKAGE` names (bin/og.mjs sets it); an installed
@@ -137,7 +130,14 @@ fn find_dir() -> Option<PathBuf> {
         std::fs::read_dir(&p)
             .ok()?
             .flatten()
-            .any(|e| e.path().join("style.ogt").is_file() || e.file_name() == "shared")
+            .any(|e| {
+                e.file_name() == "shared"
+                    || std::fs::read_dir(e.path())
+                        .into_iter()
+                        .flatten()
+                        .flatten()
+                        .any(|f| f.path().extension().is_some_and(|x| x == "css"))
+            })
             .then_some(p)
     };
     // A checkout's packages/engine has the checkout's packs two levels up.

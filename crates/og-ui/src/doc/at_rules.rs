@@ -439,7 +439,7 @@ impl Sheet {
 
 /// A path written beside the document, from the document's own directory.
 pub fn resolve(base: &str, path: &str) -> String {
-    if path.contains(':') || path.starts_with('/') {
+    if path.contains(':') || path.starts_with('/') || path.starts_with('#') {
         return path.trim_start_matches('/').to_string();
     }
     let mut parts: Vec<&str> = base
@@ -455,6 +455,92 @@ pub fn resolve(base: &str, path: &str) -> String {
         }
     }
     parts.join("/")
+}
+
+/// Rewrite URL tokens, including those nested in image-set(), without
+/// interpreting quoted strings or comments as CSS functions.
+pub fn rebase_urls(base: &str, css: &str) -> String {
+    map_urls(css, &mut |url| {
+        if url.starts_with('#') || url.contains(':') || url.parse::<u64>().is_ok() {
+            url.to_owned()
+        } else {
+            format!("/{}", resolve(base, url))
+        }
+    })
+}
+
+/// Asset URLs in a declaration or stylesheet, excluding local fragments
+/// and embedded data. The caller resolves them against their source file.
+pub fn urls(css: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    map_urls(css, &mut |url| {
+        if !url.starts_with('#')
+            && !url.contains(':')
+            && url.parse::<u64>().is_err()
+            && !out.iter().any(|s| s == url)
+        {
+            out.push(url.to_owned());
+        }
+        url.to_owned()
+    });
+    out
+}
+
+fn map_urls(css: &str, map: &mut impl FnMut(&str) -> String) -> String {
+    use cssparser::{ToCss, Token};
+    let mut p = cssparser::Parser::new(css);
+    let mut out = String::new();
+    let mut copied = p.position();
+    loop {
+        let start = p.position();
+        let Ok(token) = p.next_including_whitespace_and_comments().cloned() else {
+            break;
+        };
+        let replacement = match token {
+            Token::UnquotedUrl(url) => Some(format!(
+                "url({})",
+                Token::QuotedString(map(&url).into()).to_css_string()
+            )),
+            Token::Function(ref name) if name.eq_ignore_ascii_case("url") => {
+                let url = p.parse_nested_block(|p| {
+                    Ok::<_, cssparser::ParseError<()>>(p.expect_string()?.to_string())
+                });
+                url.ok().map(|url| {
+                    format!(
+                        "url({})",
+                        Token::QuotedString(map(&url).into()).to_css_string()
+                    )
+                })
+            }
+            Token::Function(_)
+            | Token::ParenthesisBlock
+            | Token::SquareBracketBlock
+            | Token::CurlyBracketBlock => {
+                let opening = p.slice(start..p.position()).to_owned();
+                let close = match token {
+                    Token::SquareBracketBlock => ']',
+                    Token::CurlyBracketBlock => '}',
+                    _ => ')',
+                };
+                let inner = p
+                    .parse_nested_block(|p| {
+                        let start = p.position();
+                        while p.next_including_whitespace_and_comments().is_ok() {}
+                        Ok::<_, cssparser::ParseError<()>>(map_urls(p.slice_from(start), map))
+                    })
+                    .ok();
+                inner.map(|inner| format!("{opening}{inner}{close}"))
+            }
+            _ => None,
+        };
+        if let Some(replacement) = replacement {
+            out.push_str(p.slice(copied..start));
+            out.push_str(&replacement);
+            copied = p.position();
+        }
+    }
+    out.push_str(p.slice_from(copied));
+    out
 }
 
 /// Whether `value` matches a registered syntax (`<length> | auto`,

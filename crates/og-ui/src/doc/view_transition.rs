@@ -471,7 +471,7 @@ fn cover_image(value: &str) -> Result<String, String> {
                 "::view-transition background-image: '{value}' is url(\"<texture asset>\") or none"
             )
         })?;
-    Ok(path.to_string())
+    Ok(path.trim_start_matches('/').to_string())
 }
 
 impl ViewTransition {

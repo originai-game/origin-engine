@@ -620,16 +620,15 @@ fn other_stats(bundle: &Bundle, id: &str, ty: &str) -> Result<Option<(String, Va
             )
         }
         "og.UiStyle" => {
-            let s = og_ui::parse_style(&bundle.style_text(id, &bytes()?).map_err(e)?)?;
+            let text = bundle.style_text(id, &bytes()?).map_err(e)?;
+            let files = serde_json::from_str(&text).map_err(|e| format!("{id}: {e}"))?;
+            let s = og_ui::style_pack::StylePack::parse(id, files)?;
             (
                 "style",
                 json!({
                     "name": s.name,
-                    "fonts": s.fonts.iter().flatten().count(),
-                    "sounds": s.sounds.iter().flatten().count(),
-                    "icons": s.icons.as_ref().map_or(0, |i| i.3.len()),
-                    "atlas": s.atlas.is_some(),
-                    "references": s.references().len(),
+                    "fonts": s.sheet.font_faces.len(),
+                    "references": s.assets.len(),
                 }),
             )
         }

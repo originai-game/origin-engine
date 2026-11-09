@@ -161,6 +161,7 @@ pub const STYLE: &[(&str, &str)] = &[
     ("textShadow", "text-shadow"),
     ("clipPath", "clip-path"),
     ("material", "-og-material"),
+    ("sound", "-og-sound"),
     ("scrollSnapType", "scroll-snap-type"),
     ("scrollSnapAlign", "scroll-snap-align"),
     ("overscrollBehaviorX", "overscroll-behavior-x"),
@@ -424,7 +425,7 @@ fn conv(prop: &str) -> Conv {
         "outlineWidth" | "outlineOffset" => Conv::Len,
         "outlineColor" => Conv::Paint,
         "outlineStyle" | "overflowX" | "overflowY" | "scrollbarWidth" => Conv::Kebab,
-        "boxShadow" | "uv" => Conv::Raw,
+        "boxShadow" | "uv" | "sound" => Conv::Raw,
         p if super::paint_css::C4_PROPS.contains(&p) || p == "ellipsisText" => Conv::Raw,
         "insetTop" | "insetRight" | "insetBottom" | "insetLeft" | "anchorName"
         | "positionAnchor" | "positionArea" | "positionTry" | "positionTryOrder"
@@ -518,6 +519,7 @@ pub fn value_form(prop: &str, words: &[&str]) -> Option<String> {
         Conv::Raw if prop == "boxShadow" => {
             "[inset] <x> <y> [<blur> [<spread>]] [<colour>], … | none".into()
         }
+        Conv::Raw if prop == "sound" => crate::sound_css::GRAMMAR.into(),
         Conv::Bool(t, f) => format!("{t} | {f}"),
         Conv::Kebab => words
             .iter()
@@ -1967,6 +1969,13 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
             .into_iter()
             .map(|(prop, v)| e(prop, vec![Value::String(v)]))
             .collect()),
+        "-og-sound" => {
+            crate::sound_css::parse(value)?;
+            Ok(vec![e(
+                "sound",
+                vec![Value::String(value.trim().to_owned())],
+            )])
+        }
         "backdrop-filter" | "filter" | "mix-blend-mode" | "isolation" | "text-shadow"
         | "clip-path" | "-og-material" => {
             use super::paint_css as p;
@@ -2866,17 +2875,6 @@ impl Frame {
     }
 }
 
-/// A declaration line: `name: value[; name: value]*`, without its comment.
-pub(crate) fn is_decl(t: &str) -> bool {
-    let name: String = t
-        .chars()
-        .take_while(|c| c.is_ascii_alphanumeric() || *c == '-')
-        .collect();
-    !name.is_empty()
-        && name.starts_with(|c: char| c.is_ascii_lowercase() || c == '-')
-        && t[name.len()..].trim_start().starts_with(':')
-}
-
 /// A line's declarations, split at `;` outside strings and parentheses, and
 /// cut at a `#` comment (a `#` that starts no colour).
 pub(crate) fn split_decls(t: &str) -> Result<Vec<(String, String)>, String> {
@@ -2929,40 +2927,6 @@ pub(crate) fn split_decls(t: &str) -> Result<Vec<(String, String)>, String> {
         out.push((name.trim().to_string(), value.to_string()));
     }
     Ok(out)
-}
-
-/// A rewritten line with the comment of the line `old` it replaces, at
-/// the comment's column when the new code leaves room for it.
-pub(crate) fn with_comment(code: String, comment: &str, old: &str) -> String {
-    let col = old.chars().count() - comment.chars().count();
-    let n = code.chars().count();
-    if code.trim().is_empty() {
-        format!("{code}{comment}")
-    } else if n < col {
-        format!("{code}{}{comment}", " ".repeat(col - n))
-    } else {
-        format!("{code} {comment}")
-    }
-}
-
-/// The code of a `.ogt` line and its `#` comment (from a `#` that starts a
-/// token outside a string), each trimmed.
-pub(crate) fn comment_of(line: &str) -> (&str, Option<&str>) {
-    let b = line.as_bytes();
-    let mut in_str = false;
-    let mut i = 0;
-    while i < b.len() {
-        match b[i] {
-            b'\\' if in_str => i += 1,
-            b'"' => in_str = !in_str,
-            b'#' if !in_str && (i == 0 || b[i - 1] == b' ' || b[i - 1] == b'\t') => {
-                return (line[..i].trim_end(), Some(&line[i..]));
-            }
-            _ => {}
-        }
-        i += 1;
-    }
-    (line.trim_end(), None)
 }
 
 #[cfg(test)]

@@ -148,6 +148,21 @@ fn read_document(eng: &Engine, id: &str) -> Result<UiDocument, String> {
         )
     };
     let doc = UiDocument::parse_with_imports(id, &text, imports).map_err(|e| e.join("\n"))?;
+    let doc = match eng.state.borrow().ui_desc["style"]
+        .as_f64()
+        .and_then(super::assets::index_of)
+    {
+        Some(index) => eng
+            .assets
+            .borrow()
+            .styles
+            .get(index)
+            .ok_or("the configured style is not alive")?
+            .pack
+            .apply_document(&doc)
+            .map_err(|e| e.join("\n"))?,
+        None => doc,
+    };
     let tables = doc
         .strings
         .iter()
@@ -326,8 +341,21 @@ pub(crate) fn load_document(eng: &Engine, path: &str) -> Result<String, String> 
 /// `local()` source names no font the engine has), limited to its
 /// `unicode-range`.
 fn family_faces(eng: &Engine, doc: &UiDocument) -> Result<Vec<og_ui::FamilyFace>, String> {
+    // Pack faces have a pack owner so replacing a pack also removes its fonts.
+    let authored =
+        UiDocument::parse_with_imports(&doc.source, &doc.text, doc.sheet.imports.clone())
+            .map_err(|e| e.join("\n"))?;
+    sheet_faces(eng, &authored.sheet, &doc.source, &doc.name)
+}
+
+pub(super) fn sheet_faces(
+    eng: &Engine,
+    sheet: &og_ui::doc::at_rules::Sheet,
+    source: &str,
+    owner: &str,
+) -> Result<Vec<og_ui::FamilyFace>, String> {
     let mut out = Vec::new();
-    for face in &doc.sheet.font_faces {
+    for face in &sheet.font_faces {
         let Some(src) = face
             .src
             .iter()
@@ -336,13 +364,13 @@ fn family_faces(eng: &Engine, doc: &UiDocument) -> Result<Vec<og_ui::FamilyFace>
             continue;
         };
         let i = crate::assets::load_font(eng, src)
-            .map_err(|e| format!("{}: @font-face {}: {src}: {e}", doc.source, face.family))?;
+            .map_err(|e| format!("{source}: @font-face {}: {src}: {e}", face.family))?;
         let mut font = super::ui_config::ui_font(eng, crate::assets::handle(i) as f64)?;
         font.metrics = font.metrics.with_range(&face.unicode_range);
         let weight = |w: f32| w.round().clamp(1.0, 1000.0) as u16;
         out.push(og_ui::FamilyFace {
             family: face.family.clone(),
-            document: doc.name.clone(),
+            document: owner.to_owned(),
             weight: (weight(face.weight.0), weight(face.weight.1)),
             style: match face.style.as_str() {
                 "italic" => og_ui::FaceStyle::Italic,
@@ -438,22 +466,14 @@ pub(crate) fn refresh(eng: &Engine) -> Vec<String> {
     let mut changed = false;
     for (i, id) in styles {
         let now = hash_of(eng, &id);
-        let before = with(eng.id, |d| d.styles.insert(i, now));
+        let before = with(eng.id, |d| d.styles.get(&i).copied());
         if before.is_none_or(|b| b == now) {
             continue;
         }
-        let text = {
-            let a = eng.assets.borrow();
-            a.blob(&id).and_then(|(bytes, bundle)| {
-                bundle
-                    .style_text(&id, bytes.bytes())
-                    .map_err(|e| e.to_string())
-            })
-        };
-        match text.and_then(|t| og_ui::parse_style(&t).map_err(|e| format!("{id}: {e}"))) {
-            Ok(mut file) => {
-                file.resolve(&id, |r| eng.assets.borrow().bundle_for(r).is_ok());
-                eng.assets.borrow_mut().styles[i].file = file;
+        match super::ui_config::read_style(eng, &id) {
+            Ok(style) => {
+                eng.assets.borrow_mut().styles[i] = style;
+                with(eng.id, |d| d.styles.insert(i, now));
                 changed = true;
             }
             Err(e) => failed.push(format!("og dev: {e} (the old style stays)")),

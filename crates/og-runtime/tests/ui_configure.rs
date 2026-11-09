@@ -4,14 +4,8 @@
 //! FINDINGS #11: configuring sounds after a look's style dropped the style,
 //! and with no font every glyph vanished silently).
 //!
-//! A style names its assets relative to its own file first (FINDINGS #6: a
-//! copied pack had to be rewritten): `copied/style.ogt` names `Body.ttf`
-//! beside it, `../mini/Body.ttf` up a directory and `styles/mini/Body.ttf`
-//! from assets/, and both the cook and og.load.style find all three.
-//!
-//! A project with two styles (`styles/mini/style.ogt`, a light scheme whose body
-//! font is named from assets/; `styles/copied/style.ogt`, relative ids) is
-//! cooked once.
+//! CSS packs resolve font URLs beside their individual CSS files, including
+//! nested imports. Absolute URLs start at assets/. Packs load by directory.
 //!
 //! Ways this could fail: a later call that sets only `reducedMotion` or
 //! `contrast` drops the style (the theme's style name goes empty) or resets
@@ -51,24 +45,11 @@ fn project() -> &'static Path {
             "styles/mini/Body.ttf.ogt",
             b"type import\nversion 1\n---\nfont {\n  charset latin\n  em_px 32\n  px_range 4\n}\n",
         );
-        // A style sets every role and radius: the default style's, written out.
-        let values = |scheme: og_ui::Scheme| {
-            let t = og_ui::Theme::new(scheme);
-            let mut out = String::from("palette {\n");
-            for n in og_ui::Palette::NAMES {
-                let c = t.palette.get(n).unwrap();
-                let [r, g, b] = c.rgb;
-                out += &format!("  {n} \"#{r:02x}{g:02x}{b:02x}{:02x}\"\n", (c.alpha * 255.0).round() as u8);
-            }
-            out + "}\nradius {\n  small 1\n  control 2\n  bar 1\n  panel 3\n}\n"
-        };
         write(
-            "styles/mini/style.ogt",
-            format!(
-                "type style\nversion 1\n---\nname \"mini\"\nscheme light\n{}fonts {{\n  body \"styles/mini/Body.ttf\"\n}}\n",
-                values(og_ui::Scheme::Light)
-            )
-            .as_bytes(),
+            "styles/mini/main.css",
+            br#"@font-face { font-family: Mini; src: url(Body.ttf); }
+                button::part(base) { opacity: 0.37; }
+                button::part(text) { font-family: Mini; }"#,
         );
         let font = repo().join("templates/styles/shared/Cinzel-Bold.ttf");
         write("styles/copied/Body.ttf", &std::fs::read(font).unwrap());
@@ -77,12 +58,15 @@ fn project() -> &'static Path {
             b"type import\nversion 1\n---\nfont {\n  charset latin\n  em_px 32\n  px_range 4\n}\n",
         );
         write(
-            "styles/copied/style.ogt",
-            format!(
-                "type style\nversion 1\n---\nname \"copied\"\n{}fonts {{\n  body \"Body.ttf\"\n  display \"../mini/Body.ttf\"\n  numeric \"styles/mini/Body.ttf\"\n}}\n",
-                values(og_ui::Scheme::Dark)
-            )
-            .as_bytes(),
+            "styles/copied/main.css",
+            br#"@import "nested/fonts.css";
+                button::part(text) { font-family: Copied, Mini; }"#,
+        );
+        write(
+            "styles/copied/nested/fonts.css",
+            br#"@font-face { font-family: Copied; src: url(../Body.ttf); }
+                @font-face { font-family: Mini; src: url(../../mini/Body.ttf); }
+                @font-face { font-family: Numeric; src: url(/styles/mini/Body.ttf); }"#,
         );
         let report = og_cook::cook_project(&root, &og_cook::CookOptions::default()).unwrap();
         assert!(report.ok(), "{:?}", report.errors());
@@ -141,11 +125,6 @@ fn warnings(engine: u32) -> Vec<String> {
 #[test]
 fn configure_keeps_the_fields_a_call_leaves_out() {
     let e = engine();
-    og_runtime::shared_ui(e)
-        .unwrap()
-        .lock()
-        .set_part_css("button::part(base) { opacity: 0.37; }")
-        .unwrap();
     let button = og_ui::dress::PartRef::new("Button", "base", og_ui::tokens::ElementClass::Button);
     let opacity = || {
         og_runtime::shared_ui(e)
@@ -155,10 +134,12 @@ fn configure_keeps_the_fields_a_call_leaves_out() {
             .unwrap()
             .opacity
     };
-    assert_eq!(opacity(), 0.37);
-    let style = value(og_load_style(e, "styles/mini/style.ogt".into()));
-    configure(e, json!({ "style": style, "contrast": "high" }));
-    assert_eq!(opacity(), 0.37, "style metadata preserves installed CSS");
+    let style = value(og_load_style(e, "styles/mini".into()));
+    configure(
+        e,
+        json!({ "style": style, "contrast": "high", "scheme": "light" }),
+    );
+    assert_eq!(opacity(), 0.37, "the directory CSS applies");
     let t = theme(e);
     assert_eq!(
         (t["style"].as_str(), t["contrast"].as_str()),
@@ -171,7 +152,12 @@ fn configure_keeps_the_fields_a_call_leaves_out() {
     assert_eq!(t["style"].as_str(), Some("mini"), "the style stays: {t}");
     assert_eq!(t["contrast"].as_str(), Some("high"), "the contrast stays");
     assert_eq!(t["reducedMotion"], json!(true));
-    assert_eq!(t["scheme"].as_str(), Some("light"), "the style's scheme");
+    assert_eq!(
+        t["scheme"].as_str(),
+        Some("light"),
+        "configured scheme stays"
+    );
+    assert_eq!(opacity(), 0.37, "pack CSS survives partial configure");
     // A call with nothing keeps everything.
     value(og_ui_configure(e, None));
     assert_eq!(theme(e)["style"].as_str(), Some("mini"));
@@ -190,7 +176,7 @@ fn configure_keeps_the_fields_a_call_leaves_out() {
     // Without the style the UI has no font at all: a warning names the fix.
     configure(e, json!({ "style": null }));
     assert_eq!(theme(e)["style"].as_str(), Some(""));
-    assert_eq!(opacity(), 0.37, "clearing metadata preserves installed CSS");
+    assert_eq!(opacity(), 1.0, "clearing the pack removes its CSS");
     let w = warnings(e);
     assert!(
         w.iter()
@@ -205,9 +191,13 @@ fn configure_keeps_the_fields_a_call_leaves_out() {
 #[test]
 fn a_style_names_its_assets_relative_to_itself_or_from_assets() {
     let e = engine();
-    let style = value(og_load_style(e, "styles/copied/style.ogt".into()));
+    let style = value(og_load_style(e, "styles/copied".into()));
     configure(e, json!({ "style": style }));
     assert_eq!(theme(e)["style"].as_str(), Some("copied"));
+    let ui = og_runtime::shared_ui(e).unwrap();
+    let ui = ui.lock();
+    assert_eq!(ui.fonts().families.len(), 3);
+    assert!(ui.fonts().families.iter().all(|f| f.font.handle.is_some()));
     assert!(
         warnings(e).iter().all(|w| !w.contains("no font")),
         "its body font, beside it, loaded"

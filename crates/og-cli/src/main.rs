@@ -44,7 +44,6 @@ mod session;
 mod sfx;
 mod sprite;
 mod style;
-mod style_art;
 mod style_check;
 mod test;
 mod trace;

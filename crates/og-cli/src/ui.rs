@@ -677,7 +677,9 @@ fn migrate(args: &[&str]) -> ExitCode {
             continue;
         }
         let source = f.display().to_string();
-        let migrated = og_ui::migrate_style(&text).map_err(|e| vec![format!("{source}: {e}")]);
+        let migrated: Result<String, Vec<String>> = Err(vec![format!(
+            "{source}: style.ogt has been removed; use a directory of CSS files and assets. CSS migration tooling is pending phase C."
+        )]);
         match migrated {
             Ok(_) if check => {
                 println!("og ui migrate: {source} needs migrating");

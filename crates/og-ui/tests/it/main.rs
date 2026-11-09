@@ -80,8 +80,8 @@ mod screen_layers;
 mod slots;
 #[path = "../style.rs"]
 mod style;
-#[path = "../style_contract.rs"]
-mod style_contract;
+#[path = "../style_pack.rs"]
+mod style_pack;
 #[path = "../support/mod.rs"]
 mod support;
 #[path = "../svg_defs.rs"]

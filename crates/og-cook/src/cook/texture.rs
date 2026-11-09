@@ -25,6 +25,32 @@ pub struct Image {
 /// CMYK) and TGA, the one without a signature (tried when nothing else
 /// matches).
 pub fn decode(bytes: &[u8]) -> Result<Image, String> {
+    if std::str::from_utf8(bytes).is_ok_and(|text| text.contains("<svg")) {
+        let tree = resvg::usvg::Tree::from_data(bytes, &resvg::usvg::Options::default())
+            .map_err(|e| format!("SVG: {e}"))?;
+        let size = tree.size().to_int_size();
+        let mut pixmap = resvg::tiny_skia::Pixmap::new(size.width(), size.height())
+            .ok_or("SVG: image dimensions exceed the rasterizer's limits")?;
+        resvg::render(
+            &tree,
+            resvg::tiny_skia::Transform::identity(),
+            &mut pixmap.as_mut(),
+        );
+        // tiny-skia is premultiplied; texture encoding takes straight RGBA.
+        let rgba = pixmap
+            .pixels()
+            .iter()
+            .flat_map(|pixel| {
+                let p = pixel.demultiply();
+                [p.red(), p.green(), p.blue(), p.alpha()]
+            })
+            .collect();
+        return Ok(Image {
+            width: size.width(),
+            height: size.height(),
+            rgba,
+        });
+    }
     if bytes.starts_with(&ktx2::IDENTIFIER) {
         return super::ktx2_source::decode_image(bytes);
     }

@@ -257,7 +257,7 @@ fn imported_stylesheets_ride_in_the_document_blob() {
     };
     let imports = cooked(&root);
     let paths: Vec<_> = imports.iter().map(|(p, _)| p.as_str()).collect();
-    assert_eq!(paths, ["theme/base.css", "tokens.css"]);
+    assert_eq!(paths, ["ui/theme/base.css", "ui/theme/tokens.css"]);
     std::fs::write(
         root.join("assets/ui/theme/tokens.css"),
         "#Shop { --tone: 2; }",

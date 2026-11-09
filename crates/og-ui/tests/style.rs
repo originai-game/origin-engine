@@ -8,74 +8,6 @@ use og_render::{ColorSpace, Mips, RenderScene, TextureData, TextureHandle};
 use og_ui::*;
 use support::*;
 
-const STYLE: &str = r##"type style
-version 1
----
-name "test"
-scheme dark
-atlas "styles/test/atlas.png" 128 64
-palette {
-  backdrop "#000000"
-  well "#111113"
-  panel "#203040"
-  panelHover "#3a3a3c"
-  panelRaised "#2c2c2e"
-  line "#38383a"
-  lineStrong "#545458"
-  ink "#f0f0f0"
-  inkMuted "#aeaeb2"
-  inkFaint "#98989d"
-  inkInverse "#18181a"
-  control "#7878803d"
-  controlStrong "#7878805c"
-  primary "#ffb224"
-  primaryHover "#ffc04d"
-  primaryActive "#ffd38a"
-  onPrimary "#1d1300"
-  primarySoft "#ffb22429"
-  highlight "#ffb224"
-  focus "#ffb224"
-  knob "#636366"
-  hud "#1c1c1ec7"
-  scrim "#0000006b"
-  shadow "#000000"
-  sheen "#ffffff52"
-  success "#3dd68c"
-  warn "#ff8a3d"
-  danger "#ff8a82"
-  info "#5cc8ff"
-  health "#3dd68c"
-  mana "#0a84ff"
-  xp "#bf5af2"
-  gold "#ffb224"
-}
-radius {
-  small 4
-  control 4
-  bar 4
-  panel 4
-}
-slice panel 0 0 32 32 8
-slice card 0 0 32 32 8
-slice button 32 0 32 32 6 tint
-slice fill 64 0 16 16 4
-slice track 80 0 16 16 4
-soft 96 0 32 32 12
-corner 0 32 16 16 16 16 primary 2
-corners panel card
-shadow card 0 6 10 0 "#00000080"
-glow button 4 primary 0.5
-press 1.04 0.92 2
-hover -2 1.02
-motion {
-  enter pop
-  stagger 40
-  progress 300
-  shake 6
-  pop 0.12
-}
-"##;
-
 fn atlas() -> TextureHandle {
     RenderScene::new().add_texture(TextureData {
         width: 2,
@@ -161,11 +93,19 @@ fn the_hover_lift_moves_on_springs_and_replays() {
     // eases on a curve that ignores the style's spring (no overshoot at a
     // low damping), never settles exactly, settles somewhere else, or
     // differs after a restore.
-    let springy = STYLE.replace("  pop 0.12\n", "  pop 0.12\n  hoverSpring 0.3 300\n");
-    for (text, bounces) in [(STYLE.to_string(), false), (springy, true)] {
-        let file = parse_style(&text).expect("the style parses");
+    for bounces in [false, true] {
         let mut ui = ui_with_font(test_font_metrics());
-        ui.set_theme(file.theme(Some(atlas()), [0; 6]));
+        let mut theme = Theme::default();
+        theme.art.atlas = Some(atlas());
+        theme.art.hover = Some(style_file::Hover {
+            dy: -2.0,
+            scale: 1.02,
+        });
+        theme.art.motion.hover_spring = bounces.then_some(Spring {
+            damping: 0.3,
+            response_ms: 300.0,
+        });
+        ui.set_theme(theme);
         for _ in 0..30 {
             step(&mut ui, InputFrame::default(), false);
         }
@@ -201,37 +141,4 @@ fn the_hover_lift_moves_on_springs_and_replays() {
         let b = tops(&mut ui, &over, 12);
         assert_eq!(a, b, "the spring is UI state");
     }
-}
-
-/// The test style with what `og style upgrade` must carry over besides:
-/// a button state's own frame and shadow (version 1 shares a state's
-/// shadow with its class), a tile over the panel, a measured tone, a
-/// sound and a press spring.
-fn v1_style() -> String {
-    STYLE.replace(
-        "soft 96 0 32 32 12\n",
-        "soft 96 0 32 32 12\nslice buttonHover 32 0 32 32 6 tint\ntone buttonHover 0.5 1\nshadow buttonHover 0 2 0 0 \"#00000080\"\ntile 0 32 16 16 16 16 0.3 2 panel\nsound press \"audio/press.wav\"\n",
-    )
-    .replace("  pop 0.12\n", "  pop 0.12\n  pressSpring 0.55 120\n")
-}
-
-#[test]
-fn metadata_tokens_support_aliases_and_reject_cycles() {
-    let base = upgrade_style(&v1_style()).unwrap();
-    let theme = parse_style(&base).unwrap().theme;
-    let start = base.find("--radius-sm:").unwrap();
-    let end = start + base[start..].find('\n').unwrap();
-    let mut cycle = base.clone();
-    cycle.replace_range(start..end, "--radius-sm: var(--radius-sm)");
-    assert!(
-        parse_style(&cycle)
-            .unwrap_err()
-            .contains("cyclic token --radius-sm")
-    );
-    let mut alias = base;
-    alias.replace_range(start..end, "--radius-sm: var(--space-lg)");
-    assert_eq!(
-        parse_style(&alias).unwrap().theme.tokens.radius[tokens::RadiusStep::Sm.index()],
-        theme.tokens.space[tokens::SpaceStep::Lg.index()]
-    );
 }

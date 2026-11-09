@@ -71,6 +71,5 @@ mod cli {
     mod maintenance;
     mod project;
     mod sprite;
-    mod style;
     mod ui;
 }

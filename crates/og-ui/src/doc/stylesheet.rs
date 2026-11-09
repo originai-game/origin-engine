@@ -88,20 +88,49 @@ fn parsed_rules(mut rules: Vec<Rule>, layers: &[String]) -> Result<Vec<(Selector
 /// A global part sheet, using the same reader, shorthand expansion and
 /// cascade order as a document's CSS.
 pub(crate) fn part_rules(css: &str) -> Result<(Vec<StyleRule>, super::at_rules::Sheet), String> {
-    let error = |(at, message)| format!("<part-css>:{}: {message}", syntax::location(css, at).0);
-    let mut sheet = super::at_rules::Sheet::default();
-    let rules = read("", &mut sheet, &[(css.into(), 0)]).map_err(error)?;
+    part_rules_from("<part-css>", css, Vec::new(), false)
+}
+
+pub(crate) fn part_rules_from(
+    source: &str,
+    css: &str,
+    imports: Vec<(String, String)>,
+    document_rules: bool,
+) -> Result<(Vec<StyleRule>, super::at_rules::Sheet), String> {
+    let error = |(at, message)| format!("{source}:{}: {message}", syntax::location(css, at).0);
+    let mut sheet = super::at_rules::Sheet {
+        imports,
+        ..Default::default()
+    };
+    let rules = read(source, &mut sheet, &[(css.into(), 0)], None).map_err(error)?;
     let parsed = parsed_rules(rules, &sheet.layers).map_err(error)?;
     let mut out = Vec::new();
     for (selector, rule) in parsed {
         if rule.ua {
             continue;
         }
-        part_selector(&selector).map_err(|e| error((rule.at, e)))?;
+        if !document_rules {
+            part_selector(&selector).map_err(|e| error((rule.at, e)))?;
+        }
         let (declarations, _) = lower(&rule.body, &|name| {
             sheet.keyframe_rules.iter().any(|(n, ..)| n == name)
         })
         .map_err(|e| error((rule.at, e)))?;
+        // Ordinary selectors are applied when a document joins this pack.
+        // Immediate-mode core hosts join the cascade in parts-as-nodes.
+        let has_part = selector.compounds.iter().any(|c| {
+            c.0.iter()
+                .any(|s| matches!(s, super::selectors::Simple::Part(_)))
+        });
+        let root = selector.compounds.len() == 1
+            && matches!(
+                selector.compounds[0].0.first(),
+                Some(super::selectors::Simple::Root)
+            );
+        if !has_part && !root {
+            continue;
+        }
+        part_selector(&selector).map_err(|e| error((rule.at, e)))?;
         out.push(StyleRule {
             layer: rank(&sheet.layers, &rule.layer),
             starting: rule.starting,
@@ -164,15 +193,36 @@ pub(super) fn wide_keyword(value: &str) -> Option<&'static str> {
         .find(|k| v.eq_ignore_ascii_case(k))
 }
 
+/// Order merged layer names without allowing a late sublayer to escape its parent.
+pub(crate) fn order_layers(names: &[String]) -> Vec<String> {
+    fn visit(prefix: &str, names: &[String], out: &mut Vec<String>) {
+        for name in names {
+            if name
+                .strip_prefix(prefix)
+                .is_some_and(|rest| !rest.is_empty() && !rest.contains('.'))
+            {
+                visit(&format!("{name}."), names, out);
+                out.push(name.clone());
+            }
+        }
+    }
+    let mut out = Vec::new();
+    visit("", names, &mut out);
+    out
+}
+
 fn read(
     source: &str,
     sheet: &mut super::at_rules::Sheet,
     styles: &[(String, usize)],
+    global: Option<&str>,
 ) -> Result<Vec<Rule>, Error> {
     let mut rules = Vec::new();
     let mut reader = Reader {
         sheet,
-        layers: Vec::new(),
+        layers: ["og-default", "og-kit", "og-pack", "og-game"]
+            .map(str::to_owned)
+            .to_vec(),
         anonymous: 0,
         base: source.to_owned(),
         imports_open: true,
@@ -185,25 +235,27 @@ fn read(
         rule.at = 0;
         rule.body_at = 0;
     }
-    for (text, at) in styles {
+    if let Some(css) = global {
         reader.imports_open = true;
-        reader.rules(text, *at, &Context::default(), &mut rules)?;
-    }
-    // Precedence, lowest first: a layer's sublayers before its own rules,
-    // siblings in the order first seen.
-    fn post_order(prefix: &str, names: &[String], out: &mut Vec<String>) {
-        for name in names {
-            let child = match name.strip_prefix(prefix) {
-                Some(rest) if !rest.is_empty() && !rest.contains('.') => name,
-                _ => continue,
-            };
-            post_order(&format!("{child}."), names, out);
-            out.push(child.clone());
+        let start = rules.len();
+        reader.rules(css, 0, &Context::default(), &mut rules)?;
+        for rule in &mut rules[start..] {
+            rule.at = 0;
+            rule.body_at = 0;
         }
     }
-    let mut layers = Vec::new();
-    post_order("", &reader.layers, &mut layers);
-    sheet.layers = layers;
+    for (text, at) in styles {
+        reader.imports_open = true;
+        let context = Context {
+            layer: source
+                .trim_start_matches('/')
+                .starts_with("ui-kits/")
+                .then(|| "og-kit".into()),
+            ..Context::default()
+        };
+        reader.rules(text, *at, &context, &mut rules)?;
+    }
+    sheet.layers = order_layers(&reader.layers);
     for rule in &rules {
         if let Some(name) = rule
             .selector
@@ -248,8 +300,9 @@ pub(super) fn apply(
     doc: &mut UiDocument,
     elements: &[(usize, String, Vec<Attr>)],
     styles: &[(String, usize)],
+    global: Option<&str>,
 ) -> Result<(), Error> {
-    let mut rules = read(&doc.source, &mut doc.sheet, styles)?;
+    let mut rules = read(&doc.source, &mut doc.sheet, styles, global)?;
     let layers = doc.sheet.layers.clone();
     let transitions: Vec<(&str, &str, usize, bool)> = rules
         .iter()
@@ -697,7 +750,15 @@ impl Reader<'_> {
             let parsed = super::media::Query::parse(media).map_err(|e| (at, e))?;
             inner.query.media = inner.query.media.clone().and(parsed);
         }
-        let Some((_, text)) = self.sheet.imports.iter().find(|(p, _)| *p == path).cloned() else {
+        let resolved = super::at_rules::resolve(&self.base, &path);
+        let Some((_, text)) = self
+            .sheet
+            .imports
+            .iter()
+            .find(|(p, _)| *p == resolved)
+            .or_else(|| self.sheet.imports.iter().find(|(p, _)| *p == path))
+            .cloned()
+        else {
             return Err((
                 at,
                 format!(
@@ -717,8 +778,10 @@ impl Reader<'_> {
         let mut rules = Vec::new();
         let open = self.imports_open;
         self.imports_open = true;
+        let base = std::mem::replace(&mut self.base, resolved);
         self.rules(&text, 0, &inner, &mut rules)
             .map_err(|(_, e)| (at, format!("in @import \"{path}\": {e}")))?;
+        self.base = base;
         self.imports_open = open;
         self.depth -= 1;
         for mut rule in rules {
@@ -813,7 +876,7 @@ impl Reader<'_> {
             "keyframes" | "view-transition" if !nested => {
                 out.push(Rule {
                     selector: prelude.to_string(),
-                    body: block.into(),
+                    body: super::at_rules::rebase_urls(&self.base, block),
                     query: context.query.clone(),
                     at,
                     body_at: block_at,
@@ -882,7 +945,7 @@ impl Reader<'_> {
         for item in items(text, body_at)? {
             match item {
                 Item::Statement(d, _) => {
-                    declarations.push_str(d);
+                    declarations.push_str(&super::at_rules::rebase_urls(&self.base, d));
                     declarations.push(';');
                 }
                 block => nested.push(block),

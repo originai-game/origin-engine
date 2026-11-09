@@ -27,8 +27,7 @@
 
 use crate::layout::FontRole;
 use crate::style::{Breakpoint, Durations, Srgba, Theme, TypeStep};
-use crate::style_file::{P, Shadow, StylePart, parse_color};
-use og_core::ogt::{Block, Entry, Number, Value};
+use crate::style_file::{Shadow, StylePart, parse_color};
 
 macro_rules! names {
     ($(#[doc = $doc:literal])* $ty:ident { $($(#[doc = $d:literal])* $v:ident $n:literal,)* }) => {
@@ -684,7 +683,16 @@ fn round_to(v: f32, k: f32) -> f32 {
 }
 
 mod convert;
-mod parse;
 pub use convert::*;
-pub use parse::colour_token_names;
-pub(crate) use parse::*;
+
+/// Names exposed by the Theme API, not engine-readable CSS custom properties.
+pub fn colour_token_names() -> Vec<String> {
+    Status::ALL
+        .iter()
+        .map(|s| s.name().to_string())
+        .chain(Rarity::ALL.iter().map(|r| r.name().to_string()))
+        .chain((1..=TEAMS).map(|k| format!("team{k}")))
+        .chain(DamageType::ALL.iter().map(|d| d.name().to_string()))
+        .chain((1..=SERIES).map(|k| format!("series{k}")))
+        .collect()
+}

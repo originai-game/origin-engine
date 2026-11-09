@@ -31,7 +31,7 @@ pub(crate) mod scroll_css;
 pub mod selectors;
 mod spans;
 pub(crate) mod stylesheet;
-mod svelte;
+pub(crate) mod svelte;
 mod syntax;
 pub(crate) mod text_css;
 pub mod topology;

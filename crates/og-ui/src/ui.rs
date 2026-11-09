@@ -535,7 +535,8 @@ pub struct Ui {
     /// UI events the style gives a sound or a haptic, not yet taken by the
     /// host ([`Ui::take_feedback`]), each with where it is in a rising
     /// cascade (0–1; NaN: a random pitch in the event's range).
-    pub(crate) feedback: Vec<(crate::tokens::SoundEvent, f32)>,
+    pub(crate) feedback: Vec<(crate::tokens::SoundEvent, f32, crate::tokens::Feedback)>,
+    pub(crate) css_sounds: std::collections::BTreeMap<String, u64>,
     /// The player's haptic strength (0: off, 1: as the style sets it).
     pub(crate) haptics: f32,
     /// The haptic patterns played since the host last took them

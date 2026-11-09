@@ -1,7 +1,11 @@
 use super::*;
 
 /// A UI with the theme and fonts of `previous` (a hot reload keeps them).
-pub(crate) fn new_ui(tick: u32, previous: Option<&SharedUi>) -> Result<SharedUi, String> {
+pub(crate) fn new_ui(
+    tick: u32,
+    seed: u64,
+    previous: Option<&SharedUi>,
+) -> Result<SharedUi, String> {
     let (theme, fonts, icons, style_name) = match previous {
         Some(p) => {
             let ui = p.lock();
@@ -24,6 +28,7 @@ pub(crate) fn new_ui(tick: u32, previous: Option<&SharedUi>) -> Result<SharedUi,
         ticks_per_second: tick,
         fonts,
     });
+    ui.seed_feedback(seed);
     ui.set_icons(icons);
     if let Some(p) = previous {
         ui.set_images(p.lock().images().clone());
@@ -66,8 +71,6 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
     let answer = (|| -> Result<_, String> {
         let eng = engine(world)?;
         let d = merged_ui_desc(&eng.state.borrow().ui_desc, parse(desc.as_deref())?)?;
-        // The style's other faces as loaded: (face, font handle).
-        let mut style_faces: Vec<(og_ui::style_file::StyleFace, f64)> = Vec::new();
         let style = match d["style"].as_f64() {
             Some(h) => {
                 let i = super::assets::index_of(h)
@@ -77,14 +80,11 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
                     .styles
                     .get(i)
                     .ok_or_else(|| format!("style: style {h} is not alive"))?;
-                style_faces = s.faces.clone();
                 Some((
-                    s.file.clone(),
-                    (s.atlas, s.atlas_dense),
-                    s.fonts,
-                    s.icons,
-                    s.sounds,
-                    s.feedback.clone(),
+                    s.pack.clone(),
+                    s.faces.clone(),
+                    s.textures.clone(),
+                    s.sounds.clone(),
                 ))
             }
             None => None,
@@ -93,12 +93,7 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
             Some("light") => Scheme::Light,
             _ => Scheme::Dark,
         };
-        let mut theme = match &style {
-            Some((file, (atlas, dense), _, _, sounds, feedback)) => file
-                .theme_with_feedback(*atlas, *sounds, |id| feedback.get(id).copied().unwrap_or(0))
-                .with_dense_atlases(*dense),
-            None => Theme::new(scheme),
-        };
+        let mut theme = Theme::new(scheme);
         if d["contrast"].as_str() == Some("high") {
             theme = theme.to_high_contrast();
         }
@@ -150,26 +145,10 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
                 Some(h) => ui_font(&eng, h).map(Some),
             }
         };
-        let style_font = |i: usize| -> Result<Option<UiFont>, String> {
-            match style.as_ref().and_then(|s| s.2[i]) {
-                None => Ok(None),
-                Some(h) => ui_font(&eng, h).map(Some),
-            }
-        };
-        let body = match font("font")? {
-            Some(f) => Some(f),
-            None => style_font(0)?,
-        };
         let fonts = Fonts {
-            body: body.unwrap_or_default(),
-            display: match font("displayFont")? {
-                Some(f) => Some(f),
-                None => style_font(1)?,
-            },
-            mono: match font("monoFont")? {
-                Some(f) => Some(f),
-                None => style_font(2)?,
-            },
+            body: font("font")?.unwrap_or_default(),
+            display: font("displayFont")?,
+            mono: font("monoFont")?,
             rounded: font("roundedFont")?,
             fallbacks: match d["fallbackFonts"].as_array() {
                 Some(list) => list
@@ -179,23 +158,11 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
                     .collect::<Result<Vec<_>, _>>()?,
                 None => Vec::new(),
             },
-            fallback: style_font(3)?,
-            cjk: style_font(4)?,
-            cjk_display: style_font(5)?,
-            weights: style.as_ref().map_or([0; 6], |s| s.0.font_weights),
-            faces: style_faces
-                .iter()
-                .map(|(f, h)| {
-                    Ok(og_ui::FontFace {
-                        role: f.role,
-                        cjk: f.cjk,
-                        locale: f.locale,
-                        weight: f.weight,
-                        italic: f.italic,
-                        font: ui_font(&eng, *h)?,
-                    })
-                })
-                .collect::<Result<Vec<_>, String>>()?,
+            fallback: None,
+            cjk: None,
+            cjk_display: None,
+            weights: [0; 6],
+            faces: Vec::new(),
             chain: Vec::new(),
             cjk_locale: og_ui::CjkLocale::default(),
             families: Vec::new(),
@@ -270,22 +237,7 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
                 },
             }))
         };
-        let mut atlas = match atlas_of("icons")? {
-            Some(atlas) => atlas,
-            None => match &style {
-                Some((file, _, _, Some(texture), _, _)) => {
-                    let (_, columns, rows, names) = file.icons.clone().unwrap_or_default();
-                    IconAtlas {
-                        texture: Some(*texture),
-                        columns,
-                        rows,
-                        names,
-                        ..IconAtlas::default()
-                    }
-                }
-                _ => IconAtlas::default(),
-            },
-        };
+        let mut atlas = atlas_of("icons")?.unwrap_or_default();
         atlas.fallback = atlas_of("fallbackIcons")?.map(Box::new);
         // Pictures rich text draws inline by name ([img=…]).
         let mut images = std::collections::BTreeMap::new();
@@ -325,11 +277,15 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
         ui.set_theme(theme);
         // The locale's chain and forms (og.i18n) and the documents' named
         // families (`@font-face`) stay.
-        let (chain, cjk_locale, families) = (
+        let (chain, cjk_locale, mut families) = (
             ui.fonts().chain.clone(),
             ui.fonts().cjk_locale,
             ui.fonts().families.clone(),
         );
+        families.retain(|f| !f.document.starts_with("@pack:"));
+        if let Some((_, faces, _, _)) = &style {
+            families.extend(faces.clone());
+        }
         let fonts = Fonts {
             chain,
             cjk_locale,
@@ -342,19 +298,23 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
             && fonts.rounded.is_none()
             && fonts.fallbacks.is_empty()
             && fonts.fallback.is_none()
-            && fonts.chain.is_empty();
+            && fonts.chain.is_empty()
+            && fonts.families.is_empty();
         ui.set_fonts(fonts);
         ui.set_icons(atlas);
-        // The style's own icon names: its colour tokens' icon cues index them.
-        ui.set_cue_icons(
-            style
-                .as_ref()
-                .and_then(|s| s.0.icons.as_ref())
-                .map(|i| i.3.clone())
-                .unwrap_or_default(),
-        );
         ui.set_images(images);
-        ui.set_style_name(style.as_ref().map_or("", |s| s.0.name.as_str()));
+        if let Some((pack, _, textures, sounds)) = &style {
+            ui.set_style_pack(pack)?;
+            ui.set_css_sounds(sounds.clone());
+            for (path, texture) in textures {
+                ui.define_texture(path, *texture);
+            }
+        } else {
+            ui.style_documents(None)?;
+            ui.set_part_css(og_ui::DEFAULT_CSS)?;
+            ui.set_css_sounds(Default::default());
+            ui.set_style_name("");
+        }
         ui.set_toast_anchor(anchor_of(&d["toastAnchor"]).unwrap_or(Anchor::Bottom));
         ui.set_hud_max_aspect(
             d["hudMaxAspect"]
@@ -380,22 +340,13 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
     }
 }
 
-/// A loaded UI style: its file and the handles of the assets it names.
+/// A loaded CSS directory and the assets its stylesheets reference.
 pub(crate) struct LoadedStyle {
     pub id: String,
-    pub file: og_ui::StyleFile,
-    pub atlas: Option<og_render::TextureHandle>,
-    /// The atlas at 2× and 3× (`og_ui::StyleFile::atlas_dense`).
-    pub atlas_dense: [Option<og_render::TextureHandle>; 2],
-    /// Font asset handles: body, display, numeric, fallback, cjk, cjkDisplay.
-    pub fonts: [Option<f64>; 6],
-    /// Its other faces ([`og_ui::StyleFile::font_faces`]) that are in the
-    /// bundle, with their font handles.
-    pub faces: Vec<(og_ui::style_file::StyleFace, f64)>,
-    pub icons: Option<og_render::TextureHandle>,
-    pub sounds: [u64; 6],
-    /// The sound handle of each asset id its feedback sets name.
-    pub feedback: std::collections::BTreeMap<String, u64>,
+    pub pack: og_ui::style_pack::StylePack,
+    pub faces: Vec<og_ui::FamilyFace>,
+    pub textures: Vec<(String, og_render::TextureHandle)>,
+    pub sounds: std::collections::BTreeMap<String, u64>,
 }
 
 /// `og.load.style`: a cooked UI style, its atlas, fonts, icons and sounds loaded with it.
@@ -413,87 +364,66 @@ pub fn og_load_style(world: u32, path: String) -> String {
 /// `og.load.style`: the style's load index, its atlas, fonts, icons and
 /// sounds loaded with it (once per path).
 pub(crate) fn load_style(eng: &Engine, path: &str) -> Result<usize, String> {
-    (|| -> Result<usize, String> {
-        let id = og_bundle::runtime::asset_id(path).to_string();
-        if let Some(i) = eng.assets.borrow().styles.iter().position(|s| s.id == id) {
-            return Ok(i);
-        }
-        let text = {
+    let id = og_bundle::runtime::asset_id(path)
+        .trim_end_matches('/')
+        .to_string();
+    if let Some(i) = eng.assets.borrow().styles.iter().position(|s| s.id == id) {
+        return Ok(i);
+    }
+    let style = read_style(eng, &id)?;
+    let mut a = eng.assets.borrow_mut();
+    a.styles.push(style);
+    Ok(a.styles.len() - 1)
+}
+
+pub(super) fn read_style(eng: &Engine, id: &str) -> Result<LoadedStyle, String> {
+    if id.ends_with(".ogt") {
+        return Err("style.ogt is removed; og.load.style takes the directory containing the pack's CSS files".into());
+    }
+    let text = {
+        let assets = eng.assets.borrow();
+        let (bytes, bundle) = assets.blob(id)?;
+        bundle
+            .style_text(id, bytes.bytes())
+            .map_err(|e| e.to_string())?
+    };
+    let files = serde_json::from_str(&text).map_err(|e| format!("{id}: CSS pack sources: {e}"))?;
+    let pack = og_ui::style_pack::StylePack::parse(id, files)?;
+    let faces = docs::sheet_faces(eng, &pack.sheet, id, &format!("@pack:{id}"))?;
+    let texture = |p: &str| -> Result<og_render::TextureHandle, String> {
+        let i = super::assets::load_texture(eng, p)?;
+        eng.render
+            .borrow()
+            .textures
+            .get(i)
+            .copied()
+            .ok_or_else(|| format!("{id}: the texture {p} did not load"))
+    };
+    let mut textures = Vec::new();
+    let mut sounds = std::collections::BTreeMap::new();
+    for asset in &pack.assets {
+        let ty = {
             let assets = eng.assets.borrow();
-            let (bytes, bundle) = assets.blob(&id)?;
-            bundle
-                .style_text(&id, bytes.bytes())
-                .map_err(|e| e.to_string())?
+            let (_, bundle) = assets.blob(asset)?;
+            bundle.output(asset).map_err(|e| e.to_string())?.ty.clone()
         };
-        let mut file = og_ui::parse_style(&text).map_err(|e| format!("{id}: {e}"))?;
-        // Ids relative to the style file first, as the cook resolved them.
-        file.resolve(&id, |r| eng.assets.borrow().bundle_for(r).is_ok());
-        let texture = |p: &str| -> Result<og_render::TextureHandle, String> {
-            let i = super::assets::load_texture(eng, p)?;
-            eng.render
-                .borrow()
-                .textures
-                .get(i)
-                .copied()
-                .ok_or_else(|| format!("{id}: the texture {p} did not load"))
-        };
-        let atlas = file.atlas.as_deref().map(texture).transpose()?;
-        let atlas_dense = [
-            file.atlas_dense[0].as_deref().map(texture).transpose()?,
-            file.atlas_dense[1].as_deref().map(texture).transpose()?,
-        ];
-        let icons = file.icons.as_ref().map(|i| texture(&i.0)).transpose()?;
-        let mut fonts = [None; 6];
-        for (k, p) in file.fonts.iter().enumerate() {
-            // A Chinese companion is in the bundle only when the game shows Chinese.
-            if k >= 4
-                && let Some(p) = p
-                && eng.assets.borrow().bundle_for(p).is_err()
-            {
-                continue;
+        match ty.as_str() {
+            "og.Font" => {}
+            "og.Sound" => {
+                let index = super::assets::load_sound(eng, asset)?;
+                sounds.insert(asset.clone(), eng.assets.borrow().sound_handles[index]);
             }
-            if let Some(p) = p {
-                let i = super::assets::load_font(eng, p)?;
-                fonts[k] = Some(super::assets::handle(i) as f64);
-            }
+            "og.Texture" => textures.push((asset.clone(), texture(asset)?)),
+            _ => return Err(format!("{id}: CSS asset {asset} has unsupported type {ty}")),
         }
-        let mut faces = Vec::new();
-        for f in &file.font_faces {
-            // A locale's companion is in the bundle only when the game shows that locale.
-            if f.cjk && eng.assets.borrow().bundle_for(&f.path).is_err() {
-                continue;
-            }
-            let i = super::assets::load_font(eng, &f.path)?;
-            faces.push((f.clone(), super::assets::handle(i) as f64));
-        }
-        let mut sounds = [0u64; 6];
-        for (k, p) in file.sounds.iter().enumerate() {
-            if let Some(p) = p {
-                let i = super::assets::load_sound(eng, p)?;
-                sounds[k] = eng.assets.borrow().sound_handles[i];
-            }
-        }
-        let mut feedback = std::collections::BTreeMap::new();
-        for p in file.feedback_sounds.iter().flatten() {
-            if !feedback.contains_key(p) {
-                let i = super::assets::load_sound(eng, p)?;
-                feedback.insert(p.clone(), eng.assets.borrow().sound_handles[i]);
-            }
-        }
-        let mut a = eng.assets.borrow_mut();
-        a.styles.push(LoadedStyle {
-            id,
-            file,
-            atlas,
-            atlas_dense,
-            fonts,
-            faces,
-            icons,
-            sounds,
-            feedback,
-        });
-        Ok(a.styles.len() - 1)
-    })()
+    }
+    Ok(LoadedStyle {
+        id: id.to_owned(),
+        pack,
+        faces,
+        textures,
+        sounds,
+    })
 }
 
 /// A loaded font as the UI lays out and draws with it: its first atlas

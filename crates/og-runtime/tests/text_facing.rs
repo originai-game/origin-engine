@@ -235,19 +235,14 @@ fn mixed_project() -> &'static Path {
             "styles/mix/Body.ttf.ogt",
             &std::fs::read(neon.join("ChakraPetch-BoldItalic.ttf.ogt")).unwrap(),
         );
-        let t = og_ui::Theme::new(og_ui::Scheme::Dark);
-        let mut style = String::from("type style\nversion 1\n---\nname \"mix\"\npalette {\n");
-        for n in og_ui::Palette::NAMES {
-            let c = t.palette.get(n).unwrap();
-            let [r, g, b] = c.rgb;
-            style += &format!(
-                "  {n} \"#{r:02x}{g:02x}{b:02x}{:02x}\"\n",
-                (c.alpha * 255.0).round() as u8
-            );
-        }
-        style += "}\nradius {\n  small 1\n  control 2\n  bar 1\n  panel 3\n}\n";
-        style += "fonts {\n  body \"Body.ttf\"\n  cjk \"@styles/cjk/NotoSansSC-Regular.ttf\"\n}\n";
-        write("styles/mix/style.ogt", style.as_bytes());
+        write(
+            "styles/mix/main.css",
+            br#"
+            @font-face { font-family: Body; src: url(Body.ttf); }
+            @font-face { font-family: Chinese; src: url(/@styles/cjk/NotoSansSC-Regular.ttf); }
+            :root { font-family: Body, Chinese; }
+        "#,
+        );
         write(
             "strings/zh-CN.ogt",
             "type strings\nversion 1\n---\nlocale \"zh-CN\"\nstring \"judge.perfect\" \"完美\"\n"
@@ -268,10 +263,15 @@ fn a_floating_text_mixing_a_companion_draws_each_run_in_its_font() {
     let engine = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
     let seen = Rc::new(RefCell::new(Seen::default()));
     set_render_backend(engine, Some(Box::new(Recorder(seen.clone())))).unwrap();
-    let style = value(og_load_style(engine, "styles/mix/style.ogt".into()));
+    let style = value(og_load_style(engine, "styles/mix".into()));
+    let body = value(og_load_font(engine, "styles/mix/Body.ttf".into()));
+    let chinese = value(og_load_font(
+        engine,
+        "@styles/cjk/NotoSansSC-Regular.ttf".into(),
+    ));
     value(og_ui_configure(
         engine,
-        Some(json!({ "style": style }).to_string()),
+        Some(json!({ "style": style, "font": body, "fallbackFonts": [chinese] }).to_string()),
     ));
     value(og_engine_frame(engine, 1000.0 / 60.0));
 

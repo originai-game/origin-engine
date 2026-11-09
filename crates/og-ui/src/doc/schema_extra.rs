@@ -1136,6 +1136,13 @@ pub const PROPS: &[PropSpec] = &[
         doc: "`-og-material: glass <regular|thick> <lift|float>` supplies glass tint, edge, elevation and reduced-transparency fallback; standard `backdrop-filter` supplies its blur and colour filters. Alternatively `<name>(<n> …[, <colour>])` composites through a built-in shader (dissolve, shine, hologram, glitch, ripple, pixelate, color-adjust, outline, blur), or `\"<asset>\" [<n> …]` loads a `type ui-material` asset with four numbers per parameter. `none` removes the material. Values may substitute author variables, but the engine reads no named custom property. Extension reason: standard CSS has no shader-material or native glass-weight/elevation primitive.",
     },
     PropSpec {
+        name: "sound",
+        ty: Ty::Text,
+        on: On::All,
+        two_way: false,
+        doc: "`-og-sound: none | [ <event> [ <url>+ [volume(<number> <number>?)]? [pitch(<number> <number>?)]? | none ] ]#`. Each event takes up to four URLs, selected without immediate repeats from the checkpointed engine UI random stream. Volume is an ordered 0..1 range, pitch an ordered positive range. URLs resolve beside the CSS source. `hover none` silences one event. Extension reason: standard CSS has no interaction audio playback. Haptics remain in the og.* API.",
+    },
+    PropSpec {
         name: "scrollSnapType",
         ty: Ty::Text,
         on: On::All,

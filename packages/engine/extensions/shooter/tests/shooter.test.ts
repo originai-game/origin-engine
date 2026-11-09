@@ -1,6 +1,6 @@
 // The shooter kit's members as a game mounts them (docs/ui.md §6.1): the kit
 // installed under assets/ui-kits/shooter with the library StatBar its
-// manifest names, dressed by the clean pack, each member mounted from named
+// manifest names, using the default style, each member mounted from named
 // stores and driven through the probe's touch, key and pad commands.
 //
 // Ways it could fail: an intent sent without its row key or for a disabled
@@ -50,10 +50,13 @@ beforeAll(() => {
   mkdirSync(kit, { recursive: true });
   mkdirSync(join(root, "assets/ui"), { recursive: true });
   mkdirSync(join(root, "assets/looks"), { recursive: true });
+  mkdirSync(join(root, "assets/fonts"), { recursive: true });
+  cpSync(join(KIT, "../../../../templates/styles/shared/InstrumentSans-Regular.ttf"), join(root, "assets/fonts/body.ttf"));
+  writeFileSync(join(root, "assets/fonts/body.ttf.ogt"), 'type import\nversion 1\n---\nfont {\n  charset latin\n}\n');
   for (const f of readdirSync(KIT)) if (/\.(svelte|ogt|json)$/.test(f)) cpSync(join(KIT, f), join(kit, f));
   for (const f of ["stat-bar.svelte", "stat-bar.en.ogt"]) cpSync(join(LIBRARY, f), join(root, "assets/ui", f));
   for (const [name, text] of Object.entries(PAGES)) writeFileSync(join(root, "assets/ui", `${name}.svelte`), text);
-  writeFileSync(join(root, "assets/looks/clean.ogt"), 'type look\nversion 1\n---\nname "clean"\nui "clean"\n');
+  writeFileSync(join(root, "assets/looks/clean.ogt"), 'type look\nversion 1\n---\nname "default"\nui "default"\n');
   writeFileSync(join(root, "project.ogt"), 'type project\nversion 1\n---\nname "Shooter kit"\nid "shooter-kit"\nentry "main.ts"\n');
   writeFileSync(join(root, "main.ts"), 'import { og } from "@origingame/engine"; export default og.game({});\n');
   cookProject(root, root);
@@ -71,9 +74,9 @@ function engine(page: string, stores: Record<string, unknown>, events: Event[] =
   const r = createEngine(og.game({
     systems: [Collect],
     start(world) {
-      const style = og.load.style(world, "@styles/clean/style.ogt");
-      if (!style.ok) throw new Error(style.reason);
-      og.ui.configure(world, { style: style.value });
+      const font = og.load.font(world, "fonts/body.ttf");
+      if (!font.ok) throw new Error(font.reason);
+      og.ui.configure(world, { font: font.value });
       for (const path of DOCUMENTS) {
         const loaded = og.load.document(world, path);
         if (!loaded.ok) throw new Error(`${path}: ${loaded.reason}`);

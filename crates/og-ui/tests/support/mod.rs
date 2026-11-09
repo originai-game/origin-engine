@@ -11,17 +11,6 @@ use og_ui::*;
 pub use scenes::*;
 use std::path::{Path, PathBuf};
 
-pub fn metadata_style() -> &'static str {
-    static TEXT: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
-        let choices =
-            og_ui::style_gen::StyleChoices::for_look("test", "minimal modern", "metadata test");
-        og_ui::style_gen::generate(&choices)
-            .expect("metadata generation")
-            .text
-    });
-    &TEXT
-}
-
 pub fn dressed(css: &str) -> Ui {
     let mut ui = ui_with_font(test_font_metrics());
     ui.set_part_css(&format!("{DEFAULT_CSS}\n{css}"))

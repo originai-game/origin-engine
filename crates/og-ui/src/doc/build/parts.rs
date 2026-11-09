@@ -19,7 +19,47 @@ impl Resolved {
 }
 
 impl Ui {
+    pub(crate) fn css_feedback(
+        &self,
+        key: Option<u64>,
+        event: crate::tokens::SoundEvent,
+    ) -> crate::tokens::Feedback {
+        let fallback = self.theme.tokens.feedback[event.index()];
+        let cascade = key
+            .and_then(|k| {
+                self.nodes
+                    .iter()
+                    .rfind(|n| n.key == k)
+                    .and_then(|n| n.el.part)
+                    .map(|p| self.part_values(&p, Some(k)).cascade)
+            })
+            .unwrap_or_else(|| self.css_root_cascade());
+        let root = self.css_root_cascade();
+        let Some((_, value, _)) = cascade
+            .values
+            .iter()
+            .find(|(name, _, _)| name == "-og-sound")
+            .or_else(|| root.values.iter().find(|(name, _, _)| name == "-og-sound"))
+        else {
+            return fallback;
+        };
+        crate::sound_css::parse(value)
+            .ok()
+            .and_then(|sounds| sounds.into_iter().find(|s| s.event == event))
+            .map_or(
+                crate::tokens::Feedback {
+                    haptic: fallback.haptic,
+                    ..crate::tokens::Feedback::SILENT
+                },
+                |s| s.bind(&self.css_sounds, fallback.haptic),
+            )
+    }
+
     pub(crate) fn css_root_variables(&self) -> Arc<super::super::variables::Computed> {
+        self.css_root_cascade().computed
+    }
+
+    pub(crate) fn css_root_cascade(&self) -> cascade::Cascade {
         let attributes = BTreeMap::from([(
             "data-scheme".into(),
             Value::String(if self.theme().scheme == crate::Scheme::Light {
@@ -52,7 +92,6 @@ impl Ui {
             },
             |rule| self.part_matches(rule, &facts),
         )
-        .computed
     }
 
     /// Replace the global part stylesheet. Invalid CSS leaves the current
@@ -70,6 +109,7 @@ impl Ui {
     pub fn inherit_part_css(&mut self, source: &Ui) {
         self.part_rules.clone_from(&source.part_rules);
         self.part_sheet.clone_from(&source.part_sheet);
+        self.css_sounds.clone_from(&source.css_sounds);
         self.root_tokens.clone_from(&source.root_tokens);
         self.root_type_tokens.clone_from(&source.root_type_tokens);
         self.read_theme_tokens();
@@ -134,17 +174,25 @@ impl Ui {
         if let Some(doc) = document.filter(|d| !d.part_rules.is_empty()) {
             let rules = rules.to_mut();
             let sheet = sheet.to_mut();
+            let global_layers = sheet.layers.clone();
             for layer in &doc.sheet.layers {
                 if !sheet.layers.contains(layer) {
                     sheet.layers.push(layer.clone());
                 }
             }
-            for rule in &doc.part_rules {
-                let mut rule = rule.clone();
+            sheet.layers = crate::doc::stylesheet::order_layers(&sheet.layers);
+            let remap = |rule: &mut crate::doc::StyleRule, old: &[String]| {
                 if rule.layer != u32::MAX && rule.layer > 0 {
-                    let name = &doc.sheet.layers[(rule.layer - 1) as usize];
+                    let name = &old[(rule.layer - 1) as usize];
                     rule.layer = sheet.layers.iter().position(|n| n == name).unwrap() as u32 + 1;
                 }
+            };
+            for rule in rules.iter_mut() {
+                remap(rule, &global_layers);
+            }
+            for rule in &doc.part_rules {
+                let mut rule = rule.clone();
+                remap(&mut rule, &doc.sheet.layers);
                 rules.push(rule);
             }
             rules.sort_by_key(|r| (r.layer, r.structure.as_ref().map(|s| s.specificity())));

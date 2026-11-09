@@ -172,19 +172,6 @@ fn upgrade(dir: &Path, to: Option<&str>, dry: bool) -> Value {
         let version = e["version"].as_str().unwrap_or("");
         for b in e["breaking"].as_array().into_iter().flatten() {
             let member = b["member"].as_str().unwrap_or("");
-            if b["codemod"]["kind"] == "ui-typography" {
-                for (file, text, touched) in &mut texts {
-                    if file.extension().is_some_and(|e| e == "ogt")
-                        && let Some(migrated) = archive_legacy_ramp(text)
-                    {
-                        *text = migrated;
-                        *touched = true;
-                        codemods.push(json!({ "version": version, "member": member, "file": rel(file), "from": "ramp", "to": "typography (legacy values archived as comments)", "count": 1 }));
-                    }
-                }
-                // Still report the typography block for visual review: alias
-                // merging cannot preserve two conflicting sets of sizes.
-            }
             if b["codemod"]["kind"] == "particles-lit-mesh-blend" {
                 // Reported, not rewritten: the new default is the fix, and
                 // an emitter that meant to glow says `blend additive`.
@@ -289,85 +276,6 @@ fn upgrade(dir: &Path, to: Option<&str>, dry: bool) -> Value {
         "manual": manual,
         "review": review,
     })
-}
-
-/// Upgrade v1 styles to semantic roles, then archive the superseded ramp.
-/// In v2 and v3 keep all other source bytes and the legacy numbers as comments.
-fn archive_legacy_ramp(text: &str) -> Option<String> {
-    let doc = og_ui::read_style_doc(text).ok()?;
-    if doc.ty != "style" {
-        return None;
-    }
-    if doc.version == 1 {
-        return og_ui::upgrade_style(text)
-            .ok()
-            .and_then(|s| archive_legacy_ramp(&s).or(Some(s)));
-    }
-    if !(2..=3).contains(&doc.version) || doc.body.get("typography").is_none() {
-        return None;
-    }
-    let index = doc.body.entries.iter().position(|e| e.key == "ramp")?;
-    let first = doc.body.entries[index].line;
-    let end = doc
-        .body
-        .entries
-        .get(index + 1)
-        .map_or(usize::MAX, |e| e.line);
-    let hero = hero_line(&doc.body);
-    let typography = doc.body.get("typography").map_or(0, |e| e.line);
-    let mut out = String::new();
-    for (i, line) in text.split_inclusive('\n').enumerate() {
-        if i == typography
-            && let Some(hero) = &hero
-        {
-            out.push_str(hero);
-        }
-        if i + 1 == first {
-            out.push_str(
-                "# Legacy ramp archived by og upgrade; edit typography (docs/ui.md §3).\n",
-            );
-        }
-        if i + 1 >= first && i + 1 < end {
-            out.push_str("# ");
-        }
-        out.push_str(line);
-    }
-    Some(out)
-}
-
-/// A legacy style's `hero` typography line: without one, hero is derived
-/// as display × 1.5, so displayXl2 (and xl7, xl8, displayXl, its aliases)
-/// grew where the style never asked (a 60 px line drawn at 81). It keeps
-/// what displayXl2 drew: the ramp's own line, else the engine's old
-/// default; set in display's weight and face. `None` when the typography
-/// sets hero already.
-fn hero_line(body: &og_core::ogt::Block) -> Option<String> {
-    let typography = body.get("typography")?.block.as_ref()?;
-    if typography.get("hero").is_some() {
-        return None;
-    }
-    let display = typography.get("display")?;
-    let num = |e: &og_core::ogt::Entry, i: usize| {
-        e.values
-            .get(i)
-            .and_then(og_core::ogt::Value::as_number)
-            .map(|n| n.as_f64() as f32)
-    };
-    let old = og_ui::theme::TYPE_RAMP.display_xl2;
-    let ramp = body
-        .get("ramp")
-        .and_then(|r| r.block.as_ref())
-        .and_then(|b| b.get("displayXl2").or_else(|| b.get("hero")));
-    let (size, line, tracking) = match ramp {
-        // `name size line [cjkLine] [tracking]`: an unset tracking kept the default's.
-        Some(r) => (num(r, 0)?, num(r, 1)?, num(r, 3).unwrap_or(old.tracking_em)),
-        None => (old.size, old.line_height, old.tracking_em),
-    };
-    let weight = num(display, 3)?;
-    let face = display.values.get(4)?.as_word()?;
-    Some(format!(
-        "  # Added by og upgrade: what displayXl2 drew before typography (docs/ui.md §3).\n  hero {size} {line} {tracking} {weight} {face}\n"
-    ))
 }
 
 /// A particle emitter (`.ogt` of `type particles`) drawn as lit meshes

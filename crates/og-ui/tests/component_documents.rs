@@ -65,7 +65,14 @@ fn icons(texture: Option<og_render::TextureHandle>) -> IconAtlas {
         texture,
         columns: 8,
         rows: 4,
-        names: og_ui::style_gen::ICON_NAMES.map(String::from).to_vec(),
+        names: [
+            "heart", "star", "coin", "lock", "pause", "gear", "sword", "shield", "potion", "gem",
+            "key", "map", "bolt", "clock", "trophy", "home", "plus", "close", "check", "play",
+            "back", "bag", "bomb", "crown", "flag", "apple", "leaf", "fire", "drop", "skull",
+            "music", "person",
+        ]
+        .map(String::from)
+        .to_vec(),
         ..IconAtlas::default()
     }
 }

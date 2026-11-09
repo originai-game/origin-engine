@@ -56,7 +56,6 @@ pub mod stats;
 mod story_functions;
 mod stream;
 pub mod strings_extract;
-mod style_recolour;
 mod terrain;
 mod terrain_generate;
 #[cfg(test)]
@@ -79,7 +78,7 @@ mod options;
 mod report;
 mod scan;
 
-use execute::{read_sibling, run, style_atlas};
+use execute::{read_sibling, run};
 pub use options::{CookOptions, FontSettings, MeshOptions, Palette, TextureOptions};
 use options::{
     anim_settings, conform_off, font_settings, mesh_for, mesh_texture, model_stream_textures,
@@ -311,9 +310,6 @@ enum Work<'a> {
     FlipbookLayer(&'a Source, Box<og_anim::FlipbookSheet>, usize),
     Rig2d(&'a Source),
     Rig2dAtlas(&'a Source),
-    /// A style's atlas at a density (1, 2 or 3) with its painted accents
-    /// recoloured to the palette (`recolour`), of a texture kind.
-    StyleAtlas(&'a Source, u32, u32),
     Shader(&'a Source),
     Post(&'a Source),
     UiMaterial(&'a Source),
@@ -909,14 +905,11 @@ pub fn cook_project_with_texture_cache(
     // GPU's memory (og-runtime's add_gltf shares them by these ids).
     let mut planned_textures = std::collections::HashSet::new();
     let mut parsed_refs: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
-    let mut document_themes = vec![og_ui::Theme::default()];
+    let document_themes = vec![og_ui::Theme::default()];
     let mut style_tokens_hash = StableHasher::new();
     for source in sources.iter().filter(|s| s.kind == Kind::Style) {
         style_tokens_hash.write_str(&source.rel);
         style_tokens_hash.write(&source.hash.to_le_bytes());
-        if let Ok(style) = og_ui::parse_style(&String::from_utf8_lossy(&source.bytes)) {
-            document_themes.push(style.theme);
-        }
     }
     let style_tokens_hash = style_tokens_hash.finish().to_le_bytes();
     for (si, s) in sources.iter().enumerate() {
@@ -1419,12 +1412,10 @@ pub fn cook_project_with_texture_cache(
                 Err(e) => early_errors.push((s.rel.clone(), "rive", e)),
             },
             Kind::Style => {
-                let text = String::from_utf8_lossy(&s.bytes);
-                let refs: Vec<String> = og_ui::parse_style(&text)
-                    .map(|mut f| {
-                        f.resolve(&s.rel, |id| known.contains(crate::runtime::asset_id(id)));
-                        f.references()
-                    })
+                let refs: Vec<String> = serde_json::from_slice(&s.bytes)
+                    .map_err(|e| e.to_string())
+                    .and_then(|files| og_ui::style_pack::StylePack::parse(&s.rel, files))
+                    .map(|pack| pack.assets)
                     .unwrap_or_default()
                     .into_iter()
                     .inspect(|r| {
@@ -1435,42 +1426,8 @@ pub fn cook_project_with_texture_cache(
                     })
                     .map(|r| format!("{r}={}", known.contains(crate::runtime::asset_id(&r))))
                     .collect();
-                let atlas = og_ui::parse_style(&text)
-                    .ok()
-                    .and_then(|mut f| {
-                        f.resolve(&s.rel, |id| known.contains(crate::runtime::asset_id(id)));
-                        f.atlas
-                    })
-                    .and_then(|id| style_atlas(crate::runtime::asset_id(&id), &assets_root(s)))
-                    .map(|b| hash_bytes(&b).to_le_bytes())
-                    .unwrap_or_default();
-                let st = stamp(&[b"style", &hash, refs.join("\n").as_bytes(), &atlas]);
+                let st = stamp(&[b"CSS pack 1", &hash, refs.join("\n").as_bytes()]);
                 outs.push((s.rel.clone(), format::Style::NAME, st, Work::Style(s)));
-                // Its painted art recoloured to the palette, at each density
-                // the atlas has (docs/art.md §2.7).
-                for (density, id) in style_recolour::atlases(s, &known) {
-                    let source = sources.iter().find(|x| x.rel == id);
-                    let kind = source.map_or(Ok(format::kind::COLOR), texture_kind);
-                    match kind {
-                        Ok(k) => {
-                            let bytes = source.map(|x| x.hash).unwrap_or_default().to_le_bytes();
-                            let st = stamp(&[
-                                b"style atlas",
-                                tex_desc.as_bytes(),
-                                &hash,
-                                &bytes,
-                                &k.to_le_bytes(),
-                            ]);
-                            outs.push((
-                                style_recolour::atlas_id(&s.rel, density),
-                                format::Texture::NAME,
-                                st,
-                                Work::StyleAtlas(s, density, k),
-                            ));
-                        }
-                        Err(e) => early_errors.push((s.rel.clone(), "style", e)),
-                    }
-                }
             }
             Kind::Document => {
                 let text = String::from_utf8_lossy(&s.bytes);

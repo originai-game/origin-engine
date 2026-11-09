@@ -75,6 +75,7 @@ impl Ui {
             toast_anchor: Anchor::Bottom,
             hud_max_aspect: HUD_MAX_ASPECT,
             feedback: Vec::new(),
+            css_sounds: Default::default(),
             haptics: 1.0,
             haptic_out: Vec::new(),
             part_rules,
@@ -592,10 +593,10 @@ impl Ui {
             0
         };
         if hot != 0 && hot != self.state.hot && self.hit(hot).is_some_and(|h| h.has(HIT_NAV)) {
-            self.sound(crate::style_file::UiSound::Hover);
+            self.feedback_at(hot, crate::tokens::SoundEvent::Hover);
         }
         if input.pressed && grabbed.is_none() && self.hit(hot).is_some_and(|h| h.has(HIT_NAV)) {
-            self.sound(crate::style_file::UiSound::Press);
+            self.feedback_at(hot, crate::tokens::SoundEvent::Press);
         }
         self.state.hot = hot;
         self.state.focus_click = None;
@@ -661,20 +662,24 @@ impl Ui {
     /// (rewards, rarity reveals, notifications). An event the style gives
     /// neither a sound nor a haptic queues nothing.
     pub fn feedback(&mut self, event: crate::tokens::SoundEvent) {
-        self.queue_feedback(event, f32::NAN);
+        self.queue_feedback(None, event, f32::NAN);
     }
 
     /// A step of a rising cascade (a counter's ticks): `rise` 0 at its
     /// start to 1 at its end walks the event's pitch range upwards.
     pub fn feedback_rising(&mut self, event: crate::tokens::SoundEvent, rise: f32) {
-        self.queue_feedback(event, rise.clamp(0.0, 1.0));
+        self.queue_feedback(None, event, rise.clamp(0.0, 1.0));
     }
 
-    fn queue_feedback(&mut self, event: crate::tokens::SoundEvent, rise: f32) {
-        let f = self.theme.tokens.feedback(event);
+    pub(crate) fn feedback_at(&mut self, key: u64, event: crate::tokens::SoundEvent) {
+        self.queue_feedback(Some(key), event, f32::NAN);
+    }
+
+    fn queue_feedback(&mut self, key: Option<u64>, event: crate::tokens::SoundEvent, rise: f32) {
+        let f = self.css_feedback(key, event);
         let heard = f.sounds[..usize::from(f.count)].iter().any(|s| *s != 0);
         if heard || f.haptic.count > 0 {
-            self.feedback.push((event, rise));
+            self.feedback.push((event, rise, f));
         }
     }
 
@@ -702,8 +707,7 @@ impl Ui {
     pub fn take_feedback(&mut self) -> Vec<FeedbackPlay> {
         let queued = std::mem::take(&mut self.feedback);
         let mut out = Vec::with_capacity(queued.len());
-        for (event, rise) in queued {
-            let f = *self.theme.tokens.feedback(event);
+        for (event, rise, f) in queued {
             let n = usize::from(f.count);
             let mut next = || {
                 // xorshift64*, seeded on first use.

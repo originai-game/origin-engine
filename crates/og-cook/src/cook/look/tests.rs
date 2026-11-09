@@ -201,20 +201,12 @@ fn checks_fields_against_the_records() {
     assert!(
         one("ui \"styles/x/style.ogt\"\n", &[])
             .unwrap_err()
-            .contains("styles/x/style.ogt")
+            .contains("style.ogt is removed")
     );
     let l = one("ui \"default\"\n", &[]).unwrap();
     assert_eq!(l.ui, None, "core default requires no style asset");
-    let l = one(
-        "ui \"pixel\"\n",
-        &["styles/pixel/style.ogt", "@styles/pixel/style.ogt"],
-    )
-    .unwrap();
-    assert_eq!(
-        l.ui.as_deref(),
-        Some("styles/pixel/style.ogt"),
-        "the game's own wins"
-    );
+    let l = one("ui \"pixel\"\n", &["styles/pixel", "@styles/pixel"]).unwrap();
+    assert_eq!(l.ui.as_deref(), Some("styles/pixel"), "the game's own wins");
     let e = one("ui \"velvet\"\n", &[]).unwrap_err();
     assert!(e.contains("velvet") && e.contains("neither assets/"), "{e}");
     assert!(
@@ -449,25 +441,18 @@ fn shared_style_assets_are_read_from_the_checkout() {
 /// does not carry megabytes of outlines it never draws.
 #[test]
 fn a_styles_chinese_companions_ride_with_a_chinese_game_only() {
-    let choices = og_ui::style_gen::StyleChoices::for_look_from("fixture", "", "", &[]);
-    let style = og_ui::style_gen::generate(&choices).unwrap();
-    let cjk = |files: &[(&str, &str)]| -> Vec<&'static str> {
-        let root = project(files);
-        companion_files(&style.text, &shown_cjk(&root))
+    let cjk = |css: &str| -> Vec<&'static str> {
+        shared_files("styles/example/main.css", css)
             .into_iter()
             .map(|(id, _)| id)
             .filter(|id| id.starts_with("@styles/cjk/"))
             .collect()
     };
-    let english = cjk(&[(
-        "strings/en.ogt",
-        "type strings\nversion 1\n---\nlocale \"en\"\n",
-    )]);
+    let english = cjk(":root { --language: en; }");
     assert!(english.is_empty(), "{english:?}");
-    let chinese = cjk(&[(
-        "strings/zh.ogt",
-        "type strings\nversion 1\n---\nlocale \"zh-CN\"\n",
-    )]);
+    let chinese = cjk(
+        "@font-face { font-family: CJK; src: url(/@styles/cjk/NotoSansSC-Regular.ttf); } @font-face { font-family: CJK; font-weight: 700; src: url(/@styles/cjk/NotoSansSC-Bold.ttf); }",
+    );
     assert_eq!(
         chinese,
         [
@@ -483,9 +468,8 @@ fn a_styles_chinese_companions_ride_with_a_chinese_game_only() {
 /// them in its bundle, whatever its languages, with their settings.
 #[test]
 fn a_seed_styles_shared_fonts_and_icons_ride_with_the_game() {
-    let choices = og_ui::style_gen::StyleChoices::for_look_from("fixture", "", "", &[]);
-    let style = og_ui::style_gen::generate(&choices).unwrap();
-    let ids: Vec<&str> = shared_files(&style.text)
+    let css = "@font-face { font-family: Body; src: url(/@styles/shared/InstrumentSans-Regular.ttf); } @font-face { font-family: Mono; src: url(/@styles/shared/PTMono-Regular.ttf); } button::part(icon) { mask-image: url(/@styles/shared/ink-icons.png); }";
+    let ids: Vec<&str> = shared_files("styles/example/main.css", css)
         .into_iter()
         .map(|(id, _)| id)
         .collect();

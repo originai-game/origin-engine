@@ -93,12 +93,23 @@ fn source(
     icons: &og_ui::IconAtlas,
     url: &str,
 ) -> Option<(og_render::TextureHandle, [f32; 4])> {
+    if let Some(&i) = eng
+        .assets
+        .borrow()
+        .by_path
+        .get(&format!("texture:{}", url.trim_start_matches('/')))
+    {
+        return Some((*eng.render.borrow().textures.get(i)?, [0.0, 0.0, 1.0, 1.0]));
+    }
     match url.parse::<f64>() {
         Ok(h) => {
             let i = crate::assets::index_of(h)?;
             Some((*eng.render.borrow().textures.get(i)?, [0.0, 0.0, 1.0, 1.0]))
         }
-        Err(_) => match icons.find(url)? {
+        Err(_) => match icons
+            .find(url)
+            .or_else(|| icons.find(url.rsplit('/').next().unwrap_or(url)))?
+        {
             og_ui::IconCell::Image(t, uv) => Some((t, uv)),
             og_ui::IconCell::Glyph(..) => None,
         },

@@ -13,7 +13,7 @@ default = ["cook", "basis", "transcode"]
 # og-render (og-bundle's `transcode`).
 transcode = ["og-bundle/transcode"]
 # The cook itself (native only): importers, encoders, the incremental manifest.
-cook = ["og-render/bake", "dep:blake3", "dep:og-ai", "dep:og-story", "dep:og-i18n", "og-nav/bake", "dep:gltf", "og-render/gltf", "dep:image", "dep:image_dds", "dep:draco-core", "dep:meshopt", "dep:mikktspace", "dep:fdsm", "dep:fdsm-ttf-parser", "dep:ttf-parser", "dep:skrifa", "dep:write-fonts", "dep:hound", "dep:symphonia", "dep:opus-pure", "dep:ruzstd", "dep:serde", "dep:serde_json", "dep:oxc_allocator", "dep:oxc_ast", "dep:oxc_ast_visit", "dep:oxc_parser", "dep:oxc_span", "dep:nalgebra", "dep:og-ui", "dep:naga", "dep:og-records", "og-timeline/import", "dep:og-geom", "dep:og-destruct", "dep:og-video", "dep:ufbx", "dep:libm"]
+cook = ["og-render/bake", "dep:resvg", "dep:blake3", "dep:og-ai", "dep:og-story", "dep:og-i18n", "og-nav/bake", "dep:gltf", "og-render/gltf", "dep:image", "dep:image_dds", "dep:draco-core", "dep:meshopt", "dep:mikktspace", "dep:fdsm", "dep:fdsm-ttf-parser", "dep:ttf-parser", "dep:skrifa", "dep:write-fonts", "dep:hound", "dep:symphonia", "dep:opus-pure", "dep:ruzstd", "dep:serde", "dep:serde_json", "dep:oxc_allocator", "dep:oxc_ast", "dep:oxc_ast_visit", "dep:oxc_parser", "dep:oxc_span", "dep:nalgebra", "dep:og-ui", "dep:naga", "dep:og-records", "og-timeline/import", "dep:og-geom", "dep:og-destruct", "dep:og-video", "dep:ufbx", "dep:libm"]
 # Encode textures with the basis-universal crate (a default). Without it the
 # cook looks for KTX-Software's `toktx` on PATH.
 basis = ["og-bundle/basis", "dep:basis-universal", "dep:ruzstd"]
@@ -102,6 +102,7 @@ ufbx = { version = "0.11.5", optional = true }
 # `type vfx2d`: the Forge renderer's f64 Math, the same on every host
 # (never the host's libm).
 libm = { version = "0.2.16", optional = true }
+resvg = { version = "0.48.1", default-features = false, features = ["text", "raster-images"], optional = true }
 
 [dev-dependencies]
 pollster = { workspace = true }
