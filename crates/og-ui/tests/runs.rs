@@ -41,7 +41,8 @@
 //!   instead of CSS Fonts 4's order (a lighter face over a heavier one up
 //!   to 500), a face drawing a character outside its `unicode-range`, an
 //!   undeclared family in a `font-family` list not skipped, or a family
-//!   with no face not falling back to its generic family's role →
+//!   with no face not falling back to its generic family's role (an
+//!   element's or a `::part` run's) →
 //!   `a_font_face_family_takes_its_faces_by_weight_and_range`
 
 use crate::support;
@@ -521,6 +522,7 @@ fn a_font_face_family_takes_its_faces_by_weight_and_range() {
   <p id="Named">Go</p>
   <p id="Skipped">Go</p>
   <p id="Short">Go</p>
+  <p id="Run">G<span part="w">o</span></p>
 </div>
 <style>
 @font-face { font-family: "Wide Face"; src: url(fonts/wide.ttf); }
@@ -528,6 +530,7 @@ p { width: max-content; }
 #Named { font-family: "Wide Face", monospace; }
 #Skipped { font-family: Undeclared, monospace; }
 #Short { font: 16px Wide Face, serif; }
+#Run::part(w) { font-family: Undeclared, "Wide Face", monospace; }
 </style>"#;
     crate::html_text::both(text, &[], |d| {
         d.ui.set_fonts(Fonts {
@@ -549,5 +552,13 @@ p { width: max-content; }
             "the declared family, else the monospace role"
         );
         assert_eq!(short.width, 2.0 * 2.0 * 16.0, "the font shorthand's family");
+        // A ::part run's list resolves as an element's: "o" in Wide Face
+        // (2 em) after the body's "G" (half an em), not the monospace role.
+        let em = named.width / 4.0;
+        assert_eq!(
+            d.get("Run").width,
+            2.5 * em,
+            "a run's first declared family"
+        );
     });
 }

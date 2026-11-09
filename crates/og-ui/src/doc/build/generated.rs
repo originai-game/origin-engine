@@ -175,7 +175,7 @@ impl Ui {
                 format!("{name}: {value};")
             })
             .collect();
-        match crate::doc::spans::style_of(&body, self.theme()) {
+        match crate::doc::spans::style_of(&body, self.theme(), &|n| self.family_declared(n)) {
             Ok(style) => style,
             Err(error) => {
                 self.warnings.push(format!("generated content: {error}"));

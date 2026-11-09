@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "UI: ::part font-family",
+      "summary": "A ::part run (and ::before/::after content) takes the first family in its font-family list that a loaded document's @font-face declares, then the generic family, as an element does; it no longer takes the first named family whether or not any face declares it."
+    }
+  ]
+}

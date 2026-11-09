@@ -239,8 +239,10 @@ line: `<img src="coin" alt="">` (a picture the game registered,
 `<kbd data-action="confirm"></kbd>` (the action's glyph on the device
 used last). Their attributes are literal. A `<span part="big">` names its
 run for `p::part(big) { … }` (any text element's `::part`), which takes
-`color`, `font`, `font-family`, `font-weight`, `font-style`,
-`text-decoration-line`, `-og-text-motion`, `vertical-align`, and the
+`color`, `font`, `font-family` (its first family a loaded document's
+`@font-face` declares, else its generic family, as an element's),
+`font-weight`, `font-style`, `text-decoration-line`, `-og-text-motion`,
+`vertical-align`, and the
 run's `font-size` (px), `line-height` (px, or a multiple of its
 font-size) and `letter-spacing` (em, or px of its font-size).
 

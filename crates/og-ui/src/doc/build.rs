@@ -485,6 +485,17 @@ impl Build<'_> {
 }
 
 impl Ui {
+    /// Whether a loaded document's `@font-face` declares family `name`
+    /// (a `font-family` list takes the first one that is).
+    pub(crate) fn family_declared(&self, name: &str) -> bool {
+        self.docs.docs.values().any(|d| {
+            d.sheet
+                .font_faces
+                .iter()
+                .any(|f| f.family.eq_ignore_ascii_case(name))
+        })
+    }
+
     /// Apply a part's presentation with the same values documents use.
     pub(crate) fn apply_part_appearances(&mut self) {
         if !self
@@ -837,8 +848,13 @@ impl Ui {
             let resolved: Vec<_> = spans
                 .iter()
                 .map(|span| {
-                    let (style, cascade) =
-                        super::spans::resolve(&rules, span, &r.cascade.computed, self.theme());
+                    let (style, cascade) = super::spans::resolve(
+                        &rules,
+                        span,
+                        &r.cascade.computed,
+                        self.theme(),
+                        &|n| self.family_declared(n),
+                    );
                     (span.clone(), style, cascade)
                 })
                 .collect();
@@ -926,8 +942,13 @@ impl Ui {
                                 && rule.condition.as_ref().is_none_or(|e| truthy(&b.eval(e)))
                         })
                         .collect();
-                    let (style, cascade) =
-                        super::spans::resolve(&rules, &span, &r.cascade.computed, self.theme());
+                    let (style, cascade) = super::spans::resolve(
+                        &rules,
+                        &span,
+                        &r.cascade.computed,
+                        self.theme(),
+                        &|n| self.family_declared(n),
+                    );
                     r.cascade.reads.extend(cascade.reads);
                     style
                 } else {
@@ -1020,14 +1041,7 @@ impl Ui {
                 theme: &self.theme,
                 current,
                 step,
-                declared: &|name| {
-                    self.docs.docs.values().any(|d| {
-                        d.sheet
-                            .font_faces
-                            .iter()
-                            .any(|f| f.family.eq_ignore_ascii_case(name))
-                    })
-                },
+                declared: &|name| self.family_declared(name),
             });
             cascade.text = local;
             r.text = (text != Default::default()).then(|| Arc::new(text));
