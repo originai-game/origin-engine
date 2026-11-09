@@ -607,14 +607,27 @@ impl Ui {
                     }
                 }
             }
-            "button" => self.apply_button(
-                i,
-                &base.text,
-                r.button_desc(),
-                base.response,
-                base.amounts,
-                base.press,
-            ),
+            "button" => {
+                self.apply_button(
+                    i,
+                    &base.text,
+                    r.button_desc(),
+                    base.response,
+                    base.amounts,
+                    base.press,
+                );
+                // A button holding elements (a row of an icon, a name and
+                // its detail) grows to fit them, its control height the
+                // least it takes, as an HTML button does.
+                if !n.children.is_empty()
+                    && let crate::layout::Size::Fixed(h) = self.nodes[i].el.height
+                {
+                    self.nodes[i].el.height = crate::layout::Size::Fit {
+                        min: h,
+                        max: f32::INFINITY,
+                    };
+                }
+            }
             "image" => {
                 self.apply_image(
                     i,

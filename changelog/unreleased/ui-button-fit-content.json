@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "<button>",
+      "summary": "A document button holding elements grows to fit content taller than its control height, as an HTML button does; the control height stays its least height and an authored height still holds. Before, a row of a name over its detail spilled below the button."
+    }
+  ]
+}

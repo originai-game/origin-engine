@@ -755,6 +755,40 @@ fn a_button_holds_its_content_in_a_row() {
     });
 }
 
+/// A `<button>` whose content stands taller than its control height (a
+/// loadout row: a name over its detail) grows to hold it, as an HTML
+/// button does; its control height stays the least it takes, and an
+/// authored `height` still holds. Ways it could fail: the content spilling
+/// below a fixed control height, a short content button shrinking under
+/// its control height, or the authored height lost to the fit.
+#[test]
+fn a_button_grows_to_hold_tall_content() {
+    let text = r#"<meta name="component" content="t">
+<div id="Page">
+  <button id="Row"><column id="Col"><text id="Name">Name</text><text id="Detail">Detail</text></column></button>
+  <button id="Short"><icon id="Ic" icon="coin" /></button>
+  <button id="Given"><column><text>Name</text><text>Detail</text></column></button>
+</div>
+<style>
+#Page { display: flex; flex-direction: column; align-items: flex-start; }
+#Name, #Detail { font-size: 40px; }
+#Given { height: 30px; }
+</style>"#;
+    both(text, &[], |d| {
+        let (row, col) = (d.get("Row"), d.get("Col"));
+        assert!(
+            col.height >= 60.0 && col.y >= row.y && col.y + col.height <= row.y + row.height + 0.5,
+            "the row holds its two lines: {col:?} in {row:?}"
+        );
+        let plain = d.get("Short").height;
+        assert!(
+            plain >= 24.0,
+            "a short content button keeps its control height: {plain}"
+        );
+        assert_eq!(d.get("Given").height, 30.0, "an authored height holds");
+    });
+}
+
 /// `<tabs icons badges>`: each tab draws its icon before its label and its
 /// count badge after it; an empty entry draws none. The tabPrev and tabNext
 /// actions (Q and E, LB and RB) step through the tabs.
