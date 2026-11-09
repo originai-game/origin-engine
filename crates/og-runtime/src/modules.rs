@@ -34,7 +34,7 @@ mod widgets;
 use widgets::desc_of;
 pub(crate) use widgets::emit;
 mod game_widgets;
-use crate::{art, assets, extract, ui_draw};
+use crate::{art, assets, extract};
 pub(crate) use game_widgets::a11y_json;
 use game_widgets::ui_of;
 pub use game_widgets::{

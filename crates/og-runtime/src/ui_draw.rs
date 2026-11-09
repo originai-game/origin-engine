@@ -94,17 +94,10 @@ pub(crate) fn tune_material(
         values[..numbers.len()].copy_from_slice(&numbers);
     }
     render.ui_draw.materials[i].1[slot] = values;
+    let defaults = render.ui_draw.materials[i].1;
     drop(render);
-    if eng.state.borrow().ui_desc["style"].as_f64().is_some() {
-        let answer: Value =
-            serde_json::from_str(&super::modules::og_ui_configure(eng.id, Some("{}".into())))
-                .map_err(|e| e.to_string())?;
-        if answer["ok"] == false {
-            return Err(answer["reason"]
-                .as_str()
-                .unwrap_or("style did not apply")
-                .into());
-        }
+    if let Some(ui) = &eng.state.borrow().ui {
+        ui.lock().define_material(&id, handle, defaults);
     }
     Ok(())
 }
@@ -122,7 +115,7 @@ pub fn og_load_vector(world: u32, path: String) -> String {
 }
 
 /// A cooked vector added to the scene once per path: its VectorArt index
-/// and its handle (a style's vector fills load through here too).
+/// and its handle.
 pub(crate) fn load_vector(
     eng: &super::engine::Engine,
     path: &str,
@@ -197,29 +190,6 @@ fn load_material(eng: &super::engine::Engine, path: &str) -> Result<usize, Strin
     Ok(i)
 }
 
-pub(crate) fn bind_style_materials(
-    eng: &super::engine::Engine,
-    style: &mut og_ui::StyleFile,
-) -> Result<(), String> {
-    for dressing in &mut style.dressings {
-        if let Some(material) = &mut dressing.draw.material
-            && let Some(path) = &material.asset
-        {
-            let i = load_material(eng, path)?;
-            let (handle, mut defaults) = eng.render.borrow().ui_draw.materials[i];
-            for k in 0..material.params {
-                defaults[k / 4][k % 4] = material.layer.params[k / 4][k % 4];
-            }
-            material.layer = Layer {
-                material: Material::Custom(handle),
-                params: defaults,
-                filter: None,
-            };
-        }
-    }
-    Ok(())
-}
-
 fn material_hash(eng: &super::engine::Engine, id: &str) -> u64 {
     eng.assets
         .borrow()
@@ -255,6 +225,16 @@ pub(crate) fn refresh(eng: &super::engine::Engine) -> Vec<String> {
                 rs.ui_draw.material_paths.insert(id, (i, hash));
             }
             Err(e) => failed.push(format!("og dev: {id}: {e} (the old UI material stays)")),
+        }
+    }
+    // A reload creates a new Ui even when the material bytes did not change.
+    // Register every loaded handle and its current defaults with CSS again.
+    if let Some(ui) = &eng.state.borrow().ui {
+        let render = eng.render.borrow();
+        let mut ui = ui.lock();
+        for (id, (i, _)) in &render.ui_draw.material_paths {
+            let (handle, defaults) = render.ui_draw.materials[*i];
+            ui.define_material(id, handle, defaults);
         }
     }
     failed

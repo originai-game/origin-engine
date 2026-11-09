@@ -141,8 +141,24 @@ fn warnings(engine: u32) -> Vec<String> {
 #[test]
 fn configure_keeps_the_fields_a_call_leaves_out() {
     let e = engine();
+    og_runtime::shared_ui(e)
+        .unwrap()
+        .lock()
+        .set_part_css("button::part(base) { opacity: 0.37; }")
+        .unwrap();
+    let button = og_ui::dress::PartRef::new("Button", "base", og_ui::tokens::ElementClass::Button);
+    let opacity = || {
+        og_runtime::shared_ui(e)
+            .unwrap()
+            .lock()
+            .resolve_part(&button, [80.0, 32.0])
+            .unwrap()
+            .opacity
+    };
+    assert_eq!(opacity(), 0.37);
     let style = value(og_load_style(e, "styles/mini/style.ogt".into()));
     configure(e, json!({ "style": style, "contrast": "high" }));
+    assert_eq!(opacity(), 0.37, "style metadata preserves installed CSS");
     let t = theme(e);
     assert_eq!(
         (t["style"].as_str(), t["contrast"].as_str()),
@@ -174,6 +190,7 @@ fn configure_keeps_the_fields_a_call_leaves_out() {
     // Without the style the UI has no font at all: a warning names the fix.
     configure(e, json!({ "style": null }));
     assert_eq!(theme(e)["style"].as_str(), Some(""));
+    assert_eq!(opacity(), 0.37, "clearing metadata preserves installed CSS");
     let w = warnings(e);
     assert!(
         w.iter()

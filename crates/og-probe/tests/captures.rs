@@ -58,13 +58,13 @@ impl UiTree for Ui {
         button.text = "Play".into();
         button
             .detail
-            .insert("source".into(), json!("ui/title.ogt:12"));
+            .insert("source".into(), json!("ui/title.svelte:12"));
         button
             .detail
             .insert("part".into(), json!("Button.base[primary]"));
         button.detail.insert(
             "rules".into(),
-            json!([{ "selector": "Button.base", "source": "" }, { "selector": "Button.base[primary]", "source": "styles/clean/style.ogt:40" }]),
+            json!([{ "selector": "button::part(base)", "source": "" }, { "selector": "button.primary::part(base)", "source": "styles/clean/style.css:40" }]),
         );
         let mut label = el("name", "Title/name", "label", [8.0, 4.0, 60.0, 10.0]);
         label.text = "Origin".into();
@@ -206,9 +206,9 @@ fn marks_number_the_ui_then_the_entities_and_point_back_to_source() {
         [1, 2, 3]
     );
     let play = &marks[1];
-    assert_eq!(play["source"], json!("ui/title.ogt:12"));
+    assert_eq!(play["source"], json!("ui/title.svelte:12"));
     assert_eq!(play["part"], json!("Button.base[primary]"));
-    assert_eq!(play["rule"]["source"], json!("styles/clean/style.ogt:40"));
+    assert_eq!(play["rule"]["source"], json!("styles/clean/style.css:40"));
     assert_eq!(play["point"], json!({ "x": 100.0, "y": 48.0 }));
     // The rect is in the fitted PNG's pixels: one a CSS pixel at fit 128.
     assert_eq!(

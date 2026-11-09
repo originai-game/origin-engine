@@ -9,23 +9,7 @@ use std::{cell::RefCell, path::Path, rc::Rc};
 struct Disk;
 
 impl Hooks for Disk {
-    fn dispatch(&self, call: &Dispatch) -> Result<String, String> {
-        if call.kind == 0 && call.id == 1 {
-            let ui = og_runtime::shared_ui(call.engine).expect("the engine's UI");
-            let mut ui = ui.lock();
-            let panel = ui.theme().palette.panel;
-            ui.open(
-                "Swatch",
-                og_ui::Element {
-                    frame: Some(og_ui::StylePart::Card),
-                    background: Some(panel),
-                    width: og_ui::Size::Fixed(64.0),
-                    height: og_ui::Size::Fixed(64.0),
-                    ..og_ui::Element::default()
-                },
-            );
-            ui.close();
-        }
+    fn dispatch(&self, _: &Dispatch) -> Result<String, String> {
         Ok(String::new())
     }
     fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
@@ -75,22 +59,15 @@ fn value(text: String) -> Value {
 
 fn write(root: &Path, channel: &str, amount: f32) {
     std::fs::create_dir_all(root.join("assets")).unwrap();
-    std::fs::create_dir_all(root.join("assets/skins")).unwrap();
-    let theme = og_ui::Theme::default();
-    let mut source =
-        String::from("type style\nversion 1\n---\nname \"material-test\"\npalette {\n");
-    for name in og_ui::Palette::NAMES {
-        let color = theme.palette.get(name).unwrap();
-        let [r, g, b] = color.rgb;
-        source += &format!(
-            "{name} \"#{r:02x}{g:02x}{b:02x}{:02x}\"\n",
-            (color.alpha * 255.0).round() as u8
-        );
-    }
-    source += "}\nradius {\n small 1\n control 2\n bar 1\n panel 3\n}\n";
-    let source = og_ui::upgrade_style(&source).unwrap()
-        + "Card::frame {\n -og-material: \"../effect.ogt\"\n}\n";
-    std::fs::write(root.join("assets/skins/style.ogt"), source).unwrap();
+    std::fs::write(
+        root.join("assets/swatch.svelte"),
+        r#"<meta name="screen" content="Swatch">
+<div id="swatch"></div>
+<style>
+#swatch { width: 64px; height: 64px; background: #234567; -og-material: "effect.ogt"; }
+</style>"#,
+    )
+    .unwrap();
     std::fs::write(
         root.join("assets/effect.ogt"),
         format!("type ui-material\nversion 1\n---\nsource \"effect.wgsl\"\nparam amount float {amount}\nparam offset vec2 0.2 0.7\n"),
@@ -110,16 +87,12 @@ fn reload_replaces_ui_material_code_and_defaults_without_changing_its_handle() {
     write(&root, "r", 0.25);
     set_hooks(Rc::new(Disk));
     og_host_begin_bundle();
-    let system = og_runtime::og_system_define_system("Screen".into(), "{}".into(), 1);
-    let game = og_game_game(Some(json!({ "seed": 7, "systems": [system] }).to_string()));
+    let game = og_game_game(Some(json!({ "seed": 7 }).to_string()));
     let engine = value(og_engine_create(game, json!({ "root": root }).to_string()))
         .as_u64()
         .unwrap() as u32;
-    let style = value(og_runtime::og_load_style(engine, "skins/style.ogt".into()));
-    value(og_runtime::og_ui_configure(
-        engine,
-        Some(json!({ "style": style }).to_string()),
-    ));
+    value(og_runtime::og_load_document(engine, "swatch.svelte".into()));
+    value(og_runtime::og_ui_push(engine, "Swatch".into(), None));
     let material = value(og_load_ui_material(engine, "effect.ogt".into()));
     let seen = Rc::new(RefCell::new(Vec::new()));
     let layers = Rc::new(RefCell::new(Vec::new()));
@@ -134,7 +107,7 @@ fn reload_replaces_ui_material_code_and_defaults_without_changing_its_handle() {
     assert_eq!(
         layers.borrow().len(),
         1,
-        "a custom material referenced only by a style is bound"
+        "a custom material referenced only by CSS is bound"
     );
     assert_eq!(layers.borrow()[0].params[0][0], 0.25);
 
@@ -178,9 +151,25 @@ fn reload_replaces_ui_material_code_and_defaults_without_changing_its_handle() {
     }
 
     // Only the external WGSL changes; the descriptor's bytes stay the same.
+    og_runtime::shared_ui(engine)
+        .unwrap()
+        .lock()
+        .set_part_css("button::part(base) { opacity: 0.43; }")
+        .unwrap();
     write(&root, "g", 0.25);
     let reloaded: Value = serde_json::from_str(&og_engine_probe_reload(engine)).unwrap();
     assert!(reloaded.is_object(), "{reloaded}");
+    let button = og_ui::dress::PartRef::new("Button", "base", og_ui::tokens::ElementClass::Button);
+    assert_eq!(
+        og_runtime::shared_ui(engine)
+            .unwrap()
+            .lock()
+            .resolve_part(&button, [80.0, 32.0])
+            .unwrap()
+            .opacity,
+        0.43,
+        "hot reload keeps installed part CSS"
+    );
     value(og_engine_frame(engine, 1000.0 / 60.0));
     assert_eq!(
         value(og_load_ui_material(engine, "effect.ogt".into())),
@@ -200,7 +189,7 @@ fn reload_replaces_ui_material_code_and_defaults_without_changing_its_handle() {
     assert_eq!(
         layers.borrow()[0].params[0][0],
         0.75,
-        "the style rebinds refreshed defaults"
+        "CSS rebinds refreshed defaults"
     );
     og_engine_destroy(engine);
     std::fs::remove_dir_all(root).unwrap();

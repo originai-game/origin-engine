@@ -27,7 +27,7 @@ pub(crate) fn new_ui(tick: u32, previous: Option<&SharedUi>) -> Result<SharedUi,
     ui.set_icons(icons);
     if let Some(p) = previous {
         ui.set_images(p.lock().images().clone());
-        ui.set_dressings(p.lock().dressings().dressings().to_vec());
+        ui.inherit_part_css(&p.lock());
     }
     ui.set_style_name(&style_name);
     // A hot reload keeps the documents loaded (and the timelines they define).
@@ -68,7 +68,7 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
         let d = merged_ui_desc(&eng.state.borrow().ui_desc, parse(desc.as_deref())?)?;
         // The style's other faces as loaded: (face, font handle).
         let mut style_faces: Vec<(og_ui::style_file::StyleFace, f64)> = Vec::new();
-        let mut style = match d["style"].as_f64() {
+        let style = match d["style"].as_f64() {
             Some(h) => {
                 let i = super::assets::index_of(h)
                     .ok_or_else(|| format!("style: {h} is not a UI style"))?;
@@ -89,9 +89,6 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
             }
             None => None,
         };
-        if let Some((file, ..)) = &mut style {
-            super::ui_draw::bind_style_materials(&eng, file)?;
-        }
         let scheme = match d["scheme"].as_str() {
             Some("light") => Scheme::Light,
             _ => Scheme::Dark,
@@ -326,13 +323,6 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
         }
         let mut ui = ui.lock();
         ui.set_theme(theme);
-        // The style's dressings, its vector fills bound when it loaded
-        // (none: the default style's, the design language's).
-        ui.set_dressings(
-            style
-                .as_ref()
-                .map_or_else(og_ui::default_dressings, |s| s.0.dressings.clone()),
-        );
         // The locale's chain and forms (og.i18n) and the documents' named
         // families (`@font-face`) stay.
         let (chain, cjk_locale, families) = (
@@ -490,12 +480,6 @@ pub(crate) fn load_style(eng: &Engine, path: &str) -> Result<usize, String> {
                 feedback.insert(p.clone(), eng.assets.borrow().sound_handles[i]);
             }
         }
-        // The dressings' vector fills, bound to the loaded vectors.
-        let mut vectors = std::collections::BTreeMap::new();
-        for v in file.vector_assets() {
-            vectors.insert(v.clone(), super::ui_draw::load_vector(eng, &v)?.1);
-        }
-        file.bind_vectors(|v| vectors.get(v).copied());
         let mut a = eng.assets.borrow_mut();
         a.styles.push(LoadedStyle {
             id,
