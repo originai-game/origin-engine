@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "rendering: pipeline jobs",
+      "summary": "A frame makes a pipeline job only for a pipeline that is neither made nor queued. Before, every frame made a job for every batch and pass (cloning the device, layouts and shader module and boxing the builder) and dropped it when the pipeline was already held, on every frame after the load. What is compiled does not change."
+    }
+  ]
+}
