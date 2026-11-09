@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "rendering: terrain and atmosphere extraction",
+      "summary": "Extracting the terrain components (og.Terrain, og.TerrainScatter, og.TerrainStamp, og.GrassType, og.Grass, og.GrassPusher) and the atmosphere ones (og.WindMotor, og.Water and its kin, og.Fluid2D, og.Fluid3D, og.Rope, og.Cloth, og.SoftBody) keeps the JSON of each row whose bytes did not change since the last frame, instead of decoding every row and dropping it every frame. What is extracted does not change. A garden of 1072 cells, web, from a profile: terrain 60 and atmosphere 38 ms per 10 s, about half of each in decoding."
+    }
+  ]
+}

@@ -244,10 +244,17 @@ pub struct Layout {
     /// The last bytes [`Layout::decode_kept`] decoded and their JSON,
     /// shared by the layout's clones.
     kept: std::sync::Arc<std::sync::Mutex<Kept>>,
+    /// The rows [`crate::fx::kept_rows`] last read, their bytes and their
+    /// JSON in the order it answered them, shared by the layout's clones.
+    pub(crate) kept_rows: std::sync::Arc<std::sync::Mutex<KeptRows>>,
 }
 
 /// A record's packed bytes and their JSON ([`Layout::decode_kept`]).
 type Kept = Option<(Vec<u8>, std::sync::Arc<Value>)>;
+
+/// Rows' packed bytes and their JSON, in a read's order
+/// ([`crate::fx::kept_rows`]).
+pub(crate) type KeptRows = Vec<(Vec<u8>, std::sync::Arc<Value>)>;
 
 /// The variants of an IDL enum column (`AudioBus`), from the declared
 /// columns: a game's field may be of an enum column no engine record uses.
@@ -352,6 +359,7 @@ impl Layout {
             fields: out.into(),
             by_name: Default::default(),
             kept: Default::default(),
+            kept_rows: Default::default(),
         };
         // Defaults must encode: refuse a bad one at declaration.
         layout.encode(None, None)?;
@@ -409,6 +417,7 @@ impl Layout {
             fields: fields.into(),
             by_name: Default::default(),
             kept: Default::default(),
+            kept_rows: Default::default(),
         })
     }
 
@@ -446,6 +455,7 @@ impl Layout {
                 .into(),
             by_name: Default::default(),
             kept: Default::default(),
+            kept_rows: Default::default(),
         }
     }
 
