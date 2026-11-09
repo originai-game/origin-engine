@@ -221,10 +221,11 @@ function host(): void {
     og(step, demo, "build", ".", "--publish");
     const buildJson = join(demo, "dist", "og-build.json");
     if (!existsSync(buildJson)) step.fail("og build --publish wrote no dist/og-build.json");
-    const build = JSON.parse(readFileSync(buildJson, "utf8")) as { engine: { version: string; pinned: string } };
+    const build = JSON.parse(readFileSync(buildJson, "utf8")) as { engine: { version: string; pinned: string }; wasm: string };
     if (build.engine.version !== VERSION || build.engine.pinned !== VERSION) step.fail(`og-build.json engine ${JSON.stringify(build.engine)}`);
-    const shipped = join(demo, "dist", "origin-engine_bg.wasm");
-    if (!existsSync(shipped)) step.fail("the build has no origin-engine_bg.wasm");
+    // A publish build serves the engine only under its content-hashed name (og-build.json's `wasm`).
+    const shipped = join(demo, "dist", build.wasm);
+    if (!existsSync(shipped)) step.fail(`the build has no ${build.wasm} (og-build.json's wasm)`);
     const packaged = join(enginePkg, "dist", "web-publish", "origin-engine_bg.wasm");
     if (sha256(shipped) !== sha256(packaged)) step.fail("the shipped publish wasm differs from the dist's engine/dist/web-publish/origin-engine_bg.wasm");
 

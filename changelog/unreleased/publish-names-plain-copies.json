@@ -1,0 +1,9 @@
+{
+  "breaking": [
+    {
+      "member": "og build --publish (output names)",
+      "change": "A publish build no longer writes the plain-name copies `origin-engine.js` and `origin-engine_bg.wasm`, nor the one-line `play.js` loader: `index.html` loads `./play.<hash>.js` directly, and every bundle, engine module and decoder exists only under its content-hashed name (docs/web-export.md §Content-hashed names; platform ask 18). A dev build keeps every plain name. A game's code is unaffected; a host, deploy script or check that reads a publish build's files by a plain name finds nothing.",
+      "fix": "Read the served names from the build's og-build.json: `worker` (the engine Worker), `wasm`, `lanes.glue`/`lanes.wasm`, and `names` (each plain name to its served file, such as `names[\"play.js\"]`)."
+    }
+  ]
+}

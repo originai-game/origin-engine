@@ -32,6 +32,10 @@
 //   origingame.runtime.json    the platform's isolation declaration, when the project wants isolation
 //   manifest.webmanifest, sw.js   (--publish) the PWA manifest and the offline service worker
 //
+// With --publish the bundles, the engine modules and the Basis and AV1
+// decoders (HASHED_FILES) are written only under their content-hashed names,
+// play.<hash>.js; og-build.json's `names` maps each plain name to its file.
+//
 // The bytes depend only on the inputs: no dates, no absolute paths, files in
 // sorted order. Prints a size table (bytes and brotli -q 11, or gzip -9
 // without the brotli CLI), then what a player downloads (downloadsOf: each
@@ -365,10 +369,11 @@ export interface DownloadBoot extends DownloadSum {
 
 /** What each page of a build downloads (Downloads), from its size table. */
 export function downloadsOf(files: readonly SizeRow[]): Downloads {
-  const all = files.map((f) => ({ ...f, path: f.path.split("\\").join("/") }));
-  // A content-hashed file counts under its own name; its plain copy is fetched by no page.
-  const aliases = aliasesOf(all.map((f) => f.path));
-  const rows = all.filter((f) => !aliases.has(f.path)).map((f) => ({ ...f, path: f.path.slice(0, f.path.lastIndexOf("/") + 1) + unhashed(f.path.slice(f.path.lastIndexOf("/") + 1)) }));
+  // A content-hashed file counts under its plain name.
+  const rows = files.map((f) => {
+    const path = f.path.split("\\").join("/");
+    return { ...f, path: path.slice(0, path.lastIndexOf("/") + 1) + unhashed(path.slice(path.lastIndexOf("/") + 1)) };
+  });
   const sum = (test: (path: string) => boolean): DownloadSum =>
     rows.filter((f) => test(f.path)).reduce((a, f) => ({ files: a.files + 1, bytes: a.bytes + f.bytes, compressed: a.compressed + f.compressed }), { files: 0, bytes: 0, compressed: 0 });
   const add = (...parts: DownloadSum[]): DownloadSum => parts.reduce((a, b) => ({ files: a.files + b.files, bytes: a.bytes + b.bytes, compressed: a.compressed + b.compressed }), { files: 0, bytes: 0, compressed: 0 });
@@ -405,9 +410,7 @@ export function downloadsOf(files: readonly SizeRow[]): Downloads {
  */
 export function serviceWorkerLists(paths: readonly string[], packs: ReadonlySet<string>): { files: string[]; lazy: string[]; single: string[]; lanes: string[] } {
   const onDemand = (f: string) => packs.has(f) || SOUND_CHUNK.test(f) || TEXTURE_MIPS.test(f) || FONT_FACE.test(f) || (f.startsWith("cooked/") && VIDEO_STREAM.test(f)) || f.startsWith("av1/");
-  // A content-hashed file's plain copy is fetched by no page, so it is not precached.
-  const aliases = aliasesOf(paths);
-  const precache = paths.filter((f) => !NOT_PRECACHED.test(f) && !onDemand(f) && !aliases.has(f));
+  const precache = paths.filter((f) => !NOT_PRECACHED.test(f) && !onDemand(f));
   return {
     files: ["./", ...precache.filter((f) => !SINGLE_ENGINE.test(f) && !LANES_ENGINE.test(f))],
     lazy: paths.filter(onDemand).sort(),
@@ -571,7 +574,8 @@ const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", 
  * manifest, a script in the head keeps Chromium's beforeinstallprompt, which fires before
  * the shell's module has booted (shell/page.ts installPwa offers it).
  */
-export function pageHtml(o: { settings: ProjectSettings; publish: boolean; config: Record<string, unknown>; icon: string; pwa: boolean; preload?: string }): string {
+export function pageHtml(o: { settings: ProjectSettings; publish: boolean; config: Record<string, unknown>; icon: string; pwa: boolean; play?: string }): string {
+  const play = o.play ?? "play.js";
   const css = [shellTokens(), motionSubset(SHELL_MOTIONS), readFileSync(join(SHELL_DIR, "shell.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/\n\s*/g, "\n").trim()].join("\n");
   // `<` cannot appear in the JSON's strings unescaped, so the script element cannot be closed early.
   const config = JSON.stringify(o.config).replace(/</g, "\\u003c");
@@ -594,7 +598,7 @@ export function pageHtml(o: { settings: ProjectSettings; publish: boolean; confi
 <title>${title}</title>
 <link rel="icon" href="./${o.icon}">
 <link rel="apple-touch-icon" href="./${o.icon}">
-${o.pwa ? '<link rel="manifest" href="./manifest.webmanifest">\n<script>addEventListener("beforeinstallprompt",function(e){e.preventDefault();window.__ogInstallPrompt=e})</script>\n' : ""}<link rel="modulepreload" href="./play.js">${o.preload ? `\n<link rel="modulepreload" href="./${o.preload}">` : ""}
+${o.pwa ? '<link rel="manifest" href="./manifest.webmanifest">\n<script>addEventListener("beforeinstallprompt",function(e){e.preventDefault();window.__ogInstallPrompt=e})</script>\n' : ""}<link rel="modulepreload" href="./${play}">
 <style>
 ${css}
 </style>
@@ -620,7 +624,7 @@ ${bootMark()}
 <button id="og-back" type="button" aria-label="Back" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m15 6-6 6 6 6"/></svg><span>Back</span></button>
 <a id="og-made-with" href="https://origingame.ai" target="_blank" rel="noopener"${o.settings.publish.madeWith ? "" : " hidden"}>${engineMark()}<span>Made with Origin Engine</span></a>
 <script type="application/json" id="og-config">${config}</script>
-<script type="module" src="./play.js"></script>
+<script type="module" src="./${play}"></script>
 </body>
 </html>
 `;
@@ -640,8 +644,6 @@ export function headersFile(isolation: PublishSettings["isolation"], hashed: rea
     "/",
     "  Cache-Control: no-cache",
     "/sw.js",
-    "  Cache-Control: no-cache",
-    "/play.js",
     "  Cache-Control: no-cache",
     "/og-build.json",
     "  Cache-Control: no-cache",
@@ -711,31 +713,11 @@ export const HASHED_FILES = [
   "basis/basis_transcoder.wasm",
   "av1/og-av1.wasm",
 ] as const;
-/**
- * Of those, the ones a publish build also writes under their plain name, a
- * copy no page fetches: the platform's build detection and checks still
- * read these names (docs/platform-asks.md #18), until it reads og-build.json.
- * `play.js` stays too, as the page's entry: a loader of a line that imports
- * `play.<hash>.js` ([`playLoader`]), revalidated like index.html.
- */
-export const ALIASED_FILES = ["origin-engine.js", "origin-engine_bg.wasm"] as const;
-
-/** `play.js` of a publish build: the entry index.html loads, importing the content-hashed shell. */
-export function playLoader(hashed: string): string {
-  return `import "./${hashed}";\n`;
-}
-
 /** `game.js` named by its content, `game.<first 12 hex of sha256>.js`. */
 export function hashedName(path: string, sha256hex: string): string {
   return path.replace(/(\.[^./]+)?$/, (ext) => `.${sha256hex.slice(0, 12)}${ext}`);
 }
 
-/** Of a build's paths, the plain copies of content-hashed files (ALIASED_FILES beside their hashed names): fetched by no page. */
-export function aliasesOf(paths: readonly string[]): Set<string> {
-  const plainOf = (p: string) => p.slice(0, p.lastIndexOf("/") + 1) + unhashed(p.slice(p.lastIndexOf("/") + 1));
-  const plain = new Set(paths.filter((p) => plainOf(p) !== p).map(plainOf));
-  return new Set(paths.filter((p) => plain.has(p) && (ALIASED_FILES as readonly string[]).includes(p)));
-}
 /** og.motion's model (og cook writes it for a project that uses og.motion): fetched in the background once the bundle is open (the manifest's motion entry), never in the boot bundle, cached then. */
 const MOTION_MODEL = "cooked/motion/model.ogb";
 /** A chunk of a sound cooked in chunks: fetched as its playhead nears it, cached then. */
@@ -868,20 +850,16 @@ export async function webBuild(project: string, entry: string, out: string, publ
 
   // Content-hashed names (a publish build): what the page and the Worker
   // fetch by name is served as `<stem>.<hash>.<ext>`, found through the
-  // configuration's `files`; a plain copy stays where the platform still
-  // reads the plain name (ALIASED_FILES).
+  // configuration's `files` and the platform through og-build.json.
   const names: Record<string, string> = {};
   if (publish) {
     for (const f of HASHED_FILES) {
       const from = join(out, f);
       if (!existsSync(from)) continue;
       const name = hashedName(f, sha256(new Uint8Array(readFileSync(from))));
-      if ((ALIASED_FILES as readonly string[]).includes(f)) cpSync(from, join(out, name));
-      else renameSync(from, join(out, name));
+      renameSync(from, join(out, name));
       names[f] = name;
     }
-    // The page's entry keeps its name (the platform's checks read `./play.js` in index.html).
-    writeFileSync(join(out, "play.js"), playLoader(names["play.js"]!));
   }
   const served = (f: string) => names[f] ?? f;
 
@@ -924,7 +902,7 @@ export async function webBuild(project: string, entry: string, out: string, publ
     expect: { wasm: wasmBytes, cooked: cookedBytes, lanes: lanes ? statSync(join(out, served("origin-engine-lanes_bg.wasm"))).size : 0 },
     files: names,
   };
-  writeFileSync(join(out, "index.html"), pageHtml({ settings, publish, config, icon, pwa: publish, preload: names["play.js"] }));
+  writeFileSync(join(out, "index.html"), pageHtml({ settings, publish, config, icon, pwa: publish, play: served("play.js") }));
   writeFileSync(join(out, "_headers"), headersFile(p.isolation, Object.values(names)));
   if (p.isolation !== "off") writeFileSync(join(out, "origingame.runtime.json"), JSON.stringify({ version: 1, crossOriginIsolated: true }) + "\n");
   if (publish) {
@@ -967,7 +945,7 @@ export async function webBuild(project: string, entry: string, out: string, publ
     version = identity(fileRows());
   }
 
-  const probe = await probeOf(join(out, "origin-engine.js"), join(out, "origin-engine_bg.wasm"), settings.profile);
+  const probe = await probeOf(join(out, served("origin-engine.js")), join(out, served("origin-engine_bg.wasm")), settings.profile);
   const rows = fileRows();
   const manifest: BuildManifest = {
     format: 1,

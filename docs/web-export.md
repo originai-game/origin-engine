@@ -15,6 +15,10 @@ og build . --publish    # what ships: the player probe members, minified, the PW
 
 ## Output layout
 
+The plain names below are a dev build's. A publish build writes the
+bundles, the engine modules and the decoders under content-hashed names
+only (`play.<hash>.js`; §Content-hashed names), listed in og-build.json.
+
 | Path | What it is |
 |---|---|
 | `index.html` | The player shell: the canvas, the boot splash (with the cover's backdrop on a platform page), the play gate, the error card, the install hint, Back, the badge. Carries `<meta name="og-engine" content="<engine version>">`, `og-build` (`publish`/`dev`), `og-profile` and `og-player` (`frame page`: the Player transports the shell speaks, what the platform reads to open the page at the top level), the inlined CSS (brand tokens and only the `genesis`, `progress` and `drift` motion rules) and the page configuration (`<script type="application/json" id="og-config">`). |
@@ -169,9 +173,10 @@ digits of its sha256>.<ext>` (`game.3f2a9c1e04b7.js`). This covers
 service worker caches it lazily) (`HASHED_FILES` in
 `src/node/web-build.ts`). A new build changes the URL of what changed and
 nothing else. The page finds them through its configuration's `files` (the
-same map as og-build.json's `names`). `index.html` still loads `./play.js`,
-which in a publish build is a one-line loader of `./play.<hash>.js`,
-revalidated like `index.html`; the page also preloads the hashed shell.
+same map as og-build.json's `names`), and `index.html` loads
+`./play.<hash>.js` directly. A publish build writes these files under their
+hashed names only: a host or tool finds them through og-build.json
+(`worker`, `wasm`, `lanes`, `names`), never by a plain name.
 
 Some names stay as they are: the entry points (`index.html`, `sw.js`,
 `og-build.json`, `manifest.webmanifest`), the icons, `snippets/` (the lanes
@@ -179,12 +184,7 @@ pool's helper, which imports the glue by the URL it is given) and
 `cooked/`, whose files the cook's manifest names; the service worker
 carries an unchanged cooked file over by its content instead (§Incremental
 update). A dev build keeps every plain name, because `og dev`, the tests
-and its linked source maps read them. Until the platform reads
-og-build.json (`docs/platform-asks.md` #18), a publish build also writes
-`origin-engine.js` and `origin-engine_bg.wasm` under their plain names
-(`ALIASED_FILES`): no page fetches them, the service worker does not
-precache them and the download figures do not count them. Dropping them
-and the `play.js` loader is a breaking minor.
+and its linked source maps read them.
 
 ## Lanes
 

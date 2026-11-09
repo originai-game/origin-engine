@@ -9,7 +9,7 @@ the store. Each ask names the shape the engine would use, so the bridge's
 mapping shrinks to a rename when it lands. Asks are numbered once and never
 renumbered; platform asks are collected at release.
 
-Only open asks are listed; landed ones (1–8, 12, 14, 15) are in git
+Only open asks are listed; landed ones (1–8, 12, 14, 15, 18, 27) are in git
 history. Numbers are never reused.
 
 ## The Player's clock
@@ -75,12 +75,6 @@ The engine does not consume it.
 | # | Ask | Why | Before | State |
 |---|---|---|---|---|
 | 17 | Keep field telemetry's fields when filing `crash` and `sample` (framed Player and the play origin's `/__player/v2/<game>/<release>/report`), shapes in `docs/web-export.md` §Telemetry; never answer 400 for them (a 400 drops the whole report). At publication, take a publish build's `sourcemaps/` out of the directory before the release is served and store it privately under og-build.json's `sourcemaps.build`; map a stored crash's `stack` with `mapStack` from `@origingame/engine/sourcemap` (a public contract, `docs/web-export.md` §Source maps) when showing it. Aggregate `frames` per release (the bins add up), `stages` and `failures`. The `end` sample is posted on `pagehide`, so by the time the Player's listener runs its `MessageEvent.source` no longer equals the iframe's `contentWindow` (seen in Chrome 150): a Player that filters messages on `e.source === iframe.contentWindow` drops every `end`; accept it by origin and the report's game and release instead. | A crash report that carries its mapped stack, tick, engine, build, browser, device, GPU and memory is one an agent can fix; frame-time and hitch distributions per session say which releases play badly on which devices. | A `crash` is `{ name, fingerprint }`; a `sample` is `renderer` and `timings`; stacks name minified bundle lines. | Open. The engine sends them (`publish { telemetry off }` opts a game out); a play origin that drops unknown fields loses nothing it had. |
-
-## Content-hashed names in publish builds
-
-| # | Ask | Why | Before | State |
-|---|---|---|---|---|
-| 18 | Find an Origin Engine publish build's files through its `og-build.json`, never by a plain file name: `worker` (the engine Worker), `wasm` and `lanes.glue`/`lanes.wasm` (the engine modules), and `names` (each file's own name to the name it is served by, `"play.js": "play.3f2a9c1e04b7.js"`; empty for a dev build) are the served names (`docs/web-export.md` §Content-hashed names). The places that name them, as read at origin-agent and origingame `main`: origin-agent `scripts/workspace-stack/scenarios/deploy.ts:149` and `stage-engine.ts:158,167` check that the entry page contains `./play.js` (check for `./${manifest.names["play.js"] ?? "play.js"}`, or `/\.\/play(\.[0-9a-f]{12})?\.js/`); `deploy.ts:150` and `stage-engine.ts:369` fetch or read `origin-engine_bg.wasm` (read `manifest.wasm`); origingame's wizard family markers (`packages/game-knowledge/production/wizard/rules.json`, `docs/wizard.md`: `origin-engine_bg.wasm`, `origin-engine.js`) detect a build by those names (detect it by `og-build.json` with `engine.name` `origin-engine`, or by `project.ogt` as now), and `tests/wizard-e2e/publish.e2e.ts:110` fetches `/origin-engine_bg.wasm` (fetch `manifest.wasm`). Keep publish builds served as a whole directory, as now: the shared engine blob (`server/src/play/serve.ts`, by sha256 and basename) works unchanged, and with content names two games on one engine still share one URL. | A new build downloads only what changed: hashed files are cached for a year (`_headers`), and the service worker carries every unchanged file over from the old build's cache. | With plain names the browser revalidated each one and the service worker downloads the whole game again on every release. | Open. Until it lands, `og build --publish` keeps the platform's checks passing. `index.html` still loads `./play.js`, which is now a one-line loader (`import "./play.<hash>.js"`, revalidated like `index.html`). The build also writes `origin-engine.js` and `origin-engine_bg.wasm` under their plain names, as copies that no page fetches and the service worker does not precache (`ALIASED_FILES` in `packages/engine/src/node/web-build.ts`). These names go only after this ask has landed, as a later breaking minor (`changelog.json`). |
 
 ## Purchases, ads, achievements, identity and share
 
@@ -266,69 +260,6 @@ writing prompts of its own:
 Until then the engine's side stands alone: `og new` records the choices,
 `audioBrief` lists the requests, and the presets synthesised by og cook
 give every game its sounds. Nothing is generated.
-
-## The engine measures, the agent judges
-
-**Ask 27, open.** From the first engine version after 0.7.7, engine
-commands report facts and measurements and never a taste verdict. origin-agent stops calling or describing what is
-gone, and keeps the judgement in its own design (its skills, prompts and
-evals):
-
-- **`og polish` is removed**, with `@origingame/engine/node/polish`, its
-  `og-out/polish/` report and its scores. Nothing replaces it inside the
-  engine: review a build with `og test` (the playtests), `og ui check`
-  and the frames (`og run --headless --commands`, `og frame measure`),
-  judged by the agent (the engine's guides, `og api show testing`, and
-  origin-agent's own skills).
-- **`og ui check` exits 0 when it ran** and 1 when it could not; exit 3
-  (an error finding) is gone. Its findings (overlap, text-cut,
-  text-truncated, offscreen, safe-area, covered, pseudo-overflow,
-  focus-reach, focus-trap, a11y-name, a11y-locale, feedback, art-slot)
-  carry `rule`, `paths`, `measured`, `prop`, `fix`, `cells`, `value`,
-  `unit` and `at`, and no `severity`, `limit` or `bar`. Contrast, text
-  size, touch target, text scale, primary actions per layer and the
-  element count are `measures` (`measure`, `paths`, `value`, `unit`,
-  `detail`, `prop`, `cell`, `rect`) held to no bar; contrast is no longer
-  a finding. The usual thresholds (4.5:1 and 3:1, 7:1 in high contrast;
-  44 px touch targets; 12 px text, 18 px at 1080p) are the `screens`
-  guide's §5 (`og api show screens`), for the agent to apply.
-- **`og build --publish` no longer refuses a game in the default UI
-  style**: a game may ship the default style, a built-in pack or its own.
-- **`og style check --critic` is removed**, and the JSON's
-  `contract.style` is `{ slug }` (no `checks`, no `intended`). The
-  measurements against the game's own art contract and exit 3 off that
-  contract stay. origin-agent's `critique_style` already reads the
-  checks from the catalogue itself, so it is not affected.
-- **`og run --device` has no scores**: device.json and `--json` lose
-  `scores`; the measures and findings stay.
-
-Callers on origin-agent `main`, as read at 73a84f7. No server or
-runner code invokes `og polish`, `--critic`, branches on `og ui check`'s
-or `og style check`'s exit 3, or relies on the publish refusal; what
-names them is documentation, a skill and an offline eval:
-
-- `docs/product/game.md:336` (the command table's `og polish .` row),
-  §Polish at `:463`–`:477`, the skill table's og-taste and og-feel rows at
-  `:601`–`:602` ("`og polish`'s taste measures", "feel measures") and
-  `:611` (the pin "with `og polish` in" its command list).
-- `docs/product/product-design.md:686` ("The engine's `og polish` scores
-  a build against the taste and feel checklists").
-- `server/prompts/create.md:43` (og-build "for the cook, run, observe,
-  test, polish and ship loop").
-- `knowledge/game/skills/art-director/SKILL.md:52`–`:55` (`og ui check`
-  "measures contrast, text size, touch targets ... each against the
-  engine's bar") and `:82`–`:84` ("a finding `og ui check` marks as a
-  warning"): the bar is now the art bible's or the `screens` guide's, and there are
-  no warnings, only findings and measures.
-- `server/scripts/eval/art-director.ts:60`–`:65` reads
-  `f.severity` and `f.bar` of each `og ui check` finding, and
-  `server/evals/art/cases.json` (its `ui` documents, ten `severity` or
-  `bar` fields, and case `:983`'s "just over the engine's 3:1"): render
-  contrast from `measures` (`measure: "contrast"`, `value`) instead.
-
-Until then an origin-agent pinned to 0.7.7 sees no change; one that pins
-the next version and still runs `og polish` gets an unknown-command error,
-and one that waits for `og ui check`'s exit 3 never sees it.
 
 ## The engine ships no skills
 
