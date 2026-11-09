@@ -29,6 +29,8 @@ serde_json = "1"
 tungstenite = { version = "=0.30.0", default-features = false, features = ["handshake"] }
 # `og style pack` starts a new style from the prototype's palette and radii.
 og-ui = { path = "../og-ui" }
+# og compare's FLIP and the agents' captures (og-probe's frame module).
+og-probe = { path = "../og-probe", default-features = false }
 # `og check`'s module-scope state check (src/module_state.rs), at og-cook's versions.
 oxc_allocator = "=0.157.0"
 oxc_ast = "=0.157.0"

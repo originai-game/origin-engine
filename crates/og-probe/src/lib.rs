@@ -29,6 +29,7 @@ pub mod base64;
 pub mod command;
 mod describe;
 pub mod expect;
+pub mod frame;
 pub mod hooks;
 pub mod input;
 mod names;

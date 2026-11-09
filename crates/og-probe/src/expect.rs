@@ -21,6 +21,7 @@
 //! as an unchecked screenshot is; so are an entity's `render.*` fields and
 //! the renderer's timings (`triangles`, `render`, `passes`).
 
+use crate::frame::{Rgba, decode_png};
 use crate::hooks::find_by_text;
 use crate::probe::Probe;
 use og_ecs::World;
@@ -482,113 +483,6 @@ fn compare(observed: &Value, op: Op, expected: &Value) -> bool {
             _ => false,
         },
     }
-}
-
-/// A decoded RGBA8 image.
-pub(crate) struct Rgba {
-    pub width: u32,
-    pub height: u32,
-    pub pixels: Vec<u8>,
-}
-
-/// Decodes an 8-bit RGB or RGBA, non-interlaced PNG (the frames og writes
-/// and most references).
-pub(crate) fn decode_png(bytes: &[u8]) -> Result<Rgba, String> {
-    if bytes.len() < 8 || &bytes[..8] != b"\x89PNG\r\n\x1a\n" {
-        return Err("not a PNG".into());
-    }
-    let mut at = 8;
-    let (mut width, mut height, mut channels) = (0u32, 0u32, 0usize);
-    let mut data = Vec::new();
-    while at + 8 <= bytes.len() {
-        let len = u32::from_be_bytes(bytes[at..at + 4].try_into().expect("4 bytes")) as usize;
-        let kind = &bytes[at + 4..at + 8];
-        let body = bytes
-            .get(at + 8..at + 8 + len)
-            .ok_or("a truncated PNG chunk")?;
-        match kind {
-            b"IHDR" => {
-                if body.len() < 13 {
-                    return Err("a short IHDR".into());
-                }
-                width = u32::from_be_bytes(body[0..4].try_into().expect("4"));
-                height = u32::from_be_bytes(body[4..8].try_into().expect("4"));
-                let (depth, color, interlace) = (body[8], body[9], body[12]);
-                channels = match color {
-                    2 => 3,
-                    6 => 4,
-                    _ => return Err(format!("PNG colour type {color} (RGB or RGBA only)")),
-                };
-                if depth != 8 || interlace != 0 {
-                    return Err("only 8-bit, non-interlaced PNGs".into());
-                }
-            }
-            b"IDAT" => data.extend_from_slice(body),
-            b"IEND" => break,
-            _ => {}
-        }
-        at += 12 + len;
-    }
-    if width == 0 || height == 0 {
-        return Err("a PNG without an image".into());
-    }
-    let raw = miniz_oxide::inflate::decompress_to_vec_zlib(&data)
-        .map_err(|e| format!("a PNG whose data does not inflate ({e:?})"))?;
-    let stride = width as usize * channels;
-    if raw.len() < (stride + 1) * height as usize {
-        return Err("a PNG with too little data".into());
-    }
-    let mut out = vec![0u8; width as usize * height as usize * 4];
-    let mut prev = vec![0u8; stride];
-    let mut cur = vec![0u8; stride];
-    for y in 0..height as usize {
-        let row = &raw[y * (stride + 1)..(y + 1) * (stride + 1)];
-        let filter = row[0];
-        for x in 0..stride {
-            let a = if x >= channels { cur[x - channels] } else { 0 };
-            let b = prev[x];
-            let c = if x >= channels { prev[x - channels] } else { 0 };
-            let v = row[x + 1];
-            cur[x] = match filter {
-                0 => v,
-                1 => v.wrapping_add(a),
-                2 => v.wrapping_add(b),
-                3 => v.wrapping_add(((u16::from(a) + u16::from(b)) / 2) as u8),
-                4 => {
-                    let p = i16::from(a) + i16::from(b) - i16::from(c);
-                    let (pa, pb, pc) = (
-                        (p - i16::from(a)).abs(),
-                        (p - i16::from(b)).abs(),
-                        (p - i16::from(c)).abs(),
-                    );
-                    let pred = if pa <= pb && pa <= pc {
-                        a
-                    } else if pb <= pc {
-                        b
-                    } else {
-                        c
-                    };
-                    v.wrapping_add(pred)
-                }
-                f => return Err(format!("PNG filter {f}")),
-            };
-        }
-        for x in 0..width as usize {
-            let o = (y * width as usize + x) * 4;
-            out[o..o + 3].copy_from_slice(&cur[x * channels..x * channels + 3]);
-            out[o + 3] = if channels == 4 {
-                cur[x * channels + 3]
-            } else {
-                255
-            };
-        }
-        std::mem::swap(&mut prev, &mut cur);
-    }
-    Ok(Rgba {
-        width,
-        height,
-        pixels: out,
-    })
 }
 
 /// The RGB root-mean-square difference of two images of one size, 0 to 255.

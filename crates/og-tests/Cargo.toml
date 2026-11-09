@@ -18,6 +18,8 @@ og-core = { path = "../og-core" }
 og-tween = { path = "../og-tween" }
 og-geom = { path = "../og-geom" }
 og-tilemap = { path = "../og-tilemap" }
+# A failing frame's FLIP heat map and worst regions (og-probe's frame module).
+og-probe = { path = "../og-probe", default-features = false }
 glam = { workspace = true }
 # hdr: the environment-map scene's equirectangular image (assets/env).
 image = { workspace = true, features = ["hdr"] }

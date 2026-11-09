@@ -3,7 +3,7 @@
 //! One binary for the author's loop: `og run` (native host, probe, command
 //! channel; `--device` times the publish build in a real browser), `og probe` (a WebSocket client of the probe), `og dev` (watch,
 //! rebuild, hot reload), `og check` (type-check with tsrs), `og test` (bun tests and playtests),
-//! `og compare` (a model review's silhouette IoU, ΔE00 and sheet), `og
+//! `og compare` (a model review's silhouette IoU, ΔE00 and sheet, and FLIP), `og
 //! migrate three` (a three.js file rewritten towards og, the rest listed),
 //! `og build` (the play page), `og cook`, `og doctor` and `og api` (the IDL outputs).
 
@@ -103,10 +103,13 @@ commands:
                       mixer's audio with --audio), frames.json (tick, time, sha256 per frame) and a
                       contact sheet; the fps divides the tick rate; --jobs splits the range
   compare <reference.png> <render.png> [--mask <mask.png>] [--align] [--key <ΔE00>] [--sheet <out.png>]
-      [--json]
+      [--flip <out.png>] [--ppd P] [--regions N] [--json]
                       a model review's numbers: silhouette IoU and ΔE00 per mask region (or over the
                       overlap) of a captured frame against a reference image, and one sheet PNG of
-                      the reference beside the render beside their silhouettes (the art-review guide)
+                      the reference beside the render beside their silhouettes (the art-review guide);
+                      NVIDIA's FLIP of the two (mean, percentiles, max), its heat map (default
+                      <render>.flip.png) and its worst regions, each reference | render | heat
+                      enlarged in <heat>-<n>.png (the captures guide)
   migrate three <file.ts> [--out <file.ts> | --write] [--json]
                       rewrite a three.js file towards og where the mapping is mechanical (geometries,
                       materials, meshes, lights, the scene graph, transforms, the camera, texture

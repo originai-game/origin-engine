@@ -1,6 +1,7 @@
 //! `og compare <reference.png> <render.png> [--mask <mask.png>] [--align]
-//! [--key <ΔE00>] [--sheet <out.png>] [--json]`: the deterministic half of a
-//! model review (the `art-review` guide). It reads a reference image and a frame
+//! [--key <ΔE00>] [--sheet <out.png>] [--flip <out.png>] [--ppd P]
+//! [--regions N] [--json]`: the deterministic half of a model review (the
+//! `art-review` guide) and of a frame diff (the `captures` guide). It reads a reference image and a frame
 //! the probe captured (`screenshot`, `view`, `turntable`), and prints:
 //!
 //! - **silhouette IoU**: the object's pixels in both over the pixels in
@@ -19,6 +20,16 @@
 //!   render only blue), labelled with the IoU and the overall ΔE00, so a
 //!   reviewer judges one image. By default `<render>.sheet.png` beside the
 //!   render.
+//! - **FLIP**: NVIDIA's perceptual difference (og-probe's `frame::flip`, a
+//!   port of the reference LDR-FLIP) of the render as compared against the
+//!   reference over the whole frame, at `--ppd` pixels per degree (default
+//!   the reference's observer, 67.02): its mean, percentiles and maximum,
+//!   the heat map (`--flip`, default `<render>.flip.png`, magma: black is
+//!   no difference) and the `--regions` (default 4) squares with the
+//!   largest mean error (og-probe's `FlipMap::worst`: one change, one
+//!   region), each written as `<heat>-<n>.png`: the reference's, the
+//!   render's and the heat map's pixels of it side by side, enlarged to
+//!   about 256 pixels a panel.
 //!
 //! The render is compared in the reference's frame: resampled to its size
 //! when the aspect ratios agree within 1 %, refused otherwise (render at the
@@ -33,7 +44,13 @@ use serde_json::json;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: og compare <reference.png> <render.png> [--mask <mask.png>] [--align] [--key <ΔE00>] [--sheet <out.png>] [--json]";
+const USAGE: &str = "usage: og compare <reference.png> <render.png> [--mask <mask.png>] [--align] [--key <ΔE00>] [--sheet <out.png>] [--flip <out.png>] [--ppd P] [--regions N] [--json]";
+
+/// The side a FLIP region starts from: a twentieth of the frame's shorter
+/// side, at least 16 pixels (og-probe's `frame::flip::region_side`).
+fn region_side(w: u32, h: u32) -> u32 {
+    og_probe::frame::flip::region_side(w, h)
+}
 
 /// What `og compare` was asked.
 #[derive(Debug, PartialEq)]
@@ -44,24 +61,45 @@ struct Args {
     align: bool,
     key: f64,
     sheet: Option<PathBuf>,
+    flip: Option<PathBuf>,
+    ppd: f32,
+    regions: usize,
     json: bool,
 }
 
 fn parse(args: &[&str]) -> Result<Args, String> {
     let mut paths = Vec::new();
     let (mut mask, mut sheet, mut align, mut json, mut key) = (None, None, false, false, 8.0);
+    let (mut flip, mut ppd, mut regions) = (None, og_probe::frame::flip::DEFAULT_PPD, 4);
     let mut i = 0;
     while i < args.len() {
         match args[i] {
             "--align" => align = true,
             "--json" => json = true,
-            flag @ ("--mask" | "--sheet" | "--key") => {
+            flag @ ("--mask" | "--sheet" | "--key" | "--flip" | "--ppd" | "--regions") => {
                 let v = args
                     .get(i + 1)
                     .ok_or_else(|| format!("{flag} needs a value. {USAGE}"))?;
                 match flag {
                     "--mask" => mask = Some(PathBuf::from(v)),
                     "--sheet" => sheet = Some(PathBuf::from(v)),
+                    "--flip" => flip = Some(PathBuf::from(v)),
+                    "--ppd" => {
+                        ppd = v
+                            .parse()
+                            .ok()
+                            .filter(|p: &f32| p.is_finite() && *p > 0.0)
+                            .ok_or_else(|| {
+                                format!("--ppd {v}: pixels per degree above 0, such as 67")
+                            })?
+                    }
+                    "--regions" => {
+                        regions = v
+                            .parse()
+                            .ok()
+                            .filter(|n: &usize| *n <= 32)
+                            .ok_or_else(|| format!("--regions {v}: a count from 0 to 32"))?
+                    }
                     _ => {
                         key = v
                             .parse()
@@ -92,6 +130,9 @@ fn parse(args: &[&str]) -> Result<Args, String> {
         align,
         key,
         sheet,
+        flip,
+        ppd,
+        regions,
         json,
     })
 }
@@ -134,15 +175,95 @@ fn compare_files(a: &Args) -> Result<(), String> {
     sheet(&reference, &c)
         .save(&sheet_path)
         .map_err(|e| format!("{}: {e}", sheet_path.display()))?;
+    let heat_path = a.flip.clone().unwrap_or_else(|| {
+        let stem = a
+            .render
+            .file_stem()
+            .map_or("render".into(), |s| s.to_string_lossy().into_owned());
+        a.render.with_file_name(format!("{stem}.flip.png"))
+    });
+    let flip = flip_files(&reference, &c.render, a.ppd, a.regions, &heat_path)?;
     if a.json {
         let mut v = c.to_json();
         v["sheet"] = json!(sheet_path.display().to_string());
+        v["flip"] = flip;
         println!("{v}");
     } else {
         print!("{}", c.report());
         println!("sheet {}", sheet_path.display());
+        println!(
+            "FLIP at {:.2} px/deg: mean {:.4}, p50 {:.4}, p95 {:.4}, p99 {:.4}, max {:.4}",
+            a.ppd,
+            flip["mean"].as_f64().unwrap_or(0.0),
+            flip["p50"].as_f64().unwrap_or(0.0),
+            flip["p95"].as_f64().unwrap_or(0.0),
+            flip["p99"].as_f64().unwrap_or(0.0),
+            flip["max"].as_f64().unwrap_or(0.0)
+        );
+        println!("heat map {}", heat_path.display());
+        for r in flip["regions"].as_array().into_iter().flatten() {
+            let b = &r["rect"];
+            println!(
+                "  region {}x{} at {},{}: mean {:.4}, max {:.4}  {}",
+                b["width"],
+                b["height"],
+                b["x"],
+                b["y"],
+                r["mean"].as_f64().unwrap_or(0.0),
+                r["max"].as_f64().unwrap_or(0.0),
+                r["file"].as_str().unwrap_or("")
+            );
+        }
     }
     Ok(())
+}
+
+fn frame_of(img: &RgbaImage) -> og_probe::frame::Rgba {
+    og_probe::frame::Rgba {
+        width: img.width(),
+        height: img.height(),
+        pixels: img.as_raw().clone(),
+    }
+}
+
+/// FLIP of `render` against `reference` (one size): the heat map written to
+/// `heat`, each of the `regions` worst regions to `<heat>-<n>.png`, and
+/// their numbers.
+pub fn flip_files(
+    reference: &RgbaImage,
+    render: &RgbaImage,
+    ppd: f32,
+    regions: usize,
+    heat: &Path,
+) -> Result<serde_json::Value, String> {
+    use og_probe::frame::flip;
+    let (r, t) = (frame_of(reference), frame_of(render));
+    let map = flip::flip(&r, &t, ppd)?;
+    let heat_map = map.heat_map();
+    std::fs::write(heat, heat_map.png()).map_err(|e| format!("{}: {e}", heat.display()))?;
+    let side = region_side(map.width, map.height);
+    let stem = heat.with_extension("");
+    let mut listed = Vec::new();
+    for (n, region) in map.worst(regions, side).iter().enumerate() {
+        let file = PathBuf::from(format!("{}-{}.png", stem.display(), n + 1));
+        let factor = flip::enlargement(region.rect.width.max(region.rect.height), 256);
+        let strip = flip::region_strip(&r, &t, &heat_map, region.rect, factor);
+        std::fs::write(&file, strip.png()).map_err(|e| format!("{}: {e}", file.display()))?;
+        listed.push(json!({
+            "rect": { "x": region.rect.x, "y": region.rect.y, "width": region.rect.width, "height": region.rect.height },
+            "mean": region.mean,
+            "max": region.max,
+            "enlarged": factor,
+            "file": file.display().to_string(),
+        }));
+    }
+    let s = map.stats();
+    Ok(json!({
+        "ppd": ppd,
+        "mean": s.mean, "p50": s.p50, "p95": s.p95, "p99": s.p99, "max": s.max,
+        "heatMap": heat.display().to_string(),
+        "regions": listed,
+    }))
 }
 
 // ── colour ──────────────────────────────────────────────────────────────────
@@ -805,6 +926,52 @@ mod tests {
             (0..90).any(|dx| s.get_pixel(GAP + 2 * (100 + GAP) + 2 + dx, GAP + 80 + 8)[0] > 200);
         assert!(label, "the IoU is written under the overlay");
         assert_eq!(sheet(&reference, &c), s, "the same bytes again");
+    }
+
+    #[test]
+    fn flip_writes_the_heat_map_and_the_worst_region_over_the_change() {
+        let dir = std::env::temp_dir().join(format!("og-compare-flip-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let reference = square(20, RED);
+        // The square moved 10 px right: the difference is its two edges.
+        let render = square(30, RED);
+        let heat = dir.join("shot.flip.png");
+        let v = flip_files(
+            &reference,
+            &render,
+            og_probe::frame::flip::DEFAULT_PPD,
+            2,
+            &heat,
+        )
+        .unwrap();
+        let map = image::open(&heat).unwrap().to_rgba8();
+        assert_eq!(map.dimensions(), (100, 80));
+        assert!(v["mean"].as_f64().unwrap() > 0.0 && v["max"].as_f64().unwrap() > 0.9);
+        let regions = v["regions"].as_array().unwrap();
+        assert_eq!(regions.len(), 2);
+        // Each worst region touches a changed column (20..30 or 60..70).
+        for r in regions {
+            let (x, w) = (
+                r["rect"]["x"].as_u64().unwrap(),
+                r["rect"]["width"].as_u64().unwrap(),
+            );
+            assert!(x < 30 && x + w > 20 || x < 70 && x + w > 60, "{r}");
+            let strip = image::open(r["file"].as_str().unwrap()).unwrap();
+            let h = r["rect"]["height"].as_u64().unwrap();
+            assert_eq!(strip.height() as u64, h * r["enlarged"].as_u64().unwrap());
+        }
+        // A frame against itself lists no region.
+        let same = flip_files(
+            &reference,
+            &reference,
+            og_probe::frame::flip::DEFAULT_PPD,
+            2,
+            &heat,
+        )
+        .unwrap();
+        assert_eq!(same["max"], 0.0);
+        assert!(same["regions"].as_array().unwrap().is_empty());
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

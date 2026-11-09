@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "og compare --flip, --ppd, --regions",
+      "summary": "og compare also measures NVIDIA's FLIP (a port of the reference LDR-FLIP, BSD-3-Clause, third_party/flip) of the render as compared against the reference: mean, p50, p95, p99 and max per pixel at --ppd pixels per degree (default the reference's observer, 67.02), a magma heat map (--flip, default <render>.flip.png) and up to --regions (default 4) worst regions, one per change and framed to its extent, each written as reference | render | heat enlarged to about 256 px a panel (<heat>-<n>.png). --json carries them as `flip`."
+    },
+    {
+      "member": "gfx reference tests",
+      "summary": "A frame that fails its reference also writes <scene>.flip.png (the FLIP heat map) and <scene>.flip-<n>.png (its three worst regions, reference | actual | heat enlarged) beside .actual.png and .diff.png, and the failure prints FLIP's mean, p95 and max with each region's box."
+    }
+  ]
+}

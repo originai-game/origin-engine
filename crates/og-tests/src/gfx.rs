@@ -152,6 +152,58 @@ pub fn load_png(path: &Path) -> Result<RgbaImage, String> {
     })
 }
 
+/// The FLIP of a failing frame against its reference (og-probe's
+/// `frame::flip`, NVIDIA's LDR-FLIP): `<scene>.flip.png`, the heat map, and
+/// `<scene>.flip-<n>.png`, the three worst regions (`FlipMap::worst`) as
+/// reference | actual | heat enlarged, under `base`; answers
+/// the lines the failure prints.
+pub fn flip_report(
+    reference: &RgbaImage,
+    actual: &RgbaImage,
+    base: &Path,
+    scene: &str,
+) -> Result<String, String> {
+    use og_probe::frame::{Rgba, flip};
+    let frame = |i: &RgbaImage| Rgba {
+        width: i.width,
+        height: i.height,
+        pixels: i.pixels.clone(),
+    };
+    let (r, t) = (frame(reference), frame(actual));
+    let map = flip::flip(&r, &t, flip::DEFAULT_PPD)?;
+    let heat = map.heat_map();
+    let write = |name: String, img: &Rgba| -> Result<String, String> {
+        let path = base.join(name);
+        std::fs::write(&path, img.png()).map_err(|e| format!("{}: {e}", path.display()))?;
+        Ok(path.display().to_string())
+    };
+    let s = map.stats();
+    let mut out = format!(
+        "  FLIP      mean {:.4}, p95 {:.4}, max {:.4}: {}",
+        s.mean,
+        s.p95,
+        s.max,
+        write(format!("{scene}.flip.png"), &heat)?
+    );
+    let side = flip::region_side(map.width, map.height);
+    for (n, region) in map.worst(3, side).iter().enumerate() {
+        let long = region.rect.width.max(region.rect.height);
+        let strip = flip::region_strip(&r, &t, &heat, region.rect, flip::enlargement(long, 256));
+        let file = write(format!("{scene}.flip-{}.png", n + 1), &strip)?;
+        out += &format!(
+            "\n  worst {}   {}x{} at {},{}: mean {:.4}, max {:.4}: {file}",
+            n + 1,
+            region.rect.width,
+            region.rect.height,
+            region.rect.x,
+            region.rect.y,
+            region.mean,
+            region.max
+        );
+    }
+    Ok(out)
+}
+
 /// Renders the scene called `scene` headless (see [`render_built`]).
 pub fn render(scene: &str) -> Result<Rendered, String> {
     render_built(&mut scenes::build(scene)?)
@@ -237,8 +289,9 @@ pub fn check_built(scene: &str, built: &mut GfxScene, out_dir: &Path) -> Result<
         let diff_path = base.join(format!("{scene}.diff.png"));
         save_png(&actual_path, &rendered.image)?;
         save_png(&diff_path, &diff)?;
+        let flip = flip_report(&expected, &rendered.image, &base, scene)?;
         return Err(format!(
-            "{report}: {why}\n  reference {}\n  actual    {}\n  diff      {}",
+            "{report}: {why}\n  reference {}\n  actual    {}\n  diff      {}\n{flip}",
             reference.display(),
             actual_path.display(),
             diff_path.display()
