@@ -15,8 +15,6 @@ def build():
     command = ['cargo', 'nextest', 'list', '--locked', '--workspace', '--list-type', 'binaries-only', '--message-format', 'json']
     if os.environ['OG_GATE_LANE'] == 'quick':
         command += ['--exclude', 'og-tests']
-    else:
-        command += ['--features', 'og-cook/kit-tests,og-ui/kit-tests,og-tests-cooked/kit-tests']
     with (LOGS / 'binaries.json').open('w') as out:
         subprocess.run(command, stdout=out, check=True)
     listing = json.loads((LOGS / 'binaries.json').read_text())

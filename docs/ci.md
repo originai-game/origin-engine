@@ -190,7 +190,7 @@ wasm products keyed by content. Neither lane partitions tests across machines.
 | Lane | Checks |
 |---|---|
 | `quick` | fmt, clippy, native test build, CPU tests, GPU tests outside og-tests, generated API drift, non-engine package tests, the lanes wasm type check |
-| `full` | quick plus og-tests, doctests, opt-in kit Rust targets, engine and extension Bun tests, bindgen-only wasm variants, fixtures, browser wire/player/export/unsupported/motion-tick tests |
+| `full` | quick plus og-tests, doctests, engine and extension Bun tests, bindgen-only wasm variants, fixtures, the browser tests of packages/engine's `test:browser` |
 
 `scripts/check.sh` owns admission and checkout ownership.
 `scripts/gate/run.py` schedules the dependency DAG. `step.sh` acquires GPU
@@ -237,8 +237,7 @@ longer exist.
 ### Test binaries
 
 Each crate has at most one default integration binary, `tests`, declared
-at `tests/it/main.rs` with `autotests = false`. The opt-in `kit-tests`
-targets belong to the full lane. Single-crate checks live inline under
+at `tests/it/main.rs` with `autotests = false`. Single-crate checks live inline under
 `#[cfg(test)]`; integration targets cover cross-crate contracts, GPU
 rendering and the CLI. nextest runs each test in its own process,
 including tests that change process-wide state; use nextest, or `cargo
@@ -268,7 +267,7 @@ split, and the lowest such crate is its cause.
 |---|---|---|
 | `fmt` | `cargo fmt --all --check` | quick, full |
 | `clippy` | `cargo clippy --workspace --all-targets -- -D warnings` | quick, full |
-| `rust-build` | nextest builds and lists native test binaries; quick excludes og-tests, full includes retained kit features. | quick, full |
+| `rust-build` | nextest builds and lists native test binaries; quick excludes og-tests. | quick, full |
 | `rust-cpu`, `rust-gpu` | nextest executes the discovered tests with separate reports and bounded workers. | quick, full |
 | `doc-tests` | `cargo test --workspace --doc` | full |
 | `drift` | The dev `og api check` checks generated declarations, wiki, schema and Rust glue against the IDL. | quick, full |
@@ -279,7 +278,7 @@ split, and the lowest such crate is its cause.
 | `size-gate` | Brotli-11 bytes of each shipping-profile bindgen module in `dev.txt`, checked against `wasm_core_brotli_bytes` before packing. | release only |
 | `bun-test` | Package tests and typechecks using the dev addon and gate-produced wasm (`OG_GATE=1`), without a second release build. | full |
 | `fixtures` | `og test` for each changed runnable feature fixture and the creation skeleton. | full |
-| `browser` | Browser hello page (its display-frame readback included), wire, player, export, device, unsupported-device and og.motion tick tests (`test:browser`). | full |
+| `browser` | Every file packages/engine's `test:browser` names, each run even when one before it failed: the hello page (its display-frame readback included), wire, player, export, device, unsupported-device, og.motion tick and colour-vision tests. | full |
 | `web-reference` | Native and web preparation, then headless Chrome WebGPU groups with `OG_WEB_JOBS` concurrency (default 3). Compare retained scenes under unchanged tolerances. | explicit |
 | `check-conformance` | `scripts/tsrs-diff.sh`: compare tsrs and pinned tsgo diagnostics over packages, templates, the test fixtures and the error corpus. | explicit |
 | perf | `scripts/perf.sh`: ignored `perf_*` assertions in og-tests, og-runtime and og-audio, release profile, serially under every GPU slot. | explicit |

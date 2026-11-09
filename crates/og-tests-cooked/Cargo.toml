@@ -9,7 +9,6 @@ publish = false
 autotests = false
 
 [features]
-kit-tests = []
 
 [dependencies]
 og-tests = { path = "../og-tests" }

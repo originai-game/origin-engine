@@ -28,18 +28,19 @@ for (const entry of readdirSync("packages", { withFileTypes: true })) {
   const pkg = `packages/${entry.name}`;
   if ((entry.name === "engine") !== full) continue;
   const manifestFile = Bun.file(join(pkg, "package.json"));
-  if (!await manifestFile.exists()) continue;
-  const manifest = await manifestFile.json();
+  // A package without a manifest or a test script still has its test files
+  // run (packages/launcher has neither): a test file is never skipped for
+  // what its package does not declare.
+  const manifest = await manifestFile.exists() ? await manifestFile.json() : {};
   const script: unknown = manifest.scripts?.test;
-  if (typeof script !== "string") continue;
-  const testCommand = script.lastIndexOf("bun test");
-  if (testCommand < 0) {
+  const testCommand = typeof script === "string" ? script.lastIndexOf("bun test") : -1;
+  if (typeof script === "string" && testCommand < 0) {
     await run(["bun", "run", "test"], resolve(pkg));
     continue;
   }
   // Preserve validation/prepack commands from the package's own contract.
   // engine preparation and typecheck are done once by step_bun_test.
-  const prepare = script.slice(0, testCommand).replace(/\s*&&\s*$/, "");
+  const prepare = typeof script === "string" ? script.slice(0, testCommand).replace(/\s*&&\s*$/, "") : "";
   if (!full && prepare.trim()) await run(["bash", "-eu", "-c", prepare], resolve(pkg));
   const files = [...new Bun.Glob("{tests,extensions}/**/*.{test,spec}.{ts,tsx,js}").scanSync(pkg)].sort();
   const dependencies = new Map<string, Set<string>>();

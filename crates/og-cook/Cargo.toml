@@ -9,7 +9,6 @@ autotests = false
 
 [features]
 default = ["cook", "basis", "transcode"]
-kit-tests = []
 # Native Basis Universal transcoding of cooked KTX2 textures to RGBA8 for
 # og-render (og-bundle's `transcode`).
 transcode = ["og-bundle/transcode"]

@@ -47,14 +47,18 @@ case "$1" in
         og_green_set bun-quick.scripts
       rc=$?
     fi
+    # Every script test, found rather than listed, so a new one cannot be missed.
     [ "$rc" != 0 ] || {
-      bun test scripts/gate/imports.test.ts scripts/changelog.test.ts scripts/release-dist.test.ts scripts/toolchain.test.ts && bun scripts/gate/bun.ts quick
+      bun test $(find scripts -name '*.test.ts' | sort | sed 's|^|./|') && bun scripts/gate/bun.ts quick
       rc=$?
     } ;;
   browser)
-    rc=0
-    for test in wire player export unsupported; do
-      (cd packages/engine && bun "tests/web/$test.ts") || rc=1
+    # packages/engine's test:browser is the one list of the browser tests;
+    # each runs even when one before it failed.
+    tests="$(bun -e 'console.log(require("./packages/engine/package.json").scripts["test:browser"])' | grep -o 'tests/web/[a-z0-9-]*\.ts')"
+    [ -n "$tests" ] && rc=0 || { og_err "browser: packages/engine's test:browser names no tests/web file"; rc=1; }
+    for test in $tests; do
+      (cd packages/engine && bun "$test") || rc=1
     done ;;
   *) "step_$(gate_key "$1")"; rc=$? ;;
 esac
