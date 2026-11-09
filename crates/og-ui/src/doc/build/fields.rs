@@ -827,6 +827,28 @@ impl Ui {
         // `display: inline-*` (any element): it lies in its parent's lines,
         // and `vertical-align` places it there.
         el.inline = super::outer_inline(r.str("display"));
+        // A block-level text (`<p>`, a heading, a text displayed `block`)
+        // in a block's flow fills its line, as a CSS block box does (CSS 2
+        // §10.3.3); an inline-level one keeps fitting its text.
+        if base.kind == "label" {
+            el.block = match r.str("display") {
+                d @ Some(_) if super::outer_inline(d) => false,
+                Some("block" | "flowRoot" | "listItem") => true,
+                _ => matches!(
+                    n.selector_tag.as_deref(),
+                    Some("p" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6")
+                ),
+            };
+            let parent = self.nodes[i].parent;
+            if el.block
+                && !r.has("width")
+                && !r.has("textPath")
+                && parent != crate::layout::NONE
+                && self.nodes[parent].el.block
+            {
+                el.width = Size::grow();
+            }
+        }
         if el.inline {
             // `top` and `bottom` against the line box; the others against
             // the line's baseline (`Ui::align_baselines`).

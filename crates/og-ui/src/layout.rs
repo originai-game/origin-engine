@@ -730,7 +730,9 @@ pub struct Element {
     pub margin: [Margin; 4],
     /// A CSS block box (`display: block`): its in-flow children's vertical
     /// margins collapse with each other and, where no padding separates
-    /// them, with its own (CSS 2 §8.3.1).
+    /// them, with its own (CSS 2 §8.3.1). A text with it is block-level
+    /// (`<p>`, a heading): in a block's flow it fills the line and lies on
+    /// a line of its own.
     pub block: bool,
     /// CSS `row-reverse`/`column-reverse`: its children run from the main
     /// axis's end.

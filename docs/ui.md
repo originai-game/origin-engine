@@ -385,7 +385,12 @@ inline-level child's `vertical-align` places it in its line: `top` and
 (below) against the line's baseline and the block's first text, a box
 with no text taking its bottom edge as its baseline. Such a box is
 moved where it is drawn; its line keeps the height of its tallest
-child, so a box moved past the line's edge overflows it. An inline-level element is laid out whole (an
+child, so a box moved past the line's edge overflows it. A `<p>`, a
+heading or a text displayed `block` is block-level: in a block's flow it
+is as wide as the block's content box (CSS 2 §10.3.3), as a block box
+is, and on a line of its own among inline-level children; `<span>`,
+`<a>`, `<small>` and a text displayed `inline` or `inline-block` are
+inline-level and as wide as their text. An inline-level element is laid out whole (an
 atomic inline): an `inline` box's text does not break across the
 lines of its parent; inline markup inside a text (`<b>`, `<span>`,
 `<a>`) is runs of that text and flows across lines. Other elements'

@@ -518,13 +518,14 @@ fn cross_size(n: &Node, axis: usize, inner: f32, basis: f32, stretch: bool) -> f
 }
 
 /// Whether node `n` lies in a line beside its siblings (CSS 2 §9.2.2): a
-/// box displayed `inline-*`, a text or an image.
+/// box displayed `inline-*`, a text that is not block-level, or an image.
 pub(super) fn inline_level(n: &Node) -> bool {
     n.el.inline
-        || matches!(
-            n.content,
-            Content::Text(_) | Content::Rich(_) | Content::Image { .. }
-        )
+        || match n.content {
+            Content::Text(_) | Content::Rich(_) => !n.el.block,
+            Content::Image { .. } => true,
+            Content::None => false,
+        }
 }
 
 /// Node `c`'s size along `axis` held to its bounds against `basis`.

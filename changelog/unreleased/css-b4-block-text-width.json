@@ -1,0 +1,15 @@
+{
+  "breaking": [
+    {
+      "member": "UI document scoped CSS (block-level text width)",
+      "change": "A <p>, a heading (<h1>…<h6>) or a text displayed block in a block's flow is now as wide as its containing block, as a CSS block box is, instead of only as wide as its text. Its background, border and hit area span the line, and column-span: all spans every column. A <span>, <a>, <small> or a text displayed inline or inline-block still fits its text.",
+      "fix": "Where a paragraph or heading should be only as wide as its text, give it `width: fit-content` (or `display: inline-block`).",
+      "find": [
+        "<p",
+        "<h1",
+        "<h2",
+        "<h3"
+      ]
+    }
+  ]
+}
