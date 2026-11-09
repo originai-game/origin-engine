@@ -36,7 +36,9 @@ never for its art, brand or layout.
 A locked slot is disabled and sends nothing. The Equip button is disabled
 for a locked or equipped slot; X or pad Y on an equipped slot still sends
 `equip`, and the game, which owns legality, ignores it. An empty loadout
-says so and keeps Back.
+says so and keeps Back. On a landscape phone (height under 600 px) the
+title is smaller, the slots take one column and Back and Equip stand
+beside the list at its foot, so the list keeps the page's height.
 Equipped is a tag on a slot's detail line, so every row's price is one
 right-aligned column. The slot list keeps a gutter for its scrollbar and
 fades its bottom edge while there is more to scroll. Under a coarse pointer
