@@ -6,20 +6,21 @@
 // "Settings saved" toast. `show pause` opens a pause dialog (it scales in,
 // or fades under reduced motion); `show none` closes both.
 import { og, defineSystem } from "@origingame/engine";
-import type { UiWritable } from "@origingame/engine";
+import type { World } from "@origingame/engine";
 
 const SCREENS = ["none", "settings", "pause"] as const;
 
-let settings: UiWritable<boolean> | undefined;
-let pause: UiWritable<boolean> | undefined;
+// The dialogs' open stores, by name: a store lives in the UI's
+// presentation checkpoint, never in a module variable.
+const open = (world: World, dialog: "settings" | "pause") => og.ui.scope(world, "a11y").writable(dialog, false);
 
 const Screens = defineSystem("A11yScreens", {}, (_q, _t, world) => {
   for (const e of og.ui.docEvents(world)) {
     if (e.kind !== "emit") continue;
     if (e.name === "done") {
-      settings?.set(false);
+      open(world, "settings").set(false);
       og.ui.toast(world, "Settings saved");
-    } else if (e.name === "resume") pause?.set(false);
+    } else if (e.name === "resume") open(world, "pause").set(false);
   }
 });
 
@@ -32,11 +33,9 @@ export default og.game({
   },
   ui(world) {
     const scope = og.ui.scope(world, "a11y");
-    settings = scope.writable("settings", false);
-    pause = scope.writable("pause", false);
     const inputs = {
-      settings,
-      pause,
+      settings: open(world, "settings"),
+      pause: open(world, "pause"),
       tab: scope.writable("tab", "audio"),
       master: scope.writable("master", 1),
       music: scope.writable("music", 0.8),
@@ -48,11 +47,11 @@ export default og.game({
     if (!mounted.ok) throw new Error(mounted.reason);
   },
   commands: {
-    show: (_world, args) => {
+    show: (world, args) => {
       const at = SCREENS.indexOf((args[0] ?? "none") as (typeof SCREENS)[number]);
       if (at < 0) return;
-      settings?.set(at === 1);
-      pause?.set(at === 2);
+      open(world, "settings").set(at === 1);
+      open(world, "pause").set(at === 2);
     },
   },
   commandHelp: {

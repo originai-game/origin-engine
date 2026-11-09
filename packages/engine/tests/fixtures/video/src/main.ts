@@ -9,7 +9,7 @@
 // as the map of an unlit og.Mesh plane on the left half of the view, and
 // on a UI document's image on the right half (Surfaces binds it every tick).
 import { og, defineSystem } from "@origingame/engine";
-import type { Video, World } from "@origingame/engine";
+import type { World } from "@origingame/engine";
 
 function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }): T {
   if (!r.ok) throw new Error(r.reason);
@@ -29,12 +29,9 @@ export const Show = defineSystem("Show", { reads: [og.VideoPlayer], writes: [og.
   }
 });
 
-let streamed = 0 as unknown as Video;
-let surfaces = false;
-
-/** After `surfaces`: the screen's player texture on a UI image over the right half. */
+/** After `surfaces` (its plane is in the world): the screen's player texture on a UI image over the right half. */
 export const Surfaces = defineSystem("Surfaces", { reads: [og.VideoPlayer] }, (_q, _time, world) => {
-  if (!surfaces) return;
+  if (world.find("plane") == null) return;
   const screen = world.find("screen");
   if (screen == null) return;
   must(og.ui.scope(world, "video").writable("texture", 0).set(must(world.get(screen, og.VideoPlayer)).texture as number));
@@ -50,7 +47,8 @@ export default og.game({
     camera.height = 9;
     camera.position = { x: 0, y: 0, z: 50 };
     const info = must(og.load.video(world, "clips/count.ogt"));
-    streamed = must(og.load.video(world, "clips/count-stream.ogt")).video;
+    // The stream too, so its handles are the same in every process (`stream` loads it again).
+    must(og.load.video(world, "clips/count-stream.ogt"));
     const screen = must(world.spawn({ name: "screen", position: { x: 0, y: 0, z: 0 } }));
     must(world.insert(screen, og.Sprite, { texture: info.texture, width: 16, height: 9 }));
     must(world.insert(screen, og.VideoPlayer, { video: info.video }));
@@ -64,6 +62,7 @@ export default og.game({
   commands: {
     stream: (world: World) => {
       const screen = world.find("screen")!;
+      const streamed = must(og.load.video(world, "clips/count-stream.ogt")).video;
       must(world.set(screen, og.VideoPlayer, { video: streamed }) as never);
     },
     pair: (world: World) => {
@@ -83,7 +82,6 @@ export default og.game({
       const material = must(og.render.standardMaterial(world, { map: texture, unlit: true }));
       const plane = must(world.spawn({ name: "plane", position: { x: -4, y: 0, z: 0 } }));
       must(world.insert(plane, og.Mesh, { geometry, material }));
-      surfaces = true;
     },
   },
 });
