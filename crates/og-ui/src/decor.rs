@@ -88,7 +88,7 @@ pub struct BoxDecor {
     pub radius: Option<f32>,
     /// Its CSS paint beyond these: gradients, mask, filters, blend, text
     /// shadows, clip path and material.
-    pub css: Option<Box<crate::doc::paint_css::CssPaint>>,
+    pub(crate) css: Option<Box<crate::doc::paint_css::CssPaint>>,
     /// Per-corner, elliptical or % `border-radius`, or a `corner-shape`.
     pub corners: Option<Corners>,
     /// Its content box's edges in from its border box (its border and

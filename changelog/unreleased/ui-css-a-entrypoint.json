@@ -1,0 +1,9 @@
+{
+  "breaking": [
+    {
+      "member": "Rust Ui::resolve_part",
+      "change": "Part resolution takes the placed [width, height] and returns a CSS ElementDraw or diagnostics instead of a merged legacy dressing.",
+      "fix": "Supply standard CSS with Ui::set_part_css and select lowercase markup hosts with ::part(name), such as button.primary::part(base):hover or input[type=range]::part(track). Pass the part's placed size when resolving."
+    }
+  ]
+}

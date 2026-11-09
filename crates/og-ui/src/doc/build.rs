@@ -1988,6 +1988,7 @@ mod kbd;
 mod media;
 mod mount;
 mod nodes;
+mod parts;
 mod popover;
 mod retained;
 mod structure;

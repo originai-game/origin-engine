@@ -333,9 +333,9 @@ impl Selector {
                             matches
                         }
                     }
-                    Simple::Part(_) => {
-                        return Err("::part must be the final selector's named text span".into());
-                    }
+                    // Parts are matched against a part's Facts at runtime,
+                    // never against its host as an ordinary document node.
+                    Simple::Part(_) => Expr::Lit(false.into()),
                     Simple::Nth(_)
                     | Simple::Only { .. }
                     | Simple::Empty
@@ -507,7 +507,7 @@ fn nth(a: i32, b: i32, last: bool, of_type: bool) -> Simple {
     })
 }
 
-fn state(name: &str) -> Option<InteractionState> {
+pub(crate) fn state(name: &str) -> Option<InteractionState> {
     use InteractionState::*;
     Some(match name {
         "hover" => Hover,

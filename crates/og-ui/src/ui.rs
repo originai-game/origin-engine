@@ -545,6 +545,9 @@ pub struct Ui {
     /// ones its theme's version 1 art makes.
     pub(crate) dress: std::sync::Arc<crate::dress::DressSet>,
     pub(crate) dress_set: bool,
+    /// Global CSS part rules in cascade order and their at-rule descriptors.
+    pub(crate) part_rules: Vec<crate::doc::StyleRule>,
+    pub(crate) part_sheet: crate::doc::at_rules::Sheet,
     /// What each part of this frame draws through the UI pass, by node
     /// (made at `end` from its dressing, or the tokens).
     pub(crate) part_draws: std::collections::HashMap<usize, crate::paint::ElementDraw>,

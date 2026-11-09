@@ -72,6 +72,8 @@ impl Ui {
                 crate::style_file::theme_dressings(&desc.theme.art),
             )),
             dress_set: false,
+            part_rules: Vec::new(),
+            part_sheet: Default::default(),
             part_draws: Default::default(),
             decor_draws: Default::default(),
             clipboard: None,
@@ -373,11 +375,6 @@ impl Ui {
     /// The dressings in effect.
     pub fn dressings(&self) -> &crate::dress::DressSet {
         &self.dress
-    }
-
-    /// Every dressing that matches `part`, merged.
-    pub fn resolve_part(&self, part: &crate::dress::PartRef) -> crate::dress::Resolved {
-        self.dress.resolve(part)
     }
 
     /// Gives the element open now (a grid's cell, a panel, a card) a

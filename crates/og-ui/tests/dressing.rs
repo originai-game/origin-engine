@@ -586,3 +586,179 @@ fn a_kit_text_part_takes_its_ink_and_step() {
     assert!(near(free.1, ui.theme().palette.ink), "{:?}", free.1);
     assert_eq!(free.0, body);
 }
+
+#[test]
+fn css_parts_share_the_css_cascade_and_markup_hosts() {
+    use og_ui::dress::PartRef;
+    use og_ui::paint::{ColorRef, Effect, Paint, ShapeKind};
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.set_part_css(include_str!("fixtures/parts.css")).unwrap();
+    let part = PartRef::of("Button", "base", None);
+    let color = |hex: &str| Paint::Solid(ColorRef::Literal(style_file::parse_color(hex).unwrap()));
+    let draw = ui.resolve_part(&part, [120.0, 40.0]).unwrap();
+    assert_eq!(draw.fills, vec![color("#123456")]);
+    assert!(matches!(draw.shape, ShapeKind::Rect { radii: Some(r), .. } if r == [7.0; 4]));
+    assert!(matches!(
+        draw.effects.as_slice(),
+        [Effect::DropShadow {
+            offset: [1.0, 3.0],
+            blur: 5.0,
+            spread: 2.0,
+            ..
+        }]
+    ));
+    assert_eq!(
+        draw.borders.as_ref().unwrap().borders[0].unwrap().width,
+        2.0
+    );
+    let hover = part.flag("primary").flag("hover");
+    assert_eq!(
+        ui.resolve_part(&hover, [120.0, 40.0]).unwrap().fills,
+        vec![color("#ffff00")]
+    );
+    let epic = hover.attr("data-rarity", "epic").flag("pressed");
+    let draw = ui.resolve_part(&epic, [120.0, 40.0]).unwrap();
+    assert_eq!(draw.fills, vec![color("#0000ff")]);
+    assert_eq!(draw.opacity, 0.4);
+    ui.set_theme(Theme::new(Scheme::Light));
+    assert_eq!(
+        ui.resolve_part(&part, [120.0, 40.0]).unwrap().fills,
+        vec![color("#abcdef")]
+    );
+    for (component, name, on, expected) in [
+        ("Slider", "track", false, "#112233"),
+        ("Checkbox", "base", true, "#334455"),
+        ("Toggle", "base", true, "#556677"),
+        ("Dropdown", "base", false, "#778899"),
+        ("TextEdit", "frame", false, "#99aabb"),
+    ] {
+        let p = PartRef::of(component, name, None).flag_if(on, "on");
+        assert_eq!(
+            ui.resolve_part(&p, [80.0, 30.0]).unwrap().fills,
+            vec![color(expected)],
+            "{component}"
+        );
+    }
+    let slot = ui
+        .resolve_part(&PartRef::of("Slot", "frame", None), [120.0, 40.0])
+        .unwrap();
+    let layers = slot.boxes.unwrap();
+    assert_eq!(layers.backgrounds.len(), 1);
+    assert!(layers.border.is_some());
+    assert!(matches!(
+        slot.effects.as_slice(),
+        [Effect::BackdropFilter(_)]
+    ));
+    let empty = ui
+        .resolve_part(&PartRef::of("Button", "unknown", None), [120.0, 40.0])
+        .unwrap();
+    assert!(empty.fills.is_empty() && empty.effects.is_empty() && empty.borders.is_none());
+    for invalid in [
+        "Button::base",
+        "Button.base",
+        "Button::part(base)",
+        "button::part(base).primary",
+    ] {
+        assert!(
+            ui.set_part_css(&format!("{invalid} {{ background: red; }}"))
+                .is_err(),
+            "{invalid}"
+        );
+    }
+    let doc = UiDocument::parse(
+        "parts.svelte",
+        r#"<meta name="component" content="parts"><button>OK</button><style>button::part(base):hover { background: red; }</style>"#,
+    )
+    .unwrap();
+    assert_eq!(doc.part_rules.len(), 1);
+}
+
+#[test]
+#[ignore = "requires GPU"]
+fn css_parts_render_their_background_border_and_shadow() {
+    use og_render::*;
+    use og_ui::dress::PartRef;
+    let mut scene = RenderScene::new();
+    let font = add_test_font(&mut scene);
+    let mut ui = ui_with_font(font);
+    ui.set_part_css(include_str!("fixtures/parts.css")).unwrap();
+    let (width, height) = (464, 96);
+    ui.begin(
+        InputFrame::default(),
+        Viewport::new(width as f32, height as f32),
+    );
+    ui.row(
+        "States",
+        Element {
+            padding: Insets::all(24.0),
+            gap: 24.0,
+            ..Element::row()
+        },
+        |ui| {
+            let base = PartRef::of("Button", "base", None);
+            for (name, part) in [
+                ("Rest", base),
+                ("Hover", base.flag("hover")),
+                (
+                    "Epic",
+                    base.flag("primary")
+                        .flag("hover")
+                        .attr("data-rarity", "epic"),
+                ),
+            ] {
+                let draw = ui.resolve_part(&part, [120.0, 40.0]).unwrap();
+                ui.column(
+                    name,
+                    Element {
+                        width: Size::px(120.0),
+                        height: Size::px(40.0),
+                        ..Element::column()
+                    },
+                    |ui| ui.set_draw(draw),
+                );
+            }
+        },
+    );
+    ui.end();
+    let mut overlay = Overlay::new(width as f32, height as f32, 1.0);
+    ui.frame().emit(&EmitDesc::default(), &mut overlay);
+    scene.overlay = Some(overlay);
+    scene.post.tonemap = Tonemap::None;
+    let mut renderer = Renderer::new_blocking(&RenderDesc {
+        width,
+        height,
+        ..Default::default()
+    })
+    .unwrap();
+    renderer.render(&scene, &RenderTarget::Offscreen).unwrap();
+    let pixels = renderer.read_offscreen().unwrap().pixels;
+    image::save_buffer(
+        out_dir().join("css-parts.png"),
+        &pixels,
+        width,
+        height,
+        image::ColorType::Rgba8,
+    )
+    .unwrap();
+    for (x, expected) in [
+        (24, [254, 220, 186]),
+        (84, [0x12, 0x34, 0x56]),
+        (228, [255, 255, 0]),
+        (372, [0, 0, 255]),
+    ] {
+        let at = (44 * width as usize + x) * 4;
+        for c in 0..3 {
+            assert!(
+                (i16::from(pixels[at + c]) - expected[c]).abs() <= 3,
+                "pixel at {x},44: {:?}",
+                &pixels[at..at + 4]
+            );
+        }
+    }
+    let shadow = (67 * width as usize + 84) * 4;
+    let ground = (85 * width as usize + 84) * 4;
+    assert!(
+        pixels[shadow] < pixels[ground],
+        "the outer shadow darkens the ground"
+    );
+}

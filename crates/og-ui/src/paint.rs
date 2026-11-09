@@ -1035,6 +1035,9 @@ pub struct ElementDraw {
     /// Its CSS background and mask layers beyond its fills (a document
     /// element's `background-*` and `mask-*`).
     pub boxes: Option<Box<BoxLayers>>,
+    /// CSS border sides and outline. Their dash placement and shaded styles
+    /// use the same painter as document boxes.
+    pub borders: Option<Box<crate::decor::BoxDecor>>,
     /// It draws nothing of its own: its subtree is the `n`-th element an
     /// `feImage` of its parent's filters reads ([`filter_uses`]), drawn
     /// into a layer that composites nowhere ([`crate::LayerRole::Image`]).
@@ -1134,6 +1137,7 @@ impl Default for ElementDraw {
             view_box: None,
             view_rect: None,
             boxes: None,
+            borders: None,
             element_image: None,
         }
     }
@@ -1946,6 +1950,18 @@ impl ElementDraw {
                 opacity,
                 blend,
             ));
+        }
+        if let Some(borders) = &self.borders {
+            let placed = Placed {
+                alpha: opacity,
+                ..*at
+            };
+            for mut cmd in borders.lines(&placed) {
+                if let DrawCmd::Shape { shape, .. } = &mut cmd {
+                    shape.blend = blend;
+                }
+                out.push(cmd);
+            }
         }
         out
     }

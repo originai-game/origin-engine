@@ -1204,6 +1204,7 @@ impl Resolved {
             view_box: None,
             view_rect: None,
             boxes: None,
+            borders: None,
             element_image: None,
         }
     }

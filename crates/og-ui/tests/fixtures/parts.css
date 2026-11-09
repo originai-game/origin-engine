@@ -1,0 +1,28 @@
+@layer defaults, game;
+@layer defaults {
+  :root { --part-fill: #123456; }
+  :root[data-scheme=light] { --part-fill: #abcdef; }
+  button::part(base) {
+    background: var(--part-fill);
+    border: 2px solid #fedcba;
+    border-radius: 7px;
+    box-shadow: 1px 3px 5px 2px #00000080;
+  }
+  button.primary::part(base):hover { background: #ff0000; }
+  button::part(base):active { opacity: 0.4; }
+}
+@layer game {
+  button::part(base):hover { background: #00ff00; }
+}
+button.primary[data-rarity=epic]::part(base):hover { background: #0000ff; }
+button::part(base):hover { background: #ffff00; }
+input[type=range]::part(track) { background: #112233; }
+input[type=checkbox]::part(base):checked { background: #334455; }
+input[type=checkbox][switch]::part(base):checked { background: #556677; }
+select::part(base) { background: #778899; }
+textarea::part(frame) { background: #99aabb; }
+slot::part(frame) {
+  background: linear-gradient(to right, #123456, #abcdef);
+  border-image: linear-gradient(#ffffff, #000000) 1 / 2px;
+  backdrop-filter: blur(4px) saturate(1.2);
+}

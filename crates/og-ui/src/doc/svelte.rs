@@ -30,6 +30,7 @@ pub(super) fn parse(
                     imports,
                     ..Default::default()
                 },
+                part_rules: Vec::new(),
                 nodes: Vec::new(),
                 root: NONE,
                 warnings: Vec::new(),

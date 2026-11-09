@@ -98,6 +98,12 @@ impl UiDocument {
         fn plain(d: &UiDocument) -> UiDocument {
             let mut d = d.clone();
             d.text.clear();
+            for rule in &mut d.part_rules {
+                rule.line = 0;
+                for declaration in &mut rule.declarations {
+                    declaration.source.clear();
+                }
+            }
             for n in &mut d.nodes {
                 n.line = 0;
                 n.source_offset = 0;

@@ -85,6 +85,75 @@ fn parsed_rules(mut rules: Vec<Rule>, layers: &[String]) -> Result<Vec<(Selector
     Ok(parsed)
 }
 
+/// A global part sheet, using the same reader, shorthand expansion and
+/// cascade order as a document's CSS.
+pub(crate) fn part_rules(css: &str) -> Result<(Vec<StyleRule>, super::at_rules::Sheet), String> {
+    let mut sheet = super::at_rules::Sheet::default();
+    let rules = read("", &mut sheet, &[(css.into(), 0)]).map_err(|(_, e)| e)?;
+    let parsed = parsed_rules(rules, &sheet.layers).map_err(|(_, e)| e)?;
+    let mut out = Vec::new();
+    for (selector, rule) in parsed {
+        if rule.ua {
+            continue;
+        }
+        part_selector(&selector)?;
+        let (declarations, _) = lower(&rule.body, &|name| {
+            sheet.keyframe_rules.iter().any(|(n, ..)| n == name)
+        })?;
+        out.push(StyleRule {
+            layer: rank(&sheet.layers, &rule.layer),
+            starting: rule.starting,
+            query: rule.query,
+            condition: None,
+            structure: Some(std::sync::Arc::new(selector)),
+            props: Vec::new(),
+            declarations,
+            line: syntax::location(css, rule.at).0,
+        });
+    }
+    Ok((out, sheet))
+}
+
+fn part_selector(selector: &Selector) -> Result<(), String> {
+    use super::selectors::Simple;
+    let bad = || {
+        format!(
+            "{}: use a lowercase markup tag, host classes/attributes, ::part(name), then state pseudo-classes",
+            selector.source
+        )
+    };
+    if selector.compounds.len() != 1 {
+        return Err(bad());
+    }
+    let simples = &selector.compounds[0].0;
+    if matches!(simples.first(), Some(Simple::Root))
+        && simples[1..]
+            .iter()
+            .all(|s| matches!(s, Simple::Attribute { .. }))
+    {
+        return Ok(());
+    }
+    let Some(Simple::Type(tag)) = simples.first() else {
+        return Err(bad());
+    };
+    if tag != &tag.to_ascii_lowercase() {
+        return Err(bad());
+    }
+    let mut part = false;
+    for simple in &simples[1..] {
+        match simple {
+            Simple::Class(_) | Simple::Attribute { .. } if !part => {}
+            Simple::Part(_) if !part => part = true,
+            Simple::State(_) if part => {}
+            _ => return Err(bad()),
+        }
+    }
+    if !part {
+        return Err(bad());
+    }
+    Ok(())
+}
+
 /// The CSS-wide keywords every property takes.
 pub(super) fn wide_keyword(value: &str) -> Option<&'static str> {
     let v = value.trim();
@@ -205,23 +274,39 @@ pub(super) fn apply(
                     ),
                 ));
             }
-            let span = super::spans::parse(selector, &rule.body).map_err(|e| (rule.at, e))?;
             let parent = if parent.is_empty() { "text" } else { parent };
-            for (i, tag, _) in elements {
+            let mut text_span = false;
+            for (i, _, _) in elements {
                 let Some(condition) = matches(doc, elements, *i, parent, rule.at)? else {
                     continue;
                 };
                 // A text element's spans: `text::part(name)`, `p::part(…)`.
                 if doc.nodes[*i].kind != NodeKind::Element("label") {
-                    return Err((
-                        rule.at,
-                        format!("<{tag}> has no text spans; ::part(name) selects a text element's"),
-                    ));
+                    continue;
                 }
-                let mut span = span.clone();
+                text_span = true;
+                let mut span =
+                    super::spans::parse(selector, &rule.body).map_err(|e| (rule.at, e))?;
                 span.query = rule.query.clone();
                 span.condition = Some(condition);
                 doc.nodes[*i].span_rules.push(span);
+            }
+            if !text_span {
+                part_selector(&parsed).map_err(|e| (rule.at, e))?;
+                let (declarations, _) = lower(&rule.body, &|name| {
+                    doc.sheet.keyframe_rules.iter().any(|(n, ..)| n == name)
+                })
+                .map_err(|e| (rule.at, e))?;
+                doc.part_rules.push(StyleRule {
+                    layer: rank(&layers, &rule.layer),
+                    starting: rule.starting,
+                    query: rule.query,
+                    condition: None,
+                    structure: Some(std::sync::Arc::new(parsed)),
+                    props: Vec::new(),
+                    declarations,
+                    line: syntax::location(&doc.text, rule.at).0,
+                });
             }
             continue;
         }

@@ -639,6 +639,7 @@ impl Topology {
         let instance = &self.entry(i).instance;
         let facts = super::matching::Facts {
             scope: &instance.document.name,
+            part: None,
             tag: instance.document.nodes[instance.document_node]
                 .selector_tag
                 .as_deref()
@@ -728,6 +729,7 @@ impl super::matching::Tree for Topology {
         let instance = &self.entry(self.identities[id]).instance;
         super::matching::Facts {
             scope: &instance.document.name,
+            part: None,
             tag: instance.document.nodes[instance.document_node]
                 .selector_tag
                 .as_deref()

@@ -134,9 +134,9 @@ impl Ui {
     /// what they do to its box: a border's width pads it, an outline set
     /// replaces the focus ring, a scrolling overflow scrolls it, and a
     /// shadow takes its background under it.
-    fn box_decor(
+    pub(super) fn box_decor(
         &self,
-        doc: &crate::doc::UiDocument,
+        doc: Option<&crate::doc::UiDocument>,
         r: &Resolved,
         el: &mut Element,
         kind: &str,
@@ -299,7 +299,7 @@ impl Ui {
     /// stylesheet already checked, so one that fails here is skipped.
     fn css_paint(
         &self,
-        doc: &crate::doc::UiDocument,
+        doc: Option<&crate::doc::UiDocument>,
         r: &Resolved,
         current: Srgba,
         textures: &[(f64, og_render::TextureHandle)],
@@ -419,9 +419,10 @@ impl Ui {
                 },
             }
         };
-        let url = |warn: &mut Vec<String>, what: &str, u: &str| match super::svg::css_filter(
-            doc, u, &fe_image,
-        ) {
+        let url = |warn: &mut Vec<String>, what: &str, u: &str| match doc
+            .ok_or_else(|| "an SVG filter reference needs its document".to_string())
+            .and_then(|doc| super::svg::css_filter(doc, u, &fe_image))
+        {
             Ok(f) => Some(f),
             Err(e) => {
                 warn.push(format!("{what}: {e}"));
@@ -468,7 +469,10 @@ impl Ui {
         if let Some((clip, geo)) = r.str("clipPath").and_then(|v| p::clip(v).ok()).flatten() {
             c.clip_box = geo;
             c.clip = Some(match clip {
-                p::CssClip::Url(u) => match super::svg::css_clip(doc, &u) {
+                p::CssClip::Url(u) => match doc
+                    .ok_or_else(|| "an SVG clip reference needs its document".to_string())
+                    .and_then(|doc| super::svg::css_clip(doc, &u))
+                {
                     Ok((rule, parts, false)) => p::CssClip::Path(rule, parts),
                     Ok((rule, parts, true)) => p::CssClip::Units(rule, parts),
                     Err(e) => {
@@ -942,7 +946,7 @@ impl Ui {
             };
         }
         let mut warn = Vec::new();
-        let mut decor = self.box_decor(doc, r, &mut el, base.kind, &base.textures, &mut warn);
+        let mut decor = self.box_decor(Some(doc), r, &mut el, base.kind, &base.textures, &mut warn);
         for w in warn {
             self.warnings.push(format!("line {}: {w}", n.line));
         }
