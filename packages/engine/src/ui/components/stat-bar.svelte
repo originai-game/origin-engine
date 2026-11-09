@@ -57,6 +57,10 @@
 #Fill { inset-inline-start: 0; width: calc(var(--value) * 100%); background: linear-gradient(180deg, #ffffff38, #00000000 50%, #0000002e), var(--meter); }
 #Heal { inset-inline-start: 0; width: calc((var(--value) + var(--heal)) * 100%); background: var(--success); opacity: 0.5; animation: pulse 900ms ease-in-out infinite alternate; }
 #Blocks { inset-inline-start: 0; width: stretch; background: var(--blocks); }
+/* Transforms and gradients are physical: right to left, the ghost shrinks towards
+   the right and the blocks count from the right, as the fill does. */
+#StatBar:dir(rtl) #Ghost { transform-origin: 100% 50%; }
+#StatBar:dir(rtl) #Blocks { scale: -1 1; }
 #Gloss { inset-inline-start: 0; width: stretch; height: 42%; background: linear-gradient(180deg, #ffffff38, #ffffff00); }
 #Inside { position: absolute; inset-inline-end: 6px; top: 0; height: stretch; font: var(--text-caption); font-family: var(--font-mono); text-shadow: 0 1px 2px #000000; }
 #Value { font: var(--text-sm); font-family: var(--font-mono); white-space: nowrap; text-shadow: 0 1px 2px #000000cc; }

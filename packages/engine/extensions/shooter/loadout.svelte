@@ -53,7 +53,9 @@
 <style>
 #Loadout { width: stretch; height: stretch; gap: var(--space-lg); }
 #Title { font: var(--text-xl2); font-family: var(--font-display); }
-#Groups { width: stretch; height: stretch; overflow-y: auto; scrollbar-gutter: stable; padding-inline-end: var(--space-lg); container-type: scroll-state; gap: var(--space-xl); display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(var(--size-xxl) * 3), 1fr)); align-content: start; }
+/* The scrollbar is drawn on the right in either direction, so the room beside it is
+   on the right too. */
+#Groups { width: stretch; height: stretch; overflow-y: auto; scrollbar-gutter: stable; padding-right: var(--space-lg); container-type: scroll-state; gap: var(--space-xl); display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(var(--size-xxl) * 3), 1fr)); align-content: start; }
 .group { gap: var(--space-sm); }
 .category { font: var(--text-caption); color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.08em; }
 .items { gap: var(--space-xs); }
@@ -62,8 +64,9 @@
 .icon { width: var(--size-sm); height: var(--size-sm); color: var(--ink-muted); }
 .text { width: stretch; gap: var(--space-xxs); align-items: flex-start; }
 .name { font: var(--text-body); text-align: start; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: stretch; }
-.sub { display: flex; align-items: center; gap: var(--space-sm); }
-.detail { text-align: start; font: var(--text-caption); font-family: var(--font-mono); }
+/* The tag drops under the figures when a long translation leaves no room beside them. */
+.sub { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-xxs) var(--space-sm); }
+.detail { text-align: start; font: var(--text-caption); font-family: var(--font-mono); white-space: nowrap; }
 /* Equipped is a tag on the detail line, so every row's price stands alone at its end
    and the name keeps the row's width. */
 .badge { flex: none; font: var(--text-caption); color: var(--accent); text-transform: uppercase; white-space: nowrap; padding: 0 var(--space-xs); border: 1px solid var(--accent); border-radius: var(--radius-xs); }

@@ -41,6 +41,11 @@
 #Feed { position: absolute; right: calc(env(safe-area-inset-right) + var(--edge)); top: calc(env(safe-area-inset-top) + var(--edge)); max-width: calc(100% - var(--edge) * 2); }
 #Vitals { position: absolute; left: calc(env(safe-area-inset-left) + var(--edge)); bottom: calc(env(safe-area-inset-bottom) + var(--edge)); padding: var(--space-sm) var(--space-md); border-radius: var(--radius-sm); background: var(--scene-plate); width: fit-content; }
 #Ammo { position: absolute; right: calc(env(safe-area-inset-right) + var(--edge)); bottom: calc(env(safe-area-inset-bottom) + var(--edge)); }
+/* Right to left the corners mirror with the reading order (the feed's and the
+   readouts' own rows already run from the right): the feed and the ammunition
+   on the left, the vitals on the right. */
+#CombatHud:dir(rtl) #Feed, #CombatHud:dir(rtl) #Ammo { right: auto; left: calc(env(safe-area-inset-left) + var(--edge)); }
+#CombatHud:dir(rtl) #Vitals { left: auto; right: calc(env(safe-area-inset-right) + var(--edge)); }
 /* On a phone the vitals take the bottom edge and the ammunition sits above
    them, and the centre ring shrinks. */
 @media (width < 600px) {
