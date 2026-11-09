@@ -139,7 +139,8 @@ pub enum DrawCmd {
     PopClip,
     /// What follows, until its [`DrawCmd::EndLayer`], draws offscreen.
     /// `rect` (the union of what it draws, grown by `expand`) is set when
-    /// levels are assigned. With a `filter` (an SVG `<filter>`'s region
+    /// levels are assigned; with a `mask` it is the box the mask is fitted
+    /// to, under the element's map. With a `filter` (an SVG `<filter>`'s region
     /// and graph, CSS px) the layer is the filter region instead and
     /// composites the graph's result. `role` says what it is for.
     BeginLayer {
@@ -612,6 +613,7 @@ fn collect(
                     rect,
                     expand,
                     filter,
+                    mask,
                     ..
                 } = &mut begin
                 {
@@ -622,6 +624,9 @@ fn collect(
                             f.0 = m.map_rect(&f.0);
                             f.0
                         }
+                        // The box its mask is fitted to: what the mask
+                        // leaves of the rest is cut.
+                        None if mask.is_some() => m.map_rect(rect),
                         None => bounds.outset(*expand),
                     };
                     *rect = r;

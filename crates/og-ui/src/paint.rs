@@ -1647,12 +1647,19 @@ impl ElementDraw {
                 }
                 Some(Box::new((region, graph)))
             };
+            // A mask is fitted to the element's box, so that box is the
+            // layer's rectangle (draw.rs), not the union of what it draws.
+            let rect = if mask.is_some() {
+                at.rect
+            } else {
+                Rect::default()
+            };
             out.push(DrawCmd::BeginLayer {
                 material,
                 params,
                 mask,
                 expand: expand_of(material, &params),
-                rect: Rect::default(),
+                rect,
                 filter: filter(outer),
                 role: Default::default(),
             });
