@@ -324,6 +324,8 @@ export function install(proto: Device): void {
 }
 
 let patched = false;
+/** A skipping pass's draws: nothing. */
+const skipDraw = () => {};
 /** The render pass's and bundle's `setPipeline` take a stand-in; a pass skips its draws while it is not made. */
 function patchEncoders(): void {
   if (patched) return;
@@ -332,26 +334,30 @@ function patchEncoders(): void {
   const pass = g.GPURenderPassEncoder?.prototype;
   if (pass) {
     const setPipeline = pass["setPipeline"] as (this: Js, p: unknown) => void;
+    // The draw methods stay the browser's own (s105): a pass that skips is given no-op draws of
+    // its own until its next made pipeline gives them back, so a pass that skips nothing (every
+    // pass once the pipelines are made, and every pass of a sync page) draws through no wrapper
+    // (one on the prototype cost every draw of every frame: 9k a frame, 0.2 ms, in a large scene).
+    const draws = ["draw", "drawIndexed", "drawIndirect", "drawIndexedIndirect"].filter((name) => pass[name]);
+    const own = draws.map((name) => pass[name]);
     pass["setPipeline"] = function (this: Js, p: unknown) {
       const slot = (p as Js | null)?.[SLOT] as Slot | undefined;
       // Only a pass encoded in a frame span may skip: one outside it (a shadow map's static
       // casters, a probe's capture, a one-shot bake) keeps what it draws, so it makes it now.
       if (slot && !slot.made && framing() && !slot.refused) {
         skipped++;
-        this[SKIP] = true;
+        if (!this[SKIP]) {
+          this[SKIP] = true;
+          for (const name of draws) this[name] = skipDraw;
+        }
         return;
       }
-      if (this[SKIP]) this[SKIP] = false;
+      if (this[SKIP]) {
+        this[SKIP] = false;
+        draws.forEach((name, i) => (this[name] = own[i]));
+      }
       setPipeline.call(this, slot ? made(slot) : p);
     };
-    for (const name of ["draw", "drawIndexed", "drawIndirect", "drawIndexedIndirect"]) {
-      const draw = pass[name] as ((this: Js, a: unknown, b: unknown, c: unknown, d: unknown, e: unknown) => void) | undefined;
-      if (!draw) continue;
-      pass[name] = function (this: Js, a: unknown, b: unknown, c: unknown, d: unknown, e: unknown) {
-        if (this[SKIP]) return;
-        draw.call(this, a, b, c, d, e);
-      };
-    }
   }
   const bundle = g.GPURenderBundleEncoder?.prototype;
   if (bundle) {
