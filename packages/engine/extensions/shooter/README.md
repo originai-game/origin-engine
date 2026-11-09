@@ -72,6 +72,12 @@ as a game installs it.
   long names. The player is Kestrel: the newest row (Kestrel's kill) and the
   oldest (Kestrel's death) are self rows, framed; a phone shows only the
   newest of them.
+- Motion: the sheet's commands `hit:<kind>`, `damage:<id>:<angle>:<strength>:<kind>`,
+  `heal:<id>` and `reduced:<on|off>` drive the hit mark and the arcs for
+  `og render --keyframes`. The mark pops in (opacity, and scale from 1.5)
+  and holds while the game holds `hit`; an arc fades in and out over
+  300 ms. Under reduced motion both only fade, and both settle: the frame's
+  `dump_ui:motion` lists nothing moving once they have.
 - The primary pack is `clean`. The contrast pack, `scifi`, is pending
   because scifi is unbuilt.
 

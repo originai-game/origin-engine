@@ -4,12 +4,17 @@
 // style pack. The kit is installed into assets/ui-kits/shooter as a game
 // installs it; the pages mount its documents with fixture stores.
 //
-// Commands: style:<clean>, page:<combat|loadout>.
+// Commands: style:<clean>, page:<combat|loadout>; for motion clips (`og
+// render --keyframes`), hit:<kind> replays the hit mark, damage:<id>:<angle>
+// :<strength>:<kind> adds an incoming hit, heal:<id> removes one, and
+// reduced:<on|off> sets reduced motion.
 
 import { og, type World } from "@origingame/engine";
 import { COMBAT, FEED, LOADOUT } from "./fixtures.ts";
 
 const PAGES = ["combat", "loadout"] as const;
+const HITS = ["none", "hit", "headshot", "kill", "shieldBreak"] as const;
+const KINDS = ["normal", "shield", "critical"] as const;
 const STYLES = ["clean"] as const;
 
 const DOCUMENTS = [
@@ -60,9 +65,27 @@ export default og.game({
     page: (world, args) => {
       og.ui.scope(world, "sheet").writable("page", "combat").set(PAGES.includes(args[0] as never) ? args[0]! : "combat");
     },
+    hit: (world, args) => {
+      const scope = og.ui.scope(world, "sheet");
+      scope.writable("hit", COMBAT.hit).set(HITS.includes(args[0] as never) ? args[0]! : "hit");
+      scope.writable("hitAt", COMBAT.hitAt).update((at) => at + 1);
+    },
+    damage: (world, args) => {
+      const [id = "d", angle = "0", strength = "1", kind = "normal"] = args;
+      og.ui.scope(world, "sheet").collection("hits", COMBAT.hits, { key: "id" })
+        .insert({ id, angle: Number(angle), strength: Number(strength), kind: KINDS.includes(kind as never) ? kind : "normal" });
+    },
+    heal: (world, args) => {
+      og.ui.scope(world, "sheet").collection("hits", COMBAT.hits, { key: "id" }).remove(args[0] ?? "");
+    },
+    reduced: (world, args) => og.ui.configure(world, { reducedMotion: args[0] !== "off" }),
   },
   commandHelp: {
     style: { usage: `<${STYLES.join("|")}>`, doc: "The style pack the pages are dressed in." },
     page: { usage: `<${PAGES.join("|")}>`, doc: "A review page of the shooter kit." },
+    hit: { usage: `<${HITS.join("|")}>`, doc: "Set the crosshair's hit mark and replay it." },
+    damage: { usage: `<id>:<angle rad>:<strength 0-1>:<${KINDS.join("|")}>`, doc: "Add an incoming hit to the damage direction." },
+    heal: { usage: "<id>", doc: "Remove an incoming hit." },
+    reduced: { usage: "<on|off>", doc: "Reduced motion on or off." },
   },
 });
