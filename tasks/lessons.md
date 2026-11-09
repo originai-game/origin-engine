@@ -96,3 +96,5 @@ lost. Chain a take with `&&` and check the printed path, or better, land
 from your own lane: `scripts/land.sh` needs the worktree clean only while
 it runs, so stop editing there until it returns instead of borrowing a
 second lane.
+
+- 2026-11-09 (P1b, lane-11): never `git stash` / `git stash pop` in a lane. The stash list is shared by every worktree, so a stash with nothing to save makes `pop` apply another lane's entry. With untracked work, rebase with `git rebase origin/main` directly, or commit first.

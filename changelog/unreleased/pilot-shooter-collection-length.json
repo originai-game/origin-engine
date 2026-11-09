@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.ui",
+      "summary": "A keyed collection store reads as a value in a document: `$rows.length` counts its rows, and a component handed `items={$rows}` reads `items.length`, following inserts and removals. Before, either read failed the mount as a missing signal."
+    }
+  ]
+}

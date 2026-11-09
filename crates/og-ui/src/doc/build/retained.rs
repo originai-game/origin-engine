@@ -2283,6 +2283,96 @@ mod tests {
     use crate::reactive::session::Command;
     use crate::{InputFrame, UiDesc, Viewport};
 
+    /// A keyed collection read as a value: `$rows.length` in the document
+    /// that mounts it, and `items.length` in a component it is handed to as
+    /// a prop. Both count the rows and follow an insert and a removal; the
+    /// mount builds, rather than failing its reads as a missing signal.
+    #[test]
+    fn a_collection_store_reads_its_length_directly_and_through_a_component_prop() {
+        let mut ui = Ui::new(UiDesc::default());
+        ui.define_document(
+            UiDocument::parse(
+                "counted.svelte",
+                r#"
+            <meta name="component" content="Counted">
+            <meta name="prop:items" content="list">
+            <column>
+                <text id="Inner">{items.length}</text>
+                {#if items.length == 0}<text id="Empty">none</text>{/if}
+            </column>
+        "#,
+            )
+            .unwrap(),
+        );
+        ui.define_document(
+            UiDocument::parse(
+                "page.svelte",
+                r#"
+            <meta name="component" content="page">
+            <column>
+                <text id="Outer">{$rows.length}</text>
+                <Counted items={$rows} />
+            </column>
+        "#,
+            )
+            .unwrap(),
+        );
+        let rows = SourceId::new("test", "rows");
+        ui.reactive
+            .execute(Command::Collection {
+                source: rows.clone(),
+                key: "id".into(),
+                items: ["a", "b", "c"]
+                    .map(|id| json!({ "id": id }).as_object().unwrap().clone())
+                    .to_vec(),
+            })
+            .unwrap();
+        let inputs = BTreeMap::from([("rows".to_string(), rows.clone())]);
+        ui.mount_document(
+            SourceId::new("test", "page"),
+            "page",
+            inputs,
+            Default::default(),
+            &crate::bind::NoEnv,
+        )
+        .unwrap();
+        let texts = |ui: &mut Ui| {
+            ui.begin(InputFrame::default(), Viewport::new(400.0, 300.0));
+            ui.build_retained_documents(&crate::bind::NoEnv).unwrap();
+            ui.end();
+            let mut texts: Vec<String> = ui
+                .probe_elements()
+                .into_iter()
+                .filter(|n| {
+                    ["Outer", "Inner", "Empty"]
+                        .iter()
+                        .any(|id| n.path.ends_with(id))
+                })
+                .map(|n| format!("{}={}", n.path.rsplit('/').next().unwrap(), n.text))
+                .collect();
+            texts.sort();
+            texts
+        };
+        assert_eq!(texts(&mut ui), ["Inner=3", "Outer=3"]);
+        ui.reactive
+            .execute(Command::Insert {
+                source: rows.clone(),
+                row: json!({ "id": "d" }).as_object().unwrap().clone(),
+                before: None,
+            })
+            .unwrap();
+        assert_eq!(texts(&mut ui), ["Inner=4", "Outer=4"]);
+        for key in ["a", "b", "c", "d"] {
+            ui.reactive
+                .execute(Command::Remove {
+                    source: rows.clone(),
+                    key: key.into(),
+                })
+                .unwrap();
+        }
+        assert_eq!(texts(&mut ui), ["Empty=none", "Inner=0", "Outer=0"]);
+    }
+
     #[test]
     fn retained_actions_report_the_innermost_collection_key_after_restore() {
         let mut ui = Ui::new(UiDesc::default());

@@ -354,6 +354,28 @@ impl Tracked<'_, '_> {
             .inputs
             .get(name)
             .ok_or_else(|| format!("mount has no input store '{name}'"))?;
+        // A keyed collection read as a value (`$items.length`, or `$items`
+        // handed to a component prop whose document reads `items.length`):
+        // its rows in order, its length from its keys alone.
+        if let Ok(collection) = self.source.session.sources.keyed(source) {
+            let mut reads = self.reads.borrow_mut();
+            reads.insert(Dependency::Keys(source.clone()));
+            if rest == "length" {
+                return Ok(Value::from(collection.keys().len()));
+            }
+            let rows: Vec<Value> = collection
+                .keys()
+                .iter()
+                .map(|key| {
+                    reads.insert(Dependency::Row(source.clone(), key.clone()));
+                    collection
+                        .row(key)
+                        .map_or(Value::Null, |row| Value::Object(row.clone()))
+                })
+                .collect();
+            let list = Value::Array(rows);
+            return Ok(get_path(&list, rest).map_or(Value::Null, |value| value.into_owned()));
+        }
         self.reads
             .borrow_mut()
             .insert(Dependency::Value(source.clone()));
