@@ -754,7 +754,7 @@ fn document_part_css_is_scoped_and_inherits_authored_host_facts() {
 fn part_keyframes_keep_delay_direction_and_replay() {
     use og_ui::dress::PartRef;
     let mut ui = ui_with_font(test_font_metrics());
-    ui.set_part_css("button::part(base) { background: red; animation: pulse 200ms 100ms linear 2 alternate both; } @keyframes pulse { from { opacity: 0.2; } to { opacity: 0.8; } }").unwrap();
+    ui.set_part_css("button::part(base) { background: red; animation: pulse-ring 200ms 100ms linear 2 alternate both; } @keyframes pulse-ring { from { opacity: 0.2; } to { opacity: 0.8; } }").unwrap();
     let step = |ui: &mut Ui| {
         ui.begin(InputFrame::default(), Viewport::new(100.0, 100.0));
         ui.column(

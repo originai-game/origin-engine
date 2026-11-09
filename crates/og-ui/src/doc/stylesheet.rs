@@ -145,6 +145,37 @@ pub(crate) fn part_rules_from(
     Ok((out, sheet))
 }
 
+pub(crate) fn pack_extensions(source: &str, css: &str) -> Result<(), String> {
+    fn walk(text: &str, base: usize) -> Result<(), Error> {
+        for item in items(text, base)? {
+            match item {
+                Item::Block {
+                    block, block_at, ..
+                } => walk(block, block_at)?,
+                Item::Statement(text, at) if !text.starts_with('@') => {
+                    for declaration in variables::declarations(text).map_err(|e| (at, e))? {
+                        let name = declaration.name.to_ascii_lowercase();
+                        if name.starts_with("-og-")
+                            && !matches!(name.as_str(), "-og-material" | "-og-sound")
+                        {
+                            return Err((
+                                at,
+                                format!(
+                                    "unknown appearance extension `{}`; CSS packs accept only -og-material and -og-sound",
+                                    declaration.name
+                                ),
+                            ));
+                        }
+                    }
+                }
+                _ => (),
+            }
+        }
+        Ok(())
+    }
+    walk(css, 0).map_err(|(at, e)| format!("{source}:{}: {e}", syntax::location(css, at).0))
+}
+
 fn part_selector(selector: &Selector) -> Result<(), String> {
     use super::selectors::Simple;
     let bad = || {
@@ -263,7 +294,10 @@ fn read(
             .filter(|n| n.starts_with(char::is_whitespace))
         {
             let name = name.trim();
-            if !syntax::identifier(name) {
+            if !matches!(
+                super::css::tokens(name).as_deref(),
+                Ok([super::css::Tok::Ident(_)])
+            ) {
                 return Err((rule.at, "@keyframes needs a CSS identifier".into()));
             }
             let mut frames = Vec::new();

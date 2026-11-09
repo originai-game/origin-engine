@@ -18,6 +18,17 @@ pub struct StylePack {
 }
 
 impl StylePack {
+    /// Check one author source with its own filename and line numbers.
+    /// Imports are supplied by asset ID, as for `parse`.
+    pub fn validate_source(
+        source: &str,
+        css: &str,
+        files: Vec<(String, String)>,
+    ) -> Result<(), String> {
+        crate::doc::stylesheet::pack_extensions(source, css)?;
+        crate::doc::stylesheet::part_rules_from(source, css, files, true).map(|_| ())
+    }
+
     /// `files` contains CSS source keyed by asset ID, including imports.
     /// The cook stores these sources verbatim; runtime uses the same parser.
     pub fn parse(directory: &str, files: Vec<(String, String)>) -> Result<Self, String> {
@@ -47,6 +58,7 @@ impl StylePack {
         css.push_str(crate::DEFAULT_CSS);
         let mut assets = std::collections::BTreeSet::new();
         for (source, text) in &files {
+            crate::doc::stylesheet::pack_extensions(source, text)?;
             for url in at_rules::urls(text) {
                 let id = at_rules::resolve(source, &url);
                 if !files.iter().any(|(path, _)| *path == id) {
