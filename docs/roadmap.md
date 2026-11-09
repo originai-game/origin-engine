@@ -6,10 +6,8 @@ threads linked here; rules are in `AGENTS.md`, the UI contract in
 
 ## Order (the owner, 2026-11-08)
 
-1. **Engine and UI infrastructure (now).** Everything below under Running.
-   The UI kits and style packs start only when all UI infrastructure is on
-   main.
-2. **UI catalogue.** Pilot first (clean and fantasy packs, rpg and shooter
+1. **Engine and UI infrastructure:** done 2026-11-09.
+2. **UI catalogue (now).** Pilot first (clean and fantasy packs, rpg and shooter
    kits, a separate art-review stream), then the remaining kits and packs
    (`docs/ui.md`: 9 kits, 6 packs) until the whole acceptance matrix
    passes.
@@ -23,70 +21,39 @@ threads linked here; rules are in `AGENTS.md`, the UI contract in
 
 ## Running
 
-All streams run on macrunner and report to the coordinator thread
-[T-38e88112](https://ampcode.com/threads/T-38e88112-c769-4e7b-ab60-ee1cd4065bc7).
+Phase 1 of the TODO opened 2026-11-09, after the CSS and UI-infrastructure
+round landed. All streams run on macrunner and report to the coordinator
+thread [T-38e88112](https://ampcode.com/threads/T-38e88112-c769-4e7b-ab60-ee1cd4065bc7).
 
 | Stream | Thread | Scope |
 |---|---|---|
-| Retained UI renderer | [T-01a1b999](https://ampcode.com/threads/T-01a1b999-f109-72dc-b8c3-1d9e6cb93c1b) | Wave 1 of builder removal, field replacement, both-host proofs, one-label and scroll-1000 cost, final perf.sh numbers; the final builder removal once the document gaps land |
-| og-ui document surface | [T-01a1b99f-0571](https://ampcode.com/threads/T-01a1b99f-0571-7307-b07f-6038d86a5245) | UA block margins, the extern-element hook, bound custom properties, props on existing tags (`border`, `box-shadow`, `outline`, `overflow`), content in buttons, ARIA, device glyphs, inline img/icon/kbd, tooltips and popover, the missing core controls, component documents ([gap brief](https://ampcode.com/artifacts/ui-document-surface-gap-brief-builder-removal-8f5316ab-4604-49d8-8477-6d267aa6ef55)) |
-| UI document runtime, graphics and world | [T-01a1bad4-0793](https://ampcode.com/threads/T-01a1bad4-0793-740e-aa3f-5dd65b6b3396) | Mounted documents as layers, snippets as content, inline SVG, drag and drop, `<viewport>`, touch controls, world panels, mass, particles in CSS |
-| og-ui features | [T-01a1bad4-117c](https://ampcode.com/threads/T-01a1bad4-117c-709c-bedb-133a6e3d515b) | Colour-blind modes, selectable text, text on a path, colour emoji, live regions, UI debugger and `dump_ui:motion`, split screen, untested components and perf budgets |
-| Rendering performance | [T-01a1b99f-2748](https://ampcode.com/threads/T-01a1b99f-2748-7173-98de-af62ac91012f) | FSR 3.1, GI probes, crowds at 50k, first frame |
+| Capture tooling | [T-01a1bf6c-5afe](https://ampcode.com/threads/T-01a1bf6c-5afe-7689-8295-f4510385bdc8) | Set-of-Mark captures, key frames by event with a timeline, FLIP heat maps, model-sized captures |
+| UI pilot P1 | [T-01a1bf6c-62eb](https://ampcode.com/threads/T-01a1bf6c-62eb-71f3-9964-d1ad718af946) | `clean` pack and `shooter` kit, §6 acceptance at desktop and 390 px |
+| UI pilot P2 | [T-01a1bf6c-6967](https://ampcode.com/threads/T-01a1bf6c-6967-749b-b5b9-b1b4b8980f4b) | `fantasy` pack and `rpg` kit, §6 acceptance at desktop and 390 px |
+| Art review | [T-01a1bf6c-75ca](https://ampcode.com/threads/T-01a1bf6c-75ca-7787-a80d-a39e1194502d) | The queued new and moved looks, then the pilot heads; lands look heads |
+| Test cleanup | [T-01a1bf6c-7caa](https://ampcode.com/threads/T-01a1bf6c-7caa-7323-aa28-0ee1999840b6) | `full` lane green, tests that guard nothing removed |
 
-## Landed this round (2026-11-07 to 2026-11-08)
+## Landed this round (2026-11-08 to 2026-11-09)
 
-- **UI reset:** the old kits and packs deleted (951b652e5); `docs/ui.md`
-  rewritten (beccbf27a and follow-ups).
-- **UI documents:** scriptless Svelte templates (6ee803a44, fb2813069,
-  01a9a97b2); standard CSS cascade (443078990), media queries
-  (fd41adf81), sibling and structural selectors (17d111bc2), property
-  transitions and `@keyframes` animations (7cb6be159), container queries
-  (0c5f2cc93) and `@keyframes` inside `@media`/`@container` (dba9940b7);
-  the standard CSS stream is complete.
-- **Retained core:** named stores, `GameDesc.ui`, presentation checkpoint
-  and recorded intents (cc6000c29); mounts, topology, keyed virtual rows,
-  settlement, stable slots (1167a7566 to 0b6ba3af3); only changed mounted
-  elements are written each frame (dc8a7b38b); the last frame inspected
-  on demand with retained paint reused (909c1bb79); layout only along the
-  paths to what changed (9909569fe); unchanged subtrees' paint reused and
-  scrolled rows kept (9b5a0368e); moved subtrees' paint moved, not
-  repainted (ec2553603); the native a11y bridge reads only changed nodes,
-  with landmark roles and heading levels (60cedfade); finish and paint
-  visit only what changed (0392bec45, a189aa88f).
-- **og-ui capabilities:** input types, `inputmode`, `autocomplete` and
-  password reveal (4d8b785b9); ten Noto font packs loaded per script on
-  demand (84d8ec3e2); HTML element names in documents (a050fc383); core
-  `<select>`, `<dialog>` with `::backdrop`, `<details>`, `<meter>`
-  (f0c02b795, 3a798e95f); `<p>`, `<span>`, headings, `<div>` and the
-  landmarks, lists with CSS markers, `<a href>`, `<label for>`
-  (61fb46e22).
-- **Checkpoints:** module-scope state fails `og check` as OG9101
-  (bf1fd9440); a presentation checkpoint restores the display's whole frame
-  history (TAA, SMAA, GI, SSR, FSR, terrain streaming), and
-  `og run --capture-only` draws a still frame (1fac50487). The og.motion
-  pitch and wave rows were stale since aea4a0f15 (no bounds remain; the
-  wave plays past 15 s). Restore checked byte-identical in Chrome WebGPU
-  (3dee686b6); the web `renderFrame` readback fixed (dc6ca86c1);
-  `og run --forks N` (d0d9a3dde). og.motion runs on the GPU by default
-  with no held tick; captures wait for due results; no cross-host pose
-  claim; the CPU backend is an opt-in (fb115a7ca, bdc60e28a). The
-  checkpoints stream is complete.
-- **Invariants and `og explore`:** incremental default invariants, `$`
-  path values, `require`, the per-tick `probe.assertionEvents` stream on
-  node and web, `RestoreDesc.session`, the `intent:` command and
-  `og explore` (29d909847 to dffb7421d); one tick number for every
-  assertion kind (e79082c96) and a 20 s explore test (856472296).
-- **Core gaps:** CSS length tokens, keyed variable-height virtualization,
-  CLDR formatting (a62282dbb, 00a1f5016, e8d43c7b8); structured rich text
-  (80ca008ab).
-- **Familiar vocabulary:** behaviour trees, GSAP tweens and eases, input
-  action maps, `playbackRate`, Rapier names, one shared Ease everywhere
-  (bf566370b to 218726bda); playtests on bun:test (d9b237bf0); dialogue in
-  Yarn Spinner 3.2.2 (4d4b9ce18).
-- **Tooling:** wasm-opt removed (1fe3f19cf); 4 GiB lanes memory; sccache
-  0.19.0, local disk only; gate temp files on the checkout volume
-  (4c3c8f61c).
+- **CSS completion** (the gap audit's sections A, B and C): cascade
+  features, `::selection`, pseudo-element boxes, `@font-face`; units,
+  box model, flex, grid, table, positioning and anchor positioning,
+  multi-column, floats, `direction` and writing modes with vertical text;
+  colour, fonts, corner shapes, blend modes and isolation, 3D, `linear()`,
+  every property animatable, scroll-driven animations, shared-element and
+  nested view transitions, clip-path, inline SVG `<filter>` and
+  backdrop-filter, backgrounds, border-image and masks, interaction,
+  scrolling, images, `cursor: url()`, `resize`, `contain`,
+  `content-visibility`. Head of the round: ae321c70a.
+- **Svelte, HTML, SVG and GSAP:** forms with validity, date and time
+  pickers, file input, `<video>`/`<audio>`, table display.
+- **Retained UI finished:** every TS builder removed (ea7f1ae40,
+  708635b81, d4f4d4d1d, 11a2b2488); popovers on CSS anchors;
+  `env(safe-area-inset-*)` honours the covered controls and
+  `env(-og-hud-inset-*)` keeps the ultrawide HUD band; the og-ui suite
+  passes under `OG_UI_CHECK_BOUNDED` (2421a23eb).
+- **Publish names:** platform ask 18 landed; publish builds carry
+  content-hashed names only (64b33dede).
 
 ## Below target
 
@@ -108,9 +75,13 @@ AccessKit, the overlay's GPU cost, SSSR and FSR follow-ups, W7 (CPU FFT
 band for buoyancy), wgpu 31 (unpublished). Ray tracing is a non-goal;
 Radiance Cascades were measured and not ported (`docs/design.md` §2.6).
 
-## TODO (the owner, 2026-11-08: opened later, not now)
+## TODO (the owner, 2026-11-08)
 
-- **Screenshots and recordings for agents:** UI elements and entities
+Phase 1 is open (Running): the capture tooling, the UI pilot with its
+art review, and test cleanup. Then the rest of the catalogue, the
+performance pass, the real devices, 0.8.0 and the showcase page.
+
+- **Screenshots and recordings for agents (running):** UI elements and entities
   marked with numbered boxes on a capture, with a JSON map to path and
   source line (Set-of-Mark); key frames picked by event (visual change,
   input, assertion, screen change) with a synced timeline JSON; perceptual
@@ -118,9 +89,7 @@ Radiance Cascades were measured and not ported (`docs/design.md` §2.6).
   enlarged; captures sized for the model (long side 1280, crops apart). A
   platform ask for video summarised by a video model, the engine supplying
   the video, key frames and timeline.
-- **After the UI infrastructure lands:** the UI pilot (clean and fantasy
-  packs, rpg and shooter kits, an art review stream), then the whole
-  catalogue; 0.8.0 with the pack catalogue and the collected platform asks;
+- **The UI pilot (running), then the whole catalogue;** 0.8.0 with the pack catalogue and the collected platform asks;
   the showcase page on the platform. Each is opened when the owner says so.
 - **One full performance pass before the 0.8.0 release, never alongside
   development:** no stream measures while others build or land. It covers
