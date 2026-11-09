@@ -5,6 +5,20 @@ use crate::pipeline_features::{Features, Variants};
 #[cfg(not(target_arch = "wasm32"))]
 use std::sync::Arc;
 
+/// Queues a slot's pipeline job in `jobs` when the slot is wanted, neither
+/// `held` nor queued, and only then evaluates `work`: making a job clones the
+/// device, its layouts and module and boxes its builder, which a frame whose
+/// pipelines are all made did for every batch and pass, to drop
+/// ([`Renderer::pipeline_jobs`]; engine s109).
+macro_rules! add_job {
+    ($jobs:expr, $slot:expr, $held:expr, $work:expr $(,)?) => {{
+        let slot = $slot;
+        if !$held && !$jobs.iter().any(|(s, _)| *s == slot) {
+            $jobs.push((slot, $work));
+        }
+    }};
+}
+
 impl Renderer {
     /// Sorts the instances into (mesh, material) batches
     /// ([`instances::SortedInstances`]: from the last frame's sort while the
@@ -573,11 +587,6 @@ impl Renderer {
         let shadow_shader = &self.shadow_shader;
         let shadow_layouts = &self.shadow_layouts;
         let mut jobs: Vec<(Slot, Work)> = Vec::new();
-        let mut add = |slot: Slot, held: bool, work: Work| {
-            if !held && !jobs.iter().any(|(s, _)| *s == slot) {
-                jobs.push((slot, work));
-            }
-        };
         let all = batches
             .iter()
             .map(|b| (b, false))
@@ -589,30 +598,33 @@ impl Renderer {
                 && !b.transparent
                 && self.cache.meshes[b.mesh].surface.is_some()
             {
-                let (layouts, module) = if b.array {
-                    let a = self.array_maps.as_ref().expect("array material");
-                    (a.layouts.clone(), Shader::Made(a.module.clone()))
-                } else {
-                    (
-                        pbr.clone(),
-                        b.shader.map_or(Shader::Lazy(pbr_shader.clone()), |sh| {
-                            Shader::Made(self.cache.shaders[sh].clone())
-                        }),
-                    )
-                };
-                let (device, side, array) = (device.clone(), b.side, b.array);
-                add(
+                add_job!(
+                    jobs,
                     Slot::SurfacePrepass(key),
                     self.cache.surface_prepass_pipelines.contains_key(&key),
-                    Work::Once(Box::new(move || {
-                        Made::Pipeline(surface_prepass_pipeline(
-                            &device,
-                            (&layouts.0, &layouts.1),
-                            &module,
-                            side,
-                            array,
-                        ))
-                    })),
+                    {
+                        let (layouts, module) = if b.array {
+                            let a = self.array_maps.as_ref().expect("array material");
+                            (a.layouts.clone(), Shader::Made(a.module.clone()))
+                        } else {
+                            (
+                                pbr.clone(),
+                                b.shader.map_or(Shader::Lazy(pbr_shader.clone()), |sh| {
+                                    Shader::Made(self.cache.shaders[sh].clone())
+                                }),
+                            )
+                        };
+                        let (device, side, array) = (device.clone(), b.side, b.array);
+                        Work::Once(Box::new(move || {
+                            Made::Pipeline(surface_prepass_pipeline(
+                                &device,
+                                (&layouts.0, &layouts.1),
+                                &module,
+                                side,
+                                array,
+                            ))
+                        }))
+                    }
                 );
             }
             if b.array {
@@ -620,10 +632,9 @@ impl Renderer {
                 // module and layouts (`material::ArrayMaps`).
                 let a = self.array_maps.as_ref().expect("made with the material");
                 let key = (b.side, b.blend, is_skinned, b.effects);
-                let (d, layouts, module) = (device.clone(), a.layouts.clone(), a.module.clone());
-                add(
-                    Slot::ArrayLit(key),
-                    a.lit.contains_key(&key),
+                add_job!(jobs, Slot::ArrayLit(key), a.lit.contains_key(&key), {
+                    let (d, layouts, module) =
+                        (device.clone(), a.layouts.clone(), a.module.clone());
                     Work::Once(Box::new(move || {
                         Made::Pipeline(pbr_pipeline(
                             &d,
@@ -632,40 +643,41 @@ impl Renderer {
                             key,
                             samples,
                         ))
-                    })),
-                );
+                    }))
+                });
                 let key = (b.side, is_skinned);
                 if prepass && !b.transparent {
-                    let (d, layouts, module, side) =
-                        (device.clone(), a.layouts.clone(), a.module.clone(), b.side);
-                    add(
+                    add_job!(
+                        jobs,
                         Slot::ArrayPrepass(key),
                         a.prepass.contains_key(&key),
-                        Work::Once(Box::new(move || {
-                            Made::Pipeline(prepass_pipeline(
-                                &d,
-                                (&layouts.0, &layouts.1),
-                                &module,
-                                side,
-                                is_skinned,
-                                None,
-                                None,
-                                &[],
-                            ))
-                        })),
+                        {
+                            let (d, layouts, module, side) =
+                                (device.clone(), a.layouts.clone(), a.module.clone(), b.side);
+                            Work::Once(Box::new(move || {
+                                Made::Pipeline(prepass_pipeline(
+                                    &d,
+                                    (&layouts.0, &layouts.1),
+                                    &module,
+                                    side,
+                                    is_skinned,
+                                    None,
+                                    None,
+                                    &[],
+                                ))
+                            }))
+                        }
                     );
                 }
                 let key = (b.side, b.dissolve);
                 if !is_skinned {
-                    let (d, layouts, module) = (
-                        device.clone(),
-                        shadow_layouts.clone(),
-                        a.shadow_module.clone(),
-                    );
-                    let (side, dissolve) = key;
-                    add(
-                        Slot::ArrayShadow(key),
-                        a.shadow.contains_key(&key),
+                    add_job!(jobs, Slot::ArrayShadow(key), a.shadow.contains_key(&key), {
+                        let (d, layouts, module) = (
+                            device.clone(),
+                            shadow_layouts.clone(),
+                            a.shadow_module.clone(),
+                        );
+                        let (side, dissolve) = key;
                         Work::Once(Box::new(move || {
                             Made::Shadows(shadow_pipeline(
                                 &d,
@@ -675,8 +687,8 @@ impl Renderer {
                                 false,
                                 false,
                             ))
-                        })),
-                    );
+                        }))
+                    });
                 }
             }
             if b.physical {
@@ -684,43 +696,51 @@ impl Renderer {
                 // material's reflection).
                 let key = (b.side, b.blend, is_skinned, b.effects);
                 let physical = self.physical.as_ref().expect("made with the material");
-                let layouts = physical.layouts.clone();
-                let d = device.clone();
                 match b.shader {
                     None => {
-                        let module = physical.module.clone();
-                        add(
+                        add_job!(
+                            jobs,
                             Slot::Physical(key),
                             physical.pipelines.contains_key(&key),
-                            Work::Once(Box::new(move || {
-                                Made::Pipeline(lit_pipeline(
-                                    &d,
-                                    (&layouts.0, &layouts.1),
-                                    &module,
-                                    key,
-                                    samples,
-                                    true,
-                                    &[],
-                                ))
-                            })),
+                            {
+                                let layouts = physical.layouts.clone();
+                                let d = device.clone();
+                                let module = physical.module.clone();
+                                Work::Once(Box::new(move || {
+                                    Made::Pipeline(lit_pipeline(
+                                        &d,
+                                        (&layouts.0, &layouts.1),
+                                        &module,
+                                        key,
+                                        samples,
+                                        true,
+                                        &[],
+                                    ))
+                                }))
+                            }
                         );
                     }
                     Some(sh) => {
-                        let module = self.cache.physical_shaders[&sh].clone();
-                        add(
+                        add_job!(
+                            jobs,
                             Slot::PhysicalHook((sh, key)),
                             self.cache.physical_hook_pipelines.contains_key(&(sh, key)),
-                            Work::Once(Box::new(move || {
-                                Made::Pipeline(lit_pipeline(
-                                    &d,
-                                    (&layouts.0, &layouts.1),
-                                    &module,
-                                    key,
-                                    samples,
-                                    true,
-                                    &[],
-                                ))
-                            })),
+                            {
+                                let layouts = physical.layouts.clone();
+                                let d = device.clone();
+                                let module = self.cache.physical_shaders[&sh].clone();
+                                Work::Once(Box::new(move || {
+                                    Made::Pipeline(lit_pipeline(
+                                        &d,
+                                        (&layouts.0, &layouts.1),
+                                        &module,
+                                        key,
+                                        samples,
+                                        true,
+                                        &[],
+                                    ))
+                                }))
+                            }
                         );
                     }
                 }
@@ -728,58 +748,69 @@ impl Renderer {
             if let Some(sh) = b.shader {
                 let key = (sh, b.side, b.blend, b.effects, is_skinned);
                 let lit = (b.side, b.blend, is_skinned, b.effects);
-                let (d, layouts, module) =
-                    (device.clone(), pbr.clone(), self.cache.shaders[sh].clone());
-                add(
+                add_job!(
+                    jobs,
                     Slot::Hook(key),
                     self.cache.hook_pipelines.contains_key(&key),
-                    Work::Once(Box::new(move || {
-                        Made::Pipeline(pbr_pipeline(
-                            &d,
-                            (&layouts.0, &layouts.1),
-                            &module,
-                            lit,
-                            samples,
-                        ))
-                    })),
+                    {
+                        let (d, layouts, module) =
+                            (device.clone(), pbr.clone(), self.cache.shaders[sh].clone());
+                        Work::Once(Box::new(move || {
+                            Made::Pipeline(pbr_pipeline(
+                                &d,
+                                (&layouts.0, &layouts.1),
+                                &module,
+                                lit,
+                                samples,
+                            ))
+                        }))
+                    }
                 );
                 // Shadows and the prepass see the material shader's offset.
                 let key = (sh, b.side, is_skinned);
                 let shadow = (b.side, is_skinned, b.dissolve);
-                let (d, layouts, module) = (
-                    device.clone(),
-                    shadow_layouts.clone(),
-                    self.cache.shadow_shaders[sh].clone(),
-                );
-                add(
+                add_job!(
+                    jobs,
                     Slot::HookShadow(key),
                     self.cache.hook_shadow_pipelines.contains_key(&key),
-                    Work::Once(Box::new(move || {
-                        Made::Shadows(shadow_pipeline(&d, &layouts, &module, shadow, true, false))
-                    })),
+                    {
+                        let (d, layouts, module) = (
+                            device.clone(),
+                            shadow_layouts.clone(),
+                            self.cache.shadow_shaders[sh].clone(),
+                        );
+                        Work::Once(Box::new(move || {
+                            Made::Shadows(shadow_pipeline(
+                                &d, &layouts, &module, shadow, true, false,
+                            ))
+                        }))
+                    }
                 );
                 if prepass && !b.transparent {
-                    let (d, layouts, module, side) = (
-                        device.clone(),
-                        pbr.clone(),
-                        self.cache.shaders[sh].clone(),
-                        b.side,
-                    );
-                    add(
+                    add_job!(
+                        jobs,
                         Slot::HookPrepass(key),
                         self.cache.hook_prepass_pipelines.contains_key(&key),
-                        Work::Once(Box::new(move || {
-                            Made::Pipeline(prepass_pipeline(
-                                &d,
-                                (&layouts.0, &layouts.1),
-                                &module,
-                                side,
-                                is_skinned,
-                                None,
-                                None,
-                                &[],
-                            ))
-                        })),
+                        {
+                            let (d, layouts, module, side) = (
+                                device.clone(),
+                                pbr.clone(),
+                                self.cache.shaders[sh].clone(),
+                                b.side,
+                            );
+                            Work::Once(Box::new(move || {
+                                Made::Pipeline(prepass_pipeline(
+                                    &d,
+                                    (&layouts.0, &layouts.1),
+                                    &module,
+                                    side,
+                                    is_skinned,
+                                    None,
+                                    None,
+                                    &[],
+                                ))
+                            }))
+                        }
                     );
                 }
             }
@@ -787,109 +818,130 @@ impl Renderer {
                 // A plain material: the lean lit and prepass pipelines (its
                 // shadows take the shadow pipeline below, lean as well).
                 let key = (b.side, b.effects, b.derivatives, b.compact);
-                let (d, layout, module) =
-                    (device.clone(), self.pbr_layout.clone(), pbr_shader.clone());
-                add(
+                add_job!(
+                    jobs,
                     Slot::Lean(key),
                     self.lean_pipelines.contains_key(&key),
-                    Work::Variants(variant_job(move |off: &[(&'static str, f64)]| {
-                        Made::Pipeline(lean_pipeline(&d, &layout, &module, key, samples, off))
-                    })),
+                    {
+                        let (d, layout, module) =
+                            (device.clone(), self.pbr_layout.clone(), pbr_shader.clone());
+                        Work::Variants(variant_job(move |off: &[(&'static str, f64)]| {
+                            Made::Pipeline(lean_pipeline(&d, &layout, &module, key, samples, off))
+                        }))
+                    }
                 );
                 let key = (b.side, b.derivatives, b.compact);
                 if prepass {
-                    let (d, layouts, module) = (device.clone(), pbr.clone(), pbr_shader.clone());
-                    let (side, lean) = (b.side, (b.derivatives, b.compact));
-                    add(
+                    add_job!(
+                        jobs,
                         Slot::LeanPrepass(key),
                         self.lean_prepass_pipelines.contains_key(&key),
-                        Work::Variants(variant_job(move |off: &[(&'static str, f64)]| {
-                            Made::Pipeline(prepass_pipeline(
-                                &d,
-                                (&layouts.0, &layouts.1),
-                                &module,
-                                side,
-                                false,
-                                Some(lean),
-                                None,
-                                off,
-                            ))
-                        })),
+                        {
+                            let (d, layouts, module) =
+                                (device.clone(), pbr.clone(), pbr_shader.clone());
+                            let (side, lean) = (b.side, (b.derivatives, b.compact));
+                            Work::Variants(variant_job(move |off: &[(&'static str, f64)]| {
+                                Made::Pipeline(prepass_pipeline(
+                                    &d,
+                                    (&layouts.0, &layouts.1),
+                                    &module,
+                                    side,
+                                    false,
+                                    Some(lean),
+                                    None,
+                                    off,
+                                ))
+                            }))
+                        }
                     );
                 }
                 if b.compact {
-                    let (d, layouts, module, side) = (
-                        device.clone(),
-                        shadow_layouts.clone(),
-                        shadow_shader.clone(),
-                        b.side,
-                    );
-                    add(
-                        Slot::CompactShadow(side),
-                        self.compact_shadow_pipelines.contains_key(&side),
-                        Work::Once(Box::new(move || {
-                            Made::Shadows(shadow_pipeline(
-                                &d,
-                                &layouts,
-                                &module,
-                                (side, false, false),
-                                false,
-                                true,
-                            ))
-                        })),
+                    add_job!(
+                        jobs,
+                        Slot::CompactShadow(b.side),
+                        self.compact_shadow_pipelines.contains_key(&b.side),
+                        {
+                            let (d, layouts, module, side) = (
+                                device.clone(),
+                                shadow_layouts.clone(),
+                                shadow_shader.clone(),
+                                b.side,
+                            );
+                            Work::Once(Box::new(move || {
+                                Made::Shadows(shadow_pipeline(
+                                    &d,
+                                    &layouts,
+                                    &module,
+                                    (side, false, false),
+                                    false,
+                                    true,
+                                ))
+                            }))
+                        }
                     );
                 }
             }
             let key = (b.side, b.blend, is_skinned, b.effects);
             if !(b.lean && !is_skinned) {
-                let (d, layouts, module) = (device.clone(), pbr.clone(), pbr_shader.clone());
-                add(
+                add_job!(
+                    jobs,
                     Slot::Pbr(key),
                     self.pbr_pipelines.contains_key(&key),
-                    Work::Variants(variant_job(move |off: &[(&'static str, f64)]| {
-                        Made::Pipeline(lit_pipeline(
-                            &d,
-                            (&layouts.0, &layouts.1),
-                            &module,
-                            key,
-                            samples,
-                            false,
-                            off,
-                        ))
-                    })),
+                    {
+                        let (d, layouts, module) =
+                            (device.clone(), pbr.clone(), pbr_shader.clone());
+                        Work::Variants(variant_job(move |off: &[(&'static str, f64)]| {
+                            Made::Pipeline(lit_pipeline(
+                                &d,
+                                (&layouts.0, &layouts.1),
+                                &module,
+                                key,
+                                samples,
+                                false,
+                                off,
+                            ))
+                        }))
+                    }
                 );
             }
             let key = (b.side, is_skinned, b.dissolve);
-            let (d, layouts, module) = (
-                device.clone(),
-                shadow_layouts.clone(),
-                shadow_shader.clone(),
-            );
-            add(
+            add_job!(
+                jobs,
                 Slot::Shadow(key),
                 self.shadow_pipelines.contains_key(&key),
-                Work::Once(Box::new(move || {
-                    Made::Shadows(shadow_pipeline(&d, &layouts, &module, key, false, false))
-                })),
+                {
+                    let (d, layouts, module) = (
+                        device.clone(),
+                        shadow_layouts.clone(),
+                        shadow_shader.clone(),
+                    );
+                    Work::Once(Box::new(move || {
+                        Made::Shadows(shadow_pipeline(&d, &layouts, &module, key, false, false))
+                    }))
+                }
             );
             if prepass && !b.transparent && !(b.lean && !is_skinned) {
                 let key = (b.side, is_skinned);
-                let (d, layouts, module) = (device.clone(), pbr.clone(), pbr_shader.clone());
-                add(
+                add_job!(
+                    jobs,
                     Slot::Prepass(key),
                     self.prepass_pipelines.contains_key(&key),
-                    Work::Variants(variant_job(move |off: &[(&'static str, f64)]| {
-                        Made::Pipeline(prepass_pipeline(
-                            &d,
-                            (&layouts.0, &layouts.1),
-                            &module,
-                            key.0,
-                            key.1,
-                            None,
-                            None,
-                            off,
-                        ))
-                    })),
+                    {
+                        let (d, layouts, module) =
+                            (device.clone(), pbr.clone(), pbr_shader.clone());
+                        Work::Variants(variant_job(move |off: &[(&'static str, f64)]| {
+                            Made::Pipeline(prepass_pipeline(
+                                &d,
+                                (&layouts.0, &layouts.1),
+                                &module,
+                                key.0,
+                                key.1,
+                                None,
+                                None,
+                                off,
+                            ))
+                        }))
+                    }
                 );
             }
         }
@@ -1523,4 +1575,33 @@ fn deferred<T: crate::deferred::AnywhereOnce + 'static>(
     #[cfg(target_arch = "wasm32")]
     d.get();
     d
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A slot's job is made once, and only for a slot neither held nor
+    /// queued: a frame whose pipelines are all made makes none.
+    #[test]
+    fn a_pipeline_job_is_made_only_for_a_wanted_slot() {
+        let mut jobs: Vec<(Slot, Work)> = Vec::new();
+        let mut made = 0;
+        let mut job = || {
+            made += 1;
+            Work::Once(Box::new(|| unreachable!("a test job is never run")))
+        };
+        let front = Slot::Shadow((Side::Front, false, false));
+        let back = Slot::Shadow((Side::Back, false, false));
+        add_job!(jobs, front, true, job());
+        add_job!(jobs, back, true, job());
+        assert_eq!(jobs.len(), 0, "held slots queue nothing");
+        add_job!(jobs, front, false, job());
+        add_job!(jobs, front, false, job());
+        add_job!(jobs, Slot::Prepass((Side::Front, false)), false, job());
+        add_job!(jobs, back, true, job());
+        assert_eq!(jobs.len(), 2, "one job per wanted slot");
+        assert!(jobs[0].0 == front && jobs[1].0 == Slot::Prepass((Side::Front, false)));
+        assert_eq!(made, 2, "a job is made only for a slot it queues");
+    }
 }
