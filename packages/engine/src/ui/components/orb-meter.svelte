@@ -2,7 +2,7 @@
 <meta name="strings" content="./orb-meter.en.ogt">
 <meta name="prop:value" content="number" data-doc="The value.">
 <meta name="prop:max" content="number" data-doc="Its maximum.">
-<meta name="prop:kind" content="string" data-doc="Its liquid's colour: health (red) or mana (blue).">
+<meta name="prop:kind" content="string" data-doc="Its liquid's colour: health (the style's --health) or mana (--mana).">
 <meta name="prop:showValue" content="bool" data-doc="The value in the middle.">
 <meta name="prop:label" content="string" data-doc="A caption under it; empty is none.">
 <meta name="prop:name" content="string" data-doc="What a screen reader calls it; empty is the label, else Health.">
@@ -25,7 +25,7 @@
 #Glass { width: stretch; height: stretch; background: radial-gradient(circle at 50% 40%, #1a1f2a, #05070b); }
 #Liquid { position: absolute; inset-inline-start: 0; bottom: 0; width: stretch; height: calc(var(--value) * 100%); background: linear-gradient(180deg, #ffffff30, #00000000 30%, #00000066), var(--meter); }
 #Surface { width: stretch; height: 4px; background: #ffffff55; animation: sway 2400ms ease-in-out infinite alternate; }
-#Shine { width: stretch; height: stretch; background: radial-gradient(ellipse at 35% 22%, #ffffff66, #ffffff00 40%); }
+#Shine { width: stretch; height: stretch; background: radial-gradient(ellipse 30% 16% at 40% 18%, #ffffff73, #ffffff00), radial-gradient(circle at 50% 50%, #00000000 62%, #00000073); }
 #Value { font: var(--text-lg); font-family: var(--font-mono); text-shadow: 0 1px 3px #000000; }
 #Label { font: var(--text-sm); text-shadow: 0 1px 2px #000000cc; }
 @keyframes sway { from { translate: -6px 0; } to { translate: 6px 0; } }
