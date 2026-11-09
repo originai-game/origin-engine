@@ -100,6 +100,7 @@ fn declaration(name: &str, value: &str, important: bool) -> Result<StyleDeclarat
         value: variables::Value::parse(value)?,
         source: value.into(),
         important,
+        pending_shorthand: None,
     })
 }
 
@@ -1607,6 +1608,7 @@ mod tests {
             value: variables::Value::parse(v).unwrap(),
             source: v.into(),
             important: false,
+            pending_shorthand: None,
         };
         let names = |ds: Vec<StyleDeclaration>| -> Vec<(String, String)> {
             ds.into_iter().map(|d| (d.name, d.source)).collect()

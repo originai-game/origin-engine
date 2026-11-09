@@ -81,6 +81,56 @@ fn tick(ui: &mut Ui, input: InputFrame) {
 }
 
 #[test]
+fn transition_variables_substitute_after_longhands_win() {
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.define_document(
+        UiDocument::parse(
+            "timing.svelte",
+            r#"
+<meta name="component" content="timing">
+<column id="Target" class:expanded={expanded}/>
+<style>
+@layer engine-default {
+  column { --duration: 2s; --curve: linear; width: 20px; height: 40px;
+    transition: width var(--duration) var(--curve); }
+  column.expanded { width: 80px; }
+}
+column { transition-duration: 200ms; }
+</style>"#,
+        )
+        .unwrap(),
+    );
+    let step = |ui: &mut Ui, expanded| {
+        ui.begin(InputFrame::default(), viewport());
+        ui.component(
+            "timing",
+            "timing",
+            &mut json!({"expanded": expanded}),
+            &bind::NoEnv,
+        );
+        ui.end();
+    };
+    for _ in 0..30 {
+        step(&mut ui, false);
+    }
+    let target = ui.element("timing").unwrap();
+    assert_eq!(target.width, 20.0);
+    for _ in 0..7 {
+        step(&mut ui, true);
+    }
+    let width = ui.element("timing").unwrap().width;
+    assert!(
+        width > 30.0 && width < 70.0,
+        "200ms transition, not 2s or instant: {width}"
+    );
+    for _ in 0..30 {
+        step(&mut ui, true);
+    }
+    assert_eq!(ui.element("timing").unwrap().width, 80.0);
+    assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+}
+
+#[test]
 fn media_queries_follow_dimensions_preferences_and_nested_intersections() {
     let doc = UiDocument::parse(
         "media.svelte",

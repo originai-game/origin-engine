@@ -162,6 +162,7 @@ fn declaration(name: &str, value: String, important: bool) -> Result<StyleDeclar
         value: Tokens::parse(&value)?,
         source: value,
         important,
+        pending_shorthand: None,
     })
 }
 
@@ -185,13 +186,39 @@ pub(crate) fn expand(
         }
         _ => return Ok(vec![d]),
     };
-    if d.source.replace("var(--motion-", "").contains("var(") {
-        return Err(format!(
-            "{}: write var() in a longhand ({}), not in the shorthand",
-            d.name,
-            shorthand.join(", ")
-        ));
+    if d.value.has_variables() {
+        let pending = if d.name == "transition" {
+            "transition"
+        } else {
+            "animation"
+        };
+        let mut out: Vec<_> = shorthand
+            .iter()
+            .map(|name| StyleDeclaration {
+                name: (*name).into(),
+                pending_shorthand: Some(pending),
+                ..d.clone()
+            })
+            .collect();
+        if pending == "animation" {
+            for (name, value) in [
+                ("animation-timeline", "auto"),
+                ("animation-range-start", "normal"),
+                ("animation-range-end", "normal"),
+            ] {
+                out.push(declaration(name, value.into(), d.important)?);
+            }
+        }
+        return Ok(out);
     }
+    expand_shorthand(d, shorthand, keyframes)
+}
+
+fn expand_shorthand(
+    d: StyleDeclaration,
+    shorthand: &[&str],
+    keyframes: &dyn Fn(&str) -> bool,
+) -> Result<Vec<StyleDeclaration>, String> {
     let mut lists: Vec<Vec<String>> = vec![Vec::new(); shorthand.len()];
     for item in items(&d.source) {
         let parts = if d.name == "transition" {
@@ -220,6 +247,20 @@ pub(crate) fn expand(
         }
     }
     Ok(out)
+}
+
+/// Extract one cascade-winning longhand after its shorthand substitutes.
+pub(crate) fn substituted(shorthand: &str, name: &str, source: String) -> Result<String, String> {
+    let names = if shorthand == "transition" {
+        &TRANSITION[..]
+    } else {
+        &ANIMATION[..]
+    };
+    expand_shorthand(declaration(shorthand, source, false)?, names, &|_| true)?
+        .into_iter()
+        .find(|d| d.name == name)
+        .map(|d| d.source)
+        .ok_or_else(|| format!("{shorthand} has no {name} longhand"))
 }
 
 /// `animation-range` (`<start> <end>?`: an omitted end is the start's
@@ -824,7 +865,11 @@ mod tests {
         for (name, value) in decls {
             for d in expand(decl(name, value), &known).unwrap() {
                 winners.retain(|(n, _): &(String, String)| *n != d.name);
-                winners.push((d.name, d.source));
+                let source = match d.pending_shorthand {
+                    Some(shorthand) => substituted(shorthand, &d.name, d.source).unwrap(),
+                    None => d.source,
+                };
+                winners.push((d.name, source));
             }
         }
         let mut diagnostics = Vec::new();
@@ -890,7 +935,6 @@ mod tests {
                 "none, opacity",
                 "transition-property",
             ),
-            ("transition", "opacity var(--d)", "longhand"),
             ("animation", "fade 1s", "@keyframes fade"),
             ("animation-direction", "sideways", "animation-direction"),
             (

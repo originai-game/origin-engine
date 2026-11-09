@@ -125,7 +125,7 @@ const DRESSINGS: &[(&str, &str, &str)] = &[
     ),
     (
         "Tabs::tab:selected",
-        "tabs[aria-selected=true]::part(tab)",
+        "tabs::part(tab):checked",
         "background: var(--selection); box-shadow: 0 2px 4px 0 #00000073, inset 0 1px 0 0 #ffffff26;",
     ),
 ];

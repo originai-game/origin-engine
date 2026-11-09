@@ -577,7 +577,7 @@ pub fn value_form(prop: &str, words: &[&str]) -> Option<String> {
         Conv::Raw if prop == "sheetDetents" => "<n>% | <n>px …".into(),
         Conv::Raw if prop == "sheetEdge" => "block-end | inline-start | inline-end".into(),
         Conv::Raw if prop == "material" => {
-            "<material>(<n> …[, <colour>]) | \"<ui-material asset>\" <n> … | none".into()
+            "glass <regular|thick> <lift|float> | <material>(<n> …[, <colour>]) | \"<ui-material asset>\" <n> … | none".into()
         }
         Conv::Raw if prop == "emitter" => {
             "[<preset>] [<rate>] [burst <n>] [for <time>] [life <time>] [<n>px/s …] … | none"
@@ -1871,6 +1871,11 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
             )];
             if let Some(c) = colour {
                 out.push(e("background", paint_vals(&[c])?));
+            } else if name == "background" && value.trim() == "none" {
+                out.push(e(
+                    "background",
+                    paint_vals(&[Tok::Ident("transparent".into())])?,
+                ));
             }
             // The shorthand resets the longhands to its own layers' (an
             // empty value), so an earlier `background-size` stops applying
@@ -1972,7 +1977,13 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
                 )
                 .map(|_| "textShadow"),
                 "clip-path" => p::clip(value).map(|_| "clipPath"),
-                _ => p::material(value).map(|_| "material"),
+                _ => p::glass_material(value).and_then(|glass| {
+                    if glass.is_some() {
+                        Ok("material")
+                    } else {
+                        p::material(value).map(|_| "material")
+                    }
+                }),
             }?;
             Ok(vec![e(prop, vec![Value::String(value.trim().to_owned())])])
         }

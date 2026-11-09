@@ -614,6 +614,8 @@ pub struct GlassParts {
     pub css_mix: bool,
     /// The effect named its tint: a weight keeps it instead of its own.
     pub own_tint: bool,
+    /// CSS supplies the filter; the weight supplies only the material.
+    pub own_filter: bool,
     /// A colour matrix over the blurred backdrop (CSS's `backdrop-filter`
     /// colour functions, [`og_render::UiGlass::matrix`]).
     pub matrix: Option<og_render::UiColorMatrix>,
@@ -631,6 +633,7 @@ impl GlassParts {
         explicit_tint: bool,
         theme: &Theme,
     ) -> (og_render::UiMode, [f32; 4]) {
+        let filter = (blur, saturation, brightness);
         let dark = theme.scheme == crate::style::Scheme::Dark;
         let fallback = if theme.reduced_transparency {
             og_render::UiGlassFallback::ReducedTransparency
@@ -691,6 +694,11 @@ impl GlassParts {
         if self.matrix.is_some() {
             glass.matrix = self.matrix;
         }
+        let (blur, saturation, brightness) = if self.own_filter && !glass.solid {
+            filter
+        } else {
+            (blur, saturation, brightness)
+        };
         let mode = og_render::UiMode::Backdrop {
             blur,
             saturation,

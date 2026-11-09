@@ -1133,7 +1133,7 @@ pub const PROPS: &[PropSpec] = &[
         ty: Ty::Text,
         on: On::All,
         two_way: false,
-        doc: "`-og-material: <name>(<n> …[, <colour>])`: the element and its subtree composited through one of the engine's built-in materials (dissolve, shine, hologram, glitch, ripple, pixelate, color-adjust, outline, blur), its parameters in the material's order; or `-og-material: \"<asset>\" [<n> …]`, a `type ui-material` asset (`og ui add materials`) by its path under `assets/`, the numbers over its defaults in `param` order, four a parameter, as a style's dressing writes one (`-og-material: \"ui-kits/materials/burn.ogt\" var(--burn)`). Any number may be `var(--name)`, so `style:--burn={$burn}` drives it from a store. No CSS standard has shader materials.",
+        doc: "`-og-material: glass <regular|thick> <lift|float>` supplies glass tint, edge, elevation and reduced-transparency fallback; standard `backdrop-filter` supplies its blur and colour filters. Alternatively `<name>(<n> …[, <colour>])` composites through a built-in shader (dissolve, shine, hologram, glitch, ripple, pixelate, color-adjust, outline, blur), or `\"<asset>\" [<n> …]` loads a `type ui-material` asset with four numbers per parameter. `none` removes the material. Values may substitute author variables, but the engine reads no named custom property. Extension reason: standard CSS has no shader-material or native glass-weight/elevation primitive.",
     },
     PropSpec {
         name: "scrollSnapType",

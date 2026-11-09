@@ -185,6 +185,7 @@ fn declaration(name: &str, value: String, important: bool) -> Result<StyleDeclar
         value: variables::Value::parse(&value)?,
         source: value,
         important,
+        pending_shorthand: None,
     })
 }
 

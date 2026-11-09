@@ -77,6 +77,7 @@ fn declaration(name: &str, value: &str, important: bool) -> Result<StyleDeclarat
         value: variables::Value::parse(value)?,
         source: value.into(),
         important,
+        pending_shorthand: None,
     })
 }
 

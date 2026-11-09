@@ -107,6 +107,7 @@ pub(super) fn declarations(text: &str) -> Result<Vec<super::StyleDeclaration>, S
                     value,
                     source,
                     important,
+                    pending_shorthand: None,
                 })
             })
             .map_err(|error: ParseError<String>| format!("invalid CSS declaration: {error:?}"))?;

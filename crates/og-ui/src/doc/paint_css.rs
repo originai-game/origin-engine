@@ -1048,7 +1048,10 @@ fn layer(item: &str, last: bool, mask: bool) -> Result<(CssLayer, Option<Tok>), 
 /// has no image (a plain colour, lowered as before).
 pub(crate) fn background(text: &str) -> Option<Result<Background, String>> {
     let Ok(t) = tokens(text) else { return None };
-    if !t.iter().any(is_image) {
+    if !t
+        .iter()
+        .any(|t| is_image(t) || matches!(t, Tok::Ident(w) if w == "none"))
+    {
         return None;
     }
     let items = super::boxes::items(text);
@@ -1792,6 +1795,66 @@ fn px(t: &Tok) -> Result<f32, String> {
         (v, "px") | (v @ 0.0, "") => Ok(v),
         _ => Err(format!("'{}' is not a length in px", describe(t))),
     }
+}
+
+/// The glass material carries no paint or filter defaults of its own.
+pub(crate) fn glass_material(text: &str) -> Result<Option<crate::paint::GlassParts>, String> {
+    let t = tokens(text)?;
+    if !matches!(t.first(), Some(Tok::Ident(v)) if v == "glass") {
+        return Ok(None);
+    }
+    let [Tok::Ident(_), Tok::Ident(weight), Tok::Ident(elevation)] = t.as_slice() else {
+        return Err("glass needs a weight (regular | thick) and elevation (lift | float)".into());
+    };
+    Ok(Some(crate::paint::GlassParts {
+        weight: Some(match weight.as_str() {
+            "regular" => og_render::UiGlassWeight::Regular,
+            "thick" => og_render::UiGlassWeight::Thick,
+            _ => return Err("glass weight: regular | thick".into()),
+        }),
+        elevation: Some(match elevation.as_str() {
+            "lift" => og_render::UiElevation::Lift,
+            "float" => og_render::UiElevation::Float,
+            _ => return Err("glass elevation: lift | float".into()),
+        }),
+        own_filter: true,
+        ..Default::default()
+    }))
+}
+
+/// A glass surface's filter in the native backdrop shader. A filter chain
+/// that needs intermediate clamping cannot be folded into this shader.
+pub(crate) fn glass_effect(
+    mut glass: crate::paint::GlassParts,
+    fns: &[FilterFn],
+) -> Result<Effect, String> {
+    let mut blur = 0.0;
+    for f in fns {
+        match f {
+            FilterFn::Blur(sigma) if glass.matrix.is_none() => {
+                blur = f32::sqrt(blur * blur + sigma * sigma);
+            }
+            FilterFn::Matrix(m) => {
+                glass.matrix = Some(match glass.matrix {
+                    None => *m,
+                    Some(previous) if contained(&previous) => then(&previous, m),
+                    _ => {
+                        return Err(
+                            "glass backdrop-filter needs an intermediate colour clamp".into()
+                        );
+                    }
+                });
+            }
+            _ => return Err("glass backdrop-filter requires blur before colour functions".into()),
+        }
+    }
+    Ok(Effect::Backdrop {
+        blur: blur * og_render::ui::GLASS_BLUR_SCALE,
+        saturation: 1.0,
+        brightness: 1.0,
+        tint: ColorRef::Literal(Srgba::TRANSPARENT),
+        glass,
+    })
 }
 
 /// `backdrop-filter`'s functions as its stages, in order: a run of

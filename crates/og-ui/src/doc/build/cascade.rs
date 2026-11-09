@@ -365,6 +365,12 @@ pub(crate) fn values_with(
         // units become px; math functions reduce once their variables are
         // known.
         let value = value.and_then(|v| {
+            let v = match winner {
+                Winner::Declared(d) if let Some(shorthand) = d.pending_shorthand => {
+                    crate::doc::motion::substituted(shorthand, name, v)?
+                }
+                _ => v,
+            };
             let v = if v.contains("attr(") {
                 crate::doc::calc::attr(&v, attr)?
             } else {

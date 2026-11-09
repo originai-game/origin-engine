@@ -681,6 +681,69 @@ fn css_parts_share_the_css_cascade_and_markup_hosts() {
 }
 
 #[test]
+fn default_css_glass_uses_css_filters_and_material_fallbacks() {
+    use og_ui::dress::PartRef;
+    use og_ui::paint::Effect;
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.set_part_css(DEFAULT_CSS).unwrap();
+    for value in ["glass thick lift", "var(--author-material)"] {
+        let css = format!("\npanel::part(frame) {{ -og-materail: {value}; }}");
+        let error = ui.set_part_css(&css).unwrap_err();
+        assert!(error.contains("<part-css>:2:"), "{error}");
+        assert!(error.contains("-og-materail"), "{error}");
+        let document =
+            format!("<meta name=\"component\" content=\"typo\"><panel/>\n<style>{css}</style>");
+        let error = UiDocument::parse("ui/typo.svelte", &document).unwrap_err();
+        let error = error.join("\n");
+        assert!(error.contains("ui/typo.svelte:3:"), "{error}");
+        assert!(error.contains("-og-materail"), "{error}");
+    }
+    let part = PartRef::of("Panel", "frame", None);
+    let default = ui.resolve_part(&part, [120.0, 80.0]).unwrap();
+    assert!(default.fills.is_empty());
+    assert!(matches!(
+        default.effects.as_slice(),
+        [Effect::Backdrop { .. }]
+    ));
+    ui.set_part_css("panel::part(frame) { -og-material: glass thick lift; backdrop-filter: blur(7px) saturate(0); }")
+        .unwrap();
+    let draw = ui.resolve_part(&part, [120.0, 80.0]).unwrap();
+    let [
+        Effect::Backdrop {
+            blur,
+            saturation,
+            brightness,
+            glass,
+            ..
+        },
+    ] = draw.effects.as_slice()
+    else {
+        panic!("one material applies the filter exactly once");
+    };
+    let (mode, _) = glass.resolve(*blur, *saturation, *brightness, [0.0; 4], false, ui.theme());
+    let og_render::UiMode::Backdrop {
+        blur: actual_blur,
+        saturation: actual_saturation,
+        glass: material,
+        ..
+    } = mode
+    else {
+        panic!("a glass material");
+    };
+    assert_eq!(actual_blur, 14.0, "CSS blur, not the thick preset's blur");
+    assert_eq!(actual_saturation, 1.0, "the matrix applies saturation once");
+    let matrix = material.matrix.unwrap();
+    for row in matrix.rows {
+        assert_eq!(row, [0.213, 0.715, 0.072, 0.0]);
+    }
+    let mut reduced = ui.theme().clone();
+    reduced.reduced_transparency = true;
+    let (mode, tint) = glass.resolve(*blur, *saturation, *brightness, [0.0; 4], false, &reduced);
+    assert!(matches!(mode, og_render::UiMode::Backdrop { blur: 0.0, glass, .. } if glass.solid));
+    assert_eq!(tint[3], 1.0);
+}
+
+#[test]
 #[ignore = "requires GPU"]
 fn css_parts_render_their_background_border_and_shadow() {
     use og_render::*;

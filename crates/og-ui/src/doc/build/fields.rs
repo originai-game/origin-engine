@@ -430,9 +430,17 @@ impl Ui {
             }
         };
         let mut fails = Vec::new();
-        if let Some(Ok(fns)) = r
-            .str("backdropFilter")
-            .map(|v| p::filter_fns(v, "backdrop-filter"))
+        let glass = r
+            .str("material")
+            .and_then(|s| p::glass_material(s).ok())
+            .flatten();
+        let fns = p::filter_fns(r.str("backdropFilter").unwrap_or("none"), "backdrop-filter");
+        if let Some(glass) = glass {
+            match fns.and_then(|fns| p::glass_effect(glass, &fns)) {
+                Ok(effect) => c.effects.push(effect),
+                Err(error) => fails.push(error),
+            }
+        } else if let Ok(fns) = fns
             && let Some(stages) =
                 p::backdrop_stages(&fns, crate::paint::ColorRef::Literal(current), |u| {
                     url(&mut fails, "backdrop-filter", u)

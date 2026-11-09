@@ -92,7 +92,14 @@ impl Ui {
             }
         }
         if part.has("selected") {
-            attributes.insert("aria-selected".into(), "true".into());
+            if matches!(
+                (part.component, part.part),
+                ("Tabs", "tab") | ("Radio", "card")
+            ) {
+                states.insert(crate::bind::InteractionState::Checked);
+            } else {
+                attributes.insert("aria-selected".into(), "true".into());
+            }
         }
         if !states.contains(&crate::bind::InteractionState::Disabled) {
             states.insert(crate::bind::InteractionState::Enabled);
@@ -188,7 +195,7 @@ impl Ui {
             ..Default::default()
         };
         let mut element = Element {
-            background: r.color("background"),
+            background: r.color("background").filter(|color| color.alpha > 0.0),
             radius: r.num("radius").unwrap_or(0.0),
             ..Element::default()
         };

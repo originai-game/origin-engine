@@ -284,6 +284,8 @@ pub struct StyleDeclaration {
     pub value: variables::Value,
     pub source: String,
     pub important: bool,
+    /// This longhand's value must be extracted after var() substitution.
+    pub pending_shorthand: Option<&'static str>,
 }
 
 #[derive(Clone, Debug, PartialEq)]

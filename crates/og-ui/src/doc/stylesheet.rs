@@ -88,18 +88,20 @@ fn parsed_rules(mut rules: Vec<Rule>, layers: &[String]) -> Result<Vec<(Selector
 /// A global part sheet, using the same reader, shorthand expansion and
 /// cascade order as a document's CSS.
 pub(crate) fn part_rules(css: &str) -> Result<(Vec<StyleRule>, super::at_rules::Sheet), String> {
+    let error = |(at, message)| format!("<part-css>:{}: {message}", syntax::location(css, at).0);
     let mut sheet = super::at_rules::Sheet::default();
-    let rules = read("", &mut sheet, &[(css.into(), 0)]).map_err(|(_, e)| e)?;
-    let parsed = parsed_rules(rules, &sheet.layers).map_err(|(_, e)| e)?;
+    let rules = read("", &mut sheet, &[(css.into(), 0)]).map_err(error)?;
+    let parsed = parsed_rules(rules, &sheet.layers).map_err(error)?;
     let mut out = Vec::new();
     for (selector, rule) in parsed {
         if rule.ua {
             continue;
         }
-        part_selector(&selector)?;
+        part_selector(&selector).map_err(|e| error((rule.at, e)))?;
         let (declarations, _) = lower(&rule.body, &|name| {
             sheet.keyframe_rules.iter().any(|(n, ..)| n == name)
-        })?;
+        })
+        .map_err(|e| error((rule.at, e)))?;
         out.push(StyleRule {
             layer: rank(&sheet.layers, &rule.layer),
             starting: rule.starting,
@@ -521,6 +523,15 @@ fn at_rule(prelude: &str) -> Option<(String, &str)> {
     Some((rest[..end].to_ascii_lowercase(), rest[end..].trim()))
 }
 
+fn layer_name(name: &str) -> bool {
+    name.split('.').all(|part| {
+        matches!(
+            super::css::tokens(part).as_deref(),
+            Ok([super::css::Tok::Ident(_)])
+        )
+    })
+}
+
 impl Reader<'_> {
     /// A layer's full name inside `context`, registered on first sight.
     fn layer(&mut self, context: &Context, name: Option<&str>) -> String {
@@ -598,7 +609,7 @@ impl Reader<'_> {
             "layer" => {
                 for layer in rest.split(',') {
                     let layer = layer.trim();
-                    if layer.split('.').any(|p| !syntax::identifier(p)) {
+                    if !layer_name(layer) {
                         return Err((at, format!("@layer {layer} is not a layer name")));
                     }
                     self.layer(context, Some(layer));
@@ -766,7 +777,7 @@ impl Reader<'_> {
             "layer" => {
                 let name = (!rest.is_empty()).then_some(rest);
                 if let Some(name) = name
-                    && (name.contains(',') || name.split('.').any(|p| !syntax::identifier(p)))
+                    && !layer_name(name)
                 {
                     return Err((at, format!("@layer {name} {{ … }} takes one layer name")));
                 }
