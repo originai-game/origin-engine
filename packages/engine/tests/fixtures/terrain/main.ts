@@ -7,19 +7,24 @@
 // `grass` grows a default og.Grass over it, and `wind` blows og.Wind (R6's grass):
 //   og run packages/engine/tests/fixtures/terrain --no-check --size 1280x720 --out og-out \
 //     --commands "0.2:grass;0.4:screenshot:grass.png;0.5:wind:0.3;1.0:screenshot:grass-wind.png;1.1:quit"
-import { og, SHAPE_HEIGHTFIELD } from "@origingame/engine";
+import { og, SHAPE_HEIGHTFIELD, type World } from "@origingame/engine";
 
-let terrain = 0;
-let hill = 0;
+// The hill and its terrain data live in the world (the entity named "hill"
+// and its og.Terrain), so a restore or a fork brings them back with it.
+function hill(world: World) {
+  const e = world.find("hill");
+  if (e === null) throw new Error("no hill: start spawns it");
+  const t = world.get(e, og.Terrain);
+  if (!t.ok) throw new Error(t.reason);
+  return { entity: e, data: t.value.data };
+}
 
 export default og.game({
   start(world) {
     const info = og.terrain.load(world, "terrain/hill.ogt");
     if (!info.ok) throw new Error(info.reason);
-    terrain = info.value.data as unknown as number;
     const spawned = world.spawn({ name: "hill" });
     if (!spawned.ok) throw new Error(spawned.reason);
-    hill = spawned.value as unknown as number;
     world.insert(spawned.value, og.Terrain, { data: info.value.data });
     world.insert(spawned.value, og.Collider, { shape: SHAPE_HEIGHTFIELD, mesh: info.value.geometry });
     const cam = world.resource(og.Camera);
@@ -39,7 +44,7 @@ export default og.game({
   commands: {
     /** `hole:<x>:<z>:<radius>`: cuts a round pit into the hill. */
     hole: (world, args) => {
-      const r = og.terrain.edit(world, terrain as never, {
+      const r = og.terrain.edit(world, hill(world).data, {
         mode: "hole" as never,
         center: { x: Number(args[0] ?? 20), y: 0, z: Number(args[1] ?? 20) },
         radius: Number(args[2] ?? 4),
@@ -49,7 +54,8 @@ export default og.game({
     },
     /** `grass`: a default og.Grass (a meadow) over the hill's first layer. */
     grass: (world) => {
-      world.insert(hill as never, og.Grass, { data: terrain as never });
+      const h = hill(world);
+      world.insert(h.entity, og.Grass, { data: h.data });
     },
     /** `wind:<strength>`: og.Wind along +x. */
     wind: (world, args) => {

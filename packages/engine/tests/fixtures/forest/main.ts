@@ -11,8 +11,6 @@
 //     --commands "0.2:screenshot:calm.png;0.3:wind:0.15;1.0:screenshot:windy.png;1.5:screenshot:windy-later.png;1.6:quit"
 import { og } from "@origingame/engine";
 
-const palms: unknown[] = [];
-
 export default og.game({
   start(world) {
     const palm = og.load.gltf(world, "models/palm.glb", { castShadow: true });
@@ -25,7 +23,6 @@ export default og.game({
         const name = row === 13 && k === 0 ? "far" : `palm-${row}-${k}`;
         const e = world.instantiate(palm.value, { name, position: { x, y: 0, z } });
         if (!e.ok) throw new Error(e.reason);
-        palms.push(e.value);
       }
       z *= 1.35;
     }
@@ -75,7 +72,12 @@ export default og.game({
         w.value.strength = Number(args[0] ?? 0.15);
         w.value.direction = { x: 1, y: 0, z: 0 };
       }
-      for (const p of palms) world.set(p as never, og.Model, { sway: 1 });
+      // Every palm is a glTF root, the one og.Model in the world.
+      const palms = world.query({ with: [og.Model] });
+      if (!palms.ok) throw new Error(palms.reason);
+      // The handles first: a set ends the views it came from.
+      const each = palms.value.archetypes().flatMap((a) => Array.from({ length: a.count }, (_, i) => a.entity(i)));
+      for (const p of each) world.set(p, og.Model, { sway: 1 });
     },
   },
   commandHelp: {
