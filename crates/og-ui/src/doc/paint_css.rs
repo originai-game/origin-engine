@@ -416,8 +416,10 @@ pub(crate) fn color(t: &Tok) -> Result<ColorRef, String> {
         && let [Tok::Ident(n)] = v.as_slice()
         && let Some(name) = n.strip_prefix("--")
     {
+        // `--panel-raised` names the role `panelRaised`, as in a colour
+        // expression ([`crate::css_color`]).
         return Ok(ColorRef::Token {
-            name: name.to_owned(),
+            name: crate::doc::css::camel(name),
             alpha: 1.0,
         });
     }
@@ -2693,6 +2695,14 @@ mod tests {
         assert!(close(r.to, [0.5, 0.5]), "{r:?}");
         let r = g("conic-gradient(from 90deg, red, blue)").resolve(10.0, 10.0);
         assert!(r.to[0].abs() < 1e-5, "from 90deg starts at +x: {r:?}");
+        // A two-word role in a stop names the palette's role, never the
+        // missing-token magenta.
+        let r = g("linear-gradient(var(--panel-raised), var(--panel))").resolve(10.0, 10.0);
+        let theme = crate::Theme::default();
+        assert_eq!(
+            r.stops[0].color.resolve(&theme),
+            theme.palette.panel_raised.linear()
+        );
         assert!(background("linear-gradient(red)").unwrap().is_err());
         assert!(
             background("#fff").is_none(),
