@@ -318,6 +318,13 @@ pub(crate) struct LayoutCache {
     pub anchor_toggled: Vec<usize>,
     pub motion_groups: crate::id::KeyMap<Vec<u64>>,
     pub widget_channels: Vec<u64>,
+    /// Each element's progress-based animations' progress at the last
+    /// motion step, by its `animation` list (`None`: time-based or
+    /// inactive): what its computed values are sampled at.
+    pub timelines: crate::id::KeyMap<Vec<Option<f32>>>,
+    /// Elements whose computed values follow a timeline that moved: built
+    /// again next frame.
+    pub timeline_restyle: Vec<u64>,
 }
 
 /// What the frame changes about a node's drawing without writing it again:

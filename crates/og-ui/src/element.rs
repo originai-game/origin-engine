@@ -1364,6 +1364,11 @@ pub struct Props {
     /// Its `@starting-style` values: where its first style's channels
     /// start, moved by its CSS transitions.
     pub starting: Values,
+    /// Timelines it declares (`scroll-timeline`, `view-timeline`).
+    pub timelines: Vec<crate::motion::scroll::NamedTimeline>,
+    /// `timeline-scope`: names its subtree's declarations are seen by
+    /// (`all` for every one).
+    pub timeline_scope: Vec<String>,
     /// Kept, inert and out of hit tests and the accessibility tree, while
     /// it plays after the element leaves the tree.
     pub exit: Option<PresenceSpec>,
@@ -1421,6 +1426,8 @@ impl Default for Props {
             layout_motion: None,
             enter: None,
             starting: Vec::new(),
+            timelines: Vec::new(),
+            timeline_scope: Vec::new(),
             exit: None,
             states: Vec::new(),
             state: Vec::new(),

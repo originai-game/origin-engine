@@ -259,6 +259,8 @@ impl Ui {
         let tokens = self.theme.motion;
         let reduced = self.theme.reduced_motion;
         let mut m = std::mem::take(&mut self.state.motion);
+        // Last step's asks were taken by this frame's build.
+        self.kept.timeline_restyle.clear();
         let mut touched =
             crate::id::KeySet::with_capacity_and_hasher(m.channels.len(), Default::default());
 
@@ -507,8 +509,11 @@ impl Ui {
             }
             // A play, a CSS animation and a layout motion move it on their
             // own; a channel off its target (or waiting out a delay) too.
-            let mut busy =
-                has_override || !props.animations.is_empty() || props.layout_motion.is_some();
+            // A scroll-driven animation is visited when its timeline moves
+            // (`Ui::frame_seeds`), not every tick.
+            let mut busy = has_override
+                || props.animations.iter().any(|a| a.timeline.ticks())
+                || props.layout_motion.is_some();
             let mut node_groups = Vec::new();
             let fallback = props.reduced.unwrap_or(tokens.reduced);
             let base = read_values(&self.nodes[i]);
@@ -687,10 +692,27 @@ impl Ui {
             }
             // CSS animations: over the channels' values, later entries win.
             let animations = self.nodes[i].props.animations.clone();
+            let scrolled = animations.iter().any(|a| !a.timeline.ticks());
+            let mut progress: Vec<Option<f32>> = vec![None; animations.len()];
+            let mut styled = false;
             for (index, a) in animations.iter().enumerate() {
                 let Some(frames) = self.docs.keyframes.get(&a.name).cloned() else {
                     continue;
                 };
+                if !a.timeline.ticks() {
+                    // Its time is its timeline's progress (no run, no
+                    // events: scrolling back and forth is not playback).
+                    let p = self.timeline_progress(i, a);
+                    progress[index] = p;
+                    styled |= !frames.styles.is_empty();
+                    if let Some(p) = p {
+                        let (b, active) = a.on_progress(p);
+                        for (c, v) in b.sample_active(&frames, active, &row, false).values {
+                            row[c] = v;
+                        }
+                    }
+                    continue;
+                }
                 let nth = animations[..index]
                     .iter()
                     .filter(|b| b.name == a.name)
@@ -752,6 +774,14 @@ impl Ui {
                     }
                 }
                 run.last_ms = sample.active_ms;
+            }
+            if scrolled {
+                let old = self.kept.timelines.insert(key, progress.clone());
+                if styled && old.as_ref() != Some(&progress) {
+                    self.kept.timeline_restyle.push(key);
+                }
+            } else {
+                self.kept.timelines.remove(&key);
             }
             if row != base {
                 write_values(&mut self.nodes[i], &row);
@@ -1092,6 +1122,10 @@ impl Ui {
         // A CSS animation no element ran this tick ended with its element
         // or its `animation-name`.
         m.css.retain(|r| r.stepped == now);
+        let tree = &self.tree;
+        self.kept
+            .timelines
+            .retain(|k, _| tree.by_key.contains_key(k));
         // Transitions of computed values outlive no element.
         m.styles.retain(|k, _| self.tree.by_key.contains_key(k));
         m.bursts.extend(css_bursts);

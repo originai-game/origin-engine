@@ -154,31 +154,51 @@ impl Ui {
             if frames.styles.is_empty() {
                 continue;
             }
-            // The run the motion step counts, as it will count it this tick.
-            let nth = animations[..index]
-                .iter()
-                .filter(|b| b.name == a.name)
-                .count() as u32;
-            let ticks = self
-                .state
-                .motion
-                .css
-                .iter()
-                .find(|r| r.element == key && r.name == a.name && r.index == nth)
-                .map_or(0, |r| r.ticks + u64::from(r.stepped != now && !a.paused));
             let values = &cascade.values;
-            let sampled = a.sample_styles(
-                frames,
-                ticks,
-                tps,
-                reduced,
-                &|name| value_of(values, name),
-                &compute,
-            );
+            let sampled = if a.timeline.ticks() {
+                // The run the motion step counts, as it will count it this tick.
+                let nth = animations[..index]
+                    .iter()
+                    .filter(|b| b.name == a.name)
+                    .count() as u32;
+                let ticks = self
+                    .state
+                    .motion
+                    .css
+                    .iter()
+                    .find(|r| r.element == key && r.name == a.name && r.index == nth)
+                    .map_or(0, |r| r.ticks + u64::from(r.stepped != now && !a.paused));
+                running |= !a.settled(ticks, tps, reduced);
+                a.sample_styles(
+                    frames,
+                    a.active_ms(ticks, tps),
+                    reduced,
+                    &|name| value_of(values, name),
+                    &compute,
+                )
+            } else {
+                // Its timeline's progress as the motion step last read it
+                // (the motion step asks for a build when it moves).
+                let Some(p) = self
+                    .kept
+                    .timelines
+                    .get(&key)
+                    .and_then(|v| v.get(index).copied().flatten())
+                else {
+                    continue;
+                };
+                let (a, active) = a.on_progress(p);
+                a.sample_styles(
+                    frames,
+                    active,
+                    false,
+                    &|name| value_of(values, name),
+                    &compute,
+                )
+            };
             for (name, value) in sampled {
                 set(&mut cascade.values, &name, value);
             }
-            running |= !a.settled(ticks, tps, reduced);
         }
 
         // Transitions: from the before-change value to the after-change one.

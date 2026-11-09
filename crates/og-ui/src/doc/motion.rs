@@ -11,6 +11,7 @@ use crate::motion::css::{
     StyleKey, StyleTrack,
 };
 use crate::motion::interpolate::{self, Composite};
+use crate::motion::scroll::{AnimationTimeline, Axis, Inset, NamedTimeline, RangeEdge};
 use crate::motion::{Ease, MotionToken, SpringSpec, Transition};
 
 pub(crate) const TRANSITION: [&str; 5] = [
@@ -31,12 +32,32 @@ pub(crate) const ANIMATION: [&str; 8] = [
     "animation-play-state",
 ];
 
-/// Animation longhands the `animation` shorthand does not set.
-const ANIMATION_EXTRA: [&str; 1] = ["animation-composition"];
+/// Animation longhands the `animation` shorthand does not set; it resets
+/// the timeline and range ones (CSS Scroll-driven Animations 1 §4.1).
+const ANIMATION_EXTRA: [&str; 4] = [
+    "animation-composition",
+    "animation-timeline",
+    "animation-range-start",
+    "animation-range-end",
+];
 
-/// Whether a declaration is a transition or animation longhand.
+/// The declarations of named scroll and view timelines (CSS Scroll-driven
+/// Animations 1 §2.3, §3.3, §4.2).
+pub(crate) const TIMELINES: [&str; 6] = [
+    "scroll-timeline-name",
+    "scroll-timeline-axis",
+    "view-timeline-name",
+    "view-timeline-axis",
+    "view-timeline-inset",
+    "timeline-scope",
+];
+
+/// Whether a declaration is a transition, animation or timeline longhand.
 pub(crate) fn longhand(name: &str) -> bool {
-    TRANSITION.contains(&name) || ANIMATION.contains(&name) || ANIMATION_EXTRA.contains(&name)
+    TRANSITION.contains(&name)
+        || ANIMATION.contains(&name)
+        || ANIMATION_EXTRA.contains(&name)
+        || TIMELINES.contains(&name)
 }
 
 /// The channels of a property the element's channels hold; any other
@@ -153,6 +174,9 @@ pub(crate) fn expand(
     let shorthand = match d.name.as_str() {
         "transition" => &TRANSITION[..],
         "animation" => &ANIMATION[..],
+        "animation-range" | "scroll-timeline" | "view-timeline" => {
+            return timeline_shorthand(&d);
+        }
         name if longhand(name) => {
             if !d.value.has_variables() {
                 validate(name, &d.source, keyframes)?;
@@ -183,6 +207,74 @@ pub(crate) fn expand(
     for (name, list) in shorthand.iter().zip(lists) {
         let value = list.join(", ");
         validate(name, &value, keyframes)?;
+        out.push(declaration(name, value, d.important)?);
+    }
+    if d.name == "animation" {
+        // Reset-only longhands.
+        for (name, value) in [
+            ("animation-timeline", "auto"),
+            ("animation-range-start", "normal"),
+            ("animation-range-end", "normal"),
+        ] {
+            out.push(declaration(name, value.into(), d.important)?);
+        }
+    }
+    Ok(out)
+}
+
+/// `animation-range` (`<start> <end>?`: an omitted end is the start's
+/// range name at 100%, or `normal`), `scroll-timeline` and `view-timeline`
+/// (`<name> <axis>?`) into their longhands.
+fn timeline_shorthand(d: &StyleDeclaration) -> Result<Vec<StyleDeclaration>, String> {
+    if d.source.contains("var(") {
+        return Err(format!(
+            "{}: write var() in a longhand, not in the shorthand",
+            d.name
+        ));
+    }
+    let named = |w: &str| crate::motion::scroll::RangeName::from_css(w).is_some();
+    let mut lists: [Vec<String>; 2] = Default::default();
+    for item in items(&d.source) {
+        let words: Vec<&str> = item.iter().map(String::as_str).collect();
+        let parts = if d.name == "animation-range" {
+            // The start is a name and a length-percentage, or one word.
+            let split = if words.len() >= 2 && named(words[0]) && !named(words[1]) {
+                2
+            } else {
+                1
+            };
+            let (start, end) = words.split_at(split.min(words.len()));
+            let end = match (end.is_empty(), start.first()) {
+                (true, Some(w)) if named(w) => format!("{w} 100%"),
+                (true, _) => "normal".into(),
+                (false, _) => end.join(" "),
+            };
+            [start.join(" "), end]
+        } else {
+            match words[..] {
+                [name] => [name.to_string(), "block".into()],
+                [name, axis] => [name.to_string(), axis.to_string()],
+                _ => {
+                    return Err(format!(
+                        "{}: write <name> <axis>?, a comma-separated list",
+                        d.name
+                    ));
+                }
+            }
+        };
+        for (list, part) in lists.iter_mut().zip(parts) {
+            list.push(part);
+        }
+    }
+    let names: [&str; 2] = match d.name.as_str() {
+        "animation-range" => ["animation-range-start", "animation-range-end"],
+        "scroll-timeline" => ["scroll-timeline-name", "scroll-timeline-axis"],
+        _ => ["view-timeline-name", "view-timeline-axis"],
+    };
+    let mut out = Vec::new();
+    for (name, list) in names.iter().zip(lists) {
+        let value = list.join(", ");
+        validate(name, &value, &|_| true)?;
         out.push(declaration(name, value, d.important)?);
     }
     Ok(out)
@@ -291,6 +383,21 @@ fn validate(name: &str, value: &str, keyframes: &dyn Fn(&str) -> bool) -> Result
                 matches!(word.as_str(), "none" | "forwards" | "backwards" | "both")
             }
             "animation-play-state" => matches!(word.as_str(), "running" | "paused"),
+            "animation-timeline" => crate::motion::scroll::timeline_valid(word),
+            "animation-range-start" | "animation-range-end" => {
+                crate::motion::scroll::RangeEdge::valid(word)
+            }
+            "scroll-timeline-name" | "view-timeline-name" => {
+                word == "none" || crate::motion::scroll::dashed(word)
+            }
+            "scroll-timeline-axis" | "view-timeline-axis" => {
+                crate::motion::scroll::Axis::from_css(word).is_some()
+            }
+            "view-timeline-inset" => crate::motion::scroll::Inset::pair_valid(word),
+            "timeline-scope" => {
+                (matches!(word.as_str(), "none" | "all") && list.len() == 1)
+                    || crate::motion::scroll::dashed(word)
+            }
             _ => true,
         };
         if !ok {
@@ -320,6 +427,16 @@ fn hint(name: &str) -> &'static str {
         "transition-property" => "write none, all or property names",
         "transition-behavior" => "write normal or allow-discrete",
         "animation-composition" => "write replace, add or accumulate",
+        "animation-timeline" => {
+            "write auto, none, a --timeline name, scroll(<nearest|root|self> <block|inline|x|y>) or view(<axis> <inset>)"
+        }
+        "animation-range-start" | "animation-range-end" => {
+            "write normal, a length-percentage, or cover, contain, entry, exit, entry-crossing or exit-crossing with an optional length-percentage"
+        }
+        "scroll-timeline-name" | "view-timeline-name" => "write none or a --name",
+        "scroll-timeline-axis" | "view-timeline-axis" => "write block, inline, x or y",
+        "view-timeline-inset" => "write one or two of auto and length-percentages",
+        "timeline-scope" => "write none, all or --names",
         _ => "see the document CSS reference",
     }
 }
@@ -395,6 +512,9 @@ pub(crate) fn resolve(
         get("animation-fill-mode", "none"),
         get("animation-play-state", "running"),
         get("animation-composition", "replace"),
+        get("animation-timeline", "auto"),
+        get("animation-range-start", "normal"),
+        get("animation-range-end", "normal"),
     ];
     for (i, name) in names.iter().enumerate() {
         if name == "none" {
@@ -431,9 +551,61 @@ pub(crate) fn resolve(
             fill_forwards: matches!(fill.as_str(), "forwards" | "both"),
             paused: at(6) == "paused",
             composite: Composite::from_css(&at(7)).unwrap_or_default(),
+            timeline: AnimationTimeline::parse(&at(8)).unwrap_or_else(|| {
+                diagnostics.push(format!(
+                    "animation-timeline of {name}: `{}` takes px or % insets after the element's units",
+                    at(8)
+                ));
+                AnimationTimeline::None
+            }),
+            range_start: RangeEdge::parse(&at(9), false).flatten(),
+            range_end: RangeEdge::parse(&at(10), true).flatten(),
         });
     }
     (transitions, animations)
+}
+
+/// The scroll and view timelines an element declares and its
+/// `timeline-scope`, from its winning longhands (lengths already px).
+pub(crate) fn timelines(winners: &[(String, String)]) -> (Vec<NamedTimeline>, Vec<String>) {
+    let get = |name: &str, default: &str| -> Vec<String> {
+        let value = winners
+            .iter()
+            .rev()
+            .find(|(n, _)| n == name)
+            .map_or(default, |(_, v)| v.as_str());
+        items(value).into_iter().map(|w| w.join(" ")).collect()
+    };
+    let pick = |list: &[String], i: usize| list[i % list.len().max(1)].clone();
+    let mut out = Vec::new();
+    for view in [false, true] {
+        let kind = if view { "view" } else { "scroll" };
+        let axes = get(&format!("{kind}-timeline-axis"), "block");
+        let insets = get("view-timeline-inset", "auto");
+        for (i, name) in get(&format!("{kind}-timeline-name"), "none")
+            .iter()
+            .enumerate()
+        {
+            if !crate::motion::scroll::dashed(name) {
+                continue;
+            }
+            out.push(NamedTimeline {
+                name: name.clone(),
+                view,
+                axis: Axis::from_css(&pick(&axes, i)).unwrap_or_default(),
+                inset: if view {
+                    Inset::pair(&pick(&insets, i)).unwrap_or_default()
+                } else {
+                    Default::default()
+                },
+            });
+        }
+    }
+    let scope = get("timeline-scope", "none")
+        .into_iter()
+        .filter(|w| w != "none")
+        .collect();
+    (out, scope)
 }
 
 /// One `@keyframes` body: `from`, `to` and percentage selector lists whose

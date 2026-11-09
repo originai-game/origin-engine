@@ -1319,3 +1319,52 @@ fn rive_frames_and_hidden_elements_change_fields_not_builds() {
     close(&mut ui, false);
     assert_eq!(frame(&mut ui).1, shown, "built when first shown");
 }
+
+/// A scroll-driven animation (`animation-timeline: view()`) follows its
+/// subject through its scroller: a channel property (translate) and a
+/// computed one (width) at the view progress, with nothing rebuilt while
+/// the scroller rests. Ways it could fail: the animation playing on ticks,
+/// progress over the scroll range instead of the subject's cover range,
+/// the computed value left behind for good, or an idle scroll-driven
+/// element binding every frame.
+#[test]
+fn view_timelines_follow_the_subject_through_its_scroller() {
+    let text = r#"<meta name="component" content="t">
+<div id="Root"><div id="Box"><div id="Top"></div><div id="Card"></div><div class="gap"></div></div></div>
+<style>
+#Box { height: 100px; width: 300px; overflow: hidden auto; scrollbar-width: none; }
+#Top { height: 50px; }
+.gap { height: 300px; }
+#Card { height: 50px; width: 100px; animation: slide linear both; animation-timeline: view(); }
+@keyframes slide { from { translate: 0 0; width: 20px; } to { translate: 150px 0; width: 170px; } }
+</style>"#;
+    crate::html_text::both(text, &[], |d| {
+        let b = d.get("Box");
+        let settle = |d: &mut crate::html_text::Doc| {
+            for _ in 0..40 {
+                d.step(InputFrame::hover(b.x + 10.0, b.y + 10.0));
+            }
+        };
+        // Its cover range runs from offset -50 (its top at the port's
+        // bottom) to 100: at rest it is a third of the way through.
+        settle(d);
+        let c = d.get("Card");
+        assert!((c.x - b.x - 50.0).abs() < 0.01, "{c:?}");
+        assert!((c.width - 70.0).abs() < 0.01, "{c:?}");
+        d.step(InputFrame {
+            wheel: og_core::glam::Vec2::new(0.0, 25.0),
+            ..InputFrame::hover(b.x + 10.0, b.y + 10.0)
+        });
+        settle(d);
+        let c = d.get("Card");
+        assert!((c.x - b.x - 75.0).abs() < 0.01, "{c:?}");
+        assert!((c.width - 95.0).abs() < 0.01, "{c:?}");
+        if d.mounted {
+            // The pointer leaves; then nothing changes.
+            d.step(InputFrame::default());
+            d.step(InputFrame::default());
+            let idle = d.ui.frame().stats;
+            assert_eq!((idle.bindings, idle.reconciled), (0, 0), "{idle:?}");
+        }
+    });
+}

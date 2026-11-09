@@ -389,6 +389,8 @@ pub(crate) fn props(d: &Value) -> Props {
         animations: z.animations,
         enter: presence(&d["enter"], false),
         starting: z.starting,
+        timelines: z.timelines,
+        timeline_scope: z.timeline_scope,
         exit: presence(&d["exit"], true),
         states: states(&d["states"]),
         state: list(&d["state"])

@@ -72,6 +72,11 @@ pub struct CssAnimation {
     pub paused: bool,
     /// `animation-composition`.
     pub composite: Composite,
+    /// `animation-timeline`.
+    pub timeline: super::scroll::AnimationTimeline,
+    /// `animation-range-start` and `-end` (`None`: `normal`).
+    pub range_start: Option<super::scroll::RangeEdge>,
+    pub range_end: Option<super::scroll::RangeEdge>,
 }
 
 impl Default for CssAnimation {
@@ -87,6 +92,9 @@ impl Default for CssAnimation {
             fill_forwards: false,
             paused: false,
             composite: Composite::Replace,
+            timeline: super::scroll::AnimationTimeline::Document,
+            range_start: None,
+            range_end: None,
         }
     }
 }
@@ -174,21 +182,24 @@ impl CssAnimation {
         self.paused || reduced || elapsed - self.delay_ms >= self.active_total()
     }
 
-    /// The computed values of `keyframes`' style tracks at `ticks` of
-    /// running time, each over `underlying` (the property's value below
+    /// Its active time after `ticks` of running time.
+    pub(crate) fn active_ms(&self, ticks: u64, tps: u32) -> f32 {
+        ticks as f32 * 1000.0 / tps.max(1) as f32 - self.delay_ms
+    }
+
+    /// The computed values of `keyframes`' style tracks at active time
+    /// `active_ms`, each over `underlying` (the property's value below
     /// this animation, `None` when it has none), with `compute` turning a
     /// keyframe's declaration into the element's computed text.
     pub(crate) fn sample_styles(
         &self,
         keyframes: &Keyframes,
-        ticks: u64,
-        tps: u32,
+        active_ms: f32,
         reduced: bool,
         underlying: &dyn Fn(&str) -> Option<String>,
         compute: &dyn Fn(&str, &str) -> Option<String>,
     ) -> Vec<(String, String)> {
-        let elapsed = ticks as f32 * 1000.0 / tps.max(1) as f32;
-        let Some(t) = self.local_ms(elapsed - self.delay_ms, reduced) else {
+        let Some(t) = self.local_ms(active_ms, reduced) else {
             return Vec::new();
         };
         let d = self.duration_ms;
@@ -298,8 +309,17 @@ impl CssAnimation {
         base: &[f32; CHANNELS],
         reduced: bool,
     ) -> Sample {
-        let elapsed = ticks as f32 * 1000.0 / tps.max(1) as f32;
-        let active_ms = elapsed - self.delay_ms;
+        self.sample_active(keyframes, self.active_ms(ticks, tps), base, reduced)
+    }
+
+    /// The channel values of `keyframes` at active time `active_ms`.
+    pub(crate) fn sample_active(
+        &self,
+        keyframes: &Keyframes,
+        active_ms: f32,
+        base: &[f32; CHANNELS],
+        reduced: bool,
+    ) -> Sample {
         let mut values = Vec::new();
         if let Some(t) = self.local_ms(active_ms, reduced) {
             for track in &keyframes.tracks {

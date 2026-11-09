@@ -1904,6 +1904,13 @@ impl RetainedHost {
             }
         }
         self.emit.extend(self.volatile.iter().cloned());
+        // Computed values that follow a timeline that moved.
+        for key in std::mem::take(&mut ui.kept.timeline_restyle) {
+            if let Some(identity) = self.by_key.get(&key) {
+                self.dirty.insert(identity.clone());
+                self.emit.insert(identity.clone());
+            }
+        }
         self.dirty.extend(self.animated.iter().cloned());
         self.emit.extend(self.animated.iter().cloned());
         self.built_now.clear();

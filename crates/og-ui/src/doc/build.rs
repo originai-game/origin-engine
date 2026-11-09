@@ -50,6 +50,9 @@ struct Resolved {
     span_styles: Vec<(crate::TextSpan, crate::TextSpanStyle)>,
     transitions: Vec<crate::motion::css::CssTransition>,
     animations: Vec<crate::motion::css::CssAnimation>,
+    /// Scroll and view timelines it declares, and its `timeline-scope`.
+    timelines: Vec<crate::motion::scroll::NamedTimeline>,
+    timeline_scope: Vec<String>,
     /// The layout key this element publishes as a query container.
     container: Option<u64>,
     /// An immediate build's inputs under a query container (settlement replay).
@@ -705,8 +708,21 @@ impl Ui {
             .values
             .iter()
             .filter(|(name, ..)| super::motion::longhand(name))
-            .map(|(name, value, _)| (name.clone(), value.clone()))
+            .map(|(name, value, _)| {
+                // Timeline insets and ranges in the element's units, as px.
+                let value = if (name.starts_with("animation-range")
+                    || name == "animation-timeline"
+                    || name == "view-timeline-inset")
+                    && super::calc::per_element(name, value)
+                {
+                    super::calc::absolute(value, basis, name).0
+                } else {
+                    value.clone()
+                };
+                (name.clone(), value)
+            })
             .collect();
+        (r.timelines, r.timeline_scope) = super::motion::timelines(&motion);
 
         (r.transitions, r.animations) =
             super::motion::resolve(&motion, &b.doc.name, &mut r.cascade.diagnostics);
@@ -1442,6 +1458,8 @@ impl Ui {
             .cloned()
             .collect();
         p.animations = r.animations.clone();
+        p.timelines = r.timelines.clone();
+        p.timeline_scope = r.timeline_scope.clone();
         if let Some(V::Transition(t)) = r.get("layoutMotion") {
             p.layout_motion = Some(*t);
         }

@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "Document CSS scroll-driven animations",
+      "summary": "animation-timeline takes scroll(), view() and named timelines from scroll-timeline and view-timeline (with -name, -axis and view-timeline-inset longhands), seen across a subtree with timeline-scope; animation-range (-start, -end) takes normal, length-percentages and the named ranges cover, contain, entry, exit, entry-crossing and exit-crossing. A scroll-driven animation's time is its timeline's progress, so it moves with the scroller and costs nothing while the scroller rests. The animation shorthand now resets animation-timeline and animation-range, as in CSS."
+    }
+  ]
+}

@@ -1986,6 +1986,29 @@ one, otherwise it jumps. An element with a computed value in flight builds
 again each frame; once settled it costs nothing. `var()` inside a
 shorthand, a property that does not animate, and unknown keyframes fail at
 cook with the property named.
+Scroll-driven animations follow CSS Scroll-driven Animations 1.
+`animation-timeline` takes `auto` (presentation ticks), `none`,
+`scroll(<nearest | root | self> <block | inline | x | y>)` (the scroll
+range of that scroller), `view(<axis> <inset>{1,2})` (the element's own
+cover range in its nearest scroller) or a `--name` that `scroll-timeline`
+(`-name`, `-axis`) or `view-timeline` (`-name`, `-axis`, `-inset`)
+declares on the element or an ancestor; `timeline-scope: --name | all` on
+an ancestor lets its descendants see a timeline declared anywhere in its
+subtree (two such declarations make it inactive). `animation-range`
+(`-start`, `-end`) narrows the active interval: `normal`, a
+length-percentage of the timeline, or `cover`, `contain`, `entry`, `exit`,
+`entry-crossing` or `exit-crossing` with an optional length-percentage. The
+`animation` shorthand resets the timeline to `auto` and the range to
+`normal`, so `animation-timeline` comes after it. On a progress timeline
+the iterations share the range, a time duration and a positive delay are
+proportions of it, the play state is ignored and keyframe events do not
+fire. Progress is read from the laid-out geometry each motion step (the
+subject's layout box, its transforms left out, so an animation never moves
+its own timeline): an element is sampled again only when its progress
+moved, and a computed value (`width`, a shadow) one frame after the move.
+An inactive timeline (a scroller that cannot scroll, no subject) leaves
+the animation without effect. Reduced motion leaves scroll-driven
+animations alone: the player drives them.
 `@keyframes` may be nested in `@media` and `@container`: the last
 definition of a name whose conditions currently hold defines it, and a
 switch between definitions restarts the animation as a name change does.

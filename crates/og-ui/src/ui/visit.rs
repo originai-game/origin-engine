@@ -326,6 +326,25 @@ impl Ui {
         for &k in &self.tree.moved_keys {
             restyle.extend(self.tree.by_key.get(&k).copied());
         }
+        // Scroll-driven animations whose timeline moved (a scroll, a
+        // layout change of the scroller or the subject).
+        for (k, last) in &self.kept.timelines {
+            let Some(&i) = self.tree.by_key.get(k) else {
+                continue;
+            };
+            let moved = self.nodes[i]
+                .props
+                .animations
+                .iter()
+                .enumerate()
+                .any(|(x, a)| {
+                    !a.timeline.ticks()
+                        && self.timeline_progress(i, a) != last.get(x).copied().flatten()
+                });
+            if moved {
+                restyle.push(i);
+            }
+        }
         let mut seeds = restyle.clone();
         seeds.extend(self.kept.laid.iter().chain(&self.floating));
         for &p in &self.tree.restructured {
