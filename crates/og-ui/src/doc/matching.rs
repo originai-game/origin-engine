@@ -13,8 +13,9 @@ use std::collections::{BTreeMap, BTreeSet};
 
 /// The selector inputs of one instantiated element.
 pub struct Facts<'a> {
-    pub document: &'a UiDocument,
-    pub node: usize,
+    pub scope: &'a str,
+    pub tag: &'a str,
+    pub root: bool,
     pub attributes: &'a BTreeMap<String, Value>,
     pub states: &'a BTreeSet<InteractionState>,
     pub text: &'a str,
@@ -56,10 +57,11 @@ pub struct MatchWork {
     pub candidates: usize,
 }
 
-/// Whether `id` is the subject of `selector`, a rule of `document`.
+/// Whether `id` is the subject of `selector`. Document sheets supply
+/// their scope; global sheets have no scope restriction.
 pub fn matches<T: Tree>(
     tree: &T,
-    document: &UiDocument,
+    scope: Option<&str>,
     selector: &Selector,
     id: &T::Id,
     work: &mut MatchWork,
@@ -67,7 +69,7 @@ pub fn matches<T: Tree>(
     work.selectors += 1;
     chain(
         tree,
-        document,
+        scope,
         selector,
         selector.compounds.len() - 1,
         id,
@@ -78,14 +80,14 @@ pub fn matches<T: Tree>(
 
 fn chain<T: Tree>(
     tree: &T,
-    document: &UiDocument,
+    scope: Option<&str>,
     selector: &Selector,
     part: usize,
     id: &T::Id,
     anchor: Option<&T::Id>,
     work: &mut MatchWork,
 ) -> bool {
-    if !compound_at(tree, document, &selector.compounds[part], id, anchor, work) {
+    if !compound_at(tree, scope, &selector.compounds[part], id, anchor, work) {
         return false;
     }
     if part == 0 {
@@ -98,7 +100,7 @@ fn chain<T: Tree>(
     };
     while let Some(candidate) = next {
         work.candidates += 1;
-        if chain(tree, document, selector, part - 1, &candidate, anchor, work) {
+        if chain(tree, scope, selector, part - 1, &candidate, anchor, work) {
             return true;
         }
         next = match combinator {
@@ -113,17 +115,17 @@ fn chain<T: Tree>(
 /// Whether one compound matches the element's own facts and position.
 pub fn compound<T: Tree>(
     tree: &T,
-    document: &UiDocument,
+    scope: Option<&str>,
     compound: &Compound,
     id: &T::Id,
     work: &mut MatchWork,
 ) -> bool {
-    compound_at(tree, document, compound, id, None, work)
+    compound_at(tree, scope, compound, id, None, work)
 }
 
 fn compound_at<T: Tree>(
     tree: &T,
-    document: &UiDocument,
+    scope: Option<&str>,
     compound: &Compound,
     id: &T::Id,
     anchor: Option<&T::Id>,
@@ -137,20 +139,20 @@ fn compound_at<T: Tree>(
     {
         return id == anchor;
     }
-    if facts.document.name != document.name {
+    if scope.is_some_and(|scope| facts.scope != scope) {
         return false;
     }
     compound.0.iter().all(|simple| match simple {
-        Simple::Nth(nth) => position(tree, document, nth, id, work),
+        Simple::Nth(nth) => position(tree, scope, nth, id, work),
         Simple::Only { of_type: false } => tree.position(id).1 == 1,
         Simple::Only { of_type: true } => {
-            let filter = type_filter(tag(&facts));
+            let filter = type_filter(facts.tag);
             tree.filtered(id, &filter).1 == 1
         }
         Simple::Empty => facts.text.is_empty() && !tree.has_children(id),
         Simple::Has(list) => list
             .iter()
-            .any(|relative| has(tree, document, relative, id, work)),
+            .any(|relative| has(tree, scope, relative, id, work)),
         Simple::Lang(ranges) => match inherited(tree, id, "lang") {
             Some(tag) => ranges.iter().any(|r| crate::bind::lang_matches(r, &tag)),
             None => ranges.iter().any(|r| crate::bind::lang_matches(r, "en")),
@@ -161,23 +163,15 @@ fn compound_at<T: Tree>(
         }
         Simple::Pseudo(list) => list
             .iter()
-            .any(|inner| matches(tree, document, inner, id, work)),
+            .any(|inner| matches(tree, scope, inner, id, work)),
         Simple::Not(list) => !list
             .iter()
-            .any(|inner| matches(tree, document, inner, id, work)),
+            .any(|inner| matches(tree, scope, inner, id, work)),
         Simple::Is(list) | Simple::Where(list) => list
             .iter()
-            .any(|inner| matches(tree, document, inner, id, work)),
+            .any(|inner| matches(tree, scope, inner, id, work)),
         simple => own(&facts, simple),
     })
-}
-
-/// The element's own type selector name.
-fn tag<'a>(facts: &Facts<'a>) -> &'a str {
-    facts.document.nodes[facts.node]
-        .selector_tag
-        .as_deref()
-        .unwrap_or_default()
 }
 
 /// The nearest `name` attribute of the element or an ancestor, as text.
@@ -201,7 +195,7 @@ fn inherited<T: Tree>(tree: &T, id: &T::Id, name: &str) -> Option<String> {
 /// far as its steps reach.
 fn has<T: Tree>(
     tree: &T,
-    document: &UiDocument,
+    scope: Option<&str>,
     relative: &Selector,
     anchor: &T::Id,
     work: &mut MatchWork,
@@ -238,7 +232,7 @@ fn has<T: Tree>(
     let subject = relative.compounds.len() - 1;
     while let Some((id, level)) = starts.pop() {
         work.candidates += 1;
-        if chain(tree, document, relative, subject, &id, Some(anchor), work) {
+        if chain(tree, scope, relative, subject, &id, Some(anchor), work) {
             return true;
         }
         if down && level < depth {
@@ -250,21 +244,21 @@ fn has<T: Tree>(
 
 fn position<T: Tree>(
     tree: &T,
-    document: &UiDocument,
+    scope: Option<&str>,
     nth: &Nth,
     id: &T::Id,
     work: &mut MatchWork,
 ) -> bool {
     let (before, count) = match &nth.of {
         None if nth.of_type => {
-            let filter = type_filter(tag(&tree.facts(id)));
+            let filter = type_filter(tree.facts(id).tag);
             tree.filtered(id, &filter)
         }
         None => tree.position(id),
         Some(filter) => {
             if !filter
                 .iter()
-                .any(|inner| compound(tree, document, &inner.compounds[0], id, work))
+                .any(|inner| compound(tree, scope, &inner.compounds[0], id, work))
             {
                 return false;
             }
@@ -277,10 +271,9 @@ fn position<T: Tree>(
 /// A simple selector that reads only the element's own facts; also used to
 /// evaluate `of S` filters on a single element.
 pub fn own(facts: &Facts<'_>, simple: &Simple) -> bool {
-    let node = &facts.document.nodes[facts.node];
     match simple {
-        Simple::Type(name) => node.selector_tag.as_deref() == Some(name.as_str()),
-        Simple::Root => facts.node == facts.document.root,
+        Simple::Type(name) => facts.tag == name,
+        Simple::Root => facts.root,
         Simple::Id(name) => facts.attributes.get("id").and_then(Value::as_str) == Some(name),
         Simple::Class(name) => facts
             .attributes
@@ -304,7 +297,7 @@ pub fn own(facts: &Facts<'_>, simple: &Simple) -> bool {
             .get(&format!("state:{name}"))
             .is_some_and(|v| crate::bind::truthy(v) && v.as_str() != Some("false")),
         Simple::Defined => true,
-        Simple::Scope => facts.node == facts.document.root,
+        Simple::Scope => facts.root,
         Simple::Not(list) => !list
             .iter()
             .any(|s| s.compounds[0].0.iter().all(|x| own(facts, x))),
