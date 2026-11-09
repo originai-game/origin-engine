@@ -859,29 +859,63 @@ pub(crate) fn line_direction(line: &str, ui: Direction) -> Direction {
 pub(crate) fn drawn_line(
     m: &FontMetrics,
     line: &str,
-    default: Direction,
+    para: impl Into<Para>,
     tracking: f32,
     features: Features,
 ) -> (String, Vec<GlyphPlacement>) {
+    let para = para.into();
+    if let Para::Override(d) = para {
+        return FontMetrics::drawn(&m.run_with(line, d == Direction::Rtl, tracking, 0, features));
+    }
+    let base = para.base(line);
     #[cfg(feature = "shaping")]
-    if let Some(layout) = paragraph::layout(
-        m,
-        line,
-        1.0,
-        tracking,
-        features,
-        line_direction(line, default),
-        None,
-    ) {
+    if let Some(layout) = paragraph::layout(m, line, 1.0, tracking, features, base, None) {
         return FontMetrics::drawn(&paragraph::visual(m, line, &layout));
     }
     if needs_visual(line)
+        || base == Direction::Rtl
         || (!features.is_empty() && m.shapes_features())
         || tabulates(line, features)
     {
-        FontMetrics::drawn(&m.visual_with(line, default, tracking, features))
+        FontMetrics::drawn(&m.visual_at_with(line, base, tracking, features))
     } else {
         (line.to_string(), Vec::new())
+    }
+}
+
+/// How a paragraph's base direction is set (CSS `unicode-bidi`, docs/ui.md
+/// §2): from its first strong character, else the given direction
+/// (`Auto`, og-ui's own text and `plaintext`); the given direction
+/// (`Fixed`); or every character in that direction, unreordered
+/// (`Override`, `bidi-override`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Para {
+    Auto(Direction),
+    Fixed(Direction),
+    Override(Direction),
+}
+
+impl From<Direction> for Para {
+    fn from(d: Direction) -> Para {
+        Para::Auto(d)
+    }
+}
+
+impl Para {
+    /// The paragraph direction of `line`.
+    pub fn base(self, line: &str) -> Direction {
+        match self {
+            Para::Auto(d) => line_direction(line, d),
+            Para::Fixed(d) | Para::Override(d) => d,
+        }
+    }
+
+    /// `line`'s glyphs in visual order.
+    fn visual(self, m: &FontMetrics, line: &str, tracking: f32, f: Features) -> Vec<VisualGlyph> {
+        match self {
+            Para::Override(d) => m.run_with(line, d == Direction::Rtl, tracking, 0, f),
+            p => m.visual_at_with(line, p.base(line), tracking, f),
+        }
     }
 }
 
@@ -909,10 +943,11 @@ pub fn pieces(font: &UiFont, line: &str, default: Direction, tracking: f32) -> V
 pub fn pieces_with(
     font: &UiFont,
     line: &str,
-    default: Direction,
+    default: impl Into<Para>,
     tracking: f32,
     features: Features,
 ) -> Vec<Piece> {
+    let default = default.into();
     if !font.metrics.is_mixed() {
         let (text, placements) = drawn_line(&font.metrics, line, default, tracking, features);
         return vec![Piece {
@@ -925,7 +960,7 @@ pub fn pieces_with(
     }
     split(
         font,
-        &font.metrics.visual_with(line, default, tracking, features),
+        &default.visual(&font.metrics, line, tracking, features),
     )
 }
 
@@ -934,12 +969,14 @@ pub fn pieces_with(
 pub(crate) fn pieces_spaced(
     font: &UiFont,
     line: &str,
-    default: Direction,
+    default: impl Into<Para>,
     tracking: f32,
     features: Features,
     extra: f32,
 ) -> Vec<Piece> {
-    let mut glyphs = font.metrics.visual_with(line, default, tracking, features);
+    let mut glyphs = default
+        .into()
+        .visual(&font.metrics, line, tracking, features);
     let mut shift = 0.0;
     for g in &mut glyphs {
         g.x += shift;

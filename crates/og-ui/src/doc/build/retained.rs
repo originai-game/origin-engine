@@ -142,6 +142,8 @@ pub struct RetainedHost {
     /// change re-resolves what read the viewport (`env()`, `svh`, `lvh`).
     surface: [f32; 8],
     theme: Option<crate::Theme>,
+    /// The surface's direction last build: a document's root takes it.
+    direction: Option<og_i18n::Direction>,
     theme_epoch: u64,
     media: [BTreeSet<MountedNode>; crate::doc::media::AXES],
     materializing: Option<Materialization>,
@@ -926,6 +928,10 @@ impl RetainedHost {
             .theme
             .replace(*ui.theme())
             .is_some_and(|old| old != *ui.theme())
+            || self
+                .direction
+                .replace(ui.direction)
+                .is_some_and(|old| old != ui.direction)
         {
             self.theme_epoch += 1;
         }

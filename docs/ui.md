@@ -423,8 +423,28 @@ parent's content box. An absolute box is placed in its parent's box and
 a fixed one in the whole surface. The insets are `top`, `right`,
 `bottom`, `left`, the `inset`, `inset-block` and `inset-inline`
 shorthands and their logical longhands; each takes px, `%` of the
-containing block, `auto` or `anchor()`. A right-to-left layout is
-mirrored whole, `left` with it.
+containing block, `auto` or `anchor()`. `left` is the left in either
+direction (Direction and writing modes, below).
+
+Direction follows CSS Writing Modes 4. `direction` (`ltr`, `rtl`,
+inherited) and HTML's `dir` attribute (`ltr`, `rtl`, or `auto` for its
+text's first strong character) set an element's inline direction; a
+document's root takes the surface's (the locale's, or `og.ui.configure`).
+A right-to-left element runs its flex rows, grid columns, columns and
+lines from the right, and its `start` text sits on the right. Logical
+properties (margins, padding, borders and their radii, insets, sizes,
+`overflow-inline`/`-block`, `scroll-margin`/`-padding`) name the sides of
+the element's own direction; physical ones (`left`, `margin-left`,
+`text-align: left`, `justify-content: right`, transforms) stay where they
+say. A right-to-left surface still lays a right-to-left document out
+mirrored as a whole; a document's physical sides and transforms keep
+their places under it. `unicode-bidi` takes `normal`, `embed`, `isolate`,
+`bidi-override`, `isolate-override` and `plaintext`. Each element's text
+is a paragraph of its own (`embed` reads as `isolate`), set in its
+direction once `dir`, `direction` or `unicode-bidi` is declared on it or
+an ancestor. Without one, or under `plaintext`, a paragraph takes the
+direction of its first strong character, as og-ui's own text does. The
+overrides lay its characters out in its direction, unreordered.
 
 CSS Anchor Positioning 1 places an absolute or fixed box against other
 boxes as this frame laid them out. `anchor-name: --a` names an anchor

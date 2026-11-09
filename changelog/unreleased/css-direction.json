@@ -1,0 +1,14 @@
+{
+  "added": [
+    {
+      "member": "UI: CSS direction and unicode-bidi per element",
+      "summary": "Document elements take `direction`, `unicode-bidi` and HTML's `dir` attribute (`ltr`, `rtl`, `auto`), inherited down the tree. A right-to-left element lays its flex rows, grid columns, columns and lines out from the right and aligns its start text there; logical margins, padding, borders, radii, insets, sizes and axes name the sides of each element's own direction. A declared direction sets its text's paragraph direction; `plaintext` and undeclared text keep the first strong character's, and the overrides lay text out unreordered."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "UI: physical sides under a right-to-left surface",
+      "summary": "In a right-to-left surface a document's `left`, `right`, `margin-left`, `padding-right`, `text-align: left`, `justify-content: right` and transforms stay on the side they name; before, the whole-surface mirror turned them round with the logical ones. The surface mirror still lays out documents that are right to left as a whole."
+    }
+  ]
+}

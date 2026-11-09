@@ -629,3 +629,61 @@ fn vertical_align_places_inline_boxes_as_css_does() {
         assert_eq!(d.get("Tp").y, d.get("Line").y, "top: the line's top");
     }
 }
+
+#[test]
+fn direction_lays_out_as_css_writing_modes_does() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root">
+  <div id="Row" dir="rtl"><div id="R1"></div><div id="R2"></div></div>
+  <div id="Ltr"><div id="L1"></div></div>
+  <div id="Log"><div id="G1"></div></div>
+  <div id="Abs"><div id="Ab"></div></div>
+  <div id="Back" dir="ltr"><div id="B1"></div></div>
+</div></div>
+<style>
+#Root { width: 400px; }
+#Row { display: flex; width: 300px; }
+#R1, #R2 { width: 50px; height: 10px; }
+#R1 { margin-inline-start: 5px; }
+#Ltr, #Log, #Back { width: 300px; }
+#L1 { width: 40px; height: 10px; margin-left: 20px; }
+#Log { direction: rtl; }
+#G1 { width: 40px; height: 10px; margin-inline-end: 30px; }
+#Abs { position: relative; width: 300px; height: 20px; direction: rtl; }
+#Ab { position: absolute; left: 10px; width: 20px; height: 5px; }
+#Back { display: flex; }
+#B1 { width: 40px; height: 10px; }
+</style>"#;
+    let at = |d: &Doc, id: &str, of: &str| d.get(id).x - d.get(of).x;
+    both(text, &[], |d| {
+        for rtl_surface in [false, true] {
+            if rtl_surface {
+                d.ui.set_direction(og_i18n::Direction::Rtl);
+                for _ in 0..2 {
+                    d.step(InputFrame::default());
+                }
+            }
+            let s = if rtl_surface {
+                "rtl surface"
+            } else {
+                "ltr surface"
+            };
+            // A right-to-left flex row runs from the right; its start margin
+            // is on the right.
+            assert_eq!(
+                (at(d, "R1", "Row"), at(d, "R2", "Row")),
+                (245.0, 195.0),
+                "{s}"
+            );
+            // A block sits at its container's inline start; a physical margin
+            // stays on its side, a logical one follows the direction.
+            let l1 = if rtl_surface { 260.0 } else { 20.0 };
+            assert_eq!(at(d, "L1", "Ltr"), l1, "{s}");
+            assert_eq!(at(d, "G1", "Log"), 260.0, "{s}");
+            // `left` is the left, whatever the direction.
+            assert_eq!(at(d, "Ab", "Abs"), 10.0, "{s}");
+            // A left-to-right element in a right-to-left surface.
+            assert_eq!(at(d, "B1", "Back"), 0.0, "{s}");
+        }
+    });
+}

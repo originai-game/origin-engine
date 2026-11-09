@@ -421,15 +421,105 @@ pub(crate) fn known(name: &str, value: &str) -> bool {
         || crate::doc::extern_element::svg_longhand(name)
         || crate::doc::generated::longhand(name)
         || crate::doc::text_css::longhand(name)
+        || (crate::layout::flow::longhand(name) && crate::layout::flow::check(name, value).is_ok())
         || css::declarations(&format!("{name}: {value};"), 0).is_ok()
 }
 
-/// Sends each winning value to the part of the build that reads it.
-pub(crate) fn route(out: &mut Cascade) {
+/// The computed-map key an element's flow is carried to its children under.
+const FLOW: &str = " flow";
+
+/// An element's flow ([`crate::layout::Flow`]): its parent's direction
+/// (the surface's at a document's root), its `dir` attribute's, then its
+/// declared `direction` and `unicode-bidi`; carried to its children.
+pub(crate) fn flow(
+    out: &mut Cascade,
+    inherited: &variables::Computed,
+    surface_rtl: bool,
+    dir: Option<&str>,
+) -> crate::layout::Flow {
+    use crate::layout::{Bidi, Flow};
+    out.inherited_reads.insert(FLOW.into());
+    let mut flow = match inherited.get(FLOW).cloned().flatten() {
+        Some(v) => Flow {
+            rtl: v.starts_with("rtl"),
+            declared: v.ends_with("declared"),
+            ..Flow::default()
+        },
+        None => Flow {
+            rtl: surface_rtl,
+            ..Flow::default()
+        },
+    };
+    flow.doc = true;
+    // HTML's `[dir]`: its direction, isolated (`auto` reads its text once
+    // its props are known).
+    if let Some(d) = dir.map(str::to_ascii_lowercase) {
+        flow.declared = true;
+        flow.bidi = Bidi::Isolate;
+        match d.as_str() {
+            "rtl" => flow.rtl = true,
+            "ltr" | "auto" => flow.rtl = false,
+            _ => {}
+        }
+    }
+    for (name, value, _) in &out.values {
+        match name.as_str() {
+            "direction" if matches!(value.trim(), "ltr" | "rtl") => {
+                flow.rtl = value.trim() == "rtl";
+                flow.declared = true;
+            }
+            "unicode-bidi" => match Bidi::parse(value) {
+                Some(b) => {
+                    flow.bidi = b;
+                    flow.declared = true;
+                }
+                None => out
+                    .diagnostics
+                    .push(format!("unicode-bidi: unknown value {value}")),
+            },
+            "direction" => out
+                .diagnostics
+                .push(format!("direction: unknown value {value}")),
+            _ => {}
+        }
+    }
+    let carried = format!(
+        "{} {}",
+        if flow.rtl { "rtl" } else { "ltr" },
+        if flow.declared { "declared" } else { "" }
+    );
+    Arc::make_mut(&mut out.computed).insert(FLOW.into(), Some(carried));
+    flow
+}
+
+/// Sends each winning value to the part of the build that reads it, a
+/// logical property as the physical one it names in `flow`.
+pub(crate) fn route(out: &mut Cascade, flow: crate::layout::Flow) {
     let mut body = String::new();
     // The winners stay with the cascade: the UI debugger names each one's
     // line (`Ui::debug_element`).
-    for (name, value, line) in out.values.clone() {
+    let values: Vec<(String, String, usize)> = out
+        .values
+        .iter()
+        .flat_map(|(name, value, line)| {
+            match crate::layout::flow::physical(name, value, flow) {
+                Some(sides) => sides.into_iter().map(|(n, v)| (n, v, *line)).collect(),
+                None if name.starts_with("justify-") || name.starts_with("place-") => {
+                    // `left` and `right` are the line's physical sides.
+                    let side = |w: &str| match (w, flow.rtl) {
+                        ("left", false) | ("right", true) => "start".to_string(),
+                        ("left", true) | ("right", false) => "end".to_string(),
+                        (w, _) => w.to_string(),
+                    };
+                    let v: Vec<String> = value.split_whitespace().map(side).collect();
+                    vec![(name.clone(), v.join(" "), *line)]
+                }
+                None => vec![(name.clone(), value.clone(), *line)],
+            }
+        })
+        .filter(|(name, ..)| !matches!(name.as_str(), "direction" | "unicode-bidi"))
+        .collect();
+    for (name, value, line) in values {
         if crate::doc::motion::longhand(&name) {
             out.motion.push((name, value));
             continue;

@@ -1060,6 +1060,12 @@ pub(super) fn lower(
     let mut body = String::new();
     for declaration in &declarations {
         let name = declaration.name.as_str();
+        if crate::layout::flow::longhand(name) {
+            if wide_keyword(&declaration.source).is_none() && !declaration.value.has_variables() {
+                crate::layout::flow::check(name, &declaration.source)?;
+            }
+            continue;
+        }
         if name.starts_with("--")
             || super::motion::longhand(name)
             || super::container::longhand(name)
@@ -1348,6 +1354,7 @@ pub(super) fn inline(
             || super::motion::longhand(name)
             || super::container::longhand(name)
             || super::extern_element::svg_longhand(name)
+            || crate::layout::flow::longhand(name)
         {
             continue;
         }

@@ -19,6 +19,7 @@
 pub mod anchor;
 mod cache;
 mod flex;
+pub mod flow;
 mod grid;
 pub(crate) mod multicol;
 mod node;
@@ -29,6 +30,7 @@ pub(crate) use cache::{
 };
 pub(crate) use flex::on_screen;
 use flex::*;
+pub use flow::{Bidi, Flow};
 pub(crate) use grid::{GridLayout, Table, derive_table, shown_children};
 use grid::{grid_columns, grid_intrinsic, grid_rows, place_grid};
 pub use multicol::Multicol;
@@ -790,6 +792,11 @@ pub struct Element {
     /// Its CSS `break-before`, `break-after` and `break-inside` in a
     /// fragmented flow ([`multicol::BREAK_BEFORE`] …).
     pub breaks: u8,
+    /// Its inline direction runs against its layout space's (a
+    /// right-to-left element on a left-to-right surface, or the other way
+    /// round under the surface's mirror): its children's margin boxes flip
+    /// across its content box once placed ([`flow`]).
+    pub flip: bool,
 }
 
 /// What a box is to the CSS table layout (CSS 2 §17.2).

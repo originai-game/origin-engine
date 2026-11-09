@@ -526,7 +526,7 @@ impl Ui {
         self.nodes[i].hidden = base.hidden || (r.has("visible") && !r.flag("visible"));
         match base.kind {
             "label" => {
-                let desc = r.label_desc(self.theme(), self.direction == og_i18n::Direction::Rtl);
+                let desc = r.label_desc(self.theme(), r.own_flow().rtl);
                 let shown;
                 let base = match r.text.as_deref() {
                     Some(t) => {
@@ -725,9 +725,14 @@ impl Ui {
                 }
                 // Its lines' `text-align` (they lie in lines when one of
                 // its children is inline-level).
-                el.line_align = match r.text.as_deref().and_then(|t| t.align.as_deref()) {
-                    Some("center") => crate::Align::Center,
-                    Some("end" | "right") => crate::Align::End,
+                el.line_align = match (
+                    r.text.as_deref().and_then(|t| t.align.as_deref()),
+                    r.flow.rtl,
+                ) {
+                    (Some("center"), _) => crate::Align::Center,
+                    (Some("end"), _) | (Some("right"), false) | (Some("left"), true) => {
+                        crate::Align::End
+                    }
                     _ => crate::Align::Start,
                 };
                 // A block-level box in a block's flow fills its width
@@ -828,7 +833,7 @@ impl Ui {
         for w in warn {
             self.warnings.push(format!("line {}: {w}", n.line));
         }
-        let el = Self::sized(r, Self::item_of(r, el));
+        let mut el = Self::sized(r, Self::item_of(r, el));
         // A clip's reference box from the laid-out box: its insets from
         // the border box and the corner it takes (CSS Masking 1 §4.1; the
         // border width pads the element, so padding holds it).
@@ -855,9 +860,18 @@ impl Ui {
                 },
             );
         }
+        let surface_rtl = self.direction == og_i18n::Direction::Rtl;
+        let flow = r.own_flow();
+        el.flip = flow.rtl != surface_rtl;
+        if surface_rtl {
+            crate::layout::flow::mirror_el(&mut el);
+        }
         self.nodes[i].el = el;
         self.nodes[i].decor = decor.map(Box::new);
         let mut props = Self::resolved_props(n, r);
+        if surface_rtl {
+            crate::layout::flow::mirror_props(&mut props);
+        }
         if r.flag("dataOgInstant") {
             // `data-og-instant`: its first entrance lands settled (the
             // screen behind the web's play gate); the motion state then
@@ -882,6 +896,7 @@ impl Ui {
             );
             self.nodes[i].props = props;
         }
+        self.nodes[i].props.flow = flow;
         // The roles and levels HTML's tags give (landmarks, lists, headings).
         if let Some(role) = n.role {
             self.nodes[i].a11y.role = Some(role);

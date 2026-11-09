@@ -389,7 +389,7 @@ impl Ui {
                         let ly = top + (k as f32 * lh) + fy * sk;
                         let free = inner.width - line.width * sk;
                         // Right to left, start is the right edge.
-                        let rtl = self.direction == og_i18n::Direction::Rtl;
+                        let (rtl, para) = self.text_flow(i);
                         let x = inner.x
                             + if rtl { -fx } else { fx } * sk
                             + match (tc.align, rtl) {
@@ -475,7 +475,7 @@ impl Ui {
                             crate::text::pieces_spaced(
                                 font,
                                 &line.text,
-                                self.direction,
+                                para,
                                 tc.tracking(),
                                 tc.features(),
                                 free / spaces as f32 / size.max(1e-3),
@@ -484,7 +484,7 @@ impl Ui {
                             crate::text::pieces_with(
                                 font,
                                 &line.text,
-                                self.direction,
+                                para,
                                 tc.tracking(),
                                 tc.features(),
                             )
@@ -704,7 +704,7 @@ impl Ui {
                         let text = if !e.placeholder { tc.text.as_str() } else { "" };
                         // An empty field's caret sits at its start.
                         let x = if text.is_empty() {
-                            if self.direction == og_i18n::Direction::Rtl {
+                            if self.text_flow(i).0 {
                                 inner.right()
                             } else {
                                 inner.x
@@ -1126,8 +1126,13 @@ impl Ui {
             let (sin, cos) = angle.sin_cos();
             // The pen: half the advance back along the path's direction.
             let pen = p - Vec2::new(cos, sin) * (advance / 2.0);
-            let pieces =
-                crate::text::pieces_with(font, &cluster, self.direction, tracking, tc.features());
+            let pieces = crate::text::pieces_with(
+                font,
+                &cluster,
+                self.text_flow(i).1,
+                tracking,
+                tc.features(),
+            );
             for pc in pieces {
                 let Some(handle) = pc.font.filter(|_| !pc.text.is_empty()) else {
                     continue;

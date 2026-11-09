@@ -744,7 +744,8 @@ impl Ui {
             }
             for &i in sampled {
                 let t = self.nodes[i].sampled.transform;
-                if !t.is_identity() {
+                // A document's transforms are physical: they turn as written.
+                if !t.is_identity() && !self.nodes[i].props.flow.doc {
                     self.nodes[i].sampled.transform = t.mirrored();
                 }
             }

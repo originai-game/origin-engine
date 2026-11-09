@@ -1380,6 +1380,8 @@ pub struct Props {
     /// It and its subtree take no input (a state or a timeline sets it:
     /// a results screen's buttons wait for the sequence).
     pub inert: bool,
+    /// A document element's direction and bidi ([`crate::layout::Flow`]).
+    pub flow: crate::layout::Flow,
 }
 
 impl Default for Props {
@@ -1433,6 +1435,7 @@ impl Default for Props {
             state: Vec::new(),
             reduced: None,
             inert: false,
+            flow: crate::layout::Flow::default(),
         }
     }
 }

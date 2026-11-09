@@ -80,6 +80,10 @@ struct Resolved {
     /// Its box pseudo-elements ([`DocNode::pseudo`]), each resolved under
     /// it: the name, its node and its values.
     pseudo: Vec<(&'static str, usize, Arc<Resolved>)>,
+    /// Its direction and bidi ([`cascade::flow`]).
+    flow: crate::layout::Flow,
+    /// `dir="auto"`: its direction is its text's.
+    dir_auto: bool,
 }
 
 #[derive(Clone)]
@@ -92,6 +96,17 @@ struct ResolvedNode {
 }
 
 impl Resolved {
+    /// Its flow, a `dir="auto"` one in its text's direction.
+    fn own_flow(&self) -> crate::layout::Flow {
+        let mut flow = self.flow;
+        if self.dir_auto {
+            let text = self.str("text").unwrap_or_default();
+            flow.rtl = og_i18n::paragraph_direction(text, og_i18n::Direction::Ltr)
+                == og_i18n::Direction::Rtl;
+        }
+        flow
+    }
+
     fn get(&self, name: &str) -> Option<&V> {
         self.vals
             .iter()
@@ -785,7 +800,15 @@ impl Ui {
             &r.animations,
             basis,
         );
-        cascade::route(&mut r.cascade);
+        let dir = attr("dir");
+        r.flow = cascade::flow(
+            &mut r.cascade,
+            inherited,
+            self.direction == og_i18n::Direction::Rtl,
+            dir.as_deref(),
+        );
+        r.dir_auto = dir.is_some_and(|d| d.eq_ignore_ascii_case("auto"));
+        cascade::route(&mut r.cascade, r.flow);
         if let Some((ty, names)) =
             super::container::declared(&r.cascade.container, &mut r.cascade.diagnostics)
         {

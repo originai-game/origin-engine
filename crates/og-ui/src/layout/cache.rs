@@ -535,6 +535,7 @@ pub(crate) fn el_layout_eq(a: &Element, b: &Element) -> bool {
             == b.multicol.map(|m| (m.count, m.width, m.gap, m.fill_auto))
         && a.span_all == b.span_all
         && a.breaks == b.breaks
+        && a.flip == b.flip
 }
 
 /// The content layout measures is equal (an ink may differ).

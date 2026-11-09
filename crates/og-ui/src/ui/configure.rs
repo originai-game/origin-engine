@@ -448,6 +448,20 @@ impl Ui {
         self.direction
     }
 
+    /// Node `i`'s text runs right to left, and how its paragraphs take
+    /// their direction: a document element's own flow, else the surface's.
+    pub(crate) fn text_flow(&self, i: usize) -> (bool, crate::text::Para) {
+        let flow = self.nodes[i].props.flow;
+        if flow.doc {
+            (flow.rtl, flow.para())
+        } else {
+            (
+                self.direction == og_i18n::Direction::Rtl,
+                crate::text::Para::Auto(self.direction),
+            )
+        }
+    }
+
     /// Right to left mirrors every frame's layout from the next `end` on.
     pub fn set_direction(&mut self, direction: og_i18n::Direction) {
         self.direction = direction;

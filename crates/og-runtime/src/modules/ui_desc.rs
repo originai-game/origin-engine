@@ -205,6 +205,7 @@ pub(super) fn element(theme: &Theme, d: &Value) -> Element {
         multicol: None,
         span_all: false,
         breaks: 0,
+        flip: false,
     }
 }
 

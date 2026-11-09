@@ -1306,6 +1306,15 @@ fn mirror_lines(nodes: &mut [Node], i: usize, x0: f32, y0: f32, inner_w: f32, in
 pub(super) fn position(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f32, f32)) {
     place_children(nodes, i, scroll);
     super::multicol::place(nodes, i);
+    if nodes[i].el.flip {
+        let n = &nodes[i];
+        let sx = if n.el.scroll_x {
+            scroll(n.key).0.clamp(0.0, n.max_scroll_x())
+        } else {
+            0.0
+        };
+        super::flow::flip_children(nodes, i, sx);
+    }
     // Relative and sticky children (CSS Position 3 §3.3–3.4): moved from
     // where the flow put them, their siblings unmoved. Each placement
     // above starts them from the flow again, so this never adds up.

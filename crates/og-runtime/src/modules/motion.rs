@@ -404,6 +404,7 @@ pub(crate) fn props(d: &Value) -> Props {
             _ => None,
         },
         inert: d["inert"].as_bool().unwrap_or(false),
+        flow: og_ui::Flow::default(),
     }
 }
 
