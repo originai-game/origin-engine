@@ -1,0 +1,9 @@
+{
+  "breaking": [
+    {
+      "member": "og style art, og style pack and style cooking",
+      "change": "The cook no longer recolours part slices or injects their measured tones. og style art packs only corner, divider, flourish, crest and edge ornaments; it reports other requests as skipped. For version 2+ styles, og style pack no longer writes part dressing blocks. Style summaries no longer count dressings.",
+      "fix": "Author part appearance in standard CSS. Ornament packing and recolouring remain available until the style.ogt pack format is replaced by CSS tooling."
+    }
+  ]
+}

@@ -186,23 +186,10 @@ fn style_eject_writes_the_built_in_pack_that_cooks_the_same() {
     let _ = std::fs::remove_dir_all(&styles);
 }
 
-/// `og style art` takes a generated style from its requests to painted
-/// atlases: it completes `art-requests.json` (each slot's file, cell size,
-/// insets, states, dressings and hash), refuses art that arrives without
-/// provenance, packs what arrived at 1×, 2× and 3× (the panel trimmed to its
-/// art and drawn edge to edge in its cell, the primary button delivered as
-/// one cell given its other states), points each dressing at its piece
-/// with the art's tone, reruns to the same bytes, reports a slot whose
-/// request changed as stale, and the game cooks the denser atlases but
-/// never the art sources.
-///
-/// Ways it could fail: the transparent margin packed with the art, the
-/// denser atlases laid out differently from the 1× one (a region then cuts
-/// the wrong texels there), the primary states written to the plain
-/// button's dressings, a rerun stacking a second copy below the first, or
-/// the cook bundling `art/`.
+/// Ornament packing keeps provenance, trimming, density and rerun contracts;
+/// part-art requests are left alone rather than converted into style rules.
 #[test]
-fn style_art_packs_painted_slots_at_three_densities() {
+fn style_art_packs_ornaments_at_three_densities() {
     let dir = look_project("styles/arena/style.ogt", false);
     let out = og()
         .args(["style", "new", "arena", "--project"])
@@ -211,6 +198,17 @@ fn style_art_packs_painted_slots_at_three_densities() {
         .unwrap();
     assert_eq!(out.status.code(), Some(0), "{}", text(&out));
     let pack = dir.join("assets/styles/arena");
+    std::fs::write(
+        pack.join("art-requests.json"),
+        serde_json::json!({
+            "slots": [
+                {"name": "arena/corner", "kind": "ornament", "size": [32, 32]},
+                {"name": "arena/button-primary", "kind": "styleButton"}
+            ]
+        })
+        .to_string(),
+    )
+    .unwrap();
     let art = |args: &[&str]| {
         og().args(["style", "art"])
             .arg(&pack)
@@ -234,47 +232,12 @@ fn style_art_packs_painted_slots_at_three_densities() {
             .unwrap_or_else(|| panic!("no {name} in {}", requests()))
     };
     let primary = slot("arena/button-primary");
-    assert_eq!(primary["file"], "art/button-primary.png");
-    assert_eq!(primary["states"].as_array().unwrap().len(), 5);
-    assert_eq!(
-        primary["dress"][1], "Button.base[primary][hover]",
-        "{primary}"
-    );
-    // The card's own 20 px of 96, not a quarter: a request's insets win,
-    // so the spec's default must not be written into one.
-    assert_eq!(
-        slot("arena/card")["insets"],
-        serde_json::json!([0.208, 0.208, 0.208, 0.208])
-    );
-    let panel = slot("arena/panel");
-    assert_eq!(panel["size"], serde_json::json!([96, 96]));
-    assert_eq!(panel["pixels"], serde_json::json!([288, 288]));
-    assert!(
-        !requests()["slots"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|s| s["name"] == "arena/bar")
-    );
-    let mut custom = requests();
-    custom["slots"].as_array_mut().unwrap().extend([
-        serde_json::json!({"name": "arena/bar"}),
-        serde_json::json!({
-            "name": "arena/selected-tab", "kind": "styleFrame", "size": [80, 32],
-            "insets": [0.1, 0.25, 0.1, 0.25],
-            "dress": [["Tabs.tab[selected]", "Chip.base[selected]"]]
-        }),
-    ]);
-    std::fs::write(pack.join("art-requests.json"), custom.to_string()).unwrap();
-    let out = art(&[]);
-    assert_eq!(out.status.code(), Some(0), "{}", text(&out));
-    let bar = slot("arena/bar");
-    let tab = slot("arena/selected-tab");
-    assert_eq!(bar["dress"], serde_json::json!(["Meter.fill"]));
-    assert_eq!(tab["pixels"], serde_json::json!([240, 96]));
+    assert!(primary.get("file").is_none(), "part art must not be packed");
+    assert!(text(&out).contains("arena/button-primary skipped"));
+    let corner = slot("arena/corner");
+    assert_eq!(corner["pixels"], serde_json::json!([96, 96]));
 
-    // The panel: a red 18-px border round a blue middle, in a transparent
-    // 20-px margin; the primary button one plain cell.
+    // A red border round a blue middle, inside a transparent margin.
     let art_dir = pack.join("art");
     std::fs::create_dir_all(&art_dir).unwrap();
     let mut img = image::RgbaImage::new(328, 328);
@@ -289,28 +252,16 @@ fn style_art_packs_painted_slots_at_three_densities() {
             };
         }
     }
-    img.save(art_dir.join("panel.png")).unwrap();
-    image::RgbaImage::from_pixel(288, 132, image::Rgba([200, 160, 40, 255]))
-        .save(art_dir.join("button-primary.png"))
-        .unwrap();
-    image::RgbaImage::from_pixel(192, 48, image::Rgba([220, 220, 220, 255]))
-        .save(art_dir.join("bar.png"))
-        .unwrap();
-    image::RgbaImage::from_pixel(240, 96, image::Rgba([40, 120, 200, 255]))
-        .save(art_dir.join("selected-tab.png"))
-        .unwrap();
+    img.save(art_dir.join("corner.png")).unwrap();
     let out = art(&[]);
     assert_eq!(out.status.code(), Some(1), "{}", text(&out));
     assert!(
-        text(&out).contains("no entry for arena/panel"),
+        text(&out).contains("no entry for arena/corner"),
         "{}",
         text(&out)
     );
     let provenance = serde_json::json!({
-        "arena/panel": { "model": "hand", "prompt": "a test panel", "request": panel["hash"] },
-        "arena/button-primary": { "model": "hand", "prompt": "a test button", "request": primary["hash"] },
-        "arena/bar": { "model": "hand", "prompt": "a tinted bar", "request": bar["hash"] },
-        "arena/selected-tab": { "model": "hand", "prompt": "a selected tab", "request": tab["hash"] },
+        "arena/corner": { "model": "hand", "prompt": "a test corner", "request": corner["hash"] },
     });
     std::fs::write(art_dir.join("provenance.json"), provenance.to_string()).unwrap();
     let out = art(&[]);
@@ -329,54 +280,26 @@ fn style_art_packs_painted_slots_at_three_densities() {
     let (w, h) = atlases[0].dimensions();
     assert_eq!(atlases[1].dimensions(), (w * 2, h * 2));
     assert_eq!(atlases[2].dimensions(), (w * 3, h * 3));
-    // The dressing's slice: its region and insets in CSS px, authored.
-    let dress = |sel: &str| -> Vec<String> {
-        let at = style
-            .find(&format!(
-                "{} {{",
-                og_ui::style_file::css::selector_css(&og_ui::Selector::parse(sel).unwrap())
-            ))
-            .unwrap_or_else(|| panic!("no dress {sel} in\n{style}"));
-        let block = &style[at..];
-        let slice = block
-            .lines()
-            .find(|l| l.trim().starts_with("-og-slice:"))
-            .unwrap();
-        slice.split_whitespace().map(String::from).collect()
-    };
-    assert_eq!(
-        &dress("Meter.fill")[3..],
-        &["64", "16", "12", "4", "12", "4", "tint"]
-    );
-    assert_eq!(
-        &dress("Tabs.tab[selected]")[3..],
-        &["80", "32", "8", "8", "8", "8", "authored"]
-    );
-    // One painted cell dresses both parts its request lists, packed once.
-    assert_eq!(dress("Chip.base[selected]"), dress("Tabs.tab[selected]"));
-    let s = dress("Panel.frame");
+    let s: Vec<_> = style
+        .lines()
+        .find(|l| l.starts_with("corner "))
+        .unwrap()
+        .split_whitespace()
+        .collect();
     let n = |i: usize| -> u32 { s[i].parse().unwrap() };
-    assert_eq!(
-        (n(3), n(4), &s[5..10]),
-        (
-            96,
-            96,
-            &["24", "24", "24", "24", "authored"].map(String::from)[..]
-        ),
-        "{s:?}"
-    );
+    assert_eq!((n(3), n(4)), (32, 32), "{s:?}");
     let (x, y) = (n(1), n(2));
     // Trimmed: the border's red at the cell's very edge, at every density,
     // and the blue middle at its centre.
     for (k, a) in atlases.iter().enumerate() {
         let k = k as u32 + 1;
-        let edge = a.get_pixel(x * k + 1, (y + 48) * k);
-        let mid = a.get_pixel((x + 48) * k, (y + 48) * k);
+        let edge = a.get_pixel(x * k, (y + 16) * k);
+        let mid = a.get_pixel((x + 16) * k, (y + 16) * k);
         assert!(edge[0] > 180 && edge[2] < 80, "{k}×: edge {edge:?}");
         assert!(mid[2] > 180 && mid[0] < 80, "{k}×: middle {mid:?}");
     }
-    assert!(style.contains("Button::base.primary:disabled {"), "{style}");
-    assert!(!style.contains("Button::base.secondary {"), "{style}");
+    assert!(!style.contains("-og-slice:"), "{style}");
+    assert!(!style.contains("dress \""), "{style}");
     // The review sheet; a style with no atlas of its own keeps no base.
     assert!(pack.join("art/sheet.png").is_file());
     assert!(!pack.join("art/base.png").exists());
@@ -396,20 +319,20 @@ fn style_art_packs_painted_slots_at_three_densities() {
     assert_eq!(cooked.status.code(), Some(0), "{}", text(&cooked));
     let bundle = og_cook::runtime::Bundle::open(&dir.join("cooked")).unwrap();
     assert!(bundle.output("styles/arena/atlas@3x.png").is_ok());
-    assert!(bundle.output("styles/arena/art/panel.png").is_err());
+    assert!(bundle.output("styles/arena/art/corner.png").is_err());
 
     // A request that changes leaves its art stale.
     let mut r = requests();
     for s in r["slots"].as_array_mut().unwrap() {
-        if s["name"] == "arena/panel" {
-            s["size"] = serde_json::json!([120, 96]);
+        if s["name"] == "arena/corner" {
+            s["size"] = serde_json::json!([40, 32]);
         }
     }
     std::fs::write(pack.join("art-requests.json"), r.to_string()).unwrap();
     let out = art(&["--check"]);
     assert_eq!(out.status.code(), Some(1), "{}", text(&out));
     assert!(
-        text(&out).contains("arena/panel was painted for an older request"),
+        text(&out).contains("arena/corner was painted for an older request"),
         "{}",
         text(&out)
     );

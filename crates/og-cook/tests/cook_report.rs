@@ -123,3 +123,49 @@ fn every_asset_type_reports_its_figures_and_its_budgets_flag_it() {
     );
     assert_eq!(flags("scenes/main.ogt"), [("sceneEntities".to_string(), 4)]);
 }
+
+#[test]
+fn style_cook_recolours_ornaments_without_recolouring_or_measuring_part_slices() {
+    let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-cook-ornament-recolour");
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(root.join("assets")).unwrap();
+    let style = include_str!("../../og-cli/tests/fixtures/style-pack/style.ogt")
+        .replace("styles/handmade/atlas.png", "atlas.png")
+        .replace("primary \"#ffb000\"", "primary \"#3d7eff\"")
+        .replace(
+            "corner 24 0 8 8 12 12 primary 2",
+            "corner 24 0 8 8 12 12 authored 2",
+        )
+        + "recolour \"#ffb000\" primary\n";
+    std::fs::write(root.join("assets/style.ogt"), &style).unwrap();
+    image::RgbaImage::from_pixel(64, 64, image::Rgba([255, 176, 0, 255]))
+        .save(root.join("assets/atlas.png"))
+        .unwrap();
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    let bundle = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
+    let text = bundle
+        .style_text("style.ogt", &bundle.read("style.ogt").unwrap())
+        .unwrap();
+    assert_eq!(
+        text,
+        style.replace("\"atlas.png\"", "\"style.ogt#atlas.png\""),
+        "the cook rewrites the atlas, not part tones or rules"
+    );
+    let atlas = bundle
+        .load_texture("style.ogt#atlas.png")
+        .unwrap()
+        .to_texture_data()
+        .unwrap();
+    let pixel = |x: usize, y: usize| &atlas.rgba[(y * 64 + x) * 4..][..3];
+    let part = pixel(4, 4);
+    let ornament = pixel(28, 4);
+    assert!(
+        part[0] > 230 && part[1] > 150 && part[2] < 25,
+        "part moved: {part:?}"
+    );
+    assert!(
+        ornament[2] > 230 && ornament[0] < 90,
+        "ornament not blue: {ornament:?}"
+    );
+}

@@ -214,11 +214,15 @@ commands:
                       <slug>) to change at will, refusing to overwrite without --force; the look
                       names it as ui \"styles/<name>/style.ogt\"
   style upgrade <style.ogt> [--out <file>] [--check]
-                      write a version 1 UI style as version 2 (its values kept, its part lines as
-                      dressings, the new tokens derived from its palette); --check only fails on v1
+                      write a version 1 UI style as version 3 (tokens derived from its palette);
+                      --check only fails on v1
   style pack <dir> [--out <dir>]
                       pack a UI style's art drawn by hand (<part>.9.png nine-patches, other PNGs)
-                      into atlas.png and the style file's atlas, slice and ornament lines
+                      into atlas.png and the style file's atlas, soft and ornament lines;
+                      part slice lines are written only for version 1 styles
+  style art <pack dir> [--art <dir>] [--check]
+                      verify and pack painted corner, divider, flourish, crest and edge ornaments;
+                      other art requests are reported as skipped (part appearance belongs to CSS)
   style check [project] [--title <commands>] [--play <commands>] [--results <commands>] [--size WxH]
       [--no-frames] [--json]
                       cook, then measure every cooked asset against the art contract of the look

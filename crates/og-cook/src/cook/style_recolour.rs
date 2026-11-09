@@ -12,16 +12,44 @@
 //!
 //! The cook writes the recoloured atlas beside the style, one texture per
 //! density the style's `atlas` line names (`<style>#atlas.png`,
-//! `<style>#atlas@2x.png` …), points the cooked style at it and measures
-//! the recoloured frames' `tone` again, so a label still picks ink that
-//! reads on its button. A palette that still has every accent as painted
+//! `<style>#atlas@2x.png` …), and points the cooked style at it.
+//! Only ornament regions are recoloured. A palette that still has every accent as painted
 //! cooks nothing extra: the style draws its own atlas, byte for byte.
 
 use super::Source;
 use super::conform::texture2d::colour::{ONE, lab_to_linear, linear_to_lab, to_linear, to_srgb8};
 use image::RgbaImage;
-use og_ui::style_file::{RecolourRegion, dense_name};
+use og_ui::style_file::dense_name;
 use std::collections::BTreeSet;
+
+pub(super) struct RecolourRegion {
+    uv: [f32; 4],
+    map: Vec<(og_ui::Srgba, og_ui::Srgba)>,
+}
+
+pub(super) fn regions(file: &og_ui::StyleFile) -> Vec<RecolourRegion> {
+    let map: Vec<_> = file
+        .recolour
+        .iter()
+        .filter_map(|r| {
+            let to = file.theme.palette.get(&r.role)?;
+            (og_ui::tokens::hex(to) != og_ui::tokens::hex(r.from)).then_some((r.from, to))
+        })
+        .collect();
+    if map.is_empty() {
+        return Vec::new();
+    }
+    let art = &file.theme.art;
+    [art.corner, art.divider, art.flourish, art.crest, art.edge]
+        .into_iter()
+        .flatten()
+        .filter(|o| o.ink == og_ui::style_file::Ink::Authored)
+        .map(|o| RecolourRegion {
+            uv: o.uv,
+            map: map.clone(),
+        })
+        .collect()
+}
 
 /// The full mask within this hue of the accent, none past [`HUE_OUT`] (degrees).
 const HUE_IN: f64 = 30.0;
@@ -59,7 +87,7 @@ pub(super) fn atlases(s: &Source, known: &BTreeSet<String>) -> Vec<(u32, String)
     let Some(base) = f.atlas.clone().filter(|a| !a.starts_with('@')) else {
         return Vec::new();
     };
-    if f.recolour_regions().is_empty() {
+    if regions(&f).is_empty() {
         return Vec::new();
     }
     let mut out = vec![(1, base)];
@@ -72,15 +100,8 @@ pub(super) fn atlases(s: &Source, known: &BTreeSet<String>) -> Vec<(u32, String)
     out
 }
 
-/// The cooked style's text when it recolours: its `atlas` line naming the
-/// recoloured atlas beside it, and a `tone` for each recoloured frame,
-/// measured from `atlas` (the 1× copy, recoloured).
-pub(super) fn cooked_text(
-    text: &str,
-    style: &str,
-    file: &og_ui::StyleFile,
-    atlas: &RgbaImage,
-) -> String {
+/// The cooked style's text with its atlas pointing at the recoloured copy.
+pub(super) fn cooked_text(text: &str, style: &str) -> String {
     let name = style.rsplit('/').next().unwrap_or(style);
     let mut out = String::with_capacity(text.len() + 256);
     let mut done = false;
@@ -95,21 +116,6 @@ pub(super) fn cooked_text(
             }
             _ => out.push_str(line),
         }
-        out.push('\n');
-    }
-    out.push_str("# Recoloured by og cook to the palette (recolour): each frame's tone again.\n");
-    for r in file.recolour_regions() {
-        let Some(sel) = &r.dressing else { continue };
-        let Some(sl) = file
-            .dressings
-            .iter()
-            .find(|d| &d.selector == sel)
-            .and_then(|d| d.frame.slice)
-        else {
-            continue;
-        };
-        let t = super::execute::slice_tone(atlas, &sl);
-        out.push_str(&file.dress_tone_text(sel, t));
         out.push('\n');
     }
     out
@@ -262,7 +268,6 @@ mod tests {
         RecolourRegion {
             uv: [0.0, 0.0, 1.0, 1.0],
             map,
-            dressing: None,
         }
     }
 

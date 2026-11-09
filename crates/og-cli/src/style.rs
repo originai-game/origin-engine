@@ -20,6 +20,8 @@
 //! its `slice` and `soft` lines (rewritten from the nine-patches) and the
 //! regions of its `corner`, `divider`, `flourish` and `tile` lines (moved to
 //! where those images now sit); without one it starts a style of the slices.
+//! Version 2+ files update only atlas, soft and ornament metadata; part
+//! slices are not written, since part appearance belongs to CSS.
 //! `--out` defaults to the input directory.
 //!
 //! `og style list` names the built-in styles; `og style eject <slug>
@@ -35,7 +37,7 @@
 //! the seed style nearest the look family, takes the flags over it (the
 //! palette seed, scheme, shape language, ornament level, motion personality
 //! and finish), and writes `assets/styles/<name>/` of the game (or
-//! `--out <dir>`): its `style.ogt` (palette, tokens, procedural dressings,
+//! `--out <dir>`): its `style.ogt` (palette, tokens,
 //! sound sets, haptics), the `type sfx` presets its sounds name, and
 //! `art-requests.json`, the art slots it asks for (frames, buttons,
 //! ornaments, icons) which the art brief's `styleArtBriefs` turns into
@@ -44,9 +46,8 @@
 //! values; existing style.ogt files are authored data and never regenerated.
 //!
 //! `og style upgrade <style.ogt> [--out <file>] [--check]` writes a
-//! version 1 style as version 2 (og-ui's `upgrade_style`, docs/ui.md
-//! §12): every version 1 value kept, so it draws the same; its part lines
-//! become dressings, its radii the shape language, its durations motion
+//! version 1 style as version 3 (og-ui's `upgrade_style`, docs/ui.md
+//! §12): its radii become the shape language, its durations motion
 //! tokens; the new tokens derived from its palette and scheme. In place
 //! unless `--out`; `--check` writes nothing and fails while it is version 1.
 
@@ -56,7 +57,7 @@ use std::process::ExitCode;
 
 const USAGE: &str = "usage: og style list\n       og style add <pack|directory> [project]\n       og style new <name> [--look <family>] [--premise <text>] [--seed <#rrggbb>] [--scheme dark|light] [--shape <s>] [--ornament <o>] [--motion <m>] [--finish <f>] [--project <dir> | --out <dir>] [--force]\n       og style upgrade <style.ogt> [--out <file>] [--check]\n       og style eject <slug> [<name>] [--project <dir>] [--force]\n       og style pack <dir> [--out <dir>]\n       og style art <pack dir> [--art <dir>] [--check]\n       og style check [project] [--title <commands>] [--play <commands>] [--results <commands>] [--size WxH] [--no-frames] [--json]";
 
-/// The parts a nine-patch can dress (og-ui's `StylePart` names) and `soft`.
+/// Legacy nine-patch names and `soft`.
 const SLICES: [&str; 13] = [
     "panel",
     "card",
@@ -480,8 +481,7 @@ fn upgrade(args: &[&str]) -> Result<(), String> {
     let upgraded = og_ui::upgrade_style(&text).map_err(|e| format!("{path}: {e}"))?;
     std::fs::write(out, &upgraded).map_err(|e| format!("{out}: {e}"))?;
     println!(
-        "og style upgrade: {path} -> {out} (version 3: {} dressing(s); its new tokens are derived, so make them the style's own: colors, typography, shape, elevation, motion, sounds)",
-        file.dressings.len()
+        "og style upgrade: {path} -> {out} (version 3; its new tokens are derived, so make them the style's own: colors, typography, shape, elevation, motion, sounds)"
     );
     Ok(())
 }
@@ -794,16 +794,15 @@ fn style_text(
     out.join("\n") + "\n"
 }
 
-/// A version 2 style file with its atlas, its parts' `slice` lines (in
-/// their `dress` blocks, made when missing) and its ornament regions
-/// replaced from the packed pieces.
+/// A version 2+ style file with its atlas, soft slice and ornament regions
+/// replaced from the packed pieces. Part styling belongs to CSS.
 fn style_text_v2(
     mut doc: og_core::ogt::Document,
     atlas_id: &str,
     pieces: &[Piece],
     size: (u32, u32),
 ) -> String {
-    use og_core::ogt::{Block, Entry, Number, Value};
+    use og_core::ogt::{Entry, Number, Value};
     let n = |v: u32| Value::Number(Number::from_f64(f64::from(v)).expect("finite"));
     let region = |p: &Piece| {
         vec![
@@ -831,39 +830,10 @@ fn style_text_v2(
                     None => body.push(e),
                 }
             }
-            (Some([l, t, r, b]), name) => {
-                // `capsule` is the HUD capsule's nine-patch.
-                let part =
-                    og_ui::StylePart::from_name(if name == "capsule" { "hud" } else { name })
-                        .expect("a nine-patch names a part");
-                let sel = part.selector().to_string();
-                let i = match body.entries.iter().position(|e| {
-                    e.key == "dress"
-                        && e.values.first().and_then(Value::as_str) == Some(sel.as_str())
-                }) {
-                    Some(i) => i,
-                    None => {
-                        body.push(
-                            Entry::new("dress")
-                                .with(Value::String(sel))
-                                .with_block(Block::new()),
-                        );
-                        body.entries.len() - 1
-                    }
-                };
-                let block = body.entries[i].block.get_or_insert_with(Block::new);
-                let mut e = Entry::new("slice");
-                e.values = region(p);
-                e.values.extend([n(l), n(t), n(r), n(b)]);
-                match block.entries.iter_mut().find(|e| e.key == "slice") {
-                    Some(old) => {
-                        // Its words (tint or authored, stretch, repeat or round) stay.
-                        e.values
-                            .extend(old.values.iter().filter(|v| v.as_word().is_some()).cloned());
-                        *old = e;
-                    }
-                    None => block.entries.insert(0, e),
-                }
+            (Some(_), name) => {
+                println!(
+                    "og style pack: {name} packed into the atlas without a part rule (part appearance belongs to CSS)"
+                );
             }
             (None, key @ ("corner" | "divider" | "flourish" | "crest" | "edge" | "tile")) => {
                 for e in body.entries.iter_mut().filter(|e| e.key == key) {

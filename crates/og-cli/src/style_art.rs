@@ -1,5 +1,5 @@
 //! `og style art <pack> [--art <dir>] [--check]`: a style pack's painted
-//! art, from the requests it writes to the atlases it packs (docs/art.md
+//! ornament art, from the requests it writes to the atlases it packs (docs/art.md
 //! §2.7, docs/ui.md §3.3).
 //!
 //! The command never paints and never reaches the network. It does three
@@ -7,35 +7,31 @@
 //!
 //! 1. **Requests.** It completes `<pack>/art-requests.json` (what `og style
 //!    new` writes) with what a fulfiller needs to paint each slot: the file
-//!    it drops (`art/<part>.png`), the cell's size in CSS px, the nine-slice
-//!    insets as fractions, the states a button sheet draws left to right,
-//!    the least pixels to deliver (the 3× atlas's), the dressings the art
-//!    goes to and a hash of the request. A value already in the file wins,
+//!    it drops (`art/<part>.png`), the cell's size in CSS px,
+//!    the least pixels to deliver (the 3× atlas's), and a hash of the request.
+//!    A value already in the file wins,
 //!    so a pack retunes a slot by editing it.
 //! 2. **Verification.** It reads what arrived in the art directory
 //!    (`<pack>/art/` unless `--art`): each slot's PNG and its entry in
 //!    `provenance.json` (who painted it, from which prompt and references,
 //!    for which request hash). Art without provenance is refused; art painted
 //!    for an older request is reported stale; a slot with no art yet keeps
-//!    the style's own dressing. `--check` stops here and fails on any of
+//!    the style's own ornament. `--check` stops here and fails on any of
 //!    them.
-//! 3. **Conversion and packing.** Each image is cut into its state cells,
-//!    trimmed to the art (one box for every cell, so the states stay
-//!    aligned), and resampled to the cell's size at 1×, 2× and 3× (Lanczos
+//! 3. **Conversion and packing.** Each image is trimmed to the art
+//!    and resampled to the cell's size at 1×, 2× and 3× (Lanczos
 //!    over premultiplied alpha; a pixel style takes the dominant colour of
-//!    each block at 1× and enlarges it by whole pixels). A button delivered
-//!    as one cell has its other states derived (lighter, darker, muted).
+//!    each block at 1× and enlarges it by whole pixels).
 //!    The pieces are shelved below the pack's own atlas as it was before
 //!    any art (`art/base.png`, kept on the first run), so no region the
 //!    style already cuts moves; `atlas.png`, `atlas@2x.png` and
 //!    `atlas@3x.png` share the layout at 1, 2 and 3 texels per CSS px. The
-//!    style's `atlas` line names the densities, each painted part's `dress`
-//!    block gets its `slice` (authored) and the `tone` of its centre, and an
+//!    style's `atlas` line names the densities and each
 //!    ornament line its region. `art/sheet.png` lays every piece out for
 //!    review and `art/report.json` says what was packed from what.
 
 use image::{Rgba, RgbaImage};
-use og_core::ogt::{Block, Document, Entry, Number, Value};
+use og_core::ogt::{Document, Entry, Number, Value};
 use serde_json::{Map, Value as Json, json};
 use std::path::{Path, PathBuf};
 
@@ -47,179 +43,51 @@ const DENSITIES: [u32; 3] = [1, 2, 3];
 /// CSS px between packed pieces at 1× (each piece's edge is extruded into it).
 const GAP: u32 = 2;
 
-/// The states of a button sheet, left to right (og-ui's `BUTTON_STATES`):
-/// the dressing qualifier each one goes to; `focused` is drawn by the
-/// style's focus ring, so its cell is read but not packed.
-const BUTTON_STATES: [(&str, Option<&str>); 5] = [
-    ("normal", Some("")),
-    ("hover", Some("[hover]")),
-    ("pressed", Some("[pressed]")),
-    ("disabled", Some("[disabled]")),
-    ("focused", None),
-];
-
-/// What a slot paints by default: its dressings (by state for a button) or
-/// an ornament line, its cell in CSS px and its insets in CSS px.
+/// The ornament line a slot paints and its default size in CSS px.
 struct Default {
     part: &'static str,
-    target: Target,
     size: [u32; 2],
-    insets: [u32; 4],
 }
 
-#[derive(Clone, Copy, PartialEq)]
-enum Target {
-    /// A nine-slice dressing (`Panel.frame`).
-    Frame(&'static str),
-    /// A button sheet: the dressing every state qualifies (`Button.base[secondary]`).
-    Button(&'static str),
-    /// An ornament line of the style (`corner`, `divider`, `flourish`).
-    Ornament(&'static str),
-    /// A widget's piece drawn whole in its box (a slider's thumb, a
-    /// switch's knob): painted on a clear ground like an ornament, packed
-    /// as its dressing's slice with one-px corners, so it scales as one.
-    Piece(&'static str),
-    /// A greyscale nine-slice tinted by its widget, requested explicitly.
-    Tinted(&'static str),
-}
-
-const DEFAULTS: [Default; 17] = [
-    Default {
-        part: "panel",
-        target: Target::Frame("Panel.frame"),
-        size: [96, 96],
-        insets: [24, 24, 24, 24],
-    },
-    Default {
-        part: "card",
-        target: Target::Frame("Card.frame"),
-        size: [96, 96],
-        insets: [20, 20, 20, 20],
-    },
-    Default {
-        part: "field",
-        target: Target::Frame("Field.frame"),
-        size: [96, 40],
-        insets: [12, 12, 12, 12],
-    },
-    Default {
-        part: "slot",
-        target: Target::Frame("Slot.frame"),
-        size: [64, 64],
-        insets: [16, 16, 16, 16],
-    },
-    Default {
-        part: "tooltip",
-        target: Target::Frame("Tooltip.frame"),
-        size: [64, 48],
-        insets: [12, 12, 12, 12],
-    },
-    Default {
-        part: "hud",
-        target: Target::Frame("Hud.frame"),
-        size: [64, 40],
-        insets: [14, 12, 14, 12],
-    },
-    // The plain button art dresses the secondary variant: the quiet and
-    // ghost ones stay bare, and a danger one keeps the style's colour.
-    Default {
-        part: "button",
-        target: Target::Button("Button.base[secondary]"),
-        size: [96, 44],
-        insets: [18, 14, 18, 14],
-    },
-    Default {
-        part: "button-primary",
-        target: Target::Button("Button.base[primary]"),
-        size: [96, 44],
-        insets: [18, 14, 18, 14],
-    },
+const DEFAULTS: [Default; 5] = [
     Default {
         part: "corner",
-        target: Target::Ornament("corner"),
         size: [32, 32],
-        insets: [0; 4],
     },
     Default {
         part: "divider",
-        target: Target::Ornament("divider"),
         size: [192, 16],
-        insets: [0; 4],
     },
     Default {
         part: "flourish",
-        target: Target::Ornament("flourish"),
         size: [64, 24],
-        insets: [0; 4],
     },
     Default {
         part: "crest",
-        target: Target::Ornament("crest"),
         size: [64, 32],
-        insets: [0; 4],
     },
     Default {
         part: "edge",
-        target: Target::Ornament("edge"),
         size: [16, 64],
-        insets: [0; 4],
-    },
-    // A slider's thumb and a switch's knob, on and off: a non-text graphic
-    // at 3:1 against its track and the panel, in its own colours (not the
-    // `knob` a segmented control's selected tab shares).
-    Default {
-        part: "thumb",
-        target: Target::Piece("Slider.knob"),
-        size: [24, 24],
-        insets: [1, 1, 1, 1],
-    },
-    Default {
-        part: "knob",
-        target: Target::Piece("Toggle.knob[on]"),
-        size: [24, 24],
-        insets: [1, 1, 1, 1],
-    },
-    Default {
-        part: "knob-off",
-        target: Target::Piece("Toggle.knob[off]"),
-        size: [24, 24],
-        insets: [1, 1, 1, 1],
-    },
-    Default {
-        part: "bar",
-        target: Target::Tinted("Meter.fill"),
-        size: [64, 16],
-        insets: [12, 4, 12, 4],
     },
 ];
 
 /// One slot of the requests, completed.
 struct Slot {
-    /// `fantasy/panel`.
+    /// `fantasy/corner`.
     name: String,
-    /// `panel`.
+    /// `corner`.
     part: String,
     file: String,
     size: [u32; 2],
-    /// Fractions of the cell: left, top, right, bottom (0 for an ornament).
-    insets: [f64; 4],
-    /// The dressings each state cell goes to (one for a frame, four for a
-    /// button) or the ornament line it sets.
-    target: Target,
-    /// Each cell's dressings: one painted cell may dress several parts
-    /// (a window's frame and a dialog's), packed once.
-    dress: Vec<(usize, Vec<String>)>,
     hash: String,
 }
 
 /// A converted slot: its cells at each density, ready to pack.
 struct Piece {
     slot: usize,
-    /// The dressings (or the ornament key) this cell goes to.
-    to: Vec<String>,
     /// The cell at 1×, 2× and 3×.
     images: [RgbaImage; 3],
-    insets: [u32; 4],
     at: (u32, u32),
 }
 
@@ -249,7 +117,7 @@ pub fn run(args: &[&str]) -> Result<(), String> {
         og_ui::read_style_doc(&style_text).map_err(|e| format!("{}: {e}", style_path.display()))?;
     if doc.version < 2 {
         return Err(format!(
-            "{} is a version 1 style: og style upgrade it first (painted art dresses parts by selector)",
+            "{} is a version 1 style: og style upgrade it first",
             style_path.display()
         ));
     }
@@ -283,7 +151,7 @@ pub fn run(args: &[&str]) -> Result<(), String> {
         Ok(t) => serde_json::from_str(&t).map_err(|e| format!("{}: {e}", req_path.display()))?,
         Err(_) => json!({}),
     };
-    let (requests, slots) = complete_requests(&old, &name, &doc)?;
+    let (requests, slots) = complete_requests(&old, &name, &doc);
     let text = serde_json::to_string_pretty(&requests).expect("json") + "\n";
     if !check && std::fs::read_to_string(&req_path).ok().as_deref() != Some(text.as_str()) {
         std::fs::write(&req_path, &text).map_err(|e| format!("{}: {e}", req_path.display()))?;
@@ -335,12 +203,12 @@ pub fn run(args: &[&str]) -> Result<(), String> {
     }
     for s in &stale {
         println!(
-            "og style art: {s} was painted for an older request (its size, insets, dressings or note changed): repaint it or update its provenance"
+            "og style art: {s} was painted for an older request (its size or note changed): repaint it or update its provenance"
         );
     }
     if !pending.is_empty() {
         println!(
-            "og style art: no art yet for {} (the style keeps its own dressing there)",
+            "og style art: no art yet for {} (the style keeps its own ornament there)",
             pending.join(", ")
         );
     }
@@ -372,62 +240,18 @@ pub fn run(args: &[&str]) -> Result<(), String> {
     for (k, img) in &arrived {
         let s = &slots[*k];
         let p = &provenance[&s.name];
-        let insets = p
-            .get("insets")
-            .and_then(Json::as_array)
-            .filter(|a| a.len() == 4)
-            .map(|a| {
-                let v: Vec<f64> = a.iter().filter_map(Json::as_f64).collect();
-                [v[0], v[1], v[2], v[3]]
-            })
-            .unwrap_or(s.insets);
-        let (cells, derived, size) = convert(s, img, pixel)?;
-        // The insets are the requested cell's (corners keep their CSS px
-        // when the art's middle is longer or shorter).
-        let px = |f: f64, len: u32| (f * f64::from(len)).round() as u32;
-        let mut ins = [
-            px(insets[0], s.size[0]),
-            px(insets[1], s.size[1]),
-            px(insets[2], s.size[0]),
-            px(insets[3], s.size[1]),
-        ];
-        if !matches!(s.target, Target::Ornament(_)) {
-            // A middle of at least one CSS px each way, corners of at least one.
-            for v in &mut ins {
-                *v = (*v).max(1);
-            }
-            ins[0] = ins[0].min(size[0].saturating_sub(3) / 2).max(1);
-            ins[1] = ins[1].min(size[1].saturating_sub(3) / 2).max(1);
-            ins[2] = ins[2].min(size[0].saturating_sub(ins[0] + 1)).max(1);
-            ins[3] = ins[3].min(size[1].saturating_sub(ins[1] + 1)).max(1);
-        }
-        let mut tos = Vec::new();
-        for (cell, images) in cells {
-            let Some(to) = s
-                .dress
-                .iter()
-                .find(|(c, _)| *c == cell)
-                .map(|(_, d)| d.clone())
-            else {
-                continue;
-            };
-            tos.extend(to.iter().cloned());
-            pieces.push(Piece {
-                slot: *k,
-                to,
-                images,
-                insets: ins,
-                at: (0, 0),
-            });
-        }
+        let (images, size) = convert(s, img, pixel)?;
+        pieces.push(Piece {
+            slot: *k,
+            images,
+            at: (0, 0),
+        });
         report.push(json!({
             "slot": s.name,
             "from": s.file,
             "source": [img.width(), img.height()],
             "size": size,
-            "insets": ins,
-            "to": tos,
-            "derived": derived,
+            "to": [s.part],
             "provenance": p,
         }));
     }
@@ -543,7 +367,7 @@ pub fn run(args: &[&str]) -> Result<(), String> {
 }
 
 /// The requests with every slot completed, and the slots this command packs.
-fn complete_requests(old: &Json, name: &str, doc: &Document) -> Result<(Json, Vec<Slot>), String> {
+fn complete_requests(old: &Json, name: &str, doc: &Document) -> (Json, Vec<Slot>) {
     let mut out = old.as_object().cloned().unwrap_or_default();
     out.entry("style").or_insert_with(|| json!(name));
     let shape = old["choices"]["shape"].as_str().unwrap_or("");
@@ -565,27 +389,14 @@ fn complete_requests(old: &Json, name: &str, doc: &Document) -> Result<(Json, Ve
     out.entry("palette")
         .or_insert_with(|| Json::Object(palette));
     let mut list: Vec<Json> = old["slots"].as_array().cloned().unwrap_or_default();
-    // Every default slot is requested, the ornaments only where the style
-    // draws one (a line of that key) or already asks for it.
+    // Only ornaments that the style draws or already requests are packed.
     for d in &DEFAULTS {
         let named = format!("{name}/{}", d.part);
-        let wanted = match d.target {
-            Target::Ornament(key) => {
-                doc.body.get(key).is_some() || list.iter().any(|s| s["name"] == named.as_str())
-            }
-            Target::Tinted(_) => list.iter().any(|s| s["name"] == named.as_str()),
-            _ => true,
-        };
+        let wanted = doc.body.get(d.part).is_some();
         if wanted && !list.iter().any(|s| s["name"] == named.as_str()) {
-            let kind = match d.target {
-                Target::Frame(_) | Target::Tinted(_) => "styleFrame",
-                Target::Button(_) => "styleButton",
-                Target::Ornament(_) | Target::Piece(_) => "ornament",
-            };
-            list.push(json!({ "name": named, "kind": kind }));
+            list.push(json!({ "name": named, "kind": "ornament" }));
         }
     }
-    let pill = shape == "pill";
     let mut slots = Vec::new();
     for s in list.iter_mut() {
         let Some(slot_name) = s["name"].as_str().map(str::to_string) else {
@@ -596,170 +407,30 @@ fn complete_requests(old: &Json, name: &str, doc: &Document) -> Result<(Json, Ve
             .next()
             .unwrap_or(&slot_name)
             .to_string();
-        // A pack can paint any selector; the historical slot names are
-        // only defaults. Non-UI asset requests have no `dress` mapping.
-        let custom = Default {
-            part: "",
-            target: match s["kind"].as_str() {
-                Some("styleButton") => Target::Button(""),
-                Some("ornament") => Target::Piece(""),
-                _ if s["tint"] == true => Target::Tinted(""),
-                _ => Target::Frame(""),
-            },
-            size: [64, 64],
-            insets: [1; 4],
-        };
-        let known = DEFAULTS.iter().find(|d| d.part == part);
-        if known.is_none() && s.get("dress").is_none() {
+        let Some(d) = DEFAULTS.iter().find(|d| d.part == part) else {
+            println!(
+                "og style art: {slot_name} skipped; only corner, divider, flourish, crest and edge ornaments are packed (part art belongs to CSS)"
+            );
             continue;
-        }
-        let d = known.unwrap_or(&custom);
-        if part.is_empty()
-            || !part
-                .bytes()
-                .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
-        {
-            return Err(format!(
-                "{slot_name}: an art part name uses letters, digits, '-' and '_'"
-            ));
-        }
-        if known.is_none()
-            && !s["size"].as_array().is_some_and(|a| {
-                a.len() == 2
-                    && a.iter()
-                        .all(|v| v.as_u64().is_some_and(|n| (1..=4096).contains(&n)))
-            })
-        {
-            return Err(format!(
-                "{slot_name}: a custom painted part declares size [width, height], each 1 to 4096"
-            ));
-        }
+        };
         let o = s.as_object_mut().expect("a slot is an object");
         // An ornament the style already cuts keeps its region's size, so the
         // size its line draws at keeps its proportions.
-        let region = match d.target {
-            Target::Ornament(key) => doc.body.get(key).and_then(|e| {
-                let n = |i: usize| e.values.get(i)?.as_number().map(|n| n.as_f64() as u32);
-                Some([n(2)?, n(3)?])
-            }),
-            _ => None,
-        };
+        let region = doc.body.get(d.part).and_then(|e| {
+            let n = |i: usize| e.values.get(i)?.as_number().map(|n| n.as_f64() as u32);
+            Some([n(2)?, n(3)?])
+        });
         let size = o
             .get("size")
             .and_then(Json::as_array)
             .and_then(|a| Some([a.first()?.as_u64()? as u32, a.get(1)?.as_u64()? as u32]))
             .or(region)
             .unwrap_or(d.size);
-        let mut px = d.insets;
-        if pill && matches!(d.target, Target::Button(_)) || pill && d.part == "field" {
-            px[0] = size[1] / 2;
-            px[2] = size[1] / 2;
-        }
-        let insets = o
-            .get("insets")
-            .and_then(Json::as_array)
-            .filter(|a| a.len() == 4)
-            .map(|a| {
-                let v: Vec<f64> = a.iter().map(|v| v.as_f64().unwrap_or(0.0)).collect();
-                [v[0], v[1], v[2], v[3]]
-            })
-            .unwrap_or_else(|| {
-                let f = |p: u32, l: u32| (f64::from(p) / f64::from(l) * 1000.0).round() / 1000.0;
-                [
-                    f(px[0], size[0]),
-                    f(px[1], size[1]),
-                    f(px[2], size[0]),
-                    f(px[3], size[1]),
-                ]
-            });
-        // A cell's dressing is a selector, or a list of the selectors it
-        // dresses alike; "" or [] leaves the cell unpacked.
-        let dress: Vec<(usize, Vec<String>)> = match o.get("dress").and_then(Json::as_array) {
-            Some(a) => a
-                .iter()
-                .enumerate()
-                .map(|(i, v)| {
-                    let sels: Vec<String> = match v {
-                        Json::Array(list) => list
-                            .iter()
-                            .map(|s| s.as_str().map(str::to_string))
-                            .collect::<Option<_>>()
-                            .ok_or_else(|| {
-                                format!("{slot_name}: dress cell {i} lists selectors as strings")
-                            })?,
-                        Json::String(s) => vec![s.clone()],
-                        _ => {
-                            return Err(format!(
-                                "{slot_name}: dress cell {i} is a selector or a list of them"
-                            ));
-                        }
-                    };
-                    Ok((i, sels.into_iter().filter(|s| !s.is_empty()).collect()))
-                })
-                .filter(|r: &Result<(usize, Vec<String>), String>| {
-                    r.as_ref().map_or(true, |(_, v)| !v.is_empty())
-                })
-                .collect::<Result<_, _>>()?,
-            None => match d.target {
-                Target::Frame(sel) | Target::Piece(sel) | Target::Tinted(sel) => {
-                    vec![(0, vec![sel.to_string()])]
-                }
-                Target::Button(sel) => BUTTON_STATES
-                    .iter()
-                    .enumerate()
-                    .filter_map(|(i, (_, q))| Some((i, vec![format!("{sel}{}", (*q)?)])))
-                    .collect(),
-                Target::Ornament(key) => vec![(0, vec![key.to_string()])],
-            },
-        };
-        let states: Vec<&str> = match d.target {
-            Target::Button(_) => BUTTON_STATES.iter().map(|(s, _)| *s).collect(),
-            _ => vec!["normal"],
-        };
-        if !matches!(d.target, Target::Ornament(_)) {
-            if dress.is_empty() {
-                return Err(format!(
-                    "{slot_name}: a painted part needs at least one dress selector"
-                ));
-            }
-            for (cell, selectors) in &dress {
-                for selector in selectors {
-                    og_ui::Selector::parse(selector).map_err(|e| format!("{slot_name}: {e}"))?;
-                }
-                if *cell >= states.len() {
-                    return Err(format!(
-                        "{slot_name}: dress has more cells than its kind supplies"
-                    ));
-                }
-            }
-        }
         let file = format!("art/{part}.png");
         o.insert("file".into(), json!(file));
         o.insert("size".into(), json!(size));
-        // A piece is painted whole: its brief carries no nine-slice.
-        if matches!(
-            d.target,
-            Target::Frame(_) | Target::Button(_) | Target::Tinted(_)
-        ) {
-            o.insert("insets".into(), json!(insets));
-        }
-        o.insert("states".into(), json!(states));
-        o.insert(
-            "pixels".into(),
-            json!([size[0] * 3 * states.len() as u32, size[1] * 3]),
-        );
-        // The dressings a sheet's cells go to, left to right ("" for a
-        // cell read but not packed: a button's focused one).
-        let mut by_cell = vec![json!(""); states.len()];
-        for (c, sels) in &dress {
-            if let Some(v) = by_cell.get_mut(*c) {
-                *v = match sels.as_slice() {
-                    [one] => json!(one),
-                    many => json!(many),
-                };
-            }
-        }
-        o.insert("dress".into(), json!(by_cell));
+        o.insert("states".into(), json!(["normal"]));
+        o.insert("pixels".into(), json!([size[0] * 3, size[1] * 3]));
         o.remove("hash");
         let hash = format!(
             "{:016x}",
@@ -771,14 +442,11 @@ fn complete_requests(old: &Json, name: &str, doc: &Document) -> Result<(Json, Ve
             part,
             file,
             size,
-            insets,
-            target: d.target,
-            dress,
             hash,
         });
     }
     out.insert("slots".into(), Json::Array(list));
-    Ok((Json::Object(out), slots))
+    (Json::Object(out), slots)
 }
 
 fn load(path: &Path) -> Result<RgbaImage, String> {
@@ -787,55 +455,18 @@ fn load(path: &Path) -> Result<RgbaImage, String> {
         .map_err(|e| format!("{}: {e}", path.display()))
 }
 
-/// The slot's cells at each density, by cell index, the states derived (a
-/// button delivered as one cell) and the cell's size in CSS px.
-#[allow(clippy::type_complexity)]
-fn convert(
-    s: &Slot,
-    img: &RgbaImage,
-    pixel: bool,
-) -> Result<(Vec<(usize, [RgbaImage; 3])>, Vec<&'static str>, [u32; 2]), String> {
-    let states = match s.target {
-        Target::Button(_) => BUTTON_STATES.len() as u32,
-        _ => 1,
-    };
+/// The ornament at each density and its size in CSS px.
+fn convert(s: &Slot, img: &RgbaImage, pixel: bool) -> Result<([RgbaImage; 3], [u32; 2]), String> {
     let cell_aspect = f64::from(s.size[0]) / f64::from(s.size[1]);
-    let aspect = f64::from(img.width()) / f64::from(img.height());
-    // A sheet is as many cells as states, side by side; a single cell is
-    // read as the normal state.
-    let n = if states > 1 && (aspect / (cell_aspect * f64::from(states)) - 1.0).abs() < 0.35 {
-        states
-    } else {
-        1
-    };
-    let cw = img.width() / n;
-    let cells: Vec<RgbaImage> = (0..n)
-        .map(|c| image::imageops::crop_imm(img, c * cw, 0, cw, img.height()).to_image())
-        .collect();
-    // One trim box for every cell, so the states keep their places.
-    let mut bbox: Option<(u32, u32, u32, u32)> = None;
-    for c in &cells {
-        if let Some(b) = alpha_box(c) {
-            bbox = Some(match bbox {
-                None => b,
-                Some(a) => (a.0.min(b.0), a.1.min(b.1), a.2.max(b.2), a.3.max(b.3)),
-            });
-        }
-    }
     let (x0, y0, x1, y1) =
-        bbox.ok_or_else(|| format!("{}: the art is fully transparent", s.file))?;
-    let trimmed: Vec<RgbaImage> = cells
-        .iter()
-        .map(|c| image::imageops::crop_imm(c, x0, y0, x1 - x0, y1 - y0).to_image())
-        .collect();
-    // The art keeps its own proportions: a nine-slice keeps its corners'
-    // CSS px and its middle takes the difference, along the side it is
-    // longer on; an ornament fits inside its box.
+        alpha_box(img).ok_or_else(|| format!("{}: the art is fully transparent", s.file))?;
+    let trimmed = image::imageops::crop_imm(img, x0, y0, x1 - x0, y1 - y0).to_image();
+    // The ornament fits inside its box, keeping its proportions.
     let got = f64::from(x1 - x0) / f64::from(y1 - y0);
     let [w, h] = s.size;
     let size = if (got / cell_aspect - 1.0).abs() <= 0.12 {
         s.size
-    } else if matches!(s.target, Target::Ornament(_) | Target::Piece(_)) == (got > cell_aspect) {
+    } else if got > cell_aspect {
         [w, ((f64::from(w) / got).round() as u32).max(1)]
     } else {
         [((f64::from(h) * got).round() as u32).max(1), h]
@@ -846,20 +477,7 @@ fn convert(
             s.name, got, cell_aspect, size[0], size[1]
         );
     }
-    let mut out = Vec::new();
-    for (i, c) in trimmed.iter().enumerate() {
-        out.push((i, densities(c, size, pixel)));
-    }
-    let mut derived = Vec::new();
-    if states > 1 && n == 1 {
-        let base = out[0].1.clone();
-        for (i, (state, _)) in BUTTON_STATES.iter().enumerate().skip(1) {
-            let f = |img: &RgbaImage| derive(img, state);
-            out.push((i, [f(&base[0]), f(&base[1]), f(&base[2])]));
-            derived.push(*state);
-        }
-    }
-    Ok((out, derived, size))
+    Ok((densities(&trimmed, size, pixel), size))
 }
 
 /// The box of pixels above a faint alpha: x0, y0, x1, y1 (exclusive).
@@ -976,31 +594,6 @@ fn scale_up(img: &RgbaImage, k: u32, pixel: bool) -> RgbaImage {
     smooth(img, img.width() * k, img.height() * k)
 }
 
-/// A button state from its normal cell: hover lighter, pressed darker,
-/// disabled muted, focused as it is (the ring is the style's).
-fn derive(img: &RgbaImage, state: &str) -> RgbaImage {
-    let mut out = img.clone();
-    for p in out.pixels_mut() {
-        let [r, g, b, a] = p.0.map(f32::from);
-        let (r, g, b) = match state {
-            "hover" => (
-                r + (255.0 - r) * 0.14,
-                g + (255.0 - g) * 0.14,
-                b + (255.0 - b) * 0.14,
-            ),
-            "pressed" => (r * 0.8, g * 0.8, b * 0.8),
-            "disabled" => {
-                let l = 0.299 * r + 0.587 * g + 0.114 * b;
-                let m = |v: f32| (v + (l - v) * 0.75) * 0.85;
-                (m(r), m(g), m(b))
-            }
-            _ => (r, g, b),
-        };
-        *p = Rgba([r, g, b, a].map(|v| v.round().clamp(0.0, 255.0) as u8));
-    }
-    out
-}
-
 /// Places pieces of the given sizes on shelves, tallest first, in an atlas
 /// at least `min_width` wide (the next power of two over the square of
 /// their area): each piece's place and the shelves' size.
@@ -1046,54 +639,11 @@ fn put(atlas: &mut RgbaImage, img: &RgbaImage, at: (u32, u32), e: u32) {
     }
 }
 
-/// The mean of a piece's centre (the middle half of what lies between its
-/// insets) in linear light over its coverage, and its mean alpha: the
-/// `tone` a widget reads its label ink against.
-fn tone(img: &RgbaImage, insets: [u32; 4]) -> [f32; 4] {
-    let lin = |v: f32| {
-        if v <= 0.04045 {
-            v / 12.92
-        } else {
-            ((v + 0.055) / 1.055).powf(2.4)
-        }
-    };
-    let (w, h) = img.dimensions();
-    let (x0, y0) = (insets[0].min(w - 1), insets[1].min(h - 1));
-    let (x1, y1) = (
-        w.saturating_sub(insets[2]).max(x0 + 1),
-        h.saturating_sub(insets[3]).max(y0 + 1),
-    );
-    // The central half of the middle, each way: where a label sits, not the
-    // bevels and shading along the middle's own edges.
-    let (qx, qy) = ((x1 - x0) / 4, (y1 - y0) / 4);
-    let (x0, y0, x1, y1) = (
-        x0 + qx,
-        y0 + qy,
-        (x1 - qx).max(x0 + qx + 1),
-        (y1 - qy).max(y0 + qy + 1),
-    );
-    let (mut rgb, mut alpha, mut n) = ([0.0f64; 3], 0.0f64, 0.0f64);
-    for y in y0..y1 {
-        for x in x0..x1 {
-            let p = img.get_pixel(x, y).0;
-            let a = f64::from(p[3]) / 255.0;
-            for k in 0..3 {
-                rgb[k] += f64::from(lin(f32::from(p[k]) / 255.0)) * a;
-            }
-            alpha += a;
-            n += 1.0;
-        }
-    }
-    let c = rgb.map(|v| (v / alpha.max(1e-6)) as f32);
-    [c[0], c[1], c[2], (alpha / n.max(1.0)) as f32]
-}
-
 fn num(v: f64) -> Value {
     Value::Number(Number::from_f64(v).expect("finite"))
 }
 
-/// The style file with its atlas line naming the densities, each painted
-/// dressing's slice and tone, and each painted ornament's region.
+/// The style file with its atlas densities and painted ornament regions.
 fn packed_style(mut doc: Document, pieces: &[Piece], slots: &[Slot], size: (u32, u32)) -> String {
     let body = &mut doc.body;
     let mut atlas = Entry::new("atlas");
@@ -1113,91 +663,37 @@ fn packed_style(mut doc: Document, pieces: &[Piece], slots: &[Slot], size: (u32,
         [p.at.0, p.at.1, w, h].map(|v| num(f64::from(v)))
     };
     for p in pieces {
-        match slots[p.slot].target {
-            Target::Ornament(key) => {
-                let (w, h) = p.images[0].dimensions();
-                match body.entries.iter_mut().find(|e| e.key == key) {
-                    Some(e) => {
-                        // The size it draws at keeps the scale it had to its region,
-                        // in the new region's proportions.
-                        let n = |i: usize| {
-                            e.values
-                                .get(i)
-                                .and_then(Value::as_number)
-                                .map(Number::as_f64)
-                        };
-                        let mut rest: Vec<Value> = e.values.iter().skip(4).cloned().collect();
-                        if let (Some(rw), Some(rh), Some(dw), Some(dh)) = (n(2), n(3), n(4), n(5)) {
-                            let k = (dw / rw).min(dh / rh);
-                            let r = |v: u32| num((f64::from(v) * k * 10.0).round() / 10.0);
-                            rest[0] = r(w);
-                            rest[1] = r(h);
-                        }
-                        e.values = region(p).to_vec();
-                        e.values.extend(rest);
-                    }
-                    None => {
-                        let mut e = Entry::new(key);
-                        e.values = region(p).to_vec();
-                        e.values.extend([
-                            num(f64::from(w)),
-                            num(f64::from(h)),
-                            Value::Word("authored".into()),
-                        ]);
-                        body.push(e);
-                    }
+        let key = &slots[p.slot].part;
+        let (w, h) = p.images[0].dimensions();
+        match body.entries.iter_mut().find(|e| &e.key == key) {
+            Some(e) => {
+                // The size it draws at keeps the scale it had to its region,
+                // in the new region's proportions.
+                let n = |i: usize| {
+                    e.values
+                        .get(i)
+                        .and_then(Value::as_number)
+                        .map(Number::as_f64)
+                };
+                let mut rest: Vec<Value> = e.values.iter().skip(4).cloned().collect();
+                if let (Some(rw), Some(rh), Some(dw), Some(dh)) = (n(2), n(3), n(4), n(5)) {
+                    let k = (dw / rw).min(dh / rh);
+                    let r = |v: u32| num((f64::from(v) * k * 10.0).round() / 10.0);
+                    rest[0] = r(w);
+                    rest[1] = r(h);
                 }
+                e.values = region(p).to_vec();
+                e.values.extend(rest);
             }
-            Target::Frame(_) | Target::Button(_) | Target::Piece(_) | Target::Tinted(_) => {
-                for to in &p.to {
-                    let i = match body.entries.iter().position(|e| {
-                        e.key == "dress" && e.values.first().and_then(Value::as_str) == Some(to)
-                    }) {
-                        Some(i) => i,
-                        None => {
-                            body.push(
-                                Entry::new("dress")
-                                    .with(Value::String(to.clone()))
-                                    .with_block(Block::new()),
-                            );
-                            body.entries.len() - 1
-                        }
-                    };
-                    let block = body.entries[i].block.get_or_insert_with(Block::new);
-                    let mut slice = Entry::new("slice");
-                    slice.values = region(p).to_vec();
-                    slice.values.extend(p.insets.map(|v| num(f64::from(v))));
-                    let tint = matches!(slots[p.slot].target, Target::Tinted(_));
-                    slice
-                        .values
-                        .push(Value::Word(if tint { "tint" } else { "authored" }.into()));
-                    // Its fill words (stretch, repeat, round) stay; painted art is authored.
-                    if let Some(old) = block.entries.iter().find(|e| e.key == "slice") {
-                        slice.values.extend(
-                            old.values
-                                .iter()
-                                .filter(|v| {
-                                    matches!(v.as_word(), Some("stretch" | "repeat" | "round"))
-                                })
-                                .cloned(),
-                        );
-                    }
-                    let t = tone(&p.images[0], p.insets);
-                    let mut tone_e = Entry::new("tone");
-                    tone_e.values = t
-                        .iter()
-                        .enumerate()
-                        .map(|(k, v)| {
-                            let d = if k == 3 { 100.0 } else { 1000.0 };
-                            num((f64::from(*v) * d).round() / d)
-                        })
-                        .collect();
-                    block
-                        .entries
-                        .retain(|e| e.key != "slice" && e.key != "tone");
-                    block.entries.insert(0, tone_e);
-                    block.entries.insert(0, slice);
-                }
+            None => {
+                let mut e = Entry::new(key);
+                e.values = region(p).to_vec();
+                e.values.extend([
+                    num(f64::from(w)),
+                    num(f64::from(h)),
+                    Value::Word("authored".into()),
+                ]);
+                body.push(e);
             }
         }
     }

@@ -14,71 +14,6 @@ pub(super) fn style_atlas(id: &str, root: &Path) -> Option<Vec<u8>> {
     }
 }
 
-/// `tone` lines for the tinted frames of a style that sets none: the mean
-/// of each frame's centre in the atlas, linear grey (premultiplied, over
-/// its coverage) and alpha, where it is not white and opaque.
-fn style_tones(file: &og_ui::StyleFile, root: &Path) -> Vec<String> {
-    let Some(img) = file
-        .atlas
-        .as_deref()
-        .and_then(|id| style_atlas(crate::runtime::asset_id(id), root))
-        .and_then(|b| image::load_from_memory(&b).ok())
-        .map(|i| i.to_rgba8())
-    else {
-        return Vec::new();
-    };
-    let mut out = Vec::new();
-    for part in og_ui::style_file::StylePart::ALL {
-        let Some(sl) = file.theme.art.slices[part.index()] else {
-            continue;
-        };
-        if sl.tone != og_ui::style_file::Slice::WHITE {
-            continue;
-        }
-        let t = slice_tone(&img, &sl);
-        if t.iter().any(|v| *v < 0.98) {
-            // A version 2 style's tone is a line of its part's dressing.
-            out.push(file.tone_text(part, t));
-        }
-    }
-    out
-}
-
-/// The mean of a slice's centre in `img`: linear RGB over its coverage
-/// (premultiplied, then divided by the mean alpha) and the mean alpha.
-pub fn slice_tone(img: &image::RgbaImage, sl: &og_ui::style_file::Slice) -> [f32; 4] {
-    let (w, h) = (img.width() as f32, img.height() as f32);
-    let lin = |v: f32| {
-        if v <= 0.04045 {
-            v / 12.92
-        } else {
-            ((v + 0.055) / 1.055).powf(2.4)
-        }
-    };
-    let (u0, v0) = (sl.uv[0] + sl.border_uv[0], sl.uv[1] + sl.border_uv[1]);
-    let (u1, v1) = (sl.uv[2] - sl.border_uv[2], sl.uv[3] - sl.border_uv[3]);
-    let (x0, y0) = ((u0 * w).round() as u32, (v0 * h).round() as u32);
-    let x1 = ((u1 * w).round() as u32).max(x0 + 1).min(img.width());
-    let y1 = ((v1 * h).round() as u32).max(y0 + 1).min(img.height());
-    let (mut rgb, mut alpha, mut n) = ([0.0f64; 3], 0.0f64, 0.0f64);
-    for y in y0..y1 {
-        for x in x0..x1 {
-            let p = img.get_pixel(x, y).0;
-            let a = f64::from(p[3]) / 255.0;
-            for k in 0..3 {
-                rgb[k] += f64::from(lin(f32::from(p[k]) / 255.0)) * a;
-            }
-            alpha += a;
-            n += 1.0;
-        }
-    }
-    if n == 0.0 {
-        return og_ui::style_file::Slice::WHITE;
-    }
-    let c = rgb.map(|v| (v / alpha.max(1e-6)) as f32);
-    [c[0], c[1], c[2], (alpha / n) as f32]
-}
-
 pub(super) fn run(
     p: &Planned,
     options: &CookOptions,
@@ -457,31 +392,10 @@ pub(super) fn run(
                     missing.join(", ")
                 )));
             }
-            // Each tinted frame's centre as the atlas draws it, for a style
-            // that did not measure it (og-ui picks button label ink by it).
-            let tones = style_tones(&file, &assets_root(s));
-            // Its painted art recoloured to the palette: the cooked style
-            // draws the recoloured atlas the cook writes beside it.
+            // Ornament art recoloured to the palette uses the cooked atlas.
             let recoloured = (!super::style_recolour::atlases(s, known).is_empty())
-                .then_some(file.atlas.as_deref())
-                .flatten()
-                .and_then(|id| style_atlas(crate::runtime::asset_id(id), &assets_root(s)))
-                .and_then(|b| image::load_from_memory(&b).ok())
-                .map(|i| {
-                    let img =
-                        super::style_recolour::recolour(&i.to_rgba8(), &file.recolour_regions(), 1);
-                    super::style_recolour::cooked_text(text, &s.rel, &file, &img)
-                });
+                .then(|| super::style_recolour::cooked_text(text, &s.rel));
             let text = recoloured.as_deref().unwrap_or(text);
-            let text = if tones.is_empty() {
-                text.to_string()
-            } else {
-                format!(
-                    "{text}\n# Measured by og cook from the atlas (each tinted frame's centre).\n{}\n",
-                    tones.join("\n")
-                )
-            };
-            let text = text.as_str();
             let mut w = og_blob::BlobWriter::new(
                 format::Style::type_hash(),
                 format::Style::schema_version(),
@@ -499,10 +413,8 @@ pub(super) fn run(
             Ok((
                 w.finish(),
                 vec![format!(
-                    "style '{}' version {}, {parts} frame(s), {} dressing(s)",
-                    file.name,
-                    file.version,
-                    file.dressings.len()
+                    "style '{}' version {}, {parts} frame(s)",
+                    file.name, file.version,
                 )],
             ))
         }
@@ -538,7 +450,7 @@ pub(super) fn run(
             let img = image::load_from_memory(&bytes)
                 .map_err(|e| CookError(format!("{id}: {e}")))?
                 .to_rgba8();
-            let regions = file.recolour_regions();
+            let regions = super::style_recolour::regions(&file);
             let img = super::style_recolour::recolour(&img, &regions, *density);
             let note = format!(
                 "{}x{} {id} recoloured to the palette ({} regions)",

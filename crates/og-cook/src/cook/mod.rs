@@ -79,7 +79,6 @@ mod options;
 mod report;
 mod scan;
 
-pub use execute::slice_tone;
 use execute::{read_sibling, run, style_atlas};
 pub use options::{CookOptions, FontSettings, MeshOptions, Palette, TextureOptions};
 use options::{
