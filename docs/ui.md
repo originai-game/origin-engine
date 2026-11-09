@@ -122,7 +122,10 @@ code in the tick.
   expressions, and `interface` and `type` declarations, which are erased.
   A prop's type is its default's (`any` without one) unless a `<meta
   name="prop:…">` states it; a component user who leaves a prop out reads
-  its default, and the generated `.d.ts` marks it optional. Derived values
+  its default, and the generated `.d.ts` marks it optional. A declared
+  prop with no default is required: a mount whose document, or a
+  component it uses, leaves one out returns an error naming the instance
+  and the prop, instead of mounting nothing. Derived values
   are names for their expressions, replaced where read. Anything else
   (`$state`, `$effect`, imports, functions, other statements) is refused:
   state and logic live in a TS system that writes the stores.

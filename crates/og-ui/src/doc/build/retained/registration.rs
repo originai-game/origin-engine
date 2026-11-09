@@ -21,6 +21,7 @@ impl Ui {
         if !self.docs.docs.contains_key(&document) {
             return Err(format!("missing document '{document}'"));
         }
+        super::content::check_instances(&self.docs.docs, &document)?;
         for reference in content.values() {
             let name = reference
                 .split_once('#')

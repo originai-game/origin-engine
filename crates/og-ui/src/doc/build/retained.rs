@@ -2109,6 +2109,7 @@ impl Ui {
             .get(document)
             .cloned()
             .ok_or_else(|| format!("missing document '{document}'"))?;
+        content::check_instances(&self.docs.docs, document)?;
         // Every mount reads the engine's `$ui` unless it binds its own.
         let mut inputs = inputs;
         if !inputs.contains_key("ui") {
@@ -2371,6 +2372,82 @@ mod tests {
                 .unwrap();
         }
         assert_eq!(texts(&mut ui), ["Empty=none", "Inner=0", "Outer=0"]);
+    }
+
+    /// A mount whose document uses a component without a prop that
+    /// component declares with no default returns the error, naming the
+    /// instance and the prop, instead of returning ok and building nothing
+    /// (the bound name was unbound, and the deferred compile's error went
+    /// only to the warnings). A prop with a `$props()` default may be left
+    /// out and reads its default.
+    ///
+    /// Ways it could fail: only the page's own instances checked (a
+    /// component inside a component still mounts nothing), the check run
+    /// only on the immediate `mount_document` (the host's `scope.mount`
+    /// registers and still returns ok), or a defaulted prop refused.
+    #[test]
+    fn a_mount_refuses_an_instance_that_leaves_out_a_declared_prop() {
+        let mut ui = Ui::new(UiDesc::default());
+        for (file, text) in [
+            (
+                "card.svelte",
+                r#"<meta name="component" content="Card">
+            <meta name="prop:title" content="string">
+            <meta name="prop:orientation" content="string">
+            <column class:h={orientation == "horizontal"}><text id="Title">{title}</text></column>"#,
+            ),
+            (
+                "tag.svelte",
+                r#"<script lang="ts">let { label = 'plain' }: { label?: string } = $props();</script>
+            <meta name="component" content="Tag">
+            <meta name="prop:label" content="string">
+            <text id="Tag">{label}</text>"#,
+            ),
+            (
+                "row.svelte",
+                r#"<meta name="component" content="Row">
+            <row><Card title="hi" /><Tag /></row>"#,
+            ),
+            (
+                "page.svelte",
+                r#"<meta name="component" content="page">
+            <column><Row /></column>"#,
+            ),
+            (
+                "fixed.svelte",
+                r#"<meta name="component" content="fixed">
+            <column><Card title="hi" orientation="vertical" /><Tag /></column>"#,
+            ),
+        ] {
+            ui.define_document(UiDocument::parse(file, text).unwrap());
+        }
+        let mount = |ui: &mut Ui, document: &str| {
+            ui.register_document_mount(
+                SourceId::new("test", document),
+                document.into(),
+                BTreeMap::new(),
+                BTreeMap::new(),
+            )
+        };
+        let error = mount(&mut ui, "page").unwrap_err();
+        assert!(
+            error.starts_with("row.svelte:2: <Card> leaves out its prop 'orientation'"),
+            "{error}"
+        );
+        assert!(ui.docs.retained.registrations.is_empty());
+
+        mount(&mut ui, "fixed").unwrap();
+        ui.begin(InputFrame::default(), Viewport::new(400.0, 300.0));
+        ui.build_retained_documents(&crate::bind::NoEnv).unwrap();
+        ui.end();
+        let mut texts: Vec<String> = ui
+            .probe_elements()
+            .into_iter()
+            .filter(|n| !n.text.is_empty())
+            .map(|n| n.text)
+            .collect();
+        texts.sort();
+        assert_eq!(texts, ["hi", "plain"]);
     }
 
     #[test]

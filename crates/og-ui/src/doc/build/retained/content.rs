@@ -32,6 +32,7 @@ impl RetainedHost {
                 doc.source, node.line
             )
         })?;
+        unpassed(&doc, index, &instance)?;
         let user = Arc::new(context.clone());
         let mut lexical = Lexical::default();
         for (name, value, _) in &node.args {
@@ -186,6 +187,55 @@ impl RetainedHost {
             doc.source, doc.nodes[index].line
         ))
     }
+}
+
+/// An instance at `doc.nodes[index]` that leaves out a prop `instance`
+/// declares with no default (`let { orientation = "vertical" } = $props()`)
+/// is refused: the prop would be unbound, and the document built nothing.
+/// Content props are passed as snippets and children, not arguments.
+fn unpassed(doc: &UiDocument, index: usize, instance: &UiDocument) -> Result<(), String> {
+    let node = &doc.nodes[index];
+    let missing = instance.props.iter().find(|p| {
+        p.default.is_none()
+            && p.ty != "content"
+            && !node.args.iter().any(|(name, ..)| *name == p.name)
+    });
+    match missing {
+        Some(p) => Err(format!(
+            "{}:{}: <{}> leaves out its prop '{}'; pass it, or give it a default in the component (`let {{ {} = … }} = $props()`)",
+            doc.source, node.line, instance.name, p.name, p.name
+        )),
+        None => Ok(()),
+    }
+}
+
+/// Every component instance `document` builds, through the components it
+/// uses, passes each prop with no default: checked when the document is
+/// mounted, so a mount that would build nothing returns the error.
+/// Components not loaded yet are checked when they compile.
+pub(crate) fn check_instances(
+    docs: &BTreeMap<String, Arc<UiDocument>>,
+    document: &str,
+) -> Result<(), String> {
+    let mut seen = BTreeSet::new();
+    let mut queue = vec![document.to_string()];
+    while let Some(name) = queue.pop() {
+        if !seen.insert(name.clone()) {
+            continue;
+        }
+        let Some(doc) = docs.get(&name) else {
+            continue;
+        };
+        for (index, node) in doc.nodes.iter().enumerate() {
+            if let NodeKind::Use(component) = &node.kind
+                && let Some(instance) = docs.get(component)
+            {
+                unpassed(doc, index, instance)?;
+                queue.push(component.clone());
+            }
+        }
+    }
+    Ok(())
 }
 
 /// The content a mount is given, by name: `document` (its root) or
