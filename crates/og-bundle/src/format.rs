@@ -23,7 +23,7 @@
 //! | sound (`og.Sound`; a `.wav`, `.mp3`, `.ogg` (Vorbis), `.flac` or `.opus`, or a procedural preset: an `.ogt` of `type sfx` synthesised by the cook) | [`SoundMeta`] | `qoa` (`codec` QOA: a QOA file; of a sound cooked in chunks, the header and the first chunk's frames) or `opus` (`codec` Opus: an Opus sound, `crate::opus`) |
 //! | sound chunk (`og.SoundChunk`, `<id>#chunk<n>` of a sound cooked in chunks) | [`SoundChunkMeta`] | `qoa` (the chunk's QOA frames) |
 //! | font (`og.Font`) | [`FontMeta`] | `glyphs` [`GlyphRow`], `kerning` [`KernRow`] (sorted by left, right), `atlas.<n>` (KTX2 RGBA8, zlib), `ttf` (the font file, when shaped or `runtime`) |
-//! | scene (`og.Scene`) | [`SceneMeta`] | `entities` [`EntityRow`], `refs` [`RefRow`], `components` [`ComponentRow`], `strings`, per component `c.<Type>` rows and `s.<Type>` its schema JSON; when an entity was placed from a prefab, `prefabs` [`PrefabRow`] and `prefab_refs` [`RefRow`]; when one places a sub-scene, `subscenes` [`SubsceneRow`] and `subscene_refs` [`RefRow`]. A prefab (an `.ogt` of `type prefab`) cooks to one too, flattened |
+//! | scene (`og.Scene`) | [`SceneMeta`] | `entities` [`EntityRow`], `refs` [`RefRow`], `components` [`ComponentRow`], `strings`, per component `c.<Type>` rows and `s.<Type>` its schema JSON; when an entity was placed from a prefab, `prefabs` [`PrefabRow`] and `prefab_refs` [`RefRow`]; when one places a sub-scene, `subscenes` [`SubsceneRow`] and `subscene_refs` [`RefRow`]; outside a publish cook, `lines` [`SceneLineRow`]. A prefab (an `.ogt` of `type prefab`) cooks to one too, flattened |
 //! | colour LUT (`og.Lut`, a `.cube`) | [`LutMeta`] | `rgba` (size³ RGBA8, red fastest) |
 //! | particle emitter (`og.ParticleEmitter`, an `.ogt` of `type particles`) | [`EmitterMeta`] | `text` (the validated emitter file) |
 //! | effect material (`og.EffectMaterial`, an `.ogt` of `type effect`) | [`EffectMeta`] | `text` (the validated effect file) |
@@ -56,7 +56,7 @@ use og_core::{Reflect, Schema};
 
 /// Changes whenever the bytes the cook writes for the same input change.
 /// Part of every cook stamp, so a new cooker re-cooks everything.
-pub const COOKER_VERSION: &str = concat!("og-cook ", env!("CARGO_PKG_VERSION"), " r14");
+pub const COOKER_VERSION: &str = concat!("og-cook ", env!("CARGO_PKG_VERSION"), " r15");
 
 /// "None" in a u32 index field.
 pub const NONE: u32 = u32::MAX;

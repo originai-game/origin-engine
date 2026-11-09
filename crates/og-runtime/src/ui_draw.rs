@@ -39,6 +39,10 @@ impl og_probe::UiTree for MaterialProbe {
         self.ui.style(world)
     }
 
+    fn screens(&self, world: &og_ecs::World) -> Vec<String> {
+        self.ui.screens(world)
+    }
+
     fn extra(&self, world: &og_ecs::World) -> Option<serde_json::Map<String, Value>> {
         let mut extra = self.ui.extra(world).unwrap_or_default();
         let render = self.render.borrow();

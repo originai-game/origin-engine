@@ -14,6 +14,7 @@ import type { Dispatcher, HostAbi } from "./generated/abi.ts";
 import { SYMBOLS, checkEntities } from "./generated/abi.ts";
 import { noPlatform, type PlatformAnswer, type PlatformCall, type PlatformHost, type PlatformLink, type PlatformNotice } from "./platform-local.ts";
 import { UiReactor } from "./ui/reactive.ts";
+import { spawnSite } from "./spawn-site.ts";
 
 // ── host binding ──────────────────────────────────────────────────────────
 
@@ -372,6 +373,10 @@ export interface SaveMigrationIn {
 const gameMigrations = new WeakMap<object, readonly SaveMigrationIn[]>();
 /** The game an engine runs, for its world's restores. */
 const engineGames = new Map<number, object>();
+/** Each engine's CreateOptions.root: the project a spawn's source is relative to. */
+const engineRoots = new Map<number, string>();
+/** The root of the engine being created: GameDesc.start (and the boot scene's hooks) spawn before its id is known. */
+let creatingRoot: string | undefined;
 
 /** The og.game() token engine `id` runs (og.assert reads its game's sites by it). */
 export function engineGame(id: number): object | undefined {
@@ -1130,6 +1135,11 @@ export class WorldImpl {
   }
 
   spawn(desc?: unknown): Result<number> {
+    // SpawnDesc.source: the game's line that called spawn, outside a publish build (spawn-site.ts).
+    if (publishBuild !== true && (desc == null || (typeof desc === "object" && !(desc as { source?: unknown }).source))) {
+      const source = spawnSite(engineRoots.get(this.id) ?? creatingRoot);
+      if (source !== null) desc = { ...(desc as object | undefined), source };
+    }
     return structural(parse(abi().og_world_spawn(this.id, json(desc))));
   }
 
@@ -1761,6 +1771,7 @@ export class Engine {
     engines.delete(this.id);
     worlds.delete(this.id);
     engineGames.delete(this.id);
+    engineRoots.delete(this.id);
     forgetRecords(this.id);
     return abi().og_engine_destroy(this.id);
   }
@@ -1770,10 +1781,17 @@ export class Engine {
 export function createEngine(game: GameToken, options: CreateOptions = {}): Result<Engine> {
   const handle = gameHandles.get(game);
   if (handle === undefined) return refused("not a game: pass the bundle's default export, the result of og.game()");
-  const answer = parse<Result<number>>(abi().og_engine_create(handle, JSON.stringify(options)));
+  creatingRoot = options.root;
+  let answer: Result<number>;
+  try {
+    answer = parse<Result<number>>(abi().og_engine_create(handle, JSON.stringify(options)));
+  } finally {
+    creatingRoot = undefined;
+  }
   if (!answer.ok) return answer;
   forgetRecords(answer.value);
   engineGames.set(answer.value, game);
+  if (options.root !== undefined) engineRoots.set(answer.value, options.root);
   return { ok: true, value: new Engine(answer.value, game) };
 }
 

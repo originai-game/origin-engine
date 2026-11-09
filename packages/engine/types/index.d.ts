@@ -1392,6 +1392,12 @@ export interface SpawnDesc {
    * @default false
    */
   readonly bare?: boolean;
+  /**
+   * Where a person would change it (`src/enemies.ts:42`), which the probe answers as the entity's source (pick, marks). Outside a publish build the runtime fills it with the game's own TypeScript line that called spawn (the first frame of the call's stack outside the engine and node_modules); a value given here wins, so a helper may name its caller. A publish build keeps none.
+   *
+   * @default ""
+   */
+  readonly source?: string;
 }
 
 /**
@@ -26602,7 +26608,7 @@ export interface PickResult {
    */
   readonly world: [number, number] | [number, number, number];
   /**
-   * Where a person would change it: the scene line that declares the entity (`scenes/main.ogt:12`), or a code site as `player.ts::jump`.
+   * Where a person would change it: the scene line that declares the entity (`scenes/main.ogt:12`), or the TypeScript line that spawned it (`src/enemies.ts:42`, SpawnDesc.source; none in a publish build).
    */
   readonly source: string | null;
   /**
@@ -26918,7 +26924,7 @@ export interface Mark {
    */
   readonly point: ScreenPoint;
   /**
-   * Where a person would change it: the document line that built the element (`ui/shop.ogt:42`), or the scene line that declares the entity (`scenes/main.ogt:12`); null for code-built UI and spawned entities.
+   * Where a person would change it: the document line that built the element (`ui/shop.ogt:42`), the scene line that declares the entity (`scenes/main.ogt:12`), or the TypeScript line that spawned it (`src/enemies.ts:42`, SpawnDesc.source); null for code-built UI, and for spawned entities in a publish build.
    */
   readonly source: string | null;
   /**

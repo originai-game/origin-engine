@@ -1938,6 +1938,7 @@ pub(crate) fn spawn_part(
                 Placement::Cell { cell, .. } => Some(cell.to_bits()),
             },
             entities: spawned.iter().map(|e| e.to_bits()).collect(),
+            lines: scene.entities.iter().map(|e| e.line).collect(),
         });
     Ok(())
 }

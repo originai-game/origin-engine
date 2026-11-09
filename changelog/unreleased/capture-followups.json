@@ -1,0 +1,18 @@
+{
+  "added": [
+    {
+      "member": "world.SpawnDesc.source",
+      "summary": "Where a person would change a spawned entity (`src/enemies.ts:42`). Outside a publish build the runtime fills it with the game's own TypeScript line that called world.spawn (bun's mapping natively, the dev bundle's map in the web Worker), and pick and marks answer it as the entity's source. A given value wins."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "probe pick and marks source",
+      "summary": "A scene entity's source line is now cooked into the scene blob (a `lines` table, left out of publish cooks), so the web host answers `scenes/main.ogt:5` as the native host does instead of the bare scene id. A prefab instance's nodes name the line where the instance is placed. The cooker version moves to r15, so projects re-cook once."
+    },
+    {
+      "member": "probe timeline screens",
+      "summary": "timeline's screen changes are recorded on both hosts: the runtime's UI hook passed the layer stack through to the probe, and before this it reported none."
+    }
+  ]
+}

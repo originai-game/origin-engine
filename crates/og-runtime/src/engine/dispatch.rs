@@ -92,6 +92,9 @@ pub(crate) struct SceneInstance {
     pub id: String,
     pub root: Option<u64>,
     pub entities: Vec<u64>,
+    /// Each entity's line in the scene's text (cooked: SceneLineRow), in
+    /// `entities`' order; none from a publish cook.
+    pub lines: Vec<Option<u32>>,
 }
 
 pub(crate) struct State {
@@ -122,8 +125,10 @@ pub(crate) struct State {
     /// og.world.instantiate): `save_scene` writes each back to its source.
     pub scene_instances: Vec<SceneInstance>,
     /// Entities the game spawned (world.spawn, between ticks or in a
-    /// system), by bits: what `save_scene`'s spawned section writes.
-    pub game_spawned: std::collections::BTreeSet<u64>,
+    /// system), by bits: what `save_scene`'s spawned section writes. Each
+    /// with the line that spawned it (SpawnDesc.source), which the probe
+    /// answers as its source; none in a publish build.
+    pub game_spawned: BTreeMap<u64, Option<std::sync::Arc<str>>>,
     /// GameDesc.start, until it has run.
     pub start: Option<u32>,
     /// Pending registration, including an absent GameDesc.ui. None means it ran.

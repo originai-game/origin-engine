@@ -7,9 +7,11 @@
 // dump world. Prints the result as JSON and writes the captured frame.
 //
 //   bun tests/web/template.ts [--project <dir>] [--commands <script>] [--advance <ticks>] [--publish]
-//     [--entry <file>] [--png <out.png>] [--chrome <path>] [--entities <name,name>]
+//     [--entry <file>] [--png <out.png>] [--chrome <path>] [--entities <name,name>] [--members <member,member>]
 //
 // --entities adds each named entity's dump (the probe's dump { what: "entity" }) to the answer.
+// --members adds each named probe member's answer, called with no arguments (`marks`, `timeline`), under
+// `members`; a PNG it carries is written beside --png as <png>.<member>.png and left out of the answer.
 
 import { existsSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -70,7 +72,9 @@ try {
   const dump = await p.dump({ what: "world" });
   const entities = {};
   for (const id of ${JSON.stringify((opt("--entities") ?? "").split(",").filter((s) => s))}) entities[id] = await p.dump({ what: "entity", id });
-  await post({ crossOriginIsolated, readyMs: Math.round(ready), hello, scheduled, captureMs: Math.round(captureMs), capture, dump, entities });
+  const members = {};
+  for (const m of ${JSON.stringify((opt("--members") ?? "").split(",").filter((s) => s))}) members[m] = await p[m]();
+  await post({ crossOriginIsolated, readyMs: Math.round(ready), hello, scheduled, captureMs: Math.round(captureMs), capture, dump, entities, members });
 } catch (e) {
   await post({ error: String(e && e.stack || e) });
 }
@@ -114,18 +118,24 @@ const browser = Bun.spawn(
   { stdout: "ignore", stderr: "ignore" },
 );
 const timeout = new Promise((r) => setTimeout(() => r({ error: "timed out after 150 s" }), 150_000));
-const answer = (await Promise.race([result, timeout])) as { error?: string; capture?: { png: string; width: number; height: number; tick: number } | null };
+const answer = (await Promise.race([result, timeout])) as { error?: string; capture?: { png: string; width: number; height: number; tick: number } | null; members?: Record<string, { png?: string } | null> };
 browser.kill();
 await browser.exited;
 server.stop();
 rmSync(profile, { recursive: true, force: true });
 const png = opt("--png");
-if (answer.capture && png) {
-  const bin = atob(answer.capture.png);
+const writePng = (file: string, base64: string) => {
+  const bin = atob(base64);
   const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  writeFileSync(png, bytes);
-}
+  writeFileSync(file, bytes);
+};
+if (answer.capture && png) writePng(png, answer.capture.png);
 if (answer.capture) (answer.capture as { png: string }).png = `<${answer.capture.png.length} base64 chars>`;
+for (const [member, value] of Object.entries(answer.members ?? {})) {
+  if (typeof value?.png !== "string") continue;
+  if (png) writePng(png.replace(/\.png$/, `.${member}.png`), value.png);
+  value.png = `<${value.png.length} base64 chars>`;
+}
 console.log(JSON.stringify({ entry, build: { total: built.total, probe: built.probe }, ...answer }, null, 2));
 process.exit(answer.error || !answer.capture ? 1 : 0);

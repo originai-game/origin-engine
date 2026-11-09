@@ -18,7 +18,7 @@ One numbered box of a marked capture (Set-of-Mark): what it is and where a perso
 | `text` | `string` | `""` | — | — | — | The text the element shows, or the entity's name; empty for none. |
 | `rect` | `MarkRect` | `{ x: 0, y: 0, width: 0, height: 0 }` | — | — | — | Its box on the image. |
 | `point` | `ScreenPoint` | `{ x: 0, y: 0 }` | — | — | — | A point of the play surface on it, for pick, pickUi or touch_move_to: the element's centre, or a visible point of the entity (describe's point). |
-| `source` | `string \| null` | `null` | — | — | — | Where a person would change it: the document line that built the element (`ui/shop.ogt:42`), or the scene line that declares the entity (`scenes/main.ogt:12`); null for code-built UI and spawned entities. |
+| `source` | `string \| null` | `null` | — | — | — | Where a person would change it: the document line that built the element (`ui/shop.ogt:42`), the scene line that declares the entity (`scenes/main.ogt:12`), or the TypeScript line that spawned it (`src/enemies.ts:42`, SpawnDesc.source); null for code-built UI, and for spawned entities in a publish build. |
 | `part` | `string \| null` | `null` | — | — | — | The style part the element is drawn as (`Button.base[primary]`); null for an entity or an element no style dresses. |
 | `rule` | `UiPickRule \| null` | `null` | — | — | — | The most specific style rule that dresses the element; null when none does. |
 | `depth` | `number \| null` | `null` | — | `m` | — | The entity's distance from the camera to its nearest visible point; null for an element. |
@@ -34,7 +34,7 @@ struct Mark {
   field text String "The text the element shows, or the entity's name; empty for none."
   field rect MarkRect "Its box on the image."
   field point ScreenPoint "A point of the play surface on it, for pick, pickUi or touch_move_to: the element's centre, or a visible point of the entity (describe's point)."
-  field source Option.String "Where a person would change it: the document line that built the element (`ui/shop.ogt:42`), or the scene line that declares the entity (`scenes/main.ogt:12`); null for code-built UI and spawned entities."
+  field source Option.String "Where a person would change it: the document line that built the element (`ui/shop.ogt:42`), the scene line that declares the entity (`scenes/main.ogt:12`), or the TypeScript line that spawned it (`src/enemies.ts:42`, SpawnDesc.source); null for code-built UI, and for spawned entities in a publish build."
   field part Option.String "The style part the element is drawn as (`Button.base[primary]`); null for an entity or an element no style dresses."
   field rule Option.UiPickRule "The most specific style rule that dresses the element; null when none does."
   field depth Option.f32 "The entity's distance from the camera to its nearest visible point; null for an element." {

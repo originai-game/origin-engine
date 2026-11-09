@@ -326,8 +326,23 @@ fn spawn(eng: &Engine, call: &str, desc: &Value) -> Result<Entity, String> {
     if !name.is_empty() {
         set_name(eng, e, &name);
     }
-    eng.state.borrow_mut().game_spawned.insert(e.to_bits());
+    eng.state
+        .borrow_mut()
+        .game_spawned
+        .insert(e.to_bits(), spawn_source(desc));
     Ok(e)
+}
+
+/// A desc's `source` (SpawnDesc): the line that spawned the entity, kept
+/// outside a publish build.
+fn spawn_source(desc: &Value) -> Option<std::sync::Arc<str>> {
+    if cfg!(feature = "publish") {
+        return None;
+    }
+    desc["source"]
+        .as_str()
+        .filter(|s| !s.is_empty())
+        .map(Into::into)
 }
 
 /// `world.spawn` inside a system: queued, applied when the system returns
@@ -383,7 +398,10 @@ fn spawn_in_system(eng: &Engine, f: &super::engine::Frame, desc: &Value) -> Resu
         // SAFETY: as above.
         unsafe { f.ctx() }.set_name(e, &name);
     }
-    eng.state.borrow_mut().game_spawned.insert(e.to_bits());
+    eng.state
+        .borrow_mut()
+        .game_spawned
+        .insert(e.to_bits(), spawn_source(desc));
     Ok(e)
 }
 
@@ -453,6 +471,7 @@ pub fn og_world_despawn(world: u32, entity_id: f64) -> String {
         for d in all {
             eng.world()?.despawn(d).map_err(err)?;
             forget_name(&eng, d);
+            eng.state.borrow_mut().game_spawned.remove(&d.to_bits());
         }
         Ok(())
     })())

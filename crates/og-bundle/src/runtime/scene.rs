@@ -15,6 +15,9 @@ pub struct EntityDesc {
     /// The asset id of a scene placed under it (`scene "<id>"`, a
     /// sub-scene): spawned with it, or when its cell loads.
     pub subscene: Option<String>,
+    /// The line that declares it in the scene's text ([`SceneLineRow`]);
+    /// `None` from a publish cook.
+    pub line: Option<u32>,
 }
 
 /// An entity's prefab origin (`docs/design.md` §2.5, prefabs): the prefab
@@ -130,6 +133,7 @@ impl SceneDesc {
                 },
                 prefab: None,
                 subscene: None,
+                line: None,
             });
         }
         // Older blobs and scenes without prefabs have no `prefabs` table.
@@ -154,6 +158,16 @@ impl SceneDesc {
                     node: r.node,
                     root,
                 });
+            }
+        }
+        // A publish cook writes no `lines` table.
+        if blob.section("lines").is_some() {
+            let rows = table::<SceneLineRow>(blob, "lines")?;
+            if rows.len() != out.len() {
+                return Err(bad("lines: one row per entity".into()));
+            }
+            for (e, r) in out.iter_mut().zip(rows) {
+                e.line = (r.line > 0).then_some(r.line);
             }
         }
         // Older blobs and scenes without sub-scenes have no `subscenes` table.

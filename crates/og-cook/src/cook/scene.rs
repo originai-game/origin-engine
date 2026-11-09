@@ -483,6 +483,8 @@ pub fn cook(
         (at, s.len() as u32)
     };
     let mut entities: Vec<Entity> = Vec::new();
+    // Each entity's `entity` line, in entity order (SceneLineRow).
+    let mut lines: Vec<u32> = Vec::new();
     let mut refs: Vec<String> = Vec::new();
     // Sub-scenes: (entity index, `subscene_ids` entry).
     let mut subscenes: Vec<(u32, u32)> = Vec::new();
@@ -690,6 +692,7 @@ pub fn cook(
             }
         }
         entities.push(entity);
+        lines.push(line as u32);
         for c in children.into_iter().rev() {
             stack.push((c, index));
         }
@@ -869,6 +872,23 @@ pub fn cook(
             rows.len(),
             subscene_ids.len()
         ));
+    }
+    if !prefabs.publish {
+        // In a scene, the nodes of a prefab instance carry the prefab's
+        // lines: each is declared where its instance is placed (its root,
+        // the instance's first entity). A prefab's own blob keeps its lines.
+        let mut placed: BTreeMap<u32, u32> = BTreeMap::new();
+        let rows: Vec<SceneLineRow> = lines
+            .iter()
+            .zip(&links)
+            .map(|(&line, link)| SceneLineRow {
+                line: match link {
+                    Some(l) if !is_prefab => *placed.entry(l.instance).or_insert(line),
+                    _ => line,
+                },
+            })
+            .collect();
+        w.table("lines", &rows, row_hash::<SceneLineRow>());
     }
     if !resource_rows.is_empty() {
         w.table("resources", &resource_rows, row_hash::<ComponentRow>());

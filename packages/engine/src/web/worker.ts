@@ -48,7 +48,9 @@
 // Worker's animation frames while the clock played, so isolated pages never
 // answered.
 
-import { boundHost, createEngine, systemClock, type CursorImage, type Engine, type GameToken } from "../runtime.ts";
+import { boundHost, createEngine, isPublishBuild, systemClock, type CursorImage, type Engine, type GameToken } from "../runtime.ts";
+import { SourceMap } from "../sourcemap.ts";
+import { useSourceMap } from "../spawn-site.ts";
 import type { PlatformAnswer, PlatformHost, PlatformNotice } from "../platform-local.ts";
 import { loadWebHost, type WebGlue } from "./host.ts";
 import { FrameCounter } from "./frames.ts";
@@ -248,6 +250,7 @@ interface WorkerScope {
   addEventListener?(type: string, fn: (e: { message?: string; error?: unknown; reason?: unknown; preventDefault?(): void }) => void): void;
   postMessage(message: unknown): void;
   requestAnimationFrame?(fn: (t: number) => void): number;
+  readonly location: { readonly href: string; readonly pathname: string };
 }
 
 declare const self: WorkerScope;
@@ -840,6 +843,17 @@ export function installImageDecoder(glue: Pick<WebExtras, "og_web_set_image_deco
       .catch((e: unknown) => fail(key, `the browser could not decode it (${e instanceof Error ? e.message : String(e)})`));
   });
   return true;
+}
+
+/** This Worker's bundle's map, served beside it in a dev build, for the spawns' lines; nothing when it is not there. */
+async function loadOwnSourceMap(): Promise<void> {
+  const bundle = self.location.href;
+  try {
+    const r = await fetch(new URL(`${self.location.pathname.slice(self.location.pathname.lastIndexOf("/") + 1)}.map`, bundle));
+    if (r.ok) useSourceMap(bundle, new SourceMap(await r.text()));
+  } catch {
+    // No map: spawned entities have no source.
+  }
 }
 
 /**
@@ -1559,6 +1573,8 @@ export function startWorker(game: GameToken): void {
         });
         if (!created.ok) throw new Error(created.reason);
         engine = created.value;
+        // A dev build serves its bundle's map beside it: the game's spawns name their lines with it (spawn-site.ts).
+        const sourceMap = isPublishBuild() === true ? null : loadOwnSourceMap();
         if (data.trace) {
           traceOn(true);
           glue.og_web_trace?.(TRACE_BEFORE_ENGINE, false);
@@ -1588,6 +1604,7 @@ export function startWorker(game: GameToken): void {
         // The textures go to the renderer's encodings, so after it is attached (the game starts later).
         const loaded = fetched ? await transcodeBundle(glue, rendering ? engine.id : null, fetched, data.basis, progress, data.expect ? received : undefined) : null;
         phase("transcode");
+        await sourceMap;
         progress(1, "ready");
         ready = true;
         self.postMessage({

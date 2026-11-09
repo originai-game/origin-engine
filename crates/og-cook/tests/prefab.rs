@@ -164,6 +164,12 @@ fn an_override_survives_a_prefab_edit_and_a_re_cook() {
         field(&first, "crate2/lid", "Health", "hp"),
         Some(vec![10.0])
     );
+    // Each entity's line in the scene's text (the probe's source): a
+    // prefab's nodes are declared where their instance is placed, not at
+    // their lines in the prefab's text.
+    let lines: Vec<Option<u32>> = first.entities.iter().map(|e| e.line).collect();
+    let at = |n: u32| Some(n);
+    assert_eq!(lines, [at(5), at(5), at(5), at(16), at(16), at(16), at(19)]);
     // The root's own block overrides one field; the other follows the prefab.
     assert_eq!(
         field(&first, "crate1", "Transform", "position"),
@@ -218,6 +224,11 @@ fn an_override_survives_a_prefab_edit_and_a_re_cook() {
     write(&root, "scenes/yard.ogt", &format!("{YARD}# touched\n"));
     assert!(cook_with(&root, false).ok());
     assert_eq!(load(&root, "scenes/yard.ogt"), second);
+
+    // A publish cook keeps no lines.
+    assert!(cook_with(&root, true).ok());
+    let published = load(&root, "scenes/yard.ogt");
+    assert!(published.entities.iter().all(|e| e.line.is_none()));
 }
 
 #[test]

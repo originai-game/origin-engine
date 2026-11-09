@@ -151,6 +151,13 @@ const BASE64: Record<number, number> = {};
  */
 const FRAME = /^(.*?[\s(@]|)((?:[A-Za-z][\w+.-]*:\/{0,3})?[^\s()@]+?):(\d+):(\d+)(\)?\s*)$/;
 
+/** A stack frame's file, line and column (1-based, as printed), or null for a line that is not a frame. */
+export function frameAt(line: string): { readonly file: string; readonly line: number; readonly column: number } | null {
+  if (!isFrame(line)) return null;
+  const m = FRAME.exec(line)!;
+  return { file: m[2]!, line: Number(m[3]), column: Number(m[4]) };
+}
+
 /** Whether a line of an error's text is a stack frame. */
 export function isFrame(line: string): boolean {
   return /^\s*at\s/.test(line) ? FRAME.test(line) : /@/.test(line) && FRAME.test(line);

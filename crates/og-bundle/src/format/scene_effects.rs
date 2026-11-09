@@ -74,6 +74,18 @@ row!(
     }
 );
 
+row!(
+    /// Where an entity is declared (the optional `lines` table, one row
+    /// per entity in entity order, written outside a publish cook): the
+    /// 1-based line of its `entity` in the scene's text, or for a node an
+    /// instance placed from a prefab the instance's own line; 0 for none.
+    /// What the probe answers as a scene entity's source
+    /// (`scenes/main.ogt:12`) on every host, with no source text to read.
+    SceneLineRow, "og.SceneLine", 1 {
+        line: u32,
+    }
+);
+
 /// The scene blob. A prefab's blob is one too (manifest type
 /// `og.Scene`), its entities all linked to it.
 pub struct Scene;

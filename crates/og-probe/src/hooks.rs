@@ -233,8 +233,10 @@ pub trait SceneWriter {
     ) -> Result<SavedScene, String>;
 
     /// Where an entity is declared: `scenes/main.ogt:12`, the line of its
-    /// `entity` in the scene it was assembled from. `None` for one the game
-    /// spawned at run time, or a host that does not know.
+    /// `entity` in the scene it was assembled from, or for one the game
+    /// spawned at run time the line that spawned it (SpawnDesc.source:
+    /// `src/enemies.ts:42`). `None` when neither is known (a publish build,
+    /// a host that does not know).
     fn source(&self, world: &World, entity: Entity) -> Option<String> {
         let _ = (world, entity);
         None

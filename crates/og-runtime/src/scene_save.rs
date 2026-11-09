@@ -233,7 +233,7 @@ impl SceneWriter for RuntimeWriter {
             // makes it again when it instantiates, and scene text cannot
             // name a scene to instantiate, so it is not written.
             let mut more: Vec<Entity> = game_spawned
-                .iter()
+                .keys()
                 .filter(|b| !roots.contains_key(b))
                 .map(|b| Entity::from_bits(*b))
                 .filter(|e| world.is_alive(*e))
@@ -370,33 +370,22 @@ impl SceneWriter for RuntimeWriter {
         Ok(out)
     }
 
-    fn source(&self, world: &World, entity: Entity) -> Option<String> {
+    fn source(&self, _world: &World, entity: Entity) -> Option<String> {
         let eng = super::engine::engine(self.engine).ok()?;
-        let id = eng
-            .state
-            .borrow()
-            .scene_instances
-            .iter()
-            .find(|i| i.entities.contains(&entity.to_bits()))?
-            .id
-            .clone();
-        // The line of its `entity "<name>"` in the scene's text, when the
-        // project's sources are here to read it.
-        let root = eng.assets.borrow().root.clone();
-        let line = world.name(entity).and_then(|name| {
-            let quoted = name.replace('\\', "\\\\").replace('"', "\\\"");
-            let head = format!("entity \"{quoted}\"");
-            let text =
-                std::fs::read_to_string(std::path::Path::new(&root).join("assets").join(&id))
-                    .ok()?;
-            text.lines()
-                .position(|l| l.trim_start().starts_with(&format!("{head} ")))
-                .map(|i| i + 1)
-        });
-        Some(match line {
-            Some(n) => format!("{id}:{n}"),
-            None => id,
-        })
+        let st = eng.state.borrow();
+        let bits = entity.to_bits();
+        // Declared in a scene: the line the cook kept (none from a publish
+        // cook), the same on every host.
+        for i in &st.scene_instances {
+            if let Some(at) = i.entities.iter().position(|e| *e == bits) {
+                return Some(match i.lines.get(at).copied().flatten() {
+                    Some(line) => format!("{}:{line}", i.id),
+                    None => i.id.clone(),
+                });
+            }
+        }
+        // Spawned in code: the line that spawned it.
+        st.game_spawned.get(&bits)?.as_deref().map(Into::into)
     }
 
     fn prefab(&mut self, world: &mut World, edit: &PrefabEdit) -> Result<SavedScene, String> {

@@ -27,6 +27,7 @@ module world {
       default 1 1 1
     }
     field bare bool "Spawn without a Transform: a pure data entity."
+    field source String "Where a person would change it (`src/enemies.ts:42`), which the probe answers as the entity's source (pick, marks). Outside a publish build the runtime fills it with the game's own TypeScript line that called spawn (the first frame of the call's stack outside the engine and node_modules); a value given here wins, so a helper may name its caller. A publish build keeps none."
   }
 
   struct RestoreDesc {

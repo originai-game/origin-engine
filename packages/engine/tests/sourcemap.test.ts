@@ -12,6 +12,7 @@ import { bundleGame } from "../src/node/build.ts";
 import { loadNativeHost } from "../src/node/index.ts";
 import { createEngine, type GameToken } from "../src/runtime.ts";
 import { mapStack, SourceMap, stackFrames } from "../src/sourcemap.ts";
+import { useSourceMap } from "../src/spawn-site.ts";
 
 const fixtures = join(dirname(fileURLToPath(import.meta.url)), "fixtures", "stack-maps");
 
@@ -72,6 +73,49 @@ test("a minified bundle's stack, its map kept apart, maps back to the .ts line",
     expect(mapped).toMatch(/stack-maps\/script\.ts:11:\d+/);
     // A frame of a file without a map stays as it was.
     expect(mapStack("    at x (other.js:1:5)", { "play.js": readFileSync(mapFile, "utf8") })).toBe("    at x (other.js:1:5)");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+/** The probe's source for the entity drawn at the middle of a 64×64 frame of `game` (describe, then pick). */
+function spawnedSource(game: GameToken, root?: string): unknown {
+  const created = createEngine(game, root === undefined ? {} : { root });
+  if (!created.ok) throw new Error(created.reason);
+  const engine = created.value;
+  try {
+    expect(engine.advance(1).ok).toBe(true);
+    const seen = engine.probe.describe() as unknown as { entities: Array<{ id: string; point: { x: number; y: number } }> };
+    const crate = seen.entities.find((e) => e.id === "crate");
+    if (!crate) throw new Error(`no crate in ${JSON.stringify(seen)}`);
+    const at = engine.probe.pick(crate.point.x, crate.point.y) as { entity: string; source: unknown } | null;
+    expect(at?.entity).toBe("crate");
+    return at!.source;
+  } finally {
+    engine.destroy();
+  }
+}
+
+test("an entity spawned in code has the game's .ts line as its source, through bun's mapping or a bundle's map", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "og-maps-"));
+  try {
+    // As og run loads a game: bun maps the linked bundle's frames to the
+    // sources, which are named relative to the project.
+    const linked = join(dir, "linked", "game.native.js");
+    expect((await bundleGame(join(fixtures, "spawn.ts"), linked, "native")).ok).toBe(true);
+    const native = ((await import(pathToFileURL(linked).href)) as { default: GameToken }).default;
+    // `world.spawn(` is line 14 of spawn.ts; the engine's own frames above it are skipped.
+    expect(spawnedSource(native, fixtures)).toBe("spawn.ts:14");
+
+    // As the web Worker sees its bundle: no mapping of its own, the map
+    // handed over (useSourceMap) with sources relative to the project.
+    const out = join(dir, "kept", "game.js");
+    const mapFile = join(dir, "kept", "maps", "game.js.map");
+    expect((await bundleGame(join(fixtures, "spawn.ts"), out, "native", false, { root: dirname(fixtures), link: false, file: mapFile })).ok).toBe(true);
+    const web = ((await import(pathToFileURL(out).href)) as { default: GameToken }).default;
+    expect(spawnedSource(web)).toBeNull();
+    useSourceMap(out, new SourceMap(readFileSync(mapFile, "utf8")));
+    expect(spawnedSource(web)).toBe("stack-maps/spawn.ts:14");
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
