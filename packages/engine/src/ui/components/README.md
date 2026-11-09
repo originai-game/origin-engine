@@ -32,6 +32,7 @@ test cooks every one from its fixture at desktop and phone sizes.
 | Celebrations (confetti, a burst, a level up, fireworks) | `celebration` |
 | Navigation (minimap, compass) | `minimap`, `minimap-view`, `compass` |
 | Menus and layout (radial menu, split view, carousel, breadcrumbs) | `radial-menu`, `split-view`, `carousel`, `breadcrumbs` |
+| Menus and tooltip cards (in a `popover` or `contextmenu` popover) | `menu`, `tooltip-card` |
 | Charts and map overlays | `chart`, `overlay-bar` |
 | Skill trees and run maps | `node-graph` |
 | Data views (inventories, level selects) | `data-grid` |

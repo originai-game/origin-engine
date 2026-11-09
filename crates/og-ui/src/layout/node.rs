@@ -648,6 +648,12 @@ pub(crate) struct Node {
     /// Positioning 1): the position option that won, the side of its
     /// anchor it sits on, and whether `position-visibility` hides it.
     pub anchor_placed: crate::anchor::Placed,
+    /// A popover opened at a point (`contextmenu`): its implicit anchor is
+    /// that zero-size point rather than its anchor node.
+    pub anchor_point: Option<[f32; 2]>,
+    /// A popover's `::-og-arrow`: its side and colour, drawn on the side of
+    /// its box facing its anchor once it is placed.
+    pub arrow: Option<(f32, Srgba)>,
     /// A multi-column container's used column count and width.
     pub cols: (usize, f32),
     /// A multi-column container's rules between columns, from its box's
@@ -796,6 +802,8 @@ impl Node {
             laid_rect: Rect::default(),
             laid_clip: Rect::default(),
             anchor_placed: crate::anchor::Placed::default(),
+            anchor_point: None,
+            arrow: None,
             cols: (1, 0.0),
             col_rules: Vec::new(),
             frag: Vec::new(),

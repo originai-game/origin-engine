@@ -175,19 +175,22 @@ export function inkOn(c: Rgba): Rgba {
   return luminance(c) > 0.36 ? { r: 0.06, g: 0.06, b: 0.08, a: 1 } : { r: 1, g: 1, b: 1, a: 1 };
 }
 
+/** A loot tier (the style's rarity colours, each paired with its pips). */
+export type Rarity = "none" | "common" | "uncommon" | "rare" | "epic" | "legendary" | "mythic";
+
 const RARITY_FALLBACK: Record<string, string> = {
   common: "#b8bec7", uncommon: "#4cc35a", rare: "#3d8bff", epic: "#a64dff", legendary: "#ff9a1f", mythic: "#ff3d6e",
 };
 
 /** A rarity tier's colour from the style's tokens. */
-export function rarityColor(r: Api.Rarity | undefined): Rgba | null {
+export function rarityColor(r: Rarity | undefined): Rgba | null {
   if (!r || r === "none") return null;
   const tokens = frame().theme.tokens as { rarity?: Record<string, string> } | null;
   return hex(tokens?.rarity?.[r] ?? RARITY_FALLBACK[r]);
 }
 
 /** How many pips a rarity carries (so no tier is told by colour alone). */
-export function rarityPips(r: Api.Rarity | undefined): number {
+export function rarityPips(r: Rarity | undefined): number {
   return ["none", "common", "uncommon", "rare", "epic", "legendary", "mythic"].indexOf(r ?? "none");
 }
 

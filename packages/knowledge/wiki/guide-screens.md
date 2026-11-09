@@ -86,6 +86,13 @@ local styles and `og style new` remain available.
   - `<button data-hold="1200" onhold={confirm}>` fires after a held press
     (Enter, Space, a pad's A, or its `data-action`'s input hold it too) and
     draws a fill across it as it is held: `button::-og-hold { background }`.
+  - `<div id="Tip" popover>` opens against the control whose
+    `popovertarget="Tip"` (or `interestfor`) names it. Place it with CSS
+    anchor positioning against that control: `position-area: right`, an
+    inset such as `left: 8px` for the gap, `position-try-fallbacks:
+    flip-inline`. `#Tip::-og-arrow { width: 10px }` draws an arrow on the
+    side facing the control. `contextmenu="Menu"` on an element opens
+    popover `Menu` at the pointer on a right-click or long press.
   - `<input type="checkbox" switch data-on="On" data-off="Off">` is a
     switch whose on and off words a screen reader reads.
   - `<input type="number" data-format="{value, number} m">` with

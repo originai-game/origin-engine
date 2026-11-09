@@ -3,9 +3,7 @@
 // `ui`, `host false`) and built only from og.ui's public members.
 
 import { formatNumber } from "./core.ts";
-import { tooltipCard } from "./tooltips.ts";
 
 export const feedback = Object.freeze({
-  tooltipCard,
   formatNumber,
 });

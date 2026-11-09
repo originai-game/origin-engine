@@ -1074,6 +1074,98 @@ fn titles_and_popovers_show_against_their_controls() {
     });
 }
 
+/// The centre of the `::-og-arrow` drawn this frame (red in the test's
+/// style), if one is.
+fn arrow_at(d: &Doc) -> Option<(f32, f32)> {
+    d.ui.frame().items.iter().find_map(|i| match &i.cmd {
+        DrawCmd::Bar { center, color, .. }
+            if color[0] > 0.9 && color[1] < 0.05 && color[2] < 0.05 =>
+        {
+            Some(*center)
+        }
+        _ => None,
+    })
+}
+
+/// A popover is anchor-positioned against its implicit anchor, the control
+/// that opened it: `position-area` picks its side, an inset offsets it,
+/// `position-try-fallbacks` flips it off the safe area's edge, and its
+/// `::-og-arrow` sits on the edge facing the control; `contextmenu` opens
+/// one at the point of a secondary press.
+///
+/// Ways it could fail: an authored area ignored (today's hang-below
+/// placement), an offset dropped, a fallback that never flips, an arrow on
+/// the wrong edge or kept while closed, a context menu at its element
+/// rather than the pointer, or a primary press opening it.
+#[test]
+fn popovers_take_their_area_offset_fallback_arrow_and_point() {
+    let text = r#"<meta name="component" content="t">
+<div id="Page">
+  <button id="Open" popovertarget="Side">Side</button>
+  <div id="Side" popover><p id="SideText">Beside it</p></div>
+  <div id="Area" contextmenu="Ctx"><p>Right-click here for the menu</p></div>
+  <div id="Gap"></div>
+  <button id="Edge" popovertarget="Flip">Edge</button>
+  <div id="Flip" popover><p id="FlipText">Flipped</p><p>over</p><p>it</p></div>
+  <menu id="Ctx" popover><button id="Copy">Copy</button></menu>
+</div>
+<style>
+#Page { padding: 40px; gap: 40px; }
+#Gap { height: 640px; }
+#Side { position-area: right; left: 12px; }
+#Side::-og-arrow { width: 10px; background: #ff0000; }
+#Flip { position-area: bottom; position-try-fallbacks: flip-block; }
+</style>"#;
+    both(text, &[], |d| {
+        for _ in 0..3 {
+            d.step(InputFrame::default());
+        }
+        assert!(arrow_at(d).is_none(), "no arrow while closed");
+        d.click("Open");
+        d.step(InputFrame::default());
+        let (open, side) = (d.get("Open"), d.get("SideText"));
+        assert!(
+            side.x >= open.x + open.width + 12.0 - 0.5,
+            "right of its control, 12 px off: {side:?} vs {open:?}"
+        );
+        let (ax, ay) = arrow_at(d).expect("the arrow draws");
+        assert!(
+            (ax - (open.x + open.width + 12.0)).abs() < 1.0
+                && (ay - (open.y + open.height / 2.0)).abs() < 1.0,
+            "on the edge facing the control, at its middle: {:?} vs {open:?}",
+            (ax, ay)
+        );
+        // At the bottom of the screen, a popover under its control flips above it.
+        d.click("Edge");
+        let (edge, flip) = (d.get("Edge"), d.get("FlipText"));
+        assert!(
+            flip.y + flip.height <= edge.y + 0.5,
+            "flipped above its control: {flip:?} vs {edge:?}"
+        );
+        // A secondary press opens the context menu at the pointer.
+        let area = d.get("Area");
+        let at = Vec2::new(area.x + area.width * 0.75, area.y + area.height / 2.0);
+        d.click("Area");
+        assert!(d.el("Copy").is_none(), "a primary press opens no menu");
+        d.step(InputFrame {
+            pointer: at,
+            pointer_inside: true,
+            secondary_pressed: true,
+            ..InputFrame::default()
+        });
+        d.step(InputFrame {
+            pointer: at,
+            pointer_inside: true,
+            ..InputFrame::default()
+        });
+        let copy = d.get("Copy");
+        assert!(
+            (copy.x - at.x).abs() < 24.0 && copy.y >= at.y - 0.5 && copy.y < at.y + 24.0,
+            "at the point: {copy:?} vs {at:?}"
+        );
+    });
+}
+
 /// The width of the `::-og-hold` fill drawn this frame (red in the test's
 /// style), or 0.
 fn hold_fill_width(d: &Doc) -> f32 {

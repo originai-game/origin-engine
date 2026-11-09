@@ -352,8 +352,14 @@ only then); with `$page` empty it shows its `tree` content alone.
 on it, and its description in the accessibility tree. An element with
 `popover` (HTML's `auto`, also bare; `manual`; `hint`) is not in the
 page: it takes no room there and shows, open, in a layer over it, placed
-under the control that opened it (above it where there is more room,
-kept on screen), its box and look from its CSS. A control's
+against the control that opened it (its implicit anchor) by anchor
+positioning: `position-area` picks the side and alignment, an inset
+offsets it, `position-try-fallbacks` flips it inside the safe area; with
+none of them it hangs under the control (above it where there is more
+room, kept on screen). Its box and look come from its CSS; its
+`::-og-arrow { width; background }` draws on the side facing the anchor.
+`contextmenu="id"` on an element opens popover `id` at the point of a
+secondary press or long press on it, that zero-size point its anchor. A control's
 `popovertarget="id"` opens, closes or toggles it on a press
 (`popovertargetaction="show|hide|toggle"`, default toggle) and reports
 `expanded`. An `auto` popover closes on a press outside it or Back and

@@ -141,18 +141,7 @@ module ui {
 | [`og.ui.remember`](ui/fn-remember.md) | function | `(id: string, value: number): void` | Set a number memory (see memory). |
 | [`og.ui.tick`](ui/fn-tick.md) | function | `(): number` | Frames the UI has built: its clock, for animations by the tick. |
 | [`og.ui.previewViewport`](ui/fn-previewViewport.md) | function | `(world: World, viewport: Viewport \| null): void` | Lay the UI out for another play surface (a phone in portrait at 3x, a notch) until cleared with null: for headless previews and playtests of responsive layouts. |
-| [`FloatSide`](ui/type-FloatSide.md) | enum |  | Where a floating surface hangs off what it belongs to; start and end follow the writing direction. |
-| [`FloatAlign`](ui/type-FloatAlign.md) | enum |  | How a floating surface lines up with what it belongs to. |
-| [`PopoverDesc`](ui/type-PopoverDesc.md) | desc struct |  | A popover beside an element, flipped where there is no room and kept on screen, with an arrow at the element. |
-| [`PopoverResult`](ui/type-PopoverResult.md) | struct |  | What a popover answered this tick. |
-| [`MenuEntryKind`](ui/type-MenuEntryKind.md) | enum |  | What a menu's entry is. |
-| [`MenuEntry`](ui/type-MenuEntry.md) | desc struct |  | An entry of a menu. An entry whose `parent` names another's id sits in that entry's submenu. |
-| [`MenuDesc`](ui/type-MenuDesc.md) | desc struct |  | A menu hanging from an element, or at a point (a context menu). |
-| [`MenuChoice`](ui/type-MenuChoice.md) | struct |  | What a menu answered this tick. |
 | [`DataStateDesc`](ui/type-DataStateDesc.md) | desc struct |  | What a data view shows instead of its rows: loading, an error, or nothing. |
-| [`og.ui.popover`](ui/fn-popover.md) | function | `(id: string, open: boolean, desc: PopoverDesc, build: UiBuild): PopoverResult` | A popover beside an element with an arrow at it; Back or a press outside dismisses it. |
-| [`og.ui.menu`](ui/fn-menu.md) | function | `(id: string, open: boolean, desc?: MenuDesc): MenuChoice` | A menu of commands, checks, radios, separators, headers and submenus, hanging from an element or at a point. |
-| [`og.ui.contextMenu`](ui/fn-contextMenu.md) | function | `(id: string, open: boolean, at: Vector2, desc?: MenuDesc): MenuChoice` | A menu at a point: where a right press or a long press happened. |
 | [`UiProp`](ui/type-UiProp.md) | enum |  | An animatable value of an element (docs/ui.md §3.1): a state, a timeline key, a presence or og.ui.animate moves it. |
 | [`LayoutMode`](ui/type-LayoutMode.md) | enum |  | How a container lays out its children. |
 | [`Position`](ui/type-Position.md) | enum |  | How an element is placed. |
@@ -244,12 +233,6 @@ module ui {
 | [`og.ui.motionEvents`](ui/fn-motionEvents.md) | function | `(): readonly UiMotionEvent[]` | The UI's motion events of the last frame: sounds, haptics, bursts, state changes, callbacks, ends, dismissals, drops and snaps. |
 | [`og.ui.overlaps`](ui/fn-overlaps.md) | function | `(): readonly UiOverlap[]` | The last frame's undeclared overlaps between elements (docs/ui.md §2), with both paths. |
 | [`og.ui.layoutStats`](ui/fn-layoutStats.md) | function | `(): UiLayoutStats` | What the last frame built, rebuilt, laid out and kept. |
-| [`Rarity`](ui/type-Rarity.md) | enum |  | A loot tier (the style's rarity colours, each paired with its pips so no tier is told by colour alone). |
-| [`TooltipStat`](ui/type-TooltipStat.md) | desc struct |  | A row of a tooltip's stats, with an optional comparison. |
-| [`TooltipLink`](ui/type-TooltipLink.md) | desc struct |  | What a keyword link in a tooltip's body opens: a nested tooltip of its own. |
-| [`TooltipCardDesc`](ui/type-TooltipCardDesc.md) | desc struct |  | A rich tooltip card beside its trigger. |
-| [`TooltipCardResult`](ui/type-TooltipCardResult.md) | struct |  | What a tooltip card did this tick. |
-| [`og.ui.tooltipCard`](ui/fn-tooltipCard.md) | function | `(id: string, desc?: TooltipCardDesc): TooltipCardResult` | A rich tooltip: a card in the tooltip layer beside its trigger, flipped and clamped inside the safe area, with a title in its rarity's colour and pips, an art slot, rich-text body whose keyword links… |
 | [`Notation`](ui/type-Notation.md) | enum |  | How a number is written. |
 | [`NumberFormatDesc`](ui/type-NumberFormatDesc.md) | desc struct |  | How og.ui.formatNumber and the counters write a number. |
 | [`og.ui.formatNumber`](ui/fn-formatNumber.md) | function | `(value: number, format?: NumberFormatDesc): string` | A number written in a notation: grouped, compact, idle letters, scientific or engineering, with a sign, prefix and suffix and the locale's separators, and past 1e308 through its exponent. |
@@ -355,7 +338,7 @@ column VectorArt {
 }
 ```
 
-<sub>Module `ui` line 2410</sub>
+<sub>Module `ui` line 2192</sub>
 
 ```ogt
 column UiMaterial {
@@ -366,4 +349,4 @@ column UiMaterial {
 }
 ```
 
-<sub>Module `ui` line 2417</sub>
+<sub>Module `ui` line 2199</sub>

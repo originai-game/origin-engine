@@ -26,7 +26,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `width` | `Size \| null` | `null` | — | — | — | Its width; null fits the content. |
 | `height` | `Size \| null` | `null` | — | — | — | Its height; null fits the content. |
 | `over` | `boolean` | `false` | — | — | — | Draw over dialogs and spotlights (a tutorial callout, a dragged item); the default draws under them. |
-| `tooltip` | `boolean` | `false` | — | — | — | Draw in the tooltip layer, over every other layer including the toast stack and over groups: a card the player opened (og.ui.tooltipCard). |
+| `tooltip` | `boolean` | `false` | — | — | — | Draw in the tooltip layer, over every other layer including the toast stack and over groups: a card the player opened (a tooltip card). |
 | `avoid` | `boolean` | `false` | — | — | — | Step clear of the other anchored groups and the host's control, to the nearest free place on the safe area: a popup placed at a point (a drift score over the car) that must not cover the map or the tower. |
 | `frame` | `StylePart \| null` | `null` | — | — | — | The style frame its background takes; null is the panel's. |
 | `instant` | `boolean` | `false` | — | — | — | Shown settled the first time it is built: no style entrance or stagger, its controls answering at once. For the screen a game opens on while it is that: the web draws it behind the play gate, where an entrance would stay part-way until the tap. |
@@ -57,7 +57,7 @@ struct AnchorDesc {
   field width Option.Size "Its width; null fits the content."
   field height Option.Size "Its height; null fits the content."
   field over bool "Draw over dialogs and spotlights (a tutorial callout, a dragged item); the default draws under them."
-  field tooltip bool "Draw in the tooltip layer, over every other layer including the toast stack and over groups: a card the player opened (og.ui.tooltipCard)."
+  field tooltip bool "Draw in the tooltip layer, over every other layer including the toast stack and over groups: a card the player opened (a tooltip card)."
   field avoid bool "Step clear of the other anchored groups and the host's control, to the nearest free place on the safe area: a popup placed at a point (a drift score over the car) that must not cover the map or the tower."
   field frame Option.StylePart "The style frame its background takes; null is the panel's."
   field instant bool "Shown settled the first time it is built: no style entrance or stagger, its controls answering at once. For the screen a game opens on while it is that: the web draws it behind the play gate, where an entrance would stay part-way until the tap."

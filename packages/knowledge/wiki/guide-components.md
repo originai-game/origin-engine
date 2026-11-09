@@ -154,6 +154,7 @@ What every kind takes: its box, layout, paint, motion and input.
 | `popovertarget` | `name` | The id of the popover a press on it opens, closes or toggles (HTML `popovertarget`). |
 | `popovertargetaction` | `toggle \| show \| hide` | What its press does to its popovertarget (default toggle). |
 | `interestfor` | `name` | The id of the popover shown while the pointer rests on it or it holds the keyboard focus (HTML `interestfor`). |
+| `contextmenu` | `name` | The id of the popover a secondary press or a long press on it opens at the pointer, its anchor that point (HTML's former `contextmenu`): a context menu. |
 | `aria-description` | `text` | Read after its name (`aria-description`, or the text `aria-describedby` names). |
 | `aria-valuemin` | `number` | Its range's low end for a screen reader (`aria-valuemin`). |
 | `aria-valuemax` | `number` | Its range's high end for a screen reader (`aria-valuemax`). |

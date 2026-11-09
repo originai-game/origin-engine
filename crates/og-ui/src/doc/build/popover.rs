@@ -2,8 +2,17 @@
 //! `popover` (auto, manual, hint) on an element makes it a layer shown over
 //! the page against the control that opened it; `popovertarget` opens,
 //! closes or toggles one on a press, and `interestfor` shows one while the
-//! player hovers or keyboard-focuses the control (a rich tooltip). `title`
-//! is the plain tooltip after its element.
+//! player hovers or keyboard-focuses the control (a rich tooltip), and
+//! `contextmenu` opens one at the point of a secondary press or long press
+//! on it (a context menu). `title` is the plain tooltip after its element.
+//!
+//! An open popover sits where CSS anchor positioning puts it against that
+//! control, its implicit anchor (a context menu's is the zero-size point):
+//! `position-area` picks the side and alignment, its insets offset it in
+//! that area, `position-try-fallbacks` flips it where it would overflow the
+//! safe area; with none of them it hangs under the control, above it where
+//! there is more room. Its `::-og-arrow` draws on the side facing the
+//! anchor.
 
 use super::*;
 
@@ -21,6 +30,8 @@ pub(crate) struct PopoverLink {
     pub shown: bool,
     /// `auto`, `manual` or `hint`, as last built.
     pub mode: Mode,
+    /// Opened by `contextmenu`: the point it opened at, its anchor.
+    pub point: Option<[f32; 2]>,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -99,10 +110,27 @@ impl Ui {
                     Some("hide") => false,
                     _ => !open,
                 };
-                self.docs.popovers.entry(pk).or_default().invoker = (at, key);
+                let link = self.docs.popovers.entry(pk).or_default();
+                link.invoker = (at, key);
+                link.point = None;
                 self.set_popover_open(pk, next);
             }
             self.nodes[at].a11y.expanded = Some(self.popover_open(pk));
+        }
+        // HTML's former `contextmenu` attribute: a secondary press or a long
+        // press on it opens the popover at the pointer.
+        if let Some(target) = r.str("contextmenu") {
+            let context = resp.long_pressed
+                || self.gesture_of(key).long_pressed
+                || (self.input.secondary_pressed && self.state.hot == key);
+            if context {
+                let pk = popover_key(&b.mount, target);
+                let p = self.input.pointer;
+                let link = self.docs.popovers.entry(pk).or_default();
+                link.invoker = (at, key);
+                link.point = Some([p.x, p.y]);
+                self.set_popover_open(pk, true);
+            }
         }
         if let Some(target) = r.str("interestfor") {
             let pk = popover_key(&b.mount, target);
@@ -203,9 +231,11 @@ impl Ui {
         );
         let local = format!("{}~popover", path.replace('/', "_"));
         let mut layer = 0;
+        let mut layer_at = NONE;
         if mode == Mode::Auto {
             let out = self.floating(&local, open, anchor, content, |ui| {
-                layer = ui.nodes[ui.parent()].key;
+                layer_at = ui.parent();
+                layer = ui.nodes[layer_at].key;
                 build_children(ui, b, None);
             });
             if out.dismissed {
@@ -225,8 +255,12 @@ impl Ui {
                 anchor,
             );
             layer = self.nodes[i].key;
+            layer_at = i;
             build_children(self, b, None);
             self.close();
+        }
+        if layer_at != NONE {
+            self.place_popover(r, layer_at, link.point);
         }
         let l = self.docs.popovers.entry(pk).or_default();
         if layer != 0 {
@@ -236,5 +270,33 @@ impl Ui {
         let resp = crate::ui::Response::default();
         self.fire(b, n, key, &path, resp);
         Some(path)
+    }
+
+    /// Popover layer `at`'s anchor positioning against its implicit anchor
+    /// (the layout pass reads its `anchor` node, or `point`), and its arrow.
+    fn place_popover(&mut self, r: &Resolved, at: usize, point: Option<[f32; 2]>) {
+        let (spec, authored) = Self::anchor_spec(r, &mut Props::default());
+        let n = &mut self.nodes[at];
+        if authored {
+            n.props.anchor = Some(Box::new(spec));
+        }
+        n.anchor_point = point;
+        n.arrow = r
+            .pseudo
+            .iter()
+            .find(|(w, ..)| *w == "arrow")
+            .map(|(_, _, p)| {
+                let size = match p.size("width") {
+                    Some(Size::Fixed(v)) => v,
+                    _ => 10.0,
+                };
+                // Its own background, else the popover's, as a CSS arrow
+                // usually is.
+                let color = p
+                    .color("background")
+                    .or(n.el.background)
+                    .unwrap_or(self.theme.palette.panel_raised);
+                (size, color)
+            });
     }
 }

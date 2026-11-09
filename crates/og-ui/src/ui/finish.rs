@@ -629,10 +629,13 @@ impl Ui {
                         )
                     }
                     _ => {
-                        let a = self
-                            .nodes
-                            .get(self.nodes[f].anchor)
-                            .map_or(safe, |n| n.rect);
+                        let a = match self.nodes[f].anchor_point {
+                            Some([px, py]) => Rect::new(px, py, 0.0, 0.0),
+                            None => self
+                                .nodes
+                                .get(self.nodes[f].anchor)
+                                .map_or(safe, |n| n.rect),
+                        };
                         let popover = float == Float::Popover;
                         let x = if popover {
                             // Aligned to the anchor's start in the reading direction.
@@ -651,6 +654,14 @@ impl Ui {
                         if popover {
                             y = y.min(safe.bottom() - h).max(safe.y);
                         }
+                        // The side it sits on, for its arrow.
+                        self.nodes[f].anchor_placed.side = if y >= a.bottom() - 0.5 {
+                            Some(crate::anchor::PlacedSide::Bottom)
+                        } else if y + h <= a.y + 0.5 {
+                            Some(crate::anchor::PlacedSide::Top)
+                        } else {
+                            None
+                        };
                         (x, y)
                     }
                 };
@@ -751,23 +762,36 @@ impl Ui {
                             .find(|(j, n)| n == name && !inside(*j))
                             .map(|(j, _)| *j)
                     };
+                    // A popover's implicit anchor (HTML): the control that
+                    // opened it, or the point a context menu opened at.
+                    let popover = matches!(self.nodes[i].float, Float::Popover | Float::Tooltip)
+                        && self.floating.contains(&i);
+                    let point = self.nodes[i]
+                        .anchor_point
+                        .filter(|_| popover && spec.anchor.is_empty())
+                        .map(|[x, y]| Rect::new(x, y, 0.0, 0.0));
                     let default = if spec.anchor.is_empty() {
                         let to = &self.nodes[i].props.anchor_to;
+                        let implicit = self.nodes[i].anchor;
                         (!to.is_empty())
                             .then(|| crate::ui::node_in(&self.tree, &self.nodes, to, i))
                             .flatten()
+                            .or((popover && point.is_none() && implicit < self.nodes.len())
+                                .then_some(implicit))
                     } else {
                         by_name(&spec.anchor)
                     };
                     let anchor = |name: &str| {
                         if name.is_empty() {
-                            default.map(box_of)
+                            point.or(default.map(box_of))
                         } else {
                             by_name(name).map(box_of)
                         }
                     };
                     let n = &self.nodes[i];
                     let cb = match n.props.position {
+                        // A popover keeps inside the safe area, as it does unanchored.
+                        _ if popover => safe,
                         crate::element::Position::Screen => screen,
                         _ if n.up != NONE => box_of(n.up),
                         _ => screen,
@@ -823,6 +847,48 @@ impl Ui {
                     return Err(error);
                 }
             }
+        }
+        // Popovers' arrows (`::-og-arrow`): a square turned 45° across the
+        // edge facing the anchor, over the anchor's middle where the box
+        // allows, hidden while no side faces it.
+        for k in 0..self.floating.len() {
+            let f = self.floating[k];
+            let n = &self.nodes[f];
+            let Some((size, color)) = n.arrow else {
+                continue;
+            };
+            let a = match n.anchor_point {
+                Some([x, y]) => Rect::new(x, y, 0.0, 0.0),
+                None => match self.nodes.get(n.anchor) {
+                    Some(a) => a.rect,
+                    None => continue,
+                },
+            };
+            let (b, placed) = (n.rect, n.anchor_placed);
+            self.nodes[f].shapes.retain(|s| {
+                !matches!(s, crate::layout::Shape::Bar { part, .. }
+                    if part.component == "Popover" && part.part == "arrow")
+            });
+            let (Some(side), false) = (placed.side, placed.hidden) else {
+                continue;
+            };
+            // Kept a side's length in from the corners.
+            let along =
+                |lo: f32, len: f32, at: f32| at.clamp(lo + size, (lo + len - size).max(lo + size));
+            let (ax, ay) = a.center();
+            let (cx, cy) = match side {
+                crate::anchor::PlacedSide::Bottom => (along(b.x, b.width, ax), b.y),
+                crate::anchor::PlacedSide::Top => (along(b.x, b.width, ax), b.bottom()),
+                crate::anchor::PlacedSide::Right => (b.x, along(b.y, b.height, ay)),
+                crate::anchor::PlacedSide::Left => (b.right(), along(b.y, b.height, ay)),
+            };
+            let (bx, by) = b.center();
+            self.nodes[f].shapes.push(crate::layout::Shape::Bar {
+                part: crate::dress::PartRef::of("Popover", "arrow", None),
+                frame: crate::layout::Frame::centered(cx - bx, cy - by, size, size),
+                angle: std::f32::consts::FRAC_PI_4,
+                color,
+            });
         }
         self.kept.query_roots = None;
         if !self.tree.pending.is_empty() {

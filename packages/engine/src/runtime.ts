@@ -2127,6 +2127,7 @@ function within<T>(open: () => void, build: () => void): T {
 export const ui = Object.freeze({
   scope: (world: WorldImpl, id: string): Api.UiScope => uiReactor(world).scope(id),
   configure: (world: WorldImpl, desc?: unknown) => parse(abi().og_ui_configure(world.id, json(desc))),
+  filePicker: (world: WorldImpl): boolean => abi().og_ui_file_picker(world.id),
   viewport: (world: WorldImpl) => parse(abi().og_ui_viewport(world.id)),
   theme: (world: WorldImpl) => parse(abi().og_ui_theme(world.id)),
   open: (id: string, desc?: unknown) => abi().og_ui_open(id, json(desc)),

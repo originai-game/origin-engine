@@ -1321,6 +1321,10 @@ impl Ui {
         if let Some(c) = r.color("fadeInto") {
             el.fade_into = Some(c);
         }
+        // A context menu's element takes the presses that open it.
+        if r.has("contextmenu") {
+            el.interactive = true;
+        }
         if r.has("interactive") {
             el.interactive = r.flag("interactive");
         }
@@ -1413,6 +1417,70 @@ impl Ui {
         el
     }
 
+    /// Its anchor positioning (CSS Anchor Positioning 1) as authored, and
+    /// whether any of it resolves only after layout; px insets and anchor
+    /// names go into `p`.
+    fn anchor_spec(r: &Resolved, p: &mut Props) -> (crate::anchor::AnchorSpec, bool) {
+        // The standard insets (`top`, `left`, `inset`, …): px ones are its
+        // edges; a percentage or `anchor()` resolves after layout.
+        let mut spec = crate::anchor::AnchorSpec::default();
+        let mut resolved_later = false;
+        for (k, name) in ["insetTop", "insetRight", "insetBottom", "insetLeft"]
+            .into_iter()
+            .enumerate()
+        {
+            let Some(v) = r.str(name).filter(|v| *v != "auto") else {
+                continue;
+            };
+            let Ok(inset) = crate::anchor::parse_inset(v) else {
+                continue;
+            };
+            if let crate::anchor::Inset::Px(px) = inset {
+                *[
+                    &mut p.insets.top,
+                    &mut p.insets.end,
+                    &mut p.insets.bottom,
+                    &mut p.insets.start,
+                ][k] = Some(px);
+            } else {
+                resolved_later = true;
+            }
+            spec.base.insets[k] = Some(inset);
+        }
+        if let Some(n) = r.str("anchorName").filter(|n| !n.is_empty()) {
+            p.anchor_names = n.split_whitespace().map(str::to_string).collect();
+        }
+        if let Some(a) = r.str("positionAnchor") {
+            spec.anchor = a.to_string();
+        }
+        if let Some(a) = r.str("positionArea") {
+            spec.base.area = crate::anchor::parse_area(a).ok().flatten();
+            resolved_later |= spec.base.area.is_some();
+        }
+        for (k, name) in ["anchorWidth", "anchorHeight"].into_iter().enumerate() {
+            if let Some(v) = r.str(name) {
+                spec.base.sizes[k] = crate::anchor::parse_size(v).ok();
+                resolved_later |= spec.base.sizes[k].is_some();
+            }
+        }
+        if let Some(t) = r.str("positionTry") {
+            spec.tries = crate::anchor::parse_tries(t).unwrap_or_default();
+        }
+        spec.order = match r.str("positionTryOrder") {
+            Some("most-width") => crate::anchor::TryOrder::MostWidth,
+            Some("most-height") => crate::anchor::TryOrder::MostHeight,
+            _ => crate::anchor::TryOrder::Normal,
+        };
+        spec.visibility = match r.str("positionVisibility") {
+            Some("always") => crate::anchor::Visibility::Always,
+            Some("no-overflow") => crate::anchor::Visibility::NoOverflow,
+            _ => crate::anchor::Visibility::AnchorsVisible,
+        };
+        spec.named = r.position_tries.clone();
+        resolved_later |= !spec.tries.is_empty();
+        (spec, resolved_later)
+    }
+
     /// Element fields depend only on resolved values, not a binding scope.
     fn resolved_props(n: &DocNode, r: &Resolved) -> Props {
         let mut p = Props::default();
@@ -1473,63 +1541,7 @@ impl Ui {
         if p.position == Position::Flow && p.insets.is_set() {
             p.position = Position::Absolute;
         }
-        // The standard insets (`top`, `left`, `inset`, …): px ones are its
-        // edges; a percentage or `anchor()` resolves after layout.
-        let mut spec = crate::anchor::AnchorSpec::default();
-        let mut resolved_later = false;
-        for (k, name) in ["insetTop", "insetRight", "insetBottom", "insetLeft"]
-            .into_iter()
-            .enumerate()
-        {
-            let Some(v) = r.str(name).filter(|v| *v != "auto") else {
-                continue;
-            };
-            let Ok(inset) = crate::anchor::parse_inset(v) else {
-                continue;
-            };
-            if let crate::anchor::Inset::Px(px) = inset {
-                *[
-                    &mut p.insets.top,
-                    &mut p.insets.end,
-                    &mut p.insets.bottom,
-                    &mut p.insets.start,
-                ][k] = Some(px);
-            } else {
-                resolved_later = true;
-            }
-            spec.base.insets[k] = Some(inset);
-        }
-        if let Some(n) = r.str("anchorName").filter(|n| !n.is_empty()) {
-            p.anchor_names = n.split_whitespace().map(str::to_string).collect();
-        }
-        if let Some(a) = r.str("positionAnchor") {
-            spec.anchor = a.to_string();
-        }
-        if let Some(a) = r.str("positionArea") {
-            spec.base.area = crate::anchor::parse_area(a).ok().flatten();
-            resolved_later |= spec.base.area.is_some();
-        }
-        for (k, name) in ["anchorWidth", "anchorHeight"].into_iter().enumerate() {
-            if let Some(v) = r.str(name) {
-                spec.base.sizes[k] = crate::anchor::parse_size(v).ok();
-                resolved_later |= spec.base.sizes[k].is_some();
-            }
-        }
-        if let Some(t) = r.str("positionTry") {
-            spec.tries = crate::anchor::parse_tries(t).unwrap_or_default();
-        }
-        spec.order = match r.str("positionTryOrder") {
-            Some("most-width") => crate::anchor::TryOrder::MostWidth,
-            Some("most-height") => crate::anchor::TryOrder::MostHeight,
-            _ => crate::anchor::TryOrder::Normal,
-        };
-        spec.visibility = match r.str("positionVisibility") {
-            Some("always") => crate::anchor::Visibility::Always,
-            Some("no-overflow") => crate::anchor::Visibility::NoOverflow,
-            _ => crate::anchor::Visibility::AnchorsVisible,
-        };
-        spec.named = r.position_tries.clone();
-        resolved_later |= !spec.tries.is_empty();
+        let (spec, resolved_later) = Self::anchor_spec(r, &mut p);
         if resolved_later && matches!(p.position, Position::Absolute | Position::Screen) {
             p.anchor = Some(Box::new(spec));
         }

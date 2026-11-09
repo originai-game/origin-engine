@@ -1167,8 +1167,9 @@ reference source of `references/<tier>/kit-*.png`; the `screens` guide
 built from the public calls only (open/close with `ElementDesc.focusable`
 and `part`, `props`, `setDraw`, `semantics`, `animate`, `memory`, `gesture`,
 the modal layer). Containers and navigation: `card`,
-`dialog`, `confirm`, `popover`, `menu`, `contextMenu`,
-`sheet`, `pagination` (the action bar, split view, carousel,
+`dialog`, `confirm`,
+`sheet`, `pagination` (popovers and context menus are document
+`popover`/`contextmenu` attributes; the menu, tooltip card, action bar, split view, carousel,
 breadcrumbs and radial menu are component documents in
 `packages/engine/src/ui/components`, `og ui eject <name>`). Data: `dataList`, `dataGrid`, `table` (sorted
 and filtered once per change of its rows, only the rows in view built),

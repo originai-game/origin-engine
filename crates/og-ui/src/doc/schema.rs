@@ -1001,6 +1001,11 @@ pub const CORE_PROPS: &[PropSpec] = &[
         Ty::Name,
         "The id of the popover shown while the pointer rests on it or it holds the keyboard focus (HTML `interestfor`)."
     ),
+    p!(
+        "contextmenu",
+        Ty::Name,
+        "The id of the popover a secondary press or a long press on it opens at the pointer, its anchor that point (HTML's former `contextmenu`): a context menu."
+    ),
     // ARIA (docs/ui.md §2: semantics through ARIA).
     p!(
         "role",

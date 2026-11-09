@@ -23,10 +23,10 @@ export type Mut<T> = { -readonly [K in keyof T]: T[K] };
 
 // The tiers' and teams' colours are U6c's (feedback/core.ts).
 export { rarityColor, rarityPips, teamColor } from "../feedback/core.ts";
-import { rarityColor, rarityPips } from "../feedback/core.ts";
+import { rarityColor, rarityPips, type Rarity } from "../feedback/core.ts";
 
 /** A row of `n` small diamonds in a tier's colour (its pips), each `size` square. */
-export function pips(id: string, r: Api.Rarity | undefined, size = 6, max = 0): void {
+export function pips(id: string, r: Rarity | undefined, size = 6, max = 0): void {
   const n = Math.max(0, rarityPips(r));
   const c = rarityColor(r);
   if (!c || n === 0) return;
@@ -298,7 +298,7 @@ export interface Slot {
   /** What it shows, for a screen reader; empty is decoration. */
   label?: string | undefined;
   /** A tier's colour washes the placeholder and rings the slot. */
-  rarity?: Api.Rarity | undefined;
+  rarity?: Rarity | undefined;
   /** The slot's corner radius. */
   radius?: number | [number, number, number, number] | undefined;
   /** How the art fills it. */

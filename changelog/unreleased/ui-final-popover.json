@@ -1,0 +1,41 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "UI document popover placement (position-area, insets, position-try-fallbacks on a popover)",
+      "summary": "An open popover is placed by CSS anchor positioning against its implicit anchor, the control whose popovertarget or interestfor opened it: position-area picks the side and alignment, an inset (left: 8px beside a right-hand popover) offsets it, and position-try-fallbacks and @position-try flip it inside the safe area. A popover with none of them still hangs under its control, above it where there is more room."
+    },
+    {
+      "member": "UI document popover arrow (::-og-arrow)",
+      "summary": "A popover's ::-og-arrow { width; background } draws a square turned 45° across the edge facing its anchor, over the anchor's middle where the box allows, and hides while no side faces it. Its colour defaults to the popover's background."
+    },
+    {
+      "member": "UI document contextmenu attribute",
+      "summary": "contextmenu=\"id\" on an element opens popover id at the point of a secondary press or long press on it; that zero-size point is its anchor, so position-area and fallbacks place it there."
+    },
+    {
+      "member": "Component documents menu and tooltip-card",
+      "summary": "packages/engine/src/ui/components/menu.svelte (commands, checks, radios, separators, headers, shortcuts and a drill-in submenu) and tooltip-card.svelte (rarity title and pips, art slot, stat rows with deltas, a comparison card, footer and action hints). Put them in a popover, or eject them with og ui eject menu and og ui eject tooltip-card."
+    }
+  ],
+  "breaking": [
+    {
+      "member": "og.ui.popover, og.ui.PopoverDesc, og.ui.PopoverResult, og.ui.FloatSide, og.ui.FloatAlign",
+      "change": "The popover builder is removed.",
+      "fix": "Write `<button popovertarget=\"Tip\">?</button><div id=\"Tip\" popover>…</div>` in a document, and place it with `#Tip { position-area: right; left: 10px; position-try-fallbacks: flip-inline; } #Tip::-og-arrow { width: 10px; }`.",
+      "find": ["og.ui.popover", "PopoverDesc", "PopoverResult", "FloatSide", "FloatAlign"]
+    },
+    {
+      "member": "og.ui.menu, og.ui.contextMenu, og.ui.MenuDesc, og.ui.MenuEntry, og.ui.MenuEntryKind, og.ui.MenuChoice",
+      "change": "The menu and context menu builders are removed.",
+      "fix": "Write `<menu id=\"Menu\" popover>` with buttons opened by `popovertarget=\"Menu\"`. For a context menu, put `contextmenu=\"Menu\"` on the element that is right-clicked or long-pressed. For entries from a store, eject the `menu` component document and read the choice from og.ui.docEvents.",
+      "find": ["og.ui.menu", "og.ui.contextMenu", "MenuDesc", "MenuEntry", "MenuEntryKind", "MenuChoice"]
+    },
+    {
+      "member": "og.ui.tooltipCard, og.ui.TooltipCardDesc, og.ui.TooltipCardResult, og.ui.TooltipStat, og.ui.TooltipLink, og.ui.Rarity",
+      "change": "The rich tooltip card builder is removed.",
+      "fix": "Put a `popover=\"hint\"` element opened by `interestfor` on its trigger, holding the `tooltip-card` component document (`og ui eject tooltip-card`) bound to stores. A nested keyword card is a hint popover of its own, opened by `interestfor` on the keyword.",
+      "find": ["og.ui.tooltipCard", "TooltipCardDesc", "TooltipCardResult", "TooltipStat", "TooltipLink"]
+    }
+  ]
+}
