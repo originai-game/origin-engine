@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "shooter kit: Loadout",
+      "summary": "On a landscape phone the loadout shows several slot rows instead of one: the title is smaller and its heading margins go, the slots take one column, and Back and Equip stand beside the list at its foot. A slot's icon no longer shrinks and its Equipped tag ellipsizes when a long translation leaves no room."
+    }
+  ]
+}

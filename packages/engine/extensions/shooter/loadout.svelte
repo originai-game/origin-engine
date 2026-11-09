@@ -12,6 +12,7 @@
 
 <section id="Loadout" aria-label={title != '' ? title : t("shooter.loadout.title")}>
   <h2 id="Title">{title != '' ? title : t("shooter.loadout.title")}</h2>
+  <div id="Body">
   <div id="Groups">
     {#each categories as c (c.id)}
       <section class="group" aria-label={c.label != '' ? c.label : t("shooter.loadout.category." + c.id)}>
@@ -48,11 +49,13 @@
       {/if}
     {/each}
   </footer>
+  </div>
 </section>
 
 <style>
 #Loadout { width: stretch; height: stretch; gap: var(--space-lg); }
 #Title { font: var(--text-xl2); font-family: var(--font-display); }
+#Body { width: stretch; height: stretch; gap: var(--space-lg); }
 /* The scrollbar is drawn on the right in either direction, so the room beside it is
    on the right too. */
 #Groups { width: stretch; height: stretch; overflow-y: auto; scrollbar-gutter: stable; padding-right: var(--space-lg); container-type: scroll-state; gap: var(--space-xl); display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(var(--size-xxl) * 3), 1fr)); align-content: start; }
@@ -61,15 +64,15 @@
 .items { gap: var(--space-xs); }
 .item { width: stretch; height: auto; min-height: var(--size-touch); padding: var(--space-sm) var(--space-md); border-radius: var(--radius-sm); }
 .face { display: flex; width: stretch; align-items: center; gap: var(--space-md); }
-.icon { width: var(--size-sm); height: var(--size-sm); color: var(--ink-muted); }
-.text { width: stretch; gap: var(--space-xxs); align-items: flex-start; }
+.icon { flex: none; width: var(--size-sm); height: var(--size-sm); color: var(--ink-muted); }
+.text { width: stretch; min-width: 0; gap: var(--space-xxs); align-items: flex-start; }
 .name { font: var(--text-body); text-align: start; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: stretch; }
 /* The tag drops under the figures when a long translation leaves no room beside them. */
 .sub { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-xxs) var(--space-sm); }
 .detail { text-align: start; font: var(--text-caption); font-family: var(--font-mono); white-space: nowrap; }
 /* Equipped is a tag on the detail line, so every row's price stands alone at its end
    and the name keeps the row's width. */
-.badge { flex: none; font: var(--text-caption); color: var(--accent); text-transform: uppercase; white-space: nowrap; padding: 0 var(--space-xs); border: 1px solid var(--accent); border-radius: var(--radius-xs); }
+.badge { flex: 0 1 auto; max-width: stretch; overflow: hidden; text-overflow: ellipsis; font: var(--text-caption); color: var(--accent); text-transform: uppercase; white-space: nowrap; padding: 0 var(--space-xs); border: 1px solid var(--accent); border-radius: var(--radius-xs); }
 .cost { display: flex; flex: none; align-items: center; gap: var(--space-xxs); }
 .price { font: var(--text-caption); font-family: var(--font-mono); white-space: nowrap; }
 .coin { width: var(--size-xs); height: var(--size-xs); color: var(--gold); }
@@ -80,6 +83,17 @@
 @container scroll-state(scrollable: bottom) { #Fade { opacity: 1; } }
 #Actions { display: flex; width: stretch; justify-content: flex-end; gap: var(--space-sm); padding-bottom: env(safe-area-inset-bottom); }
 #Actions button { min-height: var(--size-touch); min-width: calc(var(--size-xxl) * 1.25); }
+/* A landscape phone has height for a few rows only: the title takes less of it,
+   and the actions stand beside the list, at its end under the thumb, so the
+   list keeps the page's height. */
+@media (height < 600px) and (orientation: landscape) {
+  #Loadout { gap: var(--space-sm); }
+  #Title { font: var(--text-lg); font-family: var(--font-display); margin: 0; }
+  .category { margin: 0; }
+  #Body { flex-direction: row; gap: var(--space-md); }
+  #Groups { gap: var(--space-md); grid-template-columns: minmax(0, 1fr); }
+  #Actions { flex-direction: column; width: auto; height: stretch; justify-content: flex-end; }
+}
 /* Under a finger the buttons are pressed, not keyed: no keycaps. */
 @media (pointer: coarse) { #BackKey, #EquipKey { display: none; } }
 </style>
