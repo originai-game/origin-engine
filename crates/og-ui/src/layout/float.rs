@@ -461,11 +461,17 @@ fn rich(
         (l, (r - l).max(0.0), next)
     };
     let y = top + pad.top;
+    // Down a vertical line its units take their vertical lengths, which the
+    // shaper does not lay out.
+    let v = n.rich_vertical();
     #[cfg(feature = "shaping")]
-    let broken = shaped_lines(rc, fonts, y, room_at)
-        .unwrap_or_else(|| span_lines(rc, fonts, y, lowest, room_at));
+    let broken = v
+        .is_none()
+        .then(|| shaped_lines(rc, fonts, y, room_at))
+        .flatten()
+        .unwrap_or_else(|| span_lines(rc, fonts, y, lowest, room_at, v));
     #[cfg(not(feature = "shaping"))]
-    let broken = span_lines(rc, fonts, y, lowest, room_at);
+    let broken = span_lines(rc, fonts, y, lowest, room_at, v);
     let (lines, shifts, narrowed, drop) = broken;
     let shifts = shifts
         .into_iter()
@@ -540,21 +546,22 @@ fn shaped_lines(
 }
 
 /// [`rich`]'s lines where its faces cannot be shaped (fixed or atlas-only
-/// metrics): each line broken from the spans left; below `lowest` (the
-/// floats' bottom) the rest at once.
+/// metrics) or run down a vertical line `v`: each line broken from the
+/// spans left; below `lowest` (the floats' bottom) the rest at once.
 fn span_lines(
     rc: &RichContent,
     fonts: &dyn Metrics,
     mut y: f32,
     lowest: f32,
     room_at: impl Fn(f32, f32) -> (f32, f32, Option<f32>),
+    v: Option<crate::layout::flow::VerticalText>,
 ) -> Broken {
     let break_at = |rest: &[(usize, RichSpan)], w: f32| {
         let part = RichContent {
             spans: rest.iter().map(|s| s.1.clone()).collect(),
             ..rc.clone()
         };
-        crate::rich::rich_lines(&part, fonts, Some(w + 0.5))
+        crate::rich::rich_lines(&part, fonts, Some(w + 0.5), v)
     };
     // A line of the spans left, its spans renumbered to the paragraph's.
     let renumber = |rest: &[(usize, RichSpan)], mut l: RichLine| {

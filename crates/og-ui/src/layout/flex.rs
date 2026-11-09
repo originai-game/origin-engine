@@ -436,7 +436,7 @@ pub(super) fn size_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'_>) {
                 None => (pref, min),
             }
         }
-        Content::Rich(rc) => crate::rich::rich_widths(rc, fonts),
+        Content::Rich(rc) => crate::rich::rich_widths(rc, fonts, n.rich_vertical()),
         Content::Image { .. } => (0.0, 0.0),
         Content::None if n.props.layout == LayoutMode::Stack => {
             let kids = || n.children.iter().map(|&c| &nodes[c]);
@@ -853,7 +853,8 @@ pub(super) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'
         return;
     }
     if let Content::Rich(rc) = &nodes[i].content {
-        let lines = crate::rich::rich_lines(rc, fonts, rc.wrap.then_some(inner + 0.5));
+        let v = nodes[i].rich_vertical();
+        let lines = crate::rich::rich_lines(rc, fonts, rc.wrap.then_some(inner + 0.5), v);
         nodes[i].rich_lines = lines;
         nodes[i].wrap_lines.clear();
         return;

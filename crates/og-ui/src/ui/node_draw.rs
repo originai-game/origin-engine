@@ -1102,25 +1102,146 @@ impl Ui {
         let walk = crate::text_path::Walk::new(&subs, closed);
         // One line: its breaks are spaces.
         let line: String = tc.text.replace('\n', " ");
-        let chars: Vec<char> = line.chars().collect();
-        let boxes = crate::edit::boxes(m, &line, self.direction, size, tracking);
-        let width = boxes.iter().map(|b| b.x1).fold(0.0, f32::max);
-        let at = if tp.percent {
-            tp.offset * walk.length
-        } else {
-            tp.offset * sk
-        };
-        let start = at
-            - match tc.align {
-                TextAlign::Start | TextAlign::Justify => 0.0,
-                TextAlign::Center => width / 2.0,
-                TextAlign::End => width,
-            };
         let t = &self.theme;
         let dpr = self.viewport.dpr();
         let role = tc.font.effect_index();
         let weight = t.art.text_weights[role] * sk / dpr + tc.emphasis * size;
         let color = n.sampled.ink.fade(n.alpha).linear();
+        let offset = if tp.percent {
+            tp.offset * walk.length
+        } else {
+            tp.offset * sk
+        };
+        let start = |width: f32| {
+            offset
+                - match tc.align {
+                    TextAlign::Start | TextAlign::Justify => 0.0,
+                    TextAlign::Center => width / 2.0,
+                    TextAlign::End => width,
+                }
+        };
+        if let Some(v) = tc.vertical {
+            // Vertical text on a path (SVG 2 §11.8.3, CSS Writing Modes 4
+            // §5): the path is the line, running from its start. Each
+            // cluster takes its stretch of the line as a vertical line sets
+            // it (upright at its vertical advance, sideways at its
+            // horizontal one) and is drawn as that line draws it, with
+            // the line's down turned onto the path at its middle: an
+            // upright cluster stands with its top back along the path, its
+            // em centred on it; a sideways one lies along it, centred
+            // across it (the central baseline on the path).
+            let v = crate::layout::flow::VerticalText {
+                combine: false,
+                ..v
+            };
+            let (asc, desc) = m.extents(&line);
+            let para = self.text_flow(i).1;
+            let run = |draw| VerticalRun {
+                font,
+                size,
+                tracking,
+                features: tc.features(),
+                para,
+                dir: og_i18n::Direction::Ltr,
+                up_line: false,
+                mid: 0.0,
+                centre: (asc + desc) / 2.0 * size,
+                col: -size / 2.0,
+                lh: size,
+                space_extra: 0.0,
+                draw,
+            };
+            // Each cluster's bytes, whether it stands, and its stretch.
+            let mut clusters: Vec<(std::ops::Range<usize>, bool, f32, f32)> = Vec::new();
+            let mut length = 0.0;
+            for (range, up) in crate::text::vertical::runs(&line, v) {
+                let text = &line[range.clone()];
+                let bytes: Vec<usize> = text
+                    .char_indices()
+                    .map(|(b, _)| b)
+                    .chain([text.len()])
+                    .collect();
+                length = vertical_run(
+                    &run(false),
+                    text,
+                    up,
+                    length,
+                    &|a, _| a,
+                    &mut || 0.0,
+                    &mut |c, a, z| {
+                        let r = range.start + bytes[c.start]..range.start + bytes[c.end];
+                        match clusters.last_mut() {
+                            // A cluster of several glyphs: one stretch.
+                            Some(last) if last.0 == r => last.3 = last.3.max(z),
+                            _ => clusters.push((r, up, a, z)),
+                        }
+                    },
+                    &mut |_, _, _, _, _, _, _| {},
+                );
+            }
+            let start = start(length);
+            let draw = run(true);
+            for (r, up, a, z) in clusters {
+                let cluster = &line[r];
+                if cluster.trim().is_empty() {
+                    continue;
+                }
+                let Some((p, angle)) = walk.at(start + (a + z) / 2.0) else {
+                    continue;
+                };
+                let (sin, cos) = angle.sin_cos();
+                // The line's across and down, on the path.
+                let (across, down) = (Vec2::new(sin, -cos), Vec2::new(cos, sin));
+                let half = (z - a) / 2.0;
+                vertical_run(
+                    &draw,
+                    cluster,
+                    up,
+                    0.0,
+                    &|a, _| a,
+                    &mut || 0.0,
+                    &mut |_, _, _| {},
+                    &mut |x, y, text, handle, placements, tf, _| {
+                        let Some(handle) = handle.filter(|_| !text.is_empty()) else {
+                            return;
+                        };
+                        let pen = p + across * x + down * (y - half);
+                        let (c0, c1) =
+                            (across * tf[0] + down * tf[1], across * tf[2] + down * tf[3]);
+                        let text = DrawCmd::Text {
+                            x: pen.x,
+                            baseline: pen.y,
+                            size,
+                            text,
+                            color,
+                            font: handle,
+                            bounds: Rect::new(
+                                p.x - 2.0 * size,
+                                p.y - 2.0 * size,
+                                4.0 * size,
+                                4.0 * size,
+                            ),
+                            clip,
+                            tracking,
+                            weight,
+                            glow: None,
+                            placements,
+                        };
+                        cmds.push(DrawCmd::StyledText {
+                            text: Box::new(text),
+                            effects: Box::new(og_render::UiTextEffects {
+                                transform: [c0.x, c0.y, c1.x, c1.y],
+                                ..Default::default()
+                            }),
+                        });
+                    },
+                );
+            }
+            return;
+        }
+        let chars: Vec<char> = line.chars().collect();
+        let boxes = crate::edit::boxes(m, &line, self.direction, size, tracking);
+        let start = start(boxes.iter().map(|b| b.x1).fold(0.0, f32::max));
         for (a, b) in og_i18n::graphemes(&line) {
             let span = boxes.iter().filter(|g| g.index >= a && g.index < b).fold(
                 None,
@@ -1181,8 +1302,9 @@ impl Ui {
 
 /// A vertical line where it is drawn ([`Ui::vertical_lines`]).
 pub(crate) struct VerticalLine {
-    /// Its column's left edge; the column is a line height wide.
+    /// Its column's left edge and width (a line height).
     pub col: f32,
+    pub width: f32,
     /// Each cluster in logical order: its characters (indices in the line)
     /// and its stretch down the line, physical (top, bottom).
     pub glyphs: Vec<(std::ops::Range<usize>, f32, f32)>,
@@ -1371,7 +1493,11 @@ impl Ui {
                         );
                     }
                 }
-                out.push(VerticalLine { col, glyphs });
+                out.push(VerticalLine {
+                    col,
+                    width: lh,
+                    glyphs,
+                });
                 if let Some(c) = cmds.as_deref_mut() {
                     c.push(line_cmds);
                 }
@@ -1430,7 +1556,11 @@ impl Ui {
                     },
                 );
             }
-            out.push(VerticalLine { col, glyphs });
+            out.push(VerticalLine {
+                col,
+                width: lh,
+                glyphs,
+            });
             if let Some(c) = cmds.as_deref_mut() {
                 c.push(line_cmds);
             }
@@ -1546,39 +1676,13 @@ impl Ui {
             }
             first += count + 1;
             // The player's selection (`user-select`), under the text.
-            if !runs.is_empty() {
-                let fill = self
-                    .docs
-                    .selection
-                    .get(&n.key)
-                    .and_then(|s| s.background)
-                    .unwrap_or(self.theme.palette.control_strong);
-                let part = crate::dress::PartRef::of("TextEdit", "selection", None);
-                let dressing = self.dress.resolve(&part);
-                let across = size + self.theme.space.xxs * 2.0;
-                let x0 = glyphs.col + (lh - across) / 2.0;
-                for &(y0, y1) in &runs {
-                    let r = Rect::new(x0, y0, across, y1 - y0).snapped(dpr);
-                    if dressing.matched == 0 {
-                        cmds.push(DrawCmd::Quad {
-                            rect: r,
-                            radius: 0.0,
-                            color: fill.fade(alpha).linear(),
-                            clip,
-                        });
-                    } else {
-                        self.part_commands_at(
-                            &part,
-                            dressing.draw.subpart_rect(r, n.rect).snapped(dpr),
-                            Some(dressing.draw.subpart_color(fill, &self.theme)),
-                            0.0,
-                            alpha,
-                            clip,
-                            cmds,
-                        );
-                    }
-                }
-            }
+            let across = size + self.theme.space.xxs * 2.0;
+            let x0 = glyphs.col + (lh - across) / 2.0;
+            let fills: Vec<Rect> = runs
+                .iter()
+                .map(|&(y0, y1)| Rect::new(x0, y0, across, y1 - y0))
+                .collect();
+            self.selection_fills(i, &fills, clip, cmds);
             // The unselected stretches when `::selection` redraws the
             // selected ones, else the whole line.
             let cut = selection.is_some() && !runs.is_empty();
@@ -1678,6 +1782,54 @@ impl Ui {
                         rule(mid);
                     }
                 }
+            }
+        }
+    }
+}
+
+impl Ui {
+    /// The player's selection (`user-select`) of node `i` under its text:
+    /// each of `rects` filled in `::selection`'s background, else the text
+    /// controls' `TextEdit.selection` part as dressed.
+    pub(crate) fn selection_fills(
+        &self,
+        i: usize,
+        rects: &[Rect],
+        clip: Rect,
+        cmds: &mut Vec<DrawCmd>,
+    ) {
+        if rects.is_empty() {
+            return;
+        }
+        let n = &self.nodes[i];
+        let (alpha, dpr) = (n.alpha, self.viewport.dpr());
+        let fill = self
+            .docs
+            .selection
+            .get(&n.key)
+            .and_then(|s| s.background)
+            .unwrap_or(self.theme.palette.control_strong);
+        let part = crate::dress::PartRef::of("TextEdit", "selection", None);
+        let dressing = self.dress.resolve(&part);
+        for r in rects {
+            let r = r.snapped(dpr);
+            if dressing.matched == 0 {
+                cmds.push(DrawCmd::Quad {
+                    rect: r,
+                    radius: 0.0,
+                    color: fill.fade(alpha).linear(),
+                    clip,
+                });
+            } else {
+                self.part_commands_at(
+                    &part,
+                    dressing.draw.subpart_rect(r, n.rect).snapped(dpr),
+                    Some(dressing.draw.subpart_color(fill, &self.theme)),
+                    0.0,
+                    alpha,
+                    clip,
+                    cmds,
+                );
             }
         }
     }

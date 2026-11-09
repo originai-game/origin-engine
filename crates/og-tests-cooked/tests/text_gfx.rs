@@ -47,6 +47,10 @@ fn cooked() -> Vec<CookedFont> {
     copy_dir(&here.join("tests/text-fonts"), &root);
     let src = here.join("../../tests/fixtures/ui-text/assets/fonts");
     for file in FONTS {
+        if root.join("assets/fonts").join(file).exists() {
+            // The project's own face (the text-vertical frame's brackets).
+            continue;
+        }
         std::fs::copy(src.join(file), root.join("assets/fonts").join(file)).expect("copy font");
     }
     let report = cook_project(&root, &CookOptions::default()).expect("cook");

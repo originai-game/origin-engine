@@ -1010,11 +1010,13 @@ impl Ui {
         // A vertical text sets its lines down: a plain text by its own
         // setting, a rich text by its node's (`Ui::rich_vertical`).
         // Text on a path follows its path's physical geometry: its box is
-        // the path's extent, whatever the writing mode.
+        // the path's extent, whatever the writing mode; its glyphs are set
+        // as a vertical line's along the path.
         let node = &mut self.nodes[i];
         match &mut node.content {
-            crate::layout::Content::Text(_) if node.props.text_path.is_some() => {
+            crate::layout::Content::Text(t) if node.props.text_path.is_some() => {
                 node.el.vertical = None;
+                t.vertical = flow.vertical_text(&t.text);
             }
             crate::layout::Content::Text(t) => t.vertical = flow.vertical_text(&t.text),
             _ => {}

@@ -1190,6 +1190,44 @@ p { margin: 0; }
     );
 }
 
+/// Upright Latin in a vertical rich paragraph takes an em per letter
+/// down its column, so its lines break by that length, not by the
+/// letters' widths across: every cluster stays inside the box.
+#[test]
+fn an_upright_rich_paragraph_breaks_by_its_vertical_advances() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="V"><p id="P">ab cd <b>ef</b> gh ij kl mn</p></div></div>
+<style>
+#V { writing-mode: vertical-rl; text-orientation: upright; height: 120px; }
+p { margin: 0; }
+</style>"#;
+    let mut scene = og_render::RenderScene::new();
+    let mut font = crate::features::font("Inter-Display.ttf");
+    font.handle = crate::support::add_test_font(&mut scene).handle;
+    let mut d = Doc::with_font(text, &[], false, font);
+    d.step(InputFrame::default());
+    let p = d.get("P");
+    assert_eq!(p.kind, "richtext");
+    let bottoms: Vec<f32> =
+        d.ui.frame()
+            .items
+            .iter()
+            .filter_map(|it| match &it.cmd {
+                og_ui::DrawCmd::Text { bounds, text, .. } if !text.trim().is_empty() => {
+                    Some(bounds.bottom())
+                }
+                _ => None,
+            })
+            .collect();
+    // 17 characters an em (16px) each: no fewer than three columns.
+    assert!(bottoms.len() >= 12, "{bottoms:?}");
+    assert!(
+        bottoms.iter().all(|b| *b <= p.y + p.height + 0.5),
+        "{bottoms:?} {p:?}"
+    );
+    assert!(p.width >= 3.0 * 16.0, "{p:?}");
+}
+
 /// A right-to-left rich paragraph beside a float breaks at each line's
 /// room from one shaping and draws each line in visual order: its Hebrew
 /// runs reversed, the first lines clear of the float on the left.

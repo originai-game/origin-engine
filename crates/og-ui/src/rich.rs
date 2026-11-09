@@ -139,6 +139,39 @@ struct Unit {
     glued: bool,
 }
 
+/// What a span's `text` takes along its line: its width across, or its
+/// length down a vertical line `v` (CSS Writing Modes 4), as
+/// [`Ui::vertical_rich_pieces`] sets it: text at its vertical advances
+/// (upright clusters) and horizontal ones (sideways runs), a picture or
+/// icon standing upright, a key cap's label down its plate.
+pub(crate) fn span_advance(
+    s: &RichSpan,
+    text: &str,
+    fonts: &dyn Metrics,
+    v: Option<crate::layout::flow::VerticalText>,
+) -> f32 {
+    let Some(v) = v else {
+        return span_width(s, text, fonts);
+    };
+    let size = s.step.size;
+    let down = |t: &str, size: f32| {
+        let m = fonts.metrics_styled(s.font, s.weight, s.italic, t);
+        crate::text::vertical::measure(
+            m,
+            t,
+            size,
+            span_tracking(s, t),
+            crate::shape::Features::NONE,
+            v,
+        )
+    };
+    match &s.atom {
+        Some(Atom::Icon(_) | Atom::Image(_)) => size * 1.1,
+        Some(Atom::Cap(t)) => down(t, size * CAP_TEXT) + 2.0 * (CAP_MARGIN + CAP_PAD) * size,
+        None => down(text, size),
+    }
+}
+
 pub(crate) fn span_width(s: &RichSpan, text: &str, fonts: &dyn Metrics) -> f32 {
     let size = s.step.size;
     match &s.atom {
@@ -202,8 +235,13 @@ pub(crate) fn span_metrics(s: &RichSpan, fonts: &dyn Metrics) -> (f32, f32, f32)
     (lh, a * s.step.size, d * s.step.size)
 }
 
-/// The paragraphs' units (paragraphs split at `\n`).
-fn paragraphs(rc: &RichContent, fonts: &dyn Metrics) -> Vec<Vec<Unit>> {
+/// The paragraphs' units (paragraphs split at `\n`), measured along a
+/// line ([`span_advance`]).
+fn paragraphs(
+    rc: &RichContent,
+    fonts: &dyn Metrics,
+    v: Option<crate::layout::flow::VerticalText>,
+) -> Vec<Vec<Unit>> {
     let mut out: Vec<Vec<Unit>> = vec![Vec::new()];
     for (k, s) in rc.spans.iter().enumerate() {
         if s.atom.is_some() {
@@ -212,7 +250,7 @@ fn paragraphs(rc: &RichContent, fonts: &dyn Metrics) -> Vec<Vec<Unit>> {
                 span: k,
                 text: String::new(),
                 space: false,
-                width: span_width(s, "", fonts),
+                width: span_advance(s, "", fonts, v),
                 glued,
             });
             continue;
@@ -232,7 +270,7 @@ fn paragraphs(rc: &RichContent, fonts: &dyn Metrics) -> Vec<Vec<Unit>> {
                     span: k,
                     text: t.to_string(),
                     space,
-                    width: span_width(s, t, fonts),
+                    width: span_advance(s, t, fonts, v),
                     glued,
                 });
             }
@@ -241,15 +279,22 @@ fn paragraphs(rc: &RichContent, fonts: &dyn Metrics) -> Vec<Vec<Unit>> {
     out
 }
 
-/// The widest paragraph unbroken, and the widest unbreakable group.
-pub(crate) fn rich_widths(rc: &RichContent, fonts: &dyn Metrics) -> (f32, f32) {
+/// The widest paragraph unbroken, and the widest unbreakable group: along
+/// the line, the longest down a vertical one `v`.
+pub(crate) fn rich_widths(
+    rc: &RichContent,
+    fonts: &dyn Metrics,
+    v: Option<crate::layout::flow::VerticalText>,
+) -> (f32, f32) {
     #[cfg(feature = "shaping")]
-    if let Some((_, widths)) = crate::text::paragraph::rich(rc, fonts, None) {
+    if v.is_none()
+        && let Some((_, widths)) = crate::text::paragraph::rich(rc, fonts, None)
+    {
         return (widths.0, if rc.wrap { widths.1 } else { widths.0 });
     }
     let mut pref = 0.0f32;
     let mut min = 0.0f32;
-    for para in paragraphs(rc, fonts) {
+    for para in paragraphs(rc, fonts, v) {
         pref = pref.max(para.iter().map(|u| u.width).sum());
         let mut group = 0.0f32;
         for u in &para {
@@ -264,14 +309,25 @@ pub(crate) fn rich_widths(rc: &RichContent, fonts: &dyn Metrics) -> (f32, f32) {
     (pref, if rc.wrap { min } else { pref })
 }
 
-/// Greedy lines at `max` (`None`: only at `\n`).
-pub(crate) fn rich_lines(rc: &RichContent, fonts: &dyn Metrics, max: Option<f32>) -> Vec<RichLine> {
+/// Greedy lines at `max` (`None`: only at `\n`). Down a vertical line `v`
+/// each unit takes its vertical length ([`span_advance`]): the lines break
+/// where they are drawn, not where a horizontal line would, so an upright
+/// run or a mix of upright and sideways text fills its column. The shaper
+/// lays out horizontal lines only; a vertical one is shaped as it is drawn.
+pub(crate) fn rich_lines(
+    rc: &RichContent,
+    fonts: &dyn Metrics,
+    max: Option<f32>,
+    v: Option<crate::layout::flow::VerticalText>,
+) -> Vec<RichLine> {
     #[cfg(feature = "shaping")]
-    if let Some((lines, _)) = crate::text::paragraph::rich(rc, fonts, max) {
+    if v.is_none()
+        && let Some((lines, _)) = crate::text::paragraph::rich(rc, fonts, max)
+    {
         return lines;
     }
     let mut lines = Vec::new();
-    for para in paragraphs(rc, fonts) {
+    for para in paragraphs(rc, fonts, v) {
         // Groups: glued units together, breakable between.
         let mut groups: Vec<Vec<&Unit>> = Vec::new();
         for u in &para {
@@ -778,15 +834,14 @@ impl Ui {
             return Vec::new();
         };
         let sk = n.scale;
-        let pad = n.el.padding;
-        let inner = Rect::new(
-            n.rect.x + pad.left * sk,
-            n.rect.y + pad.top * sk,
-            n.rect.width - pad.horizontal() * sk,
-            n.rect.height - pad.vertical() * sk,
-        );
+        let inner = self.rich_inner(i);
         if let Some(v) = self.rich_vertical(i) {
-            return self.vertical_rich_pieces(i, rc, v, inner);
+            return self
+                .vertical_rich_pieces(i, rc, v)
+                .0
+                .into_iter()
+                .map(|(_, p)| p)
+                .collect();
         }
         let rtl = self.direction == og_i18n::Direction::Rtl;
         let mut out = Vec::new();
@@ -1210,15 +1265,7 @@ impl Ui {
 impl Ui {
     /// A rich node's vertical setting, `None` when its lines run across.
     pub(crate) fn rich_vertical(&self, i: usize) -> Option<crate::layout::flow::VerticalText> {
-        let n = &self.nodes[i];
-        n.el.vertical?;
-        n.props
-            .flow
-            .vertical_text("")
-            .map(|v| crate::layout::flow::VerticalText {
-                combine: false,
-                ..v
-            })
+        self.nodes[i].rich_vertical()
     }
 
     /// What one rich span's text is drawn with down a vertical line whose
@@ -1258,26 +1305,58 @@ impl Ui {
         }
     }
 
-    /// A vertical rich node's pieces (CSS Writing Modes 4): its lines, laid
-    /// out in its frame, stack from its block-start side as columns, each
-    /// running down (up in `sideways-lr`, from the bottom right to left);
-    /// each piece's rect is its stretch of its column, its `baseline` the
-    /// column's middle (the central baseline) moved by its rise.
+    /// Rich node `i`'s content box.
+    fn rich_inner(&self, i: usize) -> Rect {
+        let n = &self.nodes[i];
+        let (sk, pad) = (n.scale, n.el.padding);
+        Rect::new(
+            n.rect.x + pad.left * sk,
+            n.rect.y + pad.top * sk,
+            n.rect.width - pad.horizontal() * sk,
+            n.rect.height - pad.vertical() * sk,
+        )
+    }
+
+    /// Whether a vertical rich line starts at its column's bottom (an
+    /// `rtl` line, or `sideways-lr`'s, which runs up).
+    fn rich_from_bottom(&self, i: usize, v: crate::layout::flow::VerticalText) -> bool {
+        self.text_flow(i).0 != (v.mode == crate::layout::flow::WritingMode::SidewaysLr)
+    }
+
+    /// A vertical rich node's pieces (CSS Writing Modes 4), each with its
+    /// line, and each line's column (its left edge and width): its lines,
+    /// laid out in its frame, stack from its block-start side as columns,
+    /// each running down (up in `sideways-lr`, from the bottom right to
+    /// left) in logical order, a run lying sideways shaped in its own
+    /// direction as it is drawn; each piece's rect is its stretch of its
+    /// column, its `baseline` the column's middle (the central baseline)
+    /// moved by its rise.
+    #[allow(clippy::type_complexity)]
     fn vertical_rich_pieces(
         &self,
         i: usize,
         rc: &RichContent,
         v: crate::layout::flow::VerticalText,
-        inner: Rect,
-    ) -> Vec<DrawnPiece> {
+    ) -> (Vec<(usize, DrawnPiece)>, Vec<(f32, f32)>) {
         let n = &self.nodes[i];
         let sk = n.scale;
-        let up_line = v.mode == crate::layout::flow::WritingMode::SidewaysLr;
-        let from_bottom = self.text_flow(i).0 != up_line;
+        let inner = self.rich_inner(i);
+        let from_bottom = self.rich_from_bottom(i, v);
         let mut out = Vec::new();
+        let mut cols = Vec::with_capacity(n.rich_lines.len());
         let mut line_at = 0.0;
         for (k, line) in n.rich_lines.iter().enumerate() {
-            let segments = visual_segments(rc, &self.fonts, line, og_i18n::Direction::Ltr);
+            let segments: Vec<Segment> = line
+                .pieces
+                .iter()
+                .map(|p| Segment {
+                    span: p.span,
+                    text: p.text.clone(),
+                    glyphs: None,
+                    width: p.width,
+                    rise: p.rise,
+                })
+                .collect();
             let [dx, dy, room] =
                 n.wrap_lines
                     .get(k)
@@ -1337,16 +1416,89 @@ impl Ui {
                 } else {
                     inner.y + lead + at
                 };
-                out.push(DrawnPiece {
-                    span: seg.span,
-                    text: seg.text,
-                    glyphs: seg.glyphs,
-                    rect: Rect::new(col, y, across, len),
-                    baseline: mid + seg.rise * sk,
-                });
+                out.push((
+                    k,
+                    DrawnPiece {
+                        span: seg.span,
+                        text: seg.text,
+                        glyphs: seg.glyphs,
+                        rect: Rect::new(col, y, across, len),
+                        baseline: mid + seg.rise * sk,
+                    },
+                ));
                 at += len;
             }
+            cols.push((col, across));
             line_at += across;
+        }
+        (out, cols)
+    }
+
+    /// A vertical rich node's lines where they are drawn, for the player's
+    /// selection: each line's column and its clusters' stretches, a
+    /// cluster's characters counted over its line's pieces (a picture, an
+    /// icon or a key cap none).
+    pub(crate) fn vertical_rich_lines(&self, i: usize) -> Vec<crate::ui::VerticalLine> {
+        let n = &self.nodes[i];
+        let (Content::Rich(rc), Some(v)) = (&n.content, self.rich_vertical(i)) else {
+            return Vec::new();
+        };
+        let (pieces, cols) = self.vertical_rich_pieces(i, rc, v);
+        let from_bottom = self.rich_from_bottom(i, v);
+        let mut out: Vec<crate::ui::VerticalLine> = cols
+            .into_iter()
+            .map(|(col, width)| crate::ui::VerticalLine {
+                col,
+                width,
+                glyphs: Vec::new(),
+            })
+            .collect();
+        let mut before = vec![0usize; out.len()];
+        for (k, piece) in pieces {
+            let first = before[k];
+            before[k] += piece.text.chars().count();
+            let s = &rc.spans[piece.span];
+            if s.atom.is_some() {
+                continue;
+            }
+            let font = self
+                .fonts
+                .for_styled(s.font, s.weight, s.italic, &piece.text)
+                .0;
+            let r = piece.rect;
+            let size = s.step.size * n.scale;
+            let run = self.span_run(
+                i,
+                s,
+                font,
+                &piece.text,
+                size,
+                v,
+                (piece.baseline, r.x, r.width),
+                false,
+            );
+            let top = |at: f32, len: f32| {
+                if from_bottom {
+                    r.bottom() - at - len
+                } else {
+                    r.y + at
+                }
+            };
+            let glyphs = &mut out[k].glyphs;
+            let mut at = 0.0;
+            for (range, up) in crate::text::vertical::runs(&piece.text, v) {
+                let off = first + piece.text[..range.start].chars().count();
+                at = crate::ui::vertical_run(
+                    &run,
+                    &piece.text[range],
+                    up,
+                    at,
+                    &top,
+                    &mut || 0.0,
+                    &mut |c, y0, y1| glyphs.push((off + c.start..off + c.end, y0, y1)),
+                    &mut |_, _, _, _, _, _, _| {},
+                );
+            }
         }
         out
     }
@@ -1368,8 +1520,47 @@ impl Ui {
         let n = &self.nodes[i];
         let p = &self.theme.palette;
         let (alpha, dpr, clip) = (n.alpha, self.viewport.dpr(), n.clip);
-        let from_bottom =
-            self.text_flow(i).0 != (v.mode == crate::layout::flow::WritingMode::SidewaysLr);
+        let from_bottom = self.rich_from_bottom(i, v);
+        // The player's selection: each line's selected stretch, merged,
+        // filled under the text, its column a line wide.
+        let mut selected: Vec<Rect> = Vec::new();
+        if let Some((a, b)) = n.selected {
+            let mut first = 0usize;
+            let lines = self.vertical_rich_lines(i);
+            for (line, l) in lines.iter().zip(&n.rich_lines) {
+                let count: usize = l.pieces.iter().map(|p| p.text.chars().count()).sum();
+                let (a, b) = (
+                    (a as usize).saturating_sub(first),
+                    (b as usize).saturating_sub(first),
+                );
+                let mut picked: Vec<(f32, f32)> = line
+                    .glyphs
+                    .iter()
+                    .filter(|(c, ..)| c.start >= a && c.start < b)
+                    .map(|&(_, y0, y1)| (y0, y1))
+                    .collect();
+                picked.sort_by(|p, q| p.0.total_cmp(&q.0));
+                let mut runs: Vec<(f32, f32)> = Vec::new();
+                for (y0, y1) in picked {
+                    match runs.last_mut() {
+                        Some(r) if y0 <= r.1 + 0.01 => r.1 = r.1.max(y1),
+                        _ => runs.push((y0, y1)),
+                    }
+                }
+                selected.extend(
+                    runs.into_iter()
+                        .map(|(y0, y1)| Rect::new(line.col, y0, line.width, y1 - y0)),
+                );
+                first += count + 1;
+            }
+            self.selection_fills(i, &selected, clip, cmds);
+        }
+        let selection = self
+            .docs
+            .selection
+            .get(&n.key)
+            .filter(|_| !selected.is_empty())
+            .and_then(|s| s.color);
         for piece in self.rich_pieces(i) {
             let s = &rc.spans[piece.span];
             let r = piece.rect;
@@ -1521,6 +1712,25 @@ impl Ui {
                             };
                         }
                         _ => {}
+                    }
+                }
+            }
+            // `::selection`'s ink: the selected glyphs drawn again over
+            // their stretches.
+            if let Some(ink) = selection {
+                let drawn = cmds.len();
+                for band in selected.iter().filter(|b| b.overlaps(&r)) {
+                    for k in first..drawn {
+                        let mut c = cmds[k].clone();
+                        let t = match &mut c {
+                            DrawCmd::StyledText { text, .. } => text.as_mut(),
+                            c => c,
+                        };
+                        if let DrawCmd::Text { color, clip, .. } = t {
+                            *color = ink.fade(alpha * s.color.alpha).linear();
+                            *clip = clip.intersect(band);
+                            cmds.push(c);
+                        }
                     }
                 }
             }

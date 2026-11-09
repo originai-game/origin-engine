@@ -380,6 +380,66 @@ p::selection { color: #ff0000; }
     );
 }
 
+/// A vertical rich paragraph takes the player's selection as a plain one
+/// does: a double press picks the word under it down its column (across
+/// its spans), its fill runs down that column, `::selection`'s ink covers
+/// only that stretch, and the copy is the source text.
+#[test]
+fn a_vertical_rich_paragraph_selects_down_its_columns() {
+    let doc = r#"<meta name="component" content="sel">
+<div id="Doc"><p id="V">alpha <b>beta</b> gamma delta epsilon zeta</p></div>
+<style>
+#Doc { user-select: text; padding: 16px; }
+p { writing-mode: vertical-rl; height: 200px; margin: 0; }
+p::selection { color: #ff0000; }
+</style>"#;
+    let mut scene = og_render::RenderScene::new();
+    let mut rig = Rig::with(doc, desktop(), true, add_test_font(&mut scene));
+    let e = rig.el("V");
+    assert_eq!(e.kind, "richtext");
+    rig.presses(rig.point("V", 0.9, 0.02), 2);
+    assert_eq!(rig.selected(), "alpha");
+    rig.presses(rig.point("V", 0.9, 0.22), 2);
+    assert_eq!(rig.selected(), "beta");
+    let red = Srgba::rgb(255, 0, 0).linear();
+    let near = |a: [f32; 4], b: [f32; 4]| a.iter().zip(b).all(|(x, y)| (x - y).abs() < 0.02);
+    let (mut red_clips, mut fills) = (vec![], vec![]);
+    for item in &rig.ui.frame().items {
+        let cmd = match &item.cmd {
+            DrawCmd::StyledText { text, .. } => text.as_ref(),
+            c => c,
+        };
+        match cmd {
+            DrawCmd::Text { color, clip, .. } if near(*color, red) => red_clips.push(*clip),
+            DrawCmd::Quad { rect, .. }
+                if rect.x >= e.x - 1.0 && rect.right() <= e.x + e.width + 1.0 =>
+            {
+                fills.push(*rect)
+            }
+            _ => {}
+        }
+    }
+    assert_eq!(fills.len(), 1, "{fills:?}");
+    let f = fills[0];
+    assert!(
+        f.height > f.width && f.x >= e.x + e.width / 2.0,
+        "{f:?} {e:?}"
+    );
+    assert!(!red_clips.is_empty(), "no selected ink");
+    for c in &red_clips {
+        assert!(
+            c.y >= f.y - 1.0 && c.bottom() <= f.bottom() + 1.0,
+            "{c:?} {f:?}"
+        );
+    }
+    // A drag from the first word down past the end copies the source.
+    let from = rig.point("V", 0.9, 0.0);
+    rig.at(from, true, true, false);
+    rig.at(rig.point("V", 0.02, 0.99), true, false, false);
+    rig.at(rig.point("V", 0.02, 0.99), false, false, true);
+    assert_eq!(rig.selected(), "alpha beta gamma delta epsilon zeta");
+}
+
 #[test]
 fn a_long_touch_selects_a_word() {
     let vp = Viewport {

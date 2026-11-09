@@ -109,10 +109,55 @@ impl TextLines {
 }
 
 impl Ui {
+    /// Node `i`'s selectable text: its source and its laid-out lines (a
+    /// plain text's, or a vertical rich text's, each line its pieces'
+    /// text); `None` for any other node.
+    pub(crate) fn select_source(&self, i: usize) -> Option<(String, Vec<crate::text::Line>)> {
+        let n = &self.nodes[i];
+        match &n.content {
+            Content::Text(tc) => Some((tc.text.clone(), n.lines.clone())),
+            Content::Rich(rc) if n.rich_vertical().is_some() => {
+                let source = rc.spans.iter().filter(|s| s.atom.is_none());
+                let lines = n
+                    .rich_lines
+                    .iter()
+                    .map(|l| crate::text::Line {
+                        text: l.pieces.iter().map(|p| p.text.as_str()).collect(),
+                        width: l.width,
+                    })
+                    .collect();
+                Some((source.map(|s| s.text.as_str()).collect(), lines))
+            }
+            _ => None,
+        }
+    }
+
     /// Node `i`'s text lines as [`Ui::node_commands`] draws them, `None`
-    /// for a node that is not a plain text.
+    /// for a node that is not a plain text or a vertical rich text.
     pub(crate) fn text_lines(&self, i: usize) -> Option<TextLines> {
         let n = &self.nodes[i];
+        if matches!(n.content, Content::Rich(_)) {
+            let (_, lines) = self.select_source(i)?;
+            let v = n.rich_vertical()?;
+            let up =
+                self.text_flow(i).0 != (v.mode == crate::layout::flow::WritingMode::SidewaysLr);
+            let mut start = 0u32;
+            let drawn = self.vertical_rich_lines(i);
+            let column = drawn.first().map_or(0.0, |l| l.width);
+            let lines = drawn
+                .into_iter()
+                .zip(&lines)
+                .map(|(l, line)| {
+                    let l = vertical_line(l, line, start, up);
+                    start += l.chars.len() as u32 + 1;
+                    l
+                })
+                .collect();
+            return Some(TextLines {
+                lines,
+                column: Some(column),
+            });
+        }
         let Content::Text(tc) = &n.content else {
             return None;
         };
@@ -127,25 +172,7 @@ impl Ui {
                 .into_iter()
                 .zip(&n.lines)
                 .map(|(l, line)| {
-                    let boxes = l
-                        .glyphs
-                        .iter()
-                        .flat_map(|(c, y0, y1)| {
-                            c.clone().map(move |k| crate::edit::GlyphBox {
-                                index: k,
-                                x0: *y0,
-                                x1: *y1,
-                                rtl: up,
-                            })
-                        })
-                        .collect();
-                    let l = TextLine {
-                        start,
-                        chars: line.text.chars().collect(),
-                        x: 0.0,
-                        top: l.col,
-                        boxes,
-                    };
+                    let l = vertical_line(l, line, start, up);
                     start += l.chars.len() as u32 + 1;
                     l
                 })
@@ -423,23 +450,20 @@ impl Ui {
         } else {
             ((pb, s.focus.1), (pa, s.anchor.1))
         };
-        let len = |i: usize| -> u32 {
-            let lines = &self.nodes[i].lines;
-            lines
-                .iter()
-                .map(|l| l.text.chars().count() as u32 + 1)
-                .sum::<u32>()
-                - u32::from(!lines.is_empty())
-        };
         let mut out = Vec::new();
         for pos in first..=last {
             let i = o.pre[pos as usize];
-            let selectable = matches!(self.nodes[i].content, Content::Text(_))
-                && matches!(o.select_of[i], UserSelect::Text | UserSelect::All);
-            if !selectable {
+            if !matches!(o.select_of[i], UserSelect::Text | UserSelect::All) {
                 continue;
             }
-            let n = len(i);
+            let Some((_, lines)) = self.select_source(i) else {
+                continue;
+            };
+            let n = lines
+                .iter()
+                .map(|l| l.text.chars().count() as u32 + 1)
+                .sum::<u32>()
+                - u32::from(!lines.is_empty());
             let from = if pos == first { a.min(n) } else { 0 };
             let to = if pos == last { b.min(n) } else { n };
             if from < to {
@@ -462,20 +486,19 @@ impl Ui {
             if k > 0 {
                 out.push('\n');
             }
-            let n = &self.nodes[i];
-            let Content::Text(tc) = &n.content else {
+            let Some((source, lines)) = self.select_source(i) else {
                 continue;
             };
-            let seps = line_breaks(&tc.text, &n.lines);
+            let seps = line_breaks(&source, &lines);
             let mut at = 0u32;
-            for (li, line) in n.lines.iter().enumerate() {
+            for (li, line) in lines.iter().enumerate() {
                 for c in line.text.chars() {
                     if at >= a && at < b {
                         out.push(c);
                     }
                     at += 1;
                 }
-                if li + 1 < n.lines.len() {
+                if li + 1 < lines.len() {
                     if at >= a && at < b {
                         out.push_str(&seps[li]);
                     }
@@ -577,6 +600,36 @@ impl Ui {
             "anchor": { "path": path(s.anchor.0), "at": s.anchor.1 },
             "focus": { "path": path(s.focus.0), "at": s.focus.1 },
         })
+    }
+}
+
+/// A vertical line's selection line: its clusters' stretches down it as
+/// glyph boxes along y (`up`: a bottom-up line, its caret at its bottom),
+/// its column's left edge as its `top`.
+fn vertical_line(
+    l: crate::ui::VerticalLine,
+    line: &crate::text::Line,
+    start: u32,
+    up: bool,
+) -> TextLine {
+    let boxes = l
+        .glyphs
+        .iter()
+        .flat_map(|(c, y0, y1)| {
+            c.clone().map(move |k| crate::edit::GlyphBox {
+                index: k,
+                x0: *y0,
+                x1: *y1,
+                rtl: up,
+            })
+        })
+        .collect();
+    TextLine {
+        start,
+        chars: line.text.chars().collect(),
+        x: 0.0,
+        top: l.col,
+        boxes,
     }
 }
 

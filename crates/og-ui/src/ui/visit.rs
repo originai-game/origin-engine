@@ -658,7 +658,8 @@ impl Ui {
             if n.nav {
                 flags |= HIT_NAV;
             }
-            if matches!(n.content, Content::Text(_))
+            if (matches!(n.content, Content::Text(_))
+                || matches!(n.content, Content::Rich(_)) && n.rich_vertical().is_some())
                 && n.props.text_path.is_none()
                 && !matches!(n.widget, Widget::Field(_))
                 && matches!(

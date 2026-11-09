@@ -496,8 +496,14 @@ lines (a press picks the character nearest along its column),
 `::selection`'s ink, shadows and lines (under on the column's left, over
 on its right), the style's text glow and drop. Rich text runs down its
 columns too, its spans in their fonts, inks, weights and outlines,
-pictures and icons upright, decorations along the column. Text on a path
-follows its path's physical geometry whatever the writing mode. A
+pictures and icons upright, decorations along the column; its lines
+break by what each unit takes down the column (upright clusters at their
+vertical advances, sideways runs at their widths), and it takes the
+player's selection, its fill and `::selection`'s color, as vertical text
+does. Text on a path keeps its path's physical box whatever the writing
+mode, but in a vertical element the path is a vertical line: each
+upright cluster stands on it one vertical advance long, its top back
+along the path, and a sideways run lies along it. A
 container variant of `Props` (`Query::container`) reads its element's
 inline size: a vertical element's height.
 
@@ -1819,7 +1825,8 @@ text selectable: `text` selects by characters, `all` takes the element's
 whole text with one press, `none` turns it off, and `auto` takes the
 parent's. Nothing is selectable by default, and a control's subtree (a
 button's label) stays `none` unless it sets the property itself. Only plain
-text elements take a selection; rich text and text controls keep their own.
+text elements and vertical rich text take a selection; horizontal rich
+text and text controls keep their own.
 
 A press and drag selects, a double press selects a word (UAX #29), a triple
 press a line, and Shift with a press extends. On a coarse pointer a long

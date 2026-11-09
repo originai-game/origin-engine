@@ -27,7 +27,9 @@
 //!   0xFFFF) on its foreground page, under a green and a magenta label;
 //! - `text-vertical`: CSS writing modes in a document: a `vertical-rl`
 //!   paragraph of Japanese with Latin lying sideways, its comma and full
-//!   stop set for a vertical line, wrapping into a second line to its left; the same `upright`; a `vertical-lr` box of two blocks; a
+//!   stop set for a vertical line and its brackets turned (their own face,
+//!   which has no other text), wrapping into a second line to its left; the
+//!   same `upright`; a `vertical-lr` box of two blocks; a
 //!   `sideways-lr` label reading up; and `text-combine-upright` digits.
 
 use super::scenes::mixed_runs_ui;
@@ -44,7 +46,7 @@ use std::sync::Arc;
 /// The fonts the frames draw with, in the order the scenes take them: the
 /// files of tests/fixtures/ui-text/assets/fonts, each cooked with its settings
 /// `tests/text-fonts/assets/fonts/<file>.ogt`.
-pub const FONTS: [&str; 7] = [
+pub const FONTS: [&str; 8] = [
     "Inter-Display.ttf",
     "NotoSansSC-Regular-subset.ttf",
     "NotoSansArabic-subset.ttf",
@@ -52,6 +54,7 @@ pub const FONTS: [&str; 7] = [
     "NotoSansDevanagari-subset.ttf",
     "NotoSansJP-subset.otf",
     "test_glyphs-glyf_colr_1.ttf",
+    "NotoSansJP-brackets.ttf",
 ];
 
 /// The cooked-font reference frames.
@@ -792,7 +795,7 @@ fn edit_scene(fonts: &[CookedFont]) -> (RenderScene, RenderDesc) {
 /// `text-vertical`'s document.
 const VERTICAL: &str = r#"<meta name="component" content="vertical">
 <div id="Page">
-  <p id="Mixed">古い水車小屋、冒険 Level 2 古い小屋。</p>
+  <p id="Mixed">古い水車小屋、「冒険」 Level 2 『古い小屋』。</p>
   <p id="Upright">冒険 HP</p>
   <div id="Lr"><p id="Lr1">水車小屋</p><p id="Lr2">Level 3</p></div>
   <p id="Side">Sideways up</p>
@@ -814,10 +817,12 @@ fn vertical_scene(fonts: &[CookedFont]) -> (RenderScene, RenderDesc) {
     let mut scene = RenderScene::new();
     let f = faces(&mut scene, fonts);
     let japanese = add(&mut scene, &fonts[5], true);
+    // The brackets: no other face here maps them, so they turn.
+    let brackets = add(&mut scene, &fonts[7], true);
     let mut ui = Ui::new(UiDesc {
         fonts: Fonts {
             body: f.display.clone(),
-            fallbacks: vec![japanese],
+            fallbacks: vec![japanese, brackets],
             ..Fonts::default()
         },
         ..UiDesc::default()

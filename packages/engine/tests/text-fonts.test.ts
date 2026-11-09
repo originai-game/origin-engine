@@ -18,7 +18,7 @@ test("the text frames' fonts cook for the browser harness as the scenes name the
   const list = /pub const FONTS: \[&str; \d+\] = \[([^\]]*)\]/.exec(rust)?.[1];
   expect(list).toBeDefined();
   const named = [...list!.matchAll(/"([^"]+)"/g)].map((m) => m[1]!).sort();
-  expect(named.length).toBe(7);
+  expect(named.length).toBe(8);
   const t = cookTextFonts(repo, join(repo, "target", "evidence", "text-fonts-test"));
   expect(t.fonts).toEqual(named);
   for (const f of named) {

@@ -1,0 +1,21 @@
+{
+  "added": [
+    {
+      "member": "UI: selection of vertical rich text",
+      "summary": "Rich text in a vertical writing mode takes the player's selection (`user-select`): presses, drags and copies down its columns, its fill and `::selection`'s color."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "UI: vertical rich text breaks by vertical advances",
+      "summary": "A vertical rich paragraph's lines break by what each unit takes down the column (upright clusters at their vertical advances, sideways runs at their widths). They broke by horizontal widths, so upright Latin and mixed lines ran past their box."
+    }
+  ],
+  "breaking": [
+    {
+      "member": "UI: text on a path in a vertical element",
+      "change": "Text on a path (`-og-text-path`) in a `vertical-*` or `sideways-*` writing mode is set as a vertical line along the path: upright clusters stand one vertical advance long with their tops back along the path, and sideways runs lie along it. It was set as horizontal text. Its box is unchanged (the path's extent).",
+      "fix": "Text that should read as horizontal along a path sets `writing-mode: horizontal-tb` on the path text."
+    }
+  ]
+}

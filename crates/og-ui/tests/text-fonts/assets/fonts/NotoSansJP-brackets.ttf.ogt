@@ -1,0 +1,9 @@
+type import
+version 1
+---
+# The text-vertical frame's brackets: no other text font maps them, so a
+# vertical line draws them turned (CSS Writing Modes 4, UAX #50 Tr).
+font {
+  charset cjk-punct
+  px_range 4
+}

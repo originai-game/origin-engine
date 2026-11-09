@@ -272,3 +272,30 @@ fn text_on_a_path_matches_its_reference_frames() {
         }
     });
 }
+
+/// In a vertical element the path is a vertical line: an upright cluster
+/// stands with its top back along the path (turned a quarter
+/// anticlockwise on a path running right), one em per cluster; Latin in
+/// a mixed line lies along the path as across.
+#[test]
+fn a_vertical_text_stands_upright_along_its_path() {
+    let path = "-og-text-path: path(\"M0 20 H300\"); writing-mode: vertical-rl;";
+    let ui = frame(&format!("{path} text-orientation: upright;"), "ABC");
+    let g = glyphs(&ui);
+    assert_eq!(g.len(), 3, "{g:?}");
+    let size = g[0].4;
+    for (k, (_, _, _, angle, _)) in g.iter().enumerate() {
+        assert!(
+            (angle + std::f32::consts::FRAC_PI_2).abs() < 1e-3,
+            "{k}: {angle}"
+        );
+    }
+    // One em apart down the path, whatever each letter's width.
+    for w in g.windows(2) {
+        assert!(((w[1].0 - w[0].0) - size).abs() < 0.5, "{g:?}");
+    }
+    let ui = frame(path, "ABC");
+    for (_, _, _, angle, _) in glyphs(&ui) {
+        assert!(angle.abs() < 1e-3, "{angle}");
+    }
+}

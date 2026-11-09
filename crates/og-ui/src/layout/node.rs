@@ -700,6 +700,19 @@ pub(crate) struct Node {
 }
 
 impl Node {
+    /// Its rich text's vertical setting (its element's writing mode), `None`
+    /// when its lines run across; a rich text combines nothing upright.
+    pub(crate) fn rich_vertical(&self) -> Option<crate::layout::flow::VerticalText> {
+        self.el.vertical?;
+        self.props
+            .flow
+            .vertical_text("")
+            .map(|v| crate::layout::flow::VerticalText {
+                combine: false,
+                ..v
+            })
+    }
+
     pub(crate) fn sample_style(&mut self) {
         self.sampled = SampledStyle {
             transform: self.props.transform,
