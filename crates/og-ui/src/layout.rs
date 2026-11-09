@@ -797,6 +797,49 @@ pub struct Element {
     /// round under the surface's mirror): its children's margin boxes flip
     /// across its content box once placed ([`flow`]).
     pub flip: bool,
+    /// Its CSS containment and `content-visibility` ([`Contain`]).
+    pub contain: Contain,
+}
+
+/// CSS `contain` (CSS Containment 2 §3), `content-visibility` (§4) and
+/// `contain-intrinsic-size` (CSS Sizing 4 §5) as layout and paint read
+/// them. The zero value contains nothing.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Contain {
+    /// [`Contain::SIZE_W`] … [`Contain::PAINT`]: the containment it has,
+    /// `content-visibility`'s included.
+    pub bits: u8,
+    pub visibility: ContentVisibility,
+    /// `contain-intrinsic-width` and `-height`: whether `auto` (its last
+    /// remembered size while it skips its contents), and the length its
+    /// size containment sizes it as (`None`: `none`, as if empty).
+    pub intrinsic: [(bool, Option<f32>); 2],
+}
+
+impl Contain {
+    /// Size containment across (`inline-size`, and `size`) and down.
+    pub const SIZE_W: u8 = 1;
+    pub const SIZE_H: u8 = 2;
+    pub const LAYOUT: u8 = 4;
+    pub const STYLE: u8 = 8;
+    pub const PAINT: u8 = 16;
+
+    pub fn has(&self, bit: u8) -> bool {
+        self.bits & bit != 0
+    }
+}
+
+/// CSS `content-visibility` (CSS Containment 2 §4).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ContentVisibility {
+    #[default]
+    Visible,
+    /// Its contents are skipped while it is not near the screen (nor holds
+    /// the focus); it has layout, style and paint containment always.
+    Auto,
+    /// Its contents are always skipped: not laid out, drawn, hit or in
+    /// the accessibility tree.
+    Hidden,
 }
 
 /// What a box is to the CSS table layout (CSS 2 §17.2).

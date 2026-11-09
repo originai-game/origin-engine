@@ -469,7 +469,8 @@ impl Ui {
             let sig = crate::layout::DrawSig::of(n);
             // CSS `visibility: hidden`: nothing of its own is drawn; its
             // children that say `visible` are.
-            let hidden = self.orders.hidden_of.get(i) == Some(&true);
+            let hidden = self.orders.hidden_of.get(i) == Some(&true)
+                || self.orders.skip_of.get(i).is_some_and(|&s| s != 0);
             if hidden {
             } else if i != 0 || n.sampled.background.is_some() {
                 let mut local = Vec::new();

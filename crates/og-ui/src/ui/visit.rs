@@ -44,7 +44,10 @@ pub(crate) mod feat {
     pub const RICH: u32 = 1 << 16;
     /// CSS box decorations (`Ui::build_part_draws` merges them).
     pub const DECOR: u32 = 1 << 17;
-    pub const COUNT: usize = 18;
+    /// CSS `content-visibility` other than `visible`: it may skip its
+    /// contents (`Ui::content_visibility`).
+    pub const SKIPS: u32 = 1 << 18;
+    pub const COUNT: usize = 19;
 }
 
 /// A row whose items (all, or those with an `align-self` of their own)
@@ -88,6 +91,9 @@ pub(crate) fn features(n: &Node) -> u32 {
     }
     if n.scrolls() {
         f |= feat::SCROLLS;
+    }
+    if n.el.contain.visibility != crate::layout::ContentVisibility::Visible || n.cv_skip {
+        f |= feat::SKIPS;
     }
     if p.focus_group.is_some() {
         f |= feat::GROUP;
@@ -177,6 +183,12 @@ pub(crate) struct Orders {
     /// touch on it may make, its ancestors' intersected; `u8::MAX`: auto).
     pub pointer_of: Vec<crate::element::PointerEvents>,
     pub hidden_of: Vec<bool>,
+    /// Per slot: whether an element around it skips its contents
+    /// (`content-visibility`): [`SKIP_AUTO`] off the screen, [`SKIP_HIDDEN`]
+    /// always; it is then not drawn or hit, and with `SKIP_HIDDEN` not in
+    /// the accessibility tree. `skip_in` is the same for its own contents.
+    pub skip_of: Vec<u8>,
+    pub skip_in: Vec<u8>,
     pub touch_of: Vec<u8>,
     /// Per slot: its hits and the warning its place gives; the nodes
     /// with either, in drawing order.
@@ -198,10 +210,16 @@ pub(crate) struct Orders {
     pub reuse: super::commands::Reuse,
 }
 
+/// [`Orders::skip_of`]: skipped by `content-visibility: auto`, or `hidden`.
+pub(crate) const SKIP_AUTO: u8 = 1;
+pub(crate) const SKIP_HIDDEN: u8 = 2;
+
 impl Orders {
     /// The nodes that carry feature `f`, in preorder.
     pub(crate) fn with(&self, f: u32) -> &[usize] {
-        &self.lists[f.trailing_zeros() as usize]
+        self.lists
+            .get(f.trailing_zeros() as usize)
+            .map_or(&[], Vec::as_slice)
     }
 
     /// The nodes that carry feature `f`, in drawing order.
@@ -232,6 +250,8 @@ impl Ui {
             o.select_of.resize(n, crate::element::UserSelect::None);
             o.pointer_of.resize(n, crate::element::PointerEvents::Auto);
             o.hidden_of.resize(n, false);
+            o.skip_of.resize(n, 0);
+            o.skip_in.resize(n, 0);
             o.touch_of.resize(n, u8::MAX);
             o.hit_of.resize(n, Vec::new());
             o.warn_of.resize(n, None);
@@ -480,6 +500,18 @@ impl Ui {
                 parent.map_or(u8::MAX, |u| o.touch_of[u]) & i.touch_action.unwrap_or(u8::MAX);
             (pointer, hidden, touch)
         };
+        // `content-visibility`: skipped where an element around it skips
+        // its contents.
+        let skip = if up == NONE || up >= nodes.len() {
+            0
+        } else {
+            o.skip_in[up]
+        };
+        let skip_in = skip.max(match (n.cv_skip, n.el.contain.visibility) {
+            (false, _) => 0,
+            (true, crate::layout::ContentVisibility::Hidden) => SKIP_HIDDEN,
+            (true, _) => SKIP_AUTO,
+        });
         let o = &mut self.orders;
         let old = (
             o.scope_of[i],
@@ -490,6 +522,7 @@ impl Ui {
             o.select_of[i],
             o.player_of[i],
             (o.pointer_of[i], o.hidden_of[i], o.touch_of[i]),
+            (o.skip_of[i], o.skip_in[i]),
         );
         let new = (
             scope,
@@ -500,6 +533,7 @@ impl Ui {
             select,
             player,
             (pointer, hidden, touch),
+            (skip, skip_in),
         );
         (
             o.scope_of[i],
@@ -510,6 +544,7 @@ impl Ui {
             o.select_of[i],
             o.player_of[i],
             (o.pointer_of[i], o.hidden_of[i], o.touch_of[i]),
+            (o.skip_of[i], o.skip_in[i]),
         ) = new;
         old != new
     }
@@ -558,7 +593,7 @@ impl Ui {
                 _ => (false, None),
             };
             let shown_or_svg = shape.is_some_and(|s| s & crate::element::SvgPointer::VISIBLE == 0);
-            if o.hidden_of[i] && !shown_or_svg {
+            if (o.hidden_of[i] && !shown_or_svg) || o.skip_of[i] != 0 {
                 break 'node;
             }
             let visible = n.screen.intersect(&n.clip);

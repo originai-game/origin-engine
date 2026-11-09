@@ -15,7 +15,14 @@ impl Ui {
         if !self.docs.uses_run {
             return;
         }
-        self.docs.run.enter();
+        // Style containment scopes its counters and quotes to its subtree.
+        if crate::doc::contain_css::contain(|p| r.str(p).map(str::to_owned))
+            .has(crate::layout::Contain::STYLE)
+        {
+            self.docs.run.enter_contained();
+        } else {
+            self.docs.run.enter();
+        }
         if let Some(g) = &r.generated {
             self.docs.run.apply(&g.ops);
         }

@@ -255,6 +255,13 @@ impl Ui {
             }
             d.clip = matches!(x, "hidden" | "clip") || matches!(y, "hidden" | "clip");
         }
+        // Paint containment clips what it and its subtree draw to its box
+        // (CSS Containment 2 §3.4).
+        if crate::doc::contain_css::contain(|p| r.str(p).map(str::to_owned))
+            .has(crate::layout::Contain::PAINT)
+        {
+            d.clip = true;
+        }
         if let Some(Ok(s)) = r
             .str("scrollSnapType")
             .map(crate::doc::paint_css::snap_type)
@@ -442,7 +449,13 @@ impl Ui {
         }
         warn.extend(fails);
         c.blend = r.str("mixBlendMode").and_then(|v| p::blend(v).ok());
-        c.isolate = r.str("isolation").and_then(|v| p::isolation(v).ok()) == Some(true);
+        // `will-change` naming a property that makes a stacking context
+        // makes one now (CSS Will Change 1 §2), so it is drawn on a layer
+        // of its own: the group its change composites.
+        c.isolate = r.str("isolation").and_then(|v| p::isolation(v).ok()) == Some(true)
+            || r.str("willChange")
+                .and_then(|v| crate::doc::contain_css::will_change(v).ok())
+                == Some(true);
         if let Some(Ok(s)) = r
             .str("textShadow")
             .map(|v| p::text_shadows(v, crate::paint::ColorRef::Literal(current)))
@@ -784,6 +797,8 @@ impl Ui {
                 "adjustable",
                 "wrap",
                 "columnSpan",
+                "contain",
+                "contentVisibility",
                 "breakBefore",
                 "breakAfter",
                 "breakInside",

@@ -501,10 +501,19 @@ impl Quotes {
 #[derive(Clone, Debug, PartialEq)]
 pub enum Event {
     Enter,
+    /// Enters an element with style containment.
+    EnterContained,
     Exit,
     Ops(Arc<Ops>),
     /// The quote depth moves by this.
     Quote(i32),
+}
+
+#[derive(Clone, Debug, Default, PartialEq)]
+struct Contained {
+    level: u32,
+    counters: BTreeMap<String, Vec<(i64, u32)>>,
+    quote_depth: u32,
 }
 
 /// Counters in scope and the quote depth, in document order.
@@ -515,6 +524,12 @@ pub struct Run {
     counters: BTreeMap<String, Vec<(i64, u32)>>,
     quote_depth: u32,
     level: u32,
+    /// The style-contained elements entered (CSS Containment 2 §3.3), each
+    /// with its level, the counters and quote depth before it, and how
+    /// many instances each counter had then: what its subtree changes is
+    /// undone when it is left, and an increment or set inside it makes a
+    /// counter of its own rather than move one from outside.
+    contained: Vec<Contained>,
     /// What happened, in order, for [`Run::since`].
     log: Vec<Event>,
     /// How many generated texts read the run so far this tick.
@@ -534,6 +549,7 @@ impl Run {
         self.counters == other.counters
             && self.quote_depth == other.quote_depth
             && self.level == other.level
+            && self.contained == other.contained
     }
 
     /// Where the log stands, to take a subtree's events with [`Run::since`].
@@ -554,8 +570,28 @@ impl Run {
         self.log.push(Event::Enter);
     }
 
-    /// Leaves an element: the counters its children reset go out of scope.
+    /// Enters an element with style containment (`contain: style`).
+    pub fn enter_contained(&mut self) {
+        self.level += 1;
+        self.contained.push(Contained {
+            level: self.level,
+            counters: self.counters.clone(),
+            quote_depth: self.quote_depth,
+        });
+        self.log.push(Event::EnterContained);
+    }
+
+    /// Leaves an element: the counters its children reset go out of scope;
+    /// a style-contained one's subtree leaves nothing changed behind it.
     pub fn exit(&mut self) {
+        let level = self.level;
+        if let Some(c) = self.contained.pop_if(|c| c.level == level) {
+            self.counters = c.counters;
+            self.quote_depth = c.quote_depth;
+            self.level = self.level.saturating_sub(1);
+            self.log.push(Event::Exit);
+            return;
+        }
         let inner = self.level + 1;
         self.counters.retain(|_, stack| {
             stack.retain(|&(_, level)| level < inner);
@@ -574,9 +610,11 @@ impl Run {
         }
         let level = self.level;
         for (name, n) in &ops.reset {
+            let outside = self.outside(name);
             let stack = self.counters.entry(name.clone()).or_default();
-            // A sibling's instance is replaced, not nested.
-            if stack.last().is_some_and(|&(_, l)| l == level) {
+            // A sibling's instance is replaced, not nested (one outside a
+            // style-contained element is kept).
+            if stack.len() > outside && stack.last().is_some_and(|&(_, l)| l == level) {
                 stack.pop();
             }
             stack.push((*n, level));
@@ -590,10 +628,20 @@ impl Run {
         self.log.push(Event::Ops(ops.clone()));
     }
 
+    /// How many of counter `name`'s instances are outside the innermost
+    /// style-contained element entered (0: none is).
+    fn outside(&self, name: &str) -> usize {
+        self.contained
+            .last()
+            .and_then(|c| c.counters.get(name))
+            .map_or(0, Vec::len)
+    }
+
     fn instance(&mut self, name: &str) -> &mut (i64, u32) {
         let level = self.level;
+        let outside = self.outside(name);
         let stack = self.counters.entry(name.to_string()).or_default();
-        if stack.is_empty() {
+        if stack.len() <= outside {
             stack.push((0, level));
         }
         stack.last_mut().unwrap()
@@ -609,6 +657,7 @@ impl Run {
         for e in events {
             match e {
                 Event::Enter => self.enter(),
+                Event::EnterContained => self.enter_contained(),
                 Event::Exit => self.exit(),
                 Event::Ops(ops) => self.apply(ops),
                 Event::Quote(d) => self.quote(*d),
@@ -1014,6 +1063,18 @@ mod tests {
         a.replay(&nested);
         b.replay(&nested);
         assert!(a.same_state(&b));
+        // Style containment: a counter incremented inside is its own,
+        // and nothing inside changes the one outside (Containment 2 §3.3).
+        let mut c = Run::default();
+        c.enter();
+        c.apply(&ops(&["item"], &["item"]));
+        c.enter_contained();
+        c.apply(&ops(&[], &["item"]));
+        assert_eq!(text(&mut c, "counters(item, '.')"), "1.1");
+        c.apply(&ops(&["item"], &[]));
+        assert_eq!(text(&mut c, "counters(item, '.')"), "1.0");
+        c.exit();
+        assert_eq!(text(&mut c, "counter(item)"), "1");
         // Quotes nest by depth; a close at depth 0 shows nothing.
         let mut q = Run::default();
         assert_eq!(

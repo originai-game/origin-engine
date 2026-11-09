@@ -292,7 +292,12 @@ impl Ui {
         let n = &self.nodes[i];
         let (role, name, description, value, mut states) = self.a11y_info(i);
         // CSS `visibility: hidden` leaves the tree (its visible children stay).
-        if role.is_empty() || self.orders.hidden_of.get(i) == Some(&true) {
+        // Skipped by `content-visibility: hidden` too; an `auto` element's
+        // skipped contents stay in the tree (CSS Containment 2 §4.1).
+        if role.is_empty()
+            || self.orders.hidden_of.get(i) == Some(&true)
+            || self.orders.skip_of.get(i) == Some(&super::visit::SKIP_HIDDEN)
+        {
             return None;
         }
         let r = &n.screen;

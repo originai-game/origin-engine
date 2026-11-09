@@ -9,6 +9,7 @@ pub(crate) mod boxes;
 pub mod build;
 pub(crate) mod calc;
 pub mod catalogue;
+pub(crate) mod contain_css;
 pub mod container;
 pub mod css;
 mod extern_element;

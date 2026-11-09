@@ -2103,6 +2103,19 @@ impl Ui {
                 }
             }
         }
+        // Subtrees laid out afresh (`LayoutCache::relayout`).
+        let mut afresh = vec![false; if k.relayout.is_empty() { 0 } else { n }];
+        for r in std::mem::take(&mut k.relayout) {
+            if r >= n {
+                continue;
+            }
+            k.reach(nodes, r, true);
+            let mut stack = vec![r];
+            while let Some(j) = stack.pop() {
+                afresh[j] = true;
+                stack.extend_from_slice(&nodes[j].ordered_children);
+            }
+        }
         let mut reflowed = Vec::new();
         // Children before parents: the reverse of a preorder of every tree.
         let mut order = Vec::new();
@@ -2145,6 +2158,7 @@ impl Ui {
             };
             k.clean[i] = !fresh
                 && same_layout
+                && !afresh.get(i).copied().unwrap_or(false)
                 && a.children.iter().chain(&a.out).all(|&c| {
                     let child = &nodes[c];
                     // A fixed box still lays out its dirty contents, but

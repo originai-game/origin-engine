@@ -16,6 +16,8 @@ mod color_vision;
 mod component_documents;
 #[path = "../control_props.rs"]
 mod control_props;
+#[path = "../css_contain.rs"]
+mod css_contain;
 #[path = "../css_effects.rs"]
 mod css_effects;
 #[path = "../css_filters.rs"]

@@ -376,12 +376,18 @@ fn fits(t: &TextContent, fonts: &dyn Metrics, width: f32) -> bool {
 }
 
 pub(super) fn size_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'_>) {
-    if nodes[i].props.layout == LayoutMode::Grid && matches!(nodes[i].content, Content::None) {
+    if nodes[i].props.layout == LayoutMode::Grid
+        && matches!(nodes[i].content, Content::None)
+        && !nodes[i].cv_skip
+    {
         place_grid(nodes, i);
     }
     let n = &nodes[i];
     let fonts = measure.fonts;
     let (pref, min) = match &n.content {
+        // Size containment: sized as if empty, or as its
+        // `contain-intrinsic-width` says (CSS Containment 2 §3.1).
+        _ if let Some(w) = n.contained_size(0) => (w, w),
         // Text on a path is as wide as its path.
         Content::Text(_) if let Some(tp) = &n.props.text_path => {
             let w = tp.extent().map_or(0.0, |e| e.x);
@@ -990,6 +996,7 @@ pub(super) fn size_h(nodes: &mut [Node], i: usize) {
     collapse_margins(nodes, i);
     let n = &nodes[i];
     let (pref, min) = match &n.content {
+        _ if let Some(h) = n.contained_size(1) => (h, h),
         Content::None if n.props.layout == LayoutMode::Stack => {
             let kids = || n.children.iter().map(|&c| &nodes[c]);
             (

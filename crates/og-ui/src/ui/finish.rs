@@ -14,6 +14,19 @@ fn authored_box(nodes: &mut [Node], mutated: &mut Vec<usize>, i: usize) {
     }
 }
 
+/// Whether an element around node `i` skips its contents
+/// (`content-visibility`).
+fn skipped(nodes: &[Node], i: usize) -> bool {
+    let mut at = nodes[i].up;
+    while at != NONE && at < nodes.len() {
+        if nodes[at].cv_skip {
+            return true;
+        }
+        at = nodes[at].up;
+    }
+    false
+}
+
 impl Ui {
     /// Normalize freshly assigned presentation before measurement. Call once
     /// after replacing fields, not on already prepared scroll padding.
@@ -104,6 +117,91 @@ impl Ui {
             TOUCH_TARGET / self.unit.max(0.01)
         } else {
             0.0
+        }
+    }
+
+    /// CSS `content-visibility` (CSS Containment 2 §4), before layout:
+    /// which elements skip their contents this frame. `hidden` always does;
+    /// `auto` does from the frame after it was found far from the screen
+    /// with no focus inside it ([`Ui::note_relevance`]). An element that
+    /// starts or stops skipping lays out again, its contents afresh.
+    fn content_visibility(&mut self) {
+        use crate::layout::ContentVisibility as Cv;
+        // A node written again keeps what it had found.
+        for k in 0..self.emitted.len() {
+            let i = self.emitted[k];
+            if let Some(p) = self.kept.prev.get(&i) {
+                let (skip, far, remembered) = (p.cv_skip, p.cv_far, p.remembered);
+                let n = &mut self.nodes[i];
+                (n.cv_skip, n.cv_far, n.remembered) = (skip, far, remembered);
+            }
+        }
+        let mut at: Vec<usize> = self.orders.with(visit::feat::SKIPS).to_vec();
+        at.extend(self.emitted.iter().copied());
+        at.sort_unstable();
+        at.dedup();
+        for i in at {
+            if i >= self.nodes.len() {
+                continue;
+            }
+            let n = &mut self.nodes[i];
+            let v = n.el.contain.visibility;
+            if v != Cv::Auto {
+                n.cv_far = false;
+            }
+            let skip = v == Cv::Hidden || (v == Cv::Auto && n.cv_far);
+            if skip != n.cv_skip {
+                n.cv_skip = skip;
+                self.kept.relayout.push(i);
+            }
+        }
+    }
+
+    /// After the frame: whether each `content-visibility: auto` element is
+    /// relevant to the user, near the screen (its box within half the
+    /// viewport of what of the screen its clip shows) or holding the
+    /// focus; one whose answer changed skips its contents, or lays them
+    /// out, from the next frame. One laying its contents out remembers its
+    /// content box for `contain-intrinsic-size: auto`.
+    fn note_relevance(&mut self) {
+        let vp = self.viewport;
+        let screen = Rect::new(0.0, 0.0, vp.width, vp.height);
+        let focus = self.tree.find(self.state.focus);
+        for k in 0..self.orders.with(visit::feat::SKIPS).len() {
+            let i = self.orders.with(visit::feat::SKIPS)[k];
+            if i >= self.nodes.len() || !self.tree.has(i) {
+                continue;
+            }
+            let n = &self.nodes[i];
+            if !n.cv_skip {
+                let size = [
+                    (n.w - n.el.padding.horizontal()).max(0.0),
+                    (n.h - n.el.padding.vertical()).max(0.0),
+                ];
+                self.nodes[i].remembered = Some(size);
+            }
+            let n = &self.nodes[i];
+            if n.el.contain.visibility != crate::layout::ContentVisibility::Auto {
+                continue;
+            }
+            let (mx, my) = (vp.width * 0.5, vp.height * 0.5);
+            let near = Rect::new(
+                n.screen.x - mx,
+                n.screen.y - my,
+                n.screen.width + 2.0 * mx,
+                n.screen.height + 2.0 * my,
+            );
+            let mut holds_focus = false;
+            let mut at = focus.unwrap_or(NONE);
+            while at != NONE && at < self.nodes.len() {
+                if at == i {
+                    holds_focus = true;
+                    break;
+                }
+                at = self.nodes[at].parent;
+            }
+            let far = !holds_focus && !near.overlaps(&n.clip.intersect(&screen));
+            self.nodes[i].cv_far = far;
         }
     }
 
@@ -308,6 +406,7 @@ impl Ui {
                 }
             }
         }
+        self.content_visibility();
         self.reuse_check();
         let mut floating: Vec<usize> = self
             .floating
@@ -566,7 +665,9 @@ impl Ui {
                 placed_order.extend(preorder(&self.nodes, f));
             }
             for &i in &placed_order {
-                if self.nodes[i].props.position != crate::element::Position::Screen {
+                if self.nodes[i].props.position != crate::element::Position::Screen
+                    || skipped(&self.nodes, i)
+                {
                     continue;
                 }
                 let r = crate::layout::on_screen(&self.nodes[i], &screen);
@@ -606,6 +707,9 @@ impl Ui {
                     let Some(spec) = self.nodes[i].props.anchor.clone() else {
                         continue;
                     };
+                    if skipped(&self.nodes, i) {
+                        continue;
+                    }
                     let box_of = |j: usize| {
                         let n = &self.nodes[j];
                         Rect::new(n.x, n.y, n.w, n.h)
@@ -1183,6 +1287,7 @@ impl Ui {
             }
         }
         self.orders.draw = order;
+        self.note_relevance();
         self.frame = UiFrame {
             viewport: vp,
             items,

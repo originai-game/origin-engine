@@ -655,6 +655,15 @@ pub(crate) struct Node {
     /// A sticky box's edges of its scrollport it is held to this frame
     /// (bits of `doc::media::scroll::TOP` …).
     pub stuck: u8,
+    /// It skips its contents this frame (`content-visibility: hidden`, or
+    /// `auto` far from the screen): they are not laid out, drawn or hit.
+    pub cv_skip: bool,
+    /// A `content-visibility: auto` element was far from the screen when
+    /// last laid out (it skips its contents from the next frame).
+    pub cv_far: bool,
+    /// Its content box's size when it last laid its contents out, for
+    /// `contain-intrinsic-size: auto` (CSS Sizing 4 §5.1).
+    pub remembered: Option<[f32; 2]>,
 }
 
 impl Node {
@@ -764,6 +773,9 @@ impl Node {
             col_rules: Vec::new(),
             frag: Vec::new(),
             stuck: 0,
+            cv_skip: false,
+            cv_far: false,
+            remembered: None,
         }
     }
 
@@ -803,6 +815,26 @@ impl Node {
         self.collapse_in = previous.collapse_in;
         self.through = previous.through;
         self.margin_x = previous.margin_x;
+    }
+
+    /// Its content size along `axis` (0 across) under size containment:
+    /// its `contain-intrinsic-*` length, its last remembered size for
+    /// `auto` while it skips its contents, else 0 (CSS Containment 2
+    /// §3.1, CSS Sizing 4 §5). `None` without size containment there.
+    pub(crate) fn contained_size(&self, axis: usize) -> Option<f32> {
+        let c = &self.el.contain;
+        let bit = [
+            crate::layout::Contain::SIZE_W,
+            crate::layout::Contain::SIZE_H,
+        ][axis];
+        if !self.cv_skip && !c.has(bit) {
+            return None;
+        }
+        let (auto, len) = c.intrinsic[axis];
+        Some(match self.remembered {
+            Some(r) if auto && self.cv_skip => r[axis],
+            _ => len.unwrap_or(0.0),
+        })
     }
 
     /// How far a column break moved line `k` of its text ([`Node::frag`]).

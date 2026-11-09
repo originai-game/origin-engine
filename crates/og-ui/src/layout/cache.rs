@@ -249,6 +249,10 @@ pub(crate) struct LayoutCache {
     pub query_roots: Option<std::collections::BTreeSet<usize>>,
     /// Nodes whose laid-out size changed since they were last laid out.
     pub resized: Vec<usize>,
+    /// Subtrees laid out afresh this frame, whatever they kept: an
+    /// element that stopped skipping its contents (`content-visibility`),
+    /// whose contents may have changed while they were not laid out.
+    pub relayout: Vec<usize>,
     /// Lay out every node this frame (a fresh frame, or the bounded
     /// walk's check): no subtree is left out.
     pub full: bool,
@@ -462,7 +466,9 @@ impl LayoutCache {
         let mut stack = vec![root];
         while let Some(i) = stack.pop() {
             order.push(i);
-            if self.visits(i) {
+            // An element skipping its contents (`content-visibility`)
+            // never lays them out.
+            if self.visits(i) && !nodes[i].cv_skip {
                 stack.extend(nodes[i].ordered_children.iter().rev());
             }
         }
@@ -474,7 +480,11 @@ impl LayoutCache {
     /// walk, each as a subtree of its own.
     fn open(&self, nodes: &[Node], order: &mut Vec<usize>, opened: &mut Vec<usize>, k: usize) {
         let i = order[k];
-        if self.visits(i) || opened.contains(&i) || nodes[i].ordered_children.is_empty() {
+        if self.visits(i)
+            || nodes[i].cv_skip
+            || opened.contains(&i)
+            || nodes[i].ordered_children.is_empty()
+        {
             return;
         }
         opened.push(i);
@@ -539,6 +549,7 @@ pub(crate) fn el_layout_eq(a: &Element, b: &Element) -> bool {
         && a.span_all == b.span_all
         && a.breaks == b.breaks
         && a.flip == b.flip
+        && a.contain == b.contain
 }
 
 /// The content layout measures is equal (an ink may differ).
@@ -637,7 +648,9 @@ pub(crate) fn layout(
             }
         } else {
             kept.laid_out += 1;
-            distribute_w(nodes, i, measure);
+            if !nodes[i].cv_skip {
+                distribute_w(nodes, i, measure);
+            }
             kept.open(nodes, &mut order, &mut opened, k);
         }
         k += 1;
@@ -667,7 +680,9 @@ pub(crate) fn layout(
     while k < order.len() {
         let i = order[k];
         if !same_wh(nodes, kept, i) {
-            distribute_h(nodes, i);
+            if !nodes[i].cv_skip {
+                distribute_h(nodes, i);
+            }
             kept.open(nodes, &mut order, &mut opened, k);
         }
         k += 1;
@@ -677,7 +692,9 @@ pub(crate) fn layout(
     let mut k = 0;
     while k < order.len() {
         let i = order[k];
-        if !nodes[i].scrolls() && same_wh(nodes, kept, i) {
+        if nodes[i].cv_skip {
+            // Its contents keep where they were: nothing reads them.
+        } else if !nodes[i].scrolls() && same_wh(nodes, kept, i) {
             for &c in &nodes[i].ordered_children.clone() {
                 nodes[c].x = nodes[i].x + nodes[c].layout_offset[0];
                 nodes[c].y = nodes[i].y + nodes[c].layout_offset[1];

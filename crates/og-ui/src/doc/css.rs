@@ -265,6 +265,12 @@ pub const STYLE: &[(&str, &str)] = &[
     ("touchAction", "touch-action"),
     ("visibility", "visibility"),
     ("imageRendering", "image-rendering"),
+    ("contain", "contain"),
+    ("contentVisibility", "content-visibility"),
+    ("containIntrinsicWidth", "contain-intrinsic-width"),
+    ("containIntrinsicHeight", "contain-intrinsic-height"),
+    ("resize", "resize"),
+    ("willChange", "will-change"),
     ("objectPosition", "object-position"),
     ("emitter", "-og-emitter"),
     ("meta", "-og-meta"),
@@ -316,6 +322,9 @@ pub(crate) fn targets(name: &str) -> impl Iterator<Item = &'static str> + '_ {
         "inset-inline-end" => vec!["insetRight"],
         "position-try" => vec!["positionTry", "positionTryOrder"],
         "columns" => vec!["columnWidth", "columnCount"],
+        "contain-intrinsic-size" => vec!["containIntrinsicWidth", "containIntrinsicHeight"],
+        "contain-intrinsic-inline-size" => vec!["containIntrinsicWidth"],
+        "contain-intrinsic-block-size" => vec!["containIntrinsicHeight"],
         "column-rule" => vec!["columnRuleWidth", "columnRuleStyle", "columnRuleColor"],
         "page-break-before" => vec!["breakBefore"],
         "page-break-after" => vec!["breakAfter"],
@@ -393,6 +402,7 @@ fn conv(prop: &str) -> Conv {
         p if super::interact_css::form(p).is_some() => Conv::Raw,
         p if super::scroll_css::form(p).is_some() => Conv::Raw,
         p if super::image_css::form(p).is_some() => Conv::Raw,
+        p if super::contain_css::form(p).is_some() => Conv::Raw,
         "width" | "height" | "minWidth" | "maxWidth" | "minHeight" | "maxHeight" => Conv::Size,
         "padding" => Conv::Insets,
         "paddingTop" | "paddingRight" | "paddingBottom" | "paddingLeft" => Conv::Len,
@@ -495,6 +505,7 @@ pub fn value_form(prop: &str, words: &[&str]) -> Option<String> {
         Conv::Raw if let Some(f) = super::scroll_css::form(prop) => f.into(),
         Conv::Raw if let Some(f) = super::image_css::form(prop) => f.into(),
         Conv::Raw if let Some(f) = super::view_transition::form(prop) => f.into(),
+        Conv::Raw if let Some(f) = super::contain_css::form(prop) => f.into(),
         Conv::Raw if prop == "boxShadow" => {
             "[inset] <x> <y> [<blur> [<spread>]] [<colour>], … | none".into()
         }
@@ -1699,6 +1710,9 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
     if let Some(parts) = super::view_transition::lower(name, value) {
         return Ok(parts?.into_iter().map(|(k, v)| e(k, v)).collect());
     }
+    if let Some(parts) = super::contain_css::lower(name, value) {
+        return Ok(parts?.into_iter().map(|(k, v)| e(k, v)).collect());
+    }
     let t = tokens(value)?;
     if t.is_empty() {
         return Err(format!("{name} has no value"));
@@ -1857,6 +1871,10 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
         }
         n if let Some(prop) = super::image_css::prop_of(n) => {
             super::image_css::check(n, value)?;
+            Ok(vec![e(prop, vec![Value::String(value.trim().to_owned())])])
+        }
+        n if let Some(prop) = super::contain_css::prop_of(n) => {
+            super::contain_css::check(n, value)?;
             Ok(vec![e(prop, vec![Value::String(value.trim().to_owned())])])
         }
         "scroll-snap-type" | "scroll-snap-align" | "-og-sheet-detents" => {

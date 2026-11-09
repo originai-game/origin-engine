@@ -1273,6 +1273,15 @@ impl Ui {
                 }
             }
         }
+        // CSS Containment: layout and paint containment start a formatting
+        // context of their own (CSS Containment 2 §3.2, §3.4).
+        el.contain = crate::doc::contain_css::contain(|p| r.str(p).map(str::to_owned));
+        if el
+            .contain
+            .has(crate::layout::Contain::LAYOUT | crate::layout::Contain::PAINT)
+        {
+            el.bfc = true;
+        }
         el.safe = u8::from(r.flag("safeJustify")) | u8::from(r.flag("safeAlign")) << 1;
         if let Some(c) = r.color("background") {
             el.background = Some(c);
