@@ -1,9 +1,5 @@
-// Two games for tests/light2d-save.test.ts, which restores saves written by
-// an engine from before R11 (og.Lighting2D, og.Light2D and og.Occluder2D at
-// version 1, registered in every world), and tests/support/light2d-save-v1.ts,
-// which runs on that engine to write them. `lit` turns 2D lighting on with a
-// lamp and a wall; `plain` has none. Both count their ticks. They import
-// only the package's public entries, so they run on either build.
+// Two games for tests/light2d-save.test.ts. `lit` turns 2D lighting on
+// with a lamp and a wall; `plain` has none. Both count their ticks.
 import { og, defineResource, defineSystem, u32, type World } from "@origingame/engine";
 
 export const Ticks = defineResource("Ticks", { n: u32() });

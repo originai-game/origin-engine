@@ -1,10 +1,9 @@
-// Two games for tests/video-save.test.ts, which restores saves an engine
-// with og.VideoPlayer version 1 (an f32 `time`, registered in every world)
-// wrote, and tests/support/video-save-v1.ts, which runs on that engine to
-// write them. `player` has a paused player 2.5 s in at half speed, looping;
-// `plain` has none. Both count their ticks. They import only the package's
-// public entries, so they run on either build.
+// Two games for tests/video-save.test.ts. `player` has a paused player at
+// TIME at half speed, looping; `plain` has none. Both count their ticks.
 import { og, defineResource, defineSystem, u32 } from "@origingame/engine";
+
+/** A time an f32 cannot hold: 2.5 + 2^-30 s. */
+export const TIME = 2.5 + 2 ** -30;
 
 export const Ticks = defineResource("Ticks", { n: u32() });
 
@@ -21,7 +20,7 @@ export const player = og.game({
   start(world) {
     const screen = world.spawn({ name: "screen" });
     if (!screen.ok) throw new Error(screen.reason);
-    const r = world.insert(screen.value, og.VideoPlayer, { time: 2.5, playing: false, speed: 0.5, loop: true });
+    const r = world.insert(screen.value, og.VideoPlayer, { time: TIME, playing: false, speed: 0.5, loop: true });
     if (!r.ok) throw new Error(r.reason);
   },
 });

@@ -1,36 +1,20 @@
-// Saves written before R11 (og.Lighting2D, og.Light2D and og.Occluder2D
-// at version 1, registered in every world) restore on this build without
-// `migrate`: the engine's steps (save_migrations, each 1 -> 2) keep every
-// saved field by name and give the new ones their defaults (a point light
-// on every layer, an occluder on every layer, 1024 shadow angles), and
-// drop the types from a save that holds no 2D light, so that world
-// restores as one that never had them (they are lazy now). The fixture is
-// tests/fixtures/light2d-v1/save.json, written by
-// tests/support/light2d-save-v1.ts at c6986333.
+// og.Lighting2D, og.Light2D and og.Occluder2D in a save: every field comes
+// back from a save this build wrote, and a world without 2D lights saves
+// and restores as one that never had the types (they are lazy). Saves from
+// before engine save format 3 are refused without conversion
+// (save-versions.test.ts); there is no migration to test.
 //
 // Ways it could fail, and the check that catches each:
-// - the old save refused for the changed layouts → `restore` not ok
-// - a field shifted by the new ones (read at the wrong offset) → a saved
-//   value differs, or a new field is not its default
+// - a field read at the wrong offset, or a default written over a saved
+//   value → a restored value differs
 // - the lighting resource dropped as unused although it was enabled
-// - a save without 2D lights registers the types on restore (its hash then
-//   differs from the same game run here to the same tick)
+// - a restore registers the types in a world that had none → its hash
+//   differs from the same game run to the same tick
 import { beforeAll, expect, test } from "bun:test";
 import { og } from "@origingame/engine";
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { loadNativeHost } from "../src/node/index.ts";
 import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
-import { SAVE_AT, Ticks, plain } from "./support/light2d-save-game.ts";
-import { asSaved } from "./support/saved-defaults.ts";
-
-const fixture = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "fixtures", "light2d-v1", "save.json"), "utf8")) as {
-  build: string;
-  tick: number;
-  lit: { save: string; hash: string };
-  plain: { save: string; hash: string };
-};
+import { SAVE_AT, Ticks, lit, plain } from "./support/light2d-save-game.ts";
 
 beforeAll(() => {
   loadNativeHost();
@@ -49,11 +33,20 @@ const must = <T>(r: { ok: true; value: T } | { ok: false; reason: string }): T =
 
 const near = (a: number, b: number) => Math.abs(a - b) < 1e-6;
 
-test("a save with version-1 2D lights restores with every field and the new defaults", () => {
+function saved(game: unknown): { save: string; hash: string } {
+  const e = engineOf(game);
+  e.advance(SAVE_AT);
+  const save = must(e.world.snapshot());
+  const hash = e.hash();
+  e.destroy();
+  return { save, hash };
+}
+
+test("saved 2D lights restore with every field", () => {
   const engine = engineOf(plain);
   engine.advance(1);
-  expect<unknown>(engine.world.restore(fixture.lit.save)).toEqual({ ok: true, value: null });
-  expect(engine.world.tick).toBe(fixture.tick);
+  expect<unknown>(engine.world.restore(saved(lit).save)).toEqual({ ok: true, value: null });
+  expect(engine.world.tick).toBe(SAVE_AT);
   const l = must(engine.world.resource(og.Lighting2D));
   expect([l.enabled, l.maxLayer, l.shadowAngles]).toEqual([true, 40, 1024]);
   expect(near(l.ambient.r, 0.2) && near(l.ambient.g, 0.25) && near(l.ambient.b, 0.3)).toBe(true);
@@ -69,19 +62,11 @@ test("a save with version-1 2D lights restores with every field and the new defa
   engine.destroy();
 });
 
-test("a save without 2D lights restores as a world that never had the types", () => {
-  const here = engineOf(plain);
-  here.advance(SAVE_AT);
+test("a world without 2D lights restores as one that never had the types", () => {
+  const { save, hash } = saved(plain);
   const restored = engineOf(plain);
   restored.advance(1);
-  expect<unknown>(restored.world.restore(fixture.plain.save)).toEqual({ ok: true, value: null });
-  expect(restored.world.tick).toBe(fixture.tick);
-  // The SSR defaults moved since the fixture was written; the save keeps its own.
-  asSaved(here);
-  expect(restored.hash()).toBe(here.hash());
-  // The old build registered the three types in every world, so its hash
-  // of the same world was another (the one move of a world without lights).
-  expect(fixture.plain.hash).not.toBe(here.hash());
-  here.destroy();
+  expect<unknown>(restored.world.restore(save)).toEqual({ ok: true, value: null });
+  expect(restored.hash()).toBe(hash);
   restored.destroy();
 });
