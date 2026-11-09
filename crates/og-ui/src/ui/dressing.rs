@@ -440,10 +440,22 @@ impl Ui {
                 _ => continue,
             };
             let r = self.dress.resolve(&part);
-            if r.frame.slice.is_some() && self.theme.art.atlas.is_some() {
-                continue;
+            let sliced = r.frame.slice.is_some() && self.theme.art.atlas.is_some();
+            let mut d = self.part_draw(&part, n.sampled.background);
+            if sliced {
+                // The painted slice is the part's fill (`dress`, drawn as
+                // its background); its dressing's strokes and effects, a
+                // rarity rim or a selection glow, draw over it.
+                if d.strokes.is_empty() && d.effects.is_empty() {
+                    continue;
+                }
+                d = crate::paint::ElementDraw {
+                    shape: d.shape,
+                    strokes: d.strokes,
+                    effects: d.effects,
+                    ..Default::default()
+                };
             }
-            let d = self.part_draw(&part, n.sampled.background);
             // A dressing that clears (`fill none`) draws its nothing in
             // place of the element's own background: a quiet button stays
             // clear when disabled, as its rest is.

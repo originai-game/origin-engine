@@ -575,3 +575,78 @@ fn a_kit_text_part_takes_its_ink_and_step() {
     assert!(near(free.1, ui.theme().palette.ink), "{:?}", free.1);
     assert_eq!(free.0, body);
 }
+
+/// A part painted by a slice of the style's art still draws its dressing's
+/// strokes and effects, over the slice: a rarity's rim on a painted slot
+/// (`Slot::frame[rarity=epic]`) shows, the slice is not covered by a fill,
+/// and a part without the qualifier draws only its slice.
+///
+/// Ways it could fail: a sliced part's dressing skipped whole (the rim
+/// never drawn, as before), the rim drawn under the slice, or the
+/// dressing's fill painted over the art.
+#[test]
+fn a_sliced_part_draws_its_dressings_rim_over_the_slice() {
+    let mut ui = dressed(concat!(
+        "atlas \"a.png\" 2 2\n",
+        "Slot::frame {\n -og-slice: 0 0 2 2 0 0 0 0 authored\n}\n",
+        "Slot::frame[rarity=epic] {\n -og-fill: #00ff00\n -og-stroke: 3px #ff00ff inside\n}\n",
+    ));
+    let mut scene = og_render::RenderScene::new();
+    let texture = scene.add_texture(og_render::TextureData {
+        width: 2,
+        height: 2,
+        rgba: vec![255; 16],
+        color_space: og_render::ColorSpace::Srgb,
+        mips: og_render::Mips::None,
+    });
+    let mut theme = *ui.theme();
+    theme.art.atlas = Some(texture);
+    ui.set_theme(theme);
+    ui.begin(InputFrame::default(), Viewport::new(200.0, 100.0));
+    ui.row("Bag", Element::row(), |ui| {
+        for (id, part) in [("Epic", "Slot.frame[rarity=epic]"), ("Plain", "Slot.frame")] {
+            ui.open(
+                id,
+                Element {
+                    width: Size::Fixed(40.0),
+                    height: Size::Fixed(40.0),
+                    background: Some(Srgba::rgb(40, 30, 20)),
+                    part: Some(og_ui::dress::PartRef::parse(part, None).unwrap()),
+                    ..Default::default()
+                },
+            );
+            ui.close();
+        }
+    });
+    ui.end();
+    let magenta = Srgba::rgb(255, 0, 255).linear();
+    let green = Srgba::rgb(0, 255, 0).linear();
+    let frame = ui.frame();
+    for (id, rimmed) in [("Epic", true), ("Plain", false)] {
+        let el = ui.element(id).unwrap();
+        let inside = |r: &Rect| r.x >= el.x - 4.0 && r.right() <= el.x + el.width + 4.0;
+        let slice = frame.items.iter().position(|item| {
+            matches!(&item.cmd, DrawCmd::Image { rect, texture: Some(t), .. } if *t == texture && inside(rect))
+        });
+        let rim = frame.items.iter().position(|item| match &item.cmd {
+            DrawCmd::Shape { shape, .. } => {
+                matches!(shape.mode, og_render::UiMode::Stroke(_))
+                    && shape.paint == og_render::UiPaint::Solid(magenta)
+                    && (shape.center.x - (el.x + el.width / 2.0)).abs() < 1.0
+            }
+            _ => false,
+        });
+        let slice = slice.unwrap_or_else(|| panic!("{id}: its slice is not drawn"));
+        assert_eq!(rim.is_some(), rimmed, "{id}: rim drawn {rim:?}");
+        if let Some(rim) = rim {
+            assert!(rim > slice, "{id}: the rim is drawn under the slice");
+        }
+        assert!(
+            !frame.items.iter().any(|item| item
+                .cmd
+                .filled()
+                .is_some_and(|(r, c)| c == green && inside(&r))),
+            "{id}: the dressing's fill covers the slice"
+        );
+    }
+}
