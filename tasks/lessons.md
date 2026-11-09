@@ -86,3 +86,13 @@ check out a detached revision instead; never stash.
 (`cargo build -p og-cli`), run both, and check every crate that builds an
 og-ui struct literal (`cargo check --workspace --all-targets`), not og-ui
 alone: og-runtime lists `Element`'s fields exhaustively.
+
+## 2026-11-09 — Never act on a lane `take` refused
+
+`scripts/lane.sh take lane-13 …; cd lane-13 && git reset --hard …` ran the
+reset after `take` refused because another stream (C12) had taken the
+lane seconds before: its uncommitted edits to four tracked files were
+lost. Chain a take with `&&` and check the printed path, or better, land
+from your own lane: `scripts/land.sh` needs the worktree clean only while
+it runs, so stop editing there until it returns instead of borrowing a
+second lane.
