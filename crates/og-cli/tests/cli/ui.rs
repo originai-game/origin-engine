@@ -557,3 +557,66 @@ fn ui_slots_json_gives_each_slot_its_generation_spec_and_set() {
     );
     assert_eq!(frame["problems"], serde_json::json!([]), "{frame}");
 }
+
+/// A kit names the library components its documents compose (`components`
+/// in extension.json); `og ui add` ejects each into the game's assets/ui/
+/// with its strings, keeps a copy the game already has, and refuses a kit
+/// naming a component the library does not have.
+///
+/// Ways it could fail: the component left out (the kit's documents then
+/// name a component no document declares), the game's edited copy
+/// overwritten, or an unknown name installed without a word.
+#[test]
+fn ui_add_ejects_the_library_components_a_kit_composes() {
+    let game = |name: &str| {
+        let dir = scratch_root().join(name);
+        std::fs::create_dir_all(dir.join("src")).unwrap();
+        std::fs::write(dir.join("src/main.ts"), "export default 0;\n").unwrap();
+        std::fs::write(
+            dir.join("project.ogt"),
+            "type project\nversion 1\n---\nname \"T\"\nentry \"src/main.ts\"\n",
+        )
+        .unwrap();
+        dir
+    };
+    let kit = |components: &str| {
+        let source = scratch_root().join("hud");
+        std::fs::create_dir_all(&source).unwrap();
+        std::fs::write(source.join("extension.json"), format!(r#"{{"format":1,"kind":"kit","name":"hud","version":"1.0.0","description":"Composes a library component","components":[{components}]}}"#)).unwrap();
+        std::fs::write(source.join("vitals.svelte"), "<meta name='component' content='Vitals'><column id='root'><StatBar value={1} max={2} /></column>").unwrap();
+        source
+    };
+    let add = |source: &std::path::Path, dir: &std::path::Path| {
+        let out = og()
+            .args(["ui", "add", source.to_str().unwrap()])
+            .arg(dir)
+            .output()
+            .unwrap();
+        (out.status.code(), text(&out))
+    };
+
+    let fresh = game("fresh");
+    let source = kit(r#""stat-bar""#);
+    let (code, out) = add(&source, &fresh);
+    assert_eq!(code, Some(0), "{out}");
+    assert!(fresh.join("assets/ui-kits/hud/vitals.svelte").is_file());
+    let ejected = std::fs::read_to_string(fresh.join("assets/ui/stat-bar.svelte")).unwrap();
+    assert!(ejected.contains(r#"content="StatBar""#), "{ejected}");
+    assert!(fresh.join("assets/ui/stat-bar.en.ogt").is_file());
+
+    let edited = game("edited");
+    std::fs::create_dir_all(edited.join("assets/ui")).unwrap();
+    let mine = "<meta name='component' content='StatBar'><column id='mine'></column>";
+    std::fs::write(edited.join("assets/ui/stat-bar.svelte"), mine).unwrap();
+    let (code, out) = add(&source, &edited);
+    assert_eq!(code, Some(0), "{out}");
+    assert_eq!(
+        std::fs::read_to_string(edited.join("assets/ui/stat-bar.svelte")).unwrap(),
+        mine
+    );
+
+    let unknown = game("unknown");
+    let (code, out) = add(&kit(r#""stat-bars""#), &unknown);
+    assert_ne!(code, Some(0), "{out}");
+    assert!(out.contains("stat-bars"), "{out}");
+}

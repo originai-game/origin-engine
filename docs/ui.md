@@ -2686,7 +2686,9 @@ document headers, not a hard-coded runtime name registry. A style has no
 executable entry; document-only kits need no TypeScript entry.
 
 `og ui add` copies a kit to `assets/ui-kits/<name>`; `og style add` copies
-a style to `assets/styles/<name>`. Installed copies win over bundled copies
+a style to `assets/styles/<name>`. A kit that composes library component
+documents names them in its manifest's `components` (`["stat-bar"]`), and
+`og ui add` ejects each the game does not already have into `assets/ui/`. Installed copies win over bundled copies
 of the same kind and name. Discovery never evaluates kit code. Games
 import the chosen TypeScript entry explicitly. Installation preserves
 relative paths and licences and does not silently replace existing edits.

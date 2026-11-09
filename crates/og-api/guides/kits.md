@@ -57,7 +57,8 @@ matrix and the separate art review before landing.
 
 Declare `format`, `kind: "kit"`, `name`, `version`, and `description` in
 `extension.json`, with `entry` and `types` when the kit has public data
-helpers. Declare typed inputs, emitted intents, documents, parts, and
+helpers, and `components` naming the library component documents its
+documents compose (`["stat-bar"]`), which `og ui add` ejects with it. Declare typed inputs, emitted intents, documents, parts, and
 state fixtures before implementing them. Use public engine imports only.
 
 `registerUiExtension` returns the kit's namespace; it does not add members

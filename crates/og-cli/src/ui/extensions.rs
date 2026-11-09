@@ -37,6 +37,11 @@ pub struct Manifest {
     pub languages: Option<Vec<String>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub faces: Option<Vec<String>>,
+    /// A kit's library component documents (`stat-bar`): the core
+    /// components its documents compose, which installing the kit ejects
+    /// into the game's `assets/ui/` unless the game has them already.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub components: Option<Vec<String>>,
 }
 
 /// A vfx pack's tags: its style and dimension, and the union of its
@@ -157,6 +162,14 @@ pub fn read(directory: &Path, installed: bool) -> Result<Extension, String> {
         || m.keywords
             .as_ref()
             .is_some_and(|k| !k.iter().all(|w| lower_word(w)))
+        || (m.kind != "kit" && m.components.is_some())
+        || m.components.as_ref().is_some_and(|c| {
+            !c.iter().all(|n| {
+                n.starts_with(|c: char| c.is_ascii_lowercase())
+                    && n.bytes()
+                        .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == b'-')
+            })
+        })
         || (m.kind == "font") != (m.scripts.is_some() || m.languages.is_some() || m.faces.is_some())
         || (m.kind == "font"
             && (m.languages.is_none()
@@ -292,7 +305,7 @@ pub(super) fn install(extension: &Extension, project: &Path) -> Result<PathBuf, 
         std::process::id()
     ));
     std::fs::create_dir(&staging).map_err(|e| e.to_string())?;
-    let result = (|| {
+    let result = (|| -> Result<PathBuf, String> {
         for file in all {
             let dest = staging.join(&file);
             std::fs::create_dir_all(dest.parent().unwrap()).map_err(|e| e.to_string())?;
@@ -304,7 +317,32 @@ pub(super) fn install(extension: &Extension, project: &Path) -> Result<PathBuf, 
     if result.is_err() {
         let _ = std::fs::remove_dir_all(staging);
     }
-    result
+    let target = result?;
+    install_components(extension, project)?;
+    Ok(target)
+}
+
+/// Ejects the library components a kit composes (its manifest's
+/// `components`) into the game's `assets/ui/`, as `og ui eject` does; one
+/// the game already has, edited or not, is kept.
+fn install_components(extension: &Extension, project: &Path) -> Result<(), String> {
+    let names = extension.manifest.components.as_deref().unwrap_or_default();
+    if names.is_empty() {
+        return Ok(());
+    }
+    let package = crate::project::engine_package(Some(project)).ok_or(crate::project::NO_ENGINE)?;
+    let dirs = super::LIBRARY_DIRS.map(|d| package.join(d));
+    for name in names {
+        if !project
+            .join("assets/ui")
+            .join(format!("{name}.svelte"))
+            .exists()
+        {
+            super::eject_from(&dirs, name, project, false)
+                .map_err(|e| format!("kit `{}` composes `{name}`: {e}", extension.manifest.name))?;
+        }
+    }
+    Ok(())
 }
 
 pub fn add(args: &[&str], kind: &str) -> ExitCode {

@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "extension.json components",
+      "summary": "A kit names the library component documents its documents compose (`\"components\": [\"stat-bar\"]`), and `og ui add` ejects each the game does not already have into assets/ui/, so a kit's `<StatBar>` resolves without a separate `og ui eject`."
+    }
+  ]
+}
