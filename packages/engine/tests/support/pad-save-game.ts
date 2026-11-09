@@ -1,7 +1,6 @@
 // A game whose state follows pad 1: what tests/gamepad-save.test.ts restores
-// from a save a four-pad build wrote (og.Gamepad version 1), and what
-// tests/support/pad-save-v1.ts runs on that engine to write it. It imports
-// only the package's public entries, so it runs on either build.
+// from a recorded save, and what tests/support/pad-save-write.ts runs to
+// write it.
 import { og, defineResource, defineSystem, f32, u32 } from "@origingame/engine";
 
 export const PadRun = defineResource("PadRun", { presses: u32(), x: f32(), connected: u32() });

@@ -1,16 +1,16 @@
-// A save written before og.Gamepad's eight pads (origin-engine 3aca1209:
-// og.Gamepad version 1, four pads, and no og.input.actions state block)
-// restores on this build without `migrate` and the world goes on as it did
-// on the build that saved. The fixture is tests/fixtures/gamepad-v1/save.json,
-// written by tests/support/pad-save-v1.ts on that build.
+// A recorded save of a game that follows pad 1 restores and the world goes
+// on as it did on the build that saved. The fixture is
+// tests/fixtures/gamepad-save/save.json, written by
+// tests/support/pad-save-write.ts at the current save format.
 //
 // Ways it could fail, and the check that catches each:
 // - the save refused because a session type (og.Gamepad, which a restore
-//   replaces with the host's) changed layout → `restored.ok` false
+//   replaces with the host's) is saved where it should not be → `restored.ok` false
 // - the game's own state not brought back → `atSave` differs
-// - the restored world going on otherwise than the old build did (pads
-//   mapped to the wrong slots, the action map's missing block) → `after`
+// - the restored world going on otherwise than the saving build did (pads
+//   mapped to the wrong slots, the action map's state lost) → `after`
 //   differs
+// - pads past the fourth not reaching the restored world → pad 6's `a`
 import { beforeAll, expect, test } from "bun:test";
 import { og } from "@origingame/engine";
 import { readFileSync } from "node:fs";
@@ -20,7 +20,7 @@ import { loadNativeHost } from "../src/node/index.ts";
 import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
 import { AFTER, PadRun, SAVE_AT, game, padAt } from "./support/pad-save-game.ts";
 
-const fixture = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "fixtures", "gamepad-v1", "save.json"), "utf8")) as {
+const fixture = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "fixtures", "gamepad-save", "save.json"), "utf8")) as {
   build: string;
   tick: number;
   save: string;
@@ -38,7 +38,7 @@ beforeAll(() => {
   loadNativeHost();
 });
 
-test("a four-pad save restores without migrate and replays as that build did", () => {
+test("a pad save restores and replays as the build that saved it did", () => {
   const created = createEngine(game as unknown as GameToken);
   if (!created.ok) throw new Error(created.reason);
   const engine = created.value;

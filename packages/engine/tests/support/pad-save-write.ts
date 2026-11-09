@@ -1,13 +1,9 @@
-// Writes tests/fixtures/gamepad-v1/save.json: a save of pad-save-game.ts
-// written by a build from before og.Gamepad's eight pads (og.Gamepad
-// version 1, four pads, no og.input.actions block), and the game's state at
-// the save and after AFTER more ticks of the same pad script. It is not run
-// by the tests. The fixture was written at origin-engine 3aca1209: check
-// that commit out, build its native host into packages/engine/native, copy
-// this file and pad-save-game.ts into tests/support and run
-//   bun tests/support/pad-save-v1.ts 3aca1209 > save.json
-// (a release's saves, 0.7.7's, are older still: their og.ui block is
-// version 9, which this build refuses for its own reason.)
+// Writes tests/fixtures/gamepad-save/save.json: a save of pad-save-game.ts
+// taken at SAVE_AT, and the game's state at the save and after AFTER more
+// ticks of the same pad script. It is not run by the tests; run it again
+// whenever the engine's save format changes (saves are not migrated):
+//   bun tests/support/pad-save-write.ts $(git rev-parse --short HEAD) > tests/fixtures/gamepad-save/save.json
+// from packages/engine, with this checkout's native host built.
 import { loadNativeHost } from "@origingame/engine/node";
 import { createEngine, type GameToken } from "@origingame/engine/runtime";
 import { AFTER, PadRun, SAVE_AT, game, padAt } from "./pad-save-game.ts";
