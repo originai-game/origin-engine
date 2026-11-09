@@ -1306,7 +1306,13 @@ impl RetainedHost {
             &mut probe,
             &build.inherited,
             &mut |selector| {
-                crate::doc::matching::matches(topology, &e.document, selector, identity, &mut work)
+                crate::doc::matching::matches(
+                    topology,
+                    Some(&e.document.name),
+                    selector,
+                    identity,
+                    &mut work,
+                )
             },
         );
         values.ordinal = ui.ordinal_of(

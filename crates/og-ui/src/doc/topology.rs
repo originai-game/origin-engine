@@ -638,8 +638,12 @@ impl Topology {
     fn marks_of(&self, i: usize) -> u64 {
         let instance = &self.entry(i).instance;
         let facts = super::matching::Facts {
-            document: &instance.document,
-            node: instance.document_node,
+            scope: &instance.document.name,
+            tag: instance.document.nodes[instance.document_node]
+                .selector_tag
+                .as_deref()
+                .unwrap_or_default(),
+            root: instance.document_node == instance.document.root,
             attributes: &instance.attributes,
             states: &instance.states,
             text: &instance.direct_text,
@@ -723,8 +727,12 @@ impl super::matching::Tree for Topology {
     fn facts(&self, id: &MountedNode) -> super::matching::Facts<'_> {
         let instance = &self.entry(self.identities[id]).instance;
         super::matching::Facts {
-            document: &instance.document,
-            node: instance.document_node,
+            scope: &instance.document.name,
+            tag: instance.document.nodes[instance.document_node]
+                .selector_tag
+                .as_deref()
+                .unwrap_or_default(),
+            root: instance.document_node == instance.document.root,
             attributes: &instance.attributes,
             states: &instance.states,
             text: &instance.direct_text,
