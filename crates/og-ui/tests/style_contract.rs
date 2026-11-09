@@ -2,6 +2,20 @@ use crate::support::CORE_STYLE;
 use og_ui::*;
 
 #[test]
+fn an_ornament_atlas_needs_no_part_slices() {
+    let file = parse_style(&format!(
+        "{CORE_STYLE}\natlas \"ornaments.png\" 64 32\ncorner 16 8 24 12 24 12\n"
+    ))
+    .unwrap();
+    assert_eq!(file.atlas.as_deref(), Some("ornaments.png"));
+    assert_eq!(
+        file.theme.art.corner.unwrap().uv,
+        [0.25, 0.25, 0.625, 0.625]
+    );
+    assert!(file.theme.art.slices.iter().all(Option::is_none));
+}
+
+#[test]
 fn a_styles_fonts_name_weights_italics_and_each_locales_companion() {
     let text = CORE_STYLE;
     let fonts = r#"fonts {

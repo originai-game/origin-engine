@@ -878,13 +878,6 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
                 file.sounds[u as usize].iter().cloned().collect();
         }
     }
-    if file.atlas.is_some() && theme.art.slices.iter().all(Option::is_none) {
-        return Err(if v2 {
-            "the style has an atlas but dresses no part with a `slice`".into()
-        } else {
-            "the style has an atlas but no `slice` lines".into()
-        });
-    }
     let needs_soft = theme.art.shadows.iter().flatten().any(|s| s.blur > 0.0)
         || theme.art.glows.iter().any(Option::is_some);
     if needs_soft && theme.art.soft.is_none() {
