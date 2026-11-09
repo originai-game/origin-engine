@@ -232,6 +232,9 @@ const FLAG_FRACTAL: u32 = 32;
 /// the element goes on past what was captured of it).
 const FLAG_CLAMP: u32 = 64;
 
+/// The most texels a blur pass reads a side (ui_filter.wgsl's case 0).
+const BLUR_REACH: f32 = 128.0;
+
 /// The ops' codes in ui_filter.wgsl beyond a primitive's.
 const OP_LAYER: u32 = 16;
 const OP_CAPTURE: u32 = 17;
@@ -336,7 +339,33 @@ fn passes(p: &UiFilterPrimitive, frame: &Frame, clamp: bool) -> Vec<FilterParams
             code(&mut f, 0);
             let x = frame.device([std_dev[0].max(0.0), 0.0]);
             let y = frame.device([0.0, std_dev[1].max(0.0)]);
-            return axes(f, x, y);
+            // A pass takes every texel within 3σ, up to BLUR_REACH a side;
+            // a wider Gaussian is n passes of σ/√n (Gaussians convolve to
+            // the Gaussian whose variance is their sum), each exact.
+            let split = |v: [f32; 2]| {
+                let n = (v[0].hypot(v[1]) * 3.0 / BLUR_REACH)
+                    .powi(2)
+                    .ceil()
+                    .max(1.0);
+                let k = n.sqrt().recip();
+                (n as usize, [v[0] * k, v[1] * k])
+            };
+            let ((nx, x), (ny, y)) = (split(x), split(y));
+            let mut out = Vec::with_capacity(nx + ny);
+            for (k, v) in std::iter::repeat_n(x, nx)
+                .chain(std::iter::repeat_n(y, ny))
+                .enumerate()
+            {
+                let mut pass = f;
+                pass.a[0] = v[0];
+                pass.a[1] = v[1];
+                // Only the first reads the input; the rest read a result.
+                if k > 0 {
+                    pass.op[1] = flags & (FLAG_SRGB | FLAG_CLAMP);
+                }
+                out.push(pass);
+            }
+            return out;
         }
         UiFilterOp::Morphology { radius, dilate } => {
             code(&mut f, 7);

@@ -144,14 +144,16 @@ fn ui_shapes_cut_their_corners_rings_and_arcs() {
 /// A layer draped over uneven terrain as a decal (`ui-ground`, a
 /// document's `<ground>`): at screen points where the checker cell the
 /// terrain's surface falls in differs from the cell the flat plane would
-/// show there, the frame shows the surface's cell; the pillar's face shows
-/// no checker; the sky past the rect shows none.
+/// show there, the frame shows the surface's cell, inverted in the first
+/// two columns by a backdrop inside the ground's layer; the pillar's face
+/// shows no checker; the sky past the rect shows none.
 ///
 /// Ways it could fail: the layer laid on the flat plane (the old quad
 /// map), the depth read at the wrong pixel or as the wrong depth (cells
 /// shifted), the plane's axes swapped (columns for rows), a surface that
-/// stands across the plane painted, or the layer drawn where the scene
-/// has nothing.
+/// stands across the plane painted, the layer drawn where the scene
+/// has nothing, or the backdrop planned on the screen's pixels (its rect is
+/// far off the screen, so it draws nothing).
 #[test]
 #[ignore = "requires GPU"]
 fn ui_ground_drapes_a_layer_over_the_terrain() {
@@ -185,6 +187,7 @@ fn ui_ground_drapes_a_layer_over_the_terrain() {
     let gold = ink([240, 180, 60]);
     let blue = ink([40, 90, 200]);
     let mut differ = 0;
+    let mut inverted = 0;
     for y in (150..700).step_by(9) {
         for x in (150..1130).step_by(9) {
             let (o, d) = ray(x as f32 + 0.5, y as f32 + 0.5);
@@ -233,6 +236,18 @@ fn ui_ground_drapes_a_layer_over_the_terrain() {
                 continue;
             }
             let p = px(&r, x, y);
+            // The first two columns are under a backdrop that inverts them.
+            let u = (surface.x + 3.0) / 6.0 * 8.0;
+            let fu = (flat.x + 3.0) / 6.0 * 8.0;
+            if (u - 2.0).abs() < 0.25 || (u < 2.0) != (fu < 2.0) {
+                continue;
+            }
+            let (gold, blue) = if u < 2.0 {
+                inverted += 1;
+                (ink([15, 75, 195]), ink([215, 165, 55]))
+            } else {
+                (gold, blue)
+            };
             let (want, not) = if s_gold { (gold, blue) } else { (blue, gold) };
             assert!(
                 near(p, want, 30.0) && !near(p, not, 60.0),
@@ -244,6 +259,10 @@ fn ui_ground_drapes_a_layer_over_the_terrain() {
     assert!(
         differ >= 20,
         "only {differ} points tell the drape from the plane"
+    );
+    assert!(
+        inverted >= 5,
+        "only {inverted} points under the ground's backdrop"
     );
     // The pillar's face, within the reach, takes no checker; the sky past
     // the rect shows its own colour.

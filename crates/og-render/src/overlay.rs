@@ -693,21 +693,42 @@ pub(crate) fn build<'a>(
             }
             continue;
         }
-        let s = target.scale.max(1e-6);
-        let x0 = (x * s).floor().clamp(0.0, target.width as f32);
-        let y0 = (y * s).floor().clamp(0.0, target.height as f32);
-        let x1 = ((x + w.max(0.0)) * s)
-            .ceil()
-            .clamp(0.0, target.width as f32);
-        let y1 = ((y + h.max(0.0)) * s)
-            .ceil()
-            .clamp(0.0, target.height as f32);
+        // Its pixel grid and extent: the screen's, or inside a world
+        // panel's or a ground's layer (at any depth) that layer's, where
+        // what it draws lands (a backdrop there reads that layer).
+        let mut root = owner(k).filter(|&t| t > 0);
+        let grid = loop {
+            let Some(t) = root else {
+                break (
+                    [0.0; 2],
+                    target.scale.max(1e-6),
+                    [target.width, target.height],
+                );
+            };
+            let j = t - 1;
+            let l = &layers[j as usize];
+            if l.target.is_some() || l.ground.is_some() {
+                if let Some(p) = plans.iter().find(|p: &&LayerPlan| p.index == j) {
+                    break (p.origin, p.scale, [p.size.0, p.size.1]);
+                }
+                // Not planned (yet): the screen's.
+                root = None;
+                continue;
+            }
+            root = owner(j).filter(|&t| t > 0);
+        };
+        let ([ox, oy], s, [gw, gh]) = grid;
+        let x0 = ((x - ox) * s).floor().clamp(0.0, gw as f32);
+        let y0 = ((y - oy) * s).floor().clamp(0.0, gh as f32);
+        let x1 = ((x - ox + w.max(0.0)) * s).ceil().clamp(0.0, gw as f32);
+        let y1 = ((y - oy + h.max(0.0)) * s).ceil().clamp(0.0, gh as f32);
         if x1 > x0 && y1 > y0 && owner(k).is_some() {
+            let origin = [ox + x0 / s, oy + y0 / s];
             plans.push(LayerPlan {
                 index: k,
-                origin: [x0 / s, y0 / s],
+                origin,
                 size: ((x1 - x0) as u32, (y1 - y0) as u32),
-                rect: [x0 / s, y0 / s, (x1 - x0) / s, (y1 - y0) / s],
+                rect: [origin[0], origin[1], (x1 - x0) / s, (y1 - y0) / s],
                 scale: s,
                 target: None,
                 parent,

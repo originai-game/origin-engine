@@ -574,7 +574,7 @@ fn backdrop_graph(
                     }
                     prims.push(p);
                 }
-                elements += u.images.len() as u32;
+                elements += u.filter.elements.len() as u32;
             }
         }
     }
@@ -755,20 +755,6 @@ impl Default for ShapeKind {
 }
 
 impl ShapeKind {
-    /// A path under `m` (its points and its stroke's width); any other
-    /// shape as it is.
-    fn mapped(&self, m: &crate::svg::Affine) -> ShapeKind {
-        let mut out = self.clone();
-        if let ShapeKind::Path { points, width, .. } = &mut out {
-            for p in points.iter_mut() {
-                let v = m.apply(Vec2::from(*p));
-                *p = [v.x, v.y];
-            }
-            *width *= m.scale();
-        }
-        out
-    }
-
     /// The geometry of an element of `radius` (its default corner radius)
     /// and `size` (CSS px).
     pub fn geometry(&self, radius: f32, size: [f32; 2]) -> og_render::UiGeometry {
@@ -943,9 +929,6 @@ pub struct FilterUse {
     /// user space is CSS px from its border box's top left and whose
     /// bounding box is its border box.
     pub svg: Option<(crate::svg::Affine, [f32; 4])>,
-    /// What its `feImage`s of elements draw ([`crate::svg::filter::Filter::elements`]),
-    /// in order: shapes in its user space.
-    pub images: Vec<Vec<(ShapeKind, Paint)>>,
 }
 
 impl FilterUse {
@@ -987,71 +970,6 @@ impl FilterUse {
         let (region, mut graph) = self.filter.resolve(bbox);
         crate::svg::filter::map(&mut graph, &map);
         (map.map_rect(&region), graph)
-    }
-
-    /// Its element images' layers for an element drawn by `draw` in `at`:
-    /// each one's shapes in the element's own units (its view box's, or
-    /// CSS px from its box), moved by its `feImage`'s `x` and `y` when it
-    /// gives them, as `<use>` is.
-    fn image_layers(
-        &self,
-        draw: &ElementDraw,
-        theme: &Theme,
-        at: &Placed,
-        base: u32,
-    ) -> Vec<DrawCmd> {
-        let mut out = Vec::new();
-        let (to_units, bbox) = match &self.svg {
-            Some((t, bbox)) => (*t, *bbox),
-            None => (
-                crate::svg::Affine::IDENTITY,
-                [0.0, 0.0, at.rect.width, at.rect.height],
-            ),
-        };
-        for (n, shapes) in self.images.iter().enumerate() {
-            let layer = crate::svg::filter::element_layer(n as u32);
-            let sub = self
-                .filter
-                .primitives
-                .iter()
-                .find(|p| matches!(p.op, og_render::UiFilterOp::Layer { layer: l } if l == layer))
-                .map_or([f32::NAN; 4], |p| p.subregion);
-            let at_edge = |v: f32, k: usize| match (v.is_nan(), self.filter.primitive_bbox) {
-                (true, _) => 0.0,
-                (false, true) => bbox[k] + v * bbox[k + 2],
-                (false, false) => v,
-            };
-            let m = to_units.then(&crate::svg::Affine([
-                1.0,
-                0.0,
-                0.0,
-                1.0,
-                at_edge(sub[0], 0),
-                at_edge(sub[1], 1),
-            ]));
-            out.push(DrawCmd::BeginLayer {
-                material: og_render::UiMaterial::Plain,
-                params: [[0.0; 4]; og_render::UI_MATERIAL_PARAMS],
-                mask: None,
-                expand: 0.0,
-                rect: Rect::default(),
-                filter: None,
-                role: crate::draw::LayerRole::Image(base + n as u32),
-            });
-            for (kind, paint) in shapes {
-                let kind = kind.mapped(&m);
-                out.push(draw.shape_of(
-                    &kind,
-                    at,
-                    draw.paint(paint, theme, at),
-                    og_render::UiMode::Fill,
-                    1.0,
-                    Blend::Normal,
-                ));
-            }
-            out.push(end_layer(None, at, 1.0, Blend::Normal));
-        }
-        out
     }
 }
 
@@ -1117,6 +1035,36 @@ pub struct ElementDraw {
     /// Its CSS background and mask layers beyond its fills (a document
     /// element's `background-*` and `mask-*`).
     pub boxes: Option<Box<BoxLayers>>,
+    /// It draws nothing of its own: its subtree is the `n`-th element an
+    /// `feImage` of its parent's filters reads ([`filter_uses`]), drawn
+    /// into a layer that composites nowhere ([`crate::LayerRole::Image`]).
+    pub element_image: Option<u32>,
+}
+
+/// The url filters of an element's draw, in the order its element images
+/// (the elements their `feImage`s name, [`crate::svg::filter::Filter::elements`])
+/// are numbered across them: its `backdrop-filter`'s url stages, then its
+/// layer's filter, then its filter layers in order. The `n`-th image is
+/// drawn by a child of the element whose [`ElementDraw::element_image`]
+/// is `n`.
+pub(crate) fn filter_uses<'a>(
+    effects: &'a [Effect],
+    layer: Option<&'a Layer>,
+    filters: &'a [Layer],
+) -> Vec<&'a FilterUse> {
+    let backdrop = effects.iter().flat_map(|e| match e {
+        Effect::BackdropFilter(stages) => stages.as_slice(),
+        _ => &[],
+    });
+    let urls = backdrop.filter_map(|s| match s {
+        BackdropStage::Url(u) => Some(&**u),
+        _ => None,
+    });
+    let layers = layer
+        .into_iter()
+        .chain(filters)
+        .filter_map(|l| l.filter.as_deref());
+    urls.chain(layers).collect()
 }
 
 impl From<Material> for og_render::UiMaterial {
@@ -1186,6 +1134,7 @@ impl Default for ElementDraw {
             view_box: None,
             view_rect: None,
             boxes: None,
+            element_image: None,
         }
     }
 }
@@ -1356,6 +1305,17 @@ impl ElementDraw {
     /// Its layers: the outer one (its own, else its last filter's), which
     /// carries the composite, and the filters inside it, the first
     /// innermost.
+    /// The number of its first element image in layer `l`'s filter
+    /// (one of its layers; [`filter_uses`]).
+    fn element_image_base(&self, l: &Layer) -> u32 {
+        let own = l.filter.as_deref();
+        filter_uses(&self.effects, self.layer.as_ref(), &self.filters)
+            .into_iter()
+            .take_while(|u| !own.is_some_and(|o| std::ptr::eq(*u, o)))
+            .map(|u| u.filter.elements.len() as u32)
+            .sum()
+    }
+
     fn stages(&self) -> (Option<&Layer>, &[Layer]) {
         match (&self.layer, self.filters.split_last()) {
             (Some(l), _) => (Some(l), &self.filters),
@@ -1574,7 +1534,7 @@ impl ElementDraw {
         at: &Placed,
         opacity: f32,
     ) -> Vec<DrawCmd> {
-        let (region, primitives, bases) =
+        let (region, primitives, _) =
             backdrop_graph(stages, [at.rect.width, at.rect.height], theme);
         if primitives.is_empty() {
             return Vec::new();
@@ -1594,13 +1554,6 @@ impl ElementDraw {
             filter: Some(Box::new((map.map_rect(&region), graph))),
             role: crate::draw::LayerRole::Backdrop,
         }];
-        let urls = stages.iter().filter_map(|s| match s {
-            BackdropStage::Url(u) => Some(u),
-            _ => None,
-        });
-        for (u, base) in urls.zip(bases) {
-            out.extend(u.image_layers(self, theme, at, base));
-        }
         let rect = if matches!(self.shape, ShapeKind::Path { .. }) {
             at.rect
         } else {
@@ -1621,6 +1574,17 @@ impl ElementDraw {
     /// its shadows, outer glows and backdrops, then its fills, inner
     /// shadows and inner glows.
     pub(crate) fn enter(&self, theme: &Theme, at: &Placed) -> Vec<DrawCmd> {
+        if let Some(n) = self.element_image {
+            return vec![DrawCmd::BeginLayer {
+                material: og_render::UiMaterial::Plain,
+                params: [[0.0; 4]; og_render::UI_MATERIAL_PARAMS],
+                mask: None,
+                expand: 0.0,
+                rect: Rect::default(),
+                filter: None,
+                role: crate::draw::LayerRole::Image(n),
+            }];
+        }
         let mut out = Vec::new();
         if self.masked() {
             out.push(plain_layer(None));
@@ -1667,14 +1631,21 @@ impl ElementDraw {
                     .map(|texture| og_render::UiMask::Image { texture, uv: *uv }),
                 _ => None,
             };
+            // Its element images are numbered across its filters
+            // ([`filter_uses`]); its children draw them.
             let filter = |l: Option<&Layer>| {
-                let f = l?.filter.as_ref()?;
-                Some(Box::new(f.resolve(at, self.fit(at))))
-            };
-            // A filter's element images draw first inside its layer.
-            let images = |l: Option<&Layer>| {
-                l.and_then(|l| l.filter.as_ref())
-                    .map_or(Vec::new(), |f| f.image_layers(self, theme, at, 0))
+                let l = l?;
+                let f = l.filter.as_ref()?;
+                let (region, mut graph) = f.resolve(at, self.fit(at));
+                let base = self.element_image_base(l);
+                for p in &mut graph.primitives {
+                    if let og_render::UiFilterOp::Layer { layer } = &mut p.op
+                        && let Some(n) = crate::svg::filter::element_of(*layer)
+                    {
+                        *layer = crate::svg::filter::element_layer(n + base);
+                    }
+                }
+                Some(Box::new((region, graph)))
             };
             out.push(DrawCmd::BeginLayer {
                 material,
@@ -1685,7 +1656,6 @@ impl ElementDraw {
                 filter: filter(outer),
                 role: Default::default(),
             });
-            out.extend(images(outer));
             // The inner stages open inside it, the first innermost.
             for l in inner.iter().rev() {
                 let material = l.material.into();
@@ -1698,7 +1668,6 @@ impl ElementDraw {
                     filter: filter(Some(l)),
                     role: Default::default(),
                 });
-                out.extend(images(Some(l)));
             }
         }
         // Inside a layer the composite carries the opacity and blend.
@@ -1876,7 +1845,7 @@ impl ElementDraw {
 
     /// What starts the children: the cut to the shape, when it clips.
     pub(crate) fn children(&self, at: &Placed) -> Vec<DrawCmd> {
-        if self.clip != Clip::Shape {
+        if self.clip != Clip::Shape || self.element_image.is_some() {
             return Vec::new();
         }
         vec![self.clip_to(&self.shape, at)]
@@ -1907,6 +1876,9 @@ impl ElementDraw {
     /// What draws after the subtree: the end of the cut, the strokes, then
     /// the layer's composite.
     pub(crate) fn leave(&self, theme: &Theme, at: &Placed) -> Vec<DrawCmd> {
+        if self.element_image.is_some() {
+            return vec![end_layer(None, at, 1.0, Blend::Normal)];
+        }
         let mut out = Vec::new();
         if self.clip == Clip::Shape {
             out.push(DrawCmd::PopClip);
@@ -1924,6 +1896,9 @@ impl ElementDraw {
     /// style part's border, under its label, so the two batch on their
     /// levels (docs/ui.md §3.3).
     pub(crate) fn leave_stroked(&self, theme: &Theme, at: &Placed) -> Vec<DrawCmd> {
+        if self.element_image.is_some() {
+            return self.leave(theme, at);
+        }
         let mut out = Vec::new();
         if self.clip == Clip::Shape || self.cut(at).is_some() {
             out.push(DrawCmd::PopClip);

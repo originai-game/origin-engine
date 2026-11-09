@@ -731,100 +731,10 @@ pub(crate) fn css_filter(
 ) -> Result<std::sync::Arc<crate::paint::FilterUse>, String> {
     let vb = [0.0, 0.0, 100.0, 100.0];
     let filter = filter_def(doc, reference, [vb[2], vb[3]], image)?;
-    let images = element_images(doc, &filter, vb)?;
     Ok(std::sync::Arc::new(crate::paint::FilterUse {
         filter,
         svg: None,
-        images,
     }))
-}
-
-/// What a filter's `feImage`s of elements draw, in order: each element as
-/// `<use>` would draw it (Filter Effects 1 §15.17), in the filtered
-/// element's user space: a shape, or a group's literal shapes under
-/// their transforms, with their solid fills and strokes.
-fn element_images(
-    doc: &UiDocument,
-    filter: &crate::svg::filter::Filter,
-    vb: [f32; 4],
-) -> Result<Vec<Vec<(ShapeKind, Paint)>>, String> {
-    filter
-        .elements
-        .iter()
-        .map(|id| {
-            let node = doc
-                .nodes
-                .iter()
-                .find(|n| n.id == *id && n.selector_tag.is_some())
-                .ok_or_else(|| format!("<feImage> href=\"#{id}\" names no element"))?;
-            let tag = node.selector_tag.as_deref().unwrap_or_default();
-            let attrs = literal_attrs(node)?;
-            let own = match attrs.iter().find(|(k, _)| k == "transform") {
-                Some((_, v)) => Affine::parse(v)?,
-                None => Affine::IDENTITY,
-            };
-            let mut shapes = Vec::new();
-            if crate::doc::extern_element::SVG_SHAPES.contains(&tag) {
-                shapes.push((tag.to_string(), attrs, own));
-            } else {
-                def_shapes(doc, node, own, &mut shapes)?;
-            }
-            let mut out = Vec::new();
-            for (tag, attrs, t) in &shapes {
-                let get = |a: &str| attrs.iter().find(|(k, _)| k == a).map(|(_, v)| v.as_str());
-                let mut style = Style::default();
-                for attr in PRESENTATION {
-                    if let Some(v) = get(attr) {
-                        let parent = style.clone();
-                        style
-                            .apply(attr, v, &parent)
-                            .map_err(|e| format!("#{id} {attr}: {e}"))?;
-                    }
-                }
-                let Some(local) = shape_path(tag, &get, vb)? else {
-                    continue;
-                };
-                let parts = subpaths(&local.transformed(t));
-                let alpha = style.opacity;
-                if let Some(paint) = solid(&style.fill, style.fill_opacity * alpha) {
-                    let rule = if style.even_odd {
-                        crate::paint::FillRule::EvenOdd
-                    } else {
-                        crate::paint::FillRule::NonZero
-                    };
-                    out.push((filled(parts.clone(), rule), paint));
-                }
-                let width = style.stroke_width * t.scale();
-                if let Some(paint) =
-                    solid(&style.stroke, style.stroke_opacity * alpha).filter(|_| width > 0.0)
-                {
-                    for (points, closed) in parts {
-                        out.push((
-                            ShapeKind::Path {
-                                contours: vec![points.len() as u32],
-                                points,
-                                closed,
-                                filled: false,
-                                curves: true,
-                                fill_rule: crate::paint::FillRule::NonZero,
-                                width,
-                                cap: cap_of(style.cap),
-                                join: match style.join {
-                                    crate::svg::Join::Miter => {
-                                        crate::paint::Join::Miter(style.miter_limit)
-                                    }
-                                    crate::svg::Join::Round => crate::paint::Join::Round,
-                                    crate::svg::Join::Bevel => crate::paint::Join::Bevel,
-                                },
-                            },
-                            paint.clone(),
-                        ));
-                    }
-                }
-            }
-            Ok(out)
-        })
-        .collect()
 }
 
 /// A pattern's tiles under a shape of local bounds `bbox` and transform
@@ -1533,7 +1443,170 @@ fn text_path(
     }))
 }
 
+/// Where an element's element images are drawn: an SVG element's user
+/// space (its map into the view box, and its bounding box there), or a
+/// CSS box's (CSS px from its border box's top left).
+#[derive(Clone, Copy)]
+pub(super) enum ImageSpace {
+    Svg(Affine, [f32; 4]),
+    Css,
+}
+
 impl Ui {
+    /// The elements the `feImage`s of the open element's filters name
+    /// (`uses`, numbered as [`crate::paint::filter_uses`] numbers them),
+    /// each built as `<use>` would draw it (Filter Effects 1 §15.17): in
+    /// the filtered element's user space, moved by its `feImage`'s `x` and
+    /// `y`, inheriting from the filtered element. Each is a child of the
+    /// open element under an anonymous box whose draw is its element image
+    /// (`ElementDraw::element_image`), so it draws everything the element
+    /// draws (gradients, patterns, text, images, groups, `<use>`) into a
+    /// layer only the filter reads, takes no input and is in no tree a
+    /// reader walks. `of` is the filtered element's node, `computed` its
+    /// computed values.
+    pub(super) fn build_element_images(
+        &mut self,
+        b: &Build<'_>,
+        of: &DocNode,
+        computed: &crate::doc::variables::Computed,
+        uses: &[&crate::paint::FilterUse],
+        space: ImageSpace,
+    ) {
+        if self.docs.element_images >= 4 {
+            return;
+        }
+        let doc = b.doc.clone();
+        let Some(of) = doc.nodes.iter().position(|d| std::ptr::eq(d, of)) else {
+            return;
+        };
+        let mut n = 0u32;
+        for u in uses {
+            for (k, id) in u.filter.elements.iter().enumerate() {
+                let at = n;
+                n += 1;
+                let Some(target) = doc.nodes.iter().position(|d| {
+                    d.id == *id
+                        && matches!(d.kind, NodeKind::Element(k) if KINDS.contains(&k) && k != "svgDef")
+                }) else {
+                    // A missing element: the filter reads nothing there.
+                    continue;
+                };
+                let mut up = of;
+                let mut inside = false;
+                while up != crate::doc::NONE {
+                    inside |= up == target;
+                    up = doc.nodes[up].parent;
+                }
+                if inside {
+                    self.warnings.push(format!(
+                        "{}:{}: <feImage href=\"#{id}\"> draws an element the filter is on or inside",
+                        doc.source, doc.nodes[of].line
+                    ));
+                    continue;
+                }
+                // Its feImage's x and y, in the filter's primitive units.
+                let layer = crate::svg::filter::element_layer(k as u32);
+                let sub = u
+                    .filter
+                    .primitives
+                    .iter()
+                    .find(
+                        |p| matches!(p.op, og_render::UiFilterOp::Layer { layer: l } if l == layer),
+                    )
+                    .map_or([f32::NAN; 4], |p| p.subregion);
+                let bbox = match space {
+                    ImageSpace::Svg(_, bbox) => bbox,
+                    ImageSpace::Css => [0.0; 4],
+                };
+                // (user units, fraction of the box) per axis.
+                let shift = |v: f32, axis: usize| match (v.is_nan(), u.filter.primitive_bbox) {
+                    (true, _) => (0.0, 0.0),
+                    (false, true) => (bbox[axis], v),
+                    (false, false) => (v, 0.0),
+                };
+                let (sx, sy) = (shift(sub[0], 0), shift(sub[1], 1));
+                let mut inherited = computed.clone();
+                self.open(
+                    format!("~image{at}"),
+                    match space {
+                        ImageSpace::Svg(..) => Element {
+                            width: Size::grow(),
+                            height: Size::grow(),
+                            ..Element::default()
+                        },
+                        ImageSpace::Css => Element {
+                            width: Size::px(1.0),
+                            height: Size::px(1.0),
+                            ..Element::default()
+                        },
+                    },
+                );
+                let i = self.parent();
+                let p = &mut self.nodes[i].props;
+                p.position = crate::element::Position::Absolute;
+                p.inert = true;
+                p.interact.pointer_events = crate::element::PointerEvents::None;
+                match space {
+                    ImageSpace::Svg(t, _) => {
+                        // Over the whole `<svg>`, as its shapes are.
+                        p.insets = crate::element::Edges {
+                            start: Some(0.0),
+                            top: Some(0.0),
+                            end: Some(0.0),
+                            bottom: Some(0.0),
+                            ..Default::default()
+                        };
+                        let to = Affine([
+                            1.0,
+                            0.0,
+                            0.0,
+                            1.0,
+                            sx.0 + sx.1 * bbox[2],
+                            sy.0 + sy.1 * bbox[3],
+                        ]);
+                        inherited.insert(TRANSFORM.into(), Some(matrix(&t.then(&to))));
+                    }
+                    ImageSpace::Css => {
+                        // A one-px view box at the box's top left (moved
+                        // by the feImage): one user unit is a CSS px.
+                        use crate::layout::anchor::{AnchorSpec, Inset};
+                        let inset = |(px, q): (f32, f32)| Some(Inset::Percent(q, px));
+                        p.anchor = Some(Box::new(AnchorSpec {
+                            base: crate::layout::anchor::Placement {
+                                insets: [inset(sy), None, None, inset(sx)],
+                                ..Default::default()
+                            },
+                            ..Default::default()
+                        }));
+                        inherited.insert(VIEW_BOX.into(), Some("0 0 1 1".into()));
+                        inherited.insert(TRANSFORM.into(), Some(matrix(&Affine::IDENTITY)));
+                    }
+                }
+                self.set_draw(ElementDraw {
+                    element_image: Some(at),
+                    ..ElementDraw::default()
+                });
+                let mut ib = Build {
+                    doc: doc.clone(),
+                    mount: b.mount.clone(),
+                    vm: b.vm,
+                    env: b.env,
+                    locals: b.locals.clone(),
+                    row_key: b.row_key.clone(),
+                    inherited: std::sync::Arc::new(inherited),
+                    events: Vec::new(),
+                    writes: Vec::new(),
+                    cached: None,
+                    recording: Default::default(),
+                };
+                self.docs.element_images += 1;
+                self.build_node(&mut ib, target, None);
+                self.docs.element_images -= 1;
+                self.close();
+            }
+        }
+    }
+
     /// An SVG `<text>`: one line shaped as any label, at its view-box size,
     /// placed and scaled by layout through [`crate::element::ViewPlace`].
     #[allow(clippy::too_many_arguments)]
@@ -1798,7 +1871,6 @@ impl Ui {
             }
         };
         let filter = filter_def(&b.doc, reference, [vb[2], vb[3]], &image)?;
-        let images = element_images(&b.doc, &filter, vb)?;
         let union = |a: [f32; 4], b: [f32; 4]| {
             if a[2] <= 0.0 && a[3] <= 0.0 {
                 return b;
@@ -1841,7 +1913,6 @@ impl Ui {
         Ok(std::sync::Arc::new(crate::paint::FilterUse {
             filter,
             svg: Some((*t, bbox)),
-            images,
         }))
     }
 
@@ -2278,6 +2349,10 @@ impl Ui {
                 }
                 Err(e) => warn(self, e),
             }
+        }
+        if let Some(f) = &filter {
+            let bbox = f.svg.map_or([0.0; 4], |(_, bbox)| bbox);
+            self.build_element_images(b, n, &computed, &[&**f], ImageSpace::Svg(t, bbox));
         }
         self.note_built(built);
         if kind != "svgShape" {

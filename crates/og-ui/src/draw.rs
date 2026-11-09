@@ -1795,11 +1795,37 @@ pub(crate) fn emit(
                 ..
             } => {
                 let k = overlay.ui.layers.len() as u32;
-                let parent = spaces.last().and_then(|s| s.layer);
+                // An element image's filter: the nearest layer around it
+                // whose filter reads that image and has no layer for it
+                // yet, else one opened since the innermost (a backdrop's,
+                // ended before its element's children).
+                let reader = match role {
+                    LayerRole::Image(n) => {
+                        let stand_in = crate::svg::filter::element_layer(*n);
+                        let reads = |j: &u32| {
+                            overlay.ui.layers[*j as usize]
+                                .filter
+                                .as_ref()
+                                .is_some_and(|f| {
+                                    f.primitives.iter().any(|p| {
+                                        matches!(p.op, og_render::UiFilterOp::Layer { layer } if layer == stand_in)
+                                    })
+                                })
+                        };
+                        let floor = spaces.last().and_then(|s| s.layer).map_or(0, |l| l + 1);
+                        spaces
+                            .iter()
+                            .rev()
+                            .filter_map(|s| s.layer)
+                            .chain((floor..k).rev())
+                            .find(reads)
+                    }
+                    _ => None,
+                };
                 if k >= MAX_LAYERS
                     || rect.is_empty()
                     || hidden
-                    || matches!(role, LayerRole::Image(_)) && parent.is_none()
+                    || matches!(role, LayerRole::Image(_)) && reader.is_none()
                 {
                     // Drawn in place, over what its composite would be over;
                     // an element image or a backdrop, nowhere.
@@ -1809,7 +1835,7 @@ pub(crate) fn emit(
                     });
                     continue;
                 }
-                if let (LayerRole::Image(n), Some(j)) = (role, parent)
+                if let (LayerRole::Image(n), Some(j)) = (role, reader)
                     && let Some(f) = &mut overlay.ui.layers[j as usize].filter
                 {
                     // The filter reads this layer for its n-th element.

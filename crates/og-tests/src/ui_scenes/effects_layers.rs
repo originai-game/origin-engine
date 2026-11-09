@@ -761,6 +761,38 @@ pub fn ground() -> RenderScene {
             plane: false,
         }),
     });
+    // A backdrop inside it over its first two columns: its filter
+    // (sRGB inversion) runs over what the ground's layer drew under it,
+    // in that layer's own pixels (its rect is far off the screen).
+    let backdrop = [x0, y0, 100.0, 400.0];
+    o.ui.layers.push(UiLayer {
+        capture: [20, 29],
+        rect: backdrop,
+        material: UiMaterial::Plain,
+        params: [[0.0; 4]; og_render::UI_MATERIAL_PARAMS],
+        mask: None,
+        target: None,
+        filter: Some(og_render::UiFilter {
+            primitives: vec![og_render::UiFilterPrimitive {
+                op: og_render::UiFilterOp::ColorMatrix([
+                    -1.0, 0.0, 0.0, 0.0, 1.0, //
+                    0.0, -1.0, 0.0, 0.0, 1.0, //
+                    0.0, 0.0, -1.0, 0.0, 1.0, //
+                    0.0, 0.0, 0.0, 1.0, 0.0,
+                ]),
+                inputs: Default::default(),
+                subregion: [-1.0e6, -1.0e6, 2.0e6, 2.0e6],
+                srgb: true,
+            }],
+            ..Default::default()
+        }),
+        backdrop: true,
+        ground: None,
+    });
+    o.ui.shapes.push(UiShape {
+        layer: 12,
+        ..shape(rect([0.0; 4], UiCorner::Round), backdrop, UiPaint::Layer(1))
+    });
     // The composite covers the screen; the drape cuts it.
     o.ui.shapes.push(UiShape {
         layer: 50,

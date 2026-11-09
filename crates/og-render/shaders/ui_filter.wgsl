@@ -145,9 +145,9 @@ fn device_vec(v: vec2<f32>) -> vec2<f32> {
   return linear_part(f.space) * v * f.origin.z;
 }
 
-// in1 at the texel nearest `p` (a morphology keeps the values it finds).
-fn in1_near(p: vec2<f32>) -> vec4<f32> {
-  var c = texel(in1_tex, vec2<i32>(floor(p)));
+// in1's texel `i` (a morphology keeps the values it finds).
+fn in1_texel(i: vec2<i32>) -> vec4<f32> {
+  var c = texel(in1_tex, i);
   if ((f.op.y & FLAG_IN1_ALPHA) != 0u) {
     c = vec4<f32>(0.0, 0.0, 0.0, c.a);
   }
@@ -369,18 +369,18 @@ fn fs_filter(@builtin(position) at: vec4<f32>) -> @location(0) vec4<f32> {
   switch f.op.x {
     case 0u: {
       // Blur: one axis of a Gaussian, a.xy the image of the space's axis
-      // scaled by the standard deviation (device px), at most 64 taps a
-      // side (wider ones step between texels).
+      // scaled by the standard deviation (device px), every device px
+      // within 3σ (at most 128 a side: a wider blur is split into
+      // passes, src/ui/filter.rs).
       let sigma = length(f.a.xy);
       let dir = f.a.xy / max(sigma, 1e-6);
       if (sigma <= 1e-4) {
         out = in1_at(p);
       } else {
-        let reach = ceil(3.0 * sigma);
-        let step = max(1.0, ceil(reach / 64.0));
+        let reach = min(ceil(3.0 * sigma), 128.0);
         var sum = vec4<f32>(0.0);
         var total = 0.0;
-        for (var i = -reach; i <= reach; i += step) {
+        for (var i = -reach; i <= reach; i += 1.0) {
           let w = exp(-0.5 * i * i / (sigma * sigma));
           sum += w * in1_at(p + dir * i);
           total += w;
@@ -457,15 +457,36 @@ fn fs_filter(@builtin(position) at: vec4<f32>) -> @location(0) vec4<f32> {
     }
     case 7u: {
       // Morphology along one axis of the space: the min (erode) or max
-      // (dilate) of each channel within a.xy (the radius along it,
-      // device px), a device px a step.
+      // (dilate) of each channel over every texel the segment of a.xy
+      // (the radius along it, device px, whole) either side of the pixel
+      // crosses: a grid walk (Amanatides and Woo), so a turned axis
+      // misses no texel; along a device axis, the row or column itself.
       let radius = length(f.a.xy);
-      let dir = f.a.xy / max(radius, 1e-6);
       let dilate = f.a.z > 0.5;
       let reach = min(floor(radius + 1e-3), 128.0);
-      var o = in1_near(p);
-      for (var i = -reach; i <= reach; i += 1.0) {
-        let c = in1_near(p + dir * i);
+      let d = f.a.xy / max(radius, 1e-6) * reach;
+      let a = p - d;
+      let b = p + d;
+      var cell = vec2<i32>(floor(a));
+      let last = vec2<i32>(floor(b));
+      let span = b - a;
+      let dir_step = vec2<i32>(sign(span));
+      let inv = 1.0 / max(abs(span), vec2<f32>(1e-9));
+      let first = select(a - floor(a), floor(a) + 1.0 - a, span > vec2<f32>(0.0));
+      var t_max = select(vec2<f32>(2.0), first * inv, abs(span) > vec2<f32>(1e-6));
+      var o = in1_texel(cell);
+      for (var n = 0; n < 520; n++) {
+        if (all(cell == last)) {
+          break;
+        }
+        if (t_max.x < t_max.y) {
+          cell.x += dir_step.x;
+          t_max.x += inv.x;
+        } else {
+          cell.y += dir_step.y;
+          t_max.y += inv.y;
+        }
+        let c = in1_texel(cell);
         o = select(min(o, c), max(o, c), dilate);
       }
       out = o;

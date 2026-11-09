@@ -578,6 +578,26 @@ impl Ui {
             }
             self.note_built(built);
             if shows_content {
+                // Its filters' `feImage`s of elements, as its first children.
+                let at = self.parent();
+                let css = self.nodes[at].decor.as_ref().and_then(|d| d.css.as_ref());
+                let images = css.is_some_and(|c| {
+                    crate::paint::filter_uses(&c.effects, c.layer.as_ref(), &c.filters)
+                        .iter()
+                        .any(|u| !u.filter.elements.is_empty())
+                });
+                if images && let Some(c) = css.cloned() {
+                    let uses = crate::paint::filter_uses(&c.effects, c.layer.as_ref(), &c.filters);
+                    {
+                        self.build_element_images(
+                            b,
+                            n,
+                            &r.cascade.computed,
+                            &uses,
+                            super::svg::ImageSpace::Css,
+                        );
+                    }
+                }
                 let inherited = std::mem::replace(&mut b.inherited, r.cascade.computed.clone());
                 self.generated_box(b, n, &r, &path, true);
                 build_children(self, b, None);

@@ -928,7 +928,10 @@ matrix while it stays in 0..1, each matrix clamps as CSS does, its
 `opacity()` fades the result over the unfiltered backdrop, and a
 `drop-shadow()` casts where the backdrop is transparent (inside a
 group). The blur is an exact Gaussian, not the glass pyramid; the
-theme's `-og-effect: backdrop` glass keeps the pyramid. `mix-blend-mode`
+theme's `-og-effect: backdrop` glass keeps the pyramid. Inside a world
+panel, a `<ground>` or a 3D plane the backdrop root is that layer: its
+backdrop is planned on the layer's own pixels (wherever its rect lies,
+on or off the screen) and reads what the layer has drawn so far. `mix-blend-mode`
 takes every mode of CSS Compositing 1: normal, multiply, screen, overlay,
 darken, lighten, color-dodge, color-burn, hard-light, soft-light,
 difference, exclusion, hue, saturation, color, luminosity and
@@ -1432,10 +1435,14 @@ objectBoundingBox units draws nothing. Every primitive is drawn:
 noise, stitched or not), `feDropShadow` (its blur, offset, flood,
 composite and merge), `feImage` (an atlas image or texture handle by
 `href`, stretched over its subregion, or an element by `href="#id"`:
-as `<use>` draws it, a shape or a group's literal shapes with their solid
-fills and strokes, in the filtered element's user space, moved by the
-`feImage`'s `x` and `y` when it gives them; og-render draws it into a
-layer that composites nowhere and the filter reads), `feTile` (filling
+built as `<use>` builds it, under the filtered element and inheriting
+from it, so it draws whatever the element draws (gradients, patterns,
+text, images, groups, nested `<use>`), in the filtered element's user
+space, moved by the `feImage`'s `x` and `y` when it gives them; it takes
+no input, its anonymous box draws it into a layer that composites
+nowhere (`ElementDraw::element_image`) and the filter reads that layer;
+an element the filter is on or inside is refused with a warning, and
+element images nest four deep at most), `feTile` (filling
 the region), `feConvolveMatrix` (up to 64 cells) and
 `feDiffuseLighting`/`feSpecularLighting` with a distant, point or spot
 light; `primitiveUnits`, subregions (`x`, `y`, `width`, `height`, by
@@ -1445,7 +1452,10 @@ default the union of the inputs' or the region),
 normal is taken over, whose slope is then per cell; left out, one device
 px) are read. `BackgroundImage`, `BackgroundAlpha`, `FillPaint` and
 `StrokePaint` read as transparent black. Each primitive is one or two
-full-region passes, run in the filter's own space (the element's user
+full-region passes (a blur reads every device px within three
+deviations, at most 128 a side, and a wider one is split into passes of
+σ/√n, which compose to the exact Gaussian; a morphology takes every
+texel its segment along the axis crosses), run in the filter's own space (the element's user
 space; og-render's `UiFilter::space` maps it to the screen): a blur or
 a morphology under a turn or skew runs along the element's axes, a
 subregion is its own parallelogram on the screen, and lighting computes

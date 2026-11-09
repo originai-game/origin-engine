@@ -1,0 +1,26 @@
+{
+  "added": [
+    {
+      "member": "UI: feImage href=\"#id\" draws whatever the element draws",
+      "summary": "An feImage of an element now builds the element as <use> builds it, so gradients, patterns, text, images, groups and nested <use> all draw into the filter's input, not only literal shapes with solid paint."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "UI: backdrop-filter inside a world panel, a ground or a 3D plane",
+      "summary": "A backdrop drawn inside a world panel's, a <ground>'s or a 3D plane's layer now reads what that layer has drawn so far, planned on the layer's own pixels, instead of drawing nothing."
+    },
+    {
+      "member": "UI: wide blurs and turned morphology are exact",
+      "summary": "A blur wider than about 42 device px now reads every texel (split into passes that compose to the exact Gaussian) instead of stepping between texels; a morphology under a rotation takes every texel its segment crosses instead of the nearest one each device px."
+    }
+  ],
+  "breaking": [
+    {
+      "member": "og_ui::paint::FilterUse",
+      "change": "FilterUse no longer has images; an feImage's element is built as children of the filtered element whose ElementDraw::element_image numbers it.",
+      "fix": "Drop images from FilterUse literals; set element_image: None on ElementDraw literals that list every field.",
+      "find": ["FilterUse", "ElementDraw {"]
+    }
+  ]
+}

@@ -1196,6 +1196,7 @@ impl Resolved {
             view_box: None,
             view_rect: None,
             boxes: None,
+            element_image: None,
         }
     }
 }

@@ -239,6 +239,7 @@ const SPACE: &str = r##"<meta name="component" content="filter-space">
     <div class="ground"><div class="pane" id="Warp">url()</div></div>
     <div class="ground" id="Group"><div class="pane" id="Inner">group</div></div>
     <div class="ground"><div class="pane" id="Shift">mixed</div></div>
+    <div class="ground" id="Tilt"><div class="pane" id="Tilted">tilted</div></div>
   </div>
   <div id="Row2">
     <div class="t" id="TurnBlur"></div>
@@ -247,14 +248,33 @@ const SPACE: &str = r##"<meta name="component" content="filter-space">
     <div class="t" id="Unit"></div>
     <div class="t" id="UnitLight"></div>
     <div class="t" id="Element"></div>
+    <svg id="Pic" width="64" height="48" viewBox="0 0 64 48">
+      <rect x="6" y="6" width="52" height="36" rx="6" fill="#30363d" transform="rotate(-12 32 24)" filter="url(#Stamp2)"/>
+    </svg>
   </div>
+  <div id="Row3"><div id="Wide"></div></div>
   <svg id="Defs" width="0" height="0">
-    <path id="Star" d="M32 4 L40 24 L60 24 L44 36 L50 56 L32 44 L14 56 L20 36 L4 24 L24 24 Z" fill="#ffd166" stroke="#ff7b72" stroke-width="2"/>
+    <defs>
+      <linearGradient id="Gold" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#ffd166"/><stop offset="1" stop-color="#f77f00"/>
+      </linearGradient>
+      <pattern id="Dots" width="4" height="4" patternUnits="userSpaceOnUse">
+        <rect width="2" height="2" fill="#0d1117"/>
+      </pattern>
+      <circle id="Dot" cx="32" cy="16" r="3" fill="#58a6ff"/>
+    </defs>
+    <g id="Star" transform="translate(0 2)">
+      <path d="M32 4 L40 24 L60 24 L44 36 L50 56 L32 44 L14 56 L20 36 L4 24 L24 24 Z" fill="url(#Gold)" stroke="#ff7b72" stroke-width="2"/>
+      <circle cx="32" cy="40" r="6" fill="url(#Dots)"/>
+      <use href="#Dot" x="-18" y="18"/>
+      <g transform="rotate(-10 32 30)"><text x="32" y="30" font-size="9" text-anchor="middle" fill="#ffffff">OG</text></g>
+    </g>
     <filter id="Ripple" x="0" y="0" width="1" height="1">
       <feTurbulence type="turbulence" baseFrequency="0.05" numOctaves="2" seed="4" result="t"/>
       <feDisplacementMap in="SourceGraphic" in2="t" scale="18" xChannelSelector="R" yChannelSelector="G"/>
     </filter>
     <filter id="Streak"><feGaussianBlur stdDeviation="8 0"/></filter>
+    <filter id="Smear" filterUnits="userSpaceOnUse" x="-130" y="0" width="284" height="12"><feGaussianBlur stdDeviation="40 0"/></filter>
     <filter id="Spread" x="-20%" y="-20%" width="140%" height="140%"><feMorphology operator="dilate" radius="8 1"/></filter>
     <filter id="Raised">
       <feGaussianBlur in="SourceAlpha" stdDeviation="3" result="bump"/>
@@ -270,6 +290,10 @@ const SPACE: &str = r##"<meta name="component" content="filter-space">
       </feSpecularLighting>
       <feComposite in="s" in2="SourceAlpha" operator="in" result="lit"/>
       <feComposite in="lit" in2="SourceGraphic" operator="arithmetic" k2="1" k3="1"/>
+    </filter>
+    <filter id="Stamp2" primitiveUnits="objectBoundingBox" x="0" y="0" width="1" height="1">
+      <feImage href="#Star" x="0.1" y="-0.2" result="star"/>
+      <feComposite in="star" in2="SourceGraphic" operator="over"/>
     </filter>
     <filter id="Stamp" x="0" y="0" width="1" height="1">
       <feImage href="#Star" x="0" y="-6" result="star"/>
@@ -292,6 +316,8 @@ const SPACE: &str = r##"<meta name="component" content="filter-space">
 #Warp { backdrop-filter: url(#Ripple); }
 #Group { opacity: 0.9; }
 #Inner { backdrop-filter: blur(3px) invert(1); }
+#Tilt { transform: perspective(260px) rotateY(32deg); }
+#Tilted { backdrop-filter: blur(2px) invert(1); }
 #Shift { backdrop-filter: url(#Ripple) grayscale(0.7) drop-shadow(0 0 4px #000); }
 .t { width: 64px; height: 48px; border-radius: 8px;
   background: linear-gradient(90deg, #ff7b72, #f0b429 50%, #58a6ff); }
@@ -301,6 +327,8 @@ const SPACE: &str = r##"<meta name="component" content="filter-space">
 #Unit { filter: url(#Edges); }
 #UnitLight { border-radius: 24px; filter: url(#Coarse); }
 #Element { transform: rotate(15deg); filter: url(#Stamp); }
+#Row3 { display: flex; justify-content: center; align-self: stretch; padding: 0 0 4px; }
+#Wide { width: 24px; height: 12px; filter: url(#Smear); background: #f0b429; }
 @media (max-width: 500px) {
   #Row, #Row2 { flex-wrap: wrap; gap: 12px; width: 300px; }
 }
@@ -339,20 +367,24 @@ fn render_space(width: u32, height: u32) -> (Vec<u8>, og_render::RenderInfo) {
     let layers = &overlay.ui.layers;
     assert_eq!(
         layers.iter().filter(|l| l.backdrop).count(),
-        4,
+        5,
         "a backdrop layer per backdrop-filter"
     );
-    // The element image is a layer the stamp's filter reads.
-    let stamp = layers
+    // Each stamp's element image is a layer its filter reads.
+    let stamps: Vec<u32> = layers
         .iter()
         .filter_map(|l| l.filter.as_ref())
         .flat_map(|f| &f.primitives)
-        .find_map(|p| match p.op {
+        .filter_map(|p| match p.op {
             UiFilterOp::Layer { layer } => Some(layer),
             _ => None,
         })
-        .expect("feImage of #Star reads a layer");
-    assert!((stamp as usize) < layers.len(), "placed: {stamp}");
+        .collect();
+    assert_eq!(stamps.len(), 2, "feImage of #Star on a box and on a shape");
+    assert!(
+        stamps.iter().all(|&k| (k as usize) < layers.len()),
+        "placed: {stamps:?}"
+    );
     scene.overlay = Some(overlay);
     let bg = ui.theme().palette.backdrop.linear();
     scene.environment.background = Background::Color(og_core::glam::Vec3::new(bg[0], bg[1], bg[2]));
@@ -371,13 +403,16 @@ fn render_space(width: u32, height: u32) -> (Vec<u8>, og_render::RenderInfo) {
 /// Backdrops read what is really under them (the screen, or the group
 /// they are drawn in) through functions and `url()` alike; a turned
 /// element's blur, dilation and lighting turn with it; `kernelUnitLength`
-/// sizes a convolution's and a light's cells; `feImage` draws an element.
+/// sizes a convolution's and a light's cells; `feImage` draws an element
+/// as it draws: a group's gradient, pattern, `<use>` and turned text, on a
+/// CSS box and on a turned SVG shape (moved by a bounding-box `x` and `y`).
 ///
 /// Ways it could fail: a backdrop reading the layer drawn so far instead
 /// of the screen (a pane over nothing), a backdrop in an opacity group
 /// reading the screen instead of the group, a turned streak still
-/// horizontal, a kernel unit read as a device px, or the star drawn
-/// where it is defined instead of in the filtered element's space.
+/// horizontal, a kernel unit read as a device px, the star drawn where it
+/// is defined instead of in the filtered element's space, or only its
+/// literal solid shapes drawn (no gradient, dots, blue dot or text).
 #[test]
 #[ignore = "requires GPU"]
 fn css_filter_space_matches_its_reference_frames() {
