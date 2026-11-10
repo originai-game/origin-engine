@@ -22,7 +22,7 @@ pub(crate) enum Pos {
 }
 
 impl Pos {
-    fn at(self, whole: f32) -> f32 {
+    pub(crate) fn at(self, whole: f32) -> f32 {
         match self {
             Pos::Frac(f) => f * whole,
             Pos::Px(p) => p,
@@ -2174,6 +2174,18 @@ fn rule(t: &[Tok]) -> (FillRule, &[Tok]) {
         Some((Tok::Ident(w), rest)) if w == "nonzero" => (FillRule::NonZero, rest),
         _ => (FillRule::NonZero, t),
     }
+}
+
+pub(crate) fn shape_margin(text: &str) -> Result<Pos, String> {
+    let t = tokens(text)?;
+    let [value] = t.as_slice() else {
+        return Err("shape-margin takes one non-negative length or percentage".into());
+    };
+    let value = pos(value)?;
+    if value.at(1.0) < 0.0 {
+        return Err("shape-margin cannot be negative".into());
+    }
+    Ok(value)
 }
 
 /// Basic-shape float exclusion uses the margin box by default, not the

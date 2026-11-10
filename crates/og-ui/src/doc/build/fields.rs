@@ -884,6 +884,10 @@ impl Ui {
             .map(|(shape, reference)| crate::layout::float::Outside {
                 shape,
                 reference,
+                margin: r
+                    .str("shapeMargin")
+                    .and_then(|s| crate::doc::paint_css::shape_margin(s).ok())
+                    .unwrap_or(crate::doc::paint_css::Pos::Px(0.0)),
                 rtl,
             });
         el.clear = match r.str("clear") {

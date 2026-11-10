@@ -72,11 +72,12 @@ fn joins(nodes: &[Node], i: usize) -> bool {
 pub(crate) struct Outside {
     pub shape: crate::doc::paint_css::CssClip,
     pub reference: crate::doc::paint_css::GeoBox,
+    pub margin: crate::doc::paint_css::Pos,
     pub rtl: bool,
 }
 
 impl Outside {
-    fn edges(&self, n: &Node, offset: [f32; 2]) -> Vec<[[f32; 2]; 2]> {
+    fn edges(&self, n: &Node, offset: [f32; 2], margin: f32) -> Vec<[[f32; 2]; 2]> {
         use crate::doc::paint_css::GeoBox;
         use crate::paint::ShapeKind;
         use og_core::glam::Vec2;
@@ -156,7 +157,7 @@ impl Outside {
             .fold((f32::INFINITY, f32::NEG_INFINITY), |(top, bottom), p| {
                 (top.min(p[1]), bottom.max(p[1]))
             });
-        if top == bottom {
+        if top == bottom && margin == 0.0 {
             edges.clear();
         }
         edges
@@ -172,6 +173,46 @@ struct Placed {
     h: f32,
     left: bool,
     contour: Option<Vec<[[f32; 2]; 2]>>,
+    margin: f32,
+}
+
+/// The horizontal extent of a segment swept by a disk, intersected with
+/// a line band. Endpoints, band crossings and circle tangencies are the
+/// only extrema; expanding its bounding box would give square joins.
+fn expanded_edge(a: [f32; 2], b: [f32; 2], lo: f32, hi: f32, margin: f32) -> (f32, f32) {
+    let (mut left, mut right) = (f32::INFINITY, f32::NEG_INFINITY);
+    let mut include = |p: [f32; 2]| {
+        let distance = (lo - p[1]).max(p[1] - hi).max(0.0);
+        if distance <= margin {
+            let radius = (margin * margin - distance * distance).max(0.0).sqrt();
+            left = left.min(p[0] - radius);
+            right = right.max(p[0] + radius);
+        }
+    };
+    include(a);
+    include(b);
+    let (dx, dy) = (b[0] - a[0], b[1] - a[1]);
+    if dy != 0.0 {
+        let tangent = margin * dx * dy.signum() / dx.hypot(dy);
+        for y in [
+            lo - margin,
+            lo,
+            lo + margin,
+            hi - margin,
+            hi,
+            hi + margin,
+            lo - tangent,
+            lo + tangent,
+            hi - tangent,
+            hi + tangent,
+        ] {
+            let t = (y - a[1]) / dy;
+            if (0.0..=1.0).contains(&t) {
+                include([a[0] + t * dx, y]);
+            }
+        }
+    }
+    (left, right)
 }
 
 /// Only inline content uses the contour. Float placement, BFC avoidance
@@ -187,18 +228,12 @@ fn line_room(floats: &[Placed], y0: f32, y1: f32, x0: f32, x1: f32) -> (f32, f32
         if let Some(edges) = &f.contour {
             (left, right) = (f32::INFINITY, f32::NEG_INFINITY);
             for &[a, b] in edges {
-                if a[1].max(b[1]) < lo || a[1].min(b[1]) > hi {
+                if a[1].max(b[1]) + f.margin < lo || a[1].min(b[1]) - f.margin > hi {
                     continue;
                 }
-                let x =
-                    |y: f32| a[0] + (b[0] - a[0]) * ((y - a[1]) / (b[1] - a[1])).clamp(0.0, 1.0);
-                let (a, b) = if a[1] == b[1] {
-                    (a[0], b[0])
-                } else {
-                    (x(lo), x(hi))
-                };
-                left = left.min(a.min(b));
-                right = right.max(a.max(b));
+                let (a, b) = expanded_edge(a, b, lo, hi, f.margin);
+                left = left.min(a);
+                right = right.max(b);
             }
         }
         if left > right {
@@ -452,10 +487,14 @@ fn place(
             _ => break if left { l } else { r - w },
         }
     };
+    let margin = n
+        .shape_outside
+        .as_ref()
+        .map_or(0.0, |s| s.margin.at(x1 - x0));
     let contour = n
         .shape_outside
         .as_ref()
-        .map(|s| s.edges(n, [x + ml, y + mt]));
+        .map(|s| s.edges(n, [x + ml, y + mt], margin));
     cx.floats.push(Placed {
         x,
         y,
@@ -463,6 +502,7 @@ fn place(
         h,
         left,
         contour,
+        margin,
     });
     nodes[f].float_at = [x - origin.0 + ml, y - origin.1 + mt];
     cx.touched.push(f);

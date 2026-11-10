@@ -155,6 +155,7 @@ pub const STYLE: &[(&str, &str)] = &[
     ("textShadow", "text-shadow"),
     ("clipPath", "clip-path"),
     ("shapeOutside", "shape-outside"),
+    ("shapeMargin", "shape-margin"),
     ("material", "-og-material"),
     ("sound", "-og-sound"),
     ("scrollSnapType", "scroll-snap-type"),
@@ -1913,7 +1914,7 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
             )])
         }
         "backdrop-filter" | "filter" | "mix-blend-mode" | "isolation" | "text-shadow"
-        | "clip-path" | "shape-outside" | "-og-material" => {
+        | "clip-path" | "shape-outside" | "shape-margin" | "-og-material" => {
             use super::paint_css as p;
             let prop = match name {
                 "backdrop-filter" => {
@@ -1929,6 +1930,7 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
                 .map(|_| "textShadow"),
                 "clip-path" => p::clip(value).map(|_| "clipPath"),
                 "shape-outside" => p::outside(value).map(|_| "shapeOutside"),
+                "shape-margin" => p::shape_margin(value).map(|_| "shapeMargin"),
                 _ => p::glass_material(value).and_then(|glass| {
                     if glass.is_some() {
                         Ok("material")

@@ -1136,6 +1136,13 @@ pub const PROPS: &[PropSpec] = &[
         doc: "CSS `shape-outside`: `none`, a basic shape and optional shape box, or a shape box alone. The default reference is margin-box. Changes inline line exclusion around floats, never float placement or clear. Image alpha contours are not implemented.",
     },
     PropSpec {
+        name: "shapeMargin",
+        ty: Ty::Text,
+        on: On::All,
+        two_way: false,
+        doc: "CSS `shape-margin`: a non-negative length or percentage (zero by default) expands the shape-outside contour by that distance, with round joins. Percentages use the containing block's inline size. The result is clipped to the float's margin box; float placement and clearance do not change. Not inherited.",
+    },
+    PropSpec {
         name: "material",
         ty: Ty::Text,
         on: On::All,

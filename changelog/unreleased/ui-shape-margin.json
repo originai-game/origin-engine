@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "CSS shape-margin",
+      "summary": "Expand float exclusion contours by a non-negative CSS length or percentage with round joins, clipped to the float margin box. Percentages resolve against the containing block inline size; dynamic changes update neighbouring lines in both document builders."
+    }
+  ]
+}

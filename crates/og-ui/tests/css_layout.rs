@@ -1139,6 +1139,36 @@ fn shape_outside_uses_the_whole_line_band_and_reference_box() {
 }
 
 #[test]
+fn shape_margin_expands_by_distance_and_clips_to_the_float_box() {
+    let source = r#"<meta name="component" content="t">
+<div><div id="Root"><div id="F" class={$mode}></div><div id="Line"><span id="A"></span></div></div></div>
+<style>
+#Root { width: 400px; }
+#F { float: left; width: 100px; height: 100px; shape-outside: polygon(0 0, 100% 100%, 0 100%); shape-margin: 10px; }
+#F.percent { shape-margin: 10%; }
+#F.clip { shape-margin: 100px; }
+#F.zero { shape-margin: 0; }
+#Line { font-size: 0; }
+#A { display: inline-block; width: 280px; height: 20px; }
+</style>"#;
+    both(source, &[("mode", serde_json::json!("initial"))], |d| {
+        let x = |d: &Doc| d.get("A").x - d.get("Root").x;
+        // y=x dilated by 10px intersects the line's bottom at
+        // x=20+sqrt(2)*10, not x=20+10 (axis-aligned expansion).
+        assert!((x(d) - 34.0).abs() <= 0.5);
+        d.set("mode", serde_json::json!("percent"));
+        assert!(
+            (x(d) - 77.0).abs() <= 0.5,
+            "percentage of containing block width"
+        );
+        d.set("mode", serde_json::json!("clip"));
+        assert_eq!(x(d), 100.0, "never outside the float margin box");
+        d.set("mode", serde_json::json!("zero"));
+        assert_eq!(x(d), 20.0);
+    });
+}
+
+#[test]
 fn every_line_box_is_shortened_around_floats() {
     let words = "alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu";
     let boxes: String = (1..=9)
