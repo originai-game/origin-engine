@@ -458,6 +458,9 @@ const FALLBACKS: &str = r#"
   button.primary::part(base):hover { background: var(--primary-hover); }
   button.primary::part(base):active { background: var(--primary-active); }
   button.quiet::part(base), button.ghost::part(base) { background: transparent; }
+  button.ghost::part(base) { padding-inline: calc(var(--space-lg) - 1px); }
+  button.ghost.small::part(base) { padding-inline: calc(var(--space-md) - 1px); }
+  button.ghost.square::part(base) { padding-inline: 0; }
   button.quiet::part(base):hover, button.quiet::part(base):active,
   button.ghost::part(base):hover, button.ghost::part(base):active { background: var(--control); }
   button.danger::part(base) {
