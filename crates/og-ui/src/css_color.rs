@@ -11,7 +11,8 @@
 //! Color 4's gamut mapping (OKLCh chroma reduction to within one JND).
 //! Conversion matrices are CSS Color 4's sample code (W3C, permissive).
 
-use crate::doc::css::{Tok, describe, tokens};
+use crate::doc::css::{Tok, camel, describe, tokens};
+use crate::style_file::parse_color;
 use crate::theme::Srgba;
 
 /// A colour space a colour is written in or mixed in.
@@ -349,7 +350,7 @@ pub(crate) fn parse(t: &Tok) -> Result<Color, String> {
                 "var" => match args.as_slice() {
                     [v] => match v.as_slice() {
                         [Tok::Ident(n)] if n.starts_with("--") => {
-                            Ok(Color::Token(crate::doc::css::camel(&n[2..])))
+                            Ok(Color::Token(camel(&n[2..])))
                         }
                         _ => Err("var(--<role>)".into()),
                     },
@@ -385,7 +386,7 @@ fn srgb_color(c: [f32; 3], a: f32) -> Color {
 }
 
 fn hex(h: &str) -> Option<Color> {
-    let c = crate::style_file::parse_color(h)?;
+    let c = parse_color(h)?;
     Some(srgb_color(c.rgb.map(|v| f32::from(v) / 255.0), c.alpha))
 }
 
