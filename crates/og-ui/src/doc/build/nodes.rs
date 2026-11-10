@@ -759,13 +759,11 @@ impl Ui {
             }
             "image" => {
                 texture = r.handle("texture").and_then(|h| b.env.texture(h));
-                let tint = r.color("tint");
                 let i = self.leaf("image", id.as_str().into(), Default::default());
                 self.apply_image(
                     i,
                     crate::ui::ImageDesc {
                         texture,
-                        tint,
                         width: r.size("width").unwrap_or_default(),
                         height: r.size("height").unwrap_or_default(),
                         aspect: r

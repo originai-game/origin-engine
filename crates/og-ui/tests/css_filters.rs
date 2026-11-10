@@ -16,6 +16,120 @@ use crate::support;
 use og_ui::*;
 use support::*;
 
+#[test]
+#[ignore = "requires GPU"]
+fn color_matrix_preserves_texture_tint_multiplication() {
+    use og_render::*;
+    struct Env(TextureHandle);
+    impl bind::Env for Env {
+        fn texture(&self, _: f64) -> Option<TextureHandle> {
+            Some(self.0)
+        }
+    }
+    let mut scene = RenderScene::new();
+    scene.environment.background = Background::Color(og_core::glam::Vec3::new(0.08, 0.2, 0.4));
+    scene.post.tonemap = Tonemap::None;
+    let texture = scene.add_texture(TextureData {
+        width: 2,
+        height: 2,
+        rgba: vec![
+            211, 67, 129, 255, 43, 193, 87, 177, 19, 101, 233, 83, 239, 159, 31, 0,
+        ],
+        color_space: ColorSpace::Srgb,
+        mips: Mips::None,
+    });
+    let mut renderer = Renderer::new_blocking(&RenderDesc {
+        width: 64,
+        height: 32,
+        ..Default::default()
+    })
+    .unwrap();
+    let mut maximum = 0;
+    for tint in ["#80c040", "#d060a080"] {
+        let linear = style_file::parse_color(tint).unwrap().linear();
+        let source = |css: &str| {
+            format!(
+                r##"<meta name="component" content="t"><div><img id="Pic" src={{1}} alt=""/><svg width="0" height="0" viewBox="0 0 1 1"><filter id="Tint" x="0" y="0" width="1" height="1" color-interpolation-filters="linearRGB"><feColorMatrix type="matrix" values="{r} 0 0 0 0 0 {g} 0 0 0 0 0 {b} 0 0 0 0 0 {a} 0"/></filter></svg></div><style>#Pic {{ width: 64px; height: 32px; {css} }}</style>"##,
+                r = linear[0],
+                g = linear[1],
+                b = linear[2],
+                a = linear[3]
+            )
+        };
+        for mounted in [false, true] {
+            let mut render = |css: &str| {
+                let mut ui = ui_with_font(test_font_metrics());
+                ui.define_document(UiDocument::parse("tint.svelte", &source(css)).unwrap());
+                if mounted && !css.is_empty() {
+                    ui.mount_document(
+                        reactive::SourceId::new("test", "tint"),
+                        "t",
+                        Default::default(),
+                        Default::default(),
+                        &Env(texture),
+                    )
+                    .unwrap();
+                }
+                for _ in 0..2 {
+                    ui.begin(InputFrame::default(), Viewport::new(64.0, 32.0));
+                    if css.is_empty() {
+                        ui.image(
+                            "Pic",
+                            ImageDesc {
+                                texture: Some(texture),
+                                tint: Some(style_file::parse_color(tint).unwrap()),
+                                width: Size::Fixed(64.0),
+                                height: Size::Fixed(32.0),
+                                ..Default::default()
+                            },
+                        );
+                    } else if mounted {
+                        ui.build_retained_documents(&Env(texture)).unwrap();
+                    } else {
+                        ui.component("T", "t", &mut serde_json::json!({}), &Env(texture));
+                    }
+                    ui.end();
+                }
+                assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+                let mut overlay = Overlay::new(64.0, 32.0, 1.0);
+                ui.frame().emit(&EmitDesc::default(), &mut overlay);
+                scene.overlay = Some(overlay);
+                renderer.render(&scene, &RenderTarget::Offscreen).unwrap();
+                renderer.read_offscreen().unwrap().pixels
+            };
+            let before = render("");
+            let after = render("filter: url(#Tint);");
+            assert!(
+                before
+                    .as_chunks::<4>()
+                    .0
+                    .iter()
+                    .any(|pixel| pixel != &before[..4]),
+                "the texture must draw, not an empty background"
+            );
+            let diff = before
+                .iter()
+                .zip(&after)
+                .map(|(a, b)| a.abs_diff(*b))
+                .max()
+                .unwrap();
+            maximum = maximum.max(diff);
+            assert!(
+                diff <= 1,
+                "{tint}, mounted={mounted}: maximum channel difference {diff}"
+            );
+        }
+    }
+    println!("maximum tint/matrix channel difference: {maximum}");
+    assert!(
+        UiDocument::parse(
+            "removed.svelte",
+            "<meta name=\"component\" content=\"t\"><img style=\"-og-tint: #80c040\"/>"
+        )
+        .is_err()
+    );
+}
+
 const CARD: &str = r##"<meta name="component" content="filters">
 <column id="Center">
 <div id="Card">

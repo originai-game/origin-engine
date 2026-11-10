@@ -288,7 +288,6 @@ pub const STYLE: &[(&str, &str)] = &[
     ("maxLines", "line-clamp"),
     ("ellipsis", "text-overflow"),
     ("ellipsisText", "text-overflow"),
-    ("tint", "-og-tint"),
     ("cue", "-og-cue"),
     ("fit", "object-fit"),
     ("uv", "object-view-box"),
@@ -443,7 +442,7 @@ fn conv(prop: &str) -> Conv {
         "gap" | "radius" | "fade" | "start" | "top" | "end" | "bottom" => Conv::Len,
         "aspect" | "opacity" | "z" | "scale" | "maxLines" | "stepperLargeStep" => Conv::Num,
         "rotate" => Conv::Angle,
-        "background" | "fadeInto" | "color" | "secondaryTint" | "tint" | "ink" => Conv::Paint,
+        "background" | "fadeInto" | "color" | "secondaryTint" | "ink" => Conv::Paint,
         "align" | "cross" | "direction" | "frame" | "reduced" | "textAlign" | "verticalAlign"
         | "captionSide" | "fit" | "display" | "markerType" | "markerPosition" | "userSelect"
         | "appearance" | "labelDirection" | "stepper" | "stepperWrap" | "selectFilter"

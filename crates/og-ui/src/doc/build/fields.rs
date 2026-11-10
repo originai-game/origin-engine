@@ -664,7 +664,7 @@ impl Ui {
                     i,
                     crate::ImageDesc {
                         texture: base.texture,
-                        tint: r.color("tint"),
+                        tint: None,
                         width: r.size("width").unwrap_or_default(),
                         height: r.size("height").unwrap_or_default(),
                         aspect: r

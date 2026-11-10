@@ -29,6 +29,12 @@
       "change": "Removed the proprietary skew declaration and skew-x/skew-y reflected attributes without aliases.",
       "fix": "Use transform: skew(x, y). To preserve a legacy rotation/skew/nonuniform-scale combination, move rotation and scale into the same transform list in rotate(...) skew(...) scale(...) order. Animate transform instead of -og-skew.",
       "find": ["-og-skew", "skew-x", "skew-y"]
+    },
+    {
+      "member": "-og-tint",
+      "change": "Removed the proprietary texture tint property and reflected tint attribute without aliases.",
+      "fix": "Use filter: url(#id) referencing an SVG feColorMatrix with type=matrix, color-interpolation-filters=linearRGB, the tint's linear-light RGB and alpha on the diagonal, and zero elsewhere. This preserves RGBA multiplication, unlike an approximate CSS filter-function chain. Without a texture, use background-color.",
+      "find": ["-og-tint"]
     }
   ]
 }

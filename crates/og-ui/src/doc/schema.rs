@@ -187,7 +187,7 @@ pub const CORE_KINDS: &[KindSpec] = &[
     KindSpec {
         name: "image",
         container: false,
-        doc: "A texture (or a tint).",
+        doc: "A texture. CSS filter with an SVG colour matrix multiplies its RGBA channels; use a background for a solid fill.",
     },
     KindSpec {
         name: "art",
@@ -1835,12 +1835,6 @@ pub const CORE_PROPS: &[PropSpec] = &[
         Ty::Num,
         ["image", "art"],
         "A texture handle (og.load.texture), usually bound."
-    ),
-    p!(
-        "tint",
-        Ty::Paint,
-        ["image", "art"],
-        "Multiplies the texture (or fills without one)."
     ),
     p!(
         "uv",

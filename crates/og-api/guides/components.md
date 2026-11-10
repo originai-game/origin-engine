@@ -554,16 +554,15 @@ Its own props, beside every element's:
 | `text` | `text` | What it says. |
 | `i18n` | `name` | A string table key (og.i18n) its text comes from; `text` is the fallback. |
 
-## 13. `<img>` (`image`): A texture (or a tint)
+## 13. `<img>` (`image`): A texture. CSS filter with an SVG colour matrix multiplies its RGBA channels; use a background for a solid fill
 
-A texture (or a tint). A leaf; text-bearing controls accept text content: `<img id="Name" />`.
+A texture. CSS filter with an SVG colour matrix multiplies its RGBA channels; use a background for a solid fill. A leaf; text-bearing controls accept text content: `<img id="Name" />`.
 
 Its own props, beside every element's:
 
 | Write | Value | What |
 |---|---|---|
 | `src` | `number` | A texture handle (og.load.texture), usually bound. |
-| `-og-tint:` | `var(--<role>) \| #rrggbb[aa]` | Multiplies the texture (or fills without one). |
 | `object-view-box:` | `inset(<t>% [<r>% [<b>% [<l>%]]])` | The part of the texture it shows (`object-view-box: inset(…)` in percentages of the texture, ordered top, right, bottom, left). |
 | `object-fit:` | `cover \| contain \| fill \| none \| scale-down \| nine-slice \| tile` | CSS `object-fit`: how the image fills its box (fill, contain, cover, none, scale-down) or the art its slot (also nineSlice and tile). |
 | `object-position:` | `<position>: one to four of left, center, right, top, bottom, <n>px, <n>%` | CSS `object-position`: where contain, cover, none or scale-down place the image in its box, as background-position is written (50% 50% by default). |
@@ -577,7 +576,6 @@ Its own props, beside every element's:
 | Write | Value | What |
 |---|---|---|
 | `src` | `number` | A texture handle (og.load.texture), usually bound. |
-| `-og-tint:` | `var(--<role>) \| #rrggbb[aa]` | Multiplies the texture (or fills without one). |
 | `kind` | `name` | The slot's kind (Appendix F: itemIcon, bust, keyArt…). |
 | `ratio` | `x y` | The slot's aspect, width and height in whole numbers. |
 | `focal` | `x y` | The point cropping keeps, 0–1. |
