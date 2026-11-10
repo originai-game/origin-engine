@@ -183,8 +183,8 @@ probe) are unchanged. The mapping:
 |---|---|---|
 | `<input>` (`type` text, password, number, email, url, tel, search) | field | `placeholder`, `maxlength`, `minlength`, `readonly`, `required`, `pattern`, `min`, `max`, `step` (`any`), `aria-invalid`, `list` naming a `<datalist>` of suggestions (below); CSS `appearance: none` drops its frame |
 | `<textarea rows>` | field (multi-line) | the same constraints; `rows` lines shown |
-| `<input type="range">` | slider | `min`, `max`, `step`, `disabled`, `list` naming a `<datalist>` (below); CSS `-og-fill-origin: <value>` |
-| `<input type="range" bind:low bind:high>` | slider (range) | two knobs on one track, `low` to `high` (HTML meter's names), the fill between them: a press takes the nearer knob, each knob is its own focus stop that Left and Right step, and neither passes the other; CSS `-og-min-gap: <value>` keeps them apart. The readout is `low – high`; to a screen reader they are two sliders, `<name>, minimum` and `<name>, maximum` |
+| `<input type="range">` | slider | `min`, `max`, `step`, `disabled`, `list` naming a `<datalist>` (below); `data-fill-origin="<value>"` sets the value its fill grows from |
+| `<input type="range" bind:low bind:high>` | slider (range) | two knobs on one track, `low` to `high` (HTML meter's names), the fill between them: a press takes the nearer knob, each knob is its own focus stop that Left and Right step, and neither passes the other; `data-min-gap="<value>"` keeps them apart. The readout is `low – high`; to a screen reader they are two sliders, `<name>, minimum` and `<name>, maximum` |
 | `<datalist id>` of `<option value [label]>` | — | draws nothing: a range's `list` puts a tick at each option and its `label` (or text other than the value) under the track. A text input's `list` takes its options' values, or `<datalist id items={$names}>`'s, as suggestions: a list under the field while it has the focus (dressed as a select's, `Dropdown.list` and `Dropdown.option`), those containing the text, case and accents ignored, prefix matches first, at most 8; with no text, the first ones as written. The focus stays in the field as the player types; Down reaches the list, choosing one writes it to the field and returns the focus, and Back closes it until the player types again |
 | `<input type="checkbox" switch>` | toggle | `checked`, `disabled`; CSS `-og-control-size` |
 | `<input type="checkbox">` | toggle | `checked`; drawn as a switch (og-ui has one checkbox control) |
@@ -328,7 +328,7 @@ A text with `count={$score}` counts to its value as it changes, over
 `-og-count-duration` ms (900 by default; `-og-count-decimals` digits). A
 text with `-og-reveal: <characters per second>` types its words out, again
 whenever they change, whole under reduced motion, and fires `onrevealed`
-once as the last character shows. A `<select>` with `-og-select: cycle` is
+once as the last character shows. A `<select data-cycle>` is
 previous, its option and next, wrapping past disabled options; one with no
 `<option>`s takes its bound `items`. An open `<dialog>` with
 `-og-spotlight: <id>` dims the page but for the element of that id, which
@@ -1072,14 +1072,13 @@ alike). `scroll-behavior: smooth` on a scroller makes a scroll into view
 (a focus move, a pad's step, `og.ui.scrollIntoView`) glide there along
 the momentum curve and land on it exactly; reduced motion jumps. A glide
 is a fling aimed at its target, so it lives in the snapshotted fling.
-A modal `<dialog>` with
-`-og-sheet-detents: 40% 90%` is a bottom sheet: docked to the bottom at
+A modal `<dialog data-detents="40% 90%">` is a bottom sheet: docked to the bottom at
 full width, as tall as its tallest detent, opened at its first, dragged
 onto its detents and swiped down to close, which writes `open` back.
-`-og-sheet-edge: inline-start | inline-end` docks it to a side instead: full
+`data-edge="inline-start"` or `data-edge="inline-end"` docks it to a side instead: full
 height, its detents widths, swiped off sideways; the edges are CSS's logical
-names, so they mirror right to left. The detents and edge are the engine
-prefix because no CSS standard has them.
+names, so they mirror right to left. These data attributes control gesture
+behavior. CSS controls the sheet's appearance.
 
 A `display: block` box with an auto width fills its block parent's
 content width, as in CSS block flow, so a `<div>` inside a `<section>` is

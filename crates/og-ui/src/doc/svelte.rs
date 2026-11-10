@@ -2695,6 +2695,11 @@ impl Parser {
         if matches!(value, PropValue::Model(_)) && !p.two_way {
             return Err((at, format!("{name} is read-only; remove bind:")));
         }
+        if name == "dataDetents"
+            && let PropValue::Lit(Lit::Str(text)) = &value
+        {
+            super::build::gestures::detents(text, 100.0).map_err(|error| (at, error))?;
+        }
         // A modal's content is built in the top layer, a tree of its own
         // its descendants are named by; HTML chooses it per opening too
         // (showModal or show).

@@ -1,0 +1,10 @@
+{
+  "breaking": [
+    {
+      "member": "-og-fill-origin, -og-min-gap, -og-select, -og-sheet-detents, -og-sheet-edge, -og-hit-slop",
+      "change": "Removed behavior declarations from CSS and their old reflected attributes, without aliases.",
+      "fix": "Use data-fill-origin and data-min-gap on input type=range, data-cycle on select, data-detents and data-edge on dialog, and data-hit-slop on any element. Bindings, events, pointer priority, sheet drag/snap state and checkpointing are unchanged.",
+      "find": ["-og-fill-origin", "-og-min-gap", "-og-select:", "-og-sheet-detents", "-og-sheet-edge", "-og-hit-slop"]
+    }
+  ]
+}

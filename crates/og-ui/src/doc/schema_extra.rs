@@ -1255,18 +1255,18 @@ pub const PROPS: &[PropSpec] = &[
         doc: "CSS `scrollbar-gutter: auto | stable [both-edges]` of a vertical scroll container: stable keeps the scrollbar's room on its end side whether or not it overflows (both-edges on its start side too), so its content does not shift when it starts to.",
     },
     PropSpec {
-        name: "sheetDetents",
+        name: "dataDetents",
         ty: Ty::Text,
         on: On::Kinds(&["dialog"]),
         two_way: false,
-        doc: "`-og-sheet-detents: 40% 90%` on a modal `<dialog>`: a sheet docked to its `-og-sheet-edge` (the bottom at full width by default), dragged onto its detents (depths, `%` of the viewport's height, or its width for a side sheet) and swiped off its edge to close (writing `open` back). It opens at the first. No CSS standard has detents.",
+        doc: "`<dialog modal data-detents=\"40% 90%\">`: a sheet docked to its `data-edge` (the bottom at full width by default), dragged onto its detents and swiped off its edge to close (writing `open` back). Detents are positive px or percentages of viewport height, or width for a side sheet. It opens at the first; drag and snap state is checkpointed.",
     },
     PropSpec {
-        name: "sheetEdge",
-        ty: Ty::Text,
+        name: "dataEdge",
+        ty: Ty::Word(&["block-end", "inline-start", "inline-end"]),
         on: On::Kinds(&["dialog"]),
         two_way: false,
-        doc: "`-og-sheet-edge: block-end | inline-start | inline-end` beside `-og-sheet-detents`: the edge the sheet docks to, in CSS's logical names, so the inline ones mirror right to left (`inline-end` is the right left to right, the left in Arabic); a side sheet is full height, its detents widths, and swipes off sideways.",
+        doc: "`data-edge=\"block-end|inline-start|inline-end\"` beside `data-detents`: the edge the sheet docks to, in CSS's logical names, so the inline ones mirror right to left (`inline-end` is the right left to right, the left in Arabic); a side sheet is full height, its detents widths, and swipes off sideways.",
     },
     PropSpec {
         name: "insetTop",

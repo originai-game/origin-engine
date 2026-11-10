@@ -97,7 +97,7 @@ What every kind takes: its box, layout, paint, motion and input.
 | `top:` | `<n>px` | The inset from the top. `insetTop`: CSS `top` / `inset-block-start` as written: px, `%` of the containing block, `anchor()` or `calc()` of one plus px. |
 | `inset-inline-end:` | `<n>px` | The inset from the end edge. |
 | `bottom:` | `<n>px` | The inset from the bottom. `insetBottom`: CSS `bottom` / `inset-block-end` as written (see insetTop). |
-| `-og-hit-slop:` | `<n>px` | Extra pointer reach, CSS px. |
+| `data-hit-slop` | `number` | Extra pointer reach in CSS px (`data-hit-slop`), without changing layout or paint. Overlapping targets keep their existing hit priority. |
 | `grid-template-columns:` | `[name] 120px 1fr auto 25% minmax(min-content, 1fr) repeat(auto-fill, 200px) \| subgrid \| masonry` | A grid's column tracks (CSS `grid-template-columns`: sizes, `[line names]`, `repeat()`, `subgrid` or `masonry`). |
 | `grid-template-rows:` | `[name] 120px 1fr auto 25% minmax(min-content, 1fr) repeat(auto-fill, 200px) \| subgrid \| masonry` | A grid's row tracks (CSS `grid-template-rows`). |
 | `grid-template-areas:` | `"<a>" "<b>" …` | A grid's named areas, one string per row. |
@@ -621,13 +621,13 @@ Its own props, beside every element's:
 | `min` | `number` | The range's low end; a number input under it is invalid (`rangeUnderflow`). |
 | `max` | `number` | The range's high end; a number input over it is invalid (`rangeOverflow`). |
 | `show-value` | `bool` | Show the slider's value readout (default true); false when an adjacent label supplies units. |
-| `-og-fill-origin:` | `<number>` | The value its fill grows from (`-og-fill-origin`; default min): 0 on a -1 to 1 balance fills either way from the centre. |
+| `data-fill-origin` | `number` | The value its fill grows from (`data-fill-origin`; default min): 0 on a -1 to 1 balance fills either way from the centre. |
 | `mark-values` | `names` | The values of the `<datalist>` its `list` names: a tick at each. |
 | `mark-labels` | `names` | The marks' labels, under the track (an `<option label>`'s, or its text); empty for a tick only. |
 | `step` | `number` | A slider snaps to multiples of this (0: continuous). A number input's value off the step grid from `min` is invalid (default 1; `any` or 0: no step). |
 | `low` | `number` | A meter's top of the low region (HTML `low`; default `min`). On a range input with `high`, its low knob (a slider writes it back). Two-way only with an explicit bind: attribute. |
 | `high` | `number` | A meter's bottom of the high region (HTML `high`; default `max`). On a range input, its high knob: two knobs on one track, `low` to `high` (a slider writes both back). Two-way only with an explicit bind: attribute. |
-| `-og-min-gap:` | `<number>` | The least distance between a range input's two knobs (`-og-min-gap`, in its values; default 0). |
+| `data-min-gap` | `number` | The least distance between a range input's two knobs (`data-min-gap`, in its values; default 0). |
 
 ## 18. `<input type="checkbox">`, `<input type="checkbox" switch>`, `<label>` (`toggle`): A switch with a label (two-way `checked`)
 
@@ -839,7 +839,7 @@ Its own props, beside every element's:
 | Write | Value | What |
 |---|---|---|
 | `disabled` | `bool` | Takes no input. |
-| `-og-select:` | `dropdown \| cycle` | cycle draws it as previous, its option and next (`-og-select`). |
+| `data-cycle` | `bool` | `<select data-cycle>` draws previous, its option and next; selection, events and bindings remain those of the select. |
 | `-og-select-filter:` | `auto \| on \| off` | A filter field atop the open list that narrows its options as the player types (`-og-select-filter: on`); auto shows it past 10 options. |
 | `data-filter-placeholder` | `text` | What the open list's filter field shows while empty (`data-filter-placeholder`); empty is Filter. |
 | `items` | `names` | The tab or option labels, literal names or a bound list of strings (a `<select>`'s `<option>`s set them). |
@@ -864,8 +864,8 @@ Its own props, beside every element's:
 | `closedby` | `any \| closerequest \| none` | What closes it (HTML `closedby`): any adds a press outside a modal (light dismiss) to closerequest's Escape or a pad's B; none leaves closing to the document. Default: closerequest for a modal, none in place. |
 | `appearance:` | `auto \| none` | none drops the control's own frame: its box, borders and background are the document's. |
 | `modal` | `bool` | Over a backdrop that takes every press, the focus trapped inside (HTML `showModal()`); else a panel in place (`show()`). |
-| `-og-sheet-detents:` | `<n>% \| <n>px …` | `-og-sheet-detents: 40% 90%` on a modal `<dialog>`: a sheet docked to its `-og-sheet-edge` (the bottom at full width by default), dragged onto its detents (depths, `%` of the viewport's height, or its width for a side sheet) and swiped off its edge to close (writing `open` back). It opens at the first. No CSS standard has detents. |
-| `-og-sheet-edge:` | `block-end \| inline-start \| inline-end` | `-og-sheet-edge: block-end \| inline-start \| inline-end` beside `-og-sheet-detents`: the edge the sheet docks to, in CSS's logical names, so the inline ones mirror right to left (`inline-end` is the right left to right, the left in Arabic); a side sheet is full height, its detents widths, and swipes off sideways. |
+| `data-detents` | `text` | `<dialog modal data-detents="40% 90%">`: a sheet docked to its `data-edge` (the bottom at full width by default), dragged onto its detents and swiped off its edge to close (writing `open` back). Detents are positive px or percentages of viewport height, or width for a side sheet. It opens at the first; drag and snap state is checkpointed. |
+| `data-edge` | `block-end \| inline-start \| inline-end` | `data-edge="block-end\|inline-start\|inline-end"` beside `data-detents`: the edge the sheet docks to, in CSS's logical names, so the inline ones mirror right to left (`inline-end` is the right left to right, the left in Arabic); a side sheet is full height, its detents widths, and swipes off sideways. |
 
 ## 32. `<details>` (`details`): A disclosure (two-way `open`): its `<summary>` row, its content shown only while open
 

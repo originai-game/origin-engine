@@ -350,8 +350,8 @@ writer. The game's art-contract measurements remain available through
   `x`, `y`); the `node-graph` component zooms by it.
 - A carousel snaps with `scroll-snap-type: x mandatory` on its box and
   `scroll-snap-align: center` on each card. A bottom sheet is
-  `<dialog modal bind:open={$bag}>` with `-og-sheet-detents: 40% 90%`;
-  `-og-sheet-edge: inline-end` makes it a side sheet (the right, the left
+  `<dialog modal data-detents="40% 90%" bind:open={$bag}>`;
+  `data-edge="inline-end"` makes it a side sheet (the right, the left
   right to left) whose detents are widths.
 - Paint with standard CSS: `background: linear-gradient(160deg,
   var(--panel), #0000), #123`, `mask-image: linear-gradient(#000 70%,

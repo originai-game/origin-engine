@@ -175,8 +175,6 @@ pub const STYLE: &[(&str, &str)] = &[
     ("scrollSnapStop", "scroll-snap-stop"),
     ("scrollbarColor", "scrollbar-color"),
     ("scrollbarGutter", "scrollbar-gutter"),
-    ("sheetDetents", "-og-sheet-detents"),
-    ("sheetEdge", "-og-sheet-edge"),
     ("overflowX", "overflow-x"),
     ("overflowY", "overflow-y"),
     ("scrollbarWidth", "scrollbar-width"),
@@ -212,7 +210,6 @@ pub const STYLE: &[(&str, &str)] = &[
     ("countDuration", "-og-count-duration"),
     ("countDecimals", "-og-count-decimals"),
     ("reveal", "-og-reveal"),
-    ("selectAppearance", "-og-select"),
     ("selectFilter", "-og-select-filter"),
     ("spotlight", "-og-spotlight"),
     ("insetTop", "top"),
@@ -242,7 +239,6 @@ pub const STYLE: &[(&str, &str)] = &[
     ("float", "float"),
     ("clear", "clear"),
     ("anchorHeight", "height"),
-    ("hitSlop", "-og-hit-slop"),
     ("columns", "grid-template-columns"),
     ("rows", "grid-template-rows"),
     ("areas", "grid-template-areas"),
@@ -299,8 +295,6 @@ pub const STYLE: &[(&str, &str)] = &[
     ("fit", "object-fit"),
     ("uv", "object-view-box"),
     ("appearance", "appearance"),
-    ("fillOrigin", "-og-fill-origin"),
-    ("minGap", "-og-min-gap"),
 ];
 
 /// Reflected fields affected even when a winning declaration is invalid.
@@ -439,8 +433,6 @@ fn conv(prop: &str) -> Conv {
         | "material"
         | "scrollSnapType"
         | "scrollSnapAlign"
-        | "sheetDetents"
-        | "sheetEdge"
         | "radiusTopLeft"
         | "radiusTopRight"
         | "radiusBottomRight"
@@ -450,15 +442,15 @@ fn conv(prop: &str) -> Conv {
         | "cornerBottomRightShape"
         | "cornerBottomLeftShape" => Conv::Raw,
         "marginTop" | "marginRight" | "marginBottom" | "marginLeft" => Conv::Margin,
-        "gap" | "radius" | "fade" | "start" | "top" | "end" | "bottom" | "hitSlop" => Conv::Len,
-        "aspect" | "opacity" | "z" | "scale" | "maxLines" | "fillOrigin" | "minGap"
-        | "stepperLargeStep" => Conv::Num,
+        "gap" | "radius" | "fade" | "start" | "top" | "end" | "bottom" => Conv::Len,
+        "aspect" | "opacity" | "z" | "scale" | "maxLines" | "stepperLargeStep" => Conv::Num,
         "rotate" => Conv::Angle,
         "background" | "fadeInto" | "color" | "secondaryTint" | "tint" | "ink" => Conv::Paint,
         "align" | "cross" | "direction" | "frame" | "reduced" | "textAlign" | "verticalAlign"
         | "captionSide" | "fit" | "display" | "markerType" | "markerPosition" | "userSelect"
-        | "appearance" | "labelDirection" | "stepper" | "stepperWrap" | "selectAppearance"
-        | "selectFilter" => Conv::Kebab,
+        | "appearance" | "labelDirection" | "stepper" | "stepperWrap" | "selectFilter" => {
+            Conv::Kebab
+        }
         "countDuration" | "countDecimals" | "reveal" => Conv::Num,
         "spotlight" => Conv::Ident,
         "wrap" => Conv::Bool("wrap", "nowrap"),
@@ -564,8 +556,6 @@ pub fn value_form(prop: &str, words: &[&str]) -> Option<String> {
             "none | x | y | block | inline | both [mandatory | proximity]".into()
         }
         Conv::Raw if prop == "scrollSnapAlign" => "none | start | center | end [<inline>]".into(),
-        Conv::Raw if prop == "sheetDetents" => "<n>% | <n>px …".into(),
-        Conv::Raw if prop == "sheetEdge" => "block-end | inline-start | inline-end".into(),
         Conv::Raw if prop == "material" => {
             "glass <regular|thick> <lift|float> | <material>(<n> …[, <colour>]) | \"<ui-material asset>\" <n> … | none".into()
         }
@@ -1927,14 +1917,10 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
             super::contain_css::check(n, value)?;
             Ok(vec![e(prop, vec![Value::String(value.trim().to_owned())])])
         }
-        "scroll-snap-type" | "scroll-snap-align" | "-og-sheet-detents" | "-og-sheet-edge" => {
+        "scroll-snap-type" | "scroll-snap-align" => {
             let prop = match name {
                 "scroll-snap-type" => super::paint_css::snap_type(value).map(|_| "scrollSnapType"),
-                "scroll-snap-align" => {
-                    super::paint_css::snap_align(value).map(|_| "scrollSnapAlign")
-                }
-                "-og-sheet-edge" => super::build::gestures::sheet_edge(value).map(|_| "sheetEdge"),
-                _ => super::build::gestures::detents(value, 100.0).map(|_| "sheetDetents"),
+                _ => super::paint_css::snap_align(value).map(|_| "scrollSnapAlign"),
             }?;
             Ok(vec![e(prop, vec![Value::String(value.trim().to_owned())])])
         }

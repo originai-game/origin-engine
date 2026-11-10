@@ -759,7 +759,11 @@ pub const CORE_PROPS: &[PropSpec] = &[
     p!("top", Ty::Num, "The inset from the top."),
     p!("end", Ty::Num, "The inset from the end edge."),
     p!("bottom", Ty::Num, "The inset from the bottom."),
-    p!("hitSlop", Ty::Num, "Extra pointer reach, CSS px."),
+    p!(
+        "dataHitSlop",
+        Ty::Num,
+        "Extra pointer reach in CSS px (`data-hit-slop`), without changing layout or paint. Overlapping targets keep their existing hit priority."
+    ),
     p!(
         "columns",
         Ty::Tracks,
@@ -1216,10 +1220,10 @@ pub const CORE_PROPS: &[PropSpec] = &[
         "Show the slider's value readout (default true); false when an adjacent label supplies units."
     ),
     p!(
-        "fillOrigin",
+        "dataFillOrigin",
         Ty::Num,
         ["slider"],
-        "The value its fill grows from (`-og-fill-origin`; default min): 0 on a -1 to 1 balance fills either way from the centre."
+        "The value its fill grows from (`data-fill-origin`; default min): 0 on a -1 to 1 balance fills either way from the centre."
     ),
     p!(
         "markValues",
@@ -1448,10 +1452,10 @@ pub const CORE_PROPS: &[PropSpec] = &[
         "Types its text out at this many characters a second (`-og-reveal`); `onrevealed` fires when it is whole."
     ),
     p!(
-        "selectAppearance",
-        Ty::Word(&["dropdown", "cycle"]),
+        "dataCycle",
+        Ty::Bool,
         ["select"],
-        "cycle draws it as previous, its option and next (`-og-select`)."
+        "`<select data-cycle>` draws previous, its option and next; selection, events and bindings remain those of the select."
     ),
     p!(
         "selectFilter",
@@ -1693,10 +1697,10 @@ pub const CORE_PROPS: &[PropSpec] = &[
         "A text input's suggestions, from the `<datalist>` its `list` names (its options' values, or its `items={$names}`): a list under the field while it has the focus, those containing the text first by prefix, choosing one writes it to the field."
     ),
     p!(
-        "minGap",
+        "dataMinGap",
         Ty::Num,
         ["slider"],
-        "The least distance between a range input's two knobs (`-og-min-gap`, in its values; default 0)."
+        "The least distance between a range input's two knobs (`data-min-gap`, in its values; default 0)."
     ),
     p!(
         "optimum",

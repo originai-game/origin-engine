@@ -387,11 +387,11 @@ impl Ui {
                         opened = Some(false);
                     }
                     if dialog.modal
-                        && let Some(d) = r.str("sheetDetents")
+                        && let Some(d) = r.str("dataDetents")
                         && self.sheet(
                             id.as_str(),
                             d,
-                            r.str("sheetEdge")
+                            r.str("dataEdge")
                                 .and_then(|e| super::gestures::sheet_edge(e).ok())
                                 .unwrap_or_default(),
                             open,
@@ -810,7 +810,7 @@ impl Ui {
                     },
                 );
             }
-            "select" if styled.str("selectAppearance") == Some("cycle") => {
+            "select" if r.flag("dataCycle") => {
                 let changed = self.cycler(b, n, id.as_str(), &r);
                 resp = crate::Response {
                     changed,
@@ -931,7 +931,7 @@ impl Ui {
                         min: r.num("min").unwrap_or(0.0),
                         max: r.num("max").unwrap_or(1.0),
                         step: r.num("stepBy").unwrap_or(0.0),
-                        min_gap: styled.num("minGap").unwrap_or(0.0),
+                        min_gap: r.num("dataMinGap").unwrap_or(0.0),
                         label: text_of(&r, b),
                         show_value: !r.has("showValue") || r.flag("showValue"),
                         width: r.size("width"),
@@ -976,7 +976,7 @@ impl Ui {
                         show_value: !r.has("showValue") || r.flag("showValue"),
                         width: r.size("width"),
                         marks,
-                        origin: styled.num("fillOrigin"),
+                        origin: r.num("dataFillOrigin"),
                         disabled: r.flag("disabled"),
                         ..crate::widgets::ValueSliderDesc::default()
                     },

@@ -39,7 +39,7 @@
               {/if}
               {#if e.kind == "select"}
                 <p class="name">{e.name}</p>
-                <select id="Choice" class="cycle" aria-label={e.name} items={e.options} bind:value={e.value}></select>
+                <select id="Choice" data-cycle aria-label={e.name} items={e.options} bind:value={e.value}></select>
               {/if}
               {#if e.kind == "binding"}
                 <p class="name">{e.name}</p>
@@ -76,6 +76,5 @@
 #Entries { list-style: none; padding: 0; margin: 0; width: stretch; height: stretch; overflow-y: auto; }
 .entry { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); }
 .entry .name { width: stretch; }
-.cycle { -og-select: cycle; }
 #Foot { display: flex; justify-content: end; gap: 8px; width: stretch; }
 </style>

@@ -1636,7 +1636,7 @@ impl Ui {
         if resolved_later && matches!(p.position, Position::Absolute | Position::Screen) {
             p.anchor = Some(Box::new(spec));
         }
-        if let Some(v) = r.num("hitSlop") {
+        if let Some(v) = r.num("dataHitSlop") {
             p.hit_slop = v;
         }
         // A `<div>` with `display: grid` lays out as a `<grid>` does; a

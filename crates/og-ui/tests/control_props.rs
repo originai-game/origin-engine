@@ -1,5 +1,5 @@
 //! The HTML and CSS a document's controls take beyond their tag (docs/ui.md
-//! §2.4): a range's `<datalist>` marks, `-og-fill-origin` and `disabled`;
+//! §2.4): a range's `<datalist>` marks, `data-fill-origin` and `disabled`;
 //! a checkbox's caption side, `<small>` description, control size and
 //! `disabled`; tabs' size and `disabled`; a dialog's `closedby` and
 //! `appearance: none`; a select's `aria-invalid` and
@@ -10,7 +10,7 @@
 //! Ways these could fail, each covered below:
 //! - a `<datalist>` drawn as content, its options' ticks missing or at the
 //!   wrong fractions, an option labelled by its value shown as text, the
-//!   fill growing from min when `-og-fill-origin` names another value, a
+//!   fill growing from min when `data-fill-origin` names another value, a
 //!   disabled range still taking a drag, or a `list` naming nothing
 //!   accepted → `a_range_takes_its_datalist_origin_and_disabled`
 //! - a caption on the wrong side of its switch for the source order, a
@@ -66,6 +66,54 @@ fn refused(text: &str) -> String {
         Ok(_) => panic!("accepted: {text}"),
         Err(e) => format!("{e:?}"),
     }
+}
+
+#[test]
+fn data_hit_slop_extends_reach_without_changing_boxes_or_priority() {
+    let source = r#"<meta name="component" content="t">
+<div id="Root">
+  <div id="A" interactive="true" data-hit-slop="8" onclick={a}></div>
+  <div id="B" interactive="true" data-hit-slop="8" onclick={b}></div>
+</div>
+<style>
+#Root { width: 300px; height: 200px; }
+#A, #B { position: absolute; top: 100px; width: 20px; height: 20px; }
+#A { left: 100px; }
+#B { left: 126px; }
+</style>"#;
+    both(source, &[], |d| {
+        for (x, y, expected) in [
+            (110.0, 94.0, "a"),
+            (121.0, 110.0, "a"),
+            (124.0, 110.0, "b"),
+            (128.0, 110.0, "b"),
+        ] {
+            let events = d.click_at(Vec2::new(x, y));
+            let clicks: Vec<_> = events
+                .iter()
+                .filter(|e| e.name == "a" || e.name == "b")
+                .map(|e| e.name.as_str())
+                .collect();
+            assert_eq!(clicks, [expected]);
+        }
+        assert!(d.click_at(Vec2::new(110.0, 91.0)).is_empty());
+        let a = d.get("A");
+        assert_eq!((a.x, a.y, a.width, a.height), (100.0, 100.0, 20.0, 20.0));
+    });
+    for declaration in [
+        "-og-hit-slop: 8px",
+        "-og-fill-origin: 0",
+        "-og-min-gap: 20",
+        "-og-select: cycle",
+        "-og-sheet-detents: 40%",
+        "-og-sheet-edge: inline-end",
+    ] {
+        assert!(refused(&format!("<meta name=\"component\" content=\"t\"><div></div><style>div {{ {declaration}; }}</style>")).contains(declaration.split(':').next().unwrap()));
+    }
+    assert!(
+        refused(r#"<meta name="component" content="t"><dialog data-detents="-1px"></dialog>"#)
+            .contains("detent")
+    );
 }
 
 #[test]
@@ -138,7 +186,7 @@ fn key(d: &mut Doc, k: UiKey) {
 
 /// A range input with `low` and `high` is two knobs on one track: a press
 /// takes the nearer knob, each knob steps on its own, and neither passes
-/// the other by less than `-og-min-gap`.
+/// the other by less than `data-min-gap`.
 ///
 /// Ways it could fail: a press always moving one knob, a step on the high
 /// knob moving the low one, the knobs crossing or closing past the gap, or
@@ -147,11 +195,11 @@ fn key(d: &mut Doc, k: UiKey) {
 fn a_range_with_low_and_high_is_two_knobs() {
     let text = r#"<meta name="component" content="t">
 <div id="Page">
-  <input type="range" id="Price" min="0" max="100" step="10" bind:low={$lo} bind:high={$hi} />
+  <input type="range" id="Price" min="0" max="100" step="10" data-min-gap="20" bind:low={$lo} bind:high={$hi} />
 </div>
 <style>
 #Page { padding: 20px; }
-#Price { width: 400px; -og-min-gap: 20; }
+#Price { width: 400px; }
 </style>"#;
     let knobs = |d: &mut Doc| {
         (
@@ -331,7 +379,7 @@ fn a_pad_focus_opens_the_on_screen_keyboard() {
 fn a_range_takes_its_datalist_origin_and_disabled() {
     let text = r#"<meta name="component" content="t">
 <div id="Page">
-  <input type="range" id="Bal" min="-1" max="1" step="0.1" list="Steps" value={$bal} />
+  <input type="range" id="Bal" min="-1" max="1" step="0.1" data-fill-origin="0" list="Steps" value={$bal} />
   <datalist id="Steps">
     <option value="-1" label="Left"></option>
     <option value="0">0</option>
@@ -342,7 +390,6 @@ fn a_range_takes_its_datalist_origin_and_disabled() {
 <style>
 #Page { display: flex; flex-direction: column; gap: 16px; padding: 20px; }
 input { width: 400px; }
-#Bal { -og-fill-origin: 0; }
 </style>"#;
     both(text, &[("bal", json!(-0.5)), ("vol", json!(0.25))], |d| {
         // A range places its ticks from its last laid-out width.
@@ -1493,7 +1540,7 @@ fn core_controls_choose_step_hold_and_report() {
 
 /// The core controls written as text, selects and dialogs: `count` counts
 /// to its value, `-og-reveal` types its text out and fires `onrevealed`
-/// once, `-og-select: cycle` steps its options and writes the value back,
+/// once, `data-cycle` steps its options and writes the value back,
 /// `-og-spotlight` dims the page but for its target, and `<input
 /// type="color">` opens a picker whose hex writes `#rrggbb` back.
 ///
@@ -1507,14 +1554,13 @@ fn counters_reveals_cyclers_spotlights_and_colours() {
 <div id="Page">
   <p id="Score" count={$score}>0</p>
   <p id="Line" class="typed" onrevealed={done}>Hello there</p>
-  <select id="Diff" class="cycle" bind:value={$diff}><option value="easy">Easy</option><option value="hard">Hard</option></select>
+  <select id="Diff" data-cycle bind:value={$diff}><option value="easy">Easy</option><option value="hard">Hard</option></select>
   <button id="Target">Here</button>
   <dialog id="Tour" bind:open={$tour} class="tour"><div id="Step"><p id="Callout">Press here</p></div></dialog>
   <input type="color" id="Tint" bind:value={$tint}>
 </div>
 <style>
 .typed { -og-reveal: 20; }
-.cycle { -og-select: cycle; }
 .tour { -og-spotlight: Target; }
 #Page { gap: 8px; padding: 8px; }
 </style>"#;

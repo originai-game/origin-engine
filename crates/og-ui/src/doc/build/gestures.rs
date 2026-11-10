@@ -8,7 +8,7 @@
 use super::*;
 use crate::element::{DragSpec, DropSpec};
 
-/// A `-og-sheet-detents` value's depths in CSS px (`%` of the viewport's
+/// A `data-detents` value's depths in CSS px (`%` of the viewport's
 /// height inside its safe area, or its width for a side sheet), in the
 /// order written.
 pub(crate) fn detents(text: &str, vh: f32) -> Result<Vec<f32>, String> {
@@ -28,12 +28,12 @@ pub(crate) fn detents(text: &str, vh: f32) -> Result<Vec<f32>, String> {
         })
         .collect::<Result<_, _>>()?;
     if out.is_empty() {
-        return Err("-og-sheet-detents takes one or more heights".into());
+        return Err("data-detents takes one or more heights".into());
     }
     Ok(out)
 }
 
-/// The edge a sheet docks to (`-og-sheet-edge`).
+/// The edge a sheet docks to (`data-edge`).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub(crate) enum SheetEdge {
     #[default]
@@ -42,20 +42,20 @@ pub(crate) enum SheetEdge {
     InlineEnd,
 }
 
-/// A `-og-sheet-edge` value.
+/// A `data-edge` value.
 pub(crate) fn sheet_edge(text: &str) -> Result<SheetEdge, String> {
     match text.trim() {
-        "block-end" | "bottom" => Ok(SheetEdge::BlockEnd),
+        "block-end" => Ok(SheetEdge::BlockEnd),
         "inline-start" => Ok(SheetEdge::InlineStart),
         "inline-end" => Ok(SheetEdge::InlineEnd),
         w => Err(format!(
-            "-og-sheet-edge: '{w}' is block-end, inline-start or inline-end"
+            "data-edge: '{w}' is block-end, inline-start or inline-end"
         )),
     }
 }
 
 impl Ui {
-    /// A modal `<dialog>` with `-og-sheet-detents`, just opened by
+    /// A modal `<dialog>` with `data-detents`, just opened by
     /// `open_dialog`: its backdrop docks the panel to `edge` (the bottom at
     /// full width, or the inline start or end at full height, mirrored right
     /// to left), as deep as its deepest detent, and the panel drags across
@@ -220,12 +220,11 @@ mod tests {
     const DOC: &str = r#"<meta name="component" content="snap">
 <div id="Root">
   <div id="List"><div id="A" class="Row"></div><div id="B" class="Row"></div><div id="C" class="Row"></div><div id="D" class="Row"></div><div id="E" class="Row"></div></div>
-  <dialog id="Sheet" modal bind:open={$open}><p>Sheet</p></dialog>
+  <dialog id="Sheet" modal data-detents="40% 90%" bind:open={$open}><p>Sheet</p></dialog>
 </div>
 <style>
 #List { height: 150px; width: 200px; overflow-y: auto; scroll-snap-type: y mandatory; }
 .Row { height: 100px; width: 200px; scroll-snap-align: start; }
-#Sheet { -og-sheet-detents: 40% 90%; }
 </style>"#;
 
     fn tick(ui: &mut Ui, at: Vec2, down: bool, was: bool, wheel: f32) {
@@ -342,7 +341,7 @@ mod tests {
         assert_eq!(v["value"], json!(false), "a swipe down closes the sheet");
     }
 
-    /// `-og-sheet-edge: inline-end` docks the sheet to the right left to
+    /// `data-edge="inline-end"` docks the sheet to the right left to
     /// right and to the left right to left, full height, opened at its
     /// first detent (a width), and a swipe off that edge closes it.
     ///
@@ -352,8 +351,7 @@ mod tests {
     #[test]
     fn side_sheets_dock_to_their_inline_edge_and_mirror() {
         let doc = r#"<meta name="component" content="side">
-<div id="Root"><dialog id="Sheet" modal bind:open={$open}><p>Side</p></dialog></div>
-<style>#Sheet { -og-sheet-detents: 50% 80%; -og-sheet-edge: inline-end; }</style>"#;
+<div id="Root"><dialog id="Sheet" modal data-detents="50% 80%" data-edge="inline-end" bind:open={$open}><p>Side</p></dialog></div>"#;
         for rtl in [false, true] {
             let mut ui = Ui::new(UiDesc::default());
             if rtl {

@@ -1,6 +1,6 @@
 //! Core controls documents write as text and selects (docs/ui.md §2): a
 //! counted number (`count`), a typewriter text (`-og-reveal`, `onrevealed`),
-//! a cycler (`<select>` with `-og-select: cycle`) and a spotlight
+//! a cycler (`<select data-cycle>`) and a spotlight
 //! (`<dialog>` with `-og-spotlight`).
 
 use super::*;
