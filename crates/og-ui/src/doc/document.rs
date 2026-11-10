@@ -318,6 +318,38 @@ impl UiDocument {
         out
     }
 
+    /// The texture assets its floats' `shape-outside: url()` take their
+    /// contours from: the host reads their alpha on the CPU and gives it
+    /// with [`crate::Ui::define_texture_alpha`].
+    pub fn shape_images(&self) -> Vec<String> {
+        let mut out: Vec<String> = Vec::new();
+        let mut add = |text: &str| {
+            if let Ok(Some(super::paint_css::OutsideShape::Image(path))) =
+                super::paint_css::outside(text)
+            {
+                let path = path.trim_start_matches('/').to_owned();
+                if !out.contains(&path) {
+                    out.push(path);
+                }
+            }
+        };
+        for n in &self.nodes {
+            for p in n
+                .props
+                .iter()
+                .chain(n.at.iter().flat_map(|a| &a.1))
+                .chain(n.rules.iter().flat_map(|rule| &rule.props))
+            {
+                if p.name() == "shapeOutside"
+                    && let PropValue::Lit(Lit::Str(text)) = &p.value
+                {
+                    add(text);
+                }
+            }
+        }
+        out
+    }
+
     /// The texture asset its view transition's cover shows
     /// (`::view-transition { background-image: url("…") }`): the host loads
     /// it and binds it with [`crate::Ui::define_texture`].

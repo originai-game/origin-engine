@@ -170,6 +170,7 @@ pub const STYLE: &[(&str, &str)] = &[
     ("clipPath", "clip-path"),
     ("shapeOutside", "shape-outside"),
     ("shapeMargin", "shape-margin"),
+    ("shapeImageThreshold", "shape-image-threshold"),
     ("material", "-og-material"),
     ("sound", "-og-sound"),
     ("scrollSnapType", "scroll-snap-type"),

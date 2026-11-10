@@ -76,6 +76,12 @@ fn project() -> &'static Path {
 <div id="Pointer" style="cursor: url(missing.svg), url(../icons/glyph.svg) 1 2, crosshair"></div>
 <style>@import "nested/pointer.css";
 #Pointer { width: 80px; height: 80px; background: red; }</style>"#);
+        write("ui/shape.svelte", br#"<meta name="screen" content="Shape" />
+<div id="Root"><div id="F"></div><div id="Line"><span id="A"></span></div></div>
+<style>#Root { width: 300px; }
+#F { float: left; width: 80px; height: 40px; shape-outside: url(../icons/glyph.svg); }
+#Line { font-size: 0; }
+#A { display: inline-block; width: 100px; height: 20px; }</style>"#);
         let report = og_cook::cook_project(&root, &og_cook::CookOptions::default()).unwrap();
         assert!(report.ok(), "{:?}", report.errors());
         root
@@ -210,6 +216,29 @@ fn a_style_names_its_assets_relative_to_itself_or_from_assets() {
         warnings(e).iter().all(|w| !w.contains("no font")),
         "its body font, beside it, loaded"
     );
+}
+
+#[test]
+fn shape_outside_images_take_their_contour_from_cooked_alpha() {
+    let e = engine();
+    let style = value(og_load_style(e, "styles/mini".into()));
+    configure(e, json!({ "style": style }));
+    value(og_runtime::og_load_document(e, "ui/shape.svelte".into()));
+    value(og_runtime::og_ui_push(e, "Shape".into(), None));
+    og_runtime::og_engine_frame(e, 1000.0 / 60.0);
+    let ui = og_runtime::shared_ui(e).unwrap();
+    let ui = ui.lock();
+    let x = |id: &str| {
+        ui.probe_elements()
+            .into_iter()
+            .find(|el| el.id == id)
+            .unwrap_or_else(|| panic!("no {id}"))
+            .x
+    };
+    // The cooked SVG's left half is opaque: the line starts at half the
+    // float's 80px width, not after its box.
+    assert_eq!(x("A") - x("Root"), 40.0);
+    assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
 }
 
 #[test]

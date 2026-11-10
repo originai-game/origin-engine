@@ -102,6 +102,7 @@ pub use juice::{
 };
 pub use layers::{LayerInfo, LayerOp};
 pub use layout::anchor;
+pub use layout::float::ImageAlpha;
 pub use layout::{
     Align, Anchor, Bidi, Calc, CalcOp, Contain, ContentVisibility, Cross, Direction, Element,
     Family, FlexItem, FloatSide, Flow, FontRole, Insets, Length, Margin, Multicol, Rect, Size,

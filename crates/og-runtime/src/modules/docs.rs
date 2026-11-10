@@ -215,6 +215,40 @@ fn read_textures(
     Ok(textures)
 }
 
+/// The alpha channels of the textures its floats' `shape-outside: url()`
+/// names, read on the CPU as a cursor image is: an RGBA texture, or a
+/// cooked one decoded again from the bundle (any natively; on the web a
+/// lossless one, `kind pixel`). One that cannot be read is noted and its
+/// float keeps its box.
+fn read_shape_alphas(
+    eng: &Engine,
+    doc: &UiDocument,
+    textures: &[(String, og_render::TextureHandle)],
+) -> Vec<(String, og_ui::ImageAlpha)> {
+    let mut out = Vec::new();
+    for path in doc.shape_images() {
+        let Some((_, texture)) = textures.iter().find(|(p, _)| *p == path) else {
+            continue;
+        };
+        match crate::ui_cursor::read(eng, *texture, [0.0, 0.0, 1.0, 1.0]) {
+            Ok((width, height, rgba)) => out.push((
+                path,
+                og_ui::ImageAlpha {
+                    width,
+                    height,
+                    alpha: rgba.as_chunks::<4>().0.iter().map(|p| p[3]).collect(),
+                },
+            )),
+            Err(why) => eng.render.borrow_mut().notes.push(format!(
+                "{}: shape-outside: url({path}) {}; the float's box is its shape",
+                doc.source,
+                why.unwrap_or_else(|| "is not readable on the CPU".into())
+            )),
+        }
+    }
+    out
+}
+
 /// The UI materials a document's `-og-material` names, loaded by path.
 #[allow(clippy::type_complexity)]
 fn read_materials(
@@ -306,6 +340,7 @@ pub(crate) fn load_document(eng: &Engine, path: &str) -> Result<String, String> 
     let rive = read_rive(eng, &doc)?;
     let materials = read_materials(eng, &doc)?;
     let textures = read_textures(eng, &doc)?;
+    let alphas = read_shape_alphas(eng, &doc, &textures);
     let name = doc.name.clone();
     let hash = hash_of(eng, &id);
     let hashes: Vec<(String, u64)> = rive.iter().map(|(r, h, _)| (r.clone(), *h)).collect();
@@ -339,6 +374,9 @@ pub(crate) fn load_document(eng: &Engine, path: &str) -> Result<String, String> 
     }
     for (path, texture) in textures {
         ui.define_texture(&path, texture);
+    }
+    for (path, alpha) in alphas {
+        ui.define_texture_alpha(&path, alpha);
     }
     define(&mut ui, doc, faces);
     Ok(name)
@@ -438,6 +476,7 @@ pub(crate) fn refresh(eng: &Engine) -> Vec<String> {
             ))
         }) {
             Ok((rive, materials, textures, faces, doc)) => {
+                let alphas = read_shape_alphas(eng, &doc, &textures);
                 let hashes: Vec<(String, u64)> =
                     rive.iter().map(|(r, h, _)| (r.clone(), *h)).collect();
                 with(eng.id, |d| {
@@ -455,6 +494,9 @@ pub(crate) fn refresh(eng: &Engine) -> Vec<String> {
                 }
                 for (path, texture) in textures {
                     ui.define_texture(&path, texture);
+                }
+                for (path, alpha) in alphas {
+                    ui.define_texture_alpha(&path, alpha);
                 }
                 define(&mut ui, doc, faces);
             }

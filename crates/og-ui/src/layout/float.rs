@@ -67,11 +67,92 @@ fn joins(nodes: &[Node], i: usize) -> bool {
         && !n.el.scroll_x
 }
 
+/// An image's alpha channel on the CPU: one byte per pixel, row-major,
+/// `width` x `height` ([`crate::Ui::define_texture_alpha`]). A
+/// `shape-outside: url()` float's contour is read from it.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct ImageAlpha {
+    pub width: u32,
+    pub height: u32,
+    pub alpha: Vec<u8>,
+}
+
+/// `shape-outside: <image>` with its `shape-image-threshold`.
+#[derive(Clone, Debug)]
+pub(crate) struct ShapeImage {
+    pub alpha: std::sync::Arc<ImageAlpha>,
+    pub threshold: f32,
+}
+
+impl PartialEq for ShapeImage {
+    fn eq(&self, other: &Self) -> bool {
+        std::sync::Arc::ptr_eq(&self.alpha, &other.alpha) && self.threshold == other.threshold
+    }
+}
+
+impl ShapeImage {
+    /// The area of the pixels whose alpha is greater than the threshold
+    /// (CSS Shapes 1 §6.2), the image stretched over the `w` x `h` box at
+    /// `at`: each run of them in a row as its two vertical sides, runs
+    /// repeated by the rows below merged into one.
+    fn segments(&self, at: [f32; 2], w: f32, h: f32, out: &mut Vec<[[f32; 2]; 2]>) {
+        let a = &*self.alpha;
+        let (iw, ih) = (a.width as usize, a.height as usize);
+        if iw == 0 || ih == 0 || a.alpha.len() < iw * ih {
+            return;
+        }
+        let cut = self.threshold * 255.0;
+        let runs = |j: usize| {
+            let row = &a.alpha[j * iw..(j + 1) * iw];
+            let mut runs = Vec::new();
+            let mut k = 0;
+            while k < iw {
+                if f32::from(row[k]) > cut {
+                    let start = k;
+                    while k < iw && f32::from(row[k]) > cut {
+                        k += 1;
+                    }
+                    runs.push((start, k));
+                } else {
+                    k += 1;
+                }
+            }
+            runs
+        };
+        let (sx, sy) = (w / iw as f32, h / ih as f32);
+        let mut j = 0;
+        let mut row = runs(0);
+        while j < ih {
+            let mut end = j + 1;
+            let mut next = Vec::new();
+            while end < ih {
+                next = runs(end);
+                if next != row {
+                    break;
+                }
+                end += 1;
+            }
+            // The rows cover [y0, y1): a line starting at y1 is below them.
+            let y0 = at[1] + j as f32 * sy;
+            let y1 = (at[1] + end as f32 * sy - 1.0 / 256.0).max(y0);
+            for &(s, e) in &row {
+                for x in [at[0] + s as f32 * sx, at[0] + e as f32 * sx] {
+                    out.push([[x, y0], [x, y1]]);
+                }
+            }
+            row = next;
+            j = end;
+        }
+    }
+}
+
 /// Unresolved CSS shape geometry; layout resolves percentages after sizing.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct Outside {
     pub shape: crate::doc::paint_css::CssClip,
     pub reference: crate::doc::paint_css::GeoBox,
+    /// An image's contour, in place of `shape`, over the content box.
+    pub image: Option<ShapeImage>,
     pub margin: crate::doc::paint_css::Pos,
     pub rtl: bool,
 }
@@ -92,7 +173,14 @@ impl Outside {
             out
         };
         let p = n.el.padding;
-        let insets = match self.reference {
+        // An image lies over the content box as a replaced element's
+        // picture would, stretched to it (CSS Shapes 1 §6.1).
+        let reference = if self.image.is_some() {
+            GeoBox::Content
+        } else {
+            self.reference
+        };
+        let insets = match reference {
             GeoBox::Border => [0.0; 4],
             GeoBox::Padding => n
                 .decor
@@ -116,12 +204,6 @@ impl Outside {
         } else {
             (n.layout.w, n.layout.pref_h)
         };
-        let ShapeKind::Path {
-            points, contours, ..
-        } = self.shape.resolve(w, h, (insets, radius))
-        else {
-            return Vec::new();
-        };
         let map = |p: Vec2| {
             let (mut x, y) = match vertical {
                 Some([1, _, _, _]) => (p.y, w - p.x),
@@ -135,6 +217,30 @@ impl Outside {
             [x + offset[0], y + offset[1]]
         };
         let mut edges = Vec::new();
+        if let Some(image) = &self.image {
+            let [t, r, b, l] = insets;
+            let mut sides = Vec::new();
+            image.segments(
+                [l, t],
+                (w - l - r).max(0.0),
+                (h - t - b).max(0.0),
+                &mut sides,
+            );
+            edges.extend(
+                sides
+                    .into_iter()
+                    .map(|[a, b]| [map(Vec2::from(a)), map(Vec2::from(b))]),
+            );
+        }
+        let (points, contours) = match self.image {
+            Some(_) => (Vec::new(), Vec::new()),
+            None => match self.shape.resolve(w, h, (insets, radius)) {
+                ShapeKind::Path {
+                    points, contours, ..
+                } => (points, contours),
+                _ => return Vec::new(),
+            },
+        };
         let mut start = 0;
         for count in contours {
             let contour = &points[start..start + count as usize];

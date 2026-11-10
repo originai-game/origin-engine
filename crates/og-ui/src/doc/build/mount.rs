@@ -166,6 +166,9 @@ pub struct DocHost {
     /// The textures documents name by asset path (a view transition's
     /// cover image), by path.
     pub(crate) textures: BTreeMap<String, og_draw::TextureHandle>,
+    /// The alpha of the textures a `shape-outside: url()` names, by path
+    /// ([`Ui::define_texture_alpha`]).
+    pub(crate) alphas: BTreeMap<String, Arc<crate::layout::float::ImageAlpha>>,
     /// The on-screen controls documents lay out (`<joystick action>`,
     /// `<dpad action>`, `<button data-og-touch>`), by render key, their
     /// rects filled from the frame's hits; `zones_changed`: og-input's
@@ -285,6 +288,16 @@ impl Ui {
     /// ([`UiDocument::cover_image`]) to its loaded handle.
     pub fn define_texture(&mut self, path: &str, texture: og_draw::TextureHandle) {
         self.docs.host.textures.insert(path.to_owned(), texture);
+    }
+
+    /// Gives the texture asset `path` its alpha channel on the CPU, which
+    /// a float's `shape-outside: url(<path>)` takes its contour from
+    /// ([`UiDocument::shape_images`]); without it the float has no shape.
+    pub fn define_texture_alpha(&mut self, path: &str, alpha: crate::ImageAlpha) {
+        self.docs
+            .host
+            .alphas
+            .insert(path.to_owned(), Arc::new(alpha));
     }
 
     /// Binds the UI material asset `path` a document's `-og-material`

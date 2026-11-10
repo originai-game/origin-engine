@@ -853,14 +853,41 @@ impl Ui {
         self.tree.nodes[i].shape_outside = r
             .str("shapeOutside")
             .and_then(|s| crate::doc::paint_css::outside(s).ok().flatten())
-            .map(|(shape, reference)| crate::layout::float::Outside {
-                shape,
-                reference,
-                margin: r
-                    .str("shapeMargin")
-                    .and_then(|s| crate::doc::paint_css::shape_margin(s).ok())
-                    .unwrap_or(crate::doc::paint_css::Pos::Px(0.0)),
-                rtl,
+            .and_then(|value| {
+                use crate::doc::paint_css::{CssClip, GeoBox, OutsideShape};
+                let (shape, reference, image) = match value {
+                    OutsideShape::Shape(shape, reference) => (shape, reference, None),
+                    OutsideShape::Image(path) => {
+                        let Some(alpha) = self.docs.host.alphas.get(path.trim_start_matches('/'))
+                        else {
+                            // An image that cannot be read is no shape
+                            // (CSS Shapes 1 §6.1): the float's box wraps.
+                            self.out.warnings.push(format!(
+                                "shape-outside: url({path}) has no image alpha; the float's box is its shape"
+                            ));
+                            return None;
+                        };
+                        let threshold = r
+                            .str("shapeImageThreshold")
+                            .and_then(|s| crate::doc::paint_css::shape_threshold(s).ok())
+                            .unwrap_or(0.0);
+                        let image = crate::layout::float::ShapeImage {
+                            alpha: alpha.clone(),
+                            threshold,
+                        };
+                        (CssClip::Box, GeoBox::Content, Some(image))
+                    }
+                };
+                Some(crate::layout::float::Outside {
+                    shape,
+                    reference,
+                    image,
+                    margin: r
+                        .str("shapeMargin")
+                        .and_then(|s| crate::doc::paint_css::shape_margin(s).ok())
+                        .unwrap_or(crate::doc::paint_css::Pos::Px(0.0)),
+                    rtl,
+                })
             });
         el.clear = match r.str("clear") {
             Some("both") => crate::layout::float::LEFT | crate::layout::float::RIGHT,

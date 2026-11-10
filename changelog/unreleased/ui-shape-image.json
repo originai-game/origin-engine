@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "CSS shape-outside",
+      "summary": "shape-outside: url(<file>) wraps lines around the alpha channel of a texture stretched over the float's content box, holding the pixels greater than the new shape-image-threshold (0 by default; number or percentage); shape-margin expands it. The host reads the alpha on the CPU as the document loads (any texture natively, a lossless kind pixel texture on the web); a float whose image it cannot read keeps its box, with a note."
+    },
+    {
+      "member": "Ui::define_texture_alpha",
+      "summary": "New og-ui host call giving a texture asset path its CPU alpha (ImageAlpha); UiDocument::shape_images lists the paths a document's shape-outside names."
+    }
+  ]
+}

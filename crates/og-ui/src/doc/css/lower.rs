@@ -144,10 +144,16 @@ pub(super) fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Par
                 vec![Value::String(value.trim().to_owned())],
             )])
         }
-        "backdrop-filter" | "filter" | "mix-blend-mode" | "isolation" | "text-shadow"
-        | "clip-path" | "shape-outside" | "shape-margin" | "-og-material" => {
-            lower_effects(name, value)
-        }
+        "backdrop-filter"
+        | "filter"
+        | "mix-blend-mode"
+        | "isolation"
+        | "text-shadow"
+        | "clip-path"
+        | "shape-outside"
+        | "shape-margin"
+        | "shape-image-threshold"
+        | "-og-material" => lower_effects(name, value),
         "width" | "height" | "min-width" | "max-width" | "min-height" | "max-height"
         | "inline-size" | "block-size" | "min-inline-size" | "max-inline-size"
         | "min-block-size" | "max-block-size" => lower_size(name, t),
@@ -434,6 +440,7 @@ fn lower_effects(name: &str, value: &str) -> Result<Vec<Part>, String> {
         "clip-path" => p::clip(value).map(|_| "clipPath"),
         "shape-outside" => p::outside(value).map(|_| "shapeOutside"),
         "shape-margin" => p::shape_margin(value).map(|_| "shapeMargin"),
+        "shape-image-threshold" => p::shape_threshold(value).map(|_| "shapeImageThreshold"),
         _ => p::glass_material(value).and_then(|glass| {
             if glass.is_some() {
                 Ok("material")

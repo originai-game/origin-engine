@@ -20,26 +20,58 @@ pub(crate) fn shape_margin(text: &str) -> Result<Pos, String> {
     Ok(value)
 }
 
+/// A `shape-outside` value: a basic shape over its reference box, or an
+/// image whose alpha channel gives the contour.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum OutsideShape {
+    Shape(CssClip, GeoBox),
+    /// `url(<file>)`: the texture asset's path.
+    Image(String),
+}
+
 /// Basic-shape float exclusion uses the margin box by default, not the
 /// border box used by clip-path. SVG geometry boxes are not shape boxes.
-pub(crate) fn outside(text: &str) -> Result<Option<(CssClip, GeoBox)>, String> {
+pub(crate) fn outside(text: &str) -> Result<Option<OutsideShape>, String> {
     let t = tokens(text)?;
     if t.iter().any(|t| matches!(t, Tok::Ident(s) if matches!(s.as_str(), "fill-box" | "stroke-box" | "view-box"))) {
         return Err("shape-outside takes margin-box, border-box, padding-box or content-box".into());
     }
-    let mut value = clip(text)?;
-    if let Some((shape, geo)) = &mut value {
-        if matches!(shape, CssClip::Url(_)) {
-            return Err("shape-outside image alpha contours are not implemented".into());
+    if let Some(Tok::Func(f, args)) = t.first()
+        && f == "url"
+    {
+        let [_] = t.as_slice() else {
+            return Err("shape-outside: an image takes no shape box".into());
+        };
+        let path = url(args).map_err(|_| "shape-outside: url() names an image file")?;
+        if path.is_empty() || path.starts_with('#') {
+            return Err("shape-outside: url() names an image file".into());
         }
-        if !t
+        return Ok(Some(OutsideShape::Image(path)));
+    }
+    let mut value = clip(text)?;
+    if let Some((_, geo)) = &mut value
+        && !t
             .iter()
             .any(|t| matches!(t, Tok::Ident(s) if GeoBox::parse(s).is_some()))
-        {
-            *geo = GeoBox::Margin;
-        }
+    {
+        *geo = GeoBox::Margin;
     }
-    Ok(value)
+    Ok(value.map(|(shape, geo)| OutsideShape::Shape(shape, geo)))
+}
+
+/// `shape-image-threshold`: a number or percentage, clamped to 0-1.
+pub(crate) fn shape_threshold(text: &str) -> Result<f32, String> {
+    const FORM: &str = "shape-image-threshold takes a number or percentage";
+    let t = tokens(text)?;
+    let [value] = t.as_slice() else {
+        return Err(FORM.into());
+    };
+    let (v, unit) = number(value)?;
+    match unit {
+        "" => Ok(v.clamp(0.0, 1.0)),
+        "%" => Ok((v / 100.0).clamp(0.0, 1.0)),
+        _ => Err(FORM.into()),
+    }
 }
 
 /// `clip-path`: `[<basic-shape> || <geometry-box>] | url(#id) | none`;

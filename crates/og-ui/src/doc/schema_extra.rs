@@ -1133,7 +1133,7 @@ pub const PROPS: &[PropSpec] = &[
         ty: Ty::Text,
         on: On::All,
         two_way: false,
-        doc: "CSS `shape-outside`: `none`, a basic shape and optional shape box, or a shape box alone. The default reference is margin-box. Changes inline line exclusion around floats, never float placement or clear. Image alpha contours are not implemented.",
+        doc: "CSS `shape-outside`: `none`, a basic shape and optional shape box, a shape box alone, or `url(<file>)` of a texture whose alpha channel, stretched over the content box, gives the contour (the pixels above `shape-image-threshold`; one whose alpha the host cannot read is no shape). The default reference is margin-box. Changes inline line exclusion around floats, never float placement or clear.",
     },
     PropSpec {
         name: "shapeMargin",
@@ -1141,6 +1141,13 @@ pub const PROPS: &[PropSpec] = &[
         on: On::All,
         two_way: false,
         doc: "CSS `shape-margin`: a non-negative length or percentage (zero by default) expands the shape-outside contour by that distance, with round joins. Percentages use the containing block's inline size. The result is clipped to the float's margin box; float placement and clearance do not change. Not inherited.",
+    },
+    PropSpec {
+        name: "shapeImageThreshold",
+        ty: Ty::Text,
+        on: On::All,
+        two_way: false,
+        doc: "CSS `shape-image-threshold`: a number or percentage, clamped to 0-1 (0 by default): a `shape-outside: url()` contour holds the pixels whose alpha is greater than it. Not inherited.",
     },
     PropSpec {
         name: "material",

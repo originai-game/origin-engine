@@ -153,7 +153,7 @@ fn pixels(
 }
 
 /// The RGBA pixels of `uv` of `texture` (`Err(None)`: not yet).
-fn read(
+pub(crate) fn read(
     eng: &Engine,
     texture: og_render::TextureHandle,
     uv: [f32; 4],

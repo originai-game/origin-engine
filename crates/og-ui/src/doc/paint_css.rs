@@ -32,7 +32,7 @@ use border::border_shorthand;
 pub(crate) use border::{
     BORDER_IMAGE_PROPS, BiLen, BorderSpec, MASK_BORDER_PROPS, border_source, border_spec, lower,
 };
-pub(crate) use clip::{clip, outside, shape_margin};
+pub(crate) use clip::{OutsideShape, clip, outside, shape_margin, shape_threshold};
 use filters::*;
 pub(crate) use filters::{
     backdrop_stages, blend, filter_fns, filter_layers, glass_effect, glass_material, isolation,

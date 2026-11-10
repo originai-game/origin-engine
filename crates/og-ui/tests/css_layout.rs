@@ -71,7 +71,7 @@
 
 use crate::html_text::{Doc, both};
 use og_core::glam::Vec2;
-use og_ui::InputFrame;
+use og_ui::{ImageAlpha, InputFrame};
 
 fn wh(d: &Doc, id: &str) -> (f32, f32) {
     let e = d.get(id);
@@ -1165,6 +1165,66 @@ fn shape_margin_expands_by_distance_and_clips_to_the_float_box() {
         assert_eq!(x(d), 100.0, "never outside the float margin box");
         d.set("mode", serde_json::json!("zero"));
         assert_eq!(x(d), 20.0);
+    });
+}
+
+#[test]
+fn shape_images_wrap_lines_around_their_alpha() {
+    let source = r#"<meta name="component" content="t">
+<div><div id="Root"><div id="F" class={$mode}></div><div id="Line"><span id="A"></span><span id="B"></span></div></div></div>
+<style>
+#Root { width: 400px; }
+#F { float: left; width: 100px; height: 40px; shape-outside: url(mask.png); }
+#F.half { shape-image-threshold: 0.5; }
+#F.all { shape-image-threshold: 100%; }
+#F.margin { shape-margin: 10px; }
+#F.pad { padding-left: 20px; }
+#Line { font-size: 0; }
+#A, #B { display: inline-block; width: 280px; height: 20px; }
+</style>"#;
+    both(source, &[("mode", serde_json::json!(""))], |d| {
+        let x = |d: &Doc, id: &str| d.get(id).x - d.get("Root").x;
+        // Without the image's alpha the float's box is its shape.
+        assert_eq!((x(d, "A"), x(d, "B")), (100.0, 100.0));
+        assert!(
+            d.ui.frame()
+                .warnings
+                .iter()
+                .any(|w| w.contains("url(/ui/mask.png) has no image alpha")),
+            "{:?}",
+            d.ui.frame().warnings
+        );
+        // Two rows over the 100x40 content box: the top one's alpha runs
+        // three quarters across (the last of them at 100), the bottom
+        // one's a quarter.
+        d.ui.define_texture_alpha(
+            "ui/mask.png",
+            ImageAlpha {
+                width: 4,
+                height: 2,
+                alpha: vec![255, 255, 100, 0, 255, 0, 0, 0],
+            },
+        );
+        d.set("mode", serde_json::json!("zero"));
+        assert_eq!((x(d, "A"), x(d, "B")), (75.0, 25.0));
+        assert!(
+            d.ui.frame().warnings.is_empty(),
+            "{:?}",
+            d.ui.frame().warnings
+        );
+        // Only alpha greater than the threshold is the shape.
+        d.set("mode", serde_json::json!("half"));
+        assert_eq!((x(d, "A"), x(d, "B")), (50.0, 25.0));
+        d.set("mode", serde_json::json!("all"));
+        assert_eq!((x(d, "A"), x(d, "B")), (0.0, 0.0), "no pixel: no exclusion");
+        // shape-margin grows the contour by distance: the top row's side
+        // reaches the second line's band at its corner.
+        d.set("mode", serde_json::json!("margin"));
+        assert_eq!((x(d, "A"), x(d, "B")), (85.0, 85.0));
+        // The image lies over the content box: 80px wide from x=20 in the
+        // 100px border box.
+        d.set("mode", serde_json::json!("pad"));
+        assert_eq!((x(d, "A"), x(d, "B")), (80.0, 40.0));
     });
 }
 
