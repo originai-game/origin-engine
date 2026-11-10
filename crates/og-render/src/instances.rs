@@ -182,6 +182,24 @@ pub(crate) struct SortedInstances {
     changed: Vec<u32>,
     /// Counts the updates ([`Sorted::serial`]).
     serial: u64,
+    /// The materials whose shader parameters moved this frame, ascending
+    /// ([`SortedInstances::set_params_moved`]).
+    params_moved: Vec<u32>,
+}
+
+/// The material `m`'s instances batch under: the one it is an alias of
+/// ([`RenderScene::alias_material`]), unless either's shader parameters
+/// moved this frame. Equal parameters now do not make equal previous ones
+/// (`previous_shader_params()`, the prepass's motion), so each of the two
+/// then draws with its own uniform, and they batch again from the next frame.
+fn drawn(scene: &RenderScene, params_moved: &[u32], m: usize) -> usize {
+    let o = scene.drawn_material(m);
+    let moved = |i: usize| params_moved.binary_search(&(i as u32)).is_ok();
+    if o != m && (moved(m) || moved(o)) {
+        m
+    } else {
+        o
+    }
 }
 
 /// What [`SortedInstances::update`] lends a frame.
@@ -256,6 +274,13 @@ impl SortedInstances {
         }
     }
 
+    /// The materials whose shader parameters moved this frame (ascending),
+    /// before [`SortedInstances::update`]: none of them draws in another's
+    /// batch, nor any of their aliases in theirs.
+    pub fn set_params_moved(&mut self, materials: Vec<u32>) {
+        self.params_moved = materials;
+    }
+
     /// The frame's sorted instances, from the last frame's where they still
     /// hold. Fails on an instance whose mesh or material index is not below
     /// `meshes` / `materials` (the renderer's copies of the scene's);
@@ -297,7 +322,7 @@ impl SortedInstances {
             // (RenderScene::alias_material): its instances join that run.
             let k = (
                 k.0 as u32,
-                scene.drawn_material(k.1) as u32,
+                drawn(scene, &self.params_moved, k.1) as u32,
                 inst.cast_shadows,
                 crate::views::layer_of(&scene.instance_layers, i),
             );
@@ -381,7 +406,7 @@ impl SortedInstances {
             let inst = &instances[i];
             (
                 inst.mesh,
-                scene.drawn_material(inst.material.index()),
+                drawn(scene, &self.params_moved, inst.material.index()),
                 !inst.cast_shadows,
                 layers(i),
                 probe_of(i),
@@ -398,7 +423,7 @@ impl SortedInstances {
             let inst = &instances[i];
             let (mesh, material, cast, mask, probe) = (
                 inst.mesh.index(),
-                scene.drawn_material(inst.material.index()),
+                drawn(scene, &self.params_moved, inst.material.index()),
                 inst.cast_shadows,
                 layers(i),
                 probe_of(i),

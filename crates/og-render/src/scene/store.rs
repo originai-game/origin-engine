@@ -1561,8 +1561,11 @@ impl RenderScene {
     /// of either that leaves them different (a `set_*`, a shader or a
     /// shader parameter) parts them, and each draws as its own from that
     /// frame on, so an edit of one never shows on the other; the same edit
-    /// of the other joins them again. A removed texture parts them until an
-    /// edit finds them alike; the removal of either ends it. False, and
+    /// of the other joins them again. In the frame a shader parameter of
+    /// either changes, the two draw apart all the same: equal parameters
+    /// now do not make equal previous ones (`previous_shader_params()`).
+    /// A removed texture parts them until an edit finds them alike; the
+    /// removal of either ends it. False, and
     /// nothing changes, unless both are live and draw the same now (equal
     /// values, the same material shader with equal parameters, or none).
     pub fn alias_material(&mut self, copy: MaterialHandle, of: MaterialHandle) -> bool {
