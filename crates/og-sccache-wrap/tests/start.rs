@@ -186,9 +186,12 @@ fn run_stalled(name: &str, busy: bool, patience: u32) -> (i32, String, bool, Str
         .status()
         .unwrap();
     let alive = server.try_wait().unwrap().is_none();
-    // The server and its `sleep`: its whole process group.
-    let _ = Command::new("kill")
-        .args(["-KILL", &format!("-{}", server.id())])
+    // The server and its `sleep`: its whole process group. Not `kill -KILL
+    // -<pgid>`: procps-ng 4.0.4's kill (Ubuntu 24.04) answers 0 to it and
+    // signals nothing, and the server left behind held the test's output
+    // open until nextest's timeout.
+    let _ = Command::new("pkill")
+        .args(["-KILL", "-g", &server.id().to_string()])
         .stderr(std::process::Stdio::null())
         .status();
     let _ = server.wait();
