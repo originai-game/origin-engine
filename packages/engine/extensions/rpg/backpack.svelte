@@ -69,10 +69,16 @@
 .tabs { position: relative; display: flex; width: stretch; align-items: center; gap: var(--space-xs); }
 .tabs-fade { display: none; position: absolute; right: 0; top: 0; width: var(--size-lg); height: stretch; pointer-events: none; }
 .tabs-fade:dir(rtl) { right: auto; left: 0; }
-@media (width < 600px) { .tabs-fade { display: block; } }
+@media (width < 600px) {
+  .tabs-fade { display: block; }
+  .rpg-band { min-height: var(--size-lg); padding-top: 0; padding-bottom: 0; }
+  .grid { gap: var(--space-xs); }
+  .foot { gap: var(--space-sm); padding-top: var(--space-xs); }
+  .tab { min-height: calc(var(--size-touch) * 0.85); }
+}
 .tabs-scroll { width: stretch; overflow-x: auto; overflow-y: hidden; }
-.tabs-row { display: flex; gap: var(--space-xxs); justify-content: space-between; width: stretch; }
-.tab { flex: none; min-height: var(--size-touch); padding: 0 var(--space-xs); }
+.tabs-row { display: flex; gap: 0; justify-content: space-between; width: stretch; }
+.tab { flex: none; min-height: var(--size-touch); padding: 0; }
 .grid-scroll { width: stretch; flex: 1; min-height: 0; }
 .grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: var(--space-sm); width: stretch; padding: var(--space-xs); }
 .cell { position: relative; width: stretch; aspect-ratio: 1; min-width: var(--size-touch); padding: var(--space-sm); align-items: center; justify-content: center; }
@@ -90,7 +96,7 @@
 .foot { display: flex; width: stretch; gap: var(--space-lg); align-items: center; padding: var(--space-sm) var(--space-xs) 0; }
 .weight { display: flex; width: stretch; gap: var(--space-sm); align-items: center; }
 .weight-text { display: flex; flex-direction: column; width: stretch; gap: var(--space-xs); }
-.weight-line { display: flex; gap: var(--space-sm); align-items: baseline; }
+.weight-line { display: flex; gap: var(--space-sm); align-items: baseline; white-space: nowrap; }
 .foot-mark { width: var(--size-sm); height: var(--size-sm); flex: none; }
 .bar { width: stretch; height: var(--space-sm); }
 .bar-fill { width: calc(var(--fill, 0) * 100%); height: stretch; }

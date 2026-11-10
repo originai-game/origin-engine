@@ -14,9 +14,9 @@
 #Card { width: 28%; height: stretch; min-height: 0; }
 #Hero { width: 32%; height: stretch; min-height: 0; }
 @media (width < 600px) {
-  #Page { flex-direction: column; gap: var(--space-md); padding: var(--space-sm); }
-  #Bag { width: stretch; height: 42%; }
-  #Card { width: stretch; height: 58%; }
+  #Page { flex-direction: column; gap: var(--space-sm); margin: calc(env(safe-area-inset-top) * -1) 0 calc(env(safe-area-inset-bottom) * -1); padding: calc(env(safe-area-inset-top) + var(--space-sm)) var(--space-sm) calc(env(safe-area-inset-bottom) + var(--space-sm)); height: calc(100% + env(safe-area-inset-top) + env(safe-area-inset-bottom)); }
+  #Bag { width: stretch; height: 54%; }
+  #Card { width: stretch; height: 46%; }
   #Hero { display: none; }
 }
 @media (height < 600px) and (orientation: landscape) {

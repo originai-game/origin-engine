@@ -66,21 +66,21 @@
 </article>
 
 <style>
-.rpg-item-card { display: flex; flex-direction: column; width: stretch; height: stretch; gap: var(--space-sm); container-type: inline-size; }
-.hero { position: relative; display: flex; width: stretch; height: calc(var(--size-xxl) * 1.7); flex: none; align-items: center; justify-content: center; }
+.rpg-item-card { display: flex; flex-direction: column; width: stretch; height: stretch; gap: var(--space-xs); container-type: inline-size; }
+.hero { position: relative; display: flex; width: stretch; height: calc(var(--size-xxl) * 1.25); flex: none; align-items: center; justify-content: center; }
 .hero-glow { position: absolute; left: 6%; top: 0; width: 88%; height: stretch; }
 .hero-picture { position: relative; width: stretch; height: stretch; object-fit: contain; }
 .hero-art { position: relative; width: calc(var(--size-xxl) * 1.8); height: calc(var(--size-xxl) * 1.8); }
 .head { display: flex; flex-direction: column; width: stretch; gap: var(--space-xxs); align-items: center; text-align: center; }
 .item-name, .item-kind { margin: 0; }
 .body { width: stretch; flex: 1; min-height: 0; gap: var(--space-sm); }
-.lead-row { display: flex; width: stretch; align-items: center; gap: var(--space-sm); padding: var(--space-xs) 0; }
+.lead-row { display: flex; width: stretch; align-items: center; gap: var(--space-sm); padding: 0 0 var(--space-xxs); }
 .lead-main { display: flex; flex-direction: column; width: stretch; gap: var(--space-xxs); }
 .lead-figures { display: flex; align-items: baseline; gap: var(--space-sm); }
 .lead-current { display: flex; flex-direction: column; flex: none; gap: var(--space-xxs); padding-inline-start: var(--space-md); align-items: flex-start; }
 .stat-mark { width: var(--size-sm); height: var(--size-sm); flex: none; }
 .stats { width: stretch; }
-.stat-row { display: grid; grid-template-columns: var(--size-sm) 1fr auto 4.5em 3.5em; column-gap: var(--space-sm); align-items: center; width: stretch; padding: var(--space-xs) 0; }
+.stat-row { display: grid; grid-template-columns: var(--size-sm) 1fr auto 4.5em 3.5em; column-gap: var(--space-sm); align-items: center; width: stretch; padding: var(--space-xxs) 0; }
 .stat-value, .delta, .stat-current, .lead-value, .current-value { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .stat-value, .stat-current { text-align: end; }
 .lore { margin: 0; padding: var(--space-xs) var(--space-xs); flex: none; }

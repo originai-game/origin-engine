@@ -29,13 +29,14 @@
 #Talk { grid-area: talk; height: stretch; min-height: 0; }
 #Party, #Turns, #Fade { display: none; }
 @media (width < 600px) {
-  #Page { position: relative; display: flex; flex-direction: column; justify-content: flex-start; gap: var(--space-md); overflow: hidden; padding: var(--space-sm) var(--space-sm) 0; }
+  #Page { position: relative; display: flex; flex-direction: column; justify-content: flex-start; gap: var(--space-md); overflow: hidden; margin-top: calc(env(safe-area-inset-top) * -1); height: calc(100% + env(safe-area-inset-top)); padding: calc(env(safe-area-inset-top) + var(--space-sm)) var(--space-sm) 0; }
   #Compass, #Detail, #Talk { display: none; }
   #Party, #Turns { display: block; width: stretch; flex: none; }
   #Middle { width: stretch; flex: none; gap: var(--space-md); }
   #Map { height: calc(var(--size-xxl) * 2.3); flex: none; }
   #Place { height: calc(var(--size-xxl) * 2.25); flex: none; }
   #Log { width: stretch; height: auto; flex: none; }
-  #Fade { display: block; position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--size-xxl) * 1.5); pointer-events: none; }
+  /* pending: absolute right/bottom insets — the box is dropped when placed by left/right/bottom; correct form: left: 0; right: 0; bottom: 0; */
+  #Fade { display: block; position: absolute; left: 0; top: calc(100% - var(--size-xxl) * 1.5); width: 100%; height: calc(var(--size-xxl) * 1.5); pointer-events: none; }
 }
 </style>

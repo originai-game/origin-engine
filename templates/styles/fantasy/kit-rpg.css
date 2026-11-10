@@ -75,9 +75,9 @@
    button.tab { font-family: var(--fantasy-caps); font-size: 16px; letter-spacing: var(--fantasy-tracking); text-transform: uppercase; color: var(--ink-muted); }
    button.tab[aria-selected=true] { color: var(--gold); }
    ::part(base) carries them until then. */
-button.tab::part(base) { font-family: var(--fantasy-caps); font-size: 13px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-muted); }
+button.tab::part(base) { font-family: var(--fantasy-caps); font-size: 13px; letter-spacing: 0; text-transform: uppercase; color: var(--ink-muted); }
 button.tab[aria-selected=true]::part(base) { color: var(--gold); }
-button.tab::part(base) { border-image: none; padding: 0 var(--space-xs); background: none; border: none; box-shadow: none; border-radius: 0; }
+button.tab::part(base) { border-image: none; padding: 0 2px; background: none; border: none; box-shadow: none; border-radius: 0; }
 button.tab::part(base):hover { background: linear-gradient(0deg, #e9c46f1f, #e9c46f00); }
 button.tab[aria-selected=true]::part(base) { border-bottom: 2px solid var(--gold); background: linear-gradient(0deg, #e9c46f2e, #e9c46f00 70%); }
 
@@ -132,12 +132,12 @@ button.cell[data-broken=true] .art { opacity: 0.45; }
 .rpg-item-card .item-kind { font-size: 15px; color: #d39a4e; }
 .rpg-item-card .lead-row { border-bottom: 1px solid #8f765044; }
 .rpg-item-card .lead-row .caption { font-size: 14px; color: var(--ink-muted); }
-.rpg-item-card .lead-value { font-family: var(--font-mono); font-size: 34px; color: var(--ink); }
+.rpg-item-card .lead-value { font-family: var(--font-mono); font-size: 30px; color: var(--ink); }
 .rpg-item-card .lead-current { border-inline-start: 1px solid #8f765066; }
 .rpg-item-card .current-value { font-family: var(--font-mono); font-size: 22px; color: var(--ink-muted); }
 .rpg-item-card .stat-mark { color: var(--fantasy-brass-hi); }
 .rpg-item-card .stat-row { border-bottom: 1px solid #8f765030; }
-.rpg-item-card .stat-label { font-size: 14px; color: var(--ink); }
+.rpg-item-card .stat-label { font-size: 13px; color: var(--ink); }
 .rpg-item-card .stat-value { font-family: var(--font-mono); font-size: 17px; color: var(--ink); }
 .rpg-item-card .stat-current { font-family: var(--font-mono); font-size: 17px; color: var(--ink-muted); }
 .rpg-item-card .delta { font-family: var(--font-mono); font-size: 17px; }
@@ -155,7 +155,7 @@ button.cell[data-broken=true] .art { opacity: 0.45; }
 .rpg-character .attr { border-bottom: 1px solid #8f765030; }
 .rpg-character .attr-split { background: linear-gradient(180deg, #8f765000, #8f7650cc, #8f765000); }
 .rpg-character .attr-mark { color: var(--fantasy-brass-hi); }
-.rpg-character .attr-label { font-size: 14px; color: var(--ink); }
+.rpg-character .attr-label { font-size: 13px; letter-spacing: 0.04em; color: var(--ink); }
 .rpg-character .attr-value { font-family: var(--font-mono); font-size: 17px; color: var(--ink); }
 
 /* ── Quest log. */
@@ -273,7 +273,7 @@ button.member[data-down=true]::part(base) { border-color: #6f6a62; background: l
 .rpg-turn-order .round { font-family: var(--font-display); font-size: 22px; letter-spacing: 0.08em; text-transform: uppercase; color: #f1dfb6; border: 1px solid var(--fantasy-brass-hi); border-radius: 2px; background: linear-gradient(180deg, #7a1e14, #4f130c); box-shadow: inset 0 0 0 2px #2a0a06, 0 4px 10px #000c; }
 
 /* ── The fold: content fades into the ground at a phone's lower edge. */
-.rpg-fold { z-index: 2; background: linear-gradient(180deg, #0a070400 0%, #0a0704e6 70%, #0a0704 100%); }
+.rpg-fold { z-index: 2; background: linear-gradient(180deg, #0a070400 0%, #0a0704d0 32%, #0a0704 55%); }
 .rpg-band .band-end.start { background: url(flourish-left.svg) center / contain no-repeat; }
 .rpg-band .band-end.finish { background: url(flourish-right.svg) center / contain no-repeat; }
 
@@ -291,4 +291,10 @@ button.member[data-down=true]::part(base) { border-color: #6f6a62; background: l
     radial-gradient(ellipse at 50% 40%, #00000000 40%, #000000a8 100%),
     url(ground.png) center / 768px 768px repeat,
     #140e09;
+}
+
+@media (width < 600px) {
+  .rpg-backpack .rpg-title { font-size: 22px; }
+  .rpg-backpack .weight-line .caption { font-size: 12px; }
+  .rpg-backpack .figure { font-size: 16px; }
 }

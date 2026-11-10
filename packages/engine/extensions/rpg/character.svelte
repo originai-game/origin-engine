@@ -74,7 +74,8 @@
 .attr-split { width: 1px; align-self: stretch; }
 .attr { display: flex; width: stretch; align-items: center; gap: var(--space-sm); padding: var(--space-xs) 0; }
 .attr-mark { width: var(--size-sm); height: var(--size-sm); flex: none; }
-.attr-label { width: stretch; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.attr-label { width: stretch; min-width: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.attr { column-gap: var(--space-xs); }
 .attr-value { font-variant-numeric: tabular-nums; white-space: nowrap; }
 @container (width < 300px) { .attributes { flex-direction: column; gap: 0; } .attr-split { display: none; } }
 </style>
