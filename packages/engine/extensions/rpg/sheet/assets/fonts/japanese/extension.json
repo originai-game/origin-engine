@@ -1,0 +1,16 @@
+{
+  "format": 1,
+  "kind": "font",
+  "name": "japanese",
+  "version": "1.0.0",
+  "description": "Noto Sans JP: JIS X 0208 rows 1-8 and level 1 kanji (2,965), kana, CJK and fullwidth punctuation",
+  "scripts": [
+    "Jpan"
+  ],
+  "languages": [
+    "ja"
+  ],
+  "faces": [
+    "NotoSansJP-Regular.ttf"
+  ]
+}
