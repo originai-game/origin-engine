@@ -28,6 +28,8 @@ og-tween = { path = "../og-tween" }
 bytemuck = { workspace = true }
 # Localization: text direction and shaped scripts (og-i18n).
 og-i18n = { path = "../og-i18n" }
+# CSS values: the value lexer and calc().
+og-css = { path = "../og-css" }
 # Text measurement, line breaking, bidi and shaping.
 og-text = { path = "../og-text", default-features = false }
 # Match Parley 0.12's font stack; libm, never host floating-point math.

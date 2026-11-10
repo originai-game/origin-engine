@@ -48,7 +48,7 @@ const UNITS: &[(&str, &str, f64)] = &[
 ];
 
 /// What one physical unit is worth in px (`None`: not a physical unit).
-pub(crate) fn physical(unit: &str) -> Option<f64> {
+pub fn physical(unit: &str) -> Option<f64> {
     UNITS
         .iter()
         .find(|(w, c, _)| *w == unit && *c == "px" && *w != "px")
@@ -96,7 +96,7 @@ fn is_length(unit: &str) -> bool {
 
 /// What the units [`absolute`] resolves are worth for one element.
 #[derive(Clone, Copy, Debug, Default)]
-pub(crate) struct Basis {
+pub struct Basis {
     /// The viewport's dynamic size (the surface's now), and its small and
     /// large ones (CSS Values 4 §6.1.2).
     pub width: f32,
@@ -151,7 +151,7 @@ impl Basis {
 
 /// Which viewport axes and query containers a value read through its units.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub(crate) struct Read {
+pub struct Read {
     pub width: bool,
     pub height: bool,
     pub containers: [Option<u64>; 4],
@@ -159,20 +159,20 @@ pub(crate) struct Read {
 
 /// Whether `text` has a number in a unit [`absolute`] resolves, or an
 /// `env()`.
-pub(crate) fn has_absolute(text: &str) -> bool {
+pub fn has_absolute(text: &str) -> bool {
     text.contains("env(") || numbers(text).any(|(_, _, unit)| ABSOLUTE.contains(&unit))
 }
 
 /// A property that keeps its `em` terms to the element's resolve (a
 /// margin's em reads the element's own type step there).
-pub(crate) fn keeps_em(name: &str) -> bool {
+pub fn keeps_em(name: &str) -> bool {
     name.starts_with("margin")
 }
 
 /// Whether property `name`'s `text` resolves only when its element does:
 /// it reads the viewport, the safe area, the element's font or an
 /// attribute.
-pub(crate) fn per_element(name: &str, text: &str) -> bool {
+pub fn per_element(name: &str, text: &str) -> bool {
     has_absolute(text)
         || text.contains("attr(")
         || (!keeps_em(name) && numbers(text).any(|(_, _, unit)| unit == "em"))
@@ -181,7 +181,7 @@ pub(crate) fn per_element(name: &str, text: &str) -> bool {
 /// `text` with every viewport, root and font-relative number written in px
 /// (`em` too unless property `name` [`keeps_em`]), every `env()` replaced,
 /// and the viewport axes it read.
-pub(crate) fn absolute(text: &str, basis: Basis, name: &str) -> (String, Read) {
+pub fn absolute(text: &str, basis: Basis, name: &str) -> (String, Read) {
     let mut read = Read::default();
     let text = env(text, basis, &mut read);
     let mut out = String::with_capacity(text.len());
@@ -334,7 +334,7 @@ fn env(text: &str, basis: Basis, read: &mut Read) -> String {
 /// unit keyword (`px`, `%`, `deg`…) or `number`. An absent attribute, or
 /// one that is no number where a number is asked, takes the fallback;
 /// without one the declaration is invalid.
-pub(crate) fn attr(text: &str, lookup: &dyn Fn(&str) -> Option<String>) -> Result<String, String> {
+pub fn attr(text: &str, lookup: &dyn Fn(&str) -> Option<String>) -> Result<String, String> {
     let mut out = String::with_capacity(text.len());
     let mut rest = text;
     while let Some(at) = rest.find("attr(") {
@@ -452,7 +452,7 @@ fn numbers(text: &str) -> impl Iterator<Item = (usize, usize, &str)> {
 /// `text` with every math function reduced to its value (`calc(0.5 *
 /// 100%)` → `50%`, `calc(100% - 2 * 6px)` → `calc(100% - 12px)`). Other
 /// text is unchanged.
-pub(crate) fn reduce(text: &str) -> Result<String, String> {
+pub fn reduce(text: &str) -> Result<String, String> {
     let mut out = String::with_capacity(text.len());
     let mut rest = text;
     while let Some((at, name)) = next_function(rest) {
@@ -480,7 +480,7 @@ pub(crate) fn reduce(text: &str) -> Result<String, String> {
 }
 
 /// Whether `text` holds a math function.
-pub(crate) fn has_math(text: &str) -> bool {
+pub fn has_math(text: &str) -> bool {
     next_function(text).is_some()
 }
 
@@ -535,7 +535,7 @@ fn closing(s: &str, open: usize) -> Option<usize> {
     None
 }
 
-pub(crate) fn number(v: f64) -> String {
+pub fn number(v: f64) -> String {
     let mut n = format!("{v:.6}");
     while n.ends_with('0') {
         n.pop();
@@ -551,7 +551,7 @@ pub(crate) fn number(v: f64) -> String {
 
 /// A sum as CSS: one term bare (`12px`), more in a `calc()`
 /// (`calc(100% - 12px)`).
-pub(crate) fn sum_text(terms: &[(&str, f64)]) -> String {
+pub fn sum_text(terms: &[(&str, f64)]) -> String {
     match terms {
         [] => "0".into(),
         [(u, v)] => format!("{}{u}", number(*v)),
@@ -959,7 +959,7 @@ fn evaluate(name: &str, unit: &'static str, v: &[f64]) -> Result<(&'static str, 
 /// `round()`'s nearest multiple of `b` to `a` by its strategy: the
 /// nearest (a tie upwards), up, down, or towards zero; a zero step gives
 /// NaN, as CSS's does.
-pub(crate) fn round(strategy: &str, a: f64, b: f64) -> f64 {
+pub fn round(strategy: &str, a: f64, b: f64) -> f64 {
     let b = b.abs();
     if b == 0.0 {
         return f64::NAN;

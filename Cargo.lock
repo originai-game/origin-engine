@@ -2856,6 +2856,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "og-css"
+version = "0.7.7"
+dependencies = [
+ "og-core",
+]
+
+[[package]]
 name = "og-destruct"
 version = "0.7.7"
 dependencies = [
@@ -3233,6 +3240,7 @@ dependencies = [
  "elsa",
  "image",
  "og-core",
+ "og-css",
  "og-draw",
  "og-ecs",
  "og-i18n",

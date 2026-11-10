@@ -7,7 +7,7 @@
 pub mod at_rules;
 pub(crate) mod boxes;
 pub mod build;
-pub(crate) mod calc;
+pub(crate) use og_css::calc;
 pub mod catalogue;
 pub(crate) mod contain_css;
 pub mod container;

@@ -6,7 +6,7 @@ use super::{
     boxes, calc, contain_css, image_css, interact_css, lists, multicol_css, paint_css,
     position_css, scroll_css, tracks, view_transition,
 };
-use og_core::ogt::{self, Block, Entry, Number, Value};
+use og_core::ogt::{Block, Entry, Number, Value};
 
 mod declarations;
 mod lower;
@@ -15,9 +15,10 @@ mod tokens;
 
 pub(crate) use declarations::{declarations, split_decls, zero_shift};
 use lower::*;
+pub(crate) use og_css::{Tok, describe, quoted, tok_text, tokens};
 pub(crate) use to_css::decl_line;
 use tokens::*;
-pub(crate) use tokens::{Tok, describe, hex, paint_vals, tokens, want_len, want_lin, want_num};
+pub(crate) use tokens::{hex, paint_vals, want_len, want_lin, want_num};
 
 /// How a property's value is written.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -693,10 +694,6 @@ fn text_of(v: &Value) -> String {
         Value::Number(n) => n.text().to_string(),
         Value::String(s) | Value::Word(s) => s.clone(),
     }
-}
-
-pub(crate) fn quoted(s: &str) -> String {
-    ogt::value_text(&Value::String(s.to_string())).unwrap_or_default()
 }
 
 fn is_ident(s: &str) -> bool {

@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/og-core", "crates/og-geom", "crates/og-destruct", "crates/og-core-derive", "crates/og-ecs", "crates/og-lanes", "crates/og-api", "crates/og-records", "crates/og-idl", "crates/og-runtime", "crates/og-draw", "crates/og-render", "crates/og-bake", "crates/og-cook", "crates/og-bundle", "crates/og-blob", "crates/og-probe", "crates/og-input", "crates/og-physics", "crates/og-anim", "crates/og-tween", "crates/og-timeline", "crates/og-tilemap", "crates/og-audio", "crates/og-nav", "crates/og-ai", "crates/og-story", "crates/og-motion", "crates/og-i18n", "crates/og-net", "crates/og-text", "crates/og-ui", "crates/og-video", "crates/og-video-wasm", "crates/og-host-web", "crates/og-host-node", "crates/og-cli", "crates/og-sccache-wrap", "crates/og-tests", "crates/og-tests-cooked", "crates/og-tests-web"]
+members = ["crates/og-core", "crates/og-geom", "crates/og-destruct", "crates/og-core-derive", "crates/og-ecs", "crates/og-lanes", "crates/og-api", "crates/og-records", "crates/og-idl", "crates/og-runtime", "crates/og-draw", "crates/og-render", "crates/og-bake", "crates/og-cook", "crates/og-bundle", "crates/og-blob", "crates/og-probe", "crates/og-input", "crates/og-physics", "crates/og-anim", "crates/og-tween", "crates/og-timeline", "crates/og-tilemap", "crates/og-audio", "crates/og-nav", "crates/og-ai", "crates/og-story", "crates/og-motion", "crates/og-i18n", "crates/og-net", "crates/og-css", "crates/og-text", "crates/og-ui", "crates/og-video", "crates/og-video-wasm", "crates/og-host-web", "crates/og-host-node", "crates/og-cli", "crates/og-sccache-wrap", "crates/og-tests", "crates/og-tests-cooked", "crates/og-tests-web"]
 
 # A vendored dependency, patched in below; not a member (no fmt, clippy or tests of ours).
 exclude = ["third_party"]
@@ -118,6 +118,8 @@ opt-level = 3
 opt-level = 3
 # og-ui's text (before the split): measured every frame the UI lays out.
 [profile.wasm.package.og-text]
+opt-level = 3
+[profile.wasm.package.og-css]
 opt-level = 3
 [profile.wasm.package.wgpu]
 opt-level = 3
@@ -287,6 +289,9 @@ codegen-units = 16
 opt-level = 1
 codegen-units = 16
 [profile.dev.package.og-text]
+opt-level = 1
+codegen-units = 16
+[profile.dev.package.og-css]
 opt-level = 1
 codegen-units = 16
 [profile.dev.package.og-api]
