@@ -477,6 +477,10 @@ impl Renderer {
         let serial = scene.material_serial();
         let unchanged =
             self.cache.material_serial == Some(serial) && !restyle && replaced.is_empty();
+        // The materials whose parameters this frame stamps (their motion
+        // this frame): the frame draws each with its own uniform, apart from
+        // its aliases (SortedInstances::set_params_moved).
+        let mut params_moved = Vec::new();
         for (i, (material, revision)) in scene.materials().enumerate() {
             if unchanged {
                 break;
@@ -512,6 +516,7 @@ impl Renderer {
                         bytemuck::bytes_of(&change),
                     );
                     m.params = params;
+                    params_moved.push(i as u32);
                 }
                 continue;
             }
@@ -539,6 +544,9 @@ impl Renderer {
                 .and_then(|m| m.params);
             let (bind_group, array, factors) =
                 self.material_bind_group(i, material, hooked.map(|h| h.1), previous_params)?;
+            if previous_params.is_some_and(|p| Some(p) != hooked.map(|h| h.1)) {
+                params_moved.push(i as u32);
+            }
             // A full shader (custom.rs) draws a physical material with its
             // own entries: no physical pipelines.
             let full = hooked.is_some_and(|(sh, _)| {
@@ -622,6 +630,8 @@ impl Renderer {
         if !unchanged {
             self.cache.material_serial = Some(serial);
         }
+        // Also when the pass was skipped: nothing is stamped in that frame.
+        self.sorted.set_params_moved(params_moved);
         let stale_fonts: Vec<usize> = (0..self.cache.fonts.len())
             .filter(|&i| {
                 replaced.contains(&scene.fonts()[i].atlas.index())

@@ -4,6 +4,8 @@ use og_render::wgpu as gpu_wgpu;
 #[path = "../../../../tests/gpu.rs"]
 mod gpu_tests;
 
+#[path = "../material_alias.rs"]
+mod material_alias;
 #[path = "../meshlet.rs"]
 mod meshlet;
 #[path = "../params_motion.rs"]
