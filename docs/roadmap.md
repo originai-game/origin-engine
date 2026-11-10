@@ -53,9 +53,11 @@ Still open in phase 1:
   (range, meter and progress, panel and tooltip, slots, HUD and touch
   controls). The rpg kit's flourish and inactive-hover markers drop with
   them.
-- `-og` migration: presentation (layout-transition, scroll-fade,
-  reduced-motion, text-path), semantics (meta → `og-overlay`, overlaps →
-  `og.ui` diagnostics), revision-3 extras, the final reflection audit.
+- `-og` migration: reduced-motion, meta → `og-overlay` and overlaps →
+  `og.ui` diagnostics land with PR #40; then the revision-3 extras and the
+  final reflection audit. `-og-scroll-fade`, `-og-layout-transition` and
+  `-og-text-path` stay `-og` properties (the owner, 2026-11-10): standard
+  CSS has no equivalent that keeps their output.
 - The `docs/ui.md` §8 inventory and its named gaps (image-alpha shape
   contours, select/file/vertical `field-sizing`, cursors over arbitrary
   clip paths).
