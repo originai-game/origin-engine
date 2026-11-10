@@ -17,7 +17,7 @@ export const INK_NAMES = [
   "flag", "apple", "leaf", "fire", "drop", "skull", "music", "person",
 ];
 
-export const PICTURES = ["blade", "brenna-full", "brenna", "idris", "maren", "sela", "ysolde", "oarsman", "lurker", "abbey", "causeway", "map"] as const;
+export const PICTURES = ["blade", "brenna-full", "brenna", "idris", "maren", "sela", "ysolde", "oarsman", "lurker", "abbey", "causeway", "map", "scene"] as const;
 type Pictures = Record<string, number>;
 
 const item = (id: string, name: string, icon: string, rarity: string, count = 1, more: Partial<{ equipped: boolean; fresh: boolean; locked: boolean; broken: boolean }> = {}) =>
@@ -88,6 +88,8 @@ export const INVENTORY = (p: Pictures) => ({
   cardLore: "“Quenched in the last ember of a dying hearth, it still remembers the warmth it was made to guard.”",
   cardPrimary: "Equip",
   cardSecondary: "Drop",
+  cardSecondaryEquip: "Details",
+  cardUnequip: "Unequip",
 
   charName: "Brenna Vale",
   charLine: "Ranger · Level 12",
@@ -207,6 +209,14 @@ export const JOURNAL = (p: Pictures) => ({
     { id: "sela", name: "Sela", portrait: p.sela, level: 8, health: 58, healthMax: 70, mana: 66, manaMax: 84, down: false },
   ],
   partySelected: "brenna",
+
+  exploreScene: p.scene,
+  trackName: "The Sunken Bell",
+  trackSteps: [
+    { id: "s1", text: "Speak with the oarsman", done: true },
+    { id: "s2", text: "Find the sunken belfry", done: false },
+  ],
+  trackDistance: "312 m",
 
   turnRound: 3,
   turns: [

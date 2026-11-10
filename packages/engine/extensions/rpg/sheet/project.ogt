@@ -13,4 +13,7 @@ seed 1
 ui {
   screen "inventory-fantasy" "style:fantasy;page:inventory"
   screen "journal-fantasy" "style:fantasy;page:journal"
+  screen "equipment-fantasy" "style:fantasy;page:equipment"
+  screen "explore-fantasy" "style:fantasy;page:explore"
+  screen "combat-fantasy" "style:fantasy;page:combat"
 }

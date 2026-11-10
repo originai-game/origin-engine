@@ -5,12 +5,13 @@
 // assets/ui-kits/rpg as a game installs it; the pages mount its documents
 // with fixture stores.
 //
-// Commands: style:<fantasy>, page:<inventory|journal>, reduced:<on|off>.
+// Commands: style:<fantasy>, page:<inventory|journal|equipment|explore|combat>,
+// reduced:<on|off>.
 
 import { og, type World } from "@origingame/engine";
 import { ITEM_NAMES, INK_NAMES, INVENTORY, JOURNAL, PICTURES } from "./fixtures.ts";
 
-const PAGES = ["inventory", "journal"] as const;
+const PAGES = ["inventory", "journal", "equipment", "explore", "combat"] as const;
 const STYLES = ["fantasy"] as const;
 
 const DOCUMENTS = [
@@ -25,8 +26,12 @@ const DOCUMENTS = [
   "ui-kits/rpg/compass.svelte",
   "ui-kits/rpg/party.svelte",
   "ui-kits/rpg/turn-order.svelte",
+  "ui-kits/rpg/quest-tracker.svelte",
   "ui/inventory.svelte",
   "ui/journal.svelte",
+  "ui/equipment.svelte",
+  "ui/explore.svelte",
+  "ui/combat.svelte",
   "ui/sheet.svelte",
 ];
 
