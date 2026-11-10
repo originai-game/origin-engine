@@ -154,3 +154,11 @@ stepper. Keep held-repeat timing and the pad keyboard in the migration tests.
 Land CSS support inventory updates in the same land.sh run as the code
 milestone they document. Do not spend a separate shared landing queue turn
 on proof-count updates while other lanes are waiting.
+
+## 2026-11-11 — Never chain a destructive command after `lane.sh take`
+
+`scripts/lane.sh take lane-4 X; cd lane-4 && git reset --hard ...` ran the
+reset inside another stream's lane after `take` refused (the lane had been
+claimed after `--list`), and destroyed its uncommitted edits. Chain only
+with `&&` after `take` exits 0, and before any reset, checkout or clean run
+`git -C <lane> rev-parse --abbrev-ref HEAD` to confirm the branch is yours.
