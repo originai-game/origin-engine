@@ -3,6 +3,7 @@ use crate::motion::TransitionKind;
 use crate::style::{Palette, Srgba, TypeRamp, TypeStep};
 use crate::tokens::SoundEvent;
 use og_core::ogt::{Entry, Value};
+pub use og_css::parse_color;
 use og_draw::TextureHandle;
 
 mod art;
@@ -80,24 +81,6 @@ pub fn ramp_step<'a>(r: &'a mut TypeRamp, name: &str) -> Option<&'a mut TypeStep
         "displayXl" => &mut r.display_xl,
         "displayXl2" | "hero" => &mut r.display_xl2,
         _ => return None,
-    })
-}
-
-/// A CSS hex colour: `#rgb`, `#rgba`, `#rrggbb` or `#rrggbbaa`.
-pub fn parse_color(s: &str) -> Option<Srgba> {
-    let h = s.strip_prefix('#')?;
-    let d: Vec<u8> = h
-        .chars()
-        .map(|c| c.to_digit(16).map(|v| v as u8))
-        .collect::<Option<_>>()?;
-    let v: Vec<u8> = match d.len() {
-        3 | 4 => d.iter().map(|x| x * 17).collect(),
-        6 | 8 => d.chunks(2).map(|p| p[0] * 16 + p[1]).collect(),
-        _ => return None,
-    };
-    Some(Srgba {
-        rgb: [v[0], v[1], v[2]],
-        alpha: v.get(3).map_or(1.0, |&a| f32::from(a) / 255.0),
     })
 }
 
