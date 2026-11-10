@@ -241,6 +241,10 @@ function shapeProblems(method: string, a: unknown): string[] {
   return out;
 }
 
+/** Resolves after `ms`, through the runtime's timer: a game's type check has no timer globals. */
+const sleep = (ms: number) =>
+  new Promise<void>((r) => (globalThis as unknown as { setTimeout(f: () => void, ms: number): unknown }).setTimeout(r, ms));
+
 /**
  * Checks a platform provider against this contract, for its author's tests: it lists methods
  * og.platform calls, without duplicates; every method is called once in one batch (each listed
@@ -293,13 +297,13 @@ export async function checkPlatformProvider(provider: PlatformProvider, options:
   const until = Date.now() + (options.wait ?? 2000);
   // Pumped as the shell pumps it: poll on every frame, with the engine's tick moving.
   while (!done() && Date.now() < until) {
-    await new Promise((r) => setTimeout(r, step));
+    await sleep(step);
     tick++;
     provider.poll?.(link);
   }
   // Late duplicates show within the settle time.
   for (let t = 0; t < (options.settle ?? 50); t += step) {
-    await new Promise((r) => setTimeout(r, step));
+    await sleep(step);
     tick++;
     provider.poll?.(link);
   }

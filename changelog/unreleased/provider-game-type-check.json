@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og check and og test of a game with playtests",
+      "summary": "A game's type check failed with 8 errors in .og/engine/src/provider.ts and src/web/relay-rooms.ts (setTimeout, WebSocket, Event, MessageEvent and CloseEvent not found), so og test ran no playtest: the provider module, which @origingame/engine/playtest reaches, named DOM and timer globals a game's type check does not have. It now writes out the socket it needs and reaches the timer through globalThis; relayRooms and checkPlatformProvider behave as before."
+    }
+  ]
+}

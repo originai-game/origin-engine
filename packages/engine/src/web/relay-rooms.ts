@@ -38,12 +38,19 @@ export interface RelayRooms extends RoomProvider {
   close(): void;
 }
 
-/** The part of the WebSocket constructor this needs (the browser's by default). */
-export type SocketFactory = new (url: string) => Pick<WebSocket, "send" | "close" | "readyState"> & {
-  onopen: ((e: Event) => unknown) | null;
-  onmessage: ((e: MessageEvent) => unknown) | null;
-  onclose: ((e: CloseEvent) => unknown) | null;
-  onerror: ((e: Event) => unknown) | null;
+/**
+ * The part of the WebSocket constructor this needs (the browser's by default), written out
+ * rather than named from the DOM: a game's type check has no DOM, and og.platform's provider
+ * module, which re-exports relayRooms, is part of it.
+ */
+export type SocketFactory = new (url: string) => {
+  send(data: string): void;
+  close(code?: number): void;
+  readonly readyState: number;
+  onopen: ((e: unknown) => unknown) | null;
+  onmessage: ((e: { readonly data: unknown }) => unknown) | null;
+  onclose: ((e: { readonly wasClean: boolean }) => unknown) | null;
+  onerror: ((e: unknown) => unknown) | null;
 };
 
 /** The ops that ask for a room: a lost or unreachable relay answers each with an `error`. */
@@ -55,7 +62,7 @@ const ASKS = new Set(["create", "join", "quick"]);
  */
 export function relayRooms(url: string, options: { readonly WebSocket?: SocketFactory } = {}): RelayRooms {
   if (!/^wss?:\/\/[^/]/.test(url)) throw new Error(`'${url}' is not a relay URL: write ws://127.0.0.1:<port>/ (og relay prints its port) or wss://<host>/ for one behind TLS`);
-  const Socket = options.WebSocket ?? (globalThis.WebSocket as unknown as SocketFactory | undefined);
+  const Socket = options.WebSocket ?? (globalThis as unknown as { WebSocket?: SocketFactory }).WebSocket;
   if (!Socket) throw new Error("this page has no WebSocket: relayRooms needs a browser (or a runtime with WebSocket)");
   let state: RelayRooms["state"] = "connecting";
   let opened = false;
