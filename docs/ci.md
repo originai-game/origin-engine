@@ -157,9 +157,9 @@ cache), an og-ui touch rebuild 23 s, the full `rust-gpu` step about 9 min
 at 4 workers. The VM is started and stopped by the owner; a stopped orb
 keeps its disk, not its processes.
 
-Until the orb survives a whole `quick` (its container was killed mid-run on
-2026-11-10) and the one L4-only failure (the CSS colour-matrix tint) is
-fixed, heads proved on the L4 still land from a macrunner lane.
+Every head lands from the GPU host (the owner, 2026-11-10): authors on
+macrunner push a branch and hand it to the integrator; no landing runs on
+a Mac. The orb runs on the VM directly, not in a container.
 
 macrunner (Metal, Safari, iPhone) and studio-win (DX12, Chrome, Edge,
 Firefox) are development and compatibility hosts. They run the same gate
