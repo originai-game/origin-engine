@@ -187,3 +187,19 @@ pub fn tok_text(t: &Tok) -> String {
 pub fn quoted(s: &str) -> String {
     ogt::value_text(&Value::String(s.to_string())).unwrap_or_default()
 }
+
+pub fn camel(s: &str) -> String {
+    let mut out = String::new();
+    let mut up = false;
+    for c in s.chars() {
+        if c == '-' {
+            up = true;
+        } else if up {
+            out.push(c.to_ascii_uppercase());
+            up = false;
+        } else {
+            out.push(c);
+        }
+    }
+    out
+}

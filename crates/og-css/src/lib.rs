@@ -3,8 +3,9 @@
 //! and style packs.
 
 pub mod calc;
+pub mod color;
 mod srgba;
 mod tokens;
 
-pub use srgba::Srgba;
-pub use tokens::{Tok, describe, quoted, tok_text, tokens};
+pub use srgba::{Srgba, parse_color};
+pub use tokens::{Tok, camel, describe, quoted, tok_text, tokens};

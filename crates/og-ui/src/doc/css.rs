@@ -15,7 +15,7 @@ mod tokens;
 
 pub(crate) use declarations::{declarations, split_decls, zero_shift};
 use lower::*;
-pub(crate) use og_css::{Tok, describe, quoted, tok_text, tokens};
+pub(crate) use og_css::{Tok, camel, describe, quoted, tok_text, tokens};
 pub(crate) use to_css::decl_line;
 use tokens::*;
 pub(crate) use tokens::{hex, paint_vals, want_len, want_lin, want_num};
@@ -631,22 +631,6 @@ pub(crate) fn kebab(s: &str) -> String {
 }
 
 /// `space-between` → `spaceBetween`.
-pub(crate) fn camel(s: &str) -> String {
-    let mut out = String::new();
-    let mut up = false;
-    for c in s.chars() {
-        if c == '-' {
-            up = true;
-        } else if up {
-            out.push(c.to_ascii_uppercase());
-            up = false;
-        } else {
-            out.push(c);
-        }
-    }
-    out
-}
-
 /// A decimal text times 10^k, exactly (`0.25`, 2 → `25`).
 pub(crate) fn shift(text: &str, k: i32) -> String {
     if text.contains(['e', 'E']) {
