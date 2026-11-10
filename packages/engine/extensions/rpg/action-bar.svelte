@@ -41,5 +41,5 @@
 .cool { position: absolute; left: 0; top: 0; width: stretch; height: calc(var(--cool) * 100%); }
 .hotkey { position: absolute; left: 0; top: calc(100% + var(--space-xxs)); width: stretch; text-align: center; }
 .count { position: absolute; left: 0; top: calc(100% - var(--space-lg)); width: calc(100% - var(--space-xxs)); text-align: end; }
-@media (width < 600px) { .items { display: none; } .skill { width: var(--size-lg); height: var(--size-lg); } }
+@media (width < 600px), (height < 500px) { .items { display: none; } .skill { width: var(--size-lg); height: var(--size-lg); } }
 </style>

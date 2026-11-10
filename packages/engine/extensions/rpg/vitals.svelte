@@ -41,7 +41,7 @@
 .bar-fill { position: absolute; left: 0; top: 0; width: calc(var(--fill) * 100%); height: stretch; }
 .bar-fill:dir(rtl) { left: auto; right: 0; }
 .bar-figure { position: relative; font-variant-numeric: tabular-nums; white-space: nowrap; }
-@media (width < 600px) {
+@media (width < 600px), (height < 500px) {
   .rpg-vitals[data-plate=compact] .bars { width: var(--size-xxl); }
   .rpg-vitals[data-plate=large] .ring { width: calc(var(--size-xxl) * 1.05); height: calc(var(--size-xxl) * 1.05); }
   .rpg-vitals[data-plate=large] .badge { top: calc(var(--size-xxl) * 1.05 - var(--size-md)); }

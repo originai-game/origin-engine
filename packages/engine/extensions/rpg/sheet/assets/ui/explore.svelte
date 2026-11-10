@@ -37,4 +37,10 @@
   #Map { align-self: start; }
   #Bar { padding-bottom: var(--space-md); }
 }
+@media (height < 500px) {
+  #Hud { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-rows: auto 1fr auto; grid-template-areas: "party compass tracker" "party . ." "party bar map"; column-gap: var(--space-md); row-gap: var(--space-xs); padding: var(--space-sm) var(--space-md); }
+  #Player { display: none; }
+  #Party { gap: var(--space-xs); }
+  #Bar { padding-bottom: 0; }
+}
 </style>

@@ -37,4 +37,5 @@
 .round-rule { display: flex; width: stretch; align-items: center; gap: var(--space-sm); }
 .round-rule .rpg-rule { width: stretch; flex: 1; }
 .round { flex: none; padding: var(--space-xxs) var(--space-xl); white-space: nowrap; }
+@media (height < 500px) { .ring { max-width: var(--size-xl); } .turns { padding: 0; } .round { padding: 0 var(--space-lg); } }
 </style>

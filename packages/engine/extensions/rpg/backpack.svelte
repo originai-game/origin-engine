@@ -70,7 +70,7 @@
 .tabs { position: relative; display: flex; width: stretch; align-items: center; gap: var(--space-xs); }
 .tabs-fade { display: none; position: absolute; right: 0; top: 0; width: var(--size-lg); height: stretch; pointer-events: none; }
 .tabs-fade:dir(rtl) { right: auto; left: 0; }
-@media (width < 600px) {
+@media (width < 600px), (height < 500px) {
   .tabs-fade { display: block; }
   .rpg-band { min-height: var(--size-lg); padding-top: 0; padding-bottom: 0; }
   .grid { gap: var(--space-xs); }

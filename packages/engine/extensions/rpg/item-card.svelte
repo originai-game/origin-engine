@@ -85,10 +85,10 @@
 .stat-value, .delta, .stat-current, .lead-value, .current-value { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .stat-value, .stat-current { text-align: end; }
 .lore { margin: 0; padding: var(--space-xs) var(--space-xs); flex: none; }
-@media (width < 600px) { .lore { display: none; } }
+@media (width < 600px), (height < 500px) { .lore { display: none; } }
 .actions { display: flex; flex-direction: column; width: stretch; gap: var(--space-sm); flex: none; }
 .act { width: stretch; min-height: calc(var(--size-touch) * 1.25); }
-@media (width < 600px) {
+@media (width < 600px), (height < 500px) {
   .hero { height: calc(var(--size-xxl) * 0.55); }
   .hero-art { width: calc(var(--size-xxl) * 0.6); height: calc(var(--size-xxl) * 0.6); }
   .actions { flex-direction: row; }

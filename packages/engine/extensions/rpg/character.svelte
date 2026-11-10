@@ -83,4 +83,5 @@
 .attr { column-gap: var(--space-xs); }
 .attr-value { font-variant-numeric: tabular-nums; white-space: nowrap; }
 @container (width < 300px) { .attributes { flex-direction: column; gap: 0; } .attr-split { display: none; } }
+@media (height < 500px) { .doll { padding: var(--space-xxs) var(--space-xs); } .column { gap: var(--space-xxs); } .cell { width: var(--size-lg); height: var(--size-lg); padding: var(--space-xxs); } }
 </style>

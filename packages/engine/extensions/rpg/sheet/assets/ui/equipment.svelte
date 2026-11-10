@@ -36,4 +36,12 @@
   #Foot button { width: calc(50% - var(--space-xs) / 2); }
   #FootGap { display: none; }
 }
+@media (height < 500px) {
+  #Page { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto minmax(0, 1fr); grid-template-areas: "menu menu" "body foot"; column-gap: var(--space-sm); row-gap: var(--space-xs); padding: 0 var(--space-md) var(--space-sm); }
+  #Menu { grid-area: menu; }
+  #Body { grid-area: body; height: stretch; gap: var(--space-sm); }
+  #Foot { grid-area: foot; flex-direction: column; justify-content: flex-end; gap: var(--space-xs); }
+  #Foot button { width: calc(var(--size-xxl) * 2); }
+  #FootGap { display: none; }
+}
 </style>

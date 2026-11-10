@@ -36,5 +36,5 @@
 .menu-close { width: var(--size-touch); height: var(--size-touch); flex: none; padding: 0; }
 .face { width: stretch; height: stretch; align-items: center; justify-content: center; }
 .close-mark { width: 50%; height: 50%; }
-@media (width < 600px) { .rpg-menu-bar { gap: var(--space-xs); } .menu-tabs { grid-auto-columns: max-content; width: max-content; } .menu-fade { display: block; } }
+@media (width < 600px), (height < 500px) { .rpg-menu-bar { gap: var(--space-xs); } .menu-tabs { grid-auto-columns: max-content; width: max-content; } .menu-fade { display: block; } }
 </style>

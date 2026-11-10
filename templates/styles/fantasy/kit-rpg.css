@@ -293,7 +293,15 @@ button.member[data-down=true]::part(base) { border-color: #6f6a62; background: l
     #140e09;
 }
 
-@media (width < 600px) {
+/* A phone on its side: every band and title one step down, to fit 390 px. */
+@media (height < 500px) {
+  .rpg-band { min-height: var(--size-md); padding-top: 0; padding-bottom: 0; }
+  .rpg-title { font-size: 18px; }
+  .rpg-quest-detail .rpg-title { font-size: 17px; }
+  .rpg-band.small .rpg-title, .rpg-quest-log .rpg-title { font-size: 14px; }
+}
+
+@media (width < 600px), (height < 500px) {
   .rpg-backpack .rpg-title { font-size: 22px; }
   .rpg-backpack .weight-line .caption { font-size: 12px; }
   .rpg-backpack .figure { font-size: 16px; }
@@ -413,5 +421,5 @@ button.menu-close::part(base) { border-image: none; padding: 0; border: 1px soli
 .rpg-character .band-end.finish, .rpg-backpack .band-end.finish { background: url(art/flourish-right.svg) center / contain no-repeat; }
 .rpg-menu-bar .menu-fade { background: linear-gradient(90deg, #140d0900, #140d09); }
 .rpg-menu-bar .menu-fade:dir(rtl) { background: linear-gradient(270deg, #140d0900, #140d09); }
-@media (width < 600px) { button.menu-tab::part(base) { font-size: 14px; padding: 0 var(--space-sm); } }
+@media (width < 600px), (height < 500px) { button.menu-tab::part(base) { font-size: 14px; padding: 0 var(--space-sm); } }
 .rpg-combat-log .lines { mask-image: linear-gradient(180deg, #000 0, #000 calc(100% - 36px), #0000 100%); }

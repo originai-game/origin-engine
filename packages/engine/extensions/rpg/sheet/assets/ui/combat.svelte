@@ -43,4 +43,13 @@
   #Foot { flex-direction: column; gap: var(--space-sm); }
   #Party, #Commands { width: 100%; flex: none; }
 }
+@media (height < 500px) {
+  #Hud { display: grid; grid-template-columns: minmax(0, 1fr) 34%; grid-template-rows: auto minmax(0, 1fr) auto; grid-template-areas: "turns enemy" ". enemy" "party commands"; column-gap: var(--space-md); row-gap: var(--space-xs); padding: var(--space-sm) var(--space-md); }
+  #Top, #Mid, #Foot { display: contents; }
+  #Log, #Goal { display: none; }
+  #Turns { grid-area: turns; }
+  #Enemy { grid-area: enemy; width: stretch; align-self: start; }
+  #Party { grid-area: party; align-self: end; }
+  #Commands { grid-area: commands; width: stretch; align-self: end; }
+}
 </style>

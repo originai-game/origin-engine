@@ -39,5 +39,5 @@
 .effects { display: flex; flex-direction: column; width: stretch; margin: 0; padding: 0; list-style: none; gap: var(--space-xs); }
 .effect { display: flex; align-items: center; gap: var(--space-sm); }
 .effect-mark { width: var(--size-sm); height: var(--size-sm); flex: none; }
-@media (width < 600px) { .picture { display: none; } .effects { flex-direction: row; flex-wrap: wrap; column-gap: var(--space-md); } }
+@media (width < 600px), (height < 500px) { .picture { display: none; } .effects { flex-direction: row; flex-wrap: wrap; column-gap: var(--space-md); } }
 </style>

@@ -38,4 +38,9 @@
   #Log { width: stretch; height: auto; flex: none; }
   #Fade { display: block; position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--size-xxl) * 1.5); pointer-events: none; }
 }
+@media (height < 500px) {
+  #Page { grid-template-columns: 25% 1fr 25%; grid-template-rows: minmax(0, 1fr); grid-template-areas: "log middle detail"; column-gap: var(--space-sm); padding: var(--space-sm) var(--space-md); }
+  #Compass, #Talk { display: none; }
+  #Place { height: 56%; }
+}
 </style>

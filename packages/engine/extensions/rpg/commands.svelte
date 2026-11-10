@@ -24,5 +24,5 @@
 .command { width: stretch; height: calc(var(--size-xl) * 1.2); padding: 0; }
 .face { display: flex; flex-direction: column; width: stretch; height: stretch; align-items: center; justify-content: center; gap: var(--space-xxs); }
 .command-mark { width: var(--size-lg); height: var(--size-lg); }
-@media (width < 600px) { .plates { grid-auto-flow: row; grid-template-columns: repeat(3, 1fr); } }
+@media (width < 600px), (height < 500px) { .plates { grid-auto-flow: row; grid-template-columns: repeat(3, 1fr); } }
 </style>
