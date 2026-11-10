@@ -73,13 +73,9 @@
 /* ── Backpack. */
 .rpg-backpack .tabs { padding: 0 0 var(--space-xs); border-bottom: 1px solid #8f765055; }
 .rpg-backpack .key { color: var(--ink-faint); }
-/* pending: core-widget host rules (parts-as-nodes) — a button host refuses
-   color and font today; these belong on the tab host:
-   button.tab { font-family: var(--fantasy-caps); font-size: 1.1429em; letter-spacing: var(--fantasy-tracking); text-transform: uppercase; color: var(--ink-muted); }
-   button.tab[aria-selected=true] { color: var(--gold); }
-   ::part(base) carries them until then. */
-button.tab::part(base) { font-family: var(--fantasy-caps); font-size: 0.9286em; letter-spacing: 0; text-transform: uppercase; color: var(--ink-muted); }
-button.tab[aria-selected=true]::part(base) { color: var(--gold); }
+button.tab { color: var(--ink-muted); }
+button.tab[aria-selected=true] { color: var(--gold); }
+button.tab::part(base) { font-family: var(--fantasy-caps); font-size: 0.9286em; letter-spacing: 0; text-transform: uppercase; }
 button.tab::part(base) { border-image: none; padding: 0 2px; background: none; border: none; box-shadow: none; border-radius: 0; }
 button.tab::part(base):hover { background: linear-gradient(0deg, #e9c46f1f, #e9c46f00); }
 button.tab[aria-selected=true]::part(base) { border-bottom: 2px solid var(--gold); background: linear-gradient(0deg, #e9c46f2e, #e9c46f00 70%); }

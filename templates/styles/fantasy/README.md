@@ -31,7 +31,8 @@ Fonts come from `@styles/shared` under their own licences there.
 Rules written in their correct form are kept and marked `/* pending: … */`
 where an engine feature is still landing:
 
-- Core-widget host rules, inheritance and transforms on `::part()`
-  (parts-as-nodes): label size and ink are set on `::part(base)` for now.
+- A heading's `::part(flourish)` is read as a text span and refuses
+  `background`, so the gold rule under a heading is not drawn yet
+  (parts-as-nodes).
 - The `font-family` fallback list is not consulted per glyph: Newsreader
   has no arrows, so a `unicode-range` face takes them from Spectral.

@@ -7,7 +7,12 @@
    any width through border-image; the plate fills the middle. The default
    is dark iron with gold ink; .primary is painted crimson.
    The resting primary rule takes :enabled so it outranks the default's
-   :hover/:active rules, which have equal specificity. */
+   :hover/:active rules, which have equal specificity. The resting ink is
+   on the host, so the label and the button's content inherit it; each
+   state's ink is on the part. The display face stays on the part: it is the
+   label's own, and a button's content keeps the body face. */
+button { color: #e9c46f; }
+button.primary { color: #f8ecd6; }
 button::part(base) {
   min-height: var(--size-touch);
   padding: 0 calc(var(--space-lg) + 8px);
@@ -16,7 +21,6 @@ button::part(base) {
   border-image: url(art/button-iron.svg) 28 24 fill / 50% 24px stretch;
   background: none;
   box-shadow: none;
-  color: #e9c46f;
   font-family: var(--font-display);
   font-size: 1.3571em;
   letter-spacing: 0.12em;
@@ -26,19 +30,13 @@ button::part(base) {
 button::part(base):hover { border-image-source: url(art/button-iron-hover.svg); color: #f6dc95; }
 button::part(base):active { border-image-source: url(art/button-iron-pressed.svg); color: #d9b45f; }
 button::part(base):disabled { border-image-source: url(art/button-disabled.svg); color: #7d705d; text-shadow: none; }
-button.primary::part(base):enabled { border-image-source: url(art/button-red.svg); color: #f8ecd6; }
+button.primary::part(base):enabled { border-image-source: url(art/button-red.svg); }
 button.primary::part(base):hover { border-image-source: url(art/button-red-hover.svg); color: #fff6e4; }
 button.primary::part(base):active { border-image-source: url(art/button-red-pressed.svg); color: #f0dcc0; }
 button.primary::part(base):disabled { border-image-source: url(art/button-disabled.svg); color: #a08a78; }
 button.secondary::part(base) { border-image-source: url(art/button-iron.svg); }
 button[variant=quiet]::part(base) { border-image: none; background: none; border: none; box-shadow: none; padding: 0 var(--space-xs); }
 button::part(focus):focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; border-radius: 4px; }
-/* pending: core-widget host rules (parts-as-nodes). A button host refuses
-   color today ("CSS property color does not apply to button"); the rule
-   that belongs here is kept as written and switched on when hosts land:
-   button.primary { color: #f8ecd6; font-family: var(--font-display); }
-   ::part(base) carries the ink until then. */
-
 /* ── Checkbox, switch and radio. */
 input[type=checkbox]::part(row), input[type=radio]::part(option) { border: none; box-shadow: none; background: none; }
 input[type=checkbox]::part(row):hover, input[type=radio]::part(option):hover { background: #e9c46f14; }
