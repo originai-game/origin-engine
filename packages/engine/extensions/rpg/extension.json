@@ -1,0 +1,7 @@
+{
+  "format": 1,
+  "kind": "kit",
+  "name": "rpg",
+  "version": "1.0.0",
+  "description": "RPG and open-world documents: backpack, item card and character, quest log and detail, world map and location, conversation, compass, party and initiative"
+}
