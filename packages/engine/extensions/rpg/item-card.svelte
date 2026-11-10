@@ -88,8 +88,8 @@
 .actions { display: flex; flex-direction: column; width: stretch; gap: var(--space-sm); flex: none; }
 .act { width: stretch; min-height: calc(var(--size-touch) * 1.25); }
 @media (width < 600px) {
-  .hero { height: calc(var(--size-xxl) * 0.95); }
-  .hero-art { width: calc(var(--size-xxl) * 1.05); height: calc(var(--size-xxl) * 1.05); }
+  .hero { height: calc(var(--size-xxl) * 0.55); }
+  .hero-art { width: calc(var(--size-xxl) * 0.6); height: calc(var(--size-xxl) * 0.6); }
   .actions { flex-direction: row; }
   .act { min-height: var(--size-touch); }
 }

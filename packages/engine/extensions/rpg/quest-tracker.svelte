@@ -18,7 +18,7 @@
       <li class="tracker-step" data-done={s.done}><div class="tracker-mark"></div><span class="tracker-text">{s.text}</span></li>
     {/each}
   </ul>
-  <div class="tracker-distance" hidden={!distance}><div class="tracker-arrow"></div><span class="tracker-far">{distance}</span></div>
+  {#if distance}<div class="tracker-distance"><div class="tracker-arrow"></div><span class="tracker-far">{distance}</span></div>{/if}
 </section>
 
 <style>
@@ -29,6 +29,5 @@
 .tracker-mark { width: var(--space-md); height: var(--space-md); flex: none; }
 .tracker-text { width: stretch; }
 .tracker-distance { display: flex; align-items: center; justify-content: center; gap: var(--space-xs); }
-.tracker-distance[hidden] { display: none; }
 .tracker-arrow { width: var(--space-md); height: var(--space-md); }
 </style>

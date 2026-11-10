@@ -18,15 +18,15 @@
   (a slot's key) and unequip (X or pad Y on the focused slot, its key).
 -->
 <section id="RpgCharacter" class="rpg-character" aria-label={title ? title : name}>
-  <header class="rpg-band" hidden={!title}><div class="band-end start"></div><h2 class="rpg-title">{title}</h2><div class="band-end finish"></div></header>
-  <header class="who" hidden={title != ''}>
+  {#if title}<header class="rpg-band"><div class="band-end start"></div><h2 class="rpg-title">{title}</h2><div class="band-end finish"></div></header>{:else}
+  <header class="who">
     <img class="portrait" src={portrait} alt="" hidden={!portrait}>
     <div class="who-text">
       <h2 class="char-name">{name}</h2>
       <p class="char-line">{line}</p>
       <div class="rpg-rule" role="separator"></div>
     </div>
-  </header>
+  </header>{/if}
   <div class="doll">
     <img class="figure" src={figure} alt="" hidden={!figure}>
     <div class="column start" role="group">

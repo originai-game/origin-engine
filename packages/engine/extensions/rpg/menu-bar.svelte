@@ -12,19 +12,29 @@
   (a screen's key), tabPrev, tabNext and close (the button, Escape or B).
 -->
 <nav id="RpgMenuBar" class="rpg-menu-bar" aria-label={t("rpg.menu.name")} ontabNext={tabNext} ontabPrev={tabPrev} onback={close}>
-  <div class="menu-tabs" role="tablist">
-    {#each tabs as c (c.id)}
-      <button class="menu-tab" role="tab" aria-selected={c.id == tab} onclick={choosetab}>{c.label}</button>
-    {/each}
+  <div class="menu-wrap">
+    <scroll class="menu-scroll">
+      <div class="menu-tabs" role="tablist">
+        {#each tabs as c (c.id)}
+          <button class="menu-tab" role="tab" aria-selected={c.id == tab} onclick={choosetab}>{c.label}</button>
+        {/each}
+      </div>
+    </scroll>
+    <div class="menu-fade"></div>
   </div>
   <button id="Close" class="menu-close" aria-label={t("rpg.menu.close")} onclick={close}><div class="face"><div class="close-mark"></div></div></button>
 </nav>
 
 <style>
 .rpg-menu-bar { display: flex; width: stretch; align-items: center; gap: var(--space-md); }
+.menu-wrap { position: relative; width: stretch; min-width: 0; }
+.menu-scroll { width: stretch; overflow-x: auto; overflow-y: hidden; }
+.menu-fade { display: none; position: absolute; left: calc(100% - var(--size-lg)); top: 0; width: var(--size-lg); height: stretch; pointer-events: none; }
+.menu-fade:dir(rtl) { left: 0; }
 .menu-tabs { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: var(--space-xs); width: stretch; }
 .menu-tab { width: stretch; min-height: var(--size-touch); }
 .menu-close { width: var(--size-touch); height: var(--size-touch); flex: none; padding: 0; }
 .face { width: stretch; height: stretch; align-items: center; justify-content: center; }
 .close-mark { width: 50%; height: 50%; }
+@media (width < 600px) { .rpg-menu-bar { gap: var(--space-xs); } .menu-tabs { grid-auto-columns: max-content; width: max-content; } .menu-fade { display: block; } }
 </style>

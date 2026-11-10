@@ -33,7 +33,7 @@
 <style>
 .rpg-action-bar { display: flex; align-items: flex-end; gap: var(--space-lg); width: fit-content; }
 .skills, .items { display: flex; gap: var(--space-xs); padding: var(--space-xs); }
-.skill, .quick { width: var(--size-xl); height: var(--size-xl); padding: 0; }
+.skill, .quick { width: calc(var(--size-xl) * 0.85); height: calc(var(--size-xl) * 0.85); padding: 0; }
 .face { position: relative; width: stretch; height: stretch; align-items: center; justify-content: center; }
 .skill-art, .item-art { width: 78%; height: 78%; }
 .cool { position: absolute; left: 0; top: 0; width: stretch; height: calc(var(--cool) * 100%); }

@@ -34,10 +34,16 @@
 .badge { position: absolute; left: 0; top: calc(var(--size-xl) - var(--space-lg)); width: var(--space-xl); height: var(--space-xl); align-items: center; justify-content: center; }
 .rpg-vitals[data-plate=large] .badge { top: calc(var(--size-xxl) * 1.6 - var(--size-md)); width: var(--size-md); height: var(--size-md); }
 .bars { display: flex; flex-direction: column; gap: var(--space-xxs); width: calc(var(--size-xxl) * 1.4); }
-.rpg-vitals[data-plate=large] .bars { width: calc(var(--size-xxl) * 4); gap: var(--space-xs); }
+.rpg-vitals[data-plate=large] .bars { width: calc(var(--size-xxl) * 2.6); gap: var(--space-xs); }
 .bar { position: relative; display: flex; width: stretch; height: var(--space-sm); align-items: center; justify-content: center; }
 .rpg-vitals[data-plate=large] .bar { height: calc(var(--space-md) * 1.6); }
 .bar-fill { position: absolute; left: 0; top: 0; width: calc(var(--fill) * 100%); height: stretch; }
 .bar-fill:dir(rtl) { left: auto; right: 0; }
 .bar-figure { position: relative; font-variant-numeric: tabular-nums; white-space: nowrap; }
+@media (width < 600px) {
+  .rpg-vitals[data-plate=large] .ring { width: calc(var(--size-xxl) * 1.05); height: calc(var(--size-xxl) * 1.05); }
+  .rpg-vitals[data-plate=large] .badge { top: calc(var(--size-xxl) * 1.05 - var(--size-md)); }
+  .rpg-vitals[data-plate=large] .bars { width: calc(var(--size-xxl) * 1.7); }
+  .rpg-vitals[data-plate=large] .bar { height: calc(var(--space-md) * 1.2); }
+}
 </style>
