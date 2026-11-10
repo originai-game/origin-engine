@@ -134,24 +134,73 @@ pub enum Color {
     },
 }
 
+/// The palette roles a colour's `var(--role)` names, and the style's own
+/// ink and scheme: what a [`Context`] reads from a style (og-ui's `Theme`).
+pub trait ColorTokens {
+    /// The colour of palette role `name` (camelCase), if the style has it.
+    fn color(&self, name: &str) -> Option<Srgba>;
+    /// The style's ink: `currentColor` where an element sets none.
+    fn ink(&self) -> Srgba;
+    /// The style's colour scheme is dark.
+    fn dark(&self) -> bool;
+}
+
 /// What a colour is resolved against.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy)]
 pub struct Context<'a> {
-    pub theme: &'a crate::Theme,
+    /// Where `var(--role)` is looked up, borrowed for the resolve.
+    pub tokens: &'a dyn ColorTokens,
     /// `currentColor` (the element's `color`).
     pub current: Srgba,
     /// The used colour scheme is dark (`light-dark()` takes its second).
     pub dark: bool,
 }
 
+impl std::fmt::Debug for Context<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Context")
+            .field("current", &self.current)
+            .field("dark", &self.dark)
+            .finish_non_exhaustive()
+    }
+}
+
 impl<'a> Context<'a> {
     /// The style's own: its ink as `currentColor`, its scheme.
-    pub fn of(theme: &'a crate::Theme) -> Context<'a> {
+    pub fn of(tokens: &'a dyn ColorTokens) -> Context<'a> {
         Context {
-            theme,
-            current: theme.palette.ink,
-            dark: theme.scheme == crate::Scheme::Dark,
+            tokens,
+            current: tokens.ink(),
+            dark: tokens.dark(),
         }
+    }
+}
+
+/// No palette: what a colour that depends on nothing is resolved against
+/// ([`Color::literal`] never reads it).
+struct NoTokens;
+
+impl ColorTokens for NoTokens {
+    fn color(&self, _: &str) -> Option<Srgba> {
+        None
+    }
+    fn ink(&self) -> Srgba {
+        Srgba::BLACK
+    }
+    fn dark(&self) -> bool {
+        false
+    }
+}
+
+impl ColorTokens for crate::Theme {
+    fn color(&self, name: &str) -> Option<Srgba> {
+        crate::Theme::color(self, name)
+    }
+    fn ink(&self) -> Srgba {
+        self.palette.ink
+    }
+    fn dark(&self) -> bool {
+        self.scheme == crate::Scheme::Dark
     }
 }
 
@@ -161,10 +210,8 @@ impl Color {
     /// The colour as sRGB when it depends on nothing (no token,
     /// `currentColor` or `light-dark()`).
     pub fn literal(&self) -> Option<Srgba> {
-        self.fixed().then(|| {
-            let theme = crate::Theme::default();
-            to_srgba(self.eval(&Context::of(&theme)))
-        })
+        self.fixed()
+            .then(|| to_srgba(self.eval(&Context::of(&NoTokens))))
     }
 
     fn fixed(&self) -> bool {
@@ -209,7 +256,9 @@ impl Color {
     fn eval(&self, cx: &Context) -> Abs {
         match self {
             Color::Abs { space, c, alpha } => (*space, *c, *alpha),
-            Color::Token(name) => srgb_abs(cx.theme.color(name).unwrap_or(Srgba::rgb(255, 0, 255))),
+            Color::Token(name) => {
+                srgb_abs(cx.tokens.color(name).unwrap_or(Srgba::rgb(255, 0, 255)))
+            }
             Color::Current => srgb_abs(cx.current),
             Color::LightDark(l, d) => {
                 if cx.dark {
@@ -349,9 +398,7 @@ pub(crate) fn parse(t: &Tok) -> Result<Color, String> {
             match f.as_str() {
                 "var" => match args.as_slice() {
                     [v] => match v.as_slice() {
-                        [Tok::Ident(n)] if n.starts_with("--") => {
-                            Ok(Color::Token(camel(&n[2..])))
-                        }
+                        [Tok::Ident(n)] if n.starts_with("--") => Ok(Color::Token(camel(&n[2..]))),
                         _ => Err("var(--<role>)".into()),
                     },
                     _ => Err("a colour's var(--<role>) takes no fallback".into()),
