@@ -7,12 +7,19 @@
 // disabled command or a skill still cooling down; the selection following a
 // row's index instead of its key; a member that only fits the desktop; the
 // pack losing to a kit rule of equal specificity (og-kit < og-pack).
-import { afterAll, beforeAll, expect, test } from "bun:test";
+import { afterAll, beforeAll, expect, setDefaultTimeout, test } from "bun:test";
+
+// The tests run on ticks, not the clock; a time limit only guards a hang.
+// macrunner shares its cores with other lanes' gates (load averages of 40),
+// where one engine boot takes several seconds, so the limits leave room.
+setDefaultTimeout(60_000);
 import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineSystem, og } from "@origingame/engine";
+
+declare const Bun: { spawnSync(cmd: string[], o: { cwd: string; env: Record<string, string | undefined>; stdout: "ignore"; stderr: "pipe" }): { exitCode: number; stderr: Uint8Array } };
 import { loadNativeHost } from "../../../src/node/index.ts";
 import { createEngine, type Engine, type GameToken } from "../../../src/runtime.ts";
 import { ogBin } from "../../../tests/support/og-bin.ts";
@@ -43,7 +50,7 @@ beforeAll(() => {
   loadNativeHost();
   root = mkdtempSync(join(tmpdir(), "og-rpg-kit-"));
   styles = mkdtempSync(join(tmpdir(), "og-rpg-styles-"));
-  for (const d of ["fantasy", "shared"]) cpSync(join(STYLES, d), join(styles, d), { recursive: true, dereference: true });
+  for (const d of ["fantasy", "shared"]) cpSync(join(STYLES, d), join(styles, d), { recursive: true });
   writeFileSync(join(styles, "fantasy/zz-cascade-probe.css"), PROBE_PACK);
   const kit = join(root, "assets/ui-kits/rpg");
   mkdirSync(kit, { recursive: true });
@@ -69,7 +76,7 @@ beforeAll(() => {
   writeFileSync(join(root, "assets/ui/host-cascade.svelte"), '<meta name="component" content="Host_RpgCascadeProbe">\n<div style="width: stretch; height: stretch"><RpgCascadeProbe /></div>\n');
   // og cook bundles the pack from OG_STYLES_DIR: the copy holding the probe sheet.
   const cook = Bun.spawnSync([ogBin(), "cook", root], { cwd: root, env: { ...process.env, OG_STYLES_DIR: styles }, stdout: "ignore", stderr: "pipe" });
-  if (cook.exitCode !== 0) throw new Error(`cooking ${root}: ${cook.stderr.toString()}`);
+  if (cook.exitCode !== 0) throw new Error(`cooking ${root}: ${new TextDecoder().decode(cook.stderr)}`);
 });
 
 afterAll(() => {
@@ -142,7 +149,7 @@ const pad = (e: Engine, spec: string): void => {
   e.probe.commands(`0:gamepad:${spec};0.05:gamepad:-`);
   e.advance(8);
 };
-const errors = (e: Engine): string[] => og.ui.scope(e.world, "t").takeErrors();
+const errors = (e: Engine): readonly string[] => og.ui.scope(e.world, "t").takeErrors();
 const row = (e: Engine, k: string): El => find(e, new RegExp(`#${k}$`))!;
 
 for (const [view, viewport] of [["desktop", DESKTOP], ["phone", PHONE]] as const) {
@@ -155,7 +162,7 @@ for (const [view, viewport] of [["desktop", DESKTOP], ["phone", PHONE]] as const
         expect(`${name} ${box.x + box.width <= viewport.width + 0.5}`).toBe(`${name} true`);
       });
     }
-  }, 60_000);
+  }, 180_000);
 }
 
 test("the pack beats a kit rule of equal specificity (og-kit < og-pack), and the kit rule holds without the pack", () => {
@@ -282,10 +289,13 @@ test("RpgTurnOrder plates the round", () => {
   run(member("turn-order", { round: 7 }), (e) => expect(elements(e).some((x) => /\b7\b/.test(x.text))).toBeTrue());
 });
 
-test("RpgStats puts each group in its column; RpgCombatLog keeps the game's order", () => {
+test("RpgStats puts each group in its column", () => {
   run(member("stats"), (e) => {
     expect(elements(e).find((x) => x.text === "Health")!.x).toBeLessThan(elements(e).find((x) => /Fire/.test(x.text))!.x);
   });
+});
+
+test("RpgCombatLog keeps the game's order", () => {
   const lines = ["l3", "l1", "l2"].map((id) => ({ id, text: `line ${id}`, tone: "plain", detail: "" }));
   run(member("combat-log", { lines }), (e) => {
     const ys = lines.map((l) => elements(e).find((x) => x.text === l.text)!.y);
