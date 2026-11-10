@@ -412,3 +412,6 @@ button.menu-close::part(base) { border-image: none; padding: 0; border: 1px soli
 .rpg-minimap .marker.player { background: #e9c46f; border-color: #1a120b; }
 .rpg-character .band-end.start, .rpg-backpack .band-end.start { background: url(flourish-left.svg) center / contain no-repeat; }
 .rpg-character .band-end.finish, .rpg-backpack .band-end.finish { background: url(flourish-right.svg) center / contain no-repeat; }
+.rpg-menu-bar .menu-fade { background: linear-gradient(90deg, #140d0900, #140d09); }
+.rpg-menu-bar .menu-fade:dir(rtl) { background: linear-gradient(270deg, #140d0900, #140d09); }
+@media (width < 600px) { button.menu-tab::part(base) { font-size: 14px; padding: 0 var(--space-sm); } }
