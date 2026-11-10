@@ -47,4 +47,5 @@
   .about { display: none; }
   .actions { width: stretch; }
 }
+@container (width < 360px) { .rpg-place-card { gap: var(--space-sm); } .picture { width: 36%; } .act .face { gap: var(--space-xs); } }
 </style>
