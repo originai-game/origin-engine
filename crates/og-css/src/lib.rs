@@ -3,6 +3,8 @@
 //! and style packs.
 
 pub mod calc;
+mod srgba;
 mod tokens;
 
+pub use srgba::Srgba;
 pub use tokens::{Tok, describe, quoted, tok_text, tokens};

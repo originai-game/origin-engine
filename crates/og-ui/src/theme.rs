@@ -16,12 +16,7 @@
 //! fills are the tokens' `linear` values, restated for the UI pass's
 //! linear-light blending. `crate::style` converts them for the renderer.
 
-/// An sRGB colour as a style authors it: 8-bit channels, straight alpha.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Srgba {
-    pub rgb: [u8; 3],
-    pub alpha: f32,
-}
+pub use og_css::Srgba;
 
 const fn c(r: u8, g: u8, b: u8) -> Srgba {
     Srgba {
