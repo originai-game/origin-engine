@@ -35,7 +35,8 @@
 .skills, .items { display: flex; gap: var(--space-xs); padding: var(--space-xs); }
 .skill, .quick { width: calc(var(--size-xl) * 0.85); height: calc(var(--size-xl) * 0.85); padding: 0; }
 .face { position: relative; width: stretch; height: stretch; align-items: center; justify-content: center; }
-.skill-art, .item-art { width: 78%; height: 78%; }
+.skill-art { width: stretch; height: stretch; }
+.item-art { width: 84%; height: 84%; }
 .cool { position: absolute; left: 0; top: 0; width: stretch; height: calc(var(--cool) * 100%); }
 .hotkey { position: absolute; left: 0; top: calc(100% + var(--space-xxs)); width: stretch; text-align: center; }
 .count { position: absolute; left: 0; top: calc(100% - var(--space-lg)); width: calc(100% - var(--space-xxs)); text-align: end; }
