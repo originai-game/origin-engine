@@ -116,6 +116,18 @@ proof("font-family", "runs", "ordered_named_families_preserve_primary_glyphs_and
       "Both builders assert exact glyph/font handles for inherited lists, rich spans, reversed named/generic order, names after generics and quoted generic names. Generics map to engine font roles, not installed system fonts.")
 proof("gradients", "css_paint", "repeating_gradients_repeat_the_stop_interval",
       "Metal pixels prove repeating radial intervals with positive/negative starts, all eight conic half-quadrants and collapsed linear stops. Subpixel periods and unbounded stop counts are not covered.")
+proof("margin", "html_text", "block_margins_follow_the_ua_stylesheet_and_collapse",
+      "Both builders assert positive/negative sibling and parent-child margin collapse, padding/fixed-height boundaries, noncollapsing flex margins, UA em margins and keyed insertion.")
+proof("text-wrap-balance text-wrap-pretty text-overflow", "html_text", "text_wrap_styles_and_overflow_strings_lay_out_as_css_does",
+      "Both builders inspect emitted lines: balance reduces width spread at the same line count; pretty avoids the final single-word line; custom overflow text replaces the ellipsis on one clipped line.")
+proof("container-queries", "documents", "container_queries_restyle_lists_grids_and_rive_frames_before_paint",
+      "Viewport changes immediately change list/grid padding and Rive visibility under a named inline-size query. Pushed-screen path; style/scroll-state queries and container units are not covered.")
+proof("scroll-driven-animations", "documents", "view_timelines_follow_the_subject_through_its_scroller",
+      "Both builders assert width and translation at rest and after wheel input for an anonymous view() cover timeline. Named timeline scopes and all range keywords are not covered.")
+proof("animations-css cubic-bezier-easing", "documents", "scoped_css_motion_uses_shared_curves_emits_sound_and_restores",
+      "A cubic-bezier(0,1,0,1) keyframe animation reaches 7/8 displacement at 1/8 duration; twelve subsequent positions replay exactly after checkpoint restoration. Pushed-screen path, not every animation mode.")
+proof("color", "dressing", "host_font_and_color_reach_button_ink_and_divider_output",
+      "Emitted button text and divider fill match authored hex colors; an explicit button part color overrides inherited host ink. This does not cover every color syntax or space.")
 
 MISSING = {
     "default": "documents::boolean_attribute_selectors_follow_svelte_presence proves retained :default follows false/present checked attributes. The immediate builder does not expose :default state; full support is missing.",
@@ -131,18 +143,33 @@ MISSING = {
     "background-image": "Gradient/reference coverage exists; url(coin) resolves an atlas name, not a standard file URL. Icon uses must migrate to SVG file masks.",
 }
 
-PART_PROVEN = {
-    feature: ("dressing", "button_parts_keep_separate_boxes_and_host_event_ownership",
-              "Button base dimensions, independent host/part translate, inherited font size/color, "
-              "opacity keyframes, click ownership and remove/reinsert output. Other widget groups remain pending.")
-    for feature in "shadow-parts width-height individual-transforms font-size color opacity".split()
-}
-PART_PROVEN["border-radius"] = (
+PART_PROVEN = {}
+
+
+def part_proof(features, module, test, scope):
+    for feature in features.split():
+        PART_PROVEN.setdefault(feature, []).append((module, test, scope))
+
+
+part_proof("shadow-parts width-height individual-transforms font-size color opacity",
+    "dressing", "button_parts_keep_separate_boxes_and_host_event_ownership",
+    "Button base dimensions, independent host/part translate, inherited font size/color, "
+    "opacity keyframes, click ownership and remove/reinsert output. Limited to this button fixture.")
+part_proof("border-radius",
     "box_decor", "border_radius_rounds_a_dressed_button",
     "Emitted button base radius replaces its default in both immediate and retained documents.")
-PART_PROVEN["font-family"] = (
+part_proof("font-family",
     "runs", "ordered_named_families_preserve_primary_glyphs_and_inherit",
     "Both builders emit button::part(base) glyphs from ordered named families, including a named fallback after an intervening generic.")
+part_proof("shadow-parts width-height padding borders background-color",
+    "dressing", "tabs_and_select_parts_keep_boxes_states_and_host_input",
+    "Tab indicator height, select group height, list padding+border inset, group text padding and distinct tab/option fills are asserted after real clicks. Semantic roles remain on hosts.")
+part_proof("not opacity border-image",
+    "dressing", "part_host_negation_and_part_states_select_distinct_paint",
+    "Four primary/hover combinations assert exact resolved opacity and border-image presence for button:not(.primary)::part(base). No document-selector claim.")
+part_proof("animations-css opacity",
+    "dressing", "retained_part_nodes_animate_without_rebuilding_the_host",
+    "A retained button part emits alpha 0.2/0.5/0.8 at ticks 0/6/12 for a 200ms linear animation, then paints nothing while idle. Other animation modes are not covered.")
 
 
 def main():
@@ -200,8 +227,7 @@ def main():
             state = "Missing"
             reason = MISSING.get(key, "Output proof not yet reviewed; implementation status unverified.")
         part_state = "Pending parts-as-nodes"
-        if key in PART_PROVEN:
-            module, test, scope = PART_PROVEN[key]
+        for module, test, scope in PART_PROVEN.get(key, []):
             source = ROOT / f"crates/og-ui/tests/{module}.rs"
             if f"fn {test}(" not in source.read_text():
                 raise ValueError(f"missing part proof entry point: {module}::{test}")
