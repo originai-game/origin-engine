@@ -339,7 +339,7 @@ These declarations also construct widget part identities and are exported by doc
 | `dialog` | `panel` | `:enabled` |
 | `popover` | `arrow` | `:enabled` |
 | `toast` | `indicator` | `:enabled` |
-| `spotlight` | `edge` | `:enabled` |
+| `og-spotlight` | `edge` | `:enabled` |
 | `cooldown` | `track` | `:enabled` |
 | `cooldown` | `sweep` | `:enabled` |
 | `cooldown` | `mask` | `:enabled` |
@@ -506,9 +506,9 @@ Its own props, beside every element's:
 | `cell-columns` | `number` | Cells across (0: as many as fit). |
 
 <a id="guide-components-10"></a>
-### `components §10` `<text>`, `<p>`, `<span>`, `<h1>`, `<a>` (`label`): A text
+### `components §10` `<text>`, `<p>`, `<span>`, `<h1>`, `<a>`, `<og-counter>`, `<og-typewriter>` (`label`): A text
 
-A text. A leaf; text-bearing controls accept text content: `<text id="Name">…</text>` or `<p id="Name">Read the <a href="rules">rules</a>.</p>` or `<span id="Name">…</span>` or `<h1 id="Name">…</h1> (to <h6>)` or `<a id="Name" href="shop">…</a>`.
+A text. A leaf; text-bearing controls accept text content: `<text id="Name">…</text>` or `<p id="Name">Read the <a href="rules">rules</a>.</p>` or `<span id="Name">…</span>` or `<h1 id="Name">…</h1> (to <h6>)` or `<a id="Name" href="shop">…</a>` or `<og-counter id="Name">…</og-counter>` or `<og-typewriter id="Name">…</og-typewriter>`.
 
 Its own props, beside every element's:
 
@@ -527,10 +527,10 @@ Its own props, beside every element's:
 | `text-overflow:` | `ellipsis \| clip` | Cut with … where it does not fit. `ellipsisText`: What its cut ends in instead of … (`text-overflow: "<string>"`). |
 | `font-family:` | `var(--font-<name>)` | The font role. |
 | `heading` | `bool` | A heading (a style's flourish frames it). |
-| `count` | `number` | A number it counts to as it changes (`count={$score}`), over `-og-count-duration` ms. |
-| `-og-count-duration:` | `<number>` | How long a change of its count takes, in ms (`-og-count-duration`; 0: 900). |
-| `-og-count-decimals:` | `<number>` | Digits its count shows after the point (`-og-count-decimals`). |
-| `-og-reveal:` | `<number>` | Types its text out at this many characters a second (`-og-reveal`); `onrevealed` fires when it is whole. |
+| `<og-counter value>` | `number` | The target value of <og-counter value={$score}>. Changes interpolate over its duration in engine ticks. |
+| `<og-counter duration>` | `number` | The counter's duration in milliseconds (900 by default; zero also selects the default). |
+| `<og-counter decimals>` | `number` | The counter's digits after the decimal point. |
+| `<og-typewriter rate>` | `number` | The typewriter's extended grapheme clusters per second; onrevealed fires once when the text is whole. Text changes restart it. Reduced motion shows the whole text. Progress follows engine ticks and checkpoints. |
 | `href` | `text` | An `<a>`'s destination: a click sends a `link` event named by it (as `onclick` fires). |
 
 <a id="guide-components-11"></a>
@@ -885,15 +885,15 @@ Its own props, beside every element's:
 | `invalid` | `bool` | Its value is wrong (`aria-invalid`): the danger frame. |
 
 <a id="guide-components-31"></a>
-### `components §31` `<dialog>` (`dialog`): A dialog (two-way `open`): `modal` over a backdrop that traps the focus, else a panel in place; Escape or B closes it and the focus returns
+### `components §31` `<dialog>`, `<og-spotlight>` (`dialog`): A dialog (two-way `open`): `modal` over a backdrop that traps the focus, else a panel in place; Escape or B closes it and the focus returns
 
-A dialog (two-way `open`): `modal` over a backdrop that traps the focus, else a panel in place; Escape or B closes it and the focus returns. A container with nested children: `<dialog id="Name" modal bind:open={$x} aria-label="Quit?">…</dialog>`.
+A dialog (two-way `open`): `modal` over a backdrop that traps the focus, else a panel in place; Escape or B closes it and the focus returns. A container with nested children: `<dialog id="Name" modal bind:open={$x} aria-label="Quit?">…</dialog>` or `<og-spotlight id="Name">…</og-spotlight>`.
 
 Its own props, beside every element's:
 
 | Write | Value | What |
 |---|---|---|
-| `-og-spotlight:` | `<name>` | Open, it dims the page but for the element of this id, its content a callout against it (`-og-spotlight`). |
+| `<og-spotlight target>` | `name` | The id tracked by <og-spotlight target="Target">. While open it dims the page outside that element and places its content as a callout. |
 | `open` | `bool` | Whether it is open (HTML `open`; closing writes false back). Two-way only with an explicit bind: attribute. |
 | `closedby` | `any \| closerequest \| none` | What closes it (HTML `closedby`): any adds a press outside a modal (light dismiss) to closerequest's Escape or a pad's B; none leaves closing to the document. Default: closerequest for a modal, none in place. |
 | `appearance:` | `auto \| none` | none drops the control's own frame: its box, borders and background are the document's. |

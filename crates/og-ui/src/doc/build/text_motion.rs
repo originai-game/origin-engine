@@ -1,13 +1,13 @@
 //! Core controls documents write as text and selects (docs/ui.md §2): a
-//! counted number (`count`), a typewriter text (`-og-reveal`, `onrevealed`),
+//! counted number (`og-counter`), a typewriter text (`og-typewriter`, `onrevealed`),
 //! a cycler (`<select data-cycle>`) and a spotlight
-//! (`<dialog>` with `-og-spotlight`).
+//! (`<og-spotlight target>`).
 
 use super::*;
 
 impl Ui {
-    /// A text that counts to `value` (`count={$score}`) over
-    /// `-og-count-duration` ms (900 by default).
+    /// A counter that interpolates to `value` over its duration in ms
+    /// (900 by default).
     pub(super) fn count_text(&mut self, id: &str, value: f32, desc: &LabelDesc, r: &Resolved) {
         let shown = self.counter(
             id,
@@ -31,7 +31,7 @@ impl Ui {
         }
     }
 
-    /// What a typewriter text (`-og-reveal: <characters per second>`) shows
+    /// What a typewriter text (`rate` graphemes per second) shows
     /// this tick: it starts again when its text changes and is whole under
     /// reduced motion. It fires `onrevealed` once as the last character
     /// shows. Its progress is widget memory (kept in snapshots); it builds
@@ -53,7 +53,8 @@ impl Ui {
                 b: 0.0,
             };
         }
-        let total = text.chars().count();
+        let graphemes = og_i18n::graphemes(text);
+        let total = graphemes.len();
         let shown = if self.still() {
             total
         } else {
@@ -70,9 +71,9 @@ impl Ui {
         {
             owned.moved = true;
         }
-        let end = text
-            .char_indices()
-            .nth(shown)
+        let end = graphemes
+            .get(shown)
+            .and_then(|(start, _)| text.char_indices().nth(*start))
             .map_or(text.len(), |(i, _)| i);
         &text[..end]
     }
@@ -167,7 +168,7 @@ impl Ui {
         true
     }
 
-    /// An open `<dialog>` with `-og-spotlight: <id>`: the page dimmed but
+    /// An open `<og-spotlight target="id">`: the page dimmed but
     /// for the element of that id, the dialog's content a callout against
     /// it. Answers the shade's response and whether the callout layer is
     /// open (it is when the element is on the page).

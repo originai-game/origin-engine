@@ -1674,7 +1674,13 @@ impl Parser {
                 continue;
             }
             let model = a.name.strip_prefix("bind:");
+            let mapped = schema::ELEMENT_ATTRIBUTES
+                .iter()
+                .find(|(owner, attribute, _)| {
+                    *owner == tag && *attribute == model.unwrap_or(&a.name)
+                });
             let mut name = match (internal, model.unwrap_or(&a.name)) {
+                _ if let Some((_, _, property)) = mapped => (*property).into(),
                 ("field", "maxlength") => "maxChars".into(),
                 ("field", "minlength") => "minChars".into(),
                 ("field", "rows") if tag == "textarea" => "lines".into(),
@@ -1682,6 +1688,19 @@ impl Parser {
                 (_, other) => super::extern_element::property(internal, other)
                     .unwrap_or_else(|| property(other)),
             };
+            if mapped.is_none()
+                && let Some((owner, attribute, _)) = schema::ELEMENT_ATTRIBUTES
+                    .iter()
+                    .find(|(_, _, property)| *property == name)
+            {
+                return Err((
+                    a.at,
+                    format!(
+                        "{} is not an attribute of <{tag}>; write <{owner} {attribute}=…>",
+                        a.name
+                    ),
+                ));
+            }
             if name == "value" && internal == "field" {
                 name = "input".into();
             }

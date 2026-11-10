@@ -1623,10 +1623,9 @@ fn core_controls_choose_step_hold_and_report() {
     assert!(events.iter().any(|e| e.name == "toggled"), "{events:?}");
 }
 
-/// The core controls written as text, selects and dialogs: `count` counts
-/// to its value, `-og-reveal` types its text out and fires `onrevealed`
+/// The counter counts to its value, the typewriter fires `onrevealed`
 /// once, `data-cycle` steps its options and writes the value back,
-/// `-og-spotlight` dims the page but for its target, and `<input
+/// `og-spotlight` dims the page but for its target, and `<input
 /// type="color">` opens a picker whose hex writes `#rrggbb` back.
 ///
 /// Ways it could fail: a count that jumps or never arrives, a reveal shown
@@ -1635,18 +1634,32 @@ fn core_controls_choose_step_hold_and_report() {
 /// writes a malformed value.
 #[test]
 fn counters_reveals_cyclers_spotlights_and_colours() {
+    for rejected in [
+        "<p count=\"3\" />",
+        "<og-counter count-duration=\"200\" />",
+        "<p reveal=\"20\" />",
+        "<dialog spotlight=\"Target\" />",
+        "<p/><style>p { -og-count-duration: 200; }</style>",
+        "<p/><style>p { -og-count-decimals: 1; }</style>",
+        "<p/><style>p { -og-reveal: 20; }</style>",
+        "<dialog/><style>dialog { -og-spotlight: Target; }</style>",
+    ] {
+        let source = format!("<meta name=\"component\" content=\"t\">{rejected}");
+        assert!(
+            UiDocument::parse("ui/t.svelte", &source).is_err(),
+            "{rejected}"
+        );
+    }
     let text = r#"<meta name="component" content="t">
 <div id="Page">
-  <p id="Score" count={$score}>0</p>
-  <p id="Line" class="typed" onrevealed={done}>Hello there</p>
+  <og-counter id="Score" value={$score} duration="200" decimals="1">0</og-counter>
+  <og-typewriter id="Line" rate="20" onrevealed={done}>Hello there</og-typewriter>
   <select id="Diff" data-cycle bind:value={$diff}><option value="easy">Easy</option><option value="hard">Hard</option></select>
   <button id="Target">Here</button>
-  <dialog id="Tour" bind:open={$tour} class="tour"><div id="Step"><p id="Callout">Press here</p></div></dialog>
+  <og-spotlight id="Tour" bind:open={$tour} target="Target"><div id="Step"><p id="Callout">Press here</p></div></og-spotlight>
   <input type="color" id="Tint" bind:value={$tint}>
 </div>
 <style>
-.typed { -og-reveal: 20; }
-.tour { -og-spotlight: Target; }
 #Page { gap: 8px; padding: 8px; }
 </style>"#;
     let stores = [
@@ -1669,14 +1682,18 @@ fn counters_reveals_cyclers_spotlights_and_colours() {
     }
     assert_eq!(d.get("Line").text, "Hello there");
     assert_eq!(revealed, 1, "onrevealed fires once");
-    d.set("score", json!(100));
+    d.set("score", json!(25.5));
     d.step(InputFrame::default());
     let mid: f64 = d.get("Score").text.parse().unwrap_or(-1.0);
-    assert!((0.0..100.0).contains(&mid), "counting: {mid}");
-    for _ in 0..90 {
+    assert!(mid > 0.0 && mid < 25.5, "counting: {mid}");
+    for _ in 0..12 {
         d.step(InputFrame::default());
     }
-    assert_eq!(d.get("Score").text, "100");
+    assert_eq!(
+        d.get("Score").text,
+        "25.5",
+        "duration and decimal attributes apply"
+    );
     d.click("Diff/Next");
     assert_eq!(d.read("diff"), json!("hard"));
     d.click("Diff/Next");
@@ -1703,6 +1720,42 @@ fn counters_reveals_cyclers_spotlights_and_colours() {
         json!("easy"),
         "the page under the shade takes no press"
     );
+}
+
+#[test]
+fn typewriter_reveals_whole_graphemes_and_replays_completion() {
+    let text = r#"<meta name="component" content="t">
+<div><og-typewriter id="Line" rate="60" onrevealed={done}>{$words}</og-typewriter></div>"#;
+    for mounted in [false, true] {
+        let mut d = Doc::new(text, &[("words", json!("Á👩‍🚀Z"))], mounted);
+        assert_eq!(d.get("Line").text, "");
+        d.step(InputFrame::default());
+        assert_eq!(d.get("Line").text, "Á", "the accent stays with its base");
+        let saved = d.ui.save_state();
+        for replay in 0..2 {
+            if replay == 1 {
+                d.ui.restore_state(&saved).unwrap();
+            }
+            d.events.clear();
+            d.step(InputFrame::default());
+            assert_eq!(d.get("Line").text, "Á👩‍🚀", "the joined emoji is indivisible");
+            assert!(!d.events.iter().any(|event| event.name == "done"));
+            d.step(InputFrame::default());
+            assert_eq!(d.get("Line").text, "Á👩‍🚀Z");
+            d.step(InputFrame::default());
+            assert_eq!(
+                d.events.iter().filter(|event| event.name == "done").count(),
+                1
+            );
+        }
+        d.set("words", json!("🇳🇿BC"));
+        assert_eq!(d.get("Line").text, "🇳🇿", "new content restarts the reveal");
+        let mut theme = *d.ui.theme();
+        theme.reduced_motion = true;
+        d.ui.set_theme(theme);
+        d.step(InputFrame::default());
+        assert_eq!(d.get("Line").text, "🇳🇿BC");
+    }
 }
 
 /// The settings screen's tree from data: pages as tabs, each entry's

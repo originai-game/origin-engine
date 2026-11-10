@@ -327,14 +327,14 @@ long press, `ontoggle` when a `<details>` or popover opens or closes, and
 
 #### Counters, typewriters, cyclers, spotlights and colour inputs
 
-A text with `count={$score}` counts to its value as it changes, over
-`-og-count-duration` ms (900 by default; `-og-count-decimals` digits). A
-text with `-og-reveal: <characters per second>` types its words out, again
-whenever they change, whole under reduced motion, and fires `onrevealed`
-once as the last character shows. A `<select data-cycle>` is
+A `<og-counter value={$score} duration="900" decimals="0">` counts to its
+value as it changes; duration is in milliseconds. A
+`<og-typewriter rate="20">` reveals extended grapheme clusters per second,
+restarts whenever its text changes, shows the whole text under reduced
+motion, and fires `onrevealed` once at completion. A `<select data-cycle>` is
 previous, its option and next, wrapping past disabled options; one with no
-`<option>`s takes its bound `items`. An open `<dialog>` with
-`-og-spotlight: <id>` dims the page but for the element of that id, which
+`<option>`s takes its bound `items`. An open `<og-spotlight target="Target">`
+dims the page but for the element of that id, which
 it outlines, and shows its content as a callout against it; the shade takes
 presses, and `closedby="any"` closes it on one. `<input type="color"
 bind:value={$tint}>` is a swatch that opens a picker against it (a

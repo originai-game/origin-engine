@@ -108,7 +108,7 @@ parts! {
     DIALOG_PANEL: "dialog", "panel", ["enabled"];
     POPOVER_ARROW: "popover", "arrow", ["enabled"];
     TOAST_INDICATOR: "toast", "indicator", ["enabled"];
-    SPOTLIGHT_EDGE: "spotlight", "edge", ["enabled"];
+    SPOTLIGHT_EDGE: "og-spotlight", "edge", ["enabled"];
     COOLDOWN_TRACK: "cooldown", "track", ["enabled"];
     COOLDOWN_SWEEP: "cooldown", "sweep", ["enabled"];
     COOLDOWN_MASK: "cooldown", "mask", ["enabled"];

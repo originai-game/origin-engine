@@ -442,7 +442,7 @@ actions and a `fixture:default`, so `og ui preview` shows it at once.
   critical), `star-bar` (a score bar with star thresholds), `celebration`
   (confetti, a burst, a level-up flourish or fireworks, played again by a
   new `shots` id). A number that
-  counts is `<p count={$score}>` with `-og-count-duration`.
+  counts is `<og-counter value={$score} duration="900" decimals="0">`.
 - Navigation: `minimap` and `minimap-view` (a map in the corner with
   markers for allies, enemies, objectives and pings, a uv region by
   `object-view-box: inset(…)`), `compass` (a heading strip with points of interest).

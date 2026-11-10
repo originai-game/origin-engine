@@ -114,7 +114,21 @@ pub static KINDS: LazyLock<Vec<KindSpec>> =
 
 /// Author tags for engine semantics without an HTML equivalent, mapped
 /// to the runtime kinds used by checkpoints.
-pub const ELEMENT_TAGS: &[(&str, &str)] = &[("og-icon", "icon")];
+pub const ELEMENT_TAGS: &[(&str, &str)] = &[
+    ("og-icon", "icon"),
+    ("og-counter", "label"),
+    ("og-typewriter", "label"),
+    ("og-spotlight", "dialog"),
+];
+
+/// Tag-exclusive attributes and the runtime properties they populate.
+pub const ELEMENT_ATTRIBUTES: &[(&str, &str, &str)] = &[
+    ("og-counter", "value", "count"),
+    ("og-counter", "duration", "countDuration"),
+    ("og-counter", "decimals", "countDecimals"),
+    ("og-typewriter", "rate", "reveal"),
+    ("og-spotlight", "target", "spotlight"),
+];
 
 /// Every prop: the core's, then the document runtime's.
 pub static PROPS: LazyLock<Vec<PropSpec>> =
@@ -1428,25 +1442,25 @@ pub const CORE_PROPS: &[PropSpec] = &[
         "count",
         Ty::Num,
         ["label"],
-        "A number it counts to as it changes (`count={$score}`), over `-og-count-duration` ms."
+        "The target value of <og-counter value={$score}>. Changes interpolate over its duration in engine ticks."
     ),
     p!(
         "countDuration",
         Ty::Num,
         ["label"],
-        "How long a change of its count takes, in ms (`-og-count-duration`; 0: 900)."
+        "The counter's duration in milliseconds (900 by default; zero also selects the default)."
     ),
     p!(
         "countDecimals",
         Ty::Num,
         ["label"],
-        "Digits its count shows after the point (`-og-count-decimals`)."
+        "The counter's digits after the decimal point."
     ),
     p!(
         "reveal",
         Ty::Num,
         ["label"],
-        "Types its text out at this many characters a second (`-og-reveal`); `onrevealed` fires when it is whole."
+        "The typewriter's extended grapheme clusters per second; onrevealed fires once when the text is whole. Text changes restart it. Reduced motion shows the whole text. Progress follows engine ticks and checkpoints."
     ),
     p!(
         "dataCycle",
@@ -1470,7 +1484,7 @@ pub const CORE_PROPS: &[PropSpec] = &[
         "spotlight",
         Ty::Name,
         ["dialog"],
-        "Open, it dims the page but for the element of this id, its content a callout against it (`-og-spotlight`)."
+        "The id tracked by <og-spotlight target=\"Target\">. While open it dims the page outside that element and places its content as a callout."
     ),
     p!(
         "dataHold",
@@ -1936,7 +1950,9 @@ pub fn to_json() -> serde_json::Value {
     json!({
         "parts": parts::to_json(),
         "cssFunctions": CSS_FUNCTIONS.iter().map(|(name, grammar, reason)| json!({ "name": name, "grammar": grammar, "reason": reason })).collect::<Vec<_>>(),
-        "elementTags": ELEMENT_TAGS.iter().map(|(name, kind)| json!({ "name": name, "kind": kind })).collect::<Vec<_>>(),
+        "elementTags": ELEMENT_TAGS.iter().map(|(name, kind)| json!({ "name": name, "kind": kind,
+            "attributes": ELEMENT_ATTRIBUTES.iter().filter(|(tag, _, _)| tag == name).map(|(_, attribute, property)| json!({"name": attribute, "property": property})).collect::<Vec<_>>()
+        })).collect::<Vec<_>>(),
         "kinds": KINDS.iter().map(|k| json!({ "name": k.name, "container": k.container, "doc": k.doc })).collect::<Vec<_>>(),
         "props": PROPS.iter().map(|p| {
             let mut v = json!({ "name": p.name, "type": p.ty.name(), "doc": p.doc, "twoWay": p.two_way });

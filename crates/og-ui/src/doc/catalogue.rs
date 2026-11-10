@@ -33,10 +33,18 @@ fn value(p: &PropSpec) -> String {
 /// wherever HTML has the role (docs/ui.md §2).
 pub fn tags(kind: &str) -> Vec<(String, String)> {
     let void = |tag: &str| (tag.to_string(), format!("<{tag} id=\"Name\" />"));
-    if let Some((tag, _)) = super::schema::ELEMENT_TAGS.iter().find(|(_, k)| *k == kind) {
-        return vec![void(tag)];
-    }
-    match kind {
+    let registered: Vec<_> = super::schema::ELEMENT_TAGS
+        .iter()
+        .filter(|(_, k)| *k == kind)
+        .map(|(tag, _)| {
+            if kind == "label" || super::schema::kind(kind).is_some_and(|k| k.container) {
+                (tag.to_string(), format!("<{tag} id=\"Name\">…</{tag}>"))
+            } else {
+                void(tag)
+            }
+        })
+        .collect();
+    let mut tags = match kind {
         "label" => vec![
             ("text".into(), "<text id=\"Name\">…</text>".into()),
             ("p".into(), "<p id=\"Name\">Read the <a href=\"rules\">rules</a>.</p>".into()),
@@ -92,14 +100,23 @@ pub fn tags(kind: &str) -> Vec<(String, String)> {
             "meter".into(),
             "<meter id=\"Name\" value={$hp} min=\"0\" max=\"100\" low=\"25\" high=\"75\" optimum=\"90\" />".into(),
         )],
+        _ if !registered.is_empty() => Vec::new(),
         other => super::schema_extra::tags(other).unwrap_or_else(|| {
             vec![(other.into(), format!("<{other} id=\"Name\">…</{other}>"))]
         }),
-    }
+    };
+    tags.extend(registered);
+    tags
 }
 
 /// How a document writes `p`: its CSS declaration or HTML attribute.
 fn written(p: &PropSpec) -> String {
+    if let Some((tag, name, _)) = super::schema::ELEMENT_ATTRIBUTES
+        .iter()
+        .find(|(_, _, prop)| *prop == p.name)
+    {
+        return format!("`<{tag} {name}>`");
+    }
     match css_name(p.name) {
         Some("grid-column") => "`grid-column:`, `grid-row:`".into(),
         Some(css) => format!("`{css}:`"),

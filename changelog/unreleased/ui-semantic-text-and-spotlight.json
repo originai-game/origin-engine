@@ -1,0 +1,9 @@
+{
+  "breaking": [
+    {
+      "member": "UI counters, typewriters and spotlights",
+      "change": "Removed count attributes on ordinary text and the -og-count-duration, -og-count-decimals, -og-reveal and -og-spotlight CSS properties. These semantics use reflected og- tags without legacy aliases.",
+      "fix": "Use <og-counter value={$score} duration=\"900\" decimals=\"0\">, <og-typewriter rate=\"20\" onrevealed={done}>, and <og-spotlight target=\"Target\" bind:open={$tour}>. Typewriter rate counts extended grapheme clusters, preserving combining marks and joined emoji. Tick timing, checkpoints and completion events remain supported."
+    }
+  ]
+}

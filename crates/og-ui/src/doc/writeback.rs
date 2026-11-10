@@ -102,7 +102,12 @@ pub(super) fn edit(
         }
         return Ok(text);
     }
+    let semantic_attribute = schema::ELEMENT_ATTRIBUTES
+        .iter()
+        .find(|(owner, _, property)| *owner == tag && *property == prop)
+        .map(|(_, attribute, _)| *attribute);
     let name = match prop {
+        _ if let Some(attribute) = semantic_attribute => attribute,
         "stepBy" => "step",
         "key" => "i18n",
         "name" => "aria-label",
@@ -119,7 +124,8 @@ pub(super) fn edit(
     let attribute = format!("{name}=\"{}\"", escaped(&literal));
     if let Some(attr) = attrs.iter().find(|a| {
         let name = a.name.strip_prefix("bind:").unwrap_or(&a.name);
-        svelte::property(name) == prop
+        semantic_attribute == Some(name)
+            || svelte::property(name) == prop
             || (prop == "input" && matches!(tag.as_str(), "input" | "textarea") && name == "value")
             || (prop == "current" && tag == "select" && name == "value")
             || matches!(
@@ -149,6 +155,8 @@ mod tests {
 <column id="Root">
   <text id="Title">Before</text><text id="Other">Other</text>
   <input type="range" id="Amount" bind:value={$amount} step="0.25"/>
+  <og-counter id="Score" value="0" duration="900"/>
+  <og-typewriter id="Story" rate="20">Story</og-typewriter>
 </column>
 <style>text { opacity: 0.4; } #Title { translate: 3px 7px; }</style>
 "#;
@@ -178,6 +186,13 @@ mod tests {
         assert_eq!(value("x"), PropValue::Lit(Lit::Num(11.0)));
         assert_eq!(value("y"), PropValue::Lit(Lit::Num(7.0)));
         assert_eq!(doc.text.matches("<style>").count(), 1);
+        let score = doc.node_at("Root/Score").unwrap();
+        doc.set_prop(score, "count", "42").unwrap();
+        doc.set_prop(score, "countDuration", "200").unwrap();
+        assert!(doc.text.contains("value=\"42\" duration=\"200\""));
+        let story = doc.node_at("Root/Story").unwrap();
+        doc.set_prop(story, "reveal", "60").unwrap();
+        assert!(doc.text.contains("rate=\"60\">Story"));
         let other = doc.node_at("Root/Other").unwrap();
         assert!(
             doc.nodes[other]

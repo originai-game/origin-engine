@@ -761,7 +761,7 @@ impl Ui {
                 ];
                 for frame in edges {
                     self.nodes[hole].shapes.push(Shape::DressedRect {
-                        part: crate::dress::PartRef::of("Spotlight", "edge", None),
+                        part: crate::doc::schema::parts::SPOTLIGHT_EDGE.reference(None),
                         frame,
                         radius: 0.0,
                         color: p.focus,
