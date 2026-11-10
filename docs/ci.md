@@ -430,15 +430,15 @@ tools from a new `bash -lc` shell.
 sccache keeps a local disk cache on every host (the owner, 2026-11-07): a
 remote cache in OVH BHS measured 302.7 s for a cleaned `og-cli` rebuild on
 macrunner against 38.9 s from the local disk (about 3.7 s per remote hit),
-so there is none. The persistent lanes on one machine share its cache: on
+so there is none. The checkouts on one machine share its cache: on
 macrunner `/Volumes/app/.sccache`, on studio-win `SCCACHE_DIR=E:\sccache`,
 on an orb `~/.cache/sccache`.
 
-One sccache server per host serves every lane, and it is started cleanly.
+One sccache server per host serves every checkout, and it is started cleanly.
 sccache's client starts a server when none answers, and that server keeps
 the environment of the build that started it, including that cargo's
 jobserver (`CARGO_MAKEFLAGS`) and its per-run `TMPDIR`. On 2026-11-09 such a
-server stalled every lane on macrunner: it waited for tokens from one
+server stalled every checkout on macrunner: it waited for tokens from one
 cargo whose jobs were all clients waiting on it. So `.cargo/config.toml`'s
 rustc wrapper is `og-sccache-wrap` (`crates/og-sccache-wrap`), not sccache.
 When no server answers on `SCCACHE_SERVER_PORT` (4226), it takes the lock
