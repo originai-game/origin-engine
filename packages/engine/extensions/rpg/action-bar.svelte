@@ -13,7 +13,7 @@
   <div class="skills" role="toolbar">
     {#each skills as s (s.id)}
       <button class="skill" data-ready={s.ready} aria-label={s.name} disabled={!s.ready} onclick={use}><div class="face">
-        <icon class="skill-art" icon={s.icon}></icon>
+        <og-icon class="skill-art" icon={s.icon}></og-icon>
         <div class="cool" hidden={!(s.cooldown > 0)} style:--cool={s.cooldown}></div>
         <span class="hotkey">{s.key}</span>
       </div></button>
@@ -22,7 +22,7 @@
   <div class="items" role="toolbar" hidden={!items.length}>
     {#each items as i (i.id)}
       <button class="quick" aria-label={i.name} onclick={use}><div class="face">
-        <icon class="item-art" icon={i.icon}></icon>
+        <og-icon class="item-art" icon={i.icon}></og-icon>
         <span class="count" hidden={!(i.count > 0)}>{formatNumber(i.count)}</span>
         <span class="hotkey">{i.key}</span>
       </div></button>

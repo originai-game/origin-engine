@@ -132,7 +132,7 @@ minimap::part(north) { color: var(--gold); }
 minimap::part(marker) { background: var(--gold); }
 toast::part(indicator) { background: var(--gold); }
 popover::part(arrow) { background: #18110b; }
-spotlight::part(edge) { border: 2px solid var(--gold); }
+og-spotlight::part(edge) { border: 2px solid var(--gold); }
 
 /* ── Slot (core), chip, badge. */
 slot::part(frame) { border: 2px solid #6f6658; background: radial-gradient(circle, #3a332a, #120e0a); box-shadow: inset 0 0 14px #000a; }
@@ -196,7 +196,8 @@ keyboard::part(preview) { border-bottom: 1px solid #8f765066; background: #0b080
 keyboard::part(candidates) { border-bottom: 1px solid #8f765044; background: #160f0a; }
 input::part(composition), textarea::part(composition) { text-decoration-line: underline; text-decoration-color: var(--gold); }
 input::part(reveal-icon), input::part(clear-icon) { color: var(--ink-muted); }
-icon::part(image), art::part(icon), artslot::part(icon), actionbutton::part(icon), cooldown::part(icon), dialogue::part(portraitIcon) { color: var(--ink); }
+og-icon::part(secondary) { color: var(--gold); }
+og-icon::part(image), art::part(icon), artslot::part(icon), actionbutton::part(icon), cooldown::part(icon), dialogue::part(portraitIcon) { color: var(--ink); }
 cooldown::part(mask), actionbutton::part(mask) { background: #000000a0; }
 minimap::part(image) { filter: saturate(0.85) brightness(0.9); }
 minimap::part(markerOutline) { background: #0b0805; }

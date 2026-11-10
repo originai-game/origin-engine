@@ -20,7 +20,7 @@
   <div class="bar" role="meter" aria-label={t("rpg.party.health")} style:--fill={healthMax > 0 ? health / healthMax : 0}><div class="bar-fill"></div><span class="bar-figure">{t("rpg.party.figure", { now: health, max: healthMax })}</span></div>
   <ul class="effects" hidden={!effects.length}>
     {#each effects as e (e.id)}
-      <li class="effect" data-tone={e.tone}><icon class="effect-mark" icon={e.icon}></icon><span class="effect-label">{e.label}</span></li>
+      <li class="effect" data-tone={e.tone}><og-icon class="effect-mark" icon={e.icon}></og-icon><span class="effect-label">{e.label}</span></li>
     {/each}
   </ul>
 </section>

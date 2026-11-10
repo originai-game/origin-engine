@@ -18,7 +18,7 @@
           {#if g.column == 'a'}
             <div class="group" role="group">
               {#each rows as r (r.id)}
-                {#if r.group == g.id}<div class="row" role="row"><icon class="row-mark" icon={r.icon}></icon><span class="row-label" role="rowheader">{r.label}</span><span class="row-value" role="cell">{r.value}</span></div>{/if}
+                {#if r.group == g.id}<div class="row" role="row"><og-icon class="row-mark" icon={r.icon}></og-icon><span class="row-label" role="rowheader">{r.label}</span><span class="row-value" role="cell">{r.value}</span></div>{/if}
               {/each}
             </div>
           {/if}
@@ -30,7 +30,7 @@
           {#if g.column == 'b'}
             <div class="group" role="group">
               {#each rows as r (r.id)}
-                {#if r.group == g.id}<div class="row" role="row"><icon class="row-mark" icon={r.icon}></icon><span class="row-label" role="rowheader">{r.label}</span><span class="row-value" role="cell">{r.value}</span></div>{/if}
+                {#if r.group == g.id}<div class="row" role="row"><og-icon class="row-mark" icon={r.icon}></og-icon><span class="row-label" role="rowheader">{r.label}</span><span class="row-value" role="cell">{r.value}</span></div>{/if}
               {/each}
             </div>
           {/if}

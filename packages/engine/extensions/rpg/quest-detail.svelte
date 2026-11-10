@@ -36,7 +36,7 @@
       <h3 class="part-head">{t("rpg.quest.rewards")}</h3>
       <ul class="rewards">
         {#each rewards as r (r.id)}
-          <li class="reward"><icon class="reward-mark" icon={r.icon}></icon><div class="reward-text"><span class="reward-label">{r.label}</span><span class="reward-detail" hidden={!r.detail}>{r.detail}</span></div></li>
+          <li class="reward"><og-icon class="reward-mark" icon={r.icon}></og-icon><div class="reward-text"><span class="reward-label">{r.label}</span><span class="reward-detail" hidden={!r.detail}>{r.detail}</span></div></li>
         {/each}
       </ul>
     </section>

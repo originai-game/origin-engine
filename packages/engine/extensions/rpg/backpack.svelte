@@ -38,27 +38,27 @@
       <div class="grid" role="grid" aria-label={title}>
         {#each items as i (i.id)}
           <button class="cell" data-rarity={i.rarity} data-equipped={i.equipped} data-fresh={i.fresh} data-locked={i.locked} data-broken={i.broken} role="gridcell" aria-selected={i.id == selected} aria-label={i.name} onclick={choose}><div class="face">
-            <icon class="art" icon={i.icon}></icon>
+            <og-icon class="art" icon={i.icon}></og-icon>
             <span class="count" hidden={!(i.count > 1)}>{formatNumber(i.count)}</span>
-            <div class="badge equipped" hidden={!i.equipped} aria-label={t("rpg.backpack.equipped")}><icon icon="check"></icon></div>
+            <div class="badge equipped" hidden={!i.equipped} aria-label={t("rpg.backpack.equipped")}><og-icon icon="check"></og-icon></div>
             <div class="badge fresh" hidden={!i.fresh} aria-label={t("rpg.backpack.new")}></div>
-            <div class="badge locked" hidden={!i.locked} aria-label={t("rpg.backpack.locked")}><icon icon="lock"></icon></div>
+            <div class="badge locked" hidden={!i.locked} aria-label={t("rpg.backpack.locked")}><og-icon icon="lock"></og-icon></div>
           </div></button>
         {/each}
       </div>
     </scroll>
   {:else}
-    <div class="empty" role="status"><icon class="empty-mark" icon="bag"></icon><p class="empty-text">{t("rpg.backpack.empty")}</p></div>
+    <div class="empty" role="status"><og-icon class="empty-mark" icon="bag"></og-icon><p class="empty-text">{t("rpg.backpack.empty")}</p></div>
   {/if}
   <footer class="foot" hidden={!weight && !gold}>
     <div class="weight" hidden={!weight}>
-      <icon class="foot-mark" icon="bag"></icon>
+      <og-icon class="foot-mark" icon="bag"></og-icon>
       <div class="weight-text">
         <div class="weight-line"><span class="caption">{t("rpg.backpack.weight")}</span><span class="figure" data-over={load > 1}>{weight}</span></div>
         <div class="bar" role="meter" aria-label={t("rpg.backpack.weight")} aria-valuetext={weight} data-over={load > 1} style:--fill={load > 1 ? 1 : load}><div class="bar-fill"></div></div>
       </div>
     </div>
-    <div class="purse" hidden={!gold} aria-label={t("rpg.backpack.gold", { gold })}><icon class="foot-mark coin" icon="coin"></icon><span class="figure">{gold}</span></div>
+    <div class="purse" hidden={!gold} aria-label={t("rpg.backpack.gold", { gold })}><og-icon class="foot-mark coin" icon="coin"></og-icon><span class="figure">{gold}</span></div>
   </footer>
 </section>
 
@@ -87,7 +87,7 @@
 .art { width: stretch; height: stretch; }
 .count { position: absolute; right: var(--space-xxs); bottom: 0; width: fit-content; text-align: end; }
 .badge { position: absolute; align-items: center; justify-content: center; }
-.badge icon { width: var(--space-md); height: var(--space-md); }
+.badge og-icon { width: var(--space-md); height: var(--space-md); }
 .badge.equipped { left: var(--space-xxs); top: var(--space-xxs); width: var(--space-lg); height: var(--space-lg); }
 .badge.fresh { right: var(--space-xs); top: var(--space-xs); width: var(--space-sm); height: var(--space-sm); }
 .badge.locked { right: var(--space-xxs); top: var(--space-xxs); width: var(--space-lg); height: var(--space-lg); }

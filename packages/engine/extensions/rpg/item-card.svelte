@@ -25,7 +25,7 @@
   figures and the lore scroll, the buttons keep the foot.
 -->
 <article id="RpgItemCard" class="rpg-item-card" data-rarity={rarity} aria-label={name} ondetails={equip}>
-  <div class="hero"><div class="hero-glow"></div><img class="hero-picture" src={art} alt="" hidden={!art}><icon class="hero-art" icon={icon} hidden={!!art}></icon></div>
+  <div class="hero"><div class="hero-glow"></div><img class="hero-picture" src={art} alt="" hidden={!art}><og-icon class="hero-art" icon={icon} hidden={!!art}></og-icon></div>
   <header class="head">
     <h2 class="item-name">{name}</h2>
     <p class="item-kind">{kind}</p>
@@ -34,7 +34,7 @@
   <scroll class="body">
     {#each lead as s (s.id)}
       <div class="lead-row" aria-label={s.label}>
-        <icon class="stat-mark" icon={s.icon}></icon>
+        <og-icon class="stat-mark" icon={s.icon}></og-icon>
         <div class="lead-main">
           <span class="caption">{s.label}</span>
           <div class="lead-figures"><span class="lead-value">{s.value}</span><span class="delta" data-trend={s.trend} hidden={!s.delta}>{s.delta}</span></div>
@@ -48,7 +48,7 @@
     <div class="stats" role="table">
       {#each stats as s (s.id)}
         <div class="stat-row" role="row">
-          <icon class="stat-mark" icon={s.icon}></icon>
+          <og-icon class="stat-mark" icon={s.icon}></og-icon>
           <span class="stat-label" role="rowheader">{s.label}</span>
           <span class="stat-value" role="cell">{s.value}</span>
           <span class="delta" role="cell" data-trend={s.trend}>{s.delta}</span>

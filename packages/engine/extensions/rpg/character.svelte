@@ -32,14 +32,14 @@
     <div class="column start" role="group">
       {#each slots as s (s.id)}
         {#if s.side == 'start'}
-          <button class="cell" data-rarity={s.icon ? s.rarity : ''} data-empty={!s.icon} aria-selected={s.id == selected} aria-label={s.label} onclick={choose} ondetails={unequip}><div class="face"><icon class="art" icon={s.icon ? s.icon : 'plus'}></icon></div></button>
+          <button class="cell" data-rarity={s.icon ? s.rarity : ''} data-empty={!s.icon} aria-selected={s.id == selected} aria-label={s.label} onclick={choose} ondetails={unequip}><div class="face"><og-icon class="art" icon={s.icon ? s.icon : 'plus'}></og-icon></div></button>
         {/if}
       {/each}
     </div>
     <div class="column end" role="group">
       {#each slots as s (s.id)}
         {#if s.side == 'end'}
-          <button class="cell" data-rarity={s.icon ? s.rarity : ''} data-empty={!s.icon} aria-selected={s.id == selected} aria-label={s.label} onclick={choose} ondetails={unequip}><div class="face"><icon class="art" icon={s.icon ? s.icon : 'plus'}></icon></div></button>
+          <button class="cell" data-rarity={s.icon ? s.rarity : ''} data-empty={!s.icon} aria-selected={s.id == selected} aria-label={s.label} onclick={choose} ondetails={unequip}><div class="face"><og-icon class="art" icon={s.icon ? s.icon : 'plus'}></og-icon></div></button>
         {/if}
       {/each}
     </div>
@@ -47,13 +47,13 @@
   <div class="attributes" role="table" hidden={!attributes.length} aria-label={t("rpg.character.attributes")}>
     <div class="attr-column">
       {#each attributes as a (a.id)}
-        {#if a.group == 'a'}<div class="attr" role="row"><icon class="attr-mark" icon={a.icon}></icon><span class="attr-label" role="rowheader">{a.label}</span><span class="attr-value" role="cell">{a.value}</span></div>{/if}
+        {#if a.group == 'a'}<div class="attr" role="row"><og-icon class="attr-mark" icon={a.icon}></og-icon><span class="attr-label" role="rowheader">{a.label}</span><span class="attr-value" role="cell">{a.value}</span></div>{/if}
       {/each}
     </div>
     <div class="attr-split"></div>
     <div class="attr-column">
       {#each attributes as a (a.id)}
-        {#if a.group == 'b'}<div class="attr" role="row"><icon class="attr-mark" icon={a.icon}></icon><span class="attr-label" role="rowheader">{a.label}</span><span class="attr-value" role="cell">{a.value}</span></div>{/if}
+        {#if a.group == 'b'}<div class="attr" role="row"><og-icon class="attr-mark" icon={a.icon}></og-icon><span class="attr-label" role="rowheader">{a.label}</span><span class="attr-value" role="cell">{a.value}</span></div>{/if}
       {/each}
     </div>
   </div>
