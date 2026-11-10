@@ -180,6 +180,22 @@ impl Ui {
             return;
         }
         let t = self.theme;
+        let owner = &self.nodes[self.parent()];
+        let inherited = owner
+            .el
+            .part
+            .map(|part| self.part_values(&part, Some(owner.key)));
+        let ink = |fallback| {
+            inherited
+                .as_ref()
+                .and_then(|r| r.color("color"))
+                .map_or(Ink::Role(fallback), |color| Ink::C(C::of(color)))
+        };
+        let step = |fallback| {
+            inherited
+                .as_ref()
+                .map_or(fallback, |r| r.part_type(&t, fallback))
+        };
         self.open(
             "Text",
             Element {
@@ -194,7 +210,8 @@ impl Ui {
                 "Label",
                 label,
                 Text {
-                    color: Ink::Role(if disabled { "inkFaint" } else { "ink" }),
+                    color: ink(if disabled { "inkFaint" } else { "ink" }),
+                    step: Some(step(t.type_ramp.body)),
                     width: Some(Size::grow()),
                     ..Text::default()
                 },
@@ -205,8 +222,8 @@ impl Ui {
                 "Description",
                 description,
                 Text {
-                    step: Some(t.type_ramp.sm),
-                    color: Ink::Role(if disabled { "inkFaint" } else { "inkMuted" }),
+                    step: Some(step(t.type_ramp.sm)),
+                    color: ink(if disabled { "inkFaint" } else { "inkMuted" }),
                     width: Some(Size::grow()),
                     ..Text::default()
                 },
@@ -265,6 +282,7 @@ impl Ui {
             id,
             Ctl {
                 part: "input[type=checkbox][switch]::part(row)",
+                part_node: true,
                 disabled: desc.disabled,
                 flags: vec![Some(if on { "on" } else { "off" })],
                 width: desc.width,
@@ -297,7 +315,7 @@ impl Ui {
                     ],
                     ElementClass::Chip,
                 );
-                ui.open(
+                ui.open_part(
                     "Track",
                     Element {
                         width: Size::px(tw),
@@ -314,7 +332,7 @@ impl Ui {
                     &[on.then_some("on"), Some("round")],
                     ElementClass::Chip,
                 );
-                ui.open(
+                ui.open_part(
                     "Knob",
                     Element {
                         width: Size::px(knob),
@@ -450,6 +468,7 @@ impl Ui {
             id,
             Ctl {
                 part: "input[type=checkbox]::part(row)",
+                part_node: true,
                 disabled: desc.disabled,
                 flags: vec![
                     checked.then_some("checked"),
@@ -491,7 +510,7 @@ impl Ui {
                     ],
                     ElementClass::Field,
                 );
-                ui.open(
+                ui.open_part(
                     "Box",
                     Element {
                         width: Size::px(bx),
@@ -506,7 +525,7 @@ impl Ui {
                         ..Element::default()
                     },
                 );
-                ui.open(
+                ui.open_part(
                     "Mark",
                     Element {
                         width: Size::px(bx),
@@ -608,7 +627,7 @@ impl Ui {
             &[selected.then_some("checked"), Some("round"), ix.flag()],
             ElementClass::Field,
         );
-        self.open(
+        self.open_part(
             "Ring",
             Element {
                 width: Size::px(size),
@@ -622,7 +641,7 @@ impl Ui {
                 ..Element::default()
             },
         );
-        self.open(
+        self.open_part(
             "Dot",
             Element {
                 width: Size::px(dot),
@@ -741,6 +760,7 @@ impl Ui {
                     } else {
                         "input[type=radio]::part(option)"
                     },
+                    part_node: true,
                     cls: if cards {
                         ElementClass::Card
                     } else {
@@ -796,12 +816,30 @@ impl Ui {
                     if cards {
                         ui.radio_ring(on, ix, size);
                         if on {
-                            ui.chosen_ring(
+                            ui.open_part(
                                 "Chosen",
-                                2.0,
-                                "primary",
-                                "input[type=radio]::part(chosen)",
+                                Element {
+                                    width: Size::grow(),
+                                    height: Size::grow(),
+                                    part: Some(
+                                        crate::doc::schema::parts::RADIO_CHOSEN.reference(None),
+                                    ),
+                                    ..Element::default()
+                                },
                             );
+                            ui.close();
+                            ui.over(Props {
+                                insets: Edges {
+                                    start: Some(0.0),
+                                    top: Some(0.0),
+                                    end: Some(0.0),
+                                    bottom: Some(0.0),
+                                    ..Edges::default()
+                                },
+                                inert: true,
+                                z: 3,
+                                ..Props::default()
+                            });
                         }
                     }
                 },

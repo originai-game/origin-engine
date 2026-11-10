@@ -59,7 +59,14 @@ impl Ui {
         self.elements()
             .iter()
             .rev()
-            .find(|e| !e.clipped && x >= e.x && y >= e.y && x < e.x + e.width && y < e.y + e.height)
+            .find(|e| {
+                e.kind != "part"
+                    && !e.clipped
+                    && x >= e.x
+                    && y >= e.y
+                    && x < e.x + e.width
+                    && y < e.y + e.height
+            })
             .map(|e| e.path.clone())
     }
 

@@ -13,9 +13,7 @@ use crate::element::{Edges, Position, Prop, Props, Transform, Values};
 use crate::id::Id;
 use crate::layout::{Align, Cross, Direction, Element, FontRole, Insets, Rect, Size, TextAlign};
 use crate::motion::{Ease, MotionToken, StateGroup, StateTransition, Transition, VisualState};
-use crate::paint::{
-    Cap, ColorRef, ElementDraw, Gradient, Join, Paint, ShapeKind, Stop, Stroke, StrokeAlign,
-};
+use crate::paint::{Cap, ColorRef, ElementDraw, Gradient, Join, Paint, ShapeKind, Stop};
 use crate::style::{Breakpoint, Srgba, TypeStep};
 use crate::tokens::{ElementClass, SoundEvent};
 use crate::ui::{ControlSize, LabelDesc, Response, Ui};
@@ -223,6 +221,7 @@ struct Ctl<'a> {
     /// The part a style dresses (`Toggle.row`); the interaction state and
     /// `flags` are added as qualifiers.
     part: &'a str,
+    part_node: bool,
     /// The element class an undressed part takes its shape and elevation from.
     cls: ElementClass,
     flags: Vec<Option<&'a str>>,
@@ -268,6 +267,7 @@ impl Default for Ctl<'_> {
     fn default() -> Self {
         Ctl {
             part: "",
+            part_node: false,
             cls: ElementClass::Button,
             flags: Vec::new(),
             disabled: false,
@@ -497,6 +497,17 @@ impl Ui {
             Ix::Disabled
         } else if d.inert {
             Ix::Normal
+        } else if d.part_node {
+            let response = self.respond(crate::id::key_of_path(&own));
+            if response.pressed {
+                Ix::Pressed
+            } else if response.hovered {
+                Ix::Hover
+            } else if response.focused {
+                Ix::Focused
+            } else {
+                Ix::Normal
+            }
         } else {
             self.interaction_at(&own)
         };
@@ -545,6 +556,31 @@ impl Ui {
                 ..Element::default()
             },
         );
+        let part_slot = d.part_node.then(|| {
+            let owner = *self.stack.last().unwrap();
+            let element = self.nodes[owner].el;
+            self.nodes[owner].el.padding = Insets::default();
+            self.nodes[owner].el.background = None;
+            self.nodes[owner].el.radius = 0.0;
+            let slot = self.write_part(
+                owner,
+                part,
+                (part.part, 0),
+                Element {
+                    width: Size::grow(),
+                    height: Size::grow(),
+                    interactive: false,
+                    focusable: false,
+                    adjustable: false,
+                    arrows: 0,
+                    part: None,
+                    ..element
+                },
+                crate::layout::Content::None,
+            );
+            self.nodes[owner].content_slot = slot;
+            slot
+        });
         build(self, ix);
         let r = self.close();
         let path = self.last_path();
@@ -568,7 +604,13 @@ impl Ui {
         let mut state = d.state;
         state.append(&mut props.state);
         props.state = state;
-        self.set_props(props);
+        if let Some(slot) = part_slot {
+            props.state.push(("interaction".into(), ix.name().into()));
+            self.nodes[slot].part_box.as_mut().unwrap().intrinsic_props = props;
+            self.nodes[node].props.hit_slop = slop;
+        } else {
+            self.set_props(props);
+        }
         if d.semantics.is_some() || disabled {
             let mut s = d.semantics.unwrap_or_default();
             s.disabled = disabled;
@@ -918,49 +960,6 @@ impl Ui {
             z: 3,
             ..Props::default()
         });
-    }
-
-    /// A ring over the parent's box (a chosen card's).
-    fn chosen_ring(&mut self, id: &str, width: f32, ink: &str, part: &str) {
-        self.open(
-            id,
-            Element {
-                width: Size::grow(),
-                height: Size::grow(),
-                part: crate::dress::PartRef::parse(part, None::<ElementClass>).ok(),
-                ..Element::default()
-            },
-        );
-        self.set_draw(ElementDraw {
-            shape: ShapeKind::default(),
-            strokes: vec![Self::stroke(width, ink)],
-            ..ElementDraw::default()
-        });
-        self.close();
-        self.over(Props {
-            insets: Edges {
-                start: Some(0.0),
-                top: Some(0.0),
-                end: Some(0.0),
-                bottom: Some(0.0),
-                ..Edges::default()
-            },
-            inert: true,
-            z: 3,
-            ..Props::default()
-        });
-    }
-
-    /// A stroke inside an element's edge in a colour role.
-    fn stroke(width: f32, token: &str) -> Stroke {
-        Stroke {
-            width,
-            align: StrokeAlign::Inside,
-            dash: [0.0; 2],
-            dash_offset: 0.0,
-            dash_cap: Cap::default(),
-            paint: Paint::Solid(ColorRef::token(token)),
-        }
     }
 
     // ── the label and helper around a field ─────────────────────────────

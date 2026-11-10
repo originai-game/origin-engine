@@ -1,0 +1,15 @@
+{
+  "breaking": [
+    {
+      "member": "Button and choice widget CSS boxes",
+      "change": "Button bases and checkbox, switch and radio parts have persistent layout and paint boxes separate from their semantic hosts. Host and part transforms compose instead of overwriting each other.",
+      "fix": "Style the visual box with ::part(base), ::part(box), ::part(track) or the registered part name. Keep host dimensions, events and accessibility on the host. Host color and font size inherit into labels."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "Retained widget parts",
+      "summary": "New parts measure before entering the layout cache. Retained content preserves logical IDs while attaching under its physical part box. Settled animations reuse paint, and removing and reinserting a host retires its parts."
+    }
+  ]
+}

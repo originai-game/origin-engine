@@ -1470,7 +1470,7 @@ impl RetainedHost {
         {
             self.resolve(ui, identity, env)?;
         }
-        let parent_slot = ui.parent();
+        let parent_slot = ui.content_parent();
         let element = &self.elements[identity];
         // A world layer (`<anchor>`, `<panel world>`) stands outside the
         // tree, under no parent, and stays among the layers as it is.
@@ -1717,7 +1717,12 @@ impl RetainedHost {
             (ui.docs.accepts, ui.docs.building) = (accepts, building);
             // A world layer's own arm opens its layer again.
             if parent != NONE {
-                ui.stack.push(parent);
+                let owner = ui.nodes[parent]
+                    .part_box
+                    .as_ref()
+                    .filter(|part| ui.nodes[part.owner].content_slot == parent)
+                    .map_or(parent, |part| part.owner);
+                ui.stack.push(owner);
             }
             let result = self.emit_element(ui, &identity, true, env, events, writes);
             if parent != NONE {

@@ -44,6 +44,8 @@ fn retained_documents_match_immediate_pixels_after_updates_and_restore() {
         <column id="Root" gap="12">
             <text id="Title">{$title}</text>
             <label>Enable captions <input type="checkbox" switch id="Choice" checked={$enabled} width={$enabled ? 300 : 240}></label>
+            <label><input type="checkbox" id="Check" checked={$enabled}> Caption sound effects</label>
+            <label><input type="radio" id="Radio" checked={$enabled}> Descriptive captions</label>
             <text id="Details">Captions follow the selected language.</text>
         </column>
         <style>

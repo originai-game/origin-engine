@@ -713,10 +713,10 @@
   button.quiet::part(base):hover, button.quiet::part(base):active,
   button.ghost::part(base):hover, button.ghost::part(base):active { background: var(--control); }
   button.danger::part(base) {
-    background: color-mix(in srgb, var(--danger) 10%, transparent);
+    background: color-mix(in srgb, var(--danger) 10%, var(--color-surface));
   }
   button.danger::part(base):hover, button.danger::part(base):active {
-    background: color-mix(in srgb, var(--danger) 15%, transparent);
+    background: color-mix(in srgb, var(--danger) 15%, var(--color-surface));
   }
   button::part(base):disabled,
   button.primary::part(base):disabled, button.quiet::part(base):disabled,
@@ -920,7 +920,7 @@
   /* Radio::card:selected */
   input[type=radio]::part(card):checked { background: var(--selection); }
   /* Radio::chosen */
-  input[type=radio]::part(chosen) { border: none; }
+  input[type=radio]::part(chosen) { border: 2px solid var(--primary); }
   /* Tabs::tab:selected */
   tabs::part(tab):checked { background: var(--selection); box-shadow: 0 2px 4px 0 #00000073, inset 0 1px 0 0 #ffffff26; }
 }

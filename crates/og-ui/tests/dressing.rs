@@ -7,6 +7,109 @@ use crate::support::*;
 use og_ui::*;
 
 #[test]
+fn choice_parts_have_independent_css_layout_and_paint() {
+    let mut ui = ui_with_font(add_test_font(&mut og_render::RenderScene::new()));
+    ui.set_part_css(r#"
+input { color: #d3b517; font-size: 21px; }
+input[type=checkbox]::part(box) { width: 34px; height: 30px; background: #fb0307; translate: 7px 0; opacity: 0.5; border: none; transition: none; }
+input[type=checkbox][switch]::part(track) { width: 70px; height: 32px; background: #03fb07; border: none; transition: none; }
+input[type=radio]::part(ring) { width: 38px; height: 26px; background: #0307fb; border: none; transition: none; }
+input[type=radio]::part(chosen) { width: 17px; height: 13px; background: #fb07fb; border: none; }
+"#).unwrap();
+    for _ in 0..3 {
+        ui.begin(InputFrame::default(), Viewport::new(600.0, 400.0));
+        ui.open("Root", Element::column());
+        ui.check_field(
+            "Check",
+            true,
+            &CheckFieldDesc {
+                label: "Check".into(),
+                ..Default::default()
+            },
+        );
+        ui.toggle_switch(
+            "Switch",
+            true,
+            &ToggleSwitchDesc {
+                label: "Switch".into(),
+                ..Default::default()
+            },
+        );
+        ui.radio_group(
+            "Radio",
+            &RadioGroupDesc {
+                selected: 0,
+                options: vec![RadioOption {
+                    label: "Radio".into(),
+                    ..Default::default()
+                }],
+                ..Default::default()
+            },
+        );
+        ui.radio_group(
+            "Cards",
+            &RadioGroupDesc {
+                variant: RadioVariant::Cards,
+                selected: 0,
+                options: vec![RadioOption {
+                    label: "Card".into(),
+                    ..Default::default()
+                }],
+                ..Default::default()
+            },
+        );
+        ui.close();
+        ui.end();
+        assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+        for (path, width, height) in [
+            ("Root/Check/Box", 34.0, 30.0),
+            ("Root/Switch/Track", 70.0, 32.0),
+            ("Root/Radio/Options/Option#0/Ring", 38.0, 26.0),
+            ("Root/Cards/Options/Option#0/Chosen", 17.0, 13.0),
+        ] {
+            let part = ui.element(path).unwrap();
+            assert_eq!((part.width, part.height), (width, height), "{path}");
+        }
+        let fills: Vec<_> = ui
+            .frame()
+            .items
+            .iter()
+            .filter_map(|i| i.cmd.filled())
+            .map(|(_, c)| c)
+            .collect();
+        for rgb in [[251, 3, 7], [3, 251, 7], [3, 7, 251], [251, 7, 251]] {
+            let expected = Srgba::rgb(rgb[0], rgb[1], rgb[2]).linear();
+            assert!(
+                fills.iter().any(|c| c[..3] == expected[..3]),
+                "{rgb:?}: {fills:?}"
+            );
+        }
+        let row = ui.element("Root/Check/::part(row)#0").unwrap();
+        assert_eq!(ui.element("Root/Check").unwrap().role, "checkbox");
+        assert!(row.role.is_empty());
+        for label in ["Check", "Switch", "Radio", "Card"] {
+            let text = ui
+                .frame()
+                .items
+                .iter()
+                .find_map(|item| {
+                    match match &item.cmd {
+                        DrawCmd::StyledText { text, .. } => &**text,
+                        cmd => cmd,
+                    } {
+                        DrawCmd::Text {
+                            text, size, color, ..
+                        } if text == label => Some((*size, *color)),
+                        _ => None,
+                    }
+                })
+                .expect("choice label");
+            assert_eq!(text, (21.0, Srgba::rgb(211, 181, 23).linear()), "{label}");
+        }
+    }
+}
+
+#[test]
 fn button_parts_keep_separate_boxes_and_host_event_ownership() {
     let tick = |ui: &mut Ui, input| {
         ui.begin(input, Viewport::new(600.0, 400.0));

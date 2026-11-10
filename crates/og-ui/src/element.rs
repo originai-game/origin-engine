@@ -2244,6 +2244,11 @@ impl Ui {
     /// Sets the props of the element built just before (any widget, or a
     /// container just closed). Answers false when there is none.
     pub fn set_props(&mut self, props: Props) -> bool {
+        if let Some(node) = self.nodes.get_mut(self.last_closed)
+            && let Some(part) = node.part_box.as_mut()
+        {
+            part.intrinsic_props = props.clone();
+        }
         match self.props_mut() {
             Some(p) => {
                 *p = props;

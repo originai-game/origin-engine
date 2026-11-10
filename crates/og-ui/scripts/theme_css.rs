@@ -109,7 +109,7 @@ const PART_RULES: &[(&str, &str, &str)] = &[
     (
         "Radio::chosen",
         "input[type=radio]::part(chosen)",
-        "border: none;",
+        "border: 2px solid var(--primary);",
     ),
     (
         "Tabs::tab:selected",
@@ -464,10 +464,10 @@ const FALLBACKS: &str = r#"
   button.quiet::part(base):hover, button.quiet::part(base):active,
   button.ghost::part(base):hover, button.ghost::part(base):active { background: var(--control); }
   button.danger::part(base) {
-    background: color-mix(in srgb, var(--danger) 10%, transparent);
+    background: color-mix(in srgb, var(--danger) 10%, var(--color-surface));
   }
   button.danger::part(base):hover, button.danger::part(base):active {
-    background: color-mix(in srgb, var(--danger) 15%, transparent);
+    background: color-mix(in srgb, var(--danger) 15%, var(--color-surface));
   }
   button::part(base):disabled,
   button.primary::part(base):disabled, button.quiet::part(base):disabled,

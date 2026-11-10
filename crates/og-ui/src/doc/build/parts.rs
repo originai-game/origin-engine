@@ -20,11 +20,11 @@ impl Resolved {
 
 impl Ui {
     pub(super) fn apply_part_box(&mut self, i: usize) {
-        self.kept
-            .prev
-            .entry(i)
-            .or_insert_with(|| self.nodes[i].clone());
         if !self.emitted.contains(&i) {
+            self.kept
+                .prev
+                .entry(i)
+                .or_insert_with(|| self.nodes[i].clone());
             self.emitted.push(i);
         }
         let part = self.nodes[i].part_box.clone().expect("part node");
@@ -45,7 +45,13 @@ impl Ui {
             &r,
             fields::BoxSource {
                 document: document.as_deref(),
-                kind: "box",
+                kind: if r.has("display") {
+                    "box"
+                } else if part.element.direction == Direction::Row {
+                    "row"
+                } else {
+                    "column"
+                },
                 tag: None,
                 root: false,
                 line: 0,
@@ -53,6 +59,54 @@ impl Ui {
             },
         );
         let mut props = Self::box_props(&NodeKind::Element("box"), &r);
+        let intrinsic = part.intrinsic_props;
+        props.states = intrinsic.states;
+        props.state = intrinsic.state;
+        for group in &mut props.states {
+            for state in &mut group.states {
+                state.values.retain(|(property, _)| {
+                    use crate::element::Prop;
+                    match property {
+                        Prop::BackgroundR
+                        | Prop::BackgroundG
+                        | Prop::BackgroundB
+                        | Prop::BackgroundA => !r.has("background"),
+                        Prop::Opacity => !r.has("opacity"),
+                        Prop::X => !r.has("x") && r.space3d.is_none(),
+                        Prop::Y => !r.has("y") && r.space3d.is_none(),
+                        Prop::Scale | Prop::ScaleX | Prop::ScaleY => {
+                            !r.has("scale")
+                                && !r.has("scaleX")
+                                && !r.has("scaleY")
+                                && r.space3d.is_none()
+                        }
+                        _ => true,
+                    }
+                });
+            }
+        }
+        props.motion = props.motion.or(intrinsic.motion);
+        props.overlaps = intrinsic.overlaps;
+        props.inert |= intrinsic.inert;
+        if !r.has("z") {
+            props.z = intrinsic.z;
+        }
+        if !r.has("position") && !props.insets.is_set() {
+            props.position = intrinsic.position;
+            props.insets = intrinsic.insets;
+        }
+        if r.cascade.transform.is_empty()
+            && ![
+                "x", "y", "xShift", "yShift", "scale", "scaleX", "scaleY", "rotate", "pivot",
+            ]
+            .iter()
+            .any(|name| r.has(name))
+        {
+            props.transform = intrinsic.transform;
+        }
+        if !r.has("opacity") {
+            props.opacity = intrinsic.opacity;
+        }
         props.flow = r.own_flow();
         if self.direction == og_i18n::Direction::Rtl {
             crate::layout::flow::mirror_props(&mut props);

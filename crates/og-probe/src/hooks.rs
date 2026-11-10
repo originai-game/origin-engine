@@ -453,7 +453,8 @@ pub fn find_by_id<'a>(elements: &'a [UiElement], path: &str) -> Option<&'a UiEle
 pub fn pick_ui(elements: &[UiElement], x: f32, y: f32) -> Option<&UiElement> {
     const LAYOUT: [&str; 6] = ["layer", "root", "row", "column", "scroll", "stack"];
     elements.iter().rev().find(|e| {
-        x >= e.x
+        e.kind != "part"
+            && x >= e.x
             && x < e.x + e.width
             && y >= e.y
             && y < e.y + e.height

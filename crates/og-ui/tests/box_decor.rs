@@ -109,7 +109,7 @@ fn decorations_paint_in_css_order_over_any_draw() {
 #A { width: 50px; height: 30px; border: 4px solid #ff0000; }
 #C { margin: 0; width: 40px; height: 20px; color: #00ff00; outline: 3px dashed; outline-offset: 2px; }
 #S { width: 40px; height: 40px; background: #3366ff; box-shadow: 0 4px 12px #000000, inset 0 0 0 2px #ffffff; }
-#Btn { border: 2px solid #ffff00; }
+#Btn::part(base) { border: 2px solid #ffff00; }
 </style>"#;
     both(text, &[], |d| {
         let s = shapes(&d.ui);
@@ -213,7 +213,7 @@ fn border_radius_rounds_a_dressed_button() {
 </div></div>
 <style>
 #Root { width: 400px; gap: 20px; }
-#Round { border-radius: 20px; }
+#Round::part(base) { border-radius: 20px; }
 </style>"#;
     both(text, &[], |d| {
         let s = shapes(&d.ui);
@@ -225,6 +225,17 @@ fn border_radius_rounds_a_dressed_button() {
                 .find_map(|x| match x.geometry {
                     og_render::UiGeometry::Rect { radii, .. } => Some(radii),
                     _ => None,
+                })
+                .or_else(|| {
+                    d.ui.frame().items.iter().find_map(|item| match item.cmd {
+                        DrawCmd::Quad { rect, radius, .. }
+                            if Vec2::new(rect.x + rect.width / 2.0, rect.y + rect.height / 2.0)
+                                == at =>
+                        {
+                            Some([radius; 4])
+                        }
+                        _ => None,
+                    })
                 })
                 .unwrap_or_else(|| panic!("{id}'s plate"))
         };

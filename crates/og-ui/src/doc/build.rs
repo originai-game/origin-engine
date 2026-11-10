@@ -586,6 +586,10 @@ impl Ui {
             .collect();
         for i in moving {
             if !self.emitted.contains(&i) {
+                self.kept
+                    .prev
+                    .entry(i)
+                    .or_insert_with(|| self.nodes[i].clone());
                 self.emitted.push(i);
             }
         }

@@ -257,15 +257,10 @@ fn part_selector(selector: &Selector) -> Result<(), String> {
     {
         return Ok(());
     }
-    let Some(Simple::Type(tag)) = simples.first() else {
-        return Err(bad());
-    };
-    if tag != &tag.to_ascii_lowercase() {
-        return Err(bad());
-    }
     let mut part = false;
-    for simple in &simples[1..] {
+    for simple in simples {
         match simple {
+            Simple::Type(tag) if !part && tag == &tag.to_ascii_lowercase() => {}
             Simple::Class(_) | Simple::Id(_) | Simple::Attribute { .. } if !part => {}
             Simple::Not(list) | Simple::Is(list) | Simple::Where(list)
                 if !part && list.iter().all(|selector| !selector.structural()) => {}

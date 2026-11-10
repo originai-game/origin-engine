@@ -482,6 +482,7 @@ pub(crate) struct PartBox {
     pub owner: usize,
     pub reference: crate::dress::PartRef,
     pub element: Element,
+    pub intrinsic_props: crate::element::Props,
 }
 
 #[derive(Clone, Debug)]

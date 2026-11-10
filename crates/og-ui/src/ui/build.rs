@@ -120,7 +120,7 @@ impl Ui {
     /// Puts a retained node that was not emitted again back under the open
     /// element, with its subtree as it stands.
     pub(crate) fn reattach(&mut self, i: usize) {
-        let parent = self.parent();
+        let parent = self.content_parent();
         self.nodes[parent].built_children.push(i);
     }
 
@@ -172,7 +172,11 @@ impl Ui {
     }
 
     pub(crate) fn parent(&self) -> usize {
-        let owner = self.stack.last().copied().unwrap_or(0);
+        self.stack.last().copied().unwrap_or(0)
+    }
+
+    pub(crate) fn content_parent(&self) -> usize {
+        let owner = self.parent();
         match self.nodes[owner].content_slot {
             NONE => owner,
             slot => slot,
@@ -193,14 +197,17 @@ impl Ui {
             owner,
             reference,
             element,
+            intrinsic_props: Default::default(),
         };
         if let Some(i) = self.render_slot(key, owner)
             && self.nodes[owner].built_children.contains(&i)
         {
-            self.kept
-                .prev
-                .entry(i)
-                .or_insert_with(|| self.nodes[i].clone());
+            if !self.emitted.contains(&i) {
+                self.kept
+                    .prev
+                    .entry(i)
+                    .or_insert_with(|| self.nodes[i].clone());
+            }
             self.nodes[i].part_box = Some(part);
             self.nodes[i].el = element;
             self.nodes[i].content = content;
@@ -215,6 +222,19 @@ impl Ui {
         i
     }
 
+    pub(crate) fn open_part(&mut self, id: impl Into<Id>, mut element: Element) {
+        let reference = element.part.take().expect("a widget part reference");
+        let owner = self.stack.last().copied().unwrap_or(0);
+        let i = self.push("part", id.into(), element);
+        self.nodes[i].part_box = Some(crate::layout::PartBox {
+            owner,
+            reference,
+            element,
+            intrinsic_props: Default::default(),
+        });
+        self.stack.push(i);
+    }
+
     /// Adds a node under the open element and returns its index.
     pub(crate) fn push(&mut self, kind: &'static str, id: Id, el: Element) -> usize {
         if !self.building {
@@ -222,9 +242,10 @@ impl Ui {
                 .push("an element was added outside begin/end; call ui.begin() first".into());
             self.begin(InputFrame::default(), self.viewport);
         }
-        let parent = self.parent();
+        let owner = self.parent();
+        let parent = self.content_parent();
         let anonymous = id.is_empty();
-        let parent_key = self.nodes[self.stack.last().copied().unwrap_or(0)].key;
+        let parent_key = self.nodes[owner].key;
         let mut local = if anonymous {
             let n = self
                 .anonymous
@@ -285,7 +306,10 @@ impl Ui {
         let mut parts = Vec::new();
         let own = i;
         while i != NONE && i != 0 {
-            if i == own || self.nodes[i].part_box.is_none() {
+            if i == own
+                || self.nodes[i].part_box.is_none()
+                || !self.nodes[i].id.starts_with("::part(")
+            {
                 parts.push(self.nodes[i].id.clone());
             }
             i = self.nodes[i].parent;
