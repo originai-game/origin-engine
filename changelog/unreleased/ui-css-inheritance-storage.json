@@ -1,0 +1,15 @@
+{
+  "breaking": [
+    {
+      "member": "CSS computed values",
+      "change": "Inherited standard declarations and bound inline styles no longer use --og-* custom properties. Reserved --og-* names cannot enter the computed custom-property map or be read through var().",
+      "fix": "Use standard inheritance and style:prop={expr}. Use author custom properties without the reserved --og- prefix; style:--name={expr} remains supported."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "Svelte inline styles",
+      "summary": "Inline !important declarations, including Svelte style:prop|important, outrank stylesheet !important declarations across cascade layers. Removing a bound inline value restores the underlying declaration."
+    }
+  ]
+}

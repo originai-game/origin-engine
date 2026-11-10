@@ -288,6 +288,8 @@ pub struct StyleDeclaration {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct StyleRule {
+    /// Inline styles outrank stylesheet declarations at equal importance.
+    pub inline: bool,
     /// Its cascade layer's rank: 0 for the user-agent sheet, the layer's
     /// place in [`at_rules::Sheet::layers`] plus one, `u32::MAX` unlayered.
     /// Normal declarations of a higher rank win; `!important` ones of a

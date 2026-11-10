@@ -398,6 +398,80 @@ fn boolean_attribute_selectors_follow_svelte_presence() {
 }
 
 #[test]
+fn inline_bindings_and_inheritance_are_isolated_from_author_variables() {
+    let source = r#"<meta name="screen" content="isolated" data-layer="hud">
+<div id="Root" style:width={width} style:color={color} style:--author={width}>
+  <div id="Inherited" />
+  <div id="Author" />
+  <div id="Normal" style:width={width} />
+  <div id="Important" style:width|important={width} />
+  <div id="Optional" style:width={optional} />
+  <text id="InheritedColor">inherited</text>
+  <text id="BoundColor" style:color={color}>bound</text>
+  <text id="HiddenColor">hidden</text>
+</div>
+<style>
+#Root { --og-v-width: 999px; --og-v-color: red; --og-style-color: red; }
+#Root { --og-style-width: 999px; width: 14px; }
+#Inherited { width: inherit; height: 10px; }
+#Author { width: var(--author); height: 10px; }
+#Normal, #Important { width: 80px !important; height: 10px; }
+#Optional { width: 64px; height: 10px; }
+#InheritedColor { color: inherit; }
+#BoundColor { --og-style-color: red !important; }
+#HiddenColor { color: var(--og-v-color, #00ff00); }
+@layer overrides { #Important { width: 93px !important; } }
+</style>"#;
+    let mut ui = ui_with_font(add_test_font(&mut og_render::RenderScene::new()));
+    ui.define_document(UiDocument::parse("isolated.svelte", source).unwrap());
+    ui.push_screen("isolated", json!({"width":"138px", "color":"#0000ff"}))
+        .unwrap();
+    for (width, color, rgb) in [
+        (138.0, "#0000ff", [0.0, 0.0, 1.0, 1.0]),
+        (220.0, "#ff0000", [1.0, 0.0, 0.0, 1.0]),
+    ] {
+        ui.set_screen_vm(
+            "isolated",
+            json!({"width":format!("{width}px"), "color":color,
+                "optional": if width == 138.0 { Some("104px") } else { None }}),
+        );
+        for _ in 0..3 {
+            tick(&mut ui, InputFrame::default());
+        }
+        for id in ["Root", "Root/Inherited", "Root/Author", "Root/Important"] {
+            assert_eq!(
+                ui.element(&format!("isolated/{id}")).unwrap().width,
+                width,
+                "{id}"
+            );
+        }
+        assert_eq!(ui.element("isolated/Root/Normal").unwrap().width, 80.0);
+        assert_eq!(
+            ui.element("isolated/Root/Optional").unwrap().width,
+            if width == 138.0 { 104.0 } else { 64.0 }
+        );
+        for (label, expected) in [
+            ("inherited", rgb),
+            ("bound", rgb),
+            ("hidden", [0.0, 1.0, 0.0, 1.0]),
+        ] {
+            let actual = ui.frame().items.iter().find_map(|item| {
+                let cmd = match &item.cmd {
+                    DrawCmd::StyledText { text, .. } => text.as_ref(),
+                    cmd => cmd,
+                };
+                match cmd {
+                    DrawCmd::Text { text, color, .. } if text == label => Some(*color),
+                    _ => None,
+                }
+            });
+            assert_eq!(actual, Some(expected), "{label}");
+        }
+        assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+    }
+}
+
+#[test]
 fn ancestor_selectors_read_the_matched_nodes_state() {
     use og_ui::bind::{Env, InteractionState};
     struct States(usize, InteractionState);

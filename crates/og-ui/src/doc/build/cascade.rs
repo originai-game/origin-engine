@@ -98,12 +98,6 @@ pub(crate) const CARRIED_BY_DEFAULT: &[&str] = &[
     "list-style-image",
 ];
 
-/// The computed-map key that carries a property's value to the children
-/// that write `inherit` (or `unset` on an inherited property).
-pub(crate) fn carried(name: &str) -> String {
-    format!("--og-v-{name}")
-}
-
 /// What won the cascade for one property.
 #[derive(Clone, Copy)]
 enum Winner<'a> {
@@ -151,7 +145,7 @@ pub(crate) struct Options<'a> {
     /// Include `@starting-style` rules (the values a first style's
     /// transitions start from).
     pub starting: bool,
-    /// Carry the winners to children's `inherit` ([`carried`]).
+    /// Carry the winners in the standard-property map for children's `inherit`.
     pub carry: bool,
 }
 
@@ -166,7 +160,7 @@ pub(crate) fn values_with(
     // line, layer). Normal declarations of a later layer win; important
     // ones of an earlier layer (CSS Cascade 5 §6.4).
     type Candidate<'a> = (
-        (bool, u32, usize, usize),
+        (bool, bool, u32, usize, usize),
         &'a crate::doc::StyleDeclaration,
         usize,
         u32,
@@ -186,7 +180,7 @@ pub(crate) fn values_with(
                 .entry(declaration.name.as_str())
                 .or_default()
                 .push((
-                    (declaration.important, layer, order, position),
+                    (declaration.important, rule.inline, layer, order, position),
                     declaration,
                     rule.line,
                     rule.layer,
@@ -288,14 +282,12 @@ pub(crate) fn values_with(
         .filter(|(name, _)| !name.starts_with("--"))
         .collect();
     declarations.sort_by_key(|(_, (priority, _, _))| *priority);
-    let carry_prefix = carried("");
     if o.carry {
         // A child inherits the carried values of inherited properties
         // only; the rest are this element's own.
-        computed.retain(|name, _| {
-            name.strip_prefix(&carry_prefix)
-                .is_none_or(inherited_property)
-        });
+        computed
+            .properties
+            .retain(|name, _| inherited_property(name));
     }
     out.computed = Arc::new(computed);
     // Font size reads the parent's em; other lengths read this element's
@@ -410,9 +402,8 @@ pub(crate) fn values_with(
                     }
                     continue;
                 }
-                let key = carried(name);
-                out.inherited_reads.insert(key.clone());
-                match inherited.get(&key).cloned().flatten() {
+                out.inherited_reads.insert(name.into());
+                match inherited.properties.get(name).cloned() {
                     Some(value) => Ok(value),
                     None => continue,
                 }
@@ -482,15 +473,14 @@ pub(crate) fn values_with(
             if out.values.iter().any(|(n, ..)| n == name) {
                 continue;
             }
-            let key = carried(name);
-            out.inherited_reads.insert(key.clone());
-            if let Some(value) = o.inherited.get(&key).cloned().flatten() {
+            out.inherited_reads.insert((*name).into());
+            if let Some(value) = o.inherited.properties.get(*name).cloned() {
                 out.values.push(((*name).into(), value, 0));
             }
         }
         let computed = Arc::make_mut(&mut out.computed);
         for (name, value, _) in &out.values {
-            computed.insert(carried(name), Some(value.clone()));
+            computed.properties.insert(name.clone(), value.clone());
         }
     }
     out

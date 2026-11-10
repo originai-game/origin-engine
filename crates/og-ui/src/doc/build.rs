@@ -776,7 +776,47 @@ impl Ui {
                 && rule.condition.as_ref().is_none_or(|e| truthy(&b.eval(e)))
                 && rule.structure.as_ref().is_none_or(|s| structure(s))
         };
-        r.cascade = cascade::values_with(&n.rules, &options, &mut rule_applies);
+        let mut rules = std::borrow::Cow::Borrowed(&n.rules);
+        let mut inline_errors = Vec::new();
+        if n.rules.iter().any(|rule| {
+            rule.declarations
+                .iter()
+                .any(|d| d.value.binding().is_some())
+        }) {
+            for rule in rules.to_mut() {
+                rule.declarations = std::mem::take(&mut rule.declarations)
+                    .into_iter()
+                    .flat_map(|declaration| {
+                        let Some(expression) = declaration.value.binding() else {
+                            return vec![declaration];
+                        };
+                        let value = match b.eval(expression) {
+                            Value::String(value) => value,
+                            Value::Number(value) => value.to_string(),
+                            Value::Bool(value) => value.to_string(),
+                            _ => return Vec::new(),
+                        };
+                        let body = format!(
+                            "{}: {value}{};",
+                            declaration.name,
+                            if declaration.important {
+                                " !important"
+                            } else {
+                                ""
+                            }
+                        );
+                        match super::stylesheet::inline(&b.doc, n, &body, 0) {
+                            Ok(declarations) => declarations,
+                            Err((_, error)) => {
+                                inline_errors.push(format!("style:{}: {error}", declaration.name));
+                                Vec::new()
+                            }
+                        }
+                    })
+                    .collect();
+            }
+        }
+        r.cascade = cascade::values_with(&rules, &options, &mut rule_applies);
         // The root's own `vi` and `vb` follow the writing mode it declares.
         let (basis, options) = if cascade::root_vertical(inherited).is_none()
             && cascade::declares_vertical(&r.cascade.values)
@@ -789,17 +829,18 @@ impl Ui {
                 basis: Some(basis),
                 ..options
             };
-            r.cascade = cascade::values_with(&n.rules, &options, &mut rule_applies);
+            r.cascade = cascade::values_with(&rules, &options, &mut rule_applies);
             (basis, options)
         } else {
             (basis, options)
         };
+        r.cascade.diagnostics.extend(inline_errors);
         // `@starting-style`: the before-change style of an element's first
         // style, for its transitions.
         let key = crate::id::key_of_path(path);
         if !self.docs.seen.contains(&key) && n.rules.iter().any(|rule| rule.starting) {
             let start = cascade::values_with(
-                &n.rules,
+                &rules,
                 &cascade::Options {
                     starting: true,
                     carry: false,

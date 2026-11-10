@@ -134,6 +134,7 @@ pub(crate) fn part_rules_from(
         }
         part_selector(&selector).map_err(|e| error((rule.at, e)))?;
         out.push(StyleRule {
+            inline: false,
             layer: rank(&sheet.layers, &rule.layer),
             starting: rule.starting,
             query: rule.query,
@@ -456,6 +457,7 @@ pub(super) fn apply(
                 })
                 .map_err(|e| (rule.at, e))?;
                 doc.part_rules.push(StyleRule {
+                    inline: false,
                     layer: rank(&layers, &rule.layer),
                     starting: rule.starting,
                     query: rule.query,
@@ -534,6 +536,7 @@ pub(super) fn apply(
                 }
                 let props = rule_props(entries, kind).map_err(|e| (rule.at, e))?;
                 doc.nodes[node].rules.push(StyleRule {
+                    inline: false,
                     layer: if rule.ua {
                         0
                     } else {
@@ -1622,7 +1625,7 @@ fn pseudo_element(rule: &mut Rule) -> Result<(), (usize, String)> {
 /// directive, `body` at `at`), expanded and checked as a rule's are.
 pub(super) fn inline(
     doc: &UiDocument,
-    node: usize,
+    node: &super::DocNode,
     body: &str,
     at: usize,
 ) -> Result<Vec<StyleDeclaration>, Error> {
@@ -1650,7 +1653,7 @@ pub(super) fn inline(
             );
         }
     }
-    let kind = match doc.nodes[node].kind {
+    let kind = match node.kind {
         NodeKind::Element(k) => k,
         _ => "column",
     };
@@ -1686,7 +1689,7 @@ pub(super) fn inline(
             let applies = schema::prop(&e.key).is_some_and(|(_, p)| p.applies(kind));
             let side = (e.key == "direction" && kind == "toggle")
                 || (e.key == "labelDirection" && kind != "toggle");
-            if !applies && !side {
+            if !applies && !side && !super::build::cascade::inherited_property(name) {
                 return Err((at, format!("CSS property {name} does not apply to {kind}")));
             }
         }

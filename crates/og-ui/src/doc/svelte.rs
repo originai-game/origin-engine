@@ -153,6 +153,7 @@ pub(crate) fn parse_with_pack(
         for (i, declarations) in std::mem::take(&mut p.inline_styles) {
             let line = p.doc.nodes[i].line;
             p.doc.nodes[i].rules.push(StyleRule {
+                inline: true,
                 layer: u32::MAX,
                 starting: false,
                 query: AtQuery::default(),

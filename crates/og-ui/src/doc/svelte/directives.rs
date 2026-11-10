@@ -208,7 +208,8 @@ impl Parser {
                         .into(),
                 ));
             }
-            let declarations = super::super::stylesheet::inline(&self.doc, i, &a.value, a.at)?;
+            let declarations =
+                super::super::stylesheet::inline(&self.doc, &self.doc.nodes[i], &a.value, a.at)?;
             self.inline_styles.push((i, declarations));
         } else if let Some(prop) = head.strip_prefix("style:") {
             if prop.starts_with("--") {
@@ -225,12 +226,9 @@ impl Parser {
                 }
             };
             let value = if a.bound {
-                // The value is data: a custom property only this element
-                // declares, which its own declaration reads.
-                let var = format!("--og-style-{prop}");
-                let expr = expression(&a.value, a.at)?;
-                self.doc.nodes[i].custom.push((var.clone(), expr));
-                format!("var({var})")
+                // Defer value validation and shorthand expansion until the
+                // expression is evaluated, without allocating a CSS variable.
+                "var(--bound-style)".into()
             } else {
                 a.value.clone()
             };
@@ -238,7 +236,17 @@ impl Parser {
                 "{prop}: {value}{};",
                 if important { " !important" } else { "" }
             );
-            let declarations = super::super::stylesheet::inline(&self.doc, i, &body, a.at)?;
+            let mut declarations =
+                super::super::stylesheet::inline(&self.doc, &self.doc.nodes[i], &body, a.at)?;
+            if a.bound {
+                declarations = vec![StyleDeclaration {
+                    name: prop.into(),
+                    value: variables::Value::bound(expression(&a.value, a.at)?),
+                    source: String::new(),
+                    important,
+                    pending_shorthand: None,
+                }];
+            }
             self.inline_styles.push((i, declarations));
         } else {
             return Ok(false);

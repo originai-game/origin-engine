@@ -658,7 +658,11 @@ impl RetainedHost {
                 when.into_iter().chain(action)
             }))
             .chain(node.uses.iter().filter_map(|(_, params)| params.as_ref()))
-            // `style:prop={…}`'s values (`style:--name`'s are selector facts).
+            .chain(
+                node.rules
+                    .iter()
+                    .flat_map(|rule| rule.declarations.iter().filter_map(|d| d.value.binding())),
+            )
             .chain(
                 node.custom
                     .iter()
@@ -1369,11 +1373,11 @@ impl RetainedHost {
         if let Some(previous) = previous {
             let names: BTreeSet<_> = previous
                 .computed
-                .keys()
-                .chain(values.cascade.computed.keys())
+                .dependency_names()
+                .chain(values.cascade.computed.dependency_names())
                 .collect();
             for name in names {
-                if previous.computed.get(name) != values.cascade.computed.get(name)
+                if previous.computed.dependency(name) != values.cascade.computed.dependency(name)
                     && let Some(readers) = self.inherited.get(&(identity.clone(), name.clone()))
                 {
                     self.dirty.extend(readers.iter().cloned());

@@ -254,7 +254,8 @@ impl Ui {
         }
         self.docs.wide_keywords |= doc.nodes.iter().any(|n| {
             n.rules.iter().flat_map(|r| &r.declarations).any(|d| {
-                super::cascade::CARRIED_BY_DEFAULT.contains(&d.name.as_str())
+                d.value.binding().is_some()
+                    || super::cascade::CARRIED_BY_DEFAULT.contains(&d.name.as_str())
                     || !d.name.starts_with("--")
                         && matches!(
                             crate::doc::stylesheet::wide_keyword(&d.source),

@@ -8,16 +8,90 @@ enum Piece {
     Text(String),
     Block(String, Value, char),
     Var(String, Option<Value>),
+    Bound(Box<crate::bind::Expr>),
 }
 
 /// A token stream, not concatenated identifiers: `var(--n)px` is not a length.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Value(Vec<Piece>);
 
-/// None is the guaranteed-invalid value; an empty string is a valid value.
-pub type Computed = BTreeMap<String, Option<String>>;
+/// Custom values and inherited standard declarations have separate namespaces.
+/// None is the guaranteed-invalid custom value; an empty string is valid.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Computed {
+    custom: BTreeMap<String, Option<String>>,
+    pub(crate) properties: BTreeMap<String, String>,
+}
+
+impl std::ops::Deref for Computed {
+    type Target = BTreeMap<String, Option<String>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.custom
+    }
+}
+
+impl Computed {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn insert(&mut self, name: String, value: Option<String>) -> Option<Option<String>> {
+        if name.starts_with("--og-") {
+            return None;
+        }
+        self.custom.insert(name, value)
+    }
+
+    pub fn remove(&mut self, name: &str) -> Option<Option<String>> {
+        self.custom.remove(name)
+    }
+
+    pub fn extend(&mut self, values: impl IntoIterator<Item = (String, Option<String>)>) {
+        for (name, value) in values {
+            self.insert(name, value);
+        }
+    }
+
+    pub(crate) fn dependency_names(&self) -> impl Iterator<Item = &String> {
+        self.custom.keys().chain(self.properties.keys())
+    }
+
+    pub(crate) fn dependency(&self, name: &str) -> Option<&str> {
+        self.properties
+            .get(name)
+            .map(String::as_str)
+            .or_else(|| self.custom.get(name).and_then(Option::as_deref))
+    }
+}
+
+impl<const N: usize> From<[(String, Option<String>); N]> for Computed {
+    fn from(values: [(String, Option<String>); N]) -> Self {
+        let mut computed = Self::new();
+        computed.extend(values);
+        computed
+    }
+}
 
 impl Value {
+    pub(crate) fn bound(expression: crate::bind::Expr) -> Self {
+        Self(vec![Piece::Bound(Box::new(expression))])
+    }
+
+    pub(crate) fn binding(&self) -> Option<&crate::bind::Expr> {
+        match self.0.as_slice() {
+            [Piece::Bound(expression)] => Some(expression),
+            _ => None,
+        }
+    }
+
+    pub(crate) fn binding_mut(&mut self) -> Option<&mut crate::bind::Expr> {
+        match self.0.as_mut_slice() {
+            [Piece::Bound(expression)] => Some(expression),
+            _ => None,
+        }
+    }
+
     pub fn parse(text: &str) -> Result<Self, String> {
         parse(&mut Parser::new(text)).map_err(|e| format!("invalid CSS value: {e:?}"))
     }
@@ -32,7 +106,7 @@ impl Value {
                     }
                 }
                 Piece::Block(_, value, _) => value.dependencies(out),
-                Piece::Text(_) => {}
+                Piece::Text(_) | Piece::Bound(_) => {}
             }
         }
     }
@@ -52,6 +126,7 @@ impl Value {
         let mut out = String::new();
         for piece in &self.0 {
             match piece {
+                Piece::Bound(_) => return Err("unevaluated inline style binding".into()),
                 Piece::Text(text) => out.push_str(text),
                 Piece::Block(open, value, close) => {
                     out.push_str(open);
@@ -236,6 +311,9 @@ pub fn compute(
         errors: &mut Vec<String>,
         inherited_reads: &mut BTreeSet<String>,
     ) -> Option<String> {
+        if name.starts_with("--og-") {
+            return None;
+        }
         if !specified.contains_key(name) {
             inherited_reads.insert(name.into());
         }
@@ -304,6 +382,28 @@ mod tests {
             .iter()
             .map(|(name, value)| (name.to_string(), Value::parse(value).unwrap()))
             .collect()
+    }
+
+    #[test]
+    fn engine_names_cannot_enter_or_be_read_from_custom_properties() {
+        let mut inherited = Computed::new();
+        inherited.properties.insert("color".into(), "blue".into());
+        inherited.insert("--og-v-color".into(), Some("red".into()));
+        let (computed, errors, _) = compute(
+            &inherited,
+            &declarations(&[
+                ("--og-v-color", "red"),
+                ("--og-style-color", "red"),
+                ("--first", "var(--og-v-color, green)"),
+                ("--second", "var(--og-style-color, yellow)"),
+            ]),
+            &mut |_| Some("red".into()),
+        );
+        assert!(errors.is_empty());
+        assert!(computed.keys().all(|name| !name.starts_with("--og-")));
+        assert_eq!(computed["--first"].as_deref().unwrap().trim(), "green");
+        assert_eq!(computed["--second"].as_deref().unwrap().trim(), "yellow");
+        assert_eq!(computed.properties["color"], "blue");
     }
 
     #[test]

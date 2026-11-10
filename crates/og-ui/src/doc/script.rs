@@ -301,6 +301,11 @@ pub(super) fn apply(doc: &mut UiDocument, consts: &[(usize, String, Expr)]) -> R
             if let Some(c) = &mut rule.condition {
                 substitute(c, &scope).map_err(at_line)?;
             }
+            for declaration in &mut rule.declarations {
+                if let Some(expression) = declaration.value.binding_mut() {
+                    substitute(expression, &scope).map_err(at_line)?;
+                }
+            }
             for p in &mut rule.props {
                 value(&mut p.value).map_err(at_line)?;
             }

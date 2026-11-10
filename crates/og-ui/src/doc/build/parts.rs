@@ -252,7 +252,10 @@ impl Ui {
             };
             let mut inherited = (*self.css_root_variables()).clone();
             if let Some(host) = host {
-                inherited.extend((*host.computed).clone());
+                inherited.extend(host.computed.iter().map(|(k, v)| (k.clone(), v.clone())));
+                inherited
+                    .properties
+                    .extend(host.computed.properties.clone());
             }
             let attr = |name: &str| facts.attributes.get(name).map(crate::bind::text);
             let options = cascade::Options {
