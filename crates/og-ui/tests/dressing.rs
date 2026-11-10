@@ -542,6 +542,104 @@ fn bar_track_css_sizes_the_box_its_fill_is_drawn_in() {
     );
 }
 
+/// A wide-valued number stepper in a 600×500 frame; answers its value.
+fn stepper_tick(ui: &mut Ui, input: InputFrame, value: &mut f32) {
+    ui.begin(input, Viewport::new(600.0, 500.0));
+    ui.open(
+        "Root",
+        Element {
+            padding: Insets::all(13.0),
+            ..Element::column()
+        },
+    );
+    *value = ui
+        .number_stepper("Wide", *value, &NumberStepperDesc::default())
+        .value;
+    ui.close();
+    ui.end();
+}
+
+#[test]
+fn stepper_buttons_and_value_are_part_boxes_with_their_rims_inside() {
+    let mut ui = ui_with_font(test_font_metrics());
+    let mut value = 12345.67;
+    for _ in 0..3 {
+        stepper_tick(&mut ui, InputFrame::default(), &mut value);
+    }
+    for (host, part, role) in [
+        ("Root/Wide/Frame/Dec", "button", "button"),
+        ("Root/Wide/Frame/Value", "value", "spinbutton"),
+        ("Root/Wide/Frame/Inc", "button", "button"),
+    ] {
+        assert_eq!(ui.element(host).unwrap().role, role, "{host}");
+        let visual = ui.element(&format!("{host}/::part({part})#0")).unwrap();
+        assert_eq!(visual.kind, "part");
+        assert!(visual.role.is_empty());
+    }
+    // The default 1.5 px rim sits inside the value's inset, as it was
+    // painted: the value and its frame keep their widths.
+    assert_eq!(rect(&ui, "Root/Wide/Frame"), [13.0, 13.0, 147.0, 44.0]);
+    assert_eq!(rect(&ui, "Root/Wide/Frame/Value"), [57.0, 13.0, 59.0, 44.0]);
+    assert_eq!(rect(&ui, "Root/Wide/Frame/Value/Text")[0], 65.0);
+    // The button host still takes the press.
+    let inc = ui.element("Root/Wide/Frame/Inc").unwrap().clone();
+    let at = og_core::math::Vec2::new(inc.x + inc.width / 2.0, inc.y + inc.height / 2.0);
+    for down in [true, false] {
+        stepper_tick(
+            &mut ui,
+            InputFrame {
+                pointer: at,
+                pointer_inside: true,
+                down,
+                pressed: down,
+                released: !down,
+                ..Default::default()
+            },
+            &mut value,
+        );
+    }
+    assert!((value - 12346.67).abs() < 0.01, "{value}");
+}
+
+#[test]
+fn stepper_part_css_pads_borders_and_states_its_boxes() {
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.set_part_css(
+        "stepper::part(value) { padding: 0 20px; border: 2px solid #123456; }
+         stepper::part(button):hover { background: #00ff00; transition: none; }",
+    )
+    .unwrap();
+    let mut value = 12345.67;
+    for _ in 0..3 {
+        stepper_tick(&mut ui, InputFrame::default(), &mut value);
+    }
+    let text = ui.element("Root/Wide/Frame/Value/Text").unwrap().clone();
+    let part = ui.element("Root/Wide/Frame/Value/::part(value)#0").unwrap();
+    assert_eq!(part.width, text.width + 2.0 * (20.0 + 2.0));
+    assert_eq!(text.x - part.x, 22.0);
+    let green = Srgba::rgb(0, 255, 0).linear();
+    let inc = ui.element("Root/Wide/Frame/Inc").unwrap().clone();
+    let at = og_core::math::Vec2::new(inc.x + inc.width / 2.0, inc.y + inc.height / 2.0);
+    for _ in 0..3 {
+        stepper_tick(
+            &mut ui,
+            InputFrame {
+                pointer: at,
+                pointer_inside: true,
+                ..Default::default()
+            },
+            &mut value,
+        );
+    }
+    assert!(
+        ui.frame().items.iter().any(|i| i
+            .cmd
+            .filled()
+            .is_some_and(|(r, c)| c == green && r.x == inc.x && r.width == inc.width)),
+        "the hovered button's box takes its :hover"
+    );
+}
+
 #[test]
 fn choice_parts_have_independent_css_layout_and_paint() {
     let mut ui = ui_with_font(add_test_font(&mut og_render::RenderScene::new()));

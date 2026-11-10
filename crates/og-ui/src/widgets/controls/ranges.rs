@@ -430,6 +430,35 @@ impl Ui {
         self.tree.nodes[host].props = placed;
     }
 
+    /// A part-node control's CSS border drawn inside the widget's own
+    /// inset, as its painted rim was: the widget's padding gives up the
+    /// border's width on each side (down to none), so a border does not
+    /// widen a box that fits its content. CSS padding replaces the
+    /// widget's and is kept whole.
+    fn border_inside(&mut self, host: usize) {
+        let slot = self.tree.nodes[host].content_slot;
+        let Some(reference) = self.tree.nodes[host].el.part else {
+            return;
+        };
+        let r = self.part_values(&reference, Some(self.tree.nodes[slot].key));
+        let [top, right, bottom, left] = crate::doc::boxes::SIDES.map(|side| {
+            r.str(&format!("border{side}Style"))
+                .and_then(crate::decor::LineStyle::from_css)
+                .map_or(0.0, |_| {
+                    r.num(&format!("border{side}Width")).unwrap_or(3.0).max(0.0)
+                })
+        });
+        let part = self.tree.nodes[slot]
+            .part_box
+            .as_mut()
+            .expect("a part node");
+        let p = &mut part.element.padding;
+        p.top = (p.top - top).max(0.0);
+        p.right = (p.right - right).max(0.0);
+        p.bottom = (p.bottom - bottom).max(0.0);
+        p.left = (p.left - left).max(0.0);
+    }
+
     /// The value bubble over a knob.
     fn bubble(&mut self, f: f32, label: &str, g: Geo) {
         let t = self.env.theme;
@@ -1089,6 +1118,7 @@ impl Ui {
                 bid,
                 Ctl {
                     part,
+                    part_node: true,
                     disabled: off,
                     // A button under a finger is a stop keys and pads reach too.
                     focusable: touch,
@@ -1133,6 +1163,7 @@ impl Ui {
             "Value",
             Ctl {
                 part: "stepper::part(value)",
+                part_node: true,
                 cls: ElementClass::Field,
                 disabled,
                 adjustable: true,
@@ -1171,6 +1202,7 @@ impl Ui {
                 )
             },
         );
+        self.border_inside(val.node);
         button(self, "Inc", 1, v);
         self.close();
         if val.r.adjust != 0 && !disabled {

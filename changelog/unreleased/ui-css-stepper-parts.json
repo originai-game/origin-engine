@@ -1,0 +1,9 @@
+{
+  "breaking": [
+    {
+      "member": "Number stepper CSS boxes",
+      "change": "A number stepper's minus and plus buttons and its value have persistent CSS layout and paint boxes. Their CSS width, height, padding, border and state rules now lay them out and paint them; a border with no CSS padding sits inside the widget's own inset, so the default frames are unchanged.",
+      "fix": "Style the boxes through stepper::part(button) and stepper::part(value). Input, focus, adjust and the spinbutton role stay on the hosts; stepper::part(frame) is still drawn by its host."
+    }
+  ]
+}
