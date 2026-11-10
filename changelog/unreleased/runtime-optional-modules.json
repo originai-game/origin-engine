@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og.story, og.video, og.destruction and og.motion as optional runtime modules",
+      "summary": "Each is a feature of the runtime (story, video, destruction, motion), on by default and in every shipped web variant (publish, publish2d and both lanes modules) and the native host, so a game's calls and saves are unchanged. A build without one links none of that module's crate; its calls answer a refusal naming the feature, and the world it leaves (records in IDL order, systems, state blocks) is the full build's for a game that never uses the module."
+    }
+  ]
+}
