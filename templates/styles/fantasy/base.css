@@ -1,0 +1,134 @@
+/* fantasy: painted frames and materials with room for dense content
+   (docs/ui.md §4). Lamp-black leather and dark walnut grounds, aged brass
+   rims, parchment ink, a crimson primary and gold for focus and selection.
+
+   Files apply in lexical order: base (fonts, tokens), controls (every core
+   control and its states), kit-rpg (the rpg kit's class hooks), motion,
+   sounds. Every --fantasy-* property is this pack's own; the engine reads
+   no custom property. */
+
+@font-face { font-family: "Fantasy Display"; src: url(/@styles/shared/Cinzel-Bold.ttf); font-weight: 700; }
+@font-face { font-family: "Fantasy Caps"; src: url(/@styles/shared/SpectralSC-SemiBold.ttf); font-weight: 600; }
+@font-face { font-family: "Fantasy Serif"; src: url(/@styles/shared/Spectral-SemiBold.ttf); font-weight: 600; }
+@font-face { font-family: "Fantasy Text"; src: url(/@styles/shared/Newsreader-Medium.ttf); font-weight: 500; }
+
+:root {
+  /* Materials. */
+  --fantasy-leather: #17110c;
+  --fantasy-walnut: #21180f;
+  --fantasy-walnut-hi: #2d2116;
+  --fantasy-soot: #0b0805;
+  --fantasy-brass: #8f7650;
+  --fantasy-brass-hi: #d9b45f;
+  --fantasy-brass-lo: #4a3a24;
+  --fantasy-gold: #e9c46f;
+  --fantasy-crimson: #8f2a1b;
+  --fantasy-crimson-hi: #b23a26;
+  --fantasy-crimson-lo: #4f130c;
+  --fantasy-band: linear-gradient(90deg, #2a0b0800, #5c1610 12%, #6e1c13 50%, #5c1610 88%, #2a0b0800);
+  --fantasy-iron: #2a2520;
+  --fantasy-iron-hi: #4a423a;
+  --fantasy-parchment: #efe4cc;
+
+  /* The core roles, in this pack's materials. */
+  --backdrop: #0d0906;
+  --well: #0a0705;
+  --panel: #18110b;
+  --panel-hover: #2b2016;
+  --panel-raised: #211810;
+  --line: #4a3c2b;
+  --line-strong: #8f7650;
+  --ink: #efe4cc;
+  --ink-muted: #cbbb9c;
+  --ink-faint: #a8977b;
+  --ink-inverse: #1c1611;
+  --control: #2a2119;
+  --control-strong: #3a2e22;
+  --primary: #8f2a1b;
+  --primary-hover: #a8392a;
+  --primary-active: #6c1e12;
+  --on-primary: #f8ecd6;
+  --primary-soft: #8f2a1b40;
+  --highlight: #e9c46f;
+  --selection: #3d2f1c;
+  --on-selection: #f6e7c4;
+  --accent: #e9c46f;
+  --focus: #f0cf7a;
+  --knob: #cdb27a;
+  --hud: #140f0bea;
+  --scrim: #070504c4;
+  --shadow: #000000a6;
+  --sheen: #fff1d040;
+  --scene-ink: #f5ead3;
+  --scene-plate: #140f0bea;
+  --scene-shadow: #000000a0;
+  --success: #86c98f;
+  --warn: #e6b04f;
+  --danger: #e0786a;
+  --info: #86aee0;
+  --health: #b8322a;
+  --mana: #3a68c8;
+  --xp: #b48be0;
+  --gold: #e2b84f;
+
+  /* Rarity: a rim, a glow and a tinted well, and the name's ink. */
+  --common: #a39d92;
+  --uncommon: #5fc451;
+  --rare: #4f8fff;
+  --epic: #b05cf2;
+  --legendary: #f0942a;
+  --mythic: #ef4f43;
+
+  /* Sides of a fight. */
+  --team1: #6fa8f0;
+  --team2: #e0614f;
+  --neutral: #d6c48e;
+
+  /* Type: Cinzel for display, Spectral SC for labels, Newsreader to read. */
+  --font-display: "Fantasy Display", serif;
+  --font-body: "Fantasy Text", serif;
+  --font-sans: "Fantasy Text", serif;
+  --font-mono: "Fantasy Serif", serif;
+  --fantasy-caps: "Fantasy Caps", serif;
+  --fantasy-tracking: 0.08em;
+
+  --radius-xs: 2px;
+  --radius-sm: 3px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-button: 4px;
+  --radius-panel: 4px;
+  --radius-card: 4px;
+  --radius-field: 3px;
+  --radius-control: 3px;
+
+  font-family: "Fantasy Text", serif;
+  color: var(--ink);
+}
+
+/* The light scheme: parchment and ink, the same brass and crimson. */
+:root[data-scheme=light] {
+  --backdrop: #e8dcc0;
+  --well: #d9c9a6;
+  --panel: #f1e6cc;
+  --panel-hover: #e6d6b2;
+  --panel-raised: #f7eed9;
+  --line: #b39a70;
+  --line-strong: #7a5f35;
+  --ink: #2a1d12;
+  --ink-muted: #4f3d2a;
+  --ink-faint: #6b563d;
+  --ink-inverse: #f6ecd6;
+  --control: #e4d4b0;
+  --control-strong: #d8c49b;
+  --selection: #e9d29a;
+  --on-selection: #2a1d12;
+  --highlight: #8a5a12;
+  --accent: #8a5a12;
+  --focus: #8a5a12;
+  --gold: #8a5a12;
+  --success: #2f6f37;
+  --danger: #9c2a1c;
+  --warn: #8a5800;
+  --info: #24589c;
+}

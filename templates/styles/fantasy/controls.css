@@ -1,0 +1,183 @@
+/* fantasy: every core control and its states. Painted with gradients,
+   brass rims and inner shadows; hover lifts toward gold, pressed sinks
+   into the well, both inside the pack's palette. */
+
+/* ── Buttons. The default is dark iron; .primary is painted crimson. */
+button::part(base) {
+  min-height: var(--size-touch);
+  border: 1px solid #8f7650;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #4a423a 0%, #2c2620 48%, #1d1915 52%, #2a2520 100%);
+  box-shadow: inset 0 0 0 2px #0b0805, inset 0 1px 0 3px #ffffff10, 0 3px 8px #000000b0;
+  color: #e8d9b8;
+  font-family: var(--font-display);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+button::part(base):hover { border-color: #d9b45f; background: linear-gradient(180deg, #574d42 0%, #352e26 48%, #26201a 52%, #322b24 100%); }
+button::part(base):active { background: linear-gradient(180deg, #1a1612, #24201b); box-shadow: inset 0 0 0 2px #0b0805, inset 0 3px 8px #000000c0; }
+button::part(base):disabled { border-color: #4a3c2b; background: linear-gradient(180deg, #2a2520, #1a1714); box-shadow: inset 0 0 0 2px #0b0805; color: #7d705d; }
+button.primary::part(base) {
+  border: 1px solid #d9b45f;
+  background: linear-gradient(180deg, #c0412c 0%, #9a2b1c 46%, #7d1f13 54%, #92281a 100%);
+  box-shadow: inset 0 0 0 2px #3a0c07, inset 0 1px 0 3px #ffd8a028, 0 0 0 1px #000, 0 4px 10px #000000b8;
+  color: #f8ecd6;
+}
+button.primary::part(base):hover { background: linear-gradient(180deg, #d24e36 0%, #ab3423 46%, #8c2617 54%, #a2301f 100%); box-shadow: inset 0 0 0 2px #3a0c07, inset 0 1px 0 3px #ffd8a038, 0 0 0 1px #000, 0 0 12px #e9c46f55; }
+button.primary::part(base):active { background: linear-gradient(180deg, #5c160d, #7d1f13); box-shadow: inset 0 0 0 2px #3a0c07, inset 0 3px 8px #000000c0; }
+button.primary::part(base):disabled { border-color: #6b4f3a; background: linear-gradient(180deg, #4f2a22, #3a1d17); color: #a08a78; }
+button.secondary::part(base) { color: #e8d9b8; }
+button[variant=quiet]::part(base) { background: none; border: none; box-shadow: none; }
+button::part(focus):focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; border-radius: 4px; }
+/* pending: core-widget host rules (parts-as-nodes). A button host refuses
+   color today ("CSS property color does not apply to button"); the rule
+   that belongs here is kept as written and switched on when hosts land:
+   button.primary { color: #f8ecd6; font-family: var(--font-display); }
+   ::part(base) carries the ink until then. */
+
+/* ── Checkbox, switch and radio. */
+input[type=checkbox]::part(row), input[type=radio]::part(option) { border: none; box-shadow: none; background: none; }
+input[type=checkbox]::part(row):hover, input[type=radio]::part(option):hover { background: #e9c46f14; }
+input[type=checkbox]::part(box), input[type=radio]::part(ring) { border: 1px solid #8f7650; background: #0b0805; box-shadow: inset 0 1px 3px #000; }
+input[type=checkbox]::part(box):hover, input[type=radio]::part(ring):hover { border-color: #d9b45f; }
+input[type=checkbox]::part(box):checked { border: 1px solid #d9b45f; background: linear-gradient(180deg, #8a6420, #5a3f12); }
+input[type=checkbox]::part(box):disabled, input[type=radio]::part(ring):disabled { border-color: #4a3c2b; background: #15100c; }
+input[type=checkbox]::part(box):invalid { border-color: var(--danger); }
+input[type=checkbox]::part(mark) { background: #f8ecd6; }
+input[type=radio]::part(ring):checked { border: 1px solid #d9b45f; }
+input[type=radio]::part(dot) { background: var(--gold); }
+input[type=radio]::part(card) { border: 1px solid #8f7650; background: linear-gradient(180deg, #241a11, #160f0a); }
+input[type=radio]::part(card):hover { border-color: #d9b45f; }
+input[type=radio]::part(card):checked { border-color: var(--gold); background: linear-gradient(180deg, #3d2f1c, #22190e); box-shadow: 0 0 10px #e9c46f44; }
+input[type=radio]::part(chosen) { background: var(--gold); }
+input[type=checkbox][switch]::part(track) { border: 1px solid #8f7650; background: #0b0805; box-shadow: inset 0 1px 3px #000; }
+input[type=checkbox][switch]::part(track):checked { background: linear-gradient(180deg, #9a2b1c, #6c1e12); border-color: #d9b45f; }
+input[type=checkbox][switch]::part(knob) { border: 1px solid #5b4220; background: radial-gradient(circle at 40% 35%, #f6dc95, #a7813f); }
+input[type=checkbox]::part(focus):focus-visible, input[type=radio]::part(focus):focus-visible,
+input[type=checkbox][switch]::part(focus):focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* ── Tabs: uppercase, underlined in gold when selected. */
+tabs::part(track) { background: none; border-bottom: 1px solid #8f765055; }
+tabs::part(tab) { background: none; color: var(--ink-muted); font-family: var(--fantasy-caps); letter-spacing: var(--fantasy-tracking); text-transform: uppercase; }
+tabs::part(tab):hover { background: linear-gradient(0deg, #e9c46f1f, #e9c46f00); }
+tabs::part(tab):active { background: #0b080580; }
+tabs::part(tab):checked { color: var(--gold); background: linear-gradient(0deg, #e9c46f2e, #e9c46f00 70%); }
+tabs::part(tab):disabled { color: #6b5e4c; }
+tabs::part(indicator) { height: 2px; background: var(--gold); border-radius: 0; box-shadow: 0 0 6px #e9c46f99; }
+tabs::part(focus):focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* ── Slider. */
+input[type=range]::part(track) { background: #0b0805; border: 1px solid #4a3c2b; box-shadow: inset 0 1px 3px #000; }
+input[type=range]::part(fill) { background: linear-gradient(180deg, #f2d27f, #a7813f); }
+input[type=range]::part(tick) { background: #8f765099; }
+input[type=range]::part(knob) { border: 1px solid #5b4220; background: radial-gradient(circle at 40% 35%, #f6dc95, #a7813f 70%, #6e4f22); box-shadow: 0 2px 4px #000; }
+input[type=range]::part(knob):hover { box-shadow: 0 0 10px #e9c46f88, 0 2px 4px #000; }
+input[type=range]::part(knob):active { background: radial-gradient(circle at 50% 50%, #c79a4a, #6e4f22); }
+input[type=range]::part(knob):disabled { background: #4a3c2b; }
+input[type=range]::part(core) { background: #2a1d12; }
+input[type=range]::part(bubble) { border: 1px solid #8f7650; background: #18110b; color: var(--ink); }
+input[type=range]::part(focus):focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+
+/* ── Fields, select and stepper. */
+input::part(frame), textarea::part(frame), select::part(trigger), stepper::part(frame),
+input[type=number]::part(frame) {
+  border: 1px solid #8f7650; border-radius: 3px;
+  background: linear-gradient(180deg, #0b0805, #15100b);
+  box-shadow: inset 0 2px 4px #000000c0;
+}
+input::part(frame):focus-visible, textarea::part(frame):focus-visible { border-color: var(--gold); box-shadow: inset 0 2px 4px #000000c0, 0 0 8px #e9c46f55; }
+input::part(frame):disabled, textarea::part(frame):disabled, select::part(trigger):disabled { border-color: #4a3c2b; background: #15100c; }
+input::part(frame):invalid, textarea::part(frame):invalid, select::part(trigger):invalid { border-color: var(--danger); }
+input::part(text), textarea::part(text) { color: var(--ink); font-family: var(--font-body); }
+input::part(placeholder), textarea::part(placeholder) { color: var(--ink-faint); }
+input::part(selection), textarea::part(selection) { background: #8a642066; }
+input::part(caret), textarea::part(caret) { background: var(--gold); }
+input::part(reveal):hover, input::part(clear):hover { background: #e9c46f1c; }
+select::part(trigger):hover { border-color: #d9b45f; }
+select::part(trigger):open { border-color: var(--gold); }
+select::part(list) { border: 1px solid #8f7650; background: #18110b; box-shadow: 0 10px 24px #000000c0; }
+select::part(option) { border: none; box-shadow: none; background: none; color: var(--ink); }
+select::part(option):hover { background: #e9c46f1c; }
+select::part(option):active { background: #0b0805; }
+select::part(option):disabled { color: #6b5e4c; }
+select::part(group) { color: #d8bf86; font-family: var(--fantasy-caps); letter-spacing: var(--fantasy-tracking); text-transform: uppercase; }
+stepper::part(value) { border: none; background: none; box-shadow: none; color: var(--ink); }
+stepper::part(button), input[type=number]::part(button) { border: 1px solid #8f7650; background: linear-gradient(180deg, #4a423a, #2a2520); }
+stepper::part(button):hover, input[type=number]::part(button):hover { border-color: #d9b45f; }
+stepper::part(button):active, input[type=number]::part(button):active { background: #1a1612; box-shadow: inset 0 2px 5px #000; }
+stepper::part(button):disabled, input[type=number]::part(button):disabled { border-color: #4a3c2b; background: #1a1714; }
+input::part(focus):focus-visible, textarea::part(focus):focus-visible, select::part(focus):focus-visible,
+stepper::part(focus):focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* ── Details. */
+details::part(summary) { border: none; border-bottom: 1px solid #8f765055; background: none; box-shadow: none; color: #d8bf86; font-family: var(--fantasy-caps); letter-spacing: var(--fantasy-tracking); text-transform: uppercase; }
+details::part(summary):hover { background: #e9c46f14; }
+details::part(summary):open { color: var(--gold); }
+details::part(focus):focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* ── Panels, dialogs, tooltips, HUD. */
+panel::part(frame), dialog::part(panel) {
+  border: 1px solid #8f7650; border-radius: 4px;
+  background: radial-gradient(ellipse at 50% 0%, #2f2216, #1a130c 55%, #110c08);
+  box-shadow: inset 0 0 0 3px #0b0805, inset 0 0 0 4px #8f765066, 0 10px 30px #000000b0;
+}
+dialog::part(backdrop) { background: #070504c4; }
+tooltip::part(frame) { border: 1px solid #8f7650; background: #140f0bf2; box-shadow: 0 6px 16px #000c; backdrop-filter: none; }
+hud::part(frame), minimap::part(frame) { border: 1px solid #8f7650; background: #140f0bea; backdrop-filter: none; }
+minimap::part(north) { color: var(--gold); }
+minimap::part(marker) { background: var(--gold); }
+toast::part(indicator) { background: var(--gold); }
+popover::part(arrow) { background: #18110b; }
+spotlight::part(edge) { border: 2px solid var(--gold); }
+
+/* ── Slot (core), chip, badge. */
+slot::part(frame) { border: 2px solid #6f6658; background: radial-gradient(circle, #3a332a, #120e0a); box-shadow: inset 0 0 14px #000a; }
+slot::part(frame):hover { border-color: #d9b45f; }
+slot::part(frame):active { background: #0e0a07; }
+slot::part(focus):focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+chip::part(base) { border: 1px solid #8f7650; background: #241a11; color: var(--ink); }
+chip::part(base):hover { border-color: #d9b45f; }
+chip::part(base):active { background: #0b0805; }
+chip::part(base):disabled { color: #6b5e4c; border-color: #4a3c2b; }
+badge::part(base) { background: #6e1c13; color: #f8ecd6; border: 1px solid #d9b45f; }
+
+/* ── Bars, progress, meters, cooldowns. */
+progress::part(track), meter::part(track) { background: #0b0805; border: 1px solid #4a3c2b; box-shadow: inset 0 1px 3px #000; }
+progress::part(fill) { background: linear-gradient(180deg, #f2d27f, #a7813f); }
+meter::part(fill) { background: linear-gradient(180deg, #f2d27f, #a7813f); }
+meter.health::part(fill) { background: linear-gradient(180deg, #c8463a, #8a1e16); }
+meter.mana::part(fill) { background: linear-gradient(180deg, #4f7ed8, #213f86); }
+meter::part(trail) { background: #e9c46f88; }
+meter::part(separator) { background: #0b0805; }
+meter::part(label) { color: var(--ink); }
+cooldown::part(track) { background: #0b0805; }
+cooldown::part(sweep) { background: #000000a0; }
+cooldown::part(core):active { background: #e9c46f33; }
+skeleton::part(frame), skeleton::part(line) { background: #241a11; }
+skeleton::part(sheen) { background: linear-gradient(90deg, #e9c46f00, #e9c46f22, #e9c46f00); }
+spinner::part(dot) { background: var(--gold); }
+
+/* ── Keyboard (on-screen). */
+keyboard::part(panel) { border-top: 1px solid #8f7650; background: #120d08; }
+keyboard::part(key), keyboard::part(candidate) { border: 1px solid #8f7650; background: linear-gradient(180deg, #3a322a, #241f1a); color: var(--ink); }
+keyboard::part(key):hover, keyboard::part(candidate):hover { border-color: #d9b45f; }
+keyboard::part(key):active, keyboard::part(candidate):active { background: #0b0805; }
+keyboard::part(key):disabled { color: #6b5e4c; }
+keyboard::part(focus):focus-visible { outline: 2px solid var(--focus); }
+
+/* ── Touch controls. */
+joystick::part(base), dpad::part(base) { background: #140f0bb0; border: 1px solid #8f7650; }
+joystick::part(rim):active { border-color: var(--gold); }
+joystick::part(knob) { background: radial-gradient(circle at 40% 35%, #f6dc95, #a7813f 70%, #6e4f22); }
+dpad::part(indicator):active, dpad::part(chevron):active { background: var(--gold); }
+actionbutton::part(face) { border: 2px solid #8f7650; background: radial-gradient(circle, #3a2e22, #160f0a); }
+actionbutton::part(face):active { border-color: var(--gold); background: radial-gradient(circle, #241a11, #0b0805); }
+actionbutton::part(sweep) { background: #000000a0; }
+
+/* ── Dialogue (core), headings, scroll bars. */
+dialogue::part(continue) { color: var(--gold); }
+/* pending: heading flourish — the registry exposes h1..h6::part(flourish),
+   but a text element.s ::part is read as a text span and refuses background
+   ("unsupported text span property background"):
+   h1::part(flourish), h2::part(flourish), h3::part(flourish) { background: url(rule.svg) center / 100% 12px no-repeat; } */
+scroll::part(bar) { background: #8f765099; border-radius: 2px; }

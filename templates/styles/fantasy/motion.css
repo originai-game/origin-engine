@@ -1,0 +1,19 @@
+/* fantasy: motion. Controls ease over the pack's slow, warm curve; a slot
+   or a reply settles with a spring. Reduced motion keeps every state change
+   and drops the movement. */
+:root { --fantasy-ease: cubic-bezier(0.22, 0.8, 0.3, 1); }
+button::part(base), tabs::part(tab), input[type=range]::part(knob), slot::part(frame) {
+  transition: background 160ms var(--fantasy-ease), border-color 160ms var(--fantasy-ease), box-shadow 200ms var(--fantasy-ease), color 160ms var(--fantasy-ease);
+}
+button.cell::part(base), button.reply::part(base), button.quest::part(base), button.member::part(base) {
+  transition: box-shadow 220ms var(--fantasy-ease), background 180ms var(--fantasy-ease), border-color 180ms var(--fantasy-ease);
+}
+tabs::part(indicator) { transition: left -og-spring(260ms, 0.18), width -og-spring(260ms, 0.18); }
+@keyframes fantasy-glint { from { opacity: 0.55; } to { opacity: 1; } }
+.rpg-backpack .badge.fresh { animation: fantasy-glint 1.2s ease-in-out infinite alternate; }
+.rpg-turn-order .turn[data-acting=true] .ring { transition: box-shadow 300ms var(--fantasy-ease); }
+@media (prefers-reduced-motion: reduce) {
+  button::part(base), tabs::part(tab), tabs::part(indicator), input[type=range]::part(knob), slot::part(frame),
+  button.cell::part(base), button.reply::part(base), button.quest::part(base), button.member::part(base) { transition: none; }
+  .rpg-backpack .badge.fresh { animation: none; }
+}
