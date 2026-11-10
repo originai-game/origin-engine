@@ -19,7 +19,7 @@
 <anchor id="Nameplate" entity={entity || null} at={at} offset={"0 " + height + " 0"} occlusion="fade" declutter="stack" priority={targeted ? 1100 : 100} max-distance={maxDistance}>
   <div id="Plate" class:friendly={reaction == 'friendly'} class:hostile={reaction == 'hostile'} class:player={reaction == 'player'} class:boss={boss} class:targeted={targeted}>
     <div id="Head">
-      <icon id="Icon" icon={icon} hidden={!icon}></icon>
+      <og-icon id="Icon" icon={icon} hidden={!icon}></og-icon>
       <span id="Level" hidden={!level}>{level}</span>
       <span id="Name">{name}</span>
     </div>

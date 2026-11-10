@@ -13,7 +13,7 @@
       <circle cx="40" cy="40" r="37" fill="none" stroke="#00000080" stroke-width="4"></circle>
       <circle id="ChargeFill" cx="40" cy="40" r="37" fill="none" stroke-width="4" stroke-linecap="round" pathLength="1" stroke-dasharray={charge + " 1"} transform="rotate(-90 40 40)"></circle>
     </svg>
-    <icon id="Icon" icon={icon} hidden={!icon}></icon>
+    <og-icon id="Icon" icon={icon} hidden={!icon}></og-icon>
     <span id="Label" hidden={!!icon}>{label}</span>
   </div>
 </button>

@@ -13,7 +13,7 @@
   <div id="Mark" class:ping={kind == 'ping'} class:danger={kind == 'danger'} class:ally={kind == 'ally'} class:loot={kind == 'loot'}>
     <div id="Pin">
       <svg id="Diamond" viewBox="0 0 28 28" hidden={!!icon}><path d="M14 2l12 12-12 12L2 14z"></path></svg>
-      <icon id="Icon" icon={icon} hidden={!icon}></icon>
+      <og-icon id="Icon" icon={icon} hidden={!icon}></og-icon>
     </div>
     <span id="Label" hidden={!label}>{label}</span>
     <span id="Distance" hidden={distance < 0}>{formatNumber(distance) + units}</span>

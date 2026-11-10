@@ -1,11 +1,11 @@
 <meta name="component" content="materialsSheet">
 
 <div id="Page">
-  <div id="Plain" class="card"><div class="art"><icon class="icon" icon="crown"></icon></div><span class="title">Common</span><span class="note">no material</span></div>
-  <div id="Foil" class="card"><div class="art"><icon class="icon" icon="crown"></icon></div><span class="title">Foil</span><span class="note">foil</span></div>
-  <div id="Holo" class="card"><div class="art"><icon class="icon" icon="crown"></icon></div><span class="title">Holo</span><span class="note">holo</span></div>
-  <div id="Burn" class="card" style:--burn={$burn}><div class="art"><icon class="icon" icon="crown"></icon></div><span class="title">Burn</span><span class="note">burn</span></div>
-  <div id="Rarity" class="card"><div class="art"><icon class="icon" icon="crown"></icon></div><span class="title">Legendary</span><span class="note">rarity</span></div>
+  <div id="Plain" class="card"><div class="art"><og-icon class="icon" icon="crown"></og-icon></div><span class="title">Common</span><span class="note">no material</span></div>
+  <div id="Foil" class="card"><div class="art"><og-icon class="icon" icon="crown"></og-icon></div><span class="title">Foil</span><span class="note">foil</span></div>
+  <div id="Holo" class="card"><div class="art"><og-icon class="icon" icon="crown"></og-icon></div><span class="title">Holo</span><span class="note">holo</span></div>
+  <div id="Burn" class="card" style:--burn={$burn}><div class="art"><og-icon class="icon" icon="crown"></og-icon></div><span class="title">Burn</span><span class="note">burn</span></div>
+  <div id="Rarity" class="card"><div class="art"><og-icon class="icon" icon="crown"></og-icon></div><span class="title">Legendary</span><span class="note">rarity</span></div>
 </div>
 
 <style>

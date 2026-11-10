@@ -19,12 +19,12 @@
     {/each}
   </div>
   <div id="Controls">
-    <button id="Prev" aria-label={t("component.carousel.prev")} onclick={prev}><icon icon="back"></icon></button>
+    <button id="Prev" aria-label={t("component.carousel.prev")} onclick={prev}><og-icon icon="back"></og-icon></button>
     <div id="Dots">
       {#each pages as page (page.id)}<div class="dot"></div>{/each}
       <div id="Lit"></div>
     </div>
-    <button id="Next" aria-label={t("component.carousel.next")} onclick={next}><icon id="NextIcon" icon="back"></icon></button>
+    <button id="Next" aria-label={t("component.carousel.next")} onclick={next}><og-icon id="NextIcon" icon="back"></og-icon></button>
   </div>
 </div>
 

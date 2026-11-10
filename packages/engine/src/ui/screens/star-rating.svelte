@@ -5,7 +5,7 @@
 
 <div id="Stars" role="image" aria-label={$label}>
   {#each $stars as s (s.id)}
-    <icon class="star" class:lit={s.lit} name="star" style:--i={s.index}/>
+    <og-icon class="star" class:lit={s.lit} name="star" style:--i={s.index}/>
   {/each}
 </div>
 

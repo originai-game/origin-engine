@@ -23,13 +23,13 @@
 <div id="AbilitySlot" class:ultimate={ultimate >= 0}>
   <button id="Slot" onclick={use} aria-label={name} aria-valuetext={locked ? t("component.ability-slot.locked") : disabled ? t("component.ability-slot.unavailable") : cooldown > 0 ? formatNumber(cooldown) : t("component.ability-slot.ready")} disabled={locked || disabled} class:cooling={cooldown > 0} class:active={active} class:tinted={unaffordable || outOfRange} class:locked={locked} class:off={disabled} class:full={ultimate >= 1}>
     <div id="Face">
-      <div id="Art"><icon id="Icon" icon={icon}></icon></div>
+      <div id="Art"><og-icon id="Icon" icon={icon}></og-icon></div>
       <svg id="Ultimate" viewBox="0 0 64 64" hidden={ultimate < 0}><circle cx="32" cy="32" r="29" fill="none" stroke="#00000080" stroke-width="4"></circle><circle id="UltimateFill" cx="32" cy="32" r="29" fill="none" stroke-width="4" pathLength="1" stroke-dasharray={ultimate + " 1"} transform="rotate(-90 32 32)"></circle></svg>
       <svg id="Sweep" viewBox="0 0 56 56" hidden={!(cooldown > 0)}><circle cx="28" cy="28" r="20" fill="none" stroke="#00000099" stroke-width="40" pathLength="1" stroke-dasharray={(cooldown / cooldownMax) + " 1"} transform="rotate(-90 28 28) scale(-1 1) translate(-56 0)"></circle></svg>
       <span id="Time" hidden={!(cooldown > 0)}>{cooldown < 10 ? formatNumber(cooldown) : formatCountdown(cooldown)}</span>
       <span id="Percent" hidden={!(ultimate >= 0 && ultimate < 1)}>{formatPercent(ultimate)}</span>
       <svg id="Slash" viewBox="0 0 56 56" hidden={!disabled}><path d="M8 48L48 8" stroke="#e5484dff" stroke-width="5" stroke-linecap="round"></path></svg>
-      <icon id="Lock" icon="lock" hidden={!locked}></icon>
+      <og-icon id="Lock" icon="lock" hidden={!locked}></og-icon>
       <span id="Cost" class:short={unaffordable} hidden={!cost || cooldown > 0 || locked}>{cost}</span>
       <span id="Charges" hidden={!(maxCharges > 1) || cooldown > 0}>{formatNumber(charges)}</span>
     </div>

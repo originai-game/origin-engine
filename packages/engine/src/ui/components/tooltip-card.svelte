@@ -31,7 +31,7 @@
     <header id="Header">
       <div id="Well" class="well" hidden={!image && icon == ""}>
         <img id="Art" src={image} alt="" hidden={!image}>
-        <icon id="Icon" class="glyph" icon={icon} hidden={!!image}></icon>
+        <og-icon id="Icon" class="glyph" icon={icon} hidden={!!image}></og-icon>
       </div>
       <div id="Names">
         <h3 id="Title">{title}</h3>

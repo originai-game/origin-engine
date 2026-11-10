@@ -22,7 +22,7 @@
 <div id="StatBar" role="meter" aria-label={name || label || t("component.stat-bar.health")} aria-valuemin="0" aria-valuemax={max} aria-valuenow={value} aria-valuetext={valueText || t("component.stat-bar.value", { value: value, max: max })} class:mana={kind == 'mana'} class:stamina={kind == 'stamina'} class:xp={kind == 'xp'} class:low={kind == 'health' && value / max <= low && value / max > critical} class:critical={kind == 'health' && value / max <= critical} class:bare={bare}>
   <div id="Shield" hidden={!(shieldMax > 0)} style:--shield={shield / shieldMax}><div id="ShieldFill"></div></div>
   <div id="Main">
-    <icon id="Icon" icon={icon} hidden={!icon}></icon>
+    <og-icon id="Icon" icon={icon} hidden={!icon}></og-icon>
     <span id="Label" hidden={!label}>{label}</span>
     <div id="Track" style:--value={value / max} style:--heal={heal / max} style:--recoverable={recoverable / max} style:--blocks={"repeating-linear-gradient(90deg, #00000000 0% " + (segment / max * 100 - 0.8) + "%, #000000cc " + (segment / max * 100 - 0.8) + "% " + (segment / max * 100) + "%)"}>
       <div id="Recoverable"></div>

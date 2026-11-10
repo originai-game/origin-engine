@@ -11,7 +11,7 @@
     <div class="row" part="Killfeed.row" class:self={r.self} aria-label={t("shooter.killfeed.row", { killer: r.killer, victim: r.victim, weapon: r.weapon })} in:fly={{ x: 24, duration: 200 }} out:fade={{ duration: 200 }} animate:flip={{ duration: 200 }}>
       <span class="name killer" part="Killfeed.name" class:ally={r.team == 'ally'} class:enemy={r.team != 'ally'}>{r.killer}</span>
       <span class="weapon" part="Killfeed.weapon">{r.weapon}</span>
-      <icon class="headshot" icon="skull" aria-label={t("shooter.killfeed.headshot")} hidden={!r.headshot}></icon>
+      <og-icon class="headshot" icon="skull" aria-label={t("shooter.killfeed.headshot")} hidden={!r.headshot}></og-icon>
       <span class="name victim" part="Killfeed.name" class:ally={r.team != 'ally'} class:enemy={r.team == 'ally'}>{r.victim}</span>
     </div>
   {/each}

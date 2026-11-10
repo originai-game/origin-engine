@@ -24355,13 +24355,13 @@ export interface UiDesc {
    */
   readonly colorVisionStrength?: number;
   /**
-   * The icon atlas a document's `<icon>` draws from; null takes the style's.
+   * The icon atlas a document's `<og-icon>` draws from; null takes the style's.
    *
    * @default null
    */
   readonly icons?: IconAtlasDesc | null;
   /**
-   * The icon set that draws the names the atlas lacks (icons, or the style's when icons is null): a game's whole set, such as the UI kit's iconoir set, under a style pack's few painted icons, which keep the names they paint. A document's `<icon>`, rich text's [icon=], an action's glyph and an art slot's placeholder all look in it; a name in neither warns. null is none.
+   * The icon set that draws the names the atlas lacks (icons, or the style's when icons is null): a game's whole set, such as the UI kit's iconoir set, under a style pack's few painted icons, which keep the names they paint. A document's `<og-icon>`, rich text's [icon=], an action's glyph and an art slot's placeholder all look in it; a name in neither warns. null is none.
    *
    * @default null
    */
@@ -24734,7 +24734,7 @@ export interface IconAtlasDesc {
    */
   readonly rows?: number;
   /**
-   * Each cell's name, in reading order: a document's `<icon>` draws a cell by its name.
+   * Each cell's name, in reading order: a document's `<og-icon>` draws a cell by its name.
    *
    * @default []
    */

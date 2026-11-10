@@ -21,7 +21,7 @@
           {#each slots as s (s.id)}
             {#if s.category == c.id}
               <button class="item" part="Loadout.item" aria-selected={s.id == selected} aria-label={s.name} class:equipped={s.equipped} class:locked={s.locked} disabled={s.locked} onclick={select} ondetails={equip}><div class="face">
-                <icon class="icon" icon={s.locked ? 'lock' : s.icon}></icon>
+                <og-icon class="icon" icon={s.locked ? 'lock' : s.icon}></og-icon>
                 <div class="text">
                   <span class="name">{s.name}</span>
                   <div class="sub" hidden={s.detail == '' && !s.equipped}>
@@ -29,7 +29,7 @@
                     <span class="badge" hidden={!s.equipped}>{t("shooter.loadout.equipped")}</span>
                   </div>
                 </div>
-                {#if s.cost != ''}<div class="cost"><icon class="coin" icon="coin"></icon><span class="price" part="Loadout.price">{s.cost}</span></div>{/if}
+                {#if s.cost != ''}<div class="cost"><og-icon class="coin" icon="coin"></og-icon><span class="price" part="Loadout.price">{s.cost}</span></div>{/if}
               </div></button>
             {/if}
           {/each}

@@ -23,7 +23,7 @@
     </svg>
     {#each nodes as node (node.id)}
       <button class="node" class:locked={node.state == 'locked'} class:active={node.state == 'active'} class:done={node.state == 'done'} class:current={node.state == 'current'} class:square={node.shape == 'square'} class:hex={node.shape == 'hex'} class:diamond={node.shape == 'diamond'} class:ally={node.team == 'ally'} class:enemy={node.team == 'enemy'} class:selected={node.id == selected} aria-label={node.label} aria-valuetext={node.state} aria-disabled={node.state == 'locked'} style:--x={node.x} style:--y={node.y} onclick={pick}>
-        <icon class="icon" icon={node.icon}></icon>
+        <og-icon class="icon" icon={node.icon}></og-icon>
         <span class="caption">{node.label}</span>
       </button>
     {/each}

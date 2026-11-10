@@ -33,6 +33,9 @@ fn value(p: &PropSpec) -> String {
 /// wherever HTML has the role (docs/ui.md §2).
 pub fn tags(kind: &str) -> Vec<(String, String)> {
     let void = |tag: &str| (tag.to_string(), format!("<{tag} id=\"Name\" />"));
+    if let Some((tag, _)) = super::schema::ELEMENT_TAGS.iter().find(|(_, k)| *k == kind) {
+        return vec![void(tag)];
+    }
     match kind {
         "label" => vec![
             ("text".into(), "<text id=\"Name\">…</text>".into()),

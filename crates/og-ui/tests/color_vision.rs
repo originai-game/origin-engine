@@ -1,12 +1,12 @@
 //! Colour-blind modes (docs/ui.md §3.2): the player's colour vision filter
 //! over the whole frame, the `-og-color-vision` media feature, and the
-//! colour tokens' cues drawn with `-og-cue`.
+//! colour tokens' cues drawn with `<og-icon cue>`.
 //!
 //! Ways these could fail, each covered below:
 //! - the media feature parsed but never re-evaluated when the setting
 //!   changes in a retained mount (its dirty axis missing), or the boolean
 //!   form matching typical vision → `the_media_feature_follows_the_setting`
-//! - `-og-cue` reading the game's atlas order instead of the style's icon
+//! - `cue` reading the game's atlas order instead of the style's icon
 //!   names, or a non-icon cue drawn as a blank icon without a warning →
 //!   `a_cue_draws_the_tokens_icon_from_the_styles_names`
 //! - the GPU pass reading the wrong half-plane, skipping the sRGB decode,
@@ -89,12 +89,7 @@ fn the_media_feature_follows_the_setting() {
 fn a_cue_draws_the_tokens_icon_from_the_styles_names() {
     use og_ui::tokens::{Cue, Pattern, Status};
     let doc = r#"<meta name="component" content="cues">
-<row><icon id="Danger"/><icon id="Warn"/><icon id="Own" icon="star"/></row>
-<style>
-#Danger { -og-cue: danger; }
-#Warn { -og-cue: warn; }
-#Own { -og-cue: danger; }
-</style>"#;
+<row><og-icon id="Danger" cue="danger"/><og-icon id="Warn" cue="warn"/><og-icon id="Own" icon="star" cue="danger"/></row>"#;
     let mut ui = ui_with_font(test_font_metrics());
     let mut theme = *ui.theme();
     theme.tokens.colors.status[Status::Danger.index()] = Cue::Icon(1);
@@ -120,6 +115,81 @@ fn a_cue_draws_the_tokens_icon_from_the_styles_names() {
     assert_eq!(text("Own"), "star", "an icon attribute wins over the cue");
     let warnings = ui.frame().warnings.join("\n");
     assert!(warnings.contains("warn's cue is Pattern"), "{warnings}");
+}
+
+#[test]
+fn icon_layers_keep_independent_colors() {
+    for rejected in [
+        "<icon icon=\"base\" />",
+        "<og-icon secondary-tint=\"#fff\" />",
+        "<og-icon /><style>og-icon { -og-secondary-tint: #fff; }</style>",
+        "<og-icon /><style>og-icon { -og-cue: danger; }</style>",
+    ] {
+        let source = format!("<meta name=\"component\" content=\"rejected\">{rejected}");
+        assert!(
+            UiDocument::parse("ui/rejected.svelte", &source).is_err(),
+            "{rejected}"
+        );
+    }
+    let source = r##"<meta name="component" content="layers">
+<og-icon id="Mark" icon="base" secondary="accent" />
+<style>
+og-icon::part(image) { color: #c0392b; }
+og-icon::part(secondary) { color: #2980b9; }
+</style>"##;
+    for mounted in [false, true] {
+        let mut scene = og_render::RenderScene::new();
+        let texture = scene.add_texture(og_render::TextureData {
+            width: 2,
+            height: 1,
+            rgba: vec![255; 8],
+            color_space: og_render::ColorSpace::Srgb,
+            mips: og_render::Mips::None,
+        });
+        let mut ui = ui_with_font(test_font_metrics());
+        ui.set_icons(IconAtlas {
+            texture: Some(texture),
+            columns: 2,
+            rows: 1,
+            names: vec!["base".into(), "accent".into()],
+            ..Default::default()
+        });
+        ui.define_document(UiDocument::parse("ui/layers.svelte", source).unwrap());
+        if mounted {
+            ui.mount_document(
+                SourceId::new("test", "layers"),
+                "layers",
+                BTreeMap::new(),
+                BTreeMap::new(),
+                &bind::NoEnv,
+            )
+            .unwrap();
+        }
+        ui.begin(InputFrame::default(), Viewport::new(160.0, 100.0));
+        if mounted {
+            ui.build_retained_documents(&bind::NoEnv).unwrap();
+        } else {
+            ui.component("T", "layers", &mut json!({}), &bind::NoEnv);
+        }
+        ui.end();
+        let images: Vec<_> = ui
+            .frame()
+            .items
+            .iter()
+            .filter_map(|item| match &item.cmd {
+                DrawCmd::Image { color, uv, .. } => Some((*color, *uv)),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            images,
+            vec![
+                (Srgba::rgb(192, 57, 43).linear(), [0.0, 0.0, 0.5, 1.0]),
+                (Srgba::rgb(41, 128, 185).linear(), [0.5, 0.0, 1.0, 1.0]),
+            ],
+            "mounted={mounted}: each atlas layer keeps its own ink"
+        );
+    }
 }
 
 /// The filter on the GPU is the CPU's ([`og_render::ColorFilter::apply_srgb8`]) on every

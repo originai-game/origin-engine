@@ -140,7 +140,7 @@ writer. The game's art-contract measurements remain available through
     `data-format` is an ICU message over `value`, shown only while unfocused.
   - A field's icon, suffix and count are markup round an input with
     `appearance` set to `none`, in a row styled with `:focus-within`:
-    `<icon>`, `<span>gold</span>`, `<small>{$name.length}/20</small>`.
+    `<og-icon>`, `<span>gold</span>`, `<small>{$name.length}/20</small>`.
     `<input type="search">` draws a clear button while it has text.
   - `<select>` with `-og-select-filter: on` puts a filter on its open list
     (`data-filter-placeholder`); `auto` shows one past 10 options.

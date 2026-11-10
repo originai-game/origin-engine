@@ -24,7 +24,7 @@
       <button id="Overlay" class="overlay" aria-label={o.name} aria-pressed={o.id == selected} onclick={choose}>
         <div class="face">
           <img class="art" src={o.image} hidden={!o.image}>
-          <div class="well" hidden={!!o.image}><icon class="glyph" icon={o.icon}></icon></div>
+          <div class="well" hidden={!!o.image}><og-icon class="glyph" icon={o.icon}></og-icon></div>
           <span class="name">{o.name}</span>
         </div>
       </button>

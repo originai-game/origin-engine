@@ -219,6 +219,7 @@ fn renamed(tag: &str) -> Option<String> {
             "<div> (or <section>, <header>, <footer>, <nav>, <main>, <aside>, <article>, <ul>, <ol>, <li>)"
         }
         "image" => "<img>",
+        "icon" => "<og-icon>",
         "label" => {
             "<label> around one <input type=\"checkbox\"> and its caption, <label for=\"id\"> naming a control, or <p> (or <text>) for text"
         }
@@ -1335,6 +1336,11 @@ impl Parser {
         }
         let html = self.html_kind(tag, parent, at)?;
         let internal = match tag {
+            _ if let Some((_, kind)) =
+                schema::ELEMENT_TAGS.iter().find(|(name, _)| *name == tag) =>
+            {
+                kind
+            }
             _ if let Some((kind, _)) = html => kind,
             // SVG's text: placed in its view box (extern_element).
             "text" if super::extern_element::in_svg(self.parent_tag(parent)) => "svgText",
@@ -2411,7 +2417,7 @@ impl Parser {
                     children,
                     at,
                     ..
-                } if matches!(tag.as_str(), "img" | "icon" | "kbd")
+                } if matches!(tag.as_str(), "img" | "og-icon" | "kbd")
                     && children.is_empty()
                     && !translated =>
                 {
@@ -2424,7 +2430,7 @@ impl Parser {
                     };
                     let atom = match tag.as_str() {
                         "img" => literal(&["src"]).map(crate::rich::InlineAtom::Image),
-                        "icon" => literal(&["name", "icon"]).map(crate::rich::InlineAtom::Icon),
+                        "og-icon" => literal(&["name", "icon"]).map(crate::rich::InlineAtom::Icon),
                         _ => literal(&["data-action"]).map(crate::rich::InlineAtom::Action),
                     }
                     .ok_or((
@@ -2433,7 +2439,7 @@ impl Parser {
                             "an inline <{tag}> names its {} literally",
                             match tag.as_str() {
                                 "img" => "picture with src",
-                                "icon" => "icon with name",
+                                "og-icon" => "icon with name",
                                 _ => "action with data-action",
                             }
                         ),

@@ -9,7 +9,7 @@
   <ol id="Trail">
     {#each items as crumb (crumb.id)}
       <li class="crumb" class:current={crumb.current}>
-        <icon class="icon" icon={crumb.icon} hidden={!crumb.icon}></icon>
+        <og-icon class="icon" icon={crumb.icon} hidden={!crumb.icon}></og-icon>
         <a class="link" href={crumb.id} aria-current={crumb.current ? 'page' : ''} onclick={choose} hidden={crumb.current}>{crumb.label}</a>
         <span class="here" hidden={!crumb.current}>{crumb.label}</span>
         <svg class="sep" viewBox="0 0 8 12" hidden={crumb.current}><path d="M2 1l4 5-4 5" fill="none" stroke-width="1.5" stroke-linecap="round"></path></svg>

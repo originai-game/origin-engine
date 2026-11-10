@@ -112,6 +112,10 @@ pub struct KindSpec {
 pub static KINDS: LazyLock<Vec<KindSpec>> =
     LazyLock::new(|| [CORE_KINDS, super::schema_extra::KINDS].concat());
 
+/// Author tags for engine semantics without an HTML equivalent, mapped
+/// to the runtime kinds used by checkpoints.
+pub const ELEMENT_TAGS: &[(&str, &str)] = &[("og-icon", "icon")];
+
 /// Every prop: the core's, then the document runtime's.
 pub static PROPS: LazyLock<Vec<PropSpec>> =
     LazyLock::new(|| [CORE_PROPS, super::schema_extra::PROPS].concat());
@@ -1122,12 +1126,6 @@ pub const CORE_PROPS: &[PropSpec] = &[
         "The second icon layer, in the same atlas."
     ),
     p!(
-        "secondaryTint",
-        Ty::Paint,
-        ["icon"],
-        "The second layer's ink; accent by default."
-    ),
-    p!(
         "textAlign",
         Ty::Word(&["start", "center", "end"]),
         ["label"],
@@ -1847,7 +1845,7 @@ pub const CORE_PROPS: &[PropSpec] = &[
         "cue",
         Ty::Name,
         ["icon"],
-        "A colour token whose cue it draws (`-og-cue: danger`, docs/ui.md §3.2): the style's icon for that status, rarity, team or damage type, so its meaning never rests on colour alone. Its `icon`, when set, wins."
+        "On <og-icon cue=\"danger\">, the style's icon for that status, rarity, team or damage type, so its meaning never rests on colour alone. Its `icon`, when set, wins. Style the primary and secondary layers with ::part(image) and ::part(secondary)."
     ),
     p!(
         "kind",
@@ -1938,6 +1936,7 @@ pub fn to_json() -> serde_json::Value {
     json!({
         "parts": parts::to_json(),
         "cssFunctions": CSS_FUNCTIONS.iter().map(|(name, grammar, reason)| json!({ "name": name, "grammar": grammar, "reason": reason })).collect::<Vec<_>>(),
+        "elementTags": ELEMENT_TAGS.iter().map(|(name, kind)| json!({ "name": name, "kind": kind })).collect::<Vec<_>>(),
         "kinds": KINDS.iter().map(|k| json!({ "name": k.name, "container": k.container, "doc": k.doc })).collect::<Vec<_>>(),
         "props": PROPS.iter().map(|p| {
             let mut v = json!({ "name": p.name, "type": p.ty.name(), "doc": p.doc, "twoWay": p.two_way });

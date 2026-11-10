@@ -350,7 +350,7 @@ impl Ui {
                         },
                         Some(_) => {
                             warn.push(format!(
-                                "{what}: url({u}) is a glyph icon, not an image: write <icon name=\"{u}\">"
+                                "{what}: url({u}) is a glyph icon, not an image: write <og-icon icon=\"{u}\">"
                             ));
                             return None;
                         }
@@ -690,7 +690,7 @@ impl Ui {
                         size: r.num("iconSize").unwrap_or(0.0),
                         tint: r.color("color"),
                         secondary: r.str("secondary").map(str::to_string),
-                        secondary_tint: r.color("secondaryTint"),
+                        secondary_tint: None,
                         label: r.str("name").map(str::to_string),
                     },
                 )

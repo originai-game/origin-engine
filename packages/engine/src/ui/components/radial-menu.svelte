@@ -15,9 +15,9 @@
       <svg class="wedge" viewBox="0 0 320 320"><circle cx="160" cy="160" r="105" fill="none" stroke-width="86" pathLength="1" stroke-dasharray={(span - 0.006) + " 1"} transform={"rotate(" + ((item.at - span / 2) * 360 - 90 + 1) + " 160 160)"}></circle></svg>
       <button class="item" role="menuitem" aria-label={item.label} disabled={item.disabled} onclick={choose}>
         <div class="upright">
-          <icon class="icon" icon={item.icon}></icon>
+          <og-icon class="icon" icon={item.icon}></og-icon>
           <span class="label">{item.label}</span>
-          <div class="cost" class:short={item.unaffordable} hidden={!item.cost}><icon class="coin" icon="coin"></icon><span class="price">{item.cost}</span></div>
+          <div class="cost" class:short={item.unaffordable} hidden={!item.cost}><og-icon class="coin" icon="coin"></og-icon><span class="price">{item.cost}</span></div>
         </div>
       </button>
     </div>

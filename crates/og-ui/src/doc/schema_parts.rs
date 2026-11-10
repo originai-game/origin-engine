@@ -99,7 +99,8 @@ parts! {
     SKELETON_LINE: "skeleton", "line", ["enabled"];
     SPINNER_BASE: "spinner", "base", ["enabled"];
     SPINNER_DOT: "spinner", "dot", ["enabled"];
-    ICON_IMAGE: "icon", "image", ["enabled"];
+    ICON_IMAGE: "og-icon", "image", ["enabled"];
+    ICON_SECONDARY: "og-icon", "secondary", ["enabled"];
     ARTSLOT_ICON: "artslot", "icon", ["enabled"];
     ARTSLOT_PLACEHOLDER: "artslot", "placeholder", ["enabled"];
     ARTSLOT_LABEL: "artslot", "label", ["enabled"];

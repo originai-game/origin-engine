@@ -23,13 +23,13 @@
     </div>
   {:else if error}
     <div id="Error" role="alert" aria-label={error}>
-      <div class="mark danger"><icon icon="close"></icon></div>
+      <div class="mark danger"><og-icon icon="close"></og-icon></div>
       <p class="title">{error}</p>
       <button id="Retry" onclick={retry}>{t("component.data-grid.retry")}</button>
     </div>
   {:else if !rows.length}
     <div id="Empty" role="status">
-      <div class="mark"><icon icon="bag"></icon></div>
+      <div class="mark"><og-icon icon="bag"></og-icon></div>
       <p class="title">{empty || t("component.data-grid.empty")}</p>
       <p class="hint" hidden={!hint}>{hint}</p>
     </div>

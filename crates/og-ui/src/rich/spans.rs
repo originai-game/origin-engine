@@ -62,7 +62,7 @@ pub struct TextSpanStyle {
     pub size_scale: Option<f32>,
 }
 
-/// An inline object of a text (a document's `<img>`, `<icon>` or `<kbd
+/// An inline object of a text (a document's `<img>`, `<og-icon>` or `<kbd
 /// data-action>` among its words).
 #[derive(Clone, Debug, PartialEq)]
 pub enum InlineAtom {
@@ -197,7 +197,7 @@ impl Ui {
                             Some(k) => Some(crate::rich::Atom::Icon(k)),
                             None => {
                                 self.warnings.push(format!(
-                                    "text: <icon name=\"{name}\"> is not in the icon atlas"
+                                    "text: <og-icon name=\"{name}\"> is not in the icon atlas"
                                 ));
                                 None
                             }

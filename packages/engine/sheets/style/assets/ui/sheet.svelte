@@ -76,13 +76,13 @@
         <panel id="PanelFrame" class="frame"><p class="title">{t("sheet.frame.panel")}</p><p class="muted">{t("sheet.frame.note")}</p></panel>
         <div id="CardFrame" class="frame card"><p class="title">{t("sheet.frame.card")}</p><p class="muted">{t("sheet.frame.note")}</p></div>
         <div id="TooltipFrame" class="frame tip" role="tooltip"><p class="title">{t("sheet.frame.tooltip")}</p><p class="muted">{t("sheet.frame.tip")}</p></div>
-        <div id="HudFrame" class="frame hud"><icon icon="heart"></icon><span class="numeric">{t("sheet.hud")}</span></div>
+        <div id="HudFrame" class="frame hud"><og-icon icon="heart"></og-icon><span class="numeric">{t("sheet.hud")}</span></div>
       </div>
       <div id="Slots" class="wrap" role="list" aria-label={t("sheet.slots")}>
         <div id="SlotEmpty" class="slot" role="listitem" aria-label={t("sheet.slot.empty")}></div>
-        <div id="SlotItem" class="slot" data-rarity="epic" role="listitem" aria-label={t("sheet.slot.item")}><icon icon="sword"></icon></div>
-        <div id="SlotStack" class="slot" role="listitem" aria-label={t("sheet.slot.stack")}><icon icon="potion"></icon><badge class="count" tone="neutral">12</badge></div>
-        <div id="SlotLocked" class="slot locked" role="listitem" aria-label={t("sheet.slot.locked")}><icon icon="lock"></icon></div>
+        <div id="SlotItem" class="slot" data-rarity="epic" role="listitem" aria-label={t("sheet.slot.item")}><og-icon icon="sword"></og-icon></div>
+        <div id="SlotStack" class="slot" role="listitem" aria-label={t("sheet.slot.stack")}><og-icon icon="potion"></og-icon><badge class="count" tone="neutral">12</badge></div>
+        <div id="SlotLocked" class="slot locked" role="listitem" aria-label={t("sheet.slot.locked")}><og-icon icon="lock"></og-icon></div>
       </div>
     </section>
     </div>

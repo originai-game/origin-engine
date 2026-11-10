@@ -546,7 +546,7 @@ pub struct InlineRun {
     /// The `<span part="name">` it is in: its span's name, which
     /// `text::part(name)` rules style.
     pub part: Option<String>,
-    /// An inline `<img>`, `<icon>` or `<kbd data-action>`: its text is the
+    /// An inline `<img>`, `<og-icon>` or `<kbd data-action>`: its text is the
     /// placeholder U+FFFC.
     pub atom: Option<crate::rich::InlineAtom>,
     /// HTML's `<sub>` or `<sup>`: its `vertical-align`, its size the

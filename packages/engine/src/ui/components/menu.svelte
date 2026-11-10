@@ -24,7 +24,7 @@
       {:else}
         <button class="entry" class:danger={e.danger} role={e.kind == "check" ? "menuitemcheckbox" : e.kind == "radio" ? "menuitemradio" : "menuitem"} aria-checked={e.kind == "check" || e.kind == "radio" ? e.checked : null} aria-label={e.label} disabled={e.disabled} onclick={choose}><div class="face">
           <div class="slot">
-            <icon class="glyph" icon={e.icon} hidden={e.icon == "" || e.kind == "check" || e.kind == "radio"}></icon>
+            <og-icon class="glyph" icon={e.icon} hidden={e.icon == "" || e.kind == "check" || e.kind == "radio"}></og-icon>
             <svg class="check" viewBox="0 0 12 12" hidden={e.kind != "check" || !e.checked}><polyline points="2,6.5 5,9.5 10,3"></polyline></svg>
             <span class="dot" hidden={e.kind != "radio" || !e.checked}></span>
           </div>

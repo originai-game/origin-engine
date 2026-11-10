@@ -10,10 +10,10 @@
     <li class="cell">
       <button class="slot" onclick={use} aria-label={s.name} aria-valuetext={s.locked ? t("component.ability-bar.locked") : s.cooldown > 0 ? formatNumber(s.cooldown) : t("component.ability-bar.ready")} disabled={s.locked} class:cooling={s.cooldown > 0} class:active={s.active} class:tinted={s.unaffordable} class:locked={s.locked}>
         <div class="face">
-          <div class="art"><icon class="icon" icon={s.icon}></icon></div>
+          <div class="art"><og-icon class="icon" icon={s.icon}></og-icon></div>
           <svg class="sweep" viewBox="0 0 56 56" hidden={!(s.cooldown > 0)}><circle cx="28" cy="28" r="20" fill="none" stroke="#00000099" stroke-width="40" pathLength="1" stroke-dasharray={(s.cooldown / s.cooldownMax) + " 1"} transform="rotate(-90 28 28) scale(-1 1) translate(-56 0)"></circle></svg>
           <span class="time" hidden={!(s.cooldown > 0)}>{s.cooldown < 10 ? formatNumber(s.cooldown) : formatCountdown(s.cooldown)}</span>
-          <icon class="lock" icon="lock" hidden={!s.locked}></icon>
+          <og-icon class="lock" icon="lock" hidden={!s.locked}></og-icon>
           <span class="cost" class:short={s.unaffordable} hidden={!s.cost || s.cooldown > 0 || s.locked}>{s.cost}</span>
         </div>
       </button>

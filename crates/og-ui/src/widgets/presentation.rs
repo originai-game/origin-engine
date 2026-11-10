@@ -343,15 +343,19 @@ impl Ui {
             ..Element::default()
         };
         self.nodes[i].shapes.clear();
-        for (name, tint) in std::iter::once((name, desc.tint.unwrap_or(self.content_ink()))).chain(
-            desc.secondary.as_deref().map(|name| {
-                (
-                    name,
-                    desc.secondary_tint.unwrap_or(self.theme.palette.accent),
-                )
-            }),
-        ) {
-            match self.icon_shape(crate::dress::PartRef::of("Icon", "image", None), name, Frame::FULL, tint) {
+        for (part, name, tint) in std::iter::once((
+            crate::doc::schema::parts::ICON_IMAGE,
+            name,
+            desc.tint.unwrap_or(self.content_ink()),
+        ))
+        .chain(desc.secondary.as_deref().map(|name| {
+            (
+                crate::doc::schema::parts::ICON_SECONDARY,
+                name,
+                desc.secondary_tint.unwrap_or(self.theme.palette.accent),
+            )
+        })) {
+            match self.icon_shape(part.reference(None), name, Frame::FULL, tint) {
                 Some(shape) => self.nodes[i].shapes.push(shape),
                 None => self.warnings.push(format!(
                     "icon '{name}' is in neither the icon atlas nor UiDesc.fallbackIcons; add it to one of them"

@@ -9,7 +9,7 @@
 <meta name="fixture:default" content="{&quot;label&quot;:&quot;Pages&quot;,&quot;atStart&quot;:false,&quot;atEnd&quot;:false,&quot;pages&quot;:[{&quot;id&quot;:&quot;1&quot;,&quot;label&quot;:&quot;1&quot;,&quot;current&quot;:false},{&quot;id&quot;:&quot;2&quot;,&quot;label&quot;:&quot;2&quot;,&quot;current&quot;:true},{&quot;id&quot;:&quot;3&quot;,&quot;label&quot;:&quot;3&quot;,&quot;current&quot;:false},{&quot;id&quot;:&quot;gap&quot;,&quot;label&quot;:&quot;…&quot;,&quot;gap&quot;:true},{&quot;id&quot;:&quot;9&quot;,&quot;label&quot;:&quot;9&quot;,&quot;current&quot;:false}]}">
 
 <nav id="Pagination" aria-label={$label}>
-  <button id="Prev" variant="quiet" disabled={$atStart} onclick={previous} aria-label={$label}><icon name="chevronLeft"/></button>
+  <button id="Prev" variant="quiet" disabled={$atStart} onclick={previous} aria-label={$label}><og-icon name="chevronLeft"/></button>
   <ol id="Pages">
     {#each $pages as p (p.id)}
       <li class="page">
@@ -18,7 +18,7 @@
       </li>
     {/each}
   </ol>
-  <button id="Next" variant="quiet" disabled={$atEnd} onclick={next} aria-label={$label}><icon name="chevronRight"/></button>
+  <button id="Next" variant="quiet" disabled={$atEnd} onclick={next} aria-label={$label}><og-icon name="chevronRight"/></button>
 </nav>
 
 <style>

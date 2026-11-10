@@ -277,7 +277,6 @@ pub const STYLE: &[(&str, &str)] = &[
     ("font", "font-family"),
     ("color", "color"),
     ("uppercase", "text-transform"),
-    ("secondaryTint", "-og-secondary-tint"),
     ("textAlign", "text-align"),
     ("verticalAlign", "vertical-align"),
     ("captionSide", "caption-side"),
@@ -285,7 +284,6 @@ pub const STYLE: &[(&str, &str)] = &[
     ("maxLines", "line-clamp"),
     ("ellipsis", "text-overflow"),
     ("ellipsisText", "text-overflow"),
-    ("cue", "-og-cue"),
     ("fit", "object-fit"),
     ("uv", "object-view-box"),
     ("appearance", "appearance"),
@@ -439,7 +437,7 @@ fn conv(prop: &str) -> Conv {
         "gap" | "radius" | "fade" | "start" | "top" | "end" | "bottom" => Conv::Len,
         "aspect" | "opacity" | "z" | "scale" | "maxLines" => Conv::Num,
         "rotate" => Conv::Angle,
-        "background" | "fadeInto" | "color" | "secondaryTint" | "ink" => Conv::Paint,
+        "background" | "fadeInto" | "color" | "ink" => Conv::Paint,
         "align" | "cross" | "direction" | "frame" | "reduced" | "textAlign" | "verticalAlign"
         | "captionSide" | "fit" | "display" | "markerType" | "markerPosition" | "userSelect"
         | "appearance" | "labelDirection" | "selectFilter" | "fitMin" => Conv::Kebab,

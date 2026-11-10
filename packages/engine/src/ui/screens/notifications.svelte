@@ -7,7 +7,7 @@
   {#each $items as n (n.id)}
     <article class="note" class:success={n.tone == "success"} class:warn={n.tone == "warn"} class:danger={n.tone == "danger"}>
       <div class="text"><p class="title">{n.title}</p><small class="body">{n.body}</small></div>
-      <button id="Close" variant="quiet" onclick={dismiss} aria-label={n.title}><icon name="close"/></button>
+      <button id="Close" variant="quiet" onclick={dismiss} aria-label={n.title}><og-icon name="close"/></button>
     </article>
   {/each}
 </column>

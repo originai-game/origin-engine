@@ -8,7 +8,7 @@
 
 <button id="Cooldown" aria-label={label} class:ready={remaining <= 0} disabled={remaining > 0} onclick={use}>
   <div id="Face">
-    <icon id="Icon" icon={icon}></icon>
+    <og-icon id="Icon" icon={icon}></og-icon>
     <svg id="Sweep" viewBox="0 0 56 56" hidden={remaining <= 0}>
       <circle cx="28" cy="28" r="14" fill="none" stroke="#000000b3" stroke-width="28" pathLength="1" stroke-dasharray={(remaining / total) + " 1"} transform="rotate(-90 28 28) scale(-1 1) translate(-56 0)"></circle>
     </svg>

@@ -889,7 +889,7 @@ fn data_og_instant_settles_only_the_first_entrance() {
 fn a_button_holds_its_content_in_a_row() {
     let text = r#"<meta name="component" content="t">
 <div id="Page">
-  <button id="Buy" variant="primary" onclick={buy}><icon id="Coin" icon="coin" />Buy<badge id="N">3</badge></button>
+  <button id="Buy" variant="primary" onclick={buy}><og-icon id="Coin" icon="coin" />Buy<badge id="N">3</badge></button>
   <button id="Plain">Plain</button>
 </div>"#;
     both(text, &[], |d| {
@@ -936,7 +936,7 @@ fn a_button_grows_to_hold_tall_content() {
     let text = r#"<meta name="component" content="t">
 <div id="Page">
   <button id="Row"><column id="Col"><text id="Name">Name</text><text id="Detail">Detail</text></column></button>
-  <button id="Short"><icon id="Ic" icon="coin" /></button>
+  <button id="Short"><og-icon id="Ic" icon="coin" /></button>
   <button id="Given"><column><text>Name</text><text>Detail</text></column></button>
 </div>
 <style>
@@ -1214,7 +1214,7 @@ fn kbd_glyphs_follow_the_device_and_rebind() {
     });
 }
 
-/// Rich inline content (G6): `<img>`, `<icon>` and `<kbd data-action>`
+/// Rich inline content (G6): `<img>`, `<og-icon>` and `<kbd data-action>`
 /// among a paragraph's words draw as inline objects, a `<span part>` takes
 /// its `::part()` size, line height and tracking (doc/mf2.rs tests the
 /// translated markup). Ways it could fail: an inline object refused or
@@ -1223,7 +1223,7 @@ fn kbd_glyphs_follow_the_device_and_rebind() {
 fn text_holds_inline_objects_sized_parts_and_translated_markup() {
     let text = r#"<meta name="component" content="t">
 <div id="Page">
-  <p id="Line">Press <kbd data-action="jump"></kbd> for <img src="coin" alt=""> <span part="big">gold</span></p>
+  <p id="Line">Press <kbd data-action="jump"></kbd> for <img src="coin" alt=""> <og-icon name="coin"/> <span part="big">gold</span></p>
   <p id="Said">plain</p>
 </div>
 <style>
@@ -1231,7 +1231,7 @@ p::part(big) { font-size: 40px; line-height: 48px; letter-spacing: 0.1em; }
 </style>"#;
     let doc = UiDocument::parse("ui/t.svelte", text).unwrap_or_else(|e| panic!("{e:?}"));
     let line = doc.nodes.iter().find(|n| n.id == "Line").unwrap();
-    assert_eq!(line.inline.iter().filter(|r| r.atom.is_some()).count(), 2);
+    assert_eq!(line.inline.iter().filter(|r| r.atom.is_some()).count(), 3);
     assert_eq!(
         line.span_rules.len(),
         1,
@@ -1849,7 +1849,7 @@ fn shipped_component_documents_build_from_their_fixtures() {
 
 /// A search box draws HTML's clear button while it has text, and a press on
 /// it empties the field; a field's count, leading icon and suffix are plain
-/// markup round a bare input (`{$name.length}/20`, `<icon>`, `<span>`).
+/// markup round a bare input (`{$name.length}/20`, `<og-icon>`, `<span>`).
 ///
 /// Ways it could fail: no clear button, one that shows on an empty box or
 /// leaves the text, or a count that does not follow the text.
@@ -1859,7 +1859,7 @@ fn search_clears_and_field_adornments_compose() {
 <div id="Page">
   <input type="search" id="Find" bind:value={$q}>
   <div id="Frame" class="frame">
-    <icon id="Lead" icon="coin"></icon>
+    <og-icon id="Lead" icon="coin"></og-icon>
     <input id="Gold" class="bare" maxlength="20" bind:value={$name}>
     <span id="Suffix">gold</span>
   </div>

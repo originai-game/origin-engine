@@ -1961,7 +1961,7 @@ impl Ui {
                 Some(crate::ui::IconCell::Image(texture, uv)) => (texture, uv),
                 Some(_) => {
                     return Err(format!(
-                        "\"{href}\" is a glyph icon, not an image: write <icon name=\"{href}\"> beside the svg"
+                        "\"{href}\" is a glyph icon, not an image: write <og-icon icon=\"{href}\"> beside the svg"
                     ));
                 }
                 None => return Err(format!("href \"{href}\" names no atlas image")),

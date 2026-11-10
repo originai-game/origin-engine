@@ -197,7 +197,7 @@ probe) are unchanged. The mapping:
 | `<a href>` | label (a link) | a click sends a `link` event named by its href through the document's events, as `onclick` sends `emit`; accent ink and an underline |
 | `<div>`, `<section>`, `<header>`, `<footer>`, `<nav>`, `<main>`, `<aside>`, `<article>` | box | layout from CSS `display` (below); landmarks take their roles: `navigation`, `main`, `banner`, `contentinfo`, `complementary`, `article`, and `region` for a named `<section>` |
 | `<ul>`, `<ol>`, `<li>` | box (list, listitem) | not virtualised (that is `<list>`); markers from `list-style` (below); `<ol start reversed>`, `<li value>` |
-| `<button>`, `<progress>` | button, progress | already HTML; a `<button>` holding elements (`<icon/>`, text, `<badge>`) lays them out as a centred row inside its frame, states and press, and its text and icons without a colour of their own take its ink |
+| `<button>`, `<progress>` | button, progress | already HTML; a `<button>` holding elements (`<og-icon/>`, text, `<badge>`) lays them out as a centred row inside its frame, states and press, and its text and icons without a colour of their own take its ink |
 | `<select>` with `<option>` and `<optgroup>` | select | `value`, `placeholder`, `disabled`, `aria-invalid`; options take `value`, `label`, `i18n`, `disabled`, `selected`; `select::picker(select)` styles the open list as a box and its `max-height` bounds the rows |
 | `<dialog>` | dialog | `open`, `modal`, `closedby`, `aria-label`; CSS `appearance: none` drops its frame |
 | `<details>` with a first `<summary>` | details | `open`, `disabled` |
@@ -245,7 +245,7 @@ Elements HTML has no name for (`column`, `row`, `stack`, `grid`, `panel`,
 
 A text element's words may hold inline objects, each one em tall in the
 line: `<img src="coin" alt="">` (a picture the game registered,
-`UiDesc.images`), `<icon name="coin">` (the style's atlas) and
+`UiDesc.images`), `<og-icon name="coin">` (the style's atlas) and
 `<kbd data-action="confirm"></kbd>` (the action's glyph on the device
 used last). Their attributes are literal. A `<span part="big">` names its
 run for `p::part(big) { … }` (any text element's `::part`), which takes
@@ -2529,8 +2529,10 @@ Colour is never the only signal at the token level either. Every status
 and rarity colour token pairs its colour with a cue, an icon, a pattern
 or pips, distinct within its group, and the style refuses to cook
 without one; team and damage colours may take one. A document draws a
-token's icon cue with `icon { -og-cue: danger; }`, the icon the style
-names for that token (an `icon` attribute wins). `@media
+token's icon cue with `<og-icon cue="danger">`, the icon the style
+names for that token (an `icon` attribute wins). The primary layer takes
+`og-icon::part(image) { color: … }`; an optional `secondary` icon takes
+`og-icon::part(secondary) { color: … }` independently. `@media
 (-og-color-vision)` matches any mode and `(-og-color-vision:
 deuteranopia)` one, so a pack can add cues, patterns or stronger
 contrast when the player needs them; a retained mount restyles only the

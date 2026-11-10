@@ -11,7 +11,7 @@
 
 <div id="HoldButton">
   <button id="Button" data-hold="1200" data-action={action} onhold={confirm} aria-label={label} class:primary={variant == "primary"} class:secondary={variant == "secondary"} disabled={disabled}>
-    <icon id="Icon" icon={icon} hidden={!icon}></icon>
+    <og-icon id="Icon" icon={icon} hidden={!icon}></og-icon>
     <span id="Label" class="rest">{label}</span>
     <span id="Holding" class="held" hidden={!holding}>{holding}</span>
   </button>

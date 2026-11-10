@@ -11,7 +11,7 @@
     {#each buffs as e (e.id)}
       <li class="tile" class:expiring={e.expiring} aria-label={e.name}>
         <div class="face">
-          <icon class="icon" icon={e.icon}></icon>
+          <og-icon class="icon" icon={e.icon}></og-icon>
           <svg class="sweep" viewBox="0 0 32 32" hidden={!(e.duration > 0)}><circle cx="16" cy="16" r="8" fill="none" stroke="#0000009e" stroke-width="16" pathLength="1" stroke-dasharray={(1 - e.remaining / e.duration) + " 1"} transform="rotate(-90 16 16)"></circle></svg>
           <span class="stacks" hidden={!(e.stacks > 1)}>{formatNumber(e.stacks)}</span>
         </div>
@@ -24,7 +24,7 @@
     {#each debuffs as e (e.id)}
       <li class="tile debuff" class:expiring={e.expiring} class:magic={e.type == 'magic'} class:curse={e.type == 'curse'} class:poison={e.type == 'poison'} class:disease={e.type == 'disease'} class:bleed={e.type == 'bleed'} aria-label={e.name}>
         <div class="face">
-          <icon class="icon" icon={e.icon}></icon>
+          <og-icon class="icon" icon={e.icon}></og-icon>
           <svg class="sweep" viewBox="0 0 32 32" hidden={!(e.duration > 0)}><circle cx="16" cy="16" r="8" fill="none" stroke="#0000009e" stroke-width="16" pathLength="1" stroke-dasharray={(1 - e.remaining / e.duration) + " 1"} transform="rotate(-90 16 16)"></circle></svg>
           <div class="notch"></div>
           <span class="stacks" hidden={!(e.stacks > 1)}>{formatNumber(e.stacks)}</span>

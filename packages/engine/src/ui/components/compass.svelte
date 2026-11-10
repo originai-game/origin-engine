@@ -43,9 +43,9 @@
       </svg>
       {#each pois as poi (poi.id)}
         <div class="poi" class:objective={poi.kind == 'objective'} class:ping={poi.kind == 'ping'} class:enemy={poi.kind == 'enemy'} class:ally={poi.kind == 'ally'} class:loot={poi.kind == 'loot'} style:--b={poi.bearing} aria-label={poi.label}>
-          <div class="copy back"><icon class="mark" icon={poi.icon} hidden={!poi.icon}></icon><svg class="mark" viewBox="0 0 16 16" hidden={!!poi.icon}><path class="diamond" d="M8 1l7 7-7 7-7-7z"></path></svg><span class="distance" hidden={poi.distance < 0}>{formatNumber(poi.distance) + units}</span></div>
-          <div class="copy"><icon class="mark" icon={poi.icon} hidden={!poi.icon}></icon><svg class="mark" viewBox="0 0 16 16" hidden={!!poi.icon}><path class="diamond" d="M8 1l7 7-7 7-7-7z"></path></svg><span class="distance" hidden={poi.distance < 0}>{formatNumber(poi.distance) + units}</span></div>
-          <div class="copy ahead"><icon class="mark" icon={poi.icon} hidden={!poi.icon}></icon><svg class="mark" viewBox="0 0 16 16" hidden={!!poi.icon}><path class="diamond" d="M8 1l7 7-7 7-7-7z"></path></svg><span class="distance" hidden={poi.distance < 0}>{formatNumber(poi.distance) + units}</span></div>
+          <div class="copy back"><og-icon class="mark" icon={poi.icon} hidden={!poi.icon}></og-icon><svg class="mark" viewBox="0 0 16 16" hidden={!!poi.icon}><path class="diamond" d="M8 1l7 7-7 7-7-7z"></path></svg><span class="distance" hidden={poi.distance < 0}>{formatNumber(poi.distance) + units}</span></div>
+          <div class="copy"><og-icon class="mark" icon={poi.icon} hidden={!poi.icon}></og-icon><svg class="mark" viewBox="0 0 16 16" hidden={!!poi.icon}><path class="diamond" d="M8 1l7 7-7 7-7-7z"></path></svg><span class="distance" hidden={poi.distance < 0}>{formatNumber(poi.distance) + units}</span></div>
+          <div class="copy ahead"><og-icon class="mark" icon={poi.icon} hidden={!poi.icon}></og-icon><svg class="mark" viewBox="0 0 16 16" hidden={!!poi.icon}><path class="diamond" d="M8 1l7 7-7 7-7-7z"></path></svg><span class="distance" hidden={poi.distance < 0}>{formatNumber(poi.distance) + units}</span></div>
         </div>
       {/each}
     </div>

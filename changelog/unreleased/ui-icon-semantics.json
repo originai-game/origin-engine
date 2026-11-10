@@ -1,0 +1,9 @@
+{
+  "breaking": [
+    {
+      "member": "UI icon markup and color styling",
+      "change": "Removed <icon>, -og-cue and -og-secondary-tint without aliases. The reflected <og-icon> tag preserves the internal icon kind and exposes separate image and secondary parts.",
+      "fix": "Write <og-icon cue=\"danger\"> for a semantic cue, or set its icon attribute explicitly. Use og-icon::part(image) and og-icon::part(secondary) with standard color declarations for independent layer colors. Rename inline icon tags to og-icon too."
+    }
+  ]
+}

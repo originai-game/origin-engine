@@ -328,7 +328,8 @@ These declarations also construct widget part identities and are exported by doc
 | `skeleton` | `line` | `:enabled` |
 | `spinner` | `base` | `:enabled` |
 | `spinner` | `dot` | `:enabled` |
-| `icon` | `image` | `:enabled` |
+| `og-icon` | `image` | `:enabled` |
+| `og-icon` | `secondary` | `:enabled` |
 | `artslot` | `icon` | `:enabled` |
 | `artslot` | `placeholder` | `:enabled` |
 | `artslot` | `label` | `:enabled` |
@@ -586,9 +587,9 @@ Its own props, beside every element's:
 | `slice` | `insets` | A nine-slice's insets as fractions of the art: all, x y, or left top right bottom. |
 | `art-set` | `name` | The set it is generated with for a consistent look (the kind's name by default). |
 
-## 15. `<icon>` (`icon`): An icon of the style's set
+## 15. `<og-icon>` (`icon`): An icon of the style's set
 
-An icon of the style's set. A leaf; text-bearing controls accept text content: `<icon id="Name">…</icon>`.
+An icon of the style's set. A leaf; text-bearing controls accept text content: `<og-icon id="Name" />`.
 
 Its own props, beside every element's:
 
@@ -596,10 +597,9 @@ Its own props, beside every element's:
 |---|---|---|
 | `color:` | `var(--<role>) \| #rrggbb[aa]` | Its ink. |
 | `secondary` | `name` | The second icon layer, in the same atlas. |
-| `-og-secondary-tint:` | `var(--<role>) \| #rrggbb[aa]` | The second layer's ink; accent by default. |
 | `icon` | `name` | The icon's name in the style's set. |
 | `icon-size` | `number` | CSS px (24 by default). |
-| `-og-cue:` | `<name>` | A colour token whose cue it draws (`-og-cue: danger`, docs/ui.md §3.2): the style's icon for that status, rarity, team or damage type, so its meaning never rests on colour alone. Its `icon`, when set, wins. |
+| `cue` | `name` | On <og-icon cue="danger">, the style's icon for that status, rarity, team or damage type, so its meaning never rests on colour alone. Its `icon`, when set, wins. Style the primary and secondary layers with ::part(image) and ::part(secondary). |
 
 ## 16. `<progress>` (`progress`): A progress bar
 
