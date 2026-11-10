@@ -574,7 +574,8 @@ fn the_selection_matches_its_reference_frames() {
             let reference = if own.exists() {
                 own
             } else {
-                dir.join("metal").join(format!("{name}.png"))
+                dir.join(og_tests::compare::RECORDING_TIER)
+                    .join(format!("{name}.png"))
             };
             let expected = image::open(&reference)
                 .unwrap_or_else(|e| panic!("{}: {e} (OG_UI_CAPTURE=1)", reference.display()))

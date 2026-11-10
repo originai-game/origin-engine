@@ -120,12 +120,11 @@ images binary even with `core.autocrlf=true`.
 Windows selects DX12 and statically links DXC, so the installed engine
 needs no compiler DLL; game authors need the Microsoft Visual C++ x64
 redistributable (MSVCP140/VCRUNTIME140), not Visual Studio or Rust. The
-reference harness falls back to Metal's frames under the cross-platform
-tolerance (§Reference frames). `crates/og-tests/references/dx12/`
-and `vulkan/` (`OG_GFX_BACKEND=vulkan`) hold a frame only where that
-backend legitimately differs from Metal (nearest-sampled texels whose edges
-fall on pixel centres; NVIDIA's Vulkan anisotropic filter), with the reason
-in the commit that recorded it. `og check` and the package's typecheck use
+reference harness falls back to the GPU host's frames (`references/vulkan/`)
+under the cross-platform tolerance (§Reference frames).
+`crates/og-tests/references/dx12/` holds a frame only where DX12
+legitimately differs (nearest-sampled texels whose edges fall on pixel
+centres), with the reason in the commit that recorded it. `og check` and the package's typecheck use
 the pinned tsgo through Bun, since tsrs has no Windows package. The
 Windows release package is built with `OG_RELEASE=1 sh
 packages/engine/scripts/build.sh --native && sh
@@ -169,12 +168,12 @@ defect to fix, not a landing gate.
 ## Reference frames
 
 One reference set serves every real GPU backend. New frames are recorded
-on the GPU host only (`RECORDING_TIER`; `metal` until the re-record moves
-the set to the L4), so a frame never flip-flops between hosts'
-renderings (§Re-capturing gfx references); `references/<tier>/` holds a
-frame for another backend only where it differs by design (§Windows x64
-prerequisites). A frame is judged against its own tier's reference when
-one is committed, else Metal's, under one rule,
+on the GPU host only (`RECORDING_TIER`, `vulkan`: the L4, §The GPU host),
+so a frame never flip-flops between hosts' renderings (§Re-capturing gfx
+references); `references/<tier>/` holds a frame for another backend only
+where it differs by design (§Windows x64 prerequisites). A frame is judged
+against its own tier's reference when one is committed, else the recording
+tier's, under one rule,
 `og_tests::compare::tolerance_for` (png.ts `toleranceFor` and
 reference-gfx.ts `limitFor` in the browser):
 
@@ -646,9 +645,10 @@ measures. `native/build-profile` records `dev` or `release`;
 ## Browser reference tiers
 
 The browser tier is WebGPU in headless Chrome for Testing. Reference
-frames are recorded on `metal`; a tier's references are looked up frame by
-frame: a frame with no file under `references/<tier>/` is judged against
-`references/metal/`, and a frame on neither fails the run ("no reference
+frames are recorded on the GPU host's `vulkan` tier (png.ts `RECORDING`);
+a tier's references are looked up frame by frame: a frame with no file
+under `references/<tier>/` is judged against `references/vulkan/`, and a
+frame on neither fails the run ("no reference
 at …; record one with --record"), never passes. A tier gets its own
 reference only for a difference it makes by design, never to absorb a
 defect. Tolerances follow §Reference frames: the tight one against the
@@ -678,8 +678,8 @@ compiles them to a wasm-bindgen module (glTF and font assets embedded with
 `include_bytes!` on wasm32), opens each on an OffscreenCanvas at 1280×720
 on WebGPU, draws its frames as the native harness does
 (`og_tests::gfx::render_built`) and reads the target back. Each frame is
-compared with `crates/og-tests/references/webgpu/`, else `metal`, under
-§Reference frames' rule, and every frame's figures against `metal` are
+compared with `crates/og-tests/references/webgpu/`, else `vulkan`, under
+§Reference frames' rule, and every frame's figures against `vulkan` are
 kept in the report. It builds only `og-tests-web`, in `wasm-test`, under
 `target/wasm-gfx`, so the gate's og-render artifacts stay put. Explicit
 `--time` or `--perf-out` runs use the shipping `wasm` profile instead.
@@ -699,7 +699,7 @@ The same module carries og-ui's reference scenes as `og-ui/<name>`
 (`sample-screen`, `text-glow`, `glass`, `widget-set`, `text-fields-2`),
 built by `crates/og-ui/tests/support/scenes.rs` (included into
 og-tests-web by `#[path]`) and judged against
-`crates/og-ui/references/<tier>/<name>.png`, else `metal`; and the four
+`crates/og-ui/references/<tier>/<name>.png`, else `vulkan`; and the four
 cooked-font text frames (`og-ui/text-bidi`, `text-kerning`, `text-edit`,
 `text-mixed-runs`, `crates/og-tests-cooked/tests/support/text_scenes.rs`).
 The module cannot cook, so the runner first cooks
@@ -788,19 +788,29 @@ they write `<scene>.actual.png` and `<scene>.diff.png` under
 `$OG_EVIDENCE_DIR/gfx/`. When a rendering change is intended:
 
 ```
-OG_CAPTURE=1 cargo test -p og-tests          # rewrite the references
-git diff --stat tests/                       # see which frames moved
+# on the GPU host, after `scripts/gate/step.sh rust-build` in the full lane
+OG_GFX_CAPTURE=1 OG_UI_CAPTURE=1 scripts/gate/step.sh rust-gpu   # rewrite the references
+git diff --stat -- '*/references/vulkan/*'                         # see which frames moved
 ```
 
+`OG_GFX_CAPTURE` takes `1` or a comma list of og-tests scenes;
+`OG_UI_CAPTURE=1` rewrites og-ui's frames, including the cooked-font and
+material frames og-tests-cooked writes there. Record twice and compare the
+two sets byte for byte before committing, so no frame flips on the host.
+
 A scene with no reference on the adapter's tier is compared with
-`references/metal/` under the cross-platform tolerance (§Reference frames)
+`references/vulkan/` under the cross-platform tolerance (§Reference frames)
 and the test says so (`gfx <scene>: no <tier> reference …; comparing with
-metal's`); a scene on neither fails. Commit the new references with the
+vulkan's`); a scene on neither fails. Commit the new references with the
 change and describe what each moved frame now shows (AGENTS.md §Building
 and testing). Record on the GPU host; a frame from another tier never
-replaces a recording-tier reference. Until the re-record lands, the set
-is Metal's: the GPU host judges it under the cross-platform tolerance and
-no new frame is recorded on Metal.
+replaces a recording-tier reference. `references/metal/` stays as Metal's
+compatibility set from before the set moved to the L4 (2026-11-10); no new
+frame is recorded there. A project fixture whose playtest names
+`references/metal/<frame>.png` itself keeps that frame until it is
+re-recorded with its project. The browser tiers' own frames (`webgpu`)
+were recorded against Metal's and are re-checked against the L4 set
+later.
 
 ## When the size gate fails
 

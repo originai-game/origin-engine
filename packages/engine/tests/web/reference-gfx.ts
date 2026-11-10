@@ -4,16 +4,16 @@
 // draws it (`og_tests::gfx::render_built`: its frames, its update before
 // each, the offscreen target read back), and compared with
 // crates/og-tests/references/<tier>/ (`webgpu`) when that frame
-// is committed, else with `metal`, under crates/og-tests/src/compare.rs's rule
+// is committed, else with the recording tier's (`RECORDING`, png.ts), under crates/og-tests/src/compare.rs's rule
 // (`tolerance_for`): the scene's tolerance against its own tier's frame, its
 // cross-platform one against another tier's (`Tolerance::CROSS_PLATFORM`
 // unless the scene names its own; a channel off by more than 32/255 is an outlier).
-// Every frame is also compared with its metal reference, reported and kept
+// Every frame is also compared with its recording-tier reference, reported and kept
 // in the JSON whether or not it is the frame the run is judged against.
 // og-ui's reference scenes ride along as `og-ui/<name>` (sample-screen,
 // text-glow, glass, widget-set: crates/og-ui/tests/support/scenes.rs, the
 // code og-ui's native gfx tests draw them with), judged the same way against
-// crates/og-ui/references/<tier>/<name>.png, else metal. So do og-ui's
+// crates/og-ui/references/<tier>/<name>.png, else the recording tier's. So do og-ui's
 // cooked-font text frames (text-bidi, text-kerning, text-edit,
 // text-mixed-runs: crates/og-ui/tests/support/text_scenes.rs): their fonts
 // are cooked first with `og cook` (text-fonts.ts: crates/og-ui/tests/text-fonts
@@ -52,7 +52,7 @@
 // reference-gfx-<tier>.json (default dist/test-gfx/out). Exits 1 when a
 // scene does not match or does not render. Needs Chrome (cdp.ts) or, with
 // --firefox, Firefox (bidi.ts), or with --safari, Safari (webdriver.ts; judged
-// as webgpu-safari, falling back to webgpu, then metal),
+// as webgpu-safari, falling back to webgpu, then the recording tier),
 // wasm-bindgen at the Cargo.lock version and the wasm32 target.
 
 import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -64,7 +64,7 @@ import { Safari, safariDriverPath } from "./webdriver.ts";
 import { serve } from "./serve.ts";
 import { cookTextFonts } from "./text-fonts.ts";
 import { decodePng, encodePng, encodePngBest, type Image } from "../../src/node/png.ts";
-import { compareFrames as compare, TOLERANCE, type Tolerance as Limit } from "../support/png.ts";
+import { compareFrames as compare, RECORDING, TOLERANCE, type Tolerance as Limit } from "../support/png.ts";
 import { createRequire } from "node:module";
 
 const { cpus, loadavg } = createRequire(import.meta.url)("node:os") as { cpus(): { model: string }[]; loadavg(): number[] };
@@ -82,7 +82,7 @@ const repo = join(pkg, "..", "..");
 const android = androidOf(args);
 const safari = args.includes("--safari") ? safariDriverPath(args) : undefined;
 // A phone's frames (webgpu-android) and Safari's (webgpu-safari) are their own
-// reference tier, falling back to the browsers' webgpu and then metal; recorded
+// reference tier, falling back to the browsers' webgpu and then the recording tier; recorded
 // only for a legitimate implementation difference (the former test sample
 const tier = android ? "webgpu-android" : safari ? "webgpu-safari" : "webgpu";
 const record = args.includes("--record");
@@ -238,7 +238,7 @@ try {
   const timed = Number(opt("--time") ?? 0);
   const retained = all.filter((scene) => {
     const { root, name } = referencesOf(scene);
-    return existsSync(join(root, "metal", `${name}.png`));
+    return existsSync(join(root, RECORDING, `${name}.png`));
   });
   const scenes = only ?? (timed > 0 ? [...retained, ...PERF.filter((p) => !retained.includes(p))] : retained);
   if (scenes.length === 0) throw new Error("no retained GPU reference scenes");
@@ -359,11 +359,11 @@ try {
       mkdirSync(dirname(file), { recursive: true });
       writeFileSync(file, png);
       const where = referencesOf(scene);
-      const metal = join(where.root, "metal", `${where.name}.png`);
-      if (existsSync(metal)) {
-        const ml = limitFor(o, metal);
-        const m = compare(img, decodePng(new Uint8Array(readFileSync(metal))), ml);
-        row["metal"] = { outliers: +(m.outliers * 100).toFixed(3), rmse: +m.rmse.toFixed(5), bias: +m.bias.toFixed(5), ok: m.ok };
+      const recorded = join(where.root, RECORDING, `${where.name}.png`);
+      if (existsSync(recorded)) {
+        const ml = limitFor(o, recorded);
+        const m = compare(img, decodePng(new Uint8Array(readFileSync(recorded))), ml);
+        row[RECORDING] = { outliers: +(m.outliers * 100).toFixed(3), rmse: +m.rmse.toFixed(5), bias: +m.bias.toFixed(5), ok: m.ok };
       }
       if (!all.includes(scene) || (timed > 0 && !retained.includes(scene))) {
         console.log(`--   ${scene} (${tier}): timed only (no retained reference)`);
@@ -371,13 +371,13 @@ try {
         mkdirSync(join(where.root, tier), { recursive: true });
         const to = join(where.root, tier, `${where.name}.png`);
         writeFileSync(to, encodePngBest(img));
-        console.log(`rec  ${scene} (${tier}) -> ${to.slice(repo.length + 1)}; against metal ${JSON.stringify(row["metal"] ?? "none")}`);
+        console.log(`rec  ${scene} (${tier}) -> ${to.slice(repo.length + 1)}; against ${RECORDING} ${JSON.stringify(row[RECORDING] ?? "none")}`);
       } else {
         const own = join(where.root, tier, `${where.name}.png`);
-        // A phone's or Safari's tier falls back to the browsers' webgpu, then metal.
+        // A phone's or Safari's tier falls back to the browsers' webgpu, then the recording tier.
         const browsers = join(where.root, "webgpu", `${where.name}.png`);
-        const against = existsSync(own) ? own : tier !== "webgpu" && existsSync(browsers) ? browsers : metal;
-        if (!existsSync(against)) throw new Error(`no reference at ${own} or ${metal}; record one with --record --scene ${scene}`);
+        const against = existsSync(own) ? own : tier !== "webgpu" && existsSync(browsers) ? browsers : recorded;
+        if (!existsSync(against)) throw new Error(`no reference at ${own} or ${recorded}; record one with --record --scene ${scene}`);
         const limit = limitFor(o, against);
         const d = compare(img, decodePng(new Uint8Array(readFileSync(against))), limit);
         const ok = d.ok;
@@ -388,7 +388,7 @@ try {
         }
         console.log(
           `${ok ? "ok  " : "FAIL"} ${scene} (${tier}): ${(d.outliers * 100).toFixed(3)} % outliers (≤ ${(limit.outliers * 100).toFixed(1)} %), RMSE ${d.rmse.toFixed(5)} (≤ ${limit.rmse}), bias ${d.bias.toFixed(5)} (≤ ${limit.bias}) against ${against.slice(repo.length + 1)}` +
-            (against !== metal && row["metal"] ? `; metal: RMSE ${(row["metal"] as { rmse: number }).rmse}` : ""),
+            (against !== recorded && row[RECORDING] ? `; ${RECORDING}: RMSE ${(row[RECORDING] as { rmse: number }).rmse}` : ""),
         );
       }
       if (timed > 0 && (PERF.includes(scene) || CITY.includes(scene) || (only?.includes(scene) ?? false))) {

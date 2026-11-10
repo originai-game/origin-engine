@@ -714,7 +714,7 @@ fn html_constraints_readonly_rows_and_label_checkboxes() {
     assert_eq!(rig.a11y("/Opt").name, "Subtitles");
 }
 
-/// `references/metal/input-types-{1280,390}.png`: the form with a masked
+/// `references/vulkan/input-types-{1280,390}.png`: the form with a masked
 /// password, its reveal eye, an invalid number and a valid email, the
 /// password focused. Ways it could fail: the mask drawn as text, the eye
 /// missing or over the text, the invalid frame not dressed.
@@ -784,7 +784,8 @@ fn input_types_match_their_reference_frames() {
         )
         .unwrap();
         let own = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("references/metal")
+            .join("references")
+            .join(og_tests::compare::RECORDING_TIER)
             .join(&name);
         if std::env::var_os("OG_UI_CAPTURE").is_some() {
             record_reference(&own, width, height, &image.pixels);

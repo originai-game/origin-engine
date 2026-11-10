@@ -13,10 +13,11 @@
 
 use std::path::Path;
 
-/// The backend tier new reference frames are recorded on. One platform
+/// The backend tier new reference frames are recorded on: the GPU host
+/// (an NVIDIA L4 on Vulkan, docs/ci.md §The GPU host). One platform
 /// records, so a frame never flip-flops between hosts' renderings; the
 /// others are held to it under the cross-platform tolerance.
-pub const RECORDING_TIER: &str = "metal";
+pub const RECORDING_TIER: &str = "vulkan";
 
 /// When two frames count as the same picture.
 #[derive(Clone, Copy, Debug, PartialEq)]

@@ -2,7 +2,7 @@
 //! `stroke-dashoffset` binds a store over `pathLength="1"`, a bar chart
 //! from a keyed `{#each}` with a `url(#…)` gradient, a line chart's path
 //! data bound to a store, a star `<polygon>` and an even-odd ring, each in
-//! a box CSS sizes. The frames match `references/metal/inline-svg-{1280,390}.png`
+//! a box CSS sizes. The frames match `references/vulkan/inline-svg-{1280,390}.png`
 //! (`OG_UI_CAPTURE=1` records them).
 //!
 //! Ways it could fail: the view box not fitted (shapes at their user-space
@@ -136,7 +136,8 @@ fn inline_svg_matches_its_reference_frames() {
         )
         .unwrap();
         let own = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("references/metal")
+            .join("references")
+            .join(og_tests::compare::RECORDING_TIER)
             .join(&name);
         if std::env::var_os("OG_UI_CAPTURE").is_some() {
             record_reference(&own, width, height, &pixels);

@@ -505,7 +505,7 @@ fn box_layers_match_their_reference_frames() {
     frames(LAYERS, "box-layers", &[(1280, 720)]);
 }
 
-/// Renders `page` at each size and compares it with `references/metal/<name>-<width>.png`.
+/// Renders `page` at each size and compares it with `references/vulkan/<name>-<width>.png`.
 fn frames(page: &str, stem: &str, sizes: &[(u32, u32)]) {
     use crate::support::*;
     use og_render::*;
@@ -554,7 +554,8 @@ fn frames(page: &str, stem: &str, sizes: &[(u32, u32)]) {
         )
         .unwrap();
         let own = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("references/metal")
+            .join("references")
+            .join(og_tests::compare::RECORDING_TIER)
             .join(&name);
         if std::env::var_os("OG_UI_CAPTURE").is_some() {
             record_reference(&own, width, height, &image.pixels);

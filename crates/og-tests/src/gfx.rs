@@ -5,7 +5,7 @@
 //! `OG_GFX_CAPTURE=1` (re)records every reference instead of comparing;
 //! `OG_GFX_CAPTURE=scene-a,scene-b` records only those scenes.
 
-use crate::compare::{Comparison, compare, tolerance_for};
+use crate::compare::{Comparison, RECORDING_TIER, compare, tolerance_for};
 use crate::scenes::{self, GfxScene};
 use og_render::{FrameStats, RenderInfo, RenderTarget, Renderer, RgbaImage};
 use std::path::{Path, PathBuf};
@@ -210,7 +210,7 @@ pub fn render(scene: &str) -> Result<Rendered, String> {
 }
 
 /// Renders `scene` and compares it with its reference, this tier's or else
-/// metal's (or records this tier's when capture is requested). On a mismatch, writes
+/// the recording tier's (or records this tier's when capture is requested). On a mismatch, writes
 /// `<out_dir>/<tier>/<scene>.actual.png` and `.diff.png` and returns `Err`.
 pub fn check(scene: &str, out_dir: &Path) -> Result<GfxReport, String> {
     check_built(scene, &mut scenes::build(scene)?, out_dir)
@@ -235,23 +235,23 @@ pub fn check_built(scene: &str, built: &mut GfxScene, out_dir: &Path) -> Result<
         return Ok(report);
     }
     // Frame by frame, as every reference harness here: a tier without its
-    // own reference for this scene is judged against metal's and says so
-    // (docs/ci.md §Browser reference tiers), so a scene recorded on metal
-    // is held on the other tiers before their own frame is recorded.
-    let metal = reference_path("metal", scene);
-    let reference = if own.exists() || !metal.exists() {
+    // own reference for this scene is judged against the recording tier's
+    // and says so (docs/ci.md §Reference frames), so a scene recorded on the
+    // GPU host is held on the other tiers without a frame of their own.
+    let recorded = reference_path(RECORDING_TIER, scene);
+    let reference = if own.exists() || !recorded.exists() {
         own.clone()
     } else {
         println!(
-            "gfx {scene}: no {tier} reference at {}; comparing with metal's (record one with OG_GFX_CAPTURE={scene} on that tier)",
+            "gfx {scene}: no {tier} reference at {}; comparing with {RECORDING_TIER}'s (record one with OG_GFX_CAPTURE={scene} on that tier)",
             own.display()
         );
-        metal
+        recorded
     };
     report.reference = reference.clone();
     if !reference.exists() {
         return Err(format!(
-            "{report}: no reference at {} for backend tier '{tier}', nor on metal; record one with OG_GFX_CAPTURE={scene}",
+            "{report}: no reference at {} for backend tier '{tier}', nor on {RECORDING_TIER}; record one with OG_GFX_CAPTURE={scene}",
             own.display()
         ));
     }

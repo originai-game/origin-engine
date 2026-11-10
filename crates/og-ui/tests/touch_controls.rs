@@ -2,7 +2,7 @@
 //! held by one finger and pushed up and right, a `<dpad>` held right by a
 //! second, and two touch `<button data-og-touch>`s CSS sizes, laid
 //! out by CSS at the screen's corners, shown on a coarse pointer only. The
-//! frames match `references/metal/touch-controls-{1280,390}.png`
+//! frames match `references/vulkan/touch-controls-{1280,390}.png`
 //! (`OG_UI_CAPTURE=1` records them).
 //!
 //! Ways it could fail: the knob not following a second finger (a document
@@ -121,7 +121,8 @@ fn touch_controls_match_their_reference_frames() {
         )
         .unwrap();
         let own = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("references/metal")
+            .join("references")
+            .join(og_tests::compare::RECORDING_TIER)
             .join(&name);
         if std::env::var_os("OG_UI_CAPTURE").is_some() {
             record_reference(&own, width, height, &pixels);

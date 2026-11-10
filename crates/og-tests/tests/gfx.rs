@@ -155,18 +155,19 @@ fn the_device_msaa_caps_the_qualitys() {
 
 /// The cross-platform tolerance (og_tests::compare::Tolerance::CROSS_PLATFORM)
 /// is wide enough for another backend's rasterisation, but not for a real
-/// regression: each scene as it is passes against its Metal reference under
-/// the tolerance a frame from another backend gets, and each small mutation
-/// of it fails. On the recording backend (Metal) the tolerance is the tight
-/// one, which the mutations fail by more.
+/// regression: each scene as it is passes against its recording-tier
+/// reference under the tolerance a frame from another backend gets, and each
+/// small mutation of it fails. On the recording backend the tolerance is the
+/// tight one, which the mutations fail by more.
 #[test]
 #[ignore = "requires GPU"]
 fn the_cross_platform_tolerance_still_catches_small_regressions() {
-    use og_tests::compare::compare;
+    use og_tests::compare::{RECORDING_TIER, compare};
     use og_tests::gfx::{load_png, reference_path, render_built};
 
     let judge = |name: &str, g: &mut GfxScene| -> Result<(), String> {
-        let reference = load_png(&reference_path("metal", name)).expect("metal reference");
+        let reference =
+            load_png(&reference_path(RECORDING_TIER, name)).expect("recording-tier reference");
         let image = render_built(g).expect("render").image;
         let tolerance = g.tolerance.widened(g.cross_tolerance);
         let c = compare(

@@ -426,7 +426,7 @@ web_ui() {
   bun tests/web/a11y.ts || rc=1
   return "$rc"
 }
-# og-tests' scenes and og-ui's against their tier's reference, else metal's.
+# og-tests' scenes and og-ui's against their tier's reference, else the recording tier's.
 web_gfx() { bun tests/web/reference-gfx.ts; }
 # Ember Vale uses its native smoke's two frames and command timeline.
 # The vehicle-terrain fixture's slide frame: its tests/drive.og.ts itself

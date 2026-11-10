@@ -631,7 +631,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         "sprites-array" => |g, _| {
             g.scene = sprite_array_scene();
             // Nearest texels whose edges fall on pixel centres: each backend
-            // breaks the tie its own way (references/dx12, vulkan); WebGPU on
+            // breaks the tie its own way (references/dx12); WebGPU on
             // D3D12 against Metal's frame: RMSE 0.0205, 0.136 % outliers.
             g.cross_tolerance = Tolerance {
                 rmse: 0.031,

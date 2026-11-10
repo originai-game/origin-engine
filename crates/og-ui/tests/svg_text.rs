@@ -2,7 +2,7 @@
 //! anchored at their ticks, a gauge's value centred on its ring by
 //! `dominant-baseline="central"`, a styled `<tspan>`, and a 24-unit badge
 //! glyph drawn ten times its size (the scale the GPU takes on the text).
-//! The frames match `references/metal/svg-text-{1280,390}.png`
+//! The frames match `references/vulkan/svg-text-{1280,390}.png`
 //! (`OG_UI_CAPTURE=1` records them).
 //!
 //! Ways it could fail: labels at their unscaled place or size, a start
@@ -116,7 +116,8 @@ fn svg_text_matches_its_reference_frames() {
         )
         .unwrap();
         let own = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("references/metal")
+            .join("references")
+            .join(og_tests::compare::RECORDING_TIER)
             .join(&name);
         if std::env::var_os("OG_UI_CAPTURE").is_some() {
             record_reference(&own, width, height, &pixels);

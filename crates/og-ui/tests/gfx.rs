@@ -312,7 +312,12 @@ fn core_documents_preserve_screen_pixels() {
                     image::ColorType::Rgba8,
                 )
                 .unwrap();
-                let reference_path = reference_dir("metal").join("documents").join(&filename);
+                let reference_path = reference_dir(og_tests::compare::RECORDING_TIER)
+                    .join("documents")
+                    .join(&filename);
+                if std::env::var_os("OG_UI_CAPTURE").is_some() && !reference_path.exists() {
+                    record_reference(&reference_path, width, height, &image.pixels);
+                }
                 let reference = image::open(&reference_path).unwrap().to_rgba8();
                 assert_eq!(reference.dimensions(), (width, height));
                 let sum: f64 = reference
@@ -325,12 +330,12 @@ fn core_documents_preserve_screen_pixels() {
                     .sum();
                 let rmse = (sum / (f64::from(width) * f64::from(height) * 3.0)).sqrt() / 255.0;
                 println!("conversion {name} {case} {width}x{height}: RMSE {rmse:.8}");
-                // Metal, the tier the frames were recorded on, preserves them
-                // byte for byte; another tier is judged against them under
-                // the cross-platform tolerance (`tolerance_for`).
+                // The tier the frames were recorded on preserves them byte
+                // for byte; another tier is judged against them under the
+                // cross-platform tolerance (`tolerance_for`).
                 let info = renderer.info();
                 let preserved = reference.as_raw() == &image.pixels
-                    || (info.backend_tier() != "metal"
+                    || (info.backend_tier() != og_tests::compare::RECORDING_TIER
                         && compare(&image.pixels, reference.as_raw(), info, &reference_path)
                             .is_ok());
                 if !preserved && std::env::var_os("OG_UI_CAPTURE").is_some() {
@@ -486,7 +491,7 @@ fn missing_art_slot_kinds_have_intentional_placeholders() {
         image::ColorType::Rgba8,
     )
     .unwrap();
-    let reference = reference_dir("metal").join(filename);
+    let reference = reference_dir(og_tests::compare::RECORDING_TIER).join(filename);
     if std::env::var_os("OG_UI_CAPTURE").is_some() {
         record_reference(&reference, image.width, image.height, &image.pixels);
     } else {
@@ -987,12 +992,12 @@ fn sample_screen_matches_its_reference_frame() {
     let reference = if own.exists() {
         own
     } else {
-        let metal = reference_dir("metal").join("sample-screen.png");
         println!(
-            "no {tier} reference ({}); comparing with the metal one. Record it with OG_UI_CAPTURE=1 on that tier",
-            own.display()
+            "no {tier} reference ({}); comparing with the {} one. Record it with OG_UI_CAPTURE=1 on that tier",
+            own.display(),
+            og_tests::compare::RECORDING_TIER
         );
-        metal
+        reference_dir(og_tests::compare::RECORDING_TIER).join("sample-screen.png")
     };
     let expected = image::open(&reference)
         .unwrap_or_else(|e| panic!("{}: {e} (OG_UI_CAPTURE=1 records it)", reference.display()))
@@ -1220,7 +1225,7 @@ fn a_text_glow_is_a_halo_from_the_distance_field() {
     let reference = if own.exists() {
         own
     } else {
-        reference_dir("metal").join("text-glow.png")
+        reference_dir(og_tests::compare::RECORDING_TIER).join("text-glow.png")
     };
     let expected = image::open(&reference)
         .unwrap_or_else(|e| panic!("{}: {e} (OG_UI_CAPTURE=1 records it)", reference.display()))
@@ -1619,7 +1624,7 @@ fn a_glass_panel_blurs_the_overlay_layers_below_it() {
     let reference = if own.exists() {
         own
     } else {
-        reference_dir("metal").join("glass.png")
+        reference_dir(og_tests::compare::RECORDING_TIER).join("glass.png")
     };
     let expected = image::open(&reference)
         .unwrap_or_else(|e| panic!("{}: {e} (OG_UI_CAPTURE=1 records it)", reference.display()))
@@ -1812,8 +1817,11 @@ fn text_fields_match_their_reference_frame() {
     let reference = if own.exists() {
         own
     } else {
-        println!("no {tier} reference for text-fields-2; comparing with metal");
-        reference_dir("metal").join("text-fields-2.png")
+        println!(
+            "no {tier} reference for text-fields-2; comparing with {}",
+            og_tests::compare::RECORDING_TIER
+        );
+        reference_dir(og_tests::compare::RECORDING_TIER).join("text-fields-2.png")
     };
     let expected = image::open(&reference)
         .unwrap_or_else(|e| panic!("{}: {e} (OG_UI_CAPTURE=1 records it)", reference.display()))

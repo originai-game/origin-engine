@@ -463,8 +463,9 @@ fn the_materials_frame_matches_its_reference() {
     let reference = if own.exists() {
         own
     } else {
-        println!("no {tier} reference for materials; comparing with metal");
-        refs.join("metal").join("materials.png")
+        let recorded = og_tests::compare::RECORDING_TIER;
+        println!("no {tier} reference for materials; comparing with {recorded}");
+        refs.join(recorded).join("materials.png")
     };
     let expected = image::open(&reference)
         .unwrap_or_else(|e| panic!("{}: {e} (OG_UI_CAPTURE=1 records it)", reference.display()))

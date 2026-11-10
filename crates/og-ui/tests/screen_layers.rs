@@ -160,7 +160,7 @@ fn screen_sprites_above_the_ui_layer_draw_over_the_ui() {
     let reference = if own.exists() {
         own
     } else {
-        dir("metal").join("screen-layers.png")
+        dir(og_tests::compare::RECORDING_TIER).join("screen-layers.png")
     };
     let expected = image::open(&reference)
         .unwrap_or_else(|e| panic!("{}: {e} (OG_UI_CAPTURE=1 records it)", reference.display()))

@@ -525,7 +525,7 @@ fn each_control_is_dressed_by_its_named_parts() {
     }
 }
 
-/// `references/metal/html-controls-{1280,390}.png`: the form with the
+/// `references/vulkan/html-controls-{1280,390}.png`: the form with the
 /// select, last, open below it (its groups, the disabled Orange, the tick
 /// on Blue), the bound disclosure open, the meter in its poor region and
 /// the dialog in place; `html-controls-modal-{1280,390}.png`: the modal
@@ -608,7 +608,8 @@ fn html_controls_match_their_reference_frames() {
             )
             .unwrap();
             let own = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                .join("references/metal")
+                .join("references")
+                .join(og_tests::compare::RECORDING_TIER)
                 .join(&name);
             if std::env::var_os("OG_UI_CAPTURE").is_some() {
                 record_reference(&own, width, height, &image.pixels);

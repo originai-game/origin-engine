@@ -2,7 +2,7 @@
 //! pause screen mounted with a store input, the pause menu a modal layer
 //! over the dimmed HUD, and the same menu leaving under its CSS view
 //! transition's `-og-iris` cover on `::view-transition-old(root)`. The frames match
-//! `references/metal/mounted-layers-{1280,390}.png` and
+//! `references/vulkan/mounted-layers-{1280,390}.png` and
 //! `mounted-layers-iris-{1280,390}.png` (`OG_UI_CAPTURE=1` records them).
 //!
 //! A third frame, `mounted-layers-morph-{1280,390}.png`, is a shared
@@ -154,7 +154,8 @@ fn mounted_layers_match_their_reference_frames() {
             )
             .unwrap();
             let own = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                .join("references/metal")
+                .join("references")
+                .join(og_tests::compare::RECORDING_TIER)
                 .join(&name);
             if std::env::var_os("OG_UI_CAPTURE").is_some() {
                 record_reference(&own, width, height, &pixels);

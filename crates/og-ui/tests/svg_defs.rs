@@ -2,7 +2,7 @@
 //! drawn by three `<use>`s at three sizes, a gauge cut by a `<clipPath>`,
 //! a card faded by a gradient `<mask>`, and a hatched `<pattern>` fill
 //! cut to a diamond path.
-//! The frames match `references/metal/svg-defs-{1280,390}.png`
+//! The frames match `references/vulkan/svg-defs-{1280,390}.png`
 //! (`OG_UI_CAPTURE=1` records them).
 //!
 //! Ways it could fail: a use drawn at the symbol's own size, a clip or a
@@ -158,7 +158,8 @@ fn svg_defs_match_their_reference_frames() {
         )
         .unwrap();
         let own = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("references/metal")
+            .join("references")
+            .join(og_tests::compare::RECORDING_TIER)
             .join(&name);
         if std::env::var_os("OG_UI_CAPTURE").is_some() {
             record_reference(&own, width, height, &pixels);

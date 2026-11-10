@@ -4,8 +4,9 @@
 // headless Chrome on WebGPU (the engine's only web tier) at
 // 1280×720, DPR 1, from the dev web export's engine Worker, and compared
 // with the former test sample (`webgpu`) when
-// that frame is committed there, else with `metal` (a tier with no
-// directory is judged against metal throughout), under og-tests' rule
+// that frame is committed there, else with the recording tier's (`RECORDING`,
+// png.ts; Metal's for a project whose references predate the move to the GPU
+// host), under og-tests' rule
 // (crates/og-tests/src/compare.rs `tolerance_for`, png.ts `toleranceFor`):
 // a channel off by more than 32/255 is an outlier; against this tier's own
 // frame fail above 0.5 % outliers or an RGB RMSE above 0.01, against another
@@ -27,7 +28,7 @@
 // repository) with --script "<og run --commands script>" and
 // --shots name@tick,... (the ticks its screenshots run at); the script runs
 // as it is and each shot is compared with <dir>/references/<tier>/<name>.png
-// (each shot falls back to metal's on its own). --playtest <file> (relative
+// (each shot falls back to the recording tier's on its own). --playtest <file> (relative
 // to the project) takes the script and shots from a frames playtest instead,
 // as reference-ui.ts does the kit's: its commands without screenshots, `quit`,
 // `expect:frame` and `dump_*`, each `<t>:screenshot:<file>` a shot at tick round(60 t), its
@@ -45,7 +46,7 @@
 // stations: tests/looks-script.ts's commands (the playtest's, without its
 // screenshots and quit) in one run, one shot per preset of the catalogue at
 // its screenshot's tick (37), each compared with references/<tier>/
-// looks-<slug>.png, else metal's; its output defaults to
+// looks-<slug>.png, else the recording tier's; its output defaults to
 // dist/test-reference/looks.
 //
 // --time <n> then drives n more frames after the last shot and reports the
@@ -59,11 +60,11 @@
 // RGBA, differences x4, outliers red) and reference-<tier>.json (default
 // dist/test-reference/out; on an error, with the engine's last log lines).
 // Exits 1 when a station does not match or has no reference (neither its
-// tier's nor metal's), the engine does not start or the probe does not
+// tier's nor the recording tier's), the engine does not start or the probe does not
 // refuse. Needs Chrome (cdp.ts: a missing one is an error), or Firefox with
 // --firefox [<path>] (bidi.ts; WebGPU opens a window), or Chrome on an Android
 // phone with --android [<serial>] (cdp.ts Browser.android; its tier is
-// webgpu-android, judged against webgpu-android, else webgpu, else metal, a
+// webgpu-android, judged against webgpu-android, else webgpu, else the recording tier, a
 // webgpu-android frame recorded only for a legitimate difference:
 // the former test sample or Safari with --safari (webdriver.ts; its
 // tier is webgpu-safari, judged the same way: the former test sample
@@ -80,7 +81,7 @@ import { Firefox, firefoxPath } from "./bidi.ts";
 import { Safari, safariDriverPath } from "./webdriver.ts";
 import { serve } from "./serve.ts";
 import { cookProject } from "../support/og-bin.ts";
-import { compareFrames as compare, CROSS_TOLERANCE, decodePng, TOLERANCE, toleranceFor, type Image } from "../support/png.ts";
+import { compareFrames as compare, CROSS_TOLERANCE, decodePng, RECORDING, TOLERANCE, toleranceFor, type Image } from "../support/png.ts";
 import { encodePngBest } from "../../src/node/png.ts";
 
 declare const Bun: {
@@ -204,14 +205,16 @@ const log: string[] = [];
 const dir = join(out, tier);
 mkdirSync(dir, { recursive: true });
 const own = join(refsRoot, tier);
-const metal = join(refsRoot, "metal");
-/** The reference a shot (or the sheet) is judged against: this tier's, else webgpu's (a phone's or Safari's tier), else metal's. */
+// The recording tier's set (compare.rs `RECORDING_TIER`), else Metal's for a
+// project whose frames were recorded before the set moved to the GPU host.
+const recorded = join(refsRoot, existsSync(join(refsRoot, RECORDING)) ? RECORDING : "metal");
+/** The reference a shot (or the sheet) is judged against: this tier's, else webgpu's (a phone's or Safari's tier), else the recording tier's. */
 const referenceOf = (file: string) =>
   record || existsSync(join(own, file))
     ? join(own, file)
     : tier !== "webgpu" && existsSync(join(refsRoot, "webgpu", file))
       ? join(refsRoot, "webgpu", file)
-      : join(metal, file);
+      : join(recorded, file);
 const result: Record<string, unknown> = { tier, size: `${WIDTH}x${HEIGHT}`, tolerance: TOLERANCE, crossTolerance: CROSS_TOLERANCE, script: SCRIPT, stations: {} as Record<string, unknown> };
 if (browser instanceof Browser && browser.device) result["device"] = browser.device;
 if (SHEET) result["sheet"] = { ...SHEET, against: referenceOf(SHEET.name).slice(repo.length + 1) };

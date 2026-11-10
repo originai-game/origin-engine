@@ -102,10 +102,11 @@ fn matches_reference(
     let reference = if own.exists() {
         own
     } else {
+        let recorded = og_tests::compare::RECORDING_TIER;
         println!(
-            "no {tier} reference; comparing with the metal one. Record it with OG_UI_CAPTURE=1 on that tier"
+            "no {tier} reference; comparing with the {recorded} one. Record it with OG_UI_CAPTURE=1 on that tier"
         );
-        dir("metal").join(name)
+        dir(recorded).join(name)
     };
     let expected = image::open(&reference)
         .unwrap_or_else(|e| panic!("{}: {e} (OG_UI_CAPTURE=1 records it)", reference.display()))

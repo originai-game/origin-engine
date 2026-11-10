@@ -1,7 +1,7 @@
 //! CSS effects in documents (docs/ui.md, CSS paint): group blending,
 //! `isolation`, and `clip-path`'s `rect()`, `xywh()`, `shape()`, geometry
 //! boxes and `url(#id)` of a `<clipPath>` in user space and in
-//! objectBoundingBox units. The frames match `references/metal/css-effects-{1280,390}.png`
+//! objectBoundingBox units. The frames match `references/vulkan/css-effects-{1280,390}.png`
 //! (`OG_UI_CAPTURE=1` records them).
 //!
 //! Ways it could fail: a blend applied to each shape of an element rather
@@ -139,7 +139,8 @@ fn css_effects_match_their_reference_frames() {
         )
         .unwrap();
         let own = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("references/metal")
+            .join("references")
+            .join(og_tests::compare::RECORDING_TIER)
             .join(&name);
         if std::env::var_os("OG_UI_CAPTURE").is_some() {
             record_reference(&own, width, height, &pixels);

@@ -146,8 +146,8 @@ status `docs/roadmap.md`. Platform contracts implemented here:
   design. Every other real GPU backend (Metal, DX12, WebGPU in Chrome) is
   a compatibility check under the cross-platform tolerance
   (`og_tests::compare::tolerance_for`, docs/ci.md §Reference frames).
-  Until the re-record lands, the committed set is Metal's, judged on the
-  L4 under the cross-platform tolerance. macrunner (Metal, Safari, iPhone)
+  `references/metal/` is kept as Metal's compatibility set; nothing new
+  is recorded there. macrunner (Metal, Safari, iPhone)
   and studio-win (DX12, Chrome, Edge, Firefox) are development and
   compatibility hosts, run at milestones and before a release, never a
   landing gate; Android waits. The web is WebGPU only

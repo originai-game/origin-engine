@@ -88,8 +88,9 @@ fn check(name: &str, (scene, desc): (RenderScene, RenderDesc)) -> og_render::Fra
     let reference = if own.exists() {
         own
     } else {
-        println!("no {tier} reference for {name}; comparing with metal");
-        refs.join("metal").join(format!("{name}.png"))
+        let recorded = og_tests::compare::RECORDING_TIER;
+        println!("no {tier} reference for {name}; comparing with {recorded}");
+        refs.join(recorded).join(format!("{name}.png"))
     };
     let expected = image::open(&reference)
         .unwrap_or_else(|e| panic!("{}: {e} (OG_UI_CAPTURE=1 records it)", reference.display()))

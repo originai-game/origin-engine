@@ -6,7 +6,7 @@
 //! (`url()` of texture assets) sized, placed and repeated: 16 px tiles cut
 //! by a radius, a cover photo under a badge 6 px from its corner, a
 //! contained icon over a gradient, and tiles spaced edge to edge.
-//! The frames match `references/metal/css-paint-{1280,390}.png`
+//! The frames match `references/vulkan/css-paint-{1280,390}.png`
 //! (`OG_UI_CAPTURE=1` records them).
 //!
 //! Ways it could fail: a gradient's angle read in maths' convention or not
@@ -432,7 +432,8 @@ fn css_paint_matches_its_reference_frames() {
         )
         .unwrap();
         let own = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("references/metal")
+            .join("references")
+            .join(og_tests::compare::RECORDING_TIER)
             .join(&name);
         if std::env::var_os("OG_UI_CAPTURE").is_some() {
             record_reference(&own, width, height, &pixels);

@@ -25,6 +25,9 @@ export const TOLERANCE = { channel: 32, outliers: 0.005, rmse: 0.01, bias: 1 } a
 /** Its cross-platform twin (`Tolerance::CROSS_PLATFORM`): channel 32/255, at most 1 % outliers, RMSE 0.024 and absolute channel mean bias 0.012. RMSE and bias allow about twice the measured backend spread; outliers have more headroom for edge ties. */
 export const CROSS_TOLERANCE = { channel: 32, outliers: 0.01, rmse: 0.024, bias: 0.012 } as const;
 
+/** The tier reference frames are recorded on (compare.rs `RECORDING_TIER`): the GPU host's, an NVIDIA L4 on Vulkan. A tier without its own frame is judged against this one. */
+export const RECORDING = "vulkan";
+
 export type Tolerance = { readonly channel: number; readonly outliers: number; readonly rmse: number; readonly bias: number };
 
 /** `tolerance_for` (compare.rs): TOLERANCE against a reference recorded on `tier` (its directory, references/<tier>/), CROSS_TOLERANCE against another tier's. */
