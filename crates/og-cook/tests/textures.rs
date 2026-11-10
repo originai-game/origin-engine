@@ -12,6 +12,11 @@
 //!   mips (its leaves averaged away when minified), or every texture of the
 //!   image, or its other slots, cooked as a cut-out →
 //!   `an_alpha_tested_base_colour_is_a_cut_out_that_keeps_its_coverage`
+//! - a cut-out's byte taken from `alphaCutoff` alone (the renderer tests the
+//!   texture's alpha times `baseColorFactor`'s) or rounded down, a factor
+//!   under the cut-off taken as byte 255, a cut-off of 0 or a vertex alpha
+//!   under 1 (any `COLOR_0` type, or under a variant) cooked as a cut-out →
+//!   `a_cut_off_is_the_texture_byte_through_the_alpha_factor_or_none`
 //!
 //! Evidence: `$OG_EVIDENCE_DIR/cook/textures-*.json`.
 
@@ -448,10 +453,38 @@ fn bamboo_card() -> Vec<u8> {
         .collect()
 }
 
+/// Per level of the cooked texture `id`, as encoded (transcoded to RGBA),
+/// its share of texels whose alpha is at least `cut`.
+#[cfg(feature = "basis")]
+fn encoded_coverage(b: &Bundle, id: &str, cut: u8) -> Vec<f32> {
+    use basis_universal::{TranscodeParameters, Transcoder, TranscoderTextureFormat};
+    let basis = og_cook::ktx2::to_basis(&b.load_texture(id).unwrap().ktx2).unwrap();
+    let mut t = Transcoder::new();
+    t.prepare_transcoding(&basis).unwrap();
+    let levels = (0..t.image_level_count(&basis, 0))
+        .map(|level_index| {
+            let rgba = t
+                .transcode_image_level(
+                    &basis,
+                    TranscoderTextureFormat::RGBA32,
+                    TranscodeParameters {
+                        image_index: 0,
+                        level_index,
+                        ..Default::default()
+                    },
+                )
+                .unwrap();
+            let texels = rgba.as_chunks::<4>().0;
+            texels.iter().filter(|p| p[3] >= cut).count() as f32 / texels.len() as f32
+        })
+        .collect();
+    t.end_transcoding();
+    levels
+}
+
 #[cfg(feature = "basis")]
 #[test]
 fn an_alpha_tested_base_colour_is_a_cut_out_that_keeps_its_coverage() {
-    use basis_universal::{TranscodeParameters, Transcoder, TranscoderTextureFormat};
     let root = project("cutout");
     png(&root.join("assets/tex/zhu.png"), 32, 12, &bamboo_card());
     // One image under three materials: alpha-tested (glTF MASK, which also
@@ -488,33 +521,143 @@ fn an_alpha_tested_base_colour_is_a_cut_out_that_keeps_its_coverage() {
     // the cut-out keeps the card's (0.25) to 1 x 1; the ordinary texture,
     // its leaf rows spread over the transparent ones by the encoder's filter,
     // has none from 4 x 1 down.
-    let coverage = |id: &str| -> Vec<f32> {
-        let basis = og_cook::ktx2::to_basis(&b.load_texture(id).unwrap().ktx2).unwrap();
-        let mut t = Transcoder::new();
-        t.prepare_transcoding(&basis).unwrap();
-        let levels = (0..t.image_level_count(&basis, 0))
-            .map(|level_index| {
-                let rgba = t
-                    .transcode_image_level(
-                        &basis,
-                        TranscoderTextureFormat::RGBA32,
-                        TranscodeParameters {
-                            image_index: 0,
-                            level_index,
-                            ..Default::default()
-                        },
-                    )
-                    .unwrap();
-                let texels = rgba.as_chunks::<4>().0;
-                texels.iter().filter(|p| p[3] >= 90).count() as f32 / texels.len() as f32
-            })
-            .collect();
-        t.end_transcoding();
-        levels
-    };
+    let coverage = |id: &str| encoded_coverage(&b, id, 90);
     let (c, p) = (coverage(&cutout), coverage(&plain));
     assert_eq!((c.len(), p.len()), (6, 6), "32x12 to 1x1");
     assert_eq!((c[0], p[0]), (0.25, 0.25));
     assert!(c.iter().all(|&c| c >= 0.25), "cut-out {c:?}");
     assert!(p[3..].iter().all(|&p| p == 0.0), "ordinary {p:?}");
+}
+
+/// The renderer discards where the texture's alpha times `baseColorFactor`'s
+/// (and the vertex colour's) is under `alphaCutoff`, so a cut-out's byte is
+/// 255 × cut-off / factor rounded up, and a material for which no one byte
+/// is the test keeps the encoder's mips: the texture an opaque material
+/// gets. The maintainers' case on #9: a 4×4 card, column 0 kept, under
+/// cut-off 0.35 and factor 0.5.
+#[cfg(feature = "basis")]
+#[test]
+fn a_cut_off_is_the_texture_byte_through_the_alpha_factor_or_none() {
+    let root = project("cutout-factor");
+    let card: Vec<u8> = (0..16u32)
+        .flat_map(|i| [255, 255, 255, if i % 4 == 0 { 255 } else { 0 }])
+        .collect();
+    png(&root.join("assets/tex/card.png"), 4, 4, &card);
+    // One triangle, and five vertex colours for it: float, u8 and u16 RGBA
+    // with an alpha under 1, u8 RGBA all opaque, float RGB.
+    let mut bin: Vec<u8> = Vec::new();
+    for v in [[0.0f32, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]] {
+        v.iter().for_each(|f| bin.extend(f.to_le_bytes()));
+    }
+    for a in [1.0f32, 0.5, 1.0] {
+        [1.0, 1.0, 1.0, a]
+            .iter()
+            .for_each(|f: &f32| bin.extend(f.to_le_bytes()));
+    }
+    for a in [255u8, 128, 255] {
+        bin.extend([255, 255, 255, a]);
+    }
+    for a in [65535u16, 30000, 65535] {
+        [65535u16, 65535, 65535, a]
+            .iter()
+            .for_each(|c| bin.extend(c.to_le_bytes()));
+    }
+    bin.extend([255u8; 12]);
+    for _ in 0..9 {
+        bin.extend(1.0f32.to_le_bytes());
+    }
+    assert_eq!(bin.len(), 168);
+    std::fs::write(root.join("assets/tex/card.bin"), &bin).unwrap();
+    let mask = |name: &str, cut: f32, a: f32| {
+        format!(
+            r#"{{"name":"{name}","alphaMode":"MASK","alphaCutoff":{cut},"pbrMetallicRoughness":{{"baseColorTexture":{{"index":0}},"baseColorFactor":[1,1,1,{a}]}}}}"#
+        )
+    };
+    let materials = [
+        mask("half", 0.35, 0.5),
+        mask("full", 0.35, 1.0),
+        r#"{"name":"solid","pbrMetallicRoughness":{"baseColorTexture":{"index":0}}}"#.to_string(),
+        mask("faint", 0.35, 0.2),
+        mask("zero", 0.0, 1.0),
+        mask("tinted-f32", 0.35, 1.0),
+        mask("tinted-u8", 0.35, 1.0),
+        mask("tinted-u16", 0.35, 1.0),
+        mask("coloured", 0.5, 1.0),
+        mask("variant", 0.35, 1.0),
+    ]
+    .join(",");
+    let prim = |color: u32, material: u32| {
+        format!(r#"{{"attributes":{{"POSITION":0,"COLOR_0":{color}}},"material":{material}}}"#)
+    };
+    let primitives = [
+        prim(1, 5),
+        prim(2, 6),
+        prim(3, 7),
+        prim(4, 8),
+        prim(5, 8),
+        // Drawn as the opaque one, and as "variant" under the variant.
+        r#"{"attributes":{"POSITION":0,"COLOR_0":2},"material":2,"extensions":{"KHR_materials_variants":{"mappings":[{"material":9,"variants":[0]}]}}}"#.to_string(),
+    ]
+    .join(",");
+    let views = [(0, 36), (36, 48), (84, 12), (96, 24), (120, 12), (132, 36)]
+        .map(|(o, l)| format!(r#"{{"buffer":0,"byteOffset":{o},"byteLength":{l}}}"#))
+        .join(",");
+    let accessors = [
+        r#"{"bufferView":0,"componentType":5126,"count":3,"type":"VEC3","min":[0,0,0],"max":[1,1,0]}"#,
+        r#"{"bufferView":1,"componentType":5126,"count":3,"type":"VEC4"}"#,
+        r#"{"bufferView":2,"componentType":5121,"normalized":true,"count":3,"type":"VEC4"}"#,
+        r#"{"bufferView":3,"componentType":5123,"normalized":true,"count":3,"type":"VEC4"}"#,
+        r#"{"bufferView":4,"componentType":5121,"normalized":true,"count":3,"type":"VEC4"}"#,
+        r#"{"bufferView":5,"componentType":5126,"count":3,"type":"VEC3"}"#,
+    ]
+    .join(",");
+    std::fs::write(
+        root.join("assets/tex/card.gltf"),
+        format!(
+            r#"{{"asset":{{"version":"2.0"}},"extensionsUsed":["KHR_materials_variants"],
+"extensions":{{"KHR_materials_variants":{{"variants":[{{"name":"v"}}]}}}},
+"scene":0,"scenes":[{{"nodes":[0]}}],"nodes":[{{"mesh":0}}],"meshes":[{{"primitives":[{primitives}]}}],
+"buffers":[{{"uri":"card.bin","byteLength":168}}],"bufferViews":[{views}],"accessors":[{accessors}],
+"images":[{{"uri":"card.png"}}],"textures":[{{"source":0}}],"materials":[{materials}]}}"#
+        ),
+    )
+    .unwrap();
+    let report =
+        og_cook::cook::cook_project_with_texture_cache(&root, &CookOptions::default(), None)
+            .unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    let b = Bundle::open(&root.join("cooked")).unwrap();
+    let m = b.load_model("tex/card.gltf").unwrap();
+    let id = |i: usize| {
+        m.textures[m.materials[i].base_color_texture.expect("a texture")]
+            .id
+            .clone()
+    };
+    // 255 × 0.35 / 0.5 = 178.5: byte 179, not the 90 of the cut-off alone.
+    let (half, full, plain) = (id(0), id(1), id(2));
+    assert!(half.ends_with("-0-cutout179#tex"), "{half}");
+    assert!(full.ends_with("-0-cutout90#tex"), "{full}");
+    assert!(plain.ends_with("-0#tex"), "{plain}");
+    // No one byte is the test: the opaque material's texture, the encoder's
+    // mips. A factor under the cut-off keeps no texel, a cut-off of 0 every
+    // one; a vertex alpha under 1, in any type or under a variant, moves the
+    // test per vertex.
+    for (i, why) in [
+        (3, "a factor under the cut-off"),
+        (4, "a cut-off of 0"),
+        (5, "a float vertex alpha under 1"),
+        (6, "a u8 vertex alpha under 1"),
+        (7, "a u16 vertex alpha under 1"),
+        (9, "a vertex alpha under 1 under a variant"),
+    ] {
+        assert_eq!(id(i), plain, "{why}");
+    }
+    // Opaque RGBA and RGB vertex colours leave a cut-out as it is.
+    assert!(id(8).ends_with("-0-cutout128#tex"), "{}", id(8));
+    assert_eq!(m.textures.len(), 4);
+    // Through the encoder, each level keeps at least level 0's share at the
+    // byte the material tests (as drawn, alpha × 0.5 ≥ 0.35).
+    let c = encoded_coverage(&b, &half, 179);
+    assert_eq!((c.len(), c[0]), (3, 0.25), "4x4 to 1x1: {c:?}");
+    assert!(c.iter().all(|&c| c >= 0.25), "{c:?}");
 }

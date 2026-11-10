@@ -365,9 +365,16 @@ cancellable `og dev` checks use the stateless path.
   the first level does, its alpha raised until it keeps as many. basisu's
   own filter, which every other texture keeps, spreads a card's leaves over
   the transparent texels around them, until minified levels fall under the
-  cut-off and the card is cut away. One image under an alpha-tested and
-  another material is two textures. A texture file, or an alpha test set at
-  run time (`og.render.updateMaterial`), is not a cut-out to the cook.
+  cut-off and the card is cut away. The cut-off is taken in the texture's
+  alpha: the renderer tests the texture's alpha times `baseColorFactor`'s,
+  so the least byte kept is 255 × `alphaCutoff` / that factor, rounded up.
+  A material with no such byte keeps the encoder's mips: a cut-off of 0 or
+  less, a factor under the cut-off, or a primitive drawn with it whose
+  `COLOR_0` alpha falls under 1, which moves the test per vertex. One image
+  under an alpha-tested and another material, or under two whose cut-offs
+  come to different bytes, is that many textures. A texture file, or an
+  alpha test set at run time (`og.render.updateMaterial`), is not a cut-out
+  to the cook.
 - Reusable production assets come through the platform's asset MCP; the
   cook consumes what the agent put in `assets/`.
 
