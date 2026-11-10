@@ -505,7 +505,7 @@ pub fn value_form(prop: &str, words: &[&str]) -> Option<String> {
             "linear-gradient(…) | radial-gradient(…) | conic-gradient(…) (repeating- too)".into()
         }
         Conv::Raw if prop == "backgroundImage" => {
-            "<image> [<position> [/ <size>]] [<repeat>], … [<colour>], an <image> url(<icon or texture>) or a gradient".into()
+            "<image> [<position> [/ <size>]] [<repeat>], … [<colour>], an <image> url(<file>) or a gradient".into()
         }
         Conv::Raw if prop == "backgroundSize" => {
             "cover | contain | [<n>px | <n>% | auto]{1,2}, …".into()

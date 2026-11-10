@@ -28,12 +28,12 @@ const DOC: &str = r#"<meta name="component" content="ix">
 </div>
 <style>
 #Root { width: 600px; height: 400px; cursor: help; }
-#Under { width: 200px; height: 60px; cursor: url(arrow) 3 4, url(7), crosshair; }
+#Under { width: 200px; height: 60px; cursor: url(arrow.svg) 3 4, url(fallback.svg), crosshair; }
 #Over { position: absolute; top: 0; inset-inline-start: 0; width: 300px; height: 60px; pointer-events: none; cursor: wait; }
 #Again { position: absolute; top: 0; inset-inline-start: 220px; width: 60px; height: 60px; pointer-events: auto; cursor: copy; }
 #Ghost { visibility: hidden; cursor: no-drop; }
 #Lost { width: 100px; height: 40px; }
-#Shown { width: 100px; height: 40px; visibility: visible; cursor: url(grip), auto; }
+#Shown { width: 100px; height: 40px; visibility: visible; cursor: url(grip.svg), auto; }
 </style>"#;
 
 fn frame(ui: &mut Ui, p: Vec2) -> Cursor {
@@ -83,7 +83,10 @@ fn the_pointer_passes_through_none_and_hidden() {
     };
     assert_eq!(
         urls(&ui),
-        [("/ui/arrow".into(), Some([3.0, 4.0])), ("7".into(), None)]
+        [
+            ("/ui/arrow.svg".into(), Some([3.0, 4.0])),
+            ("/ui/fallback.svg".into(), None)
+        ]
     );
     // Its child that says auto takes the pointer again.
     frame(&mut ui, again);
@@ -95,7 +98,7 @@ fn the_pointer_passes_through_none_and_hidden() {
     // its own value: the keyword is its kind's, not its parent's no-drop.
     frame(&mut ui, shown);
     assert_eq!(frame(&mut ui, shown), Cursor::Default);
-    assert_eq!(urls(&ui), [("/ui/grip".into(), None)]);
+    assert_eq!(urls(&ui), [("/ui/grip.svg".into(), None)]);
     let a11y = format!("{:?}", ui.a11y());
     assert!(a11y.contains("Shown") && !a11y.contains("Lost"), "{a11y}");
 }

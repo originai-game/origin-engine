@@ -677,8 +677,7 @@ pub(crate) enum CssImage {
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum ImageSource {
     Gradient(CssGradient),
-    /// `url(…)`: an icon of the UI's atlas by name, or a texture by its
-    /// asset handle (`og.load.texture`), as `<image href>` names one.
+    /// `url(…)`: a texture file resolved relative to its stylesheet.
     Url(String),
 }
 
@@ -916,7 +915,7 @@ fn is_image(t: &Tok) -> bool {
     matches!(t, Tok::Func(f, _) if f == "url" || f == "image-set") || gradient(t).is_some()
 }
 
-/// `url(<name>)`, `url("<name>")` or `url(<handle>)`.
+/// A quoted or unquoted file URL.
 pub(crate) fn url(args: &[Vec<Tok>]) -> Result<String, String> {
     let mut out = String::new();
     for t in args.iter().flatten() {
@@ -931,7 +930,7 @@ pub(crate) fn url(args: &[Vec<Tok>]) -> Result<String, String> {
         }
     }
     if out.is_empty() {
-        return Err("url() names an atlas icon or a texture handle".into());
+        return Err("url() names an image file".into());
     }
     Ok(out)
 }

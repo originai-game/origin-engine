@@ -152,6 +152,13 @@ pub(crate) fn parse_with_pack(
         // `!important` one, which an `|important` one wins over in turn.
         for (i, declarations) in std::mem::take(&mut p.inline_styles) {
             let line = p.doc.nodes[i].line;
+            for declaration in &declarations {
+                p.doc.sheet.assets.extend(
+                    at_rules::urls(&declaration.source)
+                        .iter()
+                        .map(|url| at_rules::resolve(source, url)),
+                );
+            }
             p.doc.nodes[i].rules.push(StyleRule {
                 inline: true,
                 layer: u32::MAX,

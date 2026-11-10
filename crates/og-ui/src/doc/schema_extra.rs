@@ -902,7 +902,7 @@ pub const PROPS: &[PropSpec] = &[
         ty: Ty::Text,
         on: On::All,
         two_way: false,
-        doc: "CSS `background` or `background-image` layers over the background colour, the first on top (CSS Backgrounds 3): images `url(<name>)` (an icon of the UI's atlas, as `<image href>` names one) or `url(<handle>)` (a texture, `og.load.texture`), each `<image> [<position> [/ <size>]] [<repeat>]` (`background: url(coin) right 8px bottom 8px / 24px no-repeat, url(sky) center / cover, #123`), and gradients: `linear-gradient()`, `radial-gradient()`, `conic-gradient()` and their `repeating-` forms, which fill the box (up to 8 stops each, mixed in OKLab). The element's `border-radius` and `clip-path` cut every layer.",
+        doc: "CSS `background` or `background-image` layers over the background colour, the first on top (CSS Backgrounds 3): images `url(<file>)` resolved beside the stylesheet, each `<image> [<position> [/ <size>]] [<repeat>]` (`background: url(art/coin.png) right 8px bottom 8px / 24px no-repeat, url(art/sky.png) center / cover, #123`), and gradients: `linear-gradient()`, `radial-gradient()`, `conic-gradient()` and their `repeating-` forms, which fill the box (up to 8 stops each, mixed in OKLab). URLs never name atlas icons or numeric asset handles. Monochrome icons use SVG files through `mask-image` with a background colour. The element's `border-radius` and `clip-path` cut every layer.",
     },
     PropSpec {
         name: "backgroundSize",

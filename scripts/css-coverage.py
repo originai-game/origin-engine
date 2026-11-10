@@ -130,6 +130,8 @@ proof("color", "dressing", "host_font_and_color_reach_button_ink_and_divider_out
       "Emitted button text and divider fill match authored hex colors; an explicit button part color overrides inherited host ink. This does not cover every color syntax or space.")
 proof("image-set", "css_paint", "image_sets_render_density_correct_backgrounds_masks_and_borders",
       "Metal pixels at DPR 1/2/1 prove density-correct background/mask tiles, MIME filtering before duplicate removal (including quoted parameters and malformed-type rejection), zero-resolution transparency, percentage border slices with auto widths and gradient selection. Resolution math covers calc/min/max/clamp with mixed x/dppx/dpi/dpcm units; retained output also tests fractional DPR.")
+proof("background-image", "css_paint", "image_urls_resolve_files_not_atlas_names_or_handles",
+      "Retained drawing selects the registered relative file and numeric filename, rejects a missing path despite an atlas basename collision, and reports the missing asset. css_paint_matches_its_reference_frames covers background tiling and gradients on Metal. Runtime ui_configure::svg_asset_urls_supply_cursor_pixels_and_masks proves cooked SVG pixels, imported masks and inline cursor URL provenance.")
 
 MISSING = {
     "default": "documents::boolean_attribute_selectors_follow_svelte_presence proves retained :default follows false/present checked attributes. The immediate builder does not expose :default state; full support is missing.",
@@ -141,7 +143,7 @@ MISSING = {
     "table": "Table spans/captions have computed output tests, but border-spacing and border-collapse have no implementation/output proof.",
     "backdrop-filter": "Ordinary staged backdrop chains have fixtures; native glass rejects chains requiring intermediate clamps, drop-shadow and SVG url filters.",
     "shadow-parts": "Host/part/state selector registry is present; all-property part applicability awaits the parts-as-nodes stream and its output tests.",
-    "background-image": "Gradient/reference coverage exists; url(coin) resolves an atlas name, not a standard file URL. Icon uses must migrate to SVG file masks.",
+    "cursor": "Runtime ui_configure::svg_asset_urls_supply_cursor_pixels_and_masks proves cooked SVG cursor pixels and hotspots on a button, including inline relative URLs. Cursor hit testing on noninteractive boxes remains unverified; full support is not claimed.",
 }
 
 PART_PROVEN = {}

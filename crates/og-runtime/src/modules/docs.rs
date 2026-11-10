@@ -186,25 +186,32 @@ fn read_document(eng: &Engine, id: &str) -> Result<UiDocument, String> {
     Ok(doc)
 }
 
-/// The Rive artboards a document plays (`<og-rive src="id">`), read
-/// from their cooked blobs and checked, with their hashes: one missing or
-/// malformed refuses the document.
-/// The texture a screen's view transition covers with, loaded by path.
-fn read_cover(
+/// Load CSS textures by their authored asset paths, including transition covers.
+fn read_textures(
     eng: &Engine,
     doc: &UiDocument,
-) -> Result<Option<(String, og_render::TextureHandle)>, String> {
-    let Some(path) = doc.cover_image() else {
-        return Ok(None);
-    };
-    let i = crate::assets::load_texture(eng, path).map_err(|e| {
-        format!(
-            "{}: ::view-transition background-image: \"{path}\": {e}",
-            doc.source
-        )
-    })?;
-    let texture = eng.render.borrow().textures.get(i).copied();
-    Ok(texture.map(|t| (path.to_string(), t)))
+) -> Result<Vec<(String, og_render::TextureHandle)>, String> {
+    let mut paths = doc.sheet.assets.clone();
+    paths.extend(doc.cover_image().map(str::to_owned));
+    let mut textures = Vec::new();
+    for path in paths {
+        let ty = {
+            let assets = eng.assets.borrow();
+            // Missing URLs remain unresolved so cursor candidates can fall
+            // through and image paint can report its missing asset.
+            let Ok((_, bundle)) = assets.blob(&path) else {
+                continue;
+            };
+            bundle.output(&path).map_err(|e| e.to_string())?.ty.clone()
+        };
+        if ty != "og.Texture" {
+            continue;
+        }
+        let i = crate::assets::load_texture(eng, &path)
+            .map_err(|e| format!("{}: CSS texture {path}: {e}", doc.source))?;
+        textures.push((path, eng.render.borrow().textures[i]));
+    }
+    Ok(textures)
 }
 
 /// The UI materials a document's `-og-material` names, loaded by path.
@@ -297,7 +304,7 @@ pub(crate) fn load_document(eng: &Engine, path: &str) -> Result<String, String> 
     let doc = read_document(eng, &id)?;
     let rive = read_rive(eng, &doc)?;
     let materials = read_materials(eng, &doc)?;
-    let cover = read_cover(eng, &doc)?;
+    let textures = read_textures(eng, &doc)?;
     let name = doc.name.clone();
     let hash = hash_of(eng, &id);
     let hashes: Vec<(String, u64)> = rive.iter().map(|(r, h, _)| (r.clone(), *h)).collect();
@@ -329,7 +336,7 @@ pub(crate) fn load_document(eng: &Engine, path: &str) -> Result<String, String> 
     for (path, (handle, defaults)) in materials {
         ui.define_material(&path, handle, defaults);
     }
-    if let Some((path, texture)) = cover {
+    for (path, texture) in textures {
         ui.define_texture(&path, texture);
     }
     define(&mut ui, doc, faces);
@@ -421,16 +428,15 @@ pub(crate) fn refresh(eng: &Engine) -> Vec<String> {
             continue;
         }
         match read_document(eng, &l.id).and_then(|doc| {
-            let cover = read_cover(eng, &doc)?;
             Ok((
                 read_rive(eng, &doc)?,
                 read_materials(eng, &doc)?,
-                cover,
+                read_textures(eng, &doc)?,
                 family_faces(eng, &doc)?,
                 doc,
             ))
         }) {
-            Ok((rive, materials, cover, faces, doc)) => {
+            Ok((rive, materials, textures, faces, doc)) => {
                 let hashes: Vec<(String, u64)> =
                     rive.iter().map(|(r, h, _)| (r.clone(), *h)).collect();
                 with(eng.id, |d| {
@@ -446,7 +452,7 @@ pub(crate) fn refresh(eng: &Engine) -> Vec<String> {
                 for (path, (handle, defaults)) in materials {
                     ui.define_material(&path, handle, defaults);
                 }
-                if let Some((path, texture)) = cover {
+                for (path, texture) in textures {
                     ui.define_texture(&path, texture);
                 }
                 define(&mut ui, doc, faces);

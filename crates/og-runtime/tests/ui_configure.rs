@@ -68,6 +68,14 @@ fn project() -> &'static Path {
                 @font-face { font-family: Mini; src: url(../../mini/Body.ttf); }
                 @font-face { font-family: Numeric; src: url(/styles/mini/Body.ttf); }"#,
         );
+        let glyph = br#"<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4"><path d="M0 0H2V4H0Z" fill="white"/></svg>"#;
+        write("icons/glyph.svg", glyph);
+        write("icons/mask.svg", glyph);
+        write("ui/nested/pointer.css", br#"#Pointer { mask-image: url(../../icons/mask.svg); }"#);
+        write("ui/pointer.svelte", br#"<meta name="screen" content="Pointer" />
+<button id="Pointer" style="cursor: url(missing.svg), url(../icons/glyph.svg) 1 2, crosshair"></button>
+<style>@import "nested/pointer.css";
+#Pointer { width: 80px; height: 80px; background: red; }</style>"#);
         let report = og_cook::cook_project(&root, &og_cook::CookOptions::default()).unwrap();
         assert!(report.ok(), "{:?}", report.errors());
         root
@@ -202,4 +210,67 @@ fn a_style_names_its_assets_relative_to_itself_or_from_assets() {
         warnings(e).iter().all(|w| !w.contains("no font")),
         "its body font, beside it, loaded"
     );
+}
+
+#[test]
+fn svg_asset_urls_supply_cursor_pixels_and_masks() {
+    struct Backend;
+    impl og_runtime::RenderBackend for Backend {
+        fn tier(&self) -> String {
+            "test".into()
+        }
+        fn size(&self) -> (u32, u32) {
+            (100, 100)
+        }
+        fn render(&mut self, _: &og_render::RenderScene) -> Result<(), String> {
+            Ok(())
+        }
+        fn capture(
+            &mut self,
+            _: &og_render::RenderScene,
+            _: u32,
+            _: u32,
+        ) -> Option<og_render::RgbaImage> {
+            None
+        }
+    }
+    let e = engine();
+    og_runtime::set_render_backend(e, Some(Box::new(Backend))).unwrap();
+    let style = value(og_load_style(e, "styles/mini".into()));
+    configure(e, json!({ "style": style }));
+    value(og_runtime::og_load_document(e, "ui/pointer.svelte".into()));
+    value(og_runtime::og_ui_push(e, "Pointer".into(), None));
+    og_runtime::og_engine_frame(e, 1000.0 / 60.0);
+    value(og_runtime::og_commands_schedule(
+        e,
+        "0:touch_move:20,20".into(),
+    ));
+    let frame: Value =
+        serde_json::from_str(&og_runtime::og_engine_frame(e, 1000.0 / 60.0)).unwrap();
+    assert_eq!(frame["ok"], true, "{frame}");
+    assert_eq!(frame["cursor"], "crosshair", "{frame}");
+    let image = &frame["cursorImage"];
+    assert_eq!(
+        (image["width"].as_u64(), image["height"].as_u64()),
+        (Some(4), Some(4)),
+        "{frame}"
+    );
+    assert_eq!(image["hotspot"], json!([1, 2]));
+    let rgba = og_net::base64::decode(image["rgba"].as_str().unwrap()).unwrap();
+    for y in 0..4 {
+        assert_eq!(&rgba[y * 16..y * 16 + 8], &[255; 8]);
+        assert_eq!((rgba[y * 16 + 11], rgba[y * 16 + 15]), (0, 0));
+    }
+    let ui = og_runtime::shared_ui(e).unwrap();
+    let ui = ui.lock();
+    assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+    assert!(ui.frame().items.iter().any(|item| matches!(
+        &item.cmd,
+        og_ui::DrawCmd::EndLayer {
+            blend: og_ui::paint::Blend::DestinationIn,
+            ..
+        }
+    )));
+    drop(ui);
+    assert!(og_runtime::og_engine_destroy(e));
 }

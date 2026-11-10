@@ -63,7 +63,6 @@ impl Ui {
                 tag: None,
                 root: false,
                 line: 0,
-                textures: &[],
             },
         );
         let mut props = Self::box_props(&NodeKind::Element("box"), &r);
@@ -527,7 +526,7 @@ impl Ui {
         };
         let mut warnings = r.cascade.diagnostics.clone();
         let mut decor = self
-            .box_decor(None, r, &mut element, "box", &[], &mut warnings)
+            .box_decor(None, r, &mut element, "box", &mut warnings)
             .unwrap_or_default();
         if !warnings.is_empty() {
             return Err(warnings);

@@ -484,8 +484,7 @@ impl Ui {
                         // Settlement replaces the box the list was opened with;
                         // its window and stride follow on the next build.
                         let mut fields =
-                            fields::RenderFields::capture(self, key, at, kind, resp, props, None)
-                                .with_textures(&r, b.env);
+                            fields::RenderFields::capture(self, key, at, kind, resp, props, None);
                         fields.unstyle_virtual();
                         self.note_render_fields(key, fields);
                     }
@@ -507,8 +506,7 @@ impl Ui {
                 }
             }
             let fields =
-                fields::RenderFields::capture(self, key, self.parent(), kind, resp, props, None)
-                    .with_textures(&r, b.env);
+                fields::RenderFields::capture(self, key, self.parent(), kind, resp, props, None);
             self.apply_document_fields(&doc, n, &r, &fields);
             self.note_render_fields(key, fields);
             // A content button feeds og-input's action as a text one does.
@@ -1339,8 +1337,7 @@ impl Ui {
         let last = self.last_closed;
         if last != NONE && last < self.nodes.len() {
             let mut fields =
-                fields::RenderFields::capture(self, key, last, kind, resp, props, texture)
-                    .with_textures(&styled, b.env);
+                fields::RenderFields::capture(self, key, last, kind, resp, props, texture);
             // A text keeps its source: settlement shows it in its new style.
             if kind == "label" && styled.text.is_some() && styled.generated.is_none() {
                 fields.text = raw_of(&styled, b);

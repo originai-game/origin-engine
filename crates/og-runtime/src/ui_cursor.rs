@@ -4,11 +4,11 @@
 //! canvas's CSS cursor from it; Origin Desktop's shared frame hears it as
 //! its `Cursor` message (og-render's `shared_frames`).
 //!
-//! An image is an atlas icon by name or a texture by its asset handle, as
-//! `background-image` names one, read from the pixels the engine holds: an
+//! An image is a texture asset URL, as `background-image` names one,
+//! read from the pixels the engine holds: an
 //! RGBA texture, or a cooked one decoded again from the bundle (a Basis
 //! texture natively; on the web only a lossless one, `kind pixel`). One
-//! that cannot be read, is a glyph icon or is larger than
+//! that cannot be read or is larger than
 //! [`MAX_SIDE`] does not load, and the next image or the keyword is shown,
 //! as a browser falls back. Decoded images are kept by their source, a few
 //! at once, so a cursor that comes back is not decoded again.
@@ -72,7 +72,7 @@ pub(crate) fn shape(eng: &Engine) -> CursorShape {
         let sources: Vec<_> = frame
             .cursor_images
             .iter()
-            .map(|c| (source(eng, ui.icons(), &c.url), c.hotspot))
+            .map(|c| (source(eng, &c.url), c.hotspot))
             .collect();
         (frame.cursor, sources)
     };
@@ -86,34 +86,14 @@ pub(crate) fn shape(eng: &Engine) -> CursorShape {
     CursorShape { keyword, image }
 }
 
-/// The texture region a `url()` names: a texture by its asset handle, else
-/// an atlas icon by name (a glyph icon has no pixels).
-fn source(
-    eng: &Engine,
-    icons: &og_ui::IconAtlas,
-    url: &str,
-) -> Option<(og_render::TextureHandle, [f32; 4])> {
-    if let Some(&i) = eng
+/// The texture asset a stylesheet-relative `url()` names.
+fn source(eng: &Engine, url: &str) -> Option<(og_render::TextureHandle, [f32; 4])> {
+    let i = *eng
         .assets
         .borrow()
         .by_path
-        .get(&format!("texture:{}", url.trim_start_matches('/')))
-    {
-        return Some((*eng.render.borrow().textures.get(i)?, [0.0, 0.0, 1.0, 1.0]));
-    }
-    match url.parse::<f64>() {
-        Ok(h) => {
-            let i = crate::assets::index_of(h)?;
-            Some((*eng.render.borrow().textures.get(i)?, [0.0, 0.0, 1.0, 1.0]))
-        }
-        Err(_) => match icons
-            .find(url)
-            .or_else(|| icons.find(url.rsplit('/').next().unwrap_or(url)))?
-        {
-            og_ui::IconCell::Image(t, uv) => Some((t, uv)),
-            og_ui::IconCell::Glyph(..) => None,
-        },
-    }
+        .get(&format!("texture:{}", url.trim_start_matches('/')))?;
+    Some((*eng.render.borrow().textures.get(i)?, [0.0, 0.0, 1.0, 1.0]))
 }
 
 /// The image of `region` with `hotspot` (kept, else read now).

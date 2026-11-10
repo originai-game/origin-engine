@@ -11,6 +11,8 @@ pub struct Sheet {
     /// `@import`ed stylesheets by the path written, as the cook read them
     /// from beside the document.
     pub imports: Vec<(String, String)>,
+    /// Asset URLs resolved against the stylesheet that authored them.
+    pub assets: std::collections::BTreeSet<String>,
     pub font_faces: Vec<FontFace>,
     /// `@property` registrations by custom property name.
     pub properties: Vec<(String, Property)>,
@@ -461,7 +463,7 @@ pub fn resolve(base: &str, path: &str) -> String {
 /// interpreting quoted strings or comments as CSS functions.
 pub fn rebase_urls(base: &str, css: &str) -> String {
     map_urls(css, &mut |url| {
-        if url.starts_with('#') || url.contains(':') || url.parse::<u64>().is_ok() {
+        if url.starts_with('#') || url.contains(':') {
             url.to_owned()
         } else {
             format!("/{}", resolve(base, url))
@@ -476,11 +478,7 @@ pub fn urls(css: &str) -> Vec<String> {
     map_urls_in(
         css,
         &mut |url| {
-            if !url.starts_with('#')
-                && !url.contains(':')
-                && url.parse::<u64>().is_err()
-                && !out.iter().any(|s| s == url)
-            {
+            if !url.starts_with('#') && !url.contains(':') && !out.iter().any(|s| s == url) {
                 out.push(url.to_owned());
             }
             url.to_owned()

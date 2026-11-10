@@ -744,6 +744,11 @@ impl Reader<'_> {
                     at,
                     block_at,
                 } => {
+                    self.sheet.assets.extend(
+                        super::at_rules::urls(block)
+                            .iter()
+                            .map(|url| super::at_rules::resolve(&self.base, url)),
+                    );
                     if prelude.starts_with('@') {
                         self.group(prelude, block, at, block_at, context, out, false)?;
                     } else {
@@ -1640,7 +1645,8 @@ pub(super) fn inline(
         .map(|(n, ..)| n.clone())
         .collect();
     let mut out = Vec::new();
-    for declaration in variables::declarations(body).map_err(|e| (at, e))? {
+    let body = super::at_rules::rebase_urls(&doc.source, body);
+    for declaration in variables::declarations(&body).map_err(|e| (at, e))? {
         for d in super::container::expand(declaration)
             .and_then(|ds| {
                 let mut v = Vec::new();

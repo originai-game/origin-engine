@@ -1,0 +1,15 @@
+{
+  "breaking": [
+    {
+      "member": "CSS url()",
+      "change": "CSS image and cursor URLs name files relative to their stylesheet, never atlas icon names or numeric texture handles. Numeric URLs now name numeric files.",
+      "fix": "Replace icon-name URLs with SVG files through mask-image and a background colour. Replace numeric texture-handle URLs with the texture's file path."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "og.load.document",
+      "summary": "Load and register document CSS texture assets, including imported stylesheets and inline styles, on initial load and document reload. Inline URLs resolve beside the document. Cooked SVG files supply mask images and cursor pixels without manual texture loading."
+    }
+  ]
+}

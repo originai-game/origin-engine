@@ -8,7 +8,6 @@ pub(super) struct BoxSource<'a> {
     pub tag: Option<&'a str>,
     pub root: bool,
     pub line: usize,
-    pub textures: &'a [(f64, og_render::TextureHandle)],
 }
 
 #[derive(Clone, Debug)]
@@ -24,9 +23,6 @@ pub(crate) struct RenderFields {
     amounts: (f32, f32),
     press: f32,
     texture: Option<og_render::TextureHandle>,
-    /// The textures of the asset handles its `background`'s `url()`s name,
-    /// looked up while the host was at hand ([`css_textures`]).
-    textures: Vec<(f64, og_render::TextureHandle)>,
     art: Option<String>,
     /// Hidden by something other than the document's `display`.
     hidden: bool,
@@ -58,7 +54,6 @@ impl RenderFields {
                 _ => 0.0,
             },
             texture,
-            textures: Vec::new(),
             art: (kind == "art").then(|| ui.last_art_path()),
             hidden: node.hidden,
         }
@@ -66,12 +61,6 @@ impl RenderFields {
 }
 
 impl RenderFields {
-    /// With the textures `r`'s background `url(<handle>)`s name in `env`.
-    pub(super) fn with_textures(mut self, r: &Resolved, env: &dyn crate::bind::Env) -> Self {
-        self.textures = css_textures(r, env);
-        self
-    }
-
     /// A list or grid opens with its styled width, height, padding and gap;
     /// its baseline is the box without them.
     pub(super) fn unstyle_virtual(&mut self) {
@@ -80,33 +69,6 @@ impl RenderFields {
         self.element.padding = Insets::default();
         self.element.gap = 0.0;
     }
-}
-
-/// The textures of the asset handles (`og.load.texture`) an element's
-/// `background` names by `url(<handle>)`: settlement resolves its fields
-/// again without the host, so they are looked up when it builds.
-fn css_textures(r: &Resolved, env: &dyn crate::bind::Env) -> Vec<(f64, og_render::TextureHandle)> {
-    use crate::doc::paint_css as p;
-    let mut images = Vec::new();
-    if let Some(Ok((layers, _))) = r.str("backgroundImage").and_then(p::background) {
-        images.extend(layers.into_iter().map(|l| l.image));
-    }
-    if let Some(Ok(layers)) = r.str("maskImage").map(p::masks) {
-        images.extend(layers.into_iter().map(|l| l.image));
-    }
-    for prop in ["borderImageSource", "maskBorderSource"] {
-        if let Some(Ok(i)) = r.str(prop).filter(|v| !v.is_empty()).map(p::border_source) {
-            images.push(i);
-        }
-    }
-    images
-        .iter()
-        .flat_map(p::CssImage::urls)
-        .filter_map(|u| {
-            let h = u.parse::<f64>().ok()?;
-            Some((h, env.texture(h)?))
-        })
-        .collect()
 }
 
 /// Its CSS corners when a corner differs from the element's one circular
@@ -150,7 +112,6 @@ impl Ui {
         r: &Resolved,
         el: &mut Element,
         kind: &str,
-        textures: &[(f64, og_render::TextureHandle)],
         warn: &mut Vec<String>,
     ) -> Option<crate::decor::BoxDecor> {
         use crate::decor::{BoxDecor, Line, LineStyle, Shadow};
@@ -221,7 +182,7 @@ impl Ui {
             }
         }
         d.corners = corners(r, el.radius);
-        let css = self.css_paint(doc, r, current, textures, warn);
+        let css = self.css_paint(doc, r, current, warn);
         // A clip, mask, blend, filter or material cuts or composites the
         // background too: it is drawn with them.
         if (css.as_ref().is_some_and(|c| {
@@ -312,14 +273,12 @@ impl Ui {
         doc: Option<&crate::doc::UiDocument>,
         r: &Resolved,
         current: Srgba,
-        textures: &[(f64, og_render::TextureHandle)],
         warn: &mut Vec<String>,
     ) -> Option<crate::doc::paint_css::CssPaint> {
         use crate::doc::paint_css as p;
         let mut c = p::CssPaint::default();
         let nearest = r.object_css().1;
-        // A layer's image: a gradient, a texture by its handle, else an
-        // atlas icon by name, as `<image href>` resolves one.
+        // Asset paths were resolved beside their stylesheet before the cascade.
         let mut image = |what: &str, i: p::CssImage| -> Option<p::BgImage> {
             let Some((source, density)) = i.select(self.viewport.dpr()) else {
                 return (what == "mask" && matches!(i, p::CssImage::Set(_)))
@@ -337,42 +296,10 @@ impl Ui {
                         nearest,
                     }
                 }
-                p::ImageSource::Url(u) => match u.parse::<f64>() {
-                    Ok(h) => match textures.iter().find(|(k, _)| *k == h) {
-                        Some((_, t)) => p::BgImage::Texture {
-                            texture: *t,
-                            uv: [0.0, 0.0, 1.0, 1.0],
-                            density,
-                            nearest,
-                        },
-                        None => {
-                            warn.push(format!("{what}: url({u}) names no texture"));
-                            return None;
-                        }
-                    },
-                    Err(_) => match self
-                        .icons()
-                        .find(u)
-                        .or_else(|| self.icons().find(u.rsplit('/').next().unwrap_or(u)))
-                    {
-                        Some(crate::ui::IconCell::Image(texture, uv)) => p::BgImage::Texture {
-                            texture,
-                            uv,
-                            density,
-                            nearest,
-                        },
-                        Some(_) => {
-                            warn.push(format!(
-                                "{what}: url({u}) is a glyph icon, not an image: write <og-icon icon=\"{u}\">"
-                            ));
-                            return None;
-                        }
-                        None => {
-                            warn.push(format!("{what}: url({u}) names no atlas image"));
-                            return None;
-                        }
-                    },
-                },
+                p::ImageSource::Url(u) => {
+                    warn.push(format!("{what}: url({u}) names no texture asset"));
+                    return None;
+                }
             })
         };
         let layer = |l: p::CssLayer, image: p::BgImage| p::BgLayer {
@@ -436,17 +363,15 @@ impl Ui {
         warn.extend(errors);
         // `url(#id)`: an inline SVG `<filter>` of the document.
         let fe_image = |href: &str| -> Result<(og_render::TextureHandle, [f32; 4]), String> {
-            match href.parse::<f64>() {
-                Ok(h) => textures
-                    .iter()
-                    .find(|(k, _)| *k == h)
-                    .map(|(_, t)| (*t, [0.0, 0.0, 1.0, 1.0]))
-                    .ok_or_else(|| format!("href {h} names no texture")),
-                Err(_) => match self.icons().find(href) {
-                    Some(crate::ui::IconCell::Image(texture, uv)) => Ok((texture, uv)),
-                    _ => Err(format!("href \"{href}\" names no atlas image")),
-                },
-            }
+            let path = doc.map_or_else(
+                || href.trim_start_matches('/').to_owned(),
+                |doc| crate::doc::at_rules::resolve(&doc.source, href),
+            );
+            self.docs
+                .textures
+                .get(&path)
+                .map(|t| (*t, [0.0, 0.0, 1.0, 1.0]))
+                .ok_or_else(|| format!("href \"{href}\" names no texture asset"))
         };
         let url = |warn: &mut Vec<String>, what: &str, u: &str| match doc
             .ok_or_else(|| "an SVG filter reference needs its document".to_string())
@@ -765,7 +690,6 @@ impl Ui {
                 tag: n.selector_tag.as_deref(),
                 root: n.parent == crate::layout::NONE,
                 line: n.line,
-                textures: &base.textures,
             },
         );
         self.apply_document_semantics(n, r, base);
@@ -1011,14 +935,7 @@ impl Ui {
             };
         }
         let mut warn = Vec::new();
-        let mut decor = self.box_decor(
-            source.document,
-            r,
-            &mut el,
-            source.kind,
-            source.textures,
-            &mut warn,
-        );
+        let mut decor = self.box_decor(source.document, r, &mut el, source.kind, &mut warn);
         for w in warn {
             self.warnings.push(format!("line {}: {w}", source.line));
         }

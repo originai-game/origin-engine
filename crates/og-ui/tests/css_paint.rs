@@ -3,7 +3,7 @@
 //! `text-shadow`, `filter` chains (a drop shadow that follows a clipped
 //! star's alpha, colour functions in order, opacity and blur), and
 //! `backdrop-filter` colour functions over stripes, and image layers
-//! (`url()` of atlas icons) sized, placed and repeated: 16 px tiles cut
+//! (`url()` of texture assets) sized, placed and repeated: 16 px tiles cut
 //! by a radius, a cover photo under a badge 6 px from its corner, a
 //! contained icon over a gradient, and tiles spaced edge to edge.
 //! The frames match `references/metal/css-paint-{1280,390}.png`
@@ -19,6 +19,78 @@ use crate::support;
 
 use og_ui::*;
 use support::*;
+
+#[test]
+fn image_urls_resolve_files_not_atlas_names_or_handles() {
+    use og_render::*;
+    let mut scene = RenderScene::new();
+    let mut ui = ui_with_font(test_font_metrics());
+    let mut textures = Vec::new();
+    for name in ["coin.svg", "7", "atlas"] {
+        let texture = scene.add_texture(TextureData {
+            width: 1,
+            height: 1,
+            rgba: vec![255; 4],
+            color_space: ColorSpace::Srgb,
+            mips: Mips::None,
+        });
+        ui.define_texture(&format!("ui/{name}"), texture);
+        textures.push(texture);
+    }
+    ui.set_icons(IconAtlas {
+        texture: Some(textures[2]),
+        columns: 1,
+        rows: 1,
+        names: vec!["coin.svg".into()],
+        ..Default::default()
+    });
+    ui.define_document(
+        UiDocument::parse(
+            "ui/urls.svelte",
+            r#"
+<meta name="component" content="urls" />
+<section><div id="file"></div><div id="missing"></div><div id="number"></div></section>
+<style>
+div { width: 8px; height: 8px; }
+#file { background-image: url(coin.svg); }
+#missing { background-image: url(missing/coin.svg); }
+#number { background-image: url(7); }
+</style>"#,
+        )
+        .unwrap(),
+    );
+    ui.mount_document(
+        reactive::SourceId::new("test", "urls"),
+        "urls",
+        Default::default(),
+        Default::default(),
+        &bind::NoEnv,
+    )
+    .unwrap();
+    ui.begin(InputFrame::default(), Viewport::new(100.0, 100.0));
+    ui.build_retained_documents(&bind::NoEnv).unwrap();
+    ui.end();
+    let images: Vec<_> = ui
+        .frame()
+        .items
+        .iter()
+        .filter_map(|item| match &item.cmd {
+            DrawCmd::Shape { shape, .. } => match &shape.paint {
+                UiPaint::Image(image) => Some(image.texture),
+                _ => None,
+            },
+            _ => None,
+        })
+        .collect();
+    assert_eq!(images, textures[..2]);
+    assert!(
+        ui.frame()
+            .warnings
+            .iter()
+            .any(|w| w.contains("missing/coin.svg"))
+    );
+    assert!(!ui.frame().warnings.iter().any(|w| w.contains("url(7)")));
+}
 
 #[test]
 fn image_sets_reselect_on_density_changes() {
@@ -240,11 +312,11 @@ const CARD: &str = r##"<meta name="component" content="paint">
 #Pane { width: 100%; height: 40px; display: flex; flex-direction: row;
   background: repeating-linear-gradient(90deg, #f0b429 0px, #f0b429 10px, #1f6feb 10px, #1f6feb 20px); }
 #Lens { width: 50%; height: 100%; backdrop-filter: invert(1) grayscale(0.5); }
-#Tiles { background: url(coin) 0 0 / 16px 16px, #1f6feb; border-radius: 16px; }
-#Photo { background: url(coin) right 6px bottom 6px / 24px no-repeat, url("sky") center / cover no-repeat;
+#Tiles { background: url(coin.png) 0 0 / 16px 16px, #1f6feb; border-radius: 16px; }
+#Photo { background: url(coin.png) right 6px bottom 6px / 24px no-repeat, url("sky.png") center / cover no-repeat;
   border-radius: 32px; }
-#Fit { background: url(coin) center / contain no-repeat, linear-gradient(#30363d, #0d1117); }
-#Spaced { background: url(coin), #238636; background-size: 20px; background-repeat: space; }
+#Fit { background: url(coin.png) center / contain no-repeat, linear-gradient(#30363d, #0d1117); }
+#Spaced { background: url(coin.png), #238636; background-size: 20px; background-repeat: space; }
 #Glow { margin: 0; color: #ffffff; text-shadow: 0 2px 6px #58a6ff; }
 @media (max-width: 500px) {
   #Row, #Row2, #Row3, #Row4 { gap: 8px; }
@@ -253,16 +325,16 @@ const CARD: &str = r##"<meta name="component" content="paint">
 }
 </style>"##;
 
-/// A 2×1 atlas of 64 px cells: `coin`, a gold disc with a dark rim on
-/// clear, and `sky`, blue over orange with a white sun up and to the
+/// Independent 64 px images: a gold disc with a dark rim on
+/// clear, or blue over orange with a white sun up and to the
 /// left (an image whose crop shows where cover centres it).
-fn atlas() -> og_render::TextureData {
-    let (w, h) = (128u32, 64u32);
+fn picture(coin: bool) -> og_render::TextureData {
+    let (w, h) = (64u32, 64u32);
     let mut rgba = Vec::with_capacity((w * h * 4) as usize);
     for y in 0..h {
         for x in 0..w {
-            let (cx, fy) = ((x % 64) as f32 + 0.5, y as f32 + 0.5);
-            let px = if x < 64 {
+            let (cx, fy) = (x as f32 + 0.5, y as f32 + 0.5);
+            let px = if coin {
                 let d = ((cx - 32.0).powi(2) + (fy - 32.0).powi(2)).sqrt();
                 if d > 28.0 {
                     [0, 0, 0, 0]
@@ -302,13 +374,9 @@ fn render(width: u32, height: u32) -> (Vec<u8>, og_render::RenderInfo) {
     let mut scene = RenderScene::new();
     let font = add_test_font(&mut scene);
     let mut ui = ui_with_font(font);
-    ui.set_icons(IconAtlas {
-        texture: Some(scene.add_texture(atlas())),
-        columns: 2,
-        rows: 1,
-        names: vec!["coin".into(), "sky".into()],
-        ..IconAtlas::default()
-    });
+    for (name, coin) in [("coin.png", true), ("sky.png", false)] {
+        ui.define_texture(&format!("ui/{name}"), scene.add_texture(picture(coin)));
+    }
     ui.define_document(UiDocument::parse("ui/paint.svelte", CARD).unwrap());
     ui.mount_document(
         reactive::SourceId::new("test", "paint"),

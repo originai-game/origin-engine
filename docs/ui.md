@@ -907,11 +907,14 @@ draws nothing.
 CSS paint. `background` (or `background-image`) takes comma-separated
 layers over the background colour, the first on top, as CSS Backgrounds
 3 writes them: each `<image> [<position> [/ <size>]] [<repeat>]`, the
-colour only in the last. An image is `url(<name>)`, an icon of the UI's
-atlas (`UiDesc.icons`), or `url(<handle>)`, a texture by its asset handle
-(`og.load.texture`), resolved as `<image href>` resolves one (a glyph
-icon or a name that resolves to nothing is a warning naming it), or a
-gradient: `linear-gradient()`, `radial-gradient()` and
+colour only in the last. An image is `url(<file>)`, resolved beside the
+stylesheet that authored it (inline styles resolve beside the document).
+Document loading registers these cooked textures, including SVG files,
+without a game-side texture load. URLs never select atlas icons or numeric
+asset handles: `url(7)` names the file `7`. Monochrome icons use
+`mask-image: url(icons/coin.svg)` with `background-color: currentColor`.
+Missing image assets produce a paint warning. Gradients include
+`linear-gradient()`, `radial-gradient()` and
 `conic-gradient()` and their `repeating-` forms as CSS Images 3 writes
 them (angles with 0 up and clockwise, `to <side or corner>`, radial
 shapes and extents, `from <angle> at <position>`, stops with one or two
@@ -1912,16 +1915,16 @@ range changed are painted again.
 CSS `cursor` takes every CSS UI 4 keyword (`context-menu`, `cell`,
 `vertical-text`, `alias`, `copy`, `no-drop`, `all-scroll`, `col-resize`,
 `row-resize`, the eight edge and corner resizes beside the earlier ones),
-inherited by the subtree, and `og.ui.frameCursor` answers it. `url(<icon
-or texture>) [<x> <y>]` images listed before the keyword are tried in
+inherited by the subtree, and `og.ui.frameCursor` answers it. `url(<file>)
+[<x> <y>]` images listed before the keyword are tried in
 order and the first that loads is shown at its hotspot (default its top
 left, clamped into the image), the keyword where none does: the property
 inherits whole, so images over `auto` stop the parent's keyword and fall
-back to the element's own kind's. An image is an atlas icon by name or a
-texture by its asset handle, cut from the pixels the engine holds: an RGBA
+back to the element's own kind's. Each URL resolves beside its stylesheet
+and reads a registered texture asset, including cooked SVG: an RGBA
 texture, or a cooked one read again from the bundle (any natively; on the
 web a lossless one, `kind pixel`, since the Worker's Basis textures stay on
-the GPU). A glyph icon, an image larger than 128×128 (the browsers' limit)
+the GPU). An image larger than 128×128 (the browsers' limit)
 or one that cannot be read falls through, with a note. The frame answer
 carries the keyword as `cursor` and, on the frames where it changed,
 `cursorImage` (`{width, height, rgba: <base64>, hotspot}` or null); the
@@ -2996,7 +2999,7 @@ Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document dr
 | `background-clip-border-area` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `background-clip-text` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `background-color` | Widely | Missing | Supported (scope →) | Output proof not yet reviewed; implementation status unverified. Part proof: [`dressing::tabs_and_select_parts_keep_boxes_states_and_host_input`](../crates/og-ui/tests/dressing.rs). Tab indicator height, select group height, list padding+border inset, group text padding and distinct tab/option fills are asserted after real clicks. Semantic roles remain on hosts. |
-| `background-image` | Widely | Missing | Pending parts-as-nodes | Gradient/reference coverage exists; url(coin) resolves an atlas name, not a standard file URL. Icon uses must migrate to SVG file masks. |
+| `background-image` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_paint::image_urls_resolve_files_not_atlas_names_or_handles`](../crates/og-ui/tests/css_paint.rs). Retained drawing selects the registered relative file and numeric filename, rejects a missing path despite an atlas basename collision, and reports the missing asset. css_paint_matches_its_reference_frames covers background tiling and gradients on Metal. Runtime ui_configure::svg_asset_urls_supply_cursor_pixels_and_masks proves cooked SVG pixels, imported masks and inline cursor URL provenance. |
 | `background-origin` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `background-position` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `background-repeat` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
