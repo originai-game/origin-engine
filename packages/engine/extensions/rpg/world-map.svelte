@@ -44,7 +44,7 @@
 .here:dir(rtl) { left: auto; right: 0; }
 .here-mark { width: var(--space-lg); height: var(--space-lg); }
 .legend { position: absolute; left: 50%; bottom: var(--space-sm); translate: -50% 0; display: flex; align-items: center; gap: var(--space-md); padding: var(--space-xxs) var(--space-md); white-space: nowrap; }
-@container (width < 760px) { .legend { left: auto; right: var(--space-sm); translate: 0 0; /* pending: translate none */ } .here { bottom: auto; top: 0; } .legend:dir(rtl) { right: auto; left: var(--space-sm); } }
+@container (width < 760px) { .legend { left: auto; right: var(--space-sm); translate: none; } .here { bottom: auto; top: 0; } .legend:dir(rtl) { right: auto; left: var(--space-sm); } }
 .legend-item { display: flex; align-items: center; gap: var(--space-xs); flex: none; }
 .legend-mark { width: var(--space-lg); height: var(--space-lg); }
 </style>

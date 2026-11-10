@@ -18,6 +18,7 @@
   (a slot's key) and unequip (X or pad Y on the focused slot, its key).
 -->
 <section id="RpgCharacter" class="rpg-character" aria-label={title ? title : name}>
+  <!-- pending: [hidden] matches hidden={false} (gap 14); {#if} until then, correct form hidden={!title} / hidden={!!title}. -->
   {#if title}<header class="rpg-band"><div class="band-end start"></div><h2 class="rpg-title">{title}</h2><div class="band-end finish"></div></header>{:else}
   <header class="who">
     <img class="portrait" src={portrait} alt="" hidden={!portrait}>

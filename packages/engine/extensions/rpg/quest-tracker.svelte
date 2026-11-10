@@ -18,6 +18,7 @@
       <li class="tracker-step" data-done={s.done}><div class="tracker-mark"></div><span class="tracker-text">{s.text}</span></li>
     {/each}
   </ul>
+  <!-- pending: [hidden] matches hidden={false} (gap 14); {#if} until then, correct form hidden={!distance}. -->
   {#if distance}<div class="tracker-distance"><div class="tracker-arrow"></div><span class="tracker-far">{distance}</span></div>{/if}
 </section>
 
