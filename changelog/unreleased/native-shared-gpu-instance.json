@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "Native renderers made one after another",
+      "summary": "Natively every renderer of a backend now shares one graphics instance for the process. Each renderer used to make its own, so the driver was unloaded and loaded again for each; on NVIDIA's Linux driver a process that made some dozens of renderers then failed to make the next one (`NoAdapter`)."
+    }
+  ]
+}

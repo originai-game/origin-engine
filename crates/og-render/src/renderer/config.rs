@@ -92,6 +92,15 @@ impl Backend {
     /// A wgpu instance for this backend, for hosts that create their own surface
     /// before calling [`Renderer::with_surface`].
     ///
+    /// Natively one instance a backend serves the whole process, made on
+    /// first use and kept: every renderer, and every host surface, shares
+    /// it. An instance a renderer let go was the last, so the Vulkan loader
+    /// unloaded the driver with it and loaded it again for the next one;
+    /// NVIDIA's Linux driver takes a static TLS block each load, and after
+    /// some dozens of renderers in one process (a test making one a case)
+    /// the next load failed (`libnvidia-tls.so: cannot allocate memory in
+    /// static TLS block`, then `RenderError::NoAdapter`).
+    ///
     /// Without wgpu's validation of indirect draws (`VALIDATION_INDIRECT_CALL`,
     /// on by default natively): it re-checks every indirect draw's
     /// arguments in a compute pass of its own each frame, and the only
@@ -113,6 +122,23 @@ impl Backend {
     /// grass past LOD 0's ring was missing on DX12 (studio-win, 2026-11-05;
     /// the former test sample
     pub fn instance(self) -> wgpu::Instance {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            static INSTANCES: std::sync::Mutex<Vec<(Backend, wgpu::Instance)>> =
+                std::sync::Mutex::new(Vec::new());
+            let mut made = INSTANCES.lock().unwrap_or_else(|e| e.into_inner());
+            if let Some((_, instance)) = made.iter().find(|(b, _)| *b == self) {
+                return instance.clone();
+            }
+            let instance = self.new_instance();
+            made.push((self, instance.clone()));
+            instance
+        }
+        #[cfg(target_arch = "wasm32")]
+        self.new_instance()
+    }
+
+    fn new_instance(self) -> wgpu::Instance {
         let mut flags = wgpu::InstanceFlags::from_build_config();
         if !self.backends().contains(wgpu::Backends::DX12) {
             flags.remove(wgpu::InstanceFlags::VALIDATION_INDIRECT_CALL);
