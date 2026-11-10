@@ -68,7 +68,7 @@ pub(crate) enum Shape {
     Glyph {
         part: crate::dress::PartRef,
         frame: Frame,
-        font: og_render::FontHandle,
+        font: og_draw::FontHandle,
         ch: char,
         color: Srgba,
     },
@@ -370,7 +370,7 @@ pub(crate) enum Content {
 /// `offset`, the px after it) and `image-rendering` (`nearest`).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ObjectFit {
-    pub fit: og_render::UiFit,
+    pub fit: og_draw::UiFit,
     pub focal: [f32; 2],
     pub offset: [f32; 2],
     pub nearest: bool,
@@ -379,7 +379,7 @@ pub struct ObjectFit {
 impl Default for ObjectFit {
     fn default() -> Self {
         ObjectFit {
-            fit: og_render::UiFit::Fill,
+            fit: og_draw::UiFit::Fill,
             focal: [0.5; 2],
             offset: [0.0; 2],
             nearest: false,

@@ -173,7 +173,7 @@ pub(crate) struct CssLayer {
     pub image: CssImage,
     pub size: BgSize,
     pub position: [BgPos; 2],
-    pub repeat: [og_render::UiRepeat; 2],
+    pub repeat: [og_draw::UiRepeat; 2],
     pub origin: BoxEdge,
     pub clip: BoxEdge,
     pub attach: Attach,
@@ -188,7 +188,7 @@ impl CssLayer {
             image,
             size: BgSize::Given([None; 2]),
             position: [(0.0, 0.0); 2],
-            repeat: [og_render::UiRepeat::Repeat; 2],
+            repeat: [og_draw::UiRepeat::Repeat; 2],
             origin: if mask {
                 BoxEdge::Border
             } else {
@@ -463,8 +463,8 @@ fn bg_size(t: &[Tok]) -> Result<BgSize, String> {
     }
 }
 
-fn repeat_word(w: &str) -> Option<og_render::UiRepeat> {
-    use og_render::UiRepeat as R;
+fn repeat_word(w: &str) -> Option<og_draw::UiRepeat> {
+    use og_draw::UiRepeat as R;
     Some(match w {
         "repeat" => R::Repeat,
         "no-repeat" => R::NoRepeat,
@@ -475,8 +475,8 @@ fn repeat_word(w: &str) -> Option<og_render::UiRepeat> {
 }
 
 /// A `background-repeat` of one layer.
-fn bg_repeat(t: &[Tok]) -> Result<[og_render::UiRepeat; 2], String> {
-    use og_render::UiRepeat as R;
+fn bg_repeat(t: &[Tok]) -> Result<[og_draw::UiRepeat; 2], String> {
+    use og_draw::UiRepeat as R;
     let word = |t: &Tok| match t {
         Tok::Ident(w) => repeat_word(w),
         _ => None,

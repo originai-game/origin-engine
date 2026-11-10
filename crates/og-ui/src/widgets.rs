@@ -15,7 +15,7 @@ use crate::style::{READABLE, Srgba};
 use crate::tokens::EaseRole;
 use crate::ui::{Anim, Response, Toast, Ui};
 use og_core::hash::StableHasher;
-use og_render::TextureHandle;
+use og_draw::TextureHandle;
 use std::f32::consts::{FRAC_PI_2, FRAC_PI_4, PI};
 
 pub use controls::{

@@ -14,7 +14,7 @@ use crate::style::Srgba;
 use crate::ui::Ui;
 use crate::world::WorldView;
 use og_core::glam::{Vec2, Vec3};
-use og_render::TextureHandle;
+use og_draw::TextureHandle;
 
 /// A viewport ([`Ui::scene_viewport`]).
 #[derive(Clone, Debug, PartialEq)]

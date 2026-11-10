@@ -14,7 +14,7 @@
 /// A glyph rendered from outlines: RGBA8 rows top to bottom.
 #[derive(Clone, Debug, PartialEq)]
 pub struct GlyphImage {
-    pub key: og_render::GlyphKey,
+    pub key: og_draw::GlyphKey,
     /// Horizontal advance in em.
     pub advance: f32,
     /// The quad around the glyph relative to the pen on the baseline, em,
@@ -109,7 +109,7 @@ impl ttf_parser::OutlineBuilder for Flatten {
 /// the font has no glyph for it.
 pub fn render_glyph(
     ttf: &[u8],
-    c: impl Into<og_render::GlyphKey>,
+    c: impl Into<og_draw::GlyphKey>,
     em_px: f32,
     px_range: f32,
 ) -> Option<GlyphImage> {
@@ -121,7 +121,7 @@ pub fn render_glyph(
 /// whole number of cells, as the cook renders it.
 pub fn render_glyph_on(
     ttf: &[u8],
-    c: impl Into<og_render::GlyphKey>,
+    c: impl Into<og_draw::GlyphKey>,
     em_px: f32,
     px_range: f32,
     grid: u32,
@@ -129,9 +129,9 @@ pub fn render_glyph_on(
     let c = c.into();
     let face = ttf_parser::Face::parse(ttf, 0).ok()?;
     let gid = match c {
-        og_render::GlyphKey::Id(id) if id < face.number_of_glyphs() => ttf_parser::GlyphId(id),
-        og_render::GlyphKey::Id(_) => return None,
-        og_render::GlyphKey::Char(c) => face.glyph_index(c)?,
+        og_draw::GlyphKey::Id(id) if id < face.number_of_glyphs() => ttf_parser::GlyphId(id),
+        og_draw::GlyphKey::Id(_) => return None,
+        og_draw::GlyphKey::Char(c) => face.glyph_index(c)?,
     };
     let upem = f32::from(face.units_per_em());
     let mut advance = f32::from(face.glyph_hor_advance(gid).unwrap_or(0)) / upem;

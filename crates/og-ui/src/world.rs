@@ -14,7 +14,7 @@
 //!   screen's own elements.
 //! - **World panels** ([`Ui::world_panel`]): a subtree laid out at its own
 //!   size away from the screen and drawn into a render target (an
-//!   rgba16float [`og_render::RenderTargetHandle`] colour) that a mesh's
+//!   rgba16float [`og_draw::RenderTargetHandle`] colour) that a mesh's
 //!   material shows, lit (`map`) or unlit (`emissiveMap`). The pointer
 //!   reaches it through a ray: where the ray from the pointer meets the
 //!   panel's quad, the panel's controls take the press.
@@ -48,7 +48,7 @@ use crate::style::Srgba;
 use crate::ui::Ui;
 use og_core::glam::{Mat4, Quat, Vec2, Vec3, Vec4};
 use og_core::math::Pose;
-use og_render::{
+use og_draw::{
     TextureHandle, UiGeometry, UiMassBatch, UiMassInstance, UiMassSpace, UiMassTemplate, UiShape,
 };
 use std::collections::BTreeMap;
@@ -320,7 +320,7 @@ pub struct WorldPanelDesc {
     /// a sign), in a band under the screen's elements, instead of into
     /// `target`: no render target or mesh. Inert: no ray reaches it, and
     /// its controls take no focus. Laid over the scene's surface as a
-    /// decal ([`og_render::UiGround`]).
+    /// decal ([`og_draw::UiGround`]).
     pub projected: bool,
 }
 
@@ -370,8 +370,8 @@ pub enum MetaKind {
     /// The frame under it composited through a UI material (a ripple for
     /// sanity, a glitch for a hit): a backdrop of the scene in a layer.
     Material {
-        material: og_render::UiMaterial,
-        params: [[f32; 4]; og_render::UI_MATERIAL_PARAMS],
+        material: og_draw::UiMaterial,
+        params: [[f32; 4]; og_draw::UI_MATERIAL_PARAMS],
     },
 }
 
@@ -465,14 +465,14 @@ pub(crate) struct KeptMass {
 /// bottom left corners land on the screen when all four are in front of
 /// the camera, the screen `bounds` its decal can cover (the whole screen
 /// while a corner of it is behind the camera), and its drape onto the
-/// scene ([`og_render::UiDrape`]).
+/// scene ([`og_draw::UiDrape`]).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct GroundQuad {
     pub key: u64,
     pub rect: Rect,
     pub corners: Option<[Vec2; 4]>,
     pub bounds: Rect,
-    pub drape: og_render::UiDrape,
+    pub drape: og_draw::UiDrape,
     /// A CSS 3D plane's 3D rendering context (a key; 0: none) and its
     /// depth toward the viewer there, CSS px.
     pub context: u64,
@@ -484,7 +484,7 @@ impl GroundQuad {
     /// through the plane's projective map, as the rect's own corners do.
     /// `None` while a corner is behind the camera.
     pub fn corners_of(&self, r: Rect) -> Option<[Vec2; 4]> {
-        let m = og_render::square_to_quad(&self.corners?)?;
+        let m = og_draw::square_to_quad(&self.corners?)?;
         let at = |x: f32, y: f32| {
             let u = (x - self.rect.x) / self.rect.width.max(1e-6);
             let v = (y - self.rect.y) / self.rect.height.max(1e-6);
@@ -510,7 +510,7 @@ pub struct WorldFrame {
 
 impl WorldFrame {
     /// Appends the batches to an overlay, one layer under `layer`.
-    pub fn emit(&self, layer: i32, overlay: &mut og_render::Overlay) {
+    pub fn emit(&self, layer: i32, overlay: &mut og_draw::Overlay) {
         overlay.ui.tick = self.tick;
         for b in &self.batches {
             overlay.ui.mass.push(UiMassBatch {

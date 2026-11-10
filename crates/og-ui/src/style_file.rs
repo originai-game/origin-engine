@@ -3,7 +3,7 @@ use crate::motion::TransitionKind;
 use crate::style::{Palette, Srgba, TypeRamp, TypeStep};
 use crate::tokens::SoundEvent;
 use og_core::ogt::{Entry, Value};
-use og_render::TextureHandle;
+use og_draw::TextureHandle;
 
 mod art;
 pub use art::*;

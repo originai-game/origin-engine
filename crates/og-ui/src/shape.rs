@@ -23,7 +23,7 @@ use std::collections::HashMap;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::{Arc, Mutex};
 
-pub use og_render::GlyphKey;
+pub use og_draw::GlyphKey;
 
 /// The OpenType features a type step turns on (docs/ui.md §6.3.4): small
 /// caps, capitals to small caps, tabular and lining figures, case-sensitive

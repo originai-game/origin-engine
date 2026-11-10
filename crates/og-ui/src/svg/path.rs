@@ -163,7 +163,7 @@ impl Path {
                         pts.push(c[2]);
                     } else {
                         pts.extend(
-                            og_render::flatten_cubic(at, c[0], c[1], c[2], tolerance)
+                            og_draw::flatten_cubic(at, c[0], c[1], c[2], tolerance)
                                 .into_iter()
                                 .skip(1),
                         );

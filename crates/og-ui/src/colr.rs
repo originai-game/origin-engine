@@ -122,7 +122,7 @@ pub fn render(
 /// what a colour font's cooked glyph carries, made from its file when a
 /// text first shows it.
 pub struct RuntimeColor {
-    pub key: og_render::GlyphKey,
+    pub key: og_draw::GlyphKey,
     /// Horizontal advance in em.
     pub advance: f32,
     /// Painted with a black foreground (the only paint unless
@@ -141,14 +141,14 @@ pub struct RuntimeColor {
 /// when the font lacks it or it has no colour paint (an outline glyph).
 pub fn render_runtime(
     ttf: &[u8],
-    key: og_render::GlyphKey,
+    key: og_draw::GlyphKey,
     em_px: f32,
     palette: &[[f32; 4]],
 ) -> Option<RuntimeColor> {
     let font = FontRef::new(ttf).ok()?;
     let gid = match key {
-        og_render::GlyphKey::Char(c) => font.charmap().map(c)?,
-        og_render::GlyphKey::Id(id) => GlyphId::new(u32::from(id)),
+        og_draw::GlyphKey::Char(c) => font.charmap().map(c)?,
+        og_draw::GlyphKey::Id(id) => GlyphId::new(u32::from(id)),
     };
     let image = render(&font, gid, em_px, palette, [0.0; 3]).ok()??;
     let white = if image.foreground {

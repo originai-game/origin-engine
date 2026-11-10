@@ -247,10 +247,10 @@ impl<'a> Cursor<'a> {
                 "names '{w}' among its stops, which is not a palette colour (a token such as primary or lineStrong, or a quoted \"#rrggbb\")"
             )));
         }
-        if !(2..=og_render::UI_GRADIENT_STOPS).contains(&raw.len()) {
+        if !(2..=og_draw::UI_GRADIENT_STOPS).contains(&raw.len()) {
             return Err(self.err(&format!(
                 "takes 2 to {} gradient stops, not {}",
-                og_render::UI_GRADIENT_STOPS,
+                og_draw::UI_GRADIENT_STOPS,
                 raw.len()
             )));
         }
@@ -601,9 +601,9 @@ impl Effect {
                         glass.own_tint = true;
                     } else if c.eat("glass") {
                         glass.weight = Some(match c.word()? {
-                            "thin" => og_render::UiGlassWeight::Thin,
-                            "regular" => og_render::UiGlassWeight::Regular,
-                            "thick" => og_render::UiGlassWeight::Thick,
+                            "thin" => og_draw::UiGlassWeight::Thin,
+                            "regular" => og_draw::UiGlassWeight::Regular,
+                            "thick" => og_draw::UiGlassWeight::Thick,
                             w => {
                                 return Err(c.err(&format!(
                                     "has glass '{w}', which is not a weight: thin, regular or thick"
@@ -612,9 +612,9 @@ impl Effect {
                         });
                     } else if c.eat("elevation") {
                         glass.elevation = Some(match c.word()? {
-                            "raised" => og_render::UiElevation::Raised,
-                            "float" => og_render::UiElevation::Float,
-                            "lift" => og_render::UiElevation::Lift,
+                            "raised" => og_draw::UiElevation::Raised,
+                            "float" => og_draw::UiElevation::Float,
+                            "lift" => og_draw::UiElevation::Lift,
                             w => {
                                 return Err(c.err(&format!(
                                     "has elevation '{w}', which is not one: raised, float or lift"
@@ -710,10 +710,10 @@ impl DressMaterial {
         let mut layer = layer;
         let mut k = 0;
         while !c.done() {
-            if k >= 4 * og_render::UI_MATERIAL_PARAMS {
+            if k >= 4 * og_draw::UI_MATERIAL_PARAMS {
                 return Err(c.err(&format!(
                     "takes at most {} parameter numbers",
-                    4 * og_render::UI_MATERIAL_PARAMS
+                    4 * og_draw::UI_MATERIAL_PARAMS
                 )));
             }
             layer.params[k / 4][k % 4] = c.num()?;

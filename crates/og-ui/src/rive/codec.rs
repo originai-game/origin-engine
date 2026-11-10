@@ -4,7 +4,7 @@
 
 use super::*;
 use crate::motion::codec::{R, W};
-use og_render::UiBlend;
+use og_draw::UiBlend;
 
 /// The codec's version (in the blob after its magic).
 pub const VERSION: u32 = 3;

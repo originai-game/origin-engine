@@ -20,7 +20,7 @@ pub(super) struct Run<'a> {
     /// Its style's node.
     pub style: u32,
     pub metrics: &'a FontMetrics,
-    pub handle: Option<og_render::FontHandle>,
+    pub handle: Option<og_draw::FontHandle>,
     pub ascent: f32,
     pub descent: f32,
     pub size: f32,
@@ -627,7 +627,7 @@ fn ellipsize(runs: &[Run], pieces: &[Piece], width: f32, last: bool) -> Option<(
 }
 
 /// A piece as a text command draws it: what it draws and the placements.
-pub(super) fn shaped(r: &Run, text: &str) -> (String, Vec<og_render::GlyphPlacement>) {
+pub(super) fn shaped(r: &Run, text: &str) -> (String, Vec<og_draw::GlyphPlacement>) {
     drawn_line(r.metrics, text, Direction::Ltr, r.tracking, Features::NONE)
 }
 

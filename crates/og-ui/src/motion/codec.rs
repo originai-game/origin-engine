@@ -9,7 +9,7 @@ use crate::element::{Affine, Prop};
 use crate::layout::Rect;
 use crate::style::Srgba;
 use og_core::glam::Vec2;
-use og_render::{FontHandle, GlyphPlacement, TextureHandle};
+use og_draw::{FontHandle, GlyphPlacement, TextureHandle};
 
 pub(crate) struct W<'a>(pub &'a mut Vec<u8>);
 
@@ -130,7 +130,7 @@ impl W<'_> {
             } => {
                 // Tag 0 is the plain glass as it always was; 7 adds the
                 // saturation and the material.
-                let plain = *saturation == 1.0 && *material == og_render::UiGlass::default();
+                let plain = *saturation == 1.0 && *material == og_draw::UiGlass::default();
                 self.u8(if plain { 0 } else { 7 });
                 self.rect(rect);
                 self.f32(*radius);
@@ -630,7 +630,7 @@ impl R<'_> {
                     self.rect()?,
                 );
                 let mut saturation = 1.0;
-                let mut material = og_render::UiGlass::default();
+                let mut material = og_draw::UiGlass::default();
                 if tag == 7 {
                     saturation = self.f32()?;
                     material.edge = self.f32()?;

@@ -165,7 +165,7 @@ pub struct DocHost {
     pub(crate) revealing: Vec<Revealing>,
     /// The textures documents name by asset path (a view transition's
     /// cover image), by path.
-    pub(crate) textures: BTreeMap<String, og_render::TextureHandle>,
+    pub(crate) textures: BTreeMap<String, og_draw::TextureHandle>,
     /// The on-screen controls documents lay out (`<joystick action>`,
     /// `<dpad action>`, `<button data-og-touch>`), by render key, their
     /// rects filled from the frame's hits; `zones_changed`: og-input's
@@ -179,8 +179,8 @@ pub struct DocHost {
     pub(crate) materials: BTreeMap<
         String,
         (
-            og_render::UiMaterialHandle,
-            [[f32; 4]; og_render::UI_MATERIAL_PARAMS],
+            og_draw::UiMaterialHandle,
+            [[f32; 4]; og_draw::UI_MATERIAL_PARAMS],
         ),
     >,
     /// CSS `@keyframes` of every defined document, as `<doc>/<name>`.
@@ -280,7 +280,7 @@ impl Ui {
 
     /// Binds the texture asset `path` a document names
     /// ([`UiDocument::cover_image`]) to its loaded handle.
-    pub fn define_texture(&mut self, path: &str, texture: og_render::TextureHandle) {
+    pub fn define_texture(&mut self, path: &str, texture: og_draw::TextureHandle) {
         self.docs.textures.insert(path.to_owned(), texture);
     }
 
@@ -290,8 +290,8 @@ impl Ui {
     pub fn define_material(
         &mut self,
         path: &str,
-        handle: og_render::UiMaterialHandle,
-        defaults: [[f32; 4]; og_render::UI_MATERIAL_PARAMS],
+        handle: og_draw::UiMaterialHandle,
+        defaults: [[f32; 4]; og_draw::UI_MATERIAL_PARAMS],
     ) {
         self.docs
             .materials

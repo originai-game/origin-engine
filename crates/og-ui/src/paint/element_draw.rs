@@ -48,7 +48,7 @@ impl ElementDraw {
                 continue;
             }
             let geometry = if mask_rect {
-                og_render::UiGeometry::Rect {
+                og_draw::UiGeometry::Rect {
                     radii: [0.0; 4],
                     corner: Corner::Round,
                 }
@@ -56,13 +56,13 @@ impl ElementDraw {
                 inset_geometry(self.geometry(&self.shape, at), inset)
             };
             out.push(DrawCmd::Shape {
-                shape: Box::new(og_render::UiShape {
+                shape: Box::new(og_draw::UiShape {
                     geometry,
                     center: Vec2::new(r.x + r.width / 2.0, r.y + r.height / 2.0),
                     half: Vec2::new(r.width / 2.0, r.height / 2.0),
                     transform: [1.0, 0.0, 0.0, 1.0],
                     paint: l.resolve(theme, at.rect, r),
-                    mode: og_render::UiMode::Fill,
+                    mode: og_draw::UiMode::Fill,
                     opacity,
                     blend: blend(l),
                     layer: 0,
@@ -274,7 +274,7 @@ impl ElementDraw {
     }
 
     /// `kind`'s geometry placed in `at`, through the view box when it has one.
-    fn geometry(&self, kind: &ShapeKind, at: &Placed) -> og_render::UiGeometry {
+    fn geometry(&self, kind: &ShapeKind, at: &Placed) -> og_draw::UiGeometry {
         let size = [at.rect.width, at.rect.height];
         let Some((k, mid, half)) = self.fit(at) else {
             return kind.geometry(at.radius, size);
@@ -322,9 +322,9 @@ impl ElementDraw {
 
     /// A paint resolved for `at`: a gradient written in view-box units
     /// becomes fractions of the box.
-    fn paint(&self, paint: &Paint, theme: &Theme, at: &Placed) -> og_render::UiPaint {
+    fn paint(&self, paint: &Paint, theme: &Theme, at: &Placed) -> og_draw::UiPaint {
         let mut out = paint.resolve(theme);
-        if let (Some((k, mid, half)), og_render::UiPaint::Gradient(g)) = (self.fit(at), &mut out) {
+        if let (Some((k, mid, half)), og_draw::UiPaint::Gradient(g)) = (self.fit(at), &mut out) {
             let size = Vec2::new(at.rect.width, at.rect.height).max(Vec2::splat(1e-6));
             g.from = ((g.from - mid) * k + half) / size;
             g.to = match g.kind {
@@ -338,8 +338,8 @@ impl ElementDraw {
     fn shape(
         &self,
         at: &Placed,
-        paint: og_render::UiPaint,
-        mode: og_render::UiMode,
+        paint: og_draw::UiPaint,
+        mode: og_draw::UiMode,
         opacity: f32,
         blend: Blend,
     ) -> DrawCmd {
@@ -350,8 +350,8 @@ impl ElementDraw {
         &self,
         kind: &ShapeKind,
         at: &Placed,
-        paint: og_render::UiPaint,
-        mode: og_render::UiMode,
+        paint: og_draw::UiPaint,
+        mode: og_draw::UiMode,
         opacity: f32,
         blend: Blend,
     ) -> DrawCmd {
@@ -361,7 +361,7 @@ impl ElementDraw {
             self.frame(at)
         };
         DrawCmd::Shape {
-            shape: Box::new(og_render::UiShape {
+            shape: Box::new(og_draw::UiShape {
                 geometry: self.geometry(kind, at),
                 center: Vec2::new(r.x + r.width / 2.0, r.y + r.height / 2.0),
                 half: Vec2::new(r.width / 2.0, r.height / 2.0),
@@ -392,14 +392,14 @@ impl ElementDraw {
             return Vec::new();
         }
         let map = crate::element::Affine::translate(at.rect.x, at.rect.y);
-        let mut graph = og_render::UiFilter {
+        let mut graph = og_draw::UiFilter {
             primitives,
             ..Default::default()
         };
         crate::svg::filter::map(&mut graph, &map);
         let mut out = vec![DrawCmd::BeginLayer {
-            material: og_render::UiMaterial::Plain,
-            params: [[0.0; 4]; og_render::UI_MATERIAL_PARAMS],
+            material: og_draw::UiMaterial::Plain,
+            params: [[0.0; 4]; og_draw::UI_MATERIAL_PARAMS],
             mask: None,
             expand: 0.0,
             rect: Rect::default(),
@@ -427,8 +427,8 @@ impl ElementDraw {
     pub(crate) fn begin(&self, theme: &Theme, at: &Placed) -> Vec<DrawCmd> {
         if let Some(n) = self.element_image {
             return vec![DrawCmd::BeginLayer {
-                material: og_render::UiMaterial::Plain,
-                params: [[0.0; 4]; og_render::UI_MATERIAL_PARAMS],
+                material: og_draw::UiMaterial::Plain,
+                params: [[0.0; 4]; og_draw::UI_MATERIAL_PARAMS],
                 mask: None,
                 expand: 0.0,
                 rect: Rect::default(),
@@ -454,13 +454,13 @@ impl ElementDraw {
                     _ => None,
                 }) {
                     Some(radius) => {
-                        let mut p = [[0.0; 4]; og_render::UI_MATERIAL_PARAMS];
+                        let mut p = [[0.0; 4]; og_draw::UI_MATERIAL_PARAMS];
                         p[0][0] = radius;
-                        (og_render::UiMaterial::Builtin(Builtin::Blur), p)
+                        (og_draw::UiMaterial::Builtin(Builtin::Blur), p)
                     }
                     None => (
-                        og_render::UiMaterial::Plain,
-                        [[0.0; 4]; og_render::UI_MATERIAL_PARAMS],
+                        og_draw::UiMaterial::Plain,
+                        [[0.0; 4]; og_draw::UI_MATERIAL_PARAMS],
                     ),
                 },
             };
@@ -468,18 +468,18 @@ impl ElementDraw {
                 // Written in view-box units, it is fitted as a fill is.
                 Clip::Mask(Mask::Gradient(g)) => {
                     match self.paint(&Paint::Gradient(g.clone()), theme, at) {
-                        og_render::UiPaint::Gradient(g) => Some(og_render::UiMask::Gradient(g)),
+                        og_draw::UiPaint::Gradient(g) => Some(og_draw::UiMask::Gradient(g)),
                         _ => None,
                     }
                 }
-                Clip::Mask(Mask::Image { texture, uv }) => Some(og_render::UiMask::Image {
+                Clip::Mask(Mask::Image { texture, uv }) => Some(og_draw::UiMask::Image {
                     texture: *texture,
                     uv: *uv,
                 }),
                 Clip::Mask(Mask::Atlas { uv }) => theme
                     .art
                     .atlas
-                    .map(|texture| og_render::UiMask::Image { texture, uv: *uv }),
+                    .map(|texture| og_draw::UiMask::Image { texture, uv: *uv }),
                 _ => None,
             };
             // Its element images are numbered across its filters
@@ -490,7 +490,7 @@ impl ElementDraw {
                 let (region, mut graph) = f.resolve(at, self.fit(at));
                 let base = self.element_image_base(l);
                 for p in &mut graph.primitives {
-                    if let og_render::UiFilterOp::Layer { layer } = &mut p.op
+                    if let og_draw::UiFilterOp::Layer { layer } = &mut p.op
                         && let Some(n) = crate::svg::filter::element_of(*layer)
                     {
                         *layer = crate::svg::filter::element_layer(n + base);
@@ -545,7 +545,7 @@ impl ElementDraw {
         } else {
             (self.opacity * at.alpha, self.blend)
         };
-        let o = og_render::UiMode::Fill;
+        let o = og_draw::UiMode::Fill;
         for e in &self.effects {
             let (mode, color) = match e {
                 Effect::DropShadow {
@@ -554,7 +554,7 @@ impl ElementDraw {
                     spread,
                     color,
                 } => (
-                    og_render::UiMode::Shadow {
+                    og_draw::UiMode::Shadow {
                         offset: Vec2::from(*offset),
                         blur: *blur,
                         spread: *spread,
@@ -566,7 +566,7 @@ impl ElementDraw {
                     spread,
                     color,
                 } => (
-                    og_render::UiMode::Shadow {
+                    og_draw::UiMode::Shadow {
                         offset: Vec2::ZERO,
                         blur: *blur,
                         spread: *spread,
@@ -577,7 +577,7 @@ impl ElementDraw {
             };
             out.push(self.shape(
                 at,
-                og_render::UiPaint::Solid(color.resolve(theme)),
+                og_draw::UiPaint::Solid(color.resolve(theme)),
                 mode,
                 opacity,
                 Blend::Normal,
@@ -605,7 +605,7 @@ impl ElementDraw {
                 );
                 out.push(self.shape(
                     at,
-                    og_render::UiPaint::Solid(tint),
+                    og_draw::UiPaint::Solid(tint),
                     mode,
                     opacity,
                     Blend::Normal,
@@ -653,7 +653,7 @@ impl ElementDraw {
                     spread,
                     color,
                 } => (
-                    og_render::UiMode::InnerShadow {
+                    og_draw::UiMode::InnerShadow {
                         offset: Vec2::from(*offset),
                         blur: *blur,
                         spread: *spread,
@@ -665,7 +665,7 @@ impl ElementDraw {
                     spread,
                     color,
                 } => (
-                    og_render::UiMode::InnerShadow {
+                    og_draw::UiMode::InnerShadow {
                         offset: Vec2::ZERO,
                         blur: *blur,
                         spread: *spread,
@@ -676,7 +676,7 @@ impl ElementDraw {
             };
             out.push(self.shape(
                 at,
-                og_render::UiPaint::Solid(color.resolve(theme)),
+                og_draw::UiPaint::Solid(color.resolve(theme)),
                 mode,
                 opacity,
                 Blend::Normal,
@@ -694,9 +694,9 @@ impl ElementDraw {
             let cut = player.artboard.clip;
             if cut {
                 out.push(DrawCmd::PushClip {
-                    geometry: og_render::UiGeometry::Rect {
+                    geometry: og_draw::UiGeometry::Rect {
                         radii: [0.0; 4],
-                        corner: og_render::UiCorner::Round,
+                        corner: og_draw::UiCorner::Round,
                     },
                     center: (r.x + r.width / 2.0, r.y + r.height / 2.0),
                     half: (r.width / 2.0, r.height / 2.0),
@@ -788,7 +788,7 @@ impl ElementDraw {
         // `meet` scales both axes alike).
         let k = self.fit(at).map_or(1.0, |(k, ..)| k);
         let mode = |s: &Stroke| {
-            og_render::UiMode::Stroke(og_render::UiStroke {
+            og_draw::UiMode::Stroke(og_draw::UiStroke {
                 width: s.width * k,
                 align: s.align,
                 dash: s.dash.map(|d| d * k),
@@ -884,20 +884,20 @@ impl ElementDraw {
         theme: &Theme,
         bounds: Rect,
         cell: f32,
-    ) -> Option<og_render::UiTextEffects> {
+    ) -> Option<og_draw::UiTextEffects> {
         let t = self.text.as_ref()?;
-        Some(og_render::UiTextEffects {
+        Some(og_draw::UiTextEffects {
             text: 0,
             shadows: t
                 .shadows
                 .iter()
-                .map(|s| og_render::UiTextShadow {
+                .map(|s| og_draw::UiTextShadow {
                     offset: Vec2::from(s.offset.map(|v| snap_to_cells(v, cell))),
                     blur: if cell > 0.0 { 0.0 } else { s.blur },
                     color: s.color.resolve(theme),
                 })
                 .collect(),
-            outline: t.outline.as_ref().map(|o| og_render::UiTextOutline {
+            outline: t.outline.as_ref().map(|o| og_draw::UiTextOutline {
                 width: snap_to_cells(o.width, cell),
                 color: o.color.resolve(theme),
                 align: o.align,
@@ -944,7 +944,7 @@ fn rive_cmd(d: crate::rive::Drawn, clip: Rect) -> DrawCmd {
             let (lo, hi) = path.bounds().unwrap_or_default();
             let c = (lo + hi) * 0.5;
             DrawCmd::PushClip {
-                geometry: og_render::UiGeometry::Path(std::sync::Arc::new(path.map(|q| q - c))),
+                geometry: og_draw::UiGeometry::Path(std::sync::Arc::new(path.map(|q| q - c))),
                 center: (c.x, c.y),
                 half: ((hi.x - lo.x) / 2.0, (hi.y - lo.y) / 2.0),
             }
@@ -975,13 +975,13 @@ fn rive_cmd(d: crate::rive::Drawn, clip: Rect) -> DrawCmd {
             };
             DrawCmd::StyledText {
                 text: Box::new(text),
-                effects: Box::new(og_render::UiTextEffects {
+                effects: Box::new(og_draw::UiTextEffects {
                     text: 0,
                     shadows: Vec::new(),
-                    outline: t.outline.map(|(width, color)| og_render::UiTextOutline {
+                    outline: t.outline.map(|(width, color)| og_draw::UiTextOutline {
                         width,
                         color,
-                        align: og_render::UiAlign::Center,
+                        align: og_draw::UiAlign::Center,
                     }),
                     fill,
                     fill_box,

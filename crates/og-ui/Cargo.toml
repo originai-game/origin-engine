@@ -4,7 +4,7 @@ version = "0.7.7"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
-description = "Origin Engine UI: an immediate-mode toolkit with Clay-style layout, styled by each game's own UI style, drawn through og-render's sprite and text batches, addressable by the probe."
+description = "Origin Engine UI: an immediate-mode toolkit with Clay-style layout, styled by each game's own UI style, drawn as og-draw's commands through og-render's sprite and text batches, addressable by the probe."
 autotests = false
 
 [features]
@@ -19,7 +19,8 @@ shaping = ["dep:harfrust", "dep:parley"]
 og-core = { path = "../og-core" }
 og-ecs = { path = "../og-ecs" }
 og-input = { path = "../og-input" }
-og-render = { path = "../og-render" }
+# The draw commands og-render draws (the UI never links the renderer).
+og-draw = { path = "../og-draw" }
 og-probe = { path = "../og-probe", default-features = false }
 # The damped spring the skin's hover and press move on.
 og-tween = { path = "../og-tween" }
@@ -49,6 +50,8 @@ elsa = "1.11.2"
 accesskit = { version = "=0.25.2", features = ["serde"] }
 
 [dev-dependencies]
+# The tests draw what the UI built.
+og-render = { path = "../og-render" }
 image = { workspace = true }
 # The reference-frame rule (og_tests::compare::tolerance_for).
 og-tests = { path = "../og-tests" }

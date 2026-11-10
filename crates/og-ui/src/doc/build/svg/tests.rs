@@ -28,7 +28,7 @@ fn strokes(ui: &Ui) -> Vec<f32> {
         .iter()
         .filter_map(|it| match &it.cmd {
             DrawCmd::Shape { shape, .. } => match shape.mode {
-                og_render::UiMode::Stroke(s) => Some(s.width),
+                og_draw::UiMode::Stroke(s) => Some(s.width),
                 _ => None,
             },
             _ => None,
@@ -108,7 +108,7 @@ fn inline_svg_shapes_bind_attributes_and_repaint_only_what_changed() {
     assert!(widths.iter().all(|w| (w - 2.0).abs() < 1e-4), "{widths:?}");
     let gradient = ui.frame().items.iter().any(|it| {
         matches!(&it.cmd, DrawCmd::Shape { shape, .. }
-            if matches!(shape.paint, og_render::UiPaint::Gradient(_)))
+            if matches!(shape.paint, og_draw::UiPaint::Gradient(_)))
     });
     assert!(gradient, "the bar's url(#Grad) fill draws");
     let idle = tick(&mut ui, 400.0);
@@ -131,7 +131,7 @@ fn inline_svg_shapes_bind_attributes_and_repaint_only_what_changed() {
     // The ring's dash offset is a quarter of its circumference, in px.
     let offset = ui.frame().items.iter().find_map(|it| match &it.cmd {
         DrawCmd::Shape { shape, .. } => match shape.mode {
-            og_render::UiMode::Stroke(s) if s.dash[0] > 0.0 => Some((s.dash, s.dash_offset)),
+            og_draw::UiMode::Stroke(s) if s.dash[0] > 0.0 => Some((s.dash, s.dash_offset)),
             _ => None,
         },
         _ => None,
@@ -230,7 +230,7 @@ fn svg_definitions_draw_and_cost_only_what_changed() {
         tick(&mut ui);
     }
     assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
-    let shapes = |ui: &Ui| -> Vec<og_render::UiShape> {
+    let shapes = |ui: &Ui| -> Vec<og_draw::UiShape> {
         ui.frame()
             .items
             .iter()
@@ -244,7 +244,7 @@ fn svg_definitions_draw_and_cost_only_what_changed() {
     // The coins: one filled with the symbol's gold at 2× (20 units in
     // a 2 px/unit box: 40 px wide), the other black (the use's fill
     // does not reach a child that sets its own: still gold).
-    let gold = all.iter().filter(|s| matches!(&s.paint, og_render::UiPaint::Solid(c) if c[0] > 0.8 && c[2] < 0.1 && c[1] > 0.3)).count();
+    let gold = all.iter().filter(|s| matches!(&s.paint, og_draw::UiPaint::Solid(c) if c[0] > 0.8 && c[2] < 0.1 && c[1] > 0.3)).count();
     assert_eq!(gold, 2, "both coins draw the symbol's gold");
     let clipped = ui
         .frame()
@@ -257,7 +257,7 @@ fn svg_definitions_draw_and_cost_only_what_changed() {
         matches!(
             &it.cmd,
             DrawCmd::PushClip {
-                geometry: og_render::UiGeometry::Path(_),
+                geometry: og_draw::UiGeometry::Path(_),
                 ..
             }
         )
@@ -265,7 +265,7 @@ fn svg_definitions_draw_and_cost_only_what_changed() {
     assert!(path_clip, "the wedge clips to its path");
     let masked = ui.frame().items.iter().find_map(|it| match &it.cmd {
         DrawCmd::BeginLayer {
-            mask: Some(og_render::UiMask::Gradient(g)),
+            mask: Some(og_draw::UiMask::Gradient(g)),
             ..
         } => Some(g.clone()),
         _ => None,
@@ -276,7 +276,7 @@ fn svg_definitions_draw_and_cost_only_what_changed() {
         (g.from.x - 0.6).abs() < 1e-3 && (g.to.x - 0.8).abs() < 1e-3,
         "{g:?}"
     );
-    let dots = all.iter().find(|s| matches!(&s.geometry, og_render::UiGeometry::Path(p) if p.verbs.iter().filter(|v| matches!(v, og_render::UiVerb::Move)).count() == 16));
+    let dots = all.iter().find(|s| matches!(&s.geometry, og_draw::UiGeometry::Path(p) if p.verbs.iter().filter(|v| matches!(v, og_draw::UiVerb::Move)).count() == 16));
     assert!(dots.is_some(), "16 dot tiles over the 20×20 rect");
     let name = |ui: &Ui| {
         ui.a11y()
@@ -324,7 +324,7 @@ fn svg_definitions_draw_and_cost_only_what_changed() {
         .iter()
         .find_map(|it| match &it.cmd {
             DrawCmd::BeginLayer {
-                mask: Some(og_render::UiMask::Gradient(g)),
+                mask: Some(og_draw::UiMask::Gradient(g)),
                 ..
             } => Some(g.clone()),
             _ => None,
@@ -482,7 +482,7 @@ fn svg_text_sits_on_its_point_and_scales_with_the_view_box() {
 fn an_svg_image_fills_its_rect_from_the_atlas() {
     let mut ui = Ui::new(UiDesc::default());
     ui.set_icons(crate::IconAtlas {
-        texture: og_render::TextureHandle::from_slot(3),
+        texture: og_draw::TextureHandle::from_slot(3),
         columns: 2,
         rows: 1,
         names: vec!["coin".into(), "gem".into()],
@@ -513,7 +513,7 @@ fn an_svg_image_fills_its_rect_from_the_atlas() {
         .unwrap();
     let img = ui.frame().items.iter().find_map(|it| match &it.cmd {
         DrawCmd::Shape { shape, .. } => match &shape.paint {
-            og_render::UiPaint::Image(im) => Some((shape.center, shape.half, im.uv)),
+            og_draw::UiPaint::Image(im) => Some((shape.center, shape.half, im.uv)),
             _ => None,
         },
         _ => None,

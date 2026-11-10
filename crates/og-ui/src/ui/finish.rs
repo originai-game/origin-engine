@@ -1569,8 +1569,8 @@ impl Ui {
     fn missing_glyphs(
         &mut self,
         cmds: &[(DrawCmd, Affine)],
-    ) -> Vec<(og_render::FontHandle, Vec<char>)> {
-        let mut out: Vec<(og_render::FontHandle, Vec<char>)> = Vec::new();
+    ) -> Vec<(og_draw::FontHandle, Vec<char>)> {
+        let mut out: Vec<(og_draw::FontHandle, Vec<char>)> = Vec::new();
         let kept = std::mem::take(&mut self.kept_spans);
         let mut spans = kept.iter().peekable();
         for (at, (c, _)) in cmds.iter().enumerate() {
@@ -1622,4 +1622,4 @@ impl Ui {
 }
 
 /// Per font, the characters it lacks that a frame drew for the first time.
-type MissingGlyphs = Vec<(og_render::FontHandle, Vec<char>)>;
+type MissingGlyphs = Vec<(og_draw::FontHandle, Vec<char>)>;

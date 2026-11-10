@@ -1123,7 +1123,7 @@ mod tests {
             "{PAUSE}<style>@view-transition {{ navigation: auto; }}\n::view-transition-old(root) {{ animation: 400ms linear -og-iris; }}\n::view-transition {{ background-image: url(\"ui/covers/stars.png\"); }}</style>"
         );
         let mut ui = ui_with(&[("hud.svelte", HUD), ("pause.svelte", &page)]);
-        let stars = og_render::TextureHandle::from_bits(9);
+        let stars = og_draw::TextureHandle::from_bits(9);
         ui.define_texture("ui/covers/stars.png", stars);
         mount(&mut ui, "hud", "hud");
         step(&mut ui, InputFrame::default());
@@ -1207,7 +1207,7 @@ mod tests {
                     Some(*rect)
                 }
                 crate::DrawCmd::Shape { shape, .. } => match shape.paint {
-                    og_render::UiPaint::Solid(c) if c[0] > 0.9 && c[1] < 0.05 && c[2] < 0.05 => {
+                    og_draw::UiPaint::Solid(c) if c[0] > 0.9 && c[1] < 0.05 && c[2] < 0.05 => {
                         Some(crate::layout::Rect::new(
                             shape.center.x - shape.half.x,
                             shape.center.y - shape.half.y,

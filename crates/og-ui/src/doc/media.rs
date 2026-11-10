@@ -8,7 +8,7 @@ pub struct Context {
     pub height: f32,
     pub reduced_motion: bool,
     /// The player's colour vision setting (`-og-color-vision`).
-    pub color_vision: og_render::ColorVision,
+    pub color_vision: og_draw::ColorVision,
     /// The primary pointer is coarse (a touch screen): `pointer: coarse`
     /// and `hover: none`, else `pointer: fine` and `hover: hover`.
     pub coarse_pointer: bool,
@@ -30,7 +30,7 @@ impl Default for Context {
             width: 0.0,
             height: 0.0,
             reduced_motion: false,
-            color_vision: og_render::ColorVision::Typical,
+            color_vision: og_draw::ColorVision::Typical,
             coarse_pointer: false,
             dark: false,
             high_contrast: false,
@@ -170,7 +170,7 @@ pub enum Feature {
     ReducedMotion(bool),
     /// `(-og-color-vision: <mode>)`; `None`, the boolean form: any mode
     /// but `none`.
-    ColorVision(Option<og_render::ColorVision>),
+    ColorVision(Option<og_draw::ColorVision>),
     /// `pointer`/`any-pointer` (`coarse`: true, `fine`: false) and
     /// `hover`/`any-hover` (`none`: true, `hover`: false); `None`, the
     /// boolean form, which every pointing device matches.
@@ -366,7 +366,7 @@ impl Context {
                     reads.color_vision = true;
                     match value {
                         Some(v) => context.color_vision == v,
-                        None => context.color_vision != og_render::ColorVision::Typical,
+                        None => context.color_vision != og_draw::ColorVision::Typical,
                     }
                 }
             }
@@ -762,7 +762,7 @@ fn feature(input: &mut Parser<'_>, scope: Scope) -> Result<Query, Error> {
             }
             if name == "-og-color-vision" {
                 let word = input.expect_ident_cloned()?.to_ascii_lowercase();
-                return og_render::ColorVision::from_name(&word)
+                return og_draw::ColorVision::from_name(&word)
                     .map(|v| Query::Feature(Feature::ColorVision(Some(v))))
                     .ok_or_else(|| {
                         ParseError::custom(format!(
@@ -904,7 +904,7 @@ mod tests {
             width: 600.0,
             height: 400.0,
             reduced_motion: false,
-            color_vision: og_render::ColorVision::Typical,
+            color_vision: og_draw::ColorVision::Typical,
             coarse_pointer: false,
             ..Context::default()
         };
@@ -942,7 +942,7 @@ mod tests {
                 width: 600.0,
                 height: 400.0,
                 reduced_motion: false,
-                color_vision: og_render::ColorVision::Typical,
+                color_vision: og_draw::ColorVision::Typical,
                 coarse_pointer: false,
                 ..Context::default()
             },
@@ -965,7 +965,7 @@ mod tests {
                 width: 400.0,
                 height: 300.0,
                 reduced_motion: false,
-                color_vision: og_render::ColorVision::Typical,
+                color_vision: og_draw::ColorVision::Typical,
                 coarse_pointer: false,
                 ..Context::default()
             },
@@ -1000,7 +1000,7 @@ mod tests {
                 width: 600.0,
                 height: 400.0,
                 reduced_motion: false,
-                color_vision: og_render::ColorVision::Typical,
+                color_vision: og_draw::ColorVision::Typical,
                 coarse_pointer: coarse,
                 ..Context::default()
             };

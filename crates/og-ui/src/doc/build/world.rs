@@ -92,7 +92,7 @@ fn three(r: &Resolved, prop: &str, what: &str) -> Result<Option<Vec3>, String> {
 pub(super) fn panel_desc(
     r: &Resolved,
     el: Element,
-    texture: Option<og_render::TextureHandle>,
+    texture: Option<og_draw::TextureHandle>,
     ground: bool,
 ) -> Result<WorldPanelDesc, String> {
     let px = |s: Size, d: f32| match s {
@@ -157,7 +157,7 @@ fn time_ms(w: &str) -> Option<f32> {
 /// An og-emitter preset: its particles, its rate and its palette roles.
 fn preset(name: &str) -> Option<(crate::particles::ParticlesDesc, &'static [&'static str])> {
     use crate::particles::{EmitFrom, ParticlesDesc};
-    use og_render::UiParticleShape::{Circle, Diamond, Square};
+    use og_draw::UiParticleShape::{Circle, Diamond, Square};
     use std::f32::consts::{FRAC_PI_2, TAU};
     let d = |rate, life, shape, size: (f32, f32), travel, dir, spread, gravity, spin, end| {
         ParticlesDesc {
@@ -322,7 +322,7 @@ fn emitter_desc(
     v: &str,
     palette: &crate::theme::Palette,
 ) -> Result<Option<crate::particles::ParticlesDesc>, String> {
-    use og_render::UiParticleShape;
+    use og_draw::UiParticleShape;
     if v.trim() == "none" {
         return Ok(None);
     }
@@ -589,7 +589,7 @@ impl Ui {
         path: &str,
         key: u64,
     ) {
-        use og_render::{UiMassInstance, UiMassKey, UiMassKind, UiMassSpace, UiMassTemplate};
+        use og_draw::{UiMassInstance, UiMassKey, UiMassKind, UiMassSpace, UiMassTemplate};
         let target = match (r.num("entity"), r.str("worldAt")) {
             (Some(e), _) => WorldTarget::Entity(e as u64),
             (None, Some(p)) => match vec3(p) {
@@ -1080,7 +1080,7 @@ mod tests {
             ui.world_frame()
                 .batches
                 .iter()
-                .filter(|b| matches!(b.template.kind, og_render::UiMassKind::Bar { .. }))
+                .filter(|b| matches!(b.template.kind, og_draw::UiMassKind::Bar { .. }))
                 .map(|b| b.instances.len())
                 .sum::<usize>()
         };

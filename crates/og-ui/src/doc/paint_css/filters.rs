@@ -6,7 +6,7 @@ pub(crate) enum FilterFn {
     /// `blur(<σ>)`, CSS px.
     Blur(f32),
     /// A colour function as its matrix.
-    Matrix(og_render::UiColorMatrix),
+    Matrix(og_draw::UiColorMatrix),
     /// `drop-shadow([<colour>] <x> <y> [<blur>])`; no colour is
     /// `currentColor`.
     DropShadow {
@@ -53,12 +53,12 @@ fn filter_fn(f: &str, a: &[Tok]) -> Result<FilterFn, String> {
         }
         Ok(v.min(most))
     };
-    let diag = |k: f32, o: f32| og_render::UiColorMatrix {
+    let diag = |k: f32, o: f32| og_draw::UiColorMatrix {
         rows: [[k, 0.0, 0.0, o], [0.0, k, 0.0, o], [0.0, 0.0, k, o]],
         opacity: 1.0,
     };
     // A 3×3 over the colour.
-    let m3 = |m: [[f32; 3]; 3]| og_render::UiColorMatrix {
+    let m3 = |m: [[f32; 3]; 3]| og_draw::UiColorMatrix {
         rows: m.map(|r| [r[0], r[1], r[2], 0.0]),
         opacity: 1.0,
     };
@@ -82,7 +82,7 @@ fn filter_fn(f: &str, a: &[Tok]) -> Result<FilterFn, String> {
             let k = amount(1.0)?;
             Matrix(diag(1.0 - 2.0 * k, k))
         }
-        "opacity" => Matrix(og_render::UiColorMatrix {
+        "opacity" => Matrix(og_draw::UiColorMatrix {
             opacity: amount(1.0)?,
             ..Default::default()
         }),
@@ -177,7 +177,7 @@ fn filter_fn(f: &str, a: &[Tok]) -> Result<FilterFn, String> {
 }
 
 /// `m` then `n`: one matrix, as if `n` read `m`'s result unclamped.
-fn then(m: &og_render::UiColorMatrix, n: &og_render::UiColorMatrix) -> og_render::UiColorMatrix {
+fn then(m: &og_draw::UiColorMatrix, n: &og_draw::UiColorMatrix) -> og_draw::UiColorMatrix {
     let mut rows = [[0.0; 4]; 3];
     for (i, row) in rows.iter_mut().enumerate() {
         for (j, v) in row.iter_mut().enumerate() {
@@ -185,7 +185,7 @@ fn then(m: &og_render::UiColorMatrix, n: &og_render::UiColorMatrix) -> og_render
                 + if j == 3 { n.rows[i][3] } else { 0.0 };
         }
     }
-    og_render::UiColorMatrix {
+    og_draw::UiColorMatrix {
         rows,
         opacity: m.opacity * n.opacity,
     }
@@ -193,7 +193,7 @@ fn then(m: &og_render::UiColorMatrix, n: &og_render::UiColorMatrix) -> og_render
 
 /// Whether `m` keeps every colour in 0..1: then the clamp after it does
 /// nothing, and the next function folds into it exactly.
-fn contained(m: &og_render::UiColorMatrix) -> bool {
+fn contained(m: &og_draw::UiColorMatrix) -> bool {
     m.rows.iter().all(|r| {
         let lo = r[3] + r[..3].iter().map(|v| v.min(0.0)).sum::<f32>();
         let hi = r[3] + r[..3].iter().map(|v| v.max(0.0)).sum::<f32>();
@@ -218,7 +218,7 @@ pub(crate) fn filter_layers(
         filter: None,
     };
     let mut out = Vec::new();
-    let mut run: Option<og_render::UiColorMatrix> = None;
+    let mut run: Option<og_draw::UiColorMatrix> = None;
     for f in fns {
         if let FilterFn::Matrix(m) = f {
             run = Some(match run.take() {
@@ -234,7 +234,7 @@ pub(crate) fn filter_layers(
         if let Some(r) = run.take() {
             out.push(layer(Builtin::ColorMatrix, r.params()));
         }
-        let mut p = [[0.0; 4]; og_render::UI_MATERIAL_PARAMS];
+        let mut p = [[0.0; 4]; og_draw::UI_MATERIAL_PARAMS];
         match f {
             FilterFn::Blur(sigma) => {
                 // The layer blur's radius is twice its standard deviation.
@@ -286,13 +286,13 @@ pub(crate) fn glass_material(text: &str) -> Result<Option<crate::paint::GlassPar
     };
     Ok(Some(crate::paint::GlassParts {
         weight: Some(match weight.as_str() {
-            "regular" => og_render::UiGlassWeight::Regular,
-            "thick" => og_render::UiGlassWeight::Thick,
+            "regular" => og_draw::UiGlassWeight::Regular,
+            "thick" => og_draw::UiGlassWeight::Thick,
             _ => return Err("glass weight: regular | thick".into()),
         }),
         elevation: Some(match elevation.as_str() {
-            "lift" => og_render::UiElevation::Lift,
-            "float" => og_render::UiElevation::Float,
+            "lift" => og_draw::UiElevation::Lift,
+            "float" => og_draw::UiElevation::Float,
             _ => return Err("glass elevation: lift | float".into()),
         }),
         own_filter: true,
@@ -327,7 +327,7 @@ pub(crate) fn glass_effect(
         }
     }
     Ok(Effect::Backdrop {
-        blur: blur * og_render::ui::GLASS_BLUR_SCALE,
+        blur: blur * og_draw::ui::GLASS_BLUR_SCALE,
         saturation: 1.0,
         brightness: 1.0,
         tint: ColorRef::Literal(Srgba::TRANSPARENT),

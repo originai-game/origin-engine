@@ -44,9 +44,9 @@ use crate::style_file::{Ink, Ornament, StylePart};
 use crate::text::{FontMetrics, UiFont};
 use og_core::IdMap;
 use og_core::glam::Vec2;
+use og_draw::{Overlay, TextureHandle};
 use og_probe::UiElement;
 use og_probe::hooks::{find_by_id, find_by_text};
-use og_render::{Overlay, TextureHandle};
 
 /// What happened to an element this tick. Edges (`clicked`, `changed`,
 /// `submitted`) are true for exactly one tick.
@@ -485,7 +485,7 @@ pub struct Ui {
     pub(crate) last_closed: usize,
     pub(crate) warnings: Vec<String>,
     /// The (face, character) pairs [`UiFrame::missing_glyphs`] named.
-    pub(crate) glyphs_missed: std::collections::BTreeSet<(og_render::FontHandle, char)>,
+    pub(crate) glyphs_missed: std::collections::BTreeSet<(og_draw::FontHandle, char)>,
     /// The trees' membership, keys and features (`tree`).
     pub(crate) tree: tree::TreeIndex,
     /// The frame's orders and each feature's nodes (`visit`).
