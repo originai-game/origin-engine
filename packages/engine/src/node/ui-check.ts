@@ -3,12 +3,12 @@
 // (ui-run.ts, over a screen set × breakpoints × locales) and by playtests (`checkUi`, from
 // `@origingame/engine/ui-check`, on the frames a `dump_ui:<name>.uicheck.json`
 // step saved). It reads one laid-out frame (`og_node_ui_frame`, the native
-// host's reading of og-ui's UiFrame: elements, undeclared overlaps, drawn
+// host's reading of og-ui's UiFrame: elements, overlaps, drawn
 // text, fills, the accessibility tree, layout counts, viewport and theme)
 // and, where there is one, the rendered frame (contrast on pixels).
 //
 // A finding is a fact about the frame that holds whatever the game's taste
-// (an undeclared overlap, text cut by its clip, a control a pad cannot
+// (an overlap, text cut by its clip, a control a pad cannot
 // reach): the rule, the element path(s), what was measured, the prop that
 // sets it and a way to change it. A measure is a number with no threshold
 // (a text's contrast and size, a control's side, how far text grows with
@@ -192,7 +192,7 @@ export interface UiRule {
 }
 
 export const RULES: readonly UiRule[] = [
-  { id: "overlap", kind: "finding", title: "overlap not declared (§6.2), across breakpoints and locales", status: "checked" },
+  { id: "overlap", kind: "finding", title: "overlap (§6.2), across breakpoints and locales", status: "checked" },
   { id: "text-cut", kind: "finding", title: "text clipped without an ellipsis, or drawn past its box (at any text scale)", status: "checked" },
   { id: "text-truncated", kind: "finding", title: "text truncated with an ellipsis but without a tooltip", status: "partial", note: "the ellipsis is read from the drawn text; a tooltip exists only while hovered (og-ui builds it then), so a truncated text is reported until U3's dump_ui lists an element's tooltip" },
   { id: "offscreen", kind: "finding", title: "an interactive element laid out past the screen with nothing to scroll to it", status: "checked" },
@@ -489,10 +489,10 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
       value: r1(o.rect[2] * o.rect[3]),
       unit: "CSS px²",
       measured: `${r1(o.rect[2])}×${r1(o.rect[3])} CSS px overlap at ${r1(o.rect[0])},${r1(o.rect[1])}${o.inFlow ? " (siblings in the flow)" : ""}${pseudo}`,
-      prop: o.inFlow ? `${o.path}: size, gap or wrap of its row` : `${o.path}: anchor, offset or insets (or \`-og-overlaps: ${o.other}\` in its CSS when it is meant)`,
+      prop: o.inFlow ? `${o.path}: size, gap or wrap of its row` : `${o.path}: anchor, offset or insets`,
       fix: o.inFlow
         ? `siblings in the flow never overlap: give their row room (wrap, a smaller step, grow) at ${v.breakpoint}`
-        : `move ${o.path} off ${o.other} at ${v.breakpoint} (a breakpoint variant of its anchor or offset, or one group for both), or declare the overlap when it is the design`,
+        : `move ${o.path} off ${o.other} at ${v.breakpoint} (a breakpoint variant of its anchor or offset, or one group for both); an overlap the design means stays`,
     });
   }
 

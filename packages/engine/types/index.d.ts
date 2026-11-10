@@ -35723,7 +35723,7 @@ export declare namespace og {
      */
     function motionEvents(): readonly UiMotionEvent[];
     /**
-     * The last frame's undeclared overlaps between elements (docs/ui.md §2), with both paths.
+     * The last frame's overlaps between elements (docs/ui.md §2), with both paths: an absolute, anchored or floating element over another's drawing, and siblings in the flow over each other. What the engine places over another on purpose (a badge on its item's corner) is left out; whether any other overlap is meant is the reader's call.
      */
     function overlaps(): readonly UiOverlap[];
     /** What the last frame built, rebuilt, laid out and kept. */

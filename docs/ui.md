@@ -2878,7 +2878,13 @@ tolerance. A missing GPU is unchecked, never passed.
 Technical checks reject parse failures, missing resources, wrong intents,
 missing required states, and out-of-bounds references. `og ui check`
 reports contrast, layout, and cost measurements; `og ui literals` reports
-suspect values. Neither command scores taste. Warnings do not become
+suspect values. Neither command scores taste. Overlaps are such
+measurements: `og.ui.overlaps` (and the check's overlap finding) lists
+every absolute, anchored or floating element over another's drawing and
+siblings in the flow over each other, leaving out only what the engine
+places on purpose (a badge on its item). Whether an overlap is meant is the
+author's call; there is no style property that hides one (the removed
+`-og-overlaps`). Warnings do not become
 automatic aesthetic failures. Author thresholds remain in the screens
 and art-review guides, not in a second table here.
 

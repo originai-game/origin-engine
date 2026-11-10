@@ -366,7 +366,6 @@ the kinds'. Kinds: `column`, `row`, `stack`, `grid`, `panel`, `scroll`,
 | `area` | name | all | The named grid area it takes. |
 | `cell` | x y | all | Its grid column and row, 1-based. |
 | `span` | x y | all | Columns and rows it spans. |
-| `overlaps` | names | all | Paths it overlaps on purpose. |
 | `match` | name | all | A shared-element key. |
 | `motion` | transition | all | How its animatable values move when they change. |
 | `layoutMotion` | transition | all | Moves from its old rectangle to its new one. |

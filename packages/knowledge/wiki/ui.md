@@ -146,7 +146,7 @@ module ui {
 | [`og.ui.animate`](ui/fn-animate.md) | function | `(id: string, target: number, transition: Transition): number` | Any number on a spring or an ease (docs/ui.md §3.1: every value is animatable): call it every tick with the target and it answers this tick's value. |
 | [`og.ui.gesture`](ui/fn-gesture.md) | function | `(path: string): GestureInfo` | What the drag or pinch on an element is doing. |
 | [`og.ui.motionEvents`](ui/fn-motionEvents.md) | function | `(): readonly UiMotionEvent[]` | The UI's motion events of the last frame: sounds, haptics, bursts, state changes, callbacks, ends, dismissals, drops and snaps. |
-| [`og.ui.overlaps`](ui/fn-overlaps.md) | function | `(): readonly UiOverlap[]` | The last frame's undeclared overlaps between elements (docs/ui.md §2), with both paths. |
+| [`og.ui.overlaps`](ui/fn-overlaps.md) | function | `(): readonly UiOverlap[]` | The last frame's overlaps between elements (docs/ui.md §2), with both paths: an absolute, anchored or floating element over another's drawing, and siblings in the flow over each other. |
 | [`og.ui.layoutStats`](ui/fn-layoutStats.md) | function | `(): UiLayoutStats` | What the last frame built, rebuilt, laid out and kept. |
 | [`Notation`](ui/type-Notation.md) | enum |  | How a number is written. |
 | [`NumberFormatDesc`](ui/type-NumberFormatDesc.md) | desc struct |  | How og.ui.formatNumber and the counters write a number. |

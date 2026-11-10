@@ -1,5 +1,5 @@
 //! What the last frame shows, for inspection: the probe's element list,
-//! the accessibility tree, undeclared overlaps, dense and sideways
+//! the accessibility tree, overlaps, dense and sideways
 //! regions and motion in flight. None of it is made while a frame is
 //! drawn; each is made from the finished frame's nodes the first time it
 //! is asked for, and kept until the next `end`.
@@ -115,7 +115,8 @@ impl Ui {
             .get_or_init(|| self.finished().inspected_a11y())
     }
 
-    /// Overlaps no element declared (docs/ui.md §2), for `og ui check`.
+    /// Overlaps between elements (docs/ui.md §2), other than those the
+    /// engine places on purpose, for `og ui check`.
     pub fn overlaps(&self) -> &[Overlap] {
         self.inspection.overlaps.get_or_init(|| {
             let ui = self.finished();

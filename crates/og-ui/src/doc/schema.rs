@@ -848,7 +848,6 @@ pub const CORE_PROPS: &[PropSpec] = &[
         Ty::Name,
         "The grid row line it ends at (CSS `grid-row-end`)."
     ),
-    p!("overlaps", Ty::Names, "Paths it overlaps on purpose."),
     p!("match", Ty::Name, "A shared-element key."),
     p!(
         "motion",

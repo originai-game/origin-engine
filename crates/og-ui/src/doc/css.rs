@@ -239,7 +239,6 @@ pub const STYLE: &[(&str, &str)] = &[
     ("columnEnd", "grid-column-end"),
     ("rowStart", "grid-row-start"),
     ("rowEnd", "grid-row-end"),
-    ("overlaps", "-og-overlaps"),
     ("motion", "transition"),
     ("layoutMotion", "-og-layout-transition"),
     ("cursor", "cursor"),
@@ -439,7 +438,7 @@ fn conv(prop: &str) -> Conv {
         "textPath" | "textPathOffset" | "meta" => Conv::Raw,
         "textPathSide" => Conv::Kebab,
         "area" => Conv::Ident,
-        "areas" | "overlaps" => Conv::Strs,
+        "areas" => Conv::Strs,
         "columns" | "rows" | "autoColumns" | "autoRows" => Conv::Tracks,
         "columnStart" | "columnEnd" | "rowStart" | "rowEnd" => Conv::Raw,
         "motion" | "layoutMotion" => Conv::Transition,
@@ -587,6 +586,9 @@ fn neutral(key: &str) -> Option<&'static str> {
 pub(crate) fn unsupported(name: &str) -> Option<&'static str> {
     Some(match name {
         "visibility" => "write the attribute `visible false` (or `visible bind …`)",
+        "-og-overlaps" => {
+            "an overlap is a finding of og.ui.overlaps and og ui check, not a style; one the design means stays as it is"
+        }
         "-og-reduced-motion" => {
             "write the element's transition under @media (prefers-reduced-motion: reduce) { … } (transition: none jumps; one written there plays as written)"
         }

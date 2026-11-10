@@ -1788,9 +1788,6 @@ impl Ui {
                 })
             }),
         };
-        if let Some(V::Strs(o)) = r.get("overlaps") {
-            p.overlaps = o.clone();
-        }
         if let Some(m) = r.str("match") {
             p.match_key = m.to_string();
         }

@@ -109,7 +109,6 @@ What every kind takes: its box, layout, paint, motion and input.
 | `grid-column-end:` | `auto \| <n> [<name>] \| <name> \| span [<n>] [<name>]` | The grid column line it ends at (CSS `grid-column-end`). |
 | `grid-row-start:` | `auto \| <n> [<name>] \| <name> \| span [<n>] [<name>]` | Its first grid row line (CSS `grid-row-start`). |
 | `grid-row-end:` | `auto \| <n> [<name>] \| <name> \| span [<n>] [<name>]` | The grid row line it ends at (CSS `grid-row-end`). |
-| `-og-overlaps:` | `"<a>" "<b>" …` | Paths it overlaps on purpose. |
 | `match` | `name` | A shared-element key. |
 | `transition:` | `[<property>] <duration> [<timing-function>] [<delay>], …` | How its animatable values move when they change. |
 | `-og-layout-transition:` | `none \| <ms>ms [ease] \| -og-spring(<ms>ms, <bounce>) \| var(--motion-<name>)` | Moves from its old rectangle to its new one. |

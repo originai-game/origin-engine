@@ -1,0 +1,10 @@
+{
+  "breaking": [
+    {
+      "member": "UI overlap declarations",
+      "change": "Removed -og-overlaps. og.ui.overlaps and og ui check's overlap finding now list every overlap between elements except those the engine places on purpose (a badge on its item); a document can no longer hide one.",
+      "fix": "Delete -og-overlaps declarations. Move an overlap that is a defect; keep one the design means and treat its finding as a measurement, not a failure.",
+      "find": ["-og-overlaps"]
+    }
+  ]
+}

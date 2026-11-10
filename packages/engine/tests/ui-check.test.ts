@@ -50,7 +50,7 @@ test("every §16.5 rule is listed as a finding or a measure, and those waiting f
   expect(text).not.toMatch(/error|warning/);
 });
 
-test("an undeclared overlap names both paths, the area and the prop; nested pairs are one finding", () => {
+test("an overlap names both paths, the area and the prop; nested pairs are one finding", () => {
   const f = frame({
     overlaps: [
       { path: "Hud.top/Timer", other: "Hud.right/Coins", rect: [180, 63, 44, 44], inFlow: false },
@@ -61,7 +61,8 @@ test("an undeclared overlap names both paths, the area and the prop; nested pair
   expect(got.length).toBe(1);
   expect(got[0]!.paths).toEqual(["Hud.top/Timer", "Hud.right/Coins"]);
   expect(got[0]!.measured).toContain("44×44");
-  expect(got[0]!.prop).toContain("overlaps");
+  expect(got[0]!.prop).toContain("anchor, offset or insets");
+  expect(got[0]!.prop).not.toContain("-og-");
   expect(rules(frame())).not.toContain("overlap");
 });
 

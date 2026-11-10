@@ -1271,6 +1271,42 @@ fn reduced_motion_transitions_follow_the_media_query() {
     }
 }
 
+/// An overlap is a diagnostic (`og.ui.overlaps`), not a style: a gem
+/// placed over its card's art is reported in both builders, and the
+/// removed `-og-overlaps` is refused naming where overlaps are read. Ways
+/// it could fail: the declaration still accepted (and hiding the pair), or
+/// a document overlap no longer reported.
+#[test]
+fn overlaps_are_reported_not_declared() {
+    let error = refused(
+        r#"<meta name="component" content="t"><div/><style>div { -og-overlaps: "Art"; }</style>"#,
+    );
+    assert!(
+        error.contains("-og-overlaps") && error.contains("og.ui.overlaps"),
+        "{error}"
+    );
+    let text = r#"<meta name="component" content="t">
+<div id="Card"><div id="Art"></div><div id="Gem"></div></div>
+<style>
+#Card { position: relative; width: 120px; height: 160px; }
+#Art { width: 120px; height: 160px; background: #334455; }
+#Gem { position: absolute; left: -8px; top: -8px; width: 24px; height: 24px; background: #ffd166; }
+</style>"#;
+    both(text, &[], |d| {
+        let pairs: Vec<_> =
+            d.ui.overlaps()
+                .iter()
+                .map(|o| (o.path.clone(), o.other.clone()))
+                .collect();
+        assert!(
+            pairs
+                .iter()
+                .any(|(a, b)| a.ends_with("/Gem") && b.ends_with("/Art")),
+            "{pairs:?}"
+        );
+    });
+}
+
 #[test]
 fn discrete_display_exit_finishes_before_removing_content() {
     for name in ["enter", "exit"] {

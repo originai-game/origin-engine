@@ -1,7 +1,7 @@
 //! `og ui check`'s member (packages/engine/src/node/ui-check.ts, docs/ui.md
 //! §16.5), development only: `og_node_ui_frame` is an engine's last laid-out
 //! UI frame read between ticks, as JSON, with what the probe's `dump_ui`
-//! does not carry: the undeclared overlaps, the layout counts and draw
+//! does not carry: the overlaps, the layout counts and draw
 //! commands, every drawn line of text (its string as drawn, size, line box
 //! and clip), the fills (for the primary action), the accessibility tree
 //! with its focus order, the elements in visual states, the frame's

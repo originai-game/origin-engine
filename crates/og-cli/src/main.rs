@@ -239,7 +239,7 @@ commands:
                       else the values the game's show usage lists, else the playtests' screenshots)
                       out per style, breakpoint and
                       locale (the game's, a pseudo-locale 40 % longer, CJK, RTL) and report facts:
-                      findings (undeclared overlap, cut text, the safe area and the shell's corner,
+                      findings (overlap, cut text, the safe area and the shell's corner,
                       pad reach, names, feedback) with the paths, what was found and the prop, and
                       measures with no bar (contrast on pixels, text size, touch targets, text
                       scale, primary actions, element count) (DIR/check.json, check.txt; default

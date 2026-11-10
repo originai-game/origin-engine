@@ -393,9 +393,10 @@ bars it does not hold, this guide does:
   CPU a tick, a HUD within 1 ms; the element count `og ui check` reports
   is where to look first.
 
-Every finding is fixed (an undeclared overlap, cut text, the safe area,
-missing names, missing feedback, placeholder art). A declared overlap is
-for elements that are meant to overlap, never to silence a finding.
+Every finding is fixed (cut text, the safe area, missing names, missing
+feedback, placeholder art). An overlap finding is fixed unless the design
+means it (a badge on its icon, a ribbon across a card's corner): keep that
+one and say why in the report, never move a design to silence a finding.
 
 `og ui preview` renders the contact sheet (a row per breakpoint, a column
 per locale) and, with `--film`, a motion's filmstrip: read it before
