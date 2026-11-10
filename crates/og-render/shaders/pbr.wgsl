@@ -31,9 +31,10 @@ struct Fx {
 // along: GTAO's bent normal where the AO texture holds it beside the
 // probe GI (fx.ao.w 2: fxpost.wgsl `fs_gtao_bent`, blurred, so it is
 // normalised again), the least occluded direction around `n`, which the
-// probes then light; `n` itself otherwise.
+// probes then light; `n` itself otherwise (and in a pipeline without the
+// probe GI's code, OG_GI: the bent normals are made only for it).
 fn ambient_normal(clip: vec2<f32>, n: vec3<f32>) -> vec3<f32> {
-  if (fx.ao.x < 0.5 || fx.ao.w < 1.5) { return n; }
+  if (!OG_GI || fx.ao.x < 0.5 || fx.ao.w < 1.5) { return n; }
   let b = textureSampleLevel(ssao_tex, fx_sampler, clip * fx.screen.zw, 0.0).gba;
   let l = length(b);
   if (l < 0.25) { return n; }

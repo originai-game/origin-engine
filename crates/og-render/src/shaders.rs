@@ -285,7 +285,27 @@ pub fn shader_sources() -> Vec<ShaderSource> {
             })
         })
         .collect();
+    // And as a renderer made without every listed feature makes it
+    // (RenderDesc::without): each override false in its text, the
+    // weather's stub in the weather's place.
+    let every = crate::LitFeatures::NAMED
+        .iter()
+        .fold(crate::LitFeatures::NONE, |a, (f, _)| a | *f)
+        .features();
+    let left_out: Vec<ShaderSource> = out
+        .iter()
+        .filter(|s| {
+            crate::pipeline_features::Features::declared(&s.wgsl)
+                != crate::pipeline_features::Features::NONE
+        })
+        .map(|s| ShaderSource {
+            label: format!("{} (left out)", s.label),
+            wgsl: every.leave_out(s.wgsl.clone()),
+            constants: s.constants.clone(),
+        })
+        .collect();
     out.extend(off);
+    out.extend(left_out);
     out
 }
 

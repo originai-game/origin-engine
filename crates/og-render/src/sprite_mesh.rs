@@ -207,6 +207,7 @@ impl SpriteMeshRenderer {
         layouts: [&wgpu::BindGroupLayout; 3],
         samples: u32,
         skin: bool,
+        off: crate::pipeline_features::Features,
     ) -> SpriteMeshRenderer {
         let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("sprite mesh"),
@@ -215,7 +216,7 @@ impl SpriteMeshRenderer {
         });
         let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("sprite mesh"),
-            source: wgpu::ShaderSource::Wgsl(source().into()),
+            source: wgpu::ShaderSource::Wgsl(off.leave_out(source()).into()),
         });
         let buffers = [Some(MESH_LAYOUT)];
         let pipeline = |label, blend| {

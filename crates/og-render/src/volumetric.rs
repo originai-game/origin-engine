@@ -147,6 +147,8 @@ pub(crate) struct Volumetric {
     froxels: Option<Froxels>,
     apply_layout: wgpu::BindGroupLayout,
     apply: Option<wgpu::RenderPipeline>,
+    /// The lit features the renderer is made without (pipeline_features.rs).
+    off: crate::pipeline_features::Features,
 }
 
 /// A bind group of `(binding, resource)` pairs (layouts whose bindings
@@ -244,7 +246,13 @@ impl Volumetric {
 }
 
 impl Volumetric {
-    pub fn new(device: &wgpu::Device, method: VolumetricMethod) -> Volumetric {
+    /// `off`: the lit features the renderer is made without
+    /// (pipeline_features.rs), out of its module.
+    pub fn new(
+        device: &wgpu::Device,
+        method: VolumetricMethod,
+        off: crate::pipeline_features::Features,
+    ) -> Volumetric {
         let froxel = method == VolumetricMethod::Froxel;
         let fragment = wgpu::ShaderStages::FRAGMENT;
         let mut entries = vec![
@@ -282,6 +290,7 @@ impl Volumetric {
             froxels: None,
             apply_layout,
             apply: None,
+            off,
         }
     }
 
@@ -291,7 +300,7 @@ impl Volumetric {
             return;
         }
         let froxel = self.method == VolumetricMethod::Froxel;
-        let module = crate::shader(device, "volumetric", source(froxel));
+        let module = crate::shader(device, "volumetric", self.off.leave_out(source(froxel)));
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("volumetric apply"),
             bind_group_layouts: &[Some(frame_layout), Some(&self.apply_layout)],

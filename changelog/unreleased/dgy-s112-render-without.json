@@ -1,0 +1,16 @@
+{
+  "added": [
+    {
+      "member": "RenderOptions.without",
+      "summary": "A list of optional lit features (LitFeature: surfaceWeather, gi, areaLights, decals) to build no lit shader with. Empty, the default, builds every one as before. Each one left out is in no lit pipeline the renderer makes, on native and on the web: its code, which every lit and prepass pipeline compiled behind a runtime test whether or not a scene used it, is folded away, so those pipelines compile faster and draw a little faster. It is not drawn: a scene that uses it draws as if it did not, and the log says so once."
+    },
+    {
+      "member": "LitFeature",
+      "summary": "The optional lit features RenderOptions.without can leave out: the weather on surfaces, the probes of GlobalIllumination, rect lights and decals."
+    },
+    {
+      "member": "RenderCapabilities.without",
+      "summary": "The lit features the renderer was made without (RenderOptions.without); empty by default and without a renderer."
+    }
+  ]
+}

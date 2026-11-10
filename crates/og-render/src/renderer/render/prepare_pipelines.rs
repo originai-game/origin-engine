@@ -40,9 +40,10 @@ impl Renderer {
     ) -> (bool, bool, bool) {
         // Decals and screen-space AO (or GI) need the effect shader on every batch;
         // decals take screen derivatives (the lean pipelines keep the discard).
-        self.plain_effects = ao || !scene.decals.is_empty();
+        // (No decal in a renderer made without them, RenderDesc::without.)
+        let decals = !scene.decals.is_empty() && !self.info.without.contains(LitFeatures::DECALS);
+        self.plain_effects = ao || decals;
         if self.plain_effects {
-            let decals = !scene.decals.is_empty();
             for b in batches.iter_mut().chain(skinned_batches.iter_mut()) {
                 b.effects = true;
                 b.derivatives |= decals;
@@ -138,9 +139,9 @@ impl Renderer {
         // A pattern in object space: the object pass after the prepass.
         let object_space = prepass && scene.stylise.in_object_space();
         if object_space {
-            let object = self
-                .stylise_object
-                .get_or_insert_with(|| stylise_object::ObjectPass::new(&self.device));
+            let object = self.stylise_object.get_or_insert_with(|| {
+                stylise_object::ObjectPass::new(&self.device, self.info.without.features())
+            });
             let opaque = batches.iter().filter(|b| !b.transparent);
             for (side, skinned) in opaque
                 .map(|b| (b.side, false))

@@ -54,6 +54,8 @@ mod removal;
 mod render;
 #[path = "../render_origin.rs"]
 mod render_origin;
+#[path = "../render_without.rs"]
+mod render_without;
 #[path = "../shadows.rs"]
 mod shadows;
 #[path = "../sprites2d.rs"]

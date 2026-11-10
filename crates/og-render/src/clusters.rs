@@ -28,7 +28,7 @@
 //!   rest there only (`cluster_lights_dropped`).
 
 use crate::frame::{CameraFrame, Frustum};
-use crate::scene::{Light, MAX_LIGHTS};
+use crate::scene::{Light, LightKind, MAX_LIGHTS};
 use glam::{Vec3, Vec4};
 
 /// Clusters across, down and in depth.
@@ -198,6 +198,9 @@ pub(crate) struct ClusterBuilder {
     count: Vec<u32>,
     fill: Vec<u32>,
     scores: Vec<f32>,
+    /// A renderer made without rect lights (`LitFeatures::AREA_LIGHTS`)
+    /// keeps none: no record, no shadow, no light anywhere.
+    pub skip_rects: bool,
 }
 
 /// The light's weight when lights must be dropped.
@@ -228,6 +231,9 @@ impl ClusterBuilder {
     fn select(&mut self, lights: &[Light], view: &ClusterView) {
         self.kept.clear();
         for (i, l) in lights.iter().enumerate() {
+            if self.skip_rects && matches!(l.kind, LightKind::Rect { .. }) {
+                continue;
+            }
             if view
                 .frustum
                 .intersects_sphere(l.position, l.range.max(1e-3))

@@ -89,6 +89,8 @@ pub(crate) struct Tiles {
     /// The cached layer/chunk of each view's draw.
     draws: Vec<(usize, usize)>,
     pub textures: Vec<crate::TextureHandle>,
+    /// The lit features its module is made without (`RenderDesc::without`).
+    off: crate::pipeline_features::Features,
 }
 
 impl Tiles {
@@ -96,7 +98,12 @@ impl Tiles {
         flags.contains(wgpu::DownlevelFlags::COMPUTE_SHADERS | wgpu::DownlevelFlags::VERTEX_STORAGE)
     }
 
-    pub fn new(device: &wgpu::Device, layouts: [&wgpu::BindGroupLayout; 3], samples: u32) -> Self {
+    pub fn new(
+        device: &wgpu::Device,
+        layouts: [&wgpu::BindGroupLayout; 3],
+        samples: u32,
+        off: crate::pipeline_features::Features,
+    ) -> Self {
         let storage = |binding| wgpu::BindGroupLayoutEntry {
             binding,
             visibility: wgpu::ShaderStages::VERTEX,
@@ -130,7 +137,7 @@ impl Tiles {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        let pipeline = pipeline(device, layouts, &layout, samples, false);
+        let pipeline = pipeline(device, layouts, &layout, samples, false, off);
         Self {
             layout,
             pipeline,
@@ -139,6 +146,7 @@ impl Tiles {
             layers: Vec::new(),
             draws: Vec::new(),
             textures: Vec::new(),
+            off,
         }
     }
 
@@ -154,7 +162,14 @@ impl Tiles {
         if self.normal.is_none()
             && let Some(layouts) = normal
         {
-            self.normal = Some(pipeline(device, layouts, &self.layout, samples, true));
+            self.normal = Some(pipeline(
+                device,
+                layouts,
+                &self.layout,
+                samples,
+                true,
+                self.off,
+            ));
         }
         // Retain the Arc as the geometry identity: copy-on-write edits and
         // reloads cannot alias a cached allocation, even across scenes.
@@ -281,6 +296,7 @@ fn pipeline(
     tiles: &wgpu::BindGroupLayout,
     samples: u32,
     normal: bool,
+    off: crate::pipeline_features::Features,
 ) -> wgpu::RenderPipeline {
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("tiles"),
@@ -294,7 +310,7 @@ fn pipeline(
     });
     let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("tiles"),
-        source: wgpu::ShaderSource::Wgsl(source().into()),
+        source: wgpu::ShaderSource::Wgsl(off.leave_out(source()).into()),
     });
     crate::hdr_pipeline(
         device,

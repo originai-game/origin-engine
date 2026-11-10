@@ -1453,6 +1453,9 @@ pub(crate) struct TerrainRenderer {
     /// The features the frame's terrain pipelines draw with (the
     /// renderer's `frame_features`: every one in a capture).
     pub features: crate::pipeline_features::Features,
+    /// The lit features the renderer is made without (pipeline_features.rs):
+    /// without the weather on surfaces, lying snow lifts no ground.
+    off: crate::pipeline_features::Features,
     /// The layer-array variant (a terrain whose layers sample texture
     /// arrays, [`Terrain::layer_arrays`]): its group layout, with the
     /// albedo (5) and normal (9) maps as 2D arrays and no other layer
@@ -1524,6 +1527,9 @@ pub(crate) struct TerrainPipelines<'a> {
     pub lighting_wgsl: &'a str,
     /// The local lights' cluster tables (`clusters.rs`), after the frame.
     pub light_tables_wgsl: &'a str,
+    /// The lit features the renderer is made without (pipeline_features.rs):
+    /// out of the lit source.
+    pub off: crate::pipeline_features::Features,
     pub samples: u32,
     pub white: wgpu::TextureView,
     pub flat_normal: wgpu::TextureView,

@@ -317,7 +317,8 @@ impl Renderer {
             && !contact
             && ao.is_some_and(|a| a.method == AoMethod::Gtao)
             && post_fx.gi_probes.is_some()
-            && scene.quality.global_illumination;
+            && scene.quality.global_illumination
+            && !self.info.without.contains(LitFeatures::GI);
         let outline = post_fx.outline.is_some()
             || batches
                 .iter()
@@ -865,6 +866,7 @@ impl Renderer {
                             &self.sprite_fx_layout,
                         ],
                         self.samples,
+                        self.info.without.features(),
                     )
                 });
                 tiles.prepare(
@@ -894,6 +896,7 @@ impl Renderer {
                         ],
                         self.samples,
                         self.sprite_skin_supported,
+                        self.info.without.features(),
                     )
                 })
             });
@@ -1055,7 +1058,7 @@ impl Renderer {
             + scene
                 .lights
                 .iter()
-                .filter(|l| l.cast_shadows)
+                .filter(|l| l.cast_shadows && self.kept_kind(l))
                 .map(|l| match l.kind {
                     LightKind::Point => self.info.point_shadows.layers(),
                     LightKind::Spot { .. } => 1,
@@ -2155,6 +2158,7 @@ impl Renderer {
                         &self.device,
                         [&self.frame_layout, &self.material_layout, &self.fx_layout],
                         planar_slot(self.info.planar_reflections),
+                        self.info.without.features(),
                         &batches,
                         prepass,
                         self.samples,
@@ -2728,9 +2732,14 @@ impl Renderer {
         if !motion_read {
             fx_uniform.motion[0] = 0.0;
         }
-        // The decals: their records, and the main view's clusters they reach.
+        // The decals: their records, and the main view's clusters they reach
+        // (none in a renderer made without them, RenderDesc::without).
         fx::pack_decals(
-            &scene.decals,
+            if self.info.without.contains(LitFeatures::DECALS) {
+                &[]
+            } else {
+                &scene.decals
+            },
             &mut self.decal_records,
             &mut self.decal_spheres,
         );

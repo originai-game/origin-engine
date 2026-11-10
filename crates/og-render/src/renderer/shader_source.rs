@@ -30,6 +30,36 @@ pub(crate) const LIGHTING_WGSL: &str = wgsl!("lighting.wgsl");
 /// Rain, puddles and snow on lit surfaces (weather.rs), after
 /// lighting.wgsl, in the standard, physical and terrain lit modules.
 pub(crate) const WEATHER_SURFACE_WGSL: &str = wgsl!("weather_surface.wgsl");
+/// What the lit modules call of [`WEATHER_SURFACE_WGSL`], each returning
+/// what the full code returns with `OG_WEATHER` false: its text in a module
+/// made without the weather on surfaces (`RenderDesc::without`,
+/// `Features::leave_out`).
+pub(crate) const WEATHER_SURFACE_STUB: &str = "const WEATHER_RUNS_OFF: f32 = 0.0;
+const WEATHER_STANDS: f32 = 1.0;
+const WEATHER_GROUND: f32 = 2.0;
+struct Weathered {
+  s: Surface,
+  n: vec3<f32>,
+};
+override OG_WEATHER: bool = false;
+fn weather_surface_at(s_in: Surface, n_in: vec3<f32>, geo: vec3<f32>, p_frame: vec3<f32>, cavity: f32, amount: f32, standing: f32) -> Weathered {
+  return Weathered(s_in, n_in);
+}
+fn weather_surface(s_in: Surface, n_in: vec3<f32>, geo: vec3<f32>, p_frame: vec3<f32>) -> Weathered {
+  return Weathered(s_in, n_in);
+}
+fn weather_gloss(roughness: f32, metalness: f32, n: vec3<f32>, geo: vec3<f32>, p_frame: vec3<f32>, cavity: f32, amount: f32, standing: f32) -> Weathered {
+  var s: Surface;
+  s.albedo = vec3<f32>(1.0);
+  s.metallic = metalness;
+  s.roughness = roughness;
+  s.f0 = mix(vec3<f32>(0.04), s.albedo, metalness);
+  return Weathered(s, n);
+}
+fn weather_grass(s_in: Surface, n_in: vec3<f32>, p_frame: vec3<f32>, t: f32) -> Weathered {
+  return Weathered(s_in, n_in);
+}
+";
 /// Rect lights and cookies (area.rs), after lighting.wgsl.
 pub(crate) const AREA_WGSL: &str = wgsl!("area.wgsl");
 /// The lightmap pages at group 3 and their lookup (lightmap.rs), in the

@@ -296,6 +296,16 @@ pub struct RenderDesc {
     /// engine sets it for a game whose bundle declares og.motion). Outside
     /// `publish` they are asked for anyway, for the GPU pass timing.
     pub timestamps: bool,
+    /// Optional lit features to build no lit shader with ([`LitFeatures`]:
+    /// the weather on surfaces, the probe GI, rect lights, decals). Empty
+    /// by default: every lit module carries every one, as before. Each left
+    /// out is in no pipeline the renderer makes, on any host (the code
+    /// every lit and prepass pipeline compiled, reachable behind its
+    /// runtime test, is folded away), and is not drawn: a scene that uses
+    /// it draws as if it did not, and the log says so once
+    /// ([`RenderInfo::without`]). Not the adapter's features
+    /// ([`Self::without_features`]).
+    pub without: LitFeatures,
 }
 
 /// The most planar reflections one frame draws
@@ -359,6 +369,7 @@ impl Default for RenderDesc {
             transparency_layers: 0,
             low_power: false,
             timestamps: false,
+            without: LitFeatures::NONE,
         }
     }
 }
@@ -435,6 +446,9 @@ pub struct RenderInfo {
     /// [`RenderDesc::planar_reflections`] clamped to 1 to
     /// [`MAX_PLANAR_REFLECTIONS`], 0 without the 3D world ([`WORLD_3D`]).
     pub planar_reflections: u32,
+    /// The lit features the renderer's shaders were made without
+    /// ([`RenderDesc::without`]).
+    pub without: LitFeatures,
     /// What [`RenderDesc::transparency`] resolved to: the linked lists only
     /// where the device writes storage from fragment shaders and has room
     /// for the arena's binding beside the lit pipelines' own.

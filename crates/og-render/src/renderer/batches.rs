@@ -269,6 +269,7 @@ impl Renderer {
                     &self.sprite_fx_layout,
                 ],
                 self.samples,
+                self.info.without.features(),
             )
         });
         hooks.prepare_shader(

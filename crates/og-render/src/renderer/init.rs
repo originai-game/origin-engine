@@ -312,6 +312,7 @@ impl Renderer {
             } else {
                 0
             },
+            without: desc.without,
             transparency: Transparency::Weighted,
             gpu_crowds: crowd_indirect,
             visual_simulation: ribbons_gpu::GpuTrails::supported(
@@ -575,7 +576,8 @@ impl Renderer {
         let light_buffers = clusters::buffers(&device);
         let ltc = area::ltc_buffer(&device, &queue);
         let caustic_grid = water::caustic_buffer(&device);
-        let volumetric = volumetric::Volumetric::new(&device, info.volumetric);
+        let volumetric =
+            volumetric::Volumetric::new(&device, info.volumetric, info.without.features());
         // One set per planar reflection the renderer draws (none without
         // the 3D world).
         let slots = 0..info.planar_reflections;
@@ -628,14 +630,17 @@ impl Renderer {
         // Pipelines.
         // Parsed when the first pipeline that uses them is made
         // (deferred.rs): a frame compiles only what it draws.
+        // The features the renderer is made without are in none of the
+        // modules that carry their code (pipeline_features.rs).
+        let off = info.without.features();
         let pbr_shader = deferred::module(
             &device,
             "pbr",
-            lit_source_with(&hooks::default_hooks(), planar),
+            off.leave_out(lit_source_with(&hooks::default_hooks(), planar)),
         );
-        let sky_shader = deferred::module(&device, "sky", sky_source());
-        let sprite_shader = deferred::module(&device, "sprite", sprite_source());
-        let ribbon_shader = deferred::module(&device, "ribbon", ribbon_source());
+        let sky_shader = deferred::module(&device, "sky", off.leave_out(sky_source()));
+        let sprite_shader = deferred::module(&device, "sprite", off.leave_out(sprite_source()));
+        let ribbon_shader = deferred::module(&device, "ribbon", off.leave_out(ribbon_source()));
         let shadow_shader =
             deferred::module(&device, "shadow", shadow_source(&hooks::default_hooks()));
         let pipeline_layout = |label: &str, layouts: &[&wgpu::BindGroupLayout]| {
@@ -725,8 +730,8 @@ impl Renderer {
         let water = water::WaterRenderer::new(
             &device,
             &frame_layout,
-            FRAME_WGSL,
-            LIGHTING_WGSL,
+            &off.leave_out(FRAME_WGSL.to_string()),
+            &off.leave_out(LIGHTING_WGSL.to_string()),
             samples,
             adapter
                 .get_downlevel_capabilities()
@@ -742,10 +747,18 @@ impl Renderer {
         let wind_field = crate::wind_field::WindFieldSim::new(&device, vegetation_compute);
         // The grass trample map (G3), pressed where compute runs.
         let trample = crate::trample::Trample::new(&device, vegetation_compute);
-        let metaballs =
-            metaballs::MetaballRenderer::new(&device, &frame_layout, FRAME_WGSL, samples);
-        let fluid3d =
-            fluid3d::Fluid3dRenderer::new(&device, &frame_layout, &fluid_shared_source(), samples);
+        let metaballs = metaballs::MetaballRenderer::new(
+            &device,
+            &frame_layout,
+            &off.leave_out(FRAME_WGSL.to_string()),
+            samples,
+        );
+        let fluid3d = fluid3d::Fluid3dRenderer::new(
+            &device,
+            &frame_layout,
+            &off.leave_out(fluid_shared_source()),
+            samples,
+        );
         let additive = wgpu::BlendState {
             color: wgpu::BlendComponent {
                 src_factor: wgpu::BlendFactor::SrcAlpha,
@@ -928,7 +941,7 @@ impl Renderer {
             effects,
             &frame_layout,
             &sprite_layout,
-            &fluid_shared_source(),
+            &off.leave_out(fluid_shared_source()),
         );
         let lights_2d = light2d::Light2dRenderer::new(&device);
         let ribbon_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
@@ -994,6 +1007,7 @@ impl Renderer {
                 frame_wgsl: FRAME_WGSL,
                 lighting_wgsl: LIGHTING_WGSL,
                 light_tables_wgsl: &clusters::wgsl(),
+                off,
                 samples,
                 white: default_white.clone(),
                 flat_normal: default_normal.clone(),
@@ -1007,7 +1021,7 @@ impl Renderer {
                 material_layout: &material_layout,
                 shadow_layout: &shadow_bind_layout,
                 fx_layout: &fx_layout,
-                lit_wgsl: Box::new(scatter_lit_source),
+                lit_wgsl: Box::new(move |hooks: &str| off.leave_out(scatter_lit_source(hooks))),
                 shadow_wgsl: scatter_shadow_source(),
                 samples,
                 wind_field: wind_field.lean_view.clone(),
@@ -1026,6 +1040,7 @@ impl Renderer {
                 samples,
                 wind_field: wind_field.lean_view.clone(),
                 trample: trample.view.clone(),
+                off,
             },
         );
         let vertex_buffer = |label: &str, size: u64| {
@@ -1149,7 +1164,11 @@ impl Renderer {
             caustic_grid,
             cookies: area::Cookies::default(),
             volumetric,
-            clusters: clusters::ClusterBuilder::default(),
+            clusters: {
+                let mut c = clusters::ClusterBuilder::default();
+                c.skip_rects = off.contains(crate::pipeline_features::Features::AREA);
+                c
+            },
             reflection_buffer,
             reflection_fx_buffer,
             reflection_light_buffers,
@@ -1223,6 +1242,7 @@ impl Renderer {
             shadow_cache_maps: Vec::new(),
             shadow_hashes: Default::default(),
             warned_planar: false,
+            warned_without: LitFeatures::NONE,
             fx_groups: None,
             mips,
             physical: None,
