@@ -16,37 +16,76 @@ threads linked here; rules are in `AGENTS.md`, the UI contract in
 4. **The engine's showcase page**, rebuilt from scratch as a page of the
    platform (origingame), after the UI catalogue.
 5. **Compatibility and real devices last:** Safari, phones (Pixel 10,
-   PowerVR, Adreno, Mali), HDR on a real display, the WebGL 2 fallback
-   study. `og mcp` after 0.8.0.
+   PowerVR, Adreno, Mali), HDR on a real display. `og mcp` after 0.8.0.
+6. **Native store packages and mini-game platforms** (§Direction), after
+   0.8.0 unless the owner moves them.
 
 ## Running
 
 Phase 1 closed 2026-11-10. Streams run on macrunner and report to the
 coordinator thread [T-01a1c3df](https://ampcode.com/threads/T-01a1c3df-23c6-73be-9bb8-0da680008e82).
+Every stream finished its current item on 2026-11-10 and is paused with
+its lane reserved until the owner orders the next list.
 
 Landed in phase 1:
 
 - The rpg kit and the fantasy pack (pure CSS), art-approved: 7407166332.
-- The core and G1 UI parts: 8ef79ce29a.
+- The core and G1 UI parts: 8ef79ce29a; select lists and groups as part
+  boxes, with the fantasy pack keeping its approved labels: 0d556d0379.
 - `og-rive` and `og-emitter` as owned nodes: 7e4888f5d1.
-- CSS gaps 18 (digits beside CJK in one run) and 20 (`rem`): 748b1ef9ef.
+- `-og` migration: control sizes replaced by CSS dimensions (0f48e47397),
+  forced input on the standard pointer and hover media features plus
+  `(-og-input: pad)` (fadefff678);
+  enter and exit on `@starting-style` and standard transitions with
+  discrete `display` exits (fea25ade37).
+- CSS gaps: digits beside CJK and `rem` (748b1ef9ef), MIME parameters
+  (2428c753ea), file URLs and document CSS textures (312ca93f08), cursors
+  over passive boxes in both builders (b964756669), `field-sizing` for text
+  controls (096fc69039), `shape-outside` basic shapes (9e130c45e6),
+  `shape-margin` (3904d7a21f). `docs/ui.md` §8: 101 of 454 with output
+  proofs.
+- Terrain debug views wait for complete diagnostic pipelines (209c656dfb);
+  PRs #16, #20 and #21 (c8e5ed5dff).
 
-Still open:
+Still open in phase 1:
 
-- G2/G3 parts as nodes: select and tabs landing now, text fields and G3
-  next. The fantasy pack's host-rule `pending` markers drop with them.
-- Gap 16: the `font-family` fallback list is not consulted per glyph.
-- Finding 19: filtering the overflow check's stderr at tick 0.
-- The `docs/ui.md` §8 inventory.
+- G2/G3 parts as nodes: text fields and textarea, the number spinner, G3
+  (range, meter and progress, panel and tooltip, slots, HUD and touch
+  controls). The rpg kit's flourish and inactive-hover markers drop with
+  them.
+- `-og` migration: presentation (layout-transition, scroll-fade,
+  reduced-motion, text-path), semantics (meta → `og-overlay`, overlaps →
+  `og.ui` diagnostics), revision-3 extras, the final reflection audit.
+- The `docs/ui.md` §8 inventory and its named gaps (image-alpha shape
+  contours, select/file/vertical `field-sizing`, cursors over arbitrary
+  clip paths).
+- PR #9 waits for its author (the cut-out check ignores
+  `baseColorFactor.a`); #23 stays a draft until the performance pass.
 
 Next, in order:
 
-1. The docs pass.
+1. The docs pass (`docs/ui.md` rewritten, the generated wiki).
 2. The web-tier re-records.
 3. Phase 2: the remaining kits and packs, from generated boards.
 4. The performance pass.
 5. The real-device run.
 6. 0.8.0.
+
+### The GPU check host (verification only, 2026-11-10)
+
+The workflow and the reference host stay as they are until the owner
+chooses. Metal on macrunner remains the reference.
+
+- studio-win, RTX 5060 on DX12, at fea25ade37: 233 of 236 GPU tests pass,
+  no crash on exit, all 40 committed reference scenes within the
+  cross-platform tolerance. Three portability failures (ui-debug has no
+  DX12 → Metal reference fallback; core documents compare bytes against
+  Metal; a CSS tint differs by 2 channel units) and the wasm build's
+  Windows command-line limit under sccache (OS error 206) are open.
+- An RTX 4090 on Vulkan (Linux): the same 40 scenes pass, but 104 tests
+  crash after reporting success; root cause unknown.
+- A GCP L4 VM (Linux, Vulkan) is being verified; it is stopped between
+  runs.
 
 ## Landed this round (2026-11-08 to 2026-11-09)
 
@@ -119,6 +158,60 @@ under Running. The showcase page follows 0.8.0.
   pilot accepts every kit at 390 px wide and by touch as well as at 1280;
   before 0.8.0 the whole UI catalogue runs on at least one real iPhone and
   one real Android phone.
+
+## Direction (the owner, 2026-11-10)
+
+From the review of expo/exact (thread
+[T-01a1c5af](https://ampcode.com/threads/T-01a1c5af-d1ce-765f-976b-361d1ad50413)).
+`docs/design.md` §1 states the goals; this is the open work.
+
+- **Kept:** TypeScript game code with Rust inside the engine, one IDL for
+  both hosts, determinism as a contract, observability from the first
+  frame, facts not verdicts, rendering in a Worker, wgpu as published.
+- **Native store packages.** TypeScript compiled to Hermes bytecode at build
+  time (no JIT, as iOS requires; QuickJS or the system JSC as fallbacks).
+  The host is a C ABI static library under a thin shell (AppKit/UIKit and a
+  Swift package first; Android and Windows the same shape) owning windows,
+  lifecycle, input, the audio session, signing and packaging; accounts and
+  purchases reach the platform through the host ABI. The web stays the
+  development loop; native is verified by the gate in batches, with the same
+  agent driver and probe. Open: which platforms come first (iOS/Android or
+  desktop), which sets the JS engine and the gate machines.
+- **Game-code speed without a JIT.** Measure a typical game's per-frame
+  code in Hermes interpreted against Chrome's JIT first; then move hot
+  paths into batched engine primitives (queries, spatial lookups, behaviour
+  data, parametric AI and particles). A typed TypeScript subset compiled to
+  wasm ahead of time is a study only.
+- **Mini-game platforms.** Phase 1: WeChat on Android over WebGPU (WeChat
+  8.0.79+, base library 3.17.3+, Android 10+): a host adapter for
+  `WXWebAssembly` (package-local paths, `.js` only in the Worker
+  directory) and `wx.*` input, audio and UI; a renderer path without MRT,
+  async pipeline creation or timestamps; code subpackages within a 4 MB main
+  and 30 MB total package; scripts change only through review, assets
+  through updates. First a device run of the current engine. Phase 2: the
+  GL tier through wgpu's GL backend for WeChat iOS and older devices, with a
+  renderer path without compute (the most expensive step). Phase 3: Douyin,
+  Alipay and others on the same adapter.
+- **Loaded on demand.** Optional capabilities (GPU extras, physics,
+  navigation, video) as separate artifacts loaded after the first frame;
+  this serves the size principle, native packages and subpackages alike.
+- **Determinism for every game.** `og check` reports the lockstep lint's
+  findings (`Math.random`, `Date.now`/`performance.now`, host trig,
+  unordered container iteration) for every game with the replacement to
+  use, reporting without refusing, also at publish and packaging; check
+  that wasm and native both disable floating-point contraction; tick and
+  save proof pins in the fixtures.
+- **Agent observability:** a `visible` reason code (frustum, occluded,
+  hidden ancestor, asset pending, LOD hidden, outside cascade) in the probe
+  and `dump_entity`, read from what the renderer did; a record of what was
+  drawn after culling; borrow-conflict errors naming component, entity and
+  source line; captures from several viewpoints.
+- **Features to compare APIs against:** model LOD, dithered fades, a
+  first-person view-model layer, water, glow and lit springs, multi-light
+  shadows, `render_scale` with the HUD at native resolution, camera turning
+  between ticks; Taffy as a reference for og-ui's flex and grid. Exact's
+  licence is checked before anything is ported (`third_party/`).
+- **Not taken:** Exact's Contract UI language, Rust gameplay, the DOM host.
 
 ## Open
 

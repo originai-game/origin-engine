@@ -50,8 +50,20 @@ Normative detail is in `docs/design.md` (and `docs/ui.md` for the UI).
 
 ## Status
 
-What is running, next and open: `docs/roadmap.md`. Metal on macrunner is
-the pixel reference; DX12, the browsers and phones come after the features.
+What is running, next and open: `docs/roadmap.md`.
+
+- **Now:** the UI catalogue's phase 1 (the rpg kit and the fantasy pack
+  art-approved; the remaining parts as retained nodes, the move from `-og`
+  properties to standard CSS, the CSS inventory in `docs/ui.md` §8), then a
+  docs pass, phase 2 (the other kits and packs), one performance pass, a
+  real-device run and 0.8.0.
+- **Delivery:** the web first, on WebGPU. Native store packages (TypeScript
+  as Hermes bytecode under a thin native shell) and mini-game platforms
+  (WeChat on Android over WebGPU first, then a capability-limited GL tier)
+  are goals after 0.8.0 (`docs/roadmap.md` §Direction).
+- **Pixels:** Metal on macrunner is the reference; DX12 (studio-win) and
+  Vulkan hosts are judged against it under the cross-platform tolerance.
+  Choosing a resident GPU check host is being verified.
 
 ## Features
 
@@ -116,11 +128,16 @@ What is on main, grouped by area, with the API module (`og.<module>`, from
   (`og sfx`).
 
 **UI** (`og.ui`; og-ui, `packages/engine/src/ui`, `packages/design`)
-- An immediate-mode toolkit with Clay-style layout, drawn through og-render
-  and addressable by the probe; rich text, RTL and CJK shaping.
+- Screens as Svelte 5 templates styled with a standard-CSS dialect (cascade,
+  flex, grid, floats and shapes, anchor positioning, transitions with
+  `@starting-style`, view transitions, masks, filters), mounted as a
+  retained tree, drawn through og-render and addressable by the probe;
+  rich text, RTL, vertical text and CJK shaping. `docs/ui.md` §8 lists
+  what each property is proved to do.
 - UI styles: each game ships its own (`type style`); built-in style packs
-  under `templates/styles`, `og style eject`; the default style is generated
-  from `packages/design`'s tokens.
+  under `templates/styles` (fantasy accepted, the others being rebuilt),
+  `og style eject`; the default style is generated from `packages/design`'s
+  tokens.
 - The kit: controls, containers, data views (virtualised lists, tables,
   charts), feedback, HUD and world components, and genre patterns
   (inventory, cards, shop, gacha, lobby, draft, dialogue, quest log, maps,
@@ -219,7 +236,7 @@ crates/            Rust workspace
   og-nav           grids, flow fields, navmesh, steering
   og-ai            behaviour trees, state machines, perception
   og-audio         command stream and mixer
-  og-ui            immediate-mode UI toolkit
+  og-ui            UI documents: CSS cascade, layout, interaction, retained mounting
   og-input         the Input resource, events, the shell's input ring
   og-i18n          string tables, MessageFormat, plural rules
   og-story         dialogue and quests
@@ -279,9 +296,11 @@ og doctor           check bun, the engine package, the addon, the wasm, the rend
 
 ## Development
 
-`scripts/check.sh quick` (fmt, clippy, drift, the logic tests, the knowledge
-and create packages) is the loop while working; `scripts/check.sh` is the full
-path-aware lane, and `scripts/check.sh functional` what a merge passes (`docs/ci.md` §Lanes).
+`scripts/check.sh quick` (fmt, clippy, CPU tests, GPU tests outside
+og-tests, drift, package tests) is the loop while working and what a landing
+runs; `scripts/check.sh` is the `full` lane (adding og-tests, fixtures, the
+wasm variants and the browser tests; `docs/ci.md` §Lanes). Heads land
+through `scripts/land.sh`, a merge queue; main is never pushed directly.
 
 Read `AGENTS.md` before changing anything: ownership, contracts and the gate
 discipline. Toolchain versions are in `docs/ci.md` §Toolchain.

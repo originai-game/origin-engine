@@ -19,7 +19,10 @@ renderer process. The engine the agent needs does not exist, so we build it.
 1. A full mid-size 3D engine (and 2D as a subset): PBR rendering with shadows,
    IBL and post, skeletal animation and IK, rigid-body physics and character
    control, navigation, spatial audio, particles, terrain, decals, text and a
-   UI toolkit. Delivered to the Web only; native builds exist for executors.
+   UI toolkit. Delivered to the Web first; native store packages and
+   mini-game platforms (WeChat first) are goals on the same core and API
+   (the owner, 2026-11-10; `docs/roadmap.md` §Direction). Today the native
+   builds serve executors and developers.
 2. AI-native from the first frame: a command channel, a probe, world dumps,
    deterministic replay, frame capture and parameter sweeps are runtime
    features in every build.
@@ -31,7 +34,7 @@ renderer process. The engine the agent needs does not exist, so we build it.
    instanced and culled by default, so the slow version cannot be written".
 5. One play surface without iframes.
 
-**Non-goals.** Native store exports (APK, iOS apps). A visual editor as the
+**Non-goals.** A visual editor as the
 primary authoring surface (an inspector and gizmos exist for humans; authoring
 is code and text). Scripting languages other than TypeScript. Console
 platforms. Ray tracing. Networking engines beyond the platform SDK's rooms.
@@ -615,8 +618,11 @@ and each texture's state and footprint.
 ### 2.6 Renderer
 
 wgpu with WGSL shaders cooked per backend (naga). On the web the renderer
-is WebGPU only (§8): compute is available on every supported device, and a
-feature is designed for that tier. The CPU culling and CPU particle paths
+is WebGPU only today (§8): compute is available on every supported device,
+and a feature is designed for that tier. A capability-limited GL tier, for
+mini-game platforms without WebGPU and older devices, is planned
+(`docs/roadmap.md` §Direction): features answer it through capability
+queries, and the WebGPU tier is never lowered to meet it. The CPU culling and CPU particle paths
 remain options on every device (`Culling::Cpu`, small frames under
 `Culling::Auto`, `ParticleSimulation::Cpu`). The engine is GPU only on
 every host: a player's device without a GPU is not supported, and no
@@ -2443,14 +2449,15 @@ line.
 | determinism | yes | yes | yes | yes |
 
 The engine targets current hardware and current browsers; old browsers,
-low-end GPUs and old drivers are not a target and are not tested. There is
-no reduced tier for weaker devices: a browser or device without WebGPU is
-not supported (the player shell says so instead of starting a degraded
-engine), and a feature is built for the supported devices at the quality it
-needs.
+low-end GPUs and old drivers are not a target and are not tested. Today a
+browser or device without WebGPU is not supported (the player shell says so
+instead of starting a degraded engine), and a feature is built for the
+supported devices at the quality it needs. The planned GL tier (§2.6) is a
+separate, capability-limited tier, not a fallback inside the WebGPU path.
 
 - Browsers: the current stable Chrome and Edge and the major before it,
-  Safari 26+, the current stable Firefox, on WebGPU. No WebGL2 fallback.
+  Safari 26+, the current stable Firefox, on WebGPU. WebGL2 is not yet a
+  tier (§2.6).
 - Desktop: Windows 10/11 x64 on DX12 (in the browser, D3D12 for WebGPU) with
   a current NVIDIA, AMD or Intel GPU and driver; macOS on Apple silicon
   (Metal); Linux x64 with a Vulkan GPU.
@@ -2818,6 +2825,12 @@ truth and the frame's cost; their numbers go in reports.
   author's loop.
 - **Game code in Rust.** Strongest isolation and performance, rejected for
   compile latency, toolchain size in every sandbox and the author's loop.
+  Re-checked against expo/exact (Rust gameplay over wgpu, 2026-11-10): game
+  code stays TypeScript; on hosts without a JIT (iOS) it ships as bytecode,
+  and hot paths move into engine primitives (`docs/roadmap.md` §Direction).
+- **A declarative UI language (Exact's Contract).** Rejected: it would be a
+  third text format beside `.ogt` and `.ogb`; UI structure is Svelte
+  templates and its look standard CSS (`docs/ui.md`).
 
 ## 14. Sources
 

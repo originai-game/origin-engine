@@ -135,8 +135,9 @@ status `docs/roadmap.md`. Platform contracts implemented here:
   under the scene's tight tolerance, on another (DX12, Vulkan, WebGPU in
   Chrome) under the cross-platform tolerance (`og_tests::compare::tolerance_for`,
   docs/ci.md §Reference frames). studio-win (DX12, Chrome, Edge, Firefox) is
-  a second gate host; Safari and Android wait. The web is WebGPU only.
-  Nothing runs on lavapipe; no `references/vulkan-cpu/`.
+  a second gate host; Safari and Android wait. The web is WebGPU only
+  until the planned GL tier (`docs/roadmap.md` §Direction). Nothing runs
+  on lavapipe; no `references/vulkan-cpu/`.
 - Generated `.d.ts` and wiki are drift-checked; never hand-edit them.
 - A test is kept only when it fails on a plausible regression; a re-recorded
   frame is one the change must move, and is named in the report.
