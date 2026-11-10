@@ -13,7 +13,7 @@ default = ["shaping"]
 # conjuncts, marks placed by the font's GPOS. Without it a shaped script is
 # drawn unshaped (its characters in visual order); bidi, kerning and run-time
 # glyphs stay. og-runtime and og-host-web pass it on (`shaping`).
-shaping = ["dep:harfrust", "dep:parley"]
+shaping = ["og-text/shaping", "dep:parley"]
 
 [dependencies]
 og-core = { path = "../og-core" }
@@ -28,16 +28,12 @@ og-tween = { path = "../og-tween" }
 bytemuck = { workspace = true }
 # Localization: text direction and shaped scripts (og-i18n).
 og-i18n = { path = "../og-i18n" }
+# Text measurement, line breaking, bidi and shaping.
+og-text = { path = "../og-text", default-features = false }
 # Match Parley 0.12's font stack; libm, never host floating-point math.
-harfrust = { version = "=0.12.0", optional = true, default-features = false, features = ["libm"] }
 skrifa = { version = "=0.44.0", default-features = false, features = ["libm"] }
 parley = { version = "=0.12.0", optional = true, default-features = false, features = ["libm", "complex-scripts"] }
 parley_engine = { version = "=0.12.0", default-features = false, features = ["libm", "complex-scripts"] }
-# The bidirectional algorithm (UAX #9): a line's runs in visual order.
-unicode-bidi = "0.3.18"
-# A cooked font's file (`runtime true`): metrics and outlines of characters
-# outside the atlas, rendered at run time (src/glyphs.rs).
-ttf-parser = { version = "0.25.1", default-features = false, features = ["std"] }
 # Viewmodels and bindings (src/bind.rs) are JSON, as the host passes them.
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -50,6 +46,8 @@ elsa = "1.11.2"
 accesskit = { version = "=0.25.2", features = ["serde"] }
 
 [dev-dependencies]
+# Font files the tests read directly (the version og-text reads them with).
+ttf-parser = { version = "0.25.1", default-features = false, features = ["std"] }
 # The tests draw what the UI built.
 og-render = { path = "../og-render" }
 image = { workspace = true }

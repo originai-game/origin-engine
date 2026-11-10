@@ -3184,6 +3184,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "og-text"
+version = "0.7.7"
+dependencies = [
+ "harfrust",
+ "og-core",
+ "og-draw",
+ "og-i18n",
+ "parley",
+ "parley_engine",
+ "skrifa",
+ "ttf-parser",
+ "unicode-bidi",
+]
+
+[[package]]
 name = "og-tilemap"
 version = "0.7.7"
 dependencies = [
@@ -3216,7 +3231,6 @@ dependencies = [
  "bytemuck",
  "cssparser",
  "elsa",
- "harfrust",
  "image",
  "og-core",
  "og-draw",
@@ -3226,6 +3240,7 @@ dependencies = [
  "og-probe",
  "og-render",
  "og-tests",
+ "og-text",
  "og-tween",
  "parley",
  "parley_engine",
@@ -3235,7 +3250,6 @@ dependencies = [
  "serde_json",
  "skrifa",
  "ttf-parser",
- "unicode-bidi",
 ]
 
 [[package]]

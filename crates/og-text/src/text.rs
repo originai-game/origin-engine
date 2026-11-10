@@ -1,0 +1,1343 @@
+//! Text measurement, line breaking and visual order over an MSDF font's
+//! glyph table: the same advances and kerning og-render's `Text` lays out
+//! with (missing glyphs take no space), so measured text and drawn text
+//! agree to the pixel. A line with right-to-left or shaped characters is
+//! laid out by the bidirectional algorithm (UAX #9, unicode-bidi): its runs
+//! in visual order, each right-to-left run reversed or shaped in its
+//! direction (`crate::shape`), and drawn with the resulting placements.
+//!
+//! A text that mixes scripts no one font covers is laid out per run
+//! ([`FontMetrics::is_mixed`]): each grapheme cluster (a base and its
+//! marks) takes the first of the UI's fonts that has it whole (the role's,
+//! the locale's, the game's fallbacks, the style's), neutral characters stay
+//! with the run before them, and each run is measured, kerned, shaped and
+//! drawn with its own font.
+
+use crate::shape::{Features, FontFile};
+use og_draw::{FontHandle, GlyphKey, GlyphPlacement, MsdfFont};
+use og_i18n::Direction;
+use std::ops::Range;
+use std::sync::Arc;
+
+#[cfg(feature = "shaping")]
+pub mod paragraph;
+
+/// Advances, kerning and vertical extents of a font, in em.
+#[derive(Clone, Debug, PartialEq)]
+pub struct FontMetrics {
+    /// (codepoint, advance) sorted by codepoint.
+    advances: Vec<(GlyphKey, f32)>,
+    /// Every character's advance when the table is empty (`fixed`).
+    pub fixed: Option<f32>,
+    /// Kerning pairs (`left << 32 | right`, em), sorted.
+    kerning: Vec<(u64, f32)>,
+    /// Baseline to the top of the tallest glyph, in em (positive).
+    pub ascender: f32,
+    /// Baseline to the bottom of the lowest glyph, in em (negative).
+    pub descender: f32,
+    /// The font file, for a font cooked with a shaped script or `runtime
+    /// true`: its shaped runs are measured and drawn shaped, and characters
+    /// outside the atlas measured from it (`crate::shape`).
+    pub file: Option<Arc<FontFile>>,
+    /// The fonts after this one that a mixed text's runs take, first first
+    /// (set on the font [`crate::Fonts::for_text`] gives a mixed text).
+    pub runs: Option<Arc<[UiFont]>>,
+    /// This font with the UI's other fonts after it (`runs`): what a text
+    /// of this role takes when it mixes scripts ([`crate::Fonts::link`]).
+    pub mixed: Option<Arc<UiFont>>,
+    /// How many of `runs`, first first, a character takes when their atlas
+    /// or file has it, ahead of a later font's atlas: the style's CJK
+    /// companion ([`crate::Fonts::companions`]), whose glyphs render at run
+    /// time, keeps its Chinese over a locale face that cooked the same
+    /// characters. 0: the atlas first, as for every other font.
+    pub prefer: usize,
+    /// A pixel font's grid, its pixels to the em (`font { pixel <grid> }`);
+    /// 0 for an outline font. Text in it is set at whole multiples of the
+    /// grid ([`FontMetrics::pixel_size`]).
+    pub pixel: u32,
+    /// An `@font-face`'s `unicode-range` (inclusive code point ranges):
+    /// the face has only the characters in it ([`FontMetrics::with_range`]).
+    range: Option<Arc<[(u32, u32)]>>,
+}
+
+/// One glyph of a line as drawn, left to right.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct VisualGlyph {
+    /// The character drawn (for a shaped form, the first of its cluster).
+    pub ch: char,
+    /// A shaped form, drawn by the font's glyph id instead of `ch`'s glyph
+    /// (og-render's `GlyphPlacement::glyph`).
+    pub glyph: Option<u16>,
+    /// The pen's advance after it, em (kerning and tracking included).
+    pub advance: f32,
+    /// The glyph's offset from the pen, em (y up).
+    pub x: f32,
+    pub y: f32,
+    /// The logical index (in characters) of the first character it draws.
+    pub index: usize,
+    /// It belongs to a right-to-left run.
+    pub rtl: bool,
+    /// The font that draws it: 0 the font laid out with, `k` the `k`-th of
+    /// a mixed text's other fonts ([`UiFont::handle_of`]).
+    pub font: u8,
+}
+
+impl VisualGlyph {
+    /// The glyph it draws: its form by id, else its character's.
+    pub fn key(&self) -> GlyphKey {
+        self.glyph.map_or(GlyphKey::Char(self.ch), GlyphKey::Id)
+    }
+}
+
+fn kern_key(a: char, b: char) -> u64 {
+    (u64::from(a as u32) << 32) | u64::from(b as u32)
+}
+
+/// Brackets a right-to-left run draws mirrored (Unicode's Bidi_Mirrored
+/// pairs the UI's fonts carry).
+pub fn mirror(c: char) -> char {
+    match c {
+        '(' => ')',
+        ')' => '(',
+        '[' => ']',
+        ']' => '[',
+        '{' => '}',
+        '}' => '{',
+        '<' => '>',
+        '>' => '<',
+        '«' => '»',
+        '»' => '«',
+        '‹' => '›',
+        '›' => '‹',
+        '（' => '）',
+        '）' => '（',
+        '「' => '」',
+        '」' => '「',
+        _ => c,
+    }
+}
+
+impl FontMetrics {
+    /// The metrics of an MSDF font: its advances and kerning, and extents
+    /// measured over its printable ASCII glyphs (a cooked font knows its
+    /// real ascender and descender: pass them with
+    /// [`FontMetrics::with_extents`]).
+    pub fn from_msdf(font: &MsdfFont) -> FontMetrics {
+        let mut advances: Vec<(GlyphKey, f32)> =
+            font.glyphs.iter().map(|g| (g.key, g.advance)).collect();
+        og_core::sort::sort_by_key(&mut advances, |(c, _)| *c);
+        advances.dedup_by_key(|(c, _)| *c);
+        let mut kerning: Vec<(u64, f32)> = font
+            .kerning
+            .iter()
+            .map(|k| (kern_key(k.left, k.right), k.adjust))
+            .collect();
+        og_core::sort::sort_by_key(&mut kerning, |(k, _)| *k);
+        kerning.dedup_by_key(|(k, _)| *k);
+        let (mut top, mut bottom) = (0.0f32, 0.0f32);
+        for g in font
+            .glyphs
+            .iter()
+            .filter(|g| g.key.char().is_some_and(|c| c.is_ascii_graphic()))
+        {
+            top = top.max(g.plane_bounds[3]);
+            bottom = bottom.min(g.plane_bounds[1]);
+        }
+        if top <= 0.0 {
+            top = 0.8;
+            bottom = -0.2;
+        }
+        FontMetrics {
+            advances,
+            fixed: None,
+            kerning,
+            ascender: top,
+            descender: bottom,
+            file: None,
+            runs: None,
+            mixed: None,
+            prefer: 0,
+            pixel: 0,
+            range: None,
+        }
+    }
+
+    /// Every character advances `advance` em; ascender 0.8, descender -0.2.
+    /// For layout without a font (a headless executor, a golden test).
+    pub fn fixed(advance: f32) -> FontMetrics {
+        FontMetrics {
+            advances: Vec::new(),
+            fixed: Some(advance),
+            kerning: Vec::new(),
+            ascender: 0.8,
+            descender: -0.2,
+            file: None,
+            runs: None,
+            mixed: None,
+            prefer: 0,
+            pixel: 0,
+            range: None,
+        }
+    }
+
+    /// A pixel font on a `grid`-pixel em (0: an outline font): its text
+    /// sizes snap to whole multiples of the grid, and characters measured
+    /// from its file advance whole pixels, as its cooked glyphs do.
+    pub fn with_pixel(mut self, grid: u32) -> FontMetrics {
+        self.pixel = grid;
+        self
+    }
+
+    /// Only the characters in `ranges` (inclusive code points; empty: every
+    /// character): an `@font-face`'s `unicode-range`, so a text takes each
+    /// character from the face whose range has it (CSS Fonts 4 §4.5).
+    pub fn with_range(mut self, ranges: &[(u32, u32)]) -> FontMetrics {
+        self.range = (!ranges.is_empty()).then(|| ranges.into());
+        self
+    }
+
+    /// Whether `c` is in the face's `unicode-range`.
+    fn in_range(&self, c: char) -> bool {
+        self.range
+            .as_ref()
+            .is_none_or(|r| r.iter().any(|&(a, b)| (a..=b).contains(&u32::from(c))))
+    }
+
+    /// The pixel grid (`font { pixel <grid> }`); 0 for an outline font.
+    pub fn pixel_grid(&self) -> u32 {
+        self.pixel
+    }
+
+    /// The size a text of `size` CSS px is set at in this font: a pixel
+    /// font's nearest whole multiple of its grid, at least one, so each of
+    /// its pixels is a whole number of CSS pixels; `size` for any other.
+    pub fn pixel_size(&self, size: f32) -> f32 {
+        if self.pixel == 0 || size <= 0.0 {
+            return size;
+        }
+        let g = self.pixel as f32;
+        (size / g).round().max(1.0) * g
+    }
+
+    /// Tracking `em` of a text in this font: a pixel font's in whole pixels.
+    pub fn pixel_tracking(&self, em: f32) -> f32 {
+        match self.pixel {
+            0 => em,
+            g => (em * g as f32).round() / g as f32,
+        }
+    }
+
+    /// Shapes this font's shaped runs and measures characters outside its
+    /// atlas with its font file.
+    pub fn with_file(mut self, file: Option<Arc<FontFile>>) -> FontMetrics {
+        self.file = file;
+        self
+    }
+
+    /// The font file (an older name for [`FontMetrics::with_file`]).
+    pub fn with_shaper(self, file: Option<Arc<FontFile>>) -> FontMetrics {
+        self.with_file(file)
+    }
+
+    pub fn with_extents(mut self, ascender: f32, descender: f32) -> FontMetrics {
+        self.ascender = ascender;
+        self.descender = descender;
+        self
+    }
+
+    fn atlas_advance(&self, c: impl Into<GlyphKey>) -> Option<f32> {
+        let c = c.into();
+        self.advances
+            .binary_search_by_key(&c, |(k, _)| *k)
+            .ok()
+            .map(|i| self.advances[i].1)
+    }
+
+    /// A character's advance in em; 0 when the font lacks it (as og-render).
+    /// A character outside the atlas that the font file has is measured from
+    /// the file (and rendered at run time). A mixed font measures it with
+    /// the font its run takes.
+    pub fn advance(&self, c: char) -> f32 {
+        if self.runs.is_none() {
+            return self.own_advance(c);
+        }
+        self.part(self.font_of(c, None))
+            .map_or(0.0, |m| m.own_advance(c))
+    }
+
+    fn own_advance(&self, c: char) -> f32 {
+        if let Some(a) = self.fixed {
+            return a;
+        }
+        if let Some(a) = self.atlas_advance(c) {
+            return a;
+        }
+        let a = self.file.as_ref().and_then(|f| f.advance(c)).unwrap_or(0.0);
+        match self.pixel {
+            0 => a,
+            g => crate::glyphs::snap_to_grid(a, g),
+        }
+    }
+
+    /// Whether the font has a glyph for `c` (fixed metrics have every one;
+    /// a font with its file has every character the file has; a mixed font
+    /// has what any of its fonts has).
+    pub fn has(&self, c: char) -> bool {
+        self.own_has(c)
+            || self
+                .runs
+                .as_ref()
+                .is_some_and(|r| r.iter().any(|f| f.metrics.own_has(c)))
+    }
+
+    fn own_has(&self, c: char) -> bool {
+        self.in_range(c)
+            && (self.fixed.is_some()
+                || self.atlas_advance(c).is_some()
+                || self.file.as_ref().is_some_and(|f| f.covers(c)))
+    }
+
+    /// Whether the cooked atlas itself has `c`.
+    pub fn in_atlas(&self, c: char) -> bool {
+        self.in_atlas_key(GlyphKey::Char(c))
+    }
+
+    /// Whether the cooked atlas has the glyph `key` (a character's, or a
+    /// shaped form's by id).
+    pub fn in_atlas_key(&self, key: GlyphKey) -> bool {
+        if let GlyphKey::Char(c) = key
+            && !self.in_range(c)
+        {
+            return false;
+        }
+        self.fixed.is_some() || self.atlas_advance(key).is_some()
+    }
+
+    /// Whether a text is laid out per run, each run with the first of this
+    /// font's fonts that has it (a label mixing scripts no one font covers:
+    /// [`crate::Fonts::for_text`]).
+    pub fn is_mixed(&self) -> bool {
+        self.runs.is_some()
+    }
+
+    /// Font `k` of a mixed text (0: this one).
+    pub fn part(&self, k: usize) -> Option<&FontMetrics> {
+        match k {
+            0 => Some(self),
+            k => self.runs.as_ref()?.get(k - 1).map(|f| &f.metrics),
+        }
+    }
+
+    /// The font (0: this one, `k`: the `k`-th of `runs`) that draws `c` in
+    /// a mixed text after a character drawn with `prev`: a neutral
+    /// character or a mark stays with `prev` when that font has it (not an
+    /// emoji face: a space after an emoji takes a text face's, as browsers
+    /// fall back); any other the first font whose atlas has it, else the
+    /// first whose file renders it at run time, else `prev`'s (it is
+    /// missing everywhere).
+    fn font_of(&self, c: char, prev: Option<usize>) -> usize {
+        let Some(runs) = &self.runs else { return 0 };
+        let n = runs.len() + 1;
+        let m = |k: usize| self.part(k).expect("a font of the run");
+        if let Some(p) = prev
+            && sticks(c)
+            && m(p).own_has(c)
+            && !m(p).file.as_ref().is_some_and(|f| f.is_colour())
+        {
+            return p;
+        }
+        self.preferred(|k| m(k).own_has(c))
+            .or_else(|| (0..n).find(|&k| m(k).in_atlas(c)))
+            .or_else(|| (0..n).find(|&k| m(k).own_has(c)))
+            .unwrap_or(prev.unwrap_or(0))
+    }
+
+    /// The first of this font and its `prefer` preferred runs (none when
+    /// `prefer` is 0) that `takes`.
+    fn preferred(&self, takes: impl Fn(usize) -> bool) -> Option<usize> {
+        (self.prefer > 0)
+            .then(|| (0..=self.prefer).find(|&k| takes(k)))
+            .flatten()
+    }
+
+    /// The font (0: this one, `k`: the `k`-th of `runs`, as
+    /// [`UiFont::handle_of`] numbers them) that draws the grapheme cluster
+    /// `cluster` on its own.
+    pub fn face_of(&self, cluster: &str) -> u8 {
+        self.font_of_cluster(cluster, None) as u8
+    }
+
+    /// The font (as [`FontMetrics::font_of`]) that draws a grapheme
+    /// cluster (a base and its combining marks, a conjunct, an emoji
+    /// sequence) whole: its base's font when that font has every character
+    /// of it; else the first font whose atlas has them all, else the first
+    /// whose atlas or file does; else its base's (a mark no font has is
+    /// missing beside its base, not drawn from another face). Joiners and
+    /// variation selectors, which no face need draw, are not asked for.
+    fn font_of_cluster(&self, cluster: &str, prev: Option<usize>) -> usize {
+        let mut chars = cluster.chars();
+        let Some(base) = chars.next() else {
+            return prev.unwrap_or(0);
+        };
+        let k = self.font_of(base, prev);
+        let Some(runs) = &self.runs else { return k };
+        let drawn = || cluster.chars().filter(|&c| !invisible(c));
+        if chars.as_str().is_empty() || cluster.chars().skip(1).all(invisible) {
+            return k;
+        }
+        let m = |k: usize| self.part(k).expect("a font of the run");
+        if drawn().all(|c| m(k).own_has(c)) {
+            return k;
+        }
+        let n = runs.len() + 1;
+        self.preferred(|f| drawn().all(|c| m(f).own_has(c)))
+            .or_else(|| (0..n).find(|&f| drawn().all(|c| m(f).in_atlas(c))))
+            .or_else(|| (0..n).find(|&f| drawn().all(|c| m(f).own_has(c))))
+            .unwrap_or(k)
+    }
+
+    /// A mixed text's font runs in logical order: byte ranges and the font
+    /// each takes (one run of font 0 for a font that is not mixed). The
+    /// choice is per grapheme cluster ([`og_i18n::graphemes`]), so a base
+    /// letter and its marks stay in one run.
+    pub fn font_runs(&self, text: &str) -> Vec<(Range<usize>, usize)> {
+        if self.runs.is_none() {
+            return vec![(0..text.len(), 0)];
+        }
+        let mut out: Vec<(Range<usize>, usize)> = Vec::new();
+        // Neutral characters before the first letter go with its font.
+        let mut prev = text
+            .chars()
+            .find(|&c| !sticks(c))
+            .map(|c| self.font_of(c, None));
+        // Character index to byte offset.
+        let bytes: Vec<usize> = text
+            .char_indices()
+            .map(|(i, _)| i)
+            .chain([text.len()])
+            .collect();
+        for (a, b) in og_i18n::graphemes(text) {
+            let range = bytes[a]..bytes[b];
+            let k = self.font_of_cluster(&text[range.clone()], prev);
+            match out.last_mut() {
+                Some((r, f)) if *f == k => r.end = range.end,
+                _ => out.push((range, k)),
+            }
+            prev = Some(k);
+        }
+        out
+    }
+
+    /// The ascender and descender (em) a line of `text` is placed by: this
+    /// font's, or for a mixed text the highest ascender and the lowest
+    /// descender of this font (the line's strut) and the fonts its runs
+    /// take. Every run sits on one baseline, and the line box placed
+    /// around these extents holds each run's face, as CSS's line box holds
+    /// each inline box's: a taller fallback face (an Arabic or Devanagari
+    /// run in a Latin label) moves the shared baseline down instead of
+    /// rising out of the box.
+    pub fn extents(&self, text: &str) -> (f32, f32) {
+        if self.runs.is_none() {
+            return (self.ascender, self.descender);
+        }
+        self.font_runs(text)
+            .iter()
+            .filter_map(|(_, k)| self.part(*k))
+            .fold((self.ascender, self.descender), |(a, d), m| {
+                (a.max(m.ascender), d.min(m.descender))
+            })
+    }
+
+    /// The height of its lowercase letters, em (half an em for a font
+    /// without its file).
+    pub fn x_height(&self) -> f32 {
+        self.file.as_ref().map_or(0.5, |f| f.x_height())
+    }
+
+    /// The baseline of a line of `text` at `size` in a line box `line_h`
+    /// tall whose top is `top`: its [`FontMetrics::extents`] centred in the
+    /// box.
+    pub fn baseline(&self, text: &str, top: f32, line_h: f32, size: f32) -> f32 {
+        let (a, d) = self.extents(text);
+        top + (line_h - (a - d) * size) / 2.0 + a * size
+    }
+
+    /// The kerning between `a` and the `b` after it, em (0: none).
+    pub fn kern(&self, a: char, b: char) -> f32 {
+        if self.kerning.is_empty() {
+            return 0.0;
+        }
+        match self
+            .kerning
+            .binary_search_by_key(&kern_key(a, b), |(k, _)| *k)
+        {
+            Ok(i) => self.kerning[i].1,
+            Err(_) => 0.0,
+        }
+    }
+
+    /// Whether the font kerns at all.
+    pub fn kerns(&self) -> bool {
+        !self.kerning.is_empty()
+    }
+
+    /// The width of one line of text at `size` CSS pixels per em: the
+    /// advances and the kerning between neighbours, as og-render draws it;
+    /// a line with right-to-left or shaped characters as laid out visually.
+    pub fn measure(&self, text: &str, size: f32) -> f32 {
+        #[cfg(feature = "shaping")]
+        if let Some(layout) =
+            paragraph::layout(self, text, 1.0, 0.0, Features::NONE, Direction::Ltr, None)
+        {
+            return layout.full_width() * size;
+        }
+        if needs_visual(text) || self.is_mixed() {
+            return self
+                .visual(text, Direction::Ltr, 0.0)
+                .iter()
+                .map(|g| g.advance)
+                .sum::<f32>()
+                * size;
+        }
+        if self.kerning.is_empty() {
+            return text.chars().map(|c| self.advance(c)).sum::<f32>() * size;
+        }
+        let mut prev: Option<char> = None;
+        let mut w = 0.0f32;
+        for c in text.chars() {
+            if c == '\n' || !self.has(c) {
+                prev = None;
+                continue;
+            }
+            if let Some(p) = prev {
+                w += self.kern(p, c);
+            }
+            w += self.advance(c);
+            prev = Some(c);
+        }
+        w * size
+    }
+
+    /// [`FontMetrics::measure`] with `tracking` em after each character the
+    /// font draws (og-render's `Text::tracking`: CSS `letter-spacing`).
+    pub fn measure_tracked(&self, text: &str, size: f32, tracking: f32) -> f32 {
+        self.measure_with(text, size, tracking, Features::NONE)
+    }
+
+    /// [`FontMetrics::measure_tracked`] with a type step's OpenType
+    /// `features`: a text they shape is measured as it is drawn, glyph by
+    /// shaped glyph.
+    pub fn measure_with(&self, text: &str, size: f32, tracking: f32, features: Features) -> f32 {
+        #[cfg(feature = "shaping")]
+        if let Some(layout) =
+            paragraph::layout(self, text, 1.0, tracking, features, Direction::Ltr, None)
+        {
+            return layout.full_width() * size;
+        }
+        if (!features.is_empty() && self.shapes_features()) || tabulates(text, features) {
+            return self
+                .visual_with(text, Direction::Ltr, tracking, features)
+                .iter()
+                .map(|g| g.advance)
+                .sum::<f32>()
+                * size;
+        }
+        if tracking != 0.0 && (needs_visual(text) || self.is_mixed()) {
+            return self
+                .visual(text, Direction::Ltr, tracking)
+                .iter()
+                .map(|g| g.advance)
+                .sum::<f32>()
+                * size;
+        }
+        let w = self.measure(text, size);
+        if tracking == 0.0 {
+            return w;
+        }
+        w + tracking * size * text.chars().filter(|&c| c != '\n' && self.has(c)).count() as f32
+    }
+
+    /// One run of one direction as drawn, left to right: shaped when it has
+    /// a shaped script and the font can, else its characters (reversed and
+    /// mirrored when right to left), kerned when left to right. `first` is
+    /// the logical index of its first character. A mixed font cuts it into
+    /// its font runs, each laid out by its own font (in reverse order when
+    /// right to left).
+    pub fn run(&self, text: &str, rtl: bool, tracking: f32, first: usize) -> Vec<VisualGlyph> {
+        self.run_with(text, rtl, tracking, first, Features::NONE)
+    }
+
+    /// [`FontMetrics::run`] with OpenType `features`.
+    pub fn run_with(
+        &self,
+        text: &str,
+        rtl: bool,
+        tracking: f32,
+        first: usize,
+        features: Features,
+    ) -> Vec<VisualGlyph> {
+        if !self.is_mixed() {
+            return self.run_one(text, rtl, tracking, first, 0, features);
+        }
+        let mut parts = Vec::new();
+        for (range, k) in self.font_runs(text) {
+            let m = self.part(k).expect("a font of the run");
+            let f = first + text[..range.start].chars().count();
+            parts.push(m.run_one(&text[range], rtl, tracking, f, k as u8, features));
+        }
+        if rtl {
+            parts.reverse();
+        }
+        parts.concat()
+    }
+
+    /// [`FontMetrics::run`] with this font alone, its glyphs marked `font`;
+    /// with `tnum`, its digits on tabular advances ([`FontMetrics::tabulate`]).
+    fn run_one(
+        &self,
+        text: &str,
+        rtl: bool,
+        tracking: f32,
+        first: usize,
+        font: u8,
+        features: Features,
+    ) -> Vec<VisualGlyph> {
+        let mut out = self.run_raw(text, rtl, tracking, first, font, features);
+        if tabulates(text, features) {
+            self.tabulate(text, first, tracking, features, &mut out);
+        }
+        out
+    }
+
+    /// The widest of the font's digits 0 to 9, em; `None` when its digits
+    /// are already one advance (a face whose figures are tabular, by
+    /// default or by its `tnum` as shaped) or it has none.
+    fn tabular_advance(&self, features: Features) -> Option<f32> {
+        let digits = "0123456789";
+        let shaped = self
+            .file
+            .as_ref()
+            .and_then(|f| f.shape_with(digits, false, features, &|k| self.in_atlas_key(k)));
+        let adv: Vec<f32> = match shaped {
+            Some(g) if g.len() == 10 => g.iter().map(|g| g.advance).collect(),
+            _ => digits
+                .chars()
+                .filter(|&c| self.own_has(c))
+                .map(|c| self.own_advance(c))
+                .collect(),
+        };
+        let (lo, hi) = adv
+            .iter()
+            .fold((f32::MAX, 0.0f32), |(lo, hi), &a| (lo.min(a), hi.max(a)));
+        (!adv.is_empty() && hi - lo > 1e-4).then_some(hi)
+    }
+
+    /// The backstop for a face without tabular figures (the typography
+    /// audit, fix 4): each digit set on the widest digit's advance, its
+    /// glyph centred in it, as a `tnum` face draws them.
+    fn tabulate(
+        &self,
+        text: &str,
+        first: usize,
+        tracking: f32,
+        features: Features,
+        glyphs: &mut [VisualGlyph],
+    ) {
+        let Some(wide) = self.tabular_advance(features) else {
+            return;
+        };
+        let chars: Vec<char> = text.chars().collect();
+        // A shaped script keeps its joins untracked (run_raw).
+        let track = if chars.iter().any(|&c| og_i18n::needs_shaping(c)) {
+            0.0
+        } else {
+            tracking
+        };
+        for g in glyphs.iter_mut() {
+            let Some(&c) = g.index.checked_sub(first).and_then(|k| chars.get(k)) else {
+                continue;
+            };
+            if !c.is_ascii_digit() || (g.ch != c && g.glyph.is_none()) {
+                continue;
+            }
+            let own = if g.glyph.is_none() {
+                self.own_advance(c)
+            } else {
+                g.advance - track
+            };
+            g.x += (wide - own) / 2.0;
+            g.advance = wide + track;
+        }
+    }
+
+    fn run_raw(
+        &self,
+        text: &str,
+        rtl: bool,
+        tracking: f32,
+        first: usize,
+        font: u8,
+        features: Features,
+    ) -> Vec<VisualGlyph> {
+        let script = text.chars().any(og_i18n::needs_shaping);
+        // A glyph the atlas has, or a character the file renders at run time.
+        let has = |k: GlyphKey| {
+            self.in_atlas_key(k)
+                || k.char()
+                    .is_some_and(|c| self.file.as_ref().is_some_and(|f| f.advance(c).is_some()))
+        };
+        if (script || !features.is_empty())
+            && let Some(file) = &self.file
+            && let Some(shaped) = file.shape_with(text, rtl, features, &has)
+        {
+            // A shaped script keeps its joins untracked (step_tracking); a
+            // run shaped only for its features tracks as written.
+            let track = if script { 0.0 } else { tracking };
+            return shaped
+                .iter()
+                .map(|g| VisualGlyph {
+                    ch: g.ch,
+                    glyph: g.glyph,
+                    advance: g.advance + track,
+                    x: g.x,
+                    y: g.y,
+                    index: first + text[..(g.cluster as usize).min(text.len())].chars().count(),
+                    rtl,
+                    font,
+                })
+                .collect();
+        }
+        // A shaped run that cannot be drawn whole (its atlas lacks a form)
+        // falls back word by word: only the word that lacks it is drawn as
+        // written, and the line is as wide as its words measured alone (as
+        // a rich text's line breaking measures them).
+        if script && self.file.is_some() && text.contains(' ') {
+            let mut words: Vec<Vec<VisualGlyph>> = Vec::new();
+            let mut at = 0;
+            for piece in text.split_inclusive(' ') {
+                let (word, space) = piece.split_at(piece.trim_end_matches(' ').len());
+                for part in [word, space] {
+                    if !part.is_empty() {
+                        let f = first + text[..at].chars().count();
+                        words.push(self.run_raw(part, rtl, tracking, f, font, features));
+                        at += part.len();
+                    }
+                }
+            }
+            if rtl {
+                words.reverse();
+            }
+            return words.concat();
+        }
+        let n = text.chars().count();
+        let mut out: Vec<VisualGlyph> = Vec::with_capacity(n);
+        let glyph = |k: usize, c: char| VisualGlyph {
+            ch: c,
+            glyph: None,
+            advance: if self.own_has(c) {
+                self.own_advance(c) + tracking
+            } else {
+                0.0
+            },
+            x: 0.0,
+            y: 0.0,
+            index: first + k,
+            rtl,
+            font,
+        };
+        if rtl {
+            for (k, c) in text
+                .chars()
+                .enumerate()
+                .collect::<Vec<_>>()
+                .into_iter()
+                .rev()
+            {
+                out.push(glyph(k, mirror(c)));
+            }
+        } else {
+            let mut prev: Option<char> = None;
+            for (k, c) in text.chars().enumerate() {
+                let g = glyph(k, c);
+                if let (Some(p), true) = (prev, self.own_has(c))
+                    && let Some(last) = out.last_mut()
+                {
+                    last.advance += self.kern(p, c);
+                }
+                prev = self.own_has(c).then_some(c);
+                out.push(g);
+            }
+        }
+        out
+    }
+
+    /// One line as drawn: its bidi runs in visual order (UAX #9 at the
+    /// paragraph direction of its first strong character, `default` with
+    /// none), each laid out by [`FontMetrics::run`].
+    pub fn visual(&self, line: &str, default: Direction, tracking: f32) -> Vec<VisualGlyph> {
+        self.visual_with(line, default, tracking, Features::NONE)
+    }
+
+    /// [`FontMetrics::visual`] with OpenType `features`.
+    pub fn visual_with(
+        &self,
+        line: &str,
+        default: Direction,
+        tracking: f32,
+        features: Features,
+    ) -> Vec<VisualGlyph> {
+        let base = line_direction(line, default);
+        self.visual_at_with(line, base, tracking, features)
+    }
+
+    /// [`FontMetrics::visual`] at a given paragraph direction.
+    pub fn visual_at(&self, line: &str, base: Direction, tracking: f32) -> Vec<VisualGlyph> {
+        self.visual_at_with(line, base, tracking, Features::NONE)
+    }
+
+    /// [`FontMetrics::visual_at`] with OpenType `features`.
+    pub fn visual_at_with(
+        &self,
+        line: &str,
+        base: Direction,
+        tracking: f32,
+        features: Features,
+    ) -> Vec<VisualGlyph> {
+        #[cfg(feature = "shaping")]
+        if let Some(layout) = paragraph::layout(self, line, 1.0, tracking, features, base, None) {
+            return paragraph::visual(self, line, &layout);
+        }
+        if !needs_visual(line) && base == Direction::Ltr {
+            return self.run_with(line, false, tracking, 0, features);
+        }
+        let mut out = Vec::new();
+        for (range, rtl) in bidi_runs(line, base) {
+            let first = line[..range.start].chars().count();
+            out.extend(self.run_with(&line[range], rtl, tracking, first, features));
+        }
+        // Bidi marks and isolates have steered the runs; no face draws them.
+        out.retain(|g| !og_i18n::is_bidi_control(g.ch));
+        out
+    }
+
+    /// Whether this font can apply OpenType features: it ships its file
+    /// (`features` in its import) and this build shapes.
+    pub fn shapes_features(&self) -> bool {
+        FontFile::shapes()
+            && (self.file.is_some()
+                || self
+                    .runs
+                    .as_ref()
+                    .is_some_and(|r| r.iter().any(|f| f.metrics.file.is_some())))
+    }
+
+    /// The characters and placements a visual line draws with
+    /// (og-render's `Text::placements`).
+    pub fn drawn(glyphs: &[VisualGlyph]) -> (String, Vec<GlyphPlacement>) {
+        (
+            glyphs.iter().map(|g| g.ch).collect(),
+            glyphs
+                .iter()
+                .map(|g| GlyphPlacement {
+                    advance: g.advance,
+                    x: g.x,
+                    y: g.y,
+                    glyph: g.glyph,
+                })
+                .collect(),
+        )
+    }
+}
+
+/// A line's paragraph direction under a UI laid out in `ui`: its first
+/// strong character's (UAX #9 P2, isolates skipped), else the UI's, except
+/// that a line with no letter of its own (an amount, a change, a count)
+/// keeps left to right. At a right-to-left level such a line's leading
+/// and trailing neutrals took the far side (−$98,100 drew as $98,100−,
+/// +4% as 4%+, ×2 as 2×). Its alignment still follows the UI's direction.
+pub fn line_direction(line: &str, ui: Direction) -> Direction {
+    let lettered = line.chars().any(char::is_alphabetic);
+    og_i18n::paragraph_direction(line, if lettered { ui } else { Direction::Ltr })
+}
+
+/// A line as a text command draws it: as written (og-render kerns it), or
+/// for a line with right-to-left or shaped characters its visual glyphs and
+/// their placements.
+pub fn drawn_line(
+    m: &FontMetrics,
+    line: &str,
+    para: impl Into<Para>,
+    tracking: f32,
+    features: Features,
+) -> (String, Vec<GlyphPlacement>) {
+    let para = para.into();
+    if let Para::Override(d) = para {
+        return FontMetrics::drawn(&m.run_with(line, d == Direction::Rtl, tracking, 0, features));
+    }
+    let base = para.base(line);
+    #[cfg(feature = "shaping")]
+    if let Some(layout) = paragraph::layout(m, line, 1.0, tracking, features, base, None) {
+        return FontMetrics::drawn(&paragraph::visual(m, line, &layout));
+    }
+    if needs_visual(line)
+        || base == Direction::Rtl
+        || (!features.is_empty() && m.shapes_features())
+        || tabulates(line, features)
+    {
+        FontMetrics::drawn(&m.visual_at_with(line, base, tracking, features))
+    } else {
+        (line.to_string(), Vec::new())
+    }
+}
+
+/// How a paragraph's base direction is set (CSS `unicode-bidi`, docs/ui.md
+/// §2): from its first strong character, else the given direction
+/// (`Auto`, og-ui's own text and `plaintext`); the given direction
+/// (`Fixed`); or every character in that direction, unreordered
+/// (`Override`, `bidi-override`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Para {
+    Auto(Direction),
+    Fixed(Direction),
+    Override(Direction),
+}
+
+impl From<Direction> for Para {
+    fn from(d: Direction) -> Para {
+        Para::Auto(d)
+    }
+}
+
+impl Para {
+    /// The paragraph direction of `line`.
+    pub fn base(self, line: &str) -> Direction {
+        match self {
+            Para::Auto(d) => line_direction(line, d),
+            Para::Fixed(d) | Para::Override(d) => d,
+        }
+    }
+
+    /// `line`'s glyphs in visual order.
+    fn visual(self, m: &FontMetrics, line: &str, tracking: f32, f: Features) -> Vec<VisualGlyph> {
+        match self {
+            Para::Override(d) => m.run_with(line, d == Direction::Rtl, tracking, 0, f),
+            p => m.visual_at_with(line, p.base(line), tracking, f),
+        }
+    }
+}
+
+/// One text command's worth of a line: the font, what it draws and where
+/// it starts, `dx` em from the line's start (its width `width` em; 0 for
+/// the one piece of a font that is not mixed).
+#[derive(Clone, Debug, PartialEq)]
+pub struct Piece {
+    pub font: Option<FontHandle>,
+    pub dx: f32,
+    pub width: f32,
+    pub text: String,
+    pub placements: Vec<GlyphPlacement>,
+}
+
+/// What a line of `font` draws: one piece as [`drawn_line`] gives it, or
+/// for a mixed font its visual glyphs cut where the font changes (a
+/// style's Chinese companion beside its Latin face). World text drawn with
+/// the UI's fonts (`og.render.floatingText`) draws these too.
+pub fn pieces(font: &UiFont, line: &str, default: Direction, tracking: f32) -> Vec<Piece> {
+    pieces_with(font, line, default, tracking, Features::NONE)
+}
+
+/// [`pieces`] with a type step's OpenType `features`.
+pub fn pieces_with(
+    font: &UiFont,
+    line: &str,
+    default: impl Into<Para>,
+    tracking: f32,
+    features: Features,
+) -> Vec<Piece> {
+    let default = default.into();
+    if !font.metrics.is_mixed() {
+        let (text, placements) = drawn_line(&font.metrics, line, default, tracking, features);
+        return vec![Piece {
+            font: font.handle,
+            dx: 0.0,
+            width: 0.0,
+            text,
+            placements,
+        }];
+    }
+    split(
+        font,
+        &default.visual(&font.metrics, line, tracking, features),
+    )
+}
+
+/// [`pieces_with`] with `extra` em added after each space (CSS
+/// `text-align: justify`'s expansion at word separators, CSS Text 3 §7.1).
+pub fn pieces_spaced(
+    font: &UiFont,
+    line: &str,
+    default: impl Into<Para>,
+    tracking: f32,
+    features: Features,
+    extra: f32,
+) -> Vec<Piece> {
+    let mut glyphs = default
+        .into()
+        .visual(&font.metrics, line, tracking, features);
+    let mut shift = 0.0;
+    for g in &mut glyphs {
+        g.x += shift;
+        if matches!(g.ch, ' ' | '\u{a0}' | '\u{3000}') {
+            g.advance += extra;
+            shift += extra;
+        }
+    }
+    split(font, &glyphs)
+}
+
+/// Visual glyphs cut into one piece per run of one font, left to right.
+pub fn split(font: &UiFont, glyphs: &[VisualGlyph]) -> Vec<Piece> {
+    let mut out = Vec::new();
+    let mut x = 0.0f32;
+    for run in glyphs.chunk_by(|a, b| a.font == b.font) {
+        let (text, placements) = FontMetrics::drawn(run);
+        let width = run.iter().map(|g| g.advance).sum::<f32>();
+        out.push(Piece {
+            font: font.handle_of(run[0].font),
+            dx: x,
+            width,
+            text,
+            placements,
+        });
+        x += width;
+    }
+    out
+}
+
+/// Characters that keep the font of the run before them in a mixed text:
+/// spaces, punctuation and symbols, and combining marks and joiners.
+fn sticks(c: char) -> bool {
+    c.is_whitespace()
+        || !c.is_alphanumeric()
+        || matches!(c as u32,
+            0x0300..=0x036f | 0x0483..=0x0489 | 0x0591..=0x05bd | 0x05bf..=0x05c7
+            | 0x0610..=0x061a | 0x064b..=0x065f | 0x0670 | 0x06d6..=0x06ed
+            | 0x0900..=0x0903 | 0x093a..=0x094f | 0x0951..=0x0957 | 0x0962..=0x0963
+            | 0x1ab0..=0x1aff | 0x1dc0..=0x1dff | 0x200c..=0x200d | 0x20d0..=0x20ff
+            | 0xfe00..=0xfe0f)
+}
+
+/// Characters no face need draw: joiners and variation selectors.
+fn invisible(c: char) -> bool {
+    matches!(c as u32, 0x200c..=0x200d | 0x2060 | 0xfe00..=0xfe0f | 0xe0100..=0xe01ef)
+}
+
+/// Whether a line's digits take the tabular backstop: `tnum` and a digit.
+fn tabulates(line: &str, features: Features) -> bool {
+    features.tabular() && line.bytes().any(|b| b.is_ascii_digit())
+}
+
+/// Whether a line needs the bidi algorithm or shaping to be drawn.
+pub fn needs_visual(line: &str) -> bool {
+    line.chars().any(|c| {
+        og_i18n::needs_shaping(c) || og_i18n::is_rtl_char(c) || og_i18n::is_bidi_control(c)
+    })
+}
+
+/// A line's level runs in visual order: byte ranges and whether each runs
+/// right to left (UAX #9, unicode-bidi, at paragraph direction `base`).
+pub fn bidi_runs(line: &str, base: Direction) -> Vec<(std::ops::Range<usize>, bool)> {
+    use unicode_bidi::{BidiInfo, Level};
+    if line.is_empty() {
+        return Vec::new();
+    }
+    let level = match base {
+        Direction::Rtl => Level::rtl(),
+        Direction::Ltr => Level::ltr(),
+    };
+    let info = BidiInfo::new(line, Some(level));
+    let mut out = Vec::new();
+    for para in &info.paragraphs {
+        let (levels, runs) = info.visual_runs(para, para.range.clone());
+        for r in runs {
+            let rtl = levels[r.start].is_rtl();
+            out.push((r, rtl));
+        }
+    }
+    out
+}
+
+/// A font the UI lays out with and draws with.
+#[derive(Clone, Debug, PartialEq)]
+pub struct UiFont {
+    /// The font in the host's `RenderScene`; `None` measures but draws no text.
+    pub handle: Option<FontHandle>,
+    pub metrics: FontMetrics,
+}
+
+impl UiFont {
+    pub fn new(handle: FontHandle, font: &MsdfFont) -> UiFont {
+        UiFont {
+            handle: Some(handle),
+            metrics: FontMetrics::from_msdf(font),
+        }
+    }
+
+    /// Fixed-advance metrics and nothing drawn: [`FontMetrics::fixed`].
+    pub fn unrendered(advance: f32) -> UiFont {
+        UiFont {
+            handle: None,
+            metrics: FontMetrics::fixed(advance),
+        }
+    }
+
+    /// The font that draws [`VisualGlyph::font`] `k`: this one for 0, else
+    /// the `k`-th of a mixed text's other fonts.
+    pub fn handle_of(&self, k: u8) -> Option<FontHandle> {
+        match k {
+            0 => self.handle,
+            k => self.metrics.runs.as_ref()?.get(k as usize - 1)?.handle,
+        }
+    }
+
+    /// This font alone: no runs and no mixed variant (what a mixed font's
+    /// parts are).
+    pub fn alone(&self) -> UiFont {
+        let mut f = self.clone();
+        f.metrics.runs = None;
+        f.metrics.mixed = None;
+        f.metrics.prefer = 0;
+        f
+    }
+}
+
+impl Default for UiFont {
+    fn default() -> UiFont {
+        UiFont::unrendered(0.5)
+    }
+}
+
+/// One laid-out line.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Line {
+    pub text: String,
+    pub width: f32,
+}
+
+/// Characters that break anywhere (CJK ideographs, kana, Hangul, fullwidth forms).
+pub fn is_cjk(c: char) -> bool {
+    matches!(c as u32,
+        0x3000..=0x30ff | 0x3400..=0x4dbf | 0x4e00..=0x9fff | 0xac00..=0xd7af
+        | 0xf900..=0xfaff | 0xff00..=0xffef | 0x20000..=0x2fa1f)
+}
+
+/// UAX #14 opportunities, including dictionary segmentation of complex
+/// scripts. Breakable trailing whitespace is separate so it can hang at
+/// the end of a line; NBSP remains part of its unbreakable unit.
+pub fn tokens(paragraph: &str) -> Vec<(&str, bool)> {
+    let mut analysis = parley_engine::Analysis::new();
+    parley_engine::Analyzer::new().analyze(
+        paragraph,
+        &parley_engine::AnalysisOptions {
+            line_break_override: Some(&keep_katakana),
+            ..Default::default()
+        },
+        &mut analysis,
+    );
+    let breaks = paragraph
+        .char_indices()
+        .zip(analysis.char_info())
+        .filter_map(|((byte, _), info)| {
+            (byte > 0 && info.is_soft_wrap_opportunity()).then_some(byte)
+        })
+        .chain([paragraph.len()]);
+    let mut start = 0;
+    let mut out = Vec::new();
+    for end in breaks {
+        let unit = &paragraph[start..end];
+        let word = unit.trim_end_matches([' ', '\t', '\u{200b}']);
+        if !word.is_empty() {
+            out.push((word, false));
+        }
+        if word.len() < unit.len() {
+            out.push((&unit[word.len()..], true));
+        }
+        start = end;
+    }
+    out
+}
+
+/// Keep the engine's loanword policy while ICU owns all kinsoku rules.
+pub fn keep_katakana(pair: parley_engine::break_overrides::LineBreakContext) -> Option<bool> {
+    let kana = |c| matches!(c, 'ァ'..='ヺ' | 'ー' | 'ヽ' | 'ヾ' | 'ㇰ'..='ㇿ' | 'ｦ'..='ﾟ');
+    (kana(pair.before) && kana(pair.after)).then_some(false)
+}
+
+/// The widest unbreakable unit: a wrapping text's minimum width.
+pub fn longest_word(
+    text: &str,
+    m: &FontMetrics,
+    size: f32,
+    tracking: f32,
+    features: Features,
+) -> f32 {
+    text.split('\n')
+        .flat_map(tokens)
+        .filter(|(_, space)| !space)
+        .map(|(w, _)| m.measure_with(w, size, tracking, features))
+        .fold(0.0, f32::max)
+}
+
+/// The widest `\n`-separated line, unwrapped.
+pub fn widest_line(
+    text: &str,
+    m: &FontMetrics,
+    size: f32,
+    tracking: f32,
+    features: Features,
+) -> f32 {
+    text.split('\n')
+        .map(|l| m.measure_with(l, size, tracking, features))
+        .fold(0.0, f32::max)
+}
+
+/// Greedy line breaking at `max_width` (`None`: only at `\n`). Spaces at a
+/// break are dropped; a unit wider than the line breaks between characters.
+pub fn break_lines(
+    text: &str,
+    m: &FontMetrics,
+    size: f32,
+    tracking: f32,
+    features: Features,
+    max_width: Option<f32>,
+) -> Vec<Line> {
+    #[cfg(feature = "shaping")]
+    if let Some(lines) = paragraph::discretionary(m, text, size, tracking, features, max_width) {
+        return lines;
+    }
+    #[cfg(feature = "shaping")]
+    if let Some(layout) = paragraph::layout(
+        m,
+        text,
+        1.0,
+        tracking,
+        features,
+        og_i18n::paragraph_direction(text, Direction::Ltr),
+        max_width.map(|w| w / size),
+    ) {
+        return layout
+            .lines()
+            .map(|line| {
+                let range = line.text_range();
+                let text = text[range]
+                    .trim_end_matches([' ', '\t', '\r', '\n'])
+                    .to_owned();
+                Line {
+                    text,
+                    width: (line.metrics().advance - line.metrics().hanging_advance) * size,
+                }
+            })
+            .collect();
+    }
+    let mut lines = greedy_lines(
+        text,
+        max_width,
+        &|t| m.measure_with(t, size, tracking, features),
+        &|a, b| m.kern(a, b) * size,
+    );
+    // A kerning font kerns across the units too, and a shaped run is shaped
+    // whole: each line's width is its whole text measured (what is drawn),
+    // not the sum of its units.
+    if m.kerns() || m.is_mixed() || needs_visual(text) {
+        for l in &mut lines {
+            l.width = m.measure_with(&l.text, size, tracking, features);
+        }
+    }
+    lines
+}
+
+/// Greedy line breaking at `max_width` (`None`: only at `\n`) by UAX #14
+/// opportunities, each unit `measure`d and `seam` (the kerning) between
+/// two that meet without a space. Spaces at a break are dropped; a unit
+/// wider than the line breaks between its grapheme clusters.
+pub fn greedy_lines(
+    text: &str,
+    max_width: Option<f32>,
+    measure: &dyn Fn(&str) -> f32,
+    seam: &dyn Fn(char, char) -> f32,
+) -> Vec<Line> {
+    let mut lines = Vec::new();
+    for paragraph in text.split('\n') {
+        let Some(max) = max_width else {
+            lines.push(Line {
+                text: paragraph.to_owned(),
+                width: measure(paragraph),
+            });
+            continue;
+        };
+        let mut line = String::new();
+        let mut width = 0.0f32;
+        let mut spaces = String::new();
+        let mut spaces_w = 0.0f32;
+        let mut pushed_any = false;
+        for (unit, is_space) in tokens(paragraph) {
+            if is_space {
+                spaces.push_str(unit);
+                spaces_w += measure(unit);
+                continue;
+            }
+            let w = measure(unit);
+            // Atlas-only metrics kern at the seam, never reshape the growing
+            // prefix for each unit. Cooked-file paragraphs take Parley above.
+            let seam = if spaces.is_empty() {
+                line.chars()
+                    .next_back()
+                    .zip(unit.chars().next())
+                    .map_or(0.0, |(a, b)| seam(a, b))
+            } else {
+                0.0
+            };
+            if !line.is_empty() && width + spaces_w + w + seam > max {
+                lines.push(Line {
+                    text: std::mem::take(&mut line),
+                    width,
+                });
+                pushed_any = true;
+                width = 0.0;
+            } else if !line.is_empty() {
+                line.push_str(&spaces);
+                width += spaces_w + seam;
+            }
+            spaces.clear();
+            spaces_w = 0.0;
+            if line.is_empty() && w > max {
+                let bytes: Vec<_> = unit
+                    .char_indices()
+                    .map(|(b, _)| b)
+                    .chain([unit.len()])
+                    .collect();
+                for (a, b) in og_i18n::graphemes(unit) {
+                    let cluster = &unit[bytes[a]..bytes[b]];
+                    let cw = measure(cluster);
+                    if !line.is_empty() && width + cw > max {
+                        lines.push(Line {
+                            text: std::mem::take(&mut line),
+                            width,
+                        });
+                        pushed_any = true;
+                        width = 0.0;
+                    }
+                    line.push_str(cluster);
+                    width += cw;
+                }
+                continue;
+            }
+            line.push_str(unit);
+            width += w;
+        }
+        if !line.is_empty() || !pushed_any {
+            lines.push(Line { text: line, width });
+        }
+    }
+    lines
+}
