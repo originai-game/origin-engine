@@ -63,6 +63,7 @@
 </section>
 
 <style>
+.rpg-backpack[hidden], .rpg-backpack [hidden] { display: none; }
 .rpg-backpack { display: flex; flex-direction: column; width: stretch; height: stretch; gap: var(--space-sm); container-type: inline-size; }
 .rpg-band { display: flex; width: stretch; align-items: center; justify-content: center; gap: var(--space-md); flex: none; }
 .band-end { width: var(--size-lg); height: var(--space-lg); flex: none; }

@@ -17,6 +17,7 @@
 </section>
 
 <style>
+.rpg-combat-log[hidden], .rpg-combat-log [hidden] { display: none; }
 .rpg-combat-log { display: flex; flex-direction: column; width: stretch; height: stretch; gap: var(--space-xs); }
 .rpg-band { display: flex; width: stretch; align-items: center; flex: none; }
 .lines { width: stretch; flex: 1; min-height: 0; }

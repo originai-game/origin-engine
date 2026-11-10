@@ -30,6 +30,7 @@
 </section>
 
 <style>
+.rpg-place-card[hidden], .rpg-place-card [hidden] { display: none; }
 .rpg-place-card { display: flex; width: stretch; height: stretch; gap: var(--space-md); container-type: inline-size; padding: var(--space-sm); }
 .picture { width: 34%; height: stretch; object-fit: cover; flex: none; }
 .side { display: flex; width: stretch; gap: var(--space-md); align-items: center; }

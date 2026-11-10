@@ -31,6 +31,7 @@
 </nav>
 
 <style>
+.rpg-action-bar[hidden], .rpg-action-bar [hidden] { display: none; }
 .rpg-action-bar { display: flex; align-items: flex-end; gap: var(--space-lg); width: fit-content; }
 .skills, .items { display: flex; gap: var(--space-xs); padding: var(--space-xs); }
 .skill, .quick { width: calc(var(--size-xl) * 0.85); height: calc(var(--size-xl) * 0.85); padding: 0; }

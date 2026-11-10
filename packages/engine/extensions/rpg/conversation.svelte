@@ -33,6 +33,7 @@
 </section>
 
 <style>
+.rpg-conversation[hidden], .rpg-conversation [hidden] { display: none; }
 .rpg-conversation { display: flex; width: stretch; height: stretch; gap: var(--space-lg); container-type: inline-size; }
 .portrait { width: calc(var(--size-xxl) * 1.9); height: stretch; object-fit: cover; object-position: center top; flex: none; }
 .said { display: flex; flex-direction: column; width: 42%; gap: var(--space-sm); padding: var(--space-md) 0; flex: none; }

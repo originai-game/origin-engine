@@ -26,6 +26,7 @@
 </section>
 
 <style>
+.rpg-enemy-info[hidden], .rpg-enemy-info [hidden] { display: none; }
 .rpg-enemy-info { display: flex; flex-direction: column; width: stretch; gap: var(--space-xs); align-items: center; }
 .rpg-band { display: flex; width: stretch; align-items: center; justify-content: center; flex: none; }
 .enemy-name, .enemy-level { margin: 0; text-align: center; }

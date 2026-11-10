@@ -44,6 +44,7 @@
 </article>
 
 <style>
+.rpg-quest-detail[hidden], .rpg-quest-detail [hidden] { display: none; }
 .rpg-quest-detail { display: flex; flex-direction: column; width: stretch; height: stretch; gap: var(--space-sm); }
 .rpg-band { display: flex; width: stretch; align-items: center; gap: var(--space-sm); flex: none; }
 .band-mark { width: var(--size-sm); height: var(--size-sm); flex: none; }

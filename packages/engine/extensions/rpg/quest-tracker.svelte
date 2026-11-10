@@ -18,11 +18,11 @@
       <li class="tracker-step" data-done={s.done}><div class="tracker-mark"></div><span class="tracker-text">{s.text}</span></li>
     {/each}
   </ul>
-  <!-- pending: [hidden] matches hidden={false} (gap 14); {#if} until then, correct form hidden={!distance}. -->
-  {#if distance}<div class="tracker-distance"><div class="tracker-arrow"></div><span class="tracker-far">{distance}</span></div>{/if}
+  <div class="tracker-distance" hidden={!distance}><div class="tracker-arrow"></div><span class="tracker-far">{distance}</span></div>
 </section>
 
 <style>
+.rpg-quest-tracker[hidden], .rpg-quest-tracker [hidden] { display: none; }
 .rpg-quest-tracker { display: flex; flex-direction: column; width: stretch; gap: var(--space-xs); padding: var(--space-sm) var(--space-md); }
 .tracker-name { margin: 0; text-align: center; }
 .tracker-steps { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; gap: var(--space-xxs); }

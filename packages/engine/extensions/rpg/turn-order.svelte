@@ -26,6 +26,7 @@
 </section>
 
 <style>
+.rpg-turn-order[hidden], .rpg-turn-order [hidden] { display: none; }
 .rpg-turn-order { display: flex; flex-direction: column; width: stretch; gap: var(--space-xs); align-items: center; }
 .track { display: flex; width: stretch; align-items: center; gap: var(--space-xs); }
 .end { width: var(--size-sm); height: var(--size-md); flex: none; }

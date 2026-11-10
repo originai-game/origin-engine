@@ -29,6 +29,7 @@
 </section>
 
 <style>
+.rpg-party[hidden], .rpg-party [hidden] { display: none; }
 .rpg-party { width: stretch; }
 .cards { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: var(--space-sm); width: stretch; }
 .member { position: relative; width: stretch; padding: var(--space-xs); gap: var(--space-xxs); align-items: stretch; justify-content: flex-start; }

@@ -33,6 +33,7 @@
 </figure>
 
 <style>
+.rpg-world-map[hidden], .rpg-world-map [hidden] { display: none; }
 .rpg-world-map { position: relative; width: stretch; height: stretch; margin: 0; container-type: inline-size; }
 .sheet { position: relative; width: stretch; height: stretch; overflow: hidden; }
 .terrain { position: absolute; left: 0; top: 0; width: stretch; height: stretch; object-fit: cover; }

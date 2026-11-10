@@ -66,6 +66,7 @@
 </article>
 
 <style>
+.rpg-item-card[hidden], .rpg-item-card [hidden] { display: none; }
 .rpg-item-card { display: flex; flex-direction: column; width: stretch; height: stretch; gap: var(--space-xs); container-type: inline-size; }
 .hero { position: relative; display: flex; width: stretch; height: calc(var(--size-xxl) * 1.25); flex: none; align-items: center; justify-content: center; }
 .hero-glow { position: absolute; left: 6%; top: 0; width: 88%; height: stretch; }

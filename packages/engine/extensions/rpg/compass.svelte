@@ -20,6 +20,7 @@
 </div>
 
 <style>
+.rpg-compass[hidden], .rpg-compass [hidden] { display: none; }
 .rpg-compass { position: relative; display: flex; width: stretch; height: var(--size-lg); align-items: center; }
 .end { width: var(--size-md); height: stretch; flex: none; }
 .strip { position: relative; width: stretch; height: stretch; }

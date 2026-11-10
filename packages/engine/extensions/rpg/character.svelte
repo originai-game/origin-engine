@@ -18,16 +18,15 @@
   (a slot's key) and unequip (X or pad Y on the focused slot, its key).
 -->
 <section id="RpgCharacter" class="rpg-character" aria-label={title ? title : name}>
-  <!-- pending: [hidden] matches hidden={false} (gap 14); {#if} until then, correct form hidden={!title} / hidden={!!title}. -->
-  {#if title}<header class="rpg-band"><div class="band-end start"></div><h2 class="rpg-title">{title}</h2><div class="band-end finish"></div></header>{:else}
-  <header class="who">
+  <header class="rpg-band" hidden={!title}><div class="band-end start"></div><h2 class="rpg-title">{title}</h2><div class="band-end finish"></div></header>
+  <header class="who" hidden={!!title}>
     <img class="portrait" src={portrait} alt="" hidden={!portrait}>
     <div class="who-text">
       <h2 class="char-name">{name}</h2>
       <p class="char-line">{line}</p>
       <div class="rpg-rule" role="separator"></div>
     </div>
-  </header>{/if}
+  </header>
   <div class="doll">
     <img class="figure" src={figure} alt="" hidden={!figure}>
     <div class="column start" role="group">
@@ -61,6 +60,7 @@
 </section>
 
 <style>
+.rpg-character[hidden], .rpg-character [hidden] { display: none; }
 .rpg-character { display: flex; flex-direction: column; width: stretch; height: stretch; gap: var(--space-sm); container-type: inline-size; }
 .rpg-band { display: flex; width: stretch; align-items: center; justify-content: center; gap: var(--space-md); flex: none; }
 .band-end { width: var(--size-lg); height: var(--space-lg); flex: none; }

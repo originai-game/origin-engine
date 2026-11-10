@@ -27,6 +27,7 @@
 </div>
 
 <style>
+.rpg-vitals[hidden], .rpg-vitals [hidden] { display: none; }
 .rpg-vitals { position: relative; display: flex; align-items: center; gap: var(--space-xs); width: fit-content; }
 .ring { width: var(--size-xl); height: var(--size-xl); flex: none; overflow: hidden; border-radius: 50%; }
 .rpg-vitals[data-plate=large] .ring { width: calc(var(--size-xxl) * 1.6); height: calc(var(--size-xxl) * 1.6); }
@@ -41,6 +42,7 @@
 .bar-fill:dir(rtl) { left: auto; right: 0; }
 .bar-figure { position: relative; font-variant-numeric: tabular-nums; white-space: nowrap; }
 @media (width < 600px) {
+  .rpg-vitals[data-plate=compact] .bars { width: var(--size-xxl); }
   .rpg-vitals[data-plate=large] .ring { width: calc(var(--size-xxl) * 1.05); height: calc(var(--size-xxl) * 1.05); }
   .rpg-vitals[data-plate=large] .badge { top: calc(var(--size-xxl) * 1.05 - var(--size-md)); }
   .rpg-vitals[data-plate=large] .bars { width: calc(var(--size-xxl) * 1.7); }
