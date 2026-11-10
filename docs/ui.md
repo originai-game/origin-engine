@@ -1711,10 +1711,12 @@ a second, and over either `burst <n>` (that many at once when the element
 first stands), `for <time>` (the rate stops after it), `life <time>`, a
 speed (`120px/s`, or a range of two), `up`, `down` or an angle, a shape,
 a size and colours (`effect="confetti 70 burst 110 for 1.4s"`,
-`effect="12 diamond 6px #ffd166 #fff"`). `-og-meta:
-vignette #a00` or `tint <colour>` draws a full-screen overlay with the
-element that never takes input, its strength the element's `opacity`
-(`#Hurt { -og-meta: vignette #a00; opacity: var(--hit); }`). The engine
+`effect="12 diamond 6px #ffd166 #fff"`). `<og-overlay effect="vignette
+#a00">` (or `tint <colour>`, or `material <material>` written as
+`-og-material` writes one) draws a full-screen overlay that never takes
+input, its strength the overlay's `opacity` (`<og-overlay id="Hurt"
+effect="vignette #a00">` with `#Hurt { opacity: var(--hit); }`); the
+removed `-og-meta` property is refused with that hint. The engine
 registers emitters and overlays every tick while their element stands, so
 a retained element keeps emitting with nothing built (0 bindings, 0
 reconciled). Reduced motion silences bursts and emitters. All of it is

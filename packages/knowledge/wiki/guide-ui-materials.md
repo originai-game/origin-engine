@@ -50,7 +50,7 @@ property, so a store drives it through `style:`:
 
 The element and its children are drawn offscreen and composited through it;
 `og.load.document` loads the materials its declarations name.
-`-og-meta: material "…" …` composites the whole frame under the element
+`<og-overlay effect="material …">` composites the whole frame under it
 through one the same way.
 
 - Animate a parameter from a store each tick (a burn's `progress` from 0

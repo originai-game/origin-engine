@@ -346,8 +346,8 @@ writer. The game's art-contract measurements remain available through
   bubbles, dust, sparks, fireworks), throw confetti once with
   `effect="confetti 70 burst 110 for 1.4s"`, or set rate, shape, size, `life`, speed
   (`120px/s`) and colours yourself. The `celebration` component is confetti,
-  a burst, a level-up flourish or fireworks. Flash damage with `#Hurt {
-  -og-meta: vignette #a00; opacity: var(--hit); }`.
+  a burst, a level-up flourish or fireworks. Flash damage with `<og-overlay
+  id="Hurt" effect="vignette #a00">` and `#Hurt { opacity: var(--hit); }`.
   drawn flat on the ground in perspective, inert.
 - Turn a model on a turntable with `<viewport src={$target} camera-controls
   camera-orbit="30deg 75deg 3m" max-camera-orbit="auto 100deg 6m"

@@ -1,0 +1,16 @@
+{
+  "breaking": [
+    {
+      "member": "UI screen overlays",
+      "change": "Removed -og-meta. A full-screen vignette, tint or material overlay is now its own element, <og-overlay effect=\"…\">, with the same grammar; its strength is still the element's opacity.",
+      "fix": "Replace an element styled with -og-meta: <value> by <og-overlay id=\"…\" effect=\"<value>\"></og-overlay> and keep its opacity (and any opacity animation) in CSS. A material parameter that came from var() comes from a bound attribute instead: effect={$fx}, the store holding the whole value.",
+      "find": ["-og-meta"]
+    }
+  ],
+  "added": [
+    {
+      "member": "<og-overlay effect>",
+      "summary": "A full-screen overlay element: vignette [<colour>], tint <colour> or material <material>, drawn at the element's opacity and never taking input; og.load.document loads the ui-material asset its effect names."
+    }
+  ]
+}

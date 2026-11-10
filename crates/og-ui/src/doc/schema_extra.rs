@@ -290,9 +290,9 @@ pub const PROPS: &[PropSpec] = &[
     PropSpec {
         name: "meta",
         ty: Ty::Text,
-        on: On::All,
+        on: On::Kinds(&["box"]),
         two_way: false,
-        doc: "`-og-meta: vignette [<colour>] | tint <colour> | material <material>`: a full-screen overlay drawn with the element, never taking input, its strength the element's `opacity` (`#Hurt { -og-meta: vignette #a00; opacity: var(--hit); }`); `material` composites the frame under it through a material written as `-og-material` writes one (`-og-meta: material ripple(6 48 60)` for sanity, `-og-meta: material \"fx/static.ogt\" var(--k)`). A pulse is a CSS animation of its opacity.",
+        doc: "`<og-overlay effect=\"vignette [<colour>] | tint <colour> | material <material>\">`: a full-screen overlay drawn with the element, never taking input, its strength the element's `opacity` (`<og-overlay id=\"Hurt\" effect=\"vignette #a00\">` with `#Hurt { opacity: var(--hit); }`); `material` composites the frame under it through a material written as `-og-material` writes one (`effect=\"material ripple(6 48 60)\"` for sanity, `effect={$fx}` from a store holding the whole value). A pulse is a CSS animation of its opacity.",
     },
     PropSpec {
         name: "mass",

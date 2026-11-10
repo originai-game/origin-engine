@@ -271,8 +271,8 @@ impl UiDocument {
         out
     }
 
-    /// The `type ui-material` assets its `-og-material` and `-og-meta:
-    /// material` declarations name (`-og-material: "ui-kits/materials/foil.ogt"
+    /// The `type ui-material` assets its `-og-material` declarations and
+    /// `<og-overlay effect="material …">` name (`-og-material: "ui-kits/materials/foil.ogt"
     /// …`), each once: the host loads them and binds them with
     /// [`crate::Ui::define_material`].
     pub fn material_assets(&self) -> Vec<String> {
@@ -308,7 +308,7 @@ impl UiDocument {
             // Declarations with custom properties are resolved per element:
             // their asset is the same whatever the variables hold.
             for d in n.rules.iter().flat_map(|rule| &rule.declarations) {
-                if matches!(d.name.as_str(), "-og-material" | "-og-meta")
+                if d.name == "-og-material"
                     && let Ok(text) = d.value.substitute(&mut |_| Some("0".into()))
                 {
                     add(&d.name, &text);

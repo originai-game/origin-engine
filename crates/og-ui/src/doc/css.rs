@@ -254,7 +254,6 @@ pub const STYLE: &[(&str, &str)] = &[
     ("fieldSizing", "field-sizing"),
     ("willChange", "will-change"),
     ("objectPosition", "object-position"),
-    ("meta", "-og-meta"),
     ("userSelect", "user-select"),
     ("textPath", "-og-text-path"),
     ("textPathOffset", "-og-text-path-offset"),
@@ -435,7 +434,7 @@ fn conv(prop: &str) -> Conv {
         "position" => Conv::Kw(POSITIONS),
         "step" => Conv::Var("text"),
         "font" => Conv::Var("font"),
-        "textPath" | "textPathOffset" | "meta" => Conv::Raw,
+        "textPath" | "textPathOffset" => Conv::Raw,
         "textPathSide" => Conv::Kebab,
         "area" => Conv::Ident,
         "areas" => Conv::Strs,
@@ -586,6 +585,9 @@ fn neutral(key: &str) -> Option<&'static str> {
 pub(crate) fn unsupported(name: &str) -> Option<&'static str> {
     Some(match name {
         "visibility" => "write the attribute `visible false` (or `visible bind …`)",
+        "-og-meta" => {
+            "write <og-overlay effect=\"vignette #a00\"> (tint <colour>, material <material>) and give it opacity"
+        }
         "-og-overlaps" => {
             "an overlap is a finding of og.ui.overlaps and og ui check, not a style; one the design means stays as it is"
         }
@@ -2130,12 +2132,6 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
                 vec![Value::String(value.trim().to_owned())],
             )])
         }
-        // Engine effects with no CSS standard (docs/ui.md): read by the
-        // document build, which names a bad value.
-        "-og-meta" => Ok(vec![e(
-            "meta",
-            vec![Value::String(value.trim().to_owned())],
-        )]),
         "-og-text-path-offset" => {
             crate::text_path::parse_offset(value)?;
             Ok(vec![e(

@@ -1412,7 +1412,7 @@ mod tests {
 
     /// `-og-material: "<asset>" var(--burn)`: the defined material's handle,
     /// its defaults under the numbers written, and a store driving one
-    /// through a custom property; `-og-meta: material` takes the same.
+    /// through a custom property; `<og-overlay effect="material …">` takes the same.
     ///
     /// Ways it could fail: an asset path read as a built-in (or refused), a
     /// default lost under the written numbers, a store change that does not
@@ -1423,10 +1423,9 @@ mod tests {
         use crate::reactive::session::Command;
         use crate::{InputFrame, Ui, UiDesc, Viewport};
         let doc = r#"<meta name="component" content="card">
-<div id="Root"><div id="Card" style:--burn={$burn}>Card</div><div id="Hurt"></div></div>
+<div id="Root"><div id="Card" style:--burn={$burn}>Card</div><og-overlay id="Hurt" effect='material "fx/burn.ogt" 0.25'></og-overlay></div>
 <style>
 #Card { width: 120px; height: 160px; background: #334455; -og-material: "fx/burn.ogt" var(--burn) 0 0 0 6; }
-#Hurt { -og-meta: material "fx/burn.ogt" 0.25; }
 </style>"#;
         let parsed = crate::doc::UiDocument::parse("card.svelte", doc).unwrap();
         assert_eq!(parsed.material_assets(), ["fx/burn.ogt"]);
@@ -1492,7 +1491,7 @@ mod tests {
                 m,
                 Some(crate::world::MetaDesc { kind: crate::world::MetaKind::Material { material: og_render::UiMaterial::Custom(h), params }, .. }) if *h == handle && params[0][0] == 0.25
             )),
-            "-og-meta: material takes the asset"
+            "og-overlay effect=\"material\" takes the asset"
         );
     }
 }

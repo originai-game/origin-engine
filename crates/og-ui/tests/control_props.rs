@@ -1307,6 +1307,67 @@ fn overlaps_are_reported_not_declared() {
     });
 }
 
+/// `<og-overlay effect>` is the full-screen overlay `-og-meta` was: drawn
+/// over the screen at the overlay's opacity, `none` drawing nothing. The
+/// removed property is refused naming the element, and `effect` belongs
+/// to og-overlay alone. Ways it could fail: the overlay not drawn, its
+/// strength not following opacity, `-og-meta` still accepted, or the
+/// attribute read on any element.
+#[test]
+fn og_overlay_draws_a_screen_overlay_at_its_opacity() {
+    let error = refused(
+        r#"<meta name="component" content="t"><div/><style>div { -og-meta: vignette #a00; }</style>"#,
+    );
+    assert!(
+        error.contains("-og-meta") && error.contains("og-overlay"),
+        "{error}"
+    );
+    let error = refused(r#"<meta name="component" content="t"><div effect="tint #fff"></div>"#);
+    assert!(error.contains("unknown attribute effect"), "{error}");
+    let doc = |effect: &str| {
+        format!(
+            r#"<meta name="component" content="t">
+<div id="Page"><og-overlay id="Hurt" effect="{effect}" class={{$mode}}></og-overlay></div>
+<style>
+#Hurt {{ opacity: 0.3; }}
+#Hurt.on {{ opacity: 0.7; }}
+</style>"#
+        )
+    };
+    let frame = |effect: &str, mode: &str| {
+        let mut d = Doc::new(&doc(effect), &[("mode", json!(mode))], true);
+        d.step(InputFrame::default());
+        d.ui.frame().items.clone()
+    };
+    for effect in [
+        "vignette #a00",
+        "tint #3366ff80",
+        "material ripple(6 48 60)",
+    ] {
+        let (low, high) = (frame(effect, "off"), frame(effect, "on"));
+        assert!(
+            low.len() > frame("none", "off").len(),
+            "{effect}: the overlay draws"
+        );
+        assert_ne!(low, high, "{effect}: its strength follows opacity");
+    }
+    // A material parameter from a store, through the attribute.
+    let bound = r#"<meta name="component" content="t">
+<div id="Page"><og-overlay id="Hurt" effect={$fx}></og-overlay></div>"#;
+    let mut d = Doc::new(bound, &[("fx", json!("material ripple(6 48 60)"))], true);
+    let param = |d: &Doc| {
+        d.ui.frame().items.iter().find_map(|it| match &it.cmd {
+            DrawCmd::BeginLayer { params, .. } => Some(params[0][0]),
+            _ => None,
+        })
+    };
+    // The bound value reaches the overlay on the frame after mounting.
+    d.step(InputFrame::default());
+    assert_eq!(param(&d), Some(6.0));
+    d.set("fx", json!("material ripple(9 48 60)"));
+    assert_eq!(param(&d), Some(9.0), "the store drives the parameter");
+}
+
 #[test]
 fn discrete_display_exit_finishes_before_removing_content() {
     for name in ["enter", "exit"] {

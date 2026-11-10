@@ -439,8 +439,8 @@ fn emitter_desc(
     Ok(Some(d))
 }
 
-/// `-og-meta: vignette [<colour>] | tint <colour> | material <material> |
-/// none`, the material written as `-og-material` writes one (resolved by
+/// `<og-overlay effect="vignette [<colour>] | tint <colour> | material
+/// <material> | none">`, the material written as `-og-material` writes one (resolved by
 /// `material`).
 fn meta_desc(
     v: &str,
@@ -471,7 +471,7 @@ fn meta_desc(
         (Some("tint"), Some(c)) => MetaKind::Tint { color: srgba(c)? },
         _ => {
             return Err(
-                "-og-meta is vignette [<colour>], tint <colour>, material <material> or none"
+                "og-overlay effect is vignette [<colour>], tint <colour>, material <material> or none"
                     .into(),
             );
         }
@@ -511,7 +511,9 @@ impl Ui {
             .map(|v| {
                 meta_desc(v, |m| {
                     super::super::paint_css::material(m)?
-                        .ok_or_else(|| "-og-meta: material takes a material, not none".to_string())
+                        .ok_or_else(|| {
+                            "og-overlay effect: material takes a material, not none".to_string()
+                        })
                         .and_then(|m| self.css_material(m))
                 })
             })
@@ -1221,7 +1223,7 @@ mod tests {
         assert!(UiDocument::parse("fx.svelte", &rejected).is_err());
     }
 
-    /// og-emitter and `-og-meta` stay registered on the ticks their
+    /// og-emitter and og-overlay stay registered on the ticks their
     /// element is not built again, and leave with it; `-og-burst` in a
     /// keyframe is a burst event.
     ///
@@ -1233,11 +1235,11 @@ mod tests {
         let doc = r#"<meta name="component" content="fx">
 <div id="Root">
   {#if $on}<og-emitter id="Gem" effect="30 diamond 6px #ffd166"></og-emitter>{/if}
-  <div id="Hurt"></div>
+  <og-overlay id="Hurt" effect="vignette #aa0000"></og-overlay>
 </div>
 <style>
 #Gem { width: 40px; height: 40px; animation: pop 1s; }
-#Hurt { -og-meta: vignette #aa0000; opacity: 0.5; }
+#Hurt { opacity: 0.5; }
 @keyframes pop { 50% { -og-burst: 24 48px #ffffff 600ms; } }
 </style>"#;
         let mut ui = Ui::new(UiDesc::default());
