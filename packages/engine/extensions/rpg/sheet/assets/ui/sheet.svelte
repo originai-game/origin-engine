@@ -1,4 +1,4 @@
-<meta name="component" content="RpgSheet">
+<meta name="screen" content="RpgSheet" data-layer="menu" data-input="menu">
 
 <div id="Sheet">
   {#if $page == 'journal'}
