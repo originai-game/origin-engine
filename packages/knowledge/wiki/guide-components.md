@@ -796,9 +796,9 @@ Its own props, beside every element's:
 | `fill` | `bool` | Equal tabs filling the available width. |
 
 <a id="guide-components-26"></a>
-### `components §26` `<input type="text">`, `<textarea>` (`field`): A text control (two-way `input`): `<input>` for one line, `<textarea>` for several; `type="number"` with `-og-stepper: buttons` is a number stepper with minus and plus buttons
+### `components §26` `<input type="text">`, `<textarea>` (`field`): A text control (two-way `input`): `<input>` for one line, `<textarea>` for several; `type="number"` keeps editable text and adds increment/decrement buttons. Min, max and step constrain stepping; data-wrap, data-large-step and data-format configure it
 
-A text control (two-way `input`): `<input>` for one line, `<textarea>` for several; `type="number"` with `-og-stepper: buttons` is a number stepper with minus and plus buttons. A leaf; text-bearing controls accept text content: `<input type="text" id="Name" />` or `<textarea id="Name" rows="4" />`.
+A text control (two-way `input`): `<input>` for one line, `<textarea>` for several; `type="number"` keeps editable text and adds increment/decrement buttons. Min, max and step constrain stepping; data-wrap, data-large-step and data-format configure it. A leaf; text-bearing controls accept text content: `<input type="text" id="Name" />` or `<textarea id="Name" rows="4" />`.
 
 Its own props, beside every element's:
 
@@ -808,10 +808,9 @@ Its own props, beside every element's:
 | `min` | `number` | The range's low end; a number input under it is invalid (`rangeUnderflow`). |
 | `max` | `number` | The range's high end; a number input over it is invalid (`rangeOverflow`). |
 | `step` | `number` | A slider snaps to multiples of this (0: continuous). A number input's value off the step grid from `min` is invalid (default 1; `any` or 0: no step). |
-| `-og-stepper:` | `none \| buttons` | A number input drawn as minus, its value and plus (`-og-stepper: buttons`). |
-| `-og-stepper-wrap:` | `none \| wrap` | A stepper past its max goes to its min and back (`-og-stepper-wrap: wrap`; needs both). |
-| `-og-stepper-large-step:` | `<number>` | What a held stepper button's repeats move by after a second (`-og-stepper-large-step: 10`); 0 is ten steps. |
-| `data-format` | `text` | How a stepper writes its value: an ICU message over `value` in the UI's locale (`data-format="{value, number} m"`, `{value, number, compact}`, `{value, plural, =0 {Off} =1 {Low} other {High}}`); empty writes the number. |
+| `data-wrap` | `bool` | A number input past its last valid step at or below max goes to min and back (`data-wrap`; needs both bounds). |
+| `data-large-step` | `number` | The larger number-input step for Shift adjustment or a button held past a second (`data-large-step="10"`); 0 is ten steps. |
+| `data-format` | `text` | How an unfocused number input presents its value: an ICU message over `value` in the UI's locale (`data-format="{value, number} m"`, `{value, number, compact}`, `{value, plural, =0 {Off} =1 {Low} other {High}}`). Editing retains the raw string. |
 | `appearance:` | `auto \| none` | none drops the control's own frame: its box, borders and background are the document's. |
 | `suggestions` | `names` | A text input's suggestions, from the `<datalist>` its `list` names (its options' values, or its `items={$names}`): a list under the field while it has the focus, those containing the text first by prefix, choosing one writes it to the field. |
 | `value` | `text` | The field's text (written back). Two-way only with an explicit bind: attribute. |

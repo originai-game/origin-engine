@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "Editable number input spinners",
+      "summary": "Number inputs retain the text field's height, raw string, validation, selection, clipboard and readonly behavior while offering side-by-side increment/decrement buttons with 24px desktop and 44px phone/touch widths. Up/Down preserves editing focus; Shift arrows and Shift-click use the larger step. Spinner options support wrapping and unfocused display formatting without rewriting the editing value."
+    }
+  ]
+}

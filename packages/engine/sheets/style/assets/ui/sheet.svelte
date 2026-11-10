@@ -261,7 +261,6 @@
 #Display, #Heading { font-family: fantasy; }
 .label, .state { font: var(--text-caption); color: var(--ink-muted); margin: 0; }
 .na { width: var(--space-lg); height: var(--stroke-regular); background: var(--line); }
-.stepper { -og-stepper: buttons; }
 /* A row per control, a captioned box per state: seven abreast on a desktop,
    two on a phone, so every state's caption and control keep their width at
    150 % text and no word breaks. */

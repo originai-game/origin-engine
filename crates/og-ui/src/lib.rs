@@ -133,9 +133,9 @@ pub use tokens::StyleTokens;
 pub use ui::{
     ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT, ARROW_UP, ButtonDesc, ButtonVariant, CjkLocale,
     ControlSize, FaceStyle, FamilyFace, FeedbackPlay, FieldDesc, FontFace, Fonts, HUD_MAX_ASPECT,
-    IconAtlas, IconCell, ImageDesc, InlineImage, LabelDesc, PanelDesc, ProgressDesc, Response,
-    ScrollAxes, ScrollDesc, Synth, TextAreaDesc, TextTarget, Ui, UiDebugElement, UiDebugStyle,
-    UiDesc, UiFrame, Viewport, debug_overlay,
+    IconAtlas, IconCell, ImageDesc, InlineImage, LabelDesc, NumberInputOptions, PanelDesc,
+    ProgressDesc, Response, ScrollAxes, ScrollDesc, Synth, TextAreaDesc, TextTarget, Ui,
+    UiDebugElement, UiDebugStyle, UiDesc, UiFrame, Viewport, debug_overlay,
 };
 pub use vcursor::VirtualCursorDesc;
 pub use viewport::{ViewportDesc, ViewportResponse};

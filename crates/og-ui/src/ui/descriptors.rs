@@ -1227,6 +1227,17 @@ pub struct ProgressDesc {
     pub width: Option<Size>,
 }
 
+/// Spinner behavior for an editable number field. Its raw string remains
+/// the editing value; formatting affects only its unfocused presentation.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct NumberInputOptions {
+    /// Wrap between min and the last valid step at or below max.
+    pub wrap: bool,
+    /// Shift-click step; zero uses ten ordinary steps.
+    pub large_step: f32,
+    pub format: crate::widgets::ValueFormat,
+}
+
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct FieldDesc {
     /// Shown, dimmed, while the field is empty.
@@ -1266,6 +1277,9 @@ pub struct FieldDesc {
     /// What else its text must be (`required`, `pattern`, `min`…): one
     /// failing makes it invalid as `invalid` does.
     pub constraints: crate::input_type::Constraints,
+    /// Number spinner options; `None` uses nonwrapping unit-step behavior
+    /// (or the step in `constraints`) without formatting the raw value.
+    pub number: Option<NumberInputOptions>,
 }
 
 /// How a multi-line text area looks ([`Ui::text_area`]).

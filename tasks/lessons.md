@@ -136,3 +136,15 @@ landing with evidence; do not require the coordinator to repeat “keep going.�
 Finished CSS runs remain in checkpoints for fill and replay. Cache invalidation
 must use the sampler's running status, not a nonempty animation list. Check both
 the changing output and the return to cached commands after completion or removal.
+
+## 2026-11-10 — Spinner geometry includes its hit targets
+
+Number fields keep the same height as sibling inputs. Fit minimum-size targets
+side by side using width, never by making a taller spinner column. Reserve their
+width and text-padding inset before layout; test desktop and coarse-pointer
+geometry, including sibling height equality, and inspect both captures.
+Numeric fields must claim Up/Down before navigation runs so keyboard stepping
+preserves editing focus; test Shift and readonly through actual input events.
+HTML number inputs keep a raw editable string, including empty and intermediate
+values. Add spinner behavior to the text field; never replace it with an f32-only
+stepper. Keep held-repeat timing and the pad keyboard in the migration tests.

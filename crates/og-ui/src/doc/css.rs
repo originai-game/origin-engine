@@ -202,9 +202,6 @@ pub const STYLE: &[(&str, &str)] = &[
     ("top", "top"),
     ("end", "inset-inline-end"),
     ("bottom", "bottom"),
-    ("stepper", "-og-stepper"),
-    ("stepperWrap", "-og-stepper-wrap"),
-    ("stepperLargeStep", "-og-stepper-large-step"),
     ("countDuration", "-og-count-duration"),
     ("countDecimals", "-og-count-decimals"),
     ("reveal", "-og-reveal"),
@@ -440,13 +437,12 @@ fn conv(prop: &str) -> Conv {
         | "cornerBottomLeftShape" => Conv::Raw,
         "marginTop" | "marginRight" | "marginBottom" | "marginLeft" => Conv::Margin,
         "gap" | "radius" | "fade" | "start" | "top" | "end" | "bottom" => Conv::Len,
-        "aspect" | "opacity" | "z" | "scale" | "maxLines" | "stepperLargeStep" => Conv::Num,
+        "aspect" | "opacity" | "z" | "scale" | "maxLines" => Conv::Num,
         "rotate" => Conv::Angle,
         "background" | "fadeInto" | "color" | "secondaryTint" | "ink" => Conv::Paint,
         "align" | "cross" | "direction" | "frame" | "reduced" | "textAlign" | "verticalAlign"
         | "captionSide" | "fit" | "display" | "markerType" | "markerPosition" | "userSelect"
-        | "appearance" | "labelDirection" | "stepper" | "stepperWrap" | "selectFilter"
-        | "fitMin" => Conv::Kebab,
+        | "appearance" | "labelDirection" | "selectFilter" | "fitMin" => Conv::Kebab,
         "countDuration" | "countDecimals" | "reveal" => Conv::Num,
         "spotlight" => Conv::Ident,
         "wrap" => Conv::Bool("wrap", "nowrap"),

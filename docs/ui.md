@@ -314,9 +314,12 @@ type="radio" value="easy" bind:group={$level}>` is one choice of a group:
 checked while the bound store holds its value, which a press writes;
 radios binding one store are one group (`name` is accepted and adds
 nothing). Each takes its caption from its `<label>` as a checkbox does.
-`<input type="number">` with `-og-stepper: buttons` (a pack's `.stepper`
-rule, say) is minus, its value and plus, bounded by `min`, `max` and
-`step`. `<menu>` is a box with role menu whose buttons are menu items.
+`<input type="number">` keeps an editable text field with increment and
+decrement buttons, bounded by `min`, `max` and `step`. `data-wrap` wraps
+at those bounds; `data-large-step` controls Shift adjustment and held repeats.
+Formatting through `data-format` applies only while unfocused. The raw string,
+selection, validation, readonly focus and pad keyboard remain available.
+`<menu>` is a box with role menu whose buttons are menu items.
 Beyond `onclick`, an element fires `onhold` once per press held for its
 `data-hold` ms (default 500), `oncontextmenu` on a secondary press or a
 long press, `ontoggle` when a `<details>` or popover opens or closes, and

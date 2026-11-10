@@ -1197,39 +1197,7 @@ impl Ui {
                     max: r.num("max").map(f64::from),
                     step: r.num("stepBy").map(f64::from),
                 };
-                resp = if styled.str("stepper") == Some("buttons")
-                    && r.str("type") == Some("number")
-                {
-                    let out = self.number_stepper(
-                        id.as_str(),
-                        s.trim().parse().unwrap_or(0.0),
-                        &crate::widgets::NumberStepperDesc {
-                            min: r.num("min"),
-                            max: r.num("max"),
-                            step: r.num("stepBy").filter(|s| *s > 0.0).unwrap_or(1.0),
-                            large_step: styled.num("stepperLargeStep").unwrap_or(0.0),
-                            wrap: styled.str("stepperWrap") == Some("wrap"),
-                            format: crate::widgets::ValueFormat {
-                                message: r
-                                    .str("dataFormat")
-                                    .filter(|f| !f.is_empty())
-                                    .and_then(|f| og_i18n::Message::parse(f).ok()),
-                                locale: self.locale.clone(),
-                                ..Default::default()
-                            },
-                            disabled: r.flag("disabled") || r.flag("readonly"),
-                            width: r.size("width"),
-                            ..Default::default()
-                        },
-                    );
-                    if out.changed {
-                        s = out.value.to_string();
-                    }
-                    crate::Response {
-                        changed: out.changed,
-                        ..crate::Response::default()
-                    }
-                } else if r.flag("multiline") {
+                resp = if r.flag("multiline") {
                     self.docs.placeholder_ink = self.pseudo_ink(&styled);
                     let out = self.text_area(
                         id.as_str(),
@@ -1267,12 +1235,27 @@ impl Ui {
                             autocomplete: r.str("autocomplete").unwrap_or_default().to_string(),
                             readonly: r.flag("readonly"),
                             constraints: constraints.clone(),
+                            number: (r.flag("dataWrap")
+                                || r.num("dataLargeStep").is_some()
+                                || r.str("dataFormat").is_some())
+                            .then(|| crate::NumberInputOptions {
+                                wrap: r.flag("dataWrap"),
+                                large_step: r.num("dataLargeStep").unwrap_or(0.0),
+                                format: crate::widgets::ValueFormat {
+                                    message: r
+                                        .str("dataFormat")
+                                        .filter(|f| !f.is_empty())
+                                        .and_then(|f| og_i18n::Message::parse(f).ok()),
+                                    locale: self.locale.clone(),
+                                    ..Default::default()
+                                },
+                            }),
                         },
                     );
                     self.docs.placeholder_ink = None;
                     out
                 };
-                if styled.str("stepper") != Some("buttons") && !r.flag("readonly") {
+                if !r.flag("readonly") {
                     self.pad_keyboard(&path, &r, &mut s, &mut resp);
                 }
                 if let Some(V::Strs(all)) = r.get("suggestions") {

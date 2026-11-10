@@ -1337,7 +1337,13 @@ impl RetainedHost {
             }));
         let text = values.str("text").unwrap_or_default().to_owned();
         let previous = e.resolved.as_ref().map(|r| &r.values.cascade);
-        let reads = values.cascade.viewport_reads;
+        let mut reads = values.cascade.viewport_reads;
+        if e.document.nodes[e.index].kind == NodeKind::Element("field")
+            && values.str("type") == Some("number")
+        {
+            reads.width = true;
+            reads.coarse_pointer = true;
+        }
         for (axis, read) in reads.axes().into_iter().enumerate() {
             if read {
                 self.media[axis].insert(identity.clone());

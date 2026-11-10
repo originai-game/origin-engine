@@ -5,6 +5,12 @@
       "change": "Removed behavior declarations from CSS and their old reflected attributes, without aliases.",
       "fix": "Use data-fill-origin and data-min-gap on input type=range, data-cycle on select, data-detents and data-edge on dialog, and data-hit-slop on any element. Bindings, events, pointer priority, sheet drag/snap state and checkpointing are unchanged.",
       "find": ["-og-fill-origin", "-og-min-gap", "-og-select:", "-og-sheet-detents", "-og-sheet-edge", "-og-hit-slop"]
+    },
+    {
+      "member": "-og-stepper, -og-stepper-wrap, -og-stepper-large-step",
+      "change": "Removed the proprietary number-input styling and reflected attributes. Number inputs use the editable field with spinner buttons, not the f32-only stepper widget.",
+      "fix": "Use input type=number with min, max, step, data-wrap and data-large-step. Data-format affects only unfocused presentation. Raw text, selection, validation, readonly focus and the pad keyboard remain available.",
+      "find": ["-og-stepper"]
     }
   ]
 }

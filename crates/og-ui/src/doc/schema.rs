@@ -252,7 +252,7 @@ pub const CORE_KINDS: &[KindSpec] = &[
     KindSpec {
         name: "field",
         container: false,
-        doc: "A text control (two-way `input`): `<input>` for one line, `<textarea>` for several; `type=\"number\"` with `-og-stepper: buttons` is a number stepper with minus and plus buttons.",
+        doc: "A text control (two-way `input`): `<input>` for one line, `<textarea>` for several; `type=\"number\"` keeps editable text and adds increment/decrement buttons. Min, max and step constrain stepping; data-wrap, data-large-step and data-format configure it.",
     },
     KindSpec {
         name: "badge",
@@ -1409,28 +1409,22 @@ pub const CORE_PROPS: &[PropSpec] = &[
         "Its value (HTML `value`), what its group holds when it is checked."
     ),
     p!(
-        "stepper",
-        Ty::Word(&["none", "buttons"]),
+        "dataWrap",
+        Ty::Bool,
         ["field"],
-        "A number input drawn as minus, its value and plus (`-og-stepper: buttons`)."
+        "A number input past its last valid step at or below max goes to min and back (`data-wrap`; needs both bounds)."
     ),
     p!(
-        "stepperWrap",
-        Ty::Word(&["none", "wrap"]),
-        ["field"],
-        "A stepper past its max goes to its min and back (`-og-stepper-wrap: wrap`; needs both)."
-    ),
-    p!(
-        "stepperLargeStep",
+        "dataLargeStep",
         Ty::Num,
         ["field"],
-        "What a held stepper button's repeats move by after a second (`-og-stepper-large-step: 10`); 0 is ten steps."
+        "The larger number-input step for Shift adjustment or a button held past a second (`data-large-step=\"10\"`); 0 is ten steps."
     ),
     p!(
         "dataFormat",
         Ty::Text,
         ["field"],
-        "How a stepper writes its value: an ICU message over `value` in the UI's locale (`data-format=\"{value, number} m\"`, `{value, number, compact}`, `{value, plural, =0 {Off} =1 {Low} other {High}}`); empty writes the number."
+        "How an unfocused number input presents its value: an ICU message over `value` in the UI's locale (`data-format=\"{value, number} m\"`, `{value, number, compact}`, `{value, plural, =0 {Off} =1 {Low} other {High}}`). Editing retains the raw string."
     ),
     p!(
         "count",

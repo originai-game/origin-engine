@@ -170,6 +170,295 @@ impl Rig {
 }
 
 #[test]
+fn number_options_wrap_and_step_without_rewriting_formatted_text() {
+    let mut ui = ui_with_font(add_test_font(&mut og_render::RenderScene::new()));
+    let mut value = "1".to_string();
+    let mut desc = FieldDesc {
+        input_type: InputType::Number,
+        width: Some(Size::Fixed(200.0)),
+        number: Some(NumberInputOptions {
+            wrap: true,
+            large_step: 0.3,
+            format: ValueFormat {
+                decimals: Some(2),
+                unit: " kg".into(),
+                ..Default::default()
+            },
+        }),
+        ..Default::default()
+    };
+    desc.constraints.min = Some(0.0);
+    desc.constraints.max = Some(1.0);
+    desc.constraints.step = Some(0.1);
+    let tick = |ui: &mut Ui, value: &mut String, input| {
+        ui.begin(input, Viewport::new(300.0, 100.0));
+        let response = ui.text_field("Number", value, &desc);
+        ui.end();
+        response
+    };
+    tick(&mut ui, &mut value, InputFrame::default());
+    assert_eq!(value, "1");
+    assert!(ui.frame().items.iter().any(|item| matches!(&item.cmd,
+        DrawCmd::Text { text, .. } if text == "1.00 kg")));
+    for (shift, expected) in [(false, "0"), (true, "0.3")] {
+        let button = ui.element("Number/Increment").unwrap();
+        let pointer = Vec2::new(
+            button.x + button.width / 2.0,
+            button.y + button.height / 2.0,
+        );
+        for down in [true, false] {
+            tick(
+                &mut ui,
+                &mut value,
+                InputFrame {
+                    pointer,
+                    pointer_inside: true,
+                    down,
+                    pressed: down,
+                    released: !down,
+                    shift,
+                    ..Default::default()
+                },
+            );
+        }
+        assert_eq!(value, expected);
+    }
+    for (key, expected) in [(UiKey::Up, "0.6"), (UiKey::Down, "0.3")] {
+        let response = tick(
+            &mut ui,
+            &mut value,
+            InputFrame {
+                keys: vec![key],
+                shift: true,
+                ..Default::default()
+            },
+        );
+        assert!(response.changed && response.focused);
+        assert_eq!(
+            value, expected,
+            "Shift arrows use the configured large step"
+        );
+    }
+}
+
+#[test]
+fn number_buttons_repeat_while_held_and_accelerate() {
+    let mut ui = ui_with_font(test_font_metrics());
+    let mut value = "0".to_string();
+    let mut desc = FieldDesc {
+        input_type: InputType::Number,
+        width: Some(Size::Fixed(277.0)),
+        number: Some(NumberInputOptions {
+            large_step: 1.5,
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
+    desc.constraints.step = Some(0.25);
+    let tick = |ui: &mut Ui, value: &mut String, desc: &FieldDesc, input| {
+        ui.begin(input, Viewport::new(1280.0, 720.0));
+        let response = ui.text_field("Number", value, desc);
+        ui.end();
+        response
+    };
+    tick(&mut ui, &mut value, &desc, InputFrame::default());
+    for (button, sign, readonly) in [
+        ("Increment", 1.0, false),
+        ("Decrement", -1.0, false),
+        ("Increment", 1.0, true),
+    ] {
+        desc.readonly = readonly;
+        tick(&mut ui, &mut value, &desc, InputFrame::default());
+        let rect = ui.element(&format!("Number/{button}")).unwrap();
+        let pointer = Vec2::new(rect.x + rect.width / 2.0, rect.y + rect.height / 2.0);
+        let rate = ui.ticks_per_second();
+        let mut changes = Vec::new();
+        for frame in 0..rate * 2 {
+            let before: f64 = value.parse().unwrap();
+            let response = tick(
+                &mut ui,
+                &mut value,
+                &desc,
+                InputFrame {
+                    pointer,
+                    pointer_inside: true,
+                    down: true,
+                    pressed: frame == 0,
+                    ..Default::default()
+                },
+            );
+            let delta = value.parse::<f64>().unwrap() - before;
+            assert_eq!(response.changed, delta != 0.0);
+            if delta != 0.0 {
+                let age = f64::from(frame) / f64::from(rate);
+                assert!(!readonly);
+                assert!(frame == 0 || age > 0.4, "no repeat before the hold delay");
+                assert_eq!(delta, sign * if age > 1.0 { 1.5 } else { 0.25 });
+                changes.push(age);
+            }
+        }
+        if !readonly {
+            assert_eq!(changes[0], 0.0, "a press steps immediately");
+            assert!(changes[1] > 0.4 && changes[1] < 0.5);
+            assert!(
+                changes
+                    .windows(2)
+                    .any(|w| w[0] > 0.5 && w[1] < 1.6 && w[1] - w[0] >= 0.12)
+            );
+            assert!(
+                changes.windows(2).any(|w| w[0] > 1.6 && w[1] - w[0] < 0.1),
+                "long holds repeat faster"
+            );
+        }
+        let before = value.clone();
+        tick(
+            &mut ui,
+            &mut value,
+            &desc,
+            InputFrame {
+                pointer,
+                pointer_inside: true,
+                released: true,
+                ..Default::default()
+            },
+        );
+        assert_eq!(value, before, "release must not add another click step");
+    }
+    let mut rig = Rig::with(
+        r#"<meta name="component" content="form"><div><input id="Number" type="number" bind:value={$value} /></div>"#,
+        &["value"],
+    );
+    rig.set("value", json!("0"));
+    let pointer = rig.centre("Number/Increment");
+    for frame in 0..90 {
+        rig.step(InputFrame {
+            pointer,
+            pointer_inside: true,
+            down: true,
+            pressed: frame == 0,
+            ..Default::default()
+        });
+    }
+    assert!(
+        rig.store("value").as_str().unwrap().parse::<f64>().unwrap() > 10.0,
+        "retained buttons keep repeating between input events"
+    );
+}
+
+#[test]
+fn number_spinner_targets_fit_inside_the_field() {
+    for coarse in [false, true] {
+        let mut ui = ui_with_font(test_font_metrics());
+        let mut vp = Viewport::new(1280.0, 844.0);
+        vp.coarse_pointer = coarse;
+        ui.begin(InputFrame::default(), vp);
+        ui.text_field(
+            "Number",
+            &mut "0.5".into(),
+            &FieldDesc {
+                input_type: InputType::Number,
+                width: Some(Size::Fixed(277.0)),
+                ..Default::default()
+            },
+        );
+        ui.text_field("Sibling", &mut String::new(), &FieldDesc::default());
+        ui.end();
+        let field = ui.element("Number").unwrap();
+        assert_eq!(field.height, ui.element("Sibling").unwrap().height);
+        let up = ui.element("Number/Increment").unwrap();
+        let down = ui.element("Number/Decrement").unwrap();
+        let minimum = if coarse { 44.0 } else { 24.0 };
+        let inset = ui.theme().space.md;
+        for button in [&up, &down] {
+            assert!(button.width >= minimum);
+            assert_eq!(button.y, field.y);
+            assert_eq!(button.height, field.height);
+            assert!(button.x + button.width <= field.x + field.width - inset);
+        }
+        assert!(down.x + down.width <= up.x, "targets must not overlap");
+    }
+    let mut rig = Rig::with(
+        r#"<meta name="component" content="form"><div><input id="Number" type="number" bind:value={$value} /></div>"#,
+        &["value"],
+    );
+    for (width, coarse, target) in [
+        (1280.0, false, 24.0),
+        (390.0, false, 44.0),
+        (1280.0, true, 44.0),
+        (1280.0, false, 24.0),
+    ] {
+        let mut viewport = Viewport::new(width, 844.0);
+        viewport.coarse_pointer = coarse;
+        rig.ui.begin(InputFrame::default(), viewport);
+        rig.ui.build_retained_documents(&bind::NoEnv).unwrap();
+        rig.ui.end();
+        assert_eq!(
+            rig.el("Number/Increment").width,
+            target,
+            "retained targets follow the viewport"
+        );
+    }
+}
+
+#[test]
+fn number_buttons_keep_the_editable_value_and_readonly_selection() {
+    let mut rig = Rig::with(
+        r#"<meta name="component" content="form">
+        <div>
+        <input id="Number" type="number" min="-2" max="3" step="0.25" bind:value={$value} />
+        <input id="Read" type="number" readonly bind:value={$other} />
+        </div>"#,
+        &["value", "other"],
+    );
+    rig.focus("Number");
+    rig.typed("1e");
+    assert_eq!(rig.store("value"), "1e");
+    rig.typed("1");
+    assert_eq!(rig.store("value"), "1e1");
+    rig.set("value", json!("0.5"));
+    rig.step(InputFrame::default());
+    rig.click(rig.centre("Number/Increment"));
+    assert_eq!(rig.store("value"), "0.75");
+    rig.click(rig.centre("Number/Decrement"));
+    assert_eq!(rig.store("value"), "0.5");
+    rig.set("value", json!("0.6"));
+    rig.step(InputFrame::default());
+    rig.click(rig.centre("Number/Increment"));
+    assert_eq!(rig.store("value"), "0.75");
+    rig.focus("Number");
+    for (key, shift, expected) in [
+        (UiKey::Up, false, "1"),
+        (UiKey::Down, false, "0.75"),
+        (UiKey::Down, true, "-1.75"),
+        (UiKey::Up, true, "0.75"),
+    ] {
+        rig.step(InputFrame {
+            keys: vec![key],
+            shift,
+            ..Default::default()
+        });
+        assert_eq!(rig.store("value"), expected);
+        assert!(
+            rig.ui.frame().text_input.is_some(),
+            "arrows keep editing focus"
+        );
+    }
+    rig.set("other", json!("2"));
+    rig.step(InputFrame::default());
+    rig.focus("Read");
+    rig.typed("9");
+    rig.click(rig.centre("Read/Increment"));
+    rig.step(InputFrame {
+        keys: vec![UiKey::Up],
+        ..Default::default()
+    });
+    assert_eq!(rig.store("other"), "2");
+    rig.chord(UiKey::KeyA);
+    rig.chord(UiKey::KeyC);
+    assert_eq!(rig.ui.take_clipboard().as_deref(), Some("2"));
+}
+
+#[test]
 fn a_password_is_masked_uncopyable_and_revealed_by_its_toggle() {
     let mut rig = Rig::new();
     rig.focus("Pin");
@@ -433,6 +722,7 @@ fn html_constraints_readonly_rows_and_label_checkboxes() {
 #[ignore = "requires GPU"]
 fn input_types_match_their_reference_frames() {
     use og_render::*;
+    let mut failures = Vec::new();
     for (width, height) in [(1280u32, 720u32), (390, 844)] {
         let mut scene = RenderScene::new();
         let font = add_test_font(&mut scene);
@@ -464,6 +754,10 @@ fn input_types_match_their_reference_frames() {
         rig.ui.begin(InputFrame::default(), vp);
         rig.ui.build_retained_documents(&bind::NoEnv).unwrap();
         rig.ui.end();
+        assert_eq!(
+            rig.el("Age/Increment").width,
+            if width == 390 { 44.0 } else { 24.0 }
+        );
         let mut overlay = Overlay::new(width as f32, height as f32, 1.0);
         rig.ui.frame().emit(&EmitDesc::default(), &mut overlay);
         scene.overlay = Some(overlay);
@@ -498,8 +792,10 @@ fn input_types_match_their_reference_frames() {
         let expected = image::open(&own)
             .unwrap_or_else(|e| panic!("{}: {e} (OG_UI_CAPTURE=1 records it)", own.display()))
             .to_rgba8();
-        let (rmse, _) = compare(&image.pixels, expected.as_raw(), renderer.info(), &own)
-            .unwrap_or_else(|e| panic!("{name}: {e}"));
-        println!("{name}: RMSE {rmse:.6}");
+        match compare(&image.pixels, expected.as_raw(), renderer.info(), &own) {
+            Ok((rmse, _)) => println!("{name}: RMSE {rmse:.6}"),
+            Err(error) => failures.push(format!("{name}: {error}")),
+        }
     }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
 }

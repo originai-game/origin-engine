@@ -410,6 +410,30 @@ fn a_pad_focus_opens_the_on_screen_keyboard() {
         "Done closes it, and it stays closed"
     );
     assert_eq!(d.read("name"), json!("qq"));
+
+    let number = text.replace("<input id=\"Name\"", "<input type=\"number\" id=\"Name\"");
+    let d = &mut Doc::new(&number, &[("name", json!(""))], true);
+    d.step(InputFrame {
+        gamepad: GamepadFrame {
+            pressed: 1 << 13,
+            held: 1 << 13,
+            device: Some(Device::Xbox),
+            ..GamepadFrame::default()
+        },
+        ..InputFrame::default()
+    });
+    for _ in 0..20 {
+        d.step(InputFrame::default());
+    }
+    let digit = key(d, 0, 0).expect("number inputs retain their pad keyboard");
+    d.click_at(Vec2::new(
+        digit.x + digit.width / 2.0,
+        digit.y + digit.height / 2.0,
+    ));
+    assert!(
+        d.read("name").as_str().unwrap().parse::<f64>().is_ok(),
+        "a numeric key edits the original number input"
+    );
 }
 
 #[test]
@@ -1442,7 +1466,7 @@ fn hold_fill_width(d: &Doc) -> f32 {
 
 /// HTML's core controls beyond the switch: a plain checkbox is a box with a
 /// check (`indeterminate` a dash), radios share a `bind:group`, a number
-/// input with `-og-stepper: buttons` steps, `<menu>` holds menu items, and
+/// input stays editable while its buttons step, `<menu>` holds menu items, and
 /// `onhold`, `oncontextmenu`, `ontoggle` and `onclose` fire.
 ///
 /// Ways it could fail: a plain checkbox still drawn as a switch, a radio
@@ -1451,6 +1475,13 @@ fn hold_fill_width(d: &Doc) -> f32 {
 /// a primary press, or toggle and close never firing.
 #[test]
 fn core_controls_choose_step_hold_and_report() {
+    for declaration in [
+        "-og-stepper: buttons",
+        "-og-stepper-wrap: wrap",
+        "-og-stepper-large-step: 10",
+    ] {
+        assert!(refused(&format!("<meta name=\"component\" content=\"t\"><input type=\"number\"/><style>input {{ {declaration}; }}</style>")).contains("-og-stepper"));
+    }
     let text = r#"<meta name="component" content="t">
 <div id="Page">
   <label><input type="checkbox" id="Box" bind:checked={$box}> Box</label>
@@ -1458,15 +1489,13 @@ fn core_controls_choose_step_hold_and_report() {
   <label><input type="checkbox" switch id="Sw" data-on="On" data-off="Off"> Switch</label>
   <label><input type="radio" id="Easy" name="lv" value="easy" bind:group={$level}> Easy</label>
   <label><input type="radio" id="Hard" name="lv" value="hard" bind:group={$level}> Hard</label>
-  <input type="number" id="Qty" class="stepper" max="3" data-format="{value, number} m" bind:value={$qty}>
-  <input type="number" id="Lv" class="stepper wrap" min="0" max="2" bind:value={$lv}>
+  <input type="number" id="Qty" max="3" data-format="{value, number} m" bind:value={$qty}>
+  <input type="number" id="Lv" min="0" max="20" step="2" data-wrap data-large-step="6" bind:value={$lv}>
   <menu id="Menu"><button id="Copy">Copy</button></menu>
   <button id="Buy" onhold={buy} data-hold="300" oncontextmenu={more}>Buy</button>
   <details id="More" summary="More" ontoggle={toggled}><p>x</p></details>
 </div>
 <style>
-.stepper { -og-stepper: buttons; }
-.wrap { -og-stepper-wrap: wrap; }
 #Page { gap: 8px; padding: 8px; }
 #Buy::-og-hold { background: #ff0000; }
 </style>"#;
@@ -1474,9 +1503,15 @@ fn core_controls_choose_step_hold_and_report() {
         ("box", json!(false)),
         ("level", json!("easy")),
         ("qty", json!("2")),
-        ("lv", json!("2")),
+        ("lv", json!("20")),
     ];
-    let d = &mut Doc::new(text, &stores, true);
+    let mut scene = og_render::RenderScene::new();
+    let d = &mut Doc::with_font(
+        text,
+        &stores,
+        true,
+        crate::support::add_test_font(&mut scene),
+    );
     for _ in 0..5 {
         d.step(InputFrame::default());
     }
@@ -1498,28 +1533,41 @@ fn core_controls_choose_step_hold_and_report() {
     let plus =
         d.ui.probe_elements()
             .into_iter()
-            .find(|e| e.path.ends_with("/Qty/Frame/Inc"))
+            .find(|e| e.path.ends_with("/Qty/Increment"))
             .expect("the stepper's plus");
     let at = Vec2::new(plus.x + plus.width / 2.0, plus.y + plus.height / 2.0);
     d.click_at(at);
     d.click_at(at);
     assert_eq!(d.read("qty"), json!("3"), "steps to max and stops");
-    assert_eq!(
-        d.get("Qty/Frame/Value/Text").text,
-        "3 m",
-        "data-format writes it"
+    d.click("Copy");
+    assert!(
+        d.ui.frame()
+            .items
+            .iter()
+            .any(|item| matches!(&item.cmd, DrawCmd::Text { text, .. } if text == "3 m")),
+        "data-format presents the value while unfocused"
     );
-    // -og-stepper-wrap goes past max to min.
+    // data-wrap goes past max to min.
     let plus =
         d.ui.probe_elements()
             .into_iter()
-            .find(|e| e.path.ends_with("/Lv/Frame/Inc"))
+            .find(|e| e.path.ends_with("/Lv/Increment"))
             .expect("the wrapping stepper's plus");
     d.click_at(Vec2::new(
         plus.x + plus.width / 2.0,
         plus.y + plus.height / 2.0,
     ));
     assert_eq!(d.read("lv"), json!("0"), "wraps past max to min");
+    d.step(InputFrame {
+        keys: vec![og_ui::UiKey::Up],
+        shift: true,
+        ..InputFrame::default()
+    });
+    assert_eq!(
+        d.read("lv"),
+        json!("6"),
+        "data-large-step sets Shift adjustment"
+    );
     assert_eq!(d.a11y("Copy").role, "menuitem");
     // Hold: fires once, after 300 ms, not at once.
     let buy = d.get("Buy");

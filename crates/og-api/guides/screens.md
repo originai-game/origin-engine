@@ -134,10 +134,10 @@ writer. The game's art-contract measurements remain available through
     popover `Menu` at the pointer on a right-click or long press.
   - `<input type="checkbox" switch data-on="On" data-off="Off">` is a
     switch whose on and off words a screen reader reads.
-  - `<input type="number" data-format="{value, number} m">` with
-    `-og-stepper: buttons` steps; `-og-stepper-wrap: wrap` goes past max to
-    min and `-og-stepper-large-step: 10` sets a held button's repeats.
-    `data-format` is an ICU message over `value`.
+  - `<input type="number" step="1" data-format="{value, number} m">` keeps
+    editable text with spinner buttons; `data-wrap` wraps at the bounds and
+    `data-large-step="10"` sets Shift adjustment and held-button repeats.
+    `data-format` is an ICU message over `value`, shown only while unfocused.
   - A field's icon, suffix and count are markup round an input with
     `appearance` set to `none`, in a row styled with `:focus-within`:
     `<icon>`, `<span>gold</span>`, `<small>{$name.length}/20</small>`.

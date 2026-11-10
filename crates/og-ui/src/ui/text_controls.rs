@@ -58,7 +58,15 @@ impl Ui {
         // A search box's clear button (HTML's search cancel button) takes
         // the same square, kept while it is empty so its text never moves.
         let search = desc.input_type == crate::InputType::Search;
-        let reveal_w = if secret || search {
+        let number = desc.input_type == crate::InputType::Number;
+        let spinner = if self.viewport.breakpoint().is_phone() {
+            44.0
+        } else {
+            24.0_f32.max(self.touch_min())
+        };
+        let reveal_w = if number {
+            2.0 * spinner + pad
+        } else if secret || search {
             height.min(sizes.control_md)
         } else {
             0.0
@@ -83,6 +91,9 @@ impl Ui {
         );
         self.nodes[i].focusable = true;
         self.nodes[i].nav = true;
+        if number {
+            self.nodes[i].claim = ARROW_UP | ARROW_DOWN;
+        }
         let key = self.nodes[i].key;
         let revealed = secret && self.reveal_toggle(i, base, reveal_w, height);
         let cleared = search
@@ -92,9 +103,10 @@ impl Ui {
         if cleared {
             value.clear();
         }
+        let stepped = number && self.number_buttons(i, base, [spinner, height, pad], value, desc);
         self.last_closed = i;
         let mut r = self.respond(key);
-        r.changed |= cleared;
+        r.changed |= cleared || stepped;
         // Only the real focus edits; a forced one (the probe's) only shows.
         if self.state.focus == key {
             let inner = self.hit(key).map(|h| h.full.inset(&padding));
@@ -114,7 +126,7 @@ impl Ui {
                     readonly: desc.readonly,
                 },
             );
-            r.changed = e.changed || cleared;
+            r.changed = e.changed || cleared || stepped;
             r.submitted = e.submitted;
             r.focused = self.state.focus == key;
         }
@@ -123,6 +135,26 @@ impl Ui {
             || desc.input_type.mismatch(value)
             || desc.constraints.fails(desc.input_type, value);
         let (shown, composition) = self.shown_text(value, focused);
+        let shown = if number && !focused {
+            desc.number
+                .as_ref()
+                .and_then(|options| {
+                    value
+                        .parse::<f32>()
+                        .ok()
+                        .filter(|n| n.is_finite())
+                        .map(|n| {
+                            options.format.show(
+                                n,
+                                desc.constraints.min.unwrap_or(0.0) as f32,
+                                desc.constraints.step.unwrap_or(1.0) as f32,
+                            )
+                        })
+                })
+                .unwrap_or(shown)
+        } else {
+            shown
+        };
         let mask = (secret && !revealed).then(|| {
             crate::edit::mask_char(&self.fonts.for_text(FontRole::Body, "\u{2022}").metrics)
         });
@@ -184,6 +216,169 @@ impl Ui {
         n.a11y.description = Some(desc.placeholder.clone());
         n.a11y.value = Some(said);
         r
+    }
+
+    fn number_buttons(
+        &mut self,
+        owner: usize,
+        base: crate::dress::PartRef,
+        geometry: [f32; 3],
+        value: &mut String,
+        desc: &FieldDesc,
+    ) -> bool {
+        let [width, height, inset] = geometry;
+        let now = self.seconds();
+        let mut accelerated = self.input.shift;
+        let mut direction = if self.state.focus == self.nodes[owner].key {
+            -f64::from(self.nav.adjust_y)
+        } else {
+            0.0
+        };
+        self.stack.push(owner);
+        for (id, class, sign, end) in [
+            ("Increment", "inc", 1.0, inset),
+            ("Decrement", "dec", -1.0, inset + width),
+        ] {
+            let i = self.leaf(
+                "button",
+                id.into(),
+                Element {
+                    width: Size::Fixed(width),
+                    height: Size::Fixed(height),
+                    interactive: !desc.readonly,
+                    ..Element::default()
+                },
+            );
+            let response = self.respond(self.nodes[i].key);
+            self.nodes[i].props.position = crate::element::Position::Absolute;
+            self.nodes[i].props.insets = crate::element::Edges {
+                end: Some(end),
+                top: Some(0.0),
+                ..Default::default()
+            };
+            self.nodes[i].el.part = Some(
+                crate::dress::PartRef {
+                    part: "button",
+                    ..base
+                }
+                .attr("type", "number")
+                .flag(class)
+                .flag_if(response.hovered, "hover")
+                .flag_if(response.pressed, "pressed")
+                .flag_if(desc.readonly, "disabled"),
+            );
+            let part = self.nodes[i].el.part.unwrap();
+            self.nodes[i].shapes.push(Shape::Rect {
+                frame: crate::layout::Frame::centered(
+                    -width / 2.0,
+                    0.0,
+                    1.0,
+                    (height - 2.0 * inset).max(1.0),
+                ),
+                radius: 0.0,
+                color: self.theme.palette.ink_muted,
+            });
+            for side in [-1.0, 1.0] {
+                self.nodes[i].shapes.push(Shape::Bar {
+                    part,
+                    frame: crate::layout::Frame::centered(side * 2.5, 0.0, 7.0, 2.0),
+                    angle: side * sign as f32 * std::f32::consts::FRAC_PI_4,
+                    color: self.theme.palette.ink,
+                });
+            }
+            self.nodes[i].a11y.name = Some(if sign > 0.0 { "Increase" } else { "Decrease" }.into());
+            self.nodes[i].disabled = desc.readonly;
+            let since_id = format!("{id}~since");
+            let repeat_id = format!("{id}~repeat");
+            let since = self.memory(&since_id, -1.0);
+            let last = self.memory(&repeat_id, -1.0);
+            if response.pressed && !desc.readonly && !self.nodes[owner].disabled {
+                if since < 0.0 {
+                    direction = sign;
+                    self.remember(&since_id, now);
+                    self.remember(&repeat_id, now);
+                } else {
+                    let age = now - since;
+                    let every = if age > 1.6 { 0.05 } else { 0.12 };
+                    if age > 0.4 && now - last >= every {
+                        direction = sign;
+                        accelerated |= age > 1.0;
+                        self.remember(&repeat_id, now);
+                    }
+                }
+            } else {
+                if response.clicked && since < 0.0 && !desc.readonly {
+                    direction = sign;
+                }
+                self.remember(&since_id, -1.0);
+                self.remember(&repeat_id, -1.0);
+            }
+        }
+        self.stack.pop();
+        if direction == 0.0 || desc.readonly {
+            return false;
+        }
+        let step = desc.constraints.step.filter(|s| *s > 0.0).unwrap_or(1.0);
+        let options = desc.number.as_ref();
+        let amount = if accelerated {
+            options
+                .map(|o| f64::from(o.large_step))
+                .filter(|s| *s > 0.0)
+                .unwrap_or(step * 10.0)
+        } else {
+            step
+        };
+        let (min, max) = (desc.constraints.min, desc.constraints.max);
+        let base = min.unwrap_or(0.0);
+        let current = value
+            .parse::<f64>()
+            .ok()
+            .filter(|n| n.is_finite())
+            .unwrap_or(0.0);
+        let grid = (current - base) / step;
+        let count = (amount / step).round().max(1.0);
+        let index = if direction > 0.0 {
+            (grid + 1e-9).floor() + count
+        } else {
+            (grid - 1e-9).ceil() - count
+        };
+        let max = max.map(|max| base + ((max - base) / step + 1e-9).floor() * step);
+        let mut next = base + index * step;
+        if options.is_some_and(|o| o.wrap)
+            && let (Some(min), Some(max)) = (min, max)
+        {
+            if next > max {
+                next = min;
+            } else if next < min {
+                next = max;
+            }
+        }
+        if let Some(min) = min {
+            next = next.max(min);
+        }
+        if let Some(max) = max {
+            next = next.min(max);
+        }
+        if !next.is_finite() {
+            return false;
+        }
+        let decimals = |n: f64| {
+            n.to_string()
+                .split_once('.')
+                .map_or(0, |(_, tail)| tail.len())
+        };
+        let precision = decimals(step).max(decimals(base));
+        let next = if precision == 0 {
+            next.to_string()
+        } else {
+            format!("{next:.precision$}")
+                .trim_end_matches('0')
+                .trim_end_matches('.')
+                .to_string()
+        };
+        let changed = *value != next;
+        *value = next;
+        changed
     }
 
     /// A password field's reveal toggle (`<id>/Reveal`): a square button
