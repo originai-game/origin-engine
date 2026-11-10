@@ -75,12 +75,12 @@ pub fn cook(
     let mut strings = Strings(Vec::new());
     let plan = super::ext::uv_plan(src);
     notes.extend(plan.notes.iter().cloned());
-    let tex_of = |t: Option<gltf::texture::Texture>, k: u32| -> u32 {
+    let tex_of = |t: Option<gltf::texture::Texture>, k: u32, cutout: Option<u8>| -> u32 {
         t.filter(|_| !proxy)
             .and_then(|t| {
-                src.textures
-                    .iter()
-                    .position(|u| u.image == t.source().index() && u.kind == k)
+                src.textures.iter().position(|u| {
+                    u.image == t.source().index() && u.kind == k && u.cutout == cutout
+                })
             })
             .map_or(NONE, |i| i as u32)
     };
@@ -101,8 +101,9 @@ pub fn cook(
         if baked {
             b = [1.0, 1.0, 1.0, b[3]];
         }
-        let p =
-            og_render::gltf::physical_extensions(doc, &m, |t, k| tex_of(Some(t), texture_kind(k)));
+        let p = og_render::gltf::physical_extensions(doc, &m, |t, k| {
+            tex_of(Some(t), texture_kind(k), None)
+        });
         let t = |x: Option<u32>| x.unwrap_or(NONE);
         materials.push(MaterialRow {
             physical: p.present,
@@ -159,14 +160,20 @@ pub fn cook(
                     .map(|t| t.texture())
                     .filter(|_| !baked),
                 kind::COLOR,
+                super::cuts_out(&m),
             ),
             metallic_roughness_texture: tex_of(
                 pbr.metallic_roughness_texture().map(|t| t.texture()),
                 kind::LINEAR,
+                None,
             ),
-            normal_texture: tex_of(m.normal_texture().map(|t| t.texture()), kind::NORMAL),
-            emissive_texture: tex_of(m.emissive_texture().map(|t| t.texture()), kind::COLOR),
-            occlusion_texture: tex_of(m.occlusion_texture().map(|t| t.texture()), kind::LINEAR),
+            normal_texture: tex_of(m.normal_texture().map(|t| t.texture()), kind::NORMAL, None),
+            emissive_texture: tex_of(m.emissive_texture().map(|t| t.texture()), kind::COLOR, None),
+            occlusion_texture: tex_of(
+                m.occlusion_texture().map(|t| t.texture()),
+                kind::LINEAR,
+                None,
+            ),
             name_offset,
             name_len,
             unlit: super::ext::unlit(&src.json, m.index().unwrap_or(usize::MAX)) as u32,

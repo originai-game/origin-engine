@@ -26,6 +26,23 @@ pub(super) use primitive::*;
 pub struct TextureUse {
     pub image: usize,
     pub kind: u32,
+    /// The base colour of a material that tests its alpha (glTF
+    /// `alphaMode` `MASK`): a cut-out, whose mips keep its coverage at the
+    /// material's cut-off (texture.rs `cutout_mips` and `keep_coverage`),
+    /// here the least alpha byte the material keeps; `None` for every other
+    /// use. An image that a cut-out material and another material sample, or
+    /// two cut-out materials with different cut-offs, is that many uses, each
+    /// with its own mips.
+    pub cutout: Option<u8>,
+}
+
+/// A material's base colour use's [`TextureUse::cutout`]: for an
+/// alpha-tested material (`MASK`), the least alpha byte it keeps, its
+/// `alphaCutoff` (0.5 when it names none) times 255 rounded up, as the
+/// renderer discards a texel whose alpha is below the cut-off.
+pub(super) fn cuts_out(m: &gltf::Material) -> Option<u8> {
+    (m.alpha_mode() == gltf::material::AlphaMode::Mask)
+        .then(|| (m.alpha_cutoff().unwrap_or(0.5).clamp(0.0, 1.0) * 255.0).ceil() as u8)
 }
 
 /// A parsed glTF: the document, its buffers and the encoded image bytes.
@@ -388,23 +405,28 @@ pub fn load(bytes: &[u8], dir: &Path) -> Result<GltfSource, String> {
                 pbr.base_color_texture()
                     .map(|t| (t.texture(), t.tex_coord())),
                 kind::COLOR,
+                cuts_out(&m),
             ),
             (
                 pbr.metallic_roughness_texture()
                     .map(|t| (t.texture(), t.tex_coord())),
                 kind::LINEAR,
+                None,
             ),
             (
                 m.normal_texture().map(|t| (t.texture(), t.tex_coord())),
                 kind::NORMAL,
+                None,
             ),
             (
                 m.emissive_texture().map(|t| (t.texture(), t.tex_coord())),
                 kind::COLOR,
+                None,
             ),
             (
                 m.occlusion_texture().map(|t| (t.texture(), t.tex_coord())),
                 kind::LINEAR,
+                None,
             ),
         ];
         // The physical extensions' textures (`KHR_materials_*`).
@@ -412,12 +434,13 @@ pub fn load(bytes: &[u8], dir: &Path) -> Result<GltfSource, String> {
             let u = TextureUse {
                 image: t.source().index(),
                 kind: texture_kind(k),
+                cutout: None,
             };
             if !textures.contains(&u) {
                 textures.push(u);
             }
         });
-        for (slot, k) in slots {
+        for (slot, k, cutout) in slots {
             if let Some((t, coord)) = slot {
                 if coord != 0 {
                     warnings.push(format!(
@@ -428,6 +451,7 @@ pub fn load(bytes: &[u8], dir: &Path) -> Result<GltfSource, String> {
                 let u = TextureUse {
                     image: t.source().index(),
                     kind: k,
+                    cutout,
                 };
                 if !textures.contains(&u) {
                     textures.push(u);

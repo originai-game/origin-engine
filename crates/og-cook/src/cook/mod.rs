@@ -287,7 +287,9 @@ enum Work<'a> {
     /// the material (roughness, translucency, metallic).
     Impostor(&'a Source, model::ImpostorBake, u8),
     Animation(&'a Source, anim::AnimSettings),
-    GltfTexture(&'a Source, usize, u32, Split),
+    /// A glTF image cooked as a texture: its index, kind, cut-off as a
+    /// cut-out ([`model::TextureUse::cutout`]) and how it splits.
+    GltfTexture(&'a Source, usize, u32, Option<u8>, Split),
     Texture(&'a Source, u32, Split),
     /// A 2D texture's `#normal` (normal2d.rs): made from it, or from the
     /// file its `normal` line names (its bytes).
@@ -999,6 +1001,7 @@ pub fn cook_project_with_texture_cache(
                             u64::from_le_bytes(image_hash),
                             u.kind,
                             stream_textures,
+                            u.cutout,
                         )
                     } else {
                         format!("{}#tex{i}", s.rel)
@@ -1016,6 +1019,12 @@ pub fn cook_project_with_texture_cache(
                     let st = |word: &[u8]| {
                         let mut parts: Vec<&[u8]> =
                             vec![b"texture", tex_desc.as_bytes(), &image_hash, &kind];
+                        // A cut-out's mips are its own, kept at its cut-off
+                        // (texture.rs `cutout_mips`, `keep_coverage`).
+                        if let Some(c) = &u.cutout {
+                            parts.push(b"cutout");
+                            parts.push(std::slice::from_ref(c));
+                        }
                         if !word.is_empty() {
                             parts.push(word);
                         }
@@ -1023,6 +1032,8 @@ pub fn cook_project_with_texture_cache(
                     };
                     let not_split = stream_textures
                         .then(|| not_split(&g.images[u.image], u.kind, group_of.get(&s.rel)));
+                    let gltf_texture =
+                        |split| Work::GltfTexture(s, u.image, u.kind, u.cutout, split);
                     match not_split {
                         Some(None) => {
                             let mips = st(b"mips");
@@ -1030,20 +1041,20 @@ pub fn cook_project_with_texture_cache(
                                 id.clone(),
                                 format::Texture::NAME,
                                 st(b"tail"),
-                                Work::GltfTexture(s, u.image, u.kind, Split::Tail(mips)),
+                                gltf_texture(Split::Tail(mips)),
                             ));
                             outs.push((
                                 crate::runtime::mips_id(&id),
                                 format::Texture::NAME,
                                 mips,
-                                Work::GltfTexture(s, u.image, u.kind, Split::Mips),
+                                gltf_texture(Split::Mips),
                             ));
                         }
                         why => outs.push((
                             id.clone(),
                             format::Texture::NAME,
                             st(b""),
-                            Work::GltfTexture(s, u.image, u.kind, Split::Whole(why.flatten())),
+                            gltf_texture(Split::Whole(why.flatten())),
                         )),
                     }
                     ids.push(id);

@@ -351,6 +351,19 @@ cancellable `og dev` checks use the stateless path.
   project.ogt's `cook { color_textures uastc }` says otherwise (four times
   the bytes, no 4×4 block colour loss); `publish { color_textures etc1s }`
   overrides it for the web export's cook (`og build`, `og run --device`).
+  A cut-out, the base colour texture of a glTF material that tests its alpha
+  (`alphaMode` `MASK`, which a `type model`'s `alphaTest` writes), gets mips
+  that keep its coverage (og-cook's texture.rs `cutout_mips`,
+  `keep_coverage`): each level the one before sampled bilinearly at the
+  texel centre (a 2×2 box on even sizes, the two centre taps on odd ones,
+  clamped, sRGB in linear light: WebGL's `generateMipmap`), then, wherever a
+  level keeps fewer texels at or above the material's `alphaCutoff` than
+  the first level does, its alpha raised until it keeps as many. basisu's
+  own filter, which every other texture keeps, spreads a card's leaves over
+  the transparent texels around them, until minified levels fall under the
+  cut-off and the card is cut away. One image under an alpha-tested and
+  another material is two textures. A texture file, or an alpha test set at
+  run time (`og.render.updateMaterial`), is not a cut-out to the cook.
 - Reusable production assets come through the platform's asset MCP; the
   cook consumes what the agent put in `assets/`.
 

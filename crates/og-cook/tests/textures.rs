@@ -8,6 +8,10 @@
 //! - a streamed texture's tail and chain from two encodes, a texture inside
 //!   the tail split, or stream accepted where it cannot apply →
 //!   `a_streamed_texture_cooks_its_mip_tail_and_its_whole_chain`
+//! - an alpha-tested material's base colour cooked with the encoder's own
+//!   mips (its leaves averaged away when minified), or every texture of the
+//!   image, or its other slots, cooked as a cut-out →
+//!   `an_alpha_tested_base_colour_is_a_cut_out_that_keeps_its_coverage`
 //!
 //! Evidence: `$OG_EVIDENCE_DIR/cook/textures-*.json`.
 
@@ -432,4 +436,85 @@ fn a_streamed_texture_cooks_its_mip_tail_and_its_whole_chain() {
         "{:?}",
         err("tex/b.png")
     );
+}
+
+/// The bamboo spray card of texture.rs's tests (daguanyuan's zhu_spray, 1024
+/// x 384, at 32 x 12): green leaves in rows 4 to 7, three columns in four,
+/// the rest transparent.
+fn bamboo_card() -> Vec<u8> {
+    (0..12u32)
+        .flat_map(|y| (0..32u32).map(move |x| (4..8).contains(&y) && x % 4 != 3))
+        .flat_map(|leaf| [60, 140, 50, if leaf { 255 } else { 0 }])
+        .collect()
+}
+
+#[cfg(feature = "basis")]
+#[test]
+fn an_alpha_tested_base_colour_is_a_cut_out_that_keeps_its_coverage() {
+    use basis_universal::{TranscodeParameters, Transcoder, TranscoderTextureFormat};
+    let root = project("cutout");
+    png(&root.join("assets/tex/zhu.png"), 32, 12, &bamboo_card());
+    // One image under three materials: alpha-tested (glTF MASK, which also
+    // samples it as its metallic-roughness), opaque, and blended (which
+    // also samples it as its emissive).
+    std::fs::write(
+        root.join("assets/tex/m.gltf"),
+        r#"{"asset":{"version":"2.0"},"images":[{"uri":"zhu.png"}],"textures":[{"source":0}],"materials":[
+{"name":"cut","alphaMode":"MASK","alphaCutoff":0.35,"pbrMetallicRoughness":{"baseColorTexture":{"index":0},"metallicRoughnessTexture":{"index":0}}},
+{"name":"solid","pbrMetallicRoughness":{"baseColorTexture":{"index":0}}},
+{"name":"blend","alphaMode":"BLEND","pbrMetallicRoughness":{"baseColorTexture":{"index":0}},"emissiveTexture":{"index":0},"emissiveFactor":[1,1,1]}]}"#,
+    )
+    .unwrap();
+    let report =
+        og_cook::cook::cook_project_with_texture_cache(&root, &CookOptions::default(), None)
+            .unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    let b = Bundle::open(&root.join("cooked")).unwrap();
+    let m = b.load_model("tex/m.gltf").unwrap();
+    let id = |t: Option<usize>| m.textures[t.expect("a texture")].id.clone();
+    let (cut, solid, blend) = (&m.materials[0], &m.materials[1], &m.materials[2]);
+    // The alpha-tested material's base colour is a texture of its own; the
+    // opaque and blended materials' base colour and the emissive are one
+    // ordinary texture, and the metallic-roughness its own kind.
+    let cutout = id(cut.base_color_texture);
+    let plain = id(solid.base_color_texture);
+    assert!(cutout.ends_with("-0-cutout90#tex"), "{cutout}");
+    assert!(plain.ends_with("-0#tex"), "{plain}");
+    assert_eq!(id(blend.base_color_texture), plain);
+    assert_eq!(id(blend.emissive_texture), plain);
+    assert!(id(cut.metallic_roughness_texture).ends_with("-2#tex"));
+    assert_eq!(m.textures.len(), 3);
+    // Their levels, each one's share of texels at or above the cut-off:
+    // the cut-out keeps the card's (0.25) to 1 x 1; the ordinary texture,
+    // its leaf rows spread over the transparent ones by the encoder's filter,
+    // has none from 4 x 1 down.
+    let coverage = |id: &str| -> Vec<f32> {
+        let basis = og_cook::ktx2::to_basis(&b.load_texture(id).unwrap().ktx2).unwrap();
+        let mut t = Transcoder::new();
+        t.prepare_transcoding(&basis).unwrap();
+        let levels = (0..t.image_level_count(&basis, 0))
+            .map(|level_index| {
+                let rgba = t
+                    .transcode_image_level(
+                        &basis,
+                        TranscoderTextureFormat::RGBA32,
+                        TranscodeParameters {
+                            image_index: 0,
+                            level_index,
+                            ..Default::default()
+                        },
+                    )
+                    .unwrap();
+                let texels = rgba.as_chunks::<4>().0;
+                texels.iter().filter(|p| p[3] >= 90).count() as f32 / texels.len() as f32
+            })
+            .collect();
+        t.end_transcoding();
+        levels
+    };
+    let (c, p) = (coverage(&cutout), coverage(&plain));
+    assert_eq!((c.len(), p.len()), (6, 6), "32x12 to 1x1");
+    assert_eq!((c[0], p[0]), (0.25, 0.25));
+    assert!(c.iter().all(|&c| c >= 0.25), "cut-out {c:?}");
+    assert!(p[3..].iter().all(|&p| p == 0.0), "ordinary {p:?}");
 }
