@@ -46,10 +46,18 @@ fn fades(c: usize) -> bool {
 }
 
 impl Ui {
+    fn interaction_owner(&self, i: usize) -> usize {
+        self.nodes[i]
+            .part_box
+            .as_ref()
+            .filter(|part| self.nodes[part.owner].content_slot == i)
+            .map_or(i, |part| part.owner)
+    }
+
     /// The interaction state of element `i` (`normal`, `hover`, `pressed`,
     /// `focused`, `disabled`).
     fn interaction_of(&self, i: usize) -> &'static str {
-        let n = &self.nodes[i];
+        let n = &self.nodes[self.interaction_owner(i)];
         if n.disabled {
             return "disabled";
         }
@@ -68,7 +76,12 @@ impl Ui {
     /// The state group `g` of node `i` is in now.
     fn state_of(&self, i: usize, g: &super::StateGroup, m: &MotionState) -> String {
         let n = &self.nodes[i];
-        let gk = group_key(n.key, &g.name);
+        let owner = if g.name == "interaction" {
+            self.interaction_owner(i)
+        } else {
+            i
+        };
+        let gk = group_key(self.nodes[owner].key, &g.name);
         let has = |s: &str| g.states.iter().any(|v| v.name == s);
         if let Some(s) = m.forced.get(&gk).filter(|s| has(s)) {
             return s.clone();

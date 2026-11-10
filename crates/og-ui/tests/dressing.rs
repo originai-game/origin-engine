@@ -7,6 +7,135 @@ use crate::support::*;
 use og_ui::*;
 
 #[test]
+fn tabs_and_select_parts_keep_boxes_states_and_host_input() {
+    let mut ui = ui_with_font(add_test_font(&mut og_render::RenderScene::new()));
+    ui.set_part_css(
+        "tabs::part(track) { background: #123456; padding: 5px; }
+         tabs::part(indicator) { background: #654321; height: 7px; }
+         tabs::part(tab) { background: #ff0000; padding: 3px; }
+         tabs::part(tab):checked { background: #00ff00; }
+         select::part(trigger) { background: #0000ff; padding: 4px; }
+         select::part(option) { background: #ff00ff; padding: 6px; }",
+    )
+    .unwrap();
+    let mut selected = 1;
+    let tick = |ui: &mut Ui, input, selected: &mut i32| {
+        ui.begin(input, Viewport::new(600.0, 400.0));
+        ui.open("Root", Element::column());
+        *selected = ui
+            .segmented(
+                "Tabs",
+                &SegmentedDesc {
+                    selected: *selected,
+                    items: vec![
+                        SegmentItem {
+                            label: "First".into(),
+                            ..Default::default()
+                        },
+                        SegmentItem {
+                            label: "Second".into(),
+                            ..Default::default()
+                        },
+                    ],
+                    ..Default::default()
+                },
+            )
+            .selected;
+        ui.dropdown(
+            "Select",
+            &DropdownDesc {
+                selected: 0,
+                options: vec![DropdownOption {
+                    label: "Option".into(),
+                    ..Default::default()
+                }],
+                ..Default::default()
+            },
+        );
+        ui.close();
+        ui.end();
+    };
+    for _ in 0..3 {
+        tick(&mut ui, InputFrame::default(), &mut selected);
+    }
+    let indicator = ui.element("Root/Tabs/Strip/Track/Thumb").unwrap();
+    assert_eq!(indicator.kind, "part");
+    assert_eq!(indicator.height, 7.0);
+    for (host, part, role) in [
+        ("Root/Tabs/Strip/Track/Item#0", "tab", "radio"),
+        ("Root/Select/Trigger", "trigger", "combobox"),
+    ] {
+        assert_eq!(ui.element(host).unwrap().role, role);
+        let visual = ui.element(&format!("{host}/::part({part})#0")).unwrap();
+        assert_eq!(visual.kind, "part");
+        assert!(visual.role.is_empty());
+    }
+    for rgb in [[255, 0, 0], [0, 255, 0], [0, 0, 255]] {
+        let expected = Srgba::rgb(rgb[0], rgb[1], rgb[2]).linear();
+        assert!(
+            ui.frame()
+                .items
+                .iter()
+                .any(|i| i.cmd.filled().is_some_and(|(_, c)| c == expected)),
+            "{rgb:?}"
+        );
+    }
+    let first = ui.element("Root/Tabs/Strip/Track/Item#0").unwrap();
+    let pointer =
+        og_core::math::Vec2::new(first.x + first.width / 2.0, first.y + first.height / 2.0);
+    for down in [true, false] {
+        tick(
+            &mut ui,
+            InputFrame {
+                pointer,
+                pointer_inside: true,
+                down,
+                pressed: down,
+                released: !down,
+                ..Default::default()
+            },
+            &mut selected,
+        );
+    }
+    assert_eq!(selected, 0);
+    tick(&mut ui, InputFrame::default(), &mut selected);
+    let trigger = ui.element("Root/Select/Trigger").unwrap();
+    let pointer = og_core::math::Vec2::new(
+        trigger.x + trigger.width / 2.0,
+        trigger.y + trigger.height / 2.0,
+    );
+    for down in [true, false] {
+        tick(
+            &mut ui,
+            InputFrame {
+                pointer,
+                pointer_inside: true,
+                down,
+                pressed: down,
+                released: !down,
+                ..Default::default()
+            },
+            &mut selected,
+        );
+    }
+    for _ in 0..15 {
+        tick(&mut ui, InputFrame::default(), &mut selected);
+    }
+    let option = ui.elements().iter().find(|e| e.role == "option").unwrap();
+    let visual = ui
+        .element(&format!("{}/::part(option)#0", option.path))
+        .unwrap();
+    assert!(visual.role.is_empty());
+    assert_eq!(visual.kind, "part");
+    assert!(ui.frame().items.iter().any(|i| {
+        i.cmd
+            .filled()
+            .is_some_and(|(_, c)| c == [1.0, 0.0, 1.0, 1.0])
+    }));
+    assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+}
+
+#[test]
 fn choice_parts_have_independent_css_layout_and_paint() {
     let mut ui = ui_with_font(add_test_font(&mut og_render::RenderScene::new()));
     ui.set_part_css(r#"
@@ -233,6 +362,71 @@ fn registry_parts_on_text_hosts_are_boxes_and_hosts_accept_color() {
         let source =
             format!("<meta name=\"component\" content=\"kit\">{markup}<style>{css}</style>");
         UiDocument::parse("kit.svelte", &source).unwrap();
+    }
+}
+
+#[test]
+fn host_font_and_color_reach_button_ink_and_divider_output() {
+    let mut scene = og_render::RenderScene::new();
+    let body = add_test_font(&mut scene);
+    let display = add_test_font(&mut scene);
+    let body_handle = body.handle.unwrap();
+    let display_handle = display.handle.unwrap();
+    let mut ui = Ui::new(UiDesc {
+        fonts: Fonts {
+            body,
+            families: vec![FamilyFace {
+                family: "Fantasy Display".into(),
+                weight: (100, 900),
+                font: display,
+                ..Default::default()
+            }],
+            ..Default::default()
+        },
+        ..Default::default()
+    });
+    ui.define_document(UiDocument::parse("host-ink.svelte", r#"
+<meta name="screen" content="host-ink" data-layer="hud">
+<column><button id="Inherited">Inherited</button><button id="Override">Override</button><hr id="Rule" /></column>
+<style>
+button { color: #d12345; font-family: "Fantasy Display"; }
+#Override::part(base) { color: blue; font-family: sans-serif; }
+hr { width: 173px; color: #23d145; }
+</style>"#).unwrap());
+    ui.push_screen("host-ink", serde_json::json!({})).unwrap();
+    for _ in 0..3 {
+        ui.begin(InputFrame::default(), Viewport::new(600.0, 400.0));
+        ui.end();
+        for (label, expected_font, expected_color) in [
+            (
+                "Inherited",
+                display_handle,
+                Srgba::rgb(209, 35, 69).linear(),
+            ),
+            ("Override", body_handle, Srgba::rgb(0, 0, 255).linear()),
+        ] {
+            let actual = ui.frame().items.iter().find_map(|item| {
+                let cmd = match &item.cmd {
+                    DrawCmd::StyledText { text, .. } => &**text,
+                    cmd => cmd,
+                };
+                match cmd {
+                    DrawCmd::Text {
+                        text, font, color, ..
+                    } if text == label => Some((*font, *color)),
+                    _ => None,
+                }
+            });
+            assert_eq!(actual, Some((expected_font, expected_color)), "{label}");
+        }
+        let expected = Srgba::rgb(35, 209, 69).linear();
+        assert!(
+            ui.frame().items.iter().any(|item| item
+                .cmd
+                .filled()
+                .is_some_and(|(r, c)| r.width == 173.0 && c == expected)),
+            "hr color must reach the drawn rule"
+        );
     }
 }
 

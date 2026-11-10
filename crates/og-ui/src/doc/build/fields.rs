@@ -745,6 +745,11 @@ impl Ui {
                 self.nodes[i].el.width = size;
                 self.nodes[i].el.height = size;
             }
+            "divider" => {
+                if let Some(color) = r.color("color") {
+                    self.nodes[i].el.background = Some(color);
+                }
+            }
             _ => {}
         }
         self.apply_box_fields(

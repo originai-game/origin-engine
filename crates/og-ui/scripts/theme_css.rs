@@ -89,7 +89,7 @@ const PART_RULES: &[(&str, &str, &str)] = &[
     (
         "Dropdown::trigger.open",
         "select[aria-expanded=true]::part(trigger)",
-        "border: 2px solid var(--focus);",
+        "border: 2px solid var(--focus); padding-inline: calc(var(--space-md) - 2px);",
     ),
     (
         "Dropdown::option",
@@ -534,6 +534,7 @@ const FALLBACKS: &str = r#"
     border-radius: var(--radius-button);
     box-shadow: inset 0 1px 3px 0 var(--shadow-30);
   }
+  select::part(trigger) { padding-inline: calc(var(--space-md) - 1.5px); }
   input[type=checkbox]::part(box), input[type=radio]::part(ring) {
     border: 1px solid var(--well-rim);
   }

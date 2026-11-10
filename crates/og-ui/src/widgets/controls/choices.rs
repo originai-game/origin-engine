@@ -964,7 +964,7 @@ impl Ui {
             &[desc.disabled.then_some("disabled")],
             ElementClass::Tab,
         );
-        self.open(
+        self.open_part(
             "Track",
             Element {
                 direction: Direction::Row,
@@ -982,7 +982,7 @@ impl Ui {
             },
         );
         if let (Some(sel), Some(me)) = (sel_b, me) {
-            self.open(
+            self.open_part(
                 "Thumb",
                 Element {
                     width: Size::px(sel.width),
@@ -1027,9 +1027,10 @@ impl Ui {
                 crate::ui_idi("Item", i as u32),
                 Ctl {
                     part: "tabs::part(tab)",
+                    part_node: true,
                     cls: ElementClass::Tab,
                     disabled: off,
-                    flags: vec![on.then_some("selected")],
+                    flags: vec![on.then_some("checked")],
                     width: Some(if desc.equal {
                         Size::Grow {
                             min: widest.max(min_w),

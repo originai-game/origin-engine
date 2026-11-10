@@ -1,0 +1,15 @@
+{
+  "breaking": [
+    {
+      "member": "Select and tabs CSS boxes",
+      "change": "Select triggers and options, and tab tracks, indicators and tabs, have persistent CSS layout and paint boxes separate from their event owners.",
+      "fix": "Style the visual box through its registered ::part selector. Keep events and accessibility on the host. Address the selected tab with tabs::part(tab):checked."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "CSS inherited widget ink",
+      "summary": "Button text uses the host's installed font-family, with part-local font overrides taking precedence. Divider color reaches the drawn rule. Tab indicators retain their layout motion. Persistent content boxes retain host interaction states and focus radii, and select borders preserve default text positions."
+    }
+  ]
+}

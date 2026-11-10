@@ -53,7 +53,9 @@ impl Ui {
             };
             let mut at = Placed {
                 rect: values.part_rect(rect, rect),
-                radius: values.num("radius").unwrap_or(n.sampled.radius),
+                radius: values
+                    .num("radius")
+                    .unwrap_or_else(|| self.nodes.get(n.content_slot).unwrap_or(n).sampled.radius),
                 clip: n.clip,
                 alpha: n.alpha,
             };

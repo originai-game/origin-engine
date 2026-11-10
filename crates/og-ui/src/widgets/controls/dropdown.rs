@@ -194,6 +194,7 @@ impl Ui {
                     crate::ui_idi("Option", i as u32),
                     Ctl {
                         part: "select::part(option)",
+                        part_node: true,
                         width: Some(Size::grow()),
                         height: Some(Size::px(row_h)),
                         padding: Insets::xy(t.space.md, 0.0),
@@ -338,6 +339,7 @@ impl Ui {
                     "Trigger",
                     Ctl {
                         part: "select::part(trigger)",
+                        part_node: true,
                         cls: ElementClass::Field,
                         flags: vec![open.then_some("open"), invalid.then_some("invalid")],
                         disabled,
@@ -510,6 +512,7 @@ impl Ui {
                             crate::ui_idi("Option", i as u32),
                             Ctl {
                                 part: "select::part(option)",
+                                part_node: true,
                                 flags: vec![on.then_some("selected")],
                                 disabled: off,
                                 width: Some(Size::grow()),

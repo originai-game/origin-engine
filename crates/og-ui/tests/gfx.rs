@@ -46,6 +46,8 @@ fn retained_documents_match_immediate_pixels_after_updates_and_restore() {
             <label>Enable captions <input type="checkbox" switch id="Choice" checked={$enabled} width={$enabled ? 300 : 240}></label>
             <label><input type="checkbox" id="Check" checked={$enabled}> Caption sound effects</label>
             <label><input type="radio" id="Radio" checked={$enabled}> Descriptive captions</label>
+            <tabs id="Tabs" items="Off On" selected={$enabled ? 1 : 0} />
+            <select id="Select" value={$enabled ? "on" : "off"}><option value="off">Off</option><option value="on">On</option></select>
             <text id="Details">Captions follow the selected language.</text>
         </column>
         <style>
@@ -55,7 +57,7 @@ fn retained_documents_match_immediate_pixels_after_updates_and_restore() {
     "#,
     )
     .unwrap();
-    for (width, height) in [(640, 360), (390, 844)] {
+    for (width, height) in [(640, 480), (390, 844)] {
         let mut scene = RenderScene::new();
         scene.environment.background = Background::Color(Vec3::splat(0.008));
         let font = add_test_font(&mut scene);

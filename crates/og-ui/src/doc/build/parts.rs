@@ -4,6 +4,15 @@ use crate::doc::matching::{Facts, own};
 
 impl Resolved {
     pub(crate) fn part_type(&self, theme: &crate::Theme, step: crate::TypeStep) -> crate::TypeStep {
+        self.part_text(theme, step, &|_| false).step(step)
+    }
+
+    fn part_text(
+        &self,
+        theme: &crate::Theme,
+        step: crate::TypeStep,
+        declared: &dyn Fn(&str) -> bool,
+    ) -> super::super::text_css::TextCss {
         super::super::text_css::inherit(super::super::text_css::Inputs {
             local: &self.cascade.text,
             computed: &mut (*self.cascade.computed).clone(),
@@ -12,9 +21,8 @@ impl Resolved {
             theme,
             current: self.color("color").unwrap_or(theme.palette.ink),
             step,
-            declared: &|_| false,
+            declared,
         })
-        .step(step)
     }
 }
 
@@ -86,6 +94,7 @@ impl Ui {
             }
         }
         props.motion = props.motion.or(intrinsic.motion);
+        props.layout_motion = props.layout_motion.or(intrinsic.layout_motion);
         props.overlaps = intrinsic.overlaps;
         props.inert |= intrinsic.inert;
         if !r.has("z") {
@@ -112,8 +121,19 @@ impl Ui {
             crate::layout::flow::mirror_props(&mut props);
         }
         self.nodes[i].props = props;
+        let text_style = match &self.nodes[i].content {
+            crate::layout::Content::Text(text) => {
+                Some(r.part_text(&self.theme, text.step, &|name| self.family_declared(name)))
+            }
+            _ => None,
+        };
         if let crate::layout::Content::Text(text) = &mut self.nodes[i].content {
-            text.step = r.part_type(&self.theme, text.step);
+            let style = text_style.unwrap();
+            text.step = style.step(text.step);
+            let role = style.font_role.unwrap_or(text.font);
+            text.font = style.family.as_deref().map_or(role, |name| {
+                FontRole::Family(crate::Family::new(name, role))
+            });
             if let Some(ink) = r.color("color") {
                 text.color = ink;
             }

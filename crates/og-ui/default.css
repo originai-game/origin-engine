@@ -783,6 +783,7 @@
     border-radius: var(--radius-button);
     box-shadow: inset 0 1px 3px 0 var(--shadow-30);
   }
+  select::part(trigger) { padding-inline: calc(var(--space-md) - 1.5px); }
   input[type=checkbox]::part(box), input[type=radio]::part(ring) {
     border: 1px solid var(--well-rim);
   }
@@ -912,7 +913,7 @@
   /* Radio::option */
   input[type=radio]::part(option) { border: none; box-shadow: none; }
   /* Dropdown::trigger.open */
-  select[aria-expanded=true]::part(trigger) { border: 2px solid var(--focus); }
+  select[aria-expanded=true]::part(trigger) { border: 2px solid var(--focus); padding-inline: calc(var(--space-md) - 2px); }
   /* Dropdown::option */
   select::part(option) { border: none; box-shadow: none; }
   /* Radio::card */
