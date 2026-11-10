@@ -554,6 +554,88 @@ input { width: 400px; }
 }
 
 #[test]
+fn switch_parts_drive_knob_mark_and_travel_after_resize() {
+    let source = r#"<meta name="component" content="t">
+<div><input type="checkbox" switch id="Switch" class:large={$large} bind:checked={$on} /></div>
+<style>
+#Switch { width: 240px; height: 80px; }
+#Switch::part(row) { padding: 0; }
+#Switch::part(track) { width: 80px; height: 40px; }
+#Switch::part(knob) { width: 32px; height: 32px; }
+#Switch.large::part(track) { width: 50%; height: 75%; }
+#Switch.large::part(knob) { width: 40%; height: 80%; }
+</style>"#;
+    both(
+        source,
+        &[("large", json!(false)), ("on", json!(false))],
+        |d| {
+            let mut theme = *d.ui.theme();
+            theme.reduced_motion = true;
+            d.ui.set_theme(theme);
+            for (large, on, diameter, inset, travel, tick) in [
+                (false, false, 32.0, 4.0, 0.0, 20.0),
+                (false, true, 32.0, 4.0, 40.0, 20.0),
+                (true, true, 48.0, 7.0, 58.0, 30.0),
+                (true, false, 48.0, 7.0, 0.0, 30.0),
+            ] {
+                d.set("large", json!(large));
+                d.set("on", json!(on));
+                let track = under(d, "Switch", "Track");
+                let knob = under(d, "Switch", "Knob");
+                let mark = under(d, "Switch", "Mark");
+                let glyph = under(d, "Switch", "Tick");
+                let scale = if on { 1.0 } else { 0.5 };
+                assert_eq!(
+                    (mark.width, mark.height),
+                    (diameter * scale, diameter * scale)
+                );
+                assert_eq!((glyph.width, glyph.height), (tick * scale, tick * scale));
+                assert!((knob.x - track.x - inset - travel).abs() < 0.01);
+                assert!((knob.y - track.y - inset).abs() < 0.01);
+            }
+            let geometry = |d: &Doc| {
+                ["Track", "Knob", "Mark", "Tick"].map(|id| {
+                    let node = under(d, "Switch", id);
+                    (node.x, node.y, node.width, node.height)
+                })
+            };
+            let expected = geometry(d);
+            let saved = d.ui.save_state();
+            d.ui.restore_state(&saved).unwrap();
+            d.step(InputFrame::default());
+            assert_eq!(geometry(d), expected, "same-instance restore");
+            let mut fresh = Doc::new(
+                source,
+                &[("large", json!(true)), ("on", json!(false))],
+                d.mounted,
+            );
+            fresh.ui.set_theme(*d.ui.theme());
+            fresh.ui.restore_state(&saved).unwrap();
+            fresh.step(InputFrame::default());
+            assert_eq!(geometry(&fresh), expected, "fresh-instance restore");
+            let automatic = source
+                .lines()
+                .filter(|line| !line.contains("::part(knob)"))
+                .collect::<Vec<_>>()
+                .join("\n");
+            let automatic = Doc::new(
+                &automatic,
+                &[("large", json!(true)), ("on", json!(true))],
+                d.mounted,
+            );
+            let knob = under(&automatic, "Switch", "Knob");
+            let tick = under(&automatic, "Switch", "Tick");
+            assert_eq!(
+                (knob.width, knob.height),
+                (46.0, 46.0),
+                "unauthored knob follows the 60px track on the first frame"
+            );
+            assert_eq!((tick.width, tick.height), (29.0, 29.0));
+        },
+    );
+}
+
+#[test]
 fn a_checkbox_follows_its_label_order_size_and_description() {
     let text = r#"<meta name="component" content="t">
 <div id="Page">

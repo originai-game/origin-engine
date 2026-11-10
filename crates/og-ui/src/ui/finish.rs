@@ -444,8 +444,10 @@ impl Ui {
         let rtl = self.direction == og_i18n::Direction::Rtl;
         self.kept.query_roots = None;
         let mut settlement = settlement::Settlement::default();
+        let part_geometry = self.nodes.iter().any(|node| node.part_geometry.is_some());
         loop {
-            let mut layout_inputs = settlement::LayoutInputs::new(&self.kept.measurements);
+            let mut layout_inputs =
+                settlement::LayoutInputs::new(&self.kept.measurements, part_geometry);
             let scroll = self.state.scroll.clone();
             let scroll_x = self.state.scroll_x.clone();
             let offset = |k: u64| {

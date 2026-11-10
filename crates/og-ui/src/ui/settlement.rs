@@ -55,9 +55,9 @@ pub(crate) struct LayoutInputs {
 }
 
 impl LayoutInputs {
-    pub(crate) fn new(measurements: &Measurements) -> Self {
+    pub(crate) fn new(measurements: &Measurements, part_geometry: bool) -> Self {
         Self {
-            enabled: !measurements.watched.is_empty(),
+            enabled: part_geometry || !measurements.watched.is_empty(),
             sizing: BTreeMap::new(),
         }
     }
@@ -136,22 +136,24 @@ impl Ui {
         ) -> Result<Vec<usize>, SettlementError>,
     ) -> Result<bool, SettlementError> {
         let changes = self.kept.measurements.take();
-        if changes.is_empty() {
+        // Placement temporarily fixes floating dimensions and adds safe-area
+        // padding. Resolvers patch authored inputs, not those derived values.
+        inputs.swap(&mut self.nodes);
+        let (geometry, mut dirty) = self.settle_part_geometry();
+        if changes.is_empty() && geometry.is_empty() {
+            inputs.swap(&mut self.nodes);
             return Ok(false);
         }
-        for change in &changes {
+        for change in changes.iter().chain(&geometry) {
             settlement.changed.insert(change.key, change.current);
         }
         if settlement.seen.contains(&settlement.changed) {
             return Err(SettlementError::Cycle(
-                changes.iter().map(|c| c.key).collect(),
+                changes.iter().chain(&geometry).map(|c| c.key).collect(),
             ));
         }
         settlement.seen.push(settlement.changed.clone());
-        // Placement temporarily fixes floating dimensions and adds safe-area
-        // padding. Query styles patch authored inputs, not those derived values.
-        inputs.swap(&mut self.nodes);
-        let dirty = resolve(self, &changes)?;
+        dirty.extend(resolve(self, &changes)?);
         if dirty.is_empty() {
             inputs.swap(&mut self.nodes);
             return Ok(false);

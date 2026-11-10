@@ -579,6 +579,7 @@ fn sin(a: f32) -> f32 {
 }
 
 mod controls;
+mod geometry;
 mod hud;
 mod layers;
 mod lists;

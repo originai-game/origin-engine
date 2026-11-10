@@ -387,6 +387,18 @@ impl Default for ObjectFit {
     }
 }
 
+/// Widget geometry derived from measured persistent parts before paint.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum PartGeometry {
+    Switch {
+        track: u64,
+        knob: u64,
+        mark: u64,
+        tick: u64,
+        measured: Option<[f32; 4]>,
+    },
+}
+
 /// What a widget draws besides its background and content.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum Widget {
@@ -511,6 +523,7 @@ pub(crate) struct Node {
     pub content_slot: usize,
     pub content: Content,
     pub widget: Widget,
+    pub part_geometry: Option<PartGeometry>,
     /// The text the probe reports for it.
     pub probe_text: String,
     /// A disabled control (the probe reports it; contrast rules exempt it).
@@ -766,6 +779,7 @@ impl Node {
             content_slot: NONE,
             content: Content::None,
             widget: Widget::None,
+            part_geometry: None,
             probe_text: String::new(),
             disabled: false,
             focusable: false,

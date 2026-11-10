@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "UI switch parts",
+      "summary": "Switch knob defaults, tick size and stroke, and selection travel now settle from the measured CSS track and knob boxes, including percentage dimensions and retained restyles. Same-instance and fresh-instance checkpoint restore preserve the derived geometry. Default widget and core-document reference frames are unchanged."
+    }
+  ]
+}
