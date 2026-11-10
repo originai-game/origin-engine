@@ -1,0 +1,9 @@
+{
+  "breaking": [
+    {
+      "member": "UI filtered selection",
+      "change": "Removed -og-select-filter without an alias. Native select behavior remains available; author-controlled filtering uses an input linked to a datalist.",
+      "fix": "Use <input list=\"Maps\" placeholder=\"Find a map\" bind:value={$map}> and <datalist id=\"Maps\"><option value=\"map-17\" i18n=\"map.bay\">Bay</option></datalist>. Suggestions filter values and localized labels, skip disabled options, and write the selected option value."
+    }
+  ]
+}

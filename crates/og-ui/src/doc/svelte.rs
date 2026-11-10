@@ -262,6 +262,7 @@ fn inline(node: &Node) -> bool {
 }
 
 /// One `<option>` of a `<select>`.
+#[derive(Clone)]
 struct SelectOption {
     label: String,
     value: String,
@@ -489,7 +490,7 @@ struct Parser {
 }
 /// A `<datalist>`: its id, its options' values and labels, and its bound
 /// `items`.
-type Datalist = (String, Vec<(String, String)>, Option<Expr>);
+type Datalist = (String, Vec<SelectOption>, Option<Expr>);
 
 impl Parser {
     fn line(&self, at: usize) -> usize {
@@ -1121,19 +1122,7 @@ impl Parser {
                     ));
                 }
                 let options = select_options(children)?;
-                // An option labelled only by its value is a tick without text.
-                let marks = options
-                    .into_iter()
-                    .map(|o| {
-                        let label = if o.label == o.value {
-                            String::new()
-                        } else {
-                            o.label
-                        };
-                        (o.value.trim().to_string(), label)
-                    })
-                    .collect();
-                self.datalists.push((id.value.clone(), marks, items));
+                self.datalists.push((id.value.clone(), options, items));
                 return Ok(self.push(NodeKind::If(Expr::Lit(false.into())), parent, at));
             }
             "select" => {
@@ -1688,6 +1677,12 @@ impl Parser {
                 (_, other) => super::extern_element::property(internal, other)
                     .unwrap_or_else(|| property(other)),
             };
+            if matches!(name.as_str(), "suggestionLabels" | "suggestionKeys") {
+                return Err((
+                    a.at,
+                    "write label or i18n on the datalist's <option>, not on the input".into(),
+                ));
+            }
             if mapped.is_none()
                 && let Some((owner, attribute, _)) = schema::ELEMENT_ATTRIBUTES
                     .iter()
@@ -2594,25 +2589,63 @@ impl Parser {
             let strs = |v: Vec<String>| PropValue::Lit(Lit::Strs(v));
             if matches!(self.doc.nodes[range].kind, NodeKind::Element("field")) {
                 // A text input's suggestions: the options' values, or the
-                // datalist's bound items.
+                // datalist's bound items. Labels and translations never
+                // replace the value written back on selection.
+                let options: Vec<_> = marks
+                    .iter()
+                    .filter(|o| items.is_none() && !o.disabled)
+                    .collect();
                 let value = match items {
                     Some(e) => PropValue::Bind(e, None),
-                    None => strs(marks.iter().map(|m| m.0.clone()).collect()),
+                    None => strs(options.iter().map(|o| o.value.clone()).collect()),
                 };
                 self.prop(range, "field", "suggestions", value, at, "")?;
+                for (name, values) in [
+                    (
+                        "suggestionLabels",
+                        options.iter().map(|o| o.label.clone()).collect(),
+                    ),
+                    (
+                        "suggestionKeys",
+                        options
+                            .iter()
+                            .map(|o| o.key.clone().unwrap_or_default())
+                            .collect(),
+                    ),
+                ] {
+                    self.prop(range, "field", name, strs(values), at, "")?;
+                }
                 continue;
             }
             if items.is_some() {
                 return Err((at, "a range's <datalist> lists literal <option>s".into()));
             }
-            if let Some(m) = marks.iter().find(|m| m.0.parse::<f32>().is_err()) {
+            if let Some(m) = marks
+                .iter()
+                .find(|m| m.value.trim().parse::<f32>().is_err())
+            {
                 return Err((
                     at,
-                    format!("a range's <datalist> lists numbers; '{}' is not one", m.0),
+                    format!(
+                        "a range's <datalist> lists numbers; '{}' is not one",
+                        m.value
+                    ),
                 ));
             }
-            let values = strs(marks.iter().map(|m| m.0.clone()).collect());
-            let labels = strs(marks.iter().map(|m| m.1.clone()).collect());
+            let values = strs(marks.iter().map(|m| m.value.trim().to_string()).collect());
+            // An option labelled only by its value is a tick without text.
+            let labels = strs(
+                marks
+                    .iter()
+                    .map(|m| {
+                        if m.label == m.value {
+                            String::new()
+                        } else {
+                            m.label.clone()
+                        }
+                    })
+                    .collect(),
+            );
             self.prop(range, "slider", "markValues", values, at, "")?;
             self.prop(range, "slider", "markLabels", labels, at, "")?;
         }

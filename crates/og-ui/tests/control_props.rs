@@ -284,7 +284,8 @@ fn a_text_input_list_suggests_from_its_datalist() {
   <input type="search" id="Q" list="Fruit" bind:value={$q} />
   <datalist id="Fruit">
     <option value="Apple"></option><option value="Grape"></option>
-    <option value="Apricot"></option><option value="Banana"></option>
+    <option value="fruit-apricot" label="Apricot"></option><option value="Banana"></option>
+    <option value="Unavailable" disabled></option>
   </datalist>
 </div>
 <style>#Page { padding: 20px; } #Q { width: 300px; }</style>"#;
@@ -320,7 +321,11 @@ fn a_text_input_list_suggests_from_its_datalist() {
         apricot.y + apricot.height / 2.0,
     ));
     d.step(InputFrame::default());
-    assert_eq!(d.read("q"), json!("Apricot"));
+    assert_eq!(
+        d.read("q"),
+        json!("fruit-apricot"),
+        "selection writes the value, not its label"
+    );
     assert!(options(d).is_empty(), "closed once one is chosen");
     let bound = r#"<meta name="component" content="t">
 <div id="Page"><input id="Q" list="L" bind:value={$q} /><datalist id="L" items={$names}></datalist></div>"#;
@@ -652,57 +657,68 @@ fn dialogs_close_as_closedby_says() {
     }
 }
 
-/// `-og-select-filter` puts the open list's filter field on a short list
-/// (`on`) or keeps it off a long one (`off`); `data-filter-placeholder`
-/// is what it shows while empty.
-///
-/// Ways it could fail: the property ignored (auto's 10-option threshold
-/// either way), or the filter showing its default word.
 #[test]
-fn a_select_filter_follows_its_property() {
-    let long: String = (0..20)
-        .map(|i| format!("<option value=\"{i}\">Option {i}</option>"))
-        .collect();
-    let text = format!(
-        r#"<meta name="component" content="t">
-<div id="Page">
-  <select id="Short" class="find" data-filter-placeholder="Find a map" bind:value={{$a}}><option value="x">Bay</option><option value="y">Fort</option></select>
-  <select id="Long" class="plain" bind:value={{$b}}>{long}</select>
-</div>
-<style>
-#Page {{ display: flex; flex-direction: column; gap: 8px; padding: 20px; }}
-select {{ width: 260px; }}
-.find {{ -og-select-filter: on; }}
-.plain {{ -og-select-filter: off; }}
-</style>"#
-    );
-    let d = &mut Doc::new(&text, &[("a", Value::Null), ("b", Value::Null)], true);
-    let filter = |d: &Doc, of: &str| {
-        d.ui.probe_elements()
+fn datalist_filter_uses_translated_labels() {
+    struct Env;
+    impl bind::Env for Env {
+        fn lookup(&self, _: &str) -> Option<Value> {
+            None
+        }
+        fn translate(&self, key: &str) -> Option<String> {
+            (key == "map.bay").then(|| "Baie".into())
+        }
+    }
+    for obsolete in ["-og-select-filter: on", "-og-select-filter: off"] {
+        let source = format!(
+            "<meta name=\"component\" content=\"t\"><select/><style>select {{ {obsolete}; }}</style>"
+        );
+        assert!(UiDocument::parse("ui/t.svelte", &source).is_err());
+    }
+    for internal in ["suggestion-labels", "suggestion-keys"] {
+        let source = format!("<meta name=\"component\" content=\"t\"><input {internal}=\"Bay\" />");
+        assert!(UiDocument::parse("ui/t.svelte", &source).is_err());
+    }
+    let text = r#"<meta name="component" content="t">
+<div><input id="Q" list="Maps" value="bai" placeholder="Find a map" />
+<datalist id="Maps"><option value="map-17" i18n="map.bay">Bay</option><option value="map-82">Fort</option></datalist></div>"#;
+    for mounted in [false, true] {
+        let mut ui = crate::support::ui_with_font(crate::support::test_font_metrics());
+        ui.define_document(UiDocument::parse("ui/t.svelte", text).unwrap());
+        if mounted {
+            ui.mount_document(
+                reactive::SourceId::new("test", "t"),
+                "t",
+                Default::default(),
+                Default::default(),
+                &Env,
+            )
+            .unwrap();
+        }
+        for _ in 0..3 {
+            ui.begin(InputFrame::default(), Viewport::new(800.0, 900.0));
+            if mounted {
+                ui.build_retained_documents(&Env).unwrap();
+            } else {
+                ui.component("T", "t", &mut json!({}), &Env);
+            }
+            let field = ui.probe_elements().into_iter().find(|e| e.id == "Q");
+            if let Some(field) = field {
+                ui.set_focus(&field.path);
+            }
+            ui.end();
+        }
+        let options: Vec<_> = ui
+            .probe_elements()
             .into_iter()
-            .find(|e| e.id == "Filter" && e.path.contains(of))
-    };
-    d.click("Short/Trigger");
-    assert!(
-        filter(d, "Short").is_some(),
-        "on: a short list has its filter"
-    );
-    assert!(
-        d.ui.probe_elements()
-            .iter()
-            .any(|e| e.path.contains("Short") && e.text == "Find a map"),
-        "the filter shows its placeholder"
-    );
-    // A fresh page: the short list's open picker would take this press.
-    let d = &mut Doc::new(&text, &[("a", Value::Null), ("b", Value::Null)], true);
-    d.click("Long/Trigger");
-    assert!(
-        d.ui.probe_elements()
-            .iter()
-            .any(|e| e.id == "List" && e.path.contains("Long")),
-        "the long list is open"
-    );
-    assert!(filter(d, "Long").is_none(), "off: a long list has none");
+            .filter(|e| e.path.contains("~list/Option#") && !e.text.is_empty())
+            .map(|e| e.text)
+            .collect();
+        assert_eq!(
+            options,
+            ["Baie"],
+            "filter matches translated labels, mounted={mounted}"
+        );
+    }
 }
 
 #[test]

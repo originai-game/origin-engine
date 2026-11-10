@@ -878,11 +878,6 @@ impl Ui {
                         disabled: r.flag("disabled"),
                         width: r.size("width"),
                         max_height,
-                        searchable: match styled.str("selectFilter") {
-                            Some("on") => Some(true),
-                            Some("off") => Some(false),
-                            _ => None,
-                        },
                         search_placeholder: r
                             .str("dataFilterPlaceholder")
                             .unwrap_or_default()
@@ -1259,10 +1254,34 @@ impl Ui {
                     self.pad_keyboard(&path, &r, &mut s, &mut resp);
                 }
                 if let Some(V::Strs(all)) = r.get("suggestions") {
+                    let labels = match r.get("suggestionLabels") {
+                        Some(V::Strs(labels)) => labels.as_slice(),
+                        _ => &[],
+                    };
+                    let keys = match r.get("suggestionKeys") {
+                        Some(V::Strs(keys)) => keys.as_slice(),
+                        _ => &[],
+                    };
+                    let labels: Vec<_> = all
+                        .iter()
+                        .enumerate()
+                        .map(|(index, value)| {
+                            keys.get(index)
+                                .filter(|key| !key.is_empty())
+                                .and_then(|key| b.env.translate(key))
+                                .map(|text| b.env.shown(text))
+                                .unwrap_or_else(|| labels.get(index).unwrap_or(value).clone())
+                        })
+                        .collect();
                     let field = self.last_closed;
-                    if let Some(c) =
-                        self.suggestions(&path, field, (resp.focused, resp.changed), &s, all)
-                    {
+                    if let Some(c) = self.suggestions(
+                        &path,
+                        field,
+                        (resp.focused, resp.changed),
+                        &s,
+                        all,
+                        &labels,
+                    ) {
                         s = c;
                         resp.changed = true;
                     }

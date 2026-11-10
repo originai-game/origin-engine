@@ -97,19 +97,35 @@ pub fn kept_options(options: &[DropdownOption], filter: &str) -> Vec<usize> {
 /// A text input's suggestions for `query`: those containing it (case and
 /// accents ignored), those starting with it first, then the shorter; with
 /// no query, the first ones as written. At most `max`.
-fn kept_suggestions<'a>(all: &'a [String], query: &str, max: usize) -> Vec<&'a str> {
+fn kept_suggestions<'a>(
+    all: &'a [String],
+    labels: &'a [String],
+    query: &str,
+    max: usize,
+) -> Vec<(usize, &'a str)> {
     let q = fold(query.trim());
-    let mut hits: Vec<(bool, &str)> = all
+    let mut hits: Vec<(bool, usize, &str)> = all
         .iter()
-        .filter_map(|s| {
-            let f = fold(s);
-            (q.is_empty() || f.contains(&q)).then(|| (!f.starts_with(&q), s.as_str()))
+        .enumerate()
+        .filter_map(|(index, value)| {
+            let label = labels.get(index).filter(|s| !s.is_empty()).unwrap_or(value);
+            let (label_folded, value_folded) = (fold(label), fold(value));
+            (q.is_empty() || label_folded.contains(&q) || value_folded.contains(&q)).then(|| {
+                (
+                    !label_folded.starts_with(&q) && !value_folded.starts_with(&q),
+                    index,
+                    label.as_str(),
+                )
+            })
         })
         .collect();
     if !q.is_empty() {
-        hits.sort_by_key(|&(later, s)| (later, s.chars().count()));
+        hits.sort_by_key(|&(later, _, s)| (later, s.chars().count()));
     }
-    hits.into_iter().take(max).map(|(_, s)| s).collect()
+    hits.into_iter()
+        .take(max)
+        .map(|(_, index, s)| (index, s))
+        .collect()
 }
 
 impl Ui {
@@ -130,9 +146,10 @@ impl Ui {
         (focused, typed): (bool, bool),
         query: &str,
         all: &[String],
+        labels: &[String],
     ) -> Option<String> {
         let t = self.theme;
-        let kept = kept_suggestions(all, query, 8);
+        let kept = kept_suggestions(all, labels, query, 8);
         let open_key = format!("{id}~suggest");
         let shut_key = format!("{id}~shut");
         let field_key = format!("{id}~field");
@@ -172,7 +189,7 @@ impl Ui {
                 crate::layout::Float::Popover,
                 field,
             );
-            for (i, s) in kept.iter().enumerate() {
+            for (i, (index, s)) in kept.iter().enumerate() {
                 let b = self.ctl(
                     crate::ui_idi("Option", i as u32),
                     Ctl {
@@ -209,7 +226,7 @@ impl Ui {
                 );
                 on_option |= b.r.focused;
                 if b.r.clicked {
-                    chosen = Some((*s).to_string());
+                    chosen = Some(all[*index].clone());
                 }
             }
             self.close();

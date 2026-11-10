@@ -1469,12 +1469,6 @@ pub const CORE_PROPS: &[PropSpec] = &[
         "`<select data-cycle>` draws previous, its option and next; selection, events and bindings remain those of the select."
     ),
     p!(
-        "selectFilter",
-        Ty::Word(&["auto", "on", "off"]),
-        ["select"],
-        "A filter field atop the open list that narrows its options as the player types (`-og-select-filter: on`); auto shows it past 10 options."
-    ),
-    p!(
         "dataFilterPlaceholder",
         Ty::Text,
         ["select"],
@@ -1706,6 +1700,18 @@ pub const CORE_PROPS: &[PropSpec] = &[
         Ty::Names,
         ["field"],
         "A text input's suggestions, from the `<datalist>` its `list` names (its options' values, or its `items={$names}`): a list under the field while it has the focus, those containing the text first by prefix, choosing one writes it to the field."
+    ),
+    p!(
+        "suggestionLabels",
+        Ty::Names,
+        ["field"],
+        "The labels of the input's datalist options, separate from the values written on selection."
+    ),
+    p!(
+        "suggestionKeys",
+        Ty::Names,
+        ["field"],
+        "Translation keys for datalist option labels; missing translations use the option's literal label."
     ),
     p!(
         "dataMinGap",

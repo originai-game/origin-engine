@@ -123,6 +123,8 @@ fn written(p: &PropSpec) -> String {
         None => format!(
             "`{}`",
             match p.name {
+                "suggestionLabels" => "<datalist><option label>".into(),
+                "suggestionKeys" => "<datalist><option i18n>".into(),
                 "stepBy" => "step".into(),
                 "input" => "value".into(),
                 "maxChars" => "maxlength".into(),

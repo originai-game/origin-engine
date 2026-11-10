@@ -142,8 +142,9 @@ writer. The game's art-contract measurements remain available through
     `appearance` set to `none`, in a row styled with `:focus-within`:
     `<og-icon>`, `<span>gold</span>`, `<small>{$name.length}/20</small>`.
     `<input type="search">` draws a clear button while it has text.
-  - `<select>` with `-og-select-filter: on` puts a filter on its open list
-    (`data-filter-placeholder`); `auto` shows one past 10 options.
+  - `<input list="Maps" placeholder="Find a map">` with a
+    `<datalist id="Maps">` filters suggestions by value or translated
+    option label. Choosing an option writes its value, not its label.
   - `<tabs items icons badges>` draws an icon and a count badge per tab;
     the tabPrev and tabNext actions (Q and E, LB and RB) step it.
   - `<details name="faq">` is an exclusive accordion: one of a name open

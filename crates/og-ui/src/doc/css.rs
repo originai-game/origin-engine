@@ -202,7 +202,6 @@ pub const STYLE: &[(&str, &str)] = &[
     ("top", "top"),
     ("end", "inset-inline-end"),
     ("bottom", "bottom"),
-    ("selectFilter", "-og-select-filter"),
     ("insetTop", "top"),
     ("insetRight", "right"),
     ("insetBottom", "bottom"),
@@ -436,7 +435,7 @@ fn conv(prop: &str) -> Conv {
         "background" | "fadeInto" | "color" | "ink" => Conv::Paint,
         "align" | "cross" | "direction" | "frame" | "reduced" | "textAlign" | "verticalAlign"
         | "captionSide" | "fit" | "display" | "markerType" | "markerPosition" | "userSelect"
-        | "appearance" | "labelDirection" | "selectFilter" | "fitMin" => Conv::Kebab,
+        | "appearance" | "labelDirection" | "fitMin" => Conv::Kebab,
         "wrap" => Conv::Bool("wrap", "nowrap"),
         "uppercase" => Conv::Bool("uppercase", "none"),
         "nowrap" => Conv::Bool("nowrap", "normal"),

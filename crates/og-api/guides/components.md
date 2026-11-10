@@ -786,6 +786,8 @@ Its own props, beside every element's:
 | `data-format` | `text` | How an unfocused number input presents its value: an ICU message over `value` in the UI's locale (`data-format="{value, number} m"`, `{value, number, compact}`, `{value, plural, =0 {Off} =1 {Low} other {High}}`). Editing retains the raw string. |
 | `appearance:` | `auto \| none` | none drops the control's own frame: its box, borders and background are the document's. |
 | `suggestions` | `names` | A text input's suggestions, from the `<datalist>` its `list` names (its options' values, or its `items={$names}`): a list under the field while it has the focus, those containing the text first by prefix, choosing one writes it to the field. |
+| `<datalist><option label>` | `names` | The labels of the input's datalist options, separate from the values written on selection. |
+| `<datalist><option i18n>` | `names` | Translation keys for datalist option labels; missing translations use the option's literal label. |
 | `value` | `text` | The field's text (written back). Two-way only with an explicit bind: attribute. |
 | `placeholder` | `text` | Shown while it is empty. |
 | `readonly` | `bool` | Its text is selected and copied but never edited; it keeps its focus stop. |
@@ -842,7 +844,6 @@ Its own props, beside every element's:
 |---|---|---|
 | `disabled` | `bool` | Takes no input. |
 | `data-cycle` | `bool` | `<select data-cycle>` draws previous, its option and next; selection, events and bindings remain those of the select. |
-| `-og-select-filter:` | `auto \| on \| off` | A filter field atop the open list that narrows its options as the player types (`-og-select-filter: on`); auto shows it past 10 options. |
 | `data-filter-placeholder` | `text` | What the open list's filter field shows while empty (`data-filter-placeholder`); empty is Filter. |
 | `items` | `names` | The tab or option labels, literal names or a bound list of strings (a `<select>`'s `<option>`s set them). |
 | `keys` | `names` | A string table key (og.i18n) per tab its label comes from; its item is the fallback. |
