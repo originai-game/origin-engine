@@ -6,7 +6,9 @@
 //!
 //! - `src/generated/glue.rs` (`og api gen`) exports every symbol and calls
 //!   the `og_api::host` trait method of the same name; `src/host.rs`
-//!   implements the traits, so a member missing here is a build error.
+//!   states the web wire types and expands the traits' shared
+//!   implementation (`og_runtime::host_impl`), so a member missing there is
+//!   a build error.
 //! - Column views are byte offsets into the module's memory; the Worker
 //!   loader makes typed arrays over `memory.buffer` at them, so a system
 //!   reads and writes engine memory without a copy.
@@ -36,9 +38,6 @@
 pub mod glue;
 mod audio;
 mod host;
-mod host_depth;
-mod host_e6;
-mod host_p2;
 
 use og_core::IdMap;
 use og_runtime::{Dispatch, Fetch, Hooks};

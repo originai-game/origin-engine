@@ -251,9 +251,10 @@ the validator refuses a declaration that would repeat one.
 `Lifecycle` (create, destroy, advance, command, frame, write a resource,
 a resource's packed layout and its bytes read and written, set the
 dispatcher), each method named after its binding symbol. `Host` is all of
-them. Each host implements every trait in its `src/host.rs` and its generated
-glue calls each method, so a member the IDL gains is a build error on a host
-that lacks it.
+them. Every trait is implemented once, in `og_runtime::host_impl`, which
+each host expands for itself in its `src/host.rs` beside its `Wire` types and
+what it does differently (`HostWire`); its generated glue calls each method,
+so a member the IDL gains is a build error on every host until it is there.
 
 Every binding crosses in one wire form, identical on both hosts:
 
