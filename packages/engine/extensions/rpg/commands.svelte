@@ -12,7 +12,7 @@
   <header class="rpg-band small"><h3 class="rpg-title">{t("rpg.commands.name")}</h3></header>
   <div class="plates" role="toolbar">
     {#each commands as c (c.id)}
-      <button class="command" class:primary={c.id == selected} aria-selected={c.id == selected} disabled={!c.enabled} onclick={choose}><div class="face"><icon class="command-mark" icon={c.icon}></icon><span class="command-label">{c.label}</span></div></button>
+      <button class="command" class:primary={c.id == selected} aria-label={c.label} aria-selected={c.id == selected} disabled={!c.enabled} onclick={choose}><div class="face"><icon class="command-mark" icon={c.icon}></icon><span class="command-label">{c.label}</span></div></button>
     {/each}
   </div>
 </section>
