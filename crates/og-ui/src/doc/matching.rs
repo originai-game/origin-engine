@@ -45,6 +45,7 @@ pub trait Tree {
 pub fn type_filter(tag: &str) -> Vec<Selector> {
     vec![Selector {
         source: tag.to_string(),
+        global: false,
         compounds: vec![Compound(vec![Simple::Type(tag.to_string())])],
         combinators: Vec::new(),
     }]
@@ -71,7 +72,7 @@ pub fn matches<T: Tree>(
     work.selectors += 1;
     chain(
         tree,
-        scope,
+        scope.filter(|_| !selector.global),
         selector,
         selector.compounds.len() - 1,
         id,
@@ -403,7 +404,7 @@ fn has_in(simple: &Simple) -> bool {
 
 impl Profile {
     pub fn add(&mut self, selector: &Selector) {
-        if !selector.structural() {
+        if !selector.structural() && !selector.global {
             return;
         }
         self.any = true;
@@ -414,6 +415,7 @@ impl Profile {
             }
             let own = |c: &Compound| Selector {
                 source: selector.source.clone(),
+                global: selector.global,
                 compounds: vec![Compound(
                     c.0.iter()
                         .filter(|s| {

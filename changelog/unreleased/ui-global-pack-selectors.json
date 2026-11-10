@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "ui.css",
+      "summary": "Global pack selectors match ancestors across component boundaries and restyle retained descendants when those ancestors change. Document styles remain component-scoped; minimap frame masks now receive their wrapper-qualified pack rules."
+    }
+  ]
+}

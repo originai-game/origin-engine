@@ -151,6 +151,8 @@ pub struct Compound(pub Vec<Simple>);
 #[derive(Clone, Debug, PartialEq)]
 pub struct Selector {
     pub source: String,
+    /// A global stylesheet may match across component document boundaries.
+    pub global: bool,
     pub compounds: Vec<Compound>,
     pub combinators: Vec<Combinator>,
 }
@@ -232,6 +234,7 @@ impl Selector {
         let subject = self.compounds.last().expect("a selector has a compound");
         Self {
             source: self.source.clone(),
+            global: self.global,
             compounds: vec![Compound(
                 subject
                     .0
@@ -745,6 +748,7 @@ fn parse_selector(input: &mut Parser<'_>, relative: bool) -> Result<Selector, Pa
     let start = input.position();
     let mut selector = Selector {
         source: String::new(),
+        global: false,
         compounds: Vec::new(),
         combinators: Vec::new(),
     };

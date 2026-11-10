@@ -15,6 +15,7 @@ struct Rule {
     /// HTML's user-agent stylesheet ([`super::lists::UA_CSS`]): cascades
     /// before every author rule, whatever their specificity.
     ua: bool,
+    global: bool,
     /// Its cascade layer's full name (`a.b`); `None` is unlayered.
     layer: Option<String>,
     /// Inside `@starting-style`.
@@ -68,7 +69,8 @@ fn parsed_rules(mut rules: Vec<Rule>, layers: &[String]) -> Result<Vec<(Selector
     }
     let mut parsed = Vec::new();
     for rule in rules {
-        for selector in Selector::parse_list(&rule.selector).map_err(|e| (rule.at, e))? {
+        for mut selector in Selector::parse_list(&rule.selector).map_err(|e| (rule.at, e))? {
+            selector.global = rule.global;
             let mut rule = rule.clone();
             rule.selector = selector.source.clone();
             parsed.push((selector, rule));
@@ -337,6 +339,7 @@ fn read(
         let start = rules.len();
         reader.rules(css, 0, &Context::default(), &mut rules)?;
         for rule in &mut rules[start..] {
+            rule.global = true;
             rule.at = 0;
             rule.body_at = 0;
         }
@@ -465,6 +468,11 @@ pub(super) fn apply(
             }
             continue;
         }
+        let structure = if parsed.global {
+            Some(std::sync::Arc::new(parsed.clone()))
+        } else {
+            structure
+        };
         let known: Vec<String> = doc
             .sheet
             .keyframe_rules
@@ -982,6 +990,7 @@ impl Reader<'_> {
                     body_at: block_at,
                     order: out.len(),
                     ua: false,
+                    global: false,
                     layer: context.layer.clone(),
                     starting: false,
                     pseudo: None,
@@ -1060,6 +1069,7 @@ impl Reader<'_> {
                 body_at,
                 order: out.len(),
                 ua: false,
+                global: false,
                 layer: context.layer.clone(),
                 starting: context.starting,
                 pseudo: None,

@@ -25,7 +25,7 @@ impl RetainedHost {
         ui: &Ui,
         nodes: impl IntoIterator<Item = &'a Arc<UiDocument>>,
     ) -> Profile {
-        let mut out = Profile::default();
+        let mut out = ui.docs.global_structure.clone();
         for doc in nodes {
             let profile = self.profile(ui, &doc.name).clone();
             out.merge(&profile);

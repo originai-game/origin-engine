@@ -403,36 +403,57 @@ fn masks_hide_invisible_boxes_and_fade_image_content() {
     }));
     let mut ui = ui_with_font(add_test_font(&mut scene));
     let text = r##"<meta name="component" content="masks"/>
-<div id="Root"><div id="Hidden"></div><div id="Visible"></div><img id="Image" src={1} alt=""/><div id="Parent"><div id="Child"></div></div></div>
+<div id="Root"><div id="Hidden"></div><div id="Visible"></div><img id="Image" src={1} alt=""/><div id="Parent"><div id="Child"></div></div><div id="Map" class="rpg-minimap"><Minimap texture={1} size={128} u0={0} v0={0} u1={1} v1={1} markers={$markers} label=""/></div></div>
 <style>
-#Root { width: 128px; height: 512px; background: white; }
+#Root { width: 128px; height: 640px; background: white; }
 #Hidden, #Visible, #Image, #Parent { position: absolute; left: 0; width: 128px; height: 128px; mask-image: linear-gradient(90deg, #0000, #000); }
 #Hidden { top: 0; background: black; visibility: hidden; }
 #Visible { top: 128px; background: black; mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 36px), #0000 100%); }
 #Image { top: 256px; opacity: 0.5; object-fit: cover; }
 #Parent { top: 384px; background: red; visibility: hidden; }
 #Child { width: 128px; height: 128px; background: blue; visibility: visible; }
+.rpg-minimap { position: absolute; top: 512px; width: 128px; height: 128px; }
 </style>"##;
+    ui.define_document(
+        UiDocument::parse(
+            "ui-kits/core/minimap.svelte",
+            include_str!("../../../packages/engine/src/ui/components/minimap.svelte"),
+        )
+        .unwrap(),
+    );
     ui.define_document(UiDocument::parse("ui-kits/test/masks.svelte", text).unwrap());
+    let pack = style_pack::StylePack::parse("styles/test", vec![("styles/test/main.css".into(), ".rpg-minimap #Frame { border-radius: 50%; mask-image: radial-gradient(circle, #000 69%, #0000 70.5%); }".into())]).unwrap();
+    ui.set_style_pack(&pack).unwrap();
+    let markers = reactive::SourceId::new("test", "markers");
+    let reply = reactive::wire::decode(
+        &ui.apply_reactive(
+            &reactive::wire::encode(&serde_json::json!([
+                {"op": "collection", "source": markers, "key": "id", "items": []}
+            ]))
+            .unwrap(),
+        ),
+    )
+    .unwrap();
+    assert_eq!(reply[0]["ok"], true);
     ui.mount_document(
         reactive::SourceId::new("test", "masks"),
         "masks",
-        Default::default(),
+        [("markers".into(), markers)].into(),
         Default::default(),
         &env,
     )
     .unwrap();
-    ui.begin(InputFrame::default(), Viewport::new(128.0, 512.0));
+    ui.begin(InputFrame::default(), Viewport::new(128.0, 640.0));
     ui.build_retained_documents(&env).unwrap();
     ui.end();
     assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
-    let mut overlay = Overlay::new(128.0, 512.0, 1.0);
+    let mut overlay = Overlay::new(128.0, 640.0, 1.0);
     ui.frame().emit(&EmitDesc::default(), &mut overlay);
     scene.overlay = Some(overlay);
     scene.post.tonemap = Tonemap::None;
     let mut renderer = Renderer::new_blocking(&RenderDesc {
         width: 128,
-        height: 512,
+        height: 640,
         ..Default::default()
     })
     .expect("a headless adapter");
@@ -442,7 +463,7 @@ fn masks_hide_invisible_boxes_and_fade_image_content() {
         out_dir().join("css-mask-visibility-image.png"),
         &pixels,
         128,
-        512,
+        640,
         image::ColorType::Rgba8,
     )
     .unwrap();
@@ -451,6 +472,11 @@ fn masks_hide_invisible_boxes_and_fade_image_content() {
     let div = [rgb(4, 192), rgb(124, 192)];
     let img = [rgb(4, 320), rgb(124, 320)];
     let child = [rgb(4, 448), rgb(124, 448)];
+    let minimap = [rgb(4, 516), rgb(64, 576), rgb(124, 636)];
+    assert!(
+        minimap[0][1] > 248 && minimap[1][1] < 8 && minimap[2][1] > 248,
+        "round minimap: {minimap:?}"
+    );
     assert!(
         hidden.iter().all(|c| c.iter().all(|v| *v > 248))
             && div[0][1] < 8

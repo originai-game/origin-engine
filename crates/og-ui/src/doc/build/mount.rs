@@ -209,6 +209,8 @@ pub struct DocHost {
     pub(crate) selection: BTreeMap<u64, Arc<crate::doc::generated::Selection>>,
     /// What structural selectors of every defined document read.
     pub(crate) structure: crate::doc::matching::Profile,
+    /// Global rules can read facts in a different document from their subject.
+    pub(crate) global_structure: crate::doc::matching::Profile,
     /// The instantiated sibling levels of the screen being built.
     pub(crate) levels: Vec<super::structure::Level>,
     /// A component's root continues its instance's place among siblings.
@@ -241,6 +243,15 @@ impl Ui {
         self.docs
             .structure
             .merge(&crate::doc::matching::Profile::of_document(&doc));
+        for selector in doc
+            .nodes
+            .iter()
+            .flat_map(|n| &n.rules)
+            .filter_map(|r| r.structure.as_ref())
+            .filter(|s| s.global)
+        {
+            self.docs.global_structure.add(selector);
+        }
         self.docs.wide_keywords |= doc.nodes.iter().any(|n| {
             n.rules.iter().flat_map(|r| &r.declarations).any(|d| {
                 super::cascade::CARRIED_BY_DEFAULT.contains(&d.name.as_str())
