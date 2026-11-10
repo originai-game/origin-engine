@@ -171,6 +171,8 @@ impl Ui {
             get(values, name).or_else(|| interpolate::initial(name).map(str::to_string))
         };
         let mut running = false;
+        let mut animated_values = Vec::new();
+        let mut animation_cascade = cascade.values.clone();
 
         // CSS animations, in list order over the cascade (later win).
         let theme = self.theme();
@@ -202,7 +204,7 @@ impl Ui {
             if frames.styles.is_empty() {
                 continue;
             }
-            let values = &cascade.values;
+            let values = &animation_cascade;
             let sampled = if a.timeline.ticks() {
                 // The run the motion step counts, as it will count it this tick.
                 let nth = animations[..index]
@@ -258,7 +260,8 @@ impl Ui {
             };
             for (name, value) in sampled {
                 if part || !scalar_track(frames, &name) {
-                    set(&mut cascade.values, &name, value);
+                    set(&mut animation_cascade, &name, value.clone());
+                    animated_values.push((name, value));
                 }
             }
         }
@@ -367,6 +370,11 @@ impl Ui {
                     set(&mut cascade.values, &name, value);
                     state.runs.push(r);
                 }
+            }
+        }
+        for (name, value) in animated_values {
+            if !state.runs.iter().any(|run| run.property == name) {
+                set(&mut cascade.values, &name, value);
             }
         }
         running |= !state.runs.is_empty();

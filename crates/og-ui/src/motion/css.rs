@@ -846,7 +846,7 @@ mod document_tests {
     fn computed_values_transition_reverse_shortened_animate_and_compose() {
         // 60 ticks a second: 100 ms is 6 ticks.
         let mut ui = ui(
-            "#Card { width: 40px; height: 20px; transition: width 100ms linear; }
+            "#Card { width: 40px; height: 20px; transition: width 100ms linear, height 100ms linear; }
              #Card.on { width: 100px; }
              #Card.paused { animation: grow 100ms linear both, nudge 100ms linear both;
                             animation-composition: replace, add; }
