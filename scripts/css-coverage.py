@@ -87,8 +87,34 @@ proof("isolation mix-blend-mode clip-path clip-path-boxes rect-xywh shape-functi
       "Metal references at 1280/390 compare isolated/grouped blends and rect, xywh, shape, content-box and SVG-reference clipping tiles.")
 proof("filter svg-filters", "css_filters", "css_filters_match_their_reference_frames",
       "Metal references at 1280/390 compare SVG filter graphs, primitive tiles and CSS function/url composition; this does not prove native glass backdrop chains.")
+proof("font-size rem font-shorthand", "control_props", "root_relative_text_sizes_follow_the_root_not_the_parent",
+      "Both builders emit 1.75rem at 24.5/36.75 px under 100/150 percent text scale, distinct from 1.75em under a 10px parent; shorthand is checked too.")
+proof("text-shadow", "control_props", "scene_text_shadows_follow_the_font_size",
+      "Both builders emit the same shadows as independently resolved px values for em/lh and inherited font size; none removes them.")
+proof("absolute-positioning relative-positioning fixed-positioning sticky-positioning anchor-positioning",
+      "css_layout", "positioning_places_as_css_positioning_does",
+      "Both builders assert relative flow reservation, asymmetric absolute insets, viewport-fixed corners, sticky wheel scrolling, anchor()/anchor-size(), position-area and position-try. Anchor animation and visibility are not covered.")
+proof("writing-mode", "css_layout", "writing_modes_lay_out_as_css_writing_modes_does",
+      "Both builders assert vertical-rl/lr, sideways-lr, flex axes, logical padding/margins, orthogonal flow and vertical float geometry.")
+proof("layout-direction-override", "css_layout", "direction_lays_out_as_css_writing_modes_does",
+      "Computed flex positions, logical/physical margins and absolute placement distinguish dir and CSS direction on LTR/RTL surfaces.")
+proof("vertical-align", "css_layout", "vertical_align_places_inline_boxes_as_css_does",
+      "Both builders assert sup/sub text baselines, inline-block baseline/middle/top, px/percentage offsets and line-box growth.")
+proof("float-clear", "css_layout", "floats_lay_out_as_css_floats_do",
+      "Computed opposing/stacked floats, paragraph exclusion, flow-root avoidance, clear:both and enclosing float height. Rectangular exclusion only.")
+proof("viewport-units", "css_layout", "vi_and_vb_follow_the_roots_writing_mode",
+      "Computed vi/vb dimensions follow the root writing mode on an 800x900 viewport, independently of child writing modes. Dynamic/small/large viewport units are not covered.")
+proof("border-radius corner-shape", "box_decor", "corners_take_css_radii_and_shapes",
+      "Both builders emit fill/stroke ellipse radii with overlap scaling, percentages, slash syntax and bevel corners.")
+proof("box-shadow", "box_decor", "decorations_paint_in_css_order_over_any_draw",
+      "Both builders assert outer shadow offset/blur, inset spread and paint order relative to the fill.")
+proof("pointer-events cursor", "css_interact", "the_pointer_passes_through_none_and_hidden",
+      "Actual cursor routing through pointer-events:none and visibility:hidden, descendant overrides, URL priority/hotspot and accessibility presence. Immediate builder only; OS cursor loading is not covered.")
+proof("text-align", "control_props", "a_button_label_takes_text_align",
+      "Both builders assert emitted label positions for default centre, explicit start and menu item alignment; parent alignment does not override the button default.")
 
 MISSING = {
+    "font-family": "Partial: runs::ordered_named_families_preserve_primary_glyphs_and_inherit proves ordered named families, inheritance, spans and button::part(base) glyph/font output in both builders. Named families after a generic are truncated by the parser; generic positions are not preserved.",
     "default": "documents::boolean_attribute_selectors_follow_svelte_presence proves retained :default follows false/present checked attributes. The immediate builder does not expose :default state; full support is missing.",
     "gradients": "Metal pixel proofs cover nonzero repeating intervals and coincident stops (css_paint::repeating_gradients_repeat_the_stop_interval), and out-of-range non-repeating linear/radial/conic stops (css_paint::nonrepeating_gradients_keep_stops_outside_the_image). Full feature remains missing: subpixel periods and unbounded stop counts are not proved.",
     "image-set": "URL rewriting descends into image-set, but image candidate selection has no implementation/output proof.",
@@ -112,6 +138,9 @@ PART_PROVEN = {
 PART_PROVEN["border-radius"] = (
     "box_decor", "border_radius_rounds_a_dressed_button",
     "Emitted button base radius replaces its default in both immediate and retained documents.")
+PART_PROVEN["font-family"] = (
+    "runs", "ordered_named_families_preserve_primary_glyphs_and_inherit",
+    "Both builders emit button::part(base) glyphs from ordered named families before a generic. Generic interleaving remains missing.")
 
 
 def main():

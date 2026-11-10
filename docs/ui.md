@@ -2944,7 +2944,7 @@ Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document dr
 | WebDX feature | Baseline | Document elements | Widget ::part | Proof scope or missing reason |
 | --- | --- | --- | --- | --- |
 | `abs-sign` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
-| `absolute-positioning` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `absolute-positioning` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_layout::positioning_places_as_css_positioning_does`](../crates/og-ui/tests/css_layout.rs). Both builders assert relative flow reservation, asymmetric absolute insets, viewport-fixed corners, sticky wheel scrolling, anchor()/anchor-size(), position-area and position-try. Anchor animation and visibility are not covered. |
 | `accent-color` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `active-view-transition` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `align-content-block` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
@@ -2952,7 +2952,7 @@ Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document dr
 | `all` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `alpha` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `alt-text-generated-content` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
-| `anchor-positioning` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `anchor-positioning` | Not Baseline | Supported (scope →) | Pending parts-as-nodes | [`css_layout::positioning_places_as_css_positioning_does`](../crates/og-ui/tests/css_layout.rs). Both builders assert relative flow reservation, asymmetric absolute insets, viewport-fixed corners, sticky wheel scrolling, anchor()/anchor-size(), position-area and position-try. Anchor animation and visibility are not covered. |
 | `anchor-positioning-animations` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `anchor-positioning-position-visibility-plurals` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `anchor-positioning-transforms` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
@@ -2982,11 +2982,11 @@ Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document dr
 | `baseline-source` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `before-after` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `border-image` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_paint::flex_ratios_absolute_fades_and_state_border_images_render`](../crates/og-ui/tests/css_paint.rs). A real button hover changes rendered border pixels from a shorthand source to a longhand gradient source; this does not prove all border-image modes. |
-| `border-radius` | Widely | Missing | Supported (scope →) | Output proof not yet reviewed; implementation status unverified. Part proof: [`box_decor::border_radius_rounds_a_dressed_button`](../crates/og-ui/tests/box_decor.rs). Emitted button base radius replaces its default in both immediate and retained documents. |
+| `border-radius` | Widely | Supported (scope →) | Supported (scope →) | [`box_decor::corners_take_css_radii_and_shapes`](../crates/og-ui/tests/box_decor.rs). Both builders emit fill/stroke ellipse radii with overlap scaling, percentages, slash syntax and bevel corners. Part proof: [`box_decor::border_radius_rounds_a_dressed_button`](../crates/og-ui/tests/box_decor.rs). Emitted button base radius replaces its default in both immediate and retained documents. |
 | `border-shape` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `borders` | Widely | Supported (scope →) | Pending parts-as-nodes | [`box_decor::borders_pad_the_box_and_outlines_take_no_room`](../crates/og-ui/tests/box_decor.rs). Computed child offsets prove border widths/styles and logical sides affect layout; outline/offset take no room. |
 | `box-decoration-break` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
-| `box-shadow` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `box-shadow` | Widely | Supported (scope →) | Pending parts-as-nodes | [`box_decor::decorations_paint_in_css_order_over_any_draw`](../crates/og-ui/tests/box_decor.rs). Both builders assert outer shadow offset/blur, inset spread and paint order relative to the fill. |
 | `box-sizing` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_layout::the_box_model_sizes_as_css_does`](../crates/og-ui/tests/css_layout.rs). Computed content-box padding, auto/percentage bounds, 16:9 ratio, logical dimensions and intrinsic widths. |
 | `calc` | Widely | Supported (scope →) | Pending parts-as-nodes | [`custom_properties::calc_reduces_once_its_variables_are_known`](../crates/og-ui/tests/custom_properties.rs). Computed lengths after variable substitution, typed attr updates/fallbacks, round(down), min/max/clamp and em/lh units. mod/rem are not covered by this round proof. |
 | `calc-constants` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
@@ -3033,7 +3033,7 @@ Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document dr
 | `content` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `content-visibility` | Newly | Supported (scope →) | Pending parts-as-nodes | [`css_contain::content_visibility_skips_contents_off_screen`](../crates/og-ui/tests/css_contain.rs). Computed offscreen placeholder/remembered sizes, re-entry and hidden accessibility contents. |
 | `contrast-color` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
-| `corner-shape` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `corner-shape` | Not Baseline | Supported (scope →) | Pending parts-as-nodes | [`box_decor::corners_take_css_radii_and_shapes`](../crates/og-ui/tests/box_decor.rs). Both builders emit fill/stroke ellipse radii with overlap scaling, percentages, slash syntax and bevel corners. |
 | `counter-reset-reversed` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `counter-set` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `counter-style` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
@@ -3043,7 +3043,7 @@ Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document dr
 | `cross-fade` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `cubic-bezier-easing` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `currentcolor` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
-| `cursor` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `cursor` | Not Baseline | Supported (scope →) | Pending parts-as-nodes | [`css_interact::the_pointer_passes_through_none_and_hidden`](../crates/og-ui/tests/css_interact.rs). Actual cursor routing through pointer-events:none and visibility:hidden, descendant overrides, URL priority/hotspot and accessibility presence. Immediate builder only; OS cursor loading is not covered. |
 | `custom-ellipses` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `custom-media-queries` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `custom-properties` | Widely | Supported (scope →) | Pending parts-as-nodes | [`custom_properties::bound_custom_properties_feed_the_cascade`](../crates/og-ui/tests/custom_properties.rs). Computed sizes follow bound/inherited variables, important precedence, null fallback and keyed insertion. |
@@ -3078,16 +3078,16 @@ Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document dr
 | `first-line` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `fit-content` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `fit-content-function` | Not Baseline | Supported (scope →) | Pending parts-as-nodes | [`css_layout::the_box_model_sizes_as_css_does`](../crates/og-ui/tests/css_layout.rs). Computed content-box padding, auto/percentage bounds, 16:9 ratio, logical dimensions and intrinsic widths. |
-| `fixed-positioning` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `fixed-positioning` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_layout::positioning_places_as_css_positioning_does`](../crates/og-ui/tests/css_layout.rs). Both builders assert relative flow reservation, asymmetric absolute insets, viewport-fixed corners, sticky wheel scrolling, anchor()/anchor-size(), position-area and position-try. Anchor animation and visibility are not covered. |
 | `flexbox` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_layout::flex_lays_out_as_css_flexbox_does`](../crates/og-ui/tests/css_layout.rs). Computed grow/shrink shares, reverse/order, safe alignment, wrapping, row and column gaps. |
 | `flexbox-flex-wrap-balance` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `flexbox-gap` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_layout::flex_lays_out_as_css_flexbox_does`](../crates/og-ui/tests/css_layout.rs). Computed grow/shrink shares, reverse/order, safe alignment, wrapping, row and column gaps. |
-| `float-clear` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `float-clear` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_layout::floats_lay_out_as_css_floats_do`](../crates/og-ui/tests/css_layout.rs). Computed opposing/stacked floats, paragraph exclusion, flow-root avoidance, clear:both and enclosing float height. Rectangular exclusion only. |
 | `focus-visible` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `focus-within` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_interact::focus_within_follows_real_focus_between_retained_ancestors`](../crates/og-ui/tests/css_interact.rs). Real clicks transfer focus between nested retained branches; computed widths prove shared ancestors stay focused and old ancestors reset. Parts and the legacy immediate builder are not covered. |
 | `font-display` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `font-face` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
-| `font-family` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `font-family` | Widely | Missing | Supported (scope →) | Partial: runs::ordered_named_families_preserve_primary_glyphs_and_inherit proves ordered named families, inheritance, spans and button::part(base) glyph/font output in both builders. Named families after a generic are truncated by the parser; generic positions are not preserved. Part proof: [`runs::ordered_named_families_preserve_primary_glyphs_and_inherit`](../crates/og-ui/tests/runs.rs). Both builders emit button::part(base) glyphs from ordered named families before a generic. Generic interleaving remains missing. |
 | `font-family-math` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `font-family-system` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `font-family-ui` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
@@ -3098,8 +3098,8 @@ Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document dr
 | `font-optical-sizing` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `font-palette` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `font-palette-animation` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
-| `font-shorthand` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
-| `font-size` | Widely | Missing | Supported (scope →) | Output proof not yet reviewed; implementation status unverified. Part proof: [`dressing::button_parts_keep_separate_boxes_and_host_event_ownership`](../crates/og-ui/tests/dressing.rs). Button base dimensions, independent host/part translate, inherited font size/color, opacity keyframes, click ownership and remove/reinsert output. Other widget groups remain pending. |
+| `font-shorthand` | Widely | Supported (scope →) | Pending parts-as-nodes | [`control_props::root_relative_text_sizes_follow_the_root_not_the_parent`](../crates/og-ui/tests/control_props.rs). Both builders emit 1.75rem at 24.5/36.75 px under 100/150 percent text scale, distinct from 1.75em under a 10px parent; shorthand is checked too. |
+| `font-size` | Widely | Supported (scope →) | Supported (scope →) | [`control_props::root_relative_text_sizes_follow_the_root_not_the_parent`](../crates/og-ui/tests/control_props.rs). Both builders emit 1.75rem at 24.5/36.75 px under 100/150 percent text scale, distinct from 1.75em under a 10px parent; shorthand is checked too. Part proof: [`dressing::button_parts_keep_separate_boxes_and_host_event_ownership`](../crates/og-ui/tests/dressing.rs). Button base dimensions, independent host/part translate, inherited font size/color, opacity keyframes, click ownership and remove/reinsert output. Other widget groups remain pending. |
 | `font-size-adjust` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `font-stretch` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `font-style` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
@@ -3166,7 +3166,7 @@ Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document dr
 | `justify-self-block` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `lab` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `lang` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
-| `layout-direction-override` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `layout-direction-override` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_layout::direction_lays_out_as_css_writing_modes_does`](../crates/og-ui/tests/css_layout.rs). Computed flex positions, logical/physical margins and absolute placement distinguish dir and CSS direction on LTR/RTL surfaces. |
 | `letter-spacing` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `lh` | Widely | Supported (scope →) | Pending parts-as-nodes | [`custom_properties::calc_reduces_once_its_variables_are_known`](../crates/og-ui/tests/custom_properties.rs). Computed lengths after variable substitution, typed attr updates/fallbacks, round(down), min/max/clamp and em/lh units. mod/rem are not covered by this round proof. |
 | `light-dark` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
@@ -3234,7 +3234,7 @@ Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document dr
 | `picture-in-picture` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `placeholder` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `placeholder-shown` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
-| `pointer-events` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `pointer-events` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_interact::the_pointer_passes_through_none_and_hidden`](../crates/og-ui/tests/css_interact.rs). Actual cursor routing through pointer-events:none and visibility:hidden, descendant overrides, URL priority/hotspot and accessibility presence. Immediate builder only; OS cursor loading is not covered. |
 | `popover` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `position` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `prefers-color-scheme` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
@@ -3254,8 +3254,8 @@ Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document dr
 | `rect-xywh` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_effects::css_effects_match_their_reference_frames`](../crates/og-ui/tests/css_effects.rs). Metal references at 1280/390 compare isolated/grouped blends and rect, xywh, shape, content-box and SVG-reference clipping tiles. |
 | `registered-custom-properties` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `relative-color` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
-| `relative-positioning` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
-| `rem` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `relative-positioning` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_layout::positioning_places_as_css_positioning_does`](../crates/og-ui/tests/css_layout.rs). Both builders assert relative flow reservation, asymmetric absolute insets, viewport-fixed corners, sticky wheel scrolling, anchor()/anchor-size(), position-area and position-try. Anchor animation and visibility are not covered. |
+| `rem` | Widely | Supported (scope →) | Pending parts-as-nodes | [`control_props::root_relative_text_sizes_follow_the_root_not_the_parent`](../crates/og-ui/tests/control_props.rs). Both builders emit 1.75rem at 24.5/36.75 px under 100/150 percent text scale, distinct from 1.75em under a 10px parent; shorthand is checked too. |
 | `resizable` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `resize` | Not Baseline | Supported (scope →) | Pending parts-as-nodes | [`css_contain::a_resize_handle_drags_the_size_onto_the_element`](../crates/og-ui/tests/css_contain.rs). Pointer drags change computed dimensions subject to axis, overflow and max-width. |
 | `resolution` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
@@ -3304,7 +3304,7 @@ Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document dr
 | `state` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `static-positioning` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `steps-easing` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
-| `sticky-positioning` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `sticky-positioning` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_layout::positioning_places_as_css_positioning_does`](../crates/og-ui/tests/css_layout.rs). Both builders assert relative flow reservation, asymmetric absolute insets, viewport-fixed corners, sticky wheel scrolling, anchor()/anchor-size(), position-area and position-try. Anchor animation and visibility are not covered. |
 | `stretch` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `style-query-range-syntax` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `subgrid` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_layout::grid_lays_out_as_css_grid_does`](../crates/og-ui/tests/css_layout.rs). Computed named/negative/spanning tracks, auto-fit/fill, fr minimums, areas, alignment and inherited subgrid tracks. |
@@ -3322,7 +3322,7 @@ Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document dr
 | `table` | Widely | Missing | Pending parts-as-nodes | Table spans/captions have computed output tests, but border-spacing and border-collapse have no implementation/output proof. |
 | `target` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `target-text` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
-| `text-align` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `text-align` | Widely | Supported (scope →) | Pending parts-as-nodes | [`control_props::a_button_label_takes_text_align`](../crates/og-ui/tests/control_props.rs). Both builders assert emitted label positions for default centre, explicit start and menu item alignment; parent alignment does not override the button default. |
 | `text-align-last` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `text-autospace` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `text-box` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
@@ -3342,7 +3342,7 @@ Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document dr
 | `text-justify` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `text-orientation` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `text-overflow` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
-| `text-shadow` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `text-shadow` | Widely | Supported (scope →) | Pending parts-as-nodes | [`control_props::scene_text_shadows_follow_the_font_size`](../crates/og-ui/tests/control_props.rs). Both builders emit the same shadows as independently resolved px values for em/lh and inherited font size; none removes them. |
 | `text-size-adjust` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `text-spacing-trim` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `text-stroke-fill` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
@@ -3369,7 +3369,7 @@ Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document dr
 | `user-action-pseudos` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `user-pseudos` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `user-select` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
-| `vertical-align` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `vertical-align` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_layout::vertical_align_places_inline_boxes_as_css_does`](../crates/og-ui/tests/css_layout.rs). Both builders assert sup/sub text baselines, inline-block baseline/middle/top, px/percentage offsets and line-box growth. |
 | `vertical-form-controls` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `video-dynamic-range` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `view-transition-class` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
@@ -3377,7 +3377,7 @@ Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document dr
 | `view-transitions-element-scoped` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `viewport-segments` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `viewport-unit-variants` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
-| `viewport-units` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `viewport-units` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_layout::vi_and_vb_follow_the_roots_writing_mode`](../crates/og-ui/tests/css_layout.rs). Computed vi/vb dimensions follow the root writing mode on an 800x900 viewport, independently of child writing modes. Dynamic/small/large viewport units are not covered. |
 | `visibility` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_paint::masks_hide_invisible_boxes_and_fade_image_content`](../crates/og-ui/tests/css_paint.rs). Metal pixels prove hidden masked boxes do not paint, visible descendants retain the mask, and gradient masks fade both div and translucent image content. |
 | `webvtt` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `webxr-dom-overlays` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
@@ -3393,7 +3393,7 @@ Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document dr
 | `word-break-auto-phrase` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `word-break-break-word` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `word-spacing` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
-| `writing-mode` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `writing-mode` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_layout::writing_modes_lay_out_as_css_writing_modes_does`](../crates/og-ui/tests/css_layout.rs). Both builders assert vertical-rl/lr, sideways-lr, flex axes, logical padding/margins, orthogonal flow and vertical float geometry. |
 | `writing-mode-svg-values` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `z-index` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `zoom` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
