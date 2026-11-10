@@ -127,26 +127,47 @@ fn every_asset_type_reports_its_figures_and_its_budgets_flag_it() {
 
 #[test]
 fn css_pack_cooks_svg_images_as_regular_texture_assets() {
-    let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-cook-css-svg");
+    let builtin = std::env::var_os("OG_TEST_BUILTIN_CSS").is_some();
+    let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join(if builtin {
+        "og-cook-css-svg-builtin"
+    } else {
+        "og-cook-css-svg"
+    });
     let _ = std::fs::remove_dir_all(&root);
-    std::fs::create_dir_all(root.join("assets/example")).unwrap();
+    let dir = root.join(if builtin {
+        "styles/example"
+    } else {
+        "assets/example"
+    });
+    let id = if builtin {
+        "@styles/example"
+    } else {
+        "example"
+    };
+    std::fs::create_dir_all(dir.join("art")).unwrap();
+    if builtin {
+        std::fs::create_dir_all(root.join("assets")).unwrap();
+        std::fs::write(
+            root.join("assets/look.ogt"),
+            "type look\nversion 1\n---\nui \"@styles/example\"\n",
+        )
+        .unwrap();
+    }
     std::fs::write(
-        root.join("assets/example/main.css"),
-        "button::part(body) { mask-image: url(icon.svg); }",
+        dir.join("main.css"),
+        "button::part(body) { mask-image: url(art/icon.svg); }",
     )
     .unwrap();
-    std::fs::write(root.join("assets/example/icon.svg"), r##"<svg xmlns="http://www.w3.org/2000/svg" width="32" height="16"><rect width="16" height="16" fill="#ff0000" fill-opacity="0.5"/></svg>"##).unwrap();
+    std::fs::write(dir.join("art/icon.svg"), r##"<svg xmlns="http://www.w3.org/2000/svg" width="32" height="16"><rect width="16" height="16" fill="#ff0000" fill-opacity="0.5"/></svg>"##).unwrap();
     let report = cook_project(&root, &CookOptions::default()).unwrap();
     assert!(report.ok(), "{:?}", report.errors());
     let bundle = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
-    let text = bundle
-        .style_text("example", &bundle.read("example").unwrap())
-        .unwrap();
-    let pack = og_ui::style_pack::StylePack::parse("example", serde_json::from_str(&text).unwrap())
-        .unwrap();
-    assert_eq!(pack.assets, ["example/icon.svg"]);
+    let text = bundle.style_text(id, &bundle.read(id).unwrap()).unwrap();
+    let pack =
+        og_ui::style_pack::StylePack::parse(id, serde_json::from_str(&text).unwrap()).unwrap();
+    assert_eq!(pack.assets, [format!("{id}/art/icon.svg")]);
     let atlas = bundle
-        .load_texture("example/icon.svg")
+        .load_texture(&format!("{id}/art/icon.svg"))
         .unwrap()
         .to_texture_data()
         .unwrap();
@@ -158,4 +179,28 @@ fn css_pack_cooks_svg_images_as_regular_texture_assets() {
         "straight alpha: {painted:?}"
     );
     assert!(pixel(28, 4)[3] < 10, "outside the SVG shape is transparent");
+    if !builtin {
+        // Built-in tables are process-wide; isolate their directory from
+        // other cooks instead of changing the test process's environment.
+        let output = std::process::Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "cook_report::css_pack_cooks_svg_images_as_regular_texture_assets",
+                "--nocapture",
+            ])
+            .env("OG_TEST_BUILTIN_CSS", "1")
+            .env(
+                "OG_STYLES_DIR",
+                root.with_file_name("og-cook-css-svg-builtin")
+                    .join("styles"),
+            )
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{}\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
 }

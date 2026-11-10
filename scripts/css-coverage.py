@@ -55,6 +55,10 @@ proof("individual-transforms", "css_interact", "translate_percentages_move_by_th
       "Percentage translate changes computed box and hit testing; this proof covers translate, not individual rotate/scale.")
 proof("conic-gradients", "css_paint", "repeating_gradients_repeat_the_stop_interval",
       "Metal pixel assertions for both halves of all four repeating conic quarters.")
+proof("masks visibility", "css_paint", "masks_hide_invisible_boxes_and_fade_image_content",
+      "Metal pixels prove hidden masked boxes do not paint, visible descendants retain the mask, and gradient masks fade both div and translucent image content.")
+proof("border-image", "css_paint", "flex_ratios_absolute_fades_and_state_border_images_render",
+      "A real button hover changes rendered border pixels from a shorthand source to a longhand gradient source; this does not prove all border-image modes.")
 proof("focus-within", "css_interact", "focus_within_follows_real_focus_between_retained_ancestors",
       "Real clicks transfer focus between nested retained branches; computed widths prove shared ancestors stay focused and old ancestors reset. Parts and the legacy immediate builder are not covered.")
 proof("object-view-box", "control_props", "an_image_shows_its_object_view_box",
@@ -83,7 +87,7 @@ proof("filter svg-filters", "css_filters", "css_filters_match_their_reference_fr
       "Metal references at 1280/390 compare SVG filter graphs, primitive tiles and CSS function/url composition; this does not prove native glass backdrop chains.")
 
 MISSING = {
-    "gradients": "Nonzero repeating radial/conic intervals and coincident stops have Metal pixel proof in css_paint::repeating_gradients_repeat_the_stop_interval; full feature remains missing: subpixel periods, unbounded stop counts and out-of-range non-repeating stops are not proved.",
+    "gradients": "Metal pixel proofs cover nonzero repeating intervals and coincident stops (css_paint::repeating_gradients_repeat_the_stop_interval), and out-of-range non-repeating linear/radial/conic stops (css_paint::nonrepeating_gradients_keep_stops_outside_the_image). Full feature remains missing: subpixel periods and unbounded stop counts are not proved.",
     "image-set": "URL rewriting descends into image-set, but image candidate selection has no implementation/output proof.",
     "interpolate-size": "No intrinsic-size interpolation implementation or output proof.",
     "calc-size": "No calc-size evaluation or animated output proof.",

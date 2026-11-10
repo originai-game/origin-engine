@@ -728,7 +728,7 @@ pub(crate) fn layout(
         let i = order[k];
         if !skip(&frames, i) && !same_wh(nodes, kept, i) {
             if !nodes[i].cv_skip {
-                distribute_h(nodes, i);
+                distribute_h(nodes, i, measure);
             }
             kept.open(nodes, &mut order, &mut opened, k);
         }

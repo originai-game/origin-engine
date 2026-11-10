@@ -199,7 +199,7 @@ impl UiTables {
             .take(UI_GRADIENT_STOPS)
             .map(|s| UiStop {
                 offset: if s.offset.is_finite() {
-                    if g.spread == UiSpread::RepeatStops {
+                    if matches!(g.spread, UiSpread::Pad | UiSpread::RepeatStops) {
                         s.offset
                     } else {
                         s.offset.clamp(0.0, 1.0)
@@ -895,9 +895,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn gradient_stops_are_clamped_ordered_and_premultiplied_in_oklab() {
+    fn repeating_gradient_stops_are_clamped_ordered_and_premultiplied_in_oklab() {
         let mut t = UiTables::default();
         let g = UiGradient {
+            spread: UiSpread::Repeat,
             stops: vec![
                 UiStop {
                     offset: 0.6,

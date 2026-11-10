@@ -167,6 +167,46 @@ fn centering_and_asymmetric_anchors_preserve_transforms() {
 }
 
 #[test]
+fn flex_resolves_an_auto_cross_size_from_the_final_aspect_ratio() {
+    let text = r#"<meta name="component" content="t">
+<div id="Root"><div id="Column"><div id="First"><div id="Child"></div></div><div id="Second"></div></div></div>
+<style>
+#Root { display: flex; width: 400px; height: 168px; margin-left: 120px; }
+#Column { display: flex; flex-direction: column; height: 100%; gap: 8px; align-items: center; }
+#First, #Second { flex: 1 1 0; min-height: 0; aspect-ratio: 1; max-width: 100px; }
+#Second { aspect-ratio: 2; }
+#Child { width: 100%; height: 100%; }
+</style>"#;
+    both(text, &[], |d| {
+        assert_eq!(wh(d, "First"), (80.0, 80.0));
+        assert_eq!(wh(d, "Second"), (100.0, 80.0));
+        assert_eq!(wh(d, "Child"), (80.0, 80.0));
+        assert_eq!(wh(d, "Column"), (0.0, 168.0));
+        d.step(InputFrame::default());
+        assert_eq!(wh(d, "First"), (80.0, 80.0));
+        assert_eq!(wh(d, "Child"), (80.0, 80.0));
+    });
+}
+
+#[test]
+fn absolute_insets_place_a_fade_over_overflowing_flex_children() {
+    let text = r#"<meta name="component" content="t">
+<div id="Page"><div class="box">A</div><div class="box">B</div><div class="box">C</div><div id="Fade"></div></div>
+<style>
+#Page { position: relative; display: flex; flex-direction: column; width: 390px; height: 763px; gap: 8px; overflow: hidden; background: #303030; }
+.box { flex: none; height: 400px; background: #3060c0; }
+#Fade { position: absolute; left: 0; right: 0; bottom: 0; height: 200px; background: linear-gradient(180deg, #ff000000, #ff0000); }
+</style>"#;
+    both(text, &[], |d| {
+        let fade = d.get("Fade");
+        assert_eq!(
+            (fade.x, fade.y, fade.width, fade.height),
+            (0.0, 563.0, 390.0, 200.0)
+        );
+    });
+}
+
+#[test]
 fn the_box_model_sizes_as_css_does() {
     let text = r#"<meta name="component" content="t">
 <div><div id="Root">

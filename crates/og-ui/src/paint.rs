@@ -1582,10 +1582,9 @@ impl ElementDraw {
         out
     }
 
-    /// What draws before the element's own commands: a layer's start, then
-    /// its shadows, outer glows and backdrops, then its fills, inner
-    /// shadows and inner glows.
-    pub(crate) fn enter(&self, theme: &Theme, at: &Placed) -> Vec<DrawCmd> {
+    /// Opens the subtree's masks, clips and filter layers, even when its
+    /// own paint is hidden but a descendant restores visibility.
+    pub(crate) fn begin(&self, theme: &Theme, at: &Placed) -> Vec<DrawCmd> {
         if let Some(n) = self.element_image {
             return vec![DrawCmd::BeginLayer {
                 material: og_render::UiMaterial::Plain,
@@ -1688,6 +1687,17 @@ impl ElementDraw {
                     role: Default::default(),
                 });
             }
+        }
+        out
+    }
+
+    /// What draws before the element's own commands: a layer's start, then
+    /// its shadows, outer glows and backdrops, then its fills, inner
+    /// shadows and inner glows.
+    pub(crate) fn enter(&self, theme: &Theme, at: &Placed) -> Vec<DrawCmd> {
+        let mut out = self.begin(theme, at);
+        if self.element_image.is_some() {
+            return out;
         }
         // Inside a layer the composite carries the opacity and blend.
         let (opacity, blend) = if self.composited() {

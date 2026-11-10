@@ -587,7 +587,7 @@ pub fn value_form(prop: &str, words: &[&str]) -> Option<String> {
 /// How a property that sets several props at once is written.
 fn joint_form(css: &str) -> Option<&'static str> {
     Some(match css {
-        "translate" => "<x> [<y>]: px, or % of its own box",
+        "translate" => "none | <x> [<y>]: px, or % of its own box",
         "scale" => "<both> | <x> <y>",
         "-og-skew" => "<x>deg [<y>deg]",
         "grid-column" => "<n> | <n> / span <n> | span <n>",
@@ -1804,6 +1804,10 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
                 ("skewX", "skewY")
             };
             let (x, y) = match t.as_slice() {
+                [Tok::Ident(w)] if name == "translate" && w == "none" => (
+                    Tok::Num("0".into(), String::new()),
+                    Tok::Num("0".into(), String::new()),
+                ),
                 [x] => (x.clone(), Tok::Num("0".into(), String::new())),
                 [x, y] => (x.clone(), y.clone()),
                 _ => return Err(format!("{name}: <x> <y>")),

@@ -2964,7 +2964,7 @@ Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document dr
 | `baseline-shift` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `baseline-source` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `before-after` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
-| `border-image` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `border-image` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_paint::flex_ratios_absolute_fades_and_state_border_images_render`](../crates/og-ui/tests/css_paint.rs). A real button hover changes rendered border pixels from a shorthand source to a longhand gradient source; this does not prove all border-image modes. |
 | `border-radius` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `border-shape` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `borders` | Widely | Supported (scope →) | Pending parts-as-nodes | [`box_decor::borders_pad_the_box_and_outlines_take_no_room`](../crates/og-ui/tests/box_decor.rs). Computed child offsets prove border widths/styles and logical sides affect layout; outline/offset take no room. |
@@ -3110,7 +3110,7 @@ Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document dr
 | `gap-decorations` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `glyph-orientation-vertical` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `gradient-interpolation` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
-| `gradients` | Widely | Missing | Pending parts-as-nodes | Nonzero repeating radial/conic intervals and coincident stops have Metal pixel proof in css_paint::repeating_gradients_repeat_the_stop_interval; full feature remains missing: subpixel periods, unbounded stop counts and out-of-range non-repeating stops are not proved. |
+| `gradients` | Widely | Missing | Pending parts-as-nodes | Metal pixel proofs cover nonzero repeating intervals and coincident stops (css_paint::repeating_gradients_repeat_the_stop_interval), and out-of-range non-repeating linear/radial/conic stops (css_paint::nonrepeating_gradients_keep_stops_outside_the_image). Full feature remains missing: subpixel periods and unbounded stop counts are not proved. |
 | `grid` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_layout::grid_lays_out_as_css_grid_does`](../crates/og-ui/tests/css_layout.rs). Computed named/negative/spanning tracks, auto-fit/fill, fr minimums, areas, alignment and inherited subgrid tracks. |
 | `grid-animation` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `grid-lanes` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
@@ -3167,7 +3167,7 @@ Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document dr
 | `marker` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `mask-border` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `mask-type` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
-| `masks` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `masks` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_paint::masks_hide_invisible_boxes_and_fade_image_content`](../crates/og-ui/tests/css_paint.rs). Metal pixels prove hidden masked boxes do not paint, visible descendants retain the mask, and gradient masks fade both div and translucent image content. |
 | `mathml` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `media-pseudos` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `media-queries` | Widely | Supported (scope →) | Pending parts-as-nodes | [`documents::media_queries_follow_dimensions_preferences_and_nested_intersections`](../crates/og-ui/tests/documents.rs). Computed widths at six viewport/preference combinations, including inclusive/exclusive range boundaries and nested queries. |
@@ -3361,7 +3361,7 @@ Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document dr
 | `viewport-segments` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `viewport-unit-variants` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `viewport-units` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
-| `visibility` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `visibility` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_paint::masks_hide_invisible_boxes_and_fade_image_content`](../crates/og-ui/tests/css_paint.rs). Metal pixels prove hidden masked boxes do not paint, visible descendants retain the mask, and gradient masks fade both div and translucent image content. |
 | `webvtt` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `webxr-dom-overlays` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `where` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |

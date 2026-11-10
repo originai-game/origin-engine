@@ -300,3 +300,232 @@ div { margin: 0; }
         assert!(rgb.iter().all(|c| (126..=129).contains(c)), "{rgb:?}");
     }
 }
+
+#[test]
+#[ignore = "requires GPU"]
+fn nonrepeating_gradients_keep_stops_outside_the_image() {
+    use og_render::*;
+    let mut scene = RenderScene::new();
+    let mut ui = ui_with_font(add_test_font(&mut scene));
+    let text = r##"<meta name="component" content="outside"/>
+<div>
+  <div id="negative"></div><div id="beyond"></div>
+  <div id="radial"></div><div id="conic"></div>
+</div>
+<style>
+div { margin: 0; }
+#negative, #beyond, #radial, #conic { width: 128px; height: 128px; }
+#negative { background: linear-gradient(to right, black -128px, white 128px); }
+#beyond { background: linear-gradient(to right, black 0px, white 256px); }
+#radial { background: radial-gradient(circle at 0% 50%, black -64px, white 64px); }
+#conic { background: conic-gradient(black -1turn, white 1turn); }
+</style>"##;
+    ui.define_document(UiDocument::parse("ui/outside.svelte", text).unwrap());
+    ui.mount_document(
+        reactive::SourceId::new("test", "outside"),
+        "outside",
+        Default::default(),
+        Default::default(),
+        &bind::NoEnv,
+    )
+    .unwrap();
+    ui.begin(InputFrame::default(), Viewport::new(128.0, 512.0));
+    ui.build_retained_documents(&bind::NoEnv).unwrap();
+    ui.end();
+    let mut overlay = Overlay::new(128.0, 512.0, 1.0);
+    ui.frame().emit(&EmitDesc::default(), &mut overlay);
+    scene.overlay = Some(overlay);
+    scene.post.tonemap = Tonemap::None;
+    let mut renderer = Renderer::new_blocking(&RenderDesc {
+        width: 128,
+        height: 512,
+        ..Default::default()
+    })
+    .expect("a headless adapter");
+    renderer.render(&scene, &RenderTarget::Offscreen).unwrap();
+    let pixels = renderer.read_offscreen().unwrap().pixels;
+    image::save_buffer(
+        out_dir().join("css-outside-gradients.png"),
+        &pixels,
+        128,
+        512,
+        image::ColorType::Rgba8,
+    )
+    .unwrap();
+    let check = |x: usize, y: usize, fraction: f32| {
+        // On the neutral OKLab axis L=t, linear luminance is t³. Encode
+        // that independently as sRGB; neither stop clamping nor the
+        // renderer's gradient evaluator contributes the expectation.
+        let linear = fraction.clamp(0.0, 1.0).powi(3);
+        let encoded = if linear <= 0.003_130_8 {
+            linear * 12.92
+        } else {
+            1.055 * linear.powf(1.0 / 2.4) - 0.055
+        };
+        let expected = encoded * 255.0;
+        let rgb = &pixels[(y * 128 + x) * 4..][..3];
+        assert!(
+            rgb.iter().all(|c| (*c as f32 - expected).abs() < 3.0),
+            "({x}, {y}): expected {expected:.1}, got {rgb:?}"
+        );
+    };
+    for x in [8, 32, 80, 120] {
+        let at = x as f32 + 0.5;
+        check(x, 64, (at + 128.0) / 256.0);
+        check(x, 192, at / 256.0);
+        check(x, 320, (at.hypot(0.5) + 64.0) / 128.0);
+    }
+    for (x, y) in [(80, 24), (104, 80), (48, 104), (24, 48)] {
+        let angle = (y as f32 + 0.5 - 64.0).atan2(x as f32 + 0.5 - 64.0);
+        let turn = (angle + std::f32::consts::FRAC_PI_2).rem_euclid(std::f32::consts::TAU)
+            / std::f32::consts::TAU;
+        check(x, y + 384, (turn + 1.0) / 2.0);
+    }
+}
+
+#[test]
+#[ignore = "requires GPU"]
+fn masks_hide_invisible_boxes_and_fade_image_content() {
+    use og_render::*;
+    struct Env(TextureHandle);
+    impl bind::Env for Env {
+        fn texture(&self, _: f64) -> Option<TextureHandle> {
+            Some(self.0)
+        }
+    }
+    let mut scene = RenderScene::new();
+    let env = Env(scene.add_texture(TextureData {
+        width: 2,
+        height: 2,
+        rgba: [255, 0, 0, 255].repeat(4),
+        color_space: ColorSpace::Srgb,
+        mips: Mips::None,
+    }));
+    let mut ui = ui_with_font(add_test_font(&mut scene));
+    let text = r##"<meta name="component" content="masks"/>
+<div id="Root"><div id="Hidden"></div><div id="Visible"></div><img id="Image" src={1} alt=""/><div id="Parent"><div id="Child"></div></div></div>
+<style>
+#Root { width: 128px; height: 512px; background: white; }
+#Hidden, #Visible, #Image, #Parent { position: absolute; left: 0; width: 128px; height: 128px; mask-image: linear-gradient(90deg, #0000, #000); }
+#Hidden { top: 0; background: black; visibility: hidden; }
+#Visible { top: 128px; background: black; }
+#Image { top: 256px; opacity: 0.5; object-fit: cover; }
+#Parent { top: 384px; background: red; visibility: hidden; }
+#Child { width: 128px; height: 128px; background: blue; visibility: visible; }
+</style>"##;
+    ui.define_document(UiDocument::parse("ui-kits/test/masks.svelte", text).unwrap());
+    ui.mount_document(
+        reactive::SourceId::new("test", "masks"),
+        "masks",
+        Default::default(),
+        Default::default(),
+        &env,
+    )
+    .unwrap();
+    ui.begin(InputFrame::default(), Viewport::new(128.0, 512.0));
+    ui.build_retained_documents(&env).unwrap();
+    ui.end();
+    assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+    let mut overlay = Overlay::new(128.0, 512.0, 1.0);
+    ui.frame().emit(&EmitDesc::default(), &mut overlay);
+    scene.overlay = Some(overlay);
+    scene.post.tonemap = Tonemap::None;
+    let mut renderer = Renderer::new_blocking(&RenderDesc {
+        width: 128,
+        height: 512,
+        ..Default::default()
+    })
+    .expect("a headless adapter");
+    renderer.render(&scene, &RenderTarget::Offscreen).unwrap();
+    let pixels = renderer.read_offscreen().unwrap().pixels;
+    image::save_buffer(
+        out_dir().join("css-mask-visibility-image.png"),
+        &pixels,
+        128,
+        512,
+        image::ColorType::Rgba8,
+    )
+    .unwrap();
+    let rgb = |x: usize, y: usize| &pixels[(y * 128 + x) * 4..][..3];
+    let hidden = [rgb(4, 64), rgb(64, 64), rgb(124, 64)];
+    let div = [rgb(4, 192), rgb(124, 192)];
+    let img = [rgb(4, 320), rgb(124, 320)];
+    let child = [rgb(4, 448), rgb(124, 448)];
+    assert!(
+        hidden.iter().all(|c| c.iter().all(|v| *v > 248))
+            && div[0][1] > 235
+            && div[1][1] < 90
+            && img[0][1] > 235
+            && img[1][1] < 205
+            && child[0][0] > 235
+            && child[1][0] < 90
+            && child[1][2] > 248,
+        "hidden={hidden:?}; masked div={div:?}; masked img={img:?}; visible child={child:?}"
+    );
+}
+
+#[test]
+#[ignore = "requires GPU"]
+fn flex_ratios_absolute_fades_and_state_border_images_render() {
+    use og_render::*;
+    let mut scene = RenderScene::new();
+    let text = r##"<meta name="component" content="t">
+<div>
+<div id="Page"><div class="box"></div><div class="box"></div><div id="Fade"></div></div>
+<div id="Doll"><div id="Column"><div id="First"></div><div id="Second"></div></div></div>
+<button id="Border"></button>
+</div>
+<style>
+#Page { position: relative; display: flex; flex-direction: column; width: 240px; height: 160px; overflow: hidden; }
+.box { flex: none; height: 200px; background: blue; }
+#Fade { position: absolute; left: 0; right: 0; bottom: 0; height: 80px; background: linear-gradient(180deg, #ff000000, #ff0000); }
+#Doll { display: flex; width: 240px; height: 168px; padding-left: 120px; }
+#Column { display: flex; flex-direction: column; height: 100%; gap: 8px; align-items: center; }
+#First, #Second { flex: 1 1 0; min-height: 0; aspect-ratio: 1; max-width: 100px; background: lime; }
+#Second { aspect-ratio: 2; background: cyan; }
+#Border { width: 240px; height: 64px; border: 12px solid transparent; border-image: linear-gradient(red, red) 12 / 12px; }
+#Border:hover { border-image-source: linear-gradient(lime, lime); }
+</style>"##;
+    let mut d = crate::html_text::Doc::with_font(text, &[], true, add_test_font(&mut scene));
+    d.viewport = Viewport::new(240.0, 392.0);
+    d.step(InputFrame::default());
+    d.step(InputFrame {
+        pointer: og_core::glam::Vec2::new(120.0, 350.0),
+        pointer_inside: true,
+        ..Default::default()
+    });
+    let mut overlay = Overlay::new(240.0, 392.0, 1.0);
+    d.ui.frame().emit(&EmitDesc::default(), &mut overlay);
+    scene.overlay = Some(overlay);
+    scene.post.tonemap = Tonemap::None;
+    let mut renderer = Renderer::new_blocking(&RenderDesc {
+        width: 240,
+        height: 392,
+        ..Default::default()
+    })
+    .expect("a headless adapter");
+    renderer.render(&scene, &RenderTarget::Offscreen).unwrap();
+    let pixels = renderer.read_offscreen().unwrap().pixels;
+    image::save_buffer(
+        out_dir().join("css-rpg-layout.png"),
+        &pixels,
+        240,
+        392,
+        image::ColorType::Rgba8,
+    )
+    .unwrap();
+    let rgb = |x: usize, y: usize| &pixels[(y * 240 + x) * 4..][..3];
+    assert!(
+        rgb(120, 20)[2] > 248 && rgb(120, 158)[0] > 248,
+        "absolute fade overlays overflowing children"
+    );
+    assert!(
+        rgb(85, 200)[1] > 248 && rgb(75, 280)[2] > 248,
+        "flex-derived ratio boxes paint their width"
+    );
+    assert!(
+        rgb(120, 332)[1] > 248 && rgb(120, 332)[0] < 8,
+        "hover longhand replaces shorthand source: {:?}",
+        rgb(120, 332)
+    );
+}

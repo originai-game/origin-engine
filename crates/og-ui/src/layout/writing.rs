@@ -277,7 +277,7 @@ pub(super) fn nest(
     };
     for &m in &members {
         if !inner(nodes, m) && !nodes[m].cv_skip {
-            distribute_h(nodes, m);
+            distribute_h(nodes, m, cx.measure);
         }
     }
     // An inner frame its boxes gave another size lays out again at it.

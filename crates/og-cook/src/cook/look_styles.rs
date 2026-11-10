@@ -84,7 +84,6 @@ fn table() -> &'static Table {
 }
 
 /// Every shipped file in a pack's directory, sorted: `(pack, file, path)`.
-/// A pack's `art/` (the sources `og style art` packs) is not a built-in.
 fn files(dir: &Path) -> Vec<(String, String, PathBuf)> {
     let names = |d: &Path, want_dir: bool| -> Vec<String> {
         let mut out: Vec<String> = std::fs::read_dir(d)
@@ -108,9 +107,6 @@ fn files(dir: &Path) -> Vec<(String, String, PathBuf)> {
                 out.push((pack.clone(), relative, parent.join(file)));
             }
             for child in names(&parent, true) {
-                if prefix.is_empty() && child == "art" {
-                    continue;
-                }
                 pending.push(format!("{prefix}{child}/"));
             }
         }

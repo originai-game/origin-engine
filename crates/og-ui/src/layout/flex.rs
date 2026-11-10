@@ -1174,7 +1174,7 @@ pub(super) fn size_h(nodes: &mut [Node], i: usize) {
     nodes[i].min_h = el.bounded(1, None, cp, cm, m);
 }
 
-pub(super) fn distribute_h(nodes: &mut [Node], i: usize) {
+pub(super) fn distribute_h(nodes: &mut [Node], i: usize, measure: &mut Measure<'_>) {
     let el = nodes[i].el;
     let inner = (nodes[i].h - el.padding.vertical()).max(0.0);
     let outer = nodes[i].h;
@@ -1301,6 +1301,38 @@ pub(super) fn distribute_h(nodes: &mut [Node], i: usize) {
                     };
                     nodes[c].h = clamp_to(n, 1, Some(inner), h);
                 }
+            }
+        }
+    }
+    // CSS Flexbox §9.4: the hypothetical cross size uses the final main
+    // size. A column's flexed height was not known in the widths pass.
+    if el.direction == Direction::Column && el.multicol.is_none() {
+        let basis = (nodes[i].w - el.padding.horizontal()).max(0.0);
+        for c in kids {
+            let n = &nodes[c];
+            if n.el.aspect <= 0.0
+                || !matches!(n.el.width, Size::Fit { .. })
+                || n.el.align_self.unwrap_or(el.cross) == Cross::Stretch
+            {
+                continue;
+            }
+            let w =
+                (n.h - n.el.padding.vertical()).max(0.0) * n.el.aspect + n.el.padding.horizontal();
+            let (lo, hi) = n.el.width.bounds();
+            let w = clamp_to(n, 0, Some(basis), w.clamp(lo, hi));
+            if w == n.w {
+                continue;
+            }
+            nodes[c].w = w;
+            let order = preorder(nodes, c);
+            for &j in &order {
+                distribute_w(nodes, j, measure);
+            }
+            let mut touched = Vec::new();
+            for &j in order.iter().rev() {
+                inline_rows(nodes, j, measure);
+                size_h(nodes, j);
+                super::float::flow(nodes, j, measure, &mut touched);
             }
         }
     }

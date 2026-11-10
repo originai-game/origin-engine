@@ -204,6 +204,52 @@ fn translate_percentages_move_by_the_elements_own_box() {
 }
 
 #[test]
+fn translate_none_clears_percentage_and_length_offsets_in_kits() {
+    let text = r#"<meta name="component" content="ix">
+<div><div id="Percent"></div><div id="Length"></div></div>
+<style>
+#Percent, #Length { position: absolute; left: 100px; top: 150px; width: 80px; height: 40px; }
+#Percent { translate: -50% -50%; }
+#Length { translate: 12px -24px; }
+#Percent, #Length { translate: none; }
+</style>"#;
+    for retained in [false, true] {
+        let mut ui = ui_with_font(test_font_metrics());
+        ui.define_document(UiDocument::parse("ui-kits/test/ix.svelte", text).unwrap());
+        if retained {
+            ui.mount_document(
+                reactive::SourceId::new("test", "none"),
+                "ix",
+                Default::default(),
+                Default::default(),
+                &bind::NoEnv,
+            )
+            .unwrap();
+        }
+        ui.begin(InputFrame::default(), Viewport::new(400.0, 400.0));
+        if retained {
+            ui.build_retained_documents(&bind::NoEnv).unwrap();
+        } else {
+            ui.component("T", "ix", &mut json!({}), &bind::NoEnv);
+        }
+        ui.end();
+        assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+        for id in ["Percent", "Length"] {
+            let node = ui
+                .probe_elements()
+                .into_iter()
+                .find(|e| e.id == id)
+                .unwrap();
+            assert_eq!(
+                (node.x, node.y),
+                (100.0, 150.0),
+                "{id}, retained={retained}"
+            );
+        }
+    }
+}
+
+#[test]
 fn focus_within_follows_real_focus_between_retained_ancestors() {
     let text = r#"<meta name="component" content="t">
 <div id="Root">

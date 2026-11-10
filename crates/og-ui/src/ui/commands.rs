@@ -472,6 +472,9 @@ impl Ui {
             let hidden = self.orders.hidden_of.get(i) == Some(&true)
                 || self.orders.skip_of.get(i).is_some_and(|&s| s != 0);
             if hidden {
+                if let Some(d) = &draw {
+                    cmds.extend(d.begin(&theme, &placed(n)).into_iter().map(|c| (c, world)));
+                }
             } else if i != 0 || n.sampled.background.is_some() {
                 let mut local = Vec::new();
                 let mut background = 0;
@@ -564,7 +567,7 @@ impl Ui {
                     ring.into_iter().map(|c| (c, world)).collect(),
                 ));
             }
-            if let Some(d) = draw.as_ref().filter(|_| !hidden) {
+            if let Some(d) = &draw {
                 let at = placed(&self.nodes[i]);
                 cmds.extend(d.children(&at).into_iter().map(|c| (c, world)));
             }
@@ -672,7 +675,9 @@ impl Ui {
                 let w = self.nodes[j].world;
                 if let Some(d) = self.draw_of(j) {
                     let at = placed(&self.nodes[j]);
-                    let mut leave = if marked(&self.nodes[j]) {
+                    let hidden = self.orders.hidden_of.get(j) == Some(&true)
+                        || self.orders.skip_of.get(j).is_some_and(|&s| s != 0);
+                    let mut leave = if marked(&self.nodes[j]) && !hidden {
                         d.leave(&theme, &at)
                     } else {
                         d.leave_stroked(&theme, &at)

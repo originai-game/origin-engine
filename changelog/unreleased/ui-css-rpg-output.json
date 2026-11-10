@@ -1,0 +1,12 @@
+{
+  "fixed": [
+    {
+      "member": "ui.css",
+      "summary": "Non-repeating CSS gradients preserve stops outside 0..100%; translate:none clears percentage and length offsets; hidden masked boxes preserve subtree layer pairing without painting; column flex items derive auto cross sizes from their final flexed height and aspect ratio."
+    },
+    {
+      "member": "og cook",
+      "summary": "Built-in CSS packs may reference SVG images inside art/ subdirectories, just like other relative asset directories."
+    }
+  ]
+}

@@ -187,7 +187,9 @@ pub enum UiSpread {
     RepeatStops,
 }
 
-/// A gradient stop: `offset` 0 to 1 and a linear RGBA colour.
+/// A gradient stop and a linear RGBA colour. `offset` is a fraction of
+/// the gradient's geometry; Pad and RepeatStops preserve positions outside
+/// 0..1. Repeat and Reflect clamp to their geometry's 0..1 interval.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct UiStop {
     pub offset: f32,
