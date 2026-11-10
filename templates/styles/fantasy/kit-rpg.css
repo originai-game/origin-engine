@@ -235,7 +235,7 @@ button.reply[aria-selected=true]::part(base) { border: 1px solid #e9c46fcc; bord
 .rpg-conversation .reply-mark { background: url(diamond.svg) center / contain no-repeat; }
 
 /* ── Compass. */
-.rpg-compass .strip { background: url(rule.svg) center / 100% 12px no-repeat; }
+.rpg-compass .strip { background: url(rule.svg) center / 100% 12px no-repeat, linear-gradient(180deg, #0d0906d8, #1a120be0 50%, #0d0906d8); border-block: 1px solid #8f765099; box-shadow: 0 4px 12px #0009; }
 .rpg-compass .end.start { background: url(flourish-left.svg) center / contain no-repeat; }
 .rpg-compass .end.finish { background: url(flourish-right.svg) center / contain no-repeat; }
 .rpg-compass .mark[data-kind=tick] { background: #b8924daa; }
@@ -308,3 +308,107 @@ button.member[data-down=true]::part(base) { border-color: #6f6a62; background: l
 .rpg-quest-tracker .tracker-step[data-done=true] .tracker-mark { background: var(--gold); mask-image: url(check.svg); mask-size: contain; }
 .rpg-quest-tracker .tracker-arrow { background: var(--gold); mask-image: url(triangle-down.svg); mask-size: contain; transform: rotate(180deg); }
 .rpg-quest-tracker .tracker-far { font-family: var(--font-mono); font-size: 14px; color: var(--gold); }
+
+/* ── Small heading bands on HUD panels. */
+.rpg-band.small { min-height: var(--size-md); padding: var(--space-xxs) var(--space-md); background: linear-gradient(90deg, #4f130c00, #6e1c13 18%, #6e1c13 82%, #4f130c00); border-bottom: 1px solid #8f765088; }
+.rpg-band.small .rpg-title { font-size: 15px; letter-spacing: 0.12em; }
+
+/* ── HUD plates: combat log, enemy info, commands, objective. */
+.rpg-combat-log, .rpg-enemy-info, .rpg-commands {
+  box-sizing: border-box;
+  padding: var(--space-xs) var(--space-sm) var(--space-sm);
+  border: 1px solid #9a7a45; border-radius: 2px;
+  background:
+    url(filigree-tl.png) left top / 34px 34px no-repeat,
+    url(filigree-tr.png) right top / 34px 34px no-repeat,
+    url(filigree-bl.png) left bottom / 34px 34px no-repeat,
+    url(filigree-br.png) right bottom / 34px 34px no-repeat,
+    linear-gradient(180deg, #160f0af2, #0d0906ee);
+  box-shadow: inset 0 0 0 1px #000, inset 0 0 0 2px #6d553080, 0 8px 20px #000c;
+}
+
+/* ── Vitals. */
+.rpg-vitals .ring { border: 2px solid var(--fantasy-brass-hi); background: #120d08; box-shadow: inset 0 0 0 1px #000, 0 0 0 1px #000, 0 4px 10px #000c; }
+.rpg-vitals[data-plate=large] .ring { border-width: 3px; box-shadow: inset 0 0 0 2px #000, 0 0 0 2px #2a1d12, 0 0 0 3px #8f7650, 0 6px 16px #000; }
+.rpg-vitals .badge { border-radius: 50%; border: 2px solid var(--fantasy-brass-hi); background: radial-gradient(circle, #2a1d12, #0b0805); box-shadow: 0 2px 4px #000; }
+.rpg-vitals .badge-level { font-family: var(--font-display); font-size: 13px; color: var(--ink); }
+.rpg-vitals[data-plate=large] .badge-level { font-size: 20px; }
+.rpg-vitals .bar { border: 1px solid #00000099; border-radius: 2px; background: #0b0805d0; box-shadow: 0 0 0 1px #6d553080; }
+.rpg-vitals .bar.health .bar-fill { background: linear-gradient(180deg, #d24a3c, #8a1e16); }
+.rpg-vitals .bar.mana .bar-fill { background: linear-gradient(180deg, #4f7ed8, #213f86); }
+.rpg-vitals .bar-figure { font-family: var(--font-mono); font-size: 15px; color: #f8ecd6; text-shadow: 0 1px 2px #000; }
+.rpg-vitals[data-down=true] .portrait { filter: grayscale(1) brightness(0.7); }
+
+/* ── Action bar: dark wells in brass, the hotkey under each. */
+.rpg-action-bar .skills, .rpg-action-bar .items { border: 1px solid #8f7650; border-radius: 3px; background: #0d0906d8; box-shadow: inset 0 0 0 1px #000, 0 6px 16px #000c; }
+button.skill::part(base), button.quick::part(base) { border-image: none; padding: 0; border: 2px solid #8f7650; border-radius: 3px; background: radial-gradient(circle, #2a2017, #0e0a07); box-shadow: inset 0 0 0 1px #000, inset 0 0 12px #000a; }
+button.skill::part(base):hover, button.quick::part(base):hover { border-color: var(--gold); box-shadow: inset 0 0 0 1px #000, 0 0 10px #e9c46f66; }
+button.skill::part(base):active, button.quick::part(base):active { background: #0b0805; }
+button.skill::part(base):disabled { border-color: #4a3c2b; }
+.rpg-action-bar .skill[data-ready=false] .skill-art { opacity: 0.4; }
+.rpg-action-bar .skill-art { color: var(--gold); }
+.rpg-action-bar .cool { background: #000000b0; }
+.rpg-action-bar .hotkey { font-family: var(--font-mono); font-size: 13px; color: var(--ink-muted); }
+.rpg-action-bar .count { font-family: var(--font-mono); font-size: 14px; color: #f3e6c8; text-shadow: 0 1px 2px #000, 0 0 3px #000; }
+
+/* ── Combat log. */
+.rpg-combat-log .line-text { font-family: var(--font-body); font-size: 14px; color: var(--ink); }
+.rpg-combat-log .line-detail { font-family: var(--font-body); font-size: 13px; color: var(--ink-muted); }
+.rpg-combat-log .line[data-tone=damage] .line-text, .rpg-combat-log .line[data-tone=damage] .line-detail { color: #e06a55; }
+.rpg-combat-log .line[data-tone=heal] .line-text { color: #7ccf6e; }
+.rpg-combat-log .line[data-tone=status] .line-text { color: #e9c46f; }
+.rpg-combat-log .line[data-tone=crit] .line-text { color: #f0942a; }
+.rpg-combat-log .line + .line { border-top: 1px solid #8f765026; }
+
+/* ── Enemy info. */
+.rpg-enemy-info .enemy-name { font-family: var(--font-display); font-size: 18px; letter-spacing: 0.06em; color: #ecd9b0; }
+.rpg-enemy-info .enemy-level { font-family: var(--fantasy-caps); font-size: 13px; letter-spacing: var(--fantasy-tracking); color: var(--ink-muted); }
+.rpg-enemy-info .picture { border: 2px solid #a8392a; box-shadow: inset 0 0 0 1px #000, 0 0 12px #a8392a55; }
+.rpg-enemy-info .bar { border: 1px solid #00000099; border-radius: 2px; background: #0b0805; box-shadow: 0 0 0 1px #6d553080; }
+.rpg-enemy-info .bar-fill { background: linear-gradient(180deg, #d24a3c, #8a1e16); }
+.rpg-enemy-info .bar-figure { font-family: var(--font-mono); font-size: 13px; color: #f8ecd6; text-shadow: 0 1px 2px #000; }
+.rpg-enemy-info .effect-label { font-family: var(--font-body); font-size: 13px; color: var(--ink); }
+.rpg-enemy-info .effect[data-tone=harm] .effect-mark { color: #e9c46f; }
+.rpg-enemy-info .effect[data-tone=weak] .effect-mark, .rpg-enemy-info .effect[data-tone=weak] .effect-label { color: #f0942a; }
+.rpg-enemy-info .effect[data-tone=strong] .effect-mark, .rpg-enemy-info .effect[data-tone=strong] .effect-label { color: #b48be0; }
+.rpg-enemy-info .effect[data-tone=boon] .effect-mark { color: #7ccf6e; }
+
+/* ── Commands: square plates; the chosen one is painted crimson. */
+button.command::part(base) { border-image: none; padding: 0; border: 2px solid #8f7650; border-radius: 3px; background: linear-gradient(180deg, #3a3129, #1b1612); box-shadow: inset 0 0 0 2px #0b0805, inset 0 1px 0 3px #ffffff10, 0 4px 10px #000c; font-size: 15px; letter-spacing: 0.04em; text-transform: none; }
+button.command::part(base):hover { border-color: var(--gold); }
+button.command::part(base):active { background: #0b0805; }
+button.command.primary::part(base):enabled { border-image: none; border-color: #e9c46f; background: linear-gradient(180deg, #c0412c, #7d1f13); box-shadow: inset 0 0 0 2px #3a0c07, 0 0 14px #e9c46f66; }
+button.command::part(base):disabled { border-image: none; border-color: #4a3c2b; background: #1a1714; }
+.rpg-commands .command-mark { color: #e9c46f; }
+.rpg-commands .command.primary .command-mark { color: #fff1d8; }
+
+/* ── Menu bar: red tab plates, the shown one lit, a close square. */
+.rpg-menu-bar { padding: var(--space-xs) var(--space-md); border-bottom: 1px solid #8f7650; background: linear-gradient(180deg, #1c130cf0, #0d0906f0); box-shadow: 0 6px 16px #000c; }
+button.menu-tab::part(base) { border-image: none; padding: 0 var(--space-sm); border: 1px solid #8f765099; border-radius: 2px; background: linear-gradient(180deg, #3c120c, #22090a); box-shadow: inset 0 0 0 1px #000; color: #cbbb9c; font-size: 16px; }
+button.menu-tab::part(base):hover { border-color: var(--gold); color: #f6dc95; }
+button.menu-tab[aria-selected=true]::part(base) { border-color: #e9c46f; background: linear-gradient(180deg, #8f2a1b, #4f130c); color: #f8ecd6; box-shadow: inset 0 0 0 1px #000, 0 0 10px #e9c46f55; }
+button.menu-close::part(base) { border-image: none; padding: 0; border: 1px solid #c9a45c; border-radius: 2px; background: linear-gradient(180deg, #8f2a1b, #4f130c); }
+.rpg-menu-bar .close-mark { background: #f8ecd6; mask-image: url(close.svg); mask-size: contain; }
+
+/* ── Stats panel. */
+.rpg-stats { box-sizing: border-box; padding: calc(var(--space-md) + 4px); border: 2px solid #9a7a45; border-radius: 2px;
+  background: url(filigree-tl.png) left top / 58px 58px no-repeat, url(filigree-tr.png) right top / 58px 58px no-repeat, url(filigree-bl.png) left bottom / 58px 58px no-repeat, url(filigree-br.png) right bottom / 58px 58px no-repeat, radial-gradient(ellipse at 50% 0%, #2a1e13 0%, #17110b 60%, #0f0a07 100%);
+  box-shadow: inset 0 0 0 2px #0a0604, inset 0 0 0 3px #c9a45c, inset 0 0 0 5px #0a0604, inset 0 0 0 6px #6d5530, inset 0 0 48px #000000b0, 0 12px 32px #000000c0; }
+.rpg-stats .group + .group { border-top: 1px solid #8f765066; padding-top: var(--space-xs); }
+.rpg-stats .split { background: linear-gradient(180deg, #8f765000, #8f7650cc, #8f765000); }
+.rpg-stats .row-mark { color: var(--fantasy-brass-hi); }
+.rpg-stats .row-label { font-family: var(--font-body); font-size: 16px; color: var(--ink); }
+.rpg-stats .row-value { font-family: var(--font-mono); font-size: 16px; color: var(--ink); }
+.rpg-stats .band-end.start { background: url(flourish-left.svg) center / contain no-repeat; }
+.rpg-stats .band-end.finish { background: url(flourish-right.svg) center / contain no-repeat; }
+
+/* ── The core minimap in a round brass frame (the kit's .rpg-minimap wrapper). */
+.rpg-minimap { padding: 6px; border-radius: 50%; background: radial-gradient(circle, #0b0805 64%, #6d5530 66%, #d9b45f 69%, #8f7650 72%, #2a1d12 75%, #0b0805 77%); box-shadow: 0 8px 20px #000c; }
+.rpg-minimap #Frame { border-radius: 50%; border: 2px solid #c9a45c; background: #120d08; box-shadow: inset 0 0 18px #000; mask-image: radial-gradient(circle, #000 69%, #0000 70.5%); }
+.rpg-minimap #Label { font-family: var(--fantasy-caps); letter-spacing: var(--fantasy-tracking); color: #ecd9b0; }
+.rpg-minimap .marker { background: #ecd9b0; }
+.rpg-minimap .marker.danger { background: #e0584a; }
+.rpg-minimap .marker.warn { background: #e9c46f; }
+.rpg-minimap .marker.player { background: #e9c46f; border-color: #1a120b; }
+.rpg-character .band-end.start, .rpg-backpack .band-end.start { background: url(flourish-left.svg) center / contain no-repeat; }
+.rpg-character .band-end.finish, .rpg-backpack .band-end.finish { background: url(flourish-right.svg) center / contain no-repeat; }
