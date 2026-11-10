@@ -63,6 +63,7 @@ mod fx;
 mod garment;
 mod geometry;
 mod glyphs;
+pub mod host_impl;
 pub use glyphs::glyphs_pending;
 mod i18n;
 #[cfg(not(feature = "publish"))]

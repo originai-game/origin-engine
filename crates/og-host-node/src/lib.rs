@@ -5,8 +5,9 @@
 //!
 //! - `src/generated/glue.rs` (`og api gen`) exports every symbol under its
 //!   snake_case name and calls the `og_api::host` trait method of the same
-//!   name; `src/host.rs` implements the traits, so a member missing here is a
-//!   build error.
+//!   name; `src/host.rs` states the native wire types and expands the
+//!   traits' shared implementation (`og_runtime::host_impl`), so a member
+//!   missing there is a build error.
 //! - Column views alias engine memory: each field is an external
 //!   ArrayBuffer over the column. The buffer is kept while the column stays
 //!   where it is, and detached before anything can move it (a structural
@@ -37,9 +38,6 @@
 pub mod glue;
 mod audio;
 mod host;
-mod host_depth;
-mod host_e6;
-mod host_p2;
 #[cfg(not(feature = "publish"))]
 mod render;
 #[cfg(not(feature = "publish"))]
