@@ -359,6 +359,8 @@ pub struct UiImage {
     pub texture: TextureHandle,
     pub uv: [f32; 4],
     pub size: Vec2,
+    /// Source pixels per CSS pixel for natural sizing; positive (normally 1).
+    pub density: f32,
     pub tint: [f32; 4],
     pub fit: UiFit,
     /// Where cover crops and contain or none place the image, fractions of

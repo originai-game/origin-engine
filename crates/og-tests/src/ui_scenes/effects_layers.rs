@@ -514,6 +514,7 @@ pub fn blur_detail(radius: f32) -> RenderScene {
                     texture: noise,
                     uv: [0.0, 0.0, 1.0, 1.0],
                     size: Vec2::new(640.0, 720.0),
+                    density: 1.0,
                     tint: [1.0; 4],
                     fit: UiFit::Fill,
                     focal: Vec2::splat(0.5),

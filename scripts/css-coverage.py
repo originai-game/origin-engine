@@ -128,10 +128,11 @@ proof("animations-css cubic-bezier-easing", "documents", "scoped_css_motion_uses
       "A cubic-bezier(0,1,0,1) keyframe animation reaches 7/8 displacement at 1/8 duration; twelve subsequent positions replay exactly after checkpoint restoration. Pushed-screen path, not every animation mode.")
 proof("color", "dressing", "host_font_and_color_reach_button_ink_and_divider_output",
       "Emitted button text and divider fill match authored hex colors; an explicit button part color overrides inherited host ink. This does not cover every color syntax or space.")
+proof("image-set", "css_paint", "image_sets_render_density_correct_backgrounds_masks_and_borders",
+      "Metal pixels at DPR 1/2/1 prove density-correct background/mask tiles, MIME filtering before duplicate removal, zero-resolution transparency, percentage border slices with auto widths and gradient selection. Retained output also tests 192dpi and fractional DPR. Resolution math and MIME parameters remain missing.")
 
 MISSING = {
     "default": "documents::boolean_attribute_selectors_follow_svelte_presence proves retained :default follows false/present checked attributes. The immediate builder does not expose :default state; full support is missing.",
-    "image-set": "URL rewriting descends into image-set, but image candidate selection has no implementation/output proof.",
     "interpolate-size": "No intrinsic-size interpolation implementation or output proof.",
     "calc-size": "No calc-size evaluation or animated output proof.",
     "field-sizing": "No field-sizing layout implementation/output proof; fixed control sizing is not content sizing.",
@@ -170,6 +171,8 @@ part_proof("not opacity border-image",
 part_proof("animations-css opacity",
     "dressing", "retained_part_nodes_animate_without_rebuilding_the_host",
     "A retained button part emits alpha 0.2/0.5/0.8 at ticks 0/6/12 for a 200ms linear animation, then paints nothing while idle. Other animation modes are not covered.")
+part_proof("image-set", "css_paint", "image_sets_render_density_correct_backgrounds_masks_and_borders",
+    "Metal pixels prove button::part(base) reselects its background at DPR 1/2/1 while preserving an 8 CSS px tile. Other part image properties are not separately proved.")
 
 
 def main():

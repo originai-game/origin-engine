@@ -72,10 +72,12 @@ pub(crate) struct CssGradient {
 /// A layer's image as drawn: a gradient, or a texture region.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum BgImage {
+    Transparent,
     Gradient(CssGradient),
     Texture {
         texture: og_render::TextureHandle,
         uv: [f32; 4],
+        density: f32,
         /// Sampled at the nearest texel (CSS `image-rendering`).
         nearest: bool,
     },
@@ -121,6 +123,7 @@ impl BgLayer {
             area: [0.0; 4],
         };
         match &self.image {
+            BgImage::Transparent => Paint::Solid(ColorRef::Literal(Srgba::TRANSPARENT)),
             BgImage::Gradient(g) => {
                 let [w, h] = match self.size {
                     BgSize::Cover | BgSize::Contain => [aw, ah],
@@ -141,11 +144,13 @@ impl BgLayer {
             BgImage::Texture {
                 texture,
                 uv,
+                density,
                 nearest,
             } => Paint::Image(ImagePaint {
                 texture: *texture,
                 uv: *uv,
                 size: [0.0; 2],
+                density: *density,
                 tint: ColorRef::Literal(Srgba::WHITE),
                 fit: og_render::UiFit::Background(bg(match self.size {
                     BgSize::Cover => og_render::UiBackgroundSize::Cover,
@@ -298,6 +303,9 @@ impl LayerFrame {
             fill: s.fill,
         });
         let paint = match &b.image {
+            BgImage::Transparent => {
+                crate::paint::Paint::Solid(ColorRef::Literal(Srgba::TRANSPARENT))
+            }
             BgImage::Gradient(g) => crate::paint::Paint::GradientImage {
                 gradient: g.resolve(aw.max(1e-3), ah.max(1e-3)),
                 size: [aw.max(1e-3), ah.max(1e-3)],
@@ -306,11 +314,13 @@ impl LayerFrame {
             BgImage::Texture {
                 texture,
                 uv,
+                density,
                 nearest,
             } => crate::paint::Paint::Image(crate::paint::ImagePaint {
                 texture: *texture,
                 uv: *uv,
                 size: [0.0; 2],
+                density: *density,
                 tint: ColorRef::Literal(Srgba::WHITE),
                 fit,
                 focal: [0.5; 2],
@@ -660,10 +670,79 @@ fn gradient_of(kind: &str, repeating: bool, args: &[Vec<Tok>]) -> Result<CssGrad
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum CssImage {
     None,
+    Image(ImageSource),
+    Set(Vec<(ImageSource, f32)>),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum ImageSource {
     Gradient(CssGradient),
     /// `url(…)`: an icon of the UI's atlas by name, or a texture by its
     /// asset handle (`og.load.texture`), as `<image href>` names one.
     Url(String),
+}
+
+impl CssImage {
+    pub(crate) fn select(&self, resolution: f32) -> Option<(&ImageSource, f32)> {
+        match self {
+            Self::None => None,
+            Self::Image(image) => Some((image, 1.0)),
+            Self::Set(options) => options
+                .iter()
+                .filter(|(_, density)| *density > 0.0)
+                .min_by(
+                    |(_, a), (_, b)| match (*a >= resolution, *b >= resolution) {
+                        (true, true) => a.total_cmp(b),
+                        (false, false) => b.total_cmp(a),
+                        (true, false) => std::cmp::Ordering::Less,
+                        (false, true) => std::cmp::Ordering::Greater,
+                    },
+                )
+                .map(|(image, density)| (image, *density)),
+        }
+    }
+
+    pub(crate) fn urls(&self) -> impl Iterator<Item = &str> {
+        let single = match self {
+            Self::Image(image) => Some(image),
+            _ => None,
+        };
+        let options = match self {
+            Self::Set(options) => options.as_slice(),
+            _ => &[],
+        };
+        single
+            .into_iter()
+            .chain(
+                options
+                    .iter()
+                    .filter(|(_, density)| *density > 0.0)
+                    .map(|(image, _)| image),
+            )
+            .filter_map(|image| match image {
+                ImageSource::Url(url) => Some(url.as_str()),
+                _ => None,
+            })
+    }
+}
+
+/// Formats decoded by the texture cook. An unsupported type discards only
+/// its candidate, before equal-density candidates are deduplicated.
+pub(crate) fn image_type_supported(mime: &str) -> bool {
+    matches!(
+        mime.to_ascii_lowercase().as_str(),
+        "image/png"
+            | "image/jpeg"
+            | "image/webp"
+            | "image/gif"
+            | "image/svg+xml"
+            | "image/ktx2"
+            | "image/vnd-ms.dds"
+            | "image/vnd.adobe.photoshop"
+            | "image/x-tga"
+            | "image/vnd.radiance"
+            | "image/x-exr"
+    )
 }
 
 /// `background-size` of one layer; a percentage is of the box.
@@ -782,7 +861,7 @@ fn mask_mode(w: &str) -> Option<bool> {
 pub(crate) type Background = (Vec<CssLayer>, Option<Tok>);
 
 fn is_image(t: &Tok) -> bool {
-    matches!(t, Tok::Func(f, _) if f == "url") || gradient(t).is_some()
+    matches!(t, Tok::Func(f, _) if f == "url" || f == "image-set") || gradient(t).is_some()
 }
 
 /// `url(<name>)`, `url("<name>")` or `url(<handle>)`.
@@ -808,9 +887,75 @@ pub(crate) fn url(args: &[Vec<Tok>]) -> Result<String, String> {
 fn image(t: &Tok) -> Result<CssImage, String> {
     match t {
         Tok::Ident(w) if w == "none" => Ok(CssImage::None),
-        Tok::Func(f, a) if f == "url" => url(a).map(CssImage::Url),
+        Tok::Func(f, a) if f == "url" => url(a).map(|u| CssImage::Image(ImageSource::Url(u))),
+        Tok::Func(f, options) if f == "image-set" => {
+            let mut out = Vec::new();
+            for option in options {
+                let (first, descriptors) = option
+                    .split_first()
+                    .ok_or("image-set(): an image is required")?;
+                let source = match first {
+                    Tok::Str(url) => ImageSource::Url(url.clone()),
+                    t => match image(t)? {
+                        CssImage::Image(source) => source,
+                        _ => {
+                            return Err(
+                                "image-set(): candidates cannot be none or another image-set()"
+                                    .into(),
+                            );
+                        }
+                    },
+                };
+                let mut density = None;
+                let mut mime = None;
+                for descriptor in descriptors {
+                    match descriptor {
+                        Tok::Func(f, args) if f == "type" && mime.is_none() => {
+                            let [arg] = args.as_slice() else {
+                                return Err("image-set(): type() takes one string".into());
+                            };
+                            let [Tok::Str(value)] = arg.as_slice() else {
+                                return Err("image-set(): type() takes one string".into());
+                            };
+                            mime = Some(value);
+                        }
+                        t if density.is_none() => {
+                            let (value, unit) = number(t)?;
+                            let value = match unit {
+                                "x" | "dppx" => value,
+                                "dpi" => value / 96.0,
+                                "dpcm" => value * 2.54 / 96.0,
+                                _ => {
+                                    return Err(
+                                        "image-set(): resolution uses x, dppx, dpi or dpcm".into(),
+                                    );
+                                }
+                            };
+                            if !value.is_finite() || value < 0.0 {
+                                return Err(
+                                    "image-set(): resolution must be finite and nonnegative".into(),
+                                );
+                            }
+                            density = Some(value);
+                        }
+                        _ => {
+                            return Err(
+                                "image-set(): one resolution and one type() per candidate".into()
+                            );
+                        }
+                    }
+                }
+                let density = density.unwrap_or(1.0);
+                if mime.is_none_or(|m| image_type_supported(m))
+                    && !out.iter().any(|(_, d)| *d == density)
+                {
+                    out.push((source, density));
+                }
+            }
+            Ok(CssImage::Set(out))
+        }
         t => match gradient(t) {
-            Some(g) => g.map(CssImage::Gradient),
+            Some(g) => g.map(|g| CssImage::Image(ImageSource::Gradient(g))),
             None => Err(format!(
                 "'{}' is not an image: url(…), a gradient or none",
                 describe(t)
@@ -2712,7 +2857,7 @@ mod tests {
     #[test]
     fn gradients_resolve_as_css_draws_them() {
         let g = |s: &str| match background(s).unwrap().unwrap().0.remove(0).image {
-            CssImage::Gradient(g) => g,
+            CssImage::Image(ImageSource::Gradient(g)) => g,
             i => panic!("{i:?}"),
         };
         let close =
@@ -2854,11 +2999,17 @@ mod tests {
         // The colour alone is the final layer, its image none.
         assert_eq!(layers.len(), 4);
         assert_eq!(layers[3].image, CssImage::None);
-        assert_eq!(layers[0].image, CssImage::Url("coin".into()));
+        assert_eq!(
+            layers[0].image,
+            CssImage::Image(ImageSource::Url("coin".into()))
+        );
         assert_eq!(layers[0].position, [(1.0, -10.0), (0.8, 0.0)]);
         assert_eq!(layers[0].size, BgSize::Given([Some(Pos::Px(32.0)), None]));
         assert_eq!(layers[0].repeat, [R::NoRepeat; 2]);
-        assert_eq!(layers[1].image, CssImage::Url("gem".into()));
+        assert_eq!(
+            layers[1].image,
+            CssImage::Image(ImageSource::Url("gem".into()))
+        );
         assert_eq!(layers[1].position, [(0.0, 0.0), (0.0, 0.0)]);
         assert_eq!(layers[1].repeat, [R::Repeat, R::NoRepeat]);
         let pos = |s: &str| background(&format!("url(a) {s}")).unwrap().unwrap().0[0].position;

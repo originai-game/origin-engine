@@ -642,6 +642,7 @@ pub(crate) fn shape(
             texture = Some(im.texture);
             g.color = im.tint;
             g.paint = im.uv;
+            g.extra[1] = im.density;
             // A zero size is the region's own (ui.wgsl's `image_uv`).
             let size = if im.size.x <= 0.0 || im.size.y <= 0.0 {
                 [0.0; 2]
@@ -796,8 +797,8 @@ fn fit_word(g: &mut UiGpu, fit: UiFit) -> u32 {
             // paint3 the slices (image px), paint4 the widths (CSS px),
             // left, top, right, bottom; each axis's repeat in the edges'
             // bits, the fill in the centre's.
-            g.paint3 = b.slice.map(|v| v.max(0.0));
-            g.paint4 = b.width.map(|v| v.max(0.0));
+            g.paint3 = b.slice;
+            g.paint4 = b.width;
             (
                 7,
                 edge_code(b.repeat[0]) | edge_code(b.repeat[1]) << 2,

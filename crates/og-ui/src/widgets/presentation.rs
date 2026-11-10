@@ -455,6 +455,7 @@ impl Ui {
                     texture,
                     uv: [0.0, 0.0, 1.0, 1.0],
                     size,
+                    density: 1.0,
                     tint: ColorRef::Literal(Srgba::WHITE),
                     fit: match spec.fit {
                         crate::slot::Fit::Cover => crate::paint::Fit::Cover,

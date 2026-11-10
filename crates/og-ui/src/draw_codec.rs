@@ -838,11 +838,13 @@ fn paint(w: &mut W, p: &UiPaint) {
         UiPaint::Image(im) => {
             // A luminance image is its own tag (2 stays what it was); one
             // with an offset or sampled nearest is 6, with both after it.
-            let extra = im.offset != Vec2::ZERO || im.nearest;
-            w.u8(match (extra, im.luminance) {
-                (true, _) => 6,
-                (false, true) => 4,
-                (false, false) => 2,
+            let density = im.density != 1.0;
+            let extra = im.offset != Vec2::ZERO || im.nearest || density;
+            w.u8(match (density, extra, im.luminance) {
+                (true, _, _) => 7,
+                (false, true, _) => 6,
+                (false, false, true) => 4,
+                (false, false, false) => 2,
             });
             w.u32(im.texture.slot());
             f4(w, &im.uv);
@@ -853,6 +855,9 @@ fn paint(w: &mut W, p: &UiPaint) {
             if extra {
                 v2(w, im.offset);
                 w.u8(u8::from(im.luminance) | u8::from(im.nearest) << 1);
+            }
+            if density {
+                w.f32(im.density);
             }
         }
         UiPaint::Layer(k) => {
@@ -874,14 +879,14 @@ fn rpaint(r: &mut R) -> Option<UiPaint> {
     Some(match tag {
         0 => UiPaint::Solid(rf4(r)?),
         1 => UiPaint::Gradient(rgradient(r)?),
-        2 | 4 | 6 => {
+        2 | 4 | 6 | 7 => {
             let texture = TextureHandle::from_slot(r.u32()?)?;
             let uv = rf4(r)?;
             let size = rv2(r)?;
             let tint = rf4(r)?;
             let fit = rfit(r)?;
             let focal = rv2(r)?;
-            let (offset, flags) = if tag == 6 {
+            let (offset, flags) = if tag >= 6 {
                 (rv2(r)?, r.u8()?)
             } else {
                 (Vec2::ZERO, u8::from(tag == 4))
@@ -890,6 +895,7 @@ fn rpaint(r: &mut R) -> Option<UiPaint> {
                 texture,
                 uv,
                 size,
+                density: if tag == 7 { r.f32()? } else { 1.0 },
                 tint,
                 fit,
                 focal,
@@ -1464,6 +1470,34 @@ mod tests {
             (plain[0], plain.len()),
             (0, 1 + 4 * (4 + 1 + 1 + 4 + 1 + 4))
         );
+    }
+
+    #[test]
+    fn image_density_survives_a_saved_drawing() {
+        for density in [1.0, 2.0] {
+            let image = UiPaint::Image(UiImage {
+                texture: TextureHandle::from_slot(1).unwrap(),
+                uv: [0.25, 0.0, 0.75, 1.0],
+                size: Vec2::ZERO,
+                density,
+                tint: [0.5, 1.0, 0.25, 0.75],
+                fit: UiFit::None,
+                focal: Vec2::new(0.0, 1.0),
+                offset: Vec2::new(3.0, -2.0),
+                luminance: true,
+                nearest: true,
+            });
+            let mut bytes = Vec::new();
+            paint(&mut W(&mut bytes), &image);
+            let mut reader = R {
+                bytes: &bytes,
+                at: 0,
+                legacy_glyphs: false,
+                affine_only: false,
+            };
+            assert_eq!(rpaint(&mut reader), Some(image));
+            assert_eq!(reader.at, bytes.len());
+        }
     }
 
     #[test]

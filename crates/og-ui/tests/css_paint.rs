@@ -20,6 +20,167 @@ use crate::support;
 use og_ui::*;
 use support::*;
 
+#[test]
+fn image_sets_reselect_on_density_changes() {
+    use og_render::*;
+    let mut scene = RenderScene::new();
+    let mut ui = ui_with_font(test_font_metrics());
+    let mut textures = Vec::new();
+    for (name, size) in [("low.png", 8), ("high.png", 16)] {
+        let texture = scene.add_texture(TextureData {
+            width: size,
+            height: size,
+            rgba: vec![255; (size * size * 4) as usize],
+            color_space: ColorSpace::Srgb,
+            mips: Mips::None,
+        });
+        ui.define_texture(&format!("ui/{name}"), texture);
+        textures.push(texture);
+    }
+    ui.define_document(
+        UiDocument::parse(
+            "ui/set.svelte",
+            r#"
+<meta name="component" content="set" />
+<div id="image"></div>
+<style>
+#image { width: 32px; height: 32px;
+  background-image: image-set("low.png" 1x, url(high.png) 192dpi);
+  background-repeat: no-repeat; }
+</style>"#,
+        )
+        .unwrap(),
+    );
+    ui.mount_document(
+        reactive::SourceId::new("test", "set"),
+        "set",
+        Default::default(),
+        Default::default(),
+        &bind::NoEnv,
+    )
+    .unwrap();
+    for (dpr, chosen) in [(1.0, 0), (1.5, 1), (3.0, 1), (0.75, 0)] {
+        let mut viewport = Viewport::new(100.0, 100.0);
+        viewport.dpr = dpr;
+        ui.begin(InputFrame::default(), viewport);
+        ui.build_retained_documents(&bind::NoEnv).unwrap();
+        ui.end();
+        assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+        let images: Vec<_> = ui
+            .frame()
+            .items
+            .iter()
+            .filter_map(|item| match &item.cmd {
+                DrawCmd::Shape { shape, .. } => match &shape.paint {
+                    UiPaint::Image(image) => Some((image.texture, image.density)),
+                    _ => None,
+                },
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            images,
+            [(textures[chosen], (chosen + 1) as f32)],
+            "DPR {dpr}"
+        );
+    }
+}
+
+#[test]
+#[ignore = "requires GPU"]
+fn image_sets_render_density_correct_backgrounds_masks_and_borders() {
+    use og_render::*;
+    let mut scene = RenderScene::new();
+    let mut ui = ui_with_font(add_test_font(&mut scene));
+    for (name, size, rgba) in [
+        ("low.png", 8, [255, 0, 0, 255]),
+        ("high.png", 16, [0, 0, 255, 255]),
+    ] {
+        let texture = scene.add_texture(TextureData {
+            width: size,
+            height: size,
+            rgba: rgba.repeat((size * size) as usize),
+            color_space: ColorSpace::Srgb,
+            mips: Mips::None,
+        });
+        ui.define_texture(&format!("ui/{name}"), texture);
+    }
+    ui.define_document(UiDocument::parse("ui/density.svelte", r#"
+<meta name="component" content="density" />
+<div id="row"><div id="auto"></div><div id="type"></div><div id="zero"></div><div id="mask"></div><div id="border"></div><div id="gradient"></div><button></button></div>
+<style>
+#row { display: flex; }
+#row > div { width: 32px; height: 32px; flex-shrink: 0; }
+#auto { background: image-set("low.png" 1x, "high.png" 2dppx) no-repeat; }
+#type { background: image-set("absent.avif" type("image/avif"), "high.png" type("image/png"), "low.png" 1x) no-repeat; }
+#zero { background: lime; mask-image: image-set("absent.png" 0x); }
+#mask { background: lime; mask: image-set("low.png" 1x, "high.png" 2x) no-repeat; }
+#border { border: 1px solid transparent; border-image-source: image-set("high.png" 2x); border-image-slice: 25%; border-image-width: auto; }
+#gradient { background: image-set(linear-gradient(red, red) 1x, linear-gradient(blue, blue) 2x); }
+button { width: 32px; height: 32px; flex-shrink: 0; }
+button::part(base) { background: image-set("low.png" 1x, "high.png" 2x) no-repeat; border: 0; border-radius: 0; padding: 0; box-shadow: none; }
+</style>"#).unwrap());
+    ui.mount_document(
+        reactive::SourceId::new("test", "density"),
+        "density",
+        Default::default(),
+        Default::default(),
+        &bind::NoEnv,
+    )
+    .unwrap();
+    scene.environment.background = Background::Color(og_core::glam::Vec3::ZERO);
+    scene.post.tonemap = Tonemap::None;
+    for dpr in [1u32, 2, 1] {
+        let (width, height) = (224 * dpr, 32 * dpr);
+        let mut viewport = Viewport::new(224.0, 32.0);
+        viewport.dpr = dpr as f32;
+        ui.begin(InputFrame::default(), viewport);
+        ui.build_retained_documents(&bind::NoEnv).unwrap();
+        ui.end();
+        assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+        let mut overlay = Overlay::new(width as f32, height as f32, dpr as f32);
+        ui.frame().emit(&EmitDesc::default(), &mut overlay);
+        scene.overlay = Some(overlay);
+        let mut renderer = Renderer::new_blocking(&RenderDesc {
+            width,
+            height,
+            ..Default::default()
+        })
+        .unwrap();
+        renderer.render(&scene, &RenderTarget::Offscreen).unwrap();
+        let pixels = renderer.read_offscreen().unwrap().pixels;
+        image::save_buffer(
+            out_dir().join(format!("css-image-set-{dpr}.png")),
+            &pixels,
+            width,
+            height,
+            image::ColorType::Rgba8,
+        )
+        .unwrap();
+        let check = |x: u32, y: u32, expected: [u8; 3]| {
+            let at = ((y * dpr * width + x * dpr) * 4) as usize;
+            let actual = &pixels[at..at + 3];
+            assert!(
+                actual.iter().zip(expected).all(|(&a, b)| a.abs_diff(b) < 8),
+                "DPR {dpr}, ({x},{y}): {actual:?}, expected {expected:?}"
+            );
+        };
+        let chosen = if dpr == 1 { [255, 0, 0] } else { [0, 0, 255] };
+        check(3, 3, chosen);
+        check(10, 3, [0; 3]); // Both 8px@1x and 16px@2x occupy 8 CSS px.
+        check(42, 3, [0, 0, 255]); // Type filtering precedes first-density wins.
+        check(50, 3, [0; 3]);
+        check(67, 3, [0; 3]); // A zero-resolution mask is transparent, not absent.
+        check(99, 3, [0, 255, 0]);
+        check(106, 3, [0; 3]);
+        check(140, 1, [0, 0, 255]); // Four source texels make a 2 CSS px auto border.
+        check(140, 3, [0; 3]);
+        check(180, 16, chosen); // Gradients use the box, not raster density sizing.
+        check(195, 3, chosen);
+        check(202, 3, [0; 3]); // Persistent widget parts use the same density-aware painter.
+    }
+}
+
 const CARD: &str = r##"<meta name="component" content="paint">
 <column id="Center">
 <div id="Card">

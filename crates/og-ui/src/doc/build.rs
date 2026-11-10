@@ -1162,6 +1162,22 @@ impl Ui {
                 r.vals.push((spec, V::Spans(Ok(spans))));
             }
         }
+        media_reads.resolution |= [
+            "backgroundImage",
+            "maskImage",
+            "borderImageSource",
+            "maskBorderSource",
+        ]
+        .iter()
+        .any(|name| {
+            r.str(name).is_some_and(|value| {
+                super::css::tokens(value).is_ok_and(|tokens| {
+                    tokens.iter().any(|token| {
+                        matches!(token, super::css::Tok::Func(name, _) if name == "image-set")
+                    })
+                })
+            })
+        });
         r.cascade.viewport_reads.extend(media_reads);
         if !container_read.sizes.is_empty()
             || !r.cascade.container_reads.is_empty()
@@ -1273,8 +1289,7 @@ impl Ui {
                     .cloned(),
             );
             c.reads.extend(p.cascade.reads.iter().cloned());
-            c.viewport_reads.width |= p.cascade.viewport_reads.width;
-            c.viewport_reads.height |= p.cascade.viewport_reads.height;
+            c.viewport_reads.extend(p.cascade.viewport_reads);
             c.container_reads.extend(&p.cascade.container_reads);
             c.scroll_reads.extend(&p.cascade.scroll_reads);
             c.diagnostics.extend(

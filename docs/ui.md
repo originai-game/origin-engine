@@ -917,7 +917,24 @@ them (angles with 0 up and clockwise, `to <side or corner>`, radial
 shapes and extents, `from <angle> at <position>`, stops with one or two
 positions, at most 8), mixed in OKLab and resolved against the placed
 box, so the line of a `45deg` gradient reaches the corners of a wide
-box. An image layer's natural size is its texels, one a CSS px;
+box. `image-set("art/low.png" 1x, url("art/high.png") 2x)` selects the
+lowest supported density at least as high as the viewport's DPR, or the
+highest available density otherwise. String URLs resolve beside the source
+stylesheet, just like `url()`. Descriptors accept `x`, `dppx`, `dpi` and
+`dpcm`, defaulting to `1x`; `type("image/png")` can precede or follow the
+density. Unsupported MIME types are excluded before first-density-wins
+deduplication, and their files are not cook inputs. Gradients are also valid
+candidates. Nested sets are rejected. Zero-density candidates paint nothing;
+in a mask an unusable set is transparent black, not an absent mask.
+
+Raster natural dimensions divide the source texels by the selected density:
+a 16-pixel image at `2x` occupies 8 CSS pixels under `auto` sizing. This also
+applies to mask tiles and automatic border-image widths; border-image slices
+still address source pixels. Document images and `button::part(base)` reselect
+when DPR changes. Saved leaving drawings preserve the density. Resolution
+math functions and MIME parameters are not yet implemented.
+
+An ordinary image layer's natural size is its texels, one a CSS px;
 `background-size` takes `cover`, `contain` and one or two of `auto`,
 lengths and percentages of the box; `background-position` one to four
 values (`right 10px bottom 20%` from those edges); `background-repeat`
@@ -3150,7 +3167,7 @@ Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document dr
 | `if` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `image-orientation` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `image-rendering` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_interact::images_take_object_fit_position_and_inherited_image_rendering`](../crates/og-ui/tests/css_interact.rs). Emitted image paint has contain fit, right-edge offset and inherited nearest sampling. |
-| `image-set` | Widely | Missing | Pending parts-as-nodes | URL rewriting descends into image-set, but image candidate selection has no implementation/output proof. |
+| `image-set` | Widely | Supported (scope →) | Supported (scope →) | [`css_paint::image_sets_render_density_correct_backgrounds_masks_and_borders`](../crates/og-ui/tests/css_paint.rs). Metal pixels at DPR 1/2/1 prove density-correct background/mask tiles, MIME filtering before duplicate removal, zero-resolution transparency, percentage border slices with auto widths and gradient selection. Retained output also tests 192dpi and fractional DPR. Resolution math and MIME parameters remain missing. Part proof: [`css_paint::image_sets_render_density_correct_backgrounds_masks_and_borders`](../crates/og-ui/tests/css_paint.rs). Metal pixels prove button::part(base) reselects its background at DPR 1/2/1 while preserving an 8 CSS px tile. Other part image properties are not separately proved. |
 | `ime-mode` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `import` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `indeterminate` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |

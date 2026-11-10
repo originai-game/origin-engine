@@ -70,6 +70,7 @@ fn image(texture: og_render::TextureHandle, fit: UiFit) -> UiImage {
         texture,
         uv: [0.0, 0.0, 1.0, 1.0],
         size: Vec2::ZERO,
+        density: 1.0,
         tint: [1.0; 4],
         fit,
         focal: Vec2::splat(0.5),

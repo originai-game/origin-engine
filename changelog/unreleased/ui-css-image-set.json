@@ -1,0 +1,14 @@
+{
+  "added": [
+    {
+      "member": "CSS image-set()",
+      "summary": "Backgrounds, masks and border images select image-set candidates by viewport density, preserve density-correct intrinsic sizing, filter unsupported types before duplicate resolutions, and discover bare-string asset URLs. Retained documents and button part backgrounds reselect when DPR changes; saved drawings preserve image density."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "CSS border-image",
+      "summary": "Preserve percentage slice and automatic-width metadata through the renderer instead of clamping it away; automatic widths account for image-set density."
+    }
+  ]
+}

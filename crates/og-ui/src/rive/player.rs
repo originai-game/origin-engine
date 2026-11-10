@@ -415,6 +415,7 @@ impl Player {
                                     texture,
                                     uv: [0.0, 0.0, 1.0, 1.0],
                                     size: img.size,
+                                    density: 1.0,
                                     tint: [1.0, 1.0, 1.0, alpha],
                                     fit: og_render::UiFit::Fill,
                                     focal: Vec2::splat(0.5),

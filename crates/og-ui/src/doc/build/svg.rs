@@ -1984,6 +1984,7 @@ impl Ui {
                     (uv[2] - uv[0]).abs() * 1024.0,
                     (uv[3] - uv[1]).abs() * 1024.0,
                 ],
+                density: 1.0,
                 tint: ColorRef::Literal(Srgba {
                     rgb: [255; 3],
                     alpha: 1.0,

@@ -473,21 +473,44 @@ pub fn rebase_urls(base: &str, css: &str) -> String {
 /// and embedded data. The caller resolves them against their source file.
 pub fn urls(css: &str) -> Vec<String> {
     let mut out = Vec::new();
-    map_urls(css, &mut |url| {
-        if !url.starts_with('#')
-            && !url.contains(':')
-            && url.parse::<u64>().is_err()
-            && !out.iter().any(|s| s == url)
-        {
-            out.push(url.to_owned());
-        }
-        url.to_owned()
-    });
+    map_urls_in(
+        css,
+        &mut |url| {
+            if !url.starts_with('#')
+                && !url.contains(':')
+                && url.parse::<u64>().is_err()
+                && !out.iter().any(|s| s == url)
+            {
+                out.push(url.to_owned());
+            }
+            url.to_owned()
+        },
+        false,
+        true,
+    );
     out
 }
 
 fn map_urls(css: &str, map: &mut impl FnMut(&str) -> String) -> String {
+    map_urls_in(css, map, false, false)
+}
+
+fn map_urls_in(
+    css: &str,
+    map: &mut dyn FnMut(&str) -> String,
+    image_set: bool,
+    assets_only: bool,
+) -> String {
     use cssparser::{ToCss, Token};
+    if image_set
+        && assets_only
+        && let Ok(image) = super::paint_css::border_source(&format!("image-set({css})"))
+    {
+        for url in image.urls() {
+            map(url);
+        }
+        return css.to_owned();
+    }
     let mut p = cssparser::Parser::new(css);
     let mut out = String::new();
     let mut copied = p.position();
@@ -497,6 +520,9 @@ fn map_urls(css: &str, map: &mut impl FnMut(&str) -> String) -> String {
             break;
         };
         let replacement = match token {
+            Token::QuotedString(url) if image_set => {
+                Some(Token::QuotedString(map(&url).into()).to_css_string())
+            }
             Token::UnquotedUrl(url) => Some(format!(
                 "url({})",
                 Token::QuotedString(map(&url).into()).to_css_string()
@@ -516,6 +542,7 @@ fn map_urls(css: &str, map: &mut impl FnMut(&str) -> String) -> String {
             | Token::ParenthesisBlock
             | Token::SquareBracketBlock
             | Token::CurlyBracketBlock => {
+                let image_set = matches!(&token, Token::Function(name) if name.eq_ignore_ascii_case("image-set"));
                 let opening = p.slice(start..p.position()).to_owned();
                 let close = match token {
                     Token::SquareBracketBlock => ']',
@@ -526,7 +553,12 @@ fn map_urls(css: &str, map: &mut impl FnMut(&str) -> String) -> String {
                     .parse_nested_block(|p| {
                         let start = p.position();
                         while p.next_including_whitespace_and_comments().is_ok() {}
-                        Ok::<_, cssparser::ParseError<()>>(map_urls(p.slice_from(start), map))
+                        Ok::<_, cssparser::ParseError<()>>(map_urls_in(
+                            p.slice_from(start),
+                            map,
+                            image_set,
+                            assets_only,
+                        ))
                     })
                     .ok();
                 inner.map(|inner| format!("{opening}{inner}{close}"))

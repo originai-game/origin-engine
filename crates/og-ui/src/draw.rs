@@ -2021,6 +2021,7 @@ pub(crate) fn emit(
                         texture: *t,
                         uv: *uv,
                         size: Vec2::new(rect.width, rect.height),
+                        density: 1.0,
                         tint: *color,
                         fit: og_render::UiFit::Fill,
                         focal: Vec2::splat(0.5),

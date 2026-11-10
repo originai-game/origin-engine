@@ -101,12 +101,10 @@ fn css_textures(r: &Resolved, env: &dyn crate::bind::Env) -> Vec<(f64, og_render
     }
     images
         .iter()
-        .filter_map(|i| match i {
-            p::CssImage::Url(u) => {
-                let h = u.parse::<f64>().ok()?;
-                Some((h, env.texture(h)?))
-            }
-            _ => None,
+        .flat_map(p::CssImage::urls)
+        .filter_map(|u| {
+            let h = u.parse::<f64>().ok()?;
+            Some((h, env.texture(h)?))
         })
         .collect()
 }
@@ -323,23 +321,28 @@ impl Ui {
         // A layer's image: a gradient, a texture by its handle, else an
         // atlas icon by name, as `<image href>` resolves one.
         let mut image = |what: &str, i: p::CssImage| -> Option<p::BgImage> {
-            Some(match i {
-                p::CssImage::None => return None,
-                p::CssImage::Gradient(g) => p::BgImage::Gradient(g),
-                p::CssImage::Url(ref u)
+            let Some((source, density)) = i.select(self.viewport.dpr()) else {
+                return (what == "mask" && matches!(i, p::CssImage::Set(_)))
+                    .then_some(p::BgImage::Transparent);
+            };
+            Some(match source {
+                p::ImageSource::Gradient(g) => p::BgImage::Gradient(g.clone()),
+                p::ImageSource::Url(u)
                     if self.docs.textures.contains_key(u.trim_start_matches('/')) =>
                 {
                     p::BgImage::Texture {
                         texture: self.docs.textures[u.trim_start_matches('/')],
                         uv: [0.0, 0.0, 1.0, 1.0],
+                        density,
                         nearest,
                     }
                 }
-                p::CssImage::Url(u) => match u.parse::<f64>() {
+                p::ImageSource::Url(u) => match u.parse::<f64>() {
                     Ok(h) => match textures.iter().find(|(k, _)| *k == h) {
                         Some((_, t)) => p::BgImage::Texture {
                             texture: *t,
                             uv: [0.0, 0.0, 1.0, 1.0],
+                            density,
                             nearest,
                         },
                         None => {
@@ -349,12 +352,13 @@ impl Ui {
                     },
                     Err(_) => match self
                         .icons()
-                        .find(&u)
-                        .or_else(|| self.icons().find(u.rsplit('/').next().unwrap_or(&u)))
+                        .find(u)
+                        .or_else(|| self.icons().find(u.rsplit('/').next().unwrap_or(u)))
                     {
                         Some(crate::ui::IconCell::Image(texture, uv)) => p::BgImage::Texture {
                             texture,
                             uv,
+                            density,
                             nearest,
                         },
                         Some(_) => {

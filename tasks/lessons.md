@@ -148,3 +148,9 @@ preserves editing focus; test Shift and readonly through actual input events.
 HTML number inputs keep a raw editable string, including empty and intermediate
 values. Add spinner behavior to the text field; never replace it with an f32-only
 stepper. Keep held-repeat timing and the pad keyboard in the migration tests.
+
+## 2026-11-10 — Batch proof inventories with their implementation
+
+Land CSS support inventory updates in the same land.sh run as the code
+milestone they document. Do not spend a separate shared landing queue turn
+on proof-count updates while other lanes are waiting.

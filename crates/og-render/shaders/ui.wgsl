@@ -164,6 +164,8 @@ fn image_uv(s: UiInstance, p: vec2<f32>) -> ImageUv {
     // No size given: the region's own pixels.
     img = max(abs(s.paint.zw - s.paint.xy) * vec2<f32>(textureDimensions(sprite_tex, 0)), vec2<f32>(1.0));
   }
+  let density = select(1.0, s.extra.y, (s.kinds.y & 15u) == PAINT_IMAGE);
+  img = img / density;
   var f = pos / max(size, vec2<f32>(1e-4));
   switch fit {
     case 1u, 2u, 8u: {
@@ -222,6 +224,7 @@ fn image_uv(s: UiInstance, p: vec2<f32>) -> ImageUv {
       // A gradient's natural size is its own (paint2.zw); the
       // positioning area is paint4's edges in from the box's.
       var nat = max(abs(s.paint.zw - s.paint.xy) * vec2<f32>(textureDimensions(sprite_tex, 0)), vec2<f32>(1.0));
+      nat = nat / density;
       if ((s.kinds.y & 15u) == PAINT_GRADIENT_IMAGE) {
         nat = s.paint2.zw;
       }
@@ -280,7 +283,7 @@ fn image_uv(s: UiInstance, p: vec2<f32>) -> ImageUv {
       let img = nat;
       let natv = vec4<f32>(nat.x, nat.y, nat.x, nat.y);
       let sl = min(select(s.paint3, -s.paint3 * natv, s.paint3 < vec4<f32>(0.0)), natv);
-      var wd = select(s.paint4, sl, s.paint4 < vec4<f32>(0.0));
+      var wd = select(s.paint4, sl / density, s.paint4 < vec4<f32>(0.0));
       let fit = min(min(size.x / max(wd.x + wd.z, 1e-4), size.y / max(wd.y + wd.w, 1e-4)), 1.0);
       wd = wd * fit;
       let top = border_scale(wd.y, sl.y);

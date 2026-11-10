@@ -469,6 +469,7 @@ pub fn paints() -> RenderScene {
                 texture,
                 uv: [0.0, 0.0, 1.0, 1.0],
                 size,
+                density: 1.0,
                 tint: [1.0; 4],
                 fit,
                 focal: Vec2::splat(0.5),

@@ -655,6 +655,7 @@ impl Ui {
                     texture: *texture,
                     uv: *uv,
                     size: og_core::glam::Vec2::ZERO,
+                    density: 1.0,
                     tint: color,
                     fit: object.fit,
                     focal: object.focal.into(),

@@ -205,10 +205,11 @@ fn pack_imports_keep_their_own_asset_bases_and_cascade_order() {
 #[test]
 fn css_urls_ignore_comments_strings_and_local_fragments() {
     use og_ui::doc::at_rules::{rebase_urls, urls};
-    let css = r#"/* url(fake.png) */ content: "url(fake.png)"; mask-image: url('../icons/a.svg'); filter: url(#blur); background-image: image-set(url(b.png) 1x, url(c.png) 2x);"#;
+    let css = r#"/* url(fake.png) */ content: "url(fake.png)"; mask-image: url('../icons/a.svg'); filter: url(#blur); background-image: image-set("unsupported.avif" type("image/avif") 1x, "b.png" type("image/png") 1x, url(duplicate.png) 1x, url(c.png) 2x, url(zero.png) 0x);"#;
     let rebased = rebase_urls("styles/pack/nested/a.css", css);
     assert!(rebased.contains("/styles/pack/icons/a.svg"), "{rebased}");
     assert!(rebased.contains("/styles/pack/nested/b.png"), "{rebased}");
+    assert!(rebased.contains("type(\"image/png\")"), "{rebased}");
     assert!(rebased.contains("url(#blur)") || rebased.contains("url(\"#blur\")"));
     assert_eq!(urls(css), ["../icons/a.svg", "b.png", "c.png"]);
 }
