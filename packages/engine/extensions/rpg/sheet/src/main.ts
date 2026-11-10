@@ -82,6 +82,9 @@ export default og.game({
     if (camera.ok) camera.value.background = { r: 0.04, g: 0.03, b: 0.02 };
     setStyle(world, "fantasy");
     pictures = Object.fromEntries(PICTURES.map((p) => [p, must(og.load.texture(world, `art/${p}.png`), p) as number]));
+    // The kit's strings in the review's CJK and right-to-left locales, as a
+    // game ships them (English comes with the kit).
+    for (const locale of ["ja", "zh-CN", "ar"]) must(og.i18n.load(world, `strings/${locale}.ogt`), locale);
     for (const path of DOCUMENTS) must(og.load.document(world, path), path);
   },
   ui: show,
