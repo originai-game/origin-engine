@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og cook (alpha-tested textures)",
+      "summary": "Moves frames; re-cooks everything (cooker r16): the base colour texture of a glTF material that tests its alpha (`alphaMode` `MASK`, or a `type model`'s `alphaTest`) gets mips that keep its coverage. Each level is the one before sampled bilinearly at the texel centre (a 2×2 box on even sizes, the two centre taps on odd ones, clamped at the edges: WebGL's `generateMipmap`), and a level that keeps fewer texels at or above the material's `alphaCutoff` than the first level does has its alpha raised until it keeps as many. basisu's own filter spread a leaf card's alpha over the transparent texels around it, so its minified levels fell under the cut-off and the card thinned out and vanished with distance (a 1024×384 bamboo spray had no texel left from its 4×1 level down). Every other texture keeps the same levels. One image under an alpha-tested and another material now cooks as two textures."
+    }
+  ]
+}

@@ -218,6 +218,13 @@ pub struct TextureOptions {
     /// bark and stone detail). Off by default; project.ogt's `cook { color_textures uastc }` turns it on and
     /// `publish { color_textures etc1s }` off again for the web export (og-cli's `cook::texture_options`).
     pub color_uastc: bool,
+    /// This texture is a cut-out, the base colour of an alpha-tested material (a glTF material's `alphaMode`
+    /// `MASK`), and the least alpha byte the material keeps: its mips are texture.rs `cutout_mips` and
+    /// `keep_coverage`, so each level keeps at least the share of texels at or above the cut-off that the
+    /// first has, where the encoder's own filter spreads a card's alpha into the transparent texels around it
+    /// until minified levels fall under the cut-off. Set per texture by the cook (execute.rs), not a project
+    /// setting; through the basis-universal encoder only (toktx makes its own mips).
+    pub cutout: Option<u8>,
 }
 
 impl Default for TextureOptions {
@@ -230,6 +237,7 @@ impl Default for TextureOptions {
             mipmaps: true,
             force_toktx: false,
             color_uastc: false,
+            cutout: None,
         }
     }
 }
