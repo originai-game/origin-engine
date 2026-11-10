@@ -755,11 +755,15 @@ impl Fonts {
                     .iter()
                     .map(|&role| {
                         let own = self.latin(role, w, slanted).0.alone();
-                        let last = (own.handle != body.handle).then(|| body.clone());
+                        let available =
+                            |font: &UiFont| face.font.handle.is_none() || font.handle.is_some();
+                        let last =
+                            (own.handle != body.handle && available(&body)).then(|| body.clone());
+                        let own = available(&own).then_some(own);
                         let all: Vec<UiFont> = set
                             .iter()
                             .cloned()
-                            .chain([own])
+                            .chain(own)
                             .chain(self.companion_styled(role, w).map(UiFont::alone))
                             .chain(others.iter().cloned())
                             .chain(last)

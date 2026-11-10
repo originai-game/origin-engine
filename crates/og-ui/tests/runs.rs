@@ -457,6 +457,56 @@ fn an_arabic_run_is_shaped_with_its_own_font() {
 }
 
 #[test]
+fn named_fonts_keep_runtime_fallback_glyphs_beside_digits() {
+    let mut scene = RenderScene::new();
+    let f = faces(&mut scene);
+    let file = FontFile::new(Arc::new(
+        std::fs::read(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../tests/fixtures/cook-assets/assets/fonts/NotoSansSC-Regular-subset.ttf"
+        ))
+        .unwrap(),
+    ))
+    .unwrap();
+    let fallback = UiFont {
+        handle: f.cjk.handle,
+        metrics: f.latin.metrics.clone().with_file(Some(file)),
+    };
+    assert!(fallback.metrics.has('原'));
+    assert!(!fallback.metrics.in_atlas('原'));
+    let source = r#"<meta name="component" content="t"><p>原3点</p><style>p { font-family: Brand; }</style>"#;
+    crate::html_text::both(source, &[], |d| {
+        d.ui.set_fonts(Fonts {
+            families: vec![FamilyFace {
+                family: "Brand".into(),
+                weight: (400, 400),
+                font: f.latin.clone(),
+                ..FamilyFace::default()
+            }],
+            chain: vec![fallback.clone()],
+            ..Fonts::default()
+        });
+        d.step(InputFrame::default());
+        let drawn = commands(d.ui.frame());
+        assert_eq!(
+            drawn.iter().map(|c| c.0.as_str()).collect::<String>(),
+            "原3点",
+            "{drawn:?}"
+        );
+        assert!(
+            drawn
+                .iter()
+                .any(|c| c.0 == "3" && Some(c.1) == f.latin.handle)
+        );
+        assert!(
+            drawn
+                .iter()
+                .any(|c| c.0 == "原" && Some(c.1) == fallback.handle)
+        );
+    });
+}
+
+#[test]
 fn a_font_face_family_takes_its_faces_by_weight_and_range() {
     let mut scene = RenderScene::new();
     let f = faces(&mut scene);

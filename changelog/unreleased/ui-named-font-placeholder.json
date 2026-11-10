@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "ui.font",
+      "summary": "A named font's mixed-script fallback chain skips unrendered generic-role placeholders, so locale font glyphs beside Latin digits are emitted instead of silently disappearing. Measurement-only fonts retain their fallback metrics."
+    }
+  ]
+}
