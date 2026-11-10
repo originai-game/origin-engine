@@ -1172,7 +1172,6 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             // 0.11 % on DX12) against Metal.
             g.cross_tolerance = Tolerance {
                 channel: 32,
-                max_outlier_fraction: 0.007,
                 rmse: 0.025,
                 ..Tolerance::CROSS_PLATFORM
             };

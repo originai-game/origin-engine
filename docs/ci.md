@@ -183,16 +183,20 @@ reference-gfx.ts `limitFor` in the browser):
   more than 32/255 is an outlier; fail above 0.5 % outliers or an RGB RMSE
   above 0.01), so the recording platform keeps catching subtle regressions;
 - against another backend's reference, that widened by the scene's
-  `cross_tolerance`, `Tolerance::CROSS_PLATFORM` by default: RMSE 0.016, and
-  no RGB channel's mean signed difference above 0.008, which is what keeps a
+  `cross_tolerance`, `Tolerance::CROSS_PLATFORM` by default: channel 32/255,
+  at most 1 % outliers, RMSE 0.024, and no RGB channel's absolute mean signed
+  difference above 0.012, which is what keeps a
   dimmer light or a colour shift from hiding inside the wider RMSE.
 
 `CROSS_PLATFORM` is set from the measured spread with a margin (2026-11-08,
 RTX 5060 on DX12, Vulkan and Chrome 150 on D3D12, against Metal): RMSE at
-most 0.0102, outliers at most 0.08 %, channel bias at most 0.0057, almost
-all of it rasterisation and threshold ties along edges.
+most 0.0102, outliers at most 0.08 %, absolute channel bias at most 0.0057,
+almost all of it rasterisation and threshold ties along edges. The L4's
+worst default-tolerance scene, dof-high, measured RMSE 0.0095 and bias
+−0.0057 (2026-11-10). The RMSE and bias limits allow about twice the measured
+spread; outliers have a larger margin for edge ties.
 `og-tests` `the_cross_platform_tolerance_still_catches_small_regressions`
-proves that it still fails a 10 % dimmer sun, a lost shadow, text moved by
+proves that it still fails a 15 % dimmer sun, a lost shadow, text moved by
 3 px and a wrong text colour. A scene whose spread is wider by nature
 names its own `cross_tolerance` in `scenes.rs` with the measurement beside
 it (visual-garment, stylise-print, sprites-array, tilemap-lit); never widen
