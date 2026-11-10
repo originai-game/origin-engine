@@ -94,6 +94,8 @@ impl Ui {
         if number {
             self.nodes[i].claim = ARROW_UP | ARROW_DOWN;
         }
+        // Its frame is its first child, under the buttons at its end.
+        let frame = (!desc.bare).then(|| self.field_frame(i, base));
         let key = self.nodes[i].key;
         let revealed = secret && self.reveal_toggle(i, base, reveal_w, height);
         let cleared = search
@@ -109,7 +111,8 @@ impl Ui {
         r.changed |= cleared || stepped;
         // Only the real focus edits; a forced one (the probe's) only shows.
         if self.state.focus == key {
-            let inner = self.hit(key).map(|h| h.full.inset(&padding));
+            let inset = self.frame_inset(i, frame, padding);
+            let inner = self.hit(key).map(|h| h.full.inset(&inset));
             let e = self.edit(
                 key,
                 value,
@@ -195,13 +198,18 @@ impl Ui {
                 target.selection.clear();
             }
         }
-        self.field_part(i, base, focused, invalid, desc.bare);
+        self.field_part(i, frame, base, focused, invalid, desc.bare);
         // What the probe and a screen reader read: a password masked
         // unless revealed (the mask, never the text).
         let said = match mask {
             Some(m) => value.chars().map(|_| m).collect(),
             None => value.clone(),
         };
+        // The frame draws the text; the host measures it.
+        if let Some(slot) = frame {
+            self.nodes[slot].content = Content::Text(content.clone());
+            self.nodes[slot].widget = Widget::Field(edit);
+        }
         let n = &mut self.nodes[i];
         n.content = Content::Text(content);
         n.widget = Widget::Field(edit);
@@ -288,6 +296,7 @@ impl Ui {
             }
             self.nodes[i].a11y.name = Some(if sign > 0.0 { "Increase" } else { "Decrease" }.into());
             self.nodes[i].disabled = desc.readonly;
+            self.control_part(i, "button");
             let since_id = format!("{id}~since");
             let repeat_id = format!("{id}~repeat");
             let since = self.memory(&since_id, -1.0);
@@ -483,6 +492,7 @@ impl Ui {
         n.probe_text = label.into();
         n.a11y.name = Some(label.into());
         n.a11y.checked = Some(revealed);
+        self.control_part(j, "reveal");
         revealed
     }
 
@@ -540,7 +550,203 @@ impl Ui {
         }
         n.probe_text = "Clear".into();
         n.a11y.name = Some("Clear".into());
+        self.control_part(j, "clear");
         r.clicked && !self.nodes[i].disabled
+    }
+
+    /// A text control's button (`reveal`, `clear`, a number's `button`) as
+    /// a persistent part box filling it: the box takes the part's CSS and
+    /// draws the icon; the button keeps its input and semantics.
+    fn control_part(&mut self, j: usize, name: &'static str) {
+        let element = self.nodes[j].el;
+        let part = element.part.expect("a dressed text control button");
+        let shapes = std::mem::take(&mut self.nodes[j].shapes);
+        let slot = self.write_part(
+            j,
+            part,
+            (name, 0),
+            Element {
+                width: Size::grow(),
+                height: Size::grow(),
+                interactive: false,
+                part: None,
+                ..element
+            },
+            Content::None,
+        );
+        self.nodes[j].content_slot = slot;
+        self.nodes[slot].shapes = shapes;
+    }
+
+    /// A text control's frame (`<component>::part(frame)`): a persistent
+    /// box over the host's padding box, under the host's buttons. It takes
+    /// the frame's CSS, paints the ground and draws the text; the host
+    /// keeps the layout, input, focus and semantics.
+    fn field_frame(&mut self, i: usize, base: crate::dress::PartRef) -> usize {
+        let el = self.nodes[i].el;
+        let slot = self.write_part(
+            i,
+            base,
+            ("frame", 0),
+            Element {
+                width: Size::grow(),
+                height: Size::grow(),
+                padding: el.padding,
+                radius: el.radius,
+                ..Element::default()
+            },
+            Content::None,
+        );
+        let fill = crate::element::Edges {
+            start: Some(0.0),
+            top: Some(0.0),
+            end: Some(0.0),
+            bottom: Some(0.0),
+            ..Default::default()
+        };
+        let part = self.nodes[slot].part_box.as_mut().expect("frame part");
+        part.intrinsic_props.position = crate::element::Position::Absolute;
+        part.intrinsic_props.insets = fill;
+        let props = &mut self.nodes[slot].props;
+        props.position = crate::element::Position::Absolute;
+        props.insets = fill;
+        slot
+    }
+
+    /// Where field `i`'s text box stood in its hit box last frame: its
+    /// frame's padding and placement, else `fallback` (the host's padding).
+    fn frame_inset(&self, i: usize, frame: Option<usize>, fallback: Insets) -> Insets {
+        let Some(slot) = frame else {
+            return fallback;
+        };
+        let (Some(h), Some(s)) = (self.previous_node(i), self.previous_node(slot)) else {
+            return fallback;
+        };
+        if s.part_box.is_none()
+            || s.key != child_key(h.key, "::part(frame)#0")
+            || h.rect.width <= 0.0
+            || s.rect.width <= 0.0
+        {
+            return fallback;
+        }
+        let (hr, sr, p) = (h.rect, s.rect, s.el.padding);
+        Insets {
+            top: sr.y - hr.y + p.top,
+            right: hr.right() - sr.right() + p.right,
+            bottom: hr.bottom() - sr.bottom() + p.bottom,
+            left: sr.x - hr.x + p.left,
+        }
+    }
+
+    /// Whether node `i` is a text control whose frame part box paints it:
+    /// the host draws no ground or text of its own.
+    pub(crate) fn framed_text(&self, i: usize) -> bool {
+        let n = &self.nodes[i];
+        n.content_slot != NONE
+            && n.part_box.is_none()
+            && matches!(n.widget, Widget::Field(_) | Widget::TextArea { .. })
+    }
+
+    /// The node whose document state a text control's drawing reads (its
+    /// `::selection`, its caret's part animation): a frame's host.
+    pub(crate) fn text_owner(&self, i: usize) -> usize {
+        self.nodes[i]
+            .part_box
+            .as_ref()
+            .map(|p| p.owner)
+            .filter(|&o| self.nodes[o].content_slot == i && self.framed_text(o))
+            .unwrap_or(i)
+    }
+
+    /// Whether node `i` has a fill a focus ring or outline follows, and
+    /// whether it is a focused text control that rings itself.
+    pub(crate) fn field_rings(&self, i: usize) -> (bool, bool) {
+        let n = &self.nodes[i];
+        let framed = n.sampled.background.is_some() || self.framed_text(i);
+        let ring = match &n.widget {
+            Widget::Field(e) | Widget::TextArea { edit: e, .. } => {
+                e.focused && n.part_box.is_none() && framed
+            }
+            _ => false,
+        };
+        (framed, ring)
+    }
+
+    /// A text control's frame after its CSS (`Ui::apply_part_box`): over
+    /// the host's padding box, inset as the host lays out its text unless
+    /// the frame declares padding (its border inside that inset), and
+    /// taking the host's own document ground, radius and direction unless
+    /// the frame declares them.
+    pub(crate) fn text_frame_box(&mut self, i: usize, r: &crate::doc::build::Resolved) {
+        let Some(owner) = self.nodes[i].part_box.as_ref().map(|p| p.owner) else {
+            return;
+        };
+        if self.nodes[owner].content_slot != i || !self.framed_text(owner) {
+            return;
+        }
+        let host = &self.nodes[owner];
+        let border = host
+            .decor
+            .as_ref()
+            .map_or([0.0; 4], |d| d.borders.map(|b| b.map_or(0.0, |b| b.width)));
+        let (padding, background, radius, flow) = (
+            host.el.padding,
+            host.el.background,
+            host.el.radius,
+            host.props.flow,
+        );
+        // A radius written on the host rounds its frame, as it rounded
+        // the dressing painted on it.
+        let written = host.decor.as_ref().and_then(|d| d.radius);
+        let rtl = self.direction == og_i18n::Direction::Rtl;
+        let declared = [
+            "padding",
+            "paddingTop",
+            "paddingRight",
+            "paddingBottom",
+            "paddingLeft",
+        ]
+        .iter()
+        .any(|name| r.has(name));
+        let n = &mut self.nodes[i];
+        if !declared {
+            n.el.padding = Insets {
+                top: (padding.top - border[0]).max(0.0),
+                right: (padding.right - border[1]).max(0.0),
+                bottom: (padding.bottom - border[2]).max(0.0),
+                left: (padding.left - border[3]).max(0.0),
+            };
+        }
+        if !r.has("background")
+            && let Some(ground) = background
+        {
+            n.el.background = Some(ground);
+        }
+        if let Some(radius) = written {
+            n.el.radius = radius;
+            if let Some(decor) = &mut n.decor {
+                decor.radius = Some(radius);
+            }
+        } else if !r.has("radius") {
+            // Inside a host's border, its inner curve (CSS Backgrounds 3 §4.3).
+            let inset = border.iter().copied().fold(0.0_f32, f32::max);
+            n.el.radius = (radius - inset).max(0.0);
+        }
+        n.props.flow = flow;
+        if !r.has("position") && border != [0.0; 4] {
+            let (start, end) = if rtl {
+                (border[1], border[3])
+            } else {
+                (border[3], border[1])
+            };
+            n.props.insets = crate::element::Edges {
+                start: Some(start),
+                top: Some(border[0]),
+                end: Some(end),
+                bottom: Some(border[2]),
+                ..Default::default()
+            };
+        }
     }
 
     /// A field's frame as a part (`Field.frame[focused][invalid]`): its ground moves
@@ -550,27 +756,37 @@ impl Ui {
     fn field_part(
         &mut self,
         i: usize,
+        frame: Option<usize>,
         base: crate::dress::PartRef,
         focused: bool,
         invalid: bool,
         bare: bool,
     ) {
-        if bare {
+        let Some(slot) = frame.filter(|_| !bare) else {
             let n = &mut self.nodes[i];
             n.el.background = None;
             n.el.part = None;
             return;
-        }
+        };
         let p = self.theme.palette;
         let key = self.nodes[i].key;
         let f = self.spring_to(child_key(key, "focus"), if focused { 1.0 } else { 0.0 });
+        let ground = mix_srgba(p.control, p.panel, f.clamp(0.0, 1.0));
         let n = &mut self.nodes[i];
-        n.el.background = Some(mix_srgba(p.control, p.panel, f.clamp(0.0, 1.0)));
         let part = base
             .flag_if(focused, "focused")
             .flag_if(invalid, "invalid")
             .flag_if(n.disabled, "disabled");
+        // The host keeps the part's states for its focus ring; its frame
+        // box (`Ui::field_frame`) paints the ground.
         n.el.part = Some(part);
+        n.el.background = None;
+        n.content_slot = slot;
+        let frame = &mut self.nodes[slot];
+        frame.el.background = Some(ground);
+        let part_box = frame.part_box.as_mut().expect("frame part");
+        part_box.reference = part;
+        part_box.element.background = Some(ground);
     }
 
     /// A multi-line text area: [`Ui::text_field`]'s editing, with Enter
@@ -611,11 +827,13 @@ impl Ui {
         self.nodes[i].focusable = true;
         self.nodes[i].nav = true;
         self.nodes[i].multiline = true;
+        let frame = (!desc.bare).then(|| self.field_frame(i, base));
         let key = self.nodes[i].key;
         let mut r = self.respond(key);
         // Only the real focus edits; a forced one (the probe's) only shows.
         if self.state.focus == key {
-            let inner = self.hit(key).map(|h| h.full.inset(&pad));
+            let inset = self.frame_inset(i, frame, pad);
+            let inner = self.hit(key).map(|h| h.full.inset(&inset));
             let e = self.edit(
                 key,
                 value,
@@ -650,15 +868,20 @@ impl Ui {
         }
         let disabled = self.nodes[i].disabled;
         let ink = self.field_ink(base, focused, invalid, disabled);
-        self.field_part(i, base, focused, invalid, desc.bare);
-        let n = &mut self.nodes[i];
-        n.widget = Widget::TextArea {
+        self.field_part(i, frame, base, focused, invalid, desc.bare);
+        let widget = Widget::TextArea {
             edit,
             text: shown,
             placeholder: desc.placeholder.clone(),
             line_height: lh,
             ink,
         };
+        // The frame draws the lines; the host measures them.
+        if let Some(slot) = frame {
+            self.nodes[slot].widget = widget.clone();
+        }
+        let n = &mut self.nodes[i];
+        n.widget = widget;
         n.probe_text = if value.is_empty() {
             desc.placeholder.clone()
         } else {
@@ -673,6 +896,10 @@ impl Ui {
     /// Supply textarea text to layout only when CSS requests content sizing.
     /// Editing and scrolling still paint through `text_area_commands`.
     pub(crate) fn field_measurement(&mut self, i: usize, content: bool) -> Option<f32> {
+        // A frame part box fills its host, which sizes to the content.
+        if self.nodes[i].part_box.is_some() {
+            return None;
+        }
         if let Widget::TextArea {
             text,
             placeholder,
@@ -819,11 +1046,12 @@ impl Ui {
         let dpr = self.viewport.dpr();
         let boxes = crate::edit::boxes(mk.m, mk.text, self.direction, mk.size, mk.tracking);
         let n = mk.text.chars().count();
+        let key = self.nodes[self.text_owner(i)].key;
         let mark = |name, rect: Rect, color: Srgba, cmds: &mut Vec<DrawCmd>| {
             let part = crate::dress::PartRef::of("TextEdit", name, None);
-            let values = self.part_values(&part, Some(self.nodes[i].key));
+            let values = self.part_values(&part, Some(key));
             self.part_commands_at(
-                Some(self.nodes[i].key),
+                Some(key),
                 &part,
                 values.part_rect(rect, self.nodes[i].rect).snapped(dpr),
                 Some(values.color("color").unwrap_or(color)),
@@ -861,7 +1089,7 @@ impl Ui {
             let selection = self
                 .docs
                 .selection
-                .get(&self.nodes[i].key)
+                .get(&key)
                 .and_then(|s| s.background)
                 .unwrap_or(p.control_strong);
             span("selection", e.selection, cmds, cy, ch, selection);
@@ -888,6 +1116,10 @@ impl Ui {
         clip: Rect,
         cmds: &mut Vec<DrawCmd>,
     ) {
+        // A framed host's lines are its frame's to draw.
+        if self.framed_text(i) {
+            return;
+        }
         let n = &self.nodes[i];
         let Widget::TextArea {
             edit,

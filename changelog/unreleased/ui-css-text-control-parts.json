@@ -1,0 +1,9 @@
+{
+  "breaking": [
+    {
+      "member": "Text field, textarea and number spinner CSS boxes",
+      "change": "input::part(frame) and textarea::part(frame) are persistent CSS layout and paint boxes over the control's padding box that draw its text; the reveal, clear and number spin buttons (input::part(reveal), input::part(clear), input[type=number]::part(button)) are boxes filling their buttons. Frame width, height and transforms now size and move the frame box, not the control. Undressed controls draw unchanged.",
+      "fix": "Size and place the control through its host (input, textarea); style the frame's padding, border, background, radius and states through its ::part selector. A frame without its own padding keeps the control's inset with its border inside it. Focus, editing, presses and accessibility stay on the host."
+    }
+  ]
+}

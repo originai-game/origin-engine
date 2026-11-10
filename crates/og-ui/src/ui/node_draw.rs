@@ -88,13 +88,8 @@ impl Ui {
             }
         }
         // A bare field (no frame of its own) leaves the ring to its frame.
-        let field_ring = match &n.widget {
-            Widget::Field(e) | Widget::TextArea { edit: e, .. } => {
-                e.focused && n.sampled.background.is_some()
-            }
-            _ => false,
-        };
-        let outline = t.outline && (n.nav || n.focusable) && n.sampled.background.is_some();
+        let (framed, field_ring) = self.field_rings(i);
+        let outline = t.outline && (n.nav || n.focusable) && framed;
         if field_ring || n.ring || outline {
             cmds.extend(ring(0, outline && !field_ring && !n.ring));
         }
@@ -131,11 +126,9 @@ impl Ui {
             clip,
         };
         // A part the UI pass draws (`part_draws`) has its background there.
-        if let Some(bg) = n
-            .sampled
-            .background
-            .filter(|bg| bg.alpha > 0.0 && !self.part_draws.contains_key(&i))
-        {
+        if let Some(bg) = n.sampled.background.filter(|bg| {
+            bg.alpha > 0.0 && !self.part_draws.contains_key(&i) && !self.framed_text(i)
+        }) {
             let r = if matches!(n.widget, Widget::Button { pressed: true, .. }) {
                 rect.scaled(t.press_scale)
             } else {
@@ -246,6 +239,8 @@ impl Ui {
         }
         match &n.content {
             Content::Text(_) if matches!(n.widget, Widget::TextArea { .. }) => {}
+            // A framed text control's frame draws its text (`Ui::field_frame`).
+            Content::Text(_) if self.framed_text(i) => {}
             Content::Text(tc) if let Some(tp) = &n.props.text_path => {
                 self.path_text_commands(i, tc, tp, rect, clip, cmds);
             }
@@ -345,7 +340,8 @@ impl Ui {
                         }
                         // `::selection`'s ink, lines and shadows: the line's
                         // selected glyphs drawn again, clipped to their runs.
-                        let selection = self.docs.selection.get(&n.key).filter(|s| {
+                        let owner = self.nodes[self.text_owner(i)].key;
+                        let selection = self.docs.selection.get(&owner).filter(|s| {
                             s.color.is_some() || s.decoration.is_some() || s.shadows.is_some()
                         });
                         let range = match &field {

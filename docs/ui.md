@@ -1861,6 +1861,16 @@ toggle `<id>/Reveal` sits at the field's end (start in RTL), dressed
 Show password or Hide password and keeps the field's text focus when
 pressed. Revealed is UI state and survives save and restore.
 
+A text input's or textarea's `::part(frame)` is a box of its own over the
+control's padding box, under its buttons, and it draws the text. Its
+padding, border, background, radius and states (`:focus-visible`,
+`:invalid`, `:disabled`) come from the part's CSS; without a padding of
+its own it keeps the control's inset, its border inside it. The control
+keeps its size, focus, editing, role and its own document box. The reveal
+toggle's `::part(reveal)`, the search box's `::part(clear)` and a number's
+spin buttons (`input[type=number]::part(button)`, `.inc` and `.dec`) are
+boxes filling their buttons the same way, their icons drawn in them.
+
 A text input a pad gives the focus opens og-ui's on-screen keyboard, a
 panel docked at the screen's bottom over a scrim: the text with its caret,
 rows of keys the pad walks (the focus starts on the first; Y erases, LB

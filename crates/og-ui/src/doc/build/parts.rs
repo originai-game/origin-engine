@@ -138,6 +138,7 @@ impl Ui {
                 text.color = ink;
             }
         }
+        self.text_frame_box(i, &r);
     }
 
     pub(crate) fn css_feedback(

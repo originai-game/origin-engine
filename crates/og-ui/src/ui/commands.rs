@@ -1016,14 +1016,8 @@ impl Ui {
             || node.decor.as_ref().is_some_and(|d| d.fixed())
             || (node.scrolls() && (node.el.fade > 0.0 || !node.el.hide_bars))
             || node.el.resize != 0;
-        let outline =
-            self.theme.outline && (node.nav || node.focusable) && node.sampled.background.is_some();
-        let field_ring = match &node.widget {
-            Widget::Field(e) | Widget::TextArea { edit: e, .. } => {
-                e.focused && node.sampled.background.is_some()
-            }
-            _ => false,
-        };
+        let (framed, field_ring) = self.field_rings(i);
+        let outline = self.theme.outline && (node.nav || node.focusable) && framed;
         (
             volatile,
             node.ring || node.pad_rings != 0 || outline || field_ring,

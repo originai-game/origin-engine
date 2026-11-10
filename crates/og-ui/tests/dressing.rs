@@ -1575,3 +1575,218 @@ fn progress_part_keyframes_advance_without_host_changes() {
         "removed animation reuses paint"
     );
 }
+
+/// Text fields, text areas and the number spinner keep their frame and
+/// buttons as persistent part boxes: the part CSS lays out and paints them,
+/// their states select rules, and the hosts keep focus, typing, presses and
+/// semantics. Wrong: the frame was painted on the host and its padding,
+/// border and state rules did not move the text or reach the buttons.
+#[test]
+fn text_field_and_spinner_parts_keep_boxes_states_and_host_input() {
+    let mut ui = ui_with_font(add_test_font(&mut og_render::RenderScene::new()));
+    ui.set_part_css(
+        "input::part(frame) { padding: 0 11px; border: 2px solid #123456; background: #00ff00; }
+         input::part(frame):focus-visible { background: #0000ff; }
+         input::part(frame):invalid { background: #ff0000; }
+         input[type=number]::part(button) { background: #ff00ff; }
+         input::part(reveal) { background: #00ffff; padding: 3px; }
+         textarea::part(frame) { padding: 7px; background: #808000; }",
+    )
+    .unwrap();
+    let mut values = [
+        "Hi".to_string(),
+        "42".into(),
+        "pw".into(),
+        "x".into(),
+        "Area".into(),
+    ];
+    let tick = |ui: &mut Ui, input, values: &mut [String; 5]| {
+        ui.begin(input, Viewport::new(600.0, 600.0));
+        ui.open("Root", Element::column());
+        let [name, number, secret, bad, area] = values;
+        ui.text_field("Name", name, &FieldDesc::default());
+        ui.text_field(
+            "Count",
+            number,
+            &FieldDesc {
+                input_type: InputType::Number,
+                ..Default::default()
+            },
+        );
+        ui.text_field(
+            "Secret",
+            secret,
+            &FieldDesc {
+                input_type: InputType::Password,
+                ..Default::default()
+            },
+        );
+        ui.text_field(
+            "Bad",
+            bad,
+            &FieldDesc {
+                invalid: true,
+                ..Default::default()
+            },
+        );
+        ui.text_area("Notes", area, &TextAreaDesc::default());
+        ui.close();
+        ui.end();
+    };
+    let press = |ui: &mut Ui, path: &str, dx: f32, values: &mut [String; 5]| {
+        let e = ui.element(path).unwrap().clone();
+        let pointer = og_core::math::Vec2::new(e.x + e.width * dx, e.y + e.height / 2.0);
+        for down in [true, false] {
+            tick(
+                ui,
+                InputFrame {
+                    pointer,
+                    pointer_inside: true,
+                    down,
+                    pressed: down,
+                    released: !down,
+                    ..Default::default()
+                },
+                values,
+            );
+        }
+    };
+    for _ in 0..3 {
+        tick(&mut ui, InputFrame::default(), &mut values);
+    }
+    let texts = |ui: &Ui| -> Vec<(String, f32)> {
+        ui.frame()
+            .items
+            .iter()
+            .filter_map(|item| match &item.cmd {
+                DrawCmd::StyledText { text, .. } => match text.as_ref() {
+                    DrawCmd::Text { text, x, .. } => Some((text.clone(), *x)),
+                    _ => None,
+                },
+                DrawCmd::Text { text, x, .. } => Some((text.clone(), *x)),
+                _ => None,
+            })
+            .collect()
+    };
+    let fill = |ui: &Ui, rgb: [u8; 3]| {
+        let c = Srgba::rgb(rgb[0], rgb[1], rgb[2]).linear();
+        ui.frame()
+            .items
+            .iter()
+            .filter_map(|i| i.cmd.filled())
+            .filter(|(_, color)| *color == c)
+            .map(|(r, _)| r)
+            .collect::<Vec<_>>()
+    };
+    for (host, part, role) in [
+        ("Root/Name", "frame", "textbox"),
+        ("Root/Notes", "frame", "textbox"),
+        ("Root/Count/Increment", "button", "button"),
+        ("Root/Secret/Reveal", "reveal", "button"),
+    ] {
+        let h = ui.element(host).unwrap();
+        assert_eq!(h.role, role, "{host}");
+        let p = ui.element(&format!("{host}/::part({part})#0")).unwrap();
+        assert_eq!(p.kind, "part", "{host}");
+        assert!(p.role.is_empty(), "{host}");
+        assert_eq!((p.x, p.y, p.width, p.height), (h.x, h.y, h.width, h.height));
+    }
+    // The frame's padding and border inset the text; its background is
+    // its own box's, by state.
+    let name = ui.element("Root/Name").unwrap().clone();
+    let hi = texts(&ui).into_iter().find(|t| t.0 == "Hi").unwrap();
+    assert_eq!(hi.1 - name.x, 13.0);
+    assert!(fill(&ui, [0, 255, 0]).iter().any(|r| r.y == name.y));
+    let bad = ui.element("Root/Bad").unwrap().clone();
+    assert!(fill(&ui, [255, 0, 0]).iter().any(|r| r.y == bad.y));
+    let notes = ui.element("Root/Notes").unwrap().clone();
+    let area = texts(&ui).into_iter().find(|t| t.0 == "Area").unwrap();
+    assert_eq!(area.1 - notes.x, 7.0);
+    assert!(fill(&ui, [128, 128, 0]).iter().any(|r| r.y == notes.y));
+    let inc = ui.element("Root/Count/Increment").unwrap().clone();
+    assert!(fill(&ui, [255, 0, 255]).iter().any(|r| r.x == inc.x));
+    assert!(fill(&ui, [0, 255, 255]).len() == 1);
+    // Presses and typing reach the hosts.
+    press(&mut ui, "Root/Count/Increment", 0.5, &mut values);
+    assert_eq!(values[1], "43");
+    press(&mut ui, "Root/Secret/Reveal", 0.5, &mut values);
+    assert_eq!(
+        ui.element("Root/Secret/Reveal").unwrap().text,
+        "Hide password"
+    );
+    press(&mut ui, "Root/Name", 0.9, &mut values);
+    assert!(ui.focus_path(0).ends_with("/Name"));
+    tick(
+        &mut ui,
+        InputFrame {
+            text: "!".into(),
+            ..Default::default()
+        },
+        &mut values,
+    );
+    assert_eq!(values[0], "Hi!");
+    for _ in 0..20 {
+        tick(&mut ui, InputFrame::default(), &mut values);
+    }
+    assert!(fill(&ui, [0, 0, 255]).iter().any(|r| r.y == name.y));
+    assert!(!fill(&ui, [0, 255, 0]).iter().any(|r| r.y == name.y));
+}
+
+/// An undressed text control draws as before its frame became a box: one
+/// ground at the host's box, its text at the host's inset, no fill of the
+/// host's own. Wrong: the host and its frame both painted, or the text
+/// moved by the frame's border.
+#[test]
+fn undressed_text_frames_keep_the_hosts_box_and_inset() {
+    let mut ui = ui_with_font(add_test_font(&mut og_render::RenderScene::new()));
+    let mut value = "Hello".to_string();
+    let mut invalid = "Bad".to_string();
+    for _ in 0..3 {
+        ui.begin(InputFrame::default(), Viewport::new(600.0, 400.0));
+        ui.open("Root", Element::column());
+        ui.text_field("Name", &mut value, &FieldDesc::default());
+        ui.text_field(
+            "Bad",
+            &mut invalid,
+            &FieldDesc {
+                invalid: true,
+                ..Default::default()
+            },
+        );
+        ui.close();
+        ui.end();
+    }
+    let pad = ui.theme().space.md;
+    let control = ui.theme().palette.control.linear();
+    for (path, text) in [("Root/Name", "Hello"), ("Root/Bad", "Bad")] {
+        let host = ui.element(path).unwrap().clone();
+        let frame = ui.element(&format!("{path}/::part(frame)#0")).unwrap();
+        assert_eq!(
+            (frame.x, frame.y, frame.width, frame.height),
+            (host.x, host.y, host.width, host.height)
+        );
+        let grounds: Vec<_> = ui
+            .frame()
+            .items
+            .iter()
+            .filter_map(|i| i.cmd.filled())
+            .filter(|(r, c)| *c == control && r.y == host.y)
+            .collect();
+        assert_eq!(grounds.len(), 1, "{path}: {grounds:?}");
+        assert_eq!(grounds[0].0.width, host.width);
+        let x = ui
+            .frame()
+            .items
+            .iter()
+            .find_map(|item| match &item.cmd {
+                DrawCmd::StyledText { text: t, .. } => match t.as_ref() {
+                    DrawCmd::Text { text: s, x, .. } if s == text => Some(*x),
+                    _ => None,
+                },
+                DrawCmd::Text { text: s, x, .. } if s == text => Some(*x),
+                _ => None,
+            })
+            .unwrap();
+        assert_eq!(x - host.x, pad, "{path}");
+    }
+}
