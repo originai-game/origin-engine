@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "CSS image-set()",
+      "summary": "Evaluate resolution descriptors through the shared CSS math engine: calc(), min(), max() and clamp() accept mixed x, dppx, dpi and dpcm units for document and widget-part images."
+    }
+  ]
+}

@@ -45,7 +45,8 @@ fn image_sets_reselect_on_density_changes() {
 <div id="image"></div>
 <style>
 #image { width: 32px; height: 32px;
-  background-image: image-set("low.png" 1x, url(high.png) 192dpi);
+  background-image: image-set("low.png" calc(2dppx - 96dpi),
+    url(high.png) clamp(1x, calc(480dpi / 2), 2dppx));
   background-repeat: no-repeat; }
 </style>"#,
         )
@@ -111,14 +112,14 @@ fn image_sets_render_density_correct_backgrounds_masks_and_borders() {
 <style>
 #row { display: flex; }
 #row > div { width: 32px; height: 32px; flex-shrink: 0; }
-#auto { background: image-set("low.png" 1x, "high.png" 2dppx) no-repeat; }
+#auto { background: image-set("low.png" 1x, "high.png" calc(192dpcm / 2.54)) no-repeat; }
 #type { background: image-set("absent.avif" type("image/avif"), "high.png" type("image/png"), "low.png" 1x) no-repeat; }
 #zero { background: lime; mask-image: image-set("absent.png" 0x); }
 #mask { background: lime; mask: image-set("low.png" 1x, "high.png" 2x) no-repeat; }
 #border { border: 1px solid transparent; border-image-source: image-set("high.png" 2x); border-image-slice: 25%; border-image-width: auto; }
 #gradient { background: image-set(linear-gradient(red, red) 1x, linear-gradient(blue, blue) 2x); }
 button { width: 32px; height: 32px; flex-shrink: 0; }
-button::part(base) { background: image-set("low.png" 1x, "high.png" 2x) no-repeat; border: 0; border-radius: 0; padding: 0; box-shadow: none; }
+button::part(base) { background: image-set("low.png" min(1x, 2dppx), "high.png" max(96dpi, 2x)) no-repeat; border: 0; border-radius: 0; padding: 0; box-shadow: none; }
 </style>"#).unwrap());
     ui.mount_document(
         reactive::SourceId::new("test", "density"),

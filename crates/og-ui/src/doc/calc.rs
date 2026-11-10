@@ -40,6 +40,10 @@ const UNITS: &[(&str, &str, f64)] = &[
     ("grad", "deg", 0.9),
     ("rad", "deg", 180.0 / std::f64::consts::PI),
     ("turn", "deg", 360.0),
+    ("x", "dppx", 1.0),
+    ("dppx", "dppx", 1.0),
+    ("dpi", "dppx", 1.0 / 96.0),
+    ("dpcm", "dppx", 2.54 / 96.0),
     ("", "", 1.0),
 ];
 
@@ -52,7 +56,7 @@ pub(crate) fn physical(unit: &str) -> Option<f64> {
 }
 
 /// The order a sum's terms are written in.
-const ORDER: [&str; 6] = ["%", "px", "em", "ms", "deg", ""];
+const ORDER: [&str; 7] = ["%", "px", "em", "ms", "deg", "dppx", ""];
 
 /// The units resolved before reduction: the viewport's (with the small,
 /// large and dynamic forms of CSS Values 4 §6.1.2, one viewport here), the
