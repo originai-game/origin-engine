@@ -40,7 +40,7 @@ og_temp_prepare() {
 og_gpu_root="${OG_GPU_ROOT:-$HOME/.cache/og-gate}"
 og_gpu_impl() {
   cat <<'OG_GPU_IMPL'
-og_gpu_lock_version=8
+og_gpu_lock_version=9
 
 # Process birth, not command text, identifies an owner after PID reuse.
 # Keep the human-readable owner file compatible with older lanes.
@@ -260,7 +260,7 @@ og_lock_release() {
 
 # GPU slots (the owner, 2026-11-04): Metal on macrunner runs a few GPU suites
 # at once, so scoped GPU work (an area's og-tests, `og run --commands`
-# frames, a sheet render) takes one of OG_GPU_SLOTS slots (default 3)
+# frames, a sheet render) takes one of OG_GPU_SLOTS slots (default 6)
 # instead of the whole machine. Reference pixels do not depend on what else
 # runs; frame-time and perf measurements do, so they take every slot.
 #
@@ -317,7 +317,7 @@ og_gpu_acquire() {
     # An exclusive holder (og_gpu_acquire_all) blocks new single slots, so it is not starved.
     if [ ! -d "$og_gpu_root/gpu-all.lock" ] || [ "$(cut -d' ' -f1 "$og_gpu_root/gpu-all.lock/owner" 2>/dev/null)" = "$$" ]; then
       og_gpu_n=1
-      while [ "$og_gpu_n" -le "${OG_GPU_SLOTS:-3}" ]; do
+      while [ "$og_gpu_n" -le "${OG_GPU_SLOTS:-6}" ]; do
         if og_gpu_try "$og_gpu_n" "$1"; then
           OG_GPU_SLOT="$og_gpu_n"
           OG_LOCK_IDENTITIES="${OG_LOCK_IDENTITIES:-} $(cat "$og_gpu_slot/identity")"
@@ -331,7 +331,7 @@ og_gpu_acquire() {
       rm -rf "$og_gpu_root/gpu-all.lock"
     fi
     if [ -z "$og_gpu_said" ]; then
-      printf '%s\n' "gpu: all ${OG_GPU_SLOTS:-3} slots busy, waiting ($1)" >&2
+      printf '%s\n' "gpu: all ${OG_GPU_SLOTS:-6} slots busy, waiting ($1)" >&2
       og_gpu_said=1
     fi
     sleep 2
@@ -352,7 +352,7 @@ og_gpu_acquire_all() {
   export OG_GPU_OWNER OG_LOCK_IDENTITIES
   og_lock_dirs="${og_lock_dirs:-}${og_lock_dirs:+ }$og_gpu_root/gpu-all.lock"
   og_gpu_n=1
-  while [ "$og_gpu_n" -le "${OG_GPU_SLOTS:-3}" ]; do
+  while [ "$og_gpu_n" -le "${OG_GPU_SLOTS:-6}" ]; do
     until og_gpu_try "$og_gpu_n" "$1"; do sleep 2; done
     og_gpu_n=$((og_gpu_n + 1))
   done

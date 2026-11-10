@@ -359,7 +359,8 @@ The drain never holds the entrance long: it yields at once when a landing
 recheck waits, and after `OG_MEASURE_DRAIN` seconds (default 120) to every
 waiting gate, then queues again.
 It is separate from GPU ownership: nothing holds GPU slots while waiting
-for a child gate. Rendering steps acquire a FIFO slot;
+for a child gate. Rendering steps acquire one of `OG_GPU_SLOTS` slots
+(default 6) in FIFO order;
 single-slot and all-slot requests share the queue. Owners are identified
 by PID and process birth, not command names. Inherited ownership lets a
 child reuse its parent's resources. The versioned implementation in

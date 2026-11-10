@@ -60,7 +60,8 @@ while [ ! -f "$ROOT/$1.release" ]; do sleep 0.05; done
         with (self.root / f'{name}.log').open('w') as log:
             job = subprocess.Popen(['sh', str(self.script), name, kind], stdout=log, stderr=log,
                                    env=dict(os.environ, LOCK=str(LOCK), ROOT=str(self.root),
-                                            OG_GPU_ROOT=str(self.root / 'gpu'), OG_GPU_SLOTS=str(slots),
+                                            OG_GPU_ROOT=str(self.root / 'gpu'),
+                                            OG_GPU_SLOTS='' if slots is None else str(slots),
                                             OG_LOCK_OWNER='', OG_MEASURE_BACKOFF='0'))
         self.jobs.append(job)
         self.named[name] = job
@@ -114,16 +115,37 @@ while [ ! -f "$ROOT/$1.release" ]; do sleep 0.05; done
                         p.unlink()
 
     def test_all_slots_blocks_later_single_waiters(self):
-        holder = self.start('holder', 'one', slots=2)
-        self.acquired('holder')
-        exclusive = self.start('all', 'all', slots=2)
+        holders = []
+        for i in range(6):
+            name = f'holder{i}'
+            holder = self.start(name, 'one', slots=None)
+            self.acquired(name)
+            holders.append((name, holder))
+        seventh = self.start('seventh', 'one', slots=None)
+        self.queued(seventh)
+        self.wait(lambda: 'gpu: all 6 slots busy' in (self.root / 'seventh.log').read_text())
+        self.assertFalse((self.root / 'seventh.acquired').exists())
+        self.release(*holders.pop(0))
+        self.acquired('seventh')
+        holders.append(('seventh', seventh))
+        # Keep slot 1 occupied: later singles must wait despite five free slots.
+        for name, holder in holders:
+            if name != 'seventh':
+                self.release(name, holder)
+        exclusive = self.start('all', 'all', slots=None)
         self.queued(exclusive)
-        later = self.start('later', 'one', slots=2)
+        barrier = self.root / 'gpu/gpu-all.lock/owner'
+        self.wait(lambda: barrier.exists() and barrier.read_text().startswith(f'{self.pid(exclusive)} '))
+        self.assertFalse((self.root / 'all.acquired').exists())
+        later = self.start('later', 'one', slots=None)
         self.queued(later)
         time.sleep(2.2)
         self.assertFalse((self.root / 'later.acquired').exists(), 'later single bypassed an all-slots waiter')
-        self.release('holder', holder)
+        self.release('seventh', seventh)
         self.acquired('all')
+        self.assertEqual(len(list((self.root / 'gpu').glob('gpu-slot-*.lock'))), 6)
+        for i in range(1, 7):
+            self.assertTrue((self.root / f'gpu/gpu-slot-{i}.lock/owner').read_text().startswith(f'{self.pid(exclusive)} '))
         self.assertFalse((self.root / 'later.acquired').exists())
         self.release('all', exclusive)
         self.acquired('later')
