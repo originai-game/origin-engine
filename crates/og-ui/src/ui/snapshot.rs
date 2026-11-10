@@ -305,6 +305,9 @@ impl Ui {
         b.push(u8::from(p.long));
         // The layer stack, its viewmodels and the documents' states.
         let mut docs = self.docs_state();
+        if !s.clocks.is_empty() {
+            docs["ownedClocks"] = serde_json::to_value(&s.clocks).expect("integer clocks");
+        }
         if !s.motion.css.is_empty() {
             docs["cssAnimations"] = serde_json::to_value(&s.motion.css).expect("finite CSS runs");
         }
@@ -359,6 +362,10 @@ impl Ui {
             .ok_or_else(|| bad("truncated or malformed layer stack".into()))?;
         if r.at != bytes.len() {
             return Err(bad("trailing bytes".into()));
+        }
+        if let Some(clocks) = docs.get("ownedClocks") {
+            s.clocks = serde_json::from_value(clocks.clone())
+                .map_err(|_| bad("malformed owned clocks".into()))?;
         }
         if let Some(runs) = docs.get("cssAnimations") {
             s.motion.css = serde_json::from_value(runs.clone())

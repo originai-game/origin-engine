@@ -1,0 +1,9 @@
+{
+  "breaking": [
+    {
+      "member": "UI particle emitters",
+      "change": "Removed -og-emitter without an alias. Particle emission is a reflected og-emitter element behavior, not a style declaration.",
+      "fix": "Move the former value to <og-emitter effect=\"confetti 70 burst 110 for 1.4s\">. Keep position, dimensions and visibility in standard CSS. The effect attribute supports expressions; keyed insertion starts a new emitter. Presets, rates, one-shot bursts, timing, seeded replay and reduced-motion suppression are unchanged."
+    }
+  ]
+}

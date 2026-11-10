@@ -2,7 +2,7 @@
 //! clipped by its layer (confetti, sparks, coin streams, rarity bursts),
 //! drawn as og-render's particle mass elements, each particle a few values
 //! (where it starts, where it flies, its spin, colour and start tick) whose
-//! motion the shader evaluates: a document's `-og-emitter` and `-og-burst`.
+//! motion the shader evaluates: a document's og-emitter and burst events.
 //!
 //! Particles spawned by an emitter live in the world state (they replay),
 //! at fixed screen positions from where the element was drawn when they
@@ -31,7 +31,7 @@ pub enum EmitFrom {
     Edges,
 }
 
-/// An emitter on an element (`-og-emitter`, a burst).
+/// An emitter on an element (og-emitter, a burst).
 #[derive(Clone, Debug, PartialEq)]
 pub struct ParticlesDesc {
     /// Particles a second while it is built (0: none).

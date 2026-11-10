@@ -154,7 +154,7 @@ fn time_ms(w: &str) -> Option<f32> {
     n.parse::<f32>().ok().filter(|v| *v >= 0.0).map(|v| v * k)
 }
 
-/// An `-og-emitter` preset: its particles, its rate and its palette roles.
+/// An og-emitter preset: its particles, its rate and its palette roles.
 fn preset(name: &str) -> Option<(crate::particles::ParticlesDesc, &'static [&'static str])> {
     use crate::particles::{EmitFrom, ParticlesDesc};
     use og_render::UiParticleShape::{Circle, Diamond, Square};
@@ -311,10 +311,10 @@ fn preset(name: &str) -> Option<(crate::particles::ParticlesDesc, &'static [&'st
     })
 }
 
-/// The `-og-emitter` presets, as the error lists them.
+/// The og-emitter presets, as the error lists them.
 const PRESETS: &str = "sparkles, confetti, embers, snow, bubbles, dust, sparks, fireworks";
 
-/// `-og-emitter: [<preset>] [<rate>] [burst <n>] [for <time>] [life <time>]
+/// The effect attribute: `[<preset>] [<rate>] [burst <n>] [for <time>] [life <time>]
 /// [<v>px/s [<v>px/s]] [up|down|<n>deg] [square|circle|diamond] [<size>px]
 /// [<colour>…] | none`: a preset's particles (its palette roles in
 /// `palette`), each later word over it.
@@ -347,7 +347,7 @@ fn emitter_desc(
     let mut size = None;
     let mut life = None;
     let after = |k: &str, w: Option<&str>| {
-        w.ok_or_else(|| format!("-og-emitter: `{k}` takes a value after it"))
+        w.ok_or_else(|| format!("og-emitter effect: `{k}` takes a value after it"))
             .map(str::to_string)
     };
     while let Some(w) = words.next() {
@@ -361,12 +361,13 @@ fn emitter_desc(
                 let n = after(w, words.next())?;
                 d.burst = n
                     .parse()
-                    .map_err(|_| format!("-og-emitter: burst `{n}` is a count"))?;
+                    .map_err(|_| format!("og-emitter effect: burst `{n}` is a count"))?;
             }
             "for" | "life" => {
                 let t = after(w, words.next())?;
-                let ms = time_ms(&t)
-                    .ok_or_else(|| format!("-og-emitter: {w} `{t}` is a time (1.4s, 900ms)"))?;
+                let ms = time_ms(&t).ok_or_else(|| {
+                    format!("og-emitter effect: {w} `{t}` is a time (1.4s, 900ms)")
+                })?;
                 if w == "for" {
                     d.duration_ms = ms;
                 } else {
@@ -385,7 +386,7 @@ fn emitter_desc(
                     d.direction = (deg - 90.0).to_radians();
                 } else if !named && rate.is_none() && colors.is_empty() && !w.starts_with('#') {
                     return Err(format!(
-                        "-og-emitter: `{w}` is not a preset ({PRESETS}) or a rate"
+                        "og-emitter effect: `{w}` is not a preset ({PRESETS}) or a rate"
                     ));
                 } else {
                     colors.push(srgba(w)?);
@@ -397,7 +398,7 @@ fn emitter_desc(
         d.rate = r;
     } else if !named && d.burst == 0 {
         return Err(
-            "-og-emitter takes a preset or a rate a second first: `-og-emitter: sparkles` or `-og-emitter: 12 diamond 6px #ffd166`"
+            "og-emitter effect takes a preset or a rate a second first: effect=\"sparkles\" or effect=\"12 diamond 6px #ffd166\""
                 .into(),
         );
     }
@@ -491,7 +492,7 @@ fn srgba(w: &str) -> Result<crate::style::Srgba, String> {
 }
 
 impl Ui {
-    /// An element's `-og-emitter` and `-og-meta`, on node `i`.
+    /// An element's emitter and meta effects, on node `i`.
     pub(super) fn world_effects(
         &mut self,
         b: &Build<'_>,
@@ -1111,14 +1112,14 @@ mod tests {
         assert_eq!(bars(&ui), 0);
     }
 
-    /// `-og-emitter`'s presets, burst, emission time, life and speed:
+    /// og-emitter's presets, burst, emission time, life and speed:
     /// a burst fires once when its element first stands, and `for` stops
     /// the rate.
     ///
     /// Ways it could fail: a burst that fires every tick (or never), a rate
     /// that runs past its `for`, a preset word read as a colour.
     #[test]
-    fn css_emitter_presets_burst_once_and_stop_after_their_time() {
+    fn emitter_presets_burst_once_and_stop_after_their_time() {
         let palette = Ui::new(UiDesc::default()).theme().palette;
         let d = super::emitter_desc("confetti 70 burst 110 for 1.4s life 2s 200px/s", &palette)
             .unwrap()
@@ -1138,8 +1139,8 @@ mod tests {
                 .contains("sparkles")
         );
         let doc = r#"<meta name="component" content="fx">
-<div id="Root"><div id="Gem"></div></div>
-<style>#Gem { width: 40px; height: 40px; -og-emitter: sparks 600 burst 20 for 50ms; }</style>"#;
+<div id="Root"><og-emitter id="Gem" effect="sparks 600 burst 20 for 50ms"></og-emitter></div>
+<style>#Gem { width: 40px; height: 40px; }</style>"#;
         let mut ui = Ui::new(UiDesc::default());
         ui.define_document(UiDocument::parse("fx.svelte", doc).unwrap());
         ui.mount_document(
@@ -1169,9 +1170,58 @@ mod tests {
         let first = spawned.iter().position(|&n| n > 0).unwrap();
         assert_eq!(spawned[first], 30, "{spawned:?}");
         assert_eq!(spawned[11], 50, "{spawned:?}");
+
+        let saved = ui.save_state();
+        let world = ui.save_world_state();
+        let advance = |ui: &mut Ui| {
+            for _ in 0..6 {
+                ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+                ui.build_retained_documents(&crate::bind::NoEnv).unwrap();
+                ui.end();
+            }
+            ui.save_world_state()
+        };
+        let expected = advance(&mut ui);
+        ui.restore_state(&saved).unwrap();
+        ui.restore_world_state(&world).unwrap();
+        assert!(advance(&mut ui) == expected, "particle checkpoint replay");
+
+        let mut fresh = Ui::new(UiDesc::default());
+        fresh.define_document(UiDocument::parse("fx.svelte", doc).unwrap());
+        fresh.restore_state(&saved).unwrap();
+        fresh.restore_world_state(&world).unwrap();
+        assert!(
+            advance(&mut fresh) == expected,
+            "fresh particle checkpoint replay"
+        );
+
+        ui.unmount_document(&SourceId::new("test", "fx"));
+        advance(&mut ui);
+        ui.mount_document(
+            SourceId::new("test", "fx"),
+            "fx",
+            BTreeMap::new(),
+            BTreeMap::new(),
+            &crate::bind::NoEnv,
+        )
+        .unwrap();
+        advance(&mut ui);
+        assert_eq!(
+            ui.world
+                .state
+                .particles
+                .values()
+                .map(|e| e.spawned)
+                .sum::<u32>(),
+            100,
+            "remount gets a new clock and emits another 50 particles"
+        );
+
+        let rejected = doc.replace("width: 40px;", "width: 40px; -og-emitter: sparks;");
+        assert!(UiDocument::parse("fx.svelte", &rejected).is_err());
     }
 
-    /// `-og-emitter` and `-og-meta` stay registered on the ticks their
+    /// og-emitter and `-og-meta` stay registered on the ticks their
     /// element is not built again, and leave with it; `-og-burst` in a
     /// keyframe is a burst event.
     ///
@@ -1179,14 +1229,14 @@ mod tests {
     /// was registered only while built), one that outlives its element, or
     /// a burst dropped by the keyframe parser.
     #[test]
-    fn css_emitters_and_metas_last_while_their_element_stands() {
+    fn emitters_and_metas_last_while_their_element_stands() {
         let doc = r#"<meta name="component" content="fx">
 <div id="Root">
-  {#if $on}<div id="Gem"></div>{/if}
+  {#if $on}<og-emitter id="Gem" effect="30 diamond 6px #ffd166"></og-emitter>{/if}
   <div id="Hurt"></div>
 </div>
 <style>
-#Gem { width: 40px; height: 40px; -og-emitter: 30 diamond 6px #ffd166; animation: pop 1s; }
+#Gem { width: 40px; height: 40px; animation: pop 1s; }
 #Hurt { -og-meta: vignette #aa0000; opacity: 0.5; }
 @keyframes pop { 50% { -og-burst: 24 48px #ffffff 600ms; } }
 </style>"#;

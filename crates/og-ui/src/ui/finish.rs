@@ -1034,6 +1034,9 @@ impl Ui {
             .anims
             .retain(|k, _| touched.contains(k) || retained.keeps_memory(*k));
         let tree = &self.tree;
+        self.state
+            .clocks
+            .retain(|_, (owner, _)| tree.find(*owner).is_some() || retained.owns(*owner));
         self.docs
             .validity
             .retain(|k, _| tree.find(*k).is_some() || retained.keeps_memory(*k));

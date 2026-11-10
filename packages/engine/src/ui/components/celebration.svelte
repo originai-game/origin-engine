@@ -9,9 +9,9 @@
 <div id="Celebration" inert>
   {#each shots as shot (shot.id)}
     <div class="play" class:confetti={kind == 'confetti'} class:burst={kind == 'burst'} class:level={kind == 'levelUp'} class:fireworks={kind == 'fireworks'}>
-      <div class="sky"></div>
+      <og-emitter class="sky" effect="confetti 70 burst 110 for 1.4s"></og-emitter>
       <div class="ring"></div>
-      <div class="sparks"></div>
+      <og-emitter class="sparks" effect="sparks burst 26 diamond 7px"></og-emitter>
       <div class="shells">
         <div class="shell one"></div>
         <div class="shell two"></div>
@@ -27,7 +27,7 @@
         <div class="halo"></div>
         <span class="title">{title || t("component.celebration.level-up")}</span>
         <span class="value" hidden={!value}>{value}</span>
-        <div class="rise"></div>
+        <og-emitter class="rise" effect="embers 40 burst 30 for 1.6s diamond 6px life 1.2s 80px/s 220px/s #ffd166 #fff6cc"></og-emitter>
       </div>
     </div>
   {/each}
@@ -39,10 +39,10 @@
 .level, .fireworks { animation-name: reward; }
 .sky, .ring, .sparks, .stage { display: none; }
 
-.confetti .sky { display: block; position: absolute; top: 0; inset-inline-start: 0; inset-inline-end: 0; height: 2px; -og-emitter: confetti 70 burst 110 for 1.4s; }
+.confetti .sky { display: block; position: absolute; top: 0; inset-inline-start: 0; inset-inline-end: 0; height: 2px; }
 
 .burst .ring { display: block; width: 60px; height: 60px; border-radius: 30px; border: 4px solid var(--highlight); box-shadow: 0 0 10px var(--highlight); animation: ring 1s ease-out both; }
-.burst .sparks { display: block; position: absolute; width: 8px; height: 8px; -og-emitter: sparks burst 26 diamond 7px; }
+.burst .sparks { display: block; position: absolute; width: 8px; height: 8px; }
 
 .shells { display: none; }
 .fireworks .shells { display: flex; flex-direction: row; position: absolute; top: 0; inset-inline-start: 0; inset-inline-end: 0; height: 240px; justify-content: space-between; padding: 0 64px; }
@@ -58,7 +58,7 @@
 .halo { position: absolute; width: 200px; height: 200px; border-radius: 100px; border: 6px solid var(--gold); box-shadow: 0 0 18px var(--gold); animation: halo 800ms ease-out both; }
 .title { font: var(--text-xl5); text-transform: uppercase; white-space: nowrap; color: var(--gold); text-shadow: 0 0 2px #000000, 0 2px 0 #00000099; animation: title 450ms cubic-bezier(0.34, 1.8, 0.64, 1) both; }
 .value { font: var(--text-xl4); white-space: nowrap; color: var(--gold); text-shadow: 0 0 2px #000000, 0 2px 0 #00000099; animation: value 220ms ease-out 300ms both; }
-.rise { position: absolute; bottom: 40px; width: 300px; height: 4px; -og-emitter: embers 40 burst 30 for 1.6s diamond 6px life 1.2s 80px/s 220px/s #ffd166 #fff6cc; }
+.rise { position: absolute; bottom: 40px; width: 300px; height: 4px; }
 
 @keyframes cheer { from { -og-sound: success; } }
 @keyframes reward { from { -og-sound: success; } }

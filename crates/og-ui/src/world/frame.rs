@@ -173,7 +173,7 @@ impl Ui {
         self.keep_effects();
     }
 
-    /// A document element's `-og-emitter` and `-og-meta` (`None` both:
+    /// A document element's emitter and meta effects (`None` both:
     /// none): kept by its key and registered on node `i` every tick it
     /// stands ([`Ui::keep_world_anchors`]).
     pub(crate) fn document_effects(
@@ -199,8 +199,9 @@ impl Ui {
             };
             if let Some(d) = emitter {
                 // Its burst fires, and its `for` counts, from when it first stands.
+                let owner = *key;
                 let key = crate::id::child_key(*key, "particles");
-                let at = self.since(key);
+                let at = self.since(owner, key);
                 self.world.emitters.push(crate::particles::EmitterEntry {
                     node: i,
                     key,

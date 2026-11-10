@@ -52,15 +52,13 @@ impl Ui {
         }
     }
 
-    /// The tick `key` was first seen on (kept while it is asked every tick).
-    pub(crate) fn since(&mut self, key: u64) -> u64 {
-        let fresh = !self.has_anim(key);
-        let mut a = self.anim(key);
-        if fresh {
-            a.t = self.state.tick;
-        }
-        self.set_anim(key, a);
-        a.t
+    /// The clock's first tick, kept for the lifetime of its semantic owner.
+    pub(crate) fn since(&mut self, owner: u64, key: u64) -> u64 {
+        self.state
+            .clocks
+            .entry(key)
+            .or_insert((owner, self.state.tick))
+            .1
     }
 
     /// Each element's map onto the screen (docs/ui.md §2): its layout

@@ -283,9 +283,9 @@ pub const PROPS: &[PropSpec] = &[
     PropSpec {
         name: "emitter",
         ty: Ty::Text,
-        on: On::All,
+        on: On::Kinds(&["box"]),
         two_way: false,
-        doc: "`-og-emitter: [<preset>] [<rate>] [burst <n>] [for <time>] [life <time>] [<speed>px/s [<speed>px/s]] [up|down|<angle>deg] [square|circle|diamond] [<size>px] [<colour>…]`: particles from the element while it stands, drawn over it; `none` stops. A preset (sparkles, confetti, embers, snow, bubbles, dust, sparks, fireworks) gives the look, rate and the style's colours; the later words override it (`.rare { -og-emitter: sparkles; }`, `.win { -og-emitter: confetti 70 burst 110 for 1.4s; }`, `#Gem { -og-emitter: 12 diamond 6px #ffd166 #fff; }`). `burst` throws that many at once when the element first stands, `for` stops the rate that long after, `life` is each particle's life and a speed (one, or a range) its travel a second. Silent under reduced motion.",
+        doc: "`<og-emitter effect=\"confetti 70 burst 110 for 1.4s\">`: particles from the element while it stands, drawn over it; `none` stops. Grammar: `[<preset>] [<rate>] [burst <n>] [for <time>] [life <time>] [<speed>px/s [<speed>px/s]] [up|down|<angle>deg] [square|circle|diamond] [<size>px] [<colour>…]`. Presets: sparkles, confetti, embers, snow, bubbles, dust, sparks, fireworks. Later words override the preset's look, rate and palette colours. `burst` throws that many once when the element first stands, `for` stops its rate after that time, `life` is each particle's life and speed (one or a range) is travel per second. Silent under reduced motion; state and seeded replay are checkpointed.",
     },
     PropSpec {
         name: "meta",

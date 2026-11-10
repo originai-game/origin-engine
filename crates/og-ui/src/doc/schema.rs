@@ -120,6 +120,7 @@ pub const ELEMENT_TAGS: &[(&str, &str)] = &[
     ("og-typewriter", "label"),
     ("og-spotlight", "dialog"),
     ("og-rive", "column"),
+    ("og-emitter", "box"),
 ];
 
 /// Tag-exclusive attributes and the runtime properties they populate.
@@ -130,6 +131,7 @@ pub const ELEMENT_ATTRIBUTES: &[(&str, &str, &str)] = &[
     ("og-typewriter", "rate", "reveal"),
     ("og-spotlight", "target", "spotlight"),
     ("og-rive", "src", "rive"),
+    ("og-emitter", "effect", "emitter"),
 ];
 
 /// Every prop: the core's, then the document runtime's.

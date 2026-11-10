@@ -374,6 +374,9 @@ pub(crate) struct State {
     /// puts the focus on the first control: `Ui::navigate`).
     pub pending: Vec<(Nav, bool)>,
     pub anims: IdMap<u64, Anim>,
+    /// Clock key to (semantic owner key, first tick). Lifetime follows the
+    /// owner, including ticks when a restored mount has no render node yet.
+    pub clocks: std::collections::BTreeMap<u64, (u64, u64)>,
     pub toasts: Vec<Toast>,
     pub next_toast: u32,
     /// The host's voice entity for each UI event's sound (bits; 0: none),

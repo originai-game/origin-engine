@@ -335,10 +335,10 @@ writer. The game's art-contract measurements remain available through
   spawns one number that plays `@keyframes rise`; with `max="100"` and no
   animation it is a bar that stays with its row.
 - Celebrate with CSS: `@keyframes land { 60% { -og-burst: 24 48px #ffd166
-  600ms; -og-sound: success; } }`. Sparkle a rare item with `.rare {
-  -og-emitter: sparkles; }` (presets: sparkles, confetti, embers, snow,
-  bubbles, dust, sparks, fireworks), throw confetti once with `-og-emitter:
-  confetti 70 burst 110 for 1.4s`, or set rate, shape, size, `life`, speed
+  600ms; -og-sound: success; } }`. Sparkle a rare item with
+  `<og-emitter effect="sparkles">` (presets: sparkles, confetti, embers, snow,
+  bubbles, dust, sparks, fireworks), throw confetti once with
+  `effect="confetti 70 burst 110 for 1.4s"`, or set rate, shape, size, `life`, speed
   (`120px/s`) and colours yourself. The `celebration` component is confetti,
   a burst, a level-up flourish or fireworks. Flash damage with `#Hurt {
   -og-meta: vignette #a00; opacity: var(--hit); }`.

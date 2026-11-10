@@ -256,7 +256,6 @@ pub const STYLE: &[(&str, &str)] = &[
     ("resize", "resize"),
     ("willChange", "will-change"),
     ("objectPosition", "object-position"),
-    ("emitter", "-og-emitter"),
     ("meta", "-og-meta"),
     ("userSelect", "user-select"),
     ("textPath", "-og-text-path"),
@@ -439,7 +438,7 @@ fn conv(prop: &str) -> Conv {
         "position" => Conv::Kw(POSITIONS),
         "step" => Conv::Var("text"),
         "font" => Conv::Var("font"),
-        "textPath" | "textPathOffset" | "emitter" | "meta" => Conv::Raw,
+        "textPath" | "textPathOffset" | "meta" => Conv::Raw,
         "textPathSide" => Conv::Kebab,
         "area" => Conv::Ident,
         "areas" | "overlaps" => Conv::Strs,
@@ -535,10 +534,6 @@ pub fn value_form(prop: &str, words: &[&str]) -> Option<String> {
         Conv::Raw if prop == "scrollSnapAlign" => "none | start | center | end [<inline>]".into(),
         Conv::Raw if prop == "material" => {
             "glass <regular|thick> <lift|float> | <material>(<n> …[, <colour>]) | \"<ui-material asset>\" <n> … | none".into()
-        }
-        Conv::Raw if prop == "emitter" => {
-            "[<preset>] [<rate>] [burst <n>] [for <time>] [life <time>] [<n>px/s …] … | none"
-                .into()
         }
         Conv::Raw if prop == "textPath" => {
             "none | path(\"<svg path data>\") | circle([<n>px])".into()
@@ -2159,12 +2154,8 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
         }
         // Engine effects with no CSS standard (docs/ui.md): read by the
         // document build, which names a bad value.
-        "-og-emitter" | "-og-meta" => Ok(vec![e(
-            if name == "-og-emitter" {
-                "emitter"
-            } else {
-                "meta"
-            },
+        "-og-meta" => Ok(vec![e(
+            "meta",
             vec![Value::String(value.trim().to_owned())],
         )]),
         "-og-text-path-offset" => {
