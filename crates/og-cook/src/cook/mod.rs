@@ -459,34 +459,217 @@ pub fn cook_project_with_texture_cache(
         report.elapsed_ms = started.elapsed().as_secs_f64() * 1000.0;
         return Ok(report);
     }
-    let story_functions = story_functions::read(root).map_err(CookError)?;
-    let story_functions_stamp =
-        serde_json::to_vec(&story_functions).map_err(|e| CookError(e.to_string()))?;
-    let assets_dir = root.join("assets");
-    let cooked_dir = root.join("cooked");
+    let project = Project::read(root)?;
+    let assets_dir = &project.assets_dir;
+    let cooked_dir = &project.cooked_dir;
     let threads = if options.threads == 0 {
         std::thread::available_parallelism().map_or(4, |n| n.get())
     } else {
         options.threads
     };
     let texture_encoder = texture::encoder_name(&options.texture);
-    // The project's budgets (project.ogt's `budgets { }`, the defaults
-    // without one): a `type model` past them is cooked with a warning.
-    let budgets = std::fs::read_to_string(root.join("project.ogt"))
-        .ok()
-        .and_then(|t| Document::parse(&t).ok())
-        .and_then(|d| stats::Budgets::from_project(&d.body).ok())
-        .unwrap_or_default();
-    let budget_desc = format!(
-        "budgets triangles {} vertices {}",
-        budgets.triangles, budgets.vertices
-    );
-
-    let Scan {
+    let Scanned {
         mut sources,
         mut ignored,
         mut early_errors,
-    } = scan::scan_with(&assets_dir, &|path| cook_index.read(path))?;
+        mut consumed,
+    } = scan_sources(assets_dir, &cook_index)?;
+    let imported = import(&mut sources, &mut consumed, texture_cache);
+    let Resolved {
+        known,
+        prefab_texts,
+    } = resolve(assets_dir, &mut sources, &mut ignored, consumed);
+    let Contracted {
+        contract,
+        conformed,
+        options,
+    } = contract(
+        &project,
+        &mut sources,
+        &known,
+        &imported.model_texts,
+        options,
+        &mut early_errors,
+    )?;
+    let options = &options;
+    let sources = sources;
+    let Grouped {
+        groups,
+        group_of,
+        pack_faces,
+    } = group(&sources, &known, &mut early_errors);
+    let schemas: BTreeMap<String, Schema> = options
+        .schemas
+        .iter()
+        .map(|s| (s.name.clone(), s.clone()))
+        .collect();
+    let mut schema_hash = StableHasher::new();
+    for s in schemas.values() {
+        schema_hash.write_str(&s.to_json());
+    }
+    let schema_hash = schema_hash.finish().to_le_bytes();
+    let old = std::fs::read_to_string(cooked_dir.join(MANIFEST))
+        .ok()
+        .and_then(|t| Manifest::parse(&t).ok())
+        .unwrap_or_default();
+    let old_outputs: BTreeMap<&str, &ManifestOutput> =
+        old.outputs().map(|o| (o.id.as_str(), o)).collect();
+    let mesh_desc = options.mesh.describe();
+    let font_desc = options.font.describe();
+    let tex_desc = format!(
+        "{} encoder {}",
+        options.texture.describe(),
+        texture_encoder.as_deref().unwrap_or("none")
+    );
+    let document_themes = vec![og_ui::Theme::default()];
+    let mut style_tokens_hash = StableHasher::new();
+    for source in sources.iter().filter(|s| s.kind == Kind::Style) {
+        style_tokens_hash.write_str(&source.rel);
+        style_tokens_hash.write(&source.hash.to_le_bytes());
+    }
+    let style_tokens_hash = style_tokens_hash.finish().to_le_bytes();
+    let cx = Cx {
+        root,
+        assets_dir,
+        cooked_dir,
+        options,
+        sources: &sources,
+        known: &known,
+        prefab_texts: &prefab_texts,
+        group_of: &group_of,
+        pack_faces: &pack_faces,
+        old_outputs: &old_outputs,
+        schemas: &schemas,
+        budgets: &project.budgets,
+        tex_desc: &tex_desc,
+        mesh_desc: &mesh_desc,
+        font_desc: &font_desc,
+        budget_desc: &project.budget_desc,
+        schema_hash,
+        style_tokens_hash,
+        story_functions: &project.story_functions,
+        story_functions_stamp: &project.story_functions_stamp,
+        document_themes: &document_themes,
+    };
+    let (
+        plan,
+        PlanState {
+            early_errors,
+            parsed_refs,
+            ..
+        },
+    ) = plan(&cx, early_errors);
+    let project_key = project_key(&cook_index, &sources, texture_cache);
+    let results = execute(
+        &cx,
+        &plan,
+        threads,
+        texture_cache,
+        project_key.as_deref(),
+        started,
+    );
+    let Assembled {
+        mut reports,
+        new_outputs,
+        log,
+    } = assemble(
+        &cx,
+        &plan,
+        results,
+        early_errors,
+        &imported.reused_fractures,
+    )?;
+    let mut written = write(&cx, new_outputs, &mut reports, &old)?;
+    pack(&cx, &groups, &mut written, &mut reports)?;
+    let (removed, warnings) = finish(&cx, &old, written, &parsed_refs, &mut reports, &log)?;
+    let (conformed, warnings) = diagnose(
+        &cx,
+        &plan,
+        &mut reports,
+        &log,
+        contract.as_ref(),
+        conformed,
+        warnings,
+    );
+    reports.sort_by(|a, b| a.source.cmp(&b.source));
+    let report = Report {
+        conform: conformed,
+        warnings,
+        root: root.display().to_string(),
+        cooker: COOKER_VERSION.to_string(),
+        texture_encoder: texture_encoder.unwrap_or_else(|e| format!("none ({e})")),
+        assets: reports,
+        ignored,
+        removed,
+        elapsed_ms: started.elapsed().as_secs_f64() * 1000.0,
+    };
+    save(&cook_index, &report, &sources, assets_dir, texture_cache);
+    Ok(report)
+}
+
+/// The project's own settings (`project.ogt`) and where its assets are:
+/// read once, before the scan.
+struct Project {
+    root: PathBuf,
+    assets_dir: PathBuf,
+    cooked_dir: PathBuf,
+    /// `project.ogt`, parsed; `None` when it is missing or malformed.
+    doc: Option<Document>,
+    budgets: stats::Budgets,
+    budget_desc: String,
+    story_functions: BTreeMap<String, og_story::yarn::types::Function>,
+    story_functions_stamp: Vec<u8>,
+}
+
+impl Project {
+    fn read(root: &Path) -> Result<Project, CookError> {
+        let story_functions = story_functions::read(root).map_err(CookError)?;
+        let story_functions_stamp =
+            serde_json::to_vec(&story_functions).map_err(|e| CookError(e.to_string()))?;
+        let doc = std::fs::read_to_string(root.join("project.ogt"))
+            .ok()
+            .and_then(|t| Document::parse(&t).ok());
+        // The project's budgets (project.ogt's `budgets { }`, the defaults
+        // without one): a `type model` past them is cooked with a warning.
+        let budgets = doc
+            .as_ref()
+            .and_then(|d| stats::Budgets::from_project(&d.body).ok())
+            .unwrap_or_default();
+        let budget_desc = format!(
+            "budgets triangles {} vertices {}",
+            budgets.triangles, budgets.vertices
+        );
+        Ok(Project {
+            root: root.to_path_buf(),
+            assets_dir: root.join("assets"),
+            cooked_dir: root.join("cooked"),
+            doc,
+            budgets,
+            budget_desc,
+            story_functions,
+            story_functions_stamp,
+        })
+    }
+}
+
+/// A problem found before the cook ran: the asset, its kind and the error.
+type EarlyError = (String, &'static str, String);
+
+/// The scan stage's sources, with the sources expanded from others and
+/// the files those consumed.
+struct Scanned {
+    sources: Vec<Source>,
+    ignored: Vec<String>,
+    early_errors: Vec<EarlyError>,
+    consumed: BTreeSet<String>,
+}
+
+fn scan_sources(assets_dir: &Path, cook_index: &index::Index) -> Result<Scanned, CookError> {
+    let Scan {
+        mut sources,
+        ignored,
+        early_errors,
+    } = scan::scan_with(assets_dir, &|path| cook_index.read(path))?;
     let mut consumed: BTreeSet<String> = BTreeSet::new();
     // Pixel effects and flipbooks of animated sources become ordinary
     // sheets (`vfx2d.rs`, `animated.rs`).
@@ -494,8 +677,30 @@ pub fn cook_project_with_texture_cache(
     animated::expand(&mut sources, &mut consumed);
     // Effekseer projects become composed effects and what they need (`efk/`).
     efk::expand(&mut sources, &mut consumed);
+    Ok(Scanned {
+        sources,
+        ignored,
+        early_errors,
+        consumed,
+    })
+}
+
+/// What the model import stage keeps beside the sources it rewrote.
+struct Imported {
     // The `type model` texts, built again under the art contract's face
     // budget once the look is read (below).
+    model_texts: BTreeMap<String, String>,
+    /// The fractured models whose prefracture came from the cache.
+    reused_fractures: BTreeSet<String>,
+}
+
+/// Every model is made a glb and loaded (vox, FBX and OBJ, text models,
+/// fracture), and every source hashed.
+fn import(
+    sources: &mut [Source],
+    consumed: &mut BTreeSet<String>,
+    texture_cache: Option<&Path>,
+) -> Imported {
     let mut model_texts: BTreeMap<String, String> = BTreeMap::new();
     let mut reused_fractures = BTreeSet::new();
     for s in sources.iter_mut() {
@@ -641,20 +846,41 @@ pub fn cook_project_with_texture_cache(
         }
         s.hash = h.finish();
     }
+    Imported {
+        model_texts,
+        reused_fractures,
+    }
+}
+
+/// The bundle's assets once the files other assets consume are taken out.
+struct Resolved {
+    known: BTreeSet<String>,
+    // Prefab and scene texts by asset id: scenes and prefabs flatten
+    // through the prefabs, and a sub-scene (`scene "<id>"`) is checked
+    // against the scenes (a scene, and no cycle).
+    prefab_texts: BTreeMap<String, String>,
+}
+
+fn resolve(
+    assets_dir: &Path,
+    sources: &mut Vec<Source>,
+    ignored: &mut Vec<String>,
+    mut consumed: BTreeSet<String>,
+) -> Resolved {
     // A terrain's heightmap and control map are part of the terrain, an
     // environment's image part of the environment.
-    for s in &sources {
+    for s in sources.iter() {
         if s.kind == Kind::Terrain {
             consumed.extend(terrain::terrain_files(
                 &s.rel,
-                &assets_dir,
+                assets_dir,
                 &String::from_utf8_lossy(&s.bytes),
             ));
         }
         if s.kind == Kind::Rig2d {
             consumed.extend(autorig::part_files(
                 &s.rel,
-                &assets_dir,
+                assets_dir,
                 &String::from_utf8_lossy(&s.bytes),
             ));
         }
@@ -666,14 +892,14 @@ pub fn cook_project_with_texture_cache(
         if s.kind == Kind::Timeline {
             consumed.extend(timeline::caption_files(
                 &s.rel,
-                &assets_dir,
+                assets_dir,
                 &String::from_utf8_lossy(&s.bytes),
             ));
         }
         if s.kind == Kind::Environment {
             consumed.extend(environment::environment_files(
                 &s.rel,
-                &assets_dir,
+                assets_dir,
                 &String::from_utf8_lossy(&s.bytes),
             ));
         }
@@ -681,13 +907,13 @@ pub fn cook_project_with_texture_cache(
     // A file a model references stays an asset of its own as well when it
     // has import settings of its own (which only a texture cooked on its own
     // reads) or a terrain names it as a layer (by asset id), s59.
-    for s in &sources {
+    for s in sources.iter() {
         if s.kind == Kind::Texture && s.settings.is_some() {
             consumed.remove(&s.rel);
         }
         if s.kind == Kind::Terrain {
             for layer in
-                terrain::layer_files(&s.rel, &assets_dir, &String::from_utf8_lossy(&s.bytes))
+                terrain::layer_files(&s.rel, assets_dir, &String::from_utf8_lossy(&s.bytes))
             {
                 consumed.remove(&layer);
             }
@@ -697,9 +923,6 @@ pub fn cook_project_with_texture_cache(
     sources.retain(|s| !consumed.contains(&s.rel));
     ignored.retain(|r| !consumed.contains(r));
     let known: BTreeSet<String> = sources.iter().map(|s| s.rel.clone()).collect();
-    // Prefab and scene texts by asset id: scenes and prefabs flatten
-    // through the prefabs, and a sub-scene (`scene "<id>"`) is checked
-    // against the scenes (a scene, and no cycle).
     let prefab_texts: BTreeMap<String, String> = sources
         .iter()
         .filter(|s| matches!(s.kind, Kind::Prefab | Kind::Scene))
@@ -710,6 +933,30 @@ pub fn cook_project_with_texture_cache(
             )
         })
         .collect();
+    Resolved {
+        known,
+        prefab_texts,
+    }
+}
+
+/// The art contract's stage: the project's look, the 2D conformance and the
+/// options the 3D conformance cooks with.
+struct Contracted {
+    contract: Option<(String, crate::look::LookFile)>,
+    conformed: Vec<ConformEntry>,
+    options: CookOptions,
+}
+
+fn contract(
+    project: &Project,
+    sources: &mut Vec<Source>,
+    known: &BTreeSet<String>,
+    model_texts: &BTreeMap<String, String>,
+    options: &CookOptions,
+    early_errors: &mut Vec<EarlyError>,
+) -> Result<Contracted, CookError> {
+    let root = project.root.as_path();
+    let assets_dir = project.assets_dir.as_path();
     // The project's look (project.ogt's `look "looks/<id>.ogt"`): its art
     // contract (docs/art.md §2.1), read before anything cooks. A line that
     // names no look of the bundle is that asset's error.
@@ -717,9 +964,9 @@ pub fn cook_project_with_texture_cache(
     // Its `Stylise` paint fields, which the 3D pass paints a model's colour
     // textures with in texel space (painterly 3D).
     let mut mesh_paint = None;
-    let project_look = std::fs::read_to_string(root.join("project.ogt"))
-        .ok()
-        .and_then(|t| Document::parse(&t).ok())
+    let project_look = project
+        .doc
+        .as_ref()
         .map(|d| crate::look::project_look(&d.body))
         .transpose()
         .map_err(|e| CookError(format!("project.ogt:{e}")))?
@@ -727,9 +974,9 @@ pub fn cook_project_with_texture_cache(
     if let Some(id) = project_look {
         match sources.iter().find(|s| s.rel == id) {
             Some(s) if s.kind == Kind::Look => {
-                if let Ok(c) = look::contract(s, &assets_dir, &|id| known.contains(id)) {
-                    if let Ok(full) = look::flattened(s, &assets_dir, &|id| known.contains(id)) {
-                        match conform::texture2d::paint_of(&full, &assets_dir) {
+                if let Ok(c) = look::contract(s, assets_dir, &|id| known.contains(id)) {
+                    if let Ok(full) = look::flattened(s, assets_dir, &|id| known.contains(id)) {
+                        match conform::texture2d::paint_of(&full, assets_dir) {
                             Ok(p) => mesh_paint = p.active().then_some(p),
                             Err(e) => early_errors.push((id.clone(), "look", e)),
                         }
@@ -751,19 +998,16 @@ pub fn cook_project_with_texture_cache(
     }
     // What the 3D pass keeps as made (docs/art.md §2.3): read before the
     // 2D pass, which takes a sheet's own `conform` line out of its text.
-    let project_conform = std::fs::read_to_string(root.join("project.ogt"))
-        .ok()
-        .and_then(|t| Document::parse(&t).ok())
+    let project_conform = project
+        .doc
+        .as_ref()
         .map(|d| conform::ProjectConform::parse(&d.body))
         .transpose()
         .map_err(|e| CookError(format!("project.ogt:{e}")))?
         .unwrap_or_default();
     // The screens `og ui check` visits (project.ogt's `ui { screen ... }`):
     // a malformed block fails the cook with its line and fix.
-    if let Some(d) = std::fs::read_to_string(root.join("project.ogt"))
-        .ok()
-        .and_then(|t| Document::parse(&t).ok())
-    {
+    if let Some(d) = &project.doc {
         ui_screens::screens(&d.body).map_err(|e| CookError(format!("project.ogt:{e}")))?;
     }
     let mut mesh_off: BTreeMap<String, String> = BTreeMap::new();
@@ -781,8 +1025,8 @@ pub fn cook_project_with_texture_cache(
         }
     }
     // Conformance (docs/art.md §2.3): the 2D textures, to the contract.
-    let (mut conformed, mesh_textures) =
-        conform::texture2d::conform(root, &assets_dir, &mut sources, &known, contract.as_ref())
+    let (conformed, mesh_textures) =
+        conform::texture2d::conform(root, assets_dir, sources, known, contract.as_ref())
             .map_err(CookError)?;
     // In a 3D project a texture nothing else claims is a mesh's
     // (`conform::TextureRole::Mesh`): the mesh pass holds it, unless it or
@@ -864,9 +1108,27 @@ pub fn cook_project_with_texture_cache(
             }
         }
     }
-    let options = &with_contract;
+    Ok(Contracted {
+        contract,
+        conformed,
+        options: with_contract,
+    })
+}
+
+/// Streaming groups and the font packs' faces: where outputs go.
+struct Grouped {
+    groups: BTreeMap<String, stream::GroupDecl>,
+    group_of: BTreeMap<String, String>,
+    pack_faces: BTreeSet<String>,
+}
+
+fn group(
+    sources: &[Source],
+    known: &BTreeSet<String>,
+    early_errors: &mut Vec<EarlyError>,
+) -> Grouped {
     // Streaming groups (phase 3): every scene's, read before anything cooks.
-    let (groups, group_of) = plan_groups(&sources, &known, &mut early_errors);
+    let (groups, group_of) = plan_groups(sources, known, early_errors);
     // Font packs' faces (docs/ui.md §3.4): cooked as fonts by their own
     // settings, to `<id>.face.ogb`, which the web reads on demand.
     let pack_faces: BTreeSet<String> = sources
@@ -874,46 +1136,70 @@ pub fn cook_project_with_texture_cache(
         .filter(|s| s.kind == Kind::FontPack)
         .flat_map(font_pack::faces)
         .collect();
-    let schemas: BTreeMap<String, Schema> = options
-        .schemas
-        .iter()
-        .map(|s| (s.name.clone(), s.clone()))
-        .collect();
-    let mut schema_hash = StableHasher::new();
-    for s in schemas.values() {
-        schema_hash.write_str(&s.to_json());
+    Grouped {
+        groups,
+        group_of,
+        pack_faces,
     }
-    let schema_hash = schema_hash.finish().to_le_bytes();
-    let old = std::fs::read_to_string(cooked_dir.join(MANIFEST))
-        .ok()
-        .and_then(|t| Manifest::parse(&t).ok())
-        .unwrap_or_default();
-    let old_outputs: BTreeMap<&str, &ManifestOutput> =
-        old.outputs().map(|o| (o.id.as_str(), o)).collect();
-    let mesh_desc = options.mesh.describe();
-    let font_desc = options.font.describe();
-    let tex_desc = format!(
-        "{} encoder {}",
-        options.texture.describe(),
-        texture_encoder.as_deref().unwrap_or("none")
-    );
+}
 
-    // Plan every output with its stamp.
-    let mut plan: Vec<Planned> = Vec::new();
+/// What every stage after the art contract reads.
+#[derive(Clone, Copy)]
+struct Cx<'a> {
+    root: &'a Path,
+    assets_dir: &'a Path,
+    cooked_dir: &'a Path,
+    options: &'a CookOptions,
+    sources: &'a [Source],
+    known: &'a BTreeSet<String>,
+    prefab_texts: &'a BTreeMap<String, String>,
+    group_of: &'a BTreeMap<String, String>,
+    pack_faces: &'a BTreeSet<String>,
+    old_outputs: &'a BTreeMap<&'a str, &'a ManifestOutput>,
+    schemas: &'a BTreeMap<String, Schema>,
+    budgets: &'a stats::Budgets,
+    tex_desc: &'a str,
+    mesh_desc: &'a str,
+    font_desc: &'a str,
+    budget_desc: &'a str,
+    schema_hash: [u8; 8],
+    style_tokens_hash: [u8; 8],
+    story_functions: &'a BTreeMap<String, og_story::yarn::types::Function>,
+    story_functions_stamp: &'a [u8],
+    document_themes: &'a [og_ui::Theme],
+}
+
+/// What planning writes as it goes: the errors it finds, the references it
+/// parses and the glTF textures already planned.
+struct PlanState {
+    early_errors: Vec<EarlyError>,
+    parsed_refs: BTreeMap<String, BTreeSet<String>>,
     // glTF textures of models outside streaming groups are cooked once per
     // image and use, whichever models use them: a scene exported in many
     // glTFs (cells, tiles) repeats its images in every file, and a copy per
     // model multiplied the cooked bytes, the load's transcoding and the
     // GPU's memory (og-runtime's add_gltf shares them by these ids).
-    let mut planned_textures = std::collections::HashSet::new();
-    let mut parsed_refs: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
-    let document_themes = vec![og_ui::Theme::default()];
-    let mut style_tokens_hash = StableHasher::new();
-    for source in sources.iter().filter(|s| s.kind == Kind::Style) {
-        style_tokens_hash.write_str(&source.rel);
-        style_tokens_hash.write(&source.hash.to_le_bytes());
-    }
-    let style_tokens_hash = style_tokens_hash.finish().to_le_bytes();
+    planned_textures: std::collections::HashSet<String>,
+}
+
+/// One planned output: its id, type, stamp and work.
+type Out<'a> = (String, &'static str, u64, Work<'a>);
+
+// Plan every output with its stamp.
+fn plan<'a>(cx: &Cx<'a>, early_errors: Vec<EarlyError>) -> (Vec<Planned<'a>>, PlanState) {
+    let Cx {
+        sources,
+        cooked_dir,
+        pack_faces,
+        old_outputs,
+        ..
+    } = *cx;
+    let mut state = PlanState {
+        early_errors,
+        parsed_refs: BTreeMap::new(),
+        planned_textures: std::collections::HashSet::new(),
+    };
+    let mut plan: Vec<Planned> = Vec::new();
     for (si, s) in sources.iter().enumerate() {
         if s.error.is_some() {
             continue;
@@ -940,933 +1226,8 @@ pub fn cook_project_with_texture_cache(
             _ => stamp(&[&s.hash.to_le_bytes(), s.rel.as_bytes()]),
         }
         .to_le_bytes();
-        let mut outs: Vec<(String, &'static str, u64, Work)> = Vec::new();
-        match s.kind {
-            Kind::Model => {
-                let g = s.gltf.as_ref().expect("loaded");
-                // The art contract's part of each output's stamp: empty
-                // (and left out) when it changes nothing here.
-                let contract = options
-                    .mesh
-                    .conform
-                    .as_ref()
-                    .filter(|_| !conform_off(s, options));
-                let model_desc = contract
-                    .map(|c| {
-                        let mut d = if c.applies(g) {
-                            c.model_desc()
-                        } else {
-                            String::new()
-                        };
-                        // An effect's mesh is held to no face budget.
-                        if !d.is_empty() && g.role == conform::ModelRole::Effect {
-                            d.push_str(" role effect");
-                        }
-                        // Its colour textures' kind is in the blob.
-                        if c.filter == conform::mesh::Filter::Nearest {
-                            d.push_str(" textures nearest");
-                        }
-                        d
-                    })
-                    .unwrap_or_default();
-                let texture_desc = contract.map(|c| c.texture_desc()).unwrap_or_default();
-                let with = |parts: &[&[u8]], desc: &str, extra: &[u8]| {
-                    let mut v: Vec<&[u8]> = parts.to_vec();
-                    if !desc.is_empty() {
-                        v.push(desc.as_bytes());
-                        v.push(extra);
-                    }
-                    stamp(&v)
-                };
-                let stream_textures = match model_stream_textures(s) {
-                    Ok(b) => b,
-                    Err(e) => {
-                        early_errors.push((s.rel.clone(), "model", e));
-                        continue;
-                    }
-                };
-                let mut ids = Vec::new();
-                let grouped = group_of.contains_key(&s.rel);
-                for (i, u) in g.textures.iter().enumerate() {
-                    let image_hash = hash_bytes(&g.images[u.image]).to_le_bytes();
-                    // One cooked texture per image and use: its kind, and
-                    // whether it streams its levels (a model's
-                    // `stream_textures` splits it into a tail and a chain).
-                    // A model's own unless an art contract makes it depend
-                    // on the model (a density is per metre of the model) or
-                    // it is in a streaming group's pack.
-                    let shared = !grouped && texture_desc.is_empty();
-                    let id = if shared {
-                        crate::runtime::gltf_texture_id(
-                            u64::from_le_bytes(image_hash),
-                            u.kind,
-                            stream_textures,
-                            u.cutout,
-                        )
-                    } else {
-                        format!("{}#tex{i}", s.rel)
-                    };
-                    parsed_refs
-                        .entry(s.rel.clone())
-                        .or_default()
-                        .insert(id.clone());
-                    if shared && !planned_textures.insert(id.clone()) {
-                        ids.push(id);
-                        continue;
-                    }
-                    // A density is per metre of the model: its hash too.
-                    let kind = u.kind.to_le_bytes();
-                    let st = |word: &[u8]| {
-                        let mut parts: Vec<&[u8]> =
-                            vec![b"texture", tex_desc.as_bytes(), &image_hash, &kind];
-                        // A cut-out's mips are its own, kept at its cut-off
-                        // (texture.rs `cutout_mips`, `keep_coverage`).
-                        if let Some(c) = &u.cutout {
-                            parts.push(b"cutout");
-                            parts.push(std::slice::from_ref(c));
-                        }
-                        if !word.is_empty() {
-                            parts.push(word);
-                        }
-                        with(&parts, &texture_desc, &hash)
-                    };
-                    let not_split = stream_textures
-                        .then(|| not_split(&g.images[u.image], u.kind, group_of.get(&s.rel)));
-                    let gltf_texture =
-                        |split| Work::GltfTexture(s, u.image, u.kind, u.cutout, split);
-                    match not_split {
-                        Some(None) => {
-                            let mips = st(b"mips");
-                            outs.push((
-                                id.clone(),
-                                format::Texture::NAME,
-                                st(b"tail"),
-                                gltf_texture(Split::Tail(mips)),
-                            ));
-                            outs.push((
-                                crate::runtime::mips_id(&id),
-                                format::Texture::NAME,
-                                mips,
-                                gltf_texture(Split::Mips),
-                            ));
-                        }
-                        why => outs.push((
-                            id.clone(),
-                            format::Texture::NAME,
-                            st(b""),
-                            gltf_texture(Split::Whole(why.flatten())),
-                        )),
-                    }
-                    ids.push(id);
-                }
-                let joined = ids.join("\n");
-                // A model written as text is refused past the budgets, so
-                // they are among its inputs.
-                let st = if ext(&s.rel) == "ogt" {
-                    with(
-                        &[
-                            b"model",
-                            NODE_ROWS,
-                            mesh_desc.as_bytes(),
-                            &hash,
-                            joined.as_bytes(),
-                            budget_desc.as_bytes(),
-                        ],
-                        &model_desc,
-                        &[],
-                    )
-                } else {
-                    with(
-                        &[
-                            b"model",
-                            NODE_ROWS,
-                            mesh_desc.as_bytes(),
-                            &hash,
-                            joined.as_bytes(),
-                        ],
-                        &model_desc,
-                        &[],
-                    )
-                };
-                outs.insert(
-                    0,
-                    (s.rel.clone(), format::Model::NAME, st, Work::Model(s, ids)),
-                );
-                if s.fracture.is_some() {
-                    outs.push((
-                        format!("{}#fracture", s.rel),
-                        format::Fracture::NAME,
-                        // The asset's layout too: a new og_destruct version
-                        // recooks what the runtime would refuse.
-                        stamp(&[
-                            b"fracture",
-                            &og_destruct::ASSET_VERSION.to_le_bytes(),
-                            &hash,
-                        ]),
-                        Work::Fracture(s),
-                    ));
-                }
-                if group_of.contains_key(&s.rel) {
-                    let st = with(
-                        &[b"proxy", NODE_ROWS, mesh_desc.as_bytes(), &hash],
-                        &model_desc,
-                        &[],
-                    );
-                    outs.push((
-                        format!("{}#proxy", s.rel),
-                        format::Model::NAME,
-                        st,
-                        Work::Proxy(s),
-                    ));
-                }
-                // The impostor's three atlases (`model { impostor true }`),
-                // baked from the model's source.
-                if let Some(b) = mesh_for(s, options)
-                    .ok()
-                    .and_then(|m| m.impostor)
-                    .map(|b| b.resolved(g))
-                {
-                    let size = [b.grid.to_le_bytes(), b.frame.to_le_bytes()].concat();
-                    for (kind, id) in model::impostor_ids(&s.rel).into_iter().enumerate() {
-                        // `3`: the atlas's layout version (2, the
-                        // hemi-octahedron; 3, 16 samples a texel, filtered
-                        // textures and the material atlas), so an atlas
-                        // baked by an older layout is baked again.
-                        let st = with(
-                            &[
-                                b"impostor",
-                                &[3, kind as u8],
-                                &size,
-                                tex_desc.as_bytes(),
-                                &hash,
-                            ],
-                            &model_desc,
-                            &[],
-                        );
-                        outs.push((
-                            id,
-                            format::Texture::NAME,
-                            st,
-                            Work::Impostor(s, b, kind as u8),
-                        ));
-                    }
-                }
-                if anim::wanted(g) {
-                    match anim_settings(s) {
-                        Ok(a) => {
-                            let deps = anim::dependencies(&assets_root(s), &a);
-                            let motion = contract
-                                .and_then(|c| c.motion.as_ref())
-                                .map(|m| m.describe())
-                                .unwrap_or_default();
-                            let st = with(
-                                &[
-                                    b"animation",
-                                    NODE_ROWS,
-                                    mesh_desc.as_bytes(),
-                                    a.describe().as_bytes(),
-                                    &hash,
-                                    deps.as_bytes(),
-                                ],
-                                &format!("{model_desc}{motion}"),
-                                &[],
-                            );
-                            outs.insert(
-                                1,
-                                (
-                                    format!("{}#anim", s.rel),
-                                    format::Animation::NAME,
-                                    st,
-                                    Work::Animation(s, a),
-                                ),
-                            );
-                        }
-                        Err(e) => early_errors.push((s.rel.clone(), "model", e)),
-                    }
-                }
-            }
-            Kind::Texture => match texture_kind(s).and_then(|k| Ok((k, texture_stream(s, k)?))) {
-                Ok((k, stream)) => {
-                    // A mesh's texture under the art contract: its desc too.
-                    let mesh = mesh_texture(s, options)
-                        .map(|c| c.texture_desc())
-                        .unwrap_or_default();
-                    let kind = k.to_le_bytes();
-                    let st = |word: &[u8]| {
-                        let mut parts: Vec<&[u8]> =
-                            vec![b"texture", tex_desc.as_bytes(), &hash, &kind];
-                        if !mesh.is_empty() {
-                            parts.push(mesh.as_bytes());
-                        }
-                        if !word.is_empty() {
-                            parts.push(word);
-                        }
-                        stamp(&parts)
-                    };
-                    let source = s.conformed.as_deref().map_or(&s.bytes[..], |b| &b[..]);
-                    match stream.then(|| not_split(source, k, group_of.get(&s.rel))) {
-                        Some(None) => {
-                            let mips = st(b"mips");
-                            outs.push((
-                                s.rel.clone(),
-                                format::Texture::NAME,
-                                st(b"tail"),
-                                Work::Texture(s, k, Split::Tail(mips)),
-                            ));
-                            outs.push((
-                                crate::runtime::mips_id(&s.rel),
-                                format::Texture::NAME,
-                                mips,
-                                Work::Texture(s, k, Split::Mips),
-                            ));
-                        }
-                        why => outs.push((
-                            s.rel.clone(),
-                            format::Texture::NAME,
-                            st(b""),
-                            Work::Texture(s, k, Split::Whole(why.flatten())),
-                        )),
-                    }
-                    // Its normal map for 2D lighting (`normal auto` or a file).
-                    match normal2d::setting(settings_block(s, "texture")) {
-                        Ok(None) => {}
-                        Ok(Some(setting)) => {
-                            let file = match &setting {
-                                normal2d::NormalSetting::Auto => Ok(None),
-                                normal2d::NormalSetting::File(name) => {
-                                    let path = s.path.parent().unwrap_or(Path::new(".")).join(name);
-                                    std::fs::read(&path)
-                                        .map(Some)
-                                        .map_err(|e| format!("normal \"{name}\": {e}"))
-                                }
-                            };
-                            match file {
-                                Ok(file) => {
-                                    let st = stamp(&[
-                                        b"texture normal",
-                                        tex_desc.as_bytes(),
-                                        &hash,
-                                        file.as_deref().unwrap_or(b"auto"),
-                                    ]);
-                                    outs.push((
-                                        format!("{}#normal", s.rel),
-                                        format::Texture::NAME,
-                                        st,
-                                        Work::TextureNormal(s, file),
-                                    ));
-                                }
-                                Err(e) => early_errors.push((s.rel.clone(), "texture", e)),
-                            }
-                        }
-                        Err(e) => early_errors.push((s.rel.clone(), "texture", e)),
-                    }
-                }
-                Err(e) => early_errors.push((s.rel.clone(), "texture", e)),
-            },
-            Kind::Sound if s.rel.ends_with(".ogt") => {
-                // A preset's stamp moves with the synthesiser.
-                let st = stamp(&[b"sfx", sfx::SYNTH_VERSION.as_bytes(), &hash]);
-                outs.push((s.rel.clone(), format::Sound::NAME, st, Work::Sound(s, None)));
-            }
-            Kind::Sound => {
-                let settings = match audio::SoundSettings::parse(settings_block(s, "sound")) {
-                    Ok(x) => x,
-                    Err(e) => {
-                        early_errors.push((s.rel.clone(), "sound", e));
-                        continue;
-                    }
-                };
-                // An unreadable file fails in the cook, with its reason.
-                let chunking = audio::shape(&s.rel, &s.bytes)
-                    .ok()
-                    .and_then(|(rate, ch, frames)| settings.chunking(rate, ch, frames));
-                let shape =
-                    chunking.map_or("whole".to_string(), |(p, n)| format!("{n} chunks of {p}"));
-                let st = stamp(&[
-                    b"sound",
-                    &hash,
-                    settings.describe().as_bytes(),
-                    shape.as_bytes(),
-                ]);
-                outs.push((
-                    s.rel.clone(),
-                    format::Sound::NAME,
-                    st,
-                    Work::Sound(s, chunking),
-                ));
-                if let Some((per, count)) = chunking {
-                    for n in 1..count {
-                        let st =
-                            stamp(&[b"sound chunk", &hash, shape.as_bytes(), &n.to_le_bytes()]);
-                        outs.push((
-                            format!("{}#chunk{n}", s.rel),
-                            format::SoundChunk::NAME,
-                            st,
-                            Work::SoundChunk(s, per, n),
-                        ));
-                    }
-                }
-            }
-            Kind::Lut => {
-                let st = stamp(&[b"lut", &hash]);
-                outs.push((s.rel.clone(), format::Lut::NAME, st, Work::Lut(s)));
-            }
-            Kind::Emitter => {
-                let text = String::from_utf8_lossy(&s.bytes);
-                let refs: Vec<String> = crate::fx::emitter_references(&text)
-                    .into_iter()
-                    .inspect(|r| {
-                        parsed_refs
-                            .entry(s.rel.clone())
-                            .or_default()
-                            .insert(r.clone());
-                    })
-                    .map(|r| format!("{r}={}", known.contains(crate::runtime::asset_id(&r))))
-                    .collect();
-                let fields = fx_field::stamp(s, &text);
-                let st = stamp(&[
-                    b"emitter",
-                    &hash,
-                    refs.join("\n").as_bytes(),
-                    fields.as_bytes(),
-                ]);
-                outs.push((s.rel.clone(), format::Emitter::NAME, st, Work::Emitter(s)));
-            }
-            Kind::Effect => {
-                let text = String::from_utf8_lossy(&s.bytes);
-                let refs: Vec<String> = og_bundle::effect::effect_references(&text)
-                    .into_iter()
-                    .map(|r| format!("{r}={}", known.contains(crate::runtime::asset_id(&r))))
-                    .collect();
-                let st = stamp(&[b"effect", &hash, refs.join("\n").as_bytes()]);
-                outs.push((s.rel.clone(), format::Effect::NAME, st, Work::Effect(s)));
-            }
-            Kind::Vfx => {
-                let st = vfx::stamp_inputs(s, &|id| known.contains(id));
-                let st = stamp(&[b"vfx", &hash, st.as_bytes()]);
-                outs.push((s.rel.clone(), format::Vfx::NAME, st, Work::Vfx(s)));
-            }
-            Kind::Shader => {
-                // The stamp covers the WGSL file the shader names.
-                let text = String::from_utf8_lossy(&s.bytes);
-                let wgsl = crate::shader::shader_source(&text)
-                    .map(|src| read_sibling(s, &src).unwrap_or_default())
-                    .unwrap_or_default();
-                let st = stamp(&[b"shader", &hash, wgsl.as_bytes()]);
-                outs.push((s.rel.clone(), format::Shader::NAME, st, Work::Shader(s)));
-            }
-            Kind::Post => {
-                let text = String::from_utf8_lossy(&s.bytes);
-                let wgsl = crate::shader::shader_source(&text)
-                    .map(|src| read_sibling(s, &src).unwrap_or_default())
-                    .unwrap_or_default();
-                let st = stamp(&[b"post", &hash, wgsl.as_bytes()]);
-                outs.push((s.rel.clone(), format::Post::NAME, st, Work::Post(s)));
-            }
-            Kind::UiMaterial => {
-                let text = String::from_utf8_lossy(&s.bytes);
-                let wgsl = crate::shader::shader_source(&text)
-                    .map(|src| execute::read_beside(s, &src).unwrap_or_default())
-                    .unwrap_or_default();
-                let st = stamp(&[b"ui-material", &hash, wgsl.as_bytes()]);
-                outs.push((
-                    s.rel.clone(),
-                    format::UiMaterial::NAME,
-                    st,
-                    Work::UiMaterial(s),
-                ));
-            }
-            Kind::Vector => {
-                // The stamp covers the SVG the vector names.
-                let svg = vector::dependencies(s);
-                let st = stamp(&[b"vector", &hash, svg.as_bytes()]);
-                outs.push((s.rel.clone(), format::Vector::NAME, st, Work::Vector(s)));
-            }
-            Kind::Rive => match riv::plan(s, &options.font) {
-                Ok((names, images, fonts)) => {
-                    for f in fonts {
-                        // The font cook's version and settings, and the
-                        // file's bytes (a referenced font's own).
-                        let st = stamp(&[
-                            b"rive font 1 font 9",
-                            &hash,
-                            &f.index.to_le_bytes(),
-                            f.settings.describe().as_bytes(),
-                            &hash_bytes(&f.bytes).to_le_bytes(),
-                        ]);
-                        outs.push((
-                            format!("{}#font{}", s.rel, f.index),
-                            format::Font::NAME,
-                            st,
-                            Work::RiveFont(Box::new(f)),
-                        ));
-                    }
-                    for n in images {
-                        let st = stamp(&[b"rive image", &hash, &n.to_le_bytes()]);
-                        outs.push((
-                            format!("{}#image{n}", s.rel),
-                            format::Texture::NAME,
-                            st,
-                            Work::RiveImage(s, n),
-                        ));
-                    }
-                    for name in names {
-                        let st = stamp(&[b"rive 3", &hash, name.as_bytes()]);
-                        outs.push((
-                            format!("{}#{name}", s.rel),
-                            format::RiveArtboard::NAME,
-                            st,
-                            Work::Rive(s, name),
-                        ));
-                    }
-                }
-                Err(e) => early_errors.push((s.rel.clone(), "rive", e)),
-            },
-            Kind::Style => {
-                let refs: Vec<String> = serde_json::from_slice(&s.bytes)
-                    .map_err(|e| e.to_string())
-                    .and_then(|files| og_ui::style_pack::StylePack::parse(&s.rel, files))
-                    .map(|pack| pack.assets)
-                    .unwrap_or_default()
-                    .into_iter()
-                    .inspect(|r| {
-                        parsed_refs
-                            .entry(s.rel.clone())
-                            .or_default()
-                            .insert(r.clone());
-                    })
-                    .map(|r| format!("{r}={}", known.contains(crate::runtime::asset_id(&r))))
-                    .collect();
-                let st = stamp(&[b"CSS pack 1", &hash, refs.join("\n").as_bytes()]);
-                outs.push((s.rel.clone(), format::Style::NAME, st, Work::Style(s)));
-            }
-            Kind::Document => {
-                let text = String::from_utf8_lossy(&s.bytes);
-                let mut dependencies = Vec::new();
-                let imports = match execute::document_imports(s, &text) {
-                    Ok(imports) => imports,
-                    Err(e) => {
-                        early_errors.push((s.rel.clone(), "document", e));
-                        continue;
-                    }
-                };
-                for (path, css) in &imports {
-                    dependencies.push(format!(
-                        "@import {path}={:016x}",
-                        hash_bytes(css.as_bytes())
-                    ));
-                }
-                if let Err(errors) = og_ui::UiDocument::parse_with_imports(&s.rel, &text, imports).and_then(|doc| {
-                    doc.validate_tokens(&document_themes)?;
-                    // Each @font-face's fonts join the bundle with it (the first
-                    // url() the project has is the face's; local() names none).
-                    for face in &doc.sheet.font_faces {
-                        let urls: Vec<&String> = face.src.iter().filter(|s| !s.starts_with("local:")).collect();
-                        if !urls.iter().any(|u| known.contains(u.as_str())) {
-                            return Err(vec![format!(
-                                "{}: @font-face {}: no src is a font of the project ({}; a url() is read relative to the document)",
-                                s.rel,
-                                face.family,
-                                if urls.is_empty() { "it names only local() fonts, and the engine has no system fonts".to_string() } else { urls.iter().map(|u| u.as_str()).collect::<Vec<_>>().join(", ") }
-                            )]);
-                        }
-                        for u in urls {
-                            dependencies.push(format!("{u}={}", known.contains(u.as_str())));
-                        }
-                    }
-                    for id in &doc.strings {
-                        let table = sources.iter().find(|source| source.rel == *id && source.kind == Kind::Strings)
-                            .ok_or_else(|| vec![format!("{}: missing string table {id}; add the table named by <meta name=\"strings\">", s.rel)])?;
-                        let text = std::str::from_utf8(&table.bytes).map_err(|_| vec![format!("{id}: string tables must be UTF-8")])?;
-                        og_i18n::StringTable::parse(text).map_err(|error| vec![format!("{id}: {error}")])?;
-                        dependencies.push(format!("{id}={:016x}", table.hash));
-                    }
-                    if options.publish && !doc.warnings.is_empty() {
-                        Err(doc.warnings)
-                    } else {
-                        Ok(())
-                    }
-                }) {
-                    early_errors.push((s.rel.clone(), "document", errors.join("\n")));
-                    continue;
-                }
-                let dependencies = dependencies.join("\n");
-                assets::record_dependencies(&mut parsed_refs, &s.rel, &dependencies);
-                let st = stamp(&[
-                    b"svelte document 1",
-                    &hash,
-                    &style_tokens_hash,
-                    dependencies.as_bytes(),
-                ]);
-                outs.push((s.rel.clone(), format::Document::NAME, st, Work::Document(s)));
-            }
-            Kind::Tileset => {
-                let deps = tilemap::references_of_tileset(&s.bytes, &|id| known.contains(id));
-                assets::record_dependencies(&mut parsed_refs, &s.rel, &deps);
-                let st = stamp(&[b"tileset", &hash, deps.as_bytes()]);
-                outs.push((s.rel.clone(), format::Tileset::NAME, st, Work::Tileset(s)));
-            }
-            Kind::Tilemap => match tilemap::MapSettings::parse(settings_block(s, "tilemap")) {
-                Ok(m) => {
-                    let refs = tilemap::references(&s.rel, &s.bytes, &m, &|id| known.contains(id));
-                    assets::record_dependencies(&mut parsed_refs, &s.rel, &refs.join("\n"));
-                    let st = stamp(&[
-                        b"tilemap",
-                        &hash,
-                        m.describe().as_bytes(),
-                        refs.join("\n").as_bytes(),
-                    ]);
-                    outs.push((
-                        s.rel.clone(),
-                        format::Tilemap::NAME,
-                        st,
-                        Work::Tilemap(s, m),
-                    ));
-                }
-                Err(e) => early_errors.push((s.rel.clone(), "tilemap", e)),
-            },
-            Kind::Rig2d => {
-                let deps = rig2d::dependency_hashes(s);
-                assets::record_dependencies(&mut parsed_refs, &s.rel, &deps);
-                let st = stamp(&[b"rig2d", &hash, deps.as_bytes()]);
-                outs.push((s.rel.clone(), format::Rig2D::NAME, st, Work::Rig2d(s)));
-                // Rigged from layered art: its parts packed into a texture beside it.
-                if Document::parse(&String::from_utf8_lossy(&s.bytes))
-                    .is_ok_and(|d| autorig::is_autorig(&d))
-                {
-                    let st = stamp(&[b"rig2d atlas", tex_desc.as_bytes(), &hash, deps.as_bytes()]);
-                    outs.push((
-                        autorig::atlas_id(&s.rel),
-                        format::Texture::NAME,
-                        st,
-                        Work::Rig2dAtlas(s),
-                    ));
-                }
-            }
-            Kind::Flipbook => {
-                let deps = flipbook::dependency_hashes(s);
-                assets::record_dependencies(&mut parsed_refs, &s.rel, &deps);
-                let motion = options
-                    .mesh
-                    .conform
-                    .as_ref()
-                    .and_then(|c| c.motion.as_ref())
-                    .filter(|_| !conform_off(s, options))
-                    .map(|m| m.describe());
-                let st = match &motion {
-                    Some(m) => stamp(&[b"flipbook", &hash, deps.as_bytes(), m.as_bytes()]),
-                    None => stamp(&[b"flipbook", &hash, deps.as_bytes()]),
-                };
-                outs.push((s.rel.clone(), format::Flipbook::NAME, st, Work::Flipbook(s)));
-                // `array true`: the frames as the layers of a texture array.
-                if let Ok(sheet) = flipbook::sheet(s)
-                    && sheet.array
-                {
-                    let base = [
-                        b"flipbook array 1".as_slice(),
-                        tex_desc.as_bytes(),
-                        &hash,
-                        deps.as_bytes(),
-                    ];
-                    let sheet = Box::new(sheet);
-                    for n in 0..sheet.frames.len() {
-                        let st = stamp(&[&base[..], &[&(n as u32).to_le_bytes()[..]]].concat());
-                        outs.push((
-                            texture_array::layer_id(&flipbook::array_id(&s.rel), n),
-                            format::Texture::NAME,
-                            st,
-                            Work::FlipbookLayer(s, sheet.clone(), n),
-                        ));
-                    }
-                    outs.push((
-                        flipbook::array_id(&s.rel),
-                        format::TextureArray::NAME,
-                        stamp(&base),
-                        Work::FlipbookArray(s, sheet),
-                    ));
-                }
-            }
-            Kind::Behaviour => {
-                // The stamp covers every subtree its `use` nodes reach.
-                let deps = e6::behaviour_dependencies(s);
-                let st = stamp(&[b"behaviour", &hash, deps.as_bytes()]);
-                outs.push((
-                    s.rel.clone(),
-                    format::Behaviour::NAME,
-                    st,
-                    Work::Behaviour(s),
-                ));
-            }
-            Kind::Dialogue => {
-                let st = stamp(&[b"dialogue", &hash, &story_functions_stamp]);
-                outs.push((
-                    s.rel.clone(),
-                    format::Dialogue::NAME,
-                    st,
-                    Work::Dialogue(s, &story_functions),
-                ));
-            }
-            Kind::Quest => {
-                let st = stamp(&[b"quest", &hash]);
-                outs.push((s.rel.clone(), format::Quest::NAME, st, Work::Quest(s)));
-            }
-            Kind::Strings => {
-                let st = stamp(&[b"strings", &hash]);
-                outs.push((s.rel.clone(), format::Strings::NAME, st, Work::Strings(s)));
-            }
-            Kind::FontPack => {
-                // The stamp covers its faces' bytes: their cmaps are the coverage.
-                let deps = font_pack::dependencies(s);
-                let st = stamp(&[b"font-pack 1", &hash, deps.as_bytes()]);
-                outs.push((s.rel.clone(), format::FontPack::NAME, st, Work::FontPack(s)));
-            }
-            Kind::Rig => {
-                let st = stamp(&[b"rig", &hash]);
-                outs.push((s.rel.clone(), format::Rig::NAME, st, Work::Rig(s)));
-            }
-            Kind::MotionAction => {
-                let st = stamp(&[b"motion-action", &hash]);
-                outs.push((
-                    s.rel.clone(),
-                    format::MotionAction::NAME,
-                    st,
-                    Work::MotionAction(s),
-                ));
-            }
-            Kind::Icons => {
-                // The stamp covers every SVG the set names.
-                let deps = icons::dependencies(s);
-                let st = stamp(&[b"icons", &hash, deps.as_bytes()]);
-                outs.push((s.rel.clone(), format::Font::NAME, st, Work::Icons(s)));
-            }
-            Kind::Terrain => {
-                let deps = terrain::terrain_dependencies(s, &|id| known.contains(id));
-                assets::record_dependencies(&mut parsed_refs, &s.rel, &deps);
-                let st = stamp(&[b"terrain 2", &hash, deps.as_bytes()]);
-                outs.push((s.rel.clone(), format::Terrain::NAME, st, Work::Terrain(s)));
-            }
-            Kind::Lightmap => {
-                // The stamp covers its pages file.
-                let deps = lightmap::dependencies(s);
-                assets::record_dependencies(&mut parsed_refs, &s.rel, &deps);
-                let st = stamp(&[b"lightmap 1", &hash, deps.as_bytes()]);
-                outs.push((s.rel.clone(), format::Lightmap::NAME, st, Work::Lightmap(s)));
-            }
-            Kind::Timeline => {
-                // The stamp covers every caption file it imports.
-                let deps = timeline::dependencies(s);
-                assets::record_dependencies(&mut parsed_refs, &s.rel, &deps);
-                let st = stamp(&[b"timeline 1", &hash, deps.as_bytes()]);
-                outs.push((s.rel.clone(), format::Timeline::NAME, st, Work::Timeline(s)));
-            }
-            Kind::TextureArray => {
-                let text = String::from_utf8_lossy(&s.bytes);
-                let root = texture_array::assets_dir(&s.path, &s.rel);
-                match texture_array::parse(&s.rel, &text, &|p| root.join(p).is_file()) {
-                    Ok(decl) => {
-                        let deps = texture_array::dependencies(&root, &decl);
-                        assets::record_dependencies(&mut parsed_refs, &s.rel, &deps);
-                        let base = [
-                            b"texture-array 1".as_slice(),
-                            tex_desc.as_bytes(),
-                            &hash,
-                            deps.as_bytes(),
-                        ];
-                        outs.push((
-                            s.rel.clone(),
-                            format::TextureArray::NAME,
-                            stamp(&base),
-                            Work::TextureArray(s, decl.clone()),
-                        ));
-                        for n in 0..decl.layers.len() {
-                            let st = stamp(&[&base[..], &[&(n as u32).to_le_bytes()[..]]].concat());
-                            outs.push((
-                                texture_array::layer_id(&s.rel, n),
-                                format::Texture::NAME,
-                                st,
-                                Work::ArrayLayer(s, decl.clone(), n),
-                            ));
-                        }
-                    }
-                    Err(e) => early_errors.push((s.rel.clone(), "texture-array", e)),
-                }
-            }
-            Kind::Video => {
-                let text = String::from_utf8_lossy(&s.bytes);
-                let root = texture_array::assets_dir(&s.path, &s.rel);
-                let planned =
-                    video::parse(&s.rel, &text, &|p| root.join(p).is_file()).and_then(|d| {
-                        let src = root.join(&d.source);
-                        let bytes =
-                            std::fs::read(&src).map_err(|e| format!("{}: {e}", src.display()))?;
-                        let encoder = if d.stream {
-                            video::stream_encoder()?
-                        } else {
-                            ""
-                        };
-                        let plan = video::plan(&d, video::probe(&src)?, encoder)?;
-                        Ok((src, hash_bytes(&bytes), plan))
-                    });
-                match planned {
-                    Ok((src, src_hash, plan)) => {
-                        let described = plan.describe();
-                        let base = [
-                            b"video 2".as_slice(),
-                            tex_desc.as_bytes(),
-                            &hash,
-                            &src_hash.to_le_bytes(),
-                            described.as_bytes(),
-                        ];
-                        let plan = Box::new(plan);
-                        outs.push((
-                            s.rel.clone(),
-                            format::Video::NAME,
-                            stamp(&base),
-                            Work::VideoMeta(plan.clone()),
-                        ));
-                        if plan.decl.stream {
-                            outs.push((
-                                video::stream_id(&s.rel),
-                                format::VideoStream::NAME,
-                                stamp(&[&base[..], &[b"stream".as_slice()]].concat()),
-                                Work::VideoStream(src.clone(), src_hash, plan.clone()),
-                            ));
-                            if let Some(size) = og_video::stream::fallback_size(plan.size) {
-                                outs.push((
-                                    video::stream_fallback_id(&s.rel),
-                                    format::VideoStream::NAME,
-                                    stamp(&[&base[..], &[b"stream720".as_slice()]].concat()),
-                                    Work::VideoStream(
-                                        src.clone(),
-                                        src_hash,
-                                        Box::new(video::fallback_plan(&plan, size)),
-                                    ),
-                                ));
-                            }
-                            outs.push((
-                                video::poster_id(&s.rel),
-                                format::Texture::NAME,
-                                stamp(&[&base[..], &[b"poster".as_slice()]].concat()),
-                                Work::VideoPoster(src.clone(), src_hash, plan.clone()),
-                            ));
-                        } else {
-                            let frames = video::frames_id(&s.rel);
-                            outs.push((
-                                frames.clone(),
-                                format::TextureArray::NAME,
-                                stamp(&[&base[..], &[b"array".as_slice()]].concat()),
-                                Work::VideoArray(s, plan.clone()),
-                            ));
-                            for n in 0..plan.frames as usize {
-                                let st =
-                                    stamp(&[&base[..], &[&(n as u32).to_le_bytes()[..]]].concat());
-                                outs.push((
-                                    texture_array::layer_id(&frames, n),
-                                    format::Texture::NAME,
-                                    st,
-                                    Work::VideoFrame(src.clone(), src_hash, plan.clone(), n),
-                                ));
-                            }
-                        }
-                        if plan.audio {
-                            outs.push((
-                                video::audio_id(&s.rel),
-                                format::Sound::NAME,
-                                stamp(&[&base[..], &[b"audio".as_slice()]].concat()),
-                                Work::VideoAudio(src.clone(), plan.clone()),
-                            ));
-                        }
-                    }
-                    Err(e) => early_errors.push((s.rel.clone(), "video", e)),
-                }
-            }
-            Kind::Environment => {
-                let deps = environment::environment_dependencies(s);
-                assets::record_dependencies(&mut parsed_refs, &s.rel, &deps);
-                let st = stamp(&[b"environment 1", &hash, deps.as_bytes()]);
-                outs.push((
-                    s.rel.clone(),
-                    format::EnvironmentMap::NAME,
-                    st,
-                    Work::Environment(s),
-                ));
-            }
-            Kind::Look => {
-                let deps = look::look_dependencies(s, &assets_dir, &|id| known.contains(id));
-                assets::record_dependencies(&mut parsed_refs, &s.rel, &deps);
-                let st = stamp(&[b"look 1", &hash, deps.as_bytes()]);
-                outs.push((s.rel.clone(), format::Look::NAME, st, Work::Look(s)));
-            }
-            Kind::Palette => {
-                let st = stamp(&[b"palette 1", &hash]);
-                outs.push((s.rel.clone(), format::Palette::NAME, st, Work::Palette(s)));
-            }
-            Kind::NavMesh => {
-                let deps = e6::navmesh_dependencies(s);
-                assets::record_dependencies(&mut parsed_refs, &s.rel, &deps);
-                // Re-bake cached terrain surfaces with adaptive diagonals.
-                let st = stamp(&[b"navmesh 2", &hash, deps.as_bytes()]);
-                outs.push((s.rel.clone(), format::NavMesh::NAME, st, Work::NavMesh(s)));
-            }
-            Kind::Font => match font_settings(s, &options.font) {
-                Ok(f) => {
-                    // "font 2": the Unicode spaces a font lacks are cooked as empty
-                    // glyphs; "font 3": the field is of each glyph's outline
-                    // union; "font 4": negative-bearing fill and post-sign error
-                    // correction; "font 5": every face carries OpenType data
-                    // for paragraph layout; "font 6": default substitutions
-                    // and referenced contextual lookups; "font 7": layout-only
-                    // tables without runtime outlines; "font 8": the vertical
-                    // forms (`vert`, `vrt2`) of its characters; "font 9": a glyph keyed
-                    // by code point and by id is one image in the atlas.
-                    // Older fonts re-cook.
-                    let st = stamp(&[b"font 9", f.describe().as_bytes(), &hash]);
-                    outs.push((s.rel.clone(), format::Font::NAME, st, Work::Font(s, f)));
-                }
-                Err(e) => early_errors.push((s.rel.clone(), "font", e)),
-            },
-            Kind::Scene | Kind::Prefab => {
-                let text = String::from_utf8_lossy(&s.bytes);
-                // Every prefab it reaches, transitively, with its text's
-                // hash: editing a prefab re-cooks what places it.
-                let texts = |id: &str| prefab_texts.get(id).cloned();
-                let reached = prefab::reached(&text, &texts);
-                let mut refs: BTreeSet<String> = scene::references(&text).into_iter().collect();
-                let mut placed = Vec::new();
-                for id in &reached {
-                    let t = prefab_texts.get(id);
-                    if let Some(t) = t {
-                        refs.extend(scene::references(t));
-                    }
-                    placed.push(format!(
-                        "{id}#{}",
-                        t.map_or(0, |t| hash_bytes(t.as_bytes()))
-                    ));
-                }
-                parsed_refs
-                    .entry(s.rel.clone())
-                    .or_default()
-                    .extend(refs.iter().chain(reached.iter()).cloned());
-                let refs: Vec<String> = refs
-                    .into_iter()
-                    .map(|r| format!("{r}={}", known.contains(&r)))
-                    .collect();
-                // A scene that places no prefab keeps the stamp it had.
-                let st = if placed.is_empty() && s.kind == Kind::Scene {
-                    stamp(&[b"scene", &hash, &schema_hash, refs.join("\n").as_bytes()])
-                } else {
-                    stamp(&[
-                        b"scene",
-                        &hash,
-                        &schema_hash,
-                        refs.join("\n").as_bytes(),
-                        placed.join("\n").as_bytes(),
-                        &[options.publish as u8],
-                    ])
-                };
-                outs.push((s.rel.clone(), format::Scene::NAME, st, Work::Scene(s)));
-            }
-        }
+        let mut outs: Vec<Out> = Vec::new();
+        plan_kind(cx, &mut state, s, hash, &mut outs);
         for (id, ty, st, work) in outs {
             let file = if pack_faces.contains(&id) {
                 format!("{id}.{}", og_bundle::runtime::FONT_PACK_FACE)
@@ -1900,8 +1261,1344 @@ pub fn cook_project_with_texture_cache(
             });
         }
     }
+    (plan, state)
+}
 
-    let project_key = texture_cache
+/// Plans a source's outputs by its kind.
+fn plan_kind<'a>(
+    cx: &Cx<'a>,
+    state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    match s.kind {
+        Kind::Model => plan_model(cx, state, s, hash, outs),
+        Kind::Texture => plan_texture(cx, state, s, hash, outs),
+        Kind::Sound if s.rel.ends_with(".ogt") => plan_sfx(cx, state, s, hash, outs),
+        Kind::Sound => plan_sound(cx, state, s, hash, outs),
+        Kind::Lut => plan_lut(cx, state, s, hash, outs),
+        Kind::Emitter => plan_emitter(cx, state, s, hash, outs),
+        Kind::Effect => plan_effect(cx, state, s, hash, outs),
+        Kind::Vfx => plan_vfx(cx, state, s, hash, outs),
+        Kind::Shader => plan_shader(cx, state, s, hash, outs),
+        Kind::Post => plan_post(cx, state, s, hash, outs),
+        Kind::UiMaterial => plan_ui_material(cx, state, s, hash, outs),
+        Kind::Vector => plan_vector(cx, state, s, hash, outs),
+        Kind::Rive => plan_rive(cx, state, s, hash, outs),
+        Kind::Style => plan_style(cx, state, s, hash, outs),
+        Kind::Document => plan_document(cx, state, s, hash, outs),
+        Kind::Tileset => plan_tileset(cx, state, s, hash, outs),
+        Kind::Tilemap => plan_tilemap(cx, state, s, hash, outs),
+        Kind::Rig2d => plan_rig2d(cx, state, s, hash, outs),
+        Kind::Flipbook => plan_flipbook(cx, state, s, hash, outs),
+        Kind::Behaviour => plan_behaviour(cx, state, s, hash, outs),
+        Kind::Dialogue => plan_dialogue(cx, state, s, hash, outs),
+        Kind::Quest => plan_quest(cx, state, s, hash, outs),
+        Kind::Strings => plan_strings(cx, state, s, hash, outs),
+        Kind::FontPack => plan_font_pack(cx, state, s, hash, outs),
+        Kind::Rig => plan_rig(cx, state, s, hash, outs),
+        Kind::MotionAction => plan_motion_action(cx, state, s, hash, outs),
+        Kind::Icons => plan_icons(cx, state, s, hash, outs),
+        Kind::Terrain => plan_terrain(cx, state, s, hash, outs),
+        Kind::Lightmap => plan_lightmap(cx, state, s, hash, outs),
+        Kind::Timeline => plan_timeline(cx, state, s, hash, outs),
+        Kind::TextureArray => plan_texture_array(cx, state, s, hash, outs),
+        Kind::Video => plan_video(cx, state, s, hash, outs),
+        Kind::Environment => plan_environment(cx, state, s, hash, outs),
+        Kind::Look => plan_look(cx, state, s, hash, outs),
+        Kind::Palette => plan_palette(cx, state, s, hash, outs),
+        Kind::NavMesh => plan_nav_mesh(cx, state, s, hash, outs),
+        Kind::Font => plan_font(cx, state, s, hash, outs),
+        Kind::Scene | Kind::Prefab => plan_scene(cx, state, s, hash, outs),
+    }
+}
+
+fn plan_model<'a>(
+    cx: &Cx<'a>,
+    state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let Cx {
+        options,
+        group_of,
+        tex_desc,
+        mesh_desc,
+        budget_desc,
+        ..
+    } = *cx;
+    let PlanState {
+        early_errors,
+        parsed_refs,
+        planned_textures,
+        ..
+    } = state;
+    let g = s.gltf.as_ref().expect("loaded");
+    // The art contract's part of each output's stamp: empty
+    // (and left out) when it changes nothing here.
+    let contract = options
+        .mesh
+        .conform
+        .as_ref()
+        .filter(|_| !conform_off(s, options));
+    let model_desc = contract
+        .map(|c| {
+            let mut d = if c.applies(g) {
+                c.model_desc()
+            } else {
+                String::new()
+            };
+            // An effect's mesh is held to no face budget.
+            if !d.is_empty() && g.role == conform::ModelRole::Effect {
+                d.push_str(" role effect");
+            }
+            // Its colour textures' kind is in the blob.
+            if c.filter == conform::mesh::Filter::Nearest {
+                d.push_str(" textures nearest");
+            }
+            d
+        })
+        .unwrap_or_default();
+    let texture_desc = contract.map(|c| c.texture_desc()).unwrap_or_default();
+    let with = |parts: &[&[u8]], desc: &str, extra: &[u8]| {
+        let mut v: Vec<&[u8]> = parts.to_vec();
+        if !desc.is_empty() {
+            v.push(desc.as_bytes());
+            v.push(extra);
+        }
+        stamp(&v)
+    };
+    let stream_textures = match model_stream_textures(s) {
+        Ok(b) => b,
+        Err(e) => {
+            early_errors.push((s.rel.clone(), "model", e));
+            return;
+        }
+    };
+    let mut ids = Vec::new();
+    let grouped = group_of.contains_key(&s.rel);
+    for (i, u) in g.textures.iter().enumerate() {
+        let image_hash = hash_bytes(&g.images[u.image]).to_le_bytes();
+        // One cooked texture per image and use: its kind, and
+        // whether it streams its levels (a model's
+        // `stream_textures` splits it into a tail and a chain).
+        // A model's own unless an art contract makes it depend
+        // on the model (a density is per metre of the model) or
+        // it is in a streaming group's pack.
+        let shared = !grouped && texture_desc.is_empty();
+        let id = if shared {
+            crate::runtime::gltf_texture_id(
+                u64::from_le_bytes(image_hash),
+                u.kind,
+                stream_textures,
+                u.cutout,
+            )
+        } else {
+            format!("{}#tex{i}", s.rel)
+        };
+        parsed_refs
+            .entry(s.rel.clone())
+            .or_default()
+            .insert(id.clone());
+        if shared && !planned_textures.insert(id.clone()) {
+            ids.push(id);
+            continue;
+        }
+        // A density is per metre of the model: its hash too.
+        let kind = u.kind.to_le_bytes();
+        let st = |word: &[u8]| {
+            let mut parts: Vec<&[u8]> = vec![b"texture", tex_desc.as_bytes(), &image_hash, &kind];
+            // A cut-out's mips are its own, kept at its cut-off
+            // (texture.rs `cutout_mips`, `keep_coverage`).
+            if let Some(c) = &u.cutout {
+                parts.push(b"cutout");
+                parts.push(std::slice::from_ref(c));
+            }
+            if !word.is_empty() {
+                parts.push(word);
+            }
+            with(&parts, &texture_desc, &hash)
+        };
+        let not_split =
+            stream_textures.then(|| not_split(&g.images[u.image], u.kind, group_of.get(&s.rel)));
+        let gltf_texture = |split| Work::GltfTexture(s, u.image, u.kind, u.cutout, split);
+        match not_split {
+            Some(None) => {
+                let mips = st(b"mips");
+                outs.push((
+                    id.clone(),
+                    format::Texture::NAME,
+                    st(b"tail"),
+                    gltf_texture(Split::Tail(mips)),
+                ));
+                outs.push((
+                    crate::runtime::mips_id(&id),
+                    format::Texture::NAME,
+                    mips,
+                    gltf_texture(Split::Mips),
+                ));
+            }
+            why => outs.push((
+                id.clone(),
+                format::Texture::NAME,
+                st(b""),
+                gltf_texture(Split::Whole(why.flatten())),
+            )),
+        }
+        ids.push(id);
+    }
+    let joined = ids.join("\n");
+    // A model written as text is refused past the budgets, so
+    // they are among its inputs.
+    let st = if ext(&s.rel) == "ogt" {
+        with(
+            &[
+                b"model",
+                NODE_ROWS,
+                mesh_desc.as_bytes(),
+                &hash,
+                joined.as_bytes(),
+                budget_desc.as_bytes(),
+            ],
+            &model_desc,
+            &[],
+        )
+    } else {
+        with(
+            &[
+                b"model",
+                NODE_ROWS,
+                mesh_desc.as_bytes(),
+                &hash,
+                joined.as_bytes(),
+            ],
+            &model_desc,
+            &[],
+        )
+    };
+    outs.insert(
+        0,
+        (s.rel.clone(), format::Model::NAME, st, Work::Model(s, ids)),
+    );
+    if s.fracture.is_some() {
+        outs.push((
+            format!("{}#fracture", s.rel),
+            format::Fracture::NAME,
+            // The asset's layout too: a new og_destruct version
+            // recooks what the runtime would refuse.
+            stamp(&[
+                b"fracture",
+                &og_destruct::ASSET_VERSION.to_le_bytes(),
+                &hash,
+            ]),
+            Work::Fracture(s),
+        ));
+    }
+    if group_of.contains_key(&s.rel) {
+        let st = with(
+            &[b"proxy", NODE_ROWS, mesh_desc.as_bytes(), &hash],
+            &model_desc,
+            &[],
+        );
+        outs.push((
+            format!("{}#proxy", s.rel),
+            format::Model::NAME,
+            st,
+            Work::Proxy(s),
+        ));
+    }
+    // The impostor's three atlases (`model { impostor true }`),
+    // baked from the model's source.
+    if let Some(b) = mesh_for(s, options)
+        .ok()
+        .and_then(|m| m.impostor)
+        .map(|b| b.resolved(g))
+    {
+        let size = [b.grid.to_le_bytes(), b.frame.to_le_bytes()].concat();
+        for (kind, id) in model::impostor_ids(&s.rel).into_iter().enumerate() {
+            // `3`: the atlas's layout version (2, the
+            // hemi-octahedron; 3, 16 samples a texel, filtered
+            // textures and the material atlas), so an atlas
+            // baked by an older layout is baked again.
+            let st = with(
+                &[
+                    b"impostor",
+                    &[3, kind as u8],
+                    &size,
+                    tex_desc.as_bytes(),
+                    &hash,
+                ],
+                &model_desc,
+                &[],
+            );
+            outs.push((
+                id,
+                format::Texture::NAME,
+                st,
+                Work::Impostor(s, b, kind as u8),
+            ));
+        }
+    }
+    if anim::wanted(g) {
+        match anim_settings(s) {
+            Ok(a) => {
+                let deps = anim::dependencies(&assets_root(s), &a);
+                let motion = contract
+                    .and_then(|c| c.motion.as_ref())
+                    .map(|m| m.describe())
+                    .unwrap_or_default();
+                let st = with(
+                    &[
+                        b"animation",
+                        NODE_ROWS,
+                        mesh_desc.as_bytes(),
+                        a.describe().as_bytes(),
+                        &hash,
+                        deps.as_bytes(),
+                    ],
+                    &format!("{model_desc}{motion}"),
+                    &[],
+                );
+                outs.insert(
+                    1,
+                    (
+                        format!("{}#anim", s.rel),
+                        format::Animation::NAME,
+                        st,
+                        Work::Animation(s, a),
+                    ),
+                );
+            }
+            Err(e) => early_errors.push((s.rel.clone(), "model", e)),
+        }
+    }
+}
+
+fn plan_texture<'a>(
+    cx: &Cx<'a>,
+    state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let Cx {
+        options,
+        group_of,
+        tex_desc,
+        ..
+    } = *cx;
+    let PlanState { early_errors, .. } = state;
+    match texture_kind(s).and_then(|k| Ok((k, texture_stream(s, k)?))) {
+        Ok((k, stream)) => {
+            // A mesh's texture under the art contract: its desc too.
+            let mesh = mesh_texture(s, options)
+                .map(|c| c.texture_desc())
+                .unwrap_or_default();
+            let kind = k.to_le_bytes();
+            let st = |word: &[u8]| {
+                let mut parts: Vec<&[u8]> = vec![b"texture", tex_desc.as_bytes(), &hash, &kind];
+                if !mesh.is_empty() {
+                    parts.push(mesh.as_bytes());
+                }
+                if !word.is_empty() {
+                    parts.push(word);
+                }
+                stamp(&parts)
+            };
+            let source = s.conformed.as_deref().map_or(&s.bytes[..], |b| &b[..]);
+            match stream.then(|| not_split(source, k, group_of.get(&s.rel))) {
+                Some(None) => {
+                    let mips = st(b"mips");
+                    outs.push((
+                        s.rel.clone(),
+                        format::Texture::NAME,
+                        st(b"tail"),
+                        Work::Texture(s, k, Split::Tail(mips)),
+                    ));
+                    outs.push((
+                        crate::runtime::mips_id(&s.rel),
+                        format::Texture::NAME,
+                        mips,
+                        Work::Texture(s, k, Split::Mips),
+                    ));
+                }
+                why => outs.push((
+                    s.rel.clone(),
+                    format::Texture::NAME,
+                    st(b""),
+                    Work::Texture(s, k, Split::Whole(why.flatten())),
+                )),
+            }
+            // Its normal map for 2D lighting (`normal auto` or a file).
+            match normal2d::setting(settings_block(s, "texture")) {
+                Ok(None) => {}
+                Ok(Some(setting)) => {
+                    let file = match &setting {
+                        normal2d::NormalSetting::Auto => Ok(None),
+                        normal2d::NormalSetting::File(name) => {
+                            let path = s.path.parent().unwrap_or(Path::new(".")).join(name);
+                            std::fs::read(&path)
+                                .map(Some)
+                                .map_err(|e| format!("normal \"{name}\": {e}"))
+                        }
+                    };
+                    match file {
+                        Ok(file) => {
+                            let st = stamp(&[
+                                b"texture normal",
+                                tex_desc.as_bytes(),
+                                &hash,
+                                file.as_deref().unwrap_or(b"auto"),
+                            ]);
+                            outs.push((
+                                format!("{}#normal", s.rel),
+                                format::Texture::NAME,
+                                st,
+                                Work::TextureNormal(s, file),
+                            ));
+                        }
+                        Err(e) => early_errors.push((s.rel.clone(), "texture", e)),
+                    }
+                }
+                Err(e) => early_errors.push((s.rel.clone(), "texture", e)),
+            }
+        }
+        Err(e) => early_errors.push((s.rel.clone(), "texture", e)),
+    }
+}
+
+fn plan_sfx<'a>(
+    _cx: &Cx<'a>,
+    _state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    // A preset's stamp moves with the synthesiser.
+    let st = stamp(&[b"sfx", sfx::SYNTH_VERSION.as_bytes(), &hash]);
+    outs.push((s.rel.clone(), format::Sound::NAME, st, Work::Sound(s, None)));
+}
+
+fn plan_sound<'a>(
+    _cx: &Cx<'a>,
+    state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let PlanState { early_errors, .. } = state;
+    let settings = match audio::SoundSettings::parse(settings_block(s, "sound")) {
+        Ok(x) => x,
+        Err(e) => {
+            early_errors.push((s.rel.clone(), "sound", e));
+            return;
+        }
+    };
+    // An unreadable file fails in the cook, with its reason.
+    let chunking = audio::shape(&s.rel, &s.bytes)
+        .ok()
+        .and_then(|(rate, ch, frames)| settings.chunking(rate, ch, frames));
+    let shape = chunking.map_or("whole".to_string(), |(p, n)| format!("{n} chunks of {p}"));
+    let st = stamp(&[
+        b"sound",
+        &hash,
+        settings.describe().as_bytes(),
+        shape.as_bytes(),
+    ]);
+    outs.push((
+        s.rel.clone(),
+        format::Sound::NAME,
+        st,
+        Work::Sound(s, chunking),
+    ));
+    if let Some((per, count)) = chunking {
+        for n in 1..count {
+            let st = stamp(&[b"sound chunk", &hash, shape.as_bytes(), &n.to_le_bytes()]);
+            outs.push((
+                format!("{}#chunk{n}", s.rel),
+                format::SoundChunk::NAME,
+                st,
+                Work::SoundChunk(s, per, n),
+            ));
+        }
+    }
+}
+
+fn plan_lut<'a>(
+    _cx: &Cx<'a>,
+    _state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let st = stamp(&[b"lut", &hash]);
+    outs.push((s.rel.clone(), format::Lut::NAME, st, Work::Lut(s)));
+}
+
+fn plan_emitter<'a>(
+    cx: &Cx<'a>,
+    state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let Cx { known, .. } = *cx;
+    let PlanState { parsed_refs, .. } = state;
+    let text = String::from_utf8_lossy(&s.bytes);
+    let refs: Vec<String> = crate::fx::emitter_references(&text)
+        .into_iter()
+        .inspect(|r| {
+            parsed_refs
+                .entry(s.rel.clone())
+                .or_default()
+                .insert(r.clone());
+        })
+        .map(|r| format!("{r}={}", known.contains(crate::runtime::asset_id(&r))))
+        .collect();
+    let fields = fx_field::stamp(s, &text);
+    let st = stamp(&[
+        b"emitter",
+        &hash,
+        refs.join("\n").as_bytes(),
+        fields.as_bytes(),
+    ]);
+    outs.push((s.rel.clone(), format::Emitter::NAME, st, Work::Emitter(s)));
+}
+
+fn plan_effect<'a>(
+    cx: &Cx<'a>,
+    _state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let Cx { known, .. } = *cx;
+    let text = String::from_utf8_lossy(&s.bytes);
+    let refs: Vec<String> = og_bundle::effect::effect_references(&text)
+        .into_iter()
+        .map(|r| format!("{r}={}", known.contains(crate::runtime::asset_id(&r))))
+        .collect();
+    let st = stamp(&[b"effect", &hash, refs.join("\n").as_bytes()]);
+    outs.push((s.rel.clone(), format::Effect::NAME, st, Work::Effect(s)));
+}
+
+fn plan_vfx<'a>(
+    cx: &Cx<'a>,
+    _state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let Cx { known, .. } = *cx;
+    let st = vfx::stamp_inputs(s, &|id| known.contains(id));
+    let st = stamp(&[b"vfx", &hash, st.as_bytes()]);
+    outs.push((s.rel.clone(), format::Vfx::NAME, st, Work::Vfx(s)));
+}
+
+fn plan_shader<'a>(
+    _cx: &Cx<'a>,
+    _state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    // The stamp covers the WGSL file the shader names.
+    let text = String::from_utf8_lossy(&s.bytes);
+    let wgsl = crate::shader::shader_source(&text)
+        .map(|src| read_sibling(s, &src).unwrap_or_default())
+        .unwrap_or_default();
+    let st = stamp(&[b"shader", &hash, wgsl.as_bytes()]);
+    outs.push((s.rel.clone(), format::Shader::NAME, st, Work::Shader(s)));
+}
+
+fn plan_post<'a>(
+    _cx: &Cx<'a>,
+    _state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let text = String::from_utf8_lossy(&s.bytes);
+    let wgsl = crate::shader::shader_source(&text)
+        .map(|src| read_sibling(s, &src).unwrap_or_default())
+        .unwrap_or_default();
+    let st = stamp(&[b"post", &hash, wgsl.as_bytes()]);
+    outs.push((s.rel.clone(), format::Post::NAME, st, Work::Post(s)));
+}
+
+fn plan_ui_material<'a>(
+    _cx: &Cx<'a>,
+    _state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let text = String::from_utf8_lossy(&s.bytes);
+    let wgsl = crate::shader::shader_source(&text)
+        .map(|src| execute::read_beside(s, &src).unwrap_or_default())
+        .unwrap_or_default();
+    let st = stamp(&[b"ui-material", &hash, wgsl.as_bytes()]);
+    outs.push((
+        s.rel.clone(),
+        format::UiMaterial::NAME,
+        st,
+        Work::UiMaterial(s),
+    ));
+}
+
+fn plan_vector<'a>(
+    _cx: &Cx<'a>,
+    _state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    // The stamp covers the SVG the vector names.
+    let svg = vector::dependencies(s);
+    let st = stamp(&[b"vector", &hash, svg.as_bytes()]);
+    outs.push((s.rel.clone(), format::Vector::NAME, st, Work::Vector(s)));
+}
+
+fn plan_rive<'a>(
+    cx: &Cx<'a>,
+    state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let Cx { options, .. } = *cx;
+    let PlanState { early_errors, .. } = state;
+    match riv::plan(s, &options.font) {
+        Ok((names, images, fonts)) => {
+            for f in fonts {
+                // The font cook's version and settings, and the
+                // file's bytes (a referenced font's own).
+                let st = stamp(&[
+                    b"rive font 1 font 9",
+                    &hash,
+                    &f.index.to_le_bytes(),
+                    f.settings.describe().as_bytes(),
+                    &hash_bytes(&f.bytes).to_le_bytes(),
+                ]);
+                outs.push((
+                    format!("{}#font{}", s.rel, f.index),
+                    format::Font::NAME,
+                    st,
+                    Work::RiveFont(Box::new(f)),
+                ));
+            }
+            for n in images {
+                let st = stamp(&[b"rive image", &hash, &n.to_le_bytes()]);
+                outs.push((
+                    format!("{}#image{n}", s.rel),
+                    format::Texture::NAME,
+                    st,
+                    Work::RiveImage(s, n),
+                ));
+            }
+            for name in names {
+                let st = stamp(&[b"rive 3", &hash, name.as_bytes()]);
+                outs.push((
+                    format!("{}#{name}", s.rel),
+                    format::RiveArtboard::NAME,
+                    st,
+                    Work::Rive(s, name),
+                ));
+            }
+        }
+        Err(e) => early_errors.push((s.rel.clone(), "rive", e)),
+    }
+}
+
+fn plan_style<'a>(
+    cx: &Cx<'a>,
+    state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let Cx { known, .. } = *cx;
+    let PlanState { parsed_refs, .. } = state;
+    let refs: Vec<String> = serde_json::from_slice(&s.bytes)
+        .map_err(|e| e.to_string())
+        .and_then(|files| og_ui::style_pack::StylePack::parse(&s.rel, files))
+        .map(|pack| pack.assets)
+        .unwrap_or_default()
+        .into_iter()
+        .inspect(|r| {
+            parsed_refs
+                .entry(s.rel.clone())
+                .or_default()
+                .insert(r.clone());
+        })
+        .map(|r| format!("{r}={}", known.contains(crate::runtime::asset_id(&r))))
+        .collect();
+    let st = stamp(&[b"CSS pack 1", &hash, refs.join("\n").as_bytes()]);
+    outs.push((s.rel.clone(), format::Style::NAME, st, Work::Style(s)));
+}
+
+fn plan_document<'a>(
+    cx: &Cx<'a>,
+    state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let Cx {
+        options,
+        sources,
+        known,
+        style_tokens_hash,
+        document_themes,
+        ..
+    } = *cx;
+    let PlanState {
+        early_errors,
+        parsed_refs,
+        ..
+    } = state;
+    let text = String::from_utf8_lossy(&s.bytes);
+    let mut dependencies = Vec::new();
+    let imports = match execute::document_imports(s, &text) {
+        Ok(imports) => imports,
+        Err(e) => {
+            early_errors.push((s.rel.clone(), "document", e));
+            return;
+        }
+    };
+    for (path, css) in &imports {
+        dependencies.push(format!(
+            "@import {path}={:016x}",
+            hash_bytes(css.as_bytes())
+        ));
+    }
+    if let Err(errors) = og_ui::UiDocument::parse_with_imports(&s.rel, &text, imports).and_then(|doc| {
+        doc.validate_tokens(document_themes)?;
+        // Each @font-face's fonts join the bundle with it (the first
+        // url() the project has is the face's; local() names none).
+        for face in &doc.sheet.font_faces {
+            let urls: Vec<&String> = face.src.iter().filter(|s| !s.starts_with("local:")).collect();
+            if !urls.iter().any(|u| known.contains(u.as_str())) {
+                return Err(vec![format!(
+                    "{}: @font-face {}: no src is a font of the project ({}; a url() is read relative to the document)",
+                    s.rel,
+                    face.family,
+                    if urls.is_empty() { "it names only local() fonts, and the engine has no system fonts".to_string() } else { urls.iter().map(|u| u.as_str()).collect::<Vec<_>>().join(", ") }
+                )]);
+            }
+            for u in urls {
+                dependencies.push(format!("{u}={}", known.contains(u.as_str())));
+            }
+        }
+        for id in &doc.strings {
+            let table = sources.iter().find(|source| source.rel == *id && source.kind == Kind::Strings)
+                .ok_or_else(|| vec![format!("{}: missing string table {id}; add the table named by <meta name=\"strings\">", s.rel)])?;
+            let text = std::str::from_utf8(&table.bytes).map_err(|_| vec![format!("{id}: string tables must be UTF-8")])?;
+            og_i18n::StringTable::parse(text).map_err(|error| vec![format!("{id}: {error}")])?;
+            dependencies.push(format!("{id}={:016x}", table.hash));
+        }
+        if options.publish && !doc.warnings.is_empty() {
+            Err(doc.warnings)
+        } else {
+            Ok(())
+        }
+    }) {
+        early_errors.push((s.rel.clone(), "document", errors.join("\n")));
+        return;
+    }
+    let dependencies = dependencies.join("\n");
+    assets::record_dependencies(parsed_refs, &s.rel, &dependencies);
+    let st = stamp(&[
+        b"svelte document 1",
+        &hash,
+        &style_tokens_hash,
+        dependencies.as_bytes(),
+    ]);
+    outs.push((s.rel.clone(), format::Document::NAME, st, Work::Document(s)));
+}
+
+fn plan_tileset<'a>(
+    cx: &Cx<'a>,
+    state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let Cx { known, .. } = *cx;
+    let PlanState { parsed_refs, .. } = state;
+    let deps = tilemap::references_of_tileset(&s.bytes, &|id| known.contains(id));
+    assets::record_dependencies(parsed_refs, &s.rel, &deps);
+    let st = stamp(&[b"tileset", &hash, deps.as_bytes()]);
+    outs.push((s.rel.clone(), format::Tileset::NAME, st, Work::Tileset(s)));
+}
+
+fn plan_tilemap<'a>(
+    cx: &Cx<'a>,
+    state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let Cx { known, .. } = *cx;
+    let PlanState {
+        early_errors,
+        parsed_refs,
+        ..
+    } = state;
+    match tilemap::MapSettings::parse(settings_block(s, "tilemap")) {
+        Ok(m) => {
+            let refs = tilemap::references(&s.rel, &s.bytes, &m, &|id| known.contains(id));
+            assets::record_dependencies(parsed_refs, &s.rel, &refs.join("\n"));
+            let st = stamp(&[
+                b"tilemap",
+                &hash,
+                m.describe().as_bytes(),
+                refs.join("\n").as_bytes(),
+            ]);
+            outs.push((
+                s.rel.clone(),
+                format::Tilemap::NAME,
+                st,
+                Work::Tilemap(s, m),
+            ));
+        }
+        Err(e) => early_errors.push((s.rel.clone(), "tilemap", e)),
+    }
+}
+
+fn plan_rig2d<'a>(
+    cx: &Cx<'a>,
+    state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let Cx { tex_desc, .. } = *cx;
+    let PlanState { parsed_refs, .. } = state;
+    let deps = rig2d::dependency_hashes(s);
+    assets::record_dependencies(parsed_refs, &s.rel, &deps);
+    let st = stamp(&[b"rig2d", &hash, deps.as_bytes()]);
+    outs.push((s.rel.clone(), format::Rig2D::NAME, st, Work::Rig2d(s)));
+    // Rigged from layered art: its parts packed into a texture beside it.
+    if Document::parse(&String::from_utf8_lossy(&s.bytes)).is_ok_and(|d| autorig::is_autorig(&d)) {
+        let st = stamp(&[b"rig2d atlas", tex_desc.as_bytes(), &hash, deps.as_bytes()]);
+        outs.push((
+            autorig::atlas_id(&s.rel),
+            format::Texture::NAME,
+            st,
+            Work::Rig2dAtlas(s),
+        ));
+    }
+}
+
+fn plan_flipbook<'a>(
+    cx: &Cx<'a>,
+    state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let Cx {
+        options, tex_desc, ..
+    } = *cx;
+    let PlanState { parsed_refs, .. } = state;
+    let deps = flipbook::dependency_hashes(s);
+    assets::record_dependencies(parsed_refs, &s.rel, &deps);
+    let motion = options
+        .mesh
+        .conform
+        .as_ref()
+        .and_then(|c| c.motion.as_ref())
+        .filter(|_| !conform_off(s, options))
+        .map(|m| m.describe());
+    let st = match &motion {
+        Some(m) => stamp(&[b"flipbook", &hash, deps.as_bytes(), m.as_bytes()]),
+        None => stamp(&[b"flipbook", &hash, deps.as_bytes()]),
+    };
+    outs.push((s.rel.clone(), format::Flipbook::NAME, st, Work::Flipbook(s)));
+    // `array true`: the frames as the layers of a texture array.
+    if let Ok(sheet) = flipbook::sheet(s)
+        && sheet.array
+    {
+        let base = [
+            b"flipbook array 1".as_slice(),
+            tex_desc.as_bytes(),
+            &hash,
+            deps.as_bytes(),
+        ];
+        let sheet = Box::new(sheet);
+        for n in 0..sheet.frames.len() {
+            let st = stamp(&[&base[..], &[&(n as u32).to_le_bytes()[..]]].concat());
+            outs.push((
+                texture_array::layer_id(&flipbook::array_id(&s.rel), n),
+                format::Texture::NAME,
+                st,
+                Work::FlipbookLayer(s, sheet.clone(), n),
+            ));
+        }
+        outs.push((
+            flipbook::array_id(&s.rel),
+            format::TextureArray::NAME,
+            stamp(&base),
+            Work::FlipbookArray(s, sheet),
+        ));
+    }
+}
+
+fn plan_behaviour<'a>(
+    _cx: &Cx<'a>,
+    _state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    // The stamp covers every subtree its `use` nodes reach.
+    let deps = e6::behaviour_dependencies(s);
+    let st = stamp(&[b"behaviour", &hash, deps.as_bytes()]);
+    outs.push((
+        s.rel.clone(),
+        format::Behaviour::NAME,
+        st,
+        Work::Behaviour(s),
+    ));
+}
+
+fn plan_dialogue<'a>(
+    cx: &Cx<'a>,
+    _state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let Cx {
+        story_functions,
+        story_functions_stamp,
+        ..
+    } = *cx;
+    let st = stamp(&[b"dialogue", &hash, story_functions_stamp]);
+    outs.push((
+        s.rel.clone(),
+        format::Dialogue::NAME,
+        st,
+        Work::Dialogue(s, story_functions),
+    ));
+}
+
+fn plan_quest<'a>(
+    _cx: &Cx<'a>,
+    _state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let st = stamp(&[b"quest", &hash]);
+    outs.push((s.rel.clone(), format::Quest::NAME, st, Work::Quest(s)));
+}
+
+fn plan_strings<'a>(
+    _cx: &Cx<'a>,
+    _state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let st = stamp(&[b"strings", &hash]);
+    outs.push((s.rel.clone(), format::Strings::NAME, st, Work::Strings(s)));
+}
+
+fn plan_font_pack<'a>(
+    _cx: &Cx<'a>,
+    _state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    // The stamp covers its faces' bytes: their cmaps are the coverage.
+    let deps = font_pack::dependencies(s);
+    let st = stamp(&[b"font-pack 1", &hash, deps.as_bytes()]);
+    outs.push((s.rel.clone(), format::FontPack::NAME, st, Work::FontPack(s)));
+}
+
+fn plan_rig<'a>(
+    _cx: &Cx<'a>,
+    _state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let st = stamp(&[b"rig", &hash]);
+    outs.push((s.rel.clone(), format::Rig::NAME, st, Work::Rig(s)));
+}
+
+fn plan_motion_action<'a>(
+    _cx: &Cx<'a>,
+    _state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let st = stamp(&[b"motion-action", &hash]);
+    outs.push((
+        s.rel.clone(),
+        format::MotionAction::NAME,
+        st,
+        Work::MotionAction(s),
+    ));
+}
+
+fn plan_icons<'a>(
+    _cx: &Cx<'a>,
+    _state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    // The stamp covers every SVG the set names.
+    let deps = icons::dependencies(s);
+    let st = stamp(&[b"icons", &hash, deps.as_bytes()]);
+    outs.push((s.rel.clone(), format::Font::NAME, st, Work::Icons(s)));
+}
+
+fn plan_terrain<'a>(
+    cx: &Cx<'a>,
+    state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let Cx { known, .. } = *cx;
+    let PlanState { parsed_refs, .. } = state;
+    let deps = terrain::terrain_dependencies(s, &|id| known.contains(id));
+    assets::record_dependencies(parsed_refs, &s.rel, &deps);
+    let st = stamp(&[b"terrain 2", &hash, deps.as_bytes()]);
+    outs.push((s.rel.clone(), format::Terrain::NAME, st, Work::Terrain(s)));
+}
+
+fn plan_lightmap<'a>(
+    _cx: &Cx<'a>,
+    state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let PlanState { parsed_refs, .. } = state;
+    // The stamp covers its pages file.
+    let deps = lightmap::dependencies(s);
+    assets::record_dependencies(parsed_refs, &s.rel, &deps);
+    let st = stamp(&[b"lightmap 1", &hash, deps.as_bytes()]);
+    outs.push((s.rel.clone(), format::Lightmap::NAME, st, Work::Lightmap(s)));
+}
+
+fn plan_timeline<'a>(
+    _cx: &Cx<'a>,
+    state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let PlanState { parsed_refs, .. } = state;
+    // The stamp covers every caption file it imports.
+    let deps = timeline::dependencies(s);
+    assets::record_dependencies(parsed_refs, &s.rel, &deps);
+    let st = stamp(&[b"timeline 1", &hash, deps.as_bytes()]);
+    outs.push((s.rel.clone(), format::Timeline::NAME, st, Work::Timeline(s)));
+}
+
+fn plan_texture_array<'a>(
+    cx: &Cx<'a>,
+    state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let Cx { tex_desc, .. } = *cx;
+    let PlanState {
+        early_errors,
+        parsed_refs,
+        ..
+    } = state;
+    let text = String::from_utf8_lossy(&s.bytes);
+    let root = texture_array::assets_dir(&s.path, &s.rel);
+    match texture_array::parse(&s.rel, &text, &|p| root.join(p).is_file()) {
+        Ok(decl) => {
+            let deps = texture_array::dependencies(&root, &decl);
+            assets::record_dependencies(parsed_refs, &s.rel, &deps);
+            let base = [
+                b"texture-array 1".as_slice(),
+                tex_desc.as_bytes(),
+                &hash,
+                deps.as_bytes(),
+            ];
+            outs.push((
+                s.rel.clone(),
+                format::TextureArray::NAME,
+                stamp(&base),
+                Work::TextureArray(s, decl.clone()),
+            ));
+            for n in 0..decl.layers.len() {
+                let st = stamp(&[&base[..], &[&(n as u32).to_le_bytes()[..]]].concat());
+                outs.push((
+                    texture_array::layer_id(&s.rel, n),
+                    format::Texture::NAME,
+                    st,
+                    Work::ArrayLayer(s, decl.clone(), n),
+                ));
+            }
+        }
+        Err(e) => early_errors.push((s.rel.clone(), "texture-array", e)),
+    }
+}
+
+fn plan_video<'a>(
+    cx: &Cx<'a>,
+    state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let Cx { tex_desc, .. } = *cx;
+    let PlanState { early_errors, .. } = state;
+    let text = String::from_utf8_lossy(&s.bytes);
+    let root = texture_array::assets_dir(&s.path, &s.rel);
+    let planned = video::parse(&s.rel, &text, &|p| root.join(p).is_file()).and_then(|d| {
+        let src = root.join(&d.source);
+        let bytes = std::fs::read(&src).map_err(|e| format!("{}: {e}", src.display()))?;
+        let encoder = if d.stream {
+            video::stream_encoder()?
+        } else {
+            ""
+        };
+        let plan = video::plan(&d, video::probe(&src)?, encoder)?;
+        Ok((src, hash_bytes(&bytes), plan))
+    });
+    match planned {
+        Ok((src, src_hash, plan)) => {
+            let described = plan.describe();
+            let base = [
+                b"video 2".as_slice(),
+                tex_desc.as_bytes(),
+                &hash,
+                &src_hash.to_le_bytes(),
+                described.as_bytes(),
+            ];
+            let plan = Box::new(plan);
+            outs.push((
+                s.rel.clone(),
+                format::Video::NAME,
+                stamp(&base),
+                Work::VideoMeta(plan.clone()),
+            ));
+            if plan.decl.stream {
+                outs.push((
+                    video::stream_id(&s.rel),
+                    format::VideoStream::NAME,
+                    stamp(&[&base[..], &[b"stream".as_slice()]].concat()),
+                    Work::VideoStream(src.clone(), src_hash, plan.clone()),
+                ));
+                if let Some(size) = og_video::stream::fallback_size(plan.size) {
+                    outs.push((
+                        video::stream_fallback_id(&s.rel),
+                        format::VideoStream::NAME,
+                        stamp(&[&base[..], &[b"stream720".as_slice()]].concat()),
+                        Work::VideoStream(
+                            src.clone(),
+                            src_hash,
+                            Box::new(video::fallback_plan(&plan, size)),
+                        ),
+                    ));
+                }
+                outs.push((
+                    video::poster_id(&s.rel),
+                    format::Texture::NAME,
+                    stamp(&[&base[..], &[b"poster".as_slice()]].concat()),
+                    Work::VideoPoster(src.clone(), src_hash, plan.clone()),
+                ));
+            } else {
+                let frames = video::frames_id(&s.rel);
+                outs.push((
+                    frames.clone(),
+                    format::TextureArray::NAME,
+                    stamp(&[&base[..], &[b"array".as_slice()]].concat()),
+                    Work::VideoArray(s, plan.clone()),
+                ));
+                for n in 0..plan.frames as usize {
+                    let st = stamp(&[&base[..], &[&(n as u32).to_le_bytes()[..]]].concat());
+                    outs.push((
+                        texture_array::layer_id(&frames, n),
+                        format::Texture::NAME,
+                        st,
+                        Work::VideoFrame(src.clone(), src_hash, plan.clone(), n),
+                    ));
+                }
+            }
+            if plan.audio {
+                outs.push((
+                    video::audio_id(&s.rel),
+                    format::Sound::NAME,
+                    stamp(&[&base[..], &[b"audio".as_slice()]].concat()),
+                    Work::VideoAudio(src.clone(), plan.clone()),
+                ));
+            }
+        }
+        Err(e) => early_errors.push((s.rel.clone(), "video", e)),
+    }
+}
+
+fn plan_environment<'a>(
+    _cx: &Cx<'a>,
+    state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let PlanState { parsed_refs, .. } = state;
+    let deps = environment::environment_dependencies(s);
+    assets::record_dependencies(parsed_refs, &s.rel, &deps);
+    let st = stamp(&[b"environment 1", &hash, deps.as_bytes()]);
+    outs.push((
+        s.rel.clone(),
+        format::EnvironmentMap::NAME,
+        st,
+        Work::Environment(s),
+    ));
+}
+
+fn plan_look<'a>(
+    cx: &Cx<'a>,
+    state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let Cx {
+        known, assets_dir, ..
+    } = *cx;
+    let PlanState { parsed_refs, .. } = state;
+    let deps = look::look_dependencies(s, assets_dir, &|id| known.contains(id));
+    assets::record_dependencies(parsed_refs, &s.rel, &deps);
+    let st = stamp(&[b"look 1", &hash, deps.as_bytes()]);
+    outs.push((s.rel.clone(), format::Look::NAME, st, Work::Look(s)));
+}
+
+fn plan_palette<'a>(
+    _cx: &Cx<'a>,
+    _state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let st = stamp(&[b"palette 1", &hash]);
+    outs.push((s.rel.clone(), format::Palette::NAME, st, Work::Palette(s)));
+}
+
+fn plan_nav_mesh<'a>(
+    _cx: &Cx<'a>,
+    state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let PlanState { parsed_refs, .. } = state;
+    let deps = e6::navmesh_dependencies(s);
+    assets::record_dependencies(parsed_refs, &s.rel, &deps);
+    // Re-bake cached terrain surfaces with adaptive diagonals.
+    let st = stamp(&[b"navmesh 2", &hash, deps.as_bytes()]);
+    outs.push((s.rel.clone(), format::NavMesh::NAME, st, Work::NavMesh(s)));
+}
+
+fn plan_font<'a>(
+    cx: &Cx<'a>,
+    state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let Cx { options, .. } = *cx;
+    let PlanState { early_errors, .. } = state;
+    match font_settings(s, &options.font) {
+        Ok(f) => {
+            // "font 2": the Unicode spaces a font lacks are cooked as empty
+            // glyphs; "font 3": the field is of each glyph's outline
+            // union; "font 4": negative-bearing fill and post-sign error
+            // correction; "font 5": every face carries OpenType data
+            // for paragraph layout; "font 6": default substitutions
+            // and referenced contextual lookups; "font 7": layout-only
+            // tables without runtime outlines; "font 8": the vertical
+            // forms (`vert`, `vrt2`) of its characters; "font 9": a glyph keyed
+            // by code point and by id is one image in the atlas.
+            // Older fonts re-cook.
+            let st = stamp(&[b"font 9", f.describe().as_bytes(), &hash]);
+            outs.push((s.rel.clone(), format::Font::NAME, st, Work::Font(s, f)));
+        }
+        Err(e) => early_errors.push((s.rel.clone(), "font", e)),
+    }
+}
+
+fn plan_scene<'a>(
+    cx: &Cx<'a>,
+    state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let Cx {
+        options,
+        known,
+        prefab_texts,
+        schema_hash,
+        ..
+    } = *cx;
+    let PlanState { parsed_refs, .. } = state;
+    let text = String::from_utf8_lossy(&s.bytes);
+    // Every prefab it reaches, transitively, with its text's
+    // hash: editing a prefab re-cooks what places it.
+    let texts = |id: &str| prefab_texts.get(id).cloned();
+    let reached = prefab::reached(&text, &texts);
+    let mut refs: BTreeSet<String> = scene::references(&text).into_iter().collect();
+    let mut placed = Vec::new();
+    for id in &reached {
+        let t = prefab_texts.get(id);
+        if let Some(t) = t {
+            refs.extend(scene::references(t));
+        }
+        placed.push(format!(
+            "{id}#{}",
+            t.map_or(0, |t| hash_bytes(t.as_bytes()))
+        ));
+    }
+    parsed_refs
+        .entry(s.rel.clone())
+        .or_default()
+        .extend(refs.iter().chain(reached.iter()).cloned());
+    let refs: Vec<String> = refs
+        .into_iter()
+        .map(|r| format!("{r}={}", known.contains(&r)))
+        .collect();
+    // A scene that places no prefab keeps the stamp it had.
+    let st = if placed.is_empty() && s.kind == Kind::Scene {
+        stamp(&[b"scene", &hash, &schema_hash, refs.join("\n").as_bytes()])
+    } else {
+        stamp(&[
+            b"scene",
+            &hash,
+            &schema_hash,
+            refs.join("\n").as_bytes(),
+            placed.join("\n").as_bytes(),
+            &[options.publish as u8],
+        ])
+    };
+    outs.push((s.rel.clone(), format::Scene::NAME, st, Work::Scene(s)));
+}
+
+/// The texture cache's key for the project's outputs.
+fn project_key(
+    cook_index: &index::Index,
+    sources: &[Source],
+    texture_cache: Option<&Path>,
+) -> Option<String> {
+    texture_cache
         .and_then(|_| cook_index.content_key())
         .map(|input| {
             let dependencies: Vec<_> = sources
@@ -1921,9 +2618,30 @@ pub fn cook_project_with_texture_cache(
                     &serde_json::to_vec(&dependencies).expect("dependency strings"),
                 ],
             )
-        });
-    // Cook what is stale, in parallel; results land by plan index.
-    type Done = (Result<(Vec<u8>, Vec<String>), CookError>, f64, f64, u32);
+        })
+}
+
+/// An output's cook: its bytes and notes, how long it took, when it began
+/// and the thread that ran it.
+type Done = (Result<(Vec<u8>, Vec<String>), CookError>, f64, f64, u32);
+
+/// Cooks what is stale, in parallel; results land by plan index.
+fn execute(
+    cx: &Cx,
+    plan: &[Planned],
+    threads: usize,
+    texture_cache: Option<&Path>,
+    project_key: Option<&str>,
+    started: Instant,
+) -> Vec<Mutex<Option<Done>>> {
+    let Cx {
+        options,
+        known,
+        prefab_texts,
+        schemas,
+        budgets,
+        ..
+    } = *cx;
     let results: Vec<Mutex<Option<Done>>> = plan.iter().map(|_| Mutex::new(None)).collect();
     let todo: Vec<usize> = (0..plan.len())
         .filter(|&i| plan[i].work.is_some())
@@ -1931,17 +2649,8 @@ pub fn cook_project_with_texture_cache(
     let next = std::sync::atomic::AtomicUsize::new(0);
     std::thread::scope(|scope| {
         for worker in 0..threads.min(todo.len()) {
-            let (next, results, plan, schemas, known, todo, prefab_texts) = (
-                &next,
-                &results,
-                &plan,
-                &schemas,
-                &known,
-                &todo,
-                &prefab_texts,
-            );
-            let budgets = &budgets;
-            let project_key = project_key.as_deref();
+            let (next, results, plan, schemas, known, todo, prefab_texts) =
+                (&next, &results, plan, schemas, known, &todo, prefab_texts);
             scope.spawn(move || {
                 loop {
                     let k = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
@@ -1958,8 +2667,33 @@ pub fn cook_project_with_texture_cache(
             });
         }
     });
+    results
+}
 
-    // Assemble the report and the manifest; write what changed.
+/// The reports and each source's outputs, with the aliases resolved.
+struct Assembled {
+    reports: Vec<AssetReport>,
+    new_outputs: BTreeMap<usize, Vec<NewOutput>>,
+    // The 3D pass's lines per output: this cook's, or for an output that
+    // was up to date the ones its last cook recorded.
+    log: ConformLog,
+}
+
+/// Assembles the report and each output's manifest entry and bytes.
+fn assemble(
+    cx: &Cx,
+    plan: &[Planned],
+    results: Vec<Mutex<Option<Done>>>,
+    early_errors: Vec<EarlyError>,
+    reused_fractures: &BTreeSet<String>,
+) -> Result<Assembled, CookError> {
+    let Cx {
+        sources,
+        cooked_dir,
+        group_of,
+        old_outputs,
+        ..
+    } = *cx;
     let mut reports: Vec<AssetReport> = sources
         .iter()
         .map(|s| AssetReport {
@@ -1997,7 +2731,7 @@ pub fn cook_project_with_texture_cache(
     let mut new_outputs: BTreeMap<usize, Vec<NewOutput>> = BTreeMap::new();
     // The 3D pass's lines per output: this cook's, or for an output that
     // was up to date the ones its last cook recorded.
-    let old_log = read_conform_log(&cooked_dir);
+    let old_log = read_conform_log(cooked_dir);
     let mut log = ConformLog::new();
     for (i, p) in plan.iter().enumerate() {
         let r = &mut reports[p.source];
@@ -2043,7 +2777,7 @@ pub fn cook_project_with_texture_cache(
                 stamp: p.stamp,
                 hash,
                 bytes: size,
-                group: output_group(&p.id, &sources[p.source].rel, &group_of),
+                group: output_group(&p.id, &sources[p.source].rel, group_of),
             },
             bytes,
             OutputReport {
@@ -2088,12 +2822,40 @@ pub fn cook_project_with_texture_cache(
         }
         rep.file = m.file.clone();
     }
+    Ok(Assembled {
+        reports,
+        new_outputs,
+        log,
+    })
+}
+
+/// The manifest and the files it keeps.
+struct Written {
+    manifest: Manifest,
+    keep: BTreeSet<String>,
+}
+
+/// Writes what changed and builds the manifest.
+fn write(
+    cx: &Cx,
+    new_outputs: BTreeMap<usize, Vec<NewOutput>>,
+    reports: &mut [AssetReport],
+    old: &Manifest,
+) -> Result<Written, CookError> {
+    let Cx {
+        sources,
+        cooked_dir,
+        font_desc,
+        mesh_desc,
+        tex_desc,
+        ..
+    } = *cx;
     let mut manifest = Manifest {
         cooker: COOKER_VERSION.to_string(),
         options: BTreeMap::from([
-            ("font".to_string(), font_desc),
-            ("mesh".to_string(), mesh_desc),
-            ("texture".to_string(), tex_desc),
+            ("font".to_string(), font_desc.to_string()),
+            ("mesh".to_string(), mesh_desc.to_string()),
+            ("texture".to_string(), tex_desc.to_string()),
         ]),
         assets: Vec::new(),
         streams: Vec::new(),
@@ -2143,8 +2905,19 @@ pub fn cook_project_with_texture_cache(
     for r in reports.iter_mut().filter(|r| r.error.is_some()) {
         r.outputs.clear();
     }
-    // Each group's outputs, packed into one file the runtime fetches.
-    for (name, g) in &groups {
+    Ok(Written { manifest, keep })
+}
+
+// Each group's outputs, packed into one file the runtime fetches.
+fn pack(
+    cx: &Cx,
+    groups: &BTreeMap<String, stream::GroupDecl>,
+    written: &mut Written,
+    reports: &mut [AssetReport],
+) -> Result<(), CookError> {
+    let cooked_dir = cx.cooked_dir;
+    let Written { manifest, keep } = written;
+    for (name, g) in groups {
         let mut files: Vec<(String, Vec<u8>)> = Vec::new();
         let mut memory = 0u64;
         let mut sounds = Vec::new();
@@ -2200,10 +2973,34 @@ pub fn cook_project_with_texture_cache(
         }
         manifest.streams.push(entry);
     }
+    Ok(())
+}
+
+/// Writes the manifest, the motion model, the asset index, the publish plan,
+/// the cook times and the conform log, and deletes what is no longer an
+/// output. Returns the motion model's warnings.
+fn finish(
+    cx: &Cx,
+    old: &Manifest,
+    written: Written,
+    parsed_refs: &BTreeMap<String, BTreeSet<String>>,
+    reports: &mut [AssetReport],
+    log: &ConformLog,
+) -> Result<(Vec<String>, Vec<String>), CookError> {
+    let Cx {
+        root,
+        sources,
+        cooked_dir,
+        ..
+    } = *cx;
+    let Written {
+        mut manifest,
+        mut keep,
+    } = written;
     // og.motion's model, for a project whose code uses it (in the manifest,
     // outside its outputs: never in the boot bundle).
     let mut motion_warnings = Vec::new();
-    manifest.motion = motion::cook(root, &cooked_dir, &mut keep, &mut motion_warnings)?;
+    manifest.motion = motion::cook(root, cooked_dir, &mut keep, &mut motion_warnings)?;
     let mut removed = Vec::new();
     let old_files = old
         .outputs()
@@ -2217,7 +3014,7 @@ pub fn cook_project_with_texture_cache(
             removed.push(f.clone());
         }
     }
-    std::fs::create_dir_all(&cooked_dir)
+    std::fs::create_dir_all(cooked_dir)
         .map_err(|e| CookError(format!("{}: {e}", cooked_dir.display())))?;
     let text = manifest.to_text();
     let manifest_path = cooked_dir.join(MANIFEST);
@@ -2225,12 +3022,12 @@ pub fn cook_project_with_texture_cache(
         std::fs::write(&manifest_path, &text)
             .map_err(|e| CookError(format!("{}: {e}", manifest_path.display())))?;
     }
-    let index = assets::build(root, &manifest, &sources, &parsed_refs)?;
-    index.write(&cooked_dir)?;
+    let index = assets::build(root, &manifest, sources, parsed_refs)?;
+    index.write(cooked_dir)?;
     index.write_publish_plan(root, &manifest)?;
     // Each asset's cook time: this run's (its outputs' summed) when it
     // cooked, else the one recorded; written only when one changed.
-    let old_times = CookTimes::read(&cooked_dir);
+    let old_times = CookTimes::read(cooked_dir);
     let mut times = CookTimes::default();
     for r in reports.iter_mut().filter(|r| r.error.is_none()) {
         let now: Vec<f64> = r
@@ -2255,7 +3052,7 @@ pub fn cook_project_with_texture_cache(
                 .map_err(|e| CookError(format!("{}: {e}", log_path.display())))?;
         }
     } else {
-        let text = conform_log_text(&log);
+        let text = conform_log_text(log);
         if std::fs::read_to_string(&log_path).ok().as_deref() != Some(text.as_str()) {
             std::fs::write(&log_path, text)
                 .map_err(|e| CookError(format!("{}: {e}", log_path.display())))?;
@@ -2266,23 +3063,43 @@ pub fn cook_project_with_texture_cache(
         std::fs::write(&path, times.to_text())
             .map_err(|e| CookError(format!("{}: {e}", path.display())))?;
     }
+    Ok((removed, motion_warnings))
+}
+
+/// The cook's warnings and the art contract's entries: diagnostics describe
+/// source assets and never change their cooked blobs.
+fn diagnose(
+    cx: &Cx,
+    plan: &[Planned],
+    reports: &mut [AssetReport],
+    log: &ConformLog,
+    contract: Option<&(String, crate::look::LookFile)>,
+    mut conformed: Vec<ConformEntry>,
+    mut warnings: Vec<String>,
+) -> (Vec<ConformEntry>, Vec<String>) {
+    let Cx {
+        sources,
+        assets_dir,
+        options,
+        story_functions,
+        ..
+    } = *cx;
     // Across the string tables: every locale has every key, with its arguments.
     let tables: Vec<(&str, &[u8])> = sources
         .iter()
         .filter(|s| s.kind == Kind::Strings)
         .map(|s| (s.rel.as_str(), s.bytes.as_slice()))
         .collect();
-    let mut warnings = motion_warnings;
     // Diagnostics describe source assets, never change their cooked blobs.
     // Run on cached cooks as well so a warning does not disappear on rerun.
-    for (source, report) in sources.iter().zip(&mut reports) {
+    for (source, report) in sources.iter().zip(reports.iter_mut()) {
         if report.error.is_some() {
             continue;
         }
         if let Some(gltf) = &source.gltf {
             let notes = anim_settings(source).and_then(|settings| {
                 let mut notes =
-                    model::skin_report::report(gltf, &assets_dir, settings.rig.as_deref())?;
+                    model::skin_report::report(gltf, assets_dir, settings.rig.as_deref())?;
                 notes.extend(gltf.emissive_warnings()?);
                 Ok(notes)
             });
@@ -2315,7 +3132,7 @@ pub fn cook_project_with_texture_cache(
         .filter(|s| matches!(s.kind, Kind::Dialogue | Kind::Quest))
         .map(|s| (s.rel.as_str(), s.bytes.as_slice()))
         .collect();
-    for (rel, what) in e6::check_story_keys(&tables, &stories, &story_functions) {
+    for (rel, what) in e6::check_story_keys(&tables, &stories, story_functions) {
         warnings.push(format!("assets/{rel}: {what}"));
         if let Some(r) = reports.iter_mut().find(|r| r.source == rel) {
             r.notes.push(what);
@@ -2376,10 +3193,10 @@ pub fn cook_project_with_texture_cache(
             }
         }
     }
-    efk::warnings(&sources, &mut reports, &mut warnings);
+    efk::warnings(sources, reports, &mut warnings);
     // The project's look carries the art contract: say which of its
     // resources it sets (conformance to them is docs/art.md §2.3).
-    if let Some((id, c)) = &contract
+    if let Some((id, c)) = contract
         && let Some(r) = reports.iter_mut().find(|r| &r.source == id)
     {
         let set = c.resources();
@@ -2394,7 +3211,7 @@ pub fn cook_project_with_texture_cache(
     // dropped past ArtMotion.maxFrames) are the cook's too.
     let failed = |rel: &str| reports.iter().any(|r| r.source == rel && r.error.is_some());
     let mut mesh: BTreeMap<&str, Vec<&str>> = BTreeMap::new();
-    for p in &plan {
+    for p in plan {
         if let Some(w) = log.get(&(p.id.clone(), p.stamp)) {
             mesh.entry(sources[p.source].rel.as_str())
                 .or_default()
@@ -2460,18 +3277,17 @@ pub fn cook_project_with_texture_cache(
                 .push(format!("art contract: {}: {}", e.action.name(), e.what));
         }
     }
-    reports.sort_by(|a, b| a.source.cmp(&b.source));
-    let report = Report {
-        conform: conformed,
-        warnings,
-        root: root.display().to_string(),
-        cooker: COOKER_VERSION.to_string(),
-        texture_encoder: texture_encoder.unwrap_or_else(|e| format!("none ({e})")),
-        assets: reports,
-        ignored,
-        removed,
-        elapsed_ms: started.elapsed().as_secs_f64() * 1000.0,
-    };
+    (conformed, warnings)
+}
+
+/// Saves the cook index and collects the texture cache's garbage.
+fn save(
+    cook_index: &index::Index,
+    report: &Report,
+    sources: &[Source],
+    assets_dir: &Path,
+    texture_cache: Option<&Path>,
+) {
     let assets_path = assets_dir.canonicalize().ok();
     let bounded = sources.iter().all(|s| {
         s.kind != Kind::Video
@@ -2479,7 +3295,7 @@ pub fn cook_project_with_texture_cache(
                 g.external.iter().all(|(name, _)| {
                     s.path
                         .parent()
-                        .unwrap_or(&assets_dir)
+                        .unwrap_or(assets_dir)
                         .join(name)
                         .canonicalize()
                         .ok()
@@ -2488,11 +3304,10 @@ pub fn cook_project_with_texture_cache(
                 })
             })
     });
-    cook_index.save(&report, bounded);
+    cook_index.save(report, bounded);
     if let Some(path) = texture_cache {
         let _ = cache::Store::new(path.to_owned()).gc_if_due(cache::max_bytes());
     }
-    Ok(report)
 }
 
 type OutputBytes = std::sync::Arc<[u8]>;
