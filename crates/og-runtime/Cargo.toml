@@ -39,7 +39,7 @@ og-net = { path = "../og-net" }
 og-video = { path = "../og-video", default-features = false, optional = true }
 # og.motion: the motion model on the renderer's device (GPU only, no `reference`).
 og-motion = { path = "../og-motion" }
-og-destruct = { path = "../og-destruct" }
+og-destruct = { path = "../og-destruct", optional = true }
 bincode = "1.3.3"
 
 # og.load.imageData's decoder natively (PNG and JPEG, on a worker thread),
@@ -52,7 +52,7 @@ og-video = { path = "../og-video", optional = true }
 image = { workspace = true, features = ["exr"] }
 
 [features]
-default = ["shaping", "physics2d", "physics3d", "story", "video"]
+default = ["shaping", "physics2d", "physics3d", "story", "video", "destruction"]
 # A published game: the probe keeps only its player-facing members, the
 # renderer times no pass on the GPU (og-render's `publish`), and the
 # reflected and record field docs are empty (og-core's and og-api's
@@ -81,6 +81,9 @@ story = ["dep:og-story"]
 # og.video and a document's <video> and <audio> (og-video: the streamed
 # decode plan, natively its rav1d decoder; src/video.rs).
 video = ["dep:og-video"]
+# og.destruction: prefractured props and pixel terrain (og-destruct;
+# src/destruction.rs, src/destruction2d.rs).
+destruction = ["dep:og-destruct"]
 
 [dev-dependencies]
 # tests/stream_release.rs cooks a small project with streaming groups.
