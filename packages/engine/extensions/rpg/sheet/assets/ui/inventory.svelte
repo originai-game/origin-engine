@@ -5,7 +5,7 @@
 <div id="Page" class="rpg-ground">
   <div id="Bag"><RpgBackpack title={$bagTitle} tabs={$bagTabs} tab={$bagTab} items={$bagItems} selected={$bagSelected} weight={$bagWeight} load={$bagLoad} gold={$bagGold} /></div>
   <div id="Card"><RpgItemCard name={$cardName} icon={$cardIcon} art={$cardArt} rarity={$cardRarity} kind={$cardKind} lead={$cardLead} stats={$cardStats} lore={$cardLore} primary={$cardPrimary} secondary={$cardSecondary} canPrimary={true} canSecondary={true} /></div>
-  <div id="Hero"><RpgCharacter name={$charName} line={$charLine} portrait={$charPortrait} figure={$charFigure} slots={$charSlots} selected={$charSelected} attributes={$charAttributes} /></div>
+  <div id="Hero"><RpgCharacter title="" name={$charName} line={$charLine} portrait={$charPortrait} figure={$charFigure} slots={$charSlots} selected={$charSelected} attributes={$charAttributes} /></div>
 </div>
 
 <style>

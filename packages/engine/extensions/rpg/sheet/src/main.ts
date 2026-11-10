@@ -9,7 +9,7 @@
 // reduced:<on|off>.
 
 import { og, type World } from "@origingame/engine";
-import { ITEM_NAMES, INK_NAMES, INVENTORY, JOURNAL, PICTURES } from "./fixtures.ts";
+import { EQUIPMENT, ITEM_NAMES, INK_NAMES, INVENTORY, JOURNAL, PICTURES } from "./fixtures.ts";
 
 const PAGES = ["inventory", "journal", "equipment", "explore", "combat"] as const;
 const STYLES = ["fantasy"] as const;
@@ -27,6 +27,14 @@ const DOCUMENTS = [
   "ui-kits/rpg/party.svelte",
   "ui-kits/rpg/turn-order.svelte",
   "ui-kits/rpg/quest-tracker.svelte",
+  "ui-kits/rpg/vitals.svelte",
+  "ui-kits/rpg/action-bar.svelte",
+  "ui-kits/rpg/combat-log.svelte",
+  "ui-kits/rpg/enemy-info.svelte",
+  "ui-kits/rpg/commands.svelte",
+  "ui-kits/rpg/menu-bar.svelte",
+  "ui-kits/rpg/stats.svelte",
+  "ui/minimap.svelte",
   "ui/inventory.svelte",
   "ui/journal.svelte",
   "ui/equipment.svelte",
@@ -58,7 +66,7 @@ let pictures: Record<string, number> = {};
 
 function show(world: World): void {
   const scope = og.ui.scope(world, "sheet");
-  const data = { ...INVENTORY(pictures), ...JOURNAL(pictures), page: "inventory" };
+  const data = { ...INVENTORY(pictures), ...JOURNAL(pictures), ...EQUIPMENT(), page: "inventory" };
   const stores = Object.fromEntries(Object.entries(data).map(([k, v]) =>
     [k, Array.isArray(v) ? scope.collection(k, v as { id: string }[], { key: "id" }) : scope.writable(k, v)]));
   must(scope.mount("sheet", "RpgSheet", stores), "mount");
