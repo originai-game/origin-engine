@@ -7,6 +7,53 @@ use super::{NONE, UiDocument, syntax::Attr};
 use crate::bind::{AttrOp, AttrTest, Expr, InteractionState, Op};
 use cssparser::{ParseError, Parser, Token};
 
+/// The authored attribute as it exists in HTML, shared by compiled
+/// predicates and the retained selector tree. Bound boolean attributes
+/// are present with an empty value when true and absent when false.
+pub(super) fn attribute_value(attr: &Attr) -> Result<Expr, super::syntax::Error> {
+    if !attr.bound && !attr.name.starts_with("class:") {
+        return Ok(Expr::Lit(attr.value.clone().into()));
+    }
+    let value = super::svelte::expression(&attr.value, attr.at)?;
+    Ok(
+        if matches!(
+            attr.name.as_str(),
+            "allowfullscreen"
+                | "async"
+                | "autofocus"
+                | "autoplay"
+                | "checked"
+                | "controls"
+                | "default"
+                | "defer"
+                | "disabled"
+                | "formnovalidate"
+                | "hidden"
+                | "inert"
+                | "ismap"
+                | "loop"
+                | "multiple"
+                | "muted"
+                | "nomodule"
+                | "novalidate"
+                | "open"
+                | "playsinline"
+                | "readonly"
+                | "required"
+                | "reversed"
+                | "selected"
+        ) {
+            Expr::If(
+                Box::new(value),
+                Box::new(Expr::Lit(String::new().into())),
+                Box::new(Expr::Lit(serde_json::Value::Null)),
+            )
+        } else {
+            value
+        },
+    )
+}
+
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Specificity(pub u32, pub u32, pub u32);
 
@@ -250,33 +297,20 @@ impl Selector {
                     Simple::Attribute { name, test } => {
                         match attrs.iter().find(|a| a.name == *name) {
                             None => Expr::Lit(false.into()),
-                            Some(attr) => match test {
-                                None => {
-                                    if attr.bound
-                                        && matches!(
-                                            name.as_str(),
-                                            "disabled" | "checked" | "selected"
-                                        )
-                                    {
-                                        expression(attr)?
-                                    } else if attr.bound {
-                                        Expr::Bin(
-                                            Op::Ne,
-                                            Box::new(expression(attr)?),
-                                            Box::new(Expr::Lit(serde_json::Value::Null)),
-                                        )
-                                    } else {
-                                        Expr::Lit(true.into())
-                                    }
+                            Some(attr) if !attr.bound => {
+                                Expr::Lit(test.as_ref().is_none_or(|t| t.test(&attr.value)).into())
+                            }
+                            Some(attr) => {
+                                let value = attribute_value(attr).map_err(|(_, error)| error)?;
+                                match test {
+                                    None => Expr::Bin(
+                                        Op::Ne,
+                                        Box::new(value),
+                                        Box::new(Expr::Lit(serde_json::Value::Null)),
+                                    ),
+                                    Some(test) => Expr::AttrTest(Box::new(value), test.clone()),
                                 }
-                                Some(test) => {
-                                    if attr.bound {
-                                        Expr::AttrTest(Box::new(expression(attr)?), test.clone())
-                                    } else {
-                                        Expr::Lit(test.test(&attr.value).into())
-                                    }
-                                }
-                            },
+                            }
                         }
                     }
                     Simple::Lang(ranges) => match inherited(doc, elements, index, "lang") {

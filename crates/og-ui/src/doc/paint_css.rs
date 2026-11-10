@@ -66,7 +66,7 @@ enum Extent {
 pub(crate) struct CssGradient {
     shape: Shape,
     repeating: bool,
-    stops: Vec<(ColorRef, Option<Pos>)>,
+    stops: Vec<(ColorRef, Option<crate::Length>)>,
 }
 
 /// A layer's image as drawn: a gradient, or a texture region.
@@ -609,14 +609,24 @@ fn gradient_of(kind: &str, repeating: bool, args: &[Vec<Tok>]) -> Result<CssGrad
     for s in stops {
         let (c, rest) = s.split_first().ok_or("an empty colour stop")?;
         let c = color(c)?;
-        let at = |t: &Tok| -> Result<Pos, String> {
+        let at = |t: &Tok| -> Result<crate::Length, String> {
             if conic {
-                Ok(match number(t)? {
-                    (v, "%") => Pos::Frac(v / 100.0),
-                    _ => Pos::Frac(angle(t)? / (2.0 * PI)),
+                Ok(crate::Length {
+                    pct: match number(t)? {
+                        (v, "%") => v / 100.0,
+                        _ => angle(t)? / (2.0 * PI),
+                    },
+                    px: 0.0,
                 })
             } else {
-                pos(t)
+                let [pct, px, em] = super::css::want_lin(t)?;
+                if em != 0.0 {
+                    return Err("a gradient stop needs resolved px and % lengths".into());
+                }
+                Ok(crate::Length {
+                    pct: pct as f32,
+                    px: px as f32,
+                })
             }
         };
         match rest {
@@ -2450,7 +2460,7 @@ impl CssGradient {
         let mut offsets: Vec<Option<f32>> = self
             .stops
             .iter()
-            .map(|(_, p)| p.map(|p| p.at(length) / length))
+            .map(|(_, p)| p.map(|p| p.of(length) / length))
             .collect();
         fix_stops(&mut offsets);
         let offsets = offsets.into_iter().map(|o| o.unwrap_or(0.0));

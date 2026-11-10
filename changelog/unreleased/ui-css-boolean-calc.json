@@ -1,0 +1,18 @@
+{
+  "fixed": [
+    {
+      "member": "ui.css",
+      "summary": "Bound false HTML boolean attributes are absent from attribute selectors in both document builders; true values are present with an empty string. Data and ARIA false values remain selector-visible. Retained :default follows the checked attribute's presence."
+    },
+    {
+      "member": "ui.css",
+      "summary": "Linear and radial gradient colour stops accept reduced calc() sums of percentages and pixels, including mask-image fades with a fixed pixel tail."
+    }
+  ],
+  "added": [
+    {
+      "member": "ui.css",
+      "summary": "The UI guide explains existing root safe-area padding versus viewport-relative env() values and fixed viewport-page padding, backed by computed output tests."
+    }
+  ]
+}

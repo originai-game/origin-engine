@@ -71,6 +71,8 @@ proof("nth-child nth-child-of empty", "documents", "pushed_screens_match_sibling
       "Computed widths/heights after keyed reorder and conditional removal prove filtered nth-child, nth-last-child, sibling and empty matching.")
 proof("custom-properties", "custom_properties", "bound_custom_properties_feed_the_cascade",
       "Computed sizes follow bound/inherited variables, important precedence, null fallback and keyed insertion.")
+proof("safe-area-inset", "custom_properties", "safe_area_insets_clear_the_hosts_covered_control",
+      "Computed fixed and normal-flow positions prove viewport-relative env values, the engine root's existing safe-area padding, and covered-control inset updates in portrait/landscape. Insets do not subtract ancestor padding.")
 proof("calc min-max-clamp attr round-mod-rem em-unit lh", "custom_properties", "calc_reduces_once_its_variables_are_known",
       "Computed lengths after variable substitution, typed attr updates/fallbacks, round(down), min/max/clamp and em/lh units. mod/rem are not covered by this round proof.")
 proof("borders outlines", "box_decor", "borders_pad_the_box_and_outlines_take_no_room",
@@ -87,6 +89,7 @@ proof("filter svg-filters", "css_filters", "css_filters_match_their_reference_fr
       "Metal references at 1280/390 compare SVG filter graphs, primitive tiles and CSS function/url composition; this does not prove native glass backdrop chains.")
 
 MISSING = {
+    "default": "documents::boolean_attribute_selectors_follow_svelte_presence proves retained :default follows false/present checked attributes. The immediate builder does not expose :default state; full support is missing.",
     "gradients": "Metal pixel proofs cover nonzero repeating intervals and coincident stops (css_paint::repeating_gradients_repeat_the_stop_interval), and out-of-range non-repeating linear/radial/conic stops (css_paint::nonrepeating_gradients_keep_stops_outside_the_image). Full feature remains missing: subpixel periods and unbounded stop counts are not proved.",
     "image-set": "URL rewriting descends into image-set, but image candidate selection has no implementation/output proof.",
     "interpolate-size": "No intrinsic-size interpolation implementation or output proof.",

@@ -121,6 +121,12 @@ writer. The game's art-contract measurements remain available through
 - Read a named store with `{$gold}` or `disabled={$gold < 10}`. Use
   `bind:value={$volume}` for two-way controls. Ordinary attribute bindings
   never write. `onclick={buy}` names an action supplied by the game.
+- Normal-flow pages already sit inside the engine root's hardware safe
+  area. Use ordinary padding there; adding `env(safe-area-inset-top)`
+  adds the top inset a second time. For a page whose background reaches
+  the viewport edges, use `position: fixed; inset: 0` and apply the
+  safe-area `env()` values once in its padding. These viewport-relative
+  values also account for the host's covered Back control.
 - Controls are HTML's, with a few `-og-` properties where HTML has none:
   - `<button data-hold="1200" onhold={confirm}>` fires after a held press
     (Enter, Space, a pad's A, or its `data-action`'s input hold it too) and

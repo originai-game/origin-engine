@@ -736,6 +736,18 @@ HUD insets, so it is clear of Back at every corner and inside the band:
 calc(env(-og-hud-inset-top) + 16px)`; full-screen art and dialogs read
 the safe-area insets. Any other name takes its fallback. A change to the safe area, the covered region, the HUD band or
 the small or large viewport re-resolves the elements that read them.
+
+The engine root already pads normal-flow content by `Viewport.safe_area`.
+With a 47px top inset, an in-flow page with `padding: 8px` starts its content
+55px below the viewport top. Adding `env(safe-area-inset-top)` starts
+content at 102px. Environment values measure from the viewport edge, as
+[CSS Environment Variables specifies](https://drafts.csswg.org/css-env-1/#safe-area-insets),
+and do not subtract ancestor padding. A full-viewport page with
+`position: fixed; inset: 0` can apply the safe-area environment values
+once through its own padding. This also clears the host's covered control
+through the covered-region calculation above. Plain padding inside normal flow
+uses the hardware safe area only, not the covered-control inset.
+
 `attr(data-size px, 4px)` reads the element's attribute (CSS Values 5):
 untyped, it is a string; `number`, a unit keyword or `type(…)` make it a
 number, and a missing or non-numeric attribute takes the fallback. HTML's
@@ -3031,7 +3043,7 @@ Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document dr
 | `custom-media-queries` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `custom-properties` | Widely | Supported (scope →) | Pending parts-as-nodes | [`custom_properties::bound_custom_properties_feed_the_cascade`](../crates/og-ui/tests/custom_properties.rs). Computed sizes follow bound/inherited variables, important precedence, null fallback and keyed insertion. |
 | `customizable-select` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
-| `default` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `default` | Widely | Missing | Pending parts-as-nodes | documents::boolean_attribute_selectors_follow_svelte_presence proves retained :default follows false/present checked attributes. The immediate builder does not expose :default state; full support is missing. |
 | `details-content` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `device-posture` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `device-queries` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
@@ -3254,7 +3266,7 @@ Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document dr
 | `ruby-align` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `ruby-overhang` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `ruby-position` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
-| `safe-area-inset` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `safe-area-inset` | Widely | Supported (scope →) | Pending parts-as-nodes | [`custom_properties::safe_area_insets_clear_the_hosts_covered_control`](../crates/og-ui/tests/custom_properties.rs). Computed fixed and normal-flow positions prove viewport-relative env values, the engine root's existing safe-area padding, and covered-control inset updates in portrait/landscape. Insets do not subtract ancestor padding. |
 | `scope` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `scope-pseudo` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `scripting` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |

@@ -883,7 +883,7 @@ impl RetainedHost {
         let authored = |name: &str| {
             node.selector_attrs
                 .iter()
-                .any(|(a, e)| a == name && !matches!(e, crate::bind::Expr::Lit(Value::Bool(false))))
+                .any(|(a, e)| a == name && !build.eval(e).is_null())
         };
         for (state, enabled) in [
             (Disabled, disabled),
@@ -2974,7 +2974,10 @@ mod tests {
             let t = ui.mounted_topology();
             let root = t.child_at(None, 0).unwrap();
             let choice = t.node(t.child_at(Some(root), 0).unwrap()).unwrap();
-            assert_eq!(choice.attributes["checked"], json!(checked));
+            assert_eq!(
+                choice.attributes["checked"],
+                if checked { json!("") } else { Value::Null }
+            );
             assert_eq!(
                 choice
                     .states

@@ -350,6 +350,54 @@ fn lexical_css_inherits_computed_values_and_cascades_before_substitution() {
 }
 
 #[test]
+fn boolean_attribute_selectors_follow_svelte_presence() {
+    let source = r#"<meta name="component" content="t">
+<div>
+<div id="Shown" hidden={false}>show</div><div id="Hidden" hidden={true}>hide</div>
+<button id="Disabled" disabled={$on}>button</button>
+<input id="Checked" type="checkbox" checked={$on}/>
+<details id="Open" open={$on}><summary>details</summary></details>
+<div id="Data" data-value={false} aria-atomic={false}></div>
+<div id="Ancestor"><button disabled={$on}>child</button></div>
+</div>
+<style>
+#Shown, #Hidden { height: 20px; }
+[hidden] { display: none; }
+#Disabled, #Checked, #Open, #Data, #Ancestor { width: 100px; min-width: 0; }
+#Disabled[disabled], #Checked[checked], #Open[open], #Data[data-value="false"][aria-atomic="false"], #Ancestor:has(> [disabled]) { width: 120px; }
+#Disabled[disabled="false"], #Checked[checked="false"], #Open[open="false"] { width: 190px; }
+#Checked { height: 24px; min-height: 0; }
+#Checked:default { height: 40px; }
+</style>"#;
+    crate::html_text::both(source, &[("on", json!(false))], |d| {
+        assert!(d.el("Shown").is_some(), "false hidden is absent");
+        assert!(d.el("Hidden").is_none(), "true hidden is present");
+        assert_eq!(
+            d.get("Data").width,
+            120.0,
+            "data false is not a boolean attribute"
+        );
+        for on in [false, true, false] {
+            d.set("on", json!(on));
+            for id in ["Disabled", "Checked", "Open", "Ancestor"] {
+                assert_eq!(
+                    d.get(id).width,
+                    if on { 120.0 } else { 100.0 },
+                    "{id}, on={on}"
+                );
+            }
+            if d.mounted {
+                assert_eq!(
+                    d.get("Checked").height,
+                    if on { 40.0 } else { 24.0 },
+                    ":default on={on}"
+                );
+            }
+        }
+    });
+}
+
+#[test]
 fn ancestor_selectors_read_the_matched_nodes_state() {
     use og_ui::bind::{Env, InteractionState};
     struct States(usize, InteractionState);

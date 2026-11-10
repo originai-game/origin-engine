@@ -149,8 +149,15 @@ fn safe_area_insets_clear_the_hosts_covered_control() {
     let text = r#"<meta name="component" content="t">
 <div><div id="Hud">
   <div id="TL"></div><div id="BL"></div><div id="HR"></div>
-</div></div>
+</div><div id="Flow"><div id="Plain"><div id="PlainChild"></div></div><div id="Padded"><div id="PaddedChild"></div></div></div><div id="FixedPage"><div id="FixedChild"></div></div></div>
 <style>
+#Flow { display: flex; }
+#Plain, #Padded { width: 100px; }
+#Plain { padding-top: 8px; }
+#Padded { padding-top: calc(env(safe-area-inset-top) + 8px); }
+#PlainChild, #PaddedChild { height: 10px; }
+#FixedPage { position: fixed; inset: 0; padding-top: calc(env(safe-area-inset-top) + 8px); }
+#FixedChild { width: 10px; height: 10px; }
 #TL { position: fixed; left: env(safe-area-inset-left); top: env(safe-area-inset-top); width: 100px; height: 20px; }
 #BL { position: fixed; left: max(8px, env(safe-area-inset-left)); bottom: calc(env(safe-area-inset-bottom) + 4px); width: 100px; height: 20px; }
 #HR { position: fixed; right: calc(env(-og-hud-inset-right) + 24px); top: env(-og-hud-inset-top); width: 10px; height: 10px; }
@@ -184,6 +191,29 @@ fn safe_area_insets_clear_the_hosts_covered_control() {
             right: 0.0,
             bottom: 34.0,
         };
+        d.viewport = phone;
+        d.step(InputFrame::default());
+        assert_eq!(
+            d.get("Flow").y,
+            47.0,
+            "the host root already pads normal flow"
+        );
+        assert_eq!(d.get("PlainChild").y, 55.0);
+        assert_eq!(
+            d.get("FixedChild").y,
+            55.0,
+            "a viewport page applies the inset once"
+        );
+        assert_eq!(
+            d.get("PaddedChild").y,
+            102.0,
+            "env is viewport-relative, not the remaining inset after ancestor padding"
+        );
+        assert_eq!(
+            d.get("TL").y,
+            47.0,
+            "fixed positioning starts at the viewport"
+        );
         phone.covered = Rect::new(12.0, 59.0, 40.0, 40.0);
         d.viewport = phone;
         d.step(InputFrame::default());
@@ -191,6 +221,11 @@ fn safe_area_insets_clear_the_hosts_covered_control() {
             (d.get("TL").x, d.get("TL").y),
             (0.0, 99.0),
             "portrait: below it"
+        );
+        assert_eq!(
+            d.get("FixedChild").y,
+            107.0,
+            "the viewport page also clears the covered control"
         );
         assert_eq!(
             (d.get("BL").x, d.get("BL").y),

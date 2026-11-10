@@ -1408,11 +1408,7 @@ impl Parser {
             .iter()
             .filter(|a| !a.name.starts_with("on") && !directive_name(&a.name))
         {
-            let value = if attr.bound || attr.name.starts_with("class:") {
-                expression(&attr.value, attr.at)?
-            } else {
-                Expr::Lit(attr.value.clone().into())
-            };
+            let value = super::selectors::attribute_value(attr)?;
             self.doc.nodes[i]
                 .selector_attrs
                 .push((attr.name.clone(), value));

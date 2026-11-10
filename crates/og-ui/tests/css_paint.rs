@@ -315,8 +315,8 @@ fn nonrepeating_gradients_keep_stops_outside_the_image() {
 <style>
 div { margin: 0; }
 #negative, #beyond, #radial, #conic { width: 128px; height: 128px; }
-#negative { background: linear-gradient(to right, black -128px, white 128px); }
-#beyond { background: linear-gradient(to right, black 0px, white 256px); }
+#negative { background: linear-gradient(to right, black calc(0% - 128px), white 128px); }
+#beyond { background: linear-gradient(to right, black 0px, white calc(100% + 128px)); }
 #radial { background: radial-gradient(circle at 0% 50%, black -64px, white 64px); }
 #conic { background: conic-gradient(black -1turn, white 1turn); }
 </style>"##;
@@ -408,7 +408,7 @@ fn masks_hide_invisible_boxes_and_fade_image_content() {
 #Root { width: 128px; height: 512px; background: white; }
 #Hidden, #Visible, #Image, #Parent { position: absolute; left: 0; width: 128px; height: 128px; mask-image: linear-gradient(90deg, #0000, #000); }
 #Hidden { top: 0; background: black; visibility: hidden; }
-#Visible { top: 128px; background: black; }
+#Visible { top: 128px; background: black; mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 36px), #0000 100%); }
 #Image { top: 256px; opacity: 0.5; object-fit: cover; }
 #Parent { top: 384px; background: red; visibility: hidden; }
 #Child { width: 128px; height: 128px; background: blue; visibility: visible; }
@@ -453,8 +453,10 @@ fn masks_hide_invisible_boxes_and_fade_image_content() {
     let child = [rgb(4, 448), rgb(124, 448)];
     assert!(
         hidden.iter().all(|c| c.iter().all(|v| *v > 248))
-            && div[0][1] > 235
-            && div[1][1] < 90
+            && div[0][1] < 8
+            && div[1][1] > 235
+            && rgb(90, 192)[1] < 8
+            && (180..=200).contains(&rgb(110, 192)[1])
             && img[0][1] > 235
             && img[1][1] < 205
             && child[0][0] > 235
