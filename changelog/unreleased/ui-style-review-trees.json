@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "ui.style",
+      "summary": "Built-in style discovery excludes tests, references and captures directories at every depth while retaining nested art assets."
+    }
+  ]
+}

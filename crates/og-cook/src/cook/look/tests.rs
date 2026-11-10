@@ -417,8 +417,12 @@ fn shared_style_assets_are_read_from_the_checkout() {
     let ids: Vec<&str> = styles().iter().map(StyleFile::id).collect();
     assert!(ids.contains(&"@styles/shared/Cinzel-Bold.ttf"));
     assert!(
-        !ids.iter()
-            .any(|id| id.contains("/art/") || id.ends_with(".md") || id.ends_with("OFL.txt")),
+        !ids.iter().any(|id| {
+            id.split('/')
+                .any(|part| matches!(part, "tests" | "references" | "captures"))
+                || id.ends_with(".md")
+                || id.ends_with("OFL.txt")
+        }),
         "{ids:?}"
     );
     let font = styles()

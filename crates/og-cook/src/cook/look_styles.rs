@@ -93,6 +93,7 @@ fn files(dir: &Path) -> Vec<(String, String, PathBuf)> {
             .filter(|e| e.file_type().is_ok_and(|t| t.is_dir() == want_dir))
             .map(|e| e.file_name().to_string_lossy().into_owned())
             .filter(|n| !n.starts_with('.'))
+            .filter(|n| !want_dir || !matches!(n.as_str(), "tests" | "references" | "captures"))
             .collect();
         out.sort();
         out
@@ -206,4 +207,28 @@ pub fn styles() -> &'static [StyleFile] {
 /// The built-in styles' licence files and art requests, sorted by id.
 pub fn style_licences() -> &'static [StyleFile] {
     &table().licences
+}
+
+#[test]
+fn pack_files_keep_nested_art_but_exclude_review_trees() {
+    let root = super::test_dir::TempDir::new("style-files");
+    for name in [
+        "fantasy/base.css",
+        "fantasy/art/coin.svg",
+        "fantasy/tests/test.css",
+        "fantasy/art/references/coin.png",
+        "fantasy/captures/sheet.png",
+        "tests/clean/sheet.png",
+        "references/fantasy/sheet.png",
+        "captures/fantasy/sheet.png",
+    ] {
+        let path = root.join(name);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, "fixture").unwrap();
+    }
+    let paths: Vec<_> = files(&root)
+        .into_iter()
+        .map(|(pack, file, _)| format!("{pack}/{file}"))
+        .collect();
+    assert_eq!(paths, ["fantasy/art/coin.svg", "fantasy/base.css"]);
 }
