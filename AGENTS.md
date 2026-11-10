@@ -28,6 +28,9 @@ status `docs/roadmap.md`. Platform contracts implemented here:
   - `packages/knowledge/scripts/lib.ts`: `payload(roots: Roots): PayloadFile[]`,
     `defaultRoots(pkg?: string): Roots`, `PayloadFile { path; source; bytes;
     symlink }`, `Roots { pkg; template; engine }`.
+  - `packages/engine/src/provider.ts` (`@origingame/engine/provider`): the
+    platform and room provider contract and `PROVIDER_VERSION`
+    (`docs/design.md` §2.8 Providers).
   - `packages/knowledge/scripts/brief.ts`: `artBrief`, `readLook`,
     `presetLook` (re-exported by `@origingame/create-game`; `docs/art.md` §2.2).
 - The engine ships no skills. What a game author needs beyond a signature
@@ -80,6 +83,11 @@ status `docs/roadmap.md`. Platform contracts implemented here:
 - **The API is for a reader who has never seen it.** Zero-value desc structs,
   no hidden state, errors as values, one documented entry per module, one
   naming convention, the three.js vocabulary where it fits.
+- **Structure rules** (`docs/design.md` §2.1): a runtime module is an
+  optional feature with an absent stand-in that keeps the world's bytes; a
+  binding is written once for every host; cooked formats sit below feature
+  crates; a hand-written file past about 2,000 lines is split by subject.
+  A tier is a capability set, never a reduced copy (§2.6 Tiers).
 - **wgpu as published.** Never vendored or patched; work around it in
   og-render or og-host-web.
 - **Rendering never blocks the engine thread on the web.** Engine in a Worker

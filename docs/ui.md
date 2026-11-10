@@ -48,10 +48,9 @@ A document uses core UI elements as tags, `{#if}`, keyed
 The Svelte parser, cook path, and generic screens are implemented; the old
 screen reader is deleted. The [screens guide](../crates/og-api/guides/screens.md)
 and generated [component catalogue](../crates/og-api/guides/components.md)
-describe the supported syntax. Native retained mounting is implemented;
-TypeScript mount wiring and removal of TypeScript builders remain pending
-(§2.1). The structure-only authoring rule is the
-target contract, not a claim that those builders have already been removed.
+describe the supported syntax. Retained mounting is implemented and every
+TypeScript builder is removed (§2.1): a document is the only way to
+author structure.
 The document contract has these requirements:
 
 - A `.svelte` file has compile-time `<meta>` declarations, one root element,
@@ -2715,8 +2714,8 @@ extensions are outside this rebuild.
 
 | Genre kit | Required presentation | Status |
 | --- | --- | --- |
-| `rpg` | Inventory and equipment, journal and tracker, dialogue, party and turn order, world map | Not yet built |
-| `shooter` | Aim, ammunition, damage-direction HUD, killfeed, loadout | Not yet built |
+| `rpg` | Inventory and equipment, journal and tracker, dialogue, party and turn order, world map | Built, art-approved (pilot) |
+| `shooter` | Aim, ammunition, damage-direction HUD, killfeed, loadout | Built (pilot), not yet accepted |
 | `strategy` | Selection and commands, production queue, waves, tower-upgrade inspection | Not yet built |
 | `racing` | Telemetry, laps and standings, race banner, garage selection, results document | Not yet built |
 | `card` | Hand and piles, collection and deck building, reward-choice and run-map documents | Not yet built |
@@ -2734,9 +2733,9 @@ production, purchases, rewards, legal card targets, or note timing.
 
 | Style pack | Visual language | Commercial review references | Status |
 | --- | --- | --- | --- |
-| `clean` | Clear numeric hierarchy, restrained menus, low-interference HUD | Forza Horizon 5, Portal 2 | Not yet built |
+| `clean` | Clear numeric hierarchy, restrained menus, low-interference HUD | Forza Horizon 5, Portal 2 | Pilot, in progress (references only) |
 | `cartoon` | Rounded forms, deliberate thickness, clear primary actions | Mario Kart 8 Deluxe, Bloons TD 6 | Not yet built |
-| `fantasy` | Painted frames and materials with room for dense content | Baldur's Gate 3, Diablo IV | Not yet built |
+| `fantasy` | Painted frames and materials with room for dense content | Baldur's Gate 3, Diablo IV | Built, art-approved (pilot) |
 | `pixel` | Consistent pixel grid, integer scaling, readable glyphs | Stardew Valley, Octopath Traveler | Not yet built |
 | `scifi` | Instrument hierarchy, precise geometry, sparse emphasis | Elite Dangerous, Starfield | Not yet built |
 | `storybook` | Paper and illustrated edges, quiet ornament, readable text | Pentiment, Strange Horticulture | Not yet built |
@@ -2962,6 +2961,14 @@ skills. No kit silently implements those missing facilities itself.
 The [gate rules](ci.md) own test lanes, locks, and toolchain policy.
 `scripts/land.sh` owns landing on main. Release and platform installation
 follow [release rules](release.md), with separate release authorization.
+
+**The CSS dialect is the §8 inventory at its pinned version, and it is closed.**
+og-ui implements game-UI CSS, not a browser: a row is in scope when a kit,
+a style pack or a guide needs it, and work goes to proving the rows in use
+before adding rows. A feature outside the pinned inventory, or a row the
+owner marks out of scope, is refused by the parser with its name, never
+half-rendered. Moving the pin to a newer web-features version is a decision
+of its own, not a side effect of a feature.
 
 <!-- css-coverage:start -->
 ## 8. Standard CSS output-proof checklist

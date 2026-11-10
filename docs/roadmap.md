@@ -223,6 +223,23 @@ From the review of expo/exact (thread
   licence is checked before anything is ported (`third_party/`).
 - **Not taken:** Exact's Contract UI language, Rust gameplay, the DOM host.
 
+## Structure (the owner, 2026-11-10)
+
+From the structural review; the rules are `docs/design.md` §2.1 Structure
+rules, §2.6 Tiers and §2.8 Providers. Work runs on
+`claude/zen-clarke-grqlh1`, CPU checks only; its GPU check and landing are
+the integrator's.
+
+| Item | Rule | State |
+|---|---|---|
+| Provider contract | §2.8 Providers | `@origingame/engine/provider`, versioned; the Player and the local document are providers; a web relay room provider. Open: a build-time choice of provider in `og build`, and the platform's rename of its extensions |
+| Optional runtime modules | §2.1 | Features of `og-runtime` with absent stand-ins, default on; shipping variants unchanged. Open: variants that leave modules out, then separate artifacts loaded after the first frame |
+| One host implementation | §2.1 | The bindings both hosts copied are written once. Open: the web host's TypeScript services (input, audio, lifecycle, accessibility) have no native counterpart until the native shell |
+| Tiers | §2.6 | Stated. Open: the renderer still selects several passes by backend; each becomes a capability, starting with the mini-game WebGPU set (no MRT, async pipelines, timestamps) |
+| og-ui scope | `docs/ui.md` §7 | The CSS dialect is closed at the pinned inventory. Open: og-ui as crates (core; documents: Svelte, CSS, SVG); 29 core files still name `doc`, which must become a one-way dependency first |
+| Formats below features | §2.1 | Open: `og-cook` and `og-bundle` link `og-render` for format types |
+| File size | §2.1 | Every hand-written source file of 2,000 lines or more split by subject, verbatim |
+
 ## Open
 
 - The asset store's cook stat index: sessions still run the incremental

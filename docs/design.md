@@ -74,6 +74,34 @@ platforms. Ray tracing. Networking engines beyond the platform SDK's rooms.
 | Tooling | Rust (`og`) | engine | one binary: build, run, cook, probe, check, test, doctor |
 | Shell | TypeScript (platform `site/`) | platform | the play page and the creator overlay; consumes the engine |
 
+**Structure rules.** They bind every crate; open work against them is in
+`docs/roadmap.md` §Structure.
+
+- **A runtime module is optional.** `og-runtime` is the core (declarations,
+  engines, the tick, assets, saves, the probe) plus modules, one per IDL
+  module that binds a feature crate (navigation, AI, story, destruction,
+  video, the motion model, terrain, the physics profiles). Each module is
+  a Cargo feature of `og-runtime` passed through by both hosts, on by
+  default. A build without one keeps its binding symbols, its records and
+  its state blocks, so a world is the same bytes and the API is the same
+  surface; its calls answer a refusal naming the module
+  (`terrain_absent.rs` is the pattern). The core never names a module's
+  crate outside that module's files and its mount point. This is what a
+  separately loaded artifact, a mini-game subpackage and a native package
+  cut along (`docs/roadmap.md` §Direction, loaded on demand).
+- **One host implementation.** A host supplies what differs: its wire types
+  (arrays, views, bytes, functions), how the dispatcher is called, the
+  surface and the audio sink. Every binding whose body is the host-neutral
+  runtime is written once (`og-runtime`'s `host_impl`), never copied per
+  host; a third host (the native shell, a mini-game adapter) adds a wire,
+  not a copy.
+- **Formats below features.** The cooked formats (`.ogb` layouts, their
+  type hashes and readers) live in crates below the renderer, so the cook
+  and the bundle reader do not link a feature crate for its types.
+- **Files have one subject.** A source file past about 2,000 lines is split
+  by subject into a directory module, verbatim (`AGENTS.md` §Streams and
+  landing); generated files are exempt.
+
 `og check` type-checks game code with tsrs (the Rust port of TypeScript 7),
 a pinned binary `og` runs as a child process and never links: from
 `OG_TSRS`, the `@tsrs/<platform>` package beside the engine, or `PATH`
@@ -622,7 +650,22 @@ is WebGPU only today (§8): compute is available on every supported device,
 and a feature is designed for that tier. A capability-limited GL tier, for
 mini-game platforms without WebGPU and older devices, is planned
 (`docs/roadmap.md` §Direction): features answer it through capability
-queries, and the WebGPU tier is never lowered to meet it. The CPU culling and CPU particle paths
+queries, and the WebGPU tier is never lowered to meet it.
+
+**Tiers.** A tier is a declared set of device capabilities, never a
+quality setting. The full tier (WebGPU, Vulkan, Metal, DX12) has compute,
+multiple render targets, asynchronous pipeline creation and timestamps.
+A limited tier lacks some of them: the mini-game WebGPU tier has no MRT,
+asynchronous pipelines or timestamps; the GL tier has no compute either.
+Three rules follow. Within a tier nothing is reduced for a budget (§7).
+A feature states the capabilities it needs, and on a tier without them it
+is absent and says so through `RenderCapabilities`, as `world3d` does in
+the 2D profile; it is never a degraded copy. The renderer asks capabilities,
+not backends: a pass that needs compute is selected by `compute`, so a new
+tier is a capability set and the passes that have a path without the
+missing ones, not a second renderer. Quality presets (`low`, `medium`,
+`high`, `autoQuality`) are a player's choice inside a tier and unrelated to
+this. The CPU culling and CPU particle paths
 remain options on every device (`Culling::Cpu`, small frames under
 `Culling::Auto`, `ParticleSimulation::Cpu`). The engine is GPU only on
 every host: a player's device without a GPU is not supported, and no
@@ -1728,6 +1771,34 @@ save), `og_leaderboard_*`, `og_room_*` (rooms/RTC via the shell),
 appear under `og.platform.*`. Nothing in game code can reach cookies, the
 DOM or arbitrary origins; the shell owns every credential.
 
+**Providers.** The host side of this ABI is a public contract,
+`@origingame/engine/provider` (`packages/engine/src/provider.ts`), so the
+OriginGame Player is one provider among others and a game's code is the
+same under each.
+
+- A **platform provider** answers `og.platform`'s calls: it lists the
+  methods it answers (`capabilities`), takes each tick's calls as a method
+  name and JSON arguments, answers each once, and may send notices and
+  pause or resume the game. A **room provider** carries og-net's room
+  protocol (`crates/og-net/src/protocol.rs`): ops out, events in, in order.
+- The contract has a version (`PROVIDER_VERSION`), and the method
+  vocabulary has two parts: the **core** methods any store or portal can
+  answer (`store.*`, `leaderboard.*`, `telemetry`, `purchase.*`, `ad.*`,
+  `achievement.*`, `player.get`, `friends.list`, `invite.*`, `share`) and
+  **host extensions**, which one host defines (`point` and `ai.mark` are
+  OriginGame's). A provider answers any subset; the rest is `unavailable`,
+  and `og.platform.supports` tells the game.
+- Providers in the tree: the Player (protocol 2, `shell/platform.ts`), the
+  local document (the native host's file, a dev page's storage, the
+  deterministic fake), and for rooms the Player, the native relay client
+  and the web relay client (a page that names an `og relay` URL). A portal,
+  a store or a mini-game platform is one more provider, outside the engine.
+- The rules of the ABI hold for every provider: the provider owns every
+  credential and URL, game code names neither, ids are opaque and
+  game-scoped, and a published page never fakes money. The provider is
+  chosen by the page that hosts the game (the shell's `provider` option),
+  never by game code.
+
 **Rooms.** `og.platform.roomCreate`, `roomJoin`, `roomLeave`, `roomSend`,
 `roomPeers`, `roomInfo` and `roomMessage` put this engine with other
 players' engines. The engine never opens a socket: it queues ops and its
@@ -2406,8 +2477,9 @@ passed or unchecked. An invalid revision fails rather than selecting none.
 
 Gated in CI where `scripts/budgets.txt` holds them, measured by hand
 otherwise. Quality comes first: the engine targets current devices only
-(§8), and no budget is a reason to cut a feature to a reduced tier or hold a
-model or an effect below the quality it needs; a figure a feature moves is
+(§8), and within a tier (§2.6 Tiers) no budget is a reason to cut a feature
+or hold a model or an effect below the quality it needs; a limited tier is
+a separate, declared capability set, not a cut; a figure a feature moves is
 pursued, or the budget is raised in its own commit (docs/ci.md §Updating a
 budget).
 
