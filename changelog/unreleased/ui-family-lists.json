@@ -1,0 +1,12 @@
+{
+  "fixed": [
+    {
+      "member": "ui.font",
+      "summary": "CSS font-family retains its ordered named-family list through inheritance and rich spans. Missing glyphs use the next matching named face before generic and locale fallbacks, without replacing primary-font glyphs."
+    },
+    {
+      "member": "og.ui.check",
+      "summary": "UI check and preview report overflow from the measured frame instead of replaying stale tick-0 layout warnings. Other runtime diagnostics remain visible."
+    }
+  ]
+}

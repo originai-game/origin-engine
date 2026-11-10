@@ -131,9 +131,10 @@ impl Ui {
             let style = text_style.unwrap();
             text.step = style.step(text.step);
             let role = style.font_role.unwrap_or(text.font);
-            text.font = style.family.as_deref().map_or(role, |name| {
-                FontRole::Family(crate::Family::new(name, role))
-            });
+            text.font = style
+                .family
+                .as_deref()
+                .map_or(role, |names| self.fonts.family_list(names, role));
             if let Some(ink) = r.color("color") {
                 text.color = ink;
             }

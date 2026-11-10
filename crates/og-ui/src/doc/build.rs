@@ -1028,7 +1028,7 @@ impl Ui {
                         span,
                         &r.cascade.computed,
                         self.theme(),
-                        &|n| self.family_declared(n),
+                        self.fonts(),
                     );
                     (span.clone(), style, cascade)
                 })
@@ -1124,7 +1124,7 @@ impl Ui {
                         &span,
                         &r.cascade.computed,
                         self.theme(),
-                        &|n| self.family_declared(n),
+                        self.fonts(),
                     );
                     r.cascade.reads.extend(cascade.reads);
                     style

@@ -249,8 +249,8 @@ line: `<img src="coin" alt="">` (a picture the game registered,
 `<kbd data-action="confirm"></kbd>` (the action's glyph on the device
 used last). Their attributes are literal. A `<span part="big">` names its
 run for `p::part(big) { … }` (any text element's `::part`), which takes
-`color`, `font`, `font-family` (its first family a loaded document's
-`@font-face` declares, else its generic family, as an element's),
+`color`, `font`, `font-family` (named families in order, then the generic
+family, as an element's),
 `font-weight`, `font-style`, `text-decoration-line`, `-og-text-motion`,
 `vertical-align`, and the
 run's `font-size` (px), `line-height` (px, or a multiple of its
@@ -2282,14 +2282,15 @@ document; it must be a font of the project, cooked with its own settings,
 and `local()` names no font since the engine has no system fonts), and the
 runtime registers the first source the bundle has under the family name
 when the document loads. `font-family: "Name", monospace` (or the `font`
-shorthand) draws the text in the first listed family a loaded document
-declares, its generic family (`monospace`, `ui-rounded`, `fantasy`/`cursive`,
-anything else body) the font role it falls back to. Of the family's faces
+shorthand) tries the listed named families in order for each glyph,
+skipping unavailable families, then the generic family's font role
+(`monospace`, `ui-rounded`, `fantasy`/`cursive`, anything else body). Of each family's faces
 the text takes those of the nearest `font-style` and then the nearest
 `font-weight` range (§5.2's order), and each character comes from the
-last-declared face of that set whose `unicode-range` has it, then the role's
+last-declared face of that set whose `unicode-range` has it, then the next
+named family, then the role's
 face, the CJK companion, the locale's and the game's fonts. A `::part` run's
-`font-family` takes its first named family. A weight or slant the family
+`font-family` preserves the same ordered list. A weight or slant the family
 has no face for is synthesised as for a role. `@counter-style` and
 `@position-try` are read into the document's sheet (counters and anchor
 positioning use them). `inherit`, `initial`, `unset`, `revert` and

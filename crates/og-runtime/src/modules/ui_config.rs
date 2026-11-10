@@ -166,6 +166,7 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
             chain: Vec::new(),
             cjk_locale: og_ui::CjkLocale::default(),
             families: Vec::new(),
+            family_lists: Default::default(),
         };
         let ui = eng
             .state

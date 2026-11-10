@@ -217,8 +217,18 @@ async function main(argv: string[], process: RunOutput, control: UiRunControl, c
         for (const o of engine.takeOutputs()) if (o.kind === "png") images.set(basename(o.file).replace(/\.png$/, ""), decodePng(Uint8Array.from(atob(o.data), (c) => c.charCodeAt(0))));
         if (a.quit || (a.pending ?? ((a.tick ?? 0) > report!.untilTick ? 0 : 1)) === 0) break;
       }
-      for (const l of engine.takeLog()) if (l.warning) warnings.push(`tick ${l.tick}: ${l.text}`);
       const f = JSON.parse(extras.og_node_ui_frame(engine.id)) as UiFrameSnapshot & { error?: string };
+      const overflow = /^'[^']+' is laid out \d+ px past the \d+x\d+ screen/;
+      for (const l of engine.takeLog()) {
+        if (!l.warning) continue;
+        // Layout warnings in the log are deduplicated history, not the
+        // measured frame. Keep other diagnostics even when layout settled.
+        if (!f.error && l.text.startsWith("og.ui: ") && overflow.test(l.text.slice(7))) continue;
+        warnings.push(`tick ${l.tick}: ${l.text}`);
+      }
+      if (!f.error) for (const warning of f.warnings) {
+        if (overflow.test(warning)) warnings.push(`og.ui: ${warning}`);
+      }
       const pages: Array<{ frame: UiFrameSnapshot; image: Image }> = [];
       if (!f.error && argv.includes("--baseline")) {
         // Keep the real viewport, breakpoint and text scale. Overlapping scroll

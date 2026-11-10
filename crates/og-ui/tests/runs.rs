@@ -507,6 +507,66 @@ fn named_fonts_keep_runtime_fallback_glyphs_beside_digits() {
 }
 
 #[test]
+fn ordered_named_families_preserve_primary_glyphs_and_inherit() {
+    let mut scene = RenderScene::new();
+    let f = faces(&mut scene);
+    for (markup, css, digit) in [
+        (
+            "<div><p>原3点</p></div>",
+            "div { font-family: Missing, Brand, Companion, serif; }",
+            f.latin.handle,
+        ),
+        (
+            "<p><span part=\"word\">原3点</span></p>",
+            "p::part(word) { font-family: Brand, Companion, serif; }",
+            f.latin.handle,
+        ),
+        (
+            "<p>原3点</p>",
+            "p { font-family: Companion, Brand, serif; }",
+            f.cjk.handle,
+        ),
+        (
+            "<button>原3点</button>",
+            "button::part(base) { font-family: Brand, Companion, serif; }",
+            f.latin.handle,
+        ),
+    ] {
+        let source = format!("<meta name=\"component\" content=\"t\">{markup}<style>{css}</style>");
+        crate::html_text::both(&source, &[], |d| {
+            d.ui.set_fonts(Fonts {
+                families: vec![
+                    FamilyFace {
+                        family: "Brand".into(),
+                        weight: (400, 400),
+                        font: f.latin.clone(),
+                        ..FamilyFace::default()
+                    },
+                    FamilyFace {
+                        family: "Companion".into(),
+                        weight: (400, 400),
+                        font: f.cjk.clone(),
+                        ..FamilyFace::default()
+                    },
+                ],
+                ..Fonts::default()
+            });
+            d.step(InputFrame::default());
+            let drawn = commands(d.ui.frame());
+            let glyphs: Vec<_> = drawn
+                .iter()
+                .flat_map(|c| c.0.chars().map(move |ch| (ch, Some(c.1))))
+                .collect();
+            assert_eq!(
+                glyphs,
+                [('原', f.cjk.handle), ('3', digit), ('点', f.cjk.handle)],
+                "{source}"
+            );
+        });
+    }
+}
+
+#[test]
 fn a_font_face_family_takes_its_faces_by_weight_and_range() {
     let mut scene = RenderScene::new();
     let f = faces(&mut scene);

@@ -76,3 +76,38 @@ export default og.game({start(world){if(++starts!==1)throw new Error("cell state
     rmSync(dir, { recursive: true, force: true });
   }
 }, 60_000);
+
+test.skipIf(process.platform === "win32")("UI diagnostics report settled overflow, not historical layout warnings", async () => {
+  const root = mkdtempSync(join(tmpdir(), "og-ui-warnings-"));
+  try {
+    mkdirSync(join(root, "assets"));
+    writeFileSync(join(root, "project.ogt"), 'type project\nversion 1\n---\nname "UI Warnings"\nentry "main.ts"\nseed 83\n');
+    writeFileSync(join(root, "assets", "menu.svelte"), `
+<meta name="component" content="menu">
+<meta name="prop:wide" content="bool">
+<div id="Root">
+<button id="Transient" class:wide={$wide}>Transient</button>
+<button id="Persistent">Persistent</button>
+</div>
+<style>
+#Root { width: 1280px; }
+#Transient { width: 100px; height: 30px; }
+#Transient.wide, #Persistent { width: 2000px; height: 30px; }
+</style>`);
+    writeFileSync(join(root, "main.ts"), `import {og} from "@origingame/engine";
+export default og.game({start(world){const d=og.load.document(world,"menu.svelte");if(!d.ok)throw new Error(d.reason);},commands:{shrink(world){og.ui.scope(world,"menu").writable("wide",true).set(false);}},ui(world){const s=og.ui.scope(world,"menu");const m=s.mount("menu","menu",{wide:s.writable("wide",true)});if(!m.ok)throw new Error(m.reason);}});`);
+    const out = join(root, "out");
+    const child = Bun.spawn([ogBin(), "ui", "check", root, "--screen", "start=0.05:shrink", "--breakpoints", "desktop", "--locales", "game", "--scales", "100", "--settle", "0.2", "--out", out, "--json"], {
+      env: { ...process.env, OG_ENGINE_PACKAGE: resolve(import.meta.dir!, ".."), OG_RENDERER: "none", OG_SESSION: "0" }, stdout: "pipe", stderr: "pipe",
+    });
+    const [code, stdout, stderr] = await Promise.all([child.exited, new Response(child.stdout).text(), new Response(child.stderr).text()]);
+    expect(code, stdout + stderr).toBe(0);
+    const frame = JSON.parse(readFileSync(join(out, "cells", "0.uiframe.json"), "utf8"));
+    expect(frame.warnings.join("\n")).toContain("Persistent' is laid out");
+    expect(frame.warnings.join("\n")).not.toContain("Transient' is laid out");
+    expect(stderr).toContain("Persistent' is laid out");
+    expect(stderr).not.toContain("Transient' is laid out");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+}, 60_000);

@@ -190,7 +190,7 @@ impl Ui {
                 format!("{name}: {value};")
             })
             .collect();
-        match crate::doc::spans::style_of(&body, self.theme(), &|n| self.family_declared(n)) {
+        match crate::doc::spans::style_of(&body, self.theme(), self.fonts()) {
             Ok(style) => style,
             Err(error) => {
                 self.warnings.push(format!("generated content: {error}"));

@@ -279,6 +279,24 @@ pub struct Fonts {
     /// whose `unicode-range` has it, then from the family's fallback role
     /// and the fonts after it ([`Fonts::for_styled`]).
     pub families: Vec<FamilyFace>,
+    /// Interned CSS family lists and their resolved weight/style combinations.
+    pub family_lists: FamilyLists,
+}
+
+type FamilySelection = (u32, usize, u16, bool);
+
+#[derive(Clone, Default, PartialEq)]
+pub struct FamilyLists {
+    names: elsa::FrozenMap<u32, Box<[String]>>,
+    fonts: elsa::FrozenMap<FamilySelection, Box<(UiFont, Synth)>>,
+}
+
+impl std::fmt::Debug for FamilyLists {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("FamilyLists")
+            .field("lists", &self.names.len())
+            .finish()
+    }
 }
 
 /// An `@font-face`'s `font-style`.
@@ -401,8 +419,47 @@ fn nearest<'a>(
 }
 
 impl Fonts {
+    pub(crate) fn family_names(&self, family: crate::Family) -> Vec<String> {
+        self.family_lists
+            .names
+            .get(&family.id())
+            .map(<[String]>::to_vec)
+            .unwrap_or_else(|| {
+                self.families
+                    .iter()
+                    .find(|f| f.is(family))
+                    .map(|f| vec![f.family.clone()])
+                    .unwrap_or_default()
+            })
+    }
+
+    /// Retain named families in CSS order, followed by the generic role.
+    pub fn family_list(&self, names: &[String], fallback: FontRole) -> FontRole {
+        let names: Vec<String> = names
+            .iter()
+            .filter(|n| self.has_family(n))
+            .map(|n| n.to_ascii_lowercase())
+            .collect();
+        match names.as_slice() {
+            [] => fallback,
+            [name] => FontRole::Family(crate::Family::new(name, fallback)),
+            _ => {
+                let family = crate::Family::new(&names.join("\0"), fallback);
+                if self.family_lists.names.get(&family.id()).is_none() {
+                    self.family_lists
+                        .names
+                        .insert(family.id(), names.into_boxed_slice());
+                }
+                FontRole::Family(family)
+            }
+        }
+    }
+
     pub fn get(&self, role: FontRole) -> &UiFont {
         match role {
+            FontRole::Family(f) if self.family_lists.names.get(&f.id()).is_some() => {
+                self.for_styled(role, 400, false, "").0
+            }
             FontRole::Family(f) => match self.family_set(f, 400, false).0.first() {
                 Some(face) => &face.font,
                 None => self.get(f.fallback()),
@@ -520,6 +577,43 @@ impl Fonts {
         text: &str,
     ) -> (&UiFont, Synth) {
         if let FontRole::Family(family) = role {
+            if let Some(names) = self.family_lists.names.get(&family.id()) {
+                let key = (family.id(), family.fallback_index(), weight, italic);
+                let resolved = self.family_lists.fonts.get(&key).unwrap_or_else(|| {
+                    let mut fonts = Vec::new();
+                    let mut synth = Synth::default();
+                    for name in names {
+                        let (set, got, slanted) = self.family_set(
+                            crate::Family::new(name, family.fallback()),
+                            weight,
+                            italic,
+                        );
+                        if fonts.is_empty() {
+                            synth = Synth {
+                                bold: weight >= 600 && got + 100 < weight,
+                                italic: italic && !slanted,
+                            };
+                        }
+                        fonts.extend(set.into_iter().map(|f| f.font.alone()));
+                    }
+                    let generic = family.fallback();
+                    let rendered = fonts.first().is_some_and(|f| f.handle.is_some());
+                    fonts.extend(
+                        std::iter::once(self.latin(generic, weight, italic).0)
+                            .chain(self.companion_styled(generic, weight))
+                            .chain(&self.chain)
+                            .chain(&self.fallbacks)
+                            .chain(self.fallback.as_ref())
+                            .chain(std::iter::once(&self.body))
+                            .filter(|f| !rendered || f.handle.is_some())
+                            .map(UiFont::alone),
+                    );
+                    let mut font = fonts.remove(0);
+                    font.metrics.runs = Some(fonts.into());
+                    self.family_lists.fonts.insert(key, Box::new((font, synth)))
+                });
+                return (&resolved.0, resolved.1);
+            }
             let (set, got, slanted) = self.family_set(family, weight, italic);
             let Some(first) = set.first() else {
                 return self.for_styled(family.fallback(), weight, italic, text);
@@ -667,6 +761,7 @@ impl Fonts {
     /// links the fonts it is given; call it again after changing them by
     /// hand.
     pub fn link(&mut self) {
+        self.family_lists.fonts = elsa::FrozenMap::new();
         let others: Vec<UiFont> = self
             .chain
             .iter()

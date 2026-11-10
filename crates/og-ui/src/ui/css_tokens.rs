@@ -64,16 +64,21 @@ fn typography(theme: &Theme, at: Breakpoint, fonts: &Fonts) -> BTreeMap<String, 
                 .flat_map(|role| {
                     let token = theme.tokens.typography.get(role, at);
                     let family = match token.font {
-                        FontRole::Family(family) => fonts
-                            .families
-                            .iter()
-                            .find(|face| crate::Family::id_of(&face.family) == family.id())
-                            .map(|face| {
-                                format!(
-                                    "\"{}\"",
-                                    face.family.replace('\\', "\\\\").replace('"', "\\\"")
-                                )
-                            }),
+                        FontRole::Family(family) => {
+                            let names = fonts.family_names(family);
+                            (!names.is_empty()).then(|| {
+                                names
+                                    .iter()
+                                    .map(|name| {
+                                        format!(
+                                            "\"{}\"",
+                                            name.replace('\\', "\\\\").replace('"', "\\\"")
+                                        )
+                                    })
+                                    .collect::<Vec<_>>()
+                                    .join(", ")
+                            })
+                        }
                         _ => None,
                     }
                     .unwrap_or_else(|| {
@@ -261,12 +266,9 @@ impl Ui {
                     .and_then(|s| s.strip_suffix(')'))
                     .and_then(FontRole::from_name)
                     .unwrap_or_default();
-                token.font = crate::doc::text_css::names_of(&names)
-                    .into_iter()
-                    .find(|name| self.fonts.has_family(name))
-                    .map_or(fallback, |name| {
-                        FontRole::Family(crate::Family::new(&name, fallback))
-                    });
+                token.font = self
+                    .fonts
+                    .family_list(&crate::doc::text_css::names_of(&names), fallback);
             }
             let mut step = token.step(1.0);
             read_step(role.name(), &mut step);

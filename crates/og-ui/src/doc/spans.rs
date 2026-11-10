@@ -126,16 +126,11 @@ pub(super) fn parse(selector: &str, body: &str) -> Result<SpanRule, String> {
         }
     }
     // Validated here; which family is declared is known when it builds.
-    apply_body(&mut rule, &literal, &|_| true)?;
+    apply_body(&mut rule, &literal, None)?;
     Ok(rule)
 }
 
-/// `declared` tells a family some loaded document's `@font-face` declares.
-fn apply_body(
-    rule: &mut SpanRule,
-    body: &str,
-    declared: &dyn Fn(&str) -> bool,
-) -> Result<(), String> {
+fn apply_body(rule: &mut SpanRule, body: &str, fonts: Option<&crate::Fonts>) -> Result<(), String> {
     for (name, value) in css::split_decls(body)? {
         match name.as_str() {
             "font" if !value.trim().starts_with("var(") => {
@@ -147,7 +142,7 @@ fn apply_body(
                     })
                     .map(|(name, value)| format!("{name}: {value};"))
                     .collect::<String>();
-                apply_body(rule, &body, declared)?;
+                apply_body(rule, &body, fonts)?;
             }
             "font-weight" => {
                 let weight = match value.as_str() {
@@ -240,21 +235,15 @@ fn apply_body(
                 })
             }
             "font-family" => {
-                // The first named family a loaded document declares, as an
-                // element's (CSS Fonts 4 §5.1), else the generic family's role.
                 let (names, role) = super::text_css::family_list(&value)?;
                 let role = role
                     .strip_prefix("var(--font-")
                     .and_then(|r| r.strip_suffix(')'))
                     .and_then(crate::FontRole::from_name)
                     .unwrap_or_default();
-                let first = super::text_css::names_of(&names)
-                    .into_iter()
-                    .find(|n| declared(n));
-                rule.style.font = Some(match first {
-                    Some(name) => crate::FontRole::Family(crate::Family::new(&name, role)),
-                    None => role,
-                });
+                rule.style.font = Some(fonts.map_or(role, |fonts| {
+                    fonts.family_list(&super::text_css::names_of(&names), role)
+                }));
             }
             "color" | "font" => {
                 for entry in css::declarations(&format!("{name}: {value};"), 1)? {
@@ -285,7 +274,7 @@ fn apply_body(
 pub(crate) fn style_of(
     body: &str,
     theme: &Theme,
-    declared: &dyn Fn(&str) -> bool,
+    fonts: &crate::Fonts,
 ) -> Result<TextSpanStyle, String> {
     let mut rule = SpanRule {
         name: String::new(),
@@ -296,7 +285,7 @@ pub(crate) fn style_of(
         declarations: Vec::new(),
         step: None,
     };
-    apply_body(&mut rule, body, declared)?;
+    apply_body(&mut rule, body, Some(fonts))?;
     let mut style = TextSpanStyle::default();
     rule.apply(theme, &mut style);
     Ok(style)
@@ -307,7 +296,7 @@ pub(crate) fn resolve(
     span: &TextSpan,
     inherited: &super::variables::Computed,
     theme: &Theme,
-    declared: &dyn Fn(&str) -> bool,
+    fonts: &crate::Fonts,
 ) -> (TextSpanStyle, super::build::cascade::Cascade) {
     let rules: Vec<_> = rules
         .iter()
@@ -336,7 +325,7 @@ pub(crate) fn resolve(
         step: None,
     };
     for (name, value, _) in cascade.values.drain(..) {
-        if let Err(error) = apply_body(&mut rule, &format!("{name}: {value};"), declared) {
+        if let Err(error) = apply_body(&mut rule, &format!("{name}: {value};"), Some(fonts)) {
             cascade.diagnostics.push(format!(
                 "::part({}): {name} invalid at computed-value time: {error}",
                 span.name

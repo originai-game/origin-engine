@@ -585,7 +585,7 @@ impl Ui {
         self.nodes[i].hidden = base.hidden || (r.has("visible") && !r.flag("visible"));
         match base.kind {
             "label" => {
-                let desc = r.label_desc(self.theme(), r.own_flow().rtl);
+                let desc = r.label_desc(self.theme(), self.fonts(), r.own_flow().rtl);
                 let shown;
                 let base = match r.text.as_deref() {
                     Some(t) => {
@@ -1245,7 +1245,12 @@ impl Resolved {
         })
     }
 
-    pub(super) fn label_desc(&self, theme: &crate::Theme, rtl: bool) -> LabelDesc {
+    pub(super) fn label_desc(
+        &self,
+        theme: &crate::Theme,
+        fonts: &crate::Fonts,
+        rtl: bool,
+    ) -> LabelDesc {
         let step = self
             .str("step")
             .and_then(|s| crate::style_file::ramp_step(&mut theme.type_ramp.clone(), s).copied());
@@ -1271,7 +1276,7 @@ impl Resolved {
                     .unwrap_or_default();
                 // A named family a document declares, the role after it.
                 match css.and_then(|t| t.family.as_deref()) {
-                    Some(name) => FontRole::Family(crate::Family::new(name, role)),
+                    Some(names) => fonts.family_list(names, role),
                     None => role,
                 }
             },

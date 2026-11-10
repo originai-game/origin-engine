@@ -637,7 +637,7 @@ impl Ui {
         match kind {
             "label" => {
                 let text = text_of(&r, b);
-                let desc = r.label_desc(&t, r.own_flow().rtl);
+                let desc = r.label_desc(&t, self.fonts(), r.own_flow().rtl);
                 if !n.inline.is_empty() {
                     self.inline_links(b, n, &r, &path, key);
                 }

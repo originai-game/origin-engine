@@ -935,9 +935,8 @@ pub struct TextCss {
     /// The used colour scheme is dark (`None`: the style's).
     pub dark: Option<bool>,
     pub vertical_align: Option<String>,
-    /// The first named family of `font-family` a document declares an
-    /// `@font-face` for (CSS Fonts 4 §5: an unavailable family is skipped).
-    pub family: Option<String>,
+    /// Named families in authored order, skipping unavailable families.
+    pub family: Option<Vec<String>>,
     pub font_role: Option<crate::FontRole>,
 }
 
@@ -1080,7 +1079,12 @@ pub(crate) fn inherit(inp: Inputs<'_>) -> TextCss {
     let family = family_list
         .map(|(names, _)| names)
         .or_else(|| get("-og-font-name"))
-        .and_then(|names| names_of(&names).into_iter().find(|n| declared(n)));
+        .map(|names| {
+            names_of(&names)
+                .into_iter()
+                .filter(|n| declared(n))
+                .collect()
+        });
     let mut t = TextCss {
         size,
         weight: num(get("font-weight")).map(|w| w.round().clamp(1.0, 1000.0) as u16),
