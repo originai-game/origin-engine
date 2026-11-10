@@ -73,7 +73,7 @@ fn project() -> &'static Path {
         write("icons/mask.svg", glyph);
         write("ui/nested/pointer.css", br#"#Pointer { mask-image: url(../../icons/mask.svg); }"#);
         write("ui/pointer.svelte", br#"<meta name="screen" content="Pointer" />
-<button id="Pointer" style="cursor: url(missing.svg), url(../icons/glyph.svg) 1 2, crosshair"></button>
+<div id="Pointer" style="cursor: url(missing.svg), url(../icons/glyph.svg) 1 2, crosshair"></div>
 <style>@import "nested/pointer.css";
 #Pointer { width: 80px; height: 80px; background: red; }</style>"#);
         let report = og_cook::cook_project(&root, &og_cook::CookOptions::default()).unwrap();
@@ -240,6 +240,10 @@ fn svg_asset_urls_supply_cursor_pixels_and_masks() {
     configure(e, json!({ "style": style }));
     value(og_runtime::og_load_document(e, "ui/pointer.svelte".into()));
     value(og_runtime::og_ui_push(e, "Pointer".into(), None));
+    value(og_runtime::og_commands_schedule(
+        e,
+        "0:touch_move:90,90".into(),
+    ));
     og_runtime::og_engine_frame(e, 1000.0 / 60.0);
     value(og_runtime::og_commands_schedule(
         e,

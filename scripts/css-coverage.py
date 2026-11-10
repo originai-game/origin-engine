@@ -108,7 +108,7 @@ proof("border-radius corner-shape", "box_decor", "corners_take_css_radii_and_sha
       "Both builders emit fill/stroke ellipse radii with overlap scaling, percentages, slash syntax and bevel corners.")
 proof("box-shadow", "box_decor", "decorations_paint_in_css_order_over_any_draw",
       "Both builders assert outer shadow offset/blur, inset spread and paint order relative to the fill.")
-proof("pointer-events cursor", "css_interact", "the_pointer_passes_through_none_and_hidden",
+proof("pointer-events", "css_interact", "the_pointer_passes_through_none_and_hidden",
       "Actual cursor routing through pointer-events:none and visibility:hidden, descendant overrides, URL priority/hotspot and accessibility presence. Immediate builder only; OS cursor loading is not covered.")
 proof("text-align", "control_props", "a_button_label_takes_text_align",
       "Both builders assert emitted label positions for default centre, explicit start and menu item alignment; parent alignment does not override the button default.")
@@ -132,6 +132,8 @@ proof("image-set", "css_paint", "image_sets_render_density_correct_backgrounds_m
       "Metal pixels at DPR 1/2/1 prove density-correct background/mask tiles, MIME filtering before duplicate removal (including quoted parameters and malformed-type rejection), zero-resolution transparency, percentage border slices with auto widths and gradient selection. Resolution math covers calc/min/max/clamp with mixed x/dppx/dpi/dpcm units; retained output also tests fractional DPR.")
 proof("background-image", "css_paint", "image_urls_resolve_files_not_atlas_names_or_handles",
       "Retained drawing selects the registered relative file and numeric filename, rejects a missing path despite an atlas basename collision, and reports the missing asset. css_paint_matches_its_reference_frames covers background tiling and gradients on Metal. Runtime ui_configure::svg_asset_urls_supply_cursor_pixels_and_masks proves cooked SVG pixels, imported masks and inline cursor URL provenance.")
+proof("cursor", "css_interact", "plain_boxes_choose_cursors_in_clipped_transformed_paint_order",
+      "Both builders assert cursor inheritance over noninteractive boxes, passive overlays above buttons, pointer-events:none, hidden and overflow-clipped children, 90-degree transforms and image hotspots. Runtime ui_configure::svg_asset_urls_supply_cursor_pixels_and_masks checks cooked SVG cursor pixels on a plain div. Arbitrary clip-path targeting and every cursor keyword are not covered.")
 
 MISSING = {
     "default": "documents::boolean_attribute_selectors_follow_svelte_presence proves retained :default follows false/present checked attributes. The immediate builder does not expose :default state; full support is missing.",
@@ -143,8 +145,10 @@ MISSING = {
     "table": "Table spans/captions have computed output tests, but border-spacing and border-collapse have no implementation/output proof.",
     "backdrop-filter": "Ordinary staged backdrop chains have fixtures; native glass rejects chains requiring intermediate clamps, drop-shadow and SVG url filters.",
     "shadow-parts": "Host/part/state selector registry is present; all-property part applicability awaits the parts-as-nodes stream and its output tests.",
-    "cursor": "Runtime ui_configure::svg_asset_urls_supply_cursor_pixels_and_masks proves cooked SVG cursor pixels and hotspots on a button, including inline relative URLs. Cursor hit testing on noninteractive boxes remains unverified; full support is not claimed.",
 }
+
+if overlap := PROVEN.keys() & MISSING.keys():
+    raise ValueError(f"a proof must state its remaining gaps, not hide MISSING: {sorted(overlap)}")
 
 PART_PROVEN = {}
 

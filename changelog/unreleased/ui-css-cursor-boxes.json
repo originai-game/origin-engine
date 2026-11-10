@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "CSS cursor",
+      "summary": "Resolve cursors over noninteractive boxes in paint order, including inherited values, URL images, transforms, overflow clipping and pointer-events. Passive boxes no longer expose an unrelated underlying control's cursor. Held controls retain their cursor and passive boxes gain no input handlers."
+    }
+  ]
+}

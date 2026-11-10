@@ -93,7 +93,7 @@ fn the_pointer_passes_through_none_and_hidden() {
     assert_eq!(frame(&mut ui, again), Cursor::Copy);
     // A hidden button takes nothing: the pointer is on the root.
     frame(&mut ui, lost);
-    assert_eq!(frame(&mut ui, lost), Cursor::Default);
+    assert_eq!(frame(&mut ui, lost), Cursor::Help);
     // A visible child of a hidden parent takes it. Images over `auto` are
     // its own value: the keyword is its kind's, not its parent's no-drop.
     frame(&mut ui, shown);
@@ -101,6 +101,94 @@ fn the_pointer_passes_through_none_and_hidden() {
     assert_eq!(urls(&ui), [("/ui/grip.svg".into(), None)]);
     let a11y = format!("{:?}", ui.a11y());
     assert!(a11y.contains("Shown") && !a11y.contains("Lost"), "{a11y}");
+}
+
+#[test]
+fn plain_boxes_choose_cursors_in_clipped_transformed_paint_order() {
+    let doc = r#"<meta name="component" content="cursors" />
+<section id="Root">
+  <button id="Under">Under</button>
+  <div id="Cover"></div><div id="Pass"></div>
+  <div id="Clip"><div id="Crop"></div></div>
+  <div id="Turn"></div>
+  <div id="Ghost"><div id="Shown"></div><div id="Hidden"></div></div>
+  <div id="Inherit"></div>
+</section>
+<style>
+#Root { width: 240px; height: 200px; cursor: help; }
+#Under, #Cover, #Pass { position: absolute; left: 10px; top: 10px; width: 80px; height: 40px; }
+#Under { cursor: crosshair; }
+#Cover { z-index: 1; cursor: url(hand.svg) 2 3, wait; }
+#Pass { z-index: 2; pointer-events: none; cursor: copy; }
+#Clip { position: absolute; left: 120px; top: 10px; width: 40px; height: 40px; overflow: hidden; }
+#Crop { width: 80px; height: 40px; cursor: grab; }
+#Turn { position: absolute; left: 100px; top: 100px; width: 80px; height: 20px;
+  transform-origin: top left; transform: rotate(90deg); cursor: copy; }
+#Ghost { position: absolute; left: 190px; top: 50px; width: 40px; height: 40px;
+  visibility: hidden; cursor: progress; }
+#Shown, #Hidden { position: absolute; top: 0; width: 20px; height: 20px; }
+#Shown { left: 0; visibility: visible; cursor: zoom-in; }
+#Hidden { left: 20px; }
+#Inherit { position: absolute; left: 200px; top: 150px; width: 20px; height: 20px; }
+</style>"#;
+    for retained in [false, true] {
+        let mut ui = ui_with_font(test_font_metrics());
+        ui.define_document(UiDocument::parse("ui/cursors.svelte", doc).unwrap());
+        if retained {
+            ui.mount_document(
+                reactive::SourceId::new("test", "cursor"),
+                "cursors",
+                Default::default(),
+                Default::default(),
+                &bind::NoEnv,
+            )
+            .unwrap();
+        }
+        for (x, y, expected) in [
+            (20.0, 20.0, Cursor::Wait),
+            (130.0, 20.0, Cursor::Grab),
+            (175.0, 20.0, Cursor::Help),
+            (90.0, 130.0, Cursor::Copy),
+            (125.0, 105.0, Cursor::Help),
+            (195.0, 55.0, Cursor::ZoomIn),
+            (225.0, 55.0, Cursor::Help),
+            (205.0, 155.0, Cursor::Help),
+            (230.0, 190.0, Cursor::Help),
+            (260.0, 190.0, Cursor::Default),
+        ] {
+            for _ in 0..2 {
+                ui.begin(
+                    InputFrame {
+                        pointer: Vec2::new(x, y),
+                        pointer_inside: true,
+                        ..Default::default()
+                    },
+                    Viewport::new(300.0, 240.0),
+                );
+                if retained {
+                    ui.build_retained_documents(&bind::NoEnv).unwrap();
+                } else {
+                    ui.component("T", "cursors", &mut json!({}), &bind::NoEnv);
+                }
+                ui.end();
+            }
+            assert_eq!(
+                ui.frame().cursor,
+                expected,
+                "retained={retained}, ({x}, {y})"
+            );
+            assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+            if expected == Cursor::Wait {
+                assert_eq!(
+                    ui.frame().cursor_images,
+                    [CursorImage {
+                        url: "/ui/hand.svg".into(),
+                        hotspot: Some([2.0, 3.0])
+                    }]
+                );
+            }
+        }
+    }
 }
 
 #[test]

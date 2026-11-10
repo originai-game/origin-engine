@@ -391,8 +391,11 @@ impl Ui {
     /// element's hand, a link's), else the arrow. With it, the `url()`
     /// images declared beside the keyword that won (CSS UI 4 §5.1: the
     /// property inherits whole, images and keyword together).
-    pub(crate) fn resolve_cursor(&self) -> (crate::Cursor, Vec<crate::CursorImage>) {
-        let (cursor, at) = self.cursor_at();
+    pub(crate) fn resolve_cursor(
+        &self,
+        order: &[usize],
+    ) -> (crate::Cursor, Vec<crate::CursorImage>) {
+        let (cursor, at) = self.cursor_at(order);
         let images = if at == NONE {
             Vec::new()
         } else {
@@ -403,20 +406,45 @@ impl Ui {
 
     /// The resolved keyword and the node that declared it (`NONE`: a
     /// default of the element's kind).
-    fn cursor_at(&self) -> (crate::Cursor, usize) {
+    fn cursor_at(&self, order: &[usize]) -> (crate::Cursor, usize) {
         use crate::Cursor;
-        let key = if self.state.active != 0 {
+        let mut key = if self.state.active != 0 {
             self.state.active
         } else {
             self.state.hot
+        };
+        let hovered = if self.state.active == 0 {
+            let Some(i) = self.cursor_node(order) else {
+                return (Cursor::Default, NONE);
+            };
+            // Keep a control's link, resize handle or native cursor when
+            // its noninteractive child is on top, but not through a sibling.
+            let hot = self.tree.find(key);
+            let mut ancestor = i;
+            loop {
+                if Some(ancestor) == hot
+                    || crate::ui::resize::grip_key(self.nodes[ancestor].key) == key
+                {
+                    break;
+                }
+                ancestor = self.nodes[ancestor].parent;
+                if ancestor == NONE {
+                    key = self.nodes[i].key;
+                    break;
+                }
+            }
+            Some(i)
+        } else {
+            None
         };
         // Over selectable text (or selecting it): its own cursor where one
         // is set on it or above it, else the I-beam.
         let selecting = self.hit(key).filter(|h| h.has(HIT_SELECT)).map(|h| h.key);
         if let Some(t) = selecting.or_else(|| {
-            (self.state.active == 0)
-                .then(|| self.select_hit_at(self.state.pointer, key))
-                .flatten()
+            hovered
+                .and_then(|i| self.hit(self.nodes[i].key))
+                .filter(|h| h.has(HIT_SELECT))
+                .map(|h| h.key)
         }) && let Some(i) = self.tree.find(t)
         {
             return match self.declared_cursor(i) {
@@ -441,7 +469,7 @@ impl Ui {
                 None => (Cursor::Default, NONE),
             };
         };
-        let (c, at) = self.declared_cursor(i);
+        let (c, at) = self.declared_cursor(hovered.unwrap_or(i));
         if c != Cursor::Auto {
             return (c, at);
         }
@@ -467,6 +495,64 @@ impl Ui {
             };
         }
         (Cursor::Default, at)
+    }
+
+    /// Cursor targeting includes plain boxes without giving them input hits.
+    fn cursor_node(&self, order: &[usize]) -> Option<usize> {
+        use crate::element::{PointerEvents, SvgPointer};
+        let p = self.state.pointer;
+        order.iter().rev().copied().find(|&i| {
+            let n = &self.nodes[i];
+            let pointer = self.orders.pointer_of[i];
+            let svg = match pointer {
+                PointerEvents::Svg(bits)
+                    if self.draw_of(i).is_some_and(|d| d.view_box.is_some()) =>
+                {
+                    Some(bits.0)
+                }
+                _ => None,
+            };
+            if i == 0
+                || n.inert
+                || pointer == PointerEvents::None
+                || self.orders.skip_of[i] != 0
+                || (self.orders.hidden_of[i] && !svg.is_some_and(|s| s & SvgPointer::VISIBLE == 0))
+                || !n.clip.contains(p.x, p.y)
+            {
+                return false;
+            }
+            let Some(inv) = n.world.invert() else {
+                return false;
+            };
+            let (x, y) = inv.apply(p.x, p.y);
+            if !n.rect.contains(x, y) {
+                return false;
+            }
+            let mut parent = n.parent;
+            while parent != NONE {
+                let ancestor = &self.nodes[parent];
+                if ancestor.decor.as_ref().is_some_and(|d| d.clip) {
+                    let Some(inv) = ancestor.world.invert() else {
+                        return false;
+                    };
+                    let (x, y) = inv.apply(p.x, p.y);
+                    if !ancestor.rect.contains(x, y) {
+                        return false;
+                    }
+                }
+                parent = ancestor.parent;
+            }
+            svg.is_none_or(|bits| {
+                bits & SvgPointer::BOX != 0
+                    || self.draw_of(i).is_some_and(|d| {
+                        d.covers(
+                            [n.rect.width, n.rect.height],
+                            Vec2::new(x - n.rect.x, y - n.rect.y),
+                            bits,
+                        )
+                    })
+            })
+        })
     }
 
     /// The `cursor` declared on node `i` or the nearest element around it

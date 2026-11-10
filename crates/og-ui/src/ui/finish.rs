@@ -1197,7 +1197,7 @@ impl Ui {
                 // The pad's cursor is drawn; the system's is hidden.
                 (crate::Cursor::None, Vec::new())
             } else {
-                self.resolve_cursor()
+                self.resolve_cursor(&order)
             };
 
         // A button narrower than an ornament's span is `[narrow]`, laid
