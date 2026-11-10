@@ -32,7 +32,7 @@ test("affected selection includes transitive game inputs and conservatively reta
   put("unresolved.test.ts", 'import "./absent";');
   git(root, "init", "-q");
   git(root, "add", ".");
-  git(root, "-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "-qm", "baseline");
+  git(root, "-c", "user.name=Test", "-c", "user.email=test@example.invalid", "-c", "commit.gpgsign=false", "commit", "-qm", "baseline");
   const suites = ["unit.test.ts", "scene.og.ts", "reader.test.ts", "unresolved.test.ts"];
   const select = async () => (await affected(project, "entry.ts", suites, "HEAD")).selected;
   expect(await select()).toEqual([]);
@@ -72,7 +72,7 @@ test("computed imports and implicit runtime reads cannot be skipped as independe
   writeFileSync(join(root, "independent.test.ts"), "export const answer = 42;");
   git(root, "init", "-q");
   git(root, "add", ".");
-  git(root, "-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "-qm", "baseline");
+  git(root, "-c", "user.name=Test", "-c", "user.email=test@example.invalid", "-c", "commit.gpgsign=false", "commit", "-qm", "baseline");
   writeFileSync(join(root, "data.ts"), "export default 5;");
   expect((await affected(root, "entry.ts", [...suites, "independent.test.ts"], "HEAD")).selected).toEqual(suites);
 });
