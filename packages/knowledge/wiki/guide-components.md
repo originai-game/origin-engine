@@ -115,8 +115,6 @@ What every kind takes: its box, layout, paint, motion and input.
 | `match` | `name` | A shared-element key. |
 | `transition:` | `[<property>] <duration> [<timing-function>] [<delay>], …` | How its animatable values move when they change. |
 | `-og-layout-transition:` | `none \| <ms>ms [ease] \| -og-spring(<ms>ms, <bounce>) \| var(--motion-<name>)` | Moves from its old rectangle to its new one. |
-| `-og-enter:` | `<kind> [<distance>px] [<transition>]` | How it arrives. |
-| `-og-exit:` | `<kind> [<distance>px] [<transition>]` | How it leaves. |
 | `inert` | `bool` | It and its subtree take no input. |
 | `nav-up` | `name` | Where Up moves the focus from it (a path). |
 | `nav-down` | `name` | Where Down moves the focus from it. |

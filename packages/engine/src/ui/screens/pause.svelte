@@ -34,7 +34,8 @@
 @media (width < 600px), (height < 600px) {
 #Pause { padding: 16px; }
 }
-#Panel { width: stretch; max-width: 400px; padding: 24px; gap: 16px;  border-radius: var(--radius-panel); backdrop-filter: blur(32px) saturate(var(--surface-saturation)); -og-material: glass thick lift; -og-enter: slide-up 24px var(--motion-enter); }
+#Panel { width: stretch; max-width: 400px; padding: 24px; gap: 16px;  border-radius: var(--radius-panel); backdrop-filter: blur(32px) saturate(var(--surface-saturation)); -og-material: glass thick lift; opacity: 1; translate: 0 0; transition: opacity var(--motion-enter), translate var(--motion-enter); }
+@starting-style { #Panel { opacity: 0; translate: 0 24px; } }
 @media (height < 600px) and (orientation: landscape) {
 #Panel { width: stretch; max-width: 640px; padding: 12px; gap: 8px; }
 }

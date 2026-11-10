@@ -28,7 +28,9 @@
 @media (width < 600px), (height < 600px) {
 #Splash { padding: 24px; }
 }
-#Mark { gap: 12px; align-items: center; -og-enter: fade; -og-exit: fade; }
+#Mark { display: block; gap: 12px; align-items: center; opacity: 1; transition: opacity var(--motion-enter), display var(--motion-enter) allow-discrete; }
+#Mark[hidden] { display: none; opacity: 0; transition: opacity var(--motion-exit), display var(--motion-exit) allow-discrete; }
+@starting-style { #Mark { opacity: 0; } }
 #Art { width: 360px; height: 160px; }
 @media (width < 600px), (height < 600px) {
 #Art { width: 260px; height: 116px; }

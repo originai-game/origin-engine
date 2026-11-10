@@ -287,6 +287,21 @@ impl Ui {
         }
         for name in names {
             let Some(t) = covered(&name) else { continue };
+            // Display must keep the box alive for the opacity channels'
+            // reduced-motion fade, rather than removing it immediately.
+            let reduced_display = reduced && name == "display" && t.discrete;
+            let transition = if reduced_display {
+                match theme.motion.reduced {
+                    crate::motion::Reduced::Keep => t.transition,
+                    crate::motion::Reduced::None => Transition::Instant,
+                    crate::motion::Reduced::Fade => Transition::Tween {
+                        duration_ms: theme.motion.reduced_ms,
+                        ease: crate::motion::Ease::Linear,
+                    },
+                }
+            } else {
+                t.transition
+            };
             let after = value_of(&cascade.values, &name);
             let Some(after) = after else { continue };
             state.after.insert(name.clone(), after.clone());
@@ -303,7 +318,7 @@ impl Ui {
                 if ms < 0.0 {
                     return (r.from.clone(), false);
                 }
-                let (p, done) = progress(&t.transition, ms, r, tps, &theme.motion);
+                let (p, done) = progress(&transition, ms, r, tps, &theme.motion);
                 (interpolate::mix(&name, &r.from, &r.to, p), done)
             };
             let run = match old {
@@ -311,7 +326,7 @@ impl Ui {
                 Some(r) if r.to == after => Some(r.clone()),
                 _ => {
                     let current = old.map(|r| sample(r).0).or(before);
-                    let duration_ms = match t.transition {
+                    let duration_ms = match transition {
                         Transition::Tween { duration_ms, .. } => duration_ms.max(0.0),
                         Transition::Instant => 0.0,
                         _ => 1.0,
@@ -319,7 +334,7 @@ impl Ui {
                     match current {
                         Some(from)
                             if from != after
-                                && !reduced
+                                && (!reduced || reduced_display)
                                 && duration_ms + t.delay_ms > 0.0
                                 && (t.discrete
                                     || interpolate::interpolate(&name, &from, &after, 0.5)
@@ -336,7 +351,7 @@ impl Ui {
                                     let p = if ms <= 0.0 {
                                         0.0
                                     } else {
-                                        progress(&t.transition, ms, r, tps, &theme.motion).0
+                                        progress(&transition, ms, r, tps, &theme.motion).0
                                     };
                                     (
                                         r.to.clone(),

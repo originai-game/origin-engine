@@ -46,7 +46,6 @@ use crate::element::Prop;
 use crate::layout::Size;
 use crate::motion::{
     Ease, MotionToken, PresenceSpec, SpringSpec, StateTransition, Timeline, Transition,
-    TransitionKind,
 };
 use crate::style::Srgba;
 use og_core::ogt::{Document, Number, Value};
@@ -245,7 +244,6 @@ pub enum Lit {
     Size(Size),
     Paint(Paint),
     Transition(Transition),
-    Presence(PresenceSpec),
     Tracks(tracks::TrackList),
     Strs(Vec<String>),
 }
@@ -496,6 +494,9 @@ pub struct DocNode {
     /// Names retain `class:` and `bind:` prefixes; event handlers are excluded.
     pub selector_attrs: Vec<(String, Expr)>,
     pub props: Vec<PropSet>,
+    /// Svelte `in:`/`out:` directives; not CSS properties or HTML attributes.
+    pub enter: Option<PresenceSpec>,
+    pub exit: Option<PresenceSpec>,
     /// Breakpoint and orientation overrides, in order (later wins).
     pub at: Vec<(AtQuery, Vec<PropSet>)>,
     /// Scoped CSS rules in cascade order, with their reactive match condition.
@@ -702,41 +703,6 @@ fn parse_ease(e: &str) -> Result<Ease, String> {
     })
 }
 
-fn parse_presence(vals: &[Value], enter: bool) -> Result<PresenceSpec, String> {
-    let kind = vals.first().and_then(Value::as_word).unwrap_or("");
-    let k = match kind {
-        "fade" => TransitionKind::Fade,
-        "slideUp" => TransitionKind::SlideUp,
-        "slideDown" => TransitionKind::SlideDown,
-        "slideLeft" => TransitionKind::SlideLeft,
-        "slideRight" => TransitionKind::SlideRight,
-        "scale" => TransitionKind::Scale,
-        "pop" => TransitionKind::Pop,
-        "glitch" => TransitionKind::Glitch,
-        other => {
-            return Err(format!(
-                "'{other}' is not a presence: fade, slideUp, slideDown, slideLeft, slideRight, scale, pop, glitch"
-            ));
-        }
-    };
-    let mut rest = &vals[1..];
-    let mut distance = 24.0;
-    if let Some(n) = rest.first().and_then(Value::as_number) {
-        distance = n.as_f32();
-        rest = &rest[1..];
-    }
-    let t = if rest.is_empty() {
-        Transition::Token(if enter {
-            MotionToken::Enter
-        } else {
-            MotionToken::Exit
-        })
-    } else {
-        parse_transition(rest)?
-    };
-    Ok(PresenceSpec::from_kind(k, distance, t))
-}
-
 fn parse_size(vals: &[Value]) -> Result<Size, String> {
     const HOW: &str = "a size: fit [min max], grow [min max], fixed <px> (or a number), percent <0–1>, minContent, maxContent";
     if let [Value::Number(n)] = vals {
@@ -876,7 +842,6 @@ pub(crate) fn parse_lit(ty: Ty, vals: &[Value]) -> Result<Lit, String> {
         Ty::Size => Lit::Size(parse_size(vals)?),
         Ty::Paint => Lit::Paint(parse_paint(vals)?),
         Ty::Transition => Lit::Transition(parse_transition(vals)?),
-        Ty::Presence => Lit::Presence(parse_presence(vals, true)?),
         Ty::Tracks => Lit::Tracks(tracks::of_values(vals)?),
         Ty::Names => Lit::Strs(vals.iter().filter_map(as_name).collect()),
         Ty::Spans => return Err("spans takes a read-only expression: spans={$spans}".into()),

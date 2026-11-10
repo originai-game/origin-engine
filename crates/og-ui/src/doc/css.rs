@@ -35,8 +35,6 @@ enum Conv {
     Tracks,
     /// `none`, `<ms>ms [ease]`, `-og-spring(<ms>ms, <bounce>)`, `var(--motion-<name>)`.
     Transition,
-    /// `<kind> [<distance>px] [<transition>]`.
-    Presence,
     /// Two fractions as percentages: `50% 100%`.
     Origin,
     /// A margin edge: `<n>px`, `<n>em` (of its own type step) or `0`, as
@@ -244,8 +242,6 @@ pub const STYLE: &[(&str, &str)] = &[
     ("overlaps", "-og-overlaps"),
     ("motion", "transition"),
     ("layoutMotion", "-og-layout-transition"),
-    ("enter", "-og-enter"),
-    ("exit", "-og-exit"),
     ("cursor", "cursor"),
     ("pointerEvents", "pointer-events"),
     ("touchAction", "touch-action"),
@@ -448,7 +444,6 @@ fn conv(prop: &str) -> Conv {
         "columns" | "rows" | "autoColumns" | "autoRows" => Conv::Tracks,
         "columnStart" | "columnEnd" | "rowStart" | "rowEnd" => Conv::Raw,
         "motion" | "layoutMotion" => Conv::Transition,
-        "enter" | "exit" => Conv::Presence,
         "pivot" => Conv::Origin,
         _ => Conv::Joint,
     }
@@ -497,7 +492,6 @@ pub fn value_form(prop: &str, words: &[&str]) -> Option<String> {
         Conv::Transition => {
             "none | <ms>ms [ease] | -og-spring(<ms>ms, <bounce>) | var(--motion-<name>)".into()
         }
-        Conv::Presence => "<kind> [<distance>px] [<transition>]".into(),
         Conv::Origin => "<x>% <y>%".into(),
         Conv::Raw if prop.starts_with("radius") => "<h> [<v>] (<n>px | <n>%)".into(),
         Conv::Raw if prop.starts_with("corner") => {
@@ -760,27 +754,6 @@ fn transition_css(vals: &[Value]) -> Result<String, String> {
     }
 }
 
-fn presence_css(vals: &[Value]) -> Result<String, String> {
-    let kind = vals
-        .first()
-        .map(text_of)
-        .ok_or("a presence: fade, slideUp …")?;
-    let mut out = kebab(&kind);
-    let mut rest = &vals[1..];
-    if let Some(v) = rest.first()
-        && px(v).is_ok()
-    {
-        out.push(' ');
-        out.push_str(&px(v)?);
-        rest = &rest[1..];
-    }
-    if !rest.is_empty() {
-        out.push(' ');
-        out.push_str(&transition_css(rest)?);
-    }
-    Ok(out)
-}
-
 fn track_css(v: &Value) -> Result<String, String> {
     match v {
         Value::Number(_) => px(v),
@@ -887,7 +860,6 @@ fn value_css(prop: &str, c: Conv, vals: &[Value]) -> Result<String, String> {
             .collect::<Result<Vec<_>, _>>()?
             .join(" ")),
         Conv::Transition => transition_css(vals),
-        Conv::Presence => presence_css(vals),
         Conv::Origin => match vals {
             [Value::Number(a), Value::Number(b)] => {
                 Ok(format!("{}% {}%", shift(a.text(), 2), shift(b.text(), 2)))
@@ -2418,25 +2390,6 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
                     vec![Value::String(value.trim().to_string())]
                 }
                 Conv::Transition => transition_vals(&t)?,
-                Conv::Presence => {
-                    let kind = want_ident(
-                        t.first().ok_or("a presence")?,
-                        "a presence: fade, slide-up …",
-                    )?;
-                    let mut out = vec![Value::Word(camel(kind))];
-                    let mut rest = &t[1..];
-                    if let Some(d) = rest.first()
-                        && (matches!(d, Tok::Num(..))
-                            || matches!(d, Tok::Func(f, _) if f == "var" && want_len(d).is_ok()))
-                    {
-                        out.push(want_len(d)?);
-                        rest = &rest[1..];
-                    }
-                    if !rest.is_empty() {
-                        out.extend(transition_vals(rest)?);
-                    }
-                    out
-                }
                 Conv::Origin => match t.as_slice() {
                     [Tok::Num(a, u), Tok::Num(b, v)] if u == "%" && v == "%" => {
                         vec![number(&shift(a, -2))?, number(&shift(b, -2))?]

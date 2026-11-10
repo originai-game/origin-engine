@@ -3480,18 +3480,8 @@ mod tests {
         )
         .unwrap();
         let boxed = doc.nodes.iter().find(|n| n.id == "Box").unwrap();
-        let presence = |name: &str| {
-            boxed
-                .props
-                .iter()
-                .find(|p| p.name() == name)
-                .map(|p| match &p.value {
-                    PropValue::Lit(crate::doc::Lit::Presence(s)) => s.clone(),
-                    other => panic!("{other:?}"),
-                })
-        };
-        let enter = presence("enter").unwrap();
-        assert_eq!(enter, presence("exit").unwrap());
+        let enter = boxed.enter.clone().unwrap();
+        assert_eq!(Some(&enter), boxed.exit.as_ref());
         assert!(enter.values.contains(&(crate::element::Prop::Y, 20.0)));
         assert!(enter.values.contains(&(crate::element::Prop::Opacity, 0.0)));
         assert_eq!(

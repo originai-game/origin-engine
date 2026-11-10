@@ -2151,8 +2151,9 @@ properties style it over the `Dropdown.list` part, and `max-height: 240px`
 bounds its rows, which then scroll.
 
 `data-og-instant` on any element settles its first entrance: its
-`-og-enter` lands at once, as the screen a game opens on behind the web's
-play gate needs; a later entrance, after it left, plays.
+`@starting-style` lands at once, as the screen a game opens on behind the web's
+play gate needs; a later entrance, after it left, plays. This covers both
+channel values such as opacity and computed values such as width.
 
 `<details bind:open={$x}><summary>…</summary>…</details>` is a disclosure.
 The summary row (`Details.summary[open]`, role button with `expanded`)
@@ -2297,7 +2298,13 @@ style of an element's first style (CSS Transitions 2 §3): each property it
 sets that a transition covers, any animatable property, moves from it as
 from a style change; with `transition-behavior: allow-discrete`, a
 `display: none` or `visibility: hidden` start holds the shown value
-throughout. `@property` registers a custom property's
+throughout. For an exit, transition opacity to zero and display to none
+with `allow-discrete`; keep the element mounted while its style changes.
+Its render subtree stays until display reaches none, then retires, and
+can be built again when shown. Removing an `{#if}` branch immediately is
+not a CSS style change; Svelte's `out:` directive remains available for
+that lifecycle. The removed `-og-enter` and `-og-exit` properties have no
+attribute aliases. `@property` registers a custom property's
 syntax, inheritance and initial value; a value that does not match its
 syntax takes the initial value. `@font-face` declares a named family
 (CSS Fonts 4): the cook bundles each `url()` source (read relative to the

@@ -1,0 +1,15 @@
+{
+  "breaking": [
+    {
+      "member": "UI entrance and exit styles",
+      "change": "Removed -og-enter and -og-exit, including their reflected enter/exit attributes.",
+      "fix": "Use @starting-style with standard transitions for entrances. Exit with opacity and display transitions using allow-discrete, keeping the element mounted until its display becomes none. Svelte in:/out:/transition: directives retain their existing lifecycle behavior."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "UI CSS transitions",
+      "summary": "data-og-instant settles the first @starting-style entrance for channel and computed values. Whitespace no longer makes a discrete display exit disappear halfway through; retained display exits retire their render subtree on completion."
+    }
+  ]
+}

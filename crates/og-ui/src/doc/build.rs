@@ -37,7 +37,6 @@ enum V {
     Size(Size),
     Color(Srgba),
     Transition(crate::motion::Transition),
-    Presence(crate::motion::PresenceSpec),
     Tracks(super::tracks::TrackList),
     Strs(Vec<String>),
     Spans(Result<Vec<crate::TextSpan>, String>),
@@ -258,7 +257,7 @@ fn coerce(ui: &Ui, ty: Ty, v: &Value) -> Option<V> {
             _ => V::Strs(vec![text(v)]),
         },
         Ty::Spans => V::Spans(serde_json::from_value(v.clone()).map_err(|e| e.to_string())),
-        Ty::Transition | Ty::Presence | Ty::Tracks => return None,
+        Ty::Transition | Ty::Tracks => return None,
     })
 }
 
@@ -271,7 +270,6 @@ fn lit(ui: &Ui, l: &Lit) -> Option<V> {
         Lit::Size(s) => V::Size(*s),
         Lit::Paint(p) => V::Color(paint(ui, p)?),
         Lit::Transition(t) => V::Transition(*t),
-        Lit::Presence(p) => V::Presence(p.clone()),
         Lit::Tracks(t) => V::Tracks(t.clone()),
         Lit::Strs(s) => V::Strs(s.clone()),
     })
@@ -869,7 +867,18 @@ impl Ui {
         // `@starting-style`: the before-change style of an element's first
         // style, for its transitions.
         let key = crate::id::key_of_path(path);
-        if !self.docs.seen.contains(&key) && n.rules.iter().any(|rule| rule.starting) {
+        let instant = !self.docs.entered.contains(&key)
+            && sets
+                .iter()
+                .rev()
+                .find(|p| p.name() == "dataOgInstant")
+                .is_some_and(|p| {
+                    matches!(
+                        b.value(self, PROPS[p.spec].ty, &p.value),
+                        Some(V::Bool(true))
+                    )
+                });
+        if !instant && !self.docs.seen.contains(&key) && n.rules.iter().any(|rule| rule.starting) {
             let start = cascade::values_with(
                 &rules,
                 &cascade::Options {
@@ -1660,6 +1669,8 @@ impl Ui {
     /// Document event ownership is separate from a box's computed style.
     fn resolved_props(n: &DocNode, r: &Resolved) -> Props {
         let mut p = Self::box_props(&n.kind, r);
+        p.enter = n.enter.clone();
+        p.exit = n.exit.clone();
         gestures::props(n, r, &mut p);
         p
     }
@@ -1808,9 +1819,6 @@ impl Ui {
         if let Some(V::Transition(t)) = r.get("layoutMotion") {
             p.layout_motion = Some(*t);
         }
-        if let Some(V::Presence(e)) = r.get("enter") {
-            p.enter = Some(e.clone());
-        }
         // `@starting-style` values the channels hold.
         for (name, value, _) in &r.starting {
             if super::motion::channels(name).is_none() {
@@ -1830,9 +1838,6 @@ impl Ui {
                     p.starting.push((prop, v));
                 }
             }
-        }
-        if let Some(V::Presence(e)) = r.get("exit") {
-            p.exit = Some(e.clone());
         }
         p.inert = r.flag("inert");
         let link = |name: &str| r.str(name).unwrap_or_default().to_string();

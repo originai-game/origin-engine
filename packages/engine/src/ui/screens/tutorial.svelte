@@ -49,7 +49,8 @@ button, button::part(base) { height: calc(24rem / 7); }
 }
 #Tutorial { width: stretch; height: stretch; }
 #Highlight { width: stretch; height: stretch; position: absolute; inset-inline-start: 0; top: 0; inset-inline-end: 0; bottom: 0; }
-#Card { position: absolute; inset-inline-start: bind(x); top: bind(y); width: stretch; max-width: 360px; padding: 16px; gap: 8px; border-radius: 12px; background: linear-gradient(180deg, var(--panel-raised), var(--panel)); border: 1px solid var(--line-strong); box-shadow: 0 12px 32px #0000008c, 0 2px 6px #00000059; -og-enter: pop; }
+#Card { position: absolute; inset-inline-start: bind(x); top: bind(y); width: stretch; max-width: 360px; padding: 16px; gap: 8px; border-radius: 12px; background: linear-gradient(180deg, var(--panel-raised), var(--panel)); border: 1px solid var(--line-strong); box-shadow: 0 12px 32px #0000008c, 0 2px 6px #00000059; opacity: 1; scale: 1; transition: opacity var(--motion-enter), scale var(--motion-enter); }
+@starting-style { #Card { opacity: 0; scale: 0.6; } }
 @media (width < 600px) and (orientation: portrait) {
 #Card { inset-inline-start: 12px; inset-inline-end: 12px; top: bind(y); }
 }

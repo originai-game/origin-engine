@@ -391,7 +391,13 @@ impl Parser {
             if !on {
                 continue;
             }
-            if self.doc.nodes[i].props.iter().any(|p| p.name() == prop) {
+            let node = &mut self.doc.nodes[i];
+            let target = if prop == "enter" {
+                &mut node.enter
+            } else {
+                &mut node.exit
+            };
+            if target.is_some() {
                 return Err((
                     a.at,
                     format!(
@@ -399,8 +405,7 @@ impl Parser {
                     ),
                 ));
             }
-            let value = PropValue::Lit(Lit::Presence(spec.clone()));
-            self.prop(i, internal, prop, value, a.at, &a.value)?;
+            *target = Some(spec.clone());
         }
         Ok(())
     }

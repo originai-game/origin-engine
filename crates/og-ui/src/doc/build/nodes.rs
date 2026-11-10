@@ -262,7 +262,20 @@ impl Ui {
             self.commit_styles(commit);
         }
         let keeps = std::mem::take(&mut self.docs.keeps_hidden);
-        if r.has("visible") && !r.flag("visible") && r.cascade.container_reads.is_empty() && !keeps
+        // A discrete display exit retains the subtree until the sampled
+        // display becomes none, then completes its removal lifecycle.
+        let exited = r
+            .transitions
+            .iter()
+            .any(|t| t.discrete && t.covers("display"))
+            && r.cascade
+                .values
+                .iter()
+                .any(|(name, value, _)| name == "display" && value.trim() == "none");
+        if r.has("visible")
+            && !r.flag("visible")
+            && r.cascade.container_reads.is_empty()
+            && (!keeps || exited)
         {
             return None;
         }

@@ -107,6 +107,7 @@ pub(crate) fn mix(property: &str, a: &str, b: &str, p: f32) -> String {
 
 /// The discrete step from `a` to `b` at `p`.
 pub(crate) fn discrete<'a>(property: &str, a: &'a str, b: &'a str, p: f32) -> &'a str {
+    let (a, b) = (a.trim(), b.trim());
     if let Some(none) = hidden(property)
         && (a == none) != (b == none)
         && p > 0.0

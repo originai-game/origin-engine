@@ -1524,6 +1524,8 @@ fn pseudo_node(doc: &mut UiDocument, i: usize, pseudo: &'static str) -> usize {
         selector_tag: None,
         selector_attrs: Vec::new(),
         props: Vec::new(),
+        enter: None,
+        exit: None,
         at: Vec::new(),
         rules: Vec::new(),
         span_rules: Vec::new(),

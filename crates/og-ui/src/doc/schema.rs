@@ -36,9 +36,6 @@ pub enum Ty {
     Paint,
     /// `spring <ms> <bounce>`, `tween <ms> [ease]`, `token <name>`, `instant`.
     Transition,
-    /// `<fade|slideUp|slideDown|slideLeft|slideRight|scale|pop> [distance]
-    /// [transition…]`.
-    Presence,
     /// Grid tracks: `120`, `1fr`, `auto`, `minmax:80:200`, `25%`, as words
     /// or numbers.
     Tracks,
@@ -62,7 +59,6 @@ impl Ty {
             Ty::Size => "size",
             Ty::Paint => "paint",
             Ty::Transition => "transition",
-            Ty::Presence => "presence",
             Ty::Tracks => "tracks",
             Ty::Names => "names",
             Ty::Spans => "TextSpan[]",
@@ -876,8 +872,6 @@ pub const CORE_PROPS: &[PropSpec] = &[
         ["box"],
         "A table cell's rows (`<td rowspan>`), 1 by default, 0 to the end of its row group; CSS table layout reads it."
     ),
-    p!("enter", Ty::Presence, "How it arrives."),
-    p!("exit", Ty::Presence, "How it leaves."),
     p!("inert", Ty::Bool, "It and its subtree take no input."),
     p!(
         "navUp",

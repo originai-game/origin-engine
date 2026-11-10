@@ -1118,7 +1118,8 @@ fn data_og_instant_settles_only_the_first_entrance() {
   {#if $shown}<div id="Plain" class="in">Ready</div>{/if}
 </div>
 <style>
-.in { -og-enter: fade 0px 400ms; width: 100px; height: 40px; background: #ffffff; }
+.in { opacity: 1; transition: opacity 400ms, width 400ms; width: 100px; height: 40px; background: #ffffff; }
+@starting-style { .in { opacity: 0; width: 10px; } }
 </style>"#;
     both(text, &[("shown", json!(true))], |d| {
         // Built at the first frame: a frame on, the instant one is settled
@@ -1153,6 +1154,8 @@ fn data_og_instant_settles_only_the_first_entrance() {
             "the plain one enters: {}",
             opacity(d, "Plain")
         );
+        assert_eq!(d.get("Gate").width, 100.0);
+        assert!(d.get("Plain").width < 100.0);
         // Hidden, then shown again: now both play their entrance.
         d.set("shown", json!(false));
         for _ in 0..60 {
@@ -1164,6 +1167,86 @@ fn data_og_instant_settles_only_the_first_entrance() {
             "a later entrance plays: {}",
             opacity(d, "Gate")
         );
+    });
+}
+
+#[test]
+fn discrete_display_exit_finishes_before_removing_content() {
+    for name in ["enter", "exit"] {
+        let css = refused(&format!(
+            r#"<meta name="component" content="t"><div/><style>div {{ -og-{name}: fade; }}</style>"#
+        ));
+        assert!(css.contains(&format!("-og-{name}")), "{css}");
+        let attribute = refused(&format!(
+            r#"<meta name="component" content="t"><div {name}="fade"/>"#
+        ));
+        assert!(
+            attribute.contains(&format!("unknown attribute {name}")),
+            "{attribute}"
+        );
+    }
+    let text = r#"<meta name="component" content="t">
+<div id="Page"><div id="Card" class={$mode}><button id="Child">Ready</button></div></div>
+<style>
+#Card { display: flex; opacity: 1; width: 100px; height: 40px;
+  background: #ffffff; transition: opacity 200ms linear, display 200ms allow-discrete; }
+#Card.gone { display: none; opacity: 0; }
+</style>"#;
+    both(text, &[("mode", json!("shown"))], |d| {
+        d.set("mode", json!("gone"));
+        assert!(d.el("Child").is_some(), "content remains during its exit");
+        for _ in 0..7 {
+            d.step(InputFrame::default());
+        }
+        assert!(
+            d.el("Child").is_some(),
+            "display holds past the halfway point"
+        );
+        let saved = d.ui.save_state();
+        d.step(InputFrame::default());
+        let expected = d.ui.frame().items.clone();
+        d.ui.restore_state(&saved).unwrap();
+        d.step(InputFrame::default());
+        assert_eq!(
+            d.ui.frame().items,
+            expected,
+            "exit checkpoint replays exactly"
+        );
+        let mut fresh = Doc::new(text, &[("mode", json!("gone"))], d.mounted);
+        fresh.ui.restore_state(&saved).unwrap();
+        fresh.step(InputFrame::default());
+        assert_eq!(
+            fresh.ui.frame().items,
+            expected,
+            "fresh exit checkpoint replays exactly"
+        );
+        for _ in 0..20 {
+            d.step(InputFrame::default());
+        }
+        assert!(d.el("Child").is_none(), "content retires after its exit");
+        d.set("mode", json!("shown"));
+        assert!(
+            d.el("Child").is_some(),
+            "content returns after display changes"
+        );
+        for _ in 0..20 {
+            d.step(InputFrame::default());
+        }
+        let mut theme = *d.ui.theme();
+        theme.reduced_motion = true;
+        d.ui.set_theme(theme);
+        d.set("mode", json!("gone"));
+        for _ in 0..3 {
+            d.step(InputFrame::default());
+        }
+        assert!(
+            d.el("Child").is_some(),
+            "display retains the reduced-motion fade"
+        );
+        for _ in 0..10 {
+            d.step(InputFrame::default());
+        }
+        assert!(d.el("Child").is_none(), "the reduced-motion exit completes");
     });
 }
 
