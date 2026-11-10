@@ -1,0 +1,12 @@
+{
+  "fixed": [
+    {
+      "member": "CSS image-set()",
+      "summary": "Accept valid MIME parameters in type() descriptors and discard malformed descriptors before resolution deduplication. Asset discovery and rendering use the same selection rules."
+    },
+    {
+      "member": "CSS math",
+      "summary": "Preserve quoted strings during math-function discovery and scan Unicode at character boundaries, avoiding a panic on non-ASCII MIME parameters and accidental evaluation of literal calc() text."
+    }
+  ]
+}

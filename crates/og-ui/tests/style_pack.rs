@@ -212,6 +212,35 @@ fn css_urls_ignore_comments_strings_and_local_fragments() {
     assert!(rebased.contains("type(\"image/png\")"), "{rebased}");
     assert!(rebased.contains("url(#blur)") || rebased.contains("url(\"#blur\")"));
     assert_eq!(urls(css), ["../icons/a.svg", "b.png", "c.png"]);
+    for (mime, supported) in [
+        ("IMAGE/PNG; profile=test", true),
+        ("image/png \t;\tprofile=test; mode=fast", true),
+        (r#"image/png; note="a;b""#, true),
+        (r#"image/png; note="a\"b""#, true),
+        ("image/png; note=\"\"", true),
+        ("image/png; note=\"ÿ\"", true),
+        ("image/png;", false),
+        ("image/png; bad", false),
+        ("image/png; note=", false),
+        ("image/png; note =test", false),
+        ("image/png; note=\"unterminated", false),
+        ("image/png; note=\"λ\"", false),
+        ("image/avif; profile=test", false),
+    ] {
+        let escaped = mime.replace('\\', "\\\\").replace('"', "\\\"");
+        let css = format!(
+            "background: image-set(\"typed.png\" type(\"{escaped}\"), \"fallback.png\" 1x);"
+        );
+        assert_eq!(
+            urls(&css),
+            [if supported {
+                "typed.png"
+            } else {
+                "fallback.png"
+            }],
+            "MIME {mime:?}"
+        );
+    }
 }
 
 #[test]

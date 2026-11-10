@@ -729,8 +729,15 @@ impl CssImage {
 /// Formats decoded by the texture cook. An unsupported type discards only
 /// its candidate, before equal-density candidates are deduplicated.
 pub(crate) fn image_type_supported(mime: &str) -> bool {
+    let (essence, parameters) = match mime.split_once(';') {
+        Some((essence, parameters)) => (essence.trim_end_matches([' ', '\t']), Some(parameters)),
+        None => (mime, None),
+    };
+    if parameters.is_some_and(|p| !mime_parameters(p)) {
+        return false;
+    }
     matches!(
-        mime.to_ascii_lowercase().as_str(),
+        essence.to_ascii_lowercase().as_str(),
         "image/png"
             | "image/jpeg"
             | "image/webp"
@@ -743,6 +750,51 @@ pub(crate) fn image_type_supported(mime: &str) -> bool {
             | "image/vnd.radiance"
             | "image/x-exr"
     )
+}
+
+/// RFC 9110 media-type parameters. CSS Images 4 requires a valid MIME
+/// string, not MIME Sniffing's forgiving parser that drops malformed parameters.
+fn mime_parameters(mut rest: &str) -> bool {
+    let token = |c: char| c.is_ascii_alphanumeric() || "!#$%&'*+-.^_`|~".contains(c);
+    let quoted = |c: char| matches!(c, '\t' | ' '..='~' | '\u{80}'..='\u{ff}');
+    loop {
+        rest = rest.trim_start_matches([' ', '\t']);
+        let after_name = rest.trim_start_matches(token);
+        if after_name.len() == rest.len() {
+            return false;
+        }
+        let Some(value) = after_name.strip_prefix('=') else {
+            return false;
+        };
+        if let Some(value) = value.strip_prefix('"') {
+            let mut chars = value.chars();
+            loop {
+                match chars.next() {
+                    Some('"') => break,
+                    Some('\\') => {
+                        if !chars.next().is_some_and(quoted) {
+                            return false;
+                        }
+                    }
+                    Some(c) if quoted(c) => {}
+                    _ => return false,
+                }
+            }
+            rest = chars.as_str();
+        } else {
+            rest = value.trim_start_matches(token);
+            if rest.len() == value.len() {
+                return false;
+            }
+        }
+        if rest.is_empty() {
+            return true;
+        }
+        let Some(next) = rest.trim_start_matches([' ', '\t']).strip_prefix(';') else {
+            return false;
+        };
+        rest = next;
+    }
 }
 
 /// `background-size` of one layer; a percentage is of the box.

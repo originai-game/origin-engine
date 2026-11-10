@@ -113,7 +113,7 @@ fn image_sets_render_density_correct_backgrounds_masks_and_borders() {
 #row { display: flex; }
 #row > div { width: 32px; height: 32px; flex-shrink: 0; }
 #auto { background: image-set("low.png" 1x, "high.png" calc(192dpcm / 2.54)) no-repeat; }
-#type { background: image-set("absent.avif" type("image/avif"), "high.png" type("image/png"), "low.png" 1x) no-repeat; }
+#type { background: image-set("absent.avif" type("image/avif"), "absent.png" type("image/png; bad"), "high.png" type('image/png; note="a;bÿcalc(bad)"'), "low.png" 1x) no-repeat; }
 #zero { background: lime; mask-image: image-set("absent.png" 0x); }
 #mask { background: lime; mask: image-set("low.png" 1x, "high.png" 2x) no-repeat; }
 #border { border: 1px solid transparent; border-image-source: image-set("high.png" 2x); border-image-slice: 25%; border-image-width: auto; }

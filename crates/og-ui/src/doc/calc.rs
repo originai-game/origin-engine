@@ -487,8 +487,29 @@ pub(crate) fn has_math(text: &str) -> bool {
 /// The first math function in `s`: where its name starts, and the name.
 fn next_function(s: &str) -> Option<(usize, &'static str)> {
     let b = s.as_bytes();
-    (0..b.len()).find_map(|i| {
-        let boundary = i == 0 || !(b[i - 1].is_ascii_alphanumeric() || b[i - 1] == b'-');
+    let mut quote = None;
+    let mut escaped = false;
+    s.char_indices().find_map(|(i, c)| {
+        if escaped {
+            escaped = false;
+            return None;
+        }
+        if c == '\\' {
+            escaped = true;
+            return None;
+        }
+        if let Some(q) = quote {
+            if c == q {
+                quote = None;
+            }
+            return None;
+        }
+        if c == '"' || c == '\'' {
+            quote = Some(c);
+            return None;
+        }
+        let boundary = i == 0
+            || !(b[i - 1].is_ascii_alphanumeric() || matches!(b[i - 1], b'-' | b'_' | 128..=255));
         FUNCTIONS
             .iter()
             .find(|f| boundary && s[i..].starts_with(*f) && b.get(i + f.len()) == Some(&b'('))
