@@ -112,11 +112,13 @@ proof("pointer-events cursor", "css_interact", "the_pointer_passes_through_none_
       "Actual cursor routing through pointer-events:none and visibility:hidden, descendant overrides, URL priority/hotspot and accessibility presence. Immediate builder only; OS cursor loading is not covered.")
 proof("text-align", "control_props", "a_button_label_takes_text_align",
       "Both builders assert emitted label positions for default centre, explicit start and menu item alignment; parent alignment does not override the button default.")
+proof("font-family", "runs", "ordered_named_families_preserve_primary_glyphs_and_inherit",
+      "Both builders assert exact glyph/font handles for inherited lists, rich spans, reversed named/generic order, names after generics and quoted generic names. Generics map to engine font roles, not installed system fonts.")
+proof("gradients", "css_paint", "repeating_gradients_repeat_the_stop_interval",
+      "Metal pixels prove repeating radial intervals with positive/negative starts, all eight conic half-quadrants and collapsed linear stops. Subpixel periods and unbounded stop counts are not covered.")
 
 MISSING = {
-    "font-family": "Partial: runs::ordered_named_families_preserve_primary_glyphs_and_inherit proves ordered named families, inheritance, spans and button::part(base) glyph/font output in both builders. Named families after a generic are truncated by the parser; generic positions are not preserved.",
     "default": "documents::boolean_attribute_selectors_follow_svelte_presence proves retained :default follows false/present checked attributes. The immediate builder does not expose :default state; full support is missing.",
-    "gradients": "Metal pixel proofs cover nonzero repeating intervals and coincident stops (css_paint::repeating_gradients_repeat_the_stop_interval), and out-of-range non-repeating linear/radial/conic stops (css_paint::nonrepeating_gradients_keep_stops_outside_the_image). Full feature remains missing: subpixel periods and unbounded stop counts are not proved.",
     "image-set": "URL rewriting descends into image-set, but image candidate selection has no implementation/output proof.",
     "interpolate-size": "No intrinsic-size interpolation implementation or output proof.",
     "calc-size": "No calc-size evaluation or animated output proof.",
@@ -140,7 +142,7 @@ PART_PROVEN["border-radius"] = (
     "Emitted button base radius replaces its default in both immediate and retained documents.")
 PART_PROVEN["font-family"] = (
     "runs", "ordered_named_families_preserve_primary_glyphs_and_inherit",
-    "Both builders emit button::part(base) glyphs from ordered named families before a generic. Generic interleaving remains missing.")
+    "Both builders emit button::part(base) glyphs from ordered named families, including a named fallback after an intervening generic.")
 
 
 def main():

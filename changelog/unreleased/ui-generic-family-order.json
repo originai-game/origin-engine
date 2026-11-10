@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "ui.font",
+      "summary": "CSS font-family preserves generic families at their authored positions instead of discarding all named families after the first generic. Quoted generic names remain named families, including in inherited text, spans and widget parts. An unrendered generic no longer adds synthetic bold to a later real heavy face."
+    }
+  ]
+}

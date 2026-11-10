@@ -285,9 +285,31 @@ pub struct Fonts {
 
 type FamilySelection = (u32, usize, u16, bool);
 
+/// One entry in an ordered CSS font-family list. Quoted generic names are named families.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum FontFamily {
+    Named(String),
+    Generic(FontRole),
+}
+
+impl FontFamily {
+    pub(crate) fn css(&self) -> String {
+        match self {
+            Self::Named(name) => format!("\"{}\"", name.replace('\\', "\\\\").replace('"', "\\\"")),
+            Self::Generic(role) => match role.base() {
+                FontRole::Mono => "monospace",
+                FontRole::Display => "fantasy",
+                FontRole::Rounded => "ui-rounded",
+                _ => "sans-serif",
+            }
+            .into(),
+        }
+    }
+}
+
 #[derive(Clone, Default, PartialEq)]
 pub struct FamilyLists {
-    names: elsa::FrozenMap<u32, Box<[String]>>,
+    names: elsa::FrozenMap<u32, Box<[FontFamily]>>,
     fonts: elsa::FrozenMap<FamilySelection, Box<(UiFont, Synth)>>,
 }
 
@@ -419,32 +441,42 @@ fn nearest<'a>(
 }
 
 impl Fonts {
-    pub(crate) fn family_names(&self, family: crate::Family) -> Vec<String> {
+    pub(crate) fn family_names(&self, family: crate::Family) -> Vec<FontFamily> {
         self.family_lists
             .names
             .get(&family.id())
-            .map(<[String]>::to_vec)
+            .map(<[FontFamily]>::to_vec)
             .unwrap_or_else(|| {
                 self.families
                     .iter()
                     .find(|f| f.is(family))
-                    .map(|f| vec![f.family.clone()])
+                    .map(|f| vec![FontFamily::Named(f.family.clone())])
                     .unwrap_or_default()
             })
     }
 
-    /// Retain named families in CSS order, followed by the generic role.
-    pub fn family_list(&self, names: &[String], fallback: FontRole) -> FontRole {
-        let names: Vec<String> = names
+    /// Retain named and generic families in CSS order, then use the fallback role.
+    pub fn family_list(&self, names: &[FontFamily], fallback: FontRole) -> FontRole {
+        let names: Vec<FontFamily> = names
             .iter()
-            .filter(|n| self.has_family(n))
-            .map(|n| n.to_ascii_lowercase())
+            .filter_map(|n| match n {
+                FontFamily::Named(name) => self
+                    .has_family(name)
+                    .then(|| FontFamily::Named(name.to_ascii_lowercase())),
+                FontFamily::Generic(_) => Some(n.clone()),
+            })
             .collect();
         match names.as_slice() {
             [] => fallback,
-            [name] => FontRole::Family(crate::Family::new(name, fallback)),
+            [FontFamily::Named(name)] => FontRole::Family(crate::Family::new(name, fallback)),
+            [FontFamily::Generic(role)] => *role,
             _ => {
-                let family = crate::Family::new(&names.join("\0"), fallback);
+                let key = names
+                    .iter()
+                    .map(FontFamily::css)
+                    .collect::<Vec<_>>()
+                    .join("\0");
+                let family = crate::Family::new(&key, fallback);
                 if self.family_lists.names.get(&family.id()).is_none() {
                     self.family_lists
                         .names
@@ -582,22 +614,46 @@ impl Fonts {
                 let resolved = self.family_lists.fonts.get(&key).unwrap_or_else(|| {
                     let mut fonts = Vec::new();
                     let mut synth = Synth::default();
+                    let mut rendered = false;
                     for name in names {
-                        let (set, got, slanted) = self.family_set(
-                            crate::Family::new(name, family.fallback()),
-                            weight,
-                            italic,
-                        );
-                        if fonts.is_empty() {
+                        let (set, got, slanted) = match name {
+                            FontFamily::Named(name) => {
+                                let (faces, got, slanted) = self.family_set(
+                                    crate::Family::new(name, family.fallback()),
+                                    weight,
+                                    italic,
+                                );
+                                (
+                                    faces.into_iter().map(|f| &f.font).collect::<Vec<_>>(),
+                                    got,
+                                    slanted,
+                                )
+                            }
+                            FontFamily::Generic(role) => {
+                                let (font, got, slanted) = self.latin(*role, weight, italic);
+                                (
+                                    std::iter::once(font)
+                                        .chain(self.companion_styled(*role, weight))
+                                        .collect(),
+                                    got,
+                                    slanted,
+                                )
+                            }
+                        };
+                        let renders = set.iter().any(|f| f.handle.is_some());
+                        if fonts.is_empty() || (!rendered && renders) {
                             synth = Synth {
                                 bold: weight >= 600 && got + 100 < weight,
                                 italic: italic && !slanted,
                             };
                         }
-                        fonts.extend(set.into_iter().map(|f| f.font.alone()));
+                        rendered |= renders;
+                        fonts.extend(set.into_iter().map(UiFont::alone));
                     }
                     let generic = family.fallback();
-                    let rendered = fonts.first().is_some_and(|f| f.handle.is_some());
+                    if rendered {
+                        fonts.retain(|f| f.handle.is_some());
+                    }
                     fonts.extend(
                         std::iter::once(self.latin(generic, weight, italic).0)
                             .chain(self.companion_styled(generic, weight))

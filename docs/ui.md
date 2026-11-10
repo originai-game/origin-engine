@@ -249,8 +249,8 @@ line: `<img src="coin" alt="">` (a picture the game registered,
 `<kbd data-action="confirm"></kbd>` (the action's glyph on the device
 used last). Their attributes are literal. A `<span part="big">` names its
 run for `p::part(big) { … }` (any text element's `::part`), which takes
-`color`, `font`, `font-family` (named families in order, then the generic
-family, as an element's),
+`color`, `font`, `font-family` (named and generic families in authored order,
+as an element's),
 `font-weight`, `font-style`, `text-decoration-line`, `-og-text-motion`,
 `vertical-align`, and the
 run's `font-size` (px), `line-height` (px, or a multiple of its
@@ -2282,14 +2282,17 @@ document; it must be a font of the project, cooked with its own settings,
 and `local()` names no font since the engine has no system fonts), and the
 runtime registers the first source the bundle has under the family name
 when the document loads. `font-family: "Name", monospace` (or the `font`
-shorthand) tries the listed named families in order for each glyph,
-skipping unavailable families, then the generic family's font role
-(`monospace`, `ui-rounded`, `fantasy`/`cursive`, anything else body). Of each family's faces
+shorthand) tries named and generic families in authored order for each glyph,
+skipping unavailable names. Generics may appear anywhere, including before
+named families: `serif, "Symbols"` tries Symbols for glyphs the body face lacks.
+Generics map to the style's roles (`monospace`, `ui-rounded`,
+`fantasy`/`cursive`, anything else body); quoted `"serif"` is a named family,
+not a generic. Of each named family's faces
 the text takes those of the nearest `font-style` and then the nearest
 `font-weight` range (§5.2's order), and each character comes from the
 last-declared face of that set whose `unicode-range` has it, then the next
-named family, then the role's
-face, the CJK companion, the locale's and the game's fonts. A `::part` run's
+entry in the list. After the list, fallback tries the role's face, the CJK
+companion, the locale's and the game's fonts. A `::part` run's
 `font-family` preserves the same ordered list. A weight or slant the family
 has no face for is synthesised as for a role. `@counter-style` and
 `@position-try` are read into the document's sheet (counters and anchor
@@ -3087,7 +3090,7 @@ Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document dr
 | `focus-within` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_interact::focus_within_follows_real_focus_between_retained_ancestors`](../crates/og-ui/tests/css_interact.rs). Real clicks transfer focus between nested retained branches; computed widths prove shared ancestors stay focused and old ancestors reset. Parts and the legacy immediate builder are not covered. |
 | `font-display` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `font-face` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
-| `font-family` | Widely | Missing | Supported (scope →) | Partial: runs::ordered_named_families_preserve_primary_glyphs_and_inherit proves ordered named families, inheritance, spans and button::part(base) glyph/font output in both builders. Named families after a generic are truncated by the parser; generic positions are not preserved. Part proof: [`runs::ordered_named_families_preserve_primary_glyphs_and_inherit`](../crates/og-ui/tests/runs.rs). Both builders emit button::part(base) glyphs from ordered named families before a generic. Generic interleaving remains missing. |
+| `font-family` | Widely | Supported (scope →) | Supported (scope →) | [`runs::ordered_named_families_preserve_primary_glyphs_and_inherit`](../crates/og-ui/tests/runs.rs). Both builders assert exact glyph/font handles for inherited lists, rich spans, reversed named/generic order, names after generics and quoted generic names. Generics map to engine font roles, not installed system fonts. Part proof: [`runs::ordered_named_families_preserve_primary_glyphs_and_inherit`](../crates/og-ui/tests/runs.rs). Both builders emit button::part(base) glyphs from ordered named families, including a named fallback after an intervening generic. |
 | `font-family-math` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `font-family-system` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `font-family-ui` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
@@ -3127,7 +3130,7 @@ Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document dr
 | `gap-decorations` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `glyph-orientation-vertical` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `gradient-interpolation` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
-| `gradients` | Widely | Missing | Pending parts-as-nodes | Metal pixel proofs cover nonzero repeating intervals and coincident stops (css_paint::repeating_gradients_repeat_the_stop_interval), and out-of-range non-repeating linear/radial/conic stops (css_paint::nonrepeating_gradients_keep_stops_outside_the_image). Full feature remains missing: subpixel periods and unbounded stop counts are not proved. |
+| `gradients` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_paint::repeating_gradients_repeat_the_stop_interval`](../crates/og-ui/tests/css_paint.rs). Metal pixels prove repeating radial intervals with positive/negative starts, all eight conic half-quadrants and collapsed linear stops. Subpixel periods and unbounded stop counts are not covered. |
 | `grid` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_layout::grid_lays_out_as_css_grid_does`](../crates/og-ui/tests/css_layout.rs). Computed named/negative/spanning tracks, auto-fit/fill, fr minimums, areas, alignment and inherited subgrid tracks. |
 | `grid-animation` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `grid-lanes` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |

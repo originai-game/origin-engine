@@ -69,12 +69,7 @@ fn typography(theme: &Theme, at: Breakpoint, fonts: &Fonts) -> BTreeMap<String, 
                             (!names.is_empty()).then(|| {
                                 names
                                     .iter()
-                                    .map(|name| {
-                                        format!(
-                                            "\"{}\"",
-                                            name.replace('\\', "\\\\").replace('"', "\\\"")
-                                        )
-                                    })
+                                    .map(FontFamily::css)
                                     .collect::<Vec<_>>()
                                     .join(", ")
                             })
@@ -266,9 +261,7 @@ impl Ui {
                     .and_then(|s| s.strip_suffix(')'))
                     .and_then(FontRole::from_name)
                     .unwrap_or_default();
-                token.font = self
-                    .fonts
-                    .family_list(&crate::doc::text_css::names_of(&names), fallback);
+                token.font = self.fonts.family_list(&names, fallback);
             }
             let mut step = token.step(1.0);
             read_step(role.name(), &mut step);

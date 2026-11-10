@@ -486,12 +486,9 @@ fn wide(v: &str) -> bool {
     )
 }
 
-/// A `font-family` list (CSS Fonts 4 §2.1) as its named families, quoted
-/// and comma-separated (`none` when it names none), and the role its first
-/// generic family (or `var(--font-<role>)` token) is, `body` when it names
-/// none: a named family is drawn from a document's `@font-face` faces
-/// ([`crate::FontRole::Family`]), the role after it.
-pub(crate) fn family_list(v: &str) -> Result<(String, String), String> {
+/// A CSS Fonts 4 §2.1 list, preserving generic positions and quoted names.
+/// The separate role supplies the final fallback when no entry has a glyph.
+pub(crate) fn family_list(v: &str) -> Result<(Vec<crate::FontFamily>, String), String> {
     use super::css::Tok;
     let tokens = super::css::tokens(&format!("families({v})"))?;
     let [Tok::Func(_, items)] = tokens.as_slice() else {
@@ -535,42 +532,17 @@ pub(crate) fn family_list(v: &str) -> Result<(String, String), String> {
         };
         if let Some(g) = generic {
             role.get_or_insert(g);
+            names.push(crate::FontFamily::Generic(
+                crate::FontRole::from_name(g).unwrap(),
+            ));
             continue;
         }
         if !quoted && wide(&item) {
             return Err("font-family: a CSS-wide keyword cannot occur in a family list".into());
         }
-        if role.is_none() && !names.contains(&item) {
-            names.push(item);
-        }
+        names.push(crate::FontFamily::Named(item));
     }
-    let names = if names.is_empty() {
-        "none".to_string()
-    } else {
-        names
-            .iter()
-            .map(|n| format!("\"{}\"", n.replace('\\', "\\\\").replace('"', "\\\"")))
-            .collect::<Vec<_>>()
-            .join(", ")
-    };
     Ok((names, format!("var(--font-{})", role.unwrap_or("body"))))
-}
-
-/// The names of a computed `-og-font-name` list.
-pub(crate) fn names_of(v: &str) -> Vec<String> {
-    if v == "none" {
-        return Vec::new();
-    }
-    match super::css::tokens(&format!("families({v})")).as_deref() {
-        Ok([super::css::Tok::Func(_, items)]) => items
-            .iter()
-            .filter_map(|tokens| match tokens.as_slice() {
-                [super::css::Tok::Str(name)] => Some(name.clone()),
-                _ => None,
-            })
-            .collect(),
-        _ => Vec::new(),
-    }
 }
 
 fn is_size(s: &str) -> bool {
@@ -935,8 +907,8 @@ pub struct TextCss {
     /// The used colour scheme is dark (`None`: the style's).
     pub dark: Option<bool>,
     pub vertical_align: Option<String>,
-    /// Named families in authored order, skipping unavailable families.
-    pub family: Option<Vec<String>>,
+    /// Named and generic families in authored order, skipping unavailable names.
+    pub family: Option<Vec<crate::FontFamily>>,
     pub font_role: Option<crate::FontRole>,
 }
 
@@ -1078,11 +1050,14 @@ pub(crate) fn inherit(inp: Inputs<'_>) -> TextCss {
     });
     let family = family_list
         .map(|(names, _)| names)
-        .or_else(|| get("-og-font-name"))
+        .or_else(|| get("-og-font-name").and_then(|v| self::family_list(&v).ok().map(|v| v.0)))
         .map(|names| {
-            names_of(&names)
+            names
                 .into_iter()
-                .filter(|n| declared(n))
+                .filter(|n| match n {
+                    crate::FontFamily::Named(name) => declared(name),
+                    crate::FontFamily::Generic(_) => true,
+                })
                 .collect()
         });
     let mut t = TextCss {

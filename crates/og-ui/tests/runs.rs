@@ -531,10 +531,37 @@ fn ordered_named_families_preserve_primary_glyphs_and_inherit() {
             "button::part(base) { font-family: Brand, Companion, serif; }",
             f.latin.handle,
         ),
+        (
+            "<div><p>原3点</p></div>",
+            "div { font-family: serif, Companion; }",
+            f.latin.handle,
+        ),
+        (
+            "<p>原3点</p>",
+            "p { font-family: serif, monospace, Brand; }",
+            f.latin.handle,
+        ),
+        (
+            "<p>原3点</p>",
+            "p { font-family: monospace, serif, Brand; }",
+            f.cjk.handle,
+        ),
+        (
+            "<button>原3点</button>",
+            "button::part(base) { font-family: Brand, serif, Companion; }",
+            f.latin.handle,
+        ),
+        (
+            "<p><span part=\"word\">原3点</span></p>",
+            "p::part(word) { font-family: 'serif', serif; }",
+            f.cjk.handle,
+        ),
     ] {
         let source = format!("<meta name=\"component\" content=\"t\">{markup}<style>{css}</style>");
         crate::html_text::both(&source, &[], |d| {
             d.ui.set_fonts(Fonts {
+                body: f.latin.clone(),
+                mono: Some(f.cjk.clone()),
                 families: vec![
                     FamilyFace {
                         family: "Brand".into(),
@@ -544,6 +571,12 @@ fn ordered_named_families_preserve_primary_glyphs_and_inherit() {
                     },
                     FamilyFace {
                         family: "Companion".into(),
+                        weight: (400, 400),
+                        font: f.cjk.clone(),
+                        ..FamilyFace::default()
+                    },
+                    FamilyFace {
+                        family: "serif".into(),
                         weight: (400, 400),
                         font: f.cjk.clone(),
                         ..FamilyFace::default()
@@ -592,6 +625,25 @@ fn a_font_face_family_takes_its_faces_by_weight_and_range() {
         ..Fonts::default()
     };
     fonts.link();
+    let mut unnamed = Fonts {
+        families: vec![face("Heavy", 700, &f.latin, &[])],
+        ..Fonts::default()
+    };
+    unnamed.link();
+    let role = unnamed.family_list(
+        &[
+            FontFamily::Generic(FontRole::Body),
+            FontFamily::Named("Heavy".into()),
+        ],
+        FontRole::Body,
+    );
+    let (font, synth) = unnamed.for_styled(role, 700, false, "Go");
+    assert_eq!(font.handle, f.latin.handle);
+    assert_eq!(
+        synth,
+        Synth::default(),
+        "an unrendered generic must not double-bold a real heavy face"
+    );
     let family = |name| FontRole::Family(Family::new(name, FontRole::Body));
     let at = |w| fonts.for_styled(family("brand"), w, false, "Go").0.handle;
     assert_eq!(

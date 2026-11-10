@@ -241,9 +241,7 @@ fn apply_body(rule: &mut SpanRule, body: &str, fonts: Option<&crate::Fonts>) -> 
                     .and_then(|r| r.strip_suffix(')'))
                     .and_then(crate::FontRole::from_name)
                     .unwrap_or_default();
-                rule.style.font = Some(fonts.map_or(role, |fonts| {
-                    fonts.family_list(&super::text_css::names_of(&names), role)
-                }));
+                rule.style.font = Some(fonts.map_or(role, |fonts| fonts.family_list(&names, role)));
             }
             "color" | "font" => {
                 for entry in css::declarations(&format!("{name}: {value};"), 1)? {
