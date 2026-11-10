@@ -1,3 +1,9 @@
+#![feature(custom_test_frameworks, test)]
+#![test_runner(gpu_tests::run)]
+use og_render::wgpu as gpu_wgpu;
+#[path = "../../../../tests/gpu.rs"]
+mod gpu_tests;
+
 #[path = "../antialias_default.rs"]
 mod antialias_default;
 #[path = "../ao_resolution.rs"]

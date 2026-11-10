@@ -3112,6 +3112,7 @@ dependencies = [
  "og-tween",
  "og-ui",
  "og-video",
+ "pollster",
  "serde",
  "serde_json",
  "ttf-parser",

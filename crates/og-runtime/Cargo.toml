@@ -95,6 +95,9 @@ ttf-parser = "=0.25.1"
 # tests/font_packs.rs compares its frames under og-tests' tolerance.
 og-tests = { path = "../og-tests" }
 image = { workspace = true }
+# The adapter-aware test runner (tests/gpu.rs) that makes its GPU tests
+# gate-selectable probes the adapter with it.
+pollster = { workspace = true }
 
 [[test]]
 name = "tests"

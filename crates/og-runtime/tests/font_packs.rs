@@ -477,7 +477,7 @@ fn costs(root: &Path, text: &str) -> (Cost, Vec<Cost>, Cost, u32) {
 /// while its glyphs still render (rendered on the frame, they hitched it:
 /// 203 ms).
 #[test]
-#[ignore = "requires GPU"]
+#[ignore = "requires GPU; perf"]
 fn run_time_faces_cost_what_atlas_fonts_cost() {
     let show_cost = |c: &Cost| {
         format!(
@@ -612,7 +612,7 @@ fn colour_emoji_draw_from_the_emoji_pack_in_colour() {
 /// font's, and that the frames first drawing them return while they are
 /// still being painted.
 #[test]
-#[ignore = "requires GPU"]
+#[ignore = "requires GPU; perf"]
 fn run_time_emoji_cost_what_cooked_emoji_cost() {
     let show_cost = |c: &Cost| {
         format!(
