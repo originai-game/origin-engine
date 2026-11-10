@@ -342,3 +342,22 @@ export const EQUIPMENT = () => ({
   footAuto: "Auto-equip",
   footDetails: "Details",
 });
+
+// The fixtures' player-facing text goes through the string tables as a
+// game's own data would: a top-level text store is the key `sheet.<store>`,
+// a row's text field `sheet.<store>.<id>.<field>`. The English in this file
+// is the source of assets/strings/en.ogt; `tr` answers each key in the active
+// locale. Ids, icons, tones, figures and selections stay as they are.
+const ROW_TEXT = new Set(["label", "name", "text", "detail"]);
+const NOT_TEXT = /(Selected|Tab|Icon|Rarity|Weight|Gold|Distance|Heading)$|^page$/;
+
+export function localized<T extends Record<string, unknown>>(data: T, tr: (key: string, en: string) => string): T {
+  const out: Record<string, unknown> = {};
+  for (const [store, v] of Object.entries(data)) {
+    if (typeof v === "string") out[store] = v && !NOT_TEXT.test(store) ? tr(`sheet.${store}`, v) : v;
+    else if (Array.isArray(v)) out[store] = v.map((row: Record<string, unknown>) => Object.fromEntries(Object.entries(row).map(([f, x]) =>
+      [f, typeof x === "string" && x && ROW_TEXT.has(f) ? tr(`sheet.${store}.${row.id}.${f}`, x) : x])));
+    else out[store] = v;
+  }
+  return out as T;
+}

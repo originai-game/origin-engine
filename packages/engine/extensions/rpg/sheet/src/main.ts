@@ -9,7 +9,7 @@
 // reduced:<on|off>.
 
 import { og, type World } from "@origingame/engine";
-import { CMD_NAMES, EQUIPMENT, ITEM_NAMES, SKILL_NAMES, INK_NAMES, INVENTORY, JOURNAL, PICTURES } from "./fixtures.ts";
+import { CMD_NAMES, EQUIPMENT, localized, ITEM_NAMES, SKILL_NAMES, INK_NAMES, INVENTORY, JOURNAL, PICTURES } from "./fixtures.ts";
 
 const PAGES = ["inventory", "journal", "equipment", "explore", "combat"] as const;
 const STYLES = ["fantasy"] as const;
@@ -63,10 +63,12 @@ function setStyle(world: World, name: string): void {
 /** Mounts the sheet, its stores the fixtures and the page shown. */
 /** The pictures, loaded in start (ui only reads); handles are stable per world. */
 let pictures: Record<string, number> = {};
+/** The fixtures in the active locale, read in start (ui may not call og.i18n). */
+let fixtures: Record<string, unknown> = {};
 
 function show(world: World): void {
   const scope = og.ui.scope(world, "sheet");
-  const data = { ...INVENTORY(pictures), ...JOURNAL(pictures), ...EQUIPMENT(), page: "inventory" };
+  const data = { ...fixtures, page: "inventory" };
   const stores = Object.fromEntries(Object.entries(data).map(([k, v]) =>
     [k, Array.isArray(v) ? scope.collection(k, v as { id: string }[], { key: "id" }) : scope.writable(k, v)]));
   must(scope.mount("sheet", "RpgSheet", stores), "mount");
@@ -82,9 +84,10 @@ export default og.game({
     if (camera.ok) camera.value.background = { r: 0.04, g: 0.03, b: 0.02 };
     setStyle(world, "fantasy");
     pictures = Object.fromEntries(PICTURES.map((p) => [p, must(og.load.texture(world, `art/${p}.png`), p) as number]));
-    // The kit's strings in the review's CJK and right-to-left locales, as a
-    // game ships them (English comes with the kit).
-    for (const locale of ["ja", "zh-CN", "ar"]) must(og.i18n.load(world, `strings/${locale}.ogt`), locale);
+    // The kit's strings in the review's locales, as a game ships them (the
+    // kit's English comes with the kit), and the sheet's own fixture text.
+    for (const locale of ["en", "ja", "zh-CN", "ar"]) must(og.i18n.load(world, `strings/${locale}.ogt`), locale);
+    fixtures = localized({ ...INVENTORY(pictures), ...JOURNAL(pictures), ...EQUIPMENT() }, (key) => og.i18n.t(world, key));
     for (const path of DOCUMENTS) must(og.load.document(world, path), path);
   },
   ui: show,
