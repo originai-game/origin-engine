@@ -234,13 +234,13 @@ the integrator's.
 
 | Item | Rule | State |
 |---|---|---|
-| Provider contract | §2.8 Providers | `@origingame/engine/provider`, versioned; the Player and the local document are providers; a web relay room provider. Open: a build-time choice of provider in `og build`, and the platform's rename of its extensions |
-| Optional runtime modules | §2.1 | Features of `og-runtime` with absent stand-ins, default on; shipping variants unchanged. Open: variants that leave modules out, then separate artifacts loaded after the first frame |
-| One host implementation | §2.1 | The bindings both hosts copied are written once. Open: the web host's TypeScript services (input, audio, lifecycle, accessibility) have no native counterpart until the native shell |
+| Provider contract | §2.8 Providers | Done: `@origingame/engine/provider` (version 1), the page's `provider` option, `relayRooms`. Open: the relay's 16 MiB frame limit drops a near-limit engine message instead of answering `too_large`; the native room client does not reconnect; `og relay` serves `ws://` only, so a public page needs TLS in front; the platform's rename of its extensions |
+| Optional runtime modules | §2.1 | Done: `story`, `video`, `destruction` and `motion` are features of `og-runtime` and both hosts with absent stand-ins, default on; the shipping variants name them, so they are unchanged (`scripts/wasm-crates.txt`). Open: `nav` and `ai` (their mounts in `e6.rs` and `lazy.rs`), variants that leave modules out, then separate artifacts loaded after the first frame |
+| One host implementation | §2.1 | Done: `og_runtime::host_impl` and `host_bindings!`; the hosts' copied `host*.rs` are gone. Open: the web host's TypeScript services (input, audio, lifecycle, accessibility) have no native counterpart until the native shell |
 | Tiers | §2.6 | Stated. Open: the renderer still selects several passes by backend; each becomes a capability, starting with the mini-game WebGPU set (no MRT, async pipelines, timestamps) |
-| og-ui scope | `docs/ui.md` §7 | The CSS dialect is closed at the pinned inventory. Open: og-ui as crates (core; documents: Svelte, CSS, SVG); 29 core files still name `doc`, which must become a one-way dependency first |
+| og-ui scope | `docs/ui.md` §7 | The CSS dialect is closed at the pinned inventory. Open: og-ui as crates (core; documents: Svelte, CSS, SVG). 29 core files name `doc`, and `doc` holds 25 `impl Ui` blocks (about 9,500 lines) that a separate crate must reach through an extension trait: first move the data types down and `style_pack.rs` up, then put `DocHost` behind a trait, then the crate. `rive` and `reactive` are the cheaper first crates |
 | Formats below features | §2.1 | Open: `og-cook` and `og-bundle` link `og-render` for format types |
-| File size | §2.1 | Every hand-written source file of 2,000 lines or more split by subject, verbatim |
+| File size | §2.1 | Split verbatim (`scripts/verify-move.py`): the render and physics IDL parts; in og-render `particles`, `particles_gpu`, `scatter`, `scene/store`, `terrain`, `water`; in og-ui `draw`, `paint`, `element`, `layout/flex` and the document builder, CSS and Svelte files; `og-physics` `sim`, `og-net` `lockstep`, `og-core` `reflect`, `og-cli` `style_check`, the engine's `runtime.ts`. Open, at 2,000 lines or more: `og-runtime` `motion/present.rs`, `destruction.rs`, `fx.rs`; `og-cook` `cook/mod.rs`, `riv/defs.rs`; `og-input` `actions.rs`; `og-physics` `lib.rs`; `og-nav` `system.rs`. `og-render`'s `renderer/render.rs` (5,757 lines) is one function, `Renderer::render`: it cannot be moved verbatim, and extracting its passes is a rendering change checked against the reference frames on the GPU host |
 
 ## Open
 
