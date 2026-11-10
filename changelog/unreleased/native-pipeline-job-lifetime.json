@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "rendering: pipeline lifetime",
+      "summary": "Dropping an unused native pipeline waits for its queued compilation and releases its result, instead of detaching GPU driver work from the pipeline's owner."
+    }
+  ]
+}

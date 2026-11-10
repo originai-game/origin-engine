@@ -89,6 +89,20 @@ pub(crate) struct Pending<T>(
     Option<u64>,
 );
 
+#[cfg(not(target_arch = "wasm32"))]
+impl<T> Drop for Pending<T> {
+    fn drop(&mut self) {
+        if let Some(id) = self.1 {
+            promote(id);
+        }
+        // A discarded pipeline still owns its compile: dropping the receiver
+        // alone detaches work that can enter the driver during process teardown.
+        // An already received result leaves a disconnected channel. A panic
+        // from unused work is discarded, never raised while unwinding.
+        let _ = self.0.recv();
+    }
+}
+
 /// A worker's value, waited for, its panic passed on.
 #[cfg(not(target_arch = "wasm32"))]
 fn joined<T>(pending: Pending<T>) -> T {
@@ -741,6 +755,25 @@ mod tests {
         assert_eq!(
             panic.unwrap_err().downcast_ref::<&str>(),
             Some(&"compile failed")
+        );
+        let resource = Arc::new(());
+        let captured = resource.clone();
+        let unused = Deferred::anywhere(move || captured);
+        unused.start_at(Priority::Background);
+        drop(unused);
+        assert_eq!(
+            Arc::strong_count(&resource),
+            1,
+            "a dropped pipeline owns no background work"
+        );
+        let captured = resource.clone();
+        let unused = Sampled::anywhere(4, move |_| captured.clone());
+        unused.start_at(Priority::Background);
+        drop(unused);
+        assert_eq!(
+            Arc::strong_count(&resource),
+            1,
+            "a dropped sampled pipeline owns no background work"
         );
     }
 }
