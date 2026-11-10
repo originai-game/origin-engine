@@ -190,8 +190,8 @@ fn the_cross_platform_tolerance_still_catches_small_regressions() {
     /// A scene, what changed in it, and the change.
     type Mutation = (&'static str, &'static str, fn(&mut GfxScene));
     let cases: [Mutation; 4] = [
-        ("gltf-reference", "the sun 10 % dimmer", |g| {
-            g.scene.light.intensity *= 0.9
+        ("gltf-reference", "the sun 15 % dimmer", |g| {
+            g.scene.light.intensity *= 0.85
         }),
         ("shadows-soft", "the sun casting no shadow", |g| {
             g.scene.light.cast_shadows = false

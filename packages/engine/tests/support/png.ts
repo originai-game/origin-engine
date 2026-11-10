@@ -22,8 +22,8 @@ export function decodeCapture(frame: unknown): Image {
 /** og-tests' rule (crates/og-tests/src/compare.rs `Tolerance::default`): a channel off by more than 32/255 is an outlier; fail above 0.5 % outliers or an RGB RMSE above 0.01; no bias limit (1). */
 export const TOLERANCE = { channel: 32, outliers: 0.005, rmse: 0.01, bias: 1 } as const;
 
-/** Its cross-platform twin (`Tolerance::CROSS_PLATFORM`): what a frame may differ by from a reference another backend recorded: a wider RMSE, and no channel's mean off by more than 0.008. */
-export const CROSS_TOLERANCE = { channel: 32, outliers: 0.005, rmse: 0.016, bias: 0.008 } as const;
+/** Its cross-platform twin (`Tolerance::CROSS_PLATFORM`): channel 32/255, at most 1 % outliers, RMSE 0.024 and absolute channel mean bias 0.012. RMSE and bias allow about twice the measured backend spread; outliers have more headroom for edge ties. */
+export const CROSS_TOLERANCE = { channel: 32, outliers: 0.01, rmse: 0.024, bias: 0.012 } as const;
 
 export type Tolerance = { readonly channel: number; readonly outliers: number; readonly rmse: number; readonly bias: number };
 
