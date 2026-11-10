@@ -113,7 +113,7 @@ fn params(a: &Attr) -> Result<Vec<(String, String)>, Error> {
     Ok(out)
 }
 
-fn number(a: &Attr, key: &str, text: &str) -> Result<f32, Error> {
+pub(super) fn number(a: &Attr, key: &str, text: &str) -> Result<f32, Error> {
     text.trim_end_matches("px")
         .trim()
         .parse()
