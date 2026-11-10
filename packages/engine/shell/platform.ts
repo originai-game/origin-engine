@@ -47,6 +47,8 @@ import { answerLocally, fail, localPlatform, SERVICE_METHODS, type LocalDocument
 export { storagePersistence } from "../src/platform-local.ts";
 import type { PlayerResult } from "./player.ts";
 import type { RoomHost } from "../src/web/shell.ts";
+import { unavailable, type PlatformProvider, type Providers, type RoomProvider } from "../src/provider.ts";
+import { relayRooms } from "../src/web/relay-rooms.ts";
 
 /** The part of the Player link this needs (connectPlayer's answer). */
 export interface PlayerLink {
@@ -264,5 +266,59 @@ export function playerRooms(player: PlayerLink): (RoomHost & { push(event: Recor
     push(event) {
       deliver?.([event]);
     },
+  };
+}
+
+/**
+ * The providers the page named (`play({ provider })`, else `window.__OG_PROVIDER`;
+ * docs/web-export.md §Providers), checked: a part that is not a provider is left out with a
+ * line for the page's log, a rooms URL becomes relayRooms(url), and in a publish build a
+ * `local` platform provider answers the platform services `unavailable` (a published page
+ * never fakes a purchase). Each part named takes the place of the browser's storage (the
+ * platform) or of no rooms; a Player that frames the page still answers what it answers.
+ */
+export function pageProviders(given: unknown, build: "publish" | "dev", warn: (line: string) => void = () => {}): { platform?: PlatformProvider; rooms?: RoomProvider } {
+  if (given === undefined || given === null) return {};
+  if (typeof given !== "object") {
+    warn("warn: the page's provider is not an object { platform?, rooms? }: ignored");
+    return {};
+  }
+  const p = given as Providers;
+  const out: { platform?: PlatformProvider; rooms?: RoomProvider } = {};
+  const platform = p.platform as Partial<PlatformProvider> | undefined;
+  if (platform !== undefined) {
+    if (platform && typeof platform.host === "string" && platform.host !== "" && Array.isArray(platform.capabilities) && typeof platform.handle === "function") {
+      out.platform = build === "publish" && platform.host === "local" ? withoutServices(platform as PlatformProvider) : (platform as PlatformProvider);
+    } else warn("warn: the page's provider.platform is not a PlatformProvider { host, capabilities, handle }: the browser's storage answers og.platform");
+  }
+  const rooms = p.rooms as Partial<RoomProvider> | string | undefined;
+  if (typeof rooms === "string") {
+    try {
+      out.rooms = relayRooms(rooms);
+    } catch (e) {
+      warn(`warn: the page's provider.rooms: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  } else if (rooms !== undefined) {
+    if (rooms && typeof rooms.host === "string" && rooms.host !== "" && typeof rooms.handle === "function") out.rooms = rooms as RoomProvider;
+    else warn("warn: the page's provider.rooms is not a RoomProvider { host, handle } or an og relay URL: this page carries no rooms");
+  }
+  return out;
+}
+
+/** A provider with the platform services taken out: listed nowhere, answered `unavailable`. */
+function withoutServices(p: PlatformProvider): PlatformProvider {
+  const off: ReadonlySet<string> = new Set(SERVICE_METHODS);
+  return {
+    host: p.host,
+    capabilities: p.capabilities.filter((m) => !off.has(m)),
+    get time() {
+      return p.time;
+    },
+    handle(calls, answer, link) {
+      for (const c of calls) if (off.has(c.method)) answer(c.request, unavailable(c.method, "a published page"));
+      const kept = calls.filter((c) => !off.has(c.method));
+      if (kept.length > 0) p.handle(kept, answer, link);
+    },
+    ...(p.poll ? { poll: (link: Parameters<NonNullable<PlatformProvider["poll"]>>[0]) => p.poll!(link) } : {}),
   };
 }

@@ -1811,13 +1811,16 @@ same under each.
 - Providers in the tree: the Player (protocol 2, `shell/platform.ts`), the
   local document (the native host's file, a dev page's storage, the
   deterministic fake), and for rooms the Player, the native relay client
-  and the web relay client (a page that names an `og relay` URL). A portal,
-  a store or a mini-game platform is one more provider, outside the engine.
+  and the web relay client (`relayRooms`, a page that names an `og relay`
+  URL). A portal, a store or a mini-game platform is one more provider,
+  outside the engine.
 - The rules of the ABI hold for every provider: the provider owns every
   credential and URL, game code names neither, ids are opaque and
   game-scoped, and a published page never fakes money. The provider is
-  chosen by the page that hosts the game (the shell's `provider` option),
-  never by game code.
+  chosen by the page that hosts the game (the play page's `provider`
+  option: `play({ provider })` or `window.__OG_PROVIDER`), never by game
+  code; where a Player frames the page it still answers what it answers
+  (docs/web-export.md §Providers).
 
 **Rooms.** `og.platform.roomCreate`, `roomJoin`, `roomLeave`, `roomSend`,
 `roomPeers`, `roomInfo` and `roomMessage` put this engine with other

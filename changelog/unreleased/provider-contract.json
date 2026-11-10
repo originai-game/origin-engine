@@ -1,0 +1,22 @@
+{
+  "added": [
+    {
+      "member": "@origingame/engine/provider",
+      "summary": "The host side of og.platform as a public, versioned contract (PROVIDER_VERSION 1): PlatformProvider and RoomProvider with PlatformCall, PlatformAnswer, PlatformNotice, PlatformLink, RoomOp and RoomEvent; the vocabulary as data (CORE_METHODS, HOST_EXTENSIONS, ERROR_CODES, RETRYABLE_CODES, kept equal to platform.ogt's); the helpers ok, failure and unavailable; and checkPlatformProvider, a conformance check for a provider author's tests. PlatformHost and RoomHost remain as the same types. Game code is unchanged."
+    },
+    {
+      "member": "Web page: play({ provider }) and window.__OG_PROVIDER",
+      "summary": "The page that hosts a game names its providers, { platform?, rooms? }: where no Player answers, the page's platform provider answers og.platform instead of the browser's storage and its rooms provider carries the rooms. rooms may be an og relay URL. A Player framing the page still answers what it answers, and in a publish build a local provider answers the platform services unavailable (docs/web-export.md §Providers)."
+    },
+    {
+      "member": "relayRooms(url)",
+      "summary": "Rooms for a self-hosted web page through an og relay over the browser's WebSocket, as og run --room connects natively: og.platform.roomInfo's host reads relay. A lost relay is a left event; a later create, join or quick, and one sent to a relay that never answered, is refused offline."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "og.platform on the local platform",
+      "summary": "A no_fill error from the local fake (og run --platform-fake, PlaytestDesc.platform, a dev page) is retryable, as platform.ogt and the native runtime say; it read retryable false."
+    }
+  ]
+}

@@ -754,7 +754,7 @@ Who the shell speaks protocol 2 to, in order:
 
 The Player is the provider described here; the contract every provider
 meets, and how a page names another one (a portal's, a self-hosted relay
-for rooms), is docs/design.md §2.8 Providers and
+for rooms), is §Providers below, docs/design.md §2.8 Providers and
 `@origingame/engine/provider`.
 
 `og.platform` (IDL module `platform`, docs/design.md §2.8) reaches the
@@ -876,6 +876,56 @@ Tests: `tests/platform-page.test.ts` (the transport against a stand-in play
 origin), `tests/web-shell-crash.test.ts` (a crash report's fields end to
 end), `tests/sourcemap.test.ts`, and `tests/web/player.ts` (the runner's
 publish build at the top level in Chrome against a stand-in play origin).
+
+### Providers
+
+`@origingame/engine/provider` (`src/provider.ts`) is the host side of
+og.platform as a versioned contract (`PROVIDER_VERSION`, 1; a bump is a
+break): a `PlatformProvider` (`host`, `capabilities`, `handle(calls,
+answer, link)`, optional `poll`; the shapes `PlatformCall`,
+`PlatformAnswer`, `PlatformNotice`, `PlatformLink`) and a `RoomProvider`
+(`host`, `handle(ops, deliver)`, optional `attach(deliver)`; `RoomOp` and
+`RoomEvent` are og-net's protocol). The vocabulary is data:
+`CORE_METHODS` (the store, leaderboards, telemetry and the platform
+services), `HOST_EXTENSIONS` (`point`, `ai.mark`: OriginGame's),
+`ERROR_CODES` and `RETRYABLE_CODES`, kept equal to `platform.ogt`'s by
+`tests/provider.test.ts`. A provider answers each call once (`telemetry`
+never) and anything it does not list `unavailable` (`unavailable(method)`
+builds that answer); `checkPlatformProvider(provider)` checks this in a
+provider author's own tests. The Player bridge and the local document pass
+it (`tests/provider.test.ts`). The older names `PlatformHost`
+(`src/platform-local.ts`) and `RoomHost` (`src/web/shell.ts`) are the same
+types.
+
+The page that hosts the game names its providers, never the game:
+`play({ provider: { platform?, rooms? } })` (`shell/page.ts`), or, for the
+page `og build` writes, `window.__OG_PROVIDER = { platform?, rooms? }` set
+by a script before `play.js` loads. `rooms` is a RoomProvider or an `og
+relay` URL. Each part named takes the place of the default where no Player
+answers: `platform` that of the browser's storage (unframed, or a framed
+page with no hello in 1.5 s), `rooms` that of no rooms (a Player whose hello
+lists no `room.join`). A Player that frames the page, the top-level page's
+play origin and the Stage overlay still answer what they answer. A part that
+is not a provider is left out with a line in the page's log. In a publish
+build a provider whose `host` is `local` (the local document) answers the
+platform services `unavailable`: a published page never fakes a purchase.
+
+`relayRooms(url)` (`src/web/relay-rooms.ts`, exported from the provider
+module) is the web room provider for a self-hosted page: og-net's protocol
+to an `og relay` over the browser's WebSocket, as the native client speaks
+it (`og run --room`). One connection, opened at once; a room in the URL's
+path is joined as it opens (a Play link needs none: the engine joins the
+link's room). Each op is one text frame, in order, those made while it
+opens sent first; each text frame is one event, in order, and binary or
+non-JSON frames are ignored. The relay holds the limits (64 KiB a game's
+message, 16 MiB an engine channel's, `too_large` past them). There is no
+reconnect: a lost relay is a `left` event and the room is gone; a later
+`create`, `join` or `quick`, and those that waited for a relay that never
+answered, are refused `offline`. `close()` sends what is queued first. A
+page on https reaches only a `wss://` relay (`og relay` serves `ws://`;
+put a TLS proxy in front). roomInfo's `host` reads `relay`. Tests:
+`tests/relay-rooms.test.ts` (a stand-in relay, and the real `og relay`
+when an `og` is built).
 
 ### The og-probe wire (`origin/packages/contracts/src/probe-wire.ts`)
 
