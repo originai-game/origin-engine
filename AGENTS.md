@@ -99,10 +99,11 @@ status `docs/roadmap.md`. Platform contracts implemented here:
 - **One target directory per checkout.** Never set a private
   `CARGO_TARGET_DIR` or copy the tree. Never delete a `target/`; clean one
   crate with `cargo clean -p`, and free disk with `scripts/clean-targets.sh`.
-- **One stream at a time on macrunner.** Development there is ordinary work
-  on a branch in one checkout; streams run in order, and the next starts once
-  the previous has landed. Never switch or reset a checkout another thread is
-  using, never `git worktree add` a fresh one.
+- **Streams on macrunner.** Development there is ordinary work on a branch.
+  The coordinator decides how many streams run at once: streams whose files
+  overlap run in order, the next starting once the previous has landed. Each
+  stream works in its own checkout; never switch or reset a checkout another
+  thread is using, never `git worktree add` a fresh one.
 - **Concurrent gates, bounded work.** `scripts/check.sh` takes shared admission
   and a checkout-local output lock. CPU steps take no machine work lock;
   each gate runs two steps, and each step's Cargo/nextest jobs share the
@@ -191,8 +192,9 @@ status `docs/roadmap.md`. Platform contracts implemented here:
 
 ## Streams and landing
 
-- The coordinator thread delegates streams with `create_thread`: one author stream
-  at a time, in order, each owning a whole feature area on one branch.
+- The coordinator thread delegates streams with `create_thread`, as many at once
+  as the work allows (overlapping ones in order), each owning a whole feature
+  area on one branch.
   Default mode: `external-agent:claude-code` with
   `["model:claude-opus-5-5","effort:medium"]`, project `origingame/origin-engine`,
   base commit named in the brief. Infrastructure, hard logic, backend work,
