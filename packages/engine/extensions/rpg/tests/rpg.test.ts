@@ -233,16 +233,17 @@ test("RpgMenuBar: a tab reports its key; the close button, Escape and the pad's 
   });
 });
 
-test("RpgConversation, RpgQuestLog, RpgWorldMap, RpgParty and RpgCharacter report the row tapped by its key", () => {
-  const cases: [string, string, string][] = [["conversation", "r2", "reply"], ["quest-log", "heir", "choose"], ["world-map", "crown", "choose"], ["party", "l", "choose"], ["character", "neck", "choose"]];
-  for (const [name, k, intent] of cases) {
+// One test per member: each boots its own engine (about a second, two under
+// GPU load), so five in one test crossed bun's 5 s limit on a busy machine.
+for (const [name, k, intent] of [["conversation", "r2", "reply"], ["quest-log", "heir", "choose"], ["world-map", "crown", "choose"], ["party", "l", "choose"], ["character", "neck", "choose"]] as const) {
+  test(`${name} reports the row tapped by its key`, () => {
     const events: Event[] = [];
     run(member(name, {}, { events }), (e) => {
       tap(e, row(e, k));
-      expect(`${name} ${intents(events, [intent]).join(",")}`).toBe(`${name} ${intent}:${k}`);
+      expect(intents(events, [intent])).toEqual([`${intent}:${k}`]);
     });
-  }
-});
+  });
+}
 
 test("RpgWorldMap: the player's own marker is not a target", () => {
   const events: Event[] = [];
@@ -253,7 +254,7 @@ test("RpgWorldMap: the player's own marker is not a target", () => {
   });
 });
 
-test("RpgItemCard and RpgPlaceCard: their buttons report once, and a refused action is disabled", () => {
+test("RpgItemCard: its buttons report once, and a refused action is disabled", () => {
   const events: Event[] = [];
   run(member("item-card", { canSecondary: false }, { events }), (e) => {
     tap(e, find(e, /\/Primary$/)!);
@@ -261,6 +262,9 @@ test("RpgItemCard and RpgPlaceCard: their buttons report once, and a refused act
     tap(e, find(e, /\/Secondary$/)!);
     expect(intents(events, ["equip", "discard"])).toEqual(["equip:"]);
   });
+});
+
+test("RpgPlaceCard: Mark reports, and Fast travel refused is silent", () => {
   const placed: Event[] = [];
   run(member("place-card", { canTravel: false }, { events: placed }), (e) => {
     tap(e, find(e, /\/Mark$/)!);
@@ -269,9 +273,12 @@ test("RpgItemCard and RpgPlaceCard: their buttons report once, and a refused act
   });
 });
 
-test("RpgQuestTracker shows its distance only when the game gives one; RpgTurnOrder plates the round", () => {
+test("RpgQuestTracker shows its distance only when the game gives one", () => {
   run(member("quest-tracker"), (e) => expect(elements(e).some((x) => x.text === "312 m")).toBeTrue());
   run(member("quest-tracker", { distance: "" }), (e) => expect(elements(e).some((x) => /\bm$/.test(x.text))).toBeFalse());
+});
+
+test("RpgTurnOrder plates the round", () => {
   run(member("turn-order", { round: 7 }), (e) => expect(elements(e).some((x) => /\b7\b/.test(x.text))).toBeTrue());
 });
 
