@@ -82,17 +82,38 @@ impl<T> Make<T> {
 }
 
 /// A value being made on a compile worker ([`spawn`]).
+///
+/// Dropped unreceived, it owns its job still: one not yet started is taken
+/// off the queues and dropped here, and one running is waited for. A job's
+/// closure owns GPU objects (the device, layouts, modules); detached, it
+/// went on compiling in the driver after its renderer was gone, and on
+/// NVIDIA's Linux driver a worker still inside the shader compiler when
+/// the process exited crashed it (SIGSEGV, heap corruption) after the
+/// test had passed.
 #[cfg(not(target_arch = "wasm32"))]
-pub(crate) struct Pending<T>(
-    std::sync::mpsc::Receiver<std::thread::Result<T>>,
-    // A background job's ([`Queues::background`]).
-    Option<u64>,
-);
+pub(crate) struct Pending<T> {
+    answer: std::sync::mpsc::Receiver<std::thread::Result<T>>,
+    /// Its job's id in [`Queues`].
+    id: u64,
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl<T> Drop for Pending<T> {
+    fn drop(&mut self) {
+        if let Some(job) = cancel(self.id) {
+            drop(job);
+            return;
+        }
+        // Running, or done (its answer, received or not, is dropped here;
+        // a panic of work nobody uses is not raised again).
+        let _ = self.answer.recv();
+    }
+}
 
 /// A worker's value, waited for, its panic passed on.
 #[cfg(not(target_arch = "wasm32"))]
 fn joined<T>(pending: Pending<T>) -> T {
-    if let Ok(answer) = pending.0.try_recv() {
+    if let Ok(answer) = pending.answer.try_recv() {
         return match answer {
             Ok(value) => value,
             Err(panic) => std::panic::resume_unwind(panic),
@@ -100,11 +121,9 @@ fn joined<T>(pending: Pending<T>) -> T {
     }
     // A background compile waited for runs now, ahead of the others (they
     // still wait for the frame: [`release_background`]).
-    if let Some(id) = pending.1 {
-        promote(id);
-    }
+    promote(pending.id);
     let t0 = std::time::Instant::now();
-    let answer = pending.0.recv();
+    let answer = pending.answer.recv();
     WAITED_US.fetch_add(
         t0.elapsed().as_micros() as u64,
         std::sync::atomic::Ordering::Relaxed,
@@ -169,7 +188,8 @@ pub(crate) enum Priority {
 #[cfg(not(target_arch = "wasm32"))]
 #[derive(Default)]
 struct Queues {
-    frame: std::collections::VecDeque<Job>,
+    /// Every job is queued with its id ([`Pending`]).
+    frame: std::collections::VecDeque<(u64, Job)>,
     /// Released background jobs, each with its id (a wait for one moves
     /// it to `frame`: [`promote`]).
     background: std::collections::VecDeque<(u64, Job)>,
@@ -219,10 +239,8 @@ fn pool() -> &'static Pool {
                         let job = {
                             let mut q = pool.queues.lock().unwrap_or_else(|e| e.into_inner());
                             loop {
-                                if let Some(job) = q
-                                    .frame
-                                    .pop_front()
-                                    .or_else(|| q.background.pop_front().map(|(_, job)| job))
+                                if let Some((_, job)) =
+                                    q.frame.pop_front().or_else(|| q.background.pop_front())
                                 {
                                     q.running += 1;
                                     break job;
@@ -294,24 +312,44 @@ fn spawn<T: Send + 'static>(
     });
     let pool = pool();
     let mut q = pool.queues.lock().unwrap_or_else(|e| e.into_inner());
+    let id = q.next;
+    q.next += 1;
     match priority {
         Priority::Frame => {
-            q.frame.push_back(job);
+            q.frame.push_back((id, job));
             pool.work.notify_one();
-            Pending(pending, None)
         }
-        Priority::Background => {
-            let id = q.next;
-            q.next += 1;
-            q.held.push((id, job));
-            Pending(pending, Some(id))
-        }
+        Priority::Background => q.held.push((id, job)),
+    }
+    Pending {
+        answer: pending,
+        id,
     }
 }
 
+/// Takes the job `id` off the queues if no worker has started it (its
+/// [`Pending`] was dropped); the caller drops it, outside the lock.
+#[cfg(not(target_arch = "wasm32"))]
+fn cancel(id: u64) -> Option<Job> {
+    let pool = pool();
+    let mut q = pool.queues.lock().unwrap_or_else(|e| e.into_inner());
+    let job = if let Some(i) = q.held.iter().position(|(j, _)| *j == id) {
+        Some(q.held.remove(i).1)
+    } else if let Some(i) = q.background.iter().position(|(j, _)| *j == id) {
+        q.background.remove(i).map(|(_, job)| job)
+    } else {
+        let i = q.frame.iter().position(|(j, _)| *j == id);
+        i.and_then(|i| q.frame.remove(i)).map(|(_, job)| job)
+    };
+    if job.is_some() && q.idle() {
+        pool.idle.notify_all();
+    }
+    job
+}
+
 /// Moves the background job `id`, held or queued, to the front of the
-/// frame's queue (the renderer waits for it); a running or finished one is
-/// in neither.
+/// frame's queue (the renderer waits for it); a frame's job, or a running
+/// or finished one, is in neither.
 #[cfg(not(target_arch = "wasm32"))]
 fn promote(id: u64) {
     let pool = pool();
@@ -323,7 +361,7 @@ fn promote(id: u64) {
         i.and_then(|i| q.background.remove(i)).map(|(_, job)| job)
     };
     if let Some(job) = job {
-        q.frame.push_front(job);
+        q.frame.push_front((id, job));
         pool.work.notify_one();
     }
 }
@@ -360,7 +398,7 @@ impl<T> Deferred<T> {
         }
         #[cfg(not(target_arch = "wasm32"))]
         match self.make.take() {
-            Some(Make::Started(worker)) => match worker.0.try_recv() {
+            Some(Make::Started(worker)) => match worker.answer.try_recv() {
                 Ok(Ok(value)) => return Some(self.value.get_or_init(|| value)),
                 Ok(Err(panic)) => std::panic::resume_unwind(panic),
                 Err(std::sync::mpsc::TryRecvError::Empty) => {
@@ -523,7 +561,7 @@ impl<T> Sampled<T> {
         }
         #[cfg(not(target_arch = "wasm32"))]
         if let Some(worker) = self.started[i].take() {
-            match worker.0.try_recv() {
+            match worker.answer.try_recv() {
                 Ok(Ok(value)) => return Some(self.made[i].get_or_init(|| value)),
                 Ok(Err(panic)) => std::panic::resume_unwind(panic),
                 Err(_) => self.started[i].set(Some(worker)),
@@ -742,5 +780,45 @@ mod tests {
             panic.unwrap_err().downcast_ref::<&str>(),
             Some(&"compile failed")
         );
+    }
+
+    /// A started value dropped before its first use leaves no work behind:
+    /// one still queued is dropped with it, with what its closure owns, and
+    /// one a worker is making is waited for.
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn a_dropped_started_value_owns_its_compile() {
+        use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
+        let resource = Arc::new(());
+        let captured = resource.clone();
+        let held = Deferred::anywhere(move || captured);
+        held.start_at(Priority::Background);
+        drop(held);
+        assert_eq!(Arc::strong_count(&resource), 1, "a held compile is dropped");
+        let captured = resource.clone();
+        let sampled = Sampled::anywhere(4, move |_| captured.clone());
+        sampled.start_at(Priority::Background);
+        drop(sampled);
+        assert_eq!(
+            Arc::strong_count(&resource),
+            1,
+            "a held sampled compile is dropped"
+        );
+        let (began, done) = (
+            Arc::new(AtomicBool::new(false)),
+            Arc::new(AtomicBool::new(false)),
+        );
+        let (b, d) = (began.clone(), done.clone());
+        let running = Deferred::anywhere(move || {
+            b.store(true, SeqCst);
+            std::thread::sleep(std::time::Duration::from_millis(200));
+            d.store(true, SeqCst);
+        });
+        running.start();
+        while !began.load(SeqCst) {
+            std::thread::yield_now();
+        }
+        drop(running);
+        assert!(done.load(SeqCst), "a running compile is waited for");
     }
 }
