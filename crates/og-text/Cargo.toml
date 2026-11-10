@@ -1,0 +1,32 @@
+[package]
+name = "og-text"
+version = "0.7.7"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Origin Engine text: measurement, line breaking, bidi and shaping over cooked MSDF fonts and their font files, and run-time glyphs; og-ui lays out and draws with it."
+
+[features]
+default = ["shaping"]
+# Run-time shaping with HarfRust: Arabic joining, Indic clusters and
+# conjuncts, marks placed by the font's GPOS. Without it a shaped script is
+# drawn unshaped (its characters in visual order); bidi, kerning and run-time
+# glyphs stay. og-ui passes it on (`shaping`).
+shaping = ["dep:harfrust", "dep:parley"]
+
+[dependencies]
+og-core = { path = "../og-core" }
+# The glyph keys, placements and MSDF fonts text is drawn with.
+og-draw = { path = "../og-draw" }
+# Localization: text direction and shaped scripts (og-i18n).
+og-i18n = { path = "../og-i18n" }
+# Match Parley 0.12's font stack; libm, never host floating-point math.
+harfrust = { version = "=0.12.0", optional = true, default-features = false, features = ["libm"] }
+skrifa = { version = "=0.44.0", default-features = false, features = ["libm"] }
+parley = { version = "=0.12.0", optional = true, default-features = false, features = ["libm", "complex-scripts"] }
+parley_engine = { version = "=0.12.0", default-features = false, features = ["libm", "complex-scripts"] }
+# The bidirectional algorithm (UAX #9): a line's runs in visual order.
+unicode-bidi = "0.3.18"
+# A cooked font's file (`runtime true`): metrics and outlines of characters
+# outside the atlas, rendered at run time (src/glyphs.rs).
+ttf-parser = { version = "0.25.1", default-features = false, features = ["std"] }

@@ -399,7 +399,7 @@ impl FontFile {
     /// the glyph by its id, including new ligatures: the character drawn
     /// and the glyph id it is drawn as (`None`: its own glyph).
     #[cfg(feature = "shaping")]
-    pub(crate) fn character_for_glyph(
+    pub fn character_for_glyph(
         &self,
         id: u32,
         source: char,
