@@ -15,15 +15,20 @@ test = false
 doctest = false
 
 [features]
-default = []
+default = ["story"]
 # A published game: the commands module and the probe's non-player members are not exported.
 publish = ["og-runtime/publish"]
 # Audio on the default output device through cpal (og-audio); without it the sinks are null and capture.
 native-audio = ["dep:cpal"]
+# og-runtime's optional modules (its Cargo.toml), each on by default; a
+# build without one answers that module's calls with the refusal naming
+# the feature. og-runtime's other defaults (shaping, both physics
+# profiles) are always on in the addon.
+story = ["og-runtime/story"]
 
 [dependencies]
 og-api = { path = "../og-api" }
-og-runtime = { path = "../og-runtime" }
+og-runtime = { path = "../og-runtime", default-features = false, features = ["shaping", "physics2d", "physics3d"] }
 # `og ui check` reads the UI frame's types (src/ui_check.rs).
 og-ui = { path = "../og-ui", default-features = false }
 # Not called here: og-physics' `default` (both profiles, which og-runtime's
