@@ -19,7 +19,7 @@ use crate::element::{Edges, GridFlow, GridPlace, GridSpec, LayoutMode, Position,
 use crate::layout::{Align, Cross, Direction, Element, FontRole, Insets, NONE, Size, TextAlign};
 use crate::motion::{StateGroup, VisualState};
 use crate::style::Srgba;
-use crate::ui::{ButtonDesc, ButtonVariant, ControlSize, LabelDesc, Ui};
+use crate::ui::{ButtonDesc, ButtonVariant, LabelDesc, Ui};
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;

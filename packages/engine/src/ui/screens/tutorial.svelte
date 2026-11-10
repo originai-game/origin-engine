@@ -22,13 +22,31 @@
     <row id="Foot">
       <text id="Step">{t("screen.tutorial.Step", { step: $step, steps: $steps })}</text>
       <spacer id="Node9"></spacer>
-      <button id="Skip" variant="quiet" size="small" onclick={skip}>{t("screen.tutorial.skip")}</button>
-      <button id="Next" variant="primary" size="small" hidden={!(!($waits))} onclick={next} onconfirm={next}>{t("screen.tutorial.next")}</button>
+      <button id="Skip" variant="quiet" onclick={skip}>{t("screen.tutorial.skip")}</button>
+      <button id="Next" variant="primary" hidden={!(!($waits))} onclick={next} onconfirm={next}>{t("screen.tutorial.next")}</button>
     </row>
   </column>
 </stack>
 
 <style>
+button, button::part(base) { height: 2rem; }
+button::part(base) { padding: 0 calc(6rem / 7); }
+@media (pointer: coarse) {
+button, button::part(base) { height: calc(22rem / 7); }
+}
+@media (-og-input: pad) {
+button, button::part(base) { height: calc(20rem / 7); }
+}
+@media (width < 600px), (height < 600px) {
+button, button::part(base) { height: calc(16rem / 7); }
+button::part(base) { padding: 0 calc(8rem / 7); }
+}
+@media (width < 600px) and (pointer: coarse), (height < 600px) and (pointer: coarse) {
+button, button::part(base) { height: calc(22rem / 7); }
+}
+@media (width < 600px) and (-og-input: pad), (height < 600px) and (-og-input: pad) {
+button, button::part(base) { height: calc(24rem / 7); }
+}
 #Tutorial { width: stretch; height: stretch; }
 #Highlight { width: stretch; height: stretch; position: absolute; inset-inline-start: 0; top: 0; inset-inline-end: 0; bottom: 0; }
 #Card { position: absolute; inset-inline-start: bind(x); top: bind(y); width: stretch; max-width: 360px; padding: 16px; gap: 8px; border-radius: 12px; background: linear-gradient(180deg, var(--panel-raised), var(--panel)); border: 1px solid var(--line-strong); box-shadow: 0 12px 32px #0000008c, 0 2px 6px #00000059; -og-enter: pop; }
@@ -41,7 +59,4 @@
 #Hint { width: stretch; }
 #Foot { width: stretch; gap: 8px; align-items: center; }
 #Step { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--ink-muted); }
-@media (width < 600px), (height < 600px) {
-#Skip, #Next { -og-control-size: medium; }
-}
 </style>

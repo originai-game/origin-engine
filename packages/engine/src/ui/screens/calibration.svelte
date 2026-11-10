@@ -25,7 +25,7 @@
       <text id="OffsetHint">{t("screen.calibration.offsetHint")}</text>
       <row id="Measure">
         <button id="Start" onclick={measure}>{t("screen.calibration.start")}</button>
-        <button id="Tap" variant="primary" size="large" onclick={tap}>{t("screen.calibration.tap")}</button>
+        <button id="Tap" variant="primary" onclick={tap}>{t("screen.calibration.tap")}</button>
         <text id="Taps">{t("screen.calibration.Taps", { taps: $taps })}</text>
       </row>
       <row id="Manual">
@@ -49,6 +49,13 @@
 </column>
 
 <style>
+#Tap, #Tap::part(base) { height: calc(18rem / 7); }
+@media (pointer: coarse) {
+#Tap, #Tap::part(base) { height: calc(24rem / 7); }
+}
+@media (-og-input: pad) {
+#Tap, #Tap::part(base) { height: calc(26rem / 7); }
+}
 :root { --surface-saturation: 120%; }
 @media (prefers-color-scheme: light) { :root { --surface-saturation: 200%; } }
 #Calibration { width: stretch; height: stretch; padding: 32px; justify-content: center; align-items: center; }

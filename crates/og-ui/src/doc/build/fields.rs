@@ -1217,7 +1217,7 @@ impl Resolved {
                 .iter()
                 .filter(|(spec, _)| {
                     let name = PROPS[*spec].name;
-                    name != "size" && !super::super::css::STYLE.iter().any(|(p, _)| *p == name)
+                    !super::super::css::STYLE.iter().any(|(p, _)| *p == name)
                 })
                 .cloned()
                 .collect(),
@@ -1320,15 +1320,6 @@ impl Resolved {
         Some((span, style))
     }
 
-    /// Its `-og-control-size`.
-    pub(crate) fn control_size(&self) -> ControlSize {
-        match self.str("size") {
-            Some("small") => ControlSize::Small,
-            Some("large") => ControlSize::Large,
-            _ => ControlSize::Medium,
-        }
-    }
-
     pub(super) fn button_desc(&self) -> ButtonDesc {
         ButtonDesc {
             variant: match self.str("variant") {
@@ -1338,7 +1329,7 @@ impl Resolved {
                 Some("ghost") => ButtonVariant::Ghost,
                 _ => ButtonVariant::Secondary,
             },
-            size: self.control_size(),
+            size: Default::default(),
             disabled: self.flag("disabled"),
             width: self.size("width"),
             autofocus: self.flag("autofocus"),
@@ -1355,7 +1346,7 @@ mod tests {
 
     fn document(styled: bool) -> UiDocument {
         let css = if styled {
-            "#Root { padding: 13px; gap: 7px; } #Title { text-transform: uppercase; color: #f0a020; position: absolute; top: 230px; } #Action { -og-control-size: large; width: 173px; } #Check, #Range { width: 219px; padding: 5px; }"
+            "#Root { padding: 13px; gap: 7px; } #Title { text-transform: uppercase; color: #f0a020; position: absolute; top: 230px; } #Action { height: 36px; width: 173px; } #Check, #Range { width: 219px; padding: 5px; }"
         } else {
             ""
         };

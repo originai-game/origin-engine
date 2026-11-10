@@ -13,11 +13,11 @@
   <column id="MenuMenu">
     <art id="Logo" kind="logo"></art>
     <spacer id="Node5"></spacer>
-    <button id="Continue" variant="primary" size="large" hidden={!($canContinue)} onclick={continue}>{t("screen.main-menu.continue")}</button>
+    <button id="Continue" variant="primary" class="large" hidden={!($canContinue)} onclick={continue}>{t("screen.main-menu.continue")}</button>
     <text id="SaveLine" hidden={!($canContinue)}>{$saveLine}</text>
-    <button id="NewGame" size="large" onclick={newGame}>{t("screen.main-menu.newGame")}</button>
-    <button id="Modes" size="large" onclick={modes}>{t("screen.main-menu.modes")}</button>
-    <button id="Settings" size="large" onclick={settings}>{t("screen.main-menu.settings")}</button>
+    <button id="NewGame" class="large" onclick={newGame}>{t("screen.main-menu.newGame")}</button>
+    <button id="Modes" class="large" onclick={modes}>{t("screen.main-menu.modes")}</button>
+    <button id="Settings" class="large" onclick={settings}>{t("screen.main-menu.settings")}</button>
     <button id="Credits" variant="quiet" onclick={credits}>{t("screen.main-menu.credits")}</button>
     <button id="Quit" variant="quiet" onclick={quit}>{t("screen.main-menu.quit")}</button>
     <column id="Extra">{@render extra?.()}</column>
@@ -31,6 +31,22 @@
 </stack>
 
 <style>
+.large, .large::part(base) { height: calc(18rem / 7); }
+@media (pointer: coarse) {
+.large, .large::part(base) { height: calc(24rem / 7); }
+}
+@media (-og-input: pad) {
+.large, .large::part(base) { height: calc(26rem / 7); }
+}
+@media (height < 600px) and (orientation: landscape) {
+.large, .large::part(base) { height: calc(16rem / 7); }
+}
+@media (height < 600px) and (orientation: landscape) and (pointer: coarse) {
+.large, .large::part(base) { height: calc(22rem / 7); }
+}
+@media (height < 600px) and (orientation: landscape) and (-og-input: pad) {
+.large, .large::part(base) { height: calc(24rem / 7); }
+}
 #RootMenu { width: stretch; height: stretch; }
 #Art { width: stretch; height: stretch; position: absolute; inset-inline-start: 0; top: 0; inset-inline-end: 0; bottom: 0; }
 #Background { width: stretch; height: stretch; position: absolute; inset-inline-start: 0; top: 0; inset-inline-end: 0; bottom: 0; }
@@ -49,22 +65,10 @@
 #Logo { display: none; }
 }
 #Continue { width: stretch; }
-@media (height < 600px) and (orientation: landscape) {
-#Continue { -og-control-size: medium; }
-}
 #SaveLine { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--ink-muted); }
 #NewGame { width: stretch; }
-@media (height < 600px) and (orientation: landscape) {
-#NewGame { -og-control-size: medium; }
-}
 #Modes { width: stretch; }
-@media (height < 600px) and (orientation: landscape) {
-#Modes { -og-control-size: medium; }
-}
 #Settings { width: stretch; }
-@media (height < 600px) and (orientation: landscape) {
-#Settings { -og-control-size: medium; }
-}
 #Credits { width: stretch; }
 #Quit { width: stretch; }
 #Extra { width: stretch; }

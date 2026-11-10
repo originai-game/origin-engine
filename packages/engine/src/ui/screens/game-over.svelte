@@ -22,11 +22,11 @@
       <text id="Line">{t("screen.game-over.revive")}</text>
       <text id="Left">{t("screen.game-over.Left", { value: formatCountdown($left) })}</text>
       <column id="OfferArt">{@render offerArt?.()}</column>
-      <button id="Revive" variant="primary" size="large" onclick={revive}>{t("screen.game-over.Revive", { price: $price })}</button>
+      <button id="Revive" variant="primary" onclick={revive}>{t("screen.game-over.Revive", { price: $price })}</button>
       <button id="Decline" variant="quiet" onclick={decline}>{t("screen.game-over.decline")}</button>
     </column>
     <column id="Actions" hidden={!(!($offer))}>
-      <button id="Retry" variant="primary" size="large" onclick={retry}>{t("screen.game-over.retry")}</button>
+      <button id="Retry" variant="primary" onclick={retry}>{t("screen.game-over.retry")}</button>
       <button id="Checkpoint" hidden={!($checkpoint)} onclick={checkpoint}>{t("screen.game-over.checkpoint")}</button>
       <button id="Quit" variant="quiet" onclick={quit}>{t("screen.game-over.quit")}</button>
     </column>
@@ -34,6 +34,13 @@
 </column>
 
 <style>
+#Revive, #Retry, #Revive::part(base), #Retry::part(base) { height: calc(18rem / 7); }
+@media (pointer: coarse) {
+#Revive, #Retry, #Revive::part(base), #Retry::part(base) { height: calc(24rem / 7); }
+}
+@media (-og-input: pad) {
+#Revive, #Retry, #Revive::part(base), #Retry::part(base) { height: calc(26rem / 7); }
+}
 #GameOver { width: stretch; height: stretch; padding: 32px; justify-content: center; align-items: center; }
 @media (width < 600px), (height < 600px) {
 #GameOver { padding: 16px; }

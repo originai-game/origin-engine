@@ -260,7 +260,7 @@ fn core_documents_preserve_screen_pixels() {
             vec![("default".into(), base)]
         };
         for (case, vm) in cases {
-            for (width, height) in [(1280u32, 720u32), (390, 844)] {
+            for (width, height, coarse_pointer) in [(1280u32, 720u32, false), (390, 844, true)] {
                 let mut scene = RenderScene::new();
                 let font = add_test_font(&mut scene);
                 let art = ["coast.png", "logo.png", "thumbnail.png"].map(|file| {
@@ -288,11 +288,12 @@ fn core_documents_preserve_screen_pixels() {
                     messages: messages.clone(),
                     art,
                 };
+                let viewport = Viewport {
+                    coarse_pointer,
+                    ..Viewport::new(width as f32, height as f32)
+                };
                 for _ in 0..30 {
-                    ui.begin(
-                        InputFrame::default(),
-                        Viewport::new(width as f32, height as f32),
-                    );
+                    ui.begin(InputFrame::default(), viewport);
                     ui.build_layers(&env);
                     ui.end();
                 }

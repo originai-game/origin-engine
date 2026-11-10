@@ -17,7 +17,7 @@
     <button id="Back" variant="quiet" onclick={back}>{t("screen.common.back")}</button>
     <text id="Title" heading="true">{t("screen.leaderboard.title")}</text>
     <spacer id="Node4"></spacer>
-    <button id="Period" size="small" onclick={period}>{$period}</button>
+    <button id="Period" onclick={period}>{$period}</button>
   </row>
   <row id="Tabs" focus-group="wrap">
     <button id="Global" variant="ghost" class:selection-off={!(($tab == "global"))} class:selection-on={($tab == "global")}>{t("screen.leaderboard.global")}</button>
@@ -51,6 +51,24 @@
 </column>
 
 <style>
+#Period, #Period::part(base) { height: 2rem; }
+#Period::part(base) { padding: 0 calc(6rem / 7); }
+@media (pointer: coarse) {
+#Period, #Period::part(base) { height: calc(22rem / 7); }
+}
+@media (-og-input: pad) {
+#Period, #Period::part(base) { height: calc(20rem / 7); }
+}
+@media (width < 600px), (height < 600px) {
+#Period, #Period::part(base) { height: calc(16rem / 7); }
+#Period::part(base) { padding: 0 calc(8rem / 7); }
+}
+@media (width < 600px) and (pointer: coarse), (height < 600px) and (pointer: coarse) {
+#Period, #Period::part(base) { height: calc(22rem / 7); }
+}
+@media (width < 600px) and (-og-input: pad), (height < 600px) and (-og-input: pad) {
+#Period, #Period::part(base) { height: calc(24rem / 7); }
+}
 #Screen { width: stretch; height: stretch; padding: 32px; gap: 12px; }
 @media (width < 600px), (height < 600px) {
 #Screen { padding: 16px; }
@@ -59,9 +77,6 @@
 #Title { font: var(--text-xl2); letter-spacing: var(--type-xl2-tracking); }
 @media (width < 600px), (height < 600px) {
 #Title { font: var(--text-xl); letter-spacing: var(--type-xl-tracking); }
-}
-@media (width < 600px), (height < 600px) {
-#Period { -og-control-size: medium; }
 }
 #Tabs { gap: 6px; }
 #Global.selection-off { opacity: 0.85; }

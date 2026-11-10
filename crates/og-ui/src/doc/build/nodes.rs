@@ -1001,7 +1001,7 @@ impl Ui {
                             description: r.str("description").unwrap_or_default().to_string(),
                             disabled: r.flag("disabled"),
                             side,
-                            size: styled.control_size(),
+                            size: Default::default(),
                             width: r.size("width"),
                             on_label: r.str("dataOn").unwrap_or_default().to_string(),
                             off_label: r.str("dataOff").unwrap_or_default().to_string(),
@@ -1161,7 +1161,7 @@ impl Ui {
                             Size::fit()
                         })),
                         label: text_of(&r, b),
-                        size: styled.control_size(),
+                        size: Default::default(),
                         disabled: r.flag("disabled"),
                     },
                 );

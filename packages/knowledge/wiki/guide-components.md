@@ -540,7 +540,6 @@ Its own props, beside every element's:
 | `text` | `text` | What it says. |
 | `i18n` | `name` | A string table key (og.i18n) its text comes from; `text` is the fallback. |
 | `variant` | `secondary \| primary \| quiet \| danger \| ghost` | The button's role. |
-| `size` | `small \| medium \| large` | The control height (`-og-control-size`). |
 | `disabled` | `bool` | Takes no input. |
 | `autofocus` | `bool` | Takes the focus when it appears. |
 | `square` | `bool` | A square of the control height: an icon button. |
@@ -655,7 +654,6 @@ Its own props, beside every element's:
 |---|---|---|
 | `text` | `text` | What it says. |
 | `i18n` | `name` | A string table key (og.i18n) its text comes from; `text` is the fallback. |
-| `size` | `small \| medium \| large` | The control height (`-og-control-size`). |
 | `disabled` | `bool` | Takes no input. |
 | `switch` | `bool` | Draws the checkbox as a switch (HTML `switch`); without it, a box with a check. |
 | `indeterminate` | `bool` | Neither on nor off: a dash in its box (HTML `indeterminate`); a press turns it on. |
@@ -778,7 +776,6 @@ Its own props, beside every element's:
 |---|---|---|
 | `text` | `text` | What it says. |
 | `i18n` | `name` | A string table key (og.i18n) its text comes from; `text` is the fallback. |
-| `size` | `small \| medium \| large` | The control height (`-og-control-size`). |
 | `disabled` | `bool` | Takes no input. |
 | `items` | `names` | The tab or option labels, literal names or a bound list of strings (a `<select>`'s `<option>`s set them). |
 | `keys` | `names` | A string table key (og.i18n) per tab its label comes from; its item is the fallback. |

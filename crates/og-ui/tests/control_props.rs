@@ -15,7 +15,7 @@
 //!   accepted → `a_range_takes_its_datalist_origin_and_disabled`
 //! - a caption on the wrong side of its switch for the source order, a
 //!   label's `flex-direction: row-reverse` ignored, a `<small>` merged into
-//!   the caption, `-og-control-size` or `disabled` dropped →
+//!   the caption, styled track dimensions or `disabled` dropped →
 //!   `a_checkbox_follows_its_label_order_size_and_description`
 //! - a modal closing on a backdrop press without `closedby="any"`, Escape
 //!   closing a `closedby="none"` modal, an in-place dialog taking Escape by
@@ -107,6 +107,7 @@ fn data_hit_slop_extends_reach_without_changing_boxes_or_priority() {
         "-og-select: cycle",
         "-og-sheet-detents: 40%",
         "-og-sheet-edge: inline-end",
+        "-og-control-size: large",
     ] {
         assert!(refused(&format!("<meta name=\"component\" content=\"t\"><div></div><style>div {{ {declaration}; }}</style>")).contains(declaration.split(':').next().unwrap()));
     }
@@ -649,7 +650,7 @@ fn a_checkbox_follows_its_label_order_size_and_description() {
 <style>
 #Page { display: flex; flex-direction: column; align-items: start; gap: 12px; padding: 20px; }
 .rev { flex-direction: row-reverse; }
-.big { -og-control-size: large; }
+.big::part(track) { width: 55px; height: 32px; }
 </style>"#;
     both(text, &[("a", json!(false))], |d| {
         let side = |d: &Doc, id: &str| {
@@ -677,7 +678,7 @@ fn a_checkbox_follows_its_label_order_size_and_description() {
         let (big, small) = (under(d, "Big", "Track"), under(d, "Small", "Track"));
         assert!(
             big.height > small.height,
-            "-og-control-size: large is larger: {} vs {}",
+            "the styled track is larger: {} vs {}",
             big.height,
             small.height
         );
@@ -687,6 +688,52 @@ fn a_checkbox_follows_its_label_order_size_and_description() {
         r#"<meta name="component" content="t"><div><label>A <input type="checkbox"><small>x</small><small>y</small></label></div>"#,
     );
     assert!(two.contains("one plain <small>"), "{two}");
+}
+
+#[test]
+fn button_dimensions_follow_media_and_text_scale() {
+    let source = r#"<meta name="component" content="t"><div><button id="Action">Apply</button></div><style>
+#Action, #Action::part(base) { height: 2rem; }
+#Action::part(base) { padding: 0 calc(6rem / 7); }
+@media (pointer: coarse) { #Action, #Action::part(base) { height: calc(22rem / 7); } }
+@media (-og-input: pad) { #Action, #Action::part(base) { height: calc(20rem / 7); } }
+</style>"#;
+    both(source, &[], |d| {
+        let original = *d.ui.theme();
+        for (density, scale, height) in [
+            (DensityMode::Mouse, 1.0, 28.0),
+            (DensityMode::Touch, 1.0, 44.0),
+            (DensityMode::Pad, 1.0, 40.0),
+            (DensityMode::Pad, 1.5, 60.0),
+        ] {
+            let mut theme = original;
+            theme.density = density;
+            theme.text_scale = scale;
+            d.ui.set_theme(theme);
+            d.step(InputFrame::default());
+            assert_eq!(d.get("Action").height, height);
+            assert!(!d.get("Action").clipped);
+        }
+        let mut theme = original;
+        theme.density = DensityMode::Auto;
+        theme.text_scale = 1.0;
+        d.ui.set_theme(theme);
+        d.viewport.width = 390.0;
+        d.viewport.coarse_pointer = false;
+        d.step(InputFrame::default());
+        assert_eq!(
+            d.get("Action").height,
+            28.0,
+            "a narrow mouse window keeps fine-pointer sizing"
+        );
+        d.viewport.coarse_pointer = true;
+        d.step(InputFrame::default());
+        assert_eq!(
+            d.get("Action").height,
+            44.0,
+            "a phone's coarse pointer selects touch sizing"
+        );
+    });
 }
 
 #[test]

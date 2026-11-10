@@ -283,7 +283,6 @@ pub const STYLE: &[(&str, &str)] = &[
 pub(crate) fn targets(name: &str) -> impl Iterator<Item = &'static str> + '_ {
     let alias = match name {
         "display" => Some("visible"),
-        "-og-control-size" => Some("size"),
         _ => None,
     };
     let both: Vec<&'static str> = match name {
@@ -1694,9 +1693,6 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
             e("visible", vec![Value::Word("true".into())]),
             e("display", vec![Value::Word(word.into())]),
         ]);
-    }
-    if name == "-og-control-size" {
-        return Ok(vec![e("size", vec![Value::Word(value.trim().into())])]);
     }
     // A bound declaration: the whole value is the binding.
     if let [Tok::Func(f, a)] = t.as_slice()

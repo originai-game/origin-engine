@@ -1,0 +1,9 @@
+{
+  "breaking": [
+    {
+      "member": "UI control sizing",
+      "change": "Removed -og-control-size and the small/medium/large size attribute on document buttons, switches and tabs. Rust descriptor sizes are unchanged.",
+      "fix": "Use standard CSS dimensions and padding on hosts and exposed parts. Shipped screen sizes use rem and pointer media queries, with (-og-input: pad) for gamepad density."
+    }
+  ]
+}

@@ -1196,12 +1196,6 @@ pub const CORE_PROPS: &[PropSpec] = &[
         "The button's role."
     ),
     p!(
-        "size",
-        Ty::Word(&["small", "medium", "large"]),
-        ["button", "toggle", "tabs"],
-        "The control height (`-og-control-size`)."
-    ),
-    p!(
         "disabled",
         Ty::Bool,
         [

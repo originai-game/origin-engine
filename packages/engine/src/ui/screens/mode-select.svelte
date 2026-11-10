@@ -29,11 +29,18 @@
   </scroll>
   <column id="Detail">{@render detail?.()}</column>
   <row id="Footer">
-    <button id="Play" variant="primary" size="large" disabled={($modes.length == 0.0)} onclick={play} onconfirm={play}>{t("screen.mode-select.play")}</button>
+    <button id="Play" variant="primary" disabled={($modes.length == 0.0)} onclick={play} onconfirm={play}>{t("screen.mode-select.play")}</button>
   </row>
 </column>
 
 <style>
+#Play, #Play::part(base) { height: calc(18rem / 7); }
+@media (pointer: coarse) {
+#Play, #Play::part(base) { height: calc(24rem / 7); }
+}
+@media (-og-input: pad) {
+#Play, #Play::part(base) { height: calc(26rem / 7); }
+}
 #Screen { width: stretch; height: stretch; padding: 32px; gap: 20px; }
 @media (width < 600px), (height < 600px) {
 #Screen { padding: 16px; gap: 12px; }
