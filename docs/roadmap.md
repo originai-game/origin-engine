@@ -241,6 +241,13 @@ From the review of expo/exact (thread
   §The pack catalogue): `vfx`, `ui`, `fonts` and `looks` in
   `manifest.json` with a preview per pack, for origin-agent's Engine page
   (asked 2026-11-08); `release-dist.ts` builds it.
+- UI blending into a linear target with one unblended sRGB encode: the UI
+  blends straight into the 8-bit sRGB output, and NVIDIA's sRGB blend is
+  accurate to ±1.2 steps and stepped (L4, 2026-11-10;
+  `og-ui` `css_filters::color_matrix_preserves_texture_tint_multiplication`
+  has the figures), so two equal paths can differ by 2. A linear target
+  makes the UI immune to the blender's precision and moves frames on
+  every tier: decided with the art review, not before.
 
 ## Decided
 

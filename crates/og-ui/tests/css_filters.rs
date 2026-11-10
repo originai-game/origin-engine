@@ -16,6 +16,25 @@ use crate::support;
 use og_ui::*;
 use support::*;
 
+/// A tinted image (`ImageDesc::tint`) and the same image through a
+/// linearRGB diagonal `feColorMatrix` draw the same picture, within one
+/// channel value, on both document paths.
+///
+/// Both draw into a linear Rgba16Float output, read back through the
+/// capture's exact sRGB encode, so the comparison checks the matrix maths
+/// rather than the GPU's blender. Drawn into the default 8-bit sRGB output,
+/// the two paths' final blend inputs differ by the filter layer's
+/// Rgba16Float round trip (about 0.06 of a step), and NVIDIA's blend into
+/// an 8-bit sRGB target is accurate to only ±1.2 steps and is stepped, so
+/// that difference came out as 2 at translucent texels, even with the
+/// tinted image drawn through the same isolation layer. Measured on an
+/// NVIDIA L4 (Vulkan, driver 595.99.02) with a raw wgpu probe blending a
+/// 4096-value colour sweep at alpha 0.8614 over a fixed background into
+/// Rgba8UnormSrgb: largest error 1.21 steps against the exact blend, 698 of
+/// 4096 values off by more than 0.6, six jumps of 2 between neighbouring
+/// inputs; at alpha 0.5, 1.19 and 505; unblended (alpha 1), at most 0.598,
+/// rounded correctly. lavapipe stays within 0.74 with no jump.
+/// docs/roadmap.md §Open has blending the UI in a linear target instead.
 #[test]
 #[ignore = "requires GPU"]
 fn color_matrix_preserves_texture_tint_multiplication() {
@@ -41,6 +60,7 @@ fn color_matrix_preserves_texture_tint_multiplication() {
     let mut renderer = Renderer::new_blocking(&RenderDesc {
         width: 64,
         height: 32,
+        output_format: Some(wgpu::TextureFormat::Rgba16Float),
         ..Default::default()
     })
     .unwrap();
