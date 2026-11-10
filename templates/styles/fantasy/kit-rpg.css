@@ -75,7 +75,7 @@
 .rpg-backpack .key { color: var(--ink-faint); }
 button.tab { color: var(--ink-muted); }
 button.tab[aria-selected=true] { color: var(--gold); }
-button.tab::part(base) { font-family: var(--fantasy-caps); font-size: 0.9286em; letter-spacing: 0; text-transform: uppercase; }
+button.tab::part(base) { font-family: "Fantasy Text"; font-size: 0.9286em; letter-spacing: 0; text-transform: uppercase; }
 button.tab::part(base) { border-image: none; padding: 0 2px; background: none; border: none; box-shadow: none; border-radius: 0; }
 button.tab::part(base):hover { background: linear-gradient(0deg, #e9c46f1f, #e9c46f00); }
 button.tab[aria-selected=true]::part(base) { border-bottom: 2px solid var(--gold); background: linear-gradient(0deg, #e9c46f2e, #e9c46f00 70%); }

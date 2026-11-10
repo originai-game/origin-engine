@@ -477,11 +477,15 @@ fn misplaced_parts_are_refused() {
 #[test]
 fn each_control_is_dressed_by_its_named_parts() {
     let mut rig = rig();
-    rig.ui.set_part_css("details::part(summary) { background: #ff00ff; } select[aria-expanded=true]::part(trigger) { background: #00ffff; }").unwrap();
+    rig.ui.set_part_css("details::part(summary) { background: #ff00ff; } select[aria-expanded=true]::part(trigger) { background: #00ffff; } select[id=Pick]::part(list) { background: #ff8800; }").unwrap();
     rig.set("more", json!(true));
     rig.set("note", json!(true));
     rig.click("Pick/Trigger");
-    for color in [Srgba::rgb(255, 0, 255), Srgba::rgb(0, 255, 255)] {
+    for color in [
+        Srgba::rgb(255, 0, 255),
+        Srgba::rgb(0, 255, 255),
+        Srgba::rgb(255, 136, 0),
+    ] {
         assert!(
             rig.ui
                 .frame()

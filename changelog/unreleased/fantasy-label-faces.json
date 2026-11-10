@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "Fantasy button and tab labels",
+      "summary": "Declare Fantasy Text on button and tab base parts to preserve their approved Newsreader appearance while honoring part-local font CSS."
+    }
+  ]
+}

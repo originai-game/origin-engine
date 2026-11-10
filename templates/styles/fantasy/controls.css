@@ -9,8 +9,7 @@
    The resting primary rule takes :enabled so it outranks the default's
    :hover/:active rules, which have equal specificity. The resting ink is
    on the host, so the label and the button's content inherit it; each
-   state's ink is on the part. The display face stays on the part: it is the
-   label's own, and a button's content keeps the body face. */
+   state's ink is on the part. Labels use the approved Newsreader face. */
 button { color: #e9c46f; }
 button.primary { color: #f8ecd6; }
 button::part(base) {
@@ -21,7 +20,7 @@ button::part(base) {
   border-image: url(art/button-iron.svg) 28 24 fill / 50% 24px stretch;
   background: none;
   box-shadow: none;
-  font-family: var(--font-display);
+  font-family: "Fantasy Text";
   font-size: 1.3571em;
   letter-spacing: 0.12em;
   text-transform: uppercase;

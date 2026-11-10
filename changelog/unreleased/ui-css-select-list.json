@@ -1,0 +1,15 @@
+{
+  "breaking": [
+    {
+      "member": "Select list and group CSS boxes",
+      "change": "Select lists, suggestion lists and group headings have persistent CSS layout and paint boxes. List border widths participate in layout; the default frames remain unchanged.",
+      "fix": "Style list interiors through select::part(list) and headings through select::part(group). The popup host still owns its focus scope and dismissal."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "Floating part ownership and inspection",
+      "summary": "Select popup parts retain their markup host's selector attributes and document stylesheet without changing independent popovers. Part inspection includes persistent part boxes."
+    }
+  ]
+}

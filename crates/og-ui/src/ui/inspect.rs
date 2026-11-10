@@ -519,7 +519,13 @@ impl Ui {
                 } else {
                     self.nodes[n.parent].id.clone()
                 };
-                parts.push(n.el.part.or_else(|| n.el.frame.map(StylePart::part_ref)));
+                parts.push(
+                    n.part_box
+                        .as_ref()
+                        .map(|p| p.reference)
+                        .or(n.el.part)
+                        .or_else(|| n.el.frame.map(StylePart::part_ref)),
+                );
                 elements.push(UiElement {
                     id: n.id.clone(),
                     parent,

@@ -15,6 +15,8 @@ fn tabs_and_select_parts_keep_boxes_states_and_host_input() {
          tabs::part(tab) { background: #ff0000; padding: 3px; }
          tabs::part(tab):checked { background: #00ff00; }
          select::part(trigger) { background: #0000ff; padding: 4px; }
+         select::part(list) { padding: 13px; border: 3px solid #123456; }
+         select::part(group) { height: 37px; padding-left: 19px; }
          select::part(option) { background: #ff00ff; padding: 6px; }",
     )
     .unwrap();
@@ -47,6 +49,7 @@ fn tabs_and_select_parts_keep_boxes_states_and_host_input() {
                 selected: 0,
                 options: vec![DropdownOption {
                     label: "Option".into(),
+                    group: "Group".into(),
                     ..Default::default()
                 }],
                 ..Default::default()
@@ -127,6 +130,15 @@ fn tabs_and_select_parts_keep_boxes_states_and_host_input() {
         .unwrap();
     assert!(visual.role.is_empty());
     assert_eq!(visual.kind, "part");
+    let list = ui.element("Select.list/::part(list)#0").unwrap();
+    let group = ui.element("Select.list/List/Group#0").unwrap();
+    assert_eq!(list.kind, "part");
+    assert!(list.role.is_empty());
+    assert_eq!(group.kind, "part");
+    assert_eq!(group.height, 37.0);
+    assert_eq!(group.x - list.x, 16.0);
+    let text = ui.element("Select.list/List/Group#0/Text").unwrap();
+    assert_eq!(text.x - group.x, 19.0);
     assert!(ui.frame().items.iter().any(|i| {
         i.cmd
             .filled()

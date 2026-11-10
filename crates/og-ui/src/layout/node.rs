@@ -504,6 +504,9 @@ pub(crate) struct Node {
     pub authored_box: Option<(Size, Size, Insets)>,
     pub el: Element,
     pub part_host: Option<std::sync::Arc<crate::doc::build::PartHost>>,
+    /// The semantic owner of a detached widget surface's CSS parts.
+    /// Placement anchors alone do not imply shared CSS ownership.
+    pub part_source: usize,
     pub part_box: Option<PartBox>,
     pub content_slot: usize,
     pub content: Content,
@@ -758,6 +761,7 @@ impl Node {
             authored_box: None,
             el,
             part_host: None,
+            part_source: NONE,
             part_box: None,
             content_slot: NONE,
             content: Content::None,

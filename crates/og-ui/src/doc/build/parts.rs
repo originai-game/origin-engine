@@ -286,10 +286,15 @@ impl Ui {
             if let Some(host) = &node.part_host {
                 return Some(host);
             }
-            if node.parent == NONE {
+            let parent = if node.part_source != NONE {
+                node.part_source
+            } else {
+                node.parent
+            };
+            if parent == NONE {
                 return None;
             }
-            i = node.parent;
+            i = parent;
         }
     }
 

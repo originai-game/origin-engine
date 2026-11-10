@@ -129,6 +129,37 @@ fn kept_suggestions<'a>(
 }
 
 impl Ui {
+    fn select_list_part(&mut self) {
+        let owner = self.parent();
+        let element = self.nodes[owner].el;
+        let reference = element.part.expect("select list part");
+        self.nodes[owner].el.padding = Insets::default();
+        self.nodes[owner].el.background = None;
+        self.nodes[owner].el.radius = 0.0;
+        // The old list inset included the painted one-pixel rim. The
+        // persistent CSS box now accounts for that rim in its padding.
+        let padding = element.padding;
+        let slot = self.write_part(
+            owner,
+            reference,
+            ("list", 0),
+            Element {
+                width: Size::grow(),
+                height: Size::grow(),
+                padding: Insets {
+                    top: padding.top - 1.0,
+                    right: padding.right - 1.0,
+                    bottom: padding.bottom - 1.0,
+                    left: padding.left - 1.0,
+                },
+                part: None,
+                ..element
+            },
+            crate::layout::Content::None,
+        );
+        self.nodes[owner].content_slot = slot;
+    }
+
     /// A text input's suggestion list (HTML's `list` naming a
     /// `<datalist>`): open under `field` (the field's node) while the field
     /// or one of its options has the focus, it lists the suggestions that
@@ -189,6 +220,7 @@ impl Ui {
                 crate::layout::Float::Popover,
                 field,
             );
+            self.select_list_part();
             for (i, (index, s)) in kept.iter().enumerate() {
                 let b = self.ctl(
                     crate::ui_idi("Option", i as u32),
@@ -433,7 +465,10 @@ impl Ui {
             };
             // Its rim and shadow are the part's (a floating surface's) dressing.
             let m = self.floating(&list_id, open, trig_node, content, |ui| {
-                list(ui, ui.parent());
+                let layer = ui.parent();
+                ui.nodes[layer].part_source = trig_node;
+                list(ui, layer);
+                ui.select_list_part();
                 if searchable {
                     // The filter's text lives in the UI's text memory while the list is open.
                     let mut typed = ui.take_text(&filter_key);
@@ -474,7 +509,7 @@ impl Ui {
                         if o.group != group {
                             group = &o.group;
                             if !group.is_empty() {
-                                ui.open(
+                                ui.open_part(
                                     crate::ui_idi("Group", i as u32),
                                     Element {
                                         direction: Direction::Row,
