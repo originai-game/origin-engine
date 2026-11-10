@@ -154,8 +154,8 @@ code in the tick.
   wins over that too. A bound value is written with its unit, `style:width
   ={$w + 'px'}`.
 - `bind:this={name}` names the element: it is its id, and `name` reads
-  as that id wherever an expression names an element (`popovertarget`,
-  `anchorTo`) and as `#name` in the stylesheet.
+  as that id wherever an expression names an element (`popovertarget`)
+  and as `#name` in the stylesheet.
 - `use:name` or `use:name={params}` sends a DocEvent of kind `use` named
   `name` with value `{ phase, params }`: `create` when the element is
   made, `update` when its params' value changes and `destroy` when it
@@ -446,8 +446,7 @@ text element, as an HTML anonymous block box is; `i18n` on a box
 translates its one run of text.
 
 `position` takes `static`, `relative`, `sticky`, `absolute` and `fixed`
-(CSS Position 3; `-og-anchored` is the house placement against
-`-og-anchor`). `relative` moves the box by its insets after its parent's
+(CSS Position 3). `relative` moves the box by its insets after its parent's
 layout, its siblings keeping its room; `sticky` keeps it in the flow and
 holds it inside its nearest scroller's view by its insets, never past its
 parent's content box. An absolute box is placed in its parent's box and
@@ -536,7 +535,7 @@ CSS Anchor Positioning 1 places an absolute or fixed box against other
 boxes as this frame laid them out. `anchor-name: --a` names an anchor
 (the last in tree order wins, never one inside the positioned box);
 `position-anchor: --a` picks the default one, else its implicit anchor
-(a popover's invoker, `-og-anchor`'s target). An inset takes
+(a popover's invoker). An inset takes
 `anchor([--a] top | right | bottom | left | center | start | end | inside
 | outside | <n>%[, <fallback>])`, alone or in `calc()` plus or minus px;
 `width` and `height` take `anchor-size([--a] width | height | block |

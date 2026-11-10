@@ -315,16 +315,11 @@ pub(super) fn outer_inline(d: Option<&str>) -> bool {
 /// its insets (CSS 2.1 §10.3.7), never the flow's width.
 fn positioned(r: &Resolved) -> bool {
     match r.str("position") {
-        Some("absolute" | "screen" | "anchored") => true,
+        Some("absolute" | "screen") => true,
         Some("relative" | "sticky") => false,
-        _ => {
-            ["start", "top", "end", "bottom"]
-                .iter()
-                .any(|k| r.num(k).is_some())
-                || r.flag("centerX")
-                || r.flag("centerY")
-                || r.has("anchorTo")
-        }
+        _ => ["start", "top", "end", "bottom"]
+            .iter()
+            .any(|k| r.num(k).is_some()),
     }
 }
 
@@ -421,21 +416,6 @@ fn inline_link(k: usize) -> String {
         "link".into()
     } else {
         format!("link{k}")
-    }
-}
-
-fn anchor_of(s: &str) -> crate::layout::Anchor {
-    use crate::layout::Anchor::*;
-    match s {
-        "top" => Top,
-        "topRight" => TopRight,
-        "left" => Left,
-        "center" => Center,
-        "right" => Right,
-        "bottomLeft" => BottomLeft,
-        "bottom" => Bottom,
-        "bottomRight" => BottomRight,
-        _ => TopLeft,
     }
 }
 
@@ -1638,7 +1618,6 @@ impl Ui {
         p.position = match r.str("position") {
             Some("absolute") => Position::Absolute,
             Some("screen") => Position::Screen,
-            Some("anchored") => Position::Anchored,
             Some("relative") => Position::Relative,
             Some("sticky") => Position::Sticky,
             _ => Position::Flow,
@@ -1648,9 +1627,7 @@ impl Ui {
             top: r.num("top"),
             end: r.num("end"),
             bottom: r.num("bottom"),
-            center_x: r.flag("centerX"),
-            center_y: r.flag("centerY"),
-            across: None,
+            ..Edges::default()
         };
         if p.position == Position::Flow && p.insets.is_set() {
             p.position = Position::Absolute;
@@ -1658,18 +1635,6 @@ impl Ui {
         let (spec, resolved_later) = Self::anchor_spec(r, &mut p);
         if resolved_later && matches!(p.position, Position::Absolute | Position::Screen) {
             p.anchor = Some(Box::new(spec));
-        }
-        if let Some(a) = r.str("anchorTo") {
-            p.anchor_to = a.to_string();
-            if p.position == Position::Flow {
-                p.position = Position::Anchored;
-            }
-        }
-        if let Some(a) = r.str("anchorAt") {
-            p.anchor_at = anchor_of(a);
-        }
-        if let Some(a) = r.str("anchorSelf") {
-            p.anchor_self = anchor_of(a);
         }
         if let Some(v) = r.num("hitSlop") {
             p.hit_slop = v;

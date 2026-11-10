@@ -68,6 +68,64 @@ fn refused(text: &str) -> String {
     }
 }
 
+#[test]
+fn scene_text_shadows_follow_the_font_size() {
+    for mounted in [false, true] {
+        for (font, size, line, offset, blur) in [
+            ("font: 12px/1.5 sans-serif", 12.0, 18.0, 1.0, 1.0),
+            ("font: 20px/1.5 sans-serif", 20.0, 30.0, 1.0, 1.6),
+            ("font: 48px/1.5 sans-serif", 48.0, 72.0, 1.92, 3.84),
+            ("font-size: 2em", 20.0, 40.0, 1.0, 1.6),
+            ("font-size: 2em; line-height: inherit", 20.0, 40.0, 1.0, 1.6),
+            ("font-size: 200%; line-height: 1.5", 20.0, 30.0, 1.0, 1.6),
+            (
+                "font: var(--case-font); font-size: 20px",
+                20.0,
+                30.0,
+                1.0,
+                1.6,
+            ),
+        ] {
+            let draw = |style: &str| {
+                let source = format!(
+                    r#"<meta name="component" content="t"><div><p id="Ink">Scene ink</p></div><style>div {{ font: 10px/2 sans-serif; --case-font: 12px/1.5 sans-serif; }} #Ink {{ margin: 0; {font}; color: #f5f5f7; {style} }}</style>"#
+                );
+                let mut scene = og_render::RenderScene::new();
+                let d = Doc::with_font(
+                    &source,
+                    &[],
+                    mounted,
+                    crate::support::add_test_font(&mut scene),
+                );
+                assert!(
+                    d.ui.frame().warnings.is_empty(),
+                    "{:?}",
+                    d.ui.frame().warnings
+                );
+                let items =
+                    d.ui.frame()
+                        .items
+                        .iter()
+                        .map(|i| (i.cmd.clone(), i.transform))
+                        .collect::<Vec<_>>();
+                assert!(!items.is_empty());
+                items
+            };
+            let expected = draw(&format!("text-shadow: 0 {offset}px {blur}px #000000;"));
+            let actual = draw("text-shadow: 0 max(1px, 0.04em) max(1px, 0.08em) #000000;");
+            assert_ne!(actual, draw("text-shadow: none;"));
+            assert_eq!(expected, actual, "size {size}, mounted {mounted}");
+            assert!(actual.iter().any(|(cmd, _)| matches!(cmd, DrawCmd::StyledText { text, .. } if matches!(text.as_ref(), DrawCmd::Text { size: s, .. } if *s == size))));
+            assert_eq!(
+                draw("text-shadow: 0 0.1lh 1px #000000;"),
+                draw(&format!("text-shadow: 0 {}px 1px #000000;", line * 0.1)),
+                "{font}, mounted {mounted}"
+            );
+        }
+    }
+    assert!(refused(r#"<meta name="component" content="t"><span>Text</span><style>span { -og-on-scene: true; }</style>"#).contains("-og-on-scene"));
+}
+
 fn key(d: &mut Doc, k: UiKey) {
     d.step(InputFrame {
         keys: vec![k],

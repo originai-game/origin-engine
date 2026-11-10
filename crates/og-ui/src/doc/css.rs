@@ -27,8 +27,6 @@ enum Conv {
     Kw(&'static [(&'static str, &'static str)]),
     /// A token: `var(--<namespace>-<name>)`.
     Var(&'static str),
-    /// A quoted string.
-    Str,
     /// An identifier, or a string when it is not one.
     Ident,
     /// Quoted strings.
@@ -60,7 +58,6 @@ const POSITIONS: &[(&str, &str)] = &[
     ("flow", "static"),
     ("absolute", "absolute"),
     ("screen", "fixed"),
-    ("anchored", "-og-anchored"),
     ("relative", "relative"),
     ("sticky", "sticky"),
 ];
@@ -209,9 +206,6 @@ pub const STYLE: &[(&str, &str)] = &[
     ("top", "top"),
     ("end", "inset-inline-end"),
     ("bottom", "bottom"),
-    ("centerX", "-og-center-x"),
-    ("centerY", "-og-center-y"),
-    ("anchorTo", "-og-anchor"),
     ("stepper", "-og-stepper"),
     ("stepperWrap", "-og-stepper-wrap"),
     ("stepperLargeStep", "-og-stepper-large-step"),
@@ -221,8 +215,6 @@ pub const STYLE: &[(&str, &str)] = &[
     ("selectAppearance", "-og-select"),
     ("selectFilter", "-og-select-filter"),
     ("spotlight", "-og-spotlight"),
-    ("anchorAt", "-og-anchor-at"),
-    ("anchorSelf", "-og-anchor-self"),
     ("insetTop", "top"),
     ("insetRight", "right"),
     ("insetBottom", "bottom"),
@@ -293,7 +285,6 @@ pub const STYLE: &[(&str, &str)] = &[
     ("fitMin", "-og-fit-min"),
     ("font", "font-family"),
     ("color", "color"),
-    ("onScene", "-og-on-scene"),
     ("uppercase", "text-transform"),
     ("secondaryTint", "-og-secondary-tint"),
     ("textAlign", "text-align"),
@@ -464,21 +455,19 @@ fn conv(prop: &str) -> Conv {
         | "stepperLargeStep" => Conv::Num,
         "rotate" => Conv::Angle,
         "background" | "fadeInto" | "color" | "secondaryTint" | "tint" | "ink" => Conv::Paint,
-        "align" | "cross" | "direction" | "frame" | "anchorAt" | "anchorSelf" | "reduced"
-        | "textAlign" | "verticalAlign" | "captionSide" | "fit" | "display" | "markerType"
-        | "markerPosition" | "userSelect" | "appearance" | "labelDirection" | "stepper"
-        | "stepperWrap" | "selectAppearance" | "selectFilter" => Conv::Kebab,
+        "align" | "cross" | "direction" | "frame" | "reduced" | "textAlign" | "verticalAlign"
+        | "captionSide" | "fit" | "display" | "markerType" | "markerPosition" | "userSelect"
+        | "appearance" | "labelDirection" | "stepper" | "stepperWrap" | "selectAppearance"
+        | "selectFilter" => Conv::Kebab,
         "countDuration" | "countDecimals" | "reveal" => Conv::Num,
         "spotlight" => Conv::Ident,
         "wrap" => Conv::Bool("wrap", "nowrap"),
-        "centerX" | "centerY" | "onScene" => Conv::Bool("true", "false"),
         "uppercase" => Conv::Bool("uppercase", "none"),
         "nowrap" => Conv::Bool("nowrap", "normal"),
         "ellipsis" => Conv::Bool("ellipsis", "clip"),
         "position" => Conv::Kw(POSITIONS),
         "step" | "fitMin" => Conv::Var("text"),
         "font" => Conv::Var("font"),
-        "anchorTo" => Conv::Str,
         "rive" => Conv::Rive,
         "textPath" | "textPathOffset" | "emitter" | "meta" => Conv::Raw,
         "textPathSide" => Conv::Kebab,
@@ -528,7 +517,6 @@ pub fn value_form(prop: &str, words: &[&str]) -> Option<String> {
             .join(" | "),
         Conv::Kw(t) => t.iter().map(|(_, c)| *c).collect::<Vec<_>>().join(" | "),
         Conv::Var(ns) => format!("var(--{ns}-<name>)"),
-        Conv::Str => "\"<text>\"".into(),
         Conv::Ident => "<name>".into(),
         Conv::Strs => "\"<a>\" \"<b>\" …".into(),
         Conv::Tracks => {
@@ -921,7 +909,6 @@ fn value_css(prop: &str, c: Conv, vals: &[Value]) -> Result<String, String> {
                 .ok_or_else(|| format!("'{w}' is not a {prop}"))
         }
         Conv::Var(ns) => Ok(format!("var(--{ns}-{})", kebab(&text_of(one()?)))),
-        Conv::Str => Ok(quoted(&text_of(one()?))),
         Conv::Rive => Ok(format!("rive({})", quoted(&text_of(one()?)))),
         Conv::Raw => Ok(text_of(one()?)),
         Conv::Ident => {
@@ -2500,15 +2487,6 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
                     vec![Value::Word(el.into())]
                 }
                 Conv::Var(ns) => vec![Value::Word(want_var(&one(&t, name)?, ns)?)],
-                Conv::Str => match one(&t, name)? {
-                    Tok::Str(s) => vec![Value::String(s)],
-                    v => {
-                        return Err(format!(
-                            "{name} takes a quoted path, not '{}'",
-                            describe(&v)
-                        ));
-                    }
-                },
                 Conv::Ident => match one(&t, name)? {
                     Tok::Str(s) => vec![Value::String(s)],
                     Tok::Ident(s) => vec![Value::Word(s)],

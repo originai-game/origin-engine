@@ -11,6 +11,18 @@
       "change": "Removed the proprietary list marker properties and the internal --og-list-style-* custom-property channel.",
       "fix": "Use inherited list-style-type, list-style-position and list-style-image. Only list items draw inherited markers.",
       "find": ["-og-marker-type", "-og-marker-position", "--og-list-style-"]
+    },
+    {
+      "member": "-og-center-x, -og-center-y, -og-anchor, -og-anchor-at, -og-anchor-self, position: -og-anchored",
+      "change": "Removed the proprietary centering and anchoring declarations and their reflected attributes; no aliases remain.",
+      "fix": "Center with left/top: 50% and translate: -50%, or standard flex/grid alignment. Use anchor-name, position-anchor and anchor() with translation for asymmetric self-alignment. Existing rotate and scale still compose with translation. Implicit popover anchoring is unchanged.",
+      "find": ["-og-center-", "-og-anchor"]
+    },
+    {
+      "member": "-og-on-scene",
+      "change": "Removed implicit scene ink and separation shadow styling.",
+      "fix": "Declare color and text-shadow. The shipped shooter controls use text-shadow: 0 max(1px, 0.04em) max(1px, 0.08em) #000000, with their scene ink declared as color. Font-relative shadow lengths now use the element's winning font size rather than the body default.",
+      "find": ["-og-on-scene"]
     }
   ]
 }

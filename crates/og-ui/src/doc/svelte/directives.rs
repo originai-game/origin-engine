@@ -159,7 +159,7 @@ impl Parser {
             if !a.bound || !identifier(&a.value) {
                 return Err((
                     a.at,
-                    "bind:this={name} names the element; the name reads as its id (popovertarget={name}, anchorTo, events' paths)".into(),
+                    "bind:this={name} names the element; the name reads as its id (popovertarget={name}, events' paths)".into(),
                 ));
             }
             let name = a.value.clone();

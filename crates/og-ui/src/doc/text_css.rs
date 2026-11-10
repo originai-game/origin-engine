@@ -604,7 +604,7 @@ const STRETCH: &[(&str, f32)] = &[
 
 /// A length in px against `em` (the font size it is relative to) and
 /// `pct` (what 100% is). `rem` and viewport units are px by now.
-fn length_of(s: &str, em: f32, pct: f32) -> Option<f32> {
+pub(crate) fn length_of(s: &str, em: f32, pct: f32) -> Option<f32> {
     let s = s.trim();
     if s == "0" {
         return Some(0.0);
@@ -1272,6 +1272,19 @@ fn variant_features(w: &str) -> Vec<(&'static [u8; 4], u16)> {
     }
 }
 
+pub(crate) fn font_size(v: &str, parent: f32, medium: f32) -> Option<f32> {
+    let size = if let Some((_, k)) = SIZE_KEYWORDS.iter().find(|(k, _)| *k == v) {
+        medium * k
+    } else if v == "larger" {
+        parent * 1.2
+    } else if v == "smaller" {
+        parent / 1.2
+    } else {
+        length_of(v, parent, parent)?
+    };
+    Some(size.max(0.0))
+}
+
 /// One declared value as it is inherited: lengths in px against `em`
 /// (the parent's size for `font-size`, the element's own otherwise).
 #[allow(clippy::too_many_arguments)]
@@ -1292,17 +1305,8 @@ fn compute(
     };
     Ok(match name {
         "font-size" => {
-            let medium = theme.type_ramp.body.size;
-            let p = if let Some((_, k)) = SIZE_KEYWORDS.iter().find(|(k, _)| *k == v) {
-                medium * k
-            } else if v == "larger" {
-                parent * 1.2
-            } else if v == "smaller" {
-                parent / 1.2
-            } else {
-                length_of(v, parent, parent).ok_or("a font size")?
-            };
-            super::calc::number(f64::from(p.max(0.0)))
+            let p = font_size(v, parent, theme.type_ramp.body.size).ok_or("a font size")?;
+            super::calc::number(f64::from(p))
         }
         "font-weight" => match v {
             "normal" => "400".into(),

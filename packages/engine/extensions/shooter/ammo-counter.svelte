@@ -37,10 +37,10 @@
 #Rounds { display: flex; align-items: baseline; gap: var(--space-sm); }
 /* The magazine is the largest number on the HUD; the reserve sits beside it,
    a step down and quieter, as Apex and Forza set a value beside its unit. */
-#Count { font: var(--text-display-md); font-family: var(--font-mono); -og-on-scene: true; }
+#Count { font: var(--text-display-md); font-family: var(--font-mono); color: var(--scene-ink); text-shadow: 0 max(1px, 0.04em) max(1px, 0.08em) #000000; }
 #Count.low { color: var(--warn); }
 #Count.empty { color: var(--danger); }
-#Reserve { font: var(--text-lg); font-family: var(--font-mono); -og-on-scene: true; }
+#Reserve { font: var(--text-lg); font-family: var(--font-mono); color: var(--scene-ink); text-shadow: 0 max(1px, 0.04em) max(1px, 0.08em) #000000; }
 #Magazine { width: stretch; height: var(--stroke-thick); background: var(--sheen); }
 #MagazineFill { width: calc(var(--fill) * 100%); height: stretch; background: var(--scene-ink); transition: width var(--motion-ui); }
 .low #MagazineFill { background: var(--warn); }

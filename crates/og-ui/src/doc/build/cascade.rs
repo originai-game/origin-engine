@@ -298,38 +298,96 @@ pub(crate) fn values_with(
         });
     }
     out.computed = Arc::new(computed);
-    // The element's own type step sizes its font-relative units.
-    let basis = basis.map(|mut basis| {
-        let step = declarations
-            .iter()
-            .find(|(name, _)| *name == "font")
-            .and_then(|(_, (_, w, _))| {
-                let Winner::Declared(d) = w else { return None };
-                d.value
-                    .substitute(&mut |n| match out.computed.get(n) {
-                        Some(v) => v.clone(),
-                        None => None,
-                    })
-                    .ok()
+    // Font size reads the parent's em; other lengths read this element's
+    // winning size, including when the font shorthand expanded earlier.
+    let parent_basis = basis.map(|mut b| {
+        let key = crate::doc::text_css::key("font-size");
+        out.inherited_reads.insert(key.clone());
+        b.em = inherited
+            .get(&key)
+            .and_then(|v| v.as_deref())
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(b.rem);
+        let key = crate::doc::text_css::key("line-height");
+        out.inherited_reads.insert(key.clone());
+        b.lh = inherited
+            .get(&key)
+            .and_then(|v| v.as_deref())
+            .and_then(|v| {
+                if v == "normal" {
+                    Some(b.em * 1.2)
+                } else {
+                    v.parse::<f32>()
+                        .ok()
+                        .map(|f| f * b.em)
+                        .or_else(|| crate::doc::text_css::length_of(v, b.em, b.em))
+                }
             })
-            .and_then(|v| crate::doc::text_css::font(&v).ok());
-        if let Some(step) = step {
-            for (name, value) in step {
-                if matches!(name.as_str(), "font-size" | "line-height") {
-                    let (value, _) = crate::doc::calc::absolute(&value, basis, &name);
-                    if let Some(value) =
-                        value.strip_suffix("px").and_then(|v| v.trim().parse().ok())
-                    {
-                        if name == "font-size" {
-                            basis.em = value;
-                        } else {
-                            basis.lh = value;
-                        }
+            .unwrap_or(b.em * b.rlh / b.rem.max(1e-3));
+        b
+    });
+    let basis = parent_basis.map(|mut b| {
+        let parent = b;
+        let line_key = crate::doc::text_css::key("line-height");
+        out.inherited_reads.insert(line_key.clone());
+        let mut size = None;
+        let mut line = inherited.get(&line_key).cloned().flatten();
+        for (name, (_, winner, _)) in &declarations {
+            if !matches!(*name, "font" | "font-size" | "line-height") {
+                continue;
+            }
+            let Winner::Declared(d) = winner else {
+                continue;
+            };
+            let Ok(value) = d
+                .value
+                .substitute(&mut |n| out.computed.get(n).cloned().flatten())
+            else {
+                continue;
+            };
+            let values = if *name == "font" {
+                crate::doc::text_css::font(&value).unwrap_or_default()
+            } else {
+                vec![(name.to_string(), value)]
+            };
+            for (name, value) in values {
+                match name.as_str() {
+                    "font-size" => size = Some(value),
+                    "line-height" if matches!(value.trim(), "inherit" | "unset") => {
+                        line = inherited.get(&line_key).cloned().flatten();
                     }
+                    "line-height" => line = Some(value),
+                    _ => {}
                 }
             }
         }
-        basis
+        if let Some(value) = size {
+            let (value, _) = crate::doc::calc::absolute(&value, parent, "font-size");
+            if let Ok(value) = crate::doc::calc::reduce(&value) {
+                b.em = match value.trim() {
+                    "inherit" | "unset" => parent.em,
+                    "initial" => b.rem,
+                    v => crate::doc::text_css::font_size(v, parent.em, b.rem).unwrap_or(parent.em),
+                };
+            }
+        }
+        b.lh = b.em * b.rlh / b.rem.max(1e-3);
+        if let Some(value) = line {
+            let line_basis = crate::doc::calc::Basis { lh: parent.lh, ..b };
+            let (value, _) = crate::doc::calc::absolute(&value, line_basis, "line-height");
+            if let Ok(value) = crate::doc::calc::reduce(&value) {
+                b.lh = match value.trim() {
+                    "normal" | "initial" => b.em * 1.2,
+                    v => v
+                        .parse::<f32>()
+                        .ok()
+                        .map(|factor| factor * b.em)
+                        .or_else(|| crate::doc::text_css::length_of(v, b.em, b.em))
+                        .unwrap_or(b.lh),
+                };
+            }
+        }
+        b
     });
     for (name, (_, winner, line)) in declarations {
         for prop in css::targets(name) {
@@ -386,7 +444,16 @@ pub(crate) fn values_with(
             } else {
                 v
             };
-            let v = match basis {
+            let unit_basis = if matches!(name, "font" | "font-size") {
+                parent_basis
+            } else if name == "line-height" {
+                basis
+                    .zip(parent_basis)
+                    .map(|(b, parent)| crate::doc::calc::Basis { lh: parent.lh, ..b })
+            } else {
+                basis
+            };
+            let v = match unit_basis {
                 Some(basis) if crate::doc::calc::per_element(name, &v) => {
                     let (v, read) = crate::doc::calc::absolute(&v, basis, name);
                     out.viewport_reads.width |= read.width;

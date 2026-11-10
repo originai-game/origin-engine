@@ -1215,7 +1215,7 @@ impl Resolved {
         LabelDesc {
             step,
             color: self.color("color"),
-            on_scene: self.flag("onScene"),
+            on_scene: false,
             uppercase: self.flag("uppercase"),
             align,
             nowrap: css.and_then(|t| t.nowrap).unwrap_or(self.flag("nowrap")),

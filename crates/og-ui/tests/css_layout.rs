@@ -79,6 +79,94 @@ fn wh(d: &Doc, id: &str) -> (f32, f32) {
 }
 
 #[test]
+fn centering_and_asymmetric_anchors_preserve_transforms() {
+    for mounted in [false, true] {
+        for width in [390.0, 1280.0] {
+            let center_x = (width * 0.8 - 62.0) / 2.0;
+            for (standard, x, y) in [
+                ("left: 50%; translate: -50% 0; top: 17px;", center_x, 17.0),
+                ("top: 50%; translate: 0 -50%; left: 23px;", 23.0, 106.0),
+                (
+                    "left: 50%; top: 50%; translate: -50% -50%;",
+                    center_x,
+                    106.0,
+                ),
+                (
+                    "position-anchor: --target; left: anchor(right); top: anchor(bottom);",
+                    140.0,
+                    102.0,
+                ),
+                (
+                    "position-anchor: --target; left: anchor(left); top: anchor(top); translate: -100% -100%;",
+                    31.0,
+                    43.0,
+                ),
+            ] {
+                let draw = |css: &str| {
+                    let source = format!(
+                        r#"<meta name="component" content="t">
+<div id="Stage"><div id="Anchor"></div><div id="Placed"></div></div>
+<style>
+#Stage {{ width: 80%; height: 240px; }}
+#Anchor {{ anchor-name: --target; margin: 71px 0 0 93px; width: 47px; height: 31px; }}
+#Placed {{ position: absolute; width: 62px; height: 28px; background: #397ace; rotate: 13deg; scale: 1.2 0.8; {css} }}
+</style>"#
+                    );
+                    let mut d = Doc::new(&source, &[], mounted);
+                    d.viewport = og_ui::Viewport::new(width, 600.0);
+                    d.step(InputFrame::default());
+                    assert!(
+                        d.ui.frame().warnings.is_empty(),
+                        "{:?}",
+                        d.ui.frame().warnings
+                    );
+                    let frame = d.ui.frame();
+                    assert_eq!(frame.items.len(), 1);
+                    let item = &frame.items[0];
+                    let og_ui::DrawCmd::Quad { rect, .. } = item.cmd else {
+                        panic!("expected a quad")
+                    };
+                    [
+                        (rect.x, rect.y),
+                        (rect.right(), rect.y),
+                        (rect.x, rect.bottom()),
+                        (rect.right(), rect.bottom()),
+                    ]
+                    .map(|(x, y)| item.transform.apply(x, y))
+                };
+                let (expected, actual) =
+                    (draw(&format!("left: {x}px; top: {y}px;")), draw(standard));
+                assert!(
+                    expected.iter().zip(actual).all(
+                        |((x, y), (nx, ny))| (x - nx).abs() < 0.0001 && (y - ny).abs() < 0.0001
+                    ),
+                    "{standard}; mounted={mounted}, width={width}: {expected:?} != {actual:?}"
+                );
+            }
+        }
+    }
+    for declaration in [
+        "-og-center-x: true",
+        "-og-center-y: true",
+        "-og-anchor: \"Anchor\"",
+        "-og-anchor-at: top",
+        "-og-anchor-self: center",
+        "position: -og-anchored",
+    ] {
+        let source = format!(
+            "<meta name=\"component\" content=\"t\"><div></div><style>div {{ {declaration}; }}</style>"
+        );
+        let errors = og_ui::UiDocument::parse("removed.svelte", &source).unwrap_err();
+        assert!(
+            errors
+                .join(" ")
+                .contains(declaration.split(':').next().unwrap()),
+            "{errors:?}"
+        );
+    }
+}
+
+#[test]
 fn the_box_model_sizes_as_css_does() {
     let text = r#"<meta name="component" content="t">
 <div><div id="Root">

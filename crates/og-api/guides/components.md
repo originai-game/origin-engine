@@ -92,16 +92,11 @@ What every kind takes: its box, layout, paint, motion and input.
 | `transform-origin:` | `<x>% <y>%` | The transform's origin, fractions of its box. |
 | `opacity:` | `<number>` | 0 to 1, multiplied down the tree. |
 | `z-index:` | `<number>` | Drawing order among its siblings. |
-| `position:` | `static \| absolute \| fixed \| -og-anchored \| relative \| sticky` | In the flow, placed by its insets in its parent, by its insets on the whole screen (full bleed, under the safe area), or against another element. |
+| `position:` | `static \| absolute \| fixed \| relative \| sticky` | In the flow, placed by its insets in its parent, by its insets on the whole screen (full bleed, under the safe area), or against another element. |
 | `inset-inline-start:` | `<n>px` | The inset from its parent's start edge (absolute). |
 | `top:` | `<n>px` | The inset from the top. `insetTop`: CSS `top` / `inset-block-start` as written: px, `%` of the containing block, `anchor()` or `calc()` of one plus px. |
 | `inset-inline-end:` | `<n>px` | The inset from the end edge. |
 | `bottom:` | `<n>px` | The inset from the bottom. `insetBottom`: CSS `bottom` / `inset-block-end` as written (see insetTop). |
-| `-og-center-x:` | `true \| false` | Centred across its parent. |
-| `-og-center-y:` | `true \| false` | Centred down its parent. |
-| `-og-anchor:` | `"<text>"` | The path of the element an anchored element sits against. |
-| `-og-anchor-at:` | `top-left \| top \| top-right \| left \| center \| right \| bottom-left \| bottom \| bottom-right` | The target's point it sits on. |
-| `-og-anchor-self:` | `top-left \| top \| top-right \| left \| center \| right \| bottom-left \| bottom \| bottom-right` | Its own point that sits there. |
 | `-og-hit-slop:` | `<n>px` | Extra pointer reach, CSS px. |
 | `grid-template-columns:` | `[name] 120px 1fr auto 25% minmax(min-content, 1fr) repeat(auto-fill, 200px) \| subgrid \| masonry` | A grid's column tracks (CSS `grid-template-columns`: sizes, `[line names]`, `repeat()`, `subgrid` or `masonry`). |
 | `grid-template-rows:` | `[name] 120px 1fr auto 25% minmax(min-content, 1fr) repeat(auto-fill, 200px) \| subgrid \| masonry` | A grid's row tracks (CSS `grid-template-rows`). |
@@ -507,7 +502,6 @@ Its own props, beside every element's:
 | `font:` | `var(--text-<name>)` | The type step. |
 | `color:` | `var(--<role>) \| #rrggbb[aa]` | Its ink. |
 | `spans` | `TextSpan[]` | Read-only TextSpan[] ranges over plain text; offsets count Unicode scalars. Styles come from ::part(name). |
-| `-og-on-scene:` | `true \| false` | Scene ink and separation shadow. |
 | `text-transform:` | `uppercase \| none` | Uppercase in the UI's locale, as a type role with `case upper` is. |
 | `text-align:` | `start \| center \| end` | How its lines align. |
 | `white-space:` | `nowrap \| normal` | One line. |

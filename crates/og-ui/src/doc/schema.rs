@@ -290,17 +290,6 @@ pub const CORE_KINDS: &[KindSpec] = &[
 ];
 
 const STEPS: &[&str] = &crate::style_file::STEP_NAMES;
-const ANCHORS: &[&str] = &[
-    "topLeft",
-    "top",
-    "topRight",
-    "left",
-    "center",
-    "right",
-    "bottomLeft",
-    "bottom",
-    "bottomRight",
-];
 
 macro_rules! p {
     ($name:literal, $ty:expr, $doc:literal) => {
@@ -759,9 +748,7 @@ pub const CORE_PROPS: &[PropSpec] = &[
     p!("z", Ty::Num, "Drawing order among its siblings."),
     p!(
         "position",
-        Ty::Word(&[
-            "flow", "absolute", "screen", "anchored", "relative", "sticky"
-        ]),
+        Ty::Word(&["flow", "absolute", "screen", "relative", "sticky"]),
         "In the flow, placed by its insets in its parent, by its insets on the whole screen (full bleed, under the safe area), or against another element."
     ),
     p!(
@@ -772,23 +759,6 @@ pub const CORE_PROPS: &[PropSpec] = &[
     p!("top", Ty::Num, "The inset from the top."),
     p!("end", Ty::Num, "The inset from the end edge."),
     p!("bottom", Ty::Num, "The inset from the bottom."),
-    p!("centerX", Ty::Bool, "Centred across its parent."),
-    p!("centerY", Ty::Bool, "Centred down its parent."),
-    p!(
-        "anchorTo",
-        Ty::Name,
-        "The path of the element an anchored element sits against."
-    ),
-    p!(
-        "anchorAt",
-        Ty::Word(ANCHORS),
-        "The target's point it sits on."
-    ),
-    p!(
-        "anchorSelf",
-        Ty::Word(ANCHORS),
-        "Its own point that sits there."
-    ),
     p!("hitSlop", Ty::Num, "Extra pointer reach, CSS px."),
     p!(
         "columns",
@@ -1129,12 +1099,6 @@ pub const CORE_PROPS: &[PropSpec] = &[
         Ty::Spans,
         ["label"],
         "Read-only TextSpan[] ranges over plain text; offsets count Unicode scalars. Styles come from ::part(name)."
-    ),
-    p!(
-        "onScene",
-        Ty::Bool,
-        ["label"],
-        "Scene ink and separation shadow."
     ),
     p!(
         "uppercase",
