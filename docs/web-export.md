@@ -752,6 +752,11 @@ Who the shell speaks protocol 2 to, in order:
 
 ### Platform services over protocol 2
 
+The Player is the provider described here; the contract every provider
+meets, and how a page names another one (a portal's, a self-hosted relay
+for rooms), is docs/design.md §2.8 Providers and
+`@origingame/engine/provider`.
+
 `og.platform` (IDL module `platform`, docs/design.md §2.8) reaches the
 Player through the same channel (`shell/platform.ts`). The engine Worker
 hands each tick's calls to the page (`{ type: "platform", calls }`); the

@@ -9,6 +9,12 @@ the store. Each ask names the shape the engine would use, so the bridge's
 mapping shrinks to a rename when it lands. Asks are numbered once and never
 renumbered; platform asks are collected at release.
 
+The Player is one provider of the engine's provider contract
+(`@origingame/engine/provider`, docs/design.md §2.8 Providers): each ask
+below is what that provider needs from the platform, not a shape the
+engine depends on. `point` and `ai.mark` are OriginGame's host extensions
+of the vocabulary, not core methods.
+
 Only open asks are listed; landed ones (1–8, 12, 14, 15, 18, 27) are in git
 history. Numbers are never reused.
 
