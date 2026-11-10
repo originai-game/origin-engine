@@ -1106,11 +1106,6 @@ pub const CORE_PROPS: &[PropSpec] = &[
         Ty::Bool,
         "Its first entrance is settled (`data-og-instant`): the screen a game opens on, which the web draws behind its play gate. Later entrances play."
     ),
-    p!(
-        "reduced",
-        Ty::Word(&["fade", "none", "keep"]),
-        "Its reduced-motion fallback."
-    ),
     // Text.
     p!(
         "text",

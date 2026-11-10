@@ -753,9 +753,10 @@ mod document_tests {
     #[test]
     fn reduced_motion_ends_finite_animations_stops_loops_and_jumps_transitions() {
         let mut ui = ui(
-            "#Card { width: 40px; height: 20px; -og-reduced-motion: none; transition: opacity 400ms linear;
+            "#Card { width: 40px; height: 20px; transition: opacity 400ms linear;
                      animation: slide 600ms linear forwards, spin 300ms linear infinite; }
              #Card.on { opacity: 0.4; }
+             @media (prefers-reduced-motion: reduce) { #Card { transition: none; } }
              @keyframes slide { to { translate: 90px 0; } }
              @keyframes spin { to { rotate: 2rad; } }",
             true,

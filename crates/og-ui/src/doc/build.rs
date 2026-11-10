@@ -1899,12 +1899,12 @@ impl Ui {
             key: r.str("customizeKey").unwrap_or_default().to_owned(),
             ..crate::element::Customize::default()
         });
-        p.reduced = match r.str("reduced") {
-            Some("fade") => Some(crate::Reduced::Fade),
-            Some("none") => Some(crate::Reduced::None),
-            Some("keep") => Some(crate::Reduced::Keep),
-            _ => None,
-        };
+        // A transition written under `prefers-reduced-motion` plays as
+        // written; any other takes the theme's fallback.
+        p.reduced = r
+            .cascade
+            .reduced_motion_authored
+            .then_some(crate::Reduced::Keep);
         p
     }
 

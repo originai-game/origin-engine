@@ -389,7 +389,6 @@ the kinds'. Kinds: `column`, `row`, `stack`, `grid`, `panel`, `scroll`,
 | `cursor` | auto \| default \| pointer \| text \| grab \| grabbing \| move \| notAllowed \| crosshair \| help \| wait \| progress \| resizeEw \| resizeNs \| resizeNesw \| resizeNwse \| zoomIn \| zoomOut \| none | all | The pointer's shape over it and its subtree. |
 | `customize` | bool | all | The player can move, scale and fade it in the HUD edit mode. |
 | `customizeKey` | name | all | With customize: its name in the saved HUD layout (default: its path). |
-| `reduced` | fade \| none \| keep | all | Its reduced-motion fallback. |
 | `text` | text | label, button, badge, toggle, tabs | What it says. |
 | `key` | name | label, button, badge, toggle, tabs | A string table key (og.i18n) its text comes from; `text` is the fallback. |
 | `step` | body \| xs \| meta \| caption \| sm \| reading \| base \| lg \| xl \| xl2 \| xl3 \| xl4 \| xl5 \| xl6 \| xl7 \| xl8 \| displaySm \| displayMd \| displayLg \| displayXl \| displayXl2 \| hero | label | The type step. |

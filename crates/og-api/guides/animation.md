@@ -106,7 +106,9 @@ The thresholds actions are held to:
   centimetres or pixels, never on every frame of continuous fire.
 - **UI motion** 150 to 300 ms for panels and screens, 80 to 150 ms for
   button feedback; entrances ease out, exits ease in and are shorter. The
-  reduced-motion setting replaces movement with a fade.
+  reduced-motion setting replaces movement with a fade; a transition a
+  screen writes under `@media (prefers-reduced-motion: reduce)` plays as
+  written instead, so keep motion that carries meaning small there.
 - **Coyote time** about 100 ms and a jump buffer of about 100 ms for a
   platformer; a jump without them feels broken at any polish.
 - Ease every tween; linear motion reads as mechanical except for

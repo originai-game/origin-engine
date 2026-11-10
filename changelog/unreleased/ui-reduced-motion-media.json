@@ -1,0 +1,10 @@
+{
+  "breaking": [
+    {
+      "member": "UI reduced-motion styles",
+      "change": "Removed -og-reduced-motion (fade, none, keep). An element's transitions under the player's reduced motion now follow standard CSS: a transition written under @media (prefers-reduced-motion) plays as written; any other keeps the engine's fallback (movement jumps, opacity and colour fade quickly).",
+      "fix": "For none, write @media (prefers-reduced-motion: reduce) { .x { transition: none; } }. For keep, repeat the element's transition inside that block. Drop fade: it is the fallback for every transition not written for reduced motion.",
+      "find": ["-og-reduced-motion"]
+    }
+  ]
+}

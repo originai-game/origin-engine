@@ -2436,7 +2436,14 @@ animations; an animation starts when its rule begins to match and ends when
 it stops. Motion runs on presentation ticks, never a clock, and is saved with
 the presentation state outside `world_hash`, so a restore continues exactly.
 Reduced motion shows a finite animation's end and stops endless ones;
-transitions use the element's reduced-motion fallback. Transitions and
+a transition written under a media query that names
+`prefers-reduced-motion` (`@media (prefers-reduced-motion: reduce) {
+.card { transition: none; } }`) plays as written, computed values such
+as `width` and a `display` exit included; any other transition takes the
+engine's fallback, in which movement, scale and computed values jump while
+opacity and colour fade quickly. The
+removed `-og-reduced-motion` property has no replacement beyond that
+block. Transitions and
 keyframes cover every animatable property. Opacity, translate, scale,
 rotate, `border-radius`, background, color and z-index move the
 element's channels in the motion step (springs and motion tokens keep their

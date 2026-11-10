@@ -1170,6 +1170,107 @@ fn data_og_instant_settles_only_the_first_entrance() {
     });
 }
 
+/// Reduced motion follows `@media (prefers-reduced-motion)`: a transition
+/// written under it plays as written, `transition: none` there jumps, and
+/// any other transition takes the engine's fallback (opacity and colour
+/// fade quickly, movement jumps). Ways it could fail: a transition written
+/// for reduced motion taking the fallback (or a display exit there cut to
+/// the fallback's length), `transition: none` still moving, the fallback
+/// lost elsewhere, or the removed `-og-reduced-motion` accepted.
+#[test]
+fn reduced_motion_transitions_follow_the_media_query() {
+    let error = refused(
+        r#"<meta name="component" content="t"><div/><style>div { -og-reduced-motion: keep; }</style>"#,
+    );
+    assert!(
+        error.contains("-og-reduced-motion") && error.contains("prefers-reduced-motion"),
+        "{error}"
+    );
+    let all = "opacity 400ms linear, translate 300ms ease, background-color 200ms";
+    let doc = |rule: &str| {
+        format!(
+            r#"<meta name="component" content="t">
+<div id="Page"><div id="Card" class={{$mode}}>Hi</div></div>
+<style>
+#Card {{ width: 100px; height: 40px; background: #ffffff; opacity: 1; translate: 0 0; transition: {all}; }}
+#Card.on {{ opacity: 0.2; translate: 40px 0; background: #ff0000; }}
+{rule}
+</style>"#
+        )
+    };
+    let keep =
+        format!("@media (prefers-reduced-motion: reduce) {{ #Card {{ transition: {all}; }} }}");
+    let none = "@media (prefers-reduced-motion: reduce) { #Card { transition: none; } }";
+    for mounted in [false, true] {
+        let run = |rule: &str, reduced: bool| {
+            let mut d = Doc::new(&doc(rule), &[("mode", json!("off"))], mounted);
+            let mut theme = *d.ui.theme();
+            theme.reduced_motion = reduced;
+            d.ui.set_theme(theme);
+            d.step(InputFrame::default());
+            let mut frames = Vec::new();
+            for mode in ["on", "off"] {
+                d.set("mode", json!(mode));
+                for _ in 0..30 {
+                    d.step(InputFrame::default());
+                    frames.push(d.ui.frame().items.clone());
+                }
+            }
+            frames
+        };
+        let distinct = |f: &[Vec<_>]| f.windows(2).filter(|w| w[0] != w[1]).count();
+        let authored = run("", false);
+        assert_eq!(
+            run(&keep, true),
+            authored,
+            "mounted {mounted}: kept as written"
+        );
+        assert_eq!(
+            run(&keep, false),
+            authored,
+            "mounted {mounted}: the block is inert"
+        );
+        let jumped = run(none, true);
+        assert_eq!(distinct(&jumped), 1, "mounted {mounted}: none jumps");
+        let fallback = run("", true);
+        let moves = distinct(&fallback);
+        assert!(
+            moves > 1 && moves < distinct(&authored),
+            "mounted {mounted}: the fallback fades quickly ({moves} vs {})",
+            distinct(&authored)
+        );
+    }
+    // A display exit written for reduced motion keeps its length (200 ms,
+    // 12 ticks) instead of the fallback's 120 ms.
+    let exit = r#"<meta name="component" content="t">
+<div id="Page"><div id="Card" class={$mode}><button id="Child">Ready</button></div></div>
+<style>
+#Card { display: flex; opacity: 1; width: 100px; height: 40px; background: #ffffff;
+  transition: opacity 200ms linear, display 200ms allow-discrete; }
+#Card.gone { display: none; opacity: 0; }
+@media (prefers-reduced-motion: reduce) {
+  #Card.kept { transition: opacity 200ms linear, display 200ms allow-discrete; }
+}
+</style>"#;
+    for (shown, gone, held) in [("shown", "gone", false), ("kept", "kept gone", true)] {
+        both(exit, &[("mode", json!(shown))], |d| {
+            let mut theme = *d.ui.theme();
+            theme.reduced_motion = true;
+            d.ui.set_theme(theme);
+            d.step(InputFrame::default());
+            d.set("mode", json!(gone));
+            for _ in 0..8 {
+                d.step(InputFrame::default());
+            }
+            assert_eq!(d.el("Child").is_some(), held, "{gone} at 10 ticks");
+            for _ in 0..10 {
+                d.step(InputFrame::default());
+            }
+            assert!(d.el("Child").is_none(), "{gone} completes");
+        });
+    }
+}
+
 #[test]
 fn discrete_display_exit_finishes_before_removing_content() {
     for name in ["enter", "exit"] {

@@ -260,7 +260,6 @@ pub const STYLE: &[(&str, &str)] = &[
     ("textPath", "-og-text-path"),
     ("textPathOffset", "-og-text-path-offset"),
     ("textPathSide", "-og-text-path-side"),
-    ("reduced", "-og-reduced-motion"),
     ("step", "font"),
     ("fitMin", "-og-fit-min"),
     ("font", "font-family"),
@@ -426,7 +425,7 @@ fn conv(prop: &str) -> Conv {
         "aspect" | "opacity" | "z" | "scale" | "maxLines" => Conv::Num,
         "rotate" => Conv::Angle,
         "background" | "fadeInto" | "color" | "ink" => Conv::Paint,
-        "align" | "cross" | "direction" | "frame" | "reduced" | "textAlign" | "verticalAlign"
+        "align" | "cross" | "direction" | "frame" | "textAlign" | "verticalAlign"
         | "captionSide" | "fit" | "display" | "markerType" | "markerPosition" | "userSelect"
         | "appearance" | "labelDirection" | "fitMin" => Conv::Kebab,
         "fieldSizing" => Conv::Kebab,
@@ -588,6 +587,9 @@ fn neutral(key: &str) -> Option<&'static str> {
 pub(crate) fn unsupported(name: &str) -> Option<&'static str> {
     Some(match name {
         "visibility" => "write the attribute `visible false` (or `visible bind …`)",
+        "-og-reduced-motion" => {
+            "write the element's transition under @media (prefers-reduced-motion: reduce) { … } (transition: none jumps; one written there plays as written)"
+        }
         _ => return None,
     })
 }

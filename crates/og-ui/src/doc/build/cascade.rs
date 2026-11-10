@@ -20,6 +20,11 @@ pub struct Cascade {
     pub(crate) values: Vec<(String, String, usize)>,
     /// Winning transition and animation longhands, substituted.
     pub(crate) motion: Vec<(String, String)>,
+    /// A winning `transition` longhand was written under a media query
+    /// naming `prefers-reduced-motion`: the document chose its reduced
+    /// motion, so its transitions play as written rather than through the
+    /// engine's reduced-motion fallback.
+    pub(crate) reduced_motion_authored: bool,
     /// Winning container-name and container-type, substituted.
     pub(crate) container: Vec<(String, String)>,
     /// Winning SVG presentation properties (`fill`, `stroke`…), substituted.
@@ -97,6 +102,15 @@ pub(crate) const CARRIED_BY_DEFAULT: &[&str] = &[
     "list-style-position",
     "list-style-image",
 ];
+
+/// The query names `prefers-reduced-motion`, evaluated or not.
+fn names_reduced_motion(query: &crate::doc::media::Query) -> bool {
+    let mut named = false;
+    query.features(&mut |f| {
+        named |= matches!(f, crate::doc::media::Feature::ReducedMotion(_));
+    });
+    named
+}
 
 /// What won the cascade for one property.
 #[derive(Clone, Copy)]
@@ -281,6 +295,11 @@ pub(crate) fn values_with(
         .into_iter()
         .filter(|(name, _)| !name.starts_with("--"))
         .collect();
+    out.reduced_motion_authored = declarations.iter().any(|(name, (priority, winner, _))| {
+        name.starts_with("transition")
+            && matches!(winner, Winner::Declared(_))
+            && names_reduced_motion(&rules[priority.3].query.media)
+    });
     declarations.sort_by_key(|(_, (priority, _, _))| *priority);
     if o.carry {
         // A child inherits the carried values of inherited properties

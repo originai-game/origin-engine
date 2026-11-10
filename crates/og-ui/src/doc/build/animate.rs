@@ -285,11 +285,14 @@ impl Ui {
                     .cloned(),
             );
         }
+        let written = cascade.reduced_motion_authored;
         for name in names {
             let Some(t) = covered(&name) else { continue };
             // Display must keep the box alive for the opacity channels'
             // reduced-motion fade, rather than removing it immediately.
-            let reduced_display = reduced && name == "display" && t.discrete;
+            // One written for reduced motion (under its media query) plays
+            // as written.
+            let reduced_display = reduced && !written && name == "display" && t.discrete;
             let transition = if reduced_display {
                 match theme.motion.reduced {
                     crate::motion::Reduced::Keep => t.transition,
@@ -334,7 +337,7 @@ impl Ui {
                     match current {
                         Some(from)
                             if from != after
-                                && (!reduced || reduced_display)
+                                && (!reduced || written || reduced_display)
                                 && duration_ms + t.delay_ms > 0.0
                                 && (t.discrete
                                     || interpolate::interpolate(&name, &from, &after, 0.5)
