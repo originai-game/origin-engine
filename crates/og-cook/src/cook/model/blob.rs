@@ -160,7 +160,8 @@ pub fn cook(
                     .map(|t| t.texture())
                     .filter(|_| !baked),
                 kind::COLOR,
-                super::cuts_out(&m),
+                m.index()
+                    .and_then(|i| src.cutouts.get(i).copied().flatten()),
             ),
             metallic_roughness_texture: tex_of(
                 pbr.metallic_roughness_texture().map(|t| t.texture()),

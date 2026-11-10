@@ -29,20 +29,66 @@ pub struct TextureUse {
     /// The base colour of a material that tests its alpha (glTF
     /// `alphaMode` `MASK`): a cut-out, whose mips keep its coverage at the
     /// material's cut-off (texture.rs `cutout_mips` and `keep_coverage`),
-    /// here the least alpha byte the material keeps; `None` for every other
-    /// use. An image that a cut-out material and another material sample, or
-    /// two cut-out materials with different cut-offs, is that many uses, each
-    /// with its own mips.
+    /// here the least texture alpha byte the material keeps ([`cuts_out`]);
+    /// `None` for every other use. An image that a cut-out material and
+    /// another material sample, or two cut-out materials whose cut-offs come
+    /// to different bytes, is that many uses, each with its own mips.
     pub cutout: Option<u8>,
 }
 
 /// A material's base colour use's [`TextureUse::cutout`]: for an
-/// alpha-tested material (`MASK`), the least alpha byte it keeps, its
-/// `alphaCutoff` (0.5 when it names none) times 255 rounded up, as the
-/// renderer discards a texel whose alpha is below the cut-off.
-pub(super) fn cuts_out(m: &gltf::Material) -> Option<u8> {
-    (m.alpha_mode() == gltf::material::AlphaMode::Mask)
-        .then(|| (m.alpha_cutoff().unwrap_or(0.5).clamp(0.0, 1.0) * 255.0).ceil() as u8)
+/// alpha-tested material (`MASK`), the least texture alpha byte it keeps.
+/// The renderer discards where the texture's alpha times `baseColorFactor`'s
+/// alpha (and a vertex colour's) is below `alphaCutoff` (0.5 when it names
+/// none), so the byte is 255 × cut-off / factor, rounded up. `None`, the
+/// encoder's mips as for any texture, where no one byte is the test: a
+/// cut-off of 0 or less keeps every texel, a factor under the cut-off (0
+/// too) keeps none, and `vertex_alpha` (a vertex alpha under 1 on a
+/// primitive drawn with the material, [`vertex_alphas`]) moves the test per
+/// vertex.
+pub(super) fn cuts_out(m: &gltf::Material, vertex_alpha: bool) -> Option<u8> {
+    if m.alpha_mode() != gltf::material::AlphaMode::Mask || vertex_alpha {
+        return None;
+    }
+    let cut = m.alpha_cutoff().unwrap_or(0.5);
+    let factor = m.pbr_metallic_roughness().base_color_factor()[3];
+    // cut / factor first: 1 exactly when the two are equal.
+    let byte = (cut / factor * 255.0).ceil();
+    (cut > 0.0 && byte <= 255.0).then_some(byte as u8)
+}
+
+/// Per material, whether a primitive drawn with it (as its material or
+/// under a `KHR_materials_variants` variant) has a `COLOR_0` with an alpha
+/// under 1 (any of its component types: float, normalised u8 or u16).
+fn vertex_alphas(
+    doc: &gltf::Document,
+    json: &serde_json::Value,
+    buffers: &[gltf::buffer::Data],
+) -> Vec<bool> {
+    let mut out = vec![false; doc.materials().count()];
+    for mesh in doc.meshes() {
+        for prim in mesh.primitives() {
+            let below = prim
+                .reader(|b| Some(&buffers[b.index()].0[..]))
+                .read_colors(0)
+                .is_some_and(|c| c.into_rgba_f32().any(|c| c[3] < 1.0));
+            if !below {
+                continue;
+            }
+            let mapped = ext::mappings(&json["meshes"][mesh.index()]["primitives"][prim.index()]);
+            for m in prim
+                .material()
+                .index()
+                .into_iter()
+                .chain(mapped.into_iter().map(|(m, _)| m))
+            {
+                if let Some(v) = out.get_mut(m) {
+                    *v = true;
+                }
+            }
+        }
+    }
+    out
 }
 
 /// A parsed glTF: the document, its buffers and the encoded image bytes.
@@ -58,6 +104,9 @@ pub struct GltfSource {
     /// Bytes of every external file the glTF referenced (part of its source hash).
     pub external: Vec<(String, Vec<u8>)>,
     pub textures: Vec<TextureUse>,
+    /// Per material, its base colour use's [`TextureUse::cutout`]
+    /// ([`cuts_out`]).
+    pub cutouts: Vec<Option<u8>>,
     pub warnings: Vec<String>,
     /// How the art contract's face budget is shared over its primitives
     /// (`conform::mesh`), made by the first output that needs it.
@@ -398,14 +447,18 @@ pub fn load(bytes: &[u8], dir: &Path) -> Result<GltfSource, String> {
     }
     let mut textures: Vec<TextureUse> = Vec::new();
     let mut warnings = plain_warnings;
+    let vertex_alpha = vertex_alphas(&doc, &json, &buffers);
+    let mut cutouts = Vec::new();
     for m in doc.materials() {
         let pbr = m.pbr_metallic_roughness();
+        let cutout = cuts_out(&m, m.index().is_some_and(|i| vertex_alpha[i]));
+        cutouts.push(cutout);
         let slots = [
             (
                 pbr.base_color_texture()
                     .map(|t| (t.texture(), t.tex_coord())),
                 kind::COLOR,
-                cuts_out(&m),
+                cutout,
             ),
             (
                 pbr.metallic_roughness_texture()
@@ -466,6 +519,7 @@ pub fn load(bytes: &[u8], dir: &Path) -> Result<GltfSource, String> {
         images,
         external,
         textures,
+        cutouts,
         warnings,
         conform_plan: Default::default(),
         role: Default::default(),
