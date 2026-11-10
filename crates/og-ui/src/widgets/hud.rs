@@ -27,13 +27,6 @@ impl Ui {
             Element {
                 width: desc.width.unwrap_or(Size::grow()),
                 height: Size::Fixed(h),
-                background: Some(p.control_strong),
-                radius: t.radius.bar,
-                part: Some(crate::dress::PartRef::new(
-                    "Meter",
-                    "track",
-                    crate::tokens::ElementClass::Bar,
-                )),
                 ..Element::default()
             },
         );
@@ -125,14 +118,16 @@ impl Ui {
             ink(self.part_ground(&fill_part, color)),
             ink(self.part_ground(&track_part, p.control_strong)),
         );
-        let n = &mut self.tree.nodes[i];
+        // The trail, fill, separators and label are fractions of the
+        // track's device-pixel box, drawn by the track's part box.
+        let mut shapes = Vec::new();
         if ghost > main {
             let trail = if a.b < a.a || frac < ghost {
                 p.ink.fade(0.55)
             } else {
                 color.fade(0.4)
             };
-            n.shapes.push(Shape::DressedRect {
+            shapes.push(Shape::DressedRect {
                 frame: Frame::left(0.0, ghost),
                 part: crate::dress::PartRef::of("Meter", "trail", None)
                     .attr("kind", kind)
@@ -142,7 +137,7 @@ impl Ui {
             });
         }
         if main > 0.0 {
-            n.shapes.push(Shape::Part {
+            shapes.push(Shape::Part {
                 frame: Frame::left(0.0, main),
                 part: fill_part,
                 fill: Some(color),
@@ -151,7 +146,7 @@ impl Ui {
         if desc.segments > 1 {
             for k in 1..desc.segments {
                 let x = k as f32 / desc.segments as f32;
-                n.shapes.push(Shape::DressedRect {
+                shapes.push(Shape::DressedRect {
                     part: crate::dress::PartRef::of("Meter", "separator", None).attr("kind", kind),
                     frame: Frame {
                         fx: x,
@@ -171,7 +166,7 @@ impl Ui {
                 (Frame::left(main, 1.0), track_ink),
             ] {
                 if clip.fw > 0.0 {
-                    n.shapes.push(Shape::Text {
+                    shapes.push(Shape::Text {
                         part: crate::dress::PartRef::of("Meter", "label", None)
                             .attr("surface", if clip.fx == 0.0 { "fill" } else { "track" }),
                         frame: Frame::FULL,
@@ -184,6 +179,8 @@ impl Ui {
                 }
             }
         }
+        self.bar_track(i, track_part, p.control_strong, t.radius.bar, shapes);
+        let n = &mut self.tree.nodes[i];
         n.probe_text = desc.label.clone();
         n.a11y.value = Some(format!("{} of {}", value.round(), max.round()));
         n.a11y.range = Some(crate::a11y::A11yRange {
@@ -218,13 +215,6 @@ impl Ui {
             Element {
                 width: desc.width.unwrap_or(Size::Fixed(160.0)),
                 height: Size::Fixed(t.space.md),
-                background: Some(p.control_strong),
-                radius: t.radius.bar,
-                part: Some(crate::dress::PartRef::new(
-                    "Meter",
-                    "track",
-                    crate::tokens::ElementClass::Bar,
-                )),
                 ..Element::default()
             },
         );
@@ -233,15 +223,23 @@ impl Ui {
             MeterRegion::Suboptimum => ("suboptimum", p.warn),
             MeterRegion::Poor => ("poor", p.danger),
         };
-        let n = &mut self.tree.nodes[i];
+        let mut shapes = Vec::new();
         if frac > 0.0 {
-            n.shapes.push(Shape::Part {
+            shapes.push(Shape::Part {
                 frame: Frame::left(0.0, frac),
                 part: crate::dress::PartRef::new("Meter", "fill", crate::tokens::ElementClass::Bar)
                     .attr("region", name),
                 fill: Some(color),
             });
         }
+        self.bar_track(
+            i,
+            crate::dress::PartRef::new("Meter", "track", crate::tokens::ElementClass::Bar),
+            p.control_strong,
+            t.radius.bar,
+            shapes,
+        );
+        let n = &mut self.tree.nodes[i];
         n.a11y.value = Some(format!("{value}"));
         n.a11y.range = Some(crate::a11y::A11yRange {
             min: Some(min),

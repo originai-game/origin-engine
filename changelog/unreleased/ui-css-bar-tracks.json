@@ -1,0 +1,9 @@
+{
+  "breaking": [
+    {
+      "member": "Progress and meter track CSS boxes",
+      "change": "Progress bars, meters and HTML meters have a persistent CSS track box. Its CSS width, height, margin, padding and border now lay it out, and the fill, trail, separators and label are drawn over that box. The default frames are unchanged.",
+      "fix": "Style the track through progress::part(track) and meter::part(track). The host keeps the progressbar or meter role and value; fills, trails, separators and labels are still dressed through their ::part rules."
+    }
+  ]
+}

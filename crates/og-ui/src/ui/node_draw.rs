@@ -190,38 +190,27 @@ impl Ui {
                 &self.env,
             );
         }
-        use crate::dress::PartRef;
-        use crate::tokens::ElementClass as C;
-        let decoration =
-            |part: &PartRef, r: Rect| self.part_values(part, Some(n.key)).part_rect(r, rect);
-        let bar = |rect: Rect, value: f32| {
+        // A progress bar's fill, over its track's part box: a fraction of
+        // the track's snapped box, never narrower than it is tall.
+        if let Some(owner) = n.part_box.as_ref().map(|p| p.owner)
+            && self.tree.nodes[owner].content_slot == i
+            && let Widget::Progress { value } = self.tree.nodes[owner].widget
+            && value > 0.0
+        {
+            let fill =
+                crate::dress::PartRef::new("progress", "fill", crate::tokens::ElementClass::Bar)
+                    .attr("kind", "primary");
             let w = (rect.width * value).max(rect.height.min(rect.width));
-            Rect::new(rect.x, rect.y, w, rect.height).snapped(dpr)
-        };
-        if let Widget::Progress { value } = n.widget {
-            let track = PartRef::new("progress", "track", C::Bar);
-            let fill = PartRef::new("progress", "fill", C::Bar).attr("kind", "primary");
+            let r = Rect::new(rect.x, rect.y, w, rect.height).snapped(dpr);
             self.part_commands(
                 Some(n.key),
-                &track,
-                decoration(&track, rect),
-                Some(p.control_strong),
+                &fill,
+                self.part_values(&fill, Some(n.key)).part_rect(r, rect),
+                Some(p.primary),
                 alpha,
                 clip,
                 cmds,
             );
-            if value > 0.0 {
-                let r = bar(rect, value);
-                self.part_commands(
-                    Some(n.key),
-                    &fill,
-                    decoration(&fill, r),
-                    Some(p.primary),
-                    alpha,
-                    clip,
-                    cmds,
-                );
-            }
         }
         if matches!(n.widget, Widget::TextArea { .. }) {
             self.text_area_commands(i, rect, clip, cmds);

@@ -352,6 +352,46 @@ impl Ui {
             v = a.a;
         }
         self.tree.nodes[i].widget = Widget::Progress { value: v };
+        // The fill stays the track's drawing (`node_draw`): it is a fraction
+        // of the track's device-pixel box, never narrower than it is tall.
+        self.bar_track(
+            i,
+            crate::dress::PartRef::new("progress", "track", crate::tokens::ElementClass::Bar),
+            t.palette.control_strong,
+            0.0,
+            Vec::new(),
+        );
+    }
+
+    /// A bar widget's track: the persistent CSS box filling host `i`
+    /// (which keeps the semantics) in `color` at `radius` unless its CSS
+    /// paints it, drawing `shapes` (the bar's fractional parts) over it.
+    /// Answers the box.
+    pub(crate) fn bar_track(
+        &mut self,
+        i: usize,
+        part: crate::dress::PartRef,
+        color: Srgba,
+        radius: f32,
+        shapes: Vec<crate::layout::Shape>,
+    ) -> usize {
+        let slot = self.tree.write_part(
+            i,
+            part,
+            (part.part, 0),
+            Element {
+                width: Size::grow(),
+                height: Size::grow(),
+                background: Some(color),
+                radius,
+                ..Element::default()
+            },
+            Content::None,
+            &mut self.layout,
+        );
+        self.tree.nodes[i].content_slot = slot;
+        self.tree.nodes[slot].shapes = shapes;
+        slot
     }
 
     /// A button's style motion: the hover lift and the press squash on the

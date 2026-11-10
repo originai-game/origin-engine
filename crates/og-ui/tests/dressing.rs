@@ -411,6 +411,137 @@ fn widget_part_placement_follows_the_writing_direction() {
     );
 }
 
+/// A progress bar, a meter and a gauge at 1.5× in a 257 px column.
+fn bars(ui: &mut Ui) {
+    ui.begin(
+        InputFrame::default(),
+        Viewport {
+            dpr: 1.5,
+            ..Viewport::new(800.0, 500.0)
+        },
+    );
+    ui.open(
+        "Root",
+        Element {
+            padding: Insets::all(13.0),
+            gap: 9.0,
+            width: Size::px(257.0),
+            ..Element::column()
+        },
+    );
+    ui.progress(
+        "Load",
+        0.6,
+        ProgressDesc {
+            width: Some(Size::px(141.0)),
+        },
+    );
+    ui.meter(
+        "Hp",
+        23.0,
+        100.0,
+        &MeterDesc {
+            kind: MeterKind::Health,
+            label: "HP".into(),
+            segments: 4,
+            ..Default::default()
+        },
+    );
+    ui.gauge(
+        "Gauge",
+        &GaugeDesc {
+            value: 0.2,
+            low: Some(0.3),
+            high: Some(0.7),
+            optimum: Some(0.9),
+            ..Default::default()
+        },
+    );
+    ui.close();
+    ui.end();
+}
+
+fn fill_rects(ui: &Ui) -> Vec<[f32; 4]> {
+    ui.frame()
+        .items
+        .iter()
+        .filter_map(|i| i.cmd.filled())
+        .map(|(r, _)| [r.x, r.y, r.width, r.height])
+        .collect()
+}
+
+#[test]
+fn bar_tracks_are_part_boxes_and_fills_keep_their_device_pixels() {
+    let mut ui = ui_with_font(test_font_metrics());
+    for _ in 0..3 {
+        bars(&mut ui);
+    }
+    for (host, role) in [
+        ("Root/Load", "progressbar"),
+        ("Root/Hp", "meter"),
+        ("Root/Gauge", "meter"),
+    ] {
+        let h = ui.element(host).unwrap();
+        assert_eq!(h.role, role, "{host}");
+        let track = ui.element(&format!("{host}/::part(track)#0")).unwrap();
+        assert_eq!(track.kind, "part");
+        assert!(track.role.is_empty());
+        assert_eq!(
+            [track.x, track.y, track.width, track.height],
+            [h.x, h.y, h.width, h.height]
+        );
+    }
+    // The fills are fractions of the track's device-pixel box, as before
+    // the tracks were boxes: 60% of 140.668 px ends on the 98 px edge.
+    let fills = fill_rects(&ui);
+    let load = ui.element("Root/Load").unwrap();
+    let expected = [load.x, load.y, 98.0 - load.x, 8.0];
+    assert!(fills.contains(&expected), "{expected:?} in {fills:?}");
+    let hp = ui.element("Root/Hp").unwrap();
+    assert!(
+        fills
+            .iter()
+            .any(|r| r[1] == hp.y && r[2] == 1.0 * 2.0 && r[3] == hp.height),
+        "a separator over the meter's track: {fills:?}"
+    );
+    assert_eq!(ui.element("Root/Hp").unwrap().text, "HP");
+}
+
+#[test]
+fn bar_track_css_sizes_the_box_its_fill_is_drawn_in() {
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.set_part_css(
+        "progress::part(track) { height: 4px; background: #0000ff; }
+         meter::part(track) { height: 6px; }",
+    )
+    .unwrap();
+    for _ in 0..3 {
+        bars(&mut ui);
+    }
+    let track = ui.element("Root/Load/::part(track)#0").unwrap();
+    assert_eq!(track.height, 4.0);
+    let fills = fill_rects(&ui);
+    let load = ui.element("Root/Load").unwrap();
+    assert!(
+        fills.contains(&[load.x, load.y, 98.0 - load.x, 4.0]),
+        "the fill is the track's height: {fills:?}"
+    );
+    let blue = Srgba::rgb(0, 0, 255).linear();
+    assert!(ui.frame().items.iter().any(|i| {
+        i.cmd
+            .filled()
+            .is_some_and(|(r, c)| c == blue && r.height == 4.0)
+    }));
+    let hp = ui.element("Root/Hp/::part(track)#0").unwrap();
+    assert_eq!(hp.height, 6.0);
+    assert!(
+        fills
+            .iter()
+            .any(|r| r[1] == hp.y && r[3] == 6.0 && r[2] < hp.width),
+        "the meter's fill is the track's height: {fills:?}"
+    );
+}
+
 #[test]
 fn choice_parts_have_independent_css_layout_and_paint() {
     let mut ui = ui_with_font(add_test_font(&mut og_render::RenderScene::new()));
