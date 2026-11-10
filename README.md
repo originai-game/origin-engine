@@ -61,9 +61,9 @@ What is running, next and open: `docs/roadmap.md`.
   as Hermes bytecode under a thin native shell) and mini-game platforms
   (WeChat on Android over WebGPU first, then a capability-limited GL tier)
   are goals after 0.8.0 (`docs/roadmap.md` §Direction).
-- **Pixels:** Metal on macrunner is the reference; DX12 (studio-win) and
-  Vulkan hosts are judged against it under the cross-platform tolerance.
-  Choosing a resident GPU check host is being verified.
+- **Pixels:** the gate's GPU host is an NVIDIA L4 on Vulkan (a `gcp-l4`
+  orb), where the reference frames are being re-recorded; Metal, DX12 and
+  the browsers are compatibility checks under the cross-platform tolerance.
 
 ## Features
 

@@ -129,20 +129,25 @@ status `docs/roadmap.md`. Platform contracts implemented here:
   declared in `.config/nextest.toml`.
 - **A missing GPU is a warning:** the test counts as skipped or unchecked,
   never as passed. Tests are not split across machines.
-- **One reference set, any real GPU.** Reference frames are recorded on
-  Metal on macrunner, so a frame never flip-flops between hosts; another
-  tier records its own only where it differs by design. Every real GPU backend is judged against them: on its own backend
-  under the scene's tight tolerance, on another (DX12, Vulkan, WebGPU in
-  Chrome) under the cross-platform tolerance (`og_tests::compare::tolerance_for`,
-  docs/ci.md §Reference frames). studio-win (DX12, Chrome, Edge, Firefox) is
-  a second gate host; Safari and Android wait. The web is WebGPU only
+- **One GPU host, one reference set.** The gate's GPU steps run on the
+  GPU host, an NVIDIA L4 on Vulkan in a `gcp-l4` orb (docs/ci.md §The GPU
+  host). Reference frames are recorded there, so a frame never flip-flops
+  between hosts; another tier records its own only where it differs by
+  design. Every other real GPU backend (Metal, DX12, WebGPU in Chrome) is
+  a compatibility check under the cross-platform tolerance
+  (`og_tests::compare::tolerance_for`, docs/ci.md §Reference frames).
+  Until the re-record lands, the committed set is Metal's, judged on the
+  L4 under the cross-platform tolerance. macrunner (Metal, Safari, iPhone)
+  and studio-win (DX12, Chrome, Edge, Firefox) are development and
+  compatibility hosts, run at milestones and before a release, never a
+  landing gate; Android waits. The web is WebGPU only
   until the planned GL tier (`docs/roadmap.md` §Direction). Nothing runs
   on lavapipe; no `references/vulkan-cpu/`.
 - Generated `.d.ts` and wiki are drift-checked; never hand-edit them.
 - A test is kept only when it fails on a plausible regression; a re-recorded
   frame is one the change must move, and is named in the report.
-- There is no GitHub CI; the gate is `scripts/check.sh` on macrunner or
-  studio-win (Git Bash).
+- There is no GitHub CI; the gate is `scripts/check.sh`, its GPU steps on
+  the GPU host.
 
 ## Pitfalls
 
@@ -160,7 +165,7 @@ status `docs/roadmap.md`. Platform contracts implemented here:
   Metal shader cache) before the slots free. Per-process GPU limits add up
   across test runners: fix contention in the scheduler, not a timeout.
 - Land ready heads in stacks: regenerate once, run `quick` once, run the
-  targeted Metal checks together, return only a failing head.
+  targeted GPU checks on the GPU host together, return only a failing head.
 - `local main` can be ahead of `origin/main`: compare full object ids and
   pin a measurement worktree to the requested commit.
 - The look presets are `include_str!` into og-cook: rebuild `og` (and the
@@ -199,16 +204,22 @@ status `docs/roadmap.md`. Platform contracts implemented here:
   art, a paper port) may go to Claude Code with
   `["model:claude-fable-5-1","effort:high"]`, briefed with every attempt.
   A stopped thread is not resumed; a new one starts from `origin/main`.
-- Authors work in their own lane on macrunner with the Metal GPU and run their
-  own tests, scoped GPU suites and frames.
-- **Landing.** A head that moves no reference frame and changes no look is
-  landed by its author with `scripts/land.sh`, then posted to Slack. The command
-  is a merge queue: quick runs first outside it, then a FIFO landing lock is
+- Authors work in their own lane on macrunner (or an orb) and run the CPU
+  side themselves: `cargo check`, their crates' tests and
+  `scripts/check.sh quick --only fmt clippy rust-cpu drift bun-quick`. GPU
+  work runs in stages, not on every edit: at a milestone the author pushes
+  the branch and asks the GPU integrator, the one thread in the `gcp-l4`
+  orb, for its GPU check (the GPU host has one L4, so GPU runs queue there,
+  FIFO, run by the coordinator). A Metal capture is a compatibility check,
+  never evidence for landing.
+- **Landing.** The GPU integrator lands every head with `scripts/land.sh`
+  in the `gcp-l4` orb, then posts to Slack; a head that moves no reference
+  frame and changes no look needs no review. The command is a merge queue: quick runs first outside it, then a FIFO landing lock is
   held through rebase, at most one recheck (only for overlap or shared
   inputs; disjoint changes reuse the pass) and push. Never push main
-  directly. A head that moves frames or changes a look goes
-  to the art runner, who reviews the look against commercial games and lands
-  it with the same command. A failure found later goes back to its branch as
+  directly. A head that moves frames or changes a look sends its L4
+  captures to the art runner, who reviews the look against commercial games;
+  the integrator lands it once approved. A failure found later goes back to its branch as
   a fix-forward commit.
 - A file split moves code verbatim (only `mod`, `use` and visibility edits)
   and is reviewed with `git diff --color-moved`.

@@ -1,7 +1,7 @@
 # The local gate
 
-The gate is one script, `scripts/check.sh`, run on macrunner or on
-studio-win under Git Bash; there is no GitHub CI. The rules it rests on are in AGENTS.md §Building and testing: one
+The gate is one script, `scripts/check.sh`; its GPU steps run on the GPU
+host (§The GPU host), and there is no GitHub CI. The rules it rests on are in AGENTS.md §Building and testing: one
 target directory, the dev profile for every native step, tests that never
 run `cargo`.
 
@@ -142,10 +142,35 @@ start time from `ps -o lstart`, or from `/proc/<pid>/stat` where MSYS's
 groups need the pinned og.motion weights (§The model bucket: the
 `OG_SHOWCASE_S3_*` credentials or a local copy with the pinned sha256).
 
+## The GPU host
+
+The GPU host is an NVIDIA L4 (proprietary Vulkan driver, 595.99.02 at the
+switch) behind the personal orb provider `gcp-l4`: one GCP VM, one
+exclusive orb at a time (14 vCPU, 56 GiB). Pin
+`VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json` so llvmpipe is
+never picked. One thread, the GPU integrator, holds that orb: it runs the
+gate's GPU steps (`rust-gpu`, og-tests, the references) for the heads
+queued by the coordinator, in order, and lands them with `scripts/land.sh`.
+Authors do not wait for it on every edit; they queue a milestone. Measured
+there on 2026-11-10: a cold native build 5 min 37 s (8 jobs, no compiler
+cache), an og-ui touch rebuild 23 s, the full `rust-gpu` step about 9 min
+at 4 workers. The VM is started and stopped by the owner; a stopped orb
+keeps its disk, not its processes.
+
+Until the orb survives a whole `quick` (its container was killed mid-run on
+2026-11-10) and the one L4-only failure (the CSS colour-matrix tint) is
+fixed, heads proved on the L4 still land from a macrunner lane.
+
+macrunner (Metal, Safari, iPhone) and studio-win (DX12, Chrome, Edge,
+Firefox) are development and compatibility hosts. They run the same gate
+at milestones and before a release; a failure there is a compatibility
+defect to fix, not a landing gate.
+
 ## Reference frames
 
 One reference set serves every real GPU backend. New frames are recorded
-on `metal` (macrunner) only, so a frame never flip-flops between hosts'
+on the GPU host only (`RECORDING_TIER`; `metal` until the re-record moves
+the set to the L4), so a frame never flip-flops between hosts'
 renderings (§Re-capturing gfx references); `references/<tier>/` holds a
 frame for another backend only where it differs by design (§Windows x64
 prerequisites). A frame is judged against its own tier's reference when
@@ -623,7 +648,7 @@ frame: a frame with no file under `references/<tier>/` is judged against
 at …; record one with --record"), never passes. A tier gets its own
 reference only for a difference it makes by design, never to absorb a
 defect. Tolerances follow §Reference frames: the tight one against the
-tier's own frame, the cross-platform one against `metal`'s. `--record`
+tier's own frame, the cross-platform one against the recording tier's. `--record`
 writes the tier's references.
 
 `web-reference` runs four groups (`WEB_GROUPS` in `scripts/gate/commands.sh`):
@@ -768,9 +793,10 @@ A scene with no reference on the adapter's tier is compared with
 and the test says so (`gfx <scene>: no <tier> reference …; comparing with
 metal's`); a scene on neither fails. Commit the new references with the
 change and describe what each moved frame now shows (AGENTS.md §Building
-and testing). Record on macrunner (Metal); a frame from another tier never
-replaces a Metal reference. A change that moves a frame can be checked on
-studio-win first, but its references are re-recorded on macrunner.
+and testing). Record on the GPU host; a frame from another tier never
+replaces a recording-tier reference. Until the re-record lands, the set
+is Metal's: the GPU host judges it under the cross-platform tolerance and
+no new frame is recorded on Metal.
 
 ## When the size gate fails
 

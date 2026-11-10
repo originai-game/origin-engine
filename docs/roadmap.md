@@ -71,10 +71,16 @@ Next, in order:
 5. The real-device run.
 6. 0.8.0.
 
-### The GPU check host (verification only, 2026-11-10)
+### The GPU host (the owner, 2026-11-10)
 
-The workflow and the reference host stay as they are until the owner
-chooses. Metal on macrunner remains the reference.
+The gate's GPU steps, the reference frames and the performance targets
+move to an NVIDIA L4 on Vulkan in a `gcp-l4` orb (`docs/ci.md` §The GPU
+host). Metal becomes a compatibility check under the cross-platform
+tolerance; macrunner stays for development, Safari and iPhone. Next: the
+post-success exit crash on Linux NVIDIA (dropped compile jobs and one wgpu
+instance per renderer, landing now), then the re-record of every
+reference set on the L4, art-reviewed, which moves `RECORDING_TIER` off
+`metal`. Measured before the switch:
 
 - studio-win, RTX 5060 on DX12, at fea25ade37: 233 of 236 GPU tests pass,
   no crash on exit, all 40 committed reference scenes within the
@@ -84,8 +90,9 @@ chooses. Metal on macrunner remains the reference.
   Windows command-line limit under sccache (OS error 206) are open.
 - An RTX 4090 on Vulkan (Linux): the same 40 scenes pass, but 104 tests
   crash after reporting success; root cause unknown.
-- A GCP L4 VM (Linux, Vulkan) is being verified; it is stopped between
-  runs.
+- The GCP L4 at 676d18d0ec: 166 of 236 pass, 67 crashing after `ok`, the
+  same three portability failures; with the two fixes 235 of 236, no
+  abnormal exit, only the CSS tint left.
 
 ## Landed this round (2026-11-08 to 2026-11-09)
 
@@ -145,7 +152,10 @@ under Running. The showcase page follows 0.8.0.
 - **The UI pilot (running), then the whole catalogue;** 0.8.0 with the pack catalogue and the collected platform asks;
   the showcase page on the platform. Each is opened when the owner says so.
 - **One full performance pass before the 0.8.0 release, never alongside
-  development:** no stream measures while others build or land. It covers
+  development:** no stream measures while others build or land. It runs on
+  the GPU host (the L4): it first re-measures each Below target item's
+  baseline there and restates its target on the L4 at the same ratio to
+  that baseline (the M4 Pro and RTX 5060 figures above are history). It covers
   `scripts/perf.sh` with UI counters and the idle breakdown, the rendering
   budgets (first frame, crowds, FSR, GI) and the release size gate. It also
   finishes the paused rendering work on local branches in macrunner's lanes:
