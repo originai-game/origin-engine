@@ -88,6 +88,12 @@ mod save_migrations;
 #[cfg(not(feature = "publish"))]
 mod scene_save;
 mod seabed;
+#[cfg(feature = "story")]
+mod story;
+// Without the `story` feature og-story is not linked: og.story answers the
+// refusal (src/story_absent.rs).
+#[cfg(not(feature = "story"))]
+#[path = "story_absent.rs"]
 mod story;
 mod stream;
 #[cfg(not(feature = "profile2d"))]

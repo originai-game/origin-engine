@@ -149,5 +149,6 @@ mod web_findings;
 mod world_origin;
 #[path = "../world_ui.rs"]
 mod world_ui;
+#[cfg(feature = "story")]
 #[path = "../yarn.rs"]
 mod yarn;

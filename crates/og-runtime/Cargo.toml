@@ -32,7 +32,7 @@ og-tween = { path = "../og-tween" }
 og-tilemap = { path = "../og-tilemap" }
 og-nav = { path = "../og-nav" }
 og-ai = { path = "../og-ai" }
-og-story = { path = "../og-story" }
+og-story = { path = "../og-story", optional = true }
 og-i18n = { path = "../og-i18n" }
 og-net = { path = "../og-net" }
 # Streamed video's decode plan; natively its rav1d decoder too (below).
@@ -52,7 +52,7 @@ og-video = { path = "../og-video" }
 image = { workspace = true, features = ["exr"] }
 
 [features]
-default = ["shaping", "physics2d", "physics3d"]
+default = ["shaping", "physics2d", "physics3d", "story"]
 # A published game: the probe keeps only its player-facing members, the
 # renderer times no pass on the GPU (og-render's `publish`), and the
 # reflected and record field docs are empty (og-core's and og-api's
@@ -71,6 +71,13 @@ shaping = ["og-ui/shaping"]
 # §Variants), and the other profile's calls answer that it is not built.
 physics2d = ["og-physics/physics2d"]
 physics3d = ["og-physics/physics3d"]
+# The optional modules (docs/design.md §2.1): each is built in by default;
+# a build without one links none of its crate, and its calls answer a
+# refusal naming the feature (src/<module>_absent.rs), while the world it
+# leaves (records in IDL order, systems, state blocks) is the full build's
+# for a game that never uses the module.
+# og.story: dialogues, barks and quests (og-story; src/story.rs).
+story = ["dep:og-story"]
 
 [dev-dependencies]
 # tests/stream_release.rs cooks a small project with streaming groups.

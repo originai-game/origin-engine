@@ -25,11 +25,11 @@
 # (dist/web-publish), `publish2d` and `lanes2d` the 2D ones
 # (dist/web-publish-2d); `og build --publish` copies the pair of the game's
 # profile, so a page downloads one of them. All keep og-ui's `shaping`
-# (rustybuzz: Arabic, Indic). The size gate holds each download to the
-# budget.
+# (rustybuzz: Arabic, Indic) and every optional runtime module (og-runtime's
+# Cargo.toml: story). The size gate holds each download to the budget.
 og-render   required
 og-host-web required publish lanes
-variant publish   og-host-web publish,physics3d,shaping
-variant publish2d og-host-web publish,physics2d,profile2d,shaping
-lanes   lanes2d   og-host-web publish,physics2d,profile2d,shaping
-lanes   lanes     og-host-web publish,physics3d,shaping
+variant publish   og-host-web publish,physics3d,shaping,story
+variant publish2d og-host-web publish,physics2d,profile2d,shaping,story
+lanes   lanes2d   og-host-web publish,physics2d,profile2d,shaping,story
+lanes   lanes     og-host-web publish,physics3d,shaping,story
