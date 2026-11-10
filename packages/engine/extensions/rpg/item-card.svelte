@@ -75,8 +75,8 @@
 .head { display: flex; flex-direction: column; width: stretch; gap: var(--space-xxs); align-items: center; text-align: center; }
 .item-name, .item-kind { margin: 0; }
 .body { width: stretch; flex: 1; min-height: 0; gap: var(--space-sm); }
-.lead-row { display: flex; width: stretch; align-items: center; gap: var(--space-sm); padding: 0 0 var(--space-xxs); }
-.lead-main { display: flex; flex-direction: column; width: stretch; gap: var(--space-xxs); }
+.lead-row { display: flex; flex-wrap: wrap; width: stretch; align-items: center; row-gap: var(--space-xs); gap: var(--space-sm); padding: 0 0 var(--space-xxs); }
+.lead-main { display: flex; flex-direction: column; width: auto; flex: 1 0 auto; gap: var(--space-xxs); }
 .lead-figures { display: flex; align-items: baseline; gap: var(--space-sm); }
 .lead-current { display: flex; flex-direction: column; flex: none; gap: var(--space-xxs); padding-inline-start: var(--space-md); align-items: flex-start; }
 .stat-mark { width: var(--size-sm); height: var(--size-sm); flex: none; }

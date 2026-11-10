@@ -10,11 +10,11 @@
     <div id="Stats"><RpgStats title={$statsTitle} groups={$statGroups} rows={$statRows} /></div>
   </div>
   <div id="Foot">
-    <button id="Back" class="primary" onclick={back}>{$footBack}</button>
+    <button id="Back" class="primary foot" onclick={back}>{$footBack}</button>
     <div id="FootGap"></div>
-    <button id="Unequip" class="secondary" onclick={unequip}>{$footUnequip}</button>
-    <button id="Auto" class="primary" onclick={autoequip}>{$footAuto}</button>
-    <button id="Details" class="secondary" onclick={details}>{$footDetails}</button>
+    <button id="Unequip" class="secondary foot" onclick={unequip}>{$footUnequip}</button>
+    <button id="Auto" class="primary foot" onclick={autoequip}>{$footAuto}</button>
+    <button id="Details" class="secondary foot" onclick={details}>{$footDetails}</button>
   </div>
 </div>
 
@@ -34,6 +34,8 @@
   #Stats { width: stretch; height: 60%; }
   #Foot { flex-wrap: wrap; gap: var(--space-xs); }
   #Foot button { width: calc(50% - var(--space-xs) / 2); }
+  /* Two to a row on a phone: a step smaller and tighter, so AUTO-EQUIP fits whole at 150 % text. */
+  button.foot::part(base) { padding: 0 var(--space-sm); font-size: 0.9286em; letter-spacing: 0.04em; }
   #FootGap { display: none; }
 }
 @media (height < 500px) {
