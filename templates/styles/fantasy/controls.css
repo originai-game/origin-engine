@@ -6,9 +6,6 @@
    keyline and a lit top edge (button-*.svg). The ends keep their shape at
    any width through border-image; the plate fills the middle. The default
    is dark iron with gold ink; .primary is painted crimson.
-   pending: border-image-source longhand — a state rule that sets only
-   border-image-source does not replace the shorthand's image, so each
-   state writes the whole shorthand.
    The resting primary rule takes :enabled so it outranks the default's
    :hover/:active rules, which have equal specificity. */
 button::part(base) {
@@ -16,7 +13,7 @@ button::part(base) {
   padding: 0 calc(var(--space-lg) + 8px);
   border: none;
   border-radius: 0;
-  border-image: url(button-iron.svg) 28 24 fill / 50% 24px stretch;
+  border-image: url(art/button-iron.svg) 28 24 fill / 50% 24px stretch;
   background: none;
   box-shadow: none;
   color: #e9c46f;
@@ -26,14 +23,14 @@ button::part(base) {
   text-transform: uppercase;
   text-shadow: 0 1px 2px #000000d0;
 }
-button::part(base):hover { border-image: url(button-iron-hover.svg) 28 24 fill / 50% 24px stretch; color: #f6dc95; }
-button::part(base):active { border-image: url(button-iron-pressed.svg) 28 24 fill / 50% 24px stretch; color: #d9b45f; }
-button::part(base):disabled { border-image: url(button-disabled.svg) 28 24 fill / 50% 24px stretch; color: #7d705d; text-shadow: none; }
-button.primary::part(base):enabled { border-image: url(button-red.svg) 28 24 fill / 50% 24px stretch; color: #f8ecd6; }
-button.primary::part(base):hover { border-image: url(button-red-hover.svg) 28 24 fill / 50% 24px stretch; color: #fff6e4; }
-button.primary::part(base):active { border-image: url(button-red-pressed.svg) 28 24 fill / 50% 24px stretch; color: #f0dcc0; }
-button.primary::part(base):disabled { border-image: url(button-disabled.svg) 28 24 fill / 50% 24px stretch; color: #a08a78; }
-button.secondary::part(base) { border-image: url(button-iron.svg) 28 24 fill / 50% 24px stretch; }
+button::part(base):hover { border-image-source: url(art/button-iron-hover.svg); color: #f6dc95; }
+button::part(base):active { border-image-source: url(art/button-iron-pressed.svg); color: #d9b45f; }
+button::part(base):disabled { border-image-source: url(art/button-disabled.svg); color: #7d705d; text-shadow: none; }
+button.primary::part(base):enabled { border-image-source: url(art/button-red.svg); color: #f8ecd6; }
+button.primary::part(base):hover { border-image-source: url(art/button-red-hover.svg); color: #fff6e4; }
+button.primary::part(base):active { border-image-source: url(art/button-red-pressed.svg); color: #f0dcc0; }
+button.primary::part(base):disabled { border-image-source: url(art/button-disabled.svg); color: #a08a78; }
+button.secondary::part(base) { border-image-source: url(art/button-iron.svg); }
 button[variant=quiet]::part(base) { border-image: none; background: none; border: none; box-shadow: none; padding: 0 var(--space-xs); }
 button::part(focus):focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; border-radius: 4px; }
 /* pending: core-widget host rules (parts-as-nodes). A button host refuses
@@ -186,5 +183,5 @@ dialogue::part(continue) { color: var(--gold); }
 /* pending: heading flourish — the registry exposes h1..h6::part(flourish),
    but a text element.s ::part is read as a text span and refuses background
    ("unsupported text span property background"):
-   h1::part(flourish), h2::part(flourish), h3::part(flourish) { background: url(rule.svg) center / 100% 12px no-repeat; } */
+   h1::part(flourish), h2::part(flourish), h3::part(flourish) { background: url(art/rule.svg) center / 100% 12px no-repeat; } */
 scroll::part(bar) { background: #8f765099; border-radius: 2px; }
