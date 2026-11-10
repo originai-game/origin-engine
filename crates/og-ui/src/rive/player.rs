@@ -6,7 +6,7 @@ use super::*;
 use crate::element::Affine;
 use crate::motion::codec::{R, W};
 use crate::style::Srgba;
-use og_render::{
+use og_draw::{
     UiBlend, UiGeometry, UiGradient, UiGradientKind, UiJoin, UiMode, UiPaint, UiPath, UiShape,
     UiSpread, UiStop,
 };
@@ -28,10 +28,10 @@ pub enum Drawn {
 /// or a map).
 #[derive(Clone, Debug, PartialEq)]
 pub struct TextDraw {
-    pub font: og_render::FontHandle,
+    pub font: og_draw::FontHandle,
     pub text: String,
     /// One per character of `text` (empty: the font's advances and kerning).
-    pub placements: Vec<og_render::GlyphPlacement>,
+    pub placements: Vec<og_draw::GlyphPlacement>,
     /// The pen at the line's baseline, CSS px.
     pub pen: Vec2,
     pub size: f32,
@@ -406,18 +406,18 @@ impl Player {
                             Some(Drawn::Shape(UiShape {
                                 geometry: UiGeometry::Rect {
                                     radii: [0.0; 4],
-                                    corner: og_render::UiCorner::Round,
+                                    corner: og_draw::UiCorner::Round,
                                 },
                                 center: Vec2::new(x, y),
                                 half: img.size / 2.0,
                                 transform: [m.a, m.b, m.c, m.d],
-                                paint: UiPaint::Image(og_render::UiImage {
+                                paint: UiPaint::Image(og_draw::UiImage {
                                     texture,
                                     uv: [0.0, 0.0, 1.0, 1.0],
                                     size: img.size,
                                     density: 1.0,
                                     tint: [1.0, 1.0, 1.0, alpha],
-                                    fit: og_render::UiFit::Fill,
+                                    fit: og_draw::UiFit::Fill,
                                     focal: Vec2::splat(0.5),
                                     luminance: false,
                                     offset: Default::default(),
@@ -1316,6 +1316,6 @@ mod tests {
         // its first curve ends 20 along the top.
         assert_eq!(p.points[0], Vec2::new(0.0, 20.0));
         assert_eq!(p.points[3], Vec2::new(20.0, 0.0));
-        assert_eq!(p.verbs.last(), Some(&og_render::UiVerb::Close));
+        assert_eq!(p.verbs.last(), Some(&og_draw::UiVerb::Close));
     }
 }

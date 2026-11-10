@@ -1,5 +1,5 @@
-//! From a laid-out frame to og-render's overlay ([`og_render::Overlay`]):
-//! the UI pass's analytic shapes ([`og_render::UiShape`]), MSDF text, the
+//! From a laid-out frame to og-render's overlay ([`og_draw::Overlay`]):
+//! the UI pass's analytic shapes ([`og_draw::UiShape`]), MSDF text, the
 //! UI's clip shapes and offscreen layers (`docs/ui.md` §3.3).
 //!
 //! Every rectangle, bar, half disc, image and glass panel is a UI shape:
@@ -30,7 +30,7 @@ use crate::element::Affine;
 use crate::layout::Rect;
 use crate::world::WorldCmd;
 use og_core::glam::Vec2;
-use og_render::{
+use og_draw::{
     FontHandle, TextureHandle, UiBlend, UiGeometry, UiMaterial, UiMode, UiPaint, UiShape,
     UiVectorHandle,
 };
@@ -49,14 +49,14 @@ pub enum DrawCmd {
     /// saturation scaled (1: as it is), tinted (`tint`: linear RGB, alpha
     /// how much covers the blur), with its `material` (hairline, shadows,
     /// solid fallback; the default none), masked to the rounded rectangle,
-    /// at `alpha`: a backdrop ([`og_render::UiMode::Backdrop`]).
+    /// at `alpha`: a backdrop ([`og_draw::UiMode::Backdrop`]).
     Glass {
         rect: Rect,
         radius: f32,
         blur: f32,
         saturation: f32,
         tint: [f32; 4],
-        material: og_render::UiGlass,
+        material: og_draw::UiGlass,
         alpha: f32,
         clip: Rect,
     },
@@ -114,13 +114,13 @@ pub enum DrawCmd {
         glow: Option<([f32; 4], f32)>,
         /// A visual line's placements (bidi runs, shaped glyphs), one per
         /// character of `text`; empty: the font's advances and kerning.
-        placements: Vec<og_render::GlyphPlacement>,
+        placements: Vec<og_draw::GlyphPlacement>,
     },
     /// A [`DrawCmd::Text`] with effects drawn from its font's distance
     /// field: shadows, an outline, a gradient fill (§5.6).
     StyledText {
         text: Box<DrawCmd>,
-        effects: Box<og_render::UiTextEffects>,
+        effects: Box<og_draw::UiTextEffects>,
     },
     /// Any UI shape: geometry, paint, mode, opacity and blend. Its `layer`
     /// and `clip` are set when it is emitted.
@@ -152,11 +152,11 @@ pub enum DrawCmd {
     /// composites the graph's result. `role` says what it is for.
     BeginLayer {
         material: UiMaterial,
-        params: [[f32; 4]; og_render::UI_MATERIAL_PARAMS],
-        mask: Option<og_render::UiMask>,
+        params: [[f32; 4]; og_draw::UI_MATERIAL_PARAMS],
+        mask: Option<og_draw::UiMask>,
         expand: f32,
         rect: Rect,
-        filter: Option<Box<(Rect, og_render::UiFilter)>>,
+        filter: Option<Box<(Rect, og_draw::UiFilter)>>,
         role: LayerRole,
     },
     /// The layer's composite: `geometry` over `rect` (`None`: the layer's
@@ -185,7 +185,7 @@ pub enum LayerRole {
     Draw,
     /// CSS `backdrop-filter`: it draws nothing; its filter runs over what
     /// is under its composite where the composite draws
-    /// ([`og_render::UiLayer::backdrop`]), its region its filter's.
+    /// ([`og_draw::UiLayer::backdrop`]), its region its filter's.
     Backdrop,
     /// The `n`-th element an `feImage` of the enclosing layer's filter
     /// reads ([`crate::svg::filter::element_layer`]): what follows is
@@ -273,7 +273,7 @@ fn shape_bounds(s: &UiShape) -> Rect {
             return Rect::default();
         }
         let limit = match join {
-            og_render::UiJoin::Miter(l) => l.max(1.5),
+            og_draw::UiJoin::Miter(l) => l.max(1.5),
             _ => 1.5,
         };
         let m = s.transform;
@@ -296,9 +296,9 @@ fn shape_bounds(s: &UiShape) -> Rect {
     match s.mode {
         UiMode::Stroke(st) => {
             let off = match st.align {
-                og_render::UiAlign::Inside => -0.5,
-                og_render::UiAlign::Center => 0.0,
-                og_render::UiAlign::Outside => 0.5,
+                og_draw::UiAlign::Inside => -0.5,
+                og_draw::UiAlign::Center => 0.0,
+                og_draw::UiAlign::Outside => 0.5,
             } * st.width;
             grow += (0.5 * st.width + off).max(0.0);
         }
@@ -382,10 +382,10 @@ impl DrawCmd {
                 color,
                 ..
             } => Some((*rect, *color)),
-            DrawCmd::Shape { shape, .. } if shape.mode == og_render::UiMode::Fill => {
+            DrawCmd::Shape { shape, .. } if shape.mode == og_draw::UiMode::Fill => {
                 let mut c = match &shape.paint {
-                    og_render::UiPaint::Solid(c) => *c,
-                    og_render::UiPaint::Gradient(g) if !g.stops.is_empty() => {
+                    og_draw::UiPaint::Solid(c) => *c,
+                    og_draw::UiPaint::Gradient(g) if !g.stops.is_empty() => {
                         let n = g.stops.len() as f32;
                         let mut m = [0.0; 4];
                         for s in &g.stops {

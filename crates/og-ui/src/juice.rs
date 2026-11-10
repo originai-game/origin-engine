@@ -9,7 +9,7 @@ use crate::layout::{Content, FontRole, NONE, Rect, Size, TextAlign};
 use crate::motion::Fx;
 use crate::style::{Srgba, TypeStep};
 use crate::ui::{Anim, Ui};
-use og_render::TextureHandle;
+use og_draw::TextureHandle;
 
 /// A shake of the element built just before (a wrong answer, a locked door):
 /// three decaying swings, as a refused press shakes a button.

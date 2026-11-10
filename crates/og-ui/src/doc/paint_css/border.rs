@@ -20,7 +20,7 @@ pub(crate) struct BorderSpec {
     pub fill: bool,
     pub width: [BiLen; 4],
     pub outset: [BiLen; 4],
-    pub repeat: [og_render::UiEdge; 2],
+    pub repeat: [og_draw::UiEdge; 2],
     pub luminance: bool,
 }
 
@@ -61,7 +61,7 @@ pub(crate) fn border_spec(
     mode: Option<&str>,
     mask: bool,
 ) -> Result<BorderSpec, String> {
-    use og_render::UiEdge as E;
+    use og_draw::UiEdge as E;
     let toks = |t: Option<&str>| -> Result<Option<Vec<Tok>>, String> {
         t.filter(|t| !t.trim().is_empty()).map(tokens).transpose()
     };

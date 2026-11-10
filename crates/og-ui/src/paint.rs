@@ -15,7 +15,7 @@ use crate::draw::DrawCmd;
 use crate::layout::Rect;
 use crate::style::{Srgba, Theme};
 use og_core::glam::Vec2;
-pub use og_render::{
+pub use og_draw::{
     TextureHandle, UiAlign as StrokeAlign, UiBlend as Blend, UiBuiltin as Builtin, UiCap as Cap,
     UiCorner as Corner, UiEdge as Edge, UiFillRule as FillRule, UiFit as Fit,
     UiGradientKind as GradientKind, UiJoin as Join, UiMaterialHandle, UiSpread as Spread,
@@ -117,15 +117,15 @@ impl Default for Gradient {
 }
 
 impl Gradient {
-    pub fn resolve(&self, theme: &Theme) -> og_render::UiGradient {
-        og_render::UiGradient {
+    pub fn resolve(&self, theme: &Theme) -> og_draw::UiGradient {
+        og_draw::UiGradient {
             kind: self.kind,
             from: Vec2::from(self.from),
             to: Vec2::from(self.to),
             stops: self
                 .stops
                 .iter()
-                .map(|s| og_render::UiStop {
+                .map(|s| og_draw::UiStop {
                     offset: s.offset,
                     color: s.color.resolve(theme),
                 })
@@ -193,11 +193,11 @@ pub struct AtlasPaint {
 }
 
 impl Paint {
-    pub fn resolve(&self, theme: &Theme) -> og_render::UiPaint {
+    pub fn resolve(&self, theme: &Theme) -> og_draw::UiPaint {
         match self {
-            Paint::Solid(c) => og_render::UiPaint::Solid(c.resolve(theme)),
-            Paint::Gradient(g) => og_render::UiPaint::Gradient(g.resolve(theme)),
-            Paint::Image(im) => og_render::UiPaint::Image(og_render::UiImage {
+            Paint::Solid(c) => og_draw::UiPaint::Solid(c.resolve(theme)),
+            Paint::Gradient(g) => og_draw::UiPaint::Gradient(g.resolve(theme)),
+            Paint::Image(im) => og_draw::UiPaint::Image(og_draw::UiImage {
                 texture: im.texture,
                 uv: im.uv,
                 size: Vec2::from(im.size),
@@ -209,9 +209,9 @@ impl Paint {
                 luminance: false,
                 nearest: im.nearest,
             }),
-            Paint::Vector { tint, .. } => og_render::UiPaint::Solid(tint.resolve(theme)),
+            Paint::Vector { tint, .. } => og_draw::UiPaint::Solid(tint.resolve(theme)),
             Paint::Atlas(a) => match theme.art.atlas {
-                Some(texture) => og_render::UiPaint::Image(og_render::UiImage {
+                Some(texture) => og_draw::UiPaint::Image(og_draw::UiImage {
                     texture,
                     uv: a.uv,
                     size: Vec2::from(a.size),
@@ -223,13 +223,13 @@ impl Paint {
                     luminance: false,
                     nearest: false,
                 }),
-                None => og_render::UiPaint::Solid([0.0; 4]),
+                None => og_draw::UiPaint::Solid([0.0; 4]),
             },
             Paint::GradientImage {
                 gradient,
                 size,
                 fit,
-            } => og_render::UiPaint::GradientImage(Box::new(og_render::UiGradientImage {
+            } => og_draw::UiPaint::GradientImage(Box::new(og_draw::UiGradientImage {
                 gradient: gradient.resolve(theme),
                 size: Vec2::from(*size),
                 fit: *fit,
@@ -303,7 +303,7 @@ pub struct BoxLayers {
 impl BoxLayer {
     /// Its paint drawn in `d`, `inset` (left, top, right, bottom) in from
     /// the box `b`: its fit's positioning area made `d`'s.
-    fn resolve(&self, theme: &Theme, b: Rect, d: Rect) -> og_render::UiPaint {
+    fn resolve(&self, theme: &Theme, b: Rect, d: Rect) -> og_draw::UiPaint {
         let mut p = self.paint.resolve(theme);
         let area = match self.area {
             Area::Box([l, t, r, bt]) => [
@@ -317,17 +317,17 @@ impl BoxLayer {
             }
         };
         let fit = match &mut p {
-            og_render::UiPaint::Image(im) => {
+            og_draw::UiPaint::Image(im) => {
                 im.luminance = self.luminance;
                 Some(&mut im.fit)
             }
-            og_render::UiPaint::GradientImage(g) => {
+            og_draw::UiPaint::GradientImage(g) => {
                 g.luminance = self.luminance;
                 Some(&mut g.fit)
             }
             _ => None,
         };
-        if let Some(og_render::UiFit::Background(bg)) = fit {
+        if let Some(og_draw::UiFit::Background(bg)) = fit {
             bg.area = area;
         }
         p
@@ -336,9 +336,9 @@ impl BoxLayer {
 
 /// `geometry` inset by `inset` (left, top, right, bottom): a rectangle's
 /// corners less the inset across each (CSS Backgrounds 3 §5.3).
-fn inset_geometry(g: og_render::UiGeometry, inset: [f32; 4]) -> og_render::UiGeometry {
+fn inset_geometry(g: og_draw::UiGeometry, inset: [f32; 4]) -> og_draw::UiGeometry {
     match g {
-        og_render::UiGeometry::Rect { radii, corner } if inset != [0.0; 4] => {
+        og_draw::UiGeometry::Rect { radii, corner } if inset != [0.0; 4] => {
             let (vertical, shape) = match corner {
                 Corner::Css(c) => (c.vertical, c.shape),
                 Corner::Round => (radii, [1.0; 4]),
@@ -347,9 +347,9 @@ fn inset_geometry(g: og_render::UiGeometry, inset: [f32; 4]) -> og_render::UiGeo
                 Corner::Notch => (radii, [-1.0; 4]),
             };
             let [l, t, r, b] = inset;
-            og_render::UiGeometry::Rect {
+            og_draw::UiGeometry::Rect {
                 radii: [radii[0] - l, radii[1] - r, radii[2] - r, radii[3] - l].map(|v| v.max(0.0)),
-                corner: Corner::Css(og_render::UiCssCorners {
+                corner: Corner::Css(og_draw::UiCssCorners {
                     vertical: [
                         vertical[0] - t,
                         vertical[1] - t,
@@ -374,10 +374,10 @@ fn inset_rect(r: Rect, [l, t, rt, b]: [f32; 4]) -> Rect {
     )
 }
 
-fn plain_layer(mask: Option<og_render::UiMask>) -> DrawCmd {
+fn plain_layer(mask: Option<og_draw::UiMask>) -> DrawCmd {
     DrawCmd::BeginLayer {
-        material: og_render::UiMaterial::Plain,
-        params: [[0.0; 4]; og_render::UI_MATERIAL_PARAMS],
+        material: og_draw::UiMaterial::Plain,
+        params: [[0.0; 4]; og_draw::UI_MATERIAL_PARAMS],
         mask,
         expand: 0.0,
         rect: Rect::default(),
@@ -387,7 +387,7 @@ fn plain_layer(mask: Option<og_render::UiMask>) -> DrawCmd {
 }
 
 fn end_layer(
-    geometry: Option<og_render::UiGeometry>,
+    geometry: Option<og_draw::UiGeometry>,
     at: &Placed,
     opacity: f32,
     blend: Blend,
@@ -430,7 +430,7 @@ pub enum ShapeKind {
         points: Vec<[f32; 2]>,
         closed: bool,
         /// Fills cover the inside of the closed contours by `fill_rule`,
-        /// drawn from the curves themselves ([`og_render::UiGeometry::Path`]),
+        /// drawn from the curves themselves ([`og_draw::UiGeometry::Path`]),
         /// instead of drawing its line, and strokes outline it.
         filled: bool,
         curves: bool,
@@ -457,19 +457,19 @@ impl Default for ShapeKind {
 impl ShapeKind {
     /// The geometry of an element of `radius` (its default corner radius)
     /// and `size` (CSS px).
-    pub fn geometry(&self, radius: f32, size: [f32; 2]) -> og_render::UiGeometry {
+    pub fn geometry(&self, radius: f32, size: [f32; 2]) -> og_draw::UiGeometry {
         match self {
-            ShapeKind::Rect { radii, corner } => og_render::UiGeometry::Rect {
+            ShapeKind::Rect { radii, corner } => og_draw::UiGeometry::Rect {
                 radii: radii.unwrap_or([radius; 4]),
                 corner: *corner,
             },
-            ShapeKind::Ellipse => og_render::UiGeometry::Ellipse,
+            ShapeKind::Ellipse => og_draw::UiGeometry::Ellipse,
             ShapeKind::Polygon {
                 sides,
                 inner,
                 rounding,
                 rotation,
-            } => og_render::UiGeometry::Polygon {
+            } => og_draw::UiGeometry::Polygon {
                 sides: *sides,
                 inner: *inner,
                 rounding: *rounding,
@@ -480,7 +480,7 @@ impl ShapeKind {
                 sweep,
                 thickness,
                 cap,
-            } => og_render::UiGeometry::Arc {
+            } => og_draw::UiGeometry::Arc {
                 start: *start,
                 sweep: *sweep,
                 thickness: *thickness,
@@ -495,7 +495,7 @@ impl ShapeKind {
                 ..
             } => {
                 let half = Vec2::from(size) * 0.5;
-                let mut path = og_render::UiPath::new();
+                let mut path = og_draw::UiPath::new();
                 path.fill_rule = *fill_rule;
                 let mut rest: &[[f32; 2]] = points;
                 let whole = [points.len() as u32];
@@ -521,7 +521,7 @@ impl ShapeKind {
                     }
                     path.close();
                 }
-                og_render::UiGeometry::Path(std::sync::Arc::new(path))
+                og_draw::UiGeometry::Path(std::sync::Arc::new(path))
             }
             ShapeKind::Path {
                 points,
@@ -541,7 +541,7 @@ impl ShapeKind {
                         let from = *line.last().expect("the first point");
                         // A quarter CSS px from the curve.
                         line.extend(
-                            og_render::flatten_cubic(from, c[0], c[1], c[2], 0.25)
+                            og_draw::flatten_cubic(from, c[0], c[1], c[2], 0.25)
                                 .into_iter()
                                 .skip(1),
                         );
@@ -558,7 +558,7 @@ impl ShapeKind {
                 {
                     line.pop();
                 }
-                og_render::UiGeometry::Polyline {
+                og_draw::UiGeometry::Polyline {
                     points: line,
                     closed: *closed || *filled,
                     filled: *filled,
@@ -614,7 +614,7 @@ pub enum Material {
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Layer {
     pub material: Material,
-    pub params: [[f32; 4]; og_render::UI_MATERIAL_PARAMS],
+    pub params: [[f32; 4]; og_draw::UI_MATERIAL_PARAMS],
     /// An SVG `<filter>` run over what the layer drew before it
     /// composites; the layer is then the filter region.
     pub filter: Option<std::sync::Arc<FilterUse>>,
@@ -635,7 +635,7 @@ impl FilterUse {
     /// Its region and graph in CSS px, for an element drawn in `at`
     /// through `fit` (its view box's scale, centre and the box point the
     /// centre lands on).
-    fn resolve(&self, at: &Placed, fit: Option<(f32, Vec2, Vec2)>) -> (Rect, og_render::UiFilter) {
+    fn resolve(&self, at: &Placed, fit: Option<(f32, Vec2, Vec2)>) -> (Rect, og_draw::UiFilter) {
         let (bbox, map) = match (&self.svg, fit) {
             (Some((t, bbox)), Some((k, mid, half))) => {
                 let o = Vec2::new(at.rect.x, at.rect.y) + half - mid * k;
@@ -770,12 +770,12 @@ pub(crate) fn filter_uses<'a>(
     urls.chain(layers).collect()
 }
 
-impl From<Material> for og_render::UiMaterial {
-    fn from(m: Material) -> og_render::UiMaterial {
+impl From<Material> for og_draw::UiMaterial {
+    fn from(m: Material) -> og_draw::UiMaterial {
         match m {
-            Material::Plain => og_render::UiMaterial::Plain,
-            Material::Builtin(b) => og_render::UiMaterial::Builtin(b),
-            Material::Custom(h) => og_render::UiMaterial::Custom(h),
+            Material::Plain => og_draw::UiMaterial::Plain,
+            Material::Builtin(b) => og_draw::UiMaterial::Builtin(b),
+            Material::Custom(h) => og_draw::UiMaterial::Custom(h),
         }
     }
 }
@@ -784,15 +784,15 @@ impl From<Material> for og_render::UiMaterial {
 /// blur's, outline's or ripple's radius and a drop shadow's blur and
 /// offset, with the Gaussian's tail.
 fn expand_of(
-    material: og_render::UiMaterial,
-    params: &[[f32; 4]; og_render::UI_MATERIAL_PARAMS],
+    material: og_draw::UiMaterial,
+    params: &[[f32; 4]; og_draw::UI_MATERIAL_PARAMS],
 ) -> f32 {
     let p = params[0];
     match material {
-        og_render::UiMaterial::Builtin(Builtin::Blur | Builtin::Outline | Builtin::Ripple) => {
+        og_draw::UiMaterial::Builtin(Builtin::Blur | Builtin::Outline | Builtin::Ripple) => {
             p[0].max(0.0) * 1.5
         }
-        og_render::UiMaterial::Builtin(Builtin::DropShadow) => {
+        og_draw::UiMaterial::Builtin(Builtin::DropShadow) => {
             p[2].max(0.0) * 1.5 + p[0].abs().max(p[1].abs())
         }
         _ => 0.0,
@@ -910,11 +910,11 @@ mod tests {
             cmds.iter()
                 .map(|c| match c {
                     DrawCmd::Shape { shape, .. } => match shape.mode {
-                        og_render::UiMode::Fill => "fill",
-                        og_render::UiMode::Stroke(_) => "stroke",
-                        og_render::UiMode::Shadow { .. } => "shadow",
-                        og_render::UiMode::InnerShadow { .. } => "inner",
-                        og_render::UiMode::Backdrop { .. } => "backdrop",
+                        og_draw::UiMode::Fill => "fill",
+                        og_draw::UiMode::Stroke(_) => "stroke",
+                        og_draw::UiMode::Shadow { .. } => "shadow",
+                        og_draw::UiMode::InnerShadow { .. } => "inner",
+                        og_draw::UiMode::Backdrop { .. } => "backdrop",
                     },
                     DrawCmd::PushClip { .. } => "push",
                     DrawCmd::PopClip => "pop",
@@ -942,7 +942,7 @@ mod tests {
         else {
             panic!("{enter:?}");
         };
-        assert_eq!(*material, og_render::UiMaterial::Builtin(Builtin::Blur));
+        assert_eq!(*material, og_draw::UiMaterial::Builtin(Builtin::Blur));
         assert_eq!(params[0][0], 6.0);
         let leave = d.leave(&theme, &at());
         assert!(
@@ -972,12 +972,11 @@ mod tests {
             join: Join::Round,
         };
         // Points as lines: two contours of 4 each.
-        let og_render::UiGeometry::Path(p) =
-            shape(true, false, vec![4, 4]).geometry(0.0, [100.0; 2])
+        let og_draw::UiGeometry::Path(p) = shape(true, false, vec![4, 4]).geometry(0.0, [100.0; 2])
         else {
             panic!("a filled path is a vector path");
         };
-        use og_render::UiVerb::*;
+        use og_draw::UiVerb::*;
         assert_eq!(
             p.verbs,
             [Move, Line, Line, Line, Close, Move, Line, Line, Line, Close]
@@ -992,14 +991,14 @@ mod tests {
         if let ShapeKind::Path { points, .. } = &mut k {
             *points = curved;
         }
-        let og_render::UiGeometry::Path(p) = k.geometry(0.0, [100.0; 2]) else {
+        let og_draw::UiGeometry::Path(p) = k.geometry(0.0, [100.0; 2]) else {
             panic!()
         };
         assert_eq!(p.verbs, [Move, Close, Move, Cubic, Close]);
         // Unfilled: a polyline still.
         assert!(matches!(
             shape(false, false, vec![]).geometry(0.0, [100.0; 2]),
-            og_render::UiGeometry::Polyline { .. }
+            og_draw::UiGeometry::Polyline { .. }
         ));
     }
 }

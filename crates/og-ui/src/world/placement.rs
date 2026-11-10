@@ -473,8 +473,8 @@ impl Ui {
                     key,
                     Marks {
                         enter: vec![DrawCmd::BeginLayer {
-                            material: og_render::UiMaterial::Plain,
-                            params: [[0.0; 4]; og_render::UI_MATERIAL_PARAMS],
+                            material: og_draw::UiMaterial::Plain,
+                            params: [[0.0; 4]; og_draw::UI_MATERIAL_PARAMS],
                             mask: None,
                             expand: 0.0,
                             rect: Rect::default(),
@@ -485,7 +485,7 @@ impl Ui {
                             geometry: None,
                             rect: self.nodes[p.node].rect,
                             opacity: 1.0,
-                            blend: og_render::UiBlend::Normal,
+                            blend: og_draw::UiBlend::Normal,
                             clip: all,
                             ground: Some(crate::draw::Ground::Panel(key)),
                         }],
@@ -534,7 +534,7 @@ impl Ui {
                             .outset(1.0)
                             .intersect(&screen)
                     };
-                    let drape = og_render::UiDrape::new(
+                    let drape = og_draw::UiDrape::new(
                         view.view_proj,
                         view.eye,
                         view.forward,
@@ -675,16 +675,16 @@ fn meta_cmds(kind: &MetaKind, screen: Rect, alpha: f32) -> Vec<DrawCmd> {
             let c = color.linear();
             let mut shape = UiShape::rect(r, 0.0, c);
             // A radial gradient from the centre out to the corners.
-            shape.paint = og_render::UiPaint::Gradient(og_render::UiGradient {
-                kind: og_render::UiGradientKind::Radial,
+            shape.paint = og_draw::UiPaint::Gradient(og_draw::UiGradient {
+                kind: og_draw::UiGradientKind::Radial,
                 from: Vec2::new(0.5, 0.5),
                 to: Vec2::new(1.0, 1.0),
                 stops: vec![
-                    og_render::UiStop {
+                    og_draw::UiStop {
                         offset: inner.clamp(0.0, 1.0),
                         color: [c[0], c[1], c[2], 0.0],
                     },
-                    og_render::UiStop {
+                    og_draw::UiStop {
                         offset: outer.clamp(0.0, 1.0).max(*inner + 1e-3),
                         color: [c[0], c[1], c[2], c[3]],
                     },
@@ -701,14 +701,14 @@ fn meta_cmds(kind: &MetaKind, screen: Rect, alpha: f32) -> Vec<DrawCmd> {
             // The frame under it as a backdrop, in a layer composited
             // through the material.
             let mut back = UiShape::rect(r, 0.0, [1.0; 4]);
-            back.mode = og_render::UiMode::Backdrop {
+            back.mode = og_draw::UiMode::Backdrop {
                 blur: 0.0,
                 saturation: 1.0,
                 brightness: 1.0,
-                glass: og_render::UiGlass::default(),
+                glass: og_draw::UiGlass::default(),
             };
             // No tint over the scene: the backdrop alone.
-            back.paint = og_render::UiPaint::Solid([1.0, 1.0, 1.0, 0.0]);
+            back.paint = og_draw::UiPaint::Solid([1.0, 1.0, 1.0, 0.0]);
             vec![
                 DrawCmd::BeginLayer {
                     material: *material,
@@ -727,7 +727,7 @@ fn meta_cmds(kind: &MetaKind, screen: Rect, alpha: f32) -> Vec<DrawCmd> {
                     geometry: None,
                     rect: screen,
                     opacity: alpha,
-                    blend: og_render::UiBlend::Normal,
+                    blend: og_draw::UiBlend::Normal,
                     clip: screen,
                     ground: None,
                 },

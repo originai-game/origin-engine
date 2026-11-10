@@ -48,7 +48,7 @@ use crate::element::{Edges, GridFlow, LayoutMode, Patch, Query, Track};
 use crate::motion::Fx;
 use crate::style::{Srgba, TypeStep};
 use crate::text::{Line, break_lines, is_cjk, longest_word, widest_line};
-use og_render::TextureHandle;
+use og_draw::TextureHandle;
 
 /// A rectangle in CSS pixels, origin at the top left, y down.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]

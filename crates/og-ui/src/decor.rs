@@ -105,7 +105,7 @@ pub struct Corners {
 }
 
 /// Corners resolved for one box: horizontal radii and the rest.
-pub(crate) type Resolved = ([f32; 4], og_render::UiCssCorners);
+pub(crate) type Resolved = ([f32; 4], og_draw::UiCssCorners);
 
 impl Corners {
     /// Its radii for a `w` × `h` box, scaled down together where two
@@ -123,7 +123,7 @@ impl Corners {
         let fix = |r: f32| if r * f < 1e-4 { 0.0 } else { r * f };
         (
             rx.map(fix),
-            og_render::UiCssCorners {
+            og_draw::UiCssCorners {
                 vertical: ry.map(fix),
                 shape: self.shape,
             },
@@ -137,7 +137,7 @@ fn grow((h, c): Resolved, k: f32) -> Resolved {
     let g = |r: f32| if r > 0.0 { (r + k).max(0.0) } else { 0.0 };
     (
         h.map(g),
-        og_render::UiCssCorners {
+        og_draw::UiCssCorners {
             vertical: c.vertical.map(g),
             shape: c.shape,
         },
@@ -245,7 +245,7 @@ impl BoxDecor {
             {
                 d.layer = Some(crate::paint::Layer {
                     material: crate::paint::Material::Plain,
-                    params: [[0.0; 4]; og_render::UI_MATERIAL_PARAMS],
+                    params: [[0.0; 4]; og_draw::UI_MATERIAL_PARAMS],
                     filter: None,
                 });
             }
@@ -278,7 +278,7 @@ impl BoxDecor {
         {
             let (h, css) = c.resolve(size[0], size[1]);
             *radii = Some(h);
-            *corner = og_render::UiCorner::Css(css);
+            *corner = og_draw::UiCorner::Css(css);
         }
         if self.clip && d.clip == crate::paint::Clip::None {
             d.clip = crate::paint::Clip::Shape;
@@ -391,11 +391,11 @@ fn halve(r: Rect, k: usize) -> (Rect, Rect) {
     }
 }
 
-use og_render::UiAlign::{Inside, Outside};
+use og_draw::UiAlign::{Inside, Outside};
 
 /// Round corners of K 1, as `corner-shape: round` is.
-fn round() -> og_render::UiCssCorners {
-    og_render::UiCssCorners {
+fn round() -> og_draw::UiCssCorners {
+    og_draw::UiCssCorners {
         vertical: [0.0; 4],
         shape: [1.0; 4],
     }
@@ -409,7 +409,7 @@ fn ring(
     rect: Rect,
     corners: Resolved,
     line: Line,
-    align: og_render::UiAlign,
+    align: og_draw::UiAlign,
 ) {
     // Plain round corners stay the circular geometry (its dashes follow
     // the arcs exactly); anything else is CSS's.
@@ -417,9 +417,9 @@ fn ring(
         && (corners.1.vertical == [0.0; 4] || corners.1.vertical == corners.0);
     let w = line.width;
     let (dash, cap) = match line.style {
-        LineStyle::Dashed => ([3.0 * w, 3.0 * w], og_render::UiCap::Butt),
-        LineStyle::Dotted => ([w, w], og_render::UiCap::Butt),
-        _ => ([0.0; 2], og_render::UiCap::Butt),
+        LineStyle::Dashed => ([3.0 * w, 3.0 * w], og_draw::UiCap::Butt),
+        LineStyle::Dotted => ([w, w], og_draw::UiCap::Butt),
+        _ => ([0.0; 2], og_draw::UiCap::Butt),
     };
     let mut stroke = |rect: Rect,
                       (radii, css): Resolved,
@@ -427,20 +427,20 @@ fn ring(
                       (dash, dash_offset): ([f32; 2], f32),
                       clip: Rect| {
         out.push(DrawCmd::Shape {
-            shape: Box::new(og_render::UiShape {
-                geometry: og_render::UiGeometry::Rect {
+            shape: Box::new(og_draw::UiShape {
+                geometry: og_draw::UiGeometry::Rect {
                     radii: radii.map(|r| r.max(0.0)),
                     corner: if plain {
-                        og_render::UiCorner::Round
+                        og_draw::UiCorner::Round
                     } else {
-                        og_render::UiCorner::Css(css)
+                        og_draw::UiCorner::Css(css)
                     },
                 },
                 center: Vec2::new(rect.x + rect.width / 2.0, rect.y + rect.height / 2.0),
                 half: Vec2::new(rect.width / 2.0, rect.height / 2.0),
                 transform: [1.0, 0.0, 0.0, 1.0],
-                paint: og_render::UiPaint::Solid(line.color.linear()),
-                mode: og_render::UiMode::Stroke(og_render::UiStroke {
+                paint: og_draw::UiPaint::Solid(line.color.linear()),
+                mode: og_draw::UiMode::Stroke(og_draw::UiStroke {
                     width,
                     align,
                     dash,
@@ -448,7 +448,7 @@ fn ring(
                     dash_cap: cap,
                 }),
                 opacity: at.alpha,
-                blend: og_render::UiBlend::Normal,
+                blend: og_draw::UiBlend::Normal,
                 layer: 0,
                 clip: None,
             }),
@@ -497,7 +497,7 @@ fn dash_regions(
     rect: Rect,
     radii: [f32; 4],
     w: f32,
-    align: og_render::UiAlign,
+    align: og_draw::UiAlign,
 ) -> Vec<(Rect, [f32; 2], f32)> {
     let (l, t, rr, b) = (rect.x, rect.y, rect.right(), rect.bottom());
     let (ww, hh) = (rect.width, rect.height);

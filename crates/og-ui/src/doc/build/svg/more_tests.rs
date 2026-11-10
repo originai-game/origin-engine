@@ -119,7 +119,7 @@ fn markers_lines_text_paths_and_foreign_objects_draw_in_the_view_box() {
         .iter()
         .filter_map(|it| match &it.cmd {
             DrawCmd::Shape { shape, .. } => match (&shape.paint, &shape.geometry) {
-                (og_render::UiPaint::Solid(c), og_render::UiGeometry::Path(p))
+                (og_draw::UiPaint::Solid(c), og_draw::UiGeometry::Path(p))
                     if c[2] > 0.9 && c[0] < 0.1 =>
                 {
                     let lo = p
@@ -268,7 +268,7 @@ fn smil_animations_play_on_the_ui_clock() {
                 .iter()
                 .filter_map(|it| match &it.cmd {
                     DrawCmd::Shape { shape, .. } => match (&shape.paint, &shape.geometry) {
-                        (og_render::UiPaint::Solid(c), og_render::UiGeometry::Path(p)) => {
+                        (og_draw::UiPaint::Solid(c), og_draw::UiGeometry::Path(p)) => {
                             let lo = p.points.iter().fold(f32::MAX, |m, q| m.min(q.x));
                             let hi = p.points.iter().fold(f32::MIN, |m, q| m.max(q.x));
                             let x = shape.center.x - s.x;

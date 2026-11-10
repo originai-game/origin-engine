@@ -3,7 +3,7 @@ use crate::element::Affine;
 use crate::layout::Rect;
 use crate::world::WorldCmd;
 use og_core::glam::Vec2;
-use og_render::{Overlay, Text, UiGeometry, UiMaterial, UiMode, UiPaint, UiShape};
+use og_draw::{Overlay, Text, UiGeometry, UiMaterial, UiMode, UiPaint, UiShape};
 
 /// Where a frame's shapes and text go.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -72,7 +72,7 @@ impl Clips {
         }
         let i = overlay.add_clip([clip.x, clip.y, clip.width, clip.height]);
         if let Some((_, at, depth, alpha)) = occ {
-            overlay.ui.occluders.push(og_render::UiOccluder {
+            overlay.ui.occluders.push(og_draw::UiOccluder {
                 rect: i,
                 at,
                 depth,
@@ -82,7 +82,7 @@ impl Clips {
             });
         }
         if let Some(c) = top {
-            overlay.ui.clips.push(og_render::UiClip {
+            overlay.ui.clips.push(og_draw::UiClip {
                 rect: i,
                 geometry: c.geometry.clone(),
                 center: c.center,
@@ -110,7 +110,7 @@ impl Clips {
         let (cx, cy) = m.apply(center.x, center.y);
         let center = Vec2::new(cx, cy);
         let transform = linear(m);
-        overlay.ui.clips.push(og_render::UiClip {
+        overlay.ui.clips.push(og_draw::UiClip {
             rect,
             geometry: geometry.clone(),
             center,
@@ -228,8 +228,8 @@ pub(crate) fn zoom_items(mut items: Vec<DrawItem>, unit: f32) -> Vec<DrawItem> {
 /// A mass batch drawn `unit` times larger ([`zoom_items`]): each
 /// instance's size, and for screen-space ones where it stands and how far
 /// it travels.
-pub(crate) fn zoom_mass(b: &mut og_render::UiMassBatch, unit: f32) {
-    let screen = b.space == og_render::UiMassSpace::Screen;
+pub(crate) fn zoom_mass(b: &mut og_draw::UiMassBatch, unit: f32) {
+    let screen = b.space == og_draw::UiMassSpace::Screen;
     for i in &mut b.instances {
         i.scale *= unit;
         if screen {
@@ -397,7 +397,7 @@ pub(crate) fn emit(
                 }
                 WorldCmd::Mass { batch, clip, .. } => {
                     let c = clips.index(overlay, clip);
-                    overlay.ui.mass.push(og_render::UiMassBatch {
+                    overlay.ui.mass.push(og_draw::UiMassBatch {
                         layer,
                         clip: Some(c),
                         ..(**batch).clone()
@@ -411,11 +411,11 @@ pub(crate) fn emit(
                         continue;
                     }
                     let base = desc.layer + LAYER_BASE + k as i32 * LAYER_SPAN;
-                    overlay.ui.layers.push(og_render::UiLayer {
+                    overlay.ui.layers.push(og_draw::UiLayer {
                         capture: [base, base + LAYER_SPAN - 1],
                         rect: [rect.x, rect.y, rect.width, rect.height],
                         material: UiMaterial::Plain,
-                        params: [[0.0; 4]; og_render::UI_MATERIAL_PARAMS],
+                        params: [[0.0; 4]; og_draw::UI_MATERIAL_PARAMS],
                         mask: None,
                         target: Some(*target),
                         ground: None,
@@ -454,7 +454,7 @@ pub(crate) fn emit(
                                 .as_ref()
                                 .is_some_and(|f| {
                                     f.primitives.iter().any(|p| {
-                                        matches!(p.op, og_render::UiFilterOp::Layer { layer } if layer == stand_in)
+                                        matches!(p.op, og_draw::UiFilterOp::Layer { layer } if layer == stand_in)
                                     })
                                 })
                         };
@@ -486,7 +486,7 @@ pub(crate) fn emit(
                 {
                     // The filter reads this layer for its n-th element.
                     for p in &mut f.primitives {
-                        if let og_render::UiFilterOp::Layer { layer } = &mut p.op
+                        if let og_draw::UiFilterOp::Layer { layer } = &mut p.op
                             && *layer == crate::svg::filter::element_layer(*n)
                         {
                             *layer = k;
@@ -494,7 +494,7 @@ pub(crate) fn emit(
                     }
                 }
                 let base = desc.layer + LAYER_BASE + k as i32 * LAYER_SPAN;
-                overlay.ui.layers.push(og_render::UiLayer {
+                overlay.ui.layers.push(og_draw::UiLayer {
                     capture: [base, base + LAYER_SPAN - 1],
                     rect: [rect.x, rect.y, rect.width, rect.height],
                     material: *material,
@@ -536,7 +536,7 @@ pub(crate) fn emit(
                     };
                     let [lx, ly, lw, lh] = overlay.ui.layers[k as usize].rect;
                     let corners = g.corners_of(Rect::new(lx, ly, lw, lh));
-                    overlay.ui.layers[k as usize].ground = Some(og_render::UiGround {
+                    overlay.ui.layers[k as usize].ground = Some(og_draw::UiGround {
                         corners,
                         drape: g.drape,
                         plane: true,
@@ -569,7 +569,7 @@ pub(crate) fn emit(
                         continue;
                     };
                     let [lx, ly, lw, lh] = overlay.ui.layers[k as usize].rect;
-                    overlay.ui.layers[k as usize].ground = Some(og_render::UiGround {
+                    overlay.ui.layers[k as usize].ground = Some(og_draw::UiGround {
                         corners: g.corners_of(Rect::new(lx, ly, lw, lh)),
                         drape: g.drape,
                         plane: false,
@@ -594,7 +594,7 @@ pub(crate) fn emit(
                     None => (
                         UiGeometry::Rect {
                             radii: [0.0; 4],
-                            corner: og_render::UiCorner::Round,
+                            corner: og_draw::UiCorner::Round,
                         },
                         Rect::new(lx, ly, lw, lh),
                         Affine::IDENTITY,
@@ -658,13 +658,13 @@ pub(crate) fn emit(
                 let c = clips.index(overlay, clip);
                 let mut s = rect_shape(*rect, 0.0, *color);
                 if let Some(t) = texture {
-                    s.paint = UiPaint::Image(og_render::UiImage {
+                    s.paint = UiPaint::Image(og_draw::UiImage {
                         texture: *t,
                         uv: *uv,
                         size: Vec2::new(rect.width, rect.height),
                         density: 1.0,
                         tint: *color,
-                        fit: og_render::UiFit::Fill,
+                        fit: og_draw::UiFit::Fill,
                         focal: Vec2::splat(0.5),
                         luminance: false,
                         offset: Default::default(),
@@ -713,7 +713,7 @@ pub(crate) fn emit(
                     start: angle - std::f32::consts::FRAC_PI_2,
                     sweep: std::f32::consts::PI,
                     thickness: *radius,
-                    cap: og_render::UiCap::Butt,
+                    cap: og_draw::UiCap::Butt,
                 };
                 put(overlay, s, c);
             }
@@ -732,7 +732,7 @@ pub(crate) fn emit(
                 // Its rectangle's centre moved by the map, its local space
                 // (about that centre) composed with the map's linear part.
                 let (cx, cy) = m.apply(rect.x + rect.width / 2.0, rect.y + rect.height / 2.0);
-                overlay.ui.vectors.push(og_render::UiVectorDraw {
+                overlay.ui.vectors.push(og_draw::UiVectorDraw {
                     vector: *vector,
                     rect: [
                         cx - rect.width / 2.0,
@@ -750,7 +750,7 @@ pub(crate) fn emit(
                 let at = overlay.texts.len() as u32;
                 if emit_text(&item.cmd, layer, &mut clips, overlay) && !m.is_identity() {
                     // No effects: the map alone.
-                    overlay.ui.text_effects.push(og_render::UiTextEffects {
+                    overlay.ui.text_effects.push(og_draw::UiTextEffects {
                         text: at,
                         transform: linear(m),
                         ..Default::default()
@@ -791,7 +791,7 @@ pub(crate) fn emit(
 /// A styled text's effects under an upright map (translation and scale)
 /// baked into its text: offsets scaled per axis, widths by the text's
 /// height scale (as its size), the gradient's box moved.
-pub(crate) fn scale_effects(fx: &mut og_render::UiTextEffects, m: &Affine) {
+pub(crate) fn scale_effects(fx: &mut og_draw::UiTextEffects, m: &Affine) {
     let sy = m.d.abs();
     for s in &mut fx.shadows {
         s.offset = Vec2::new(s.offset.x * m.a, s.offset.y * m.d);
@@ -811,7 +811,7 @@ pub(crate) fn scale_effects(fx: &mut og_render::UiTextEffects, m: &Affine) {
 }
 
 /// Moves text `at`'s pen by the map: its glyphs take the map's linear part
-/// from its [`og_render::UiTextEffects::transform`].
+/// from its [`og_draw::UiTextEffects::transform`].
 fn map_text(overlay: &mut Overlay, at: u32, m: &Affine) {
     let t = &mut overlay.texts[at as usize];
     let (x, y) = m.apply(t.position.x, t.position.y);
@@ -850,7 +850,7 @@ fn emit_text(cmd: &DrawCmd, layer: i32, clips: &mut Clips, overlay: &mut Overlay
         clip: Some(c),
         tracking: *tracking,
         weight: *weight,
-        glow: glow.map(|(color, radius)| og_render::TextGlow { color, radius }),
+        glow: glow.map(|(color, radius)| og_draw::TextGlow { color, radius }),
         placements: placements.clone(),
     });
     true

@@ -58,9 +58,7 @@ impl Ui {
                     .filter
                     .primitives
                     .iter()
-                    .find(
-                        |p| matches!(p.op, og_render::UiFilterOp::Layer { layer: l } if l == layer),
-                    )
+                    .find(|p| matches!(p.op, og_draw::UiFilterOp::Layer { layer: l } if l == layer))
                     .map_or([f32::NAN; 4], |p| p.subregion);
                 let bbox = match space {
                     ImageSpace::Svg(_, bbox) => bbox,
@@ -405,7 +403,7 @@ impl Ui {
         t: &Affine,
         vb: [f32; 4],
     ) -> Result<std::sync::Arc<crate::paint::FilterUse>, String> {
-        let image = |href: &str| -> Result<(og_render::TextureHandle, [f32; 4]), String> {
+        let image = |href: &str| -> Result<(og_draw::TextureHandle, [f32; 4]), String> {
             match href.parse::<f64>() {
                 Ok(h) => b
                     .env
@@ -513,9 +511,9 @@ impl Ui {
             },
         };
         let fit = match get("svgPreserveAspectRatio").map(str::trim) {
-            Some("none") => og_render::UiFit::Fill,
-            Some(v) if v.contains("slice") => og_render::UiFit::Cover,
-            _ => og_render::UiFit::Contain,
+            Some("none") => og_draw::UiFit::Fill,
+            Some(v) if v.contains("slice") => og_draw::UiFit::Cover,
+            _ => og_draw::UiFit::Contain,
         };
         Ok(Some(ElementDraw {
             shape: ShapeKind::Rect {

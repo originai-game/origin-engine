@@ -1,5 +1,5 @@
 use super::*;
-use og_render::Overlay;
+use og_draw::Overlay;
 
 fn plain(cmds: Vec<DrawCmd>) -> Vec<(DrawCmd, Affine)> {
     cmds.into_iter().map(|c| (c, Affine::IDENTITY)).collect()
@@ -47,7 +47,7 @@ fn quad(rect: Rect) -> DrawCmd {
 fn image(rect: Rect, slot: u32) -> DrawCmd {
     DrawCmd::Image {
         rect,
-        texture: og_render::TextureHandle::from_slot(slot),
+        texture: og_draw::TextureHandle::from_slot(slot),
         uv: [0.0, 0.0, 1.0, 1.0],
         color: [1.0; 4],
         clip: ALL,
@@ -108,7 +108,7 @@ fn the_grid_assigns_the_levels_of_every_pair_tested() {
 fn begin() -> DrawCmd {
     DrawCmd::BeginLayer {
         material: UiMaterial::Plain,
-        params: [[0.0; 4]; og_render::UI_MATERIAL_PARAMS],
+        params: [[0.0; 4]; og_draw::UI_MATERIAL_PARAMS],
         mask: None,
         expand: 4.0,
         rect: Rect::default(),
@@ -170,7 +170,7 @@ fn levelling_again_what_changed_matches_levelling_afresh() {
         DrawCmd::PushClip {
             geometry: UiGeometry::Rect {
                 radii: [0.0; 4],
-                corner: og_render::UiCorner::Round,
+                corner: og_draw::UiCorner::Round,
             },
             center: (300.0, 200.0),
             half: (200.0, 100.0),
@@ -254,7 +254,7 @@ fn splicing_a_scroll_matches_levelling_afresh() {
     };
     let row_image = |rect: Rect, slot: u32| DrawCmd::Image {
         rect,
-        texture: og_render::TextureHandle::from_slot(slot),
+        texture: og_draw::TextureHandle::from_slot(slot),
         uv: [0.0, 0.0, 1.0, 1.0],
         color: [1.0; 4],
         clip,
@@ -367,7 +367,7 @@ fn a_layer_is_one_command_of_its_parent_with_levels_of_its_own() {
 fn layers_and_cuts_emit_their_ranges_and_shapes() {
     let rounded = |r: f32| UiGeometry::Rect {
         radii: [r; 4],
-        corner: og_render::UiCorner::Round,
+        corner: og_draw::UiCorner::Round,
     };
     let cmds = vec![
         quad(Rect::new(0.0, 0.0, 100.0, 100.0)),
@@ -428,7 +428,7 @@ fn layers_and_cuts_emit_their_ranges_and_shapes() {
 /// layer and the levels see.
 #[test]
 fn a_turned_squashed_path_keeps_its_point_in_its_bounds() {
-    let mut path = og_render::UiPath::new();
+    let mut path = og_draw::UiPath::new();
     path.move_to(Vec2::new(-60.0, -21.0))
         .cubic_to(
             Vec2::new(-60.0, -60.0),

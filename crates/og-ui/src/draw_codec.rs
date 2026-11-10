@@ -7,7 +7,7 @@
 use crate::draw::DrawCmd;
 use crate::motion::codec::{R, W};
 use og_core::glam::Vec2;
-use og_render::{
+use og_draw::{
     TextureHandle, UiAlign, UiBackgroundSize, UiBlend, UiBuiltin, UiCap, UiCorner, UiEdge,
     UiFillRule, UiFilter, UiFilterComposite, UiFilterInput, UiFilterOp, UiFilterPrimitive, UiFit,
     UiGeometry, UiGradient, UiGradientKind, UiImage, UiJoin, UiLight, UiMask, UiMaterial,
@@ -571,7 +571,7 @@ fn rgeometry(r: &mut R) -> Option<UiGeometry> {
                 1 => UiCorner::Squircle(r.f32()?),
                 2 => UiCorner::Bevel,
                 3 => UiCorner::Notch,
-                4 => UiCorner::Css(og_render::UiCssCorners {
+                4 => UiCorner::Css(og_draw::UiCssCorners {
                     vertical: rf4(r)?,
                     shape: rf4(r)?,
                 }),
@@ -672,7 +672,7 @@ fn rgradient(r: &mut R) -> Option<UiGradient> {
     let from = rv2(r)?;
     let to = rv2(r)?;
     let n = r.u32()? as usize;
-    let mut stops = Vec::with_capacity(n.min(og_render::UI_GRADIENT_STOPS));
+    let mut stops = Vec::with_capacity(n.min(og_draw::UI_GRADIENT_STOPS));
     for _ in 0..n {
         stops.push(UiStop {
             offset: r.f32()?,
@@ -800,7 +800,7 @@ fn rfit(r: &mut R) -> Option<UiFit> {
             offset: rv2(r)?,
             scroll: rv2(r)?,
         },
-        6 | 8 => UiFit::Background(og_render::UiBackground {
+        6 | 8 => UiFit::Background(og_draw::UiBackground {
             size: match r.u8()? {
                 0 => UiBackgroundSize::Given([r.f32()?, r.f32()?].map(|v| (v >= 0.0).then_some(v))),
                 1 => UiBackgroundSize::Cover,
@@ -815,7 +815,7 @@ fn rfit(r: &mut R) -> Option<UiFit> {
             ],
             area: if tag == 8 { rf4(r)? } else { [0.0; 4] },
         }),
-        7 => UiFit::BorderImage(og_render::UiBorderImage {
+        7 => UiFit::BorderImage(og_draw::UiBorderImage {
             slice: rf4(r)?,
             width: rf4(r)?,
             repeat: [redge(r)?, redge(r)?],
@@ -905,7 +905,7 @@ fn rpaint(r: &mut R) -> Option<UiPaint> {
             })
         }
         3 => UiPaint::Layer(r.u32()?),
-        5 => UiPaint::GradientImage(Box::new(og_render::UiGradientImage {
+        5 => UiPaint::GradientImage(Box::new(og_draw::UiGradientImage {
             gradient: rgradient(r)?,
             size: rv2(r)?,
             fit: rfit(r)?,
@@ -955,7 +955,7 @@ fn mode(w: &mut W, m: &UiMode) {
         } => {
             // Tag 4 is the plain backdrop as it always was; 5 adds the
             // material.
-            let plain = *glass == og_render::UiGlass::default();
+            let plain = *glass == og_draw::UiGlass::default();
             w.u8(if plain { 4 } else { 5 });
             w.f32(*blur);
             w.f32(*saturation);
@@ -999,22 +999,22 @@ fn rmode(r: &mut R) -> Option<UiMode> {
             blur: r.f32()?,
             saturation: r.f32()?,
             brightness: r.f32()?,
-            glass: og_render::UiGlass::default(),
+            glass: og_draw::UiGlass::default(),
         },
         5 => {
             let (blur, saturation, brightness) = (r.f32()?, r.f32()?, r.f32()?);
             let edge = r.f32()?;
             let edge_color = rf4(r)?;
-            let mut shadows = [og_render::UiGlassShadow::default(); 2];
+            let mut shadows = [og_draw::UiGlassShadow::default(); 2];
             for sh in &mut shadows {
-                *sh = og_render::UiGlassShadow {
+                *sh = og_draw::UiGlassShadow {
                     offset: rv2(r)?,
                     blur: r.f32()?,
                     spread: r.f32()?,
                     color: rf4(r)?,
                 };
             }
-            let mut glass = og_render::UiGlass {
+            let mut glass = og_draw::UiGlass {
                 edge,
                 edge_color,
                 shadows,
@@ -1121,7 +1121,7 @@ fn reffects(r: &mut R) -> Option<UiTextEffects> {
 /// backdrop or lights its top edge, flag 4 and those two values, then with
 /// a colour matrix flag 8 and its rows and opacity: a save from before
 /// them reads unchanged.
-pub(crate) fn glass_flags(w: &mut W, g: &og_render::UiGlass) {
+pub(crate) fn glass_flags(w: &mut W, g: &og_draw::UiGlass) {
     let lit = g.backdrop_max != 0.0 || g.edge_top != 0.0;
     w.u8(u8::from(g.solid)
         | u8::from(g.srgb_mix) << 1
@@ -1139,7 +1139,7 @@ pub(crate) fn glass_flags(w: &mut W, g: &og_render::UiGlass) {
     }
 }
 
-pub(crate) fn rglass_flags(r: &mut R, g: &mut og_render::UiGlass) -> Option<()> {
+pub(crate) fn rglass_flags(r: &mut R, g: &mut og_draw::UiGlass) -> Option<()> {
     let flags = r.u8()?;
     g.solid = flags & 1 != 0;
     g.srgb_mix = flags & 2 != 0;
@@ -1148,7 +1148,7 @@ pub(crate) fn rglass_flags(r: &mut R, g: &mut og_render::UiGlass) -> Option<()> 
         g.edge_top = r.f32()?;
     }
     if flags & 8 != 0 {
-        g.matrix = Some(og_render::UiColorMatrix {
+        g.matrix = Some(og_draw::UiColorMatrix {
             rows: [rf4(r)?, rf4(r)?, rf4(r)?],
             opacity: r.f32()?,
         });
@@ -1329,7 +1329,7 @@ impl R<'_> {
             4 => DrawCmd::PopClip,
             5 => {
                 let material = rmaterial(r)?;
-                let mut params = [[0.0; 4]; og_render::UI_MATERIAL_PARAMS];
+                let mut params = [[0.0; 4]; og_draw::UI_MATERIAL_PARAMS];
                 for p in &mut params {
                     *p = rf4(r)?;
                 }
@@ -1387,7 +1387,7 @@ mod tests {
     use crate::layout::Rect;
     use crate::motion::codec::{R, W};
     use og_core::glam::Vec2;
-    use og_render::{UiGlass, UiGlassShadow, UiMode, UiShape};
+    use og_draw::{UiGlass, UiGlassShadow, UiMode, UiShape};
 
     /// A leaving element's glass keeps its material through a saved state
     /// (the primitive and a UI shape's backdrop), and a plain one is the
@@ -1430,7 +1430,7 @@ mod tests {
             brightness: 1.0,
             glass: UiGlass {
                 solid: true,
-                matrix: Some(og_render::UiColorMatrix {
+                matrix: Some(og_draw::UiColorMatrix {
                     rows: [
                         [0.5, 0.0, 0.0, 0.25],
                         [0.0, 1.5, 0.0, 0.0],

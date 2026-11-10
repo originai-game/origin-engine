@@ -43,7 +43,7 @@ pub enum Effect {
     LayerBlur { radius: f32 },
     /// CSS `backdrop-filter`: what is really under the element (the
     /// screen, or the group it is drawn in) through these stages in order,
-    /// laid in its shape ([`og_render::UiLayer::backdrop`]).
+    /// laid in its shape ([`og_draw::UiLayer::backdrop`]).
     BackdropFilter(std::sync::Arc<Vec<BackdropStage>>),
     /// What is under the element blurred, its saturation and brightness
     /// scaled and tinted: glass, with its material ([`GlassParts`]).
@@ -62,7 +62,7 @@ pub enum BackdropStage {
     /// A Gaussian of this standard deviation, CSS px.
     Blur(f32),
     /// A run of colour functions (over sRGB-encoded straight colour).
-    Matrix(og_render::UiColorMatrix),
+    Matrix(og_draw::UiColorMatrix),
     /// `drop-shadow()`: its offset, its blur (twice the deviation) and colour.
     DropShadow {
         offset: [f32; 2],
@@ -81,8 +81,8 @@ pub(super) fn backdrop_graph(
     stages: &[BackdropStage],
     size: [f32; 2],
     theme: &Theme,
-) -> (Rect, Vec<og_render::UiFilterPrimitive>, Vec<u32>) {
-    use og_render::{UiFilterInput as I, UiFilterOp as Op, UiFilterPrimitive};
+) -> (Rect, Vec<og_draw::UiFilterPrimitive>, Vec<u32>) {
+    use og_draw::{UiFilterInput as I, UiFilterOp as Op, UiFilterPrimitive};
     let mut prims: Vec<UiFilterPrimitive> = Vec::new();
     let mut reach = 0.0f32;
     let mut regions: Vec<[f32; 4]> = Vec::new();
@@ -148,7 +148,7 @@ pub(super) fn backdrop_graph(
                 let shadow = push(
                     &mut prims,
                     Op::Composite {
-                        op: og_render::UiFilterComposite::In,
+                        op: og_draw::UiFilterComposite::In,
                         k: [0.0; 4],
                     },
                     [fill, moved],
@@ -201,7 +201,7 @@ pub(super) fn backdrop_graph(
 }
 
 /// A backdrop's material beyond its blur and tint (og-render's
-/// [`og_render::UiGlass`]); the default is none of it, the plain frosted
+/// [`og_draw::UiGlass`]); the default is none of it, the plain frosted
 /// backdrop.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct GlassParts {
@@ -209,9 +209,9 @@ pub struct GlassParts {
     /// tint (unless the effect gives one), 0.5 px hairline and CSS mixing,
     /// in the theme's scheme; under reduced transparency or increased
     /// contrast the solid fallback. `None`: the effect's own values.
-    pub weight: Option<og_render::UiGlassWeight>,
+    pub weight: Option<og_draw::UiGlassWeight>,
     /// The soft shadow outside it (`None`: none).
-    pub elevation: Option<og_render::UiElevation>,
+    pub elevation: Option<og_draw::UiElevation>,
     /// A hairline inside the edge, CSS px (0: none, or the weight's).
     pub edge: f32,
     /// The hairline's colour (`None`: the weight's, or none).
@@ -225,8 +225,8 @@ pub struct GlassParts {
     /// CSS supplies the filter; the weight supplies only the material.
     pub own_filter: bool,
     /// A colour matrix over the blurred backdrop (CSS's `backdrop-filter`
-    /// colour functions, [`og_render::UiGlass::matrix`]).
-    pub matrix: Option<og_render::UiColorMatrix>,
+    /// colour functions, [`og_draw::UiGlass::matrix`]).
+    pub matrix: Option<og_draw::UiColorMatrix>,
 }
 
 impl GlassParts {
@@ -240,26 +240,26 @@ impl GlassParts {
         tint: [f32; 4],
         explicit_tint: bool,
         theme: &Theme,
-    ) -> (og_render::UiMode, [f32; 4]) {
+    ) -> (og_draw::UiMode, [f32; 4]) {
         let filter = (blur, saturation, brightness);
         let dark = theme.scheme == crate::style::Scheme::Dark;
         let fallback = if theme.reduced_transparency {
-            og_render::UiGlassFallback::ReducedTransparency
+            og_draw::UiGlassFallback::ReducedTransparency
         } else if theme.contrast == crate::style::Contrast::High {
-            og_render::UiGlassFallback::IncreasedContrast
+            og_draw::UiGlassFallback::IncreasedContrast
         } else {
-            og_render::UiGlassFallback::None
+            og_draw::UiGlassFallback::None
         };
         let (mut glass, blur, saturation, brightness, tint) = match self.weight {
             Some(weight) => {
-                let style = og_render::UiGlassStyle {
+                let style = og_draw::UiGlassStyle {
                     weight,
                     elevation: self.elevation.unwrap_or_default(),
                     dark,
                     fallback,
                 };
                 let (mode, preset) = style.backdrop();
-                let og_render::UiMode::Backdrop {
+                let og_draw::UiMode::Backdrop {
                     blur,
                     saturation,
                     brightness,
@@ -268,7 +268,7 @@ impl GlassParts {
                 else {
                     unreachable!("a glass style is a backdrop")
                 };
-                let solid = fallback != og_render::UiGlassFallback::None;
+                let solid = fallback != og_draw::UiGlassFallback::None;
                 let tint = if explicit_tint && !solid {
                     tint
                 } else {
@@ -277,14 +277,14 @@ impl GlassParts {
                 (glass, blur, saturation, brightness, tint)
             }
             None => {
-                let mut glass = og_render::UiGlass::default();
+                let mut glass = og_draw::UiGlass::default();
                 if let Some(e) = self.elevation {
-                    let style = og_render::UiGlassStyle {
+                    let style = og_draw::UiGlassStyle {
                         elevation: e,
                         dark,
                         ..Default::default()
                     };
-                    if let og_render::UiMode::Backdrop { glass: g, .. } = style.backdrop().0 {
+                    if let og_draw::UiMode::Backdrop { glass: g, .. } = style.backdrop().0 {
                         glass.shadows = g.shadows;
                     }
                 }
@@ -307,7 +307,7 @@ impl GlassParts {
         } else {
             (blur, saturation, brightness)
         };
-        let mode = og_render::UiMode::Backdrop {
+        let mode = og_draw::UiMode::Backdrop {
             blur,
             saturation,
             brightness,

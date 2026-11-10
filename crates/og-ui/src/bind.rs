@@ -112,7 +112,7 @@ pub trait Env {
         }
     }
     /// The texture of an asset handle a document's `texture` binds (`og.load.texture`).
-    fn texture(&self, handle: f64) -> Option<og_render::TextureHandle> {
+    fn texture(&self, handle: f64) -> Option<og_draw::TextureHandle> {
         let _ = handle;
         None
     }
@@ -136,7 +136,7 @@ pub struct MediaState {
     /// A player without loop reached its end.
     pub ended: bool,
     /// The frame it shows (a video's).
-    pub texture: Option<og_render::TextureHandle>,
+    pub texture: Option<og_draw::TextureHandle>,
 }
 
 /// What a `<video>` or `<audio>` asks of its player for the next tick:

@@ -22,7 +22,7 @@ pub(crate) struct RenderFields {
     response: crate::Response,
     amounts: (f32, f32),
     press: f32,
-    texture: Option<og_render::TextureHandle>,
+    texture: Option<og_draw::TextureHandle>,
     art: Option<String>,
     /// Hidden by something other than the document's `display`.
     hidden: bool,
@@ -36,7 +36,7 @@ impl RenderFields {
         kind: &'static str,
         response: crate::Response,
         document_props: Props,
-        texture: Option<og_render::TextureHandle>,
+        texture: Option<og_draw::TextureHandle>,
     ) -> Self {
         let node = &ui.nodes[index];
         Self {
@@ -362,7 +362,7 @@ impl Ui {
         c.mask_border = border(&p::MASK_BORDER_PROPS, true);
         warn.extend(errors);
         // `url(#id)`: an inline SVG `<filter>` of the document.
-        let fe_image = |href: &str| -> Result<(og_render::TextureHandle, [f32; 4]), String> {
+        let fe_image = |href: &str| -> Result<(og_draw::TextureHandle, [f32; 4]), String> {
             let path = doc.map_or_else(
                 || href.trim_start_matches('/').to_owned(),
                 |doc| crate::doc::at_rules::resolve(&doc.source, href),
@@ -477,11 +477,11 @@ impl Ui {
     pub(super) fn object_fit(&mut self, i: usize, r: &Resolved) {
         let (at, nearest) = r.object_css();
         let fit = match r.str("fit") {
-            Some("contain") => og_render::UiFit::Contain,
-            Some("cover") => og_render::UiFit::Cover,
-            Some("none") => og_render::UiFit::None,
-            Some("scaleDown") => og_render::UiFit::ScaleDown,
-            _ => og_render::UiFit::Fill,
+            Some("contain") => og_draw::UiFit::Contain,
+            Some("cover") => og_draw::UiFit::Cover,
+            Some("none") => og_draw::UiFit::None,
+            Some("scaleDown") => og_draw::UiFit::ScaleDown,
+            _ => og_draw::UiFit::Fill,
         };
         if let crate::layout::Content::Image { object, .. } = &mut self.nodes[i].content {
             *object = crate::layout::ObjectFit {
@@ -1322,7 +1322,7 @@ mod tests {
         for ui in [&mut patched, &mut direct] {
             ui.set_fonts(crate::Fonts {
                 body: crate::UiFont {
-                    handle: Some(og_render::FontHandle::from_bits(1)),
+                    handle: Some(og_draw::FontHandle::from_bits(1)),
                     metrics: crate::FontMetrics::fixed(0.55),
                 },
                 ..Default::default()
@@ -1430,8 +1430,8 @@ mod tests {
         let parsed = crate::doc::UiDocument::parse("card.svelte", doc).unwrap();
         assert_eq!(parsed.material_assets(), ["fx/burn.ogt"]);
         let mut ui = Ui::new(UiDesc::default());
-        let handle = og_render::UiMaterialHandle(7);
-        let mut defaults = [[0.0; 4]; og_render::UI_MATERIAL_PARAMS];
+        let handle = og_draw::UiMaterialHandle(7);
+        let mut defaults = [[0.0; 4]; og_draw::UI_MATERIAL_PARAMS];
         defaults[1] = [1.0, 2.0, 3.0, 4.0];
         ui.define_material("fx/burn.ogt", handle, defaults);
         ui.define_document(parsed);
@@ -1463,7 +1463,7 @@ mod tests {
                 .iter()
                 .find_map(|it| match &it.cmd {
                     crate::DrawCmd::BeginLayer {
-                        material: og_render::UiMaterial::Custom(h),
+                        material: og_draw::UiMaterial::Custom(h),
                         params,
                         ..
                     } if *h == handle => Some(*params),
@@ -1489,7 +1489,7 @@ mod tests {
         assert!(
             ui.world.kept_effects.values().any(|(_, m)| matches!(
                 m,
-                Some(crate::world::MetaDesc { kind: crate::world::MetaKind::Material { material: og_render::UiMaterial::Custom(h), params }, .. }) if *h == handle && params[0][0] == 0.25
+                Some(crate::world::MetaDesc { kind: crate::world::MetaKind::Material { material: og_draw::UiMaterial::Custom(h), params }, .. }) if *h == handle && params[0][0] == 0.25
             )),
             "og-overlay effect=\"material\" takes the asset"
         );

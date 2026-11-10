@@ -102,7 +102,7 @@ pub(crate) enum BgImage {
     Transparent,
     Gradient(CssGradient),
     Texture {
-        texture: og_render::TextureHandle,
+        texture: og_draw::TextureHandle,
         uv: [f32; 4],
         density: f32,
         /// Sampled at the nearest texel (CSS `image-rendering`).
@@ -117,7 +117,7 @@ pub(crate) struct BgLayer {
     pub image: BgImage,
     pub size: BgSize,
     pub position: [BgPos; 2],
-    pub repeat: [og_render::UiRepeat; 2],
+    pub repeat: [og_draw::UiRepeat; 2],
     pub origin: BoxEdge,
     pub clip: BoxEdge,
     pub attach: Attach,
@@ -142,7 +142,7 @@ impl BgLayer {
     fn paint(&self, area: [f32; 2]) -> crate::paint::Paint {
         use crate::paint::{ImagePaint, Paint};
         let [aw, ah] = area;
-        let bg = |size| og_render::UiBackground {
+        let bg = |size| og_draw::UiBackground {
             size,
             align: og_core::glam::Vec2::new(self.position[0].0, self.position[1].0),
             offset: og_core::glam::Vec2::new(self.position[0].1, self.position[1].1),
@@ -162,7 +162,7 @@ impl BgLayer {
                 Paint::GradientImage {
                     gradient: g.resolve(w, h),
                     size: [w, h],
-                    fit: og_render::UiFit::Background(bg(og_render::UiBackgroundSize::Given([
+                    fit: og_draw::UiFit::Background(bg(og_draw::UiBackgroundSize::Given([
                         Some(w),
                         Some(h),
                     ]))),
@@ -179,13 +179,12 @@ impl BgLayer {
                 size: [0.0; 2],
                 density: *density,
                 tint: ColorRef::Literal(Srgba::WHITE),
-                fit: og_render::UiFit::Background(bg(match self.size {
-                    BgSize::Cover => og_render::UiBackgroundSize::Cover,
-                    BgSize::Contain => og_render::UiBackgroundSize::Contain,
-                    BgSize::Given([x, y]) => og_render::UiBackgroundSize::Given([
-                        x.map(|p| p.at(aw)),
-                        y.map(|p| p.at(ah)),
-                    ]),
+                fit: og_draw::UiFit::Background(bg(match self.size {
+                    BgSize::Cover => og_draw::UiBackgroundSize::Cover,
+                    BgSize::Contain => og_draw::UiBackgroundSize::Contain,
+                    BgSize::Given([x, y]) => {
+                        og_draw::UiBackgroundSize::Given([x.map(|p| p.at(aw)), y.map(|p| p.at(ah))])
+                    }
                 })),
                 focal: [0.5; 2],
                 offset: [0.0; 2],
@@ -323,7 +322,7 @@ impl LayerFrame {
             })
             .collect();
         let lt = |v: &[f32]| [v[3], v[0], v[1], v[2]];
-        let fit = og_render::UiFit::BorderImage(og_render::UiBorderImage {
+        let fit = og_draw::UiFit::BorderImage(og_draw::UiBorderImage {
             slice: lt(&slice),
             width: lt(&width),
             repeat: s.repeat,
@@ -721,7 +720,7 @@ mod tests {
     /// a layer that is not the last.
     #[test]
     fn background_layers_place_as_css_does() {
-        use og_render::UiRepeat as R;
+        use og_draw::UiRepeat as R;
         let (layers, colour) = background(
             "url(coin) right 10px bottom 20% / 32px auto no-repeat, url(\"gem\") top left repeat-x, linear-gradient(red, blue), #123",
         )
@@ -776,7 +775,7 @@ mod tests {
     /// box (a background's), or `local` read on a mask.
     #[test]
     fn mask_and_border_image_layers_read_as_css_does() {
-        use og_render::UiEdge as E;
+        use og_draw::UiEdge as E;
         let m = masks(
             "url(a) content-box subtract luminance, linear-gradient(red, blue) padding-box no-clip",
         )

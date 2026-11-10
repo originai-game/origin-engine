@@ -520,7 +520,7 @@ impl Style {
 pub struct GradientDef {
     pub radial: bool,
     pub user_space: bool,
-    pub spread: og_render::UiSpread,
+    pub spread: og_draw::UiSpread,
     /// x1 y1 x2 y2, or cx cy r (fx, fy unused), as written (lengths).
     pub coords: Vec<(String, String)>,
     /// Offsets and sRGB colours (straight alpha, `stop-opacity` applied).
@@ -536,7 +536,7 @@ pub struct PlacedGradient {
     pub from: Vec2,
     pub to: Vec2,
     pub stops: Vec<(f32, [f32; 4])>,
-    pub spread: og_render::UiSpread,
+    pub spread: og_draw::UiSpread,
 }
 
 /// Every gradient of a file's tree, by id.
@@ -633,11 +633,11 @@ impl GradientDef {
             }
             out.push((offset, c));
         }
-        if out.len() > og_render::UI_GRADIENT_STOPS {
+        if out.len() > og_draw::UI_GRADIENT_STOPS {
             return Err(format!(
                 "gradient \"{id}\" has {} stops (at most {})",
                 out.len(),
-                og_render::UI_GRADIENT_STOPS
+                og_draw::UI_GRADIENT_STOPS
             ));
         }
         let transform = match get("gradientTransform") {
@@ -656,9 +656,9 @@ impl GradientDef {
             radial,
             user_space: get("gradientUnits") == Some("userSpaceOnUse"),
             spread: match get("spreadMethod") {
-                Some("repeat") => og_render::UiSpread::Repeat,
-                Some("reflect") => og_render::UiSpread::Reflect,
-                _ => og_render::UiSpread::Pad,
+                Some("repeat") => og_draw::UiSpread::Repeat,
+                Some("reflect") => og_draw::UiSpread::Reflect,
+                _ => og_draw::UiSpread::Pad,
             },
             coords,
             stops: out,

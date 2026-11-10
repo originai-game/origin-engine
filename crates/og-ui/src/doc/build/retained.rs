@@ -1860,12 +1860,12 @@ mod tests {
             for item in &ui.frame().items {
                 match &item.cmd {
                     crate::DrawCmd::BeginLayer {
-                        material: og_render::UiMaterial::Builtin(og_render::UiBuiltin::Blur),
+                        material: og_draw::UiMaterial::Builtin(og_draw::UiBuiltin::Blur),
                         params,
                         ..
                     } => blur = Some(params[0][0]),
                     crate::DrawCmd::Shape { shape, .. } => {
-                        if let og_render::UiMode::Stroke(s) = shape.mode {
+                        if let og_draw::UiMode::Stroke(s) = shape.mode {
                             dash = Some((s.dash, s.dash_offset));
                         }
                     }

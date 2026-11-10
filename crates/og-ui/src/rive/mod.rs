@@ -3,7 +3,7 @@
 //! its objects as [`Node`]s (transforms, paths and their vertices, paints
 //! and their colours, nested artboards) and its animations as keyframe
 //! [`Track`]s on the nodes' [`Values`]. A [`Player`] advances one on the
-//! tick and draws it as UI shapes ([`og_render::UiGeometry::Path`]): it is
+//! tick and draws it as UI shapes ([`og_draw::UiGeometry::Path`]): it is
 //! deterministic (a fixed step, no clock) and its objects are named
 //! elements for dump_ui, describe and pick ([`Player::elements`]).
 //!
@@ -20,7 +20,7 @@ pub use codec::{check, decode, encode};
 pub use player::{Drawn, Player, RiveElement, TextDraw};
 
 use og_core::glam::Vec2;
-use og_render::{UiCap, UiFillRule};
+use og_draw::{UiCap, UiFillRule};
 
 /// An artboard: its frame, its objects and its animations.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -87,16 +87,13 @@ pub struct Image {
     pub size: Vec2,
     /// Its texture once loaded ([`Artboard::bind_images`]); not in the
     /// blob. An unbound image draws nothing.
-    pub texture: Option<og_render::TextureHandle>,
+    pub texture: Option<og_draw::TextureHandle>,
 }
 
 impl Artboard {
     /// Gives every image of this artboard and the ones it nests its
     /// texture, by id (the loader's: `None` leaves it undrawn).
-    pub fn bind_images(
-        &mut self,
-        texture: &mut dyn FnMut(&str) -> Option<og_render::TextureHandle>,
-    ) {
+    pub fn bind_images(&mut self, texture: &mut dyn FnMut(&str) -> Option<og_draw::TextureHandle>) {
         for i in &mut self.images {
             i.texture = texture(&i.id);
         }
@@ -241,7 +238,7 @@ pub enum Kind {
         paths: Vec<u32>,
         paints: Vec<u32>,
         hidden: bool,
-        blend: og_render::UiBlend,
+        blend: og_draw::UiBlend,
     },
     /// An outline in the shape it belongs to.
     Path { outline: Outline, closed: bool },

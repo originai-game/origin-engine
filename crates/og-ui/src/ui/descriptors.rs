@@ -936,7 +936,7 @@ impl Fonts {
 
     /// The face drawn as `handle`: a role's, a companion, the locale's or
     /// a fallback.
-    pub fn face(&self, handle: og_render::FontHandle) -> Option<&UiFont> {
+    pub fn face(&self, handle: og_draw::FontHandle) -> Option<&UiFont> {
         [
             Some(&self.body),
             self.display.as_ref(),
@@ -1047,7 +1047,7 @@ pub struct IconAtlas {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum IconCell {
     /// An icon set's distance-field glyph.
-    Glyph(og_render::FontHandle, char),
+    Glyph(og_draw::FontHandle, char),
     /// A cell of a texture grid, `[u0, v0, u1, v1]`.
     Image(TextureHandle, [f32; 4]),
 }
@@ -1084,7 +1084,7 @@ impl IconAtlas {
     }
 
     /// An icon set's glyph for icon `index`: its font and character.
-    pub fn glyph(&self, index: u32) -> Option<(og_render::FontHandle, char)> {
+    pub fn glyph(&self, index: u32) -> Option<(og_draw::FontHandle, char)> {
         let f = self.font.as_ref()?.handle?;
         Some((f, char::from_u32(ICON_PUA + index)?))
     }
@@ -1117,7 +1117,7 @@ pub struct UiFrame {
     /// atlas and in the file it renders from at run time: per face, in the
     /// order first drawn, each (face, character) once in the UI's life. The
     /// host names the face and warns ([`Fonts::face`] has its metrics).
-    pub missing_glyphs: Vec<(og_render::FontHandle, Vec<char>)>,
+    pub missing_glyphs: Vec<(og_draw::FontHandle, Vec<char>)>,
     /// The path of the control each pad's focus is on (pad 0: the shared
     /// focus), or empty.
     pub focus_paths: [String; 4],
@@ -1209,7 +1209,7 @@ impl UiFrame {
 
     /// Appends the frame's sprites, text and clip rectangles to an overlay
     /// (`RenderScene::overlay`), in CSS pixels: make it with the viewport's
-    /// size and `dpr` (`og_render::Overlay::new(vp.width, vp.height, vp.dpr)`).
+    /// size and `dpr` (`og_draw::Overlay::new(vp.width, vp.height, vp.dpr)`).
     pub fn emit(&self, desc: &EmitDesc, overlay: &mut Overlay) {
         emit(&self.items, desc, overlay, &|_| None, &self.grounds);
     }

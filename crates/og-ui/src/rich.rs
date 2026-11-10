@@ -1080,7 +1080,7 @@ impl Ui {
                          dy: f32,
                          a: f32,
                          text: String,
-                         placements: Vec<og_render::GlyphPlacement>,
+                         placements: Vec<og_draw::GlyphPlacement>,
                          w: f32| DrawCmd::Text {
                 x: snap(x),
                 baseline: snap(baseline + dy),
@@ -1231,11 +1231,11 @@ impl Ui {
                     let DrawCmd::Text { bounds, .. } = c else {
                         continue;
                     };
-                    let fx = og_render::UiTextEffects {
-                        outline: s.outline.map(|(w, oc)| og_render::UiTextOutline {
+                    let fx = og_draw::UiTextEffects {
+                        outline: s.outline.map(|(w, oc)| og_draw::UiTextOutline {
                             width: w * n.scale,
                             color: oc.fade(alpha).linear(),
-                            align: og_render::UiAlign::Outside,
+                            align: og_draw::UiAlign::Outside,
                         }),
                         fill_box: [bounds.x, bounds.y, bounds.width, bounds.height],
                         transform: if s.synth.italic {
@@ -1703,7 +1703,7 @@ impl Ui {
                         } else {
                             DrawCmd::StyledText {
                                 text: Box::new(cmd),
-                                effects: Box::new(og_render::UiTextEffects {
+                                effects: Box::new(og_draw::UiTextEffects {
                                     transform,
                                     ..Default::default()
                                 }),
@@ -1714,10 +1714,10 @@ impl Ui {
             }
             // An outline from the distance field, as across.
             if let Some((w, oc)) = s.outline {
-                let outline = Some(og_render::UiTextOutline {
+                let outline = Some(og_draw::UiTextOutline {
                     width: w * n.scale,
                     color: oc.fade(alpha).linear(),
-                    align: og_render::UiAlign::Outside,
+                    align: og_draw::UiAlign::Outside,
                 });
                 for c in &mut cmds[first..] {
                     match c {
@@ -1726,7 +1726,7 @@ impl Ui {
                             let text = std::mem::replace(c, DrawCmd::PopClip);
                             *c = DrawCmd::StyledText {
                                 text: Box::new(text),
-                                effects: Box::new(og_render::UiTextEffects {
+                                effects: Box::new(og_draw::UiTextEffects {
                                     outline,
                                     transform: [1.0, 0.0, 0.0, 1.0],
                                     ..Default::default()
@@ -1772,10 +1772,10 @@ impl Ui {
                     }
                 }
                 let ink = sel.color.unwrap_or(color);
-                let shadows: Option<Vec<og_render::UiTextShadow>> =
+                let shadows: Option<Vec<og_draw::UiTextShadow>> =
                     sel.shadows.as_ref().map(|list| {
                         list.iter()
-                            .map(|(o, blur, c)| og_render::UiTextShadow {
+                            .map(|(o, blur, c)| og_draw::UiTextShadow {
                                 offset: og_core::glam::Vec2::new(o[0] * n.scale, o[1] * n.scale),
                                 blur: blur * n.scale,
                                 color: c.fade(alpha * s.color.alpha).linear(),
@@ -1810,7 +1810,7 @@ impl Ui {
                                 match &shadows {
                                     Some(sh) => DrawCmd::StyledText {
                                         text: Box::new(c),
-                                        effects: Box::new(og_render::UiTextEffects {
+                                        effects: Box::new(og_draw::UiTextEffects {
                                             shadows: sh.clone(),
                                             transform: [1.0, 0.0, 0.0, 1.0],
                                             ..Default::default()

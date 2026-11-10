@@ -14,8 +14,8 @@
 //! drawn with its own font.
 
 use crate::shape::{Features, FontFile};
+use og_draw::{FontHandle, GlyphKey, GlyphPlacement, MsdfFont};
 use og_i18n::Direction;
-use og_render::{FontHandle, GlyphKey, GlyphPlacement, MsdfFont};
 use std::ops::Range;
 use std::sync::Arc;
 

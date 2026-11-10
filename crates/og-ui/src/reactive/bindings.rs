@@ -425,7 +425,7 @@ impl Env for Tracked<'_, '_> {
         self.reads.borrow_mut().insert(Dependency::Locale);
         self.source.host.translate(key)
     }
-    fn texture(&self, handle: f64) -> Option<og_render::TextureHandle> {
+    fn texture(&self, handle: f64) -> Option<og_draw::TextureHandle> {
         self.source.host.texture(handle)
     }
 }

@@ -144,8 +144,7 @@ impl Outside {
             }
             let mut at = Vec2::from(contour[0]);
             for c in contour[1..].as_chunks::<3>().0 {
-                let line =
-                    og_render::flatten_cubic(at, c[0].into(), c[1].into(), c[2].into(), 0.01);
+                let line = og_draw::flatten_cubic(at, c[0].into(), c[1].into(), c[2].into(), 0.01);
                 edges.extend(line.windows(2).map(|p| [map(p[0]), map(p[1])]));
                 at = c[2].into();
             }

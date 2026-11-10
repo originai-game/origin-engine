@@ -324,9 +324,9 @@ fn clip_to(at: &Rect, axes: [bool; 2]) -> Option<DrawCmd> {
     }
     let half = |clips: bool, len: f32| if clips { len / 2.0 } else { 1e9 };
     Some(DrawCmd::PushClip {
-        geometry: og_render::UiGeometry::Rect {
+        geometry: og_draw::UiGeometry::Rect {
             radii: [0.0; 4],
-            corner: og_render::UiCorner::Round,
+            corner: og_draw::UiCorner::Round,
         },
         center: (at.x + at.width / 2.0, at.y + at.height / 2.0),
         half: (half(axes[0], at.width), half(axes[1], at.height)),
@@ -335,8 +335,8 @@ fn clip_to(at: &Rect, axes: [bool; 2]) -> Option<DrawCmd> {
 
 fn begin_layer() -> DrawCmd {
     DrawCmd::BeginLayer {
-        material: og_render::UiMaterial::Plain,
-        params: [[0.0; 4]; og_render::UI_MATERIAL_PARAMS],
+        material: og_draw::UiMaterial::Plain,
+        params: [[0.0; 4]; og_draw::UI_MATERIAL_PARAMS],
         mask: None,
         expand: 0.0,
         rect: Rect::default(),
@@ -345,7 +345,7 @@ fn begin_layer() -> DrawCmd {
     }
 }
 
-fn end_layer(rect: Rect, opacity: f32, blend: og_render::UiBlend) -> DrawCmd {
+fn end_layer(rect: Rect, opacity: f32, blend: og_draw::UiBlend) -> DrawCmd {
     DrawCmd::EndLayer {
         geometry: None,
         rect,
@@ -493,9 +493,9 @@ fn draw(
             .mul(&transform(&row, &to))
             .mul(&Affine::rect_to_rect(&from, &to));
         let blend = if both && list.iter().any(|a| a.name == FADE_IN || a.name == FADE_OUT) {
-            og_render::UiBlend::Add
+            og_draw::UiBlend::Add
         } else {
-            og_render::UiBlend::Normal
+            og_draw::UiBlend::Normal
         };
         tail.push((begin_layer(), Affine::IDENTITY));
         tail.extend(cmds.iter().map(|(c, m)| (c.clone(), map.mul(m))));
@@ -506,7 +506,7 @@ fn draw(
     }
     let opacity = if nested {
         tail.push((
-            end_layer(*at, p[7].clamp(0.0, 1.0), og_render::UiBlend::Normal),
+            end_layer(*at, p[7].clamp(0.0, 1.0), og_draw::UiBlend::Normal),
             Affine::IDENTITY,
         ));
         // The children: the group's padding box, its own animations'
@@ -532,7 +532,7 @@ fn draw(
         }
         if faded {
             tail.push((
-                end_layer(pad, c[7].max(0.0), og_render::UiBlend::Normal),
+                end_layer(pad, c[7].max(0.0), og_draw::UiBlend::Normal),
                 Affine::IDENTITY,
             ));
         }
@@ -544,7 +544,7 @@ fn draw(
         tail.push((DrawCmd::PopClip, Affine::IDENTITY));
     }
     tail.push((
-        end_layer(*at, opacity.clamp(0.0, 1.0), og_render::UiBlend::Normal),
+        end_layer(*at, opacity.clamp(0.0, 1.0), og_draw::UiBlend::Normal),
         Affine::IDENTITY,
     ));
 }

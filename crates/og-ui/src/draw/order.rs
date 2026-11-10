@@ -2,7 +2,7 @@ use super::{Batch, DrawCmd, DrawItem, Ground, LayerRole, mapped_bounds, union, z
 use crate::element::Affine;
 use crate::layout::Rect;
 use crate::world::WorldCmd;
-use og_render::UiBlend;
+use og_draw::UiBlend;
 
 /// One command of a level space, or a layer: its start and end in the
 /// space, its own items between.

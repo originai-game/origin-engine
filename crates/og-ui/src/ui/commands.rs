@@ -1362,7 +1362,7 @@ fn glitch_layer(
     let vary = 0.8 + 0.4 * ((x >> 40) as f32 / (1u64 << 24) as f32);
     let slice = (height / 6.0 * vary).clamp(4.0, 48.0);
     let split = 10.0 * g.min(1.5);
-    let mut params = [[0.0; 4]; og_render::UI_MATERIAL_PARAMS];
+    let mut params = [[0.0; 4]; og_draw::UI_MATERIAL_PARAMS];
     params[0] = [
         g.clamp(0.0, 1.0),
         slice,
@@ -1370,7 +1370,7 @@ fn glitch_layer(
         ticks_per_second as f32 / 2.0,
     ];
     let begin = DrawCmd::BeginLayer {
-        material: og_render::UiMaterial::Builtin(og_render::UiBuiltin::Glitch),
+        material: og_draw::UiMaterial::Builtin(og_draw::UiBuiltin::Glitch),
         params,
         mask: None,
         expand: split + 2.0,
@@ -1382,7 +1382,7 @@ fn glitch_layer(
         geometry: None,
         rect,
         opacity: 1.0,
-        blend: og_render::UiBlend::Normal,
+        blend: og_draw::UiBlend::Normal,
         clip,
         ground: None,
     };
@@ -1394,10 +1394,10 @@ fn glitch_layer(
 /// the material's radius is twice it), reaching past the box by the
 /// Gaussian's tail.
 fn blur_layer(sigma: f32, rect: Rect, clip: Rect) -> (DrawCmd, DrawCmd) {
-    let mut params = [[0.0; 4]; og_render::UI_MATERIAL_PARAMS];
+    let mut params = [[0.0; 4]; og_draw::UI_MATERIAL_PARAMS];
     params[0][0] = 2.0 * sigma;
     let begin = DrawCmd::BeginLayer {
-        material: og_render::UiMaterial::Builtin(og_render::UiBuiltin::Blur),
+        material: og_draw::UiMaterial::Builtin(og_draw::UiBuiltin::Blur),
         params,
         mask: None,
         expand: 3.0 * sigma,
@@ -1409,7 +1409,7 @@ fn blur_layer(sigma: f32, rect: Rect, clip: Rect) -> (DrawCmd, DrawCmd) {
         geometry: None,
         rect,
         opacity: 1.0,
-        blend: og_render::UiBlend::Normal,
+        blend: og_draw::UiBlend::Normal,
         clip,
         ground: None,
     };
@@ -1427,7 +1427,7 @@ fn undraw(cmds: &mut [DrawCmd], hidden: f32) {
         let DrawCmd::Shape { shape, .. } = c else {
             continue;
         };
-        let og_render::UiMode::Stroke(stroke) = &mut shape.mode else {
+        let og_draw::UiMode::Stroke(stroke) = &mut shape.mode else {
             continue;
         };
         let length = outline_length(&shape.geometry, shape.half);
@@ -1440,8 +1440,8 @@ fn undraw(cmds: &mut [DrawCmd], hidden: f32) {
 }
 
 /// The length of a shape's outline in its local space, CSS px.
-fn outline_length(geometry: &og_render::UiGeometry, half: og_core::glam::Vec2) -> f32 {
-    use og_render::UiGeometry as G;
+fn outline_length(geometry: &og_draw::UiGeometry, half: og_core::glam::Vec2) -> f32 {
+    use og_draw::UiGeometry as G;
     let polyline = |points: &[og_core::glam::Vec2], closed: bool| {
         let open: f32 = points.windows(2).map(|w| w[0].distance(w[1])).sum();
         match (closed, points.first(), points.last()) {
@@ -1817,8 +1817,8 @@ fn shift_named(named: &mut [crate::view_transition::Named], at: usize) {
 
 fn plane_begin() -> DrawCmd {
     DrawCmd::BeginLayer {
-        material: og_render::UiMaterial::Plain,
-        params: [[0.0; 4]; og_render::UI_MATERIAL_PARAMS],
+        material: og_draw::UiMaterial::Plain,
+        params: [[0.0; 4]; og_draw::UI_MATERIAL_PARAMS],
         mask: None,
         expand: 0.0,
         rect: Rect::default(),
@@ -1834,7 +1834,7 @@ fn plane_end(key: u64, clip: Rect) -> DrawCmd {
         geometry: None,
         rect: Rect::default(),
         opacity: 1.0,
-        blend: og_render::UiBlend::Normal,
+        blend: og_draw::UiBlend::Normal,
         clip,
         ground: Some(crate::draw::Ground::Plane(key)),
     }
@@ -1863,7 +1863,7 @@ impl Ui {
             let map = crate::transform3d::project(&p.m);
             let Some(inv) = map.invert() else { continue };
             // The screen (or the space it is laid onto) to its layer: rows
-            // b, with a ray the drape meets at w = 1 (og_render::UiGround).
+            // b, with a ray the drape meets at w = 1 (og_draw::UiGround).
             let mut b = inv.rows();
             let (cx, cy) = n.rect.center();
             let (sx, sy) = map.apply(cx, cy);
@@ -1895,7 +1895,7 @@ impl Ui {
                 rect: r,
                 corners,
                 bounds: p.clip,
-                drape: og_render::UiDrape {
+                drape: og_draw::UiDrape {
                     a: [[0.0; 3], [0.0; 3], [0.0, 0.0, -1.0]],
                     b,
                     scale: og_core::glam::Vec2::ONE,

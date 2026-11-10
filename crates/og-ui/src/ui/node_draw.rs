@@ -506,9 +506,9 @@ impl Ui {
                                 if let Some(shadows) =
                                     sel.shadows.as_ref().filter(|s| !s.is_empty())
                                 {
-                                    let shadows: Vec<og_render::UiTextShadow> = shadows
+                                    let shadows: Vec<og_draw::UiTextShadow> = shadows
                                         .iter()
-                                        .map(|(o, blur, color)| og_render::UiTextShadow {
+                                        .map(|(o, blur, color)| og_draw::UiTextShadow {
                                             offset: og_core::glam::Vec2::new(o[0] * sk, o[1] * sk),
                                             blur: blur * sk,
                                             color: color.fade(alpha * n.sampled.ink.alpha).linear(),
@@ -518,7 +518,7 @@ impl Ui {
                                         let t = std::mem::replace(cmd, DrawCmd::PopClip);
                                         *cmd = DrawCmd::StyledText {
                                             text: Box::new(t),
-                                            effects: Box::new(og_render::UiTextEffects {
+                                            effects: Box::new(og_draw::UiTextEffects {
                                                 shadows: shadows.clone(),
                                                 transform: [1.0, 0.0, 0.0, 1.0],
                                                 ..Default::default()
@@ -647,8 +647,8 @@ impl Ui {
                 // position, image-rendering).
                 let color = tint.fade(alpha).linear();
                 let mut shape =
-                    og_render::UiShape::rect([rect.x, rect.y, rect.width, rect.height], 0.0, color);
-                shape.paint = og_render::UiPaint::Image(og_render::UiImage {
+                    og_draw::UiShape::rect([rect.x, rect.y, rect.width, rect.height], 0.0, color);
+                shape.paint = og_draw::UiPaint::Image(og_draw::UiImage {
                     texture: *texture,
                     uv: *uv,
                     size: og_core::glam::Vec2::ZERO,
@@ -1110,7 +1110,7 @@ impl Ui {
                         };
                         cmds.push(DrawCmd::StyledText {
                             text: Box::new(text),
-                            effects: Box::new(og_render::UiTextEffects {
+                            effects: Box::new(og_draw::UiTextEffects {
                                 transform: [c0.x, c0.y, c1.x, c1.y],
                                 ..Default::default()
                             }),
@@ -1171,7 +1171,7 @@ impl Ui {
                 };
                 cmds.push(DrawCmd::StyledText {
                     text: Box::new(text),
-                    effects: Box::new(og_render::UiTextEffects {
+                    effects: Box::new(og_draw::UiTextEffects {
                         transform: [cos, sin, -sin, cos],
                         ..Default::default()
                     }),
@@ -1265,8 +1265,8 @@ impl Ui {
         let emit = |x: f32,
                     baseline: f32,
                     text: String,
-                    handle: Option<og_render::FontHandle>,
-                    placements: Vec<og_render::GlyphPlacement>,
+                    handle: Option<og_draw::FontHandle>,
+                    placements: Vec<og_draw::GlyphPlacement>,
                     transform: [f32; 4],
                     bounds: Rect,
                     cmds: &mut Vec<DrawCmd>| {
@@ -1292,7 +1292,7 @@ impl Ui {
             } else {
                 cmds.push(DrawCmd::StyledText {
                     text: Box::new(cmd),
-                    effects: Box::new(og_render::UiTextEffects {
+                    effects: Box::new(og_draw::UiTextEffects {
                         transform,
                         ..Default::default()
                     }),
@@ -1611,9 +1611,9 @@ impl Ui {
                 let start = cmds.len();
                 copy(line, (0.0, 0.0), Some(ink), band, true, cmds);
                 if let Some(shadows) = sel.shadows.as_ref().filter(|s| !s.is_empty()) {
-                    let shadows: Vec<og_render::UiTextShadow> = shadows
+                    let shadows: Vec<og_draw::UiTextShadow> = shadows
                         .iter()
-                        .map(|(o, blur, color)| og_render::UiTextShadow {
+                        .map(|(o, blur, color)| og_draw::UiTextShadow {
                             offset: og_core::glam::Vec2::new(o[0] * sk, o[1] * sk),
                             blur: blur * sk,
                             color: color.fade(alpha * n.sampled.ink.alpha).linear(),
@@ -1628,7 +1628,7 @@ impl Ui {
                                 let t = std::mem::replace(c, DrawCmd::PopClip);
                                 *c = DrawCmd::StyledText {
                                     text: Box::new(t),
-                                    effects: Box::new(og_render::UiTextEffects {
+                                    effects: Box::new(og_draw::UiTextEffects {
                                         shadows: shadows.clone(),
                                         transform: [1.0, 0.0, 0.0, 1.0],
                                         ..Default::default()
@@ -1737,8 +1737,8 @@ pub(crate) type GlyphEmit<'a> = dyn FnMut(
         f32,
         f32,
         String,
-        Option<og_render::FontHandle>,
-        Vec<og_render::GlyphPlacement>,
+        Option<og_draw::FontHandle>,
+        Vec<og_draw::GlyphPlacement>,
         [f32; 4],
         Rect,
     ) + 'a;
@@ -1894,7 +1894,7 @@ pub(crate) fn vertical_run(
             .map(|&(_, face, id)| (face, id));
         let (x, baseline) = (mid - wh / 2.0, y0 + adv / 2.0 + centre);
         if let Some((face, id)) = form {
-            let placement = og_render::GlyphPlacement {
+            let placement = og_draw::GlyphPlacement {
                 advance: wh / size.max(1e-3),
                 x: 0.0,
                 y: 0.0,

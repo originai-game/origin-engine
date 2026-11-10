@@ -3219,6 +3219,7 @@ dependencies = [
  "harfrust",
  "image",
  "og-core",
+ "og-draw",
  "og-ecs",
  "og-i18n",
  "og-input",

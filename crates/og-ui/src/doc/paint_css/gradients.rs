@@ -239,10 +239,10 @@ fn gradient_of(kind: &str, repeating: bool, args: &[Vec<Tok>]) -> Result<CssGrad
     if out.len() < 2 {
         return Err("a gradient takes at least two colour stops".into());
     }
-    if out.len() > og_render::UI_GRADIENT_STOPS {
+    if out.len() > og_draw::UI_GRADIENT_STOPS {
         return Err(format!(
             "a gradient takes at most {} stops",
-            og_render::UI_GRADIENT_STOPS
+            og_draw::UI_GRADIENT_STOPS
         ));
     }
     Ok(CssGradient {

@@ -13,7 +13,7 @@ use crate::style::Srgba;
 use crate::ui::Ui;
 use crate::world::{Reader, WorldCmd};
 use og_core::glam::Vec2;
-use og_render::{
+use og_draw::{
     UiMassBatch, UiMassInstance, UiMassKey, UiMassKind, UiMassSpace, UiMassTemplate,
     UiParticleShape,
 };
