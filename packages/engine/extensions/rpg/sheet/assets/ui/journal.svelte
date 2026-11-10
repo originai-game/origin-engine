@@ -43,4 +43,5 @@
   #Compass, #Talk { display: none; }
   #Place { height: 56%; }
 }
+@media (600px <= width) and (500px <= height < 800px) { #Place { height: 40%; } }
 </style>

@@ -34,7 +34,7 @@
 #Party { flex: 1; min-width: 0; }
 #Commands { flex: none; width: 44%; }
 @media (width < 600px) {
-  #Hud { padding: var(--space-xs) var(--space-sm); gap: var(--space-xs); }
+  #Hud { padding: var(--space-xs) var(--space-sm) 0; gap: var(--space-xs); }
   #Top { flex-wrap: wrap; gap: var(--space-xs); }
   #Log { display: none; }
   #Turns { width: 100%; flex: none; }

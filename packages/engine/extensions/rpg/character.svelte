@@ -86,4 +86,5 @@
 @media (height < 500px) { .doll { padding: var(--space-xxs) var(--space-xs); } .column { gap: var(--space-xxs); } .cell { width: var(--size-lg); height: var(--size-lg); padding: var(--space-xxs); } }
 /* A short screen (a desktop at large text): smaller slots, so the doll can give height to the attributes. */
 @media (600px <= width) and (500px <= height < 800px) { .cell { width: var(--size-lg); height: var(--size-lg); padding: var(--space-xxs); } .column { gap: var(--space-xxs); } }
+@media (600px <= width) and (500px <= height < 800px) { .attr-mark { display: none; } .attributes { gap: var(--space-sm); } }
 </style>

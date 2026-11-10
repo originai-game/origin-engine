@@ -296,6 +296,9 @@ button.member[data-down=true]::part(base) { border-color: #6f6a62; background: l
     #140e09;
 }
 
+/* A short desktop (large text): attribute labels keep their whole word. */
+@media (600px <= width) and (500px <= height < 800px) { .rpg-character .attr-label { letter-spacing: 0.02em; } }
+
 /* A phone on its side: every band and title one step down, to fit 390 px. */
 @media (height < 500px) {
   .rpg-band { min-height: var(--size-md); padding-top: 0; padding-bottom: 0; }

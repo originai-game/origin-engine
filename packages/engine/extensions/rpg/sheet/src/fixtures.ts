@@ -115,7 +115,7 @@ export const INVENTORY = (p: Pictures) => ({
     { id: "vit", group: "a", icon: "heart", label: "Vitality", value: "142" },
     { id: "arm", group: "a", icon: "shield", label: "Armour", value: "212" },
     { id: "eva", group: "a", icon: "bolt", label: "Evasion", value: "18%" },
-    { id: "res", group: "a", icon: "drop", label: "Resistance", value: "15%" },
+    { id: "res", group: "a", icon: "drop", label: "Resist", value: "15%" },
     { id: "str", group: "b", icon: "sword", label: "Strength", value: "14" },
     { id: "dex", group: "b", icon: "leaf", label: "Dexterity", value: "20" },
     { id: "int", group: "b", icon: "star", label: "Intellect", value: "12" },
