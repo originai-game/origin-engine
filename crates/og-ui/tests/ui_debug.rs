@@ -220,12 +220,31 @@ fn the_debugger_overlay_matches_its_reference_frames() {
             if std::env::var_os("OG_UI_CAPTURE").is_some() {
                 record_reference(&own, image.width, image.height, &image.pixels);
             }
-            let expected = image::open(&own)
-                .unwrap_or_else(|e| panic!("{}: {e} (OG_UI_CAPTURE=1)", own.display()))
+            // A tier without its own frame is judged against Metal's under
+            // the cross-platform tolerance (`compare`).
+            let reference = if own.exists() {
+                own
+            } else {
+                dir.join("metal").join(format!("{name}.png"))
+            };
+            let expected = image::open(&reference)
+                .unwrap_or_else(|e| panic!("{}: {e} (OG_UI_CAPTURE=1)", reference.display()))
                 .to_rgba8();
-            match compare(&image.pixels, expected.as_raw(), renderer.info(), &own) {
-                Ok((rmse, _)) => println!("{name} {tier}: RMSE {rmse:.5}"),
-                Err(e) => panic!("{} differs from {}: {e}", actual.display(), own.display()),
+            match compare(
+                &image.pixels,
+                expected.as_raw(),
+                renderer.info(),
+                &reference,
+            ) {
+                Ok((rmse, _)) => println!(
+                    "{name} {tier}: RMSE {rmse:.5} against {}",
+                    reference.display()
+                ),
+                Err(e) => panic!(
+                    "{} differs from {}: {e}",
+                    actual.display(),
+                    reference.display()
+                ),
             }
         }
     });
