@@ -4,7 +4,7 @@ node_modules/
 # Copied from packages/knowledge at pack (scripts/pack.sh).
 knowledge/
 # Copied from templates/styles at pack (scripts/pack.sh).
-styles/
+/styles/
 /fonts/
 # Copied from templates/ui-kit for on-demand review sheets.
 ui-sheet/

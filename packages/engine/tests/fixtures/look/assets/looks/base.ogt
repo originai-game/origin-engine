@@ -3,7 +3,7 @@ version 1
 ---
 # A base other looks extend: tone, fog, the UI style and no antialiasing.
 name "Base"
-ui "styles/tiny/style.ogt"
+ui "tiny"
 antialias off
 RenderSettings {
   toneMapping agx
