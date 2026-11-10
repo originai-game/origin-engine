@@ -22,7 +22,7 @@
   lore and up to two buttons. The game words every figure and decides the
   trend; the card reports equip (the main button, X or pad Y) and
   discard (the second button). It fills the height it is given: the
-  figures scroll, the buttons keep the foot.
+  figures and the lore scroll, the buttons keep the foot.
 -->
 <article id="RpgItemCard" class="rpg-item-card" data-rarity={rarity} aria-label={name} ondetails={equip}>
   <div class="hero"><div class="hero-glow"></div><img class="hero-picture" src={art} alt="" hidden={!art}><icon class="hero-art" icon={icon} hidden={!!art}></icon></div>
@@ -56,8 +56,8 @@
         </div>
       {/each}
     </div>
+    <p class="lore" hidden={!lore}>{lore}</p>
   </scroll>
-  <p class="lore" hidden={!lore}>{lore}</p>
   <div class="rpg-rule" role="separator" hidden={!primary && !secondary}></div>
   <footer class="actions" hidden={!primary && !secondary}>
     <button id="Primary" class="primary act" hidden={!primary} disabled={!canPrimary} onclick={equip}>{primary}</button>

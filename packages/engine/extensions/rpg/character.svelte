@@ -84,4 +84,6 @@
 .attr-value { font-variant-numeric: tabular-nums; white-space: nowrap; }
 @container (width < 300px) { .attributes { flex-direction: column; gap: 0; } .attr-split { display: none; } }
 @media (height < 500px) { .doll { padding: var(--space-xxs) var(--space-xs); } .column { gap: var(--space-xxs); } .cell { width: var(--size-lg); height: var(--size-lg); padding: var(--space-xxs); } }
+/* A short screen (a desktop at large text): smaller slots, so the doll can give height to the attributes. */
+@media (600px <= width) and (500px <= height < 800px) { .cell { width: var(--size-lg); height: var(--size-lg); padding: var(--space-xxs); } .column { gap: var(--space-xxs); } }
 </style>

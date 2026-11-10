@@ -34,13 +34,13 @@
 #Party { flex: 1; min-width: 0; }
 #Commands { flex: none; width: 44%; }
 @media (width < 600px) {
-  #Hud { padding: var(--space-sm); gap: var(--space-sm); }
-  #Top { flex-wrap: wrap; gap: var(--space-sm); }
+  #Hud { padding: var(--space-xs) var(--space-sm); gap: var(--space-xs); }
+  #Top { flex-wrap: wrap; gap: var(--space-xs); }
   #Log { display: none; }
   #Turns { width: 100%; flex: none; }
   #Goal { width: 100%; }
   #Enemy { width: 100%; }
-  #Foot { flex-direction: column; gap: var(--space-sm); }
+  #Foot { flex-direction: column; gap: var(--space-xs); }
   #Party, #Commands { width: 100%; flex: none; }
 }
 @media (height < 500px) {

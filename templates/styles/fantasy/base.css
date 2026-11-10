@@ -107,6 +107,9 @@
   --radius-control: 3px;
 
   font-family: "Fantasy Text", "Fantasy Serif", serif;
+  /* A number, so every line box follows its own font size, which follows the
+     player's text scale (the steps' px line heights would not). */
+  line-height: 1.4;
   color: var(--ink);
 }
 

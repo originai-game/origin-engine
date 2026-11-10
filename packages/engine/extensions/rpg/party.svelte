@@ -34,7 +34,7 @@
 .cards { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: var(--space-sm); width: stretch; }
 .member { position: relative; width: stretch; padding: var(--space-xs); gap: var(--space-xxs); align-items: stretch; justify-content: flex-start; }
 .member .face { display: flex; flex-direction: column; width: stretch; gap: var(--space-xxs); }
-.picture { width: stretch; aspect-ratio: 0.9; overflow: hidden; }
+.picture { width: stretch; aspect-ratio: 1.15; overflow: hidden; }
 @media (width >= 600px) and (height >= 500px) { .picture { aspect-ratio: 1.5; } }
 .portrait { width: stretch; height: stretch; object-fit: cover; object-position: center top; }
 .seal { position: absolute; left: var(--space-xxs); top: var(--space-xxs); width: var(--size-md); height: var(--size-md); align-items: center; justify-content: center; gap: 0; }
@@ -45,4 +45,5 @@
 .bar-figure { position: relative; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .empty-text { margin: 0; }
 @media (height < 500px) { .picture { aspect-ratio: 2.4; } }
+@media (600px <= width) and (500px <= height < 800px) { .picture { aspect-ratio: 2; } }
 </style>
