@@ -24,6 +24,7 @@ mod contact_hit;
 mod cookie_cap;
 #[path = "../crowd.rs"]
 mod crowd;
+#[cfg(feature = "destruction")]
 #[path = "../destruction.rs"]
 mod destruction;
 #[path = "../display.rs"]
@@ -69,6 +70,7 @@ mod nav_profiles;
 mod no_renderer;
 #[path = "../painted_2d.rs"]
 mod painted_2d;
+#[cfg(feature = "destruction")]
 #[path = "../pixel_terrain.rs"]
 mod pixel_terrain;
 #[path = "../prefabs.rs"]

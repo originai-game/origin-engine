@@ -38,7 +38,17 @@ mod atmosphere;
 mod baked;
 mod codec;
 mod describe;
+#[cfg(feature = "destruction")]
 mod destruction;
+#[cfg(feature = "destruction")]
+mod destruction2d;
+// Without the `destruction` feature og-destruct is not linked: both halves
+// of og.destruction answer the refusal (src/destruction*_absent.rs).
+#[cfg(not(feature = "destruction"))]
+#[path = "destruction_absent.rs"]
+mod destruction;
+#[cfg(not(feature = "destruction"))]
+#[path = "destruction2d_absent.rs"]
 mod destruction2d;
 #[cfg(not(feature = "publish"))]
 mod determinism;
