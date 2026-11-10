@@ -749,7 +749,12 @@ impl Ui {
                 let display = super::inner_display(r.str("display"));
                 let initial = match (base.kind, display) {
                     ("box", "flex") => "row",
-                    ("box", _) if r.str("markerPosition") == Some("inside") => "row",
+                    ("box", _)
+                        if n.selector_tag.as_deref() == Some("li")
+                            && r.str("markerPosition") == Some("inside") =>
+                    {
+                        "row"
+                    }
                     // A button's content is a row in it.
                     ("button", _) => "row",
                     (kind, _) => kind,

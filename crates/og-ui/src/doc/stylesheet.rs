@@ -1314,13 +1314,10 @@ pub(super) fn lower(
                     .map(|s| s.to_string())
                     .collect(),
                 "list-style" => vec![
-                    "--og-list-style-image".into(),
-                    "--og-list-style-type".into(),
-                    "--og-list-style-position".into(),
+                    "list-style-image".into(),
+                    "list-style-type".into(),
+                    "list-style-position".into(),
                 ],
-                "list-style-image" => vec!["--og-list-style-image".into()],
-                "list-style-type" => vec!["--og-list-style-type".into()],
-                "list-style-position" => vec!["--og-list-style-position".into()],
                 name => vec![name.to_string()],
             };
             for name in longhands {

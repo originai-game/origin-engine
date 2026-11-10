@@ -90,7 +90,13 @@ pub(crate) fn inherited_property(name: &str) -> bool {
 /// parent's value through the cascade (CSS Scrollbars 1 §2:
 /// `scrollbar-color` inherits; CSS Images 3 §5.3: `image-rendering`). A document declaring one carries its
 /// values, as one writing `inherit` does.
-pub(crate) const CARRIED_BY_DEFAULT: &[&str] = &["scrollbar-color", "image-rendering"];
+pub(crate) const CARRIED_BY_DEFAULT: &[&str] = &[
+    "scrollbar-color",
+    "image-rendering",
+    "list-style-type",
+    "list-style-position",
+    "list-style-image",
+];
 
 /// The computed-map key that carries a property's value to the children
 /// that write `inherit` (or `unset` on an inherited property).

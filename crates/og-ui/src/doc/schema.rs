@@ -1680,6 +1680,11 @@ pub const CORE_PROPS: &[PropSpec] = &[
         "Where an `<li>`'s marker sits, from the inherited `list-style-position`: `outside` hangs it before the item's start edge (the default), `inside` lays the item out as a row after it."
     ),
     p!(
+        "markerImage",
+        Ty::Text,
+        "CSS `list-style-image`: an inherited image URL replacing a list item's marker, or none. Only list items draw the image."
+    ),
+    p!(
         "href",
         Ty::Text,
         ["label"],
@@ -1868,7 +1873,7 @@ pub const CORE_PROPS: &[PropSpec] = &[
         "uv",
         Ty::Num4,
         ["image"],
-        "The part of the texture it shows, u0 v0 u1 v1 with v down (`object-view-box: inset(…)` in percentages, or `-og-uv`)."
+        "The part of the texture it shows (`object-view-box: inset(…)` in percentages of the texture, ordered top, right, bottom, left)."
     ),
     p!(
         "icon",

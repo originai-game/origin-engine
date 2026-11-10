@@ -1,9 +1,7 @@
 //! HTML lists: `<ul>`, `<ol>` and `<li>` with CSS list markers.
 //!
 //! `list-style-type` and `list-style-position` are inherited properties, so
-//! they ride the inherited custom-property channel: an author's
-//! declaration becomes `--og-list-style-type` (or `-position`), and each
-//! `<li>`'s user-agent rule reads them into its `markerType` and
+//! they use the standard-property cascade, lowered into `markerType` and
 //! `markerPosition`. An ordinal comes from the element's place among its
 //! `<li>` siblings, the count the structural selectors keep for
 //! `:nth-child(… of li)`, so a keyed `{#each}` reorder or insert renumbers
@@ -24,14 +22,10 @@ use serde_json::Value;
 /// menus are.
 pub(super) const UA_CSS: &str = "
 ul, ol { padding: 0 0 0 40px; }
-ul { --og-list-style-type: disc; }
-ol { --og-list-style-type: decimal; }
-ul ul, ol ul { --og-list-style-type: circle; }
-ul ul ul, ul ol ul, ol ul ul, ol ol ul { --og-list-style-type: square; }
-li {
-  -og-marker-type: var(--og-list-style-type, disc);
-  -og-marker-position: var(--og-list-style-position, outside);
-}
+ul { list-style-type: disc; }
+ol { list-style-type: decimal; }
+ul ul, ol ul { list-style-type: circle; }
+ul ul ul, ul ol ul, ol ul ul, ol ol ul { list-style-type: square; }
 p, ul, ol { margin-block: 1em; }
 ul ul, ul ol, ol ul, ol ol { margin-block: 0; }
 h1 { font: var(--text-xl3); letter-spacing: var(--type-xl3-tracking); margin-block: 0.67em; }
@@ -91,10 +85,10 @@ fn checked<'a>(name: &str, value: &'a str, allowed: &[&str]) -> Result<&'a str, 
 }
 
 /// Lowers `list-style-type`, `list-style-position` and the `list-style`
-/// shorthand onto their inherited custom properties; other declarations
+/// shorthand onto their inherited standard properties; other declarations
 /// pass through.
 pub(super) fn expand(d: StyleDeclaration) -> Result<Vec<StyleDeclaration>, String> {
-    let property = |p: &str| format!("--og-list-style-{p}");
+    let property = |p: &str| format!("list-style-{p}");
     match d.name.as_str() {
         "list-style-type" => {
             if !d.value.has_variables() {

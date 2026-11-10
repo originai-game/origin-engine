@@ -22,7 +22,7 @@
 <style>
 #Minimap { align-items: center; gap: 6px; }
 #Frame { width: calc(var(--size) * 1px); height: calc(var(--size) * 1px); border-radius: 12px; overflow: hidden; background: var(--well); border: 2px solid var(--line-strong); box-shadow: 0 4px 12px #00000080; }
-#Map { position: absolute; top: 0; inset-inline-start: 0; width: stretch; height: stretch; -og-uv: var(--u0) var(--v0) var(--u1) var(--v1); }
+#Map { position: absolute; top: 0; inset-inline-start: 0; width: stretch; height: stretch; object-view-box: inset(calc(var(--v0) * 100%) calc((1 - var(--u1)) * 100%) calc((1 - var(--v1)) * 100%) calc(var(--u0) * 100%)); }
 .marker { position: absolute; width: 8px; height: 8px; border-radius: 4px; inset-inline-start: calc(var(--x) * var(--size) * 1px - 4px); top: calc(var(--y) * var(--size) * 1px - 4px); background: var(--ink); border: 1px solid #000000b3; }
 .marker.info { background: var(--info); }
 .marker.success { background: var(--success); }

@@ -45,7 +45,7 @@
     {
       "member": "og.ui.minimap, og.ui.MinimapDesc, og.ui.MapMarker",
       "change": "The mini-map builder is removed.",
-      "fix": "Eject the `minimap` component document; it draws the texture with `<img>` and its uv region with `-og-uv` from the props u0, v0, u1, v1, and the markers from a list prop.",
+      "fix": "Eject the `minimap` component document; it draws the texture with `<img>` and its uv region with `object-view-box: inset(...)` from the props u0, v0, u1, v1, and the markers from a list prop.",
       "find": ["og.ui.minimap", "MinimapDesc", "MapMarker"]
     },
     {

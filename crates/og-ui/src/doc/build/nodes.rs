@@ -516,6 +516,7 @@ impl Ui {
                 self.note_touch_button(&r);
             }
             if kind == "box"
+                && n.selector_tag.as_deref() == Some("li")
                 && let Some(marker) = r.str("markerType")
             {
                 // `::marker { content }` replaces the list style's text;
@@ -525,12 +526,8 @@ impl Ui {
                 let inside = r.str("markerPosition") == Some("inside");
                 // `list-style-image`: the picture stands for the marker.
                 let picture = r
-                    .cascade
-                    .computed
-                    .get("--og-list-style-image")
-                    .cloned()
-                    .flatten()
-                    .and_then(|v| crate::doc::lists::image(&v).ok().flatten());
+                    .str("markerImage")
+                    .and_then(|v| crate::doc::lists::image(v).ok().flatten());
                 if let Some(name) = picture.filter(|_| content.is_none()) {
                     let text = if inside { "\u{FFFC}\u{a0}" } else { "\u{FFFC}" };
                     let span = crate::TextSpan {

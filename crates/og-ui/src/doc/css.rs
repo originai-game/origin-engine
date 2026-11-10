@@ -185,8 +185,9 @@ pub const STYLE: &[(&str, &str)] = &[
     ("scrollbarWidth", "scrollbar-width"),
     ("rive", "-og-frame"),
     ("display", "display"),
-    ("markerType", "-og-marker-type"),
-    ("markerPosition", "-og-marker-position"),
+    ("markerType", "list-style-type"),
+    ("markerPosition", "list-style-position"),
+    ("markerImage", "list-style-image"),
     ("aspect", "aspect-ratio"),
     ("fade", "-og-scroll-fade"),
     ("fadeInto", "-og-scroll-fade-into"),
@@ -306,7 +307,6 @@ pub const STYLE: &[(&str, &str)] = &[
     ("cue", "-og-cue"),
     ("fit", "object-fit"),
     ("uv", "object-view-box"),
-    ("uv", "-og-uv"),
     ("appearance", "appearance"),
     ("fillOrigin", "-og-fill-origin"),
     ("minGap", "-og-min-gap"),
@@ -425,7 +425,7 @@ fn conv(prop: &str) -> Conv {
         "outlineWidth" | "outlineOffset" => Conv::Len,
         "outlineColor" => Conv::Paint,
         "outlineStyle" | "overflowX" | "overflowY" | "scrollbarWidth" => Conv::Kebab,
-        "boxShadow" | "uv" | "sound" => Conv::Raw,
+        "boxShadow" | "uv" | "sound" | "markerImage" => Conv::Raw,
         p if super::paint_css::C4_PROPS.contains(&p) || p == "ellipsisText" => Conv::Raw,
         "insetTop" | "insetRight" | "insetBottom" | "insetLeft" | "anchorName"
         | "positionAnchor" | "positionArea" | "positionTry" | "positionTryOrder"
@@ -544,7 +544,8 @@ pub fn value_form(prop: &str, words: &[&str]) -> Option<String> {
         Conv::Raw if prop.starts_with("corner") => {
             "round | squircle | bevel | scoop | notch | square | superellipse(<K>)".into()
         }
-        Conv::Raw if prop == "uv" => "inset(<t>% <r>% <b>% <l>%) | -og-uv: <u0> <v0> <u1> <v1>".into(),
+        Conv::Raw if prop == "uv" => "inset(<t>% [<r>% [<b>% [<l>%]]])".into(),
+        Conv::Raw if prop == "markerImage" => "none | url(<image>)".into(),
         Conv::Raw if prop == "maskImage" => {
             "linear-gradient(…) | radial-gradient(…) | conic-gradient(…) (repeating- too)".into()
         }
@@ -1969,6 +1970,13 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
             .into_iter()
             .map(|(prop, v)| e(prop, vec![Value::String(v)]))
             .collect()),
+        "list-style-image" => {
+            super::lists::image(value)?;
+            Ok(vec![e(
+                "markerImage",
+                vec![Value::String(value.trim().into())],
+            )])
+        }
         "-og-sound" => {
             crate::sound_css::parse(value)?;
             Ok(vec![e(
@@ -2276,13 +2284,6 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
                     })
                     .collect::<Result<_, _>>()?,
             )])
-        }
-        "-og-uv" => {
-            let n: Vec<Value> = t.iter().map(want_num).collect::<Result<_, _>>()?;
-            if n.len() != 4 {
-                return Err("-og-uv: <u0> <v0> <u1> <v1>, fractions of the texture".into());
-            }
-            Ok(vec![e("uv", n)])
         }
         "flex-direction" => {
             let w = camel(want_ident(&one(&t, name)?, "a direction")?);

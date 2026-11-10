@@ -439,7 +439,7 @@ actions and a `fixture:default`, so `og ui preview` shows it at once.
   counts is `<p count={$score}>` with `-og-count-duration`.
 - Navigation: `minimap` and `minimap-view` (a map in the corner with
   markers for allies, enemies, objectives and pings, a uv region by
-  `-og-uv`), `compass` (a heading strip with points of interest).
+  `object-view-box: inset(…)`), `compass` (a heading strip with points of interest).
 - Menus and layout: `radial-menu` (a radial weapon wheel whose slice is
   chosen with the right stick or the pointer: SVG wedges, the aim from its
   events), `split-view` (two panes and a dragged

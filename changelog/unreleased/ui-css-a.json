@@ -1,0 +1,16 @@
+{
+  "breaking": [
+    {
+      "member": "-og-uv",
+      "change": "Removed the proprietary image crop property; it is no longer accepted.",
+      "fix": "Use object-view-box: inset(top right bottom left), with percentages v0*100, (1-u1)*100, (1-v1)*100, u0*100. The shipped minimap uses the standard property.",
+      "find": ["-og-uv"]
+    },
+    {
+      "member": "-og-marker-type, -og-marker-position",
+      "change": "Removed the proprietary list marker properties and the internal --og-list-style-* custom-property channel.",
+      "fix": "Use inherited list-style-type, list-style-position and list-style-image. Only list items draw inherited markers.",
+      "find": ["-og-marker-type", "-og-marker-position", "--og-list-style-"]
+    }
+  ]
+}

@@ -612,13 +612,13 @@ select::picker(select) {{ max-height: 150px; padding: 9px; }}
 fn an_image_shows_its_object_view_box() {
     let text = r#"<meta name="component" content="t">
 <div id="Page">
-  <img id="Crop" alt="" />
+  <img id="Crop" alt="" style:--u0={0.4} style:--v0={0.1} style:--u1={0.8} style:--v1={0.7} />
   <img id="Raw" alt="" />
 </div>
 <style>
 img { width: 64px; height: 64px; }
-#Crop { object-view-box: inset(10% 20% 30% 40%); }
-#Raw { -og-uv: 0 0 0.5 1; }
+#Crop { object-view-box: inset(calc(var(--v0) * 100%) calc((1 - var(--u1)) * 100%) calc((1 - var(--v1)) * 100%) calc(var(--u0) * 100%)); }
+#Raw { object-view-box: inset(0% 50% 0% 0%); }
 </style>"#;
     both(text, &[], |d| {
         let rect_of = |d: &Doc, id: &str| {
@@ -645,13 +645,17 @@ img { width: 64px; height: 64px; }
         let raw = rect_of(d, "Raw");
         assert!(
             close(raw, [0.0, 0.0, 0.5, 1.0]),
-            "-og-uv as written: {raw:?}"
+            "right half cropped: {raw:?}"
         );
     });
     let px = refused(
         r#"<meta name="component" content="t"><div><img alt="" /></div><style>img { object-view-box: inset(4px); }</style>"#,
     );
     assert!(px.contains("percentages"), "{px}");
+    let removed = refused(
+        r#"<meta name="component" content="t"><img alt="" /><style>img { -og-uv: 0 0 0.5 1; }</style>"#,
+    );
+    assert!(removed.contains("-og-uv"), "{removed}");
 }
 
 #[test]
