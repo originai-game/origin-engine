@@ -66,6 +66,11 @@ impl Ui {
             },
         );
         let mut props = Self::box_props(&NodeKind::Element("box"), &r);
+        // CSS's physical sides map onto the mirrored surface; the widget's
+        // own placement below is already in its layout's terms.
+        if self.direction == og_i18n::Direction::Rtl {
+            crate::layout::flow::mirror_props(&mut props);
+        }
         let intrinsic = part.intrinsic_props;
         props.states = intrinsic.states;
         props.state = intrinsic.state;
@@ -95,6 +100,10 @@ impl Ui {
         props.motion = props.motion.or(intrinsic.motion);
         props.layout_motion = props.layout_motion.or(intrinsic.layout_motion);
         props.overlaps = intrinsic.overlaps;
+        // A widget's presence (a value bubble that fades in) is its own.
+        props.enter = props.enter.or(intrinsic.enter);
+        props.exit = props.exit.or(intrinsic.exit);
+        props.reduced = props.reduced.or(intrinsic.reduced);
         props.inert |= intrinsic.inert;
         if !r.has("z") {
             props.z = intrinsic.z;
@@ -116,9 +125,6 @@ impl Ui {
             props.opacity = intrinsic.opacity;
         }
         props.flow = r.own_flow();
-        if self.direction == og_i18n::Direction::Rtl {
-            crate::layout::flow::mirror_props(&mut props);
-        }
         self.nodes[i].props = props;
         let text_style = match &self.nodes[i].content {
             crate::layout::Content::Text(text) => {

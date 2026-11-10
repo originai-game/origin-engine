@@ -1,0 +1,15 @@
+{
+  "breaking": [
+    {
+      "member": "Range slider CSS boxes",
+      "change": "A range's reach, track, fill, ticks, knobs, core and value bubble have persistent CSS layout and paint boxes. Their CSS width, height, padding and border now size them; the bubble's border takes part in its width. The default frames are unchanged.",
+      "fix": "Style the visual box through input[type=range]::part(reach|track|fill|tick|knob|core|bubble). Input, focus and the slider role stay on the host; a knob's :active follows the press."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "Widget part placement in right-to-left frames",
+      "summary": "A widget part's own placement is no longer mirrored a second time in a right-to-left frame: a switch's knob stays on its track. Part boxes keep their widget's enter and exit presence."
+    }
+  ]
+}

@@ -147,6 +147,270 @@ fn tabs_and_select_parts_keep_boxes_states_and_host_input() {
     assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
 }
 
+/// Two sliders and a switch in a 600×400 frame; answers the stepped
+/// slider's value.
+fn range_tick(ui: &mut Ui, input: InputFrame, value: &mut f32) {
+    ui.begin(input, Viewport::new(600.0, 400.0));
+    ui.open(
+        "Root",
+        Element {
+            padding: Insets::all(20.0),
+            gap: 30.0,
+            ..Element::column()
+        },
+    );
+    ui.value_slider(
+        "Plain",
+        0.3,
+        &ValueSliderDesc {
+            width: Some(Size::px(200.0)),
+            ..Default::default()
+        },
+    );
+    *value = ui
+        .value_slider(
+            "Ticks",
+            *value,
+            &ValueSliderDesc {
+                max: 10.0,
+                step: 1.0,
+                ticks: true,
+                label: "Volume".into(),
+                show_value: true,
+                bubble: true,
+                marks: vec![
+                    SliderMark {
+                        value: 0.0,
+                        label: "Lo".into(),
+                    },
+                    SliderMark {
+                        value: 10.0,
+                        label: "Hi".into(),
+                    },
+                ],
+                ..Default::default()
+            },
+        )
+        .value;
+    ui.toggle_switch("Switch", true, &ToggleSwitchDesc::default());
+    ui.close();
+    ui.end();
+}
+
+/// The default style, or `css` as the whole part stylesheet.
+fn range_ui(css: Option<&str>) -> Ui {
+    let mut ui = ui_with_font(test_font_metrics());
+    if let Some(css) = css {
+        ui.set_part_css(css).unwrap();
+    }
+    ui
+}
+
+fn rect(ui: &Ui, path: &str) -> [f32; 4] {
+    let e = ui.element(path).unwrap_or_else(|| panic!("{path}"));
+    [e.x, e.y, e.width, e.height]
+}
+
+#[test]
+fn undressed_range_parts_keep_their_boxes_and_draws() {
+    // The boxes and fills the slider drew before its parts were boxes.
+    let mut ui = range_ui(None);
+    let mut value = 4.0;
+    for _ in 0..3 {
+        range_tick(&mut ui, InputFrame::default(), &mut value);
+    }
+    for (path, kind, expected) in [
+        ("Root/Plain/Track", "box", [20.0, 44.0, 200.0, 44.0]),
+        (
+            "Root/Plain/Track/::part(reach)#0",
+            "part",
+            [20.0, 44.0, 200.0, 44.0],
+        ),
+        ("Root/Plain/Track/Rail", "part", [33.0, 63.0, 174.0, 6.0]),
+        (
+            "Root/Plain/Track/Rail/Fill",
+            "part",
+            [33.0, 63.0, 52.0, 6.0],
+        ),
+        ("Root/Plain/Track/Knob", "box", [72.0, 53.0, 26.0, 26.0]),
+        (
+            "Root/Plain/Track/Knob/::part(knob)#0",
+            "part",
+            [72.0, 53.0, 26.0, 26.0],
+        ),
+        (
+            "Root/Ticks/Track/Rail/Tick#0",
+            "part",
+            [32.0, 158.0, 2.0, 12.0],
+        ),
+        (
+            "Root/Ticks/Track/Rail/Tick#10",
+            "part",
+            [206.0, 158.0, 2.0, 12.0],
+        ),
+        ("Root/Ticks/Track/Knob", "box", [90.0, 151.0, 26.0, 26.0]),
+    ] {
+        assert_eq!(rect(&ui, path), expected, "{path}");
+        let e = ui.element(path).unwrap();
+        assert_eq!(e.kind == "part", kind == "part", "{path}: {}", e.kind);
+        if kind == "part" {
+            assert!(e.role.is_empty(), "{path}: {}", e.role);
+        }
+    }
+    assert_eq!(ui.element("Root/Plain/Track").unwrap().role, "slider");
+    // The rail, fill and passed tick in their roles' colours, the knob's
+    // own fill under its CSS rim.
+    let fills: Vec<_> = ui
+        .frame()
+        .items
+        .iter()
+        .filter_map(|i| i.cmd.filled())
+        .map(|(r, _)| [r.x, r.y, r.width, r.height])
+        .collect();
+    for expected in [
+        [33.0, 63.0, 174.0, 6.0],
+        [33.0, 63.0, 52.0, 6.0],
+        [32.0, 158.0, 2.0, 12.0],
+        [72.0, 53.0, 26.0, 26.0],
+    ] {
+        assert!(fills.contains(&expected), "{expected:?} in {fills:?}");
+    }
+    // A press on the track: the knob follows, its core shows, the
+    // bubble fades in over it (its presence is the part's) and keeps
+    // the width its painted rim had.
+    let track = ui.element("Root/Ticks/Track").unwrap().clone();
+    let at = og_core::math::Vec2::new(track.x + track.width * 0.62, track.y + track.height / 2.0);
+    let press = |down, pressed| InputFrame {
+        pointer: at,
+        pointer_inside: true,
+        down,
+        pressed,
+        ..Default::default()
+    };
+    range_tick(&mut ui, press(true, true), &mut value);
+    for _ in 0..4 {
+        range_tick(&mut ui, press(true, false), &mut value);
+    }
+    assert_eq!(value, 6.0, "pointer input reaches the slider host");
+    assert_eq!(
+        rect(&ui, "Root/Ticks/Track/Knob"),
+        [124.0, 151.0, 26.0, 26.0]
+    );
+    assert_eq!(
+        rect(&ui, "Root/Ticks/Track/Knob/Core"),
+        [132.0, 159.0, 11.0, 11.0]
+    );
+    let bubble = rect(&ui, "Root/Ticks/Track/Bubble");
+    assert_eq!([bubble[0], bubble[2], bubble[3]], [121.0, 24.0, 26.0]);
+    assert!(bubble[1] > 113.0, "entering, the bubble rises: {bubble:?}");
+    for _ in 0..30 {
+        range_tick(&mut ui, press(true, false), &mut value);
+    }
+    let settled = rect(&ui, "Root/Ticks/Track/Bubble");
+    assert!((settled[1] - 112.0).abs() < 0.01, "{settled:?}");
+    assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+}
+
+#[test]
+fn range_part_css_sizes_and_states_its_boxes() {
+    let mut ui = range_ui(Some(
+        "input[type=range]::part(track) { height: 10px; }
+         input[type=range]::part(reach) { background: #0000ff; }
+         input[type=range]::part(bubble) { padding: 0 11px; border: 2px solid #123456; }
+         input[type=range]::part(knob) { width: 30px; }
+         input[type=range]::part(knob):active { background: #00ff00; }
+         input[type=range]::part(core) { background: #ff00ff; }",
+    ));
+    let mut value = 4.0;
+    for _ in 0..3 {
+        range_tick(&mut ui, InputFrame::default(), &mut value);
+    }
+    let reach = ui.element("Root/Plain/Track/::part(reach)#0").unwrap();
+    let reach = [reach.x, reach.y, reach.width, reach.height];
+    assert_eq!(ui.element("Root/Plain/Track/Rail").unwrap().height, 10.0);
+    let blue = Srgba::rgb(0, 0, 255).linear();
+    assert!(
+        ui.frame().items.iter().any(|i| i
+            .cmd
+            .filled()
+            .is_some_and(|(r, c)| c == blue && [r.x, r.y, r.width, r.height] == reach)),
+        "the reach paints its own box"
+    );
+    assert_eq!(
+        ui.element("Root/Plain/Track/Knob/::part(knob)#0")
+            .unwrap()
+            .width,
+        30.0
+    );
+    let green = Srgba::rgb(0, 255, 0).linear();
+    let magenta = Srgba::rgb(255, 0, 255).linear();
+    let has = |ui: &Ui, c: [f32; 4]| {
+        ui.frame()
+            .items
+            .iter()
+            .any(|i| i.cmd.filled().is_some_and(|(_, f)| f == c))
+    };
+    assert!(!has(&ui, green) && !has(&ui, magenta));
+    let track = ui.element("Root/Ticks/Track").unwrap().clone();
+    let at = og_core::math::Vec2::new(track.x + track.width * 0.62, track.y + track.height / 2.0);
+    // Held past the knob's state motion.
+    for k in 0..30 {
+        let pressed = k == 0;
+        range_tick(
+            &mut ui,
+            InputFrame {
+                pointer: at,
+                pointer_inside: true,
+                down: true,
+                pressed,
+                ..Default::default()
+            },
+            &mut value,
+        );
+    }
+    assert_eq!(value, 6.0);
+    assert!(has(&ui, green), "the held knob is :active");
+    assert!(has(&ui, magenta), "the core takes its part's CSS");
+    let bubble = ui.element("Root/Ticks/Track/Bubble").unwrap();
+    let text = ui.element("Root/Ticks/Track/Bubble/Text").unwrap();
+    assert_eq!(bubble.width, text.width + 2.0 * (11.0 + 2.0));
+    assert_eq!(text.x - bubble.x, 13.0);
+}
+
+#[test]
+fn widget_part_placement_follows_the_writing_direction() {
+    // A part's own insets are in its layout's terms: in a right-to-left
+    // frame the fill and the switch's knob stay on their track.
+    let mut ui = range_ui(None);
+    ui.set_direction(og_i18n::Direction::Rtl);
+    let mut value = 4.0;
+    for _ in 0..3 {
+        range_tick(&mut ui, InputFrame::default(), &mut value);
+    }
+    assert_eq!(
+        rect(&ui, "Root/Plain/Track/Rail"),
+        [393.0, 63.0, 174.0, 6.0]
+    );
+    assert_eq!(
+        rect(&ui, "Root/Plain/Track/Rail/Fill"),
+        [515.0, 63.0, 52.0, 6.0]
+    );
+    assert_eq!(
+        rect(&ui, "Root/Ticks/Track/Rail/Tick#0"),
+        [566.0, 158.0, 2.0, 12.0]
+    );
+    let track = rect(&ui, "Root/Switch/Track");
+    let knob = rect(&ui, "Root/Switch/Track/Knob");
+    assert!(
+        knob[0] >= track[0] && knob[0] + knob[2] <= track[0] + track[2],
+        "{knob:?} in {track:?}"
+    );
+    assert!(
+        knob[0] - track[0] < 5.0,
+        "on, it sits at the left end: {knob:?}"
+    );
+}
+
 #[test]
 fn choice_parts_have_independent_css_layout_and_paint() {
     let mut ui = ui_with_font(add_test_font(&mut og_render::RenderScene::new()));

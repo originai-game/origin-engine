@@ -211,7 +211,7 @@ impl Ui {
         };
         let (on_primary, strong) = (self.role("onPrimary"), self.role("lineStrong"));
         let part = |s: &str| crate::dress::PartRef::parse(s, ElementClass::Bar).ok();
-        self.open(
+        self.open_part(
             "Rail",
             Element {
                 width: Size::grow(),
@@ -222,7 +222,7 @@ impl Ui {
                 ..Element::default()
             },
         );
-        self.open(
+        self.open_part(
             "Fill",
             Element {
                 width: Size::percent((to - from).clamp(0.0, 1.0)),
@@ -251,7 +251,7 @@ impl Ui {
                 &[passed.then_some("passed")],
                 ElementClass::Bar,
             );
-            self.open(
+            self.open_part(
                 crate::ui_idi("Tick", i as u32),
                 Element {
                     width: Size::px(2.0),
@@ -315,10 +315,11 @@ impl Ui {
             self.role("knob")
         };
         let primary = self.role("primary");
-        self.ctl(
+        let built = self.ctl(
             name,
             Ctl {
                 part: "input[type=range]::part(knob)",
+                part_node: true,
                 cls: ElementClass::Chip,
                 flags: vec![
                     Some("round"),
@@ -368,7 +369,7 @@ impl Ui {
                 // A dot of primary inside the knob while it is held or focused.
                 if pressed || focused {
                     let c = (g.knob * 0.42).round();
-                    ui.open(
+                    ui.open_part(
                         "Core",
                         Element {
                             width: Size::px(c),
@@ -386,7 +387,44 @@ impl Ui {
                     ui.close();
                 }
             },
-        )
+        );
+        self.place_part_host(built.node);
+        built
+    }
+
+    /// A part-node control placed on its track: its placement (the
+    /// position and its stacking) moves from the part box to the host,
+    /// which keeps the hits, focus and semantics; the part keeps its
+    /// transform, states and paint. Its fill does not wash with its state
+    /// (`wash: Some(None)`), so it is the part box's own background, which
+    /// the part's CSS background (a gradient included) replaces.
+    fn place_part_host(&mut self, host: usize) {
+        let slot = self.nodes[host].content_slot;
+        let part = self.nodes[slot].part_box.as_mut().expect("a part node");
+        let p = &mut part.intrinsic_props;
+        for group in &mut p.states {
+            for state in &mut group.states {
+                state.values.retain(|(prop, _)| {
+                    !matches!(
+                        prop,
+                        Prop::BackgroundR
+                            | Prop::BackgroundG
+                            | Prop::BackgroundB
+                            | Prop::BackgroundA
+                    )
+                });
+            }
+        }
+        let placed = Props {
+            position: std::mem::take(&mut p.position),
+            insets: std::mem::take(&mut p.insets),
+            overlaps: std::mem::take(&mut p.overlaps),
+            z: std::mem::take(&mut p.z),
+            motion: p.motion,
+            hit_slop: self.nodes[host].props.hit_slop,
+            ..Props::default()
+        };
+        self.nodes[host].props = placed;
     }
 
     /// The value bubble over a knob.
@@ -394,11 +432,12 @@ impl Ui {
         let t = self.theme;
         let h = self.by_text(26.0);
         let ink = self.role("ink");
-        self.open(
+        self.open_part(
             "Bubble",
             Element {
                 height: Size::px(h),
-                padding: Insets::xy(t.space.sm, 0.0),
+                // The default 1 px rim is a CSS border inside this inset.
+                padding: Insets::xy(t.space.sm - 1.0, 0.0),
                 align: Align::Center,
                 cross: Cross::Center,
                 radius: t.radius.control,
@@ -474,6 +513,12 @@ impl Ui {
         // Last tick's track, for the pointer and the rail's width.
         let track_path = format!("{}/Track", self.child_path(&key));
         let tb = self.bounds_of(&track_path);
+        // The knob shows the reach's state as its part box last showed it.
+        let reach = if disabled {
+            Ix::Disabled
+        } else {
+            self.interaction_at(&format!("{track_path}/::part(reach)#0"))
+        };
         let g = Geo {
             h: (knob + 8.0).max(if touch { TOUCH } else { 28.0 }),
             knob,
@@ -570,6 +615,7 @@ impl Ui {
                 // The reach a finger and the pointer take; the bar it holds
                 // is `Slider.track`, as CSS names a range's.
                 part: "input[type=range]::part(reach)",
+                part_node: true,
                 cls: ElementClass::Badge,
                 disabled,
                 adjustable: true,
@@ -590,10 +636,10 @@ impl Ui {
                 }),
                 ..Ctl::default()
             },
-            |ui, ix| {
+            |ui, _| {
                 ui.rail(g, f.min(of), f.max(of), &ticks, disabled);
-                let pressed = held || ix == Ix::Pressed;
-                ui.knob_at(f, g, pressed, ix == Ix::Focused, disabled);
+                let pressed = held || reach == Ix::Pressed;
+                ui.knob_at(f, g, pressed, reach == Ix::Focused, disabled);
                 if show_bubble && (pressed || flash > now) {
                     ui.bubble(f, &shown, g);
                 }
@@ -780,6 +826,7 @@ impl Ui {
             "Track",
             Ctl {
                 part: "input[type=range]::part(reach)",
+                part_node: true,
                 cls: ElementClass::Badge,
                 disabled,
                 focusable: false,
