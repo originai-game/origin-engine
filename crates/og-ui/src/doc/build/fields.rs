@@ -2,6 +2,15 @@
 //! widget input processing, animation sampling or document emission lives here.
 use super::*;
 
+pub(super) struct BoxSource<'a> {
+    pub document: Option<&'a UiDocument>,
+    pub kind: &'static str,
+    pub tag: Option<&'a str>,
+    pub root: bool,
+    pub line: usize,
+    pub textures: &'a [(f64, og_render::TextureHandle)],
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct RenderFields {
     pub(super) index: usize,
@@ -738,19 +747,35 @@ impl Ui {
             }
             _ => {}
         }
+        self.apply_box_fields(
+            i,
+            r,
+            BoxSource {
+                document: Some(doc),
+                kind: base.kind,
+                tag: n.selector_tag.as_deref(),
+                root: n.parent == crate::layout::NONE,
+                line: n.line,
+                textures: &base.textures,
+            },
+        );
+        self.apply_document_semantics(n, r, base);
+    }
+
+    pub(super) fn apply_box_fields(&mut self, i: usize, r: &Resolved, source: BoxSource<'_>) {
         // Widget-owned sizing is established above; document box overrides
         // replace their previous values, including when a declaration vanishes.
         let mut el = self.nodes[i].el;
         let em = self.em_of(r);
-        if schema::kind(base.kind).is_some_and(|kind| kind.container) {
+        if schema::kind(source.kind).is_some_and(|kind| kind.container) {
             el = Self::box_of(r, el, em);
-            if !matches!(base.kind, "panel" | "scroll" | "list" | "cells") {
+            if !matches!(source.kind, "panel" | "scroll" | "list" | "cells") {
                 // A box is a column (CSS block), or a row as `display: flex`.
                 let display = super::inner_display(r.str("display"));
-                let initial = match (base.kind, display) {
+                let initial = match (source.kind, display) {
                     ("box", "flex") => "row",
                     ("box", _)
-                        if n.selector_tag.as_deref() == Some("li")
+                        if source.tag == Some("li")
                             && r.str("markerPosition") == Some("inside") =>
                     {
                         "row"
@@ -767,16 +792,16 @@ impl Ui {
                 el.reverse = direction.ends_with("Reverse");
                 // A flex box's lines share its free room across it unless
                 // told otherwise (`align-content: normal`, CSS Flexbox §8.4).
-                if base.kind == "box" && display == "flex" && el.align_content.is_none() {
+                if source.kind == "box" && display == "flex" && el.align_content.is_none() {
                     el.align_content = Some(crate::Align::Stretch);
                 }
                 // A `display: block` box flows its children as CSS blocks.
                 el.block = initial == "box"
                     && el.direction == Direction::Column
                     && !matches!(display, "grid" | "table");
-                el.bfc = base.kind == "box" && r.str("display") == Some("flowRoot");
-                el.contents = base.kind == "box" && r.str("display") == Some("contents");
-                el.table = if base.kind == "box" {
+                el.bfc = source.kind == "box" && r.str("display") == Some("flowRoot");
+                el.contents = source.kind == "box" && r.str("display") == Some("contents");
+                el.table = if source.kind == "box" {
                     super::table_part(r.str("display"), r.str("captionSide"))
                 } else {
                     crate::TablePart::None
@@ -816,7 +841,7 @@ impl Ui {
                 // containing block (CSS 2 §10.1): it fills the column or
                 // stack it is mounted in.
                 let host = |p: &crate::layout::Node| {
-                    n.parent == crate::layout::NONE
+                    source.root
                         && p.props.layout != crate::LayoutMode::Grid
                         && (p.props.layout == crate::LayoutMode::Stack
                             || p.el.direction == Direction::Column)
@@ -829,7 +854,7 @@ impl Ui {
                 let across = parent != crate::layout::NONE
                     && self.nodes[parent].props.flow.mode.vertical() != vertical;
                 let axis = if vertical { "height" } else { "width" };
-                if base.kind == "box"
+                if source.kind == "box"
                     && fills
                     && !across
                     && !r.has(axis)
@@ -889,7 +914,7 @@ impl Ui {
                     );
                 }
             }
-            if r.has("width") && !matches!(base.kind, "label" | "button" | "image" | "art") {
+            if r.has("width") && !matches!(source.kind, "label" | "button" | "image" | "art") {
                 el.width = r.size("width").unwrap_or(el.width);
             }
         }
@@ -929,12 +954,12 @@ impl Ui {
         // A block-level text (`<p>`, a heading, a text displayed `block`)
         // in a block's flow fills its line, as a CSS block box does (CSS 2
         // §10.3.3); an inline-level one keeps fitting its text.
-        if base.kind == "label" {
+        if source.kind == "label" {
             el.block = match r.str("display") {
                 d @ Some(_) if super::outer_inline(d) => false,
                 Some("block" | "flowRoot" | "listItem") => true,
                 _ => matches!(
-                    n.selector_tag.as_deref(),
+                    source.tag,
                     Some("p" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6")
                 ),
             };
@@ -977,9 +1002,16 @@ impl Ui {
             };
         }
         let mut warn = Vec::new();
-        let mut decor = self.box_decor(Some(doc), r, &mut el, base.kind, &base.textures, &mut warn);
+        let mut decor = self.box_decor(
+            source.document,
+            r,
+            &mut el,
+            source.kind,
+            source.textures,
+            &mut warn,
+        );
         for w in warn {
-            self.warnings.push(format!("line {}: {w}", n.line));
+            self.warnings.push(format!("line {}: {w}", source.line));
         }
         let mut el = Self::sized(r, Self::item_of(r, el));
         // A clip's reference box from the laid-out box: its insets from
@@ -1028,6 +1060,12 @@ impl Ui {
         }
         self.nodes[i].el = el;
         self.nodes[i].decor = decor.map(Box::new);
+    }
+
+    fn apply_document_semantics(&mut self, n: &DocNode, r: &Resolved, base: &RenderFields) {
+        let i = base.index;
+        let surface_rtl = self.direction == og_i18n::Direction::Rtl;
+        let flow = r.own_flow();
         let mut props = Self::resolved_props(n, r);
         if surface_rtl {
             crate::layout::flow::mirror_props(&mut props);
