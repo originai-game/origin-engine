@@ -62,7 +62,7 @@ pub struct UiPath {
 
 /// A quadratic curve of a path (`line`: its control is on the chord).
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) struct Quad {
+pub struct Quad {
     pub p: [Vec2; 3],
     pub line: bool,
 }
@@ -176,7 +176,7 @@ impl UiPath {
 
     /// Each contour as quadratics, closed back to its start; cubics are
     /// split until each quadratic is within `tolerance` of its piece.
-    pub(crate) fn quads(&self, tolerance: f32) -> Vec<Quad> {
+    pub fn quads(&self, tolerance: f32) -> Vec<Quad> {
         let mut out = Vec::new();
         let mut pts = self.points.iter().copied();
         let (mut start, mut at) = (Vec2::ZERO, Vec2::ZERO);
@@ -355,7 +355,7 @@ fn cubic_to_quads(p0: Vec2, p1: Vec2, p2: Vec2, p3: Vec2, tolerance: f32, out: &
 /// per band (where its curve list starts, its length), then the lists,
 /// four curve indices a record.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) struct PathGpu {
+pub struct PathGpu {
     /// The curves' first record, the header's, the bands' count and a
     /// band's height.
     pub geo: [f32; 4],
@@ -370,7 +370,7 @@ const MAX_BANDS: usize = 64;
 /// to `margin` local units past the outline (antialiasing, a stroke's
 /// reach, a shadow's blur); curves are within `tolerance` local units.
 /// `None` when it has no curves.
-pub(crate) fn write(
+pub fn write(
     path: &UiPath,
     margin: f32,
     tolerance: f32,
