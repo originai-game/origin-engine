@@ -657,11 +657,16 @@ impl Ui {
             height: vp.height,
             reduced_motion: theme.reduced_motion,
             color_vision: theme.color_vision,
-            coarse_pointer: vp.coarse_pointer,
+            coarse_pointer: match theme.density {
+                crate::DensityMode::Touch => true,
+                crate::DensityMode::Mouse => false,
+                crate::DensityMode::Auto | crate::DensityMode::Pad => vp.coarse_pointer,
+            },
             dark: theme.scheme == crate::Scheme::Dark,
             high_contrast: theme.contrast == crate::Contrast::High,
             reduced_transparency: theme.reduced_transparency,
             resolution: vp.dpr,
+            pad: theme.density == crate::DensityMode::Pad,
         }
     }
 

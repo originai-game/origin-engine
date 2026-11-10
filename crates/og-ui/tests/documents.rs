@@ -194,6 +194,55 @@ fn invalid_media_queries_report_document_location_and_fix() {
 }
 
 #[test]
+fn forced_input_density_drives_media_queries_and_retained_updates() {
+    use crate::html_text::Doc;
+    let source = r#"<meta name="component" content="t">
+<column><div id="Pointer"></div><div id="Hover"></div><div id="Pad"></div><input type="number" value="3" /></column>
+<style>
+div { width: 10px; height: 10px; }
+@media (pointer: coarse) { #Pointer { width: 21px; } }
+@media (hover: none) { #Hover { width: 32px; } }
+@media (-og-input: pad) { #Pad { width: 43px; } }
+</style>"#;
+    for mounted in [false, true] {
+        let mut doc = Doc::new(source, &[], mounted);
+        for (density, coarse, pointer, hover, pad) in [
+            (DensityMode::Auto, false, 10.0, 10.0, 10.0),
+            (DensityMode::Touch, false, 21.0, 32.0, 10.0),
+            (DensityMode::Mouse, true, 10.0, 10.0, 10.0),
+            (DensityMode::Mouse, false, 10.0, 10.0, 10.0),
+            (DensityMode::Mouse, true, 10.0, 10.0, 10.0),
+            (DensityMode::Auto, true, 21.0, 32.0, 10.0),
+            (DensityMode::Pad, true, 21.0, 32.0, 43.0),
+            (DensityMode::Auto, true, 21.0, 32.0, 10.0),
+        ] {
+            let mut theme = *doc.ui.theme();
+            if theme.density != density {
+                theme.density = density;
+                doc.ui.set_theme(theme);
+            }
+            doc.viewport.coarse_pointer = coarse;
+            doc.step(InputFrame::default());
+            for (id, width) in [("Pointer", pointer), ("Hover", hover), ("Pad", pad)] {
+                assert_eq!(
+                    doc.get(id).width,
+                    width,
+                    "{density:?} {id}, mounted={mounted}"
+                );
+            }
+            assert_eq!(doc.get("Increment").width, if coarse { 44.0 } else { 24.0 });
+        }
+    }
+    assert!(
+        UiDocument::parse(
+            "bad.svelte",
+            &source.replace("-og-input: pad", "-og-input: touch")
+        )
+        .is_err()
+    );
+}
+
+#[test]
 fn core_screen_readouts_preserve_units_and_unbroken_ranks() {
     struct Messages(std::collections::BTreeMap<String, String>, Value);
     impl bind::Env for Messages {

@@ -197,6 +197,12 @@ pub fn markdown() -> String {
     for (name, grammar, reason) in super::schema::CSS_FUNCTIONS {
         let _ = writeln!(out, "| `{name}` | `{grammar}` | {reason} |");
     }
+    out.push_str(
+        "\n### Media extensions\n\n| Feature | Grammar | Reason and behavior |\n|---|---|---|\n",
+    );
+    for (name, grammar, reason) in super::schema::MEDIA_FEATURES {
+        let _ = writeln!(out, "| `{name}` | `{grammar}` | {reason} |");
+    }
     for (n, k) in KINDS.iter().filter(|k| k.name != "slot").enumerate() {
         let own: Vec<&PropSpec> = PROPS
             .iter()

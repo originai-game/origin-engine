@@ -402,6 +402,12 @@ These declarations also construct widget part identities and are exported by doc
 |---|---|---|
 | `-og-spring` | `-og-spring(<time [0,∞]> [, <number>])` | Transition timing with a perceptual duration (ms or s) and optional finite bounce (default 0). Bounce is clamped to -0.95..1 by the spring solver. Extension reason: CSS linear() cannot preserve velocity when a transition is interrupted. Springs time transitions, not keyframe animations. |
 
+### Media extensions
+
+| Feature | Grammar | Reason and behavior |
+|---|---|---|
+| `-og-input` | `(-og-input: pad)` | Matches the configured gamepad input mode. Extension reason: standard media queries have no gamepad input feature. Forced Touch and Mouse instead set standard pointer/hover queries to coarse/none and fine/hover; Auto reports the device. No density metrics are exposed to CSS. |
+
 ## 2. `<column>`, `<og-rive>` (`column`): Children top to bottom
 
 Children top to bottom. A container with nested children: `<column id="Name">…</column>` or `<og-rive id="Name">…</og-rive>`.

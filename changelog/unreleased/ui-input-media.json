@@ -1,0 +1,9 @@
+{
+  "breaking": [
+    {
+      "member": "UI input media queries",
+      "change": "Forced Touch and Mouse density now override pointer/hover media features. Auto continues to report the device. Gamepad mode is exposed by the reflected (-og-input: pad) media feature.",
+      "fix": "Use standard pointer: coarse and hover: none queries for touch, pointer: fine and hover: hover for mouse, and (-og-input: pad) for gamepad styles. Express control dimensions in rem/em. No density environment variables are provided; Rust control descriptors are unchanged."
+    }
+  ]
+}

@@ -20,6 +20,8 @@ pub struct Context {
     pub reduced_transparency: bool,
     /// Device pixels per CSS pixel (`resolution`, in dppx).
     pub resolution: f32,
+    /// The configured input mode is gamepad (`-og-input: pad`).
+    pub pad: bool,
 }
 
 impl Default for Context {
@@ -34,12 +36,13 @@ impl Default for Context {
             high_contrast: false,
             reduced_transparency: false,
             resolution: 1.0,
+            pad: false,
         }
     }
 }
 
 /// How many independent inputs a media query reads ([`Reads::axes`]).
-pub const AXES: usize = 9;
+pub const AXES: usize = 10;
 
 impl Context {
     /// Which inputs differ from `old`, in [`Reads::axes`] order.
@@ -54,6 +57,7 @@ impl Context {
             old.high_contrast != self.high_contrast,
             old.reduced_transparency != self.reduced_transparency,
             old.resolution != self.resolution,
+            old.pad != self.pad,
         ]
     }
 }
@@ -69,6 +73,7 @@ pub struct Reads {
     pub contrast: bool,
     pub transparency: bool,
     pub resolution: bool,
+    pub pad: bool,
 }
 
 impl Reads {
@@ -92,6 +97,7 @@ impl Reads {
             self.contrast,
             self.transparency,
             self.resolution,
+            self.pad,
         ]
     }
 
@@ -106,6 +112,7 @@ impl Reads {
             &mut self.contrast,
             &mut self.transparency,
             &mut self.resolution,
+            &mut self.pad,
         ]
         .into_iter()
         .nth(axis)
@@ -168,6 +175,8 @@ pub enum Feature {
     /// `hover`/`any-hover` (`none`: true, `hover`: false); `None`, the
     /// boolean form, which every pointing device matches.
     Coarse(Option<bool>),
+    /// The engine's forced gamepad input mode.
+    Pad,
     /// `prefers-color-scheme`: true for dark.
     Dark(bool),
     /// `prefers-contrast`: `more` (true), `no-preference` (false); `None`,
@@ -329,6 +338,10 @@ impl Context {
                 Feature::Coarse(value) => {
                     reads.coarse_pointer = true;
                     value.is_none_or(|v| v == context.coarse_pointer)
+                }
+                Feature::Pad => {
+                    reads.pad = true;
+                    context.pad
                 }
                 Feature::Dark(value) => {
                     reads.scheme = true;
@@ -737,6 +750,16 @@ fn feature(input: &mut Parser<'_>, scope: Scope) -> Result<Query, Error> {
             };
         }
         if input.try_parse(|p| p.expect_colon()).is_ok() {
+            if name == "-og-input" {
+                let word = input.expect_ident_cloned()?;
+                return if word.eq_ignore_ascii_case("pad") {
+                    Ok(Query::Feature(Feature::Pad))
+                } else {
+                    Err(ParseError::custom(format!(
+                        "unsupported -og-input value {word}; use pad; use pointer and hover for mouse and touch"
+                    )))
+                };
+            }
             if name == "-og-color-vision" {
                 let word = input.expect_ident_cloned()?.to_ascii_lowercase();
                 return og_render::ColorVision::from_name(&word)
@@ -1042,7 +1065,9 @@ mod tests {
         };
         assert_eq!(
             light.changes(&context),
-            [false, false, false, false, false, true, false, false, false]
+            [
+                false, false, false, false, false, true, false, false, false, false
+            ]
         );
         assert!(Query::parse_container("(prefers-color-scheme: dark)").is_err());
     }

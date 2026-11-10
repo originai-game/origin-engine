@@ -145,6 +145,13 @@ pub const CSS_FUNCTIONS: &[(&str, &str, &str)] = &[(
     "Transition timing with a perceptual duration (ms or s) and optional finite bounce (default 0). Bounce is clamped to -0.95..1 by the spring solver. Extension reason: CSS linear() cannot preserve velocity when a transition is interrupted. Springs time transitions, not keyframe animations.",
 )];
 
+/// Registered media extensions: name, grammar and extension reason.
+pub const MEDIA_FEATURES: &[(&str, &str, &str)] = &[(
+    "-og-input",
+    "(-og-input: pad)",
+    "Matches the configured gamepad input mode. Extension reason: standard media queries have no gamepad input feature. Forced Touch and Mouse instead set standard pointer/hover queries to coarse/none and fine/hover; Auto reports the device. No density metrics are exposed to CSS.",
+)];
+
 pub const CORE_KINDS: &[KindSpec] = &[
     KindSpec {
         name: "column",
@@ -1960,6 +1967,7 @@ pub fn to_json() -> serde_json::Value {
     json!({
         "parts": parts::to_json(),
         "cssFunctions": CSS_FUNCTIONS.iter().map(|(name, grammar, reason)| json!({ "name": name, "grammar": grammar, "reason": reason })).collect::<Vec<_>>(),
+        "mediaFeatures": MEDIA_FEATURES.iter().map(|(name, grammar, reason)| json!({ "name": name, "grammar": grammar, "reason": reason })).collect::<Vec<_>>(),
         "elementTags": ELEMENT_TAGS.iter().map(|(name, kind)| json!({ "name": name, "kind": kind,
             "attributes": ELEMENT_ATTRIBUTES.iter().filter(|(tag, _, _)| tag == name).map(|(_, attribute, property)| json!({"name": attribute, "property": property})).collect::<Vec<_>>()
         })).collect::<Vec<_>>(),
