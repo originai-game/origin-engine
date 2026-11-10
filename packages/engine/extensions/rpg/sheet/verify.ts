@@ -1,4 +1,4 @@
-// Compare a fresh Metal capture of the rpg review pages with the approved
+// Compare a fresh capture of the rpg review pages with the approved
 // references: the five pages at desktopHd, phonePortrait and phoneLandscape,
 // 100 %, game locale, in the fantasy pack. On demand, not a gate step; the
 // README says how to capture. Recording is manual: review every changed cell
@@ -15,7 +15,7 @@ const same = (a: Uint8Array, b: Uint8Array): boolean => a.length === b.length &&
 
 const capture = process.argv[2];
 assert(capture, "usage: bun verify.ts <preview-capture-directory>");
-const references = fileURLToPath(new URL("references/metal/", import.meta.url));
+const references = fileURLToPath(new URL("references/vulkan/", import.meta.url));
 const expected = JSON.parse(readFileSync(resolve(references, "index.json"), "utf8")) as { cells: Record<string, string | number>[] };
 const actual = JSON.parse(readFileSync(resolve(capture, "index.json"), "utf8")) as { cells: Record<string, string | number>[] };
 assert(actual.cells.length === expected.cells.length, "cell coverage changed");
@@ -28,4 +28,4 @@ for (const [i, cell] of expected.cells.entries()) {
   assert(got.height === want.height, `cell ${i}: height`);
   assert(same(got.rgba, want.rgba), `cell ${i} (${cell.screen}, ${cell.breakpoint}): pixels differ; review before recording`);
 }
-console.log(`rpg sheet: ${actual.cells.length} Metal reference cells match`);
+console.log(`rpg sheet: ${actual.cells.length} L4 reference cells match`);

@@ -11,7 +11,7 @@ What it checks:
   breaks on its beat, the game's `og.assert` sites hold on every tick (no
   chunk falls through the slab, read from `og.MatrixWorld` inside the
   slab's footprint), and one frame of the settled yard matches
-  `references/metal/yard.png` (rmse ≤ 3).
+  `references/vulkan/yard.png` (rmse ≤ 3).
 - `packages/engine/tests/destruction.test.ts` with
   `support/destruction-hash.ts` and `support/yard-piers.ts`: the yard's
   world hash after the beats (`BEATS` in `src/main.ts`) is the same on the

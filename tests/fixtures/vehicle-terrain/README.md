@@ -16,7 +16,7 @@ What it checks:
 - `tests/drive.og.ts` (`og test tests/fixtures/vehicle-terrain`): throttle,
   then a handbrake turn at 2 s; the car stays above the terrain on every
   tick, it reaches speed, it slides, smoke and marks appear, the HUD reads
-  the speed, and one frame matches `references/metal/drive.png`.
+  the speed, and one frame matches `references/vulkan/drive.png`.
 - `scripts/check.sh web-reference` (`web_vehicle_terrain`): the same
   playtest's frame in the browser tiers (`packages/engine/tests/web/reference.ts`).
 - `packages/engine/tests/presentation.test.ts`: the presentation gate

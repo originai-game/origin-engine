@@ -1,5 +1,5 @@
 // The two effects as `og test` plays them: each sends its event once, on
-// its tick, and one frame with both playing matches its Metal reference.
+// its tick, and one frame with both playing matches its L4 reference (references/vulkan/).
 import { expect, test } from "bun:test";
 import { runPlaytest } from "@origingame/engine/playtest";
 
@@ -13,7 +13,7 @@ test("a hit and a heal play, send their events once and draw as recorded", async
       "0.5:heal",
       "1.5:hit",
       "1.6:screenshot:hit.png",
-      "1.6:expect:frame:references/metal/hit.png:rmse:<=3",
+      "1.6:expect:frame:references/vulkan/hit.png:rmse:<=3",
       "2.6:expect:state:impacts==1",
       "2.6:expect:state:healed==1",
       "2.65:quit",

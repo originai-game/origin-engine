@@ -8,7 +8,7 @@ import { gpuUnavailable } from "./support/gpu.ts";
 // tick and starts it again at the new time.
 //
 // The reference frame is references/<tier>/video-90.png beside the fixture
-// (recorded by the coordinator on Metal); without one for this tier the
+// (vulkan on the GPU host, metal on Metal); without one for this tier the
 // frame is checked against the source only.
 //
 // Two players of the video (the fixture's `pair`, the second half a second ahead)

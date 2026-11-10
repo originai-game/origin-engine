@@ -38,7 +38,7 @@ What it checks (`og test tests/fixtures/top-down`, `tests/walk.og.ts`): the
 farmer's step events fire (`the farmer steps`, `steps>=3`), she walks
 3.5 tiles or more and ends on a path tile (`onPath==1`, read with
 og.tilemap.getTile), `till:12:9` changes the map (`watered==7`), and the
-frame at 2.2 s matches `references/metal/farm.png` (rmse ≤ 3).
+frame at 2.2 s matches `references/vulkan/farm.png` (rmse ≤ 3).
 
 Budget: under 10 s warm. Measured 1.5 s of run, 1.9 s with its cook and
 check.

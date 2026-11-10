@@ -1,7 +1,7 @@
 // The car driven up the road and thrown into a handbrake turn: it passes
 // 20 km/h, its rear slides (smoke and skid marks), it never falls through
 // the terrain, and one frame of the slide (the HUD's speed, the marks, the
-// smoke, the eased camera) is compared with its Metal reference.
+// smoke, the eased camera) is compared with its L4 reference (references/vulkan/).
 import { expect, test } from "bun:test";
 import { runPlaytest } from "@origingame/engine/playtest";
 
@@ -22,7 +22,7 @@ test("a car driven on terrain slides through a handbrake turn, leaving smoke and
       "2.6:expect:state:smoking>0",
       "2.6:expect:ui:text:km/h",
       "2.6:screenshot:drive.png",
-      "2.6:expect:frame:references/metal/drive.png:rmse:<=3",
+      "2.6:expect:frame:references/vulkan/drive.png:rmse:<=3",
       "2.65:quit",
     ].join(";"),
   });

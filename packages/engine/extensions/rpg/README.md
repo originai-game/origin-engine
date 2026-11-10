@@ -80,7 +80,8 @@ is in `em` of the body step so the player's text scale applies.
 
 ### References
 
-`sheet/references/metal/` holds the 15 art-approved Metal cells: the five
+`sheet/references/vulkan/` holds the 15 art-approved cells, recorded on the
+GPU host (`references/metal/` keeps the Metal ones): the five
 pages at desktopHd, phonePortrait and phoneLandscape, 100 %, game locale.
 Capture the same cells and compare, from the repository root:
 

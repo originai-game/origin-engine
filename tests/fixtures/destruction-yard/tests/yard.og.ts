@@ -2,7 +2,7 @@
 // charge at the wall's foot, the blow at the pillar, the ball at the pane.
 // The game's og.assert sites hold on every tick (no chunk falls through the
 // slab), each prop is seen to break, and one frame of the settled yard is
-// compared with its Metal reference.
+// compared with its L4 reference (references/vulkan/).
 import { expect, test } from "bun:test";
 import { runPlaytest } from "@origingame/engine/playtest";
 
@@ -23,7 +23,7 @@ test("a wall, a pillar and a pane break on their beats and nothing falls through
       "2.9:expect:state:pillar>0.25",
       "2.9:expect:state:paneIntact==0",
       "3:screenshot:yard.png",
-      "3:expect:frame:references/metal/yard.png:rmse:<=3",
+      "3:expect:frame:references/vulkan/yard.png:rmse:<=3",
       "3.05:quit",
     ].join(";"),
   });

@@ -45,7 +45,7 @@ idle (`state==0`), the run fires step events, the hit fires once and the
 blast cuts loose at least one piece (`the mound breaks into pieces`,
 `detached>=1`; 25 today); the frame at 1.9 s, two ticks of the blade's
 crescent after the hit with the mound's pieces lifting in its spark's
-light, matches `references/metal/slash.png` (rmse ≤ 3).
+light, matches `references/vulkan/slash.png` (rmse ≤ 3).
 
 Budget: under 10 s warm. Measured 2.4 s of run (2.6 s with its check); a
 cold cook is 5.7 s with the debug `og`, most of it the two vfx2d recipes.
