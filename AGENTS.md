@@ -108,10 +108,10 @@ status `docs/roadmap.md`. Platform contracts implemented here:
 - **One target directory per checkout.** Never set a private
   `CARGO_TARGET_DIR` or copy the tree. Never delete a `target/`; clean one
   crate with `cargo clean -p`, and free disk with `scripts/clean-targets.sh`.
-- **Lanes.** Parallel work on macrunner takes a persistent worktree with
-  `scripts/lane.sh take lane-N <stream>` and frees it after landing
-  (`scripts/lane.sh free lane-N`, `--list` to see them). Never switch or reset
-  a lane you did not take, never `git worktree add` a fresh one.
+- **One stream at a time on macrunner.** Development there is ordinary work
+  on a branch in one checkout; streams run in order, and the next starts once
+  the previous has landed. Never switch or reset a checkout another thread is
+  using, never `git worktree add` a fresh one.
 - **Concurrent gates, bounded work.** `scripts/check.sh` takes shared admission
   and a checkout-local output lock. CPU steps take no machine work lock;
   each gate runs two steps, and each step's Cargo/nextest jobs share the
@@ -160,11 +160,8 @@ status `docs/roadmap.md`. Platform contracts implemented here:
 
 ## Pitfalls
 
-- Claim a lane only with `scripts/lane.sh take`; for an existing branch,
-  take first and switch inside the claimed lane. `--list` can be seconds
-  stale.
 - Never kill a process you did not start: `pgrep -f "check.sh quick"`
-  matches other lanes' gates. Keep `$!` and stop only that; tell the owner
+  matches other checkouts' gates. Keep `$!` and stop only that; tell the owner
   of anything else in your way. A killed script's `og test` keeps running;
   check `ps` for `target/debug/og` before re-recording into the same files.
 - Never edit a shell script while a running shell is reading it.
@@ -203,8 +200,8 @@ status `docs/roadmap.md`. Platform contracts implemented here:
 
 ## Streams and landing
 
-- The coordinator thread delegates streams with `create_thread`: at most eight
-  author streams at once, each owning a whole feature area on one branch.
+- The coordinator thread delegates streams with `create_thread`: one author stream
+  at a time, in order, each owning a whole feature area on one branch.
   Default mode: `external-agent:claude-code` with
   `["model:claude-opus-5-5","effort:medium"]`, project `origingame/origin-engine`,
   base commit named in the brief. Infrastructure, hard logic, backend work,
@@ -213,7 +210,7 @@ status `docs/roadmap.md`. Platform contracts implemented here:
   art, a paper port) may go to Claude Code with
   `["model:claude-fable-5-1","effort:high"]`, briefed with every attempt.
   A stopped thread is not resumed; a new one starts from `origin/main`.
-- Authors work in their own lane on macrunner (or an orb) and run the CPU
+- Authors work on their branch on macrunner (or an orb) and run the CPU
   side themselves: `cargo check`, their crates' tests and
   `scripts/check.sh quick --only fmt clippy rust-cpu drift bun-quick`. GPU
   work runs in stages, not on every edit: at a milestone the author pushes
