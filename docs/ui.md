@@ -2936,7 +2936,7 @@ Source: [WebDX web-features 3.45.0](https://www.npmjs.com/package/web-features/v
 
 **Supported means the output assertion named in the row proves the listed scope.** It does not claim every syntax or subfeature grouped under that WebDX name. **Missing means an implementation gap or a missing output proof**, distinguished in the reason. A missing proof is not evidence that the implementation is absent. Parser acceptance, a property name in source, and an entire test file are not support evidence. This is a conservative, incomplete conformance inventory; unresolved rows stay visible.
 
-Part applicability is pending the parts-as-nodes stream for every row: an element test does not prove that a widget `::part` lays out, transforms or paints the property. Inherited, pseudo-element, environment and lifecycle features need their own applicable part scenarios; there is no blanket all-properties claim.
+Part applicability is proved only in the scopes named below: an element test does not prove that a widget `::part` lays out, transforms or paints the property. Inherited, pseudo-element, environment and lifecycle features need their own applicable part scenarios; there is no blanket all-properties claim.
 
 Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document drift. For offline use, pass `--archive <web-features-3.45.0.tgz>`; its SHA-256 is pinned in the script. Proof entries are manually reviewed assertions, not name matches. Tests below live in `crates/og-ui/tests/` and run in the `og-ui` integration test binary; GPU proofs require Metal.
 
@@ -2981,7 +2981,7 @@ Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document dr
 | `baseline-source` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `before-after` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `border-image` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_paint::flex_ratios_absolute_fades_and_state_border_images_render`](../crates/og-ui/tests/css_paint.rs). A real button hover changes rendered border pixels from a shorthand source to a longhand gradient source; this does not prove all border-image modes. |
-| `border-radius` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `border-radius` | Widely | Missing | Supported (scope →) | Output proof not yet reviewed; implementation status unverified. Part proof: [`box_decor::border_radius_rounds_a_dressed_button`](../crates/og-ui/tests/box_decor.rs). Emitted button base radius replaces its default in both immediate and retained documents. |
 | `border-shape` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `borders` | Widely | Supported (scope →) | Pending parts-as-nodes | [`box_decor::borders_pad_the_box_and_outlines_take_no_room`](../crates/og-ui/tests/box_decor.rs). Computed child offsets prove border widths/styles and logical sides affect layout; outline/offset take no room. |
 | `box-decoration-break` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
@@ -3002,7 +3002,7 @@ Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document dr
 | `clip-path` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_effects::css_effects_match_their_reference_frames`](../crates/og-ui/tests/css_effects.rs). Metal references at 1280/390 compare isolated/grouped blends and rect, xywh, shape, content-box and SVG-reference clipping tiles. |
 | `clip-path-animatable` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `clip-path-boxes` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_effects::css_effects_match_their_reference_frames`](../crates/og-ui/tests/css_effects.rs). Metal references at 1280/390 compare isolated/grouped blends and rect, xywh, shape, content-box and SVG-reference clipping tiles. |
-| `color` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `color` | Widely | Missing | Supported (scope →) | Output proof not yet reviewed; implementation status unverified. Part proof: [`dressing::button_parts_keep_separate_boxes_and_host_event_ownership`](../crates/og-ui/tests/dressing.rs). Button base dimensions, independent host/part translate, inherited font size/color, opacity keyframes, click ownership and remove/reinsert output. Other widget groups remain pending. |
 | `color-adjust` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `color-function` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `color-gamut` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
@@ -3098,7 +3098,7 @@ Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document dr
 | `font-palette` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `font-palette-animation` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `font-shorthand` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
-| `font-size` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `font-size` | Widely | Missing | Supported (scope →) | Output proof not yet reviewed; implementation status unverified. Part proof: [`dressing::button_parts_keep_separate_boxes_and_host_event_ownership`](../crates/og-ui/tests/dressing.rs). Button base dimensions, independent host/part translate, inherited font size/color, opacity keyframes, click ownership and remove/reinsert output. Other widget groups remain pending. |
 | `font-size-adjust` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `font-stretch` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `font-style` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
@@ -3150,7 +3150,7 @@ Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document dr
 | `ime-mode` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `import` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `indeterminate` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
-| `individual-transforms` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_interact::translate_percentages_move_by_the_elements_own_box`](../crates/og-ui/tests/css_interact.rs). Percentage translate changes computed box and hit testing; this proof covers translate, not individual rotate/scale. |
+| `individual-transforms` | Widely | Supported (scope →) | Supported (scope →) | [`css_interact::translate_percentages_move_by_the_elements_own_box`](../crates/og-ui/tests/css_interact.rs). Percentage translate changes computed box and hit testing; this proof covers translate, not individual rotate/scale. Part proof: [`dressing::button_parts_keep_separate_boxes_and_host_event_ownership`](../crates/og-ui/tests/dressing.rs). Button base dimensions, independent host/part translate, inherited font size/color, opacity keyframes, click ownership and remove/reinsert output. Other widget groups remain pending. |
 | `inherit-value` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `initial-letter` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `initial-value` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
@@ -3206,7 +3206,7 @@ Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document dr
 | `object-position` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_interact::images_take_object_fit_position_and_inherited_image_rendering`](../crates/og-ui/tests/css_interact.rs). Emitted image paint has contain fit, right-edge offset and inherited nearest sampling. |
 | `object-view-box` | Not Baseline | Supported (scope →) | Pending parts-as-nodes | [`control_props::an_image_shows_its_object_view_box`](../crates/og-ui/tests/control_props.rs). Both build paths emit asymmetric inset/calc crop UVs; the removed -og-uv property is rejected. |
 | `oklab` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
-| `opacity` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `opacity` | Widely | Missing | Supported (scope →) | Output proof not yet reviewed; implementation status unverified. Part proof: [`dressing::button_parts_keep_separate_boxes_and_host_event_ownership`](../crates/og-ui/tests/dressing.rs). Button base dimensions, independent host/part translate, inherited font size/color, opacity keyframes, click ownership and remove/reinsert output. Other widget groups remain pending. |
 | `opacity-svg` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `open-pseudo` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `outline` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
@@ -3289,7 +3289,7 @@ Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document dr
 | `scrollbar-width` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `selection` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `selectors` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
-| `shadow-parts` | Widely | Missing | Pending parts-as-nodes | Host/part/state selector registry is present; all-property part applicability awaits the parts-as-nodes stream and its output tests. |
+| `shadow-parts` | Widely | Missing | Supported (scope →) | Host/part/state selector registry is present; all-property part applicability awaits the parts-as-nodes stream and its output tests. Part proof: [`dressing::button_parts_keep_separate_boxes_and_host_event_ownership`](../crates/og-ui/tests/dressing.rs). Button base dimensions, independent host/part translate, inherited font size/color, opacity keyframes, click ownership and remove/reinsert output. Other widget groups remain pending. |
 | `shape-function` | Newly | Supported (scope →) | Pending parts-as-nodes | [`css_effects::css_effects_match_their_reference_frames`](../crates/og-ui/tests/css_effects.rs). Metal references at 1280/390 compare isolated/grouped blends and rect, xywh, shape, content-box and SVG-reference clipping tiles. |
 | `shape-outside` | Widely | Missing | Pending parts-as-nodes | Rectangular floats have layout tests; shape exclusion contours and shape-margin have no output proof. |
 | `shapes` | Widely | Missing | Pending parts-as-nodes | clip-path does not prove shape-outside float exclusion. |
@@ -3384,7 +3384,7 @@ Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document dr
 | `white-space` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `white-space-collapse` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `widows-orphans` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
-| `width-height` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_layout::the_box_model_sizes_as_css_does`](../crates/og-ui/tests/css_layout.rs). Computed content-box padding, auto/percentage bounds, 16:9 ratio, logical dimensions and intrinsic widths. |
+| `width-height` | Widely | Supported (scope →) | Supported (scope →) | [`css_layout::the_box_model_sizes_as_css_does`](../crates/og-ui/tests/css_layout.rs). Computed content-box padding, auto/percentage bounds, 16:9 ratio, logical dimensions and intrinsic widths. Part proof: [`dressing::button_parts_keep_separate_boxes_and_host_event_ownership`](../crates/og-ui/tests/dressing.rs). Button base dimensions, independent host/part translate, inherited font size/color, opacity keyframes, click ownership and remove/reinsert output. Other widget groups remain pending. |
 | `will-change` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `window-controls-overlay` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `window-drag` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |

@@ -103,6 +103,16 @@ MISSING = {
     "background-image": "Gradient/reference coverage exists; url(coin) resolves an atlas name, not a standard file URL. Icon uses must migrate to SVG file masks.",
 }
 
+PART_PROVEN = {
+    feature: ("dressing", "button_parts_keep_separate_boxes_and_host_event_ownership",
+              "Button base dimensions, independent host/part translate, inherited font size/color, "
+              "opacity keyframes, click ownership and remove/reinsert output. Other widget groups remain pending.")
+    for feature in "shadow-parts width-height individual-transforms font-size color opacity".split()
+}
+PART_PROVEN["border-radius"] = (
+    "box_decor", "border_radius_rounds_a_dressed_button",
+    "Emitted button base radius replaces its default in both immediate and retained documents.")
+
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -116,7 +126,7 @@ def main():
         data = json.load(package.extractfile("package/data.json"))["features"]
     features = {key: value for key, value in data.items()
                 if any(name.startswith("css.") for name in value.get("compat_features", []))}
-    if len(features) != 454 or (PROVEN.keys() | MISSING.keys()) - features.keys():
+    if len(features) != 454 or (PROVEN.keys() | MISSING.keys() | PART_PROVEN.keys()) - features.keys():
         raise ValueError("feature inventory drift")
     lines = [START,
              "## 8. Standard CSS output-proof checklist",
@@ -133,7 +143,7 @@ def main():
              "a property name in source, and an entire test file are not support evidence. "
              "This is a conservative, incomplete conformance inventory; unresolved rows stay visible.",
              "",
-             "Part applicability is pending the parts-as-nodes stream for every row: an element test "
+             "Part applicability is proved only in the scopes named below: an element test "
              "does not prove that a widget `::part` lays out, transforms or paints the property. "
              "Inherited, pseudo-element, environment and lifecycle features need their own applicable "
              "part scenarios; there is no blanket all-properties claim.",
@@ -158,7 +168,15 @@ def main():
         else:
             state = "Missing"
             reason = MISSING.get(key, "Output proof not yet reviewed; implementation status unverified.")
-        lines.append(f"| `{key}` | {label} | {state} | Pending parts-as-nodes | {reason} |")
+        part_state = "Pending parts-as-nodes"
+        if key in PART_PROVEN:
+            module, test, scope = PART_PROVEN[key]
+            source = ROOT / f"crates/og-ui/tests/{module}.rs"
+            if f"fn {test}(" not in source.read_text():
+                raise ValueError(f"missing part proof entry point: {module}::{test}")
+            part_state = "Supported (scope →)"
+            reason += f" Part proof: [`{module}::{test}`](../crates/og-ui/tests/{module}.rs). {scope}"
+        lines.append(f"| `{key}` | {label} | {state} | {part_state} | {reason} |")
     lines += [END]
     path = ROOT / "docs/ui.md"
     old = path.read_text()
