@@ -55,6 +55,32 @@ proof("individual-transforms", "css_interact", "translate_percentages_move_by_th
       "Percentage translate changes computed box and hit testing; this proof covers translate, not individual rotate/scale.")
 proof("conic-gradients", "css_paint", "repeating_gradients_repeat_the_stop_interval",
       "Metal pixel assertions for both halves of all four repeating conic quarters.")
+proof("focus-within", "css_interact", "focus_within_follows_real_focus_between_retained_ancestors",
+      "Real clicks transfer focus between nested retained branches; computed widths prove shared ancestors stay focused and old ancestors reset. Parts and the legacy immediate builder are not covered.")
+proof("object-view-box", "control_props", "an_image_shows_its_object_view_box",
+      "Both build paths emit asymmetric inset/calc crop UVs; the removed -og-uv property is rejected.")
+proof("list-style", "html_text", "list_markers_follow_css_and_renumber_on_reorder",
+      "Both build paths assert marker text/shapes, position, inheritance and keyed reorder. Explicit initial resetting is tracked separately.")
+proof("media-queries media-query-range-syntax prefers-reduced-motion", "documents", "media_queries_follow_dimensions_preferences_and_nested_intersections",
+      "Computed widths at six viewport/preference combinations, including inclusive/exclusive range boundaries and nested queries.")
+proof("nth-child nth-child-of empty", "documents", "pushed_screens_match_sibling_and_structural_selectors_on_instantiated_rows",
+      "Computed widths/heights after keyed reorder and conditional removal prove filtered nth-child, nth-last-child, sibling and empty matching.")
+proof("custom-properties", "custom_properties", "bound_custom_properties_feed_the_cascade",
+      "Computed sizes follow bound/inherited variables, important precedence, null fallback and keyed insertion.")
+proof("calc min-max-clamp attr round-mod-rem em-unit lh", "custom_properties", "calc_reduces_once_its_variables_are_known",
+      "Computed lengths after variable substitution, typed attr updates/fallbacks, round(down), min/max/clamp and em/lh units. mod/rem are not covered by this round proof.")
+proof("borders outlines", "box_decor", "borders_pad_the_box_and_outlines_take_no_room",
+      "Computed child offsets prove border widths/styles and logical sides affect layout; outline/offset take no room.")
+proof("overscroll-behavior scroll-snap", "box_decor", "overscroll_contains_and_scroll_padding_insets_snaps",
+      "Wheel input proves nested containment and scroll-padding changes the final mandatory snap offset.")
+proof("scrollbar-color", "box_decor", "a_wheel_stops_at_snap_stop_always_and_scrollbar_color_inherits",
+      "Emitted thumb is inherited red; repeated wheel input stops at the mandatory intermediate snap area.")
+proof("overflow overflow-shorthand", "box_decor", "overflow_scrolls_and_clips",
+      "Wheel input changes only the auto axis; computed viewport/content extents and offsets are asserted.")
+proof("isolation mix-blend-mode clip-path clip-path-boxes rect-xywh shape-function", "css_effects", "css_effects_match_their_reference_frames",
+      "Metal references at 1280/390 compare isolated/grouped blends and rect, xywh, shape, content-box and SVG-reference clipping tiles.")
+proof("filter svg-filters", "css_filters", "css_filters_match_their_reference_frames",
+      "Metal references at 1280/390 compare SVG filter graphs, primitive tiles and CSS function/url composition; this does not prove native glass backdrop chains.")
 
 MISSING = {
     "gradients": "Nonzero repeating radial/conic intervals and coincident stops have Metal pixel proof in css_paint::repeating_gradients_repeat_the_stop_interval; full feature remains missing: subpixel periods, unbounded stop counts and out-of-range non-repeating stops are not proved.",
@@ -66,7 +92,6 @@ MISSING = {
     "shapes": "clip-path does not prove shape-outside float exclusion.",
     "table": "Table spans/captions have computed output tests, but border-spacing and border-collapse have no implementation/output proof.",
     "backdrop-filter": "Ordinary staged backdrop chains have fixtures; native glass rejects chains requiring intermediate clamps, drop-shadow and SVG url filters.",
-    "focus-within": "Synthetic ancestor-state matching is tested; real focus transfer through retained ancestors and parts remains unproved.",
     "shadow-parts": "Host/part/state selector registry is present; all-property part applicability awaits the parts-as-nodes stream and its output tests.",
     "background-image": "Gradient/reference coverage exists; url(coin) resolves an atlas name, not a standard file URL. Icon uses must migrate to SVG file masks.",
 }

@@ -202,3 +202,45 @@ fn translate_percentages_move_by_the_elements_own_box() {
     frame(&mut ui, unshifted);
     assert_eq!(frame(&mut ui, unshifted), Cursor::Default);
 }
+
+#[test]
+fn focus_within_follows_real_focus_between_retained_ancestors() {
+    let text = r#"<meta name="component" content="t">
+<div id="Root">
+  <div id="Left"><div id="Nested"><button id="First">First</button><button id="Second">Second</button></div></div>
+  <div id="Right"><button id="Third">Third</button></div>
+</div>
+<style>
+#Root { width: 400px; }
+#Left, #Right { width: 120px; }
+#Nested { width: 100px; }
+#Left:focus-within { width: 180px; }
+#Right:focus-within { width: 220px; }
+#Nested:focus-within { width: 160px; }
+button { width: 80px; height: 40px; }
+</style>"#;
+    let mut d = crate::html_text::Doc::new(text, &[], true);
+    let widths = |d: &crate::html_text::Doc| {
+        [
+            d.get("Left").width,
+            d.get("Nested").width,
+            d.get("Right").width,
+        ]
+    };
+    d.click("First");
+    assert_eq!(widths(&d), [180.0, 160.0, 120.0]);
+    d.click("Second");
+    assert_eq!(
+        widths(&d),
+        [180.0, 160.0, 120.0],
+        "shared ancestors remain focused"
+    );
+    d.click("Third");
+    assert_eq!(
+        widths(&d),
+        [120.0, 100.0, 220.0],
+        "old ancestors lose focus-within"
+    );
+    d.click("First");
+    assert_eq!(widths(&d), [180.0, 160.0, 120.0]);
+}
