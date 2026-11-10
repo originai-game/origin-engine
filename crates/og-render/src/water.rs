@@ -1054,8 +1054,11 @@ pub(crate) struct WaterRenderer {
     #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
     module: crate::deferred::Module,
     last_sea: Option<wgpu::BindGroup>,
-    /// W2: the sea's caustics pass, made with the first sea with caustics.
+    /// W2: the sea's caustics pass, made with the first sea with caustics
+    /// (none in a renderer made without them, RenderDesc::without: no lit
+    /// module reads its grid).
     caustics: Option<CausticsPass>,
+    caustics_left_out: bool,
     /// W3: the sea's hulls' wakes, made with the first sea with hulls in
     /// it, and the square's centre (frame xz) this frame when they ran.
     wakes: Option<crate::sea_wakes::SeaWakes>,
@@ -1281,6 +1284,7 @@ impl WaterRenderer {
         lighting_wgsl: &str,
         samples: u32,
         compute: bool,
+        caustics_left_out: bool,
     ) -> WaterRenderer {
         let tex = |binding, filterable| wgpu::BindGroupLayoutEntry {
             binding,
@@ -1581,6 +1585,7 @@ impl WaterRenderer {
             rivers: Vec::new(),
             no_wake,
             caustics: None,
+            caustics_left_out,
         }
     }
 
@@ -2168,7 +2173,7 @@ impl WaterRenderer {
             self.wake_centre = Some(pass.centre(world(origin)));
         }
         // W2: the sea's curvature about the camera, for the caustics under it.
-        if water.caustics > 0.0 && self.compute {
+        if water.caustics > 0.0 && self.compute && !self.caustics_left_out {
             let pass = self
                 .caustics
                 .get_or_insert_with(|| CausticsPass::new(device));

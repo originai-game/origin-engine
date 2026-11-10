@@ -737,6 +737,7 @@ impl Renderer {
                 .get_downlevel_capabilities()
                 .flags
                 .contains(wgpu::DownlevelFlags::COMPUTE_SHADERS),
+            off.contains(crate::pipeline_features::Features::CAUSTICS),
         );
         // The vegetation's wind field (G2), simulated where compute runs.
         let vegetation_compute = WORLD_3D

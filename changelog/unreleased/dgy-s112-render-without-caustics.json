@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "LitFeature.caustics",
+      "summary": "RenderOptions.without can leave out the caustics a water surface casts on what lies below it (og.Water.caustics), which every lit shader carries."
+    }
+  ]
+}
