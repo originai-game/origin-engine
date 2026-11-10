@@ -73,7 +73,9 @@ fn decals_project_on_terrain_and_reject_back_faces() {
     };
     scene.post.tonemap = Tonemap::None;
     let mut capture = |s: &RenderScene| {
-        let stats = renderer.render(s, &RenderTarget::Offscreen).unwrap();
+        let stats = renderer
+            .render_capture(s, &RenderTarget::Offscreen)
+            .unwrap();
         assert!(stats.terrain_draws > 0);
         renderer.read_offscreen().unwrap()
     };
