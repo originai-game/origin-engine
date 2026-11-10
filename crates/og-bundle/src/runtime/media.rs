@@ -34,12 +34,14 @@ pub fn mips_id(id: &str) -> String {
 
 /// The id of a glTF texture cooked once per image and use, whichever models
 /// name it (outside streaming groups and art contracts): its image's hash,
-/// its kind, and whether it streams its levels (a model's
-/// `stream_textures`). Models loaded at run time share it
-/// ([`SharedParts`](super::SharedParts)).
-pub fn gltf_texture_id(image_hash: u64, kind: u32, streamed: bool) -> String {
+/// its kind, whether it streams its levels (a model's `stream_textures`)
+/// and, for a cut-out (the base colour of an alpha-tested material, whose
+/// mips keep its coverage), the least alpha byte its material keeps. Models
+/// loaded at run time share it ([`SharedParts`](super::SharedParts)).
+pub fn gltf_texture_id(image_hash: u64, kind: u32, streamed: bool, cutout: Option<u8>) -> String {
     let stream = if streamed { "-stream" } else { "" };
-    format!("{SHARED_TEXTURES}{image_hash:016x}-{kind}{stream}#tex")
+    let cut = cutout.map(|c| format!("-cutout{c}")).unwrap_or_default();
+    format!("{SHARED_TEXTURES}{image_hash:016x}-{kind}{stream}{cut}#tex")
 }
 
 /// Whether `id` names a texture [`gltf_texture_id`] made: the same bytes

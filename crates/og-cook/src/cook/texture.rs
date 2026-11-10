@@ -261,6 +261,152 @@ fn dilate_transparent(img: &Image) -> Option<Image> {
     })
 }
 
+/// A cut-out's mips ([`TextureOptions::cutout`]), before [`keep_coverage`]: each level half the one before,
+/// rounded down to at least 1, each texel the level before sampled bilinearly at its centre. That is the plain mean
+/// of the 2 × 2 texels under it where a size is even, and the two texels nearest the centre where it is odd: a card
+/// 8 texels by 3 whose middle row holds the leaves halves to 4 × 1 from that row, where a filter that reaches the
+/// rows above and below (an area box, or the encoder's Kaiser, which also wraps round the edges) averages in two
+/// nearly transparent ones and takes the alpha below the cut-off. Clamped at the edges, never wrapping round them;
+/// colour in linear light on an sRGB map, alpha (and linear data) as stored. This is the chain a WebGL
+/// `generateMipmap` gives on the GPUs measured (NVIDIA's linear blit). Levels 1 to 1 × 1.
+#[cfg_attr(not(feature = "basis"), allow(dead_code))]
+fn cutout_mips(img: &Image, srgb: bool) -> Vec<Image> {
+    let to_lin: Vec<f32> = (0..256)
+        .map(|v| {
+            let c = v as f32 / 255.0;
+            if !srgb {
+                c
+            } else if c <= 0.04045 {
+                c / 12.92
+            } else {
+                ((c + 0.055) / 1.055).powf(2.4)
+            }
+        })
+        .collect();
+    let to_byte = |c: f32| -> u8 {
+        let c = c.clamp(0.0, 1.0);
+        let e = if !srgb {
+            c
+        } else if c <= 0.0031308 {
+            c * 12.92
+        } else {
+            1.055 * c.powf(1.0 / 2.4) - 0.055
+        };
+        (e * 255.0).round() as u8
+    };
+    // Per axis: for each target texel, the two source texels round its
+    // centre and their bilinear weights (clamped at the edge).
+    let spans = |n: usize, m: usize| -> Vec<[(usize, f32); 2]> {
+        (0..m)
+            .map(|i| {
+                let x = ((i as f32 + 0.5) * n as f32 / m as f32 - 0.5).max(0.0);
+                let j = (x.floor() as usize).min(n - 1);
+                let f = x - j as f32;
+                [(j, 1.0 - f), ((j + 1).min(n - 1), f)]
+            })
+            .collect()
+    };
+    let mut out = Vec::new();
+    let (mut w, mut h) = (img.width as usize, img.height as usize);
+    // The level before: colour in linear light, alpha as stored.
+    let mut px: Vec<[f32; 4]> = img
+        .rgba
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .map(|p| {
+            [
+                to_lin[p[0] as usize],
+                to_lin[p[1] as usize],
+                to_lin[p[2] as usize],
+                p[3] as f32 / 255.0,
+            ]
+        })
+        .collect();
+    while w > 1 || h > 1 {
+        let (nw, nh) = ((w / 2).max(1), (h / 2).max(1));
+        let (sx, sy) = (spans(w, nw), spans(h, nh));
+        let mut next = vec![[0.0f32; 4]; nw * nh];
+        for (y, ry) in sy.iter().enumerate() {
+            for (x, rx) in sx.iter().enumerate() {
+                let acc = &mut next[y * nw + x];
+                for &(j, wy) in ry {
+                    for &(i, wx) in rx {
+                        let p = px[j * w + i];
+                        for c in 0..4 {
+                            acc[c] += p[c] * wx * wy;
+                        }
+                    }
+                }
+            }
+        }
+        let rgba = next
+            .iter()
+            .flat_map(|p| {
+                [
+                    to_byte(p[0]),
+                    to_byte(p[1]),
+                    to_byte(p[2]),
+                    (p[3].clamp(0.0, 1.0) * 255.0).round() as u8,
+                ]
+            })
+            .collect();
+        out.push(Image {
+            width: nw as u32,
+            height: nh as u32,
+            rgba,
+        });
+        (w, h, px) = (nw, nh, next);
+    }
+    out
+}
+
+/// Raises the alpha of each cut-out level that keeps fewer texels at or above the cut-off `cut` (the least alpha
+/// byte the material keeps) than the first level does, in share (alpha-to-coverage mips: Castaño 2010, NVTT's
+/// `scaleAlphaToCoverage`, here upwards only): the texel that brings the level to that share, rounded up to a
+/// whole texel, comes to [`COVERAGE_MARGIN`] over the cut-off, and every alpha is scaled with it, so a
+/// box-filtered card's thin leaves stay drawn when minified instead of fading under the cut-off. A level that
+/// keeps the share is left as it is: the bilinear chain alone is what WebGL draws, so a game tuned there keeps its
+/// look.
+#[cfg_attr(not(feature = "basis"), allow(dead_code))]
+fn keep_coverage(levels: &mut [Image], first: &Image, cut: u8) {
+    let kept = |img: &Image| {
+        img.rgba
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .filter(|p| p[3] >= cut)
+            .count() as u64
+    };
+    let (k0, n0) = (
+        kept(first),
+        u64::from(first.width) * u64::from(first.height),
+    );
+    for l in levels {
+        let n = u64::from(l.width) * u64::from(l.height);
+        let need = (k0 * n).div_ceil(n0);
+        if kept(l) >= need {
+            continue;
+        }
+        let mut alpha: Vec<u8> = l.rgba.as_chunks::<4>().0.iter().map(|p| p[3]).collect();
+        alpha.sort_unstable_by(|a, b| b.cmp(a));
+        let at = alpha[need as usize - 1];
+        if at == 0 {
+            continue;
+        }
+        let scale = f32::from(cut.saturating_add(COVERAGE_MARGIN)) / f32::from(at);
+        for p in l.rgba.as_chunks_mut::<4>().0 {
+            p[3] = (f32::from(p[3]) * scale).round().min(255.0) as u8;
+        }
+    }
+}
+
+/// How far over the cut-off [`keep_coverage`] raises a level, in alpha bytes: about the alpha error ETC1S and
+/// UASTC make there. Raised to the cut-off itself, 7 of the 389 levels (of 16 texels or more) of a game's 57
+/// cut-out textures (daguanyuan's) still lost half their coverage once encoded in ETC1S, and 1 in UASTC; raised 8
+/// over it, none did.
+const COVERAGE_MARGIN: u8 = 8;
+
 fn has_alpha(img: &Image) -> bool {
     img.rgba.as_chunks::<4>().0.iter().any(|p| p[3] != 255)
 }
@@ -292,11 +438,23 @@ fn encode_basisu(img: &Image, k: u32, opts: &TextureOptions) -> Result<Vec<u8>, 
     if k == kind::NORMAL {
         params.tune_for_normal_maps();
     }
-    params.set_generate_mipmaps(opts.mipmaps);
-    params.set_mipmap_smallest_dimension(1);
     params
         .source_image_mut(0)
         .init(&img.rgba, img.width, img.height, 4);
+    if let Some(cut) = opts.cutout.filter(|_| opts.mipmaps) {
+        // A cut-out's own levels, handed to basisu whole.
+        params.set_generate_mipmaps(false);
+        let mut levels = cutout_mips(img, k == kind::COLOR);
+        keep_coverage(&mut levels, img, cut);
+        for (i, l) in levels.iter().enumerate() {
+            params
+                .source_mipmap_image_mut(0, i as u32)
+                .init(&l.rgba, l.width, l.height, 4);
+        }
+    } else {
+        params.set_generate_mipmaps(opts.mipmaps);
+        params.set_mipmap_smallest_dimension(1);
+    }
     // One thread per texture: the cook parallelises across assets, and a
     // single-threaded encode is bit-for-bit reproducible.
     let mut c = Compressor::new(1);
@@ -516,5 +674,196 @@ mod tests {
             rgba: vec![9, 9, 9, 255],
         };
         assert!(dilate_transparent(&opaque).is_none());
+    }
+
+    fn alpha_image(width: u32, height: u32, alpha: &[u8]) -> Image {
+        Image {
+            width,
+            height,
+            rgba: alpha.iter().flat_map(|&a| [255, 255, 255, a]).collect(),
+        }
+    }
+
+    fn alphas(img: &Image) -> Vec<u8> {
+        img.rgba.as_chunks::<4>().0.iter().map(|p| p[3]).collect()
+    }
+
+    /// A bamboo spray card (daguanyuan's zhu_spray: 1024 × 384, alpha-tested at 0.35, three quarters of its texels
+    /// transparent, its leaves across the middle) at 32 × 12: white leaves in rows 4 to 7, three columns in four.
+    fn bamboo_card() -> Image {
+        let alpha: Vec<u8> = (0..12)
+            .flat_map(|y| {
+                (0..32).map(move |x| {
+                    if (4..8).contains(&y) && x % 4 != 3 {
+                        255
+                    } else {
+                        0
+                    }
+                })
+            })
+            .collect();
+        alpha_image(32, 12, &alpha)
+    }
+
+    #[test]
+    fn cutout_mips_halve_to_one_texel_with_the_centre_taps() {
+        // 4 x 2, alpha 1 0 1 1 / 0 0 1 1: level 1 (2 x 1) is the 2 x 2
+        // means 0.25 and 1, level 2 (1 x 1) their mean 0.625.
+        let m = cutout_mips(
+            &alpha_image(4, 2, &[255, 0, 255, 255, 0, 0, 255, 255]),
+            true,
+        );
+        let sizes: Vec<_> = m.iter().map(|l| (l.width, l.height)).collect();
+        assert_eq!(sizes, [(2, 1), (1, 1)]);
+        assert_eq!((m[0].rgba[3], m[0].rgba[7], m[1].rgba[3]), (64, 255, 159));
+        assert_eq!(&m[1].rgba[0..3], &[255, 255, 255]);
+        // Colour averages in linear light on an sRGB map (black and white:
+        // linear 0.5, sRGB 188), as stored on linear data (128).
+        let bw = Image {
+            width: 2,
+            height: 1,
+            rgba: vec![0, 0, 0, 255, 255, 255, 255, 255],
+        };
+        assert_eq!(cutout_mips(&bw, true)[0].rgba[0], 188);
+        assert_eq!(cutout_mips(&bw, false)[0].rgba[0], 128);
+        // A mid grey shows the light it averages in: black and sRGB 128
+        // meet at 92 (linear 0.108), not at 137 (the stored values' mean
+        // encoded again) or 64 (the stored values' mean).
+        let grey = Image {
+            width: 2,
+            height: 1,
+            rgba: vec![0, 0, 0, 255, 128, 128, 128, 255],
+        };
+        assert_eq!(cutout_mips(&grey, true)[0].rgba[0], 92);
+        // Odd sizes take the taps nearest the centre, clamped, never
+        // wrapping: 3 -> 1 is the middle texel; 5 -> 2 samples at 0.75 and
+        // 3.25 (0.25 a0 + 0.75 a1, 0.75 a3 + 0.25 a4).
+        assert_eq!(
+            cutout_mips(&alpha_image(3, 1, &[0, 200, 255]), false)[0].rgba[3],
+            200
+        );
+        let five = &cutout_mips(&alpha_image(5, 1, &[0, 100, 200, 40, 0]), false)[0];
+        assert_eq!((five.width, five.rgba[3], five.rgba[7]), (2, 75, 30));
+        // The bamboo card: 16 x 6 holds its leaf rows as pairs of columns
+        // with two leaves (255) and one (128); 8 x 3 their mean, 191, in its
+        // middle row and nothing above or below; 4 x 1 that row alone, not
+        // the three rows' mean (64, under the cut-off 0.35 = 89), and so to
+        // 1 x 1: every level keeps a texel at or above the cut-off where
+        // its leaves are.
+        let m = cutout_mips(&bamboo_card(), true);
+        let sizes: Vec<_> = m.iter().map(|l| (l.width, l.height)).collect();
+        assert_eq!(sizes, [(16, 6), (8, 3), (4, 1), (2, 1), (1, 1)]);
+        let leaves: Vec<u8> = (0..16)
+            .map(|x| if x % 2 == 0 { 255 } else { 128 })
+            .collect();
+        let none = [0u8; 16];
+        assert_eq!(
+            alphas(&m[0]),
+            [&none[..], &none, &leaves, &leaves, &none, &none].concat()
+        );
+        assert_eq!(alphas(&m[1]), [[0; 8], [191; 8], [0; 8]].concat());
+        assert_eq!(alphas(&m[2]), [191; 4]);
+        assert_eq!((alphas(&m[3]), alphas(&m[4])), (vec![191; 2], vec![191]));
+        assert!(
+            m.iter()
+                .all(|l| l.rgba.as_chunks::<4>().0.iter().all(|p| p[..3] == [255; 3]))
+        );
+    }
+
+    #[test]
+    fn keep_coverage_raises_only_the_levels_that_lose_it() {
+        // A thin stalk: one column of alpha 200 in 8 x 8, cut at 0.5 (128),
+        // 1 texel in 8 kept. The chain halves it to 100 (4 x 4), 50 (2 x 2)
+        // and 25 (1 x 1), every level under the cut-off; raised, each level's
+        // brightest texels come to 136 (the cut-off and the margin, 8), every
+        // alpha scaled with them: the column at 4 x 4 (4 texels in 16, at
+        // least the 2 the share asks), one texel in two at 2 x 2, the last one.
+        let stalk: Vec<u8> = (0..64).map(|i| if i % 8 == 2 { 200 } else { 0 }).collect();
+        let first = alpha_image(8, 8, &stalk);
+        let mut m = cutout_mips(&first, true);
+        assert_eq!(alphas(&m[0]), [[0, 100, 0, 0]; 4].concat());
+        assert_eq!(
+            (alphas(&m[1]), alphas(&m[2])),
+            (vec![50, 0, 50, 0], vec![25])
+        );
+        keep_coverage(&mut m, &first, 128);
+        assert_eq!(alphas(&m[0]), [[0, 136, 0, 0]; 4].concat());
+        assert_eq!(
+            (alphas(&m[1]), alphas(&m[2])),
+            (vec![136, 0, 136, 0], vec![136])
+        );
+        // Texels of 100 and 50 where one is asked for: the 100 comes to 136,
+        // the 50 with it to 68, still under the cut-off.
+        let mut two = vec![alpha_image(2, 1, &[100, 50])];
+        keep_coverage(&mut two, &alpha_image(2, 1, &[255, 0]), 128);
+        assert_eq!(alphas(&two[0]), [136, 68]);
+        // The bamboo card keeps its share at every level of the chain (a
+        // quarter at the first, a third or more after), so it is untouched.
+        let card = bamboo_card();
+        let chain = cutout_mips(&card, true);
+        let mut kept = cutout_mips(&card, true);
+        keep_coverage(&mut kept, &card, 90);
+        assert!(chain.iter().zip(&kept).all(|(a, b)| a.rgba == b.rgba));
+    }
+
+    /// A cut-out's levels reach the encoded texture, and only a cut-out's: the bamboo card through basisu keeps a
+    /// texel at or above its cut-off at every level as a cut-out, where as an ordinary colour texture the encoder's
+    /// own filter (Kaiser, wrapping round the edges) spreads the leaf rows over the transparent ones until, from
+    /// 4 x 1 down, no texel reaches the cut-off and the card is cut away.
+    #[cfg(feature = "basis")]
+    #[test]
+    fn only_a_cut_out_keeps_its_coverage_through_the_encoded_levels() {
+        use basis_universal::{TranscodeParameters, Transcoder, TranscoderTextureFormat};
+        let encoded = |cutout: Option<u8>| -> Vec<(u32, Vec<u8>)> {
+            let opts = TextureOptions {
+                color_uastc: true,
+                cutout,
+                ..TextureOptions::default()
+            };
+            let basis = encode_basisu(&bamboo_card(), kind::COLOR, &opts).unwrap();
+            let mut t = Transcoder::new();
+            t.prepare_transcoding(&basis).unwrap();
+            let levels = (0..t.image_level_count(&basis, 0))
+                .map(|level_index| {
+                    let width = t
+                        .image_level_description(&basis, 0, level_index)
+                        .unwrap()
+                        .original_width;
+                    let rgba = t
+                        .transcode_image_level(
+                            &basis,
+                            TranscoderTextureFormat::RGBA32,
+                            TranscodeParameters {
+                                image_index: 0,
+                                level_index,
+                                ..Default::default()
+                            },
+                        )
+                        .unwrap();
+                    (
+                        width,
+                        rgba.as_chunks::<4>().0.iter().map(|p| p[3]).collect(),
+                    )
+                })
+                .collect();
+            t.end_transcoding();
+            levels
+        };
+        // The share of a level's texels at or above the cut-off (0.35: 90).
+        let coverage = |a: &[u8]| a.iter().filter(|&&a| a >= 90).count() as f32 / a.len() as f32;
+        let cutout = encoded(Some(90));
+        assert_eq!(cutout.len(), 6, "32x12 to 1x1");
+        assert_eq!(coverage(&cutout[0].1), 0.25);
+        for (i, (width, a)) in cutout.iter().enumerate() {
+            assert!(
+                coverage(a) >= 0.25,
+                "cut-out level {i} ({width} wide): {a:?}"
+            );
+        }
+        let plain = encoded(None);
+        assert_eq!(plain.len(), 6);
+        for (i, (width, a)) in plain.iter().enumerate().skip(3) {
+            assert_eq!(coverage(a), 0.0, "ordinary level {i} ({width} wide): {a:?}");
+        }
     }
 }

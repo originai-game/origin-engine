@@ -16,9 +16,9 @@ pub(super) fn run(
             s.conformed.as_deref().unwrap_or(&s.bytes).as_slice(),
             format!("{kind} {split:?} {} {:?}", super::ext(&s.rel), s.settings),
         )),
-        Some(Work::GltfTexture(s, image, kind, split)) => Some((
+        Some(Work::GltfTexture(s, image, kind, cutout, split)) => Some((
             s.gltf.as_ref().expect("parsed model").images[*image].as_slice(),
-            format!("{kind} {split:?} {:?}", s.settings),
+            format!("{kind} cutout {cutout:?} {split:?} {:?}", s.settings),
         )),
         Some(Work::Sound(s, chunks)) => Some((
             s.bytes.as_slice(),

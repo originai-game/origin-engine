@@ -72,14 +72,24 @@ pub(super) fn run(
             let mesh = mesh_for(s, options)?;
             anim::cook(g, &s.bytes, &mesh, a, p.stamp, &assets_root(s))
         }
-        Work::GltfTexture(s, image, k, split) => {
+        Work::GltfTexture(s, image, k, cutout, split) => {
             let id = p.id.strip_suffix("#mips").unwrap_or(&p.id);
             let cook = |stamp| {
                 let g = s.gltf.as_ref().expect("loaded");
                 let img = texture::decode(&g.images[*image])
                     .map_err(|e| CookError(format!("{id}: image {image}: {e}")))?;
-                let mut notes = vec![format!("{id}: {}x{} image {image}", img.width, img.height)];
+                let mut notes = vec![format!(
+                    "{id}: {}x{} image {image}{}",
+                    img.width,
+                    img.height,
+                    cutout
+                        .map(|c| format!(
+                            " (cut-out at alpha {c}: an alpha-tested material's base colour)"
+                        ))
+                        .unwrap_or_default()
+                )];
                 let mut t = options.texture.clone();
+                t.cutout = *cutout;
                 let (img, k) = match options
                     .mesh
                     .conform
@@ -102,6 +112,12 @@ pub(super) fn run(
                     }
                     None => (img, *k),
                 };
+                if t.cutout.is_some() && t.mipmaps && (t.force_toktx || !cfg!(feature = "basis")) {
+                    notes.push(format!(
+                        "{id}: a cut-out with toktx's own mips (the basis-universal encoder, og-cook's `basis` \
+                         feature, makes the ones that keep its coverage)"
+                    ));
+                }
                 texture::cook(&img, k, &t, stamp).map(|b| (b, notes))
             };
             split_texture(s, *image, split, p, cook)
