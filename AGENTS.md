@@ -225,7 +225,11 @@ status `docs/roadmap.md`. Platform contracts implemented here:
   frame and changes no look needs no review. The command is a merge queue: quick runs first outside it, then a FIFO landing lock is
   held through rebase, at most one recheck (only for overlap or shared
   inputs; disjoint changes reuse the pass) and push. Never push main
-  directly. A head that moves frames or changes a look sends its L4
+  directly. A head that changes what a game's type check or playtest
+  reaches (packages/engine, the IDL, the generated `.d.ts`), and any stack
+  of more than a few commits, also runs `scripts/check.sh full --only
+  fixtures` first: quick runs no fixture, and a broken `og check` fails
+  every game's `og test`. A head that moves frames or changes a look sends its L4
   captures to the art runner, who reviews the look against commercial games;
   the integrator lands it once approved. A failure found later goes back to its branch as
   a fix-forward commit.
