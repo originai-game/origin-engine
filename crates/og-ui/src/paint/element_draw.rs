@@ -1001,6 +1001,21 @@ pub(crate) fn snap_to_cells(v: f32, cell: f32) -> f32 {
     (v.abs() / cell).round().max(1.0) * cell * v.signum()
 }
 
+impl ShapeKind {
+    /// Whether the area a closed shape over a `size` box fills, by its
+    /// fill rule, holds `p` (CSS px from the box's top left); an open
+    /// line holds nothing.
+    pub(crate) fn holds(&self, size: [f32; 2], p: Vec2) -> bool {
+        let (lines, closed, rule) = outline(self, [0.0, 0.0, size[0], size[1]], 0.25);
+        let w: i32 = lines.iter().map(|c| winding(c, p)).sum();
+        closed
+            && match rule {
+                FillRule::EvenOdd => w % 2 != 0,
+                _ => w != 0,
+            }
+    }
+}
+
 /// A shape's contours as polylines in its own units (`frame`: the rect a
 /// rect or ellipse fills), whether they are closed, and its fill rule.
 fn outline(kind: &ShapeKind, frame: [f32; 4], tol: f32) -> (Vec<Vec<Vec2>>, bool, FillRule) {

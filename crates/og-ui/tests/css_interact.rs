@@ -9,6 +9,9 @@
 //!   child that says `visible` take it → the same test
 //! - `cursor: url()` images lost before the host, or images over `auto`
 //!   taking the parent's keyword → the same test
+//! - a cursor applying outside an element's `clip-path` (its own, or an
+//!   ancestor's cutting a child), or a fill rule or `url(#id)` clip
+//!   ignored → `cursors_apply_only_inside_clip_paths`
 //! - `object-fit` or `object-position` not reaching an `<image>`, or
 //!   `image-rendering` not inherited (or `auto` not resetting it) →
 //!   `images_take_object_fit_position_and_inherited_image_rendering`
@@ -187,6 +190,98 @@ fn plain_boxes_choose_cursors_in_clipped_transformed_paint_order() {
                     }]
                 );
             }
+        }
+    }
+}
+
+#[test]
+fn cursors_apply_only_inside_clip_paths() {
+    let doc = r##"<meta name="component" content="cuts" />
+<section id="Root">
+  <svg id="Defs" viewBox="0 0 1 1" width="0" height="0">
+    <clipPath id="Half" clipPathUnits="objectBoundingBox"><path d="M0 0 L1 0 L0 1 Z"/></clipPath>
+  </svg>
+  <button id="Under">Under</button>
+  <div id="Round"></div>
+  <div id="Wedge"></div>
+  <div id="Ring"></div>
+  <div id="Drawn"></div>
+  <div id="Url"></div>
+  <div id="Parent"><div id="Child"></div></div>
+</section>
+<style>
+#Root { position: relative; width: 300px; height: 200px; cursor: help; }
+#Under { position: absolute; left: 0; top: 0; width: 80px; height: 80px; cursor: crosshair; }
+#Round { position: absolute; left: 0; top: 0; width: 80px; height: 80px;
+  clip-path: circle(30px at 40px 40px); cursor: wait; }
+#Wedge { position: absolute; left: 100px; top: 0; width: 80px; height: 80px;
+  clip-path: polygon(0 0, 100% 0, 0 100%) content-box; padding: 0; cursor: grab; }
+#Ring { position: absolute; left: 200px; top: 0; width: 80px; height: 80px; cursor: copy;
+  clip-path: path(evenodd, "M0 0 H80 V80 H0 Z M20 20 H60 V60 H20 Z"); }
+#Drawn { position: absolute; left: 0; top: 100px; width: 80px; height: 80px; cursor: move;
+  clip-path: shape(from 0 0, line to 50% 0, line to 50% 100%, line to 0 100%, close); }
+#Url { position: absolute; left: 100px; top: 100px; width: 80px; height: 80px;
+  clip-path: url(#Half); cursor: zoom-in; }
+#Parent { position: absolute; left: 200px; top: 100px; width: 80px; height: 80px;
+  clip-path: inset(0 40px 0 0); }
+#Child { width: 80px; height: 80px; cursor: progress; }
+</style>"##;
+    for retained in [false, true] {
+        let mut ui = ui_with_font(test_font_metrics());
+        ui.define_document(UiDocument::parse("ui/cuts.svelte", doc).unwrap());
+        if retained {
+            ui.mount_document(
+                reactive::SourceId::new("test", "cuts"),
+                "cuts",
+                Default::default(),
+                Default::default(),
+                &bind::NoEnv,
+            )
+            .unwrap();
+        }
+        for (x, y, expected) in [
+            // circle(): inside it the overlay's, in the box's corner the
+            // button under it.
+            (40.0, 40.0, Cursor::Wait),
+            (4.0, 4.0, Cursor::Crosshair),
+            // polygon(): the top-left triangle only.
+            (110.0, 10.0, Cursor::Grab),
+            (170.0, 70.0, Cursor::Help),
+            // path() with evenodd: the ring, not its hole.
+            (205.0, 5.0, Cursor::Copy),
+            (240.0, 40.0, Cursor::Help),
+            // shape(): the left half.
+            (20.0, 140.0, Cursor::Move),
+            (60.0, 140.0, Cursor::Help),
+            // url(#id) in objectBoundingBox units: the top-left triangle.
+            (110.0, 110.0, Cursor::ZoomIn),
+            (170.0, 170.0, Cursor::Help),
+            // An ancestor's clip cuts its child's cursor too.
+            (220.0, 140.0, Cursor::Progress),
+            (260.0, 140.0, Cursor::Help),
+        ] {
+            for _ in 0..2 {
+                ui.begin(
+                    InputFrame {
+                        pointer: Vec2::new(x, y),
+                        pointer_inside: true,
+                        ..Default::default()
+                    },
+                    Viewport::new(320.0, 220.0),
+                );
+                if retained {
+                    ui.build_retained_documents(&bind::NoEnv).unwrap();
+                } else {
+                    ui.component("T", "cuts", &mut json!({}), &bind::NoEnv);
+                }
+                ui.end();
+            }
+            assert_eq!(
+                ui.frame().cursor,
+                expected,
+                "retained={retained}, ({x}, {y})"
+            );
+            assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
         }
     }
 }

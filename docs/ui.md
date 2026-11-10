@@ -1942,7 +1942,10 @@ carries the keyword as `cursor` and, on the frames where it changed,
 web shell sets the canvas's CSS cursor to the image as a PNG with the
 keyword after it. Origin Desktop's shared frame hears it as the `Cursor`
 message (docs/design.md §2.6) and sets the OS cursor. Decoded images are
-kept by their source, eight at most.
+kept by their source, eight at most. A `clip-path` bounds where the
+element's cursor and its descendants' apply: outside its shape (any basic
+shape, either fill rule, or a `<clipPath>` by `url(#id)`) the cursor is
+that of what lies beneath. Presses still hit the element's box.
 
 `pointer-events` inherits: `none` lets the pointer through to what lies
 under the element (keys and pads still reach it), and a descendant saying
@@ -3108,7 +3111,7 @@ Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document dr
 | `cross-fade` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `cubic-bezier-easing` | Widely | Supported (scope →) | Pending parts-as-nodes | [`documents::scoped_css_motion_uses_shared_curves_emits_sound_and_restores`](../crates/og-ui/tests/documents.rs). A cubic-bezier(0,1,0,1) keyframe animation reaches 7/8 displacement at 1/8 duration; twelve subsequent positions replay exactly after checkpoint restoration. Pushed-screen path, not every animation mode. |
 | `currentcolor` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
-| `cursor` | Not Baseline | Supported (scope →) | Pending parts-as-nodes | [`css_interact::plain_boxes_choose_cursors_in_clipped_transformed_paint_order`](../crates/og-ui/tests/css_interact.rs). Both builders assert cursor inheritance over noninteractive boxes, passive overlays above buttons, pointer-events:none, hidden and overflow-clipped children, 90-degree transforms and image hotspots. Runtime ui_configure::svg_asset_urls_supply_cursor_pixels_and_masks checks cooked SVG cursor pixels on a plain div. Arbitrary clip-path targeting and every cursor keyword are not covered. |
+| `cursor` | Not Baseline | Supported (scope →) | Pending parts-as-nodes | [`css_interact::plain_boxes_choose_cursors_in_clipped_transformed_paint_order`](../crates/og-ui/tests/css_interact.rs). Both builders assert cursor inheritance over noninteractive boxes, passive overlays above buttons, pointer-events:none, hidden and overflow-clipped children, 90-degree transforms and image hotspots. Runtime ui_configure::svg_asset_urls_supply_cursor_pixels_and_masks checks cooked SVG cursor pixels on a plain div. css_interact::cursors_apply_only_inside_clip_paths proves, in both builders, cursors only inside circle(), polygon() over content-box, evenodd path(), shape(), objectBoundingBox url(#id) and an ancestor's inset() clip. Clip-path press hit testing and every cursor keyword are not covered. |
 | `custom-ellipses` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `custom-media-queries` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `custom-properties` | Widely | Supported (scope →) | Pending parts-as-nodes | [`custom_properties::bound_custom_properties_feed_the_cascade`](../crates/og-ui/tests/custom_properties.rs). Computed sizes follow bound/inherited variables, important precedence, null fallback and keyed insertion. |

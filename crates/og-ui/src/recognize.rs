@@ -556,12 +556,15 @@ impl crate::ui::Tree {
                 return false;
             };
             let (x, y) = inv.apply(p.x, p.y);
-            if !n.placed.rect.contains(x, y) {
+            if !n.placed.rect.contains(x, y) || !self.cut_holds(i, p, paint) {
                 return false;
             }
             let mut parent = n.parent;
             while parent != NONE {
                 let ancestor = &self.nodes[parent];
+                if !self.cut_holds(parent, p, paint) {
+                    return false;
+                }
                 if ancestor.decor.as_ref().is_some_and(|d| d.clip) {
                     let Some(inv) = ancestor.placed.world.invert() else {
                         return false;
@@ -588,6 +591,28 @@ impl crate::ui::Tree {
 }
 
 impl crate::ui::Tree {
+    /// Whether node `j`'s `clip-path`, if any, keeps the screen point `p`:
+    /// a clipped-out region takes no pointer (CSS Masking 1 §5), so its
+    /// cursor and its children's apply only inside the shape.
+    fn cut_holds(&self, j: usize, p: Vec2, paint: &crate::ui::Paint) -> bool {
+        let Some(crate::paint::ElementDraw {
+            clip: crate::paint::Clip::Cut(shape),
+            ..
+        }) = paint.draw_of(j, self)
+        else {
+            return true;
+        };
+        let n = &self.nodes[j];
+        let Some(inv) = n.placed.world.invert() else {
+            return false;
+        };
+        let (x, y) = inv.apply(p.x, p.y);
+        shape.holds(
+            [n.placed.rect.width, n.placed.rect.height],
+            Vec2::new(x - n.placed.rect.x, y - n.placed.rect.y),
+        )
+    }
+
     /// The `cursor` declared on node `i` or the nearest element around it
     /// that declares one (a keyword other than `auto`, or images over
     /// `auto`), and that element (`NONE`: none does).

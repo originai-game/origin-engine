@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "CSS cursor",
+      "summary": "An element's clip-path now bounds where its cursor and its descendants' apply: outside any basic shape, path() or shape() by its fill rule, or a url(#id) <clipPath>, the cursor is that of what lies beneath."
+    }
+  ]
+}
