@@ -11,7 +11,9 @@
 @font-face { font-family: "Fantasy Caps"; src: url(/@styles/shared/SpectralSC-SemiBold.ttf); font-weight: 600; }
 @font-face { font-family: "Fantasy Serif"; src: url(/@styles/shared/Spectral-SemiBold.ttf); font-weight: 600; }
 @font-face { font-family: "Fantasy Text"; src: url(/@styles/shared/Newsreader-Medium.ttf); font-weight: 500; }
-/* Newsreader has no arrows; Spectral supplies the arrows block (→ in the combat log). */
+/* pending: font-family fallback list (gap 16) — Newsreader has no arrows and the
+   list "Fantasy Text", "Fantasy Serif" is not consulted per glyph, so Spectral
+   supplies the arrows block (→ in the combat log) through unicode-range. */
 @font-face { font-family: "Fantasy Text"; src: url(/@styles/shared/Spectral-SemiBold.ttf); font-weight: 500; unicode-range: U+2190-21FF; }
 
 :root {
