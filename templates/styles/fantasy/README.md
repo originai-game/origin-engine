@@ -35,5 +35,3 @@ where an engine feature is still landing:
   (parts-as-nodes): label size and ink are set on `::part(base)` for now.
 - The `font-family` fallback list is not consulted per glyph: Newsreader
   has no arrows, so a `unicode-range` face takes them from Spectral.
-- A round mask or radius on the core minimap's frame does not clip its map
-  image (the map shows square inside the brass ring).

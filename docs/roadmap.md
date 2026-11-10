@@ -21,17 +21,32 @@ threads linked here; rules are in `AGENTS.md`, the UI contract in
 
 ## Running
 
-Phase 1 of the TODO opened 2026-11-09, after the CSS and UI-infrastructure
-round landed. All streams run on macrunner and report to the coordinator
-thread [T-38e88112](https://ampcode.com/threads/T-38e88112-c769-4e7b-ab60-ee1cd4065bc7).
+Phase 1 closed 2026-11-10. Streams run on macrunner and report to the
+coordinator thread [T-01a1c3df](https://ampcode.com/threads/T-01a1c3df-23c6-73be-9bb8-0da680008e82).
 
-| Stream | Thread | Scope |
-|---|---|---|
-| Capture tooling | [T-01a1bf6c-5afe](https://ampcode.com/threads/T-01a1bf6c-5afe-7689-8295-f4510385bdc8) | Set-of-Mark captures, key frames by event with a timeline, FLIP heat maps, model-sized captures |
-| UI pilot P1 | [T-01a1bf6c-62eb](https://ampcode.com/threads/T-01a1bf6c-62eb-71f3-9964-d1ad718af946) | `clean` pack and `shooter` kit, §6 acceptance at desktop and 390 px |
-| UI pilot P2 | [T-01a1bf6c-6967](https://ampcode.com/threads/T-01a1bf6c-6967-749b-b5b9-b1b4b8980f4b) | `fantasy` pack and `rpg` kit, §6 acceptance at desktop and 390 px |
-| Art review | [T-01a1bf6c-75ca](https://ampcode.com/threads/T-01a1bf6c-75ca-7787-a80d-a39e1194502d) | The queued new and moved looks, then the pilot heads; lands look heads |
-| Test cleanup | [T-01a1bf6c-7caa](https://ampcode.com/threads/T-01a1bf6c-7caa-7323-aa28-0ee1999840b6) | `full` lane green, tests that guard nothing removed |
+Landed in phase 1:
+
+- The rpg kit and the fantasy pack (pure CSS), art-approved: 7407166332.
+- The core and G1 UI parts: 8ef79ce29a.
+- `og-rive` and `og-emitter` as owned nodes: 7e4888f5d1.
+- CSS gaps 18 (digits beside CJK in one run) and 20 (`rem`): 748b1ef9ef.
+
+Still open:
+
+- G2/G3 parts as nodes: select and tabs landing now, text fields and G3
+  next. The fantasy pack's host-rule `pending` markers drop with them.
+- Gap 16: the `font-family` fallback list is not consulted per glyph.
+- Finding 19: filtering the overflow check's stderr at tick 0.
+- The `docs/ui.md` §8 inventory.
+
+Next, in order:
+
+1. The docs pass.
+2. The web-tier re-records.
+3. Phase 2: the remaining kits and packs, from generated boards.
+4. The performance pass.
+5. The real-device run.
+6. 0.8.0.
 
 ## Landed this round (2026-11-08 to 2026-11-09)
 
@@ -77,9 +92,8 @@ Radiance Cascades were measured and not ported (`docs/design.md` §2.6).
 
 ## TODO (the owner, 2026-11-08)
 
-Phase 1 is open (Running): the capture tooling, the UI pilot with its
-art review, and test cleanup. Then the rest of the catalogue, the
-performance pass, the real devices, 0.8.0 and the showcase page.
+Phase 1 is closed; what is still open and the next steps, in order, are
+under Running. The showcase page follows 0.8.0.
 
 - **Screenshots and recordings for agents (running):** UI elements and entities
   marked with numbered boxes on a capture, with a JSON map to path and
