@@ -2865,6 +2865,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "og-draw"
+version = "0.7.7"
+dependencies = [
+ "bytemuck",
+ "glam 0.34.1",
+ "og-core",
+ "og-tween",
+]
+
+[[package]]
 name = "og-ecs"
 version = "0.7.7"
 dependencies = [
@@ -3049,6 +3059,7 @@ dependencies = [
  "objc2-io-surface",
  "objc2-metal 0.3.2",
  "og-core",
+ "og-draw",
  "og-lanes",
  "og-tween",
  "pollster",

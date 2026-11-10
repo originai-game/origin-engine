@@ -28,6 +28,8 @@ profile2d = []
 [dependencies]
 # Reflection: StandardMaterial's schema is og-core's.
 og-core = { path = "../og-core" }
+# The draw commands the overlay and the UI pass draw.
+og-draw = { path = "../og-draw" }
 og-lanes = { path = "../og-lanes" }
 og-tween = { path = "../og-tween" }
 wgpu = { workspace = true }

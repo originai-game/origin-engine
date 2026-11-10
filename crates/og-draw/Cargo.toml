@@ -1,0 +1,14 @@
+[package]
+name = "og-draw"
+version = "0.7.7"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Origin Engine draw commands: the overlay's sprites, text and UI shapes, the resource handles they name and the colour vision filter, as plain data that og-ui writes and og-render draws."
+
+[dependencies]
+og-core = { path = "../og-core" }
+# A mass element's timeline keys ease with og-tween's curves.
+og-tween = { path = "../og-tween" }
+glam = { workspace = true }
+bytemuck = { workspace = true }
