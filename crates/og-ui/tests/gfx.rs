@@ -312,10 +312,8 @@ fn core_documents_preserve_screen_pixels() {
                     image::ColorType::Rgba8,
                 )
                 .unwrap();
-                let reference =
-                    image::open(reference_dir("metal").join("documents").join(&filename))
-                        .unwrap()
-                        .to_rgba8();
+                let reference_path = reference_dir("metal").join("documents").join(&filename);
+                let reference = image::open(&reference_path).unwrap().to_rgba8();
                 assert_eq!(reference.dimensions(), (width, height));
                 let sum: f64 = reference
                     .as_raw()
@@ -327,16 +325,17 @@ fn core_documents_preserve_screen_pixels() {
                     .sum();
                 let rmse = (sum / (f64::from(width) * f64::from(height) * 3.0)).sqrt() / 255.0;
                 println!("conversion {name} {case} {width}x{height}: RMSE {rmse:.8}");
-                if reference.as_raw() != &image.pixels
-                    && std::env::var_os("OG_UI_CAPTURE").is_some()
-                {
-                    record_reference(
-                        &reference_dir("metal").join("documents").join(&filename),
-                        width,
-                        height,
-                        &image.pixels,
-                    );
-                } else if reference.as_raw() != &image.pixels {
+                // Metal, the tier the frames were recorded on, preserves them
+                // byte for byte; another tier is judged against them under
+                // the cross-platform tolerance (`tolerance_for`).
+                let info = renderer.info();
+                let preserved = reference.as_raw() == &image.pixels
+                    || (info.backend_tier() != "metal"
+                        && compare(&image.pixels, reference.as_raw(), info, &reference_path)
+                            .is_ok());
+                if !preserved && std::env::var_os("OG_UI_CAPTURE").is_some() {
+                    record_reference(&reference_path, width, height, &image.pixels);
+                } else if !preserved {
                     failures.push(format!("{name}/{case}/{width}: {rmse:.8}"));
                 }
             }
