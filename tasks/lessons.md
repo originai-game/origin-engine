@@ -87,15 +87,15 @@ check out a detached revision instead; never stash.
 og-ui struct literal (`cargo check --workspace --all-targets`), not og-ui
 alone: og-runtime lists `Element`'s fields exhaustively.
 
-## 2026-11-09 — Never act on a lane `take` refused
+## 2026-11-09 — Confirm the checkout is yours before a destructive command
 
-`scripts/lane.sh take lane-13 …; cd lane-13 && git reset --hard …` ran the
-reset after `take` refused because another stream (C12) had taken the
-lane seconds before: its uncommitted edits to four tracked files were
-lost. Chain a take with `&&` and check the printed path, or better, land
-from your own lane: `scripts/land.sh` needs the worktree clean only while
-it runs, so stop editing there until it returns instead of borrowing a
-second lane.
+A stream ran `git reset --hard` in a checkout another stream (C12) had just
+started using, and that stream's uncommitted edits to four tracked files
+were lost. Before any reset, checkout or clean, run
+`git -C <checkout> rev-parse --abbrev-ref HEAD` and confirm the branch is
+yours; never chain a destructive command after `;`. `scripts/land.sh` needs
+the worktree clean only while it runs, so stop editing there until it
+returns instead of borrowing another checkout.
 
 - 2026-11-09 (P1b, lane-11): never `git stash` / `git stash pop` in a lane. The stash list is shared by every worktree, so a stash with nothing to save makes `pop` apply another lane's entry. With untracked work, rebase with `git rebase origin/main` directly, or commit first.
 
@@ -155,10 +155,9 @@ Land CSS support inventory updates in the same land.sh run as the code
 milestone they document. Do not spend a separate shared landing queue turn
 on proof-count updates while other lanes are waiting.
 
-## 2026-11-11 — Never chain a destructive command after `lane.sh take`
+## 2026-11-11 — The same reset, a second time
 
-`scripts/lane.sh take lane-4 X; cd lane-4 && git reset --hard ...` ran the
-reset inside another stream's lane after `take` refused (the lane had been
-claimed after `--list`), and destroyed its uncommitted edits. Chain only
-with `&&` after `take` exits 0, and before any reset, checkout or clean run
-`git -C <lane> rev-parse --abbrev-ref HEAD` to confirm the branch is yours.
+A chained `git reset --hard` ran in another stream's checkout again and
+destroyed its uncommitted edits (the 2026-11-09 entry). The lane pool that
+was meant to prevent it is gone (989bb8c94); the rule is that entry's
+branch check, and committing WIP at each logical step.
