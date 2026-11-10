@@ -1,0 +1,290 @@
+  # ── depth S1: runtime geometry, lines, points, mesh raycast ──────────────
+
+  struct BufferGeometryDesc {
+    doc "Geometry from attribute arrays, as three.js BufferGeometry with its attributes set: one item per vertex in each array, triangles three indices each (or, with no indices, every three vertices)."
+    doc "Missing normals are computed, as three.js computeVertexNormals (each vertex the area-weighted sum of its triangles' normals: shared vertices shade smooth, an unindexed geometry flat); missing tangents are generated when a normal map needs them. An unindexed geometry whose vertex count is not a multiple of three has no triangles: it draws nothing as an og.Mesh and is a vertex set for og.Lines and og.Points."
+    desc true
+    field positions Float32Array "The vertex positions, x y z per vertex (three.js `position`); at least one vertex."
+    field normals Option.Float32Array "Unit normals, x y z per vertex; null computes them."
+    field uvs Option.Float32Array "Texture coordinates, u v per vertex, v down the image (glTF's, as og-render's); null is 0 0."
+    field colors Option.Float32Array "Linear vertex colours, r g b or r g b a per vertex, multiplied into the material's colour (three.js `color` with vertexColors); null is white."
+    field tangents Option.Float32Array "Tangents, x y z w per vertex (glTF's: w the bitangent's sign); null generates them."
+    field indices Option.Uint32Array "Triangles, three vertex indices each, counter-clockwise seen from the front; null takes every three vertices as one."
+    field dynamic bool "Whether og.render.updateGeometry may rewrite it (a mesh made each tick: water, a deforming terrain, a trail of geometry). A static geometry is refused there."
+    field physics bool "Register it as a physics mesh too, so an og.Collider with it as `mesh` (SHAPE_MESH or SHAPE_CONVEX) collides with what is drawn; equivalent to og.physics.setMesh with its positions and indices. An update re-registers it." {
+      default true
+    }
+  }
+
+  struct GeometryInfo {
+    doc "What a geometry holds (og.render.geometryInfo)."
+    field vertices u32 "Vertices."
+    field triangles u32 "Triangles."
+    field min Vector3 "The bounds' least corner in the geometry's own space, as three.js boundingBox.min." {
+      unit m
+    }
+    field max Vector3 "The bounds' greatest corner." {
+      unit m
+    }
+    field dynamic bool "Whether og.render.updateGeometry may rewrite it."
+  }
+
+  fn bufferGeometry {
+    doc "Make a geometry from attribute arrays (three.js BufferGeometry): procedural levels, 2D polygons, meshes a tool made. It draws as any geometry (og.Mesh), its BVH is built for og.render.raycast, and (desc.physics) it is a Collider.mesh at once."
+    param world World "The world whose renderer owns the geometry."
+    param desc BufferGeometryDesc "The attributes."
+    returns Result.Geometry "Refused for an attribute whose length does not fit the vertex count, an index past the vertices, or a number that is not finite (the reason names the attribute)."
+  }
+
+  fn updateGeometry {
+    doc "Rewrite a dynamic geometry's attributes in place (desc as og.render.bufferGeometry's, every attribute given again; `dynamic` and `physics` keep their values from when it was made). The same vertex and index counts rewrite its GPU buffers in place; other counts reallocate them, which costs more and is fine now and then. Its BVH is rebuilt, and its physics mesh re-registered (colliders made from it are rebuilt at the next step). Every og.Mesh, og.Lines and og.Points showing it changes."
+    param world World "The world whose renderer owns the geometry."
+    param geometry Geometry "A geometry og.render.bufferGeometry made with dynamic true."
+    param desc BufferGeometryDesc "The new attributes."
+    returns Result.Void "Refused for a dead or static geometry, or attributes og.render.bufferGeometry refuses."
+  }
+
+  fn geometryInfo {
+    doc "A geometry's counts and bounds."
+    param world World "The world whose renderer owns the geometry."
+    param geometry Geometry "Any geometry: made, a primitive or a loaded glTF's."
+    returns Result.GeometryInfo "Refused for a dead geometry."
+  }
+
+  struct CylinderGeometryDesc {
+    doc "A cylinder (or a truncated cone) along +Y centred at the origin, as three.js CylinderGeometry(radiusTop, radiusBottom, height, radialSegments, heightSegments, openEnded, thetaStart, thetaLength)."
+    desc true
+    field radiusTop f32 "The radius at the top." {
+      default 1
+      min 0
+      unit m
+    }
+    field radiusBottom f32 "The radius at the bottom." {
+      default 1
+      min 0
+      unit m
+    }
+    field height f32 "Its extent along y." {
+      default 1
+      min 0
+      unit m
+    }
+    field radialSegments u32 "Segments around." {
+      default 32
+      min 3
+    }
+    field heightSegments u32 "Rows along the height." {
+      default 1
+      min 1
+    }
+    field openEnded bool "Leave the ends open (no caps)."
+    field thetaStart f32 "Where the side starts around y, from +Z towards +X." {
+      unit rad
+    }
+    field thetaLength f32 "How far around the side goes; 2 pi is whole." {
+      default 6.283185307179586
+      unit rad
+    }
+  }
+
+  struct ConeGeometryDesc {
+    doc "A cone along +Y centred at the origin, its tip up, as three.js ConeGeometry(radius, height, radialSegments, heightSegments, openEnded)."
+    desc true
+    field radius f32 "The base's radius." {
+      default 1
+      min 0
+      unit m
+    }
+    field height f32 "Its extent along y." {
+      default 1
+      min 0
+      unit m
+    }
+    field radialSegments u32 "Segments around." {
+      default 32
+      min 3
+    }
+    field heightSegments u32 "Rows along the height." {
+      default 1
+      min 1
+    }
+    field openEnded bool "Leave the base open."
+  }
+
+  struct CapsuleGeometryDesc {
+    doc "A capsule along +Y centred at the origin, as three.js CapsuleGeometry(radius, height, capSegments, radialSegments, heightSegments): a cylinder of `height` between two hemispheres, `height + 2 radius` long in all (an og.Collider capsule of halfHeight height / 2 and that radius matches it)."
+    desc true
+    field radius f32 "The radius." {
+      default 1
+      min 0
+      unit m
+    }
+    field height f32 "The straight middle's length." {
+      default 1
+      min 0
+      unit m
+    }
+    field capSegments u32 "Rows in each hemisphere." {
+      default 4
+      min 1
+    }
+    field radialSegments u32 "Segments around." {
+      default 8
+      min 3
+    }
+    field heightSegments u32 "Rows along the middle." {
+      default 1
+      min 1
+    }
+  }
+
+  struct TorusGeometryDesc {
+    doc "A torus in the xy plane around +Z, as three.js TorusGeometry(radius, tube, radialSegments, tubularSegments, arc)."
+    desc true
+    field radius f32 "From the centre to the tube's centre." {
+      default 1
+      min 0
+      unit m
+    }
+    field tube f32 "The tube's radius." {
+      default 0.4
+      min 0
+      unit m
+    }
+    field radialSegments u32 "Segments around the tube." {
+      default 12
+      min 2
+    }
+    field tubularSegments u32 "Segments around the ring." {
+      default 48
+      min 3
+    }
+    field arc f32 "How far around the ring goes." {
+      default 6.283185307179586
+      unit rad
+    }
+  }
+
+  struct RingGeometryDesc {
+    doc "A flat ring in the xy plane facing +Z, as three.js RingGeometry(innerRadius, outerRadius, thetaSegments, phiSegments, thetaStart, thetaLength)."
+    desc true
+    field innerRadius f32 "The hole's radius." {
+      default 0.5
+      min 0
+      unit m
+    }
+    field outerRadius f32 "The ring's radius." {
+      default 1
+      min 0
+      unit m
+    }
+    field thetaSegments u32 "Segments around." {
+      default 32
+      min 3
+    }
+    field phiSegments u32 "Rings from the inside out." {
+      default 1
+      min 1
+    }
+    field thetaStart f32 "Where it starts, from +X towards +Y." {
+      unit rad
+    }
+    field thetaLength f32 "How far around it goes." {
+      default 6.283185307179586
+      unit rad
+    }
+  }
+
+  struct CircleGeometryDesc {
+    doc "A disc (or a sector) in the xy plane facing +Z, as three.js CircleGeometry(radius, segments, thetaStart, thetaLength): a 2D polygon's simplest shape."
+    desc true
+    field radius f32 "The radius." {
+      default 1
+      min 0
+      unit m
+    }
+    field segments u32 "Segments around." {
+      default 32
+      min 3
+    }
+    field thetaStart f32 "Where it starts, from +X towards +Y." {
+      unit rad
+    }
+    field thetaLength f32 "How far around it goes." {
+      default 6.283185307179586
+      unit rad
+    }
+  }
+
+  struct TubeGeometryDesc {
+    doc "A tube along a curve, as three.js TubeGeometry(curve, tubularSegments, radius, radialSegments, closed): its rings are evenly spaced along the curve's length (three.js getPointAt), u runs along it, v around. The curve is `path` when set (an og.path, whatever its kind, followed exactly: a scene's or a timeline's path becomes a tube), otherwise new CatmullRomCurve3(points, closed, 'centripetal') through `points`, which may come from anywhere: a rope's points, a spline a tool made."
+    desc true
+    field points List.Vector3 "The points the curve passes through, in order (at least two), when `path` is 0." {
+      unit m
+    }
+    field path Path "A path (og.path.create, or a scene's `path` by og.path.find) the tube follows instead of the points: its own curve, kind and closed flag (`closed` is the path's then). 0 uses the points."
+    field tubularSegments u32 "Segments along the tube." {
+      default 64
+      min 1
+    }
+    field radius f32 "The tube's radius." {
+      default 1
+      min 0
+      unit m
+    }
+    field radialSegments u32 "Segments around it." {
+      default 8
+      min 3
+    }
+    field closed bool "Join the last point back to the first."
+  }
+
+  fn cylinderGeometry {
+    doc "Make a cylinder geometry for og.Mesh (give its body a cylinder-like Collider: a capsule, a convex Collider.mesh of it, or the geometry itself)."
+    param world World "The world whose renderer owns the geometry."
+    param desc CylinderGeometryDesc "Its radii, height and tessellation."
+    returns Result.Geometry
+  }
+
+  fn coneGeometry {
+    doc "Make a cone geometry for og.Mesh. Physics can use it as a convex Collider.mesh."
+    param world World "The world whose renderer owns the geometry."
+    param desc ConeGeometryDesc "Its radius, height and tessellation."
+    returns Result.Geometry
+  }
+
+  fn capsuleGeometry {
+    doc "Make a capsule geometry for og.Mesh (its body's Collider is a capsule of the same radius and half the height)."
+    param world World "The world whose renderer owns the geometry."
+    param desc CapsuleGeometryDesc "Its radius, length and tessellation."
+    returns Result.Geometry
+  }
+
+  fn torusGeometry {
+    doc "Make a torus geometry for og.Mesh. Physics can use it as a triangle-mesh Collider.mesh."
+    param world World "The world whose renderer owns the geometry."
+    param desc TorusGeometryDesc "Its radii and tessellation."
+    returns Result.Geometry
+  }
+
+  fn ringGeometry {
+    doc "Make a ring geometry for og.Mesh (one-sided: give it a double-sided material to see it from behind)."
+    param world World "The world whose renderer owns the geometry."
+    param desc RingGeometryDesc "Its radii and tessellation."
+    returns Result.Geometry
+  }
+
+  fn circleGeometry {
+    doc "Make a circle geometry for og.Mesh (one-sided, as ringGeometry)."
+    param world World "The world whose renderer owns the geometry."
+    param desc CircleGeometryDesc "Its radius and tessellation."
+    returns Result.Geometry
+  }
+
+  fn tubeGeometry {
+    doc "Make a tube along a curve through points for og.Mesh: pipes, cables, rails, a path shown as a ribbon of geometry. Physics can use it as a triangle-mesh Collider.mesh."
+    param world World "The world whose renderer owns the geometry."
+    param desc TubeGeometryDesc "The points, radius and tessellation."
+    returns Result.Geometry "Refused for fewer than two points or a point that is not finite (without a path), or a path that is not alive."
+  }
+

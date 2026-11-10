@@ -1,0 +1,516 @@
+  # ── round 3: procedural modelling (og-geom) ──────────────────────────────
+
+  struct ShapePoints {
+    doc "A shape as points, what og.Shape.extractPoints returns and what shapeGeometry, extrudeGeometry and sweepGeometry read: the outline, then each hole. A repeated closing point is dropped, as three.js drops it."
+    field shape List.Vector2 "The outline's points, in order."
+    field holes List.List.Vector2 "Each hole's points, in order."
+  }
+
+  struct ShapeGeometryDesc {
+    doc "A flat shape with holes in the xy plane facing +Z, as three.js ShapeGeometry(shapes, curveSegments): triangulated by earcut (three.js's own port), the outline made clockwise and the holes counter-clockwise first, so its vertices and triangles are three.js's for the same shape. uvs are world x and y (v flipped to run down the image)."
+    desc true
+    field shapes Option.OneOf.Path2.OneOf.List.Path2.List.Vector2 "One og.Shape (an og.Path2 is a shape without holes), a list of them, or the outline's points. Without it, three.js's default triangle (0, 0.5), (-0.5, -0.5), (0.5, -0.5)."
+    field curveSegments u32 "Points per curve when an og.Shape's curves are flattened (three.js extractPoints(curveSegments); an ellipse takes twice as many, a spline as many per point)." {
+      default 12
+      min 1
+    }
+    field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping)." {
+      default 1 1
+    }
+    field physics bool "Register it as a physics mesh too (BufferGeometryDesc.physics)." {
+      default true
+    }
+    field dynamic bool "Whether og.render.updateGeometry may rewrite it later (BufferGeometryDesc.dynamic)."
+  }
+
+  struct ExtrudeGeometryDesc {
+    doc "Shapes pushed along +Z, or along a path, as three.js ExtrudeGeometry(shapes, options) with its option names and defaults: a closed solid, its lids from earcut and its walls ring by ring, rounded by a bevel of bevelSegments rings at each face. Unindexed as three.js's (every triangle its own vertices, flat normals), three.js's vertex order and counts; uvs from three.js's WorldUVGenerator (v flipped to run down the image)."
+    desc true
+    field shapes Option.OneOf.Path2.OneOf.List.Path2.List.Vector2 "One og.Shape, a list of them, or the outline's points. Without it, three.js's default square of side 1."
+    field depth f32 "How far the shape is pushed along +Z (without extrudePath)." {
+      default 1
+      min 0
+      unit m
+    }
+    field steps u32 "Rings along the depth or the path." {
+      default 1
+      min 1
+    }
+    field bevelEnabled bool "Round the edges of both faces." {
+      default true
+    }
+    field bevelThickness f32 "How far the bevel reaches beyond each face, along z." {
+      default 0.2
+      min 0
+      unit m
+    }
+    field bevelSize Option.f32 "How far the bevel reaches out from the outline. Null or unset, bevelThickness - 0.1, as three.js derives it (0.1 at the default thickness, 0 at a thickness of 0.1)." {
+      unit m
+    }
+    field bevelOffset f32 "How far the bevel starts out from the outline." {
+      unit m
+    }
+    field bevelSegments u32 "Rings in each bevel." {
+      default 3
+      min 1
+    }
+    field curveSegments u32 "Points per curve when an og.Shape's curves are flattened." {
+      default 12
+      min 1
+    }
+    field extrudePath Path "A path (og.path.create or og.path.find) to extrude along instead of +Z: the shape's x along the path's normal and y along its binormal (three.js's Frenet frames), steps rings evenly spaced along it. A path turns the bevel off, as three.js. 0 extrudes along +Z."
+    field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping)." {
+      default 1 1
+    }
+    field physics bool "Register it as a physics mesh too." {
+      default true
+    }
+    field dynamic bool "Whether og.render.updateGeometry may rewrite it later."
+  }
+
+  struct LatheGeometryDesc {
+    doc "A profile turned round +Y, as three.js LatheGeometry(points, segments, phiStart, phiLength): vases, bottles, columns, wheels. three.js's vertices, indices and smooth normals; u round the axis, v along the profile (flipped to run down the image). A whole turn's seam meets exactly."
+    desc true
+    field points List.Vector2 "The profile, x the distance from the axis and y the height, in order (at least two). Without it, three.js's default (0, -0.5), (0.5, 0), (0, 0.5)." {
+      unit m
+    }
+    field segments u32 "Segments round the axis." {
+      default 12
+      min 1
+    }
+    field phiStart f32 "Where the turn starts, from +Z towards +X." {
+      unit rad
+    }
+    field phiLength f32 "How far it turns; 2 pi is whole (clamped to it)." {
+      default 6.283185307179586
+      unit rad
+    }
+    field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping)." {
+      default 1 1
+    }
+    field physics bool "Register it as a physics mesh too." {
+      default true
+    }
+    field dynamic bool "Whether og.render.updateGeometry may rewrite it later."
+  }
+
+  struct PolyhedronGeometryDesc {
+    doc "A polyhedron from vertices and faces, every face subdivided `detail` times and every vertex pushed onto the sphere of `radius`, as three.js PolyhedronGeometry(vertices, indices, radius, detail): unindexed, flat normals at detail 0 and the sphere's above, three.js's spherical uvs."
+    desc true
+    field vertices List.f32 "The corners, x y z each (three.js's flat array)."
+    field indices List.u32 "The faces, three corner indices each, counter-clockwise seen from outside."
+    field radius f32 "The sphere the vertices are pushed onto." {
+      default 1
+      min 0
+      unit m
+    }
+    field detail u32 "Subdivisions of each face: (detail + 1)² triangles a face." {
+      max 64
+    }
+    field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping)." {
+      default 1 1
+    }
+    field physics bool "Register it as a physics mesh too." {
+      default true
+    }
+    field dynamic bool "Whether og.render.updateGeometry may rewrite it later."
+  }
+
+  struct SolidGeometryDesc {
+    doc "A regular solid, as three.js IcosahedronGeometry, DodecahedronGeometry, OctahedronGeometry and TetrahedronGeometry(radius, detail): PolyhedronGeometryDesc with the solid's own vertices and faces. An icosahedron at detail 2 or more is a sphere with even triangles."
+    desc true
+    field radius f32 "The radius." {
+      default 1
+      min 0
+      unit m
+    }
+    field detail u32 "Subdivisions of each face." {
+      max 64
+    }
+    field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping)." {
+      default 1 1
+    }
+    field physics bool "Register it as a physics mesh too." {
+      default true
+    }
+    field dynamic bool "Whether og.render.updateGeometry may rewrite it later."
+  }
+
+  struct SweepKey {
+    doc "A value at a fraction of a sweep's path: linear between keys, held before the first and past the last."
+    field t f32 "The fraction of the path's length, 0 to 1." {
+      unit ratio
+    }
+    field value f32 "The value there."
+  }
+
+  struct SweepGeometryDesc {
+    doc "A section swept along a path, scaled and twisted over it: horns, tusks, handles, blades, tapered pipes, twisted columns (img2threejs's tapered sweep; three.js has no class for it). The section's x lies along the path's normal and y along its binormal (three.js's Frenet frames), rings evenly spaced along the path's length; u runs along the path, v round the section (flipped to run down the image), the sides smooth. An open path's ends are capped."
+    desc true
+    field section Option.OneOf.Path2.List.Vector2 "The section's outline: an og.Shape or og.Path2 (flattened by curveSegments; holes are not swept) or its points, at least three, either winding."
+    field path Path "The path (og.path.create or og.path.find)."
+    field steps u32 "Rings along the path, less one." {
+      default 64
+      min 1
+    }
+    field scale List.SweepKey "The section's scale over the path (none: 1 throughout). A horn: [{ t: 0, value: 1 }, { t: 1, value: 0.05 }]."
+    field twist List.SweepKey "The section's turn round the path over its length, in radians (none: 0)."
+    field caps bool "Close the ends of an open path." {
+      default true
+    }
+    field curveSegments u32 "Points per curve when an og.Shape section is flattened." {
+      default 12
+      min 1
+    }
+    field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping)." {
+      default 1 1
+    }
+    field physics bool "Register it as a physics mesh too." {
+      default true
+    }
+    field dynamic bool "Whether og.render.updateGeometry may rewrite it later."
+  }
+
+  enum MirrorAxis {
+    doc "The world axis a part is mirrored along, after its placement."
+    variant none "Not mirrored."
+    variant x "x negated: the mirror image across the yz plane."
+    variant y "y negated: across the xz plane."
+    variant z "z negated: across the xy plane."
+  }
+
+  struct GeometryPart {
+    doc "A geometry placed as an Object3D is (scale, then rotate, then move), then mirrored: one part of og.render.mergeGeometries or an operand of og.render.csgGeometry."
+    desc true
+    field geometry Geometry "Any geometry: made, a primitive or a loaded glTF's."
+    field position Vector3 "Where it goes." {
+      unit m
+    }
+    field quaternion Quaternion "How it turns."
+    field scale Vector3 "Its scale (a negative component mirrors it as `mirror` does)." {
+      default 1 1 1
+    }
+    field mirror MirrorAxis "Mirror it along a world axis after placing it: a symmetric prop is one half twice, the second mirrored."
+  }
+
+  enum CsgOp {
+    doc "A boolean operation on two solids."
+    variant union "Everything in either: a + b."
+    variant subtract "What of a is not in b: a - b (holes, notches, a dice's pips)."
+    variant intersect "What is in both."
+  }
+
+  struct CsgGeometryDesc {
+    doc "Two closed geometries combined by a boolean operation, each placed first: a box with a hole bored through it, a dice, a window cut in a wall. The result is closed when both are (every edge shared by two triangles, wound opposite), every piece keeps its source's normals, uvs and colours (b's turned inside out where it is subtracted). Where a plane side or an edge crossing is decided, the decision is exact (Shewchuk's predicates), so every host makes the same cuts; faces that coincide keep one copy or none, as the operation says."
+    desc true
+    field op CsgOp "The operation."
+    field a GeometryPart "The first operand."
+    field b GeometryPart "The second operand."
+    field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping)." {
+      default 1 1
+    }
+    field physics bool "Register it as a physics mesh too." {
+      default true
+    }
+    field dynamic bool "Whether og.render.updateGeometry may rewrite it later."
+  }
+
+  struct MergeGeometriesDesc {
+    doc "Geometries placed and merged into one, as three.js BufferGeometryUtils.mergeGeometries after applying each part's matrix: a prop of parts drawn in one draw, a mirrored half, an array (the same part at several placements). Normals follow each placement; a mirrored part turns its triangles so they still face out. Vertex colours are kept when any part has them."
+    desc true
+    field parts List.GeometryPart "The parts, in order (at least one)."
+    field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping)." {
+      default 1 1
+    }
+    field physics bool "Register it as a physics mesh too." {
+      default true
+    }
+    field dynamic bool "Whether og.render.updateGeometry may rewrite it later."
+  }
+
+  fn shapeGeometry {
+    doc "Make a flat shape for og.Mesh (one-sided, as circleGeometry): an og.Shape with holes, or a points array. Physics can use it as a triangle-mesh Collider.mesh."
+    param world World "The world whose renderer owns the geometry."
+    param desc ShapeGeometryDesc "The shapes and their tessellation."
+    returns Result.Geometry "Refused for a shape whose points are not finite or that triangulates to nothing."
+  }
+
+  fn extrudeGeometry {
+    doc "Make an extruded solid for og.Mesh: a three.js extrusion is a paste (`og.render.extrudeGeometry(world, { shapes: shape, depth: 0.2, bevelEnabled: true })`). Gears, signs, keys, logos, cookie cutters; along a path, a rail or a moulding."
+    param world World "The world whose renderer owns the geometry."
+    param desc ExtrudeGeometryDesc "The shapes, depth, bevel and path."
+    returns Result.Geometry "Refused for a shape whose points are not finite or that triangulates to nothing, or an extrudePath that is not alive."
+  }
+
+  fn latheGeometry {
+    doc "Make a solid of revolution for og.Mesh: a profile turned round +Y."
+    param world World "The world whose renderer owns the geometry."
+    param desc LatheGeometryDesc "The profile and the turn."
+    returns Result.Geometry "Refused for fewer than two points or one that is not finite."
+  }
+
+  fn polyhedronGeometry {
+    doc "Make a polyhedron from vertices and faces for og.Mesh, subdivided onto a sphere."
+    param world World "The world whose renderer owns the geometry."
+    param desc PolyhedronGeometryDesc "The vertices, faces, radius and detail."
+    returns Result.Geometry "Refused for no faces, an index past the vertices, or a count that is not a multiple of three."
+  }
+
+  fn icosahedronGeometry {
+    doc "Make an icosahedron (twenty faces) for og.Mesh; with detail, a geodesic sphere."
+    param world World "The world whose renderer owns the geometry."
+    param desc SolidGeometryDesc "Its radius and detail."
+    returns Result.Geometry
+  }
+
+  fn dodecahedronGeometry {
+    doc "Make a dodecahedron (twelve pentagons, thirty-six triangles) for og.Mesh."
+    param world World "The world whose renderer owns the geometry."
+    param desc SolidGeometryDesc "Its radius and detail."
+    returns Result.Geometry
+  }
+
+  fn octahedronGeometry {
+    doc "Make an octahedron (eight faces) for og.Mesh."
+    param world World "The world whose renderer owns the geometry."
+    param desc SolidGeometryDesc "Its radius and detail."
+    returns Result.Geometry
+  }
+
+  fn tetrahedronGeometry {
+    doc "Make a tetrahedron (four faces) for og.Mesh."
+    param world World "The world whose renderer owns the geometry."
+    param desc SolidGeometryDesc "Its radius and detail."
+    returns Result.Geometry
+  }
+
+  fn sweepGeometry {
+    doc "Make a section swept along a path for og.Mesh, tapered and twisted by keys."
+    param world World "The world whose renderer owns the geometry."
+    param desc SweepGeometryDesc "The section, path, keys and caps."
+    returns Result.Geometry "Refused for a path that is not alive, a section of fewer than three points or of no area, or a value that is not finite."
+  }
+
+  fn csgGeometry {
+    doc "Make the union, difference or intersection of two placed geometries for og.Mesh. Chain calls for more operands (a cube minus six spheres is six calls); each result is a geometry like any other."
+    param world World "The world whose renderer owns the geometry."
+    param desc CsgGeometryDesc "The operation and its operands."
+    returns Result.Geometry "Refused for a dead geometry, a placement with a zero scale, or a position that is not finite."
+  }
+
+  fn mergeGeometries {
+    doc "Make one geometry of several placed ones for og.Mesh: one draw instead of many, mirrored halves, arrays."
+    param world World "The world whose renderer owns the geometry."
+    param desc MergeGeometriesDesc "The parts and their placements."
+    returns Result.Geometry "Refused for no parts, a dead geometry, or a placement with a zero scale."
+  }
+
+  enum LineMode {
+    doc "How a line set's points join, as three.js's three line objects."
+    variant strip "One polyline through every point, as three.js Line."
+    variant segments "Pairs of points, each its own segment, as three.js LineSegments."
+    variant loop "A polyline closed back to its first point, as three.js LineLoop."
+  }
+
+  column LineMode {
+    doc "A LineMode field: the variant's index."
+    array Uint32Array
+    stride 1
+    value LineMode
+  }
+
+  struct LinesDesc {
+    doc "Lines through points, drawn this frame only (immediate mode, as og.render.sprite): submit them every tick they should show. three.js Line, LineSegments and LineLoop with a LineBasicMaterial or LineDashedMaterial, but any width (each segment is a quad in screen space with a feathered edge; WebGPU has no line width)."
+    doc "World lines are drawn in the scene after the transparent meshes and particles, exposed, bloomed and tone mapped with it; screen lines over the finished frame, after every post effect and under the UI."
+    desc true
+    field points List.Vector3 "The points, in order: world positions, or with screen CSS pixels from the top left of the play surface with y down (z ignored)." {
+      unit m
+    }
+    field colors List.Color "Per point linear colours, blended along each segment (three.js vertexColors); empty is `color` for all."
+    field color Color "The linear colour." {
+      default 1 1 1
+    }
+    field opacity f32 "The alpha." {
+      default 1
+      min 0
+      max 1
+    }
+    field mode LineMode "How the points join."
+    field width f32 "The width: CSS pixels, or world units with worldUnits." {
+      default 1
+      min 0
+    }
+    field worldUnits bool "Measure width in world units (a line that thins with distance) instead of CSS pixels (as wide at any distance)."
+    field depthTest bool "Hidden behind nearer geometry, as three.js Material.depthTest; false draws it over the scene. Screen lines are never depth tested." {
+      default true
+    }
+    field screen bool "Draw in screen space over the finished frame: points in CSS pixels, width in CSS pixels."
+    field dashed bool "Dashes, as three.js LineDashedMaterial: dashSize on, gapSize off, along the line from its first point."
+    field dashSize f32 "A dash's length: world units (CSS pixels for screen lines)." {
+      default 3
+      min 0
+    }
+    field gapSize f32 "A gap's length." {
+      default 1
+      min 0
+    }
+  }
+
+  fn lines {
+    doc "Draw lines this frame. Systems and commands may call it; the list is cleared at every tick, so submit them every tick they should show (og.Lines keeps a static set)."
+    param world World "The world whose renderer draws them."
+    param desc LinesDesc "The points and the look."
+    returns Result.Void "Refused for fewer than two points or a colours list whose length is not the points'."
+  }
+
+  struct PointsDesc {
+    doc "A point cloud drawn this frame only (immediate mode), as three.js Points with a PointsMaterial: a square per point facing the camera. Submit it every tick it should show (og.Points keeps a static set)."
+    desc true
+    field points List.Vector3 "The positions: world, or with screen CSS pixels from the top left, y down." {
+      unit m
+    }
+    field colors List.Color "Per point linear colours; empty is `color` for all."
+    field color Color "The linear colour." {
+      default 1 1 1
+    }
+    field opacity f32 "The alpha." {
+      default 1
+      min 0
+      max 1
+    }
+    field size f32 "The side of each square: world units with sizeAttenuation, else CSS pixels." {
+      default 1
+      min 0
+    }
+    field sizeAttenuation bool "Size in world units, smaller with distance, as three.js PointsMaterial.sizeAttenuation; false keeps every point `size` CSS pixels." {
+      default true
+    }
+    field depthTest bool "Hidden behind nearer geometry; false draws them over the scene." {
+      default true
+    }
+    field screen bool "Draw in screen space over the finished frame, positions and size in CSS pixels."
+  }
+
+  fn points {
+    doc "Draw a point cloud this frame. Systems and commands may call it; the list is cleared at every tick."
+    param world World "The world whose renderer draws it."
+    param desc PointsDesc "The positions and the look."
+    returns Result.Void "Refused for a colours list whose length is not the points'."
+  }
+
+  component Lines {
+    doc "Draws a geometry's vertices as lines at the entity's MatrixWorld, every frame (three.js Line, LineSegments or LineLoop over a BufferGeometry): a static set of lines kept as data, a level's outline, a track, a constellation. The vertices are taken in order (the geometry's indices are not read), with its vertex colours times color."
+    field geometry Geometry "The vertices (og.render.bufferGeometry: an unindexed one of any count)."
+    field mode LineMode "How the vertices join."
+    field color Color "The linear colour, times the vertex colours." {
+      default 1 1 1
+    }
+    field opacity f32 "The alpha." {
+      default 1
+      min 0
+      max 1
+      tunable true
+    }
+    field width f32 "CSS pixels, or world units with worldUnits." {
+      default 1
+      min 0
+      tunable true
+    }
+    field worldUnits bool "Width in world units."
+    field depthTest bool "Hidden behind nearer geometry." {
+      default true
+    }
+    field dashSize f32 "Dashes' length in world units along the line; 0 is solid (three.js LineDashedMaterial.dashSize)." {
+      min 0
+    }
+    field gapSize f32 "Gaps' length between dashes." {
+      default 1
+      min 0
+    }
+    field visible bool "Whether it is drawn." {
+      default true
+    }
+    field layers u32 "Three.js layers, as Mesh.layers: drawn by every camera whose mask shares a bit with it (og.Camera, og.CameraView, og.Mirror)." {
+      default 1
+    }
+  }
+
+  component Points {
+    doc "Draws a geometry's vertices as a point cloud at the entity's MatrixWorld, every frame (three.js Points over a BufferGeometry): star fields, scanned surfaces, sparse markers kept as data. Vertex colours times color."
+    field geometry Geometry "The vertices."
+    field color Color "The linear colour, times the vertex colours." {
+      default 1 1 1
+    }
+    field opacity f32 "The alpha." {
+      default 1
+      min 0
+      max 1
+      tunable true
+    }
+    field size f32 "World units with sizeAttenuation, else CSS pixels." {
+      default 1
+      min 0
+      tunable true
+    }
+    field sizeAttenuation bool "Size in world units, smaller with distance." {
+      default true
+    }
+    field depthTest bool "Hidden behind nearer geometry." {
+      default true
+    }
+    field visible bool "Whether it is drawn." {
+      default true
+    }
+    field layers u32 "Three.js layers, as Mesh.layers: drawn by every camera whose mask shares a bit with it (og.Camera, og.CameraView, og.Mirror)." {
+      default 1
+    }
+  }
+
+  struct RaycastGeometryDesc {
+    doc "Which meshes og.render.raycast tests, as three.js Raycaster's near, far and layers."
+    desc true
+    field maxDistance f32 "How far the ray reaches (three.js Raycaster.far); 0 is unbounded." {
+      min 0
+      unit m
+    }
+    field first bool "Answer only the nearest hit (cheaper: the BVH stops early)."
+    field layers u32 "A bit mask of the layers tested, as three.js Raycaster.layers: an og.Mesh or og.Model is tested when its own layers (Mesh.layers, Model.layers, 1 by default) share a bit with it, so the default tests every mesh on layer 0." {
+      default 1
+    }
+    field invisible bool "Test meshes whose visible is false too."
+  }
+
+  struct GeometryHit {
+    doc "Where a ray meets a drawn triangle, as three.js Raycaster's intersection."
+    field entity Entity "The og.Mesh's or og.Model's entity."
+    field geometry Geometry "The geometry hit."
+    field distance f32 "From the ray's origin along its normalised direction." {
+      unit m
+    }
+    field point Vector3 "Where, in world space." {
+      unit m
+    }
+    field normal Vector3 "The triangle's face normal in world space (its front side, counter-clockwise), unit length."
+    field uv Vector2 "The texture coordinates there, interpolated."
+    field faceIndex u32 "The triangle's index in the geometry, as three.js faceIndex."
+  }
+
+  fn raycast {
+    doc "Every drawn triangle a ray crosses, nearest first, as three.js Raycaster.intersectObjects: what is drawn, not the colliders (og.physics.castRay answers those). It tests og.Mesh and og.Model entities at their world transforms through a BVH per geometry (built when the geometry is made, loaded or updated), both faces of each triangle, skinned models in their bind pose. Read the world as of the call; inside a system, its transforms as earlier systems left them."
+    param world World "The world asked."
+    param ray Ray "The ray; its direction need not be normalised and must not be zero."
+    param desc RaycastGeometryDesc "Reach, nearest only and layers."
+    returns Result.List.GeometryHit "Refused for a zero or non-finite direction."
+  }
+
+  fn light2dAt {
+    doc "The 2D light reaching a point, for game rules (a stealth game's \"is the player lit\"): the sum of every og.Light2D whose layers share a bit with `layers`, each its color times intensity times its falloff (and a spot's cone), point and spot lights blocked when castShadows and an og.Occluder2D on their layers stands between them and the point (hard shadows through the same rectangles and polygons the light map draws; an occluder holding the point or the light blocks nothing). Ambient light is not included. Lights and occluders are read at their world transforms as of the call."
+    doc "The result is the same bits on every host (og-core's deterministic math, never the GPU), so a system may store it in the world. Inside a system, declare reads of og.Light2D, og.Occluder2D, og.Transform and og.Parent."
+    param world World "The world asked."
+    param point Vector2 "The point in the 2D plane, in world units."
+    param layers u32 "The light layers the point is on, a bit per layer as og.LightMask2D.layers." {
+      default 1
+    }
+    returns Result.Color "Refused for a non-finite point, or inside a system that did not declare the reads."
+  }
+

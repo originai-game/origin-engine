@@ -1,0 +1,407 @@
+  struct QueryFilter {
+    doc "Which colliders a scene query considers. The zero value considers every solid collider on every layer."
+    desc true
+    field mask u32 "Layers to consider: a collider counts when its layers meet this; 0 means every layer."
+    field includeSensors bool "Also report sensors."
+    field exclude Option.Entity "An entity to ignore, such as the caster itself."
+  }
+
+  struct RaycastDesc {
+    doc "A ray for og.physics.castRay."
+    desc true
+    field origin Vector3 "Where the ray starts." {
+      unit m
+    }
+    field direction Vector3 "Where it points; it need not be normalised and must not be zero (in 2D, not zero in xy)." {
+      default 0 -1 0
+    }
+    field maxDistance f32 "How far it reaches; 0 is unbounded." {
+      min 0
+      unit m
+    }
+    field filter QueryFilter "Which colliders count."
+  }
+
+  struct RaycastHit {
+    doc "The nearest collider a ray meets."
+    field entity Entity "The collider's entity."
+    field body Entity "The body the collider belongs to: its own entity, or for a compound child collider (an og.Collider on a child of an og.RigidBody) the ancestor body it is part of."
+    field distance f32 "From the origin along the normalised direction." {
+      unit m
+    }
+    field point Vector3 "Where the ray meets the collider."
+    field normal Vector3 "The surface normal there (z is 0 in 2D)."
+  }
+
+  struct RaycastAllDesc {
+    doc "A ray for og.physics.castRayAll: og.physics.castRay's fields and a cap on the hits."
+    desc true
+    field origin Vector3 "Where the ray starts." {
+      unit m
+    }
+    field direction Vector3 "Where it points; it need not be normalised and must not be zero (in 2D, not zero in xy)." {
+      default 0 -1 0
+    }
+    field maxDistance f32 "How far it reaches; 0 is unbounded." {
+      min 0
+      unit m
+    }
+    field filter QueryFilter "Which colliders count."
+    field maxHits u32 "The most hits returned, nearest first; 0 is MAX_RAYCAST_HITS (256), and more is held to it." {
+      min 0
+      max 256
+    }
+  }
+
+  struct ProjectPointDesc {
+    doc "A point for og.physics.projectPoint."
+    desc true
+    field point Vector3 "The point to project (its z is ignored in 2D)." {
+      unit m
+    }
+    field maxDistance f32 "How far a collider may be; 0 is unbounded." {
+      min 0
+      unit m
+    }
+    field solid bool "A point inside a collider is its own projection (distance 0); false projects it onto the collider's surface." {
+      default true
+    }
+    field filter QueryFilter "Which colliders count."
+  }
+
+  struct PointProjection {
+    doc "Where a point projects onto the nearest collider."
+    field entity Entity "The collider's entity."
+    field body Entity "The body it belongs to (RaycastHit.body)."
+    field point Vector3 "The nearest point on the collider, in world space." {
+      unit m
+    }
+    field normal Vector3 "Unit direction out of the collider at the point, towards a point outside it (from a point inside, still outward); zero when the distance is 0."
+    field distance f32 "From the queried point to `point`." {
+      unit m
+    }
+    field inside bool "Whether the queried point is inside the collider."
+  }
+
+  struct ShapeDesc {
+    doc "The shape of a shape cast or an overlap test: the shape fields of a Collider. The zero value is a 1 m box."
+    desc true
+    field shape u32 "One of the SHAPE_* codes." {
+      min 0
+      max 5
+    }
+    field size Vector3 "Full extents of a box." {
+      default 1 1 1
+      unit m
+    }
+    field radius f32 "Radius of a sphere, circle, capsule or cylinder." {
+      default 0.5
+      unit m
+    }
+    field height f32 "Capsule or cylinder height." {
+      default 1
+      unit m
+    }
+    field mesh Geometry "The geometry of a convex or triangle-mesh shape."
+  }
+
+  struct ShapeCastDesc {
+    doc "A shape swept along a direction for og.physics.castShape."
+    desc true
+    field shape ShapeDesc "The swept shape."
+    field position Vector3 "Where the sweep starts." {
+      unit m
+    }
+    field rotation Quaternion "The shape's rotation; a zero quaternion is no rotation."
+    field direction Vector3 "Where it sweeps; it need not be normalised and must not be zero." {
+      default 0 -1 0
+    }
+    field maxDistance f32 "How far it sweeps; 0 is unbounded." {
+      min 0
+      unit m
+    }
+    field filter QueryFilter "Which colliders count."
+  }
+
+  struct ShapeCastHit {
+    doc "The first collider a swept shape meets."
+    field entity Entity "The collider's entity."
+    field distance f32 "How far the shape travelled before touching." {
+      unit m
+    }
+    field point Vector3 "The contact point on the hit collider, in world space."
+    field normal Vector3 "The hit collider's surface normal there, in world space."
+  }
+
+  struct OverlapDesc {
+    doc "A shape placed in the world for og.physics.overlap."
+    desc true
+    field shape ShapeDesc "The shape."
+    field position Vector3 "Where it is." {
+      unit m
+    }
+    field rotation Quaternion "Its rotation; a zero quaternion is no rotation."
+    field filter QueryFilter "Which colliders count."
+  }
+
+  struct MeshDesc {
+    doc "Geometry for convex and triangle-mesh colliders, in the mesh's own space."
+    desc true
+    field positions List.Vector3 "Vertex positions (2D polygons use x and y)."
+    field indices List.u32 "Triangles as triples of indices into positions; a convex hull ignores them."
+  }
+
+  fn castRay {
+    doc "The nearest collider along a ray. Inside a system it sees the colliders as they were at the start of the tick (og.physics.queries records them before the game's systems); between ticks, as the world holds them."
+    aliases "ray, line trace, hit test, mouse picking, Unity Physics.Raycast, Godot intersect_ray, Unreal LineTraceSingle"
+    param world World "The world."
+    param desc RaycastDesc "The ray and the filter."
+    returns Result.Option.RaycastHit "The hit, or null when nothing is hit; refused for a zero direction."
+  }
+
+  fn castRayAll {
+    doc "Every collider along a ray within its reach, one hit each at its first crossing, nearest first (ties in collider entity order, so every host and run list them alike), at most `maxHits`: what a piercing shot passes through, everything under a cursor. The same view of the colliders as og.physics.castRay; its first hit is castRay's."
+    param world World "The world."
+    param desc RaycastAllDesc "The ray, the filter and the cap."
+    returns Result.List.RaycastHit "The hits, nearest first; empty when nothing is hit; refused for a zero direction."
+  }
+
+  fn projectPoint {
+    doc "The nearest point on any collider to a point, within maxDistance: snapping to a surface, the closest cover, whether a point is inside a solid. The same view of the colliders as og.physics.castRay."
+    param world World "The world."
+    param desc ProjectPointDesc "The point, its reach, solid or surface, and the filter."
+    returns Result.Option.PointProjection "The projection, or null when no collider is within reach; refused for a point that is not finite."
+  }
+
+  fn castShape {
+    doc "The first collider a shape meets when swept along a direction; the same view of the colliders as castRay."
+    param world World "The world."
+    param desc ShapeCastDesc "The shape, its sweep and the filter."
+    returns Result.Option.ShapeCastHit "The hit, or null; refused for a zero direction or an unknown mesh."
+  }
+
+  fn overlap {
+    doc "Every collider overlapping a shape, sorted by entity id; the same view of the colliders as castRay."
+    aliases "overlap sphere, area query, shapes in range, Unity Physics.OverlapSphere, Godot intersect_shape"
+    param world World "The world."
+    param desc OverlapDesc "The shape, its placement and the filter."
+    returns Result.List.Entity
+  }
+
+  fn applyForce {
+    doc "Push a dynamic body with a force (N, world axes) over the next physics step, at a world point or its centre of mass: call it every tick for a steady force (thrust, wind, a car's downforce or an anti-roll assist). Applied by the og.physics step after the systems, in the order given, then gone; a hit stop drops it. Kinematic and static bodies ignore it. Pushes not yet applied are world state (in snapshots and the hash)."
+    aliases "force, thrust, push over time, Unity AddForce, Godot apply_force"
+    param world World "The world."
+    param entity Entity "The body's entity (an og.RigidBody)."
+    param force Vector3 "The force in newtons (2D uses x and y)."
+    param point Vector3 "Where it acts, in world space; omitted is the centre of mass (no spin)." {
+      optional true
+    }
+    returns Result.Void "Refused for an entity without an og.RigidBody, or a force or point that is not finite."
+  }
+
+  fn applyImpulse {
+    doc "Give a dynamic body an impulse (N·s, world axes) at a world point or its centre of mass: a sudden change of momentum (a kick, a hit, a jump: its velocity changes by impulse / mass), applied by the next physics step (after a hit stop ends). As applyForce otherwise."
+    aliases "knockback, push, hit force, Unity AddForce ForceMode.Impulse, Godot apply_impulse, Unreal AddImpulse"
+    param world World "The world."
+    param entity Entity "The body's entity (an og.RigidBody)."
+    param impulse Vector3 "The impulse in newton-seconds (2D uses x and y)."
+    param point Vector3 "Where it acts, in world space; omitted is the centre of mass." {
+      optional true
+    }
+    returns Result.Void "Refused for an entity without an og.RigidBody, or an impulse or point that is not finite."
+  }
+
+  fn applyTorque {
+    doc "Turn a dynamic body with a torque (N·m about each world axis; 2D uses z) over the next physics step, as applyForce: call it every tick for a steady twist."
+    param world World "The world."
+    param entity Entity "The body's entity (an og.RigidBody)."
+    param torque Vector3 "The torque in newton-metres."
+    returns Result.Void "Refused for an entity without an og.RigidBody, or a torque that is not finite."
+  }
+
+  fn applyTorqueImpulse {
+    doc "Give a dynamic body an angular impulse (N·m·s about each world axis; 2D uses z): its spin changes at once, as applyImpulse."
+    param world World "The world."
+    param entity Entity "The body's entity (an og.RigidBody)."
+    param torque Vector3 "The angular impulse in newton-metre-seconds."
+    returns Result.Void "Refused for an entity without an og.RigidBody, or a value that is not finite."
+  }
+
+  fn setMesh {
+    doc "Register (or replace) the geometry a convex or triangle-mesh Collider names by its mesh handle. Loaded glTF geometries are registered under their own handles already; meshes are assets, not world state: world.snapshot carries a mesh, convex-hull or height-field collider by its handle and scale, not its triangles, and world.restore rebuilds the collider from the geometry registered then (so load or register it before restoring; a save naming one that is not is refused)."
+    param world World "The world."
+    param mesh Geometry "The handle colliders name in Collider.mesh."
+    param desc MeshDesc "Positions and triangles."
+    returns Result.Void "Refused for an empty, non-finite or out-of-range mesh."
+  }
+
+  struct WheelPose {
+    doc "A wheel of an og.Vehicle as the last step left it, for drawing."
+    field position Vector3 "The wheel's centre in world space." {
+      unit m
+    }
+    field rotation Quaternion "Its rotation (steering and spin) in world space."
+    field contact bool "Whether it touches the ground."
+    field slip f32 "How much the tyre slides (rapier's skid info turned round): 0 it grips, towards 1 it asks for more than its grip holds (0.5 is twice as much); 0 in the air and in 2D. Start smoke and skid marks above about 0.2, and fade a squeal in with it." {
+      min 0
+      max 1
+    }
+    field sideSpeed f32 "How fast the tyre's contact moves sideways over the ground (along its axle; 0 in the air and in 2D): a slide's speed, for the squeal's pitch or a skid mark's darkness." {
+      unit mps
+    }
+    field entity Entity "The wheel's og.VehicleWheel entity; 0 for a vehicle's implicit wheels."
+  }
+
+  struct RagdollBoneDesc {
+    doc "One bone of a ragdoll rig: a capsule from the bone's position along `axis` for `length`."
+    desc true
+    field parent i32 "The parent bone's index (it must come earlier); -1 for the root." {
+      default -1
+    }
+    field position Vector3 "The bone's rest position relative to the entity." {
+      unit m
+    }
+    field rotation Quaternion "The bone's rest rotation relative to the entity; a zero quaternion is no rotation."
+    field length f32 "How long the bone is (to its child)." {
+      default 0.25
+      unit m
+    }
+    field axis Vector3 "The direction the bone points in its own frame (towards its child)." {
+      default 0 1 0
+    }
+    field joint i32 "The skeleton joint (its index in the skin) the bone stands for, so the model is drawn with it; -1 for none." {
+      default -1
+    }
+  }
+
+  struct RagdollRigDesc {
+    doc "The bones of a ragdoll, parents first, for og.physics.setRagdollRig; og.physics.ragdollRigFromSkeleton makes one from a model's skeleton."
+    desc true
+    field bones List.RagdollBoneDesc "The bones."
+    field skeleton SkeletonAsset "The skeleton the bones' joints belong to (0: none): the entity's posed model is drawn blended towards the bones by og.Ragdoll.blend."
+  }
+
+  struct BonePose {
+    doc "A ragdoll bone's pose as the last step left it (blended with the animation by og.Ragdoll.weight)."
+    field position Vector3 "The bone's position in world space." {
+      unit m
+    }
+    field rotation Quaternion "Its rotation in world space."
+  }
+
+  fn ropePoints {
+    doc "An og.Rope's points after the last step, from its entity to its end (empty before its first step). The engine draws visible ropes itself; this is for game logic and custom drawing."
+    param world World "The world."
+    param entity Entity "The rope's entity."
+    returns Result.List.Vector3 "Refused for an entity without an og.Rope."
+  }
+
+  fn garmentPoints {
+    doc "An og.Garment's points after the last step, in the world: one per position of the garment's mesh (vertices at the same position, split along a seam, share one), in the order the mesh first uses them."
+    param world World "The world."
+    param entity Entity "The garment's entity."
+    returns Result.List.Vector3 "Refused for an entity without an og.Garment, or one not simulated yet (it needs og.Model, og.Skeleton and a loaded og.load.animation of the model)."
+  }
+
+  fn clothPoints {
+    doc "An og.Cloth's points after the last step, row by row (`columns` per row, rows downwards from the top edge)."
+    param world World "The world."
+    param entity Entity "The cloth's entity."
+    returns Result.List.Vector3 "Refused for an entity without an og.Cloth."
+  }
+
+  struct SoftBodyPoints {
+    doc "An og.SoftBody's surface after the last step."
+    field points List.Vector3 "Its points, in world space."
+    field indices List.u32 "Its triangles, three indices into `points` each, wound outwards (2D: a fan over the ring)."
+  }
+
+  fn softBodyPoints {
+    doc "An og.SoftBody's points and the triangles of its surface after the last step (none before its first step). The engine draws visible soft bodies itself; this is for game logic (where it touches, how squashed it is) and custom drawing."
+    param world World "The world."
+    param entity Entity "The soft body's entity."
+    returns Result.SoftBodyPoints "Refused for an entity without an og.SoftBody."
+  }
+
+  fn fluidParticles {
+    doc "An og.Fluid2D's particle positions after the last step, in world space."
+    param world World "The world."
+    param entity Entity "The fluid's entity."
+    returns Result.List.Vector2 "Refused for an entity without an og.Fluid2D."
+  }
+
+  fn fluid3dParticles {
+    doc "An og.Fluid3D's particle positions after the last step, in world space (emitted particles last, in the order they appeared)."
+    param world World "The world."
+    param entity Entity "The fluid's entity."
+    returns Result.List.Vector3 "Refused for an entity without an og.Fluid3D."
+  }
+
+  fn waterHeight {
+    doc "The surface height of an og.WaterSurface (world y) or an og.WaterLine (world y at `x`; `z` ignored) at a point, as the last step left it, plus an og.Water's sea (og.Water.wind) at this tick, the surface it draws: for boats that bob and spray that starts on the surface."
+    param world World "The world."
+    param entity Entity "The water's entity."
+    param x f32 "World x, in metres."
+    param z f32 "World z, in metres (3D)."
+    returns Result.f32 "Refused for an entity without water; outside the water, its rest level."
+  }
+
+  fn vehicleWheels {
+    doc "An og.Vehicle's wheels after the last step (front left, front right, rear left, rear right; or its og.VehicleWheel children in entity order), for drawing wheel models."
+    param world World "The world."
+    param entity Entity "The vehicle's entity."
+    returns Result.List.WheelPose "Refused for an entity without a vehicle."
+  }
+
+  fn ragdollRigFromSkeleton {
+    doc "A ragdoll rig from a loaded skeleton (og.load.animation's `skeleton`): a bone per joint of its first skin, parents first, each from its joint's rest pose to its first child joint, every bone naming its joint and the rig naming the skeleton. Pass it to og.physics.setRagdollRig, edited or not."
+    param world World "The world."
+    param skeleton SkeletonAsset "The skeleton."
+    returns Result.RagdollRigDesc "Refused for a skeleton that is not loaded or has no skin."
+  }
+
+  fn setRagdollRig {
+    doc "Give an entity with an og.Ragdoll its bones (and, from og.physics.ragdollRigFromSkeleton, the skeleton they stand for: its og.Model is then drawn blended from the animation towards the bones by og.Ragdoll.blend). While weight is 0 the bones follow the rig's rest pose at the entity. Rigs are assets, not world state: kept by the engine and given again to a reloaded world."
+    param world World "The world."
+    param entity Entity "The ragdoll's entity."
+    param desc RagdollRigDesc "The bones, parents first."
+    returns Result.Void "Refused for an empty rig or a parent that does not come before its child."
+  }
+
+  fn ragdollPose {
+    doc "An og.Ragdoll's bones after the last step, in rig order (empty before its first step)."
+    param world World "The world."
+    param entity Entity "The ragdoll's entity."
+    returns Result.List.BonePose "Refused for an entity without a ragdoll."
+  }
+
+  struct PhysicsPhase {
+    doc "One phase of the last physics step, for og.physics.stats."
+    field name String "gather (reading the components), sync (bodies and static colliders into rapier), joints (joints and vehicles), ragdolls, water (buoyancy before the step), rapier (rapier's step, every substep), readout (touching pairs and bodies read back, the rest rule), controllers (characters and platformers), soft (ropes and cloths), fluids (2D), fluids3d or writeBack (components and events written back)."
+    field ms f64 "Wall-clock time it took (0 where the host has no clock); never world state." {
+      unit ms
+    }
+    field split bool "Whether any of its work ran on the lanes pool: rapier's stages when the step went to the pool, the other phases when they split by bodies, contact pairs, ragdolls, soft bodies or particles."
+  }
+
+  struct PhysicsStats {
+    doc "What the last physics step cost, phase by phase, and where it ran: for finding where physics time goes. Timings are wall clock and vary run to run; the simulation never reads them."
+    field tick f64 "The tick the step ran (0 before the first)."
+    field bodies u32 "The rapier bodies it stepped (with ragdoll bones and vehicle wheels)."
+    field threads u32 "The lanes pool's threads at the time (1: lanes off or single-threaded)."
+    field pool bool "Whether the whole step ran on the lanes pool (from a number of bodies per thread count), where rapier splits its broad phase, narrow phase and solver."
+    field ms f64 "Wall-clock time of the whole og.physics system, gather to write-back." {
+      unit ms
+    }
+    field phases List.PhysicsPhase "Every phase, in the order they run."
+  }
+
+  fn stats {
+    doc "What the last physics step cost: each phase's time and whether it ran on the lanes pool. All zero before the first step."
+    param world World "The world."
+    returns Result.PhysicsStats "Refused for an engine without physics."
+  }
+}
+
+# ── atmosphere ────────────────────────────────────────────────────────────

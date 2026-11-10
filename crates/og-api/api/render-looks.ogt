@@ -1,0 +1,1498 @@
+  # ── stylisation and looks ─────────────────────────────────────────────
+
+  handle Palette "A colour palette for Stylise.palette, from og.load.palette (a `.hex` or GIMP `.gpl` file of up to 256 colours)."
+  handle Look "A look from og.load.look (an `.ogt` of `type look`): the frame's whole art direction as data, applied with og.render.applyLook."
+
+  column Palette {
+    doc "A Palette handle field (0 is none)."
+    array Uint32Array
+    stride 2
+    value Palette
+  }
+
+  column Look {
+    doc "A Look handle field (0 is none): a look og.load.look answered, kept for og.render.applyLook."
+    array Uint32Array
+    stride 2
+    value Look
+  }
+
+  enum DitherPattern {
+    doc "The threshold pattern Stylise.dither spreads the steps of posterize and palette with."
+    variant none "No dither: every pixel rounds to its nearest step or colour, in flat bands."
+    variant bayer2 "Ordered dither by a 2 by 2 Bayer matrix: the coarsest checker, as on early handhelds."
+    variant bayer4 "Ordered dither by a 4 by 4 Bayer matrix: the cross-hatched ramps of 8- and 16-bit art."
+    variant bayer8 "Ordered dither by an 8 by 8 Bayer matrix: finer ramps with 64 levels between two colours."
+    variant blueNoise "Blue noise: an even grain without a visible grid (a 64 by 64 void-and-cluster tile the engine ships, repeated), fixed per pixel so a still frame does not crawl."
+    variant interleavedGradient "Interleaved gradient noise: computed per pixel without a texture; a finer diagonal structure than blueNoise up close."
+  }
+
+  column DitherPattern {
+    doc "A DitherPattern field: the variant's index."
+    array Uint32Array
+    stride 1
+    value DitherPattern
+  }
+
+  enum MaterialSurface {
+    doc "A made surface MaterialStyle.surface lays on every lit material: the hand-made materials of the shape styles, drawn by the material's shading itself (its normal, its colour and how it takes the light) in each mesh's own space, so a moving object carries it."
+    variant none "No surface: each material as declared."
+    variant clay "Modelling clay: soft lumps and thumb-pressed dimples bend the normal, the light wraps past the terminator as through a soft body and warms there, and the surface stays matte (roughness at least 0.75)."
+    variant paper "Paper and card: a fibre grain darkens and lifts the colour in fine streaks and bends the normal so lit faces catch it, the light wraps a little as through a sheet, and the surface is fully rough."
+    variant plastic "Toy plastic or painted wood: a satin sheen (roughness held between 0.3 and 0.45, no metal), a soft wrap of the light and a faint moulding ripple, so pieces read as small and handled."
+  }
+
+  column MaterialSurface {
+    doc "A MaterialSurface field: the variant's index."
+    array Uint32Array
+    stride 1
+    value MaterialSurface
+  }
+
+  enum OutlinePlace {
+    doc "Where MaterialStyle's outlines lie against an object's silhouette (MaterialStyle.outlinePlace)."
+    variant inside "On the object's own edge pixels, inside its silhouette: its size is unchanged."
+    variant outside "On the pixels round the object (a jump flood finds each pixel's nearest outlined silhouette), so the shape keeps its own pixels whole and a far character is not blacked out by its own line; round at the corners and anti-aliased at any width."
+    variant both "Centred on the silhouette: half the width inside, half outside."
+  }
+
+  column OutlinePlace {
+    doc "An OutlinePlace field: the variant's index."
+    array Uint32Array
+    stride 1
+    value OutlinePlace
+  }
+
+  enum StyliseSpace {
+    doc "Where Stylise lays a pattern (the paint canvas, the hatching, the halftone)."
+    variant screen "Over the frame in logical pixels, as a print or a sheet of paper over the screen: the pattern stays put while the camera moves and the scene slides under it."
+    variant surface "On the surfaces, through the depth-normal prepass's position and normal (three world planes blended by the normal): the pattern sticks to the scene as the camera moves and wraps round forms, a tonal art map's strokes on the objects. Hatching and halftone keep about their pixel spacing by fading between whole octaves of world spacing; the sky keeps the screen pattern. The frame runs the prepass PostEffects.outline uses."
+    variant object "On the surfaces as surface, but in each mesh instance's own space (three planes of the instance blended by its normal, in metres along its axes): a moving, turning or skinned object carries its strokes, dots and grain instead of sliding through them, and keeps them however it is scaled. Terrain, scattered copies and the vertices a material shader moves keep the world pattern, the sky the screen pattern. The frame runs the prepass and an object pass that draws the opaque instances again."
+  }
+
+  column StyliseSpace {
+    doc "A StyliseSpace field: the variant's index."
+    array Uint32Array
+    stride 1
+    value StyliseSpace
+  }
+
+  enum PosterizeMode {
+    doc "How Stylise.posterize steps a colour."
+    variant channel "Each display channel rounded to its own step, the classic posterize: a colour off the grey axis can change hue as light moves it across one channel's step before the others."
+    variant tone "The colour's value (its largest channel) and its tint (the channels over that value) stepped apart, each to posterize's steps: a change of light, exposure or mood moves a colour's value and never its hue, so a near-grey stays grey and a gradient of one hue stays that hue."
+  }
+
+  column PosterizeMode {
+    doc "A PosterizeMode field: the variant's index."
+    array Uint32Array
+    stride 1
+    value PosterizeMode
+  }
+
+  enum HalftoneMode {
+    doc "How Stylise.halftone inks the frame."
+    variant ink "One ink (halftoneColor) on paper: dots larger where the image is darker."
+    variant cmyk "Four-colour process print: the colour split into cyan, magenta, yellow and black (grey component replacement), each a dot screen at its classic angle (black at halftoneAngle, cyan 30 degrees before it, magenta 30 after, yellow 45 before: 15, 75, 0 and 45 at the default angle), the inks multiplied on white paper, as comics were printed."
+  }
+
+  column HalftoneMode {
+    doc "A HalftoneMode field: the variant's index."
+    array Uint32Array
+    stride 1
+    value HalftoneMode
+  }
+
+  enum HalftoneRegion {
+    doc "Which tones Stylise.halftone prints on."
+    variant all "Every tone."
+    variant shade "The shade only: Ben-Day dots in the shadows while lit tones keep their colour (Hi-Fi Rush, Spider-Verse)."
+    variant highlight "The highlights only."
+  }
+
+  column HalftoneRegion {
+    doc "A HalftoneRegion field: the variant's index."
+    array Uint32Array
+    stride 1
+    value HalftoneRegion
+  }
+
+  resource Stylise {
+    doc "Stylisation primitives that move the frame away from the photographic: a low-resolution pixel grid scaled up by whole numbers, fewer tones or a fixed palette through an ordered or blue-noise dither, halftone dots, cross-hatching, painterly smoothing over a canvas, ink lines on tonal edges, flat colour bands by depth, and the vertex snapping, affine textures and coarse depth of early 3D hardware. They compose: a look (og.load.look) sets this with PostEffects and RenderSettings, and the game's art direction is in that data, not in the engine. Every primitive is off at its zero value (0, false, none) and then costs nothing: no pass is recorded and no pipeline is built. RenderCapabilities.stylise names the primitives this renderer draws; a field it does not name is carried and read back but not drawn. Read after each tick; it never feeds back into the simulation."
+    doc "Order in the frame: depth bands colour the lit scene with the fog, before tone mapping; after tone mapping and PostEffects' grading come paint, hatching, halftone and ink, then posterize and palette quantise through the dither, all at the logical resolution, and the pixel grid is scaled up last. The UI and screen-space sprites are drawn over the scaled frame at the output's resolution, unstylised."
+    field pixelHeight u32 "The logical resolution: the scene is rendered this many pixels tall and scaled up to the output by a whole number with nearest filtering, as a low-resolution three.js render target drawn with NearestFilter; 0 renders at the output's resolution. The height sets the scale (pixelUpscale); the width is the output's aspect times the height, rounded, but at most the output's width over the scale, so the last column gives way rather than the scale: 240 rows at 1280x720 are 426.67 columns, rounded to 427, and 427 x 3 = 1281 does not fit, so the grid is 426 x 240 at 3x (1278 x 720, a 1-pixel border each side). Heights that divide the output's evenly fill it: 180 (4x), 240 (3x) and 360 (2x) at 720p, 270 (4x) and 360 (3x) at 1080p." {
+      min 0
+      max 2160
+    }
+    field pixelUpscale u32 "The whole-number scale from the logical to the output resolution, a hard request: honoured whenever pixelHeight times it fits the output's height (a smaller scale than the largest leaves the border it implies: 240 lines at 2x in 1280x720 draw 854 x 480 in a 213 x 120 border), else the largest that fits; 0 takes the largest that fits (720 / 240 = 3, 1080 / 240 = 4, rounded down). A frame that does not fill the output is centred with Camera.background round it." {
+      min 0
+      max 16
+    }
+    field pixelSnap bool "Snap the camera and world sprites to the logical pixel grid, so a moving orthographic camera scrolls by whole pixels and sprites in a 3D world keep their edges (pixel sprites in 3D sets)." {
+      default true
+    }
+    field posterize u32 "Tones per colour channel after tone mapping (2 to 64): smooth gradients become flat steps; 0 is off." {
+      min 0
+      max 64
+    }
+    field posterizeMode PosterizeMode "How posterize steps a colour: each channel apart (channel), or its value and its tint apart so light never changes its hue (tone)."
+    field palette Palette "Quantise every pixel to the nearest colour of this palette (og.load.palette), measured in a perceptual space after posterize; 0 is none."
+    field dither DitherPattern "How the steps of posterize and palette are mixed: none rounds every pixel, an ordered or blue-noise pattern alternates the two nearest steps in proportion."
+    field ditherStrength f32 "The dither's amplitude in steps: 1 spreads exactly one step, less keeps flatter bands." {
+      default 1
+      min 0
+      max 2
+      tunable true
+    }
+    field ditherScale u32 "The size of one dither cell in logical pixels." {
+      default 1
+      min 1
+      max 8
+    }
+    field halftone f32 "Halftone print: tones become dots on a rotated grid, larger where the image is darker; 0 is off, 1 dots only." {
+      min 0
+      max 1
+      unit ratio
+      tunable true
+    }
+    field halftoneSize f32 "The dot grid's pitch in logical pixels." {
+      default 6
+      min 2
+      max 64
+    }
+    field halftoneAngle f32 "The dot grid's angle." {
+      default 45
+      unit deg
+    }
+    field halftoneColor Color "The ink of the dots (linear)." {
+      default 0.02 0.02 0.03
+    }
+    field halftoneSpace StyliseSpace "Where the dots lie: screen, a grid over the frame; surface, grids on the surfaces that stay on them as the camera moves and wrap round forms (halftoneSize is then about the pitch in pixels where they lie); object, the same grids in each instance's own space, so a moving object carries its dots."
+    field hatching f32 "Pencil or ink cross-hatching from a tonal art map: darker tones add strokes in more directions over a paper-light ground, each set thinning and fading in from clean paper at its tone; 0 is off, 1 strokes only." {
+      min 0
+      max 1
+      unit ratio
+      tunable true
+    }
+    field hatchingScale f32 "The spacing of hatch lines in logical pixels." {
+      default 6
+      min 2
+      max 64
+    }
+    field hatchingLevels u32 "How many tones the hatching distinguishes, each adding one stroke direction or density (1 to 6)." {
+      default 4
+      min 1
+      max 6
+    }
+    field hatchingAngle f32 "The direction of the first stroke set." {
+      default 45
+      unit deg
+    }
+    field hatchingColor Color "The stroke colour (linear): graphite, sepia or ink." {
+      default 0.04 0.035 0.03
+    }
+    field hatchingPaper Color "The paper the strokes lie on (linear): one-ink hatching lifts the ground's light tones towards it, and under hatchingKeepColor the wash lies on the paper's colour at the wash's own lightness (a cream sketchbook, a grey card, a blue print); white keeps the frame's own." {
+      default 1 1 1
+    }
+    field hatchingSpace StyliseSpace "Where the strokes lie: screen, stripes over the frame that follow the tone alone; surface, strokes laid on the surfaces that follow the tone and the form, wrapping round curved objects and staying on them as the camera moves (hatchingScale is then about the spacing in pixels where they lie); object, the same strokes in each instance's own space, so a moving or turning object carries its strokes."
+    field hatchingDepth f32 "Hatching from luminance and depth: the depth-normal prepass's silhouettes and creases darken the tone the strokes follow, at this strength, so strokes gather along contours and folds as inkDepth inks them (the edges are inkDepthThreshold's and inkNormalThreshold's, found within one stroke spacing). 0 is the tone alone; above 0 the frame runs the prepass PostEffects.outline uses." {
+      min 0
+      max 1
+      unit ratio
+      tunable true
+    }
+    field paintRadius f32 "Painterly smoothing (an anisotropic Kuwahara filter with eight sectors over a smoothed structure tensor, Kyprianidis 2009 and 2010): flat regions and incoherent texture (grass, noise) become strokes of one colour this many logical pixels across, while edges and thin lines keep their shape; with the prepass no stroke crosses an object's edge and detail (paintDetail) keeps its shape; 0 is off. In a profile 2d project under the art contract the paint and watercolor fields are the cook's, applied in each texture's own texels, and the frame draws neither pass, so a sprite is painted once." {
+      min 0
+      max 8
+      tunable true
+    }
+    field paintAnisotropy f32 "How far the strokes follow the image's structure: 0 round brush cells, 0.5 the filter's classic ellipses, 1 thin strokes along every coherent contour, which keep lines a pixel wide." {
+      min 0
+      max 1
+      unit ratio
+    }
+    field paintEdgeDarkening f32 "Pigment pooling at the edges of colour regions, as wet watercolour dries darker at its rim; 0 is none." {
+      min 0
+      max 1
+      unit ratio
+      tunable true
+    }
+    field paintBleed f32 "Colour bleeding across edges into its neighbours, wet in wet; 0 is none." {
+      min 0
+      max 1
+      unit ratio
+      tunable true
+    }
+    field paintCanvas Texture "A tileable paper or canvas texture (og.load.texture) laid over the frame by paintCanvasStrength; 0 is none."
+    field paintCanvasStrength f32 "How much the canvas texture modulates the frame: 0 none, 1 its full grain." {
+      min 0
+      max 1
+      unit ratio
+      tunable true
+    }
+    field paintCanvasScale f32 "Canvas texels per logical pixel, with paintCanvasSpace screen (and on the sky)." {
+      default 1
+      min 0.125
+      max 8
+    }
+    field paintCanvasSpace StyliseSpace "Where the canvas lies: screen, over the frame (the scene slides under the paper as the camera moves); surface, on the surfaces, so the grain sticks to the scene, foreshortened with the floor and walls; object, in each instance's own space, so a moving object carries its grain."
+    field paintCanvasWorldScale f32 "Canvas texels per metre with paintCanvasSpace surface: 128 repeats a 256-texel canvas every two metres." {
+      default 128
+      min 1
+      max 4096
+    }
+    field ink bool "Ink lines where the tone changes sharply (luminance edges), over every surface, sprite and texture alike: comic and storybook contours without PostEffects.outline's depth prepass. inkDepth adds the prepass's silhouettes and creases."
+    field inkThreshold f32 "The luminance step that counts as an edge (0 to 1 in display units): lower draws more lines." {
+      default 0.1
+      min 0
+      max 1
+      tunable true
+    }
+    field inkWidth f32 "The line width in logical pixels." {
+      default 1
+      min 0.5
+      max 8
+      tunable true
+    }
+    field inkColor Color "The line colour (linear)." {
+      default 0.02 0.02 0.03
+    }
+    field inkDepth f32 "With ink: lines also where the depth-normal prepass breaks (silhouettes against what is behind, creases between faces), at this strength: comic contours round flat colours that luminance alone misses. 0 is luminance only; above 0 the frame runs the prepass PostEffects.outline uses." {
+      min 0
+      max 1
+      unit ratio
+      tunable true
+    }
+    field inkDepthThreshold f32 "With inkDepth: the relative depth step to a farther neighbour that counts as a silhouette (0.04 is 4 %), as PostEffects.outlineDepthThreshold: lower inks smaller steps." {
+      default 0.04
+      min 0
+    }
+    field inkNormalThreshold f32 "With inkDepth: the normal change between neighbours of about the same depth that counts as a crease (1 - cos of the angle; 0.4 is about 53 degrees), as PostEffects.outlineNormalThreshold: lower inks gentler folds." {
+      default 0.4
+      min 0
+      max 2
+    }
+    field depthBands u32 "Colour bands by depth (2 to 8): the scene from depthBandsNear to depthBandsFar is cut into this many equal layers, the first in depthBandsNearColor, the last in depthBandsFarColor, those between stepping evenly from one to the other in lightness, chroma and hue (never through grey), for layered-silhouette and stage looks; 0 is off. For side and three-quarter views, where the depth runs across the frame: seen from above the play area lies at one depth and falls in one band." {
+      min 0
+      max 8
+    }
+    field depthBandsNear f32 "Where the first band starts." {
+      default 5
+      min 0
+      unit m
+    }
+    field depthBandsFar f32 "Where the last band ends; the last band (the far colour) starts one band's depth before it, and everything beyond it is the far colour too." {
+      default 60
+      min 0
+      unit m
+    }
+    field depthBandsNearColor Color "The nearest band's colour (linear, before exposure)." {
+      default 0.02 0.02 0.03
+    }
+    field depthBandsFarColor Color "The farthest band's colour (linear, before exposure)." {
+      default 0.55 0.6 0.7
+    }
+    field depthBandsFlatten f32 "How far a band replaces the surfaces' own shading: 1 flat silhouettes in the band's colour; 0 a tint over the lit scene, its colours times the band's at unit luminance (a coloured filter: the shading, the value and the surfaces' own hues show through); between, a mix of the two." {
+      default 1
+      min 0
+      max 1
+      unit ratio
+      tunable true
+    }
+    field vertexSnap f32 "Snap every vertex of the 3D scene to a screen grid this many logical pixels wide, as fixed-point hardware did: geometry jitters by whole steps as it moves; 0 is off." {
+      min 0
+      max 16
+    }
+    field affineTexturing f32 "How far texture coordinates are interpolated without perspective correction: 1 fully affine, so textures warp and swim across large polygons as on early consoles; 0 is off." {
+      min 0
+      max 1
+      unit ratio
+    }
+    field depthBits u32 "Quantise depth to this many bits, for the coarse depth buffers of early 3D (12 to 16 are period-like: distant surfaces fight); 0 keeps full precision." {
+      min 0
+      max 24
+    }
+    field paintDetail f32 "How far detail keeps its shape under paintRadius: a pixel's radius shrinks by its detail (its material's StandardMaterialDesc.paintDetail, or paintCharacterDetail on a skinned mesh) times this, so faces, hands and lettering stay drawn while grass and broad areas paint; with it no stroke crosses an object's edge. Above 0 the frame runs the depth-normal prepass where it draws meshes; 0 paints every pixel alike." {
+      default 1
+      min 0
+      max 1
+      unit ratio
+      tunable true
+    }
+    field paintCharacterDetail f32 "The detail of a skinned mesh's pixels (a character's face and hands) where its material sets less: 0 painted as the rest, 1 kept as drawn." {
+      default 0.8
+      min 0
+      max 1
+      unit ratio
+      tunable true
+    }
+    field watercolorEdgeDarkening f32 "The watercolour wash (Bousseau et al. 2006, Montesdeoca et al. 2018), drawn over the painted frame after paintRadius's strokes: pigment pooled in a rim two to three pixels wide at a wash's outer boundary, the colour there raised to one plus the strength, as a wash dries darker at its border. A boundary is a step between two colour regions wider than a line (the colour averaged over six pixels either side differs) or a silhouette against something farther behind; a seam, a crease or another object of the same colour is none, since one wash covers them, so a texture's seams and a tiled floor get no rim, where paintEdgeDarkening pools broadly over the source's structure; 0 is none." {
+      min 0
+      max 1
+      unit ratio
+      tunable true
+    }
+    field watercolorGranulation f32 "Pigment settling into the paper's grain: a pigment density about one from the paper's relief (paintCanvas's height about its mean, in units of its spread, so any canvas reads as paper; a noise a few pixels across without one), heavier in the pits and thinner on the peaks and broken by a grain two to three pixels across, each colour thinned towards the paper (watercolorPaper) where the density is under one and thickened where it is over (Bousseau's C(1 - (1 - C)(d - 1))). The density is weighed by the pigment load, so bare paper and the palest washes stay clean and the dark and saturated ones granulate, and the wash keeps its mean value where paintCanvasStrength's grain only darkens it; 0 is none." {
+      min 0
+      max 1
+      unit ratio
+      tunable true
+    }
+    field watercolorTurbulence f32 "Pigment drifting as the wash dries: the same density from a slow noise about a hundred canvas texels across (and half that), laid where the canvas lies (paintCanvasSpace) and seeded by the object under the pixel so no blotch runs across two washes, weighed by the pigment load so the paper and the palest washes stay even; a wash is patchy, lighter here and darker there; 0 is none." {
+      min 0
+      max 1
+      unit ratio
+      tunable true
+    }
+    field watercolorDryBrush f32 "A dry brush skipping over the paper's tooth: its peaks (the relief past half its spread, in the paper's own clusters) left bare as the paper (watercolorPaper) in the rim at a wash's outer boundary (watercolorEdgeDarkening's) and on the light-catching tones, the brightest washes first; 0 is none." {
+      min 0
+      max 1
+      unit ratio
+      tunable true
+    }
+    field watercolorWobble f32 "The painted frame displaced by the paper's relief, up to this many logical pixels, so every edge wavers with the tooth as a wash's does (MNPR's substrate distortion); 0 is none." {
+      min 0
+      max 4
+      tunable true
+    }
+    field watercolorPaper Color "The paper's colour (linear): what the wash thins towards and the dry brush leaves bare." {
+      default 1 1 1
+    }
+    field ditherSpace StyliseSpace "Where the dither's cells lie: screen, a grid over the frame (a moving camera slides the scene under it, so the pattern crawls); surface, cells on the surfaces at least ditherScale pixels on the screen each way (each surface axis by whole octaves, so a receding floor's cells are long along its depth), so the pattern stays on what it shades as the camera moves (Lucas Pope's Obra Dinn), and the sky's on a cube round the camera so turning carries them; object, in each mesh instance's own space, so a moving object carries its pattern. Off screen the frame runs the prepass."
+    field halftoneMode HalftoneMode "How the halftone inks: one ink (halftoneColor) or four-colour process print (cmyk)."
+    field halftoneMisregistration f32 "With halftoneMode cmyk: how far the cyan, magenta and yellow plates sit off the black one, in logical pixels, as a cheap print's colour slips past its line art; 0 is in register." {
+      min 0
+      max 8
+      tunable true
+    }
+    field halftoneRegion HalftoneRegion "Which tones the halftone prints on: all (the dots reproduce the tone on white paper, merging in the darks as print does), the shade only or the highlights only (the darkest or lightest third of the tones). Under a region the dots are Ben-Day dots: a tint printed over the region's own colour, at most 0.4 of their cell wide so they never touch, and a flat shade stays one colour with separate dots on it. They fade to flat ink on surfaces turned away from the camera (a floor seen from a game camera's height), where dots squeezed into a few rows read as a checker."
+    field hatchingKeepColor bool "Colour hatching: the ground is a light wash of its colour (as light as one-ink hatching's paper, keeping its hue, and more of a strong colour's chroma than a weak tint's, so props keep their colour while a greyish floor goes to paper; conformed art keeps its authored colour, with half the chroma the lift would take) and each stroke is that colour darkened towards hatchingColor, so hue and chroma stay under the strokes; false lays strokes of hatchingColor over a paper-light ground."
+  }
+
+  resource MaterialStyle {
+    doc "Stylised defaults for every lit material, so a whole scene takes one treatment without editing each material: toon shading and its ramp, a coloured shadow side, rim light, outlines whose width falls off with distance, and flat facets. Each applies to a material (og.render.standardMaterial or a loaded glTF's) that leaves that field at its own default; a terrain (og.Terrain) takes toon (the built-in three bands, matte) and shadowTint; unlit and shader materials, materials with StandardMaterialDesc.styled false, sprites and the UI are untouched, and toon passes by a material with a MeshPhysicalMaterial lobe (clearcoat, sheen, transmission, iridescence, anisotropy, ior), which keeps its physical shading. All off (false, 0) is no change. A look sets it; RenderCapabilities.stylise names what this renderer draws. Read after each tick; it never feeds back into the simulation."
+    field toon bool "Cel shading for every lit material, as StandardMaterialDesc.toon: light quantised by the ramp, hard highlights. A material with a physical lobe (clearcoat, transmission and the rest) keeps its physical shading; set its own toon to make it toon anyway."
+    field gradientMap Texture "The toon ramp for materials without their own (StandardMaterialDesc.gradientMap, og.load.texture): its first row maps the light's angle to the light received, read without filtering; 0 is three built-in bands."
+    field shadowTint Color "The colour the shadowed side of a toon or lit surface moves towards instead of black (linear): the cool or warm shadow of illustration." {
+      default 0.18 0.16 0.32
+    }
+    field shadowTintAmount f32 "How far shadowed light moves towards shadowTint; 0 is off." {
+      min 0
+      max 1
+      unit ratio
+      tunable true
+    }
+    field shadowDarkness f32 "How far shadowed surfaces fall towards black: where the sun does not reach (the toon ramp's dark band, the side turned away, a cast shadow) a surface loses this share of the sun's ramp and of the ambient light (the Environment's map and its hemisphere light) as well, so 1 draws every shadow as a solid black mass (the ink shadows of noir comics) and the toon ramp's middle band keeps half its light; point, spot and rect lights and the emissive still show inside it, and shadowTint's light is added after it. 0 is off." {
+      min 0
+      max 1
+      unit ratio
+      tunable true
+    }
+    field rimColor Color "Rim (fresnel) light for materials without their own (linear)." {
+      default 1 1 1
+    }
+    field rimIntensity f32 "The rim light's strength; 0 is none." {
+      min 0
+      tunable true
+    }
+    field rimPower f32 "How tight the rim is (higher: thinner)." {
+      default 3
+      min 0.1
+    }
+    field outlineColor Color "The outline colour for materials without their own (linear)." {
+      default 0.02 0.02 0.03
+    }
+    field outlineWidth f32 "The outline width in pixels at outlineDistance for materials without their own; 0 is none. A hull outline (StandardMaterialDesc.outlineWidth): silhouettes and creases against other objects, never the faces of one, so voxel and flat-shaded models stay clean. A surface seen at a grazing angle is lined only where it ends: a 1,600 m ground under a chase camera keeps its far edge and nothing else (no band along the horizon)." {
+      min 0
+      max 31
+      tunable true
+    }
+    field outlineDistance f32 "The distance at which outlines are outlineWidth wide: nearer they grow, up to four times outlineWidth, farther they thin in proportion (an inked look keeps line weight by depth); 0 keeps every outline outlineWidth wide." {
+      min 0
+      unit m
+    }
+    field flatShading bool "Shade every lit material with face normals, as StandardMaterialDesc.flatShading: visible facets for low-poly, paper-craft and voxel looks."
+    field surface MaterialSurface "A made surface on every lit material (clay, paper, plastic): its normal detail, colour grain and light response, in each mesh's own space; none is no change. Unlit materials, materials with StandardMaterialDesc.styled false and those with a MeshPhysicalMaterial lobe keep their own shading."
+    field surfaceStrength f32 "How strongly the surface shows: its bumps, grain and wrapped light; 0 is none." {
+      default 1
+      min 0
+      max 1
+      unit ratio
+      tunable true
+    }
+    field surfaceScale f32 "The size of the surface's pattern in metres of the mesh's own space (a clay lump, the paper's fibre); 0 takes the surface's own (clay 0.12, paper 0.15, plastic 0.3)." {
+      min 0
+      unit m
+    }
+    field toonAmbient f32 "How smooth a toon material's ambient light (the Environment and its hemisphere light) stays: 0 one flat colour, the light from above and below averaged (MToon's equalised ambient), with the environment's reflection as one flat colour, so the bands sit on flat colour; 1 the smooth PBR ambient and reflections, which wash the bands out." {
+      min 0
+      max 1
+      unit ratio
+      tunable true
+    }
+    field toonSoftness f32 "The toon bands' and highlight's edges, anti-aliased over this many pixels (lilToon's screen-space smoothing); 0 hard steps that only TAA softens." {
+      default 1
+      min 0
+      max 4
+      tunable true
+    }
+    field outlinePlace OutlinePlace "Where outlines lie against an object's silhouette: inside (the zero value, its own edge pixels), outside (round it, at any width, anti-aliased) or both. Creases between objects stay inside."
+    field wireframe bool "Draw every lit material's feature edges over its faces (StandardMaterialDesc.wireframe's edges, with wireframeAngle and wireframeColor from this style where the material sets none), in the colour the surface shows along each edge (its colour times its maps, plus its emissive light, so emissive colours glow through bloom) or wireframeColor; the faces stay drawn as usual and hide the edges behind them, as vector displays drew with hidden lines removed: vector and neon looks, whose dark materials make the fill. A material's own wireframe draws its edges alone."
+    field wireframeAngle f32 "The crease angle wireframe draws past (StandardMaterialDesc.wireframeAngle); 0 every triangle edge." {
+      default 30
+      min 0
+      max 180
+      unit deg
+    }
+    field wireframeColor Color "The look's line colour for wireframe (StandardMaterialDesc.wireframeColor), linear, above 1 blooms; black (the zero value) draws each edge in the colour its surface shows there."
+  }
+
+  struct LookInfo {
+    doc "A loaded look: where it came from and what applying it sets."
+    field look Look "Its handle."
+    field path String "Its asset id."
+    field name String "Its name (the file's `name`, else its file name without `.ogt`)."
+    field extends List.String "The looks it builds on, nearest first: asset ids under assets/ and built-in preset slugs."
+    field mood Option.String "The mood it is drawn in (bright, dark, warm, cold, soft or high-contrast): a preset's own, or the one the game's look asked for, whose layer the cook laid over the preset (docs/art.md §2.10); unset for a look that names none."
+    field resources List.String "The resources it sets, by IDL name (RenderSettings, PostEffects, Stylise, MaterialStyle, Fog, Sky, Environment, and the art contract: ArtPalette, ArtPixels, ArtTexels, ArtShape, ArtLine, ArtMotion, ArtCamera). Applying it replaces each of them whole: the fields the look names take its values, the rest their defaults."
+    field style Option.Style "The UI style its `ui` line names (a game's own or a built-in by slug), loaded with it; applying the look configures the UI with it."
+    field antialias Option.Antialias "The antialiasing it asks for. GameDesc.look's is the renderer's when GameDesc.render leaves antialias out; a running renderer keeps its method."
+  }
+
+  resource Lighting2D {
+    doc "2D lighting of the sprite layers minLayer to maxLayer (sprites, 2D particles and og.Tilemap layers there, a map layer unless its `lit` property is false): their colour is multiplied by ambient plus every Light2D reaching the pixel, shadowed by Occluder2Ds and sprites with castShadow. A texture with a normal map (`normal auto` or `normal \"file.png\"` in its import settings' texture block) is shaded by where its surface faces each light, which stands Light2D.height above the plane; a flat area keeps exactly the light it had. Other layers (and the overlay) are drawn as authored. Off by default."
+    field enabled bool "Light the layers."
+    field ambient Color "Light everywhere (0 is darkness outside the lights)." {
+      default 0.15 0.15 0.15
+    }
+    field minLayer i32 "The lowest lit sprite layer." {
+      default -1000000
+    }
+    field maxLayer i32 "The highest lit sprite layer (above it: UI and HUD layers stay unlit)." {
+      default 99
+    }
+    field resolution f32 "The light map's resolution as a fraction of the target." {
+      default 0.5
+      min 0.25
+      max 1
+    }
+    field shadowAngles u32 "The angular resolution of each shadow-casting light's shadow: how many directions around it are traced against the occluders (more keeps a small occluder far from a large light sharp, at more cost)." {
+      default 1024
+      min 64
+      max 4096
+    }
+  }
+
+  enum Light2DKind {
+    doc "What shape of light a Light2D is."
+    variant point "Light all around its position, to radius."
+    variant spot "A cone along the entity's local +x (turned with its Transform about z), innerAngle to outerAngle either side of the axis, to radius."
+    variant global "Light on every lit pixel of its layers at full intensity, from the direction of the entity's local +x at height (for normal maps); no radius and no shadows."
+  }
+
+  column Light2DKind {
+    doc "A Light2DKind field: the variant's index."
+    array Uint32Array
+    stride 1
+    value Light2DKind
+  }
+
+  component Light2D {
+    doc "A light in the 2D plane at the entity's position (z ignored): color times intensity at its centre, falling to zero at radius with (1 - d/r)^falloff (faded over its last tenth, so even a falloff below 1 ends without a rim), shadowed by occluders when castShadows. Lighting2D.enabled turns 2D lighting on; at most 64 are drawn."
+    field color Color "The light's linear colour." {
+      default 1 1 1
+    }
+    field intensity f32 "The brightness at the centre." {
+      default 1
+      min 0
+      tunable true
+    }
+    field radius f32 "Where the light reaches zero, in world units." {
+      default 5
+      min 0
+      unit m
+      tunable true
+    }
+    field falloff f32 "The exponent of the fade." {
+      default 2
+      min 0.1
+    }
+    field sourceRadius f32 "The light's own size: larger gives softer shadows." {
+      default 0.25
+      min 0
+      unit m
+    }
+    field castShadows bool "Occluders between the light and a pixel shade it (point and spot lights)." {
+      default true
+    }
+    field kind Light2DKind "Point, spot or global."
+    field innerAngle f32 "A spot's half-angle at full intensity, in radians." {
+      default 0.35
+      min 0
+      max 3.14159
+    }
+    field outerAngle f32 "A spot's half-angle where it reaches zero, in radians (at least innerAngle)." {
+      default 0.6
+      min 0
+      max 3.14159
+    }
+    field height f32 "How far above the 2D plane the light is, in world units: the slant normal-mapped sprites see it at (0 grazes the surface)." {
+      default 1
+      min 0
+      unit m
+    }
+    field layers u32 "The light layers it lights: a bit per layer, matched against each sprite's, rig's or tilemap's og.LightMask2D (layer 0, bit 1, without one)." {
+      default 4294967295
+    }
+  }
+
+  component Occluder2D {
+    doc "A shape that blocks 2D light (walls, crates, characters), centred on the entity's position and turned and scaled with it about z: a width by height rectangle, or the polygon `points` gives. Pixels inside it are not shadowed by it. At most 128 are drawn."
+    field width f32 "Its width in world units (without points)." {
+      default 1
+      min 0
+      unit m
+    }
+    field height f32 "Its height in world units (without points)." {
+      default 1
+      min 0
+      unit m
+    }
+    field points List.f32.32 "A polygon instead of the rectangle: up to 16 vertices as x, y pairs in the entity's frame, in order around it; concave is fine. Fewer than three vertices keeps the rectangle."
+    field layers u32 "The light layers whose lights it blocks (a bit per layer, as Light2D.layers)." {
+      default 4294967295
+    }
+  }
+
+  component LightMask2D {
+    doc "The light layers that light the entity's sprite, flipbook, 2D rig or tilemap: a Light2D lights it when their `layers` share a bit. Without one an entity is on layer 0 (bit 1). At most four different masks are lit in one frame; any further mask is lit as layer 0."
+    field layers u32 "A bit per light layer." {
+      default 1
+    }
+  }
+
+  component Decal {
+    doc "A projected decal (scorch marks, blood, posters, bullet holes): the entity's unit box (-0.5 to 0.5 on each axis, scaled by its Transform) projected along its local -Z onto every lit opaque surface inside it, shaded with the surface. Its image is the uvMin to uvMax region of RenderSettings.decalAtlas (a solid colour without one); with a normalMin to normalMax region, that region of the same atlas is a tangent-space normal map that bends the surface's normal (cracks, a bullet hole's rim, embossed lettering). Later decals blend over earlier ones. Tens of thousands can be placed: each pixel walks only the decals whose box can reach it, and at most 255 overlap at one place (the newest are kept)."
+    field color Color "A linear colour multiplied with the atlas." {
+      default 1 1 1
+    }
+    field opacity f32 "The decal's opacity." {
+      default 1
+      min 0
+      max 1
+      tunable true
+    }
+    field uvMin Vector2 "The atlas region's top-left corner, v down." {
+      worldspace none
+    }
+    field uvMax Vector2 "The atlas region's bottom-right corner, v down." {
+      worldspace none
+      default 1 1
+    }
+    field emissive Color "Linear light added where the decal covers (glowing runes, lava)."
+    field roughness f32 "The surface roughness under the decal; -1 keeps the surface's." {
+      default -1
+      min -1
+      max 1
+    }
+    field angleFade f32 "Surfaces turned further than this from the projection direction are not covered (the last 15 degrees fade)." {
+      default 75
+      min 0
+      max 90
+      unit deg
+    }
+    field normalMin Vector2 "The top-left corner of the decal's normal map in RenderSettings.decalAtlas, v down (glTF's convention: +X along u, +Y up the image). Equal to normalMax (the default), the decal has no normal map."
+    field normalMax Vector2 "The bottom-right corner of the decal's normal map in the atlas, v down."
+    field normalScale f32 "How strongly the normal map bends the surface, as three.js normalScale." {
+      default 1
+      min 0
+      max 4
+      tunable true
+    }
+    field visible bool "Whether it is drawn." {
+      default true
+    }
+  }
+
+  const PARTICLES_ARMED u32 4294967295 "ParticleSystem.startTick's default: never written. A looping emitter emits as if started at tick 0; a one-shot (`looping false`) emits nothing until its startTick is written, so a burst spawned in `start` waits for its first use. Write it back to re-arm a one-shot without firing it."
+
+  component ParticleSystem {
+    doc "Emits particles from an og.load.emitter asset at the entity's MatrixWorld. Particles are simulated by the renderer from (seed, startTick, the tick), so they are deterministic and replay; on an entity with og.TimeGroup they spawn, age and move at the group's scale (og.time.setGroupScale), read as the frame is drawn. They never feed back into the simulation. They simulate in compute with nothing read back, sprite-mode emitters included (emitters with sub-emitters on the CPU), identical either way. An emitter's `collision` line makes its particles bounce off the depth of what is drawn (`depth`, the default in 3D) or off the scene's og.Collider boxes, spheres, capsules and terrains (`colliders`, on or off screen; always in sprite mode), in compute either way. An emitter whose file has an `events` line (`events death collision`) is simulated in the tick instead, once the game names og.ParticleEvent: the og.particles system steps it with the engine's randomness and fixed math, sends an og.ParticleEvent for each of those events, and the renderer draws that simulation as it stands, so gameplay reads exactly the particles shown (snapshots and restores carry them)."
+    field emitter ParticleEmitter "The emitter asset; 0 draws nothing."
+    field seed u32 "The random seed: systems with different seeds differ."
+    field startTick u32 "The tick emission started: write the tick (`time.tick`, `world.tick`) to fire a one-shot burst, or to restart one. Its default, PARTICLES_ARMED, is never written: a looping emitter emits as if started at tick 0, while a one-shot (`looping false`) stays armed and emits nothing until a tick is written, so effects spawned ahead of their first use wait." {
+      default 4294967295
+    }
+    field stopTick u32 "The tick emission stops (the particles live out); 0 keeps emitting while the emitter loops."
+    field visible bool "Whether it is drawn (a hidden system loses its particles)." {
+      default true
+    }
+    field layers u32 "Three.js layers, as Mesh.layers: its particles (billboards and 2D sprite particles alike) are drawn by the cameras whose masks share a bit with it (og.Camera, og.CameraView, og.Mirror)." {
+      default 1
+    }
+  }
+
+  enum ParticleEventKind {
+    doc "What happened to a particle (og.ParticleEvent.kind; an emitter's `events` and `subEmitter` lines name them)."
+    variant birth "It was spawned."
+    variant death "It reached the end of its lifetime (a particle the emitter's ring reuses before then sends none)."
+    variant collision "It hit a collider faster than 0.5 m/s into it (one settling on the ground sends none): an og.Collider box or sphere in the tick (the emitter's `collision` line, world space)."
+  }
+
+  event ParticleEvent {
+    doc "A particle of an og.ParticleSystem was born, died or hit something in the last tick (read in the tick after, like every event): a bullet's spark that lands, a firework's shell that bursts, debris that rings a bell. Sent only for systems whose emitter names the kind on its `events` line; such systems are simulated in the tick (og.particles), with the engine's randomness, so the events replay. Registered when a game first names it: a world that never does keeps its hash. Sub-emitters' particles send none."
+    field entity Entity "The entity with the og.ParticleSystem."
+    field kind ParticleEventKind "What happened."
+    field index u32 "The particle's index in its system's spawn order (counting from 0 at startTick)."
+    field position Vector3 "Where, in the world." {
+      unit m
+      worldspace world
+    }
+    field velocity Vector3 "Its velocity then, in the world (before a bounce)." {
+      unit mps
+    }
+  }
+
+  component Trail {
+    doc "A streak behind the entity: its world positions over the last `lifetime` seconds as a camera-facing strip, from widthStart and color at the head to widthEnd and colorEnd at the tail."
+    field lifetime f32 "How long a position stays in the trail." {
+      default 0.4
+      min 0
+      unit s
+      tunable true
+    }
+    field minDistance f32 "A new point is kept when the head has moved this far." {
+      default 0.05
+      min 0
+      unit m
+    }
+    field widthStart f32 "The width at the head." {
+      default 0.15
+      min 0
+      unit m
+      tunable true
+    }
+    field widthEnd f32 "The width at the tail." {
+      min 0
+      unit m
+    }
+    field color Color "The linear colour at the head; above 1 blooms." {
+      default 1 1 1
+    }
+    field opacity f32 "The alpha at the head." {
+      default 1
+      min 0
+      max 1
+    }
+    field colorEnd Color "The linear colour at the tail." {
+      default 1 1 1
+    }
+    field opacityEnd f32 "The alpha at the tail." {
+      min 0
+      max 1
+    }
+    field texture Texture "A texture along the strip; 0 is solid."
+    field uvTile f32 "The texture repeats every this many world units; 0 stretches it once over the length." {
+      min 0
+      unit m
+    }
+    field blend StripBlend "Additive or alpha blended."
+    field layered bool "Draw it in the 2D sprite order at `layer` (a sprite's trail over a tile background) instead of with the 3D scene."
+    field layer i32 "With layered: the sprite layer it is drawn in, before that layer's sprites."
+  }
+
+  component Beam {
+    doc "A strip from the entity's position to `end` whose texture scrolls with the tick: lasers, tethers, lightning (jitter)."
+    aliases "laser beam, laser, LineRenderer, tether, lightning bolt"
+    field end Vector3 "The far end, in world space." {
+      worldspace world
+      unit m
+    }
+    field width f32 "The beam's width." {
+      default 0.1
+      min 0
+      unit m
+      tunable true
+    }
+    field color Color "The linear colour; above 1 blooms." {
+      default 1 1 1
+    }
+    field opacity f32 "The alpha." {
+      default 1
+      min 0
+      max 1
+    }
+    field texture Texture "A texture along the beam; 0 is solid."
+    field tile f32 "Texture repeats per world unit along the beam." {
+      default 1
+      min 0
+    }
+    field scroll f32 "Texture scroll in repeats per second." {
+      tunable true
+    }
+    field segments u32 "Segments: 1 is straight, more let jitter bend it." {
+      default 1
+      min 1
+      max 64
+    }
+    field jitter f32 "Sideways jitter in world units, new every tick (lightning)." {
+      min 0
+      unit m
+    }
+    field seed u32 "The jitter's seed."
+    field blend StripBlend "Additive or alpha blended."
+  }
+
+  struct RibbonPoint {
+    doc "One point of a ribbon."
+    desc true
+    field position Vector3 "Where it is." {
+      unit m
+    }
+    field width f32 "The width there." {
+      default 0.1
+      min 0
+      unit m
+    }
+    field color Color "The linear colour there." {
+      default 1 1 1
+    }
+    field opacity f32 "The alpha there." {
+      default 1
+      min 0
+      max 1
+    }
+  }
+
+  struct RibbonDesc {
+    doc "An explicit camera-facing strip through points, drawn this frame only (immediate mode, as og.render.sprite): submit it every tick it should show."
+    desc true
+    field points List.RibbonPoint "The points, in order (at least two)."
+    field texture Option.Texture "A texture along the strip; null is solid."
+    field uvTile f32 "The texture repeats every this many world units; 0 stretches it once." {
+      min 0
+      unit m
+    }
+    field blend StripBlend "Additive or alpha blended."
+  }
+
+  fn ribbon {
+    doc "Draw a ribbon this frame. Systems and commands may call it; the list is cleared at every tick."
+    param world World "The world whose renderer draws it."
+    param desc RibbonDesc "The points and the look."
+    returns Result.Void "Refused for a dead texture or fewer than two points."
+  }
+
+  struct TextDesc {
+    doc "A line or block of MSDF text in the world's xy plane facing +z, drawn this frame only (immediate mode: submit it every tick it should show)."
+    desc true
+    field font Option.Font "The font from og.load.font; null draws nothing."
+    field text String "The text; `\\n` starts a new line."
+    field position Vector3 "The baseline origin of the first line." {
+      unit m
+    }
+    field size f32 "The em size in world units." {
+      default 1
+      min 0
+    }
+    field rotation f32 "Rotation about +z." {
+      unit rad
+    }
+    field color Color "The linear colour." {
+      default 1 1 1
+    }
+    field opacity f32 "The alpha." {
+      default 1
+      min 0
+      max 1
+    }
+    field layer i32 "Draw order among sprites and text; higher draws on top."
+    field align TextAlign "How each line sits on `position`: start puts its left end there, center its middle, end its right end."
+    field outline f32 "World text: an outline around the glyphs, as a fraction (0 to 1) of the widest the font's distance range allows (a font cooked with a larger px_range takes thicker outlines)." {
+      min 0
+      max 1
+    }
+    field outlineColor Color "The outline's linear colour."
+    field facing SpriteFacing "World text as a billboard (SpriteFacing): none keeps it in the world's xy plane; camera turns it into each camera's view plane; cameraY stands it upright turned about y towards the camera (a name over a character). It turns as one panel about `position`, sorts among the transparent meshes by that point's view depth and is not culled. Screen text ignores it."
+    field screen bool "Draw in screen space over the finished frame: position is the first baseline's origin in CSS pixels from the top left, y down, size in CSS pixels, rotation clockwise. With og.ui: under every UI element at a layer up to UI_LAYER (1000), over every one above it."
+    field clip Option.Array.f32.4 "Screen text: cut to [x, y, width, height] in CSS pixels, per pixel; null draws it whole."
+  }
+
+  struct TextMeasureDesc {
+    doc "Text to measure with og.render.measureText, laid out as og.render.text lays it out."
+    desc true
+    field font Option.Font "The font from og.load.font."
+    field text String "The text; `\\n` starts a new line."
+    field size f32 "The em size in world units." {
+      default 1
+      min 0
+    }
+  }
+
+  struct TextMetrics {
+    doc "The extent of a laid-out text, in world units."
+    field width f32 "The widest line's advance."
+    field height f32 "Lines times the font's line height."
+    field lines u32 "How many lines."
+  }
+
+  struct SpriteDesc {
+    doc "A textured or solid quad in the world's xy plane facing +z (or turned to the camera, `facing`), drawn this frame only (immediate mode, as og.render.text): submit it every tick it should show. Sprites and text are sorted by layer and drawn over the 3D scene."
+    desc true
+    field texture Option.Texture "The texture from og.load.texture; null draws a solid quad of the colour."
+    field array Option.TextureArray "Draw from a layer of this texture array (og.load.textureArray) instead of `texture`: every sprite of one array is one draw whichever layer each shows, so a flipbook's frames packed as layers batch across frames. World and screen sprites alike, with flash, glow, blend and 2D lighting as a textured sprite. null uses `texture`."
+    field arrayLayer u32 "With `array`: the layer drawn, 0 to the array's layers minus 1 (refused past it). `uv` is the region within the layer."
+    field position Vector3 "Where the anchor point is." {
+      unit m
+    }
+    field width f32 "Its width in world units." {
+      default 1
+      min 0
+      unit m
+    }
+    field height f32 "Its height in world units." {
+      default 1
+      min 0
+      unit m
+    }
+    field anchor Vector2 "The point of the quad at `position`, as a fraction of its size from the bottom-left corner: (0.5, 0.5) is the centre." {
+      default 0.5 0.5
+    }
+    field rotation f32 "Counter-clockwise rotation about the anchor." {
+      unit rad
+    }
+    field color Color "A linear colour multiplied with the texture." {
+      default 1 1 1
+    }
+    field opacity f32 "The alpha." {
+      default 1
+      min 0
+      max 1
+    }
+    field uv Option.Array.f32.4 "The texture region drawn, [u0, v0, u1, v1] with v down; null is the whole texture (a sheet's frame for animation)."
+    field layer i32 "Draw order among sprites and text; higher draws on top."
+    field flash f32 "A hit flash: the colour mixed towards flashColor by this much, keeping the alpha." {
+      min 0
+      max 1
+    }
+    field flashColor Color "The flash's linear colour." {
+      default 1 1 1
+    }
+    field glow f32 "Strength in the 2D glow buffer (PostEffects.glow); 0 none." {
+      min 0
+    }
+    field blend SpriteBlend "Alpha or additive."
+    field castShadow bool "Block 2D light (Lighting2D) with the sprite's rectangle."
+    field dropShadow f32 "A drop shadow this dark (0 none, 0.5 typical): the sprite's shape in black, flattened along the sun (the first og.DirectionalLight) onto the ground under it (dropShadowHeight, or the og.Terrain there), drawn before every sprite of its layer: pixel sprites standing in a 3D set cast shadows that agree with it. Where the ground already lies in the sun's cascaded shadow the drop shadow fades, so a shadow inside a shadow is no darker. None with the sun below the horizon; at most five times the sprite's height long under a low one. World sprites with a perspective camera over the xz ground; a 2D camera sees the ground edge on." {
+      min 0
+      max 1
+    }
+    field dropShadowHeight f32 "The height of the level ground the drop shadow lies on (a floor, a deck, a step). Where an og.Terrain under the sprite's anchor is higher, the shadow lies on the terrain instead, on the plane fitted to its slope under the shadow, or bent over a hollow or a ridge narrower than the shadow (the terrain's heights under a 4 x 2 grid of the shadow's cells). 0 with no terrain is the ground plane y = 0." {
+      unit m
+    }
+    field toneMapped bool "As three.js Material.toneMapped: true draws the sprite into the lit scene, carried by exposure (auto exposure included), bloom and the tone curve like any surface. false keeps its colours as given: still placed in the world, depth tested and sorted with the other sprites, but shown unexposed and uncurved (clamped to 0 to 1), outside bloom and fog; the grade, vignette, grain and screen flash still apply. For world UI that must read the same at noon and at dusk: speech bubbles, name tags, markers. Alpha blending only: an additive sprite adds light and is always tone mapped." {
+      default true
+    }
+    field facing SpriteFacing "A billboard: none keeps the quad in the world's xy plane; camera turns it into the view plane of each camera that draws it; cameraY stands it upright turned about y towards the camera (trees, characters). World sprites only (a screen sprite ignores it); see SpriteFacing for sorting, culling and its drop shadow."
+    field flipX bool "Mirror the region left to right."
+    field flipY bool "Mirror the region top to bottom."
+    field sortY bool "Within its layer, draw by y: lower on the screen draws in front (top-down games)."
+    field slice Option.Array.f32.4 "Nine-slice: [left, top, right, bottom] insets in texture pixels of the region; the corners keep their size (sliceScale world units per pixel), edges and centre stretch. null draws it whole."
+    field sliceScale f32 "Nine-slice: world units (CSS pixels on screen) per texture pixel of the insets." {
+      default 0.0625
+      min 0
+    }
+    field screen bool "Draw in screen space over the finished frame instead of the world: position x, y in CSS pixels from the top left with y down, width and height in CSS pixels, anchor from the top left, rotation clockwise; never tone mapped, blurred or depth tested (a HUD). flash, glow, blend and castShadow apply to world sprites only. With og.ui: under every UI element at a layer up to UI_LAYER (1000), over every one above it."
+    field clip Option.Array.f32.4 "Screen sprites: cut to [x, y, width, height] in CSS pixels; null draws it whole."
+  }
+
+  fn sprite {
+    doc "Draw a sprite this frame. Systems and commands may call it; the list is cleared at every tick, so submit it every tick the sprite should show."
+    aliases "draw a 2D image, immediate sprite, blit"
+    param world World "The world whose renderer draws it."
+    param desc SpriteDesc "The texture, placement, region and colour."
+    returns Result.Void "Refused for a dead texture."
+  }
+
+  component Sprite {
+    doc "A sprite drawn every frame at the entity's MatrixWorld (its xy and z, its rotation about z, in the xy plane or turned to the camera by `facing`; its scale multiplies width and height, so squash and stretch is a tween of og.Transform.scale). With an og.Flipbook on the entity, the texture (or an `array true` sheet's texture array layer), region and anchor come from the flipbook's current frame."
+    doc "Sorted with the immediate sprites and text by layer, then (sortY) by y, then texture: one draw per run of one texture. Tile layers draw before the sprites of their layer."
+    aliases "2D image, SpriteRenderer, Sprite2D"
+    field texture Texture "The texture (og.load.texture); 0 draws a solid quad of the colour."
+    field array TextureArray "Draw from a layer of this texture array (og.load.textureArray) instead of `texture`; 0 uses `texture`. Every sprite of one array is one draw whichever layer each shows. While the array's streaming group is not resident the sprite draws nothing."
+    field arrayLayer u32 "With `array`: the layer drawn (past the last layer, the last). uvMin and uvMax are the region within the layer; a nine-slice measures the layer."
+    field width f32 "Its width in world units (times Transform.scale.x)." {
+      default 1
+      min 0
+      unit m
+      tunable true
+    }
+    field height f32 "Its height in world units (times Transform.scale.y)." {
+      default 1
+      min 0
+      unit m
+      tunable true
+    }
+    field anchor Vector2 "The point of the quad at the entity's position, as a fraction from the bottom-left corner: (0.5, 0) stands it on its feet. A flipbook frame's pivot replaces it." {
+      worldspace none
+      default 0.5 0.5
+    }
+    field color Color "A linear colour multiplied with the texture." {
+      default 1 1 1
+    }
+    field opacity f32 "The alpha." {
+      default 1
+      min 0
+      max 1
+      tunable true
+    }
+    field uvMin Vector2 "The texture region's top-left corner, v down." {
+      worldspace none
+    }
+    field uvMax Vector2 "The texture region's bottom-right corner, v down." {
+      worldspace none
+      default 1 1
+    }
+    field layer i32 "Draw order among sprites, tiles and text; higher draws on top."
+    field sortY bool "Within its layer, lower y draws in front: top-down characters, props and trees overlap by their feet."
+    field facing SpriteFacing "A billboard (SpriteDesc.facing): none keeps the quad in the world's xy plane; camera turns it into each camera's view plane; cameraY stands it upright turned about y towards the camera, for trees and characters in a 3D set. Its afterimages face as it does; its blob shadow stays flat."
+    field flipX bool "Mirror left to right (a character facing left)."
+    field flipY bool "Mirror top to bottom."
+    field flash f32 "A hit flash: the colour mixed towards flashColor by this much (og.tween.flash fades it out)." {
+      min 0
+      max 1
+      tunable true
+    }
+    field flashColor Color "The flash's linear colour." {
+      default 1 1 1
+    }
+    field glow f32 "Strength in the 2D glow buffer (PostEffects.glow); 0 none." {
+      min 0
+    }
+    field blend SpriteBlend "Alpha or additive."
+    field castShadow bool "Block 2D light (Lighting2D) with the sprite's rectangle."
+    field sliceX Vector2 "Nine-slice: the left and right insets in texture pixels of the region (0 0 with sliceY 0 0 draws it whole). World panels, health bars, speech bubbles."
+    field sliceY Vector2 "Nine-slice: the top and bottom insets in texture pixels."
+    field sliceScale f32 "Nine-slice: world units per texture pixel of the insets." {
+      default 0.0625
+      min 0
+    }
+    field shadow f32 "A soft blob shadow on the ground under the sprite's anchor, this dark (0 none, 0.4 typical), drawn under every sprite of its layer." {
+      min 0
+      max 1
+      tunable true
+    }
+    field shadowSize Vector2 "The blob's width and height; 0 0 is 0.8 by 0.3 of the sprite's width." {
+      min 0
+      unit m
+    }
+    field shadowOffset Vector2 "The blob's centre relative to the anchor." {
+      unit m
+    }
+    field dropShadow f32 "A drop shadow this dark (0 none, 0.5 typical): the sprite's shape flattened along the sun onto the ground under it (dropShadowHeight, or the og.Terrain there), faded where that ground already lies in the sun's shadow, drawn before every sprite of its layer (SpriteDesc.dropShadow): pixel sprites standing in a 3D set." {
+      min 0
+      max 1
+      tunable true
+    }
+    field dropShadowHeight f32 "The height of the level ground the drop shadow lies on; where an og.Terrain under the anchor is higher, the terrain (SpriteDesc.dropShadowHeight)." {
+      unit m
+    }
+    field toneMapped bool "As three.js Material.toneMapped: false keeps the sprite's colours as given, outside exposure, bloom, fog and the tone curve, still placed and depth tested in the world (SpriteDesc.toneMapped): speech bubbles and markers that must not blow out at dusk. Alpha blending only." {
+      default true
+    }
+    field visible bool "Whether it is drawn." {
+      default true
+    }
+    field layers u32 "Three.js layers, as Mesh.layers: a world sprite is drawn by the cameras whose masks share a bit with it (a screen sprite draws on every camera's frame)." {
+      default 1
+    }
+    field outline f32 "A pixel outline this many logical pixels wide, drawn by the sprite shader round the texture's opaque texels (a diamond of whole logical pixels outside the art, the quad grown to hold it; a sheet's neighbouring frame never lines it), for a sprite whose line cannot be baked by the cook: scaled, tinted or made at run time. A logical pixel is 1 / ArtPixels.unit world units when the art contract sets a unit, else one texel of the region. 0 is none, or, under the project's art contract (project.ogt's `look`), the look's ArtLine.width for a sprite whose texture the cook did not line (one not cooked as pixel art) when the contract sets ArtPixels.unit. Untextured sprites take none." {
+      min 0
+      max 4
+    }
+    field outlineColor Color "The outline's linear colour; at its default, the art contract's ArtLine.color when the line comes from the contract." {
+      default 0.02 0.02 0.03
+    }
+    field palette Texture "A palette swap (docs/art.md §2.4): a texture of N rows of colours (load it as `kind pixel`), row r's texel i the colour palette index i takes in row r. The sprite then draws its texture's index texture (the cook's `<id>#index`, written beside a texture the art contract maps to a palette; a texture that is itself an index texture is drawn as it is) through row paletteRow: team colours, a hit flash in palette, a day and a night ramp. Flipbook frames swap too. 0 is none; a texture without an index texture draws as it is, with a warning."
+    field paletteRow u32 "The row of `palette` drawn (past the last, the last)."
+    field material Material "Draw through a material shader's hooks: a material from og.render.shaderMaterial (an og.load.shader of `mode hooks`, the same asset a mesh draws with, or `mode sprite`), its parameters set with og.render.setShaderParam. vertex_offset moves the quad's corners, surface_color changes its colour before the 2D light (texture times tint and flash; an alpha of 0 cuts it, a dissolve), surface_emissive adds light after it; surface_normal is not called. The hooks see `local` as the point on the quad (x and y 0 to 1 from its bottom-left corner), `uv` the texture coordinate, `color` the tint and `time` the scene clock; a `mode sprite` shader may also call `sprite_texel(uv)`, the sprite's texture anywhere (distortion, a chromatic split). Dissolve, freeze, heat shimmer and palette effects are shaders, not engine features. Sprites of one material, texture and blend are one draw; a material per sprite (its own parameters) is a draw per sprite. Its drop shadow takes the shader's alpha; its glow, blob shadow and afterimages draw plain, as does a sprite drawn from a texture array, and a faced one keeps the sprite order. A hooks shader that calls a helper only meshes have draws its sprites plain, named in dump_render's spriteShaderErrors. 0 is none."
+  }
+
+  component Afterimage {
+    doc "Ghosts of the entity's og.Sprite: every `interval` ticks its pose (position, rotation, scale, frame, flips) is kept, and the last `count` are drawn behind it, fading from `opacity` to 0, tinted by color. A dash, a speed-up, a teleport. The history is world state (the og.sprite state block)."
+    field count u32 "How many ghosts." {
+      default 4
+      min 0
+      max 16
+    }
+    field interval u32 "Ticks between ghosts." {
+      default 3
+      min 1
+      unit ticks
+    }
+    field opacity f32 "The newest ghost's alpha." {
+      default 0.5
+      min 0
+      max 1
+      tunable true
+    }
+    field color Color "A linear tint (above 1 with additive, a glow)." {
+      default 1 1 1
+    }
+    field additive bool "Add the ghosts instead of blending them."
+    field active bool "Record new ghosts; false lets the existing ones fade out." {
+      default true
+    }
+  }
+
+  struct FloatingTextDesc {
+    doc "A damage number or pickup text that pops at a point, rises, spreads and fades by itself (no per-tick submission). Deterministic: its drift comes from the tick and its order, and it is world state (the og.sprite state block)."
+    desc true
+    field text String "The text, such as `-12` or `+1 key`."
+    field position Vector3 "Where it appears (above a hit, usually)." {
+      unit m
+    }
+    field font Option.Font "The font; null uses the UI's body font."
+    field size f32 "The em size in world units." {
+      default 0.5
+      min 0
+      unit m
+    }
+    field color Color "The linear fill colour." {
+      default 1 1 1
+    }
+    field outline f32 "The outline's width as a fraction of the font's distance range (0 none)." {
+      default 0.6
+      min 0
+      max 1
+    }
+    field outlineColor Color "The outline's linear colour." {
+      default 0.02 0.02 0.03
+    }
+    field rise f32 "How far it climbs over its life." {
+      default 1
+      unit m
+    }
+    field spread f32 "The largest sideways drift, left or right." {
+      default 0.3
+      min 0
+      unit m
+    }
+    field lifetime f32 "How long it shows." {
+      default 0.8
+      min 0.05
+      unit s
+    }
+    field fade f32 "The last part of its life it fades over." {
+      default 0.4
+      min 0
+      max 1
+      unit ratio
+    }
+    field pop f32 "How much bigger it starts, settling to its size in the first fifth of its life." {
+      default 0.4
+      min 0
+    }
+    field crit bool "A critical hit: critScale times bigger, a stronger pop."
+    field critScale f32 "The size of a crit." {
+      default 1.6
+      min 1
+    }
+    field layer i32 "The sprite layer (above the action)." {
+      default 100
+    }
+    field facing SpriteFacing "A billboard (TextDesc.facing): none keeps the text in the world's xy plane, as for a 2D game; camera or cameraY turns it towards each camera that draws it, for damage numbers over a 3D scene."
+  }
+
+  fn floatingText {
+    doc "Spawn a floating text (damage numbers, +coins, `blocked`). It lives `lifetime` seconds of scaled time on its own; systems and commands may call it."
+    param world World "The world whose renderer draws it."
+    param desc FloatingTextDesc "The text, the point and the style."
+    returns Result.Void "Refused for a dead font, or no font when the UI has none."
+  }
+
+  fn measureText {
+    doc "The size text takes when og.render.text draws it, for centring, wrapping and layout."
+    param world World "The world whose renderer owns the font."
+    param desc TextMeasureDesc "The font, text and size."
+    returns Result.TextMetrics "Refused for a dead font."
+  }
+
+  struct BoxGeometryDesc {
+    doc "A box centred at the origin, as three.js BoxGeometry(width, height, depth)."
+    desc true
+    field width f32 "Its extent along x." {
+      default 1
+      min 0
+      unit m
+    }
+    field height f32 "Its extent along y." {
+      default 1
+      min 0
+      unit m
+    }
+    field depth f32 "Its extent along z." {
+      default 1
+      min 0
+      unit m
+    }
+    field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs run 0 to uvRepeat instead of 0 to 1 (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping). A ground grid every 10 m on a 1,600 m plane is uvRepeat 160 160." {
+      default 1 1
+    }
+  }
+
+  struct PlaneGeometryDesc {
+    doc "A rectangle in the xy plane facing +z, centred at the origin, as three.js PlaneGeometry(width, height); turn it -pi/2 about x for a floor."
+    desc true
+    field width f32 "Its extent along x." {
+      default 1
+      min 0
+      unit m
+    }
+    field height f32 "Its extent along y." {
+      default 1
+      min 0
+      unit m
+    }
+    field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs run 0 to uvRepeat instead of 0 to 1 (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping). A ground grid every 10 m on a 1,600 m plane is uvRepeat 160 160." {
+      default 1 1
+    }
+  }
+
+  struct SphereGeometryDesc {
+    doc "A UV sphere centred at the origin, as three.js SphereGeometry(radius, widthSegments, heightSegments)."
+    desc true
+    field radius f32 "Its radius." {
+      default 1
+      min 0
+      unit m
+    }
+    field widthSegments u32 "Segments around the equator." {
+      default 32
+      min 3
+    }
+    field heightSegments u32 "Rings from pole to pole." {
+      default 16
+      min 2
+    }
+    field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs run 0 to uvRepeat instead of 0 to 1 (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping). A ground grid every 10 m on a 1,600 m plane is uvRepeat 160 160." {
+      default 1 1
+    }
+  }
+
+  fn boxGeometry {
+    doc "Make a box geometry for og.Mesh. Physics can use it as a convex or triangle-mesh Collider.mesh too."
+    aliases "cube mesh, box mesh, three.js BoxGeometry"
+    param world World "The world whose renderer owns the geometry."
+    param desc BoxGeometryDesc "Its extents and texture repeat."
+    returns Result.Geometry
+  }
+
+  fn planeGeometry {
+    doc "Make a plane geometry for og.Mesh. Physics can use it as a triangle-mesh Collider.mesh too."
+    param world World "The world whose renderer owns the geometry."
+    param desc PlaneGeometryDesc "Its extents and texture repeat."
+    returns Result.Geometry
+  }
+
+  fn sphereGeometry {
+    doc "Make a sphere geometry for og.Mesh (give its body a sphere Collider, not this mesh)."
+    param world World "The world whose renderer owns the geometry."
+    param desc SphereGeometryDesc "Its radius, tessellation and texture repeat."
+    returns Result.Geometry
+  }
+
+  const MAX_LIGHTS u32 256 "The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept."
+  const MAX_CLUSTER_LIGHTS u32 64 "The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there."
+  const UI_LAYER i32 1000 "The UI's layer among screen sprites and screen text (SpriteDesc and TextDesc with screen): those at or below it draw under every og.ui element, those above it over every one, modals, toasts and the screen transition included (a HUD element made of sprites sitting on a UI panel: draw it only while its screen shows), in their layers' order either way."
+
+  struct RenderCapabilities {
+    doc "What the renderer can do on this device. Backend limits are reported here, never by missing members."
+    field tier RenderTier "The backend."
+    field compute bool "Whether compute passes run (GPU culling, GPU particles)."
+    field antialias Antialias "The antialiasing the device resolved RenderOptions.antialias to."
+    field hdrSupported bool "Whether this surface can be configured for float extended-sRGB HDR output. This is surface-path support, not a measurement of the monitor or current OS HDR headroom. False without a surface."
+    field hdr bool "Whether HDR output was requested and the surface configured for it. True means the LPM HDR display mapper replaces PostEffects.tonemap (including none); SDR fallback keeps the chosen operator. False without a surface; separate from hdrSupported. Paint, ink and quantization remain SDR paper/ink effects; captures are clipped SDR previews, not HDR encodings."
+    field maxLights u32 "How many point and spot lights one frame draws (MAX_LIGHTS on every tier)."
+    field maxShadowedLights u32 "How many point and spot lights cast shadows in one frame (8); past it, the shadowed lights brightest at the camera keep theirs."
+    field maxMsaaSamples u32 "The samples per pixel this device multisamples the scene at, which caps RenderSettings.msaaSamples: 4 where antialias resolved to msaa4 when the renderer was made, 1 where it resolved to taa, fxaa or off (or to fxaa because the HDR format cannot be multisampled), 0 without a renderer. It stays 4 while RenderSettings.msaaSamples 1 draws FXAA (antialias then says fxaa)."
+    field pointShadows PointShadows "How point lights' shadows are stored on this device: cube or paraboloid (what RenderOptions.pointShadows resolved to)."
+    field width u32 "The render target width in device pixels."
+    field height u32 "The render target height in device pixels."
+    field stylise List.String "The Stylise and MaterialStyle primitives this renderer draws, by group: pixel, posterize, palette, dither, halftone, hatching, paint, watercolor (the watercolor* fields), ink, inkDepth, depthBands, retro3d, surfaceSpace (paintCanvasSpace, hatchingSpace and halftoneSpace surface) and objectSpace (the same object) of Stylise; toon, shadowTint, shadowDarkness, rim, outline, outlineDistance, flatShading, surface, toonAmbient, outlinePlace and wireframe of MaterialStyle; paintDetail of Stylise. A look that uses one this list lacks still applies; that primitive is not drawn."
+    field ssr bool "Whether PostEffects.ssr draws: true with a renderer, false without one."
+    field reflectionProbes u32 "How many og.ReflectionProbe components one frame samples (MAX_REFLECTION_PROBES on every tier)."
+    field renderTargetDepth bool "Whether a render target made with `depth` gets its view's depth drawn: true with a renderer, false without one. The depth comes from the view's own depth prepass of its opaque meshes into a linear-depth colour target, never from its depth buffer."
+    field maxRenderTargetSize u32 "The largest side of a render target (the device's largest 2D texture)."
+    field maxCustomPosts u32 "The most custom post passes a frame runs: 8 on every tier, PostEffects.custom's capacity."
+    field volumetricFog VolumetricFog "How Fog.volumetric is drawn on this device: a froxel grid or a raymarch along each pixel's view ray, each lit by the sun through its shadows and by the point, spot and rect lights around each sample (up to volumetricLights of them) through their shadows and cookies."
+    field volumetricLights u32 "The most point, spot and rect lights that light one sample of Fog.volumetric: those of its screen cluster, MAX_CLUSTER_LIGHTS (64) in the froxel grid, 8 in the raymarch, the brightest at the camera first."
+    field maxLightCookies u32 "The most light cookie layers one frame draws (24 on every tier): a SpotLight.cookie takes one, a PointLight.cookie six (its cube's faces), and a texture several lights of one kind share takes its layers once. Cookies past it, in the order of their lights' entities, are not drawn: those lights shine without them, and the log names them in a warning."
+    field gpuTimestamps bool "Whether the device times each render pass on the GPU (timestamp queries: Vulkan, Metal and D3D12 adapters that have them, WebGPU with `timestamp-query`; never in a publish build, which leaves the queries out): ProbeTimings.gpuPasses and the trace's gpu thread are filled only where it is true."
+    field spriteAnisotropy u32 "The anisotropic filtering of sprites and og.ui's images (text is not filtered anisotropically: its distance field would lose its edge): 16 where the device filters anisotropically (WebGPU, Vulkan, Metal, DX12), 1 where it has none and on a software rasterizer (the vulkan-cpu tier: lavapipe's anisotropic filter softens even an image drawn 1:1), 0 without a renderer. Above 1, an image squeezed along one axis keeps the other axis's detail: a style's nine-slice middle squeezed into a short button keeps its outline as crisp as the corners. At 1 the squeezed piece reads a smaller mip level and blurs; og.ui bounds a middle's squeeze at twice its art, so the outline there is one mip level softer than the corners."
+    field planarReflections u32 "How many water surfaces draw a planar reflection in one frame: RenderOptions.planarReflections (1 by default, at most 2), 0 without a renderer or where world3d is false. A surface past it that asks reflects by the screen-space and sky reflections instead."
+    field without List.LitFeature "The optional lit features the renderer was made without (RenderOptions.without), in LitFeature's order: none of its lit shaders carries them and a scene that uses one draws without it. Empty by default and without a renderer."
+    field upscalers List.String "The Upscaler variants this device draws under TAA: taau and fsr3 on every host and tier with a renderer (FSR 3.1 is ported in fp32 without subgroups, float atomics or device-wide coherence, so it needs neither shader-f16 nor subgroups, which Safari and Firefox lack), empty without one."
+    field transparency Transparency "What RenderOptions.transparency resolved to on this device: linkedList only where it was asked for and the device writes storage from fragment shaders with room for one more storage buffer in its lit pipelines; weighted otherwise and without a renderer."
+    field gpuCrowds bool "Whether og.CrowdAnimation crowds are culled (frustum and occlusion), given their level of detail and drawn on the GPU, tens of thousands at a time: where the device draws indirect with a first instance (WebGPU's `indirect-first-instance`, Vulkan, Metal, D3D12). Where it is false, and without a renderer, they draw through the CPU's culling instead: the same members at the same levels and the same frame, at a higher CPU cost per member."
+    field exrDecode bool "Whether og.load.environmentData reads OpenEXR (.exr): true on the native host, false on the web, whose module carries no EXR decoder (a Radiance .hdr loads on every host, and a cooked environment's .exr is converted by the cook, so a shipped game never needs this). Known without a renderer."
+    field visibilityBuffer bool "Whether the visibility buffer draws the camera's small clusters of clustered meshes on this device (rasterised in compute, then shaded by one full-screen resolve a batch). False without a renderer and once the device refused the resolve's pipelines (visibilityBufferRefused says why): those clusters then draw on the hardware path like every other cluster, the same surfaces at a higher vertex cost, and the log says so once. Known only after the first frame that draws a clustered mesh: true before."
+    field visibilityBufferRefused Option.String "What the device said when it refused the visibility buffer's resolve pipelines (Chrome on the Pixel 10's PowerVR D-Series answers VK_ERROR_UNKNOWN), or null."
+    field visualSimulation bool "Whether visual bodies simulate here (og.Cloth, og.SoftBody and og.Garment with SIMULATION_VISUAL): the device runs compute and reads storage in the vertex stage (every WebGPU, Metal, Vulkan and DX12 device). Where false they draw their rest shape, as their points read in the tick; false without a renderer."
+    field world3d bool "Whether the renderer draws the 3D world subsystems: terrain, planar water (og.Water), the 3D fluids, scattered copies and volumetric fog. False in the 2D profile's publish and lanes modules, which leave them out (a scene's are not drawn, og.terrain's calls and a SHAPE_HEIGHTFIELD collider answer a refusal naming this field, and `og build --publish` refuses a 2D project whose scenes hold og.Terrain, og.TerrainScatter, og.Water, og.WaterSurface or og.Fluid3D, by scene file and line); true in the 3D modules, the dev module and the native host."
+  }
+
+  const MAX_REFLECTION_PROBES u32 8 "The most og.ReflectionProbe components one frame samples, nearest the camera first; the rest are skipped."
+
+  enum ReflectionProbeMode {
+    doc "When a reflection probe's cube is rendered."
+    variant baked "Once: read from the project's cook cache when `og bake probes` wrote it there, otherwise rendered on its first frame and kept. Static rooms."
+    variant realtime "Again every `interval` ticks, so moving things show in it (a cost per update of six faces)."
+  }
+
+  column ReflectionProbeMode {
+    doc "A ReflectionProbeMode field: the variant's index."
+    array Uint32Array
+    stride 1
+    value ReflectionProbeMode
+  }
+
+  component ReflectionProbe {
+    doc "A local reflection: a cube of what is around the entity's position, sampled by every lit surface inside its box with box projection (the reflected ray meets the box, so a room's walls reflect where they are, not at infinity) and blended with the environment map over blendDistance at the box's faces. Interiors that the sky must not light: a chrome sphere in a room shows the room. Overlapping probes: the smallest wins. The cube is rendered from the probe's position without it (nothing is drawn twice) and without the probes' own reflections. It holds the light as it reaches surfaces: its sky scaled by the environment's intensity (RenderSettings.environmentIntensity, og.Environment.intensity), as a surface outside the box takes the sky's light, and the surfaces as drawn, so crossing the box's face changes what is reflected, not how bright the light is."
+    field size Vector3 "The box's full extents in world units, centred on the entity (its rotation is ignored: the box is axis-aligned)." {
+      default 10 10 10
+    }
+    field resolution u32 "The side of each cube face in texels; it is rounded to a power of two." {
+      default 128
+      min 16
+      max 1024
+    }
+    field mode ReflectionProbeMode "baked (rendered once, or loaded from `og bake probes`) or realtime (every interval ticks)."
+    field interval u32 "With realtime: ticks between updates (1 is every frame)." {
+      default 30
+      min 1
+      unit ticks
+    }
+    field intensity f32 "A multiplier on the probe's light." {
+      default 1
+      min 0
+      tunable true
+    }
+    field blendDistance f32 "The distance inside the box's faces over which the probe fades into the environment map." {
+      default 1
+      min 0
+      unit m
+    }
+    field visible bool "Whether it is sampled." {
+      default true
+    }
+  }
+
+
+  fn standardMaterial {
+    doc "Create a standard material."
+    aliases "PBR material, MeshStandardMaterial, Unity Standard shader, Godot StandardMaterial3D"
+    param world World "The world whose renderer owns the material."
+    param desc StandardMaterialDesc "The parameters; omitted ones take three.js defaults."
+    returns Result.Material
+  }
+
+  fn updateMaterial {
+    doc "Change some parameters of a standard material."
+    param world World "The world whose renderer owns the material."
+    param material Material "The material."
+    param desc StandardMaterialDesc "The parameters to change; omitted ones keep their values."
+    returns Result.Void "Refused for a dead material."
+  }
+
+  handle Shader "A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader, or with `mode full` its own vertex and fragment entries, and the parameters they read."
+
+  column Shader {
+    doc "A Shader handle field (0 is none): a material shader og.load.shader answered, kept for og.render.shaderMaterial."
+    array Uint32Array
+    stride 2
+    value Shader
+  }
+
+  fn shaderMaterial {
+    doc "Create a standard material that draws with a material shader's hooks (vertex_offset, surface_color, surface_normal, surface_emissive), its parameters at their defaults. The hooks apply to skinned meshes too, and shadows and the depth prepass (ambient occlusion, outlines, depth of field) see the mesh where vertex_offset moved it and cut where surface_color's alpha falls below alphaTest."
+    param world World "The world whose renderer owns the material."
+    param shader Shader "The shader."
+    param desc StandardMaterialDesc "The base material; omitted parameters take three.js defaults. A dissolve sets alphaTest so that alpha below it is cut."
+    returns Result.Material "Refused for a shader not loaded in this world."
+  }
+
+  fn setMaterialShader {
+    doc "Give an existing material a material shader, or take it away with null: a loaded model's material (GltfInfo.materials) draws its skinned or static meshes through the hooks, with the shader's parameters at their defaults. Every mesh drawn with that material changes."
+    param world World "The world whose renderer owns the material."
+    param material Material "The material, from og.render.standardMaterial, og.render.shaderMaterial or a loaded glTF."
+    param shader Option.Shader "The shader, or null to draw the material plain again."
+    returns Result.Void "Refused for a dead material or a shader not loaded in this world."
+  }
+
+  fn setShaderParam {
+    doc "Set a parameter of a shader material, by the name its shader declares: a number for float, two to four for vec2, vec3, vec4 and color."
+    param world World "The world whose renderer owns the material."
+    param material Material "A material made by og.render.shaderMaterial or given a shader by og.render.setMaterialShader."
+    param name String "The parameter's name."
+    param value List.f32 "Its value; missing components are 0."
+    returns Result.Void "Refused for a material without a shader or a parameter its shader does not declare."
+  }
+
+  fn applyLook {
+    doc "Apply a look, in GameDesc.start (or name it in GameDesc.look) or at any tick for a level's mood, a flashback or a photo mode: every resource the look names is replaced whole (the fields it sets take its values, the rest their defaults; PostEffects.flash and PostEffects.shakeTrauma, which game code animates, keep theirs), and the UI is configured with its style, keeping the rest of the last UiDesc. Resources it does not name are left as they are. Inside a system, the system must declare those resources among its writes, except the art contract's (ArtPalette, ArtPixels, ArtTexels, ArtShape, ArtLine, ArtMotion, ArtCamera): one the system does not declare is left as it is, so a system that declares the frame's resources applies looks that carry a contract. A look that switches the stylisation (a Stylise pass on or off, the pixel grid, retro 3D, the material style) starts TAA's history over, as a camera cut does, so its first frame holds no ghost of the old look."
+    param world World "The world whose look changes."
+    param look Look "The look, from og.load.look."
+    returns Result.Void "Refused for a look not loaded in this world, one in a streaming group that is not resident (the reason names it), or a resource the system did not declare."
+  }
+
+  fn applyQuality {
+    doc "Apply a graphics preset: write its row of RenderSettings' quality fields (the rest of RenderSettings keeps its values) and record it in RenderSettings.quality. The renderer reads those fields and nothing else, so what the probe and dump_world show of RenderSettings is what the next frame draws. A game calls it when the player picks a preset on its settings page, and applies a saved preset itself at start. Inside a system, the system must declare RenderSettings among its writes. The rows:"
+    doc "| Field | low | medium | high |"
+    doc "|---|---|---|---|"
+    doc "| rectShadows | false | true | true |"
+    doc "| shadowedLights | 2 | 8 | 16 |"
+    doc "| shadowCascades | 2 | 3 | 4 |"
+    doc "| shadowMapScale | 0.5 | 1 | 2 |"
+    doc "| volumetricFog | false | true | true |"
+    doc "| softParticles | false | true | true |"
+    doc "| screenSpaceReflections | false | true | true |"
+    doc "| ambientOcclusion | false | true | true |"
+    doc "| aoResolution | half | postEffects | full |"
+    doc "| ssrStepScale | 0.5 | 1 | 2 |"
+    doc "| volumetricStepScale | 0.5 | 1 | 2 |"
+    doc "| msaaSamples | 1 | 4 | 4 |"
+    doc "| upscaler | taau | taau | fsr3 |"
+    doc "Medium is every field's default, the frame drawn before any preset. The device caps two of the rows, as RenderCapabilities says: shadowedLights by maxShadowedLights and msaaSamples by maxMsaaSamples; the fields keep the row's value."
+    param world World "The world whose RenderSettings change."
+    param preset GraphicsQuality "The preset."
+    returns Result.Void "Refused for a world that is not alive, or inside a system that did not declare RenderSettings among its writes."
+  }
+
+  enum FrameCap {
+    doc "How many frames a second the display draws at most (DisplaySettings.frameCap). The simulation's fixed tick is the same at every cap: a capped frame runs the ticks its time owes, and input is read on every display frame, drawn or not."
+    variant auto "The device class's default: 60 on a phone or tablet (a coarse pointer), which halves the GPU's work on a 120 Hz ProMotion display for a game whose tick is 60 Hz or less; the display's own rate on a desktop. 30 with batterySaver."
+    variant display "Every frame the display shows (requestAnimationFrame): 120 on ProMotion, 144 and more on gaming monitors."
+    variant fps60 "At most 60 a second."
+    variant fps30 "At most 30 a second: the battery's choice, and a steady rate for a GPU that cannot hold 60."
+    variant fps120 "At most 120 a second: a 144 Hz or faster monitor held to a rate its GPU keeps."
+    variant fps144 "At most 144 a second: a 240 Hz monitor held to the gaming rate."
+  }
+
+  enum PowerPreference {
+    doc "Which GPU the browser's adapter is asked for (requestAdapter's powerPreference), on a laptop with two. The adapter is made once, at the boot: a change applies on the next load (DisplayInfo.restartNeeded), which the web shell keeps for the page."
+    variant highPerformance "The discrete GPU where there is one: the frame rate's choice."
+    variant lowPower "The integrated GPU: the battery's choice, cooler and quieter."
+  }
+
+  struct DisplaySettings {
+    doc "The player's graphics settings, as a settings page shows them and og.render.setDisplay sets them: the graphics preset, the frame cap, battery saver, render scale and automatic quality, fullscreen and the GPU's power preference. Presentation only: none of it is in the world, so the world's hash, snapshots, saves and replays never see it, and a native run (`og run`, `og test`, reference captures) draws every frame at render scale 1 whatever it says (the preset is drawn there too, as RenderSettings' quality is). The game keeps them with the player's settings, not the world: og.render.display(world).settings is the whole object to save (og.platform.saveSettings), and og.render.setDisplay(world, saved) puts it back at the next start."
+    doc "What the browser decides, a page reads from DisplayInfo: vsync is always on (a browser presents on the display's refresh and has no switch), fullscreen follows the page (Escape leaves it and turns the setting off), and a power preference applies at the next load (restartNeeded)."
+    desc true
+    field quality Option.GraphicsQuality "The player's graphics preset: its row of quality fields (og.render.applyQuality's table) is drawn in place of RenderSettings', which keep the game's values. Null draws the game's own RenderSettings quality."
+    field frameCap FrameCap "The most frames a second (auto: 60 on phones, the display's rate on desktops)."
+    field batterySaver bool "Save power: at most 30 frames a second whatever frameCap says, the render scale at most 0.75, and automatic quality as on. For a phone on battery or a player who asks for it."
+    field renderScale f32 "The 3D scene's resolution as a fraction of the display's: below 1 it is drawn smaller and scaled up, bilinearly or under TAA by temporal upscaling, which recovers most of the detail over a few frames (softer, cheaper), above 1 it is supersampled; the UI, screen text and screen sprites stay at the display's resolution. With autoQuality it is the most the automatic quality draws at." {
+      default 1
+      min 0.5
+      max 2
+    }
+    field autoQuality bool "Lower the render scale (and then, where autoPresetSteps allows, the graphics preset) while frames take longer than the frame cap's interval, and raise them again when there is room, with hysteresis so it never oscillates: the GPU's time where the device times it (RenderCapabilities.gpuTimestamps), else frames that miss the display's interval, with a step up tried after a calm while and given up after three failures. False draws at renderScale and RenderSettings exactly." {
+      default true
+    }
+    field autoMinScale f32 "The least render scale automatic quality lowers to." {
+      default 0.5
+      min 0.5
+      max 2
+    }
+    field clothSubdivisions u32 "Draw segments per coarse Cloth or SoftBody edge on devices with compute and vertex storage. 0 selects two; 1–8 select that many, producing the square of that many triangles per solve triangle with crack-free Phong tessellation. Applied on every host, outside world state: CPU points, volume, centre, snapshots and hashes are unchanged. Automatic quality caps it at two at its medium step and one at its low step. Devices without those capabilities keep the coarse mesh with CPU normals. Changing the effective level resets surface motion history." {
+      default 0
+      min 0
+      max 8
+    }
+    field autoPresetSteps u32 "Graphics preset steps automatic quality may take below the game's own RenderSettings once the scale is at autoMinScale: 1 caps every quality field at the medium row, 2 at the low row (the rows of og.render.applyQuality); 0 never touches RenderSettings' quality. RenderSettings keeps its values: the cap is applied when the frame is drawn." {
+      default 1
+      min 0
+      max 2
+    }
+    field fullscreen bool "The page fills the screen: the web shell asks for fullscreen (on the player's click on the settings page, or their next press when the browser wanted a gesture) and leaves it when false. The page leaving fullscreen itself (Escape) turns it off."
+    field powerPreference PowerPreference "The GPU the next load asks for (highPerformance or lowPower): the adapter is chosen once, at the boot, so a change shows DisplayInfo.restartNeeded until the page loads again."
+  }
+
+  struct GpuMemory {
+    doc "The GPU memory the renderer holds, counted where it creates each texture and buffer (sizes as allocated, without the driver's alignment and padding)."
+    field textures f64 "The scene's textures (every mip level as uploaded), texture arrays, environment maps, palettes, colour LUTs and the image-based light." {
+      unit bytes
+    }
+    field meshes f64 "The meshes' vertex and index buffers and their skins." {
+      unit bytes
+    }
+    field renderTargets f64 "Textures drawn into: og.render.renderTarget's, the frame's targets at the scene's size (the render scale included), the output, TAA's history, the shadow maps, the UI's glass, the reflection probes' faces and the volumetric fog." {
+      unit bytes
+    }
+    field buffers f64 "The renderer's own buffers: instances, uniforms, light tables." {
+      unit bytes
+    }
+    field total f64 "All four." {
+      unit bytes
+    }
+  }
+
+  struct DisplayInfo {
+    doc "What the display draws now (og.render.display): the settings, and what they resolved to on this device."
+    field settings DisplaySettings "The settings og.render.setDisplay last set (the defaults before)."
+    field presenting bool "Whether this host presents to a display (the web canvas): false on a native run, where nothing below moves from its default."
+    field maxFps u32 "The frame cap resolved: 30, 60, or 0 for the display's rate."
+    field displayHz f32 "The display's refresh rate as measured (requestAnimationFrame's interval); 0 where unknown."
+    field renderScale f32 "The render scale the scene is drawn at now (automatic quality's, within its bounds)."
+    field presetSteps u32 "The preset steps automatic quality has taken below RenderSettings (0: none)."
+    field sceneWidth u32 "The 3D scene's width in device pixels (the display's times the render scale)."
+    field sceneHeight u32 "Its height."
+    field frameMs f32 "The frame time automatic quality reads, smoothed: the GPU's where timed, else the interval between frames; 0 before a frame."
+    field deviceLosses u32 "How many times the GPU device was lost and the renderer made again on a new one (iOS Safari loses it after the page was in the background or under memory pressure). The game goes on: the next frame draws the world as it is, every mesh and texture uploaded again from the loaded assets."
+    field gpu Option.GpuMemory "The GPU memory the renderer holds; null without a renderer."
+    field vsync bool "Frames are presented on the display's refresh (no tearing): always on a presenting host, since a browser has no switch for it; a settings page shows V-Sync as on and fixed. False on a native run, which presents nothing."
+    field fullscreen bool "The page is fullscreen now, as the host last reported it."
+    field powerPreference PowerPreference "The power preference the GPU adapter was made with at the boot (highPerformance on a native run)."
+    field restartNeeded bool "settings.powerPreference differs from the adapter's: it applies on the next load (a settings page says so)."
+  }
+
+  fn setDisplay {
+    doc "Set the player's graphics settings (DisplaySettings: preset, frame cap, battery saver, render scale, automatic quality, fullscreen, power preference). A call merges over the current settings: only the fields it names change, so a settings screen sets the one the player moved without restating the rest (og.render.resetDisplay goes back to the defaults). Applied from the next frame (the power preference at the next load); presentation only, so it is allowed inside any system and never changes the simulation."
+    param world World "The world whose display it is."
+    param settings DisplaySettings "The settings to change: fields left out keep their values (the defaults before any call), so a game that sets its frame cap keeps the player's render scale; quality null is the game's own."
+    returns Result.Void "Refused for a world that is not alive."
+  }
+
+  fn resetDisplay {
+    doc "Put every graphics setting back to its default (DisplaySettings' zero value: the game's own quality, frame cap auto, render scale 1, automatic quality on, no battery saver, windowed, high performance): a settings page's Reset to defaults. Applied from the next frame like og.render.setDisplay; a power preference that changes back applies at the next load."
+    param world World "The world whose display it is."
+    returns Result.Void "Refused for a world that is not alive."
+  }
+
+  fn display {
+    doc "What the display draws now: the settings, the frame cap resolved, the render scale automatic quality chose, the scene's size, the device losses survived, the GPU memory, and what the browser decides (vsync, fullscreen now, the adapter's power preference and whether a restart is needed)."
+    param world World "The world asked."
+    returns DisplayInfo
+  }
+
+  fn look {
+    doc "The look last applied (by og.render.applyLook or GameDesc.look), as og.load.lookInfo describes it; null before any."
+    param world World "The world asked."
+    returns Option.LookInfo
+  }
+
+  fn capabilities {
+    doc "The renderer's tier and limits on this device."
+    param world World "The world whose renderer is asked."
+    returns RenderCapabilities
+  }
+
+  fn text {
+    doc "Draw text this frame. Systems and commands may call it; the list is cleared at every tick, so submit it every tick the text should show. Multi-page fonts are drawn page by page with one layout."
+    aliases "draw text, world text, label"
+    param world World "The world whose renderer draws it."
+    param desc TextDesc "The font, text, placement and colour."
+    returns Result.Void "Refused for a dead font."
+  }
+
