@@ -26,6 +26,9 @@ class Landing(unittest.TestCase):
         self.run_git(self.root, 'init', '-b', 'main', str(self.a))
         self.run_git(self.a, 'config', 'user.email', 'test@example.invalid')
         self.run_git(self.a, 'config', 'user.name', 'Landing Test')
+        # The scratch identity has no key: a host that signs every commit
+        # (an Amp orb's system config) refused its commits.
+        self.run_git(self.a, 'config', 'commit.gpgsign', 'false')
         (self.a / '.gitignore').write_text('/.og/tmp/\n')
         (self.a / 'scripts').mkdir()
         for name in ('land.sh', 'lock.sh'):
