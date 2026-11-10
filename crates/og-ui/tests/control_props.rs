@@ -2613,3 +2613,86 @@ button { width: 200px; }
         );
     }
 }
+
+#[test]
+fn selects_files_and_vertical_fields_size_to_content() {
+    let source = r#"<meta name="component" content="t">
+<div>
+  <select class="content" id="Sel" bind:value={$sel}><option value="a">A</option><option value="b">A much longer option label</option></select>
+  <select id="SelFixed" bind:value={$sel}><option value="a">A</option><option value="b">A much longer option label</option></select>
+  <select class="content" id="SelWidth" bind:value={$sel}><option value="a">A</option><option value="b">A much longer option label</option></select>
+  <input class="content" type="file" id="File" bind:value={$files} />
+  <input type="file" id="FileFixed" bind:value={$files} />
+  <input class="content v" id="VIn" bind:value={$value} />
+  <input class="content v" id="VEmpty" />
+  <input class="content" id="HEmpty" />
+  <textarea class="content v" id="VArea" bind:value={$value}></textarea>
+</div>
+<style>
+input, textarea { padding: 4px; }
+.content { field-sizing: content; }
+.v { writing-mode: vertical-rl; }
+#SelWidth { width: 150px; }
+#VArea { height: 100px; }
+</style>"#;
+    both(
+        source,
+        &[
+            ("value", json!("Hi")),
+            ("sel", json!("a")),
+            ("files", json!("")),
+        ],
+        |d| {
+            d.ui.set_file_picker(true);
+            d.set("value", json!("Hi"));
+            let size = |d: &Doc, id: &str| {
+                let e = d.get(id);
+                (e.width, e.height)
+            };
+            let (sel, fill) = (size(d, "Sel"), size(d, "SelFixed"));
+            let (file, fixed) = (size(d, "File"), size(d, "FileFixed"));
+            let (v_short, v_area) = (size(d, "VIn"), size(d, "VArea"));
+            assert!(
+                sel.0 < fill.0,
+                "content select fits its option: {sel:?} {fill:?}"
+            );
+            assert_eq!(file, fixed, "no name chosen: both show the default label");
+            // A vertical line runs down: the caret is its height, the line
+            // its width, as a horizontal field's are the other way round.
+            let (v, h) = (size(d, "VEmpty"), size(d, "HEmpty"));
+            assert_eq!((v.1, v.0), h);
+            assert!(v_short.1 < v_short.0 && v_short.0 == v.0, "{v_short:?}");
+            d.set("sel", json!("b"));
+            d.set("files", json!("a-very-long-file-name-chosen.png"));
+            d.set(
+                "value",
+                json!("A longer line with several words that must wrap"),
+            );
+            assert!(
+                size(d, "Sel").0 > sel.0 + 50.0,
+                "the longer option widens it"
+            );
+            assert_eq!(size(d, "SelFixed"), fill);
+            assert_eq!(size(d, "SelWidth").0, 150.0);
+            assert!(size(d, "File").0 > file.0 + 50.0, "content fits the names");
+            assert_eq!(size(d, "FileFixed"), fixed, "fixed keeps its label's width");
+            // Down the column: a short value's height grows with it, the
+            // width stays one line; a bounded height wraps into more lines.
+            let v_long = size(d, "VIn");
+            assert!(
+                v_long.1 > v_short.1 + 50.0 && v_long.0 == v_short.0,
+                "{v_long:?}"
+            );
+            let area = size(d, "VArea");
+            assert!(
+                area.1 == 100.0 && area.0 > v_area.0 + 20.0,
+                "{area:?} {v_area:?}"
+            );
+            assert!(
+                d.ui.frame().warnings.is_empty(),
+                "{:?}",
+                d.ui.frame().warnings
+            );
+        },
+    );
+}

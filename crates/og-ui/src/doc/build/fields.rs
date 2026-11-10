@@ -664,11 +664,17 @@ impl Ui {
     pub(super) fn apply_box_fields(&mut self, i: usize, r: &Resolved, source: BoxSource<'_>) {
         // Widget-owned sizing is established above; document box overrides
         // replace their previous values, including when a declaration vanishes.
-        let field_line = self.field_measurement(i, r.str("fieldSizing") == Some("content"));
+        let content = r.str("fieldSizing") == Some("content");
+        let field_line = self.field_measurement(i, content);
         let mut el = self.tree.nodes[i].el;
         if field_line.is_some() {
             el.width = Size::fit();
             el.height = Size::fit();
+        }
+        // A content-sized select fits the option it shows (or its
+        // placeholder) instead of filling the line.
+        if content && source.kind == "select" {
+            el.width = Size::fit();
         }
         let em = self.style.em_of(r, &self.env);
         if schema::kind(source.kind).is_some_and(|kind| kind.container) {
@@ -968,15 +974,52 @@ impl Ui {
             crate::layout::flow::mirror_el(&mut el);
         }
         if let Some(line) = field_line {
+            // At least a caret along the inline axis and a line across it:
+            // in a vertical writing mode the content-sized inline axis is
+            // the height and a line's thickness is the width.
+            let (across, down) = if el.vertical.is_some() {
+                (line, 1.0)
+            } else {
+                (1.0, line)
+            };
             if let Size::Fit { min, .. } = &mut el.width {
-                *min = min.max(el.padding.horizontal() + 1.0);
+                *min = min.max(el.padding.horizontal() + across);
             }
             if let Size::Fit { min, .. } = &mut el.height {
-                *min = min.max(el.padding.vertical() + line);
+                *min = min.max(el.padding.vertical() + down);
             }
+        }
+        if source.kind == "file" && !content {
+            self.fixed_file_width(i, &mut el, r);
         }
         self.tree.nodes[i].el = el;
         self.tree.nodes[i].decor = decor.map(Box::new);
+    }
+
+    /// `field-sizing: fixed` on a file input: it keeps the width its
+    /// default label takes whatever names are chosen, a longer one cut
+    /// with an ellipsis; `content` fits the names shown.
+    fn fixed_file_width(&mut self, i: usize, el: &mut Element, r: &Resolved) {
+        let chosen = r.str("fileValue").unwrap_or_default();
+        let slot = self.tree.nodes[i].content_slot;
+        if chosen.is_empty()
+            || slot == crate::layout::NONE
+            || self.tree.nodes[i].probe_text != chosen
+        {
+            return;
+        }
+        let Size::Fit { min, max } = el.width else {
+            return;
+        };
+        let crate::layout::Content::Text(shown) = &mut self.tree.nodes[slot].content else {
+            return;
+        };
+        shown.ellipsis = true;
+        let mut label = shown.clone();
+        label.text = super::nodes::FILE_LABEL.into();
+        let pad = self.tree.nodes[slot].el.padding.horizontal() + el.padding.horizontal();
+        let w = crate::layout::text_preferred(&label, &self.env.fonts) + pad;
+        el.width = Size::Fixed(w.min(max).max(min));
     }
 
     fn apply_document_semantics(&mut self, n: &DocNode, r: &Resolved, base: &RenderFields) {

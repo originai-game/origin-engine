@@ -30,8 +30,8 @@ pub(crate) use cache::{
     DrawSig, Invalidation, LayoutCache, Measure, Metrics, MotionCache, PaintCache, TextCache,
     content_layout_eq, draw_eq, el_layout_eq, layout, props_layout_eq,
 };
-pub(crate) use flex::on_screen;
 use flex::*;
+pub(crate) use flex::{on_screen, text_preferred};
 pub use flow::{Bidi, Flow};
 pub(crate) use grid::{GridLayout, Table, derive_table, shown_children};
 use grid::{grid_columns, grid_intrinsic, grid_rows, place_grid};

@@ -233,6 +233,13 @@ host opens a file picker (`og.ui.filePicker`, the same query on the web and
 natively; false on both today): a press sends the host a `filepick` event
 with `accept` and `multiple`, and the host writes the names chosen to the
 bound value. Elsewhere it is not built and the frame warns.
+CSS `field-sizing` (CSS UI 4) sizes the form controls: under the default
+`fixed` a file input keeps the width its default label takes, a longer
+chosen name cut with an ellipsis; under `content` a text input or
+textarea fits its value or placeholder along its writing mode's inline
+axis (a vertical field's height, a line wide), a select the option it
+shows and a file input the names chosen. Explicit dimensions and min/max
+still apply.
 `<field>`, `<slider>`, `<toggle>`, `<divider>`, `<image>` and a
 `<label>` that neither wraps a checkbox nor has `for` are refused. CSS type selectors match the written tag (`input`,
 `textarea`), so `input[type=range]` and `textarea` select as in HTML.
@@ -3138,7 +3145,7 @@ Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document dr
 | `empty` | Widely | Supported (scope →) | Pending parts-as-nodes | [`documents::pushed_screens_match_sibling_and_structural_selectors_on_instantiated_rows`](../crates/og-ui/tests/documents.rs). Computed widths/heights after keyed reorder and conditional removal prove filtered nth-child, nth-last-child, sibling and empty matching. |
 | `ex` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `exp-functions` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
-| `field-sizing` | Newly | Supported (scope →) | Pending parts-as-nodes | [`control_props::fields_size_to_displayed_content_and_respect_constraints`](../crates/og-ui/tests/control_props.rs). Both builders prove text-input value/placeholder sizing, caret-width empty inputs, textarea wrapping and newline heights, ignored rows, explicit dimensions, min/max width, noninheritance and removal of content sizing. Retained editing and checkpoint restore preserve focus/caret and update height. Select/file controls and vertical text controls remain missing or unverified. |
+| `field-sizing` | Newly | Supported (scope →) | Pending parts-as-nodes | [`control_props::fields_size_to_displayed_content_and_respect_constraints`](../crates/og-ui/tests/control_props.rs). Both builders prove text-input value/placeholder sizing, caret-width empty inputs, textarea wrapping and newline heights, ignored rows, explicit dimensions, min/max width, noninheritance and removal of content sizing. Retained editing and checkpoint restore preserve focus/caret and update height. selects_files_and_vertical_fields_size_to_content proves, in both builders, a select fitting its shown option (fixed fills, explicit width wins), file inputs fitting chosen names while fixed keeps the default label width, and vertical-rl inputs/textareas sizing height to content with a line-wide width and caret-high empty height, wrapping into columns under a fixed height. Listbox selects and fixed sizing in vertical modes are not covered. |
 | `file-selector-button` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `filter` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_filters::css_filters_match_their_reference_frames`](../crates/og-ui/tests/css_filters.rs). Metal references at 1280/390 compare SVG filter graphs, primitive tiles and CSS function/url composition; this does not prove native glass backdrop chains. |
 | `filter-function` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |

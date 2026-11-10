@@ -13,6 +13,11 @@ use position::out_size;
 pub(super) use position::{cross_offset, inline_rows, position};
 pub(super) use width::*;
 
+/// A text's preferred extent along its line: its widest line.
+pub(crate) fn text_preferred(t: &TextContent, fonts: &dyn Metrics) -> f32 {
+    width::text_widest(t, t.metrics(fonts))
+}
+
 /// Raises `items` (by index into `w`) towards a common level so their sum
 /// grows by `extra`, each capped at its own max: the smallest grow first.
 fn fill_up(w: &mut [f32], idx: &[usize], max: &[f32], extra: f32) {

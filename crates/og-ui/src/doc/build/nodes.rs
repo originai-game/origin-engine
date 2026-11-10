@@ -3,6 +3,9 @@ use super::*;
 mod events;
 mod lists;
 
+/// A file input's label while it names no file and its text says nothing.
+pub(super) const FILE_LABEL: &str = "Choose file…";
+
 impl Ui {
     /// Builds node `i` (and its subtree); `root_id` names a mount's root.
     /// Answers its path (none when it is not shown).
@@ -1395,7 +1398,7 @@ impl Ui {
         let text = match text_of(r, b) {
             t if !t.is_empty() => t,
             _ if !chosen.is_empty() => chosen.to_string(),
-            _ => "Choose file…".to_string(),
+            _ => FILE_LABEL.to_string(),
         };
         let resp = self.button(id.as_str(), &text, r.button_desc());
         if resp.clicked && !r.flag("disabled") {

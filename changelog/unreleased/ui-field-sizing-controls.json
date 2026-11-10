@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "CSS field-sizing",
+      "summary": "field-sizing: content also sizes a select to the option it shows, a file input to the names chosen, and text inputs and textareas in vertical writing modes along their inline axis (height), a line wide. Under the default fixed sizing a file input keeps its default label's width and cuts a longer chosen name with an ellipsis."
+    }
+  ]
+}

@@ -1518,6 +1518,6 @@ pub const PROPS: &[PropSpec] = &[
         ty: Ty::Word(&["fixed", "content"]),
         on: On::All,
         two_way: false,
-        doc: "CSS `field-sizing`: `fixed` keeps a control's default preferred size; `content` sizes text inputs and textareas to their displayed value or placeholder, ignoring rows. Explicit CSS dimensions and min/max constraints still apply. Not inherited.",
+        doc: "CSS `field-sizing`: `fixed` keeps a control's default preferred size (a file input its default label's width, a longer chosen name cut with an ellipsis); `content` sizes text inputs and textareas to their displayed value or placeholder along the writing mode's inline axis (a vertical one's height), ignoring rows, a select to the option it shows and a file input to the names chosen. Explicit CSS dimensions and min/max constraints still apply. Not inherited.",
     },
 ];

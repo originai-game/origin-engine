@@ -59,7 +59,7 @@ fn text_measure(t: &TextContent, m: &FontMetrics, text: &str) -> f32 {
 }
 
 /// A text's widest line along its line.
-fn text_widest(t: &TextContent, m: &FontMetrics) -> f32 {
+pub(super) fn text_widest(t: &TextContent, m: &FontMetrics) -> f32 {
     let (size, tr, ft) = (t.step.size, t.tracking(), t.features());
     match t.vertical {
         Some(v) => crate::text::vertical::widest_line(&t.text, m, size, tr, ft, v),
