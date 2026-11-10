@@ -171,6 +171,10 @@ pub fn markdown() -> String {
     );
     out.push_str("\n### Exposed widget parts\n\nThese declarations also construct widget part identities and are exported by documentSchema and dump_ui. Classes (such as primary), ARIA attributes (such as aria-selected), and author-declared custom parts are separate from state pseudo-classes. Native API styling hosts and their markup counterparts are listed separately where their names differ.\n\n");
     out.push_str(&super::schema::parts::markdown());
+    out.push_str("\n### CSS value functions\n\n| Function | Grammar | Reason and behavior |\n|---|---|---|\n");
+    for (name, grammar, reason) in super::schema::CSS_FUNCTIONS {
+        let _ = writeln!(out, "| `{name}` | `{grammar}` | {reason} |");
+    }
     for (n, k) in KINDS.iter().filter(|k| k.name != "slot").enumerate() {
         let own: Vec<&PropSpec> = PROPS
             .iter()

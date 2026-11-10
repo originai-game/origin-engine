@@ -116,6 +116,13 @@ pub static KINDS: LazyLock<Vec<KindSpec>> =
 pub static PROPS: LazyLock<Vec<PropSpec>> =
     LazyLock::new(|| [CORE_PROPS, super::schema_extra::PROPS].concat());
 
+/// Registered CSS value functions: name, grammar and extension reason.
+pub const CSS_FUNCTIONS: &[(&str, &str, &str)] = &[(
+    "-og-spring",
+    "-og-spring(<time [0,∞]> [, <number>])",
+    "Transition timing with a perceptual duration (ms or s) and optional finite bounce (default 0). Bounce is clamped to -0.95..1 by the spring solver. Extension reason: CSS linear() cannot preserve velocity when a transition is interrupted. Springs time transitions, not keyframe animations.",
+)];
+
 pub const CORE_KINDS: &[KindSpec] = &[
     KindSpec {
         name: "column",
@@ -1134,7 +1141,7 @@ pub const CORE_PROPS: &[PropSpec] = &[
         "fitMin",
         Ty::Word(STEPS),
         ["label"],
-        "Shrinks by type steps to fit its width, down to this step."
+        "Shrinks by measured text fit through type steps down to this literal step (for example -og-fit-min: caption). Extension reason: clamp() and container units cannot choose a type step by measuring shaped text. Author variables may substitute a step name; no custom-property name has engine meaning."
     ),
     p!(
         "ellipsis",
@@ -1944,6 +1951,7 @@ pub fn to_json() -> serde_json::Value {
     use serde_json::json;
     json!({
         "parts": parts::to_json(),
+        "cssFunctions": CSS_FUNCTIONS.iter().map(|(name, grammar, reason)| json!({ "name": name, "grammar": grammar, "reason": reason })).collect::<Vec<_>>(),
         "kinds": KINDS.iter().map(|k| json!({ "name": k.name, "container": k.container, "doc": k.doc })).collect::<Vec<_>>(),
         "props": PROPS.iter().map(|p| {
             let mut v = json!({ "name": p.name, "type": p.ty.name(), "doc": p.doc, "twoWay": p.two_way });

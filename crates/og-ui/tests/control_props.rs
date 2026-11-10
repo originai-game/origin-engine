@@ -174,6 +174,43 @@ fn scene_text_shadows_follow_the_font_size() {
     assert!(refused(r#"<meta name="component" content="t"><span>Text</span><style>span { -og-on-scene: true; }</style>"#).contains("-og-on-scene"));
 }
 
+#[test]
+fn fit_min_measures_text_with_a_literal_or_authored_step() {
+    for mounted in [false, true] {
+        let draw = |minimum: &str| {
+            let source = format!(
+                r#"<meta name="component" content="t"><p id="Title">The hidden treasures of the drowned bell tower</p><style>#Title {{ width: 100px; margin: 0; font: 48px/1.2 sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; --floor: caption; {minimum} }}</style>"#
+            );
+            let mut scene = og_render::RenderScene::new();
+            let mut d = Doc::with_font(
+                &source,
+                &[],
+                mounted,
+                crate::support::add_test_font(&mut scene),
+            );
+            d.step(InputFrame::default());
+            let text: Vec<_> =
+                d.ui.frame()
+                    .items
+                    .iter()
+                    .filter_map(|i| match &i.cmd {
+                        DrawCmd::Text { text, size, .. } => Some((text.clone(), *size)),
+                        _ => None,
+                    })
+                    .collect();
+            assert_eq!(text.len(), 1);
+            (text, d.ui.theme().type_ramp.caption.size)
+        };
+        let (literal, minimum) = draw("-og-fit-min: caption;");
+        assert_eq!(literal[0].1, minimum);
+        assert_eq!(literal, draw("-og-fit-min: var(--floor);").0);
+        assert_eq!(draw("").0[0].1, 48.0);
+    }
+    refused(
+        r#"<meta name="component" content="t"><p>Text</p><style>p { -og-fit-min: mystery; }</style>"#,
+    );
+}
+
 fn key(d: &mut Doc, k: UiKey) {
     d.step(InputFrame {
         keys: vec![k],

@@ -12,7 +12,7 @@ use crate::motion::css::{
 };
 use crate::motion::interpolate::{self, Composite};
 use crate::motion::scroll::{AnimationTimeline, Axis, Inset, NamedTimeline, RangeEdge};
-use crate::motion::{Ease, MotionToken, SpringSpec, Transition};
+use crate::motion::{Ease, SpringSpec, Transition};
 
 pub(crate) const TRANSITION: [&str; 5] = [
     "transition-property",
@@ -117,29 +117,24 @@ fn time(word: &str) -> Option<f32> {
     ms.is_finite().then_some(ms)
 }
 
-/// A timing: a CSS easing function, or the engine's `-og-spring(<ms>,
-/// <bounce>)` and `var(--motion-<role>)` timings.
+/// A timing: a CSS easing function or the reflected `-og-spring()` function.
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum Timing {
     Ease(Ease),
     Spring(SpringSpec),
-    Token(MotionToken),
 }
 
 fn timing(word: &str) -> Option<Timing> {
-    if let Some(role) = word
-        .strip_prefix("var(--motion-")
-        .and_then(|r| r.strip_suffix(')'))
-    {
-        return MotionToken::from_name(role).map(Timing::Token);
-    }
     if let Some(args) = word
         .strip_prefix("-og-spring(")
         .and_then(|r| r.strip_suffix(')'))
     {
         let mut args = args.split(',').map(str::trim);
         let ms = time(args.next()?)?;
-        let bounce = args.next().map_or(Some(0.0), |b| b.parse().ok())?;
+        let bounce: f32 = args.next().map_or(Some(0.0), |b| b.parse().ok())?;
+        if ms < 0.0 || !bounce.is_finite() {
+            return None;
+        }
         return args
             .next()
             .is_none()
@@ -462,7 +457,7 @@ fn hint(name: &str) -> &'static str {
         "transition-duration" | "animation-duration" => "write a non-negative time: 200ms or 0.2s",
         "transition-delay" | "animation-delay" => "write a time: 50ms or -0.1s",
         "transition-timing-function" | "animation-timing-function" => {
-            "write a CSS easing (ease-out, cubic-bezier(…), steps(…), linear(…)), -og-spring(<ms>, <bounce>) or var(--motion-<role>)"
+            "write a CSS easing (ease-out, cubic-bezier(…), steps(…), linear(…)) or -og-spring(<time> [, <bounce>])"
         }
         "animation-iteration-count" => "write a non-negative number or infinite",
         "animation-direction" => "write normal, reverse, alternate or alternate-reverse",
@@ -532,7 +527,6 @@ pub(crate) fn resolve(
         }
         let duration_ms = time(&pick(&durations, i)).unwrap_or(0.0);
         let transition = match timing(&pick(&timings, i)).expect("validated timing") {
-            Timing::Token(t) => Transition::Token(t),
             Timing::Spring(s) => Transition::Spring(s),
             Timing::Ease(_) if duration_ms <= 0.0 => Transition::Instant,
             Timing::Ease(ease) => Transition::Tween { duration_ms, ease },
@@ -569,7 +563,7 @@ pub(crate) fn resolve(
             Timing::Ease(e) => e,
             _ => {
                 diagnostics.push(format!(
-                    "animation-timing-function of {name}: springs and motion tokens time transitions; give an animation a CSS easing"
+                    "animation-timing-function of {name}: springs time transitions; give an animation a CSS easing"
                 ));
                 continue;
             }
@@ -903,12 +897,21 @@ mod tests {
             resolved(&[("animation", "spin 1s")]).0.is_empty(),
             "no transition declared"
         );
-        let (all, _, _) = resolved(&[("transition", "var(--motion-ui)")]);
+        let (all, _, _) = resolved(&[("transition", "-og-spring(350ms, 0.3)")]);
         assert_eq!(all[0].channels, ALL_CHANNELS);
-        assert!(matches!(
+        assert_eq!(
             all[0].transition,
-            Transition::Token(MotionToken::Ui)
-        ));
+            Transition::Spring(SpringSpec::new(350.0, 0.3))
+        );
+        let (plain, _, _) = resolved(&[("transition", "opacity -og-spring(0.2s)")]);
+        assert_eq!(
+            plain[0].transition,
+            Transition::Spring(SpringSpec::new(200.0, 0.0))
+        );
+        assert!(
+            timing("var(--motion-ui)").is_none(),
+            "custom properties must substitute before timing is read"
+        );
     }
 
     #[test]
@@ -947,6 +950,21 @@ mod tests {
             (
                 "transition-timing-function",
                 "bounce",
+                "transition-timing-function",
+            ),
+            (
+                "transition-timing-function",
+                "-og-spring(-1ms)",
+                "transition-timing-function",
+            ),
+            (
+                "transition-timing-function",
+                "-og-spring(200ms, NaN)",
+                "transition-timing-function",
+            ),
+            (
+                "transition-timing-function",
+                "-og-unknown(200ms)",
                 "transition-timing-function",
             ),
         ] {

@@ -448,9 +448,8 @@ fn conv(prop: &str) -> Conv {
         "background" | "fadeInto" | "color" | "secondaryTint" | "tint" | "ink" => Conv::Paint,
         "align" | "cross" | "direction" | "frame" | "reduced" | "textAlign" | "verticalAlign"
         | "captionSide" | "fit" | "display" | "markerType" | "markerPosition" | "userSelect"
-        | "appearance" | "labelDirection" | "stepper" | "stepperWrap" | "selectFilter" => {
-            Conv::Kebab
-        }
+        | "appearance" | "labelDirection" | "stepper" | "stepperWrap" | "selectFilter"
+        | "fitMin" => Conv::Kebab,
         "countDuration" | "countDecimals" | "reveal" => Conv::Num,
         "spotlight" => Conv::Ident,
         "wrap" => Conv::Bool("wrap", "nowrap"),
@@ -458,7 +457,7 @@ fn conv(prop: &str) -> Conv {
         "nowrap" => Conv::Bool("nowrap", "normal"),
         "ellipsis" => Conv::Bool("ellipsis", "clip"),
         "position" => Conv::Kw(POSITIONS),
-        "step" | "fitMin" => Conv::Var("text"),
+        "step" => Conv::Var("text"),
         "font" => Conv::Var("font"),
         "rive" => Conv::Rive,
         "textPath" | "textPathOffset" | "emitter" | "meta" => Conv::Raw,

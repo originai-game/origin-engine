@@ -397,6 +397,12 @@ These declarations also construct widget part identities and are exported by doc
 | `input[type=number]` | `value` | `:enabled`, `:disabled`, `:hover`, `:active`, `:focus-visible` |
 | `input[type=number]` | `button` | `:enabled`, `:disabled`, `:hover`, `:active`, `:focus-visible` |
 
+### CSS value functions
+
+| Function | Grammar | Reason and behavior |
+|---|---|---|
+| `-og-spring` | `-og-spring(<time [0,∞]> [, <number>])` | Transition timing with a perceptual duration (ms or s) and optional finite bounce (default 0). Bounce is clamped to -0.95..1 by the spring solver. Extension reason: CSS linear() cannot preserve velocity when a transition is interrupted. Springs time transitions, not keyframe animations. |
+
 ## 2. `<column>` (`column`): Children top to bottom
 
 Children top to bottom. A container with nested children: `<column id="Name">…</column>`.
@@ -506,7 +512,7 @@ Its own props, beside every element's:
 | `text-align:` | `start \| center \| end` | How its lines align. |
 | `white-space:` | `nowrap \| normal` | One line. |
 | `line-clamp:` | `<number>` | The most lines it shows. |
-| `-og-fit-min:` | `var(--text-<name>)` | Shrinks by type steps to fit its width, down to this step. |
+| `-og-fit-min:` | `body \| xs \| meta \| caption \| sm \| reading \| base \| lg \| xl \| xl2 \| xl3 \| xl4 \| xl5 \| xl6 \| xl7 \| xl8 \| display-sm \| display-md \| display-lg \| display-xl \| display-xl2 \| hero` | Shrinks by measured text fit through type steps down to this literal step (for example -og-fit-min: caption). Extension reason: clamp() and container units cannot choose a type step by measuring shaped text. Author variables may substitute a step name; no custom-property name has engine meaning. |
 | `text-overflow:` | `ellipsis \| clip` | Cut with … where it does not fit. `ellipsisText`: What its cut ends in instead of … (`text-overflow: "<string>"`). |
 | `font-family:` | `var(--font-<name>)` | The font role. |
 | `heading` | `bool` | A heading (a style's flourish frames it). |

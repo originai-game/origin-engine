@@ -1,0 +1,10 @@
+{
+  "breaking": [
+    {
+      "member": "-og-fit-min, -og-spring()",
+      "change": "Fit-min takes literal reflected type-step names, not a custom-property namespace shortcut. CSS spring timing is reflected with grammar and an extension reason; unresolved motion variables no longer name engine timing presets.",
+      "fix": "Use -og-fit-min: caption (or another reflected step), and transition-timing-function: -og-spring(350ms, 0.3). Author variables can substitute these values normally. Spring duration must be non-negative and bounce finite. Material and sound remain reflected CSS extensions with their existing grammars and reasons.",
+      "find": ["-og-fit-min", "-og-spring("]
+    }
+  ]
+}
