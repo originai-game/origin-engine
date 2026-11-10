@@ -744,8 +744,6 @@ pub const CORE_PROPS: &[PropSpec] = &[
     p!("scaleX", Ty::Num, "Its horizontal scale."),
     p!("scaleY", Ty::Num, "Its vertical scale."),
     p!("rotate", Ty::Num, "A turn, radians, clockwise."),
-    p!("skewX", Ty::Num, "A skew, radians."),
-    p!("skewY", Ty::Num, "A skew, radians."),
     p!(
         "pivot",
         Ty::Num2,

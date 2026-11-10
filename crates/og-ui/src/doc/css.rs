@@ -49,7 +49,7 @@ enum Conv {
     /// `-og-text-path`'s shapes).
     Raw,
     /// Written with its partner in one property (`translate: <x> <y>`,
-    /// `scale: <x> <y>`, `-og-skew`, `grid-column`/`grid-row`,
+    /// `scale: <x> <y>`, `grid-column`/`grid-row`,
     /// `grid-auto-flow`).
     Joint,
 }
@@ -194,8 +194,6 @@ pub const STYLE: &[(&str, &str)] = &[
     ("scaleX", "scale"),
     ("scaleY", "scale"),
     ("rotate", "rotate"),
-    ("skewX", "-og-skew"),
-    ("skewY", "-og-skew"),
     ("pivot", "transform-origin"),
     ("opacity", "opacity"),
     ("z", "z-index"),
@@ -578,7 +576,6 @@ fn joint_form(css: &str) -> Option<&'static str> {
     Some(match css {
         "translate" => "none | <x> [<y>]: px, or % of its own box",
         "scale" => "<both> | <x> <y>",
-        "-og-skew" => "<x>deg [<y>deg]",
         "grid-column" => "<n> | <n> / span <n> | span <n>",
         "grid-auto-flow" => "row | column [dense]",
         _ => return None,
@@ -598,8 +595,6 @@ const STATE_VALUES: &[(&str, &str)] = &[
     ("scaleX", "scale"),
     ("scaleY", "scale"),
     ("rotate", "rotate"),
-    ("skewX", "-og-skew"),
-    ("skewY", "-og-skew"),
     ("opacity", "opacity"),
     ("radius", "border-radius"),
     ("z", "z-index"),
@@ -611,7 +606,7 @@ const STATE_VALUES: &[(&str, &str)] = &[
 /// when the element declares none).
 fn neutral(key: &str) -> Option<&'static str> {
     match key {
-        "x" | "y" | "rotate" | "skewX" | "skewY" => Some("0"),
+        "x" | "y" | "rotate" => Some("0"),
         "scale" | "scaleX" | "scaleY" | "opacity" => Some("1"),
         _ => None,
     }
@@ -1028,10 +1023,6 @@ pub(crate) fn decl_line(
                     format!("{} {}", fill("scaleX")?, fill("scaleY")?),
                 ));
             }
-            "skewX" | "skewY" => {
-                done.extend(["skewX", "skewY"]);
-                out.push((css.into(), format!("{} {}", fill("skewX")?, fill("skewY")?)));
-            }
             "flow" | "dense" => {
                 done.extend(["flow", "dense"]);
                 let mut v = Vec::new();
@@ -1116,7 +1107,6 @@ pub(crate) fn decl_line(
 fn conv_joint(k: &str) -> Conv {
     match k {
         "x" | "y" => Conv::Len,
-        "skewX" | "skewY" => Conv::Angle,
         _ => Conv::Num,
     }
 }
@@ -1737,7 +1727,7 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
     // A bound declaration: the whole value is the binding.
     if let [Tok::Func(f, a)] = t.as_slice()
         && f == "bind"
-        && !matches!(name, "translate" | "scale" | "-og-skew")
+        && !matches!(name, "translate" | "scale")
     {
         let src = match a.as_slice() {
             [v] => match v.as_slice() {
@@ -1777,21 +1767,14 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
                 _ => Err("bind(path) or bind(\"expression\")".into()),
             };
         }
-        if k.starts_with("skew") {
-            want_angle(t).map(|v| vec![v])
-        } else if k.starts_with("scale") {
+        if k.starts_with("scale") {
             want_num(t).map(|v| vec![v])
         } else {
             want_len(t).map(|v| vec![v])
         }
     };
     match name {
-        "translate" | "-og-skew" => {
-            let (a, b) = if name == "translate" {
-                ("x", "y")
-            } else {
-                ("skewX", "skewY")
-            };
+        "translate" => {
             let (x, y) = match t.as_slice() {
                 [Tok::Ident(w)] if name == "translate" && w == "none" => (
                     Tok::Num("0".into(), String::new()),
@@ -1801,9 +1784,6 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
                 [x, y] => (x.clone(), y.clone()),
                 _ => return Err(format!("{name}: <x> <y>")),
             };
-            if name == "-og-skew" {
-                return Ok(vec![e(a, part(a, &x)?), e(b, part(b, &y)?)]);
-            }
             // A percentage is of the element's own box, as CSS's: its
             // fraction moves it after layout beside the px (`xShift`), so
             // `translate: -50% -50%` centres it on its place.
@@ -1887,7 +1867,6 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
                 "translate",
                 "scale",
                 "rotate",
-                "-og-skew",
                 "opacity",
                 "border-radius",
                 "z-index",

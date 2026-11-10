@@ -139,7 +139,7 @@ fn table(out: &mut String, props: &[&PropSpec]) {
             None => {
                 let joint = matches!(
                     css_name(p.name),
-                    Some("translate" | "scale" | "-og-skew" | "grid-column" | "grid-auto-flow")
+                    Some("translate" | "scale" | "grid-column" | "grid-auto-flow")
                 );
                 let what = if joint {
                     format!("`{}`: {what}", p.name)
@@ -167,7 +167,7 @@ pub fn markdown() -> String {
     out.push_str("## 1. Every element\n\nWhat every kind takes: its box, layout, paint, motion and input.\n\n");
     table(&mut out, &every);
     out.push_str(
-        "\nStyle interaction with `#Buy:hover { scale: 1.04 }`. The screens guide lists state selectors and their scoped cascade. Bind game state with `class:active={$selected}` and style `.active`. Custom properties inherit computed values from the mounted parent; `var(--name, fallback)` resolves after specificity and `!important`. CSS motion uses shared timing values; markup contains no state blocks or timelines. `transition` and its longhands (`transition-property`, `-duration`, `-timing-function`, `-delay`) and `animation` and its longhands (`animation-name`, `-duration`, `-timing-function`, `-delay`, `-iteration-count`, `-direction`, `-fill-mode`, `-play-state`) follow CSS Transitions and Animations Level 1 over the animatable values: opacity, translate, scale, rotate, -og-skew, border-radius, background, color and z-index (keyframes animate the scalar ones).\n",
+        "\nStyle interaction with `#Buy:hover { scale: 1.04 }`. The screens guide lists state selectors and their scoped cascade. Bind game state with `class:active={$selected}` and style `.active`. Custom properties inherit computed values from the mounted parent; `var(--name, fallback)` resolves after specificity and `!important`. CSS motion uses shared timing values; markup contains no state blocks or timelines. `transition` and its longhands (`transition-property`, `-duration`, `-timing-function`, `-delay`) and `animation` and its longhands (`animation-name`, `-duration`, `-timing-function`, `-delay`, `-iteration-count`, `-direction`, `-fill-mode`, `-play-state`) follow CSS Transitions and Animations Level 1 over the animatable values: opacity, translate, scale, rotate, border-radius, background, color and z-index (keyframes animate the scalar ones). Other animatable properties, including transform with skew functions, interpolate their computed values.\n",
     );
     out.push_str("\n### Exposed widget parts\n\nThese declarations also construct widget part identities and are exported by documentSchema and dump_ui. Classes (such as primary), ARIA attributes (such as aria-selected), and author-declared custom parts are separate from state pseudo-classes. Native API styling hosts and their markup counterparts are listed separately where their names differ.\n\n");
     out.push_str(&super::schema::parts::markdown());

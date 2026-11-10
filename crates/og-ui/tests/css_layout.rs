@@ -79,6 +79,68 @@ fn wh(d: &Doc, id: &str) -> (f32, f32) {
 }
 
 #[test]
+fn skew_migration_preserves_composition() {
+    for mounted in [false, true] {
+        for (x, y) in [(17.0_f32, -9.0_f32), (0.0, 23.0)] {
+            let draw = |css: &str| {
+                let source = format!(
+                    r#"<meta name="component" content="t"><div id="Box"></div><style>#Box {{ width: 91px; height: 37px; margin: 43px 0 0 29px; background: #397ace; translate: 11px -7px; {css} }}</style>"#
+                );
+                let mut d = Doc::new(&source, &[], mounted);
+                d.step(InputFrame::default());
+                assert!(d.ui.frame().warnings.is_empty());
+                let frame = d.ui.frame();
+                assert_eq!(frame.items.len(), 1);
+                let item = &frame.items[0];
+                let og_ui::DrawCmd::Quad { rect, .. } = item.cmd else {
+                    panic!("expected a quad")
+                };
+                [
+                    (rect.x, rect.y),
+                    (rect.right(), rect.y),
+                    (rect.x, rect.bottom()),
+                    (rect.right(), rect.bottom()),
+                ]
+                .map(|(x, y)| item.transform.apply(x, y))
+            };
+            let before =
+                [(-45.5, -18.5), (45.5, -18.5), (-45.5, 18.5), (45.5, 18.5)].map(|(dx, dy)| {
+                    let (sx, sy) = (dx * 1.4, dy * 0.7);
+                    let (kx, ky) = (
+                        sx + x.to_radians().tan() * sy,
+                        sy + y.to_radians().tan() * sx,
+                    );
+                    let (sin, cos) = 31.0_f32.to_radians().sin_cos();
+                    (85.5 + cos * kx - sin * ky, 54.5 + sin * kx + cos * ky)
+                });
+            let after = draw(&format!(
+                "transform: rotate(31deg) skew({x}deg, {y}deg) scale(1.4, 0.7);"
+            ));
+            assert!(
+                before
+                    .iter()
+                    .zip(after)
+                    .all(|((x, y), (nx, ny))| (x - nx).abs() < 0.0001 && (y - ny).abs() < 0.0001),
+                "mounted={mounted}: {before:?} != {after:?}"
+            );
+        }
+    }
+    for markup in [
+        "<div style=\"-og-skew: 17deg -9deg\"></div>",
+        "<div skew-x=\"0.3\"></div>",
+        "<div skew-y=\"0.2\"></div>",
+    ] {
+        assert!(
+            og_ui::UiDocument::parse(
+                "removed.svelte",
+                &format!("<meta name=\"component\" content=\"t\">{markup}")
+            )
+            .is_err()
+        );
+    }
+}
+
+#[test]
 fn centering_and_asymmetric_anchors_preserve_transforms() {
     for mounted in [false, true] {
         for width in [390.0, 1280.0] {

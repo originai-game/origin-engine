@@ -1598,12 +1598,6 @@ impl Ui {
         if let Some(v) = r.num("rotate") {
             t.rotate = v;
         }
-        if let Some(v) = r.num("skewX") {
-            t.skew_x = v;
-        }
-        if let Some(v) = r.num("skewY") {
-            t.skew_y = v;
-        }
         if let Some([x, y]) = r.nums("pivot").and_then(|n| <[f32; 2]>::try_from(n).ok()) {
             t.pivot_x = x;
             t.pivot_y = y;

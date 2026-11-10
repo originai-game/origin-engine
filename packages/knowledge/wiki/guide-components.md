@@ -90,7 +90,6 @@ What every kind takes: its box, layout, paint, motion and input.
 | `translate:` | `none \| <x> [<y>]: px, or % of its own box` | `x`: Moved right after layout, CSS px. `y`: Moved down after layout, CSS px. `xShift`: Moved right after layout, a fraction of its own width (`translate`'s %). `yShift`: Moved down after layout, a fraction of its own height (`translate`'s %). |
 | `scale:` | `<both> \| <x> <y>` | `scale`: Both scales. `scaleX`: Its horizontal scale. `scaleY`: Its vertical scale. |
 | `rotate:` | `<n>deg \| <n>rad \| <n>turn` | A turn, radians, clockwise. |
-| `-og-skew:` | `<x>deg [<y>deg]` | `skewX`: A skew, radians. `skewY`: A skew, radians. |
 | `transform-origin:` | `<x>% <y>%` | The transform's origin, fractions of its box. |
 | `opacity:` | `<number>` | 0 to 1, multiplied down the tree. |
 | `z-index:` | `<number>` | Drawing order among its siblings. |
@@ -255,7 +254,7 @@ What every kind takes: its box, layout, paint, motion and input.
 | `resize:` | `none \| both \| horizontal \| vertical \| block \| inline` | CSS `resize` on an element whose overflow is not visible: `both`, `horizontal` (`inline`) or `vertical` (`block`) puts a grab handle on its bottom end corner whose drag sets its width or height. |
 | `will-change:` | `auto \| <property>, …` | CSS `will-change`: properties it is about to change; one that makes a group (transform, opacity, filter…) draws it on a layer of its own. |
 
-Style interaction with `#Buy:hover { scale: 1.04 }`. The screens guide lists state selectors and their scoped cascade. Bind game state with `class:active={$selected}` and style `.active`. Custom properties inherit computed values from the mounted parent; `var(--name, fallback)` resolves after specificity and `!important`. CSS motion uses shared timing values; markup contains no state blocks or timelines. `transition` and its longhands (`transition-property`, `-duration`, `-timing-function`, `-delay`) and `animation` and its longhands (`animation-name`, `-duration`, `-timing-function`, `-delay`, `-iteration-count`, `-direction`, `-fill-mode`, `-play-state`) follow CSS Transitions and Animations Level 1 over the animatable values: opacity, translate, scale, rotate, -og-skew, border-radius, background, color and z-index (keyframes animate the scalar ones).
+Style interaction with `#Buy:hover { scale: 1.04 }`. The screens guide lists state selectors and their scoped cascade. Bind game state with `class:active={$selected}` and style `.active`. Custom properties inherit computed values from the mounted parent; `var(--name, fallback)` resolves after specificity and `!important`. CSS motion uses shared timing values; markup contains no state blocks or timelines. `transition` and its longhands (`transition-property`, `-duration`, `-timing-function`, `-delay`) and `animation` and its longhands (`animation-name`, `-duration`, `-timing-function`, `-delay`, `-iteration-count`, `-direction`, `-fill-mode`, `-play-state`) follow CSS Transitions and Animations Level 1 over the animatable values: opacity, translate, scale, rotate, border-radius, background, color and z-index (keyframes animate the scalar ones). Other animatable properties, including transform with skew functions, interpolate their computed values.
 
 ### Exposed widget parts
 

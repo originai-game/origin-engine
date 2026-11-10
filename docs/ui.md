@@ -882,7 +882,7 @@ every hex literal, in a document, a paint entry or a style file, so the
 four forms hold wherever a colour is read.
 
 Transforms. Elements take CSS Transforms 1 and 2 whole beside the
-individual `translate`, `scale`, `rotate` and `-og-skew`, which stay and
+individual `translate`, `scale` and `rotate`, which
 apply first: `transform` with every function (`translate`, `translateX`,
 `-Y`, `-Z`, `translate3d`, `scale` and its axis and 3D forms, `rotate`,
 `rotateX`, `-Y`, `-Z`, `rotate3d`, `skew`, `skewX`, `skewY`, `matrix`,
@@ -2401,7 +2401,7 @@ the presentation state outside `world_hash`, so a restore continues exactly.
 Reduced motion shows a finite animation's end and stops endless ones;
 transitions use the element's reduced-motion fallback. Transitions and
 keyframes cover every animatable property. Opacity, translate, scale,
-rotate, `-og-skew`, `border-radius`, background, color and z-index move the
+rotate, `border-radius`, background, color and z-index move the
 element's channels in the motion step (springs and motion tokens keep their
 velocity when retargeted); every other property moves its computed value
 before the cascade routes it, so it animates through the same parsing as a

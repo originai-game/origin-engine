@@ -23,6 +23,12 @@
       "change": "Removed implicit scene ink and separation shadow styling.",
       "fix": "Declare color and text-shadow. The shipped shooter controls use text-shadow: 0 max(1px, 0.04em) max(1px, 0.08em) #000000, with their scene ink declared as color. Font-relative shadow lengths now use the element's winning font size rather than the body default.",
       "find": ["-og-on-scene"]
+    },
+    {
+      "member": "-og-skew",
+      "change": "Removed the proprietary skew declaration and skew-x/skew-y reflected attributes without aliases.",
+      "fix": "Use transform: skew(x, y). To preserve a legacy rotation/skew/nonuniform-scale combination, move rotation and scale into the same transform list in rotate(...) skew(...) scale(...) order. Animate transform instead of -og-skew.",
+      "find": ["-og-skew", "skew-x", "skew-y"]
     }
   ]
 }

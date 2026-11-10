@@ -69,7 +69,6 @@ pub(crate) fn channels(property: &str) -> Option<u32> {
         "translate" => range(0, 1),
         "scale" => range(2, 3),
         "rotate" => 1 << 4,
-        "-og-skew" => range(5, 6),
         "opacity" => 1 << 7,
         "border-radius" => 1 << 8,
         "background" => range(9, 12),
