@@ -1,0 +1,648 @@
+  # ── effects (og-render's E1 effects, declared as data) ────────────────
+
+  handle Lut "A colour lookup table for PostEffects.lut, from og.load.lut (a `.cube` file)."
+  handle EnvironmentMap "A prefiltered HDR environment map for Environment.map, from og.load.environment (an `.ogt` of `type environment` naming an equirectangular `.hdr` or `.exr`, a KTX2 cube map, or six face images)."
+  handle ParticleEmitter "A particle emitter asset for ParticleSystem.emitter, from og.load.emitter (an `.ogt` of `type particles`)."
+
+  column Texture {
+    doc "A Texture handle field (0 is none)."
+    array Uint32Array
+    stride 2
+    value Texture
+  }
+
+  column Lut {
+    doc "A Lut handle field (0 is none)."
+    array Uint32Array
+    stride 2
+    value Lut
+  }
+
+  column EnvironmentMap {
+    doc "An EnvironmentMap handle field (0 is none)."
+    array Uint32Array
+    stride 2
+    value EnvironmentMap
+  }
+
+  resource Environment {
+    doc "Image-based light from a cooked HDR environment map instead of the sky, as three.js scene.environment, and the map behind the scene, as scene.background = the environment. Load the map with og.load.environment: the cook has already prefiltered it (GGX levels for reflections from mirror to rough, harmonics for the diffuse light), so setting it costs a few copy passes. Without a map the sky lights the scene as before (og.Sky, a DayNight, or the built-in one). Read after each tick; it never feeds back into the simulation."
+    field map EnvironmentMap "The map from og.load.environment; 0 lights by the sky."
+    field intensity f32 "The strength of the map's light on every surface, as three.js scene.environmentIntensity; while a map is set it replaces RenderSettings.environmentIntensity." {
+      default 1
+      min 0
+      tunable true
+    }
+    field rotation f32 "Turns the map about +Y, as three.js scene.environmentRotation.y: positive turns what was at +X towards -Z. The light and the background turn together." {
+      unit deg
+      tunable true
+    }
+    field background bool "Draw the map behind the scene, as three.js scene.background = the environment (Camera.background, og.Sky and RenderSettings.sky give way); false leaves the background as they set it."
+    field backgroundIntensity f32 "Multiplies the map where it is drawn behind the scene, as three.js scene.backgroundIntensity; the light is not changed." {
+      default 1
+      min 0
+      tunable true
+    }
+    field backgroundBlurriness f32 "Blurs the sky where it is drawn behind the scene, as three.js scene.backgroundBlurriness: 0 sharp to 1 the roughest of the prefiltered (GGX) levels the light already reads, so it costs nothing extra; the light is not changed. Applies to the sky background with or without a map." {
+      default 0
+      min 0
+      max 1
+      tunable true
+    }
+    field groundHeight f32 "Draws the sky on a dome with a flat ground under it, as three.js GroundedSkybox: how far above the ground the map was photographed (metres). Objects then stand on the map's ground instead of floating over its horizon, and reflections of the environment (mirrors, water, clear coats) show the same projected ground. 0 (the default) draws the sky at infinity." {
+      default 0
+      min 0
+      unit m
+      tunable true
+    }
+    field groundRadius f32 "The grounded dome's radius (metres, larger than groundHeight), as GroundedSkybox's radius: the ground looks flat out to about this distance." {
+      default 100
+      min 0
+      unit m
+      tunable true
+    }
+    field groundCenter Vector3 "The ground point under where the map was photographed: the dome's centre is groundHeight above it." {
+      worldspace world
+      unit m
+    }
+    field blendTo EnvironmentMap "A second map from og.load.environment that the light and the background blend towards (indoor to outdoor); 0 is none. Both maps turn by rotation and the background is scaled by backgroundIntensity."
+    field blendWeight f32 "How far the blend has gone: 0 the map, 1 blendTo, in between a mix of both maps' light (every GGX level and the harmonics) and background. Drive it from the tick (a tween or a system), never from a clock, so a replay blends alike; it is drawn in 128 steps, each regenerating the light once." {
+      default 0
+      min 0
+      max 1
+      tunable true
+    }
+    field hemiSky Color "A hemisphere light's sky colour (linear), as three.js HemisphereLight.color: diffuse-only ambient light mix(hemiGround, hemiSky, 0.5 n.y + 0.5) * hemiIntensity, darkened by ambient occlusion like the map's light. Unlike light baked into the map it adds no reflection." {
+      default 1 1 1
+    }
+    field hemiGround Color "The hemisphere light's ground colour (linear), as three.js HemisphereLight.groundColor." {
+      default 0 0 0
+    }
+    field hemiIntensity f32 "The hemisphere light's intensity, as three.js HemisphereLight.intensity; 0 (the default) is off." {
+      default 0
+      min 0
+      tunable true
+    }
+  }
+
+  column ParticleEmitter {
+    doc "A ParticleEmitter handle field (0 is none)."
+    array Uint32Array
+    stride 2
+    value ParticleEmitter
+  }
+
+  enum AoMethod {
+    doc "Which ambient occlusion algorithm runs."
+    variant auto "GTAO."
+    variant gtao "Ground-truth ambient occlusion (3 slices): the better looking one."
+    variant ssao "Hemisphere SSAO with 8 samples: the cheaper one."
+    variant screen "Depth-only disc AO in screen units (14 taps, radius clamp(1.6 / depth, 0.004, 0.06) of the screen width, fading out from 120 to 300 m, squared): the post-process SSAO of three.js-era games. It ignores normals, so ground seen at a low angle darkens a little too, as those games look. aoRadius and aoRadiusScale do not apply; aoIntensity scales the occlusion."
+  }
+
+  column AoMethod {
+    doc "An AoMethod field: the variant's index."
+    array Uint32Array
+    stride 1
+    value AoMethod
+  }
+
+  enum AoResolution {
+    doc "The resolution ambient occlusion is searched at."
+    variant full "Every pixel searched, then a 4x4 depth-aware blur."
+    variant half "Every second pixel in x and y searched (a quarter of the work) and blurred at that resolution, then brought to full resolution by a depth-aware upsample: softer contacts and thin creases, a fraction of the GPU time."
+  }
+
+  column AoResolution {
+    doc "An AoResolution field: the variant's index."
+    array Uint32Array
+    stride 1
+    value AoResolution
+  }
+
+  enum DofQuality {
+    doc "How many taps depth of field gathers per pixel."
+    variant low "16 taps at half resolution."
+    variant high "48 taps at half resolution: rounder, smoother bokeh."
+  }
+
+  column DofQuality {
+    doc "A DofQuality field: the variant's index."
+    array Uint32Array
+    stride 1
+    value DofQuality
+  }
+
+  enum ScreenBlur {
+    doc "Which way PostEffects.screenBlur smears the whole frame."
+    variant none "Off."
+    variant zoom "Along the line to screenBlurCenter, each way by screenBlurStrength's fraction of the distance to it (0.1 a light dash, 0.3 a hard impact): a dash forwards, a hit, a warp."
+    variant spin "Round screenBlurCenter, each way by screenBlurStrength radians (0.05 is about 3 degrees), on circles in pixels whatever the frame's aspect: a spin, a vortex, a dizzy spell."
+    variant directional "Along screenBlurAngle across the whole frame, each way by screenBlurStrength pixels at 720 lines (scaled with the frame's height): a fast pan, a sideways dash."
+  }
+
+  column ScreenBlur {
+    doc "A ScreenBlur field: the variant's index."
+    array Uint32Array
+    stride 1
+    value ScreenBlur
+  }
+
+  enum SpriteBlend {
+    doc "How a sprite is blended over what is below it."
+    variant alpha "Ordinary alpha blending."
+    variant additive "Added (light, fire, magic): order-independent within a layer."
+  }
+
+  column SpriteBlend {
+    doc "A SpriteBlend field: the variant's index."
+    array Uint32Array
+    stride 1
+    value SpriteBlend
+  }
+
+  enum SpriteFacing {
+    doc "How a world sprite turns towards the camera that draws it: a billboard (three.js Sprite). Decided as a mode of og.Sprite and SpriteDesc rather than a component of its own: a billboard is the same quad, texture, region, flash, glow, blend, layer, drop shadow and texture array layer as any sprite, drawn by the same sprite batch and shader, which only stands its corners differently. The turn is computed on the GPU from each camera's own axes (the main camera, every og.CameraView and og.Mirror, every face of a reflection probe), so it never feeds back into the simulation and a snapshot holds only the mode. The sprite turns about its anchor (a nine-slice turns as one panel), `rotation` still turns it within its own plane, and its drop shadow is cast by the quad stood upright facing the sun, so it shows the whole shape from every camera. A faced sprite without sortY (and tone mapped) draws among the transparent meshes, back to front with them by the view depth of its anchor from the camera that draws it (each face of a reflection probe from the probe), its drop shadow before them, so a billboard behind a glass pane shows through it and one in front draws over it; its layer no longer orders it against other sprites. With sortY, or toneMapped false, it keeps the sprite order (layer, then key) after the transparent meshes and particles. A faced sprite is culled by its bounds (a sphere round the anchor through the farthest corner) against the camera's view. Sprites are depth tested and do not write depth. World text takes the same modes (TextDesc.facing, FloatingTextDesc.facing): it turns as one panel about its position and sorts as a billboard."
+    variant none "In the world's xy plane facing +z, as every sprite before billboards."
+    variant camera "In the camera's view plane: its x along the camera's right, its y along its up, as particle billboards (smoke, glints, impostors seen from any side)."
+    variant cameraY "Upright, turned about the world's y axis towards the camera: its y stays +y, its x the camera's right laid level. Trees, characters and props that must stand while the camera looks down on them."
+  }
+
+  column SpriteFacing {
+    doc "A SpriteFacing field: the variant's index."
+    array Uint32Array
+    stride 1
+    value SpriteFacing
+  }
+
+  enum StripBlend {
+    doc "How a trail, ribbon or beam is blended."
+    variant additive "Added: glowing streaks, lasers, magic."
+    variant alpha "Alpha blended: smoke trails, tyre marks."
+  }
+
+  column StripBlend {
+    doc "A StripBlend field: the variant's index."
+    array Uint32Array
+    stride 1
+    value StripBlend
+  }
+
+  resource PostEffects {
+    doc "The post stack beyond RenderSettings' bloom, exposure and tone mapping, and camera shake. Every effect is off by default (its switch false or its amount 0) and then costs nothing: no pass is recorded. Read after each tick; it never feeds back into the simulation."
+    doc "Screen-space ambient occlusion, outlines, depth of field, motion blur and god rays run a depth-normal prepass, turned on with them. Grading, the colour adjustments (temperature to threshold), vignette, aberration, grain and the flash apply to the display colour after tone mapping, and lens distortion bends the result; the UI and screen-space sprites (the overlay) come after all of it."
+    field ao bool "Screen-space ambient occlusion: darkens the ambient light in creases and contact areas."
+    field aoRadius f32 "The world-space radius searched for occluders." {
+      default 0.6
+      min 0
+      unit m
+      tunable true
+    }
+    field aoIntensity f32 "0 none, 1 full; above 1 exaggerates." {
+      default 1
+      min 0
+      tunable true
+    }
+    field aoMethod AoMethod "The algorithm."
+    field aoResolution AoResolution "Full resolution, or half for a fraction of the GPU time at softer detail."
+    field aoDirect f32 "How much the occlusion also darkens direct and local light (0 only the ambient light, 1 a fully occluded pixel keeps 35 % of it). Above 0 the AO sees and darkens water surfaces too; at 0 water is outside it." {
+      default 0
+      min 0
+      max 1
+      tunable true
+    }
+    field aoRadiusScale f32 "Above 0 the radius grows with the distance, min(aoRadius, aoRadiusScale × distance): a fixed share of the screen up close, as three.js SSAO passes size theirs, instead of a fixed world size; 0 keeps aoRadius everywhere. The benefit holds with ssao, whose open flat ground stays unshaded at any radius; gtao's slices darken open ground a little as the radius shrinks." {
+      min 0
+      tunable true
+    }
+    field outline bool "Outlines every opaque surface from depth and normal edges, creases between the faces of one object included (materials with outlineWidth get their own hull outline instead)."
+    field outlineColor Color "The line colour, linear." {
+      default 0.02 0.02 0.03
+    }
+    field outlineWidth f32 "Line width in pixels, drawn inside the silhouette." {
+      default 2
+      min 0
+      max 31
+      tunable true
+    }
+    field outlineDepthThreshold f32 "The relative depth step that counts as a silhouette (0.04 is 4 %)." {
+      default 0.04
+      min 0
+    }
+    field outlineNormalThreshold f32 "The normal change that counts as a crease (1 - cos of the angle; 0.4 is about 53 degrees)." {
+      default 0.4
+      min 0
+    }
+    field depthOfField bool "Bokeh depth of field: pixels away from the focus distance blur into discs."
+    field dofFocusDistance f32 "The distance from the camera that is sharp." {
+      default 10
+      min 0
+      unit m
+      tunable true
+    }
+    field dofFocusRange f32 "The half-width of the sharp band around it." {
+      default 2
+      min 0
+      unit m
+      tunable true
+    }
+    field dofMaxBlur f32 "The largest blur radius, as a fraction of the image height (0.012 is about 9 px at 720p)." {
+      default 0.012
+      min 0
+      max 0.1
+    }
+    field dofFalloff f32 "How quickly blur grows outside the band: full blur focusRange times (1 + falloff) away." {
+      default 4
+      min 0
+    }
+    field dofQuality DofQuality "Taps per pixel."
+    field motionBlur bool "Per-object and camera motion blur along the screen-space velocity."
+    field motionBlurShutter f32 "The shutter as a fraction of the frame (0.5 is a 180 degree shutter)." {
+      default 0.5
+      min 0
+      max 2
+      tunable true
+    }
+    field motionBlurSamples u32 "Taps along the velocity." {
+      default 12
+      min 4
+      max 32
+    }
+    field motionBlurMaxPixels f32 "The longest blur in pixels." {
+      default 40
+      min 1
+    }
+    field screenBlur ScreenBlur "A zoom, spin or directional blur of the whole frame (RedGPU's zoom, radial and directional blurs), weighted to the middle of its reach: one pass after motion blur and before bloom and the tone curve, so highlights streak and glow; the UI is not blurred. Off at none or at screenBlurStrength 0."
+    field screenBlurStrength f32 "How far it reaches each way: for zoom the fraction of the way to the centre, for spin radians, for directional pixels at 720 lines; 0 is off." {
+      min 0
+      tunable true
+    }
+    field screenBlurCenter Vector2 "Zoom's and spin's centre, in fractions of the frame from the top left." {
+      worldspace none
+      default 0.5 0.5
+      tunable true
+    }
+    field screenBlurAngle f32 "Directional's direction, counter-clockwise from the right (90 is vertical)." {
+      unit deg
+      tunable true
+    }
+    field screenBlurSamples u32 "Taps per pixel: more is smoother on long blurs, each one a texture read." {
+      default 16
+      min 4
+      max 64
+    }
+    field godRays bool "Screen-space light shafts from the DirectionalLight (the sun must be in front of the camera)."
+    field godRaysIntensity f32 "How bright the shafts are." {
+      default 0.5
+      min 0
+      tunable true
+    }
+    field godRaysDecay f32 "How fast the rays fade along their length." {
+      default 0.965
+      min 0.5
+      max 1
+    }
+    field godRaysDensity f32 "How far towards the sun each ray samples (a fraction of the distance)." {
+      default 1
+      min 0
+    }
+    field godRaysTint Color "A linear tint on the light the rays carry." {
+      default 1 1 1
+    }
+    field godRaysSamples u32 "Taps per ray." {
+      default 48
+      min 8
+      max 128
+    }
+    field godRaysThreshold f32 "Sky brightness (linear, before exposure) below which the sky carries no rays." {
+      default 2
+      min 0
+    }
+    field glow bool "Order-independent 2D glow: sprites with SpriteDesc.glow (and 2D particles with a glow) are blurred and added back, with or without bloom."
+    field glowIntensity f32 "How much of the blurred glow is added back." {
+      default 1
+      min 0
+      tunable true
+    }
+    field lut Lut "Colour grading by a lookup table from og.load.lut; 0 is none (and so is a LUT whose streaming group is not resident)."
+    field lutIntensity f32 "0 leaves the image as tone mapped, 1 applies the table fully." {
+      default 1
+      min 0
+      max 1
+      tunable true
+    }
+    field temperature f32 "White balance: towards warm orange (positive) or cool blue (negative), Unity's Temperature divided by 100 (a von Kries scaling in LMS from a white point moved along the daylight locus); 0 is off. The colour adjustments, temperature to threshold, apply in this order to the display colour after the tone curve and the LUT, each clamping it to 0..1 (the white balance in linear light, the rest on the sRGB-encoded colour). They cost no pass: the renderer bakes them with the LUT into one 32³ table whenever one changes, so adjustments held still cost nothing per frame, and a frame that changes one pays that bake on the CPU (about half a millisecond with one adjustment on, a few with all of them)." {
+      min -1
+      max 1
+      tunable true
+    }
+    field tint f32 "White balance: towards magenta (positive) or green (negative), as Lightroom's and Unity's Tint divided by 100; 0 is off." {
+      min -1
+      max 1
+      tunable true
+    }
+    field brightness f32 "Added to every channel of the display colour; 0 is off." {
+      min -1
+      max 1
+      tunable true
+    }
+    field contrast f32 "Contrast around mid grey: positive spreads the tones by 1 / (1 - contrast), negative pulls them in by 1 + contrast (-1 is flat grey); 0 is off." {
+      min -1
+      max 1
+      tunable true
+    }
+    field balanceShadows Vector3 "The colour balance of the shadows (luminance below 0.5, fading out towards it): x shifts from cyan to red, y from magenta to green, z from yellow to blue, each -1 to 1 added to its channel; zero is off." {
+      tunable true
+    }
+    field balanceMidtones Vector3 "The colour balance of the mid-tones (what the shadows and highlights leave), as balanceShadows." {
+      tunable true
+    }
+    field balanceHighlights Vector3 "The colour balance of the highlights (luminance above 0.5, fading in from it), as balanceShadows." {
+      tunable true
+    }
+    field preserveLuminosity bool "The colour balance keeps each pixel's luminance, so it moves only the hue (Photoshop's Preserve Luminosity)." {
+      default true
+    }
+    field hue f32 "Turns every hue about the grey axis (red towards green at 120); 0 is off." {
+      min -180
+      max 180
+      unit deg
+      tunable true
+    }
+    field saturation f32 "-1 grey, 0 unchanged, 1 twice the colour (the chroma around the luminance scaled by 1 + saturation)." {
+      min -1
+      max 2
+      tunable true
+    }
+    field vibrance f32 "Saturation that spares colours already saturated and skin tones: positive livens dull colours, negative mutes them; 0 is off." {
+      min -1
+      max 1
+      tunable true
+    }
+    field grayscale f32 "How far each colour goes towards its luminance (grey); 0 is off." {
+      min 0
+      max 1
+      tunable true
+    }
+    field invert f32 "How far each colour goes towards its complement; 0 is off." {
+      min 0
+      max 1
+      tunable true
+    }
+    field threshold f32 "Above 0, each pixel white where its luminance reaches this level and black below it (the table's 32 steps soften the edge over about 1/31 of the range); 0 is off." {
+      min 0
+      max 1
+      tunable true
+    }
+    field vignette bool "Darkened (or tinted) edges of the frame."
+    field vignetteIntensity f32 "0 none, 1 black corners." {
+      default 0.35
+      min 0
+      max 1
+      tunable true
+    }
+    field vignetteRadius f32 "Where darkening starts, as a fraction of the half-diagonal." {
+      default 0.55
+      min 0
+      max 1
+    }
+    field vignetteSmoothness f32 "The width of the fade." {
+      default 0.45
+      min 0
+      max 1
+    }
+    field vignetteColor Color "The linear colour the edges move towards."
+    field chromaticAberration f32 "Red and blue split towards the edges, in pixels at the corners at 720p; 0 is off." {
+      min 0
+      max 20
+      tunable true
+    }
+    field lensDistortion f32 "Barrel (positive: the centre bulges and straight lines bow outwards, a wide-angle or fisheye lens) or pincushion (negative: lines bow inwards) distortion of the frame; 0 is off. The radius is measured in pixels whatever the frame's aspect, and a barrel is fitted so its farthest corner stays on the image (no black edges wherever the centre is). One pass while on, after the Stylise passes that read the depth (paint, hatching, halftone and ink, whose lines bend with the image) and before its palette quantisation; the UI is not bent. Visual only: raycasts from the pointer see the undistorted frame." {
+      min -1
+      max 1
+      tunable true
+    }
+    field lensDistortionCenter Vector2 "The lens's centre, in fractions of the frame from the top left." {
+      worldspace none
+      default 0.5 0.5
+      tunable true
+    }
+    field filmGrain f32 "Luminance-weighted noise amplitude in display units, a new pattern every tick (0.04 is subtle); 0 is off." {
+      min 0
+      max 1
+      tunable true
+    }
+    field filmGrainSize f32 "The grain size in pixels." {
+      default 1.5
+      min 0.5
+    }
+    field sharpen f32 "Contrast-adaptive sharpening (CAS) of the final image, as a three.js CAS pass after the output pass: each pixel pushed away from its four neighbours by a weight that falls where the neighbourhood is already near black or white. 0 is the mildest, 1 the strongest; below 0 is off." {
+      default -1
+      min -1
+      max 1
+      tunable true
+    }
+    field flash f32 "A full-screen flash: the display colour mixed towards flashColor by this much (animate it per tick); 0 is off." {
+      min 0
+      max 1
+      tunable true
+    }
+    field flashColor Color "The flash's linear display colour." {
+      default 1 1 1
+    }
+    field shakeTrauma f32 "Camera shake held at a fixed level (decay it yourself): 0 none, 1 the most (the amplitude is trauma squared). Prefer og.camera.shake, which decays by itself; the frame shakes by the larger of the two. Smooth value noise by the tick, so a replay shakes the same. Visual only." {
+      min 0
+      max 1
+      tunable true
+    }
+    field shakeMaxOffset f32 "The largest offset at trauma 1, as a fraction of the view height." {
+      default 0.05
+      min 0
+    }
+    field shakeMaxRoll f32 "The largest roll at trauma 1." {
+      default 3
+      min 0
+      unit deg
+    }
+    field shakeFrequency f32 "How fast the shake moves." {
+      default 12
+      min 0
+      unit hz
+    }
+    field shakeSeed u32 "The shake's noise seed."
+    field ssr bool "Screen-space reflections, stochastic and denoised (after AMD FidelityFX SSSR and Frostbite's SSR): each pixel up to ssrMaxRoughness casts one ray drawn from its GGX lobe, marched through a hierarchical depth pyramid of the depth-normal prepass; neighbours' rays are reused and the result accumulated over frames, so mirrors stay sharp and rough metal blurs as its lobe does. A hit reflects the previous frame's lit image (a frame after a cut has none yet). Lit surfaces blend it over the reflection probes', the probe GI's and the environment's reflection by how much of the lobe the screen resolved: where a ray leaves the screen, hits the sky or misses, those show. Opaque surfaces of a perspective 3D camera only; it turns on the depth-normal prepass."
+    field ssrMaxDistance f32 "How far a reflected ray marches, in world units; the last fifth fades into the probes'. The hierarchical march's cost is set by ssrSteps, not by the distance, so a long reach is cheap: the default lets a wet street mirror lights 40 m down it." {
+      default 100
+      min 0
+      unit m
+      tunable true
+    }
+    field ssrThickness f32 "How far behind the depth buffer a surface is taken to extend: a ray passing behind a surface by less than this hits it." {
+      default 0.3
+      min 0
+      unit m
+      tunable true
+    }
+    field ssrSteps u32 "The hierarchical march's iterations along each ray: each crosses a cell of the min-max depth pyramid's current level, and a ray behind everything in a cell crosses it on that level too. 64 lets a ray that passes behind thin and distant things (lamp posts down a street) reach what it reflects; a ray out of steps keeps the probes' reflection. Only the rays that need the steps pay for them." {
+      default 64
+      min 4
+      max 128
+    }
+    field ssrFade f32 "The fraction of the screen's edge over which a reflection fades into the probes' (the last fifth of ssrMaxDistance fades too)." {
+      default 0.15
+      min 0
+      max 1
+      unit ratio
+    }
+    field ssrIntensity f32 "How much of the reflection replaces the probes' and the environment's where it resolved; 1 is physical (weighted by the surface's Fresnel and lobe as the probes' are)." {
+      default 1
+      min 0
+      max 1
+      tunable true
+    }
+    field ssrMaxRoughness f32 "The roughest surface traced: rougher ones keep the probes' reflection, and the last quarter below it fades into them. Rays on rough surfaces cost the same as on mirrors, and the denoiser accumulates them over more frames." {
+      default 0.6
+      min 0
+      max 1
+      unit ratio
+      tunable true
+    }
+    field ssrResolution AoResolution "Half (the default): one ray per 2x2 block, a different pixel of the block each frame, denoised on the blocks and upsampled to the pixels by their depth, normal and roughness, so edges stay sharp: under half of Full's cost (about 1.6 ms at 1080p on an M4 Pro), with slightly softer near-mirror detail. Full: one ray per pixel, denoised at full resolution: the sharpest mirrors." {
+      default half
+    }
+    field custom List.Post.8 "The custom post passes, in order (og.load.post, `type post` assets): at most RenderCapabilities.maxCustomPosts (8, og-render's MAX_CUSTOM_POSTS). Each runs over the one before it (the lit image for the first), after depth of field and motion blur and before exposure, bloom and the tone curve, and reads the lit image, depth and normals too (any pass turns the prepass on). Write the whole list: `post.custom = [grade, crt]`, `post.custom = []`; a look gives it on one line (`custom \"post/tint.ogt\" \"post/crt.ogt\"`). A 0 in it is skipped. Its parameters are set with og.render.setPostParam. A pass the device fails to compile is reported (og.render.postErrors) and skipped."
+  }
+
+  resource LensFlare {
+    doc "Lens flare, as Filament's screen-space flare (after John Chapman): ghosts and a halo mirror the bright parts of the bloom chain's first level through the centre of the frame with chromatic aberration, are blurred, and are added before the tone curve, the halo under a starburst. The sun and up to seven point and spot lights (the ones with the most light at the camera) also cast ghosts of their own, smooth aperture-shaped discs (the sun's 8 % of the frame's height in radius, a light's three times its size on screen up to that; magnified up to 1.5 times along the line through the centre, and fainter as they are), as bright as 0.56 % (the sun) or 0.28 % (a light) of the source's exposed radiance spread over the sun's disc, in proportion to its light as its bloom is (so a dim lamp's are faint, and a small lamp's small), each weighted by how much of it the depth shows, so a sun behind a roof or a lamp behind a pillar fades out; a ghost that would lie on its own source's glare is left out. Runs after bloom, after TAA, at a quarter of the frame, in exposed light, so the exposure and an HDR display apply to it as they do to bloom. With RenderSettings.bloom on, the flare's thresholds apply above bloomThreshold; with bloom off, the bloom chain's first level runs for the flare alone with no threshold of its own, and only the flare is added. In 3D it turns on the depth-normal prepass. Clouds dim the sun's flare through the light they leave the sun, and fog through what it leaves of the sky towards the sun; a single cloud crossing the sun's disc does not."
+    doc "Off by default. Read after each tick; it never feeds back into the simulation, and a world that never names this resource keeps the type table, saves and hash it had without it."
+    field enabled bool "Draw the lens flare."
+    field intensity f32 "How much of the flare is added (Filament adds its flare at its bloom strength, 0.1)." {
+      default 0.1
+      min 0
+      tunable true
+    }
+    field ghosts u32 "Ghosts per bright spot, along the line through the centre of the frame; 0 is none." {
+      default 4
+      min 0
+      max 16
+    }
+    field ghostSpacing f32 "How far apart the ghosts are, as a fraction of the way to the centre." {
+      default 0.6
+      min 0
+      max 1
+      tunable true
+    }
+    field ghostThreshold f32 "The exposed brightness above which a spot casts ghosts (each screen-space tap clamps at 1, display white; a source's own ghosts stay in proportion to its light)." {
+      default 10
+      min 0
+      tunable true
+    }
+    field haloRadius f32 "The halo ring's radius, as a fraction of the frame's height." {
+      default 0.28
+      min 0
+      max 0.5
+      tunable true
+    }
+    field haloThickness f32 "The halo ring's thickness, as a fraction of the frame's height; 0 is no halo." {
+      default 0.1
+      min 0
+      tunable true
+    }
+    field haloThreshold f32 "The exposed brightness above which a spot feeds the halo." {
+      default 10
+      min 0
+      tunable true
+    }
+    field chromaticAberration f32 "How far the screen-space ghosts' red and blue split along the line to the centre, as a fraction of the frame (Filament's default is 0.005). Each ghost also takes one coating tint, amber, teal and violet in turn." {
+      default 0.001
+      min 0
+      tunable true
+    }
+    field starburst bool "Filament's starburst: the halo streaked by an angular pattern round the centre of the frame that turns as the camera turns (Filament streaks the whole flare; here the ghosts stay smooth discs)." {
+      default true
+    }
+    field sun f32 "The sun's own flare: a disc of the sun's size in the sky (0.27 degrees without a drawn disc), weighted by the share of it the depth shows as sky; the sky round it is kept out of the screen-space ghosts, so the sun flares once. 0 is none (no ghosts of the sun at all); 1 lets its ghosts reach full strength." {
+      default 1
+      min 0
+      tunable true
+    }
+    field lights f32 "The point and spot lights' own flares: each a 0.2 m disc of the light's radiance at its position (a spot only seen from inside its cone), hidden where the depth lies more than 0.2 m in front of it; its own bulb is kept out of the screen-space ghosts, so it flares once. 0 is none (no ghosts of those lights at all)." {
+      default 1
+      min 0
+      tunable true
+    }
+  }
+
+  enum GiMethod {
+    doc "How GlobalIllumination bounces the light."
+    variant screen "In screen space: rays through the depth-normal prepass take the light the previous frame showed where they hit. Fine detail and contact, but nothing from off screen or behind what the screen shows."
+    variant probes "With probes: a grid of probes around the camera, each casting rays through a simplified copy of the scene (its meshes and terrains) every few frames, gathers the light arriving from every side, sky included; every lit surface takes its ambient light from the probes around it, tested for which of them see it. Light from off screen and behind walls bounces, a red wall lights the floor beside it however the camera looks, and the sky's light is occluded under roofs, in rooms and between buildings. Coarse (a probe every probeSpacing metres): pair it with PostEffects.ao for contact."
+    variant both "Probes for the light from the whole scene and the sky, the screen-space rays for the detail they see."
+  }
+
+  column GiMethod {
+    doc "A GiMethod field: the variant's index."
+    array Uint32Array
+    stride 1
+    value GiMethod
+  }
+
+  resource GlobalIllumination {
+    doc "Global illumination: light bounces between surfaces, so shade is lit by what stands around it. By method: in screen space (`screen`), each pixel casts rays over the hemisphere of its normal through the depth-normal prepass, and where a ray meets a surface it takes the light that surface sent on the previous frame (so a few frames give many bounces): a red wall tints the floor beside it, a sunlit patch lights the room's ceiling, an emissive panel lights what faces it; light from off screen, or behind what the screen shows, is not bounced. With probes (`probes`), cascades of probes around the camera trace the scene in software and every lit surface (meshes, terrain, grass, scattered copies) takes its ambient light from them: the bounce from the whole scene, and the sky occluded by it. The bounce adds to the diffuse ambient light, and the rays that hit something take their share of the ambient light (the environment, the sky, baked lightmaps and LightVolumes) away, as ambient occlusion does; with PostEffects.ao on, its term does that, and with probes its bent normals (GTAO) pick the probes' light from the direction a crease opens to. Under TAA the screen rays change every frame and TAA averages them; without it a still frame keeps one pattern, blurred. Off by default. Read after each tick; it never feeds back into the simulation, and a world that never names this resource keeps the type table, saves and hash it had without it."
+    field enabled bool "Bounce the light."
+    field method GiMethod "In screen space, with probes, or both."
+    field intensity f32 "Scales the bounced light; 1 is physical. With probes the sky's light and emission are not scaled, only what surfaces bounce." {
+      default 1
+      min 0
+      tunable true
+    }
+    field maxDistance f32 "How far each ray travels at most: the reach of a bounce. A ray also stops where it leaves the screen, its steps spread over what it crosses on screen. With probes (`both`) the rays reach one probe spacing at most: farther, the probes give the light." {
+      default 16
+      min 0
+      unit m
+      tunable true
+    }
+    field thickness f32 "How far behind the depth buffer a surface is taken to extend: a ray passing behind a surface by less than this hits it." {
+      default 0.5
+      min 0
+      unit m
+      tunable true
+    }
+    field steps u32 "Steps along each ray." {
+      default 12
+      min 4
+      max 64
+    }
+    field rays u32 "Rays per pixel each frame: more is smoother and costlier (TAA adds the frames' rays together)." {
+      default 4
+      min 1
+      max 16
+    }
+    field occlusion f32 "How much of the ambient light the rays that hit something take away (1 physical, 0 the bounce is only added); not read while PostEffects.ao is on, whose term occludes." {
+      default 1
+      min 0
+      max 1
+      tunable true
+    }
+    field resolution AoResolution "Full resolution, or half for a quarter of the rays and a depth-aware upsample. With PostEffects.ao on, the AO is drawn at this resolution too. RenderSettings.aoResolution replaces it as it replaces the AO's."
+    field probeSpacing f32 "With probes: the distance between neighbouring probes of the finest cascade (16 × 8 × 16 probes around the camera); each next cascade's probes are twice as far apart, reaching twice as far. About a third of a room's size indoors, a few metres outdoors." {
+      default 1
+      min 0.05
+      unit m
+    }
+    field probeCascades u32 "With probes: how many cascades, each doubling the reach of the one before (the first is updated every frame, the next every second frame, then every fourth)." {
+      default 3
+      min 1
+      max 4
+    }
+    field probeRays u32 "With probes: rays each probe casts when it is updated; more is smoother and costlier." {
+      default 64
+      min 32
+      max 256
+    }
+    field allowed bool "The graphics quality's switch: false draws none and enabled keeps the game's choice. og.render.applyQuality writes it (false in the low preset, true in medium and high) on a world that has this resource; a game that names the resource after applying a preset applies the preset again." {
+      default true
+    }
+  }
+

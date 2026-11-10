@@ -68,7 +68,8 @@ status `docs/roadmap.md`. Platform contracts implemented here:
 - **One API, two hosts.** The TypeScript API is generated from one IDL for the
   wasm and native hosts; a member on one and not the other is a bug. Backend
   limits are capability queries. Edit `crates/og-api/api/<module>.ogt`
-  (`prelude.ogt` holds the header and units, `parts.txt` the order).
+  (`prelude.ogt` holds the header and units, `parts.txt` the order; a large
+  module continues in `<module>-<subject>.ogt` parts).
 - **Deterministic by construction.** Fixed tick, engine-owned seeded
   randomness, no wall clock in the tick, snapshot and restore of the whole
   world. Rendering never feeds back into simulation; presentation state is

@@ -57,8 +57,12 @@ og api check   # CI: exit 1 and the differing files on drift
 
 `api/parts.txt` lists the files in declaration order:
 `prelude.ogt` contains everything before the first module, and each
-`<module>.ogt` contains one whole module. Edit that module's file (for
-example `api/ui.ogt`); append a new module's filename to `parts.txt`.
+`<module>.ogt` opens one module. A large module continues in
+`<module>-<subject>.ogt` parts listed right after it (`render.ogt` then
+`render-effects.ogt`, `render-looks.ogt`, ...; `physics.ogt` then
+`physics-characters.ogt`, ...; `ui-core.ogt` and its parts), cut between
+items, the last one closing the module. Edit the part that holds the
+item; append a new module's filename to `parts.txt`.
 The loader concatenates the parts verbatim: keep their final newlines.
 No part gains a header; only the prelude has `type api`. Model lines count
 through the concatenation. Wiki citations count from the named module's

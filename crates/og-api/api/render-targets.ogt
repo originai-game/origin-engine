@@ -1,0 +1,181 @@
+  # ── render targets, secondary cameras, custom shaders and post passes (docs/design.md §10.8) ──
+
+  enum RenderTargetFormat {
+    doc "How a render target's colour is stored."
+    variant ldr "8-bit sRGB: the view's finished image (exposed with its camera's exposure and tone mapped with RenderSettings' curve), as a loaded colour texture: a monitor, a minimap, a portrait (show it with an unlit material's map or a sprite)."
+    variant hdr "16-bit float, linear: the view's radiance before exposure and tone mapping, exposed once with the frame that shows it: a mirror or a portal (show it as a material's emissiveMap with color black)."
+  }
+
+  column RenderTargetFormat {
+    doc "A RenderTargetFormat field: the variant's index."
+    array Uint32Array
+    stride 1
+    value RenderTargetFormat
+  }
+
+  handle RenderTarget "A texture a camera draws into (og.render.renderTarget), as three.js WebGLRenderTarget."
+
+  column RenderTarget {
+    doc "A RenderTarget handle field (0 is none)."
+    array Uint32Array
+    stride 2
+    value RenderTarget
+  }
+
+  struct RenderTargetDesc {
+    doc "A render target's size and storage, as three.js WebGLRenderTarget's width, height, type and depthTexture."
+    desc true
+    field width u32 "Its width in texels." {
+      default 512
+      min 1
+    }
+    field height u32 "Its height in texels." {
+      default 512
+      min 1
+    }
+    field format RenderTargetFormat "How its colour is stored."
+    field depth bool "Keep the view's depth too, as a second texture (RenderTargetInfo.depthTexture): its linear view depth from near (0) to far (1) in red, green and blue, of the opaque meshes and models, alpha-cut ones cut (transparent meshes, sprites and particles write none), drawn on every tier (RenderCapabilities.renderTargetDepth). It costs a second draw of the view's opaque meshes."
+  }
+
+  struct RenderTargetInfo {
+    doc "What og.render.renderTarget made."
+    field target RenderTarget "The target, for CameraView.target and Mirror.target."
+    field texture Texture "Its colour: any material map, og.Sprite, og.render.sprite or og.ui image shows it, as drawn by the last camera that drew into it (transparent black before)."
+    field depthTexture Texture "Its depth (RenderTargetDesc.depth); 0 without."
+    field width u32 "Its width in texels."
+    field height u32 "Its height in texels."
+  }
+
+  fn renderTarget {
+    doc "Make a render target: a texture an og.CameraView or og.Mirror draws into, its colour (RenderTargetInfo.texture) usable by any map, sprite or UI image, as three.js WebGLRenderTarget and its texture. Targets are drawn before the frame, so a material shows this frame's image; one a camera draws while it sees itself (a monitor in the room it films) shows the frame before."
+    param world World "The world whose renderer owns it."
+    param desc RenderTargetDesc "Its size, format and depth."
+    returns Result.RenderTargetInfo "Refused for a side past RenderCapabilities.maxRenderTargetSize."
+  }
+
+  component CameraView {
+    doc "A secondary camera, as a second three.js camera rendered with setRenderTarget or setViewport: it draws the scene from the entity's MatrixWorld (looking down its local -Z, as og.Camera) into a render target (target), or, without one, into a rect of the frame (viewport: split-screen, picture-in-picture) over the finished image and under the UI."
+    doc "It draws what the main camera draws, from its own eye and on its own layers: the meshes and models (skinned and with any material: hooks and full shaders run their vertex and fragment entries), opaque then transparent back to front, the terrain and the sky, the particle systems, og.Lines and og.Points, world sprites (og.Sprite, og.render.sprite) and world text, lit by the frame's lights and shadowed by its shadow maps. Each view is a draw of everything its layers admit: keep a view cheap with its layers and `every`. Screen sprites, the UI and debug draw stay on the main frame. Of the post chain, an ldr target and a viewport carry the view's exposure (its camera's) and the frame's tone curve; an hdr target carries linear radiance before exposure, exposed by the frame that shows it. Neither runs the frame's bloom, AO, SSR, depth of field, colour grading or custom post passes, whose inputs are the main camera's. Sprites in a view are not 2D-lit and do not glow; trails and 2D fluids draw on the main frame only. Views draw lowest order first, all before the frame."
+    field target RenderTarget "The target it draws into; 0 draws into the viewport rect of the frame."
+    field viewportX f32 "The viewport's left edge, as a fraction of the frame's width (without a target)." {
+      min 0
+      max 1
+    }
+    field viewportY f32 "The viewport's top edge, as a fraction of the frame's height." {
+      min 0
+      max 1
+    }
+    field viewportWidth f32 "The viewport's width, as a fraction of the frame's." {
+      default 1
+      min 0
+      max 1
+    }
+    field viewportHeight f32 "The viewport's height, as a fraction of the frame's." {
+      default 1
+      min 0
+      max 1
+    }
+    field fov f32 "The vertical field of view, as og.Camera.fov." {
+      default 50
+      min 1
+      max 179
+      unit deg
+      tunable true
+    }
+    field near f32 "The near clipping plane." {
+      default 0.1
+      min 0.001
+      unit m
+    }
+    field far f32 "The far clipping plane." {
+      default 2000
+      min 0.01
+      unit m
+    }
+    field zoom f32 "The zoom factor, as og.Camera.zoom." {
+      default 1
+      min 0.01
+      max 100
+    }
+    field orthographic bool "An orthographic projection of `height` world units."
+    field height f32 "The visible world height of the orthographic projection." {
+      default 10
+      min 0.01
+      unit m
+    }
+    field exposure f32 "Its exposure before tone mapping (an ldr target and a viewport)." {
+      default 1
+      min 0
+      max 16
+      tunable true
+    }
+    field layers u32 "Three.js layers, as og.Camera.layers: it draws the objects whose layers share a bit with it." {
+      default 1
+    }
+    field order i32 "Views draw in ascending order (ties in entity order), all before the frame."
+    field clear bool "Clear to clearColor instead of drawing the scene's background (sky or colour)."
+    field clearColor Color "The linear colour it clears to with clear." {
+      default 0 0 0
+    }
+    field every u32 "Draw once every this many ticks (when the tick is a multiple of it); the target keeps its image between. 0 and 1 draw every frame: a security monitor at 4 costs a quarter." {
+      default 1
+    }
+    field active bool "Whether it draws." {
+      default true
+    }
+  }
+
+  component Mirror {
+    doc "A planar mirror: the main camera reflected in the entity's xy plane (its local +Z the mirror's facing side), drawn into target fitted to a width by height rect centred on the entity, as a mirrored og.CameraView. Give the mirror's mesh (an og.render.planeGeometry of the same size) a material that reads the target: an hdr target as emissiveMap with color black, or an ldr target as an unlit map. Nothing behind the glass is drawn; seen from behind, it draws nothing."
+    field target RenderTarget "The target it draws into."
+    field width f32 "The mirror's width along the entity's local +X." {
+      default 1
+      min 0.001
+      unit m
+    }
+    field height f32 "Its height along local +Y." {
+      default 1
+      min 0.001
+      unit m
+    }
+    field layers u32 "Three.js layers it reflects, as og.Camera.layers." {
+      default 1
+    }
+    field every u32 "Draw once every this many ticks, as CameraView.every." {
+      default 1
+    }
+    field active bool "Whether it draws." {
+      default true
+    }
+  }
+
+  handle Post "A custom post pass from og.load.post (an `.ogt` of `type post`): a WGSL `post` function over the lit image and the parameters it reads."
+
+  column Post {
+    doc "A Post handle field (0 is none)."
+    array Uint32Array
+    stride 2
+    value Post
+  }
+
+  fn setPostParam {
+    doc "Set a parameter of a custom post pass, by the name its asset declares: a number for float, two to four for vec2, vec3, vec4 and color. Every frame it runs in reads it."
+    param world World "The world whose renderer owns the pass."
+    param post Post "The pass, from og.load.post."
+    param name String "The parameter's name."
+    param value List.f32 "Its value; missing components are 0."
+    returns Result.Void "Refused for a pass not loaded in this world or a parameter it does not declare."
+  }
+
+  struct PostError {
+    doc "A custom post pass the device failed to compile."
+    field post Post "The pass."
+    field message String "The device's message."
+  }
+
+  fn postErrors {
+    doc "The custom post passes PostEffects.custom names that failed to compile on this device, each skipped (the frame draws as without it). The cook validates every pass for each back end, so this is a device's own refusal."
+    param world World "The world asked."
+    returns List.PostError
+  }
+
