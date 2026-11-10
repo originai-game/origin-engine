@@ -29,5 +29,6 @@
 .tracker-mark { width: var(--space-md); height: var(--space-md); flex: none; }
 .tracker-text { width: stretch; }
 .tracker-distance { display: flex; align-items: center; justify-content: center; gap: var(--space-xs); }
+.tracker-distance[hidden] { display: none; }
 .tracker-arrow { width: var(--space-md); height: var(--space-md); }
 </style>

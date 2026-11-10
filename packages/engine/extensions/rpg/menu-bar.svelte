@@ -1,0 +1,30 @@
+<meta name="component" content="RpgMenuBar">
+<meta name="strings" content="./rpg.en.ogt">
+<meta name="prop:tabs" content="list" data-doc="The menu's screens, keyed rows of { id, label } (Character, Inventory, Skills, Quests, Map).">
+<meta name="prop:tab" content="string" data-doc="The screen shown.">
+<meta name="action:tabPrev" content="Previous screen">
+<meta name="action:tabNext" content="Next screen">
+<meta name="action:back" content="Close">
+<meta name="fixture:default" content='{"tabs":[{"id":"char","label":"Character"},{"id":"inv","label":"Inventory"}],"tab":"char"}'>
+
+<!--
+  The menu's top bar: its screens as tabs and a close button. Reports tab
+  (a screen's key), tabPrev, tabNext and close (the button, Escape or B).
+-->
+<nav id="RpgMenuBar" class="rpg-menu-bar" aria-label={t("rpg.menu.name")} ontabNext={tabNext} ontabPrev={tabPrev} onback={close}>
+  <div class="menu-tabs" role="tablist">
+    {#each tabs as c (c.id)}
+      <button class="menu-tab" role="tab" aria-selected={c.id == tab} onclick={choosetab}>{c.label}</button>
+    {/each}
+  </div>
+  <button id="Close" class="menu-close" aria-label={t("rpg.menu.close")} onclick={close}><div class="face"><div class="close-mark"></div></div></button>
+</nav>
+
+<style>
+.rpg-menu-bar { display: flex; width: stretch; align-items: center; gap: var(--space-md); }
+.menu-tabs { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: var(--space-xs); width: stretch; }
+.menu-tab { width: stretch; min-height: var(--size-touch); }
+.menu-close { width: var(--size-touch); height: var(--size-touch); flex: none; padding: 0; }
+.face { width: stretch; height: stretch; align-items: center; justify-content: center; }
+.close-mark { width: 50%; height: 50%; }
+</style>

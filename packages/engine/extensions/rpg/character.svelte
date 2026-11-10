@@ -1,14 +1,15 @@
 <meta name="component" content="RpgCharacter">
 <meta name="strings" content="./rpg.en.ogt">
-<meta name="prop:name" content="string" data-doc="The character's name.">
+<meta name="prop:title" content="string" data-doc="A heading band over the figure (Equipment); empty shows the name header instead.">
+<meta name="prop:name" content="string" data-doc="The character's name; with an empty title it heads the sheet beside the portrait.">
 <meta name="prop:line" content="string" data-doc="The class and level line as the game words it (Rogue · Level 12).">
 <meta name="prop:portrait" content="number" data-doc="A head-and-shoulders texture (og.load.texture); 0 hides it.">
 <meta name="prop:figure" content="number" data-doc="A full-figure texture shown between the slot columns; 0 leaves the ground.">
 <meta name="prop:slots" content="list" data-doc="The equipment slots, keyed rows of { id, side, label, icon, rarity }: side is start or end (the column it stands in, mirrored right to left); an empty icon is an empty slot showing its label.">
 <meta name="prop:selected" content="string" data-doc="The selected slot's id; empty is none.">
-<meta name="prop:attributes" content="list" data-doc="The attributes, keyed rows of { id, group, icon, label, value }: group a or b, the two columns.">
+<meta name="prop:attributes" content="list" data-doc="The attributes, keyed rows of { id, group, icon, label, value }: group a or b, the two columns; empty hides them (a page with RpgStats beside it).">
 <meta name="action:details" content="Unequip">
-<meta name="fixture:default" content='{"name":"Brenna Vale","line":"Ranger · Level 12","portrait":0,"figure":0,"slots":[{"id":"hand","side":"start","label":"Weapon","icon":"item-blade","rarity":"legendary"},{"id":"neck","side":"end","label":"Amulet","icon":"","rarity":"common"}],"selected":"hand","attributes":[{"id":"vit","group":"a","icon":"heart","label":"Vitality","value":"142"},{"id":"str","group":"b","icon":"sword","label":"Strength","value":"14"}]}'>
+<meta name="fixture:default" content='{"title":"","name":"Brenna Vale","line":"Ranger · Level 12","portrait":0,"figure":0,"slots":[{"id":"hand","side":"start","label":"Weapon","icon":"item-blade","rarity":"legendary"},{"id":"neck","side":"end","label":"Amulet","icon":"","rarity":"common"}],"selected":"hand","attributes":[{"id":"vit","group":"a","icon":"heart","label":"Vitality","value":"142"},{"id":"str","group":"b","icon":"sword","label":"Strength","value":"14"}]}'>
 
 <!--
   A character sheet: a portrait with name and class, two columns of
@@ -16,8 +17,9 @@
   columns beneath. The game owns what fits where; the sheet reports choose
   (a slot's key) and unequip (X or pad Y on the focused slot, its key).
 -->
-<section id="RpgCharacter" class="rpg-character" aria-label={name}>
-  <header class="who">
+<section id="RpgCharacter" class="rpg-character" aria-label={title ? title : name}>
+  <header class="rpg-band" hidden={!title}><div class="band-end start"></div><h2 class="rpg-title">{title}</h2><div class="band-end finish"></div></header>
+  <header class="who" hidden={title != ''}>
     <img class="portrait" src={portrait} alt="" hidden={!portrait}>
     <div class="who-text">
       <h2 class="char-name">{name}</h2>
@@ -42,7 +44,7 @@
       {/each}
     </div>
   </div>
-  <div class="attributes" role="table" aria-label={t("rpg.character.attributes")}>
+  <div class="attributes" role="table" hidden={!attributes.length} aria-label={t("rpg.character.attributes")}>
     <div class="attr-column">
       {#each attributes as a (a.id)}
         {#if a.group == 'a'}<div class="attr" role="row"><icon class="attr-mark" icon={a.icon}></icon><span class="attr-label" role="rowheader">{a.label}</span><span class="attr-value" role="cell">{a.value}</span></div>{/if}
@@ -59,6 +61,8 @@
 
 <style>
 .rpg-character { display: flex; flex-direction: column; width: stretch; height: stretch; gap: var(--space-sm); container-type: inline-size; }
+.rpg-band { display: flex; width: stretch; align-items: center; justify-content: center; gap: var(--space-md); flex: none; }
+.band-end { width: var(--size-lg); height: var(--space-lg); flex: none; }
 .who { display: flex; width: stretch; gap: var(--space-md); align-items: center; flex: none; }
 .portrait { width: calc(var(--size-xxl) * 1.15); height: calc(var(--size-xxl) * 1.15); object-fit: cover; flex: none; }
 .who-text { display: flex; flex-direction: column; width: stretch; gap: var(--space-xxs); align-items: center; text-align: center; }

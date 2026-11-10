@@ -34,6 +34,7 @@
 .member { position: relative; width: stretch; padding: var(--space-xs); gap: var(--space-xxs); align-items: stretch; justify-content: flex-start; }
 .member .face { display: flex; flex-direction: column; width: stretch; gap: var(--space-xxs); }
 .picture { width: stretch; aspect-ratio: 0.9; overflow: hidden; }
+@media (width >= 600px) { .picture { aspect-ratio: 1.5; } }
 .portrait { width: stretch; height: stretch; object-fit: cover; object-position: center top; }
 .seal { position: absolute; left: var(--space-xxs); top: var(--space-xxs); width: var(--size-md); height: var(--size-md); align-items: center; justify-content: center; gap: 0; }
 .member-name { padding: var(--space-xxs) var(--space-xs); text-align: center; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }

@@ -3,5 +3,8 @@
   "kind": "kit",
   "name": "rpg",
   "version": "1.0.0",
-  "description": "RPG and open-world documents: backpack, item card and character, quest log and detail, world map and location, conversation, compass, party and initiative"
+  "description": "RPG and open-world documents: backpack, item card, character and stats, quest log, detail and tracker, world map and place, conversation, compass, vitals, action bar, party, turn order, combat log, enemy info, commands and menu bar",
+  "components": [
+    "minimap"
+  ]
 }
