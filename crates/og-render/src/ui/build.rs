@@ -199,7 +199,11 @@ impl UiTables {
             .take(UI_GRADIENT_STOPS)
             .map(|s| UiStop {
                 offset: if s.offset.is_finite() {
-                    s.offset.clamp(0.0, 1.0)
+                    if g.spread == UiSpread::RepeatStops {
+                        s.offset
+                    } else {
+                        s.offset.clamp(0.0, 1.0)
+                    }
                 } else {
                     0.0
                 },
@@ -229,6 +233,7 @@ impl UiTables {
                     UiSpread::Pad => 0.0,
                     UiSpread::Repeat => 1.0,
                     UiSpread::Reflect => 2.0,
+                    UiSpread::RepeatStops => 3.0,
                 },
                 f32::from(u8::from(g.dither)),
             ],

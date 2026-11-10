@@ -1,0 +1,14 @@
+{
+  "fixed": [
+    {
+      "member": "ui.css",
+      "summary": "Repeating radial and conic gradients repeat the interval between their first and last stops, including negative positions; coincident stops render their CSS average colour."
+    }
+  ],
+  "added": [
+    {
+      "member": "ui.css",
+      "summary": "docs/ui.md includes a pinned 454-feature WebDX CSS checklist distinguishing scoped output proofs from missing implementation or proof, with widget part applicability tracked separately."
+    }
+  ]
+}

@@ -182,6 +182,9 @@ pub enum UiSpread {
     Pad,
     Repeat,
     Reflect,
+    /// CSS repeating gradients repeat between their first and last stops,
+    /// which can be outside 0..1, rather than repeating the geometry's 0..1.
+    RepeatStops,
 }
 
 /// A gradient stop: `offset` 0 to 1 and a linear RGBA colour.

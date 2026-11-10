@@ -656,6 +656,7 @@ fn gradient(w: &mut W, g: &UiGradient) {
         UiSpread::Pad => 0,
         UiSpread::Repeat => 1,
         UiSpread::Reflect => 2,
+        UiSpread::RepeatStops => 3,
     });
     w.u8(u8::from(g.dither));
 }
@@ -682,6 +683,7 @@ fn rgradient(r: &mut R) -> Option<UiGradient> {
         0 => UiSpread::Pad,
         1 => UiSpread::Repeat,
         2 => UiSpread::Reflect,
+        3 => UiSpread::RepeatStops,
         _ => return None,
     };
     Some(UiGradient {

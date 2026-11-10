@@ -2376,7 +2376,7 @@ impl CssGradient {
     /// The gradient over a `w` × `h` box.
     pub(crate) fn resolve(&self, w: f32, h: f32) -> Gradient {
         let (w, h) = (w.max(1e-3), h.max(1e-3));
-        let (kind, mut from, mut to, length) = match self.shape {
+        let (kind, from, to, length) = match self.shape {
             Shape::Linear(dir) => {
                 let d = match dir {
                     Dir::Angle(a) => [a.sin(), -a.cos()],
@@ -2453,32 +2453,7 @@ impl CssGradient {
             .map(|(_, p)| p.map(|p| p.at(length) / length))
             .collect();
         fix_stops(&mut offsets);
-        let mut offsets: Vec<f32> = offsets.into_iter().map(|o| o.unwrap_or(0.0)).collect();
-        let mut spread = Spread::Pad;
-        if self.repeating {
-            spread = Spread::Repeat;
-            let (p0, p1) = (offsets[0], *offsets.last().unwrap());
-            let span = (p1 - p0).max(1e-4);
-            match kind {
-                GradientKind::Linear => {
-                    let (f, t) = (from, to);
-                    for k in 0..2 {
-                        from[k] = f[k] + (t[k] - f[k]) * p0;
-                        to[k] = f[k] + (t[k] - f[k]) * p1;
-                    }
-                    for o in &mut offsets {
-                        *o = (*o - p0) / span;
-                    }
-                }
-                GradientKind::Radial if p0 <= 0.0 => {
-                    to = [to[0] * p1, to[1] * p1];
-                    for o in &mut offsets {
-                        *o /= span;
-                    }
-                }
-                _ => spread = Spread::Pad,
-            }
-        }
+        let offsets = offsets.into_iter().map(|o| o.unwrap_or(0.0));
         Gradient {
             kind,
             from,
@@ -2492,7 +2467,11 @@ impl CssGradient {
                     color: c.clone(),
                 })
                 .collect(),
-            spread,
+            spread: if self.repeating {
+                Spread::RepeatStops
+            } else {
+                Spread::Pad
+            },
             dither: true,
         }
     }

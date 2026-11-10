@@ -811,6 +811,7 @@ impl Bundle {
                     spread: match p.spread {
                         1 => og_render::UiSpread::Repeat,
                         2 => og_render::UiSpread::Reflect,
+                        3 => og_render::UiSpread::RepeatStops,
                         _ => og_render::UiSpread::Pad,
                     },
                     dither: p.dither != 0,

@@ -931,10 +931,18 @@ fn gradient_color(gi: u32, f: vec2<f32>, size: vec2<f32>, pixel: vec2<f32>) -> v
     }
   }
   let spread = u32(g.head.z);
+  var collapsed = false;
   if (spread == 1u) {
     t = fract(t);
   } else if (spread == 2u) {
     t = 1.0 - abs(fract(t * 0.5) * 2.0 - 1.0);
+  } else if (spread == 3u) {
+    let first = stop_offset(g, 0u);
+    let period = stop_offset(g, count - 1u) - first;
+    collapsed = period <= 0.0;
+    if (!collapsed) {
+      t = first + fract((t - first) / period) * period;
+    }
   }
   var c = g.colors[0];
   if (count > 1u && t > stop_offset(g, 0u)) {
@@ -950,6 +958,19 @@ fn gradient_color(gi: u32, f: vec2<f32>, size: vec2<f32>, pixel: vec2<f32>) -> v
     }
   }
   var rgb = oklab_to_linear(c.xyz / max(c.w, 1e-6));
+  if (collapsed && count > 1u) {
+    // CSS Images 3 §3.3: coincident stops are averaged as equally spaced
+    // stops in premultiplied sRGBA, with half weight at the two endpoints.
+    var average = vec4<f32>(0.0);
+    for (var i = 0u; i < count; i++) {
+      let stop = g.colors[i];
+      let color = encode(max(oklab_to_linear(stop.xyz / max(stop.w, 1e-6)), vec3<f32>(0.0)));
+      let weight = select(1.0, 0.5, i == 0u || i == count - 1u) / f32(count - 1u);
+      average += vec4<f32>(color * stop.w, stop.w) * weight;
+    }
+    rgb = decode(average.xyz / max(average.w, 1e-6));
+    c.w = average.w;
+  }
   rgb = max(rgb, vec3<f32>(0.0));
   if (g.head.w > 0.5) {
     // Half a code value of noise in the encoded output, so 8 bits show no bands.

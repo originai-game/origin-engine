@@ -2913,3 +2913,472 @@ skills. No kit silently implements those missing facilities itself.
 The [gate rules](ci.md) own test lanes, locks, and toolchain policy.
 `scripts/land.sh` owns landing on main. Release and platform installation
 follow [release rules](release.md), with separate release authorization.
+
+<!-- css-coverage:start -->
+## 8. Standard CSS output-proof checklist
+
+Source: [WebDX web-features 3.45.0](https://www.npmjs.com/package/web-features/v/3.45.0). All 454 entries with a `css.*` compatibility key are included: 257 widely available (high), 56 newly available (low), and 141 not Baseline. Including the newer entries keeps game-UI requirements visible rather than treating Baseline as a ceiling.
+
+**Supported means the output assertion named in the row proves the listed scope.** It does not claim every syntax or subfeature grouped under that WebDX name. **Missing means an implementation gap or a missing output proof**, distinguished in the reason. A missing proof is not evidence that the implementation is absent. Parser acceptance, a property name in source, and an entire test file are not support evidence. This is a conservative, incomplete conformance inventory; unresolved rows stay visible.
+
+Part applicability is pending the parts-as-nodes stream for every row: an element test does not prove that a widget `::part` lays out, transforms or paints the property. Inherited, pseudo-element, environment and lifecycle features need their own applicable part scenarios; there is no blanket all-properties claim.
+
+Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document drift. For offline use, pass `--archive <web-features-3.45.0.tgz>`; its SHA-256 is pinned in the script. Proof entries are manually reviewed assertions, not name matches. Tests below live in `crates/og-ui/tests/` and run in the `og-ui` integration test binary; GPU proofs require Metal.
+
+| WebDX feature | Baseline | Document elements | Widget ::part | Proof scope or missing reason |
+| --- | --- | --- | --- | --- |
+| `abs-sign` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `absolute-positioning` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `accent-color` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `active-view-transition` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `align-content-block` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `alignment-baseline` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `all` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `alpha` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `alt-text-generated-content` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `anchor-positioning` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `anchor-positioning-animations` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `anchor-positioning-position-visibility-plurals` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `anchor-positioning-transforms` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `animation-composition` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `animations-css` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `appearance` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `aspect-ratio` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_layout::the_box_model_sizes_as_css_does`](../crates/og-ui/tests/css_layout.rs). Computed content-box padding, auto/percentage bounds, 16:9 ratio, logical dimensions and intrinsic widths. |
+| `attr` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `attr-contents` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `autofill` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `autonomous-custom-elements` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `backdrop` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `backdrop-filter` | Newly | Missing | Pending parts-as-nodes | Ordinary staged backdrop chains have fixtures; native glass rejects chains requiring intermediate clamps, drop-shadow and SVG url filters. |
+| `background` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `background-attachment` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `background-blend-mode` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `background-clip` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `background-clip-border-area` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `background-clip-text` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `background-color` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `background-image` | Widely | Missing | Pending parts-as-nodes | Gradient/reference coverage exists; url(coin) resolves an atlas name, not a standard file URL. Icon uses must migrate to SVG file masks. |
+| `background-origin` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `background-position` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `background-repeat` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `background-size` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `baseline-shift` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `baseline-source` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `before-after` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `border-image` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `border-radius` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `border-shape` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `borders` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `box-decoration-break` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `box-shadow` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `box-sizing` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_layout::the_box_model_sizes_as_css_does`](../crates/og-ui/tests/css_layout.rs). Computed content-box padding, auto/percentage bounds, 16:9 ratio, logical dimensions and intrinsic widths. |
+| `calc` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `calc-constants` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `calc-size` | Not Baseline | Missing | Pending parts-as-nodes | No calc-size evaluation or animated output proof. |
+| `cap` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `caret-color` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `caret-shape` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `cascade-layers` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `case-insensitive-attributes` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `case-sensitive-attributes` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `ch` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `charset` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `clip` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `clip-path` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `clip-path-animatable` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `clip-path-boxes` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `color` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `color-adjust` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `color-function` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `color-gamut` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `color-mix` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `color-mix-variadic` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `color-scheme` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `colrv0` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `colrv1` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `column-breaks` | Not Baseline | Supported (scope →) | Pending parts-as-nodes | [`css_layout::multi_column_lays_out_as_css_multicol_does`](../crates/og-ui/tests/css_layout.rs). Computed balanced columns, width/count, spanning blocks, auto fill, explicit breaks and split text lines. |
+| `column-fill` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_layout::multi_column_lays_out_as_css_multicol_does`](../crates/og-ui/tests/css_layout.rs). Computed balanced columns, width/count, spanning blocks, auto fill, explicit breaks and split text lines. |
+| `column-pseudo` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `column-span` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_layout::multi_column_lays_out_as_css_multicol_does`](../crates/og-ui/tests/css_layout.rs). Computed balanced columns, width/count, spanning blocks, auto fill, explicit breaks and split text lines. |
+| `column-wrap` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `conic-gradients` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_paint::repeating_gradients_repeat_the_stop_interval`](../crates/og-ui/tests/css_paint.rs). Metal pixel assertions for both halves of all four repeating conic quarters. |
+| `contain` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `contain-inline-size` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_contain::size_containment_sizes_as_if_empty`](../crates/og-ui/tests/css_contain.rs). Computed empty size, intrinsic replacement dimensions and inline-only containment. |
+| `contain-intrinsic-size` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_contain::size_containment_sizes_as_if_empty`](../crates/og-ui/tests/css_contain.rs). Computed empty size, intrinsic replacement dimensions and inline-only containment. |
+| `contain-layout` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `contain-paint` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `contain-size` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_contain::size_containment_sizes_as_if_empty`](../crates/og-ui/tests/css_contain.rs). Computed empty size, intrinsic replacement dimensions and inline-only containment. |
+| `contain-style` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `container-anchor-position-queries` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `container-name-queries` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `container-queries` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `container-scroll-state-queries` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `container-style-queries` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `content` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `content-visibility` | Newly | Supported (scope →) | Pending parts-as-nodes | [`css_contain::content_visibility_skips_contents_off_screen`](../crates/og-ui/tests/css_contain.rs). Computed offscreen placeholder/remembered sizes, re-entry and hidden accessibility contents. |
+| `contrast-color` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `corner-shape` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `counter-reset-reversed` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `counter-set` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `counter-style` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `counters` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `crisp-edges` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `cross-document-view-transitions` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `cross-fade` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `cubic-bezier-easing` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `currentcolor` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `cursor` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `custom-ellipses` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `custom-media-queries` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `custom-properties` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `customizable-select` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `default` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `details-content` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `device-posture` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `device-queries` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `dir-pseudo` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `display` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `display-animation` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `display-contents` | Not Baseline | Supported (scope →) | Pending parts-as-nodes | [`css_layout::display_lays_out_as_css_display_does`](../crates/og-ui/tests/css_layout.rs). Computed contents flattening, inline flow-root, margin boundary, table spans and caption position; not border collapse/spacing. |
+| `display-flow-root` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_layout::display_lays_out_as_css_display_does`](../crates/og-ui/tests/css_layout.rs). Computed contents flattening, inline flow-root, margin boundary, table spans and caption position; not border collapse/spacing. |
+| `display-list-item` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `display-mode` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `display-ruby` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `display-state` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `display-table` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_layout::display_lays_out_as_css_display_does`](../crates/og-ui/tests/css_layout.rs). Computed contents flattening, inline flow-root, margin boundary, table spans and caption position; not border collapse/spacing. |
+| `dominant-baseline` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `dynamic-range` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `dynamic-range-limit` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `element` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `em-unit` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `empty` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `ex` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `exp-functions` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `field-sizing` | Newly | Missing | Pending parts-as-nodes | No field-sizing layout implementation/output proof; fixed control sizing is not content sizing. |
+| `file-selector-button` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `filter` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `filter-function` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `first-letter` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `first-line` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `fit-content` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `fit-content-function` | Not Baseline | Supported (scope →) | Pending parts-as-nodes | [`css_layout::the_box_model_sizes_as_css_does`](../crates/og-ui/tests/css_layout.rs). Computed content-box padding, auto/percentage bounds, 16:9 ratio, logical dimensions and intrinsic widths. |
+| `fixed-positioning` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `flexbox` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_layout::flex_lays_out_as_css_flexbox_does`](../crates/og-ui/tests/css_layout.rs). Computed grow/shrink shares, reverse/order, safe alignment, wrapping, row and column gaps. |
+| `flexbox-flex-wrap-balance` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `flexbox-gap` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_layout::flex_lays_out_as_css_flexbox_does`](../crates/og-ui/tests/css_layout.rs). Computed grow/shrink shares, reverse/order, safe alignment, wrapping, row and column gaps. |
+| `float-clear` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `focus-visible` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `focus-within` | Widely | Missing | Pending parts-as-nodes | Synthetic ancestor-state matching is tested; real focus transfer through retained ancestors and parts remains unproved. |
+| `font-display` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `font-face` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `font-family` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `font-family-math` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `font-family-system` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `font-family-ui` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `font-feature-settings` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `font-kerning` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `font-language-override` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `font-metric-overrides` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `font-optical-sizing` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `font-palette` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `font-palette-animation` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `font-shorthand` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `font-size` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `font-size-adjust` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `font-stretch` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `font-style` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `font-synthesis` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `font-synthesis-position` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `font-synthesis-small-caps` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `font-synthesis-style` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `font-synthesis-weight` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `font-variant` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `font-variant-alternates` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `font-variant-caps` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `font-variant-east-asian` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `font-variant-emoji` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `font-variant-ligatures` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `font-variant-numeric` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `font-variant-position` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `font-variation-settings` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `font-weight` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `font-width` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `forced-colors` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `form-validity-pseudos` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `frame-sizing` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `fullscreen` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `function` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `gap-decorations` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `glyph-orientation-vertical` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `gradient-interpolation` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `gradients` | Widely | Missing | Pending parts-as-nodes | Nonzero repeating radial/conic intervals and coincident stops have Metal pixel proof in css_paint::repeating_gradients_repeat_the_stop_interval; full feature remains missing: subpixel periods, unbounded stop counts and out-of-range non-repeating stops are not proved. |
+| `grid` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_layout::grid_lays_out_as_css_grid_does`](../crates/og-ui/tests/css_layout.rs). Computed named/negative/spanning tracks, auto-fit/fill, fr minimums, areas, alignment and inherited subgrid tracks. |
+| `grid-animation` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `grid-lanes` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `hanging-punctuation` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `has` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `has-slotted` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `heading-selectors` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `highlight` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `host` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `host-context` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `hsl` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `hwb` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `hyphenate-character` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `hyphenate-limit-chars` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `hyphens` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `ic` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `if` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `image-orientation` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `image-rendering` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_interact::images_take_object_fit_position_and_inherited_image_rendering`](../crates/og-ui/tests/css_interact.rs). Emitted image paint has contain fit, right-edge offset and inherited nearest sampling. |
+| `image-set` | Widely | Missing | Pending parts-as-nodes | URL rewriting descends into image-set, but image candidate selection has no implementation/output proof. |
+| `ime-mode` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `import` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `indeterminate` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `individual-transforms` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_interact::translate_percentages_move_by_the_elements_own_box`](../crates/og-ui/tests/css_interact.rs). Percentage translate changes computed box and hit testing; this proof covers translate, not individual rotate/scale. |
+| `inherit-value` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `initial-letter` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `initial-value` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `input-selectors` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `interaction` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `interactivity` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `interest-invokers` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `interpolate-size` | Not Baseline | Missing | Pending parts-as-nodes | No intrinsic-size interpolation implementation or output proof. |
+| `inverted-colors` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `is` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `isolation` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `justify-self-block` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `lab` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `lang` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `layout-direction-override` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `letter-spacing` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `lh` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `light-dark` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `light-dark-image` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `line-break` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `line-clamp` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `line-height` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `linear-easing` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `link-parameters` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `link-selectors` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `list-style` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `logical-properties` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_layout::the_box_model_sizes_as_css_does`](../crates/og-ui/tests/css_layout.rs). Computed content-box padding, auto/percentage bounds, 16:9 ratio, logical dimensions and intrinsic widths. |
+| `margin` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `margin-trim` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `marker` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `mask-border` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `mask-type` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `masks` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `mathml` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `media-pseudos` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `media-queries` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `media-query-range-syntax` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `min-max-clamp` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `min-max-content` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_layout::the_box_model_sizes_as_css_does`](../crates/og-ui/tests/css_layout.rs). Computed content-box padding, auto/percentage bounds, 16:9 ratio, logical dimensions and intrinsic widths. |
+| `min-max-width-height` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_layout::the_box_model_sizes_as_css_does`](../crates/og-ui/tests/css_layout.rs). Computed content-box padding, auto/percentage bounds, 16:9 ratio, logical dimensions and intrinsic widths. |
+| `mix-blend-mode` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `modal` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `motion-path` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `multi-column` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_layout::multi_column_lays_out_as_css_multicol_does`](../crates/og-ui/tests/css_layout.rs). Computed balanced columns, width/count, spanning blocks, auto fill, explicit breaks and split text lines. |
+| `named-color` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `namespace` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `nesting` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `not` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `nth-child` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `nth-child-of` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `nth-of-type` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `object-fit` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_interact::images_take_object_fit_position_and_inherited_image_rendering`](../crates/og-ui/tests/css_interact.rs). Emitted image paint has contain fit, right-edge offset and inherited nearest sampling. |
+| `object-position` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_interact::images_take_object_fit_position_and_inherited_image_rendering`](../crates/og-ui/tests/css_interact.rs). Emitted image paint has contain fit, right-edge offset and inherited nearest sampling. |
+| `object-view-box` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `oklab` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `opacity` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `opacity-svg` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `open-pseudo` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `outline` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `outlines` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `overflow` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `overflow-anchor` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `overflow-clip` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `overflow-clip-margin` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `overflow-overlay` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `overflow-shorthand` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `overflow-wrap` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `overlay` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `overscroll-behavior` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `padding` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_layout::the_box_model_sizes_as_css_does`](../crates/og-ui/tests/css_layout.rs). Computed content-box padding, auto/percentage bounds, 16:9 ratio, logical dimensions and intrinsic widths. |
+| `page-break-aliases` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `page-breaks` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `page-orientation` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `page-selectors` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `page-setup` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `paint` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `paint-order` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `path-shape` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `physical-properties` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `picture-in-picture` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `placeholder` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `placeholder-shown` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `pointer-events` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `popover` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `position` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `prefers-color-scheme` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `prefers-contrast` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `prefers-reduced-data` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `prefers-reduced-motion` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `prefers-reduced-transparency` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `print-color-adjust` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `progress-function` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `q-unit` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `quotes` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `random-function` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `rcap` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `rch` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `read-write-pseudos` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `reading-flow` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `rect-xywh` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `registered-custom-properties` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `relative-color` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `relative-positioning` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `rem` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `resizable` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `resize` | Not Baseline | Supported (scope →) | Pending parts-as-nodes | [`css_contain::a_resize_handle_drags_the_size_onto_the_element`](../crates/og-ui/tests/css_contain.rs). Pointer drags change computed dimensions subject to axis, overflow and max-width. |
+| `resolution` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `resolution-compat` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `revert-rule` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `revert-value` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `rex` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `rgb` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `ric` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `rlh` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `root` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `round-mod-rem` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `ruby-align` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `ruby-overhang` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `ruby-position` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `safe-area-inset` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `scope` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `scope-pseudo` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `scripting` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `scroll-axis-lock` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `scroll-behavior` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `scroll-buttons` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `scroll-driven-animations` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `scroll-initial-target` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `scroll-marker-targets` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `scroll-markers` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `scroll-snap` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `scroll-target-group` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `scroll-triggered-animations` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `scrollbar-color` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `scrollbar-gutter` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `scrollbar-width` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `selection` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `selectors` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `shadow-parts` | Widely | Missing | Pending parts-as-nodes | Host/part/state selector registry is present; all-property part applicability awaits the parts-as-nodes stream and its output tests. |
+| `shape-function` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `shape-outside` | Widely | Missing | Pending parts-as-nodes | Rectangular floats have layout tests; shape exclusion contours and shape-margin have no output proof. |
+| `shapes` | Widely | Missing | Pending parts-as-nodes | clip-path does not prove shape-outside float exclusion. |
+| `sibling-count` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `slot` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `smooth` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `speak` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `speak-as` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `spelling-grammar-error` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `starting-style` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `state` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `static-positioning` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `steps-easing` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `sticky-positioning` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `stretch` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `style-query-range-syntax` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `subgrid` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_layout::grid_lays_out_as_css_grid_does`](../crates/og-ui/tests/css_layout.rs). Computed named/negative/spanning tracks, auto-fit/fill, fr minimums, areas, alignment and inherited subgrid tracks. |
+| `supports` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `supports-at-rule` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `supports-compat` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `supports-named-feature` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `svg` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `svg-discouraged` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `svg-filters` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `symbols-function` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `system-color` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `system-color-accentcolor` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `tab-size` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `table` | Widely | Missing | Pending parts-as-nodes | Table spans/captions have computed output tests, but border-spacing and border-collapse have no implementation/output proof. |
+| `target` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `target-text` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `text-align` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `text-align-last` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `text-autospace` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `text-box` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `text-combine-upright` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `text-decoration` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `text-decoration-line-blink` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `text-decoration-selection` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `text-decoration-skip-ink` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `text-decoration-skip-ink-all` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `text-decoration-skip-spaces` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `text-decoration-spelling-grammar` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `text-emphasis` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `text-fit` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `text-indent` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `text-indent-each-line` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `text-indent-hanging` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `text-justify` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `text-orientation` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `text-overflow` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `text-shadow` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `text-size-adjust` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `text-spacing-trim` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `text-stroke-fill` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `text-transform` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `text-underline-offset` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `text-underline-position` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `text-wrap` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `text-wrap-balance` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `text-wrap-pretty` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `time-relative-selectors` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `touch-action` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `transform-box` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `transforms2d` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `transforms3d` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `transition-behavior` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `transitions` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `trig-functions` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `two-value-display` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_layout::display_lays_out_as_css_display_does`](../crates/og-ui/tests/css_layout.rs). Computed contents flattening, inline flow-root, margin boundary, table spans and caption position; not border collapse/spacing. |
+| `unset-value` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `update` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `url-cross-origin` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `url-integrity` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `url-referrer-policy` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `user-action-pseudos` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `user-pseudos` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `user-select` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `vertical-align` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `vertical-form-controls` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `video-dynamic-range` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `view-transition-class` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `view-transitions` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `view-transitions-element-scoped` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `viewport-segments` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `viewport-unit-variants` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `viewport-units` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `visibility` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `webvtt` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `webxr-dom-overlays` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `where` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `white-space` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `white-space-collapse` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `widows-orphans` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `width-height` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_layout::the_box_model_sizes_as_css_does`](../crates/og-ui/tests/css_layout.rs). Computed content-box padding, auto/percentage bounds, 16:9 ratio, logical dimensions and intrinsic widths. |
+| `will-change` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `window-controls-overlay` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `window-drag` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `word-break` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `word-break-auto-phrase` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `word-break-break-word` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `word-spacing` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `writing-mode` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `writing-mode-svg-values` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `z-index` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+| `zoom` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
+<!-- css-coverage:end -->

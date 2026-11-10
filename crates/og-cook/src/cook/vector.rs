@@ -189,6 +189,7 @@ pub(crate) fn write(data: &UiVectorData, stamp: u64) -> Vec<u8> {
                         UiSpread::Pad => 0,
                         UiSpread::Repeat => 1,
                         UiSpread::Reflect => 2,
+                        UiSpread::RepeatStops => 3,
                     },
                     dither: u32::from(g.dither),
                     first_stop: first,

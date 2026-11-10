@@ -215,3 +215,88 @@ fn css_paint_matches_its_reference_frames() {
         println!("{name}: RMSE {rmse:.6}");
     }
 }
+
+#[test]
+#[ignore = "requires GPU"]
+fn repeating_gradients_repeat_the_stop_interval() {
+    use og_render::*;
+    let mut scene = RenderScene::new();
+    let mut ui = ui_with_font(add_test_font(&mut scene));
+    let text = r##"<meta name="component" content="repeat"/>
+<div>
+  <div id="radial"></div><div id="negative"></div><div id="conic"></div>
+  <div id="collapsed"></div>
+</div>
+<style>
+div { margin: 0; }
+#radial, #negative, #conic, #collapsed { width: 128px; height: 128px; }
+#radial { background: repeating-radial-gradient(circle at 0% 50%, black 8px, black 16px, white 16px, white 24px); }
+#negative { background: repeating-radial-gradient(circle at 0% 50%, black -8px, black 0px, white 0px, white 8px); }
+#conic { background: repeating-conic-gradient(black 0deg, black 45deg, white 45deg, white 90deg); }
+#collapsed { background: repeating-linear-gradient(black 8px, white 8px, black 8px); }
+</style>"##;
+    ui.define_document(UiDocument::parse("ui/repeat.svelte", text).unwrap());
+    ui.mount_document(
+        reactive::SourceId::new("test", "repeat"),
+        "repeat",
+        Default::default(),
+        Default::default(),
+        &bind::NoEnv,
+    )
+    .unwrap();
+    ui.begin(InputFrame::default(), Viewport::new(128.0, 512.0));
+    ui.build_retained_documents(&bind::NoEnv).unwrap();
+    ui.end();
+    let mut overlay = Overlay::new(128.0, 512.0, 1.0);
+    ui.frame().emit(&EmitDesc::default(), &mut overlay);
+    scene.overlay = Some(overlay);
+    scene.post.tonemap = Tonemap::None;
+    let mut renderer = Renderer::new_blocking(&RenderDesc {
+        width: 128,
+        height: 512,
+        ..Default::default()
+    })
+    .expect("a headless adapter");
+    renderer.render(&scene, &RenderTarget::Offscreen).unwrap();
+    let pixels = renderer.read_offscreen().unwrap().pixels;
+    image::save_buffer(
+        out_dir().join("css-repeating-gradients.png"),
+        &pixels,
+        128,
+        512,
+        image::ColorType::Rgba8,
+    )
+    .unwrap();
+    let check = |x: usize, y: usize, white: bool| {
+        let rgb = &pixels[(y * 128 + x) * 4..][..3];
+        assert!(
+            rgb.iter().all(|c| if white { *c > 248 } else { *c < 7 }),
+            "({x}, {y}): expected {}, got {rgb:?}",
+            if white { "white" } else { "black" }
+        );
+    };
+    // The period is 16px, not the last stop's position; it extends backward too.
+    for y in [64, 192] {
+        for (x, white) in [(4, true), (12, false), (20, true), (28, false), (52, true)] {
+            check(x, y, white);
+        }
+    }
+    // Sample both halves of all four quarters, away from stop boundaries.
+    for (x, y, white) in [
+        (80, 24, false),
+        (104, 48, true),
+        (104, 80, false),
+        (80, 104, true),
+        (48, 104, false),
+        (24, 80, true),
+        (24, 48, false),
+        (48, 24, true),
+    ] {
+        check(x, y + 256, white);
+    }
+    // Three equally spaced stops integrate to half white, not their 1/3 mean.
+    for (x, y) in [(4, 400), (64, 448), (120, 500)] {
+        let rgb = &pixels[(y * 128 + x) * 4..][..3];
+        assert!(rgb.iter().all(|c| (126..=129).contains(c)), "{rgb:?}");
+    }
+}
