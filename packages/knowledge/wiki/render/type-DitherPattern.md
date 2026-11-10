@@ -31,4 +31,4 @@ enum DitherPattern {
 }
 ```
 
-<sub>Module `render` line 1392</sub>
+<sub>Module `render` line 1393</sub>

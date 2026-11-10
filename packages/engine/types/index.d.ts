@@ -5917,8 +5917,9 @@ export type Transparency = "weighted" | "linkedList";
  * - `"gi"`: The probes of GlobalIllumination (method probes or both): left out, they are not traced and lit surfaces do not gather them, so those methods bounce no light from probes (both keeps its screen-space rays). The screen-space method and LightVolume are not this feature.
  * - `"areaLights"`: Rect lights (og.RectLight): left out, a rect light is not drawn, lights nothing and casts no shadow.
  * - `"decals"`: Decals (og.Decal): left out, none is drawn.
+ * - `"caustics"`: The caustics a water surface casts on what lies below it (og.Water.caustics): left out, none is drawn.
  */
-export type LitFeature = "surfaceWeather" | "gi" | "areaLights" | "decals";
+export type LitFeature = "surfaceWeather" | "gi" | "areaLights" | "decals" | "caustics";
 
 /**
  * How the renderer is created for a game (GameDesc.render). The host reads it once, when it attaches the renderer.

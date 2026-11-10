@@ -16,6 +16,7 @@ A string: one of the variants below. The zero value is `"surfaceWeather"`.
 | `"gi"` | The probes of GlobalIllumination (method probes or both): left out, they are not traced and lit surfaces do not gather them, so those methods bounce no light from probes (both keeps its screen-space rays). The screen-space method and LightVolume are not this feature. |
 | `"areaLights"` | Rect lights (og.RectLight): left out, a rect light is not drawn, lights nothing and casts no shadow. |
 | `"decals"` | Decals (og.Decal): left out, none is drawn. |
+| `"caustics"` | The caustics a water surface casts on what lies below it (og.Water.caustics): left out, none is drawn. |
 
 ```ogt
 enum LitFeature {
@@ -24,6 +25,7 @@ enum LitFeature {
   variant gi "The probes of GlobalIllumination (method probes or both): left out, they are not traced and lit surfaces do not gather them, so those methods bounce no light from probes (both keeps its screen-space rays). The screen-space method and LightVolume are not this feature."
   variant areaLights "Rect lights (og.RectLight): left out, a rect light is not drawn, lights nothing and casts no shadow."
   variant decals "Decals (og.Decal): left out, none is drawn."
+  variant caustics "The caustics a water surface casts on what lies below it (og.Water.caustics): left out, none is drawn."
 }
 ```
 

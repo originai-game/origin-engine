@@ -238,12 +238,16 @@ impl LitFeatures {
     pub const AREA_LIGHTS: LitFeatures = LitFeatures(Features::AREA);
     /// Decals (`RenderScene::decals`): `OG_DECALS`.
     pub const DECALS: LitFeatures = LitFeatures(Features::DECALS);
+    /// A water surface's caustics on what lies below it (`Water::caustics`):
+    /// `OG_CAUSTICS`.
+    pub const CAUSTICS: LitFeatures = LitFeatures(Features::CAUSTICS);
     /// Each one by its IDL name (LitFeature), in the IDL's order.
-    pub const NAMED: [(LitFeatures, &'static str); 4] = [
+    pub const NAMED: [(LitFeatures, &'static str); 5] = [
         (LitFeatures::SURFACE_WEATHER, "surfaceWeather"),
         (LitFeatures::GI, "gi"),
         (LitFeatures::AREA_LIGHTS, "areaLights"),
         (LitFeatures::DECALS, "decals"),
+        (LitFeatures::CAUSTICS, "caustics"),
     ];
 
     pub fn contains(self, other: LitFeatures) -> bool {

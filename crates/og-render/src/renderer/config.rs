@@ -296,15 +296,14 @@ pub struct RenderDesc {
     /// engine sets it for a game whose bundle declares og.motion). Outside
     /// `publish` they are asked for anyway, for the GPU pass timing.
     pub timestamps: bool,
-    /// Optional lit features to build no lit shader with ([`LitFeatures`]:
-    /// the weather on surfaces, the probe GI, rect lights, decals). Empty
-    /// by default: every lit module carries every one, as before. Each left
-    /// out is in no pipeline the renderer makes, on any host (the code
-    /// every lit and prepass pipeline compiled, reachable behind its
-    /// runtime test, is folded away), and is not drawn: a scene that uses
-    /// it draws as if it did not, and the log says so once
-    /// ([`RenderInfo::without`]). Not the adapter's features
-    /// ([`Self::without_features`]).
+    /// Optional lit features to build no lit shader with ([`LitFeatures`]: the
+    /// weather on surfaces, the probe GI, rect lights, decals, caustics). Empty
+    /// by default: every lit module carries every one, as before. Each left out
+    /// is in no pipeline the renderer makes, on any host (the code every lit
+    /// and prepass pipeline compiled, reachable behind its runtime test, is
+    /// folded away), and is not drawn: a scene that uses it draws as if it did
+    /// not, and the log says so once ([`RenderInfo::without`]). Not the
+    /// adapter's features ([`Self::without_features`]).
     pub without: LitFeatures,
 }
 

@@ -137,6 +137,10 @@ fn no_probes(s: &mut RenderScene) {
     s.post.gi_probes = None;
 }
 
+fn no_caustics(s: &mut RenderScene) {
+    s.water.iter_mut().for_each(|w| w.caustics = 0.0);
+}
+
 /// A registered scene that uses each feature, and what takes it out.
 fn feature_scenes() -> Vec<(&'static str, LitFeatures, Strip)> {
     vec![
@@ -147,6 +151,7 @@ fn feature_scenes() -> Vec<(&'static str, LitFeatures, Strip)> {
         ),
         ("decals", LitFeatures::DECALS, no_decals),
         ("gi-room-probes", LitFeatures::GI, no_probes),
+        ("water-underwater", LitFeatures::CAUSTICS, no_caustics),
     ]
 }
 
@@ -185,8 +190,9 @@ fn the_features_left_out_are_in_no_pipeline_and_not_drawn() {
         "a lit module made without the weather on surfaces drew it"
     );
 
-    // Rect lights, decals and the probes' bounce, each in its own scene:
-    // left out, the scene draws as without them.
+    // Rect lights, decals, the probes' bounce and caustics, each in its own
+    // scene: left out, the scene draws as without them. (The caustics' rows
+    // still reach the lit modules, as the weather's do.)
     for (name, feature, strip) in feature_scenes() {
         let (desc, scene, frames) = built(name);
         let (_, mut without, _) = built(name);

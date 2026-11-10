@@ -23,4 +23,4 @@ component LightMask2D {
 }
 ```
 
-<sub>Module `render` line 1939</sub>
+<sub>Module `render` line 1940</sub>

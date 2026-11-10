@@ -122,4 +122,8 @@ fn without_leaves_out_only_the_features_it_names() {
             | LitFeatures::AREA_LIGHTS
             | LitFeatures::DECALS
     );
+    assert_eq!(
+        resolved(json!({ "without": ["caustics"] })),
+        LitFeatures::CAUSTICS
+    );
 }

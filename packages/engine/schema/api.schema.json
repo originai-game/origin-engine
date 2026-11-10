@@ -22039,13 +22039,15 @@
         "surfaceWeather",
         "gi",
         "areaLights",
-        "decals"
+        "decals",
+        "caustics"
       ],
       "x-og-variants": {
         "surfaceWeather": "The weather on lit surfaces: og.WeatherState's wet ground, rain streaks, puddles, snow and dust, and the shore a sea's surf wets (og.Water). Left out, surfaces stay dry; og.Weather's particles, fog and light still draw.",
         "gi": "The probes of GlobalIllumination (method probes or both): left out, they are not traced and lit surfaces do not gather them, so those methods bounce no light from probes (both keeps its screen-space rays). The screen-space method and LightVolume are not this feature.",
         "areaLights": "Rect lights (og.RectLight): left out, a rect light is not drawn, lights nothing and casts no shadow.",
-        "decals": "Decals (og.Decal): left out, none is drawn."
+        "decals": "Decals (og.Decal): left out, none is drawn.",
+        "caustics": "The caustics a water surface casts on what lies below it (og.Water.caustics): left out, none is drawn."
       }
     },
     "RenderOptions": {
