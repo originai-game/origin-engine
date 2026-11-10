@@ -4454,6 +4454,7 @@
         "Upscaler",
         "DebugView",
         "Transparency",
+        "LitFeature",
         "RenderOptions",
         "FoliageDesc",
         "StandardMaterialDesc",
@@ -22029,6 +22030,24 @@
         "linkedList": "Per-pixel fragment lists: each pixel keeps up to RenderOptions.transparencyLayers fragments, sorted by depth (equal depths by a stable key of the draw and its primitive) and composited exactly, the same in any submission order. A pixel with more fragments is resolved whole as weighted, and counted (the render dump's transparency.fallbackPixels). Weighted where the device cannot write storage from fragment shaders, or where the scene is too large for one node a pixel in its largest storage buffer."
       }
     },
+    "LitFeature": {
+      "x-og-kind": "enum",
+      "x-og-module": "render",
+      "description": "An optional feature of the lit shaders that RenderOptions.without can leave out. Every lit shader (meshes, material shaders, clustered meshes, terrain, grass, water, scattered copies, lit particles) carries each one's code behind a runtime test, and its pipelines compile it whether or not a scene uses it. RenderCapabilities.without lists those the renderer was made without.",
+      "type": "string",
+      "enum": [
+        "surfaceWeather",
+        "gi",
+        "areaLights",
+        "decals"
+      ],
+      "x-og-variants": {
+        "surfaceWeather": "The weather on lit surfaces: og.WeatherState's wet ground, rain streaks, puddles, snow and dust, and the shore a sea's surf wets (og.Water). Left out, surfaces stay dry; og.Weather's particles, fog and light still draw.",
+        "gi": "The probes of GlobalIllumination (method probes or both): left out, they are not traced and lit surfaces do not gather them, so those methods bounce no light from probes (both keeps its screen-space rays). The screen-space method and LightVolume are not this feature.",
+        "areaLights": "Rect lights (og.RectLight): left out, a rect light is not drawn, lights nothing and casts no shadow.",
+        "decals": "Decals (og.Decal): left out, none is drawn."
+      }
+    },
     "RenderOptions": {
       "x-og-kind": "desc",
       "x-og-module": "render",
@@ -22104,6 +22123,14 @@
           "default": 0,
           "minimum": 0,
           "maximum": 32
+        },
+        "without": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/LitFeature"
+          },
+          "description": "Optional lit features to build no lit shader with, for a game that never uses them: empty (the default) builds every one into every lit shader, as before. Each one left out is in no lit pipeline the renderer makes, on any host, so those pipelines compile faster and draw a little faster; it is not drawn: a scene that uses it draws as if it did not, and the log says so once. Each name once, in any order. Read once, when the renderer is created; RenderCapabilities.without reports it.",
+          "default": []
         },
         "debugView": {
           "$ref": "#/$defs/DebugView",
@@ -27067,6 +27094,13 @@
           "maximum": 4294967295,
           "description": "How many water surfaces draw a planar reflection in one frame: RenderOptions.planarReflections (1 by default, at most 2), 0 without a renderer or where world3d is false. A surface past it that asks reflects by the screen-space and sky reflections instead."
         },
+        "without": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/LitFeature"
+          },
+          "description": "The optional lit features the renderer was made without (RenderOptions.without), in LitFeature's order: none of its lit shaders carries them and a scene that uses one draws without it. Empty by default and without a renderer."
+        },
         "upscalers": {
           "type": "array",
           "items": {
@@ -27134,6 +27168,7 @@
         "gpuTimestamps",
         "spriteAnisotropy",
         "planarReflections",
+        "without",
         "upscalers",
         "transparency",
         "gpuCrowds",

@@ -411,6 +411,7 @@ fn weather_gloss(roughness: f32, metalness: f32, n: vec3<f32>, geo: vec3<f32>, p
 // cover, higher up), so a snowed meadow is a white blanket with the tips
 // standing out of it, not frosted grass.
 fn weather_grass(s_in: Surface, n_in: vec3<f32>, p_frame: vec3<f32>, t: f32) -> Weathered {
+  if (!OG_WEATHER) { return Weathered(s_in, n_in); }
   let geo = normalize(n_in * 0.35 + vec3<f32>(0.0, 1.0, 0.0));
   var o = weather_surface_at(s_in, n_in, geo, p_frame, 0.5, 1.0, WEATHER_RUNS_OFF);
   let cover = frame.weather.z;

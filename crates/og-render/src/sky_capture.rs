@@ -93,10 +93,11 @@ impl SkyCapture {
         queue: &wgpu::Queue,
         ibl: &IblGenerator,
         layouts: [&wgpu::BindGroupLayout; 2],
+        off: crate::pipeline_features::Features,
     ) -> SkyCapture {
         let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("live sky"),
-            source: wgpu::ShaderSource::Wgsl(crate::renderer::sky_source().into()),
+            source: wgpu::ShaderSource::Wgsl(off.leave_out(crate::renderer::sky_source()).into()),
         });
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("live sky"),

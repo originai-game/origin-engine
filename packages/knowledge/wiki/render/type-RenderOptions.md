@@ -23,6 +23,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `planarReflections` | `number` | `1` | 1 … 2 | — | — | How many planar reflection surfaces draw at once: water surfaces (og.Water.planarReflection) that mirror the scene in a pass of their own in the same frame. 1: the first surface that asks (a grid surface before one over a mesh); a second surface reflects as if it did not ask (screen-space and sky reflections), never in the first's mirror, and the log says so once. 2: a second surface in view mirrors the scene too, and material shaders can read the first's mirror (`planar_reflection`), at the cost of one more texture in every lit pipeline and a second reflection pass while both are in view. RenderCapabilities.planarReflections reports the count the renderer was made with. |
 | `transparency` | `Transparency` | `"weighted"` | — | — | — | How blended surfaces are composited: weighted (the default) or the exact per-pixel lists where the device allows them. |
 | `transparencyLayers` | `number` | `0` | 0 … 32 | — | — | With transparency linkedList: the fragments a pixel keeps and sorts exactly (0: 4), as far as the device's largest storage buffer holds them for every pixel at the render size; RenderCapabilities.transparency says whether the lists run at all. |
+| `without` | `readonly LitFeature[]` | `[]` | — | — | — | Optional lit features to build no lit shader with, for a game that never uses them: empty (the default) builds every one into every lit shader, as before. Each one left out is in no lit pipeline the renderer makes, on any host, so those pipelines compile faster and draw a little faster; it is not drawn: a scene that uses it draws as if it did not, and the log says so once. Each name once, in any order. Read once, when the renderer is created; RenderCapabilities.without reports it. |
 | `debugView` | `DebugView` | `"none"` | — | — | — | A debug overlay from the first frame (og.debug.setView, the command channel's `debug:<view>`): none in a game, a view while building one. Not in publish builds. |
 
 ```ogt
@@ -56,8 +57,9 @@ struct RenderOptions {
     min 0
     max 32
   }
+  field without List.LitFeature "Optional lit features to build no lit shader with, for a game that never uses them: empty (the default) builds every one into every lit shader, as before. Each one left out is in no lit pipeline the renderer makes, on any host, so those pipelines compile faster and draw a little faster; it is not drawn: a scene that uses it draws as if it did not, and the log says so once. Each name once, in any order. Read once, when the renderer is created; RenderCapabilities.without reports it."
   field debugView DebugView "A debug overlay from the first frame (og.debug.setView, the command channel's `debug:<view>`): none in a game, a view while building one. Not in publish builds."
 }
 ```
 
-<sub>Module `render` line 103</sub>
+<sub>Module `render` line 111</sub>

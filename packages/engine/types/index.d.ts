@@ -5912,6 +5912,15 @@ export type DebugView = "none" | "physics" | "nav" | "bounds" | "lod" | "cascade
 export type Transparency = "weighted" | "linkedList";
 
 /**
+ * An optional feature of the lit shaders that RenderOptions.without can leave out. Every lit shader (meshes, material shaders, clustered meshes, terrain, grass, water, scattered copies, lit particles) carries each one's code behind a runtime test, and its pipelines compile it whether or not a scene uses it. RenderCapabilities.without lists those the renderer was made without.
+ * - `"surfaceWeather"`: The weather on lit surfaces: og.WeatherState's wet ground, rain streaks, puddles, snow and dust, and the shore a sea's surf wets (og.Water). Left out, surfaces stay dry; og.Weather's particles, fog and light still draw.
+ * - `"gi"`: The probes of GlobalIllumination (method probes or both): left out, they are not traced and lit surfaces do not gather them, so those methods bounce no light from probes (both keeps its screen-space rays). The screen-space method and LightVolume are not this feature.
+ * - `"areaLights"`: Rect lights (og.RectLight): left out, a rect light is not drawn, lights nothing and casts no shadow.
+ * - `"decals"`: Decals (og.Decal): left out, none is drawn.
+ */
+export type LitFeature = "surfaceWeather" | "gi" | "areaLights" | "decals";
+
+/**
  * How the renderer is created for a game (GameDesc.render). The host reads it once, when it attaches the renderer.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
@@ -5988,6 +5997,12 @@ export interface RenderOptions {
    * @range 0..32
    */
   readonly transparencyLayers?: number;
+  /**
+   * Optional lit features to build no lit shader with, for a game that never uses them: empty (the default) builds every one into every lit shader, as before. Each one left out is in no lit pipeline the renderer makes, on any host, so those pipelines compile faster and draw a little faster; it is not drawn: a scene that uses it draws as if it did not, and the log says so once. Each name once, in any order. Read once, when the renderer is created; RenderCapabilities.without reports it.
+   *
+   * @default []
+   */
+  readonly without?: readonly LitFeature[];
   /**
    * A debug overlay from the first frame (og.debug.setView, the command channel's `debug:<view>`): none in a game, a view while building one. Not in publish builds.
    *
@@ -10287,6 +10302,10 @@ export interface RenderCapabilities {
    * How many water surfaces draw a planar reflection in one frame: RenderOptions.planarReflections (1 by default, at most 2), 0 without a renderer or where world3d is false. A surface past it that asks reflects by the screen-space and sky reflections instead.
    */
   readonly planarReflections: number;
+  /**
+   * The optional lit features the renderer was made without (RenderOptions.without), in LitFeature's order: none of its lit shaders carries them and a scene that uses one draws without it. Empty by default and without a renderer.
+   */
+  readonly without: readonly LitFeature[];
   /**
    * The Upscaler variants this device draws under TAA: taau and fsr3 on every host and tier with a renderer (FSR 3.1 is ported in fp32 without subgroups, float atomics or device-wide coherence, so it needs neither shader-f16 nor subgroups, which Safari and Firefox lack), empty without one.
    */

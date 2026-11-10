@@ -294,9 +294,10 @@ fn terrain_cavity(height: f32) -> f32 {
   return 0.15 + 0.7 * height;
 }
 
-// Whether the weather lays anything on the ground this frame.
+// Whether the weather lays anything on the ground this frame (never in a
+// pipeline without the weather's code, OG_WEATHER).
 fn weather_active() -> bool {
-  return max(max(max(frame.weather.x, frame.weather.y), frame.weather.z), frame.weather_dust.w) > 0.0;
+  return OG_WEATHER && max(max(max(frame.weather.x, frame.weather.y), frame.weather.z), frame.weather_dust.w) > 0.0;
 }
 
 // The picked layers' roughness under weights `w` (the lit pass and the

@@ -749,7 +749,10 @@ impl Renderer {
                 &self.device,
                 &self.frame_layout,
                 &self.palette_layout,
-                physical_source(&hooks::default_hooks()),
+                self.info
+                    .without
+                    .features()
+                    .leave_out(physical_source(&hooks::default_hooks())),
             ));
         }
         let textures = &self.cache.textures;
@@ -846,7 +849,9 @@ impl Renderer {
     /// cascades ([`Self::frame_cascades`]); the frame groups are made again
     /// when the layer count changes.
     pub(crate) fn fit_shelter_layer(&mut self, scene: &RenderScene) {
-        let shelter = scene.surface_weather.is_some_and(|w| w.shelter > 0.0);
+        // Only the weather on surfaces reads it (RenderDesc::without).
+        let shelter = !self.info.without.contains(LitFeatures::SURFACE_WEATHER)
+            && scene.surface_weather.is_some_and(|w| w.shelter > 0.0);
         let wanted = self.frame_cascades(scene) + u32::from(shelter);
         if self.cascade_map.layers.len() as u32 == wanted {
             return;
@@ -890,7 +895,7 @@ impl Renderer {
         let wanted: Vec<usize> = scene
             .lights
             .iter()
-            .filter(|l| l.cast_shadows)
+            .filter(|l| l.cast_shadows && self.kept_kind(l))
             .map(|l| match l.kind {
                 LightKind::Point => self.info.point_shadows.layers(),
                 LightKind::Spot { .. } => 1,
@@ -1103,6 +1108,7 @@ impl Renderer {
                 &self.queue,
                 &self.ibl,
                 [&self.frame_layout, &self.sky_layout],
+                self.info.without.features(),
             ));
         }
     }

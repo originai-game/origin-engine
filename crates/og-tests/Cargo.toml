@@ -33,6 +33,8 @@ winit = { version = "0.30.12", default-features = false, features = ["rwh_06", "
 
 [dev-dependencies]
 pollster = { workspace = true }
+# render_without: the renderer's one-time warnings, collected.
+log = { workspace = true }
 
 [[example]]
 name = "surface"

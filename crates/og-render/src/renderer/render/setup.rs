@@ -40,6 +40,7 @@ impl Renderer {
         let out = (self.out_width, self.out_height);
         let taau = upscale == 0 && grid != out && grid.0 <= out.0 && grid.1 <= out.1;
         self.scene_size(grid.0, grid.1, taau);
+        self.warn_without(scene);
         self.grow_local_shadows(scene);
         self.fit_shelter_layer(scene);
         self.prepare_gi_probes(scene);
@@ -73,6 +74,34 @@ impl Renderer {
             })
     }
 
+    /// Says once for each lit feature the renderer was made without
+    /// (RenderDesc::without) that the scene uses it, so it is not drawn.
+    fn warn_without(&mut self, scene: &RenderScene) {
+        let off = self.info.without;
+        if off.is_empty() {
+            return;
+        }
+        let used = crate::pipeline_features::Features::of(scene);
+        for (feature, name) in LitFeatures::NAMED {
+            if off.contains(feature)
+                && used.contains(feature.features())
+                && !self.warned_without.contains(feature)
+            {
+                self.warned_without = self.warned_without | feature;
+                log::warn!(
+                    "og-render: the scene uses {name}, but the renderer was made without it \
+                     (RenderOptions.without), so it is not drawn"
+                );
+            }
+        }
+    }
+
+    /// Whether `light`'s kind is drawn: a renderer made without rect lights
+    /// (RenderDesc::without) keeps none ([`clusters::ClusterBuilder::skip_rects`]).
+    pub(crate) fn kept_kind(&self, light: &Light) -> bool {
+        !(self.clusters.skip_rects && matches!(light.kind, LightKind::Rect { .. }))
+    }
+
     /// The probe GI's frame (gi_probes.rs): off where the quality's GI
     /// switch or a 2D build says so. The probe buffer grows to hold its
     /// probes before the frame groups that bind it are made.
@@ -80,7 +109,9 @@ impl Renderer {
         let desc = scene
             .post
             .gi_probes
-            .filter(|_| WORLD_3D && scene.quality.global_illumination);
+            .filter(|_| WORLD_3D && scene.quality.global_illumination)
+            // A renderer made without the probe GI (RenderDesc::without).
+            .filter(|_| !self.info.without.contains(LitFeatures::GI));
         let Some(desc) = desc else {
             if let Some(g) = &mut self.gi_probes {
                 g.disable();

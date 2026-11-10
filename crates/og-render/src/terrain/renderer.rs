@@ -314,7 +314,11 @@ impl TerrainRenderer {
                 corners_write: &corners_write_layout,
             },
             p.samples,
-            terrain_lit_source(p.frame_wgsl, p.light_tables_wgsl, p.lighting_wgsl),
+            p.off.leave_out(terrain_lit_source(
+                p.frame_wgsl,
+                p.light_tables_wgsl,
+                p.lighting_wgsl,
+            )),
             terrain_shadow_source(),
             terrain_corners_source(),
             false,
@@ -377,12 +381,17 @@ impl TerrainRenderer {
             decals,
             settled: false,
             features: crate::pipeline_features::Features::ALL,
+            off: p.off,
             arrays: None,
             holed: [None, None],
             array_stand_ins: None,
             frame_layout: p.frame_layout.clone(),
             shadow_layout: p.shadow_layout.clone(),
-            lit_source: terrain_lit_source(p.frame_wgsl, p.light_tables_wgsl, p.lighting_wgsl),
+            lit_source: p.off.leave_out(terrain_lit_source(
+                p.frame_wgsl,
+                p.light_tables_wgsl,
+                p.lighting_wgsl,
+            )),
             samples: p.samples,
             layer_sampler,
             map_sampler,
@@ -1141,7 +1150,15 @@ impl TerrainRenderer {
                     } else {
                         0.0
                     };
-                    [reach, up, up / across, crate::terrain::snow_lift(scene)]
+                    let lift = if self
+                        .off
+                        .contains(crate::pipeline_features::Features::WEATHER)
+                    {
+                        0.0
+                    } else {
+                        crate::terrain::snow_lift(scene)
+                    };
+                    [reach, up, up / across, lift]
                 },
                 view_proj: view_proj.to_cols_array_2d(),
                 prev_view_proj: prev_view_proj.to_cols_array_2d(),

@@ -102,6 +102,8 @@ pub(crate) struct SpriteHooks {
     layout: wgpu::BindGroupLayout,
     pipeline_layout: wgpu::PipelineLayout,
     samples: u32,
+    /// The lit features its modules are made without (`RenderDesc::without`).
+    off: crate::pipeline_features::Features,
     pipelines: HashMap<usize, Pipelines>,
     groups: HashMap<usize, Group>,
 }
@@ -126,6 +128,7 @@ impl SpriteHooks {
         device: &wgpu::Device,
         layouts: [&wgpu::BindGroupLayout; 3],
         samples: u32,
+        off: crate::pipeline_features::Features,
     ) -> SpriteHooks {
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("sprite material"),
@@ -154,6 +157,7 @@ impl SpriteHooks {
             layout,
             pipeline_layout,
             samples,
+            off,
             pipelines: HashMap::new(),
             groups: HashMap::new(),
         }
@@ -187,7 +191,7 @@ impl SpriteHooks {
         let scope = device.push_error_scope(wgpu::ErrorFilter::Validation);
         let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("sprite (material shader)"),
-            source: wgpu::ShaderSource::Wgsl(source(shader).into()),
+            source: wgpu::ShaderSource::Wgsl(self.off.leave_out(source(shader)).into()),
         });
         let pipeline = |label, fs, blend| {
             crate::hdr_pipeline(

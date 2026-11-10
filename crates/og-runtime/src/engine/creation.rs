@@ -960,7 +960,7 @@ pub fn render_options(id: u32) -> Value {
 
 /// `base` with the game's RenderOptions applied (GameDesc.render):
 /// antialias, shadowMapSize, pointShadows, taaHistory, taaSharpen,
-/// planarReflections, transparency and transparencyLayers; antialias left
+/// planarReflections, transparency, transparencyLayers and without; antialias left
 /// out (or tier) is 4x MSAA in a 2D project (options.profile). Both hosts
 /// create their renderer from it, so the options mean the same on each.
 pub fn render_desc(id: u32, base: og_render::RenderDesc) -> og_render::RenderDesc {
@@ -1007,11 +1007,22 @@ pub fn render_desc(id: u32, base: og_render::RenderDesc) -> og_render::RenderDes
     desc.transparency_layers = options["transparencyLayers"].as_u64().map_or(0, |n| {
         n.min(u64::from(og_render::MAX_TRANSPARENCY_LAYERS)) as u32
     });
+    desc.without = render_without(&options["without"]);
     // og.motion times its compute slices where the adapter can (its
     // `Gpu::set_frame_budget`): a publish build asks only for a game whose
     // bundle declares the model.
     desc.timestamps = engine(id).is_ok_and(|e| crate::motion::present::declares(&e));
     desc
+}
+
+/// RenderOptions.without as og-render's lit features left out: each
+/// LitFeature it names (a name it does not know leaves nothing out).
+fn render_without(list: &Value) -> og_render::LitFeatures {
+    list.as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|n| n.as_str().and_then(og_render::LitFeatures::named))
+        .fold(og_render::LitFeatures::NONE, |a, f| a | f)
 }
 
 /// og-render's Antialias by its IDL name (RenderCapabilities.antialias).

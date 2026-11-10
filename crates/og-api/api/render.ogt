@@ -100,6 +100,14 @@ module render {
     variant linkedList "Per-pixel fragment lists: each pixel keeps up to RenderOptions.transparencyLayers fragments, sorted by depth (equal depths by a stable key of the draw and its primitive) and composited exactly, the same in any submission order. A pixel with more fragments is resolved whole as weighted, and counted (the render dump's transparency.fallbackPixels). Weighted where the device cannot write storage from fragment shaders, or where the scene is too large for one node a pixel in its largest storage buffer."
   }
 
+  enum LitFeature {
+    doc "An optional feature of the lit shaders that RenderOptions.without can leave out. Every lit shader (meshes, material shaders, clustered meshes, terrain, grass, water, scattered copies, lit particles) carries each one's code behind a runtime test, and its pipelines compile it whether or not a scene uses it. RenderCapabilities.without lists those the renderer was made without."
+    variant surfaceWeather "The weather on lit surfaces: og.WeatherState's wet ground, rain streaks, puddles, snow and dust, and the shore a sea's surf wets (og.Water). Left out, surfaces stay dry; og.Weather's particles, fog and light still draw."
+    variant gi "The probes of GlobalIllumination (method probes or both): left out, they are not traced and lit surfaces do not gather them, so those methods bounce no light from probes (both keeps its screen-space rays). The screen-space method and LightVolume are not this feature."
+    variant areaLights "Rect lights (og.RectLight): left out, a rect light is not drawn, lights nothing and casts no shadow."
+    variant decals "Decals (og.Decal): left out, none is drawn."
+  }
+
   struct RenderOptions {
     doc "How the renderer is created for a game (GameDesc.render). The host reads it once, when it attaches the renderer."
     desc true
@@ -130,6 +138,7 @@ module render {
       min 0
       max 32
     }
+    field without List.LitFeature "Optional lit features to build no lit shader with, for a game that never uses them: empty (the default) builds every one into every lit shader, as before. Each one left out is in no lit pipeline the renderer makes, on any host, so those pipelines compile faster and draw a little faster; it is not drawn: a scene that uses it draws as if it did not, and the log says so once. Each name once, in any order. Read once, when the renderer is created; RenderCapabilities.without reports it."
     field debugView DebugView "A debug overlay from the first frame (og.debug.setView, the command channel's `debug:<view>`): none in a game, a view while building one. Not in publish builds."
   }
 
@@ -2594,6 +2603,7 @@ module render {
     field gpuTimestamps bool "Whether the device times each render pass on the GPU (timestamp queries: Vulkan, Metal and D3D12 adapters that have them, WebGPU with `timestamp-query`; never in a publish build, which leaves the queries out): ProbeTimings.gpuPasses and the trace's gpu thread are filled only where it is true."
     field spriteAnisotropy u32 "The anisotropic filtering of sprites and og.ui's images (text is not filtered anisotropically: its distance field would lose its edge): 16 where the device filters anisotropically (WebGPU, Vulkan, Metal, DX12), 1 where it has none and on a software rasterizer (the vulkan-cpu tier: lavapipe's anisotropic filter softens even an image drawn 1:1), 0 without a renderer. Above 1, an image squeezed along one axis keeps the other axis's detail: a style's nine-slice middle squeezed into a short button keeps its outline as crisp as the corners. At 1 the squeezed piece reads a smaller mip level and blurs; og.ui bounds a middle's squeeze at twice its art, so the outline there is one mip level softer than the corners."
     field planarReflections u32 "How many water surfaces draw a planar reflection in one frame: RenderOptions.planarReflections (1 by default, at most 2), 0 without a renderer or where world3d is false. A surface past it that asks reflects by the screen-space and sky reflections instead."
+    field without List.LitFeature "The optional lit features the renderer was made without (RenderOptions.without), in LitFeature's order: none of its lit shaders carries them and a scene that uses one draws without it. Empty by default and without a renderer."
     field upscalers List.String "The Upscaler variants this device draws under TAA: taau and fsr3 on every host and tier with a renderer (FSR 3.1 is ported in fp32 without subgroups, float atomics or device-wide coherence, so it needs neither shader-f16 nor subgroups, which Safari and Firefox lack), empty without one."
     field transparency Transparency "What RenderOptions.transparency resolved to on this device: linkedList only where it was asked for and the device writes storage from fragment shaders with room for one more storage buffer in its lit pipelines; weighted otherwise and without a renderer."
     field gpuCrowds bool "Whether og.CrowdAnimation crowds are culled (frustum and occlusion), given their level of detail and drawn on the GPU, tens of thousands at a time: where the device draws indirect with a first instance (WebGPU's `indirect-first-instance`, Vulkan, Metal, D3D12). Where it is false, and without a renderer, they draw through the CPU's culling instead: the same members at the same levels and the same frame, at a higher CPU cost per member."

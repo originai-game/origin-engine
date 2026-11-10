@@ -99,10 +99,15 @@ struct AreaShade {
   specular: vec3<f32>,
 };
 
+// Whether a pipeline has the rect lights' code (pipeline_features.rs):
+// without it a rect light sends nothing.
+override OG_AREA: bool = true;
+
 fn area_shade(light: LocalLight, s: Surface, p: vec3<f32>, n: vec3<f32>, v: vec3<f32>) -> AreaShade {
   var o: AreaShade;
   o.diffuse = vec3<f32>(0.0);
   o.specular = vec3<f32>(0.0);
+  if (!OG_AREA) { return o; }
   let center = light.position_range.xyz;
   var hw = light.direction_slot.xyz;
   let hh = light.cone.xyz;
@@ -171,7 +176,7 @@ fn rect_shadow_turn(p: vec3<f32>) -> f32 {
 // over a disc whose radius is half of it).
 fn rect_shadow(light: LocalLight, p: vec3<f32>, n: vec3<f32>) -> f32 {
   let slot = i32(light.direction_slot.w);
-  if (slot < 0) { return 1.0; }
+  if (!OG_AREA || slot < 0) { return 1.0; }
   let center = light.position_range.xyz;
   let range = light.position_range.w;
   let hw = light.direction_slot.xyz;

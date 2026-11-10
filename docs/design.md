@@ -301,13 +301,14 @@ cancellable `og dev` checks use the stateless path.
     capture contract. A capture draws every lit pipeline as its full
     variant and waits for it to compile (og-render
     `pipeline_features.rs`), so its bytes never depend on which compiles
-    have finished. A display frame never waits: until a pipeline's full
-    variant has compiled it draws with the variant made for the features
-    the frame first used, and a feature turned on in that window is drawn
-    once the full variant is ready. The variants' binaries may differ in
-    their last bit, so display frames drawn while a variant compiles may
-    differ from a later run's by one LSB. A test that compares display
-    frames byte for byte first settles the compiles
+    have finished. (The features `RenderOptions.without` leaves out are in
+    no variant, the full one included.) A display frame never waits: until
+    a pipeline's full variant has compiled it draws with the variant made
+    for the features the frame first used, and a feature turned on in that
+    window is drawn once the full variant is ready. The variants' binaries
+    may differ in their last bit, so display frames drawn while a variant
+    compiles may differ from a later run's by one LSB. A test that compares
+    display frames byte for byte first settles the compiles
     (`og_render::settle_pipelines`) or compares captures.
   - *Session forks.* `og run --forks N --commands <script>` takes N probe
     snapshots at evenly spaced ticks of the script, each with og.platform's

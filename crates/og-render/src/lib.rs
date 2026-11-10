@@ -168,6 +168,7 @@ pub use ui::{
 mod particles_gpu;
 mod pipeline_cache;
 pub use pipeline_cache::set_pipeline_cache_dir;
+pub use pipeline_features::LitFeatures;
 
 thread_local! {
     /// Fork s60: the host's hook around the frame pipelines
@@ -750,6 +751,9 @@ pub struct Renderer {
     /// does not draw ([`RenderDesc::planar_reflections`] 1), and the log
     /// said so once.
     warned_planar: bool,
+    /// The features the renderer was made without that a scene used
+    /// ([`RenderDesc::without`]): the log said so once for each.
+    warned_without: LitFeatures,
     fx_groups: Option<FxGroups>,
     mips: mips::MipGenerator,
     /// The physical lit pipelines, made when a scene first draws a physical

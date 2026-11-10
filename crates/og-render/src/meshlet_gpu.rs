@@ -920,12 +920,16 @@ impl MeshletGpu {
             .is_some_and(|p| p.slots.contains_key(&mesh))
     }
 
-    /// The lit and prepass pipelines for the frame's clustered batches.
+    /// The lit and prepass pipelines for the frame's clustered batches;
+    /// `off`: the lit features the renderer is made without
+    /// (pipeline_features.rs), out of the lit module.
+    #[allow(clippy::too_many_arguments)]
     pub fn ensure_pipelines(
         &mut self,
         device: &wgpu::Device,
         layouts: [&wgpu::BindGroupLayout; 3],
         planar: bool,
+        off: crate::pipeline_features::Features,
         batches: &[Batch],
         prepass: bool,
         samples: u32,
@@ -938,7 +942,7 @@ impl MeshletGpu {
                 planar,
                 device.create_shader_module(wgpu::ShaderModuleDescriptor {
                     label: Some("pbr meshlet"),
-                    source: wgpu::ShaderSource::Wgsl(lit_source(planar).into()),
+                    source: wgpu::ShaderSource::Wgsl(off.leave_out(lit_source(planar)).into()),
                 }),
             ));
         }

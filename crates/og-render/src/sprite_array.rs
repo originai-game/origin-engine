@@ -47,6 +47,7 @@ impl SpriteArrayPipelines {
         frame_layout: &wgpu::BindGroupLayout,
         fx_layout: &wgpu::BindGroupLayout,
         samples: u32,
+        off: crate::pipeline_features::Features,
     ) -> SpriteArrayPipelines {
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("sprite array"),
@@ -76,7 +77,7 @@ impl SpriteArrayPipelines {
         });
         let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("sprite array"),
-            source: wgpu::ShaderSource::Wgsl(source().into()),
+            source: wgpu::ShaderSource::Wgsl(off.leave_out(source()).into()),
         });
         let buffers = [Some(SPRITE_ARRAY_LAYOUT)];
         // Into the scene's HDR target: at the renderer's samples per pixel.

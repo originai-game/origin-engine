@@ -52,9 +52,11 @@ pub(crate) struct ObjectPass {
 }
 
 impl ObjectPass {
-    pub fn new(device: &wgpu::Device) -> ObjectPass {
+    /// `off`: the lit features the renderer is made without
+    /// (pipeline_features.rs), out of its module.
+    pub fn new(device: &wgpu::Device, off: crate::pipeline_features::Features) -> ObjectPass {
         ObjectPass {
-            module: crate::shader(device, "stylise object", object_source()),
+            module: crate::shader(device, "stylise object", off.leave_out(object_source())),
             pipelines: HashMap::new(),
         }
     }

@@ -1,12 +1,12 @@
 //! Lit pipelines specialised to the features a frame uses.
 //!
 //! The lit shaders carry every feature a scene can turn on: the weather on
-//! surfaces, the local lights, decals, the probe GI's gather and the
-//! water's caustics. Each is behind a pipeline-overridable constant
-//! (`OG_WEATHER`, `OG_LOCAL_LIGHTS`, `OG_DECALS`, `OG_GI`, `OG_CAUSTICS`,
-//! the terrain's diagnostic views' `OG_DEBUG`, og.Grass's far colour's
-//! `OG_GRASS`, MaterialStyle's made surfaces' `OG_SURFACE` and the sun's
-//! soft shadows' `OG_PCSS`, true by default) as well as its own runtime test (no rain, no light, no
+//! surfaces, the local lights, rect lights, decals, the probe GI's gather
+//! and the water's caustics. Each is behind a pipeline-overridable constant
+//! (`OG_WEATHER`, `OG_LOCAL_LIGHTS`, `OG_AREA`, `OG_DECALS`, `OG_GI`,
+//! `OG_CAUSTICS`, the terrain's diagnostic views' `OG_DEBUG`, og.Grass's far
+//! colour's `OG_GRASS`, MaterialStyle's made surfaces' `OG_SURFACE` and the
+//! sun's soft shadows' `OG_PCSS`, true by default) as well as its own runtime test (no rain, no light, no
 //! decal: the code is skipped). A pipeline made with a feature's constant
 //! false has that code folded away before the backend sees it (naga's
 //! `process_overrides`), so it compiles in a fraction of the time: on DX12
@@ -27,6 +27,15 @@
 //! compiled, and the variants' binaries differ in their last bit.
 //! On the web every pipeline is the full one (the browser compiles them
 //! and the host's frame span waits for them asynchronously).
+//!
+//! A renderer made without some of them ([`LitFeatures`],
+//! `RenderDesc::without`) has their overrides false in the text of every
+//! module it makes ([`Features::leave_out`]): every pipeline made from it,
+//! on every host, the full variant included, is made without their code,
+//! and no pipeline switches them back on. It also stops feeding them (a
+//! rect light is not kept, the probe GI does not run, decals are not
+//! recorded, the shelter layer is not fitted), so a module that carries the
+//! code still skips it at its runtime test.
 
 // On the web every lit pipeline is the full variant: the variants'
 // machinery is native.
@@ -42,7 +51,7 @@ use std::cell::OnceCell;
 pub(crate) struct Features(u16);
 
 /// Each feature's bit and its override's name.
-const NAMES: [(Features, &str); 12] = [
+const NAMES: [(Features, &str); 13] = [
     (Features::WEATHER, "OG_WEATHER"),
     (Features::LOCAL_LIGHTS, "OG_LOCAL_LIGHTS"),
     (Features::DECALS, "OG_DECALS"),
@@ -55,6 +64,7 @@ const NAMES: [(Features, &str); 12] = [
     (Features::SEA, "OG_SEA"),
     (Features::FLOW, "OG_FLOW"),
     (Features::RIPPLES, "OG_RIPPLES"),
+    (Features::AREA, "OG_AREA"),
 ];
 
 impl Features {
@@ -79,7 +89,10 @@ impl Features {
     pub(crate) const FLOW: Features = Features(1024);
     /// A water surface's height field (`Water::heights`, its ripples).
     pub(crate) const RIPPLES: Features = Features(2048);
-    pub(crate) const ALL: Features = Features(4095);
+    /// Rect lights (`LightKind::Rect`; area.wgsl's linearly transformed
+    /// cosines and their shadows).
+    pub(crate) const AREA: Features = Features(4096);
+    pub(crate) const ALL: Features = Features(8191);
 
     pub(crate) fn contains(self, other: Features) -> bool {
         self.0 & other.0 == other.0
@@ -89,11 +102,42 @@ impl Features {
         if on { Features(self.0 | other.0) } else { self }
     }
 
-    /// The features whose override `source` (a WGSL module) declares.
+    /// The features whose override `source` (a WGSL module) declares true:
+    /// those a pipeline made from it can leave out. One that
+    /// [`Self::leave_out`] set false is not among them: it is out of every
+    /// pipeline already.
     pub(crate) fn declared(source: &str) -> Features {
         NAMES.iter().fold(Features::NONE, |f, (bit, name)| {
-            f.with(*bit, source.contains(&format!("override {name}: bool")))
+            f.with(
+                *bit,
+                source.contains(&format!("override {name}: bool = true;")),
+            )
         })
+    }
+
+    /// `source` (a WGSL module) with the overrides of the features in
+    /// `self` false: every pipeline made from it, natively and on the web,
+    /// then has their code folded away. A renderer made without them
+    /// (`RenderDesc::without`) makes each module that carries them so.
+    /// The weather on surfaces also leaves the text: a false override's
+    /// code still reaches the browser's shader compilers, and the
+    /// weather's (its noise, masks, ripples and snow) is the largest, so
+    /// [`crate::WEATHER_SURFACE_STUB`] takes its place.
+    pub(crate) fn leave_out(self, source: String) -> String {
+        let source = if self.contains(Features::WEATHER) {
+            source.replace(crate::WEATHER_SURFACE_WGSL, crate::WEATHER_SURFACE_STUB)
+        } else {
+            source
+        };
+        NAMES
+            .iter()
+            .filter(|(bit, _)| self.contains(*bit))
+            .fold(source, |s, (_, name)| {
+                s.replace(
+                    &format!("override {name}: bool = true;"),
+                    &format!("override {name}: bool = false;"),
+                )
+            })
     }
 
     /// The features `scene` draws with: every one whose runtime test could
@@ -137,6 +181,13 @@ impl Features {
                 Features::RIPPLES,
                 scene.water.iter().any(|w| w.heights.is_some()),
             )
+            .with(
+                Features::AREA,
+                scene
+                    .lights
+                    .iter()
+                    .any(|l| matches!(l.kind, crate::LightKind::Rect { .. })),
+            )
     }
 
     /// The pipeline constants that leave out what `self` lacks, for a
@@ -162,6 +213,84 @@ impl std::ops::Not for Features {
     type Output = Features;
     fn not(self) -> Features {
         Features(!self.0 & Features::ALL.0)
+    }
+}
+
+/// Optional lit features a renderer can be made without
+/// ([`RenderDesc::without`](crate::RenderDesc::without), the IDL's
+/// RenderOptions.without). Every lit module carries each of them, reachable
+/// behind its runtime test; one left out is in no pipeline the renderer
+/// makes (its override false, see the module's documentation) and is not
+/// drawn: a scene that uses it draws as if it did not, and the log says so
+/// once. Empty (the default): every one, as before the option.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default, Hash)]
+pub struct LitFeatures(Features);
+
+impl LitFeatures {
+    pub const NONE: LitFeatures = LitFeatures(Features::NONE);
+    /// The weather on lit surfaces (`RenderScene::surface_weather`: wet
+    /// ground, streaks, puddles, snow, dust) and the shore a sea's surf
+    /// wets: weather_surface.wgsl, `OG_WEATHER`.
+    pub const SURFACE_WEATHER: LitFeatures = LitFeatures(Features::WEATHER);
+    /// The probe GI's gather (`PostEffects::gi_probes`): `OG_GI`.
+    pub const GI: LitFeatures = LitFeatures(Features::GI);
+    /// Rect lights (`LightKind::Rect`) and their shadows: `OG_AREA`.
+    pub const AREA_LIGHTS: LitFeatures = LitFeatures(Features::AREA);
+    /// Decals (`RenderScene::decals`): `OG_DECALS`.
+    pub const DECALS: LitFeatures = LitFeatures(Features::DECALS);
+    /// Each one by its IDL name (LitFeature), in the IDL's order.
+    pub const NAMED: [(LitFeatures, &'static str); 4] = [
+        (LitFeatures::SURFACE_WEATHER, "surfaceWeather"),
+        (LitFeatures::GI, "gi"),
+        (LitFeatures::AREA_LIGHTS, "areaLights"),
+        (LitFeatures::DECALS, "decals"),
+    ];
+
+    pub fn contains(self, other: LitFeatures) -> bool {
+        self.0.contains(other.0)
+    }
+
+    pub fn is_empty(self) -> bool {
+        self.0 == Features::NONE
+    }
+
+    /// The one named `name` (LitFeature), if there is one.
+    pub fn named(name: &str) -> Option<LitFeatures> {
+        LitFeatures::NAMED
+            .iter()
+            .find(|(_, n)| *n == name)
+            .map(|(f, _)| *f)
+    }
+
+    /// The IDL names of those in `self`, in the IDL's order.
+    pub fn names(self) -> Vec<&'static str> {
+        LitFeatures::NAMED
+            .iter()
+            .filter(|(f, _)| self.contains(*f))
+            .map(|(_, n)| *n)
+            .collect()
+    }
+
+    /// Their shaders' features.
+    pub(crate) fn features(self) -> Features {
+        self.0
+    }
+
+    /// The override of a single feature (its first, in `NAMES` order).
+    #[cfg(test)]
+    fn override_name(self) -> &'static str {
+        NAMES
+            .iter()
+            .find(|(bit, _)| self.0.contains(*bit))
+            .map(|(_, n)| *n)
+            .expect("a feature")
+    }
+}
+
+impl std::ops::BitOr for LitFeatures {
+    type Output = LitFeatures;
+    fn bitor(self, o: LitFeatures) -> LitFeatures {
+        LitFeatures(self.0 | o.0)
     }
 }
 
@@ -329,6 +458,131 @@ mod tests {
         assert_eq!(declared, Features::WEATHER | Features::GI);
         assert_eq!(Features::GI.constants(declared), vec![("OG_WEATHER", 0.0)]);
         assert!(Features::ALL.constants(declared).is_empty());
+    }
+
+    /// A feature a renderer is made without (RenderDesc::without) is false
+    /// in the module's text: no pipeline sets it, so every one made from
+    /// it, the full variant included and on every host, lacks its code.
+    /// With nothing left out the text is untouched.
+    #[test]
+    fn a_feature_left_out_is_false_in_the_text_and_never_set() {
+        let source = "override OG_WEATHER: bool = true;\noverride OG_GI: bool = true;\noverride OG_AREA: bool = true;\n".to_string();
+        assert_eq!(
+            LitFeatures::NONE.features().leave_out(source.clone()),
+            source
+        );
+        let off = (LitFeatures::SURFACE_WEATHER | LitFeatures::AREA_LIGHTS).features();
+        let lean = off.leave_out(source);
+        assert!(
+            lean.contains("override OG_WEATHER: bool = false;"),
+            "{lean}"
+        );
+        assert!(lean.contains("override OG_AREA: bool = false;"), "{lean}");
+        assert!(lean.contains("override OG_GI: bool = true;"), "{lean}");
+        let declared = Features::declared(&lean);
+        assert_eq!(declared, Features::GI);
+        assert!(Features::ALL.constants(declared).is_empty());
+        assert_eq!(Features::NONE.constants(declared), vec![("OG_GI", 0.0)]);
+    }
+
+    /// The weather on surfaces left out leaves its text too: each module
+    /// that carries it (the standard, physical, grass and terrain lit
+    /// modules) has the stub in its place, which declares the override
+    /// false, so no pipeline sets it. Another feature left out keeps it.
+    #[test]
+    fn the_weather_left_out_leaves_the_module_text() {
+        let hooks = crate::hooks::default_hooks();
+        for source in [
+            crate::lit_source_with(&hooks, false),
+            crate::physical_source(&hooks),
+            crate::grass::lit_source(),
+            crate::terrain::terrain_lit_source("", "", ""),
+        ] {
+            assert!(source.contains(crate::WEATHER_SURFACE_WGSL));
+            let others = Features::GI | Features::AREA | Features::DECALS | Features::CAUSTICS;
+            assert!(
+                others
+                    .leave_out(source.clone())
+                    .contains(crate::WEATHER_SURFACE_WGSL)
+            );
+            let lean = Features::WEATHER.leave_out(source.clone());
+            assert!(!lean.contains(crate::WEATHER_SURFACE_WGSL));
+            assert!(!lean.contains("fn weather_streaks("));
+            assert!(lean.contains("override OG_WEATHER: bool = false;"));
+            assert_eq!(
+                source.len() - lean.len(),
+                crate::WEATHER_SURFACE_WGSL.len() - crate::WEATHER_SURFACE_STUB.len()
+            );
+            assert!(!Features::declared(&lean).contains(Features::WEATHER));
+        }
+    }
+
+    /// Each listed feature is an override the lit modules declare (a
+    /// renamed constant or a feature whose code is not behind one would
+    /// leave its code in every pipeline), and leaving every one out leaves
+    /// none of them declared in any of those modules.
+    #[test]
+    fn every_lit_feature_is_an_override_of_the_lit_modules() {
+        let all = LitFeatures::NAMED
+            .iter()
+            .fold(LitFeatures::NONE, |a, (f, _)| a | *f);
+        let hooks = crate::hooks::default_hooks();
+        let modules = [
+            crate::lit_source_with(&hooks, false),
+            crate::physical_source(&hooks),
+            crate::grass::lit_source(),
+        ];
+        for source in &modules {
+            let declared = Features::declared(source);
+            let lean = Features::declared(&all.features().leave_out(source.clone()));
+            for (f, name) in LitFeatures::NAMED {
+                // Grass carries no decals (and nothing else it lacks is
+                // declared there either).
+                if source.contains(&format!("override {}", f.override_name())) {
+                    assert!(declared.contains(f.features()), "{name}");
+                    assert!(!lean.contains(f.features()), "{name} left out");
+                }
+            }
+        }
+        let standard = Features::declared(&modules[0]);
+        for (f, name) in LitFeatures::NAMED {
+            assert!(
+                standard.contains(f.features()),
+                "the standard lit module lacks {name}"
+            );
+        }
+    }
+
+    /// The IDL's names, each its own feature.
+    #[test]
+    fn lit_features_by_name() {
+        for (f, name) in LitFeatures::NAMED {
+            assert_eq!(LitFeatures::named(name), Some(f));
+            assert_eq!(f.names(), vec![name]);
+        }
+        assert_eq!(LitFeatures::named("toon"), None);
+        let all = LitFeatures::NAMED
+            .iter()
+            .fold(LitFeatures::NONE, |a, (f, _)| a | *f);
+        assert_eq!(all.names().len(), LitFeatures::NAMED.len());
+    }
+
+    /// A frame lacking only a feature the module is made without draws the
+    /// full variant: no variant is made for it.
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn a_feature_left_out_needs_no_variant() {
+        let source = "override OG_WEATHER: bool = true;\noverride OG_GI: bool = true;\n";
+        let declared = Features::declared(&Features::WEATHER.leave_out(source.to_string()));
+        let made = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+        let log = made.clone();
+        let v = Variants::new(declared, move |f: Features| {
+            log.lock().unwrap().push(f);
+            Deferred::anywhere(move || f)
+        });
+        assert_eq!(*v.get(Features::GI), Features::ALL);
+        assert_eq!(*made.lock().unwrap(), vec![Features::ALL]);
+        assert_eq!(v.each().count(), 1);
     }
 
     /// The first frame's variant draws; the full one replaces it once made,

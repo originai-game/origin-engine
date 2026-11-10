@@ -89,6 +89,8 @@ mod render_origin;
 mod render_quality;
 #[path = "../render_raycast.rs"]
 mod render_raycast;
+#[path = "../render_without.rs"]
+mod render_without;
 #[path = "../restored_event.rs"]
 mod restored_event;
 #[path = "../review_views.rs"]

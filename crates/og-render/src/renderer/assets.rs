@@ -146,6 +146,7 @@ impl Renderer {
                 &self.frame_layout,
                 &self.sprite_fx_layout,
                 self.samples,
+                self.info.without.features(),
             ));
         }
         let i = array.index();
@@ -189,6 +190,9 @@ impl Renderer {
         }
         for index in self.cache.shaders.len()..scene.shaders().len() {
             let (lit, shadow) = custom::module_sources(&scene.shaders()[index], self.planar_slot());
+            // Without the features the renderer is made without
+            // (pipeline_features.rs), in every pipeline made from it.
+            let lit = self.info.without.features().leave_out(lit);
             let module = shader(&self.device, "pbr (material shader)", lit);
             self.cache.shaders.push(module);
             let module = shader(&self.device, "shadow (material shader)", shadow);
@@ -523,7 +527,10 @@ impl Renderer {
                     &self.device,
                     &self.queue,
                     [&self.frame_layout, &self.fx_layout, &self.palette_layout],
-                    lit_source_with(&hooks::default_hooks(), self.planar_slot()),
+                    self.info
+                        .without
+                        .features()
+                        .leave_out(lit_source_with(&hooks::default_hooks(), self.planar_slot())),
                     shadow_source(&hooks::default_hooks()),
                 ));
             }
@@ -552,7 +559,10 @@ impl Renderer {
                     let module = shader(
                         &self.device,
                         "physical (material shader)",
-                        physical_source(&hooks),
+                        self.info
+                            .without
+                            .features()
+                            .leave_out(physical_source(&hooks)),
                     );
                     self.cache.physical_shaders.insert(sh.index(), module);
                 }

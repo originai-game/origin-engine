@@ -802,6 +802,8 @@ pub(crate) struct GrassPipelines<'a> {
     pub wind_field: wgpu::TextureView,
     /// The trample map (`trample.rs`), read by the generation.
     pub trample: wgpu::TextureView,
+    /// The lit features the renderer is made without (pipeline_features.rs).
+    pub off: crate::pipeline_features::Features,
 }
 
 /// What a frame's grass is prepared for: the main camera.
@@ -832,6 +834,8 @@ pub(crate) struct GrassRenderer {
     prepass_layout: wgpu::PipelineLayout,
     shadow_layout: wgpu::PipelineLayout,
     samples: u32,
+    /// The lit features its lit module is made without (pipeline_features.rs).
+    off: crate::pipeline_features::Features,
     /// The lit, prepass and shadow pipelines, made when a field first draws.
     pipelines: Option<[wgpu::RenderPipeline; 3]>,
     /// The generation pipelines (evaluate, scan, compact) over each
@@ -980,6 +984,7 @@ impl GrassRenderer {
             wind_field: p.wind_field,
             trample: p.trample,
             samples: p.samples,
+            off: p.off,
             pipelines: None,
             generate: [None, None],
             tile: crate::buffer_init(
@@ -1020,7 +1025,7 @@ impl GrassRenderer {
                 source: wgpu::ShaderSource::Wgsl(src.into()),
             })
         };
-        let lit_module = module("grass", lit_source());
+        let lit_module = module("grass", self.off.leave_out(lit_source()));
         let shadow_module = module("grass shadow", shadow_source());
         let lit = crate::hdr_pipeline(
             device,
@@ -1389,7 +1394,20 @@ impl GrassRenderer {
                 eye: generator.eye,
                 forward: view.frame.forward.extend(per_pixel).to_array(),
                 origin,
-                limits: [HEIGHT_RANGE, MIN_WIDTH_PX, TURN_TO_EYE, snow_weight(scene)],
+                limits: [
+                    HEIGHT_RANGE,
+                    MIN_WIDTH_PX,
+                    TURN_TO_EYE,
+                    // Without the weather on surfaces no snow lies on it.
+                    if self
+                        .off
+                        .contains(crate::pipeline_features::Features::WEATHER)
+                    {
+                        0.0
+                    } else {
+                        snow_weight(scene)
+                    },
+                ],
                 sun: l.extend(f32::from(u8::from(sun_on))).to_array(),
                 shape: [
                     g.tallest(),
