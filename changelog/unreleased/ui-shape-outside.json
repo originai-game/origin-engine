@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "CSS shape-outside",
+      "summary": "Basic shapes and reference boxes shorten inline lines around floats without changing float placement, clearance or block formatting context avoidance. Changes to fixed-size float contours invalidate neighbouring layout in both builders. Shape-margin and image alpha contours remain unsupported; the CSS inventory records the proved syntax and remaining gaps."
+    }
+  ]
+}

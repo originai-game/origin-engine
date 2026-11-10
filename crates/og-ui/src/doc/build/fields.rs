@@ -878,6 +878,14 @@ impl Ui {
             Some("left" | "right" | "inline-start") => crate::layout::FloatSide::Left,
             _ => crate::layout::FloatSide::None,
         };
+        self.nodes[i].shape_outside = r
+            .str("shapeOutside")
+            .and_then(|s| crate::doc::paint_css::outside(s).ok().flatten())
+            .map(|(shape, reference)| crate::layout::float::Outside {
+                shape,
+                reference,
+                rtl,
+            });
         el.clear = match r.str("clear") {
             Some("both") => crate::layout::float::LEFT | crate::layout::float::RIGHT,
             Some("left") if rtl => crate::layout::float::RIGHT,

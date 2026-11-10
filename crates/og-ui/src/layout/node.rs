@@ -535,6 +535,8 @@ pub(crate) struct Node {
     pub anchor: usize,
     /// How it is placed when it is a layer of its own.
     pub float: Float,
+    /// A float's inline exclusion contour, independent of its margin box.
+    pub shape_outside: Option<super::float::Outside>,
     /// A transition's effect on its subtree.
     pub fx: Option<Fx>,
     /// Keyboard and gamepad focus can land on it.
@@ -786,6 +788,7 @@ impl Node {
             multiline: false,
             anchor: NONE,
             float: Float::None,
+            shape_outside: None,
             fx: None,
             nav: false,
             adjust: false,

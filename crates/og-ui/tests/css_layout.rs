@@ -1056,6 +1056,89 @@ p {{ margin: 0; }}
 }
 
 #[test]
+fn shape_outside_changes_line_exclusion_not_float_placement() {
+    let source = r#"<meta name="component" content="t">
+<div><div id="Root"><div id="F" class={$mode}></div><div id="Second"></div>
+<div id="Lines"><span id="A"></span><span id="B"></span><span id="C"></span></div>
+<div id="Bfc"></div><div id="Clear"></div></div></div>
+<style>
+#Root { width: 400px; }
+#F { float: left; width: 100px; height: 100px;
+     shape-outside: polygon(0 0, 100% 100%, 0 100%); }
+#F.off { shape-outside: none; }
+#Second { float: left; width: 30px; height: 0; }
+#Lines { font-size: 0; }
+span { display: inline-block; width: 300px; height: 20px; }
+#Bfc { display: flow-root; height: 10px; }
+#Clear { clear: both; height: 10px; }
+</style>"#;
+    both(source, &[("mode", serde_json::json!("on"))], |d| {
+        let root = d.get("Root");
+        for (id, x, y) in [("A", 20.0, 0.0), ("B", 40.0, 20.0), ("C", 60.0, 40.0)] {
+            let p = d.get(id);
+            assert_eq!((p.x - root.x, p.y - root.y), (x, y), "{id}");
+        }
+        assert_eq!(
+            d.get("Second").x - root.x,
+            100.0,
+            "floats still stack by margin boxes"
+        );
+        assert_eq!(
+            d.get("Bfc").x - root.x,
+            100.0,
+            "BFC avoidance stays rectangular"
+        );
+        assert_eq!(d.get("Clear").y - root.y, 100.0, "clear stays rectangular");
+        d.set("mode", serde_json::json!("off"));
+        assert_eq!(d.get("A").x - root.x, 100.0);
+        d.set("mode", serde_json::json!("on"));
+        assert_eq!(d.get("A").x - root.x, 20.0);
+    });
+}
+
+#[test]
+fn shape_outside_uses_the_whole_line_band_and_reference_box() {
+    for (shape, extra, x, y) in [
+        ("circle(50%)", "", 90.0, 0.0),
+        ("ellipse(50px 40px)", "", 83.0, 0.0),
+        ("inset(0 70% 0 0)", "", 30.0, 0.0),
+        ("polygon(0 0, 500% 500%, 0 500%)", "", 20.0, 0.0),
+        ("border-box", "margin: 0 10px;", 110.0, 0.0),
+        ("margin-box", "margin: 0 10px;", 120.0, 0.0),
+        (
+            "content-box",
+            "padding: 10px; box-sizing: border-box;",
+            90.0,
+            0.0,
+        ),
+        ("inset(0 50% 0 50%)", "", 50.0, 0.0),
+        ("inset(0 0 100% 0)", "", 0.0, 0.0),
+        ("polygon(0 0, 100% 0, 0 100%)", "", 31.0, 70.0),
+    ] {
+        let width = if y > 0.0 { 370 } else { 200 };
+        let source = format!(
+            r#"<meta name="component" content="t">
+<div><div id="Root"><div id="F"></div><div id="Line"><span id="A"></span></div></div></div>
+<style>
+#Root {{ width: 400px; }}
+#F {{ float: left; width: 100px; height: 100px; {extra} shape-outside: {shape}; }}
+#Line {{ font-size: 0; }}
+#A {{ display: inline-block; width: {width}px; height: 20px; }}
+</style>"#
+        );
+        both(&source, &[], |d| {
+            let (a, root) = (d.get("A"), d.get("Root"));
+            assert!(
+                (a.x - root.x - x).abs() <= 1.0 && (a.y - root.y - y).abs() <= 1.0,
+                "{shape} {extra}: ({}, {}), expected ({x}, {y})",
+                a.x - root.x,
+                a.y - root.y
+            );
+        });
+    }
+}
+
+#[test]
 fn every_line_box_is_shortened_around_floats() {
     let words = "alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu";
     let boxes: String = (1..=9)

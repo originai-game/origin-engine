@@ -2176,6 +2176,28 @@ fn rule(t: &[Tok]) -> (FillRule, &[Tok]) {
     }
 }
 
+/// Basic-shape float exclusion uses the margin box by default, not the
+/// border box used by clip-path. SVG geometry boxes are not shape boxes.
+pub(crate) fn outside(text: &str) -> Result<Option<(CssClip, GeoBox)>, String> {
+    let t = tokens(text)?;
+    if t.iter().any(|t| matches!(t, Tok::Ident(s) if matches!(s.as_str(), "fill-box" | "stroke-box" | "view-box"))) {
+        return Err("shape-outside takes margin-box, border-box, padding-box or content-box".into());
+    }
+    let mut value = clip(text)?;
+    if let Some((shape, geo)) = &mut value {
+        if matches!(shape, CssClip::Url(_)) {
+            return Err("shape-outside image alpha contours are not implemented".into());
+        }
+        if !t
+            .iter()
+            .any(|t| matches!(t, Tok::Ident(s) if GeoBox::parse(s).is_some()))
+        {
+            *geo = GeoBox::Margin;
+        }
+    }
+    Ok(value)
+}
+
 /// `clip-path`: `[<basic-shape> || <geometry-box>] | url(#id) | none`;
 /// the basic shapes `inset()`, `rect()`, `xywh()`, `circle()`,
 /// `ellipse()`, `polygon()`, `path()` and `shape()`.

@@ -136,13 +136,13 @@ proof("cursor", "css_interact", "plain_boxes_choose_cursors_in_clipped_transform
       "Both builders assert cursor inheritance over noninteractive boxes, passive overlays above buttons, pointer-events:none, hidden and overflow-clipped children, 90-degree transforms and image hotspots. Runtime ui_configure::svg_asset_urls_supply_cursor_pixels_and_masks checks cooked SVG cursor pixels on a plain div. Arbitrary clip-path targeting and every cursor keyword are not covered.")
 proof("field-sizing", "control_props", "fields_size_to_displayed_content_and_respect_constraints",
       "Both builders prove text-input value/placeholder sizing, caret-width empty inputs, textarea wrapping and newline heights, ignored rows, explicit dimensions, min/max width, noninheritance and removal of content sizing. Retained editing and checkpoint restore preserve focus/caret and update height. Select/file controls and vertical text controls remain missing or unverified.")
+proof("shape-outside shapes", "css_layout", "shape_outside_changes_line_exclusion_not_float_placement",
+      "Both builders prove triangular line exclusion, unchanged float stacking/BFC avoidance/clear, and dynamic none/restoration. shape_outside_uses_the_whole_line_band_and_reference_box proves circles, ellipses, insets, margin/border/content boxes, margin-box clipping, degenerate insets and dropping a wide line along a slope. Shape-margin and image alpha contours are missing; other syntax, elliptical box corners and writing modes remain unverified.")
 
 MISSING = {
     "default": "documents::boolean_attribute_selectors_follow_svelte_presence proves retained :default follows false/present checked attributes. The immediate builder does not expose :default state; full support is missing.",
     "interpolate-size": "No intrinsic-size interpolation implementation or output proof.",
     "calc-size": "No calc-size evaluation or animated output proof.",
-    "shape-outside": "Rectangular floats have layout tests; shape exclusion contours and shape-margin have no output proof.",
-    "shapes": "clip-path does not prove shape-outside float exclusion.",
     "table": "Table spans/captions have computed output tests, but border-spacing and border-collapse have no implementation/output proof.",
     "backdrop-filter": "Ordinary staged backdrop chains have fixtures; native glass rejects chains requiring intermediate clamps, drop-shadow and SVG url filters.",
     "shadow-parts": "Host/part/state selector registry is present; all-property part applicability awaits the parts-as-nodes stream and its output tests.",

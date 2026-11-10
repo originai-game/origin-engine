@@ -67,14 +67,162 @@ fn joins(nodes: &[Node], i: usize) -> bool {
         && !n.el.scroll_x
 }
 
+/// Unresolved CSS shape geometry; layout resolves percentages after sizing.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct Outside {
+    pub shape: crate::doc::paint_css::CssClip,
+    pub reference: crate::doc::paint_css::GeoBox,
+    pub rtl: bool,
+}
+
+impl Outside {
+    fn edges(&self, n: &Node, offset: [f32; 2]) -> Vec<[[f32; 2]; 2]> {
+        use crate::doc::paint_css::GeoBox;
+        use crate::paint::ShapeKind;
+        use og_core::glam::Vec2;
+        let vertical = n.el.vertical;
+        let physical = |values: [f32; 4]| {
+            let mut out = values;
+            if let Some(sides) = vertical {
+                for k in 0..4 {
+                    out[sides[k] as usize] = values[k];
+                }
+            }
+            out
+        };
+        let p = n.el.padding;
+        let insets = match self.reference {
+            GeoBox::Border => [0.0; 4],
+            GeoBox::Padding => n
+                .decor
+                .as_ref()
+                .map_or([0.0; 4], |d| d.borders.map(|b| b.map_or(0.0, |b| b.width))),
+            GeoBox::Content => physical([p.top, p.right, p.bottom, p.left]),
+            GeoBox::Margin => physical([
+                -span(n.margin_sets[0]),
+                -n.margin_x[1],
+                -span(n.margin_sets[1]),
+                -n.margin_x[0],
+            ]),
+        };
+        let radius = if n.el.radius > 0.0 {
+            (n.el.radius - insets.iter().copied().fold(f32::INFINITY, f32::min)).max(0.0)
+        } else {
+            0.0
+        };
+        let (w, h) = if vertical.is_some() {
+            (n.pref_h, n.w)
+        } else {
+            (n.w, n.pref_h)
+        };
+        let ShapeKind::Path {
+            points, contours, ..
+        } = self.shape.resolve(w, h, (insets, radius))
+        else {
+            return Vec::new();
+        };
+        let map = |p: Vec2| {
+            let (mut x, y) = match vertical {
+                Some([1, _, _, _]) => (p.y, w - p.x),
+                Some([3, 0, _, _]) => (h - p.y, p.x),
+                Some(_) => (p.y, p.x),
+                None => (p.x, p.y),
+            };
+            if self.rtl {
+                x = n.w - x;
+            }
+            [x + offset[0], y + offset[1]]
+        };
+        let mut edges = Vec::new();
+        let mut start = 0;
+        for count in contours {
+            let contour = &points[start..start + count as usize];
+            start += count as usize;
+            if contour.is_empty() {
+                continue;
+            }
+            let mut at = Vec2::from(contour[0]);
+            for c in contour[1..].as_chunks::<3>().0 {
+                let line =
+                    og_render::flatten_cubic(at, c[0].into(), c[1].into(), c[2].into(), 0.01);
+                edges.extend(line.windows(2).map(|p| [map(p[0]), map(p[1])]));
+                at = c[2].into();
+            }
+            edges.push([map(at), map(contour[0].into())]);
+        }
+        let (top, bottom) = edges
+            .iter()
+            .flatten()
+            .fold((f32::INFINITY, f32::NEG_INFINITY), |(top, bottom), p| {
+                (top.min(p[1]), bottom.max(p[1]))
+            });
+        if top == bottom {
+            edges.clear();
+        }
+        edges
+    }
+}
+
 /// A placed float's margin box, from its context root's content box.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 struct Placed {
     x: f32,
     y: f32,
     w: f32,
     h: f32,
     left: bool,
+    contour: Option<Vec<[[f32; 2]; 2]>>,
+}
+
+/// Only inline content uses the contour. Float placement, BFC avoidance
+/// and clearance keep the rectangular margin box (CSS Shapes 1 §2).
+fn line_room(floats: &[Placed], y0: f32, y1: f32, x0: f32, x1: f32) -> (f32, f32, Option<f32>) {
+    let (mut l, mut r, mut next) = (x0, x1, None::<f32>);
+    for f in floats {
+        let (lo, hi) = (y0.max(f.y), y1.min(f.y + f.h));
+        if hi <= lo {
+            continue;
+        }
+        let (mut left, mut right) = (f.x, f.x + f.w);
+        if let Some(edges) = &f.contour {
+            (left, right) = (f32::INFINITY, f32::NEG_INFINITY);
+            for &[a, b] in edges {
+                if a[1].max(b[1]) < lo || a[1].min(b[1]) > hi {
+                    continue;
+                }
+                let x =
+                    |y: f32| a[0] + (b[0] - a[0]) * ((y - a[1]) / (b[1] - a[1])).clamp(0.0, 1.0);
+                let (a, b) = if a[1] == b[1] {
+                    (a[0], b[0])
+                } else {
+                    (x(lo), x(hi))
+                };
+                left = left.min(a.min(b));
+                right = right.max(a.max(b));
+            }
+        }
+        if left > right {
+            continue;
+        }
+        let left = left.clamp(f.x, f.x + f.w.max(0.0));
+        let right = right.clamp(f.x, f.x + f.w.max(0.0));
+        if !(if f.left { right > x0 } else { left < x1 }) {
+            continue;
+        }
+        if f.left {
+            l = l.max(right);
+        } else {
+            r = r.min(left);
+        }
+        let bottom = f.y + f.h;
+        let b = if f.contour.is_some() {
+            (y0 + 1.0 / 64.0).min(bottom)
+        } else {
+            bottom
+        };
+        next = Some(next.map_or(b, |n| n.min(b)));
+    }
+    (l, r, next)
 }
 
 /// The room floats leave between `x0` and `x1` over `y0..y1`: its left and
@@ -304,7 +452,18 @@ fn place(
             _ => break if left { l } else { r - w },
         }
     };
-    cx.floats.push(Placed { x, y, w, h, left });
+    let contour = n
+        .shape_outside
+        .as_ref()
+        .map(|s| s.edges(n, [x + ml, y + mt]));
+    cx.floats.push(Placed {
+        x,
+        y,
+        w,
+        h,
+        left,
+        contour,
+    });
     nodes[f].float_at = [x - origin.0 + ml, y - origin.1 + mt];
     cx.touched.push(f);
 }
@@ -367,7 +526,7 @@ fn text(
             }
             break;
         }
-        let (l, r, next) = room(&cx.floats, y, y + lh, tx0, tx1);
+        let (l, r, next) = line_room(&cx.floats, y, y + lh, tx0, tx1);
         let avail = (r - l).max(0.0);
         let first = at(rest, avail).into_iter().next().unwrap_or(Line {
             text: String::new(),
@@ -457,7 +616,7 @@ fn rich(
         if y >= lowest {
             return (tx0, (tx1 - tx0).max(0.0), None);
         }
-        let (l, r, next) = room(floats, y, y + h, tx0, tx1);
+        let (l, r, next) = line_room(floats, y, y + h, tx0, tx1);
         (l, (r - l).max(0.0), next)
     };
     let y = top + pad.top;
@@ -790,7 +949,7 @@ fn lines(
         // at its top, and the line filled again.
         let mut h = tall(nodes, s);
         let (e, l, avail, next) = 'fit: loop {
-            let (l, r, next) = room(&cx.floats, y, y + h, x0, x1);
+            let (l, r, next) = line_room(&cx.floats, y, y + h, x0, x1);
             let avail = (r - l).max(0.0);
             let (mut e, mut used) = (s + 1, outer(s));
             loop {

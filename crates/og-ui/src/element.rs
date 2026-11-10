@@ -2157,6 +2157,7 @@ impl Ui {
                 let same_layout = crate::layout::el_layout_eq(&a.el, &b.el)
                     && crate::layout::content_layout_eq(&a.content, &b.content)
                     && crate::layout::props_layout_eq(&a.props, &b.props)
+                    && a.shape_outside == b.shape_outside
                     && a.float == b.float
                     && a.float == Float::None
                     && a.children == b.children
@@ -2204,6 +2205,7 @@ impl Ui {
                                         && child.props.insets == old.props.insets
                                         && child.props.view_place == old.props.view_place
                                         && child.float == old.float
+                                        && child.shape_outside == old.shape_outside
                                 }))
                 });
             if !k.clean[i] {
