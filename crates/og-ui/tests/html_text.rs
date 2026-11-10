@@ -653,6 +653,7 @@ fn list_markers_follow_css_and_renumber_on_reorder() {
   <ol id="Roman"><li i18n="a">A</li><li i18n="b">B</li><li i18n="c">C</li><li i18n="d">D</li></ol>
   <ol id="Alpha"><li i18n="a">A</li><li i18n="b">B</li></ol>
   <ol id="Longhand"><li i18n="a">A</li><li i18n="b">B</li></ol>
+  <ol id="Initial"><li i18n="a">A</li></ol>
   <ul id="Bare"><li i18n="a">A</li></ul>
   <ul id="In"><li id="InItem" i18n="a">A</li></ul>
 </div></div>
@@ -660,6 +661,8 @@ fn list_markers_follow_css_and_renumber_on_reorder() {
 #Roman { list-style-type: upper-roman; }
 #Alpha { list-style: lower-alpha inside; }
 #Longhand > li { list-style-type: lower-alpha; list-style-position: inside; }
+#Initial { list-style: upper-roman inside; }
+#Initial > li { list-style: initial; }
 #Bare { list-style: none; }
 #In { list-style-position: inside; }
 </style>"#;
@@ -675,6 +678,7 @@ fn list_markers_follow_css_and_renumber_on_reorder() {
         assert_eq!(d.markers("Roman"), ["I.", "II.", "III.", "IV."]);
         assert_eq!(d.markers("Alpha"), ["a.\u{a0}", "b.\u{a0}"]);
         assert_eq!(d.markers("Alpha"), d.markers("Longhand"));
+        assert_eq!(d.markers("Initial"), ["disc"]);
         assert!(d.markers("Bare").is_empty());
         // Outside hangs before the item; inside sits in its row.
         let item = d.get("Bullets").x;

@@ -60,6 +60,15 @@ const TYPES: [&str; 9] = [
 ];
 const POSITIONS: [&str; 2] = ["outside", "inside"];
 
+pub(super) fn initial(property: &str) -> Option<&'static str> {
+    match property {
+        "list-style-type" => Some("disc"),
+        "list-style-position" => Some("outside"),
+        "list-style-image" => Some("none"),
+        _ => None,
+    }
+}
+
 /// The selector an item's ordinal counts: its `<li>` siblings.
 pub(crate) fn items() -> Vec<Selector> {
     Selector::parse_list("li").expect("li is a selector")
