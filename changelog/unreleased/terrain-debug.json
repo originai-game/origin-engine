@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "render.DebugView",
+      "summary": "Diagnostic views wait for complete lit pipelines instead of temporarily drawing an incomplete beauty variant while shaders compile. Switching from beauty to a terrain diagnostic now honours the requested view on its first frame. Beauty rendering remains non-blocking."
+    }
+  ]
+}

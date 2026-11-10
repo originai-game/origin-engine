@@ -21,6 +21,8 @@
 //! is submitted; from then on the full one draws. A feature that turns on
 //! before the full variant is ready never stalls a frame: the variant
 //! already made draws, without that feature, until the full one is ready.
+//! Diagnostic views wait for the full variant too: a beauty-only variant
+//! must never silently replace the requested diagnostic or omit its inputs.
 //! A capture (`Renderer::render_capture`) draws with the full variants,
 //! waiting for them: its bytes are a function of the world and the
 //! presentation state (docs/design.md §2.4), never of which variants have
@@ -383,9 +385,13 @@ impl<C: Cell> Variants<C> {
     }
 
     /// `features` with what the module does not declare: their code is
-    /// always in it.
+    /// always in it. Diagnostics require the full shading path immediately.
     fn wanted(&self, features: Features) -> Features {
-        features | !self.declared
+        if features.contains(Features::DEBUG) {
+            Features::ALL
+        } else {
+            features | !self.declared
+        }
     }
 
     /// Starts what a frame with `features` will draw with (natively; on the
@@ -417,8 +423,8 @@ impl<C: Cell> Variants<C> {
     /// What a frame with `features` draws with: the full variant once it
     /// is made; else the variant made for the features, waited for if it is
     /// compiling. A feature it lacks is not drawn until the full one is
-    /// ready (that frame does not wait for it). With every feature (a
-    /// capture's, `Renderer::capturing`) it is the full variant, waited
+    /// ready (that frame does not wait for it). With diagnostics or every
+    /// feature (a capture's, `Renderer::capturing`) it is the full variant, waited
     /// for, so what it draws never depends on what has compiled.
     pub(crate) fn get(&self, features: Features) -> &C::Value {
         #[cfg(target_arch = "wasm32")]
@@ -620,5 +626,27 @@ mod tests {
             std::thread::yield_now();
         }
         assert_eq!(*v.get(Features::LOCAL_LIGHTS), Features::ALL);
+    }
+
+    #[test]
+    #[cfg(not(target_arch = "wasm32"))]
+    fn diagnostics_never_draw_the_incomplete_beauty_variant() {
+        // Keep compilation pending deterministically; get supplies the
+        // requested pipeline, without a worker racing the assertion.
+        struct Pending(Features);
+        impl Cell for Pending {
+            type Value = Features;
+            fn start_at(&self, _: Priority) {}
+            fn ready(&self) -> Option<&Features> {
+                None
+            }
+            fn get(&self) -> &Features {
+                &self.0
+            }
+        }
+        let v = Variants::new(Features::ALL, Pending);
+        assert_eq!(*v.get(Features::NONE), Features::NONE);
+        assert_eq!(*v.get(Features::LOCAL_LIGHTS), Features::NONE);
+        assert_eq!(*v.get(Features::DEBUG), Features::ALL);
     }
 }
