@@ -69,6 +69,7 @@ import { PointerLockMachine, type LockAction } from "./pointer-lock.ts";
 import { LayoutLearner, readLayoutMap, type KeyLabel } from "./keyboard-layout.ts";
 import { createRpcRings, readFrames, waitForFrames, writeFrame, type RpcRings } from "./rpc-ring.ts";
 import { localPlatform, storagePersistence, type PlatformAnswer, type PlatformCall, type PlatformHost, type PlatformLink, type PlatformNotice } from "../platform-local.ts";
+import type { RoomProvider } from "../provider.ts";
 import type { BootPhases } from "./worker.ts";
 import type { TraceDocument } from "../trace.ts";
 
@@ -258,13 +259,10 @@ export const PAGE_PREFERENCES = [
 /**
  * What carries og.platform's rooms on the web (docs/design.md §2.8): the engine's room ops
  * (`{ op: "create" | "join" | "quick" | "leave" | "send", ... }`, og-net's protocol) in, its room events
- * (`joined`, `peer_joined`, `peer_left`, `message`, `left`, `error`) out, in order.
+ * (`joined`, `peer_joined`, `peer_left`, `message`, `left`, `error`) out, in order. The provider
+ * contract's RoomProvider (`@origingame/engine/provider`).
  */
-export interface RoomHost {
-  /** og.platform.roomInfo's `host`: `player` for the Player's rooms. */
-  readonly host: string;
-  handle(ops: readonly Record<string, unknown>[], deliver: (events: unknown[]) => void): void;
-}
+export type RoomHost = RoomProvider;
 
 /** The page's motion, contrast and transparency preferences and the platform's editing keys, as the viewport carries them to og-ui. */
 export function pagePreferences(): { reducedMotion: boolean; highContrast: boolean; reducedTransparency: boolean; macKeys: boolean } {
@@ -529,7 +527,7 @@ export class Shell {
       }
       if (m.type === "room") {
         const ops = (m as unknown as { ops: Record<string, unknown>[] }).ops ?? [];
-        const deliver = (events: unknown[]) => worker.postMessage({ type: "room-events", events });
+        const deliver = this.#deliverRooms;
         if (this.#rooms) this.#rooms.handle(ops, deliver);
         // No room host: what asked for a room hears so (the engine refuses first while its host is none).
         else deliver(ops.filter((o) => o["op"] === "create" || o["op"] === "join" || o["op"] === "quick").map((o) => ({ type: "error", op: o["op"], code: "unavailable", message: "this page carries no rooms" })));
@@ -758,7 +756,12 @@ export class Shell {
   setRooms(host: RoomHost | null, link?: string): void {
     this.#rooms = host;
     this.worker.postMessage({ type: "room-host", host: host ? host.host : "none", ...(link ? { join: link } : {}) });
+    // After the engine knows its host: what the provider heard already (a room joined at connect) follows.
+    host?.attach?.(this.#deliverRooms);
   }
+
+  /** Room events to the engine, in order (og_room_deliver). */
+  readonly #deliverRooms = (events: unknown[]): void => this.worker.postMessage({ type: "room-events", events });
 
   /** What answers og.platform's calls from now on (og.platform.info reports its host and capabilities). */
   /** What the platform host may do besides answering: notices, and pausing the game while an ad shows (onPlatformPause). */

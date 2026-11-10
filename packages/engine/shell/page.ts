@@ -37,7 +37,8 @@ import { pollGamepads } from "../src/web/gamepad.ts";
 import { mountWire, routeSavedScenes, SCENE_SAVED_CAPABILITY, type SavedScene } from "./wire.ts";
 import { connectPlayer } from "./player.ts";
 import { connectPage, pageGame, type PageConnection, type PageInfo } from "./transport.ts";
-import { deferredPlatform, HELLO_WAIT_MS, playerPlatform, playerRooms, storagePersistence } from "./platform.ts";
+import { deferredPlatform, HELLO_WAIT_MS, pageProviders, playerPlatform, playerRooms, storagePersistence } from "./platform.ts";
+import type { Providers } from "../src/provider.ts";
 import { localPlatform, memoryPersistence, type PlatformHost, type PlatformNotice } from "../src/platform-local.ts";
 import type { HostError } from "../src/web/shell.ts";
 import type { FrameStats } from "../src/web/frames.ts";
@@ -249,7 +250,18 @@ export interface PlayHandle {
   readonly config: ShellConfig;
 }
 
-export async function play(): Promise<PlayHandle> {
+/** How the page that hosts the game sets it up. */
+export interface PlayOptions {
+  /**
+   * The page's providers (`@origingame/engine/provider`, docs/web-export.md §Providers): `platform`
+   * answers og.platform where the browser's storage would, `rooms` (a RoomProvider, or an `og
+   * relay` URL) carries its rooms where none would. A Player framing the page still answers
+   * what it answers. Default: `window.__OG_PROVIDER`, which a page sets before play.js loads.
+   */
+  readonly provider?: Providers;
+}
+
+export async function play(options: PlayOptions = {}): Promise<PlayHandle> {
   const config = readConfig();
   const at = (name: string) => fileUrl(config, name, location.href);
   const query = new URLSearchParams(location.search);
@@ -557,6 +569,8 @@ export async function play(): Promise<PlayHandle> {
   // On the Stage (the overlay in this document) nothing goes to the shared Stage origin's
   // storage: where the overlay answers nothing, this load's memory does.
   const platformStore = stageSelf ? memoryPersistence() : storagePersistence(`og.platform:${location.pathname}`);
+  // The page's own providers (never the game's): where no Player answers, they do.
+  const provided = pageProviders(options.provider ?? (globalThis as { __OG_PROVIDER?: unknown }).__OG_PROVIDER, config.build, (line) => log.push([line]));
   let platformReady: (h: PlatformHost) => void = () => {};
   const hostReady = new Promise<PlatformHost>((r) => (platformReady = r));
   const helloForPlatform = () => platformReady(playerPlatform(player, platformStore));
@@ -565,16 +579,17 @@ export async function play(): Promise<PlayHandle> {
   // Without a Player the browser's storage answers; a dev page fakes the platform services
   // (every call succeeds), a publish page never does (they are `unavailable`).
   const fake = config.build === "dev" ? {} : undefined;
-  if (!player.hosted && linked) setTimeout(() => platformReady(localPlatform(platformStore, fake)), HELLO_WAIT_MS);
+  const alone = () => provided.platform ?? localPlatform(platformStore, fake);
+  if (!player.hosted && linked) setTimeout(() => platformReady(alone()), HELLO_WAIT_MS);
   // A top-level platform page's calls wait for its play origin's hello; without one, the browser's storage.
   if (page)
     void page.hello.then((ok) => {
-      if (!ok) return platformReady(localPlatform(platformStore, fake));
+      if (!ok) return platformReady(alone());
       helloForPlatform();
       // The cover and Back as soon as the play origin names them, while the engine still loads.
       if (page.page) paintPage(page.page);
     });
-  const platform = linked || page ? deferredPlatform(hostReady, ["store.get", "store.set", "store.list", "telemetry"]) : localPlatform(platformStore, fake);
+  const platform = linked || page ? deferredPlatform(hostReady, ["store.get", "store.set", "store.list", "telemetry"]) : alone();
 
   let firstFrameAt = 0;
   // Ready is said once, never after the page failed; a crash before it is a start failure (Player protocol: fail before ready, crash after).
@@ -816,7 +831,7 @@ export async function play(): Promise<PlayHandle> {
     shell.setPlatform(playerPlatform(player, platformStore));
     // Rooms ride the Player's postMessage link (pushed events): a framed Player's, never the HTTP page's.
     const rooms = playerRooms(player);
-    shell.setRooms(rooms, roomLink);
+    shell.setRooms(rooms ?? provided.rooms ?? null, roomLink);
     playerEvents.room = (e) => rooms?.push(e);
     pausedByPlayer = m.paused;
     if (m.started && phase === "gate") start();
@@ -844,9 +859,10 @@ export async function play(): Promise<PlayHandle> {
   pausedByPlayer = player.paused;
   // A framed page (or the Stage overlay's own document) waits briefly for a Player's hello before drawing its own gate.
   if (linked && !byPlayer) await new Promise((r) => setTimeout(r, 300));
-  // A Play link to a room on a page no Player carries rooms for: the game hears why it is in none
-  // (og.RoomJoined, ok false); a Player's hello later joins it.
-  if (roomLink && !byPlayer) shell.setRooms(null, roomLink);
+  // A page no Player answered: the page's rooms provider carries the rooms (a Play link's room
+  // through it); without one, a Play link's game hears why it is in none (og.RoomJoined, ok
+  // false). A Player's hello later carries them.
+  if (!byPlayer && (provided.rooms || roomLink)) shell.setRooms(provided.rooms ?? null, roomLink);
 
   // ── ready: reveal, then the gate ─────────────────────────────────────
   // Fork s61: the gate shows once the first frame is drawn (behind it: the first tick, the

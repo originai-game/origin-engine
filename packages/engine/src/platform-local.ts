@@ -15,80 +15,17 @@
 // (a published page with no Player) they answer `unavailable`: a page never
 // grants a purchase nobody paid for.
 
-/** One platform call, as og_platform_take lists it. */
-export interface PlatformCall {
-  readonly request: number;
-  readonly method: string;
-  readonly args: Record<string, unknown>;
-  readonly tick: number;
-}
+// The contract's types and vocabulary live in ./provider.ts (`@origingame/engine/provider`);
+// these names stay here for what imports them from this module.
+import { ERROR_CODES, failure, SERVICE_METHODS, unavailable, type PlatformAnswer, type PlatformCall, type PlatformLink, type PlatformNotice, type PlatformProvider } from "./provider.ts";
+export { ERROR_CODES, SERVICE_METHODS };
+export type { PlatformAnswer, PlatformCall, PlatformLink, PlatformNotice };
 
-/** An answer, as og_platform_answer takes it. */
-export type PlatformAnswer = (
-  | { readonly ok: true; readonly data: unknown }
-  | { readonly ok: false; readonly error: { readonly code: string; readonly message: string; readonly retryable: boolean; readonly revision?: number } }
-) & {
-  /** The answering host's clock, UTC ms (a Player that sends its time); the engine's host clock fills it in otherwise. */
-  readonly time?: number;
-};
-
-/** Unasked host input (og_platform_notify): applied at the next tick's start as og.PlatformNotice. */
-export interface PlatformNotice {
-  readonly kind: "purchase" | "entitlements" | "invite";
-  readonly data: unknown;
-  readonly time?: number;
-}
-
-/** What a platform host may do to the engine it answers, besides answering. */
-export interface PlatformLink {
-  /** The engine's tick now (read between ticks). */
-  readonly tick: number;
-  /** Answer one call (as `handle`'s `answer`). */
-  answer(request: number, result: PlatformAnswer): void;
-  /** Send a notice. */
-  notify(notice: PlatformNotice): void;
-  /** Pause the game through the host's lifecycle (no ticks, no audio), as while an ad shows. */
-  pause(): void;
-  /** Resume it. */
-  resume(): void;
-}
-
-/** What answers an engine's platform calls. */
-export interface PlatformHost {
-  /** `player`, `local` or `none` (og.platform.info). */
-  readonly host: string;
-  readonly capabilities: readonly string[];
-  /** The Player hello's UTC milliseconds, sampled when this host attaches. */
-  readonly time?: number | undefined;
-  /** Handle calls in order; answer every one but `telemetry`, now or later. */
-  handle(calls: readonly PlatformCall[], answer: (request: number, result: PlatformAnswer) => void, link?: PlatformLink): void;
-  /** Called on every pump, with calls or without: a host that answers later or sends notices on its own. */
-  poll?(link: PlatformLink): void;
-}
+/** What answers an engine's platform calls: the provider contract's PlatformProvider. */
+export type PlatformHost = PlatformProvider;
 
 /** The store, leaderboards, telemetry, Origin Point and AI marks: what the local platform always answers. */
 export const LOCAL_CAPABILITIES = ["store.get", "store.set", "store.list", "leaderboard.submit", "leaderboard.top", "leaderboard.around", "telemetry", "point", "ai.mark"] as const;
-
-/** Purchases, ads, achievements, the player, friends, invites and share (docs/platform-asks.md #19): the platform's, faked locally only with a LocalFake. */
-export const SERVICE_METHODS = [
-  "purchase.products",
-  "purchase.buy",
-  "purchase.entitlements",
-  "purchase.consume",
-  "ad.ready",
-  "ad.show",
-  "achievement.unlock",
-  "achievement.progress",
-  "achievement.list",
-  "player.get",
-  "friends.list",
-  "invite.send",
-  "invite.list",
-  "share",
-] as const;
-
-/** Every error code a platform answer may carry. */
-export const ERROR_CODES = ["offline", "timeout", "invalid", "unauthorized", "not_found", "conflict", "too_large", "rate_limited", "unavailable", "failed", "cancelled", "no_fill"] as const;
 
 /** A product the fake sells. */
 export interface FakeProduct {
@@ -167,10 +104,8 @@ function readDocument(text: string | null): LocalDocument {
   }
 }
 
-export const fail = (code: string, message: string): PlatformAnswer => ({
-  ok: false,
-  error: { code, message, retryable: ["offline", "timeout", "unavailable", "rate_limited"].includes(code) },
-});
+/** A failed answer; `retryable` as the contract gives it for `code`. */
+export const fail = failure;
 
 const okData = (data: unknown): PlatformAnswer => ({ ok: true, data });
 
@@ -243,7 +178,7 @@ export function answerLocally(doc: LocalDocument, call: PlatformCall): PlatformA
       doc.marks.push({ kind: String(a["kind"]), label: String(a["label"]), ...(typeof a["model"] === "string" ? { model: a["model"] } : {}), tick: call.tick });
       return okData({ marked: true });
     default:
-      return fail("invalid", `unknown platform method '${call.method}'`);
+      return unavailable(call.method, "the local platform");
   }
 }
 

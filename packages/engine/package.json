@@ -27,6 +27,7 @@
     "./web/shell": "./src/web/shell.ts",
     "./web/play": "./src/web/play.ts",
     "./web/rpc-ring": "./src/web/rpc-ring.ts",
+    "./provider": "./src/provider.ts",
     "./runtime": "./src/runtime.ts",
     "./sourcemap": "./src/sourcemap.ts",
     "./bindings.json": "./types/bindings.json",
