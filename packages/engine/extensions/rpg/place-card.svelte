@@ -23,8 +23,8 @@
       <p class="about" hidden={!about}>{about}</p>
     </div>
     <div class="actions">
-      <button id="Mark" class="act" data-glyph="mark" data-marked={marked} onclick={mark}><div class="face"><div class="act-mark"></div><span class="act-label">{marked ? t("rpg.place.unmark") : t("rpg.place.mark")}</span></div></button>
-      <button id="Travel" class="act primary" data-glyph="travel" disabled={!canTravel} onclick={travel}><div class="face"><div class="act-mark"></div><span class="act-label">{t("rpg.place.travel")}</span></div></button>
+      <button id="Mark" class="act secondary" data-glyph="mark" data-marked={marked} onclick={mark}><div class="face"><div class="act-mark"></div><span class="act-label">{marked ? t("rpg.place.unmark") : t("rpg.place.mark")}</span></div></button>
+      <button id="Travel" class="act secondary" data-glyph="travel" disabled={!canTravel} onclick={travel}><div class="face"><div class="act-mark"></div><span class="act-label">{t("rpg.place.travel")}</span></div></button>
     </div>
   </div>
 </section>

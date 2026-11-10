@@ -4,7 +4,7 @@
      under it and the quest detail as three columns; the conversation across
      the foot. A phone: the party, the turn order, the map, the place and the
      quest log, fading out at the fold. -->
-<div id="Page">
+<div id="Page" class="rpg-ground">
   <div id="Compass"><RpgCompass heading={$compassHeading} marks={$compassMarks} /></div>
   <div id="Party"><RpgParty members={$partyMembers} selected={$partySelected} /></div>
   <div id="Turns"><RpgTurnOrder round={$turnRound} turns={$turns} /></div>
@@ -19,7 +19,7 @@
 </div>
 
 <style>
-#Page { display: grid; width: stretch; height: stretch; grid-template-columns: 22% 1fr 27%; grid-template-rows: auto minmax(0, 3.7fr) minmax(0, 1fr); grid-template-areas: ". compass ." "log middle detail" "talk talk talk"; column-gap: var(--space-md); row-gap: var(--space-md); padding: var(--space-md) var(--space-lg) var(--space-lg); }
+#Page { display: grid; width: stretch; height: stretch; grid-template-columns: 22% 1fr 27%; grid-template-rows: auto minmax(0, 3.7fr) minmax(0, 1fr); grid-template-areas: ". compass ." "log middle detail" "talk talk talk"; column-gap: var(--space-md); row-gap: var(--space-xs); padding: 0 var(--space-lg) var(--space-lg); }
 #Compass { grid-area: compass; width: 72%; justify-self: center; }
 #Log { grid-area: log; height: stretch; min-height: 0; }
 #Middle { grid-area: middle; display: flex; flex-direction: column; height: stretch; min-height: 0; gap: var(--space-sm); }

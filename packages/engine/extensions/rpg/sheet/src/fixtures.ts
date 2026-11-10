@@ -17,7 +17,7 @@ export const INK_NAMES = [
   "flag", "apple", "leaf", "fire", "drop", "skull", "music", "person",
 ];
 
-export const PICTURES = ["brenna", "idris", "maren", "sela", "ysolde", "oarsman", "lurker", "abbey", "causeway", "map"] as const;
+export const PICTURES = ["blade", "brenna-full", "brenna", "idris", "maren", "sela", "ysolde", "oarsman", "lurker", "abbey", "causeway", "map"] as const;
 type Pictures = Record<string, number>;
 
 const item = (id: string, name: string, icon: string, rarity: string, count = 1, more: Partial<{ equipped: boolean; fresh: boolean; locked: boolean; broken: boolean }> = {}) =>
@@ -75,6 +75,7 @@ export const INVENTORY = (p: Pictures) => ({
 
   cardName: "Emberwake Blade",
   cardIcon: "item-blade",
+  cardArt: p.blade,
   cardRarity: "legendary",
   cardKind: "Legendary · Longsword",
   cardLead: [{ id: "dmg", icon: "sword", label: "Damage", value: "12–20", delta: "+4", trend: "up", current: "8–16" }],
@@ -91,7 +92,7 @@ export const INVENTORY = (p: Pictures) => ({
   charName: "Brenna Vale",
   charLine: "Ranger · Level 12",
   charPortrait: p.brenna,
-  charFigure: p.brenna,
+  charFigure: p["brenna-full"],
   charSlots: [
     { id: "hand", side: "start", label: "Weapon", icon: "item-blade", rarity: "legendary" },
     { id: "head", side: "start", label: "Head", icon: "item-helm", rarity: "rare" },
@@ -125,7 +126,7 @@ export const JOURNAL = (p: Pictures) => ({
     { id: "done", label: "Completed", done: true },
   ],
   logQuests: [
-    { id: "lantern", group: "main", name: "The Drowned Lantern", tracked: true, fresh: false },
+    { id: "lantern", group: "main", name: "The Sunken Bell", tracked: true, fresh: false },
     { id: "tithe", group: "main", name: "A Tithe of Salt", tracked: false, fresh: true },
     { id: "heron", group: "side", name: "The Grey Heron", tracked: false, fresh: false },
     { id: "ferry", group: "side", name: "Toll for the Ferryman", tracked: false, fresh: false },
@@ -137,8 +138,8 @@ export const JOURNAL = (p: Pictures) => ({
   ],
   logSelected: "lantern",
 
-  questName: "The Drowned Lantern",
-  questSummary: "The abbey's lantern went dark the night the causeway flooded. The brothers say it still burns somewhere beneath the mere, and that whoever relights it will hold the crossing.",
+  questName: "The Sunken Bell",
+  questSummary: "The abbey's bell fell silent the night the causeway flooded. The brothers say it still rings beneath the mere, and that whoever raises it will hold the crossing.",
   questObjectives: [
     { id: "o1", text: "Cross the flooded causeway", done: false, optional: false, step: 0 },
     { id: "o2", text: "Speak with the oarsman", done: true, optional: false, step: 1 },
@@ -148,20 +149,20 @@ export const JOURNAL = (p: Pictures) => ({
   questRewards: [
     { id: "gold", icon: "coin", label: "900 Gold", detail: "" },
     { id: "xp", icon: "gem", label: "320 XP", detail: "" },
-    { id: "relic", icon: "crown", label: "The Abbey Lantern", detail: "Unique relic" },
+    { id: "relic", icon: "crown", label: "The Abbey Bell", detail: "Unique relic" },
   ],
   questScenery: p.abbey,
 
   mapTexture: p.map,
   mapMarkers: [
-    { id: "abbey", kind: "quest", x: 0.47, y: 0.3, label: "Saltmere Abbey" },
-    { id: "w1", kind: "waypoint", x: 0.22, y: 0.18, label: "Reedford" },
-    { id: "w2", kind: "waypoint", x: 0.18, y: 0.6, label: "Gullstone" },
-    { id: "w3", kind: "waypoint", x: 0.72, y: 0.22, label: "Hollin Mill" },
-    { id: "w4", kind: "waypoint", x: 0.62, y: 0.58, label: "Ferry Steps" },
-    { id: "d1", kind: "danger", x: 0.36, y: 0.38, label: "Drowned Barrows" },
-    { id: "d2", kind: "danger", x: 0.84, y: 0.4, label: "Lurker's Reach" },
-    { id: "me", kind: "player", x: 0.4, y: 0.62, label: "You" },
+    { id: "abbey", kind: "quest", x: 0.42, y: 0.2, label: "Saltmere Abbey" },
+    { id: "w1", kind: "waypoint", x: 0.15, y: 0.37, label: "Reedford" },
+    { id: "w2", kind: "waypoint", x: 0.7, y: 0.53, label: "Gullstone" },
+    { id: "w3", kind: "waypoint", x: 0.13, y: 0.62, label: "Hollin Mill" },
+    { id: "w4", kind: "waypoint", x: 0.47, y: 0.6, label: "Ferry Steps" },
+    { id: "d1", kind: "danger", x: 0.73, y: 0.29, label: "Drowned Barrows" },
+    { id: "d2", kind: "danger", x: 0.88, y: 0.66, label: "Lurker's Reach" },
+    { id: "me", kind: "player", x: 0.34, y: 0.5, label: "You" },
   ],
   mapSelected: "abbey",
   mapLegend: [
@@ -179,7 +180,7 @@ export const JOURNAL = (p: Pictures) => ({
   talkPortrait: p.ysolde,
   talkLine: "The water remembers every bell it swallowed. Are you certain you want to hear them ring again?",
   talkReplies: [
-    { id: "r1", number: 1, text: "Yes. The lantern must burn again.", used: false },
+    { id: "r1", number: 1, text: "Yes. The bell must ring again.", used: false },
     { id: "r2", number: 2, text: "Tell me first what the brothers fear.", used: false },
     { id: "r3", number: 3, text: "Not yet. I need to gather supplies.", used: true },
   ],

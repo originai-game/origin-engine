@@ -2,6 +2,7 @@
 <meta name="strings" content="./rpg.en.ogt">
 <meta name="prop:name" content="string" data-doc="The item's name.">
 <meta name="prop:icon" content="string" data-doc="Its icon in the style's or the game's atlas, drawn large at the top.">
+<meta name="prop:art" content="number" data-doc="A painted picture of the item (og.load.texture) shown large in place of its icon; 0 shows the icon.">
 <meta name="prop:rarity" content="string" data-doc="common, uncommon, rare, epic, legendary or mythic; the name and the art take its ink.">
 <meta name="prop:kind" content="string" data-doc="The rarity and kind line as the game words it (Legendary · Longsword).">
 <meta name="prop:lead" content="list" data-doc="The headline figure, zero or one row of { id, icon, label, value, delta, trend, current }: trend is up, down or none; delta and current are text, empty hides them.">
@@ -12,8 +13,8 @@
 <meta name="prop:canPrimary" content="bool" data-doc="The main button is enabled.">
 <meta name="prop:canSecondary" content="bool" data-doc="The second button is enabled.">
 <meta name="action:details" content="Equip">
-<meta name="fixture:default" content='{"name":"Emberwake Blade","icon":"item-blade","rarity":"legendary","kind":"Legendary · Longsword","lead":[{"id":"dmg","icon":"sword","label":"Damage","value":"12–20","delta":"+4","trend":"up","current":"8–16"}],"stats":[{"id":"crit","icon":"star","label":"Critical chance","value":"12%","delta":"+4%","trend":"up","current":"8%"},{"id":"res","icon":"shield","label":"Spell resistance","value":"+10%","delta":"−5%","trend":"down","current":"+15%"}],"lore":"Forged in a dying star.","primary":"Equip","secondary":"Drop","canPrimary":true,"canSecondary":true}'>
-<meta name="fixture:plain" content='{"name":"Bread","icon":"item-bread","rarity":"common","kind":"Common · Food","lead":[],"stats":[],"lore":"","primary":"Use","secondary":"","canPrimary":true,"canSecondary":false}'>
+<meta name="fixture:default" content='{"name":"Emberwake Blade","icon":"item-blade","art":0,"rarity":"legendary","kind":"Legendary · Longsword","lead":[{"id":"dmg","icon":"sword","label":"Damage","value":"12–20","delta":"+4","trend":"up","current":"8–16"}],"stats":[{"id":"crit","icon":"star","label":"Critical chance","value":"12%","delta":"+4%","trend":"up","current":"8%"},{"id":"res","icon":"shield","label":"Spell resistance","value":"+10%","delta":"−5%","trend":"down","current":"+15%"}],"lore":"Forged in a dying star.","primary":"Equip","secondary":"Drop","canPrimary":true,"canSecondary":true}'>
+<meta name="fixture:plain" content='{"name":"Bread","icon":"item-bread","art":0,"rarity":"common","kind":"Common · Food","lead":[],"stats":[],"lore":"","primary":"Use","secondary":"","canPrimary":true,"canSecondary":false}'>
 
 <!--
   One item in detail: its art, name and kind, a headline figure with its
@@ -24,7 +25,7 @@
   figures scroll, the buttons keep the foot.
 -->
 <article id="RpgItemCard" class="rpg-item-card" data-rarity={rarity} aria-label={name} ondetails={equip}>
-  <div class="hero"><icon class="hero-art" icon={icon}></icon></div>
+  <div class="hero"><div class="hero-glow"></div><img class="hero-picture" src={art} alt="" hidden={!art}><icon class="hero-art" icon={icon} hidden={!!art}></icon></div>
   <header class="head">
     <h2 class="item-name">{name}</h2>
     <p class="item-kind">{kind}</p>
@@ -55,8 +56,8 @@
         </div>
       {/each}
     </div>
-    <p class="lore" hidden={!lore}>{lore}</p>
   </scroll>
+  <p class="lore" hidden={!lore}>{lore}</p>
   <div class="rpg-rule" role="separator" hidden={!primary && !secondary}></div>
   <footer class="actions" hidden={!primary && !secondary}>
     <button id="Primary" class="primary act" hidden={!primary} disabled={!canPrimary} onclick={equip}>{primary}</button>
@@ -66,8 +67,10 @@
 
 <style>
 .rpg-item-card { display: flex; flex-direction: column; width: stretch; height: stretch; gap: var(--space-sm); container-type: inline-size; }
-.hero { display: flex; width: stretch; height: calc(var(--size-xxl) * 1.9); flex: none; align-items: center; justify-content: center; }
-.hero-art { width: calc(var(--size-xxl) * 1.8); height: calc(var(--size-xxl) * 1.8); }
+.hero { position: relative; display: flex; width: stretch; height: calc(var(--size-xxl) * 1.7); flex: none; align-items: center; justify-content: center; }
+.hero-glow { position: absolute; left: 6%; top: 0; width: 88%; height: stretch; }
+.hero-picture { position: relative; width: stretch; height: stretch; object-fit: contain; }
+.hero-art { position: relative; width: calc(var(--size-xxl) * 1.8); height: calc(var(--size-xxl) * 1.8); }
 .head { display: flex; flex-direction: column; width: stretch; gap: var(--space-xxs); align-items: center; text-align: center; }
 .item-name, .item-kind { margin: 0; }
 .body { width: stretch; flex: 1; min-height: 0; gap: var(--space-sm); }
@@ -80,11 +83,12 @@
 .stat-row { display: grid; grid-template-columns: var(--size-sm) 1fr auto 4.5em 3.5em; column-gap: var(--space-sm); align-items: center; width: stretch; padding: var(--space-xs) 0; }
 .stat-value, .delta, .stat-current, .lead-value, .current-value { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .stat-value, .stat-current { text-align: end; }
-.lore { margin: 0; padding: var(--space-xs) var(--space-xs); }
+.lore { margin: 0; padding: var(--space-xs) var(--space-xs); flex: none; }
+@media (width < 600px) { .lore { display: none; } }
 .actions { display: flex; flex-direction: column; width: stretch; gap: var(--space-sm); flex: none; }
 .act { width: stretch; min-height: calc(var(--size-touch) * 1.25); }
 @media (width < 600px) {
-  .hero { height: calc(var(--size-xxl) * 1.1); }
+  .hero { height: calc(var(--size-xxl) * 0.95); }
   .hero-art { width: calc(var(--size-xxl) * 1.05); height: calc(var(--size-xxl) * 1.05); }
   .actions { flex-direction: row; }
   .act { min-height: var(--size-touch); }

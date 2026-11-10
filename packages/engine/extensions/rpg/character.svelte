@@ -64,7 +64,7 @@
 .who-text { display: flex; flex-direction: column; width: stretch; gap: var(--space-xxs); align-items: center; text-align: center; }
 .char-name, .char-line { margin: 0; }
 .doll { position: relative; display: flex; width: stretch; flex: 1; min-height: 0; justify-content: space-between; padding: var(--space-sm) var(--space-xs); }
-.figure { position: absolute; left: 15%; top: 0; width: 70%; height: stretch; object-fit: cover; object-position: center top; }
+.figure { position: absolute; left: 15%; top: 0; width: 70%; height: stretch; object-fit: contain; object-position: center bottom; }
 .column { display: flex; flex-direction: column; gap: var(--space-xs); height: stretch; min-height: 0; justify-content: space-between; }
 .cell { flex: none; width: var(--size-xl); height: var(--size-xl); padding: var(--space-xs); }
 .cell .face { display: flex; width: stretch; height: stretch; align-items: center; justify-content: center; }
@@ -76,5 +76,5 @@
 .attr-mark { width: var(--size-sm); height: var(--size-sm); flex: none; }
 .attr-label { width: stretch; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .attr-value { font-variant-numeric: tabular-nums; white-space: nowrap; }
-@container (width < 360px) { .attributes { flex-direction: column; gap: 0; } .attr-split { display: none; } }
+@container (width < 300px) { .attributes { flex-direction: column; gap: 0; } .attr-split { display: none; } }
 </style>

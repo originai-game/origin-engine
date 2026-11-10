@@ -31,6 +31,7 @@
         {/each}
       </div>
     </scroll>
+    <div class="tabs-fade"></div>
   </div>
   {#if items.length}
     <scroll class="grid-scroll">
@@ -65,7 +66,10 @@
 .rpg-backpack { display: flex; flex-direction: column; width: stretch; height: stretch; gap: var(--space-sm); container-type: inline-size; }
 .rpg-band { display: flex; width: stretch; align-items: center; justify-content: center; gap: var(--space-md); flex: none; }
 .band-end { width: var(--size-lg); height: var(--space-lg); flex: none; }
-.tabs { display: flex; width: stretch; align-items: center; gap: var(--space-xs); }
+.tabs { position: relative; display: flex; width: stretch; align-items: center; gap: var(--space-xs); }
+.tabs-fade { display: none; position: absolute; right: 0; top: 0; width: var(--size-lg); height: stretch; pointer-events: none; }
+.tabs-fade:dir(rtl) { right: auto; left: 0; }
+@media (width < 600px) { .tabs-fade { display: block; } }
 .tabs-scroll { width: stretch; overflow-x: auto; overflow-y: hidden; }
 .tabs-row { display: flex; gap: var(--space-xxs); justify-content: space-between; width: stretch; }
 .tab { flex: none; min-height: var(--size-touch); padding: 0 var(--space-xs); }
