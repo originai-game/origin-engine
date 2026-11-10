@@ -110,8 +110,16 @@ impl ShadowTarget {
 pub(crate) struct ShadowSet<P = wgpu::RenderPipeline> {
     cascade: P,
     local: OnceCell<[P; 2]>,
-    make: Option<Box<dyn Fn(ShadowTarget) -> P>>,
+    make: Option<MakeLocal<P>>,
 }
+
+/// A lazy set's builder of its local layer's pipelines: `Send` natively, as a
+/// set may be made off the renderer's thread ([`crate::deferred::AnywhereOnce`]),
+/// any closure on the web.
+#[cfg(not(target_arch = "wasm32"))]
+type MakeLocal<P> = Box<dyn Fn(ShadowTarget) -> P + Send>;
+#[cfg(target_arch = "wasm32")]
+type MakeLocal<P> = Box<dyn Fn(ShadowTarget) -> P>;
 
 impl<P> ShadowSet<P> {
     /// The three pipelines now.
@@ -126,7 +134,9 @@ impl<P> ShadowSet<P> {
     }
 
     /// The cascade's pipeline now, a local layer's two when first wanted.
-    pub(crate) fn lazy(make: impl Fn(ShadowTarget) -> P + 'static) -> ShadowSet<P> {
+    pub(crate) fn lazy(
+        make: impl Fn(ShadowTarget) -> P + crate::deferred::AnywhereOnce + 'static,
+    ) -> ShadowSet<P> {
         ShadowSet {
             cascade: make(ShadowTarget::Cascade),
             local: OnceCell::new(),
@@ -157,24 +167,23 @@ impl<P> ShadowSet<P> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::cell::RefCell;
-    use std::rc::Rc;
+    use std::sync::{Arc, Mutex};
 
     #[test]
     fn a_lazy_set_makes_the_local_layers_pipelines_only_when_one_is_wanted() {
-        let made = Rc::new(RefCell::new(Vec::new()));
+        let made = Arc::new(Mutex::new(Vec::new()));
         let log = made.clone();
         let set = ShadowSet::lazy(move |t| {
-            log.borrow_mut().push(t);
+            log.lock().unwrap().push(t);
             t as u32
         });
         assert_eq!(*set.get(ShadowTarget::Cascade), 0);
-        assert_eq!(*made.borrow(), [ShadowTarget::Cascade]);
+        assert_eq!(*made.lock().unwrap(), [ShadowTarget::Cascade]);
         assert_eq!(*set.get(ShadowTarget::LocalNear), 2);
         assert_eq!(*set.get(ShadowTarget::LocalFar), 1);
         set.local();
         assert_eq!(
-            *made.borrow(),
+            *made.lock().unwrap(),
             [
                 ShadowTarget::Cascade,
                 ShadowTarget::LocalFar,
