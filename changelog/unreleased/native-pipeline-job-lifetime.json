@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "Native renderer shutdown",
+      "summary": "A renderer dropped while pipelines it had started were still compiling on the native compile workers now drops the compiles not yet started and waits for the running ones; before, they went on in the driver after the renderer was gone, and a process that exited meanwhile could crash (SIGSEGV or heap corruption after its work had finished, seen on NVIDIA's Linux driver)."
+    }
+  ]
+}
