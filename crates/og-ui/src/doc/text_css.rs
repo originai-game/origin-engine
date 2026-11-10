@@ -574,9 +574,12 @@ pub(crate) fn names_of(v: &str) -> Vec<String> {
 }
 
 fn is_size(s: &str) -> bool {
-    SIZE_KEYWORDS.iter().any(|(k, _)| *k == s)
-        || matches!(s, "larger" | "smaller")
-        || length_of(s, 16.0, 16.0).is_some()
+    SIZE_KEYWORDS.iter().any(|(k, _)| *k == s) || matches!(s, "larger" | "smaller") || is_length(s)
+}
+
+fn is_length(s: &str) -> bool {
+    let (value, _) = super::calc::absolute(s, super::calc::Basis::default(), "");
+    length_of(&value, 16.0, 16.0).is_some()
 }
 
 const SIZE_KEYWORDS: &[(&str, f32)] = &[
@@ -643,7 +646,7 @@ fn check(name: &str, v: &str) -> Result<(), String> {
     ) {
         return Ok(());
     }
-    let length = |v: &str| length_of(v, 16.0, 16.0).is_some();
+    let length = is_length;
     let ok = match name {
         "font-size" => is_size(v),
         "font-weight" => {

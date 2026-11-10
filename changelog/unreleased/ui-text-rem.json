@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "ui.css",
+      "summary": "Text declarations and font shorthands accept root-relative lengths before per-element unit conversion. rem uses the body type step and follows player text scale instead of inheriting the parent font size."
+    }
+  ]
+}

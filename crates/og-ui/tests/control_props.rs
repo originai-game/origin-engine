@@ -117,6 +117,39 @@ fn data_hit_slop_extends_reach_without_changing_boxes_or_priority() {
 }
 
 #[test]
+fn root_relative_text_sizes_follow_the_root_not_the_parent() {
+    for mounted in [false, true] {
+        for scale in [1.0, 1.5] {
+            let source = r#"<meta name="component" content="t"><div><p id="Root">Root</p><p id="Parent">Parent</p><p id="Short">Short</p></div><style>div { font-size: 10px; } p { margin: 0; } #Root { font-size: 1.75rem; } #Parent { font-size: 1.75em; } #Short { font: 1.75rem/2 sans-serif; }</style>"#;
+            let mut scene = og_render::RenderScene::new();
+            let mut d = Doc::with_font(
+                source,
+                &[],
+                mounted,
+                crate::support::add_test_font(&mut scene),
+            );
+            let mut theme = *d.ui.theme();
+            theme.type_ramp.body.size = 14.0;
+            theme.text_scale = scale;
+            d.ui.set_theme(theme);
+            d.step(InputFrame::default());
+            let sizes: Vec<_> =
+                d.ui.frame()
+                    .items
+                    .iter()
+                    .filter_map(|i| match &i.cmd {
+                        DrawCmd::Text { text, size, .. } => Some((text.as_str(), *size)),
+                        _ => None,
+                    })
+                    .collect();
+            assert!(sizes.contains(&("Root", 1.75 * 14.0 * scale)), "{sizes:?}");
+            assert!(sizes.contains(&("Parent", 17.5)), "{sizes:?}");
+            assert!(sizes.contains(&("Short", 1.75 * 14.0 * scale)), "{sizes:?}");
+        }
+    }
+}
+
+#[test]
 fn scene_text_shadows_follow_the_font_size() {
     for mounted in [false, true] {
         for (font, size, line, offset, blur) in [
