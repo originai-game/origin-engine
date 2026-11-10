@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "rendering: mesh vertex buffers",
+      "summary": "A mesh's vertex buffer is made with storage use only when the mesh has clusters (the meshlet path reads it as storage); a mesh given clusters later is uploaded again with it. Before, every mesh's vertex buffer was made for storage too. Frames do not change."
+    }
+  ]
+}

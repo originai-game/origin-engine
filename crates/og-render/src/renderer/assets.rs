@@ -248,7 +248,14 @@ impl Renderer {
                 Some(kind) => {
                     self.upload_surface(mesh, kind, surface::subdivisions(scene.cloth_subdivisions))
                 }
-                None => self.upload_mesh(mesh, compact),
+                None => self.upload_mesh(
+                    mesh,
+                    compact,
+                    scene
+                        .mesh_clusters_all()
+                        .get(index)
+                        .is_some_and(Option::is_some),
+                ),
             };
             gpu.revision = scene.mesh_revisions()[index];
             self.cache.meshes.push(gpu);

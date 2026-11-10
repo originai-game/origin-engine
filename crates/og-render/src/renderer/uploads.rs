@@ -5,7 +5,7 @@ use super::*;
 impl Renderer {
     /// The f32 vertices of `mesh` on the GPU (its tangents generated where
     /// it lacks them); a 16-byte placeholder for a mesh without vertices.
-    fn upload_vertices(&self, mesh: &MeshData) -> wgpu::Buffer {
+    fn upload_vertices(&self, mesh: &MeshData, storage: bool) -> wgpu::Buffer {
         let tangents;
         let mesh = if mesh.lacks_tangents() {
             let mut m = mesh.clone();
@@ -25,17 +25,25 @@ impl Renderer {
             &wgpu::util::BufferInitDescriptor {
                 label: Some("vertices"),
                 contents: if bytes.is_empty() { &[0u8; 16] } else { bytes },
-                // STORAGE: the meshlet path pulls them (meshlet.wgsl).
+                // STORAGE only for a mesh with clusters: the meshlet path
+                // pulls them (meshlet.wgsl), nothing else binds them as
+                // storage. With it on every mesh a 1072-cell web boot ended
+                // 3.6 s later (engine s99).
                 usage: wgpu::BufferUsages::VERTEX
-                    | wgpu::BufferUsages::STORAGE
-                    | wgpu::BufferUsages::COPY_DST,
+                    | wgpu::BufferUsages::COPY_DST
+                    | if storage {
+                        wgpu::BufferUsages::STORAGE
+                    } else {
+                        wgpu::BufferUsages::empty()
+                    },
             },
         )
     }
 
     /// `mesh` on the GPU; `compact`: as [`VertexEncoding::Compact`], whose
-    /// f32 vertices wait for a pipeline that reads them.
-    pub(crate) fn upload_mesh(&self, mesh: &MeshData, compact: bool) -> GpuMesh {
+    /// f32 vertices wait for a pipeline that reads them; `storage`: the
+    /// mesh has clusters ([`GpuMesh::storage`]).
+    pub(crate) fn upload_mesh(&self, mesh: &MeshData, compact: bool, storage: bool) -> GpuMesh {
         // Never create an empty buffer: an empty mesh keeps a 16-byte placeholder and draws nothing.
         let compact = compact
             .then(|| compact::encode(mesh))
@@ -54,9 +62,9 @@ impl Renderer {
             });
         let full = compact.is_none();
         let vertices = if full {
-            self.upload_vertices(mesh)
+            self.upload_vertices(mesh, storage)
         } else {
-            self.upload_vertices(&MeshData::default())
+            self.upload_vertices(&MeshData::default(), false)
         };
         let indices = crate::buffer_init(
             &self.device,
@@ -77,6 +85,7 @@ impl Renderer {
         GpuMesh {
             vertices,
             full,
+            storage: storage && full,
             compact,
             indices,
             index_count: if mesh.vertices.is_empty() {
@@ -104,7 +113,7 @@ impl Renderer {
             .as_ref()
             .filter(|_| bytes > 0 && bytes <= self.device.limits().max_storage_buffer_binding_size)
         else {
-            return self.upload_mesh(&surface::fallback(mesh, kind), false);
+            return self.upload_mesh(&surface::fallback(mesh, kind), false, false);
         };
         let vertices = self.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("simulation surface vertices"),
@@ -130,6 +139,7 @@ impl Renderer {
             indices,
             index_count: count as u32,
             full: true,
+            storage: true,
             compact: None,
             bounds: surface::bounds(mesh),
             revision: 0,
@@ -303,6 +313,10 @@ impl Renderer {
                 break;
             };
             let source = &scene.meshes()[i];
+            let clustered = scene
+                .mesh_clusters_all()
+                .get(i)
+                .is_some_and(Option::is_some);
             if let Some(kind) = scene.mesh_surfaces[i] {
                 let level = surface::subdivisions(scene.cloth_subdivisions);
                 if let Some(surface) = gpu.surface.as_ref().filter(|s| s.matches(source, level)) {
@@ -321,12 +335,15 @@ impl Renderer {
                 continue;
             }
             if gpu.surface.is_some() {
-                let mut fresh = self.upload_mesh(source, false);
+                let mut fresh = self.upload_mesh(source, false, clustered);
                 fresh.revision = revision;
                 self.cache.meshes[i] = fresh;
                 continue;
             }
-            if gpu.revision == revision {
+            // A mesh given clusters since its f32 vertices were uploaded:
+            // uploaded again with STORAGE (a compact mesh's, once a
+            // pipeline asks for them: ensure_full).
+            if gpu.revision == revision && (gpu.storage || !clustered || !gpu.full) {
                 continue;
             }
             if let Some(k) = &scene.skins()[i] {
@@ -337,7 +354,7 @@ impl Renderer {
                 && scene.skins()[i].is_none()
                 && scene.morphs()[i].is_none();
             if compact || gpu.compact.is_some() {
-                let mut fresh = self.upload_mesh(source, compact);
+                let mut fresh = self.upload_mesh(source, compact, clustered);
                 fresh.revision = revision;
                 self.cache.meshes[i] = fresh;
                 continue;
@@ -356,6 +373,7 @@ impl Renderer {
             if !vb.is_empty()
                 && vb.len() as u64 == gpu.vertices.size()
                 && ib.len() as u64 == gpu.indices.size()
+                && (gpu.storage || !clustered)
             {
                 self.queue.write_buffer(&gpu.vertices, 0, vb);
                 self.queue.write_buffer(&gpu.indices, 0, ib);
@@ -366,7 +384,7 @@ impl Renderer {
                 gpu.bounds = bounds;
                 gpu.revision = revision;
             } else {
-                let mut fresh = self.upload_mesh(mesh, false);
+                let mut fresh = self.upload_mesh(mesh, false, clustered);
                 fresh.revision = revision;
                 self.cache.meshes[i] = fresh;
             }
@@ -380,10 +398,15 @@ impl Renderer {
         if self.cache.meshes.get(mesh).is_none_or(|m| m.full) {
             return;
         }
-        let vertices = self.upload_vertices(&scene.meshes()[mesh]);
+        let clustered = scene
+            .mesh_clusters_all()
+            .get(mesh)
+            .is_some_and(Option::is_some);
+        let vertices = self.upload_vertices(&scene.meshes()[mesh], clustered);
         let gpu = &mut self.cache.meshes[mesh];
         gpu.vertices = vertices;
         gpu.full = true;
+        gpu.storage = clustered;
     }
 
     /// Checks a texture before it is uploaded: its data, its format on this
