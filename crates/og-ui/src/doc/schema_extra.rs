@@ -1499,4 +1499,11 @@ pub const PROPS: &[PropSpec] = &[
         two_way: false,
         doc: "CSS `will-change`: properties it is about to change; one that makes a group (transform, opacity, filter…) draws it on a layer of its own.",
     },
+    PropSpec {
+        name: "fieldSizing",
+        ty: Ty::Word(&["fixed", "content"]),
+        on: On::All,
+        two_way: false,
+        doc: "CSS `field-sizing`: `fixed` keeps a control's default preferred size; `content` sizes text inputs and textareas to their displayed value or placeholder, ignoring rows. Explicit CSS dimensions and min/max constraints still apply. Not inherited.",
+    },
 ];

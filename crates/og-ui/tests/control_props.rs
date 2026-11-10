@@ -69,6 +69,114 @@ fn refused(text: &str) -> String {
 }
 
 #[test]
+fn fields_size_to_displayed_content_and_respect_constraints() {
+    let source = r#"<meta name="component" content="t">
+<div style="field-sizing: content">
+  <input class="content" id="Natural" bind:value={$value} placeholder="Placeholder" />
+  <input id="Fixed" bind:value={$value} />
+  <input class="content" id="Width" bind:value={$value} />
+  <input class="content" id="Bounded" bind:value={$value} />
+  <input class="content" id="Empty" />
+  <textarea class={$mode} id="Area" bind:value={$value} rows="8"></textarea>
+  <textarea id="Rows" bind:value={$value} rows="8"></textarea>
+  <textarea class="content" id="Height" bind:value={$value}></textarea>
+</div>
+<style>
+input, textarea { padding: 4px; }
+.content { field-sizing: content; }
+#Bounded { min-width: 40px; max-width: 70px; }
+#Width { width: 100px; }
+#Area, #Height { width: 100px; }
+#Height { height: 60px; }
+</style>"#;
+    both(
+        source,
+        &[("value", json!("Hi")), ("mode", json!("content"))],
+        |d| {
+            let short = d.get("Natural").width;
+            let fixed = d.get("Fixed").width;
+            let one = d.get("Area").height;
+            let rows = d.get("Rows").height;
+            assert!(
+                short < fixed,
+                "content input must shrink: {short} vs {fixed}"
+            );
+            assert!(
+                one < rows,
+                "content textarea must ignore rows: {one} vs {rows}"
+            );
+            assert_eq!(d.get("Width").width, 100.0);
+            assert_eq!(d.get("Height").height, 60.0);
+            assert_eq!(d.get("Bounded").width, 40.0);
+            assert_eq!(d.get("Empty").width, 9.0, "one caret plus padding");
+            d.set(
+                "value",
+                json!("A longer line with several words that must wrap"),
+            );
+            assert!(d.get("Natural").width > short);
+            assert_eq!(d.get("Fixed").width, fixed);
+            assert!(d.get("Area").height > one);
+            assert_eq!(d.get("Rows").height, rows);
+            assert_eq!(d.get("Width").width, 100.0);
+            assert_eq!(d.get("Height").height, 60.0);
+            assert_eq!(d.get("Bounded").width, 70.0);
+            d.set("value", json!("A\nB\nC"));
+            assert_eq!(d.get("Area").height, (one - 8.0) * 3.0 + 8.0);
+            d.set("mode", json!(""));
+            assert_eq!(
+                d.get("Area").height,
+                rows,
+                "removing content sizing restores rows"
+            );
+            d.set("mode", json!("content"));
+            d.set("value", json!(""));
+            assert!(
+                d.get("Natural").width > short,
+                "empty input sizes to placeholder"
+            );
+            assert_eq!(d.get("Area").height, one);
+            assert!(
+                d.ui.frame().warnings.is_empty(),
+                "{:?}",
+                d.ui.frame().warnings
+            );
+        },
+    );
+    let mut d = Doc::new(
+        r#"<meta name="component" content="t">
+<div><textarea id="Area" bind:value={$value}></textarea><input id="Other" /></div>
+<style>#Area { field-sizing: content; width: 100px; padding: 4px; }</style>"#,
+        &[("value", json!(""))],
+        true,
+    );
+    let one = d.get("Area").height;
+    d.click("Area");
+    assert!(d.ui.focus_path(0).ends_with("/Area"));
+    d.step(InputFrame {
+        text: "A\nB".into(),
+        ..Default::default()
+    });
+    d.step(InputFrame::default());
+    assert_eq!(d.read("value"), json!("A\nB"));
+    assert_eq!(d.get("Area").height, (one - 8.0) * 2.0 + 8.0);
+    let saved = d.ui.save_state();
+    d.click("Other");
+    d.ui.restore_state(&saved).unwrap();
+    d.step(InputFrame::default());
+    d.step(InputFrame {
+        text: "\nC".into(),
+        ..Default::default()
+    });
+    d.step(InputFrame::default());
+    assert_eq!(
+        d.read("value"),
+        json!("A\nB\nC"),
+        "restored textarea focus and caret"
+    );
+    assert_eq!(d.get("Area").height, (one - 8.0) * 3.0 + 8.0);
+}
+
+#[test]
 fn data_hit_slop_extends_reach_without_changing_boxes_or_priority() {
     let source = r#"<meta name="component" content="t">
 <div id="Root">

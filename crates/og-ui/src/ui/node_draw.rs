@@ -245,6 +245,7 @@ impl Ui {
             self.text_area_commands(i, rect, clip, cmds);
         }
         match &n.content {
+            Content::Text(_) if matches!(n.widget, Widget::TextArea { .. }) => {}
             Content::Text(tc) if let Some(tp) = &n.props.text_path => {
                 self.path_text_commands(i, tc, tp, rect, clip, cmds);
             }

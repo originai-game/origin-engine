@@ -134,12 +134,13 @@ proof("background-image", "css_paint", "image_urls_resolve_files_not_atlas_names
       "Retained drawing selects the registered relative file and numeric filename, rejects a missing path despite an atlas basename collision, and reports the missing asset. css_paint_matches_its_reference_frames covers background tiling and gradients on Metal. Runtime ui_configure::svg_asset_urls_supply_cursor_pixels_and_masks proves cooked SVG pixels, imported masks and inline cursor URL provenance.")
 proof("cursor", "css_interact", "plain_boxes_choose_cursors_in_clipped_transformed_paint_order",
       "Both builders assert cursor inheritance over noninteractive boxes, passive overlays above buttons, pointer-events:none, hidden and overflow-clipped children, 90-degree transforms and image hotspots. Runtime ui_configure::svg_asset_urls_supply_cursor_pixels_and_masks checks cooked SVG cursor pixels on a plain div. Arbitrary clip-path targeting and every cursor keyword are not covered.")
+proof("field-sizing", "control_props", "fields_size_to_displayed_content_and_respect_constraints",
+      "Both builders prove text-input value/placeholder sizing, caret-width empty inputs, textarea wrapping and newline heights, ignored rows, explicit dimensions, min/max width, noninheritance and removal of content sizing. Retained editing and checkpoint restore preserve focus/caret and update height. Select/file controls and vertical text controls remain missing or unverified.")
 
 MISSING = {
     "default": "documents::boolean_attribute_selectors_follow_svelte_presence proves retained :default follows false/present checked attributes. The immediate builder does not expose :default state; full support is missing.",
     "interpolate-size": "No intrinsic-size interpolation implementation or output proof.",
     "calc-size": "No calc-size evaluation or animated output proof.",
-    "field-sizing": "No field-sizing layout implementation/output proof; fixed control sizing is not content sizing.",
     "shape-outside": "Rectangular floats have layout tests; shape exclusion contours and shape-margin have no output proof.",
     "shapes": "clip-path does not prove shape-outside float exclusion.",
     "table": "Table spans/captions have computed output tests, but border-spacing and border-collapse have no implementation/output proof.",

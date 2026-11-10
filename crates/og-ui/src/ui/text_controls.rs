@@ -670,6 +670,43 @@ impl Ui {
         r
     }
 
+    /// Supply textarea text to layout only when CSS requests content sizing.
+    /// Editing and scrolling still paint through `text_area_commands`.
+    pub(crate) fn field_measurement(&mut self, i: usize, content: bool) -> Option<f32> {
+        if let Widget::TextArea {
+            text,
+            placeholder,
+            ink,
+            line_height,
+            ..
+        } = &self.nodes[i].widget
+        {
+            let height = *line_height;
+            let measured = if content {
+                let (shown, step, color) = if text.is_empty() {
+                    (placeholder, ink.placeholder_step, ink.placeholder)
+                } else {
+                    (text, ink.step, ink.ink)
+                };
+                let mut measured = self.text_content(shown, step, color);
+                measured.step.line_height = height;
+                measured.step.cjk_line_height = height;
+                Content::Text(measured)
+            } else {
+                Content::None
+            };
+            self.nodes[i].content = measured;
+            return content.then_some(height);
+        }
+        if content
+            && matches!(self.nodes[i].widget, Widget::Field(_))
+            && let Content::Text(text) = &self.nodes[i].content
+        {
+            return Some(text.line_height());
+        }
+        None
+    }
+
     /// The text control's markup host, including classes and attributes.
     fn field_component(&mut self, component: &str) -> crate::dress::PartRef {
         let class = crate::tokens::ElementClass::Field;

@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "CSS field-sizing",
+      "summary": "Text inputs and textareas support field-sizing: content. Their displayed value or placeholder determines intrinsic size; explicit CSS dimensions and min/max constraints still apply. Textareas wrap and grow instead of keeping their rows height. The default fixed sizing is unchanged."
+    }
+  ]
+}

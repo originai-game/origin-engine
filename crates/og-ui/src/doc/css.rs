@@ -254,6 +254,7 @@ pub const STYLE: &[(&str, &str)] = &[
     ("containIntrinsicWidth", "contain-intrinsic-width"),
     ("containIntrinsicHeight", "contain-intrinsic-height"),
     ("resize", "resize"),
+    ("fieldSizing", "field-sizing"),
     ("willChange", "will-change"),
     ("objectPosition", "object-position"),
     ("meta", "-og-meta"),
@@ -430,6 +431,7 @@ fn conv(prop: &str) -> Conv {
         "align" | "cross" | "direction" | "frame" | "reduced" | "textAlign" | "verticalAlign"
         | "captionSide" | "fit" | "display" | "markerType" | "markerPosition" | "userSelect"
         | "appearance" | "labelDirection" | "fitMin" => Conv::Kebab,
+        "fieldSizing" => Conv::Kebab,
         "wrap" => Conv::Bool("wrap", "nowrap"),
         "uppercase" => Conv::Bool("uppercase", "none"),
         "nowrap" => Conv::Bool("nowrap", "normal"),

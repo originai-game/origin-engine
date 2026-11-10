@@ -698,7 +698,12 @@ impl Ui {
     pub(super) fn apply_box_fields(&mut self, i: usize, r: &Resolved, source: BoxSource<'_>) {
         // Widget-owned sizing is established above; document box overrides
         // replace their previous values, including when a declaration vanishes.
+        let field_line = self.field_measurement(i, r.str("fieldSizing") == Some("content"));
         let mut el = self.nodes[i].el;
+        if field_line.is_some() {
+            el.width = Size::fit();
+            el.height = Size::fit();
+        }
         let em = self.em_of(r);
         if schema::kind(source.kind).is_some_and(|kind| kind.container) {
             el = Self::box_of(r, el, em);
@@ -983,6 +988,14 @@ impl Ui {
         });
         if surface_rtl {
             crate::layout::flow::mirror_el(&mut el);
+        }
+        if let Some(line) = field_line {
+            if let Size::Fit { min, .. } = &mut el.width {
+                *min = min.max(el.padding.horizontal() + 1.0);
+            }
+            if let Size::Fit { min, .. } = &mut el.height {
+                *min = min.max(el.padding.vertical() + line);
+            }
         }
         self.nodes[i].el = el;
         self.nodes[i].decor = decor.map(Box::new);
