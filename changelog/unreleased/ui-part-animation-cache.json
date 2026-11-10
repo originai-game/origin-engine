@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "UI part keyframe animation cache",
+      "summary": "Parts with CSS keyframes repaint even when their semantic host is unchanged. Paint reuse now accounts for active animations as well as transitions and does not reuse volatile node commands. Finished or removed animations return to cached commands. Progress fills advance through alternate iterations and replay the same opacity after restoring presentation state."
+    }
+  ]
+}

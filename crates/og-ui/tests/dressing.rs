@@ -998,3 +998,71 @@ fn reflected_part_constructors_keep_typed_hosts_and_state_semantics() {
                 .any(|s| s == "checked")
     }));
 }
+
+#[test]
+fn progress_part_keyframes_advance_without_host_changes() {
+    let mut ui = dressed(
+        "progress::part(track) { background: #000; }
+         progress::part(fill) { background: #fff; animation: signal 1200ms linear infinite alternate; }
+         @keyframes signal { from { opacity: 0.65; } to { opacity: 1; } }",
+    );
+    let step = |ui: &mut Ui| {
+        ui.begin(InputFrame::default(), Viewport::new(300.0, 100.0));
+        ui.progress("Meter", 0.5, ProgressDesc::default());
+        ui.end();
+        ui.frame()
+            .items
+            .iter()
+            .filter_map(|item| item.cmd.filled())
+            .find(|(_, c)| c[0] > 0.9)
+            .expect("white progress fill")
+            .1[3]
+    };
+    let first = step(&mut ui);
+    for _ in 0..17 {
+        step(&mut ui);
+    }
+    let quarter = step(&mut ui);
+    assert!((first - 0.65).abs() < 0.001, "{first}");
+    assert!((quarter - 0.7375).abs() < 0.001, "{quarter}");
+    let saved = ui.save_state();
+    let later: Vec<_> = (0..65).map(|_| step(&mut ui)).collect();
+    assert!(later[53] > later[64], "alternate reverses after 72 ticks");
+    ui.restore_state(&saved).unwrap();
+    for expected in later {
+        assert_eq!(step(&mut ui), expected);
+    }
+    ui.set_part_css(
+        "progress::part(fill) { background: #fff; animation: finish 100ms linear forwards; }
+         @keyframes finish { from { opacity: 0.65; } to { opacity: 1; } }",
+    )
+    .unwrap();
+    for _ in 0..10 {
+        step(&mut ui);
+    }
+    assert_eq!(step(&mut ui), 1.0);
+    assert_eq!(
+        ui.frame().stats.painted,
+        0,
+        "finished animation reuses paint"
+    );
+    ui.set_part_css(
+        "progress::part(fill) { background: #fff; animation: again 1200ms linear infinite; }
+         @keyframes again { from { opacity: 0.65; } to { opacity: 1; } }",
+    )
+    .unwrap();
+    for _ in 0..3 {
+        step(&mut ui);
+    }
+    ui.set_part_css("progress::part(fill) { background: #fff; opacity: 0.8; }")
+        .unwrap();
+    for _ in 0..3 {
+        step(&mut ui);
+    }
+    assert!((step(&mut ui) - 0.8).abs() < 0.001);
+    assert_eq!(
+        ui.frame().stats.painted,
+        0,
+        "removed animation reuses paint"
+    );
+}

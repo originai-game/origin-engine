@@ -121,7 +121,7 @@ slot[data-rarity=epic]::part(frame) { border: 3px double #df9bff; }
   from { opacity: 0.65; }
   to { opacity: 1; }
 }
-/* Pending parts-as-nodes: cached virtual progress fills currently freeze this animation. */
+/* The progress fill pulses; the three static meters are comparison controls. */
 progress::part(fill) { animation: laboratory-signal 1200ms ease-in-out infinite alternate; }
 button::part(base) { -og-sound: press url(/@styles/shared/sfx-tap.ogt) volume(0.2 0.28) pitch(0.96 1.04); }
 @media (prefers-reduced-motion: reduce) {

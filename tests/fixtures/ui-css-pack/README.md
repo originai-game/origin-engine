@@ -25,17 +25,16 @@ The tool does not record them automatically.
 `og ui review` accepts the same directory with `--locales game,pseudo,zh,ar`.
 Locale review reports measurements without grading the pack.
 
-Three rules remain marked pending parts-as-nodes in `main.css`:
+The following remain pending parts-as-nodes in `main.css`:
 
 - Host `font-family` inheritance into internal labels.
 - `slot[data-rarity=epic]::part(frame)` on the core slot. The document
   `[data-rarity=epic]` sample already shows the double rim.
-- `progress::part(fill)` opacity keyframes. The rule parses, but captured
-  frames at 0.3-second intervals are identical before parts-as-nodes.
-  The `prefers-reduced-motion` override remains beside it.
+- Hover and active states on text-field frames. Those states are not yet
+  emitted by the field painter, so the fixture does not claim them.
 
-The CSS keyframe-name parser now accepts hyphenated identifiers, including
-`laboratory-signal`. The existing part animation replay test covers that
-syntax on a real button part. Progress draws its fill without a layout
-node in `crates/og-ui/src/ui/node_draw.rs`. Its paint and command caches
-reuse the static host's commands even while the virtual fill animates.
+The progress fill runs the `laboratory-signal` opacity animation; its three
+neighbouring meters stay static. Paint reuse accounts for part animations
+even when the host does not change. The regression test checks advancement,
+alternate direction and checkpoint replay. The `prefers-reduced-motion`
+override remains beside the rule.

@@ -862,7 +862,10 @@ impl Ui {
                     .part_styles
                     .iter()
                     .filter_map(|(&key, styles)| {
-                        styles.values().any(|s| !s.runs.is_empty()).then_some(key)
+                        styles
+                            .values()
+                            .any(|s| s.running || !s.runs.is_empty())
+                            .then_some(key)
                     }),
             );
         for key in keyed {
@@ -906,7 +909,8 @@ impl Ui {
             let i = order[q];
             let node = &self.nodes[i];
             let up = node.parent;
-            let own = !self.draws.contains_key(&i)
+            let own = !volatile.contains(&i)
+                && !self.draws.contains_key(&i)
                 && !matches!(node.content, Content::Rich(_))
                 && if written(i) {
                     // A node written again: as it was drawn last frame.

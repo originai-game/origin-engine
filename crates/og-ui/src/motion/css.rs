@@ -440,6 +440,9 @@ pub(crate) struct StyleState {
     pub runs: Vec<StyleRun>,
     #[serde(default)]
     pub animations: Vec<CssRun>,
+    /// Finished animation runs remain for fill and replay, but need no repaint.
+    #[serde(default)]
+    pub running: bool,
 }
 
 #[cfg(test)]

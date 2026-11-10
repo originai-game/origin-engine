@@ -142,6 +142,7 @@ impl Ui {
                     .collect(),
                 runs: Vec::new(),
                 animations: Vec::new(),
+                running: false,
             });
         let previous = previous.or(first.as_ref());
         if previous.is_none() && !has_styles && !transitioned {
@@ -369,6 +370,7 @@ impl Ui {
             }
         }
         running |= !state.runs.is_empty();
+        state.running = running;
         let keep =
             !state.after.is_empty() || !state.runs.is_empty() || !state.animations.is_empty();
         Some(Arc::new(StyleCommit {

@@ -130,3 +130,9 @@ When an assigned stream has authorized work remaining, consume handoffs and
 continue implementation in the same turn. A provisional API, successful rebase,
 or reproduced failure is a milestone, not a blocker. Report each requested
 landing with evidence; do not require the coordinator to repeat “keep going.”
+
+## 2026-11-10 — Retained animation state is not active motion
+
+Finished CSS runs remain in checkpoints for fill and replay. Cache invalidation
+must use the sampler's running status, not a nonempty animation list. Check both
+the changing output and the return to cached commands after completion or removal.
