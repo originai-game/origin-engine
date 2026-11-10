@@ -367,7 +367,7 @@ pub(crate) struct State {
     /// What was typed to jump in the focused list (lowercase) and the tick
     /// of its last letter: it starts again after a second's pause.
     pub typeahead: (String, u64),
-    /// The Rive artboards elements play (`-og-frame: rive(…)`), by key.
+    /// The Rive artboards elements play (`<og-rive src>`), by key.
     pub rive: IdMap<u64, RiveSlot>,
     /// Intents queued by `Ui::navigate` for the next frame, each with
     /// whether the focus was on nothing when it was queued (then it only

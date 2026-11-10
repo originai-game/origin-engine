@@ -2754,6 +2754,14 @@ impl Parser {
         if matches!(value, PropValue::Model(_)) && !p.two_way {
             return Err((at, format!("{name} is read-only; remove bind:")));
         }
+        if name == "rive"
+            && let PropValue::Lit(Lit::Str(id)) = &value
+            && !id.split_once('#').is_some_and(|(file, board)| {
+                file.ends_with(".riv") && !board.is_empty() && !board.contains('#')
+            })
+        {
+            return Err((at, "og-rive src takes <file>.riv#<Artboard> relative to assets/, such as ui/chest.riv#Chest".into()));
+        }
         if name == "dataDetents"
             && let PropValue::Lit(Lit::Str(text)) = &value
         {

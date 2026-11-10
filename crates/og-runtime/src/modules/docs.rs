@@ -186,7 +186,7 @@ fn read_document(eng: &Engine, id: &str) -> Result<UiDocument, String> {
     Ok(doc)
 }
 
-/// The Rive artboards a document plays (`-og-frame: rive("<id>")`), read
+/// The Rive artboards a document plays (`<og-rive src="id">`), read
 /// from their cooked blobs and checked, with their hashes: one missing or
 /// malformed refuses the document.
 /// The texture a screen's view transition covers with, loaded by path.
@@ -243,7 +243,7 @@ fn read_rive(
                 let assets = eng.assets.borrow();
                 let (bytes, bundle) = assets
                     .blob(&id)
-                    .map_err(|e| format!("{}: -og-frame: rive(\"{id}\"): {e}", doc.source))?;
+                    .map_err(|e| format!("{}: og-rive src=\"{id}\": {e}", doc.source))?;
                 bundle
                     .rive_artboard(&id, bytes.bytes())
                     .map_err(|e| e.to_string())?

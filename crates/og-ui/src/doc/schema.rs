@@ -119,6 +119,7 @@ pub const ELEMENT_TAGS: &[(&str, &str)] = &[
     ("og-counter", "label"),
     ("og-typewriter", "label"),
     ("og-spotlight", "dialog"),
+    ("og-rive", "column"),
 ];
 
 /// Tag-exclusive attributes and the runtime properties they populate.
@@ -128,6 +129,7 @@ pub const ELEMENT_ATTRIBUTES: &[(&str, &str, &str)] = &[
     ("og-counter", "decimals", "countDecimals"),
     ("og-typewriter", "rate", "reveal"),
     ("og-spotlight", "target", "spotlight"),
+    ("og-rive", "src", "rive"),
 ];
 
 /// Every prop: the core's, then the document runtime's.
@@ -687,8 +689,8 @@ pub const CORE_PROPS: &[PropSpec] = &[
     p!(
         "rive",
         Ty::Name,
-        ["column", "row", "stack", "grid", "panel", "scroll", "slot"],
-        "The Rive artboard it plays in its box, `<file>.riv#<Artboard>` relative to assets/ (`-og-frame: rive(\"ui/chest.riv#Chest\")`, docs/ui.md §3.3): loaded with its document, advanced on the tick, drawn over its background and saved with the UI's state; its drawn objects are elements for dump_ui, describe and pick."
+        ["column"],
+        "The Rive artboard played by `<og-rive src=\"ui/chest.riv#Chest\">`: `<file>.riv#<Artboard>` relative to assets/. Loaded with its document, advanced on the tick, drawn over its background and saved with the UI's state; its drawn objects are elements for dump_ui, describe and pick."
     ),
     p!("aspect", Ty::Num, "Width over height (0: none)."),
     p!(

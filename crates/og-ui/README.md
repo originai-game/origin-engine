@@ -324,7 +324,7 @@ the kinds'. Kinds: `column`, `row`, `stack`, `grid`, `panel`, `scroll`,
 | `background` | paint | all | Its fill. |
 | `radius` | number | all | Its corner radius, CSS px. |
 | `frame` | panel \| card \| button \| buttonHover \| buttonPressed \| buttonDisabled \| field \| slot \| tooltip \| hud \| track \| fill | all | The style frame its background takes. |
-| `rive` | name | column, row, stack, grid, panel, scroll, slot | The Rive artboard it plays in its box, `<file>.riv#<Artboard>` relative to assets/ (`-og-frame: rive("ui/chest.riv#Chest")`, docs/ui.md §3.3): loaded with its document, advanced on the tick, drawn over its background and saved with the UI's state; its drawn objects are elements for dump_ui, describe and pick. |
+| `<og-rive src>` | name | og-rive | The Rive artboard it plays in its box, `<file>.riv#<Artboard>` relative to assets/: loaded with its document, advanced on the tick, drawn over its background and saved with the UI's state; its drawn objects are elements for dump_ui, describe and pick. |
 | `aspect` | number | all | Width over height (0: none). |
 | `fade` | number | scroll | How far, CSS px, its edges fade where its content runs on past them (a cut row reads as more, not as a clip); 0: none. |
 | `fadeInto` | paint | scroll | The colour its fade runs into: the ground it sits on (default panel). |

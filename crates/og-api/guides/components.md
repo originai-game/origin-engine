@@ -403,16 +403,16 @@ These declarations also construct widget part identities and are exported by doc
 |---|---|---|
 | `-og-spring` | `-og-spring(<time [0,∞]> [, <number>])` | Transition timing with a perceptual duration (ms or s) and optional finite bounce (default 0). Bounce is clamped to -0.95..1 by the spring solver. Extension reason: CSS linear() cannot preserve velocity when a transition is interrupted. Springs time transitions, not keyframe animations. |
 
-## 2. `<column>` (`column`): Children top to bottom
+## 2. `<column>`, `<og-rive>` (`column`): Children top to bottom
 
-Children top to bottom. A container with nested children: `<column id="Name">…</column>`.
+Children top to bottom. A container with nested children: `<column id="Name">…</column>` or `<og-rive id="Name">…</og-rive>`.
 
 Its own props, beside every element's:
 
 | Write | Value | What |
 |---|---|---|
 | `flex-direction:` | `row \| column \| row-reverse \| column-reverse` | Lays a row's or a column's children out the other way (an `at` block's: a phone in landscape puts the actions beside the content). |
-| `-og-frame:` | `rive("<file>.riv#<Artboard>")` | The Rive artboard it plays in its box, `<file>.riv#<Artboard>` relative to assets/ (`-og-frame: rive("ui/chest.riv#Chest")`, docs/ui.md §3.3): loaded with its document, advanced on the tick, drawn over its background and saved with the UI's state; its drawn objects are elements for dump_ui, describe and pick. |
+| `<og-rive src>` | `name` | The Rive artboard played by `<og-rive src="ui/chest.riv#Chest">`: `<file>.riv#<Artboard>` relative to assets/. Loaded with its document, advanced on the tick, drawn over its background and saved with the UI's state; its drawn objects are elements for dump_ui, describe and pick. |
 
 ## 3. `<row>` (`row`): Children left to right (mirrored right to left)
 
@@ -423,27 +423,18 @@ Its own props, beside every element's:
 | Write | Value | What |
 |---|---|---|
 | `flex-direction:` | `row \| column \| row-reverse \| column-reverse` | Lays a row's or a column's children out the other way (an `at` block's: a phone in landscape puts the actions beside the content). |
-| `-og-frame:` | `rive("<file>.riv#<Artboard>")` | The Rive artboard it plays in its box, `<file>.riv#<Artboard>` relative to assets/ (`-og-frame: rive("ui/chest.riv#Chest")`, docs/ui.md §3.3): loaded with its document, advanced on the tick, drawn over its background and saved with the UI's state; its drawn objects are elements for dump_ui, describe and pick. |
 
 ## 4. `<stack>` (`stack`): Children overlaid in one rectangle, each placed by its insets
 
 Children overlaid in one rectangle, each placed by its insets. A container with nested children: `<stack id="Name">…</stack>`.
 
-Its own props, beside every element's:
-
-| Write | Value | What |
-|---|---|---|
-| `-og-frame:` | `rive("<file>.riv#<Artboard>")` | The Rive artboard it plays in its box, `<file>.riv#<Artboard>` relative to assets/ (`-og-frame: rive("ui/chest.riv#Chest")`, docs/ui.md §3.3): loaded with its document, advanced on the tick, drawn over its background and saved with the UI's state; its drawn objects are elements for dump_ui, describe and pick. |
+It takes every element's props and none of its own.
 
 ## 5. `<grid>` (`grid`): Children in tracks and cells (columns, rows, areas)
 
 Children in tracks and cells (columns, rows, areas). A container with nested children: `<grid id="Name">…</grid>`.
 
-Its own props, beside every element's:
-
-| Write | Value | What |
-|---|---|---|
-| `-og-frame:` | `rive("<file>.riv#<Artboard>")` | The Rive artboard it plays in its box, `<file>.riv#<Artboard>` relative to assets/ (`-og-frame: rive("ui/chest.riv#Chest")`, docs/ui.md §3.3): loaded with its document, advanced on the tick, drawn over its background and saved with the UI's state; its drawn objects are elements for dump_ui, describe and pick. |
+It takes every element's props and none of its own.
 
 ## 6. `<panel>` (`panel`): A column on the style's panel surface (its card frame)
 
@@ -453,7 +444,6 @@ Its own props, beside every element's:
 
 | Write | Value | What |
 |---|---|---|
-| `-og-frame:` | `rive("<file>.riv#<Artboard>")` | The Rive artboard it plays in its box, `<file>.riv#<Artboard>` relative to assets/ (`-og-frame: rive("ui/chest.riv#Chest")`, docs/ui.md §3.3): loaded with its document, advanced on the tick, drawn over its background and saved with the UI's state; its drawn objects are elements for dump_ui, describe and pick. |
 | `world` | `bool` | `<panel world src={$target} entity={$e} size="1.2 0.8" rotation="0 30 0">`: a world panel, its subtree drawn into the render target `src` at its CSS width and height, shown on a quad `size` world units across at the entity (or `at="x y z"`) turned by `rotation` (degrees about x, y, z); the pointer's ray reaches its controls. |
 | `world-size` | `text` | A world panel's quad, `width height` world units (default 1 1). |
 | `world-rotation` | `text` | A world panel's turn, degrees about x, y and z (`0 30 0`); facing +z unturned. |
@@ -469,7 +459,6 @@ Its own props, beside every element's:
 
 | Write | Value | What |
 |---|---|---|
-| `-og-frame:` | `rive("<file>.riv#<Artboard>")` | The Rive artboard it plays in its box, `<file>.riv#<Artboard>` relative to assets/ (`-og-frame: rive("ui/chest.riv#Chest")`, docs/ui.md §3.3): loaded with its document, advanced on the tick, drawn over its background and saved with the UI's state; its drawn objects are elements for dump_ui, describe and pick. |
 | `-og-scroll-fade:` | `<n>px` | How far, CSS px, its edges fade where its content runs on past them (a cut row reads as more, not as a clip); 0: none. |
 | `-og-scroll-fade-into:` | `var(--<role>) \| #rrggbb[aa]` | The colour its fade runs into: the ground it sits on (default panel). |
 

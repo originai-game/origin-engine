@@ -39,9 +39,6 @@ enum Conv {
     Presence,
     /// Two fractions as percentages: `50% 100%`.
     Origin,
-    /// A Rive artboard's id as `rive("<file>.riv#<Artboard>")` (its
-    /// property is `-og-frame`, which otherwise names a style part).
-    Rive,
     /// A margin edge: `<n>px`, `<n>em` (of its own type step) or `0`, as
     /// px and em.
     Margin,
@@ -178,7 +175,6 @@ pub const STYLE: &[(&str, &str)] = &[
     ("overflowX", "overflow-x"),
     ("overflowY", "overflow-y"),
     ("scrollbarWidth", "scrollbar-width"),
-    ("rive", "-og-frame"),
     ("display", "display"),
     ("markerType", "list-style-type"),
     ("markerPosition", "list-style-position"),
@@ -443,7 +439,6 @@ fn conv(prop: &str) -> Conv {
         "position" => Conv::Kw(POSITIONS),
         "step" => Conv::Var("text"),
         "font" => Conv::Var("font"),
-        "rive" => Conv::Rive,
         "textPath" | "textPathOffset" | "emitter" | "meta" => Conv::Raw,
         "textPathSide" => Conv::Kebab,
         "area" => Conv::Ident,
@@ -502,7 +497,6 @@ pub fn value_form(prop: &str, words: &[&str]) -> Option<String> {
         }
         Conv::Presence => "<kind> [<distance>px] [<transition>]".into(),
         Conv::Origin => "<x>% <y>%".into(),
-        Conv::Rive => "rive(\"<file>.riv#<Artboard>\")".into(),
         Conv::Raw if prop.starts_with("radius") => "<h> [<v>] (<n>px | <n>%)".into(),
         Conv::Raw if prop.starts_with("corner") => {
             "round | squircle | bevel | scoop | notch | square | superellipse(<K>)".into()
@@ -879,7 +873,6 @@ fn value_css(prop: &str, c: Conv, vals: &[Value]) -> Result<String, String> {
                 .ok_or_else(|| format!("'{w}' is not a {prop}"))
         }
         Conv::Var(ns) => Ok(format!("var(--{ns}-{})", kebab(&text_of(one()?)))),
-        Conv::Rive => Ok(format!("rive({})", quoted(&text_of(one()?)))),
         Conv::Raw => Ok(text_of(one()?)),
         Conv::Ident => {
             let w = text_of(one()?);
@@ -2395,36 +2388,7 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
                         w => return Err(format!("{name} is {yes} or {no}, not '{w}'")),
                     }
                 }
-                Conv::Kebab | Conv::Rive => match one(&t, name)? {
-                    Tok::Func(f, a) if prop == "rive" && f == "rive" => {
-                        // One argument: the artboard's id, relative to
-                        // assets/ (`ui/chest.riv#Chest`, docs/ui.md §3.3).
-                        let id = match a.as_slice() {
-                            [v] => match v.as_slice() {
-                                [Tok::Str(s)] => Some(s.as_str()),
-                                _ => None,
-                            },
-                            _ => None,
-                        };
-                        let well_formed =
-                            id.and_then(|s| s.split_once('#'))
-                                .is_some_and(|(file, board)| {
-                                    file.ends_with(".riv")
-                                        && !board.is_empty()
-                                        && !board.contains('#')
-                                });
-                        match id {
-                            Some(id) if well_formed => {
-                                return Ok(vec![e("rive", vec![Value::String(id.to_owned())])]);
-                            }
-                            _ => return Err("-og-frame: rive(\"<file>.riv#<Artboard>\") takes one quoted id relative to assets/, such as rive(\"ui/chest.riv#Chest\")".into()),
-                        }
-                    }
-                    _ if prop == "rive" => {
-                        return Err("-og-frame: rive(\"<file>.riv#<Artboard>\")".into());
-                    }
-                    v => vec![Value::Word(camel(want_ident(&v, "a word")?))],
-                },
+                Conv::Kebab => vec![Value::Word(camel(want_ident(&one(&t, name)?, "a word")?))],
                 Conv::Kw(table) => {
                     let v = one(&t, name)?;
                     let w = want_ident(&v, "a word")?;

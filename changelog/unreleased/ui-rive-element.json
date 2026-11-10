@@ -1,0 +1,9 @@
+{
+  "breaking": [
+    {
+      "member": "UI Rive artboards",
+      "change": "Removed -og-frame: rive(...) without an alias. Rive loading and playback are semantics of the reflected og-rive element, not CSS decoration.",
+      "fix": "Write <og-rive src=\"ui/chest.riv#Chest\"> and use standard CSS for its dimensions and visibility. Source IDs remain relative to assets/. Playback, hot reload, picking, dependency loading and checkpoint replay are unchanged; probe edits replace the src attribute."
+    }
+  ]
+}

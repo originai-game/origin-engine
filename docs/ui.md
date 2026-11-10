@@ -2494,8 +2494,8 @@ imports. A missing custom dressing uses the readable core token fallback.
 It is not permission to leave a required state unfinished.
 
 A kit names every frame it draws as a part (`<column part="Inventory.frame">`)
-and gives it only a token background as the fallback. A kit's own `-og-frame`,
-`-og-slice` or `-og-stroke` on the element outranks the pack's dressing of
+and gives it only a token background as the fallback. A kit's own background,
+border image or border on the element outranks the pack's dressing of
 that part, so a kit that paints its own frame leaves the pack nothing to
 dress. Rarity, selection and other states a pack dresses reach the part as
 qualifiers or classes, such as `part={"Slot.frame[rarity=" + item.rarity + "]"}`

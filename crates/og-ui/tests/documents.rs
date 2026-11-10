@@ -879,14 +879,13 @@ fn css_outside_the_subset_is_an_error_that_names_the_fix() {
     assert!(err("  gap: 12").contains("12px"));
     assert!(err("  font-size: big").contains("font-size: 'big'"));
     assert!(err("  padding: 4px !urgent").contains("declaration"));
-    // A Rive frame takes one `<file>.riv#<Artboard>` id.
-    for bad in [
-        "rive(\"ui/chest.riv\", \"Chest\")",
-        "rive(\"ui/chest.riv\")",
-        "rive(chest)",
-    ] {
-        let e = err(&format!("  -og-frame: {bad}"));
-        assert!(e.contains("takes one quoted id"), "{bad}: {e}");
+    assert!(err("-og-frame: rive(\"ui/chest.riv#Chest\")").contains("-og-frame"));
+    for bad in ["ui/chest.riv", "chest", "ui/chest.riv#", "ui/chest.riv#A#B"] {
+        let source = format!("<meta name=\"component\" content=\"s\"><og-rive src=\"{bad}\"/>");
+        let e = UiDocument::parse("ui/s.svelte", &source)
+            .unwrap_err()
+            .join("\n");
+        assert!(e.contains("src takes <file>.riv#<Artboard>"), "{bad}: {e}");
     }
     // Container syntax outside the specs names what is wrong.
     assert!(err("  container-type: size scroll-state size").contains("container-type"));
@@ -1025,7 +1024,7 @@ fn chest() -> std::sync::Arc<og_ui::rive::Artboard> {
     })
 }
 
-const CHEST_SCREEN: &str = "<meta name=\"screen\" content=\"loot\"><column id=\"Chest\"/><style>#Chest { width: 100px; height: 50px; -og-frame: rive(\"ui/chest.riv#Chest\"); }</style>";
+const CHEST_SCREEN: &str = "<meta name=\"screen\" content=\"loot\"><og-rive id=\"Chest\" src=\"ui/chest.riv#Chest\"/><style>#Chest { width: 100px; height: 50px; }</style>";
 
 /// A document element whose frame is a Rive artboard plays it on the tick
 /// in its box: its shapes draw over its background, its objects are
@@ -1035,7 +1034,7 @@ const CHEST_SCREEN: &str = "<meta name=\"screen\" content=\"loot\"><column id=\"
 /// Ways it could fail: a player advanced per build rather than per tick or
 /// restarted each frame (the lid never moves or jumps), a restore that
 /// starts it again (the restored run lags the unbroken one), refused bytes
-/// silently reset, the write-back losing `rive(…)`.
+/// silently reset, or the write-back losing its src attribute.
 #[test]
 fn a_rive_frame_plays_draws_names_its_objects_and_is_saved() {
     let doc = UiDocument::parse("ui/loot.ogt", CHEST_SCREEN).expect("parses");
@@ -1153,17 +1152,12 @@ fn a_rive_frame_plays_draws_names_its_objects_and_is_saved() {
         .set_prop(chest_node, "rive", "\"ui/chest.riv#Lid\"")
         .unwrap();
     assert!(
-        edited
-            .text
-            .contains("-og-frame: rive(\"ui/chest.riv#Lid\")"),
+        edited.text.contains("src=\"ui/chest.riv#Lid\""),
         "{}",
         edited.text
     );
-    // The scoped override preserves the authored rule, so both assets are dependencies.
-    assert_eq!(
-        edited.rive_ids(),
-        ["ui/chest.riv#Chest", "ui/chest.riv#Lid"]
-    );
+    // Replacing the attribute removes the old dependency.
+    assert_eq!(edited.rive_ids(), ["ui/chest.riv#Lid"]);
 }
 
 #[test]
@@ -1238,16 +1232,17 @@ fn container_queries_restyle_lists_grids_and_rive_frames_before_paint() {
         "ui/shelf.ogt",
         r#"<meta name="screen" content="loot">
 <column id="Shelf">
-  <column id="Chest"/>
+  <column id="ChestFrame"><og-rive id="Chest" src="ui/chest.riv#Chest"/></column>
   <list id="Log" row-height="20" height="80">{#each rows as row (row.id)}<text>{row.id}</text>{/each}</list>
   <cells id="Bag" cell-width="30" cell-height="30" height="70">{#each rows as row (row.id)}<panel/>{/each}</cells>
 </column>
 <style>
 #Shelf { width: 50%; padding: 0px; container: shelf / inline-size; }
-#Chest { width: 100px; height: 50px; }
+#ChestFrame { width: 100px; height: 50px; }
+#Chest { width: 100%; height: 100%; display: none; }
 #Log { padding: 2px; }
 @container shelf (width >= 400px) {
-  #Chest { -og-frame: rive("ui/chest.riv#Chest"); }
+  #Chest { display: block; }
   #Log { padding: 7px; }
   #Bag { padding: 5px; }
 }
@@ -1449,12 +1444,12 @@ fn rive_frames_and_hidden_elements_change_fields_not_builds() {
         let mut ui = ui_with_font(test_font_metrics());
         ui.define_rive("ui/chest.riv#Chest", chest());
         let mut doc = String::from(
-            "<meta name=\"component\" content=\"loot\">\n<column id=\"Root\">\n<column id=\"Chest\"/>\n<column id=\"Menu\" hidden={$closed}>\n",
+            "<meta name=\"component\" content=\"loot\">\n<column id=\"Root\">\n<og-rive id=\"Chest\" src=\"ui/chest.riv#Chest\"/>\n<column id=\"Menu\" hidden={$closed}>\n",
         );
         for i in 0..30 {
             doc.push_str(&format!("<text id=\"L{i}\">Line {i}</text>\n"));
         }
-        doc.push_str("</column>\n</column>\n<style>#Chest { width: 100px; height: 50px; -og-frame: rive(\"ui/chest.riv#Chest\"); }</style>");
+        doc.push_str("</column>\n</column>\n<style>#Chest { width: 100px; height: 50px; }</style>");
         ui.define_document(UiDocument::parse("loot.svelte", &doc).unwrap());
         let closed = reactive::SourceId::new("test", "closed");
         let mut inputs = std::collections::BTreeMap::new();

@@ -100,7 +100,7 @@ pub fn tags(kind: &str) -> Vec<(String, String)> {
             "meter".into(),
             "<meter id=\"Name\" value={$hp} min=\"0\" max=\"100\" low=\"25\" high=\"75\" optimum=\"90\" />".into(),
         )],
-        _ if !registered.is_empty() => Vec::new(),
+        "icon" => Vec::new(),
         other => super::schema_extra::tags(other).unwrap_or_else(|| {
             vec![(other.into(), format!("<{other} id=\"Name\">…</{other}>"))]
         }),
@@ -246,6 +246,7 @@ mod tests {
     #[test]
     fn every_kind_has_a_section_listing_the_props_it_takes() {
         let md = markdown();
+        assert!(md.contains("`<column>`") && md.contains("`<og-rive>`"));
         let sections: Vec<&str> = md.split("\n## ").skip(1).collect();
         assert_eq!(
             sections.len(),
@@ -278,6 +279,6 @@ mod tests {
                 );
             }
         }
-        assert!(md.contains("\n| `-og-frame:` |") && !md.contains("\n| `frame` |"));
+        assert!(md.contains("\n| `<og-rive src>` |") && !md.contains("\n| `-og-frame:` |"));
     }
 }

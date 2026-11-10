@@ -120,7 +120,7 @@ fn ui_rive_text_draws_its_run_in_its_cooked_font() {
     board.bind_fonts(&mut |f| (f == "ui/hello_world.riv#font0").then(|| ui_font.clone()));
     let doc = UiDocument::parse(
         "ui/hello.svelte",
-        "<meta name='screen' content='hello'><column id='Hello'/><style>#Hello { width: 500px; height: 500px; -og-frame: rive(\"ui/hello_world.riv#New Artboard\"); }</style>",
+        "<meta name='screen' content='hello'><og-rive id='Hello' src='ui/hello_world.riv#New Artboard'/><style>#Hello { width: 500px; height: 500px; }</style>",
     )
     .unwrap();
     let mut ui = Ui::new(UiDesc {

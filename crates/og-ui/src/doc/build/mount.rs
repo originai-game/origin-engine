@@ -270,8 +270,8 @@ impl Ui {
     }
 
     /// Registers a Rive artboard by its id (`ui/chest.riv#Chest`, as og-cook
-    /// converted it, docs/ui.md §3.3): an element whose `-og-frame` is
-    /// `rive("<id>")` plays it. One of the same id is replaced (a hot
+    /// converted it, docs/ui.md §3.3): `<og-rive src="id">` plays it.
+    /// One of the same id is replaced (a hot
     /// reload): an element playing the old one goes on from where it was
     /// when it fits the new one, else starts it again.
     pub fn define_rive(&mut self, id: &str, artboard: Arc<crate::rive::Artboard>) {
@@ -328,7 +328,7 @@ impl Ui {
         let key = self.nodes[node].key;
         let Some(board) = self.docs.rive.get(id).cloned() else {
             self.warnings.push(format!(
-                "{path}: -og-frame: rive(\"{id}\") names no Rive artboard the UI has; og.load.document loads those its document names"
+                "{path}: og-rive src=\"{id}\" names no Rive artboard the UI has; og.load.document loads those its document names"
             ));
             return;
         };

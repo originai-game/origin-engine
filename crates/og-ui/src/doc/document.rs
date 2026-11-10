@@ -246,7 +246,7 @@ impl UiDocument {
         out
     }
 
-    /// The Rive artboards its elements play (`-og-frame: rive("<id>")`), each
+    /// The Rive artboards its elements play (`<og-rive src="id">`), each
     /// once, in document order: what loading it loads beside it.
     pub fn rive_ids(&self) -> Vec<String> {
         let Some((spec, _)) = super::schema::prop("rive") else {
