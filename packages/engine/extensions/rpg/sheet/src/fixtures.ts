@@ -10,6 +10,9 @@ export const ITEM_NAMES = [
   "lantern", "axe", "mace", "staff", "dagger", "bread", "torch", "map",
 ];
 
+export const SKILL_NAMES = ["fire", "shield", "arcane", "nature", "blood", "dash", "frost", "mend"];
+export const CMD_NAMES = ["attack", "skills", "spells", "items", "defend", "flee", "health", "mana"];
+
 export const INK_NAMES = [
   "heart", "star", "coin", "lock", "pause", "gear", "sword", "shield",
   "potion", "gem", "key", "map", "bolt", "clock", "trophy", "home",
@@ -235,17 +238,17 @@ export const JOURNAL = (p: Pictures) => ({
   playerMana: 128,
   playerManaMax: 180,
   skills: [
-    { id: "k1", icon: "item-blade", key: "1", name: "Rending Cut", cooldown: 0, ready: true },
-    { id: "k2", icon: "item-bow", key: "2", name: "Storm Arrow", cooldown: 0, ready: true },
-    { id: "k3", icon: "item-fire", key: "3", name: "Ember Volley", cooldown: 0.6, ready: false },
-    { id: "k4", icon: "item-shield", key: "4", name: "Iron Guard", cooldown: 0, ready: true },
-    { id: "k5", icon: "item-herb", key: "5", name: "Thornbind", cooldown: 0, ready: true },
-    { id: "k6", icon: "item-staff", key: "6", name: "Hunter's Mark", cooldown: 0, ready: true },
+    { id: "k1", icon: "skill-fire", key: "1", name: "Ember Slash", cooldown: 0, ready: true },
+    { id: "k2", icon: "skill-shield", key: "2", name: "Sun Ward", cooldown: 0, ready: true },
+    { id: "k3", icon: "skill-arcane", key: "3", name: "Arcane Burst", cooldown: 0.6, ready: false },
+    { id: "k4", icon: "skill-nature", key: "4", name: "Thornbind", cooldown: 0, ready: true },
+    { id: "k5", icon: "skill-blood", key: "5", name: "Blood Strike", cooldown: 0, ready: true },
+    { id: "k6", icon: "skill-dash", key: "6", name: "Dash", cooldown: 0, ready: true },
   ],
   quickItems: [
-    { id: "q1", icon: "item-potion", key: "Q", name: "Healing Draught", count: 5 },
-    { id: "q2", icon: "item-vial", key: "E", name: "Moonwater Vial", count: 3 },
-    { id: "q3", icon: "item-scroll", key: "R", name: "Scroll of Return", count: 4 },
+    { id: "q1", icon: "cmd-health", key: "Q", name: "Healing Draught", count: 9 },
+    { id: "q2", icon: "cmd-mana", key: "E", name: "Moonwater Vial", count: 7 },
+    { id: "q3", icon: "item-scroll", key: "R", name: "Scroll of Return", count: 3 },
   ],
   minimapMarkers: [
     { id: "me", x: 0.5, y: 0.5, tone: "neutral", player: true },
@@ -278,12 +281,12 @@ export const JOURNAL = (p: Pictures) => ({
     { id: "e3", icon: "fire", label: "Resists fire", tone: "strong" },
   ],
   commands: [
-    { id: "attack", label: "Attack", icon: "sword", enabled: true },
-    { id: "skills", label: "Skills", icon: "star", enabled: true },
-    { id: "spells", label: "Spells", icon: "bolt", enabled: true },
-    { id: "items", label: "Items", icon: "bag", enabled: true },
-    { id: "defend", label: "Defend", icon: "shield", enabled: true },
-    { id: "flee", label: "Flee", icon: "back", enabled: false },
+    { id: "attack", label: "Attack", icon: "cmd-attack", enabled: true },
+    { id: "skills", label: "Skills", icon: "cmd-skills", enabled: true },
+    { id: "spells", label: "Spells", icon: "cmd-spells", enabled: true },
+    { id: "items", label: "Items", icon: "cmd-items", enabled: true },
+    { id: "defend", label: "Defend", icon: "cmd-defend", enabled: true },
+    { id: "flee", label: "Flee", icon: "cmd-flee", enabled: false },
   ],
   commandSelected: "attack",
 });

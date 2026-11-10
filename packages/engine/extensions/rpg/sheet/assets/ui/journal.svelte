@@ -36,7 +36,6 @@
   #Map { height: calc(var(--size-xxl) * 2.3); flex: none; }
   #Place { height: calc(var(--size-xxl) * 2.25); flex: none; }
   #Log { width: stretch; height: auto; flex: none; }
-  /* pending: absolute right/bottom insets — the box is dropped when placed by left/right/bottom; correct form: left: 0; right: 0; bottom: 0; */
-  #Fade { display: block; position: absolute; left: 0; top: calc(100% - var(--size-xxl) * 1.5); width: 100%; height: calc(var(--size-xxl) * 1.5); pointer-events: none; }
+  #Fade { display: block; position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--size-xxl) * 1.5); pointer-events: none; }
 }
 </style>

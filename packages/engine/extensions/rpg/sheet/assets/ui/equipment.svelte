@@ -30,8 +30,8 @@
 @media (width < 600px) {
   #Page { padding: 0 var(--space-sm) var(--space-sm); gap: var(--space-sm); }
   #Body { flex-direction: column; gap: var(--space-sm); }
-  #Hero { width: stretch; height: 55%; }
-  #Stats { width: stretch; height: 45%; }
+  #Hero { width: stretch; height: 40%; }
+  #Stats { width: stretch; height: 60%; }
   #Foot { flex-wrap: wrap; gap: var(--space-xs); }
   #Foot button { width: calc(50% - var(--space-xs) / 2); }
   #FootGap { display: none; }

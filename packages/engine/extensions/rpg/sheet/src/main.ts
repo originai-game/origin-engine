@@ -9,7 +9,7 @@
 // reduced:<on|off>.
 
 import { og, type World } from "@origingame/engine";
-import { EQUIPMENT, ITEM_NAMES, INK_NAMES, INVENTORY, JOURNAL, PICTURES } from "./fixtures.ts";
+import { CMD_NAMES, EQUIPMENT, ITEM_NAMES, SKILL_NAMES, INK_NAMES, INVENTORY, JOURNAL, PICTURES } from "./fixtures.ts";
 
 const PAGES = ["inventory", "journal", "equipment", "explore", "combat"] as const;
 const STYLES = ["fantasy"] as const;
@@ -55,7 +55,7 @@ function setStyle(world: World, name: string): void {
   const ink = must(og.load.texture(world, "icons/ink-icons.png"), "ink icons");
   og.ui.configure(world, {
     style,
-    icons: { texture: items, columns: 8, rows: 4, names: ITEM_NAMES.map((n) => `item-${n}`) },
+    icons: { texture: items, columns: 8, rows: 6, names: [...ITEM_NAMES.map((n) => `item-${n}`), ...SKILL_NAMES.map((n) => `skill-${n}`), ...CMD_NAMES.map((n) => `cmd-${n}`)] },
     fallbackIcons: { texture: ink, columns: 8, rows: 4, names: INK_NAMES },
   });
 }
