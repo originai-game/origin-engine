@@ -185,3 +185,20 @@ dialogue::part(continue) { color: var(--gold); }
    ("unsupported text span property background"):
    h1::part(flourish), h2::part(flourish), h3::part(flourish) { background: url(art/rule.svg) center / 100% 12px no-repeat; } */
 scroll::part(bar) { background: #8f765099; border-radius: 2px; }
+
+/* ── The remaining registry parts: icon children take the gold ink, the
+   IME composition its underline, the keyboard's preview and candidates the
+   panel. `input[type=range]::part(reach)` is the knob's hit area and stays
+   undrawn. */
+details::part(root) { border-bottom: 1px solid #8f765033; }
+details::part(content) { padding: var(--space-xs) var(--space-sm) var(--space-sm); color: var(--ink); }
+keyboard::part(preview) { border-bottom: 1px solid #8f765066; background: #0b0805; color: var(--ink); font-family: var(--font-body); }
+keyboard::part(candidates) { border-bottom: 1px solid #8f765044; background: #160f0a; }
+input::part(composition), textarea::part(composition) { text-decoration-line: underline; text-decoration-color: var(--gold); }
+input::part(reveal-icon), input::part(clear-icon) { color: var(--ink-muted); }
+icon::part(image), art::part(icon), artslot::part(icon), actionbutton::part(icon), cooldown::part(icon), dialogue::part(portraitIcon) { color: var(--ink); }
+cooldown::part(mask), actionbutton::part(mask) { background: #000000a0; }
+minimap::part(image) { filter: saturate(0.85) brightness(0.9); }
+minimap::part(markerOutline) { background: #0b0805; }
+dialogue::part(initial) { color: var(--gold); font-family: var(--font-display); }
+joystick::part(direction) { background: var(--gold); }
