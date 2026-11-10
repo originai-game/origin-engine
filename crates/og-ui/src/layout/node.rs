@@ -478,6 +478,13 @@ impl Default for SampledStyle {
 }
 
 #[derive(Clone, Debug)]
+pub(crate) struct PartBox {
+    pub owner: usize,
+    pub reference: crate::dress::PartRef,
+    pub element: Element,
+}
+
+#[derive(Clone, Debug)]
 pub(crate) struct Node {
     pub key: u64,
     pub id: String,
@@ -496,6 +503,8 @@ pub(crate) struct Node {
     pub authored_box: Option<(Size, Size, Insets)>,
     pub el: Element,
     pub part_host: Option<std::sync::Arc<crate::doc::build::PartHost>>,
+    pub part_box: Option<PartBox>,
+    pub content_slot: usize,
     pub content: Content,
     pub widget: Widget,
     /// The text the probe reports for it.
@@ -748,6 +757,8 @@ impl Node {
             authored_box: None,
             el,
             part_host: None,
+            part_box: None,
+            content_slot: NONE,
             content: Content::None,
             widget: Widget::None,
             probe_text: String::new(),

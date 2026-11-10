@@ -90,14 +90,13 @@ fn parsed_rules(mut rules: Vec<Rule>, layers: &[String]) -> Result<Vec<(Selector
 /// A global part sheet, using the same reader, shorthand expansion and
 /// cascade order as a document's CSS.
 pub(crate) fn part_rules(css: &str) -> Result<(Vec<StyleRule>, super::at_rules::Sheet), String> {
-    part_rules_from("<part-css>", css, Vec::new(), false)
+    part_rules_from("<part-css>", css, Vec::new())
 }
 
 pub(crate) fn part_rules_from(
     source: &str,
     css: &str,
     imports: Vec<(String, String)>,
-    document_rules: bool,
 ) -> Result<(Vec<StyleRule>, super::at_rules::Sheet), String> {
     let error = |(at, message)| format!("{source}:{}: {message}", syntax::location(css, at).0);
     let mut sheet = super::at_rules::Sheet {
@@ -111,28 +110,22 @@ pub(crate) fn part_rules_from(
         if rule.ua {
             continue;
         }
-        if !document_rules {
-            part_selector(&selector).map_err(|e| error((rule.at, e)))?;
+        if selector.compounds.iter().flat_map(|c| &c.0).any(|simple| {
+            matches!(simple, super::selectors::Simple::Type(tag) if tag != &tag.to_ascii_lowercase())
+        }) {
+            return Err(error((rule.at, "use lowercase markup tags in global CSS".into())));
         }
         let (declarations, _) = lower(&rule.body, &|name| {
             sheet.keyframe_rules.iter().any(|(n, ..)| n == name)
         })
         .map_err(|e| error((rule.at, e)))?;
-        // Ordinary selectors are applied when a document joins this pack.
-        // Immediate-mode core hosts join the cascade in parts-as-nodes.
         let has_part = selector.compounds.iter().any(|c| {
             c.0.iter()
                 .any(|s| matches!(s, super::selectors::Simple::Part(_)))
         });
-        let root = selector.compounds.len() == 1
-            && matches!(
-                selector.compounds[0].0.first(),
-                Some(super::selectors::Simple::Root)
-            );
-        if !has_part && !root {
-            continue;
+        if has_part {
+            part_selector(&selector).map_err(|e| error((rule.at, e)))?;
         }
-        part_selector(&selector).map_err(|e| error((rule.at, e)))?;
         out.push(StyleRule {
             inline: false,
             layer: rank(&sheet.layers, &rule.layer),
@@ -273,9 +266,11 @@ fn part_selector(selector: &Selector) -> Result<(), String> {
     let mut part = false;
     for simple in &simples[1..] {
         match simple {
-            Simple::Class(_) | Simple::Attribute { .. } if !part => {}
+            Simple::Class(_) | Simple::Id(_) | Simple::Attribute { .. } if !part => {}
+            Simple::Not(list) | Simple::Is(list) | Simple::Where(list)
+                if !part && list.iter().all(|selector| !selector.structural()) => {}
             Simple::Part(_) if !part => part = true,
-            Simple::State(state) if part && *state != crate::bind::InteractionState::Selected => {}
+            Simple::State(_) => {}
             _ => return Err(bad()),
         }
     }
@@ -434,13 +429,24 @@ pub(super) fn apply(
                 ));
             }
             let parent = if parent.is_empty() { "text" } else { parent };
+            let part_name = parsed.compounds.iter().flat_map(|c| &c.0).find_map(|s| {
+                if let super::selectors::Simple::Part(name) = s {
+                    Some(name.as_str())
+                } else {
+                    None
+                }
+            });
             let mut text_span = false;
             for (i, _, _) in elements {
                 let Some(condition) = matches(doc, elements, *i, parent, rule.at)? else {
                     continue;
                 };
                 // A text element's spans: `text::part(name)`, `p::part(…)`.
-                if doc.nodes[*i].kind != NodeKind::Element("label") {
+                if doc.nodes[*i].kind != NodeKind::Element("label")
+                    || doc.nodes[*i].selector_tag.as_deref().is_some_and(|tag| {
+                        part_name.is_some_and(|name| schema::parts::part(tag, name).is_some())
+                    })
+                {
                     continue;
                 }
                 text_span = true;
@@ -1450,7 +1456,10 @@ fn rule_props(entries: &[og_core::ogt::Entry], kind: &str) -> Result<Vec<PropSet
             written(&e.values).as_str(),
             "block" | "inline" | "inlineBlock" | "flowRoot" | "listItem"
         );
-        if !p.applies(kind) || (e.key == "display" && kind != "box" && !inner) {
+        let inherited = css::STYLE.iter().any(|(property, name)| {
+            *property == key && super::build::cascade::inherited_property(name)
+        });
+        if (!p.applies(kind) && !inherited) || (e.key == "display" && kind != "box" && !inner) {
             return Err(if e.key == "display" {
                 format!(
                     "display: {} lays out a <div> (or another HTML block); a {kind}'s layout is its tag, so it takes only none, block, inline, inline-block or flow-root",

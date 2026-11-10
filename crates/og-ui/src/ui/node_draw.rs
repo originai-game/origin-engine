@@ -132,7 +132,7 @@ impl Ui {
         if let Some(bg) = n
             .sampled
             .background
-            .filter(|_| !self.part_draws.contains_key(&i))
+            .filter(|bg| bg.alpha > 0.0 && !self.part_draws.contains_key(&i))
         {
             let r = if matches!(n.widget, Widget::Button { pressed: true, .. }) {
                 rect.scaled(t.press_scale)

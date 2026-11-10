@@ -697,6 +697,29 @@
     --type-xs-size: 13px; --type-xs-line-height: 18px; --type-xs-cjk-line-height: 19px;
   } }
 
+  button { color: var(--ink); }
+  button.primary { color: var(--on-primary); }
+  button.danger { color: var(--danger); }
+  button:disabled { color: var(--ink-faint); }
+  button::part(base) { background: var(--control); }
+  button::part(base):hover, button::part(base):active { background: var(--control-strong); }
+  button.primary::part(base) { background: var(--primary); }
+  button.primary::part(base):hover { background: var(--primary-hover); }
+  button.primary::part(base):active { background: var(--primary-active); }
+  button.quiet::part(base), button.ghost::part(base) { background: transparent; }
+  button.quiet::part(base):hover, button.quiet::part(base):active,
+  button.ghost::part(base):hover, button.ghost::part(base):active { background: var(--control); }
+  button.danger::part(base) {
+    background: color-mix(in srgb, var(--danger) 10%, transparent);
+  }
+  button.danger::part(base):hover, button.danger::part(base):active {
+    background: color-mix(in srgb, var(--danger) 15%, transparent);
+  }
+  button::part(base):disabled,
+  button.primary::part(base):disabled, button.quiet::part(base):disabled,
+  button.ghost::part(base):disabled, button.danger::part(base):disabled {
+    background: var(--control);
+  }
   /* Hover/press values are supplied by the widget, blended by the cascade. */
   button::part(base), input[type=checkbox]::part(row), input[type=radio]::part(option),
   select::part(option), stepper::part(button), details::part(summary),

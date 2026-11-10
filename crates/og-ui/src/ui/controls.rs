@@ -215,48 +215,10 @@ impl Ui {
         amounts: (f32, f32),
         press: f32,
     ) {
-        let t = self.theme;
         self.nodes[i].el = self.button_box(desc);
         self.nodes[i].disabled = desc.disabled;
         let width = self.nodes[i].el.width;
-        let Size::Fixed(h) = self.nodes[i].el.height else {
-            unreachable!("button geometry has a fixed height")
-        };
         let key = self.nodes[i].key;
-        let p = &t.palette;
-        // Each variant's colour at rest, hovered and pressed, mixed by how
-        // far into each the button is (the style's `ui` spring).
-        let mix = |rest, hover, pressed| Ui::state_color(rest, hover, pressed, amounts);
-        let (bg, fg) = if desc.disabled {
-            (Some(p.control), p.ink_faint)
-        } else {
-            match desc.variant {
-                ButtonVariant::Primary => (
-                    Some(mix(p.primary, p.primary_hover, p.primary_active)),
-                    p.on_primary,
-                ),
-                ButtonVariant::Secondary => (
-                    Some(mix(p.control, p.control_strong, p.control_strong)),
-                    p.ink,
-                ),
-                // Ghost is quiet's fill with a strong outline (the token
-                // stroke of a `ghost` part), so it reads as a button at rest.
-                ButtonVariant::Quiet | ButtonVariant::Ghost => {
-                    let clear = p.control.fade(0.0);
-                    let c = mix(clear, p.control, p.control);
-                    ((c.alpha > 0.0).then_some(c), p.ink)
-                }
-                // Danger ink on the danger tint (10 % at rest, 15 %
-                // hovered), composited in sRGB over what is behind it, so its label
-                // reads at 4.5:1 on every ground.
-                ButtonVariant::Danger => {
-                    let behind = self.behind(i);
-                    let rest = p.danger.fade(0.10).over(behind);
-                    let lit = p.danger.fade(0.15).over(behind);
-                    (Some(mix(rest, lit, lit)), p.danger)
-                }
-            }
-        };
         let variant = match desc.variant {
             ButtonVariant::Primary => "primary",
             ButtonVariant::Secondary => "secondary",
@@ -284,16 +246,13 @@ impl Ui {
         part.hover = amounts.0;
         part.press = amounts.1;
         let resolved = self.part_values(&part, Some(key));
-        let fg = resolved.color("color").unwrap_or(fg);
+        let fg = resolved.color("color").unwrap_or(self.theme.palette.ink);
         let mut content = self.role_text(text, crate::tokens::TypeRole::Button, fg);
         content.align = desc.align.unwrap_or(TextAlign::Center);
-        let radius = resolved.num("radius").unwrap_or(0.0);
         if let Some(top) = self.button_ink.last_mut().filter(|(at, _)| *at == i) {
             top.1 = fg;
         }
         let n = &mut self.nodes[i];
-        n.el.background = bg;
-        n.el.radius = radius.min(h / 2.0);
         n.el.part = Some(part);
         n.el.frame = None;
         n.content = if text.is_empty() {
@@ -306,6 +265,21 @@ impl Ui {
             press,
         };
         n.probe_text = text.to_owned();
+        let content = std::mem::replace(&mut n.content, Content::None);
+        let element = Element {
+            width: Size::grow(),
+            height: Size::grow(),
+            interactive: false,
+            background: None,
+            part: None,
+            ..n.el
+        };
+        n.el.padding = Insets::default();
+        n.el.gap = 0.0;
+        n.el.background = None;
+        n.el.radius = 0.0;
+        let slot = self.write_part(i, part, ("base", 0), element, content);
+        self.nodes[i].content_slot = slot;
     }
 
     /// A texture region, or a solid rectangle without a texture; with

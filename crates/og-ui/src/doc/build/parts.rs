@@ -19,6 +19,53 @@ impl Resolved {
 }
 
 impl Ui {
+    pub(super) fn apply_part_box(&mut self, i: usize) {
+        self.kept
+            .prev
+            .entry(i)
+            .or_insert_with(|| self.nodes[i].clone());
+        if !self.emitted.contains(&i) {
+            self.emitted.push(i);
+        }
+        let part = self.nodes[i].part_box.clone().expect("part node");
+        let owner = &self.nodes[part.owner];
+        let reference = if owner.content_slot == i {
+            owner.el.part.unwrap_or(part.reference)
+        } else {
+            part.reference
+        };
+        let r = self.part_values(&reference, Some(self.nodes[i].key));
+        let document = self
+            .part_host(self.nodes[part.owner].key)
+            .and_then(|host| self.docs.docs.get(&host.document))
+            .cloned();
+        self.nodes[i].el = part.element;
+        self.apply_box_fields(
+            i,
+            &r,
+            fields::BoxSource {
+                document: document.as_deref(),
+                kind: "box",
+                tag: None,
+                root: false,
+                line: 0,
+                textures: &[],
+            },
+        );
+        let mut props = Self::box_props(&NodeKind::Element("box"), &r);
+        props.flow = r.own_flow();
+        if self.direction == og_i18n::Direction::Rtl {
+            crate::layout::flow::mirror_props(&mut props);
+        }
+        self.nodes[i].props = props;
+        if let crate::layout::Content::Text(text) = &mut self.nodes[i].content {
+            text.step = r.part_type(&self.theme, text.step);
+            if let Some(ink) = r.color("color") {
+                text.color = ink;
+            }
+        }
+    }
+
     pub(crate) fn css_feedback(
         &self,
         key: Option<u64>,
@@ -131,10 +178,15 @@ impl Ui {
             .media
             .matches(self.media_context(), &mut Default::default())
             && rule.query.container.is_empty()
-            && rule
-                .structure
-                .as_ref()
-                .is_some_and(|s| s.compounds[0].0.iter().all(|simple| own(facts, simple)))
+            && rule.structure.as_ref().is_some_and(|s| {
+                let has_part = s
+                    .compounds
+                    .iter()
+                    .flat_map(|c| &c.0)
+                    .any(|simple| matches!(simple, super::super::selectors::Simple::Part(_)));
+                has_part == facts.part.is_some()
+                    && s.compounds[0].0.iter().all(|simple| own(facts, simple))
+            })
     }
 
     pub(crate) fn matching_part_rules(
@@ -251,6 +303,35 @@ impl Ui {
                 carry: false,
             };
             let mut inherited = (*self.css_root_variables()).clone();
+            let mut global = cascade::values_with(
+                &rules,
+                &cascade::Options {
+                    inherited: &inherited,
+                    carry: true,
+                    ..options
+                },
+                |rule| {
+                    self.part_matches(
+                        rule,
+                        &Facts {
+                            part: None,
+                            ..facts
+                        },
+                    )
+                },
+            );
+            cascade::route(&mut global, crate::layout::Flow::default());
+            super::super::text_css::inherit(super::super::text_css::Inputs {
+                local: &global.text,
+                computed: Arc::make_mut(&mut global.computed),
+                reads: &mut global.inherited_reads,
+                diagnostics: &mut global.diagnostics,
+                theme: &self.theme,
+                current: self.theme.palette.ink,
+                step: body,
+                declared: &|name| self.family_declared(name),
+            });
+            inherited = (*global.computed).clone();
             if let Some(host) = host {
                 inherited.extend(host.computed.iter().map(|(k, v)| (k.clone(), v.clone())));
                 inherited
@@ -265,6 +346,14 @@ impl Ui {
             };
             let mut values =
                 cascade::values_with(&rules, &options, |r| self.part_matches(r, &facts));
+            for (name, value) in &inherited.properties {
+                if cascade::inherited_property(name)
+                    && !super::super::text_css::longhand(name)
+                    && !values.values.iter().any(|(own, ..)| own == name)
+                {
+                    values.values.push((name.clone(), value.clone(), 0));
+                }
+            }
             let motion = values
                 .values
                 .iter()
@@ -303,7 +392,15 @@ impl Ui {
                     .borrow_mut()
                     .insert((key, part.part), commit.clone());
             }
-            cascade::route(&mut values, crate::layout::Flow::default());
+            let flow = cascade::flow(
+                &mut values,
+                &inherited,
+                self.direction == og_i18n::Direction::Rtl,
+                None,
+            );
+            cascade::route(&mut values, flow);
+            let space3d = crate::transform3d::resolve(&values.transform, &mut values.diagnostics)
+                .map(Arc::new);
             let mut vals: Vec<_> = values
                 .props
                 .iter()
@@ -324,8 +421,8 @@ impl Ui {
             Resolved {
                 vals,
                 cascade: values,
-                transitions,
-                animations,
+                flow,
+                space3d,
                 style,
                 ..Default::default()
             }

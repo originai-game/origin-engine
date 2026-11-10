@@ -575,12 +575,34 @@ impl Ui {
 
     /// Apply a part's presentation with the same values documents use.
     pub(crate) fn apply_part_appearances(&mut self) {
+        let moving: Vec<_> = self
+            .state
+            .motion
+            .part_styles
+            .iter()
+            .filter(|(_, styles)| styles.values().any(|style| style.running))
+            .filter_map(|(key, _)| self.tree.find(*key))
+            .filter(|&i| self.nodes[i].part_box.is_some())
+            .collect();
+        for i in moving {
+            if !self.emitted.contains(&i) {
+                self.emitted.push(i);
+            }
+        }
         for k in 0..self.emitted.len() {
             self.apply_part_appearance(self.emitted[k]);
         }
     }
 
     pub(crate) fn apply_part_appearance(&mut self, i: usize) {
+        if self.nodes[i].content_slot != NONE {
+            self.apply_part_box(self.nodes[i].content_slot);
+            return;
+        }
+        if self.nodes[i].part_box.is_some() {
+            self.apply_part_box(i);
+            return;
+        }
         let Some(part) = self.nodes[i]
             .el
             .part
@@ -985,14 +1007,6 @@ impl Ui {
             }
         }
         r.part = Self::document_part(&r, n, b);
-        r.part_host = n.selector_tag.as_ref().map(|tag| {
-            Arc::new(PartHost {
-                document: b.doc.name.clone(),
-                tag: tag.clone(),
-                attributes: structure::selector_facts(n, |e| b.eval(e)),
-                computed: r.cascade.computed.clone(),
-            })
-        });
         if let Some(V::Spans(Ok(spans))) = r.get("spans") {
             let rules: Vec<_> = n
                 .span_rules
@@ -1205,6 +1219,22 @@ impl Ui {
             cascade.text = local;
             r.text = (text != Default::default()).then(|| Arc::new(text));
         }
+        r.part_host = n.selector_tag.as_ref().map(|tag| {
+            let mut computed = (*r.cascade.computed).clone();
+            computed.properties.extend(
+                r.cascade
+                    .values
+                    .iter()
+                    .filter(|(name, ..)| cascade::inherited_property(name))
+                    .map(|(name, value, _)| (name.clone(), value.clone())),
+            );
+            Arc::new(PartHost {
+                document: b.doc.name.clone(),
+                tag: tag.clone(),
+                attributes: structure::selector_facts(n, |e| b.eval(e)),
+                computed: Arc::new(computed),
+            })
+        });
         if recording {
             let cached = b.recording.borrow_mut().take().unwrap_or_default();
             r.replay = Some(Arc::new(containers::Replay {

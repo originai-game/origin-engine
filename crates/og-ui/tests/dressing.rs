@@ -6,6 +6,206 @@
 use crate::support::*;
 use og_ui::*;
 
+#[test]
+fn button_parts_keep_separate_boxes_and_host_event_ownership() {
+    let tick = |ui: &mut Ui, input| {
+        ui.begin(input, Viewport::new(600.0, 400.0));
+        ui.end();
+    };
+    let mut ui = ui_with_font(add_test_font(&mut og_render::RenderScene::new()));
+    ui.define_document(
+        UiDocument::parse(
+            "part-box.svelte",
+            r#"<meta name="screen" content="parts" data-layer="hud">
+{#if show}<button id="Button" onclick={activate}>Go</button>{/if}
+<style>
+#Button {
+  width: 180px; height: 60px; translate: 24px 0;
+  color: blue; font-size: 22px;
+  justify-content: flex-start; align-items: flex-start;
+}
+button::part(base) {
+  width: 80px; height: 22px; translate: 12px 8px;
+  background: #ff0000; padding: 0;
+}
+</style>"#,
+        )
+        .unwrap(),
+    );
+    ui.push_screen("parts", serde_json::json!({"show":true}))
+        .unwrap();
+    for _ in 0..3 {
+        tick(&mut ui, InputFrame::default());
+        let host = ui.element("parts/Button").unwrap();
+        let part = ui.element("parts/Button/::part(base)#0").unwrap();
+        assert_eq!((host.width, host.height), (180.0, 60.0));
+        assert_eq!((part.width, part.height), (80.0, 22.0));
+        assert_eq!((part.x - host.x, part.y - host.y), (12.0, 8.0));
+        assert_eq!(host.role, "button");
+        assert!(part.role.is_empty());
+        let text = ui.frame().items.iter().find_map(|item| {
+            let cmd = match &item.cmd {
+                DrawCmd::StyledText { text, .. } => text.as_ref(),
+                cmd => cmd,
+            };
+            match cmd {
+                DrawCmd::Text {
+                    text, size, color, ..
+                } if text == "Go" => Some((*size, *color)),
+                _ => None,
+            }
+        });
+        assert_eq!(text, Some((22.0, [0.0, 0.0, 1.0, 1.0])));
+    }
+    ui.set_part_css(
+        "button::part(base) { animation: fade 200ms linear forwards; }
+        @keyframes fade { from { opacity: 0.2; } to { opacity: 0.8; } }",
+    )
+    .unwrap();
+    let mut alpha = Vec::new();
+    for _ in 0..15 {
+        tick(&mut ui, InputFrame::default());
+        alpha.push(
+            ui.frame()
+                .items
+                .iter()
+                .find_map(|item| {
+                    item.cmd
+                        .filled()
+                        .filter(|(_, color)| color[0] == 1.0 && color[1] == 0.0)
+                        .map(|(_, color)| color[3])
+                })
+                .unwrap(),
+        );
+    }
+    for (at, expected) in [(0, 0.2), (6, 0.5), (12, 0.8)] {
+        assert!((alpha[at] - expected).abs() < 0.001, "{alpha:?}");
+    }
+    assert_eq!(
+        ui.frame().stats.painted,
+        0,
+        "settled part returns to cached commands"
+    );
+    ui.take_doc_events();
+    let part = ui.element("parts/Button/::part(base)#0").unwrap();
+    let pointer = og_core::math::Vec2::new(part.x + 10.0, part.y + 10.0);
+    for down in [true, false] {
+        tick(
+            &mut ui,
+            InputFrame {
+                pointer,
+                pointer_inside: true,
+                down,
+                pressed: down,
+                released: !down,
+                ..Default::default()
+            },
+        );
+    }
+    assert_eq!(
+        ui.take_doc_events()
+            .into_iter()
+            .filter(|event| event.kind == "emit")
+            .map(|event| event.name)
+            .collect::<Vec<_>>(),
+        ["activate"]
+    );
+    ui.set_screen_vm("parts", serde_json::json!({"show":false}));
+    tick(&mut ui, InputFrame::default());
+    assert!(ui.element("parts/Button").is_none());
+    assert!(ui.element("parts/Button/::part(base)#0").is_none());
+    ui.set_screen_vm("parts", serde_json::json!({"show":true}));
+    tick(&mut ui, InputFrame::default());
+    assert_eq!(ui.elements().iter().filter(|e| e.kind == "part").count(), 1);
+}
+
+#[test]
+fn registry_parts_on_text_hosts_are_boxes_and_hosts_accept_color() {
+    for (markup, css) in [
+        ("<h2>Title</h2>", "h2::part(flourish) { background: red; }"),
+        ("<button>Go</button>", "button { color: red; }"),
+        ("<hr />", "hr { color: red; }"),
+    ] {
+        og_ui::style_pack::StylePack::validate_source("kit.css", css, Vec::new()).unwrap();
+        let source =
+            format!("<meta name=\"component\" content=\"kit\">{markup}<style>{css}</style>");
+        UiDocument::parse("kit.svelte", &source).unwrap();
+    }
+}
+
+#[test]
+fn part_host_negation_and_part_states_select_distinct_paint() {
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.set_part_css(
+        "button::part(base):hover { opacity: 0.3; border: 1px solid red; }
+         button.primary::part(base) {
+           opacity: 0.7; border-image: linear-gradient(white, black) 1 / 2px;
+         }
+         button:not(.primary)::part(base) { opacity: 0.9; }
+         button:not(.primary)::part(base):hover { opacity: 0.4; }",
+    )
+    .unwrap();
+    for (primary, hover, expected) in [
+        (true, false, 0.7),
+        (true, true, 0.7),
+        (false, false, 0.9),
+        (false, true, 0.4),
+    ] {
+        let part = dress::PartRef::of("button", "base", None)
+            .flag_if(primary, "primary")
+            .flag_if(hover, "hover");
+        let draw = ui.resolve_part(&part, [80.0, 30.0]).unwrap();
+        assert_eq!(draw.opacity, expected);
+        assert_eq!(
+            draw.boxes.is_some_and(|boxes| boxes.border.is_some()),
+            primary
+        );
+    }
+}
+
+#[test]
+fn retained_part_nodes_animate_without_rebuilding_the_host() {
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.define_document(
+        UiDocument::parse(
+            "retained.svelte",
+            r#"
+        <meta name="component" content="retained">
+        <button>Go</button>
+        <style>
+        button::part(base) { background: red; animation: fade 200ms linear forwards; }
+        @keyframes fade { from { opacity: 0.2; } to { opacity: 0.8; } }
+        </style>"#,
+        )
+        .unwrap(),
+    );
+    ui.mount_document(
+        reactive::SourceId::new("test", "retained"),
+        "retained",
+        Default::default(),
+        Default::default(),
+        &bind::NoEnv,
+    )
+    .unwrap();
+    let mut alpha = Vec::new();
+    for _ in 0..15 {
+        ui.begin(InputFrame::default(), Viewport::new(300.0, 100.0));
+        ui.build_retained_documents(&bind::NoEnv).unwrap();
+        ui.end();
+        alpha.push(
+            ui.frame()
+                .items
+                .iter()
+                .find_map(|item| item.cmd.filled().map(|(_, c)| c[3]))
+                .unwrap(),
+        );
+    }
+    for (at, expected) in [(0, 0.2), (6, 0.5), (12, 0.8)] {
+        assert!((alpha[at] - expected).abs() < 0.001, "{alpha:?}");
+    }
+    assert_eq!(ui.frame().stats.painted, 0);
+}
+
 /// A tight field has no inset and its text's line for a height, so a
 /// caller's own box holds the line exactly (the 大观园 page's verse box);
 /// its style's text parts set the text's step and inks per component,

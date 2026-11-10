@@ -104,6 +104,9 @@ impl Ui {
                 continue;
             }
             let n = &self.nodes[i];
+            if n.part_box.is_some() || n.content_slot != NONE {
+                continue;
+            }
             let part = match (n.el.part, n.el.frame) {
                 (Some(p), _) => p,
                 (None, Some(f)) if n.sampled.background.is_some() => f.part_ref(),

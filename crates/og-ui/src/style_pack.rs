@@ -26,7 +26,7 @@ impl StylePack {
         files: Vec<(String, String)>,
     ) -> Result<(), String> {
         crate::doc::stylesheet::pack_extensions(source, css)?;
-        crate::doc::stylesheet::part_rules_from(source, css, files, true).map(|_| ())
+        crate::doc::stylesheet::part_rules_from(source, css, files).map(|_| ())
     }
 
     /// `files` contains CSS source keyed by asset ID, including imports.
@@ -67,7 +67,7 @@ impl StylePack {
             }
         }
         let (rules, sheet) =
-            crate::doc::stylesheet::part_rules_from(&format!("{directory}/"), &css, files, true)?;
+            crate::doc::stylesheet::part_rules_from(&format!("{directory}/"), &css, files)?;
         Ok(Self {
             name: directory.rsplit('/').next().unwrap_or(directory).to_owned(),
             css,

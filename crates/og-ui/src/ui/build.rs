@@ -172,7 +172,47 @@ impl Ui {
     }
 
     pub(crate) fn parent(&self) -> usize {
-        self.stack.last().copied().unwrap_or(0)
+        let owner = self.stack.last().copied().unwrap_or(0);
+        match self.nodes[owner].content_slot {
+            NONE => owner,
+            slot => slot,
+        }
+    }
+
+    pub(crate) fn write_part(
+        &mut self,
+        owner: usize,
+        reference: crate::dress::PartRef,
+        identity: (&str, usize),
+        element: Element,
+        content: Content,
+    ) -> usize {
+        let id = format!("::part({})#{}", identity.0, identity.1);
+        let key = child_key(self.nodes[owner].key, &id);
+        let part = crate::layout::PartBox {
+            owner,
+            reference,
+            element,
+        };
+        if let Some(i) = self.render_slot(key, owner)
+            && self.nodes[owner].built_children.contains(&i)
+        {
+            self.kept
+                .prev
+                .entry(i)
+                .or_insert_with(|| self.nodes[i].clone());
+            self.nodes[i].part_box = Some(part);
+            self.nodes[i].el = element;
+            self.nodes[i].content = content;
+            self.kept.rederive.push(owner);
+            return i;
+        }
+        let mut node = Node::new(key, id, owner, element);
+        node.part_box = Some(part);
+        node.content = content;
+        let i = self.write_node(node, ("part", false));
+        self.nodes[owner].built_children.push(i);
+        i
     }
 
     /// Adds a node under the open element and returns its index.
@@ -184,7 +224,7 @@ impl Ui {
         }
         let parent = self.parent();
         let anonymous = id.is_empty();
-        let parent_key = self.nodes[parent].key;
+        let parent_key = self.nodes[self.stack.last().copied().unwrap_or(0)].key;
         let mut local = if anonymous {
             let n = self
                 .anonymous
@@ -243,8 +283,11 @@ impl Ui {
 
     pub(crate) fn path_of(&self, mut i: usize) -> String {
         let mut parts = Vec::new();
+        let own = i;
         while i != NONE && i != 0 {
-            parts.push(self.nodes[i].id.clone());
+            if i == own || self.nodes[i].part_box.is_none() {
+                parts.push(self.nodes[i].id.clone());
+            }
             i = self.nodes[i].parent;
         }
         if parts.is_empty() {

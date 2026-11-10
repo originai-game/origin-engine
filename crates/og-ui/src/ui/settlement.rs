@@ -387,7 +387,7 @@ mod tests {
                 ui.element("button").unwrap().width,
                 if width > 300.0 { 91.0 } else { 37.0 }
             );
-            assert_eq!(ui.frame().stats.elements, 3);
+            assert_eq!(ui.frame().stats.elements, 4);
         }
     }
 
