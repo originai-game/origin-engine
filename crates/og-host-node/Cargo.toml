@@ -15,7 +15,7 @@ test = false
 doctest = false
 
 [features]
-default = ["story", "video", "destruction"]
+default = ["story", "video", "destruction", "motion"]
 # A published game: the commands module and the probe's non-player members are not exported.
 publish = ["og-runtime/publish"]
 # Audio on the default output device through cpal (og-audio); without it the sinks are null and capture.
@@ -27,6 +27,7 @@ native-audio = ["dep:cpal"]
 story = ["og-runtime/story"]
 video = ["og-runtime/video"]
 destruction = ["og-runtime/destruction"]
+motion = ["og-runtime/motion"]
 
 [dependencies]
 og-api = { path = "../og-api" }

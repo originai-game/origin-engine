@@ -78,6 +78,12 @@ mod probes;
 mod skeleton2d;
 pub use lanes::{panic_report, record_panic, report as lanes_report};
 mod modules;
+#[cfg(feature = "motion")]
+mod motion;
+// Without the `motion` feature og-motion is not linked: og.motion answers
+// the refusal (src/motion_absent.rs).
+#[cfg(not(feature = "motion"))]
+#[path = "motion_absent.rs"]
 mod motion;
 mod nav;
 mod net;
