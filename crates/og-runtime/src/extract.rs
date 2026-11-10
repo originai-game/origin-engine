@@ -350,7 +350,9 @@ pub(crate) struct RenderState {
     /// Texture arrays by TextureArray handle index (`og.load.textureArray`).
     pub texture_arrays: Vec<super::assets::LoadedArray>,
     /// Videos by Video handle index (`og.load.video`), and og.VideoPlayer's layout.
+    #[cfg(feature = "video")]
     pub videos: Vec<super::video::LoadedVideo>,
+    #[cfg(feature = "video")]
     pub video_player: Option<Layout>,
     /// Layouts of the engine records extraction reads.
     pub camera: Option<Layout>,
@@ -460,7 +462,9 @@ impl RenderState {
             fx: super::fx::FxState::default(),
             textures: Vec::new(),
             texture_arrays: Vec::new(),
+            #[cfg(feature = "video")]
             videos: Vec::new(),
+            #[cfg(feature = "video")]
             video_player: None,
             camera: None,
             settings: None,

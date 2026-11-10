@@ -110,6 +110,12 @@ pub mod ui_cursor;
 mod ui_draw;
 mod uncooked;
 mod vfx;
+#[cfg(feature = "video")]
+mod video;
+// Without the `video` feature og-video is not linked: og.video answers the
+// refusal (src/video_absent.rs).
+#[cfg(not(feature = "video"))]
+#[path = "video_absent.rs"]
 mod video;
 mod views;
 mod weather;
