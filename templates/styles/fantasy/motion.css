@@ -12,7 +12,18 @@ tabs::part(indicator) { transition: left -og-spring(260ms, 0.18), width -og-spri
 @keyframes fantasy-glint { from { opacity: 0.55; } to { opacity: 1; } }
 .rpg-backpack .badge.fresh { animation: fantasy-glint 1.2s ease-in-out infinite alternate; }
 .rpg-turn-order .turn[data-acting=true] .ring { transition: box-shadow 300ms var(--fantasy-ease); }
+/* HUD: the bars run to their new value; the plates light over the warm curve. */
+.rpg-vitals .bar-fill, .rpg-enemy-info .bar-fill, .rpg-party .bar-fill { transition: width 420ms var(--fantasy-ease); }
+.rpg-action-bar .cool { transition: height 200ms linear; }
+button.skill::part(base), button.quick::part(base), button.command::part(base), button.menu-tab::part(base) {
+  transition: box-shadow 200ms var(--fantasy-ease), border-color 160ms var(--fantasy-ease), background 180ms var(--fantasy-ease), color 160ms var(--fantasy-ease);
+}
+@keyframes fantasy-acting { from { box-shadow: 0 0 0 2px #e9c46f, 0 0 10px #e9c46f66; } to { box-shadow: 0 0 0 2px #f6dc95, 0 0 22px #e9c46fcc; } }
+.rpg-turn-order .turn[data-acting=true] .ring { animation: fantasy-acting 1.4s ease-in-out infinite alternate; }
 @media (prefers-reduced-motion: reduce) {
+  .rpg-vitals .bar-fill, .rpg-enemy-info .bar-fill, .rpg-party .bar-fill, .rpg-action-bar .cool,
+  button.skill::part(base), button.quick::part(base), button.command::part(base), button.menu-tab::part(base) { transition: none; }
+  .rpg-turn-order .turn[data-acting=true] .ring { animation: none; }
   button::part(base), tabs::part(tab), tabs::part(indicator), input[type=range]::part(knob), slot::part(frame),
   button.cell::part(base), button.reply::part(base), button.quest::part(base), button.member::part(base) { transition: none; }
   .rpg-backpack .badge.fresh { animation: none; }
