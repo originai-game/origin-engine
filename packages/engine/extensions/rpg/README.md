@@ -73,3 +73,30 @@ data, not part of the kit.
 every member from its fixture at desktop and phone, checks the intents,
 disabled states, keyed selection, keyboard and pad focus, and that a pack
 rule beats a kit rule of equal specificity.
+
+The sheet's fixture text goes through `sheet/assets/strings/` (en, ja,
+zh-CN, ar) as a game's data would, so pseudo brackets every label. Pack type
+is in `em` of the body step so the player's text scale applies.
+
+### References
+
+`sheet/references/metal/` holds the 15 art-approved Metal cells: the five
+pages at desktopHd, phonePortrait and phoneLandscape, 100 %, game locale.
+Capture the same cells and compare, from the repository root:
+
+```sh
+P=.amp/in/rpg-sheet; K=packages/engine/extensions/rpg
+rsync -a --delete --exclude references $K/sheet/ $P/
+mkdir -p $P/assets/ui-kits/rpg $P/assets/ui
+cp $K/*.svelte $K/*.ogt $K/extension.json $P/assets/ui-kits/rpg/
+cp packages/engine/src/ui/components/minimap.svelte $P/assets/ui/
+source scripts/lock.sh; og_gpu_acquire rpg-sheet
+S=""; for p in inventory journal equipment combat explore; do S="$S --screen $p=style:fantasy;page:$p"; done
+OG_ENGINE_PACKAGE="$PWD/packages/engine" OG_STYLES_DIR="$PWD/templates/styles" \
+  og ui preview $P $S --breakpoints desktopHd,phonePortrait,phoneLandscape \
+  --scales 100 --locales game --settle 2 --out "$PWD/.amp/in/rpg-capture"
+bun $K/sheet/verify.ts .amp/in/rpg-capture
+```
+
+`verify.ts` rejects a missing cell or any changed pixel. Recording is
+manual: review each changed cell before replacing it.
