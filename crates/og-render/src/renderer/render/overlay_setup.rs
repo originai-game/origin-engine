@@ -11,7 +11,7 @@ impl Renderer {
         if let Some(of) = overlay_frame {
             let mut textures: Vec<_> = overlay::run_textures(of).collect();
             // Mass elements' icon textures (and the white one).
-            if let Some(o) = &scene.overlay {
+            if let Some(o) = &scene.ui.overlay {
                 for r in &of.runs {
                     if let overlay::OverlaySource::Mass(k) = r.source {
                         textures.push(o.ui.mass[k as usize].template.texture);

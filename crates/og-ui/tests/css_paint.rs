@@ -213,7 +213,7 @@ button::part(base) { background: image-set("low.png" min(1x, 2dppx), "high.png" 
         assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
         let mut overlay = Overlay::new(width as f32, height as f32, dpr as f32);
         ui.frame().emit(&EmitDesc::default(), &mut overlay);
-        scene.overlay = Some(overlay);
+        scene.ui.overlay = Some(overlay);
         let mut renderer = Renderer::new_blocking(&RenderDesc {
             width,
             height,
@@ -402,7 +402,7 @@ fn render(width: u32, height: u32) -> (Vec<u8>, og_render::RenderInfo) {
     );
     let mut overlay = Overlay::new(width as f32, height as f32, 1.0);
     ui.frame().emit(&EmitDesc::default(), &mut overlay);
-    scene.overlay = Some(overlay);
+    scene.ui.overlay = Some(overlay);
     let bg = ui.theme().palette.backdrop.linear();
     scene.environment.background = Background::Color(og_core::glam::Vec3::new(bg[0], bg[1], bg[2]));
     scene.look.post.tonemap = Tonemap::None;
@@ -480,7 +480,7 @@ div { margin: 0; }
     ui.end();
     let mut overlay = Overlay::new(128.0, 512.0, 1.0);
     ui.frame().emit(&EmitDesc::default(), &mut overlay);
-    scene.overlay = Some(overlay);
+    scene.ui.overlay = Some(overlay);
     scene.look.post.tonemap = Tonemap::None;
     let mut renderer = Renderer::new_blocking(&RenderDesc {
         width: 128,
@@ -565,7 +565,7 @@ div { margin: 0; }
     ui.end();
     let mut overlay = Overlay::new(128.0, 512.0, 1.0);
     ui.frame().emit(&EmitDesc::default(), &mut overlay);
-    scene.overlay = Some(overlay);
+    scene.ui.overlay = Some(overlay);
     scene.look.post.tonemap = Tonemap::None;
     let mut renderer = Renderer::new_blocking(&RenderDesc {
         width: 128,
@@ -680,7 +680,7 @@ fn masks_hide_invisible_boxes_and_fade_image_content() {
     assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
     let mut overlay = Overlay::new(128.0, 640.0, 1.0);
     ui.frame().emit(&EmitDesc::default(), &mut overlay);
-    scene.overlay = Some(overlay);
+    scene.ui.overlay = Some(overlay);
     scene.look.post.tonemap = Tonemap::None;
     let mut renderer = Renderer::new_blocking(&RenderDesc {
         width: 128,
@@ -755,7 +755,7 @@ fn flex_ratios_absolute_fades_and_state_border_images_render() {
     });
     let mut overlay = Overlay::new(240.0, 392.0, 1.0);
     d.ui.frame().emit(&EmitDesc::default(), &mut overlay);
-    scene.overlay = Some(overlay);
+    scene.ui.overlay = Some(overlay);
     scene.look.post.tonemap = Tonemap::None;
     let mut renderer = Renderer::new_blocking(&RenderDesc {
         width: 240,

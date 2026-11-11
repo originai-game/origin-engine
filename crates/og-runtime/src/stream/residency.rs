@@ -346,7 +346,7 @@ fn in_use(rs: &super::extract::RenderState, held: Held, tick: u64) -> Option<&'s
             let h = rs.texture_arrays.get(i)?.handle?;
             // The queue is cleared lazily: one older than the last tick is stale.
             let queued = rs.texts_tick + 1 >= tick;
-            let overlay = rs.scene.overlay.iter().flat_map(|o| &o.sprite_arrays);
+            let overlay = rs.scene.ui.overlay.iter().flat_map(|o| &o.sprite_arrays);
             let drawn = rs
                 .scene
                 .sprite_arrays

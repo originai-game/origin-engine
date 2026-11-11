@@ -357,6 +357,7 @@ impl RenderBackend for Shapes {
     }
     fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
         *self.0.borrow_mut() = scene
+            .ui
             .overlay
             .as_ref()
             .and_then(|o| o.ui.shapes.first())

@@ -73,7 +73,7 @@ impl RenderBackend for Recorder {
         (780, 1688)
     }
     fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
-        *self.0.borrow_mut() = scene.overlay.as_ref().map(|o| (o.width, o.height));
+        *self.0.borrow_mut() = scene.ui.overlay.as_ref().map(|o| (o.width, o.height));
         Ok(())
     }
     fn capture(&mut self, _: &RenderScene, _: u32, _: u32) -> Option<og_render::RgbaImage> {

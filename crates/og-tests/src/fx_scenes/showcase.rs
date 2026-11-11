@@ -201,6 +201,6 @@ pub fn overlay_hud(scene: &mut RenderScene) -> Result<(), String> {
         .push(solid(638.0, 348.0, 4.0, 24.0, [1.0, 1.0, 1.0, 0.9], 0));
     o.sprites
         .push(solid(628.0, 358.0, 24.0, 4.0, [1.0, 1.0, 1.0, 0.9], 0));
-    scene.overlay = Some(o);
+    scene.ui.overlay = Some(o);
     Ok(())
 }

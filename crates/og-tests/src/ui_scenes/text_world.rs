@@ -430,7 +430,7 @@ pub fn world(
             ..UiShape::rect([x - 80.0, 330.0, 160.0, 60.0], 12.0, [0.9, 0.3, 0.6, 1.0])
         });
     }
-    scene.overlay = Some(o);
+    scene.ui.overlay = Some(o);
     Ok(scene)
 }
 
@@ -510,6 +510,6 @@ pub fn panel() -> RenderScene {
         geometry: og_render::UiGeometry::Ellipse,
         ..UiShape::rect([x + 30.0, y + 30.0, 80.0, 80.0], 0.0, [0.95, 0.1, 0.1, 1.0])
     });
-    scene.overlay = Some(o);
+    scene.ui.overlay = Some(o);
     scene
 }

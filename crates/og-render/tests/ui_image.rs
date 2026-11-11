@@ -26,7 +26,7 @@ fn render(images: impl FnOnce(&mut RenderScene) -> Vec<([f32; 4], UiImage)>) -> 
             ..UiShape::rect(r, 0.0, [1.0; 4])
         });
     }
-    scene.overlay = Some(o);
+    scene.ui.overlay = Some(o);
     scene.environment.background = Background::Color(Vec3::ZERO);
     scene.look.post.tonemap = Tonemap::None;
     let mut renderer = Renderer::new_blocking(&RenderDesc {

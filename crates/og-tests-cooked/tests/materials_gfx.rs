@@ -426,7 +426,7 @@ fn the_materials_frame_matches_its_reference() {
     let v = vp();
     let mut overlay = og_render::Overlay::new(v.width, v.height, v.dpr);
     ui.frame().emit(&EmitDesc::default(), &mut overlay);
-    scene.overlay = Some(overlay);
+    scene.ui.overlay = Some(overlay);
     let bg = ui.theme().palette.backdrop.linear();
     scene.environment.background = Background::Color(Vec3::new(bg[0], bg[1], bg[2]));
     scene.look.post.tonemap = Tonemap::None;

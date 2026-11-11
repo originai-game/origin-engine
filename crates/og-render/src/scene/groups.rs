@@ -23,3 +23,16 @@ pub struct SceneLook {
     /// overlay alike (`None`: none; crate::ColorFilter).
     pub color_filter: Option<crate::ColorFilter>,
 }
+
+/// The overlay (its UI tree and canvases) and the UI's vector paths and
+/// materials.
+#[derive(Debug)]
+pub struct SceneUi {
+    /// Screen-space sprites and text over the finished frame (`None`: none).
+    pub overlay: Option<Overlay>,
+    /// Cooked vectors the overlay's UI draws ([`RenderScene::add_ui_vector`]).
+    pub ui_vectors: Vec<crate::ui::UiVectorData>,
+    /// Custom materials UI layers composite through
+    /// ([`RenderScene::add_ui_material`]).
+    pub ui_materials: Vec<crate::ui::UiMaterialShader>,
+}

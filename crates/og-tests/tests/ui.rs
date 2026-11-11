@@ -507,7 +507,7 @@ fn mass_timing_luts_draw_at_the_shared_curves_positions() {
                 clip: None,
             });
         }
-        scene.overlay = Some(overlay);
+        scene.ui.overlay = Some(overlay);
         renderer.render(&scene, &RenderTarget::Offscreen).unwrap();
         let image = renderer.read_offscreen().unwrap();
         for (x, y) in centers {

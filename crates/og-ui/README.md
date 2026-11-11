@@ -36,7 +36,7 @@ probe.set_ui(ui.probe());              // dump_ui, touch_move_to, move_to_text
 let atlas = scene.add_texture(og_ui::atlas_texture());   // once
 let mut overlay = Overlay::new(viewport.width, viewport.height, viewport.dpr);
 ui.lock().frame().emit(&EmitDesc { atlas, layer: 0 }, &mut overlay);
-scene.overlay = Some(overlay);                           // over the finished frame, any camera
+scene.ui.overlay = Some(overlay);                           // over the finished frame, any camera
 ```
 
 `Ui::begin(input, viewport)` … `Ui::end()` is the whole protocol; widgets

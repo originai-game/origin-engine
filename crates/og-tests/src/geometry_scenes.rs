@@ -390,6 +390,7 @@ fn debug_label(
     let x = (ndc.x * 0.5 + 0.5) * w - width * 0.5;
     let y = (0.5 - ndc.y * 0.5) * h - size * 0.6;
     let o = scene
+        .ui
         .overlay
         .get_or_insert_with(|| og_render::Overlay::new(w, h, 0.0));
     o.texts.push(og_render::Text {

@@ -803,6 +803,6 @@ pub fn ground() -> RenderScene {
             UiPaint::Layer(0),
         )
     });
-    scene.overlay = Some(o);
+    scene.ui.overlay = Some(o);
     scene
 }

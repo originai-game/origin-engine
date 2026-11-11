@@ -1318,6 +1318,7 @@ fn texts(rs: &mut RenderState, vp: (f32, f32)) {
     }
     let o = rs
         .scene
+        .ui
         .overlay
         .get_or_insert_with(|| og_render::Overlay::new(vp.0, vp.1, 0.0));
     o.texts.extend(out);

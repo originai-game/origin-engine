@@ -747,7 +747,7 @@ pub fn sprite_array_fx_scene() -> RenderScene {
         anchor: Vec2::ZERO,
         ..Default::default()
     });
-    scene.overlay = Some(overlay);
+    scene.ui.overlay = Some(overlay);
     scene.look.post.glow = Some(Glow { intensity: 0.8 });
     scene.camera = Camera::orthographic_2d(Vec2::new(0.0, -1.0), 12.0);
     scene.environment.background = Background::Color(Vec3::new(0.02, 0.02, 0.03));

@@ -48,7 +48,7 @@ impl og_probe::UiTree for MaterialProbe {
         let render = self.render.borrow();
         let materials: Vec<Value> = render.ui_draw.material_paths.iter().map(|(id, (i, _))| {
             let (handle, values) = &render.ui_draw.materials[*i];
-            let material = &render.scene.ui_materials[handle.index()];
+            let material = &render.scene.ui.ui_materials[handle.index()];
             json!({ "path": id, "parameters": material.params.iter().enumerate().map(|(slot, p)| {
                 let count = p.kind.count();
                 json!({ "name": p.name, "type": p.kind.wgsl(), "default": p.default[..count], "value": values[slot][..count] })
@@ -75,7 +75,7 @@ pub(crate) fn tune_material(
         .get(&id)
         .ok_or_else(|| format!("UI material '{path}' is not loaded"))?;
     let handle = render.ui_draw.materials[i].0;
-    let material = &render.scene.ui_materials[handle.index()];
+    let material = &render.scene.ui.ui_materials[handle.index()];
     let (slot, kind) = material
         .param(name)
         .ok_or_else(|| format!("UI material '{path}' has no parameter '{name}'"))?;
@@ -221,7 +221,7 @@ pub(crate) fn refresh(eng: &super::engine::Engine) -> Vec<String> {
                 let mut rs = eng.render.borrow_mut();
                 let h = rs.ui_draw.materials[i].0;
                 rs.ui_draw.materials[i].1 = material.defaults();
-                rs.scene.ui_materials[h.index()] = material;
+                rs.scene.ui.ui_materials[h.index()] = material;
                 rs.ui_draw.material_paths.insert(id, (i, hash));
             }
             Err(e) => failed.push(format!("og dev: {id}: {e} (the old UI material stays)")),

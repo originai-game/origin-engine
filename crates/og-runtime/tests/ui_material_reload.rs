@@ -33,8 +33,9 @@ impl RenderBackend for Recorder {
         (64, 64)
     }
     fn render(&mut self, scene: &og_render::RenderScene) -> Result<(), String> {
-        *self.0.borrow_mut() = scene.ui_materials.clone();
+        *self.0.borrow_mut() = scene.ui.ui_materials.clone();
         *self.1.borrow_mut() = scene
+            .ui
             .overlay
             .as_ref()
             .map(|o| o.ui.layers.clone())

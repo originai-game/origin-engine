@@ -46,7 +46,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     scene.texts.clear();
     scene.sprites.clear();
     scene.sprite_meshes.clear();
-    scene.overlay = None;
+    scene.ui.overlay = None;
     scene.look.color_filter = None;
     scene.joint_palettes.clear();
     scene.skinned_instances.clear();
@@ -772,6 +772,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
             };
             if t.screen {
                 let o = scene
+                    .ui
                     .overlay
                     .get_or_insert_with(|| og_render::Overlay::new(vp.0, vp.1, 0.0));
                 let clip = t.clip.map(|c| o.add_clip(c));

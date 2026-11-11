@@ -356,7 +356,7 @@ pub struct Shot {
 pub fn shot(ui: Ui, mut scene: RenderScene, vp: Viewport) -> Shot {
     let mut overlay = og_render::Overlay::new(vp.width, vp.height, vp.dpr);
     ui.frame().emit(&EmitDesc::default(), &mut overlay);
-    scene.overlay = Some(overlay);
+    scene.ui.overlay = Some(overlay);
     let bg = ui.theme().palette.backdrop.linear();
     scene.environment.background = Background::Color(Vec3::new(bg[0], bg[1], bg[2]));
     scene.look.post.tonemap = Tonemap::None;
@@ -792,7 +792,7 @@ pub fn text_fields_shot(font: &FontFiles) -> Shot {
     // The area's UI under the fields' (each band leaves the other's empty).
     area.frame().emit(&EmitDesc::default(), &mut overlay);
     ui.frame().emit(&EmitDesc::default(), &mut overlay);
-    scene.overlay = Some(overlay);
+    scene.ui.overlay = Some(overlay);
     let bg = ui.theme().palette.backdrop.linear();
     scene.environment.background = Background::Color(Vec3::new(bg[0], bg[1], bg[2]));
     scene.look.post.tonemap = Tonemap::None;
@@ -1042,7 +1042,7 @@ pub fn glow_scene(font: &FontFiles, glow: bool, labels: usize) -> (RenderScene, 
     }
     let mut overlay = og_render::Overlay::new(vp.width, vp.height, vp.dpr);
     ui.frame().emit(&EmitDesc::default(), &mut overlay);
-    scene.overlay = Some(overlay);
+    scene.ui.overlay = Some(overlay);
     let bg = ui.theme().palette.backdrop.linear();
     scene.environment.background = Background::Color(Vec3::new(bg[0], bg[1], bg[2]));
     scene.look.post.tonemap = Tonemap::None;
@@ -1073,7 +1073,7 @@ pub fn stripes_scene(glass: &[og_render::Glass]) -> (RenderScene, RenderDesc) {
     scene.look.post.tonemap = Tonemap::None;
     let mut overlay = og_render::Overlay::new(w as f32, h as f32, 1.0);
     overlay.glass.extend_from_slice(glass);
-    scene.overlay = Some(overlay);
+    scene.ui.overlay = Some(overlay);
     let desc = RenderDesc {
         width: w,
         height: h,
@@ -1123,7 +1123,7 @@ pub fn glass_overlay_content() -> Vec<og_render::Sprite> {
 /// (`glass_overlay_content`).
 pub fn glass_reference_scene() -> (RenderScene, RenderDesc) {
     let (mut scene, desc) = stripes_scene(&[glass_panel()]);
-    if let Some(o) = scene.overlay.as_mut() {
+    if let Some(o) = scene.ui.overlay.as_mut() {
         o.sprites.extend(glass_overlay_content());
     }
     (scene, desc)
@@ -1155,7 +1155,7 @@ panel { width: 120px; height: 120px; }
     }
     let mut overlay = og_render::Overlay::new(vp.width, vp.height, 1.0);
     ui.frame().emit(&EmitDesc::default(), &mut overlay);
-    scene.overlay = Some(overlay);
+    scene.ui.overlay = Some(overlay);
     scene.environment.background = Background::Color(Vec3::new(0.6, 0.15, 0.05));
     scene.look.post.tonemap = Tonemap::None;
     (
@@ -1237,7 +1237,7 @@ pub fn user_select_scene(font: &FontFiles, width: u32, height: u32) -> (RenderSc
     );
     let mut overlay = og_render::Overlay::new(vp.width, vp.height, 1.0);
     ui.frame().emit(&EmitDesc::default(), &mut overlay);
-    scene.overlay = Some(overlay);
+    scene.ui.overlay = Some(overlay);
     let bg = ui.theme().palette.backdrop.linear();
     scene.environment.background = Background::Color(Vec3::new(bg[0], bg[1], bg[2]));
     scene.look.post.tonemap = Tonemap::None;
@@ -1288,7 +1288,7 @@ pub fn text_path_scene(font: &FontFiles, width: u32, height: u32) -> (RenderScen
     assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
     let mut overlay = og_render::Overlay::new(vp.width, vp.height, 1.0);
     ui.frame().emit(&EmitDesc::default(), &mut overlay);
-    scene.overlay = Some(overlay);
+    scene.ui.overlay = Some(overlay);
     let bg = ui.theme().palette.backdrop.linear();
     scene.environment.background = Background::Color(Vec3::new(bg[0], bg[1], bg[2]));
     scene.look.post.tonemap = Tonemap::None;

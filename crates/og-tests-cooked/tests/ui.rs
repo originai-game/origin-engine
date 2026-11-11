@@ -169,7 +169,7 @@ fn ui_rive_text_draws_its_run_in_its_cooked_font() {
     );
     let mut overlay = og_render::Overlay::new(vp.width, vp.height, vp.dpr);
     frame.emit(&EmitDesc::default(), &mut overlay);
-    scene.overlay = Some(overlay);
+    scene.ui.overlay = Some(overlay);
     let desc = RenderDesc {
         width: 500,
         height: 500,
@@ -363,7 +363,7 @@ fn colr_label(
             });
         }
     }
-    scene.overlay = Some(overlay);
+    scene.ui.overlay = Some(overlay);
     let mut renderer = Renderer::new_blocking(&RenderDesc {
         width: 400,
         height: 200,

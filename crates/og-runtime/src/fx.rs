@@ -1183,6 +1183,7 @@ pub(crate) fn queued(rs: &mut RenderState, fresh: bool, viewport: (f32, f32)) {
     for q in &fx.sprites {
         if q.screen {
             let o = scene
+                .ui
                 .overlay
                 .get_or_insert_with(|| og_render::Overlay::new(viewport.0, viewport.1, 0.0));
             let clip = q.clip.map(|c| o.add_clip(c));

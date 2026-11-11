@@ -111,7 +111,7 @@ impl RenderBackend for Recorder {
             })
             .collect();
         seen.fonts = scene.texts.iter().map(|t| t.font).collect();
-        seen.screen = scene.overlay.as_ref().map_or(0, |o| o.texts.len());
+        seen.screen = scene.ui.overlay.as_ref().map_or(0, |o| o.texts.len());
         Ok(())
     }
     fn capture(&mut self, _: &RenderScene, _: u32, _: u32) -> Option<og_render::RgbaImage> {

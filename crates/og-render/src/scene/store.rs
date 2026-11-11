@@ -102,8 +102,11 @@ impl RenderScene {
             lod_bias: 1.0,
             lod_debug: false,
             visibility_buffer: true,
-            ui_vectors: Vec::new(),
-            ui_materials: Vec::new(),
+            ui: SceneUi {
+                overlay: None,
+                ui_vectors: Vec::new(),
+                ui_materials: Vec::new(),
+            },
             origin: glam::Vec3::ZERO,
             views: Vec::new(),
             tick: 0,
@@ -141,7 +144,6 @@ impl RenderScene {
             camera_cut: false,
             joint_palettes: Vec::new(),
             skinned_instances: Vec::new(),
-            overlay: None,
             fog: None,
             clouds: None,
             aurora: None,
@@ -250,7 +252,7 @@ impl RenderScene {
                 ));
             }
         }
-        for s in self.overlay.iter().flat_map(|o| &o.sprite_arrays) {
+        for s in self.ui.overlay.iter().flat_map(|o| &o.sprite_arrays) {
             if !self.contains_texture_array(s.array) {
                 return Some(format!(
                     "overlay sprite {}: texture array {} was removed",
@@ -275,7 +277,7 @@ impl RenderScene {
                 ));
             }
         }
-        let overlay = self.overlay.as_ref();
+        let overlay = self.ui.overlay.as_ref();
         let sprites = self
             .sprites
             .iter()

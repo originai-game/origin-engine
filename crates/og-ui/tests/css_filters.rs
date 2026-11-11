@@ -113,7 +113,7 @@ fn color_matrix_preserves_texture_tint_multiplication() {
                 assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
                 let mut overlay = Overlay::new(64.0, 32.0, 1.0);
                 ui.frame().emit(&EmitDesc::default(), &mut overlay);
-                scene.overlay = Some(overlay);
+                scene.ui.overlay = Some(overlay);
                 renderer.render(&scene, &RenderTarget::Offscreen).unwrap();
                 renderer.read_offscreen().unwrap().pixels
             };
@@ -320,7 +320,7 @@ fn render(width: u32, height: u32) -> (Vec<u8>, og_render::RenderInfo) {
         filtered, 18,
         "a layer per url(): 12 tiles, 4 more in CSS, 2 in SVG"
     );
-    scene.overlay = Some(overlay);
+    scene.ui.overlay = Some(overlay);
     let bg = ui.theme().palette.backdrop.linear();
     scene.environment.background = Background::Color(og_core::glam::Vec3::new(bg[0], bg[1], bg[2]));
     scene.look.post.tonemap = Tonemap::None;
@@ -520,7 +520,7 @@ fn render_space(width: u32, height: u32) -> (Vec<u8>, og_render::RenderInfo) {
         stamps.iter().all(|&k| (k as usize) < layers.len()),
         "placed: {stamps:?}"
     );
-    scene.overlay = Some(overlay);
+    scene.ui.overlay = Some(overlay);
     let bg = ui.theme().palette.backdrop.linear();
     scene.environment.background = Background::Color(og_core::glam::Vec3::new(bg[0], bg[1], bg[2]));
     scene.look.post.tonemap = Tonemap::None;

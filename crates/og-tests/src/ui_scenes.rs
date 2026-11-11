@@ -111,7 +111,7 @@ pub fn overlay_scene(build: impl FnOnce(&mut RenderScene, &mut Overlay)) -> Rend
     let mut scene = RenderScene::new();
     let mut o = Overlay::new(W, H, 0.0);
     build(&mut scene, &mut o);
-    scene.overlay = Some(o);
+    scene.ui.overlay = Some(o);
     scene.environment.background = Background::Color(Vec3::new(0.012, 0.014, 0.02));
     scene.look.post.tonemap = Tonemap::None;
     scene

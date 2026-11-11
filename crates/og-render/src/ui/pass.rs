@@ -653,14 +653,14 @@ impl UiRenderer {
         scene: &RenderScene,
         frame: &OverlayFrame,
     ) {
-        let Some(overlay) = &scene.overlay else {
+        let Some(overlay) = &scene.ui.overlay else {
             return;
         };
         for plan in &frame.layers {
             let UiMaterial::Custom(h) = overlay.ui.layers[plan.index as usize].material else {
                 continue;
             };
-            let Some(material) = scene.ui_materials.get(h.index()) else {
+            let Some(material) = scene.ui.ui_materials.get(h.index()) else {
                 continue;
             };
             let key = (scene.id(), h.index());
@@ -692,7 +692,7 @@ impl UiRenderer {
                 if self.vectors.contains_key(&key) {
                     continue;
                 }
-                let Some(data) = scene.ui_vectors.get(h.index()) else {
+                let Some(data) = scene.ui.ui_vectors.get(h.index()) else {
                     continue;
                 };
                 let init = |label, contents: &[u8], usage| {
@@ -843,7 +843,7 @@ impl UiRenderer {
         camera: super::mass::MassCameraGpu,
         mips: &crate::mips::MipGenerator,
     ) {
-        let Some(overlay) = &scene.overlay else {
+        let Some(overlay) = &scene.ui.overlay else {
             return;
         };
         write_storage(
@@ -1314,7 +1314,7 @@ impl Renderer {
             TargetKind::Layer => &self.overlay.layer,
         };
         let ui = self.ui.pipelines(kind);
-        let materials = scene.overlay.as_ref().map(|o| &o.ui.layers);
+        let materials = scene.ui.overlay.as_ref().map(|o| &o.ui.layers);
         pass.set_bind_group(0, group0, &[]);
         // A layer's blends read the copy of the layer drawn so far.
         let backdrop = match kind {
@@ -1438,6 +1438,7 @@ impl Renderer {
                     let (Some(group), Some(batch)) = (
                         self.ui.frame.mass.as_ref(),
                         scene
+                            .ui
                             .overlay
                             .as_ref()
                             .and_then(|o| o.ui.mass.get(k as usize)),

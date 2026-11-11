@@ -75,7 +75,7 @@ fn render(source: &str, width: u32, height: u32) -> (Vec<u8>, og_render::RenderI
     assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
     let mut overlay = Overlay::new(width as f32, height as f32, 1.0);
     ui.frame().emit(&EmitDesc::default(), &mut overlay);
-    scene.overlay = Some(overlay);
+    scene.ui.overlay = Some(overlay);
     let bg = ui.theme().palette.backdrop.linear();
     scene.environment.background = Background::Color(og_core::glam::Vec3::new(bg[0], bg[1], bg[2]));
     scene.look.post.tonemap = Tonemap::None;

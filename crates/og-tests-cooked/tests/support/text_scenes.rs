@@ -118,7 +118,7 @@ fn shot(uis: &[&Ui], mut scene: RenderScene) -> (RenderScene, RenderDesc) {
     for ui in uis {
         ui.frame().emit(&EmitDesc::default(), &mut overlay);
     }
-    scene.overlay = Some(overlay);
+    scene.ui.overlay = Some(overlay);
     let bg = uis[0].theme().palette.backdrop.linear();
     scene.environment.background = Background::Color(Vec3::new(bg[0], bg[1], bg[2]));
     scene.look.post.tonemap = Tonemap::None;
@@ -402,7 +402,7 @@ fn colr_scene(fonts: &[CookedFont]) -> (RenderScene, RenderDesc) {
     }
     let (mut scene, desc) = shot(&[&ui], scene);
     // The colour font's other pages draw each of its texts too.
-    let overlay = scene.overlay.as_mut().expect("the frame's overlay");
+    let overlay = scene.ui.overlay.as_mut().expect("the frame's overlay");
     let more: Vec<og_render::Text> = overlay
         .texts
         .iter()

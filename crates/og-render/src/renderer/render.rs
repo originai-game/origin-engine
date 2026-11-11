@@ -464,13 +464,13 @@ impl Renderer {
                 .flatten()
                 .map(|g| g.info.layers)
         };
-        let overlay_frame = match &scene.overlay {
+        let overlay_frame = match &scene.ui.overlay {
             Some(o) => Some(overlay::build(
                 o,
                 |i| fonts.get(i).map(|f| &f.layout),
                 self.cache.textures.len(),
                 array_layers,
-                |v| scene.ui_vectors.get(v.index()),
+                |v| scene.ui.ui_vectors.get(v.index()),
                 |t| scene.target_texture(t),
                 overlay::OverlayTarget {
                     scale: overlay::OverlayRenderer::scale(self.out_height, o),

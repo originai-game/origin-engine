@@ -56,7 +56,7 @@ impl RenderBackend for Recorder {
                 (s.position.x, facing)
             })
             .collect();
-        seen.screen = scene.overlay.as_ref().map_or(0, |o| o.sprites.len());
+        seen.screen = scene.ui.overlay.as_ref().map_or(0, |o| o.sprites.len());
         Ok(())
     }
     fn capture(&mut self, _: &RenderScene, _: u32, _: u32) -> Option<og_render::RgbaImage> {

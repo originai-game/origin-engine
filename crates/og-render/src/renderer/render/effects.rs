@@ -147,7 +147,11 @@ impl Renderer {
             || ssr.is_some()
             || gi.is_some()
             || !custom_posts.is_empty();
-        let ui_depth = scene.overlay.as_ref().is_some_and(|o| o.ui.needs_depth());
+        let ui_depth = scene
+            .ui
+            .overlay
+            .as_ref()
+            .is_some_and(|o| o.ui.needs_depth());
         let prepass = !custom_posts.is_empty()
             || ao_target
             || contact

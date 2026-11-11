@@ -530,7 +530,7 @@ fn frames(page: &str, stem: &str, sizes: &[(u32, u32)]) {
         }
         let mut overlay = Overlay::new(width as f32, height as f32, 1.0);
         ui.frame().emit(&EmitDesc::default(), &mut overlay);
-        scene.overlay = Some(overlay);
+        scene.ui.overlay = Some(overlay);
         let bg = ui.theme().palette.backdrop.linear();
         scene.environment.background =
             Background::Color(og_core::glam::Vec3::new(bg[0], bg[1], bg[2]));

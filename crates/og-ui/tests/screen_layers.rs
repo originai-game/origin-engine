@@ -90,7 +90,7 @@ fn screen_sprites_above_the_ui_layer_draw_over_the_ui() {
         green,
         999,
     ));
-    scene.overlay = Some(overlay);
+    scene.ui.overlay = Some(overlay);
     scene.environment.background = Background::Color(Vec3::new(0.02, 0.02, 0.03));
     scene.look.post.tonemap = Tonemap::None;
     let desc = RenderDesc {

@@ -114,14 +114,14 @@ impl UiMaterialShader {
 impl crate::RenderScene {
     /// Adds a cooked vector for the overlay's [`UiVectorDraw`]s.
     pub fn add_ui_vector(&mut self, vector: UiVectorData) -> UiVectorHandle {
-        self.ui_vectors.push(vector);
-        UiVectorHandle(self.ui_vectors.len() as u32 - 1)
+        self.ui.ui_vectors.push(vector);
+        UiVectorHandle(self.ui.ui_vectors.len() as u32 - 1)
     }
 
     /// Adds a custom UI material for layers ([`UiMaterial::Custom`]).
     pub fn add_ui_material(&mut self, material: UiMaterialShader) -> UiMaterialHandle {
-        self.ui_materials.push(material);
-        UiMaterialHandle(self.ui_materials.len() as u32 - 1)
+        self.ui.ui_materials.push(material);
+        UiMaterialHandle(self.ui.ui_materials.len() as u32 - 1)
     }
 }
 

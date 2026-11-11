@@ -27,7 +27,7 @@ impl Renderer {
     ) {
         // The UI's tables and groups: after the graph, whose view depth
         // occluders and mass elements read.
-        if let (Some(of), Some(o), Some(u)) = (overlay_frame, &scene.overlay, ui_uniform) {
+        if let (Some(of), Some(o), Some(u)) = (overlay_frame, &scene.ui.overlay, ui_uniform) {
             let textures = &self.cache.textures;
             let backdrop = self.glass_targets.as_ref().filter(|_| glass_on).map(|g| {
                 (

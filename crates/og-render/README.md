@@ -199,7 +199,7 @@ a pass still reads.
     output is encoded by the hardware; a non-sRGB one (WebGPU canvases are
     `Bgra8Unorm`) by the shader (`fs_srgb_encode`). A surface takes an sRGB
     format where one is offered (native windows).
-11. **Overlay** (when `scene.overlay` is set; `overlay.rs`,
+11. **Overlay** (when `scene.ui.overlay` is set; `overlay.rs`,
     `overlay.wgsl`): after the graph, straight into the output or its sRGB
     view ([The overlay](#the-overlay)).
 

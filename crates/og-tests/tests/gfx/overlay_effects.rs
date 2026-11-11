@@ -77,7 +77,7 @@ fn the_overlay_is_drawn_after_post_untonemapped_and_clipped() {
     let without = {
         let g = built("overlay");
         let mut bare = g.scene;
-        let o = bare.overlay.as_mut().expect("overlay");
+        let o = bare.ui.overlay.as_mut().expect("overlay");
         o.sprites.retain(|s| s.clip.is_none());
         o.texts.retain(|t| t.clip.is_none());
         let mut r = Renderer::new_blocking(&g.desc).expect("renderer");

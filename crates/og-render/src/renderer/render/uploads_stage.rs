@@ -87,7 +87,7 @@ impl Renderer {
         self.particles
             .upload(&self.device, &self.queue, particle_frame, gpu_sprites);
         let mut ui_uniform = None;
-        if let (Some(of), Some(o)) = (overlay_frame, &scene.overlay) {
+        if let (Some(of), Some(o)) = (overlay_frame, &scene.ui.overlay) {
             grow_and_write(
                 &self.device,
                 &self.queue,

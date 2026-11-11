@@ -1065,6 +1065,7 @@ pub(crate) fn emit(rs: &mut RenderState) {
     let time = ui.seconds() as f32;
     let overlay = rs
         .scene
+        .ui
         .overlay
         .get_or_insert_with(|| og_render::Overlay::new(w.max(1.0), h.max(1.0), 0.0));
     let first = overlay.texts.len();

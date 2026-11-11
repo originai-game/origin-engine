@@ -109,6 +109,7 @@ impl RenderBackend for Recorder {
         let mut s = self.0.borrow_mut();
         s.world = pairs(&scene.sprite_arrays);
         s.overlay = scene
+            .ui
             .overlay
             .as_ref()
             .map_or_else(Vec::new, |o| pairs(&o.sprite_arrays));

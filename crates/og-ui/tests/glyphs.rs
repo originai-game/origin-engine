@@ -161,7 +161,7 @@ fn a_text_of_only_missing_glyphs_is_counted_by_the_renderer() {
         }
         let mut overlay = Overlay::new(200.0, 100.0, 1.0);
         ui.frame().emit(&EmitDesc::default(), &mut overlay);
-        scene.overlay = Some(overlay);
+        scene.ui.overlay = Some(overlay);
         let mut renderer = Renderer::new_blocking(&RenderDesc {
             width: 200,
             height: 100,

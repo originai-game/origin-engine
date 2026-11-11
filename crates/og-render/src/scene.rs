@@ -253,8 +253,9 @@ pub struct RenderScene {
     /// This frame's joint palettes ([`SkinnedInstance::palette`] indexes them).
     pub joint_palettes: Vec<JointPalette>,
     pub skinned_instances: Vec<SkinnedInstance>,
-    /// Screen-space sprites and text over the finished frame (`None`: none).
-    pub overlay: Option<Overlay>,
+    /// The overlay (its UI tree and canvases) and the UI's vector paths and
+    /// materials.
+    pub ui: SceneUi,
     /// Fog over the main pass (`None`: none).
     pub fog: Option<crate::Fog>,
     /// Clouds in the procedural sky (`clouds.rs`; `None`: none). Drawn
@@ -428,11 +429,6 @@ pub struct RenderScene {
     /// Secondary cameras drawn into render targets or viewports of the
     /// frame, before it in [`crate::View::order`] (`views.rs`).
     pub views: Vec<crate::View>,
-    /// Cooked vectors the overlay's UI draws ([`RenderScene::add_ui_vector`]).
-    pub ui_vectors: Vec<crate::ui::UiVectorData>,
-    /// Custom materials UI layers composite through
-    /// ([`RenderScene::add_ui_material`]).
-    pub ui_materials: Vec<crate::ui::UiMaterialShader>,
     /// Where the zero of the scene's coordinates is in the caller's world
     /// ([`RenderScene::rebase`], `origin.rs`): the frame is drawn relative
     /// to it, and the shaders that read world position for its look add

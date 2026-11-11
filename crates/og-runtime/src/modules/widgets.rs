@@ -28,6 +28,7 @@ pub(crate) fn emit(rs: &mut super::extract::RenderState, shifts: &og_core::IdMap
     // another size needs).
     let overlay = rs
         .scene
+        .ui
         .overlay
         .get_or_insert_with(|| og_render::Overlay::new(w.max(1.0), h.max(1.0), 0.0));
     let first_text = overlay.texts.len();
@@ -57,7 +58,7 @@ pub(crate) fn emit(rs: &mut super::extract::RenderState, shifts: &og_core::IdMap
         .filter_map(|a| a.font.as_ref().and_then(|f| f.handle))
         .flat_map(|h| rs.ui_pages.get(&h).cloned().unwrap_or_else(|| vec![h]))
         .collect();
-    if let Some(overlay) = rs.scene.overlay.as_mut() {
+    if let Some(overlay) = rs.scene.ui.overlay.as_mut() {
         super::art::palette_icons(
             &rs.art.frame,
             overlay,
