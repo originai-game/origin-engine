@@ -968,65 +968,64 @@ pub fn render_options(id: u32) -> Value {
 /// out (or tier) is 4x MSAA in a 2D project (options.profile). Both hosts
 /// create their renderer from it, so the options mean the same on each.
 pub fn render_desc(id: u32, base: og_render::RenderDesc) -> og_render::RenderDesc {
-    let options = render_options(id);
+    use crate::wire::{Antialias, PointShadows, RenderOptions, TaaHistory, Transparency};
+    let given = render_options(id);
+    // Options og.game refused (it refuses the engine) read as none given.
+    let options: RenderOptions = crate::wire::value(&given, "render").unwrap_or_default();
+    // A NaN reads as left out.
+    let number = |v: f32, or: f32| if v.is_nan() { or } else { v };
     let mut desc = base;
-    desc.hdr = options["hdr"].as_bool().unwrap_or(false);
-    desc.paper_white_nits = options["paperWhiteNits"].as_f64().unwrap_or(0.0) as f32;
-    desc.peak_nits = options["peakNits"].as_f64().unwrap_or(0.0) as f32;
+    desc.hdr = options.hdr;
+    desc.paper_white_nits = number(options.paper_white_nits, 0.0);
+    desc.peak_nits = number(options.peak_nits, 0.0);
     let profile = engine(id).map_or(og_physics::PROFILE_3D, |e| e.state.borrow().profile);
-    desc.antialias = match options["antialias"].as_str().unwrap_or("tier") {
-        "off" => og_render::Antialias::Off,
-        "msaa4" => og_render::Antialias::Msaa4,
-        "taa" => og_render::Antialias::Taa,
-        "fxaa" => og_render::Antialias::Fxaa,
-        "smaa" => og_render::Antialias::Smaa,
-        "smaaT2x" => og_render::Antialias::SmaaT2x,
+    desc.antialias = match options.antialias {
+        Antialias::Off => og_render::Antialias::Off,
+        Antialias::Msaa4 => og_render::Antialias::Msaa4,
+        Antialias::Taa => og_render::Antialias::Taa,
+        Antialias::Fxaa => og_render::Antialias::Fxaa,
+        Antialias::Smaa => og_render::Antialias::Smaa,
+        Antialias::SmaaT2x => og_render::Antialias::SmaaT2x,
         // A 2D project's default is 4x MSAA: TAA's jitter and history
         // blend soften nearest-sampled pixel art.
-        _ if profile == og_physics::PROFILE_2D => og_render::Antialias::Msaa4,
-        _ => og_render::Antialias::Tier,
+        Antialias::Tier if profile == og_physics::PROFILE_2D => og_render::Antialias::Msaa4,
+        Antialias::Tier => og_render::Antialias::Tier,
     };
-    if let Some(size) = options["shadowMapSize"].as_u64() {
-        desc.shadow_map_size = size.clamp(256, 4096) as u32;
+    // Left out, the host's size stays (a phone's is smaller than the
+    // option's default).
+    if given["shadowMapSize"].is_u64() {
+        desc.shadow_map_size = options.shadow_map_size.clamp(256, 4096);
     }
-    desc.point_shadows = match options["pointShadows"].as_str().unwrap_or("auto") {
-        "cube" => og_render::PointShadows::Cube,
-        "paraboloid" => og_render::PointShadows::Paraboloid,
-        _ => og_render::PointShadows::Auto,
+    desc.point_shadows = match options.point_shadows {
+        PointShadows::Cube => og_render::PointShadows::Cube,
+        PointShadows::Paraboloid => og_render::PointShadows::Paraboloid,
+        PointShadows::Auto => og_render::PointShadows::Auto,
     };
-    desc.taa_history = match options["taaHistory"].as_str() {
-        Some("catmullRom") => og_render::TaaHistory::CatmullRom,
-        _ => og_render::TaaHistory::Bilinear,
+    desc.taa_history = match options.taa_history {
+        TaaHistory::CatmullRom => og_render::TaaHistory::CatmullRom,
+        TaaHistory::Bilinear => og_render::TaaHistory::Bilinear,
     };
-    desc.taa_sharpen = options["taaSharpen"]
-        .as_f64()
-        .map_or(0.0, |v| v.clamp(0.0, 1.0) as f32);
-    desc.planar_reflections = options["planarReflections"].as_u64().map_or(1, |n| {
-        n.clamp(1, u64::from(og_render::MAX_PLANAR_REFLECTIONS)) as u32
-    });
-    desc.transparency = match options["transparency"].as_str() {
-        Some("linkedList") => og_render::Transparency::LinkedList,
-        _ => og_render::Transparency::Weighted,
+    desc.taa_sharpen = number(options.taa_sharpen, 0.0).clamp(0.0, 1.0);
+    desc.planar_reflections = options
+        .planar_reflections
+        .clamp(1, og_render::MAX_PLANAR_REFLECTIONS);
+    desc.transparency = match options.transparency {
+        Transparency::LinkedList => og_render::Transparency::LinkedList,
+        Transparency::Weighted => og_render::Transparency::Weighted,
     };
-    desc.transparency_layers = options["transparencyLayers"].as_u64().map_or(0, |n| {
-        n.min(u64::from(og_render::MAX_TRANSPARENCY_LAYERS)) as u32
-    });
-    desc.without = render_without(&options["without"]);
+    desc.transparency_layers = options
+        .transparency_layers
+        .min(og_render::MAX_TRANSPARENCY_LAYERS);
+    desc.without = options
+        .without
+        .iter()
+        .filter_map(|f| og_render::LitFeatures::named(f.as_str()))
+        .fold(og_render::LitFeatures::NONE, |a, f| a | f);
     // og.motion times its compute slices where the adapter can (its
     // `Gpu::set_frame_budget`): a publish build asks only for a game whose
     // bundle declares the model.
     desc.timestamps = engine(id).is_ok_and(|e| crate::motion::present::declares(&e));
     desc
-}
-
-/// RenderOptions.without as og-render's lit features left out: each
-/// LitFeature it names (a name it does not know leaves nothing out).
-fn render_without(list: &Value) -> og_render::LitFeatures {
-    list.as_array()
-        .into_iter()
-        .flatten()
-        .filter_map(|n| n.as_str().and_then(og_render::LitFeatures::named))
-        .fold(og_render::LitFeatures::NONE, |a, f| a | f)
 }
 
 /// og-render's Antialias by its IDL name (RenderCapabilities.antialias).
