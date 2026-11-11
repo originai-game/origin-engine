@@ -160,13 +160,13 @@ pub fn ball_impostor_with(scene: &mut RenderScene, translucency: Option<f32>) ->
 
 fn light(scene: &mut RenderScene) {
     let sun = Vec3::new(0.35, 0.8, 0.45).normalize();
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: sun,
         intensity: 3.0,
         max_shadow_distance: 40.0,
         ..Default::default()
     };
-    scene.environment = Environment {
+    scene.lighting.environment = Environment {
         sky: ProceduralSky {
             sun_direction: sun,
             ..Default::default()
@@ -242,13 +242,13 @@ pub fn impostors_scene_with(card: bool) -> RenderScene {
 pub fn impostor_backlit_scene(translucency: Option<f32>) -> RenderScene {
     let mut scene = RenderScene::new();
     let sun = Vec3::new(-0.3, 0.35, -0.9).normalize();
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: sun,
         intensity: 3.0,
         max_shadow_distance: 40.0,
         ..Default::default()
     };
-    scene.environment = Environment {
+    scene.lighting.environment = Environment {
         sky: ProceduralSky {
             sun_direction: sun,
             ..Default::default()

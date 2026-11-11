@@ -527,12 +527,12 @@ fn flow_round(size: Vec2, at: Vec2, radius: f32, u: f32, v: f32) -> [u8; 4] {
 /// boulder, the fronts lying across the stream.)
 pub fn flow_map_scene(scene: &mut RenderScene, mapped: bool) {
     let sun = Vec3::new(0.35, 0.75, 0.45).normalize();
-    scene.light = og_render::DirectionalLight {
+    scene.lighting.light = og_render::DirectionalLight {
         direction_to_light: sun,
         intensity: 2.5,
         ..Default::default()
     };
-    scene.environment = og_render::Environment {
+    scene.lighting.environment = og_render::Environment {
         sky: og_render::ProceduralSky {
             sun_direction: sun,
             ..Default::default()

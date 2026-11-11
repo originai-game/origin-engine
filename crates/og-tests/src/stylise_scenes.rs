@@ -274,7 +274,7 @@ pub fn ink_depth_scene() -> RenderScene {
             * Mat4::from_rotation_y(1.25)
             * Mat4::from_scale(Vec3::splat(0.7)),
     );
-    scene.environment.background = Background::Color(Vec3::new(0.85, 0.62, 0.38));
+    scene.lighting.environment.background = Background::Color(Vec3::new(0.85, 0.62, 0.38));
     scene.camera = Camera {
         position: Vec3::new(0.0, 3.0, 7.0),
         target: Vec3::new(0.0, 0.6, 0.0),
@@ -363,12 +363,12 @@ pub fn surface_scene() -> RenderScene {
         Mat4::from_translation(Vec3::new(-5.0, 1.5, -12.0)) * Mat4::from_scale(Vec3::splat(3.0)),
     );
     let paper = scene.add_texture(paper_grain());
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: Vec3::new(0.5, 0.7, 0.45),
         intensity: 3.0,
         ..Default::default()
     };
-    scene.environment.background = Background::Color(Vec3::new(0.86, 0.84, 0.78));
+    scene.lighting.environment.background = Background::Color(Vec3::new(0.86, 0.84, 0.78));
     scene.camera = Camera {
         position: Vec3::new(0.5, 3.2, 7.5),
         target: Vec3::new(0.0, 0.9, -1.0),
@@ -631,14 +631,14 @@ pub fn outline_voxels_scene() -> RenderScene {
         ..Default::default()
     };
     let sun = Vec3::new(-0.6, 0.7, 0.4);
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: sun,
         intensity: 3.0,
         ..Default::default()
     };
-    scene.environment.sky.sun_direction = sun;
-    scene.environment.intensity = 0.8;
-    scene.environment.background = Background::Color(Vec3::new(0.55, 0.68, 0.82));
+    scene.lighting.environment.sky.sun_direction = sun;
+    scene.lighting.environment.intensity = 0.8;
+    scene.lighting.environment.background = Background::Color(Vec3::new(0.55, 0.68, 0.82));
     scene.camera = Camera {
         position: Vec3::new(0.0, 4.2, 5.6),
         target: Vec3::new(0.0, 0.8, 0.0),
@@ -734,13 +734,13 @@ pub fn toon_physical_scene() -> RenderScene {
         ..Default::default()
     };
     let sun = Vec3::new(-0.5, 0.75, 0.45);
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: sun,
         intensity: 3.0,
         ..Default::default()
     };
-    scene.environment.sky.sun_direction = sun;
-    scene.environment.intensity = 0.9;
+    scene.lighting.environment.sky.sun_direction = sun;
+    scene.lighting.environment.intensity = 0.9;
     scene.camera = Camera {
         position: Vec3::new(0.0, 2.0, 5.4),
         target: Vec3::new(0.0, 0.6, 0.0),
@@ -874,14 +874,14 @@ pub fn untonemapped_sprites_scene() -> RenderScene {
         true,
     );
     let sun = Vec3::new(-0.7, 0.35, 0.6);
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: sun,
         intensity: 3.0,
         color: Vec3::new(1.0, 0.7, 0.45),
         ..Default::default()
     };
-    scene.environment.sky.sun_direction = sun;
-    scene.environment.intensity = 0.8;
+    scene.lighting.environment.sky.sun_direction = sun;
+    scene.lighting.environment.intensity = 0.8;
     scene.look.post.tonemap = Tonemap::Agx;
     scene.look.post.bloom = Some(Bloom {
         threshold: 1.0,
@@ -949,13 +949,13 @@ pub fn bands_tint_scene() -> RenderScene {
         flatten: 0.0,
     });
     let sun = Vec3::new(-0.6, 0.6, 0.5);
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: sun,
         intensity: 3.0,
         ..Default::default()
     };
-    scene.environment.sky.sun_direction = sun;
-    scene.environment.intensity = 0.8;
+    scene.lighting.environment.sky.sun_direction = sun;
+    scene.lighting.environment.intensity = 0.8;
     scene.camera = Camera {
         position: Vec3::new(0.0, 3.0, 8.0),
         target: Vec3::new(0.0, 1.2, -10.0),
@@ -1000,8 +1000,8 @@ pub fn outline_ground_scene(width: f32, distance: f32) -> RenderScene {
         outline_distance: distance,
         ..Default::default()
     };
-    scene.environment.background = Background::Color(Vec3::new(0.01, 0.01, 0.03));
-    scene.environment.intensity = 0.4;
+    scene.lighting.environment.background = Background::Color(Vec3::new(0.01, 0.01, 0.03));
+    scene.lighting.environment.intensity = 0.4;
     scene.camera = Camera {
         position: Vec3::new(0.0, 1.2, 0.0),
         target: Vec3::new(0.0, 0.7, -20.0),
@@ -1010,7 +1010,7 @@ pub fn outline_ground_scene(width: f32, distance: f32) -> RenderScene {
         ..Default::default()
     };
     let sun = Vec3::new(-0.4, 0.6, -0.5);
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: sun,
         intensity: 2.0,
         ..Default::default()

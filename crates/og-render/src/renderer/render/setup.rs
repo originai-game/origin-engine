@@ -97,14 +97,16 @@ impl Renderer {
         // The light volumes' probes, then the realtime volumes' due
         // relighting (probe_grid.rs), which the quality's GI switch stops.
         let realtime: &[crate::RealtimeLightVolume] = if scene.quality.global_illumination {
-            &scene.light_volumes
+            &scene.lighting.light_volumes
         } else {
             &[]
         };
-        let grid = self
-            .lights
-            .lightmaps
-            .prepare(&self.device, &self.queue, &scene.baked, realtime);
+        let grid = self.lights.lightmaps.prepare(
+            &self.device,
+            &self.queue,
+            &scene.lighting.baked,
+            realtime,
+        );
         // The probe GI's header rows, after the volumes' (gi_probes.rs).
         if let Some(g) = &mut self.gi_probes {
             g.write_header(&self.queue, &self.lights.lightmaps.probe_buffer, false);
@@ -113,7 +115,7 @@ impl Renderer {
             &self.device,
             &self.queue,
             &self.lights.ibl,
-            &scene.reflection_probes,
+            &scene.lighting.reflection_probes,
             scene.tick,
             self.samples,
             |h| {

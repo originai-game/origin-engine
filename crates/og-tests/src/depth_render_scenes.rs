@@ -44,13 +44,13 @@ pub const CHROME: (Vec3, f32) = (Vec3::new(-0.8, 1.0, 0.0), 1.0);
 pub fn probe_scene(probe: bool) -> RenderScene {
     let mut scene = RenderScene::new();
     // The sun is off: the room is closed, its light the lamps'.
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: Vec3::new(-0.4, 0.7, 0.5),
         intensity: 0.0,
         cast_shadows: false,
         ..Default::default()
     };
-    scene.environment.intensity = 1.0;
+    scene.lighting.environment.intensity = 1.0;
     scene.camera = Camera {
         position: Vec3::new(0.3, 1.6, 4.2),
         target: Vec3::new(-0.6, 1.0, 0.0),
@@ -111,7 +111,7 @@ pub fn probe_scene(probe: bool) -> RenderScene {
         (Vec3::new(-3.0, 3.2, -3.0), Vec3::new(1.0, 0.75, 0.45)),
         (Vec3::new(3.0, 3.2, 2.0), Vec3::new(0.6, 0.75, 1.0)),
     ] {
-        scene.lights.push(Light {
+        scene.lighting.lights.push(Light {
             kind: LightKind::Point,
             position: at,
             color: c,
@@ -124,7 +124,7 @@ pub fn probe_scene(probe: bool) -> RenderScene {
         let mut p = ReflectionProbe::new(1, Vec3::new(0.0, 1.6, 0.0), Vec3::new(10.0, 4.2, 10.0));
         p.mode = ProbeMode::Baked;
         p.blend_distance = 0.5;
-        scene.reflection_probes.push(p);
+        scene.lighting.reflection_probes.push(p);
     }
     scene
 }
@@ -134,10 +134,10 @@ pub use crate::SSR_FRAMES;
 /// `ssr-wet-floor` (module docs); `ssr` false turns the reflections off.
 pub fn ssr_scene(ssr: bool) -> RenderScene {
     let mut scene = RenderScene::new();
-    scene.environment.background = Background::Color(Vec3::ZERO);
-    scene.environment.intensity = 0.0;
+    scene.lighting.environment.background = Background::Color(Vec3::ZERO);
+    scene.lighting.environment.intensity = 0.0;
     let key = Vec3::new(0.3, 0.8, 0.6);
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: key,
         intensity: 2.5,
         ..Default::default()

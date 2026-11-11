@@ -447,7 +447,7 @@ fn mass_timing_luts_draw_at_the_shared_curves_positions() {
     let mut renderer = Renderer::new_blocking(&desc).unwrap();
     for tick in [1, 3] {
         let mut scene = RenderScene::new();
-        scene.environment.background = og_render::Background::Color(Vec3::splat(0.015));
+        scene.lighting.environment.background = og_render::Background::Color(Vec3::splat(0.015));
         let mut overlay = Overlay::new(480.0, 280.0, 0.0);
         overlay.ui.tick = tick;
         let mut centers = Vec::new();

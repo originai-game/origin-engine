@@ -160,7 +160,7 @@ fn the_shadow_box_shadows_inside_it_and_lights_outside_it() {
     let open_far = around(project(&scene, open_far), 1);
     let with = |f: &dyn Fn(&mut og_render::DirectionalLight)| {
         let mut s = fs::shadow_box_scene();
-        f(&mut s.light);
+        f(&mut s.lighting.light);
         render(&desc, &s)
     };
     let (boxed, stats) = render(&desc, &scene);
@@ -239,11 +239,11 @@ fn the_hemisphere_light_lights_by_facing_and_only_diffusely() {
     let (desc, scene) = built("hemisphere-light");
     let off = |i: f32| {
         let mut s = fs::hemisphere_scene();
-        s.hemisphere.2 = i;
+        s.lighting.hemisphere.2 = i;
         s
     };
     let mut none = fs::hemisphere_scene();
-    none.hemisphere = ([0.0; 3], [0.0; 3], 0.0);
+    none.lighting.hemisphere = ([0.0; 3], [0.0; 3], 0.0);
     let (lit, _) = render(&desc, &scene);
     let (dark, _) = render(&desc, &none);
     let (zero, _) = render(&desc, &off(0.0));
@@ -282,9 +282,9 @@ fn the_hemisphere_light_lights_by_facing_and_only_diffusely() {
     // The light has its own strength, not the environment's: with the
     // environment at intensity 0 the floor is black without it and red with it.
     let mut unlit = fs::hemisphere_scene();
-    unlit.environment.intensity = 0.0;
+    unlit.lighting.environment.intensity = 0.0;
     let (alone, _) = render(&desc, &unlit);
-    unlit.hemisphere = ([0.0; 3], [0.0; 3], 0.0);
+    unlit.lighting.hemisphere = ([0.0; 3], [0.0; 3], 0.0);
     let (black, _) = render(&desc, &unlit);
     println!(
         "environment at 0: floor {} with the light, {} without",

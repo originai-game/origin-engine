@@ -159,8 +159,8 @@ fn with_z(mut upload: og_render::TextureUpload) -> og_render::TextureUpload {
 /// lit one with the normal map, both with mips in view.
 fn texture_scene(color: og_render::TextureUpload, normal: og_render::TextureUpload) -> RenderScene {
     let mut scene = RenderScene::new();
-    scene.environment.background = Background::Color(Vec3::splat(0.02));
-    scene.light.cast_shadows = false;
+    scene.lighting.environment.background = Background::Color(Vec3::splat(0.02));
+    scene.lighting.light.cast_shadows = false;
     scene.camera = Camera {
         position: Vec3::new(0.0, 3.0, 6.0),
         target: Vec3::new(0.0, 0.0, -2.0),

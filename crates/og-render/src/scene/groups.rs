@@ -72,3 +72,36 @@ pub struct SceneAtmosphere {
     /// `trample.rs`): the nearest [`crate::trample::MAX_PUSHERS`] press.
     pub grass_pushers: Vec<crate::GrassPusher>,
 }
+
+/// The 3D lighting: the sun and the local lights, their cookies and the
+/// baked light and light volumes, the reflection probes, the hemisphere and
+/// the environment.
+#[derive(Debug)]
+pub struct SceneLighting {
+    pub light: DirectionalLight,
+    /// Point and spot lights; the first [`MAX_LIGHTS`] are drawn.
+    pub lights: Vec<Light>,
+    /// Light cookies of point and spot lights, by index into
+    /// [`RenderScene::lights`] (`area.rs`).
+    pub light_cookies: Vec<crate::LightCookie>,
+    /// Baked lighting: lightmap pages, the lightmap uvs of the meshes drawn
+    /// with them, light volumes (`lightmap.rs`). Empty by default.
+    pub baked: crate::BakedLighting,
+    /// Light volumes relit while the game runs (`probe_grid.rs`), sampled
+    /// over the baked ones; the first [`crate::PROBE_VOLUMES`] with the
+    /// baked ones fit. Empty by default.
+    pub light_volumes: Vec<crate::RealtimeLightVolume>,
+    /// Reflection probes: boxes reflecting a cube captured inside them
+    /// instead of the environment (the first [`crate::MAX_REFLECTION_PROBES`]).
+    pub reflection_probes: Vec<crate::ReflectionProbe>,
+    /// A hemisphere light, as three.js `HemisphereLight`: diffuse-only
+    /// ambient irradiance `mix(ground, sky, 0.5 n.y + 0.5) * intensity`
+    /// (sky, ground linear RGB; intensity 0: off). Unlike light baked into
+    /// the environment map it adds no reflection.
+    pub hemisphere: ([f32; 3], [f32; 3], f32),
+    pub environment: Environment,
+    /// A cooked environment map lighting the scene instead of
+    /// [`Environment::sky`] (three.js `scene.environment`), drawn as the
+    /// background by [`Background::Sky`]; `None`: the sky lights it.
+    pub environment_map: Option<crate::EnvironmentMap>,
+}

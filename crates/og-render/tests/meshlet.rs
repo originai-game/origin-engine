@@ -57,7 +57,7 @@ fn equal_depth_meshlets_choose_the_same_triangle_across_frames() {
         target: Vec3::ZERO,
         ..Default::default()
     };
-    scene.light.cast_shadows = false;
+    scene.lighting.light.cast_shadows = false;
     // The meshlet path follows GPU culling, which `Culling::Auto` keeps for
     // frames of GPU_CULLING_MIN_INSTANCES instances; these are 65.
     let mut renderer = Renderer::new_blocking(&RenderDesc {

@@ -131,12 +131,12 @@ pub fn stylised_scene() -> Result<RenderScene, String> {
             * Mat4::from_scale(Vec3::splat(scale)),
     );
     let sun = Vec3::new(0.5, 0.8, 0.4);
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: sun,
         intensity: 2.6,
         ..Default::default()
     };
-    scene.environment = Environment {
+    scene.lighting.environment = Environment {
         sky: ProceduralSky {
             sun_direction: sun,
             sun_color: Vec3::ONE,

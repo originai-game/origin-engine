@@ -71,14 +71,14 @@ pub fn impostor_self_shadow_scene() -> Result<(RenderScene, (Vec3, Vec3)), Strin
     let mut scene = RenderScene::new();
     // High, and in front of the trees (towards the camera at +z).
     let sun = Vec3::new(0.15, 0.85, 0.5).normalize();
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: sun,
         intensity: 3.0,
         max_shadow_distance: 30.0,
         ..Default::default()
     };
-    scene.environment.sky.sun_direction = sun;
-    scene.environment.intensity = 0.5;
+    scene.lighting.environment.sky.sun_direction = sun;
+    scene.lighting.environment.intensity = 0.5;
     let ground = scene.add_standard_material(StandardMaterial {
         color: Vec3::new(0.3, 0.32, 0.28),
         roughness: 1.0,

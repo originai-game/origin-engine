@@ -47,7 +47,7 @@ pub(crate) fn key(p: &ReflectionProbe, room: u64) -> String {
 /// ones nearest the camera first (at most [`MAX_REFLECTION_PROBES`]), each
 /// baked one with its loaded bake.
 pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
-    rs.scene.reflection_probes.clear();
+    rs.scene.lighting.reflection_probes.clear();
     let Some(layout) = rs.draw.probe.clone() else {
         return;
     };
@@ -82,7 +82,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
             .then(a.id.cmp(&b.id))
     });
     probes.truncate(MAX_REFLECTION_PROBES);
-    rs.scene.reflection_probes = probes;
+    rs.scene.lighting.reflection_probes = probes;
 }
 
 /// The lazy record that relights a LightVolume at run time: a world that
@@ -93,7 +93,7 @@ pub(crate) const REALTIME_LIGHT_VOLUME: &str = "og.RealtimeLightVolume";
 /// (its box and spacing), into `rs.scene.light_volumes`: the nearest the
 /// camera first, at most [`og_render::PROBE_VOLUMES`].
 pub(crate) fn extract_light_volumes(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
-    rs.scene.light_volumes.clear();
+    rs.scene.lighting.light_volumes.clear();
     let (Some(realtime), Some(volume)) = (
         rs.draw.realtime_volume.clone(),
         rs.draw.light_volume.clone(),
@@ -131,7 +131,7 @@ pub(crate) fn extract_light_volumes(world: &World, rs: &mut RenderState, h: &mut
         distance(a).total_cmp(&distance(b)).then(a.id.cmp(&b.id))
     });
     volumes.truncate(og_render::PROBE_VOLUMES);
-    rs.scene.light_volumes = volumes;
+    rs.scene.lighting.light_volumes = volumes;
 }
 
 /// After extraction (the room complete): each baked probe's key, from its
@@ -149,8 +149,8 @@ pub(crate) fn load_bakes(eng: &Engine, rs: &mut RenderState) {
 pub(crate) fn apply_bakes(rs: &mut RenderState) -> Vec<(usize, String)> {
     rs.probe_bakes.rooms.clear();
     let mut wanted = Vec::new();
-    for i in 0..rs.scene.reflection_probes.len() {
-        let p = rs.scene.reflection_probes[i];
+    for i in 0..rs.scene.lighting.reflection_probes.len() {
+        let p = rs.scene.lighting.reflection_probes[i];
         if p.mode != ProbeMode::Baked {
             continue;
         }
@@ -162,7 +162,7 @@ pub(crate) fn apply_bakes(rs: &mut RenderState) -> Vec<(usize, String)> {
         }
         let k = key(&at, room.hash);
         match rs.probe_bakes.tried.get(&k) {
-            Some(&h) => rs.scene.reflection_probes[i].baked = h,
+            Some(&h) => rs.scene.lighting.reflection_probes[i].baked = h,
             None => wanted.push((i, k.clone())),
         }
         rs.probe_bakes.rooms.insert(p.id, (k, room));
@@ -172,7 +172,7 @@ pub(crate) fn apply_bakes(rs: &mut RenderState) -> Vec<(usize, String)> {
 
 fn load(eng: &Engine, rs: &mut RenderState, wanted: Vec<(usize, String)>) {
     for (i, k) in wanted {
-        let size = rs.scene.reflection_probes[i].face_size();
+        let size = rs.scene.lighting.reflection_probes[i].face_size();
         let map = {
             let assets = eng.assets.borrow();
             assets
@@ -184,7 +184,7 @@ fn load(eng: &Engine, rs: &mut RenderState, wanted: Vec<(usize, String)>) {
             .filter(|m| m.size == size)
             .map(|m| rs.scene.add_environment_map(m));
         rs.probe_bakes.tried.insert(k, handle);
-        rs.scene.reflection_probes[i].baked = handle;
+        rs.scene.lighting.reflection_probes[i].baked = handle;
     }
 }
 
@@ -239,7 +239,7 @@ pub(crate) fn register_bake_dump(probe: &mut og_probe::Probe, engine: u32) {
                 .ok_or("no renderer: bake_probes reads the probes' captures back")?;
             let mut out = Vec::new();
             let assets = eng.assets.borrow();
-            for p in &rs.scene.reflection_probes {
+            for p in &rs.scene.lighting.reflection_probes {
                 let Some((k, room)) = rs.probe_bakes.rooms.get(&p.id) else {
                     continue;
                 };

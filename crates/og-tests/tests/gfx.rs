@@ -39,9 +39,9 @@ fn cascade_frames(tall: bool) -> (RgbaImage, RgbaImage, RgbaImage) {
     let g = built("cascades-200m");
     let mut scene = scenes::cascades_200m(tall);
     let (lit, _) = frame(&g.desc, &scene, 1);
-    scene.light.cast_shadows = false;
+    scene.lighting.light.cast_shadows = false;
     let (unshadowed, _) = frame(&g.desc, &scene, 1);
-    scene.light.cast_shadows = true;
+    scene.lighting.light.cast_shadows = true;
     scene.debug = DebugView::Cascades;
     let (debug, _) = frame(&g.desc, &scene, 1);
     (debug, lit, unshadowed)
@@ -192,10 +192,10 @@ fn the_cross_platform_tolerance_still_catches_small_regressions() {
     type Mutation = (&'static str, &'static str, fn(&mut GfxScene));
     let cases: [Mutation; 4] = [
         ("gltf-reference", "the sun 15 % dimmer", |g| {
-            g.scene.light.intensity *= 0.85
+            g.scene.lighting.light.intensity *= 0.85
         }),
         ("shadows-soft", "the sun casting no shadow", |g| {
-            g.scene.light.cast_shadows = false
+            g.scene.lighting.light.cast_shadows = false
         }),
         ("text-msdf", "a paragraph 3 px to the right", |g| {
             g.scene.texts[2].position.x += 0.088

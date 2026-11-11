@@ -18,12 +18,12 @@ const UNIT: f32 = 180.0;
 /// scaled by `scale`, seen down -z; the frame's red channel, linear (0 to 1).
 fn draw(mesh: MeshData, material: EffectMaterial, scale: Vec3, color: f32) -> (Vec<f32>, u32) {
     let mut scene = RenderScene::new();
-    scene.environment = Environment {
+    scene.lighting.environment = Environment {
         background: Background::Color(Vec3::ZERO),
         intensity: 0.0,
         ..Environment::default()
     };
-    scene.light.intensity = 0.0;
+    scene.lighting.light.intensity = 0.0;
     scene.look.post = PostEffects {
         tonemap: Tonemap::None,
         ..Default::default()

@@ -47,13 +47,13 @@ fn mean(img: &RgbaImage, pixels: impl Iterator<Item = (u32, u32)>) -> [f32; 3] {
 /// sphere is a disc of radius 97 pixels at the frame's centre).
 fn studio() -> RenderScene {
     let mut scene = RenderScene::new();
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: Vec3::new(-0.6, 0.7, 0.6),
         intensity: 3.0,
         cast_shadows: false,
         ..Default::default()
     };
-    scene.environment = Environment {
+    scene.lighting.environment = Environment {
         intensity: 0.15,
         background: Background::Color(Vec3::ZERO),
         ..Default::default()
@@ -77,7 +77,7 @@ fn transmission_refracts_the_scene_behind() {
     // `bands`: the backdrop in 0.25 m bands instead of halves.
     let make_on = |m: StandardMaterial, bands: bool| {
         let mut scene = studio();
-        scene.environment.intensity = 0.4;
+        scene.lighting.environment.intensity = 0.4;
         let (height, rows) = if bands { (0.25, 64) } else { (8.0, 2) };
         let wall = scene.add_mesh(shapes::cuboid(Vec3::new(8.0, height, 0.1)));
         let red = scene.add_standard_material(StandardMaterial::basic(Vec3::new(1.0, 0.05, 0.05)));

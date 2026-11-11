@@ -70,6 +70,7 @@ fn cluster_build_in_compute_against_the_cpu_build() {
     let view = glam::camera::rh::view::look_at_mat4(cam.position, cam.target, cam.up);
     let spheres: Vec<[f32; 4]> = built
         .scene
+        .lighting
         .lights
         .iter()
         .map(|l| {

@@ -115,12 +115,12 @@ pub fn ao_scene(method: AoMethod) -> RenderScene {
         Vec3::splat(0.5),
     );
     let sun = Vec3::new(0.3, 0.9, 0.5);
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: sun,
         intensity: 0.6,
         ..Default::default()
     };
-    scene.environment = Environment {
+    scene.lighting.environment = Environment {
         sky: ProceduralSky {
             sun_direction: sun,
             sun_color: Vec3::new(1.0, 0.98, 0.95),
@@ -210,12 +210,12 @@ pub fn gi_scene(gi: bool) -> RenderScene {
     // High and from the front right: the floor and the red wall in sun, the
     // green wall's inside in shade.
     let sun = Vec3::new(0.45, 0.8, 0.4);
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: sun,
         intensity: 3.0,
         ..Default::default()
     };
-    scene.environment = Environment {
+    scene.lighting.environment = Environment {
         sky: ProceduralSky {
             sun_direction: sun,
             sun_color: Vec3::new(1.0, 0.97, 0.92),
@@ -315,12 +315,12 @@ pub fn gi_shelter_scene(probes: bool, ao: bool) -> RenderScene {
         Vec3::new(1.2, 0.5, -1.2),
         Vec3::splat(1.0),
     );
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: Vec3::new(0.3, 0.9, 0.2),
         intensity: 0.0,
         ..Default::default()
     };
-    scene.environment = Environment {
+    scene.lighting.environment = Environment {
         sky: ProceduralSky {
             sun_direction: Vec3::new(0.3, 0.9, 0.2),
             sun_color: Vec3::ONE,
@@ -431,13 +431,13 @@ pub fn light_volume_scene(realtime: bool, colour: Vec3, mirror: Option<f32>) -> 
         probe.resolution = 256;
         probe.interval = 8;
         probe.blend_distance = 0.3;
-        scene.reflection_probes.push(probe);
+        scene.lighting.reflection_probes.push(probe);
     }
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         intensity: 0.0,
         ..Default::default()
     };
-    scene.lights.push(Light {
+    scene.lighting.lights.push(Light {
         kind: LightKind::Point,
         position: Vec3::new(0.0, 2.7, -0.4),
         color: colour,
@@ -445,7 +445,7 @@ pub fn light_volume_scene(realtime: bool, colour: Vec3, mirror: Option<f32>) -> 
         range: 9.0,
         cast_shadows: true,
     });
-    scene.environment = Environment {
+    scene.lighting.environment = Environment {
         intensity: 0.05,
         background: Background::Color(Vec3::ZERO),
         ..Default::default()
@@ -462,14 +462,17 @@ pub fn light_volume_scene(realtime: bool, colour: Vec3, mirror: Option<f32>) -> 
         ..Default::default()
     });
     if realtime {
-        scene.light_volumes.push(og_render::RealtimeLightVolume {
-            id: 1,
-            min: Vec3::new(-2.7, 0.15, -2.7),
-            max: Vec3::new(2.7, 2.75, 2.7),
-            spacing: 1.35,
-            updates_per_frame: 8,
-            intensity: 1.0,
-        });
+        scene
+            .lighting
+            .light_volumes
+            .push(og_render::RealtimeLightVolume {
+                id: 1,
+                min: Vec3::new(-2.7, 0.15, -2.7),
+                max: Vec3::new(2.7, 2.75, 2.7),
+                spacing: 1.35,
+                updates_per_frame: 8,
+                intensity: 1.0,
+            });
     }
     scene.camera = Camera {
         position: Vec3::new(0.0, 1.6, 2.7),
@@ -530,13 +533,13 @@ pub fn dof_scene(quality: DofQuality) -> Result<RenderScene, String> {
         Mat4::from_translation(Vec3::new(1.2, 1.4, 5.2)) * Mat4::from_scale(Vec3::splat(0.15)),
     );
     let sun = Vec3::new(-0.4, 0.5, 0.6);
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: sun,
         color: Vec3::new(1.0, 0.8, 0.6),
         intensity: 1.6,
         ..Default::default()
     };
-    scene.environment = Environment {
+    scene.lighting.environment = Environment {
         sky: ProceduralSky {
             sun_direction: sun,
             sun_color: Vec3::new(1.0, 0.7, 0.45),
@@ -592,13 +595,13 @@ pub fn god_rays_scene() -> RenderScene {
         Mat4::from_translation(Vec3::new(0.0, 7.4, -12.0)),
     );
     let sun = Vec3::new(0.1, 0.16, -1.0);
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: sun,
         color: Vec3::new(1.0, 0.8, 0.55),
         intensity: 2.5,
         ..Default::default()
     };
-    scene.environment = Environment {
+    scene.lighting.environment = Environment {
         sky: ProceduralSky {
             sun_direction: sun,
             sun_color: Vec3::new(1.0, 0.75, 0.45),
@@ -627,13 +630,13 @@ pub fn god_rays_scene() -> RenderScene {
 // ---------------------------------------------------------------------------
 
 fn flare_sky(scene: &mut RenderScene, sun: Vec3, color: Vec3, intensity: f32) {
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: sun,
         color,
         intensity,
         ..Default::default()
     };
-    scene.environment = Environment {
+    scene.lighting.environment = Environment {
         sky: ProceduralSky {
             sun_direction: sun,
             sun_color: color,
@@ -744,7 +747,7 @@ pub fn flare_lights_scene() -> RenderScene {
             m,
             Mat4::from_translation(p) * Mat4::from_scale(Vec3::splat(0.12)),
         );
-        scene.lights.push(Light {
+        scene.lighting.lights.push(Light {
             position: p,
             color: c,
             intensity: 30.0,
@@ -763,7 +766,7 @@ pub fn flare_lights_scene() -> RenderScene {
     );
     // A spot low on the right, aimed at the camera.
     let spot = Vec3::new(3.5, 0.8, -5.0);
-    scene.lights.push(Light {
+    scene.lighting.lights.push(Light {
         kind: LightKind::Spot {
             direction: (eye - spot).normalize(),
             angle_degrees: 25.0,
@@ -775,13 +778,13 @@ pub fn flare_lights_scene() -> RenderScene {
         range: 25.0,
         ..Default::default()
     });
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: Vec3::new(0.3, -0.4, -0.5),
         color: Vec3::new(0.4, 0.5, 0.8),
         intensity: 0.05,
         ..Default::default()
     };
-    scene.environment = Environment {
+    scene.lighting.environment = Environment {
         intensity: 0.05,
         background: Background::Color(Vec3::new(0.004, 0.006, 0.014)),
         ..Environment::default()

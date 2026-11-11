@@ -252,7 +252,7 @@ impl ProbeContent {
             }
             items.push(h.finish());
         }
-        for l in &scene.lights {
+        for l in &scene.lighting.lights {
             if !touches(lo, hi, l.position, l.range.max(0.0)) {
                 continue;
             }
@@ -275,10 +275,10 @@ impl ProbeContent {
         }
         // The sun only when it shines (a closed room's sun is off, whatever
         // way it points).
-        if scene.light.intensity > 0.0 {
-            h.write_str(&format!("{:?}", scene.light));
+        if scene.lighting.light.intensity > 0.0 {
+            h.write_str(&format!("{:?}", scene.lighting.light));
         }
-        h.write_str(&format!("{:?}", scene.environment));
+        h.write_str(&format!("{:?}", scene.lighting.environment));
         room.hash = h.finish();
         room
     }

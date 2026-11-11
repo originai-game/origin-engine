@@ -61,6 +61,7 @@ impl Renderer {
         if let Some(f) = &lens_flare {
             let sources = if flare_sources_on {
                 let look = scene
+                    .lighting
                     .environment
                     .sky
                     .look
@@ -69,10 +70,10 @@ impl Renderer {
                 // The drawn sun: the procedural sky's, the sky cube's when
                 // it is the procedural one, else the light's direction
                 // with no disc.
-                let (direction, radius_degrees) = match scene.environment.background {
+                let (direction, radius_degrees) = match scene.lighting.environment.background {
                     Background::Procedural { sun_direction, .. } => (sun_direction, look.sun_size),
-                    Background::Sky if scene.environment_map.is_none() => {
-                        (scene.environment.sky.sun_direction, look.sun_size)
+                    Background::Sky if scene.lighting.environment_map.is_none() => {
+                        (scene.lighting.environment.sky.sun_direction, look.sun_size)
                     }
                     _ => (to_light, 0.0),
                 };
@@ -83,7 +84,10 @@ impl Renderer {
                 // colour and intensity, through the air under the physical
                 // sky), undimmed by their mean cover (`Clouds::light`).
                 let clouded = scene.atmosphere.clouds.filter(|_| {
-                    matches!(scene.environment.background, Background::Procedural { .. })
+                    matches!(
+                        scene.lighting.environment.background,
+                        Background::Procedural { .. }
+                    )
                 });
                 let mut irradiance = light.color * light.intensity;
                 let mut disc = 0.0;
@@ -118,7 +122,7 @@ impl Renderer {
                         fog_clear: atmosphere.sky_fog_clear(camera.position, direction),
                         disc,
                     }),
-                    &scene.lights,
+                    &scene.lighting.lights,
                     &|p| atmosphere.fog_clear(camera.position, p),
                 )
             } else {

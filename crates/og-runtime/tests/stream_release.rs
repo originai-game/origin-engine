@@ -168,7 +168,7 @@ impl RenderBackend for Recorder {
     }
     fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
         let mut s = self.0.borrow_mut();
-        s.env = scene.environment_map.map(|m| m.map);
+        s.env = scene.lighting.environment_map.map(|m| m.map);
         s.palette = scene.look.stylise.quantize.and_then(|q| q.palette);
         s.arrays = scene.sprite_arrays.len();
         s.emitters = scene

@@ -94,10 +94,10 @@ pub fn many_lights(count: u32) -> RenderScene {
             );
         }
     }
-    scene.lights = many_lights_list(count);
-    scene.light.intensity = 0.0;
-    scene.light.cast_shadows = false;
-    scene.environment = Environment {
+    scene.lighting.lights = many_lights_list(count);
+    scene.lighting.light.intensity = 0.0;
+    scene.lighting.light.cast_shadows = false;
+    scene.lighting.environment = Environment {
         intensity: 0.03,
         background: Background::Color(Vec3::new(0.003, 0.004, 0.01)),
         ..Default::default()
@@ -126,12 +126,12 @@ pub fn moon_direction() -> Vec3 {
 pub fn moon_scene(phase: f32, size: f32) -> RenderScene {
     let mut scene = crate::atmo_scenes::day_night_scene(23.0, false);
     let moon = moon_direction();
-    if let Some(look) = scene.environment.sky.look.as_mut() {
+    if let Some(look) = scene.lighting.environment.sky.look.as_mut() {
         look.moon_size = size;
         look.moon_phase = phase;
         look.moon_direction = moon;
     }
-    scene.light.direction_to_light = moon;
+    scene.lighting.light.direction_to_light = moon;
     scene
 }
 
@@ -363,13 +363,13 @@ pub fn materials_scene() -> RenderScene {
             * Mat4::from_scale(Vec3::new(1.15, 0.45, 1.15)),
     );
     let sun = Vec3::new(-0.55, 0.6, 0.5);
-    scene.light = og_render::DirectionalLight {
+    scene.lighting.light = og_render::DirectionalLight {
         direction_to_light: sun,
         intensity: 3.2,
         ..Default::default()
     };
-    scene.environment.sky.sun_direction = sun;
-    scene.environment.intensity = 0.8;
+    scene.lighting.environment.sky.sun_direction = sun;
+    scene.lighting.environment.intensity = 0.8;
     scene.camera = Camera {
         position: Vec3::new(0.0, 7.4, 5.4),
         target: Vec3::new(0.0, 0.0, -1.3),
@@ -557,7 +557,7 @@ pub fn fluid_3d_scene() -> RenderScene {
         volume: spacing.powi(3),
         ..Default::default()
     });
-    scene.lights.push(Light {
+    scene.lighting.lights.push(Light {
         position: Vec3::new(-1.0, 1.0, 0.9),
         color: Vec3::new(1.0, 0.6, 0.3),
         intensity: 6.0,
@@ -565,14 +565,14 @@ pub fn fluid_3d_scene() -> RenderScene {
         ..Default::default()
     });
     let sun = Vec3::new(-0.45, 0.7, 0.4);
-    scene.light = og_render::DirectionalLight {
+    scene.lighting.light = og_render::DirectionalLight {
         direction_to_light: sun,
         intensity: 3.0,
         ..Default::default()
     };
-    scene.environment.sky.sun_direction = sun;
-    scene.environment.intensity = 0.8;
-    scene.environment.background = Background::Sky;
+    scene.lighting.environment.sky.sun_direction = sun;
+    scene.lighting.environment.intensity = 0.8;
+    scene.lighting.environment.background = Background::Sky;
     scene.camera = Camera {
         position: Vec3::new(0.0, 2.4, 3.9),
         target: Vec3::new(0.0, 0.35, 0.0),

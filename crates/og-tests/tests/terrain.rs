@@ -253,13 +253,13 @@ fn layers_follow_slope_altitude_and_the_control_map() {
         ],
         ..Terrain::new(h)
     });
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: Vec3::new(0.0, 1.0, 0.3),
         intensity: 2.0,
         cast_shadows: false,
         ..Default::default()
     };
-    scene.environment = Environment {
+    scene.lighting.environment = Environment {
         intensity: 0.3,
         ..Default::default()
     };
@@ -326,7 +326,7 @@ fn the_underwater_view_fogs_shows_the_surface_and_caustics() {
             caustics,
             ..Default::default()
         });
-        scene.environment.background = Background::Sky;
+        scene.lighting.environment.background = Background::Sky;
         scene.camera = Camera {
             position: Vec3::new(0.0, eye_y, 0.0),
             target: Vec3::new(0.0, eye_y - 0.5, -30.0),

@@ -27,7 +27,7 @@ fn frame(renderer: &mut Renderer, scene: &og_render::RenderScene) -> FrameStats 
 fn only_the_records_a_draw_reads_are_uploaded() {
     let mut built = scenes::build("spheres-20k").expect("scene");
     built.desc.culling = Culling::Cpu;
-    built.scene.light.cast_shadows = false;
+    built.scene.lighting.light.cast_shadows = false;
     // Looking past the field's edge.
     let camera = &mut built.scene.camera;
     camera.target += (camera.target - camera.position)

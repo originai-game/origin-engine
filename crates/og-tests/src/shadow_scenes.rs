@@ -66,7 +66,7 @@ pub fn soft_shadows_scene(soft: bool) -> RenderScene {
         scene.add_instance(pole, stone, Mat4::from_translation(Vec3::new(x, 2.5, z)));
     }
     let sun = Vec3::new(0.75, 0.42, 0.3);
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: sun,
         intensity: 4.0,
         max_shadow_distance: 90.0,
@@ -74,8 +74,8 @@ pub fn soft_shadows_scene(soft: bool) -> RenderScene {
         cascade_blend: if soft { CASCADE_BLEND } else { 0.0 },
         ..Default::default()
     };
-    scene.environment.sky.sun_direction = sun;
-    scene.environment.intensity = 0.45;
+    scene.lighting.environment.sky.sun_direction = sun;
+    scene.lighting.environment.intensity = 0.45;
     scene.camera = Camera {
         position: Vec3::new(0.0, 5.5, 9.0),
         target: Vec3::new(0.0, 0.0, -14.0),
@@ -163,10 +163,10 @@ pub fn many_shadowed_lights(extra: bool) -> RenderScene {
             });
         }
     }
-    scene.lights = lights;
-    scene.light.intensity = 0.0;
-    scene.light.cast_shadows = false;
-    scene.environment = Environment {
+    scene.lighting.lights = lights;
+    scene.lighting.light.intensity = 0.0;
+    scene.lighting.light.cast_shadows = false;
+    scene.lighting.environment = Environment {
         intensity: 0.03,
         background: Background::Color(Vec3::new(0.004, 0.006, 0.015)),
         ..Default::default()
@@ -289,14 +289,14 @@ pub fn crypt_scene() -> RenderScene {
     // A low sun from the east: outside it lights the field, inside only
     // the patch the door lets in; the roof and the walls shadow the rest.
     let sun = Vec3::new(0.75, 0.42, 0.3).normalize();
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: sun,
         intensity: 4.0,
         max_shadow_distance: 70.0,
         ..Default::default()
     };
-    scene.environment.sky.sun_direction = sun;
-    scene.environment.intensity = 0.12;
+    scene.lighting.environment.sky.sun_direction = sun;
+    scene.lighting.environment.intensity = 0.12;
     let lamp = Vec3::new(0.4, 2.2, 0.6);
     let glass = scene.add_material(Material {
         base_color: [1.0, 0.8, 0.4, 1.0],
@@ -314,7 +314,7 @@ pub fn crypt_scene() -> RenderScene {
         receive_shadows: true,
         sway: 0.0,
     });
-    scene.lights = vec![Light {
+    scene.lighting.lights = vec![Light {
         position: lamp,
         color: Vec3::new(1.0, 0.62, 0.3),
         intensity: 7.0,
@@ -414,14 +414,14 @@ pub fn shadow_flags_scene() -> Result<FlagsScene, String> {
         scene.instances[i].receive_shadows = false;
     }
     let sun = Vec3::new(0.85, 0.48, 0.12).normalize();
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: sun,
         intensity: 4.0,
         max_shadow_distance: 60.0,
         ..Default::default()
     };
-    scene.environment.sky.sun_direction = sun;
-    scene.environment.intensity = 0.3;
+    scene.lighting.environment.sky.sun_direction = sun;
+    scene.lighting.environment.intensity = 0.3;
     scene.camera = Camera {
         position: Vec3::new(0.2, 3.6, 8.6),
         target: Vec3::new(0.4, 0.7, -1.2),
@@ -549,7 +549,7 @@ fn contact_room(point: bool, shadows: bool) -> RenderScene {
         Mat4::from_translation(Vec3::new(0.0, 3.0, -2.0)),
     );
     let position = CONTACT_LIGHT;
-    scene.lights.push(Light {
+    scene.lighting.lights.push(Light {
         kind: if point {
             LightKind::Point
         } else {
@@ -565,12 +565,12 @@ fn contact_room(point: bool, shadows: bool) -> RenderScene {
         range: 12.0,
         cast_shadows: shadows,
     });
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         intensity: 0.0,
         cast_shadows: false,
         ..Default::default()
     };
-    scene.environment = Environment {
+    scene.lighting.environment = Environment {
         intensity: 0.05,
         background: Background::Sky,
         ..Default::default()

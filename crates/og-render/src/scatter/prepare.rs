@@ -31,7 +31,11 @@ impl ScatterRenderer {
         }
         let mut transforms = Vec::with_capacity(total);
         let mut out = Vec::with_capacity(groups.len());
-        let light = scene.light.direction_to_light.normalize_or(Vec3::Y);
+        let light = scene
+            .lighting
+            .light
+            .direction_to_light
+            .normalize_or(Vec3::Y);
         for (k, (imp, members)) in groups.iter().enumerate() {
             let first = transforms.len() as u32;
             let (mut lo, mut hi) = (Vec3::splat(f32::MAX), Vec3::splat(f32::MIN));
@@ -175,7 +179,11 @@ impl ScatterRenderer {
         };
         let impostors =
             self.prepare_impostors(device, queue, scene, base, &groups, scene.scatters.len());
-        let light = scene.light.direction_to_light.normalize_or(Vec3::Y);
+        let light = scene
+            .lighting
+            .light
+            .direction_to_light
+            .normalize_or(Vec3::Y);
         let cards = self.prepare_cards(
             device,
             queue,

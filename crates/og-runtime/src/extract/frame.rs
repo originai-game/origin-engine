@@ -42,7 +42,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     let scene = &mut rs.scene;
     let (models, geometries, materials) = (&rs.models, &rs.geometries, &rs.materials);
     scene.instances.clear();
-    scene.lights.clear();
+    scene.lighting.lights.clear();
     scene.texts.clear();
     scene.sprites.clear();
     scene.sprite_meshes.clear();
@@ -122,7 +122,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
             }
         };
         exposure = f(c, "exposure", 1.0).max(0.0);
-        scene.environment.background = og_render::Background::Color(color(&c["background"], 0.0));
+        scene.lighting.environment.background =
+            og_render::Background::Color(color(&c["background"], 0.0));
     }
     super::review::apply(&mut scene.camera, rs.review.as_ref(), size, framed);
 
@@ -131,9 +132,9 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
         // RenderSettings.exposure scales every camera's, as three.js
         // toneMappingExposure does the whole frame's.
         exposure *= f(s, "exposure", 1.0).max(0.0);
-        scene.environment.intensity = f(s, "environmentIntensity", 0.55);
+        scene.lighting.environment.intensity = f(s, "environmentIntensity", 0.55);
         if on(s, "sky", false) {
-            scene.environment.background = og_render::Background::Sky;
+            scene.lighting.environment.background = og_render::Background::Sky;
         }
         scene.look.post.bloom = on(s, "bloom", false).then(|| og_render::Bloom {
             threshold: f(s, "bloomThreshold", 1.0),
@@ -605,12 +606,12 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     // directional light (its sun) and og.Sky or og.DayNight (atmosphere.rs)
     // set it: kept from the last frame, a Sky turned off went on lighting
     // the scene and filling its background.
-    scene.environment.sky = og_render::ProceduralSky::default();
+    scene.lighting.environment.sky = og_render::ProceduralSky::default();
     if let Some(dl) = &layouts.directional
         && let Some((e, v)) = rows(world, dl).into_iter().next()
     {
         let m = h.world_of(e);
-        let light = &mut scene.light;
+        let light = &mut scene.lighting.light;
         let dir = forward(m);
         light.direction_to_light = if dir == Vec3::ZERO { Vec3::Y } else { -dir };
         light.color = color(&v["color"], 1.0);
@@ -624,7 +625,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
         light.shadow_normal_bias = f(&v, "shadowNormalBias", 0.0);
         light.shadow_softness = f(&v, "shadowSoftness", 0.0);
         light.cascade_blend = f(&v, "cascadeBlend", 0.0);
-        scene.environment.sky.sun_direction = light.direction_to_light.normalize_or_zero();
+        scene.lighting.environment.sky.sun_direction = light.direction_to_light.normalize_or_zero();
     }
     // Each light with its cookie (PointLight.cookie, SpotLight.cookie).
     let textures = &rs.textures;
@@ -683,12 +684,12 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
         }
     }
     og_core::sort::sort_by_key(&mut locals, |(e, ..)| Entity::from_bits(*e).index());
-    scene.light_cookies = locals
+    scene.lighting.light_cookies = locals
         .iter()
         .enumerate()
         .filter_map(|(i, (_, _, c))| c.map(|texture| og_render::LightCookie { light: i, texture }))
         .collect();
-    scene.lights = locals.iter().map(|(_, l, _)| *l).collect();
+    scene.lighting.lights = locals.iter().map(|(_, l, _)| *l).collect();
     // Cookies past RenderCapabilities.maxLightCookies layers are not drawn:
     // the log says which lights shine without theirs.
     let cookies = og_render::cookie_layers(scene);

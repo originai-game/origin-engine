@@ -53,14 +53,14 @@ fn sphere_scene(material: StandardMaterial, toon: bool, env: f32) -> RenderScene
     let m = scene.add_standard_material(material);
     let sphere = scene.add_mesh(shapes::sphere(64, 48));
     scene.add_instance(sphere, m, Mat4::from_scale(Vec3::splat(2.0)));
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: Vec3::new(-0.6, 0.5, 0.65),
         intensity: 3.0,
         cast_shadows: false,
         ..Default::default()
     };
-    scene.environment.background = Background::Color(Vec3::ZERO);
-    scene.environment.intensity = env;
+    scene.lighting.environment.background = Background::Color(Vec3::ZERO);
+    scene.lighting.environment.intensity = env;
     scene.camera = Camera {
         position: Vec3::new(0.0, 0.0, 4.0),
         target: Vec3::ZERO,
@@ -116,8 +116,8 @@ fn toon_ambient_is_flat() {
         true,
         0.0,
     );
-    scene.light.intensity = 0.0;
-    scene.hemisphere = ([1.0; 3], [0.0; 3], 2.0);
+    scene.lighting.light.intensity = 0.0;
+    scene.lighting.hemisphere = ([1.0; 3], [0.0; 3], 2.0);
     let img = draw(&mut renderer, &scene);
     let l: Vec<f32> = disc.iter().map(|&(x, y)| luma(px(&img, x, y))).collect();
     let (lo, hi) = l
@@ -155,8 +155,8 @@ fn box_scene(place: OutlinePlace, width: f32) -> RenderScene {
         white,
         Mat4::from_rotation_y(0.5) * Mat4::from_rotation_x(0.3),
     );
-    scene.environment.background = Background::Color(Vec3::splat(0.2));
-    scene.environment.intensity = 0.0;
+    scene.lighting.environment.background = Background::Color(Vec3::splat(0.2));
+    scene.lighting.environment.intensity = 0.0;
     scene.camera = Camera {
         position: Vec3::new(0.0, 0.0, 4.0),
         target: Vec3::ZERO,

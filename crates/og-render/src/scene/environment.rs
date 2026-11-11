@@ -823,8 +823,8 @@ mod sky_params_tests {
             ..crate::Clouds::default()
         }
         .light_scene(&mut overcast);
-        assert!(overcast.light.diffusion > 0.999);
-        assert!((overcast.light.shadow_softness_and_fill().1 - 0.65).abs() < 1e-3);
+        assert!(overcast.lighting.light.diffusion > 0.999);
+        assert!((overcast.lighting.light.shadow_softness_and_fill().1 - 0.65).abs() < 1e-3);
 
         // A declared softness wider than the cover's is kept.
         let mut soft = DirectionalLight {

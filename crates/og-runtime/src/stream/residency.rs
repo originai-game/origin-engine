@@ -339,7 +339,7 @@ fn in_use(rs: &super::extract::RenderState, held: Held, tick: u64) -> Option<&'s
     match held {
         Held::Environment(i) => {
             let h = rs.env.maps.get(i)?.1?;
-            (rs.scene.environment_map.map(|m| m.map) == Some(h))
+            (rs.scene.lighting.environment_map.map(|m| m.map) == Some(h))
                 .then_some("og.Environment.map lights the frame with it")
         }
         Held::TextureArray(i) => {

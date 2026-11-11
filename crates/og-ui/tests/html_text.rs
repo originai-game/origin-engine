@@ -921,7 +921,7 @@ fn html_text_matches_its_reference_frames() {
         ui.frame().emit(&EmitDesc::default(), &mut overlay);
         scene.ui.overlay = Some(overlay);
         let bg = ui.theme().palette.backdrop.linear();
-        scene.environment.background =
+        scene.lighting.environment.background =
             Background::Color(og_core::glam::Vec3::new(bg[0], bg[1], bg[2]));
         scene.look.post.tonemap = Tonemap::None;
         let mut renderer = Renderer::new_blocking(&RenderDesc {

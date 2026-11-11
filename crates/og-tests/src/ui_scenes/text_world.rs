@@ -174,7 +174,7 @@ pub fn world(
         far: 200.0,
         ..Default::default()
     };
-    scene.environment.background = Background::Color(Vec3::new(0.25, 0.35, 0.55));
+    scene.lighting.environment.background = Background::Color(Vec3::new(0.25, 0.35, 0.55));
     scene.look.post.tonemap = Tonemap::None;
     let mut o = Overlay::new(W, H, 0.0);
     o.ui.tick = 100;
@@ -478,7 +478,7 @@ pub fn panel() -> RenderScene {
         far: 100.0,
         ..Default::default()
     };
-    scene.environment.background = Background::Color(Vec3::new(0.25, 0.35, 0.55));
+    scene.lighting.environment.background = Background::Color(Vec3::new(0.25, 0.35, 0.55));
     scene.look.post.tonemap = Tonemap::None;
     let mut o = Overlay::new(W, H, 0.0);
     let (x, y) = (760.0, 380.0);

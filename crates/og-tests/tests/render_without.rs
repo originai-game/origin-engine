@@ -125,7 +125,8 @@ fn weather_scene(wet: bool) -> (RenderDesc, RenderScene, u32) {
 type Strip = fn(&mut RenderScene);
 
 fn no_rect_lights(s: &mut RenderScene) {
-    s.lights
+    s.lighting
+        .lights
         .retain(|l| !matches!(l.kind, og_render::LightKind::Rect { .. }));
 }
 

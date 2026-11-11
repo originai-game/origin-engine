@@ -850,7 +850,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy, ti
                     },
                     _,
                 ) if alive => {
-                    rs.scene.lights.push(Light {
+                    rs.scene.lighting.lights.push(Light {
                         kind: LightKind::Point,
                         position: local.transform_point3(Vec3::ZERO),
                         color: Vec3::from_array(*color) * tint,

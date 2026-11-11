@@ -110,7 +110,7 @@ impl RenderBackend for Recorder {
             scene.tick,
             scene.particles.len(),
             scene.effect_meshes.len(),
-            scene.lights.len(),
+            scene.lighting.lights.len(),
             scene.sprites.iter().map(|s| (s.size.x, s.size.y)).collect(),
         ));
         // Stats that follow the scene, so the render dump can be checked

@@ -170,9 +170,9 @@ impl Clouds {
     /// the scene's light and fog, before adding weather's own atmosphere.
     pub fn light_scene(&self, scene: &mut crate::RenderScene) {
         let (sun, sky) = self.light();
-        scene.light.cover(sun);
+        scene.lighting.light.cover(sun);
         if !scene.sky_captured() {
-            scene.environment.intensity *= sky;
+            scene.lighting.environment.intensity *= sky;
         }
         if let Some(fog) = &mut scene.atmosphere.fog {
             (fog.color, fog.sun_color) = self.fog_under(fog.color, fog.sun_color);

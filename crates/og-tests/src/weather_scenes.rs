@@ -205,7 +205,7 @@ fn street() -> RenderScene {
                     ..Default::default()
                 },
             );
-            scene.lights.push(Light {
+            scene.lighting.lights.push(Light {
                 kind: LightKind::Point,
                 position: Vec3::new(side * 4.0, 4.2, z),
                 color: Vec3::new(1.0, 0.72, 0.45),
@@ -578,7 +578,7 @@ pub fn cloth_with(left: StandardMaterial, right: StandardMaterial) -> RenderScen
     );
     // The set's +z (towards the camera) turned 40 degrees off the sun's
     // bearing: lit from over the viewer's shoulder.
-    let sun = scene.light.direction_to_light;
+    let sun = scene.lighting.light.direction_to_light;
     let turn = Quat::from_rotation_y(sun.x.atan2(sun.z) + 0.7);
     let sheet = scene.add_mesh(drape(2.2, 2.6));
     let ball = scene.add_mesh(shapes::sphere(64, 48));

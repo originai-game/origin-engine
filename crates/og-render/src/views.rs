@@ -691,7 +691,7 @@ impl Views {
             );
             let frustum = crate::Frustum::from_view_proj(p.frame.view_proj);
             slot.clusters.build_kept(
-                &scene.lights,
+                &scene.lighting.lights,
                 kept,
                 &crate::clusters::ClusterView {
                     camera: &p.frame,

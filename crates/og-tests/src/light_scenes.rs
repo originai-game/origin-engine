@@ -61,9 +61,9 @@ fn put(scene: &mut RenderScene, mesh: MeshData, m: StandardMaterial, t: Mat4) {
 }
 
 fn dark(scene: &mut RenderScene, ambient: f32) {
-    scene.light.intensity = 0.0;
-    scene.light.cast_shadows = false;
-    scene.environment = Environment {
+    scene.lighting.light.intensity = 0.0;
+    scene.lighting.light.cast_shadows = false;
+    scene.lighting.environment = Environment {
         intensity: ambient,
         background: Background::Color(Vec3::new(0.004, 0.006, 0.015)),
         ..Default::default()
@@ -151,7 +151,7 @@ pub fn rect_lights_scene() -> RenderScene {
             Vec3::new(-0.2, 0.5, -0.4),
         ),
     );
-    scene.lights = vec![
+    scene.lighting.lights = vec![
         // Facing down: right × up = +y, so up is -z.
         rect(
             Vec3::new(-2.6, 2.4, -0.8),
@@ -182,7 +182,7 @@ pub fn rect_lights_scene() -> RenderScene {
             false,
         ),
     ];
-    for l in scene.lights.clone() {
+    for l in scene.lighting.lights.clone() {
         fixture(&mut scene, &l);
     }
     scene.camera = Camera {
@@ -266,7 +266,7 @@ pub fn light_cookies_scene() -> RenderScene {
             _ => [8, 8, 8],
         }
     }));
-    scene.lights = vec![
+    scene.lighting.lights = vec![
         Light {
             kind: LightKind::Spot {
                 direction: Vec3::new(0.15, -1.0, -0.55).normalize(),
@@ -288,7 +288,7 @@ pub fn light_cookies_scene() -> RenderScene {
             cast_shadows: false,
         },
     ];
-    scene.light_cookies = vec![
+    scene.lighting.light_cookies = vec![
         LightCookie {
             light: 0,
             texture: glass,
@@ -325,13 +325,13 @@ pub fn light_cookies_scene() -> RenderScene {
 pub fn volumetric_fog_scene() -> RenderScene {
     let mut scene = RenderScene::new();
     let sun = Vec3::new(0.15, 0.32, -1.0).normalize();
-    scene.light.direction_to_light = sun;
-    scene.light.intensity = 4.0;
-    scene.light.color = Vec3::new(1.0, 0.9, 0.75);
-    scene.light.cast_shadows = true;
-    scene.environment.sky.sun_direction = sun;
-    scene.environment.intensity = 0.15;
-    scene.environment.background = Background::Color(Vec3::new(0.05, 0.06, 0.09));
+    scene.lighting.light.direction_to_light = sun;
+    scene.lighting.light.intensity = 4.0;
+    scene.lighting.light.color = Vec3::new(1.0, 0.9, 0.75);
+    scene.lighting.light.cast_shadows = true;
+    scene.lighting.environment.sky.sun_direction = sun;
+    scene.lighting.environment.intensity = 0.15;
+    scene.lighting.environment.background = Background::Color(Vec3::new(0.05, 0.06, 0.09));
     let stone = matte(Vec3::new(0.55, 0.5, 0.45), 0.9);
     put(&mut scene, shapes::plane(40.0, 1.0), stone, Mat4::IDENTITY);
     // The wall: piers between three slots 0.5 m wide, 0.6 m thick.
@@ -355,7 +355,7 @@ pub fn volumetric_fog_scene() -> RenderScene {
         stone,
         Mat4::from_translation(Vec3::new(0.0, 5.5, -3.0)),
     );
-    scene.lights = vec![Light {
+    scene.lighting.lights = vec![Light {
         kind: LightKind::Spot {
             direction: Vec3::new(-0.2, -1.0, 0.1).normalize(),
             angle_degrees: 22.0,
@@ -611,7 +611,7 @@ fn cornell_box(
     // Centre and radius: resting on the floor.
     let ball = (p(-0.55, 0.22, 0.55), 0.22);
 
-    scene.lights.push(spot);
+    scene.lighting.lights.push(spot);
     put(
         scene,
         shapes::sphere(32, 16),
@@ -738,7 +738,7 @@ fn cornell_box(
             })
             .collect();
         let handle = scene.add_mesh(lit);
-        scene.baked.meshes.insert(
+        scene.lighting.baked.meshes.insert(
             handle.index(),
             BakedMesh {
                 pages: pages.clone(),
@@ -747,7 +747,7 @@ fn cornell_box(
         );
         place(scene, i, handle, color);
     }
-    scene.baked.volumes.push(ProbeVolume {
+    scene.lighting.baked.volumes.push(ProbeVolume {
         min: volume.min,
         max: volume.max,
         counts: volume.counts,
@@ -770,10 +770,10 @@ pub fn rect_meadow_scene(grass: bool) -> (RenderScene, [Vec3; 2]) {
     } else {
         island_view("near")
     };
-    scene.light.intensity = 0.0;
-    scene.light.cast_shadows = false;
-    scene.environment.intensity = 0.02;
-    scene.environment.background = Background::Color(Vec3::new(0.004, 0.006, 0.015));
+    scene.lighting.light.intensity = 0.0;
+    scene.lighting.light.cast_shadows = false;
+    scene.lighting.environment.intensity = 0.02;
+    scene.lighting.environment.background = Background::Color(Vec3::new(0.004, 0.006, 0.015));
     scene.atmosphere.fog = None;
     let eye = scene.camera.position;
     let ahead = (scene.camera.target - eye) * Vec3::new(1.0, 0.0, 1.0);
@@ -793,7 +793,7 @@ pub fn rect_meadow_scene(grass: bool) -> (RenderScene, [Vec3; 2]) {
         false,
     );
     fixture(&mut scene, &panel);
-    scene.lights = vec![panel];
+    scene.lighting.lights = vec![panel];
     (
         scene,
         [ground(foot - side * 2.5), ground(foot + side * 2.5)],
@@ -834,7 +834,7 @@ pub fn rect_shadow_scene(cast: bool) -> (RenderScene, [Vec3; 2]) {
     );
     panel.cast_shadows = cast;
     fixture(&mut scene, &panel);
-    scene.lights = vec![panel];
+    scene.lighting.lights = vec![panel];
     scene.camera = Camera {
         position: Vec3::new(0.6, 4.5, 5.5),
         target: Vec3::new(0.6, 0.3, 0.0),

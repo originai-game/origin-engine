@@ -59,7 +59,10 @@ impl Renderer {
             (cx.ctx, &mut *cx.encoder, &mut *cx.stats, cx.sky_group);
         // A secondary camera (views.rs): the main pass's draws
         // on its layers from its eye, then its resolve.
-        let (i, clear) = (i as usize, background_clear(&scene.environment.background));
+        let (i, clear) = (
+            i as usize,
+            background_clear(&scene.lighting.environment.background),
+        );
         let p = &view_plans[i];
         let frustum = Frustum::from_view_proj(p.frame.view_proj);
         // Its 2D light map, as its camera sees the lights.
@@ -141,7 +144,7 @@ impl Renderer {
                 )
                 .0;
             }
-            let sky = match scene.environment.background {
+            let sky = match scene.lighting.environment.background {
                 Background::Sky => Some(&self.sky.sky_pipeline),
                 Background::Procedural { .. } => Some(&self.sky.sky_look_pipeline),
                 Background::Color(_) => None,

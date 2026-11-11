@@ -237,7 +237,7 @@ pub(crate) fn register_render_dump(probe: &mut Probe, engine: u32) {
                     "shader": rs.scene.shaders().get(i).map(|s| s.name.clone()),
                     "error": e,
                 })).collect::<Vec<_>>(),
-                "reflectionProbes": rs.scene.reflection_probes.iter().map(|p| json!({
+                "reflectionProbes": rs.scene.lighting.reflection_probes.iter().map(|p| json!({
                     "entity": p.id,
                     "mode": if p.mode == og_render::ProbeMode::Realtime { "realtime" } else { "baked" },
                     "bakedFromCache": p.baked.is_some(),

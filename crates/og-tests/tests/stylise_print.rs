@@ -70,7 +70,7 @@ fn srgb_to_linear(c: u8) -> f32 {
 fn field(rgb: [u8; 3]) -> RenderScene {
     let mut scene = RenderScene::new();
     scene.look.post.tonemap = Tonemap::None;
-    scene.environment.background = Background::Color(Vec3::from(rgb.map(srgb_to_linear)));
+    scene.lighting.environment.background = Background::Color(Vec3::from(rgb.map(srgb_to_linear)));
     scene.camera = Camera {
         exposure: Exposure::linear(1.0),
         ..Default::default()
@@ -199,7 +199,8 @@ fn tone_posterize_keeps_a_colours_hue_as_its_light_moves() {
     // dimmer sun scales it, posterized to six tones without a dither.
     let lit = |rgb: [u8; 3], k: f32, mode: PosterizeMode| {
         let mut scene = field(rgb);
-        scene.environment.background = Background::Color(Vec3::from(rgb.map(srgb_to_linear)) * k);
+        scene.lighting.environment.background =
+            Background::Color(Vec3::from(rgb.map(srgb_to_linear)) * k);
         scene.look.stylise.quantize = Some(Quantize {
             posterize: 6,
             mode,

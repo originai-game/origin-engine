@@ -276,9 +276,9 @@ fn contact_shadows_never_darken_what_lies_behind_a_silhouette() {
             let take = |shadows: bool, on: bool| {
                 let mut s = scene();
                 s.look.post.tonemap = Tonemap::None;
-                s.lights[0].cast_shadows = shadows;
+                s.lighting.lights[0].cast_shadows = shadows;
                 if !on {
-                    s.lights[0].intensity = 0.0;
+                    s.lighting.lights[0].intensity = 0.0;
                 }
                 frame(&desc, &s, 1).0
             };
@@ -345,7 +345,7 @@ fn cached_shadow_layers_draw_what_fresh_ones_do() {
             ..scenes::base_desc()
         };
         let mut scene = scenes::point_spot_lights();
-        scene.light.cast_shadows = true;
+        scene.lighting.light.cast_shadows = true;
         // The sphere at (0.2, 0.5, -2.0), the last instance.
         let mover = scene.instances.len() - 1;
         let start = scene.instances[mover].transform;

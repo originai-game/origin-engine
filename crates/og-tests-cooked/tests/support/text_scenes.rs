@@ -120,7 +120,7 @@ fn shot(uis: &[&Ui], mut scene: RenderScene) -> (RenderScene, RenderDesc) {
     }
     scene.ui.overlay = Some(overlay);
     let bg = uis[0].theme().palette.backdrop.linear();
-    scene.environment.background = Background::Color(Vec3::new(bg[0], bg[1], bg[2]));
+    scene.lighting.environment.background = Background::Color(Vec3::new(bg[0], bg[1], bg[2]));
     scene.look.post.tonemap = Tonemap::None;
     let desc = RenderDesc {
         width: (v.width * v.dpr) as u32,

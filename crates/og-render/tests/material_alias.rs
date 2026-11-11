@@ -68,7 +68,7 @@ fn stage() -> (RenderScene, MaterialHandle, MaterialHandle) {
         projection: Projection::Orthographic { height: 4.0 },
         ..Default::default()
     };
-    scene.light.cast_shadows = false;
+    scene.lighting.light.cast_shadows = false;
     (scene, a, b)
 }
 

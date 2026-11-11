@@ -17,7 +17,7 @@ pub fn showcase_effects(scene: &mut RenderScene) {
     let fire = campfire(scene);
     logs(scene, Vec3::new(1.4, 0.0, 1.4));
     light_campfire(scene, &fire, Vec3::new(1.4, 0.0, 1.4), 100);
-    scene.lights.push(Light {
+    scene.lighting.lights.push(Light {
         kind: LightKind::Point,
         position: Vec3::new(1.4, 0.6, 1.4),
         color: Vec3::new(1.0, 0.55, 0.25),

@@ -60,14 +60,14 @@ pub fn grass_scene(view: &str) -> RenderScene {
             let sun = BACKLIT_SUN.normalize();
             // Late afternoon: a warm sun, its disc and glow drawn per pixel.
             let warm = Vec3::new(1.0, 0.82, 0.58);
-            scene.light = DirectionalLight {
+            scene.lighting.light = DirectionalLight {
                 direction_to_light: sun,
                 color: warm,
-                ..scene.light
+                ..scene.lighting.light
             };
-            scene.environment.sky.sun_direction = sun;
-            scene.environment.sky.sun_color = warm;
-            scene.environment.background = Background::Procedural {
+            scene.lighting.environment.sky.sun_direction = sun;
+            scene.lighting.environment.sky.sun_color = warm;
+            scene.lighting.environment.background = Background::Procedural {
                 sun_direction: sun,
                 sun_color: warm,
             };

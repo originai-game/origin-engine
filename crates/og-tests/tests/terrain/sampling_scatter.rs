@@ -154,9 +154,9 @@ fn strip_scene(transform: Mat4, from_side: bool) -> RenderScene {
         ..Terrain::new(h)
     });
     scene.atmosphere.fog = None;
-    scene.environment.background = Background::Color(Vec3::new(1.0, 0.0, 1.0));
+    scene.lighting.environment.background = Background::Color(Vec3::new(1.0, 0.0, 1.0));
     scene.look.post.tonemap = Tonemap::None;
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: Vec3::new(0.3, 1.0, 0.2),
         cast_shadows: false,
         ..Default::default()

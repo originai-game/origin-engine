@@ -400,13 +400,13 @@ pub fn effect_materials_scene() -> RenderScene {
 
 fn night_sky(scene: &mut RenderScene) {
     let moon = Vec3::new(-0.3, 0.6, -0.6);
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: moon,
         color: Vec3::new(0.5, 0.6, 1.0),
         intensity: 0.3,
         ..Default::default()
     };
-    scene.environment = Environment {
+    scene.lighting.environment = Environment {
         sky: ProceduralSky {
             sun_direction: moon,
             sun_color: Vec3::new(0.3, 0.35, 0.5),

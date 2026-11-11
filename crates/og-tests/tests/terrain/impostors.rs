@@ -67,7 +67,7 @@ fn a_leaf_card_lets_the_sun_through_from_behind() {
 /// the frame's middle) between their mesh and their card.
 fn crossfade_scene() -> RenderScene {
     let mut scene = is::impostor_scatter_scene(40.0);
-    scene.light.cast_shadows = false;
+    scene.lighting.light.cast_shadows = false;
     scene
 }
 

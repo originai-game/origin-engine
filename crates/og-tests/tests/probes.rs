@@ -135,7 +135,7 @@ fn local_lights_reach_terrain_and_fluids_in_a_capture() {
         probe: Some(1.0),
     });
     let ny0 = face_mean(&render(&desc, &meadow, Some(7)).1.unwrap(), 3);
-    meadow.lights.push(blue(
+    meadow.lighting.lights.push(blue(
         og_tests::probe_scenes::outdoor_probe() - glam::Vec3::Y * 1.2,
     ));
     let ny = face_mean(&render(&desc, &meadow, Some(7)).1.unwrap(), 3);
@@ -148,6 +148,7 @@ fn local_lights_reach_terrain_and_fluids_in_a_capture() {
     add_floor_fluid(&mut fluid);
     let px0 = face_mean(&render(&desc, &fluid, Some(FLOOR_PROBE.0)).1.unwrap(), 0);
     fluid
+        .lighting
         .lights
         .push(blue(FLOOR_PROBE.1 + glam::Vec3::new(0.6, 0.0, 0.0)));
     let px = face_mean(&render(&desc, &fluid, Some(FLOOR_PROBE.0)).1.unwrap(), 0);

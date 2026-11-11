@@ -53,7 +53,7 @@ fn mean(v: &[f32]) -> f32 {
 /// filling the frame).
 fn plain(m: StandardMaterial, wall: bool, weather: Option<SurfaceWeather>) -> RgbaImage {
     let mut scene = RenderScene::new();
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: Vec3::new(0.3, 0.8, 0.5).normalize(),
         intensity: 2.0,
         cast_shadows: false,
@@ -200,7 +200,7 @@ fn plain_with(
     weather: Option<SurfaceWeather>,
 ) -> RgbaImage {
     let mut scene = RenderScene::new();
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: Vec3::new(0.3, 0.8, 0.5).normalize(),
         intensity: 2.0,
         cast_shadows: false,

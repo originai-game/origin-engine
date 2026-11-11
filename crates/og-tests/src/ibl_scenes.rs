@@ -67,14 +67,14 @@ pub fn environment_scene() -> Result<RenderScene, String> {
             );
         }
     }
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         intensity: 0.0,
         cast_shadows: false,
         ..Default::default()
     };
-    scene.environment.intensity = 1.0;
-    scene.environment.background = Background::Sky;
-    scene.environment_map = Some(EnvironmentMap {
+    scene.lighting.environment.intensity = 1.0;
+    scene.lighting.environment.background = Background::Sky;
+    scene.lighting.environment_map = Some(EnvironmentMap {
         rotation: 0.6,
         ..EnvironmentMap::new(map)
     });
@@ -153,7 +153,7 @@ pub fn outdoor_pixels() -> (u32, u32, Vec<f32>) {
 /// as in it, only the background softens.
 pub fn blurry_scene() -> Result<RenderScene, String> {
     let mut scene = environment_scene()?;
-    scene.environment.background_blurriness = 0.5;
+    scene.lighting.environment.background_blurriness = 0.5;
     Ok(scene)
 }
 
@@ -162,7 +162,7 @@ pub fn blurry_scene() -> Result<RenderScene, String> {
 pub fn blend_scene(weight: f32) -> Result<RenderScene, String> {
     let mut scene = environment_scene()?;
     let to = scene.add_environment_map(outdoor_map(64)?);
-    if let Some(m) = &mut scene.environment_map {
+    if let Some(m) = &mut scene.lighting.environment_map {
         m.blend = Some(og_render::EnvironmentBlend { to, weight });
     }
     Ok(scene)
@@ -253,19 +253,19 @@ pub fn grounded_scene(grounded: bool) -> Result<RenderScene, String> {
             Mat4::from_translation(at) * Mat4::from_scale(Vec3::splat(2.0 * r)),
         );
     }
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         intensity: 0.0,
         cast_shadows: false,
         ..Default::default()
     };
-    scene.environment.intensity = 1.0;
-    scene.environment.background = Background::Sky;
-    scene.environment.ground = grounded.then_some(og_render::GroundProjection {
+    scene.lighting.environment.intensity = 1.0;
+    scene.lighting.environment.background = Background::Sky;
+    scene.lighting.environment.ground = grounded.then_some(og_render::GroundProjection {
         height: 1.5,
         radius: 40.0,
         center: Vec3::ZERO,
     });
-    scene.environment_map = Some(EnvironmentMap::new(map));
+    scene.lighting.environment_map = Some(EnvironmentMap::new(map));
     scene.camera = Camera {
         position: Vec3::new(0.0, 1.6, 5.5),
         target: Vec3::new(0.0, 0.4, 0.0),
@@ -306,7 +306,7 @@ pub fn uncooked_scene(cooked: bool) -> Result<RenderScene, String> {
             irradiance.finish(),
         )?
     };
-    if let Some(m) = &mut scene.environment_map {
+    if let Some(m) = &mut scene.lighting.environment_map {
         m.map = map;
     }
     Ok(scene)

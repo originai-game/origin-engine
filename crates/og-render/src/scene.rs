@@ -123,19 +123,10 @@ pub struct RenderScene {
     /// Objects to draw this frame, in any order.
     pub instances: Vec<Instance>,
     pub camera: Camera,
-    pub light: DirectionalLight,
-    /// Point and spot lights; the first [`MAX_LIGHTS`] are drawn.
-    pub lights: Vec<Light>,
-    pub environment: Environment,
-    /// A cooked environment map lighting the scene instead of
-    /// [`Environment::sky`] (three.js `scene.environment`), drawn as the
-    /// background by [`Background::Sky`]; `None`: the sky lights it.
-    pub environment_map: Option<crate::EnvironmentMap>,
-    /// A hemisphere light, as three.js `HemisphereLight`: diffuse-only
-    /// ambient irradiance `mix(ground, sky, 0.5 n.y + 0.5) * intensity`
-    /// (sky, ground linear RGB; intensity 0: off). Unlike light baked into
-    /// the environment map it adds no reflection.
-    pub hemisphere: ([f32; 3], [f32; 3], f32),
+    /// The 3D lighting: the sun and the local lights, their cookies and the
+    /// baked light and light volumes, the reflection probes, the hemisphere and
+    /// the environment.
+    pub lighting: SceneLighting,
     /// The frame's look: its post effects and stylise, the custom post passes
     /// and their parameters, and the colour filter.
     pub look: SceneLook,
@@ -207,9 +198,6 @@ pub struct RenderScene {
     pub sprite_meshes: Vec<crate::SpriteMesh>,
     /// Screen shake applied to the camera.
     pub shake: CameraShake,
-    /// Reflection probes: boxes reflecting a cube captured inside them
-    /// instead of the environment (the first [`crate::MAX_REFLECTION_PROBES`]).
-    pub reflection_probes: Vec<crate::ReflectionProbe>,
     /// Each instance's transform in the previous frame (same order as
     /// `instances`), for per-object motion blur. Ignored unless its length
     /// equals `instances`'; then only the camera's motion blurs.
@@ -262,16 +250,6 @@ pub struct RenderScene {
     /// What the frame may cost: switches and sizes over what the rest of
     /// the scene asks for (`quality.rs`). The default draws all of it.
     pub quality: crate::RenderQuality,
-    /// Baked lighting: lightmap pages, the lightmap uvs of the meshes drawn
-    /// with them, light volumes (`lightmap.rs`). Empty by default.
-    pub baked: crate::BakedLighting,
-    /// Light volumes relit while the game runs (`probe_grid.rs`), sampled
-    /// over the baked ones; the first [`crate::PROBE_VOLUMES`] with the
-    /// baked ones fit. Empty by default.
-    pub light_volumes: Vec<crate::RealtimeLightVolume>,
-    /// Light cookies of point and spot lights, by index into
-    /// [`RenderScene::lights`] (`area.rs`).
-    pub light_cookies: Vec<crate::LightCookie>,
     /// Planar 3D water surfaces, drawn after the opaque scene and the sky.
     pub water: Vec<crate::Water>,
     /// Terrains drawn this frame (clipmaps of [`RenderScene::add_terrain`] data).

@@ -102,12 +102,12 @@ pub fn ground_grid(repeat: f32) -> RenderScene {
         ..Default::default()
     };
     let sun = Vec3::new(0.5, 0.7, 0.3);
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: sun,
         intensity: 4.0,
         ..Default::default()
     };
-    scene.environment.sky.sun_direction = sun;
+    scene.lighting.environment.sky.sun_direction = sun;
     scene
 }
 
@@ -175,12 +175,12 @@ pub fn cascades_200m(tall: bool) -> RenderScene {
         ..Default::default()
     };
     let sun = Vec3::new(0.8, 0.45, 0.25);
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: sun,
         intensity: 4.0,
         ..Default::default()
     };
-    scene.environment.sky.sun_direction = sun;
+    scene.lighting.environment.sky.sun_direction = sun;
     scene
 }
 
@@ -212,7 +212,7 @@ pub fn point_spot_lights() -> RenderScene {
     for (x, z) in [(-1.2, -0.5), (1.5, 0.3), (0.2, -2.0)] {
         scene.add_instance(sphere, metal, Mat4::from_translation(Vec3::new(x, 0.5, z)));
     }
-    scene.lights = vec![
+    scene.lighting.lights = vec![
         // Shadowed: a spot from above-left, and a point light among the pillars.
         Light {
             kind: LightKind::Spot {
@@ -275,9 +275,9 @@ pub fn point_spot_lights() -> RenderScene {
             cast_shadows: false,
         },
     ];
-    scene.light.intensity = 0.0;
-    scene.light.cast_shadows = false;
-    scene.environment = Environment {
+    scene.lighting.light.intensity = 0.0;
+    scene.lighting.light.cast_shadows = false;
+    scene.lighting.environment = Environment {
         intensity: 0.04,
         background: Background::Color(Vec3::new(0.004, 0.006, 0.015)),
         ..Default::default()
@@ -367,8 +367,8 @@ pub(super) fn emissive_spheres() -> RenderScene {
                 * Mat4::from_scale(Vec3::splat(0.8 + 0.2 * (i % 3) as f32)),
         );
     }
-    scene.light.intensity = 0.3;
-    scene.environment = Environment {
+    scene.lighting.light.intensity = 0.3;
+    scene.lighting.environment = Environment {
         intensity: 0.08,
         background: Background::Color(Vec3::new(0.01, 0.012, 0.02)),
         ..Default::default()
@@ -408,12 +408,12 @@ pub fn dim_scene(brightness: f32) -> RenderScene {
         );
     }
     let sun = Vec3::new(-0.6, 0.25, 0.4);
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: sun,
         intensity: 0.15 * brightness,
         ..Default::default()
     };
-    scene.environment = Environment {
+    scene.lighting.environment = Environment {
         sky: ProceduralSky {
             sun_direction: sun,
             sun_color: Vec3::new(1.0, 0.7, 0.45),

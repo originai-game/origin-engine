@@ -265,14 +265,14 @@ pub fn island_scene() -> RenderScene {
 /// light haze.
 pub fn afternoon(scene: &mut RenderScene) {
     let sun = Vec3::new(0.62, 0.45, 0.4);
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: sun,
         color: Vec3::new(1.0, 0.93, 0.82),
         intensity: 3.2,
         max_shadow_distance: 400.0,
         ..Default::default()
     };
-    scene.environment = Environment {
+    scene.lighting.environment = Environment {
         sky: ProceduralSky {
             sun_direction: sun,
             sun_color: Vec3::new(1.0, 0.9, 0.76),
@@ -407,8 +407,8 @@ fn posts(scene: &mut RenderScene) {
 pub fn water_shadows_scene() -> RenderScene {
     let mut scene = island_scene();
     let sun = Vec3::new(-0.8, 0.3, 0.35);
-    scene.light.direction_to_light = sun;
-    scene.environment.sky.sun_direction = sun;
+    scene.lighting.light.direction_to_light = sun;
+    scene.lighting.environment.sky.sun_direction = sun;
     lake(
         &mut scene,
         Water {
@@ -670,8 +670,8 @@ pub fn holes_scene() -> RenderScene {
     );
     afternoon(&mut scene);
     let sun = Vec3::new(0.2, 0.95, 0.15).normalize();
-    scene.light.direction_to_light = sun;
-    scene.environment.sky.sun_direction = sun;
+    scene.lighting.light.direction_to_light = sun;
+    scene.lighting.environment.sky.sun_direction = sun;
     scene.camera = camera_at(c + Vec3::new(0.0, 30.0, 24.0), c);
     scene
 }
@@ -759,14 +759,14 @@ pub fn layers_scene(painted: bool) -> RenderScene {
 /// light, so their frames measure the texture, not the shading.
 fn plain_light(scene: &mut RenderScene) {
     let sun = Vec3::new(0.3, 1.0, 0.2);
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: sun,
         color: Vec3::ONE,
         intensity: 2.5,
         max_shadow_distance: 200.0,
         ..Default::default()
     };
-    scene.environment = Environment {
+    scene.lighting.environment = Environment {
         sky: ProceduralSky {
             sun_direction: sun,
             sun_color: Vec3::ONE,
@@ -872,7 +872,7 @@ pub fn steep_scene(project_slope: f32) -> RenderScene {
     });
     plain_light(&mut scene);
     // The sun from the camera's side, so the face is lit.
-    scene.light.direction_to_light = Vec3::new(-0.8, 0.5, 0.3);
+    scene.lighting.light.direction_to_light = Vec3::new(-0.8, 0.5, 0.3);
     scene.camera = camera_at(
         Vec3::new(STEEP_FOOT - 30.0, STEEP_HEIGHT * 0.5, 0.0),
         Vec3::new(STEEP_FOOT, STEEP_HEIGHT * 0.5, 0.0),
@@ -925,11 +925,11 @@ pub fn horizon_scene(horizon: bool) -> RenderScene {
     plain_light(&mut scene);
     let e = HORIZON_SUN.to_radians();
     let sun = Vec3::new(e.cos(), e.sin(), 0.0);
-    scene.light.direction_to_light = sun;
+    scene.lighting.light.direction_to_light = sun;
     // A clear evening: the sun carries the plain's light.
-    scene.light.intensity = 7.0;
-    scene.environment.sky.sun_direction = sun;
-    scene.environment.intensity = 0.25;
+    scene.lighting.light.intensity = 7.0;
+    scene.lighting.environment.sky.sun_direction = sun;
+    scene.lighting.environment.intensity = 0.25;
     scene.camera = camera_at(
         Vec3::new(-1500.0, 120.0, 0.0),
         Vec3::new(HORIZON_RIDGE, 0.0, 0.0),
@@ -1019,8 +1019,8 @@ pub fn cliff_scene(blend: f32) -> RenderScene {
     });
     plain_light(&mut scene);
     // The sun from the valley's side, so the face and the ground are lit alike.
-    scene.light.direction_to_light = Vec3::new(0.7, 0.65, 0.3).normalize();
-    scene.environment.sky.sun_direction = scene.light.direction_to_light;
+    scene.lighting.light.direction_to_light = Vec3::new(0.7, 0.65, 0.3).normalize();
+    scene.lighting.environment.sky.sun_direction = scene.lighting.light.direction_to_light;
     scene.camera = camera_at(CLIFF_EYE, CLIFF_FOOT);
     scene
 }
@@ -1272,9 +1272,9 @@ pub fn displaced_scene(displacement: f32) -> RenderScene {
     });
     plain_light(&mut scene);
     let sun = Vec3::new(-0.9, 0.35, 0.25);
-    scene.light.direction_to_light = sun;
-    scene.light.max_shadow_distance = 60.0;
-    scene.environment.sky.sun_direction = sun;
+    scene.lighting.light.direction_to_light = sun;
+    scene.lighting.light.max_shadow_distance = 60.0;
+    scene.lighting.environment.sky.sun_direction = sun;
     let eye_z = DISPLACED_CREST + 4.0;
     scene.camera = camera_at(
         Vec3::new(0.0, displaced_height(eye_z) + 0.3, eye_z),

@@ -22,12 +22,12 @@ use std::sync::Arc;
 
 /// A sunlit sky that also lights the scene.
 fn sky(scene: &mut RenderScene, sun: Vec3, intensity: f32) {
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: sun,
         intensity,
         ..Default::default()
     };
-    scene.environment = Environment {
+    scene.lighting.environment = Environment {
         sky: ProceduralSky {
             sun_direction: sun,
             ..Default::default()
@@ -204,7 +204,7 @@ pub fn water_glint_scene() -> RenderScene {
     sky(&mut scene, GLINT_SUN, 1.0);
     // The sky's own sun disk high behind the camera: the glint is the
     // light's mirror image, not the disk's reflection.
-    scene.environment.sky.sun_direction = Vec3::new(0.2, 0.8, 0.6);
+    scene.lighting.environment.sky.sun_direction = Vec3::new(0.2, 0.8, 0.6);
     plain_ground(&mut scene, 200.0, Vec3::new(0.2, 0.18, 0.15));
     scene.water.push(Water {
         transform: Mat4::from_translation(Vec3::new(0.0, 1.0, 0.0)),
@@ -260,7 +260,7 @@ pub const LEAF_GAP: f32 = 0.02;
 pub fn shadow_box_scene() -> RenderScene {
     let mut scene = RenderScene::new();
     sky(&mut scene, BOX_SUN, 3.0);
-    scene.environment.intensity = 0.4;
+    scene.lighting.environment.intensity = 0.4;
     plain_ground(&mut scene, 200.0, Vec3::splat(0.7));
     let post = scene.add_mesh(shapes::cuboid(Vec3::new(1.0, 3.0, 1.0)));
     let wood = scene.add_standard_material(StandardMaterial {
@@ -304,11 +304,11 @@ pub fn shadow_box_scene() -> RenderScene {
         backing,
         Mat4::from_rotation_translation(face, BOX_LEAF - l * LEAF_GAP),
     );
-    scene.light.shadow_box = 8.0;
-    scene.light.shadow_focus = 12.0;
-    scene.light.shadow_focus_drop = 6.0;
-    scene.light.shadow_bias = 0.04;
-    scene.light.shadow_normal_bias = 0.04;
+    scene.lighting.light.shadow_box = 8.0;
+    scene.lighting.light.shadow_focus = 12.0;
+    scene.lighting.light.shadow_focus_drop = 6.0;
+    scene.lighting.light.shadow_bias = 0.04;
+    scene.lighting.light.shadow_normal_bias = 0.04;
     scene.camera = Camera {
         position: BOX_EYE,
         target: Vec3::new(0.0, 0.0, -6.0),
@@ -332,7 +332,7 @@ pub const HEMI_CEILING: f32 = 2.4;
 pub fn hemisphere_scene() -> RenderScene {
     let mut scene = RenderScene::new();
     sky(&mut scene, Vec3::new(0.3, 0.8, 0.4), 0.0);
-    scene.light.cast_shadows = false;
+    scene.lighting.light.cast_shadows = false;
     plain_ground(&mut scene, 40.0, Vec3::splat(0.8));
     let ceiling = scene.add_mesh(shapes::plane(40.0, 1.0));
     let white = scene.add_standard_material(StandardMaterial {
@@ -354,7 +354,7 @@ pub fn hemisphere_scene() -> RenderScene {
         ..Default::default()
     });
     scene.add_instance(tile, metal, Mat4::from_translation(HEMI_METAL));
-    scene.hemisphere = ([1.0, 0.0, 0.0], [0.0, 0.0, 1.0], 2.0);
+    scene.lighting.hemisphere = ([1.0, 0.0, 0.0], [0.0, 0.0, 1.0], 2.0);
     scene.camera = Camera {
         position: Vec3::new(0.0, 1.2, 6.0),
         target: Vec3::new(0.0, 1.2, -4.0),
@@ -479,8 +479,8 @@ pub fn bloom_unreal(mut scene: RenderScene) -> RenderScene {
 /// coverage (unlit; the desc asks for 4x MSAA in `scenes::build`).
 pub fn alpha_to_coverage_scene(a2c: bool) -> RenderScene {
     let mut scene = RenderScene::new();
-    scene.environment.background = Background::Color(Vec3::ZERO);
-    scene.light.intensity = 0.0;
+    scene.lighting.environment.background = Background::Color(Vec3::ZERO);
+    scene.lighting.light.intensity = 0.0;
     scene.look.post.tonemap = Tonemap::None;
     let ramp = scene.add_texture(texture(256, ColorSpace::Srgb, |u, v| {
         let r = (Vec2::new(u, v) - 0.5).length() * 2.0;
@@ -549,7 +549,7 @@ pub const HOOK_EYE: Vec3 = Vec3::new(0.0, 1.0, 5.0);
 /// seen).
 pub fn hooks_eye_front_scene() -> RenderScene {
     let mut scene = RenderScene::new();
-    scene.environment.background = Background::Color(Vec3::ZERO);
+    scene.lighting.environment.background = Background::Color(Vec3::ZERO);
     scene.look.post.tonemap = Tonemap::None;
     let shader = scene.add_shader(eye_front_shader());
     let m = scene.add_standard_material(StandardMaterial {
@@ -779,7 +779,7 @@ pub fn flags_scatter() -> TerrainScatter {
 pub fn terrain_flags_scene(visible: bool, cast_shadows: bool) -> RenderScene {
     let mut scene = RenderScene::new();
     sky(&mut scene, Vec3::new(1.0, 0.7, 0.2), 3.0);
-    scene.environment.background = Background::Color(Vec3::new(1.0, 0.0, 1.0));
+    scene.lighting.environment.background = Background::Color(Vec3::new(1.0, 0.0, 1.0));
     let h = scene.add_terrain(flags_terrain());
     scene.terrains.push(Terrain {
         layers: vec![TerrainLayer {

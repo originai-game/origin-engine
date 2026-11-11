@@ -24,13 +24,13 @@ fn colour(r: f32, g: f32, b: f32) -> StandardMaterial {
 pub fn room() -> RenderScene {
     let mut scene = RenderScene::new();
     let sun = Vec3::new(-0.4, 0.8, 0.5);
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: sun,
         intensity: 3.0,
         ..Default::default()
     };
-    scene.environment.sky.sun_direction = sun;
-    scene.environment.intensity = 0.6;
+    scene.lighting.environment.sky.sun_direction = sun;
+    scene.lighting.environment.intensity = 0.6;
     let mut put = |mesh, m: StandardMaterial, t: Mat4| {
         let mesh = scene.add_mesh(mesh);
         let h = scene.add_standard_material(m);
@@ -214,13 +214,13 @@ pub fn split_scene() -> RenderScene {
 pub fn full_dissolve_scene(amount: f32) -> RenderScene {
     let mut scene = RenderScene::new();
     let sun = Vec3::new(-0.7, 0.55, 0.3);
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: sun,
         intensity: 3.5,
         ..Default::default()
     };
-    scene.environment.sky.sun_direction = sun;
-    scene.environment.intensity = 0.5;
+    scene.lighting.environment.sky.sun_direction = sun;
+    scene.lighting.environment.intensity = 0.5;
     let ground = scene.add_mesh(shapes::plane(16.0, 4.0));
     let grey = scene.add_standard_material(colour(0.6, 0.6, 0.6));
     scene.add_instance(ground, grey, Mat4::IDENTITY);
@@ -397,7 +397,7 @@ pub fn view_kinds_scene(kinds: &[ViewKind], view_layers: u32, tick: u64) -> Rend
 /// view's camera leaves out, writes no depth.
 pub fn depth_scene() -> RenderScene {
     let mut scene = RenderScene::new();
-    scene.environment.sky.sun_direction = Vec3::new(-0.4, 0.8, 0.5);
+    scene.lighting.environment.sky.sun_direction = Vec3::new(-0.4, 0.8, 0.5);
     scene.look.post.tonemap = og_render::Tonemap::None;
     let grey = scene.add_standard_material(colour(0.6, 0.6, 0.6));
     let ground = scene.add_mesh(shapes::plane(12.0, 12.0));
@@ -492,13 +492,13 @@ impl ViewFx {
 /// other way, along +z, so the left half never shows the effect.
 pub fn view_fx_scene(fx: ViewFx, on: bool) -> RenderScene {
     let mut scene = RenderScene::new();
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: Vec3::new(0.2, 0.5, 1.0),
         intensity: 1.5,
         ..Default::default()
     };
-    scene.environment.intensity = 0.3;
-    scene.environment.background = og_render::Background::Color(Vec3::splat(0.02));
+    scene.lighting.environment.intensity = 0.3;
+    scene.lighting.environment.background = og_render::Background::Color(Vec3::splat(0.02));
     let wall = scene.add_mesh(shapes::cuboid(Vec3::new(20.0, 20.0, 0.2)));
     let grey = scene.add_standard_material(colour(0.25, 0.25, 0.25));
     scene.add_instance(

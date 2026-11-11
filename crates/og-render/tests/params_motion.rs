@@ -67,7 +67,7 @@ fn a_parameter_change_moves_in_its_own_frame_only() {
         target: Vec3::ZERO,
         ..Default::default()
     };
-    scene.light.cast_shadows = false;
+    scene.lighting.light.cast_shadows = false;
     let mut renderer = Renderer::new_blocking(&RenderDesc {
         width: SIZE,
         height: SIZE,

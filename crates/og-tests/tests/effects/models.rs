@@ -178,7 +178,7 @@ fn deformed_vertices_replace_the_mesh() {
                 scene.skinned_instances.push(inst);
             }
         }
-        scene.environment.background = Background::Color(Vec3::ZERO);
+        scene.lighting.environment.background = Background::Color(Vec3::ZERO);
         scene.camera = Camera {
             position: Vec3::new(0.0, 1.6, 6.0),
             target: Vec3::new(0.0, 1.6, 0.0),

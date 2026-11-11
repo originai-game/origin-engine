@@ -53,7 +53,7 @@ fn a_replaced_mesh_draws_its_new_shape() {
         ..Default::default()
     });
     s.add_instance(mesh, white, Mat4::IDENTITY);
-    s.environment.background = og_render::Background::Color(Vec3::ZERO);
+    s.lighting.environment.background = og_render::Background::Color(Vec3::ZERO);
     s.camera = Camera {
         position: Vec3::new(0.0, 0.0, 8.0),
         target: Vec3::ZERO,
@@ -131,9 +131,9 @@ fn a_replaced_mesh_draws_its_new_shape() {
 fn solar_probe() -> RenderScene {
     let mut scene = RenderScene::new();
     let sun = Vec3::new(0.0, 0.5, -0.8660254);
-    scene.environment.sky.sun_direction = sun;
-    scene.environment.sky.sun_color = Vec3::ONE;
-    scene.environment.sky.look = Some(og_render::SkyLook {
+    scene.lighting.environment.sky.sun_direction = sun;
+    scene.lighting.environment.sky.sun_color = Vec3::ONE;
+    scene.lighting.environment.sky.look = Some(og_render::SkyLook {
         physical: Some(og_render::PhysicalAtmosphere::EARTH),
         sun_size: 2.0,
         sun_intensity: 40.0,
@@ -142,7 +142,7 @@ fn solar_probe() -> RenderScene {
         moon_size: 0.0,
         ..Default::default()
     });
-    scene.environment.background = og_render::Background::Procedural {
+    scene.lighting.environment.background = og_render::Background::Procedural {
         sun_direction: sun,
         sun_color: Vec3::ONE,
     };
@@ -179,11 +179,18 @@ fn a_moving_hdr_sun_stays_stable_through_temporal_resolves() {
         ("smaa-t2x", og_render::Antialias::SmaaT2x, 1.0),
     ] {
         let mut scene = solar_probe();
-        scene.environment.sky.look.as_mut().unwrap().sun_size = 0.5;
+        scene
+            .lighting
+            .environment
+            .sky
+            .look
+            .as_mut()
+            .unwrap()
+            .sun_size = 0.5;
         scene.camera.projection = og_render::Projection::Perspective {
             fov_y_degrees: 50.0,
         };
-        let sun = scene.environment.sky.sun_direction;
+        let sun = scene.lighting.environment.sky.sun_direction;
         let mut renderer = Renderer::new_blocking(&og_render::RenderDesc {
             width: 320,
             height: 180,

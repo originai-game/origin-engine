@@ -33,9 +33,9 @@ fn center(img: &RgbaImage) -> [u8; 3] {
 /// Unlit, black background, looking straight down at the origin.
 fn flat_scene() -> RenderScene {
     let mut scene = RenderScene::new();
-    scene.environment.background = Background::Color(Vec3::ZERO);
+    scene.lighting.environment.background = Background::Color(Vec3::ZERO);
     scene.look.post.tonemap = Tonemap::None;
-    scene.light.cast_shadows = false;
+    scene.lighting.light.cast_shadows = false;
     scene.camera = Camera {
         position: Vec3::new(0.0, 10.0, 0.0),
         target: Vec3::ZERO,
@@ -151,7 +151,7 @@ fn environment_maps_texture_arrays_and_palettes_leave_the_frame_and_its_bytes() 
     let palette = scene.add_palette(Palette {
         colors: vec![[0, 0, 0], [255, 255, 255]],
     });
-    scene.environment_map = Some(EnvironmentMap::new(env));
+    scene.lighting.environment_map = Some(EnvironmentMap::new(env));
     scene.look.stylise.quantize = Some(Quantize {
         posterize: 0,
         mode: Default::default(),
@@ -191,7 +191,7 @@ fn environment_maps_texture_arrays_and_palettes_leave_the_frame_and_its_bytes() 
         }
         other => panic!("a frame lit by a removed map: {:?}", other.map(|_| ())),
     }
-    scene.environment_map = None;
+    scene.lighting.environment_map = None;
     assert!(scene.remove_palette(palette));
     assert!(scene.palette(palette).is_none());
     match renderer.render(&scene, &RenderTarget::Offscreen) {
@@ -234,12 +234,12 @@ fn environment_maps_texture_arrays_and_palettes_leave_the_frame_and_its_bytes() 
     assert_ne!(env2.generation(), env.generation());
     assert_ne!(array2.generation(), array.generation());
     assert_ne!(palette2.generation(), palette.generation());
-    scene.environment_map = Some(EnvironmentMap::new(env));
+    scene.lighting.environment_map = Some(EnvironmentMap::new(env));
     assert!(
         renderer.render(&scene, &RenderTarget::Offscreen).is_err(),
         "the old handle does not reach the new map"
     );
-    scene.environment_map = Some(EnvironmentMap::new(env2));
+    scene.lighting.environment_map = Some(EnvironmentMap::new(env2));
     let again = renderer
         .render(&scene, &RenderTarget::Offscreen)
         .expect("frame")

@@ -251,13 +251,13 @@ pub fn physical_scene() -> RenderScene {
         Mat4::from_translation(front(4.0)),
     );
     let sun = Vec3::new(-0.5, 0.75, 0.45);
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: sun,
         intensity: 3.0,
         ..Default::default()
     };
-    scene.environment.sky.sun_direction = sun;
-    scene.environment.intensity = 0.9;
+    scene.lighting.environment.sky.sun_direction = sun;
+    scene.lighting.environment.intensity = 0.9;
     scene.camera = Camera {
         position: Vec3::new(0.0, 2.3, 6.8),
         target: Vec3::new(0.0, 0.8, -0.6),
@@ -408,13 +408,13 @@ pub fn array_scene() -> RenderScene {
         Mat4::from_translation(Vec3::new(3.4, 0.6, -0.6)) * Mat4::from_scale(Vec3::splat(1.2)),
     );
     let sun = Vec3::new(-0.55, 0.7, 0.45);
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: sun,
         intensity: 3.0,
         ..Default::default()
     };
-    scene.environment.sky.sun_direction = sun;
-    scene.environment.intensity = 0.9;
+    scene.lighting.environment.sky.sun_direction = sun;
+    scene.lighting.environment.intensity = 0.9;
     scene.camera = Camera {
         position: Vec3::new(0.0, 3.4, 7.2),
         target: Vec3::new(0.3, 0.4, 0.2),

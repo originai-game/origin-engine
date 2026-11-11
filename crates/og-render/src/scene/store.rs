@@ -23,8 +23,11 @@ impl RenderScene {
     /// procedural sky with no environment map lighting the scene. Its
     /// clouds are then in that light already ([`crate::Clouds::light_scene`]).
     pub fn sky_captured(&self) -> bool {
-        self.environment_map.is_none()
-            && matches!(self.environment.background, Background::Procedural { .. })
+        self.lighting.environment_map.is_none()
+            && matches!(
+                self.lighting.environment.background,
+                Background::Procedural { .. }
+            )
     }
 
     pub fn new() -> Self {
@@ -52,11 +55,17 @@ impl RenderScene {
             font_revisions: Vec::new(),
             instances: Vec::new(),
             camera: Camera::default(),
-            hemisphere: ([0.0; 3], [0.0; 3], 0.0),
-            light: DirectionalLight::default(),
-            lights: Vec::new(),
-            environment: Environment::default(),
-            environment_map: None,
+            lighting: SceneLighting {
+                light: DirectionalLight::default(),
+                lights: Vec::new(),
+                light_cookies: Vec::new(),
+                baked: crate::BakedLighting::default(),
+                light_volumes: Vec::new(),
+                reflection_probes: Vec::new(),
+                hemisphere: ([0.0; 3], [0.0; 3], 0.0),
+                environment: Environment::default(),
+                environment_map: None,
+            },
             look: SceneLook {
                 post: PostEffects::default(),
                 stylise: crate::Stylise::default(),
@@ -131,7 +140,6 @@ impl RenderScene {
             occluders_2d: Vec::new(),
             sprite_fx: Vec::new(),
             sprite_meshes: Vec::new(),
-            reflection_probes: Vec::new(),
             shake: CameraShake::default(),
             previous_transforms: Vec::new(),
             instance_levels: Vec::new(),
@@ -156,9 +164,6 @@ impl RenderScene {
                 grass_pushers: Vec::new(),
             },
             quality: crate::RenderQuality::default(),
-            baked: crate::BakedLighting::default(),
-            light_volumes: Vec::new(),
-            light_cookies: Vec::new(),
             water: Vec::new(),
             terrains: Vec::new(),
             terrain_stamps: Vec::new(),
@@ -224,7 +229,7 @@ impl RenderScene {
         {
             return None;
         }
-        if let Some(e) = self.environment_map
+        if let Some(e) = self.lighting.environment_map
             && !self.contains_environment_map(e.map)
         {
             return Some(format!("the environment map {} was removed", e.map.index()));

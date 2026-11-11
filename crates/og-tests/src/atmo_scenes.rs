@@ -61,13 +61,13 @@ pub fn day_night_scene(hours: f32, fog: bool) -> RenderScene {
     let mut scene = RenderScene::new();
     colonnade(&mut scene);
     let look = day_night(hours, 25.0, -20.0);
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: look.light_direction,
         color: look.light_color,
         intensity: look.light_intensity,
         ..Default::default()
     };
-    scene.environment = Environment {
+    scene.lighting.environment = Environment {
         sky: ProceduralSky {
             sun_direction: look.sun_direction,
             sun_color: look.sun_color,
@@ -178,13 +178,13 @@ pub fn water_scene() -> RenderScene {
         Mat4::from_translation(Vec3::new(0.6, 0.15, -1.0)) * Mat4::from_scale(Vec3::splat(1.2)),
     );
     let sun = Vec3::new(-0.5, 0.45, -0.75);
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: sun,
         color: Vec3::new(1.0, 0.92, 0.8),
         intensity: 3.0,
         ..Default::default()
     };
-    scene.environment = Environment {
+    scene.lighting.environment = Environment {
         sky: ProceduralSky {
             sun_direction: sun,
             sun_color: Vec3::new(1.0, 0.9, 0.75),
@@ -262,7 +262,7 @@ pub fn water_2d_scene() -> RenderScene {
         ..Default::default()
     });
     scene.camera = Camera::orthographic_2d(Vec2::ZERO, 12.0);
-    scene.environment.background = Background::Color(Vec3::new(0.05, 0.06, 0.09));
+    scene.lighting.environment.background = Background::Color(Vec3::new(0.05, 0.06, 0.09));
     scene.look.post.tonemap = Tonemap::None;
     scene
 }
@@ -349,7 +349,7 @@ pub fn fluid_2d_scene() -> RenderScene {
         ..Default::default()
     });
     scene.camera = Camera::orthographic_2d(Vec2::new(-0.6, -1.5), 9.0);
-    scene.environment.background = Background::Color(Vec3::new(0.08, 0.08, 0.1));
+    scene.lighting.environment.background = Background::Color(Vec3::new(0.08, 0.08, 0.1));
     scene.look.post.tonemap = Tonemap::None;
     scene
 }
@@ -493,7 +493,7 @@ pub fn fluid_groups_scene() -> RenderScene {
         });
     }
     scene.camera = Camera::orthographic_2d(Vec2::new(-0.4, 0.4), 7.0);
-    scene.environment.background = Background::Color(Vec3::new(0.08, 0.08, 0.1));
+    scene.lighting.environment.background = Background::Color(Vec3::new(0.08, 0.08, 0.1));
     scene.look.post.tonemap = Tonemap::None;
     scene
 }
@@ -667,8 +667,8 @@ pub fn weather_scene(kind: u32) -> RenderScene {
         None,
     );
     scene.atmosphere.fog = look.fog;
-    scene.light.cover(look.light);
-    scene.environment.intensity *= 0.5 + 0.5 * look.light;
+    scene.lighting.light.cover(look.light);
+    scene.lighting.environment.intensity *= 0.5 + 0.5 * look.light;
     if let Some(e) = look.emitter.clone() {
         let emitter = scene.add_emitter(e);
         scene.particles.push(og_render::ParticleSystem::new(

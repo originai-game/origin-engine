@@ -339,12 +339,12 @@ pub fn decals_many_scene() -> RenderScene {
     });
     scene.decals = decals;
     let sun = Vec3::new(-0.8, 0.45, 0.4);
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: sun,
         intensity: 3.0,
         ..Default::default()
     };
-    scene.environment.sky.sun_direction = sun;
+    scene.lighting.environment.sky.sun_direction = sun;
     scene.camera = Camera {
         position: Vec3::new(0.0, 3.0, 5.6),
         target: Vec3::new(0.0, 0.6, -0.8),
@@ -419,12 +419,12 @@ pub fn decals_scene() -> RenderScene {
         },
     ];
     let sun = Vec3::new(0.5, 0.75, 0.6);
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: sun,
         intensity: 3.0,
         ..Default::default()
     };
-    scene.environment.sky.sun_direction = sun;
+    scene.lighting.environment.sky.sun_direction = sun;
     scene.look.post.bloom = Some(Bloom::default());
     scene.camera = Camera {
         position: Vec3::new(0.0, 4.2, 6.2),

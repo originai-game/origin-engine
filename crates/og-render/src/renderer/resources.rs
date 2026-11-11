@@ -674,8 +674,13 @@ impl Lights {
         position: Vec3,
         budget: frame::LocalShadowBudget,
     ) -> (Vec<frame::LightGpu>, Vec<frame::LocalShadow>, u32) {
-        self.clusters.build(&scene.lights, view);
-        frame::local_lights(&scene.lights, &self.clusters.kept, position, budget)
+        self.clusters.build(&scene.lighting.lights, view);
+        frame::local_lights(
+            &scene.lighting.lights,
+            &self.clusters.kept,
+            position,
+            budget,
+        )
     }
 
     /// The light tables every lit pass binds: the records, and the
@@ -738,7 +743,7 @@ impl Shadows {
         base: u32,
         view: impl Fn(TextureHandle) -> Option<&'a wgpu::TextureView>,
     ) {
-        if scene.light_cookies.is_empty() || self.local_map.layers.len() as u32 <= base {
+        if scene.lighting.light_cookies.is_empty() || self.local_map.layers.len() as u32 <= base {
             return;
         }
         self.cookies.prepare(

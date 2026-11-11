@@ -31,13 +31,13 @@ fn luma(img: &RgbaImage, x: u32, y: u32) -> f32 {
 /// One object on black, lit from the upper left, seen from +z.
 fn studio() -> RenderScene {
     let mut scene = RenderScene::new();
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: Vec3::new(-0.6, 0.7, 0.6),
         intensity: 3.0,
         cast_shadows: false,
         ..Default::default()
     };
-    scene.environment = Environment {
+    scene.lighting.environment = Environment {
         intensity: 0.15,
         background: Background::Color(Vec3::ZERO),
         ..Default::default()
@@ -58,10 +58,10 @@ fn studio() -> RenderScene {
 fn leaf_backlighting_is_tinted_and_shadowed() {
     for clearcoat in [0.0, 0.4] {
         let mut scene = studio();
-        scene.environment.intensity = 0.0;
-        scene.light.direction_to_light = Vec3::new(-0.2, 0.3, -1.0).normalize();
-        scene.light.cast_shadows = true;
-        scene.light.max_shadow_distance = 12.0;
+        scene.lighting.environment.intensity = 0.0;
+        scene.lighting.light.direction_to_light = Vec3::new(-0.2, 0.3, -1.0).normalize();
+        scene.lighting.light.cast_shadows = true;
+        scene.lighting.light.max_shadow_distance = 12.0;
         let card = scene.add_mesh(shapes::plane_xy(2.0, 2.0));
         let mut leaf = StandardMaterial {
             color: Vec3::new(0.04, 0.3, 0.025),
@@ -95,7 +95,7 @@ fn leaf_backlighting_is_tinted_and_shadowed() {
         scene.add_instance(
             blocker,
             black,
-            Mat4::from_translation(scene.light.direction_to_light),
+            Mat4::from_translation(scene.lighting.light.direction_to_light),
         );
         let shadowed = frame(&scene);
         assert!(

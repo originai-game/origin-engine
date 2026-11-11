@@ -1272,8 +1272,12 @@ impl GrassRenderer {
             scene.origin,
             view.wind_grid,
         );
-        let l = scene.light.direction_to_light.normalize_or(Vec3::Y);
-        let sun_on = scene.light.intensity > 0.0;
+        let l = scene
+            .lighting
+            .light
+            .direction_to_light
+            .normalize_or(Vec3::Y);
+        let sun_on = scene.lighting.light.intensity > 0.0;
         // Where a blade's shadow lands, per metre of its height.
         let reach = Vec3::new(-l.x, -l.y, -l.z) / l.y.max(0.2);
         let lod_rows = LOD_ROWS;
@@ -1299,7 +1303,7 @@ impl GrassRenderer {
             if self.generate[a].is_none() {
                 self.generate[a] = Some(self.make_generate(device, terrain_layout, td.arrayed));
             }
-            let cast = g.cast_shadows && scene.light.cast_shadows && sun_on;
+            let cast = g.cast_shadows && scene.lighting.light.cast_shadows && sun_on;
             // With its shadow: the box swept along the sun's reach.
             let shadow = reach * g.tallest() * f32::from(u8::from(cast));
             let visible = |lo: Vec3, hi: Vec3| {

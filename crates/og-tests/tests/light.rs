@@ -102,13 +102,13 @@ fn a_renderer_restore_keeps_the_baked_frame() {
     };
     let first = draw(&mut r, &scene);
     let saved = r.save_state();
-    let baked = std::mem::take(&mut scene.baked);
+    let baked = std::mem::take(&mut scene.lighting.baked);
     let unbaked = draw(&mut r, &scene);
     assert_ne!(unbaked.pixels, first.pixels, "unbaked draws otherwise");
     scene.camera.position.x += 0.4;
     draw(&mut r, &scene);
     scene.camera = camera;
-    scene.baked = baked;
+    scene.lighting.baked = baked;
     r.restore_state(saved);
     let again = draw(&mut r, &scene);
     assert!(

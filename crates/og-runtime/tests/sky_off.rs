@@ -36,7 +36,7 @@ impl RenderBackend for Recorder {
         (64, 64)
     }
     fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
-        self.0.set(Some(scene.environment.sky));
+        self.0.set(Some(scene.lighting.environment.sky));
         Ok(())
     }
     fn capture(&mut self, _: &RenderScene, _: u32, _: u32) -> Option<RgbaImage> {

@@ -29,13 +29,13 @@ pub fn wind() -> Wind {
 pub fn wind_scene(blowing: bool, tick: u64) -> RenderScene {
     let mut scene = RenderScene::new();
     let sun = Vec3::new(-0.3, 0.8, 0.5).normalize();
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: sun,
         intensity: 3.0,
         max_shadow_distance: 30.0,
         ..Default::default()
     };
-    scene.environment = Environment {
+    scene.lighting.environment = Environment {
         sky: ProceduralSky {
             sun_direction: sun,
             ..Default::default()

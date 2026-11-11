@@ -106,7 +106,7 @@ impl Renderer {
         } = plan;
         let (ctx, encoder, stats, sky_group) =
             (cx.ctx, &mut *cx.encoder, &mut *cx.stats, cx.sky_group);
-        let clear = match scene.environment.background {
+        let clear = match scene.lighting.environment.background {
             Background::Color(c) => wgpu::Color {
                 r: c.x as f64,
                 g: c.y as f64,
@@ -276,7 +276,7 @@ impl Renderer {
             grass_frame,
             Some(fx_group),
         );
-        let sky = match scene.environment.background {
+        let sky = match scene.lighting.environment.background {
             Background::Sky => Some(&self.sky.sky_pipeline),
             Background::Procedural { .. } => Some(&self.sky.sky_look_pipeline),
             Background::Color(_) => None,

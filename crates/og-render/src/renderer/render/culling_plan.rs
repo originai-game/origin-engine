@@ -70,12 +70,13 @@ impl Renderer {
             + view_plans.len()
             + shelter_redraw as usize
             + reflection.is_some() as usize
-            + if scene.light.cast_shadows {
+            + if scene.lighting.light.cast_shadows {
                 self.frame_cascades(scene) as usize
             } else {
                 0
             }
             + scene
+                .lighting
                 .lights
                 .iter()
                 .filter(|l| l.cast_shadows && self.kept_kind(l))

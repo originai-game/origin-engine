@@ -51,8 +51,8 @@ fn scattered_copies_are_drawn_from_chunks_and_shrink_over_the_fade() {
     });
     scene.atmosphere.fog = None;
     scene.look.post.tonemap = Tonemap::None;
-    scene.environment.background = Background::Color(Vec3::ZERO);
-    scene.light.cast_shadows = false;
+    scene.lighting.environment.background = Background::Color(Vec3::ZERO);
+    scene.lighting.light.cast_shadows = false;
     scene.camera = Camera {
         position: Vec3::new(0.0, 100.0, 0.001),
         target: Vec3::ZERO,
@@ -238,7 +238,7 @@ fn scatter_chunks_are_built_again_only_when_what_placed_them_changes() {
         impostor: None,
         impostor_distance: 0.0,
     });
-    scene.light.cast_shadows = false;
+    scene.lighting.light.cast_shadows = false;
     scene.camera = Camera {
         position: Vec3::new(0.0, 100.0, 0.001),
         target: Vec3::ZERO,
@@ -321,8 +321,8 @@ fn wind_sways_scattered_copies_downwind() {
     });
     scene.atmosphere.fog = None;
     scene.look.post.tonemap = Tonemap::None;
-    scene.environment.background = Background::Color(Vec3::ZERO);
-    scene.light.cast_shadows = false;
+    scene.lighting.environment.background = Background::Color(Vec3::ZERO);
+    scene.lighting.light.cast_shadows = false;
     scene.camera = Camera {
         position: Vec3::new(0.0, 100.0, 0.001),
         target: Vec3::ZERO,

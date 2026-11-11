@@ -267,7 +267,7 @@ pub fn fx_2d_scene() -> Result<RenderScene, String> {
     });
     scene.look.post.glow = Some(Glow { intensity: 1.0 });
     scene.camera = Camera::orthographic_2d(Vec2::ZERO, 12.0);
-    scene.environment.background = Background::Color(Vec3::ZERO);
+    scene.lighting.environment.background = Background::Color(Vec3::ZERO);
     scene.look.post.tonemap = Tonemap::None;
     Ok(scene)
 }
@@ -458,7 +458,7 @@ pub fn tilemap_lit_scene() -> RenderScene {
         },
     ];
     scene.camera = Camera::orthographic_2d(Vec2::ZERO, 18.0);
-    scene.environment.background = Background::Color(Vec3::ZERO);
+    scene.lighting.environment.background = Background::Color(Vec3::ZERO);
     scene.look.post.tonemap = Tonemap::None;
     scene
 }

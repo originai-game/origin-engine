@@ -1041,10 +1041,15 @@ pub(crate) fn release(eng: &Engine, index: Option<usize>) -> Result<(), String> 
             if let Some(h) = rs.env.maps.get_mut(map).and_then(|m| m.1.take()) {
                 // The frame stops naming it now; og.Environment's next read
                 // finds no map there and lights by the sky.
-                if rs.scene.environment_map.is_some_and(|m| m.map == h) {
-                    rs.scene.environment_map = None;
+                if rs
+                    .scene
+                    .lighting
+                    .environment_map
+                    .is_some_and(|m| m.map == h)
+                {
+                    rs.scene.lighting.environment_map = None;
                 }
-                if let Some(m) = &mut rs.scene.environment_map
+                if let Some(m) = &mut rs.scene.lighting.environment_map
                     && m.blend.is_some_and(|b| b.to == h)
                 {
                     m.blend = None;

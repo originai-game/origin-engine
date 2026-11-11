@@ -297,8 +297,8 @@ pub fn crowd_scene(count: u32) -> RenderScene {
             .collect(),
         ..Default::default()
     });
-    scene.light.direction_to_light = Vec3::new(0.5, 0.8, 0.35);
-    scene.light.cast_shadows = true;
+    scene.lighting.light.direction_to_light = Vec3::new(0.5, 0.8, 0.35);
+    scene.lighting.light.cast_shadows = true;
     scene.camera = Camera {
         position: Vec3::new(0.0, 9.0, 6.0),
         target: Vec3::new(0.0, 0.0, -depth * 0.35),
@@ -478,8 +478,8 @@ pub fn crowd_lods_scene() -> RenderScene {
         let outfit = ((unit(i, 11) * outfits as f32) as u32).min(outfits - 1);
         scene.crowds[outfit as usize].members.push(member);
     }
-    scene.light.direction_to_light = Vec3::new(0.8, 0.45, 0.25);
-    scene.light.cast_shadows = true;
+    scene.lighting.light.direction_to_light = Vec3::new(0.8, 0.45, 0.25);
+    scene.lighting.light.cast_shadows = true;
     scene.camera = Camera {
         position: Vec3::new(2.0, 7.0, 4.0),
         target: Vec3::new(0.0, 0.0, -60.0),

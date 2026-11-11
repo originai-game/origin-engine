@@ -20,7 +20,7 @@ impl Renderer {
             // reads map to the scene's pixels, stylise.wgsl `prepass_px`).
             let (w, h) = self.history_size();
             let (w, h) = (w as f32, h as f32);
-            let bg = match scene.environment.background {
+            let bg = match scene.lighting.environment.background {
                 Background::Color(c) => c,
                 _ => Vec3::ZERO,
             };

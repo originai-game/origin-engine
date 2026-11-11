@@ -79,7 +79,7 @@ impl Renderer {
         // A local light's shadow faces may be drawn this frame (frame.rs
         // `local_lights` shadows only the lights that cast).
         let local_shadows = scene.quality.shadowed_lights.min(self.info.shadowed_lights) > 0
-            && scene.lights.iter().any(|l| l.cast_shadows);
+            && scene.lighting.lights.iter().any(|l| l.cast_shadows);
         self.ensure_pipelines(
             batches,
             skinned_batches,

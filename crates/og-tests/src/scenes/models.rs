@@ -5,12 +5,12 @@ use super::*;
 pub(super) fn sky_only() -> RenderScene {
     let mut scene = RenderScene::new();
     let sun = Vec3::new(0.3, 0.12, -0.9);
-    scene.environment.sky = ProceduralSky {
+    scene.lighting.environment.sky = ProceduralSky {
         sun_direction: sun,
         sun_color: Vec3::new(1.0, 0.85, 0.65),
         look: None,
     };
-    scene.light.direction_to_light = sun;
+    scene.lighting.light.direction_to_light = sun;
     scene.camera = Camera {
         position: Vec3::new(0.0, 1.0, 0.0),
         target: Vec3::new(0.15, 1.15, -1.0),
@@ -64,7 +64,7 @@ pub(super) fn showcase() -> Result<RenderScene, String> {
                 * Mat4::from_scale(Vec3::splat(0.35)),
         );
     }
-    scene.lights = vec![
+    scene.lighting.lights = vec![
         Light {
             kind: LightKind::Spot {
                 direction: Vec3::new(0.2, -1.0, -0.3),
@@ -94,13 +94,13 @@ pub(super) fn showcase() -> Result<RenderScene, String> {
         },
     ];
     let sun = Vec3::new(-0.7, 0.3, -0.5);
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: sun,
         color: Vec3::new(1.0, 0.75, 0.5),
         intensity: 1.5,
         ..Default::default()
     };
-    scene.environment = Environment {
+    scene.lighting.environment = Environment {
         sky: ProceduralSky {
             sun_direction: sun,
             sun_color: Vec3::new(1.0, 0.7, 0.45),
@@ -284,7 +284,7 @@ fn layout(scene: &mut RenderScene, models: &[Parts], count: u32, spacing: f32) {
         far: radius * 8.0,
         exposure: Exposure::linear(0.8),
     };
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: SUN,
         color: SUN_COLOR,
         intensity: 4.0,
@@ -293,7 +293,7 @@ fn layout(scene: &mut RenderScene, models: &[Parts], count: u32, spacing: f32) {
         shadow_bounds: ShadowBounds::Auto,
         ..Default::default()
     };
-    scene.environment = Environment {
+    scene.lighting.environment = Environment {
         sky: ProceduralSky {
             sun_direction: SUN,
             sun_color: SUN_COLOR,

@@ -711,7 +711,7 @@ pub(crate) fn ground_drop_shadows(rs: &mut RenderState) {
             })
             .reduce(f32::max)
     };
-    let sun = scene.light.direction_to_light;
+    let sun = scene.lighting.light.direction_to_light;
     for k in 0..scene.sprite_shadows.len() {
         let shadow = scene.sprite_shadows[k];
         let Some(sprite) = scene.sprites.get(shadow.sprite as usize) else {

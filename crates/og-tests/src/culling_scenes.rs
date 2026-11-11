@@ -82,13 +82,13 @@ pub fn city(eye: Vec3, target: Vec3) -> RenderScene {
         ..Default::default()
     };
     let sun = Vec3::new(0.5, 0.7, 0.3);
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: sun,
         intensity: 4.0,
         max_shadow_distance: 300.0,
         ..Default::default()
     };
-    scene.environment.sky.sun_direction = sun;
+    scene.lighting.environment.sky.sun_direction = sun;
     scene
 }
 

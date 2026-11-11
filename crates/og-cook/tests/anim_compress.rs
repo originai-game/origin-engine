@@ -184,9 +184,9 @@ fn posed_trickster(root: &Path, clip: &str, t: f32) -> og_render::RgbaImage {
         target: Vec3::new(0.0, 1.0, 0.0),
         ..src.camera
     };
-    scene.light = src.light;
-    scene.lights = src.lights.clone();
-    scene.environment = src.environment;
+    scene.lighting.light = src.lighting.light;
+    scene.lighting.lights = src.lighting.lights.clone();
+    scene.lighting.environment = src.lighting.environment;
     scene.look.post = src.look.post;
     gfx.scene = scene;
     og_tests::gfx::render_built(&mut gfx).unwrap().image

@@ -25,7 +25,7 @@ fn lens_distortion_bends_by_its_formula() {
         }
         s.camera = Camera::orthographic_2d(Vec2::ZERO, 10.0);
         // Dark grey, so a black corner (beyond the image) shows.
-        s.environment.background = Background::Color(Vec3::splat(0.05));
+        s.lighting.environment.background = Background::Color(Vec3::splat(0.05));
         s.look.post.tonemap = Tonemap::None;
         s.look.post.lens_distortion = lens;
         s
@@ -175,7 +175,7 @@ fn depth_of_field_blurs_outside_the_focus_band() {
         let mut s = fx::dof_scene(DofQuality::Low).expect("scene");
         s.instances.retain(focused);
         plain(&mut s);
-        s.environment.background = Background::Color(background);
+        s.lighting.environment.background = Background::Color(background);
         frame(&desc, &s).0
     };
     let (on_black, on_white) = (alone(Vec3::ZERO), alone(Vec3::ONE));

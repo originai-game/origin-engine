@@ -71,13 +71,13 @@ fn base() -> Result<(RenderScene, Parts), String> {
         .map_err(|e| e.to_string())?;
     let mut scene = RenderScene::new();
     let sun = Vec3::new(-0.4, 0.7, 0.5);
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: sun,
         intensity: 3.0,
         ..Default::default()
     };
-    scene.environment.sky.sun_direction = sun;
-    scene.environment.intensity = 0.6;
+    scene.lighting.environment.sky.sun_direction = sun;
+    scene.lighting.environment.intensity = 0.6;
     scene.camera = Camera {
         position: Vec3::new(0.0, 1.7, 0.0),
         target: Vec3::new(0.0, 1.5, -20.0),
@@ -165,9 +165,9 @@ pub fn near_scene(meshlets: bool) -> Result<RenderScene, String> {
 pub fn shadow_scene(meshlets: bool) -> Result<RenderScene, String> {
     let (mut scene, parts) = base()?;
     let sun = Vec3::new(-0.8, 0.35, 0.3);
-    scene.light.direction_to_light = sun;
-    scene.environment.sky.sun_direction = sun;
-    scene.environment.intensity = 0.3;
+    scene.lighting.light.direction_to_light = sun;
+    scene.lighting.environment.sky.sun_direction = sun;
+    scene.lighting.environment.intensity = 0.3;
     for (k, x) in [-8.0f32, -4.0, 0.0, 4.0, 8.0].into_iter().enumerate() {
         let at = Mat4::from_rotation_translation(
             Quat::from_rotation_y(0.9 * k as f32),
@@ -178,7 +178,7 @@ pub fn shadow_scene(meshlets: bool) -> Result<RenderScene, String> {
         }
     }
     // A spot over the middle tree, its shadow cast forward on the ground.
-    scene.lights.push(Light {
+    scene.lighting.lights.push(Light {
         kind: LightKind::Spot {
             direction: Vec3::new(0.0, -1.0, 0.35).normalize(),
             angle_degrees: 40.0,
@@ -219,7 +219,7 @@ pub fn views_scene(meshlets: bool, bias: f32) -> Result<RenderScene, String> {
             Vec3::new(-2.5, 0.9, -4.0),
         ),
     );
-    scene.reflection_probes.push(ReflectionProbe::new(
+    scene.lighting.reflection_probes.push(ReflectionProbe::new(
         1,
         Vec3::new(-2.5, 1.6, -5.0),
         Vec3::new(14.0, 6.0, 14.0),

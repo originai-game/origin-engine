@@ -161,13 +161,13 @@ fn body(
 fn daylight() -> RenderScene {
     let mut scene = RenderScene::new();
     let look = day_night(15.5, 35.0, -35.0);
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: look.light_direction,
         color: look.light_color,
         intensity: look.light_intensity,
         ..Default::default()
     };
-    scene.environment = Environment {
+    scene.lighting.environment = Environment {
         sky: ProceduralSky {
             sun_direction: look.sun_direction,
             sun_color: look.sun_color,
@@ -757,13 +757,13 @@ pub fn visual_particles_scene() -> RenderScene {
     };
     let mut scene = RenderScene::new();
     let moon = Vec3::new(-0.4, 0.7, -0.5);
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: moon,
         color: Vec3::new(0.55, 0.65, 1.0),
         intensity: 0.15,
         ..Default::default()
     };
-    scene.environment = Environment {
+    scene.lighting.environment = Environment {
         sky: ProceduralSky {
             sun_direction: moon,
             sun_color: Vec3::new(0.3, 0.35, 0.5),
@@ -930,7 +930,7 @@ pub fn visual_particles_scene() -> RenderScene {
     ));
     // The sparks' glow: above and in front of the grind, so the wheel is
     // not lit flat; no shadows (it would throw the wheel across the wall).
-    scene.lights = vec![Light {
+    scene.lighting.lights = vec![Light {
         position: grind + Vec3::new(-0.35, 0.3, 0.7),
         color: Vec3::new(1.0, 0.55, 0.22),
         intensity: 1.6,

@@ -344,7 +344,7 @@ pub(crate) fn apply(
         state.gather();
     }
     state.enabled = enabled;
-    scene.baked = if enabled {
+    scene.lighting.baked = if enabled {
         state.lighting.clone()
     } else {
         BakedLighting::default()

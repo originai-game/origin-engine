@@ -155,7 +155,7 @@ impl Features {
                 Features::WEATHER,
                 scene.atmosphere.surface_weather.is_some() || shore,
             )
-            .with(Features::LOCAL_LIGHTS, !scene.lights.is_empty())
+            .with(Features::LOCAL_LIGHTS, !scene.lighting.lights.is_empty())
             .with(Features::DECALS, !scene.decals.is_empty())
             .with(Features::GI, scene.look.post.gi_probes.is_some())
             .with(
@@ -170,7 +170,7 @@ impl Features {
             )
             .with(
                 Features::SOFT_SHADOWS,
-                scene.light.shadow_softness_and_fill().0 > 0.0,
+                scene.lighting.light.shadow_softness_and_fill().0 > 0.0,
             )
             .with(
                 Features::SEA,
@@ -189,6 +189,7 @@ impl Features {
             .with(
                 Features::AREA,
                 scene
+                    .lighting
                     .lights
                     .iter()
                     .any(|l| matches!(l.kind, crate::LightKind::Rect { .. })),

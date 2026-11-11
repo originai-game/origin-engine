@@ -900,6 +900,7 @@ impl Renderer {
         // Every shadowed light of the scene's, within the frame's budget.
         let lights = scene.quality.shadowed_lights.min(self.info.shadowed_lights) as usize;
         let wanted: Vec<usize> = scene
+            .lighting
             .lights
             .iter()
             .filter(|l| l.cast_shadows && self.kept_kind(l))
@@ -944,7 +945,10 @@ impl Renderer {
                 .get(i)
                 .is_some_and(Option::is_some)
         };
-        let map = scene.environment_map.filter(|m| live(m.map.index()))?;
+        let map = scene
+            .lighting
+            .environment_map
+            .filter(|m| live(m.map.index()))?;
         let blend = map
             .blend
             .filter(|b| live(b.to.index()))
@@ -961,20 +965,23 @@ impl Renderer {
             scale: m.background_intensity.max(0.0),
             blend: blend.map_or(0.0, |b| b.1),
         });
-        let params = SkyParams::new(&scene.environment, crate::ibl::PREFILTER_MIPS, map);
+        let params = SkyParams::new(&scene.lighting.environment, crate::ibl::PREFILTER_MIPS, map);
         self.queue
             .write_buffer(&self.sky.sky_params, 0, bytemuck::bytes_of(&params));
     }
 
     pub(crate) fn ensure_environment(&mut self, scene: &RenderScene) {
-        let sky = &scene.environment.sky;
+        let sky = &scene.lighting.environment.sky;
         let drawn = self.drawn_environment(scene);
         let map = drawn.map(|d| d.0);
         let blend = drawn.and_then(|d| d.1);
         // The per-pixel sky without an environment map is live: captured
         // as it is drawn, a slice a frame (sky_capture.rs).
-        let live =
-            map.is_none() && matches!(scene.environment.background, Background::Procedural { .. });
+        let live = map.is_none()
+            && matches!(
+                scene.lighting.environment.background,
+                Background::Procedural { .. }
+            );
         if !live {
             self.sky.sky_capture = None;
         }

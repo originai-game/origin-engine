@@ -63,13 +63,13 @@ pub fn physical_light(
     air: PhysicalAtmosphere,
 ) -> og_render::DayNightLook {
     let look = day_night(hours, 25.0, -20.0).with_atmosphere(&air);
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: look.light_direction,
         color: look.light_color,
         intensity: look.light_intensity,
         ..Default::default()
     };
-    scene.environment = Environment {
+    scene.lighting.environment = Environment {
         sky: ProceduralSky {
             sun_direction: look.sun_direction,
             sun_color: look.sun_color,
@@ -149,7 +149,7 @@ fn clouded(mut scene: RenderScene, clouds: Clouds) -> RenderScene {
     // as the deck closes over 0.6 to 0.95 cover): at the clear sky's
     // exposure a noon overcast read as dusk (its sky 0.32 in sRGB).
     let t = ((clouds.coverage - 0.6) / 0.35).clamp(0.0, 1.0);
-    if scene.environment.sky.sun_direction.y > 0.0 {
+    if scene.lighting.environment.sky.sun_direction.y > 0.0 {
         scene = exposed(scene, 1.5 * t * t * (3.0 - 2.0 * t));
     }
     scene.atmosphere.clouds = Some(clouds);
@@ -293,7 +293,7 @@ fn auroral(aurora: Aurora) -> RenderScene {
         physical_sky_scene(23.5, PhysicalAtmosphere::EARTH, false),
         3.0,
     );
-    if let Some(look) = scene.environment.sky.look.as_mut() {
+    if let Some(look) = scene.lighting.environment.sky.look.as_mut() {
         look.moon_size = 0.0;
     }
     scene.atmosphere.aurora = Some(aurora);

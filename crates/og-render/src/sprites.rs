@@ -711,7 +711,8 @@ pub(crate) fn build<'a>(
         }
         shadows.insert(s.sprite, (s.opacity.clamp(0.0, 1.0), s.ground));
     }
-    let ground = shadow_ground(scene.light.direction_to_light).filter(|_| !shadows.is_empty());
+    let ground =
+        shadow_ground(scene.lighting.light.direction_to_light).filter(|_| !shadows.is_empty());
     // Pixel outlines by sprite index (the last entry wins).
     let mut lines: HashMap<u32, &crate::SpriteOutline> = HashMap::new();
     for o in &scene.sprite_outlines {
@@ -1271,7 +1272,7 @@ mod tests {
     #[test]
     fn faced_sprites_sort_back_to_front_cull_to_the_frustum_and_cast_sun_facing_shadows() {
         let mut scene = RenderScene::new();
-        scene.light.direction_to_light = Vec3::new(1.0, 1.0, 0.0);
+        scene.lighting.light.direction_to_light = Vec3::new(1.0, 1.0, 0.0);
         let at = |z: f32, layer: i32| Sprite {
             position: Vec3::new(0.0, 0.0, z),
             layer,
@@ -1420,7 +1421,7 @@ mod tests {
     #[test]
     fn a_drop_shadow_draws_first_in_its_layer_projected_along_the_sun() {
         let mut scene = RenderScene::new();
-        scene.light.direction_to_light = Vec3::new(1.0, 2.0, -0.5);
+        scene.lighting.light.direction_to_light = Vec3::new(1.0, 2.0, -0.5);
         let sprite = |x: f32, layer: i32| Sprite {
             position: Vec3::new(x, 0.0, 0.0),
             size: glam::Vec2::new(1.0, 2.0),
@@ -1446,7 +1447,7 @@ mod tests {
         assert_eq!(shadow.ground, [1.0, -0.5, 0.25, crate::SPRITE_SHADOW_LIFT]);
         assert!(f.instances.iter().filter(|i| i.ground[0] > 0.0).count() == 1);
         // No sun above the horizon, no shadow; an index past the sprites is refused.
-        scene.light.direction_to_light = Vec3::new(0.0, -1.0, 0.0);
+        scene.lighting.light.direction_to_light = Vec3::new(0.0, -1.0, 0.0);
         assert_eq!(frame(&scene).instances.len(), 3);
         scene.sprite_shadows[0].sprite = 3;
         assert!(
@@ -1471,7 +1472,7 @@ mod tests {
     fn a_drop_shadow_lies_on_its_ground_at_its_height_and_slope() {
         use crate::ShadowGround;
         let mut scene = RenderScene::new();
-        scene.light.direction_to_light = Vec3::new(1.0, 2.0, -0.5);
+        scene.lighting.light.direction_to_light = Vec3::new(1.0, 2.0, -0.5);
         scene.sprites = vec![
             Sprite {
                 position: Vec3::new(0.0, 2.0, 0.0),
@@ -1584,7 +1585,7 @@ mod tests {
         }
         // Drawn as eight cells of the quad, each corner at its height.
         let mut scene = RenderScene::new();
-        scene.light.direction_to_light = sun;
+        scene.lighting.light.direction_to_light = sun;
         scene.sprites = vec![sprite];
         scene.sprite_shadows = vec![SpriteShadow {
             sprite: 0,

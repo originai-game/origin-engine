@@ -282,7 +282,13 @@ impl Renderer {
                     .min(limits.max_buffer_size);
                 let rows = 4
                     + MAX_CASCADES as usize
-                    + scene.lights.iter().filter(|l| l.cast_shadows).count() * 6;
+                    + scene
+                        .lighting
+                        .lights
+                        .iter()
+                        .filter(|l| l.cast_shadows)
+                        .count()
+                        * 6;
                 // GPU culling must take the frame too (its pyramid, its
                 // passes): checked for every instance the frame may sort.
                 let culls = self
@@ -411,7 +417,7 @@ impl Renderer {
         }
         {
             use crate::deferred::Start;
-            match scene.environment.background {
+            match scene.lighting.environment.background {
                 Background::Sky => self.sky.sky_pipeline.start(),
                 Background::Procedural { .. } => self.sky.sky_look_pipeline.start(),
                 Background::Color(_) => {}
@@ -695,7 +701,7 @@ impl Renderer {
             cpu_cards: &cpu_cards,
         })?;
         // The directional light's cascades.
-        let light = &scene.light;
+        let light = &scene.lighting.light;
         let to_light = light.direction_to_light.normalize_or(Vec3::Y);
         let shadow_size = self.info.shadow_map_size;
         // Every kind of caster: grass and scattered copies on a terrain

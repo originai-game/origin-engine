@@ -59,7 +59,7 @@ fn retained_documents_match_immediate_pixels_after_updates_and_restore() {
     .unwrap();
     for (width, height) in [(640, 480), (390, 844)] {
         let mut scene = RenderScene::new();
-        scene.environment.background = Background::Color(Vec3::splat(0.008));
+        scene.lighting.environment.background = Background::Color(Vec3::splat(0.008));
         let font = add_test_font(&mut scene);
         let mut retained = ui_with_font(font.clone());
         let mut immediate = ui_with_font(font);
@@ -811,7 +811,7 @@ fn css_radius_token_changes_pixels_when_the_active_style_changes() {
         ui.frame().emit(&EmitDesc::default(), &mut overlay);
         let mut scene = RenderScene::new();
         scene.ui.overlay = Some(overlay);
-        scene.environment.background = Background::Color(Vec3::ZERO);
+        scene.lighting.environment.background = Background::Color(Vec3::ZERO);
         scene.look.post.tonemap = Tonemap::None;
         renderer.render(&scene, &RenderTarget::Offscreen).unwrap();
         let image = renderer.read_offscreen().unwrap();
@@ -907,7 +907,7 @@ fn keyed_virtual_content_is_measured_and_clipped_on_gpu() {
         ui.frame().emit(&EmitDesc::default(), &mut overlay);
         let mut scene = RenderScene::new();
         scene.ui.overlay = Some(overlay);
-        scene.environment.background = Background::Color(Vec3::ZERO);
+        scene.lighting.environment.background = Background::Color(Vec3::ZERO);
         scene.look.post.tonemap = Tonemap::None;
         renderer.render(&scene, &RenderTarget::Offscreen).unwrap();
         let image = renderer.read_offscreen().unwrap();
@@ -1089,7 +1089,7 @@ fn a_scroll_container_clips_everything_it_draws() {
         "every shape carries a clip"
     );
     scene.ui.overlay = Some(overlay);
-    scene.environment.background = Background::Color(Vec3::ZERO);
+    scene.lighting.environment.background = Background::Color(Vec3::ZERO);
     scene.look.post.tonemap = Tonemap::None;
     let desc = RenderDesc {
         width: vp.width as u32,
@@ -1293,7 +1293,7 @@ fn inked_frame(
     ui.frame().emit(&EmitDesc::default(), &mut overlay);
     scene.ui.overlay = Some(overlay);
     let bg = colors.map_or(ui.theme().palette.backdrop, |c| c.1).linear();
-    scene.environment.background = Background::Color(Vec3::new(bg[0], bg[1], bg[2]));
+    scene.lighting.environment.background = Background::Color(Vec3::new(bg[0], bg[1], bg[2]));
     scene.look.post.tonemap = Tonemap::None;
     let desc = RenderDesc {
         width: vp.width as u32,
@@ -1667,7 +1667,7 @@ fn glass_cost() {
                 ..og_render::Sprite::default()
             });
         }
-        scene.environment.background = Background::Color(Vec3::ZERO);
+        scene.lighting.environment.background = Background::Color(Vec3::ZERO);
         scene.look.post.tonemap = Tonemap::None;
         let mut overlay = og_render::Overlay::new(w as f32, h as f32, 1.0);
         let bar = |layer: i32, y: f32| og_render::Sprite {
@@ -1900,7 +1900,7 @@ fn a_middle_squeezed_six_times_keeps_its_outline_as_dark_as_the_art() {
     overlay.sprites.push(piece(16.0, 48.0));
     overlay.sprites.push(piece(80.0, 8.0));
     scene.ui.overlay = Some(overlay);
-    scene.environment.background = Background::Color(Vec3::ZERO);
+    scene.lighting.environment.background = Background::Color(Vec3::ZERO);
     scene.look.post.tonemap = Tonemap::None;
     let desc = RenderDesc {
         width: 128,
@@ -2027,7 +2027,7 @@ fn a_skewed_element_draws_its_parallelogram() {
     let mut overlay = og_render::Overlay::new(vp.width, vp.height, 1.0);
     ui.frame().emit(&EmitDesc::default(), &mut overlay);
     scene.ui.overlay = Some(overlay);
-    scene.environment.background = Background::Color(Vec3::ZERO);
+    scene.lighting.environment.background = Background::Color(Vec3::ZERO);
     scene.look.post.tonemap = Tonemap::None;
     let desc = RenderDesc {
         width: 400,
@@ -2189,7 +2189,7 @@ fn a_gradient_mask_fades_as_it_reads() {
     let mut overlay = og_render::Overlay::new(vp.width, vp.height, 1.0);
     ui.frame().emit(&EmitDesc::default(), &mut overlay);
     scene.ui.overlay = Some(overlay);
-    scene.environment.background = Background::Color(Vec3::ONE);
+    scene.lighting.environment.background = Background::Color(Vec3::ONE);
     scene.look.post.tonemap = Tonemap::None;
     let desc = RenderDesc {
         width: 400,
@@ -2337,7 +2337,7 @@ fn a_turned_rive_frame_is_cut_by_its_turned_box() {
     let mut overlay = og_render::Overlay::new(vp.width, vp.height, 1.0);
     ui.frame().emit(&EmitDesc::default(), &mut overlay);
     scene.ui.overlay = Some(overlay);
-    scene.environment.background = Background::Color(Vec3::ZERO);
+    scene.lighting.environment.background = Background::Color(Vec3::ZERO);
     scene.look.post.tonemap = Tonemap::None;
     let desc = RenderDesc {
         width: 300,
@@ -2428,7 +2428,7 @@ fn a_card_turned_in_perspective_draws_and_hits_where_it_is_seen() {
     let mut overlay = og_render::Overlay::new(vp.width, vp.height, 1.0);
     ui.frame().emit(&EmitDesc::default(), &mut overlay);
     scene.ui.overlay = Some(overlay);
-    scene.environment.background = Background::Color(Vec3::ZERO);
+    scene.lighting.environment.background = Background::Color(Vec3::ZERO);
     scene.look.post.tonemap = Tonemap::None;
     let desc = RenderDesc {
         width: 400,
@@ -2516,7 +2516,7 @@ fn preserve_3d_planes_draw_by_depth_and_hide_their_backs() {
     let mut overlay = og_render::Overlay::new(vp.width, vp.height, 1.0);
     ui.frame().emit(&EmitDesc::default(), &mut overlay);
     scene.ui.overlay = Some(overlay);
-    scene.environment.background = Background::Color(Vec3::ZERO);
+    scene.lighting.environment.background = Background::Color(Vec3::ZERO);
     scene.look.post.tonemap = Tonemap::None;
     let desc = RenderDesc {
         width: 400,

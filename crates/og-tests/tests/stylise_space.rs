@@ -62,13 +62,13 @@ fn scene(offset: Vec3, space: StyliseSpace) -> RenderScene {
             Vec3::new(1.1, 0.7, -0.3),
         ),
     );
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: Vec3::new(0.5, 0.7, 0.45),
         intensity: 3.0,
         cast_shadows: false,
         ..Default::default()
     };
-    scene.environment.background = Background::Color(Vec3::new(0.86, 0.84, 0.78));
+    scene.lighting.environment.background = Background::Color(Vec3::new(0.86, 0.84, 0.78));
     scene.camera = Camera {
         position: Vec3::new(0.3, 2.0, 5.0) + offset,
         target: Vec3::new(0.0, 0.6, 0.0) + offset,

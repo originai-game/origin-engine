@@ -452,7 +452,7 @@ pub fn add_lightning(
     if flash <= 0.0 {
         return;
     }
-    scene.environment.intensity *= 1.0 + 6.0 * flash;
+    scene.lighting.environment.intensity *= 1.0 + 6.0 * flash;
     // The bolt lights the land like a low sun for the flash's length, with
     // hard shadows away from it: the scene's directional light turns to the
     // channel's middle (half the cloud base up; the whole channel shines)
@@ -474,16 +474,16 @@ pub fn add_lightning(
         let root = lightning_bolt(at, top, strike)[0].0;
         c.flash = (root + Vec3::Y * 40.0 + toward_eye * 60.0).extend(12.0 * flash);
     }
-    let own = scene.light.intensity * scene.light.color.max_element();
+    let own = scene.lighting.light.intensity * scene.lighting.light.color.max_element();
     if bolt_light > own {
         let k = own / bolt_light;
-        scene.light.direction_to_light = toward
-            .lerp(scene.light.direction_to_light, k)
+        scene.lighting.light.direction_to_light = toward
+            .lerp(scene.lighting.light.direction_to_light, k)
             .normalize_or(toward);
-        scene.light.color = Vec3::new(0.78, 0.85, 1.0).lerp(scene.light.color, k);
-        scene.light.intensity = bolt_light + own * k;
+        scene.lighting.light.color = Vec3::new(0.78, 0.85, 1.0).lerp(scene.lighting.light.color, k);
+        scene.lighting.light.intensity = bolt_light + own * k;
     }
-    scene.lights.push(crate::Light {
+    scene.lighting.lights.push(crate::Light {
         kind: crate::LightKind::Point,
         position: at + Vec3::Y * 100.0,
         color: Vec3::new(0.75, 0.82, 1.0),

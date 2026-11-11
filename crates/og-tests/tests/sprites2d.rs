@@ -38,7 +38,7 @@ fn frame(scene: &RenderScene, frames: u32) -> (RgbaImage, FrameStats) {
 fn flat() -> RenderScene {
     let mut scene = RenderScene::new();
     scene.camera = Camera::orthographic_2d(Vec2::ZERO, 10.0);
-    scene.environment.background = Background::Color(Vec3::ZERO);
+    scene.lighting.environment.background = Background::Color(Vec3::ZERO);
     scene.look.post.tonemap = Tonemap::None;
     scene
 }

@@ -97,14 +97,14 @@ fn meadow() -> RenderScene {
         impostor_distance: 0.0,
     });
     let sun = Vec3::new(0.62, 0.45, 0.4);
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: sun,
         color: Vec3::new(1.0, 0.93, 0.82),
         intensity: 3.2,
         max_shadow_distance: 40.0,
         ..Default::default()
     };
-    scene.environment = Environment {
+    scene.lighting.environment = Environment {
         sky: ProceduralSky {
             sun_direction: sun,
             sun_color: Vec3::new(1.0, 0.9, 0.76),
@@ -140,13 +140,13 @@ pub const SPHERE: (f32, f32) = (1.2, 1.3);
 /// `probe-two-rooms` (module docs); `probes` false leaves both probes out.
 pub fn two_rooms_scene(probes: bool) -> RenderScene {
     let mut scene = RenderScene::new();
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: Vec3::new(-0.3, 0.8, 0.5),
         intensity: 0.0,
         cast_shadows: false,
         ..Default::default()
     };
-    scene.environment.intensity = 1.0;
+    scene.lighting.environment.intensity = 1.0;
     scene.camera = Camera {
         position: Vec3::new(0.0, 1.9, 8.5),
         target: Vec3::new(0.0, 1.4, 0.0),
@@ -201,7 +201,7 @@ pub fn two_rooms_scene(probes: bool) -> RenderScene {
                 at(0.0, SPHERE.1, 0.0),
             ),
         );
-        scene.lights.push(Light {
+        scene.lighting.lights.push(Light {
             kind: LightKind::Point,
             position: at(0.0, 3.3, 1.0),
             color: Vec3::new(1.0, 0.95, 0.85),
@@ -214,7 +214,7 @@ pub fn two_rooms_scene(probes: bool) -> RenderScene {
                 ReflectionProbe::new(1 + k as u64, at(0.0, 1.6, 0.0), Vec3::new(6.0, 4.2, 6.0));
             p.mode = ProbeMode::Baked;
             p.blend_distance = 0.3;
-            scene.reflection_probes.push(p);
+            scene.lighting.reflection_probes.push(p);
         }
     }
     scene
@@ -297,7 +297,7 @@ pub fn outdoor_scene(o: Outdoor) -> RenderScene {
         r.mode = ProbeMode::Baked;
         r.intensity = intensity;
         r.blend_distance = 0.5;
-        scene.reflection_probes.push(r);
+        scene.lighting.reflection_probes.push(r);
     }
     scene
 }
@@ -483,14 +483,14 @@ pub const FLOOR_PROBE: (u64, Vec3) = (7, Vec3::new(0.0, 1.2, 0.0));
 /// water, soft particles or a 3D fluid between the probe and the floor.
 pub fn probe_floor_scene() -> RenderScene {
     let mut scene = RenderScene::new();
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: Vec3::new(0.3, 1.0, 0.2),
         intensity: 3.0,
         cast_shadows: false,
         ..Default::default()
     };
-    scene.environment.intensity = 0.6;
-    scene.environment.background = Background::Color(Vec3::splat(0.05));
+    scene.lighting.environment.intensity = 0.6;
+    scene.lighting.environment.background = Background::Color(Vec3::splat(0.05));
     scene.camera = Camera {
         position: Vec3::new(0.0, 3.0, 6.0),
         target: Vec3::ZERO,
@@ -504,6 +504,7 @@ pub fn probe_floor_scene() -> RenderScene {
     );
     let (id, at) = FLOOR_PROBE;
     scene
+        .lighting
         .reflection_probes
         .push(ReflectionProbe::new(id, at, Vec3::new(10.0, 4.0, 10.0)));
     scene

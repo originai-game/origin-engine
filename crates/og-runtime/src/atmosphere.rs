@@ -338,19 +338,23 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
     // The physical sky: alone, towards the first directional light.
     let air = physical_air(world, layouts.physical_sky.as_ref());
     if let Some(air) = air {
-        let dir = scene.light.direction_to_light.normalize_or(Vec3::Y);
+        let dir = scene
+            .lighting
+            .light
+            .direction_to_light
+            .normalize_or(Vec3::Y);
         let sun = Vec3::new(1.0, 0.97, 0.93);
         let look = SkyLook {
             physical: Some(air),
             sun_size: 0.8,
             ..SkyLook::DEFAULT
         };
-        scene.environment.sky = ProceduralSky {
+        scene.lighting.environment.sky = ProceduralSky {
             sun_direction: dir,
             sun_color: sun,
             look: Some(look),
         };
-        scene.environment.background = Background::Procedural {
+        scene.lighting.environment.background = Background::Procedural {
             sun_direction: dir,
             sun_color: sun,
         };
@@ -379,12 +383,12 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         };
         let dir = super::fx::vec3(&s["sunDirection"]).normalize_or(Vec3::Y);
         let sun = color(&s["sunColor"], Vec3::new(1.0, 0.95, 0.88));
-        scene.environment.sky = ProceduralSky {
+        scene.lighting.environment.sky = ProceduralSky {
             sun_direction: dir,
             sun_color: sun,
             look: Some(look),
         };
-        scene.environment.background = Background::Procedural {
+        scene.lighting.environment.background = Background::Procedural {
             sun_direction: dir,
             sun_color: sun,
         };
@@ -412,17 +416,17 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         // The moon opposite the sun drawn this frame (moon_direction zero).
         stepped.sky.moon_size = f(&d, "moonSize", 1.6);
         stepped.sky.moon_phase = f(&d, "moonPhase", 0.5);
-        scene.light.direction_to_light = look.light_direction;
-        scene.light.color = look.light_color;
-        scene.light.intensity = intensity;
-        scene.environment.intensity = look.ambient;
+        scene.lighting.light.direction_to_light = look.light_direction;
+        scene.lighting.light.color = look.light_color;
+        scene.lighting.light.intensity = intensity;
+        scene.lighting.environment.intensity = look.ambient;
         scene.atmosphere.adaptation = look.adaptation;
-        scene.environment.sky = ProceduralSky {
+        scene.lighting.environment.sky = ProceduralSky {
             sun_direction: stepped.sun_direction,
             sun_color: stepped.sun_color,
             look: Some(stepped.sky),
         };
-        scene.environment.background = Background::Procedural {
+        scene.lighting.environment.background = Background::Procedural {
             sun_direction: look.sun_direction,
             sun_color: look.sun_color,
         };
@@ -469,21 +473,35 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         });
     if scene.atmosphere.aurora.is_some()
         && scene.atmosphere.clouds.is_none()
-        && !matches!(scene.environment.background, Background::Procedural { .. })
+        && !matches!(
+            scene.lighting.environment.background,
+            Background::Procedural { .. }
+        )
     {
-        let dir = scene.light.direction_to_light.normalize_or(Vec3::Y);
-        scene.environment.background = Background::Procedural {
+        let dir = scene
+            .lighting
+            .light
+            .direction_to_light
+            .normalize_or(Vec3::Y);
+        scene.lighting.environment.background = Background::Procedural {
             sun_direction: dir,
-            sun_color: scene.environment.sky.sun_color,
+            sun_color: scene.lighting.environment.sky.sun_color,
         };
     }
     if scene.atmosphere.clouds.is_some()
-        && !matches!(scene.environment.background, Background::Procedural { .. })
+        && !matches!(
+            scene.lighting.environment.background,
+            Background::Procedural { .. }
+        )
     {
-        let dir = scene.light.direction_to_light.normalize_or(Vec3::Y);
-        scene.environment.background = Background::Procedural {
+        let dir = scene
+            .lighting
+            .light
+            .direction_to_light
+            .normalize_or(Vec3::Y);
+        scene.lighting.environment.background = Background::Procedural {
             sun_direction: dir,
-            sun_color: scene.environment.sky.sun_color,
+            sun_color: scene.lighting.environment.sky.sun_color,
         };
     }
 
@@ -553,8 +571,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             }
             scene.atmosphere.fog = Some(fog);
         }
-        scene.light.cover(look.light);
-        scene.environment.intensity *= 0.5 + 0.5 * look.light;
+        scene.lighting.light.cover(look.light);
+        scene.lighting.environment.intensity *= 0.5 + 0.5 * look.light;
         if let Some(emitter) = &look.emitter {
             // The emitter is remade only when its inputs change.
             let key: Vec<u32> = [

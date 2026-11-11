@@ -69,11 +69,14 @@ impl Renderer {
         // shaders' `contact_shadow` reads.
         let mut contact_rows = [[0.0f32; 4]; 4];
         if contact {
-            for (c, ls) in frame::contact_lights(&local_shadows, &scene.lights, camera.position)
-                .into_iter()
-                .enumerate()
+            for (c, ls) in
+                frame::contact_lights(&local_shadows, &scene.lighting.lights, camera.position)
+                    .into_iter()
+                    .enumerate()
             {
-                let p = cam.view.transform_point3(scene.lights[ls.light].position);
+                let p = cam
+                    .view
+                    .transform_point3(scene.lighting.lights[ls.light].position);
                 contact_rows[c] = p.extend(1.0).to_array();
                 lights_gpu[ls.record].direction_slot[3] += 0.25 * (c + 1) as f32;
             }
@@ -112,7 +115,7 @@ impl Renderer {
         // the mirrored camera (its oblique projection moves only depth).
         for (k, (_, mirrored, f, _, (rw, rh))) in reflections.iter().enumerate() {
             self.reflections.reflection_clusters[k].build_kept(
-                &scene.lights,
+                &scene.lighting.lights,
                 &self.lights.clusters.kept,
                 &clusters::ClusterView {
                     camera: f,

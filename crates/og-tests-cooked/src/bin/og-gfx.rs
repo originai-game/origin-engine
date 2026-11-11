@@ -317,7 +317,7 @@ fn local_lights(g: &mut GfxScene, shadowed: bool) {
     let c = g.scene.camera.target;
     for i in 0..4 {
         let a = i as f32 * std::f32::consts::FRAC_PI_2;
-        g.scene.lights.push(Light {
+        g.scene.lighting.lights.push(Light {
             kind: if i % 2 == 0 {
                 LightKind::Point
             } else {
@@ -338,7 +338,9 @@ fn local_lights(g: &mut GfxScene, shadowed: bool) {
 
 const VARIANTS: &[Variant] = &[
     ("features off (CSM on)", |_| {}),
-    ("no shadows at all", |g| g.scene.light.cast_shadows = false),
+    ("no shadows at all", |g| {
+        g.scene.lighting.light.cast_shadows = false
+    }),
     ("TAA", |g| g.desc.antialias = Antialias::Taa),
     ("MSAA 4x", |g| g.desc.antialias = Antialias::Msaa4),
     ("bloom", |g| {
@@ -520,7 +522,7 @@ fn effect_table(frames: u32, only: Option<&str>) -> Result<String, String> {
         (
             "atmosphere-dusk",
             "E5: sky look drawn per pixel (vs the cubemap)",
-            |g| g.scene.environment.background = og_render::Background::Sky,
+            |g| g.scene.lighting.environment.background = og_render::Background::Sky,
         ),
         (
             "water-3d",

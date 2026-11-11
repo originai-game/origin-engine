@@ -211,7 +211,7 @@ impl RenderBackend for VolumeRecorder {
     }
     fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
         *self.0.borrow_mut() = (
-            scene.light_volumes.clone(),
+            scene.lighting.light_volumes.clone(),
             scene.quality.global_illumination,
         );
         Ok(())

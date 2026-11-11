@@ -101,7 +101,7 @@ fn moving_the_depth_slices_changes_nothing() {
 fn past_max_lights_the_faint_far_ones_are_dropped() {
     let desc = scenes::base_desc();
     let mut scene = p2_scenes::many_lights(0);
-    scene.lights = p2_scenes::many_lights_list(256)
+    scene.lighting.lights = p2_scenes::many_lights_list(256)
         .into_iter()
         .map(|mut l| {
             // All in view.
@@ -109,7 +109,7 @@ fn past_max_lights_the_faint_far_ones_are_dropped() {
             l
         })
         .collect();
-    let bright = scene.lights.clone();
+    let bright = scene.lighting.lights.clone();
     let (alone, alone_stats) = frame(&desc, &scene);
     assert_eq!(alone_stats.lights, 256);
     // Faint lights at the far edge, interleaved with the bright ones.
@@ -120,16 +120,16 @@ fn past_max_lights_the_faint_far_ones_are_dropped() {
         range: 3.0,
         ..Default::default()
     };
-    scene.lights = Vec::new();
+    scene.lighting.lights = Vec::new();
     for (i, l) in bright.iter().enumerate() {
-        scene.lights.push(*l);
-        if i % 6 == 0 && scene.lights.len() < 296 {
+        scene.lighting.lights.push(*l);
+        if i % 6 == 0 && scene.lighting.lights.len() < 296 {
             let mut f = faint;
             f.position.x = -20.0 + (i as f32) * 0.15;
-            scene.lights.push(f);
+            scene.lighting.lights.push(f);
         }
     }
-    let faint_count = scene.lights.len() - 256;
+    let faint_count = scene.lighting.lights.len() - 256;
     assert!(faint_count >= 40);
     let (mixed, stats) = frame(&desc, &scene);
     assert_eq!(
@@ -157,7 +157,7 @@ fn a_light_turned_on_mid_run_waits_for_no_compile() {
         ..scenes::base_desc()
     };
     let mut scene = scenes::build("materials").expect("materials").scene;
-    scene.lights.clear();
+    scene.lighting.lights.clear();
     scene.decals.clear();
     let light = Light {
         position: Vec3::new(0.0, 1.5, 1.0),
@@ -168,12 +168,12 @@ fn a_light_turned_on_mid_run_waits_for_no_compile() {
         ..Default::default()
     };
     // The frame a fresh renderer draws with the light.
-    scene.lights.push(light);
+    scene.lighting.lights.push(light);
     let (lit, _) = frame(&desc, &scene);
-    scene.lights.clear();
+    scene.lighting.lights.clear();
     let mut r = Renderer::new_blocking(&desc).expect("renderer");
     r.render(&scene, &RenderTarget::Offscreen).expect("render");
-    scene.lights.push(light);
+    scene.lighting.lights.push(light);
     let t0 = std::time::Instant::now();
     loop {
         let stats = r.render(&scene, &RenderTarget::Offscreen).expect("render");
@@ -204,7 +204,7 @@ fn a_capture_draws_with_the_full_lit_pipelines() {
         ..scenes::base_desc()
     };
     let mut scene = scenes::build("materials").expect("materials").scene;
-    scene.lights.clear();
+    scene.lighting.lights.clear();
     scene.decals.clear();
     let light = Light {
         position: Vec3::new(0.0, 1.5, 1.0),
@@ -214,7 +214,7 @@ fn a_capture_draws_with_the_full_lit_pipelines() {
         cast_shadows: false,
         ..Default::default()
     };
-    scene.lights.push(light);
+    scene.lighting.lights.push(light);
     let mut fresh = Renderer::new_blocking(&desc).expect("renderer");
     fresh
         .render_capture(&scene, &RenderTarget::Offscreen)
@@ -222,10 +222,10 @@ fn a_capture_draws_with_the_full_lit_pipelines() {
     let expected = fresh.read_offscreen().expect("read");
     // A renderer whose first frame had no light: its lit pipelines are the
     // variants without the local lights' code, the full ones compiling.
-    scene.lights.clear();
+    scene.lighting.lights.clear();
     let mut r = Renderer::new_blocking(&desc).expect("renderer");
     r.render(&scene, &RenderTarget::Offscreen).expect("render");
-    scene.lights.push(light);
+    scene.lighting.lights.push(light);
     r.render_capture(&scene, &RenderTarget::Offscreen)
         .expect("capture");
     let got = r.read_offscreen().expect("read");

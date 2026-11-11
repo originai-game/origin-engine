@@ -128,11 +128,11 @@ fn the_phase_lights_the_disc() {
 #[ignore = "requires GPU"]
 fn the_moon_sets_below_the_horizon() {
     let mut scene = p2_scenes::moon_scene(0.5, 2.4);
-    if let Some(look) = scene.environment.sky.look.as_mut() {
+    if let Some(look) = scene.lighting.environment.sky.look.as_mut() {
         look.moon_direction = (p2_scenes::moon_direction() * Vec3::new(1.0, -1.0, 1.0)).normalize();
     }
     let set = frame(&scene);
-    if let Some(look) = scene.environment.sky.look.as_mut() {
+    if let Some(look) = scene.lighting.environment.sky.look.as_mut() {
         look.moon_size = 0.0;
     }
     let without = frame(&scene);

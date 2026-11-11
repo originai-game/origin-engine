@@ -122,7 +122,7 @@ fn measured_outline(font: &str) -> f32 {
         ..UiTextEffects::default()
     });
     scene.ui.overlay = Some(o);
-    scene.environment.background = Background::Color(Vec3::ONE);
+    scene.lighting.environment.background = Background::Color(Vec3::ONE);
     scene.look.post.tonemap = Tonemap::None;
     let desc = RenderDesc {
         width: w,

@@ -94,6 +94,7 @@ impl Renderer {
             && gi.is_none()
             && scene.quality.shadowed_lights.min(self.info.shadowed_lights) > 0
             && scene
+                .lighting
                 .lights
                 .iter()
                 .any(|l| l.cast_shadows && !matches!(l.kind, LightKind::Rect { .. }));

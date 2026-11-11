@@ -62,13 +62,13 @@ pub fn lod_scene() -> Result<LodScene, String> {
         .map_err(|e| e.to_string())?;
     let mut scene = RenderScene::new();
     let sun = Vec3::new(-0.4, 0.7, 0.5);
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: sun,
         intensity: 3.0,
         ..Default::default()
     };
-    scene.environment.sky.sun_direction = sun;
-    scene.environment.intensity = 0.6;
+    scene.lighting.environment.sky.sun_direction = sun;
+    scene.lighting.environment.intensity = 0.6;
     scene.camera = lod_camera();
     let ground = scene.add_standard_material(StandardMaterial {
         color: Vec3::new(0.3, 0.32, 0.28),

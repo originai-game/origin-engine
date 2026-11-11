@@ -660,7 +660,7 @@ impl GiProbes {
                     (self.frame % (1 << 24)) as u32,
                     s.first_ray,
                     (s.cascade * probes_per_cascade() * RADIANCE_TEXELS * ESTIMATOR_WORDS) as u32,
-                    scene.lights.len().min(crate::MAX_LIGHTS) as u32,
+                    scene.lighting.lights.len().min(crate::MAX_LIGHTS) as u32,
                 ],
             };
             let o = k * PARAMS_STRIDE as usize;

@@ -40,7 +40,7 @@ fn scene(name: &str, remove: bool) -> RenderScene {
     s.camera.exposure = Exposure::linear(1.0);
     s.look.post.tonemap = Tonemap::None;
     if name != "sky-only" {
-        s.environment.background = Background::Color(Vec3::ZERO);
+        s.lighting.environment.background = Background::Color(Vec3::ZERO);
     }
     if remove {
         match name {
@@ -54,7 +54,7 @@ fn scene(name: &str, remove: bool) -> RenderScene {
                 s.beams.clear();
             }
             "decals" => s.decals.clear(),
-            "sky-only" => s.environment.background = Background::Color(Vec3::ZERO),
+            "sky-only" => s.lighting.environment.background = Background::Color(Vec3::ZERO),
             "impostors" => s.impostors.clear(),
             _ => {
                 s.instances.clear();

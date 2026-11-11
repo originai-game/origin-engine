@@ -185,13 +185,13 @@ pub(super) fn logs(scene: &mut RenderScene, at: Vec3) {
 
 fn night(scene: &mut RenderScene) {
     let moon = Vec3::new(-0.3, 0.6, -0.6);
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: moon,
         color: Vec3::new(0.5, 0.6, 1.0),
         intensity: 0.25,
         ..Default::default()
     };
-    scene.environment = Environment {
+    scene.lighting.environment = Environment {
         sky: ProceduralSky {
             sun_direction: moon,
             sun_color: Vec3::new(0.3, 0.35, 0.5),
@@ -322,7 +322,7 @@ pub fn particles_scene() -> RenderScene {
         5,
         0,
     ));
-    scene.lights = vec![
+    scene.lighting.lights = vec![
         Light {
             position: Vec3::new(0.0, 0.7, 0.0),
             color: Vec3::new(1.0, 0.55, 0.25),
@@ -514,16 +514,16 @@ pub fn particles_lit_scene() -> RenderScene {
         0,
     ));
     let sun = Vec3::new(0.85, 0.4, 0.3);
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: sun,
         intensity: 3.0,
         cast_shadows: true,
         ..Default::default()
     };
-    scene.environment.sky.sun_direction = sun;
+    scene.lighting.environment.sky.sun_direction = sun;
     // A low, clear sun over a dimmer sky, so the lit particles' sun side
     // reads against the sky's fill.
-    scene.environment.intensity = 0.5;
+    scene.lighting.environment.intensity = 0.5;
     scene.camera = Camera {
         position: Vec3::new(0.0, 2.4, 6.4),
         target: Vec3::new(0.0, 1.0, -0.8),

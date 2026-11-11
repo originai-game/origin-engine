@@ -21,9 +21,9 @@ fn scene(brightness: f32) -> RenderScene {
 }
 
 fn light(s: &mut RenderScene, brightness: f32) {
-    s.light.intensity = 0.15 * brightness;
-    s.environment.intensity = 0.03 * brightness;
-    s.environment.background =
+    s.lighting.light.intensity = 0.15 * brightness;
+    s.lighting.environment.intensity = 0.03 * brightness;
+    s.lighting.environment.background =
         og_render::Background::Color(glam::Vec3::new(0.01, 0.012, 0.02) * brightness);
 }
 

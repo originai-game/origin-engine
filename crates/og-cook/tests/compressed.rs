@@ -148,8 +148,8 @@ fn stone_scene(textures: &[TextureSource; 2], flip_normal: bool) -> RenderScene 
             Mat4::from_scale_rotation_translation(Vec3::splat(0.7), tilt, at),
         );
     }
-    scene.light.direction_to_light = Vec3::new(0.6, 0.35, 0.5).normalize();
-    scene.light.intensity = 3.0;
+    scene.lighting.light.direction_to_light = Vec3::new(0.6, 0.35, 0.5).normalize();
+    scene.lighting.light.intensity = 3.0;
     scene.camera.position = Vec3::new(0.0, 2.2, 4.2);
     scene.camera.target = Vec3::new(0.0, 0.6, -6.0);
     scene
@@ -353,9 +353,9 @@ fn cooked_reference(
         }
     }
     scene.camera = src.camera;
-    scene.light = src.light;
-    scene.lights = src.lights.clone();
-    scene.environment = src.environment;
+    scene.lighting.light = src.lighting.light;
+    scene.lighting.lights = src.lighting.lights.clone();
+    scene.lighting.environment = src.lighting.environment;
     scene.look.post = src.look.post;
     scene.debug = src.debug;
     gfx.scene = scene;

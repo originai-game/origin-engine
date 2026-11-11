@@ -71,7 +71,7 @@ impl Renderer {
                 .extend(scene.debug.lit_code())
                 .to_array(),
             params: [
-                scene.environment.intensity,
+                scene.lighting.environment.intensity,
                 (ibl::PREFILTER_MIPS - 1) as f32,
                 lights_gpu.len() as f32,
                 1.0 / shadow_size as f32,
@@ -86,12 +86,13 @@ impl Renderer {
             local_view_proj: [[[0.0; 4]; 4]; LOCAL_SHADOW_LAYERS],
             atmosphere: atmosphere::AtmosphereGpu::new(
                 frame_fog.as_ref(),
-                match scene.environment.background {
+                match scene.lighting.environment.background {
                     Background::Procedural {
                         sun_direction,
                         sun_color,
                     } => Some((
                         scene
+                            .lighting
                             .environment
                             .sky
                             .look
@@ -145,18 +146,18 @@ impl Renderer {
             view_right: cam.axes().0,
             view_up: cam.axes().1,
             hemi_sky: {
-                let (s, _, i) = scene.hemisphere;
+                let (s, _, i) = scene.lighting.hemisphere;
                 // Irradiance in the IBL's units (the lit shaders add it beside the environment's
                 // irradiance, at its own strength: an environment at intensity 0 leaves it).
                 [s[0], s[1], s[2], i.max(0.0) / std::f32::consts::PI]
             },
             hemi_ground: {
-                let g = scene.hemisphere.1;
+                let g = scene.lighting.hemisphere.1;
                 [g[0], g[1], g[2], 0.0]
             },
             material_surface: scene.look.stylise.material.surface_uniform(),
             origin: scene.origin.extend(0.0).to_array(),
-            env_dome: crate::GroundProjection::gpu(scene.environment.ground),
+            env_dome: crate::GroundProjection::gpu(scene.lighting.environment.ground),
             foliage_wind: crate::foliage::foliage_winds(
                 scene,
                 self.history.previous_wind,

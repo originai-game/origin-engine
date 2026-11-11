@@ -76,7 +76,7 @@ pub(super) fn sprite_field(n: usize) -> Result<RenderScene, String> {
         });
     }
     scene.camera = Camera::orthographic_2d(Vec2::ZERO, 20.0);
-    scene.environment.background = Background::Color(Vec3::new(0.02, 0.02, 0.03));
+    scene.lighting.environment.background = Background::Color(Vec3::new(0.02, 0.02, 0.03));
     scene.look.post.tonemap = Tonemap::None;
     Ok(scene)
 }
@@ -242,7 +242,7 @@ pub fn sprites_shadow_scene() -> RenderScene {
         array: wheel,
         layer: 3,
     });
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: Vec3::new(0.6, 0.8, 0.5),
         intensity: 3.0,
         ..Default::default()
@@ -433,7 +433,7 @@ pub fn billboard_scene() -> RenderScene {
         cast_shadows: false,
         ..Default::default()
     });
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: Vec3::new(0.7, 0.75, 0.35),
         intensity: 3.0,
         ..Default::default()
@@ -575,7 +575,7 @@ pub fn sprites_shadow_terrain_scene() -> RenderScene {
     stand(&mut scene, 3.5, -0.4, 2, true);
     // Beside the wall: its drop shadow runs into the wall's shadow.
     stand(&mut scene, -2.8, 0.1, 0, false);
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: sun,
         intensity: 3.0,
         ..Default::default()
@@ -750,7 +750,7 @@ pub fn sprite_array_fx_scene() -> RenderScene {
     scene.ui.overlay = Some(overlay);
     scene.look.post.glow = Some(Glow { intensity: 0.8 });
     scene.camera = Camera::orthographic_2d(Vec2::new(0.0, -1.0), 12.0);
-    scene.environment.background = Background::Color(Vec3::new(0.02, 0.02, 0.03));
+    scene.lighting.environment.background = Background::Color(Vec3::new(0.02, 0.02, 0.03));
     scene.look.post.tonemap = Tonemap::None;
     scene
 }
@@ -853,7 +853,7 @@ pub fn sprite_array_scene() -> RenderScene {
         });
     }
     scene.camera = Camera::orthographic_2d(Vec2::new(0.0, -1.0), 12.0);
-    scene.environment.background = Background::Color(Vec3::new(0.02, 0.02, 0.03));
+    scene.lighting.environment.background = Background::Color(Vec3::new(0.02, 0.02, 0.03));
     scene.look.post.tonemap = Tonemap::None;
     scene
 }
@@ -961,7 +961,7 @@ pub fn lights_2d_scene(angles: u32, normals: bool) -> RenderScene {
         });
     }
     scene.camera = Camera::orthographic_2d(Vec2::ZERO, 18.0);
-    scene.environment.background = Background::Color(Vec3::ZERO);
+    scene.lighting.environment.background = Background::Color(Vec3::ZERO);
     scene.look.post.tonemap = Tonemap::None;
     scene
 }

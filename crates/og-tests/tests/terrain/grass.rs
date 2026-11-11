@@ -49,8 +49,8 @@ fn trample_scene() -> RenderScene {
         },
     });
     scene.atmosphere.fog = None;
-    scene.environment.background = Background::Color(Vec3::ZERO);
-    scene.light.cast_shadows = false;
+    scene.lighting.environment.background = Background::Color(Vec3::ZERO);
+    scene.lighting.light.cast_shadows = false;
     scene.camera = Camera {
         position: Vec3::new(0.0, 0.12, 0.0),
         target: Vec3::new(1.0, 0.12, 0.0),
@@ -150,9 +150,9 @@ fn a_low_sun_darkens_the_meadow_towards_its_roots() {
     g.tip_color = g.base_color;
     g.translucency = 0.0;
     g.cast_shadows = og_render::Grass::default().cast_shadows;
-    scene.light.cast_shadows = true;
+    scene.lighting.light.cast_shadows = true;
     let up = 10f32.to_radians();
-    scene.light.direction_to_light = Vec3::new(0.0, up.sin(), up.cos());
+    scene.lighting.light.direction_to_light = Vec3::new(0.0, up.sin(), up.cos());
     scene.camera = Camera {
         position: Vec3::new(-20.0, 0.25, 0.0),
         target: Vec3::new(0.0, 0.25, 0.0),

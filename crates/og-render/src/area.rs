@@ -106,7 +106,7 @@ pub(crate) struct Cookies {
 
 /// Whether a cookie's light takes one (spot) or six (point) layers.
 fn faces(scene: &RenderScene, c: &LightCookie) -> Option<u32> {
-    match scene.lights.get(c.light)?.kind {
+    match scene.lighting.lights.get(c.light)?.kind {
         LightKind::Point => Some(6),
         LightKind::Spot { .. } => Some(1),
         LightKind::Rect { .. } => None,
@@ -139,7 +139,7 @@ pub struct CookieLayers {
 pub fn cookie_layers(scene: &RenderScene) -> CookieLayers {
     let mut seen: Vec<(TextureHandle, bool, bool)> = Vec::new();
     let mut out = CookieLayers::default();
-    for c in &scene.light_cookies {
+    for c in &scene.lighting.light_cookies {
         let Some(need) = faces(scene, c) else {
             continue;
         };
@@ -269,7 +269,7 @@ impl Cookies {
         let mut placed: Vec<Placed> = Vec::new();
         let mut writes: Vec<(TextureHandle, u32, u32)> = Vec::new();
         let mut next = 0u32;
-        for c in &scene.light_cookies {
+        for c in &scene.lighting.light_cookies {
             let Some(need) = faces(scene, c) else {
                 continue;
             };
@@ -369,11 +369,11 @@ impl Cookies {
         if self.placed.is_empty() {
             return;
         }
-        for c in &scene.light_cookies {
+        for c in &scene.lighting.light_cookies {
             let Some(k) = kept.iter().position(|&i| i == c.light) else {
                 continue;
             };
-            let point = matches!(scene.lights[c.light].kind, LightKind::Point);
+            let point = matches!(scene.lighting.lights[c.light].kind, LightKind::Point);
             let Some(p) = self
                 .placed
                 .iter()
@@ -463,8 +463,11 @@ mod tests {
             .chain([&textures[4], &textures[0]])
             .enumerate()
         {
-            scene.lights.push(if i == 6 { spot() } else { point() });
-            scene.light_cookies.push(LightCookie {
+            scene
+                .lighting
+                .lights
+                .push(if i == 6 { spot() } else { point() });
+            scene.lighting.light_cookies.push(LightCookie {
                 light: i,
                 texture: t,
             });

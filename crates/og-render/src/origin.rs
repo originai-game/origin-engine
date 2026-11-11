@@ -56,7 +56,7 @@ impl RenderScene {
         }
         self.camera.position += d;
         self.camera.target += d;
-        if let crate::ShadowBounds::Sphere { center, .. } = &mut self.light.shadow_bounds {
+        if let crate::ShadowBounds::Sphere { center, .. } = &mut self.lighting.light.shadow_bounds {
             *center += d;
         }
         for m in &mut self.atmosphere.wind_motors {
@@ -65,7 +65,7 @@ impl RenderScene {
         for p in &mut self.atmosphere.grass_pushers {
             p.position -= origin;
         }
-        for l in &mut self.lights {
+        for l in &mut self.lighting.lights {
             l.position += d;
         }
         for v in &mut self.views {
@@ -147,14 +147,14 @@ impl RenderScene {
         for o in &mut self.occluders_2d {
             o.center += d2;
         }
-        for p in &mut self.reflection_probes {
+        for p in &mut self.lighting.reflection_probes {
             p.position += d;
         }
-        for v in &mut self.baked.volumes {
+        for v in &mut self.lighting.baked.volumes {
             v.min += d;
             v.max += d;
         }
-        if let Some(g) = &mut self.environment.ground {
+        if let Some(g) = &mut self.lighting.environment.ground {
             g.center += d;
         }
         if let Some(f) = &mut self.atmosphere.fog {

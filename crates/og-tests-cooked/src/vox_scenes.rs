@@ -231,14 +231,14 @@ pub fn keyframes_scene() -> Result<RenderScene, String> {
         }
     }
     let sun = Vec3::new(-0.5, 0.8, 0.45);
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: sun,
         intensity: 3.0,
         ..Default::default()
     };
-    scene.environment.sky.sun_direction = sun;
-    scene.environment.intensity = 0.8;
-    scene.environment.background = Background::Color(Vec3::new(0.55, 0.68, 0.82));
+    scene.lighting.environment.sky.sun_direction = sun;
+    scene.lighting.environment.intensity = 0.8;
+    scene.lighting.environment.background = Background::Color(Vec3::new(0.55, 0.68, 0.82));
     scene.camera = Camera {
         position: Vec3::new(0.0, 2.4, 4.6),
         target: Vec3::new(0.0, 0.45, 0.0),

@@ -473,14 +473,14 @@ fn with_model(
 ) -> (RenderScene, ModelParts) {
     let mut scene = RenderScene::new();
     let sun = Vec3::new(-0.5, 0.8, 0.6);
-    scene.light = DirectionalLight {
+    scene.lighting.light = DirectionalLight {
         direction_to_light: sun,
         intensity: 3.0,
         ..Default::default()
     };
-    scene.environment.sky.sun_direction = sun;
-    scene.environment.intensity = 0.7;
-    scene.environment.background = Background::Color(Vec3::new(0.55, 0.68, 0.82));
+    scene.lighting.environment.sky.sun_direction = sun;
+    scene.lighting.environment.intensity = 0.7;
+    scene.lighting.environment.background = Background::Color(Vec3::new(0.55, 0.68, 0.82));
     scene.camera = camera;
     let bundle = Bundle::open(&cooked().expect("cooked").join("cooked")).expect("the bundle opens");
     let textures: Vec<_> = model
@@ -543,7 +543,7 @@ pub fn model_lights(model: &CookedModel, scene: &mut RenderScene) {
         };
         let kind = match l.kind {
             light::DIRECTIONAL => {
-                scene.light = DirectionalLight {
+                scene.lighting.light = DirectionalLight {
                     direction_to_light: -direction,
                     color,
                     intensity: l.intensity,
@@ -565,7 +565,7 @@ pub fn model_lights(model: &CookedModel, scene: &mut RenderScene) {
             }
             _ => LightKind::Point,
         };
-        scene.lights.push(Light {
+        scene.lighting.lights.push(Light {
             kind,
             position,
             color,
@@ -589,8 +589,8 @@ pub fn lights_scene() -> Result<(RenderScene, CookedModel), String> {
             ..Default::default()
         },
     );
-    scene.environment.intensity = 0.05;
-    scene.environment.background = Background::Color(Vec3::new(0.02, 0.02, 0.03));
+    scene.lighting.environment.intensity = 0.05;
+    scene.lighting.environment.background = Background::Color(Vec3::new(0.02, 0.02, 0.03));
     model_lights(&model, &mut scene);
     Ok((scene, model))
 }

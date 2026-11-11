@@ -186,7 +186,7 @@ fn trails_remember_the_path_for_their_lifetime() {
         tick: 0,
     });
     scene.camera = Camera::orthographic_2d(Vec2::ZERO, 6.0);
-    scene.environment.background = Background::Color(Vec3::ZERO);
+    scene.lighting.environment.background = Background::Color(Vec3::ZERO);
     scene.look.post.tonemap = Tonemap::None;
     let mut r = Renderer::new_blocking(&small()).expect("renderer");
     // The trail's lit pixels: how many, and the columns they span. The
