@@ -1,0 +1,16 @@
+{
+  "breaking": [
+    {
+      "member": "og.nav",
+      "change": "og.nav's descs (NavGridDesc, TilemapGridDesc, PathDesc, FlowDesc, NavMeshDesc, NavBox, NavShape, NavAreaDesc, NavLinkDesc) and its point and target arguments are read by types generated from the IDL. A field of the wrong type (a string for a number, 3.5 for a whole number, a negative handle) used to fall back to its default silently and is now refused with the field's path, such as `desc.blocked[1].max.y: expected a number, got true`; an unknown PathDesc.algorithm used to run jps and is refused; a desc for setObstacle, carve, setArea or setLink that is neither an object nor null used to remove the item and is refused. Absent and null fields still take the IDL defaults, which are unchanged.",
+      "fix": "Pass each field as the IDL types it (numbers as numbers, whole numbers for u32 fields, a NavAlgorithm or NavShapeKind by name), and omit the desc or pass null to remove an obstacle, area or link.",
+      "find": ["og.nav.grid", "og.nav.gridFromTilemap", "og.nav.findPath", "og.nav.flowField", "og.nav.setFlowTargets", "og.nav.build", "og.nav.setObstacle", "og.nav.carve", "og.nav.setArea", "og.nav.setLink"]
+    },
+    {
+      "member": "og.ai.noise",
+      "change": "NoiseDesc is read by a type generated from the IDL: a field of the wrong type (a string position component, a negative or fractional source) used to fall back to its default and is now refused with the field's path. The defaults are unchanged.",
+      "fix": "Pass position as a Vector3 of numbers, loudness as a number and source as an entity handle.",
+      "find": ["og.ai.noise"]
+    }
+  ]
+}

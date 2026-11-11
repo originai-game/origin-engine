@@ -167,18 +167,12 @@ pub fn og_ai_restart(world: u32, entity: f64) -> String {
 
 pub fn og_ai_noise(world: u32, desc: Option<String>) -> String {
     let r = (|| -> Result<(), String> {
-        let d = parse(desc.as_deref())?;
-        let p = &d["position"];
-        let at = Vec3::new(
-            p["x"].as_f64().unwrap_or(0.0) as f32,
-            p["y"].as_f64().unwrap_or(0.0) as f32,
-            p["z"].as_f64().unwrap_or(0.0) as f32,
-        );
+        let d: super::wire::NoiseDesc = super::wire::arg(desc.as_deref(), "desc")?;
         let s = system(world).ok_or("this world has no og.ai")?;
         s.noise(og_ai::Noise {
-            position: at,
-            loudness: d["loudness"].as_f64().unwrap_or(1.0).clamp(0.0, 100.0) as f32,
-            source: d["source"].as_f64().map_or(0, handle),
+            position: d.position,
+            loudness: d.loudness.clamp(0.0, 100.0),
+            source: d.source,
         });
         Ok(())
     })();
