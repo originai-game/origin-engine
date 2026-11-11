@@ -36,7 +36,7 @@ mod pass_prepass;
 use pass_prepass::PrepassPassInputs;
 
 mod pass_reflection;
-use pass_reflection::ReflectionPassInputs;
+use pass_reflection::{ReflectionPass, ReflectionPlan};
 
 mod pass_oit;
 use pass_oit::BlendedPart;
@@ -4293,6 +4293,20 @@ impl Renderer {
             face_line_groups: &face_line_groups,
             face_sprites: &face_sprites,
         });
+        plans.reflection = (!reflections.is_empty()).then(|| ReflectionPlan {
+            meshlet_views: &reflection_meshlets,
+            batches: &batches,
+            scene,
+            reflection_frame_group,
+            reflection_fx_group: &reflection_fx_group,
+            reflection_list: &reflection_list,
+            skinned_visible: &skinned_visible,
+            lit_skinned_standard: &lit_skinned_standard,
+            terrain_indices,
+            reflections: &reflections,
+            terrain_draws: &terrain_draws,
+            reflection_blended: &reflection_blended,
+        });
         for &pass in self.graph.order() {
             // What the pass needs here: its kind's, and what this frame's
             // instance of it adds (schedule.rs).
@@ -4342,25 +4356,6 @@ impl Renderer {
                     scatter_batches: &scatter_batches,
                     cards: camera_cards,
                     grass_frame: &grass_frame,
-                }),
-                FramePass::Reflection(k) => self.encode_reflection(ReflectionPassInputs {
-                    ctx: &ctx,
-                    meshlet_views: &reflection_meshlets,
-                    batches: &batches,
-                    k,
-                    scene,
-                    encoder: &mut encoder,
-                    reflection_frame_group,
-                    reflection_fx_group: &reflection_fx_group,
-                    reflection_list: &reflection_list,
-                    stats: &mut stats,
-                    skinned_visible: &skinned_visible,
-                    lit_skinned_standard: &lit_skinned_standard,
-                    terrain_indices,
-                    reflections: &reflections,
-                    terrain_draws: &terrain_draws,
-                    sky_group,
-                    reflection_blended: &reflection_blended,
                 }),
                 FramePass::View(i) => self.encode_view(ViewPassInputs {
                     ctx: &ctx,

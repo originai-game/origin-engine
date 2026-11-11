@@ -100,4 +100,5 @@ passes! {
     volumetric: pass_volumetric::VolumetricPass => FramePass::Volumetric,
     ssr: pass_ssr::SsrPass => FramePass::Ssr,
     probes: pass_probes::ProbesPass => FramePass::Probes,
+    reflection: pass_reflection::ReflectionPass => FramePass::Reflection(_),
 }

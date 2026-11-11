@@ -2,53 +2,47 @@
 
 use super::*;
 
-pub(super) struct ReflectionPassInputs<'a> {
-    /// What the frame draws with (draw_ctx.rs).
-    pub(super) ctx: &'a DrawCtx<'a>,
-    pub(super) k: u8,
-    pub(super) scene: &'a RenderScene,
-    pub(super) encoder: &'a mut Encoder,
-    pub(super) reflection_frame_group: &'a [wgpu::BindGroup],
-    pub(super) reflection_fx_group: &'a [wgpu::BindGroup],
-    pub(super) reflection_list: &'a [DrawList],
-    pub(super) stats: &'a mut FrameStats,
-    pub(super) skinned_visible: &'a [Batch],
-    pub(super) lit_skinned_standard: &'a [&'a wgpu::RenderPipeline],
-    pub(super) terrain_indices: Option<&'a wgpu::Buffer>,
+pub(super) struct ReflectionPlan<'f> {
+    pub(super) scene: &'f RenderScene,
+    pub(super) reflection_frame_group: &'f [wgpu::BindGroup],
+    pub(super) reflection_fx_group: &'f [wgpu::BindGroup],
+    pub(super) reflection_list: &'f [DrawList],
+    pub(super) skinned_visible: &'f [Batch],
+    pub(super) lit_skinned_standard: &'f [&'f wgpu::RenderPipeline],
+    pub(super) terrain_indices: Option<&'f wgpu::Buffer>,
     #[allow(clippy::type_complexity)]
-    pub(super) reflections: &'a [(usize, Camera, frame::CameraFrame, Mat4, (u32, u32))],
-    pub(super) terrain_draws: &'a [terrain::TerrainDraw],
-    pub(super) sky_group: &'a wgpu::BindGroup,
-    pub(super) reflection_blended: &'a [DrawList],
+    pub(super) reflections: &'f [(usize, Camera, frame::CameraFrame, Mat4, (u32, u32))],
+    pub(super) terrain_draws: &'f [terrain::TerrainDraw],
+    pub(super) reflection_blended: &'f [DrawList],
     /// Each pass's view of the meshlet dispatch (0: none), and the
     /// frame's batches it draws.
-    pub(super) meshlet_views: &'a [u32],
-    pub(super) batches: &'a [Batch],
+    pub(super) meshlet_views: &'f [u32],
+    pub(super) batches: &'f [Batch],
 }
 
 impl Renderer {
     pub(super) fn encode_reflection(
         &self,
-        ReflectionPassInputs {
-            ctx,
-            k,
+        plan: &ReflectionPlan<'_>,
+        k: u8,
+        cx: &mut EncodeCx<'_, '_>,
+    ) {
+        let &ReflectionPlan {
             scene,
-            encoder,
             reflection_frame_group,
             reflection_fx_group,
             reflection_list,
-            stats,
             skinned_visible,
             lit_skinned_standard,
             terrain_indices,
             reflections,
             terrain_draws,
-            sky_group,
             reflection_blended,
             meshlet_views,
             batches,
-        }: ReflectionPassInputs<'_>,
-    ) {
+        } = plan;
+        let (ctx, encoder, stats, sky_group) =
+            (cx.ctx, &mut *cx.encoder, &mut *cx.stats, cx.sky_group);
         let k = k as usize;
         let clear = match scene.environment.background {
             Background::Color(c) => wgpu::Color {
@@ -166,5 +160,33 @@ impl Renderer {
         );
         stats.draw_calls += list.ranges.len() as u32;
         stats.reflection_draws += list.ranges.len() as u32;
+    }
+}
+
+pub(super) struct ReflectionPass;
+
+impl Pass for ReflectionPass {
+    const DESC: PassDesc = PassDesc {
+        pass: FramePass::Reflection(0),
+        name: "planar-reflection",
+        needs: Caps::NONE,
+    };
+    type State = Vec<wgpu::Buffer>;
+    type Plan<'f> = ReflectionPlan<'f>;
+
+    fn state(r: &Renderer) -> &Self::State {
+        &r.reflection_buffer
+    }
+
+    fn encode<'f>(
+        _: &Self::State,
+        plan: &ReflectionPlan<'f>,
+        pass: FramePass,
+        cx: &mut EncodeCx<'_, 'f>,
+    ) {
+        let FramePass::Reflection(k) = pass else {
+            unreachable!("a planar-reflection pass")
+        };
+        cx.ctx.r.encode_reflection(plan, k, cx);
     }
 }
