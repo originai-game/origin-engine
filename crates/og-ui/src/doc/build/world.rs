@@ -519,7 +519,10 @@ impl Ui {
             })
             .transpose();
         match (emitter, meta) {
-            (Ok(e), Ok(m)) => self.document_effects(i, e.flatten(), m.flatten()),
+            (Ok(e), Ok(m)) => {
+                self.tree
+                    .document_effects(i, e.flatten(), m.flatten(), &mut self.world)
+            }
             (Err(e), _) | (_, Err(e)) => self
                 .out
                 .warnings
@@ -562,7 +565,7 @@ impl Ui {
             }
         };
         self.open_world_panel_keyed(path.as_str().into(), Some(key), desc);
-        let i = self.parent();
+        let i = self.tree.parent();
         let mut p = Self::resolved_props(n, r);
         p.states = props.states;
         p.state = props.state;
@@ -570,7 +573,7 @@ impl Ui {
         if let Some(name) = r.str("name").filter(|n| !n.is_empty()) {
             self.tree.nodes[i].a11y.name = Some(name.to_string());
         }
-        self.keep_world_panel(i, key);
+        self.tree.keep_world_panel(i, key, &mut self.world);
         self.note_built(built);
         build_children(self, b, None);
         let resp = self.close();
@@ -788,7 +791,7 @@ impl Ui {
             }
         };
         self.open_world_anchor_keyed(path.as_str().into(), Some(key), desc.clone());
-        let i = self.parent();
+        let i = self.tree.parent();
         let mut p = Self::resolved_props(n, r);
         p.states = props.states;
         p.state = props.state;

@@ -116,7 +116,7 @@ impl Ui {
                 ..Element::default()
             },
         );
-        let content = self.parent();
+        let content = self.tree.parent();
         self.tree.nodes[content].hidden = !open;
         DetailsResult { open, toggled }
     }

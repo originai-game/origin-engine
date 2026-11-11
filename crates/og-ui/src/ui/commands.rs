@@ -679,7 +679,7 @@ impl Ui {
                     && self.tree.orders.skip_of.get(j).is_none_or(|&s| s == 0)
                 {
                     let mut grip = Vec::new();
-                    self.resizer_commands(j, &mut grip);
+                    self.tree.resizer_commands(j, &mut grip, &self.env);
                     let w = self.tree.nodes[j].world;
                     cmds.extend(grip.into_iter().map(|c| (c, w)));
                 }

@@ -245,7 +245,7 @@ impl Ui {
         let mut layer_at = NONE;
         if mode == Mode::Auto {
             let out = self.floating(&local, open, anchor, content, |ui| {
-                layer_at = ui.parent();
+                layer_at = ui.tree.parent();
                 layer = ui.tree.nodes[layer_at].key;
                 build_children(ui, b, None);
             });

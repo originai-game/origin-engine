@@ -574,6 +574,7 @@ impl Ui {
                 | Action::ScrollRight => {
                     if self.interaction.state.scope != 0
                         && self
+                            .interaction
                             .hit(key)
                             .is_none_or(|h| h.scope != self.interaction.state.scope)
                     {

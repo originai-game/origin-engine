@@ -418,7 +418,7 @@ impl Ui {
         let owned: Vec<usize> = (0..self.tree.persistent.len())
             .filter(|&i| self.tree.persistent[i])
             .collect();
-        self.retire_owned(&owned);
+        self.tree.retire_owned(&owned);
         // Container sizes are layout's: the next frame measures and settles
         // them again, watched afresh.
         self.docs.host.containers.clear();

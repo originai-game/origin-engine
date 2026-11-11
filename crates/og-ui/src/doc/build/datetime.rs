@@ -328,7 +328,7 @@ impl Ui {
                 ..Element::default()
             },
         );
-        let at = self.parent();
+        let at = self.tree.parent();
         self.tree.nodes[at].a11y.role = Some("group");
         if let Some(name) = r.str("name") {
             self.tree.nodes[at].a11y.name = Some(name.to_string());

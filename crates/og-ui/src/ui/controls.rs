@@ -286,7 +286,9 @@ impl Ui {
         n.el.gap = 0.0;
         n.el.background = None;
         n.el.radius = 0.0;
-        let slot = self.write_part(i, part, ("base", 0), element, content);
+        let slot = self
+            .tree
+            .write_part(i, part, ("base", 0), element, content, &mut self.layout);
         self.tree.nodes[i].content_slot = slot;
     }
 

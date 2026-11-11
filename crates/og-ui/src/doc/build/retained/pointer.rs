@@ -95,7 +95,11 @@ impl RetainedHost {
         let e = &self.elements[&node];
         // Last tick's box (this tick's is laid out after the build), and
         // the pointer mapped into it through any transform.
-        let Some(hit) = ui.hit(node.key).or_else(|| ui.hit(key)) else {
+        let Some(hit) = ui
+            .interaction
+            .hit(node.key)
+            .or_else(|| ui.interaction.hit(key))
+        else {
             return;
         };
         let rect = hit.local;

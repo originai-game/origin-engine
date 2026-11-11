@@ -219,7 +219,8 @@ impl Ui {
     /// Zooms view `key` by `k` about the point `at` (CSS px) and pans it by
     /// `moved` (CSS px, the picture following the pointer).
     fn zoom_by(&mut self, key: u64, k: f32, at: Vec2, moved: Vec2) {
-        let (Some(mut s), Some(h)) = (self.zoom_state(key), self.hit(key).copied()) else {
+        let (Some(mut s), Some(h)) = (self.zoom_state(key), self.interaction.hit(key).copied())
+        else {
             return;
         };
         let r = h.full;
@@ -242,7 +243,7 @@ impl Ui {
     /// and ↑ ↓ pan it a tenth of its size towards that side.
     pub(crate) fn zoom_keys(&mut self, key: u64, adjust: i32) {
         use crate::input::UiKey;
-        let Some(h) = self.hit(key).copied() else {
+        let Some(h) = self.interaction.hit(key).copied() else {
             return;
         };
         let r = h.full;
@@ -380,7 +381,9 @@ impl Ui {
     pub fn scroll_state(&self, path: &str) -> Option<ScrollState> {
         let key = crate::id::key_of_path(path);
         let n = if self.tree.building {
-            self.previous_nodes().find(|n| n.key == key && n.scrolls())
+            self.tree
+                .previous_nodes(&self.layout)
+                .find(|n| n.key == key && n.scrolls())
         } else {
             self.tree
                 .index
@@ -418,7 +421,7 @@ impl Ui {
         use crate::doc::media::scroll::*;
         let get = |i: usize| {
             if self.tree.building {
-                self.previous_node(i)
+                self.tree.previous_node(i, &self.layout)
             } else {
                 self.tree.nodes.get(i)
             }
@@ -434,7 +437,11 @@ impl Ui {
             .or_else(|| {
                 self.tree
                     .building
-                    .then(|| self.previous_nodes().find(|n| n.key == key))
+                    .then(|| {
+                        self.tree
+                            .previous_nodes(&self.layout)
+                            .find(|n| n.key == key)
+                    })
                     .flatten()
             });
         let Some(n) = found else {
@@ -673,7 +680,7 @@ impl Ui {
         let mut k = key;
         while k != 0 && out.len() < 32 {
             out.push(k);
-            k = self.hit(k).map_or(0, |h| h.scroller);
+            k = self.interaction.hit(k).map_or(0, |h| h.scroller);
         }
         out
     }
@@ -789,7 +796,7 @@ impl Ui {
         if let Some(t) = self.interaction.state.thumb {
             if input.down || input.pressed {
                 if let (Some(h), Some(info)) = (
-                    self.hit(t.key).copied(),
+                    self.interaction.hit(t.key).copied(),
                     self.interaction.state.scroll_info.get(&t.key).copied(),
                 ) {
                     let (start, len, bar, range, at) = if t.axis == 1 {
@@ -850,7 +857,11 @@ impl Ui {
                 let moved = p - self.interaction.state.pointer;
                 self.zoom_by(active, 1.0, p, moved);
             }
-        } else if self.hit(active).is_some_and(|h| h.has(HIT_SCROLL)) {
+        } else if self
+            .interaction
+            .hit(active)
+            .is_some_and(|h| h.has(HIT_SCROLL))
+        {
             if input.down && !input.pressed {
                 let d = self.touch_allows(active, self.interaction.state.pointer - p);
                 self.scroll_chain_by(active, d);
@@ -872,7 +883,7 @@ impl Ui {
         // A fling: the released drag's velocity, decaying to rest; it stops
         // at the content's end on each axis.
         if let Some((key, v)) = self.interaction.state.fling {
-            if self.hit(key).is_none() {
+            if self.interaction.hit(key).is_none() {
                 self.interaction.state.fling = None;
             } else {
                 let keep = self.fling_keep();

@@ -384,7 +384,7 @@ impl RetainedHost {
         self.by_key
             .keys()
             .copied()
-            .filter(|&k| ui.forced_interaction(k).is_some())
+            .filter(|&k| ui.interaction.forced_interaction(k).is_some())
             .collect()
     }
 
@@ -407,7 +407,7 @@ impl RetainedHost {
             }],
         ];
         for key in self.forced_keys(ui) {
-            match ui.forced_interaction(key) {
+            match ui.interaction.forced_interaction(key) {
                 Some("hover") => next[0].push(key),
                 Some("pressed") => next[0..2].iter_mut().for_each(|s| s.push(key)),
                 Some("focused") => next[2..4].iter_mut().for_each(|s| s.push(key)),

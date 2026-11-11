@@ -325,7 +325,7 @@ impl Ui {
     /// (a settings row's "Master" before its slider), as the tree names a
     /// control without text of its own.
     fn label_before(&self) -> Option<String> {
-        let parent = self.parent();
+        let parent = self.tree.parent();
         let n = self.tree.nodes.get(parent)?;
         if n.el.direction != Direction::Row {
             return None;
@@ -564,7 +564,7 @@ impl Ui {
             self.tree.nodes[owner].el.padding = Insets::default();
             self.tree.nodes[owner].el.background = None;
             self.tree.nodes[owner].el.radius = 0.0;
-            let slot = self.write_part(
+            let slot = self.tree.write_part(
                 owner,
                 part,
                 (part.part, 0),
@@ -579,6 +579,7 @@ impl Ui {
                     ..element
                 },
                 crate::layout::Content::None,
+                &mut self.layout,
             );
             self.tree.nodes[owner].content_slot = slot;
             slot
@@ -1090,6 +1091,7 @@ impl Ui {
                 // option, its padding) is inside it too.
                 let inside = hot == self.tree.nodes[anchor].key
                     || self
+                        .interaction
                         .hit(hot)
                         .is_some_and(|h| h.scope == key || h.key == key)
                     || self

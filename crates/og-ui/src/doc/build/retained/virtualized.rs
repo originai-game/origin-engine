@@ -53,7 +53,7 @@ impl RetainedHost {
                 order,
             )
         };
-        let at = ui.parent();
+        let at = ui.tree.parent();
         if props != Props::default() {
             ui.tree.nodes[at].props = props;
         }
@@ -127,7 +127,7 @@ impl RetainedHost {
             for child in &empty {
                 self.emit(ui, child, env, events, writes)?;
             }
-            let list_slot = ui.parent();
+            let list_slot = ui.tree.parent();
             let list_key = ui.tree.nodes[list_slot].key;
             for (index, materialization) in (first..end).zip(shown) {
                 let index = index as u32;
@@ -151,10 +151,10 @@ impl RetainedHost {
                         _ => false,
                     });
                 if still
-                    && let Some(slot) = ui.render_slot(row_key, list_slot)
-                    && ui.holds(slot, row_key, list_slot)
+                    && let Some(slot) = ui.tree.render_slot(row_key, list_slot)
+                    && ui.tree.holds(slot, row_key, list_slot)
                 {
-                    ui.keep_owned(slot);
+                    ui.tree.keep_owned(slot);
                     continue;
                 }
                 let key = key.clone();

@@ -120,6 +120,7 @@ impl Ui {
         }
         let reduced = self.theme().reduced_motion;
         let hit = self
+            .interaction
             .hit(self.tree.nodes[self.tree.last_closed].key)
             .copied();
         let pinch = super::gestures::two_touches(&self.interaction.input, |x, y| {

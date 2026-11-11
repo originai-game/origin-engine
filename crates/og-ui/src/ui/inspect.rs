@@ -39,7 +39,7 @@ impl Ui {
     /// when it was not drawn.
     pub(crate) fn last_bounds(&self, key: u64) -> Option<Rect> {
         (0..self.tree.nodes.len())
-            .filter_map(|i| self.previous_node(i).map(|n| (i, n)))
+            .filter_map(|i| self.tree.previous_node(i, &self.layout).map(|n| (i, n)))
             .find(|(i, n)| {
                 n.key == key
                     && !n.hidden

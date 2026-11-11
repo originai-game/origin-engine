@@ -140,7 +140,7 @@ impl Ui {
             }
             _ => fg,
         };
-        let mut c = self.text_content(text, t.type_ramp.xs, fg);
+        let mut c = self.tree.text_content(text, t.type_ramp.xs, fg);
         c.wrap = false;
         c.align = TextAlign::Center;
         let n = &mut self.tree.nodes[i];

@@ -126,7 +126,7 @@ impl Ui {
                     ..Element::default()
                 },
             );
-            let square = ui.parent();
+            let square = ui.tree.parent();
             let square_key = ui.tree.nodes[square].key;
             ui.tree.nodes[square].a11y.role = Some("slider");
             ui.tree.nodes[square].a11y.name = Some("Saturation and brightness".into());

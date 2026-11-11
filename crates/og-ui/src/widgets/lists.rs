@@ -10,7 +10,7 @@ impl Ui {
         // few rows as it scrolls into view, and one that is out of view has
         // no hit (a screenful of rows was built for it: a grid below a
         // phone page's fold built ten rows).
-        if let Some(h) = self.hit(key) {
+        if let Some(h) = self.interaction.hit(key) {
             return h.full.height;
         }
         if let Some(r) = self.prev_rect(key)
@@ -32,20 +32,25 @@ impl Ui {
         }
         self.previous_child(key)
             .map(|i| self.tree.nodes[i].rect)
-            .or_else(|| self.previous_nodes().find(|n| n.key == key).map(|n| n.rect))
+            .or_else(|| {
+                self.tree
+                    .previous_nodes(&self.layout)
+                    .find(|n| n.key == key)
+                    .map(|n| n.rect)
+            })
     }
 
     /// The node `key` laid out last frame under the open element, before
     /// it is written again: a retained list keeps its slot and its rows'.
     fn previous_child(&self, key: u64) -> Option<usize> {
-        let parent = self.parent();
+        let parent = self.tree.parent();
         self.tree.nodes[parent]
             .built_children
             .iter()
             .copied()
             .find(|&c| self.tree.nodes[c].key == key && self.tree.nodes[c].parent == parent)
             .or_else(|| {
-                let i = self.render_slot(key, parent)?;
+                let i = self.tree.render_slot(key, parent)?;
                 (self.tree.nodes[i].key == key && self.tree.kinds[i].0 != "vacant").then_some(i)
             })
     }
@@ -105,6 +110,7 @@ impl Ui {
         let last = ((((off + view) / stride).ceil().max(0.0)) as u32 + 1).min(count);
         let (first, last, top, rest) = if let Some(keys) = keys {
             let width = self
+                .interaction
                 .hit(key)
                 .map(|h| h.full)
                 .or_else(|| self.prev_rect(key))
@@ -138,7 +144,7 @@ impl Ui {
                 ..Element::default()
             },
         );
-        let list = self.parent();
+        let list = self.tree.parent();
         self.tree.nodes[list].aux = [row, 0.0, -1.0];
         if first > 0 {
             self.filler(top, Size::grow());
@@ -199,9 +205,10 @@ impl Ui {
                 .filter_map(|&c| row(prefix, &self.tree.nodes[c]))
                 .collect(),
             None => self
-                .previous_nodes()
+                .tree
+                .previous_nodes(&self.layout)
                 .filter_map(|n| {
-                    let parent = self.previous_node(n.parent)?;
+                    let parent = self.tree.previous_node(n.parent, &self.layout)?;
                     if parent.key != container {
                         return None;
                     }
@@ -248,7 +255,7 @@ impl Ui {
 
     /// Closes a list or grid opened with [`Ui::open_list`] / [`Ui::open_grid`].
     pub fn close_list(&mut self) -> Response {
-        let list = self.parent();
+        let list = self.tree.parent();
         let rest = self.tree.nodes[list].aux[2];
         if rest >= 0.0 {
             let w = if self.tree.nodes[list].el.wrap {
@@ -265,7 +272,7 @@ impl Ui {
     /// focusable row; its content follows until [`Ui::close`].
     pub fn list_item(&mut self, index: u32, selected: bool) -> Response {
         let t = self.env.theme;
-        let list = self.parent();
+        let list = self.tree.parent();
         let h = self.tree.nodes[list].aux[0];
         let keyed = self
             .interaction
@@ -496,6 +503,7 @@ impl Ui {
         // guessed the viewport's width, built a dozen columns of rows and
         // laid them out four across, three times its height.
         let known_w = self
+            .interaction
             .hit(key)
             .map(|h| h.full.width)
             .or_else(|| self.prev_rect(key).map(|r| r.width))
@@ -569,7 +577,7 @@ impl Ui {
                 ..Element::default()
             },
         );
-        let grid = self.parent();
+        let grid = self.tree.parent();
         self.tree.nodes[grid].aux = [cw, ch, -1.0];
         if first > 0 {
             self.filler(top, Size::Percent(1.0));
@@ -585,7 +593,7 @@ impl Ui {
     /// content follows until [`Ui::close`].
     pub fn grid_item(&mut self, index: u32, selected: bool) -> Response {
         let t = self.env.theme;
-        let grid = self.parent();
+        let grid = self.tree.parent();
         let [cw, ch, _] = self.tree.nodes[grid].aux;
         let keyed = self
             .interaction

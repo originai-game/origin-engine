@@ -726,7 +726,7 @@ impl Ui {
     /// its children follow until [`Ui::close`].
     pub fn open_with(&mut self, id: impl Into<crate::Id>, el: crate::Element, props: Props) {
         self.open(id, el);
-        let i = self.parent();
+        let i = self.tree.parent();
         self.tree.nodes[i].props = props;
     }
 

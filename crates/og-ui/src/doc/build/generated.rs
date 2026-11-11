@@ -338,7 +338,8 @@ impl Ui {
     /// last layout.
     fn first_line_chars(&self, key: u64) -> Option<usize> {
         let n = self
-            .previous_nodes()
+            .tree
+            .previous_nodes(&self.layout)
             .find(|n| n.key == key)
             .or_else(|| self.tree.index.find(key).map(|i| &self.tree.nodes[i]))?;
         if let Some(line) = n.rich_lines.first() {

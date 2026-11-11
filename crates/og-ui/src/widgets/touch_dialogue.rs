@@ -278,7 +278,7 @@ impl Ui {
         let (mut kx, mut ky) = (0.0, 0.0);
         let finger = self.touch_owner(key, desc.disabled);
         if let Some(finger) = finger
-            && let Some(h) = self.hit(key)
+            && let Some(h) = self.interaction.hit(key)
         {
             let (cx, cy) = h.rect.center();
             let (dx, dy) = ((finger.x - cx) / radius, (finger.y - cy) / radius);
@@ -389,7 +389,7 @@ impl Ui {
         if let Some(&id) = self.interaction.state.touch_owners.get(&key) {
             return Some(p.position(id));
         }
-        let rect = self.hit(key)?.rect;
+        let rect = self.interaction.hit(key)?.rect;
         let held = |id: &u32| {
             self.interaction
                 .state
@@ -443,7 +443,7 @@ impl Ui {
         let key = self.tree.nodes[pad].key;
         let mut out = DpadResponse::default();
         if let Some(finger) = self.touch_owner(key, desc.disabled)
-            && let Some(h) = self.hit(key)
+            && let Some(h) = self.interaction.hit(key)
         {
             let (cx, cy) = h.rect.center();
             let (dx, dy) = (finger.x - cx, finger.y - cy);
@@ -591,10 +591,14 @@ impl Ui {
         // A further touch that went down on the button: held while down, a
         // click when it lifts over it (the primary pointer busy on a stick).
         if !desc.disabled
-            && let Some((at, held)) = self.touch(key, true)
+            && let Some((at, held)) = self.interaction.touch(key, true)
         {
             r.pressed |= held;
-            r.clicked |= !held && self.hit(key).is_some_and(|h| h.rect.contains(at.x, at.y));
+            r.clicked |= !held
+                && self
+                    .interaction
+                    .hit(key)
+                    .is_some_and(|h| h.rect.contains(at.x, at.y));
         }
         let (bg, ink) = if desc.primary {
             (

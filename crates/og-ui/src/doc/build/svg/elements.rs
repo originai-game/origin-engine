@@ -87,7 +87,7 @@ impl Ui {
                         },
                     },
                 );
-                let i = self.parent();
+                let i = self.tree.parent();
                 let p = &mut self.tree.nodes[i].props;
                 p.position = crate::element::Position::Absolute;
                 p.inert = true;
@@ -608,7 +608,7 @@ impl Ui {
         el.width = Size::px(w);
         el.height = Size::px(h);
         self.open(id, el);
-        let i = self.parent();
+        let i = self.tree.parent();
         let mut p = Self::resolved_props(n, r);
         p.states = props.states;
         p.state = props.state;
@@ -723,7 +723,7 @@ impl Ui {
             el.height = Size::grow();
         }
         self.open(id, el);
-        let i = self.parent();
+        let i = self.tree.parent();
         let mut p = Self::resolved_props(n, r);
         p.states = props.states;
         p.state = props.state;
@@ -832,7 +832,7 @@ impl Ui {
                     ..Element::default()
                 },
             );
-            let i = ui.parent();
+            let i = ui.tree.parent();
             ui.tree.nodes[i].props.position = crate::element::Position::Absolute;
             ui.tree.nodes[i].props.insets = crate::element::Edges {
                 start: Some(0.0),

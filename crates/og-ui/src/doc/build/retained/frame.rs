@@ -126,7 +126,7 @@ impl RetainedHost {
         for identity in &self.rive {
             let e = &self.elements[identity];
             let Some(slot) = e.slot else { continue };
-            if !ui.holds(slot, identity.key, e.parent_slot) {
+            if !ui.tree.holds(slot, identity.key, e.parent_slot) {
                 continue;
             }
             let Some(resolved) = e.resolved.as_ref() else {

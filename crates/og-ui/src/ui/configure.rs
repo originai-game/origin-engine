@@ -382,7 +382,7 @@ impl Ui {
 
     /// The key the next element with this id would get under the open element.
     pub(crate) fn key_for(&self, id: &str) -> u64 {
-        let parent = self.tree.nodes.get(self.parent()).map_or(1, |n| n.key);
+        let parent = self.tree.nodes.get(self.tree.parent()).map_or(1, |n| n.key);
         child_key(parent, id)
     }
 
@@ -538,7 +538,11 @@ impl Ui {
         // under it, two touches scroll or zoom what is under them.
         let grabbed = self.scroll_input(&input);
         // A press on a resize handle holds the pointer while it drags.
-        if self.interaction.gesture || self.resize_input(&input) {
+        if self.interaction.gesture
+            || self
+                .tree
+                .resize_input(&input, &self.env, &mut self.interaction)
+        {
             input.pressed = false;
             input.released = false;
             input.down = false;
@@ -555,7 +559,7 @@ impl Ui {
         self.env.theme = effective_theme(self.env.theme, &viewport).to_unit(unit);
         // The style's atlas at the density this surface draws at.
         self.env.theme.art.atlas = self.env.configured.art.atlas_for(viewport.dpr());
-        self.retire_nodes();
+        self.tree.retire_nodes(&mut self.layout);
         self.layout.cache.prev.clear();
         self.tree.prev_kinds.clear();
         std::mem::swap(&mut self.tree.emitted, &mut self.tree.retiring);
@@ -602,7 +606,8 @@ impl Ui {
         self.front.hud_editor_key = 0;
         self.front.cover = None;
         // A pointer on a world panel is moved onto the panel's layout.
-        self.world_begin(&mut input);
+        self.world
+            .world_begin(&mut input, &self.env, &self.interaction);
         self.docs_begin();
         self.actions_begin(&input);
         self.publish_ui_store();
@@ -626,28 +631,31 @@ impl Ui {
         };
         if hot != 0
             && hot != self.interaction.state.hot
-            && self.hit(hot).is_some_and(|h| h.has(HIT_NAV))
+            && self.interaction.hit(hot).is_some_and(|h| h.has(HIT_NAV))
         {
             self.feedback_at(hot, crate::tokens::SoundEvent::Hover);
         }
-        if input.pressed && grabbed.is_none() && self.hit(hot).is_some_and(|h| h.has(HIT_NAV)) {
+        if input.pressed
+            && grabbed.is_none()
+            && self.interaction.hit(hot).is_some_and(|h| h.has(HIT_NAV))
+        {
             self.feedback_at(hot, crate::tokens::SoundEvent::Press);
         }
         self.interaction.state.hot = hot;
         self.interaction.state.focus_click = None;
         if input.pressed {
             self.interaction.state.active = hot;
-            let text = self.hit(hot).is_some_and(|h| h.has(HIT_TEXT));
+            let text = self.interaction.hit(hot).is_some_and(|h| h.has(HIT_TEXT));
             if text {
                 self.interaction.state.focus = hot;
                 self.interaction.state.focus_click = Some(p.x);
-            } else if self.hit(hot).is_some_and(|h| h.has(HIT_NAV)) {
+            } else if self.interaction.hit(hot).is_some_and(|h| h.has(HIT_NAV)) {
                 // A pressed control takes focus without the ring (as :focus-visible).
                 self.interaction.state.focus = hot;
             } else {
                 // A control that takes no focus gives it to the focusable one
                 // around it (a grid's item, its grid), as a click does on the web.
-                self.interaction.state.focus = self.hit(hot).map_or(0, |h| h.owner);
+                self.interaction.state.focus = self.interaction.hit(hot).map_or(0, |h| h.owner);
             }
             self.interaction.state.focus_visible = false;
         }
@@ -677,7 +685,11 @@ impl Ui {
         el.height = Size::Fixed(viewport.height);
         el.padding = el.padding.add(&viewport.safe_area);
         el.scroll = false;
-        self.write_node(Node::new(1, String::new(), NONE, el), ("root", false));
+        self.tree.write_node(
+            Node::new(1, String::new(), NONE, el),
+            ("root", false),
+            &mut self.layout,
+        );
         self.tree.stack.push(0);
     }
 }
@@ -888,7 +900,7 @@ impl Ui {
         role: crate::tokens::TypeRole,
         color: Srgba,
     ) -> TextContent {
-        let mut c = self.text_content(text, self.type_step(role), color);
+        let mut c = self.tree.text_content(text, self.type_step(role), color);
         c.font = self.type_font(role);
         c.wrap = false;
         c

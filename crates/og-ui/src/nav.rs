@@ -342,9 +342,11 @@ impl Ui {
             out.push(if entering { Nav::Next } else { nav });
         }
         let editing = self
+            .interaction
             .hit(self.interaction.state.focus)
             .is_some_and(|h| h.has(HIT_TEXT));
         let lines = self
+            .interaction
             .hit(self.interaction.state.focus)
             .is_some_and(|h| h.has(HIT_MULTILINE));
         for k in &input.keys {
@@ -533,7 +535,7 @@ impl Ui {
                 return;
             }
         }
-        let Some(from) = self.hit(self.interaction.state.focus).copied() else {
+        let Some(from) = self.interaction.hit(self.interaction.state.focus).copied() else {
             return;
         };
         if from.group == 0 || from.has(HIT_TEXT | HIT_ADJUST) {
@@ -559,6 +561,7 @@ impl Ui {
                 UiKey::End => Some(last),
                 UiKey::PageUp | UiKey::PageDown => {
                     let view = self
+                        .interaction
                         .hit(from.scroller)
                         .map_or(self.env.viewport.height, |s| s.rect.height);
                     let down = *k == UiKey::PageDown;
@@ -683,6 +686,7 @@ impl Ui {
                 _ if !enabled => continue,
                 Nav::Activate => {
                     if self
+                        .interaction
                         .hit(self.interaction.state.focus)
                         .is_some_and(|h| h.has(HIT_NAV))
                     {
@@ -805,7 +809,7 @@ impl Ui {
                 match nav {
                     Nav::Back => continue,
                     Nav::Activate => {
-                        if self.hit(focus).is_some_and(|h| h.has(HIT_NAV)) {
+                        if self.interaction.hit(focus).is_some_and(|h| h.has(HIT_NAV)) {
                             self.interaction.nav.pad_activate[k - 1] = focus;
                             self.sound(crate::style_file::UiSound::Press);
                         }
@@ -862,13 +866,13 @@ impl Ui {
             self.scroll_into_view(key);
             return;
         }
-        let Some(h) = self.hit(key).copied() else {
+        let Some(h) = self.interaction.hit(key).copied() else {
             return;
         };
         if h.scroller == 0 {
             return;
         }
-        let Some(view) = self.hit(h.scroller).map(|s| s.rect) else {
+        let Some(view) = self.interaction.hit(h.scroller).map(|s| s.rect) else {
             return;
         };
         let (view, area) = self.scroll_areas(key, h.full, h.scroller, view);
@@ -934,13 +938,13 @@ impl Ui {
             self.interaction.state.scroll.insert(container, next);
             return;
         }
-        let Some(h) = self.hit(key).copied() else {
+        let Some(h) = self.interaction.hit(key).copied() else {
             return;
         };
         if h.scroller == 0 {
             return;
         }
-        let Some(view) = self.hit(h.scroller).map(|s| s.rect) else {
+        let Some(view) = self.interaction.hit(h.scroller).map(|s| s.rect) else {
             return;
         };
         let pad = self.theme().space.xs;

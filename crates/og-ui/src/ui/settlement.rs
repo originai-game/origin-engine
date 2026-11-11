@@ -230,7 +230,7 @@ mod tests {
                 ..Element::column()
             },
         );
-        let container = ui.parent();
+        let container = ui.tree.parent();
         ui.watch_layout_container(ui.tree.nodes[container].key);
         ui.open(
             "child",
@@ -240,7 +240,7 @@ mod tests {
                 ..Element::default()
             },
         );
-        let child = ui.parent();
+        let child = ui.tree.parent();
         ui.close();
         ui.close();
         (container, child)
@@ -491,7 +491,7 @@ mod tests {
                 ..Default::default()
             },
         );
-        let container = ui.parent();
+        let container = ui.tree.parent();
         ui.watch_layout_container(ui.tree.nodes[container].key);
         ui.open(
             "patch",
@@ -502,7 +502,7 @@ mod tests {
                 ..Element::default()
             },
         );
-        let child = ui.parent();
+        let child = ui.tree.parent();
         ui.close();
         ui.close();
         child

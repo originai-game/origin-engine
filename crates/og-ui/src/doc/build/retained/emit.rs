@@ -65,7 +65,7 @@ impl RetainedHost {
         {
             self.resolve(ui, identity, env)?;
         }
-        let parent_slot = ui.content_parent();
+        let parent_slot = ui.tree.content_parent();
         let element = &self.elements[identity];
         // A world layer (`<anchor>`, `<panel world>`) stands outside the
         // tree, under no parent, and stays among the layers as it is.
@@ -84,10 +84,12 @@ impl RetainedHost {
             && !run_moved
             && !self.emit.contains(identity)
             && let Some(slot) = element.slot
-            && ui.holds(slot, identity.key, if outside { NONE } else { parent_slot })
+            && ui
+                .tree
+                .holds(slot, identity.key, if outside { NONE } else { parent_slot })
         {
             if !outside {
-                ui.reattach(slot);
+                ui.tree.reattach(slot);
             }
             if uses_run {
                 ui.docs.host.run.replay(&element.run_events);
@@ -118,7 +120,7 @@ impl RetainedHost {
         }
         ui.docs.host.keeps_hidden = e
             .slot
-            .is_some_and(|slot| ui.holds(slot, identity.key, parent_slot));
+            .is_some_and(|slot| ui.tree.holds(slot, identity.key, parent_slot));
         ui.tree.owning.push(Default::default());
         ui.docs.host.capture.push(Default::default());
         let resolved = e.resolved.as_ref().expect("resolved mount");
@@ -163,7 +165,7 @@ impl RetainedHost {
         let mut kept = owned.slots.clone();
         kept.sort_unstable();
         retired.retain(|i| kept.binary_search(i).is_err());
-        ui.retire_owned(&retired);
+        ui.tree.retire_owned(&retired);
         for key in &e.keys {
             self.owner_of.remove(key);
         }
@@ -248,7 +250,7 @@ impl RetainedHost {
         let holds = |host: &Self, identity: &MountedNode| {
             host.elements.get(identity).is_some_and(|e| {
                 e.slot
-                    .is_some_and(|slot| ui.holds(slot, identity.key, e.parent_slot))
+                    .is_some_and(|slot| ui.tree.holds(slot, identity.key, e.parent_slot))
             })
         };
         let visible = |host: &Self, identity: &MountedNode| {
@@ -304,7 +306,7 @@ impl RetainedHost {
             let element = &self.elements[&identity];
             let Some(slot) = element.slot else { continue };
             let parent = element.parent_slot;
-            if !ui.holds(slot, identity.key, parent) {
+            if !ui.tree.holds(slot, identity.key, parent) {
                 continue;
             }
             let outer = (ui.docs.host.accepts, ui.docs.host.building);
@@ -412,7 +414,7 @@ impl RetainedHost {
         let memories = std::mem::take(&mut element.memories);
         element.slot = None;
         element.record = Default::default();
-        ui.retire_owned(&owned);
+        ui.tree.retire_owned(&owned);
         for key in keys {
             self.owner_of.remove(&key);
         }
