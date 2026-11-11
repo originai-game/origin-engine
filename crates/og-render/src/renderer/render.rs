@@ -63,6 +63,8 @@ mod pass_ssr;
 use pass_ssr::SsrPass;
 mod pass_light_2d;
 use pass_light_2d::{Light2dPass, Light2dPlan};
+mod pass_metaballs;
+use pass_metaballs::MetaballsPass;
 mod setup;
 
 impl Renderer {
@@ -601,6 +603,7 @@ impl Renderer {
             &scene.metaballs,
             (self.width, self.height),
         );
+        plans.metaballs = (fluids > 0).then_some(());
         layered.extend(
             metaballs::layers(&scene.metaballs)
                 .into_iter()
@@ -2936,7 +2939,7 @@ impl Renderer {
                 contact,
                 particles: particle_frame.any_gpu,
                 light_2d: plans.light_2d.is_some(),
-                metaballs: fluids > 0,
+                metaballs: plans.metaballs.is_some(),
                 fluid_3d: fluids_3d,
                 probes: !probe_frame.due.is_empty(),
                 reflections: reflections.len() as u8,
@@ -4215,6 +4218,7 @@ impl Renderer {
                         ctx: &ctx,
                         encoder: &mut encoder,
                         stats: &mut stats,
+                        frame_bind_group,
                         sky_group,
                         slot,
                     },
@@ -4317,15 +4321,6 @@ impl Renderer {
                         &gpu_sprites,
                         &self.particle_sprite_buffer,
                     );
-                }
-                FramePass::Metaballs => {
-                    let fields: Vec<&wgpu::TextureView> = post::FIELD_NAMES
-                        .iter()
-                        .map_while(|name| self.graph.try_view(name))
-                        .collect();
-                    self.metaballs
-                        .encode_field(&mut encoder, &fields, frame_bind_group);
-                    stats.draw_calls += fields.len() as u32;
                 }
                 FramePass::Fluid3d => {
                     if let (Some(f), Some(views)) =

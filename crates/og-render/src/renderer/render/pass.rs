@@ -14,6 +14,8 @@ pub(super) struct EncodeCx<'a, 'f> {
     pub ctx: &'a DrawCtx<'f>,
     pub encoder: &'a mut Encoder,
     pub stats: &'a mut FrameStats,
+    /// The frame's group 0 (the camera's uniform, shadows, IBL, lights).
+    pub frame_bind_group: &'f wgpu::BindGroup,
     /// The sky pipelines' group.
     pub sky_group: &'f wgpu::BindGroup,
     /// This frame's slot of the two-frame histories.
@@ -88,4 +90,5 @@ passes! {
     volumetric: pass_volumetric::VolumetricPass => FramePass::Volumetric,
     ssr: pass_ssr::SsrPass => FramePass::Ssr,
     light_2d: pass_light_2d::Light2dPass => FramePass::Light2d,
+    metaballs: pass_metaballs::MetaballsPass => FramePass::Metaballs,
 }
