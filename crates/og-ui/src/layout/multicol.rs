@@ -103,7 +103,7 @@ fn pieces(nodes: &[Node], run: &[usize], tops: &[f32], h: &dyn Fn(&Node) -> f32)
             Content::Text(t)
                 if n.layout.used.breaks & AVOID_INSIDE == 0 && !n.layout.used.scroll =>
             {
-                t.line_height()
+                n.used_text(t).line_height()
             }
             _ => 0.0,
         };

@@ -636,7 +636,7 @@ fn text(
     was: bool,
 ) {
     let n = &nodes[k];
-    let Content::Text(t) = &n.content else { return };
+    let Some(t) = n.text() else { return };
     let [ml, mr] = n.layout.margin_x;
     let pad = n.layout.used.padding;
     let fill = (inner - ml - mr).max(0.0);
@@ -654,9 +654,9 @@ fn text(
     let at = |s: &str, w: f32| {
         let part = TextContent {
             text: s.to_string(),
-            ..t.clone()
+            ..t.content().clone()
         };
-        super::flex::text_lines(&part, m, t.wrap.then_some(w + 0.5))
+        super::flex::text_lines(part.at(t.step), m, t.wrap.then_some(w + 0.5))
     };
     let full = (tx1 - tx0).max(0.0);
     let (mut lines, mut shifts) = (Vec::new(), Vec::new());

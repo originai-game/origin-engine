@@ -14,7 +14,7 @@ pub(super) use position::{cross_offset, inline_rows, position};
 pub(super) use width::*;
 
 /// A text's preferred extent along its line: its widest line.
-pub(crate) fn text_preferred(t: &TextContent, fonts: &dyn Metrics) -> f32 {
+pub(crate) fn text_preferred(t: UsedText<'_>, fonts: &dyn Metrics) -> f32 {
     width::text_widest(t, t.metrics(fonts))
 }
 

@@ -48,7 +48,7 @@ struct TextKey {
 }
 
 impl TextKey {
-    fn of(t: &TextContent, width: Option<f32>) -> TextKey {
+    fn of(t: UsedText<'_>, width: Option<f32>) -> TextKey {
         TextKey {
             font: t.font,
             size: t.step.size.to_bits(),
@@ -147,7 +147,7 @@ fn kept<V: Clone>(
 impl TextCache {
     pub(super) fn widths(
         &mut self,
-        t: &TextContent,
+        t: UsedText<'_>,
         measure: impl FnOnce() -> (f32, f32),
     ) -> (f32, f32) {
         kept(
@@ -162,7 +162,7 @@ impl TextCache {
 
     pub(super) fn lines(
         &mut self,
-        t: &TextContent,
+        t: UsedText<'_>,
         width: Option<f32>,
         measure: impl FnOnce() -> Vec<Line>,
     ) -> Vec<Line> {
@@ -428,6 +428,7 @@ pub(crate) fn draw_eq(a: &Node, b: &Node) -> bool {
         && a.style.sampled == b.style.sampled
         && a.layout.used == b.layout.used
         && a.content == b.content
+        && a.layout.fit_step == b.layout.fit_step
         && a.widget == b.widget
         && a.shapes == b.shapes
         && a.decor == b.decor
@@ -560,6 +561,9 @@ pub(crate) fn input_changes(a: &Node, b: &Node) -> Changed {
     let same = same_layout
         && a.layout.used == b.layout.used
         && a.content == b.content
+        // An auto-fit text last drawn at another step than it is written
+        // with was drawn otherwise than its input says.
+        && a.text().map(|t| t.step) == b.text().map(|t| t.step)
         && a.widget == b.widget
         && a.shapes == b.shapes
         && a.props == b.props;
@@ -725,7 +729,7 @@ pub(crate) fn layout(
     };
     nodes[root].layout.w = super::flex::clamp_to(r, 0, Some(area.width), w);
     // A clean node at the width it had keeps its children's widths, its
-    // lines and its tracks.
+    // lines (an auto-fit text, the step they were broken at) and its tracks.
     let same_w = |nodes: &[Node], kept: &LayoutCache, i: usize| {
         kept.is_clean(i) && nodes[i].layout.layout_size[0] == nodes[i].layout.w
     };
@@ -736,15 +740,7 @@ pub(crate) fn layout(
             k += 1;
             continue;
         }
-        if same_w(nodes, kept, i) {
-            // An auto-fit text keeps the step its lines were broken at.
-            let step = nodes[i].layout.layout_step;
-            if let (Content::Text(a), Some(step)) = (&mut nodes[i].content, step)
-                && !a.fit.is_empty()
-            {
-                a.step = step;
-            }
-        } else {
+        if !same_w(nodes, kept, i) {
             kept.laid_out += 1;
             if !nodes[i].layout.cv_skip {
                 distribute_w(nodes, i, measure);
@@ -878,10 +874,6 @@ pub(crate) fn layout(
                 nodes[i].layout.x - parent.layout.x,
                 nodes[i].layout.y - parent.layout.y,
             ]
-        };
-        nodes[i].layout.layout_step = match &nodes[i].content {
-            Content::Text(text) if !text.fit.is_empty() => Some(text.step),
-            _ => None,
         };
         queries.measurements.observe(
             nodes[i].key,

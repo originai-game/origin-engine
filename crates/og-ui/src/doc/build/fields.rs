@@ -1038,6 +1038,9 @@ impl Ui {
         let Size::Fit { min, max } = el.width else {
             return;
         };
+        let Some(step) = self.tree.nodes[slot].text().map(|t| t.step) else {
+            return;
+        };
         let crate::layout::Content::Text(shown) = &mut self.tree.nodes[slot].content else {
             return;
         };
@@ -1045,7 +1048,7 @@ impl Ui {
         let mut label = shown.clone();
         label.text = super::nodes::FILE_LABEL.into();
         let pad = self.tree.nodes[slot].el.padding.horizontal() + el.padding.horizontal();
-        let w = crate::layout::text_preferred(&label, &self.env.fonts) + pad;
+        let w = crate::layout::text_preferred(label.at(step), &self.env.fonts) + pad;
         el.width = Size::Fixed(w.min(max).max(min));
     }
 

@@ -940,7 +940,7 @@ impl Ui {
         }
         if content
             && matches!(self.tree.nodes[i].widget, Widget::Field(_))
-            && let Content::Text(text) = &self.tree.nodes[i].content
+            && let Some(text) = self.tree.nodes[i].text()
         {
             return Some(text.line_height());
         }

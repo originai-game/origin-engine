@@ -39,8 +39,8 @@ pub use multicol::Multicol;
 use node::truncate_lines;
 pub(crate) use node::{
     Changed, Content, EditView, Media, NONE, Node, ObjectFit, PartBox, PartGeometry, Placement,
-    Shape, Stagger, TextContent, Widget, WrapStyle, ellipsis_of, snap_pixel_text, step_tracking,
-    text_features,
+    Shape, Stagger, TextContent, UsedText, Widget, WrapStyle, ellipsis_of, snap_pixel_text,
+    step_tracking, text_features,
 };
 pub use node::{Family, FontRole};
 

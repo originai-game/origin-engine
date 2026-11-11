@@ -282,6 +282,7 @@ impl crate::ui::Layout {
         let n = &tree.nodes[i];
         match &n.content {
             Content::Text(tc) => {
+                let tc = n.used_text(tc);
                 let line = n.layout.lines.first()?;
                 let m = &env
                     .fonts
@@ -469,6 +470,7 @@ impl crate::ui::Layout {
         let n = &tree.nodes[i];
         match &n.content {
             Content::Text(tc) => {
+                let tc = n.used_text(tc);
                 let line = n.layout.lines.last()?;
                 let m = &env
                     .fonts
@@ -536,6 +538,7 @@ impl crate::ui::Tree {
         let n = &self.nodes[i];
         match &n.content {
             Content::Text(tc) => {
+                let tc = n.used_text(tc);
                 let v = tc.vertical?;
                 let k = if last {
                     n.layout.lines.len().checked_sub(1)?

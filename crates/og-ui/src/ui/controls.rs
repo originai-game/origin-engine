@@ -78,10 +78,9 @@ impl Ui {
         // clips it (pixel's results figures lost their last font pixel of
         // drop to the view's edge); elsewhere a drop draws past its box, and
         // reserving room there would change the layout of every large label.
-        let grid = match &self.tree.nodes[i].content {
-            Content::Text(tc) => tc.metrics(&self.env.fonts).pixel_grid(),
-            _ => 0,
-        };
+        let grid = self.tree.nodes[i]
+            .text()
+            .map_or(0, |tc| tc.metrics(&self.env.fonts).pixel_grid());
         let mut ancestor = parent;
         let mut scrolled = false;
         while let Some(node) = self.tree.nodes.get(ancestor) {

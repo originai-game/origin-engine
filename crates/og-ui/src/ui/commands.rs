@@ -483,10 +483,9 @@ impl Ui {
                     }
                 }
                 if let Some(d) = &draw {
-                    let grid = match &self.tree.nodes[i].content {
-                        Content::Text(t) => t.metrics(&self.env.fonts).pixel_grid(),
-                        _ => 0,
-                    };
+                    let grid = self.tree.nodes[i]
+                        .text()
+                        .map_or(0, |t| t.metrics(&self.env.fonts).pixel_grid());
                     d.style_text(&theme, &mut local, grid);
                 }
                 let key = self.tree.nodes[i].key;

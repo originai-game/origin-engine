@@ -135,9 +135,7 @@ impl Ui {
                 column: Some(column),
             });
         }
-        let Content::Text(tc) = &n.content else {
-            return None;
-        };
+        let tc = n.text()?;
         if let Some(v) = tc.vertical {
             // Down vertical lines: each cluster's stretch along y, a
             // bottom-up one with its caret at its bottom.
@@ -365,7 +363,7 @@ impl Ui {
         cmds: &mut Vec<DrawCmd>,
     ) {
         let n = &self.tree.nodes[i];
-        let (Some((a, b)), Content::Text(tc)) = (n.marks.selected, &n.content) else {
+        let (Some((a, b)), Some(tc)) = (n.marks.selected, n.text()) else {
             return;
         };
         let count = line.chars().count() as u32;
