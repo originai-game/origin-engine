@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "ui documents",
+      "summary": "A `position: fixed` element keeps its static position on an axis with no inset (CSS 2.1 §10.3.7 and §10.6.4): with `bottom: 10px` alone it stays across where its parent's flow would have put it (centred in a flex column with `align-items: center`, at the end of a row with `justify-content: flex-end`, under the sibling before it in a block). It stood at the screen's left edge (or its top, with no vertical inset). A fixed element written with one inset that relied on the edge now needs the other inset (`left: 0`)."
+    }
+  ]
+}

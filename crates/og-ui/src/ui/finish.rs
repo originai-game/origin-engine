@@ -648,7 +648,7 @@ impl Ui {
                 {
                     continue;
                 }
-                let r = crate::layout::on_screen(&self.tree.nodes[i], &screen);
+                let r = crate::layout::on_screen(&self.tree.nodes, i, &screen, &offset);
                 place_box(
                     &mut self.tree.nodes,
                     &mut self.layout.placed,

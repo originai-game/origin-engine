@@ -473,6 +473,10 @@ keeps its size and its bounds (`max-width`), and its `auto` margins share
 what is left, so `inset: 0; margin: auto` centres it (across, a start
 margin never goes below 0); with no `auto` margin an over-constrained box
 keeps its start inset. Its margins hold it off the insets it is placed by.
+A fixed box keeps its static position on an axis with no inset (`bottom:
+10px` alone leaves it across where its parent's flow would have put it:
+centred in a flex column that centres its items, under the sibling before
+it in a block); an absolute one stands at its parent's start there.
 
 Direction follows CSS Writing Modes 4. `direction` (`ltr`, `rtl`,
 inherited) and HTML's `dir` attribute (`ltr`, `rtl`, or `auto` for its
