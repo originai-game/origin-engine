@@ -277,8 +277,8 @@ impl Renderer {
             Some(fx_group),
         );
         let sky = match scene.environment.background {
-            Background::Sky => Some(&self.sky_pipeline),
-            Background::Procedural { .. } => Some(&self.sky_look_pipeline),
+            Background::Sky => Some(&self.sky.sky_pipeline),
+            Background::Procedural { .. } => Some(&self.sky.sky_look_pipeline),
             Background::Color(_) => None,
         };
         if let Some(sky) = sky {

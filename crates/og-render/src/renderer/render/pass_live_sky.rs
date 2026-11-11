@@ -15,7 +15,7 @@ impl Pass for LiveSkyPass {
     type Plan<'f> = ();
 
     fn state(r: &Renderer) -> &Self::State {
-        &r.sky_capture
+        &r.sky.sky_capture
     }
 
     fn encode<'f>(st: &Self::State, _: &(), _: FramePass, cx: &mut EncodeCx<'_, 'f>) {

@@ -46,7 +46,7 @@ impl Renderer {
             &self.sprite_glow_pipeline,
         ]) || self.overlay.warm()
             || self.post.warm()
-            || deferred::warm_one(&[&self.sky_pipeline, &self.sky_look_pipeline])
+            || deferred::warm_one(&[&self.sky.sky_pipeline, &self.sky.sky_look_pipeline])
             || self.lights.ibl.warm()
             || self.warm_plain_lit()
             || deferred::warm_one(&[&self.ribbon_pipelines[0], &self.ribbon_pipelines[1]])

@@ -409,8 +409,8 @@ impl Renderer {
         {
             use crate::deferred::Start;
             match scene.environment.background {
-                Background::Sky => self.sky_pipeline.start(),
-                Background::Procedural { .. } => self.sky_look_pipeline.start(),
+                Background::Sky => self.sky.sky_pipeline.start(),
+                Background::Procedural { .. } => self.sky.sky_look_pipeline.start(),
                 Background::Color(_) => {}
             }
         }
@@ -886,7 +886,7 @@ impl Renderer {
         };
         self.shadows.shelter_key = shadow_inputs.shelter.as_ref().map(|s| s.2);
         let lens = post_fx.lens_distortion.filter(|l| l.amount != 0.0);
-        plans.live_sky = LiveSkyPass::plan(&self.sky_capture);
+        plans.live_sky = LiveSkyPass::plan(&self.sky.sky_capture);
         plans.gi_probes = GiProbesPass::plan(&self.gi_probes);
         plans.particles = particle_frame.any_gpu.then_some(ParticlesPlan {
             frame: &particle_frame,

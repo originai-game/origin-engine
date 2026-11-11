@@ -587,14 +587,8 @@ pub struct Renderer {
     /// trilinear, clamped, never anisotropic.
     trilinear_sampler: wgpu::Sampler,
     frame_layout: wgpu::BindGroupLayout,
-    sky_layout: wgpu::BindGroupLayout,
-    /// The clouds' noise volume, bound in the sky group (`clouds.rs`).
-    cloud_noise: clouds::CloudNoise,
-    /// The sky pass's own uniform (sky.wgsl `SkyParams`): the background's
-    /// blurriness and the map it draws, written every frame.
-    sky_params: wgpu::Buffer,
-    /// The aurora's footprint and table, bound in the sky group (`aurora.rs`).
-    aurora_map: aurora::AuroraMap,
+    /// The sky's resources: its layout, cloud noise, parameters, aurora map, its two pipelines (the sky cube's and the procedural look's) and the live sky's capture.
+    sky: renderer::SkyState,
     material_layout: wgpu::BindGroupLayout,
     sprite_layout: wgpu::BindGroupLayout,
     /// The frame's lighting every lit pass binds: the frame uniform, the light
@@ -629,18 +623,12 @@ pub struct Renderer {
     /// The depth prepass's pipelines: the standard and the lean ones by key,
     /// and stylise's object pass.
     prepass: renderer::PrepassState,
-    sky_pipeline: Sampled<wgpu::RenderPipeline>,
-    /// The procedural sky of a chosen look drawn per pixel ([`Background::Procedural`]).
-    sky_look_pipeline: Sampled<wgpu::RenderPipeline>,
     water: water::WaterRenderer,
     fluid3d: fluid3d::Fluid3dRenderer,
     terrain: terrain::TerrainRenderer,
     scatter: scatter::ScatterRenderer,
     grass: grass::GrassRenderer,
     metaballs: metaballs::MetaballRenderer,
-    /// The live sky (`sky_capture.rs`): made while the background is the
-    /// per-pixel sky.
-    sky_capture: Option<sky_capture::SkyCapture>,
     /// The probe GI (`gi_probes.rs`), made the first frame that asks for it.
     gi_probes: Option<gi_probes::GiProbes>,
     /// Reflection probes' cubes and frame uniforms (`probes.rs`).

@@ -960,7 +960,7 @@ impl Renderer {
         });
         let params = SkyParams::new(&scene.environment, crate::ibl::PREFILTER_MIPS, map);
         self.queue
-            .write_buffer(&self.sky_params, 0, bytemuck::bytes_of(&params));
+            .write_buffer(&self.sky.sky_params, 0, bytemuck::bytes_of(&params));
     }
 
     pub(crate) fn ensure_environment(&mut self, scene: &RenderScene) {
@@ -973,7 +973,7 @@ impl Renderer {
         let live =
             map.is_none() && matches!(scene.environment.background, Background::Procedural { .. });
         if !live {
-            self.sky_capture = None;
+            self.sky.sky_capture = None;
         }
         let key = match map {
             None if live => EnvironmentKey::Live,
@@ -990,21 +990,21 @@ impl Renderer {
         };
         // The first frame with clouds draws their noise and makes the sky
         // group again with it.
-        if scene.clouds.is_some() && !self.cloud_noise.made {
-            self.cloud_noise.make(&self.device, &self.queue);
+        if scene.clouds.is_some() && !self.sky.cloud_noise.made {
+            self.sky.cloud_noise.make(&self.device, &self.queue);
             self.lights.environment = None;
         }
         // The aurora's footprint follows the clock every frame; the first
         // frame with one makes its texture, and the sky group again.
         if let Some(a) = &scene.aurora {
-            let made = self.aurora_map.made();
+            let made = self.sky.aurora_map.made();
             let viewer = scene.camera.position + scene.origin;
             let rate = if scene.tick_rate > 0.0 {
                 scene.tick_rate
             } else {
                 60.0
             };
-            self.aurora_map.update(
+            self.sky.aurora_map.update(
                 &self.device,
                 &self.queue,
                 a,
@@ -1060,7 +1060,7 @@ impl Renderer {
         }
         // The bound cubes are the sky without its clouds again: the live
         // sky captures it whole the next frame.
-        if let Some(c) = &mut self.sky_capture {
+        if let Some(c) = &mut self.sky.sky_capture {
             c.restart();
         }
         let ibl = self.lights.ibl.views();
@@ -1099,24 +1099,24 @@ impl Renderer {
         let sky_group = bind_group(
             &self.device,
             "sky",
-            &self.sky_layout,
+            &self.sky.sky_layout,
             &[
                 wgpu::BindingResource::TextureView(&ibl.sky),
-                wgpu::BindingResource::TextureView(&self.cloud_noise.view),
-                wgpu::BindingResource::Sampler(&self.cloud_noise.sampler),
-                self.sky_params.as_entire_binding(),
+                wgpu::BindingResource::TextureView(&self.sky.cloud_noise.view),
+                wgpu::BindingResource::Sampler(&self.sky.cloud_noise.sampler),
+                self.sky.sky_params.as_entire_binding(),
                 wgpu::BindingResource::TextureView(map.map_or(&ibl.sky, |m| view(m.map.index()))),
                 wgpu::BindingResource::TextureView(blend.map_or(&ibl.sky, |b| view(b.0))),
-                wgpu::BindingResource::TextureView(&self.aurora_map.view),
+                wgpu::BindingResource::TextureView(&self.sky.aurora_map.view),
             ],
         );
         self.lights.environment = Some((key, group, sky_group, reflection_group));
-        if live && self.sky_capture.is_none() {
-            self.sky_capture = Some(crate::sky_capture::SkyCapture::new(
+        if live && self.sky.sky_capture.is_none() {
+            self.sky.sky_capture = Some(crate::sky_capture::SkyCapture::new(
                 &self.device,
                 &self.queue,
                 &self.lights.ibl,
-                [&self.frame_layout, &self.sky_layout],
+                [&self.frame_layout, &self.sky.sky_layout],
                 self.info.without.features(),
             ));
         }

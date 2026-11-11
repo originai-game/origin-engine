@@ -113,8 +113,8 @@ impl Renderer {
             fresh.lit.lean_pipelines = self.lit.lean_pipelines;
             fresh.prepass.lean_prepass_pipelines = self.prepass.lean_prepass_pipelines;
             fresh.shadows.compact_shadow_pipelines = self.shadows.compact_shadow_pipelines;
-            fresh.sky_pipeline = self.sky_pipeline;
-            fresh.sky_look_pipeline = self.sky_look_pipeline;
+            fresh.sky.sky_pipeline = self.sky.sky_pipeline;
+            fresh.sky.sky_look_pipeline = self.sky.sky_look_pipeline;
             fresh.sprite_pipeline = self.sprite_pipeline;
             fresh.sprite_additive_pipeline = self.sprite_additive_pipeline;
             fresh.sprite_untonemapped_pipeline = self.sprite_untonemapped_pipeline;
@@ -1182,10 +1182,15 @@ impl Renderer {
             sprite_sampler_nearest,
             trilinear_sampler,
             frame_layout,
-            sky_layout,
-            cloud_noise,
-            sky_params,
-            aurora_map,
+            sky: SkyState {
+                sky_layout,
+                cloud_noise,
+                sky_params,
+                aurora_map,
+                sky_pipeline,
+                sky_look_pipeline,
+                sky_capture: None,
+            },
             material_layout,
             sprite_layout,
             lights: Lights {
@@ -1232,15 +1237,12 @@ impl Renderer {
                 lean_prepass_pipelines: HashMap::new(),
                 stylise_object: None,
             },
-            sky_pipeline,
-            sky_look_pipeline,
             water,
             fluid3d,
             terrain,
             scatter,
             grass,
             metaballs,
-            sky_capture: None,
             gi_probes: None,
             sprite_pipeline,
             sprite_additive_pipeline,

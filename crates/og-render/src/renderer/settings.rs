@@ -181,8 +181,8 @@ impl Renderer {
         self.graph.invalidate();
         // Made at a count, told the new one.
         for p in [
-            &self.sky_pipeline,
-            &self.sky_look_pipeline,
+            &self.sky.sky_pipeline,
+            &self.sky.sky_look_pipeline,
             &self.sprite_pipeline,
             &self.sprite_additive_pipeline,
             &self.sprite_untonemapped_pipeline,

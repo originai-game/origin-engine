@@ -73,8 +73,8 @@ impl Renderer {
             Background::Sky | Background::Procedural { .. } => wgpu::Color::BLACK,
         };
         let sky = match scene.environment.background {
-            Background::Sky => Some(&self.sky_pipeline),
-            Background::Procedural { .. } => Some(&self.sky_look_pipeline),
+            Background::Sky => Some(&self.sky.sky_pipeline),
+            Background::Procedural { .. } => Some(&self.sky.sky_look_pipeline),
             Background::Color(_) => None,
         };
         for (d, &(slot, _)) in probe_frame.due.iter().enumerate() {

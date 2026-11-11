@@ -753,6 +753,24 @@ impl Shadows {
     }
 }
 
+/// The sky's resources: its layout, cloud noise, parameters, aurora map, its two pipelines (the sky cube's and the procedural look's) and the live sky's capture.
+pub(crate) struct SkyState {
+    pub(crate) sky_layout: wgpu::BindGroupLayout,
+    /// The clouds' noise volume, bound in the sky group (`clouds.rs`).
+    pub(crate) cloud_noise: clouds::CloudNoise,
+    /// The sky pass's own uniform (sky.wgsl `SkyParams`): the background's
+    /// blurriness and the map it draws, written every frame.
+    pub(crate) sky_params: wgpu::Buffer,
+    /// The aurora's footprint and table, bound in the sky group (`aurora.rs`).
+    pub(crate) aurora_map: aurora::AuroraMap,
+    pub(crate) sky_pipeline: Sampled<wgpu::RenderPipeline>,
+    /// The procedural sky of a chosen look drawn per pixel ([`Background::Procedural`]).
+    pub(crate) sky_look_pipeline: Sampled<wgpu::RenderPipeline>,
+    /// The live sky (`sky_capture.rs`): made while the background is the
+    /// per-pixel sky.
+    pub(crate) sky_capture: Option<sky_capture::SkyCapture>,
+}
+
 #[cfg(test)]
 mod foliage_layout_tests {
     use super::*;
