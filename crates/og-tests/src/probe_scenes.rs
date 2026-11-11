@@ -417,7 +417,7 @@ pub fn probe_effects_scene(on: bool) -> RenderScene {
             ..Default::default()
         });
         let c = p + Vec3::new(2.5, 0.0, 0.0);
-        scene.lines.push(og_render::Lines {
+        scene.effects.lines.push(og_render::Lines {
             points: vec![
                 c + Vec3::new(0.0, -0.9, -0.9),
                 c + Vec3::new(0.0, -0.9, 0.9),
@@ -440,7 +440,7 @@ pub fn probe_effects_scene(on: bool) -> RenderScene {
             blend: og_render::ParticleBlend::Alpha,
             ..Default::default()
         });
-        scene.particles.push(og_render::ParticleSystem::new(
+        scene.effects.particles.push(og_render::ParticleSystem::new(
             11,
             e,
             Mat4::from_translation(p + Vec3::new(-2.5, -0.6, 0.0)),
@@ -560,7 +560,7 @@ pub fn add_floor_particles(scene: &mut RenderScene, soft: bool) {
         soft_distance: if soft { 2.0 } else { 0.0 },
         ..Default::default()
     });
-    scene.particles.push(og_render::ParticleSystem::new(
+    scene.effects.particles.push(og_render::ParticleSystem::new(
         12,
         e,
         Mat4::from_translation(Vec3::new(0.0, 0.1, 0.0)),

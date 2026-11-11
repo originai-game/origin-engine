@@ -1289,7 +1289,7 @@ impl crate::Renderer {
         plans: &[ViewPlan],
     ) -> Vec<(wgpu::BindGroup, wgpu::BindGroup, Option<wgpu::BindGroup>)> {
         let ibl = self.lights.ibl.views();
-        let atlas_view = scene.decal_atlas.map_or(&self.default_white, |t| {
+        let atlas_view = scene.effects.decal_atlas.map_or(&self.default_white, |t| {
             &self.cache.textures[t.index()].view
         });
         plans

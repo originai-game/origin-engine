@@ -155,6 +155,7 @@ fn array_particles_take_their_layers_by_age_or_at_random() {
             ..Default::default()
         });
         scene
+            .effects
             .particles
             .push(ParticleSystem::new(1, e, Mat4::IDENTITY, 9, 0));
         let mut renderer = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
@@ -162,7 +163,7 @@ fn array_particles_take_their_layers_by_age_or_at_random() {
         let mut stats = FrameStats::default();
         for t in 0..=90 {
             scene.tick = t;
-            scene.particles[0].tick = t;
+            scene.effects.particles[0].tick = t;
             stats = renderer.render(&scene, &RenderTarget::Offscreen)?;
         }
         Ok::<_, RenderError>((renderer.read_offscreen().expect("capture"), stats))

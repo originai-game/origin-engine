@@ -671,7 +671,7 @@ pub fn weather_scene(kind: u32) -> RenderScene {
     scene.lighting.environment.intensity *= 0.5 + 0.5 * look.light;
     if let Some(e) = look.emitter.clone() {
         let emitter = scene.add_emitter(e);
-        scene.particles.push(og_render::ParticleSystem::new(
+        scene.effects.particles.push(og_render::ParticleSystem::new(
             1,
             emitter,
             Mat4::from_translation(look.origin(

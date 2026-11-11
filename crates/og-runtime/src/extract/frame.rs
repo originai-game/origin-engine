@@ -63,9 +63,9 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     scene.sprite_shading.clear();
     scene.text_outlines.clear();
     scene.tile_layers.clear();
-    scene.trail_layers.clear();
-    scene.lines.clear();
-    scene.points.clear();
+    scene.effects.trail_layers.clear();
+    scene.effects.lines.clear();
+    scene.effects.points.clear();
     // Layer masks of the sprites, lines, points and particle systems
     // (views.rs): filled by what pushes them, 1 past their ends.
     scene.sprite_layers.clear();
@@ -74,9 +74,9 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     // Billboards (sprites' facing): set by what pushes them, none past the end.
     scene.sprite_facing.clear();
     scene.text_facing.clear();
-    scene.line_layers.clear();
-    scene.point_layers.clear();
-    scene.particle_layers.clear();
+    scene.effects.line_layers.clear();
+    scene.effects.point_layers.clear();
+    scene.effects.particle_layers.clear();
     let time = world.time();
     scene.tick = time.tick;
     scene.tick_rate = if time.dt > 0.0 { 1.0 / time.dt } else { 60.0 };
@@ -718,7 +718,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     super::fx::settings(world, rs);
     super::fx::components(world, rs, &mut h, tick);
     crate::vfx::extract(world, rs, &mut h, tick);
-    rs.scene.particle_history = rs.particle_history.clone();
+    rs.scene.effects.particle_history = rs.particle_history.clone();
     // The pixel grid's snap: after the sprites and the camera are in.
     super::fx::snap_to_grid(rs);
     // Cloth meshes are instances too: keyed for per-object motion.
@@ -1129,7 +1129,7 @@ fn colliders(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
     rs.scene.world.colliders.clear();
     let colliding = !rs.scene.debris.is_empty()
         || rs.scene.has_visual_bodies()
-        || rs.scene.particles.iter().any(|s| {
+        || rs.scene.effects.particles.iter().any(|s| {
             rs.scene
                 .emitter(s.emitter)
                 .is_some_and(|e| e.collision.is_some())

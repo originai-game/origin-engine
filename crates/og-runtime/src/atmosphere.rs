@@ -612,7 +612,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             } else {
                 at
             };
-            scene.particles.push(ParticleSystem::new(
+            scene.effects.particles.push(ParticleSystem::new(
                 WEATHER_ID,
                 handle,
                 Mat4::from_translation(at),
@@ -928,7 +928,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
                 });
             }
         } else {
-            scene.ribbons.push(Ribbon {
+            scene.effects.ribbons.push(Ribbon {
                 points: points
                     .iter()
                     .map(|&position| RibbonPoint {

@@ -41,7 +41,8 @@ impl Renderer {
         // Decals and screen-space AO (or GI) need the effect shader on every batch;
         // decals take screen derivatives (the lean pipelines keep the discard).
         // (No decal in a renderer made without them, RenderDesc::without.)
-        let decals = !scene.decals.is_empty() && !self.info.without.contains(LitFeatures::DECALS);
+        let decals =
+            !scene.effects.decals.is_empty() && !self.info.without.contains(LitFeatures::DECALS);
         self.lit.plain_effects = ao || decals;
         if self.lit.plain_effects {
             for b in batches.iter_mut().chain(skinned_batches.iter_mut()) {

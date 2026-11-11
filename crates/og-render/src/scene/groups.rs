@@ -134,3 +134,46 @@ pub struct SceneWorld {
     /// default.
     pub colliders: Vec<crate::SceneCollider>,
 }
+
+/// The effects drawn among the scene: particles and their history, trails,
+/// ribbons and beams, effect meshes, lines and points (each with its
+/// layers), and the decals with their atlas.
+#[derive(Debug)]
+pub struct SceneEffects {
+    /// Running particle systems (state is kept by their id).
+    pub particles: Vec<ParticleSystem>,
+    /// Each running system's ticks by its id, as each tick ended
+    /// ([`crate::ParticleHistory`]): the ticks a system has not been drawn
+    /// at step as they were. A system absent here steps by the frame's
+    /// system alone.
+    pub particle_history: og_core::IdMap<u64, std::sync::Arc<crate::ParticleHistory>>,
+    /// Systems the host simulated itself (its tick ran
+    /// [`crate::CpuParticles::advance`] to read their events), by
+    /// [`ParticleSystem::id`]: the renderer draws these particles and their
+    /// sub-emitters' as they are instead of simulating them, so what is
+    /// drawn is what the game read. A system absent here simulates as usual.
+    pub hosted_particles: Vec<(u64, std::sync::Arc<crate::CpuParticles>)>,
+    /// The same for `particles` (billboards and 2D sprite particles alike).
+    pub particle_layers: Vec<u32>,
+    pub trails: Vec<Trail>,
+    /// Trails drawn in the sprite order at a layer (2D) instead of with the
+    /// 3D scene: `(Trail::id, layer)`.
+    pub trail_layers: Vec<(u64, i32)>,
+    pub ribbons: Vec<Ribbon>,
+    pub beams: Vec<Beam>,
+    /// Meshes drawn with an effect material this frame (`effect.rs`).
+    pub effect_meshes: Vec<crate::EffectMesh>,
+    /// Line sets drawn this frame (`lines.rs`): in the scene or over the
+    /// finished frame (debug draw, screen lines).
+    pub lines: Vec<crate::Lines>,
+    /// The same for `lines` and `points` (scene sets; overlay and screen
+    /// sets draw on the main frame whatever their masks).
+    pub line_layers: Vec<u32>,
+    /// Point clouds drawn this frame (`points.rs`).
+    pub points: Vec<crate::Points>,
+    pub point_layers: Vec<u32>,
+    /// Projected decals (the first [`crate::MAX_DECALS`] are drawn).
+    pub decals: Vec<Decal>,
+    /// The texture decals take their `uv_rect` from (`None`: solid colour).
+    pub decal_atlas: Option<TextureHandle>,
+}

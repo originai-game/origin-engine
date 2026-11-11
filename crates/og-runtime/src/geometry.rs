@@ -997,8 +997,11 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy, vp
     // Immediate sets of the tick drawn (or the one before it, whose frame
     // this is).
     if rs.geo.tick == now || rs.geo.tick + 1 == now {
-        rs.scene.lines.extend(rs.geo.lines.iter().cloned());
-        rs.scene.points.extend(rs.geo.points.iter().cloned());
+        rs.scene.effects.lines.extend(rs.geo.lines.iter().cloned());
+        rs.scene
+            .effects
+            .points
+            .extend(rs.geo.points.iter().cloned());
     }
     // og.Lines and og.Points.
     if let Some(layout) = rs.draw.lines.clone() {
@@ -1013,12 +1016,12 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy, vp
                 continue;
             };
             let dash = num(&v, "dashSize", 0.0);
-            let at = rs.scene.lines.len();
+            let at = rs.scene.effects.lines.len();
             if layers != 1 {
-                rs.scene.line_layers.resize(at, 1);
-                rs.scene.line_layers.push(layers);
+                rs.scene.effects.line_layers.resize(at, 1);
+                rs.scene.effects.line_layers.push(layers);
             }
-            rs.scene.lines.push(Lines {
+            rs.scene.effects.lines.push(Lines {
                 points,
                 colors,
                 color: rgba(&v["color"], [1.0; 3], 1.0),
@@ -1044,12 +1047,12 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy, vp
             let Some((positions, colors)) = vertices_of(rs, &v, alpha) else {
                 continue;
             };
-            let at = rs.scene.points.len();
+            let at = rs.scene.effects.points.len();
             if layers != 1 {
-                rs.scene.point_layers.resize(at, 1);
-                rs.scene.point_layers.push(layers);
+                rs.scene.effects.point_layers.resize(at, 1);
+                rs.scene.effects.point_layers.push(layers);
             }
-            rs.scene.points.push(Points {
+            rs.scene.effects.points.push(Points {
                 positions,
                 colors,
                 color: rgba(&v["color"], [1.0; 3], 1.0),
@@ -1075,7 +1078,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy, vp
         return;
     }
     let draws: Vec<Lines> = rs.geo.draws.iter().map(|(_, l)| l.clone()).collect();
-    rs.scene.lines.extend(draws);
+    rs.scene.effects.lines.extend(draws);
     match VIEWS[rs.geo.view_index(&rs.options)] {
         "physics" => physics_view(rs),
         #[cfg(feature = "nav")]
@@ -1099,7 +1102,7 @@ fn physics_view(rs: &mut RenderState) {
         set.points.extend([a, b]);
         set.colors.extend([c, c]);
     }
-    rs.scene.lines.push(set);
+    rs.scene.effects.lines.push(set);
 }
 
 #[cfg(feature = "nav")]
@@ -1170,11 +1173,13 @@ fn nav_view(rs: &mut RenderState) {
     }
     if !edges.is_empty() {
         rs.scene
+            .effects
             .lines
             .push(debug::segments(edges, [0.2, 0.75, 1.0, 1.0], 1.0));
     }
     if !blocked.is_empty() {
         rs.scene
+            .effects
             .lines
             .push(debug::segments(blocked, [1.0, 0.3, 0.25, 1.0], 1.0));
     }
@@ -1189,7 +1194,7 @@ fn nav_view(rs: &mut RenderState) {
                 2.0,
             );
             l.mode = LineMode::Strip;
-            rs.scene.lines.push(l);
+            rs.scene.effects.lines.push(l);
         }
     }
 }
@@ -1228,6 +1233,7 @@ fn bounds_view(rs: &mut RenderState) {
     }
     if !out.is_empty() {
         rs.scene
+            .effects
             .lines
             .push(debug::segments(out, [0.3, 1.0, 0.45, 1.0], 1.0));
     }

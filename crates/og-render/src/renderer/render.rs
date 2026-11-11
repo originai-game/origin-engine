@@ -535,7 +535,7 @@ impl Renderer {
             lit_range: arenas.lit_range,
             particle_frame: &particle_frame,
         });
-        if let Some(t) = scene.decal_atlas
+        if let Some(t) = scene.effects.decal_atlas
             && t.index() >= self.cache.textures.len()
         {
             return Err(RenderError::InvalidHandle(format!(

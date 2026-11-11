@@ -364,6 +364,7 @@ fn in_use(rs: &super::extract::RenderState, held: Held, tick: u64) -> Option<&'s
             }
             let emitted = rs
                 .scene
+                .effects
                 .particles
                 .iter()
                 .any(|p| rs.scene.emitter(p.emitter).and_then(|e| e.array) == Some(h));

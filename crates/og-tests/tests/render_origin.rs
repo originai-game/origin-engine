@@ -137,8 +137,8 @@ const GRID: Vec3 = Vec3::new(8192.0, 0.0, 0.0);
 fn wisps(scene: &mut RenderScene, frame: u32) {
     fx_scenes::move_wisps(scene, frame);
     let by = GRID - scene.origin;
-    for i in 0..scene.trails.len() {
-        scene.trails[i].position += by;
+    for i in 0..scene.effects.trails.len() {
+        scene.effects.trails[i].position += by;
         scene.instances[1 + i].transform.w_axis += by.extend(0.0);
     }
 }

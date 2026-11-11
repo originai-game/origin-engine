@@ -102,7 +102,7 @@ impl RenderScene {
         for t in &mut self.tile_layers {
             t.origin += d;
         }
-        for p in &mut self.particles {
+        for p in &mut self.effects.particles {
             moved(&mut p.transform, d);
         }
         for c in &mut self.world.colliders {
@@ -120,25 +120,25 @@ impl RenderScene {
         for p in &mut self.debris {
             p.position += d;
         }
-        for t in &mut self.trails {
+        for t in &mut self.effects.trails {
             t.position += d;
         }
-        for r in &mut self.ribbons {
+        for r in &mut self.effects.ribbons {
             for p in &mut r.points {
                 p.position += d;
             }
         }
-        for b in &mut self.beams {
+        for b in &mut self.effects.beams {
             b.start += d;
             b.end += d;
         }
-        for l in self.lines.iter_mut().filter(|l| !l.screen) {
+        for l in self.effects.lines.iter_mut().filter(|l| !l.screen) {
             moved(&mut l.transform, d);
         }
-        for p in self.points.iter_mut().filter(|p| !p.screen) {
+        for p in self.effects.points.iter_mut().filter(|p| !p.screen) {
             moved(&mut p.transform, d);
         }
-        for x in &mut self.decals {
+        for x in &mut self.effects.decals {
             moved(&mut x.transform, d);
         }
         for l in &mut self.lights_2d {

@@ -13,10 +13,10 @@ fn decals_project_onto_surfaces_past_the_old_cap() {
     let desc = scenes::base_desc();
     let (with, stats) = frame(&desc, &base);
     let mut none = fx::decals_scene();
-    none.decals.clear();
+    none.effects.decals.clear();
     let (without, _) = frame(&desc, &none);
     save("decals", &with);
-    assert_eq!(stats.decals, base.decals.len() as u32);
+    assert_eq!(stats.decals, base.effects.decals.len() as u32);
     // The scorch at (-1.6, 0, 0.6) darkens the ground; the rune glows.
     let scorch = project(&base.camera, 1280, 720, Vec3::new(-1.6, 0.0, 0.6));
     let rune = project(&base.camera, 1280, 720, Vec3::new(0.2 + 0.8, 0.0, 1.6));
@@ -45,15 +45,15 @@ fn decals_project_onto_surfaces_past_the_old_cap() {
             )
         })
         .collect();
-    decals.extend(base.decals.iter().copied());
-    many.decals = decals;
+    decals.extend(base.effects.decals.iter().copied());
+    many.effects.decals = decals;
     let (late, s) = frame(&desc, &many);
     assert_eq!((s.decals, s.decals_dropped), (45, 0));
     let s2 = luma(px(&late, scorch.0, scorch.1));
     assert!(s2 < 0.5 * s0, "the 41st decal's scorch: {s2} vs {s0}");
     // Past MAX_CLUSTER_DECALS in one place the oldest there are dropped.
     let mut pile = fx::decals_scene();
-    pile.decals = vec![pile.decals[0]; MAX_CLUSTER_DECALS + 5];
+    pile.effects.decals = vec![pile.effects.decals[0]; MAX_CLUSTER_DECALS + 5];
     let (_, s) = frame(&small(), &pile);
     assert_eq!(s.decals, MAX_CLUSTER_DECALS as u32 + 5);
     assert!(s.decals_dropped >= 5, "{}", s.decals_dropped);

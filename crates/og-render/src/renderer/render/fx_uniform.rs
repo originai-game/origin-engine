@@ -63,7 +63,7 @@ impl Renderer {
             if self.info.without.contains(LitFeatures::DECALS) {
                 &[]
             } else {
-                &scene.decals
+                &scene.effects.decals
             },
             &clusters::ClusterView {
                 camera: cam,
@@ -74,14 +74,14 @@ impl Renderer {
                 width: self.width,
                 height: self.height,
             },
-            scene.decals.len() as u32,
+            scene.effects.decals.len() as u32,
         );
         // The previous joints' section (`skin::append_previous`).
         if skinned_motion.is_some() {
             fx_uniform.decal_info[3] = joints_drawn as f32;
         }
         fx_uniform.decal_info[0] = decals as f32;
-        fx_uniform.decal_info[1] = match scene.decal_atlas {
+        fx_uniform.decal_info[1] = match scene.effects.decal_atlas {
             None => 0.0,
             Some(t) if scene.texture_color_space(t) == Some(ColorSpace::Srgb) => 2.0,
             Some(_) => 1.0,

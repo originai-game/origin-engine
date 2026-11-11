@@ -48,12 +48,12 @@ fn scene(name: &str, remove: bool) -> RenderScene {
             "grass-near" => s.world.grass.clear(),
             "terrain-grass" => s.world.scatters.clear(),
             "water-planar" => s.world.water.clear(),
-            "particles" => s.particles.clear(),
+            "particles" => s.effects.particles.clear(),
             "trails-beams" => {
-                s.trails.clear();
-                s.beams.clear();
+                s.effects.trails.clear();
+                s.effects.beams.clear();
             }
-            "decals" => s.decals.clear(),
+            "decals" => s.effects.decals.clear(),
             "sky-only" => s.lighting.environment.background = Background::Color(Vec3::ZERO),
             "impostors" => s.impostors.clear(),
             _ => {

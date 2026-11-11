@@ -26,18 +26,18 @@ pub fn showcase_effects(scene: &mut RenderScene) {
         cast_shadows: false,
     });
     let atlas = decal_atlas(scene);
-    scene.decal_atlas = Some(atlas);
+    scene.effects.decal_atlas = Some(atlas);
     for (p, s, r) in [
         (Vec3::new(-5.0, 0.0, -5.0), 4.0, 0.2),
         (Vec3::new(5.5, 0.0, -4.0), 3.6, 1.3),
         (Vec3::new(1.4, 0.0, 1.4), 2.2, 0.0),
     ] {
-        scene.decals.push(Decal {
+        scene.effects.decals.push(Decal {
             uv_rect: DECAL_SCORCH,
             ..Decal::on_surface(p, Vec3::Y, Vec2::splat(s), 0.8, r)
         });
     }
-    scene.decals.push(Decal {
+    scene.effects.decals.push(Decal {
         uv_rect: DECAL_RUNE,
         emissive: Vec3::new(0.8, 2.0, 3.0),
         ..Decal::on_surface(
@@ -49,7 +49,7 @@ pub fn showcase_effects(scene: &mut RenderScene) {
         )
     });
     let beam_tex = beam_texture(scene);
-    scene.beams.push(Beam {
+    scene.effects.beams.push(Beam {
         start: Vec3::new(-4.4, 0.9, -4.8),
         end: Vec3::new(5.0, 0.9, -3.8),
         width: 0.18,
@@ -70,7 +70,7 @@ pub fn showcase_effects(scene: &mut RenderScene) {
             ]),
             ..Default::default()
         });
-        scene.trails.push(Trail {
+        scene.effects.trails.push(Trail {
             id: 200 + i as u64,
             style,
             position: showcase_wisp(i, SHOWCASE_TICK),
@@ -112,7 +112,7 @@ fn showcase_wisp(i: usize, tick: u64) -> Vec3 {
 pub fn showcase_update(scene: &mut RenderScene, frame: u32) {
     let tick = SHOWCASE_TICK + frame as u64;
     tick_all(scene, tick);
-    for (i, t) in scene.trails.iter_mut().enumerate() {
+    for (i, t) in scene.effects.trails.iter_mut().enumerate() {
         t.position = showcase_wisp(i, tick);
     }
 }

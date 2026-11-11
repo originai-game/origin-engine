@@ -27,9 +27,9 @@ impl ParticleRenderer {
         // Compute systems meeting the scene's colliders: their entries and
         // the box their particles can reach.
         let mut colliding: Vec<(std::ops::Range<u32>, (Vec3, Vec3))> = Vec::new();
-        for (i, sys) in scene.particles.iter().enumerate() {
-            let layers = crate::views::layer_of(&scene.particle_layers, i);
-            let history = scene.particle_history.get(&sys.id).map(|h| &**h);
+        for (i, sys) in scene.effects.particles.iter().enumerate() {
+            let layers = crate::views::layer_of(&scene.effects.particle_layers, i);
+            let history = scene.effects.particle_history.get(&sys.id).map(|h| &**h);
             let e = scene.emitters().get(sys.emitter.index()).ok_or_else(|| {
                 RenderError::InvalidHandle(format!(
                     "particle system {i}: emitter {}",
@@ -192,6 +192,7 @@ impl ParticleRenderer {
             }
             // A host's own simulation of it (its tick read the events).
             let hosted = scene
+                .effects
                 .hosted_particles
                 .iter()
                 .find(|(id, _)| *id == sys.id)
@@ -881,7 +882,7 @@ impl ParticleRenderer {
         entries: &mut Vec<EmitterGpu>,
         out: &mut ParticleFrame,
     ) -> Result<(), RenderError> {
-        for (i, m) in scene.effect_meshes.iter().enumerate() {
+        for (i, m) in scene.effects.effect_meshes.iter().enumerate() {
             let material = scene.effect_material(m.material).ok_or_else(|| {
                 RenderError::InvalidHandle(format!(
                     "effect mesh {i}: effect material {}",

@@ -138,7 +138,7 @@ pub fn light_campfire(scene: &mut RenderScene, fire: &Campfire, at: Vec3, id: u6
         .enumerate()
     {
         let lift = if k == 0 { 0.4 } else { 0.05 };
-        scene.particles.push(ParticleSystem::new(
+        scene.effects.particles.push(ParticleSystem::new(
             id + k as u64,
             e,
             Mat4::from_translation(Vec3::Y * lift) * t,
@@ -252,7 +252,7 @@ pub fn particles_scene() -> RenderScene {
         space: SimulationSpace::Local,
         ..Default::default()
     });
-    scene.particles.push(ParticleSystem::new(
+    scene.effects.particles.push(ParticleSystem::new(
         20,
         magic,
         Mat4::from_translation(Vec3::new(-2.6, 1.4, -1.4)),
@@ -286,6 +286,7 @@ pub fn particles_scene() -> RenderScene {
         ..Default::default()
     });
     scene
+        .effects
         .particles
         .push(ParticleSystem::new(30, sparkle, orb_at, 99, 0));
     // A spark burst every second against the pillar's base.
@@ -315,7 +316,7 @@ pub fn particles_scene() -> RenderScene {
         collision: Some(ParticleCollision::default()),
         ..Default::default()
     });
-    scene.particles.push(ParticleSystem::new(
+    scene.effects.particles.push(ParticleSystem::new(
         40,
         burst,
         Mat4::from_translation(Vec3::new(0.9, 0.6, 1.6)) * Mat4::from_rotation_z(-0.6),
@@ -400,7 +401,7 @@ pub fn particles_lit_scene() -> RenderScene {
         lit: true,
         ..Default::default()
     });
-    scene.particles.push(ParticleSystem::new(
+    scene.effects.particles.push(ParticleSystem::new(
         50,
         smoke,
         Mat4::from_translation(Vec3::new(-2.8, 0.0, -0.6)),
@@ -461,7 +462,7 @@ pub fn particles_lit_scene() -> RenderScene {
         }],
         ..Default::default()
     });
-    scene.particles.push(ParticleSystem::new(
+    scene.effects.particles.push(ParticleSystem::new(
         51,
         debris,
         Mat4::from_translation(Vec3::new(0.0, 0.1, 0.4)),
@@ -506,7 +507,7 @@ pub fn particles_lit_scene() -> RenderScene {
         distortion: 0.006,
         ..Default::default()
     });
-    scene.particles.push(ParticleSystem::new(
+    scene.effects.particles.push(ParticleSystem::new(
         52,
         haze,
         Mat4::from_translation(Vec3::new(2.8, 0.55, -1.2)),
@@ -574,7 +575,7 @@ pub fn trails_scene() -> RenderScene {
             ]),
             ..Default::default()
         });
-        scene.trails.push(Trail {
+        scene.effects.trails.push(Trail {
             id: i as u64,
             style,
             position: wisp_at(i, 0),
@@ -599,7 +600,7 @@ pub fn trails_scene() -> RenderScene {
             }
         })
         .collect();
-    scene.ribbons.push(Ribbon {
+    scene.effects.ribbons.push(Ribbon {
         points,
         texture: None,
         uv: RibbonUv::Stretch,
@@ -621,7 +622,7 @@ pub fn trails_scene() -> RenderScene {
             Mat4::from_translation(Vec3::new(x, 1.2, -2.5)),
         );
     }
-    scene.beams.push(Beam {
+    scene.effects.beams.push(Beam {
         start: Vec3::new(2.2, 2.0, -2.5),
         end: Vec3::new(4.6, 2.0, -2.5),
         width: 0.22,
@@ -631,7 +632,7 @@ pub fn trails_scene() -> RenderScene {
         scroll: 2.0,
         ..Default::default()
     });
-    scene.beams.push(Beam {
+    scene.effects.beams.push(Beam {
         start: Vec3::new(2.2, 0.9, -2.5),
         end: Vec3::new(4.6, 0.9, -2.5),
         width: 0.06,
@@ -655,10 +656,10 @@ pub fn trails_scene() -> RenderScene {
 pub fn move_wisps(scene: &mut RenderScene, frame: u32) {
     let tick = frame as u64;
     tick_all(scene, tick);
-    let n = scene.trails.len();
+    let n = scene.effects.trails.len();
     for i in 0..n {
         let p = wisp_at(i, tick);
-        scene.trails[i].position = p;
+        scene.effects.trails[i].position = p;
         // The orbs are the last three instances before the ribbon's pylons.
         let k = 1 + i;
         scene.instances[k].transform =

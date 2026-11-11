@@ -402,7 +402,7 @@ const VARIANTS: &[Variant] = &[
         let c = g.scene.camera.target;
         for i in 0..8 {
             let p = c + glam::Vec3::new(i as f32 - 4.0, 0.0, (i % 3) as f32 - 1.0);
-            g.scene.decals.push(og_render::Decal::on_surface(
+            g.scene.effects.decals.push(og_render::Decal::on_surface(
                 p,
                 glam::Vec3::Y,
                 glam::Vec2::splat(2.0),
@@ -482,21 +482,21 @@ fn effect_table(frames: u32, only: Option<&str>) -> Result<String, String> {
     type Strip = fn(&mut GfxScene);
     let effect_rows: &[(&str, &str, Strip)] = &[
         ("particles", "particles (GPU, 6 systems)", |g| {
-            g.scene.particles.clear()
+            g.scene.effects.particles.clear()
         }),
         ("particles-cpu", "particles (CPU path, 6 systems)", |g| {
-            g.scene.particles.clear()
+            g.scene.effects.particles.clear()
         }),
         ("fx-2d", "2D lights + soft shadows", |g| {
             g.scene.lighting_2d = None;
         }),
         ("fx-2d", "2D glow buffer", |g| g.scene.look.post.glow = None),
         ("trails-beams", "trails, ribbon, beams", |g| {
-            g.scene.trails.clear();
-            g.scene.ribbons.clear();
-            g.scene.beams.clear();
+            g.scene.effects.trails.clear();
+            g.scene.effects.ribbons.clear();
+            g.scene.effects.beams.clear();
         }),
-        ("decals", "5 decals", |g| g.scene.decals.clear()),
+        ("decals", "5 decals", |g| g.scene.effects.decals.clear()),
         ("stylised", "outlines (prepass + pass)", |g| {
             g.scene.look.post.outline = None;
             let handles: Vec<_> = g.scene.material_handles().collect();
@@ -556,7 +556,7 @@ fn effect_table(frames: u32, only: Option<&str>) -> Result<String, String> {
             "weather-rain",
             "E5: rain preset (particles, fog, dimming)",
             |g| {
-                g.scene.particles.clear();
+                g.scene.effects.particles.clear();
                 g.scene.atmosphere.fog = None;
             },
         ),

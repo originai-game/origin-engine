@@ -688,7 +688,7 @@ pub fn sprite_array_fx_scene() -> RenderScene {
         glow: 0.6,
         ..Default::default()
     });
-    scene.particles.push(ParticleSystem::new(
+    scene.effects.particles.push(ParticleSystem::new(
         1,
         motes,
         Mat4::from_translation(Vec3::new(-4.0, -4.5, 0.0)),
@@ -717,7 +717,7 @@ pub fn sprite_array_fx_scene() -> RenderScene {
         render: ParticleRender::Sprite { layer: 2 },
         ..Default::default()
     });
-    scene.particles.push(ParticleSystem::new(
+    scene.effects.particles.push(ParticleSystem::new(
         2,
         wheels,
         Mat4::from_translation(Vec3::new(4.0, -4.5, 0.0)),

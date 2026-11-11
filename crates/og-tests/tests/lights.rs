@@ -158,7 +158,7 @@ fn a_light_turned_on_mid_run_waits_for_no_compile() {
     };
     let mut scene = scenes::build("materials").expect("materials").scene;
     scene.lighting.lights.clear();
-    scene.decals.clear();
+    scene.effects.decals.clear();
     let light = Light {
         position: Vec3::new(0.0, 1.5, 1.0),
         color: Vec3::new(1.0, 0.4, 0.2),
@@ -205,7 +205,7 @@ fn a_capture_draws_with_the_full_lit_pipelines() {
     };
     let mut scene = scenes::build("materials").expect("materials").scene;
     scene.lighting.lights.clear();
-    scene.decals.clear();
+    scene.effects.decals.clear();
     let light = Light {
         position: Vec3::new(0.0, 1.5, 1.0),
         color: Vec3::new(1.0, 0.4, 0.2),

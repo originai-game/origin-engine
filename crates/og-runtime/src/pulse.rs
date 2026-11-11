@@ -70,7 +70,7 @@ pub(crate) fn pulse(engine: u32, world: &World) -> Result<Value, String> {
     let particles: Vec<u64> = eng
         .render
         .try_borrow()
-        .map(|rs| rs.scene.particles.iter().map(|p| p.id).collect())
+        .map(|rs| rs.scene.effects.particles.iter().map(|p| p.id).collect())
         .unwrap_or_default();
     let mut voices = Vec::new();
     let mut named = Vec::new();

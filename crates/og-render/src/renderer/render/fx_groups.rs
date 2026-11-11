@@ -13,14 +13,14 @@ impl Renderer {
         let fx_key = (
             self.graph.generation,
             scene.id(),
-            scene.decal_atlas,
+            scene.effects.decal_atlas,
             self.lights.decal_buffers.generation,
             ao,
             scene.lighting_2d.is_some(),
             reflection,
         );
         if self.lights.fx_groups.as_ref().map(|g| g.key) != Some(fx_key) {
-            let atlas_view = scene.decal_atlas.map_or(&self.default_white, |t| {
+            let atlas_view = scene.effects.decal_atlas.map_or(&self.default_white, |t| {
                 &self.cache.textures[t.index()].view
             });
             self.world.terrain.decals.bind(

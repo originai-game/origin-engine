@@ -186,7 +186,7 @@ pub fn fx_2d_scene() -> Result<RenderScene, String> {
         glow: 0.8,
         ..Default::default()
     });
-    scene.particles.push(ParticleSystem::new(
+    scene.effects.particles.push(ParticleSystem::new(
         1,
         torch,
         Mat4::from_translation(Vec3::new(-5.5, 2.2, 0.0)),
@@ -211,7 +211,7 @@ pub fn fx_2d_scene() -> Result<RenderScene, String> {
         glow: 1.0,
         ..Default::default()
     });
-    scene.particles.push(ParticleSystem::new(
+    scene.effects.particles.push(ParticleSystem::new(
         2,
         motes,
         Mat4::from_translation(Vec3::new(3.6, -3.4, 0.0)),

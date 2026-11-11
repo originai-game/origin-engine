@@ -94,6 +94,7 @@ impl RenderBackend for Recorder {
     }
     fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
         *self.0.borrow_mut() = scene
+            .effects
             .hosted_particles
             .iter()
             .map(|(id, p)| (*id, p.slots.iter().filter(|s| s.alive()).count()))

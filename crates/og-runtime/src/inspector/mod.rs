@@ -1033,11 +1033,13 @@ fn emit_gizmo(rs: &mut RenderState) {
     }
     if !bounds.is_empty() {
         rs.scene
+            .effects
             .lines
             .push(og_render::debug::segments(bounds, boxed, 1.0));
     }
     for (points, color, width) in strokes {
         rs.scene
+            .effects
             .lines
             .push(og_render::debug::segments(points, color, width));
     }

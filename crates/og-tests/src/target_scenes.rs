@@ -322,18 +322,18 @@ fn add_view_kind(scene: &mut RenderScene, kind: ViewKind) {
                 blend: og_render::ParticleBlend::Alpha,
                 ..Default::default()
             });
-            scene.particles.push(og_render::ParticleSystem::new(
+            scene.effects.particles.push(og_render::ParticleSystem::new(
                 7,
                 e,
                 Mat4::from_translation(Vec3::new(2.0, 0.2, 2.4)),
                 0x51e8,
                 0,
             ));
-            scene.particle_layers = vec![2; scene.particles.len()];
+            scene.effects.particle_layers = vec![2; scene.effects.particles.len()];
         }
         ViewKind::Lines => {
             let c = Vec3::new(3.6, 1.2, 3.4);
-            scene.lines.push(og_render::Lines {
+            scene.effects.lines.push(og_render::Lines {
                 points: vec![
                     c + Vec3::new(-0.8, -0.8, 0.0),
                     c + Vec3::new(0.8, -0.8, 0.0),
@@ -346,9 +346,9 @@ fn add_view_kind(scene: &mut RenderScene, kind: ViewKind) {
                 world_width: true,
                 ..Default::default()
             });
-            let i = scene.lines.len() - 1;
-            scene.line_layers.resize(i + 1, 1);
-            scene.line_layers[i] = 2;
+            let i = scene.effects.lines.len() - 1;
+            scene.effects.line_layers.resize(i + 1, 1);
+            scene.effects.line_layers[i] = 2;
         }
     }
 }
@@ -526,7 +526,7 @@ pub fn view_fx_scene(fx: ViewFx, on: bool) -> RenderScene {
                     width: 0.6,
                     color: [1.0, 0.45, 0.1, 1.0],
                 };
-                scene.ribbons.push(og_render::Ribbon {
+                scene.effects.ribbons.push(og_render::Ribbon {
                     points: (0..=8).map(|i| point(-2.0 + i as f32 * 0.5)).collect(),
                     texture: None,
                     uv: og_render::RibbonUv::Stretch,
@@ -584,7 +584,7 @@ pub fn view_fx_scene(fx: ViewFx, on: bool) -> RenderScene {
                     },
                     ..Default::default()
                 });
-                scene.particles.push(og_render::ParticleSystem::new(
+                scene.effects.particles.push(og_render::ParticleSystem::new(
                     9,
                     e,
                     Mat4::from_translation(Vec3::new(0.0, 0.0, -0.9)),

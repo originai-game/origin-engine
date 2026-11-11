@@ -108,18 +108,18 @@ impl RenderBackend for Recorder {
     fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
         self.0.borrow_mut().push((
             scene.tick,
-            scene.particles.len(),
-            scene.effect_meshes.len(),
+            scene.effects.particles.len(),
+            scene.effects.effect_meshes.len(),
             scene.lighting.lights.len(),
             scene.sprites.iter().map(|s| (s.size.x, s.size.y)).collect(),
         ));
         // Stats that follow the scene, so the render dump can be checked
         // against the frame that made them.
         self.1 = og_render::FrameStats {
-            draw_calls: 3 + 2 * scene.effect_meshes.len() as u32,
-            particle_systems: scene.particles.len() as u32,
-            particle_capacity: 64 * scene.particles.len() as u32,
-            transparent_draws: scene.effect_meshes.len() as u32,
+            draw_calls: 3 + 2 * scene.effects.effect_meshes.len() as u32,
+            particle_systems: scene.effects.particles.len() as u32,
+            particle_capacity: 64 * scene.effects.particles.len() as u32,
+            transparent_draws: scene.effects.effect_meshes.len() as u32,
             ..Default::default()
         };
         Ok(())

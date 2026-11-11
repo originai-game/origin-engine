@@ -172,6 +172,7 @@ impl RenderBackend for Recorder {
         s.palette = scene.look.stylise.quantize.and_then(|q| q.palette);
         s.arrays = scene.sprite_arrays.len();
         s.emitters = scene
+            .effects
             .particles
             .iter()
             .map(|p| scene.emitter(p.emitter).and_then(|e| e.array))

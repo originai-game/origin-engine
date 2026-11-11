@@ -39,10 +39,10 @@ pub use sprites::*;
 /// system's and each trail's.
 pub fn tick_all(scene: &mut RenderScene, tick: u64) {
     scene.tick = tick;
-    for p in &mut scene.particles {
+    for p in &mut scene.effects.particles {
         p.tick = tick;
     }
-    for t in &mut scene.trails {
+    for t in &mut scene.effects.trails {
         t.tick = tick;
     }
 }
@@ -288,7 +288,7 @@ pub fn bullet_hole_atlas(scene: &mut RenderScene) -> TextureHandle {
 pub fn decals_many_scene() -> RenderScene {
     let mut scene = RenderScene::new();
     terrain(&mut scene, 40.0);
-    scene.decal_atlas = Some(bullet_hole_atlas(&mut scene));
+    scene.effects.decal_atlas = Some(bullet_hole_atlas(&mut scene));
     let wall = scene.add_mesh(shapes::cuboid(Vec3::new(8.0, 3.0, 0.4)));
     let plaster = scene.add_material(Material {
         base_color: [0.82, 0.78, 0.7, 1.0],
@@ -337,7 +337,7 @@ pub fn decals_many_scene() -> RenderScene {
         normal_scale: 2.0,
         ..hole(Vec3::new(1.5, 0.0, 1.0), Vec3::Y, 1.6, 0.0)
     });
-    scene.decals = decals;
+    scene.effects.decals = decals;
     let sun = Vec3::new(-0.8, 0.45, 0.4);
     scene.lighting.light = DirectionalLight {
         direction_to_light: sun,
@@ -360,7 +360,7 @@ pub fn decals_scene() -> RenderScene {
     let mut scene = RenderScene::new();
     terrain(&mut scene, 40.0);
     let atlas = decal_atlas(&mut scene);
-    scene.decal_atlas = Some(atlas);
+    scene.effects.decal_atlas = Some(atlas);
     let wall = scene.add_mesh(shapes::cuboid(Vec3::new(8.0, 3.0, 0.4)));
     let plaster = scene.add_material(Material {
         base_color: [0.82, 0.78, 0.7, 1.0],
@@ -379,7 +379,7 @@ pub fn decals_scene() -> RenderScene {
         Mat4::from_translation(Vec3::new(2.4, 0.45, 0.2)),
     );
     let up = Vec3::Y;
-    scene.decals = vec![
+    scene.effects.decals = vec![
         Decal {
             uv_rect: DECAL_SCORCH,
             ..Decal::on_surface(Vec3::new(-1.6, 0.0, 0.6), up, Vec2::splat(2.4), 0.6, 0.3)

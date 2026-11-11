@@ -728,7 +728,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy, ti
                 (VfxKind::Emitter { seed: s, .. }, Link::Emitter(handle)) => {
                     let begin = cycle + ticks(el.at, rate);
                     let emitter = tinted_emitter(rs, *handle, tint);
-                    rs.scene.particles.push(ParticleSystem {
+                    rs.scene.effects.particles.push(ParticleSystem {
                         stop_tick: (el.life > 0.0).then(|| begin + ticks(el.life, rate).max(1)),
                         start_tick: begin,
                         ..ParticleSystem::new(
@@ -750,7 +750,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy, ti
                     },
                     Link::Mesh(mesh, material),
                 ) if alive => {
-                    rs.scene.effect_meshes.push(EffectMesh {
+                    rs.scene.effects.effect_meshes.push(EffectMesh {
                         id,
                         mesh: *mesh,
                         material: *material,
@@ -765,7 +765,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy, ti
                     });
                 }
                 (VfxKind::Flash { size, color }, Link::Mesh(mesh, material)) if alive => {
-                    rs.scene.effect_meshes.push(EffectMesh {
+                    rs.scene.effects.effect_meshes.push(EffectMesh {
                         id,
                         mesh: *mesh,
                         material: *material,
@@ -811,7 +811,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy, ti
                             h
                         }
                     };
-                    rs.scene.trails.push(Trail {
+                    rs.scene.effects.trails.push(Trail {
                         id,
                         style: handle,
                         position: local.transform_point3(p),
@@ -829,7 +829,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy, ti
                     },
                     Link::Effect(effect),
                 ) if alive => {
-                    rs.scene.beams.push(Beam {
+                    rs.scene.effects.beams.push(Beam {
                         start: local.transform_point3(Vec3::ZERO),
                         end: local.transform_point3(*to),
                         width: width * scale,
@@ -876,7 +876,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy, ti
                     let c = tinted(*color, tint);
                     // Its unit box projects along its -z: turned down the
                     // element's -y, y the depth.
-                    rs.scene.decals.push(Decal {
+                    rs.scene.effects.decals.push(Decal {
                         transform: local
                             * Mat4::from_rotation_x(-std::f32::consts::FRAC_PI_2)
                             * Mat4::from_scale(Vec3::new(size.x, size.z, size.y)),

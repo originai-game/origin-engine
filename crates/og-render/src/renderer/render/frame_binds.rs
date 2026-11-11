@@ -197,7 +197,7 @@ impl Renderer {
                 .chain(skinned_visible)
                 .any(|b| b.physical)
                 .then(|| {
-                    let atlas_view = scene.decal_atlas.map_or(&self.default_white, |t| {
+                    let atlas_view = scene.effects.decal_atlas.map_or(&self.default_white, |t| {
                         &self.cache.textures[t.index()].view
                     });
                     let ao_view = if ao_target || contact {
@@ -243,7 +243,7 @@ impl Renderer {
         // The planar reflection's effect group: its decals, no AO.
         let reflection_fx_group: Vec<wgpu::BindGroup> = (0..reflections.len())
             .map(|k| {
-                let atlas_view = scene.decal_atlas.map_or(&self.default_white, |t| {
+                let atlas_view = scene.effects.decal_atlas.map_or(&self.default_white, |t| {
                     &self.cache.textures[t.index()].view
                 });
                 fx::fx_group(
@@ -267,7 +267,7 @@ impl Renderer {
         // lightmapped draws (`fx_lean_group`), by the pass's own group.
         let reflection_fx_lean: Vec<Option<wgpu::BindGroup>> = (0..reflections.len())
             .map(|k| {
-                let atlas_view = scene.decal_atlas.map_or(&self.default_white, |t| {
+                let atlas_view = scene.effects.decal_atlas.map_or(&self.default_white, |t| {
                     &self.cache.textures[t.index()].view
                 });
                 self.fx_lean_group(

@@ -921,7 +921,7 @@ pub fn visual_particles_scene() -> RenderScene {
     // Off the wheel's bottom-left, across the block and down the plate.
     let grind = wheel_at + Vec3::new(-0.2, -0.17, 0.0);
     let towards = Vec3::new(-1.0, 0.12, 0.08).normalize();
-    scene.particles.push(ParticleSystem::new(
+    scene.effects.particles.push(ParticleSystem::new(
         1,
         sparks,
         Mat4::from_rotation_translation(Quat::from_rotation_arc(Vec3::Y, towards), grind),

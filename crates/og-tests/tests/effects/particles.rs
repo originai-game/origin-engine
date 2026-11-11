@@ -71,7 +71,7 @@ fn compute_particles_bounce_off_the_scene_colliders() {
         let mut scene = collision_scene(true);
         // Nothing drawn under the fountain: only the colliders are there.
         scene.instances.clear();
-        let e = scene.particles[0].emitter;
+        let e = scene.effects.particles[0].emitter;
         let mut emitter = scene.emitter(e).expect("emitter").clone();
         emitter.collision = Some(ParticleCollision {
             against: og_render::CollisionTarget::Colliders,
@@ -149,7 +149,7 @@ fn collision_scene(collide: bool) -> RenderScene {
         collision: collide.then(ParticleCollision::default),
         ..Default::default()
     });
-    scene.particles.push(ParticleSystem::new(
+    scene.effects.particles.push(ParticleSystem::new(
         1,
         e,
         Mat4::from_translation(Vec3::new(0.0, 1.5, 0.0)),
@@ -179,7 +179,7 @@ fn trails_remember_the_path_for_their_lifetime() {
         width: Curve::linear(0.4, 0.1),
         ..Default::default()
     });
-    scene.trails.push(Trail {
+    scene.effects.trails.push(Trail {
         id: 1,
         style,
         position: Vec3::ZERO,
@@ -207,8 +207,8 @@ fn trails_remember_the_path_for_their_lifetime() {
     };
     let mut moving = (0, 0);
     for t in 0..10u64 {
-        scene.trails[0].tick = t;
-        scene.trails[0].position = Vec3::new(t as f32 * 0.2 - 1.0, 0.0, 0.0);
+        scene.effects.trails[0].tick = t;
+        scene.effects.trails[0].position = Vec3::new(t as f32 * 0.2 - 1.0, 0.0, 0.0);
         moving = drawn(&scene);
     }
     // Moving 0.2 a tick for nine ticks: 1.8 units of path behind the head,
@@ -218,11 +218,11 @@ fn trails_remember_the_path_for_their_lifetime() {
         "{moving:?} lit pixels and span while moving"
     );
     // Standing still for longer than the lifetime: the trail collapses.
-    scene.trails[0].tick = 40;
+    scene.effects.trails[0].tick = 40;
     assert_eq!(drawn(&scene).0, 0, "a resting trail draws nothing");
     // Backwards in time: restarts with a single point.
-    scene.trails[0].tick = 5;
-    scene.trails[0].position = Vec3::new(2.0, 0.0, 0.0);
+    scene.effects.trails[0].tick = 5;
+    scene.effects.trails[0].position = Vec3::new(2.0, 0.0, 0.0);
     assert_eq!(drawn(&scene).0, 0, "a trail sent back in time starts again");
 }
 
@@ -288,6 +288,7 @@ fn expressive_scene(grid: bool) -> RenderScene {
         ..Default::default()
     });
     scene
+        .effects
         .particles
         .push(ParticleSystem::new(1, e, Mat4::IDENTITY, 7, 0));
     scene.camera = Camera {
@@ -317,7 +318,7 @@ fn compute_and_cpu_agree_on_curves_attractors_fields_and_splines() {
             let mut scene = expressive_scene(grid);
             let (_, stats, r) = run(&desc, &mut scene, 90, |s, f| {
                 // Across the frame at 1.5 m/s, the systems' clocks on.
-                s.particles[0].transform =
+                s.effects.particles[0].transform =
                     Mat4::from_translation(Vec3::new(-2.0 + f as f32 * 0.025, 0.5, 0.0));
                 fx::tick_all(s, f as u64);
             });

@@ -87,17 +87,17 @@ fn decals_project_on_terrain_and_reject_back_faces() {
         color_space: ColorSpace::Srgb,
         mips: Mips::Generate,
     });
-    scene.decal_atlas = Some(atlas);
+    scene.effects.decal_atlas = Some(atlas);
     let decal = Decal {
         emissive: Vec3::X,
         ..Decal::on_surface(Vec3::ZERO, Vec3::Y, Vec2::new(3.0, 2.0), 1.0, 0.0)
     };
-    scene.decals.push(decal);
+    scene.effects.decals.push(decal);
     let marked = capture(&scene);
     keep("terrain-decal", &marked);
     assert!(px(&marked, 48, 48)[0] > px(&bare, 48, 48)[0] + 30.0);
     assert_eq!(px(&marked, 12, 12), px(&bare, 12, 12));
-    scene.decals[0] = Decal {
+    scene.effects.decals[0] = Decal {
         emissive: decal.emissive,
         ..Decal::on_surface(Vec3::ZERO, -Vec3::Y, Vec2::new(3.0, 2.0), 1.0, 0.0)
     };

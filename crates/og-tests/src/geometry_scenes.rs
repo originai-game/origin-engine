@@ -187,7 +187,7 @@ pub fn lines_scene() -> RenderScene {
         .map(|k| Vec3::new(-4.0 + k as f32 * 0.35, 0.3 + (k % 2) as f32 * 0.8, 1.0))
         .collect();
     let n = zig.len() as f32;
-    scene.lines.push(Lines {
+    scene.effects.lines.push(Lines {
         colors: (0..zig.len())
             .map(|k| {
                 let t = k as f32 / (n - 1.0);
@@ -199,7 +199,7 @@ pub fn lines_scene() -> RenderScene {
         ..Default::default()
     });
     // A closed loop on the ground around the box.
-    scene.lines.push(Lines {
+    scene.effects.lines.push(Lines {
         points: (0..24)
             .map(|k| {
                 let a = k as f32 / 24.0 * TAU;
@@ -212,7 +212,7 @@ pub fn lines_scene() -> RenderScene {
         ..Default::default()
     });
     // A dashed helix climbing around the box (dashes in world units).
-    scene.lines.push(Lines {
+    scene.effects.lines.push(Lines {
         points: (0..120)
             .map(|k| {
                 let a = k as f32 / 20.0 * TAU / 2.0;
@@ -226,7 +226,7 @@ pub fn lines_scene() -> RenderScene {
     });
     // Segments: a fan of rays from a point on the right.
     let hub = Vec3::new(3.2, 0.1, 0.5);
-    scene.lines.push(Lines {
+    scene.effects.lines.push(Lines {
         points: (0..8)
             .flat_map(|k| {
                 let a = k as f32 / 8.0 * PI;
@@ -239,7 +239,7 @@ pub fn lines_scene() -> RenderScene {
         ..Default::default()
     });
     // Behind the box from the camera: hidden where the box is (depth tested)...
-    scene.lines.push(Lines {
+    scene.effects.lines.push(Lines {
         points: vec![Vec3::new(-3.0, 0.9, -1.5), Vec3::new(3.0, 0.9, -1.5)],
         color: [1.0, 0.3, 0.2, 1.0],
         width: 0.12,
@@ -247,7 +247,7 @@ pub fn lines_scene() -> RenderScene {
         ..Default::default()
     });
     // ...and over it (no depth test).
-    scene.lines.push(Lines {
+    scene.effects.lines.push(Lines {
         points: vec![Vec3::new(-3.0, 0.45, -1.5), Vec3::new(3.0, 0.45, -1.5)],
         color: [0.2, 0.6, 1.0, 1.0],
         width: 0.12,
@@ -256,7 +256,7 @@ pub fn lines_scene() -> RenderScene {
         ..Default::default()
     });
     // A dashed screen line across the top (CSS pixels, y down).
-    scene.lines.push(Lines {
+    scene.effects.lines.push(Lines {
         points: vec![Vec3::new(80.0, 60.0, 0.0), Vec3::new(1200.0, 60.0, 0.0)],
         color: [1.0, 1.0, 1.0, 1.0],
         width: 3.0,
@@ -289,14 +289,14 @@ pub fn points_scene() -> RenderScene {
         let t = (y + 1.0) * 0.5;
         colors.push([0.2 + 0.8 * t, 0.4, 1.0 - t, 1.0]);
     }
-    scene.points.push(Points {
+    scene.effects.points.push(Points {
         positions,
         colors,
         size: 0.05,
         size_attenuation: true,
         ..Default::default()
     });
-    scene.points.push(Points {
+    scene.effects.points.push(Points {
         positions: (0..12)
             .flat_map(|i| {
                 (0..12).map(move |j| Vec3::new(1.2 + i as f32 * 0.22, 0.05, -1.2 + j as f32 * 0.22))
@@ -433,7 +433,7 @@ pub fn debug_scene() -> Result<RenderScene, String> {
         intensity: 0.8,
     });
     let green = [0.3, 1.0, 0.4, 1.0];
-    scene.lines.push(debug::segments(
+    scene.effects.lines.push(debug::segments(
         debug::box_edges(
             Mat4::from_translation(Vec3::new(-1.5, 0.6, 0.0)),
             Vec3::splat(0.65),
@@ -441,13 +441,13 @@ pub fn debug_scene() -> Result<RenderScene, String> {
         green,
         2.0,
     ));
-    scene.lines.push(debug::segments(
+    scene.effects.lines.push(debug::segments(
         debug::sphere(Vec3::new(-1.5, 0.6, 0.0), 0.62, Quat::IDENTITY),
         [1.0, 1.0, 0.3, 1.0],
         1.0,
     ));
     // Behind the wall: debug draw shows through.
-    scene.lines.push(debug::segments(
+    scene.effects.lines.push(debug::segments(
         debug::box_edges(
             Mat4::from_translation(Vec3::new(1.6, 0.5, -0.4)),
             Vec3::splat(0.4),
@@ -455,7 +455,7 @@ pub fn debug_scene() -> Result<RenderScene, String> {
         [1.0, 0.3, 0.9, 1.0],
         2.0,
     ));
-    scene.lines.push(debug::segments(
+    scene.effects.lines.push(debug::segments(
         debug::arrow(
             Vec3::new(0.0, 0.05, 1.5),
             Vec3::new(0.0, 0.05, 1.5) + Vec3::new(-0.5, 0.75, 0.45) * 1.8,
@@ -465,9 +465,9 @@ pub fn debug_scene() -> Result<RenderScene, String> {
         2.0,
     ));
     for l in debug::axes(Mat4::from_translation(Vec3::new(-3.3, 0.02, 1.0)), 1.0, 3.0) {
-        scene.lines.push(l);
+        scene.effects.lines.push(l);
     }
-    scene.points.push(Points {
+    scene.effects.points.push(Points {
         positions: vec![Vec3::new(-1.5, 0.6, 0.0)],
         color: [1.0, 1.0, 1.0, 1.0],
         size: 8.0,

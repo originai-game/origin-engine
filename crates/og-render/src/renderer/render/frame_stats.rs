@@ -101,7 +101,7 @@ impl Renderer {
             graph_passes: self.graph.order().len() as u32,
             transient_textures: self.graph.transient_textures() as u32,
             frame: self.frame_index,
-            particle_systems: scene.particles.len() as u32,
+            particle_systems: scene.effects.particles.len() as u32,
             particle_capacity: particle_frame.capacity,
             particles_cpu: particle_frame.cpu_alive,
             particle_ticks: particle_frame.ticks,

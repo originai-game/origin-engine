@@ -178,7 +178,7 @@ pub fn effect_materials_scene() -> RenderScene {
         effect: Some(puffs),
         ..Default::default()
     });
-    scene.particles.push(ParticleSystem::new(
+    scene.effects.particles.push(ParticleSystem::new(
         1,
         puff_emitter,
         Mat4::from_translation(Vec3::new(-5.4, 0.6, 0.0)),
@@ -224,7 +224,7 @@ pub fn effect_materials_scene() -> RenderScene {
         ..Default::default()
     });
     let disc = scene.add_mesh(ring(0.0, 1.0, 48, 8, 0.0, std::f32::consts::TAU));
-    scene.effect_meshes.push(EffectMesh {
+    scene.effects.effect_meshes.push(EffectMesh {
         id: 2,
         mesh: disc,
         material: portal,
@@ -250,7 +250,7 @@ pub fn effect_materials_scene() -> RenderScene {
         ..Default::default()
     });
     let dome = scene.add_mesh(shapes::sphere(32, 20));
-    scene.effect_meshes.push(EffectMesh {
+    scene.effects.effect_meshes.push(EffectMesh {
         id: 3,
         mesh: dome,
         material: shield,
@@ -287,7 +287,7 @@ pub fn effect_materials_scene() -> RenderScene {
         ..Default::default()
     });
     let arc = scene.add_mesh(torus(1.0, 0.12, 6, 48, std::f32::consts::PI * 1.2));
-    scene.effect_meshes.push(EffectMesh {
+    scene.effects.effect_meshes.push(EffectMesh {
         id: 4,
         mesh: arc,
         material: slash,
@@ -316,7 +316,7 @@ pub fn effect_materials_scene() -> RenderScene {
         effect: Some(streak),
         ..Default::default()
     });
-    scene.trails.push(Trail {
+    scene.effects.trails.push(Trail {
         id: 5,
         style,
         position: effect_trail_at(0),
@@ -339,7 +339,7 @@ pub fn effect_materials_scene() -> RenderScene {
         }),
         ..Default::default()
     });
-    scene.beams.push(Beam {
+    scene.effects.beams.push(Beam {
         start: Vec3::new(4.6, 0.3, 0.0),
         end: Vec3::new(4.6, 2.8, 0.0),
         width: 0.5,
@@ -381,7 +381,7 @@ pub fn effect_materials_scene() -> RenderScene {
         effect: Some(banded),
         ..Default::default()
     });
-    scene.particles.push(ParticleSystem::new(
+    scene.effects.particles.push(ParticleSystem::new(
         7,
         banded_emitter,
         Mat4::from_translation(Vec3::new(6.6, 1.4, 0.0)),
@@ -427,5 +427,5 @@ fn effect_trail_at(tick: u64) -> Vec3 {
 /// Steps the scene's clocks and moves the trail's head.
 pub fn effect_materials_update(scene: &mut RenderScene, frame: u32) {
     tick_all(scene, frame as u64);
-    scene.trails[0].position = effect_trail_at(frame as u64);
+    scene.effects.trails[0].position = effect_trail_at(frame as u64);
 }

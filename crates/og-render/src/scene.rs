@@ -146,13 +146,10 @@ pub struct RenderScene {
     /// The sea's clock runs at it, so waves move at the display's rate and
     /// stay in step with the floaters drawn on them.
     pub interpolation: Option<f32>,
-    /// Running particle systems (state is kept by their id).
-    pub particles: Vec<ParticleSystem>,
-    /// Each running system's ticks by its id, as each tick ended
-    /// ([`crate::ParticleHistory`]): the ticks a system has not been drawn
-    /// at step as they were. A system absent here steps by the frame's
-    /// system alone.
-    pub particle_history: og_core::IdMap<u64, std::sync::Arc<crate::ParticleHistory>>,
+    /// The effects drawn among the scene: particles and their history, trails,
+    /// ribbons and beams, effect meshes, lines and points (each with its
+    /// layers), and the decals with their atlas.
+    pub effects: SceneEffects,
     /// The 3D world's ground and waters: water, terrains and their stamps,
     /// scattered copies, grass, 3D fluids and the colliders they meet.
     pub world: SceneWorld,
@@ -161,29 +158,9 @@ pub struct RenderScene {
     /// [`RenderScene::instances`] whose transforms the GPU writes. They
     /// collide with [`RenderScene::colliders`]. Empty by default.
     pub debris: Vec<crate::DebrisPiece>,
-    /// Systems the host simulated itself (its tick ran
-    /// [`crate::CpuParticles::advance`] to read their events), by
-    /// [`ParticleSystem::id`]: the renderer draws these particles and their
-    /// sub-emitters' as they are instead of simulating them, so what is
-    /// drawn is what the game read. A system absent here simulates as usual.
-    pub hosted_particles: Vec<(u64, std::sync::Arc<crate::CpuParticles>)>,
-    pub trails: Vec<Trail>,
-    pub ribbons: Vec<Ribbon>,
-    pub beams: Vec<Beam>,
-    /// Meshes drawn with an effect material this frame (`effect.rs`).
-    pub effect_meshes: Vec<crate::EffectMesh>,
-    /// Line sets drawn this frame (`lines.rs`): in the scene or over the
-    /// finished frame (debug draw, screen lines).
-    pub lines: Vec<crate::Lines>,
-    /// Point clouds drawn this frame (`points.rs`).
-    pub points: Vec<crate::Points>,
     /// The output's height in CSS pixels, which line widths and point sizes
     /// are measured in (0: one CSS pixel per device pixel).
     pub css_height: f32,
-    /// Projected decals (the first [`crate::MAX_DECALS`] are drawn).
-    pub decals: Vec<Decal>,
-    /// The texture decals take their `uv_rect` from (`None`: solid colour).
-    pub decal_atlas: Option<TextureHandle>,
     /// 2D lighting of the sprite layers (`None`: sprites are unlit).
     pub lighting_2d: Option<Lighting2d>,
     pub lights_2d: Vec<Light2d>,
@@ -264,9 +241,6 @@ pub struct RenderScene {
     /// Tile layers: chunked quads drawn through the sprite batch, each
     /// under the sprites of its layer.
     pub tile_layers: Vec<TileLayer>,
-    /// Trails drawn in the sprite order at a layer (2D) instead of with the
-    /// 3D scene: `(Trail::id, layer)`.
-    pub trail_layers: Vec<(u64, i32)>,
     /// Sprites drawn from a layer of a texture array instead of their
     /// texture, by sprite index (world sprites only; the last entry for an
     /// index wins). Sprites of one array draw as one run whatever their
@@ -317,12 +291,6 @@ pub struct RenderScene {
     /// last entry for an index wins; a text without one stays in the xy
     /// plane), as [`RenderScene::sprite_facing`] turns sprites.
     pub text_facing: Vec<TextFacing>,
-    /// The same for `lines` and `points` (scene sets; overlay and screen
-    /// sets draw on the main frame whatever their masks).
-    pub line_layers: Vec<u32>,
-    pub point_layers: Vec<u32>,
-    /// The same for `particles` (billboards and 2D sprite particles alike).
-    pub particle_layers: Vec<u32>,
     /// The main camera's layer mask (three.js `Camera.layers`): it draws
     /// the instances, skinned instances, world sprites, scene lines and
     /// points and particle systems whose masks share a bit with it, as each

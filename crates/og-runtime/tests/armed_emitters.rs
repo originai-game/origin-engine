@@ -73,6 +73,7 @@ impl RenderBackend for Recorder {
     }
     fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
         *self.0.borrow_mut() = scene
+            .effects
             .particles
             .iter()
             .map(|p| (p.id, p.start_tick))

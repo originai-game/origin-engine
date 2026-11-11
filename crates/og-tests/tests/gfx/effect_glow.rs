@@ -37,7 +37,7 @@ fn draw(mesh: MeshData, material: EffectMaterial, scale: Vec3, color: f32) -> (V
     };
     let mesh = scene.add_mesh(mesh);
     let material = scene.add_effect_material(material);
-    scene.effect_meshes.push(EffectMesh {
+    scene.effects.effect_meshes.push(EffectMesh {
         id: 1,
         mesh,
         material,

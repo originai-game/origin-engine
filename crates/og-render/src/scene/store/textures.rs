@@ -387,8 +387,8 @@ impl RenderScene {
                 }
             }
         }
-        if self.decal_atlas == Some(handle) {
-            self.decal_atlas = None;
+        if self.effects.decal_atlas == Some(handle) {
+            self.effects.decal_atlas = None;
         }
         self.texture_slots.remove(i, true);
         true

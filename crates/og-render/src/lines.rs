@@ -630,25 +630,25 @@ impl LineRenderer {
                     sets[k].push((mask, before as u32, n as u32));
                 }
             };
-        for (i, l) in scene.lines.iter().enumerate() {
+        for (i, l) in scene.effects.lines.iter().enumerate() {
             let k = slot(l.layer(), l.depth_test);
             let before = groups[k].len();
             l.instances(&mut groups[k]);
             record(
                 &mut groups,
                 k,
-                crate::views::layer_of(&scene.line_layers, i),
+                crate::views::layer_of(&scene.effects.line_layers, i),
                 before,
             );
         }
-        for (i, p) in scene.points.iter().enumerate() {
+        for (i, p) in scene.effects.points.iter().enumerate() {
             let k = slot(p.layer(), p.depth_test);
             let before = groups[k].len();
             p.instances(&mut groups[k]);
             record(
                 &mut groups,
                 k,
-                crate::views::layer_of(&scene.point_layers, i),
+                crate::views::layer_of(&scene.effects.point_layers, i),
                 before,
             );
         }

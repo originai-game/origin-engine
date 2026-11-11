@@ -131,7 +131,7 @@ fn no_rect_lights(s: &mut RenderScene) {
 }
 
 fn no_decals(s: &mut RenderScene) {
-    s.decals.clear();
+    s.effects.decals.clear();
 }
 
 fn no_probes(s: &mut RenderScene) {

@@ -228,7 +228,7 @@ pub(crate) fn before_tick(rs: &mut RenderState, world: &World) {
         ..
     } = rs;
     let mut live = og_core::IdMap::new();
-    for sys in &scene.particles {
+    for sys in &scene.effects.particles {
         let Some(e) = scene.emitter(sys.emitter) else {
             continue;
         };

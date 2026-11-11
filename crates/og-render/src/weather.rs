@@ -546,7 +546,7 @@ pub fn add_lightning(
                 taper(&mut points);
             }
             let points = strokeable(points);
-            scene.ribbons.push(crate::Ribbon {
+            scene.effects.ribbons.push(crate::Ribbon {
                 points,
                 texture: None,
                 uv: crate::RibbonUv::Stretch,
@@ -753,8 +753,12 @@ mod lightning_tests {
         scene.camera.position = Vec3::new(0.0, 2.0, 0.0);
         let at = Vec3::new(-150.0, 0.0, -1500.0);
         add_lightning(&mut scene, at, 900.0, 3, 0.03);
-        assert!(scene.ribbons.len() >= 4, "{}", scene.ribbons.len());
-        let (halo, core) = (&scene.ribbons[0], &scene.ribbons[1]);
+        assert!(
+            scene.effects.ribbons.len() >= 4,
+            "{}",
+            scene.effects.ribbons.len()
+        );
+        let (halo, core) = (&scene.effects.ribbons[0], &scene.effects.ribbons[1]);
         let p = core.points.last().unwrap();
         let px = p.width
             / (2.0 * (30f32).to_radians().tan() * p.position.distance(scene.camera.position))
@@ -776,7 +780,7 @@ mod lightning_tests {
         // No strip folds: every segment of every strip (core, halo, branches)
         // is at least STROKE_STEP of its width long, save a strip's last,
         // and still runs from the cloud to the ground.
-        for r in &scene.ribbons {
+        for r in &scene.effects.ribbons {
             let p = &r.points;
             assert!(p.len() >= 3, "{}", p.len());
             for w in p[..p.len() - 1].windows(2) {
@@ -792,7 +796,7 @@ mod lightning_tests {
         assert_eq!(core.points[0].position.y, 900.0);
         // The branches (the strips after the main channel's two) fade out to
         // nothing at their ends, from full width over their first 70 %.
-        for r in &scene.ribbons[2..] {
+        for r in &scene.effects.ribbons[2..] {
             let last = r.points.last().unwrap();
             assert_eq!(last.width, 0.0);
             assert_eq!(last.color[..3], [0.0; 3]);

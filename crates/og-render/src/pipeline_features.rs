@@ -157,7 +157,7 @@ impl Features {
                 scene.atmosphere.surface_weather.is_some() || shore,
             )
             .with(Features::LOCAL_LIGHTS, !scene.lighting.lights.is_empty())
-            .with(Features::DECALS, !scene.decals.is_empty())
+            .with(Features::DECALS, !scene.effects.decals.is_empty())
             .with(Features::GI, scene.look.post.gi_probes.is_some())
             .with(
                 Features::CAUSTICS,

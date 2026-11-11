@@ -402,7 +402,7 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
     } = rs;
     let layouts = &draw.fx;
     // RenderSettings.decalAtlas: the texture Decal components sample.
-    scene.decal_atlas = resource(world, render_settings.as_ref())
+    scene.effects.decal_atlas = resource(world, render_settings.as_ref())
         .and_then(|s| handle_index(&s["decalAtlas"]))
         .and_then(|i| textures.get(i).copied());
     let post = &mut scene.look.post;
@@ -935,15 +935,15 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
     let layouts = &draw.fx;
     scene.lights_2d.clear();
     scene.occluders_2d.clear();
-    scene.decals.clear();
-    scene.particles.clear();
-    scene.particle_layers.clear();
-    scene.effect_meshes.clear();
-    scene.hosted_particles.clear();
+    scene.effects.decals.clear();
+    scene.effects.particles.clear();
+    scene.effects.particle_layers.clear();
+    scene.effects.effect_meshes.clear();
+    scene.effects.hosted_particles.clear();
     let hosted = fx.host.as_ref().map(|h| super::particle_events::lock(h));
-    scene.trails.clear();
-    scene.beams.clear();
-    scene.ribbons.clear();
+    scene.effects.trails.clear();
+    scene.effects.beams.clear();
+    scene.effects.ribbons.clear();
     let texture = |v: &Value| handle_index(v).and_then(|i| textures.get(i).copied());
     // Time groups (og.TimeGroups), once a game uses them.
     let groups = world.time_groups();
@@ -1005,7 +1005,7 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
         }
         let c = color(&v["color"], Vec3::ONE);
         let (lo, hi) = (vec2(&v["uvMin"], Vec2::ZERO), vec2(&v["uvMax"], Vec2::ONE));
-        scene.decals.push(Decal {
+        scene.effects.decals.push(Decal {
             transform: h.world_of(e),
             uv_rect: [lo.x, lo.y, hi.x, hi.y],
             color: [c.x, c.y, c.z, f(&v, "opacity", 1.0)],
@@ -1057,13 +1057,19 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
         };
         let layers = v["layers"].as_u64().map_or(1, |x| x as u32);
         if layers != 1 {
-            scene.particle_layers.resize(scene.particles.len(), 1);
-            scene.particle_layers.push(layers);
+            scene
+                .effects
+                .particle_layers
+                .resize(scene.effects.particles.len(), 1);
+            scene.effects.particle_layers.push(layers);
         }
         if let Some(h) = hosted.as_ref().and_then(|h| h.systems.get(&e)) {
-            scene.hosted_particles.push((e, Arc::new(h.cpu.clone())));
+            scene
+                .effects
+                .hosted_particles
+                .push((e, Arc::new(h.cpu.clone())));
         }
-        scene.particles.push(ParticleSystem {
+        scene.effects.particles.push(ParticleSystem {
             id: e,
             emitter,
             transform: h.world_of(e),
@@ -1114,10 +1120,11 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
         };
         if on(&v, "layered", false) {
             scene
+                .effects
                 .trail_layers
                 .push((e, v["layer"].as_i64().unwrap_or(0) as i32));
         }
-        scene.trails.push(Trail {
+        scene.effects.trails.push(Trail {
             id: e,
             style: handle,
             position: h.world_of(e).w_axis.truncate(),
@@ -1126,7 +1133,7 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
     }
     for (e, v) in rows(world, layouts.beam.as_ref()) {
         let c = color(&v["color"], Vec3::ONE);
-        scene.beams.push(Beam {
+        scene.effects.beams.push(Beam {
             start: h.world_of(e).w_axis.truncate(),
             end: vec3(&v["end"]),
             width: f(&v, "width", 0.1),
@@ -1179,7 +1186,7 @@ pub(crate) fn queued(rs: &mut RenderState, fresh: bool, viewport: (f32, f32)) {
     if !fresh {
         return;
     }
-    scene.ribbons.extend(fx.ribbons.iter().cloned());
+    scene.effects.ribbons.extend(fx.ribbons.iter().cloned());
     for q in &fx.sprites {
         if q.screen {
             let o = scene

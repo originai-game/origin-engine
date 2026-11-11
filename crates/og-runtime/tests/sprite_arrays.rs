@@ -114,6 +114,7 @@ impl RenderBackend for Recorder {
             .as_ref()
             .map_or_else(Vec::new, |o| pairs(&o.sprite_arrays));
         s.emitters = scene
+            .effects
             .particles
             .iter()
             .map(|p| scene.emitter(p.emitter).and_then(|e| e.array))
