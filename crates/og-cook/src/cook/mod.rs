@@ -87,6 +87,7 @@ use options::{
 };
 pub use report::{AssetReport, COOK_TIMES, CookTimes, KindTotals, OutputReport, Report, StageTime};
 use report::{CONFORM_LOG, ConformLog, conform_log_text, conform_note, read_conform_log};
+pub use scan::own_lines;
 use scan::{Scan, ext, output_group, plan_groups, scan};
 
 use crate::format::{self, BlobKind, COOKER_VERSION};

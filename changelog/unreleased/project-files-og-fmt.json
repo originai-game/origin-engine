@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og fmt",
+      "summary": "og fmt [path…] [--check] [--json] rewrites .ogt files in the canonical layout and keeps their comments: two spaces per level, one space between tokens, a trailing comment two spaces after its tokens, one blank line where there were several. Entries keep their order. A path is a file, a directory, or a project (its project.ogt and assets/; the default is the current directory); styles, UI documents, 2D effects and installed packs are skipped. --check writes nothing and exits 1 when a file would change. The cooked output of a formatted file is unchanged. Before, the only canonical writer dropped comments, so hand-written and generated files drifted apart in layout."
+    }
+  ]
+}

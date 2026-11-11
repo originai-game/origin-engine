@@ -34,7 +34,8 @@
 //! newline); `parse(to_text(d)) == d` for every document, and
 //! `to_text(parse(t)) == t` for canonical text. Numbers keep their exact
 //! source text, so nothing is lost to float formatting. Comments and blank
-//! lines are not part of the data and are not written back.
+//! lines are not part of the data and are not written back; [`format`]
+//! rewrites a text in the canonical layout and keeps them.
 
 use crate::error::{Error, ErrorKind, Result};
 use std::fmt::Write as _;
@@ -461,7 +462,13 @@ fn parse_error(line: usize, reason: impl std::fmt::Display) -> Error {
 }
 
 fn tokenize(line: &str, n: usize) -> Result<Vec<Token>> {
+    scan(line, n).map(|(tokens, _)| tokens)
+}
+
+/// A line's tokens and its comment (from its `#`), if it has one.
+fn scan(line: &str, n: usize) -> Result<(Vec<Token>, Option<&str>)> {
     let mut tokens = Vec::new();
+    let mut comment = None;
     let mut chars = line.char_indices().peekable();
     while let Some(&(start, c)) = chars.peek() {
         if c == ' ' || c == '\t' {
@@ -469,6 +476,7 @@ fn tokenize(line: &str, n: usize) -> Result<Vec<Token>> {
             continue;
         }
         if c == '#' {
+            comment = Some(&line[start..]);
             break;
         }
         if c == '"' {
@@ -547,7 +555,7 @@ fn tokenize(line: &str, n: usize) -> Result<Vec<Token>> {
             }
         });
     }
-    Ok(tokens)
+    Ok((tokens, comment))
 }
 
 /// Parses `.ogt` text into a [`Document`].
@@ -617,6 +625,75 @@ pub fn value_text(value: &Value) -> Option<String> {
         Value::Word(_) => return None,
     }
     Some(out)
+}
+
+/// `text` in the canonical layout, with its comments: what
+/// [`Document::to_text`] writes for the same data (two spaces per level,
+/// single spaces between tokens, canonical strings, `\n` line ends, a final
+/// newline), each comment kept on its line (a line's own two spaces after
+/// its tokens) and one blank line kept wherever the text had one or more
+/// between two lines of a block. The order of entries is data and stays.
+/// `parse(format(t)) == parse(t)`, and `format(format(t)) == format(t)`.
+pub fn format(text: &str) -> Result<String> {
+    let data = parse(text)?;
+    let mut out = String::new();
+    let (mut depth, mut body, mut blank) = (0usize, false, false);
+    // Whether a blank line may be written here: not first in the file or
+    // in a block, and not last.
+    let mut inside = false;
+    for (i, line) in text.split('\n').enumerate() {
+        let line = line.strip_suffix('\r').unwrap_or(line);
+        if !body && line.trim_matches([' ', '\t']) == "---" {
+            out.push_str("---\n");
+            (body, blank, inside) = (true, false, false);
+            continue;
+        }
+        let (tokens, comment) = scan(line, i + 1)?;
+        let comment = comment.map(str::trim_end);
+        if tokens.is_empty() && comment.is_none() {
+            blank = inside;
+            continue;
+        }
+        let closes = matches!(tokens.first(), Some(Token::Close));
+        if closes {
+            depth = depth.saturating_sub(1);
+        } else if blank {
+            out.push('\n');
+        }
+        blank = false;
+        out.extend(std::iter::repeat_n("  ", depth));
+        for (j, token) in tokens.iter().enumerate() {
+            if j > 0 {
+                out.push(' ');
+            }
+            match token {
+                Token::Word(w) => out.push_str(w),
+                Token::Number(n) => out.push_str(n.text()),
+                Token::Str(s) => write_string(&mut out, s),
+                Token::Open => out.push('{'),
+                Token::Close => out.push('}'),
+            }
+        }
+        if let Some(c) = comment {
+            if !tokens.is_empty() {
+                out.push_str("  ");
+            }
+            out.push_str(c);
+        }
+        out.push('\n');
+        let opens = matches!(tokens.last(), Some(Token::Open));
+        if opens {
+            depth += 1;
+        }
+        inside = !opens;
+    }
+    if parse(&out).as_ref() != Ok(&data) {
+        return Err(Error::new(
+            ErrorKind::Invalid,
+            "the formatted text does not read back as the same data",
+        ));
+    }
+    Ok(out)
 }
 
 pub fn parse(text: &str) -> Result<Document> {
@@ -711,7 +788,7 @@ mod ogt_contracts {
     //! `.ogt`: the reader and the canonical writer round-trip.
 
     use crate::ErrorKind;
-    use crate::ogt::{Block, Document, Entry, Number, Value, parse};
+    use crate::ogt::{Block, Document, Entry, Number, Value, format, parse};
     use std::path::{Path, PathBuf};
 
     const CANONICAL: &str = r#"type scene
@@ -842,6 +919,22 @@ entity "camera" {
         let doc = parse(loose).unwrap();
         assert_eq!(doc, parse(CANONICAL).unwrap());
         assert_eq!(doc.to_text().unwrap(), CANONICAL);
+    }
+
+    #[test]
+    fn formatting_keeps_comments_and_blank_lines_and_changes_no_data() {
+        let loose = "# what this is\r\n\r\ntype   scene # the kind\r\nversion 3\n---\n\n\n# the hero\n\t entity \"player\"   {   # trailing\n\n      Health {\n# inside, \"quoted\" { and } kept as written\nhp   100\n\n\n\nmax 1e2 #tight\n\n}\n\n\n}\nnote \"a # in a string\"\n\n\n";
+        let formatted = "# what this is\n\ntype scene  # the kind\nversion 3\n---\n# the hero\nentity \"player\" {  # trailing\n  Health {\n    # inside, \"quoted\" { and } kept as written\n    hp 100\n\n    max 1e2  #tight\n  }\n}\nnote \"a # in a string\"\n";
+        assert_eq!(format(loose).unwrap(), formatted);
+        assert_eq!(format(formatted).unwrap(), formatted);
+        assert_eq!(parse(formatted).unwrap(), parse(loose).unwrap());
+        // Without comments or blank lines it is the canonical writer's text.
+        assert_eq!(format(CANONICAL).unwrap(), CANONICAL);
+        // Text the reader refuses is refused the same way, never rewritten.
+        assert_eq!(
+            format("type scene\nversion 1\n---\na {\n").unwrap_err(),
+            parse("type scene\nversion 1\n---\na {\n").unwrap_err()
+        );
     }
 
     #[test]
@@ -1037,6 +1130,13 @@ entity "camera" {
                         parse(&canonical).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
                     assert_eq!(again, doc, "{}", path.display());
                     assert_eq!(again.to_text().unwrap(), canonical, "{}", path.display());
+                    // The formatter keeps the file's data, settles in one
+                    // pass, and adds nothing to text without comments.
+                    let formatted =
+                        format(&text).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+                    assert_eq!(parse(&formatted).unwrap(), doc, "{}", path.display());
+                    assert_eq!(format(&formatted).unwrap(), formatted, "{}", path.display());
+                    assert_eq!(format(&canonical).unwrap(), canonical, "{}", path.display());
                     round_tripped += 1;
                 }
                 Err(err) => {

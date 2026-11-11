@@ -197,3 +197,78 @@ fn upgrade_rewrites_the_pin_applies_codemods_and_lists_hand_edits() {
     );
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn fmt_rewrites_a_projects_ogt_files_and_check_only_reports_them() {
+    let dir = TempDir::new("og-cli-fmt");
+    let write = |file: &str, text: &str| {
+        let path = dir.join(file);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, text).unwrap();
+    };
+    let read = |file: &str| std::fs::read_to_string(dir.join(file)).unwrap();
+    let loose = "type material\nversion 1\n---\n# the base\n\n\ncolor   1 0 0   # red\n";
+    let tidy = "type material\nversion 1\n---\n# the base\n\ncolor 1 0 0  # red\n";
+    // A style's lines are its own, a pack's files its pack's, and nothing
+    // outside project.ogt and assets/ is the project's to format.
+    let style = "type style\nversion 1\n---\n.title {\n      color:   red;\n}\n";
+    write(
+        "project.ogt",
+        "type   project\nversion 1\n---\nname \"fmt\"\n",
+    );
+    write("assets/a.ogt", loose);
+    write("assets/done.ogt", tidy);
+    write("assets/ui/title.ogt", style);
+    write("assets/pack/extension.json", "{}");
+    write("assets/pack/b.ogt", loose);
+    write("notes/c.ogt", loose);
+    write(
+        "assets/broken.ogt",
+        "type material\nversion 1\n---\ncolor {\n",
+    );
+    let fmt = |args: &[&str]| {
+        og().arg("fmt")
+            .args(args)
+            .current_dir(&dir)
+            .output()
+            .unwrap()
+    };
+
+    // The broken file is named with its line and stops neither run.
+    let out = fmt(&["--check", "--json"]);
+    assert_eq!(out.status.code(), Some(1), "{}", text(&out));
+    let r: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(
+        r["changed"],
+        serde_json::json!(["./project.ogt", "./assets/a.ogt"]),
+        "{r}"
+    );
+    assert_eq!(r["errors"][0]["file"], "./assets/broken.ogt", "{r}");
+    assert!(
+        r["errors"][0]["error"].as_str().unwrap().contains("line 4"),
+        "{r}"
+    );
+    assert_eq!(read("assets/a.ogt"), loose, "--check writes nothing");
+    std::fs::remove_file(dir.join("assets/broken.ogt")).unwrap();
+
+    let out = fmt(&[]);
+    assert!(out.status.success(), "{}", text(&out));
+    assert_eq!(read("assets/a.ogt"), tidy);
+    assert_eq!(
+        read("project.ogt"),
+        "type project\nversion 1\n---\nname \"fmt\"\n"
+    );
+    for (file, kept) in [
+        ("assets/ui/title.ogt", style),
+        ("assets/pack/b.ogt", loose),
+        ("notes/c.ogt", loose),
+    ] {
+        assert_eq!(read(file), kept, "{file}");
+    }
+    let out = fmt(&["--check"]);
+    assert!(out.status.success(), "{}", text(&out));
+    // A file named outright is formatted wherever it is.
+    let out = fmt(&["notes/c.ogt"]);
+    assert!(out.status.success(), "{}", text(&out));
+    assert_eq!(read("notes/c.ogt"), tidy);
+}
