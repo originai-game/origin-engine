@@ -337,8 +337,9 @@ magnified nearest is drawn as pixel art.
 - Refused by name: Draco and meshopt compression, Basis, WebP and AVIF
   textures, sparse accessors, a buffer or image in another file (pack the
   model as one .glb) and any other required extension.
-- A system cannot instantiate. From a system, insert og.Model with the
-  asset on an entity it spawns.
+- A system that instantiates writes og.Transform (and og.Parent for a
+  parented root): the root is its spawn. What is under the root is in the
+  world when the system returns, not before: read it from a later system.
 
 ### environmentData
 

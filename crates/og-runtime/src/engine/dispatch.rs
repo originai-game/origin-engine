@@ -116,6 +116,10 @@ pub(crate) struct State {
     pub name_of: IdMap<u64, String>,
     /// Name changes the probe has not seen yet.
     pub name_ops: Vec<NameOp>,
+    /// The names of scenes the running system is placing
+    /// (`world.instantiate` there): taken when it returns, refused to
+    /// anything else until then.
+    pub held_names: std::collections::BTreeSet<String>,
     pub rate: u32,
     pub max_catch_up: u32,
     pub accumulator_ms: f64,

@@ -1410,6 +1410,7 @@ impl World {
                         Ok(()) // despawning twice in one tick is not an error
                     }
                 }
+                Command::Run(f) => f(self),
             };
             if let Err(err) = result {
                 commands.extend(drained);

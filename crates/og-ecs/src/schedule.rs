@@ -271,7 +271,12 @@ pub(crate) enum Command {
     Name(Entity, String),
     /// A state transition asked for (state machine, value).
     State(usize, u32),
+    /// Work on the whole world ([`SystemContext::defer`]).
+    Run(Deferred),
 }
+
+/// What [`SystemContext::defer`] queues.
+pub(crate) type Deferred = Box<dyn FnOnce(&mut World) -> Result<()>>;
 
 /// What a running system can see and do: exactly what it declared.
 pub struct SystemContext<'w> {
@@ -787,6 +792,16 @@ impl<'w> SystemContext<'w> {
     /// given ([`World::set_name`]'s refusal): check [`Self::find`] first.
     pub fn set_name(&mut self, e: Entity, name: &str) {
         self.commands.push(Command::Name(e, name.to_string()));
+    }
+
+    /// Runs `f` on the whole world when the system returns, in order with
+    /// the changes the system queued before and after it (any system may:
+    /// what `f` writes is not among the system's declared writes, so it is
+    /// for work the engine does on a system's behalf, such as placing a
+    /// scene under an entity the system spawned). An `Err` stops the tick
+    /// as a failed command does.
+    pub fn defer(&mut self, f: impl FnOnce(&mut World) -> Result<()> + 'static) {
+        self.commands.push(Command::Run(Box::new(f)));
     }
 
     /// Despawns `e` when the system returns (any system may despawn). A

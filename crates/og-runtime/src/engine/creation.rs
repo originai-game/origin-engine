@@ -705,6 +705,7 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         names: BTreeMap::new(),
         name_of: IdMap::new(),
         name_ops: Vec::new(),
+        held_names: BTreeSet::new(),
         rate: a.game.tick,
         max_catch_up: a.game.max_catch_up.max(1),
         accumulator_ms: 0.0,
