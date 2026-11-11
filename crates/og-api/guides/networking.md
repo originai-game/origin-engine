@@ -79,7 +79,9 @@ const Send = defineSystem("Send", { reads: [og.Input], writes: [] }, (q, time, w
 | og.Lockstep | Value | Source |
 |---|---|---|
 | `inputDelay` | 2 ticks (33 ms at 60 Hz) | engine default |
+| `inputDelay`, recommended | 2 on a LAN, 4 to 6 over the internet | engine guidance (IDL at 9ba5b0957) |
 | `maxPrediction` | 8 ticks (133 ms at 60 Hz) | engine default |
+| `maxPrediction`, recommended | 8 covers most internet latency on top of `inputDelay` | engine guidance (IDL at 9ba5b0957) |
 | `players` | at most 16 | engine limit |
 
   An input delay must cover the room's round trip, or lockstep waits and
