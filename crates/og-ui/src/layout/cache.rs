@@ -353,6 +353,12 @@ pub(crate) struct PaintCache {
     pub prev_len: usize,
     /// What last frame's levelling decided (`None`: level afresh).
     pub levels: Option<crate::draw::Levels>,
+    /// The nodes drawn again on their own every frame, and those a focus
+    /// ring or outline is drawn over (`Ui::paint_reuse`); and the paint's
+    /// verdicts, kept for their buffers.
+    pub volatile: std::collections::BTreeSet<usize>,
+    pub ringed: std::collections::BTreeSet<usize>,
+    pub reuse: crate::ui::commands::Reuse,
 }
 
 impl PaintCache {

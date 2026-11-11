@@ -605,7 +605,7 @@ impl Ui {
         let same_roots = self.orders.roots == self.paint_cache.last_roots;
         self.paint_cache.last_roots.clone_from(&self.orders.roots);
         self.orders.ends = ends;
-        self.orders.reuse = reuse;
+        self.paint_cache.reuse = reuse;
         self.paint_cache.reused_all =
             reused_roots && same_roots && !self.invalidation.fresh && !self.invalidation.whole;
         self.paint_cache.prev_cmds = last;
@@ -830,30 +830,30 @@ impl Ui {
         prev_kinds: &std::collections::HashMap<usize, (&'static str, bool)>,
     ) -> Reuse {
         let n = self.nodes.len();
-        let mut r = std::mem::take(&mut self.orders.reuse);
+        let mut r = std::mem::take(&mut self.paint_cache.reuse);
         r.begin(n);
         // The bounded frame's check paints its whole twin afresh.
         if self.invalidation.fresh || self.invalidation.whole || self.tree.all_restructured {
-            let o = &mut self.orders;
-            o.volatile.clear();
-            o.ringed.clear();
+            let p = &mut self.paint_cache;
+            p.volatile.clear();
+            p.ringed.clear();
             for &i in order {
                 r.set(i, false, false, (f32::NAN, f32::NAN));
                 let (v, ring) = self.paints_alone(i);
                 if v {
-                    self.orders.volatile.insert(i);
+                    self.paint_cache.volatile.insert(i);
                 }
                 if ring {
-                    self.orders.ringed.insert(i);
+                    self.paint_cache.ringed.insert(i);
                 }
             }
             r.repainted = None;
             return r;
         }
-        let o = &mut self.orders;
+        let (o, p) = (&self.orders, &mut self.paint_cache);
         // What the frame draws again on its own, kept until it does not.
-        o.volatile.retain(|&i| o.pos[i] != u32::MAX);
-        o.ringed.retain(|&i| o.pos[i] != u32::MAX);
+        p.volatile.retain(|&i| o.pos[i] != u32::MAX);
+        p.ringed.retain(|&i| o.pos[i] != u32::MAX);
         let mut volatile: std::collections::HashSet<usize> = self
             .draws
             .keys()
@@ -890,8 +890,8 @@ impl Ui {
             .iter()
             .chain(&self.emitted)
             .chain(&volatile)
-            .chain(&o.volatile)
-            .chain(&o.ringed)
+            .chain(&p.volatile)
+            .chain(&p.ringed)
             .chain(o.with(visit::feat::RICH))
             .map(|&i| o.pos.get(i).copied().unwrap_or(u32::MAX))
             .filter(|&p| p != u32::MAX)
@@ -953,16 +953,16 @@ impl Ui {
                 (f32::NAN, f32::NAN)
             };
             let (own_volatile, ring) = self.paints_alone(i);
-            let o = &mut self.orders;
+            let p = &mut self.paint_cache;
             if own_volatile {
-                o.volatile.insert(i);
+                p.volatile.insert(i);
             } else {
-                o.volatile.remove(&i);
+                p.volatile.remove(&i);
             }
             if ring {
-                o.ringed.insert(i);
+                p.ringed.insert(i);
             } else {
-                o.ringed.remove(&i);
+                p.ringed.remove(&i);
             }
             let clean = !delta.0.is_nan() && !own_volatile && !volatile.contains(&i);
             r.set(i, same, clean, delta);
@@ -988,7 +988,7 @@ impl Ui {
         // A focus ring is drawn at the end of the subtree it draws over
         // (`ring_over`): that subtree is copied whole with it or not at
         // all, never a part of it below.
-        let ringed: Vec<usize> = self.orders.ringed.iter().copied().collect();
+        let ringed: Vec<usize> = self.paint_cache.ringed.iter().copied().collect();
         for i in ringed {
             let over = self.ring_over(i);
             let mut j = i;

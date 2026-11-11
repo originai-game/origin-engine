@@ -3,7 +3,7 @@
 #[cfg(debug_assertions)]
 pub(crate) mod bounded;
 mod build;
-mod commands;
+pub(crate) mod commands;
 mod configure;
 mod controls;
 mod css_tokens;
