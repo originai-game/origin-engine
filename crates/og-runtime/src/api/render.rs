@@ -229,6 +229,44 @@ pub(crate) fn material(
     Ok(m)
 }
 
+/// A warning in the engine log for each normal map the desc names that is a
+/// cooked colour texture: it is decoded as sRGB, so the normals read from
+/// it are bent and the surface is lit wrong, with nothing else to say why.
+/// Once a texture.
+fn warn_color_normal_maps(
+    eng: &Engine,
+    rs: &mut crate::extract::RenderState,
+    call: &str,
+    desc: &Value,
+) {
+    for field in ["normalMap", "clearcoatNormalMap"] {
+        let Some(handle) = desc
+            .get(field)
+            .and_then(Value::as_f64)
+            .and_then(index_of)
+            .and_then(|i| rs.textures.get(i).copied())
+        else {
+            continue;
+        };
+        // A cooked texture holding its own texels (not a streaming group's
+        // stand-in, which is sRGB whatever the texture is).
+        let Some(id) = rs.decoded.ids.get(&handle) else {
+            continue;
+        };
+        if rs.scene.texture_color_space(handle) != Some(og_render::ColorSpace::Srgb)
+            || !rs.decoded.color_normals.insert(handle)
+        {
+            continue;
+        }
+        let text = format!(
+            "{call}: {field} '{id}' is cooked as a colour texture (sRGB), so its normals are read wrong and the surface is lit wrong; put `texture {{ kind normal }}` in its import settings (assets/{id}.ogt) and cook again"
+        );
+        eng.state.borrow_mut().log.push(json!({
+            "tick": og_ecs::last_tick(), "warning": true, "text": text,
+        }));
+    }
+}
+
 /// Material handles are the render state's material index with generation 1.
 pub(crate) fn material_handle(index: usize) -> f64 {
     assets::handle(index) as f64
@@ -246,6 +284,7 @@ pub fn og_render_standard_material(world: u32, desc: Option<String>) -> Result<V
             &rs.textures,
             &rs.texture_arrays,
         )?;
+        warn_color_normal_maps(&eng, &mut rs, "og.render.standardMaterial", &desc);
         let handle = rs.scene.add_standard_material(m);
         rs.materials.push(handle);
         Ok(json!(material_handle(rs.materials.len() - 1)))
@@ -269,6 +308,7 @@ pub fn og_render_update_material(
             .standard_material(h)
             .ok_or("material is not alive")?;
         let m = material(current, &desc, &rs.textures, &rs.texture_arrays)?;
+        warn_color_normal_maps(&eng, &mut rs, "og.render.updateMaterial", &desc);
         rs.scene.set_standard_material(h, m);
         Ok(())
     })()

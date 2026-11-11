@@ -194,7 +194,7 @@ module render {
       max 1
     }
     field roughnessMap Option.Texture "Roughness from the texture's green channel."
-    field normalMap Option.Texture "A tangent-space normal map in glTF's tangent frame: red tilts towards +u, green up the image."
+    field normalMap Option.Texture "A tangent-space normal map in glTF's tangent frame: red tilts towards +u, green up the image. Cook it with `texture { kind normal }` in its import settings (linear); a colour texture here is read wrong and is a warning in the log."
     field normalScale Vector2 "How strongly the normal map bends the normal, per tangent axis." {
       default 1 1
     }

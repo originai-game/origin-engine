@@ -26,7 +26,7 @@ The metallic-roughness surface and its maps.
 | `metalnessMap` | `Texture \| null` | `null` | — | — | — | Metalness from the texture's blue channel (a glTF metallic-roughness texture, the same as roughnessMap's). |
 | `roughness` | `number` | `1` | 0 … 1 | — | — | How rough the surface is. |
 | `roughnessMap` | `Texture \| null` | `null` | — | — | — | Roughness from the texture's green channel. |
-| `normalMap` | `Texture \| null` | `null` | — | — | — | A tangent-space normal map in glTF's tangent frame: red tilts towards +u, green up the image. |
+| `normalMap` | `Texture \| null` | `null` | — | — | — | A tangent-space normal map in glTF's tangent frame: red tilts towards +u, green up the image. Cook it with `texture { kind normal }` in its import settings (linear); a colour texture here is read wrong and is a warning in the log. |
 | `normalScale` | `Vector2` | `{ x: 1, y: 1 }` | — | — | — | How strongly the normal map bends the normal, per tangent axis. |
 | `aoMap` | `Texture \| null` | `null` | — | — | — | Ambient occlusion from the texture's red channel. |
 | `aoMapIntensity` | `number` | `1` | ≥ 0 | — | — | How strongly aoMap darkens the ambient light. |
@@ -171,7 +171,7 @@ struct StandardMaterialDesc {
     max 1
   }
   field roughnessMap Option.Texture "Roughness from the texture's green channel."
-  field normalMap Option.Texture "A tangent-space normal map in glTF's tangent frame: red tilts towards +u, green up the image."
+  field normalMap Option.Texture "A tangent-space normal map in glTF's tangent frame: red tilts towards +u, green up the image. Cook it with `texture { kind normal }` in its import settings (linear); a colour texture here is read wrong and is a warning in the log."
   field normalScale Vector2 "How strongly the normal map bends the normal, per tangent axis." {
     default 1 1
   }

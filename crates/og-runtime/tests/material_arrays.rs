@@ -6,6 +6,10 @@
 //! material. A terrain whose layers name texture arrays (`layers`,
 //! `layerNormals`) draws with both arrays and each layer's layers.
 //!
+//! A colour texture given as normalMap or clearcoatNormalMap (Star Focus
+//! ENGINE-ISSUES #5: a PNG without `texture { kind normal }`) is a warning
+//! in the engine log, once a texture; a `kind normal` one is none.
+//!
 //! Ways this could fail: the desc's array fields are dropped (no slot), a
 //! mesh's layer is lost on its way to the instance, or -1 reaches the
 //! renderer as a layer. Broken once by pushing every mesh with
@@ -13,10 +17,10 @@
 
 use og_render::{RenderScene, StandardMaterial};
 use og_runtime::{
-    Dispatch, Fetch, Hooks, RenderBackend, og_engine_create, og_engine_frame, og_game_game,
-    og_host_begin_bundle, og_load_texture_array, og_render_box_geometry,
-    og_render_standard_material, og_render_update_material, og_world_insert, og_world_spawn,
-    set_hooks, set_render_backend,
+    Dispatch, Fetch, Hooks, RenderBackend, og_engine_create, og_engine_frame, og_engine_take_log,
+    og_game_game, og_host_begin_bundle, og_load_texture, og_load_texture_array,
+    og_render_box_geometry, og_render_standard_material, og_render_update_material,
+    og_world_insert, og_world_spawn, set_hooks, set_render_backend,
 };
 use serde_json::{Value, json};
 use std::cell::RefCell;
@@ -44,6 +48,11 @@ fn project() -> &'static Path {
             std::fs::read(repo().join("tests/fixtures/texture-arrays/assets/textures/toon.png")).unwrap();
         write("tex/a.png", &png);
         write("tex/b.png", &png);
+        write("tex/n.png", &png);
+        write(
+            "tex/n.png.ogt",
+            b"type import\nversion 1\n---\ntexture {\n  kind normal\n}\n",
+        );
         write(
             "tex/tiles.ogt",
             b"type texture-array\nversion 1\n---\nlayer \"a.png\"\nlayer \"b.png\"\n",
@@ -349,4 +358,52 @@ fn a_terrain_samples_its_layer_arrays() {
             );
         }
     }
+}
+
+#[test]
+fn a_colour_texture_as_a_normal_map_is_a_warning_once() {
+    let (engine, _) = engine();
+    let texture = |path: &str| {
+        value(og_runtime::host_impl::answer(og_load_texture(
+            engine,
+            path.into(),
+        )))
+    };
+    let (colour, normal) = (texture("tex/a.png"), texture("tex/n.png"));
+    og_engine_take_log(engine);
+    let material = |desc: Value| {
+        value(og_runtime::host_impl::answer(og_render_standard_material(
+            engine,
+            Some(desc.to_string()),
+        )))
+    };
+    let warnings = || -> Vec<String> {
+        let log: Value = serde_json::from_str(&og_engine_take_log(engine)).unwrap();
+        let lines = log.as_array().or(log["value"].as_array()).unwrap().clone();
+        lines
+            .iter()
+            .filter(|l| l["warning"] == json!(true))
+            .map(|l| l["text"].as_str().unwrap().to_string())
+            .collect()
+    };
+
+    // Where each belongs: nothing to say.
+    let m = material(json!({ "map": colour, "normalMap": normal, "clearcoatNormalMap": normal }));
+    assert_eq!(warnings(), Vec::<String>::new());
+
+    // The colour texture as the normal map: named, with what to write.
+    material(json!({ "normalMap": colour }));
+    let w = warnings();
+    assert_eq!(w.len(), 1, "{w:?}");
+    assert!(w[0].contains("normalMap 'tex/a.png'"), "{w:?}");
+    assert!(w[0].contains("kind normal"), "{w:?}");
+    assert!(w[0].contains("assets/tex/a.png.ogt"), "{w:?}");
+
+    // Once a texture, however often it is bound.
+    value(og_runtime::host_impl::answer(og_render_update_material(
+        engine,
+        m.as_f64().unwrap(),
+        Some(json!({ "clearcoatNormalMap": colour }).to_string()),
+    )));
+    assert_eq!(warnings(), Vec::<String>::new());
 }
