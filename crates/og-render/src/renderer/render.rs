@@ -110,6 +110,8 @@ mod sun_and_post;
 use sun_and_post::{WriteSunAndPostInputs, WriteSunAndPostOutputs};
 mod fx_uniform;
 use fx_uniform::{WriteFxUniformsInputs, WriteFxUniformsOutputs};
+mod view_uniforms;
+use view_uniforms::{WriteViewUniformsInputs, WriteViewUniformsOutputs};
 mod setup;
 
 impl Renderer {
@@ -1368,42 +1370,21 @@ impl Renderer {
             reflection,
             reflections: &reflections,
         });
-        let viewport_format = self.viewport_format(target);
-        self.views.write(
-            &self.device,
-            &self.queue,
-            self.samples,
-            &self.lights.clusters.kept,
-            scene,
-            &view_plans,
-            &uniform,
-            &fx_uniform,
-            !lights_gpu.is_empty(),
-            viewport_format,
-            scene
-                .lighting_2d
-                .map(|l| (l.resolution.clamp(0.25, 1.0), light_slots.count())),
-            fluids,
-            particle_frame.soft,
-            // The weight the frame's tonemap gives its glow (post.rs
-            // `write_uniform`): the bloom's intensity when the lit image
-            // blooms too, else the glow's own.
-            post_fx
-                .glow
-                .filter(|_| view_glow_runs.iter().any(|r| !r.is_empty()))
-                .map(|g| {
-                    post_fx
-                        .bloom
-                        .filter(|b| b.intensity > 0.0)
-                        .map_or(g.intensity, |b| b.intensity)
-                }),
-        );
-        if scene.lighting_2d.is_some() {
-            for (k, p) in view_plans.iter().enumerate() {
-                self.lights_2d
-                    .write_view(&self.device, &self.queue, k, p.frame.view_proj);
-            }
-        }
+        // The views' uniforms (view_uniforms.rs).
+        let WriteViewUniformsOutputs { viewport_format } =
+            self.write_view_uniforms(WriteViewUniformsInputs {
+                scene,
+                target,
+                view_plans: &view_plans,
+                uniform: &uniform,
+                fx_uniform: &fx_uniform,
+                lights_on: !lights_gpu.is_empty(),
+                light_slots: &light_slots,
+                fluids,
+                particle_soft: particle_frame.soft,
+                post_fx,
+                view_glow_runs: &view_glow_runs,
+            });
         // Screen-space GI reads the previous frame's lit image: TAA's
         // history, or without TAA its own copy of the main pass's image.
         let gi_copy = (gi.is_some() || ssr.is_some()) && !taa;
