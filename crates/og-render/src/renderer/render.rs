@@ -80,6 +80,8 @@ mod pass_glow;
 use pass_glow::GlowPass;
 mod pass_custom_post;
 use pass_custom_post::{CustomPostPass, CustomPostPlan};
+mod frame_visibility;
+use frame_visibility::FrameVisibility;
 mod setup;
 
 impl Renderer {
@@ -1248,24 +1250,9 @@ impl Renderer {
                 .filter(|&b| batches[b as usize].layers & mask != 0)
                 .collect()
         };
-        let mut cull_passes: Vec<cull_gpu::CullPass> = Vec::new();
-        // `layers`: the pass's three.js layer mask where it is not its
-        // kind's (a secondary view's own).
-        let mut gpu_pass =
-            |kind, frustum: &Frustum, counted: Option<Vec<u32>>, layers: Option<u32>| {
-                cull_passes.push(cull_gpu::CullPass {
-                    counted,
-                    kind,
-                    planes: frustum.planes().to_vec(),
-                    // Shadow maps take every caster; the camera's passes its
-                    // layers (views.rs), as the CPU lists' `include`.
-                    layers: layers.unwrap_or(match kind {
-                        cull_gpu::PassKind::Shadow => u32::MAX,
-                        _ => scene.camera_layers,
-                    }),
-                });
-                cull_passes.len() as u32 - 1
-            };
+        // The GPU cull's passes and the meshlet dispatch's views
+        // (frame_visibility.rs), registered by every view below in order.
+        let mut vis = FrameVisibility::new(scene.camera_layers, (meshlet_items, meshlet_max));
         // Lent to every CPU cull of this frame, given back after the last.
         let mut cull_inside = std::mem::take(&mut self.visibility.cull_inside);
         cull_inside.whole.clear();
@@ -1284,9 +1271,9 @@ impl Renderer {
         // The main camera's layers (views.rs).
         let mask = scene.camera_layers;
         let (main_list, mut culled) = if gpu_cull {
-            let g = gpu_pass(cull_gpu::PassKind::Main, &view_frustum, None, None);
+            let g = vis.gpu_pass(cull_gpu::PassKind::Main, &view_frustum, None, None);
             if occlusion {
-                gpu_pass(cull_gpu::PassKind::Occluders, &view_frustum, None, None);
+                vis.gpu_pass(cull_gpu::PassKind::Occluders, &view_frustum, None, None);
             }
             let mut list = indirect_list(&batches, cull_n, g, |b| {
                 !b.transparent && b.layers & mask != 0
@@ -1312,38 +1299,13 @@ impl Renderer {
         // The meshlet dispatch's views: the camera's, then one per
         // reflection, view, probe face and shadow pass that fits
         // (`meshlet_view`: its index, 0 none: that pass keeps its list).
-        let mut meshlet_views = vec![meshlet_gpu::MeshletView::camera(
+        vis.camera(meshlet_gpu::MeshletView::camera(
             &scene.camera,
             view_frustum.planes(),
             std::mem::take(&mut meshlet_taken),
             self.height,
-        )];
-        let camera_seen = meshlet_gpu::MeshletView {
-            taken: Vec::new(),
-            ..meshlet_views[0].clone()
-        };
+        ));
         let meshlet_gpu = self.visibility.meshlet.as_ref();
-        let mut meshlet_view = |v: meshlet_gpu::MeshletView| -> u32 {
-            if v.taken.is_empty() {
-                return 0;
-            }
-            match meshlet_gpu.and_then(|m| m.items(&batches, &v.taken, false)) {
-                Some(n) if meshlet_items + n <= meshlet_max => {
-                    meshlet_items += n;
-                    meshlet_views.push(v);
-                    meshlet_views.len() as u32 - 1
-                }
-                _ => 0,
-            }
-        };
-        let shadow_view = |meshlet_view: &mut dyn FnMut(meshlet_gpu::MeshletView) -> u32,
-                           f: &Frustum| {
-            meshlet_view(meshlet_gpu::MeshletView::shadow(
-                &camera_seen,
-                f.planes(),
-                meshlet_casters.clone(),
-            ))
-        };
         let (mut blended_list, blended_culled) = self.sort_transparent(
             &batches,
             &spheres,
@@ -1372,18 +1334,22 @@ impl Renderer {
         let mut reflection_meshlets: Vec<u32> = Vec::new();
         for (k, r) in reflections.iter().enumerate() {
             let frustum = Frustum::from_view_proj(r.3);
-            let view = meshlet_view(meshlet_gpu::MeshletView::seen(
-                frustum.planes(),
-                on_layers(mask),
-                r.1.position,
-                r.3,
-                r.4.1,
-            ));
+            let view = vis.meshlet_view(
+                meshlet_gpu,
+                &batches,
+                meshlet_gpu::MeshletView::seen(
+                    frustum.planes(),
+                    on_layers(mask),
+                    r.1.position,
+                    r.3,
+                    r.4.1,
+                ),
+            );
             reflection_meshlets.push(view);
             let include =
                 |b: &Batch| !b.transparent && b.layers & mask != 0 && !(view > 0 && in_meshlet(b));
             reflection_list.push(if gpu_cull && k == 0 {
-                let g = gpu_pass(cull_gpu::PassKind::Reflection, &frustum, None, None);
+                let g = vis.gpu_pass(cull_gpu::PassKind::Reflection, &frustum, None, None);
                 indirect_list(&batches, cull_n, g, include)
             } else {
                 self.cull(
@@ -1438,13 +1404,17 @@ impl Renderer {
                 let view = if face_depth {
                     0
                 } else {
-                    meshlet_view(meshlet_gpu::MeshletView::seen(
-                        frustum.planes(),
-                        meshlet_all.clone(),
-                        eye,
-                        f.view_proj,
-                        probe.face_size(),
-                    ))
+                    vis.meshlet_view(
+                        meshlet_gpu,
+                        &batches,
+                        meshlet_gpu::MeshletView::seen(
+                            frustum.planes(),
+                            meshlet_all.clone(),
+                            eye,
+                            f.view_proj,
+                            probe.face_size(),
+                        ),
+                    )
                 };
                 probe_views.push(view);
                 probe_lists.push(
@@ -1513,13 +1483,17 @@ impl Renderer {
                 let view = if depth {
                     0
                 } else {
-                    meshlet_view(meshlet_gpu::MeshletView::seen(
-                        Frustum::from_view_proj(p.frame.view_proj).planes(),
-                        on_layers(p.layers),
-                        p.position,
-                        p.frame.view_proj,
-                        p.size.1,
-                    ))
+                    vis.meshlet_view(
+                        meshlet_gpu,
+                        &batches,
+                        meshlet_gpu::MeshletView::seen(
+                            Frustum::from_view_proj(p.frame.view_proj).planes(),
+                            on_layers(p.layers),
+                            p.position,
+                            p.frame.view_proj,
+                            p.size.1,
+                        ),
+                    )
                 };
                 view_views.push(view);
                 let frustum = Frustum::from_view_proj(p.frame.view_proj);
@@ -1527,7 +1501,7 @@ impl Renderer {
                     !b.transparent && b.layers & p.layers != 0 && !(view > 0 && in_meshlet(b))
                 };
                 if gpu_cull {
-                    let g = gpu_pass(
+                    let g = vis.gpu_pass(
                         cull_gpu::PassKind::Reflection,
                         &frustum,
                         None,
@@ -1800,9 +1774,10 @@ impl Renderer {
                     return Default::default();
                 }
                 if gpu_cull {
-                    let g = gpu_pass(cull_gpu::PassKind::Shadow, &c.frustum, counted(plan), None);
+                    let g =
+                        vis.gpu_pass(cull_gpu::PassKind::Shadow, &c.frustum, counted(plan), None);
                     let view = if plan.overlay {
-                        shadow_view(&mut meshlet_view, &c.frustum)
+                        vis.shadow_view(meshlet_gpu, &batches, &meshlet_casters, &c.frustum)
                     } else {
                         0
                     };
@@ -1843,8 +1818,8 @@ impl Renderer {
         let mut shelter_view = 0;
         let shelter_list: Option<[DrawList; 2]> = shelter.as_ref().filter(|s| s.3).map(|s| {
             let list = if gpu_cull {
-                let g = gpu_pass(cull_gpu::PassKind::Shadow, &s.1, None, None);
-                shelter_view = shadow_view(&mut meshlet_view, &s.1);
+                let g = vis.gpu_pass(cull_gpu::PassKind::Shadow, &s.1, None, None);
+                shelter_view = vis.shadow_view(meshlet_gpu, &batches, &meshlet_casters, &s.1);
                 caster_list(g, shelter_view, &|_| true)
             } else {
                 self.cull(
@@ -2021,9 +1996,9 @@ impl Renderer {
                 let list = if !plan.draw_static && !plan.overlay {
                     Default::default()
                 } else if gpu_cull {
-                    let g = gpu_pass(cull_gpu::PassKind::Shadow, f, counted(&plan), None);
+                    let g = vis.gpu_pass(cull_gpu::PassKind::Shadow, f, counted(&plan), None);
                     let view = if plan.overlay {
-                        shadow_view(&mut meshlet_view, f)
+                        vis.shadow_view(meshlet_gpu, &batches, &meshlet_casters, f)
                     } else {
                         0
                     };
@@ -2102,7 +2077,7 @@ impl Renderer {
                 let _ = self.device.poll(wgpu::PollType::Poll);
             }
             let lagged = gc.poll_counts();
-            debug_assert!(cull_passes.len() <= max_passes);
+            debug_assert!(vis.cull_passes.len() <= max_passes);
             // The sorted instances' previous transforms (as the CPU path's
             // below), compacted with the camera pass's and, for foliage,
             // every pass that reads its current sway.
@@ -2149,7 +2124,7 @@ impl Renderer {
                 }),
                 &self.cache.meshes,
                 &self.cache.materials,
-                &cull_passes,
+                &vis.cull_passes,
                 cam.jittered_view_proj,
                 (self.width, self.height, self.samples),
                 self.frame_index,
@@ -2207,7 +2182,7 @@ impl Renderer {
                     &self.queue,
                     scene,
                     &batches,
-                    &meshlet_views,
+                    &vis.meshlet_views,
                     gc,
                     cam.jittered_view_proj,
                     (self.width, self.height),
@@ -2248,7 +2223,7 @@ impl Renderer {
                 .is_some_and(|m| !m.frame.is_empty())
                 && let Some(gc) = self.visibility.gpu_cull.as_mut()
             {
-                gc.counted_by_meshlets(&meshlet_views[0].taken);
+                gc.counted_by_meshlets(&vis.meshlet_views[0].taken);
             }
             commands
         } else {
@@ -4063,7 +4038,7 @@ impl Renderer {
                         .expect("made when crowd_gpu was decided"),
                     scene,
                     &crowd_frame,
-                    &cull_passes,
+                    &vis.cull_passes,
                     (&camera, &cam),
                     crowd_previous,
                 )
@@ -4235,7 +4210,7 @@ impl Renderer {
             terrain_casters,
         };
         let camera_cards = ctx.card_source(
-            cull_passes
+            vis.cull_passes
                 .iter()
                 .position(|p| p.kind == cull_gpu::PassKind::Main)
                 .map(|g| g as u32),
