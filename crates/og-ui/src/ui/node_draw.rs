@@ -236,7 +236,7 @@ impl Ui {
                     let sk = n.placed.scale;
                     let size = tc.step.size * sk;
                     let lh = tc.line_height() * sk;
-                    let pad = n.el.padding;
+                    let pad = n.layout.used.padding;
                     let inner = Rect::new(
                         rect.x + pad.left * sk,
                         rect.y + pad.top * sk,
@@ -987,7 +987,7 @@ impl Ui {
         let sk = n.placed.scale;
         let size = tc.step.size * sk;
         let tracking = tc.tracking();
-        let pad = n.el.padding;
+        let pad = n.layout.used.padding;
         let origin = Vec2::new(rect.x + pad.left * sk, rect.y + pad.top * sk);
         let inner = Vec2::new(
             (rect.width - pad.horizontal() * sk).max(0.0),
@@ -1245,7 +1245,7 @@ impl Ui {
         let lh = tc.line_height() * sk;
         let tracking = tc.tracking();
         let features = tc.features();
-        let pad = n.el.padding;
+        let pad = n.layout.used.padding;
         let inner = Rect::new(
             rect.x + pad.left * sk,
             rect.y + pad.top * sk,

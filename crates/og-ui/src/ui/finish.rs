@@ -4,14 +4,22 @@ use super::*;
 /// grows to it on each side it is shorter (Apple's HIG 44 pt).
 pub(crate) const TOUCH_TARGET: f32 = 44.0;
 
-/// Keeps node `i`'s authored box before placement replaces it for this
-/// frame (restored at the next `end`).
-fn authored_box(nodes: &mut [Node], mutated: &mut Vec<usize>, i: usize) {
+/// Fixes node `i`'s used box at the size placement gave it, with `padding`
+/// added, until the next layout pass measures it again
+/// ([`crate::ui::Layout::unplace`]).
+fn place_box(
+    nodes: &mut [Node],
+    placed: &mut Vec<usize>,
+    i: usize,
+    size: [f32; 2],
+    padding: Insets,
+) {
     let n = &mut nodes[i];
-    if n.layout.authored_box.is_none() {
-        n.layout.authored_box = Some((n.el.width, n.el.height, n.el.padding));
-        mutated.push(i);
+    if n.layout.placement.is_none() {
+        placed.push(i);
     }
+    n.layout.placement = Some(crate::layout::Placement { size, padding });
+    n.derive_used();
 }
 
 /// Whether an element around node `i` skips its contents
@@ -155,14 +163,9 @@ impl Ui {
         self.tree.retire_nodes(&mut self.layout);
         self.tree.building = false;
         // A retained node placement resized last frame lays out from its
-        // authored box again (a written node is authored afresh).
-        for i in std::mem::take(&mut self.layout.layout_mutated) {
-            if let Some((width, height, padding)) = self.tree.nodes[i].layout.authored_box.take() {
-                let el = &mut self.tree.nodes[i].el;
-                (el.width, el.height, el.padding) = (width, height, padding);
-                self.tree.invalidation.restored.push(i);
-            }
-        }
+        // own box again (a written node starts without a placement).
+        let restored = self.layout.unplace(&mut self.tree);
+        self.tree.invalidation.restored.extend(restored);
         // Breakpoint and orientation variants (docs/ui.md §2), before
         // anything is laid out: on the nodes written this frame (a retained
         // node keeps what they set; a new viewport emits it again).
@@ -170,6 +173,11 @@ impl Ui {
         self.apply_part_appearances();
         self.tree
             .apply_resized(&mut self.layout, &mut self.interaction);
+        // The written nodes' inputs are complete: what layout uses of them.
+        for k in 0..self.tree.emitted.len() {
+            let i = self.tree.emitted[k];
+            self.tree.nodes[i].derive_used();
+        }
         // Hidden slots (a closed dialog, a finished transition) take no room.
         // A node's lists follow from its built children and their own
         // props: derived again where those were written or a child left.
@@ -360,14 +368,9 @@ impl Ui {
     ) -> Result<(), settlement::SettlementError> {
         self.layout.queries.query_roots = None;
         let mut settlement = settlement::Settlement::default();
-        let part_geometry = self
-            .tree
-            .nodes
-            .iter()
-            .any(|node| node.part_geometry.is_some());
         loop {
-            let mut layout_inputs =
-                settlement::LayoutInputs::new(&self.layout.queries.measurements, part_geometry);
+            // A settlement's next pass measures the placed boxes again.
+            self.layout.unplace(&mut self.tree);
             let scroll = self.interaction.state.scroll.clone();
             let scroll_x = self.interaction.state.scroll_x.clone();
             let offset = |k: u64| {
@@ -469,10 +472,13 @@ impl Ui {
                         spots[k].1 = step_clear(r, &others, gap, safe);
                     }
                     for &(g, placed) in &spots {
-                        layout_inputs.remember(g, &self.tree.nodes[g]);
-                        authored_box(&mut self.tree.nodes, &mut self.layout.layout_mutated, g);
-                        self.tree.nodes[g].el.width = Size::Fixed(placed.width);
-                        self.tree.nodes[g].el.height = Size::Fixed(placed.height);
+                        place_box(
+                            &mut self.tree.nodes,
+                            &mut self.layout.placed,
+                            g,
+                            [placed.width, placed.height],
+                            Insets::default(),
+                        );
                         layout(
                             &mut self.tree.nodes,
                             g,
@@ -507,14 +513,18 @@ impl Ui {
                 }
                 if float == Float::Modal {
                     // The backdrop covers the surface; the safe area pads its content.
-                    layout_inputs.remember(f, &self.tree.nodes[f]);
-                    authored_box(&mut self.tree.nodes, &mut self.layout.layout_mutated, f);
-                    self.tree.nodes[f].el.width = Size::Fixed(vp.width);
-                    self.tree.nodes[f].el.height = Size::Fixed(vp.height);
-                    if self.tree.nodes[f].backdrop {
-                        self.tree.nodes[f].el.padding =
-                            self.tree.nodes[f].el.padding.add(&vp.safe_area);
-                    }
+                    let padding = if self.tree.nodes[f].backdrop {
+                        vp.safe_area
+                    } else {
+                        Insets::default()
+                    };
+                    place_box(
+                        &mut self.tree.nodes,
+                        &mut self.layout.placed,
+                        f,
+                        [vp.width, vp.height],
+                        padding,
+                    );
                     layout(
                         &mut self.tree.nodes,
                         f,
@@ -607,10 +617,13 @@ impl Ui {
                     spots.push((f, placed));
                     continue;
                 }
-                layout_inputs.remember(f, &self.tree.nodes[f]);
-                authored_box(&mut self.tree.nodes, &mut self.layout.layout_mutated, f);
-                self.tree.nodes[f].el.width = Size::Fixed(w);
-                self.tree.nodes[f].el.height = Size::Fixed(h);
+                place_box(
+                    &mut self.tree.nodes,
+                    &mut self.layout.placed,
+                    f,
+                    [w, h],
+                    Insets::default(),
+                );
                 layout(
                     &mut self.tree.nodes,
                     f,
@@ -637,10 +650,13 @@ impl Ui {
                     continue;
                 }
                 let r = crate::layout::on_screen(&self.tree.nodes[i], &screen);
-                layout_inputs.remember(i, &self.tree.nodes[i]);
-                authored_box(&mut self.tree.nodes, &mut self.layout.layout_mutated, i);
-                self.tree.nodes[i].el.width = Size::Fixed(r.width);
-                self.tree.nodes[i].el.height = Size::Fixed(r.height);
+                place_box(
+                    &mut self.tree.nodes,
+                    &mut self.layout.placed,
+                    i,
+                    [r.width, r.height],
+                    Insets::default(),
+                );
                 layout(
                     &mut self.tree.nodes,
                     i,
@@ -738,10 +754,9 @@ impl Ui {
                         _ if n.up != NONE => box_of(n.up),
                         _ => screen,
                     };
-                    let authored = n
-                        .layout
-                        .authored_box
-                        .map_or([n.el.width, n.el.height], |(w, h, _)| [w, h]);
+                    // Its own sizes, not the box an earlier placement fixed.
+                    let own = n.derived(false);
+                    let authored = [own.width, own.height];
                     let frame = crate::anchor::Frame {
                         cb,
                         anchor: &anchor,
@@ -769,10 +784,13 @@ impl Ui {
                     if r == here {
                         continue;
                     }
-                    layout_inputs.remember(i, &self.tree.nodes[i]);
-                    authored_box(&mut self.tree.nodes, &mut self.layout.layout_mutated, i);
-                    self.tree.nodes[i].el.width = Size::Fixed(r.width);
-                    self.tree.nodes[i].el.height = Size::Fixed(r.height);
+                    place_box(
+                        &mut self.tree.nodes,
+                        &mut self.layout.placed,
+                        i,
+                        [r.width, r.height],
+                        Insets::default(),
+                    );
                     layout(
                         &mut self.tree.nodes,
                         i,
@@ -786,7 +804,7 @@ impl Ui {
                     );
                 }
             }
-            match self.settle_layout_queries(&mut settlement, layout_inputs, &mut *resolve) {
+            match self.settle_layout_queries(&mut settlement, &mut *resolve) {
                 Ok(true) => {}
                 Ok(false) => break,
                 Err(error) => {
@@ -959,13 +977,13 @@ impl Ui {
                 let bar = Vec2::new(
                     crate::scroll::bar_len(
                         n.placed.rect.width,
-                        n.layout.w - n.el.padding.horizontal(),
+                        n.layout.w - n.layout.used.padding.horizontal(),
                         n.layout.content_w,
                         min_bar,
                     ),
                     crate::scroll::bar_len(
                         n.placed.rect.height,
-                        n.layout.h - n.el.padding.vertical(),
+                        n.layout.h - n.layout.used.padding.vertical(),
                         n.layout.content_h,
                         min_bar,
                     ),
@@ -1200,6 +1218,7 @@ impl Ui {
                 && n.placed.rect.width < NARROW_BUTTON
             {
                 *p = p.flag("narrow");
+                n.layout.used.part = n.el.part;
             }
         }
         // Parts a style dresses, and game draws it may restyle.
@@ -1372,9 +1391,8 @@ impl Ui {
 }
 
 impl crate::ui::Layout {
-    /// A vertical scroller's bar gutter on its right padding, as its last
-    /// frame's range needs it: replaced, never added again, so a retained
-    /// scroller that is not built again keeps one gutter.
+    /// A vertical scroller's bar gutter beside its content, as its last
+    /// frame's range needs it: its used padding takes it on the right.
     pub(crate) fn apply_gutter(
         &mut self,
         i: usize,
@@ -1388,14 +1406,25 @@ impl crate::ui::Layout {
         } else {
             0.0
         };
-        // `scrollbar-gutter: stable both-edges`: the same room at the start.
-        let both = node.el.scroll_css.gutter == 2;
         let node = &mut tree.nodes[i];
-        node.el.padding.right += gutter - node.layout.gutter;
-        if both {
-            node.el.padding.left += gutter - node.layout.gutter;
+        if gutter != node.layout.gutter {
+            node.layout.gutter = gutter;
+            node.derive_used();
         }
-        node.layout.gutter = gutter;
+    }
+
+    /// Lets go of the boxes placement fixed, so the next layout pass
+    /// measures them again; the nodes that had one.
+    pub(crate) fn unplace(&mut self, tree: &mut crate::ui::Tree) -> Vec<usize> {
+        let mut freed = std::mem::take(&mut self.placed);
+        freed.retain(|&i| {
+            let had = tree.nodes[i].layout.placement.take().is_some();
+            if had {
+                tree.nodes[i].derive_used();
+            }
+            had
+        });
+        freed
     }
 }
 
@@ -1471,8 +1500,8 @@ impl crate::ui::Layout {
             let n = &tree.nodes[i];
             if !n.layout.cv_skip {
                 let size = [
-                    (n.layout.w - n.el.padding.horizontal()).max(0.0),
-                    (n.layout.h - n.el.padding.vertical()).max(0.0),
+                    (n.layout.w - n.layout.used.padding.horizontal()).max(0.0),
+                    (n.layout.h - n.layout.used.padding.vertical()).max(0.0),
                 ];
                 tree.nodes[i].layout.remembered = Some(size);
             }
@@ -1537,38 +1566,21 @@ impl crate::ui::Layout {
 }
 
 impl crate::ui::Tree {
-    /// Normalize freshly assigned presentation before measurement. Call once
-    /// after replacing fields, not on already prepared scroll padding.
     /// Node `i` lays its flow out in lines while one of it is inline-level
-    /// (CSS 2 §9.4.2): a block becomes a wrapping row whose lines align on
-    /// their baseline and by its `text-align`, a block-level child on a
-    /// line of its own; its authored layout comes back when none is.
+    /// (CSS 2 §9.4.2): a block is used as a wrapping row whose lines align
+    /// on their baseline and by its `text-align`, a block-level child on a
+    /// line of its own; its own layout is used again when none is.
     fn line_box(&mut self, i: usize, flow: &[usize]) {
-        let wanted = {
-            let n = &self.nodes[i];
-            n.el.block
-                && n.props.layout == crate::LayoutMode::Flex
-                && matches!(n.content, Content::None)
-                && flow.iter().any(|&c| self.nodes[c].el.inline)
-        };
+        let n = &self.nodes[i];
+        let wanted = (n.el.block
+            && n.props.layout == crate::LayoutMode::Flex
+            && matches!(n.content, Content::None)
+            && flow.iter().any(|&c| self.nodes[c].el.inline))
+        .then_some(n.el.direction);
         let n = &mut self.nodes[i];
-        let ours = n.el.direction == crate::Direction::Row && n.el.wrap;
-        match (wanted, n.layout.line_box) {
-            (true, saved) if saved.is_none() || !ours => {
-                n.layout.line_box = Some((n.el.direction, n.el.wrap, n.el.cross, n.el.align));
-                n.el.direction = crate::Direction::Row;
-                n.el.wrap = true;
-                n.el.cross = crate::Cross::Baseline;
-                n.el.align = n.el.line_align;
-            }
-            (false, Some((direction, wrap, cross, align))) => {
-                if ours {
-                    (n.el.direction, n.el.wrap, n.el.cross, n.el.align) =
-                        (direction, wrap, cross, align);
-                }
-                n.layout.line_box = None;
-            }
-            _ => {}
+        if wanted != n.layout.line_box {
+            n.layout.line_box = wanted;
+            n.derive_used();
         }
     }
 

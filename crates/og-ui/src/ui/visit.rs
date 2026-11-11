@@ -56,7 +56,7 @@ pub(crate) mod feat {
 /// align by a baseline.
 pub(crate) fn baseline_row(n: &Node) -> bool {
     use crate::layout::Cross;
-    matches!(n.el.cross, Cross::Baseline | Cross::LastBaseline) || n.layout.baseline_items
+    matches!(n.layout.used.cross, Cross::Baseline | Cross::LastBaseline) || n.layout.baseline_items
 }
 
 /// The features of node `n`.
@@ -65,7 +65,7 @@ pub(crate) fn features(n: &Node) -> u32 {
     let p = &n.props;
     let mut f = 0;
     if baseline_row(n)
-        && n.el.direction == crate::layout::Direction::Row
+        && n.layout.used.direction == crate::layout::Direction::Row
         && p.layout == crate::element::LayoutMode::Flex
     {
         f |= feat::BASELINE;

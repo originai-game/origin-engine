@@ -1057,7 +1057,7 @@ impl Ui {
         };
         let max_x = sn.max_scroll_x();
         if max_x > 0.0 {
-            let inner_w = sn.layout.w - sn.el.padding.horizontal();
+            let inner_w = sn.layout.w - sn.layout.used.padding.horizontal();
             let track = sn.placed.rect;
             let bar_w =
                 crate::scroll::bar_len(track.width, inner_w, sn.layout.content_w, t.space.xl);
@@ -1080,7 +1080,7 @@ impl Ui {
         }
         let max = sn.max_scroll();
         if max > 0.0 {
-            let inner_h = sn.layout.h - sn.el.padding.vertical();
+            let inner_h = sn.layout.h - sn.layout.used.padding.vertical();
             let track = sn.placed.rect;
             let bar_h = (track.height * inner_h / sn.layout.content_h).max(t.space.xl);
             let off = self
@@ -1132,7 +1132,7 @@ impl crate::ui::Paint {
                     n.children.is_empty()
                         && !matches!(n.widget, Widget::Spacer)
                         && (!matches!(n.content, Content::None)
-                            || n.el.background.is_some()
+                            || n.layout.used.background.is_some()
                             || !matches!(n.widget, Widget::None)
                             || !n.shapes.is_empty())
                 })
@@ -1873,7 +1873,7 @@ fn reference_box(n: &crate::layout::Node, b: crate::transform3d::TransformBox) -
     match b {
         crate::transform3d::TransformBox::BorderBox => r,
         crate::transform3d::TransformBox::ContentBox => {
-            let p = n.el.padding;
+            let p = n.layout.used.padding;
             Rect::new(
                 r.x + p.left,
                 r.y + p.top,

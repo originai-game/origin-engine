@@ -348,8 +348,8 @@ impl Ui {
                 .map(|i| &self.tree.nodes[i])
                 .filter(|n| n.key == key && n.scrolls())
         }?;
-        let view_width = (n.layout.w - n.el.padding.horizontal()).max(0.0);
-        let view_height = (n.layout.h - n.el.padding.vertical()).max(0.0);
+        let view_width = (n.layout.w - n.layout.used.padding.horizontal()).max(0.0);
+        let view_height = (n.layout.h - n.layout.used.padding.vertical()).max(0.0);
         let at = self.interaction.offset(key);
         Some(ScrollState {
             offset_x: at.x.clamp(0.0, n.max_scroll_x()),
@@ -971,7 +971,7 @@ impl crate::ui::Tree {
 /// A scroll container's snapport (CSS Scroll Snap 1 §5.1): its view inside
 /// its padding, inset by its `scroll-padding`.
 fn snapport(n: &crate::layout::Node) -> crate::layout::Rect {
-    let pad = n.el.padding;
+    let pad = n.layout.used.padding;
     let (w, h) = (
         (n.placed.rect.width - pad.horizontal()).max(0.0),
         (n.placed.rect.height - pad.vertical()).max(0.0),

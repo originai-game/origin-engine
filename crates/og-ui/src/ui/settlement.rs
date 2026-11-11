@@ -49,37 +49,6 @@ pub(crate) struct Settlement {
     seen: Vec<BTreeMap<u64, ContentBox>>,
 }
 
-pub(crate) struct LayoutInputs {
-    enabled: bool,
-    sizing: BTreeMap<usize, (Size, Size, Insets)>,
-}
-
-impl LayoutInputs {
-    pub(crate) fn new(measurements: &Measurements, part_geometry: bool) -> Self {
-        Self {
-            enabled: part_geometry || !measurements.watched.is_empty(),
-            sizing: BTreeMap::new(),
-        }
-    }
-
-    pub(crate) fn remember(&mut self, i: usize, node: &Node) {
-        if !self.enabled {
-            return;
-        }
-        self.sizing
-            .entry(i)
-            .or_insert((node.el.width, node.el.height, node.el.padding));
-    }
-
-    fn swap(&mut self, nodes: &mut [Node]) {
-        for (&i, (width, height, padding)) in &mut self.sizing {
-            std::mem::swap(width, &mut nodes[i].el.width);
-            std::mem::swap(height, &mut nodes[i].el.height);
-            std::mem::swap(padding, &mut nodes[i].el.padding);
-        }
-    }
-}
-
 /// Container queries across a frame's layout passes: the measurements
 /// they watch and, while a settlement reruns layout, the roots it lays out
 /// again (`None`: all of them). The layout stage's own, apart from its
@@ -139,19 +108,16 @@ impl Ui {
     pub(crate) fn settle_layout_queries(
         &mut self,
         settlement: &mut Settlement,
-        mut inputs: LayoutInputs,
         resolve: &mut impl FnMut(
             &mut Ui,
             &[ContainerMeasurement],
         ) -> Result<Vec<usize>, SettlementError>,
     ) -> Result<bool, SettlementError> {
         let changes = self.layout.queries.measurements.take();
-        // Placement temporarily fixes floating dimensions and adds safe-area
-        // padding. Resolvers patch authored inputs, not those derived values.
-        inputs.swap(&mut self.tree.nodes);
+        // Resolvers patch authored inputs: what placement fixed and the
+        // other values layout derives from them are not theirs to read.
         let (geometry, mut dirty) = self.settle_part_geometry();
         if changes.is_empty() && geometry.is_empty() {
-            inputs.swap(&mut self.tree.nodes);
             return Ok(false);
         }
         for change in changes.iter().chain(&geometry) {
@@ -165,7 +131,6 @@ impl Ui {
         settlement.seen.push(settlement.changed.clone());
         dirty.extend(resolve(self, &changes)?);
         if dirty.is_empty() {
-            inputs.swap(&mut self.tree.nodes);
             return Ok(false);
         }
         let mut roots = std::collections::BTreeSet::new();
@@ -186,10 +151,17 @@ impl Ui {
                 self.tree.nodes[parent].out = out;
                 self.tree.nodes[parent].children = flow;
             }
-            // Its subtree and the path to it are laid out again.
+            // Its subtree and the path to it are laid out again, from the
+            // inputs as the resolver left them (a control's root among them).
+            let mut stack = vec![i];
+            while let Some(j) = stack.pop() {
+                self.tree.nodes[j].derive_used();
+                stack.extend_from_slice(&self.tree.nodes[j].ordered_children);
+            }
             self.layout.cache.reach(&self.tree.nodes, i, true);
             let mut at = i;
             loop {
+                self.tree.nodes[at].derive_used();
                 self.layout.cache.clean[at] = false;
                 self.layout.cache.unclean.push(at);
                 let parent = self.tree.nodes[at].parent;

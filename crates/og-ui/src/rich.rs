@@ -1897,7 +1897,7 @@ impl crate::ui::Tree {
     /// Rich node `i`'s content box.
     fn rich_inner(&self, i: usize) -> Rect {
         let n = &self.nodes[i];
-        let (sk, pad) = (n.placed.scale, n.el.padding);
+        let (sk, pad) = (n.placed.scale, n.layout.used.padding);
         Rect::new(
             n.placed.rect.x + pad.left * sk,
             n.placed.rect.y + pad.top * sk,
