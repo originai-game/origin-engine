@@ -114,6 +114,8 @@ mod view_uniforms;
 use view_uniforms::{WriteViewUniformsInputs, WriteViewUniformsOutputs};
 mod effects;
 use effects::{DecideEffectsInputs, FrameEffects};
+mod water_fluids;
+use water_fluids::{PrepareWaterAndFluidsInputs, PrepareWaterAndFluidsOutputs};
 mod setup;
 
 impl Renderer {
@@ -1535,11 +1537,6 @@ impl Renderer {
                 self.transmission = Some((texture, view, chain));
             }
         }
-        let transmission_view = self
-            .transmission
-            .as_ref()
-            .filter(|_| transmission)
-            .map(|(_, view, chain)| (view, chain));
         self.graph
             .prepare(
                 &self.device,
@@ -1714,6 +1711,31 @@ impl Renderer {
             }
             _ => None,
         };
+        // The water's and the 3D fluids' draws (water_fluids.rs).
+        let PrepareWaterAndFluidsOutputs {
+            water_draws,
+            face_water,
+            fluid_bounds,
+            fluid_frame,
+            face_fluids,
+        } = self.prepare_water_and_fluids(PrepareWaterAndFluidsInputs {
+            scene,
+            cam: &cam,
+            scene_water,
+            reflections: &reflections,
+            ao_target,
+            ao,
+            probe_frame: &probe_frame,
+            probe_faces: &probe_faces,
+            fluids_3d,
+            face_fluid,
+        });
+        plans.fluid_3d = fluids_3d.then_some(fluid_frame.as_ref());
+        let transmission_view = self
+            .transmission
+            .as_ref()
+            .filter(|_| transmission)
+            .map(|(_, view, chain)| (view, chain));
         let destination: &wgpu::TextureView = match target {
             RenderTarget::Offscreen => &self.persistent.offscreen_view,
             RenderTarget::View(v) => v,
@@ -2089,159 +2111,9 @@ impl Renderer {
             .map_while(|name| self.graph.try_view(name))
             .map(|v| self.metaballs.group(&self.device, v))
             .collect();
-        let reflection_views: Vec<(usize, &wgpu::TextureView)> = reflections
-            .iter()
-            .enumerate()
-            .filter_map(|(k, r)| {
-                Some((
-                    r.0,
-                    self.graph.try_view(post::reflection_target(k as u8, ""))?,
-                ))
-            })
-            .collect();
-        let water_draws = match self.graph.try_view("scene-copy") {
-            Some(copy) if !scene_water.is_empty() => self.water.prepare(
-                &self.device,
-                &self.queue,
-                scene_water,
-                (self.width, self.height),
-                copy,
-                scene_depth,
-                &reflection_views,
-                if ao_target {
-                    self.graph.view("ao")
-                } else {
-                    &self.post.white
-                },
-                ao.map_or(0.0, |a| a.direct),
-                scene.adaptation,
-                scene.origin,
-                water::seconds(scene),
-                &scene.camera,
-                &scene.quality,
-                &self.post.white,
-                &self.lights.caustic_grid,
-                &|h| {
-                    self.cache
-                        .meshes
-                        .get(h.index())
-                        .filter(|m| m.full)
-                        .map(|m| (m.vertices.clone(), m.indices.clone(), m.index_count))
-                },
-                &|h| self.cache.textures.get(h.index()).map(|t| &t.view),
-            ),
-            _ => Vec::new(),
-        };
         if !water_draws.is_empty() {
             (stats.water_submits, stats.foam_steps) = self.water.submitted;
         }
-        // The water as each due capture's faces draw it, through the face's
-        // copy and over its depth (water.rs `face_draws`).
-        let face_water: Vec<Vec<water::WaterDraw>> = if water_draws.is_empty() {
-            Vec::new()
-        } else {
-            probe_frame
-                .due
-                .iter()
-                .map(|&(slot, _)| {
-                    let t = self.probes.targets_of(slot);
-                    self.water.face_draws(
-                        &self.device,
-                        &self.queue,
-                        scene_water,
-                        t.size,
-                        t.copy.as_ref().expect("made with the water"),
-                        &t.prepass.lindepth,
-                        &self.post.white,
-                        &|h| self.cache.textures.get(h.index()).map(|t| &t.view),
-                    )
-                })
-                .collect()
-        };
-        // The 3D fluids' bounding sphere: the reflection probe their one
-        // composite draw samples.
-        let fluid_bounds = instances::fold_box(
-            None,
-            scene.fluids_3d.iter().flat_map(|f| {
-                // A visual fluid: its spawn box's corners.
-                let corners = f
-                    .visual
-                    .iter()
-                    .flat_map(|v| [v.centre - v.size * 0.5, v.centre + v.size * 0.5]);
-                f.particles
-                    .iter()
-                    .copied()
-                    .chain(corners)
-                    .map(move |p| (p, f.radius))
-            }),
-        )
-        .map(|(lo, hi)| ((lo + hi) * 0.5, (hi - lo).length() * 0.5));
-        let fluid_frame = match fluid3d::views(&self.graph, scene_depth) {
-            Some(views) if fluids_3d => self.fluid3d.prepare(
-                &self.device,
-                &self.queue,
-                &scene.fluids_3d,
-                &fluid3d::Fluid3dCamera {
-                    view: cam.view,
-                    proj: cam.proj,
-                    orthographic: cam.orthographic,
-                },
-                (self.width, self.height),
-                &views,
-                self.visual_fluids.is_some(),
-            ),
-            _ => None,
-        };
-        plans.fluid_3d = fluids_3d.then_some(fluid_frame.as_ref());
-        if let Some(fluids) = self.visual_fluids.as_mut() {
-            let slots = match fluid_frame {
-                Some(_) => self.fluid3d.visual.as_slice(),
-                None => &[],
-            };
-            fluids.prepare(
-                &self.device,
-                &self.queue,
-                slots,
-                &scene.colliders,
-                scene.tick,
-                scene.tick_rate,
-                self.fluid3d.instances(),
-            );
-        }
-        // The 3D fluids as each due capture face draws them: the frame's
-        // particles through the face camera into the face's own targets,
-        // over its depth and through its copy (fluid3d.rs `camera_frame`).
-        let face_fluids: Vec<Option<fluid3d::Fluid3dFrame>> = match &fluid_frame {
-            Some(main) if face_fluid => probe_frame
-                .due
-                .iter()
-                .enumerate()
-                .flat_map(|(d, &(slot, _))| {
-                    let t = self.probes.targets_of(slot);
-                    probe_faces[d].iter().map(move |f| (t, f))
-                })
-                .map(|(t, f)| {
-                    let views = t.fluid.as_ref().expect("made with the fluids").views(
-                        &t.prepass.lindepth,
-                        t.copy.as_ref().expect("made with the fluids"),
-                    );
-                    self.fluid3d.camera_frame(
-                        &self.device,
-                        &self.queue,
-                        &scene.fluids_3d,
-                        main,
-                        &fluid3d::Fluid3dCamera {
-                            view: f.view,
-                            proj: f.proj,
-                            orthographic: f.orthographic,
-                        },
-                        (t.size, t.size),
-                        &views,
-                    )
-                })
-                .collect(),
-            _ => Vec::new(),
-        };
         // The planar reflection's effect group: its decals, no AO.
         let reflection_fx_group: Vec<wgpu::BindGroup> = (0..reflections.len())
             .map(|k| {
