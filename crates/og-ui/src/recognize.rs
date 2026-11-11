@@ -100,7 +100,7 @@ impl Ui {
     /// navigation answers.
     pub(crate) fn recognize(&mut self, input: &InputFrame, hot: u64, grabbed: bool) {
         let now = self.state.tick;
-        let tps = self.ticks_per_second;
+        let tps = self.env.ticks_per_second;
         let ticks = |ms: f32| u64::from(crate::style::Theme::ticks(ms, tps));
         // A tap left waiting for its double: past the window, it is a tap.
         let w = self.state.tap.waiting;
@@ -464,7 +464,9 @@ impl Ui {
             {
                 Some(1) => (Cursor::ResizeEw, NONE),
                 Some(2) => (Cursor::ResizeNs, NONE),
-                Some(_) if self.direction == og_i18n::Direction::Rtl => (Cursor::ResizeNesw, NONE),
+                Some(_) if self.env.direction == og_i18n::Direction::Rtl => {
+                    (Cursor::ResizeNesw, NONE)
+                }
                 Some(_) => (Cursor::ResizeNwse, NONE),
                 None => (Cursor::Default, NONE),
             };

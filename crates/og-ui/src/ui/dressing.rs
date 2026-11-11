@@ -14,7 +14,7 @@ impl Ui {
         clip: Rect,
         cmds: &mut Vec<DrawCmd>,
     ) {
-        let Some(atlas) = self.theme.art.atlas else {
+        let Some(atlas) = self.env.theme.art.atlas else {
             return;
         };
         let [u0, v0, u1, v1] = o.uv;
@@ -22,7 +22,7 @@ impl Ui {
         let (v0, v1) = if flip_y { (v1, v0) } else { (v0, v1) };
         let mut color = tint.unwrap_or_else(|| match o.ink {
             Ink::Authored => Srgba::WHITE.linear(),
-            ink => ink.color(&self.theme.palette).linear(),
+            ink => ink.color(&self.env.theme.palette).linear(),
         });
         color[3] *= alpha;
         cmds.push(DrawCmd::Image {
@@ -38,7 +38,7 @@ impl Ui {
     pub(crate) fn part_ground(&self, part: &crate::dress::PartRef, fill: Srgba) -> Srgba {
         let values = self.part_values(part, None);
         self.part_draw_values(&values, [1.0, 1.0], Some(fill), None)
-            .map(|draw| crate::dress::ground_of(&draw, &self.theme, Srgba::TRANSPARENT))
+            .map(|draw| crate::dress::ground_of(&draw, &self.env.theme, Srgba::TRANSPARENT))
             .unwrap_or(Srgba::TRANSPARENT)
     }
 
@@ -84,9 +84,9 @@ impl Ui {
             },
             alpha,
         };
-        cmds.extend(draw.enter(&self.theme, &at));
+        cmds.extend(draw.enter(&self.env.theme, &at));
         cmds.extend(draw.children(&at));
-        cmds.extend(draw.leave(&self.theme, &at));
+        cmds.extend(draw.leave(&self.env.theme, &at));
     }
 
     pub(crate) fn draw_of(&self, i: usize) -> Option<&crate::paint::ElementDraw> {
@@ -176,20 +176,20 @@ impl Ui {
                         Some(&draw),
                         crate::doc::paint_css::LayerFrame {
                             size: [node.rect.width, node.rect.height],
-                            viewport: [self.viewport.width, self.viewport.height],
+                            viewport: [self.env.viewport.width, self.env.viewport.height],
                             ..Default::default()
                         },
                     )
                 },
             );
-            let ground = crate::dress::ground_of(&draw, &self.theme, Srgba::TRANSPARENT);
+            let ground = crate::dress::ground_of(&draw, &self.env.theme, Srgba::TRANSPARENT);
             fills.push(ground);
             if ground.alpha >= 1.0 {
                 break;
             }
             j = node.parent;
         }
-        let mut color = self.theme.palette.backdrop;
+        let mut color = self.env.theme.palette.backdrop;
         for fill in fills.iter().rev() {
             color = fill.over(color);
         }

@@ -318,7 +318,7 @@ impl Ui {
         if r.has("popover") {
             return self.build_popover(b, n, id.as_str(), &r, path, key, built, build_children);
         }
-        let t = self.theme;
+        let t = self.env.theme;
         let raw_of = |r: &Resolved, b: &Build<'_>| -> String {
             if let Some(k) = r.str("key")
                 && let Some(s) = b.env.translate(k).map(|t| b.env.shown(t))
@@ -1053,7 +1053,7 @@ impl Ui {
                 resp = self.media_element(b, n, id.as_str(), key, &r, kind == "video");
             }
             "file" => {
-                if !self.file_picker {
+                if !self.env.file_picker {
                     self.warnings.push(format!(
                         "{}:{}: <input type=\"file\"> needs a host file picker, which this host lacks (og.ui.filePicker is false); take files in a TS system",
                         doc.source, n.line
@@ -1255,7 +1255,7 @@ impl Ui {
                                         .str("dataFormat")
                                         .filter(|f| !f.is_empty())
                                         .and_then(|f| og_i18n::Message::parse(f).ok()),
-                                    locale: self.locale.clone(),
+                                    locale: self.env.locale.clone(),
                                     ..Default::default()
                                 },
                             }),

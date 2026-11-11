@@ -197,8 +197,8 @@ impl RetainedHost {
             .is_some_and(|old| old != *ui.theme())
             || self
                 .direction
-                .replace(ui.direction)
-                .is_some_and(|old| old != ui.direction)
+                .replace(ui.env.direction)
+                .is_some_and(|old| old != ui.env.direction)
             || presentation_changed
         {
             self.theme_epoch += 1;
@@ -206,9 +206,9 @@ impl RetainedHost {
         let scrolled = std::mem::take(&mut ui.docs.scroll_changed);
         self.rescroll(&scrolled);
         let viewport = ui.media_context();
-        let [small, large] = ui.viewport.extremes();
-        let sa = ui.viewport.env_insets();
-        let hud = ui.viewport.hud_insets(ui.hud_max_aspect);
+        let [small, large] = ui.env.viewport.extremes();
+        let sa = ui.env.viewport.env_insets();
+        let hud = ui.env.viewport.hud_insets(ui.env.hud_max_aspect);
         let surface = [
             sa.top, sa.right, sa.bottom, sa.left, small[0], small[1], large[0], large[1], hud.left,
             hud.right,

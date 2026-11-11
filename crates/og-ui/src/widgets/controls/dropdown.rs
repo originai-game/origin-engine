@@ -179,7 +179,7 @@ impl Ui {
         all: &[String],
         labels: &[String],
     ) -> Option<String> {
-        let t = self.theme;
+        let t = self.env.theme;
         let kept = kept_suggestions(all, labels, query, 8);
         let open_key = format!("{id}~suggest");
         let shut_key = format!("{id}~shut");
@@ -326,7 +326,7 @@ impl Ui {
     ) -> DropdownResult {
         let id = id.into();
         let key = id.as_str().to_owned();
-        let t = self.theme;
+        let t = self.env.theme;
         let options = &desc.options;
         let before = desc.selected;
         let mut selected = before;

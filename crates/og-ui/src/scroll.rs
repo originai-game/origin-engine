@@ -158,11 +158,11 @@ impl Ui {
                 .is_some_and(|s| s.range.y > 0.0)
         {
             let bar = if css.thin {
-                self.theme.space.xs / 2.0
+                self.env.theme.space.xs / 2.0
             } else {
-                self.theme.space.xs
+                self.env.theme.space.xs
             };
-            bar + 2.0 * self.theme.space.xxs
+            bar + 2.0 * self.env.theme.space.xxs
         } else {
             0.0
         }
@@ -723,7 +723,7 @@ impl Ui {
     /// not allow is dropped. A fine pointer pans freely.
     fn touch_allows(&self, key: u64, d: Vec2) -> Vec2 {
         use crate::element::Interact as I;
-        if !self.viewport.coarse_pointer {
+        if !self.env.viewport.coarse_pointer {
             return d;
         }
         let Some(t) = self

@@ -32,7 +32,7 @@ impl Ui {
     /// then call [`Ui::close_details`]. Role button with `expanded` on the
     /// summary, group on the whole. Probe: `<id>/Summary`, `<id>/Content`.
     pub fn open_details(&mut self, id: impl Into<Id>, desc: &DetailsDesc) -> DetailsResult {
-        let t = self.theme;
+        let t = self.env.theme;
         let mut open = desc.open;
         self.open(
             id,

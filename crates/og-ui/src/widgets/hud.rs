@@ -7,7 +7,7 @@ impl Ui {
     /// once and leaves a pale trail that follows after a beat; a rise grows
     /// into place with a faint ghost of the target, by the tick.
     pub fn meter(&mut self, id: impl Into<Id>, value: f32, max: f32, desc: &MeterDesc) {
-        let t = self.theme;
+        let t = self.env.theme;
         let p = t.palette;
         let frac = if max > 0.0 && value.is_finite() {
             (value / max).clamp(0.0, 1.0)
@@ -82,8 +82,8 @@ impl Ui {
             MeterKind::Health if frac < 0.15 => p.danger,
             MeterKind::Health if frac < 0.3 => p.warn,
             MeterKind::Health => p.health,
-            MeterKind::Mana => self.theme.palette.mana,
-            MeterKind::Xp => self.theme.palette.xp,
+            MeterKind::Mana => self.env.theme.palette.mana,
+            MeterKind::Xp => self.env.theme.palette.xp,
             MeterKind::Primary => p.primary,
             MeterKind::Custom(c) => c,
         };
@@ -198,7 +198,7 @@ impl Ui {
     /// (`Meter.fill[region=optimum|suboptimum|poor]`, undressed success,
     /// warn and danger) over `Meter.track`. Role meter with its range.
     pub fn gauge(&mut self, id: impl Into<Id>, desc: &GaugeDesc) {
-        let t = self.theme;
+        let t = self.env.theme;
         let p = t.palette;
         let (min, max) = (desc.min, desc.max.max(desc.min));
         let value = if desc.value.is_finite() {
@@ -255,7 +255,7 @@ impl Ui {
     /// the middle; full and bright when ready. A press reports `clicked`
     /// (ready or not: the game decides).
     pub fn cooldown(&mut self, id: impl Into<Id>, remaining: f32, desc: &CooldownDesc) -> Response {
-        let t = self.theme;
+        let t = self.env.theme;
         let p = t.palette;
         let size = if desc.size > 0.0 { desc.size } else { 56.0 }.max(self.min_target());
         let i = self.leaf(
@@ -443,7 +443,7 @@ impl Ui {
     /// `lineStrong` frame, markers as dots (the player primary and ringed),
     /// and an optional zone label under it.
     pub fn minimap(&mut self, id: impl Into<Id>, desc: &MinimapDesc) {
-        let t = self.theme;
+        let t = self.env.theme;
         let p = t.palette;
         let size = if desc.size > 0.0 { desc.size } else { 160.0 };
         self.open(

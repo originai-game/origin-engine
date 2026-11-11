@@ -299,7 +299,7 @@ impl Ui {
             return (true, Vec::new());
         }
         let t = self.state.tick.saturating_sub(since) as f32 * 1000.0
-            / self.ticks_per_second.max(1) as f32;
+            / self.env.ticks_per_second.max(1) as f32;
         let (covers, plays): (Vec<_>, Vec<_>) = vt.old.iter().cloned().partition(is_cover);
         if leaving {
             if t < ends(&vt.old) {
@@ -565,8 +565,8 @@ impl Ui {
         // The covers still opening over layers that have left.
         let mut revealing = std::mem::take(&mut self.docs.revealing);
         revealing.retain(|(covers, color, image, start)| {
-            let t =
-                tick.saturating_sub(*start) as f32 * 1000.0 / self.ticks_per_second.max(1) as f32;
+            let t = tick.saturating_sub(*start) as f32 * 1000.0
+                / self.env.ticks_per_second.max(1) as f32;
             t < ends(covers) && self.draw_covers(covers, *color, image.as_deref(), t, true)
         });
         self.docs.revealing = revealing;
@@ -733,7 +733,7 @@ impl Ui {
             }
         }
         let spec = &info.spec;
-        let t = self.theme;
+        let t = self.env.theme;
         let dim = matches!(spec.under, Under::Dim | Under::Blur);
         let idx = self.open_layer(
             "layer",

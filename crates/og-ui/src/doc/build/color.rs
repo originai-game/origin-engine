@@ -71,7 +71,7 @@ impl Ui {
         id: &str,
         r: &Resolved,
     ) -> crate::ui::Response {
-        let t = self.theme;
+        let t = self.env.theme;
         let disabled = r.flag("disabled");
         let rgb = r.str("colorValue").and_then(parse_hex).unwrap_or([0.0; 3]);
         let swatch = self.leaf(

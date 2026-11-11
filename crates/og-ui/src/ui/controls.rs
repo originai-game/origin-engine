@@ -27,7 +27,7 @@ impl Ui {
         self.draws.remove(&i);
         let ink = self.content_ink();
         // Borrowed, not copied: a label is the most frequent element.
-        let t = &self.theme;
+        let t = &self.env.theme;
         let mut step = desc.step.unwrap_or(t.type_ramp.body);
         step.uppercase |= desc.uppercase;
         let fit = desc.fit_min.map_or_else(Vec::new, |min| {
@@ -78,7 +78,7 @@ impl Ui {
         // drop to the view's edge); elsewhere a drop draws past its box, and
         // reserving room there would change the layout of every large label.
         let grid = match &self.nodes[i].content {
-            Content::Text(tc) => tc.metrics(&self.fonts).pixel_grid(),
+            Content::Text(tc) => tc.metrics(&self.env.fonts).pixel_grid(),
             _ => 0,
         };
         let mut ancestor = parent;
@@ -115,7 +115,7 @@ impl Ui {
     pub(crate) fn open_button(&mut self, id: impl Into<Id>, desc: ButtonDesc) -> Response {
         let i = self.push("button", id.into(), Element::default());
         self.stack.push(i);
-        self.button_ink.push((i, self.theme.palette.ink));
+        self.button_ink.push((i, self.env.theme.palette.ink));
         self.button_at(i, "", desc)
     }
 
@@ -130,13 +130,13 @@ impl Ui {
     pub(crate) fn content_ink(&self) -> Srgba {
         self.button_ink
             .last()
-            .map_or(self.theme.palette.ink, |&(_, ink)| ink)
+            .map_or(self.env.theme.palette.ink, |&(_, ink)| ink)
     }
 
     fn button_at(&mut self, i: usize, text: &str, desc: ButtonDesc) -> Response {
         self.nodes[i].disabled = desc.disabled;
         let refused = desc.disabled
-            && self.theme.art.motion.shake > 0.0
+            && self.env.theme.art.motion.shake > 0.0
             && self.respond(self.nodes[i].key).clicked;
         let r = if desc.disabled {
             Response::default()
@@ -167,7 +167,7 @@ impl Ui {
     }
 
     fn button_box(&self, desc: ButtonDesc) -> Element {
-        let t = self.theme;
+        let t = self.env.theme;
         let sizes = self.sizes();
         // Never shorter than its words with an inset above and below: a
         // style whose button step outgrows its control size (pixel's 24
@@ -246,7 +246,9 @@ impl Ui {
         part.hover = amounts.0;
         part.press = amounts.1;
         let resolved = self.part_values(&part, Some(key));
-        let fg = resolved.color("color").unwrap_or(self.theme.palette.ink);
+        let fg = resolved
+            .color("color")
+            .unwrap_or(self.env.theme.palette.ink);
         let mut content = self.role_text(text, crate::tokens::TypeRole::Button, fg);
         content.align = desc.align.unwrap_or(TextAlign::Center);
         if let Some(top) = self.button_ink.last_mut().filter(|(at, _)| *at == i) {
@@ -307,7 +309,7 @@ impl Ui {
 
     /// A capsule track filled to `value` (0–1).
     pub fn progress(&mut self, id: impl Into<Id>, value: f32, desc: ProgressDesc) {
-        let t = self.theme;
+        let t = self.env.theme;
         let i = self.leaf(
             "progress",
             id.into(),
@@ -348,7 +350,7 @@ impl Ui {
     /// how far in the press is (0 at rest, 1 held; past either while the
     /// spring overshoots).
     fn button_motion(&mut self, i: usize, r: Response, refused: bool) -> f32 {
-        let t = self.theme;
+        let t = self.env.theme;
         let art = t.art;
         if art.hover.is_none() && art.press.is_none() && art.motion.shake <= 0.0 {
             return if r.pressed { 1.0 } else { 0.0 };

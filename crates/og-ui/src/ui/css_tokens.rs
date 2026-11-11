@@ -166,8 +166,8 @@ impl Ui {
         values.retain(|name, value| old.get(name) != Some(value));
         self.root_tokens = values.into_iter().collect();
         self.root_type_tokens = Breakpoint::ALL.map(|bp| {
-            let baseline = typography(&Theme::new(theme.scheme), bp, &self.fonts);
-            typography(&theme, bp, &self.fonts)
+            let baseline = typography(&Theme::new(theme.scheme), bp, &self.env.fonts);
+            typography(&theme, bp, &self.env.fonts)
                 .into_iter()
                 .filter(|(name, value)| baseline.get(name) != Some(value))
                 .collect()
@@ -176,11 +176,11 @@ impl Ui {
 
     pub(crate) fn read_theme_tokens(&mut self) {
         let root = self.css_root_variables();
-        let context = crate::css_color::Context::of(&self.theme);
+        let context = crate::css_color::Context::of(&self.env.theme);
         let colors: Vec<_> = Palette::NAMES
             .iter()
             .copied()
-            .chain(self.configured.roles.iter().map(|(name, _)| name))
+            .chain(self.env.configured.roles.iter().map(|(name, _)| name))
             .filter_map(|name| {
                 let value = root
                     .get(&format!("--{}", crate::doc::css::kebab(name)))?
@@ -190,16 +190,17 @@ impl Ui {
             })
             .collect();
         for (name, color) in colors {
-            if let Some(target) = self.theme.palette.get_mut(&name) {
+            if let Some(target) = self.env.theme.palette.get_mut(&name) {
                 *target = color;
             } else {
-                self.theme
+                self.env
+                    .theme
                     .roles
                     .set(&name, color)
                     .expect("configured role fits");
             }
         }
-        lengths(&mut self.theme, |name, target| {
+        lengths(&mut self.env.theme, |name, target| {
             if let Some(Some(value)) = root.get(&format!("--{name}"))
                 && let Ok(value) = crate::doc::calc::reduce(value)
                 && let Some(value) = value
@@ -247,12 +248,15 @@ impl Ui {
                 step.uppercase = v == "uppercase";
             }
         };
-        for (name, step) in TYPE_NAMES.into_iter().zip(self.theme.type_ramp.steps_mut()) {
+        for (name, step) in TYPE_NAMES
+            .into_iter()
+            .zip(self.env.theme.type_ramp.steps_mut())
+        {
             read_step(name, step);
         }
         let bp = self.breakpoint() as usize;
         for role in crate::tokens::TypeRole::ALL {
-            let token = &mut self.theme.tokens.typography.steps[role.index()][bp];
+            let token = &mut self.env.theme.tokens.typography.steps[role.index()][bp];
             if let Some(Some(value)) = root.get(&format!("--type-{}-font", role.name()))
                 && let Ok((names, fallback)) = crate::doc::text_css::family_list(value)
             {
@@ -261,7 +265,7 @@ impl Ui {
                     .and_then(|s| s.strip_suffix(')'))
                     .and_then(FontRole::from_name)
                     .unwrap_or_default();
-                token.font = self.fonts.family_list(&names, fallback);
+                token.font = self.env.fonts.family_list(&names, fallback);
             }
             let mut step = token.step(1.0);
             read_step(role.name(), &mut step);

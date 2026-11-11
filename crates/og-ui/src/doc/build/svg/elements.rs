@@ -242,9 +242,14 @@ impl Ui {
             Some("italic" | "oblique")
         );
         let text = r.str("text").unwrap_or_default().to_string();
-        let font = r.label_desc(&self.theme, &self.fonts, false).font;
+        let font = r.label_desc(&self.env.theme, &self.env.fonts, false).font;
         let (ascender, descender) = {
-            let m = &self.fonts.for_styled(font, weight, italic, &text).0.metrics;
+            let m = &self
+                .env
+                .fonts
+                .for_styled(font, weight, italic, &text)
+                .0
+                .metrics;
             m.extents(&text)
         };
         let anchor_x = match value("text-anchor").as_deref().map(str::trim) {
@@ -261,7 +266,7 @@ impl Ui {
             warnings.push(e);
             ascender * size
         });
-        let mut step = self.theme.type_ramp.body;
+        let mut step = self.env.theme.type_ramp.body;
         step.size = size;
         // One line exactly the font's extents tall: the baseline sits at
         // the ascender, so `dominant-baseline` is measured from its top.
@@ -271,7 +276,7 @@ impl Ui {
             step.weight = weight;
         }
         let color = solid(&style.fill, style.fill_opacity).and_then(|p| match p {
-            Paint::Solid(c) => c.srgb(&self.theme),
+            Paint::Solid(c) => c.srgb(&self.env.theme),
             _ => None,
         });
         // `fill="none"`: transparent, still laid out and named.
@@ -410,7 +415,7 @@ impl Ui {
                     .texture(h)
                     .map(|t| (t, [0.0, 0.0, 1.0, 1.0]))
                     .ok_or_else(|| format!("href {h} names no texture")),
-                Err(_) => match self.icons.find(href) {
+                Err(_) => match self.env.icons.find(href) {
                     Some(crate::ui::IconCell::Image(texture, uv)) => Ok((texture, uv)),
                     _ => Err(format!("href \"{href}\" names no atlas image")),
                 },
@@ -500,7 +505,7 @@ impl Ui {
                     .ok_or_else(|| format!("href {h} names no texture"))?,
                 [0.0, 0.0, 1.0, 1.0],
             ),
-            Err(_) => match self.icons.find(href) {
+            Err(_) => match self.env.icons.find(href) {
                 Some(crate::ui::IconCell::Image(texture, uv)) => (texture, uv),
                 Some(_) => {
                     return Err(format!(

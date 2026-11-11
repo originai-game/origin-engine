@@ -282,7 +282,7 @@ impl Ui {
     }
 
     fn place(&mut self, t: &HudTarget, p: HudPlacement) {
-        let (w, h) = (self.viewport.width, self.viewport.height);
+        let (w, h) = (self.env.viewport.width, self.env.viewport.height);
         let p = p.limited(t, w, h);
         let now = self.hud_now();
         let hud = &mut self.state.hud;
@@ -345,7 +345,7 @@ impl Ui {
                 if spread > 0.0 && spread0 > 0.0 {
                     to.scale *= spread / spread0;
                 }
-                let (w, h) = (self.viewport.width, self.viewport.height);
+                let (w, h) = (self.env.viewport.width, self.env.viewport.height);
                 let hud = &mut self.state.hud;
                 let to = to.limited(&t, w, h);
                 let l = &mut hud.layouts[usize::from(hud.player)];
@@ -382,7 +382,7 @@ impl Ui {
                 .cloned()
             {
                 let mut to = self.placement(&t.key);
-                let step = 400.0 / self.ticks_per_second.max(1) as f32;
+                let step = 400.0 / self.env.ticks_per_second.max(1) as f32;
                 to.x += stick.x * step;
                 to.y += stick.y * step;
                 self.place(&t, to);
@@ -462,8 +462,8 @@ impl Ui {
         if !hud.edit {
             return;
         }
-        let p = &self.theme.palette;
-        let screen = Rect::new(0.0, 0.0, self.viewport.width, self.viewport.height);
+        let p = &self.env.theme.palette;
+        let screen = Rect::new(0.0, 0.0, self.env.viewport.width, self.env.viewport.height);
         let mut quad = |part: crate::dress::PartRef, r: Rect, owner: Rect, color: Srgba| {
             let values = self.part_values(&part, None);
             self.part_commands_at(
@@ -537,7 +537,7 @@ impl Ui {
         };
         let info = self.hud_edit();
         let mut out = HudEditorResponse::default();
-        let t = self.theme;
+        let t = self.env.theme;
         self.open_panel(
             id,
             PanelDesc {

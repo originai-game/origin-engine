@@ -280,7 +280,7 @@ impl Ui {
         let nearest = r.object_css().1;
         // Asset paths were resolved beside their stylesheet before the cascade.
         let mut image = |what: &str, i: p::CssImage| -> Option<p::BgImage> {
-            let Some((source, density)) = i.select(self.viewport.dpr()) else {
+            let Some((source, density)) = i.select(self.env.viewport.dpr()) else {
                 return (what == "mask" && matches!(i, p::CssImage::Set(_)))
                     .then_some(p::BgImage::Transparent);
             };
@@ -519,7 +519,7 @@ impl Ui {
                 let base = match r.text.as_deref() {
                     Some(t) => {
                         shown = RenderFields {
-                            text: t.shown(&base.text, &self.locale),
+                            text: t.shown(&base.text, &self.env.locale),
                             ..base.clone()
                         };
                         &shown
@@ -983,7 +983,7 @@ impl Ui {
                 },
             );
         }
-        let surface_rtl = self.direction == og_i18n::Direction::Rtl;
+        let surface_rtl = self.env.direction == og_i18n::Direction::Rtl;
         let flow = r.own_flow();
         // A vertical element's inline axis runs down: the surface's mirror
         // turns its block axis round instead (`vertical-rl` lays out as
@@ -1015,7 +1015,7 @@ impl Ui {
 
     fn apply_document_semantics(&mut self, n: &DocNode, r: &Resolved, base: &RenderFields) {
         let i = base.index;
-        let surface_rtl = self.direction == og_i18n::Direction::Rtl;
+        let surface_rtl = self.env.direction == og_i18n::Direction::Rtl;
         let flow = r.own_flow();
         let mut props = Self::resolved_props(n, r);
         if surface_rtl {

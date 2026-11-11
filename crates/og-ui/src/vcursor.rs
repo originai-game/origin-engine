@@ -154,9 +154,10 @@ impl Ui {
             v.pos = Vec2::new(w / 2.0, h / 2.0);
             v.placed = true;
         }
-        let tps = self.ticks_per_second.max(1) as f32;
+        let tps = self.env.ticks_per_second.max(1) as f32;
         let magnet = d.magnet(
-            self.theme
+            self.env
+                .theme
                 .art
                 .motion
                 .magnet
@@ -232,8 +233,8 @@ impl Ui {
         if v.desc.is_none() || !v.shown {
             return;
         }
-        let p = &self.theme.palette;
-        let screen = Rect::new(0.0, 0.0, self.viewport.width, self.viewport.height);
+        let p = &self.env.theme.palette;
+        let screen = Rect::new(0.0, 0.0, self.env.viewport.width, self.env.viewport.height);
         let mut r = 11.0;
         if v.over != 0 {
             r *= 1.25;

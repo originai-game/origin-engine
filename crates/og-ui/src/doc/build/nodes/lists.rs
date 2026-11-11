@@ -14,7 +14,7 @@ impl Ui {
         inside: bool,
         ink: Option<Srgba>,
     ) {
-        let t = self.theme;
+        let t = self.env.theme;
         let body = t.type_ramp.body;
         // CSS's gap between marker and content: half an em.
         let gap = (body.size * 0.5).round();

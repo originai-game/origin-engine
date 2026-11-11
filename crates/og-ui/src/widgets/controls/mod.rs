@@ -350,7 +350,8 @@ impl Ui {
             return C::of(a);
         }
         C::of(
-            self.theme
+            self.env
+                .theme
                 .color(name)
                 .unwrap_or(Srgba::rgb(0xff, 0x00, 0xff)),
         )
@@ -358,7 +359,7 @@ impl Ui {
 
     /// A finger is what presses: a coarse pointer, a phone or a tablet.
     fn touch_frame(&self) -> bool {
-        self.viewport.coarse_pointer
+        self.env.viewport.coarse_pointer
             || matches!(
                 self.breakpoint(),
                 Breakpoint::PhonePortrait | Breakpoint::PhoneLandscape | Breakpoint::Tablet
@@ -367,11 +368,11 @@ impl Ui {
 
     /// A size that holds text, at the player's text scale.
     pub(crate) fn by_text(&self, h: f32) -> f32 {
-        (h * self.theme.text_scale.max(1.0)).round()
+        (h * self.env.theme.text_scale.max(1.0)).round()
     }
 
     pub(crate) fn still(&self) -> bool {
-        self.theme.reduced_motion
+        self.env.theme.reduced_motion
     }
 
     fn rtl(&self) -> bool {
@@ -414,14 +415,14 @@ impl Ui {
 
     fn text(&mut self, id: impl Into<Id>, value: &str, d: Text) {
         let color = match d.color {
-            Ink::Role(name) => self.theme.color(name),
+            Ink::Role(name) => self.env.theme.color(name),
             Ink::C(c) => Some(c.srgba()),
         };
         self.label(
             id,
             value,
             LabelDesc {
-                step: Some(d.step.unwrap_or(self.theme.type_ramp.body)),
+                step: Some(d.step.unwrap_or(self.env.theme.type_ramp.body)),
                 color,
                 align: d.align,
                 nowrap: d.nowrap,
@@ -525,7 +526,7 @@ impl Ui {
         fl.push(ix.flag());
         let part = qualified_part(d.part, &fl, d.cls);
         let touch = self.touch_frame();
-        let radius = d.radius.unwrap_or(self.theme.radius.control);
+        let radius = d.radius.unwrap_or(self.env.theme.radius.control);
         self.open(
             id,
             Element {
@@ -974,7 +975,7 @@ impl Ui {
         width: Size,
         build: impl FnOnce(&mut Ui),
     ) {
-        let t = self.theme;
+        let t = self.env.theme;
         self.open(
             id,
             Element {

@@ -5,11 +5,11 @@ impl RetainedHost {
     /// require to be built again, before anything is emitted.
     pub(super) fn mark_frame(&mut self, ui: &mut Ui) {
         let signature = Signature {
-            viewport: ui.viewport,
-            unit: ui.unit,
-            direction: ui.direction,
-            locale: ui.locale.clone(),
-            style: ui.style_name.clone(),
+            viewport: ui.env.viewport,
+            unit: ui.env.unit,
+            direction: ui.env.direction,
+            locale: ui.env.locale.clone(),
+            style: ui.env.style_name.clone(),
             style_epoch: ui.invalidation.epoch,
             players: ui.players,
             nav_on: ui.nav_on,

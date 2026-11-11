@@ -183,6 +183,7 @@ impl Ui {
             });
         }
         let font = self
+            .env
             .fonts
             .for_styled(tc.font, tc.step.weight, false, &tc.text)
             .0;
@@ -200,16 +201,17 @@ impl Ui {
         );
         let block = lh * n.lines.len() as f32;
         let top = inner.y + ((inner.height - block) / 2.0).max(0.0);
-        let rtl = self.direction == og_i18n::Direction::Rtl;
+        let rtl = self.env.direction == og_i18n::Direction::Rtl;
         let tracking = tc.tracking();
         let mut start = 0u32;
-        let lines =
-            n.lines
-                .iter()
-                .enumerate()
-                .map(|(k, line)| {
-                    let free = inner.width - line.width * sk;
-                    let x = inner.x
+        let lines = n
+            .lines
+            .iter()
+            .enumerate()
+            .map(|(k, line)| {
+                let free = inner.width - line.width * sk;
+                let x =
+                    inner.x
                         + match (tc.align, rtl) {
                             (TextAlign::Start | TextAlign::Justify, false)
                             | (TextAlign::End, true) => 0.0,
@@ -217,18 +219,18 @@ impl Ui {
                             (TextAlign::End, false)
                             | (TextAlign::Start | TextAlign::Justify, true) => free,
                         };
-                    let chars: Vec<char> = line.text.chars().collect();
-                    let l = TextLine {
-                        start,
-                        x,
-                        top: top + k as f32 * lh,
-                        boxes: crate::edit::boxes(m, &line.text, self.direction, size, tracking),
-                        chars,
-                    };
-                    start += l.chars.len() as u32 + 1;
-                    l
-                })
-                .collect();
+                let chars: Vec<char> = line.text.chars().collect();
+                let l = TextLine {
+                    start,
+                    x,
+                    top: top + k as f32 * lh,
+                    boxes: crate::edit::boxes(m, &line.text, self.env.direction, size, tracking),
+                    chars,
+                };
+                start += l.chars.len() as u32 + 1;
+                l
+            })
+            .collect();
         Some(TextLines {
             lines,
             column: None,
@@ -321,8 +323,8 @@ impl Ui {
     pub(crate) fn select_input(&mut self, input: &crate::input::InputFrame, hot: u64) {
         let p = input.pointer;
         let tick = self.state.tick;
-        let coarse = self.viewport.coarse_pointer;
-        let hold = crate::edit::click_ticks(self.ticks_per_second);
+        let coarse = self.env.viewport.coarse_pointer;
+        let hold = crate::edit::click_ticks(self.env.ticks_per_second);
         let mut press = self.state.select_press;
         let held_key = self
             .hit(self.state.active)
@@ -414,7 +416,7 @@ impl Ui {
             }
             self.state.selection = Some(s);
         }
-        let mac = self.viewport.mac_keys;
+        let mac = self.env.viewport.mac_keys;
         let shortcut = if mac {
             input.meta
         } else {
@@ -559,6 +561,7 @@ impl Ui {
             return;
         }
         let font = self
+            .env
             .fonts
             .for_styled(tc.font, tc.step.weight, false, &tc.text)
             .0;

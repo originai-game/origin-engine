@@ -551,7 +551,7 @@ impl Ui {
                 UiKey::PageUp | UiKey::PageDown => {
                     let view = self
                         .hit(from.scroller)
-                        .map_or(self.viewport.height, |s| s.rect.height);
+                        .map_or(self.env.viewport.height, |s| s.rect.height);
                     let down = *k == UiKey::PageDown;
                     let a = cands[at].full;
                     let reach = |h: &Hit| {
@@ -603,7 +603,7 @@ impl Ui {
         if listy && !typed.is_empty() && !input.ctrl && !input.meta {
             let tick = self.state.tick;
             let (buffer, at) = &mut self.state.typeahead;
-            if tick.saturating_sub(*at) > u64::from(self.ticks_per_second) {
+            if tick.saturating_sub(*at) > u64::from(self.env.ticks_per_second) {
                 buffer.clear();
             }
             buffer.push_str(&typed);
@@ -809,8 +809,10 @@ impl Ui {
                     // screen's choices are), not on the first control of the
                     // reading order.
                     (_, None) => {
-                        let (cx, cy) = region_centre(&cands)
-                            .unwrap_or((self.viewport.width / 2.0, self.viewport.height / 2.0));
+                        let (cx, cy) = region_centre(&cands).unwrap_or((
+                            self.env.viewport.width / 2.0,
+                            self.env.viewport.height / 2.0,
+                        ));
                         let d = |h: &Hit| {
                             let (x, y) = h.full.center();
                             (x - cx) * (x - cx) + (y - cy) * (y - cy)

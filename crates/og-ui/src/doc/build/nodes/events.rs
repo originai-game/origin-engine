@@ -101,7 +101,7 @@ impl Ui {
             return;
         }
         let ms = r.num("dataHold").unwrap_or(500.0);
-        let need = ((ms * self.ticks_per_second as f32 / 1000.0).ceil() as u64).max(1);
+        let need = ((ms * self.env.ticks_per_second as f32 / 1000.0).ceil() as u64).max(1);
         let focused = self.state.focus == key
             && (self
                 .input
@@ -134,7 +134,7 @@ impl Ui {
             .iter()
             .find(|(w, ..)| *w == "hold")
             .and_then(|(_, _, p)| p.color("background"))
-            .unwrap_or_else(|| self.theme.palette.primary.fade(0.33));
+            .unwrap_or_else(|| self.env.theme.palette.primary.fade(0.33));
         let frame = if self.direction() == og_i18n::Direction::Rtl {
             crate::layout::Frame::left(1.0 - frac, 1.0)
         } else {

@@ -240,7 +240,7 @@ impl Ui {
         if !self.building {
             self.warnings
                 .push("an element was added outside begin/end; call ui.begin() first".into());
-            self.begin(InputFrame::default(), self.viewport);
+            self.begin(InputFrame::default(), self.env.viewport);
         }
         let owner = self.parent();
         let parent = self.content_parent();
@@ -541,7 +541,7 @@ impl Ui {
     /// until [`Ui::close`]. For hosts whose build code cannot pass a closure
     /// (the TypeScript binding).
     pub fn open_panel(&mut self, id: impl Into<Id>, desc: PanelDesc) {
-        let t = self.theme;
+        let t = self.env.theme;
         let el = Element {
             direction: if desc.row {
                 Direction::Row
@@ -630,12 +630,12 @@ impl Ui {
             );
             return;
         }
-        let delay =
-            (self.theme.durations_ms.slow * self.ticks_per_second as f32 / 1000.0).ceil() as u32;
+        let delay = (self.env.theme.durations_ms.slow * self.env.ticks_per_second as f32 / 1000.0)
+            .ceil() as u32;
         if self.state.hot != self.nodes[anchor].key || self.state.hover_ticks < delay {
             return;
         }
-        let t = self.theme;
+        let t = self.env.theme;
         let key = child_key(self.nodes[anchor].key, "tooltip");
         let mut node = Node::new(
             key,
@@ -705,7 +705,7 @@ impl Ui {
         if !self.building {
             self.warnings
                 .push("an element was added outside begin/end; call ui.begin() first".into());
-            self.begin(InputFrame::default(), self.viewport);
+            self.begin(InputFrame::default(), self.env.viewport);
         }
         let mut local = id.as_str().replace('/', "_");
         if local.is_empty() {

@@ -124,7 +124,7 @@ impl Ui {
             return out;
         };
         let rect = hit.local;
-        let dpr = self.viewport.dpr();
+        let dpr = self.env.viewport.dpr();
         out.rect = rect;
         out.pixels = (
             (rect.width * dpr).round().max(1.0) as u32,

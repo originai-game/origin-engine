@@ -268,9 +268,9 @@ impl Ui {
     pub(crate) fn run_motion(&mut self, seeds: Option<&[usize]>) -> Vec<usize> {
         let whole = seeds.is_none();
         let now = self.state.tick;
-        let tps = self.ticks_per_second;
-        let tokens = self.theme.motion;
-        let reduced = self.theme.reduced_motion;
+        let tps = self.env.ticks_per_second;
+        let tokens = self.env.theme.motion;
+        let reduced = self.env.theme.reduced_motion;
         let mut m = std::mem::take(&mut self.state.motion);
         // Last step's asks were taken by this frame's build.
         self.motion_cache.timeline_restyle.clear();
@@ -1053,7 +1053,7 @@ impl Ui {
             let ms = if b.duration_ms > 0.0 {
                 b.duration_ms
             } else {
-                self.theme.durations_ms.slow + self.theme.durations_ms.base
+                self.env.theme.durations_ms.slow + self.env.theme.durations_ms.base
             };
             self.tree.by_key.contains_key(&b.key)
                 && now.saturating_sub(b.since) < u64::from(crate::style::Theme::ticks(ms, tps))
@@ -1263,7 +1263,7 @@ impl Ui {
         } else {
             p.at_ms
                 + self.state.tick.saturating_sub(p.start) as f32 * 1000.0
-                    / self.ticks_per_second as f32
+                    / self.env.ticks_per_second as f32
                     * p.speed
         }
     }
@@ -1395,9 +1395,9 @@ impl Ui {
         from: Option<f32>,
     ) -> f32 {
         let now = self.state.tick;
-        let tps = self.ticks_per_second;
-        let tokens = self.theme.motion;
-        let t = if self.theme.reduced_motion {
+        let tps = self.env.ticks_per_second;
+        let tokens = self.env.theme.motion;
+        let t = if self.env.theme.reduced_motion {
             Transition::Instant
         } else {
             transition
@@ -1471,7 +1471,7 @@ impl Ui {
     pub(crate) fn motion_dump_of(&self, order: &[usize]) -> Vec<MotionDump> {
         let m = &self.state.motion;
         let now = self.state.tick;
-        let tps = self.ticks_per_second;
+        let tps = self.env.ticks_per_second;
         let names = |c: usize| -> &'static str {
             match c {
                 c if c < CHANNELS => Prop::ALL

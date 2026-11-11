@@ -12,20 +12,32 @@ impl Ui {
     pub fn new(desc: UiDesc) -> Ui {
         let (part_rules, part_sheet) = DEFAULT_PART_SHEET.clone();
         let mut ui = Ui {
-            configured: desc.theme,
-            theme: desc.theme,
-            fonts: {
-                let mut f = desc.fonts;
-                f.link();
-                f
+            env: Env {
+                configured: desc.theme,
+                theme: desc.theme,
+                fonts: {
+                    let mut f = desc.fonts;
+                    f.link();
+                    f
+                },
+                ticks_per_second: if desc.ticks_per_second == 0 {
+                    60
+                } else {
+                    desc.ticks_per_second
+                },
+                viewport: Viewport::default(),
+                unit: 1.0,
+                direction: og_i18n::Direction::Ltr,
+                locale: String::new(),
+                icons: IconAtlas::default(),
+                cue_icons: Vec::new(),
+                images: Default::default(),
+                style_name: String::new(),
+                haptics: 1.0,
+                hud_max_aspect: HUD_MAX_ASPECT,
+                file_picker: false,
+                toast_anchor: Anchor::Bottom,
             },
-            ticks_per_second: if desc.ticks_per_second == 0 {
-                60
-            } else {
-                desc.ticks_per_second
-            },
-            viewport: Viewport::default(),
-            unit: 1.0,
             input: InputFrame::default(),
             #[cfg(not(target_arch = "wasm32"))]
             native_input: Default::default(),
@@ -65,18 +77,11 @@ impl Ui {
             vcursor: None,
             hud_editor_key: 0,
             request_focus: 0,
-            file_picker: false,
             button_ink: Vec::new(),
             scopes: Vec::new(),
-            icons: IconAtlas::default(),
-            cue_icons: Vec::new(),
             kept_texts: Default::default(),
-            images: Default::default(),
-            toast_anchor: Anchor::Bottom,
-            hud_max_aspect: HUD_MAX_ASPECT,
             feedback: Vec::new(),
             css_sounds: Default::default(),
-            haptics: 1.0,
             haptic_out: Vec::new(),
             part_rules,
             part_sheet,
@@ -90,11 +95,8 @@ impl Ui {
             selected: Vec::new(),
             text_target: None,
             cover: None,
-            style_name: String::new(),
             gesture: false,
             resize_moved: None,
-            direction: og_i18n::Direction::Ltr,
-            locale: String::new(),
             accent: None,
             texts: Default::default(),
             timelines: Default::default(),
@@ -123,18 +125,18 @@ impl Ui {
 
     /// The icon atlas `icon` draws from.
     pub fn set_icons(&mut self, icons: IconAtlas) {
-        self.icons = icons;
+        self.env.icons = icons;
     }
 
     pub fn icons(&self) -> &IconAtlas {
-        &self.icons
+        &self.env.icons
     }
 
     /// The style's `icons` names, in its order: a colour token's icon cue
     /// is an index into them (`crate::tokens::Cue::Icon`), whichever atlas
     /// the game draws icons from. Empty takes the atlas's own names.
     pub fn set_cue_icons(&mut self, names: Vec<String>) {
-        self.cue_icons = names;
+        self.env.cue_icons = names;
     }
 
     /// The icon colour token `token`'s cue names (`-og-cue`, docs/ui.md
@@ -142,10 +144,10 @@ impl Ui {
     pub(crate) fn cue_icon(&mut self, token: &str) -> Option<String> {
         use crate::tokens::Cue;
         let cue = self.theme().tokens.colors.cue(token);
-        let names = if self.cue_icons.is_empty() {
-            &self.icons.names
+        let names = if self.env.cue_icons.is_empty() {
+            &self.env.icons.names
         } else {
-            &self.cue_icons
+            &self.env.cue_icons
         };
         match cue {
             Some(Cue::Icon(i)) => {
@@ -164,16 +166,16 @@ impl Ui {
 
     /// The pictures rich text draws inline by name (`[img=<name>]`).
     pub fn set_images(&mut self, images: std::collections::BTreeMap<String, InlineImage>) {
-        self.images = images;
+        self.env.images = images;
     }
 
     pub fn images(&self) -> &std::collections::BTreeMap<String, InlineImage> {
-        &self.images
+        &self.env.images
     }
 
     /// Where toasts stack (default: bottom centre of the safe area).
     pub fn set_toast_anchor(&mut self, anchor: Anchor) {
-        self.toast_anchor = anchor;
+        self.env.toast_anchor = anchor;
     }
 
     /// The widest the HUD band is, over its height (UiDesc.hudMaxAspect;
@@ -181,7 +183,7 @@ impl Ui {
     /// groups and toasts lay out in a centred band this wide, so an
     /// ultrawide's HUD corners stay near the play. 0 is the whole safe area.
     pub fn set_hud_max_aspect(&mut self, max_aspect: f32) {
-        self.hud_max_aspect = if max_aspect.is_finite() {
+        self.env.hud_max_aspect = if max_aspect.is_finite() {
             max_aspect.max(0.0)
         } else {
             HUD_MAX_ASPECT
@@ -190,7 +192,7 @@ impl Ui {
 
     /// The widest the HUD band is, over its height ([`Ui::set_hud_max_aspect`]).
     pub fn hud_max_aspect(&self) -> f32 {
-        self.hud_max_aspect
+        self.env.hud_max_aspect
     }
 
     /// The HUD band this frame lays out in: the safe area at most
@@ -199,23 +201,23 @@ impl Ui {
     /// reads it (og.ui.viewport's `hud`). Full-screen layers (dialogs,
     /// scrims, world-space markers) keep the whole safe area.
     pub fn hud_area(&self) -> Rect {
-        self.viewport.hud_rect(self.hud_max_aspect)
+        self.env.viewport.hud_rect(self.env.hud_max_aspect)
     }
 
     /// The size class of the current play surface.
     pub fn breakpoint(&self) -> Breakpoint {
-        self.viewport.breakpoint()
+        self.env.viewport.breakpoint()
     }
 
     /// The play surface of the frame being built.
     pub fn viewport(&self) -> Viewport {
-        self.viewport
+        self.env.viewport
     }
 
     /// The og-ui unit a frame on the CSS `viewport` would lay out in (the
     /// game's pin, else the surface's: docs/ui.md §6.1).
     pub fn unit_for(&self, viewport: &Viewport) -> f32 {
-        surface_unit(&self.configured, viewport)
+        surface_unit(&self.env.configured, viewport)
     }
 
     /// Frames begun so far: the UI's clock.
@@ -225,16 +227,16 @@ impl Ui {
 
     /// The UI's clock in seconds (frames over the tick rate).
     pub fn seconds(&self) -> f64 {
-        self.state.tick as f64 / f64::from(self.ticks_per_second)
+        self.state.tick as f64 / f64::from(self.env.ticks_per_second)
     }
 
     pub fn ticks_per_second(&self) -> u32 {
-        self.ticks_per_second
+        self.env.ticks_per_second
     }
 
     /// Ticks a duration in milliseconds takes (at least 1).
     pub fn ticks_for(&self, ms: f32) -> u32 {
-        Theme::ticks(ms, self.ticks_per_second)
+        Theme::ticks(ms, self.env.ticks_per_second)
     }
 
     /// Whether keyboard and gamepad navigation moves focus on this screen.
@@ -302,13 +304,13 @@ impl Ui {
     /// Whether the host opens a file picker: `<input type="file">` builds
     /// only then (og.ui.filePicker).
     pub fn file_picker(&self) -> bool {
-        self.file_picker
+        self.env.file_picker
     }
 
     /// Says the host opens a file picker on an `<input type="file">`'s
     /// `filepick` event and writes the names chosen to its bound value.
     pub fn set_file_picker(&mut self, on: bool) {
-        self.file_picker = on;
+        self.env.file_picker = on;
     }
 
     /// Moves the shared focus (the pointer's, the keys' and pad 0's) to the
@@ -364,13 +366,13 @@ impl Ui {
     /// The theme in effect: the configured one ([`Ui::set_theme`]) with the
     /// viewport's reduced-motion and contrast preferences applied.
     pub fn theme(&self) -> &Theme {
-        &self.theme
+        &self.env.theme
     }
 
     pub fn set_theme(&mut self, theme: Theme) {
         self.write_theme_tokens(theme);
-        self.configured = theme;
-        self.theme = effective_theme(theme, &self.viewport);
+        self.env.configured = theme;
+        self.env.theme = effective_theme(theme, &self.env.viewport);
         self.read_theme_tokens();
         self.invalidation.epoch += 1;
     }
@@ -401,7 +403,7 @@ impl Ui {
     /// The player's haptic strength: 0 turns haptics off, 1 plays the
     /// style's patterns as set (docs/ui.md §3.1).
     pub fn set_haptics(&mut self, intensity: f32) {
-        self.haptics = if intensity.is_finite() {
+        self.env.haptics = if intensity.is_finite() {
             intensity.clamp(0.0, 1.0)
         } else {
             1.0
@@ -409,26 +411,26 @@ impl Ui {
     }
 
     pub fn haptics(&self) -> f32 {
-        self.haptics
+        self.env.haptics
     }
 
     /// The configured style's name, for the theme the host reports (empty: the default style).
     pub fn style_name(&self) -> &str {
-        &self.style_name
+        &self.env.style_name
     }
 
     pub fn set_style_name(&mut self, name: &str) {
-        self.style_name = name.to_owned();
+        self.env.style_name = name.to_owned();
     }
 
     pub fn fonts(&self) -> &Fonts {
-        &self.fonts
+        &self.env.fonts
     }
 
     pub fn set_fonts(&mut self, fonts: Fonts) {
-        self.fonts = fonts;
+        self.env.fonts = fonts;
         self.invalidation.epoch += 1;
-        self.fonts.link();
+        self.env.fonts.link();
         self.texts.clear();
     }
 
@@ -442,7 +444,7 @@ impl Ui {
 
     /// The writing direction (left to right by default).
     pub fn direction(&self) -> og_i18n::Direction {
-        self.direction
+        self.env.direction
     }
 
     /// Node `i`'s text runs right to left, and how its paragraphs take
@@ -453,29 +455,29 @@ impl Ui {
             (flow.rtl, flow.para())
         } else {
             (
-                self.direction == og_i18n::Direction::Rtl,
-                crate::text::Para::Auto(self.direction),
+                self.env.direction == og_i18n::Direction::Rtl,
+                crate::text::Para::Auto(self.env.direction),
             )
         }
     }
 
     /// Right to left mirrors every frame's layout from the next `end` on.
     pub fn set_direction(&mut self, direction: og_i18n::Direction) {
-        self.direction = direction;
+        self.env.direction = direction;
     }
 
     /// The active BCP-47 locale for style-driven display casing. It never
     /// rewrites source strings, input fields or their selections.
     pub fn set_locale(&mut self, locale: &str) {
-        if self.locale != locale {
-            self.locale = locale.into();
+        if self.env.locale != locale {
+            self.env.locale = locale.into();
             self.reactive.graph.locale_changed();
         }
     }
 
     /// The control sizes in effect for the current viewport.
     pub fn sizes(&self) -> Density {
-        self.theme.sizes(&self.viewport)
+        self.env.theme.sizes(&self.env.viewport)
     }
 
     /// The last completed frame.
@@ -500,14 +502,14 @@ impl Ui {
         // it on the surface's size over it and draws it times larger
         // (`end`), so every length grows with the surface; input comes in
         // in units too.
-        let unit = surface_unit(&self.configured, &viewport);
+        let unit = surface_unit(&self.env.configured, &viewport);
         let viewport = viewport.zoomed(unit);
         let mut input = input.zoomed(unit);
-        self.unit = unit;
+        self.env.unit = unit;
         // A pad's virtual cursor is the pointer while it shows, and the
         // HUD edit mode takes the presses on what it edits.
         self.virtual_cursor_input(&mut input, viewport.width, viewport.height);
-        self.viewport = viewport;
+        self.env.viewport = viewport;
         self.hud_edit_input(&mut input);
         // Scrolling first: a press on a scrollbar grabs it before anything
         // under it, two touches scroll or zoom what is under them.
@@ -524,12 +526,12 @@ impl Ui {
                     .into(),
             );
         }
-        self.viewport = viewport;
-        self.theme = self.configured;
+        self.env.viewport = viewport;
+        self.env.theme = self.env.configured;
         self.read_theme_tokens();
-        self.theme = effective_theme(self.theme, &viewport).to_unit(unit);
+        self.env.theme = effective_theme(self.env.theme, &viewport).to_unit(unit);
         // The style's atlas at the density this surface draws at.
-        self.theme.art.atlas = self.configured.art.atlas_for(viewport.dpr());
+        self.env.theme.art.atlas = self.env.configured.art.atlas_for(viewport.dpr());
         self.retire_nodes();
         self.kept.prev.clear();
         self.prev_kinds.clear();
@@ -742,12 +744,12 @@ impl Ui {
                 range(f.pitch, rise)
             };
             let mut haptic = f.haptic;
-            if self.haptics <= 0.0 {
+            if self.env.haptics <= 0.0 {
                 haptic = crate::tokens::Haptic::NONE;
             }
             for p in haptic.pulses.iter_mut() {
-                p.low *= self.haptics;
-                p.high *= self.haptics;
+                p.low *= self.env.haptics;
+                p.high *= self.env.haptics;
             }
             if haptic.count > 0 && self.haptic_out.len() < 16 {
                 self.haptic_out.push(haptic);
@@ -828,15 +830,21 @@ impl Ui {
     /// (docs/ui.md §3.1): its size, line height and tracking; Chinese,
     /// Japanese and Korean text a line height half again its size.
     pub fn type_step(&self, role: crate::tokens::TypeRole) -> TypeStep {
-        let tok = self.theme.tokens.typography.get(role, self.breakpoint());
+        let tok = self
+            .env
+            .theme
+            .tokens
+            .typography
+            .get(role, self.breakpoint());
         // The tokens are the style's as authored; the player's text scale
         // grows them here (the ramp carries it already).
-        tok.step(self.theme.ramp_scale)
+        tok.step(self.env.theme.ramp_scale)
     }
 
     /// The font role the style sets `role` in.
     pub fn type_font(&self, role: crate::tokens::TypeRole) -> FontRole {
-        self.theme
+        self.env
+            .theme
             .tokens
             .typography
             .get(role, self.breakpoint())

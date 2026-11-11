@@ -648,7 +648,7 @@ impl Ui {
         markup: &str,
         desc: RichTextDesc,
     ) -> RichTextResponse {
-        let t = self.theme;
+        let t = self.env.theme;
         let (parsed, warnings) = parse_markup(markup);
         self.warnings.extend(warnings);
         let base_step = desc.step.unwrap_or(t.type_ramp.body);
@@ -703,7 +703,7 @@ impl Ui {
             });
             let mut text = s.text.clone();
             let atom = if let Some(name) = &s.icon {
-                match self.icons.find(name) {
+                match self.env.icons.find(name) {
                     Some(k) => Some(Atom::Icon(k)),
                     None => {
                         self.warnings
@@ -712,7 +712,7 @@ impl Ui {
                     }
                 }
             } else if let Some(name) = &s.image {
-                match self.images.get(name) {
+                match self.env.images.get(name) {
                     Some(im) => Some(Atom::Image(*im)),
                     None => {
                         self.warnings.push(format!(
@@ -727,7 +727,7 @@ impl Ui {
                 match self.glyph(name) {
                     Some(g) => {
                         text = g.text.clone();
-                        match self.icons.find(&g.icon) {
+                        match self.env.icons.find(&g.icon) {
                             Some(k) => Some(Atom::Icon(k)),
                             None if !g.text.is_empty() => Some(Atom::Cap(g.text)),
                             None => continue,
@@ -747,7 +747,7 @@ impl Ui {
             // A real bold or italic face when the style has one; else the
             // thickening and the oblique stand in for it.
             let weight = if s.bold { 700 } else { step.weight };
-            let synth = self.fonts.for_styled(font, weight, s.italic, "").1;
+            let synth = self.env.fonts.for_styled(font, weight, s.italic, "").1;
             let synth = crate::ui::Synth {
                 bold: s.bold && synth.bold,
                 italic: synth.italic,
@@ -802,7 +802,10 @@ impl Ui {
         n.probe_text = probe;
         n.content = Content::Rich(RichContent {
             spans,
-            base: (desc.step.unwrap_or(self.theme.type_ramp.body), desc.font),
+            base: (
+                desc.step.unwrap_or(self.env.theme.type_ramp.body),
+                desc.font,
+            ),
             align: desc.align,
             wrap: !desc.nowrap,
         });
@@ -850,11 +853,11 @@ impl Ui {
                 .map(|(_, p)| p)
                 .collect();
         }
-        let rtl = self.direction == og_i18n::Direction::Rtl;
+        let rtl = self.env.direction == og_i18n::Direction::Rtl;
         let mut out = Vec::new();
         let mut line_y = inner.y;
         for (k, line) in n.rich_lines.iter().enumerate() {
-            let segments = visual_segments(rc, &self.fonts, line, self.direction);
+            let segments = visual_segments(rc, &self.env.fonts, line, self.env.direction);
             let width: f32 = segments.iter().map(|s| s.width).sum();
             // Its line box: the room floats leave it (`Node::wrap_lines`,
             // its drop below the lines above), or its box.
@@ -929,10 +932,10 @@ impl Ui {
     ) {
         use crate::draw::DrawCmd;
         let n = &self.nodes[i];
-        let t = &self.theme;
+        let t = &self.env.theme;
         let p = &t.palette;
         let alpha = n.alpha;
-        let dpr = self.viewport.dpr();
+        let dpr = self.env.viewport.dpr();
         let snap = |v: f32| crate::layout::snap(v, dpr);
         let clip = n.clip;
         let tick = self.state.tick as f32;
@@ -1002,7 +1005,7 @@ impl Ui {
                     color: color.fade(alpha * 0.16).linear(),
                     clip,
                 });
-                let font = self.fonts.for_text(s.font, label);
+                let font = self.env.fonts.for_text(s.font, label);
                 if let Some(handle) = font.handle {
                     let size = em * CAP_TEXT;
                     let w = font.metrics.measure_tracked(label, size, 0.0);
@@ -1057,7 +1060,11 @@ impl Ui {
                 }
                 continue;
             }
-            let font = self.fonts.for_styled(s.font, s.weight, s.italic, &text).0;
+            let font = self
+                .env
+                .fonts
+                .for_styled(s.font, s.weight, s.italic, &text)
+                .0;
             let Some(handle) = font.handle else { continue };
             let first = cmds.len();
             let mixed = font.metrics.is_mixed();
@@ -1393,6 +1400,7 @@ impl Ui {
                         return seg.width * sk;
                     }
                     let font = self
+                        .env
                         .fonts
                         .for_styled(sp.font, sp.weight, sp.italic, &seg.text)
                         .0;
@@ -1477,6 +1485,7 @@ impl Ui {
                 continue;
             }
             let font = self
+                .env
                 .fonts
                 .for_styled(s.font, s.weight, s.italic, &piece.text)
                 .0;
@@ -1533,8 +1542,8 @@ impl Ui {
     ) {
         use crate::draw::DrawCmd;
         let n = &self.nodes[i];
-        let p = &self.theme.palette;
-        let (alpha, dpr, clip) = (n.alpha, self.viewport.dpr(), n.clip);
+        let p = &self.env.theme.palette;
+        let (alpha, dpr, clip) = (n.alpha, self.env.viewport.dpr(), n.clip);
         let from_bottom = self.rich_from_bottom(i, v);
         // The player's selection: each line's selected stretch, merged,
         // filled under the text, its column a line wide.
@@ -1652,7 +1661,11 @@ impl Ui {
                 }
                 _ => (piece.text.clone(), em, 0.0),
             };
-            let font = self.fonts.for_styled(s.font, s.weight, s.italic, &text).0;
+            let font = self
+                .env
+                .fonts
+                .for_styled(s.font, s.weight, s.italic, &text)
+                .0;
             if font.handle.is_none() {
                 continue;
             }
