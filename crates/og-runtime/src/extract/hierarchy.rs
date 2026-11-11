@@ -208,8 +208,12 @@ impl Hierarchy {
     /// have moved: an entity whose transform (bit for bit) and whose
     /// ancestors' transforms are as last read, under the same parents,
     /// keeps its world matrix, so a frame (or the raycast's tick record)
-    /// where little moves composes only what moved. The ECS keeps no
-    /// change ticks, so the columns are still read and compared.
+    /// where little moves composes only what moved. The columns are read
+    /// and compared, not skipped by their write clock
+    /// (`World::write_clock`): a column is stamped when a writable view of
+    /// it is made, not at each write through the view, so a write through
+    /// a typed array a game kept from an earlier view would be missed.
+    /// Comparing 20,000 transforms is under 0.1 ms.
     pub(crate) fn refresh(&mut self, world: &World) {
         self.capture(world);
         self.apply();
