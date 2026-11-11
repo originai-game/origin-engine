@@ -105,6 +105,15 @@ fn ogt_kind(ty: &str) -> Option<Kind> {
     OGT_KINDS.iter().find(|(t, _)| *t == ty).map(|&(_, k)| k)
 }
 
+/// The type an `.ogt`'s name says and does not hold: `<name>.<type>.ogt`
+/// names its type, so `hero.flipbook.ogt` cooking as anything but a
+/// flipbook is reported. A name whose last part is no type says nothing.
+pub(super) fn misnamed(rel: &str, kind: Kind) -> Option<&str> {
+    let stem = rel.rsplit('/').next()?.strip_suffix(".ogt")?;
+    let (_, named) = stem.rsplit_once('.')?;
+    (ogt_kind(named)? != kind).then_some(named)
+}
+
 /// Whether an `.ogt` of type `ty` has lines of its own below its header
 /// (CSS declarations, a recipe), which `.ogt`'s reader and `og fmt` leave
 /// alone.

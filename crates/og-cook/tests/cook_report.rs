@@ -308,6 +308,36 @@ fn a_change_to_code_alone_redoes_only_what_reads_code() {
     std::fs::remove_dir_all(root).unwrap();
 }
 
+#[test]
+fn a_name_that_says_one_type_over_a_file_of_another_is_a_warning() {
+    let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-cook-misnamed");
+    let _ = std::fs::remove_dir_all(&root);
+    let scene = "type scene\nversion 1\n---\n";
+    for name in [
+        // Named for what it holds; a last part that is no type; no part.
+        "level.scene.ogt",
+        "boss.arena.ogt",
+        "plain.ogt",
+        // Named a prefab, holding a scene.
+        "menu.prefab.ogt",
+    ] {
+        let path = root.join("assets/world").join(name);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, scene).unwrap();
+    }
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    assert_eq!(
+        report.warnings,
+        [
+            "assets/world/menu.prefab.ogt: named as a prefab (.prefab.ogt) and cooked as a scene: rename it or fix its type line"
+        ]
+    );
+    // An unchanged cook still says it.
+    let again = cook_project(&root, &CookOptions::default()).unwrap();
+    assert_eq!(again.warnings, report.warnings);
+}
+
 /// A source rewritten in the timestamp tick it was last written in, at the
 /// same length, keeps its size and times, and the cook after it still cooks it.
 /// File times advance in ticks (4 ms on ext4), so a cook and an edit both fit

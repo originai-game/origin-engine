@@ -655,6 +655,17 @@ pub(super) fn diagnose(
             }
         }
     }
+    // A name that says one type over a file of another.
+    for (s, r) in sources.iter().zip(reports.iter_mut()) {
+        if let Some(named) = scan::misnamed(&s.rel, s.kind) {
+            let what = format!(
+                "named as a {named} (.{named}.ogt) and cooked as a {}: rename it or fix its type line",
+                r.kind
+            );
+            warnings.push(format!("assets/{}: {what}", s.rel));
+            r.notes.push(what);
+        }
+    }
     efk::warnings(sources, reports, &mut warnings);
     // The project's look carries the art contract: say which of its
     // resources it sets (conformance to them is docs/art.md §2.3).
