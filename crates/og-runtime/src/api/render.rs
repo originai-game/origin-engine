@@ -279,7 +279,7 @@ pub fn og_render_capabilities(world: u32) -> String {
             let info = b.info();
             json!({
                 "tier": tier,
-                "compute": true,
+                "compute": info.as_ref().is_none_or(|i| i.caps.contains(og_render::Caps::COMPUTE)),
                 "antialias": b.antialias(),
                 "hdrSupported": info.as_ref().is_some_and(|i| i.hdr_supported),
                 "hdr": info.as_ref().is_some_and(|i| i.hdr),

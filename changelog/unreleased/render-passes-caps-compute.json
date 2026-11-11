@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "render.RenderCapabilities.compute",
+      "summary": "Reports whether the renderer runs compute passes on this device, from the renderer's capability set, instead of always answering true."
+    }
+  ]
+}
