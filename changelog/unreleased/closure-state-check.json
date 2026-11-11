@@ -1,0 +1,12 @@
+{
+  "breaking": [
+    {
+      "member": "og check",
+      "change": "OG9101 (state outside the world) now also covers state a closure keeps and state on an imported object. A let, var, container const or parameter of a function, written by a closure handed to defineSystem or og.game (directly, by name, or from a callback inside it), is an error: it lives in that closure from tick to tick, outside the world snapshot. So is an object imported from another of the game's files (a relative import) written through a member in a function (`shared.count++`). A closure only called while its function runs (a forEach callback summing into a local) is not reported; a closure registered by its caller after being returned, a method called on an imported object and state on a class instance are still not seen.",
+      "fix": "Keep the state in a component or a resource. --no-check runs anyway.",
+      "find": [
+        "OG9101"
+      ]
+    }
+  ]
+}

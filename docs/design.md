@@ -356,8 +356,15 @@ cancellable `og dev` checks use the stateless path.
   a typed array, ...) a function mutates, by file, line and name. The
   source is parsed and its names resolved (oxc's semantic model): a local
   shadowing a module name is its own, and a write as the module loads is
-  not state. Playtests and tests are not checked. State a closure keeps
-  inside a function, or one kept on an imported object, is not seen.
+  not state. Playtests and tests are not checked. The same error covers
+  the state one step further in: a variable or parameter of a function
+  that a closure handed to `defineSystem` or `og.game` writes (it lives in
+  that closure from tick to tick), and an object imported from another of
+  the game's files written through a member in a function. A closure only
+  called while its function runs (a `forEach` callback summing into a
+  local) is not state. Not seen: a closure that reaches the engine another
+  way (returned, then registered by its caller), a method called on an
+  imported object, and state on a class instance.
 
 ### 2.5 Scenes and assets
 
