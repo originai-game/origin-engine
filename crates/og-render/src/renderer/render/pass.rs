@@ -13,6 +13,8 @@ use super::*;
 pub(super) struct EncodeCx<'a, 'f> {
     pub ctx: &'a DrawCtx<'f>,
     pub encoder: &'a mut Encoder,
+    /// The sky pipelines' group.
+    pub sky_group: &'f wgpu::BindGroup,
 }
 
 /// A kind of frame pass.
@@ -66,5 +68,6 @@ macro_rules! passes {
 }
 
 passes! {
+    live_sky: pass_live_sky::LiveSkyPass => FramePass::LiveSky,
     gi_probes: pass_gi_probes::GiProbesPass => FramePass::GiProbes,
 }

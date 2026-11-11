@@ -55,6 +55,8 @@ use pass::{EncodeCx, FramePlans, Pass};
 mod pass_gi_probes;
 use draw_ctx::DrawCtx;
 use pass_gi_probes::GiProbesPass;
+mod pass_live_sky;
+use pass_live_sky::LiveSkyPass;
 mod setup;
 
 impl Renderer {
@@ -2590,9 +2592,7 @@ impl Renderer {
         self.queue
             .write_buffer(&self.frame_buffer, 0, bytemuck::bytes_of(&uniform));
         // The live sky's faces due this frame see the sky as it is drawn.
-        if let Some(c) = &self.sky_capture {
-            c.write(&self.queue, &uniform, &camera);
-        }
+        LiveSkyPass::write(&self.sky_capture, &self.queue, &uniform, &camera);
         let probe_positions: Vec<Vec3> = probe_frame
             .due
             .iter()
@@ -2930,10 +2930,11 @@ impl Renderer {
         self.shelter_key = shelter.as_ref().map(|s| s.2);
         let st = &scene.stylise;
         let lens = post_fx.lens_distortion.filter(|l| l.amount != 0.0);
+        plans.live_sky = LiveSkyPass::plan(&self.sky_capture);
         plans.gi_probes = GiProbesPass::plan(&self.gi_probes);
         let passes = schedule::frame_passes(
             &schedule::PassDecisions {
-                live_sky: self.sky_capture.is_some(),
+                live_sky: plans.live_sky.is_some(),
                 gi_probes: plans.gi_probes.is_some(),
                 cascades: cascades.len() as u32,
                 shelter: shelter_redraw,
@@ -4216,6 +4217,7 @@ impl Renderer {
                     &mut EncodeCx {
                         ctx: &ctx,
                         encoder: &mut encoder,
+                        sky_group,
                     },
                 ) => {}
                 FramePass::Cascade(i) => ctx.shadow_pass(
@@ -4345,34 +4347,6 @@ impl Renderer {
                         ambient,
                     );
                     stats.draw_calls += (lights_2d > 0) as u32;
-                }
-                FramePass::LiveSky => {
-                    let c = self.sky_capture.as_ref().expect("planned with it");
-                    let ibl = self.ibl.views();
-                    let frame = |uniform: wgpu::BindingResource| {
-                        bind_group(
-                            &self.device,
-                            "frame (live sky)",
-                            &self.frame_layout,
-                            &[
-                                uniform,
-                                wgpu::BindingResource::TextureView(&self.cascade_map.array_view),
-                                wgpu::BindingResource::TextureView(&self.local_map.array_view),
-                                wgpu::BindingResource::TextureView(&ibl.irradiance),
-                                wgpu::BindingResource::TextureView(&ibl.prefiltered),
-                                wgpu::BindingResource::TextureView(&ibl.brdf_lut),
-                                wgpu::BindingResource::Sampler(&ibl.sampler),
-                                self.light_buffers[0].as_entire_binding(),
-                                self.light_buffers[1].as_entire_binding(),
-                                self.light_buffers[2].as_entire_binding(),
-                                self.lightmaps.probe_buffer.as_entire_binding(),
-                                self.ltc.as_entire_binding(),
-                                self.caustic_grid.as_entire_binding(),
-                                wgpu::BindingResource::TextureView(self.ssr.off_view()),
-                            ],
-                        )
-                    };
-                    c.record(&mut encoder, &self.ibl, frame, sky_group);
                 }
                 FramePass::Probes => self.encode_probes(ProbesPassInputs {
                     ctx: &ctx,

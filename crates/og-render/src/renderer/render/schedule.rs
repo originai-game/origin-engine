@@ -25,6 +25,7 @@ pub(crate) struct PassDesc {
 
 /// Every kind of graph pass that needs a capability; the rest need none.
 pub(crate) const PASSES: &[PassDesc] = &[
+    LiveSkyPass::DESC,
     GiProbesPass::DESC,
     // Three colour targets: normals and velocity, linear depth, outline ids.
     PassDesc {
