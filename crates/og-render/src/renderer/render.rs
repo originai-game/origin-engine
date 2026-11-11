@@ -4071,8 +4071,9 @@ impl Renderer {
             |e| terrain::encode_corners(e, &terrain_draws),
         );
         // The grass's blades, generated before every pass that draws them.
-        self.grass
-            .encode(&mut encoder, &grass_frame, &terrain_draws);
+        pre_graph(&mut encoder, self.info.caps, pre_graph::GRASS, |e| {
+            self.grass.encode(e, &grass_frame, &terrain_draws)
+        });
         // The scattered copies placed on the GPU this frame, then those the
         // main camera sees, culled on the GPU against its view and the
         // depth pyramid the culling drew.

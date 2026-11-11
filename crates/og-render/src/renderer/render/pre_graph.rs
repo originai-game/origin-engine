@@ -53,9 +53,16 @@ pub(crate) const TERRAIN_CORNERS: PreGraphDesc = PreGraphDesc {
     needs: Caps::COMPUTE,
 };
 
+/// The grass's blades (grass.rs), generated in compute before every
+/// pass that draws them.
+pub(crate) const GRASS: PreGraphDesc = PreGraphDesc {
+    name: "grass",
+    needs: Caps::COMPUTE,
+};
+
 /// The passes before the graph, in the frame encoder's order.
 pub(crate) const PRE_GRAPH: &[PreGraphDesc] =
-    &[CROWD_CULL, WIND, VISUAL, SURFACES, TERRAIN_CORNERS];
+    &[CROWD_CULL, WIND, VISUAL, SURFACES, TERRAIN_CORNERS, GRASS];
 
 /// Encodes the pass `desc` with `encode` where `caps` has its needs, the
 /// encoder checking what it opens against them (`Encoder::expect`), and
