@@ -28,10 +28,23 @@ pub fn find<'a>(ix: &'a SearchIndex, query: &str, kind: Option<&str>) -> Vec<(&'
         .collect()
 }
 
+/// The core items a module overview names (`og_idl`'s core line), or none
+/// when the module declares no tiers.
+fn core(overview: &str) -> Option<Vec<&str>> {
+    let line = overview
+        .lines()
+        .find_map(|l| l.strip_prefix(og_idl::CORE_PREFIX))?;
+    let names = line.split_once("; ").map_or(line, |(n, _)| n);
+    Some(names.split(", ").map(|n| n.trim_matches('`')).collect())
+}
+
 /// A module's members that have a page of their own, by kind, one line each
-/// of names: what `og api show <module>` lists after the overview.
-fn members(ix: &SearchIndex, module: &str) -> String {
+/// of names: what `og api show <module>` lists after the overview. With a
+/// core tier, only the core ones unless `all`.
+fn members(ix: &SearchIndex, module: &str, overview: &str, all: bool) -> String {
+    let core = core(overview).filter(|_| !all);
     let mut out = String::new();
+    let mut hidden = 0;
     for kind in ["fn", "record", "interface", "type"] {
         let mut names: Vec<&str> = ix
             .docs
@@ -40,12 +53,29 @@ fn members(ix: &SearchIndex, module: &str) -> String {
             .map(|d| d.name.as_str())
             .collect();
         names.dedup();
+        if let Some(core) = &core {
+            let before = names.len();
+            names.retain(|n| core.contains(n));
+            hidden += before - names.len();
+        }
         if !names.is_empty() {
             out.push_str(&format!("{kind}: {}\n", names.join(", ")));
         }
     }
     if !out.is_empty() {
-        out.insert_str(0, "\nMembers (`og api show <name>` for one):\n");
+        out.insert_str(
+            0,
+            if core.is_some() {
+                "\nCore members (`og api show <name>` for one):\n"
+            } else {
+                "\nMembers (`og api show <name>` for one):\n"
+            },
+        );
+    }
+    if hidden > 0 {
+        out.push_str(&format!(
+            "… {hidden} advanced; `og api show {module} --all` lists them.\n"
+        ));
     }
     out
 }
@@ -190,6 +220,7 @@ pub fn run(cmd: &str, args: &[&str]) -> ExitCode {
     let mut kind = None;
     let mut limit = 12usize;
     let mut json = false;
+    let mut every = false;
     let mut rest = Vec::new();
     let mut it = args.iter();
     while let Some(a) = it.next() {
@@ -209,6 +240,7 @@ pub fn run(cmd: &str, args: &[&str]) -> ExitCode {
                 }
             },
             "--json" => json = true,
+            "--all" => every = true,
             w => rest.push(w),
         }
     }
@@ -255,7 +287,7 @@ pub fn run(cmd: &str, args: &[&str]) -> ExitCode {
             }
             print!("{}", render(e));
             if e.kind == "module" {
-                print!("{}", members(&ix, &e.page));
+                print!("{}", members(&ix, &e.page, &e.body, every));
             }
         }
         return ExitCode::SUCCESS;
@@ -492,7 +524,7 @@ mod tests {
         );
         // Its members follow, each named once.
         let ix = index(&dir()).unwrap();
-        let listed = members(&ix, "anim");
+        let listed = members(&ix, "anim", "", true);
         assert!(
             listed.contains("record: ") && listed.contains("og.anim.clip"),
             "{listed}"

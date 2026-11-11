@@ -20,6 +20,19 @@ pub struct Api {
     /// by name: each becomes a wiki page whose numbered sections are entries
     /// of `og api find` and `og api show`.
     pub guides: Vec<Guide>,
+    /// The part files `read` concatenated, as (lines before it, file name);
+    /// empty when the model was parsed from one text.
+    pub parts: Vec<(usize, String)>,
+}
+
+impl Api {
+    /// Where a model line was written: its part file and the line in it.
+    pub fn locate(&self, line: usize) -> (&str, usize) {
+        match self.parts.iter().rev().find(|(n, _)| *n < line) {
+            Some((n, name)) => (name, line - n),
+            None => ("api.ogt", line),
+        }
+    }
 }
 
 /// One guide: workflow, thresholds and pitfalls that no signature states.
@@ -29,6 +42,96 @@ pub struct Guide {
     pub name: String,
     /// The Markdown as written: a `# Title`, a summary paragraph and `## N. ` sections.
     pub text: String,
+}
+
+impl Guide {
+    /// The numbers of its `## N. ` sections, outside code fences.
+    pub fn sections(&self) -> Vec<u32> {
+        let mut fence = false;
+        let mut out = Vec::new();
+        for line in self.text.lines() {
+            if line.starts_with("```") {
+                fence = !fence;
+            }
+            if let Some((n, _)) = (!fence)
+                .then(|| line.strip_prefix("## "))
+                .flatten()
+                .and_then(|h| h.split_once(". "))
+                && let Ok(n) = n.parse()
+            {
+                out.push(n);
+            }
+        }
+        out
+    }
+}
+
+impl Api {
+    /// Every `guide` reference in the IDL, in declaration order.
+    pub fn guide_refs(&self) -> Vec<&GuideRef> {
+        let mut out = Vec::new();
+        for m in &self.modules {
+            out.extend(&m.see);
+            for item in &m.items {
+                match item {
+                    Item::Fn(f) => out.extend(&f.see),
+                    Item::Struct(s) => {
+                        out.extend(&s.see);
+                        out.extend(s.fields.iter().flat_map(|f| &f.see));
+                    }
+                    Item::Enum(e) => out.extend(&e.see),
+                    Item::Union(u) => out.extend(&u.see),
+                    Item::Interface(i) => {
+                        out.extend(&i.see);
+                        for mem in &i.members {
+                            match mem {
+                                Member::Fn(f) => out.extend(&f.see),
+                                Member::Prop(p) => out.extend(&p.see),
+                            }
+                        }
+                    }
+                    Item::Record(r) => {
+                        out.extend(&r.see);
+                        out.extend(r.fields.iter().flat_map(|f| &f.see));
+                        for f in &r.methods {
+                            out.extend(&f.see);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+        out
+    }
+}
+
+/// `guide "saves §2"` on a declaration: where its workflow, thresholds and
+/// pitfalls are written. The generators append "See `saves §2`." to its doc.
+#[derive(Debug, Clone, PartialEq)]
+pub struct GuideRef {
+    /// The guide's name (`saves`), a file of `crates/og-api/guides/`.
+    pub guide: String,
+    /// Its `## N.` section, or the whole guide.
+    pub section: Option<u32>,
+    pub line: usize,
+}
+
+impl fmt::Display for GuideRef {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.section {
+            Some(n) => write!(f, "{} §{n}", self.guide),
+            None => f.write_str(&self.guide),
+        }
+    }
+}
+
+/// A heading over a run of a struct's or record's fields (`group "Shadows"`):
+/// a section of the wiki's field table and a comment in the `.d.ts`.
+#[derive(Debug, Clone)]
+pub struct FieldGroup {
+    pub name: String,
+    pub doc: Vec<String>,
+    pub line: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -66,6 +169,11 @@ pub struct Module {
     pub place: Place,
     /// `false` drops the whole module from `publish` builds.
     pub publish: bool,
+    /// The core tier (`core castRay RigidBody ...`): the items most games
+    /// use, which `og api show <module>` lists; the rest are advanced.
+    /// Empty: the module declares no tiers and every item is listed.
+    pub core: Vec<String>,
+    pub see: Vec<GuideRef>,
     pub items: Vec<Item>,
     pub line: usize,
 }
@@ -277,6 +385,8 @@ pub struct Function {
     /// (sugar such as `og.assert.always`), so it has no binding symbol and no
     /// host trait method.
     pub host: bool,
+    /// `guide` lines: the guide sections that carry its workflow.
+    pub see: Vec<GuideRef>,
     pub line: usize,
 }
 
@@ -323,6 +433,9 @@ pub struct Field {
     pub tunable: bool,
     pub readonly: bool,
     pub optional: bool,
+    pub see: Vec<GuideRef>,
+    /// The `group` heading it sits under, if any.
+    pub group: Option<String>,
     pub line: usize,
 }
 
@@ -336,6 +449,10 @@ pub struct Struct {
     /// A desc struct: every field may be omitted and takes its default.
     pub desc: bool,
     pub fields: Vec<Field>,
+    /// The headings over its fields, in order.
+    pub groups: Vec<FieldGroup>,
+    /// `guide` lines: the guide sections that carry its workflow.
+    pub see: Vec<GuideRef>,
     pub line: usize,
 }
 
@@ -357,6 +474,8 @@ pub struct Enum {
     /// Template string alternatives with `${string}` holes. These extend
     /// string arguments, not the fixed variants of numeric enum columns.
     pub patterns: Vec<Variant>,
+    /// `guide` lines: the guide sections that carry its workflow.
+    pub see: Vec<GuideRef>,
     pub line: usize,
 }
 
@@ -377,6 +496,8 @@ pub struct Union {
     pub aliases: Vec<String>,
     pub tag: String,
     pub cases: Vec<Case>,
+    /// `guide` lines: the guide sections that carry its workflow.
+    pub see: Vec<GuideRef>,
     pub line: usize,
 }
 
@@ -389,6 +510,7 @@ pub struct Prop {
     /// false: a property the TypeScript runtime holds (og.Shape.holes), with
     /// no host getter.
     pub host: bool,
+    pub see: Vec<GuideRef>,
     pub line: usize,
 }
 
@@ -429,6 +551,8 @@ pub struct Interface {
     pub extends: Option<String>,
     pub publish: Option<bool>,
     pub members: Vec<Member>,
+    /// `guide` lines: the guide sections that carry its workflow.
+    pub see: Vec<GuideRef>,
     pub line: usize,
 }
 
@@ -485,7 +609,11 @@ pub struct Record {
     /// other engines' names, read by `og api find` only.
     pub aliases: Vec<String>,
     pub fields: Vec<Field>,
+    /// The headings over its fields, in order.
+    pub groups: Vec<FieldGroup>,
     /// Resources only: methods on the resource value.
     pub methods: Vec<Function>,
+    /// `guide` lines: the guide sections that carry its workflow.
+    pub see: Vec<GuideRef>,
     pub line: usize,
 }

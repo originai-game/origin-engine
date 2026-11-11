@@ -284,14 +284,17 @@ commands:
                       the API reference and guide entries for the words (a name, a purpose, a
                       typo), ranked by BM25F over name, summary, members and body fused with
                       static word embeddings, one line each; --json adds the scores
-  api show <name>     one API entry in full: signature, fields, doc (og.CharacterController,
-                      og.physics.castRay, SHAPE_BOX; og. may be left out); a module shows its
-                      overview and its members
+  api show <name> [--all]
+                      one API entry in full: signature, fields, doc (og.CharacterController,
+                      og.physics.castRay, SHAPE_BOX, \"saves §2\"; og. may be left out); a module
+                      shows its overview and its core members, --all every member
   api gen [--wiki] [--root <dir>]
                       regenerate the IDL outputs (packages/engine/{types,schema}, the hosts' glue,
                       the knowledge wiki); --wiki writes only the wiki
-  api check [--root <dir>]
-                      exit 1 when a generated file differs from crates/og-api/api/
+  api check [--root <dir>] [--budget]
+                      exit 1 when a generated file differs from crates/og-api/api/, or more
+                      descriptions are over their budget (600 characters for modules, functions
+                      and types, 300 for fields and the rest) than its backlog; --budget lists them
   bake projection <init|plan|prepare|project|holes|export> --run <dir> [options]
                       texture a level from views an image model paints (CPU, native): the
                       caller paints each prepared view; `og bake projection` lists the steps

@@ -364,7 +364,9 @@ impl<'a> Gen<'a, '_> {
         };
         self.jsdoc("", &s.doc, &extra);
         self.line(&format!("export interface {} {{", s.name));
+        let mut group = None;
         for f in &s.fields {
+            self.group_heading(&s.groups, &mut group, f);
             let tags = self.field_tags(f, s.desc);
             self.jsdoc("  ", &f.doc, &tags);
             let opt = if s.desc || f.optional { "?" } else { "" };
@@ -389,7 +391,9 @@ impl<'a> Gen<'a, '_> {
         };
         self.jsdoc("", &r.doc, &[what]);
         self.line(&format!("export interface {} {{", r.name));
+        let mut group = None;
         for f in &r.fields {
+            self.group_heading(&r.groups, &mut group, f);
             let tags = self.field_tags(f, false);
             self.jsdoc("  ", &f.doc, &tags);
             let ro = if f.readonly || r.kind == RecordKind::Event {
@@ -613,6 +617,22 @@ impl<'a> Gen<'a, '_> {
             tags.push("@readonly written by the engine".to_string());
         }
         tags
+    }
+
+    /// A `// ── Heading ──` comment (and its doc) where a field starts a new `group`.
+    fn group_heading<'g>(&mut self, groups: &'g [FieldGroup], current: &mut Option<&'g str>, f: &Field) {
+        let Some(name) = f.group.as_deref() else {
+            return;
+        };
+        if *current == Some(name) {
+            return;
+        }
+        let g = groups.iter().find(|g| g.name == name).expect("a declared group");
+        *current = Some(&g.name);
+        self.line(&format!("  // ── {} ──", g.name));
+        for d in &g.doc {
+            self.line(format!("  // {d}").trim_end());
+        }
     }
 
     fn jsdoc(&mut self, indent: &str, doc: &[String], tags: &[String]) {

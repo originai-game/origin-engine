@@ -17,10 +17,18 @@ pub fn run(args: &[&str]) -> ExitCode {
             }
         }
         [cmd @ ("find" | "show"), rest @ ..] => crate::api_lookup::run(cmd, rest),
-        ["check", rest @ ..] => match root_option(rest) {
-            Ok(root) => api_check(&root),
-            Err(code) => code,
-        },
+        ["check", rest @ ..] => {
+            let list = rest.contains(&"--budget");
+            let rest: Vec<&str> = rest.iter().copied().filter(|a| *a != "--budget").collect();
+            match root_option(&rest) {
+                Ok(root) => {
+                    let drift = api_check(&root);
+                    let budget = api_budget(&root, list);
+                    if drift == ExitCode::SUCCESS { budget } else { drift }
+                }
+                Err(code) => code,
+            }
+        }
         _ => {
             eprintln!(
                 "og api: expected `og api find`, `og api show`, `og api gen` or `og api check`; run `og --help` for the options."
@@ -150,6 +158,36 @@ fn written_guides(root: &Path) -> [(&'static str, String); 2] {
             crate::vfx_catalogue::markdown(root),
         ),
     ]
+}
+
+/// The description budget (`og_idl::budget`): a summary, or with `--budget`
+/// every description over it; a failure when more are over than the backlog.
+fn api_budget(root: &Path, list: bool) -> ExitCode {
+    use og_idl::budget::{BACKLOG, FIELD, ITEM, over};
+    let Ok(api) = og_idl::read(&root.join(og_idl::IDL_PATH)) else {
+        return ExitCode::FAILURE;
+    };
+    let over = over(&api);
+    let items = over.iter().filter(|o| o.budget == ITEM).count();
+    if list {
+        for o in &over {
+            let (part, line) = api.locate(o.line);
+            println!("{part}:{line}: {} has {} characters of {}", o.entry, o.chars, o.budget);
+        }
+    }
+    println!(
+        "og api check: {} description(s) over budget ({items} over {ITEM} characters for modules, functions and types; {} over {FIELD} for fields, parameters and the rest), backlog {BACKLOG}{}",
+        over.len(),
+        over.len() - items,
+        if list || over.is_empty() { "" } else { "; `og api check --budget` lists them" }
+    );
+    if over.len() > BACKLOG {
+        eprintln!(
+            "og api check: more descriptions are over budget than the backlog of {BACKLOG}: move workflow, sizes, timings and cross-member caveats to a guide and point at it with `guide \"<guide> §N\"` (crates/og-idl/src/budget.rs states the rule)"
+        );
+        return ExitCode::FAILURE;
+    }
+    ExitCode::SUCCESS
 }
 
 fn api_check(root: &Path) -> ExitCode {

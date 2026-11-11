@@ -13,6 +13,7 @@
 //! did not change untouched, so an IDL edit rebuilds only the crates whose
 //! generated Rust it changes.
 
+pub mod budget;
 pub mod embed;
 mod r#gen;
 mod index;
@@ -24,6 +25,7 @@ mod validate;
 mod values;
 
 pub use index::Index;
+pub use r#gen::wiki::CORE_PREFIX;
 pub use model::{Api, Guide};
 
 use std::fmt;
@@ -145,7 +147,7 @@ pub fn read(path: &Path) -> Result<Api, ReadError> {
         offset += source.bytes().filter(|&b| b == b'\n').count();
         text.push_str(&source);
     }
-    let mut api = parse(&text).map_err(|diags| {
+    let invalid = |diags: Vec<Diagnostic>| {
         let diags = diags
             .into_iter()
             .map(|mut d| {
@@ -155,8 +157,18 @@ pub fn read(path: &Path) -> Result<Api, ReadError> {
             })
             .collect();
         ReadError::Invalid(path.to_path_buf(), diags)
-    })?;
+    };
+    let mut api = parse(&text).map_err(invalid)?;
+    api.parts = sources
+        .iter()
+        .skip(1)
+        .map(|(n, p)| (*n, p.file_name().unwrap_or_default().to_string_lossy().into_owned()))
+        .collect();
     api.guides = guides(&path.join("..").join("guides"))?;
+    let unresolved = validate::guide_refs(&api);
+    if !unresolved.is_empty() {
+        return Err(invalid(unresolved));
+    }
     Ok(api)
 }
 
@@ -198,6 +210,7 @@ pub struct Generated {
 
 /// Every file the IDL generates, in a fixed order.
 pub fn generate(api: &Api) -> Vec<Generated> {
+    let api = &with_guide_refs(api);
     let ix = Index::new(api);
     vec![
         Generated {
@@ -249,7 +262,57 @@ pub fn generate(api: &Api) -> Vec<Generated> {
 /// The wiki pages alone (`og api gen --wiki`): one page per module and an
 /// index, under [`WIKI_DIR`].
 pub fn generate_wiki(api: &Api) -> Vec<Generated> {
-    wiki_pages(&Index::new(api))
+    wiki_pages(&Index::new(&with_guide_refs(api)))
+}
+
+/// The API as the generators print it: each declaration's `guide` lines
+/// become the last paragraph of its doc, "See `saves §2`.", so the `.d.ts`,
+/// the schema and the wiki all point a reader at the guide.
+fn with_guide_refs(api: &Api) -> Api {
+    use model::{GuideRef, Item, Member};
+    fn see(doc: &mut Vec<String>, refs: &[GuideRef]) {
+        if !refs.is_empty() {
+            let names: Vec<String> = refs.iter().map(|r| format!("`{r}`")).collect();
+            doc.push(format!("See {}.", names.join(", ")));
+        }
+    }
+    let mut api = api.clone();
+    for m in &mut api.modules {
+        see(&mut m.doc, &m.see);
+        for item in &mut m.items {
+            match item {
+                Item::Fn(f) => see(&mut f.doc, &f.see),
+                Item::Struct(s) => {
+                    see(&mut s.doc, &s.see);
+                    for f in &mut s.fields {
+                        see(&mut f.doc, &f.see);
+                    }
+                }
+                Item::Enum(e) => see(&mut e.doc, &e.see),
+                Item::Union(u) => see(&mut u.doc, &u.see),
+                Item::Interface(i) => {
+                    see(&mut i.doc, &i.see);
+                    for mem in &mut i.members {
+                        match mem {
+                            Member::Fn(f) => see(&mut f.doc, &f.see),
+                            Member::Prop(p) => see(&mut p.doc, &p.see),
+                        }
+                    }
+                }
+                Item::Record(r) => {
+                    see(&mut r.doc, &r.see);
+                    for f in &mut r.fields {
+                        see(&mut f.doc, &f.see);
+                    }
+                    for f in &mut r.methods {
+                        see(&mut f.doc, &f.see);
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    api
 }
 
 /// Where the wiki is generated, relative to the repository root: the
