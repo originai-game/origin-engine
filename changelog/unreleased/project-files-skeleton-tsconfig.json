@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og create",
+      "summary": "The skeleton's tsconfig.json no longer includes `host.d.ts`, a file no project has; its `include` is `src/**/*.ts`, `tests/**/*.ts` and `.og/types/**/*.d.ts`. `og check` on a project without a tsconfig.json uses the same list. An existing project's own tsconfig.json is not rewritten and keeps working. The start guide names `tools/` as the place for scripts that generate sources: nothing there is cooked or bundled."
+    }
+  ]
+}

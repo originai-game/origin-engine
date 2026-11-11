@@ -79,6 +79,9 @@ mechanical and lists every line it is not, each with its section of the
   no native addon; a feature that seems to need one is an engine request.
 - `assets/` holds sources; `og cook` writes `cooked/`. Never edit or
   commit `cooked/`, `dist/` or `og-out/`.
+- Scripts that generate sources (art, maps, tables) go in `tools/`.
+  Nothing there is cooked or bundled, and a generated file names its
+  script in its first comment.
 - Simulation state lives in components and resources; UI state lives
   in named scope stores. Module-level values are outside the snapshot,
   so saves, restores, hot reload and replays lose them.
