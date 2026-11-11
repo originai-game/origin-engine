@@ -278,214 +278,8 @@ impl Ui {
         let mut touched =
             crate::id::KeySet::with_capacity_and_hasher(m.channels.len(), Default::default());
 
-        // Plays asked for this tick: flattened now that rectangles are known.
-        for p in std::mem::take(&mut self.style.pending_plays) {
-            if reduced && p.desc.decorative {
-                continue;
-            }
-            let mut clips = Vec::new();
-            let length = self.flatten(
-                &p.choreo,
-                p.root,
-                &self.tree.index.by_key,
-                0.0,
-                0,
-                &mut clips,
-            );
-            let first = clips
-                .first()
-                .and_then(|c| self.style.timelines.get(&c.timeline))
-                .map(|(_, t)| t.clone())
-                .unwrap_or_default();
-            let at = first.label(&p.desc.from_label).unwrap_or(p.desc.from_ms);
-            m.plays.retain(|q| q.id != p.id);
-            m.plays.push(Play {
-                id: p.id,
-                root: p.root,
-                clips,
-                start: now,
-                at_ms: at,
-                last_ms: at - 1e-3,
-                speed: if p.desc.speed > 0.0 {
-                    p.desc.speed
-                } else {
-                    1.0
-                },
-                reverse: p.desc.reverse,
-                repeat: match p.desc.repeat {
-                    Repeat::Once => 0,
-                    Repeat::Loop => 1,
-                    Repeat::PingPong => 2,
-                },
-                hold: p.desc.hold,
-                paused: false,
-                length_ms: length,
-                ended: false,
-            });
-        }
-
-        // Plays: values this tick and the events passed.
-        let mut overrides: Vec<(u64, usize, f32)> = Vec::new();
-        let mut events: Vec<UiEvent> = Vec::new();
-        let mut state_events: Vec<(u64, String, String)> = Vec::new();
-        let mut bursts: Vec<BurstRun> = Vec::new();
-        m.plays
-            .retain(|p| self.tree.index.by_key.contains_key(&p.root) && !(p.ended && !p.hold));
-        if reduced {
-            // Decorative loops stop under reduced motion.
-            m.plays.retain(|p| p.repeat == 0);
-        }
-        for p in &mut m.plays {
-            let len = p.length_ms.max(1e-3);
-            let raw = if p.paused {
-                p.at_ms
-            } else {
-                p.at_ms + (now - p.start) as f32 * 1000.0 / tps as f32 * p.speed
-            };
-            let map = |raw: f32| -> f32 {
-                let t = match p.repeat {
-                    0 => raw.clamp(0.0, len),
-                    1 => raw.rem_euclid(len),
-                    _ => {
-                        let k = raw.rem_euclid(2.0 * len);
-                        if k > len { 2.0 * len - k } else { k }
-                    }
-                };
-                if p.reverse { len - t } else { t }
-            };
-            let (t_prev, t_now) = (map(p.last_ms), map(raw));
-            let wrapped = p.repeat == 1 && (raw / len).floor() != (p.last_ms / len).floor();
-            // A play's first tick includes its starting instant: an event at
-            // 0 ms (a reversed play's last) fires as it starts.
-            let fresh = p.last_ms < p.at_ms;
-            let crossed = |e: f32| -> bool {
-                if wrapped {
-                    if p.reverse {
-                        (e < t_prev && e >= 0.0) || (e >= t_now && e <= len)
-                    } else {
-                        (e > t_prev && e <= len) || (e >= 0.0 && e <= t_now)
-                    }
-                } else if t_now > t_prev || (t_now == t_prev && !p.reverse) {
-                    (e > t_prev || (fresh && e == t_prev)) && e <= t_now
-                } else {
-                    e >= t_now && (e < t_prev || (fresh && e == t_prev))
-                }
-            };
-            if p.repeat == 0 && raw >= len && !p.ended {
-                p.ended = true;
-                events.push(UiEvent {
-                    kind: "end".into(),
-                    play: p.id,
-                    pitch: 1.0,
-                    ..UiEvent::default()
-                });
-            }
-            for clip in &p.clips {
-                let Some((_, tl)) = self.style.timelines.get(&clip.timeline) else {
-                    continue;
-                };
-                let local = (t_now - clip.offset_ms).clamp(0.0, tl.length_ms());
-                for tr in &tl.tracks {
-                    let target = Ui::below(clip.target, &tr.target);
-                    if let Some(v) = sample(tr, local, tps) {
-                        for &c in tr.prop.channels() {
-                            overrides.push((target, c, v));
-                        }
-                    }
-                }
-                if t_prev == t_now && p.last_ms >= p.at_ms {
-                    continue;
-                }
-                for e in &tl.events {
-                    if !crossed(clip.offset_ms + e.at_ms) {
-                        continue;
-                    }
-                    let target = Ui::below(clip.target, &e.target);
-                    let path = self
-                        .tree
-                        .index
-                        .by_key
-                        .get(&target)
-                        .map_or(String::new(), |&i| self.path_of(i));
-                    let pitch_of = |pitch: f32| {
-                        (if pitch > 0.0 { pitch } else { 1.0 }) * 1.06f32.powi(clip.index as i32)
-                    };
-                    let mut ev = UiEvent {
-                        target: path,
-                        play: p.id,
-                        index: clip.index,
-                        pitch: 1.0,
-                        ..UiEvent::default()
-                    };
-                    match &e.kind {
-                        EventKind::Sound { name, pitch } => {
-                            ev.kind = "sound".into();
-                            ev.name = name.clone();
-                            ev.pitch = pitch_of(*pitch);
-                        }
-                        EventKind::Haptic(name) => {
-                            ev.kind = "haptic".into();
-                            ev.name = name.clone();
-                        }
-                        EventKind::Burst {
-                            count,
-                            radius,
-                            color,
-                            duration_ms,
-                        } => {
-                            ev.kind = "burst".into();
-                            bursts.push(BurstRun {
-                                key: target,
-                                since: now,
-                                count: *count,
-                                radius: *radius,
-                                color: *color,
-                                duration_ms: *duration_ms,
-                            });
-                        }
-                        EventKind::State { group, state } => {
-                            ev.kind = "state".into();
-                            ev.name = format!("{group}={state}");
-                            state_events.push((target, group.clone(), state.clone()));
-                        }
-                        EventKind::Callback(name) => {
-                            ev.kind = "callback".into();
-                            ev.name = name.clone();
-                        }
-                    }
-                    events.push(ev);
-                }
-            }
-            p.last_ms = raw;
-        }
-        for (key, group, s) in state_events {
-            m.set_states.insert(group_key(key, &group), s);
-        }
-        for ev in &events {
-            if ev.kind == "sound"
-                && let Some(s) = crate::style_file::UiSound::from_name(&ev.name)
-            {
-                self.sound(s);
-            }
-        }
-        if !reduced {
-            m.bursts.extend(bursts);
-        }
-
-        // Drags and pinches.
-        for k in 0..self.tree.orders.with(feat::GESTURE).len() {
-            let i = self.tree.orders.with(feat::GESTURE)[k];
-            let n = &self.tree.nodes[i];
-            if n.props.drag.is_none() && n.props.pinch.is_none() {
-                continue;
-            }
-            let key = n.key;
-            let out = self.run_gesture(i, &mut m);
-            self.tree.nodes[i].gesture = out;
-            touched.insert(channel_key(key, DRAG_X));
-            touched.insert(channel_key(key, DRAG_Y));
-        }
-        m.gestures.retain(|_, g| g.tick == now);
+        let (overrides, mut events) = self.step_plays(&mut m, now, tps, reduced);
+        self.step_gestures(&mut m, &mut touched, now);
 
         // Each element: states, channels, entrance, FLIP.
         // The nodes that animate their layout, by node (FLIP is relative to
@@ -896,6 +690,289 @@ impl Ui {
             }
         }
 
+        self.step_matches(&mut m, &mut touched, now, tps, tokens, reduced);
+        self.step_exits(&mut m, now, tps, tokens, reduced);
+
+        let visited = self.forget_motion(&mut m, whole, seeds, &touched, visited, now);
+        // A CSS animation no element ran this tick ended with its element
+        // or its `animation-name`.
+        m.css.retain(|r| r.stepped == now);
+        let tree = &self.tree.index;
+        self.style
+            .motion
+            .timelines
+            .retain(|k, _| tree.by_key.contains_key(k));
+        // Transitions of computed values outlive no element.
+        m.styles
+            .retain(|k, _| self.tree.index.by_key.contains_key(k));
+        m.part_styles
+            .retain(|k, _| self.tree.index.by_key.contains_key(k));
+        m.bursts.extend(css_bursts);
+        for ev in &css_events {
+            if let Some(s) = crate::style_file::UiSound::from_name(&ev.name) {
+                self.sound(s);
+            }
+        }
+        events.extend(css_events);
+        self.interaction.state.motion = m;
+        self.style.motion.motion_moving = moving;
+        self.out.events.extend(events);
+        for (key, name) in starts {
+            self.start_play(
+                key,
+                Choreo::Play {
+                    timeline: name,
+                    target: String::new(),
+                    delay_ms: 0.0,
+                },
+                PlayDesc::default(),
+            );
+        }
+        visited
+    }
+
+    /// Plays: those asked for this tick flattened, then each one's values
+    /// this tick and the events it passed; the values by node and channel
+    /// and the events.
+    fn step_plays(
+        &mut self,
+        m: &mut MotionState,
+        now: u64,
+        tps: u32,
+        reduced: bool,
+    ) -> (Vec<(u64, usize, f32)>, Vec<UiEvent>) {
+        // Plays asked for this tick: flattened now that rectangles are known.
+        for p in std::mem::take(&mut self.style.pending_plays) {
+            if reduced && p.desc.decorative {
+                continue;
+            }
+            let mut clips = Vec::new();
+            let length = self.flatten(
+                &p.choreo,
+                p.root,
+                &self.tree.index.by_key,
+                0.0,
+                0,
+                &mut clips,
+            );
+            let first = clips
+                .first()
+                .and_then(|c| self.style.timelines.get(&c.timeline))
+                .map(|(_, t)| t.clone())
+                .unwrap_or_default();
+            let at = first.label(&p.desc.from_label).unwrap_or(p.desc.from_ms);
+            m.plays.retain(|q| q.id != p.id);
+            m.plays.push(Play {
+                id: p.id,
+                root: p.root,
+                clips,
+                start: now,
+                at_ms: at,
+                last_ms: at - 1e-3,
+                speed: if p.desc.speed > 0.0 {
+                    p.desc.speed
+                } else {
+                    1.0
+                },
+                reverse: p.desc.reverse,
+                repeat: match p.desc.repeat {
+                    Repeat::Once => 0,
+                    Repeat::Loop => 1,
+                    Repeat::PingPong => 2,
+                },
+                hold: p.desc.hold,
+                paused: false,
+                length_ms: length,
+                ended: false,
+            });
+        }
+
+        // Plays: values this tick and the events passed.
+        let mut overrides: Vec<(u64, usize, f32)> = Vec::new();
+        let mut events: Vec<UiEvent> = Vec::new();
+        let mut state_events: Vec<(u64, String, String)> = Vec::new();
+        let mut bursts: Vec<BurstRun> = Vec::new();
+        m.plays
+            .retain(|p| self.tree.index.by_key.contains_key(&p.root) && !(p.ended && !p.hold));
+        if reduced {
+            // Decorative loops stop under reduced motion.
+            m.plays.retain(|p| p.repeat == 0);
+        }
+        for p in &mut m.plays {
+            let len = p.length_ms.max(1e-3);
+            let raw = if p.paused {
+                p.at_ms
+            } else {
+                p.at_ms + (now - p.start) as f32 * 1000.0 / tps as f32 * p.speed
+            };
+            let map = |raw: f32| -> f32 {
+                let t = match p.repeat {
+                    0 => raw.clamp(0.0, len),
+                    1 => raw.rem_euclid(len),
+                    _ => {
+                        let k = raw.rem_euclid(2.0 * len);
+                        if k > len { 2.0 * len - k } else { k }
+                    }
+                };
+                if p.reverse { len - t } else { t }
+            };
+            let (t_prev, t_now) = (map(p.last_ms), map(raw));
+            let wrapped = p.repeat == 1 && (raw / len).floor() != (p.last_ms / len).floor();
+            // A play's first tick includes its starting instant: an event at
+            // 0 ms (a reversed play's last) fires as it starts.
+            let fresh = p.last_ms < p.at_ms;
+            let crossed = |e: f32| -> bool {
+                if wrapped {
+                    if p.reverse {
+                        (e < t_prev && e >= 0.0) || (e >= t_now && e <= len)
+                    } else {
+                        (e > t_prev && e <= len) || (e >= 0.0 && e <= t_now)
+                    }
+                } else if t_now > t_prev || (t_now == t_prev && !p.reverse) {
+                    (e > t_prev || (fresh && e == t_prev)) && e <= t_now
+                } else {
+                    e >= t_now && (e < t_prev || (fresh && e == t_prev))
+                }
+            };
+            if p.repeat == 0 && raw >= len && !p.ended {
+                p.ended = true;
+                events.push(UiEvent {
+                    kind: "end".into(),
+                    play: p.id,
+                    pitch: 1.0,
+                    ..UiEvent::default()
+                });
+            }
+            for clip in &p.clips {
+                let Some((_, tl)) = self.style.timelines.get(&clip.timeline) else {
+                    continue;
+                };
+                let local = (t_now - clip.offset_ms).clamp(0.0, tl.length_ms());
+                for tr in &tl.tracks {
+                    let target = Ui::below(clip.target, &tr.target);
+                    if let Some(v) = sample(tr, local, tps) {
+                        for &c in tr.prop.channels() {
+                            overrides.push((target, c, v));
+                        }
+                    }
+                }
+                if t_prev == t_now && p.last_ms >= p.at_ms {
+                    continue;
+                }
+                for e in &tl.events {
+                    if !crossed(clip.offset_ms + e.at_ms) {
+                        continue;
+                    }
+                    let target = Ui::below(clip.target, &e.target);
+                    let path = self
+                        .tree
+                        .index
+                        .by_key
+                        .get(&target)
+                        .map_or(String::new(), |&i| self.path_of(i));
+                    let pitch_of = |pitch: f32| {
+                        (if pitch > 0.0 { pitch } else { 1.0 }) * 1.06f32.powi(clip.index as i32)
+                    };
+                    let mut ev = UiEvent {
+                        target: path,
+                        play: p.id,
+                        index: clip.index,
+                        pitch: 1.0,
+                        ..UiEvent::default()
+                    };
+                    match &e.kind {
+                        EventKind::Sound { name, pitch } => {
+                            ev.kind = "sound".into();
+                            ev.name = name.clone();
+                            ev.pitch = pitch_of(*pitch);
+                        }
+                        EventKind::Haptic(name) => {
+                            ev.kind = "haptic".into();
+                            ev.name = name.clone();
+                        }
+                        EventKind::Burst {
+                            count,
+                            radius,
+                            color,
+                            duration_ms,
+                        } => {
+                            ev.kind = "burst".into();
+                            bursts.push(BurstRun {
+                                key: target,
+                                since: now,
+                                count: *count,
+                                radius: *radius,
+                                color: *color,
+                                duration_ms: *duration_ms,
+                            });
+                        }
+                        EventKind::State { group, state } => {
+                            ev.kind = "state".into();
+                            ev.name = format!("{group}={state}");
+                            state_events.push((target, group.clone(), state.clone()));
+                        }
+                        EventKind::Callback(name) => {
+                            ev.kind = "callback".into();
+                            ev.name = name.clone();
+                        }
+                    }
+                    events.push(ev);
+                }
+            }
+            p.last_ms = raw;
+        }
+        for (key, group, s) in state_events {
+            m.set_states.insert(group_key(key, &group), s);
+        }
+        for ev in &events {
+            if ev.kind == "sound"
+                && let Some(s) = crate::style_file::UiSound::from_name(&ev.name)
+            {
+                self.sound(s);
+            }
+        }
+        if !reduced {
+            m.bursts.extend(bursts);
+        }
+
+        (overrides, events)
+    }
+
+    /// Drags and pinches.
+    #[allow(clippy::needless_borrow)]
+    fn step_gestures(
+        &mut self,
+        mut m: &mut MotionState,
+        touched: &mut crate::id::KeySet,
+        now: u64,
+    ) {
+        // Drags and pinches.
+        for k in 0..self.tree.orders.with(feat::GESTURE).len() {
+            let i = self.tree.orders.with(feat::GESTURE)[k];
+            let n = &self.tree.nodes[i];
+            if n.props.drag.is_none() && n.props.pinch.is_none() {
+                continue;
+            }
+            let key = n.key;
+            let out = self.run_gesture(i, &mut m);
+            self.tree.nodes[i].gesture = out;
+            touched.insert(channel_key(key, DRAG_X));
+            touched.insert(channel_key(key, DRAG_Y));
+        }
+        m.gestures.retain(|_, g| g.tick == now);
+    }
+
+    /// Shared elements: one that arrives where another with its match key
+    /// was last tick morphs from that one's place.
+    fn step_matches(
+        &mut self,
+        m: &mut MotionState,
+        touched: &mut crate::id::KeySet,
+        now: u64,
+        tps: u32,
+        tokens: crate::motion::MotionTokens,
+        reduced: bool,
+    ) {
         // Shared elements: one that arrives where another with its match
         // key was last tick morphs from that one's place, and the old one's
         // drawing follows it while it fades.
@@ -987,7 +1064,18 @@ impl Ui {
                 });
             }
         }
+    }
 
+    /// Leaving elements, the ghosts they leave and the bursts an event
+    /// started.
+    fn step_exits(
+        &mut self,
+        m: &mut MotionState,
+        now: u64,
+        tps: u32,
+        tokens: crate::motion::MotionTokens,
+        reduced: bool,
+    ) {
         // Leaving elements: what had an exit and is gone plays it from its
         // last drawing; what came back stops leaving.
         let gone: Vec<u64> = m
@@ -1072,7 +1160,19 @@ impl Ui {
             self.tree.index.by_key.contains_key(&b.key)
                 && now.saturating_sub(b.since) < u64::from(crate::style::Theme::ticks(ms, tps))
         });
+    }
 
+    /// Keeps what was used and drops the memory of elements that are gone;
+    /// the nodes visited are handed back.
+    fn forget_motion(
+        &mut self,
+        m: &mut MotionState,
+        whole: bool,
+        seeds: Option<&[usize]>,
+        touched: &crate::id::KeySet,
+        visited: Vec<usize>,
+        now: u64,
+    ) -> Vec<usize> {
         // Keep what was used; drop the memory of elements that are gone.
         // A channel nobody stepped this tick belongs to something gone.
         if whole {
@@ -1156,40 +1256,6 @@ impl Ui {
                     }
                 }
             }
-        }
-        // A CSS animation no element ran this tick ended with its element
-        // or its `animation-name`.
-        m.css.retain(|r| r.stepped == now);
-        let tree = &self.tree.index;
-        self.style
-            .motion
-            .timelines
-            .retain(|k, _| tree.by_key.contains_key(k));
-        // Transitions of computed values outlive no element.
-        m.styles
-            .retain(|k, _| self.tree.index.by_key.contains_key(k));
-        m.part_styles
-            .retain(|k, _| self.tree.index.by_key.contains_key(k));
-        m.bursts.extend(css_bursts);
-        for ev in &css_events {
-            if let Some(s) = crate::style_file::UiSound::from_name(&ev.name) {
-                self.sound(s);
-            }
-        }
-        events.extend(css_events);
-        self.interaction.state.motion = m;
-        self.style.motion.motion_moving = moving;
-        self.out.events.extend(events);
-        for (key, name) in starts {
-            self.start_play(
-                key,
-                Choreo::Play {
-                    timeline: name,
-                    target: String::new(),
-                    delay_ms: 0.0,
-                },
-                PlayDesc::default(),
-            );
         }
         visited
     }
