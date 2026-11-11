@@ -102,6 +102,8 @@ mod lights_stage;
 use lights_stage::{PrepareLightsInputs, PrepareLightsOutputs};
 mod instances_stage;
 use instances_stage::{UploadInstancesInputs, UploadInstancesOutputs};
+mod uploads_stage;
+use uploads_stage::{UploadFrameInputs, UploadFrameOutputs};
 mod setup;
 
 impl Renderer {
@@ -1276,87 +1278,27 @@ impl Renderer {
             view_lists: &mut view_lists,
             view_blended: &mut view_blended,
         });
-        if !skinned_data.is_empty() || crowd_gpu {
-            grow_and_write(
-                &self.device,
-                &self.queue,
-                &mut self.instances.skinned_buffer,
-                "skinned instances",
-                bytemuck::cast_slice(&skinned_data),
-            );
-            let morphs_changed = std::mem::take(&mut self.cache.morphs_dirty);
-            self.instances.palette.write(
-                &self.device,
-                &self.queue,
-                &self.palette_layout,
-                &joint_matrices,
-                &self.cache.morph_data,
-                morphs_changed,
-            );
-        }
-        // The crowds' cards' atlases, baked from the palette's clips.
-        self.prepare_crowd_cards(scene, &crowd_frame, &mut scatter_batches.cards);
-        grow_and_write(
-            &self.device,
-            &self.queue,
-            &mut self.ribbon_buffer,
-            "strips",
-            bytemuck::cast_slice(&ribbon_frame.vertices),
-        );
-        grow_and_write(
-            &self.device,
-            &self.queue,
-            &mut self.sprite_buffer,
-            "sprites",
-            bytemuck::cast_slice(&sprite_frame.instances),
-        );
-        self.particles
-            .upload(&self.device, &self.queue, &particle_frame, &gpu_sprites);
-        let mut ui_uniform = None;
-        if let (Some(of), Some(o)) = (&overlay_frame, &scene.overlay) {
-            grow_and_write(
-                &self.device,
-                &self.queue,
-                &mut self.overlay.buffer,
-                "overlay instances",
-                bytemuck::cast_slice(&of.instances),
-            );
-            let u = overlay::OverlayRenderer::uniform(
-                self.out_width,
-                self.out_height,
-                o,
-                !self.output_format.is_srgb()
-                    && self.output_format != HDR_FORMAT
-                    && !self.has_linear_view(target),
-            );
-            ui_uniform = Some(u);
-        }
-        // The sprite shaders' light map strips and ambient
-        // (`SpriteFxFrame::light`).
-        let ambient_2d = scene.lighting_2d.map_or(Vec3::ONE, |l| l.ambient);
-        self.queue.write_buffer(
-            &self.sprite_fx_buffer,
-            16,
-            bytemuck::bytes_of(&[
-                light_slots.count() as f32,
-                ambient_2d.x,
-                ambient_2d.y,
-                ambient_2d.z,
-            ]),
-        );
-        let (lights_2d, occluders_2d) = match scene.lighting_2d {
-            Some(l) => self.lights_2d.write(
-                &self.device,
-                &self.queue,
-                cam.view_proj,
-                &scene.lights_2d,
-                &scene.occluders_2d,
-                &light_slots,
-                l.shadow_angles,
-            ),
-            None => (0, 0),
-        };
-
+        // The skinned, sprite, particle, overlay and 2D light uploads (uploads_stage.rs).
+        let UploadFrameOutputs {
+            ui_uniform,
+            lights_2d,
+            occluders_2d,
+        } = self.upload_frame(UploadFrameInputs {
+            scene,
+            target,
+            cam: &cam,
+            crowd_gpu,
+            skinned_data: &skinned_data,
+            joint_matrices: &joint_matrices,
+            crowd_frame: &crowd_frame,
+            scatter_batches: &mut scatter_batches,
+            ribbon_frame: &ribbon_frame,
+            sprite_frame: &sprite_frame,
+            particle_frame: &particle_frame,
+            gpu_sprites: &gpu_sprites,
+            overlay_frame: &overlay_frame,
+            light_slots: &light_slots,
+        });
         // Uniforms.
         let mut uniform = frame::FrameUniform {
             view_proj: cam.jittered_view_proj.to_cols_array_2d(),
