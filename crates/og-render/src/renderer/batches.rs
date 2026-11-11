@@ -456,6 +456,7 @@ impl Renderer {
         }
         if b.lean && !skinned {
             return self
+                .prepass
                 .lean_prepass_pipelines
                 .get(&(b.side, b.derivatives, b.compact))
                 .map(|p| p.get(self.frame_features));
@@ -467,7 +468,8 @@ impl Renderer {
                 .and_then(|a| a.prepass.get(&(b.side, skinned)))
                 .map(|p| p.get());
         }
-        self.prepass_pipelines
+        self.prepass
+            .prepass_pipelines
             .get(&(b.side, skinned))
             .map(|p| p.get(self.frame_features))
     }
@@ -516,9 +518,9 @@ impl Renderer {
                     let v = variants(declared, features, job);
                     match slot {
                         Slot::Lean(k) => self.lean_pipelines.insert(k, v),
-                        Slot::LeanPrepass(k) => self.lean_prepass_pipelines.insert(k, v),
+                        Slot::LeanPrepass(k) => self.prepass.lean_prepass_pipelines.insert(k, v),
                         Slot::Pbr(k) => self.pbr_pipelines.insert(k, v),
-                        Slot::Prepass(k) => self.prepass_pipelines.insert(k, v),
+                        Slot::Prepass(k) => self.prepass.prepass_pipelines.insert(k, v),
                         _ => unreachable!("only the built-in lit and prepass slots vary"),
                     };
                     continue;
@@ -864,7 +866,7 @@ impl Renderer {
                     add_job!(
                         jobs,
                         Slot::LeanPrepass(key),
-                        self.lean_prepass_pipelines.contains_key(&key),
+                        self.prepass.lean_prepass_pipelines.contains_key(&key),
                         {
                             let (d, layouts, module) =
                                 (device.clone(), pbr.clone(), pbr_shader.clone());
@@ -954,7 +956,7 @@ impl Renderer {
                 add_job!(
                     jobs,
                     Slot::Prepass(key),
-                    self.prepass_pipelines.contains_key(&key),
+                    self.prepass.prepass_pipelines.contains_key(&key),
                     {
                         let (d, layouts, module) =
                             (device.clone(), pbr.clone(), pbr_shader.clone());

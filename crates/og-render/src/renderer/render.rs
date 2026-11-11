@@ -33,7 +33,7 @@ mod pass_view;
 use pass_view::{ViewPass, ViewPlan};
 
 mod pass_prepass;
-use pass_prepass::PrepassPassInputs;
+use pass_prepass::{PrepassPass, PrepassPlan};
 
 mod pass_reflection;
 use pass_reflection::{ReflectionPass, ReflectionPlan};
@@ -4186,7 +4186,8 @@ impl Renderer {
                         .or(array)
                         .map(|p| p.get())
                         .or_else(|| {
-                            self.prepass_pipelines
+                            self.prepass
+                                .prepass_pipelines
                                 .get(&(b.side, true))
                                 .map(|p| p.get(self.frame_features))
                         })
@@ -4331,6 +4332,24 @@ impl Renderer {
             view_glow_runs: &view_glow_runs,
             post_fx,
         });
+        plans.prepass = (prepass).then(|| PrepassPlan {
+            water_draws: &water_draws,
+            object_space,
+            frame_bind_group,
+            fx_group,
+            main_list: &main_list,
+            culled_gpu,
+            object_motion,
+            batches: &batches,
+            skinned_visible: &skinned_visible,
+            prepass_skinned: &prepass_skinned,
+            terrain_indices,
+            terrain_draws: &terrain_draws,
+            view_frustum: &view_frustum,
+            scatter_batches: &scatter_batches,
+            cards: camera_cards,
+            grass_frame: &grass_frame,
+        });
         for &pass in self.graph.order() {
             // What the pass needs here: its kind's, and what this frame's
             // instance of it adds (schedule.rs).
@@ -4360,27 +4379,6 @@ impl Renderer {
                         slot,
                     },
                 ) => {}
-                FramePass::Prepass => self.encode_prepass(PrepassPassInputs {
-                    ctx: &ctx,
-                    water_draws: &water_draws,
-                    encoder: &mut encoder,
-                    object_space,
-                    frame_bind_group,
-                    fx_group,
-                    main_list: &main_list,
-                    culled_gpu,
-                    object_motion,
-                    batches: &batches,
-                    stats: &mut stats,
-                    skinned_visible: &skinned_visible,
-                    prepass_skinned: &prepass_skinned,
-                    terrain_indices,
-                    terrain_draws: &terrain_draws,
-                    view_frustum: &view_frustum,
-                    scatter_batches: &scatter_batches,
-                    cards: camera_cards,
-                    grass_frame: &grass_frame,
-                }),
                 FramePass::Main => {
                     self.encode_main(MainPassInputs {
                         ctx: &ctx,

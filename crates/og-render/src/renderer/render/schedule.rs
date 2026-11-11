@@ -33,12 +33,7 @@ pub(crate) const PASSES: &[PassDesc] = &[
     CascadePass::DESC,
     ShelterPass::DESC,
     LocalFacePass::DESC,
-    // Three colour targets: normals and velocity, linear depth, outline ids.
-    PassDesc {
-        pass: FramePass::Prepass,
-        name: "prepass",
-        needs: Caps::MRT,
-    },
+    PrepassPass::DESC,
     PassDesc {
         pass: FramePass::Contact,
         name: "contact",

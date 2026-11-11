@@ -701,3 +701,17 @@ pub(crate) fn meshlet_shadow_pipeline(
         })
     })
 }
+
+/// The depth prepass's pipelines: the standard and the lean ones by key,
+/// and stylise's object pass.
+pub(crate) struct PrepassState {
+    /// Prepass pipelines by (side, skinned).
+    pub(crate) prepass_pipelines:
+        HashMap<(Side, bool), pipeline_features::Variants<Deferred<wgpu::RenderPipeline>>>,
+    /// Their prepass pipelines by (side, derivatives, compact).
+    pub(crate) lean_prepass_pipelines:
+        HashMap<(Side, bool, bool), pipeline_features::Variants<Deferred<wgpu::RenderPipeline>>>,
+    /// Stylise's object pass, made the first frame a pattern is laid in
+    /// object space (`stylise_object.rs`).
+    pub(crate) stylise_object: Option<stylise_object::ObjectPass>,
+}

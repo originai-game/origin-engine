@@ -631,17 +631,11 @@ pub struct Renderer {
     /// shader (screen-space AO or GI, decals: `prepare_frame_pipelines`):
     /// the variant [`Renderer::warm`] makes for plain materials.
     plain_effects: bool,
-    /// Prepass pipelines by (side, skinned).
-    prepass_pipelines:
-        HashMap<(Side, bool), pipeline_features::Variants<Deferred<wgpu::RenderPipeline>>>,
+    /// The depth prepass's pipelines: the standard and the lean ones by key,
+    /// and stylise's object pass.
+    prepass: renderer::PrepassState,
     /// The lean lit pipelines of plain materials, made at first use.
     lean_pipelines: HashMap<LeanKey, pipeline_features::Variants<Deferred<wgpu::RenderPipeline>>>,
-    /// Their prepass pipelines by (side, derivatives, compact).
-    lean_prepass_pipelines:
-        HashMap<(Side, bool, bool), pipeline_features::Variants<Deferred<wgpu::RenderPipeline>>>,
-    /// Stylise's object pass, made the first frame a pattern is laid in
-    /// object space (`stylise_object.rs`).
-    stylise_object: Option<stylise_object::ObjectPass>,
     sky_pipeline: Sampled<wgpu::RenderPipeline>,
     /// The procedural sky of a chosen look drawn per pixel ([`Background::Procedural`]).
     sky_look_pipeline: Sampled<wgpu::RenderPipeline>,

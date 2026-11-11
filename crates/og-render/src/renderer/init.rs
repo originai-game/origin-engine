@@ -109,9 +109,9 @@ impl Renderer {
         if self.samples == fresh.samples {
             fresh.pbr_pipelines = self.pbr_pipelines;
             fresh.shadows.shadow_pipelines = self.shadows.shadow_pipelines;
-            fresh.prepass_pipelines = self.prepass_pipelines;
+            fresh.prepass.prepass_pipelines = self.prepass.prepass_pipelines;
             fresh.lean_pipelines = self.lean_pipelines;
-            fresh.lean_prepass_pipelines = self.lean_prepass_pipelines;
+            fresh.prepass.lean_prepass_pipelines = self.prepass.lean_prepass_pipelines;
             fresh.shadows.compact_shadow_pipelines = self.shadows.compact_shadow_pipelines;
             fresh.sky_pipeline = self.sky_pipeline;
             fresh.sky_look_pipeline = self.sky_look_pipeline;
@@ -1221,10 +1221,12 @@ impl Renderer {
             capturing: false,
             pbr_pipelines: HashMap::new(),
             plain_effects: false,
-            prepass_pipelines: HashMap::new(),
+            prepass: PrepassState {
+                prepass_pipelines: HashMap::new(),
+                lean_prepass_pipelines: HashMap::new(),
+                stylise_object: None,
+            },
             lean_pipelines: HashMap::new(),
-            lean_prepass_pipelines: HashMap::new(),
-            stylise_object: None,
             sky_pipeline,
             sky_look_pipeline,
             water,

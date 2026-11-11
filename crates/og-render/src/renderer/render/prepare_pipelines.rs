@@ -140,7 +140,7 @@ impl Renderer {
         // A pattern in object space: the object pass after the prepass.
         let object_space = prepass && scene.stylise.in_object_space();
         if object_space {
-            let object = self.stylise_object.get_or_insert_with(|| {
+            let object = self.prepass.stylise_object.get_or_insert_with(|| {
                 stylise_object::ObjectPass::new(&self.device, self.info.without.features())
             });
             let opaque = batches.iter().filter(|b| !b.transparent);

@@ -102,4 +102,5 @@ passes! {
     probes: pass_probes::ProbesPass => FramePass::Probes,
     reflection: pass_reflection::ReflectionPass => FramePass::Reflection(_),
     view: pass_view::ViewPass => FramePass::View(_),
+    prepass: pass_prepass::PrepassPass => FramePass::Prepass,
 }

@@ -2,37 +2,30 @@
 
 use super::*;
 
-pub(super) struct PrepassPassInputs<'a> {
-    /// What the frame draws with (draw_ctx.rs).
-    pub(super) ctx: &'a DrawCtx<'a>,
-    pub(super) water_draws: &'a [water::WaterDraw],
-    pub(super) encoder: &'a mut Encoder,
+pub(super) struct PrepassPlan<'f> {
+    pub(super) water_draws: &'f [water::WaterDraw],
     pub(super) object_space: bool,
-    pub(super) frame_bind_group: &'a wgpu::BindGroup,
-    pub(super) fx_group: &'a wgpu::BindGroup,
-    pub(super) main_list: &'a DrawList,
-    pub(super) culled_gpu: Option<&'a cull_gpu::GpuCulling>,
+    pub(super) frame_bind_group: &'f wgpu::BindGroup,
+    pub(super) fx_group: &'f wgpu::BindGroup,
+    pub(super) main_list: &'f DrawList,
+    pub(super) culled_gpu: Option<&'f cull_gpu::GpuCulling>,
     pub(super) object_motion: bool,
-    pub(super) batches: &'a [Batch],
-    pub(super) stats: &'a mut FrameStats,
-    pub(super) skinned_visible: &'a [Batch],
-    pub(super) prepass_skinned: &'a [&'a wgpu::RenderPipeline],
-    pub(super) terrain_indices: Option<&'a wgpu::Buffer>,
-    pub(super) terrain_draws: &'a [terrain::TerrainDraw],
-    pub(super) view_frustum: &'a Frustum,
-    pub(super) scatter_batches: &'a scatter::ScatterBatches,
+    pub(super) batches: &'f [Batch],
+    pub(super) skinned_visible: &'f [Batch],
+    pub(super) prepass_skinned: &'f [&'f wgpu::RenderPipeline],
+    pub(super) terrain_indices: Option<&'f wgpu::Buffer>,
+    pub(super) terrain_draws: &'f [terrain::TerrainDraw],
+    pub(super) view_frustum: &'f Frustum,
+    pub(super) scatter_batches: &'f scatter::ScatterBatches,
     /// Where the crowds' cards come from in this pass.
-    pub(super) cards: scatter::CardSource<'a>,
-    pub(super) grass_frame: &'a grass::GrassFrame,
+    pub(super) cards: scatter::CardSource<'f>,
+    pub(super) grass_frame: &'f grass::GrassFrame,
 }
 
 impl Renderer {
-    pub(super) fn encode_prepass(
-        &self,
-        PrepassPassInputs {
-            ctx,
+    pub(super) fn encode_prepass(&self, plan: &PrepassPlan<'_>, cx: &mut EncodeCx<'_, '_>) {
+        let &PrepassPlan {
             water_draws,
-            encoder,
             object_space,
             frame_bind_group,
             fx_group,
@@ -40,7 +33,6 @@ impl Renderer {
             culled_gpu,
             object_motion,
             batches,
-            stats,
             skinned_visible,
             prepass_skinned,
             terrain_indices,
@@ -49,8 +41,8 @@ impl Renderer {
             scatter_batches,
             cards,
             grass_frame,
-        }: PrepassPassInputs<'_>,
-    ) {
+        } = plan;
+        let (ctx, encoder, stats) = (cx.ctx, &mut *cx.encoder, &mut *cx.stats);
         // The water's surfaces for the AO (water.rs `draw_ao_depth`), drawn after the prepass against it.
         let ao_depth = self
             .graph
@@ -207,7 +199,12 @@ impl Renderer {
                 .draw(&mut p, grass::GrassPass::Prepass, grass_frame, None);
         stats.draw_calls += stats.prepass_draws;
         drop(p);
-        if let Some(object) = self.stylise_object.as_ref().filter(|_| object_space) {
+        if let Some(object) = self
+            .prepass
+            .stylise_object
+            .as_ref()
+            .filter(|_| object_space)
+        {
             // Stylise's object pass (stylise_object.rs): the
             // prepass's instances again, against its depth.
             let mut p = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -306,5 +303,31 @@ impl Renderer {
                 stats.draw_calls += self.water.draw_ao_depth(&mut p, water_draws);
             }
         }
+    }
+}
+
+pub(super) struct PrepassPass;
+
+impl Pass for PrepassPass {
+    /// Three colour targets: normals and velocity, linear depth, outline ids.
+    const DESC: PassDesc = PassDesc {
+        pass: FramePass::Prepass,
+        name: "prepass",
+        needs: Caps::MRT,
+    };
+    type State = PrepassState;
+    type Plan<'f> = PrepassPlan<'f>;
+
+    fn state(r: &Renderer) -> &Self::State {
+        &r.prepass
+    }
+
+    fn encode<'f>(
+        _: &Self::State,
+        plan: &PrepassPlan<'f>,
+        _: FramePass,
+        cx: &mut EncodeCx<'_, 'f>,
+    ) {
+        cx.ctx.r.encode_prepass(plan, cx);
     }
 }
