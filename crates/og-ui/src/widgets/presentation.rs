@@ -62,9 +62,10 @@ impl Ui {
                 .flag_if(r.focused, "focused");
         part.hover = amounts.0;
         part.press = amounts.1;
+        let el = self.tree.el_mut(i);
+        el.background = Some(bg);
+        el.part = Some(part);
         let n = &mut self.tree.nodes[i];
-        n.el.background = Some(bg);
-        n.el.part = Some(part);
         n.content = Content::Text(c);
         n.probe_text = text.to_owned();
         n.a11y.selected = Some(desc.selected);
@@ -143,8 +144,8 @@ impl Ui {
         let mut c = self.tree.text_content(text, t.type_ramp.xs, fg);
         c.wrap = false;
         c.align = TextAlign::Center;
+        self.tree.el_mut(i).background = Some(bg);
         let n = &mut self.tree.nodes[i];
-        n.el.background = Some(bg);
         n.content = Content::Text(c);
         n.probe_text = text.to_owned();
     }
@@ -341,7 +342,7 @@ impl Ui {
 
     pub(crate) fn apply_icon(&mut self, i: usize, name: &str, desc: IconDesc) {
         let size = if desc.size > 0.0 { desc.size } else { 24.0 };
-        self.tree.nodes[i].el = Element {
+        *self.tree.el_mut(i) = Element {
             width: Size::Fixed(size),
             height: Size::Fixed(size),
             ..Element::default()
@@ -392,7 +393,7 @@ impl Ui {
             SlotAspect::Range(lo, _) => lo.ratio(),
             SlotAspect::Free => 0.0,
         };
-        self.tree.nodes[i].el = Element {
+        *self.tree.el_mut(i) = Element {
             width: desc.width,
             height: desc.height,
             aspect,

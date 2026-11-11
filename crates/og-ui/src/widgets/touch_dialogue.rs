@@ -711,7 +711,7 @@ impl Ui {
             face.fills.clear();
             face.strokes.remove(0);
         }
-        self.tree.nodes[i].el.part = Some(
+        self.tree.el_mut(i).part = Some(
             crate::dress::PartRef::new("ActionButton", "face", crate::tokens::ElementClass::Hud)
                 .flag_if(desc.primary, "primary")
                 .flag_if(r.pressed, "pressed")

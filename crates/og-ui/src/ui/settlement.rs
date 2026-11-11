@@ -260,12 +260,11 @@ mod tests {
                     if width == 400.0 && sizes[0].previous.is_none() {
                         assert_eq!(ui.out.frame.items.len(), 0);
                     }
-                    ui.tree.nodes[child].el.width =
-                        Size::Fixed(if sizes[0].current.width > 300.0 {
-                            91.0
-                        } else {
-                            37.0
-                        });
+                    ui.tree.el_mut(child).width = Size::Fixed(if sizes[0].current.width > 300.0 {
+                        91.0
+                    } else {
+                        37.0
+                    });
                     Ok(vec![child])
                 })
                 .unwrap();
@@ -502,8 +501,8 @@ mod tests {
             if ui.tree.nodes[child].el.width == Size::Fixed(side) {
                 return Ok(Vec::new());
             }
-            ui.tree.nodes[child].el.width = Size::Fixed(side);
-            ui.tree.nodes[child].el.height = Size::Fixed(side / 2.0);
+            ui.tree.el_mut(child).width = Size::Fixed(side);
+            ui.tree.el_mut(child).height = Size::Fixed(side / 2.0);
             Ok(vec![child])
         })
         .unwrap();
@@ -529,7 +528,7 @@ mod tests {
         let mut ui = Ui::default();
         let (container, _) = build(&mut ui, 400.0);
         let result = ui.end_with_layout_queries(|ui, sizes| {
-            ui.tree.nodes[container].el.width = Size::Fixed(if sizes[0].current.width > 200.0 {
+            ui.tree.el_mut(container).width = Size::Fixed(if sizes[0].current.width > 200.0 {
                 100.0
             } else {
                 400.0

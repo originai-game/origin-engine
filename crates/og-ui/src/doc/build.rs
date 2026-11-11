@@ -607,10 +607,12 @@ impl Ui {
         };
         let ink = r.color("color");
         let em = step.size;
+        let build = self.tree.build();
         let n = &mut self.tree.nodes[i];
-        n.el = Self::box_of(&r, n.el, em);
+        let el = n.el.write(build);
+        *el = Self::box_of(&r, *el, em);
         if let Some(radius) = n.decor.as_ref().and_then(|d| d.radius) {
-            n.el.radius = radius;
+            el.radius = radius;
         }
         if let Some(x) = r.num("x") {
             n.props.transform.x = x;

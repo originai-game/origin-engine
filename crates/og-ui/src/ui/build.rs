@@ -587,7 +587,7 @@ impl crate::ui::Tree {
         {
             self.stage(i);
             self.nodes[i].part_box = Some(part);
-            self.nodes[i].el = element;
+            *self.el_mut(i) = element;
             self.nodes[i].content = content;
             self.invalidation.rederive.push(owner);
             return i;

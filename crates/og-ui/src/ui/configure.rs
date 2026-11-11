@@ -408,7 +408,7 @@ impl Ui {
         let Some(&i) = self.tree.stack.last() else {
             return false;
         };
-        let el = &mut self.tree.nodes[i].el;
+        let el = self.tree.el_mut(i);
         let part = el
             .part
             .or_else(|| el.frame.map(StylePart::part_ref))

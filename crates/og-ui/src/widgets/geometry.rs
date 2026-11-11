@@ -80,8 +80,8 @@ impl Ui {
                         [(mark, k.width, k.height), (tick, tick_size, tick_size)]
                     {
                         self.tree.rewrite(index);
-                        self.tree.nodes[index].el.width = Size::px(width);
-                        self.tree.nodes[index].el.height = Size::px(height);
+                        self.tree.el_mut(index).width = Size::px(width);
+                        self.tree.el_mut(index).height = Size::px(height);
                     }
                     let draw = self.tree.draws.get_mut(&tick).expect("switch tick draw");
                     if let crate::paint::ShapeKind::Path { points, width, .. } = &mut draw.shape {

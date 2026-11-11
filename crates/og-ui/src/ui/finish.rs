@@ -1212,9 +1212,10 @@ impl Ui {
         // decides its own as it builds (its label's ink follows the art).
         for k in 0..self.tree.orders.with(visit::feat::BUTTON_PART).len() {
             let i = self.tree.orders.with(visit::feat::BUTTON_PART)[k];
+            let build = self.tree.build();
             let n = &mut self.tree.nodes[i];
-            if let Some(p) = n.el.part.as_mut()
-                && n.placed.rect.width < NARROW_BUTTON
+            if n.placed.rect.width < NARROW_BUTTON
+                && let Some(p) = n.el.write(build).part.as_mut()
             {
                 *p = p.flag("narrow");
                 n.layout.used.part = n.el.part;
