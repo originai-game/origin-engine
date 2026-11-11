@@ -10,8 +10,13 @@ pub(super) struct WriteFramePostUniformsInputs<'a> {
     pub(super) scene: &'a RenderScene,
     pub(super) ao: Option<AmbientOcclusion>,
     pub(super) gi: Option<ScreenSpaceGlobalIllumination>,
-    /// The previous frame's lit image is there for the GI to read.
-    pub(super) gi_history: bool,
+    pub(super) ssr: Option<&'a ssr::ScreenSpaceReflections>,
+    /// TAA (or a temporal upscaler) resolves the frame.
+    pub(super) taa: bool,
+    /// The frame keeps a temporal history (TAA's uniform).
+    pub(super) temporal: bool,
+    /// The depth prepass writes velocity (TAA's uniform).
+    pub(super) prepass: bool,
     pub(super) dof: Option<DepthOfField>,
     pub(super) motion_blur: Option<MotionBlur>,
     pub(super) god_rays: Option<GodRays>,
@@ -24,9 +29,19 @@ pub(super) struct WriteFramePostUniformsInputs<'a> {
     pub(super) contact: [[f32; 4]; 4],
 }
 
+/// What the post uniforms decided about the frame's history.
+pub(super) struct FramePostHistory {
+    /// The GI and SSR read their own copy of the main pass's image.
+    pub(super) gi_copy: bool,
+    /// TAA blends with a history.
+    pub(super) taa_blend: bool,
+}
+
 impl Renderer {
+    /// The post chain's frame uniforms: the GI's history, the effects'
+    /// post rows, SSR's and TAA's uniforms.
     pub(super) fn write_frame_post_uniforms(
-        &self,
+        &mut self,
         WriteFramePostUniformsInputs {
             cam,
             camera,
@@ -34,7 +49,6 @@ impl Renderer {
             scene,
             ao,
             gi,
-            gi_history,
             dof,
             motion_blur,
             god_rays,
@@ -44,8 +58,27 @@ impl Renderer {
             depth_bands,
             screen_blur,
             contact,
+            ssr,
+            taa,
+            temporal,
+            prepass,
         }: WriteFramePostUniformsInputs<'_>,
-    ) {
+    ) -> FramePostHistory {
+        // Screen-space GI reads the previous frame's lit image: TAA's
+        // history, or without TAA its own copy of the main pass's image.
+        let gi_copy = (gi.is_some() || ssr.is_some()) && !taa;
+        if gi_copy
+            && self
+                .persistent
+                .ensure_gi(&self.device, self.width, self.height)
+        {
+            self.gi_history = None;
+        }
+        let gi_history = if taa {
+            self.history.taa_history.is_some()
+        } else {
+            gi_copy && self.gi_history.is_some_and(|f| f + 1 == self.frame_index)
+        };
         let proj = cam.view_proj * cam.view.inverse();
         let global_outline = post_fx.outline;
         let fxp = post::FxPostUniform {
@@ -220,6 +253,12 @@ impl Renderer {
         );
         self.queue
             .write_buffer(&self.sprite_fx_buffer, 0, bytemuck::bytes_of(&fxp.screen));
+        if let Some(s) = ssr {
+            self.prepare_ssr(s, cam, camera, gi_history);
+        }
+        let taa_blend = taa && self.history.taa_history.is_some();
+        self.write_frame_taa_uniform(temporal, prepass, cam);
+        FramePostHistory { gi_copy, taa_blend }
     }
 
     /// `velocity`: the prepass's velocity is bound (object and skinned

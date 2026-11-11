@@ -24,7 +24,7 @@ mod draw_glow;
 mod stylise_uniforms;
 
 mod post_uniforms;
-use post_uniforms::WriteFramePostUniformsInputs;
+use post_uniforms::{FramePostHistory, WriteFramePostUniformsInputs};
 
 mod pass_probes;
 use pass_probes::{ProbesPass, ProbesPlan};
@@ -1385,45 +1385,30 @@ impl Renderer {
                 post_fx,
                 view_glow_runs: &view_glow_runs,
             });
-        // Screen-space GI reads the previous frame's lit image: TAA's
-        // history, or without TAA its own copy of the main pass's image.
-        let gi_copy = (gi.is_some() || ssr.is_some()) && !taa;
-        if gi_copy
-            && self
-                .persistent
-                .ensure_gi(&self.device, self.width, self.height)
-        {
-            self.gi_history = None;
-        }
-        let gi_history_valid = if taa {
-            self.history.taa_history.is_some()
-        } else {
-            gi_copy && self.gi_history.is_some_and(|f| f + 1 == self.frame_index)
-        };
-        self.write_frame_post_uniforms(WriteFramePostUniformsInputs {
-            cam: &cam,
-            camera: &camera,
-            post_fx,
-            scene,
-            ao,
-            gi,
-            gi_history: gi_history_valid,
-            dof,
-            motion_blur,
-            god_rays,
-            sun_ndc,
-            god_visible,
-            sun_fade,
-            depth_bands,
-            screen_blur,
-            contact: contact_rows,
-        });
-        if let Some(s) = &ssr {
-            self.prepare_ssr(s, &cam, &camera, gi_history_valid);
-        }
+        // The post chain's uniforms, the GI's history, SSR and TAA (post_uniforms.rs).
+        let FramePostHistory { gi_copy, taa_blend } =
+            self.write_frame_post_uniforms(WriteFramePostUniformsInputs {
+                cam: &cam,
+                camera: &camera,
+                post_fx,
+                scene,
+                ao,
+                gi,
+                dof,
+                motion_blur,
+                god_rays,
+                sun_ndc,
+                god_visible,
+                sun_fade,
+                depth_bands,
+                screen_blur,
+                contact: contact_rows,
+                ssr: ssr.as_ref(),
+                taa,
+                temporal,
+                prepass,
+            });
         let slot = (self.frame_index % 2) as usize;
-        let taa_blend = taa && self.history.taa_history.is_some();
-        self.write_frame_taa_uniform(temporal, prepass, &cam);
         // The frame's passes, compiled into the render graph (cached while
         // the pass list stays the same).
         let auto_exposure = matches!(camera.exposure, Exposure::Auto { .. });
