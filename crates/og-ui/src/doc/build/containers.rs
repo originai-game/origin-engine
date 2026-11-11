@@ -312,7 +312,7 @@ panel { width: 10px; height: 10px; }
 
     fn size(ui: &Ui, path: &str) -> (f32, f32) {
         let i = (0..ui.tree.nodes.len())
-            .find(|&i| ui.path_of(i) == path)
+            .find(|&i| ui.tree.path_of(i) == path)
             .unwrap_or_else(|| panic!("no {path}"));
         (ui.tree.nodes[i].rect.width, ui.tree.nodes[i].rect.height)
     }

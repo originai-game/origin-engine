@@ -333,7 +333,7 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Tree {
     /// Notes what this frame may have changed for screen readers: nodes
     /// that entered or left the trees (`TreeIndex::moved_keys`) and the
     /// parents whose children changed (`TreeIndex::restructured`), nodes
@@ -341,9 +341,14 @@ impl Ui {
     /// named by its text, a field by the label before it), nodes drawn
     /// elsewhere (`repainted`), the focus moved, the scope changed, and
     /// scrollers moved.
-    pub(crate) fn note_semantics(&mut self, repainted: Option<&[usize]>) {
-        let log = &mut self.tree.semantics;
-        let s = &self.interaction.state;
+    pub(crate) fn note_semantics(
+        &mut self,
+        repainted: Option<&[usize]>,
+        layout: &crate::ui::Layout,
+        interaction: &crate::ui::Interaction,
+    ) {
+        let log = &mut self.semantics;
+        let s = &interaction.state;
         let focus = [s.focus, s.pad_focus[0], s.pad_focus[1], s.pad_focus[2]];
         if repainted.is_none() || s.scope != log.scope {
             log.note_all();
@@ -359,62 +364,47 @@ impl Ui {
         // A node entered or left: a bridge reads it (or drops it) and the
         // children of the parents whose children changed, in the tree's
         // order.
-        for key in std::mem::take(&mut self.tree.index.moved_keys) {
+        for key in std::mem::take(&mut self.index.moved_keys) {
             log.note(key);
         }
-        for &i in &self.tree.index.restructured {
-            if let Some(n) = self.tree.nodes.get(i) {
+        for &i in &self.index.restructured {
+            if let Some(n) = self.nodes.get(i) {
                 log.note_shape(if i == 0 { 0 } else { n.key });
             }
         }
-        for &i in self
-            .tree
-            .emitted
-            .iter()
-            .chain(repainted.unwrap_or_default())
-        {
+        for &i in self.emitted.iter().chain(repainted.unwrap_or_default()) {
             // A rich text's links are nodes of their own: the shape again.
-            if !self.tree.nodes[i].links.is_empty() {
+            if !self.nodes[i].links.is_empty() {
                 log.note_all();
             }
         }
         // Node 0 is the frame's root, emitted every frame and never an
         // accessibility record.
-        for &i in self.tree.emitted.iter().filter(|&&i| i != 0) {
+        for &i in self.emitted.iter().filter(|&&i| i != 0) {
             let mut j = i;
-            while j != NONE && j != 0 && j < self.tree.nodes.len() {
-                log.note(self.tree.nodes[j].key);
-                j = self.tree.nodes[j].parent;
+            while j != NONE && j != 0 && j < self.nodes.len() {
+                log.note(self.nodes[j].key);
+                j = self.nodes[j].parent;
             }
-            let parent = self.tree.nodes[i].parent;
+            let parent = self.nodes[i].parent;
             if parent != NONE {
-                let kids = &self.tree.nodes[parent].children;
+                let kids = &self.nodes[parent].children;
                 if let Some(at) = kids.iter().position(|&c| c == i)
                     && let Some(&next) = kids.get(at + 1)
                 {
-                    log.note(self.tree.nodes[next].key);
+                    log.note(self.nodes[next].key);
                 }
             }
         }
         for &i in repainted.unwrap_or_default() {
-            log.note(self.tree.nodes[i].key);
+            log.note(self.nodes[i].key);
         }
         let mut offsets = crate::id::KeyMap::default();
-        for &i in &self.layout.cache.scrollers {
-            let key = self.tree.nodes[i].key;
+        for &i in &layout.cache.scrollers {
+            let key = self.nodes[i].key;
             let at = (
-                self.interaction
-                    .state
-                    .scroll_x
-                    .get(&key)
-                    .copied()
-                    .unwrap_or(0.0),
-                self.interaction
-                    .state
-                    .scroll
-                    .get(&key)
-                    .copied()
-                    .unwrap_or(0.0),
+                interaction.state.scroll_x.get(&key).copied().unwrap_or(0.0),
+                interaction.state.scroll.get(&key).copied().unwrap_or(0.0),
             );
             if log.offsets.get(&key) != Some(&at) {
                 log.note(key);

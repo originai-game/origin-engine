@@ -609,7 +609,7 @@ mod document_tests {
         ui.begin(InputFrame::default(), Viewport::new(640.0, 480.0));
         ui.end();
         let i = (0..ui.tree.nodes.len())
-            .find(|&i| ui.path_of(i) == "m/Card")
+            .find(|&i| ui.tree.path_of(i) == "m/Card")
             .expect("the card");
         crate::layout::read_values(&ui.tree.nodes[i])
     }
@@ -815,7 +815,7 @@ mod document_tests {
             ui.begin(InputFrame::default(), Viewport::new(width, 480.0));
             ui.end();
             let i = (0..ui.tree.nodes.len())
-                .find(|&i| ui.path_of(i) == "m/Box/Card")
+                .find(|&i| ui.tree.path_of(i) == "m/Box/Card")
                 .unwrap();
             crate::layout::read_values(&ui.tree.nodes[i])[SCALE]
         };
@@ -858,7 +858,7 @@ mod document_tests {
         let size = |ui: &mut Ui, on: bool, paused: bool| {
             tick(ui, &json!({"on": on, "paused": paused}));
             let i = (0..ui.tree.nodes.len())
-                .find(|&i| ui.path_of(i) == "m/Card")
+                .find(|&i| ui.tree.path_of(i) == "m/Card")
                 .unwrap();
             (ui.tree.nodes[i].rect.width, ui.tree.nodes[i].rect.height)
         };
@@ -914,7 +914,7 @@ mod document_tests {
         for j in 0..9 {
             let v = tick(&mut ui, &off);
             let i = (0..ui.tree.nodes.len())
-                .find(|&i| ui.path_of(i) == "m/Card")
+                .find(|&i| ui.tree.path_of(i) == "m/Card")
                 .unwrap();
             let k = (j as f32 / 6.0).min(1.0);
             assert!(close(v[OPACITY], k), "opacity at {j}: {}", v[OPACITY]);

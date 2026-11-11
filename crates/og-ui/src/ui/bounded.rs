@@ -94,7 +94,7 @@ pub(super) fn compare(ui: &Ui, twin: &Ui) {
                 )
             )
         };
-        assert_eq!(place(n), place(m), "{}", at(&ui.path_of(i)));
+        assert_eq!(place(n), place(m), "{}", at(&ui.tree.path_of(i)));
     }
 }
 
@@ -128,7 +128,7 @@ pub(super) fn compare_tree(ui: &Ui, order: &[usize]) {
             ui.tree.index.has(i),
             order.contains(&i),
             "the trees' index differs at '{}'",
-            ui.path_of(i)
+            ui.tree.path_of(i)
         );
     }
 }

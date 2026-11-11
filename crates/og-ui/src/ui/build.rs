@@ -72,7 +72,7 @@ impl Ui {
             let renamed = format!("{local}~{n}");
             self.out.warnings.push(format!(
                 "duplicate id '{local}' under '{}'; this one is '{renamed}': give siblings distinct ids (ui_idi(name, index))",
-                self.path_of(parent)
+                self.tree.path_of(parent)
             ));
             local = renamed;
         }
@@ -97,7 +97,7 @@ impl Ui {
         if self.tree.last_closed >= self.tree.nodes.len() || self.tree.last_closed == 0 {
             return String::new();
         }
-        self.path_of(self.tree.last_closed)
+        self.tree.path_of(self.tree.last_closed)
     }
 
     /// The path of the innermost open container, as the probe, `bounds`,
@@ -106,7 +106,7 @@ impl Ui {
     /// its parts in those calls.
     pub fn open_path(&self) -> String {
         match self.tree.stack.last() {
-            Some(&i) if i != 0 => self.probe_path(i),
+            Some(&i) if i != 0 => self.tree.probe_path(i),
             _ => String::new(),
         }
     }
@@ -200,7 +200,7 @@ impl Ui {
     pub fn set_draw(&mut self, draw: crate::paint::ElementDraw) {
         if let Some(&last) = self.tree.emitted.last() {
             if self.tree.draws.contains_key(&last) {
-                let path = self.path_of(last);
+                let path = self.tree.path_of(last);
                 self.out.warnings.push(format!(
                     "setDraw replaced the draw set on {path} this tick: setDraw draws the element added last, \
                      so call it right after the element's open or control, before its children"
@@ -374,18 +374,18 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Tree {
     pub(crate) fn path_of(&self, mut i: usize) -> String {
         let mut parts = Vec::new();
         let own = i;
         while i != NONE && i != 0 {
             if i == own
-                || self.tree.nodes[i].part_box.is_none()
-                || !self.tree.nodes[i].id.starts_with("::part(")
+                || self.nodes[i].part_box.is_none()
+                || !self.nodes[i].id.starts_with("::part(")
             {
-                parts.push(self.tree.nodes[i].id.clone());
+                parts.push(self.nodes[i].id.clone());
             }
-            i = self.tree.nodes[i].parent;
+            i = self.nodes[i].parent;
         }
         if parts.is_empty() {
             return "root".into();
@@ -398,8 +398,8 @@ impl Ui {
     /// layer placed against another element (a tooltip) that element's path
     /// before its own id, as its `parent` is that element's id.
     pub(crate) fn probe_path(&self, i: usize) -> String {
-        let n = &self.tree.nodes[i];
-        if n.parent == NONE && n.anchor != NONE && n.anchor < self.tree.nodes.len() {
+        let n = &self.nodes[i];
+        if n.parent == NONE && n.anchor != NONE && n.anchor < self.nodes.len() {
             return format!("{}/{}", self.probe_path(n.anchor), n.id);
         }
         self.path_of(i)

@@ -139,7 +139,7 @@ impl Ui {
             ui.inspected_preorder()
                 .into_iter()
                 .filter(|&i| ui.tree.nodes[i].props.dense)
-                .map(|i| ui.path_of(i))
+                .map(|i| ui.tree.path_of(i))
                 .collect()
         })
     }
@@ -160,7 +160,7 @@ impl Ui {
                             .as_ref()
                             .is_some_and(|d| d.axis == crate::DragAxis::X)
                 })
-                .map(|i| ui.path_of(i))
+                .map(|i| ui.tree.path_of(i))
                 .collect()
         })
     }
@@ -317,7 +317,7 @@ impl Ui {
         }
         Some(crate::a11y::A11yNode {
             parent: parent(),
-            path: self.path_of(i),
+            path: self.tree.path_of(i),
             role: role.to_owned(),
             name,
             description,
@@ -363,7 +363,7 @@ impl Ui {
             let mut up = self.a11y_up(i);
             while up != NONE && up != 0 {
                 if !self.a11y_info(up).0.is_empty() {
-                    return self.path_of(up);
+                    return self.tree.path_of(up);
                 }
                 up = self.a11y_up(up);
             }
@@ -422,7 +422,7 @@ impl Ui {
                     return None;
                 }
                 if j != at && named(j) {
-                    out.push((n.key, self.path_of(j)));
+                    out.push((n.key, self.tree.path_of(j)));
                     continue;
                 }
                 let mut kids = crate::layout::all_children(n);
@@ -450,7 +450,7 @@ impl Ui {
             };
             if reaches {
                 if named(f) {
-                    out.push((self.tree.nodes[f].key, self.path_of(f)));
+                    out.push((self.tree.nodes[f].key, self.tree.path_of(f)));
                 } else {
                     walk(f, &mut out)?;
                 }
@@ -468,7 +468,7 @@ impl Ui {
         let Content::Rich(rc) = &n.content else {
             return;
         };
-        let at = self.path_of(i);
+        let at = self.tree.path_of(i);
         for (l, lr) in self.rich_links(i) {
             let lr = n.world.map_rect(&lr);
             if lr.intersect(&n.clip).is_empty() {
@@ -541,7 +541,7 @@ impl Ui {
                 elements.push(UiElement {
                     id: n.id.clone(),
                     parent,
-                    path: self.probe_path(i),
+                    path: self.tree.probe_path(i),
                     kind: self.tree.kinds.get(i).map_or("", |k| k.0).to_string(),
                     disabled: n.disabled,
                     clipped: visible.width + 0.01 < r.width || visible.height + 0.01 < r.height,
@@ -592,7 +592,7 @@ impl Ui {
                             serde_json::json!({ "node": e.node, "opacity": e.opacity }),
                         );
                         elements.push(UiElement {
-                            path: format!("{}/{}", self.probe_path(i), e.id),
+                            path: format!("{}/{}", self.tree.probe_path(i), e.id),
                             id: e.id,
                             parent: n.id.clone(),
                             kind: "rive".into(),
@@ -631,7 +631,7 @@ impl Ui {
                             .collect();
                         parts.push(None);
                         elements.push(UiElement {
-                            path: format!("{}/{l}", self.probe_path(i)),
+                            path: format!("{}/{l}", self.tree.probe_path(i)),
                             id: l,
                             parent: n.id.clone(),
                             kind: "link".into(),

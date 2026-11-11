@@ -235,7 +235,7 @@ impl Ui {
                             self.out.events.push(UiEvent {
                                 kind: "snap".into(),
                                 name: k.to_string(),
-                                target: self.path_of(i),
+                                target: self.tree.path_of(i),
                                 pitch: 1.0,
                                 ..UiEvent::default()
                             });
@@ -252,7 +252,7 @@ impl Ui {
                         g.dismissed = true;
                         self.out.events.push(UiEvent {
                             kind: "dismiss".into(),
-                            target: self.path_of(i),
+                            target: self.tree.path_of(i),
                             pitch: 1.0,
                             ..UiEvent::default()
                         });
@@ -268,7 +268,7 @@ impl Ui {
                         self.out.events.push(UiEvent {
                             kind: "drop".into(),
                             name: target,
-                            target: self.path_of(i),
+                            target: self.tree.path_of(i),
                             pitch: 1.0,
                             ..UiEvent::default()
                         });

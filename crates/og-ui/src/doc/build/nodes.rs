@@ -124,7 +124,7 @@ impl Ui {
                 } else {
                     n.id.as_str()
                 });
-                let mount = format!("{}/{id}", self.path_of(self.tree.parent()));
+                let mount = format!("{}/{id}", self.tree.path_of(self.tree.parent()));
                 let before = vm.clone();
                 let mut built = Built::default();
                 let opened = self.enter_structure(b, i);
@@ -184,7 +184,7 @@ impl Ui {
             }
             None => n.id.clone(),
         };
-        let parent_path = self.path_of(self.tree.parent());
+        let parent_path = self.tree.path_of(self.tree.parent());
         let path = if parent_path == "root" {
             id.clone()
         } else {

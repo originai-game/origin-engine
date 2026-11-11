@@ -530,7 +530,7 @@ impl Ui {
                 if cut > 1.0 {
                     warn = Some(format!(
                         "'{}' is laid out {:.0} px past the {}x{} screen and nothing scrolls to it: fit the screen (a smaller type step, fewer rows, a row instead of a column) or put it in a scroll container",
-                        self.path_of(i),
+                        self.tree.path_of(i),
                         cut,
                         screen.width,
                         screen.height
@@ -707,41 +707,46 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Tree {
     /// Brings the drawing order up to date once motion has set this
     /// frame's `z`: made again where the shape, a `z` or the world panels
     /// changed.
-    pub(super) fn update_draw_order(&mut self, moved: &[usize]) {
-        let n = self.tree.nodes.len();
-        let o = &mut self.tree.orders;
-        let nodes = &self.tree.nodes;
+    pub(super) fn update_draw_order(
+        &mut self,
+        moved: &[usize],
+        world: &crate::world::WorldUi,
+        layout: &crate::ui::Layout,
+    ) {
+        let n = self.nodes.len();
+        let o = &mut self.orders;
+        let nodes = &self.nodes;
         let z_moved = moved
             .iter()
-            .chain(&self.tree.emitted)
+            .chain(&self.emitted)
             .any(|&i| i < n && o.z[i] != nodes[i].sampled.z);
-        let panels = self.world.panel_nodes();
+        let panels = world.panel_nodes();
         if o.draw_ok && !z_moved && panels == o.panels {
             return;
         }
         o.draw_ok = true;
         o.panels = panels;
         let mut draw = crate::layout::draw_order(nodes, 0);
-        for &f in &self.tree.floating {
+        for &f in &self.floating {
             draw.extend(crate::layout::draw_order(nodes, f));
         }
-        self.layout.world_order(&mut draw, &self.world, &self.tree);
-        let o = &mut self.tree.orders;
+        layout.world_order(&mut draw, world, self);
+        let o = &mut self.orders;
         o.pos.clear();
         o.pos.resize(n, u32::MAX);
         for (k, &i) in draw.iter().enumerate() {
             o.pos[i] = k as u32;
-            o.z[i] = self.tree.nodes[i].sampled.z;
+            o.z[i] = self.nodes[i].sampled.z;
         }
-        o.ends = crate::layout::subtree_ends(&self.tree.nodes, &draw);
+        o.ends = crate::layout::subtree_ends(&self.nodes, &draw);
         o.roots = draw
             .iter()
-            .filter(|&&i| self.tree.nodes[i].parent == NONE)
-            .map(|&i| self.tree.nodes[i].key)
+            .filter(|&&i| self.nodes[i].parent == NONE)
+            .map(|&i| self.nodes[i].key)
             .collect();
         o.draw = draw;
         // The hits follow the drawing order; a node that left has none.
@@ -762,25 +767,22 @@ impl Ui {
     /// The bounded frame's check: the kept orders and features are those
     /// the frame makes afresh.
     #[cfg(debug_assertions)]
-    pub(super) fn check_orders(&self) {
-        let mut pre = crate::layout::preorder(&self.tree.nodes, 0);
-        for &f in &self.tree.floating {
-            pre.extend(crate::layout::preorder(&self.tree.nodes, f));
+    pub(super) fn check_orders(&self, world: &crate::world::WorldUi, layout: &crate::ui::Layout) {
+        let mut pre = crate::layout::preorder(&self.nodes, 0);
+        for &f in &self.floating {
+            pre.extend(crate::layout::preorder(&self.nodes, f));
         }
-        assert_eq!(pre, self.tree.orders.pre, "the kept preorder differs");
-        let mut draw = crate::layout::draw_order(&self.tree.nodes, 0);
-        for &f in &self.tree.floating {
-            draw.extend(crate::layout::draw_order(&self.tree.nodes, f));
+        assert_eq!(pre, self.orders.pre, "the kept preorder differs");
+        let mut draw = crate::layout::draw_order(&self.nodes, 0);
+        for &f in &self.floating {
+            draw.extend(crate::layout::draw_order(&self.nodes, f));
         }
-        self.layout.world_order(&mut draw, &self.world, &self.tree);
-        assert_eq!(
-            draw, self.tree.orders.draw,
-            "the kept drawing order differs"
-        );
+        layout.world_order(&mut draw, world, self);
+        assert_eq!(draw, self.orders.draw, "the kept drawing order differs");
         for &i in &pre {
             assert_eq!(
-                features(&self.tree.nodes[i]),
-                self.tree.orders.feat[i],
+                features(&self.nodes[i]),
+                self.orders.feat[i],
                 "the kept features of '{}' differ",
                 self.path_of(i)
             );
@@ -789,10 +791,10 @@ impl Ui {
             let want: Vec<usize> = pre
                 .iter()
                 .copied()
-                .filter(|&i| self.tree.orders.feat[i] & (1 << b) != 0)
+                .filter(|&i| self.orders.feat[i] & (1 << b) != 0)
                 .collect();
             assert_eq!(
-                want, self.tree.orders.lists[b],
+                want, self.orders.lists[b],
                 "the kept list of feature {b} differs"
             );
         }
