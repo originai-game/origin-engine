@@ -60,9 +60,24 @@ pub(crate) const GRASS: PreGraphDesc = PreGraphDesc {
     needs: Caps::COMPUTE,
 };
 
+/// The scattered copies placed on the GPU this frame, then those the
+/// main camera sees, culled on the GPU (scatter/draw.rs): nothing
+/// without compute.
+pub(crate) const SCATTER: PreGraphDesc = PreGraphDesc {
+    name: "scatter",
+    needs: Caps::COMPUTE,
+};
+
 /// The passes before the graph, in the frame encoder's order.
-pub(crate) const PRE_GRAPH: &[PreGraphDesc] =
-    &[CROWD_CULL, WIND, VISUAL, SURFACES, TERRAIN_CORNERS, GRASS];
+pub(crate) const PRE_GRAPH: &[PreGraphDesc] = &[
+    CROWD_CULL,
+    WIND,
+    VISUAL,
+    SURFACES,
+    TERRAIN_CORNERS,
+    GRASS,
+    SCATTER,
+];
 
 /// Encodes the pass `desc` with `encode` where `caps` has its needs, the
 /// encoder checking what it opens against them (`Encoder::expect`), and

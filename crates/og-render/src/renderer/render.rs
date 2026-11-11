@@ -4077,12 +4077,12 @@ impl Renderer {
         // The scattered copies placed on the GPU this frame, then those the
         // main camera sees, culled on the GPU against its view and the
         // depth pyramid the culling drew.
-        let scatter_queries = {
+        let scatter_queries = pre_graph(&mut encoder, self.info.caps, pre_graph::SCATTER, |e| {
             let textures = &self.cache.textures;
             self.scatter.encode(
                 &self.device,
                 &self.queue,
-                &mut encoder,
+                e,
                 &scatter_cull::CullView {
                     view_proj: cam.jittered_view_proj,
                     planes: view_frustum.planes(),
@@ -4097,7 +4097,8 @@ impl Renderer {
                 &|h| textures.get(h.index()).map(|t| &t.view),
                 &terrain_draws,
             )
-        };
+        })
+        .unwrap_or_default();
         let palette_group = self.palette.bind_group.as_ref();
         // The main pass draws physical materials with their pipelines, the
         // planar reflection with the standard ones.
