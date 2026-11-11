@@ -1,7 +1,7 @@
 //! The main camera's lists: the frame's visibility stage opened, the
 //! camera's opaque list (the GPU cull's main and occluder passes, or culled
-//! on the CPU), its meshlet view, its transparent meshes back to front, and
-//! whether its OIT pass runs.
+//! on the CPU) near to far, its meshlet view, its transparent meshes back to
+//! front, and whether its OIT pass runs.
 
 use super::*;
 
@@ -84,7 +84,7 @@ impl Renderer {
                 .any(|b| self.cache.materials[b.material].occluder);
         // The main camera's layers (views.rs).
         let mask = scene.frame.camera_layers;
-        let (main_list, mut culled) = if gpu_cull {
+        let (mut main_list, mut culled) = if gpu_cull {
             let g = vis.gpu_pass(cull_gpu::PassKind::Main, view_frustum, None, None);
             if occlusion {
                 vis.gpu_pass(cull_gpu::PassKind::Occluders, view_frustum, None, None);
@@ -110,6 +110,15 @@ impl Renderer {
                 |b| !b.transparent && b.layers & mask != 0,
             )
         };
+        // Near batches first, so the depth test rejects what they hide before
+        // it is shaded. The prepass and the main pass both follow this list.
+        sort_near_to_far(
+            &mut main_list.ranges,
+            |b| (batches[b as usize].first, batches[b as usize].count),
+            spheres,
+            camera.position,
+            cam.forward,
+        );
         // The meshlet dispatch's views: the camera's, then one per
         // reflection, view, probe face and shadow pass that fits
         // (`meshlet_view`: its index, 0 none: that pass keeps its list).
@@ -151,5 +160,70 @@ impl Renderer {
             culled,
             blended_list,
         }
+    }
+}
+
+/// Orders an opaque list's ranges by the view depth of each batch's nearest
+/// bound in front of the eye (`span`: a batch's first sorted instance and
+/// their count); ties, and batches wholly behind the eye, keep their order.
+/// The key is the batch's, not the range's: a list culled on the GPU does
+/// not know which instances it draws.
+fn sort_near_to_far(
+    ranges: &mut [(u32, u32, u32)],
+    span: impl Fn(u32) -> (u32, u32),
+    spheres: &[(Vec3, f32)],
+    eye: Vec3,
+    forward: Vec3,
+) {
+    let mut keyed: Vec<(f32, (u32, u32, u32))> = ranges
+        .iter()
+        .map(|&r| {
+            let (first, count) = span(r.0);
+            let nearest = spheres[first as usize..(first + count) as usize]
+                .iter()
+                .map(|&(c, radius)| ((c - eye).dot(forward), radius))
+                .filter(|&(depth, radius)| depth + radius > 0.0)
+                .fold(f32::INFINITY, |near, (depth, radius)| {
+                    near.min((depth - radius).max(0.0))
+                });
+            (nearest, r)
+        })
+        .collect();
+    og_core::sort::sort_by(&mut keyed, |a, b| a.0.total_cmp(&b.0));
+    for (r, (_, sorted)) in ranges.iter_mut().zip(keyed) {
+        *r = sorted;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Batches draw by their nearest bound in front of the eye: an instance
+    /// behind it does not pull its batch forward, one around it does, and
+    /// equal depths keep the list's order.
+    #[test]
+    fn opaque_ranges_draw_near_to_far_by_their_nearest_instance_in_front() {
+        let eye = Vec3::new(0.0, 0.0, 10.0);
+        let forward = Vec3::NEG_Z;
+        let at = |z: f32, r: f32| (Vec3::new(3.0, -2.0, z), r);
+        // Batch 0: far (depth 39). Batch 1: one instance behind the eye, one
+        // at depth 19. Batch 2: near (depth 4). Batch 3: around the eye.
+        // Batch 4: depth 4 again. Batch 5: wholly behind.
+        let spheres = [
+            at(-30.0, 1.0),
+            at(25.0, 1.0),
+            at(-10.0, 1.0),
+            at(5.0, 1.0),
+            at(10.5, 2.0),
+            at(4.0, 2.0),
+            at(40.0, 1.0),
+        ];
+        let spans = [(0, 1), (1, 2), (3, 1), (4, 1), (5, 1), (6, 1)];
+        let mut ranges: Vec<(u32, u32, u32)> = (0..6).map(|b| (b, 100 + b, 1)).collect();
+        sort_near_to_far(&mut ranges, |b| spans[b as usize], &spheres, eye, forward);
+        let order: Vec<u32> = ranges.iter().map(|r| r.0).collect();
+        assert_eq!(order, [3, 2, 4, 1, 0, 5]);
+        assert!(ranges.iter().all(|r| r.1 == 100 + r.0 && r.2 == 1));
     }
 }
