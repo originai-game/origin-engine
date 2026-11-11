@@ -66,6 +66,8 @@ mod mounted_layers;
 mod perf;
 #[path = "../probe.rs"]
 mod probe;
+#[path = "../r11_dump.rs"]
+mod r11_dump;
 #[path = "../recognizers.rs"]
 mod recognizers;
 #[path = "../rich.rs"]
