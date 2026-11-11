@@ -308,6 +308,32 @@ impl SemanticLog {
 }
 
 impl Ui {
+    /// The keys whose accessibility may have changed since a bridge last
+    /// read it at `since` (`None`: it reads the whole tree), and the frame
+    /// it has now read up to.
+    pub fn semantic_changes(&self, since: Option<u64>) -> (Option<Vec<u64>>, u64) {
+        (self.tree.semantics.since(since), self.tree.semantics.frame)
+    }
+
+    /// Whether what changed since a bridge last read at `since` is news
+    /// its live regions announce: false for its first read (`None`) and
+    /// after a restore ([`Ui::restore_state`]), which changes what nodes say
+    /// without anything happening. A scope change (a dialog opening or
+    /// closing) is news: the page's nodes stay in the tree with their
+    /// words, so only what changed with it (a toast) is heard.
+    pub fn semantic_news(&self, since: Option<u64>) -> bool {
+        since.is_some_and(|s| self.tree.semantics.quiet <= s)
+    }
+
+    /// The nodes whose children may have changed since a bridge last read
+    /// at `since` (`0`: the frame's root), beside [`Ui::semantic_changes`];
+    /// `None` when it reads the whole tree.
+    pub fn semantic_shapes(&self, since: Option<u64>) -> Option<Vec<u64>> {
+        self.tree.semantics.shapes_since(since)
+    }
+}
+
+impl Ui {
     /// Notes what this frame may have changed for screen readers: nodes
     /// that entered or left the trees (`TreeIndex::moved_keys`) and the
     /// parents whose children changed (`TreeIndex::restructured`), nodes
@@ -405,29 +431,5 @@ impl Ui {
             log.shapes.pop_front();
         }
         log.floor = floor;
-    }
-
-    /// The keys whose accessibility may have changed since a bridge last
-    /// read it at `since` (`None`: it reads the whole tree), and the frame
-    /// it has now read up to.
-    pub fn semantic_changes(&self, since: Option<u64>) -> (Option<Vec<u64>>, u64) {
-        (self.tree.semantics.since(since), self.tree.semantics.frame)
-    }
-
-    /// Whether what changed since a bridge last read at `since` is news
-    /// its live regions announce: false for its first read (`None`) and
-    /// after a restore ([`Ui::restore_state`]), which changes what nodes say
-    /// without anything happening. A scope change (a dialog opening or
-    /// closing) is news: the page's nodes stay in the tree with their
-    /// words, so only what changed with it (a toast) is heard.
-    pub fn semantic_news(&self, since: Option<u64>) -> bool {
-        since.is_some_and(|s| self.tree.semantics.quiet <= s)
-    }
-
-    /// The nodes whose children may have changed since a bridge last read
-    /// at `since` (`0`: the frame's root), beside [`Ui::semantic_changes`];
-    /// `None` when it reads the whole tree.
-    pub fn semantic_shapes(&self, since: Option<u64>) -> Option<Vec<u64>> {
-        self.tree.semantics.shapes_since(since)
     }
 }
