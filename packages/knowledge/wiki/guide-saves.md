@@ -255,22 +255,17 @@ world.
   (PlatformInfo.host `player`) through origin-checked postMessage (protocol
   2). Natively the host answers from a local JSON store
   (`og run --platform-store`, default `<project>/.og/platform.json`).
-- Error codes: offline, timeout, invalid, unauthorized, not_found,
-  conflict, too_large, rate_limited, unavailable, failed, cancelled (the
-  player backed out of a purchase, an ad or a share sheet) and no_fill (no
-  ad to show now). `retryable` is true for offline, timeout, unavailable,
-  rate_limited and no_fill.
+- A failed call carries a stable code and `retryable` (`og api show
+  PlatformError` lists the codes): retry a call only when `retryable` says
+  it may succeed later, and treat `cancelled` as the player's choice, not
+  an error to report.
 - og.platform.now is the host's time as of this tick. Use it to know how
   long the game was closed (a save's time against a launch's), never to
   time play (that is og.Time). Its `clock` is `browser` while the framing
   page sends no time of its own.
 
-The methods a host may answer, as PlatformInfo.capabilities lists them:
-store.get, store.set, store.list, leaderboard.submit, leaderboard.top,
-leaderboard.around, telemetry, point, ai.mark, purchase.products,
-purchase.buy, purchase.entitlements, purchase.consume, ad.ready, ad.show,
-achievement.unlock, achievement.progress, achievement.list, player.get,
-friends.list, invite.send, invite.list and share.
+The methods a host may answer are PlatformInfo.capabilities' (`og api
+show PlatformInfo`).
 
 A service the host lacks:
 
