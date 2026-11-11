@@ -1,10 +1,14 @@
 use super::*;
 
+/// An entry setting `key` to `values`.
+fn e(key: &str, values: Vec<Value>) -> Part {
+    Part::Entry(key.to_string(), values)
+}
+
 /// The entries one element declaration (or state value when `state`)
 /// sets, in order. Sizes, grid lines and `grid-auto-flow` come back as
 /// parts the block joins ([`Joined`]).
 pub(super) fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String> {
-    let e = |key: &str, values: Vec<Value>| Part::Entry(key.to_string(), values);
     if !value.contains("bind(")
         && let Some(parts) = super::tracks::lower(name, value)
     {
@@ -793,7 +797,6 @@ fn css_text(t: &Tok) -> String {
 /// `[safe | unsafe] <position>`, a distribution, `normal`, `stretch` or a
 /// baseline. `auto` on an item is the initial value (its parent's).
 fn alignment(name: &str, t: &[Tok]) -> Result<Vec<Part>, String> {
-    let e = |key: &str, values: Vec<Value>| Part::Entry(key.to_string(), values);
     let words: Vec<&str> = t
         .iter()
         .map(|v| want_ident(v, "an alignment"))
