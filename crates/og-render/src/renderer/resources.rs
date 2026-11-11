@@ -696,6 +696,33 @@ impl Lights {
             bytemuck::cast_slice(&self.clusters.ref_words()),
         );
     }
+
+    /// The decals' records, and the clusters of `view` they reach, written
+    /// for the lit passes. Answers the decals drawn, and those dropped of
+    /// the scene's `total` (with the references the bins had no room for).
+    pub(crate) fn prepare_decals(
+        &mut self,
+        (device, queue): (&wgpu::Device, &wgpu::Queue),
+        decals: &[crate::Decal],
+        view: &clusters::ClusterView,
+        total: u32,
+    ) -> (u32, u32) {
+        fx::pack_decals(decals, &mut self.decal_records, &mut self.decal_spheres);
+        let drawn = self.decal_records.len() as u32;
+        if drawn > 0 {
+            self.clusters
+                .bin_decals(&self.decal_spheres, view, &mut self.decal_bins);
+            self.decal_buffers
+                .write(device, queue, &self.decal_records, &self.decal_bins.cells);
+        }
+        let dropped = total - drawn
+            + if drawn > 0 {
+                self.decal_bins.refs_dropped
+            } else {
+                0
+            };
+        (drawn, dropped)
+    }
 }
 
 impl Shadows {

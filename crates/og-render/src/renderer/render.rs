@@ -2745,43 +2745,24 @@ impl Renderer {
         }
         // The decals: their records, and the main view's clusters they reach
         // (none in a renderer made without them, RenderDesc::without).
-        fx::pack_decals(
+        let (decals, decals_dropped) = self.lights.prepare_decals(
+            (&self.device, &self.queue),
             if self.info.without.contains(LitFeatures::DECALS) {
                 &[]
             } else {
                 &scene.decals
             },
-            &mut self.lights.decal_records,
-            &mut self.lights.decal_spheres,
+            &clusters::ClusterView {
+                camera: &cam,
+                frustum: &view_frustum,
+                position: camera.position,
+                near: camera.near,
+                far: camera.far,
+                width: self.width,
+                height: self.height,
+            },
+            scene.decals.len() as u32,
         );
-        let decals = self.lights.decal_records.len() as u32;
-        if decals > 0 {
-            self.lights.clusters.bin_decals(
-                &self.lights.decal_spheres,
-                &clusters::ClusterView {
-                    camera: &cam,
-                    frustum: &view_frustum,
-                    position: camera.position,
-                    near: camera.near,
-                    far: camera.far,
-                    width: self.width,
-                    height: self.height,
-                },
-                &mut self.lights.decal_bins,
-            );
-            self.lights.decal_buffers.write(
-                &self.device,
-                &self.queue,
-                &self.lights.decal_records,
-                &self.lights.decal_bins.cells,
-            );
-        }
-        let decals_dropped = scene.decals.len() as u32 - decals
-            + if decals > 0 {
-                self.lights.decal_bins.refs_dropped
-            } else {
-                0
-            };
         // The previous joints' section (`skin::append_previous`).
         if skinned_motion.is_some() {
             fx_uniform.decal_info[3] = joints_drawn as f32;
