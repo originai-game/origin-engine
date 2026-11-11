@@ -1166,7 +1166,10 @@ mod tests {
     /// shipped `brdf` and `physical_brdf` (a white metal's specular over
     /// its D and n.l) and compared with [`v_smith`]. The separable G with
     /// Karis's k that this replaced gives 0.60 of it at the first point
-    /// and 0.25 to 0.89 over the others.
+    /// and 0.25 to 0.89 over the others. The anisotropic branch with one
+    /// alpha both ways is the same lobe, so the specular does not jump
+    /// as the anisotropy reaches 0 (capped at 1, it gave 1 for the first
+    /// four points' 1.3 to 15.9).
     #[test]
     #[ignore = "requires GPU"]
     fn direct_light_has_the_height_correlated_smith_visibility() {
@@ -1265,12 +1268,6 @@ fn ggx_test_fs(@builtin(position) at: vec4<f32>) -> @location(0) vec4<f32> {{
                 .iter()
                 .zip(texel)
             {
-                // The anisotropic branch keeps its visibility under 1.
-                let expected = if name.ends_with("anisotropic") {
-                    expected.min(1.0)
-                } else {
-                    expected
-                };
                 assert!(
                     (f64::from(*got) / expected - 1.0).abs() < 1e-4,
                     "{name} at n.v {n_dot_v}, n.l {n_dot_l}, roughness {roughness}: \
