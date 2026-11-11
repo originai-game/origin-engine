@@ -1,12 +1,6 @@
 use super::*;
 
 impl Ui {
-    pub(crate) fn document_mount_inputs(&self) -> Value {
-        json!(self.docs.host.retained.registrations.iter().map(|(mount, registration)| {
-            json!({ "mount": mount, "inputs": registration.inputs.values().collect::<Vec<_>>() })
-        }).collect::<Vec<_>>())
-    }
-
     /// Register once over the host protocol; the next frame compiles with its
     /// real host environment, after source callbacks have settled.
     pub(crate) fn register_document_mount(
@@ -110,6 +104,14 @@ impl Ui {
             managed: previous.docs.host.retained.managed.clone(),
             ..Default::default()
         };
+    }
+}
+
+impl Ui {
+    pub(crate) fn document_mount_inputs(&self) -> Value {
+        json!(self.docs.host.retained.registrations.iter().map(|(mount, registration)| {
+            json!({ "mount": mount, "inputs": registration.inputs.values().collect::<Vec<_>>() })
+        }).collect::<Vec<_>>())
     }
 
     pub(crate) fn registered_document_mounts(

@@ -408,16 +408,6 @@ impl Ui {
         }
     }
 
-    /// The stack index of a mounted layer.
-    pub(crate) fn mount_layer(&self, mount: &SourceId) -> Option<usize> {
-        self.docs
-            .host
-            .layers
-            .layers
-            .iter()
-            .position(|l| l.mount.as_ref() == Some(mount))
-    }
-
     /// The stack, bottom first.
     pub fn layer_stack(&self) -> Vec<LayerInfo> {
         let st = &self.docs.host.layers.layers;
@@ -847,25 +837,6 @@ impl Ui {
         events
     }
 
-    /// The layer state snapshots carry, as JSON.
-    pub(crate) fn docs_state(&self) -> Value {
-        let d = &self.docs.host;
-        json!({
-            "next": d.layers.next,
-            "heldScale": d.layers.held_scale,
-            "stores": self.docs.reactive.save(),
-            "mounts": d.retained.save(),
-            "mountRegistrations": self.document_registration_state(),
-            "seen": d.seen_now.iter().map(u64::to_string).collect::<Vec<_>>(),
-            "layers": d.layers.layers.iter().map(|l| json!({
-                "serial": l.serial, "screen": l.screen, "vm": l.vm, "focus": l.focus.to_string(), "wasTop": l.was_top,
-                "mount": l.mount, "since": l.since, "leaving": l.leaving,
-            })).collect::<Vec<_>>(),
-            "states": d.states.iter().map(|((k, g), s)| json!([k.to_string(), g, s])).collect::<Vec<_>>(),
-            "last": d.last.iter().map(|((k, i), v)| json!([k.to_string(), i, v])).collect::<Vec<_>>(),
-        })
-    }
-
     pub(crate) fn restore_docs_state(&mut self, v: &Value) -> Result<(), String> {
         let retained = self.restore_document_mounts(&v["mounts"], &v["mountRegistrations"])?;
         if let Some(stores) = v.get("stores") {
@@ -932,6 +903,37 @@ impl Ui {
             .unwrap_or_default();
         self.sync_mount_layers();
         Ok(())
+    }
+}
+
+impl Ui {
+    /// The stack index of a mounted layer.
+    pub(crate) fn mount_layer(&self, mount: &SourceId) -> Option<usize> {
+        self.docs
+            .host
+            .layers
+            .layers
+            .iter()
+            .position(|l| l.mount.as_ref() == Some(mount))
+    }
+
+    /// The layer state snapshots carry, as JSON.
+    pub(crate) fn docs_state(&self) -> Value {
+        let d = &self.docs.host;
+        json!({
+            "next": d.layers.next,
+            "heldScale": d.layers.held_scale,
+            "stores": self.docs.reactive.save(),
+            "mounts": d.retained.save(),
+            "mountRegistrations": self.document_registration_state(),
+            "seen": d.seen_now.iter().map(u64::to_string).collect::<Vec<_>>(),
+            "layers": d.layers.layers.iter().map(|l| json!({
+                "serial": l.serial, "screen": l.screen, "vm": l.vm, "focus": l.focus.to_string(), "wasTop": l.was_top,
+                "mount": l.mount, "since": l.since, "leaving": l.leaving,
+            })).collect::<Vec<_>>(),
+            "states": d.states.iter().map(|((k, g), s)| json!([k.to_string(), g, s])).collect::<Vec<_>>(),
+            "last": d.last.iter().map(|((k, i), v)| json!([k.to_string(), i, v])).collect::<Vec<_>>(),
+        })
     }
 }
 
