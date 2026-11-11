@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {"member":"Grass","summary":"A field's draws cost less with the same pixels: a shadow cascade no longer draws the levels of detail whose blades stand too far to shade it, and the prepass builds only what it writes (no colour), the lit pass no motion. The default field at 1280x720 on an Apple M4 Pro takes 42.3 ms a frame near, 50.4 mid-range and 38.0 far (45.2, 53.6 and 41.6 before)."}
+  ]
+}

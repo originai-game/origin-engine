@@ -25,14 +25,29 @@ struct GrassOut {
   @location(2) color: vec3<f32>,
   // x: the root's occlusion, y: how much sheen shows here, z: t
   @location(3) shading: vec3<f32>,
-  @location(4) cur_clip: vec4<f32>,
-  @location(5) prev_clip: vec4<f32>,
   // How far into the field's distance the blade stands (0 near, 1 where
   // it lights as the ground under it does).
-  @location(6) far: f32,
+  @location(4) far: f32,
   // How high above its root this point of the blade stands (m).
-  @location(7) above: f32,
+  @location(5) above: f32,
 };
+
+// What the prepass takes of a blade: its lit draw needs no motion, and
+// the prepass no colour, so each builds only its own.
+struct GrassPrepassIn {
+  @builtin(position) clip: vec4<f32>,
+  @location(0) world: vec3<f32>,
+  @location(1) normal: vec3<f32>,
+  // How much sheen shows here (GrassOut's shading.y).
+  @location(2) sheen: f32,
+  @location(3) cur_clip: vec4<f32>,
+  @location(4) prev_clip: vec4<f32>,
+};
+
+// How much of the field's sheen shows at `t` along a blade.
+fn grass_sheen(t: f32) -> f32 {
+  return grass.tip_color.w * smoothstep(0.4, 0.8, t);
+}
 
 fn grass_eye(previous: bool) -> GrassEye {
   var e: GrassEye;
@@ -61,8 +76,20 @@ fn vs(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> Grass
   let kind = r.blade.kind * 2u;
   let average = grass_far_color(grass.kinds[kind].rgb, grass.kinds[kind + 1u].rgb);
   o.color = mix(grass_color(r.blade, v.t), average, 0.6 * o.far) * grass_gust_sheen(grass.wind, r.blade.root.xz + grass.wind.time.zw, GRASS_GUST_SHEEN);
-  o.shading = vec3<f32>(grass_occlusion(max(v.world.y - r.blade.root.y, 0.0)), grass.tip_color.w * smoothstep(0.4, 0.8, v.t), v.t);
+  o.shading = vec3<f32>(grass_occlusion(max(v.world.y - r.blade.root.y, 0.0)), grass_sheen(v.t), v.t);
   o.above = max(v.world.y - r.blade.root.y, 0.0);
+  return o;
+}
+
+@vertex
+fn vs_prepass(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> GrassPrepassIn {
+  let r = grass_ref(vi, ii);
+  let v = grass_vertex(r, grass_eye(false));
+  var o: GrassPrepassIn;
+  o.clip = frame.view_proj * vec4<f32>(v.world, 1.0);
+  o.world = v.world;
+  o.normal = v.normal;
+  o.sheen = grass_sheen(v.t);
   o.cur_clip = grass.view_proj * vec4<f32>(v.world, 1.0);
   // Where the blade stood last frame: its last bend and flutter.
   let p = grass_vertex(r, grass_eye(true));
@@ -235,13 +262,13 @@ struct GrassPrepass {
 };
 
 @fragment
-fn fs_prepass(in: GrassOut, @builtin(front_facing) front: bool) -> GrassPrepass {
+fn fs_prepass(in: GrassPrepassIn, @builtin(front_facing) front: bool) -> GrassPrepass {
   let n = normalize(in.normal) * select(-1.0, 1.0, front);
   let cur = in.cur_clip.xy / in.cur_clip.w;
   let prev = in.prev_clip.xy / max(in.prev_clip.w, 1e-6);
   var o: GrassPrepass;
   o.gbuffer = vec4<f32>(oct_encode(n), (cur - prev) * vec2<f32>(0.5, -0.5));
-  let roughness = clamp(grass.dry_color.w * (1.0 - 0.45 * in.shading.y), 0.04, 1.0);
+  let roughness = clamp(grass.dry_color.w * (1.0 - 0.45 * in.sheen), 0.04, 1.0);
   o.depth = vec4<f32>(dot(in.world - frame.view_pos.xyz, frame.view_forward.xyz), reflectivity_bits(roughness, 0.0), 0.0, 1.0);
   o.outline = vec4<f32>(0.0);
   return o;
