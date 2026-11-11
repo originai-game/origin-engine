@@ -229,7 +229,7 @@ impl Ui {
         self.part_rules = rules;
         self.part_sheet = sheet;
         self.read_theme_tokens();
-        self.kept.epoch += 1;
+        self.invalidation.epoch += 1;
         Ok(())
     }
 
@@ -241,7 +241,7 @@ impl Ui {
         self.root_tokens.clone_from(&source.root_tokens);
         self.root_type_tokens.clone_from(&source.root_type_tokens);
         self.read_theme_tokens();
-        self.kept.epoch += 1;
+        self.invalidation.epoch += 1;
     }
 
     /// Resolve a part's CSS for its placed size. The result has no implicit

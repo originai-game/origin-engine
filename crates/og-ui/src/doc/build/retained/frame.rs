@@ -10,7 +10,7 @@ impl RetainedHost {
             direction: ui.direction,
             locale: ui.locale.clone(),
             style: ui.style_name.clone(),
-            style_epoch: ui.kept.epoch,
+            style_epoch: ui.invalidation.epoch,
             players: ui.players,
             nav_on: ui.nav_on,
         };

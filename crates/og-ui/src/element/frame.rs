@@ -531,15 +531,16 @@ impl Ui {
     /// boxes, and the frame's counts: elements built and rebuilt.
     pub(crate) fn reuse_check(&mut self) {
         let k = &mut self.kept;
+        let inv = &mut self.invalidation;
         let nodes = &self.nodes;
         let n = nodes.len();
         let sig = (self.theme, self.direction, self.viewport.dpr());
-        let fresh = k.epoch != k.prev_epoch || k.sig != Some(sig);
-        k.prev_epoch = k.epoch;
-        k.sig = Some(sig);
-        k.fresh = fresh;
+        let fresh = inv.epoch != inv.prev_epoch || inv.sig != Some(sig);
+        inv.prev_epoch = inv.epoch;
+        inv.sig = Some(sig);
+        inv.fresh = fresh;
         k.laid_out = 0;
-        k.full = fresh || k.whole;
+        k.full = fresh || inv.whole;
         k.unreach();
         // A retained node not written this frame keeps its own inputs.
         if k.full {
@@ -572,7 +573,7 @@ impl Ui {
                 sources.push(i);
                 sources.push(nodes[i].parent);
             }
-            sources.extend(std::mem::take(&mut k.rederive));
+            sources.extend(std::mem::take(&mut inv.rederive));
             sources.extend(roots.iter().copied());
             sources.extend(k.scrollers.iter().copied());
             for &i in &self.emitted {
@@ -583,18 +584,18 @@ impl Ui {
                     || (a.el.cross == crate::layout::Cross::Baseline
                         && a.el.direction == crate::layout::Direction::Row);
                 if moved {
-                    k.forced.insert(i);
+                    inv.forced.insert(i);
                 } else {
-                    k.forced.remove(&i);
+                    inv.forced.remove(&i);
                 }
             }
-            let restored = std::mem::take(&mut k.restored);
+            let restored = std::mem::take(&mut inv.restored);
             for i in sources {
                 if i < n {
                     k.reach(nodes, i, false);
                 }
             }
-            let forced: Vec<usize> = k.forced.iter().copied().collect();
+            let forced: Vec<usize> = inv.forced.iter().copied().collect();
             for i in forced.into_iter().chain(restored) {
                 if i < n && nodes[i].key != 0 {
                     k.reach(nodes, i, true);

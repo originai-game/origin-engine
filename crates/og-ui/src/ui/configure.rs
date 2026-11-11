@@ -104,6 +104,7 @@ impl Ui {
             drag_paths: IdMap::new(),
             drop_accepts: IdMap::new(),
             kept: Default::default(),
+            invalidation: Default::default(),
             paint_cache: Default::default(),
             motion_cache: Default::default(),
             stats: LayoutStats::default(),
@@ -371,7 +372,7 @@ impl Ui {
         self.configured = theme;
         self.theme = effective_theme(theme, &self.viewport);
         self.read_theme_tokens();
-        self.kept.epoch += 1;
+        self.invalidation.epoch += 1;
     }
 
     /// Set a host attribute on the open element's part. Returns whether a
@@ -426,7 +427,7 @@ impl Ui {
 
     pub fn set_fonts(&mut self, fonts: Fonts) {
         self.fonts = fonts;
-        self.kept.epoch += 1;
+        self.invalidation.epoch += 1;
         self.fonts.link();
         self.texts.clear();
     }

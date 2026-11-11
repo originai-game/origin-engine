@@ -110,7 +110,7 @@ impl crate::Ui {
         self.part_sheet.clone_from(&pack.sheet);
         self.set_style_name(&pack.name);
         self.read_theme_tokens();
-        self.kept.epoch += 1;
+        self.invalidation.epoch += 1;
         Ok(())
     }
 

@@ -297,7 +297,7 @@ impl Ui {
             .emitted
             .iter()
             .chain(&self.kept.laid)
-            .chain(&self.kept.restored);
+            .chain(&self.invalidation.restored);
         for &i in read {
             if i < n {
                 let f = features(&self.nodes[i]);

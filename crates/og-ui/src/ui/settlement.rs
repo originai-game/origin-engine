@@ -198,7 +198,7 @@ impl Ui {
 
     pub(crate) fn abort_layout_queries(&mut self) {
         self.kept.query_roots = None;
-        self.kept.epoch += 1;
+        self.invalidation.epoch += 1;
         self.kept.measurements.pending.clear();
         self.kept
             .measurements
@@ -252,7 +252,7 @@ mod tests {
             // Once per finish: the bounded frame's check finishes a whole
             // twin too (`end_with_layout_queries`), resolving it as well.
             #[cfg(debug_assertions)]
-            let finishes = if crate::ui::bounded::checking() && !ui.kept.whole {
+            let finishes = if crate::ui::bounded::checking() && !ui.invalidation.whole {
                 2
             } else {
                 1
