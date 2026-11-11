@@ -16,9 +16,9 @@
 //! shake, punch, kick and zones to the frame only: rendering never feeds
 //! back into the simulation.
 
-use super::codec::{Key, Layout, Rec, Row, Slot};
+use super::codec::{ColRow, Key, Layout, Rec, Slot};
 use super::engine::{Engine, engine, queued_structural, running};
-use super::extract::{Hierarchy, RenderState};
+use super::extract::{Hierarchy, RenderState, column_rows};
 use super::parse;
 use glam::{Quat, Vec2, Vec3};
 use og_anim::{FlipbookSheet, FlipbookSystem};

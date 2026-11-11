@@ -17,24 +17,6 @@ pub(crate) struct FeelRender {
     tiles: BTreeMap<(u64, usize), TileCache>,
 }
 
-/// Every row of a component as `(entity bits, packed bytes)`, in query
-/// order: read in place with [`Row`] (decoding each to JSON was most of a
-/// 2D frame's extraction: Hollowbell's 200 sprites).
-pub(crate) fn byte_rows(world: &World, id: SchemaId, layout: &Layout) -> Vec<(u64, Vec<u8>)> {
-    let q = QueryDesc {
-        read: vec![layout.schema.clone()],
-        ..QueryDesc::default()
-    };
-    let Ok(all) = world.query(&q) else {
-        return Vec::new();
-    };
-    let entities: Vec<Entity> = all.flat_map(|a| a.entities().to_vec()).collect();
-    entities
-        .into_iter()
-        .filter_map(|e| world.get_bytes(e, id).ok().map(|b| (e.to_bits(), b)))
-        .collect()
-}
-
 fn blob_texture(scene: &mut og_render::RenderScene) -> og_render::TextureHandle {
     const N: u32 = 64;
     let mut rgba = Vec::with_capacity((N * N * 4) as usize);
@@ -236,7 +218,7 @@ fn sheet_frame(
 /// (`None` while the array's streaming group is not resident: nothing is
 /// drawn), else its texture.
 fn sprite_image(
-    v: &Row<'_>,
+    v: &impl Rec,
     s: &SpriteSlots,
     textures: &[og_render::TextureHandle],
     arrays: &[super::assets::LoadedArray],
@@ -280,17 +262,16 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
     let s = &r.slots.sprite;
     let scene_tick = world.time().tick;
     let scaled_now = world.time_scale().elapsed;
-    let flips: IdMap<u64, Vec<u8>> =
-        IdMap::from_iter(byte_rows(world, r.flipbook.0, &r.flipbook.1));
-    let sprites = byte_rows(world, r.sprite.0, &r.sprite.1);
-    let afterimages: IdMap<u64, Vec<u8>> =
-        IdMap::from_iter(byte_rows(world, r.afterimage.0, &r.afterimage.1));
+    // Read in place from their columns (decoding each row to JSON was most
+    // of a 2D frame's extraction: Hollowbell's 200 sprites; a packed copy
+    // of each, most of what was left at 20,000).
+    let flips = column_rows(world, &r.flipbook.1);
+    let flips: IdMap<u64, ColRow<'_>> = IdMap::from_iter(flips.iter());
+    let sprites = column_rows(world, &r.sprite.1);
+    let afterimages = column_rows(world, &r.afterimage.1);
+    let afterimages: IdMap<u64, ColRow<'_>> = IdMap::from_iter(afterimages.iter());
     let ghosts = lock(&feel.shared).ghosts.clone();
-    if rs.feel.blob.is_none()
-        && sprites
-            .iter()
-            .any(|(_, b)| f(&Row::new(&r.sprite.1, b), &s.shadow, 0.0) > 0.0)
-    {
+    if rs.feel.blob.is_none() && sprites.iter().any(|(_, v)| f(&v, &s.shadow, 0.0) > 0.0) {
         rs.feel.blob = Some(blob_texture(&mut rs.scene));
     }
     let blob = rs.feel.blob;
@@ -303,8 +284,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
     let (art, notes) = (&mut rs.art, &mut rs.notes);
     // og.Sprite rows' sprites by index, for the probe's id pass.
     let mut drawn: Vec<(u32, u64)> = Vec::new();
-    for (e, bytes) in &sprites {
-        let (e, v) = (*e, Row::new(&r.sprite.1, bytes));
+    for (e, v) in sprites.iter() {
         // Its layers: the renderer draws it on the cameras they admit
         // (the main one and every og.CameraView or og.Mirror).
         let layers = v.uint(&s.layers).map_or(1, |x| x as u32);
@@ -328,7 +308,6 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
         let mut uv = [lo.x, lo.y, hi.x, hi.y];
         let mut anchor = v2_of(&v, &s.anchor, Vec2::splat(0.5));
         let flipbook = flips.get(&e).map(|fb| {
-            let fb = Row::new(&r.flipbook.1, fb);
             (
                 fb.num(&r.slots.flipbook.sheet).map_or(0, |x| x as u64),
                 fb.uint(&r.slots.flipbook.clip).unwrap_or(0) as u32,
@@ -420,12 +399,11 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
         }
         // Afterimages: oldest first, under the sprite.
         if let (Some(a), Some(list)) = (afterimages.get(&e), ghosts.get(&e)) {
-            let a = Row::new(&r.afterimage.1, a);
             let count = a.uint(&r.slots.afterimage.count).unwrap_or(4).max(1) as f32;
             let interval = a.uint(&r.slots.afterimage.interval).unwrap_or(3).max(1) as f32;
-            let tint = rgb_of(&a, &r.slots.afterimage.color, Vec3::ONE);
-            let op = f(&a, &r.slots.afterimage.opacity, 0.5);
-            let add = on(&a, &r.slots.afterimage.additive, false);
+            let tint = rgb_of(a, &r.slots.afterimage.color, Vec3::ONE);
+            let op = f(a, &r.slots.afterimage.opacity, 0.5);
+            let add = on(a, &r.slots.afterimage.additive, false);
             for g in list.iter().rev() {
                 let age = scene_tick.saturating_sub(g.tick) as f32 / (count * interval);
                 let alpha = op * (1.0 - age).clamp(0.0, 1.0);
@@ -676,7 +654,7 @@ fn tile_layers(
     now: f64,
     light_masks: &IdMap<u64, u32>,
 ) {
-    let rows = byte_rows(world, r.tilemap.0, &r.tilemap.1);
+    let rows = column_rows(world, &r.tilemap.1);
     if rows.is_empty() {
         return;
     }
@@ -691,8 +669,7 @@ fn tile_layers(
         ..
     } = rs;
     let mut keep = BTreeSet::new();
-    for (e, bytes) in &rows {
-        let (e, v) = (*e, Row::new(&r.tilemap.1, bytes));
+    for (e, v) in rows.iter() {
         if !on(&v, &r.slots.tilemap.visible, true) {
             continue;
         }

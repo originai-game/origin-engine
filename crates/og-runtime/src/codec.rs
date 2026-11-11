@@ -94,6 +94,17 @@ impl Kind {
         }
     }
 
+    /// The lane [`Kind::keys`] gives `key` (a vector's `y` is 1): every key
+    /// is one byte, compared here as one (a string compare per lane was a
+    /// tenth of reading a sprite).
+    #[inline]
+    fn lane_of(self, key: &str) -> Option<usize> {
+        let &[key] = key.as_bytes() else {
+            return None;
+        };
+        self.keys().iter().position(|k| k.as_bytes() == [key])
+    }
+
     /// The og-core field type this kind is stored as: a `bool` is one byte
     /// (a `Uint8Array` column), a `Matrix4` sixteen f32, handles a `u64`, a
     /// `str(N)` field its `capacity` bytes (an event's text without one a
@@ -764,19 +775,9 @@ impl<'a> Row<'a> {
         Row { layout, bytes }
     }
 
-    /// The field `key` names and its bytes; `None` for a list, whose JSON
-    /// is an array that none of these reads answers.
-    fn field<K: Key + ?Sized>(&self, key: &K) -> Option<(&'a FieldLayout, &'a [u8])> {
-        let (i, at) = key.index_in(self.layout)?;
-        let f = self.layout.fields.get(i)?;
-        if f.ty.is_list() {
-            return None;
-        }
-        self.bytes.get(at..at + f.ty.size()).map(|b| (f, b))
-    }
-
     /// A field as an integer when its JSON is one (an enum index past its
     /// variants is the number itself).
+    #[inline]
     fn integer(f: &FieldLayout, b: &[u8]) -> Option<i128> {
         let u32_at = || u32::from_le_bytes(b[..4].try_into().expect("4 bytes"));
         match f.kind {
@@ -794,28 +795,156 @@ impl<'a> Row<'a> {
     }
 
     /// A float field as its JSON number answers it.
+    #[inline]
     fn float(f: &FieldLayout, b: &[u8]) -> Option<f64> {
         match f.kind {
             Kind::F32 => finite(f64::from(f32_at(b, 0))),
             Kind::F64 => finite(f64::from_le_bytes(b[..8].try_into().expect("8 bytes"))),
-            _ => Row::integer(f, b).map(|i| i as f64),
+            // An integer field holds a u64 or an i32: converted from that
+            // width, the same number as from the i128 without its library
+            // call (four handle reads of every sprite).
+            _ => Row::integer(f, b).map(|i| {
+                if i < 0 {
+                    i as i64 as f64
+                } else {
+                    i as u64 as f64
+                }
+            }),
         }
     }
 }
 
-impl Rec for Row<'_> {
+/// A row whose fields are read in place as packed bytes: [`Row`] (one
+/// packed record) and [`ColRow`] (a row of an archetype's columns). Their
+/// [`Rec`] reads are the same code.
+pub trait Packed {
+    /// The field `key` names and its bytes; `None` for a list, whose JSON
+    /// is an array that none of [`Rec`]'s reads answers.
+    fn field<K: Key + ?Sized>(&self, key: &K) -> Option<(&FieldLayout, &[u8])>;
+}
+
+impl<'a> Row<'a> {
+    /// [`Packed::field`], borrowed from the row's layout and bytes.
+    #[inline]
+    fn cell<K: Key + ?Sized>(self, key: &K) -> Option<(&'a FieldLayout, &'a [u8])> {
+        let (i, at) = key.index_in(self.layout)?;
+        let f = self.layout.fields.get(i)?;
+        if f.ty.is_list() {
+            return None;
+        }
+        self.bytes.get(at..at + f.ty.size()).map(|b| (f, b))
+    }
+}
+
+impl Packed for Row<'_> {
+    #[inline]
+    fn field<K: Key + ?Sized>(&self, key: &K) -> Option<(&FieldLayout, &[u8])> {
+        self.cell(key)
+    }
+}
+
+/// One row of a component read in place from its archetype's columns
+/// ([`crate::extract::column_rows`]): each read answers what the same read
+/// of a [`Row`] over the row's packed bytes would, without packing them.
+#[derive(Clone, Copy)]
+pub struct ColRow<'a> {
+    layout: &'a Layout,
+    cells: &'a Cells<'a>,
+    row: usize,
+}
+
+/// One field's column in an archetype, with what every read of a row
+/// needs of the field's type (working both out per read was a quarter of
+/// reading 20,000 sprites).
+pub(crate) struct Col<'a> {
+    bytes: std::cell::Ref<'a, [u8]>,
+    /// The field's bytes a row.
+    size: usize,
+    /// A list: its JSON is an array, which none of [`Rec`]'s reads answers.
+    list: bool,
+}
+
+impl<'a> Col<'a> {
+    /// `bytes` as field `f`'s column: `f`'s size a row.
+    pub(crate) fn of(bytes: std::cell::Ref<'a, [u8]>, f: &FieldLayout) -> Col<'a> {
+        Col {
+            bytes,
+            size: f.ty.size(),
+            list: f.ty.is_list(),
+        }
+    }
+}
+
+/// One archetype's values of a component.
+pub(crate) enum Cells<'a> {
+    /// Its columns, one per field of the layout in order.
+    Columns(Vec<Col<'a>>),
+    /// Its rows packed one after the other, `stride` bytes each: columns
+    /// that are not the layout's fields (a [`Row`] reads those bytes by the
+    /// layout's offsets, and so does this).
+    Rows { bytes: Vec<u8>, stride: usize },
+}
+
+impl<'a> ColRow<'a> {
+    pub(crate) fn new(layout: &'a Layout, cells: &'a Cells<'a>, row: usize) -> ColRow<'a> {
+        ColRow { layout, cells, row }
+    }
+
+    /// The row's packed bytes ([`Layout::decode`]'s input) appended to `out`.
+    pub(crate) fn pack(&self, out: &mut Vec<u8>) {
+        match self.cells {
+            Cells::Columns(cols) => {
+                for c in cols {
+                    out.extend_from_slice(&c.bytes[self.row * c.size..(self.row + 1) * c.size]);
+                }
+            }
+            Cells::Rows { bytes, stride } => {
+                out.extend_from_slice(&bytes[self.row * stride..(self.row + 1) * stride]);
+            }
+        }
+    }
+}
+
+impl Packed for ColRow<'_> {
+    // Always: left as a call it was a fifth of reading 20,000 sprites, some
+    // thirty fields each.
+    #[inline(always)]
+    fn field<K: Key + ?Sized>(&self, key: &K) -> Option<(&FieldLayout, &[u8])> {
+        match self.cells {
+            Cells::Columns(cols) => {
+                let (i, _) = key.index_in(self.layout)?;
+                let c = cols.get(i)?;
+                if c.list {
+                    return None;
+                }
+                let at = self.row * c.size;
+                Some((self.layout.fields.get(i)?, c.bytes.get(at..at + c.size)?))
+            }
+            Cells::Rows { bytes, stride } => {
+                let row = bytes.get(self.row * stride..(self.row + 1) * stride)?;
+                Row::new(self.layout, row).cell(key)
+            }
+        }
+    }
+}
+
+impl<T: Packed> Rec for T {
+    #[inline]
     fn num<K: Key + ?Sized>(&self, key: &K) -> Option<f64> {
         let (f, b) = self.field(key)?;
         Row::float(f, b)
     }
+    #[inline]
     fn int<K: Key + ?Sized>(&self, key: &K) -> Option<i64> {
         let (f, b) = self.field(key)?;
         Row::integer(f, b).and_then(|i| i64::try_from(i).ok())
     }
+    #[inline]
     fn uint<K: Key + ?Sized>(&self, key: &K) -> Option<u64> {
         let (f, b) = self.field(key)?;
         Row::integer(f, b).and_then(|i| u64::try_from(i).ok())
     }
+    #[inline]
     fn flag<K: Key + ?Sized>(&self, key: &K) -> Option<bool> {
         let (f, b) = self.field(key)?;
         match f.kind {
@@ -824,11 +953,12 @@ impl Rec for Row<'_> {
             _ => Row::integer(f, b).map(|i| i != 0),
         }
     }
+    #[inline]
     fn lane<K: Key + ?Sized>(&self, key: &K, lane: &str) -> Option<f64> {
         let (f, b) = self.field(key)?;
-        let i = f.kind.keys().iter().position(|k| *k == lane)?;
-        finite(f64::from(f32_at(b, i)))
+        finite(f64::from(f32_at(b, f.kind.lane_of(lane)?)))
     }
+    #[inline]
     fn text<K: Key + ?Sized>(&self, key: &K) -> Option<std::borrow::Cow<'_, str>> {
         let (f, b) = self.field(key)?;
         match f.kind {
@@ -1223,6 +1353,89 @@ mod tests {
             }
         }
         assert!(checked > 500, "{checked} fields read");
+    }
+
+    /// A row read from its archetype's columns answers what a `Row` over
+    /// its packed bytes does, whichever way the archetype's values are
+    /// held, and packs to those bytes.
+    #[test]
+    fn a_column_row_reads_what_the_packed_row_answers() {
+        use std::cell::{Ref, RefCell};
+        let mut seed = 0x2545_f491_4f6c_dd1d_u64;
+        let mut checked = 0;
+        for decl in og_api::host::RECORDS {
+            let Ok(layout) = Layout::from_decl(decl) else {
+                continue;
+            };
+            // Three rows that differ: the defaults and two scrambled ones.
+            let mut rows = vec![layout.encode(None, None).unwrap()];
+            for _ in 0..2 {
+                rows.push(
+                    (0..layout.size())
+                        .map(|_| {
+                            seed ^= seed << 13;
+                            seed ^= seed >> 7;
+                            seed ^= seed << 17;
+                            seed as u8
+                        })
+                        .collect(),
+                );
+            }
+            let columns: Vec<RefCell<Vec<u8>>> = (0..layout.fields.len())
+                .map(|i| {
+                    let at = layout.offset(i);
+                    let size = layout.fields[i].ty.size();
+                    RefCell::new(
+                        rows.iter()
+                            .flat_map(|r| r[at..at + size].to_vec())
+                            .collect(),
+                    )
+                })
+                .collect();
+            let by_column = Cells::Columns(
+                columns
+                    .iter()
+                    .zip(layout.fields.iter())
+                    .map(|(c, f)| Col::of(Ref::map(c.borrow(), |c| c.as_slice()), f))
+                    .collect(),
+            );
+            let by_row = Cells::Rows {
+                bytes: rows.concat(),
+                stride: layout.size(),
+            };
+            for (cells, held) in [(&by_column, "columns"), (&by_row, "rows")] {
+                for (i, bytes) in rows.iter().enumerate() {
+                    let row = Row::new(&layout, bytes);
+                    let col = ColRow::new(&layout, cells, i);
+                    let mut packed = Vec::new();
+                    col.pack(&mut packed);
+                    assert_eq!(&packed, bytes, "{} row {i} of {held}", layout.schema);
+                    let names = layout.fields.iter().map(|f| f.name.as_str());
+                    for key in names.chain(["missing"]) {
+                        let at = format!("{}.{key} row {i} of {held}", layout.schema);
+                        let slot = Slot::of(&layout, String::leak(key.to_owned()));
+                        assert_eq!(
+                            col.num(&slot).map(f64::to_bits),
+                            row.num(key).map(f64::to_bits),
+                            "{at} num"
+                        );
+                        assert_eq!(col.int(&slot), row.int(key), "{at} int");
+                        assert_eq!(col.uint(key), row.uint(key), "{at} uint");
+                        assert_eq!(col.flag(&slot), row.flag(key), "{at} flag");
+                        assert_eq!(col.text(&slot), row.text(key), "{at} text");
+                        for lane in ["x", "y", "z", "w", "r", "g", "b", "elements"] {
+                            assert_eq!(
+                                col.lane(&slot, lane).map(f64::to_bits),
+                                row.lane(key, lane).map(f64::to_bits),
+                                "{at}.{lane}"
+                            );
+                        }
+                        checked += 1;
+                    }
+                }
+            }
+        }
+        assert!(checked > 3000, "{checked} fields read");
     }
 
     #[test]

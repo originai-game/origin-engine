@@ -295,13 +295,13 @@ fn models(
     keys: &mut Vec<(u64, u32)>,
 ) {
     let settings = b.settings.clone();
-    let layouts = &rs.draw;
-    let models = &rs.models;
     // Baked lighting (RenderSettings.bakedLighting, on by default).
     let baked = settings
         .as_ref()
         .is_none_or(|s| on(s, "bakedLighting", true));
     super::baked::apply(world, &mut rs.scene, &mut rs.baked, baked);
+    let layouts = &rs.draw;
+    let models = &rs.models;
     // Models: posed by og-anim when the entity has a Skeleton.
     let posed = super::fx::skeletons(world, rs.draw.fx.skeleton.as_ref(), &mut rs.fx);
     // GPU crowds (og.CrowdAnimation): the world's time of this frame,
@@ -322,8 +322,13 @@ fn models(
     // by offset, the fields resolved once a frame: decoding each row to
     // JSON was about a third of Lantern Vale's extraction
     // (the former test sample
-    let model_parts: Vec<(u64, u64, Parts, super::fx::ModelLook, f32, f32)> = match &layouts.model {
-        Some(layout) => {
+    type Row = (u64, u64, Parts, super::fx::ModelLook, f32, f32);
+    let model_rows = layouts
+        .model
+        .as_ref()
+        .map(|layout| column_rows(world, layout));
+    let model_parts: Vec<Row> = match (&layouts.model, &model_rows) {
+        (Some(layout), Some(rows)) => {
             let slot = |key| FieldSlot::of(layout, key);
             let (visible, lod_bias, asset) = (slot("visible"), slot("lodBias"), slot("asset"));
             let (flash, flash_color, tint) = (slot("flash"), slot("flashColor"), slot("tint"));
@@ -332,13 +337,8 @@ fn models(
             let variant = slot("variant");
             let sway = slot("sway");
             let fx_models = &rs.fx.models;
-            let rows = world
-                .id_by_name(&layout.schema)
-                .map(|id| super::feel::byte_rows(world, id, layout))
-                .unwrap_or_default();
             rows.iter()
-                .filter_map(|(e, bytes)| {
-                    let (e, v) = (*e, Row::new(layout, bytes));
+                .filter_map(|(e, v)| {
                     let num = |s: &FieldSlot, d: f32| v.num(s).map_or(d, |x| x as f32);
                     let on = |s: &FieldSlot, d: bool| v.flag(s).unwrap_or(d);
                     let rgb = |s: &FieldSlot| {
@@ -387,8 +387,9 @@ fn models(
                 })
                 .collect()
         }
-        None => Vec::new(),
+        _ => Vec::new(),
     };
+    drop(model_rows);
     // Levels of detail: per entity, the coarsest level whose error stays
     // under a pixel at its distance (og_render::lod), kept near a boundary
     // by the level it drew last. `RenderOptions.debugView lod` colours each

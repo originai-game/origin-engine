@@ -596,7 +596,7 @@ fn drawn(
     kept: &mut Meshes,
     out: &mut Vec<Drawn>,
 ) -> Rc<Vec<Drawn>> {
-    use super::codec::{Rec, Row, Slot};
+    use super::codec::{Rec, Slot};
     out.clear();
     h.capture(world);
     let meshes = match &rs.draw.mesh {
@@ -621,9 +621,7 @@ fn drawn(
         }
         None => Rc::new(Vec::new()),
     };
-    if let Some(layout) = &rs.draw.model
-        && let Ok(id) = world.id_by_name(&layout.schema)
-    {
+    if let Some(layout) = &rs.draw.model {
         // Read in place, as extraction reads them (decoding each row to
         // JSON was half of this read).
         let (asset, visible, layers) = (
@@ -631,7 +629,8 @@ fn drawn(
             Slot::of(layout, "visible"),
             Slot::of(layout, "layers"),
         );
-        let mut rows = super::feel::byte_rows(world, id, layout);
+        let rows = super::extract::column_rows(world, layout);
+        let mut rows: Vec<_> = rows.iter().collect();
         og_core::sort::sort_by_key(&mut rows, |(e, _)| og_ecs::Entity::from_bits(*e).index());
         // Each part's geometry index through a map (its first position, as
         // a search gave): a search per part made this read, every tick,
@@ -640,8 +639,7 @@ fn drawn(
         for (i, g) in rs.geometries.iter().enumerate() {
             geometry_of.entry(*g).or_insert(i);
         }
-        for (e, bytes) in &rows {
-            let v = Row::new(layout, bytes);
+        for (e, v) in &rows {
             let Some(parts) = rs.models.get(&(v.num(&asset).unwrap_or(0.0) as u64)) else {
                 continue;
             };
