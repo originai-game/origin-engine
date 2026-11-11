@@ -761,6 +761,12 @@ impl Probe {
         self.saves.snapshot(&mut self.host, world)
     }
 
+    /// `timeline`: the run's events since the last call, in order, with
+    /// the assertion events among them by tick.
+    pub fn timeline(&mut self, world: &World) -> Value {
+        self.timeline.report(&self.checks.assertions, world)
+    }
+
     /// `restore`: a snapshot this process took; `false` for an unknown id
     /// (or one dropped beyond [`MAX_SNAPSHOTS`]) or a world it no longer fits.
     /// A `quit` that ran is undone with it: the restored world is from

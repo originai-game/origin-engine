@@ -3,7 +3,6 @@
 //! screen changes, assertion events and expectations. What a recorder picks
 //! its key frames by (`og render --keyframes`).
 
-use super::Probe;
 use crate::command::CommandStep;
 use crate::expect::{ExpectResult, Status};
 use og_ecs::World;
@@ -115,9 +114,9 @@ impl Recorder {
         )
     }
 
-    /// [`Probe::timeline`]: the events taken, with the assertions' among
+    /// [`super::Probe::timeline`]: the events taken, with the assertions' among
     /// them by tick.
-    fn report(
+    pub(super) fn report(
         &mut self,
         assertions: &std::cell::RefCell<crate::assertions::Assertions>,
         world: &World,
@@ -147,13 +146,5 @@ impl Recorder {
             "events": events,
             "dropped": dropped,
         })
-    }
-}
-
-impl Probe {
-    /// `timeline`: the run's events since the last call, in order, with
-    /// the assertion events among them by tick.
-    pub fn timeline(&mut self, world: &World) -> Value {
-        self.timeline.report(&self.checks.assertions, world)
     }
 }

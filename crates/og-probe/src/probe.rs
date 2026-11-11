@@ -671,6 +671,13 @@ impl Probe {
         &self.names
     }
 
+    /// The run's assertions, shared: the host records the game's calls
+    /// into it while a system runs (the probe is busy then) and its
+    /// default invariants after every tick.
+    pub fn assertions(&self) -> std::rc::Rc<std::cell::RefCell<Assertions>> {
+        self.checks.assertions.clone()
+    }
+
     /// Whether the clock is held (the host's loop then takes no ticks).
     pub fn paused(&self) -> bool {
         self.clock.paused

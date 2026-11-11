@@ -468,15 +468,6 @@ impl Assertions {
     }
 }
 
-impl crate::Probe {
-    /// The run's assertions, shared: the host records the game's calls
-    /// into it while a system runs (the probe is busy then) and its
-    /// default invariants after every tick.
-    pub fn assertions(&self) -> std::rc::Rc<std::cell::RefCell<Assertions>> {
-        self.checks.assertions.clone()
-    }
-}
-
 impl crate::probe::state::Checks {
     /// `invariant:<expectation>`: the expectation (any form of `expect:`
     /// but `region` and `frame`, which read a frame) is evaluated after
@@ -503,7 +494,7 @@ impl crate::probe::state::Checks {
     /// An invariant's result after tick `ran`: a failure is a violation at
     /// `ran` with the observed value.
     #[cfg(not(feature = "publish"))]
-    fn invariant_checked(&self, ran: u64, r: crate::ExpectResult) {
+    pub(crate) fn invariant_checked(&self, ran: u64, r: crate::ExpectResult) {
         if r.status == crate::Status::Fail {
             self.assertions.borrow_mut().fail(
                 Origin::Playtest,
@@ -518,28 +509,6 @@ impl crate::probe::state::Checks {
                 },
             );
         }
-    }
-}
-
-impl crate::Probe {
-    /// Every `invariant:` step, after tick `ran`: a failure is recorded as a
-    /// violation at `ran` (the tick whose systems produced the state, as
-    /// og.assert and the default invariants number it) with the observed value.
-    #[cfg(not(feature = "publish"))]
-    pub(crate) fn check_invariants(&mut self, world: &mut og_ecs::World, ran: u64) {
-        if self.checks.invariants.is_empty() {
-            return;
-        }
-        let invariants = std::mem::take(&mut self.checks.invariants);
-        self.checks.quiet = true;
-        for args in &invariants {
-            let Ok(r) = self.expect_args(world, args, None) else {
-                continue;
-            };
-            self.checks.invariant_checked(ran, r);
-        }
-        self.checks.quiet = false;
-        self.checks.invariants = invariants;
     }
 }
 
