@@ -116,6 +116,8 @@ tick.
 |---|---|---|
 | og.Camera.traumaDecay | 1.5 per second | engine default |
 | trauma | clamped to 1 | engine limit |
+| og.camera.shake trauma, recommended | 0.1 to 0.2 for a light hit, 0.25 to 0.4 a medium one, 0.5 to 0.8 an explosion or a boss slam; 1 is almost never right | engine guidance (IDL at 9ba5b0957) |
+| og.camera.punch amount, recommended | 0.05 for a tap, 0.15 for a slam | engine guidance (IDL at 9ba5b0957) |
 
 - Trauma adds up and clamps to 1; the shake grows with trauma squared.
   1 is almost never right: it is nauseating.

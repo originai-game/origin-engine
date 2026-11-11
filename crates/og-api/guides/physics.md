@@ -442,6 +442,7 @@ pieces stay.
 | Object size | 0.05 to 100 m | determinism §2 |
 | Bullet speed that tunnels | over about 30 m/s: `ccd` or a ray per tick | determinism §2 |
 | Physics.sleepTicks | 0: never sleeps | engine default |
+| Physics.sleepTicks, recommended | about 30 for new projects | engine guidance (IDL at 9ba5b0957) |
 | Physics.substeps | 1; raise for stacks, chains, fast bodies | engine default |
 | Car mass | 1,000 kg | what the Vehicle defaults are sized for (§7) |
 | CharacterController.stepHeight | 0.3 m; 0 for no stairs | engine default |
