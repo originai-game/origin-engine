@@ -654,98 +654,7 @@ impl Ui {
         self.front.accent = styled.text.as_deref().and_then(|t| t.accent);
         match kind {
             "label" => {
-                let text = text_of(&r, b);
-                let desc = r.label_desc(&t, self.fonts(), r.own_flow().rtl);
-                if !n.inline.is_empty() {
-                    self.inline_links(b, n, &r, &path, key);
-                }
-                // `::before`, `::after` and `::first-letter` join the text
-                // as styled runs.
-                if let Some((full, runs)) = self.generated_text(b, n, &styled, key, &text) {
-                    let attributes: Vec<crate::TextSpan> =
-                        runs.iter().map(|(span, _)| span.clone()).collect();
-                    resp = self
-                        .rich_text_spans(
-                            id.as_str(),
-                            &full,
-                            &attributes,
-                            crate::RichTextDesc {
-                                step: desc.step,
-                                color: desc.color,
-                                align: desc.align,
-                                nowrap: desc.nowrap,
-                                width: desc.width,
-                                font: desc.font,
-                            },
-                            |span| {
-                                runs.iter()
-                                    .find(|(s, _)| s == span)
-                                    .map(|(_, style)| style.clone())
-                                    .unwrap_or_default()
-                            },
-                        )
-                        .response;
-                } else if let Some(V::Spans(spans)) = r.get("spans") {
-                    let spans = match spans {
-                        Ok(spans) => spans,
-                        Err(error) => {
-                            self.out.warnings.push(format!(
-                                "{}:{}: {path}.spans: expected TextSpan[]: {error}",
-                                doc.source, n.line
-                            ));
-                            self.front.accent = None;
-                            return None;
-                        }
-                    };
-                    resp = self
-                        .rich_text_spans(
-                            id.as_str(),
-                            &text,
-                            spans,
-                            crate::RichTextDesc {
-                                step: desc.step,
-                                color: desc.color,
-                                align: desc.align,
-                                nowrap: desc.nowrap,
-                                width: desc.width,
-                                font: desc.font,
-                            },
-                            |span| {
-                                r.span_styles
-                                    .iter()
-                                    .find(|(attribute, _)| attribute == span)
-                                    .map(|(_, style)| style.clone())
-                                    .unwrap_or_default()
-                            },
-                        )
-                        .response;
-                } else if let Some((span, style)) = r.css_span(&text) {
-                    resp = self
-                        .rich_text_spans(
-                            id.as_str(),
-                            &text,
-                            std::slice::from_ref(&span),
-                            crate::RichTextDesc {
-                                step: desc.step,
-                                color: desc.color,
-                                align: desc.align,
-                                nowrap: desc.nowrap,
-                                width: desc.width,
-                                font: desc.font,
-                            },
-                            |_| style.clone(),
-                        )
-                        .response;
-                } else {
-                    if let Some(count) = styled.num("count") {
-                        self.count_text(id.as_str(), count, &desc, &styled);
-                    } else {
-                        let shown = self.reveal(key, &text, styled.num("reveal"));
-                        let i = self.leaf("label", id.as_str().into(), Default::default());
-                        self.apply_label(i, shown, desc);
-                        self.css_text_content(i, &styled);
-                    }
-                }
+                resp = self.doc_label(b, n, &doc, &id, &path, key, &r, &styled, t, &text_of)?;
             }
             "button" => {
                 let text = text_of(&r, b);
@@ -834,92 +743,7 @@ impl Ui {
                 };
             }
             "select" => {
-                let strs = |name: &str| match r.get(name) {
-                    Some(V::Strs(s)) => s.clone(),
-                    _ => Vec::new(),
-                };
-                let (items, keys, groups, off) = (
-                    strs("items"),
-                    strs("keys"),
-                    strs("groups"),
-                    strs("disabledItems"),
-                );
-                let mut values = strs("values");
-                values.resize(items.len(), String::new());
-                for (v, item) in values.iter_mut().zip(&items) {
-                    if v.is_empty() {
-                        v.clone_from(item);
-                    }
-                }
-                let selected = r
-                    .str("current")
-                    .and_then(|now| values.iter().position(|v| v == now))
-                    .map_or(-1, |k| k as i32);
-                let options = items
-                    .iter()
-                    .enumerate()
-                    .map(|(k, item)| crate::widgets::DropdownOption {
-                        label: keys
-                            .get(k)
-                            .filter(|key| !key.is_empty())
-                            .and_then(|key| b.env.translate(key))
-                            .map(|t| b.env.shown(t))
-                            .unwrap_or_else(|| item.clone()),
-                        group: groups.get(k).cloned().unwrap_or_default(),
-                        disabled: off.iter().any(|o| o == &k.to_string()),
-                        ..crate::widgets::DropdownOption::default()
-                    })
-                    .collect();
-                let base = crate::widgets::DropdownDesc::default();
-                // `::picker(select)` styles the open list; its `max-height`
-                // bounds the rows before they scroll.
-                let picker = self
-                    .pseudo_node(b, &styled, &path, "picker")
-                    .map(|(at, mut p)| {
-                        let max = p.values.size("maxHeight");
-                        if let Some((spec, _)) = schema::prop("maxHeight") {
-                            p.values.vals.retain(|(s, _)| *s != spec);
-                        }
-                        (max, (at, p))
-                    });
-                let max_height = match picker.as_ref().and_then(|(max, _)| *max) {
-                    Some(Size::Fixed(px)) => px,
-                    _ => base.max_height,
-                };
-                let build: &Build<'_> = b;
-                let out = self.dropdown_marked(
-                    id.as_str(),
-                    &crate::widgets::DropdownDesc {
-                        options,
-                        selected,
-                        placeholder: r.str("placeholder").unwrap_or_default().to_string(),
-                        disabled: r.flag("disabled"),
-                        width: r.size("width"),
-                        max_height,
-                        search_placeholder: r
-                            .str("dataFilterPlaceholder")
-                            .unwrap_or_default()
-                            .to_string(),
-                        ..base
-                    },
-                    r.flag("invalid"),
-                    &mut |ui, list| {
-                        if let Some((_, p)) = &picker {
-                            ui.style_pseudo_box(build, list, "picker", p);
-                        }
-                    },
-                );
-                resp = crate::Response {
-                    changed: out.changed,
-                    ..crate::Response::default()
-                };
-                if out.changed
-                    && let Some(v) = usize::try_from(out.selected)
-                        .ok()
-                        .and_then(|k| values.get(k))
-                {
-                    self.write_back(b, n, "current", json!(v));
-                }
+                resp = self.doc_select(b, n, &id, &path, &r, &styled);
             }
             "progress" => {
                 let v = r.num("value").unwrap_or(0.0);
@@ -957,98 +781,10 @@ impl Ui {
                 }
             }
             "slider" => {
-                let v0 = r.num("value").unwrap_or(0.0);
-                // Its `<datalist>`'s options: a tick at each value.
-                let marks: Vec<crate::widgets::SliderMark> =
-                    match (r.get("markValues"), r.get("markLabels")) {
-                        (Some(V::Strs(values)), labels) => values
-                            .iter()
-                            .enumerate()
-                            .filter_map(|(k, v)| {
-                                Some(crate::widgets::SliderMark {
-                                    value: v.parse().ok()?,
-                                    label: match labels {
-                                        Some(V::Strs(l)) => l.get(k).cloned().unwrap_or_default(),
-                                        _ => String::new(),
-                                    },
-                                })
-                            })
-                            .collect(),
-                        _ => Vec::new(),
-                    };
-                let out = self.value_slider(
-                    id.as_str(),
-                    v0,
-                    &crate::widgets::ValueSliderDesc {
-                        min: r.num("min").unwrap_or(0.0),
-                        max: r.num("max").unwrap_or(1.0),
-                        step: r.num("stepBy").unwrap_or(0.0),
-                        label: text_of(&r, b),
-                        show_value: !r.has("showValue") || r.flag("showValue"),
-                        width: r.size("width"),
-                        marks,
-                        origin: r.num("dataFillOrigin"),
-                        disabled: r.flag("disabled"),
-                        ..crate::widgets::ValueSliderDesc::default()
-                    },
-                );
-                resp = crate::Response {
-                    changed: out.changed,
-                    ..out.response
-                };
-                if out.changed {
-                    self.write_back(b, n, "value", json!(out.value));
-                }
+                resp = self.doc_slider(b, n, &id, &r, &text_of);
             }
             "toggle" => {
-                let on = r.flag("checked");
-                // Source order, swapped by the label's row-reverse.
-                let side = if (r.str("side") == Some("end"))
-                    != (styled.str("labelDirection") == Some("rowReverse"))
-                {
-                    crate::widgets::LabelSide::End
-                } else {
-                    crate::widgets::LabelSide::Start
-                };
-                let out = if r.flag("switch") {
-                    self.toggle_switch(
-                        id.as_str(),
-                        on,
-                        &crate::widgets::ToggleSwitchDesc {
-                            label: text_of(&r, b),
-                            description: r.str("description").unwrap_or_default().to_string(),
-                            disabled: r.flag("disabled"),
-                            side,
-                            size: Default::default(),
-                            width: r.size("width"),
-                            on_label: r.str("dataOn").unwrap_or_default().to_string(),
-                            off_label: r.str("dataOff").unwrap_or_default().to_string(),
-                        },
-                    )
-                } else {
-                    // HTML's checkbox: a box with a check (a dash when
-                    // indeterminate).
-                    self.check_field(
-                        id.as_str(),
-                        on,
-                        &crate::widgets::CheckFieldDesc {
-                            label: text_of(&r, b),
-                            description: r.str("description").unwrap_or_default().to_string(),
-                            mixed: r.flag("indeterminate"),
-                            disabled: r.flag("disabled"),
-                            invalid: r.flag("invalid"),
-                            side,
-                            width: r.size("width"),
-                        },
-                    )
-                };
-                resp = crate::Response {
-                    changed: out.changed,
-                    ..out.response
-                };
-                if out.changed {
-                    self.write_back(b, n, "checked", json!(out.on));
-                }
+                resp = self.doc_toggle(b, n, &id, &r, &styled, &text_of);
             }
             "color" => {
                 resp = self.color_input(b, n, id.as_str(), &r);
@@ -1057,28 +793,7 @@ impl Ui {
                 resp = self.media_element(b, n, id.as_str(), key, &r, kind == "video");
             }
             "file" => {
-                if !self.env.file_picker {
-                    self.out.warnings.push(format!(
-                        "{}:{}: <input type=\"file\"> needs a host file picker, which this host lacks (og.ui.filePicker is false); take files in a TS system",
-                        doc.source, n.line
-                    ));
-                    return None;
-                }
-                let chosen = r.str("fileValue").unwrap_or_default();
-                let text = match text_of(&r, b) {
-                    t if !t.is_empty() => t,
-                    _ if !chosen.is_empty() => chosen.to_string(),
-                    _ => "Choose file…".to_string(),
-                };
-                resp = self.button(id.as_str(), &text, r.button_desc());
-                if resp.clicked && !r.flag("disabled") {
-                    b.event(
-                        &path,
-                        "filepick",
-                        &n.id,
-                        json!({ "accept": r.str("accept").unwrap_or_default(), "multiple": r.flag("multiple") }),
-                    );
-                }
+                resp = self.doc_file(b, n, &doc, &id, &path, &r, &text_of)?;
             }
             "datetime" => {
                 resp = self.datetime_input(b, n, id.as_str(), &r);
@@ -1095,233 +810,13 @@ impl Ui {
                 );
             }
             "radio" => {
-                let choice = r.str("choice").unwrap_or("on").to_string();
-                let on = if r.has("group") {
-                    r.str("group") == Some(choice.as_str())
-                        || r.num("group").is_some_and(|g| g.to_string() == choice)
-                } else {
-                    r.flag("checked")
-                };
-                let out = self.radio_group(
-                    id.as_str(),
-                    &crate::widgets::RadioGroupDesc {
-                        options: vec![crate::widgets::RadioOption {
-                            label: text_of(&r, b),
-                            description: r.str("description").unwrap_or_default().to_string(),
-                            ..Default::default()
-                        }],
-                        selected: if on { 0 } else { -1 },
-                        disabled: r.flag("disabled"),
-                        width: r.size("width"),
-                        ..Default::default()
-                    },
-                );
-                resp = crate::Response {
-                    changed: out.changed,
-                    ..crate::Response::default()
-                };
-                if out.changed && out.selected == 0 {
-                    self.write_back(b, n, "group", json!(choice));
-                }
+                resp = self.doc_radio(b, n, &id, &r, &text_of);
             }
             "tabs" => {
-                let strs = |name: &str| match r.get(name) {
-                    Some(V::Strs(s)) => s.clone(),
-                    _ => Vec::new(),
-                };
-                // A tab's label: its string table key's text where it has one, else its item.
-                let keys = strs("keys");
-                let items: Vec<String> = strs("items")
-                    .into_iter()
-                    .enumerate()
-                    .map(|(i, item)| {
-                        keys.get(i)
-                            .and_then(|k| b.env.translate(k))
-                            .map(|t| b.env.shown(t))
-                            .unwrap_or(item)
-                    })
-                    .collect();
-                // With values, `current` holds the selected tab's name (a screen's mode) instead of `selected`'s index.
-                let values = strs("values");
-                let mut selected = if values.is_empty() {
-                    r.num("selected").unwrap_or(0.0) as usize
-                } else {
-                    let now = r.str("current").unwrap_or_default();
-                    values.iter().position(|v| v == now).unwrap_or(0)
-                };
-                // The bumpers: tabPrev and tabNext (Q and E, LB and RB) step
-                // through the tabs from anywhere on the page, wrapping.
-                let step = i32::from(self.action("tabNext")) - i32::from(self.action("tabPrev"));
-                let stepped = step != 0 && items.len() > 1 && !r.flag("disabled");
-                if stepped {
-                    selected = (selected as i32 + step).rem_euclid(items.len() as i32) as usize;
-                }
-                let fill = r.flag("fill");
-                let (icons, badges) = (strs("icons"), strs("badges"));
-                let out = self.segmented(
-                    id.as_str(),
-                    &crate::widgets::SegmentedDesc {
-                        items: items
-                            .iter()
-                            .enumerate()
-                            .map(|(i, l)| crate::widgets::SegmentItem {
-                                label: l.clone(),
-                                icon: icons.get(i).cloned().unwrap_or_default(),
-                                badge: badges.get(i).cloned().unwrap_or_default(),
-                                ..crate::widgets::SegmentItem::default()
-                            })
-                            .collect(),
-                        selected: selected as i32,
-                        equal: fill,
-                        width: Some(r.size("width").unwrap_or(if fill {
-                            Size::grow()
-                        } else {
-                            Size::fit()
-                        })),
-                        label: text_of(&r, b),
-                        size: Default::default(),
-                        disabled: r.flag("disabled"),
-                    },
-                );
-                selected = usize::try_from(out.selected).unwrap_or(0);
-                resp = crate::Response {
-                    changed: out.changed || stepped,
-                    focused: out.focused >= 0,
-                    ..crate::Response::default()
-                };
-                if resp.changed {
-                    match values.get(selected) {
-                        Some(v) => self.write_back(b, n, "current", json!(v)),
-                        None => self.write_back(b, n, "selected", json!(selected)),
-                    }
-                }
+                resp = self.doc_tabs(b, n, &id, &r, &text_of);
             }
             "field" => {
-                let mut s = r.str("input").unwrap_or_default().to_string();
-                let input_type = r
-                    .str("type")
-                    .and_then(crate::InputType::from_name)
-                    .unwrap_or_default();
-                let constraints = crate::input_type::Constraints {
-                    required: r.flag("required"),
-                    min_chars: r.num("minChars").unwrap_or(0.0) as u32,
-                    pattern: r.str("pattern").map(str::to_string),
-                    min: r.num("min").map(f64::from),
-                    max: r.num("max").map(f64::from),
-                    step: r.num("stepBy").map(f64::from),
-                };
-                resp = if r.flag("multiline") {
-                    self.docs.host.placeholder_ink = self.pseudo_ink(&styled);
-                    let out = self.text_area(
-                        id.as_str(),
-                        &mut s,
-                        &crate::ui::TextAreaDesc {
-                            placeholder: r.str("placeholder").unwrap_or_default().to_string(),
-                            width: r.size("width"),
-                            rows: r.num("lines").unwrap_or(0.0) as u32,
-                            max_chars: r.num("maxChars").unwrap_or(0.0) as u32,
-                            invalid: r.flag("invalid"),
-                            bare: styled.str("appearance") == Some("none"),
-                            tight: r.flag("tight"),
-                            component: r.str("component").map(str::to_string),
-                            readonly: r.flag("readonly"),
-                            constraints: constraints.clone(),
-                        },
-                    );
-                    self.docs.host.placeholder_ink = None;
-                    out
-                } else {
-                    self.docs.host.placeholder_ink = self.pseudo_ink(&styled);
-                    let out = self.text_field(
-                        id.as_str(),
-                        &mut s,
-                        &crate::ui::FieldDesc {
-                            placeholder: r.str("placeholder").unwrap_or_default().to_string(),
-                            width: r.size("width"),
-                            max_chars: r.num("maxChars").unwrap_or(0.0) as u32,
-                            invalid: r.flag("invalid"),
-                            bare: styled.str("appearance") == Some("none"),
-                            tight: r.flag("tight"),
-                            component: r.str("component").map(str::to_string),
-                            input_type,
-                            inputmode: r.str("inputmode").and_then(crate::InputMode::from_name),
-                            autocomplete: r.str("autocomplete").unwrap_or_default().to_string(),
-                            readonly: r.flag("readonly"),
-                            constraints: constraints.clone(),
-                            number: (r.flag("dataWrap")
-                                || r.num("dataLargeStep").is_some()
-                                || r.str("dataFormat").is_some())
-                            .then(|| crate::NumberInputOptions {
-                                wrap: r.flag("dataWrap"),
-                                large_step: r.num("dataLargeStep").unwrap_or(0.0),
-                                format: crate::widgets::ValueFormat {
-                                    message: r
-                                        .str("dataFormat")
-                                        .filter(|f| !f.is_empty())
-                                        .and_then(|f| og_i18n::Message::parse(f).ok()),
-                                    locale: self.env.locale.clone(),
-                                    ..Default::default()
-                                },
-                            }),
-                        },
-                    );
-                    self.docs.host.placeholder_ink = None;
-                    out
-                };
-                if !r.flag("readonly") {
-                    self.pad_keyboard(&path, &r, &mut s, &mut resp);
-                }
-                if let Some(V::Strs(all)) = r.get("suggestions") {
-                    let labels = match r.get("suggestionLabels") {
-                        Some(V::Strs(labels)) => labels.as_slice(),
-                        _ => &[],
-                    };
-                    let keys = match r.get("suggestionKeys") {
-                        Some(V::Strs(keys)) => keys.as_slice(),
-                        _ => &[],
-                    };
-                    let labels: Vec<_> = all
-                        .iter()
-                        .enumerate()
-                        .map(|(index, value)| {
-                            keys.get(index)
-                                .filter(|key| !key.is_empty())
-                                .and_then(|key| b.env.translate(key))
-                                .map(|text| b.env.shown(text))
-                                .unwrap_or_else(|| labels.get(index).unwrap_or(value).clone())
-                        })
-                        .collect();
-                    let field = self.tree.last_closed;
-                    if let Some(c) = self.suggestions(
-                        &path,
-                        field,
-                        (resp.focused, resp.changed),
-                        &s,
-                        all,
-                        &labels,
-                    ) {
-                        s = c;
-                        resp.changed = true;
-                    }
-                }
-                if resp.changed {
-                    self.write_back(b, n, "input", json!(s));
-                }
-                // HTML bars disabled and read-only controls from validation.
-                let barred = r.flag("disabled") || r.flag("readonly");
-                self.docs.host.validity.insert(
-                    key,
-                    super::mount::FieldValidity {
-                        mount: b.mount.clone(),
-                        doc: doc.name.clone(),
-                        node: i,
-                        row_key: b.row_key.clone(),
-                        invalid: !barred
-                            && (r.flag("invalid")
-                                || input_type.mismatch(&s)
-                                || constraints.fails(input_type, &s)),
-                    },
-                );
+                resp = self.doc_field(b, n, i, &doc, &id, &path, key, &r, &styled);
             }
             "badge" => {
                 let text = text_of(&r, b);
@@ -1380,6 +875,679 @@ impl Ui {
         self.hold(key, n, &styled, last);
         self.fire(b, n, key, &path, resp);
         Some(path)
+    }
+
+    /// The document's `label` element.
+    #[allow(
+        clippy::too_many_arguments,
+        clippy::ptr_arg,
+        clippy::needless_borrow,
+        clippy::needless_late_init
+    )]
+    fn doc_label(
+        &mut self,
+        b: &mut Build<'_>,
+        n: &DocNode,
+        doc: &UiDocument,
+        id: &String,
+        path: &String,
+        key: u64,
+        r: &Resolved,
+        styled: &Resolved,
+        t: crate::style::Theme,
+        text_of: &impl Fn(&Resolved, &Build<'_>) -> String,
+    ) -> Option<crate::ui::Response> {
+        let mut resp = crate::ui::Response::default();
+        let text = text_of(&r, b);
+        let desc = r.label_desc(&t, self.fonts(), r.own_flow().rtl);
+        if !n.inline.is_empty() {
+            self.inline_links(b, n, &r, &path, key);
+        }
+        // `::before`, `::after` and `::first-letter` join the text
+        // as styled runs.
+        if let Some((full, runs)) = self.generated_text(b, n, &styled, key, &text) {
+            let attributes: Vec<crate::TextSpan> =
+                runs.iter().map(|(span, _)| span.clone()).collect();
+            resp = self
+                .rich_text_spans(
+                    id.as_str(),
+                    &full,
+                    &attributes,
+                    crate::RichTextDesc {
+                        step: desc.step,
+                        color: desc.color,
+                        align: desc.align,
+                        nowrap: desc.nowrap,
+                        width: desc.width,
+                        font: desc.font,
+                    },
+                    |span| {
+                        runs.iter()
+                            .find(|(s, _)| s == span)
+                            .map(|(_, style)| style.clone())
+                            .unwrap_or_default()
+                    },
+                )
+                .response;
+        } else if let Some(V::Spans(spans)) = r.get("spans") {
+            let spans = match spans {
+                Ok(spans) => spans,
+                Err(error) => {
+                    self.out.warnings.push(format!(
+                        "{}:{}: {path}.spans: expected TextSpan[]: {error}",
+                        doc.source, n.line
+                    ));
+                    self.front.accent = None;
+                    return None;
+                }
+            };
+            resp = self
+                .rich_text_spans(
+                    id.as_str(),
+                    &text,
+                    spans,
+                    crate::RichTextDesc {
+                        step: desc.step,
+                        color: desc.color,
+                        align: desc.align,
+                        nowrap: desc.nowrap,
+                        width: desc.width,
+                        font: desc.font,
+                    },
+                    |span| {
+                        r.span_styles
+                            .iter()
+                            .find(|(attribute, _)| attribute == span)
+                            .map(|(_, style)| style.clone())
+                            .unwrap_or_default()
+                    },
+                )
+                .response;
+        } else if let Some((span, style)) = r.css_span(&text) {
+            resp = self
+                .rich_text_spans(
+                    id.as_str(),
+                    &text,
+                    std::slice::from_ref(&span),
+                    crate::RichTextDesc {
+                        step: desc.step,
+                        color: desc.color,
+                        align: desc.align,
+                        nowrap: desc.nowrap,
+                        width: desc.width,
+                        font: desc.font,
+                    },
+                    |_| style.clone(),
+                )
+                .response;
+        } else {
+            if let Some(count) = styled.num("count") {
+                self.count_text(id.as_str(), count, &desc, &styled);
+            } else {
+                let shown = self.reveal(key, &text, styled.num("reveal"));
+                let i = self.leaf("label", id.as_str().into(), Default::default());
+                self.apply_label(i, shown, desc);
+                self.css_text_content(i, &styled);
+            }
+        }
+        Some(resp)
+    }
+
+    /// The document's `select` element.
+    #[allow(
+        clippy::too_many_arguments,
+        clippy::ptr_arg,
+        clippy::needless_borrow,
+        clippy::needless_late_init
+    )]
+    fn doc_select(
+        &mut self,
+        b: &mut Build<'_>,
+        n: &DocNode,
+        id: &String,
+        path: &String,
+        r: &Resolved,
+        styled: &Resolved,
+    ) -> crate::ui::Response {
+        let resp;
+        let strs = |name: &str| match r.get(name) {
+            Some(V::Strs(s)) => s.clone(),
+            _ => Vec::new(),
+        };
+        let (items, keys, groups, off) = (
+            strs("items"),
+            strs("keys"),
+            strs("groups"),
+            strs("disabledItems"),
+        );
+        let mut values = strs("values");
+        values.resize(items.len(), String::new());
+        for (v, item) in values.iter_mut().zip(&items) {
+            if v.is_empty() {
+                v.clone_from(item);
+            }
+        }
+        let selected = r
+            .str("current")
+            .and_then(|now| values.iter().position(|v| v == now))
+            .map_or(-1, |k| k as i32);
+        let options = items
+            .iter()
+            .enumerate()
+            .map(|(k, item)| crate::widgets::DropdownOption {
+                label: keys
+                    .get(k)
+                    .filter(|key| !key.is_empty())
+                    .and_then(|key| b.env.translate(key))
+                    .map(|t| b.env.shown(t))
+                    .unwrap_or_else(|| item.clone()),
+                group: groups.get(k).cloned().unwrap_or_default(),
+                disabled: off.iter().any(|o| o == &k.to_string()),
+                ..crate::widgets::DropdownOption::default()
+            })
+            .collect();
+        let base = crate::widgets::DropdownDesc::default();
+        // `::picker(select)` styles the open list; its `max-height`
+        // bounds the rows before they scroll.
+        let picker = self
+            .pseudo_node(b, &styled, &path, "picker")
+            .map(|(at, mut p)| {
+                let max = p.values.size("maxHeight");
+                if let Some((spec, _)) = schema::prop("maxHeight") {
+                    p.values.vals.retain(|(s, _)| *s != spec);
+                }
+                (max, (at, p))
+            });
+        let max_height = match picker.as_ref().and_then(|(max, _)| *max) {
+            Some(Size::Fixed(px)) => px,
+            _ => base.max_height,
+        };
+        let build: &Build<'_> = b;
+        let out = self.dropdown_marked(
+            id.as_str(),
+            &crate::widgets::DropdownDesc {
+                options,
+                selected,
+                placeholder: r.str("placeholder").unwrap_or_default().to_string(),
+                disabled: r.flag("disabled"),
+                width: r.size("width"),
+                max_height,
+                search_placeholder: r
+                    .str("dataFilterPlaceholder")
+                    .unwrap_or_default()
+                    .to_string(),
+                ..base
+            },
+            r.flag("invalid"),
+            &mut |ui, list| {
+                if let Some((_, p)) = &picker {
+                    ui.style_pseudo_box(build, list, "picker", p);
+                }
+            },
+        );
+        resp = crate::Response {
+            changed: out.changed,
+            ..crate::Response::default()
+        };
+        if out.changed
+            && let Some(v) = usize::try_from(out.selected)
+                .ok()
+                .and_then(|k| values.get(k))
+        {
+            self.write_back(b, n, "current", json!(v));
+        }
+        resp
+    }
+
+    /// The document's `slider` element.
+    #[allow(
+        clippy::too_many_arguments,
+        clippy::ptr_arg,
+        clippy::needless_borrow,
+        clippy::needless_late_init
+    )]
+    fn doc_slider(
+        &mut self,
+        b: &mut Build<'_>,
+        n: &DocNode,
+        id: &String,
+        r: &Resolved,
+        text_of: &impl Fn(&Resolved, &Build<'_>) -> String,
+    ) -> crate::ui::Response {
+        let resp;
+        let v0 = r.num("value").unwrap_or(0.0);
+        // Its `<datalist>`'s options: a tick at each value.
+        let marks: Vec<crate::widgets::SliderMark> =
+            match (r.get("markValues"), r.get("markLabels")) {
+                (Some(V::Strs(values)), labels) => values
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(k, v)| {
+                        Some(crate::widgets::SliderMark {
+                            value: v.parse().ok()?,
+                            label: match labels {
+                                Some(V::Strs(l)) => l.get(k).cloned().unwrap_or_default(),
+                                _ => String::new(),
+                            },
+                        })
+                    })
+                    .collect(),
+                _ => Vec::new(),
+            };
+        let out = self.value_slider(
+            id.as_str(),
+            v0,
+            &crate::widgets::ValueSliderDesc {
+                min: r.num("min").unwrap_or(0.0),
+                max: r.num("max").unwrap_or(1.0),
+                step: r.num("stepBy").unwrap_or(0.0),
+                label: text_of(&r, b),
+                show_value: !r.has("showValue") || r.flag("showValue"),
+                width: r.size("width"),
+                marks,
+                origin: r.num("dataFillOrigin"),
+                disabled: r.flag("disabled"),
+                ..crate::widgets::ValueSliderDesc::default()
+            },
+        );
+        resp = crate::Response {
+            changed: out.changed,
+            ..out.response
+        };
+        if out.changed {
+            self.write_back(b, n, "value", json!(out.value));
+        }
+        resp
+    }
+
+    /// The document's `toggle` element.
+    #[allow(
+        clippy::too_many_arguments,
+        clippy::ptr_arg,
+        clippy::needless_borrow,
+        clippy::needless_late_init
+    )]
+    fn doc_toggle(
+        &mut self,
+        b: &mut Build<'_>,
+        n: &DocNode,
+        id: &String,
+        r: &Resolved,
+        styled: &Resolved,
+        text_of: &impl Fn(&Resolved, &Build<'_>) -> String,
+    ) -> crate::ui::Response {
+        let resp;
+        let on = r.flag("checked");
+        // Source order, swapped by the label's row-reverse.
+        let side = if (r.str("side") == Some("end"))
+            != (styled.str("labelDirection") == Some("rowReverse"))
+        {
+            crate::widgets::LabelSide::End
+        } else {
+            crate::widgets::LabelSide::Start
+        };
+        let out = if r.flag("switch") {
+            self.toggle_switch(
+                id.as_str(),
+                on,
+                &crate::widgets::ToggleSwitchDesc {
+                    label: text_of(&r, b),
+                    description: r.str("description").unwrap_or_default().to_string(),
+                    disabled: r.flag("disabled"),
+                    side,
+                    size: Default::default(),
+                    width: r.size("width"),
+                    on_label: r.str("dataOn").unwrap_or_default().to_string(),
+                    off_label: r.str("dataOff").unwrap_or_default().to_string(),
+                },
+            )
+        } else {
+            // HTML's checkbox: a box with a check (a dash when
+            // indeterminate).
+            self.check_field(
+                id.as_str(),
+                on,
+                &crate::widgets::CheckFieldDesc {
+                    label: text_of(&r, b),
+                    description: r.str("description").unwrap_or_default().to_string(),
+                    mixed: r.flag("indeterminate"),
+                    disabled: r.flag("disabled"),
+                    invalid: r.flag("invalid"),
+                    side,
+                    width: r.size("width"),
+                },
+            )
+        };
+        resp = crate::Response {
+            changed: out.changed,
+            ..out.response
+        };
+        if out.changed {
+            self.write_back(b, n, "checked", json!(out.on));
+        }
+        resp
+    }
+
+    /// The document's `file` element.
+    #[allow(
+        clippy::too_many_arguments,
+        clippy::ptr_arg,
+        clippy::needless_borrow,
+        clippy::needless_late_init
+    )]
+    fn doc_file(
+        &mut self,
+        b: &mut Build<'_>,
+        n: &DocNode,
+        doc: &UiDocument,
+        id: &String,
+        path: &String,
+        r: &Resolved,
+        text_of: &impl Fn(&Resolved, &Build<'_>) -> String,
+    ) -> Option<crate::ui::Response> {
+        let resp;
+        if !self.env.file_picker {
+            self.out.warnings.push(format!(
+                "{}:{}: <input type=\"file\"> needs a host file picker, which this host lacks (og.ui.filePicker is false); take files in a TS system",
+                doc.source, n.line
+            ));
+            return None;
+        }
+        let chosen = r.str("fileValue").unwrap_or_default();
+        let text = match text_of(&r, b) {
+            t if !t.is_empty() => t,
+            _ if !chosen.is_empty() => chosen.to_string(),
+            _ => "Choose file…".to_string(),
+        };
+        resp = self.button(id.as_str(), &text, r.button_desc());
+        if resp.clicked && !r.flag("disabled") {
+            b.event(
+                &path,
+                "filepick",
+                &n.id,
+                json!({ "accept": r.str("accept").unwrap_or_default(), "multiple": r.flag("multiple") }),
+            );
+        }
+        Some(resp)
+    }
+
+    /// The document's `radio` element.
+    #[allow(
+        clippy::too_many_arguments,
+        clippy::ptr_arg,
+        clippy::needless_borrow,
+        clippy::needless_late_init
+    )]
+    fn doc_radio(
+        &mut self,
+        b: &mut Build<'_>,
+        n: &DocNode,
+        id: &String,
+        r: &Resolved,
+        text_of: &impl Fn(&Resolved, &Build<'_>) -> String,
+    ) -> crate::ui::Response {
+        let resp;
+        let choice = r.str("choice").unwrap_or("on").to_string();
+        let on = if r.has("group") {
+            r.str("group") == Some(choice.as_str())
+                || r.num("group").is_some_and(|g| g.to_string() == choice)
+        } else {
+            r.flag("checked")
+        };
+        let out = self.radio_group(
+            id.as_str(),
+            &crate::widgets::RadioGroupDesc {
+                options: vec![crate::widgets::RadioOption {
+                    label: text_of(&r, b),
+                    description: r.str("description").unwrap_or_default().to_string(),
+                    ..Default::default()
+                }],
+                selected: if on { 0 } else { -1 },
+                disabled: r.flag("disabled"),
+                width: r.size("width"),
+                ..Default::default()
+            },
+        );
+        resp = crate::Response {
+            changed: out.changed,
+            ..crate::Response::default()
+        };
+        if out.changed && out.selected == 0 {
+            self.write_back(b, n, "group", json!(choice));
+        }
+        resp
+    }
+
+    /// The document's `tabs` element.
+    #[allow(
+        clippy::too_many_arguments,
+        clippy::ptr_arg,
+        clippy::needless_borrow,
+        clippy::needless_late_init
+    )]
+    fn doc_tabs(
+        &mut self,
+        b: &mut Build<'_>,
+        n: &DocNode,
+        id: &String,
+        r: &Resolved,
+        text_of: &impl Fn(&Resolved, &Build<'_>) -> String,
+    ) -> crate::ui::Response {
+        let resp;
+        let strs = |name: &str| match r.get(name) {
+            Some(V::Strs(s)) => s.clone(),
+            _ => Vec::new(),
+        };
+        // A tab's label: its string table key's text where it has one, else its item.
+        let keys = strs("keys");
+        let items: Vec<String> = strs("items")
+            .into_iter()
+            .enumerate()
+            .map(|(i, item)| {
+                keys.get(i)
+                    .and_then(|k| b.env.translate(k))
+                    .map(|t| b.env.shown(t))
+                    .unwrap_or(item)
+            })
+            .collect();
+        // With values, `current` holds the selected tab's name (a screen's mode) instead of `selected`'s index.
+        let values = strs("values");
+        let mut selected = if values.is_empty() {
+            r.num("selected").unwrap_or(0.0) as usize
+        } else {
+            let now = r.str("current").unwrap_or_default();
+            values.iter().position(|v| v == now).unwrap_or(0)
+        };
+        // The bumpers: tabPrev and tabNext (Q and E, LB and RB) step
+        // through the tabs from anywhere on the page, wrapping.
+        let step = i32::from(self.action("tabNext")) - i32::from(self.action("tabPrev"));
+        let stepped = step != 0 && items.len() > 1 && !r.flag("disabled");
+        if stepped {
+            selected = (selected as i32 + step).rem_euclid(items.len() as i32) as usize;
+        }
+        let fill = r.flag("fill");
+        let (icons, badges) = (strs("icons"), strs("badges"));
+        let out = self.segmented(
+            id.as_str(),
+            &crate::widgets::SegmentedDesc {
+                items: items
+                    .iter()
+                    .enumerate()
+                    .map(|(i, l)| crate::widgets::SegmentItem {
+                        label: l.clone(),
+                        icon: icons.get(i).cloned().unwrap_or_default(),
+                        badge: badges.get(i).cloned().unwrap_or_default(),
+                        ..crate::widgets::SegmentItem::default()
+                    })
+                    .collect(),
+                selected: selected as i32,
+                equal: fill,
+                width: Some(r.size("width").unwrap_or(if fill {
+                    Size::grow()
+                } else {
+                    Size::fit()
+                })),
+                label: text_of(&r, b),
+                size: Default::default(),
+                disabled: r.flag("disabled"),
+            },
+        );
+        selected = usize::try_from(out.selected).unwrap_or(0);
+        resp = crate::Response {
+            changed: out.changed || stepped,
+            focused: out.focused >= 0,
+            ..crate::Response::default()
+        };
+        if resp.changed {
+            match values.get(selected) {
+                Some(v) => self.write_back(b, n, "current", json!(v)),
+                None => self.write_back(b, n, "selected", json!(selected)),
+            }
+        }
+        resp
+    }
+
+    /// The document's `field` element.
+    #[allow(
+        clippy::too_many_arguments,
+        clippy::ptr_arg,
+        clippy::needless_borrow,
+        clippy::needless_late_init
+    )]
+    fn doc_field(
+        &mut self,
+        b: &mut Build<'_>,
+        n: &DocNode,
+        i: usize,
+        doc: &UiDocument,
+        id: &String,
+        path: &String,
+        key: u64,
+        r: &Resolved,
+        styled: &Resolved,
+    ) -> crate::ui::Response {
+        let mut resp;
+        let mut s = r.str("input").unwrap_or_default().to_string();
+        let input_type = r
+            .str("type")
+            .and_then(crate::InputType::from_name)
+            .unwrap_or_default();
+        let constraints = crate::input_type::Constraints {
+            required: r.flag("required"),
+            min_chars: r.num("minChars").unwrap_or(0.0) as u32,
+            pattern: r.str("pattern").map(str::to_string),
+            min: r.num("min").map(f64::from),
+            max: r.num("max").map(f64::from),
+            step: r.num("stepBy").map(f64::from),
+        };
+        resp = if r.flag("multiline") {
+            self.docs.host.placeholder_ink = self.pseudo_ink(&styled);
+            let out = self.text_area(
+                id.as_str(),
+                &mut s,
+                &crate::ui::TextAreaDesc {
+                    placeholder: r.str("placeholder").unwrap_or_default().to_string(),
+                    width: r.size("width"),
+                    rows: r.num("lines").unwrap_or(0.0) as u32,
+                    max_chars: r.num("maxChars").unwrap_or(0.0) as u32,
+                    invalid: r.flag("invalid"),
+                    bare: styled.str("appearance") == Some("none"),
+                    tight: r.flag("tight"),
+                    component: r.str("component").map(str::to_string),
+                    readonly: r.flag("readonly"),
+                    constraints: constraints.clone(),
+                },
+            );
+            self.docs.host.placeholder_ink = None;
+            out
+        } else {
+            self.docs.host.placeholder_ink = self.pseudo_ink(&styled);
+            let out = self.text_field(
+                id.as_str(),
+                &mut s,
+                &crate::ui::FieldDesc {
+                    placeholder: r.str("placeholder").unwrap_or_default().to_string(),
+                    width: r.size("width"),
+                    max_chars: r.num("maxChars").unwrap_or(0.0) as u32,
+                    invalid: r.flag("invalid"),
+                    bare: styled.str("appearance") == Some("none"),
+                    tight: r.flag("tight"),
+                    component: r.str("component").map(str::to_string),
+                    input_type,
+                    inputmode: r.str("inputmode").and_then(crate::InputMode::from_name),
+                    autocomplete: r.str("autocomplete").unwrap_or_default().to_string(),
+                    readonly: r.flag("readonly"),
+                    constraints: constraints.clone(),
+                    number: (r.flag("dataWrap")
+                        || r.num("dataLargeStep").is_some()
+                        || r.str("dataFormat").is_some())
+                    .then(|| crate::NumberInputOptions {
+                        wrap: r.flag("dataWrap"),
+                        large_step: r.num("dataLargeStep").unwrap_or(0.0),
+                        format: crate::widgets::ValueFormat {
+                            message: r
+                                .str("dataFormat")
+                                .filter(|f| !f.is_empty())
+                                .and_then(|f| og_i18n::Message::parse(f).ok()),
+                            locale: self.env.locale.clone(),
+                            ..Default::default()
+                        },
+                    }),
+                },
+            );
+            self.docs.host.placeholder_ink = None;
+            out
+        };
+        if !r.flag("readonly") {
+            self.pad_keyboard(&path, &r, &mut s, &mut resp);
+        }
+        if let Some(V::Strs(all)) = r.get("suggestions") {
+            let labels = match r.get("suggestionLabels") {
+                Some(V::Strs(labels)) => labels.as_slice(),
+                _ => &[],
+            };
+            let keys = match r.get("suggestionKeys") {
+                Some(V::Strs(keys)) => keys.as_slice(),
+                _ => &[],
+            };
+            let labels: Vec<_> = all
+                .iter()
+                .enumerate()
+                .map(|(index, value)| {
+                    keys.get(index)
+                        .filter(|key| !key.is_empty())
+                        .and_then(|key| b.env.translate(key))
+                        .map(|text| b.env.shown(text))
+                        .unwrap_or_else(|| labels.get(index).unwrap_or(value).clone())
+                })
+                .collect();
+            let field = self.tree.last_closed;
+            if let Some(c) =
+                self.suggestions(&path, field, (resp.focused, resp.changed), &s, all, &labels)
+            {
+                s = c;
+                resp.changed = true;
+            }
+        }
+        if resp.changed {
+            self.write_back(b, n, "input", json!(s));
+        }
+        // HTML bars disabled and read-only controls from validation.
+        let barred = r.flag("disabled") || r.flag("readonly");
+        self.docs.host.validity.insert(
+            key,
+            super::mount::FieldValidity {
+                mount: b.mount.clone(),
+                doc: doc.name.clone(),
+                node: i,
+                row_key: b.row_key.clone(),
+                invalid: !barred
+                    && (r.flag("invalid")
+                        || input_type.mismatch(&s)
+                        || constraints.fails(input_type, &s)),
+            },
+        );
+        resp
     }
 
     /// A text's inline `<a href>`s: a click sends a `link` event named by
