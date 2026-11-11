@@ -23,7 +23,7 @@ impl Probe {
     /// The frame the host's loop drew last ([`crate::Capture::frame`]);
     /// `None` without a renderer or before the first frame.
     pub fn frame_rgba(&mut self) -> Option<RawFrame> {
-        self.host.capture.as_mut()?.frame()
+        self.host.frame_rgba()
     }
 
     /// The world as a render snapshot: its bytes and the probe's pointer.
@@ -70,6 +70,13 @@ impl Probe {
             c.restore_state(0);
         }
         Ok(tick)
+    }
+}
+
+impl super::state::Host {
+    /// [`Probe::frame_rgba`].
+    pub(super) fn frame_rgba(&mut self) -> Option<RawFrame> {
+        self.capture.as_mut()?.frame()
     }
 }
 
