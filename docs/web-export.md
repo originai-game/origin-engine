@@ -928,7 +928,7 @@ window passes or the room refuses, the room is a `left` event (an
 unanswered ask `offline`), and each later ask dials once more. `close()`
 sends what is queued first. A
 page on https reaches only a `wss://` relay (`og relay` serves `ws://`;
-put a TLS proxy in front). roomInfo's `host` reads `relay`. Tests:
+put a TLS proxy in front, which `og run --room wss://…` reaches too). roomInfo's `host` reads `relay`. Tests:
 `tests/relay-rooms.test.ts` (a stand-in relay, and the real `og relay`
 when an `og` is built), and `tests/rooms.test.ts` for a lockstep room
 whose wire is cut mid-match.

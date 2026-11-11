@@ -271,7 +271,8 @@ commands:
                       --rows rows with the largest step (the art-review guide)
   relay [--port P] [--host <ip>]
                       a local WebSocket relay for rooms: `og run --room ws://127.0.0.1:P/<room>`
-                      processes join <room> and play together (og.net's lockstep)
+                      processes join <room> and play together (og.net's lockstep); behind a TLS
+                      proxy it is reached as `og run --room wss://<host>/<room>`
   doctor [--json] [--require-checked]
                       check bun, the engine package, the native addon, the wasm, a headless
                       renderer, and (in the engine repository) the build toolchain, naming each fix;

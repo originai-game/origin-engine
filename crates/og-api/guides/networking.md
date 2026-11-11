@@ -34,7 +34,8 @@ og.platform.roomJoin(world, roomId);   // or og.platform.roomCreate, og.platform
   lockstep rides on them.
 
 - Natively, `og relay` plus `og run --room ws://127.0.0.1:P/<room>` plays
-  a room by hand.
+  a room by hand; a relay behind a TLS proxy is reached as
+  `wss://<host>/<room>`.
 - Until the room holds `players` peers the world runs freely on each: a
   lobby, the local input driving the local player. Then the authority
   (the lowest peer number) starts: every other peer takes its world's
