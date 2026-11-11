@@ -123,7 +123,7 @@ impl crate::ui::Tree {
             }
             t.floats.clone_from(&self.floating);
             for r in std::iter::once(0).chain(self.floating.iter().copied()) {
-                if !nodes[r].hidden {
+                if !nodes[r].is_hidden() {
                     t.mark(nodes, r, true);
                 }
             }
@@ -175,7 +175,7 @@ impl crate::ui::Tree {
         for (_, c) in queue {
             let node = &nodes[c];
             let inside = c == 0
-                || !node.hidden
+                || !node.is_hidden()
                     && node.key != 0
                     && if node.parent == NONE {
                         t.floats.contains(&c)

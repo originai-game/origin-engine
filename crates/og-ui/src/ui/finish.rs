@@ -220,7 +220,7 @@ impl Ui {
             d
         };
         for &i in &derive {
-            if self.tree.nodes[i].hidden {
+            if self.tree.nodes[i].is_hidden() {
                 continue;
             }
             use crate::layout::TablePart;
@@ -341,7 +341,7 @@ impl Ui {
             .floating
             .iter()
             .copied()
-            .filter(|&f| !self.tree.nodes[f].hidden)
+            .filter(|&f| !self.tree.nodes[f].is_hidden())
             .collect();
         og_core::sort::sort_by_key(&mut floating, |&f| self.tree.nodes[f].float.rank());
         self.tree.floating = floating;
@@ -773,7 +773,7 @@ impl Ui {
                     {
                         let a = &self.tree.nodes[a];
                         placed.hidden =
-                            a.hidden || !a.layout.laid_clip.overlaps(&a.layout.laid_rect);
+                            a.is_hidden() || !a.layout.laid_clip.overlaps(&a.layout.laid_rect);
                     }
                     if placed.hidden != self.tree.nodes[i].layout.anchor_placed.hidden {
                         self.layout.cache.anchor_toggled.push(i);
@@ -1573,7 +1573,7 @@ impl crate::ui::Tree {
     fn line_box(&mut self, i: usize, flow: &[usize]) {
         let n = &self.nodes[i];
         let wanted = (n.el.block
-            && n.props.layout == crate::LayoutMode::Flex
+            && n.layout_mode() == crate::LayoutMode::Flex
             && matches!(n.content, Content::None)
             && flow.iter().any(|&c| self.nodes[c].el.inline))
         .then_some(n.el.direction);

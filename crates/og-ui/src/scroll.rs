@@ -774,7 +774,7 @@ impl crate::ui::Interaction {
         let mut stack: Vec<usize> = n.children.clone();
         while let Some(c) = stack.pop() {
             let cn = &tree.nodes[c];
-            if cn.hidden {
+            if cn.is_hidden() {
                 continue;
             }
             let a = cn.el.snap_align;

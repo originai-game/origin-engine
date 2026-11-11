@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "ui",
+      "summary": "A container variant that stops matching while its element is laid out (a box whose width follows its height by `aspect`, a block narrowed beside floats) no longer leaves its arrangement, grid columns, `hidden` and animatable values applied: they follow the inline size the element ends the layout with, as its box already did."
+    }
+  ]
+}

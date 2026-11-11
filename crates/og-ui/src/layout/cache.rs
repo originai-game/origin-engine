@@ -542,12 +542,14 @@ impl LayoutCache {
 /// replaced (as the last frame left it).
 pub(crate) fn input_changes(a: &Node, b: &Node) -> Changed {
     let mut changed = Changed::default();
-    if a.layout.used.block != b.layout.used.block || a.props.layout != b.props.layout {
+    if a.layout.used.block != b.layout.used.block || a.layout_mode() != b.layout_mode() {
         changed |= Changed::FLOW;
     }
     let same_layout = el_layout_eq(&a.layout.used, &b.layout.used)
         && content_layout_eq(&a.content, &b.content)
         && props_layout_eq(&a.props, &b.props)
+        && a.layout_mode() == b.layout_mode()
+        && a.grid().columns == b.grid().columns
         && a.shape_outside == b.shape_outside
         && a.float == b.float
         // A layer's layout is made again every frame.
@@ -566,7 +568,13 @@ pub(crate) fn input_changes(a: &Node, b: &Node) -> Changed {
         && a.text().map(|t| t.step) == b.text().map(|t| t.step)
         && a.widget == b.widget
         && a.shapes == b.shapes
-        && a.props == b.props;
+        && a.props == b.props
+        // What its variants set over them, as it was last laid out and drawn.
+        && a.transform() == b.transform()
+        && a.opacity() == b.opacity()
+        && a.z() == b.z()
+        && a.inert() == b.inert()
+        && a.ink() == b.ink();
     if !same {
         changed |= Changed::INPUT;
     }

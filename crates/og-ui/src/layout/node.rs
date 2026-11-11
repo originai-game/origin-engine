@@ -604,6 +604,34 @@ impl Media {
     }
 }
 
+/// What a node's matching variants set over its props and its text's ink
+/// (`None`: as authored): the part of a variant's patch that is not its
+/// box ([`crate::layout::patch_box`]). Made with the used element
+/// ([`Node::derive_used`]), so a variant that stops matching sets nothing;
+/// read through the node ([`Node::layout_mode`], [`Node::grid`],
+/// [`Node::is_hidden`], [`Node::transform`], [`Node::opacity`],
+/// [`Node::z`], [`Node::inert`], [`Node::ink`]).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub(crate) struct Varied {
+    pub layout: Option<LayoutMode>,
+    /// Its grid with the columns a variant gives it.
+    pub grid: Option<Box<crate::element::GridSpec>>,
+    pub hidden: Option<bool>,
+    /// Its animatable values with the variants'.
+    pub values: Option<VariedValues>,
+}
+
+/// A node's animatable values outside its box, as its variants set them.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct VariedValues {
+    pub transform: crate::element::Transform,
+    pub opacity: f32,
+    pub z: i32,
+    pub inert: bool,
+    /// A text's ink.
+    pub ink: Srgba,
+}
+
 /// What the last write of a node's input changed against the node it
 /// replaced, recorded when the build ends ([`crate::layout::input_changes`]):
 /// what the frame decides reuse by, in place of a copy of the last frame's
@@ -655,6 +683,8 @@ pub(crate) struct LayoutBox {
     pub used: Element,
     /// Its insets as layout reads them (a vertical frame turns them).
     pub insets: crate::element::Edges,
+    /// What its matching variants set over its props ([`Varied`]).
+    pub varied: Varied,
     /// The room its scroll bar takes beside its content, added to its
     /// used padding (`Layout::apply_gutter`).
     pub gutter: f32,
@@ -782,6 +812,7 @@ impl Default for LayoutBox {
         Self {
             used: Element::default(),
             insets: crate::element::Edges::default(),
+            varied: Varied::default(),
             gutter: 0.0,
             placement: None,
             media: None,
@@ -1055,26 +1086,153 @@ impl Node {
         u
     }
 
-    /// Makes [`LayoutBox::used`] and its insets again from the authored
-    /// element and props: after they were written, and wherever the frame
-    /// changes what it decides on top of them.
+    /// What its matching variants set over its props ([`Varied`]): the
+    /// breakpoint and orientation ones, then the container ones at the size
+    /// they were last matched at, in the order [`Node::derived`] applies
+    /// their box part.
+    fn varied(&self) -> Varied {
+        let mut out = Varied::default();
+        if self.props.variants.is_empty() {
+            return out;
+        }
+        let mut values: Option<SampledStyle> = None;
+        let matched = |v: &&crate::element::Variant| match v.when.container {
+            false => self.layout.media.is_some_and(|m| m.matches(&v.when)),
+            true => self
+                .layout
+                .query_w
+                .is_some_and(|w| crate::layout::width_in(w, &v.when)),
+        };
+        let media = self.props.variants.iter().filter(|v| !v.when.container);
+        let container = self.props.variants.iter().filter(|v| v.when.container);
+        for v in media.chain(container).filter(matched) {
+            let p = &v.set;
+            if let Some(v) = p.layout {
+                out.layout = Some(v);
+            }
+            if let Some(v) = &p.columns {
+                out.grid
+                    .get_or_insert_with(|| Box::new(self.props.grid.clone()))
+                    .columns
+                    .clone_from(v);
+            }
+            if let Some(v) = p.hidden {
+                out.hidden = Some(v);
+            }
+            if !p.values.is_empty() {
+                let s = values.get_or_insert_with(|| self.authored_sample());
+                let mut row = crate::layout::values_of(s);
+                for &(prop, v) in &p.values {
+                    for &c in prop.channels() {
+                        row[c] = v;
+                    }
+                }
+                crate::layout::set_values(s, &row);
+            }
+        }
+        out.values = values.map(|s| VariedValues {
+            transform: s.transform,
+            opacity: s.opacity,
+            z: s.z,
+            inert: s.inert,
+            ink: s.ink,
+        });
+        out
+    }
+
+    /// How it arranges its children: its props', or a matching variant's.
+    pub(crate) fn layout_mode(&self) -> LayoutMode {
+        self.layout.varied.layout.unwrap_or(self.props.layout)
+    }
+
+    /// Its grid: its props', with the columns a matching variant gives it.
+    pub(crate) fn grid(&self) -> &crate::element::GridSpec {
+        self.layout
+            .varied
+            .grid
+            .as_deref()
+            .unwrap_or(&self.props.grid)
+    }
+
+    /// Not shown: built so, or hidden by a matching variant.
+    pub(crate) fn is_hidden(&self) -> bool {
+        self.layout.varied.hidden.unwrap_or(self.hidden)
+    }
+
+    /// Its declared transform: its props', or with a matching variant's values.
+    pub(crate) fn transform(&self) -> crate::element::Transform {
+        match &self.layout.varied.values {
+            Some(v) => v.transform,
+            None => self.props.transform,
+        }
+    }
+
+    pub(crate) fn opacity(&self) -> f32 {
+        match &self.layout.varied.values {
+            Some(v) => v.opacity,
+            None => self.props.opacity,
+        }
+    }
+
+    pub(crate) fn z(&self) -> i32 {
+        match &self.layout.varied.values {
+            Some(v) => v.z,
+            None => self.props.z,
+        }
+    }
+
+    pub(crate) fn inert(&self) -> bool {
+        match &self.layout.varied.values {
+            Some(v) => v.inert,
+            None => self.props.inert,
+        }
+    }
+
+    /// Its text's ink (white without a text): its content's, or with a
+    /// matching variant's values.
+    pub(crate) fn ink(&self) -> Srgba {
+        match (&self.content, &self.layout.varied.values) {
+            (Content::Text(_), Some(v)) => v.ink,
+            (Content::Text(text), None) => text.color,
+            _ => Srgba::WHITE,
+        }
+    }
+
+    /// Makes [`LayoutBox::used`], its insets and what its variants set
+    /// ([`LayoutBox::varied`]) again from the authored element and props:
+    /// after they were written, and wherever the frame changes what it
+    /// decides on top of them.
     pub(crate) fn derive_used(&mut self) {
         self.layout.used = self.derived(true);
         self.layout.insets = self.props.insets;
+        self.layout.varied = self.varied();
     }
 
-    pub(crate) fn sample_style(&mut self) {
-        self.style.sampled = SampledStyle {
+    /// Its animatable values outside its box as authored, before any
+    /// variant or motion.
+    fn authored_sample(&self) -> SampledStyle {
+        SampledStyle {
             transform: self.props.transform,
             opacity: self.props.opacity,
-            radius: self.layout.used.radius,
-            background: self.layout.used.background,
             ink: match &self.content {
                 Content::Text(text) => text.color,
                 _ => Srgba::WHITE,
             },
             z: self.props.z,
             inert: self.props.inert,
+            ..SampledStyle::default()
+        }
+    }
+
+    pub(crate) fn sample_style(&mut self) {
+        self.style.sampled = SampledStyle {
+            transform: self.transform(),
+            opacity: self.opacity(),
+            radius: self.layout.used.radius,
+            background: self.layout.used.background,
+            ink: self.ink(),
+            z: self.z(),
+            inert: self.inert(),
             blur: 0.0,
             draw: 0.0,
         };

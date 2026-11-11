@@ -64,11 +64,11 @@ impl GridLayout {
 /// The axis's template kind of node `i` (a subgrid only inside a grid).
 fn kind(nodes: &[Node], i: usize, axis: usize) -> Template {
     let n = &nodes[i];
-    if n.props.layout != LayoutMode::Grid {
+    if n.layout_mode() != LayoutMode::Grid {
         return Template::Tracks;
     }
-    match n.props.grid.lines[axis].kind {
-        Template::Subgrid if n.up == NONE || nodes[n.up].props.layout != LayoutMode::Grid => {
+    match n.grid().lines[axis].kind {
+        Template::Subgrid if n.up == NONE || nodes[n.up].layout_mode() != LayoutMode::Grid => {
             Template::Tracks
         }
         k => k,
@@ -319,7 +319,7 @@ fn item_lines(p: &GridPlace) -> [[GridLine; 2]; 2] {
 fn subgrid_span(nodes: &[Node], i: usize, axis: usize) -> usize {
     let n = &nodes[i];
     let p = &n.props.place;
-    let parent = &nodes[n.up].props.grid;
+    let parent = nodes[n.up].grid();
     if !p.area.is_empty()
         && p.lines.iter().flatten().all(|l| *l == GridLine::Auto)
         && let Some(a) = areas(parent).into_iter().find(|a| a.0 == p.area)
@@ -337,11 +337,7 @@ fn subgrid_span(nodes: &[Node], i: usize, axis: usize) -> usize {
         (GridLine::Span(k, _), _) | (_, GridLine::Span(k, _)) => *k as usize,
         _ => {
             // Without a span, the tracks its own line names count.
-            n.props.grid.lines[axis]
-                .names
-                .len()
-                .saturating_sub(1)
-                .max(1)
+            n.grid().lines[axis].names.len().saturating_sub(1).max(1)
         }
     }
     .max(1)
@@ -384,7 +380,7 @@ pub(super) fn place_grid(nodes: &mut [Node], i: usize) {
 
 fn place_at(nodes: &mut [Node], i: usize, avail: [Option<f32>; 2], min: [Option<f32>; 2]) {
     let n = &nodes[i];
-    let spec = &n.props.grid;
+    let spec = n.grid();
     let gap = [
         spec.column_gap
             .or(n.layout.used.gaps[0])
@@ -1221,7 +1217,7 @@ fn defs(nodes: &[Node], i: usize, axis: usize) -> Vec<Track> {
     let g = n.layout.grid.as_ref().unwrap();
     let count = if axis == 0 { g.ncols } else { g.nrows };
     (0..count)
-        .map(|k| track_def(&n.props.grid, g, axis, k))
+        .map(|k| track_def(n.grid(), g, axis, k))
         .collect()
 }
 
@@ -1410,9 +1406,9 @@ fn resolve_axis(nodes: &mut [Node], i: usize, axis: usize, inner: f32) {
         let n = &nodes[i];
         let g = n.layout.grid.as_ref().unwrap();
         let gap = g.gap(axis);
-        n.props.grid.lines[axis].repeat.is_some()
+        n.grid().lines[axis].repeat.is_some()
             && kind(nodes, i, axis) == Template::Tracks
-            && repetitions(&n.props.grid, axis, Some(inner), None, gap) != g.reps[axis]
+            && repetitions(n.grid(), axis, Some(inner), None, gap) != g.reps[axis]
     };
     if changed {
         let other = definite_inner(&nodes[i], 1 - axis).0;
@@ -1435,7 +1431,7 @@ fn resolve_axis(nodes: &mut [Node], i: usize, axis: usize, inner: f32) {
     let gap = g.gap(axis);
     let collapsed = g.collapsed[axis].clone();
     let count = if axis == 0 { g.ncols } else { g.nrows };
-    let spec = &n.props.grid;
+    let spec = n.grid();
     let (sizes, starts) = match kind_here {
         Template::Subgrid => subgrid_tracks(nodes, i, axis, count).unwrap_or_else(|| {
             let s = vec![inner / count.max(1) as f32; count];
@@ -1465,7 +1461,7 @@ fn resolve_axis(nodes: &mut [Node], i: usize, axis: usize, inner: f32) {
     let kids = nodes[i].children.clone();
     let g = nodes[i].layout.grid.clone().unwrap();
     let justify_items = nodes[i].layout.used.justify_items;
-    let align_items = nodes[i].props.grid.align_items;
+    let align_items = nodes[i].grid().align_items;
     for (k, &c) in kids.iter().enumerate() {
         let Some(&(col, row, cs, rs)) = g.cells.get(k) else {
             continue;
@@ -1615,7 +1611,7 @@ pub(super) fn areas_of(nodes: &[Node], i: usize) -> Vec<Option<(Rect, Cross, Cro
                 .layout
                 .used
                 .align_self
-                .or(n.props.grid.align_items)
+                .or(n.grid().align_items)
                 .unwrap_or(Cross::Start);
             Some((Rect::new(x0, y0, cw, rh), justify, align))
         })
@@ -1644,7 +1640,7 @@ pub(crate) fn shown_children(nodes: &[Node], i: usize) -> Vec<usize> {
     let mut out = Vec::new();
     for &c in &nodes[i].built_children {
         let n = &nodes[c];
-        if n.hidden || n.parent != i {
+        if n.is_hidden() || n.parent != i {
             continue;
         }
         if n.layout.used.contents {

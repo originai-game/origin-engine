@@ -190,7 +190,7 @@ impl Ui {
             }
             let mut stack = vec![i];
             while let Some(at) = stack.pop() {
-                if self.tree.nodes[at].hidden {
+                if self.tree.nodes[at].is_hidden() {
                     continue;
                 }
                 self.tree.refilter_children(at);
@@ -274,7 +274,7 @@ impl crate::ui::Tree {
             .built_children
             .iter()
             .copied()
-            .filter(|&c| !self.nodes[c].hidden && self.nodes[c].parent == i)
+            .filter(|&c| !self.nodes[c].is_hidden() && self.nodes[c].parent == i)
             .collect();
         let (out, flow) = kept
             .iter()

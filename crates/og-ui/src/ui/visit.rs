@@ -66,7 +66,7 @@ pub(crate) fn features(n: &Node) -> u32 {
     let mut f = 0;
     if baseline_row(n)
         && n.layout.used.direction == crate::layout::Direction::Row
-        && p.layout == crate::element::LayoutMode::Flex
+        && n.layout_mode() == crate::element::LayoutMode::Flex
     {
         f |= feat::BASELINE;
     }
