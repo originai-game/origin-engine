@@ -9,71 +9,6 @@ use crate::doc::generated::{self as gc, Content, PseudoBox, Quotes};
 pub(super) const QUOTES: &str = "@quotes";
 
 impl Ui {
-    /// Enters an element in the counter run and applies its counter
-    /// properties; nothing unless some document uses generated content.
-    pub(super) fn run_enter(&mut self, r: &Resolved) {
-        if !self.docs.host.uses_run {
-            return;
-        }
-        // Style containment scopes its counters and quotes to its subtree.
-        if crate::doc::contain_css::contain(|p| r.str(p).map(str::to_owned))
-            .has(crate::layout::Contain::STYLE)
-        {
-            self.docs.host.run.enter_contained();
-        } else {
-            self.docs.host.run.enter();
-        }
-        if let Some(g) = &r.generated {
-            self.docs.host.run.apply(&g.ops);
-        }
-    }
-
-    pub(super) fn run_exit(&mut self) {
-        if self.docs.host.uses_run {
-            self.docs.host.run.exit();
-        }
-    }
-
-    /// A pseudo-element's generated text, evaluated at its place in the
-    /// run (its own counter properties apply first); `None` for `normal`
-    /// and `none`, or `display: none`.
-    pub(super) fn pseudo_text(
-        &mut self,
-        b: &Build<'_>,
-        n: &DocNode,
-        r: &Resolved,
-        which: &PseudoBox,
-    ) -> Option<String> {
-        let Content::Pieces(pieces) = &which.content else {
-            return None;
-        };
-        if hidden(&which.style) {
-            return None;
-        }
-        let quotes = r
-            .cascade
-            .computed
-            .get(QUOTES)
-            .cloned()
-            .flatten()
-            .and_then(|q| gc::parse_quotes(&q).ok())
-            .unwrap_or(Quotes::Auto);
-        let facts = super::structure::selector_facts(n, |e| b.eval(e));
-        let attr = |name: &str| {
-            facts.get(name).map(|v| match v {
-                Value::String(s) => s.clone(),
-                Value::Null => String::new(),
-                v => v.to_string(),
-            })
-        };
-        let run = &mut self.docs.host.run;
-        run.enter();
-        run.apply(&which.ops);
-        let text = run.evaluate(pieces, &quotes, &b.doc.sheet, &attr, r.ordinal);
-        run.exit();
-        Some(text)
-    }
-
     /// A box's `::before` or `::after`: its generated text, styled by the
     /// pseudo-element's text properties, in the pseudo-element's own box
     /// when it has one ([`crate::doc::DocNode::pseudo`]).
@@ -117,36 +52,6 @@ impl Ui {
             }
             None => run(self),
         }
-    }
-
-    /// Element `r`'s box pseudo-element `which`, resolved, as the build
-    /// takes it, with its node.
-    pub(super) fn pseudo_node(
-        &self,
-        b: &Build<'_>,
-        r: &Resolved,
-        path: &str,
-        which: &str,
-    ) -> Option<(usize, ResolvedNode)> {
-        let (_, at, values) = r.pseudo.iter().find(|(w, ..)| *w == which)?;
-        let path = format!("{path}/::{which}");
-        Some((
-            *at,
-            ResolvedNode {
-                id: format!("::{which}"),
-                key: crate::id::key_of_path(&path),
-                values: (**values).clone(),
-                probe: Built {
-                    path: path.clone(),
-                    doc: b.doc.name.clone(),
-                    node: *at,
-                    line: b.doc.nodes[*at].line,
-                    mount: b.mount.clone(),
-                    ..Built::default()
-                },
-                path,
-            },
-        ))
     }
 
     /// Styles node `i`, a box a control draws itself (a modal's scrim, a
@@ -334,20 +239,105 @@ impl Ui {
 }
 
 impl Ui {
-    /// How many characters the first line of text node `key` held in the
-    /// last layout.
-    fn first_line_chars(&self, key: u64) -> Option<usize> {
-        let n = self
-            .tree
-            .previous_nodes(&self.layout)
-            .find(|n| n.key == key)
-            .or_else(|| self.tree.index.find(key).map(|i| &self.tree.nodes[i]))?;
-        if let Some(line) = n.rich_lines.first() {
-            return Some(line.pieces.iter().map(|p| p.text.chars().count()).sum());
+    /// Enters an element in the counter run and applies its counter
+    /// properties; nothing unless some document uses generated content.
+    pub(super) fn run_enter(&mut self, r: &Resolved) {
+        if !self.docs.host.uses_run {
+            return;
         }
-        n.lines.first().map(|l| l.text.chars().count())
+        // Style containment scopes its counters and quotes to its subtree.
+        if crate::doc::contain_css::contain(|p| r.str(p).map(str::to_owned))
+            .has(crate::layout::Contain::STYLE)
+        {
+            self.docs.host.run.enter_contained();
+        } else {
+            self.docs.host.run.enter();
+        }
+        if let Some(g) = &r.generated {
+            self.docs.host.run.apply(&g.ops);
+        }
     }
 
+    pub(super) fn run_exit(&mut self) {
+        if self.docs.host.uses_run {
+            self.docs.host.run.exit();
+        }
+    }
+
+    /// A pseudo-element's generated text, evaluated at its place in the
+    /// run (its own counter properties apply first); `None` for `normal`
+    /// and `none`, or `display: none`.
+    pub(super) fn pseudo_text(
+        &mut self,
+        b: &Build<'_>,
+        n: &DocNode,
+        r: &Resolved,
+        which: &PseudoBox,
+    ) -> Option<String> {
+        let Content::Pieces(pieces) = &which.content else {
+            return None;
+        };
+        if hidden(&which.style) {
+            return None;
+        }
+        let quotes = r
+            .cascade
+            .computed
+            .get(QUOTES)
+            .cloned()
+            .flatten()
+            .and_then(|q| gc::parse_quotes(&q).ok())
+            .unwrap_or(Quotes::Auto);
+        let facts = super::structure::selector_facts(n, |e| b.eval(e));
+        let attr = |name: &str| {
+            facts.get(name).map(|v| match v {
+                Value::String(s) => s.clone(),
+                Value::Null => String::new(),
+                v => v.to_string(),
+            })
+        };
+        let run = &mut self.docs.host.run;
+        run.enter();
+        run.apply(&which.ops);
+        let text = run.evaluate(pieces, &quotes, &b.doc.sheet, &attr, r.ordinal);
+        run.exit();
+        Some(text)
+    }
+}
+
+impl Ui {
+    /// Element `r`'s box pseudo-element `which`, resolved, as the build
+    /// takes it, with its node.
+    pub(super) fn pseudo_node(
+        &self,
+        b: &Build<'_>,
+        r: &Resolved,
+        path: &str,
+        which: &str,
+    ) -> Option<(usize, ResolvedNode)> {
+        let (_, at, values) = r.pseudo.iter().find(|(w, ..)| *w == which)?;
+        let path = format!("{path}/::{which}");
+        Some((
+            *at,
+            ResolvedNode {
+                id: format!("::{which}"),
+                key: crate::id::key_of_path(&path),
+                values: (**values).clone(),
+                probe: Built {
+                    path: path.clone(),
+                    doc: b.doc.name.clone(),
+                    node: *at,
+                    line: b.doc.nodes[*at].line,
+                    mount: b.mount.clone(),
+                    ..Built::default()
+                },
+                path,
+            },
+        ))
+    }
+}
+
+impl Ui {
     /// `::placeholder`'s color as declared.
     pub(super) fn pseudo_ink(&self, r: &Resolved) -> Option<Srgba> {
         let body = r.generated.as_ref()?.placeholder.as_ref()?;
@@ -427,6 +417,22 @@ impl Ui {
             );
         }
         (s != Default::default()).then_some(s)
+    }
+}
+
+impl Ui {
+    /// How many characters the first line of text node `key` held in the
+    /// last layout.
+    fn first_line_chars(&self, key: u64) -> Option<usize> {
+        let n = self
+            .tree
+            .previous_nodes(&self.layout)
+            .find(|n| n.key == key)
+            .or_else(|| self.tree.index.find(key).map(|i| &self.tree.nodes[i]))?;
+        if let Some(line) = n.rich_lines.first() {
+            return Some(line.pieces.iter().map(|p| p.text.chars().count()).sum());
+        }
+        n.lines.first().map(|l| l.text.chars().count())
     }
 }
 

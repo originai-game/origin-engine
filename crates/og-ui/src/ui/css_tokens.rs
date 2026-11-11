@@ -148,32 +148,6 @@ fn palette_css(theme: &Theme) -> BTreeMap<String, String> {
 }
 
 impl Ui {
-    pub(super) fn write_theme_tokens(&mut self, theme: Theme) {
-        let mut baseline = Theme::new(theme.scheme);
-        let mut old = palette_css(&baseline);
-        lengths(&mut baseline, |name, value| {
-            old.insert(format!("--{name}"), format!("{value}px"));
-        });
-        let mut values = palette_css(&theme);
-        let mut theme = theme;
-        lengths(&mut theme, |name, value| {
-            let name = format!("--{name}");
-            let value = format!("{value}px");
-            if old.get(&name) != Some(&value) {
-                values.insert(name, value);
-            }
-        });
-        values.retain(|name, value| old.get(name) != Some(value));
-        self.style.root_tokens = values.into_iter().collect();
-        self.style.root_type_tokens = Breakpoint::ALL.map(|bp| {
-            let baseline = typography(&Theme::new(theme.scheme), bp, &self.env.fonts);
-            typography(&theme, bp, &self.env.fonts)
-                .into_iter()
-                .filter(|(name, value)| baseline.get(name) != Some(value))
-                .collect()
-        });
-    }
-
     pub(crate) fn read_theme_tokens(&mut self) {
         let root = self.css_root_variables();
         let context = crate::css_color::Context::of(&self.env.theme);
@@ -277,5 +251,33 @@ impl Ui {
             token.features = step.features;
             token.uppercase = step.uppercase;
         }
+    }
+}
+
+impl Ui {
+    pub(super) fn write_theme_tokens(&mut self, theme: Theme) {
+        let mut baseline = Theme::new(theme.scheme);
+        let mut old = palette_css(&baseline);
+        lengths(&mut baseline, |name, value| {
+            old.insert(format!("--{name}"), format!("{value}px"));
+        });
+        let mut values = palette_css(&theme);
+        let mut theme = theme;
+        lengths(&mut theme, |name, value| {
+            let name = format!("--{name}");
+            let value = format!("{value}px");
+            if old.get(&name) != Some(&value) {
+                values.insert(name, value);
+            }
+        });
+        values.retain(|name, value| old.get(name) != Some(value));
+        self.style.root_tokens = values.into_iter().collect();
+        self.style.root_type_tokens = Breakpoint::ALL.map(|bp| {
+            let baseline = typography(&Theme::new(theme.scheme), bp, &self.env.fonts);
+            typography(&theme, bp, &self.env.fonts)
+                .into_iter()
+                .filter(|(name, value)| baseline.get(name) != Some(value))
+                .collect()
+        });
     }
 }

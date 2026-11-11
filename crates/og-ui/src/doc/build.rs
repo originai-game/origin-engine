@@ -530,15 +530,6 @@ impl Build<'_> {
 }
 
 impl Ui {
-    /// Whether a family is installed, rather than merely declared in CSS.
-    pub(crate) fn family_declared(&self, name: &str) -> bool {
-        self.env
-            .fonts
-            .families
-            .iter()
-            .any(|f| f.family.eq_ignore_ascii_case(name))
-    }
-
     /// An exposed part belongs to the authored markup host. Classes and
     /// attributes qualify that host; widget interaction states are merged
     /// when the control is built.
@@ -1337,6 +1328,17 @@ impl Ui {
                 .collect();
         }
         r
+    }
+}
+
+impl Ui {
+    /// Whether a family is installed, rather than merely declared in CSS.
+    pub(crate) fn family_declared(&self, name: &str) -> bool {
+        self.env
+            .fonts
+            .families
+            .iter()
+            .any(|f| f.family.eq_ignore_ascii_case(name))
     }
 }
 

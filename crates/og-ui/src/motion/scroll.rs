@@ -532,7 +532,9 @@ impl Ui {
         };
         g.progress(subject.map(|_| inset), a.range_start, a.range_end)
     }
+}
 
+impl Ui {
     fn scroll_ancestor(&self, i: usize) -> Option<usize> {
         let mut p = self.tree.nodes[i].parent;
         while p != NONE {
