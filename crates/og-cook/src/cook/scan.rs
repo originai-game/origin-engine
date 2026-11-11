@@ -64,6 +64,47 @@ fn kind_by_extension(ext: &str) -> Option<Kind> {
     })
 }
 
+/// The `type` of each `.ogt` the cook takes as an asset, with its kind.
+const OGT_KINDS: &[(&str, Kind)] = &[
+    ("scene", Kind::Scene),
+    (prefab::PREFAB_TYPE, Kind::Prefab),
+    (crate::fx::EMITTER_TYPE, Kind::Emitter),
+    (og_bundle::effect::EFFECT_TYPE, Kind::Effect),
+    (og_bundle::vfx::VFX_TYPE, Kind::Vfx),
+    ("tileset", Kind::Tileset),
+    ("tilemap", Kind::Tilemap),
+    ("flipbook", Kind::Flipbook),
+    // A pixel effect becomes a sheet (`vfx2d::expand`).
+    (vfx2d::VFX2D_TYPE, Kind::Flipbook),
+    (og_anim::RIG2D_TYPE, Kind::Rig2d),
+    (crate::shader::SHADER_TYPE, Kind::Shader),
+    (crate::shader::POST_TYPE, Kind::Post),
+    (crate::shader::UI_MATERIAL_TYPE, Kind::UiMaterial),
+    (vector::VECTOR_TYPE, Kind::Vector),
+    (sfx::SFX_TYPE, Kind::Sound),
+    (e6::BEHAVIOUR_TYPE, Kind::Behaviour),
+    (og_story::DIALOGUE_TYPE, Kind::Dialogue),
+    (og_story::QUEST_TYPE, Kind::Quest),
+    (og_i18n::STRINGS_TYPE, Kind::Strings),
+    (e6::NAVMESH_TYPE, Kind::NavMesh),
+    (anim::RIG_TYPE, Kind::Rig),
+    ("motion-action", Kind::MotionAction),
+    (terrain::TERRAIN_TYPE, Kind::Terrain),
+    (timeline::TIMELINE_TYPE, Kind::Timeline),
+    (lightmap::LIGHTMAP_TYPE, Kind::Lightmap),
+    (environment::ENVIRONMENT_TYPE, Kind::Environment),
+    (icons::ICONS_TYPE, Kind::Icons),
+    (crate::look::LOOK_TYPE, Kind::Look),
+    (texture_array::ARRAY_TYPE, Kind::TextureArray),
+    (video::VIDEO_TYPE, Kind::Video),
+    (model_text::MODEL_TYPE, Kind::Model),
+];
+
+/// The kind an `.ogt` of this `type` cooks as; `None`: not an asset.
+fn ogt_kind(ty: &str) -> Option<Kind> {
+    OGT_KINDS.iter().find(|(t, _)| *t == ty).map(|&(_, k)| k)
+}
+
 /// Whether an `.ogt` of type `ty` has lines of its own below its header
 /// (CSS declarations, a recipe), which `.ogt`'s reader and `og fmt` leave
 /// alone.
@@ -204,11 +245,6 @@ pub(super) fn scan_with(
                         }
                         continue;
                     }
-                    Ok(doc) if doc.ty == "scene" => Kind::Scene,
-                    Ok(doc) if doc.ty == prefab::PREFAB_TYPE => Kind::Prefab,
-                    Ok(doc) if doc.ty == crate::fx::EMITTER_TYPE => Kind::Emitter,
-                    Ok(doc) if doc.ty == og_bundle::effect::EFFECT_TYPE => Kind::Effect,
-                    Ok(doc) if doc.ty == og_bundle::vfx::VFX_TYPE => Kind::Vfx,
                     Ok(doc) if doc.ty == "style" => {
                         early_errors.push((rel.clone(), "style", "style.ogt is removed; author a directory of .css files and load its directory with og.load.style".into()));
                         continue;
@@ -220,33 +256,7 @@ pub(super) fn scan_with(
                         early_errors.push((rel.clone(), "document", "UI documents use scriptless .svelte markup; replace the old screen/component dialect".into()));
                         continue;
                     }
-                    Ok(doc) if doc.ty == "tileset" => Kind::Tileset,
-                    Ok(doc) if doc.ty == "tilemap" => Kind::Tilemap,
-                    Ok(doc) if doc.ty == "flipbook" => Kind::Flipbook,
-                    // A pixel effect becomes a sheet (`vfx2d::expand`).
-                    Ok(doc) if doc.ty == vfx2d::VFX2D_TYPE => Kind::Flipbook,
-                    Ok(doc) if doc.ty == og_anim::RIG2D_TYPE => Kind::Rig2d,
-                    Ok(doc) if doc.ty == crate::shader::SHADER_TYPE => Kind::Shader,
-                    Ok(doc) if doc.ty == crate::shader::POST_TYPE => Kind::Post,
-                    Ok(doc) if doc.ty == crate::shader::UI_MATERIAL_TYPE => Kind::UiMaterial,
-                    Ok(doc) if doc.ty == vector::VECTOR_TYPE => Kind::Vector,
-                    Ok(doc) if doc.ty == sfx::SFX_TYPE => Kind::Sound,
-                    Ok(doc) if doc.ty == e6::BEHAVIOUR_TYPE => Kind::Behaviour,
-                    Ok(doc) if doc.ty == og_story::DIALOGUE_TYPE => Kind::Dialogue,
-                    Ok(doc) if doc.ty == og_story::QUEST_TYPE => Kind::Quest,
-                    Ok(doc) if doc.ty == og_i18n::STRINGS_TYPE => Kind::Strings,
-                    Ok(doc) if doc.ty == e6::NAVMESH_TYPE => Kind::NavMesh,
-                    Ok(doc) if doc.ty == anim::RIG_TYPE => Kind::Rig,
-                    Ok(doc) if doc.ty == "motion-action" => Kind::MotionAction,
-                    Ok(doc) if doc.ty == terrain::TERRAIN_TYPE => Kind::Terrain,
-                    Ok(doc) if doc.ty == timeline::TIMELINE_TYPE => Kind::Timeline,
-                    Ok(doc) if doc.ty == lightmap::LIGHTMAP_TYPE => Kind::Lightmap,
-                    Ok(doc) if doc.ty == environment::ENVIRONMENT_TYPE => Kind::Environment,
-                    Ok(doc) if doc.ty == icons::ICONS_TYPE => Kind::Icons,
-                    Ok(doc) if doc.ty == crate::look::LOOK_TYPE => Kind::Look,
-                    Ok(doc) if doc.ty == texture_array::ARRAY_TYPE => Kind::TextureArray,
-                    Ok(doc) if doc.ty == video::VIDEO_TYPE => Kind::Video,
-                    Ok(doc) if doc.ty == model_text::MODEL_TYPE => Kind::Model,
+                    Ok(doc) if let Some(kind) = ogt_kind(&doc.ty) => kind,
                     Ok(doc) => {
                         early_errors.push((
                             rel.clone(),
