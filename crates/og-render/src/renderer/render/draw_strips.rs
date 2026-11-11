@@ -33,7 +33,7 @@ impl Renderer {
                 StripPart::Additive => None,
                 StripPart::Oit(_) if !alpha => continue,
                 StripPart::Oit(mode) => {
-                    let source = if run.points && self.gpu_trails.is_some() {
+                    let source = if run.points && self.strips.gpu_trails.is_some() {
                         oit::Source::Strip
                     } else {
                         oit::Source::Ribbon
@@ -79,11 +79,11 @@ impl Renderer {
         let (group, offset) = self.particles.gpu.effects.bind(effect);
         pass.set_bind_group(3, group, &[offset]);
         let alpha = usize::from(blend != ParticleBlend::Additive as u8);
-        let gpu = self.gpu_trails.as_ref().filter(|_| points);
+        let gpu = self.strips.gpu_trails.as_ref().filter(|_| points);
         pass.set_pipeline(match (pipeline, gpu) {
             (Some(p), _) => p,
             (None, Some(g)) => &g.pipelines[alpha],
-            (None, None) => &self.ribbon_pipelines[alpha],
+            (None, None) => &self.strips.ribbon_pipelines[alpha],
         });
         pass.set_bind_group(
             1,
@@ -107,7 +107,8 @@ impl Renderer {
                 let start = first as u64 * stride;
                 pass.set_vertex_buffer(
                     0,
-                    self.ribbon_buffer
+                    self.strips
+                        .ribbon_buffer
                         .slice(start..start + count as u64 * stride),
                 );
                 pass.draw(0..count, 0..1);

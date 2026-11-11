@@ -787,6 +787,19 @@ pub(crate) struct ReflectionTargets {
     pub(crate) warned_planar: bool,
 }
 
+/// The strips' resources: their two pipelines, shader, vertex buffer and sampler, and the CPU and GPU trails.
+pub(crate) struct StripState {
+    pub(crate) ribbon_pipelines: [Sampled<wgpu::RenderPipeline>; 2],
+    pub(crate) ribbon_buffer: wgpu::Buffer,
+    pub(crate) ribbon_sampler: wgpu::Sampler,
+    pub(crate) ribbon_shader: deferred::Module,
+    pub(crate) trails: ribbons::Trails,
+    /// Trails, ribbons and beams expanded on the GPU, with the trails'
+    /// histories stepped in compute (`None`: the device lacks compute or
+    /// storage in the vertex stage, and `trails` builds them on the CPU).
+    pub(crate) gpu_trails: Option<ribbons_gpu::GpuTrails>,
+}
+
 #[cfg(test)]
 mod foliage_layout_tests {
     use super::*;

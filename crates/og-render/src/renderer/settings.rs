@@ -190,8 +190,8 @@ impl Renderer {
             &self.msdf_pipeline,
         ]
         .into_iter()
-        .chain(&self.ribbon_pipelines)
-        .chain(self.gpu_trails.iter().flat_map(|g| &g.pipelines))
+        .chain(&self.strips.ribbon_pipelines)
+        .chain(self.strips.gpu_trails.iter().flat_map(|g| &g.pipelines))
         {
             p.set_samples(samples);
         }

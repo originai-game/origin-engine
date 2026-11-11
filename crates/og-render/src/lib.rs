@@ -636,7 +636,8 @@ pub struct Renderer {
     sprite_cover_pipeline: Sampled<wgpu::RenderPipeline>,
     sprite_glow_pipeline: Deferred<wgpu::RenderPipeline>,
     msdf_pipeline: Sampled<wgpu::RenderPipeline>,
-    ribbon_pipelines: [Sampled<wgpu::RenderPipeline>; 2],
+    /// The strips' resources: their two pipelines, shader, vertex buffer and sampler, and the CPU and GPU trails.
+    strips: renderer::StripState,
     fx_layout: wgpu::BindGroupLayout,
     /// `fx_layout` without the planar reflection, where it has it (two
     /// planar reflections, [`planar_slot`]): the lightmapped pipelines'
@@ -647,17 +648,10 @@ pub struct Renderer {
     sprite_fx_layout: wgpu::BindGroupLayout,
     sprite_fx_buffer: wgpu::Buffer,
     palette_layout: wgpu::BindGroupLayout,
-    ribbon_buffer: wgpu::Buffer,
-    ribbon_sampler: wgpu::Sampler,
     /// Lines, points and wireframes (`lines.rs`).
     lines: lines::LineRenderer,
     particles: renderer::Particles,
     lights_2d: light2d::Light2dRenderer,
-    trails: ribbons::Trails,
-    /// Trails, ribbons and beams expanded on the GPU, with the trails'
-    /// histories stepped in compute (`None`: the device lacks compute or
-    /// storage in the vertex stage, and `trails` builds them on the CPU).
-    gpu_trails: Option<ribbons_gpu::GpuTrails>,
     surfaces: Option<surface::SurfacePipelines>,
     garments: Option<garment_gpu::Pipelines>,
     /// The GPU solver of visual bodies ([`VisualBody`]), with `surfaces`.
@@ -737,5 +731,4 @@ pub struct Renderer {
     oit: oit::OitState,
     /// The sprite and strip modules, for their OIT pipelines.
     sprite_shader: deferred::Module,
-    ribbon_shader: deferred::Module,
 }

@@ -322,7 +322,7 @@ impl Renderer {
             &self.sprite_fx_buffer,
             &self.instances.skinned_buffer,
             &self.instances.prev_instance_buffer,
-            &self.ribbon_buffer,
+            &self.strips.ribbon_buffer,
             &self.instances.instance_buffer,
             &self.sprite_buffer,
         ]

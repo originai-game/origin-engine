@@ -106,7 +106,7 @@ impl Renderer {
         if strips.0 {
             wanted.push(Source::Ribbon);
         }
-        if strips.1 && self.gpu_trails.is_some() {
+        if strips.1 && self.strips.gpu_trails.is_some() {
             wanted.push(Source::Strip);
         }
         for (source, &mode) in wanted
@@ -324,14 +324,21 @@ impl Renderer {
                     let strip = source == Source::Strip;
                     let mut rest = vec![&self.sprite_layout];
                     if strip {
-                        rest.push(&self.gpu_trails.as_ref().expect("checked above").draw_layout);
+                        rest.push(
+                            &self
+                                .strips
+                                .gpu_trails
+                                .as_ref()
+                                .expect("checked above")
+                                .draw_layout,
+                        );
                     } else {
                         rest.push(&self.particles.gpu.effects.empty_layout);
                     }
                     rest.push(&self.particles.gpu.effects.layout);
                     let name = if strip { "strip (oit)" } else { "ribbon (oit)" };
                     let layout = self.oit.layout(&device, name, mode, frame, &rest).clone();
-                    let shader = self.ribbon_shader.get().clone();
+                    let shader = self.strips.ribbon_shader.get().clone();
                     let job = variant_job(move |_| {
                         Made::Pipeline(oit::pipeline(
                             &device,

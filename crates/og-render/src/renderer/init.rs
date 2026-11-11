@@ -121,7 +121,7 @@ impl Renderer {
             fresh.sprite_cover_pipeline = self.sprite_cover_pipeline;
             fresh.sprite_glow_pipeline = self.sprite_glow_pipeline;
             fresh.msdf_pipeline = self.msdf_pipeline;
-            fresh.ribbon_pipelines = self.ribbon_pipelines;
+            fresh.strips.ribbon_pipelines = self.strips.ribbon_pipelines;
         }
         Ok(fresh)
     }
@@ -1253,19 +1253,22 @@ impl Renderer {
             sprite_cover_pipeline,
             sprite_glow_pipeline,
             msdf_pipeline,
-            ribbon_pipelines,
+            strips: StripState {
+                ribbon_pipelines,
+                ribbon_buffer,
+                ribbon_sampler,
+                ribbon_shader,
+                trails: ribbons::Trails::default(),
+                gpu_trails,
+            },
             fx_layout,
             fx_lean_layout,
             sprite_fx_layout,
             sprite_fx_buffer,
             palette_layout,
-            ribbon_buffer,
-            ribbon_sampler,
             lines,
             particles,
             lights_2d,
-            trails: ribbons::Trails::default(),
-            gpu_trails,
             surfaces,
             visual,
             visual_fluids,
@@ -1310,7 +1313,6 @@ impl Renderer {
             sprite_hooks: None,
             oit,
             sprite_shader,
-            ribbon_shader,
             tiles_gpu: None,
             tiles_gpu_supported: tiles_gpu::Tiles::supported(flags),
         })

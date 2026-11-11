@@ -73,7 +73,7 @@ impl Renderer {
         grow_and_write(
             &self.device,
             &self.queue,
-            &mut self.ribbon_buffer,
+            &mut self.strips.ribbon_buffer,
             "strips",
             bytemuck::cast_slice(&ribbon_frame.vertices),
         );

@@ -50,7 +50,7 @@ impl Renderer {
             active_probes,
         }: SpriteArenaInputs<'_>,
     ) -> Result<SpriteArenas, RenderError> {
-        let mut ribbon_frame = match &mut self.gpu_trails {
+        let mut ribbon_frame = match &mut self.strips.gpu_trails {
             Some(g) => g.build(
                 &self.device,
                 &self.queue,
@@ -63,7 +63,7 @@ impl Renderer {
                 scene.tick,
                 scene.tick_rate,
             ),
-            None => self.trails.build(
+            None => self.strips.trails.build(
                 scene.id(),
                 scene.trail_styles(),
                 &scene.trails,
@@ -109,16 +109,17 @@ impl Renderer {
         // points and 2D water (the vertex shader faces the view's camera),
         // or, built on the CPU, its own after the main camera's in the
         // strip buffer.
-        let gpu_strips = self.gpu_trails.is_some();
+        let gpu_strips = self.strips.gpu_trails.is_some();
         let view_ribbons: Vec<Vec<ribbons::RibbonRun>> = view_plans
             .iter()
             .map(|p| {
                 if gpu_strips {
                     return ribbon_frame.runs.clone();
                 }
-                let mut f = self
-                    .trails
-                    .emit(p.position, p.frame.forward, p.frame.orthographic);
+                let mut f =
+                    self.strips
+                        .trails
+                        .emit(p.position, p.frame.forward, p.frame.orthographic);
                 water::water_2d_strips(&scene.water_2d, &mut f);
                 let base = ribbon_frame.vertices.len() as u32;
                 ribbon_frame.vertices.extend_from_slice(&f.vertices);

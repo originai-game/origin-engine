@@ -49,8 +49,11 @@ impl Renderer {
             || deferred::warm_one(&[&self.sky.sky_pipeline, &self.sky.sky_look_pipeline])
             || self.lights.ibl.warm()
             || self.warm_plain_lit()
-            || deferred::warm_one(&[&self.ribbon_pipelines[0], &self.ribbon_pipelines[1]])
-            || self.gpu_trails.as_ref().is_some_and(|g| {
+            || deferred::warm_one(&[
+                &self.strips.ribbon_pipelines[0],
+                &self.strips.ribbon_pipelines[1],
+            ])
+            || self.strips.gpu_trails.as_ref().is_some_and(|g| {
                 deferred::warm_one(&[&g.pipeline, &g.pipelines[0], &g.pipelines[1]])
             })
             || self.particles.gpu.warm()

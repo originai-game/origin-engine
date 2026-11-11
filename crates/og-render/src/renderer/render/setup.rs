@@ -18,8 +18,8 @@ impl Renderer {
                 .taa_history
                 .map(|m| crate::origin::shift_matrix(m, d));
             self.particles.gpu.shift(d);
-            self.trails.shift(d);
-            if let Some(g) = &mut self.gpu_trails {
+            self.strips.trails.shift(d);
+            if let Some(g) = &mut self.strips.gpu_trails {
                 g.shift(d);
             }
             self.history.drawn_origin = scene.origin;

@@ -1516,7 +1516,7 @@ impl Renderer {
                 &self.queue,
                 &self.sprite_layout,
                 &self.cache.textures[t.index()].view,
-                &self.ribbon_sampler,
+                &self.strips.ribbon_sampler,
                 [0.0; 4],
             ));
         }
