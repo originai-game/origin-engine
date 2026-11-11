@@ -18,6 +18,16 @@ function files(root: string): string[] {
   return readdirSync(root, { withFileTypes: true }).flatMap(e => e.isDirectory() ? files(join(root, e.name)).map(f => `${e.name}/${f}`) : e.isFile() ? [e.name] : []).sort();
 }
 
+test("the fixtures and the sheet carry the skeleton's tsconfig, whose include names only what a project has", () => {
+  const skeleton = readFileSync(join(pkg, "template/tsconfig.json"), "utf8");
+  expect(JSON.parse(skeleton).include).toEqual(["src/**/*.ts", "tests/**/*.ts", ".og/types/**/*.d.ts"]);
+  const fixtures = join(pkg, "../../tests/fixtures");
+  const copies = [...readdirSync(fixtures).map(name => join(fixtures, name)), join(pkg, "../engine/sheets/style")]
+    .map(dir => join(dir, "tsconfig.json")).filter(file => existsSync(file));
+  expect(copies.length).toBeGreaterThan(10);
+  for (const file of copies) expect(readFileSync(file, "utf8"), file).toBe(skeleton);
+});
+
 test("no-prompt creation uses source choices even with an outdated packed catalogue", () => {
   const checkout = join(scratch, "checkout");
   const source = join(checkout, "packages/create");
