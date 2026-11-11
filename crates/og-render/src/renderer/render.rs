@@ -398,34 +398,13 @@ impl Renderer {
             particle_frame: &particle_frame,
             scene_water,
         });
-        let FrameEffects {
-            ao,
-            gi,
-            ao_target,
-            contact,
-            bent,
-            outline: _,
-            dof,
-            motion_blur,
-            screen_blur,
-            god_rays,
-            lens_flare,
-            flare_sources_on,
-            fluids_3d,
-            depth_bands,
-            ssr,
-            custom_posts: _,
-            motion_read,
-            ui_depth: _,
-            prepass,
-        } = effects;
-        plans.ssr = ssr;
+        plans.ssr = effects.ssr;
         // What the frame will draw with beyond its batches starts compiling
         // on worker threads before the batches' pipelines (deferred.rs):
         // the terrains', the frame's longest compiles, the sky's and the
         // post chain's.
         if WORLD_3D {
-            self.terrain.start_passes(scene, prepass);
+            self.terrain.start_passes(scene, effects.prepass);
         }
         {
             use crate::deferred::Start;
@@ -440,7 +419,7 @@ impl Renderer {
         let (face_fluid, face_depth, object_space) =
             self.prepare_frame_pipelines(PrepareFramePipelinesInputs {
                 scene,
-                ao: ao_target || contact,
+                ao: effects.ao_target || effects.contact,
                 batches: &mut batches,
                 skinned_batches: &mut skinned_batches,
                 skinned_visible: &mut skinned_visible,
@@ -449,9 +428,9 @@ impl Renderer {
                 particle_frame: &particle_frame,
                 view_plans: &view_plans,
                 probe_frame: &probe_frame,
-                fluids_3d,
+                fluids_3d: effects.fluids_3d,
                 scene_water,
-                prepass,
+                prepass: effects.prepass,
             });
         // Texture filters: a sprite group made with the other sampler is remade;
         // before any group is made this frame (the overlay's, first, below).
@@ -592,7 +571,7 @@ impl Renderer {
         // culling compacts its camera pass's beside its own).
         let previous_valid = !scene.previous_transforms.is_empty()
             && scene.previous_transforms.len() == scene.instances.len();
-        let blur_motion = motion_blur.is_some() && previous_valid;
+        let blur_motion = effects.motion_blur.is_some() && previous_valid;
         let sorted = transforms.len() as u32;
         // The skinned instances (their records in `skinned_data`, before
         // the CPU lists' copies): GPU culling tests their posed boxes
@@ -763,7 +742,7 @@ impl Renderer {
             camera: &camera,
             cam: &cam,
             view_frustum: &view_frustum,
-            prepass,
+            prepass: effects.prepass,
             crowd_frame: &crowd_frame,
             cpu_cards: &cpu_cards,
         })?;
@@ -790,7 +769,7 @@ impl Renderer {
             camera: &camera,
             cam: &cam,
             view_frustum: &view_frustum,
-            contact,
+            contact: effects.contact,
             volumetric_fog: &volumetric_fog,
             reflections: &reflections,
         });
@@ -856,7 +835,7 @@ impl Renderer {
             auxiliary_instances,
             previous_valid,
             object_motion,
-            prepass,
+            prepass: effects.prepass,
             skinned_gpu,
             skinned_batches: &skinned_batches,
             skinned_plain,
@@ -911,7 +890,7 @@ impl Renderer {
                 active_probes: &active_probes,
                 probe_faces: &probe_faces,
                 reflections: &reflections,
-                ssr: ssr.as_ref(),
+                ssr: effects.ssr.as_ref(),
             });
         // The sun on screen, the flare's and the post chain's uniforms (sun_and_post.rs).
         let WriteSunAndPostOutputs {
@@ -927,9 +906,9 @@ impl Renderer {
             to_light,
             uniform: &uniform,
             post_fx,
-            god_rays,
-            lens_flare,
-            flare_sources_on,
+            god_rays: effects.god_rays,
+            lens_flare: effects.lens_flare,
+            flare_sources_on: effects.flare_sources_on,
             glow,
             sprite_frame: &sprite_frame,
         });
@@ -944,13 +923,13 @@ impl Renderer {
             cam: &cam,
             view_frustum: &view_frustum,
             prev_view_proj,
-            motion_read,
+            motion_read: effects.motion_read,
             skinned_motion,
             joints_drawn,
-            ao_target,
-            ao,
-            gi: gi.is_some(),
-            bent,
+            ao_target: effects.ao_target,
+            ao: effects.ao,
+            gi: effects.gi.is_some(),
+            bent: effects.bent,
             reflection,
             reflections: &reflections,
         });
@@ -976,24 +955,24 @@ impl Renderer {
                 camera: &camera,
                 post_fx,
                 scene,
-                ao,
-                gi,
-                dof,
-                motion_blur,
-                god_rays,
+                ao: effects.ao,
+                gi: effects.gi,
+                dof: effects.dof,
+                motion_blur: effects.motion_blur,
+                god_rays: effects.god_rays,
                 sun_ndc,
                 god_visible,
                 sun_fade,
-                depth_bands,
-                screen_blur,
+                depth_bands: effects.depth_bands,
+                screen_blur: effects.screen_blur,
                 contact: contact_rows,
-                ssr: ssr.as_ref(),
+                ssr: effects.ssr.as_ref(),
                 taa,
                 temporal,
-                prepass,
+                prepass: effects.prepass,
             });
         let slot = (self.frame_index % 2) as usize;
-        let gtao = match ao.map(|a| a.method) {
+        let gtao = match effects.ao.map(|a| a.method) {
             Some(AoMethod::Gtao) => true,
             Some(AoMethod::Ssao | AoMethod::Screen) => false,
             _ => true,
@@ -1037,7 +1016,7 @@ impl Renderer {
                 upscale,
                 grid_offset,
                 lens,
-                prepass,
+                prepass: effects.prepass,
             });
         // The 2D light map's size, its directions target and the light
         // pass's plan (pass_light_2d.rs).
@@ -1132,7 +1111,11 @@ impl Renderer {
         };
         // The effect bind groups, rebuilt only when what they read changed
         // (fx_groups.rs).
-        self.update_fx_groups(scene, ao_target || contact, reflection.is_some());
+        self.update_fx_groups(
+            scene,
+            effects.ao_target || effects.contact,
+            reflection.is_some(),
+        );
         // The water's and the 3D fluids' draws (water_fluids.rs).
         let PrepareWaterAndFluidsOutputs {
             water_draws,
@@ -1145,14 +1128,14 @@ impl Renderer {
             cam: &cam,
             scene_water,
             reflections: &reflections,
-            ao_target,
-            ao,
+            ao_target: effects.ao_target,
+            ao: effects.ao,
             probe_frame: &probe_frame,
             probe_faces: &probe_faces,
-            fluids_3d,
+            fluids_3d: effects.fluids_3d,
             face_fluid,
         });
-        plans.fluid_3d = fluids_3d.then_some(fluid_frame.as_ref());
+        plans.fluid_3d = effects.fluids_3d.then_some(fluid_frame.as_ref());
         // The frame's encoder and the compute before the graph (pre_graph_stage.rs).
         let EncodePreGraphOutputs {
             mut encoder,
@@ -1263,8 +1246,8 @@ impl Renderer {
             probe_faces: &probe_faces,
             face_depth,
             skinned_visible: &skinned_visible,
-            ao_target,
-            contact,
+            ao_target: effects.ao_target,
+            contact: effects.contact,
             transmission_view,
             particle_frame: &particle_frame,
             reflections: &reflections,
@@ -1302,7 +1285,7 @@ impl Renderer {
             lit_standard: lit_skinned_standard,
             shadow: shadow_skinned,
             prepass: prepass_skinned,
-        } = self.skinned_pipelines(&skinned_visible, &skinned_batches, prepass);
+        } = self.skinned_pipelines(&skinned_visible, &skinned_batches, effects.prepass);
         let culled_gpu = self.visibility.gpu_cull.as_ref().filter(|_| gpu_cull);
         let crowd_cull = self.crowd_gpu.as_ref().filter(|_| crowd_gpu);
         // The effect groups of the standard and the physical pipelines, in
@@ -1438,7 +1421,7 @@ impl Renderer {
             view_glow_runs: &view_glow_runs,
             post_fx,
         });
-        plans.prepass = (prepass).then(|| PrepassPlan {
+        plans.prepass = (effects.prepass).then(|| PrepassPlan {
             water_draws: &water_draws,
             object_space,
             frame_bind_group,
