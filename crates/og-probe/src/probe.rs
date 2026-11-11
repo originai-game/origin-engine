@@ -914,6 +914,7 @@ impl Probe {
             self.checks.count_events(world, true);
         }
         // The tick these systems run as (og.Time.tick inside them).
+        #[cfg(not(feature = "publish"))]
         let ran = world.time().tick;
         world.step()?;
         if counting {
