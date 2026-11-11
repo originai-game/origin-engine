@@ -299,7 +299,7 @@ impl SortedInstances {
         array: impl Fn(usize) -> bool,
         skip: impl Fn(usize) -> bool,
     ) -> Result<Sorted, RenderError> {
-        let instances = &scene.instances;
+        let instances = &scene.objects.instances;
         self.serial = self.serial.wrapping_add(1);
         // The submission's keys against the last frame's (and kept for the
         // next), each checked against the scene's resources on the way.
@@ -324,7 +324,7 @@ impl SortedInstances {
                 k.0 as u32,
                 drawn(scene, &self.params_moved, k.1) as u32,
                 inst.cast_shadows,
-                crate::views::layer_of(&scene.instance_layers, i),
+                crate::views::layer_of(&scene.objects.instance_layers, i),
             );
             if *key != k {
                 *key = k;
@@ -382,12 +382,12 @@ impl SortedInstances {
         dequant: &impl Fn(usize, usize) -> Option<Mat4>,
         array: &impl Fn(usize) -> bool,
     ) -> usize {
-        let instances = &scene.instances;
+        let instances = &scene.objects.instances;
         let mut order: Vec<usize> = (0..instances.len()).collect();
         // Stable: instances of one batch keep their submission order. A
         // (mesh, material) pair's casters come first, then each layer mask
         // a run of its own (a camera draws or skips a run whole).
-        let layers = |i: usize| crate::views::layer_of(&scene.instance_layers, i);
+        let layers = |i: usize| crate::views::layer_of(&scene.objects.instance_layers, i);
         // Each instance's reflection probe (last: a run splits by probe
         // only where its instances sit in different boxes).
         let probe: Vec<u8> = if self.probes.is_empty() {
@@ -478,7 +478,7 @@ impl SortedInstances {
         scene: &RenderScene,
         mesh_info: &impl Fn(usize) -> MeshInfo,
     ) -> Option<usize> {
-        let instances = &scene.instances;
+        let instances = &scene.objects.instances;
         let mut changed = 0;
         self.changed.clear();
         for run in &self.runs {
@@ -607,7 +607,7 @@ mod tests {
         let first = update(&mut kept, &scene);
         assert_eq!(runs(&first), vec![(0, 2), (1, 1)]);
         kept.restore(first.transforms, first.spheres);
-        scene.instances[1].transform = Mat4::from_translation(Vec3::new(4.0, 0.0, 0.0));
+        scene.objects.instances[1].transform = Mat4::from_translation(Vec3::new(4.0, 0.0, 0.0));
         let walked = update(&mut kept, &scene);
         assert_eq!(runs(&walked), vec![(0, 1), (1, 2)]);
         kept.restore(walked.transforms, walked.spheres);
@@ -786,9 +786,9 @@ mod tests {
         });
         kept.restore(culled, still.spheres);
         // Three moved (one of them by a sign of zero only).
-        scene.instances[3].transform.w_axis.x += 2.0;
-        scene.instances[10].transform = Mat4::from_translation(Vec3::new(-3.0, 1.0, 0.0));
-        scene.instances[7].transform.w_axis.y = -0.0;
+        scene.objects.instances[3].transform.w_axis.x += 2.0;
+        scene.objects.instances[10].transform = Mat4::from_translation(Vec3::new(-3.0, 1.0, 0.0));
+        scene.objects.instances[7].transform.w_axis.y = -0.0;
         assert_eq!(kept.refresh(&scene, &info), Some(3));
         kept.refresh(&scene, &info);
         let moved = kept
@@ -797,8 +797,8 @@ mod tests {
         assert_same(&moved, &fresh(&scene));
         kept.restore(moved.transforms, moved.spheres);
         // Another order: sorted again.
-        scene.instances.swap(0, 1);
-        scene.instances[5].material = scene.instances[6].material;
+        scene.objects.instances.swap(0, 1);
+        scene.objects.instances[5].material = scene.objects.instances[6].material;
         let resorted = kept
             .update(&scene, 3, info, 2, |_, _| None, |_| false, |_| false)
             .unwrap();
@@ -838,7 +838,7 @@ mod tests {
     #[test]
     fn non_casters_are_runs_of_their_own() {
         let mut scene = scene();
-        for (i, inst) in scene.instances.iter_mut().enumerate() {
+        for (i, inst) in scene.objects.instances.iter_mut().enumerate() {
             inst.cast_shadows = i % 3 != 0;
         }
         let mut kept = SortedInstances::default();
@@ -852,7 +852,7 @@ mod tests {
             let members = &sorted.submission[r.first as usize..(r.first + r.count) as usize];
             assert!(members.windows(2).all(|w| w[0] < w[1]), "submission order");
             for &i in members {
-                let inst = &scene.instances[i as usize];
+                let inst = &scene.objects.instances[i as usize];
                 assert_eq!(
                     (inst.mesh.index(), inst.material.index(), inst.cast_shadows),
                     (r.mesh, r.material, r.cast)
@@ -861,7 +861,7 @@ mod tests {
         }
         assert!(sorted.runs.iter().any(|r| !r.cast) && sorted.runs.iter().any(|r| r.cast));
         kept.restore(sorted.transforms, sorted.spheres);
-        scene.instances[1].cast_shadows = false;
+        scene.objects.instances[1].cast_shadows = false;
         let again = kept
             .update(&scene, 3, info, 2, |_, _| None, |_| false, |_| false)
             .unwrap();
@@ -882,7 +882,7 @@ mod tests {
             assert_eq!(decode(layer_bits(layer, false)), (false, layer));
         }
         let mut scene = scene();
-        for (i, inst) in scene.instances.iter_mut().enumerate() {
+        for (i, inst) in scene.objects.instances.iter_mut().enumerate() {
             inst.material_layer = Some(i as u32 % 5);
         }
         // Material 1 samples arrays.
@@ -895,7 +895,7 @@ mod tests {
         let before = update(&mut kept, &scene);
         let runs = before.runs.clone();
         kept.restore(before.transforms.clone(), before.spheres.clone());
-        for inst in scene.instances.iter_mut().step_by(3) {
+        for inst in scene.objects.instances.iter_mut().step_by(3) {
             inst.receive_shadows = false;
         }
         let after = update(&mut kept, &scene);
@@ -903,7 +903,7 @@ mod tests {
         assert_same(&after, &update(&mut SortedInstances::default(), &scene));
         for r in &after.runs {
             for k in r.first as usize..(r.first + r.count) as usize {
-                let inst = &scene.instances[after.submission[k] as usize];
+                let inst = &scene.objects.instances[after.submission[k] as usize];
                 let layer = if r.array {
                     inst.material_layer.unwrap() as f32 + 1.0
                 } else {
@@ -936,7 +936,7 @@ mod tests {
         for r in &with.runs {
             assert_eq!(r.dequant.is_some(), r.mesh == 1 && r.material == 0);
             for k in r.first as usize..(r.first + r.count) as usize {
-                let m = scene.instances[with.submission[k] as usize].transform;
+                let m = scene.objects.instances[with.submission[k] as usize].transform;
                 let want = gpu_transform(&r.dequant.map_or(m, |d| m * d));
                 assert_eq!(with.transforms[k], want);
             }

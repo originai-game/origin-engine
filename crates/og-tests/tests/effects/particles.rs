@@ -70,7 +70,7 @@ fn compute_particles_bounce_off_the_scene_colliders() {
     let run_with = |sprite: bool, colliders: Vec<og_render::SceneCollider>| {
         let mut scene = collision_scene(true);
         // Nothing drawn under the fountain: only the colliders are there.
-        scene.instances.clear();
+        scene.objects.instances.clear();
         let e = scene.effects.particles[0].emitter;
         let mut emitter = scene.emitter(e).expect("emitter").clone();
         emitter.collision = Some(ParticleCollision {

@@ -267,7 +267,7 @@ fn rotation(frame: u64) -> Mat3 {
 /// shadows and every terrain with its heights on the CPU, the nearest
 /// [`crate::gi_scene::MAX_INSTANCES`] to `eye`.
 fn placed(scene: &crate::RenderScene, gi: &mut GiScene, eye: Vec3) -> Vec<Placed> {
-    let mut out = Vec::with_capacity(scene.instances.len() + scene.world.terrains.len());
+    let mut out = Vec::with_capacity(scene.objects.instances.len() + scene.world.terrains.len());
     let mean = |gi: &mut GiScene, slot: u32| {
         crate::TextureHandle::from_slot(slot).map_or(Vec3::ONE, |t| {
             gi.texture_mean(
@@ -277,7 +277,7 @@ fn placed(scene: &crate::RenderScene, gi: &mut GiScene, eye: Vec3) -> Vec<Placed
             )
         })
     };
-    for inst in &scene.instances {
+    for inst in &scene.objects.instances {
         if !inst.cast_shadows || !scene.contains_mesh(inst.mesh) {
             continue;
         }

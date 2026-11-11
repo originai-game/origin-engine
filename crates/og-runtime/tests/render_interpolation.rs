@@ -121,15 +121,25 @@ impl RenderBackend for Recorder {
     }
     fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
         let mut s = self.0.borrow_mut();
-        s.drawn = scene.instances.iter().map(|i| i.transform).collect();
-        s.previous = scene.previous_transforms.clone();
+        s.drawn = scene
+            .objects
+            .instances
+            .iter()
+            .map(|i| i.transform)
+            .collect();
+        s.previous = scene.objects.previous_transforms.clone();
         s.camera_cut = scene.camera_cut;
         s.camera = scene.camera.position;
         s.interpolation = scene.interpolation;
         Ok(())
     }
     fn capture(&mut self, scene: &RenderScene, w: u32, h: u32) -> Option<og_render::RgbaImage> {
-        self.0.borrow_mut().captured = scene.instances.iter().map(|i| i.transform).collect();
+        self.0.borrow_mut().captured = scene
+            .objects
+            .instances
+            .iter()
+            .map(|i| i.transform)
+            .collect();
         self.0.borrow_mut().captured_interpolation = scene.interpolation;
         Some(og_render::RgbaImage {
             width: w.max(1),

@@ -100,6 +100,7 @@ pub(crate) fn bounds(rs: &mut RenderState, h: &Hierarchy, of: &[u64]) -> Option<
     let target = rs.review.as_ref()?.entity;
     let picked: Vec<_> = rs
         .scene
+        .objects
         .instances
         .iter()
         .zip(of)

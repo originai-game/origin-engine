@@ -46,7 +46,7 @@ fn equal_depth_meshlets_choose_the_same_triangle_across_frames() {
     let material = scene.add_material(Material::default());
     for i in 0..65 {
         scene.add_instance(mesh, material, Mat4::IDENTITY);
-        scene.instances.last_mut().unwrap().fx = InstanceFx {
+        scene.objects.instances.last_mut().unwrap().fx = InstanceFx {
             flash: 1.0,
             flash_color: if i == 64 { Vec3::Y } else { Vec3::X },
             ..Default::default()

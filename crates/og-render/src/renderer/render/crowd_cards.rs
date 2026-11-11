@@ -61,9 +61,9 @@ impl Renderer {
             },
         ));
         for (card, batch) in frame.cards.iter().zip(cards.iter_mut()) {
-            let clip = &scene.baked_clips[card.impostor.clip as usize];
+            let clip = &scene.objects.baked_clips[card.impostor.clip as usize];
             let (views, frames, size, elevation) = card.impostor.resolved();
-            let crowd = &scene.crowds[card.crowd as usize];
+            let crowd = &scene.objects.crowds[card.crowd as usize];
             let mut hasher = std::collections::hash_map::DefaultHasher::new();
             std::hash::Hash::hash(bytemuck::cast_slice::<_, u8>(&clip.frames), &mut hasher);
             let maps: Vec<Option<usize>> = crowd

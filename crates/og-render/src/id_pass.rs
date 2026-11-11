@@ -266,10 +266,10 @@ pub fn render_ids_from(
             .iter()
             .all(|p| p.truncate().dot(center) + p.w >= -radius)
     };
-    for (i, inst) in scene.instances.iter().enumerate() {
+    for (i, inst) in scene.objects.instances.iter().enumerate() {
         let id = sources.instances.get(i).copied().unwrap_or(0);
         // An instance off the camera's layers is not drawn there.
-        let shown = crate::views::layer_of(&scene.instance_layers, i) & camera.layers != 0;
+        let shown = crate::views::layer_of(&scene.objects.instance_layers, i) & camera.layers != 0;
         let Some(data) = (id != 0 && shown).then(|| scene.mesh(inst.mesh)).flatten() else {
             continue;
         };
@@ -297,20 +297,28 @@ pub fn render_ids_from(
             ground: None,
         });
     }
-    for (i, inst) in scene.skinned_instances.iter().enumerate() {
+    for (i, inst) in scene.objects.skinned_instances.iter().enumerate() {
         let id = sources.skinned.get(i).copied().unwrap_or(0);
-        let shown = crate::views::layer_of(&scene.skinned_layers, i) & camera.layers != 0;
+        let shown = crate::views::layer_of(&scene.objects.skinned_layers, i) & camera.layers != 0;
         let Some(data) = (id != 0 && shown).then(|| scene.mesh(inst.mesh)).flatten() else {
             continue;
         };
         // A baked clip's pose at its frame, else its palette's.
         let baked = inst
             .baked
-            .and_then(|b| Some(scene.baked_clips.get(b.clip as usize)?.palette(b.frame)))
+            .and_then(|b| {
+                Some(
+                    scene
+                        .objects
+                        .baked_clips
+                        .get(b.clip as usize)?
+                        .palette(b.frame),
+                )
+            })
             .map(crate::JointPalette::from);
         let palette = match inst.baked {
             Some(_) => baked.as_ref(),
-            None => scene.joint_palettes.get(inst.palette as usize),
+            None => scene.objects.joint_palettes.get(inst.palette as usize),
         };
         let skin = scene.skin(inst.mesh);
         let positions = data
@@ -947,7 +955,7 @@ mod tests {
             ..IdSources::default()
         };
         if swapped {
-            scene.instances.swap(0, 1);
+            scene.objects.instances.swap(0, 1);
             ids.instances.swap(0, 1);
         }
         (scene, ids)
@@ -994,7 +1002,7 @@ mod tests {
     #[test]
     fn a_view_sees_what_its_layers_admit_from_its_own_eye() {
         let (mut scene, ids) = scene_with_boxes();
-        scene.instance_layers = vec![1, 2];
+        scene.objects.instance_layers = vec![1, 2];
         let eye = |layers| crate::View {
             camera: Camera {
                 position: Vec3::new(8.0, 0.0, 4.0),

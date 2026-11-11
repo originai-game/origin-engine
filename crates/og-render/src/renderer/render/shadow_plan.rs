@@ -90,7 +90,7 @@ impl Renderer {
                 ShadowBounds::Auto => {
                     // The instances' box (kept while they stand still), then
                     // the skinned instances and the terrains.
-                    let skinned = scene.skinned_instances.iter().map(|s| {
+                    let skinned = scene.objects.skinned_instances.iter().map(|s| {
                         let r = self.cache.meshes[s.mesh.index()]
                             .bounds
                             .map_or(1.0, |(_, e)| e.length() * 2.0);

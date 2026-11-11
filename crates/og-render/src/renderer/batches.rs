@@ -1009,10 +1009,10 @@ impl Renderer {
         scene: &RenderScene,
         probes: &[(Vec3, Vec3)],
     ) -> Result<SkinnedFrame, RenderError> {
-        let mut offsets = Vec::with_capacity(scene.joint_palettes.len());
+        let mut offsets = Vec::with_capacity(scene.objects.joint_palettes.len());
         let mut matrices = Vec::new();
         let mut garments = Vec::new();
-        for p in &scene.joint_palettes {
+        for p in &scene.objects.joint_palettes {
             offsets.push((matrices.len() as u32, p.matrices.len() as u32));
             matrices.extend(p.matrices.iter().map(|m| m.to_cols_array_2d()));
         }
@@ -1022,7 +1022,7 @@ impl Renderer {
                 matrices.len()
             )));
         }
-        for (i, s) in scene.skinned_instances.iter().enumerate() {
+        for (i, s) in scene.objects.skinned_instances.iter().enumerate() {
             let mesh = s.mesh.index();
             if mesh >= self.cache.meshes.len() || self.cache.skins[mesh].is_none() {
                 return Err(RenderError::InvalidHandle(format!(
@@ -1038,7 +1038,7 @@ impl Renderer {
             match &s.baked {
                 Some(b) => {
                     for c in [b.clip, b.previous_clip] {
-                        let ok = scene.baked_clips.get(c as usize).is_some_and(|c| {
+                        let ok = scene.objects.baked_clips.get(c as usize).is_some_and(|c| {
                             c.joints > 0
                                 && c.frames.len() % c.joints as usize == 0
                                 && c.frame_count() >= 2
@@ -1046,7 +1046,7 @@ impl Renderer {
                         if !ok {
                             return Err(RenderError::InvalidData(format!(
                                 "skinned instance {i}: baked clip {c} of {} (a clip holds whole frames, at least two)",
-                                scene.baked_clips.len()
+                                scene.objects.baked_clips.len()
                             )));
                         }
                     }
@@ -1069,7 +1069,7 @@ impl Renderer {
         // The clips the skinned instances and the crowds play, now or the
         // frame before (a crowd's members mostly share one: marked, not
         // inserted one by one).
-        let mut marked = vec![false; scene.baked_clips.len()];
+        let mut marked = vec![false; scene.objects.baked_clips.len()];
         let mut mark = |b: &skin::BakedPose| {
             for c in [b.clip, b.previous_clip] {
                 if let Some(m) = marked.get_mut(c as usize) {
@@ -1078,17 +1078,24 @@ impl Renderer {
             }
         };
         scene
+            .objects
             .skinned_instances
             .iter()
             .filter_map(|s| s.baked.as_ref())
             .for_each(&mut mark);
         scene
+            .objects
             .crowds
             .iter()
             .flat_map(|c| &c.members)
             .for_each(|m| mark(&m.pose));
         // And the clips crowds' impostors are baked from.
-        for i in scene.crowds.iter().filter_map(|c| c.impostor.as_ref()) {
+        for i in scene
+            .objects
+            .crowds
+            .iter()
+            .filter_map(|c| c.impostor.as_ref())
+        {
             if let Some(m) = marked.get_mut(i.clip as usize) {
                 *m = true;
             }
@@ -1101,7 +1108,7 @@ impl Renderer {
             .collect();
         let baked_joints: usize = used
             .iter()
-            .map(|&i| scene.baked_clips[i as usize].frames.len())
+            .map(|&i| scene.objects.baked_clips[i as usize].frames.len())
             .sum();
         if baked_joints + matrices.len() > MAX_JOINTS {
             return Err(RenderError::InvalidData(format!(
@@ -1109,16 +1116,20 @@ impl Renderer {
                 baked_joints + matrices.len()
             )));
         }
-        self.instances
-            .palette
-            .prepare_bakes(&self.device, &self.queue, &scene.baked_clips, &used);
-        let mut order: Vec<usize> = (0..scene.skinned_instances.len()).collect();
+        self.instances.palette.prepare_bakes(
+            &self.device,
+            &self.queue,
+            &scene.objects.baked_clips,
+            &used,
+        );
+        let mut order: Vec<usize> = (0..scene.objects.skinned_instances.len()).collect();
         // Each instance's reflection probe: the one holding the centre of
         // its posed bounds, its joints' boxes moved by its palette
         // (skin.rs; a morphed mesh without a skin: its bind pose's), so a
         // figure walked out of a room by its root joint takes the room it
         // is in (probe_select.rs).
         let probe_of: Vec<u8> = scene
+            .objects
             .skinned_instances
             .iter()
             .map(|s| {
@@ -1127,7 +1138,7 @@ impl Renderer {
                 let posed = match s.baked {
                     Some(_) => None,
                     None => self.cache.joint_boxes.get(mesh).and_then(|b| {
-                        let palette = &scene.joint_palettes[s.palette as usize].matrices;
+                        let palette = &scene.objects.joint_palettes[s.palette as usize].matrices;
                         skin::posed_centre(b, palette, &s.transform)
                     }),
                 };
@@ -1146,12 +1157,12 @@ impl Renderer {
         // A (mesh, material)'s casters first, its non-casters a batch of
         // their own (left out of the shadow passes), then by probe.
         og_core::sort::sort_by_key(&mut order, |&i| {
-            let s = &scene.skinned_instances[i];
+            let s = &scene.objects.skinned_instances[i];
             (
                 s.mesh,
                 s.material,
                 !s.cast_shadows,
-                views::layer_of(&scene.skinned_layers, i),
+                views::layer_of(&scene.objects.skinned_layers, i),
                 probe_of[i],
             )
         });
@@ -1165,9 +1176,9 @@ impl Renderer {
         let mut baked_moved = false;
         let taa = self.info.antialias.temporal() || scene.look.post.motion_blur.is_some();
         for &i in &order {
-            let s = &scene.skinned_instances[i];
+            let s = &scene.objects.skinned_instances[i];
             let (mesh, material, cast) = (s.mesh.index(), s.material.index(), s.cast_shadows);
-            let layers = views::layer_of(&scene.skinned_layers, i);
+            let layers = views::layer_of(&scene.objects.skinned_layers, i);
             let probe = probe_of[i];
             if self.cache.meshes[mesh].index_count == 0 {
                 continue;
@@ -1218,9 +1229,9 @@ impl Renderer {
                 .get(mesh)
                 .map_or(&[][..], Vec::as_slice);
             let clip = s.baked.and_then(|b| {
-                *clip_boxes
-                    .entry((mesh, b.clip))
-                    .or_insert_with(|| skin::clip_box(joints, &scene.baked_clips[b.clip as usize]))
+                *clip_boxes.entry((mesh, b.clip)).or_insert_with(|| {
+                    skin::clip_box(joints, &scene.objects.baked_clips[b.clip as usize])
+                })
             });
             let morphing = targets > 0
                 && s.morph_weights[..targets as usize]
@@ -1232,7 +1243,7 @@ impl Renderer {
                 joints,
                 match s.baked {
                     Some(_) => &[],
-                    None => &scene.joint_palettes[s.palette as usize].matrices,
+                    None => &scene.objects.joint_palettes[s.palette as usize].matrices,
                 },
                 clip,
                 morphing,
@@ -1240,10 +1251,10 @@ impl Renderer {
             if let Some(b) = s.baked {
                 // Bakes stay in their own buffer; only the previous
                 // transform belongs to the frame's dynamic palette.
-                let clip = &scene.baked_clips[b.clip as usize];
+                let clip = &scene.objects.baked_clips[b.clip as usize];
                 let (k, t) = clip.at(b.frame);
                 let now = self.instances.palette.baked_offset(b.clip) + k * clip.joints as usize;
-                let before = &scene.baked_clips[b.previous_clip as usize];
+                let before = &scene.objects.baked_clips[b.previous_clip as usize];
                 let (pk, pt) = before.at(b.previous_frame);
                 let then = self.instances.palette.baked_offset(b.previous_clip)
                     + pk * before.joints as usize;
@@ -1283,19 +1294,23 @@ impl Renderer {
                 weights_at = (matrices.len() + 1) as f32;
                 matrices.extend(skin::weight_slots(&s.morph_weights, targets_n));
                 let before = scene
+                    .objects
                     .previous_morph_weights
                     .get(i)
-                    .filter(|_| scene.previous_morph_weights.len() == scene.skinned_instances.len())
+                    .filter(|_| {
+                        scene.objects.previous_morph_weights.len()
+                            == scene.objects.skinned_instances.len()
+                    })
                     .unwrap_or(&s.morph_weights);
                 previous_slots.extend(skin::weight_slots(before, targets_n));
             }
             // Its own vertices (a garment), after its weights.
             let mut deformed_at = 0.0;
             if let Some(d) = s.deformed {
-                let Some(now) = scene.deformed_vertices.get(d as usize) else {
+                let Some(now) = scene.objects.deformed_vertices.get(d as usize) else {
                     return Err(RenderError::InvalidData(format!(
                         "skinned instance {i}: deformed vertices {d} of {}",
-                        scene.deformed_vertices.len()
+                        scene.objects.deformed_vertices.len()
                     )));
                 };
                 let n = scene.mesh(s.mesh).map_or(0, |m| m.vertices.len());
@@ -1308,10 +1323,12 @@ impl Renderer {
                 }
                 deformed_at = (matrices.len() + 1) as f32;
                 let before = scene
+                    .objects
                     .previous_deformed_vertices
                     .get(d as usize)
                     .filter(|b| {
-                        scene.previous_deformed_vertices.len() == scene.deformed_vertices.len()
+                        scene.objects.previous_deformed_vertices.len()
+                            == scene.objects.deformed_vertices.len()
                             && b.vertex_count() == n
                             && (b.garment.is_some() || b.normals.len() == n)
                     })
@@ -1372,8 +1389,8 @@ impl Renderer {
     ) -> Result<crate::crowd::CrowdFrame, RenderError> {
         let cache = &self.cache;
         crate::crowd::build(
-            &scene.crowds,
-            &scene.baked_clips,
+            &scene.objects.crowds,
+            &scene.objects.baked_clips,
             &|m| {
                 Some(crate::crowd::MeshInfo {
                     skinned: cache.skins.get(m)?.is_some(),
@@ -1385,7 +1402,7 @@ impl Renderer {
             &|m| cache.materials[m].shader.is_some(),
             &|c| self.instances.palette.baked_offset(c),
             motion,
-            scene.lod_bias,
+            scene.objects.lod_bias,
         )
     }
 
@@ -1404,7 +1421,7 @@ impl Renderer {
             .enumerate()
             .map(|(k, d)| {
                 let m = &self.cache.materials[d.material];
-                let c = &scene.crowds[d.crowd as usize];
+                let c = &scene.objects.crowds[d.crowd as usize];
                 Batch {
                     mesh: d.mesh,
                     material: d.material,
@@ -1455,11 +1472,11 @@ impl Renderer {
             card_runs,
             cards,
         } = crate::crowd::cpu_records(
-            &scene.crowds,
+            &scene.objects.crowds,
             frame,
             &scene.camera,
             self.height as f32,
-            scene.lod_bias,
+            scene.objects.lod_bias,
             previous_at,
         );
         let base = skinned.data.len() as u32;

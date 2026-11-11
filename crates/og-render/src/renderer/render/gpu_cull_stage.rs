@@ -45,7 +45,7 @@ impl Renderer {
             copy_counts,
         }: GpuCullInputs<'_>,
     ) -> (Vec<wgpu::CommandBuffer>, (Option<cull_gpu::GpuCounts>, u32)) {
-        let previous_sway = if self.instances.previous_sway.len() == scene.instances.len() {
+        let previous_sway = if self.instances.previous_sway.len() == scene.objects.instances.len() {
             self.instances.previous_sway.as_slice()
         } else {
             &[]
@@ -70,9 +70,9 @@ impl Renderer {
                     .iter()
                     .map(|&i| {
                         let i = i as usize;
-                        let inst = &scene.instances[i];
+                        let inst = &scene.objects.instances[i];
                         let p = if previous_valid {
-                            scene.previous_transforms[i]
+                            scene.objects.previous_transforms[i]
                         } else {
                             inst.transform
                         };
@@ -122,14 +122,19 @@ impl Renderer {
                 &gc.instances
             };
             // The levels callers picked, at the sorted slots.
-            let levels: Vec<u8> = if scene.instance_levels.is_empty() {
+            let levels: Vec<u8> = if scene.objects.instance_levels.is_empty() {
                 Vec::new()
             } else {
                 origins[..sorted as usize]
                     .iter()
                     .map(|&i| {
                         let i = i as usize;
-                        scene.instance_levels.get(i).copied().unwrap_or(u8::MAX)
+                        scene
+                            .objects
+                            .instance_levels
+                            .get(i)
+                            .copied()
+                            .unwrap_or(u8::MAX)
                     })
                     .collect()
             };

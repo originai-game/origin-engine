@@ -268,9 +268,10 @@ pub fn outdoor_scene(o: Outdoor) -> RenderScene {
             let z = p.z - 1.6 + i as f32 * 0.8;
             let x = p.x + 2.6;
             scene
+                .objects
                 .joint_palettes
                 .push(bend_palette(-0.3 + i as f32 * 0.15, i as f32 * 0.3));
-            scene.skinned_instances.push(SkinnedInstance::new(
+            scene.objects.skinned_instances.push(SkinnedInstance::new(
                 cylinder,
                 flesh,
                 Mat4::from_translation(Vec3::new(x, ground(x, z) - 0.1, z)),
@@ -316,7 +317,7 @@ pub enum SsrFloor {
 pub fn ssr_floor_scene(floor: SsrFloor, ssr: bool) -> RenderScene {
     let mut scene = crate::depth_render_scenes::ssr_scene(ssr);
     // The old floor is the first instance.
-    scene.instances.remove(0);
+    scene.objects.instances.remove(0);
     match floor {
         SsrFloor::Mapped(map) => {
             let texture = map.then(|| {
@@ -387,14 +388,14 @@ pub fn posed_figure_scene(posed: bool) -> RenderScene {
             Mat4::IDENTITY,
         )
     };
-    scene.joint_palettes.push(og_render::JointPalette {
+    scene.objects.joint_palettes.push(og_render::JointPalette {
         matrices: vec![joint; crate::fx_scenes::CYLINDER_BONES],
     });
-    scene.skinned_instances.push(SkinnedInstance::new(
+    scene.objects.skinned_instances.push(SkinnedInstance::new(
         cylinder,
         chrome,
         transform,
-        scene.joint_palettes.len() as u32 - 1,
+        scene.objects.joint_palettes.len() as u32 - 1,
     ));
     scene
 }

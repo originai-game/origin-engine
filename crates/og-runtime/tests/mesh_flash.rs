@@ -45,7 +45,12 @@ impl RenderBackend for Recorder {
         (320, 180)
     }
     fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
-        *self.0.borrow_mut() = scene.instances.iter().map(|i| (i.material, i.fx)).collect();
+        *self.0.borrow_mut() = scene
+            .objects
+            .instances
+            .iter()
+            .map(|i| (i.material, i.fx))
+            .collect();
         Ok(())
     }
     fn capture(&mut self, _: &RenderScene, _: u32, _: u32) -> Option<og_render::RgbaImage> {

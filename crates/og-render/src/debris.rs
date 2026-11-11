@@ -253,6 +253,7 @@ pub fn chip(variant: u32) -> crate::scene::MeshData {
 /// Whether some piece of `scene` may still be moving.
 pub(crate) fn moving(scene: &RenderScene) -> bool {
     scene
+        .objects
         .debris
         .iter()
         .any(|d| scene.tick < d.tick.saturating_add(DEBRIS_SETTLE_TICKS))
@@ -262,7 +263,7 @@ pub(crate) fn moving(scene: &RenderScene) -> bool {
 /// [`RenderScene::debris`] and the piece-to-mesh transform.
 pub(crate) fn instances(scene: &RenderScene) -> HashMap<u32, (usize, Mat4)> {
     let mut out = HashMap::new();
-    for (p, d) in scene.debris.iter().enumerate() {
+    for (p, d) in scene.objects.debris.iter().enumerate() {
         for &(i, local) in &d.instances {
             out.insert(i, (p, local));
         }
@@ -448,7 +449,7 @@ impl DebrisLayer {
         scene: &RenderScene,
         targets: &[Target<'_>],
     ) -> Option<wgpu::CommandBuffer> {
-        if scene.debris.is_empty() {
+        if scene.objects.debris.is_empty() {
             self.slots.clear();
             self.free.clear();
             self.count = 0;
@@ -471,6 +472,7 @@ impl DebrisLayer {
         self.last = Some((scene.tick, scene.origin));
         // Slots: the pieces gone give theirs back, new ones take one.
         let live: HashMap<u64, usize> = scene
+            .objects
             .debris
             .iter()
             .enumerate()
@@ -489,7 +491,7 @@ impl DebrisLayer {
         }
         self.free.sort_unstable_by(|a, b| b.cmp(a));
         let mut fresh: Vec<(u32, usize)> = Vec::new();
-        for (i, d) in scene.debris.iter().enumerate() {
+        for (i, d) in scene.objects.debris.iter().enumerate() {
             if self.slots.contains_key(&d.id) {
                 continue;
             }
@@ -508,7 +510,7 @@ impl DebrisLayer {
         // New bodies: their state where they broke off, catching up from
         // there to this tick.
         for &(slot, i) in &fresh {
-            let d = &scene.debris[i];
+            let d = &scene.objects.debris[i];
             let points: Vec<Vec3> = d.points.iter().take(DEBRIS_POINTS).copied().collect();
             let (lo, hi) = points.iter().fold(
                 (Vec3::splat(f32::MAX), Vec3::splat(f32::MIN)),
@@ -553,7 +555,7 @@ impl DebrisLayer {
         // The colliders near each body's reach, and each body's list.
         let mut bounds = Vec::new();
         let mut owners = Vec::new();
-        for d in &scene.debris {
+        for d in &scene.objects.debris {
             if let Some(&s) = self.slots.get(&d.id) {
                 let (c, r) = d.sphere();
                 bounds.push((c - Vec3::splat(r), c + Vec3::splat(r)));
@@ -586,7 +588,7 @@ impl DebrisLayer {
         for t in targets {
             let first = writes.len() as u32;
             for &(record, piece, local) in &t.records {
-                let Some(&slot) = self.slots.get(&scene.debris[piece].id) else {
+                let Some(&slot) = self.slots.get(&scene.objects.debris[piece].id) else {
                     continue;
                 };
                 writes.push(WriteGpu {
@@ -752,7 +754,7 @@ mod tests {
                 )
             })
             .collect();
-        scene.debris.push(DebrisPiece {
+        scene.objects.debris.push(DebrisPiece {
             id: 7,
             tick: 0,
             position: Vec3::new(0.0, 1.0 + h, 0.0),

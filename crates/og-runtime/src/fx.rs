@@ -1409,7 +1409,7 @@ pub(crate) fn posed_model(
         return false;
     };
     let meshes = skinned_meshes(scene, &info, skin, info.prim_mesh.len());
-    let palette = scene.joint_palettes.len() as u32;
+    let palette = scene.objects.joint_palettes.len() as u32;
     atmo.palettes.insert(entity, palette);
     // og.Garment: its primitives drawn at the simulated points, posed by
     // this frame's palette (`super::garment::deformed`).
@@ -1422,7 +1422,7 @@ pub(crate) fn posed_model(
         world_matrix,
         &matrices,
     );
-    scene.joint_palettes.push(JointPalette { matrices });
+    scene.objects.joint_palettes.push(JointPalette { matrices });
     // Parts and nodes line up unless the parts are not the model's own
     // (a bake's lightmapped parts): then every part is drawn.
     let nodes = (info.part_nodes.len() == parts.len()).then_some(&info.part_nodes);
@@ -1439,17 +1439,17 @@ pub(crate) fn posed_model(
                 inst.receive_shadows = look.receive;
                 if let Some((zero, vertices)) = garment.remove(&p) {
                     inst.mesh = zero;
-                    inst.deformed = Some(scene.deformed_vertices.len() as u32);
-                    scene.deformed_vertices.push(vertices);
+                    inst.deformed = Some(scene.objects.deformed_vertices.len() as u32);
+                    scene.objects.deformed_vertices.push(vertices);
                     fx.deformed_keys.push(((entity, p), world_matrix));
                 } else if info.prim_mesh.get(p).copied() == Some(out.mesh) {
                     let n = inst.morph_weights.len().min(out.weights.len());
                     inst.morph_weights[..n].copy_from_slice(&out.weights[..n]);
                 }
-                scene.skinned_instances.push(inst);
+                scene.objects.skinned_instances.push(inst);
             }
             None => {
-                scene.instances.push(og_render::Instance {
+                scene.objects.instances.push(og_render::Instance {
                     mesh,
                     material,
                     transform: world_matrix * local,
@@ -1561,8 +1561,8 @@ fn baked_clip(
     if palette.is_empty() {
         return None;
     }
-    let index = scene.baked_clips.len() as u32;
-    scene.baked_clips.push(og_render::BakedClip {
+    let index = scene.objects.baked_clips.len() as u32;
+    scene.objects.baked_clips.push(og_render::BakedClip {
         joints: palette.len() as u32,
         frames,
     });
@@ -1662,18 +1662,19 @@ pub(crate) fn crowd_model(
         member.fx = look.fx;
         member.receive_shadows = look.receive;
         let at = scene
+            .objects
             .crowds
             .iter()
             .position(|c| c.cast_shadows == look.cast && c.parts == skinned);
         let row = match at {
-            Some(i) => &mut scene.crowds[i],
+            Some(i) => &mut scene.objects.crowds[i],
             None => {
-                scene.crowds.push(og_render::Crowd {
+                scene.objects.crowds.push(og_render::Crowd {
                     parts: skinned,
                     cast_shadows: look.cast,
                     ..Default::default()
                 });
-                scene.crowds.last_mut().expect("just pushed")
+                scene.objects.crowds.last_mut().expect("just pushed")
             }
         };
         row.members.push(member);
@@ -1683,7 +1684,7 @@ pub(crate) fn crowd_model(
         match meshes.get(p).copied().flatten() {
             Some(_) => {}
             None => {
-                scene.instances.push(og_render::Instance {
+                scene.objects.instances.push(og_render::Instance {
                     mesh,
                     material,
                     transform: world_matrix * local,
@@ -1773,22 +1774,22 @@ pub(crate) fn motion(rs: &mut RenderState, keys: &[(u64, u32)], tick: u64, cut: 
     fx.current.clear();
     fx.current.extend(
         keys.iter()
-            .zip(&scene.instances)
+            .zip(&scene.objects.instances)
             .map(|(k, i)| (*k, i.transform)),
     );
-    scene.previous_transforms.clear();
-    scene.previous_joint_palettes.clear();
-    scene.previous_morph_weights.clear();
-    scene.previous_deformed_vertices.clear();
+    scene.objects.previous_transforms.clear();
+    scene.objects.previous_joint_palettes.clear();
+    scene.objects.previous_morph_weights.clear();
+    scene.objects.previous_deformed_vertices.clear();
     let blur = scene.look.post.motion_blur.is_some();
-    let keyed = keys.len() == scene.instances.len();
+    let keyed = keys.len() == scene.objects.instances.len();
     if blur && keyed {
         let previous = fx
             .previous_by_key
             .get_or_insert_with(|| fx.previous.iter().copied().collect());
-        scene.previous_transforms = keys
+        scene.objects.previous_transforms = keys
             .iter()
-            .zip(&scene.instances)
+            .zip(&scene.objects.instances)
             .map(|(k, i)| previous.get(k).copied().unwrap_or(i.transform))
             .collect();
     }
@@ -1811,23 +1812,23 @@ pub(crate) fn motion(rs: &mut RenderState, keys: &[(u64, u32)], tick: u64, cut: 
     }
     joints(scene, atmo, fx);
     let from_drawn = if blur {
-        interp.drawn.is_some() && !scene.previous_transforms.is_empty()
+        interp.drawn.is_some() && !scene.objects.previous_transforms.is_empty()
     } else {
         keyed
     };
     if from_drawn {
         let last: BTreeMap<(u64, u32), Mat4> = fx.drawn.iter().copied().collect();
-        scene.previous_transforms = keys
+        scene.objects.previous_transforms = keys
             .iter()
-            .zip(&scene.instances)
+            .zip(&scene.objects.instances)
             .map(|(k, i)| last.get(k).copied().unwrap_or(i.transform))
             .collect();
     }
     if !cut.is_empty() {
         for ((k, i), p) in keys
             .iter()
-            .zip(&scene.instances)
-            .zip(&mut scene.previous_transforms)
+            .zip(&scene.objects.instances)
+            .zip(&mut scene.objects.previous_transforms)
         {
             if cut.contains_key(&k.0) {
                 *p = i.transform;
@@ -1837,7 +1838,7 @@ pub(crate) fn motion(rs: &mut RenderState, keys: &[(u64, u32)], tick: u64, cut: 
     fx.drawn.clear();
     fx.drawn.extend(
         keys.iter()
-            .zip(&scene.instances)
+            .zip(&scene.objects.instances)
             .map(|(k, i)| (*k, i.transform)),
     );
 }
@@ -1851,20 +1852,21 @@ fn joints(
     atmo: &super::atmosphere::AtmoState,
     fx: &mut FxState,
 ) {
-    let mut entity_of = vec![None; scene.joint_palettes.len()];
+    let mut entity_of = vec![None; scene.objects.joint_palettes.len()];
     for (&e, &p) in &atmo.palettes {
         if let Some(slot) = entity_of.get_mut(p as usize) {
             *slot = Some(e);
         }
     }
-    let mut at = vec![None; scene.joint_palettes.len()];
-    for s in &scene.skinned_instances {
+    let mut at = vec![None; scene.objects.joint_palettes.len()];
+    for s in &scene.objects.skinned_instances {
         if let Some(t) = at.get_mut(s.palette as usize) {
             t.get_or_insert(s.transform);
         }
     }
     let mut now = IdMap::new();
-    scene.previous_joint_palettes = scene
+    scene.objects.previous_joint_palettes = scene
+        .objects
         .joint_palettes
         .iter()
         .zip(entity_of.iter().zip(&at))
@@ -1886,7 +1888,8 @@ fn joints(
     // Each skinned instance's weights the frame before (its own where it
     // was not drawn then: no morph motion), and this frame's kept.
     let mut weights = BTreeMap::new();
-    scene.previous_morph_weights = scene
+    scene.objects.previous_morph_weights = scene
+        .objects
         .skinned_instances
         .iter()
         .map(|s| {
@@ -1905,7 +1908,8 @@ fn joints(
     // Retain the draw inputs, not CPU-skinned vertices. The fallback evaluates
     // the saved pose in this frame's instance space; compute keeps GPU history.
     let mut drawn = BTreeMap::new();
-    scene.previous_deformed_vertices = scene
+    scene.objects.previous_deformed_vertices = scene
+        .objects
         .deformed_vertices
         .iter()
         .zip(&fx.deformed_keys)

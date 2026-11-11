@@ -101,6 +101,7 @@ impl RenderBackend for Recorder {
     }
     fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
         self.0.borrow_mut().instances = scene
+            .objects
             .instances
             .iter()
             .map(|i| {

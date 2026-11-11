@@ -812,7 +812,7 @@ mod tests {
                     .update(scene, 2, info, 3, |_, _| None, |_| false, |_| false)
                     .unwrap();
                 let hash = |k: usize| {
-                    let inst = &scene.instances[s.submission[k] as usize];
+                    let inst = &scene.objects.instances[s.submission[k] as usize];
                     let (m, t) = (inst.mesh.index(), inst.material.index());
                     let h = instance_hash(&s.transforms[k], inst, [revisions.0[m], revisions.1[t]]);
                     (h, (m as u32, t as u32))
@@ -836,15 +836,15 @@ mod tests {
             (true, Some(0)),
             "unchanged"
         );
-        scene.instances[3].transform.w_axis.y = 2.0;
+        scene.objects.instances[3].transform.w_axis.y = 2.0;
         assert_eq!(frame(&scene, &revisions, true), (true, Some(1)), "moved");
-        scene.instances[4].fx.flash = 0.5;
+        scene.objects.instances[4].fx.flash = 0.5;
         assert_eq!(frame(&scene, &revisions, true), (true, Some(1)), "flashed");
         // Its GPU transform carries max(sway, 0): both 0.
-        scene.instances[5].sway = -1.0;
+        scene.objects.instances[5].sway = -1.0;
         assert_eq!(frame(&scene, &revisions, true), (true, Some(1)), "sway");
         // Drawn in the same batches: the sort keeps its place.
-        scene.instances[7].material = materials[2];
+        scene.objects.instances[7].material = materials[2];
         assert_eq!(
             frame(&scene, &revisions, true),
             (true, Some(1)),
@@ -862,14 +862,14 @@ mod tests {
             (true, Some(0)),
             "a material's revision"
         );
-        scene.instances.swap(0, 1);
+        scene.objects.instances.swap(0, 1);
         assert_eq!(
             frame(&scene, &revisions, true),
             (true, None),
             "another order"
         );
         // A frame that sorted and failed before hashing: the next hashes all.
-        scene.instances[9].transform.w_axis.z = 1.0;
+        scene.objects.instances[9].transform.w_axis.z = 1.0;
         assert_eq!(frame(&scene, &revisions, false), (true, Some(1)));
         assert_eq!(
             frame(&scene, &revisions, true),

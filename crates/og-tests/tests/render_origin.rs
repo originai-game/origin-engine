@@ -139,7 +139,7 @@ fn wisps(scene: &mut RenderScene, frame: u32) {
     let by = GRID - scene.origin;
     for i in 0..scene.effects.trails.len() {
         scene.effects.trails[i].position += by;
-        scene.instances[1 + i].transform.w_axis += by.extend(0.0);
+        scene.objects.instances[1 + i].transform.w_axis += by.extend(0.0);
     }
 }
 

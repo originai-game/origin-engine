@@ -102,7 +102,7 @@ impl Renderer {
         let meshlet_on = self.visibility.indirect
             && (self.gpu_culls(sorted + skinned_n) || crowd_gpu)
             && !object_space
-            && scene.meshlets
+            && scene.objects.meshlets
             && scene.mesh_clusters_all().iter().any(Option::is_some);
         if meshlet_on {
             let limits = self.device.limits();

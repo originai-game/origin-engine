@@ -221,7 +221,7 @@ fn crowd_cards_draw_the_far_members_and_only_them() {
     let run = |cards: bool, crowd: bool| {
         let mut built = scenes::build("crowd-lods").expect("scene");
         built.desc.culling = Culling::Gpu;
-        for c in &mut built.scene.crowds {
+        for c in &mut built.scene.objects.crowds {
             if !cards {
                 c.impostor = None;
             }

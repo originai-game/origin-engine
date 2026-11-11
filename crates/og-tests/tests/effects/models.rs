@@ -38,9 +38,9 @@ fn baked_clips_pose_a_crowd_like_their_palettes() {
         let h = scene.add_skinned_mesh(mesh.clone(), skin.clone());
         let mut inst = SkinnedInstance::new(h, m, Mat4::IDENTITY, 0);
         match pose {
-            Ok(p) => scene.joint_palettes.push(p),
+            Ok(p) => scene.objects.joint_palettes.push(p),
             Err(frame) => {
-                scene.baked_clips.push(clip.clone());
+                scene.objects.baked_clips.push(clip.clone());
                 inst.baked = Some(og_render::BakedPose {
                     clip: 0,
                     frame,
@@ -50,7 +50,7 @@ fn baked_clips_pose_a_crowd_like_their_palettes() {
                 });
             }
         }
-        scene.skinned_instances.push(inst);
+        scene.objects.skinned_instances.push(inst);
         scene.camera = camera;
         scene
     };
@@ -75,13 +75,17 @@ fn baked_clips_pose_a_crowd_like_their_palettes() {
     let mut resident = one(Err(0.0));
     let mut cached = Renderer::new_blocking(&desc).expect("renderer");
     for at in [0.0, 1.5, 2.0, 0.0] {
-        resident.skinned_instances[0].baked.as_mut().unwrap().frame = at;
+        resident.objects.skinned_instances[0]
+            .baked
+            .as_mut()
+            .unwrap()
+            .frame = at;
         cached.render(&resident, &RenderTarget::Offscreen).unwrap();
         let baked = cached.read_offscreen().unwrap();
         let (posed, _) = frame(&desc, &one(Ok(JointPalette::from(clip.palette(at)))));
         assert!(differing(&baked, &posed, 4.0) < 40, "cached frame {at}");
     }
-    resident.baked_clips[0].frames = [0.5, 0.25, 0.0]
+    resident.objects.baked_clips[0].frames = [0.5, 0.25, 0.0]
         .iter()
         .flat_map(|&b| fx::bend_palette(b, 0.0).matrices)
         .collect();
@@ -93,7 +97,7 @@ fn baked_clips_pose_a_crowd_like_their_palettes() {
     );
     // A clip that is not in the scene is refused.
     let mut bad = one(Err(1.0));
-    bad.baked_clips.clear();
+    bad.objects.baked_clips.clear();
     let mut r = Renderer::new_blocking(&desc).expect("renderer");
     assert!(r.render(&bad, &RenderTarget::Offscreen).is_err());
     // The crowd: 7 x 5 on a ground, one clip, each at its own frame.
@@ -103,7 +107,7 @@ fn baked_clips_pose_a_crowd_like_their_palettes() {
     scene.add_instance(ground, white, Mat4::IDENTITY);
     let m = scene.add_material(pink);
     let h = scene.add_skinned_mesh(mesh.clone(), skin.clone());
-    scene.baked_clips.push(clip.clone());
+    scene.objects.baked_clips.push(clip.clone());
     for z in 0..5 {
         for x in 0..7 {
             let k = z * 7 + x;
@@ -117,7 +121,7 @@ fn baked_clips_pose_a_crowd_like_their_palettes() {
                 previous_frame: f,
                 previous_transform: at,
             });
-            scene.skinned_instances.push(inst);
+            scene.objects.skinned_instances.push(inst);
         }
     }
     scene.camera = Camera {
@@ -160,22 +164,25 @@ fn deformed_vertices_replace_the_mesh() {
                         weights: vec![[0.0; 4]; n],
                     },
                 );
-                scene.joint_palettes.push(JointPalette::default());
-                scene.deformed_vertices.push(og_render::DeformedVertices {
-                    positions: mesh
-                        .vertices
-                        .iter()
-                        .map(|v| {
-                            let p = Vec3::from(v.position);
-                            p + Vec3::new(0.0, p.y * k, 0.0)
-                        })
-                        .collect(),
-                    normals: mesh.vertices.iter().map(|v| Vec3::from(v.normal)).collect(),
-                    garment: None,
-                });
+                scene.objects.joint_palettes.push(JointPalette::default());
+                scene
+                    .objects
+                    .deformed_vertices
+                    .push(og_render::DeformedVertices {
+                        positions: mesh
+                            .vertices
+                            .iter()
+                            .map(|v| {
+                                let p = Vec3::from(v.position);
+                                p + Vec3::new(0.0, p.y * k, 0.0)
+                            })
+                            .collect(),
+                        normals: mesh.vertices.iter().map(|v| Vec3::from(v.normal)).collect(),
+                        garment: None,
+                    });
                 let mut inst = SkinnedInstance::new(h, m, Mat4::IDENTITY, 0);
                 inst.deformed = Some(0);
-                scene.skinned_instances.push(inst);
+                scene.objects.skinned_instances.push(inst);
             }
         }
         scene.lighting.environment.background = Background::Color(Vec3::ZERO);
@@ -244,10 +251,10 @@ fn deformed_vertices_replace_the_mesh() {
             };
             let mut before = previous.clone().unwrap_or_else(|| garment.clone());
             before.output_transform = world.inverse() * before.world;
-            scene.skinned_instances[0].transform = world;
-            scene.previous_joint_palettes = scene.joint_palettes.clone();
-            scene.previous_deformed_vertices = vec![before.evaluate()];
-            scene.deformed_vertices[0] = og_render::DeformedVertices {
+            scene.objects.skinned_instances[0].transform = world;
+            scene.objects.previous_joint_palettes = scene.objects.joint_palettes.clone();
+            scene.objects.previous_deformed_vertices = vec![before.evaluate()];
+            scene.objects.deformed_vertices[0] = og_render::DeformedVertices {
                 garment: Some(garment.clone()),
                 ..Default::default()
             };
@@ -256,7 +263,7 @@ fn deformed_vertices_replace_the_mesh() {
                 .expect("compute garment frame");
             assert!(stats.prepass_draws > 0);
             let computed = gpu.read_offscreen().unwrap();
-            scene.deformed_vertices[0] = garment.evaluate();
+            scene.objects.deformed_vertices[0] = garment.evaluate();
             cpu.render(&scene, &RenderTarget::Offscreen)
                 .expect("fallback reference frame");
             let reference = cpu.read_offscreen().unwrap();
@@ -270,7 +277,7 @@ fn deformed_vertices_replace_the_mesh() {
     }
     // A count that does not match the mesh is refused.
     let mut bad = build(Some(0.0));
-    bad.deformed_vertices[0].positions.pop();
+    bad.objects.deformed_vertices[0].positions.pop();
     let mut r = Renderer::new_blocking(&desc).expect("renderer");
     assert!(r.render(&bad, &RenderTarget::Offscreen).is_err());
 }

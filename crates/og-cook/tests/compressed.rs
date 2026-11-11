@@ -315,7 +315,7 @@ fn cooked_reference(
     // The reference draws every part's full mesh (og-tests builds it
     // without levels); bias 0 keeps the meshlet path at level 0 too, where
     // it would otherwise pick each part's level by its screen-space error.
-    scene.lod_bias = 0.0;
+    scene.objects.lod_bias = 0.0;
     let mut parts = Vec::new();
     for id in MODELS {
         let model = b.load_model(id).unwrap();
@@ -332,7 +332,7 @@ fn cooked_reference(
         parts.push(model.add_to_with(&mut scene, &textures));
     }
     let mut ground = None;
-    for inst in &src.instances {
+    for inst in &src.objects.instances {
         let i = inst.mesh.index();
         if i == 0 {
             parts[0].instance(&mut scene, inst.transform);

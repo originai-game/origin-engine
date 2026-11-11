@@ -655,10 +655,14 @@ impl LineRenderer {
         let mut wires: Vec<WireInstance> = Vec::new();
         let mut wire_sets: Vec<(u32, u32, u32, u32)> = Vec::new();
         if any_wire {
-            let live: std::collections::HashSet<usize> =
-                scene.instances.iter().map(|i| i.mesh.index()).collect();
+            let live: std::collections::HashSet<usize> = scene
+                .objects
+                .instances
+                .iter()
+                .map(|i| i.mesh.index())
+                .collect();
             self.edges.retain(|(m, _), _| live.contains(m));
-            for (i, inst) in scene.instances.iter().enumerate() {
+            for (i, inst) in scene.objects.instances.iter().enumerate() {
                 let Some((w, outlined)) = wire(inst.material.index()) else {
                     continue;
                 };
@@ -702,7 +706,7 @@ impl LineRenderer {
                 }
                 let n = (wires.len() - before) as u32;
                 if n > 0 {
-                    let mask = crate::views::layer_of(&scene.instance_layers, i);
+                    let mask = crate::views::layer_of(&scene.objects.instance_layers, i);
                     let material = inst.material.index() as u32;
                     match wire_sets.last_mut() {
                         Some(r) if r.0 == mask && r.1 == material => r.3 += n,

@@ -252,3 +252,98 @@ pub struct SceneSprites {
     /// [`crate::MAX_FLUIDS`]; fluids of one group are one surface).
     pub metaballs: Vec<crate::Metaballs>,
 }
+
+/// The 3D objects: mesh instances (layers, levels, previous transforms),
+/// skinned instances with their palettes, morphs and baked clips, crowds,
+/// deformed vertices, impostors, debris, and how meshes are drawn (meshlets,
+/// LOD bias and debug, visibility buffer, cloth subdivisions).
+#[derive(Debug)]
+pub struct SceneObjects {
+    /// Objects to draw this frame, in any order.
+    pub instances: Vec<Instance>,
+    /// Three.js layer masks of the instances, by index in `instances`
+    /// (bit `n` set: on layer `n`): an index past the end is on layer 0
+    /// alone (mask 1), as every object is in three.js. A camera draws the
+    /// instances whose mask shares a bit with its own
+    /// ([`RenderScene::camera_layers`], [`crate::View::layers`]); the shadow
+    /// maps take every caster whatever its layers, so a body hidden from a
+    /// first-person camera still casts its shadow.
+    pub instance_layers: Vec<u32>,
+    /// The level each clustered instance draws on the meshlet path, by
+    /// instance index (same order as `instances`), when its caller picked
+    /// it: og-runtime picks one level per model by its largest error and
+    /// keeps it near a boundary (`lod.rs` [`crate::lod::select`] with
+    /// hysteresis), so the meshlet path draws what the regular path draws
+    /// for its parts. Every view and shadow pass draws that level (a
+    /// level past the mesh's coarsest draws the coarsest); `u8::MAX`, or
+    /// an instance past the end, leaves it to the renderer, which picks
+    /// each instance's level by its own screen-space error per view.
+    pub instance_levels: Vec<u8>,
+    /// Each instance's transform in the previous frame (same order as
+    /// `instances`), for per-object motion blur. Ignored unless its length
+    /// equals `instances`'; then only the camera's motion blurs.
+    pub previous_transforms: Vec<Mat4>,
+    pub skinned_instances: Vec<SkinnedInstance>,
+    /// The same for `skinned_instances`.
+    pub skinned_layers: Vec<u32>,
+    /// This frame's joint palettes ([`SkinnedInstance::palette`] indexes them).
+    pub joint_palettes: Vec<JointPalette>,
+    /// Each joint palette's joints as the previous frame drew them, in
+    /// the world (the transform its instances were drawn at times each
+    /// joint), same order as `joint_palettes`: TAA's motion vectors of
+    /// skinned meshes. Ignored unless its length equals
+    /// `joint_palettes`'; a palette whose joint count differs, or a mesh
+    /// with morph targets alone, moves with the camera only.
+    pub previous_joint_palettes: Vec<JointPalette>,
+    /// Each skinned instance's blendshape weights as the previous frame drew
+    /// them, same order as `skinned_instances`: TAA's motion vectors of a
+    /// morphing mesh (the palette buffer's previous section, `skin.rs`).
+    /// Ignored unless its length equals `skinned_instances`'; then the
+    /// morph moves with the camera only.
+    pub previous_morph_weights: Vec<[f32; crate::MAX_MORPH_TARGETS]>,
+    /// Animation clips baked into joint palettes, played on the GPU by
+    /// skinned instances with [`crate::SkinnedInstance::baked`] (crowds):
+    /// kept from frame to frame; a frame uploads only the clips its
+    /// instances use (`skin.rs`, the palette buffer's layout).
+    pub baked_clips: Vec<crate::BakedClip>,
+    /// Crowds: thousands of copies of one skinned model, each posed by a
+    /// baked clip, culled, given a level and drawn on the GPU-driven path
+    /// (`crowd.rs`).
+    pub crowds: Vec<crate::Crowd>,
+    /// The vertices of skinned instances that bring their own
+    /// ([`crate::SkinnedInstance::deformed`] indexes it): a simulated
+    /// garment's points, in each instance's space.
+    pub deformed_vertices: Vec<crate::DeformedVertices>,
+    /// Each `deformed_vertices` entry as the previous frame drew it, same
+    /// order, in this frame's instance space: TAA's motion vectors of a
+    /// swinging garment (the palette buffer's previous section, `skin.rs`).
+    /// An entry whose count differs, or a list whose length differs, moves
+    /// with the camera and the instance only.
+    pub previous_deformed_vertices: Vec<crate::DeformedVertices>,
+    /// Models drawn as their impostors this frame (`impostor.rs`): each a
+    /// camera-facing card, drawn with the scattered copies' passes.
+    pub impostors: Vec<crate::ImpostorDraw>,
+    /// Whether instances of clustered meshes draw through the meshlet path
+    /// (`meshlet.rs`): their level picked and their clusters culled on the
+    /// GPU. True by default; false draws them as any mesh, level 0.
+    pub meshlets: bool,
+    /// The scene's level-of-detail bias for clustered meshes (`lod.rs`'s
+    /// bias: 2 keeps detail twice as far, 0 the full mesh), 1 by default.
+    pub lod_bias: f32,
+    /// Colours each clustered instance by the level it draws (green the
+    /// full mesh, yellow, orange, red: [`crate::lod::debug_color`]), as
+    /// og-runtime's `debugView lod` colours the others.
+    pub lod_debug: bool,
+    /// Whether the meshlet path rasterises the camera's small clusters of
+    /// opaque materials in compute into a visibility buffer and shades
+    /// them in one resolve per batch (`meshlet.rs`); true by default.
+    /// False draws every cluster by the hardware.
+    pub visibility_buffer: bool,
+    /// Draw segments per coarse cloth/soft-body edge; zero selects two, 1–8.
+    pub cloth_subdivisions: u32,
+    /// Fine pieces of broken props, simulated and drawn on the GPU only
+    /// ([`crate::DebrisPiece`], `debris.rs`): each drawn by instances of
+    /// [`RenderScene::instances`] whose transforms the GPU writes. They
+    /// collide with [`RenderScene::colliders`]. Empty by default.
+    pub debris: Vec<crate::DebrisPiece>,
+}

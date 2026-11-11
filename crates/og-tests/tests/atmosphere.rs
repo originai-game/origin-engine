@@ -93,7 +93,7 @@ fn a_replaced_mesh_draws_its_new_shape() {
     let mut r = Renderer::new_blocking(&desc).expect("surface renderer");
     for (level, x, triangles) in [(0, -2.0, 8), (3, 2.0, 18), (1, -2.0, 2)] {
         let coarse = quad(x, 1.0);
-        s.cloth_subdivisions = level;
+        s.objects.cloth_subdivisions = level;
         assert!(s.set_simulation_surface(
             mesh,
             coarse.clone(),

@@ -218,12 +218,13 @@ pub fn keyframes_scene() -> Result<RenderScene, String> {
         );
         let mut matrices = Vec::new();
         anim.skeleton.palette(0, &pose.nodes, &mut matrices);
-        let palette = scene.joint_palettes.len() as u32;
-        scene.joint_palettes.push(JointPalette { matrices });
+        let palette = scene.objects.joint_palettes.len() as u32;
+        scene.objects.joint_palettes.push(JointPalette { matrices });
         let world = Mat4::from_translation(Vec3::new(x, 0.0, 0.0));
         for &(mesh, material, local) in &parts {
             match skinned.get(mesh.index() - base).copied().flatten() {
                 Some(s) => scene
+                    .objects
                     .skinned_instances
                     .push(SkinnedInstance::new(s, material, world, palette)),
                 None => scene.add_instance(mesh, material, world * local),

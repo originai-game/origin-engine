@@ -42,7 +42,7 @@ impl ScatterRenderer {
             let mut grow = 0.0f32;
             let mut cast = false;
             for &i in members {
-                let d = &scene.impostors[i];
+                let d = &scene.objects.impostors[i];
                 let c = d.transform.transform_point3(imp.center);
                 let s = d
                     .transform
@@ -145,7 +145,7 @@ impl ScatterRenderer {
         // chunks' bounds widen by its tip's reach).
         // The model impostors by atlas, in the order each first appears.
         let mut groups: Vec<(crate::Impostor, Vec<usize>)> = Vec::new();
-        for (i, d) in scene.impostors.iter().enumerate() {
+        for (i, d) in scene.objects.impostors.iter().enumerate() {
             match groups.iter_mut().find(|g| g.0 == d.impostor) {
                 Some(g) => g.1.push(i),
                 None => groups.push((d.impostor, vec![i])),

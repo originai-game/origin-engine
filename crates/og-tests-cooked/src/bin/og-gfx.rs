@@ -513,7 +513,7 @@ fn effect_table(frames: u32, only: Option<&str>) -> Result<String, String> {
             }
         }),
         ("skinning", "5 skinned instances (vs none)", |g| {
-            g.scene.skinned_instances.clear()
+            g.scene.objects.skinned_instances.clear()
         }),
         // The E5 round.
         ("atmosphere-fog", "E5: fog (distance and height)", |g| {

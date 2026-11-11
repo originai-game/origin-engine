@@ -104,7 +104,7 @@ fn a_removed_mesh_is_refused_and_its_slot_reused_under_a_new_generation() {
         draw(&mut renderer, &scene).is_err(),
         "the old instance still names the old mesh"
     );
-    scene.instances.clear();
+    scene.objects.instances.clear();
     scene.add_instance(cube, red, Mat4::IDENTITY);
     let reused = draw(&mut renderer, &scene).expect("frame");
 

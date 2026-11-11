@@ -200,6 +200,7 @@ impl RenderBackend for Recorder {
                 .filter(|m| m.emissive == og_core::glam::Vec3::new(1.0, 0.5, 0.1))
         };
         *self.0.borrow_mut() = scene
+            .objects
             .instances
             .iter()
             .find_map(|i| lamp(i.material))

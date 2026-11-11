@@ -1217,6 +1217,7 @@ fn bounds_view(rs: &mut RenderState) {
     let mut out = Vec::new();
     let instances: Vec<(MeshHandle, Mat4)> = rs
         .scene
+        .objects
         .instances
         .iter()
         .map(|i| (i.mesh, i.transform))

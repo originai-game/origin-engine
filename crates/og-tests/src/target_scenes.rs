@@ -120,9 +120,9 @@ pub fn monitor_scene() -> RenderScene {
         magenta,
         Mat4::from_translation(Vec3::new(-1.0, 0.35, 2.0)),
     );
-    let i = scene.instances.len() - 1;
-    scene.instance_layers.resize(i + 1, 1);
-    scene.instance_layers[i] = 2;
+    let i = scene.objects.instances.len() - 1;
+    scene.objects.instance_layers.resize(i + 1, 1);
+    scene.objects.instance_layers[i] = 2;
     scene.views.push(View {
         camera: Camera {
             position: Vec3::new(5.5, 2.8, 5.5),
@@ -294,11 +294,11 @@ fn add_view_kind(scene: &mut RenderScene, kind: ViewKind) {
                 ..Default::default()
             });
             scene.add_instance(glass, m, Mat4::from_translation(Vec3::new(-2.6, 0.7, 2.4)));
-            let i = scene.instances.len() - 1;
+            let i = scene.objects.instances.len() - 1;
             // Out of the shadow maps: the main frame keeps no trace of it.
-            scene.instances[i].cast_shadows = false;
-            scene.instance_layers.resize(i + 1, 1);
-            scene.instance_layers[i] = 2;
+            scene.objects.instances[i].cast_shadows = false;
+            scene.objects.instance_layers.resize(i + 1, 1);
+            scene.objects.instance_layers[i] = 2;
         }
         ViewKind::Sprite => {
             scene.add_sprite(og_render::Sprite {
@@ -417,9 +417,9 @@ pub fn depth_scene() -> RenderScene {
         red,
         Mat4::from_translation(Vec3::new(-1.6, 1.5, -4.0)),
     );
-    let i = scene.instances.len() - 1;
-    scene.instance_layers.resize(i + 1, 1);
-    scene.instance_layers[i] = 2;
+    let i = scene.objects.instances.len() - 1;
+    scene.objects.instance_layers.resize(i + 1, 1);
+    scene.objects.instance_layers[i] = 2;
     let target = scene.add_render_target(RenderTargetDesc {
         width: 320,
         height: 180,

@@ -181,6 +181,7 @@ impl RenderScene {
     pub fn has_visual_bodies(&self) -> bool {
         self.mesh_visual.iter().any(Option::is_some)
             || self
+                .objects
                 .deformed_vertices
                 .iter()
                 .any(|d| d.garment.as_ref().is_some_and(|g| g.visual.is_some()))
@@ -284,15 +285,18 @@ impl RenderScene {
     /// mesh's level 0 as any mesh does, so a caller picking levels on the
     /// CPU (og-runtime's per-entity LOD) keeps doing so for them.
     pub fn meshlet_drawable(&self, mesh: MeshHandle, material: MaterialHandle) -> bool {
-        self.meshlets && self.mesh_clusters(mesh).is_some() && self.contains_material(material) && {
-            let i = material.index();
-            let m = &self.materials[i];
-            !m.is_transparent()
-                && !m.is_physical()
-                && !m.draws_array_maps()
-                && m.wireframe != 1
-                && self.material_shaders.get(i).is_none_or(Option::is_none)
-        }
+        self.objects.meshlets
+            && self.mesh_clusters(mesh).is_some()
+            && self.contains_material(material)
+            && {
+                let i = material.index();
+                let m = &self.materials[i];
+                !m.is_transparent()
+                    && !m.is_physical()
+                    && !m.draws_array_maps()
+                    && m.wireframe != 1
+                    && self.material_shaders.get(i).is_none_or(Option::is_none)
+            }
     }
 
     pub(crate) fn mesh_revisions(&self) -> &[u64] {

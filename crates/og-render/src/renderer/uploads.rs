@@ -149,12 +149,12 @@ impl Renderer {
         )
         .0;
         let mut sway = vec![0.0f32; self.cache.meshes.len()];
-        let previous = if self.instances.previous_sway.len() == scene.instances.len() {
+        let previous = if self.instances.previous_sway.len() == scene.objects.instances.len() {
             self.instances.previous_sway.as_slice()
         } else {
             &[]
         };
-        for (i, inst) in scene.instances.iter().enumerate() {
+        for (i, inst) in scene.objects.instances.iter().enumerate() {
             if scene.mesh_foliage(inst.mesh).is_some() {
                 sway[inst.mesh.index()] = sway[inst.mesh.index()]
                     .max(inst.sway)
@@ -245,6 +245,7 @@ impl Renderer {
         }
         // Visual garments: within their reach of this frame's skinned pose.
         let garments: Vec<_> = scene
+            .objects
             .deformed_vertices
             .iter()
             .filter_map(|d| d.garment.as_ref())
@@ -308,7 +309,7 @@ impl Renderer {
             };
             let source = &scene.meshes()[i];
             if let Some(kind) = scene.mesh_surfaces[i] {
-                let level = surface::subdivisions(scene.cloth_subdivisions);
+                let level = surface::subdivisions(scene.objects.cloth_subdivisions);
                 if let Some(surface) = gpu.surface.as_ref().filter(|s| s.matches(source, level)) {
                     // A visual body's vertices are its GPU simulation's.
                     if gpu.revision != revision && scene.mesh_visual[i].is_none() {

@@ -122,14 +122,14 @@ impl Pipelines {
     ) {
         cache.retain(|key, _| {
             draws.iter().any(|&(d, _)| {
-                scene.deformed_vertices[d as usize]
+                scene.objects.deformed_vertices[d as usize]
                     .garment
                     .as_ref()
                     .is_some_and(|g| &g.key == key)
             })
         });
         for &(d, first) in draws {
-            let g = scene.deformed_vertices[d as usize]
+            let g = scene.objects.deformed_vertices[d as usize]
                 .garment
                 .as_ref()
                 .expect("garment draw");

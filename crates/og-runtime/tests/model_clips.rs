@@ -152,16 +152,19 @@ impl RenderBackend for Recorder {
     fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
         let mut s = self.0.borrow_mut();
         s.palettes = scene
+            .objects
             .joint_palettes
             .iter()
             .map(|p| p.matrices.iter().map(|m| m.x_axis.length()).collect())
             .collect();
         s.skinned = scene
+            .objects
             .skinned_instances
             .iter()
             .map(|i| height(scene, i.mesh))
             .collect();
         s.instances = scene
+            .objects
             .instances
             .iter()
             .map(|i| height(scene, i.mesh))

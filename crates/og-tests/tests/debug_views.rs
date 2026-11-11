@@ -28,7 +28,8 @@ fn scene(name: &str, remove: bool) -> RenderScene {
     if name == "shader-full-dissolve" {
         // The standard-material ground dominates this scene but is not
         // the custom shading path under test. Keep only its custom draws.
-        s.instances = s
+        s.objects.instances = s
+            .objects
             .instances
             .iter()
             .filter(|i| s.material_shader(i.material).is_some())
@@ -55,10 +56,10 @@ fn scene(name: &str, remove: bool) -> RenderScene {
             }
             "decals" => s.effects.decals.clear(),
             "sky-only" => s.lighting.environment.background = Background::Color(Vec3::ZERO),
-            "impostors" => s.impostors.clear(),
+            "impostors" => s.objects.impostors.clear(),
             _ => {
-                s.instances.clear();
-                s.skinned_instances.clear();
+                s.objects.instances.clear();
+                s.objects.skinned_instances.clear();
             }
         }
     }

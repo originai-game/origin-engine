@@ -192,7 +192,7 @@ pub fn ssr_scene(ssr: bool) -> RenderScene {
 /// lit slab and the red sphere.
 pub fn ssr_metal_scene(roughness: f32, max_roughness: f32) -> RenderScene {
     let mut scene = ssr_scene(true);
-    let floor = scene.instances[0].material;
+    let floor = scene.objects.instances[0].material;
     scene.set_standard_material(floor, mat(Vec3::splat(0.9), 1.0, roughness));
     if let Some(ssr) = scene.look.post.ssr.as_mut() {
         ssr.max_roughness = max_roughness;

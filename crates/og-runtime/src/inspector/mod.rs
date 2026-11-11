@@ -1021,7 +1021,7 @@ fn emit_gizmo(rs: &mut RenderState) {
         .ids
         .instances
         .iter()
-        .zip(&rs.scene.instances)
+        .zip(&rs.scene.objects.instances)
         .filter(|(e, _)| **e == bits)
         .map(|(_, i)| (i.mesh, i.transform))
         .collect();

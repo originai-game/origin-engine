@@ -184,11 +184,13 @@ impl RenderBackend for Recorder {
     fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
         let mut s = self.0.borrow_mut();
         s.instances = scene
+            .objects
             .instances
             .iter()
             .map(|i| (i.mesh.index(), i.cast_shadows, i.receive_shadows))
             .collect();
         s.skinned = scene
+            .objects
             .skinned_instances
             .iter()
             .map(|i| (i.cast_shadows, i.receive_shadows))

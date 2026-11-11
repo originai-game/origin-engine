@@ -216,7 +216,7 @@ pub fn impostors_scene_with(card: bool) -> RenderScene {
     scene.add_instance(ball, white, at(BALL_MESH_AT));
     if card {
         let impostor = ball_impostor(&mut scene);
-        scene.impostors.push(ImpostorDraw {
+        scene.objects.impostors.push(ImpostorDraw {
             impostor,
             transform: at(BALL_CARD_AT),
             cast_shadows: true,
@@ -269,7 +269,7 @@ pub fn impostor_backlit_scene(translucency: Option<f32>) -> RenderScene {
         Mat4::from_translation(Vec3::new(0.0, -0.1, -1.0)),
     );
     let impostor = ball_impostor_with(&mut scene, translucency);
-    scene.impostors.push(ImpostorDraw {
+    scene.objects.impostors.push(ImpostorDraw {
         impostor,
         transform: Mat4::from_scale_rotation_translation(
             Vec3::splat(2.0),

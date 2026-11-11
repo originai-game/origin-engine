@@ -267,7 +267,7 @@ pub fn crowd_scene(count: u32) -> RenderScene {
         roughness: 0.7,
         ..Default::default()
     });
-    scene.baked_clips.push(walker_clip(CROWD_FRAMES));
+    scene.objects.baked_clips.push(walker_clip(CROWD_FRAMES));
     let block = scene.add_mesh(shapes::cuboid(Vec3::new(12.0, 14.0, 12.0)));
     let stone = scene.add_material(Material {
         base_color: [0.62, 0.58, 0.52, 1.0],
@@ -281,7 +281,7 @@ pub fn crowd_scene(count: u32) -> RenderScene {
             Mat4::from_translation(Vec3::new(x * side as f32 * 1.3, 7.0, -z * depth)),
         );
     }
-    scene.crowds.push(og_render::Crowd {
+    scene.objects.crowds.push(og_render::Crowd {
         parts: vec![og_render::CrowdPart {
             levels,
             material: cloth,
@@ -312,7 +312,7 @@ pub fn crowd_scene(count: u32) -> RenderScene {
 /// second: its place on its loop, its heading and its walk's frame, the
 /// frame before kept for TAA.
 pub fn walk_crowd(scene: &mut RenderScene, frame: u32) {
-    let Some(crowd) = scene.crowds.first_mut() else {
+    let Some(crowd) = scene.objects.crowds.first_mut() else {
         return;
     };
     let count = crowd.members.len() as u32;
@@ -354,7 +354,7 @@ pub fn crowd_lods_scene() -> RenderScene {
                 .collect()
         })
         .collect();
-    scene.baked_clips.push(walker_clip(CROWD_FRAMES));
+    scene.objects.baked_clips.push(walker_clip(CROWD_FRAMES));
     let cloth = |scene: &mut RenderScene, c: [f32; 3], roughness: f32| {
         scene.add_material(Material {
             base_color: [c[0], c[1], c[2], 1.0],
@@ -414,7 +414,7 @@ pub fn crowd_lods_scene() -> RenderScene {
             }
         })
         .collect();
-    scene.crowds = outfits;
+    scene.objects.crowds = outfits;
     let stone = scene.add_material(Material {
         base_color: [0.62, 0.58, 0.52, 1.0],
         roughness: 0.85,
@@ -447,7 +447,7 @@ pub fn crowd_lods_scene() -> RenderScene {
     // avenue (either way, within 25 degrees of it), the rest anyhow; each
     // its own size (±8 %), shade of its outfit and place in the walk.
     let (cols, rows) = (24u32, 100u32);
-    let outfits = scene.crowds.len() as u32;
+    let outfits = scene.objects.crowds.len() as u32;
     for i in 0..cols * rows {
         if unit(i, 9) < 0.125 {
             continue;
@@ -476,7 +476,7 @@ pub fn crowd_lods_scene() -> RenderScene {
         let shade = 0.78 + unit(i, 7) * 0.22;
         member.fx.tint = Vec3::new(shade, shade * (0.97 + unit(i, 8) * 0.03), shade);
         let outfit = ((unit(i, 11) * outfits as f32) as u32).min(outfits - 1);
-        scene.crowds[outfit as usize].members.push(member);
+        scene.objects.crowds[outfit as usize].members.push(member);
     }
     scene.lighting.light.direction_to_light = Vec3::new(0.8, 0.45, 0.25);
     scene.lighting.light.cast_shadows = true;

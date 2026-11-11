@@ -154,6 +154,7 @@ fn posed_trickster(root: &Path, clip: &str, t: f32) -> og_render::RgbaImage {
     let mut palette = Vec::new();
     sk.palette(0, &pose.nodes, &mut palette);
     scene
+        .objects
         .joint_palettes
         .push(og_render::JointPalette { matrices: palette });
     // Two metres tall on the origin, filling the frame.
@@ -173,6 +174,7 @@ fn posed_trickster(root: &Path, clip: &str, t: f32) -> og_render::RgbaImage {
                     },
                 );
                 scene
+                    .objects
                     .skinned_instances
                     .push(SkinnedInstance::new(skinned, material, place, 0));
             }

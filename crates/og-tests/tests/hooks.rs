@@ -109,11 +109,12 @@ fn an_offset_skinned_mesh_draws_shadows_and_occludes_where_it_moved() {
         let m = rippled(&mut scene, if by_shader { SHIFT } else { Vec3::ZERO });
         for i in 0..3 {
             scene
+                .objects
                 .joint_palettes
                 .push(fx_scenes::bend_palette(-0.4 + i as f32 * 0.4, 0.3));
             let at = Vec3::new(-1.5 + i as f32 * 1.2, 0.0, 0.0);
             let at = if by_shader { at } else { at + SHIFT };
-            scene.skinned_instances.push(SkinnedInstance::new(
+            scene.objects.skinned_instances.push(SkinnedInstance::new(
                 cylinder,
                 m,
                 Mat4::from_translation(at),

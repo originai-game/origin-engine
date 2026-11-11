@@ -63,7 +63,7 @@ impl RenderBackend for Counting {
         self.0.set(if self.1 {
             scene.sprite.sprites.len()
         } else {
-            scene.instances.len()
+            scene.objects.instances.len()
         });
         Ok(())
     }

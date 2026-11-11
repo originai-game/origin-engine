@@ -41,18 +41,18 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     rs.ids.sprites.clear();
     let scene = &mut rs.scene;
     let (models, geometries, materials) = (&rs.models, &rs.geometries, &rs.materials);
-    scene.instances.clear();
+    scene.objects.instances.clear();
     scene.lighting.lights.clear();
     scene.sprite.texts.clear();
     scene.sprite.sprites.clear();
     scene.sprite.sprite_meshes.clear();
     scene.ui.overlay = None;
     scene.look.color_filter = None;
-    scene.joint_palettes.clear();
-    scene.skinned_instances.clear();
-    scene.crowds.clear();
-    scene.deformed_vertices.clear();
-    scene.previous_deformed_vertices.clear();
+    scene.objects.joint_palettes.clear();
+    scene.objects.skinned_instances.clear();
+    scene.objects.crowds.clear();
+    scene.objects.deformed_vertices.clear();
+    scene.objects.previous_deformed_vertices.clear();
     rs.fx.deformed_keys.clear();
     rs.fx.drawn_baked = std::mem::take(&mut rs.fx.baked_now);
     scene.sprite.sprite_order.clear();
@@ -322,8 +322,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     let debug_lod = super::geometry::current_view(rs) == "lod";
     // The clustered instances' levels are picked by the renderer, with the
     // settings' bias (a model's own lodBias applies to the others only).
-    rs.scene.lod_bias = settings_bias;
-    rs.scene.lod_debug = debug_lod;
+    rs.scene.objects.lod_bias = settings_bias;
+    rs.scene.objects.lod_debug = debug_lod;
     let view_height = match rs.backend.as_ref().map(|b| b.size()) {
         Some((_, ht)) if ht > 0 => ht as f32,
         _ => super::fx::viewport(rs).1,
@@ -333,9 +333,9 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     let mut drawn = IdMap::new();
     // The meshlet path draws the level picked here too (one per model, with
     // hysteresis), so both paths draw the same picture.
-    rs.scene.instance_levels.clear();
-    rs.scene.debris.clear();
-    rs.scene.impostors.clear();
+    rs.scene.objects.instance_levels.clear();
+    rs.scene.objects.debris.clear();
+    rs.scene.objects.impostors.clear();
     // A fractured destructible's model is drawn by its chunks (og.Chunk):
     // each its node of the model at its own transform, with the model's look.
     let fractured: IdMap<u64, crate::destruction::Drawn> =
@@ -360,11 +360,11 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
                     continue;
                 }
                 if rs.scene.meshlet_drawable(mesh, material) {
-                    let at = rs.scene.instances.len();
-                    rs.scene.instance_levels.resize(at + 1, u8::MAX);
-                    rs.scene.instance_levels[at] = 0;
+                    let at = rs.scene.objects.instances.len();
+                    rs.scene.objects.instance_levels.resize(at + 1, u8::MAX);
+                    rs.scene.objects.instance_levels[at] = 0;
                 }
-                rs.scene.instances.push(og_render::Instance {
+                rs.scene.objects.instances.push(og_render::Instance {
                     mesh,
                     material,
                     transform: w * local,
@@ -389,12 +389,12 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
                 }
                 let to_mesh = Mat4::from_translation(-d.centre) * local;
                 if rs.scene.meshlet_drawable(mesh, material) {
-                    let at = rs.scene.instances.len();
-                    rs.scene.instance_levels.resize(at + 1, u8::MAX);
-                    rs.scene.instance_levels[at] = 0;
+                    let at = rs.scene.objects.instances.len();
+                    rs.scene.objects.instance_levels.resize(at + 1, u8::MAX);
+                    rs.scene.objects.instance_levels[at] = 0;
                 }
-                drawn_by.push((rs.scene.instances.len() as u32, to_mesh));
-                rs.scene.instances.push(og_render::Instance {
+                drawn_by.push((rs.scene.objects.instances.len() as u32, to_mesh));
+                rs.scene.objects.instances.push(og_render::Instance {
                     mesh,
                     material,
                     transform: body * to_mesh,
@@ -429,7 +429,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
                 .map(|(_, p)| p.1)
                 .collect();
             throw_chips(rs, &piece, &materials, &look, &mut keys);
-            rs.scene.debris.push(piece);
+            rs.scene.objects.debris.push(piece);
         }
         // The grit its broken joints shed.
         let drawn = &fractured[&e];
@@ -486,7 +486,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
             && l.impostor_level() == Some(level)
             && !posed.contains(&e)
         {
-            rs.scene.impostors.push(og_render::ImpostorDraw {
+            rs.scene.objects.impostors.push(og_render::ImpostorDraw {
                 impostor,
                 transform: m,
                 cast_shadows: look.cast,
@@ -538,9 +538,9 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
             // hold every level, the same as the part's meshes.
             let meshlet = rs.scene.meshlet_drawable(mesh, material);
             if meshlet {
-                let at = rs.scene.instances.len();
-                rs.scene.instance_levels.resize(at + 1, u8::MAX);
-                rs.scene.instance_levels[at] = level as u8;
+                let at = rs.scene.objects.instances.len();
+                rs.scene.objects.instance_levels.resize(at + 1, u8::MAX);
+                rs.scene.objects.instance_levels[at] = level as u8;
             }
             let mesh = match (level, levels.and_then(|l| l.get(k))) {
                 (0, _) | (_, None) => mesh,
@@ -548,7 +548,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
                 (_, Some(p)) if p.is_empty() => mesh,
                 (l, Some(p)) => p[(l - 1).min(p.len() - 1)].0,
             };
-            rs.scene.instances.push(og_render::Instance {
+            rs.scene.objects.instances.push(og_render::Instance {
                 mesh,
                 material,
                 transform: m * local,
@@ -566,7 +566,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     let scene = &mut rs.scene;
     // Meshes.
     {
-        scene.instances.reserve(mesh_rows.len());
+        scene.objects.instances.reserve(mesh_rows.len());
         keys.reserve(mesh_rows.len());
         for r in mesh_rows {
             if !r.visible {
@@ -580,7 +580,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
             let w = h.world_of(e);
             // A flashing mesh's flash rides in its instance's record, as
             // og.Model's does: one draw with its unflashed twins (row 85).
-            scene.instances.push(og_render::Instance {
+            scene.objects.instances.push(og_render::Instance {
                 mesh: g,
                 material: m,
                 transform: w,
@@ -944,7 +944,7 @@ fn push_chip(
     look: &super::fx::ModelLook,
     keys: &mut Vec<(u64, u32)>,
 ) -> bool {
-    if rs.scene.debris.len() + 1 >= og_render::MAX_DEBRIS {
+    if rs.scene.objects.debris.len() + 1 >= og_render::MAX_DEBRIS {
         return false;
     }
     if rs.fx.chip_meshes.is_empty() {
@@ -969,12 +969,12 @@ fn push_chip(
         og_core::math::quat_from_axis_angle(axis, seed.next() * std::f32::consts::TAU) * turn;
     let body = Mat4::from_scale_rotation_translation(chip.scale, rotation, chip.position);
     if rs.scene.meshlet_drawable(mesh, chip.material) {
-        let at = rs.scene.instances.len();
-        rs.scene.instance_levels.resize(at + 1, u8::MAX);
-        rs.scene.instance_levels[at] = 0;
+        let at = rs.scene.objects.instances.len();
+        rs.scene.objects.instance_levels.resize(at + 1, u8::MAX);
+        rs.scene.objects.instance_levels[at] = 0;
     }
-    let index = rs.scene.instances.len() as u32;
-    rs.scene.instances.push(og_render::Instance {
+    let index = rs.scene.objects.instances.len() as u32;
+    rs.scene.objects.instances.push(og_render::Instance {
         mesh,
         material: chip.material,
         transform: body,
@@ -985,7 +985,7 @@ fn push_chip(
         sway: 0.0,
     });
     keys.push((chip.id, 0));
-    rs.scene.debris.push(og_render::DebrisPiece {
+    rs.scene.objects.debris.push(og_render::DebrisPiece {
         id: chip.id,
         tick: chip.tick,
         position: chip.position,
@@ -1127,7 +1127,7 @@ fn throw_crumb(
 /// reads these, so sparks bounce on the ground and on solid shapes.
 fn colliders(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
     rs.scene.world.colliders.clear();
-    let colliding = !rs.scene.debris.is_empty()
+    let colliding = !rs.scene.objects.debris.is_empty()
         || rs.scene.has_visual_bodies()
         || rs.scene.effects.particles.iter().any(|s| {
             rs.scene

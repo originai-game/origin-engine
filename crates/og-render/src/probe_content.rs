@@ -195,7 +195,7 @@ impl ProbeContent {
             }
             Some(h.finish())
         };
-        for inst in &scene.instances {
+        for inst in &scene.objects.instances {
             items.extend(draw(
                 self,
                 &mut room,
@@ -205,7 +205,7 @@ impl ProbeContent {
                 &inst.transform,
             ));
         }
-        for s in &scene.skinned_instances {
+        for s in &scene.objects.skinned_instances {
             items.extend(draw(self, &mut room, 1, s.mesh, s.material, &s.transform));
         }
         let terrain_bounds = |t: &crate::Terrain| {
@@ -321,7 +321,7 @@ mod tests {
         assert_ne!(base.hash, c.room(&room(0.3, 0.0, true), &probe).hash);
         assert_ne!(base.hash, c.room(&room(0.8, 2.0, true), &probe).hash);
         let mut far = room(0.8, 0.0, true);
-        far.instances[2].transform = Mat4::from_translation(Vec3::new(80.0, 0.0, 0.0));
+        far.objects.instances[2].transform = Mat4::from_translation(Vec3::new(80.0, 0.0, 0.0));
         assert_eq!(base.hash, c.room(&far, &probe).hash);
     }
 }

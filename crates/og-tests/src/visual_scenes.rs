@@ -595,10 +595,11 @@ pub fn visual_garment_scene(visual: bool) -> RenderScene {
         },
     );
     scene
+        .objects
         .joint_palettes
         .push(JointPalette::from(vec![Mat4::IDENTITY]));
     let points = Arc::new(rest);
-    scene.deformed_vertices.push(DeformedVertices {
+    scene.objects.deformed_vertices.push(DeformedVertices {
         garment: Some(GarmentDeformation {
             key: (1, 0),
             topology,
@@ -613,7 +614,7 @@ pub fn visual_garment_scene(visual: bool) -> RenderScene {
     });
     let mut skirt = SkinnedInstance::new(mesh, silk, Mat4::IDENTITY, 0);
     skirt.deformed = Some(0);
-    scene.skinned_instances.push(skirt);
+    scene.objects.skinned_instances.push(skirt);
     scene
 }
 

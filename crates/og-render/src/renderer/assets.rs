@@ -249,9 +249,11 @@ impl Renderer {
                 && source.is_none()
                 && morph.is_none();
             let mut gpu = match scene.mesh_surfaces[index] {
-                Some(kind) => {
-                    self.upload_surface(mesh, kind, surface::subdivisions(scene.cloth_subdivisions))
-                }
+                Some(kind) => self.upload_surface(
+                    mesh,
+                    kind,
+                    surface::subdivisions(scene.objects.cloth_subdivisions),
+                ),
                 None => self.upload_mesh(mesh, compact),
             };
             gpu.revision = scene.mesh_revisions()[index];

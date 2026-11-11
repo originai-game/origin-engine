@@ -173,7 +173,7 @@ fn depth_of_field_blurs_outside_the_focus_band() {
     };
     let alone = |background: Vec3| {
         let mut s = fx::dof_scene(DofQuality::Low).expect("scene");
-        s.instances.retain(focused);
+        s.objects.instances.retain(focused);
         plain(&mut s);
         s.lighting.environment.background = Background::Color(background);
         frame(&desc, &s).0
@@ -182,7 +182,7 @@ fn depth_of_field_blurs_outside_the_focus_band() {
     let whole = |flash: bool| {
         let mut s = fx::dof_scene(DofQuality::Low).expect("scene");
         plain(&mut s);
-        for i in s.instances.iter_mut().filter(|i| focused(i)) {
+        for i in s.objects.instances.iter_mut().filter(|i| focused(i)) {
             if flash {
                 i.fx = og_render::InstanceFx {
                     flash: 1.0,

@@ -111,7 +111,7 @@ pub fn impostor_self_shadow_scene() -> Result<(RenderScene, (Vec3, Vec3)), Strin
         roughness: 0.85,
         ..Default::default()
     });
-    scene.impostors.push(ImpostorDraw {
+    scene.objects.impostors.push(ImpostorDraw {
         impostor: Impostor {
             material,
             grid: i.grid.clamp(2, og_render::MAX_IMPOSTOR_GRID),

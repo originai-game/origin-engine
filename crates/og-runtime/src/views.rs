@@ -294,17 +294,20 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, keys: &[(u64, u32)], 
     masks(world, rs.draw.mesh.as_ref(), &mut by_entity);
     masks(world, rs.draw.model.as_ref(), &mut by_entity);
     let scene = &mut rs.scene;
-    scene.instance_layers.clear();
-    scene.skinned_layers.clear();
+    scene.objects.instance_layers.clear();
+    scene.objects.skinned_layers.clear();
     if !by_entity.is_empty() {
         let of = |e: &u64| by_entity.get(e).copied().unwrap_or(1);
         // Instances past the keyed ones (none today) stay on layer 0.
-        scene
-            .instance_layers
-            .extend(keys.iter().take(scene.instances.len()).map(|(e, _)| of(e)));
+        scene.objects.instance_layers.extend(
+            keys.iter()
+                .take(scene.objects.instances.len())
+                .map(|(e, _)| of(e)),
+        );
         let entity_of: HashMap<u32, u64> = rs.atmo.palettes.iter().map(|(e, p)| (*p, *e)).collect();
-        scene.skinned_layers.extend(
+        scene.objects.skinned_layers.extend(
             scene
+                .objects
                 .skinned_instances
                 .iter()
                 .map(|s| entity_of.get(&s.palette).map_or(1, of)),

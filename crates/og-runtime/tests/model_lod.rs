@@ -81,7 +81,7 @@ impl RenderBackend for Heights {
     }
     fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
         let (mut lo, mut hi) = (f32::MAX, f32::MIN);
-        for i in &scene.instances {
+        for i in &scene.objects.instances {
             let Some((a, b)) = scene.mesh(i.mesh).and_then(|m| m.bounds()) else {
                 continue;
             };

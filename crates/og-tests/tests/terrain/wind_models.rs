@@ -16,7 +16,7 @@ use og_tests::wind_scenes as ws;
 #[ignore = "requires GPU"]
 fn model_wind_velocity_stops_when_the_wind_stops_changing() {
     let mut scene = ws::wind_scene(true, 90);
-    let red = scene.instances[1].material;
+    let red = scene.objects.instances[1].material;
     scene.set_shader_param(red, "wind", &[1.0, 0.0, 0.15, 0.0]);
     let blur = og_render::MotionBlur {
         shutter: 1.0,

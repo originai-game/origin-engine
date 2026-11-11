@@ -290,7 +290,7 @@ fn phone(rs: &RenderState) -> bool {
 /// quality.
 pub(crate) fn before_render(rs: &mut RenderState) {
     let level = rs.display.settings.cloth_subdivisions;
-    rs.scene.cloth_subdivisions = if level == 0 { 2 } else { level };
+    rs.scene.objects.cloth_subdivisions = if level == 0 { 2 } else { level };
     // The player's preset replaces the game's quality fields on every host,
     // as RenderSettings' own do; automatic quality's steps cap it below.
     if let Some(q) = rs.display.settings.quality {
@@ -320,10 +320,11 @@ pub(crate) fn before_render(rs: &mut RenderState) {
     d.scale = scale;
     d.step = step;
     if step > 0 {
-        rs.scene.cloth_subdivisions =
-            rs.scene
-                .cloth_subdivisions
-                .min(if step >= 2 { 1 } else { 2 });
+        rs.scene.objects.cloth_subdivisions = rs
+            .scene
+            .objects
+            .cloth_subdivisions
+            .min(if step >= 2 { 1 } else { 2 });
         let preset = if step >= 2 {
             QualityPreset::Low
         } else {

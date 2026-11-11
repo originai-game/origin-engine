@@ -59,7 +59,7 @@ impl RenderBackend for Recorder {
     fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
         self.seen.borrow_mut().quality = Some(scene.quality);
         self.seen.borrow_mut().projection = Some(scene.camera.projection);
-        self.seen.borrow_mut().cloth_subdivisions = scene.cloth_subdivisions;
+        self.seen.borrow_mut().cloth_subdivisions = scene.objects.cloth_subdivisions;
         Ok(())
     }
     fn capture(&mut self, _: &RenderScene, _: u32, _: u32) -> Option<RgbaImage> {

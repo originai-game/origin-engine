@@ -347,13 +347,13 @@ fn cached_shadow_layers_draw_what_fresh_ones_do() {
         let mut scene = scenes::point_spot_lights();
         scene.lighting.light.cast_shadows = true;
         // The sphere at (0.2, 0.5, -2.0), the last instance.
-        let mover = scene.instances.len() - 1;
-        let start = scene.instances[mover].transform;
+        let mover = scene.objects.instances.len() - 1;
+        let start = scene.objects.instances[mover].transform;
         let mut renderer = Renderer::new_blocking(&desc).expect("renderer");
         let mut stats = Vec::new();
         for f in 0..16 {
             let x = 0.25 * f.min(4) as f32;
-            scene.instances[mover].transform =
+            scene.objects.instances[mover].transform =
                 glam::Mat4::from_translation(glam::Vec3::new(x, 0.0, 0.0)) * start;
             stats.push(
                 renderer

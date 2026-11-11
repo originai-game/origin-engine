@@ -220,7 +220,7 @@ impl Renderer {
         if !debris_instances.is_empty() {
             for (s, &i) in submission.iter().enumerate().take(spheres.len()) {
                 if let Some(&(p, _)) = debris_instances.get(&i) {
-                    spheres[s] = scene.debris[p].sphere();
+                    spheres[s] = scene.objects.debris[p].sphere();
                 }
             }
             sphere_box = instances::fold_box(None, spheres.iter().copied());
@@ -253,8 +253,8 @@ impl Renderer {
         let crowd_previous = crowd_motion.then(|| {
             (skinned.matrices.len()
                 + skin::previous_section_len(
-                    &scene.joint_palettes,
-                    &scene.previous_joint_palettes,
+                    &scene.objects.joint_palettes,
+                    &scene.objects.previous_joint_palettes,
                     skinned.matrices.len(),
                     skinned.previous_slots.len(),
                 )) as u32
@@ -298,8 +298,8 @@ impl Renderer {
                         cull_gpu::GpuCulling::new(&self.device, max, self.info.indirect_per_draw)
                     })
                     .fits(
-                        scene.instances.len() as u32,
-                        scene.skinned_instances.len() as u32,
+                        scene.objects.instances.len() as u32,
+                        scene.objects.skinned_instances.len() as u32,
                         rows,
                     );
                 culls
@@ -350,9 +350,9 @@ impl Renderer {
         let taa_on = temporal;
         let skinned_motion = if taa_on || scene.look.post.motion_blur.is_some() {
             skin::append_previous(
-                &scene.joint_palettes,
-                &scene.previous_joint_palettes,
-                &scene.skinned_instances,
+                &scene.objects.joint_palettes,
+                &scene.objects.previous_joint_palettes,
+                &scene.objects.skinned_instances,
                 &skinned.previous_slots,
                 &mut joint_matrices,
             )
@@ -565,8 +565,8 @@ impl Renderer {
         // Per-object motion for motion blur and TAA's motion vectors: the
         // previous transforms at the same slots as the instances (GPU
         // culling compacts its camera pass's beside its own).
-        let previous_valid = !scene.previous_transforms.is_empty()
-            && scene.previous_transforms.len() == scene.instances.len();
+        let previous_valid = !scene.objects.previous_transforms.is_empty()
+            && scene.objects.previous_transforms.len() == scene.objects.instances.len();
         let blur_motion = effects.motion_blur.is_some() && previous_valid;
         let sorted = transforms.len() as u32;
         // The skinned instances (their records in `skinned_data`, before
@@ -1590,11 +1590,12 @@ fn canvas_stats(t: &TextureData) -> [f32; 2] {
 /// ([`RenderScene::previous_transforms`]): TAA then needs the prepass's
 /// motion vectors.
 fn objects_moved(scene: &RenderScene) -> bool {
-    scene.previous_transforms.len() == scene.instances.len()
+    scene.objects.previous_transforms.len() == scene.objects.instances.len()
         && scene
+            .objects
             .previous_transforms
             .iter()
-            .zip(&scene.instances)
+            .zip(&scene.objects.instances)
             .any(|(p, i)| *p != i.transform)
 }
 

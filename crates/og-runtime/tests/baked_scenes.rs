@@ -176,7 +176,12 @@ impl RenderBackend for Recorder {
     }
     fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
         let mut s = self.0.borrow_mut();
-        s.instances = scene.instances.iter().map(|i| i.mesh.index()).collect();
+        s.instances = scene
+            .objects
+            .instances
+            .iter()
+            .map(|i| i.mesh.index())
+            .collect();
         s.lightmapped = scene
             .lighting
             .baked

@@ -33,32 +33,32 @@ impl RenderBackend for Recorder {
         (320, 180)
     }
     fn render(&mut self, scene: &og_render::RenderScene) -> Result<(), String> {
-        if let Some(p) = scene.joint_palettes.first() {
+        if let Some(p) = scene.objects.joint_palettes.first() {
             *self.0.borrow_mut() = p.matrices.clone();
         }
         // The garment must take the same procedural palette as the body,
         // without pre-evaluating its points on the CPU during extraction.
         assert!(
-            !scene.deformed_vertices.is_empty(),
+            !scene.objects.deformed_vertices.is_empty(),
             "motion agent's garment was lost"
         );
         assert_eq!(
-            scene.previous_deformed_vertices.len(),
-            scene.deformed_vertices.len(),
+            scene.objects.previous_deformed_vertices.len(),
+            scene.objects.deformed_vertices.len(),
             "motion blur without TAA must retain garment history"
         );
         assert_eq!(
-            scene.previous_joint_palettes.len(),
-            scene.joint_palettes.len()
+            scene.objects.previous_joint_palettes.len(),
+            scene.objects.joint_palettes.len()
         );
-        for instance in &scene.skinned_instances {
+        for instance in &scene.objects.skinned_instances {
             let Some(d) = instance.deformed else { continue };
-            let draw = &scene.deformed_vertices[d as usize];
+            let draw = &scene.objects.deformed_vertices[d as usize];
             let garment = draw.garment.as_ref().expect("deferred garment pose");
             assert!(draw.positions.is_empty() && draw.normals.is_empty());
             assert_eq!(
                 *garment.palette,
-                scene.joint_palettes[instance.palette as usize].matrices
+                scene.objects.joint_palettes[instance.palette as usize].matrices
             );
             // Pinned cloth has zero offsets: the fallback must reproduce
             // the body's normalized skin blend, including procedural turns.

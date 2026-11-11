@@ -194,7 +194,7 @@ pub(crate) struct MeshletDraw {
 /// Whether `b` draws through the meshlet path, given the scene and what
 /// only the renderer knows about its mesh (`lightmapped`).
 pub(crate) fn takes(scene: &RenderScene, b: &Batch, clustered: bool, lightmapped: bool) -> bool {
-    scene.meshlets
+    scene.objects.meshlets
         && clustered
         && !b.transparent
         && b.shader.is_none()
@@ -1110,7 +1110,7 @@ impl MeshletGpu {
         // affine in the rasteriser too, and the material style's surface
         // takes its gradients from the records).
         // And only while the device makes the resolve's pipelines (vis.rs).
-        let soft_on = scene.visibility_buffer
+        let soft_on = scene.objects.visibility_buffer
             && self.vis_buffer.usable()
             && matches!(
                 scene.camera.projection,
@@ -1216,7 +1216,7 @@ impl MeshletGpu {
         let params = |phase: u32| Params {
             view_proj: view_proj.to_cols_array_2d(),
             lod: [
-                scene.lod_bias.max(0.0),
+                scene.objects.lod_bias.max(0.0),
                 level_row as f32,
                 picked as u32 as f32,
                 scene.camera.near,
@@ -1241,7 +1241,7 @@ impl MeshletGpu {
             &self.draw_params,
             0,
             bytemuck::bytes_of(&DrawParams {
-                flags: [scene.lod_debug as u32, 0, 0, 0],
+                flags: [scene.objects.lod_debug as u32, 0, 0, 0],
                 wind: winds.1,
             }),
         );
@@ -1427,7 +1427,7 @@ impl MeshletGpu {
                     clusters: &pools.clusters,
                     indices: &pools.indices,
                     vertices: &pools.vertices,
-                    lod_debug: scene.lod_debug,
+                    lod_debug: scene.objects.lod_debug,
                     stylise: crate::Retro3d::uniform(scene.look.stylise.retro, width, height),
                     wind: winds.1,
                     extra: scene.look.stylise.material.surface_on() || !pools.foliage.is_empty(),

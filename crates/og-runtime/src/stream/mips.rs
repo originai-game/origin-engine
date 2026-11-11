@@ -235,7 +235,7 @@ fn measure(m: &mut Mips, scene: &og_render::RenderScene, view_height: f32) {
         .map(|(i, e)| (e.handle, i))
         .collect();
     let mut by_material: HashMap<og_render::MaterialHandle, Vec<usize>> = HashMap::new();
-    for inst in &scene.instances {
+    for inst in &scene.objects.instances {
         let streamed = by_material.entry(inst.material).or_insert_with(|| {
             scene
                 .material_textures(inst.material)

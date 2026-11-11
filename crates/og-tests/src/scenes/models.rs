@@ -185,7 +185,7 @@ pub(super) fn spike_gltf_scene() -> Result<RenderScene, String> {
 /// Moves every instance of the sphere field up or down on its own phase.
 pub(super) fn bob_spheres(scene: &mut RenderScene, frame: u32) {
     let t = frame as f32 / 60.0;
-    for (i, inst) in scene.instances.iter_mut().enumerate() {
+    for (i, inst) in scene.objects.instances.iter_mut().enumerate() {
         let speed = 1.0 + (i % 7) as f32 * 0.25;
         let phase = (i as f32 * 0.37) % std::f32::consts::TAU;
         let dy = (t * speed + phase).sin() - ((t - 1.0 / 60.0) * speed + phase).sin();

@@ -662,7 +662,7 @@ pub fn move_wisps(scene: &mut RenderScene, frame: u32) {
         scene.effects.trails[i].position = p;
         // The orbs are the last three instances before the ribbon's pylons.
         let k = 1 + i;
-        scene.instances[k].transform =
+        scene.objects.instances[k].transform =
             Mat4::from_translation(p) * Mat4::from_scale(Vec3::splat(0.18));
     }
 }

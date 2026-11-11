@@ -73,7 +73,7 @@ impl Renderer {
             terrain_uploads: self.world.terrain.uploads,
             scatter_built: self.world.scatter.built,
             batches: batches.len() as u32,
-            instances: scene.instances.len() as u32,
+            instances: scene.objects.instances.len() as u32,
             culled,
             triangles: main_list.triangles + blended_list.triangles,
             in_view_triangles: main_list.in_view_triangles,
@@ -113,7 +113,7 @@ impl Renderer {
             decals_dropped,
             lights_2d,
             occluders_2d,
-            skinned_instances: scene.skinned_instances.len() as u32,
+            skinned_instances: scene.objects.skinned_instances.len() as u32,
             joints: joints_drawn,
             taa_history: taa_blend,
             ..Default::default()

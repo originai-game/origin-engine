@@ -142,7 +142,13 @@ impl Renderer {
             .iter()
             .filter(|b| !b.compact)
             .map(|b| b.mesh)
-            .chain(scene.skinned_instances.iter().map(|s| s.mesh.index()))
+            .chain(
+                scene
+                    .objects
+                    .skinned_instances
+                    .iter()
+                    .map(|s| s.mesh.index()),
+            )
             .chain(scene.world.scatters.iter().map(|s| s.mesh.index()))
             .collect();
         for mesh in full {

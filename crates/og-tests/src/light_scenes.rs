@@ -858,7 +858,10 @@ pub fn rect_shadow_custom_scene(cast: bool) -> (RenderScene, [Vec3; 2]) {
         params: Vec::new(),
         mode: ShaderMode::Full { lit: true },
     });
-    let drawn: Vec<_> = scene.instances[..2].iter().map(|i| i.material).collect();
+    let drawn: Vec<_> = scene.objects.instances[..2]
+        .iter()
+        .map(|i| i.material)
+        .collect();
     for m in drawn {
         assert!(scene.set_material_shader(m, Some(shader)));
     }

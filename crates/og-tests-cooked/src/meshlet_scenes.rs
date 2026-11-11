@@ -121,7 +121,7 @@ fn plant_forest(scene: &mut RenderScene, parts: &[(MeshHandle, MaterialHandle, M
 pub fn forest_scene() -> Result<RenderScene, String> {
     let (mut scene, parts) = base()?;
     plant_forest(&mut scene, &parts);
-    scene.lod_debug = true;
+    scene.objects.lod_debug = true;
     Ok(scene)
 }
 
@@ -143,7 +143,7 @@ pub fn occlusion_scene(meshlets: bool) -> Result<RenderScene, String> {
         wall,
         Mat4::from_translation(Vec3::new(-8.6, 4.0, -4.0)),
     );
-    scene.meshlets = meshlets;
+    scene.objects.meshlets = meshlets;
     Ok(scene)
 }
 
@@ -156,7 +156,7 @@ pub fn near_scene(meshlets: bool) -> Result<RenderScene, String> {
     for &(mesh, material, local) in &parts {
         scene.add_instance(mesh, material, at * local);
     }
-    scene.meshlets = meshlets;
+    scene.objects.meshlets = meshlets;
     Ok(scene)
 }
 
@@ -192,7 +192,7 @@ pub fn shadow_scene(meshlets: bool) -> Result<RenderScene, String> {
     });
     scene.camera.position = Vec3::new(0.0, 9.0, 2.0);
     scene.camera.target = Vec3::new(0.0, 0.0, -18.0);
-    scene.meshlets = meshlets;
+    scene.objects.meshlets = meshlets;
     Ok(scene)
 }
 
@@ -234,9 +234,9 @@ pub fn views_scene(meshlets: bool, bias: f32) -> Result<RenderScene, String> {
         target: ViewTarget::Viewport([0.5, 0.0, 0.5, 1.0]),
         ..Default::default()
     });
-    scene.meshlets = meshlets;
-    scene.lod_bias = bias;
-    scene.lod_debug = bias > 0.0;
+    scene.objects.meshlets = meshlets;
+    scene.objects.lod_bias = bias;
+    scene.objects.lod_debug = bias > 0.0;
     Ok(scene)
 }
 
@@ -247,7 +247,7 @@ pub fn far_scene(visibility_buffer: bool) -> Result<RenderScene, String> {
     plant_forest(&mut scene, &parts);
     scene.camera.position = Vec3::new(0.0, 40.0, 54.0);
     scene.camera.target = Vec3::new(0.0, 0.0, -50.0);
-    scene.visibility_buffer = visibility_buffer;
+    scene.objects.visibility_buffer = visibility_buffer;
     Ok(scene)
 }
 
@@ -309,7 +309,7 @@ pub fn sway_scene(sway: f32, foliage: bool) -> Result<RenderScene, String> {
     let at = Mat4::from_translation(Vec3::new(0.0, 0.0, -7.0));
     for &(mesh, material, local) in &parts {
         scene.add_instance(mesh, material, at * local);
-        scene.instances.last_mut().expect("added").sway = sway;
+        scene.objects.instances.last_mut().expect("added").sway = sway;
     }
     if foliage {
         give_foliage(&mut scene, &parts);
@@ -325,13 +325,14 @@ pub fn sway_scene(sway: f32, foliage: bool) -> Result<RenderScene, String> {
 pub fn sway_far_scene(vbuffer: bool) -> Result<RenderScene, String> {
     let mut scene = far_scene(vbuffer)?;
     let parts: Parts = scene
+        .objects
         .instances
         .iter()
         .filter(|i| scene.mesh_clusters(i.mesh).is_some())
         .map(|i| (i.mesh, i.material, Mat4::IDENTITY))
         .collect();
     give_foliage(&mut scene, &parts);
-    for i in &mut scene.instances {
+    for i in &mut scene.objects.instances {
         i.sway = 1.0;
     }
     windy(&mut scene);

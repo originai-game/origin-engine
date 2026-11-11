@@ -51,7 +51,12 @@ impl RenderBackend for Recorder {
             origin: scene.origin,
             position: scene.camera.position,
             target: scene.camera.target,
-            instances: scene.instances.iter().map(|i| i.transform).collect(),
+            instances: scene
+                .objects
+                .instances
+                .iter()
+                .map(|i| i.transform)
+                .collect(),
             lights: scene.lighting.lights.iter().map(|l| l.position).collect(),
         };
         Ok(())

@@ -348,7 +348,7 @@ pub fn array_scene() -> RenderScene {
             0.45,
             -1.2 + (i / 4) as f32 * 1.3,
         );
-        scene.instances.push(Instance {
+        scene.objects.instances.push(Instance {
             mesh: cube,
             material: tile_material,
             transform: Mat4::from_translation(at) * Mat4::from_rotation_y(0.35),
@@ -383,7 +383,7 @@ pub fn array_scene() -> RenderScene {
         ..Default::default()
     });
     for (x, layer) in [(-1.0, Some(0)), (1.0, None)] {
-        scene.instances.push(Instance {
+        scene.objects.instances.push(Instance {
             mesh: pane,
             material: glass,
             transform: Mat4::from_translation(Vec3::new(x, 0.9, 2.4))

@@ -92,7 +92,7 @@ fn taau_resolves_the_half_scale_scene_to_the_output() {
 #[ignore = "requires GPU"]
 fn a_moving_object_takes_its_history_along_its_motion_vectors() {
     let mut scene = scenes::thin_geometry();
-    let sphere = scene.instances.len() - 1;
+    let sphere = scene.objects.instances.len() - 1;
     let at = |f: u32| {
         Mat4::from_translation(Vec3::new(-2.0 + 0.2 * f as f32, 1.0, 1.0))
             * Mat4::from_scale(Vec3::splat(2.0))
@@ -107,11 +107,16 @@ fn a_moving_object_takes_its_history_along_its_motion_vectors() {
     let frames = 12;
     let (mut a, mut b) = (None, None);
     for f in 0..frames {
-        scene.instances[sphere].transform = at(f);
-        scene.previous_transforms.clear();
+        scene.objects.instances[sphere].transform = at(f);
+        scene.objects.previous_transforms.clear();
         let plain = draw(&mut without, &scene, 1);
-        scene.previous_transforms = scene.instances.iter().map(|i| i.transform).collect();
-        scene.previous_transforms[sphere] = at(f.saturating_sub(1));
+        scene.objects.previous_transforms = scene
+            .objects
+            .instances
+            .iter()
+            .map(|i| i.transform)
+            .collect();
+        scene.objects.previous_transforms[sphere] = at(f.saturating_sub(1));
         let moved = draw(&mut with, &scene, 1);
         (a, b) = (Some(moved), Some(plain));
     }

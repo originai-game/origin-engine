@@ -38,20 +38,21 @@ impl RenderScene {
         self.origin += origin;
         let d = -origin;
         let d2 = d.truncate();
-        for i in &mut self.instances {
+        for i in &mut self.objects.instances {
             moved(&mut i.transform, d);
         }
-        for m in &mut self.previous_transforms {
+        for m in &mut self.objects.previous_transforms {
             moved(m, d);
         }
         for m in self
+            .objects
             .previous_joint_palettes
             .iter_mut()
             .flat_map(|p| &mut p.matrices)
         {
             moved(m, d);
         }
-        for i in &mut self.skinned_instances {
+        for i in &mut self.objects.skinned_instances {
             moved(&mut i.transform, d);
         }
         self.camera.position += d;
@@ -117,7 +118,7 @@ impl RenderScene {
                 }
             }
         }
-        for p in &mut self.debris {
+        for p in &mut self.objects.debris {
             p.position += d;
         }
         for t in &mut self.effects.trails {

@@ -94,6 +94,7 @@ impl RenderBackend for Recorder {
     }
     fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
         let t = scene
+            .objects
             .instances
             .iter()
             .flat_map(|i| scene.material_textures(i.material))

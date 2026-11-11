@@ -102,6 +102,7 @@ impl RenderBackend for Recorder {
         s.deformed.clear();
         s.plain = 0;
         s.visual = scene
+            .objects
             .deformed_vertices
             .iter()
             .filter_map(|d| d.garment.as_ref()?.visual.as_ref())
@@ -112,10 +113,10 @@ impl RenderBackend for Recorder {
                 )
             })
             .collect();
-        for i in &scene.skinned_instances {
+        for i in &scene.objects.skinned_instances {
             match i.deformed {
                 Some(d) => {
-                    let v = &scene.deformed_vertices[d as usize];
+                    let v = &scene.objects.deformed_vertices[d as usize];
                     let n = scene.mesh(i.mesh).map_or(0, |m| m.vertices.len());
                     let weightless = scene
                         .skin(i.mesh)

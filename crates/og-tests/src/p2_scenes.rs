@@ -427,7 +427,7 @@ pub fn skinned_hooks_scene() -> RenderScene {
     scene.set_material_shader(m, Some(ripple));
     scene.set_shader_param(m, "offset", &[0.0, 0.4, 0.0]);
     scene.set_shader_param(m, "bulge", &[0.05]);
-    for s in &mut scene.skinned_instances {
+    for s in &mut scene.objects.skinned_instances {
         s.material = m;
     }
     scene.look.post.ao = Some(og_render::AmbientOcclusion {

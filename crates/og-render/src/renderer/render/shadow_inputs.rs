@@ -57,7 +57,7 @@ impl Renderer {
                 meshes.iter().map(|m| m.revision),
                 materials.iter().map(|m| m.revision),
                 |k| {
-                    let inst = &scene.instances[submission[k] as usize];
+                    let inst = &scene.objects.instances[submission[k] as usize];
                     let (mesh, material) = (inst.mesh.index(), inst.material.index());
                     let revisions = [meshes[mesh].revision, materials[material].revision];
                     let hash = shadow_cache::instance_hash(&transforms[k], inst, revisions);
@@ -85,7 +85,7 @@ impl Renderer {
                 })
                 .collect();
             self.shadows.shadow_cache.split(
-                scene.instances.len(),
+                scene.objects.instances.len(),
                 &info,
                 &submission[..sorted as usize],
                 hashes,

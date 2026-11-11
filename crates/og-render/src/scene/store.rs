@@ -40,7 +40,28 @@ impl RenderScene {
             mesh_foliage: Vec::new(),
             mesh_surfaces: Vec::new(),
             mesh_visual: Vec::new(),
-            cloth_subdivisions: 0,
+            objects: SceneObjects {
+                instances: Vec::new(),
+                instance_layers: Vec::new(),
+                instance_levels: Vec::new(),
+                previous_transforms: Vec::new(),
+                skinned_instances: Vec::new(),
+                skinned_layers: Vec::new(),
+                joint_palettes: Vec::new(),
+                previous_joint_palettes: Vec::new(),
+                previous_morph_weights: Vec::new(),
+                baked_clips: Vec::new(),
+                crowds: Vec::new(),
+                deformed_vertices: Vec::new(),
+                previous_deformed_vertices: Vec::new(),
+                impostors: Vec::new(),
+                meshlets: true,
+                lod_bias: 1.0,
+                lod_debug: false,
+                visibility_buffer: true,
+                cloth_subdivisions: 0,
+                debris: Vec::new(),
+            },
             textures: Vec::new(),
             texture_revisions: Vec::new(),
             materials: Vec::new(),
@@ -53,7 +74,6 @@ impl RenderScene {
             material_copies: Vec::new(),
             fonts: Vec::new(),
             font_revisions: Vec::new(),
-            instances: Vec::new(),
             camera: Camera::default(),
             lighting: SceneLighting {
                 light: DirectionalLight::default(),
@@ -117,8 +137,6 @@ impl RenderScene {
             terrain_data: Vec::new(),
             terrain_revisions: Vec::new(),
             terrain_edits: Vec::new(),
-            instance_layers: Vec::new(),
-            skinned_layers: Vec::new(),
             effects: SceneEffects {
                 particles: Vec::new(),
                 particle_history: Default::default(),
@@ -137,10 +155,6 @@ impl RenderScene {
                 decal_atlas: None,
             },
             camera_layers: 1,
-            meshlets: true,
-            lod_bias: 1.0,
-            lod_debug: false,
-            visibility_buffer: true,
             ui: SceneUi {
                 overlay: None,
                 ui_vectors: Vec::new(),
@@ -160,20 +174,9 @@ impl RenderScene {
                 fluids_3d: Vec::new(),
                 colliders: Vec::new(),
             },
-            debris: Vec::new(),
             css_height: 0.0,
             shake: CameraShake::default(),
-            previous_transforms: Vec::new(),
-            instance_levels: Vec::new(),
-            previous_joint_palettes: Vec::new(),
-            previous_morph_weights: Vec::new(),
-            baked_clips: Vec::new(),
-            crowds: Vec::new(),
-            deformed_vertices: Vec::new(),
-            previous_deformed_vertices: Vec::new(),
             camera_cut: false,
-            joint_palettes: Vec::new(),
-            skinned_instances: Vec::new(),
             atmosphere: SceneAtmosphere {
                 fog: None,
                 volumetric_fog: None,
@@ -186,7 +189,6 @@ impl RenderScene {
                 grass_pushers: Vec::new(),
             },
             quality: crate::RenderQuality::default(),
-            impostors: Vec::new(),
             texture_filters: Vec::new(),
             texture_sizes: Default::default(),
             texture_normals: Vec::new(),
@@ -275,10 +277,16 @@ impl RenderScene {
             }
         }
         let draws = self
+            .objects
             .instances
             .iter()
             .map(|i| (i.mesh, i.material))
-            .chain(self.skinned_instances.iter().map(|i| (i.mesh, i.material)));
+            .chain(
+                self.objects
+                    .skinned_instances
+                    .iter()
+                    .map(|i| (i.mesh, i.material)),
+            );
         for (k, (mesh, material)) in draws.enumerate() {
             if !m.live(mesh.index(), mesh.generation()) {
                 return Some(format!("instance {k}: mesh {} was removed", mesh.index()));

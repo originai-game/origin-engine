@@ -220,7 +220,7 @@ impl RenderScene {
 
     /// Adds one instance (the same as pushing onto [`RenderScene::instances`]).
     pub fn add_instance(&mut self, mesh: MeshHandle, material: MaterialHandle, transform: Mat4) {
-        self.instances.push(Instance {
+        self.objects.instances.push(Instance {
             mesh,
             material,
             transform,

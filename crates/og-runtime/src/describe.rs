@@ -92,7 +92,7 @@ impl RuntimeView {
                 .ids
                 .instances
                 .iter()
-                .take(scene.instances.len())
+                .take(scene.objects.instances.len())
                 .map(|&e| id_of(e))
                 .collect(),
             ..Default::default()
@@ -101,6 +101,7 @@ impl RuntimeView {
         let by_palette: IdMap<u32, u64> =
             IdMap::from_iter(rs.atmo.palettes.iter().map(|(&e, &p)| (p, e)));
         sources.skinned = scene
+            .objects
             .skinned_instances
             .iter()
             .map(|s| by_palette.get(&s.palette).map_or(0, |&e| id_of(e)))

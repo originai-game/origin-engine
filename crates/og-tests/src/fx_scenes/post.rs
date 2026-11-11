@@ -857,12 +857,17 @@ fn motion_camera(frame: u32) -> Camera {
 /// transforms for per-object motion vectors.
 pub fn move_blur(scene: &mut RenderScene, frame: u32) {
     let prev = frame.saturating_sub(1);
-    scene.previous_transforms = scene.instances.iter().map(|i| i.transform).collect();
+    scene.objects.previous_transforms = scene
+        .objects
+        .instances
+        .iter()
+        .map(|i| i.transform)
+        .collect();
     // Instance 0 is the ground.
-    scene.previous_transforms[1] = spinner(prev);
-    scene.previous_transforms[2] = racer(prev);
-    scene.instances[1].transform = spinner(frame);
-    scene.instances[2].transform = racer(frame);
+    scene.objects.previous_transforms[1] = spinner(prev);
+    scene.objects.previous_transforms[2] = racer(prev);
+    scene.objects.instances[1].transform = spinner(frame);
+    scene.objects.instances[2].transform = racer(frame);
     scene.camera = motion_camera(frame);
     tick_all(scene, frame as u64);
 }

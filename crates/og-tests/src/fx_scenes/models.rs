@@ -290,9 +290,10 @@ pub fn skinning_scene() -> RenderScene {
     for i in 0..5 {
         let bend = -0.45 + i as f32 * 0.22;
         scene
+            .objects
             .joint_palettes
             .push(bend_palette(bend, i as f32 * 0.2));
-        scene.skinned_instances.push(SkinnedInstance::new(
+        scene.objects.skinned_instances.push(SkinnedInstance::new(
             cylinder,
             flesh,
             Mat4::from_translation(Vec3::new(-3.0 + i as f32 * 1.5, 0.0, 0.0)),
@@ -346,7 +347,7 @@ pub fn crowd_culling_scene() -> RenderScene {
         grey,
         Mat4::from_translation(Vec3::new(0.0, 5.0, -2.6)),
     );
-    scene.baked_clips.push(og_render::BakedClip {
+    scene.objects.baked_clips.push(og_render::BakedClip {
         joints: CYLINDER_BONES as u32,
         frames: [0.0, 0.3, 0.6]
             .iter()
@@ -367,16 +368,16 @@ pub fn crowd_culling_scene() -> RenderScene {
                 previous_frame: f,
                 previous_transform: at,
             });
-            scene.skinned_instances.push(inst);
+            scene.objects.skinned_instances.push(inst);
         }
     }
-    scene.joint_palettes.push(JointPalette::from(vec![
+    scene.objects.joint_palettes.push(JointPalette::from(vec![
         Mat4::from_translation(Vec3::new(
             12.0, 0.0, 0.0
         ));
         CYLINDER_BONES
     ]));
-    scene.skinned_instances.push(SkinnedInstance::new(
+    scene.objects.skinned_instances.push(SkinnedInstance::new(
         h,
         orange,
         Mat4::from_translation(Vec3::new(-12.0, 0.0, 2.2)),
@@ -420,7 +421,7 @@ pub fn model_flash_scene() -> Result<RenderScene, String> {
                 * Mat4::from_rotation_y(crate::scenes::TRICKSTER_TO_Z + 0.5)
                 * Mat4::from_scale(Vec3::splat(scale));
         for &(mesh, material) in &parts.parts {
-            scene.instances.push(Instance {
+            scene.objects.instances.push(Instance {
                 mesh,
                 material,
                 transform: m,
@@ -441,6 +442,7 @@ pub fn model_flash_scene() -> Result<RenderScene, String> {
     });
     for i in 0..2u32 {
         scene
+            .objects
             .joint_palettes
             .push(bend_palette(-0.2 + i as f32 * 0.4, 0.3));
         let mut inst = SkinnedInstance::new(
@@ -457,7 +459,7 @@ pub fn model_flash_scene() -> Result<RenderScene, String> {
                 ..InstanceFx::NONE
             };
         }
-        scene.skinned_instances.push(inst);
+        scene.objects.skinned_instances.push(inst);
     }
     scene.camera = Camera {
         position: Vec3::new(0.0, 2.4, 6.4),

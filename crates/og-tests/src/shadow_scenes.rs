@@ -199,10 +199,15 @@ pub fn pan_and_roll_sphere(scene: &mut RenderScene, frame: u32) {
             * Mat4::from_rotation_z(-0.04 * f as f32)
             * Mat4::from_scale(Vec3::splat(2.0))
     };
-    let sphere = scene.instances.len() - 1;
-    scene.instances[sphere].transform = at(frame);
-    scene.previous_transforms = scene.instances.iter().map(|i| i.transform).collect();
-    scene.previous_transforms[sphere] = at(frame.saturating_sub(1));
+    let sphere = scene.objects.instances.len() - 1;
+    scene.objects.instances[sphere].transform = at(frame);
+    scene.objects.previous_transforms = scene
+        .objects
+        .instances
+        .iter()
+        .map(|i| i.transform)
+        .collect();
+    scene.objects.previous_transforms[sphere] = at(frame.saturating_sub(1));
 }
 
 /// A roofed stone room (a crypt) on a lit field: four walls with a door in
@@ -304,7 +309,7 @@ pub fn crypt_scene() -> RenderScene {
         ..Default::default()
     });
     let lantern = scene.add_mesh(shapes::cuboid(Vec3::new(0.22, 0.3, 0.22)));
-    scene.instances.push(og_render::Instance {
+    scene.objects.instances.push(og_render::Instance {
         mesh: lantern,
         material: glass,
         transform: Mat4::from_translation(lamp),
@@ -375,18 +380,18 @@ pub fn shadow_flags_scene() -> Result<FlagsScene, String> {
     let parts = model.add_to(&mut scene);
     let scale = 1.8 / (model.max - model.min).max_element().max(1e-3);
     let trickster = |scene: &mut RenderScene, x: f32, z: f32, yaw: f32| {
-        let first = scene.instances.len();
+        let first = scene.objects.instances.len();
         parts.instance(
             scene,
             Mat4::from_translation(Vec3::new(x, -model.min.y * scale, z))
                 * Mat4::from_rotation_y(crate::scenes::TRICKSTER_TO_Z + yaw)
                 * Mat4::from_scale(Vec3::splat(scale)),
         );
-        first..scene.instances.len()
+        first..scene.objects.instances.len()
     };
     let model_as_is = trickster(&mut scene, -1.6, 2.2, 0.4);
     let model_no_cast = trickster(&mut scene, 2.4, 2.2, -0.4);
-    let wall = scene.instances.len();
+    let wall = scene.objects.instances.len();
     let slab = scene.add_mesh(shapes::cuboid(Vec3::new(0.5, 5.0, 6.0)));
     scene.add_instance(
         slab,
@@ -395,7 +400,7 @@ pub fn shadow_flags_scene() -> Result<FlagsScene, String> {
     );
     let cube = scene.add_mesh(shapes::cuboid(Vec3::splat(1.0)));
     let block = |scene: &mut RenderScene, x: f32| {
-        let i = scene.instances.len();
+        let i = scene.objects.instances.len();
         scene.add_instance(
             cube,
             red,
@@ -408,10 +413,10 @@ pub fn shadow_flags_scene() -> Result<FlagsScene, String> {
     let box_no_receive = block(&mut scene, -0.4);
     let model_no_receive = trickster(&mut scene, -1.8, -3.0, 0.2);
     for i in model_no_cast.clone() {
-        scene.instances[i].cast_shadows = false;
+        scene.objects.instances[i].cast_shadows = false;
     }
     for i in model_no_receive.clone().chain([box_no_receive]) {
-        scene.instances[i].receive_shadows = false;
+        scene.objects.instances[i].receive_shadows = false;
     }
     let sun = Vec3::new(0.85, 0.48, 0.12).normalize();
     scene.lighting.light = DirectionalLight {
@@ -484,7 +489,7 @@ pub fn local_contact_scene(point: bool, shadows: bool) -> RenderScene {
 pub fn twin_floor_scene(point: bool, shadows: bool) -> RenderScene {
     let mut scene = contact_room(point, shadows);
     let under = scene.add_mesh(shapes::plane(12.0, 1.0));
-    let grey = scene.instances[0].material;
+    let grey = scene.objects.instances[0].material;
     scene.add_instance(under, grey, Mat4::from_rotation_x(std::f32::consts::PI));
     scene
 }

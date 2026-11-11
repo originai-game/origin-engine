@@ -81,11 +81,13 @@ impl RenderBackend for Recorder {
     fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
         self.0.borrow_mut().push(Seen {
             clips: scene
+                .objects
                 .baked_clips
                 .iter()
                 .map(|c| (c.joints, c.frame_count()))
                 .collect(),
             poses: scene
+                .objects
                 .crowds
                 .iter()
                 .flat_map(|c| &c.members)
@@ -94,9 +96,9 @@ impl RenderBackend for Recorder {
                     Some((b.clip, b.frame, b.previous_clip, b.previous_frame))
                 })
                 .collect(),
-            crowds: scene.crowds.iter().map(|c| c.parts.len()).collect(),
-            skinned: scene.skinned_instances.len(),
-            palettes: scene.joint_palettes.len(),
+            crowds: scene.objects.crowds.iter().map(|c| c.parts.len()).collect(),
+            skinned: scene.objects.skinned_instances.len(),
+            palettes: scene.objects.joint_palettes.len(),
         });
         Ok(())
     }

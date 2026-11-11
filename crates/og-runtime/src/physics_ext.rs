@@ -817,6 +817,7 @@ pub(crate) fn draw_ragdolls(
             continue;
         };
         let Some(matrices) = scene
+            .objects
             .joint_palettes
             .get_mut(palette as usize)
             .map(|p| &mut p.matrices)

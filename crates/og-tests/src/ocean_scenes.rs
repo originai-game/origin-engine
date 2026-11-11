@@ -125,7 +125,7 @@ fn wake_cut(frame: u32) -> og_render::WaterCut {
 pub fn wake_update(scene: &mut RenderScene, frame: u32) {
     scene.tick = TICK + u64::from(frame);
     let at = wake_boat(frame);
-    if let Some(boat) = scene.instances.first_mut() {
+    if let Some(boat) = scene.objects.instances.first_mut() {
         boat.transform = Mat4::from_translation(Vec3::new(at.x, WAKE_HALF.y - WAKE_DRAFT, at.y));
     }
     let ticks = (frame.saturating_sub(1)..=frame)

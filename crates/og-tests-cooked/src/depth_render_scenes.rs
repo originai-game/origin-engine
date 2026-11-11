@@ -133,7 +133,7 @@ pub fn lod_scene() -> Result<LodScene, String> {
                 Some(l) if level > 0 && !l.is_empty() => l[(level - 1).min(l.len() - 1)].0,
                 _ => mesh,
             };
-            scene.instances.push(og_render::Instance {
+            scene.objects.instances.push(og_render::Instance {
                 mesh,
                 material,
                 transform: at * local,

@@ -34,7 +34,7 @@ impl Renderer {
             previous_valid,
         }: InstanceUploadInputs<'_>,
     ) -> (u64, Option<wgpu::CommandBuffer>) {
-        let previous_sway = if self.instances.previous_sway.len() == scene.instances.len() {
+        let previous_sway = if self.instances.previous_sway.len() == scene.objects.instances.len() {
             self.instances.previous_sway.as_slice()
         } else {
             &[]
@@ -99,9 +99,9 @@ impl Renderer {
             let mut prev = vec![instances::GpuTransform::default(); cpu_instances.len()];
             for k in drawn.iter().flat_map(|r| r.clone()) {
                 let i = origins[offset + k] as usize;
-                let inst = &scene.instances[i];
+                let inst = &scene.objects.instances[i];
                 let p = if previous_valid {
-                    scene.previous_transforms[i]
+                    scene.objects.previous_transforms[i]
                 } else {
                     inst.transform
                 };
@@ -139,7 +139,7 @@ impl Renderer {
             let record = |k: usize| -> Option<(usize, glam::Mat4)> {
                 let i = origins[k];
                 let &(p, local) = debris_instances.get(&i)?;
-                let inst = &scene.instances[i as usize];
+                let inst = &scene.objects.instances[i as usize];
                 let d = Self::dequant(meshes, materials, inst.mesh.index(), inst.material.index());
                 Some((p, d.map_or(local, |d| local * d)))
             };

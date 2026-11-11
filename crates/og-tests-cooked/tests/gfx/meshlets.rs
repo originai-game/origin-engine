@@ -92,7 +92,12 @@ fn a_moving_instance_takes_its_history_along_on_every_culling_path() {
     ] {
         let mut scene = og_tests_cooked::meshlet_scenes::near_scene(meshlets).expect("the tree");
         // Instance 0 is the ground; the rest are the tree's parts.
-        let rest: Vec<glam::Mat4> = scene.instances.iter().map(|i| i.transform).collect();
+        let rest: Vec<glam::Mat4> = scene
+            .objects
+            .instances
+            .iter()
+            .map(|i| i.transform)
+            .collect();
         let at = |f: u32| {
             glam::Mat4::from_translation(glam::Vec3::new(-1.5 + 0.25 * f as f32, 0.0, 0.0))
         };
@@ -111,16 +116,16 @@ fn a_moving_instance_takes_its_history_along_on_every_culling_path() {
                     .map(|(k, m)| if k == 0 { *m } else { at(f) * *m })
                     .collect()
             };
-            for (inst, m) in scene.instances.iter_mut().zip(pose(f)) {
+            for (inst, m) in scene.objects.instances.iter_mut().zip(pose(f)) {
                 inst.transform = m;
             }
-            scene.previous_transforms.clear();
+            scene.objects.previous_transforms.clear();
             let plain = draw(&mut without, &scene);
-            scene.previous_transforms = pose(f.saturating_sub(1));
+            scene.objects.previous_transforms = pose(f.saturating_sub(1));
             let moved = draw(&mut with, &scene);
             (a, b) = (Some(moved), Some(plain));
         }
-        scene.previous_transforms.clear();
+        scene.objects.previous_transforms.clear();
         let mut fresh = Renderer::new_blocking(&desc(culling)).expect("renderer");
         let still = draw(&mut fresh, &scene);
         let (d_with, d_without) = (diff(&a.unwrap(), &still), diff(&b.unwrap(), &still));
