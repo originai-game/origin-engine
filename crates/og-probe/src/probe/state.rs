@@ -117,3 +117,278 @@ pub(crate) struct Saves {
     pub(super) next_snapshot: u64,
     pub(super) sweeping: Option<SweepJob>,
 }
+
+impl Clock {
+    /// Whether the gate holds the next tick. A gate that moved `Time`
+    /// restored a peer's snapshot (lockstep's start or a late join): the
+    /// world now runs on the room's shared clock, and the scheduled steps
+    /// stay on their ticks of it, so every peer of a room runs the same
+    /// script step (a `quit`, an `expect`) on the same tick. A step whose
+    /// tick the jump passed runs at the next tick, in order.
+    pub(super) fn held(&mut self, world: &mut World) -> bool {
+        let Some(gate) = self.gate.as_mut() else {
+            return false;
+        };
+        let before = world.time().tick;
+        let go = gate(world);
+        let after = world.time().tick;
+        if after < before {
+            self.replay_until = self.replay_until.max(before);
+        }
+        !go
+    }
+
+    /// Whether the next tick runs again after a rollback's rewind.
+    pub(super) fn replaying(&self, world: &World) -> bool {
+        world.time().tick < self.replay_until
+    }
+}
+
+impl Schedule {
+    /// Polls a screenshot whose frame is in flight and writes it when it
+    /// lands; true while it still waits.
+    pub(super) fn shot_waits(
+        &mut self,
+        world: &World,
+        host: &mut state::Host,
+        out: &mut state::Out,
+    ) -> bool {
+        let Some(shot) = self.shot.as_mut() else {
+            return false;
+        };
+        let frame = match host.capture.as_mut() {
+            Some(capture) => capture.capture(world, shot.width, shot.height),
+            None => None,
+        };
+        shot.polls += 1;
+        if frame.is_none() && shot.polls < MAX_CAPTURE_POLLS {
+            return true;
+        }
+        let shot = self.shot.take().expect("waiting");
+        match frame {
+            Some(frame) => out.emit(
+                shot.at,
+                Output {
+                    tick: shot.tick,
+                    action: "screenshot".into(),
+                    path: shot.path,
+                    payload: Payload::Png {
+                        width: frame.width,
+                        height: frame.height,
+                        bytes: frame.png,
+                    },
+                },
+            ),
+            None => out.note(
+                shot.tick,
+                true,
+                format!(
+                    "{}s screenshot: the renderer produced no frame in {MAX_CAPTURE_POLLS} frames",
+                    shot.at
+                ),
+            ),
+        }
+        false
+    }
+}
+
+impl Commands {
+    /// [`Probe::register_command`].
+    pub(super) fn register_command(
+        &mut self,
+        name: &str,
+        desc: CommandDesc,
+        handler: impl Fn(&mut World, &[String]) -> Result<(), String> + 'static,
+    ) -> og_core::Result<()> {
+        let valid = command::parse(&format!("0:{name}"))
+            .is_ok_and(|s| s.len() == 1 && s[0].action == name && s[0].args.is_empty());
+        if !valid {
+            return Err(Error::new(
+                ErrorKind::Invalid,
+                format!("'{name}' is not an action name (snake_case, such as `spawn_wave`)"),
+            ));
+        }
+        if CORE_ACTIONS.iter().any(|(core, _, _)| *core == name) {
+            return Err(Error::new(
+                ErrorKind::Invalid,
+                format!("'{name}' is a core action; register under another name"),
+            ));
+        }
+        if self.registered.contains_key(name) {
+            return Err(Error::new(
+                ErrorKind::Invalid,
+                format!("'{name}' is already registered"),
+            ));
+        }
+        self.registered.insert(
+            name.to_owned(),
+            Registered {
+                desc,
+                handler: Handler::Act(Rc::new(handler)),
+            },
+        );
+        Ok(())
+    }
+
+    /// [`Probe::register_dump`].
+    pub(super) fn register_dump(
+        &mut self,
+        name: &str,
+        desc: CommandDesc,
+        path_arg: usize,
+        handler: impl Fn(&World, &[String]) -> Result<Value, String> + 'static,
+    ) -> og_core::Result<()> {
+        // A dump only observes the world for a tool: a publish build keeps
+        // none, so the handlers the engine's modules register are not built.
+        #[cfg(feature = "publish")]
+        let _ = (name, desc, path_arg, handler);
+        #[cfg(not(feature = "publish"))]
+        {
+            self.register_command(name, desc, |_, _| Ok(()))?;
+            if let Some(r) = self.registered.get_mut(name) {
+                r.handler = Handler::Dump(Rc::new(handler), path_arg);
+            }
+        }
+        Ok(())
+    }
+
+    /// [`Probe::help`].
+    pub(super) fn help(&self) -> Vec<CommandInfo> {
+        let core = CORE_ACTIONS.iter().map(|(name, usage, doc)| CommandInfo {
+            name: (*name).to_owned(),
+            usage: (*usage).to_owned(),
+            doc: (*doc).to_owned(),
+            core: true,
+        });
+        let registered = self.registered.iter().map(|(name, r)| CommandInfo {
+            name: name.clone(),
+            usage: if r.desc.usage.is_empty() {
+                name.clone()
+            } else {
+                format!("{name}:{}", r.desc.usage)
+            },
+            doc: r.desc.doc.clone(),
+            core: false,
+        });
+        core.chain(registered).collect()
+    }
+
+    /// [`Probe::act`].
+    pub(super) fn act(
+        &mut self,
+        world: &mut World,
+        action: &str,
+        args: &[String],
+    ) -> Option<Result<(), String>> {
+        match self.registered.get(action).map(|r| r.handler.clone())? {
+            Handler::Act(handler) => Some(handler(world, args)),
+            Handler::Dump(..) => Some(Err(format!(
+                "`{action}` is a dump; run it through a commands script"
+            ))),
+        }
+    }
+
+    /// [`Probe::registered`].
+    pub(super) fn registered(&self) -> Vec<String> {
+        self.registered.keys().cloned().collect()
+    }
+
+    pub(super) fn knows(&self, action: &str) -> bool {
+        CORE_ACTIONS.iter().any(|(name, _, _)| *name == action)
+            || self.registered.contains_key(action)
+    }
+}
+
+impl Out {
+    /// Hands an output a step made to the host. A file an earlier step of
+    /// this script already wrote is not overwritten: the second is written
+    /// beside it as `<stem>-2.<ext>` (then `-3`, ...), with a warning naming
+    /// both steps, so a check reading the first finds what it expects and
+    /// the clash is in the run's warnings instead of far from its cause.
+    pub(super) fn emit(&mut self, at: f64, mut output: Output) {
+        let named = output.path.is_some();
+        let wanted = output.file_name();
+        let mut name = wanted.clone();
+        let mut n = 1;
+        while self.written.contains_key(&name) {
+            n += 1;
+            name = suffixed(&wanted, n);
+        }
+        if name != wanted {
+            output.path = Some(name.clone());
+            // Unnamed outputs are the probe's own names: suffixed quietly.
+            if named {
+                let (first_at, first_action) = &self.written[&wanted];
+                self.note(
+                    output.tick,
+                    true,
+                    format!(
+                        "{at}s {}: '{wanted}' was already written by the {first_at}s {first_action} step, so this one is '{name}'; give each step its own file name",
+                        output.action
+                    ),
+                );
+            }
+        }
+        self.written.insert(name, (at, output.action.clone()));
+        self.outputs.push(output);
+    }
+
+    pub(crate) fn note(&mut self, tick: u64, warning: bool, text: String) {
+        self.log.push(LogLine {
+            tick,
+            warning,
+            text,
+        });
+    }
+}
+
+impl Inject {
+    pub(super) fn deliver(
+        &mut self,
+        world: &mut World,
+        input: &mut dyn InputSink,
+        event: &InjectedInput,
+    ) -> bool {
+        let taken = self.filter.as_mut().is_some_and(|f| f(world, event));
+        let accepted = taken || input.inject_at(world, event, self.stamp);
+        if accepted {
+            match event {
+                InjectedInput::Pointer { x, y, id: 0, .. } | InjectedInput::Wheel { x, y, .. } => {
+                    self.pointer = (*x, *y);
+                }
+                InjectedInput::Pointer { .. }
+                | InjectedInput::Key { .. }
+                | InjectedInput::Gamepad(_)
+                | InjectedInput::Text { .. }
+                | InjectedInput::A11y { .. }
+                | InjectedInput::Intent { .. }
+                | InjectedInput::PointerLock { .. } => {}
+            }
+        }
+        accepted
+    }
+
+    pub(super) fn pointer_event(
+        &mut self,
+        world: &mut World,
+        input: &mut dyn InputSink,
+        action: PointerAction,
+        button: PointerButton,
+    ) -> Result<(), String> {
+        let (x, y) = self.pointer;
+        let event = InjectedInput::Pointer {
+            action,
+            x,
+            y,
+            button,
+            id: 0,
+            movement_x: 0.0,
+            movement_y: 0.0,
+        };
+        if self.deliver(world, input, &event) {
+            Ok(())
+        } else {
+            Err("the input layer refused the pointer event".into())
+        }
+    }
+}
