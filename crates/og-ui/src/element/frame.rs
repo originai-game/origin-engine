@@ -26,11 +26,17 @@ fn painted(n: &Node) -> bool {
             || !n.shapes.is_empty())
 }
 
-impl Ui {
+impl crate::ui::Layout {
     /// Overlaps nothing declared (docs/ui.md §2): an absolute, anchored
     /// or floating-group element over another element's drawing, and
     /// siblings in the flow over each other.
-    pub(crate) fn find_overlaps(&self, order: &[usize]) -> Vec<Overlap> {
+    pub(crate) fn find_overlaps(
+        &self,
+        order: &[usize],
+        env: &crate::ui::Env,
+        paint: &crate::ui::Paint,
+        tree: &crate::ui::Tree,
+    ) -> Vec<Overlap> {
         const MAX: usize = 64;
         let mut out: Vec<Overlap> = Vec::new();
         let mut seen: std::collections::BTreeSet<(usize, usize)> = Default::default();
@@ -40,7 +46,7 @@ impl Ui {
         let declared = |a: usize, b_path: &str| -> bool {
             let mut j = a;
             while j != NONE {
-                if self.tree.nodes[j]
+                if tree.nodes[j]
                     .props
                     .overlaps
                     .iter()
@@ -48,7 +54,7 @@ impl Ui {
                 {
                     return true;
                 }
-                j = self.tree.nodes[j].parent;
+                j = tree.nodes[j].parent;
             }
             false
         };
@@ -60,8 +66,8 @@ impl Ui {
             let mut m = Affine::IDENTITY;
             let mut j = i;
             while j != NONE {
-                let n = &self.tree.nodes[j];
-                let transform = if self.env.direction == og_i18n::Direction::Rtl {
+                let n = &tree.nodes[j];
+                let transform = if env.direction == og_i18n::Direction::Rtl {
                     n.props.transform.mirrored()
                 } else {
                     n.props.transform
@@ -72,9 +78,9 @@ impl Ui {
                 j = n.parent;
             }
             if m.is_identity() {
-                self.tree.nodes[i].rect
+                tree.nodes[i].rect
             } else {
-                m.map_rect(&self.tree.nodes[i].rect)
+                m.map_rect(&tree.nodes[i].rect)
             }
         };
         // What of a node a scroll leaves in view: its rectangle cut by every
@@ -83,7 +89,7 @@ impl Ui {
         // children to its shape (a map's view larger than its frame draws
         // only inside the frame).
         let clips = |j: usize| -> bool {
-            self.paint.draw_of(j, &self.tree).is_some_and(|d| {
+            paint.draw_of(j, tree).is_some_and(|d| {
                 matches!(
                     d.clip,
                     crate::paint::Clip::Shape | crate::paint::Clip::Cut(_)
@@ -95,15 +101,15 @@ impl Ui {
         // other, every element of a placed group against every element), and
         // each answer walks its ancestors.
         let shown_at: std::cell::RefCell<Vec<Option<Rect>>> =
-            std::cell::RefCell::new(vec![None; self.tree.nodes.len()]);
+            std::cell::RefCell::new(vec![None; tree.nodes.len()]);
         let shown = |i: usize| -> Rect {
             if let Some(r) = shown_at.borrow()[i] {
                 return r;
             }
             let mut r = posed(i);
-            let mut j = self.tree.nodes[i].parent;
+            let mut j = tree.nodes[i].parent;
             while j != NONE {
-                let n = &self.tree.nodes[j];
+                let n = &tree.nodes[j];
                 if n.el.scroll || n.el.scroll_x || clips(j) {
                     r = r.intersect(&posed(j));
                 }
@@ -116,7 +122,7 @@ impl Ui {
         // nothing (a counter's invisible sizer, holding its widest value's
         // room) covers nothing.
         let seen_at: std::cell::RefCell<Vec<Option<bool>>> =
-            std::cell::RefCell::new(vec![None; self.tree.nodes.len()]);
+            std::cell::RefCell::new(vec![None; tree.nodes.len()]);
         let seen_at_all = |i: usize| -> bool {
             if let Some(s) = seen_at.borrow()[i] {
                 return s;
@@ -124,11 +130,11 @@ impl Ui {
             let mut j = i;
             let mut s = true;
             while j != NONE {
-                if self.tree.nodes[j].props.opacity <= 0.0 {
+                if tree.nodes[j].props.opacity <= 0.0 {
                     s = false;
                     break;
                 }
-                j = self.tree.nodes[j].parent;
+                j = tree.nodes[j].parent;
             }
             seen_at.borrow_mut()[i] = Some(s);
             s
@@ -137,18 +143,17 @@ impl Ui {
             let mut set = std::collections::BTreeSet::new();
             while j != NONE {
                 set.insert(j);
-                j = self.tree.nodes[j].parent;
+                j = tree.nodes[j].parent;
             }
             set
         };
         // Layers meant to be over the rest (dialogs, menus, tips, toasts).
-        let over_layers: std::collections::BTreeSet<usize> = self
-            .tree
+        let over_layers: std::collections::BTreeSet<usize> = tree
             .floating
             .iter()
             .copied()
-            .filter(|&f| !matches!(self.tree.nodes[f].float, Float::Anchored { .. }))
-            .flat_map(|f| preorder(&self.tree.nodes, f))
+            .filter(|&f| !matches!(tree.nodes[f].float, Float::Anchored { .. }))
+            .flat_map(|f| preorder(&tree.nodes, f))
             .collect();
         let placed: Vec<usize> = order
             .iter()
@@ -156,28 +161,25 @@ impl Ui {
             .filter(|&i| {
                 i != 0
                     && !over_layers.contains(&i)
-                    && (self.tree.nodes[i].props.out_of_flow()
-                        || (self.tree.nodes[i].parent == NONE
-                            && matches!(self.tree.nodes[i].float, Float::Anchored { .. })))
+                    && (tree.nodes[i].props.out_of_flow()
+                        || (tree.nodes[i].parent == NONE
+                            && matches!(tree.nodes[i].float, Float::Anchored { .. })))
             })
             .collect();
         let others: Vec<usize> = order
             .iter()
             .copied()
             .filter(|&i| {
-                i != 0
-                    && !over_layers.contains(&i)
-                    && painted(&self.tree.nodes[i])
-                    && seen_at_all(i)
+                i != 0 && !over_layers.contains(&i) && painted(&tree.nodes[i]) && seen_at_all(i)
             })
             .collect();
         for &p in &placed {
             let sub: std::collections::BTreeSet<usize> =
-                preorder(&self.tree.nodes, p).into_iter().collect();
+                preorder(&tree.nodes, p).into_iter().collect();
             let up = ancestors(p);
             for &a in sub
                 .iter()
-                .filter(|&&a| painted(&self.tree.nodes[a]) && seen_at_all(a))
+                .filter(|&&a| painted(&tree.nodes[a]) && seen_at_all(a))
             {
                 for &o in &others {
                     if sub.contains(&o) || up.contains(&o) {
@@ -191,7 +193,7 @@ impl Ui {
                     if !seen.insert(pair) || out.len() >= MAX {
                         continue;
                     }
-                    let (pa, po) = (self.tree.path_of(a), self.tree.path_of(o));
+                    let (pa, po) = (tree.path_of(a), tree.path_of(o));
                     if declared(a, &po) || declared(o, &pa) {
                         continue;
                     }
@@ -207,7 +209,7 @@ impl Ui {
         // Siblings in the flow of a row or column (a stack overlays them on
         // purpose; a grid's cells are its own).
         for &i in order {
-            let n = &self.tree.nodes[i];
+            let n = &tree.nodes[i];
             if n.props.layout != LayoutMode::Flex
                 || n.children.len() < 2
                 || over_layers.contains(&i)
@@ -251,7 +253,7 @@ impl Ui {
                     if !area(&r) || out.len() >= MAX {
                         continue;
                     }
-                    let (pa, pb) = (self.tree.path_of(a), self.tree.path_of(b));
+                    let (pa, pb) = (tree.path_of(a), tree.path_of(b));
                     if declared(a, &pb) || declared(b, &pa) {
                         continue;
                     }

@@ -127,7 +127,8 @@ impl Ui {
     pub fn overlaps(&self) -> &[Overlap] {
         self.paint.inspection.overlaps.get_or_init(|| {
             let ui = self.finished();
-            ui.find_overlaps(&ui.inspected_preorder())
+            ui.layout
+                .find_overlaps(&ui.inspected_preorder(), &ui.env, &ui.paint, &ui.tree)
         })
     }
 

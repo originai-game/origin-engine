@@ -306,16 +306,23 @@ impl Ui {
         // A gutter follows its node's props and last frame's scroll range.
         if whole {
             for i in 0..self.tree.nodes.len() {
-                self.apply_gutter(i);
+                self.layout
+                    .apply_gutter(i, &self.env, &self.interaction, &mut self.tree);
             }
         } else {
             for k in 0..self.tree.emitted.len() {
-                self.apply_gutter(self.tree.emitted[k]);
+                self.layout.apply_gutter(
+                    self.tree.emitted[k],
+                    &self.env,
+                    &self.interaction,
+                    &mut self.tree,
+                );
             }
             for k in 0..self.layout.cache.scrollers.len() {
                 let i = self.layout.cache.scrollers[k];
                 if i < self.tree.nodes.len() {
-                    self.apply_gutter(i);
+                    self.layout
+                        .apply_gutter(i, &self.env, &self.interaction, &mut self.tree);
                 }
             }
         }
@@ -1341,21 +1348,26 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Layout {
     /// A vertical scroller's bar gutter on its right padding, as its last
     /// frame's range needs it: replaced, never added again, so a retained
     /// scroller that is not built again keeps one gutter.
-    pub(crate) fn apply_gutter(&mut self, i: usize) {
-        let node = &self.tree.nodes[i];
+    pub(crate) fn apply_gutter(
+        &mut self,
+        i: usize,
+        env: &crate::ui::Env,
+        interaction: &crate::ui::Interaction,
+        tree: &mut crate::ui::Tree,
+    ) {
+        let node = &tree.nodes[i];
         let gutter = if node.el.scroll && !node.el.scroll_x && !node.el.hide_bars {
-            self.interaction
-                .bar_gutter(node.key, node.el.scroll_css, &self.env)
+            interaction.bar_gutter(node.key, node.el.scroll_css, env)
         } else {
             0.0
         };
         // `scrollbar-gutter: stable both-edges`: the same room at the start.
         let both = node.el.scroll_css.gutter == 2;
-        let node = &mut self.tree.nodes[i];
+        let node = &mut tree.nodes[i];
         node.el.padding.right += gutter - node.gutter;
         if both {
             node.el.padding.left += gutter - node.gutter;
