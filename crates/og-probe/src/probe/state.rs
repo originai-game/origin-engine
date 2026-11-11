@@ -99,3 +99,14 @@ pub(crate) struct Checks {
     pub(crate) events: BTreeMap<String, Watch>,
     pub(crate) event_base: BTreeMap<String, u64>,
 }
+
+/// The host's last measurements, for `state().timings`.
+pub(crate) struct Stats {
+    /// The last tick's milliseconds per system and per render pass.
+    pub(super) systems_ms: Vec<(String, f64)>,
+    pub(super) passes_ms: Vec<(String, f64)>,
+    pub(super) gpu_passes_ms: Vec<(String, f64)>,
+    pub(super) step_ms: f64,
+    pub(super) render_ms: f64,
+    pub(super) triangles: u64,
+}
