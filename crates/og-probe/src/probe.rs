@@ -244,8 +244,8 @@ pub struct Probe {
     passes_ms: Vec<(String, f64)>,
     gpu_passes_ms: Vec<(String, f64)>,
     commands: BTreeMap<String, Registered>,
-    queue: BTreeMap<(u64, u64), Queued>,
-    seq: u64,
+    /// The script's steps waiting to run, and the screenshot that holds them.
+    pub(crate) schedule: state::Schedule,
     snapshots: VecDeque<(String, Saved)>,
     next_snapshot: u64,
     /// Whether the next tick runs: the holds and the host's hooks around a tick.
@@ -260,8 +260,6 @@ pub struct Probe {
     inbox: Inbox,
     /// The sub-tick stamp of the input being delivered (InputSink::inject_at).
     stamp: f32,
-    /// A screenshot waiting on its frame: it holds the clock and later steps.
-    shot: Option<Shot>,
     sweeping: Option<SweepJob>,
     /// The tick of the last unnamed `get` and how many it has had, so a
     /// second one on the same tick writes `get-<tick>-2.json`.
@@ -499,8 +497,11 @@ impl Probe {
             gpu_passes_ms: Vec::new(),
             stamp: 0.0,
             commands: BTreeMap::new(),
-            queue: BTreeMap::new(),
-            seq: 0,
+            schedule: state::Schedule {
+                queue: BTreeMap::new(),
+                seq: 0,
+                shot: None,
+            },
             snapshots: VecDeque::new(),
             next_snapshot: 1,
             clock: state::Clock {
@@ -520,7 +521,6 @@ impl Probe {
             pointer: (0.0, 0.0),
             target_missed: false,
             inbox: Inbox::default(),
-            shot: None,
             sweeping: None,
             gets: (u64::MAX, 0),
             written: BTreeMap::new(),
@@ -638,11 +638,11 @@ impl Probe {
     /// restored a save, which carries its own `Time`): every scheduled step
     /// moves with it, so each keeps the delay it had left.
     pub fn shift_schedule(&mut self, from: u64, to: u64) {
-        if from == to || self.queue.is_empty() {
+        if from == to || self.schedule.queue.is_empty() {
             return;
         }
-        let queue = std::mem::take(&mut self.queue);
-        self.queue = og_core::sort::map(queue.into_iter().map(|((tick, seq), step)| {
+        let queue = std::mem::take(&mut self.schedule.queue);
+        self.schedule.queue = og_core::sort::map(queue.into_iter().map(|((tick, seq), step)| {
             let left = tick.saturating_sub(from);
             ((to + left, seq), step)
         }));
@@ -740,7 +740,7 @@ impl Probe {
 
     /// Steps still scheduled.
     pub fn pending(&self) -> usize {
-        self.queue.len()
+        self.schedule.queue.len()
     }
 
     /// Steps still to run: those scheduled and a screenshot waiting for
@@ -748,7 +748,7 @@ impl Probe {
     /// `quit`), not at the tick the script's last step was scheduled for,
     /// which a restore moving og.Time ([`Probe::shift_schedule`]) moves.
     pub fn steps_left(&self) -> usize {
-        self.queue.len() + usize::from(self.shot.is_some())
+        self.schedule.queue.len() + usize::from(self.schedule.shot.is_some())
     }
 
     /// Files commands produced since the last call, for the host to write.
@@ -956,9 +956,10 @@ impl Probe {
                     step.at, step.action
                 ));
             }
-            self.seq += 1;
-            self.queue
-                .insert((tick, self.seq), Queued::Step(step, within));
+            self.schedule.seq += 1;
+            self.schedule
+                .queue
+                .insert((tick, self.schedule.seq), Queued::Step(step, within));
             report.scheduled += 1;
             report.until_tick = tick;
         }
@@ -973,7 +974,7 @@ impl Probe {
             return;
         }
         let mut inbox = self.inbox.take().into_iter();
-        while !self.clock.quit && self.shot.is_none() {
+        while !self.clock.quit && self.schedule.shot.is_none() {
             let Some((action, args)) = inbox.next() else {
                 break;
             };
@@ -989,9 +990,9 @@ impl Probe {
         if !self.clock.quit {
             self.inbox.requeue(inbox.collect());
         }
-        while !self.clock.quit && self.shot.is_none() {
+        while !self.clock.quit && self.schedule.shot.is_none() {
             let now = world.time().tick;
-            let Some((&key, _)) = self.queue.first_key_value() else {
+            let Some((&key, _)) = self.schedule.queue.first_key_value() else {
                 break;
             };
             if key.0 > now {
@@ -1002,13 +1003,13 @@ impl Probe {
                 // keeps its spacing, so the steps after a `resume` keep
                 // their distance from it.
                 let shift = key.0 - now;
-                self.queue = std::mem::take(&mut self.queue)
+                self.schedule.queue = std::mem::take(&mut self.schedule.queue)
                     .into_iter()
                     .map(|((tick, seq), q)| ((tick - shift, seq), q))
                     .collect();
                 continue;
             }
-            match self.queue.remove(&key).expect("present") {
+            match self.schedule.queue.remove(&key).expect("present") {
                 Queued::Step(step, within) => {
                     // A step run late happened that many ticks earlier.
                     self.stamp = (within - (now - key.0) as f32).max(-1.0);
@@ -1029,7 +1030,7 @@ impl Probe {
     /// its frame, it takes no tick.
     pub fn step(&mut self, world: &mut World) -> og_core::Result<()> {
         self.pump(world);
-        if self.clock.quit || self.shot.is_some() || self.held(world) {
+        if self.clock.quit || self.schedule.shot.is_some() || self.held(world) {
             return Ok(());
         }
         self.tick_once(world)
@@ -1041,9 +1042,10 @@ impl Probe {
     pub fn frame(&mut self, world: &mut World, due: u32) -> og_core::Result<u32> {
         self.pump(world);
         let mut taken = 0;
-        while taken < due && !self.clock.paused && !self.clock.quit && self.shot.is_none() {
+        while taken < due && !self.clock.paused && !self.clock.quit && self.schedule.shot.is_none()
+        {
             self.pump(world);
-            if self.clock.quit || self.shot.is_some() || self.held(world) {
+            if self.clock.quit || self.schedule.shot.is_some() || self.held(world) {
                 break;
             }
             // A re-simulated tick is the past again, not one of the frame's.
@@ -1059,7 +1061,7 @@ impl Probe {
     /// Polls a screenshot whose frame is in flight and writes it when it
     /// lands; true while it still waits.
     fn shot_waits(&mut self, world: &World) -> bool {
-        let Some(shot) = self.shot.as_mut() else {
+        let Some(shot) = self.schedule.shot.as_mut() else {
             return false;
         };
         let frame = match self.host.capture.as_mut() {
@@ -1070,7 +1072,7 @@ impl Probe {
         if frame.is_none() && shot.polls < MAX_CAPTURE_POLLS {
             return true;
         }
-        let shot = self.shot.take().expect("waiting");
+        let shot = self.schedule.shot.take().expect("waiting");
         match frame {
             Some(frame) => self.emit(
                 shot.at,

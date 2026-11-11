@@ -43,3 +43,11 @@ pub(crate) struct Clock {
     /// present tick, stay for it.
     pub(crate) replay_until: u64,
 }
+
+/// The script's steps waiting to run, and the screenshot that holds them.
+pub(crate) struct Schedule {
+    pub(super) queue: BTreeMap<(u64, u64), Queued>,
+    pub(super) seq: u64,
+    /// A screenshot waiting on its frame: it holds the clock and later steps.
+    pub(super) shot: Option<Shot>,
+}

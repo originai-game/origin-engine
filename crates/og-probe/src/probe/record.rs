@@ -64,8 +64,8 @@ impl Probe {
             )));
         }
         self.pointer = (x, y);
-        self.queue.retain(|&(at, _), _| at >= tick);
-        self.shot = None;
+        self.schedule.queue.retain(|&(at, _), _| at >= tick);
+        self.schedule.shot = None;
         if let Some(c) = self.host.capture.as_mut() {
             c.restore_state(0);
         }
