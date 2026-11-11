@@ -3,6 +3,7 @@ module commands {
   doc "Core actions ship with the engine; a module or a game registers more. Unknown actions warn and continue. Not in publish builds."
   doc "Outputs are relative to the output directory: an absolute path, a `..` component or a name starting with `.` (kept for the harness, such as a playtest's kept store) is refused. A file an earlier step of the script wrote is never overwritten: the later step's is written as `<stem>-2.<ext>` with a warning naming both steps."
   publish false
+  core CommandDesc
 
   enum CoreAction {
     doc "The actions the engine ships. Arguments follow the action, separated by `:`."

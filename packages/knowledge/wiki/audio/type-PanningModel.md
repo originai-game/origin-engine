@@ -23,4 +23,4 @@ enum PanningModel {
 }
 ```
 
-<sub>Module `audio` line 28</sub>
+<sub>Module `audio` line 29</sub>

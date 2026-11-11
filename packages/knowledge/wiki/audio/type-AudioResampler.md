@@ -23,4 +23,4 @@ enum AudioResampler {
 }
 ```
 
-<sub>Module `audio` line 34</sub>
+<sub>Module `audio` line 35</sub>

@@ -3,6 +3,7 @@ module input {
   doc "Gameplay actions (og.input.defineAction) name what the player does instead of the keys that do it, in action maps the player rebinds; prompts read each action's glyph (og.input.glyph)."
   doc "Mouse-look (pointer lock, mouse delta, relative mouse movement): set og.PointerLock.wanted and turn the camera by og.Pointers.movement each tick."
   guide "input"
+  core Input
 
   const MAX_POINTERS u32 5 "The most pointers og.Pointers tracks at once: ids 0 (the primary pointer) to 4."
   const MAX_GAMEPADS u32 8 "The most gamepads og.Gamepad reads: pads 0 to 7."

@@ -10,6 +10,7 @@ See `world §1`.
 
 - **TypeScript**: functions are the namespace `og.terrain`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
+- **Core** (what most games use): `og.Terrain`, `TerrainInfo`, `TerrainSampleDesc`, `TerrainSample`, `TerrainBrush`, `og.terrain.load`, `og.terrain.sample`, `og.terrain.edit`; 18 more are advanced (`og api show terrain --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -69,4 +70,4 @@ column TerrainData {
 }
 ```
 
-<sub>Module `terrain` line 8</sub>
+<sub>Module `terrain` line 9</sub>

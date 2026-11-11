@@ -43,4 +43,4 @@ component AudioBusNode {
 }
 ```
 
-<sub>Module `audio` line 451</sub>
+<sub>Module `audio` line 452</sub>

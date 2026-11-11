@@ -26,4 +26,4 @@ callback FactsFn {
 }
 ```
 
-<sub>Module `game` line 5</sub>
+<sub>Module `game` line 6</sub>

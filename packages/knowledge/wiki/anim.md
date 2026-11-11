@@ -12,6 +12,7 @@ See `animation §7`.
 
 - **TypeScript**: functions are the namespace `og.anim`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
+- **Core** (what most games use): `og.Skeleton`, `og.AnimationPlayer`, `og.AnimationGraph`, `ClipInfo`, `Animation`, `GraphDesc`, `og.anim.graph`, `og.Flipbook`, `og.FlipbookEvent`, `FlipbookInfo`, `og.anim.clip`, `og.anim.clip`, `og.anim.clip`; 51 more are advanced (`og api show anim --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -121,7 +122,7 @@ column SkeletonAsset {
 }
 ```
 
-<sub>Module `anim` line 11</sub>
+<sub>Module `anim` line 12</sub>
 
 ```ogt
 column ClipAsset {
@@ -132,7 +133,7 @@ column ClipAsset {
 }
 ```
 
-<sub>Module `anim` line 18</sub>
+<sub>Module `anim` line 19</sub>
 
 ```ogt
 column GraphAsset {
@@ -143,7 +144,7 @@ column GraphAsset {
 }
 ```
 
-<sub>Module `anim` line 25</sub>
+<sub>Module `anim` line 26</sub>
 
 ```ogt
 column RootMotion {
@@ -154,7 +155,7 @@ column RootMotion {
 }
 ```
 
-<sub>Module `anim` line 39</sub>
+<sub>Module `anim` line 40</sub>
 
 ```ogt
 column BlendshapeSource {
@@ -165,7 +166,7 @@ column BlendshapeSource {
 }
 ```
 
-<sub>Module `anim` line 52</sub>
+<sub>Module `anim` line 53</sub>
 
 ```ogt
 column IkSolver {
@@ -176,7 +177,7 @@ column IkSolver {
 }
 ```
 
-<sub>Module `anim` line 65</sub>
+<sub>Module `anim` line 66</sub>
 
 ```ogt
 column IkSpace {
@@ -187,7 +188,7 @@ column IkSpace {
 }
 ```
 
-<sub>Module `anim` line 78</sub>
+<sub>Module `anim` line 79</sub>
 
 ```ogt
 column SpringSpace {
@@ -198,7 +199,7 @@ column SpringSpace {
 }
 ```
 
-<sub>Module `anim` line 439</sub>
+<sub>Module `anim` line 440</sub>
 
 ```ogt
 column SpringColliderShape {
@@ -209,7 +210,7 @@ column SpringColliderShape {
 }
 ```
 
-<sub>Module `anim` line 513</sub>
+<sub>Module `anim` line 514</sub>
 
 ```ogt
 column Rig {
@@ -220,7 +221,7 @@ column Rig {
 }
 ```
 
-<sub>Module `anim` line 592</sub>
+<sub>Module `anim` line 593</sub>
 
 ```ogt
 column FlipbookSheet {
@@ -231,7 +232,7 @@ column FlipbookSheet {
 }
 ```
 
-<sub>Module `anim` line 663</sub>
+<sub>Module `anim` line 664</sub>
 
 ```ogt
 column Rig2D {
@@ -242,4 +243,4 @@ column Rig2D {
 }
 ```
 
-<sub>Module `anim` line 766</sub>
+<sub>Module `anim` line 767</sub>

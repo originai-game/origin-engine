@@ -8,6 +8,7 @@ Structural changes (spawn, despawn, insert, remove) invalidate typed views; the 
 
 - **TypeScript**: functions are none at module level (its members live on the types below); components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
+- **Core** (what most games use): `Entity`, `Entity()`, `SpawnDesc`, `QueryDesc`, `World`, `Query`, `ArchetypeView`; 16 more are advanced (`og api show world --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -64,4 +65,4 @@ column Entity {
 }
 ```
 
-<sub>Module `world` line 10</sub>
+<sub>Module `world` line 11</sub>

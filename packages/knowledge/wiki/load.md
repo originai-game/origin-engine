@@ -12,6 +12,7 @@ See `loading §1`.
 
 - **TypeScript**: functions are the namespace `og.load`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
+- **Core** (what most games use): `og.load.gltf`, `og.load.font`, `og.load.emitter`, `og.load.texture`, `og.load.document`, `og.load.animation`, `og.load.rig`, `og.load.flipbook`, `og.load.tilemap`, `og.load.vfx`; 64 more are advanced (`og api show load --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -124,7 +125,7 @@ column TextureArray {
 }
 ```
 
-<sub>Module `load` line 13</sub>
+<sub>Module `load` line 14</sub>
 
 ```ogt
 column Asset {
@@ -135,7 +136,7 @@ column Asset {
 }
 ```
 
-<sub>Module `load` line 20</sub>
+<sub>Module `load` line 21</sub>
 
 ```ogt
 column Sound {
@@ -146,7 +147,7 @@ column Sound {
 }
 ```
 
-<sub>Module `load` line 27</sub>
+<sub>Module `load` line 28</sub>
 
 ```ogt
 column Font {
@@ -157,7 +158,7 @@ column Font {
 }
 ```
 
-<sub>Module `load` line 34</sub>
+<sub>Module `load` line 35</sub>
 
 ```ogt
 column Style {
@@ -168,4 +169,4 @@ column Style {
 }
 ```
 
-<sub>Module `load` line 41</sub>
+<sub>Module `load` line 42</sub>

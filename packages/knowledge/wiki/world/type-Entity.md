@@ -19,4 +19,4 @@ handle Entity {
 }
 ```
 
-<sub>Module `world` line 5</sub>
+<sub>Module `world` line 6</sub>

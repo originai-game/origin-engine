@@ -2,6 +2,7 @@ module destruction {
   doc "Props that break (walls, crates, pillars, glass) and 2D ground that carves. A model cooked with a `fracture { }` block is cut by the cook into Voronoi chunks bonded where they touch; hits, og.destruction.damage and explode break an og.Destructible's bonds, each unanchored island falls as one body, and a stress solver (NVIDIA Blast's) breaks what can no longer carry its own weight. og.PixelTerrain is 2D ground of cells."
   doc "It runs in the tick after the game's systems, before og.physics, in fixed f32 arithmetic; bonds, islands, chunks and cells are world state on both hosts."
   guide "physics §9"
+  core Destructible Chunk Fractured PixelTerrain PixelDetached damage explode info material fill2d explode2d MATERIAL_BRICK MATERIAL_CONCRETE MATERIAL_GLASS DamageDesc ExplosionDesc DestructibleInfo Fill2dDesc Explosion2dDesc
 
   const CAUSE_IMPACT u32 0 "Fractured.cause: a collision's impulse (og.CollisionStarted) past the prop's impactThreshold."
   const CAUSE_DAMAGE u32 1 "Fractured.cause: og.destruction.damage."

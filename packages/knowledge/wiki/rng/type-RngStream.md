@@ -14,7 +14,7 @@ interface RngStream {
   # members follow, each quoted below
 ```
 
-<sub>Module `rng` line 5</sub>
+<sub>Module `rng` line 6</sub>
 
 <a id="member-RngStream-seed"></a>
 
@@ -32,7 +32,7 @@ Binding symbol `og_rng_stream_get_seed` · publish builds: kept
 prop seed u32 "The stream's derived seed."
 ```
 
-<sub>Module `rng` line 7</sub>
+<sub>Module `rng` line 8</sub>
 
 <a id="member-RngStream-next"></a>
 
@@ -55,7 +55,7 @@ fn next {
 }
 ```
 
-<sub>Module `rng` line 8</sub>
+<sub>Module `rng` line 9</sub>
 
 <a id="member-RngStream-range"></a>
 
@@ -85,7 +85,7 @@ fn range {
 }
 ```
 
-<sub>Module `rng` line 12</sub>
+<sub>Module `rng` line 13</sub>
 
 <a id="member-RngStream-integer"></a>
 
@@ -115,7 +115,7 @@ fn integer {
 }
 ```
 
-<sub>Module `rng` line 18</sub>
+<sub>Module `rng` line 19</sub>
 
 <a id="member-RngStream-chance"></a>
 
@@ -143,7 +143,7 @@ fn chance {
 }
 ```
 
-<sub>Module `rng` line 24</sub>
+<sub>Module `rng` line 25</sub>
 
 <a id="member-RngStream-weighted"></a>
 
@@ -171,7 +171,7 @@ fn weighted {
 }
 ```
 
-<sub>Module `rng` line 29</sub>
+<sub>Module `rng` line 30</sub>
 
 <a id="member-RngStream-permutation"></a>
 
@@ -199,7 +199,7 @@ fn permutation {
 }
 ```
 
-<sub>Module `rng` line 34</sub>
+<sub>Module `rng` line 35</sub>
 
 <a id="member-RngStream-fork"></a>
 
@@ -227,4 +227,4 @@ fn fork {
 }
 ```
 
-<sub>Module `rng` line 39</sub>
+<sub>Module `rng` line 40</sub>

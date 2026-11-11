@@ -1,6 +1,7 @@
 module game {
   doc "The game entry: what the bundle's default export declares."
   place root
+  core game GameDesc
 
   callback FactsFn {
     doc "The game's own facts for the probe's state(): a small JSON object, computed from the world without changing it."

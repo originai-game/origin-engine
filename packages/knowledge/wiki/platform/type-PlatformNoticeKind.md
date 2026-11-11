@@ -27,4 +27,4 @@ enum PlatformNoticeKind {
 }
 ```
 
-<sub>Module `platform` line 224</sub>
+<sub>Module `platform` line 225</sub>

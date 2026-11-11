@@ -64,7 +64,7 @@ resource Rng {
 }
 ```
 
-<sub>Module `rng` line 46</sub>
+<sub>Module `rng` line 47</sub>
 
 <a id="member-Rng-next"></a>
 
@@ -87,7 +87,7 @@ fn next {
 }
 ```
 
-<sub>Module `rng` line 54</sub>
+<sub>Module `rng` line 55</sub>
 
 <a id="member-Rng-range"></a>
 
@@ -117,7 +117,7 @@ fn range {
 }
 ```
 
-<sub>Module `rng` line 58</sub>
+<sub>Module `rng` line 59</sub>
 
 <a id="member-Rng-integer"></a>
 
@@ -147,7 +147,7 @@ fn integer {
 }
 ```
 
-<sub>Module `rng` line 64</sub>
+<sub>Module `rng` line 65</sub>
 
 <a id="member-Rng-chance"></a>
 
@@ -175,7 +175,7 @@ fn chance {
 }
 ```
 
-<sub>Module `rng` line 70</sub>
+<sub>Module `rng` line 71</sub>
 
 <a id="member-Rng-weighted"></a>
 
@@ -203,7 +203,7 @@ fn weighted {
 }
 ```
 
-<sub>Module `rng` line 75</sub>
+<sub>Module `rng` line 76</sub>
 
 <a id="member-Rng-permutation"></a>
 
@@ -234,7 +234,7 @@ fn permutation {
 }
 ```
 
-<sub>Module `rng` line 80</sub>
+<sub>Module `rng` line 81</sub>
 
 <a id="member-Rng-fork"></a>
 
@@ -262,4 +262,4 @@ fn fork {
 }
 ```
 
-<sub>Module `rng` line 86</sub>
+<sub>Module `rng` line 87</sub>

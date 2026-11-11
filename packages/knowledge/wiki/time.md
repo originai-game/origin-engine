@@ -8,6 +8,7 @@ Time groups slow or freeze some entities and not others (a bullet-time enemy bes
 
 - **TypeScript**: functions are the namespace `og.time`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
+- **Core** (what most games use): `og.Time`; 6 more are advanced (`og api show time --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt

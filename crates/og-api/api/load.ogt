@@ -3,6 +3,7 @@ module load {
   doc "Paths are asset ids: the path under assets/ (`models/ship.glb`, `scenes/main.ogt`); an `assets/` prefix is accepted. Every blob is checked against the manifest's type, schema version and cook stamp."
   doc "The game's bundle (`cooked`) is open before the first tick, when GameDesc.scene is spawned. Loads from an open bundle complete at once on both hosts; only og.load.bundle of another bundle can be pending, completing at a tick boundary."
   guide "loading §1"
+  core gltf font emitter texture document animation rig flipbook tilemap vfx
 
   handle Asset "A loaded bundle, scene or glTF asset."
   handle Font "A cooked MSDF font: its glyph table and one or more atlas pages."

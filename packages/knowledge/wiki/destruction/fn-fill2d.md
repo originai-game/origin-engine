@@ -35,4 +35,4 @@ fn fill2d {
 }
 ```
 
-<sub>Module `destruction` line 491</sub>
+<sub>Module `destruction` line 492</sub>

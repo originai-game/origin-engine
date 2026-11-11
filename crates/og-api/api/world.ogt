@@ -1,6 +1,7 @@
 module world {
   doc "The world: an archetype ECS. Entities are generational handles; components are columns in engine memory."
   doc "Structural changes (spawn, despawn, insert, remove) invalidate typed views; the API refuses a stale view."
+  core Entity SpawnDesc QueryDesc World Query ArchetypeView
 
   handle Entity {
     doc "An entity: an index and a generation. The value is index + generation * 2^32, with the generation below 2^21, so it stays an exact JavaScript number."

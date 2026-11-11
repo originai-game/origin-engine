@@ -10,6 +10,7 @@ See `world §6`.
 
 - **TypeScript**: functions are the namespace `og.tilemap`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
+- **Core** (what most games use): `og.Tilemap`, `TilemapInfo`, `SetTileDesc`, `og.tilemap.setTile`, `og.tilemap.getTile`; 16 more are advanced (`og api show tilemap --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -64,4 +65,4 @@ column TilemapAsset {
 }
 ```
 
-<sub>Module `tilemap` line 8</sub>
+<sub>Module `tilemap` line 9</sub>

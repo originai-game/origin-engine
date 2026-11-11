@@ -2,6 +2,7 @@ module net {
   doc "Deterministic lockstep over a room (docs/design.md §2.10): every peer runs the whole world, and what crosses the room is each player's input, one per tick, and the world's hash. Turn it on with og.Lockstep and join a room (og.platform.roomJoin); once the room holds `players` peers the authority (the lowest peer number) starts, and tick t runs when every seated player's input for t is in (in rollback, on a prediction re-run when the input differs)."
   doc "Systems read og.PlayerInput and give this peer's input with og.net.submit; og.Desync reports the first tick whose hashes differ."
   guide "networking"
+  core Lockstep PlayerInput SeatDropped SeatRejoined submit
 
   enum NetMode {
     doc "How a room's peers take their ticks (og.Lockstep.mode)."

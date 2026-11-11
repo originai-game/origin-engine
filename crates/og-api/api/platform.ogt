@@ -1,6 +1,7 @@
 module platform {
   doc "Platform services as host capabilities: the cloud store and save slots, leaderboards, telemetry, Origin Point, AI marks, purchases, ads, achievements, the player, friends, invites, share and rooms. Game code names a method and its arguments, never a credential, a URL or a cookie: the host owns them; every id it hands back is opaque and scoped to this game. Calls are asynchronous: each returns a request number at once and its answer arrives at the start of a later tick (og.PlatformAnswered, og.platform.result), host input like key presses. A host that lacks a method answers it `unavailable`."
   guide "saves §7"
+  core storeGet result quickPlay PlatformResult QuickPlayDesc
 
   enum PlatformOrder {
     doc "How a leaderboard sorts; the first submission to a board fixes it."

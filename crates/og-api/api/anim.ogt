@@ -3,6 +3,7 @@ module anim {
   doc "Game code sets players, graph parameters and IK targets; og.anim writes the pose (world state, the `og.anim` state block), the joint palette, root motion into og.Transform and the fields marked written. Asset handles (og.load.animation, og.anim.graph): 0 is none."
   doc "Clips bind to nodes by name; assets are not world state."
   guide "animation §7"
+  core Skeleton AnimationPlayer AnimationGraph Flipbook FlipbookEvent graph clip ClipInfo Animation GraphDesc FlipbookInfo
 
   handle SkeletonAsset "A rig: a glTF's nodes in topological order with their rest transforms, and its skins (joints and inverse bind matrices)."
   handle ClipAsset "An animation clip, resampled at the cook's rate, with its markers."

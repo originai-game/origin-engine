@@ -10,6 +10,7 @@ Outputs are relative to the output directory: an absolute path, a `..` component
 
 - **TypeScript**: functions are the namespace `og.commands`; components, resources and events are tokens on `og`.
 - **Publish builds**: dropped (members may override).
+- **Core** (what most games use): `CommandDesc`; 9 more are advanced (`og api show commands --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt

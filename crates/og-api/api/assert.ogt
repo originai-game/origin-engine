@@ -3,6 +3,7 @@ module assert {
   doc "Beside them, every tick of a development or test build checks the default invariants from reflection. Not in publish builds: every member does nothing there."
   guide "testing §2"
   publish false
+  core always sometimes reachable
 
   enum AssertKind {
     doc "What an assertion asks."

@@ -1,5 +1,6 @@
 module render {
   doc "What is drawn: meshes with materials. Draws are instanced by (geometry, material) automatically; there is no per-object draw call."
+  core Mesh DirectionalLight SpotLight RenderSettings PostEffects Lighting2D Light2D Occluder2D LightMask2D Decal ParticleSystem Sprite boxGeometry planeGeometry sphereGeometry standardMaterial cylinderGeometry RenderOptions StandardMaterialDesc BoxGeometryDesc PlaneGeometryDesc SphereGeometryDesc CylinderGeometryDesc
 
   handle Geometry "Vertex and index data, as three.js BufferGeometry. Comes from a loaded glTF."
   handle Material "A material instance."

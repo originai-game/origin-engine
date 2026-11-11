@@ -35,4 +35,4 @@ fn kick {
 }
 ```
 
-<sub>Module `camera` line 577</sub>
+<sub>Module `camera` line 578</sub>

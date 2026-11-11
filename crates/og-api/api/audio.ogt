@@ -2,6 +2,7 @@ module audio {
   doc "Sound: inside the tick, the engine's og.audio system (after the game's systems and physics) turns AudioSource changes into a deterministic, time-stamped command stream; outside the tick the host's mixer renders it (an AudioWorklet on the web, the output device, a capture or a null sink natively)."
   doc "The stream, not the PCM, is world state: snapshots, restore and the world hash cover it, and nothing a sink does reaches the world. Spatial sound is computed in the tick, from world transforms (og.Transform down og.Parent), so it is in the stream."
   guide "audio"
+  core AudioSource createSound SoundDesc
 
   const SOUND_FINISHED u32 0 "SoundEnded.reason: a one-shot played to its end."
   const SOUND_STOPPED u32 1 "SoundEnded.reason: `playing` was set to false."

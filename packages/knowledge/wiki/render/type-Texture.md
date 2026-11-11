@@ -14,4 +14,4 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Texture "A cooked texture."
 ```
 
-<sub>Module `render` line 6</sub>
+<sub>Module `render` line 7</sub>

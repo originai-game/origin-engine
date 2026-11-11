@@ -10,6 +10,7 @@ See `loading §11`.
 
 - **TypeScript**: functions are the namespace `og.vfx`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
+- **Core** (what most games use): `og.VfxEvent`, `VfxSpawnDesc`, `og.vfx.spawn`; 5 more are advanced (`og api show vfx --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -50,4 +51,4 @@ column VfxAsset {
 }
 ```
 
-<sub>Module `vfx` line 8</sub>
+<sub>Module `vfx` line 9</sub>

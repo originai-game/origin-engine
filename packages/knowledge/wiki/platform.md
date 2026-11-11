@@ -8,6 +8,7 @@ See `saves §7`.
 
 - **TypeScript**: functions are the namespace `og.platform`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
+- **Core** (what most games use): `PlatformResult`, `og.platform.storeGet`, `og.platform.result`, `QuickPlayDesc`, `og.platform.quickPlay`; 70 more are advanced (`og api show platform --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
