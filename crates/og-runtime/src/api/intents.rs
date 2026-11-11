@@ -59,29 +59,25 @@ pub fn og_input_take_intents(world: u32) -> String {
 pub fn og_input_replay_intent(world: u32, intent: String) -> String {
     result_void((|| {
         let eng = engine(world)?;
-        let mut record = parse(Some(&intent))?;
-        let tick = record
-            .get("tick")
-            .and_then(Value::as_u64)
-            .ok_or("recorded intent needs an integer tick")?;
+        let record: wire::RecordedIntent = wire::arg(Some(&intent), "intent")?;
+        if record.tick < 0.0 || record.tick.fract() != 0.0 {
+            return Err("recorded intent needs an integer tick".into());
+        }
+        let tick = record.tick as u64;
         if eng.world()?.time().tick != tick {
             return Err(format!(
                 "recorded intent tick {tick} differs from world tick {}",
                 eng.world()?.time().tick
             ));
         }
-        record
-            .as_object_mut()
-            .ok_or("recorded intent must be an object")?
-            .insert("kind".into(), Value::String("intent".into()));
-        let Some(og_input::InjectedInput::Intent {
-            name,
-            layout_hash,
-            payload,
-        }) = og_input::InjectedInput::from_json(&record)
-        else {
-            return Err("invalid recorded intent name, layoutHash or payload".into());
-        };
+        let invalid = || "invalid recorded intent name, layoutHash or payload".to_string();
+        let name = record.name;
+        let layout_hash: u64 = record.layout_hash.parse().map_err(|_| invalid())?;
+        let payload = record
+            .payload
+            .into_iter()
+            .map(|b| u8::try_from(b).map_err(|_| invalid()))
+            .collect::<Result<Vec<u8>, String>>()?;
         event_layout(&eng, &name)?;
         og_input::InputLayer::new()
             .inject_intent(eng.world()?, &name, layout_hash, &payload)

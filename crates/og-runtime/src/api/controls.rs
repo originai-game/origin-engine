@@ -30,23 +30,17 @@ fn quat_json(q: glam::Quat) -> Value {
 }
 
 pub fn og_transform_compose(position: String, quaternion: String, scale: String) -> String {
-    let p = vec3(&parse(Some(&position)).unwrap_or_default());
-    let q = quat(&parse(Some(&quaternion)).unwrap_or_default());
-    let s = vec3(&parse(Some(&scale)).unwrap_or_default());
+    let p: glam::Vec3 = wire::arg(Some(&position), "position").unwrap_or_default();
+    let q: glam::Quat = wire::arg(Some(&quaternion), "quaternion").unwrap_or_default();
+    let s: glam::Vec3 = wire::arg(Some(&scale), "scale").unwrap_or_default();
     let m = glam::Mat4::from_scale_rotation_translation(s, q, p);
     let elements: Vec<f64> = m.to_cols_array().iter().map(|&e| f64::from(e)).collect();
     json!({ "elements": elements }).to_string()
 }
 
 pub fn og_transform_decompose(matrix: String) -> String {
-    let v = parse(Some(&matrix)).unwrap_or_default();
-    let mut e = [0f32; 16];
-    for (i, x) in e.iter_mut().enumerate() {
-        *x = v["elements"][i]
-            .as_f64()
-            .unwrap_or(if i % 5 == 0 { 1.0 } else { 0.0 }) as f32;
-    }
-    let (s, q, p) = glam::Mat4::from_cols_array(&e).to_scale_rotation_translation();
+    let m: glam::Mat4 = wire::arg(Some(&matrix), "matrix").unwrap_or_default();
+    let (s, q, p) = m.to_scale_rotation_translation();
     json!({ "position": vec3_json(p), "quaternion": quat_json(q), "scale": vec3_json(s) })
         .to_string()
 }
@@ -69,14 +63,14 @@ fn look_rotation(eye: glam::Vec3, target: glam::Vec3, up: glam::Vec3) -> glam::Q
 }
 
 pub fn og_transform_look_at(eye: String, target: String, up: Option<String>) -> String {
-    let eye = vec3(&parse(Some(&eye)).unwrap_or_default());
-    let target = vec3(&parse(Some(&target)).unwrap_or_default());
-    let up = vec3(&parse(up.as_deref()).unwrap_or_default());
+    let eye: glam::Vec3 = wire::arg(Some(&eye), "eye").unwrap_or_default();
+    let target: glam::Vec3 = wire::arg(Some(&target), "target").unwrap_or_default();
+    let up: glam::Vec3 = wire::arg(up.as_deref(), "up").unwrap_or_default();
     quat_json(look_rotation(eye, target, up)).to_string()
 }
 
 pub fn og_transform_from_axis_angle(axis: String, angle: f64) -> String {
-    let axis = vec3(&parse(Some(&axis)).unwrap_or_default());
+    let axis: glam::Vec3 = wire::arg(Some(&axis), "axis").unwrap_or_default();
     quat_json(og_core::math::quat_from_axis_angle(axis, angle as f32)).to_string()
 }
 
@@ -248,11 +242,9 @@ pub fn og_audio_play_feedback(world: u32, sound: f64, desc: Option<String>) -> S
         } else {
             eng.world()?.time().tick
         };
-        let desc = parse(desc.as_deref())?;
-        let volume = desc["volume"].as_f64().unwrap_or(1.0) as f32;
-        let pitch = desc["playbackRate"].as_f64().unwrap_or(1.0) as f32;
+        let desc: wire::AudioFeedbackDesc = wire::arg(desc.as_deref(), "desc")?;
         let link = og_audio::link(world).ok_or("world has no audio sink")?;
-        link.play_feedback(tick, sound as u64, volume, pitch)?;
+        link.play_feedback(tick, sound as u64, desc.volume, desc.playback_rate)?;
         Ok(Value::Null)
     })())
 }
@@ -290,25 +282,20 @@ pub fn og_audio_output_latency(world: u32) -> f64 {
 pub fn og_audio_create_sound(world: u32, desc: Option<String>) -> String {
     result((|| {
         let eng = engine(world)?;
-        let d = parse(desc.as_deref())?;
-        let rate = d["rate"].as_u64().unwrap_or(48_000);
-        let channels = d["channels"].as_u64().unwrap_or(1);
+        let d: wire::SoundDesc = wire::arg(desc.as_deref(), "desc")?;
+        let (rate, channels) = (d.rate, d.channels);
         if !(8_000..=192_000).contains(&rate) {
             return Err(format!("rate {rate} is out of range: 8000 to 192000"));
         }
         if !(1..=2).contains(&channels) {
             return Err(format!("channels {channels} is out of range: 1 or 2"));
         }
-        let Value::Array(values) = &d["samples"] else {
-            return Err("samples is not an array of numbers".into());
-        };
-        let mut pcm = Vec::with_capacity(values.len());
-        for v in values {
-            let x = v
-                .as_f64()
-                .filter(|x| x.is_finite())
-                .ok_or("samples holds something that is not a finite number")?;
-            pcm.push((x.clamp(-1.0, 1.0) * 32767.0).round() as i16);
+        let mut pcm = Vec::with_capacity(d.samples.len());
+        for x in d.samples {
+            if !x.is_finite() {
+                return Err("samples holds something that is not a finite number".into());
+            }
+            pcm.push((f64::from(x).clamp(-1.0, 1.0) * 32767.0).round() as i16);
         }
         if pcm.is_empty() || !pcm.len().is_multiple_of(channels as usize) {
             return Err(format!(
@@ -320,14 +307,14 @@ pub fn og_audio_create_sound(world: u32, desc: Option<String>) -> String {
         let id = format!("og.audio.createSound#{}", eng.assets.borrow().sounds.len());
         let handle = link
             .bank()
-            .insert_pcm(&id, rate as u32, channels as usize, &pcm)
+            .insert_pcm(&id, rate, channels as usize, &pcm)
             .map_err(|e| e.reason().to_string())?;
         let mut a = eng.assets.borrow_mut();
         a.sounds.push(og_bundle::runtime::CookedSound {
             id,
             meta: og_bundle::format::SoundMeta {
-                sample_rate: rate as u32,
-                channels: channels as u32,
+                sample_rate: rate,
+                channels,
                 frames: (pcm.len() / channels as usize) as u32,
                 chunk_frames: 0,
                 chunk_count: 0,
@@ -537,7 +524,7 @@ pub fn og_camera_look_at(world: u32, target: String) {
         let cam = resource_value(&eng, "og.Camera")?;
         let q = look_rotation(
             vec3(&cam["position"]),
-            vec3(&parse(Some(&target))?),
+            wire::arg(Some(&target), "target")?,
             glam::Vec3::Y,
         );
         let value = json!({ "quaternion": quat_json(q) });
@@ -605,7 +592,7 @@ pub fn og_camera_world_to_screen(world: u32, point: String) -> String {
     let answer = (|| -> Result<Value, String> {
         let eng = engine(world)?;
         let (vp, _, w, h) = view_proj(&eng)?;
-        let p = vp * vec3(&parse(Some(&point))?).extend(1.0);
+        let p = vp * wire::arg::<glam::Vec3>(Some(&point), "point")?.extend(1.0);
         if p.w <= 0.0 {
             return Ok(Value::Null);
         }

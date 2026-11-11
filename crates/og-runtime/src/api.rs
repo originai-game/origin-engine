@@ -25,7 +25,6 @@ mod render;
 use super::{engine, environment, extract, feel, fx, look, modules, views};
 pub use actions::*;
 pub use commands::*;
-use controls::vec3;
 pub use controls::*;
 pub use intents::*;
 pub use loading::*;
@@ -290,8 +289,27 @@ pub(crate) fn spawn_entity(eng: &Engine, call: &str, desc: &Value) -> Result<Ent
     spawn(eng, call, desc)
 }
 
+/// A SpawnDesc read from `desc` (of `call`): its parent checked first, so a
+/// value that is not an entity is refused as [`spawn_parent`] words it.
+fn spawn_desc(call: &str, desc: &Value) -> Result<wire::SpawnDesc, String> {
+    spawn_parent(call, desc)?;
+    wire::value(desc, "desc")
+}
+
+/// The og.Transform fields a desc names (the layout's defaults for the rest).
+fn spawn_transform(desc: &Value) -> Value {
+    let mut value = serde_json::Map::new();
+    for key in ["position", "quaternion", "scale"] {
+        if let Some(v) = desc.get(key).filter(|v| !v.is_null()) {
+            value.insert(key.to_string(), v.clone());
+        }
+    }
+    Value::Object(value)
+}
+
 fn spawn(eng: &Engine, call: &str, desc: &Value) -> Result<Entity, String> {
-    let name = desc["name"].as_str().unwrap_or_default().to_string();
+    let d = spawn_desc(call, desc)?;
+    let name = d.name;
     if !name.is_empty() {
         if eng.state.borrow().names.contains_key(&name) {
             return Err(format!("an entity named '{name}' already exists"));
@@ -303,17 +321,11 @@ fn spawn(eng: &Engine, call: &str, desc: &Value) -> Result<Entity, String> {
         }
     }
     let mut components = Vec::new();
-    if !desc["bare"].as_bool().unwrap_or(false) {
+    if !d.bare {
         let (layout, id) = component(eng, "og.Transform")?;
-        let mut value = serde_json::Map::new();
-        for key in ["position", "quaternion", "scale"] {
-            if let Some(v) = desc.get(key).filter(|v| !v.is_null()) {
-                value.insert(key.to_string(), v.clone());
-            }
-        }
-        components.push((id, layout.encode(None, Some(&Value::Object(value)))?));
+        components.push((id, layout.encode(None, Some(&spawn_transform(desc)))?));
     }
-    if let Some(p) = spawn_parent(call, desc)? {
+    if let Some(p) = d.parent.map(|p| p as f64) {
         let parent = entity(p)?;
         if !eng.world()?.is_alive(parent) {
             return Err(format!("the parent {parent} is not alive"));
@@ -329,42 +341,34 @@ fn spawn(eng: &Engine, call: &str, desc: &Value) -> Result<Entity, String> {
     eng.state
         .borrow_mut()
         .game_spawned
-        .insert(e.to_bits(), spawn_source(desc));
+        .insert(e.to_bits(), spawn_source(&d.source));
     Ok(e)
 }
 
 /// A desc's `source` (SpawnDesc): the line that spawned the entity, kept
 /// outside a publish build.
-fn spawn_source(desc: &Value) -> Option<std::sync::Arc<str>> {
-    if cfg!(feature = "publish") {
+fn spawn_source(source: &str) -> Option<std::sync::Arc<str>> {
+    if cfg!(feature = "publish") || source.is_empty() {
         return None;
     }
-    desc["source"]
-        .as_str()
-        .filter(|s| !s.is_empty())
-        .map(Into::into)
+    Some(source.into())
 }
 
 /// `world.spawn` inside a system: queued, applied when the system returns
 /// (its id is usable at once); every component it gets must be among the
 /// system's writes.
 fn spawn_in_system(eng: &Engine, f: &super::engine::Frame, desc: &Value) -> Result<Entity, String> {
-    let name = desc["name"].as_str().unwrap_or_default().to_string();
+    let d = spawn_desc("world.spawn", desc)?;
+    let name = d.name;
     if !name.is_empty() && eng.state.borrow().names.contains_key(&name) {
         return Err(format!("an entity named '{name}' already exists"));
     }
     let mut components = Vec::new();
-    if !desc["bare"].as_bool().unwrap_or(false) {
+    if !d.bare {
         let (layout, id) = running_record(eng, "og.Transform", RecordKind::Component)?;
-        let mut value = serde_json::Map::new();
-        for key in ["position", "quaternion", "scale"] {
-            if let Some(v) = desc.get(key).filter(|v| !v.is_null()) {
-                value.insert(key.to_string(), v.clone());
-            }
-        }
-        components.push((id, layout.encode(None, Some(&Value::Object(value)))?));
+        components.push((id, layout.encode(None, Some(&spawn_transform(desc)))?));
     }
-    if let Some(p) = spawn_parent("world.spawn", desc)? {
+    if let Some(p) = d.parent.map(|p| p as f64) {
         let (layout, id) = running_record(eng, "og.Parent", RecordKind::Component)?;
         components.push((id, layout.encode(None, Some(&json!({ "entity": p })))?));
     }
@@ -401,7 +405,7 @@ fn spawn_in_system(eng: &Engine, f: &super::engine::Frame, desc: &Value) -> Resu
     eng.state
         .borrow_mut()
         .game_spawned
-        .insert(e.to_bits(), spawn_source(desc));
+        .insert(e.to_bits(), spawn_source(&d.source));
     Ok(e)
 }
 
@@ -765,23 +769,19 @@ pub fn og_world_query(world: u32, desc: Option<String>) -> String {
     }
     result((|| {
         let eng = engine(world)?;
-        let desc = parse(desc.as_deref())?;
-        let names = |v: &Value| -> Vec<String> {
-            v.as_array()
-                .map(|a| {
-                    a.iter()
-                        .filter_map(|n| n.as_str().map(str::to_string))
-                        .collect()
-                })
-                .unwrap_or_default()
+        let desc: wire::QueryDesc = wire::arg(desc.as_deref(), "desc")?;
+        let names = |v: &[Value]| -> Vec<String> {
+            v.iter()
+                .filter_map(|n| n.as_str().map(str::to_string))
+                .collect()
         };
         let q = QueryDesc {
             read: Vec::new(),
-            write: names(&desc["with"]),
-            without: names(&desc["without"]),
-            changed: names(&desc["changed"]),
-            added: names(&desc["added"]),
-            removed: names(&desc["removed"]),
+            write: names(&desc.with),
+            without: names(&desc.without),
+            changed: names(&desc.changed),
+            added: names(&desc.added),
+            removed: names(&desc.removed),
         };
         for n in q
             .write

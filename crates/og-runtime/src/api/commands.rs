@@ -15,11 +15,14 @@ pub fn og_commands_register(name: String, handler: u32, desc: Option<String>) ->
             "'{name}' is not an action name (snake_case, such as `spawn_wave`)"
         ));
     }
-    let desc = parse(desc.as_deref()).unwrap_or_default();
+    let desc: wire::CommandDesc = match wire::arg(desc.as_deref(), "desc") {
+        Ok(d) => d,
+        Err(e) => return refuse(e),
+    };
     let decl = CommandDecl {
         handler,
-        usage: desc["usage"].as_str().unwrap_or_default().to_string(),
-        doc: desc["doc"].as_str().unwrap_or_default().to_string(),
+        usage: desc.usage,
+        doc: desc.doc,
     };
     let taken = DECL.with(|d| {
         let mut d = d.borrow_mut();
@@ -270,9 +273,10 @@ pub fn og_engine_probe_assertions(probe: u32, take: Option<bool>) -> String {
 }
 
 pub fn og_engine_probe_observe(probe: u32, records: Option<String>, types: Option<bool>) -> String {
-    let records = parse(records.as_deref())
+    let records = wire::arg::<Option<Vec<String>>>(records.as_deref(), "records")
         .ok()
-        .filter(|v| v.as_array().is_some_and(|a| !a.is_empty()));
+        .flatten()
+        .filter(|a| !a.is_empty());
     let mut out = member(
         probe,
         "observe",

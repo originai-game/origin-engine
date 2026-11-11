@@ -7,6 +7,7 @@ use super::{
     RecordKind, component, engine, entity, err, parse, result, result_void, running, running_record,
 };
 use crate::engine::{DECL, HANDLES, declare_hook};
+use crate::wire;
 use og_core::reflect::FieldType;
 use og_ecs::{Entity, FieldRef, SchemaId, SpatialDesc};
 use serde_json::{Value, json};
@@ -76,9 +77,13 @@ pub fn og_world_removed(world: u32, comp: String) -> String {
     })())
 }
 
-fn ids(eng: &crate::engine::Engine, v: &Value, in_system: bool) -> Result<Vec<SchemaId>, String> {
+fn ids(
+    eng: &crate::engine::Engine,
+    list: &[Value],
+    in_system: bool,
+) -> Result<Vec<SchemaId>, String> {
     let mut out = Vec::new();
-    for name in v.as_array().into_iter().flatten().filter_map(Value::as_str) {
+    for name in list.iter().filter_map(Value::as_str) {
         let (_, id) = if in_system {
             running_record(eng, name, RecordKind::Component)?
         } else {
@@ -92,7 +97,7 @@ fn ids(eng: &crate::engine::Engine, v: &Value, in_system: bool) -> Result<Vec<Sc
 pub fn og_world_spatial(world: u32, desc: Option<String>) -> String {
     result((|| {
         let eng = engine(world)?;
-        let desc = parse(desc.as_deref())?;
+        let desc: wire::SpatialDesc = wire::arg(desc.as_deref(), "desc")?;
         let in_system = running(world).is_some();
         let (_, transform) = if in_system {
             running_record(&eng, "og.Transform", RecordKind::Component)?
@@ -105,9 +110,9 @@ pub fn og_world_spatial(world: u32, desc: Option<String>) -> String {
                 field: 0,
                 ty: FieldType::Vec3,
             },
-            cell: desc["cell"].as_f64().unwrap_or(0.0) as f32,
-            with: ids(&eng, &desc["with"], in_system)?,
-            without: ids(&eng, &desc["without"], in_system)?,
+            cell: desc.cell,
+            with: ids(&eng, &desc.with, in_system)?,
+            without: ids(&eng, &desc.without, in_system)?,
         };
         let index = match running(world) {
             // SAFETY: the frame is published while its system runs.
@@ -138,9 +143,9 @@ fn neighbours(list: Vec<og_ecs::Neighbour>) -> String {
 }
 
 fn center(v: &str) -> [f32; 3] {
-    let v = parse(Some(v)).unwrap_or(Value::Null);
-    let c = super::vec3(&v);
-    [c.x, c.y, c.z]
+    wire::arg::<glam::Vec3>(Some(v), "center")
+        .unwrap_or_default()
+        .to_array()
 }
 
 pub fn og_spatial_index_get_count(h: u32) -> u32 {

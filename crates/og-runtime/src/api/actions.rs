@@ -92,13 +92,7 @@ pub fn og_input_action_vector(world: u32, name: String) -> String {
 }
 
 pub fn og_input_set_action_maps(world: u32, contexts: String) {
-    let list: Vec<String> = parse(Some(&contexts))
-        .ok()
-        .and_then(|v| v.as_array().cloned())
-        .unwrap_or_default()
-        .iter()
-        .filter_map(|c| c.as_str().map(str::to_string))
-        .collect();
+    let list: Vec<String> = wire::arg(Some(&contexts), "actionMaps").unwrap_or_default();
     let _ = on_map(world, |m| m.set_contexts(list));
 }
 
@@ -257,30 +251,27 @@ pub fn og_input_pad_device(world: u32, pad: u32) -> String {
 }
 
 pub fn og_input_set_deadzones(world: u32, desc: Option<String>) -> String {
-    let r = desc_json(desc).and_then(|d| {
-        let num = |k: &str, def: f64| d[k].as_f64().unwrap_or(def);
-        let pad = num("pad", -1.0);
+    let r = wire::arg::<wire::DeadzoneDesc>(desc.as_deref(), "desc").and_then(|d| {
         let dz = PadDeadzone {
-            stick: num("stick", 0.15) as f32,
-            trigger: num("trigger", 0.05) as f32,
+            stick: d.stick,
+            trigger: d.trigger,
         };
-        let pad = if pad < 0.0 { None } else { Some(pad as usize) };
+        let pad = usize::try_from(d.pad).ok();
         on_map(world, |m| m.set_deadzone(pad, dz))?
     });
     result_void(r)
 }
 
 pub fn og_input_set_sensitivity(world: u32, desc: Option<String>) -> String {
-    let r = desc_json(desc).and_then(|d| {
-        let action = d["action"].as_str().unwrap_or_default().to_string();
+    let r = wire::arg::<wire::SensitivityDesc>(desc.as_deref(), "desc").and_then(|d| {
         let device =
-            device_of(d["device"].as_str().map(str::to_string))?.unwrap_or(Device::KeyboardMouse);
+            device_of(Some(d.device.as_str().to_string()))?.unwrap_or(Device::KeyboardMouse);
         let sense = og_input::Sensitivity {
-            scale: d["scale"].as_f64().map_or(1.0, |x| x as f32),
-            invert_x: d["invertX"].as_bool().unwrap_or(false),
-            invert_y: d["invertY"].as_bool().unwrap_or(false),
+            scale: d.scale,
+            invert_x: d.invert_x,
+            invert_y: d.invert_y,
         };
-        on_map(world, |m| m.set_sensitivity(&action, device, sense))?
+        on_map(world, |m| m.set_sensitivity(&d.action, device, sense))?
     });
     result_void(r)
 }
@@ -299,13 +290,8 @@ pub fn og_input_sensitivity(world: u32, action: String, device: Option<String>) 
 }
 
 pub fn og_input_set_keyboard_layout(labels: String) {
-    let v: Value = serde_json::from_str(&labels).unwrap_or(Value::Null);
-    og_input::set_key_labels(v.as_array().into_iter().flatten().filter_map(|e| {
-        Some((
-            e["code"].as_str()?.to_string(),
-            e["label"].as_str()?.to_string(),
-        ))
-    }));
+    let list: Vec<wire::KeyLabel> = wire::arg(Some(&labels), "labels").unwrap_or_default();
+    og_input::set_key_labels(list.into_iter().map(|e| (e.code, e.label)));
 }
 
 pub fn og_input_keyboard_layout() -> String {
@@ -321,13 +307,16 @@ pub fn og_input_keyboard_layout() -> String {
 pub fn og_input_set_mouse(world: u32, desc: Option<String>) -> String {
     let r = (|| -> Result<(), String> {
         let eng = engine(world)?;
-        let d = desc_json(desc)?;
+        // A patch: only the fields the desc names change.
+        let v = parse(desc.as_deref())?;
+        let d: wire::MouseDesc = wire::value(&v, "desc")?;
+        let given = |k: &str| v.get(k).is_some_and(|x| !x.is_null());
         let mut rs = eng
             .render
             .try_borrow_mut()
             .map_err(|_| "the renderer is busy drawing".to_string())?;
-        if let Some(raw) = d["raw"].as_bool() {
-            rs.display.mouse.raw = raw;
+        if given("raw") {
+            rs.display.mouse.raw = d.raw;
         }
         Ok(())
     })();
@@ -344,13 +333,12 @@ pub fn og_input_mouse(world: u32) -> String {
 }
 
 pub fn og_input_rumble(world: u32, desc: Option<String>) -> String {
-    let r = desc_json(desc).and_then(|d| {
-        let num = |k: &str, def: f64| d[k].as_f64().unwrap_or(def);
+    let r = wire::arg::<wire::RumbleDesc>(desc.as_deref(), "desc").and_then(|d| {
         let r = Rumble {
-            pad: num("pad", -1.0) as i32,
-            low: num("low", 0.0) as f32,
-            high: num("high", 0.0) as f32,
-            ms: num("ms", 200.0) as f32,
+            pad: d.pad,
+            low: d.low,
+            high: d.high,
+            ms: d.ms,
         };
         on_map(world, |m| m.rumble(r))?
     });

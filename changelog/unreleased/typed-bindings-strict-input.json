@@ -29,6 +29,22 @@
         "og.tilemap.fill",
         "og.anim.graph"
       ]
+    },
+    {
+      "member": "og.world, og.input, og.transform, og.audio and og.commands",
+      "change": "Its arguments are read by types generated from the IDL. A field of the wrong JSON type, a fractional or out-of-range whole number, or an unknown enum name or union kind used to fall back to a default or be truncated silently; it is now refused with the field's path, the value it got and what was expected (`desc.blocked[1].max.y: expected a number, got true`). A malformed spawn, query or spatial desc is refused instead of defaulted; og.commands.register refuses a malformed desc instead of registering empty usage and doc; setActionMaps, setKeyboardLayout and observe drop the whole list on a bad element instead of skipping it; transform.decompose takes a matrix whose elements are not sixteen numbers as the identity; createSound refuses samples beyond f32's range. Absent and null fields take the IDL defaults; a partial object (`color: { r: 0 }`) fills the rest from its field's default.",
+      "fix": "Pass each field as the IDL types it: numbers as numbers, whole numbers in range for u32, i32 and handle fields, enums and union kinds by their names, lists and objects where the IDL says so. Omit a field (or pass null) for its default.",
+      "find": [
+        "og.world.spawn",
+        "og.world.instantiate",
+        "og.world.query",
+        "og.world.spatial",
+        "og.commands.register",
+        "og.input.setActionMaps",
+        "og.input.replayIntent",
+        "og.transform.decompose",
+        "og.audio.createSound"
+      ]
     }
   ]
 }
