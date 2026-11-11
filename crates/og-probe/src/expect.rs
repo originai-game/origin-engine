@@ -625,12 +625,7 @@ impl Probe {
             }
             Expect::UiText { query } => {
                 r.expected = json!(query);
-                let elements = self
-                    .host
-                    .ui
-                    .as_ref()
-                    .map(|u| u.elements(world))
-                    .unwrap_or_default();
+                let elements = self.host.elements(world);
                 match find_by_text(&elements, &query) {
                     Some(e) => r.observed = json!({"id": e.id, "text": e.text}),
                     None => {
@@ -734,12 +729,12 @@ impl Probe {
                 }
             }
             Expect::State { path, op, value } => {
-                let facts = self.host.facts.as_ref().map_or(Value::Null, |f| f(world));
+                let facts = self.host.facts(world);
                 check_path(&mut r, &facts, "state().facts", "facts.", &path, op, &value);
             }
             Expect::Timings { path, op, value } => {
                 // What the renderer measures, without one: unchecked.
-                if !self.host.capture.as_ref().is_some_and(|c| c.has_renderer())
+                if !self.host.has_renderer()
                     && ["triangles", "render", "passes"]
                         .contains(&path.split('.').next().unwrap_or(""))
                 {
@@ -769,9 +764,7 @@ impl Probe {
                     return Ok(self.record(r));
                 };
                 // The renderer's observation (render.lod), without one: unchecked.
-                if !self.host.capture.as_ref().is_some_and(|c| c.has_renderer())
-                    && path.split('.').next() == Some("render")
-                {
+                if !self.host.has_renderer() && path.split('.').next() == Some("render") {
                     r.status = Status::Unchecked;
                     r.reason = format!("no renderer, {path} unchecked");
                     return Ok(self.record(r));
