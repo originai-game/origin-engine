@@ -767,3 +767,16 @@ pub(crate) fn path_json(engine: u32, world: &World, e: Entity) -> Option<Value> 
     }
     Some(v)
 }
+
+/// The lazy records og.nav reads (super::lazy): granted to its system.
+pub(crate) fn enable_filters(w: &mut World) -> og_core::Result<()> {
+    og_nav::enable_filters(w)
+}
+
+pub(crate) fn enable_crowds(w: &mut World) -> og_core::Result<()> {
+    og_nav::enable_crowds(w)
+}
+
+pub(crate) fn enable_links(w: &mut World) -> og_core::Result<()> {
+    og_nav::enable_links(w)
+}

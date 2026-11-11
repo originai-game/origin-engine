@@ -10,7 +10,7 @@ description = "Origin Engine web host: the binding symbols as a wasm-bindgen mod
 crate-type = ["cdylib", "rlib"]
 
 [features]
-default = ["shaping", "physics2d", "physics3d", "story", "video", "destruction", "motion"]
+default = ["shaping", "physics2d", "physics3d", "story", "video", "destruction", "motion", "nav", "ai"]
 # og-ui's run-time shaping (rustybuzz: Arabic, Indic); every shipped variant
 # keeps it (scripts/wasm-crates.txt); a build without it is for games
 # without shaped scripts (crates/og-ui/README.md §Text).
@@ -35,6 +35,8 @@ story = ["og-runtime/story"]
 video = ["og-runtime/video"]
 destruction = ["og-runtime/destruction"]
 motion = ["og-runtime/motion"]
+nav = ["og-runtime/nav"]
+ai = ["og-runtime/ai"]
 
 [dependencies]
 og-api = { path = "../og-api" }

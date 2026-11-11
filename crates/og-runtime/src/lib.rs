@@ -29,6 +29,12 @@
 
 #![recursion_limit = "256"]
 
+#[cfg(feature = "ai")]
+mod ai;
+// Without the `ai` feature og-ai is not linked: og.ai answers the refusal
+// (src/ai_absent.rs).
+#[cfg(not(feature = "ai"))]
+#[path = "ai_absent.rs"]
 mod ai;
 mod anim;
 mod api;
@@ -54,6 +60,7 @@ mod destruction2d;
 mod determinism;
 mod display;
 mod e6;
+mod e6_idle;
 mod effect;
 mod engine;
 mod environment;
@@ -86,6 +93,12 @@ mod motion;
 #[cfg(not(feature = "motion"))]
 #[path = "motion_absent.rs"]
 mod motion;
+#[cfg(feature = "nav")]
+mod nav;
+// Without the `nav` feature og-nav is not linked: og.nav answers the
+// refusal (src/nav_absent.rs).
+#[cfg(not(feature = "nav"))]
+#[path = "nav_absent.rs"]
 mod nav;
 mod net;
 mod origin;

@@ -33,26 +33,26 @@ pub(crate) const LAZY: &[Lazy] = &[
     // G2-4: og.nav reads it.
     Lazy {
         name: "og.NavFilter",
-        enable: |w, _| og_nav::enable_filters(w),
+        enable: |w, _| crate::nav::enable_filters(w),
     },
     // G2-4: og.nav reads it (crowd avoidance).
     Lazy {
         name: "og.Crowd",
-        enable: |w, _| og_nav::enable_crowds(w),
+        enable: |w, _| crate::nav::enable_crowds(w),
     },
     // G2-4: og.ai sends them once a behaviour with a game action is loaded.
     Lazy {
         name: "og.AiActionStarted",
-        enable: |w, _| og_ai::enable_action_started(w),
+        enable: |w, _| crate::ai::enable_action_started(w),
     },
     Lazy {
         name: "og.AiActionStopped",
-        enable: |w, _| og_ai::enable_action_stopped(w),
+        enable: |w, _| crate::ai::enable_action_stopped(w),
     },
     // G2-4: og.nav sends it once a navmesh has an off-mesh link.
     Lazy {
         name: "og.NavLinkReached",
-        enable: |w, _| og_nav::enable_links(w),
+        enable: |w, _| crate::nav::enable_links(w),
     },
     // G2-3: og.physics sends them and reads the hooks once a game names
     // them; a world that never does keeps its type table and hash.

@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og.nav and og.ai as optional runtime modules",
+      "summary": "Each is a feature of the runtime (nav, ai; ai needs nav), on by default and in every shipped web variant and the native host, so a game's calls and saves are unchanged. A build without one links none of og-nav (nor og-bundle's navmesh loaders) or og-ai: its calls answer a refusal naming the feature (a cooked navmesh is refused, never dropped), and the world it leaves (the og.nav and og.ai systems and their state blocks, the records in IDL order) saves and hashes byte for byte as the full build's for a game that never uses the module."
+    }
+  ]
+}

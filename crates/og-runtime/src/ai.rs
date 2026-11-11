@@ -257,3 +257,12 @@ pub(crate) fn describe_json(engine: u32, world: &World, e: Entity) -> Option<Val
     }
     Some(v)
 }
+
+/// The lazy events og.ai sends (super::lazy): granted to its system.
+pub(crate) fn enable_action_started(w: &mut World) -> og_core::Result<()> {
+    og_ai::enable_action_started(w)
+}
+
+pub(crate) fn enable_action_stopped(w: &mut World) -> og_core::Result<()> {
+    og_ai::enable_action_stopped(w)
+}

@@ -9,6 +9,9 @@ description = "Origin Engine cooked bundle: the blob formats og-cook writes and 
 # Pure Rust by default, builds for wasm32-unknown-unknown.
 [features]
 default = []
+# The navmesh loaders (`navmesh`, `navmesh_areas`, `navmesh_links`), into
+# og-nav's types; og-runtime's `nav` turns it on.
+nav = ["dep:og-nav"]
 # Native Basis Universal transcoding of cooked KTX2 textures to RGBA8 for
 # og-render (C++ through basis-universal; not for wasm32, where the host
 # transcodes with Binomial's wasm transcoder).
@@ -23,7 +26,8 @@ og-render = { path = "../og-render" }
 og-anim = { path = "../og-anim" }
 og-tilemap = { path = "../og-tilemap" }
 og-timeline = { path = "../og-timeline" }
-og-nav = { path = "../og-nav" }
+# Cooked navmeshes load into og-nav's types (`nav`).
+og-nav = { path = "../og-nav", optional = true }
 glam = { workspace = true }
 bytemuck = { workspace = true }
 miniz_oxide = "0.8"

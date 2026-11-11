@@ -1489,6 +1489,7 @@ impl Bundle {
 
     /// Decodes a navmesh blob (`og.NavMesh`): the heightfield and the tiles
     /// the cook built (link them with `og_nav::NavMesh::from_tiles`).
+    #[cfg(feature = "nav")]
     pub fn navmesh(
         &self,
         id: &str,
@@ -1591,6 +1592,7 @@ impl Bundle {
     /// byte area id then its shape; empty in a blob without areas), which
     /// the mesh re-marks when an obstacle rebuilds a tile
     /// (`og_nav::NavMesh::from_tiles_with_areas`).
+    #[cfg(feature = "nav")]
     pub fn navmesh_areas(
         &self,
         id: &str,
@@ -1644,6 +1646,7 @@ impl Bundle {
 
     /// A navmesh blob's baked off-mesh links (G2-4: the `links` section,
     /// each a `u32` id then the link; empty in a blob without links).
+    #[cfg(feature = "nav")]
     pub fn navmesh_links(
         &self,
         id: &str,

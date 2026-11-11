@@ -1078,6 +1078,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy, vp
     rs.scene.lines.extend(draws);
     match VIEWS[rs.geo.view_index(&rs.options)] {
         "physics" => physics_view(rs),
+        #[cfg(feature = "nav")]
         "nav" => nav_view(rs),
         "bounds" => bounds_view(rs),
         _ => {}
@@ -1101,6 +1102,7 @@ fn physics_view(rs: &mut RenderState) {
     rs.scene.lines.push(set);
 }
 
+#[cfg(feature = "nav")]
 fn nav_view(rs: &mut RenderState) {
     let engine_id = rs.draw.engine;
     let Some((navs, nav, profile)) =

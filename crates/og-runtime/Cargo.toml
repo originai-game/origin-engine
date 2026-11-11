@@ -30,8 +30,8 @@ og-timeline = { path = "../og-timeline" }
 og-lanes = { path = "../og-lanes" }
 og-tween = { path = "../og-tween" }
 og-tilemap = { path = "../og-tilemap" }
-og-nav = { path = "../og-nav" }
-og-ai = { path = "../og-ai" }
+og-nav = { path = "../og-nav", optional = true }
+og-ai = { path = "../og-ai", optional = true }
 og-story = { path = "../og-story", optional = true }
 og-i18n = { path = "../og-i18n" }
 og-net = { path = "../og-net" }
@@ -52,7 +52,7 @@ og-video = { path = "../og-video", optional = true }
 image = { workspace = true, features = ["exr"] }
 
 [features]
-default = ["shaping", "physics2d", "physics3d", "story", "video", "destruction", "motion"]
+default = ["shaping", "physics2d", "physics3d", "story", "video", "destruction", "motion", "nav", "ai"]
 # A published game: the probe keeps only its player-facing members, the
 # renderer times no pass on the GPU (og-render's `publish`), and the
 # reflected and record field docs are empty (og-core's and og-api's
@@ -87,6 +87,12 @@ destruction = ["dep:og-destruct"]
 # og.motion: goals for humanoids and the motion model that draws them
 # (og-motion; src/motion.rs, src/motion/).
 motion = ["dep:og-motion"]
+# og.nav: grids, flow fields, navmeshes and their agents (og-nav, and
+# og-bundle's navmesh loaders; src/nav.rs).
+nav = ["dep:og-nav", "og-bundle/nav"]
+# og.ai: behaviour trees and state machines (og-ai; src/ai.rs). Its agents
+# move through og.nav, so it needs `nav`.
+ai = ["nav", "dep:og-ai"]
 
 [dev-dependencies]
 # tests/stream_release.rs cooks a small project with streaming groups.

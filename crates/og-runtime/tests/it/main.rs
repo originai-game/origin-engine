@@ -70,6 +70,7 @@ mod model_reload;
 mod motion_goals;
 #[path = "../motion_performance.rs"]
 mod motion_performance;
+#[cfg(feature = "nav")]
 #[path = "../nav_profiles.rs"]
 mod nav_profiles;
 #[path = "../no_renderer.rs"]
