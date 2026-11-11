@@ -72,7 +72,8 @@ impl Renderer {
                     e,
                     (&self.device, &self.queue, (self.width, self.height)),
                     self.visibility.gpu_cull.as_ref().expect("made above"),
-                    self.crowd_gpu
+                    self.world
+                        .crowd_gpu
                         .as_mut()
                         .expect("made when crowd_gpu was decided"),
                     scene,
@@ -92,30 +93,30 @@ impl Renderer {
         }
         // The wind field and the trample map step before any pass reads them.
         pre_graph(&mut encoder, self.info.caps, pre_graph::WIND, |e| {
-            self.wind_field.encode(e);
-            self.trample.encode(e);
+            self.world.wind_field.encode(e);
+            self.world.trample.encode(e);
         });
         pre_graph(&mut encoder, self.info.caps, pre_graph::VISUAL, |e| {
-            if let Some(pipelines) = &self.visual {
+            if let Some(pipelines) = &self.world.visual {
                 for mesh in &self.cache.meshes {
                     if let Some(v) = mesh.surface.as_ref().and_then(|s| s.visual.as_ref()) {
                         pipelines.encode(e, v, false);
                     }
                 }
             }
-            if let Some(fluids) = &self.visual_fluids {
+            if let Some(fluids) = &self.world.visual_fluids {
                 fluids.encode(e);
             }
         });
         pre_graph(&mut encoder, self.info.caps, pre_graph::SURFACES, |e| {
-            if let Some(pipelines) = &self.surfaces {
+            if let Some(pipelines) = &self.world.surfaces {
                 for mesh in &self.cache.meshes {
                     if let Some(surface) = &mesh.surface {
                         pipelines.encode(e, surface, &mesh.vertices, scene.camera_cut);
                     }
                 }
             }
-            if let Some(pipelines) = &self.garments {
+            if let Some(pipelines) = &self.world.garments {
                 if !skinned.garments.is_empty() {
                     pipelines.encode(
                         &self.device,
@@ -126,7 +127,7 @@ impl Renderer {
                         &skinned.garments,
                         self.instances.palette.buffer(),
                         skinned_motion.map(|_| joints_drawn),
-                        self.visual.as_ref(),
+                        self.world.visual.as_ref(),
                     );
                 } else {
                     self.cache.garments.clear();
@@ -142,14 +143,14 @@ impl Renderer {
         );
         // The grass's blades, generated before every pass that draws them.
         pre_graph(&mut encoder, self.info.caps, pre_graph::GRASS, |e| {
-            self.grass.encode(e, grass_frame, terrain_draws)
+            self.world.grass.encode(e, grass_frame, terrain_draws)
         });
         // The scattered copies placed on the GPU this frame, then those the
         // main camera sees, culled on the GPU against its view and the
         // depth pyramid the culling drew.
         let scatter_queries = pre_graph(&mut encoder, self.info.caps, pre_graph::SCATTER, |e| {
             let textures = &self.cache.textures;
-            self.scatter.encode(
+            self.world.scatter.encode(
                 &self.device,
                 &self.queue,
                 e,

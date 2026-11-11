@@ -616,12 +616,8 @@ pub struct Renderer {
     /// The depth prepass's pipelines: the standard and the lean ones by key,
     /// and stylise's object pass.
     prepass: renderer::PrepassState,
-    water: water::WaterRenderer,
-    fluid3d: fluid3d::Fluid3dRenderer,
-    terrain: terrain::TerrainRenderer,
-    scatter: scatter::ScatterRenderer,
-    grass: grass::GrassRenderer,
-    metaballs: metaballs::MetaballRenderer,
+    /// The 3D world's renderers: water, 3D fluids, terrain, scattered copies, grass, metaballs, the wind field and trample map, the visual simulations, surfaces and garments, and the crowds' GPU path and impostors.
+    world: renderer::WorldRenderers,
     /// The probe GI (`gi_probes.rs`), made the first frame that asks for it.
     gi_probes: Option<gi_probes::GiProbes>,
     /// Reflection probes' cubes and frame uniforms (`probes.rs`).
@@ -640,12 +636,6 @@ pub struct Renderer {
     lines: lines::LineRenderer,
     particles: renderer::Particles,
     lights_2d: light2d::Light2dRenderer,
-    surfaces: Option<surface::SurfacePipelines>,
-    garments: Option<garment_gpu::Pipelines>,
-    /// The GPU solver of visual bodies ([`VisualBody`]), with `surfaces`.
-    visual: Option<visual_sim::VisualPipelines>,
-    /// The GPU solver of visual fluids ([`VisualFluid`]), with `visual`.
-    visual_fluids: Option<visual_fluid::VisualFluids>,
     /// What the frame carries to the next: the previous camera, clock and
     /// wind (motion vectors), TAA's history, and the origin it is in.
     history: renderer::history::FrameHistory,
@@ -680,17 +670,6 @@ pub struct Renderer {
     saves: renderer::history::Saves,
     /// Compiled pipelines kept across runs (`pipeline_cache.rs`), when kept.
     pipeline_disk: Option<pipeline_cache::DiskCache>,
-    /// Whether crowds can be culled and drawn on the GPU (indirect draws
-    /// with a first instance), and their culling once a frame used it.
-    crowd_indirect: bool,
-    crowd_gpu: Option<crowd_gpu::CrowdCulling>,
-    /// Crowd impostors' atlases (`crowd_impostor.rs`), made when a crowd
-    /// with an impostor is first drawn.
-    crowd_impostors: Option<crowd_impostor::CrowdImpostors>,
-    /// The vegetation's simulated wind field (`wind_field.rs`).
-    wind_field: wind_field::WindFieldSim,
-    /// The grass trample map (`trample.rs`).
-    trample: trample::Trample,
     /// The frame whose lit image screen-space GI's copy holds
     /// (`Persistent::gi`, without TAA); forgotten with the TAA history.
     gi_history: Option<u64>,

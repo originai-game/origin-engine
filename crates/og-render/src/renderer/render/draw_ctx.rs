@@ -516,6 +516,7 @@ impl<'f> DrawCtx<'f> {
         }
         if let Some(keep) = scatter {
             draws += r
+                .world
                 .scatter
                 .draw(
                     &mut pass,
@@ -632,7 +633,7 @@ impl<'f> DrawCtx<'f> {
                         .map(|b| b.count)
                         .sum::<u32>();
                 }
-                let (n, _) = r.scatter.draw(
+                let (n, _) = r.world.scatter.draw(
                     pass,
                     scatter::ScatterPass::Shadow,
                     scatter_batches,
@@ -648,7 +649,8 @@ impl<'f> DrawCtx<'f> {
                 stats.draw_calls += n; // Grass casts into the first cascades only (grass.rs).
                 if slot < grass::SHADOW_CASCADES {
                     stats.draw_calls +=
-                        r.grass
+                        r.world
+                            .grass
                             .draw(pass, grass::GrassPass::Shadow, grass_frame, None);
                 }
             };

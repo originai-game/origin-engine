@@ -421,7 +421,7 @@ impl Renderer {
             }
             self.queue.submit(Some(encoder.finish()));
             self.lights.fx_groups = None;
-            self.terrain.forget_groups();
+            self.world.terrain.forget_groups();
         }
         // Stream textures' new frames, written in place (no rebinding). A
         // texture uploaded again (its slot replaced) takes its frame again.

@@ -238,7 +238,7 @@ impl Renderer {
         let metaball_groups: Vec<wgpu::BindGroup> = post::FIELD_NAMES
             .iter()
             .map_while(|name| self.graph.try_view(name))
-            .map(|v| self.metaballs.group(&self.device, v))
+            .map(|v| self.world.metaballs.group(&self.device, v))
             .collect();
         // The planar reflection's effect group: its decals, no AO.
         let reflection_fx_group: Vec<wgpu::BindGroup> = (0..reflections.len())
@@ -285,7 +285,7 @@ impl Renderer {
                 let slot = self.views.slots[p.index].as_ref().expect("written");
                 slot.fields
                     .iter()
-                    .map(|v| self.metaballs.group(&self.device, v))
+                    .map(|v| self.world.metaballs.group(&self.device, v))
                     .collect()
             })
             .collect();

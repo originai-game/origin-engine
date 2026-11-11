@@ -156,7 +156,7 @@ impl Renderer {
             foliage_wind: crate::foliage::foliage_winds(
                 scene,
                 self.history.previous_wind,
-                self.wind_field.grid(),
+                self.world.wind_field.grid(),
             )
             .1,
             toon: [

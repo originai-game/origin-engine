@@ -99,10 +99,10 @@ impl Renderer {
     ) -> GpuMesh {
         let count = mesh.indices.len() as u64 * u64::from(level * level);
         let bytes = count * std::mem::size_of::<Vertex>() as u64;
-        let Some(pipelines) = self
-            .surfaces
-            .as_ref()
-            .filter(|_| bytes > 0 && bytes <= self.device.limits().max_storage_buffer_binding_size)
+        let Some(pipelines) =
+            self.world.surfaces.as_ref().filter(|_| {
+                bytes > 0 && bytes <= self.device.limits().max_storage_buffer_binding_size
+            })
         else {
             return self.upload_mesh(&surface::fallback(mesh, kind), false);
         };
@@ -192,7 +192,7 @@ impl Renderer {
                 .map(|w| {
                     f.deformation.deform_margin(
                         crate::wind_field::lean_cap(Some(*w).filter(|w| w.strength > 0.0), false)
-                            .max(self.wind_field.lean_cap()),
+                            .max(self.world.wind_field.lean_cap()),
                     )
                 })
                 .fold(0.0f32, f32::max)
@@ -209,13 +209,13 @@ impl Renderer {
     /// conservative bounds. After [`Renderer::refresh_meshes`].
     pub(crate) fn refresh_visual(&mut self, scene: &RenderScene) {
         let Renderer {
-            visual,
+            world,
             cache,
             device,
             queue,
             ..
         } = self;
-        let Some(pipelines) = visual.as_mut() else {
+        let Some(pipelines) = world.visual.as_mut() else {
             return;
         };
         let mut bodies = Vec::new();

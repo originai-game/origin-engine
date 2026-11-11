@@ -149,9 +149,9 @@ impl Renderer {
                     let (w, f) = crate::foliage::foliage_winds(
                         scene,
                         self.history.previous_wind,
-                        self.wind_field.grid(),
+                        self.world.wind_field.grid(),
                     );
-                    (w, f, self.wind_field.lean_cap())
+                    (w, f, self.world.wind_field.lean_cap())
                 },
                 |mesh| &meshes[mesh].vertices,
                 |b| materials[b.material].occluder,

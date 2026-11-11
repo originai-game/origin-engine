@@ -86,7 +86,8 @@ impl Renderer {
             Some(t) if scene.texture_color_space(t) == Some(ColorSpace::Srgb) => 2.0,
             Some(_) => 1.0,
         };
-        self.terrain
+        self.world
+            .terrain
             .decals
             .write(&self.queue, fx_uniform.decal_info);
         // w: 1 with the GI's bounce in the AO texture's gba, 2 with GTAO's

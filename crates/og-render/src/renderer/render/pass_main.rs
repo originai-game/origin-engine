@@ -236,7 +236,7 @@ impl Renderer {
             main_list.indirect,
         );
         if let Some(indices) = terrain_indices {
-            pass.set_bind_group(3, self.terrain.decals.group(true), &[]);
+            pass.set_bind_group(3, self.world.terrain.decals.group(true), &[]);
             let (n, tris) = terrain::draw_levels(
                 &mut pass,
                 terrain_draws,
@@ -250,7 +250,7 @@ impl Renderer {
             stats.terrain_triangles += tris;
             stats.triangles += tris;
         }
-        let (n, copies) = self.scatter.draw(
+        let (n, copies) = self.world.scatter.draw(
             &mut pass,
             scatter::ScatterPass::Lit,
             scatter_batches,
@@ -270,7 +270,7 @@ impl Renderer {
         stats.draw_calls += n;
         stats.scatter_draws += n;
         stats.scatter_copies += copies;
-        stats.draw_calls += self.grass.draw(
+        stats.draw_calls += self.world.grass.draw(
             &mut pass,
             grass::GrassPass::Lit,
             grass_frame,
@@ -314,13 +314,14 @@ impl Renderer {
             // Each surface and the fluids with their reflection probe (probe_select.rs).
             let mut binder = probe_select::Binder::new(probe_binding);
             stats.draw_calls +=
-                self.water
+                self.world
+                    .water
                     .draw(&mut pass, water_draws, &mut binder, self.frame_features);
             if let Some(f) = fluid_frame {
                 if let Some((c, r)) = fluid_bounds {
                     binder.at(&mut pass, c, r);
                 }
-                stats.draw_calls += self.fluid3d.draw(&mut pass, f);
+                stats.draw_calls += self.world.fluid3d.draw(&mut pass, f);
                 binder.reset(&mut pass);
             }
         }

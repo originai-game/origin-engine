@@ -16,7 +16,7 @@ impl Pass for Fluid3dPass {
     type Plan<'f> = Option<&'f fluid3d::Fluid3dFrame>;
 
     fn state(r: &Renderer) -> &Self::State {
-        &r.fluid3d
+        &r.world.fluid3d
     }
 
     fn encode<'f>(

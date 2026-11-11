@@ -59,7 +59,7 @@ impl Renderer {
             })
             .collect();
         let water_draws = match self.graph.try_view("scene-copy") {
-            Some(copy) if !scene_water.is_empty() => self.water.prepare(
+            Some(copy) if !scene_water.is_empty() => self.world.water.prepare(
                 &self.device,
                 &self.queue,
                 scene_water,
@@ -101,7 +101,7 @@ impl Renderer {
                 .iter()
                 .map(|&(slot, _)| {
                     let t = self.probes.targets_of(slot);
-                    self.water.face_draws(
+                    self.world.water.face_draws(
                         &self.device,
                         &self.queue,
                         scene_water,
@@ -133,7 +133,7 @@ impl Renderer {
         )
         .map(|(lo, hi)| ((lo + hi) * 0.5, (hi - lo).length() * 0.5));
         let fluid_frame = match fluid3d::views(&self.graph, scene_depth) {
-            Some(views) if fluids_3d => self.fluid3d.prepare(
+            Some(views) if fluids_3d => self.world.fluid3d.prepare(
                 &self.device,
                 &self.queue,
                 &scene.fluids_3d,
@@ -144,13 +144,13 @@ impl Renderer {
                 },
                 (self.width, self.height),
                 &views,
-                self.visual_fluids.is_some(),
+                self.world.visual_fluids.is_some(),
             ),
             _ => None,
         };
-        if let Some(fluids) = self.visual_fluids.as_mut() {
+        if let Some(fluids) = self.world.visual_fluids.as_mut() {
             let slots = match fluid_frame {
-                Some(_) => self.fluid3d.visual.as_slice(),
+                Some(_) => self.world.fluid3d.visual.as_slice(),
                 None => &[],
             };
             fluids.prepare(
@@ -160,7 +160,7 @@ impl Renderer {
                 &scene.colliders,
                 scene.tick,
                 scene.tick_rate,
-                self.fluid3d.instances(),
+                self.world.fluid3d.instances(),
             );
         }
         // The 3D fluids as each due capture face draws them: the frame's
@@ -180,7 +180,7 @@ impl Renderer {
                         &t.prepass.lindepth,
                         t.copy.as_ref().expect("made with the fluids"),
                     );
-                    self.fluid3d.camera_frame(
+                    self.world.fluid3d.camera_frame(
                         &self.device,
                         &self.queue,
                         &scene.fluids_3d,

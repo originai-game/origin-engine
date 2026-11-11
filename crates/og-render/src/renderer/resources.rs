@@ -835,6 +835,33 @@ pub(crate) struct SpriteState {
     pub(crate) sprite_shader: deferred::Module,
 }
 
+/// The 3D world's renderers: water, 3D fluids, terrain, scattered copies, grass, metaballs, the wind field and trample map, the visual simulations, surfaces and garments, and the crowds' GPU path and impostors.
+pub(crate) struct WorldRenderers {
+    pub(crate) water: water::WaterRenderer,
+    pub(crate) fluid3d: fluid3d::Fluid3dRenderer,
+    pub(crate) terrain: terrain::TerrainRenderer,
+    pub(crate) scatter: scatter::ScatterRenderer,
+    pub(crate) grass: grass::GrassRenderer,
+    pub(crate) metaballs: metaballs::MetaballRenderer,
+    /// The vegetation's simulated wind field (`wind_field.rs`).
+    pub(crate) wind_field: wind_field::WindFieldSim,
+    /// The grass trample map (`trample.rs`).
+    pub(crate) trample: trample::Trample,
+    /// The GPU solver of visual fluids ([`VisualFluid`]), with `visual`.
+    pub(crate) visual_fluids: Option<visual_fluid::VisualFluids>,
+    pub(crate) surfaces: Option<surface::SurfacePipelines>,
+    pub(crate) garments: Option<garment_gpu::Pipelines>,
+    /// The GPU solver of visual bodies ([`VisualBody`]), with `surfaces`.
+    pub(crate) visual: Option<visual_sim::VisualPipelines>,
+    /// Whether crowds can be culled and drawn on the GPU (indirect draws
+    /// with a first instance), and their culling once a frame used it.
+    pub(crate) crowd_indirect: bool,
+    pub(crate) crowd_gpu: Option<crowd_gpu::CrowdCulling>,
+    /// Crowd impostors' atlases (`crowd_impostor.rs`), made when a crowd
+    /// with an impostor is first drawn.
+    pub(crate) crowd_impostors: Option<crowd_impostor::CrowdImpostors>,
+}
+
 #[cfg(test)]
 mod foliage_layout_tests {
     use super::*;

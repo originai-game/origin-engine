@@ -51,7 +51,7 @@ impl Renderer {
         let Some(palette) = self.instances.palette.bind_group.clone() else {
             return;
         };
-        let imp = self.crowd_impostors.get_or_insert_with(|| {
+        let imp = self.world.crowd_impostors.get_or_insert_with(|| {
             CrowdImpostors::new(&self.device, &self.material_layout, &self.palette_layout)
         });
         imp.begin_frame();

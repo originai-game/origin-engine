@@ -180,7 +180,7 @@ impl Renderer {
                 terrain::draw_levels(&mut p, terrain_draws, indices, prepass, view_frustum, None);
             stats.prepass_draws += n;
         }
-        let (n, _) = self.scatter.draw(
+        let (n, _) = self.world.scatter.draw(
             &mut p,
             scatter::ScatterPass::Prepass,
             scatter_batches,
@@ -195,7 +195,8 @@ impl Renderer {
         );
         stats.prepass_draws += n;
         stats.prepass_draws +=
-            self.grass
+            self.world
+                .grass
                 .draw(&mut p, grass::GrassPass::Prepass, grass_frame, None);
         stats.draw_calls += stats.prepass_draws;
         drop(p);
@@ -300,7 +301,7 @@ impl Renderer {
                     multiview_mask: None,
                 });
                 p.set_bind_group(0, frame_bind_group, &[]);
-                stats.draw_calls += self.water.draw_ao_depth(&mut p, water_draws);
+                stats.draw_calls += self.world.water.draw_ao_depth(&mut p, water_draws);
             }
         }
     }

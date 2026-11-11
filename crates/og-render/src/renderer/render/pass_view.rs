@@ -75,7 +75,8 @@ impl Renderer {
             && !slot.fields.is_empty()
         {
             let fields: Vec<&wgpu::TextureView> = slot.fields.iter().collect();
-            self.metaballs
+            self.world
+                .metaballs
                 .encode_field(encoder, &fields, &view_groups[i].0);
             stats.draw_calls += fields.len() as u32;
         }
@@ -129,7 +130,7 @@ impl Renderer {
                 None,
             );
             if let Some(indices) = terrain_indices {
-                pass.set_bind_group(3, self.terrain.decals.group(false), &[]);
+                pass.set_bind_group(3, self.world.terrain.decals.group(false), &[]);
                 stats.draw_calls += terrain::draw_levels(
                     &mut pass,
                     terrain_draws,

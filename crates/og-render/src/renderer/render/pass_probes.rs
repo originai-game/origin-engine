@@ -112,7 +112,10 @@ impl Renderer {
                         &t.prepass.lindepth,
                         t.copy.as_ref().expect("made with the fluids"),
                     );
-                    stats.draw_calls += self.fluid3d.encode(encoder, f, &face_groups[k], &views);
+                    stats.draw_calls +=
+                        self.world
+                            .fluid3d
+                            .encode(encoder, f, &face_groups[k], &views);
                 }
                 let (view, resolve_target) = match &s.msaa {
                     Some(m) => (m, Some(&s.faces[face])),
@@ -192,7 +195,7 @@ impl Renderer {
                     None,
                 );
                 if let Some(indices) = terrain_indices {
-                    pass.set_bind_group(3, self.terrain.decals.group(false), &[]);
+                    pass.set_bind_group(3, self.world.terrain.decals.group(false), &[]);
                     stats.draw_calls += terrain::draw_levels(
                         &mut pass,
                         terrain_draws,
@@ -203,7 +206,7 @@ impl Renderer {
                     )
                     .0;
                 }
-                let (n, _) = self.scatter.draw(
+                let (n, _) = self.world.scatter.draw(
                     &mut pass,
                     scatter::ScatterPass::Lit,
                     scatter_batches,
@@ -254,7 +257,7 @@ impl Renderer {
                     pass = begin(encoder, false);
                     pass.set_bind_group(0, &face_groups[k], &[]);
                     if let Some(water) = water {
-                        stats.draw_calls += self.water.draw(
+                        stats.draw_calls += self.world.water.draw(
                             &mut pass,
                             water,
                             &mut probe_select::Binder::new(None),
@@ -262,7 +265,7 @@ impl Renderer {
                         );
                     }
                     if let Some(f) = fluid {
-                        stats.draw_calls += self.fluid3d.draw(&mut pass, f);
+                        stats.draw_calls += self.world.fluid3d.draw(&mut pass, f);
                     }
                     pass.set_bind_group(2, fx_group, &[]);
                 }

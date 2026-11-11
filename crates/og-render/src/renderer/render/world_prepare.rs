@@ -48,7 +48,7 @@ impl Renderer {
         let terrain_draws = if !WORLD_3D {
             Vec::new()
         } else {
-            self.terrain.prepare(
+            self.world.terrain.prepare(
                 &self.device,
                 &self.queue,
                 scene,
@@ -79,7 +79,7 @@ impl Renderer {
         } else {
             let materials = &self.cache.materials;
             let meshes = &self.cache.meshes;
-            self.scatter.prepare(
+            self.world.scatter.prepare(
                 &self.device,
                 &self.queue,
                 scene,
@@ -88,9 +88,9 @@ impl Renderer {
                 prev_view_proj,
                 self.phase(),
                 (
-                    self.wind_field.grid(),
-                    self.wind_field.lean_cap(),
-                    self.trample.grid(),
+                    self.world.wind_field.grid(),
+                    self.world.wind_field.lean_cap(),
+                    self.world.trample.grid(),
                 ),
                 |m| materials.get(m).map(|g| g.side),
                 |m| {
@@ -107,26 +107,26 @@ impl Renderer {
                     &Self::crowd_card_inputs(crowd_frame, &cpu_cards.0),
                     &cpu_cards.1,
                 ),
-                (&self.terrain, &terrain_draws),
+                (&self.world.terrain, &terrain_draws),
             )
         };
         // Grass: this frame's fields planned over the drawn terrains (grass.rs).
         let grass_frame = if !WORLD_3D {
             grass::GrassFrame::default()
         } else {
-            self.grass.prepare(
+            self.world.grass.prepare(
                 &self.device,
                 &self.queue,
                 scene,
-                &self.terrain,
+                &self.world.terrain,
                 &terrain_draws,
                 grass::GrassView {
                     camera: camera.position,
                     frame: cam,
                     prev_view_proj,
                     height: self.height,
-                    wind_grid: self.wind_field.grid(),
-                    trample: self.trample.grid(),
+                    wind_grid: self.world.wind_field.grid(),
+                    trample: self.world.trample.grid(),
                 },
                 view_frustum,
                 &|h| textures.get(h.index()).map(|t| &t.view),

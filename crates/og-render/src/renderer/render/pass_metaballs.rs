@@ -15,7 +15,7 @@ impl Pass for MetaballsPass {
     type Plan<'f> = ();
 
     fn state(r: &Renderer) -> &Self::State {
-        &r.metaballs
+        &r.world.metaballs
     }
 
     fn encode<'f>(st: &Self::State, _: &(), _: FramePass, cx: &mut EncodeCx<'_, 'f>) {

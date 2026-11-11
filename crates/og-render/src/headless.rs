@@ -54,7 +54,11 @@ impl Renderer {
             .iter()
             .map(|p| *p - glam::Vec2::new(origin.x, origin.z))
             .collect();
-        let Some(buffer) = self.water.probe_sea(&self.device, &self.queue, &frame) else {
+        let Some(buffer) = self
+            .world
+            .water
+            .probe_sea(&self.device, &self.queue, &frame)
+        else {
             return Ok(Vec::new());
         };
         let (tx, rx) = std::sync::mpsc::channel();

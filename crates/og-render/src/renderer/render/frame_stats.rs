@@ -69,9 +69,9 @@ impl Renderer {
         let cluster_stats = &self.lights.clusters.stats;
         let mut stats = FrameStats {
             instance_upload_bytes,
-            terrain_tiles: self.terrain.resident,
-            terrain_uploads: self.terrain.uploads,
-            scatter_built: self.scatter.built,
+            terrain_tiles: self.world.terrain.resident,
+            terrain_uploads: self.world.terrain.uploads,
+            scatter_built: self.world.scatter.built,
             batches: batches.len() as u32,
             instances: scene.instances.len() as u32,
             culled,

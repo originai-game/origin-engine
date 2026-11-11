@@ -37,9 +37,9 @@ impl Renderer {
                 current = None;
             }
             if let RunSource::Metaballs(i) = source
-                && let Some(group) = self.metaballs.field_of(i).and_then(|f| fields.get(f))
+                && let Some(group) = self.world.metaballs.field_of(i).and_then(|f| fields.get(f))
             {
-                self.metaballs.composite(pass, group, i);
+                self.world.metaballs.composite(pass, group, i);
                 draws += 1;
                 pass.set_bind_group(2, fx, &[]);
                 current = None;

@@ -259,8 +259,8 @@ impl Renderer {
                 }),
                 ssr: self.ssr.save(device, e),
                 fsr: self.post.fsr.save(device, e),
-                wind: self.wind_field.save(device, e),
-                trample: self.trample.save(device, e),
+                wind: self.world.wind_field.save(device, e),
+                trample: self.world.trample.save(device, e),
             }
         };
         self.queue.submit(Some(encoder.finish()));
@@ -277,7 +277,7 @@ impl Renderer {
             previous_sway: self.instances.previous_sway.clone(),
             drawn_origin: self.history.drawn_origin,
             stylise_chain: self.stylise_chain,
-            terrain: self.terrain.save(),
+            terrain: self.world.terrain.save(),
             gpu: Some(gpu),
         }
     }
@@ -342,7 +342,7 @@ impl Renderer {
         self.instances.previous_sway.clone_from(&s.previous_sway);
         self.history.drawn_origin = s.drawn_origin;
         self.stylise_chain = s.stylise_chain;
-        self.terrain.restore(&s.terrain);
+        self.world.terrain.restore(&s.terrain);
         let mut whole = s.gpu.is_some();
         if let Some(g) = &s.gpu {
             let e: &mut wgpu::CommandEncoder = &mut encoder;
@@ -373,8 +373,8 @@ impl Renderer {
             whole &= gi;
             whole &= self.ssr.restore(e, g.ssr.as_ref());
             whole &= self.post.fsr.restore(e, &g.fsr);
-            whole &= self.wind_field.restore(e, &g.wind);
-            whole &= self.trample.restore(e, &g.trample);
+            whole &= self.world.wind_field.restore(e, &g.wind);
+            whole &= self.world.trample.restore(e, &g.trample);
         }
         self.queue.submit(Some(encoder.finish()));
         whole

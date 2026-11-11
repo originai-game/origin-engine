@@ -144,7 +144,7 @@ impl Renderer {
                 })
             })
             .collect();
-        let fluids = self.metaballs.prepare(
+        let fluids = self.world.metaballs.prepare(
             &self.device,
             &self.queue,
             &scene.metaballs,

@@ -196,19 +196,20 @@ impl Renderer {
             p.set_samples(samples);
         }
         for lit in self
+            .world
             .water
             .pipeline
             .each()
-            .chain(self.water.mesh_pipeline.each())
+            .chain(self.world.water.mesh_pipeline.each())
         {
             lit.set_samples(samples);
         }
-        self.metaballs.set_samples(samples);
-        self.fluid3d.set_samples(samples);
+        self.world.metaballs.set_samples(samples);
+        self.world.fluid3d.set_samples(samples);
         self.lines.set_samples(samples);
-        self.terrain.set_samples(samples);
-        self.scatter.set_samples(samples);
-        self.grass.set_samples(samples);
+        self.world.terrain.set_samples(samples);
+        self.world.scatter.set_samples(samples);
+        self.world.grass.set_samples(samples);
         if let Some(a) = &self.sprite.sprite_arrays {
             a.set_samples(samples);
         }

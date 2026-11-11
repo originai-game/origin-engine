@@ -114,7 +114,7 @@ impl Renderer {
                     meshlet_gpu::MeshletGpu::new(
                         &self.device,
                         max,
-                        self.wind_field.lean_view.clone(),
+                        self.world.wind_field.lean_view.clone(),
                     )
                 })
                 .sync(&self.device, &self.queue, scene);

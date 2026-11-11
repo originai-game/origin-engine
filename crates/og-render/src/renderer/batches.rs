@@ -1316,7 +1316,7 @@ impl Renderer {
                             && (b.garment.is_some() || b.normals.len() == n)
                     })
                     .unwrap_or(now);
-                if self.garments.is_some() && now.garment.is_some() {
+                if self.world.garments.is_some() && now.garment.is_some() {
                     garments.push((d, matrices.len() as u32));
                     matrices.resize(matrices.len() + n.div_ceil(2), [[0.; 4]; 4]);
                     previous_slots.resize(previous_slots.len() + n.div_ceil(2), [[0.; 4]; 4]);

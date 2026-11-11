@@ -100,7 +100,7 @@ impl Renderer {
                     Self::instance_bounds(instances::fold_box(
                         all,
                         if WORLD_3D {
-                            self.terrain.bounds(scene)
+                            self.world.terrain.bounds(scene)
                         } else {
                             Vec::new()
                         },

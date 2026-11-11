@@ -59,10 +59,10 @@ impl Renderer {
             || self.particles.gpu.warm()
             || self.lights_2d.warm()
             || self.glass.warm()
-            || (WORLD_3D && self.water.warm())
-            || (WORLD_3D && self.terrain.warm())
-            || self.metaballs.warm()
-            || (WORLD_3D && self.fluid3d.warm())
+            || (WORLD_3D && self.world.water.warm())
+            || (WORLD_3D && self.world.terrain.warm())
+            || self.world.metaballs.warm()
+            || (WORLD_3D && self.world.fluid3d.warm())
             || self.lines.warm()
     }
 
@@ -224,14 +224,14 @@ impl Renderer {
         } else {
             1
         };
-        self.terrain.settled = true;
+        self.world.terrain.settled = true;
         self.capturing = true;
         let mut stats = self.render(scene, target);
         for _ in 1..warmup {
             stats = self.render(scene, target);
         }
         self.capturing = false;
-        self.terrain.settled = false;
+        self.world.terrain.settled = false;
         self.put_frames(&kept);
         stats
     }

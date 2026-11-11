@@ -176,7 +176,7 @@ impl Renderer {
         } else {
             crate::pipeline_features::Features::of(scene)
         };
-        self.terrain.features = self.frame_features;
+        self.world.terrain.features = self.frame_features;
         // Match the surface's two-frame latency. Wait for the oldest frame,
         // not the entire queue: motion and readbacks share this device.
         #[cfg(not(target_arch = "wasm32"))]
@@ -197,8 +197,10 @@ impl Renderer {
         // The wind field's steps since the last tick drawn (wind_field.rs):
         // its grid is what every vegetation pass below reads it by, its
         // lean cap what their culling bounds widen by.
-        self.wind_field.prepare(&self.device, &self.queue, scene);
-        self.trample.prepare(&self.device, &self.queue, scene);
+        self.world
+            .wind_field
+            .prepare(&self.device, &self.queue, scene);
+        self.world.trample.prepare(&self.device, &self.queue, scene);
         self.refresh_foliage_bounds(scene);
         let (upscale, grid_offset) = self.prepare_frame_resources(scene);
         let (probe_frame, active_probes, probe_boxes) = self.prepare_frame_probes(scene);
@@ -268,7 +270,7 @@ impl Renderer {
         // a GPU culling pass (secondary views and probe faces cull skinned
         // instances on the CPU); else as skinned instances.
         let crowd_gpu = crowd_frame.len() > 0
-            && self.crowd_indirect
+            && self.world.crowd_indirect
             && self.visibility.desc_culling != Culling::Cpu
             && scene.views.is_empty()
             && probe_frame.due.is_empty()
@@ -296,6 +298,7 @@ impl Renderer {
                     );
                 culls
                     && self
+                        .world
                         .crowd_gpu
                         .get_or_insert_with(|| {
                             crowd_gpu::CrowdCulling::new(
@@ -404,7 +407,7 @@ impl Renderer {
         // the terrains', the frame's longest compiles, the sky's and the
         // post chain's.
         if WORLD_3D {
-            self.terrain.start_passes(scene, effects.prepass);
+            self.world.terrain.start_passes(scene, effects.prepass);
         }
         {
             use crate::deferred::Start;
@@ -415,7 +418,7 @@ impl Renderer {
             }
         }
         self.post.start();
-        self.water.start(scene_water, self.frame_features);
+        self.world.water.start(scene_water, self.frame_features);
         let (face_fluid, face_depth, object_space) =
             self.prepare_frame_pipelines(PrepareFramePipelinesInputs {
                 scene,
@@ -679,7 +682,7 @@ impl Renderer {
             cull_n: cull.cull_n,
         });
         // Terrains, scattered copies and grass (world_prepare.rs).
-        let mut world = self.prepare_world(PrepareWorldInputs {
+        let mut world_frame = self.prepare_world(PrepareWorldInputs {
             scene,
             camera: &camera,
             cam: &cam,
@@ -696,9 +699,9 @@ impl Renderer {
         // that casts nothing still need the cascades (their shadows, and
         // the grass canopy's own shading, read them).
         let has_casters = batches.iter().chain(&skinned_batches).any(|b| b.cast)
-            || world.terrain_casters
-            || world.grass_frame.casts()
-            || world.scatter_batches.casts();
+            || world_frame.terrain_casters
+            || world_frame.grass_frame.casts()
+            || world_frame.scatter_batches.casts();
         // The local lights (lights_stage.rs).
         let lights_frame = self.prepare_lights(PrepareLightsInputs {
             scene,
@@ -726,10 +729,10 @@ impl Renderer {
             meshlet_casters: &cull.meshlet_casters,
             shadow_split: &shadow_inputs.shadow_split,
             skinned_batches: &skinned_batches,
-            scatter_batches: &world.scatter_batches,
-            grass_frame: &world.grass_frame,
-            terrain_casters: world.terrain_casters,
-            terrain_draws: &world.terrain_draws,
+            scatter_batches: &world_frame.scatter_batches,
+            grass_frame: &world_frame.grass_frame,
+            terrain_casters: world_frame.terrain_casters,
+            terrain_draws: &world_frame.terrain_draws,
             gpu_cull: cull.gpu_cull,
             vis: &mut camera_lists.vis,
             spheres: &spheres,
@@ -778,7 +781,7 @@ impl Renderer {
             skinned_data: &skinned_data,
             joint_matrices: &joint_matrices,
             crowd_frame: &crowd_frame,
-            scatter_batches: &mut world.scatter_batches,
+            scatter_batches: &mut world_frame.scatter_batches,
             ribbon_frame: &arenas.ribbon_frame,
             sprite_frame: &arenas.sprite_frame,
             particle_frame: &particle_frame,
@@ -829,7 +832,7 @@ impl Renderer {
             camera: &camera,
             cam: &cam,
             view_frustum: &view_frustum,
-            prev_view_proj: world.prev_view_proj,
+            prev_view_proj: world_frame.prev_view_proj,
             motion_read: effects.motion_read,
             skinned_motion,
             joints_drawn,
@@ -1058,8 +1061,8 @@ impl Renderer {
             skinned: &skinned,
             skinned_motion,
             joints_drawn,
-            terrain_draws: &world.terrain_draws,
-            grass_frame: &world.grass_frame,
+            terrain_draws: &world_frame.terrain_draws,
+            grass_frame: &world_frame.grass_frame,
         });
         let transmission_view = self
             .transmission
@@ -1113,7 +1116,7 @@ impl Renderer {
             skinned_gpu: cull.skinned_gpu,
         });
         if !water_fluids.water_draws.is_empty() {
-            (stats.water_submits, stats.foam_steps) = self.water.submitted;
+            (stats.water_submits, stats.foam_steps) = self.world.water.submitted;
         }
         // The frame's bind groups (frame_binds.rs).
         let binds = self.bind_frame(BindFrameInputs {
@@ -1168,7 +1171,7 @@ impl Renderer {
             prepass: prepass_skinned,
         } = self.skinned_pipelines(&skinned_visible, &skinned_batches, effects.prepass);
         let culled_gpu = self.visibility.gpu_cull.as_ref().filter(|_| cull.gpu_cull);
-        let crowd_cull = self.crowd_gpu.as_ref().filter(|_| crowd_gpu);
+        let crowd_cull = self.world.crowd_gpu.as_ref().filter(|_| crowd_gpu);
         // The effect groups of the standard and the physical pipelines, in
         // the passes that draw physical materials with theirs.
         let physical_fx = binds
@@ -1194,13 +1197,13 @@ impl Renderer {
             fx_group: binds.fx_group,
             sprite_fx_group: binds.sprite_fx_group,
             glow_fx_group: binds.glow_fx_group,
-            terrain_indices: self.terrain.index_buffer(),
-            terrain_draws: &world.terrain_draws,
-            scatter_batches: &world.scatter_batches,
-            grass_frame: &world.grass_frame,
+            terrain_indices: self.world.terrain.index_buffer(),
+            terrain_draws: &world_frame.terrain_draws,
+            scatter_batches: &world_frame.scatter_batches,
+            grass_frame: &world_frame.grass_frame,
             shadow_skinned: &shadow_skinned,
             skinned_batches: &skinned_batches,
-            terrain_casters: world.terrain_casters,
+            terrain_casters: world_frame.terrain_casters,
         };
         let camera_cards = ctx.card_source(
             camera_lists
@@ -1259,8 +1262,8 @@ impl Renderer {
             probe_lists: &faces.probe_lists,
             probe_skinned: &probe_skinned,
             terrain_indices,
-            terrain_draws: &world.terrain_draws,
-            scatter_batches: &world.scatter_batches,
+            terrain_draws: &world_frame.terrain_draws,
+            scatter_batches: &world_frame.scatter_batches,
             probe_blended: &faces.probe_blended,
             face_boards: &arenas.face_boards,
             glow_fx_group: binds.glow_fx_group,
@@ -1281,7 +1284,7 @@ impl Renderer {
             lit_skinned_standard: &lit_skinned_standard,
             terrain_indices,
             reflections: &reflections,
-            terrain_draws: &world.terrain_draws,
+            terrain_draws: &world_frame.terrain_draws,
             reflection_blended: &mirror.reflection_blended,
         });
         plans.view = (!view_plans.is_empty()).then(|| ViewPlan {
@@ -1294,7 +1297,7 @@ impl Renderer {
             view_lists: &view_set.view_lists,
             view_skinned: &view_skinned,
             terrain_indices,
-            terrain_draws: &world.terrain_draws,
+            terrain_draws: &world_frame.terrain_draws,
             view_blended: &view_set.view_blended,
             view_boards: &arenas.view_boards,
             view_sprite_fx: &binds.view_sprite_fx,
@@ -1320,11 +1323,11 @@ impl Renderer {
             skinned_visible: &skinned_visible,
             prepass_skinned: &prepass_skinned,
             terrain_indices,
-            terrain_draws: &world.terrain_draws,
+            terrain_draws: &world_frame.terrain_draws,
             view_frustum: &view_frustum,
-            scatter_batches: &world.scatter_batches,
+            scatter_batches: &world_frame.scatter_batches,
             cards: camera_cards,
-            grass_frame: &world.grass_frame,
+            grass_frame: &world_frame.grass_frame,
         });
         plans.main = Some(MainPlan {
             scene,
@@ -1341,11 +1344,11 @@ impl Renderer {
             skinned_visible: &skinned_visible,
             lit_skinned: &lit_skinned,
             terrain_indices,
-            terrain_draws: &world.terrain_draws,
+            terrain_draws: &world_frame.terrain_draws,
             view_frustum: &view_frustum,
-            scatter_batches: &world.scatter_batches,
+            scatter_batches: &world_frame.scatter_batches,
             cards: camera_cards,
-            grass_frame: &world.grass_frame,
+            grass_frame: &world_frame.grass_frame,
             fluid_bounds: water_fluids.fluid_bounds,
             blended_list: &camera_lists.blended_list,
             sprite_frame: &arenas.sprite_frame,
