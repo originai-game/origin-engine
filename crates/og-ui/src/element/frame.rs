@@ -532,7 +532,7 @@ impl Ui {
     /// Which nodes can reuse layout, stopping propagation at unchanged fixed
     /// boxes, and the frame's counts: elements built and rebuilt.
     pub(crate) fn reuse_check(&mut self) {
-        let k = &mut self.kept;
+        let k = &mut self.layout.cache;
         let inv = &mut self.invalidation;
         let nodes = &self.nodes;
         let n = nodes.len();

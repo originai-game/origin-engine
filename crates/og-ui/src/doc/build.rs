@@ -586,7 +586,8 @@ impl Ui {
             .collect();
         for i in moving {
             if !self.emitted.contains(&i) {
-                self.kept
+                self.layout
+                    .cache
                     .prev
                     .entry(i)
                     .or_insert_with(|| self.nodes[i].clone());

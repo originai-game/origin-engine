@@ -105,7 +105,7 @@ impl Ui {
             && !self.emitted.contains(&i)
         {
             let previous = self.nodes[i].clone();
-            self.kept.prev.entry(i).or_insert(previous);
+            self.layout.cache.prev.entry(i).or_insert(previous);
             self.emitted.push(i);
         }
         for k in 0..self.emitted.len() {

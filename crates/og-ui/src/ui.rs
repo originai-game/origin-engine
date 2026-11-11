@@ -464,9 +464,6 @@ pub struct Ui {
     /// A retained element re-emitted into the slot it already holds in its
     /// parent's children: `(key, parent)` of the push that must not append.
     pub(crate) in_place: Option<(u64, usize)>,
-    /// Slots whose box placement replaced (floating sizes, a modal's safe
-    /// padding): their authored box comes back before the next layout.
-    pub(crate) layout_mutated: Vec<usize>,
     /// This frame's element keys under a parent, which a repeated id
     /// would take again (`Ui::push` renames it), and the anonymous
     /// elements of each kind under each parent: kept as built, so a
@@ -521,16 +518,11 @@ pub struct Ui {
     /// CSS `accent-color` of the document control being built: its
     /// primary ink (`widgets::controls`' roles).
     pub(crate) accent: Option<crate::Srgba>,
-    /// Text measurements kept from the frames before (layout's).
-    pub(crate) texts: crate::layout::TextCache,
     /// Last frame's drop targets and dragged elements: their paths, and the
     /// tags each target takes.
     pub(crate) drop_paths: IdMap<u64, String>,
     pub(crate) drag_paths: IdMap<u64, String>,
     pub(crate) drop_accepts: IdMap<u64, Vec<String>>,
-    /// Last frame's input hash of each element and its subtree, with its
-    /// layout, for reuse (docs/ui.md §2).
-    pub(crate) kept: crate::layout::LayoutCache,
     /// What this frame may keep from the last.
     pub(crate) invalidation: crate::layout::Invalidation,
     /// What elements of this frame draw with ([`Ui::set_draw`]), by node.
@@ -553,6 +545,8 @@ pub struct Ui {
     pub(crate) style: Style,
     /// Paint: its reuse cache, the part and decoration draws, the map being drawn and the last frame's draws and inspection.
     pub(crate) paint: Paint,
+    /// Layout: its text measurements, its reuse cache and the boxes placement replaced for one frame.
+    pub(crate) layout: Layout,
 }
 
 /// One UI event's feedback as the host plays it ([`Ui::take_feedback`]).

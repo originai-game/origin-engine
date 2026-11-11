@@ -130,7 +130,7 @@ impl Ui {
         // A node written again keeps what it had found.
         for k in 0..self.emitted.len() {
             let i = self.emitted[k];
-            if let Some(p) = self.kept.prev.get(&i) {
+            if let Some(p) = self.layout.cache.prev.get(&i) {
                 let (skip, far, remembered) = (p.cv_skip, p.cv_far, p.remembered);
                 let n = &mut self.nodes[i];
                 (n.cv_skip, n.cv_far, n.remembered) = (skip, far, remembered);
@@ -152,7 +152,7 @@ impl Ui {
             let skip = v == Cv::Hidden || (v == Cv::Auto && n.cv_far);
             if skip != n.cv_skip {
                 n.cv_skip = skip;
-                self.kept.relayout.push(i);
+                self.layout.cache.relayout.push(i);
             }
         }
     }
@@ -270,7 +270,7 @@ impl Ui {
         self.building = false;
         // A retained node placement resized last frame lays out from its
         // authored box again (a written node is authored afresh).
-        for i in std::mem::take(&mut self.layout_mutated) {
+        for i in std::mem::take(&mut self.layout.layout_mutated) {
             if let Some((width, height, padding)) = self.nodes[i].authored_box.take() {
                 let el = &mut self.nodes[i].el;
                 (el.width, el.height, el.padding) = (width, height, padding);
@@ -417,8 +417,8 @@ impl Ui {
             for k in 0..self.emitted.len() {
                 self.apply_gutter(self.emitted[k]);
             }
-            for k in 0..self.kept.scrollers.len() {
-                let i = self.kept.scrollers[k];
+            for k in 0..self.layout.cache.scrollers.len() {
+                let i = self.layout.cache.scrollers[k];
                 if i < self.nodes.len() {
                     self.apply_gutter(i);
                 }
@@ -444,12 +444,12 @@ impl Ui {
         let dpr = vp.dpr();
         let screen = Rect::new(0.0, 0.0, vp.width, vp.height);
         let rtl = self.env.direction == og_i18n::Direction::Rtl;
-        self.kept.query_roots = None;
+        self.layout.cache.query_roots = None;
         let mut settlement = settlement::Settlement::default();
         let part_geometry = self.nodes.iter().any(|node| node.part_geometry.is_some());
         loop {
             let mut layout_inputs =
-                settlement::LayoutInputs::new(&self.kept.measurements, part_geometry);
+                settlement::LayoutInputs::new(&self.layout.cache.measurements, part_geometry);
             let scroll = self.state.scroll.clone();
             let scroll_x = self.state.scroll_x.clone();
             let offset = |k: u64| {
@@ -460,7 +460,7 @@ impl Ui {
             };
             let mut measure = Measure {
                 fonts: &self.env.fonts,
-                texts: &mut self.texts,
+                texts: &mut self.layout.texts,
                 body: self.env.theme.type_ramp.body,
             };
             layout(
@@ -471,7 +471,7 @@ impl Ui {
                 &offset,
                 dpr,
                 screen,
-                &mut self.kept,
+                &mut self.layout.cache,
             );
             let safe = Rect::new(
                 vp.safe_area.left,
@@ -543,7 +543,7 @@ impl Ui {
                     }
                     for &(g, placed) in &spots {
                         layout_inputs.remember(g, &self.nodes[g]);
-                        authored_box(&mut self.nodes, &mut self.layout_mutated, g);
+                        authored_box(&mut self.nodes, &mut self.layout.layout_mutated, g);
                         self.nodes[g].el.width = Size::Fixed(placed.width);
                         self.nodes[g].el.height = Size::Fixed(placed.height);
                         layout(
@@ -554,7 +554,7 @@ impl Ui {
                             &offset,
                             dpr,
                             screen,
-                            &mut self.kept,
+                            &mut self.layout.cache,
                         );
                     }
                     continue;
@@ -572,14 +572,14 @@ impl Ui {
                         &offset,
                         dpr,
                         clip,
-                        &mut self.kept,
+                        &mut self.layout.cache,
                     );
                     continue;
                 }
                 if float == Float::Modal {
                     // The backdrop covers the surface; the safe area pads its content.
                     layout_inputs.remember(f, &self.nodes[f]);
-                    authored_box(&mut self.nodes, &mut self.layout_mutated, f);
+                    authored_box(&mut self.nodes, &mut self.layout.layout_mutated, f);
                     self.nodes[f].el.width = Size::Fixed(vp.width);
                     self.nodes[f].el.height = Size::Fixed(vp.height);
                     if self.nodes[f].backdrop {
@@ -593,7 +593,7 @@ impl Ui {
                         &offset,
                         dpr,
                         screen,
-                        &mut self.kept,
+                        &mut self.layout.cache,
                     );
                     continue;
                 }
@@ -614,7 +614,7 @@ impl Ui {
                     &offset,
                     dpr,
                     screen,
-                    &mut self.kept,
+                    &mut self.layout.cache,
                 );
                 let (w, h) = (self.nodes[f].w, self.nodes[f].h);
                 let (x, y) = match float {
@@ -675,7 +675,7 @@ impl Ui {
                     continue;
                 }
                 layout_inputs.remember(f, &self.nodes[f]);
-                authored_box(&mut self.nodes, &mut self.layout_mutated, f);
+                authored_box(&mut self.nodes, &mut self.layout.layout_mutated, f);
                 self.nodes[f].el.width = Size::Fixed(w);
                 self.nodes[f].el.height = Size::Fixed(h);
                 layout(
@@ -686,7 +686,7 @@ impl Ui {
                     &offset,
                     dpr,
                     screen,
-                    &mut self.kept,
+                    &mut self.layout.cache,
                 );
             }
             // Elements placed on the screen (Position::Screen): laid out again in
@@ -704,7 +704,7 @@ impl Ui {
                 }
                 let r = crate::layout::on_screen(&self.nodes[i], &screen);
                 layout_inputs.remember(i, &self.nodes[i]);
-                authored_box(&mut self.nodes, &mut self.layout_mutated, i);
+                authored_box(&mut self.nodes, &mut self.layout.layout_mutated, i);
                 self.nodes[i].el.width = Size::Fixed(r.width);
                 self.nodes[i].el.height = Size::Fixed(r.height);
                 layout(
@@ -715,13 +715,13 @@ impl Ui {
                     &offset,
                     dpr,
                     screen,
-                    &mut self.kept,
+                    &mut self.layout.cache,
                 );
             }
             // Anchor-positioned elements (CSS Anchor Positioning 1): placed
             // against their anchors' boxes as laid out this frame, and laid
             // out again where that moved or resized them.
-            self.kept.anchor_toggled.clear();
+            self.layout.cache.anchor_toggled.clear();
             if placed_order
                 .iter()
                 .any(|&i| self.nodes[i].props.anchor.is_some())
@@ -819,7 +819,7 @@ impl Ui {
                         placed.hidden = a.hidden || !a.laid_clip.overlaps(&a.laid_rect);
                     }
                     if placed.hidden != self.nodes[i].anchor_placed.hidden {
-                        self.kept.anchor_toggled.push(i);
+                        self.layout.cache.anchor_toggled.push(i);
                     }
                     let here = box_of(i);
                     self.nodes[i].anchor_placed = placed;
@@ -827,7 +827,7 @@ impl Ui {
                         continue;
                     }
                     layout_inputs.remember(i, &self.nodes[i]);
-                    authored_box(&mut self.nodes, &mut self.layout_mutated, i);
+                    authored_box(&mut self.nodes, &mut self.layout.layout_mutated, i);
                     self.nodes[i].el.width = Size::Fixed(r.width);
                     self.nodes[i].el.height = Size::Fixed(r.height);
                     layout(
@@ -838,7 +838,7 @@ impl Ui {
                         &offset,
                         dpr,
                         screen,
-                        &mut self.kept,
+                        &mut self.layout.cache,
                     );
                 }
             }
@@ -896,11 +896,11 @@ impl Ui {
                 color,
             });
         }
-        self.kept.query_roots = None;
+        self.layout.cache.query_roots = None;
         if !self.tree.pending.is_empty() {
             self.sync_tree(&[], &[], false);
         }
-        self.texts.sweep();
+        self.layout.texts.sweep();
 
         // The trees' orders and features, kept where nothing changed shape.
         self.update_orders(whole);
@@ -926,8 +926,8 @@ impl Ui {
             // Right to left: the whole layout mirrored about the surface's
             // centre, and with it each transform (moves and turns the other way).
             // A node layout left out is mirrored as it was last frame.
-            for k in 0..self.kept.laid.len() {
-                let i = self.kept.laid[k];
+            for k in 0..self.layout.cache.laid.len() {
+                let i = self.layout.cache.laid[k];
                 let r = &mut self.nodes[i].rect;
                 r.x = vp.width - r.x - r.width;
                 // Its clip too (a scroll container's box, laid out left to right): unmirrored, it
@@ -1003,9 +1003,9 @@ impl Ui {
             );
         }
         // Each scroll container's ranges and bar lengths, as drawn.
-        self.kept.scrollers = self.orders.drawn(visit::feat::SCROLLS);
+        self.layout.cache.scrollers = self.orders.drawn(visit::feat::SCROLLS);
         let min_bar = self.env.theme.space.xl;
-        self.state.scroll_info = IdMap::from_iter(self.kept.scrollers.iter().map(|&i| {
+        self.state.scroll_info = IdMap::from_iter(self.layout.cache.scrollers.iter().map(|&i| {
             let n = &self.nodes[i];
             let range = Vec2::new(n.max_scroll_x(), n.max_scroll());
             let bar = Vec2::new(
@@ -1398,7 +1398,7 @@ impl Ui {
             events: std::mem::take(&mut self.out.events),
             grounds: std::mem::take(&mut self.world.grounds),
             stats: LayoutStats {
-                laid_out: self.kept.laid_out,
+                laid_out: self.layout.cache.laid_out,
                 ..self.out.stats
             },
             unit: self.env.unit,

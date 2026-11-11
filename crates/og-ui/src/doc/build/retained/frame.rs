@@ -68,7 +68,7 @@ impl RetainedHost {
         }
         // Nodes whose laid-out size moved: their widgets read last frame's
         // geometry (a narrow button, a list measuring its rows).
-        for slot in std::mem::take(&mut ui.kept.resized) {
+        for slot in std::mem::take(&mut ui.layout.cache.resized) {
             if let Some(owner) = self.owner_of.get(&ui.nodes[slot].key) {
                 self.emit.insert(owner.clone());
             }

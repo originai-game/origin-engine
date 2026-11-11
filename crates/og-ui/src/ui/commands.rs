@@ -925,7 +925,7 @@ impl Ui {
                 && !matches!(node.content, Content::Rich(_))
                 && if written(i) {
                     // A node written again: as it was drawn last frame.
-                    self.kept.prev.get(&i).is_some_and(|b| {
+                    self.layout.cache.prev.get(&i).is_some_and(|b| {
                         crate::layout::draw_eq(node, b)
                             && Some(&self.kinds[i]) == prev_kinds.get(&i)
                     })

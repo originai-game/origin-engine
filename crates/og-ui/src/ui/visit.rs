@@ -290,7 +290,7 @@ impl Ui {
         let read = self
             .emitted
             .iter()
-            .chain(&self.kept.laid)
+            .chain(&self.layout.cache.laid)
             .chain(&self.invalidation.restored);
         for &i in read {
             if i < n {
@@ -336,7 +336,7 @@ impl Ui {
             .iter()
             .chain(&o.wrote_last)
             .chain(&self.style.motion.motion_moving)
-            .chain(&self.kept.anchor_toggled)
+            .chain(&self.layout.cache.anchor_toggled)
             .chain(o.with(feat::GESTURE))
             .chain(o.with(feat::MATCH))
             .chain(o.with(feat::WORLD))
@@ -365,7 +365,7 @@ impl Ui {
             }
         }
         let mut seeds = restyle.clone();
-        seeds.extend(self.kept.laid.iter().chain(&self.floating));
+        seeds.extend(self.layout.cache.laid.iter().chain(&self.floating));
         for &p in &self.tree.restructured {
             seeds.extend_from_slice(&self.nodes[p].ordered_children);
         }

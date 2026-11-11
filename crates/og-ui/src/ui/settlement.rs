@@ -118,12 +118,12 @@ impl Ui {
     /// Registers an actual layout node, not a document selector index. The
     /// subscription's first layout publishes even a zero-sized content box.
     pub fn watch_layout_container(&mut self, key: u64) {
-        self.kept.measurements.watch(key);
+        self.layout.cache.measurements.watch(key);
     }
 
     /// Removes a native layout subscription and any unpublished measurement.
     pub fn unwatch_layout_container(&mut self, key: u64) {
-        self.kept.measurements.unwatch(key);
+        self.layout.cache.measurements.unwatch(key);
     }
 
     pub(crate) fn settle_layout_queries(
@@ -135,7 +135,7 @@ impl Ui {
             &[ContainerMeasurement],
         ) -> Result<Vec<usize>, SettlementError>,
     ) -> Result<bool, SettlementError> {
-        let changes = self.kept.measurements.take();
+        let changes = self.layout.cache.measurements.take();
         // Placement temporarily fixes floating dimensions and adds safe-area
         // padding. Resolvers patch authored inputs, not those derived values.
         inputs.swap(&mut self.nodes);
@@ -176,11 +176,11 @@ impl Ui {
                 self.nodes[parent].children = flow;
             }
             // Its subtree and the path to it are laid out again.
-            self.kept.reach(&self.nodes, i, true);
+            self.layout.cache.reach(&self.nodes, i, true);
             let mut at = i;
             loop {
-                self.kept.clean[at] = false;
-                self.kept.unclean.push(at);
+                self.layout.cache.clean[at] = false;
+                self.layout.cache.unclean.push(at);
                 let parent = self.nodes[at].parent;
                 if parent == NONE {
                     roots.insert(at);
@@ -192,15 +192,16 @@ impl Ui {
         // Popovers depend on anchors and HUD groups avoid each other. Their
         // placement must settle too, even if their own styles did not change.
         roots.extend(self.floating.iter().copied());
-        self.kept.query_roots = Some(roots);
+        self.layout.cache.query_roots = Some(roots);
         Ok(true)
     }
 
     pub(crate) fn abort_layout_queries(&mut self) {
-        self.kept.query_roots = None;
+        self.layout.cache.query_roots = None;
         self.invalidation.epoch += 1;
-        self.kept.measurements.pending.clear();
-        self.kept
+        self.layout.cache.measurements.pending.clear();
+        self.layout
+            .cache
             .measurements
             .watched
             .values_mut()
