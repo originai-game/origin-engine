@@ -421,7 +421,7 @@ impl Ui {
     /// next tick's edit mode.
     pub(crate) fn hud_collect(&mut self, order: &[usize]) {
         let mut targets = Vec::new();
-        let editor = match self.hud_editor_key {
+        let editor = match self.front.hud_editor_key {
             0 => Rect::default(),
             k => self
                 .tree
@@ -549,7 +549,7 @@ impl Ui {
                 ..PanelDesc::default()
             },
         );
-        self.hud_editor_key = self.tree.nodes[self.parent()].key;
+        self.front.hud_editor_key = self.tree.nodes[self.parent()].key;
         self.label(
             "Title",
             &or(&desc.title, "Edit HUD"),

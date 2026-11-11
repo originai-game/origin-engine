@@ -280,7 +280,8 @@ impl Ui {
         };
         let comp_key = format!("{id}~comp");
         let mut comp = if open {
-            self.kept_texts
+            self.front
+                .kept_texts
                 .get(&crate::id::key_of_path(&comp_key))
                 .cloned()
                 .unwrap_or_default()
@@ -780,7 +781,8 @@ impl Ui {
         );
         self.remember(&format!("{id}~caret"), caret as f64);
         self.remember(&format!("{id}~shift"), f64::from(shift));
-        self.kept_texts
+        self.front
+            .kept_texts
             .insert(crate::id::key_of_path(&comp_key), comp);
         KeyboardResult {
             changed,

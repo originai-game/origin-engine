@@ -317,7 +317,7 @@ impl Ui {
             if k >= 1.0 {
                 continue;
             }
-            self.touched.insert(key);
+            self.front.touched.insert(key);
             if still {
                 continue;
             }
@@ -344,7 +344,7 @@ impl Ui {
             return;
         }
         let t = self.env.theme;
-        self.cover = Some(Cover {
+        self.front.cover = Some(Cover {
             kind: if t.reduced_motion {
                 ScreenWipe::Fade
             } else {

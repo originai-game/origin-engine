@@ -312,13 +312,13 @@ impl Ui {
     /// The text kept under `key` in the open container (empty when none), taken out.
     fn take_text(&mut self, key: &str) -> String {
         let k = self.key_for(key);
-        self.kept_texts.remove(&k).unwrap_or_default()
+        self.front.kept_texts.remove(&k).unwrap_or_default()
     }
 
     /// Keeps `text` under `key` in the open container for next tick.
     fn keep_text(&mut self, key: &str, text: String) {
         let k = self.key_for(key);
-        self.kept_texts.insert(k, text);
+        self.front.kept_texts.insert(k, text);
     }
 
     /// The text of the label just before the next element in the open row
@@ -345,7 +345,7 @@ impl Ui {
     // ── the frame's facts ───────────────────────────────────────────────
 
     fn role(&self, name: &str) -> C {
-        if let Some(a) = self.accent
+        if let Some(a) = self.front.accent
             && matches!(name, "primary" | "primaryHover" | "primaryActive")
         {
             return C::of(a);

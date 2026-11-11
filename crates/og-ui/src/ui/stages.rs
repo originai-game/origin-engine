@@ -213,3 +213,22 @@ pub(crate) struct Tree {
     /// What this frame may keep from the last.
     pub(crate) invalidation: crate::layout::Invalidation,
 }
+
+/// The immediate front end's memory: widget memories used, kept texts, button inks, the control accent, the HUD editor and the screen cover.
+#[derive(Clone, Debug)]
+pub(crate) struct Front {
+    /// Widget memories used this frame (others are dropped at `end`).
+    pub(crate) touched: std::collections::BTreeSet<u64>,
+    /// Text a control keeps between ticks while it is open (a dropdown's
+    /// filter), by key: names of the frame's UI, dropped when it closes.
+    pub(crate) kept_texts: crate::id::KeyMap<String>,
+    /// The content buttons open now and their ink (the innermost last).
+    pub(crate) button_ink: Vec<(usize, Srgba)>,
+    /// CSS `accent-color` of the document control being built: its
+    /// primary ink (`widgets::controls`' roles).
+    pub(crate) accent: Option<crate::Srgba>,
+    /// The HUD layout editor's panel this frame (its key; 0: none).
+    pub(crate) hud_editor_key: u64,
+    /// This frame's screen-transition cover.
+    pub(crate) cover: Option<crate::juice::Cover>,
+}

@@ -109,10 +109,14 @@ impl Ui {
                 inspection: Default::default(),
                 cache: Default::default(),
             },
-            touched: Default::default(),
-            hud_editor_key: 0,
-            button_ink: Vec::new(),
-            kept_texts: Default::default(),
+            front: Front {
+                touched: Default::default(),
+                kept_texts: Default::default(),
+                button_ink: Vec::new(),
+                accent: None,
+                hud_editor_key: 0,
+                cover: None,
+            },
             style: Style {
                 part_rules,
                 part_sheet,
@@ -124,8 +128,6 @@ impl Ui {
                 pending_plays: Vec::new(),
                 motion: Default::default(),
             },
-            cover: None,
-            accent: None,
             docs: Docs {
                 host: Default::default(),
                 reactive: Default::default(),
@@ -353,7 +355,7 @@ impl Ui {
 
     /// The widget memory of `key`, marked as used this frame.
     pub(crate) fn anim(&mut self, key: u64) -> Anim {
-        self.touched.insert(key);
+        self.front.touched.insert(key);
         if let Some(owned) = self.tree.owning.last_mut() {
             owned.memories.push(key);
         }
@@ -370,7 +372,7 @@ impl Ui {
     }
 
     pub(crate) fn set_anim(&mut self, key: u64, a: Anim) {
-        self.touched.insert(key);
+        self.front.touched.insert(key);
         let old = self.interaction.state.anims.insert(key, a);
         if let Some(owned) = self.tree.owning.last_mut() {
             owned.memories.push(key);
@@ -591,14 +593,14 @@ impl Ui {
             .rive
             .retain(|_, s| s.built + 1 >= tick);
         self.interaction.nav = NavFrame::default();
-        self.touched.clear();
+        self.front.touched.clear();
         self.interaction.request_focus = 0;
         self.tree.scopes.clear();
         self.interaction.nav_on = true;
         self.interaction.players = 1;
         self.interaction.vcursor = None;
-        self.hud_editor_key = 0;
-        self.cover = None;
+        self.front.hud_editor_key = 0;
+        self.front.cover = None;
         // A pointer on a world panel is moved onto the panel's layout.
         self.world_begin(&mut input);
         self.docs_begin();

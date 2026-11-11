@@ -651,7 +651,7 @@ impl Ui {
         let styled = r;
         let r = styled.intrinsic();
         let mut texture = None;
-        self.accent = styled.text.as_deref().and_then(|t| t.accent);
+        self.front.accent = styled.text.as_deref().and_then(|t| t.accent);
         match kind {
             "label" => {
                 let text = text_of(&r, b);
@@ -693,7 +693,7 @@ impl Ui {
                                 "{}:{}: {path}.spans: expected TextSpan[]: {error}",
                                 doc.source, n.line
                             ));
-                            self.accent = None;
+                            self.front.accent = None;
                             return None;
                         }
                     };
@@ -1350,11 +1350,11 @@ impl Ui {
                 self.out
                     .warnings
                     .push(format!("{}:{}: '{other}' is not built", doc.source, n.line));
-                self.accent = None;
+                self.front.accent = None;
                 return None;
             }
         }
-        self.accent = None;
+        self.front.accent = None;
         let last = self.tree.last_closed;
         if last != NONE && last < self.tree.nodes.len() {
             let mut fields =

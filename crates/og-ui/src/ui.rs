@@ -443,20 +443,6 @@ pub(crate) struct NavFrame {
 /// The immediate-mode UI. Call [`Ui::begin`], build, [`Ui::end`] once per tick.
 #[derive(Clone, Debug)]
 pub struct Ui {
-    /// Widget memories used this frame (others are dropped at `end`).
-    pub(crate) touched: std::collections::BTreeSet<u64>,
-    /// The HUD layout editor's panel this frame (its key; 0: none).
-    pub(crate) hud_editor_key: u64,
-    /// The content buttons open now and their ink (the innermost last).
-    pub(crate) button_ink: Vec<(usize, Srgba)>,
-    /// Text a control keeps between ticks while it is open (a dropdown's
-    /// filter), by key: names of the frame's UI, dropped when it closes.
-    pub(crate) kept_texts: crate::id::KeyMap<String>,
-    /// This frame's screen-transition cover.
-    pub(crate) cover: Option<crate::juice::Cover>,
-    /// CSS `accent-color` of the document control being built: its
-    /// primary ink (`widgets::controls`' roles).
-    pub(crate) accent: Option<crate::Srgba>,
     /// World-space UI (`crate::world`): anchors, panels, mass elements,
     /// particles, meta layers.
     pub(crate) world: crate::world::WorldUi,
@@ -476,6 +462,8 @@ pub struct Ui {
     pub(crate) interaction: Interaction,
     /// Tree: the node arena and its slots, the build cursor, the trees' index and orders, and what the frame may keep.
     pub(crate) tree: Tree,
+    /// The immediate front end's memory: widget memories used, kept texts, button inks, the control accent, the HUD editor and the screen cover.
+    pub(crate) front: Front,
 }
 
 /// One UI event's feedback as the host plays it ([`Ui::take_feedback`]).

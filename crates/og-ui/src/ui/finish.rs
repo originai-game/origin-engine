@@ -1072,7 +1072,7 @@ impl Ui {
         {
             self.interaction.state.active = 0;
         }
-        let touched = std::mem::take(&mut self.touched);
+        let touched = std::mem::take(&mut self.front.touched);
         let retained = &self.docs.host.retained;
         self.interaction
             .state
@@ -1091,7 +1091,7 @@ impl Ui {
             .host
             .media_sent
             .retain(|k, _| tree.find(*k).is_some() || retained.keeps_memory(*k));
-        self.touched = touched;
+        self.front.touched = touched;
 
         // Scopes, scrollers, focus owners, groups and recognisers around
         // each node: again where they may have changed, and below wherever
@@ -1363,7 +1363,7 @@ impl Ui {
         // the live elements taking part are left out of the items.
         let view = self.view_transition_frame(&trees);
         let mut tail = Vec::new();
-        if let Some(c) = self.cover {
+        if let Some(c) = self.front.cover {
             let mut cover = Vec::new();
             self.cover_commands(&c, &mut cover);
             tail.extend(cover.into_iter().map(|c| (c, Affine::IDENTITY)));
