@@ -7,28 +7,28 @@ impl Ui {
     /// rays start from (the host sets it before [`Ui::end`]; `None`: none,
     /// so anchors are hidden).
     pub fn set_world_view(&mut self, view: Option<WorldView>) {
-        self.world.view = view;
+        self.world.declared.view = view;
     }
 
     pub fn world_view(&self) -> Option<WorldView> {
-        self.world.view
+        self.world.declared.view
     }
 
     /// The entities' world poses (position, rotation, scale) for anchors and
     /// panels on entities: replaces the last ones.
     pub fn set_world_poses(&mut self, poses: &[(u64, Pose)]) {
-        self.world.poses = poses.iter().copied().collect();
+        self.world.declared.poses = poses.iter().copied().collect();
     }
 
     /// The anchored elements the last tick placed, with what they are on.
     pub fn world_anchor_points(&self) -> &[AnchorPoint] {
-        &self.world.placed
+        &self.world.placement.placed
     }
 
     /// The entities this frame's anchors and panels are on, for the host to
     /// hand their poses in before [`Ui::end`].
     pub fn world_entities(&self) -> Vec<u64> {
-        let mut v = self.world.wanted.clone();
+        let mut v = self.world.declared.wanted.clone();
         v.sort_unstable();
         v
     }
@@ -76,7 +76,10 @@ impl Ui {
         let i = self.open_world_layer("world", id, key, el);
         self.world.want(desc.target);
         let info = self.world.anchor_info(self.tree.nodes[i].key, &desc);
-        self.world.anchors.push(AnchorEntry { node: i, desc });
+        self.world
+            .declared
+            .anchors
+            .push(AnchorEntry { node: i, desc });
         info
     }
 
@@ -87,11 +90,12 @@ impl Ui {
     pub(crate) fn keep_world_anchors(&mut self) {
         let built: std::collections::BTreeSet<u64> = self
             .world
+            .declared
             .anchors
             .iter()
             .map(|a| self.tree.nodes[a.node].key)
             .collect();
-        let mut kept = std::mem::take(&mut self.world.kept);
+        let mut kept = std::mem::take(&mut self.world.declared.kept);
         kept.retain(|key, (desc, owner)| {
             if built.contains(key) {
                 return true;
@@ -99,7 +103,7 @@ impl Ui {
             match self.tree.index.by_key.get(key) {
                 Some(&node) if self.docs.host.retained.owns(*owner) => {
                     self.world.want(desc.target);
-                    self.world.anchors.push(AnchorEntry {
+                    self.world.declared.anchors.push(AnchorEntry {
                         node,
                         desc: desc.clone(),
                     });
@@ -108,14 +112,15 @@ impl Ui {
                 _ => false,
             }
         });
-        self.world.kept = kept;
+        self.world.declared.kept = kept;
         let built: std::collections::BTreeSet<u64> = self
             .world
+            .declared
             .panels
             .iter()
             .map(|p| self.tree.nodes[p.node].key)
             .collect();
-        let mut kept = std::mem::take(&mut self.world.kept_panels);
+        let mut kept = std::mem::take(&mut self.world.declared.kept_panels);
         kept.retain(|key, (desc, rect, owner)| {
             if built.contains(key) {
                 return true;
@@ -125,7 +130,7 @@ impl Ui {
                     if let Some((t, ..)) = desc.quad {
                         self.world.want(t);
                     }
-                    self.world.panels.push(PanelEntry {
+                    self.world.declared.panels.push(PanelEntry {
                         node,
                         desc: desc.clone(),
                         rect: *rect,
@@ -135,12 +140,14 @@ impl Ui {
                 _ => false,
             }
         });
-        self.world.kept_panels = kept;
+        self.world.declared.kept_panels = kept;
         // Mass elements: standing ones pushed where their target is now,
         // one-shots forgotten once their row leaves.
-        let mut kept = std::mem::take(&mut self.world.kept_mass);
+        let mut kept = std::mem::take(&mut self.world.declared.kept_mass);
         kept.retain(|key, m| {
-            if !self.world.mass_built.contains(key) && !self.docs.host.retained.owns(m.owner) {
+            if !self.world.declared.mass_built.contains(key)
+                && !self.docs.host.retained.owns(m.owner)
+            {
                 return false;
             }
             self.world.want(m.target);
@@ -154,10 +161,12 @@ impl Ui {
             }
             true
         });
-        self.world.kept_mass = kept;
-        let mut spawned = std::mem::take(&mut self.world.mass_spawned);
-        spawned.retain(|k| self.world.mass_built.contains(k) || self.docs.host.retained.owns(*k));
-        self.world.mass_spawned = spawned;
+        self.world.declared.kept_mass = kept;
+        let mut spawned = std::mem::take(&mut self.world.declared.mass_spawned);
+        spawned.retain(|k| {
+            self.world.declared.mass_built.contains(k) || self.docs.host.retained.owns(*k)
+        });
+        self.world.declared.mass_spawned = spawned;
         self.tree
             .keep_effects(&mut self.world, &self.docs, &mut self.interaction);
     }
@@ -166,13 +175,16 @@ impl Ui {
     /// `once`, spawned when its row first builds and left to play its
     /// template's life; else kept and pushed every tick while it stands.
     pub(crate) fn document_mass(&mut self, key: u64, owner: u64, once: bool, m: KeptMass) {
-        self.world.mass_built.push(key);
+        self.world.declared.mass_built.push(key);
         if !once {
-            self.world.kept_mass.insert(key, KeptMass { owner, ..m });
+            self.world
+                .declared
+                .kept_mass
+                .insert(key, KeptMass { owner, ..m });
             return;
         }
-        self.world.kept_mass.remove(&key);
-        if !self.world.mass_spawned.insert(key) {
+        self.world.declared.kept_mass.remove(&key);
+        if !self.world.declared.mass_spawned.insert(key) {
             return;
         }
         self.world.want(m.target);
@@ -217,7 +229,7 @@ impl Ui {
         let mut el = desc.element;
         el.width = Size::Fixed(desc.width.max(1.0));
         el.height = Size::Fixed(desc.height.max(1.0));
-        let k = self.world.panels.len() as f32;
+        let k = self.world.declared.panels.len() as f32;
         let rect = Rect::new(
             PANEL_X + k * PANEL_SLOT,
             0.0,
@@ -229,12 +241,12 @@ impl Ui {
             self.world.want(t);
         }
         let key = self.tree.nodes[i].key;
-        self.world.panels.push(PanelEntry {
+        self.world.declared.panels.push(PanelEntry {
             node: i,
             desc,
             rect,
         });
-        match self.world.pointed {
+        match self.world.placement.pointed {
             Some((k, info)) if k == key => info,
             _ => PanelInfo::default(),
         }
@@ -269,17 +281,27 @@ impl Ui {
             t.font = self.env.fonts.body.handle;
         }
         let t = Arc::new(t);
-        if let Some(k) = self.world.templates.iter().position(|(n, ..)| n == name) {
-            self.world.templates[k] = (name.to_owned(), t, space);
+        if let Some(k) = self
+            .world
+            .declared
+            .templates
+            .iter()
+            .position(|(n, ..)| n == name)
+        {
+            self.world.declared.templates[k] = (name.to_owned(), t, space);
             return MassHandle(k as u32);
         }
-        self.world.templates.push((name.to_owned(), t, space));
-        MassHandle(self.world.templates.len() as u32 - 1)
+        self.world
+            .declared
+            .templates
+            .push((name.to_owned(), t, space));
+        MassHandle(self.world.declared.templates.len() as u32 - 1)
     }
 
     /// A template by name.
     pub fn mass_handle(&self, name: &str) -> Option<MassHandle> {
         self.world
+            .declared
             .templates
             .iter()
             .position(|(n, ..)| n == name)
@@ -289,7 +311,7 @@ impl Ui {
     /// Starts an instance of a template on this tick: it plays its
     /// template's timeline over its lifetime and leaves the pool after it.
     pub fn spawn_mass(&mut self, h: MassHandle, instance: UiMassInstance) {
-        let Some((_, t, _)) = self.world.templates.get(h.0 as usize) else {
+        let Some((_, t, _)) = self.world.declared.templates.get(h.0 as usize) else {
             self.out
                 .warnings
                 .push(format!("spawn_mass: no template {}; define it first", h.0));
@@ -313,13 +335,14 @@ impl Ui {
     /// Shows an instance of a template this tick only (an overhead bar, a
     /// nameplate, a status icon: rebuilt every tick with its values).
     pub fn push_mass(&mut self, h: MassHandle, instance: UiMassInstance) {
-        if self.world.templates.get(h.0 as usize).is_none() {
+        if self.world.declared.templates.get(h.0 as usize).is_none() {
             self.out
                 .warnings
                 .push(format!("push_mass: no template {}; define it first", h.0));
             return;
         }
         self.world
+            .declared
             .immediate
             .entry(h.0)
             .or_default()
@@ -332,7 +355,7 @@ impl Ui {
     /// The frame's own mass elements (the templates' pools and this tick's
     /// instances), to emit with [`WorldFrame::emit`] beside the UI frame.
     pub fn world_frame(&self) -> &WorldFrame {
-        &self.world.frame
+        &self.world.placement.frame
     }
 
     /// The live instances a template's pool holds.
@@ -363,7 +386,7 @@ impl crate::ui::Tree {
         docs: &crate::ui::Docs,
         interaction: &mut crate::ui::Interaction,
     ) {
-        let mut kept = std::mem::take(&mut world.kept_effects);
+        let mut kept = std::mem::take(&mut world.declared.kept_effects);
         kept.retain(|key, (emitter, meta)| {
             let Some(&i) = self.index.by_key.get(key) else {
                 return docs.host.retained.owns(*key);
@@ -373,16 +396,19 @@ impl crate::ui::Tree {
                 let owner = *key;
                 let key = crate::id::child_key(*key, "particles");
                 let at = interaction.since(owner, key);
-                world.emitters.push(crate::particles::EmitterEntry {
-                    node: i,
-                    key,
-                    desc: d.clone(),
-                    at: Some(at),
-                });
+                world
+                    .declared
+                    .emitters
+                    .push(crate::particles::EmitterEntry {
+                        node: i,
+                        key,
+                        desc: d.clone(),
+                        at: Some(at),
+                    });
             }
             if let Some(m) = meta {
                 let intensity = self.nodes[i].props.opacity.clamp(0.0, 1.0);
-                world.metas.push((
+                world.declared.metas.push((
                     i,
                     MetaDesc {
                         intensity: m.intensity * intensity,
@@ -392,7 +418,7 @@ impl crate::ui::Tree {
             }
             true
         });
-        world.kept_effects = kept;
+        world.declared.kept_effects = kept;
     }
 
     /// Spawns particles where their elements are drawn, ages the pools and
@@ -408,7 +434,7 @@ impl crate::ui::Tree {
         let tick = interaction.state.tick as u32;
         paint.world_particles(tick, world, env, interaction, self);
         // Pools: instances past their life leave.
-        let templates = &world.templates;
+        let templates = &world.declared.templates;
         world.state.pools.retain(|&k, pool| {
             let Some((_, t, _)) = templates.get(k as usize) else {
                 return false;
@@ -418,10 +444,10 @@ impl crate::ui::Tree {
         });
         // The frame's own batches: pools, then this tick's instances.
         let mut batches = Vec::new();
-        for (k, (_, t, space)) in world.templates.iter().enumerate() {
+        for (k, (_, t, space)) in world.declared.templates.iter().enumerate() {
             let k = k as u32;
             let mut instances = world.state.pools.get(&k).cloned().unwrap_or_default();
-            if let Some(now) = world.immediate.get(&k) {
+            if let Some(now) = world.declared.immediate.get(&k) {
                 instances.extend_from_slice(now);
             }
             if instances.is_empty() {
@@ -438,7 +464,7 @@ impl crate::ui::Tree {
             crate::draw::zoom_mass(&mut b, env.unit);
             batches.push(b);
         }
-        world.frame = WorldFrame { tick, batches };
+        world.placement.frame = WorldFrame { tick, batches };
     }
 }
 
@@ -446,8 +472,8 @@ impl crate::world::WorldUi {
     /// Where an anchor stands as of now: its distance and level from the
     /// current view, the rest from last tick.
     fn anchor_info(&self, key: u64, desc: &WorldAnchorDesc) -> AnchorInfo {
-        let mut info = self.last.get(&key).copied().unwrap_or_default();
-        if let (Some(view), Some((p, _))) = (self.view, self.pose_of(desc.target)) {
+        let mut info = self.placement.last.get(&key).copied().unwrap_or_default();
+        if let (Some(view), Some((p, _))) = (self.declared.view, self.pose_of(desc.target)) {
             let p = p + desc.offset;
             info.distance = (p - view.eye).length();
             info.lod = lod_of(&desc.lod, info.distance);
@@ -464,21 +490,21 @@ impl crate::world::WorldUi {
         interaction: &crate::ui::Interaction,
     ) {
         let w = self;
-        w.last_pointer = interaction.state.pointer;
-        w.wanted.clear();
-        w.anchors.clear();
-        w.panels.clear();
-        w.emitters.clear();
-        w.metas.clear();
-        w.immediate.clear();
-        w.marks.clear();
-        w.grounds.clear();
-        w.mass_built.clear();
-        w.pointed = None;
-        let Some(view) = w.view else {
+        w.placement.last_pointer = interaction.state.pointer;
+        w.declared.wanted.clear();
+        w.declared.anchors.clear();
+        w.declared.panels.clear();
+        w.declared.emitters.clear();
+        w.declared.metas.clear();
+        w.declared.immediate.clear();
+        w.placement.marks.clear();
+        w.placement.grounds.clear();
+        w.declared.mass_built.clear();
+        w.placement.pointed = None;
+        let Some(view) = w.declared.view else {
             return;
         };
-        if !input.pointer_inside || w.last_panels.is_empty() {
+        if !input.pointer_inside || w.placement.last_panels.is_empty() {
             return;
         }
         // The screen's own elements are over the world: a pointer on one
@@ -493,7 +519,7 @@ impl crate::world::WorldUi {
         let vp = env.viewport;
         let (o, d) = view.ray(p.x, p.y, vp.width, vp.height);
         let mut best: Option<(f32, PanelHit, Vec2)> = None;
-        for ph in &w.last_panels {
+        for ph in &w.placement.last_panels {
             let n = ph.rotation * Vec3::Z;
             let den = n.dot(d);
             if den.abs() < 1e-6 {
@@ -516,7 +542,7 @@ impl crate::world::WorldUi {
                 ph.rect.y + uv.y * ph.rect.height,
             );
             input.pointer = at;
-            w.pointed = Some((
+            w.placement.pointed = Some((
                 ph.key,
                 PanelInfo {
                     pointed: true,
@@ -542,9 +568,9 @@ impl crate::ui::Tree {
     ) {
         let key = self.nodes[i].key;
         if emitter.is_none() && meta.is_none() {
-            world.kept_effects.remove(&key);
+            world.declared.kept_effects.remove(&key);
         } else {
-            world.kept_effects.insert(key, (emitter, meta));
+            world.declared.kept_effects.insert(key, (emitter, meta));
         }
     }
 
@@ -558,9 +584,9 @@ impl crate::ui::Tree {
         world: &mut crate::world::WorldUi,
     ) {
         let key = self.nodes[node].key;
-        if let Some(p) = world.panels.iter().rev().find(|p| p.node == node) {
+        if let Some(p) = world.declared.panels.iter().rev().find(|p| p.node == node) {
             let kept = (p.desc.clone(), p.rect, owner);
-            world.kept_panels.insert(key, kept);
+            world.declared.kept_panels.insert(key, kept);
         }
     }
 }
@@ -605,6 +631,7 @@ impl Ui {
         for (k, pool) in self.world.state.pools.iter_mut() {
             let world = self
                 .world
+                .declared
                 .templates
                 .get(*k as usize)
                 .is_some_and(|(_, _, space)| *space != UiMassSpace::Screen);

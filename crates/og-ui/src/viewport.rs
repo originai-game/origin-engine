@@ -134,7 +134,7 @@ impl Ui {
         let (lx, ly) = hit.inv.apply(p.x, p.y);
         let inside = rect.contains(lx, ly);
         if r.pressed {
-            out.drag = p - self.world.last_pointer;
+            out.drag = p - self.world.placement.last_pointer;
         }
         if inside && self.interaction.input.pointer_inside {
             out.wheel = self.interaction.input.wheel;

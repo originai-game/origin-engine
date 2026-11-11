@@ -227,7 +227,7 @@ impl Ui {
         }
         let n = &self.tree.nodes[i];
         if n.placed.plane.as_ref().is_some_and(|p| p.root) {
-            self.world.planes.insert(n.key);
+            self.world.placement.planes.insert(n.key);
         }
         let n = &self.tree.nodes[i];
         before
@@ -850,7 +850,7 @@ impl Ui {
         let keyed = ghosts
             .iter()
             .map(|g| g.frozen.parent)
-            .chain(self.world.marks.keys().copied())
+            .chain(self.world.placement.marks.keys().copied())
             .chain(self.interaction.state.motion.part_styles.iter().filter_map(
                 |(&key, styles)| {
                     styles
@@ -1926,14 +1926,14 @@ impl crate::ui::Layout {
         world: &mut crate::world::WorldUi,
         tree: &crate::ui::Tree,
     ) {
-        let keys: Vec<u64> = world.planes.iter().copied().collect();
+        let keys: Vec<u64> = world.placement.planes.iter().copied().collect();
         for key in keys {
             let found = tree.index.find(key).filter(|&i| {
                 tree.nodes[i].key == key
                     && tree.nodes[i].placed.plane.as_ref().is_some_and(|p| p.root)
             });
             let Some(i) = found else {
-                world.planes.remove(&key);
+                world.placement.planes.remove(&key);
                 continue;
             };
             let n = &tree.nodes[i];
@@ -1971,7 +1971,7 @@ impl crate::ui::Layout {
                 .all(Option::is_some)
                 .then(|| corners.map(|c| c.unwrap_or_default()));
             let (centre, _) = crate::transform3d::apply(&p.m, [cx, cy, 0.0]);
-            world.grounds.push(crate::GroundQuad {
+            world.placement.grounds.push(crate::GroundQuad {
                 key,
                 rect: r,
                 corners,

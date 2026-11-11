@@ -1498,7 +1498,7 @@ mod tests {
             .unwrap();
         assert_eq!(layer(&mut ui)[0][0], 0.8, "the store drives the parameter");
         assert!(
-            ui.world.kept_effects.values().any(|(_, m)| matches!(
+            ui.world.declared.kept_effects.values().any(|(_, m)| matches!(
                 m,
                 Some(crate::world::MetaDesc { kind: crate::world::MetaKind::Material { material: og_draw::UiMaterial::Custom(h), params }, .. }) if *h == handle && params[0][0] == 0.25
             )),

@@ -290,7 +290,7 @@ impl crate::ui::Paint {
         let color = desc.color.unwrap_or(t.palette.primary);
         let delay = (desc.delay_ms * env.ticks_per_second as f32 / 1000.0).round() as u64;
         let key = crate::id::child_key(tree.nodes[i].key, "burst");
-        world.emitters.push(EmitterEntry {
+        world.declared.emitters.push(EmitterEntry {
             node: i,
             key,
             desc: ParticlesDesc::burst(desc, color, size, ms),
@@ -311,7 +311,7 @@ impl crate::ui::Paint {
         let reduced = env.theme.reduced_motion;
         let accent = env.theme.palette.primary;
         let tps = env.ticks_per_second as f32;
-        let emitters = std::mem::take(&mut ui_world.emitters);
+        let emitters = std::mem::take(&mut ui_world.declared.emitters);
         let mut live = Vec::new();
         for e in &emitters {
             live.push(e.key);
@@ -442,16 +442,13 @@ impl crate::ui::Paint {
                 Rect::new(0.0, 0.0, vp.width, vp.height)
             };
             let key = tree.nodes[e.node].key;
-            ui_world
-                .marks
-                .entry(key)
-                .or_default()
-                .leave
-                .push(crate::draw::DrawCmd::World(Box::new(WorldCmd::Mass {
+            ui_world.placement.marks.entry(key).or_default().leave.push(
+                crate::draw::DrawCmd::World(Box::new(WorldCmd::Mass {
                     batch: Box::new(batch),
                     bounds,
                     clip,
-                })));
+                })),
+            );
         }
         // Emitters not built this tick keep their particles flying (over
         // the screen, unclipped) until they end.
@@ -492,9 +489,15 @@ impl crate::ui::Paint {
                 .collect::<Vec<_>>();
             // On the root, after everything.
             let root = tree.nodes[0].key;
-            ui_world.marks.entry(root).or_default().leave.extend(cmds);
+            ui_world
+                .placement
+                .marks
+                .entry(root)
+                .or_default()
+                .leave
+                .extend(cmds);
         }
-        ui_world.emitters = emitters;
+        ui_world.declared.emitters = emitters;
     }
 }
 

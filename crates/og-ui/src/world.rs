@@ -569,30 +569,21 @@ pub(crate) struct WorldState {
     pub smooth: BTreeMap<u64, Smooth>,
 }
 
-/// World-space UI's part of [`Ui`].
+/// What the frame declares in the world: the view and poses, anchors,
+/// panels, effects and mass elements asked for this tick, and those
+/// mounted documents keep registered. The build writes it.
 #[derive(Clone, Debug, Default)]
-pub(crate) struct WorldUi {
+pub(crate) struct WorldDeclared {
     pub view: Option<WorldView>,
     pub poses: BTreeMap<u64, Pose>,
     /// Entities asked for this frame.
     wanted: Vec<u64>,
     anchors: Vec<AnchorEntry>,
     panels: Vec<PanelEntry>,
-    last_panels: Vec<PanelHit>,
-    /// The panel the pointer is on this tick.
-    pub pointed: Option<(u64, PanelInfo)>,
     pub emitters: Vec<crate::particles::EmitterEntry>,
     metas: Vec<(usize, MetaDesc)>,
     pub templates: Vec<(String, Arc<UiMassTemplate>, UiMassSpace)>,
     immediate: BTreeMap<u32, Vec<UiMassInstance>>,
-    pub marks: BTreeMap<u64, Marks>,
-    last: BTreeMap<u64, AnchorInfo>,
-    /// This tick's anchored elements as placed.
-    pub placed: Vec<AnchorPoint>,
-    pub frame: WorldFrame,
-    pub state: WorldState,
-    /// The pointer last tick (a viewport's drag).
-    pub last_pointer: Vec2,
     /// Mounted documents' anchors by key, placed every tick whether or not
     /// their element was built again ([`Ui::keep_world_anchors`]).
     /// Each with the key of the in-flow element that owns it.
@@ -608,14 +599,41 @@ pub(crate) struct WorldUi {
     /// Documents' emitter and meta effects by element key, registered
     /// every tick while their element stands (it is not built again).
     pub kept_effects: BTreeMap<u64, (Option<crate::particles::ParticlesDesc>, Option<MetaDesc>)>,
+    /// Mounted documents' world panels by key, with the rect each was laid
+    /// out in, kept for rays and placement as anchors are.
+    kept_panels: BTreeMap<u64, (WorldPanelDesc, Rect, u64)>,
+}
+
+/// Where the frame placed the world's elements: anchors and panels as
+/// placed and projected, their marks, and the pointer on them. Layout
+/// writes it; paint and hits read it.
+#[derive(Clone, Debug, Default)]
+pub(crate) struct WorldPlacement {
+    last_panels: Vec<PanelHit>,
+    /// The panel the pointer is on this tick.
+    pub pointed: Option<(u64, PanelInfo)>,
+    pub marks: BTreeMap<u64, Marks>,
+    last: BTreeMap<u64, AnchorInfo>,
+    /// This tick's anchored elements as placed.
+    pub placed: Vec<AnchorPoint>,
+    pub frame: WorldFrame,
+    /// The pointer last tick (a viewport's drag).
+    pub last_pointer: Vec2,
     /// This tick's projected panels as seen ([`crate::UiFrame::grounds`]).
     pub grounds: Vec<GroundQuad>,
     /// The keys of the CSS 3D plane roots (each a layer laid onto its
     /// plane, its quad among `grounds` each tick); kept across ticks.
     pub planes: std::collections::BTreeSet<u64>,
-    /// Mounted documents' world panels by key, with the rect each was laid
-    /// out in, kept for rays and placement as anchors are.
-    kept_panels: BTreeMap<u64, (WorldPanelDesc, Rect, u64)>,
+}
+
+/// World-space UI's part of [`Ui`].
+#[derive(Clone, Debug, Default)]
+pub(crate) struct WorldUi {
+    /// What the build declared this tick ([`WorldDeclared`]).
+    pub declared: WorldDeclared,
+    /// Where layout placed it ([`WorldPlacement`]).
+    pub placement: WorldPlacement,
+    pub state: WorldState,
 }
 
 impl WorldUi {
@@ -623,32 +641,32 @@ impl WorldUi {
     fn pose_of(&self, t: WorldTarget) -> Option<(Vec3, Quat)> {
         match t {
             WorldTarget::Point(p) => Some((p, Quat::IDENTITY)),
-            WorldTarget::Entity(e) => self.poses.get(&e).map(|&(p, q, _)| (p, q)),
+            WorldTarget::Entity(e) => self.declared.poses.get(&e).map(|&(p, q, _)| (p, q)),
         }
     }
 
     fn want(&mut self, t: WorldTarget) {
         if let WorldTarget::Entity(e) = t
-            && !self.wanted.contains(&e)
+            && !self.declared.wanted.contains(&e)
         {
-            self.wanted.push(e);
+            self.declared.wanted.push(e);
         }
     }
 
     /// The area and clip a world layer is laid out in (`end`'s layout).
     pub(crate) fn area(&self, node: usize, screen: Rect) -> (Rect, Rect) {
-        match self.panels.iter().find(|p| p.node == node) {
+        match self.declared.panels.iter().find(|p| p.node == node) {
             Some(p) => (p.rect, p.rect),
             None => (screen, screen),
         }
     }
 
     pub(crate) fn is_panel_node(&self, node: usize) -> bool {
-        self.panels.iter().any(|p| p.node == node)
+        self.declared.panels.iter().any(|p| p.node == node)
     }
 
     /// The nodes this frame's world panels are laid out at.
     pub(crate) fn panel_nodes(&self) -> Vec<usize> {
-        self.panels.iter().map(|p| p.node).collect()
+        self.declared.panels.iter().map(|p| p.node).collect()
     }
 }

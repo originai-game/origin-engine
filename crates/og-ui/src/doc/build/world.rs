@@ -799,7 +799,10 @@ impl Ui {
         if let Some(name) = r.str("name").filter(|n| !n.is_empty()) {
             self.tree.nodes[i].a11y.name = Some(name.to_string());
         }
-        self.world.kept.insert(self.tree.nodes[i].key, (desc, key));
+        self.world
+            .declared
+            .kept
+            .insert(self.tree.nodes[i].key, (desc, key));
         self.docs.note_built(built);
         build_children(self, b, None);
         let resp = self.close();
@@ -1086,7 +1089,7 @@ mod tests {
         let damage = ui.mass_handle("damage").expect("the damage template");
         let hp = ui.mass_handle("hp").expect("the hp template");
         assert_eq!(ui.mass_count(damage), 1);
-        let t = &ui.world.templates[damage.0 as usize].1;
+        let t = &ui.world.declared.templates[damage.0 as usize].1;
         assert_eq!(t.lifetime, ui.env.ticks_per_second);
         let last = t.keys.last().expect("keys");
         assert_eq!((last.t, last.offset.y, last.alpha), (1.0, -40.0, 0.0));
@@ -1313,7 +1316,7 @@ mod tests {
             tick(&mut ui);
         }
         assert!(particles(&ui) > before, "the emitter stopped while idle");
-        assert!(ui.world.kept_effects.len() == 2);
+        assert!(ui.world.declared.kept_effects.len() == 2);
         ui.docs
             .reactive
             .execute(Command::Set {
@@ -1326,7 +1329,7 @@ mod tests {
             tick(&mut ui);
         }
         assert_eq!(
-            ui.world.kept_effects.len(),
+            ui.world.declared.kept_effects.len(),
             1,
             "the gem's emitter outlived it"
         );

@@ -473,7 +473,7 @@ impl Ui {
             }
             if styled.has("emitter")
                 || styled.has("meta")
-                || self.world.kept_effects.contains_key(&key)
+                || self.world.declared.kept_effects.contains_key(&key)
             {
                 self.world_effects(b, n, &styled, last, &path);
             }
@@ -869,7 +869,8 @@ impl Ui {
                 &mut self.tree,
             );
         }
-        if r.has("emitter") || r.has("meta") || self.world.kept_effects.contains_key(&key) {
+        if r.has("emitter") || r.has("meta") || self.world.declared.kept_effects.contains_key(&key)
+        {
             let at = self.tree.parent();
             self.world_effects(b, n, r, at, &path);
         }

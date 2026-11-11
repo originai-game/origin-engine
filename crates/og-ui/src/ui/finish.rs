@@ -125,7 +125,7 @@ impl Ui {
             focus_paths,
             text_input: self.interaction.text_target.take(),
             events: std::mem::take(&mut self.out.events),
-            grounds: std::mem::take(&mut self.world.grounds),
+            grounds: std::mem::take(&mut self.world.placement.grounds),
             stats: LayoutStats {
                 laid_out: self.layout.cache.laid_out,
                 ..self.out.stats

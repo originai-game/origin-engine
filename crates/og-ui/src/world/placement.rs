@@ -113,7 +113,7 @@ fn declutter(
 
 impl Ui {
     pub(super) fn world_metas(&mut self) {
-        let metas = std::mem::take(&mut self.world.metas);
+        let metas = std::mem::take(&mut self.world.declared.metas);
         let vp = self.env.viewport;
         let seconds = self.seconds() as f32;
         for (i, m) in &metas {
@@ -127,7 +127,7 @@ impl Ui {
             let screen = Rect::new(0.0, 0.0, vp.width, vp.height);
             let cmds = meta_cmds(&m.kind, screen, alpha);
             let key = self.tree.nodes[*i].key;
-            self.world.marks.insert(
+            self.world.placement.marks.insert(
                 key,
                 Marks {
                     enter: cmds,
@@ -135,7 +135,7 @@ impl Ui {
                 },
             );
         }
-        self.world.metas = metas;
+        self.world.declared.metas = metas;
     }
 }
 
@@ -154,8 +154,8 @@ impl crate::ui::Layout {
             vp.width - vp.safe_area.horizontal(),
             vp.height - vp.safe_area.vertical(),
         );
-        let anchors = std::mem::take(&mut world.anchors);
-        world.placed.clear();
+        let anchors = std::mem::take(&mut world.declared.anchors);
+        world.placement.placed.clear();
         // Where each lands before decluttering.
         struct Placed {
             entry: usize,
@@ -170,7 +170,7 @@ impl crate::ui::Layout {
             arrow: Option<(f32, Srgba, f32)>,
         }
         let mut placed: Vec<Placed> = Vec::new();
-        let view = world.view;
+        let view = world.declared.view;
         for (e, a) in anchors.iter().enumerate() {
             let n = &tree.nodes[a.node];
             let key = n.key;
@@ -414,20 +414,20 @@ impl crate::ui::Layout {
             info.x = at.x;
             info.y = at.y;
             info.alpha = s.alpha;
-            world.last.insert(pl.key, info);
+            world.placement.last.insert(pl.key, info);
             // Bracketed by its key, so a frame drawn between ticks moves it
             // with its point (`UiFrame::emit_shifted`).
             let mut marks = Marks::default();
             marks
                 .enter
                 .push(DrawCmd::World(Box::new(WorldCmd::Anchor { key: pl.key })));
-            world.placed.push(super::AnchorPoint {
+            world.placement.placed.push(super::AnchorPoint {
                 key: pl.key,
                 target: d.target,
                 offset: d.offset,
                 clamped: pl.info.clamped,
             });
-            if let Some(view) = world.view
+            if let Some(view) = world.declared.view
                 && d.occlusion != WorldOcclusion::None
                 && !pl.info.clamped
                 && pl.depth > 0.0
@@ -483,11 +483,11 @@ impl crate::ui::Layout {
             marks
                 .leave
                 .push(DrawCmd::World(Box::new(WorldCmd::EndAnchor)));
-            world.marks.insert(pl.key, marks);
+            world.placement.marks.insert(pl.key, marks);
         }
         world.state.smooth.retain(|k, _| seen.contains(k));
-        world.last.retain(|k, _| seen.contains(k));
-        world.anchors = anchors;
+        world.placement.last.retain(|k, _| seen.contains(k));
+        world.declared.anchors = anchors;
     }
 
     pub(super) fn world_panels(
@@ -498,7 +498,7 @@ impl crate::ui::Layout {
     ) {
         let mut hits = Vec::new();
         let mut grounds = Vec::new();
-        for p in &ui_world.panels {
+        for p in &ui_world.declared.panels {
             let key = tree.nodes[p.node].key;
             if p.desc.projected {
                 // Drawn by the UI onto where its quad is seen this tick: the
@@ -507,7 +507,7 @@ impl crate::ui::Layout {
                 // and rebuilds nothing. Inert: no ray, no focus.
                 tree.nodes[p.node].style.sampled.inert = true;
                 let all = Rect::new(-1e9, -1e9, 2e9, 2e9);
-                ui_world.marks.insert(
+                ui_world.placement.marks.insert(
                     key,
                     Marks {
                         enter: vec![DrawCmd::BeginLayer {
@@ -529,7 +529,8 @@ impl crate::ui::Layout {
                         }],
                     },
                 );
-                if let (Some(view), Some((t, rotation, size))) = (ui_world.view, p.desc.quad)
+                if let (Some(view), Some((t, rotation, size))) =
+                    (ui_world.declared.view, p.desc.quad)
                     && let Some((center, q)) = ui_world.pose_of(t)
                 {
                     let (vp, unit) = (env.viewport, env.unit.max(1e-6));
@@ -602,7 +603,7 @@ impl crate::ui::Layout {
                 continue;
             }
             if let Some(target) = p.desc.target {
-                ui_world.marks.insert(
+                ui_world.placement.marks.insert(
                     key,
                     Marks {
                         enter: vec![DrawCmd::World(Box::new(WorldCmd::BeginPanel {
@@ -625,8 +626,8 @@ impl crate::ui::Layout {
                 });
             }
         }
-        ui_world.last_panels = hits;
-        ui_world.grounds = grounds;
+        ui_world.placement.last_panels = hits;
+        ui_world.placement.grounds = grounds;
     }
 
     /// The order with world anchors and meta layers drawn (and hit) under
@@ -674,7 +675,7 @@ impl crate::world::WorldUi {
     /// What a node's commands are wrapped in (an occlusion test, a panel's
     /// target, an edge arrow, a meta layer's paint, particles).
     pub(crate) fn world_marks(&self, key: u64) -> Option<&Marks> {
-        self.marks.get(&key)
+        self.placement.marks.get(&key)
     }
 }
 
