@@ -135,6 +135,8 @@ mod post_resources;
 use fsr_frame::PrepareFsrInputs;
 mod ui_upload;
 use ui_upload::UploadUiInputs;
+mod graph_prepare;
+use graph_prepare::PrepareGraphInputs;
 mod setup;
 
 impl Renderer {
@@ -399,7 +401,7 @@ impl Renderer {
             ssr,
             custom_posts: _,
             motion_read,
-            ui_depth,
+            ui_depth: _,
             prepass,
         } = effects;
         plans.ssr = ssr;
@@ -982,7 +984,6 @@ impl Renderer {
             _ => true,
         };
         self.shadows.shelter_key = shelter.as_ref().map(|s| s.2);
-        let st = &scene.stylise;
         let lens = post_fx.lens_distortion.filter(|l| l.amount != 0.0);
         plans.live_sky = LiveSkyPass::plan(&self.sky_capture);
         plans.gi_probes = GiProbesPass::plan(&self.gi_probes);
@@ -1032,63 +1033,26 @@ impl Renderer {
         // (post_resources.rs).
         let adjusted = self.prepare_colour_lut(scene);
         let transmission = self.prepare_transmission(&batches, &blended_list, &skinned_visible);
-        // The grading table bound: the adjusted one, the scene's, or none.
-        let (lut_key, lut_view) = match (self.post.adjusted_lut().filter(|_| adjusted), lut_index) {
-            (Some(view), _) => (Some((0, 0)), view),
-            (None, Some(i)) => (
-                Some((scene.id(), i)),
-                &self.cache.luts[i].as_ref().expect("checked above").0,
-            ),
-            (None, None) => (None, &self.post.identity_lut),
-        };
-        // The stylise passes' palette and canvas.
-        let palette_view = st
-            .quantize
-            .and_then(|q| q.palette)
-            .and_then(|p| self.cache.palettes.get(p.index()))
-            .and_then(Option::as_ref)
-            .unwrap_or(&self.default_white);
-        let canvas_view = st
-            .paint
-            .and_then(|p| p.canvas)
-            .and_then(|t| self.cache.textures.get(t.index()))
-            .map_or(&self.default_white, |g| &g.view);
-        self.graph
-            .prepare(
-                &self.device,
-                passes,
-                &post::GraphConfig {
-                    width: self.width,
-                    height: self.height,
-                    post: self.history_size(),
-                    chain_format: self.post.chain_format,
-                    samples: self.samples,
-                    taa,
-                    lightmap: lightmap_size,
-                    lightdir: lightdir_on,
-                    gtao,
-                    gi: gi.is_some(),
-                    ssr: ssr.is_some(),
-                    bent,
-                    water: !scene_water.is_empty() || fluids_3d || particle_frame.distortion,
-                    water_ao: !scene_water.is_empty() && ao.is_some_and(|a| a.direct > 0.0),
-                    transmission,
-                    fluid_fields: fluids as u32,
-                    reflection: [
-                        reflections.first().map(|r| r.4),
-                        reflections.get(1).map(|r| r.4),
-                    ],
-                    object_space,
-                    ui_depth: ui_depth && prepass,
-                    oit: oit_mode.map(|m| m == oit::Oit::List),
-                },
-                &self.post,
-                &self.persistent,
-                &self.lights.lightmaps.probe_buffer,
-                (lut_key, lut_view),
-                (palette_view, canvas_view, &self.conformed.1, stylise_key),
-            )
-            .map_err(|e| RenderError::Graph(e.to_string()))?;
+        // The render graph for the frame's passes (graph_prepare.rs).
+        self.prepare_graph(PrepareGraphInputs {
+            scene,
+            effects: &effects,
+            passes,
+            taa,
+            lightmap_size,
+            lightdir_on,
+            gtao,
+            scene_water,
+            distortion: particle_frame.distortion,
+            transmission,
+            fluids,
+            reflections: &reflections,
+            object_space,
+            oit_mode,
+            adjusted,
+            lut_index,
+            stylise_key,
+        })?;
         // FSR in TAA's place (fsr_frame.rs).
         let fsr = self.prepare_fsr(PrepareFsrInputs {
             scene,
