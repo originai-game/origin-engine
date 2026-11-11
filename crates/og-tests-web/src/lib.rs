@@ -1,5 +1,6 @@
 //! og-tests' gfx scenes, and og-ui's reference scenes (`og-ui/<name>`,
-//! crates/og-ui/tests/support/scenes.rs over the screens of `screens.rs`,
+//! crates/og-tests-ui/tests/support/scenes.rs over the screens of
+//! crates/og-ui/tests/support/screens.rs,
 //! the files og-ui's own gfx tests build them with), in a browser (docs/ci.md §Browser reference tiers).
 //!
 //! One scene at a time: [`og_gfx_open`] builds it and a renderer on WebGPU,
@@ -76,7 +77,7 @@ mod web {
     }
 
     /// og-ui's reference scenes, as `og-ui/<name>` (`<name>.png` under
-    /// crates/og-ui/references/<tier>/).
+    /// crates/og-tests-ui/references/<tier>/).
     #[wasm_bindgen]
     pub fn og_gfx_ui_scenes() -> Vec<String> {
         super::scenes::REFERENCE_SCENES

@@ -526,7 +526,7 @@ fn run_time_faces_cost_what_atlas_fonts_cost() {
     );
 }
 
-/// `crates/og-ui/references/vulkan/font-packs-{1280,390}.png`: a Japanese
+/// `crates/og-tests-ui/references/vulkan/font-packs-{1280,390}.png`: a Japanese
 /// game's label mixing kana and kanji (its locale's pack), a player's
 /// Arabic name and a Simplified-only character (packs loaded when first
 /// drawn), over the Latin display face, every pack glyph from its face's
@@ -570,7 +570,7 @@ fn settle(engine: u32, frame: &impl Fn() -> Cost, packs: usize) {
     assert_eq!(quiet, 3, "the glyphs never arrived");
 }
 
-/// `crates/og-ui/references/vulkan/color-emoji-{1280,390}.png`: a label
+/// `crates/og-tests-ui/references/vulkan/color-emoji-{1280,390}.png`: a label
 /// in the Latin display face with emoji from the emoji pack (Noto Color
 /// Emoji, COLRv1), loaded when first drawn and painted in colour from the
 /// face's COLR table at run time. Ways it could fail: the emoji drawn as
@@ -665,14 +665,14 @@ fn run_time_emoji_cost_what_cooked_emoji_cost() {
     );
 }
 
-/// Compares `image` with `crates/og-ui/references/vulkan/<name>`
+/// Compares `image` with `crates/og-tests-ui/references/vulkan/<name>`
 /// (`OG_UI_CAPTURE=1` records it) under og-tests' rule for this tier,
 /// writing it to the test's temporary directory; prints its RMSE.
 fn check_reference(name: &str, image: &og_render::RgbaImage, info: &og_render::RenderInfo) {
     let out = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join(name);
     std::fs::write(&out, og_render::png_best(image)).unwrap();
     let own = repo()
-        .join("crates/og-ui/references")
+        .join("crates/og-tests-ui/references")
         .join(og_tests::compare::RECORDING_TIER)
         .join(name);
     if std::env::var_os("OG_UI_CAPTURE").is_some() {

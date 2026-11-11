@@ -11,9 +11,9 @@
 // Every frame is also compared with its recording-tier reference, reported and kept
 // in the JSON whether or not it is the frame the run is judged against.
 // og-ui's reference scenes ride along as `og-ui/<name>` (sample-screen,
-// text-glow, glass, widget-set: crates/og-ui/tests/support/scenes.rs, the
+// text-glow, glass, widget-set: crates/og-tests-ui/tests/support/scenes.rs, the
 // code og-ui's native gfx tests draw them with), judged the same way against
-// crates/og-ui/references/<tier>/<name>.png, else the recording tier's. So do og-ui's
+// crates/og-tests-ui/references/<tier>/<name>.png, else the recording tier's. So do og-ui's
 // cooked-font text frames (text-bidi, text-kerning, text-edit,
 // text-mixed-runs: crates/og-ui/tests/support/text_scenes.rs): their fonts
 // are cooked first with `og cook` (text-fonts.ts: crates/og-ui/tests/text-fonts
@@ -91,10 +91,10 @@ const out = resolve(opt("--out") ?? join(work, "out"));
 const firefox = args.includes("--firefox") ? firefoxPath(args) : undefined;
 const chrome = firefox || android || safari ? "" : chromePath(args);
 const refs = join(repo, "crates", "og-tests", "references");
-/** Where a scene's references live: og-ui's under crates/og-ui/references. */
+/** Where a scene's references live: og-ui's under crates/og-tests-ui/references. */
 function referencesOf(scene: string): { root: string; name: string } {
   return scene.startsWith("og-ui/")
-    ? { root: join(repo, "crates", "og-ui", "references"), name: scene.slice("og-ui/".length) }
+    ? { root: join(repo, "crates", "og-tests-ui", "references"), name: scene.slice("og-ui/".length) }
     : { root: refs, name: scene };
 }
 /** The scenes crates/og-tests/tests/perf.rs times natively. */

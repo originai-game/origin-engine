@@ -182,6 +182,15 @@ part_proof("image-set", "css_paint", "image_sets_render_density_correct_backgrou
     "Metal pixels prove button::part(base) reselects its background at DPR 1/2/1 while preserving an 8 CSS px tile. Other part image properties are not separately proved.")
 
 
+def proof_source(module, test, kind):
+    """The file of `module` that defines `test`: og-ui's, or the frame tests' (og-tests-ui)."""
+    for crate in ("og-ui", "og-tests-ui"):
+        source = f"crates/{crate}/tests/{module}.rs"
+        if (ROOT / source).exists() and f"fn {test}(" in (ROOT / source).read_text():
+            return source
+    raise ValueError(f"missing {kind} entry point: {module}::{test}")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--archive", type=Path)
@@ -219,7 +228,8 @@ def main():
              "Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document drift. "
              "For offline use, pass `--archive <web-features-3.45.0.tgz>`; its SHA-256 is pinned in the script. "
              "Proof entries are manually reviewed assertions, not name matches. Tests below live in "
-             "`crates/og-ui/tests/` and run in the `og-ui` integration test binary; GPU proofs require Metal.",
+             "`crates/og-ui/tests/` (what the UI builds) or `crates/og-tests-ui/tests/` (the frames drawn of it), "
+             "each one integration test binary; GPU proofs require Metal.",
              "",
              "| WebDX feature | Baseline | Document elements | Widget ::part | Proof scope or missing reason |",
              "| --- | --- | --- | --- | --- |"]
@@ -228,21 +238,17 @@ def main():
         label = {"high": "Widely", "low": "Newly", False: "Not Baseline"}[baseline]
         if key in PROVEN:
             module, test, scope = PROVEN[key]
-            source = ROOT / f"crates/og-ui/tests/{module}.rs"
-            if f"fn {test}(" not in source.read_text():
-                raise ValueError(f"missing proof entry point: {module}::{test}")
+            source = proof_source(module, test, "proof")
             state = "Supported (scope →)"
-            reason = f"[`{module}::{test}`](../crates/og-ui/tests/{module}.rs). {scope}"
+            reason = f"[`{module}::{test}`](../{source}). {scope}"
         else:
             state = "Missing"
             reason = MISSING.get(key, "Output proof not yet reviewed; implementation status unverified.")
         part_state = "Pending parts-as-nodes"
         for module, test, scope in PART_PROVEN.get(key, []):
-            source = ROOT / f"crates/og-ui/tests/{module}.rs"
-            if f"fn {test}(" not in source.read_text():
-                raise ValueError(f"missing part proof entry point: {module}::{test}")
+            source = proof_source(module, test, "part proof")
             part_state = "Supported (scope →)"
-            reason += f" Part proof: [`{module}::{test}`](../crates/og-ui/tests/{module}.rs). {scope}"
+            reason += f" Part proof: [`{module}::{test}`](../{source}). {scope}"
         lines.append(f"| `{key}` | {label} | {state} | {part_state} | {reason} |")
     lines += [END]
     path = ROOT / "docs/ui.md"

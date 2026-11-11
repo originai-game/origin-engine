@@ -14,7 +14,7 @@
 gpu = { max-threads = 4 }
 
 [[profile.default.overrides]]
-filter = 'package(og-tests) | package(og-tests-cooked) | package(og-ui) | package(og-render)'
+filter = 'package(og-tests) | package(og-tests-cooked) | package(og-tests-ui) | package(og-render)'
 test-group = 'gpu'
 
 # Determinism runs that step two worlds on two threads take two slots. The

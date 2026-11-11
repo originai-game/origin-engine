@@ -1642,7 +1642,7 @@ fn a_glass_panel_blurs_the_overlay_layers_below_it() {
 /// no glass, four dialog-sized glass panels over the scene only, the four
 /// over overlay content (a HUD bar under them: the pyramid is built after
 /// it, once), and two layers of two panels with content under each (two
-/// pyramids) (`cargo test -p og-ui --release --test tests -- --ignored
+/// pyramids) (`cargo test -p og-tests-ui --release --test tests -- --ignored
 /// gfx::glass_cost --nocapture`; the former test sample
 /// the former test sample
 #[test]
@@ -1735,7 +1735,7 @@ fn glass_cost() {
 }
 
 /// The glow's cost on this machine's GPU: 24 display-size labels rendered
-/// 300 times with and without it (`cargo test -p og-ui --release --test tests
+/// 300 times with and without it (`cargo test -p og-tests-ui --release --test tests
 /// -- --ignored gfx::text_glow_cost --nocapture`; the former test sample
 #[test]
 #[ignore]

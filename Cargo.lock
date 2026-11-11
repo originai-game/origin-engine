@@ -3174,6 +3174,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "og-tests-ui"
+version = "0.7.7"
+dependencies = [
+ "image",
+ "og-core",
+ "og-draw",
+ "og-i18n",
+ "og-input",
+ "og-render",
+ "og-tests",
+ "og-ui",
+ "pollster",
+ "serde_json",
+]
+
+[[package]]
 name = "og-tests-web"
 version = "0.7.7"
 dependencies = [
@@ -3241,7 +3257,6 @@ dependencies = [
  "bytemuck",
  "cssparser",
  "elsa",
- "image",
  "og-core",
  "og-css",
  "og-draw",
@@ -3249,13 +3264,10 @@ dependencies = [
  "og-i18n",
  "og-input",
  "og-probe",
- "og-render",
- "og-tests",
  "og-text",
  "og-tween",
  "parley",
  "parley_engine",
- "pollster",
  "regex-lite",
  "serde",
  "serde_json",

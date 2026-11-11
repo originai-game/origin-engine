@@ -1,9 +1,3 @@
-#![feature(custom_test_frameworks, test)]
-#![test_runner(gpu_tests::run)]
-use og_render::wgpu as gpu_wgpu;
-#[path = "../../../../tests/gpu.rs"]
-mod gpu_tests;
-
 #[path = "../a11y.rs"]
 mod a11y;
 #[path = "../box_decor.rs"]
@@ -18,10 +12,6 @@ mod component_documents;
 mod control_props;
 #[path = "../css_contain.rs"]
 mod css_contain;
-#[path = "../../../og-tests-ui/tests/css_effects.rs"]
-mod css_effects;
-#[path = "../../../og-tests-ui/tests/css_filters.rs"]
-mod css_filters;
 #[path = "../css_interact.rs"]
 mod css_interact;
 #[path = "../css_layout.rs"]
@@ -38,8 +28,6 @@ mod dressing;
 mod features;
 #[path = "../fields.rs"]
 mod fields;
-#[path = "../../../og-tests-ui/tests/gfx.rs"]
-mod gfx;
 #[path = "../glyphs.rs"]
 mod glyphs;
 #[path = "../html_controls.rs"]
@@ -48,20 +36,14 @@ mod html_controls;
 mod html_text;
 #[path = "../hud_layout.rs"]
 mod hud_layout;
-#[path = "../../../og-tests-ui/tests/inline_svg.rs"]
-mod inline_svg;
 #[path = "../input_types.rs"]
 mod input_types;
-#[path = "../../../og-tests-ui/tests/kit_gfx.rs"]
-mod kit_gfx;
 #[path = "../layout.rs"]
 mod layout;
 #[path = "../linebreak.rs"]
 mod linebreak;
 #[path = "../motion.rs"]
 mod motion;
-#[path = "../../../og-tests-ui/tests/mounted_layers.rs"]
-mod mounted_layers;
 #[path = "../perf.rs"]
 mod perf;
 #[path = "../probe.rs"]
@@ -74,8 +56,6 @@ mod rich;
 mod rtl;
 #[path = "../runs.rs"]
 mod runs;
-#[path = "../../../og-tests-ui/tests/screen_layers.rs"]
-mod screen_layers;
 #[path = "../slots.rs"]
 mod slots;
 #[path = "../style.rs"]
@@ -84,18 +64,12 @@ mod style;
 mod style_pack;
 #[path = "../support/mod.rs"]
 mod support;
-#[path = "../../../og-tests-ui/tests/svg_defs.rs"]
-mod svg_defs;
-#[path = "../../../og-tests-ui/tests/svg_text.rs"]
-mod svg_text;
 #[path = "../text.rs"]
 mod text;
 #[path = "../text_path.rs"]
 mod text_path;
 #[path = "../theme.rs"]
 mod theme;
-#[path = "../../../og-tests-ui/tests/touch_controls.rs"]
-mod touch_controls;
 #[path = "../ui_debug.rs"]
 mod ui_debug;
 #[path = "../user_select.rs"]

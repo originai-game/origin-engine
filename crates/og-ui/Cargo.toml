@@ -50,12 +50,6 @@ accesskit = { version = "=0.25.2", features = ["serde"] }
 [dev-dependencies]
 # Font files the tests read directly (the version og-text reads them with).
 ttf-parser = { version = "0.25.1", default-features = false, features = ["std"] }
-# The tests draw what the UI built.
-og-render = { path = "../og-render" }
-image = { workspace = true }
-# The reference-frame rule (og_tests::compare::tolerance_for).
-og-tests = { path = "../og-tests" }
-pollster = { workspace = true }
 
 
 # The default style's generator (scripts/gen-theme.sh runs it).

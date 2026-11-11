@@ -1,21 +1,19 @@
-//! The sample screen every og-ui integration test drives, the MSDF test font
-//! and the reference-frame comparison (og-tests' tolerance rules). The
-//! screens are in `screens.rs` and the render scenes of them in
-//! `scenes.rs`, which the browser tiers (crates/og-tests-web) compile too.
+//! The screens og-ui's integration tests drive (`screens.rs`, which the
+//! browser tiers compile too), the MSDF test font's metrics and handles,
+//! and the document harness. Nothing here renders: the frame tests
+//! (the og-tests-ui crate) include this support by path and add the render
+//! scenes and the reference-frame comparison beside it.
 #![allow(dead_code)]
 
 mod doc;
-#[path = "../../../og-tests-ui/tests/support/scenes.rs"]
-mod scenes;
 mod screens;
 
 // Not every binary that includes this support mounts documents.
 #[allow(unused_imports)]
 pub(crate) use doc::{Doc, both, id_text};
-use og_render::RenderScene;
 use og_ui::*;
-pub use scenes::*;
-use std::path::{Path, PathBuf};
+pub use screens::*;
+use std::path::PathBuf;
 
 pub fn dressed(css: &str) -> Ui {
     let mut ui = ui_with_font(test_font_metrics());
@@ -43,7 +41,7 @@ pub fn round_fill(cmd: &DrawCmd) -> Option<(Rect, f32)> {
     let radius = match cmd {
         DrawCmd::Quad { radius, .. } => *radius,
         DrawCmd::Shape { shape, .. } => match shape.geometry {
-            og_render::UiGeometry::Rect { radii, .. } if radii.iter().all(|r| *r == radii[0]) => {
+            og_draw::UiGeometry::Rect { radii, .. } if radii.iter().all(|r| *r == radii[0]) => {
                 radii[0]
             }
             _ => return None,
@@ -84,12 +82,6 @@ pub fn with_test_font<T>(f: impl FnOnce(&FontFiles) -> T) -> T {
         json: &json,
         csv: &csv,
     })
-}
-
-/// Adds the MSDF test font (msdf-atlas-gen's PNG, CSV and JSON) to a scene;
-/// the UI font for it, with the font's own ascender and descender.
-pub fn add_test_font(scene: &mut RenderScene) -> UiFont {
-    with_test_font(|files| add_font(scene, files))
 }
 
 /// The font and texture handles a scene would give, in a scene's order,
@@ -138,44 +130,6 @@ pub fn test_font_metrics() -> UiFont {
         handle: None,
         ..test_font()
     }
-}
-
-/// Records a reference frame (`OG_UI_CAPTURE`) as og-render's `png_best`,
-/// the smallest PNG of its pixels: never a copy of the fast-encoded frame
-/// a run writes.
-pub fn record_reference(own: &Path, width: u32, height: u32, pixels: &[u8]) {
-    std::fs::create_dir_all(own.parent().expect("dir")).expect("reference dir");
-    let image = og_render::RgbaImage {
-        width,
-        height,
-        pixels: pixels.to_vec(),
-    };
-    std::fs::write(own, og_render::png_best(&image)).expect("record reference");
-}
-
-/// `actual` (rendered by `info`'s adapter) against the frame read from
-/// `reference`, under og-tests' rule (`og_tests::compare::tolerance_for`):
-/// the default tolerance against its own tier's reference, the
-/// cross-platform one against another tier's. Answers the RMSE and the
-/// outliers' share, or what was exceeded.
-pub fn compare(
-    actual: &[u8],
-    expected: &[u8],
-    info: &og_render::RenderInfo,
-    reference: &Path,
-) -> Result<(f64, f64), String> {
-    use og_tests::compare::{Tolerance, tolerance_for};
-    let tolerance = tolerance_for(
-        Tolerance::default(),
-        Tolerance::CROSS_PLATFORM,
-        &info.backend_tier(),
-        info.software(),
-        reference,
-    );
-    // One row of pixels: the comparison reads them in order, whatever the shape.
-    let c = og_tests::compare::compare(actual, expected, (actual.len() / 4) as u32, 1, &tolerance)?;
-    c.check(&tolerance)?;
-    Ok((c.rmse, c.outlier_fraction()))
 }
 
 /// Where tests write what they produce: `$CARGO_TARGET_TMPDIR/og-ui`.

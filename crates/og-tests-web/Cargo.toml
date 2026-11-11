@@ -14,7 +14,7 @@ crate-type = ["cdylib", "rlib"]
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 og-tests = { path = "../og-tests" }
 og-render = { path = "../og-render", features = ["gltf"] }
-# og-ui's reference scenes (crates/og-ui/tests/support/scenes.rs, included by path).
+# og-ui's reference scenes (crates/og-tests-ui/tests/support/scenes.rs, included by path).
 og-ui = { path = "../og-ui" }
 # The MSDF test font's glyph table (crates/og-ui/tests/support/screens.rs).
 og-draw = { path = "../og-draw" }
