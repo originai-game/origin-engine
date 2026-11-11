@@ -7,11 +7,51 @@ fn backend_size(rs: &RenderState) -> (u32, u32) {
     rs.backend.as_ref().map_or((1, 1), |b| b.size())
 }
 
-/// Rebuild the per-frame part of `rs.scene` from the world as of its tick.
-// Rendering only: the drawn cameras' field of view.
-#[allow(clippy::disallowed_methods)]
+/// The frame's beginning, as the stages after it read it.
+struct Begun {
+    /// What a review camera frames of the last frame, in this frame's world.
+    framed: Option<(Vec3, Vec3)>,
+    /// The render target's size.
+    size: (u32, u32),
+    camera: Option<std::sync::Arc<Value>>,
+    settings: Option<std::sync::Arc<Value>>,
+    /// The world's zero in the absolute world (og.WorldOrigin).
+    zero: glam::DVec3,
+    /// The queued sprites and texts are this tick's (or a command's since).
+    fresh: bool,
+}
+
+/// Where the frame is seen from: the camera's exposure, the render origin
+/// and the camera's forward.
+struct View {
+    exposure: f32,
+    origin: Vec3,
+    look_along: Option<Vec3>,
+}
+
+/// Rebuild the per-frame part of `rs.scene` from the world as of its tick,
+/// stage by stage: the frame begins (the lists cleared, the display frame
+/// blended), then the camera, the settings, the models, the meshes, the
+/// lights, the effects and the world's other drawables, the text, and the
+/// frame's end (queued sprites, lines, motion, views, the UI, the render
+/// origin).
 pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     let mut h = std::mem::take(&mut rs.hierarchy);
+    let b = begin(world, rs, &mut h);
+    let view = camera(rs, &b);
+    settings(world, rs, &b, view.exposure);
+    let mut keys: Vec<(u64, u32)> = Vec::new();
+    models(world, rs, &mut h, &b, &mut keys);
+    meshes(world, rs, &mut h, &mut keys);
+    lights(world, rs, &mut h);
+    let (vp, tick) = effects(world, rs, &mut h, &mut keys);
+    texts(rs, b.fresh, vp);
+    finish(world, rs, h, &b, &view, &keys, vp, tick);
+}
+
+/// The frame begins: the hierarchy, timelines' materials and the art
+/// contract; the per-frame lists cleared; the display frame between ticks.
+fn begin(world: &World, rs: &mut RenderState, h: &mut Hierarchy) -> Begun {
     h.refresh(world);
     // Timelines' material tracks, at their time (presentation only).
     crate::timeline::present(world, rs);
@@ -27,20 +67,18 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     let drawn_at = std::mem::take(&mut rs.scene.frame.origin);
     let zero = crate::origin::zero(world, rs.draw.origin.as_ref());
     let back = drawn_at - zero.as_vec3();
-    let framed = super::review::bounds(rs, &h, &ids).map(|(a, b)| (a + back, b + back));
+    let framed = super::review::bounds(rs, h, &ids).map(|(a, b)| (a + back, b + back));
     rs.ids.instances = ids;
     let size = backend_size(rs);
     let camera = resource(world, rs.camera.as_ref());
     let settings = resource(world, rs.settings.as_ref());
     // A display frame between ticks: every world matrix and the camera
     // from here on are blended with the tick before (`super::interpolate`).
-    super::interpolate::begin(world, rs, settings.as_deref(), &mut h);
+    super::interpolate::begin(world, rs, settings.as_deref(), h);
     let blended = rs.interp.drawn;
-    let layouts = &rs.draw;
     rs.atmo.palettes.clear();
     rs.ids.sprites.clear();
     let scene = &mut rs.scene;
-    let (models, geometries, materials) = (&rs.models, &rs.geometries, &rs.materials);
     scene.objects.instances.clear();
     scene.lighting.lights.clear();
     scene.sprite.texts.clear();
@@ -89,6 +127,22 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     let now = world.time().tick;
     let fresh = rs.texts_tick == now || rs.texts_tick + 1 == now;
 
+    Begun {
+        framed,
+        size,
+        camera,
+        settings,
+        zero,
+        fresh,
+    }
+}
+
+/// The camera (with a review camera's framing).
+// Rendering only: the drawn cameras' field of view.
+#[allow(clippy::disallowed_methods)]
+fn camera(rs: &mut RenderState, b: &Begun) -> View {
+    let (camera, zero, size, framed) = (b.camera.clone(), b.zero, b.size, b.framed);
+    let scene = &mut rs.scene;
     // Camera.
     let mut exposure = 1.0f32;
     scene.frame.camera_layers = camera
@@ -127,6 +181,22 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     }
     super::review::apply(&mut scene.frame.camera, rs.review.as_ref(), size, framed);
 
+    View {
+        exposure,
+        origin,
+        look_along,
+    }
+}
+
+/// RenderSettings: environment, sky, bloom, exposure, tone mapping and
+/// the quality fields.
+// Rendering only: the exposure's log.
+#[allow(clippy::disallowed_methods)]
+fn settings(world: &World, rs: &mut RenderState, b: &Begun, exposure: f32) {
+    let settings = b.settings.clone();
+    let mut exposure = exposure;
+    let layouts = &rs.draw;
+    let scene = &mut rs.scene;
     // Settings: environment, sky, bloom, exposure, tone mapping.
     if let Some(s) = &settings {
         // RenderSettings.exposure scales every camera's, as three.js
@@ -212,7 +282,21 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
             ..og_render::RenderQuality::default()
         };
     }
+}
 
+/// Baked lighting, then the models: a fractured destructible's by its
+/// chunks, the rest at their level of detail, posed, as crowds, as
+/// impostors or as their parts.
+fn models(
+    world: &World,
+    rs: &mut RenderState,
+    h: &mut Hierarchy,
+    b: &Begun,
+    keys: &mut Vec<(u64, u32)>,
+) {
+    let settings = b.settings.clone();
+    let layouts = &rs.draw;
+    let models = &rs.models;
     // Baked lighting (RenderSettings.bakedLighting, on by default).
     let baked = settings
         .as_ref()
@@ -231,7 +315,6 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
         };
         ticks * f64::from(t.dt)
     };
-    let mut keys: Vec<(u64, u32)> = Vec::new();
     // Each model's own tint and flash ride in its instances' records
     // (kestrel-stair #11: a glTF's materials are shared by every instance),
     // with its shadow flags (on unless the model says otherwise). A hidden
@@ -306,12 +389,6 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
         }
         None => Vec::new(),
     };
-    let mesh_rows = layouts
-        .mesh
-        .as_ref()
-        .map(|m| mesh_rows(world, m))
-        .unwrap_or_default();
-    let (geometries, materials) = (geometries.clone(), materials.clone());
     // Levels of detail: per entity, the coarsest level whose error stays
     // under a pixel at its distance (og_render::lod), kept near a boundary
     // by the level it drew last. `RenderOptions.debugView lod` colours each
@@ -428,7 +505,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
                 .filter(|(k, _)| nodes.get(*k) == Some(&(d.node as usize)))
                 .map(|(_, p)| p.1)
                 .collect();
-            throw_chips(rs, &piece, &materials, &look, &mut keys);
+            throw_chips(rs, &piece, &materials, &look, keys);
             rs.scene.objects.debris.push(piece);
         }
         // The grit its broken joints shed.
@@ -448,7 +525,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
                 .find(|(k, _)| nodes.get(*k) == Some(&(c.node as usize)))
                 .map(|(_, p)| p.1);
             if let Some(inner) = inner {
-                throw_crumb(rs, c, inner, mortar, &look, &mut keys);
+                throw_crumb(rs, c, inner, mortar, &look, keys);
             }
         }
     }
@@ -502,13 +579,13 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
             }
         }
         if posed.contains(&e)
-            && super::fx::posed_model(rs, e, asset, m, h.blend_alpha(e), &parts, look, &mut keys)
+            && super::fx::posed_model(rs, e, asset, m, h.blend_alpha(e), &parts, look, keys)
         {
             continue;
         }
         if let Some(crowd) = crowds.get(&e) {
             let seconds = crowd_time(h.blend_alpha(e));
-            if super::fx::crowd_model(rs, e, asset, m, seconds, crowd, &parts, look, &mut keys) {
+            if super::fx::crowd_model(rs, e, asset, m, seconds, crowd, &parts, look, keys) {
                 continue;
             }
         }
@@ -563,6 +640,18 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     }
     rs.model_lods = model_lods;
     rs.lod_drawn = drawn;
+}
+
+/// og.Mesh rows.
+fn meshes(world: &World, rs: &mut RenderState, h: &mut Hierarchy, keys: &mut Vec<(u64, u32)>) {
+    let layouts = &rs.draw;
+    let (geometries, materials) = (&rs.geometries, &rs.materials);
+    let mesh_rows = layouts
+        .mesh
+        .as_ref()
+        .map(|m| mesh_rows(world, m))
+        .unwrap_or_default();
+    let (geometries, materials) = (geometries.clone(), materials.clone());
     let scene = &mut rs.scene;
     // Meshes.
     {
@@ -597,6 +686,11 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
             keys.push((e, 0));
         }
     }
+}
+
+/// The lights and their cookies.
+fn lights(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
+    let scene = &mut rs.scene;
     // Lights: the first directional light, then point and spot lights in
     // entity order (deterministic); og-render culls them to the view and
     // keeps at most MAX_LIGHTS.
@@ -711,18 +805,28 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
             lights.join(", ")
         ));
     }
+}
 
+/// The effects games declare, the atmosphere, the environment, probes,
+/// terrain, the camera's feel, sprites, tiles and the 2D drawables: the
+/// viewport (CSS pixels) and the tick.
+fn effects(
+    world: &World,
+    rs: &mut RenderState,
+    h: &mut Hierarchy,
+    keys: &mut Vec<(u64, u32)>,
+) -> ((f32, f32), u64) {
     // The effects games declare: the post stack, shake and 2D lighting,
     // then the effect components.
-    let tick = time.tick;
+    let tick = world.time().tick;
     super::fx::settings(world, rs);
-    super::fx::components(world, rs, &mut h, tick);
-    crate::vfx::extract(world, rs, &mut h, tick);
+    super::fx::components(world, rs, h, tick);
+    crate::vfx::extract(world, rs, h, tick);
     rs.scene.effects.particle_history = rs.particle_history.clone();
     // The pixel grid's snap: after the sprites and the camera are in.
     super::fx::snap_to_grid(rs);
     // Cloth meshes are instances too: keyed for per-object motion.
-    keys.extend(super::atmosphere::extract(world, rs, &mut h));
+    keys.extend(super::atmosphere::extract(world, rs, h));
     // The wind copies' parameters, from the og.Wind just read.
     let (wind, tick, rate) = (
         rs.scene.atmosphere.wind,
@@ -731,11 +835,11 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     );
     rs.wind.present(&mut rs.scene, wind, tick, rate);
     super::environment::extract(world, rs);
-    super::probes::extract(world, rs, &mut h);
-    super::probes::extract_light_volumes(world, rs, &mut h);
+    super::probes::extract(world, rs, h);
+    super::probes::extract_light_volumes(world, rs, h);
     // Scattered copies are instances too, keyed by their terrain cell.
-    keys.extend(super::terrain::extract(world, rs, &mut h));
-    colliders(world, rs, &mut h);
+    keys.extend(super::terrain::extract(world, rs, h));
+    colliders(world, rs, h);
     let vp = super::fx::viewport(rs);
     // The camera's shake, punch, kick and zones (on the frame only), then
     // og.Sprite rows, floating texts and tile layers.
@@ -745,10 +849,15 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
         _ => 16.0 / 9.0,
     };
     super::feel::camera_frame(world, rs, aspect);
-    super::feel::extract(world, rs, &mut h);
-    crate::destruction2d::extract(world, rs, &mut h);
-    super::skeleton2d::extract(world, rs, &mut h);
+    super::feel::extract(world, rs, h);
+    crate::destruction2d::extract(world, rs, h);
+    super::skeleton2d::extract(world, rs, h);
 
+    (vp, tick)
+}
+
+/// Characters the fonts lack, then the text queued for this frame.
+fn texts(rs: &mut RenderState, fresh: bool, vp: (f32, f32)) {
     // Characters the fonts lack, rendered from their files before any
     // text is laid out for this frame.
     super::glyphs::generate(rs);
@@ -805,7 +914,24 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
             }
         }
     }
+}
 
+/// The frame's end: queued sprites, the review camera, lines and points,
+/// per-object motion, views, ids, drop shadows, video, the UI, and the
+/// render origin.
+#[allow(clippy::too_many_arguments)]
+fn finish(
+    world: &World,
+    rs: &mut RenderState,
+    mut h: Hierarchy,
+    b: &Begun,
+    view: &View,
+    keys: &[(u64, u32)],
+    vp: (f32, f32),
+    tick: u64,
+) {
+    let (fresh, size, zero, camera) = (b.fresh, b.size, b.zero, b.camera.clone());
+    let (origin, look_along) = (view.origin, view.look_along);
     // Sprites and ribbons queued this tick.
     super::fx::queued(rs, fresh, vp);
     // The review camera on this frame's instances of its entity.
@@ -821,15 +947,15 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     let mut cut = IdMap::new();
     if rs.interp.drawn.is_some() && (rs.scene.look.post.motion_blur.is_some() || super::fx::taa(rs))
     {
-        for &(e, _) in &keys {
+        for &(e, _) in keys {
             if !cut.contains_key(&e) && h.cut(e) {
                 cut.insert(e, ());
             }
         }
     }
-    super::fx::motion(rs, &keys, tick, &cut);
+    super::fx::motion(rs, keys, tick, &cut);
     // Layer masks, secondary cameras and custom post passes.
-    super::views::extract(world, rs, &keys, &mut h);
+    super::views::extract(world, rs, keys, &mut h);
     // Which entity each instance came from, for the probe's id pass.
     rs.ids.instances.clear();
     rs.ids.instances.extend(keys.iter().map(|k| k.0));
