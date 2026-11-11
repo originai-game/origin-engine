@@ -365,7 +365,7 @@ impl Ui {
         cmds: &mut Vec<DrawCmd>,
     ) {
         let n = &self.tree.nodes[i];
-        let (Some((a, b)), Content::Text(tc)) = (n.selected, &n.content) else {
+        let (Some((a, b)), Content::Text(tc)) = (n.marks.selected, &n.content) else {
             return;
         };
         let count = line.chars().count() as u32;
@@ -591,14 +591,14 @@ impl crate::ui::Interaction {
         for &key in &last {
             if let Some(i) = tree.index.find(key)
                 && !now.iter().any(|&(j, _)| j == i)
-                && tree.nodes[i].selected.take().is_some()
+                && tree.nodes[i].marks.selected.take().is_some()
             {
                 changed.push(i);
             }
         }
         for &(i, r) in &now {
-            if tree.nodes[i].selected != Some(r) {
-                tree.nodes[i].selected = Some(r);
+            if tree.nodes[i].marks.selected != Some(r) {
+                tree.nodes[i].marks.selected = Some(r);
                 changed.push(i);
             }
             self.selected.push(tree.nodes[i].key);

@@ -69,17 +69,17 @@ impl Ui {
             commands.extend(draw.leave(t, &at));
             commands
         };
-        if n.pad_rings != 0 {
+        if n.marks.pad_rings != 0 {
             // Pads 1 to 3 outside pad 0's ring, outermost first.
-            for k in (0..3).rev().filter(|k| n.pad_rings & (1 << k) != 0) {
+            for k in (0..3).rev().filter(|k| n.marks.pad_rings & (1 << k) != 0) {
                 cmds.extend(ring(k + 1, false));
             }
         }
         // A bare field (no frame of its own) leaves the ring to its frame.
         let (framed, field_ring) = self.field_rings(i);
         let outline = t.outline && (n.nav || n.focusable) && framed;
-        if field_ring || n.ring || outline {
-            cmds.extend(ring(0, outline && !field_ring && !n.ring));
+        if field_ring || n.marks.ring || outline {
+            cmds.extend(ring(0, outline && !field_ring && !n.marks.ring));
         }
     }
 
@@ -325,7 +325,7 @@ impl Ui {
                             _ => x,
                         };
                         // The player's selection (`user-select`), under the text.
-                        if n.selected.is_some() && field.is_none() {
+                        if n.marks.selected.is_some() && field.is_none() {
                             self.select_marks(i, &line.text, first, (x, ly, lh), text_clip, cmds);
                         }
                         // `::selection`'s ink, lines and shadows: the line's
@@ -340,7 +340,7 @@ impl Ui {
                                 e.selection.0.max(e.selection.1),
                             )),
                             Some(_) => None,
-                            None => n.selected.map(|(a, b)| {
+                            None => n.marks.selected.map(|(a, b)| {
                                 (
                                     a.saturating_sub(first) as usize,
                                     b.saturating_sub(first) as usize,
@@ -1576,7 +1576,7 @@ impl Ui {
             let count = text.text.chars().count() as u32;
             // Its selected runs down the line, physical (top, bottom).
             let mut runs: Vec<(f32, f32)> = Vec::new();
-            if let Some((a, b)) = n.selected {
+            if let Some((a, b)) = n.marks.selected {
                 let (a, b) = (
                     a.saturating_sub(first) as usize,
                     b.saturating_sub(first) as usize,

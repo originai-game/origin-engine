@@ -1534,7 +1534,7 @@ impl Ui {
         // The player's selection: each line's selected stretch, merged,
         // filled under the text, its column a line wide.
         let mut selected: Vec<Rect> = Vec::new();
-        if let Some((a, b)) = n.selected {
+        if let Some((a, b)) = n.marks.selected {
             let mut first = 0usize;
             let lines = self.vertical_rich_lines(i);
             for (line, l) in lines.iter().zip(&n.layout.rich_lines) {

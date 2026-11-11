@@ -729,6 +729,19 @@ impl Default for StyleNode {
     }
 }
 
+/// What interaction marks on a node for paint: its focus rings and the
+/// characters the player selected.
+#[derive(Clone, Debug, Default)]
+pub(crate) struct NodeMarks {
+    /// Draw the focus ring (focused by keyboard or gamepad).
+    pub ring: bool,
+    /// Bit k: pad k + 1's focus is on it (its ring in that player's colour).
+    pub pad_rings: u8,
+    /// The characters of its text the player selected (`user-select`),
+    /// `[start, end)` over its lines joined by one break each.
+    pub selected: Option<(u32, u32)>,
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct Node {
     pub key: u64,
@@ -774,10 +787,8 @@ pub(crate) struct Node {
     pub adjust: bool,
     /// The arrows it claims while focused ([`crate::ARROW_LEFT`] …).
     pub claim: u8,
-    /// Draw the focus ring (focused by keyboard or gamepad).
-    pub ring: bool,
-    /// Bit k: pad k + 1's focus is on it (its ring in that player's colour).
-    pub pad_rings: u8,
+    /// Its focus rings and selected characters ([`NodeMarks`]).
+    pub marks: NodeMarks,
     /// Built but not shown (a closed dialog's slot): no layout, drawing or input.
     pub hidden: bool,
     /// A modal backdrop: takes the pointer, never focus.
@@ -820,9 +831,6 @@ pub(crate) struct Node {
     /// Where the frame places and draws it (layout writes it, paint reads it).
     pub placed: Placed,
     // Computed.
-    /// The characters of its text the player selected (`user-select`),
-    /// `[start, end)` over its lines joined by one break each.
-    pub selected: Option<(u32, u32)>,
     /// A popover opened at a point (`contextmenu`): its implicit anchor is
     /// that zero-size point rather than its anchor node.
     pub anchor_point: Option<[f32; 2]>,
@@ -894,8 +902,7 @@ impl Node {
             nav: false,
             adjust: false,
             claim: 0,
-            ring: false,
-            pad_rings: 0,
+            marks: NodeMarks::default(),
             hidden: false,
             backdrop: false,
             scope: false,
@@ -912,7 +919,6 @@ impl Node {
             caret: None,
             out: Vec::new(),
             placed: Placed::default(),
-            selected: None,
             anchor_point: None,
             arrow: None,
             floats: Vec::new(),

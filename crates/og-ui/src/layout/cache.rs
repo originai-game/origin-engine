@@ -406,11 +406,11 @@ impl DrawSig {
             clip: n.placed.clip,
             alpha: n.placed.alpha,
             world: n.placed.world,
-            ring: n.ring,
-            pad_rings: n.pad_rings,
+            ring: n.marks.ring,
+            pad_rings: n.marks.pad_rings,
             scale: n.placed.scale,
             sampled: n.style.sampled,
-            selected: n.selected,
+            selected: n.marks.selected,
         }
     }
 }
@@ -422,8 +422,8 @@ pub(crate) fn draw_eq(a: &Node, b: &Node) -> bool {
         && a.placed.clip == b.placed.clip
         && a.placed.alpha == b.placed.alpha
         && a.placed.world == b.placed.world
-        && a.ring == b.ring
-        && a.pad_rings == b.pad_rings
+        && a.marks.ring == b.marks.ring
+        && a.marks.pad_rings == b.marks.pad_rings
         && a.heading == b.heading
         && a.disabled == b.disabled
         && a.placed.scale == b.placed.scale
@@ -434,7 +434,7 @@ pub(crate) fn draw_eq(a: &Node, b: &Node) -> bool {
         && a.shapes == b.shapes
         && a.decor == b.decor
         && a.layout.lines == b.layout.lines
-        && a.selected == b.selected
+        && a.marks.selected == b.marks.selected
         && a.props.text_path == b.props.text_path
         && a.layout.rich_lines == b.layout.rich_lines
         && a.layout.col_rules == b.layout.col_rules

@@ -189,8 +189,8 @@ impl Ui {
         n.nav = true;
         n.adjust = adjust;
         let own = n.el.own_ring;
-        n.ring = !own && ring;
-        n.pad_rings = if own { 0 } else { (r.focused_by >> 1) as u8 };
+        n.marks.ring = !own && ring;
+        n.marks.pad_rings = if own { 0 } else { (r.focused_by >> 1) as u8 };
         Response { ring, ..r }
     }
 

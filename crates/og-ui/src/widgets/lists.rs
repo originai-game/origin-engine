@@ -656,7 +656,7 @@ impl Ui {
             self.feedback(crate::tokens::SoundEvent::Select);
         }
         if self.drop_target(grid, i) {
-            self.tree.nodes[i].ring = true;
+            self.tree.nodes[i].marks.ring = true;
         }
         r
     }

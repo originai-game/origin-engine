@@ -1008,7 +1008,7 @@ impl Ui {
         let outline = self.env.theme.outline && (node.nav || node.focusable) && framed;
         (
             volatile,
-            node.ring || node.pad_rings != 0 || outline || field_ring,
+            node.marks.ring || node.marks.pad_rings != 0 || outline || field_ring,
         )
     }
 
