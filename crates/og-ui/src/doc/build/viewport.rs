@@ -119,7 +119,9 @@ impl Ui {
             v = [0.0, 0.0];
         }
         let reduced = self.theme().reduced_motion;
-        let hit = self.hit(self.nodes[self.last_closed].key).copied();
+        let hit = self
+            .hit(self.tree.nodes[self.tree.last_closed].key)
+            .copied();
         let pinch = super::gestures::two_touches(&self.interaction.input, |x, y| {
             hit.is_some_and(|h| h.contains(x, y))
         });
@@ -198,7 +200,7 @@ impl Ui {
                 controls,
             },
         );
-        let i = self.last_closed;
+        let i = self.tree.last_closed;
         if controls {
             let bound = super::nodes::bound(n, "cameraOrbit");
             let o = self.orbit_controls(id, r, &out, bound);
@@ -210,9 +212,9 @@ impl Ui {
         let mut p = Self::resolved_props(n, r);
         p.states = props.states;
         p.state = props.state;
-        self.nodes[i].props = p;
+        self.tree.nodes[i].props = p;
         if let Some(name) = r.str("name").filter(|n| !n.is_empty()) {
-            self.nodes[i].a11y.name = Some(name.to_string());
+            self.tree.nodes[i].a11y.name = Some(name.to_string());
         }
         // Svelte's dimension bindings: written when its box changes (a
         // resized node is built again), so the game sizes its target.

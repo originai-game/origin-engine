@@ -214,10 +214,10 @@ impl Ui {
     ) -> Option<usize> {
         let fields = fields?;
         let i = fields.index;
-        let hidden = self.nodes[i].hidden;
+        let hidden = self.tree.nodes[i].hidden;
         self.apply_document_fields(doc, n, r, &fields);
         // A Rive frame already advanced this tick when its board is unchanged.
-        let layout_key = self.nodes[i].key;
+        let layout_key = self.tree.nodes[i].key;
         let playing = self
             .interaction
             .state
@@ -228,26 +228,26 @@ impl Ui {
             Some(board) if playing.as_deref() != Some(board) => self.play_rive(i, board, path),
             None if playing.is_some() => {
                 self.interaction.state.rive.remove(&layout_key);
-                if self.draws.get(&i).is_some_and(|d| d.rive.is_some()) {
-                    self.draws.remove(&i);
+                if self.tree.draws.get(&i).is_some_and(|d| d.rive.is_some()) {
+                    self.tree.draws.remove(&i);
                 }
             }
             _ => {}
         }
-        if self.nodes[i].hidden != hidden {
+        if self.tree.nodes[i].hidden != hidden {
             // `end` derived the child lists before settlement: refilter the
             // parent, and a revealed subtree whose lists were never derived.
-            let parent = self.nodes[i].parent;
+            let parent = self.tree.nodes[i].parent;
             if parent != crate::layout::NONE {
                 self.refilter_children(parent);
             }
             let mut stack = vec![i];
             while let Some(at) = stack.pop() {
-                if self.nodes[at].hidden {
+                if self.tree.nodes[at].hidden {
                     continue;
                 }
                 self.refilter_children(at);
-                stack.extend(self.nodes[at].ordered_children.iter().copied());
+                stack.extend(self.tree.nodes[at].ordered_children.iter().copied());
             }
         }
         Some(i)
@@ -255,19 +255,19 @@ impl Ui {
 
     /// A node's shown children in built order, split by flow, as `end` does.
     fn refilter_children(&mut self, i: usize) {
-        let kept: Vec<usize> = self.nodes[i]
+        let kept: Vec<usize> = self.tree.nodes[i]
             .built_children
             .iter()
             .copied()
-            .filter(|&c| !self.nodes[c].hidden && self.nodes[c].parent == i)
+            .filter(|&c| !self.tree.nodes[c].hidden && self.tree.nodes[c].parent == i)
             .collect();
         let (out, flow) = kept
             .iter()
-            .partition(|&&c| self.nodes[c].props.out_of_flow());
-        self.nodes[i].ordered_children = kept;
-        self.nodes[i].children = flow;
-        self.nodes[i].out = out;
-        self.tree.pending.push(i);
+            .partition(|&&c| self.tree.nodes[c].props.out_of_flow());
+        self.tree.nodes[i].ordered_children = kept;
+        self.tree.nodes[i].children = flow;
+        self.tree.nodes[i].out = out;
+        self.tree.index.pending.push(i);
     }
 }
 
@@ -311,10 +311,10 @@ panel { width: 10px; height: 10px; }
     }
 
     fn size(ui: &Ui, path: &str) -> (f32, f32) {
-        let i = (0..ui.nodes.len())
+        let i = (0..ui.tree.nodes.len())
             .find(|&i| ui.path_of(i) == path)
             .unwrap_or_else(|| panic!("no {path}"));
-        (ui.nodes[i].rect.width, ui.nodes[i].rect.height)
+        (ui.tree.nodes[i].rect.width, ui.tree.nodes[i].rect.height)
     }
 
     #[test]

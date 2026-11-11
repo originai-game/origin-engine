@@ -63,7 +63,7 @@ impl Ui {
     /// close. Answers whether a swipe dismissed it.
     pub(super) fn sheet(&mut self, id: &str, text: &str, edge: SheetEdge, open: bool) -> bool {
         let panel = self.parent();
-        let scrim = self.nodes[panel].parent;
+        let scrim = self.tree.nodes[panel].parent;
         let side = edge != SheetEdge::BlockEnd;
         let vh = self.env.viewport.height - self.env.viewport.safe_area.vertical();
         let vw = self.env.viewport.width - self.env.viewport.safe_area.horizontal();
@@ -94,7 +94,7 @@ impl Ui {
             }
         };
         {
-            let s = &mut self.nodes[scrim].el;
+            let s = &mut self.tree.nodes[scrim].el;
             s.padding.bottom = 0.0;
             s.padding.left = 0.0;
             s.padding.right = 0.0;
@@ -109,7 +109,7 @@ impl Ui {
             } else {
                 s.align = crate::layout::Align::End;
             }
-            let p = &mut self.nodes[panel].el;
+            let p = &mut self.tree.nodes[panel].el;
             if side {
                 p.width = Size::Fixed(max);
                 p.height = Size::grow();
@@ -118,11 +118,11 @@ impl Ui {
                 p.height = Size::Fixed(max);
             }
         }
-        let key = self.nodes[panel].key;
+        let key = self.tree.nodes[panel].key;
         let at = |h: f32| sign * (max - h.min(max));
         let travel = max - min;
         let lo = if sign < 0.0 { -travel } else { 0.0 };
-        self.nodes[panel].props.drag = Some(DragSpec {
+        self.tree.nodes[panel].props.drag = Some(DragSpec {
             axis: if side {
                 crate::element::DragAxis::X
             } else {

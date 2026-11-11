@@ -11,14 +11,14 @@ impl Ui {
         let now = self.interaction.state.tick as f32;
         let (reduced, distance) = (self.env.theme.reduced_motion, self.env.theme.space.lg);
         for &i in order {
-            let Some(st) = self.nodes[i].stagger else {
+            let Some(st) = self.tree.nodes[i].stagger else {
                 continue;
             };
-            let leaves: Vec<usize> = preorder(&self.nodes, i)
+            let leaves: Vec<usize> = preorder(&self.tree.nodes, i)
                 .into_iter()
                 .skip(1)
                 .filter(|&j| {
-                    let n = &self.nodes[j];
+                    let n = &self.tree.nodes[j];
                     n.children.is_empty()
                         && !matches!(n.widget, Widget::Spacer)
                         && (!matches!(n.content, Content::None)
@@ -36,10 +36,10 @@ impl Ui {
             for (k, &j) in leaves.iter().enumerate() {
                 let start = st.since as f32 + step * k as f32;
                 let p = ((now - start + 1.0) / st.ticks).clamp(0.0, 1.0);
-                if p >= 1.0 || self.nodes[j].fx.is_some() {
+                if p >= 1.0 || self.tree.nodes[j].fx.is_some() {
                     continue;
                 }
-                self.nodes[j].fx = Some(crate::motion::fx(
+                self.tree.nodes[j].fx = Some(crate::motion::fx(
                     st.kind,
                     self.env
                         .theme
@@ -77,14 +77,14 @@ impl Ui {
     /// `apply_world`); answers whether its children's change with them.
     fn world_step(&mut self, i: usize) -> bool {
         let before = {
-            let n = &self.nodes[i];
+            let n = &self.tree.nodes[i];
             (n.world, n.alpha, n.inert, n.plane.clone())
         };
-        let parent = self.nodes[i].parent;
+        let parent = self.tree.nodes[i].parent;
         let (alpha, inert, pw) = if parent == NONE {
             (1.0, false, Affine::IDENTITY)
         } else {
-            let p = &self.nodes[parent];
+            let p = &self.tree.nodes[parent];
             (p.alpha, p.inert, p.world)
         };
         // The 3D space its parent gives it: the parent's plane, and the
@@ -92,7 +92,7 @@ impl Ui {
         let (pplane, ppersp) = if parent == NONE {
             (None, None)
         } else {
-            let p = &self.nodes[parent];
+            let p = &self.tree.nodes[parent];
             let persp = p.props.space3d.as_ref().and_then(|s| {
                 s.perspective
                     .map(|_| s.perspective_matrix(&reference_box(p, s.transform_box)))
@@ -101,7 +101,7 @@ impl Ui {
         };
 
         let rtl = self.env.direction == og_i18n::Direction::Rtl;
-        let n = &mut self.nodes[i];
+        let n = &mut self.tree.nodes[i];
         let shown = !n.anchor_placed.hidden;
         n.alpha = alpha * n.sampled.opacity.clamp(0.0, 1.0) * f32::from(u8::from(shown));
         n.scale = 1.0;
@@ -209,9 +209,9 @@ impl Ui {
             let onto = if into == NONE {
                 Affine::IDENTITY
             } else {
-                self.nodes[into].world
+                self.tree.nodes[into].world
             };
-            let n = &mut self.nodes[i];
+            let n = &mut self.tree.nodes[i];
             n.world = onto.mul(&t3::project(&m));
             if let Some(p) = n.plane.as_deref_mut()
                 && p.root
@@ -239,47 +239,47 @@ impl Ui {
                 }
             }
         }
-        let n = &mut self.nodes[i];
+        let n = &mut self.tree.nodes[i];
         n.screen = n.world.map_rect(&r);
         // A transformed scroll container's clip moves with it: made from
         // the clip layout gave (mirrored right to left), so a node layout
         // left out is not moved twice.
-        let src = self.nodes[i].clip_src;
-        if src != NONE && !self.nodes[src].world.is_identity() {
-            let w = self.nodes[src].world;
-            let mut c = self.nodes[i].laid_clip;
+        let src = self.tree.nodes[i].clip_src;
+        if src != NONE && !self.tree.nodes[src].world.is_identity() {
+            let w = self.tree.nodes[src].world;
+            let mut c = self.tree.nodes[i].laid_clip;
             if self.env.direction == og_i18n::Direction::Rtl {
                 c.x = self.env.viewport.width - c.x - c.width;
             }
-            self.nodes[i].clip = w.map_rect(&c);
+            self.tree.nodes[i].clip = w.map_rect(&c);
         }
         // Its clip in the space its layer draws in: a scroll container's
         // in the same layer, else none (an outer clip cuts the composite).
-        if self.nodes[i].plane.is_some() {
-            let into = self.nodes[i].plane.as_ref().map_or(NONE, |p| p.into);
+        if self.tree.nodes[i].plane.is_some() {
+            let into = self.tree.nodes[i].plane.as_ref().map_or(NONE, |p| p.into);
             let clip = if src == NONE {
                 INFINITE
             } else if into == NONE {
-                self.nodes[i].clip
+                self.tree.nodes[i].clip
             } else if src == into {
-                self.nodes[src].laid_clip
+                self.tree.nodes[src].laid_clip
             } else {
-                match self.nodes[src].plane.as_deref() {
+                match self.tree.nodes[src].plane.as_deref() {
                     Some(sp) if sp.into == into && !sp.root => {
-                        crate::transform3d::project(&sp.m).map_rect(&self.nodes[src].laid_clip)
+                        crate::transform3d::project(&sp.m).map_rect(&self.tree.nodes[src].laid_clip)
                     }
                     _ => INFINITE,
                 }
             };
-            if let Some(p) = self.nodes[i].plane.as_deref_mut() {
+            if let Some(p) = self.tree.nodes[i].plane.as_deref_mut() {
                 p.clip = clip;
             }
         }
-        let n = &self.nodes[i];
+        let n = &self.tree.nodes[i];
         if n.plane.as_ref().is_some_and(|p| p.root) {
             self.world.planes.insert(n.key);
         }
-        let n = &self.nodes[i];
+        let n = &self.tree.nodes[i];
         before != (n.world, n.alpha, n.inert, n.plane.clone())
     }
 
@@ -297,7 +297,7 @@ impl Ui {
     ) -> Vec<(DrawCmd, Affine)> {
         let dpr = self.env.viewport.dpr();
         let snap = |v: f32| crate::layout::snap(v, dpr);
-        let ends = std::mem::take(&mut self.orders.ends);
+        let ends = std::mem::take(&mut self.tree.orders.ends);
         let mut last = std::mem::take(&mut self.paint.cache.last_cmds);
         self.paint.cache.prev_len = last.len();
         self.paint.cache.aligned.clear();
@@ -314,7 +314,7 @@ impl Ui {
         let mut open: Vec<(usize, usize, usize, Option<usize>, usize)> = Vec::new();
         // Focus rings waiting for the subtree they draw over (`ring_over`).
         let mut rings: Vec<(usize, Vec<(DrawCmd, Affine)>)> = Vec::new();
-        let prev_kinds = std::mem::take(&mut self.prev_kinds);
+        let prev_kinds = std::mem::take(&mut self.tree.prev_kinds);
         self.paint.kept_spans.clear();
         let reuse = self.paint_reuse(order, &ends, changed, &ghosts, &prev_kinds);
         self.paint.cache.repainted = reuse.repainted.clone();
@@ -338,7 +338,7 @@ impl Ui {
             let i = order[k];
             // Where its subtree's commands began in last frame's list.
             let up = open.last().map(|o| o.3);
-            let at_last = match self.paint.cache.ranges.get(&self.nodes[i].key) {
+            let at_last = match self.paint.cache.ranges.get(&self.tree.nodes[i].key) {
                 Some(&(rel, len, count)) => match up {
                     Some(Some(base)) => Some((base + rel, len, count)),
                     Some(None) => None,
@@ -407,7 +407,7 @@ impl Ui {
                 self.paint
                     .cache
                     .ranges
-                    .insert(self.nodes[i].key, (start - base, len, count));
+                    .insert(self.tree.nodes[i].key, (start - base, len, count));
                 k = ends[k];
                 self.close_subtrees(
                     &mut open,
@@ -420,10 +420,10 @@ impl Ui {
                 );
                 continue;
             }
-            if self.nodes[i].parent == NONE {
+            if self.tree.nodes[i].parent == NONE {
                 reused_roots = false;
             }
-            let n = &self.nodes[i];
+            let n = &self.tree.nodes[i];
             let world = n.plane.as_ref().map_or(n.world, |p| p.draw());
             // Its clip where its commands draw: a 3D plane's in its layer.
             let draw_clip = match n.plane.as_deref() {
@@ -442,7 +442,7 @@ impl Ui {
                 cmds.push((plane_begin(), Affine::IDENTITY));
             }
             let draw = self.draw_of(i).cloned();
-            let n = &self.nodes[i];
+            let n = &self.tree.nodes[i];
             if let Some(m) = self.world_marks(n.key) {
                 cmds.extend(m.enter.iter().map(|c| (c.clone(), Affine::IDENTITY)));
             }
@@ -453,7 +453,7 @@ impl Ui {
             // covers it.
             let over_background = |ui: &Self| -> Vec<(DrawCmd, Affine)> {
                 let Some(d) = &draw else { return Vec::new() };
-                let n = &ui.nodes[i];
+                let n = &ui.tree.nodes[i];
                 // CSS accent-color: the primary ink of its control's parts.
                 let mut theme = theme;
                 if let Some(a) = ui.nearest(i, |n| n.accent) {
@@ -474,8 +474,8 @@ impl Ui {
             let sig = crate::layout::DrawSig::of(n);
             // CSS `visibility: hidden`: nothing of its own is drawn; its
             // children that say `visible` are.
-            let hidden = self.orders.hidden_of.get(i) == Some(&true)
-                || self.orders.skip_of.get(i).is_some_and(|&s| s != 0);
+            let hidden = self.tree.orders.hidden_of.get(i) == Some(&true)
+                || self.tree.orders.skip_of.get(i).is_some_and(|&s| s != 0);
             if hidden {
                 if let Some(d) = &draw {
                     cmds.extend(d.begin(&theme, &placed(n)).into_iter().map(|c| (c, world)));
@@ -501,31 +501,31 @@ impl Ui {
                     if world.is_identity() {
                         self.out.stats.painted += 1;
                         let screen_clip = n.clip;
-                        self.nodes[i].clip = draw_clip;
+                        self.tree.nodes[i].clip = draw_clip;
                         background = self.node_commands(i, &mut local, &snap);
-                        self.nodes[i].clip = screen_clip;
+                        self.tree.nodes[i].clip = screen_clip;
                     } else if let Some(inv) = world.invert() {
                         self.out.stats.painted += 1;
                         // Drawn in its layout box: its screen clip taken there.
                         let screen_clip = n.clip;
-                        self.nodes[i].clip = inv.map_rect(&draw_clip);
+                        self.tree.nodes[i].clip = inv.map_rect(&draw_clip);
                         self.paint.drawing = world;
                         background = self.node_commands(i, &mut local, &snap);
                         self.paint.drawing = Affine::IDENTITY;
-                        self.nodes[i].clip = screen_clip;
+                        self.tree.nodes[i].clip = screen_clip;
                     }
                     if accent.is_some() {
                         self.env.theme.palette = theme.palette;
                     }
                 }
                 if let Some(d) = &draw {
-                    let grid = match &self.nodes[i].content {
+                    let grid = match &self.tree.nodes[i].content {
                         Content::Text(t) => t.metrics(&self.env.fonts).pixel_grid(),
                         _ => 0,
                     };
                     d.style_text(&theme, &mut local, grid);
                 }
-                let key = self.nodes[i].key;
+                let key = self.tree.nodes[i].key;
                 if !kept_now {
                     self.paint
                         .cache
@@ -542,7 +542,7 @@ impl Ui {
                 // Its text, with the backgrounds cut to it when it has them.
                 let text: Vec<DrawCmd> = local.map(|(c, _)| c).collect();
                 let text = match &draw {
-                    Some(d) => d.clip_to_text(&theme, &placed(&self.nodes[i]), text),
+                    Some(d) => d.clip_to_text(&theme, &placed(&self.tree.nodes[i]), text),
                     None => text,
                 };
                 cmds.extend(text.into_iter().map(|c| (c, world)));
@@ -557,17 +557,17 @@ impl Ui {
             let mut ring = Vec::new();
             if hidden {
             } else if world.is_identity() {
-                let screen_clip = self.nodes[i].clip;
-                self.nodes[i].clip = draw_clip;
+                let screen_clip = self.tree.nodes[i].clip;
+                self.tree.nodes[i].clip = draw_clip;
                 self.focus_ring_commands(i, &mut ring);
-                self.nodes[i].clip = screen_clip;
+                self.tree.nodes[i].clip = screen_clip;
             } else if let Some(inv) = world.invert() {
-                let screen_clip = self.nodes[i].clip;
-                self.nodes[i].clip = inv.map_rect(&draw_clip);
+                let screen_clip = self.tree.nodes[i].clip;
+                self.tree.nodes[i].clip = inv.map_rect(&draw_clip);
                 self.paint.drawing = world;
                 self.focus_ring_commands(i, &mut ring);
                 self.paint.drawing = Affine::IDENTITY;
-                self.nodes[i].clip = screen_clip;
+                self.tree.nodes[i].clip = screen_clip;
             }
             if !ring.is_empty() {
                 rings.push((
@@ -576,15 +576,15 @@ impl Ui {
                 ));
             }
             if let Some(d) = &draw {
-                let at = placed(&self.nodes[i]);
+                let at = placed(&self.tree.nodes[i]);
                 cmds.extend(d.children(&at).into_iter().map(|c| (c, world)));
             }
             if let Some((true, clip)) = plane {
                 // Its children are planes of its 3D space, not drawn onto
                 // its own: its layer ends with its own drawing.
-                cmds.push((plane_end(self.nodes[i].key, clip), Affine::IDENTITY));
+                cmds.push((plane_end(self.tree.nodes[i].key, clip), Affine::IDENTITY));
             }
-            self.paint.cache.sigs_set(i, self.nodes[i].key, sig);
+            self.paint.cache.sigs_set(i, self.tree.nodes[i].key, sig);
             open.push((i, start, ends[k], at_last.map(|a| a.0), k));
             k += 1;
             self.close_subtrees(
@@ -607,12 +607,17 @@ impl Ui {
         self.interaction.state.motion.frozen = frozen;
         self.nest_named();
         // The same trees as last frame, each drawn whole as it was.
-        let same_roots = self.orders.roots == self.paint.cache.last_roots;
-        self.paint.cache.last_roots.clone_from(&self.orders.roots);
-        self.orders.ends = ends;
+        let same_roots = self.tree.orders.roots == self.paint.cache.last_roots;
+        self.paint
+            .cache
+            .last_roots
+            .clone_from(&self.tree.orders.roots);
+        self.tree.orders.ends = ends;
         self.paint.cache.reuse = reuse;
-        self.paint.cache.reused_all =
-            reused_roots && same_roots && !self.invalidation.fresh && !self.invalidation.whole;
+        self.paint.cache.reused_all = reused_roots
+            && same_roots
+            && !self.tree.invalidation.fresh
+            && !self.tree.invalidation.whole;
         self.paint.cache.prev_cmds = last;
         cmds
     }
@@ -650,45 +655,45 @@ impl Ui {
                     break;
                 }
                 open.pop();
-                let key = self.nodes[j].key;
+                let key = self.tree.nodes[j].key;
                 for (g, ghost) in ghosts.iter().enumerate() {
                     if !drawn[g] && ghost.frozen.parent == key {
                         drawn[g] = true;
                         self.ghost_commands(ghost, cmds);
                     }
                 }
-                if self.nodes[j].scrolls() && self.nodes[j].el.fade > 0.0 {
+                if self.tree.nodes[j].scrolls() && self.tree.nodes[j].el.fade > 0.0 {
                     let mut fades = Vec::new();
                     self.scroll_fade_commands(j, &mut fades);
-                    let w = self.nodes[j].world;
+                    let w = self.tree.nodes[j].world;
                     cmds.extend(fades.into_iter().map(|c| (c, w)));
                 }
-                if self.nodes[j].scrolls() && !self.nodes[j].el.hide_bars {
+                if self.tree.nodes[j].scrolls() && !self.tree.nodes[j].el.hide_bars {
                     let mut bars = Vec::new();
                     self.scroll_bar_commands(j, &mut bars);
-                    let w = self.nodes[j].world;
+                    let w = self.tree.nodes[j].world;
                     cmds.extend(bars.into_iter().map(|c| (c, w)));
                 }
                 // CSS `resize`: its handle over everything it drew.
-                if self.nodes[j].el.resize != 0
-                    && self.orders.skip_of.get(j).is_none_or(|&s| s == 0)
+                if self.tree.nodes[j].el.resize != 0
+                    && self.tree.orders.skip_of.get(j).is_none_or(|&s| s == 0)
                 {
                     let mut grip = Vec::new();
                     self.resizer_commands(j, &mut grip);
-                    let w = self.nodes[j].world;
+                    let w = self.tree.nodes[j].world;
                     cmds.extend(grip.into_iter().map(|c| (c, w)));
                 }
-                let w = self.nodes[j].world;
+                let w = self.tree.nodes[j].world;
                 if let Some(d) = self.draw_of(j) {
-                    let at = placed(&self.nodes[j]);
-                    let hidden = self.orders.hidden_of.get(j) == Some(&true)
-                        || self.orders.skip_of.get(j).is_some_and(|&s| s != 0);
-                    let mut leave = if marked(&self.nodes[j]) && !hidden {
+                    let at = placed(&self.tree.nodes[j]);
+                    let hidden = self.tree.orders.hidden_of.get(j) == Some(&true)
+                        || self.tree.orders.skip_of.get(j).is_some_and(|&s| s != 0);
+                    let mut leave = if marked(&self.tree.nodes[j]) && !hidden {
                         d.leave(&theme, &at)
                     } else {
                         d.leave_stroked(&theme, &at)
                     };
-                    undraw(&mut leave, self.nodes[j].sampled.draw);
+                    undraw(&mut leave, self.tree.nodes[j].sampled.draw);
                     cmds.extend(leave.into_iter().map(|c| (c, w)));
                 }
                 // Focus rings over everything their subtree drew: later
@@ -701,7 +706,7 @@ impl Ui {
                     cmds.append(ring);
                     false
                 });
-                if let Some(p) = self.nodes[j].plane.as_deref()
+                if let Some(p) = self.tree.nodes[j].plane.as_deref()
                     && p.root
                     && !p.preserve
                 {
@@ -710,13 +715,13 @@ impl Ui {
                 if let Some(m) = self.world_marks(key) {
                     cmds.extend(m.leave.iter().map(|c| (c.clone(), Affine::IDENTITY)));
                 }
-                let nj = &self.nodes[j];
+                let nj = &self.tree.nodes[j];
                 if nj.props.exit.is_some() || !nj.props.match_key.is_empty() {
                     let inv = nj.world.invert().unwrap_or(Affine::IDENTITY);
                     let parent = if nj.parent == NONE {
                         0
                     } else {
-                        self.nodes[nj.parent].key
+                        self.tree.nodes[nj.parent].key
                     };
                     frozen.insert(
                         key,
@@ -729,7 +734,7 @@ impl Ui {
                             rect: nj.rect,
                             world: nj.world,
                             alpha: nj.alpha,
-                            parent: if self.tree.by_key.contains_key(&parent) {
+                            parent: if self.tree.index.by_key.contains_key(&parent) {
                                 parent
                             } else {
                                 0
@@ -748,8 +753,8 @@ impl Ui {
                 // A glitching subtree draws through the glitch material
                 // (TransitionKind::Glitch): a layer from its first command
                 // to its last.
-                if let Some(g) = self.nodes[j].fx.map(|f| f.glitch).filter(|&g| g > 0.0) {
-                    let nj = &self.nodes[j];
+                if let Some(g) = self.tree.nodes[j].fx.map(|f| f.glitch).filter(|&g| g > 0.0) {
+                    let nj = &self.tree.nodes[j];
                     let strength = match theme.art.motion.glitch {
                         s if s > 0.0 => s,
                         _ => 1.0,
@@ -771,7 +776,7 @@ impl Ui {
                 }
                 // A blurring subtree (Svelte's `blur` transition) draws
                 // through a blur layer, as CSS `filter: blur()` does.
-                let nj = &self.nodes[j];
+                let nj = &self.tree.nodes[j];
                 if nj.sampled.blur > 0.0 {
                     let (begin, end) = blur_layer(nj.sampled.blur, nj.rect, nj.clip);
                     self.paint.kept_spans.retain(|r| r.end <= first);
@@ -782,7 +787,7 @@ impl Ui {
                 }
                 // A shared element of a view transition: where its drawing
                 // is in this frame's list (crate::view_transition).
-                let nj = &self.nodes[j];
+                let nj = &self.tree.nodes[j];
                 if !nj.props.view_transition_name.is_empty() {
                     let name = match nj.props.view_transition_name.as_str() {
                         "auto" | "match-element" => crate::view_transition::element_name(key),
@@ -801,17 +806,17 @@ impl Ui {
                         inherited: if nj.parent == NONE {
                             1.0
                         } else {
-                            self.nodes[nj.parent].alpha
+                            self.tree.nodes[nj.parent].alpha
                         },
                     });
                 }
                 // Its range for the next frame, from its parent's start.
                 let base = open.last().map_or(0, |o| o.1);
                 let count = (k - pos) as u32;
-                self.paint
-                    .cache
-                    .ranges
-                    .insert(self.nodes[j].key, (first - base, cmds.len() - first, count));
+                self.paint.cache.ranges.insert(
+                    self.tree.nodes[j].key,
+                    (first - base, cmds.len() - first, count),
+                );
             }
         }
     }
@@ -832,11 +837,14 @@ impl Ui {
         ghosts: &[crate::motion::state::Ghost],
         prev_kinds: &std::collections::HashMap<usize, (&'static str, bool)>,
     ) -> Reuse {
-        let n = self.nodes.len();
+        let n = self.tree.nodes.len();
         let mut r = std::mem::take(&mut self.paint.cache.reuse);
         r.begin(n);
         // The bounded frame's check paints its whole twin afresh.
-        if self.invalidation.fresh || self.invalidation.whole || self.tree.all_restructured {
+        if self.tree.invalidation.fresh
+            || self.tree.invalidation.whole
+            || self.tree.index.all_restructured
+        {
             let p = &mut self.paint.cache;
             p.volatile.clear();
             p.ringed.clear();
@@ -853,14 +861,15 @@ impl Ui {
             r.repainted = None;
             return r;
         }
-        let (o, p) = (&self.orders, &mut self.paint.cache);
+        let (o, p) = (&self.tree.orders, &mut self.paint.cache);
         // What the frame draws again on its own, kept until it does not.
         p.volatile.retain(|&i| o.pos[i] != u32::MAX);
         p.ringed.retain(|&i| o.pos[i] != u32::MAX);
         let mut volatile: std::collections::HashSet<usize> = self
+            .tree
             .draws
             .keys()
-            .chain(&self.tree.restructured)
+            .chain(&self.tree.index.restructured)
             .chain(&self.paint.part_changed)
             .copied()
             .collect();
@@ -877,7 +886,7 @@ impl Ui {
                 },
             ));
         for key in keyed {
-            if let Some(&i) = self.tree.by_key.get(&key) {
+            if let Some(&i) = self.tree.index.by_key.get(&key) {
                 volatile.insert(i);
             }
         }
@@ -887,7 +896,7 @@ impl Ui {
         let mut at: Vec<u32> = changed
             .unwrap_or(order)
             .iter()
-            .chain(&self.emitted)
+            .chain(&self.tree.emitted)
             .chain(&volatile)
             .chain(&p.volatile)
             .chain(&p.ringed)
@@ -897,8 +906,8 @@ impl Ui {
             .collect();
         at.sort_unstable();
         at.dedup();
-        let written_at = std::mem::take(&mut self.orders.written_at);
-        let stamp = self.orders.written_stamp;
+        let written_at = std::mem::take(&mut self.tree.orders.written_at);
+        let stamp = self.tree.orders.written_stamp;
         let written = |i: usize| written_at[i] == stamp;
         let mut judged = Vec::new();
         let (mut next, mut cover, mut p) = (0usize, 0usize, None::<usize>);
@@ -915,16 +924,16 @@ impl Ui {
             };
             p = Some(q);
             let i = order[q];
-            let node = &self.nodes[i];
+            let node = &self.tree.nodes[i];
             let up = node.parent;
             let own = !volatile.contains(&i)
-                && !self.draws.contains_key(&i)
+                && !self.tree.draws.contains_key(&i)
                 && !matches!(node.content, Content::Rich(_))
                 && if written(i) {
                     // A node written again: as it was drawn last frame.
                     self.layout.cache.prev.get(&i).is_some_and(|b| {
                         crate::layout::draw_eq(node, b)
-                            && Some(&self.kinds[i]) == prev_kinds.get(&i)
+                            && Some(&self.tree.kinds[i]) == prev_kinds.get(&i)
                     })
                 } else {
                     // A retained node not written again: its own inputs are
@@ -940,7 +949,7 @@ impl Ui {
             let delta = if same {
                 (0.0, 0.0)
             } else if !written(i)
-                && !self.draws.contains_key(&i)
+                && !self.tree.draws.contains_key(&i)
                 && !matches!(node.content, Content::Rich(_))
                 && let Some(Some((k, old))) = self.paint.cache.sigs.get(i)
                 && *k == node.key
@@ -976,7 +985,7 @@ impl Ui {
         for &i in judged.iter().rev() {
             let mut c = i;
             loop {
-                let up = self.nodes[c].parent;
+                let up = self.tree.nodes[c].parent;
                 if up == NONE || (r.clean(c) && r.delta(c) == r.delta(up)) || !r.clean(up) {
                     break;
                 }
@@ -993,7 +1002,7 @@ impl Ui {
             let mut j = i;
             while j != over && j != NONE {
                 r.unclean(j);
-                j = self.nodes[j].parent;
+                j = self.tree.nodes[j].parent;
             }
         }
         // The nodes not written that draw otherwise than last frame.
@@ -1003,7 +1012,7 @@ impl Ui {
                 .filter(|&i| !r.same(i) && !written(i))
                 .collect(),
         );
-        self.orders.written_at = written_at;
+        self.tree.orders.written_at = written_at;
         r
     }
 
@@ -1011,7 +1020,7 @@ impl Ui {
     /// match key, links, a glitch, a scroll's fade and bars), and whether
     /// a focus ring or outline is drawn over it.
     fn paints_alone(&self, i: usize) -> (bool, bool) {
-        let node = &self.nodes[i];
+        let node = &self.tree.nodes[i];
         let volatile = node.props.exit.is_some()
             || !node.props.match_key.is_empty()
             || !node.props.view_transition_name.is_empty()
@@ -1033,16 +1042,16 @@ impl Ui {
     /// and kept commands are where they are drawn now.
     fn moved_subtree(&mut self, nodes: &[usize], dx: f32, dy: f32) {
         for &j in nodes {
-            let key = self.nodes[j].key;
+            let key = self.tree.nodes[j].key;
             self.paint
                 .cache
-                .sigs_set(j, key, crate::layout::DrawSig::of(&self.nodes[j]));
+                .sigs_set(j, key, crate::layout::DrawSig::of(&self.tree.nodes[j]));
             if let Some((_, local, sig)) = self.paint.cache.cmds.get_mut(&key) {
                 if local.iter().all(shiftable) {
                     for c in local.iter_mut() {
                         shift(c, dx, dy);
                     }
-                    *sig = crate::layout::DrawSig::of(&self.nodes[j]);
+                    *sig = crate::layout::DrawSig::of(&self.tree.nodes[j]);
                 } else {
                     self.paint.cache.cmds.remove(&key);
                 }
@@ -1062,6 +1071,7 @@ impl Ui {
         }
         let world = if g.morph_to != 0 {
             let to = self
+                .tree
                 .nodes
                 .iter()
                 .find(|n| n.key == g.morph_to)
@@ -1113,8 +1123,8 @@ impl Ui {
     fn ring_over(&self, i: usize) -> usize {
         let mut j = i;
         loop {
-            let parent = self.nodes[j].parent;
-            if parent == NONE || parent == 0 || self.world_marks(self.nodes[j].key).is_some() {
+            let parent = self.tree.nodes[j].parent;
+            if parent == NONE || parent == 0 || self.world_marks(self.tree.nodes[j].key).is_some() {
                 return j;
             }
             j = parent;
@@ -1122,7 +1132,7 @@ impl Ui {
     }
 
     fn scroll_clip(&self, s: usize) -> Rect {
-        let sn = &self.nodes[s];
+        let sn = &self.tree.nodes[s];
         if sn.world.is_identity() {
             sn.clip.intersect(&sn.rect)
         } else {
@@ -1139,7 +1149,7 @@ impl Ui {
     /// length into it, so a cut row reads as "there is more".
     fn scroll_fade_commands(&self, s: usize, cmds: &mut Vec<DrawCmd>) {
         use crate::paint::{ColorRef, ElementDraw, Gradient, Paint, Placed, Stop};
-        let sn = &self.nodes[s];
+        let sn = &self.tree.nodes[s];
         let reach = sn.el.fade;
         let into = sn.el.fade_into.unwrap_or(self.env.theme.palette.panel);
         let clip = self.scroll_clip(s);
@@ -1236,7 +1246,7 @@ impl Ui {
         let t = &self.env.theme;
         let p = &t.palette;
         let dpr = self.env.viewport.dpr();
-        let sn = &self.nodes[s];
+        let sn = &self.tree.nodes[s];
         let clip = self.scroll_clip(s);
         // CSS `scrollbar-width: thin` halves the bar; `scrollbar-color`
         // paints its thumb and a track along the whole edge under it.
@@ -1788,11 +1798,11 @@ impl Ui {
         mut i: usize,
         get: impl Fn(&crate::layout::Node) -> Option<T>,
     ) -> Option<T> {
-        while i != crate::layout::NONE && i < self.nodes.len() {
-            if let Some(v) = get(&self.nodes[i]) {
+        while i != crate::layout::NONE && i < self.tree.nodes.len() {
+            if let Some(v) = get(&self.tree.nodes[i]) {
                 return Some(v);
             }
-            i = self.nodes[i].parent;
+            i = self.tree.nodes[i].parent;
         }
         None
     }
@@ -1863,14 +1873,15 @@ impl Ui {
     pub(super) fn plane_quads(&mut self) {
         let keys: Vec<u64> = self.world.planes.iter().copied().collect();
         for key in keys {
-            let found = self.tree.find(key).filter(|&i| {
-                self.nodes[i].key == key && self.nodes[i].plane.as_ref().is_some_and(|p| p.root)
+            let found = self.tree.index.find(key).filter(|&i| {
+                self.tree.nodes[i].key == key
+                    && self.tree.nodes[i].plane.as_ref().is_some_and(|p| p.root)
             });
             let Some(i) = found else {
                 self.world.planes.remove(&key);
                 continue;
             };
-            let n = &self.nodes[i];
+            let n = &self.tree.nodes[i];
             let p = n.plane.as_deref().expect("a plane root");
             if p.hidden {
                 continue;

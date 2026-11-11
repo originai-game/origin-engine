@@ -56,8 +56,8 @@ impl Ui {
             if resp.clicked {
                 self.remember(&capturing, 1.0);
             }
-            let at = self.last_closed;
-            self.nodes[at].a11y.name = Some(label);
+            let at = self.tree.last_closed;
+            self.tree.nodes[at].a11y.name = Some(label);
             return resp;
         }
         match glyph.filter(|g| self.icons().find(&g.icon).is_some()) {
@@ -72,9 +72,9 @@ impl Ui {
             ),
             None => {
                 self.badge(id, &cap, crate::widgets::Tone::Neutral);
-                let at = self.last_closed;
+                let at = self.tree.last_closed;
                 if !label.is_empty() {
-                    self.nodes[at].a11y.name = Some(label);
+                    self.tree.nodes[at].a11y.name = Some(label);
                 }
             }
         }

@@ -234,13 +234,13 @@ impl Ui {
     /// them and each node's nearest group and recogniser around it
     /// (`visit::Orders::group_of`, `gesture_of`).
     pub(crate) fn collect_input_specs(&mut self) {
-        let o = &self.orders;
+        let o = &self.tree.orders;
         // A group's parent group: its parent's (a layer's anchor's, where
         // the anchor is drawn before it).
         let around = |i: usize, of: &[u64]| {
-            let n = &self.nodes[i];
+            let n = &self.tree.nodes[i];
             let up = if n.parent == NONE { n.anchor } else { n.parent };
-            if up == NONE || up >= self.nodes.len() || o.pos[up] > o.pos[i] {
+            if up == NONE || up >= self.tree.nodes.len() || o.pos[up] > o.pos[i] {
                 0
             } else {
                 of[up]
@@ -248,7 +248,7 @@ impl Ui {
         };
         let mut groups: IdMap<u64, GroupState> = IdMap::new();
         for &i in o.with(crate::ui::visit::feat::GROUP) {
-            let n = &self.nodes[i];
+            let n = &self.tree.nodes[i];
             let Some(spec) = n.props.focus_group else {
                 continue;
             };
@@ -270,7 +270,7 @@ impl Ui {
         }
         let mut recognizers: IdMap<u64, (GestureSpec, u64)> = IdMap::new();
         for &i in o.with(crate::ui::visit::feat::RECOGNIZER) {
-            let n = &self.nodes[i];
+            let n = &self.tree.nodes[i];
             if let Some(spec) = n.props.gestures.filter(GestureSpec::any)
                 && !n.inert
             {
@@ -281,8 +281,8 @@ impl Ui {
         self.interaction.state.recognizers = recognizers;
         // Explicit moves: each path resolved to where it lands.
         let mut links: IdMap<u64, [u64; 6]> = IdMap::new();
-        for i in self.orders.drawn(crate::ui::visit::feat::NAV_LINKS) {
-            let nav = self.nodes[i].props.nav.clone();
+        for i in self.tree.orders.drawn(crate::ui::visit::feat::NAV_LINKS) {
+            let nav = self.tree.nodes[i].props.nav.clone();
             let mut to = [0u64; 6];
             for (k, path) in [
                 &nav.up, &nav.down, &nav.left, &nav.right, &nav.next, &nav.prev,
@@ -303,7 +303,7 @@ impl Ui {
                     }
                 }
             }
-            links.insert(self.nodes[i].key, to);
+            links.insert(self.tree.nodes[i].key, to);
         }
         self.interaction.state.nav_links = links;
     }
@@ -312,19 +312,19 @@ impl Ui {
     /// move is made), a focusable control, or the first focusable control
     /// inside it.
     fn landing(&self, j: usize) -> u64 {
-        let n = &self.nodes[j];
+        let n = &self.tree.nodes[j];
         if n.props.focus_group.is_some() || n.nav || n.focusable {
             return n.key;
         }
         // Its subtree in drawing order.
-        let mut sub = crate::layout::preorder(&self.nodes, j);
-        sub.sort_unstable_by_key(|&o| self.orders.pos[o]);
+        let mut sub = crate::layout::preorder(&self.tree.nodes, j);
+        sub.sort_unstable_by_key(|&o| self.tree.orders.pos[o]);
         sub.into_iter()
             .find(|&o| {
-                let m: &Node = &self.nodes[o];
+                let m: &Node = &self.tree.nodes[o];
                 (m.nav || m.focusable) && !m.inert
             })
-            .map_or(0, |o| self.nodes[o].key)
+            .map_or(0, |o| self.tree.nodes[o].key)
     }
 
     /// After this frame's hits: each group's first member, and the member
@@ -394,7 +394,7 @@ impl Ui {
             if key == 0 {
                 continue;
             }
-            let Some(i) = self.tree.find(key) else {
+            let Some(i) = self.tree.index.find(key) else {
                 continue;
             };
             self.out.events.push(crate::motion::UiEvent {
@@ -420,7 +420,7 @@ impl Ui {
         let images = if at == NONE {
             Vec::new()
         } else {
-            self.nodes[at].props.cursor_images.clone()
+            self.tree.nodes[at].props.cursor_images.clone()
         };
         (cursor, images)
     }
@@ -440,17 +440,17 @@ impl Ui {
             };
             // Keep a control's link, resize handle or native cursor when
             // its noninteractive child is on top, but not through a sibling.
-            let hot = self.tree.find(key);
+            let hot = self.tree.index.find(key);
             let mut ancestor = i;
             loop {
                 if Some(ancestor) == hot
-                    || crate::ui::resize::grip_key(self.nodes[ancestor].key) == key
+                    || crate::ui::resize::grip_key(self.tree.nodes[ancestor].key) == key
                 {
                     break;
                 }
-                ancestor = self.nodes[ancestor].parent;
+                ancestor = self.tree.nodes[ancestor].parent;
                 if ancestor == NONE {
-                    key = self.nodes[i].key;
+                    key = self.tree.nodes[i].key;
                     break;
                 }
             }
@@ -463,23 +463,24 @@ impl Ui {
         let selecting = self.hit(key).filter(|h| h.has(HIT_SELECT)).map(|h| h.key);
         if let Some(t) = selecting.or_else(|| {
             hovered
-                .and_then(|i| self.hit(self.nodes[i].key))
+                .and_then(|i| self.hit(self.tree.nodes[i].key))
                 .filter(|h| h.has(HIT_SELECT))
                 .map(|h| h.key)
-        }) && let Some(i) = self.tree.find(t)
+        }) && let Some(i) = self.tree.index.find(t)
         {
             return match self.declared_cursor(i) {
                 (Cursor::Auto, at) => (Cursor::Text, at),
                 c => c,
             };
         }
-        let Some(i) = self.tree.find(key) else {
+        let Some(i) = self.tree.index.find(key) else {
             // A resize handle: the resize cursor of its axes.
             return match self
+                .tree
                 .orders
                 .with(crate::ui::visit::feat::RESIZE)
                 .iter()
-                .map(|&i| &self.nodes[i])
+                .map(|&i| &self.tree.nodes[i])
                 .find(|n| crate::ui::resize::grip_key(n.key) == key)
                 .map(|n| n.el.resize)
             {
@@ -496,7 +497,7 @@ impl Ui {
         if c != Cursor::Auto {
             return (c, at);
         }
-        let n = &self.nodes[i];
+        let n = &self.tree.nodes[i];
         if key != n.key {
             // A rich text's link.
             return (Cursor::Pointer, at);
@@ -526,8 +527,8 @@ impl Ui {
         use crate::element::{PointerEvents, SvgPointer};
         let p = self.interaction.state.pointer;
         order.iter().rev().copied().find(|&i| {
-            let n = &self.nodes[i];
-            let pointer = self.orders.pointer_of[i];
+            let n = &self.tree.nodes[i];
+            let pointer = self.tree.orders.pointer_of[i];
             let svg = match pointer {
                 PointerEvents::Svg(bits)
                     if self.draw_of(i).is_some_and(|d| d.view_box.is_some()) =>
@@ -539,8 +540,9 @@ impl Ui {
             if i == 0
                 || n.inert
                 || pointer == PointerEvents::None
-                || self.orders.skip_of[i] != 0
-                || (self.orders.hidden_of[i] && !svg.is_some_and(|s| s & SvgPointer::VISIBLE == 0))
+                || self.tree.orders.skip_of[i] != 0
+                || (self.tree.orders.hidden_of[i]
+                    && !svg.is_some_and(|s| s & SvgPointer::VISIBLE == 0))
                 || !n.clip.contains(p.x, p.y)
             {
                 return false;
@@ -554,7 +556,7 @@ impl Ui {
             }
             let mut parent = n.parent;
             while parent != NONE {
-                let ancestor = &self.nodes[parent];
+                let ancestor = &self.tree.nodes[parent];
                 if ancestor.decor.as_ref().is_some_and(|d| d.clip) {
                     let Some(inv) = ancestor.world.invert() else {
                         return false;
@@ -584,8 +586,8 @@ impl Ui {
     /// `auto`), and that element (`NONE`: none does).
     fn declared_cursor(&self, i: usize) -> (crate::Cursor, usize) {
         let mut j = i;
-        while j != NONE && j < self.nodes.len() {
-            let n = &self.nodes[j];
+        while j != NONE && j < self.tree.nodes.len() {
+            let n = &self.tree.nodes[j];
             if n.props.cursor != crate::Cursor::Auto || !n.props.cursor_images.is_empty() {
                 return (n.props.cursor, j);
             }

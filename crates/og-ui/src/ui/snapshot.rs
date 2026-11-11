@@ -410,13 +410,13 @@ impl Ui {
         self.layout.cache = Default::default();
         self.paint.cache = Default::default();
         self.style.motion = Default::default();
-        self.invalidation = Default::default();
+        self.tree.invalidation = Default::default();
         // What nodes say next is the restored state, not news.
-        self.semantics.note_quiet();
+        self.tree.semantics.note_quiet();
         // The restored mounts emit afresh; the nodes they owned retire
         // unless the next frame writes them again.
-        let owned: Vec<usize> = (0..self.persistent.len())
-            .filter(|&i| self.persistent[i])
+        let owned: Vec<usize> = (0..self.tree.persistent.len())
+            .filter(|&i| self.tree.persistent[i])
             .collect();
         self.retire_owned(&owned);
         // Container sizes are layout's: the next frame measures and settles

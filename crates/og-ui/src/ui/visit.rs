@@ -234,8 +234,8 @@ impl Ui {
     /// made again where their shape changed, a feature read again on the
     /// nodes written or laid out this frame.
     pub(super) fn update_orders(&mut self, whole: bool) {
-        let n = self.nodes.len();
-        let o = &mut self.orders;
+        let n = self.tree.nodes.len();
+        let o = &mut self.tree.orders;
         if o.feat.len() < n {
             o.feat.resize(n, 0);
             o.z.resize(n, 0);
@@ -261,18 +261,18 @@ impl Ui {
             o.written_at.fill(0);
             o.written_stamp = 1;
         }
-        for &i in &self.emitted {
+        for &i in &self.tree.emitted {
             if i < n {
                 o.written_at[i] = o.written_stamp;
             }
         }
         o.wrote_last = std::mem::take(&mut o.wrote);
-        let reshaped = whole || o.shape != Some(self.tree.shape);
+        let reshaped = whole || o.shape != Some(self.tree.index.shape);
         if reshaped {
-            o.shape = Some(self.tree.shape);
-            o.pre = crate::layout::preorder(&self.nodes, 0);
-            for &f in &self.floating {
-                o.pre.extend(crate::layout::preorder(&self.nodes, f));
+            o.shape = Some(self.tree.index.shape);
+            o.pre = crate::layout::preorder(&self.tree.nodes, 0);
+            for &f in &self.tree.floating {
+                o.pre.extend(crate::layout::preorder(&self.tree.nodes, f));
             }
             o.pre_pos.clear();
             o.pre_pos.resize(n, u32::MAX);
@@ -283,18 +283,19 @@ impl Ui {
             o.lists_ok = false;
             if whole {
                 for &i in &o.pre {
-                    o.feat[i] = features(&self.nodes[i]);
+                    o.feat[i] = features(&self.tree.nodes[i]);
                 }
             }
         }
         let read = self
+            .tree
             .emitted
             .iter()
             .chain(&self.layout.cache.laid)
-            .chain(&self.invalidation.restored);
+            .chain(&self.tree.invalidation.restored);
         for &i in read {
             if i < n {
-                let f = features(&self.nodes[i]);
+                let f = features(&self.tree.nodes[i]);
                 if f != o.feat[i] {
                     o.feat[i] = f;
                     o.lists_ok = false;
@@ -304,7 +305,7 @@ impl Ui {
         if reshaped && !whole {
             // A node that entered a tree reads its features as it is.
             for &i in &o.pre {
-                o.feat[i] = features(&self.nodes[i]);
+                o.feat[i] = features(&self.tree.nodes[i]);
             }
         }
         if !o.lists_ok {
@@ -330,8 +331,9 @@ impl Ui {
     /// again and moved by motion. A node only laid out or moved among its
     /// siblings keeps its sampled style (made from what was written).
     pub(super) fn frame_seeds(&self) -> (Vec<usize>, Vec<usize>) {
-        let o = &self.orders;
+        let o = &self.tree.orders;
         let mut restyle: Vec<usize> = self
+            .tree
             .emitted
             .iter()
             .chain(&o.wrote_last)
@@ -342,16 +344,16 @@ impl Ui {
             .chain(o.with(feat::WORLD))
             .copied()
             .collect();
-        for &k in &self.tree.moved_keys {
-            restyle.extend(self.tree.by_key.get(&k).copied());
+        for &k in &self.tree.index.moved_keys {
+            restyle.extend(self.tree.index.by_key.get(&k).copied());
         }
         // Scroll-driven animations whose timeline moved (a scroll, a
         // layout change of the scroller or the subject).
         for (k, last) in &self.style.motion.timelines {
-            let Some(&i) = self.tree.by_key.get(k) else {
+            let Some(&i) = self.tree.index.by_key.get(k) else {
                 continue;
             };
-            let moved = self.nodes[i]
+            let moved = self.tree.nodes[i]
                 .props
                 .animations
                 .iter()
@@ -365,12 +367,12 @@ impl Ui {
             }
         }
         let mut seeds = restyle.clone();
-        seeds.extend(self.layout.cache.laid.iter().chain(&self.floating));
-        for &p in &self.tree.restructured {
-            seeds.extend_from_slice(&self.nodes[p].ordered_children);
+        seeds.extend(self.layout.cache.laid.iter().chain(&self.tree.floating));
+        for &p in &self.tree.index.restructured {
+            seeds.extend_from_slice(&self.tree.nodes[p].ordered_children);
         }
         for list in [&mut restyle, &mut seeds] {
-            list.retain(|&i| i < self.nodes.len() && self.tree.has(i));
+            list.retain(|&i| i < self.tree.nodes.len() && self.tree.index.has(i));
             list.sort_unstable();
             list.dedup();
         }
@@ -392,7 +394,7 @@ impl Ui {
             }
             return order.to_vec();
         };
-        let o = &mut self.orders;
+        let o = &mut self.tree.orders;
         o.stamp = o.stamp.wrapping_add(1);
         if o.stamp == 0 {
             o.seen.fill(0);
@@ -406,16 +408,16 @@ impl Ui {
             .collect();
         let mut out = Vec::new();
         while let Some(std::cmp::Reverse((_, i))) = heap.pop() {
-            if self.orders.seen[i] == stamp {
+            if self.tree.orders.seen[i] == stamp {
                 continue;
             }
-            self.orders.seen[i] = stamp;
+            self.tree.orders.seen[i] = stamp;
             out.push(i);
             if step(self, i) {
-                for k in 0..self.nodes[i].ordered_children.len() {
-                    let c = self.nodes[i].ordered_children[k];
-                    let p = self.orders.pos[c];
-                    if p != u32::MAX && self.orders.seen[c] != stamp {
+                for k in 0..self.tree.nodes[i].ordered_children.len() {
+                    let c = self.tree.nodes[i].ordered_children[k];
+                    let p = self.tree.orders.pos[c];
+                    if p != u32::MAX && self.tree.orders.seen[c] != stamp {
                         heap.push(std::cmp::Reverse((p, c)));
                     }
                 }
@@ -428,8 +430,8 @@ impl Ui {
     /// focus group and gesture recogniser from its parent's (a layer's
     /// anchor's); answers whether any changed.
     pub(super) fn scope_step(&mut self, i: usize) -> bool {
-        let nodes = &self.nodes;
-        let o = &self.orders;
+        let nodes = &self.tree.nodes;
+        let o = &self.tree.orders;
         let n = &nodes[i];
         let up = n.parent;
         let (ps, pr) = if up == NONE {
@@ -511,7 +513,7 @@ impl Ui {
             (true, crate::layout::ContentVisibility::Hidden) => SKIP_HIDDEN,
             (true, _) => SKIP_AUTO,
         });
-        let o = &mut self.orders;
+        let o = &mut self.tree.orders;
         let old = (
             o.scope_of[i],
             o.scroller_of[i],
@@ -551,15 +553,15 @@ impl Ui {
     /// Whether a point on an SVG shape's hit ([`HIT_SHAPE`]) is on the
     /// geometry its `pointer-events` names.
     pub(crate) fn shape_hit(&self, h: &Hit, x: f32, y: f32) -> bool {
-        let Some(i) = self.tree.find(h.key) else {
+        let Some(i) = self.tree.index.find(h.key) else {
             return false;
         };
         let (crate::element::PointerEvents::Svg(bits), Some(d)) =
-            (self.orders.pointer_of[i], self.draw_of(i))
+            (self.tree.orders.pointer_of[i], self.draw_of(i))
         else {
             return true;
         };
-        let r = &self.nodes[i].rect;
+        let r = &self.tree.nodes[i].rect;
         let (lx, ly) = if h.inv.is_identity() {
             (x, y)
         } else {
@@ -572,14 +574,14 @@ impl Ui {
     /// Node `i`'s hits (none for the screen's root) and the warning its
     /// place gives, from its frame state; answers whether they changed.
     pub(super) fn hit_step(&mut self, i: usize, touch_min: f32, screen: Rect) -> bool {
-        let o = &self.orders;
+        let o = &self.tree.orders;
         let mut warn = None;
         let mut hits = Vec::new();
         'node: {
             if i == 0 {
                 break 'node;
             }
-            let n = &self.nodes[i];
+            let n = &self.tree.nodes[i];
             // CSS `pointer-events` and `visibility` (an SVG value without
             // `visible` in it takes the pointer while hidden too).
             let (pass, shape) = match o.pointer_of[i] {
@@ -777,7 +779,7 @@ impl Ui {
                 }
             }
         }
-        let o = &mut self.orders;
+        let o = &mut self.tree.orders;
         if o.hit_of[i] == hits && o.warn_of[i] == warn {
             return false;
         }
@@ -800,12 +802,12 @@ impl Ui {
     /// frame's `z`: made again where the shape, a `z` or the world panels
     /// changed.
     pub(super) fn update_draw_order(&mut self, moved: &[usize]) {
-        let n = self.nodes.len();
-        let o = &mut self.orders;
-        let nodes = &self.nodes;
+        let n = self.tree.nodes.len();
+        let o = &mut self.tree.orders;
+        let nodes = &self.tree.nodes;
         let z_moved = moved
             .iter()
-            .chain(&self.emitted)
+            .chain(&self.tree.emitted)
             .any(|&i| i < n && o.z[i] != nodes[i].sampled.z);
         let panels = self.world.panel_nodes();
         if o.draw_ok && !z_moved && panels == o.panels {
@@ -814,22 +816,22 @@ impl Ui {
         o.draw_ok = true;
         o.panels = panels;
         let mut draw = crate::layout::draw_order(nodes, 0);
-        for &f in &self.floating {
+        for &f in &self.tree.floating {
             draw.extend(crate::layout::draw_order(nodes, f));
         }
         self.world_order(&mut draw);
-        let o = &mut self.orders;
+        let o = &mut self.tree.orders;
         o.pos.clear();
         o.pos.resize(n, u32::MAX);
         for (k, &i) in draw.iter().enumerate() {
             o.pos[i] = k as u32;
-            o.z[i] = self.nodes[i].sampled.z;
+            o.z[i] = self.tree.nodes[i].sampled.z;
         }
-        o.ends = crate::layout::subtree_ends(&self.nodes, &draw);
+        o.ends = crate::layout::subtree_ends(&self.tree.nodes, &draw);
         o.roots = draw
             .iter()
-            .filter(|&&i| self.nodes[i].parent == NONE)
-            .map(|&i| self.nodes[i].key)
+            .filter(|&&i| self.tree.nodes[i].parent == NONE)
+            .map(|&i| self.tree.nodes[i].key)
             .collect();
         o.draw = draw;
         // The hits follow the drawing order; a node that left has none.
@@ -851,21 +853,24 @@ impl Ui {
     /// the frame makes afresh.
     #[cfg(debug_assertions)]
     pub(super) fn check_orders(&self) {
-        let mut pre = crate::layout::preorder(&self.nodes, 0);
-        for &f in &self.floating {
-            pre.extend(crate::layout::preorder(&self.nodes, f));
+        let mut pre = crate::layout::preorder(&self.tree.nodes, 0);
+        for &f in &self.tree.floating {
+            pre.extend(crate::layout::preorder(&self.tree.nodes, f));
         }
-        assert_eq!(pre, self.orders.pre, "the kept preorder differs");
-        let mut draw = crate::layout::draw_order(&self.nodes, 0);
-        for &f in &self.floating {
-            draw.extend(crate::layout::draw_order(&self.nodes, f));
+        assert_eq!(pre, self.tree.orders.pre, "the kept preorder differs");
+        let mut draw = crate::layout::draw_order(&self.tree.nodes, 0);
+        for &f in &self.tree.floating {
+            draw.extend(crate::layout::draw_order(&self.tree.nodes, f));
         }
         self.world_order(&mut draw);
-        assert_eq!(draw, self.orders.draw, "the kept drawing order differs");
+        assert_eq!(
+            draw, self.tree.orders.draw,
+            "the kept drawing order differs"
+        );
         for &i in &pre {
             assert_eq!(
-                features(&self.nodes[i]),
-                self.orders.feat[i],
+                features(&self.tree.nodes[i]),
+                self.tree.orders.feat[i],
                 "the kept features of '{}' differ",
                 self.path_of(i)
             );
@@ -874,10 +879,10 @@ impl Ui {
             let want: Vec<usize> = pre
                 .iter()
                 .copied()
-                .filter(|&i| self.orders.feat[i] & (1 << b) != 0)
+                .filter(|&i| self.tree.orders.feat[i] & (1 << b) != 0)
                 .collect();
             assert_eq!(
-                want, self.orders.lists[b],
+                want, self.tree.orders.lists[b],
                 "the kept list of feature {b} differs"
             );
         }

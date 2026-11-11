@@ -31,7 +31,7 @@ impl Ui {
             return None;
         }
         self.previous_child(key)
-            .map(|i| self.nodes[i].rect)
+            .map(|i| self.tree.nodes[i].rect)
             .or_else(|| self.previous_nodes().find(|n| n.key == key).map(|n| n.rect))
     }
 
@@ -39,14 +39,14 @@ impl Ui {
     /// it is written again: a retained list keeps its slot and its rows'.
     fn previous_child(&self, key: u64) -> Option<usize> {
         let parent = self.parent();
-        self.nodes[parent]
+        self.tree.nodes[parent]
             .built_children
             .iter()
             .copied()
-            .find(|&c| self.nodes[c].key == key && self.nodes[c].parent == parent)
+            .find(|&c| self.tree.nodes[c].key == key && self.tree.nodes[c].parent == parent)
             .or_else(|| {
                 let i = self.render_slot(key, parent)?;
-                (self.nodes[i].key == key && self.kinds[i].0 != "vacant").then_some(i)
+                (self.tree.nodes[i].key == key && self.tree.kinds[i].0 != "vacant").then_some(i)
             })
     }
 
@@ -139,12 +139,12 @@ impl Ui {
             },
         );
         let list = self.parent();
-        self.nodes[list].aux = [row, 0.0, -1.0];
+        self.tree.nodes[list].aux = [row, 0.0, -1.0];
         if first > 0 {
             self.filler(top, Size::grow());
         }
         // The bottom filler goes in when the list closes.
-        self.nodes[list].aux[2] = rest;
+        self.tree.nodes[list].aux[2] = rest;
         ListRange { first, last }
     }
 
@@ -193,10 +193,10 @@ impl Ui {
         // Its rows as laid out last frame: the container's own children,
         // which it still holds before it is written again.
         let measurements: Vec<_> = match self.previous_child(container) {
-            Some(list) => self.nodes[list]
+            Some(list) => self.tree.nodes[list]
                 .ordered_children
                 .iter()
-                .filter_map(|&c| row(prefix, &self.nodes[c]))
+                .filter_map(|&c| row(prefix, &self.tree.nodes[c]))
                 .collect(),
             None => self
                 .previous_nodes()
@@ -243,15 +243,15 @@ impl Ui {
                 ..Element::default()
             },
         );
-        self.nodes[i].widget = Widget::Spacer;
+        self.tree.nodes[i].widget = Widget::Spacer;
     }
 
     /// Closes a list or grid opened with [`Ui::open_list`] / [`Ui::open_grid`].
     pub fn close_list(&mut self) -> Response {
         let list = self.parent();
-        let rest = self.nodes[list].aux[2];
+        let rest = self.tree.nodes[list].aux[2];
         if rest >= 0.0 {
-            let w = if self.nodes[list].el.wrap {
+            let w = if self.tree.nodes[list].el.wrap {
                 Size::Percent(1.0)
             } else {
                 Size::grow()
@@ -266,12 +266,12 @@ impl Ui {
     pub fn list_item(&mut self, index: u32, selected: bool) -> Response {
         let t = self.env.theme;
         let list = self.parent();
-        let h = self.nodes[list].aux[0];
+        let h = self.tree.nodes[list].aux[0];
         let keyed = self
             .interaction
             .state
             .virtual_lists
-            .get(&self.nodes[list].key)
+            .get(&self.tree.nodes[list].key)
             .and_then(|v| v.keys.get(index as usize))
             .map(|k| crate::virtualize::item_id(k, false));
         let height = if keyed.is_some() {
@@ -294,9 +294,9 @@ impl Ui {
                 ..Element::default()
             },
         );
-        self.stack.push(i);
-        self.nodes[i].a11y.role = Some("option");
-        self.nodes[i].a11y.selected = Some(selected);
+        self.tree.stack.push(i);
+        self.tree.nodes[i].a11y.role = Some("option");
+        self.tree.nodes[i].a11y.selected = Some(selected);
         let mut r = self.nav_target(i, false);
         r.dropped = self.drag_and_drop(list, i, index);
         let p = &t.palette;
@@ -344,7 +344,7 @@ impl Ui {
             ..VisualState::default()
         };
         let k = usize::from(selected);
-        let n = &mut self.nodes[i];
+        let n = &mut self.tree.nodes[i];
         n.el.background = Some(rest[k]);
         n.props.states = vec![
             StateGroup {
@@ -374,8 +374,8 @@ impl Ui {
     /// item marks it the source (in the container's memory); a release over
     /// another item answers the source's index there.
     fn drag_and_drop(&mut self, container: usize, item: usize, index: u32) -> Option<u32> {
-        let ckey = self.nodes[container].key;
-        let key = self.nodes[item].key;
+        let ckey = self.tree.nodes[container].key;
+        let key = self.tree.nodes[item].key;
         let mut a = self.anim(ckey);
         let mut dropped = None;
         if self.interaction.input.pressed && self.interaction.state.active == key {
@@ -396,8 +396,8 @@ impl Ui {
 
     /// Whether a drag from another item of `container` is over `item` now.
     fn drop_target(&self, container: usize, item: usize) -> bool {
-        let ckey = self.nodes[container].key;
-        let key = self.nodes[item].key;
+        let ckey = self.tree.nodes[container].key;
+        let key = self.tree.nodes[item].key;
         let a = self
             .interaction
             .state
@@ -570,11 +570,11 @@ impl Ui {
             },
         );
         let grid = self.parent();
-        self.nodes[grid].aux = [cw, ch, -1.0];
+        self.tree.nodes[grid].aux = [cw, ch, -1.0];
         if first > 0 {
             self.filler(top, Size::Percent(1.0));
         }
-        self.nodes[grid].aux[2] = rest;
+        self.tree.nodes[grid].aux[2] = rest;
         ListRange { first, last }
     }
 
@@ -586,12 +586,12 @@ impl Ui {
     pub fn grid_item(&mut self, index: u32, selected: bool) -> Response {
         let t = self.env.theme;
         let grid = self.parent();
-        let [cw, ch, _] = self.nodes[grid].aux;
+        let [cw, ch, _] = self.tree.nodes[grid].aux;
         let keyed = self
             .interaction
             .state
             .virtual_lists
-            .get(&self.nodes[grid].key)
+            .get(&self.tree.nodes[grid].key)
             .and_then(|v| v.keys.get(index as usize))
             .map(|k| crate::virtualize::item_id(k, true));
         let height = if keyed.is_some() {
@@ -618,9 +618,9 @@ impl Ui {
                 ..Element::default()
             },
         );
-        self.stack.push(i);
-        self.nodes[i].a11y.role = Some("option");
-        self.nodes[i].a11y.selected = Some(selected);
+        self.tree.stack.push(i);
+        self.tree.nodes[i].a11y.role = Some("option");
+        self.tree.nodes[i].a11y.selected = Some(selected);
         let mut r = self.nav_target(i, false);
         r.dropped = self.drag_and_drop(grid, i, index);
         let p = &t.palette;
@@ -634,7 +634,7 @@ impl Ui {
             [hover, lifted(0.18)],
             [p.control_strong, p.selection],
         );
-        if let Some(part) = self.nodes[i].el.part.as_mut() {
+        if let Some(part) = self.tree.nodes[i].el.part.as_mut() {
             *part = part
                 .flag_if(r.pressed, "pressed")
                 .flag_if(r.hovered && !r.pressed, "hover")
@@ -646,7 +646,7 @@ impl Ui {
             self.feedback(crate::tokens::SoundEvent::Select);
         }
         if self.drop_target(grid, i) {
-            self.nodes[i].ring = true;
+            self.tree.nodes[i].ring = true;
         }
         r
     }

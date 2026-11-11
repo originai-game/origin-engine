@@ -37,7 +37,7 @@ impl Ui {
                 ..Element::default()
             },
         );
-        let key = self.nodes[i].key;
+        let key = self.tree.nodes[i].key;
         let fresh = !self.has_anim(key);
         let mut a = self.anim(key);
         let now = self.interaction.state.tick;
@@ -125,7 +125,7 @@ impl Ui {
             ink(self.part_ground(&fill_part, color)),
             ink(self.part_ground(&track_part, p.control_strong)),
         );
-        let n = &mut self.nodes[i];
+        let n = &mut self.tree.nodes[i];
         if ghost > main {
             let trail = if a.b < a.a || frac < ghost {
                 p.ink.fade(0.55)
@@ -233,7 +233,7 @@ impl Ui {
             MeterRegion::Suboptimum => ("suboptimum", p.warn),
             MeterRegion::Poor => ("poor", p.danger),
         };
-        let n = &mut self.nodes[i];
+        let n = &mut self.tree.nodes[i];
         if frac > 0.0 {
             n.shapes.push(Shape::Part {
                 frame: Frame::left(0.0, frac),
@@ -360,7 +360,7 @@ impl Ui {
                 clip: Frame::FULL,
             });
         }
-        let n = &mut self.nodes[i];
+        let n = &mut self.tree.nodes[i];
         n.shapes = shapes;
         n.probe_text = desc.label.clone();
         n.a11y.value = Some(if remaining <= 0.0 {
@@ -391,7 +391,7 @@ impl Ui {
                 ..Element::default()
             },
         );
-        let key = self.nodes[i].key;
+        let key = self.tree.nodes[i].key;
         let (min, max) = match (desc.min_zoom, desc.max_zoom) {
             (a, b) if a > 0.0 && b >= a => (a, b),
             _ => (1.0, 4.0),
@@ -407,7 +407,7 @@ impl Ui {
         // Keys and pads reach it; while focused its arrows (↑ ↓ too) are
         // its own, with + - and 0.
         let r = self.nav_target(i, true);
-        self.nodes[i].multiline = true;
+        self.tree.nodes[i].multiline = true;
         if r.focused {
             let adjust = self.interaction.nav.adjust;
             self.zoom_keys(key, adjust);
@@ -417,7 +417,7 @@ impl Ui {
         let half = 0.5 / s.zoom;
         let (fx0, fy0) = (s.center.x - half, s.center.y - half);
         let (fx1, fy1) = (s.center.x + half, s.center.y + half);
-        let n = &mut self.nodes[i];
+        let n = &mut self.tree.nodes[i];
         n.content = Content::Image {
             texture: desc.texture,
             uv: [
@@ -547,7 +547,7 @@ impl Ui {
             font: FontRole::Body,
             clip: Frame::FULL,
         });
-        self.nodes[i].shapes = shapes;
+        self.tree.nodes[i].shapes = shapes;
         if !desc.label.is_empty() {
             self.label(
                 "Zone",

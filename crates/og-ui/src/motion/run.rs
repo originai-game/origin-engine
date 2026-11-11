@@ -47,17 +47,17 @@ fn fades(c: usize) -> bool {
 
 impl Ui {
     fn interaction_owner(&self, i: usize) -> usize {
-        self.nodes[i]
+        self.tree.nodes[i]
             .part_box
             .as_ref()
-            .filter(|part| self.nodes[part.owner].content_slot == i)
+            .filter(|part| self.tree.nodes[part.owner].content_slot == i)
             .map_or(i, |part| part.owner)
     }
 
     /// The interaction state of element `i` (`normal`, `hover`, `pressed`,
     /// `focused`, `disabled`).
     fn interaction_of(&self, i: usize) -> &'static str {
-        let n = &self.nodes[self.interaction_owner(i)];
+        let n = &self.tree.nodes[self.interaction_owner(i)];
         if n.disabled {
             return "disabled";
         }
@@ -75,13 +75,13 @@ impl Ui {
 
     /// The state group `g` of node `i` is in now.
     fn state_of(&self, i: usize, g: &super::StateGroup, m: &MotionState) -> String {
-        let n = &self.nodes[i];
+        let n = &self.tree.nodes[i];
         let owner = if g.name == "interaction" {
             self.interaction_owner(i)
         } else {
             i
         };
-        let gk = group_key(self.nodes[owner].key, &g.name);
+        let gk = group_key(self.tree.nodes[owner].key, &g.name);
         let has = |s: &str| g.states.iter().any(|v| v.name == s);
         if let Some(s) = m.forced.get(&gk).filter(|s| has(s)) {
             return s.clone();
@@ -173,9 +173,9 @@ impl Ui {
             } => {
                 let keys: Vec<u64> = if targets.is_empty() {
                     present.get(&root).map_or(Vec::new(), |&i| {
-                        crate::layout::all_children(&self.nodes[i])
+                        crate::layout::all_children(&self.tree.nodes[i])
                             .into_iter()
-                            .map(|c| self.nodes[c].key)
+                            .map(|c| self.tree.nodes[c].key)
                             .collect()
                     })
                 } else {
@@ -188,7 +188,7 @@ impl Ui {
                 let centre = |k: u64| {
                     present
                         .get(&k)
-                        .map_or((0.0, 0.0), |&i| self.nodes[i].rect.center())
+                        .map_or((0.0, 0.0), |&i| self.tree.nodes[i].rect.center())
                 };
                 let pts: Vec<(f32, f32)> = keys.iter().map(|&k| centre(k)).collect();
                 let metric: Vec<f32> = match *from {
@@ -284,7 +284,14 @@ impl Ui {
                 continue;
             }
             let mut clips = Vec::new();
-            let length = self.flatten(&p.choreo, p.root, &self.tree.by_key, 0.0, 0, &mut clips);
+            let length = self.flatten(
+                &p.choreo,
+                p.root,
+                &self.tree.index.by_key,
+                0.0,
+                0,
+                &mut clips,
+            );
             let first = clips
                 .first()
                 .and_then(|c| self.style.timelines.get(&c.timeline))
@@ -323,7 +330,7 @@ impl Ui {
         let mut state_events: Vec<(u64, String, String)> = Vec::new();
         let mut bursts: Vec<BurstRun> = Vec::new();
         m.plays
-            .retain(|p| self.tree.by_key.contains_key(&p.root) && !(p.ended && !p.hold));
+            .retain(|p| self.tree.index.by_key.contains_key(&p.root) && !(p.ended && !p.hold));
         if reduced {
             // Decorative loops stop under reduced motion.
             m.plays.retain(|p| p.repeat == 0);
@@ -396,6 +403,7 @@ impl Ui {
                     let target = Ui::below(clip.target, &e.target);
                     let path = self
                         .tree
+                        .index
                         .by_key
                         .get(&target)
                         .map_or(String::new(), |&i| self.path_of(i));
@@ -465,15 +473,15 @@ impl Ui {
         }
 
         // Drags and pinches.
-        for k in 0..self.orders.with(feat::GESTURE).len() {
-            let i = self.orders.with(feat::GESTURE)[k];
-            let n = &self.nodes[i];
+        for k in 0..self.tree.orders.with(feat::GESTURE).len() {
+            let i = self.tree.orders.with(feat::GESTURE)[k];
+            let n = &self.tree.nodes[i];
             if n.props.drag.is_none() && n.props.pinch.is_none() {
                 continue;
             }
             let key = n.key;
             let out = self.run_gesture(i, &mut m);
-            self.nodes[i].gesture = out;
+            self.tree.nodes[i].gesture = out;
             touched.insert(channel_key(key, DRAG_X));
             touched.insert(channel_key(key, DRAG_Y));
         }
@@ -492,22 +500,23 @@ impl Ui {
                 .iter()
                 .copied()
                 .filter(|&i| {
-                    self.tree.has(i)
+                    self.tree.index.has(i)
                         && self
+                            .tree
                             .orders
                             .feat
                             .get(i)
                             .is_some_and(|f| f & feat::ANIMATED != 0)
                 })
                 .collect(),
-            None => self.orders.with(feat::ANIMATED).to_vec(),
+            None => self.tree.orders.with(feat::ANIMATED).to_vec(),
         };
         animating.extend(
             overrides
                 .iter()
-                .filter_map(|o| self.tree.by_key.get(&o.0).copied()),
+                .filter_map(|o| self.tree.index.by_key.get(&o.0).copied()),
         );
-        animating.sort_unstable_by_key(|&i| self.orders.pre_pos[i]);
+        animating.sort_unstable_by_key(|&i| self.tree.orders.pre_pos[i]);
         animating.dedup();
         let visited = animating.clone();
         // Visited nodes still moving: visited next tick too.
@@ -516,8 +525,8 @@ impl Ui {
             self.style.motion.motion_groups.clear();
         }
         for i in animating {
-            let key = self.nodes[i].key;
-            let props = &self.nodes[i].props;
+            let key = self.tree.nodes[i].key;
+            let props = &self.tree.nodes[i].props;
             let has_override = overrides.iter().any(|o| o.0 == key);
             let animated = props.animated() || has_override;
             if !animated && props.layout_motion.is_none() {
@@ -532,11 +541,11 @@ impl Ui {
                 || props.layout_motion.is_some();
             let mut node_groups = Vec::new();
             let fallback = props.reduced.unwrap_or(tokens.reduced);
-            let base = read_values(&self.nodes[i]);
+            let base = read_values(&self.tree.nodes[i]);
             let mut target = base;
             // Per channel: the transition a state change gives it this tick.
             let mut moved_by: [Option<Transition>; CHANNELS] = [None; CHANNELS];
-            let groups = self.nodes[i].props.states.clone();
+            let groups = self.tree.nodes[i].props.states.clone();
             for g in &groups {
                 let cur = self.state_of(i, g, &m);
                 let gk = group_key(key, &g.name);
@@ -569,7 +578,7 @@ impl Ui {
                 if changed {
                     let t = g
                         .transition(prev.as_deref().unwrap_or(""), &cur)
-                        .or(self.nodes[i].props.motion)
+                        .or(self.tree.nodes[i].props.motion)
                         .unwrap_or_default();
                     // Every value the group's states touch moves with it, to
                     // the new state's or back to the element's own.
@@ -589,13 +598,13 @@ impl Ui {
                     }
                 }
             }
-            let enter = self.nodes[i].props.enter.clone();
+            let enter = self.tree.nodes[i].props.enter.clone();
             let entering = enter.is_some() && !m.seen.contains_key(&key);
             if enter.is_some() {
                 m.seen.entry(key).or_insert(now);
             }
-            let motion = self.nodes[i].props.motion;
-            let css_transitions = self.nodes[i].props.transitions.clone();
+            let motion = self.tree.nodes[i].props.motion;
+            let css_transitions = self.tree.nodes[i].props.transitions.clone();
             let mut row = target;
             for c in 0..CHANNELS {
                 let ck = channel_key(key, c);
@@ -682,7 +691,7 @@ impl Ui {
                             m.channels.insert(ck, ch);
                             touched.insert(ck);
                         } else if let Some(&(_, v)) = css.and(
-                            self.nodes[i]
+                            self.tree.nodes[i]
                                 .props
                                 .starting
                                 .iter()
@@ -707,7 +716,7 @@ impl Ui {
                 }
             }
             // CSS animations: over the channels' values, later entries win.
-            let animations = self.nodes[i].props.animations.clone();
+            let animations = self.tree.nodes[i].props.animations.clone();
             let scrolled = animations.iter().any(|a| !a.timeline.ticks());
             let mut progress: Vec<Option<f32>> = vec![None; animations.len()];
             let mut styled = false;
@@ -780,7 +789,7 @@ impl Ui {
                                 color,
                                 duration_ms,
                             } if !reduced => css_bursts.push(BurstRun {
-                                key: self.nodes[i].key,
+                                key: self.tree.nodes[i].key,
                                 since: now,
                                 count: *count,
                                 radius: *radius,
@@ -802,22 +811,22 @@ impl Ui {
                 self.style.motion.timelines.remove(&key);
             }
             if row != base {
-                write_values(&mut self.nodes[i], &row);
+                write_values(&mut self.tree.nodes[i], &row);
             }
 
             // FLIP: from its last laid-out rectangle to this one (relative to
             // the nearest ancestor that animates its layout too).
-            if let Some(lm) = self.nodes[i].props.layout_motion {
-                let rect = self.nodes[i].rect;
-                let mut up = self.nodes[i].parent;
+            if let Some(lm) = self.tree.nodes[i].props.layout_motion {
+                let rect = self.tree.nodes[i].rect;
+                let mut up = self.tree.nodes[i].parent;
                 let mut origin = (0.0, 0.0);
                 while up != crate::layout::NONE {
                     if flip_rel.contains(&up) {
-                        let pr = self.nodes[up].rect;
+                        let pr = self.tree.nodes[up].rect;
                         origin = (pr.x, pr.y);
                         break;
                     }
-                    up = self.nodes[up].parent;
+                    up = self.tree.nodes[up].parent;
                 }
                 let rel = Rect::new(
                     rect.x - origin.0,
@@ -867,7 +876,7 @@ impl Ui {
                         touched.insert(k);
                     }
                 }
-                self.nodes[i].flip = out;
+                self.tree.nodes[i].flip = out;
             }
             if busy {
                 moving.push(i);
@@ -890,18 +899,21 @@ impl Ui {
         // Shared elements: one that arrives where another with its match
         // key was last tick morphs from that one's place, and the old one's
         // drawing follows it while it fades.
-        for k in 0..self.orders.with(feat::MATCH).len() {
-            let i = self.orders.with(feat::MATCH)[k];
-            let key = self.nodes[i].key;
-            let mk = name_hash(&self.nodes[i].props.match_key);
+        for k in 0..self.tree.orders.with(feat::MATCH).len() {
+            let i = self.tree.orders.with(feat::MATCH)[k];
+            let key = self.tree.nodes[i].key;
+            let mk = name_hash(&self.tree.nodes[i].props.match_key);
             let Some(prev) = m.matches.get(&mk).copied() else {
                 continue;
             };
-            if prev.key == key || prev.tick + 1 < now || self.tree.by_key.contains_key(&prev.key) {
+            if prev.key == key
+                || prev.tick + 1 < now
+                || self.tree.index.by_key.contains_key(&prev.key)
+            {
                 continue;
             }
-            let rect = self.nodes[i].rect;
-            let t = self.nodes[i]
+            let rect = self.tree.nodes[i].rect;
+            let t = self.tree.nodes[i]
                 .props
                 .layout_motion
                 .unwrap_or(Transition::Token(super::MotionToken::Panel));
@@ -934,11 +946,11 @@ impl Ui {
                 },
                 1.0,
             );
-            let r = self.nodes[i].sampled.radius;
+            let r = self.tree.nodes[i].sampled.radius;
             set(8, prev.radius, r);
             // The flip pivots on its top left: fold the scale into the offset
             // so the first frame sits exactly on the old rectangle.
-            self.nodes[i].flip = [
+            self.tree.nodes[i].flip = [
                 prev.rect.x - rect.x,
                 prev.rect.y - rect.y,
                 if rect.width > 0.0 {
@@ -952,7 +964,7 @@ impl Ui {
                     1.0
                 },
             ];
-            self.nodes[i].sampled.radius = prev.radius;
+            self.tree.nodes[i].sampled.radius = prev.radius;
             if let Some(f) = m.frozen.get(&prev.key).cloned() {
                 let ticks = crate::style::Theme::ticks(t.duration_ms(&tokens), tps);
                 let mut fade = Channel::at(1.0, now);
@@ -981,10 +993,11 @@ impl Ui {
         let gone: Vec<u64> = m
             .frozen
             .iter()
-            .filter(|(k, f)| !self.tree.by_key.contains_key(k) && f.exit.is_some())
+            .filter(|(k, f)| !self.tree.index.by_key.contains_key(k) && f.exit.is_some())
             .map(|(k, _)| *k)
             .collect();
-        m.ghosts.retain(|g| !self.tree.by_key.contains_key(&g.key));
+        m.ghosts
+            .retain(|g| !self.tree.index.by_key.contains_key(&g.key));
         for k in gone {
             if m.ghosts.iter().any(|g| g.key == k) {
                 continue;
@@ -1046,7 +1059,7 @@ impl Ui {
         m.ghosts.retain(|g| {
             let left = now.saturating_sub(g.since) <= u64::from(g.ticks)
                 || g.channels.iter().any(|(_, c)| !c.done(now, tps));
-            left && (g.morph_to == 0 || self.tree.by_key.contains_key(&g.morph_to))
+            left && (g.morph_to == 0 || self.tree.index.by_key.contains_key(&g.morph_to))
         });
 
         // Bursts an event started.
@@ -1056,7 +1069,7 @@ impl Ui {
             } else {
                 self.env.theme.durations_ms.slow + self.env.theme.durations_ms.base
             };
-            self.tree.by_key.contains_key(&b.key)
+            self.tree.index.by_key.contains_key(&b.key)
                 && now.saturating_sub(b.since) < u64::from(crate::style::Theme::ticks(ms, tps))
         });
 
@@ -1076,8 +1089,8 @@ impl Ui {
             self.style.motion.widget_channels = stepped;
             m.groups.retain(|k, _| touched.contains(k));
             m.set_states.retain(|k, _| touched.contains(k));
-            m.flip.retain(|k, _| self.tree.by_key.contains_key(k));
-            m.seen.retain(|k, _| self.tree.by_key.contains_key(k));
+            m.flip.retain(|k, _| self.tree.index.by_key.contains_key(k));
+            m.seen.retain(|k, _| self.tree.index.by_key.contains_key(k));
         } else {
             // A widget's channel nothing stepped this tick is forgotten,
             // as the whole frame forgets it.
@@ -1095,8 +1108,8 @@ impl Ui {
             });
             self.style.motion.widget_channels = lately;
             // What left the trees is forgotten whole.
-            for &key in &self.tree.moved_keys {
-                if self.tree.by_key.contains_key(&key) {
+            for &key in &self.tree.index.moved_keys {
+                if self.tree.index.by_key.contains_key(&key) {
                     continue;
                 }
                 for c in 0..CHANNEL_NAMES.len() {
@@ -1124,8 +1137,8 @@ impl Ui {
             // animating among them) or visited can have stopped using a
             // channel or group.
             let written = seeds.unwrap_or_default().iter().chain(&visited);
-            for &i in written.filter(|&&i| i < self.nodes.len()) {
-                let key = self.nodes[i].key;
+            for &i in written.filter(|&&i| i < self.tree.nodes.len()) {
+                let key = self.tree.nodes[i].key;
                 for c in 0..CHANNEL_NAMES.len() {
                     let ck = channel_key(key, c);
                     if !touched.contains(&ck)
@@ -1147,15 +1160,16 @@ impl Ui {
         // A CSS animation no element ran this tick ended with its element
         // or its `animation-name`.
         m.css.retain(|r| r.stepped == now);
-        let tree = &self.tree;
+        let tree = &self.tree.index;
         self.style
             .motion
             .timelines
             .retain(|k, _| tree.by_key.contains_key(k));
         // Transitions of computed values outlive no element.
-        m.styles.retain(|k, _| self.tree.by_key.contains_key(k));
+        m.styles
+            .retain(|k, _| self.tree.index.by_key.contains_key(k));
         m.part_styles
-            .retain(|k, _| self.tree.by_key.contains_key(k));
+            .retain(|k, _| self.tree.index.by_key.contains_key(k));
         m.bursts.extend(css_bursts);
         for ev in &css_events {
             if let Some(s) = crate::style_file::UiSound::from_name(&ev.name) {
@@ -1223,7 +1237,7 @@ impl Ui {
     /// built just before.
     fn play_root(&mut self, path: &str) -> Option<u64> {
         if path.is_empty() {
-            let i = self.last_closed;
+            let i = self.tree.last_closed;
             if i == crate::layout::NONE {
                 self.out.warnings.push(
                     "play with no element before it: build the element first or pass its path"
@@ -1231,7 +1245,7 @@ impl Ui {
                 );
                 return None;
             }
-            return Some(self.nodes[i].key);
+            return Some(self.tree.nodes[i].key);
         }
         Some(crate::id::key_of_path(path))
     }
@@ -1460,7 +1474,7 @@ impl Ui {
         let now = self.interaction.state.tick;
         let m = &mut self.interaction.state.motion;
         for &i in order {
-            let n = &self.nodes[i];
+            let n = &self.tree.nodes[i];
             if n.props.match_key.is_empty() {
                 continue;
             }
@@ -1483,7 +1497,7 @@ impl Ui {
         self.interaction.drag_paths.clear();
         self.interaction.drop_accepts.clear();
         for &i in order {
-            let n = &self.nodes[i];
+            let n = &self.tree.nodes[i];
             if let Some(d) = &n.props.drop {
                 let key = n.key;
                 let accept = d.accept.clone();
@@ -1491,8 +1505,8 @@ impl Ui {
                 self.interaction.drop_paths.insert(key, path);
                 self.interaction.drop_accepts.insert(key, accept);
             }
-            if self.nodes[i].props.drag.is_some() {
-                let key = self.nodes[i].key;
+            if self.tree.nodes[i].props.drag.is_some() {
+                let key = self.tree.nodes[i].key;
                 let path = self.path_of(i);
                 self.interaction.drag_paths.insert(key, path);
             }
@@ -1516,7 +1530,7 @@ impl Ui {
         };
         let mut out = Vec::new();
         for &i in order {
-            let n = &self.nodes[i];
+            let n = &self.tree.nodes[i];
             let p = &n.props;
             // A presence in flight (a layer's or a transition's entrance,
             // a stagger, a glitch): `presence`, and `glitch` while it tears.

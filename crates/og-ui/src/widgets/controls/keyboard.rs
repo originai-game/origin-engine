@@ -357,8 +357,8 @@ impl Ui {
         );
         // Docked at the bottom of the screen, as a phone's keyboard is.
         let panel = self.parent();
-        let scrim = self.nodes[panel].parent;
-        self.nodes[scrim].el.align = Align::End;
+        let scrim = self.tree.nodes[panel].parent;
+        self.tree.nodes[scrim].el.align = Align::End;
         if modal.visible {
             let (ink, faint, primary) = (
                 self.role("ink"),

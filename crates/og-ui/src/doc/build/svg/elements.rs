@@ -88,7 +88,7 @@ impl Ui {
                     },
                 );
                 let i = self.parent();
-                let p = &mut self.nodes[i].props;
+                let p = &mut self.tree.nodes[i].props;
                 p.position = crate::element::Position::Absolute;
                 p.inert = true;
                 p.interact.pointer_events = crate::element::PointerEvents::None;
@@ -356,10 +356,10 @@ impl Ui {
             }
             None => self.label(id, &text, desc),
         }
-        let i = self.last_closed;
+        let i = self.tree.last_closed;
         // Its anchor places it, so it keeps its text's width (a centred
         // label in a column would take the column's).
-        self.nodes[i].el.width = width;
+        self.tree.nodes[i].el.width = width;
         let mut p = Self::resolved_props(n, r);
         p.states = props.states;
         p.state = props.state;
@@ -381,7 +381,7 @@ impl Ui {
             },
         });
         p.text_path = text_path;
-        self.nodes[i].props = p;
+        self.tree.nodes[i].props = p;
         for e in warnings {
             let tag = n.selector_tag.as_deref().unwrap_or("text");
             self.out.warnings.push(format!(
@@ -619,7 +619,7 @@ impl Ui {
             anchor_x: 0.0,
             anchor_y: 0.0,
         });
-        self.nodes[i].props = p;
+        self.tree.nodes[i].props = p;
         self.set_draw(ElementDraw {
             shape: ShapeKind::Rect {
                 radii: Some([0.0; 4]),
@@ -678,7 +678,7 @@ impl Ui {
                 );
             }
             if r.smil
-                && let Some(owned) = self.owning.last_mut()
+                && let Some(owned) = self.tree.owning.last_mut()
             {
                 owned.restyle = true;
             }
@@ -738,15 +738,15 @@ impl Ui {
                 ..Default::default()
             };
         }
-        self.nodes[i].props = p;
+        self.tree.nodes[i].props = p;
         if let Some(role) = n.role {
-            self.nodes[i].a11y.role = Some(role);
+            self.tree.nodes[i].a11y.role = Some(role);
         }
         if let Some(name) = r.str("name").filter(|n| !n.is_empty()) {
-            self.nodes[i].a11y.name = Some(name.to_string());
+            self.tree.nodes[i].a11y.name = Some(name.to_string());
             // A named `<svg>` is an image, as browsers expose one.
             if kind == "svg" && n.role.is_none() {
-                self.nodes[i].a11y.role = Some("image");
+                self.tree.nodes[i].a11y.role = Some("image");
             }
         }
         let t = computed
@@ -833,8 +833,8 @@ impl Ui {
                 },
             );
             let i = ui.parent();
-            ui.nodes[i].props.position = crate::element::Position::Absolute;
-            ui.nodes[i].props.insets = crate::element::Edges {
+            ui.tree.nodes[i].props.position = crate::element::Position::Absolute;
+            ui.tree.nodes[i].props.insets = crate::element::Edges {
                 start: Some(0.0),
                 top: Some(0.0),
                 end: Some(0.0),

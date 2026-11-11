@@ -78,12 +78,12 @@ pub(super) fn compare(ui: &Ui, twin: &Ui) {
         )
     };
     assert_eq!(sorted(mu), sorted(mt), "{}", at("motion state"));
-    let mut order = preorder(&twin.nodes, 0);
-    for &f in &twin.floating {
-        order.extend(preorder(&twin.nodes, f));
+    let mut order = preorder(&twin.tree.nodes, 0);
+    for &f in &twin.tree.floating {
+        order.extend(preorder(&twin.tree.nodes, f));
     }
     for i in order {
-        let (n, m) = (&ui.nodes[i], &twin.nodes[i]);
+        let (n, m) = (&ui.tree.nodes[i], &twin.tree.nodes[i]);
         let place = |n: &Node| {
             format!(
                 "{:?}",
@@ -102,18 +102,19 @@ pub(super) fn compare(ui: &Ui, twin: &Ui) {
 pub(super) fn compare_tree(ui: &Ui, order: &[usize]) {
     let mut keys: Vec<(u64, usize)> = Vec::new();
     for &i in order {
-        keys.push((ui.nodes[i].key, i));
-        for l in &ui.nodes[i].links {
-            keys.push((child_key(ui.nodes[i].key, l), i));
+        keys.push((ui.tree.nodes[i].key, i));
+        for l in &ui.tree.nodes[i].links {
+            keys.push((child_key(ui.tree.nodes[i].key, l), i));
         }
     }
     keys.sort_unstable();
     keys.dedup();
     let mut held: Vec<(u64, usize)> = ui
         .tree
+        .index
         .by_key
         .iter()
-        .chain(&ui.tree.links)
+        .chain(&ui.tree.index.links)
         .map(|(&k, &i)| (k, i))
         .collect();
     held.sort_unstable();
@@ -122,9 +123,9 @@ pub(super) fn compare_tree(ui: &Ui, order: &[usize]) {
         keys, held,
         "the trees' index differs from the frame's order"
     );
-    for i in 0..ui.nodes.len() {
+    for i in 0..ui.tree.nodes.len() {
         assert_eq!(
-            ui.tree.has(i),
+            ui.tree.index.has(i),
             order.contains(&i),
             "the trees' index differs at '{}'",
             ui.path_of(i)

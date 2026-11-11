@@ -55,7 +55,7 @@ impl RetainedHost {
         };
         let at = ui.parent();
         if props != Props::default() {
-            ui.nodes[at].props = props;
+            ui.tree.nodes[at].props = props;
         }
         let (first, end) = (range.first as usize, range.last.min(count) as usize);
         // What leaves the window and what enters it; the rows staying are
@@ -128,7 +128,7 @@ impl RetainedHost {
                 self.emit(ui, child, env, events, writes)?;
             }
             let list_slot = ui.parent();
-            let list_key = ui.nodes[list_slot].key;
+            let list_key = ui.tree.nodes[list_slot].key;
             for (index, materialization) in (first..end).zip(shown) {
                 let index = index as u32;
                 // A row whose own node would be written as it stands (no

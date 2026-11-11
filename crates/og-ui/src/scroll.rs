@@ -348,8 +348,9 @@ impl Ui {
                 // CSS `touch-action` without pinch-zoom keeps the pinch.
                 if self
                     .tree
+                    .index
                     .find(key)
-                    .and_then(|i| self.orders.touch_of.get(i))
+                    .and_then(|i| self.tree.orders.touch_of.get(i))
                     .is_some_and(|t| t & crate::element::Interact::PINCH == 0)
                     && self.zoom_state(key).is_some()
                 {
@@ -378,12 +379,13 @@ impl Ui {
     /// `None` for a path that was no scroll container.
     pub fn scroll_state(&self, path: &str) -> Option<ScrollState> {
         let key = crate::id::key_of_path(path);
-        let n = if self.building {
+        let n = if self.tree.building {
             self.previous_nodes().find(|n| n.key == key && n.scrolls())
         } else {
             self.tree
+                .index
                 .find(key)
-                .map(|i| &self.nodes[i])
+                .map(|i| &self.tree.nodes[i])
                 .filter(|n| n.key == key && n.scrolls())
         }?;
         let view_width = (n.w - n.el.padding.horizontal()).max(0.0);
@@ -415,21 +417,23 @@ impl Ui {
     pub(crate) fn scroll_flags_now(&self, key: u64) -> u16 {
         use crate::doc::media::scroll::*;
         let get = |i: usize| {
-            if self.building {
+            if self.tree.building {
                 self.previous_node(i)
             } else {
-                self.nodes.get(i)
+                self.tree.nodes.get(i)
             }
         };
         // Kept (retained) nodes stay in the tree while a tick builds;
         // rebuilt ones are among the retiring nodes.
         let found = self
             .tree
+            .index
             .find(key)
             .and_then(get)
             .filter(|n| n.key == key)
             .or_else(|| {
-                self.building
+                self.tree
+                    .building
                     .then(|| self.previous_nodes().find(|n| n.key == key))
                     .flatten()
             });
@@ -485,8 +489,9 @@ impl Ui {
     /// Element `key`'s CSS scroll properties, as last laid out.
     pub(crate) fn scroll_css(&self, key: u64) -> crate::scroll::ScrollCss {
         self.tree
+            .index
             .find(key)
-            .and_then(|i| self.nodes.get(i))
+            .and_then(|i| self.tree.nodes.get(i))
             .map(|n| n.el.scroll_css)
             .unwrap_or_default()
     }
@@ -575,8 +580,9 @@ impl Ui {
     /// Whether scroll container `key` snaps (CSS `scroll-snap-type`).
     fn snaps(&self, key: u64) -> bool {
         self.tree
+            .index
             .find(key)
-            .is_some_and(|i| self.nodes[i].el.snap & 3 != 0)
+            .is_some_and(|i| self.tree.nodes[i].el.snap & 3 != 0)
     }
 
     /// Where snapping container `key` settles from offset `projected` (CSS
@@ -590,8 +596,8 @@ impl Ui {
     /// moved it, else now): it does not pass a `scroll-snap-stop: always`
     /// area on its way from there.
     fn snap_target(&self, key: u64, projected: Vec2, from: Vec2) -> Option<Vec2> {
-        let i = self.tree.find(key)?;
-        let n = &self.nodes[i];
+        let i = self.tree.index.find(key)?;
+        let n = &self.tree.nodes[i];
         let snap = n.el.snap;
         if snap & 3 == 0 {
             return None;
@@ -603,7 +609,7 @@ impl Ui {
         let mut found: [Vec<(f32, bool)>; 2] = Default::default();
         let mut stack: Vec<usize> = n.children.clone();
         while let Some(c) = stack.pop() {
-            let cn = &self.nodes[c];
+            let cn = &self.tree.nodes[c];
             if cn.hidden {
                 continue;
             }
@@ -683,7 +689,7 @@ impl Ui {
             rest = self.scroll_by(k, rest);
             // CSS `overscroll-behavior` contain or none: no chaining past
             // it on an axis it scrolls.
-            if let Some(n) = self.tree.find(k).and_then(|i| self.nodes.get(i)) {
+            if let Some(n) = self.tree.index.find(k).and_then(|i| self.tree.nodes.get(i)) {
                 let o = n.el.scroll_css.overscroll;
                 if n.el.scroll_x && o[0] != Overscroll::Auto {
                     rest.x = 0.0;
@@ -745,8 +751,9 @@ impl Ui {
         }
         let Some(t) = self
             .tree
+            .index
             .find(key)
-            .and_then(|i| self.orders.touch_of.get(i))
+            .and_then(|i| self.tree.orders.touch_of.get(i))
         else {
             return d;
         };

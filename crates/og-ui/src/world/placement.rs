@@ -139,7 +139,7 @@ impl Ui {
         let mut placed: Vec<Placed> = Vec::new();
         let view = self.world.view;
         for (e, a) in anchors.iter().enumerate() {
-            let n = &self.nodes[a.node];
+            let n = &self.tree.nodes[a.node];
             let key = n.key;
             let r = n.rect;
             let d = &a.desc;
@@ -359,11 +359,11 @@ impl Ui {
             let s = *s;
             seen.push(pl.key);
             let node = anchors[pl.entry].node;
-            let r = self.nodes[node].rect;
+            let r = self.tree.nodes[node].rect;
             let px = r.x + pl.pivot.0 * r.width;
             let py = r.y + pl.pivot.1 * r.height;
             let at = pl.at + Vec2::new(s.dx, s.dy);
-            let n = &mut self.nodes[node];
+            let n = &mut self.tree.nodes[node];
             n.sampled.transform = Transform {
                 x: at.x - px,
                 y: at.y - py,
@@ -461,13 +461,13 @@ impl Ui {
         let mut hits = Vec::new();
         let mut grounds = Vec::new();
         for p in &self.world.panels {
-            let key = self.nodes[p.node].key;
+            let key = self.tree.nodes[p.node].key;
             if p.desc.projected {
                 // Drawn by the UI onto where its quad is seen this tick: the
                 // brackets are the same every tick (the quad goes in the
                 // frame, `UiFrame::grounds`), so a moving camera relevels
                 // and rebuilds nothing. Inert: no ray, no focus.
-                self.nodes[p.node].sampled.inert = true;
+                self.tree.nodes[p.node].sampled.inert = true;
                 let all = Rect::new(-1e9, -1e9, 2e9, 2e9);
                 self.world.marks.insert(
                     key,
@@ -483,7 +483,7 @@ impl Ui {
                         }],
                         leave: vec![DrawCmd::EndLayer {
                             geometry: None,
-                            rect: self.nodes[p.node].rect,
+                            rect: self.tree.nodes[p.node].rect,
                             opacity: 1.0,
                             blend: og_draw::UiBlend::Normal,
                             clip: all,
@@ -497,7 +497,7 @@ impl Ui {
                     let (vp, unit) = (self.env.viewport, self.env.unit.max(1e-6));
                     let q = q * rotation;
                     let (hx, hy) = (size.x / 2.0, size.y / 2.0);
-                    let r = self.nodes[p.node].rect;
+                    let r = self.tree.nodes[p.node].rect;
                     let rect = Rect::new(r.x * unit, r.y * unit, r.width * unit, r.height * unit);
                     let world = |x: f32, y: f32, z: f32| center + q * Vec3::new(x, y, z);
                     let seen = |p: Vec3| {
@@ -569,7 +569,7 @@ impl Ui {
                     Marks {
                         enter: vec![DrawCmd::World(Box::new(WorldCmd::BeginPanel {
                             target,
-                            rect: self.nodes[p.node].rect,
+                            rect: self.tree.nodes[p.node].rect,
                         }))],
                         leave: vec![DrawCmd::World(Box::new(WorldCmd::EndPanel))],
                     },
@@ -580,7 +580,7 @@ impl Ui {
             {
                 hits.push(PanelHit {
                     key,
-                    rect: self.nodes[p.node].rect,
+                    rect: self.tree.nodes[p.node].rect,
                     center,
                     rotation: q * rotation,
                     size,
@@ -605,7 +605,7 @@ impl Ui {
             let alpha = (m.intensity * pulse).clamp(0.0, 1.0);
             let screen = Rect::new(0.0, 0.0, vp.width, vp.height);
             let cmds = meta_cmds(&m.kind, screen, alpha);
-            let key = self.nodes[*i].key;
+            let key = self.tree.nodes[*i].key;
             self.world.marks.insert(
                 key,
                 Marks {
@@ -624,7 +624,7 @@ impl Ui {
             return;
         }
         let under = |i: usize| -> bool {
-            let n = &self.nodes[i];
+            let n = &self.tree.nodes[i];
             n.float == Float::World && !self.world.is_panel_node(i)
         };
         // Subtrees of world layers below the root (each a run of the order).
@@ -634,7 +634,7 @@ impl Ui {
         while k < order.len() {
             let i = order[k];
             if under(i) {
-                let end = crate::layout::subtree_ends(&self.nodes, &order[k..])[0] + k;
+                let end = crate::layout::subtree_ends(&self.tree.nodes, &order[k..])[0] + k;
                 moved.extend_from_slice(&order[k..end]);
                 k = end;
             } else {

@@ -180,7 +180,7 @@ impl Ui {
             return;
         }
         let t = self.env.theme;
-        let owner = &self.nodes[self.parent()];
+        let owner = &self.tree.nodes[self.parent()];
         let inherited = owner
             .el
             .part
@@ -328,7 +328,7 @@ impl Ui {
                         ..Element::default()
                     },
                 );
-                let track_key = ui.nodes[ui.parent()].key;
+                let track_key = ui.tree.nodes[ui.parent()].key;
                 let kpart = qualified_part(
                     "input[type=checkbox][switch]::part(knob)",
                     &[on.then_some("on"), Some("round")],
@@ -347,7 +347,7 @@ impl Ui {
                         ..Element::default()
                     },
                 );
-                let knob_key = ui.nodes[ui.parent()].key;
+                let knob_key = ui.tree.nodes[ui.parent()].key;
                 // A tick in the knob while on: the state is never colour alone (XAG 103).
                 ui.open(
                     "Mark",
@@ -359,7 +359,7 @@ impl Ui {
                         ..Element::default()
                     },
                 );
-                let mark_key = ui.nodes[ui.parent()].key;
+                let mark_key = ui.tree.nodes[ui.parent()].key;
                 ui.drawn(
                     "Tick",
                     "tick",
@@ -371,7 +371,7 @@ impl Ui {
                     track: track_key,
                     knob: knob_key,
                     mark: mark_key,
-                    tick: ui.nodes[ui.last_closed].key,
+                    tick: ui.tree.nodes[ui.tree.last_closed].key,
                     measured: None,
                 });
                 ui.close();
@@ -433,7 +433,7 @@ impl Ui {
                 }
             },
         );
-        self.nodes[built.node].part_geometry = geometry;
+        self.tree.nodes[built.node].part_geometry = geometry;
         let mut next = on;
         if built.r.clicked && !desc.disabled {
             next = !on;

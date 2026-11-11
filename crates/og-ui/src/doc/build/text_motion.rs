@@ -25,7 +25,7 @@ impl Ui {
         );
         // Still counting: it builds again next tick (its memory is still).
         if shown != f64::from(value)
-            && let Some(owned) = self.owning.last_mut()
+            && let Some(owned) = self.tree.owning.last_mut()
         {
             owned.moved = true;
         }
@@ -67,7 +67,7 @@ impl Ui {
         a.a = if shown == total { 1.0 } else { 0.0 };
         self.set_anim(memory, a);
         if shown < total
-            && let Some(owned) = self.owning.last_mut()
+            && let Some(owned) = self.tree.owning.last_mut()
         {
             owned.moved = true;
         }
@@ -182,13 +182,14 @@ impl Ui {
         // Its place in the tree, as a modal dialog's: a retained document
         // finds the element's node by its id under its parent.
         let at = self.layer_place(&crate::Id::from(id), key);
-        self.nodes[at].props.position = crate::element::Position::Absolute;
+        self.tree.nodes[at].props.position = crate::element::Position::Absolute;
         let found = self
+            .tree
             .nodes
             .iter()
             .position(|node| node.id == target)
-            .filter(|&i| self.nodes[i].key != 0);
-        let hole = found.and_then(|i| self.last_bounds(self.nodes[i].key));
+            .filter(|&i| self.tree.nodes[i].key != 0);
+        let hole = found.and_then(|i| self.last_bounds(self.tree.nodes[i].key));
         let shade = self.spotlight(
             format!("{id}~spotlight").as_str(),
             hole,

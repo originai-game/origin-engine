@@ -75,11 +75,11 @@ impl Ui {
     pub fn debug_element(&self, path: &str) -> Option<UiDebugElement> {
         let key = crate::id::key_of_path(path);
         let ui = self.finished();
-        let i = ui.tree.by_key.get(&key).copied()?;
-        let n = ui.nodes.get(i)?;
+        let i = ui.tree.index.by_key.get(&key).copied()?;
+        let n = ui.tree.nodes.get(i)?;
         let r = n.screen;
         // A margin's percentage reads its parent's content width.
-        let basis = ui.nodes.get(n.parent).map_or(r.width, |p| {
+        let basis = ui.tree.nodes.get(n.parent).map_or(r.width, |p| {
             p.screen.width - p.el.padding.left - p.el.padding.right
         });
         let [mt, mr, mb, ml] = n.el.margin.map(|m| m.of(basis));
@@ -134,7 +134,7 @@ impl Ui {
         if n.props.container {
             boundaries.push("container");
         }
-        if n.parent == crate::layout::NONE || ui.floating.contains(&i) {
+        if n.parent == crate::layout::NONE || ui.tree.floating.contains(&i) {
             boundaries.push("layer");
         }
         if matches!(n.el.width, crate::Size::Fixed(_))
@@ -144,7 +144,7 @@ impl Ui {
         }
         Some(UiDebugElement {
             path: path.to_owned(),
-            kind: ui.kinds.get(i).map_or("", |k| k.0).to_owned(),
+            kind: ui.tree.kinds.get(i).map_or("", |k| k.0).to_owned(),
             border_box: r,
             margin: Insets {
                 top: mt,

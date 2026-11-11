@@ -117,7 +117,7 @@ impl Ui {
             },
         );
         let content = self.parent();
-        self.nodes[content].hidden = !open;
+        self.tree.nodes[content].hidden = !open;
         DetailsResult { open, toggled }
     }
 

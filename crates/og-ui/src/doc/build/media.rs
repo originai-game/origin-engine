@@ -113,9 +113,9 @@ impl Ui {
             },
         );
         let at = self.parent();
-        self.nodes[at].a11y.role = Some(if video { "img" } else { "group" });
+        self.tree.nodes[at].a11y.role = Some(if video { "img" } else { "group" });
         if let Some(name) = r.str("name") {
-            self.nodes[at].a11y.name = Some(name.to_string());
+            self.tree.nodes[at].a11y.name = Some(name.to_string());
         }
         if video {
             // The frame once the player has shown one, else the poster.

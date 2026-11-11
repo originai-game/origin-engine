@@ -399,8 +399,11 @@ impl Ui {
     /// (`wash: Some(None)`), so it is the part box's own background, which
     /// the part's CSS background (a gradient included) replaces.
     fn place_part_host(&mut self, host: usize) {
-        let slot = self.nodes[host].content_slot;
-        let part = self.nodes[slot].part_box.as_mut().expect("a part node");
+        let slot = self.tree.nodes[host].content_slot;
+        let part = self.tree.nodes[slot]
+            .part_box
+            .as_mut()
+            .expect("a part node");
         let p = &mut part.intrinsic_props;
         for group in &mut p.states {
             for state in &mut group.states {
@@ -421,10 +424,10 @@ impl Ui {
             overlaps: std::mem::take(&mut p.overlaps),
             z: std::mem::take(&mut p.z),
             motion: p.motion,
-            hit_slop: self.nodes[host].props.hit_slop,
+            hit_slop: self.tree.nodes[host].props.hit_slop,
             ..Props::default()
         };
-        self.nodes[host].props = placed;
+        self.tree.nodes[host].props = placed;
     }
 
     /// The value bubble over a knob.

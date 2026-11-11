@@ -47,7 +47,7 @@ impl Ui {
             );
             (out.up || out.down || out.left || out.right, ZoneKind::Pad)
         };
-        let key = self.nodes[self.last_closed].key;
+        let key = self.tree.nodes[self.tree.last_closed].key;
         self.note_zone(key, r.str("action"), zone, dead_zone, disabled);
         crate::ui::Response {
             pressed,
@@ -57,8 +57,8 @@ impl Ui {
 
     /// A touch `<button data-og-touch="jump">`'s zone (any element's).
     pub(super) fn note_touch_button(&mut self, r: &Resolved) {
-        if self.last_closed != NONE && self.last_closed < self.nodes.len() {
-            let key = self.nodes[self.last_closed].key;
+        if self.tree.last_closed != NONE && self.tree.last_closed < self.tree.nodes.len() {
+            let key = self.tree.nodes[self.tree.last_closed].key;
             let action = r.str("dataOgTouch");
             self.note_zone(key, action, ZoneKind::Button, 0.0, r.flag("disabled"));
         }

@@ -28,27 +28,27 @@ impl Resolved {
 
 impl Ui {
     pub(super) fn apply_part_box(&mut self, i: usize) {
-        if !self.emitted.contains(&i) {
+        if !self.tree.emitted.contains(&i) {
             self.layout
                 .cache
                 .prev
                 .entry(i)
-                .or_insert_with(|| self.nodes[i].clone());
-            self.emitted.push(i);
+                .or_insert_with(|| self.tree.nodes[i].clone());
+            self.tree.emitted.push(i);
         }
-        let part = self.nodes[i].part_box.clone().expect("part node");
-        let owner = &self.nodes[part.owner];
+        let part = self.tree.nodes[i].part_box.clone().expect("part node");
+        let owner = &self.tree.nodes[part.owner];
         let reference = if owner.content_slot == i {
             owner.el.part.unwrap_or(part.reference)
         } else {
             part.reference
         };
-        let r = self.part_values(&reference, Some(self.nodes[i].key));
+        let r = self.part_values(&reference, Some(self.tree.nodes[i].key));
         let document = self
-            .part_host(self.nodes[part.owner].key)
+            .part_host(self.tree.nodes[part.owner].key)
             .and_then(|host| self.docs.host.docs.get(&host.document))
             .cloned();
-        self.nodes[i].el = part.element;
+        self.tree.nodes[i].el = part.element;
         self.apply_box_fields(
             i,
             &r,
@@ -126,8 +126,8 @@ impl Ui {
             props.opacity = intrinsic.opacity;
         }
         props.flow = r.own_flow();
-        self.nodes[i].props = props;
-        let text_style = match &self.nodes[i].content {
+        self.tree.nodes[i].props = props;
+        let text_style = match &self.tree.nodes[i].content {
             crate::layout::Content::Text(text) => {
                 Some(r.part_text(&self.env.theme, text.step, &|name| {
                     self.family_declared(name)
@@ -135,7 +135,7 @@ impl Ui {
             }
             _ => None,
         };
-        if let crate::layout::Content::Text(text) = &mut self.nodes[i].content {
+        if let crate::layout::Content::Text(text) = &mut self.tree.nodes[i].content {
             let style = text_style.unwrap();
             text.step = style.step(text.step);
             let role = style.font_role.unwrap_or(text.font);
@@ -158,7 +158,8 @@ impl Ui {
         let fallback = self.env.theme.tokens.feedback[event.index()];
         let cascade = key
             .and_then(|k| {
-                self.nodes
+                self.tree
+                    .nodes
                     .iter()
                     .rfind(|n| n.key == k)
                     .and_then(|n| n.el.part)
@@ -232,7 +233,7 @@ impl Ui {
         self.style.part_rules = rules;
         self.style.part_sheet = sheet;
         self.read_theme_tokens();
-        self.invalidation.epoch += 1;
+        self.tree.invalidation.epoch += 1;
         Ok(())
     }
 
@@ -246,7 +247,7 @@ impl Ui {
             .root_type_tokens
             .clone_from(&source.style.root_type_tokens);
         self.read_theme_tokens();
-        self.invalidation.epoch += 1;
+        self.tree.invalidation.epoch += 1;
     }
 
     /// Resolve a part's CSS for its placed size. The result has no implicit
@@ -291,10 +292,11 @@ impl Ui {
     fn part_host(&self, key: u64) -> Option<&PartHost> {
         let mut i = self
             .tree
+            .index
             .find(key)
-            .or_else(|| self.nodes.iter().rposition(|n| n.key == key))?;
+            .or_else(|| self.tree.nodes.iter().rposition(|n| n.key == key))?;
         loop {
-            let node = &self.nodes[i];
+            let node = &self.tree.nodes[i];
             if let Some(host) = &node.part_host {
                 return Some(host);
             }

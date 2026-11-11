@@ -582,48 +582,48 @@ impl Ui {
             .part_styles
             .iter()
             .filter(|(_, styles)| styles.values().any(|style| style.running))
-            .filter_map(|(key, _)| self.tree.find(*key))
-            .filter(|&i| self.nodes[i].part_box.is_some())
+            .filter_map(|(key, _)| self.tree.index.find(*key))
+            .filter(|&i| self.tree.nodes[i].part_box.is_some())
             .collect();
         for i in moving {
-            if !self.emitted.contains(&i) {
+            if !self.tree.emitted.contains(&i) {
                 self.layout
                     .cache
                     .prev
                     .entry(i)
-                    .or_insert_with(|| self.nodes[i].clone());
-                self.emitted.push(i);
+                    .or_insert_with(|| self.tree.nodes[i].clone());
+                self.tree.emitted.push(i);
             }
         }
-        for k in 0..self.emitted.len() {
-            self.apply_part_appearance(self.emitted[k]);
+        for k in 0..self.tree.emitted.len() {
+            self.apply_part_appearance(self.tree.emitted[k]);
         }
     }
 
     pub(crate) fn apply_part_appearance(&mut self, i: usize) {
-        if self.nodes[i].content_slot != NONE {
-            self.apply_part_box(self.nodes[i].content_slot);
+        if self.tree.nodes[i].content_slot != NONE {
+            self.apply_part_box(self.tree.nodes[i].content_slot);
             return;
         }
-        if self.nodes[i].part_box.is_some() {
+        if self.tree.nodes[i].part_box.is_some() {
             self.apply_part_box(i);
             return;
         }
-        let Some(part) = self.nodes[i]
+        let Some(part) = self.tree.nodes[i]
             .el
             .part
-            .or_else(|| self.nodes[i].el.frame.map(crate::StylePart::part_ref))
+            .or_else(|| self.tree.nodes[i].el.frame.map(crate::StylePart::part_ref))
         else {
             return;
         };
-        let r = self.part_values(&part, Some(self.nodes[i].key));
-        let step = match &self.nodes[i].content {
+        let r = self.part_values(&part, Some(self.tree.nodes[i].key));
+        let step = match &self.tree.nodes[i].content {
             crate::layout::Content::Text(text) => r.part_type(&self.env.theme, text.step),
             _ => self.env.theme.type_ramp.body,
         };
         let ink = r.color("color");
         let em = step.size;
-        let n = &mut self.nodes[i];
+        let n = &mut self.tree.nodes[i];
         n.el = Self::box_of(&r, n.el, em);
         if let Some(radius) = n.decor.as_ref().and_then(|d| d.radius) {
             n.el.radius = radius;

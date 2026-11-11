@@ -146,14 +146,14 @@ impl Ui {
                 }
                 // The instance's own element props apply to its root.
                 if !rp.vals.is_empty()
-                    && let Some(&last) = Some(&self.last_closed)
+                    && let Some(&last) = Some(&self.tree.last_closed)
                     && last != NONE
                 {
-                    let el = Ui::box_of(&rp, self.nodes[last].el, self.em_of(&rp));
-                    let props = self.props_of(b, n, self.nodes[last].key, &rp, &mut built);
-                    self.nodes[last].el = el;
+                    let el = Ui::box_of(&rp, self.tree.nodes[last].el, self.em_of(&rp));
+                    let props = self.props_of(b, n, self.tree.nodes[last].key, &rp, &mut built);
+                    self.tree.nodes[last].el = el;
                     if props != Props::default() {
-                        self.nodes[last].props = props;
+                        self.tree.nodes[last].props = props;
                     }
                 }
                 // Its two-way writes reach the bound paths of the user.
@@ -396,7 +396,7 @@ impl Ui {
                     if dialog.modal
                         && let Some(backdrop) = self.pseudo_node(b, &r, &path, "backdrop")
                     {
-                        let scrim = self.nodes[self.parent()].parent;
+                        let scrim = self.tree.nodes[self.parent()].parent;
                         self.style_pseudo_box(b, scrim, "backdrop", &backdrop);
                     }
                     shows_content = out.visible;
@@ -496,8 +496,8 @@ impl Ui {
                         self.build_virtual(b, n, kind, &id, &r, props.clone(), &path);
                     }
                     b.inherited = inherited;
-                    let at = self.last_closed;
-                    if at != NONE && at < self.nodes.len() && self.nodes[at].key == key {
+                    let at = self.tree.last_closed;
+                    if at != NONE && at < self.tree.nodes.len() && self.tree.nodes[at].key == key {
                         // Settlement replaces the box the list was opened with;
                         // its window and stride follow on the next build.
                         let mut fields =
@@ -592,7 +592,10 @@ impl Ui {
             if shows_content {
                 // Its filters' `feImage`s of elements, as its first children.
                 let at = self.parent();
-                let css = self.nodes[at].decor.as_ref().and_then(|d| d.css.as_ref());
+                let css = self.tree.nodes[at]
+                    .decor
+                    .as_ref()
+                    .and_then(|d| d.css.as_ref());
                 let images = css.is_some_and(|c| {
                     crate::paint::filter_uses(&c.effects, c.layer.as_ref(), &c.filters)
                         .iter()
@@ -639,7 +642,7 @@ impl Ui {
                 self.write_back(b, n, "open", json!(open));
             }
             self.popover_invoker(b, &r, key, resp);
-            self.hold(key, n, &r, self.last_closed);
+            self.hold(key, n, &r, self.tree.last_closed);
             self.fire(b, n, key, &path, resp);
             return Some(path);
         }
@@ -1288,7 +1291,7 @@ impl Ui {
                                 .unwrap_or_else(|| labels.get(index).unwrap_or(value).clone())
                         })
                         .collect();
-                    let field = self.last_closed;
+                    let field = self.tree.last_closed;
                     if let Some(c) = self.suggestions(
                         &path,
                         field,
@@ -1352,8 +1355,8 @@ impl Ui {
             }
         }
         self.accent = None;
-        let last = self.last_closed;
-        if last != NONE && last < self.nodes.len() {
+        let last = self.tree.last_closed;
+        if last != NONE && last < self.tree.nodes.len() {
             let mut fields =
                 fields::RenderFields::capture(self, key, last, kind, resp, props, texture);
             // A text keeps its source: settlement shows it in its new style.

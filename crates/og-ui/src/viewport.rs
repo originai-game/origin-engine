@@ -102,15 +102,15 @@ impl Ui {
             },
         );
         if let Some(t) = desc.texture {
-            self.nodes[i].content = Content::Image {
+            self.tree.nodes[i].content = Content::Image {
                 texture: Some(t),
                 uv: [0.0, 0.0, 1.0, 1.0],
                 tint: Srgba::WHITE,
                 object: Default::default(),
             };
         }
-        self.nodes[i].probe_text = desc.label.clone();
-        let key = self.nodes[i].key;
+        self.tree.nodes[i].probe_text = desc.label.clone();
+        let key = self.tree.nodes[i].key;
         let r = self.respond(key);
         let mut out = ViewportResponse {
             hovered: r.hovered,

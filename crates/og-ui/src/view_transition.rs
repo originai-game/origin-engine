@@ -565,12 +565,12 @@ impl Ui {
         for k in 0..named.len() {
             // Its shared ancestors, nearest first.
             let mut up = Vec::new();
-            let mut j = self.nodes[named[k].node].parent;
+            let mut j = self.tree.nodes[named[k].node].parent;
             while j != NONE {
                 if let Some(&m) = index.get(&j) {
                     up.push(m);
                 }
-                j = self.nodes[j].parent;
+                j = self.tree.nodes[j].parent;
             }
             let name = |m: &usize| named[*m].name.clone();
             let containing = up.iter().find(|&&m| !named[m].group.is_empty()).map(name);
@@ -675,10 +675,10 @@ impl Ui {
             .collect();
         let in_leaving = |ui: &Ui, mut j: usize| {
             while j != NONE {
-                if ui.kinds.get(j).is_some_and(|k| k.0 == "layer") {
-                    return leaving.contains(&ui.nodes[j].id);
+                if ui.tree.kinds.get(j).is_some_and(|k| k.0 == "layer") {
+                    return leaving.contains(&ui.tree.nodes[j].id);
                 }
-                j = ui.nodes[j].parent;
+                j = ui.tree.nodes[j].parent;
             }
             false
         };

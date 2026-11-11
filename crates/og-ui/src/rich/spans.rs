@@ -264,7 +264,7 @@ impl Ui {
             s.synth.bold &= s.bold;
             runs.push(s);
         }
-        let node = &mut self.nodes[i];
+        let node = &mut self.tree.nodes[i];
         node.el.width = desc.width;
         node.probe_text = text.to_owned();
         node.content = Content::Rich(RichContent {

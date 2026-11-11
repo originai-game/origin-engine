@@ -38,7 +38,7 @@ impl RenderFields {
         document_props: Props,
         texture: Option<og_draw::TextureHandle>,
     ) -> Self {
-        let node = &ui.nodes[index];
+        let node = &ui.tree.nodes[index];
         Self {
             index,
             host_key,
@@ -471,7 +471,7 @@ impl Ui {
             .str("ellipsisText")
             .filter(|s| !s.is_empty())
             .map(str::to_owned);
-        if let crate::layout::Content::Text(t) = &mut self.nodes[i].content {
+        if let crate::layout::Content::Text(t) = &mut self.tree.nodes[i].content {
             t.wrap_style = style;
             t.cut = cut;
         }
@@ -488,7 +488,7 @@ impl Ui {
             Some("scaleDown") => og_draw::UiFit::ScaleDown,
             _ => og_draw::UiFit::Fill,
         };
-        if let crate::layout::Content::Image { object, .. } = &mut self.nodes[i].content {
+        if let crate::layout::Content::Image { object, .. } = &mut self.tree.nodes[i].content {
             *object = crate::layout::ObjectFit {
                 fit,
                 focal: at.map_or([0.5; 2], |a| a[0]),
@@ -506,17 +506,17 @@ impl Ui {
         base: &RenderFields,
     ) {
         let i = base.index;
-        self.nodes[i].el = base.element;
-        if let Some(host) = self.nodes.iter_mut().rfind(|n| n.key == base.host_key) {
+        self.tree.nodes[i].el = base.element;
+        if let Some(host) = self.tree.nodes.iter_mut().rfind(|n| n.key == base.host_key) {
             host.part_host = r.part_host.clone();
         }
-        self.nodes[i].props = base.widget_props.clone();
+        self.tree.nodes[i].props = base.widget_props.clone();
         let css = r.text.as_deref();
-        self.nodes[i].accent = css.and_then(|t| t.accent);
-        self.nodes[i].caret = css.and_then(|t| t.caret);
+        self.tree.nodes[i].accent = css.and_then(|t| t.accent);
+        self.tree.nodes[i].caret = css.and_then(|t| t.caret);
         // `display: none` that a container query decides keeps its element
         // built, so settlement can show it again.
-        self.nodes[i].hidden = base.hidden || (r.has("visible") && !r.flag("visible"));
+        self.tree.nodes[i].hidden = base.hidden || (r.has("visible") && !r.flag("visible"));
         match base.kind {
             "label" => {
                 let desc = r.label_desc(self.theme(), self.fonts(), r.own_flow().rtl);
@@ -577,7 +577,7 @@ impl Ui {
                     // keeps the box its path gives (a `circle()` centres in
                     // it), never the column's width a centred line takes.
                     if r.has("textPath") {
-                        self.nodes[i].el.width = width;
+                        self.tree.nodes[i].el.width = width;
                     }
                 }
             }
@@ -594,9 +594,9 @@ impl Ui {
                 // its detail) grows to fit them, its control height the
                 // least it takes, as an HTML button does.
                 if !n.children.is_empty()
-                    && let crate::layout::Size::Fixed(h) = self.nodes[i].el.height
+                    && let crate::layout::Size::Fixed(h) = self.tree.nodes[i].el.height
                 {
-                    self.nodes[i].el.height = crate::layout::Size::Fit {
+                    self.tree.nodes[i].el.height = crate::layout::Size::Fit {
                         min: h,
                         max: f32::INFINITY,
                     };
@@ -669,19 +669,19 @@ impl Ui {
             "details" => {
                 // Its fields are its content column's; the build gives its
                 // root (the parent) the CSS width too (`DetailsDesc.width`).
-                let root = self.nodes[i].parent;
+                let root = self.tree.nodes[i].parent;
                 if root != crate::layout::NONE {
-                    self.nodes[root].el.width = r.size("width").unwrap_or(Size::grow());
+                    self.tree.nodes[root].el.width = r.size("width").unwrap_or(Size::grow());
                 }
             }
             "spacer" => {
                 let size = r.size("width").or(r.size("height")).unwrap_or(Size::grow());
-                self.nodes[i].el.width = size;
-                self.nodes[i].el.height = size;
+                self.tree.nodes[i].el.width = size;
+                self.tree.nodes[i].el.height = size;
             }
             "divider" => {
                 if let Some(color) = r.color("color") {
-                    self.nodes[i].el.background = Some(color);
+                    self.tree.nodes[i].el.background = Some(color);
                 }
             }
             _ => {}
@@ -704,7 +704,7 @@ impl Ui {
         // Widget-owned sizing is established above; document box overrides
         // replace their previous values, including when a declaration vanishes.
         let field_line = self.field_measurement(i, r.str("fieldSizing") == Some("content"));
-        let mut el = self.nodes[i].el;
+        let mut el = self.tree.nodes[i].el;
         if field_line.is_some() {
             el.width = Size::fit();
             el.height = Size::fit();
@@ -774,7 +774,7 @@ impl Ui {
                 // A block-level box in a block's flow fills its width
                 // (CSS 2 §10.3.3: `width: auto`); an inline-level one, a table
                 // and a positioned box shrink to fit (§10.3.9, §17.5.2, §10.3.7).
-                let parent = self.nodes[i].parent;
+                let parent = self.tree.nodes[i].parent;
                 let fills = !super::outer_inline(r.str("display"))
                     && super::floated(r).is_none()
                     && !super::positioned(r)
@@ -795,14 +795,14 @@ impl Ui {
                 // its own inline axis (CSS Writing Modes 4 §7.3).
                 let vertical = r.flow.mode.vertical();
                 let across = parent != crate::layout::NONE
-                    && self.nodes[parent].props.flow.mode.vertical() != vertical;
+                    && self.tree.nodes[parent].props.flow.mode.vertical() != vertical;
                 let axis = if vertical { "height" } else { "width" };
                 if source.kind == "box"
                     && fills
                     && !across
                     && !r.has(axis)
                     && parent != crate::layout::NONE
-                    && (self.nodes[parent].el.block || host(&self.nodes[parent]))
+                    && (self.tree.nodes[parent].el.block || host(&self.tree.nodes[parent]))
                 {
                     if vertical {
                         el.height = Size::grow();
@@ -870,11 +870,11 @@ impl Ui {
         // (`layout::flow`), so `inline-start` lays out on the left and,
         // in a right-to-left one, `left` on the right. A float is
         // block-level.
-        let parent = self.nodes[i].parent;
+        let parent = self.tree.nodes[i].parent;
         let rtl = if parent == crate::layout::NONE {
             r.flow.rtl
         } else {
-            self.nodes[parent].props.flow.rtl
+            self.tree.nodes[parent].props.flow.rtl
         };
         el.float = match r.str("float") {
             Some("left") if rtl => crate::layout::FloatSide::Right,
@@ -883,7 +883,7 @@ impl Ui {
             Some("left" | "right" | "inline-start") => crate::layout::FloatSide::Left,
             _ => crate::layout::FloatSide::None,
         };
-        self.nodes[i].shape_outside = r
+        self.tree.nodes[i].shape_outside = r
             .str("shapeOutside")
             .and_then(|s| crate::doc::paint_css::outside(s).ok().flatten())
             .map(|(shape, reference)| crate::layout::float::Outside {
@@ -918,7 +918,7 @@ impl Ui {
                     Some("p" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6")
                 ),
             };
-            let parent = self.nodes[i].parent;
+            let parent = self.tree.nodes[i].parent;
             // Its inline axis: down a vertical line (CSS Writing Modes 4);
             // across its parent's writing mode it is an orthogonal flow.
             let vertical = r.flow.mode.vertical();
@@ -929,8 +929,8 @@ impl Ui {
                 && !r.has(axis)
                 && !r.has("textPath")
                 && parent != crate::layout::NONE
-                && self.nodes[parent].el.block
-                && self.nodes[parent].props.flow.mode.vertical() == vertical
+                && self.tree.nodes[parent].el.block
+                && self.tree.nodes[parent].props.flow.mode.vertical() == vertical
             {
                 if vertical {
                     el.height = Size::grow();
@@ -1014,8 +1014,8 @@ impl Ui {
                 *min = min.max(el.padding.vertical() + line);
             }
         }
-        self.nodes[i].el = el;
-        self.nodes[i].decor = decor.map(Box::new);
+        self.tree.nodes[i].el = el;
+        self.tree.nodes[i].decor = decor.map(Box::new);
     }
 
     fn apply_document_semantics(&mut self, n: &DocNode, r: &Resolved, base: &RenderFields) {
@@ -1031,7 +1031,7 @@ impl Ui {
             // screen behind the web's play gate); the motion state then
             // knows it, so a later build does not replay it, and a later
             // entrance (after it left) plays.
-            if self.docs.host.entered.insert(self.nodes[i].key)
+            if self.docs.host.entered.insert(self.tree.nodes[i].key)
                 && let Some(e) = props.enter.as_mut()
             {
                 e.transition = crate::motion::Transition::Instant;
@@ -1048,15 +1048,15 @@ impl Ui {
                     .filter(|g| !n.groups.iter().any(|x| x.name == g.name))
                     .cloned(),
             );
-            self.nodes[i].props = props;
+            self.tree.nodes[i].props = props;
         }
-        self.nodes[i].props.flow = flow;
+        self.tree.nodes[i].props.flow = flow;
         // A vertical text sets its lines down: a plain text by its own
         // setting, a rich text by its node's (`Ui::rich_vertical`).
         // Text on a path follows its path's physical geometry: its box is
         // the path's extent, whatever the writing mode; its glyphs are set
         // as a vertical line's along the path.
-        let node = &mut self.nodes[i];
+        let node = &mut self.tree.nodes[i];
         match &mut node.content {
             crate::layout::Content::Text(t) if node.props.text_path.is_some() => {
                 node.el.vertical = None;
@@ -1067,33 +1067,33 @@ impl Ui {
         }
         // The roles and levels HTML's tags give (landmarks, lists, headings).
         if let Some(role) = n.role {
-            self.nodes[i].a11y.role = Some(role);
+            self.tree.nodes[i].a11y.role = Some(role);
         }
         if n.level > 0 {
-            self.nodes[i].a11y.level = Some(n.level);
+            self.tree.nodes[i].a11y.level = Some(n.level);
         }
         // A split screen's region (`Props::player`).
         if let Some(k) = r.num("player") {
-            self.nodes[i].props.player = Some(k.clamp(0.0, 3.0) as u8);
+            self.tree.nodes[i].props.player = Some(k.clamp(0.0, 3.0) as u8);
         }
         // `role`, `aria-live` and `aria-atomic` over the tag's.
         if let Some(role) = r
             .str("role")
             .and_then(|r| crate::a11y::ROLES.iter().find(|&&k| k == r))
         {
-            self.nodes[i].a11y.role = Some(role);
+            self.tree.nodes[i].a11y.role = Some(role);
         }
-        self.nodes[i].a11y.live = r.str("ariaLive").and_then(crate::a11y::Live::parse);
-        self.nodes[i].a11y.atomic = r.get("ariaAtomic").map(|_| r.flag("ariaAtomic"));
+        self.tree.nodes[i].a11y.live = r.str("ariaLive").and_then(crate::a11y::Live::parse);
+        self.tree.nodes[i].a11y.atomic = r.get("ariaAtomic").map(|_| r.flag("ariaAtomic"));
         // `aria-label` (or a `<label for>`) names it over what it shows.
         if let Some(name) = r.str("name").filter(|n| !n.is_empty()) {
-            self.nodes[i].a11y.name = Some(name.to_string());
+            self.tree.nodes[i].a11y.name = Some(name.to_string());
         }
         self.apply_aria(i, r);
         // The part its `part` attribute names, over the control's own: the
         // control's states, variant, class and motion stay.
         if let Some(named) = r.part {
-            let el = &mut self.nodes[i].el;
+            let el = &mut self.tree.nodes[i].el;
             el.part = Some(match el.part {
                 Some(own) => {
                     let mut p = crate::dress::PartRef {
@@ -1112,7 +1112,7 @@ impl Ui {
                 None => named,
             });
         }
-        if !self.building {
+        if !self.tree.building {
             self.apply_part_appearance(i);
             self.prepare_layout_node(i);
         }
@@ -1128,12 +1128,12 @@ impl Ui {
         if let Some(role) = r.str("role")
             && let Some(&k) = crate::a11y::ROLES.iter().find(|&&k| k == role)
         {
-            self.nodes[i].a11y.role = Some(k);
+            self.tree.nodes[i].a11y.role = Some(k);
         }
         if r.flag("ariaDisabled") {
-            self.nodes[i].disabled = true;
+            self.tree.nodes[i].disabled = true;
         }
-        let a = &mut self.nodes[i].a11y;
+        let a = &mut self.tree.nodes[i].a11y;
         if let Some(d) = r.str("ariaDescription").filter(|d| !d.is_empty()) {
             a.description = Some(d.to_string());
         }
@@ -1384,21 +1384,21 @@ mod tests {
                     )
                 })
                 .collect();
-            patched.watch_layout_container(patched.nodes[0].key);
+            patched.watch_layout_container(patched.tree.nodes[0].key);
             // The first measure of this subscription must run on every test frame.
-            patched.unwatch_layout_container(patched.nodes[0].key);
-            patched.watch_layout_container(patched.nodes[0].key);
+            patched.unwatch_layout_container(patched.tree.nodes[0].key);
+            patched.watch_layout_container(patched.tree.nodes[0].key);
             patched
                 .end_with_layout_queries(|ui, _| {
                     let state = ui.save_state();
                     let events = ui.docs.host.queued.clone();
-                    let count = ui.nodes.len();
+                    let count = ui.tree.nodes.len();
                     for (node, values, fields) in &replacements {
                         ui.apply_document_fields(&target, &target.nodes[*node], values, fields);
                     }
                     assert_eq!(ui.save_state(), state);
                     assert_eq!(ui.docs.host.queued, events);
-                    assert_eq!(ui.nodes.len(), count);
+                    assert_eq!(ui.tree.nodes.len(), count);
                     Ok(replacements
                         .iter()
                         .map(|(_, _, fields)| fields.index)

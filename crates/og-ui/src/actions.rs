@@ -210,7 +210,7 @@ impl Ui {
     /// Fires an action this tick (a document's `action` trigger, a test),
     /// or between ticks the next tick.
     pub fn fire_action(&mut self, name: &str) {
-        if !self.building {
+        if !self.tree.building {
             self.interaction.actions.pending.push(name.to_string());
         } else if !self.action_fired(name) {
             self.interaction.actions.fired.push(name.to_string());

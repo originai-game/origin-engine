@@ -164,7 +164,7 @@ impl Ui {
         let props = self.props_of(b, n, node.key, &node.values, &mut built);
         let fields = fields::RenderFields::capture(
             self,
-            self.nodes[i].key,
+            self.tree.nodes[i].key,
             i,
             kind,
             Default::default(),
@@ -283,7 +283,7 @@ impl Ui {
         if let Some(style) = &g.first_line {
             let total = full.chars().count();
             let first = self.first_line_chars(key).unwrap_or(total).min(total);
-            if let Some(owned) = self.owning.last_mut() {
+            if let Some(owned) = self.tree.owning.last_mut() {
                 owned.moved = true;
             }
             if first > 0 {
@@ -340,7 +340,7 @@ impl Ui {
         let n = self
             .previous_nodes()
             .find(|n| n.key == key)
-            .or_else(|| self.tree.find(key).map(|i| &self.nodes[i]))?;
+            .or_else(|| self.tree.index.find(key).map(|i| &self.tree.nodes[i]))?;
         if let Some(line) = n.rich_lines.first() {
             return Some(line.pieces.iter().map(|p| p.text.chars().count()).sum());
         }

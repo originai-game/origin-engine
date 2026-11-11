@@ -16,35 +16,35 @@ pub(crate) struct Owned {
 impl Ui {
     pub(super) fn write_node(&mut self, node: Node, kind: (&'static str, bool)) -> usize {
         let identity = (node.key, node.parent);
-        let i = if let Some(&i) = self.render_slots.get(&identity) {
-            let previous = std::mem::replace(&mut self.nodes[i], node);
+        let i = if let Some(&i) = self.tree.render_slots.get(&identity) {
+            let previous = std::mem::replace(&mut self.tree.nodes[i], node);
             self.layout.cache.prev.entry(i).or_insert(previous);
-            self.prev_kinds.entry(i).or_insert(self.kinds[i]);
-            self.kinds[i] = kind;
+            self.tree.prev_kinds.entry(i).or_insert(self.tree.kinds[i]);
+            self.tree.kinds[i] = kind;
             i
-        } else if let Some(i) = self.free_slots.pop() {
-            self.nodes[i] = node;
-            self.kinds[i] = kind;
-            self.render_slots.insert(identity, i);
+        } else if let Some(i) = self.tree.free_slots.pop() {
+            self.tree.nodes[i] = node;
+            self.tree.kinds[i] = kind;
+            self.tree.render_slots.insert(identity, i);
             i
         } else {
-            let i = self.nodes.len();
-            self.nodes.push(node);
-            self.kinds.push(kind);
-            self.slot_present.push(false);
-            self.persistent.push(false);
-            self.render_slots.insert(identity, i);
+            let i = self.tree.nodes.len();
+            self.tree.nodes.push(node);
+            self.tree.kinds.push(kind);
+            self.tree.slot_present.push(false);
+            self.tree.persistent.push(false);
+            self.tree.render_slots.insert(identity, i);
             i
         };
-        self.slot_present[i] = true;
-        self.emitted.push(i);
+        self.tree.slot_present[i] = true;
+        self.tree.emitted.push(i);
         // A rewritten node sets its draw and layer again as it builds.
-        self.draws.remove(&i);
-        self.dressable.remove(&i);
-        if self.persistent[i] {
-            self.floating.retain(|&f| f != i);
+        self.tree.draws.remove(&i);
+        self.tree.dressable.remove(&i);
+        if self.tree.persistent[i] {
+            self.tree.floating.retain(|&f| f != i);
         }
-        self.persistent[i] = match self.owning.last_mut() {
+        self.tree.persistent[i] = match self.tree.owning.last_mut() {
             Some(owned) => {
                 owned.slots.push(i);
                 true
@@ -57,37 +57,37 @@ impl Ui {
     /// Vacates slot `i` after the frame that last drew it: its identity is
     /// free for a new node, its slot for reuse from the next frame on.
     fn vacate(&mut self, i: usize) {
-        if self.kinds[i].0 == "vacant" {
+        if self.tree.kinds[i].0 == "vacant" {
             return;
         }
         self.untree(i);
-        let old = &self.nodes[i];
-        self.render_slots.remove(&(old.key, old.parent));
+        let old = &self.tree.nodes[i];
+        self.tree.render_slots.remove(&(old.key, old.parent));
         // Its parent derives its children without it.
         if old.parent != NONE {
-            self.invalidation.rederive.push(old.parent);
+            self.tree.invalidation.rederive.push(old.parent);
         }
-        self.invalidation.forced.remove(&i);
+        self.tree.invalidation.forced.remove(&i);
         let mut vacant = Node::new(0, String::new(), NONE, Element::default());
         vacant.hidden = true;
-        let old = std::mem::replace(&mut self.nodes[i], vacant);
+        let old = std::mem::replace(&mut self.tree.nodes[i], vacant);
         self.layout.cache.prev.entry(i).or_insert(old);
-        self.prev_kinds.entry(i).or_insert(self.kinds[i]);
-        self.kinds[i] = ("vacant", false);
-        self.draws.remove(&i);
-        self.dressable.remove(&i);
-        self.free_slots.push(i);
+        self.tree.prev_kinds.entry(i).or_insert(self.tree.kinds[i]);
+        self.tree.kinds[i] = ("vacant", false);
+        self.tree.draws.remove(&i);
+        self.tree.dressable.remove(&i);
+        self.tree.free_slots.push(i);
     }
 
     pub(super) fn retire_nodes(&mut self) {
-        for k in 0..self.retiring.len() {
-            let i = self.retiring[k];
-            if self.slot_present[i] || self.persistent[i] {
+        for k in 0..self.tree.retiring.len() {
+            let i = self.tree.retiring[k];
+            if self.tree.slot_present[i] || self.tree.persistent[i] {
                 continue;
             }
             self.vacate(i);
         }
-        self.retiring.clear();
+        self.tree.retiring.clear();
     }
 
     /// Retires slots a retained element owned and no longer writes: they
@@ -95,33 +95,33 @@ impl Ui {
     /// retired slots, never reused inside it.
     pub(crate) fn retire_owned(&mut self, slots: &[usize]) {
         for &i in slots {
-            if !self.persistent[i] {
+            if !self.tree.persistent[i] {
                 continue;
             }
-            self.persistent[i] = false;
-            self.slot_present[i] = false;
-            self.floating.retain(|&f| f != i);
-            self.retiring.push(i);
+            self.tree.persistent[i] = false;
+            self.tree.slot_present[i] = false;
+            self.tree.floating.retain(|&f| f != i);
+            self.tree.retiring.push(i);
         }
     }
 
     /// The slot the node `key` under `parent` was last written to.
     pub(crate) fn render_slot(&self, key: u64, parent: usize) -> Option<usize> {
-        self.render_slots.get(&(key, parent)).copied()
+        self.tree.render_slots.get(&(key, parent)).copied()
     }
 
     /// Whether slot `i` still holds the retained node `key` under `parent`.
     pub(crate) fn holds(&self, i: usize, key: u64, parent: usize) -> bool {
-        self.persistent.get(i).copied().unwrap_or(false)
-            && self.nodes[i].key == key
-            && self.nodes[i].parent == parent
+        self.tree.persistent.get(i).copied().unwrap_or(false)
+            && self.tree.nodes[i].key == key
+            && self.tree.nodes[i].parent == parent
     }
 
     /// Puts a retained node that was not emitted again back under the open
     /// element, with its subtree as it stands.
     pub(crate) fn reattach(&mut self, i: usize) {
         let parent = self.content_parent();
-        self.nodes[parent].built_children.push(i);
+        self.tree.nodes[parent].built_children.push(i);
     }
 
     /// Puts back a retained node the element being emitted owns and does
@@ -129,17 +129,24 @@ impl Ui {
     /// its subtree.
     pub(crate) fn keep_owned(&mut self, i: usize) {
         self.reattach(i);
-        if let Some(owned) = self.owning.last_mut() {
+        if let Some(owned) = self.tree.owning.last_mut() {
             owned.slots.push(i);
         }
     }
 
     pub(crate) fn previous_node(&self, i: usize) -> Option<&Node> {
-        self.layout.cache.prev.get(&i).or_else(|| self.nodes.get(i))
+        self.layout
+            .cache
+            .prev
+            .get(&i)
+            .or_else(|| self.tree.nodes.get(i))
     }
 
     pub(crate) fn previous_nodes(&self) -> impl Iterator<Item = &Node> {
-        self.retiring.iter().filter_map(|&i| self.previous_node(i))
+        self.tree
+            .retiring
+            .iter()
+            .filter_map(|&i| self.previous_node(i))
     }
 
     /// A further touch (pointers 1 to 4, `og.Pointers`) on the touch control
@@ -172,12 +179,12 @@ impl Ui {
     }
 
     pub(crate) fn parent(&self) -> usize {
-        self.stack.last().copied().unwrap_or(0)
+        self.tree.stack.last().copied().unwrap_or(0)
     }
 
     pub(crate) fn content_parent(&self) -> usize {
         let owner = self.parent();
-        match self.nodes[owner].content_slot {
+        match self.tree.nodes[owner].content_slot {
             NONE => owner,
             slot => slot,
         }
@@ -192,7 +199,7 @@ impl Ui {
         content: Content,
     ) -> usize {
         let id = format!("::part({})#{}", identity.0, identity.1);
-        let key = child_key(self.nodes[owner].key, &id);
+        let key = child_key(self.tree.nodes[owner].key, &id);
         let part = crate::layout::PartBox {
             owner,
             reference,
@@ -200,45 +207,45 @@ impl Ui {
             intrinsic_props: Default::default(),
         };
         if let Some(i) = self.render_slot(key, owner)
-            && self.nodes[owner].built_children.contains(&i)
+            && self.tree.nodes[owner].built_children.contains(&i)
         {
-            if !self.emitted.contains(&i) {
+            if !self.tree.emitted.contains(&i) {
                 self.layout
                     .cache
                     .prev
                     .entry(i)
-                    .or_insert_with(|| self.nodes[i].clone());
+                    .or_insert_with(|| self.tree.nodes[i].clone());
             }
-            self.nodes[i].part_box = Some(part);
-            self.nodes[i].el = element;
-            self.nodes[i].content = content;
-            self.invalidation.rederive.push(owner);
+            self.tree.nodes[i].part_box = Some(part);
+            self.tree.nodes[i].el = element;
+            self.tree.nodes[i].content = content;
+            self.tree.invalidation.rederive.push(owner);
             return i;
         }
         let mut node = Node::new(key, id, owner, element);
         node.part_box = Some(part);
         node.content = content;
         let i = self.write_node(node, ("part", false));
-        self.nodes[owner].built_children.push(i);
+        self.tree.nodes[owner].built_children.push(i);
         i
     }
 
     pub(crate) fn open_part(&mut self, id: impl Into<Id>, mut element: Element) {
         let reference = element.part.take().expect("a widget part reference");
-        let owner = self.stack.last().copied().unwrap_or(0);
+        let owner = self.tree.stack.last().copied().unwrap_or(0);
         let i = self.push("part", id.into(), element);
-        self.nodes[i].part_box = Some(crate::layout::PartBox {
+        self.tree.nodes[i].part_box = Some(crate::layout::PartBox {
             owner,
             reference,
             element,
             intrinsic_props: Default::default(),
         });
-        self.stack.push(i);
+        self.tree.stack.push(i);
     }
 
     /// Adds a node under the open element and returns its index.
     pub(crate) fn push(&mut self, kind: &'static str, id: Id, el: Element) -> usize {
-        if !self.building {
+        if !self.tree.building {
             self.out
                 .warnings
                 .push("an element was added outside begin/end; call ui.begin() first".into());
@@ -247,9 +254,10 @@ impl Ui {
         let owner = self.parent();
         let parent = self.content_parent();
         let anonymous = id.is_empty();
-        let parent_key = self.nodes[owner].key;
+        let parent_key = self.tree.nodes[owner].key;
         let mut local = if anonymous {
             let n = self
+                .tree
                 .anonymous
                 .entry(child_key(parent_key, kind))
                 .or_insert(0);
@@ -268,11 +276,11 @@ impl Ui {
             }
         };
         let mut key = child_key(parent_key, &local);
-        if !self.built.insert(key) {
+        if !self.tree.built.insert(key) {
             let mut n = 1;
             loop {
                 key = child_key(parent_key, &format!("{local}~{n}"));
-                if self.built.insert(key) {
+                if self.tree.built.insert(key) {
                     break;
                 }
                 n += 1;
@@ -284,12 +292,12 @@ impl Ui {
             ));
             local = renamed;
         }
-        let in_place = self.in_place == Some((key, parent));
+        let in_place = self.tree.in_place == Some((key, parent));
         let index = self.write_node(Node::new(key, local, parent, el), (kind, anonymous));
         if in_place {
-            self.in_place = None;
+            self.tree.in_place = None;
         } else {
-            self.nodes[parent].built_children.push(index);
+            self.tree.nodes[parent].built_children.push(index);
         }
         index
     }
@@ -298,10 +306,10 @@ impl Ui {
     /// closed, or a widget), as `bounds`, `gesture` and the probe name it;
     /// empty when there is none.
     pub fn last_path(&self) -> String {
-        if self.last_closed >= self.nodes.len() || self.last_closed == 0 {
+        if self.tree.last_closed >= self.tree.nodes.len() || self.tree.last_closed == 0 {
             return String::new();
         }
-        self.path_of(self.last_closed)
+        self.path_of(self.tree.last_closed)
     }
 
     pub(crate) fn path_of(&self, mut i: usize) -> String {
@@ -309,12 +317,12 @@ impl Ui {
         let own = i;
         while i != NONE && i != 0 {
             if i == own
-                || self.nodes[i].part_box.is_none()
-                || !self.nodes[i].id.starts_with("::part(")
+                || self.tree.nodes[i].part_box.is_none()
+                || !self.tree.nodes[i].id.starts_with("::part(")
             {
-                parts.push(self.nodes[i].id.clone());
+                parts.push(self.tree.nodes[i].id.clone());
             }
-            i = self.nodes[i].parent;
+            i = self.tree.nodes[i].parent;
         }
         if parts.is_empty() {
             return "root".into();
@@ -328,7 +336,7 @@ impl Ui {
     /// A component reads its root's path right after opening it, to name
     /// its parts in those calls.
     pub fn open_path(&self) -> String {
-        match self.stack.last() {
+        match self.tree.stack.last() {
             Some(&i) if i != 0 => self.probe_path(i),
             _ => String::new(),
         }
@@ -338,8 +346,8 @@ impl Ui {
     /// layer placed against another element (a tooltip) that element's path
     /// before its own id, as its `parent` is that element's id.
     pub(crate) fn probe_path(&self, i: usize) -> String {
-        let n = &self.nodes[i];
-        if n.parent == NONE && n.anchor != NONE && n.anchor < self.nodes.len() {
+        let n = &self.tree.nodes[i];
+        if n.parent == NONE && n.anchor != NONE && n.anchor < self.tree.nodes.len() {
             return format!("{}/{}", self.probe_path(n.anchor), n.id);
         }
         self.path_of(i)
@@ -422,11 +430,11 @@ impl Ui {
     /// Marks node `i` as a keyboard/gamepad focus target and returns its
     /// response; the ring shows while navigation put focus on it.
     pub(crate) fn nav_target(&mut self, i: usize, adjust: bool) -> Response {
-        let key = self.nodes[i].key;
+        let key = self.tree.nodes[i].key;
         let r = self.respond(key);
         let ring = (self.interaction.state.focus == key && self.interaction.state.focus_visible)
             || self.forced_interaction(key) == Some("focused");
-        let n = &mut self.nodes[i];
+        let n = &mut self.tree.nodes[i];
         n.nav = true;
         n.adjust = adjust;
         let own = n.el.own_ring;
@@ -440,16 +448,16 @@ impl Ui {
     /// blend, how it clips its children and whether its subtree draws
     /// offscreen through a material; over its background.
     pub fn set_draw(&mut self, draw: crate::paint::ElementDraw) {
-        if let Some(&last) = self.emitted.last() {
-            if self.draws.contains_key(&last) {
+        if let Some(&last) = self.tree.emitted.last() {
+            if self.tree.draws.contains_key(&last) {
                 let path = self.path_of(last);
                 self.out.warnings.push(format!(
                     "setDraw replaced the draw set on {path} this tick: setDraw draws the element added last, \
                      so call it right after the element's open or control, before its children"
                 ));
             }
-            self.draws.insert(last, draw);
-            self.dressable.remove(&last);
+            self.tree.draws.insert(last, draw);
+            self.tree.dressable.remove(&last);
         }
     }
 
@@ -460,9 +468,9 @@ impl Ui {
     /// replaces the whole draw; the draw's shape stays, so a ring, a star
     /// or a segment keeps its geometry in every style (docs/ui.md §3.2).
     pub fn set_draw_dressable(&mut self, draw: crate::paint::ElementDraw) {
-        if let Some(&last) = self.emitted.last() {
-            self.draws.insert(last, draw);
-            self.dressable.insert(last);
+        if let Some(&last) = self.tree.emitted.last() {
+            self.tree.draws.insert(last, draw);
+            self.tree.dressable.insert(last);
         }
     }
 
@@ -474,29 +482,29 @@ impl Ui {
             (false, Direction::Column) => "column",
         };
         let i = self.push(kind, id.into(), el);
-        self.stack.push(i);
+        self.tree.stack.push(i);
     }
 
     /// Closes the open container. For an `interactive` element, its response.
     pub fn close(&mut self) -> Response {
-        if self.stack.len() <= 1 {
+        if self.tree.stack.len() <= 1 {
             self.out
                 .warnings
                 .push("close without open: every ui.open() takes one ui.close()".into());
             return Response::default();
         }
-        let i = self.stack.pop().unwrap_or(0);
-        self.last_closed = i;
-        if self.nodes[i].el.interactive && self.nodes[i].el.focusable {
-            let adjustable = self.nodes[i].el.adjustable;
-            let claim = self.nodes[i].el.arrows
+        let i = self.tree.stack.pop().unwrap_or(0);
+        self.tree.last_closed = i;
+        if self.tree.nodes[i].el.interactive && self.tree.nodes[i].el.focusable {
+            let adjustable = self.tree.nodes[i].el.adjustable;
+            let claim = self.tree.nodes[i].el.arrows
                 | if adjustable {
                     crate::ui::ARROW_LEFT | crate::ui::ARROW_RIGHT
                 } else {
                     0
                 };
             let mut r = self.nav_target(i, adjustable);
-            self.nodes[i].claim = claim;
+            self.tree.nodes[i].claim = claim;
             if r.focused && claim & (crate::ui::ARROW_LEFT | crate::ui::ARROW_RIGHT) != 0 {
                 r.adjust = self.interaction.nav.adjust;
             }
@@ -504,8 +512,8 @@ impl Ui {
                 r.adjust_y = self.interaction.nav.adjust_y;
             }
             r
-        } else if self.nodes[i].el.interactive {
-            self.respond(self.nodes[i].key)
+        } else if self.tree.nodes[i].el.interactive {
+            self.respond(self.tree.nodes[i].key)
         } else {
             Response::default()
         }
@@ -578,7 +586,7 @@ impl Ui {
         };
         let id = id.into();
         let i = self.push("panel", id, el);
-        self.stack.push(i);
+        self.tree.stack.push(i);
     }
 
     /// A vertically scrolling, clipping column built by `f`.
@@ -611,7 +619,7 @@ impl Ui {
 
     pub(crate) fn leaf(&mut self, kind: &'static str, id: Id, el: Element) -> usize {
         let i = self.push(kind, id, el);
-        self.last_closed = i;
+        self.tree.last_closed = i;
         i
     }
 
@@ -639,7 +647,7 @@ impl Ui {
     /// is no room) once the pointer has rested on it for `motion.duration.slow`.
     /// Only interactive elements are hovered, so anchor it to a button or a control.
     pub fn tooltip(&mut self, text: &str) {
-        let anchor = self.last_closed;
+        let anchor = self.tree.last_closed;
         if anchor == NONE {
             self.out.warnings.push(
                 "tooltip with no element before it: call ui.tooltip() right after the control"
@@ -649,13 +657,13 @@ impl Ui {
         }
         let delay = (self.env.theme.durations_ms.slow * self.env.ticks_per_second as f32 / 1000.0)
             .ceil() as u32;
-        if self.interaction.state.hot != self.nodes[anchor].key
+        if self.interaction.state.hot != self.tree.nodes[anchor].key
             || self.interaction.state.hover_ticks < delay
         {
             return;
         }
         let t = self.env.theme;
-        let key = child_key(self.nodes[anchor].key, "tooltip");
+        let key = child_key(self.tree.nodes[anchor].key, "tooltip");
         let mut node = Node::new(
             key,
             "tooltip".into(),
@@ -685,7 +693,7 @@ impl Ui {
         node.anchor = anchor;
         node.float = Float::Tooltip;
         let index = self.write_node(node, ("tooltip", false));
-        self.floating.push(index);
+        self.tree.floating.push(index);
     }
 
     /// A top-layer element's place in the tree (a modal dialog's, a
@@ -695,7 +703,7 @@ impl Ui {
     /// callout keyed as the element itself). One key names one node: the
     /// trees' index, motion and interaction state find the layer by it.
     pub(crate) fn layer_place(&mut self, id: &Id, layer: u64) -> usize {
-        let parent = self.nodes[self.parent()].key;
+        let parent = self.tree.nodes[self.parent()].key;
         let id = if child_key(parent, id.as_str()) == layer {
             Id::from(format!("{}~place", id.as_str()))
         } else {
@@ -721,7 +729,7 @@ impl Ui {
         float: Float,
         anchor: usize,
     ) -> usize {
-        if !self.building {
+        if !self.tree.building {
             self.out
                 .warnings
                 .push("an element was added outside begin/end; call ui.begin() first".into());
@@ -729,14 +737,15 @@ impl Ui {
         }
         let mut local = id.as_str().replace('/', "_");
         if local.is_empty() {
-            local = format!("{kind}#{}", self.floating.len());
+            local = format!("{kind}#{}", self.tree.floating.len());
         }
         // Taken by a layer written or kept this frame; a retained layer of
         // last frame not yet written is this one's own slot, rewritten below.
         let taken = |s: &Ui, l: &str| {
-            s.floating
+            s.tree
+                .floating
                 .iter()
-                .any(|&f| s.nodes[f].id == l && s.slot_present[f])
+                .any(|&f| s.tree.nodes[f].id == l && s.tree.slot_present[f])
         };
         if taken(self, &local) {
             let mut n = 1;
@@ -749,7 +758,7 @@ impl Ui {
             ));
             local = renamed;
         }
-        let key = child_key(self.nodes[0].key, &local);
+        let key = child_key(self.tree.nodes[0].key, &local);
         self.open_layer_keyed(kind, key, local, el, float, anchor)
     }
 
@@ -770,8 +779,8 @@ impl Ui {
         node.float = float;
         node.anchor = anchor;
         let index = self.write_node(node, (kind, false));
-        self.floating.push(index);
-        self.stack.push(index);
+        self.tree.floating.push(index);
+        self.tree.stack.push(index);
         index
     }
 }

@@ -70,7 +70,7 @@ impl Ui {
         };
         // Open, it builds each tick: its keys take input and its caret
         // blinks.
-        if let Some(owned) = self.owning.last_mut() {
+        if let Some(owned) = self.tree.owning.last_mut() {
             owned.moved = true;
         }
         let out = self.on_screen_keyboard(&id, open, s, &desc);
@@ -126,7 +126,7 @@ impl Ui {
             );
         }
         let frac = (ticks as f32 / need as f32).min(1.0);
-        if !fill || frac <= 0.0 || at >= self.nodes.len() || self.nodes[at].key != key {
+        if !fill || frac <= 0.0 || at >= self.tree.nodes.len() || self.tree.nodes[at].key != key {
             return;
         }
         // `::-og-hold`'s box (a pseudo-element node) colours it.
@@ -141,8 +141,8 @@ impl Ui {
         } else {
             crate::layout::Frame::left(0.0, frac)
         };
-        let radius = self.nodes[at].el.radius;
-        self.nodes[at].shapes.push(crate::layout::Shape::Rect {
+        let radius = self.tree.nodes[at].el.radius;
+        self.tree.nodes[at].shapes.push(crate::layout::Shape::Rect {
             frame,
             radius,
             color,
@@ -239,7 +239,7 @@ impl Ui {
                         // A disabled control's shortcut activates nothing,
                         // as its press does not (a `<fieldset disabled>`'s
                         // controls included).
-                        && !self.tree.find(key).is_some_and(|i| self.nodes[i].disabled)
+                        && !self.tree.index.find(key).is_some_and(|i| self.tree.nodes[i].disabled)
                         // An exclusive `<details name>`'s own action
                         // reaches every disclosure of its name.
                         && (a.starts_with('~') || self.focus_in_row(path, &b.row_key))

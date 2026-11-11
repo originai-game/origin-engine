@@ -276,13 +276,13 @@ impl Ui {
         } else {
             t.durations_ms.slow + t.durations_ms.base
         };
-        let size = match self.nodes[i].el.width {
+        let size = match self.tree.nodes[i].el.width {
             crate::layout::Size::Fixed(w) => w,
             _ => 32.0,
         };
         let color = desc.color.unwrap_or(t.palette.primary);
         let delay = (desc.delay_ms * self.env.ticks_per_second as f32 / 1000.0).round() as u64;
-        let key = crate::id::child_key(self.nodes[i].key, "burst");
+        let key = crate::id::child_key(self.tree.nodes[i].key, "burst");
         self.world.emitters.push(EmitterEntry {
             node: i,
             key,
@@ -301,7 +301,7 @@ impl Ui {
         let mut live = Vec::new();
         for e in &emitters {
             live.push(e.key);
-            let n = &self.nodes[e.node];
+            let n = &self.tree.nodes[e.node];
             let (rect, world, clip) = (n.rect, n.world, n.clip);
             let d = &e.desc;
             let life = ((if d.lifetime_ms > 0.0 {
@@ -427,7 +427,7 @@ impl Ui {
             } else {
                 Rect::new(0.0, 0.0, vp.width, vp.height)
             };
-            let key = self.nodes[e.node].key;
+            let key = self.tree.nodes[e.node].key;
             self.world
                 .marks
                 .entry(key)
@@ -477,7 +477,7 @@ impl Ui {
                 })
                 .collect::<Vec<_>>();
             // On the root, after everything.
-            let root = self.nodes[0].key;
+            let root = self.tree.nodes[0].key;
             self.world.marks.entry(root).or_default().leave.extend(cmds);
         }
         self.world.emitters = emitters;

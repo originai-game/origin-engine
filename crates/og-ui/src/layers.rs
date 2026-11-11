@@ -635,14 +635,14 @@ impl Ui {
         // Layers draw in stack order, whoever built them first.
         let order: Vec<String> = self.docs.host.layers.layers.iter().map(layer_id).collect();
         let rank = |ui: &Ui, f: usize| {
-            let n = &ui.nodes[f];
-            if n.float == Float::Modal && ui.kinds[f].0 == "layer" {
+            let n = &ui.tree.nodes[f];
+            if n.float == Float::Modal && ui.tree.kinds[f].0 == "layer" {
                 order.iter().position(|o| *o == n.id).map_or(0, |p| p + 1)
             } else {
                 0
             }
         };
-        let mut floats = std::mem::take(&mut self.floating);
+        let mut floats = std::mem::take(&mut self.tree.floating);
         let layered: Vec<usize> = floats
             .iter()
             .copied()
@@ -658,7 +658,7 @@ impl Ui {
                 }
             }
         }
-        self.floating = floats;
+        self.tree.floating = floats;
     }
 
     /// Builds layer `k` of the stack.
@@ -758,9 +758,9 @@ impl Ui {
             Float::Modal,
             NONE,
         );
-        let key = self.nodes[idx].key;
+        let key = self.tree.nodes[idx].key;
         {
-            let n = &mut self.nodes[idx];
+            let n = &mut self.tree.nodes[idx];
             n.backdrop = spec.capture || dim;
             n.scope = spec.input != InputMode::Game;
             n.props.inert = info.inert;
@@ -1094,7 +1094,8 @@ mod tests {
         let mut ui = ui_with(&[("hud.svelte", HUD), ("pause.svelte", &page)]);
         mount(&mut ui, "pause", "pause");
         let opacity = |ui: &Ui| {
-            ui.nodes
+            ui.tree
+                .nodes
                 .iter()
                 .find(|n| n.id == "test:pause")
                 .map(|n| (n.sampled.opacity, n.props.animations.len()))

@@ -89,14 +89,14 @@ impl Ui {
                 ..Element::default()
             },
         );
-        self.nodes[i].focusable = true;
-        self.nodes[i].nav = true;
+        self.tree.nodes[i].focusable = true;
+        self.tree.nodes[i].nav = true;
         if number {
-            self.nodes[i].claim = ARROW_UP | ARROW_DOWN;
+            self.tree.nodes[i].claim = ARROW_UP | ARROW_DOWN;
         }
         // Its frame is its first child, under the buttons at its end.
         let frame = (!desc.bare).then(|| self.field_frame(i, base));
-        let key = self.nodes[i].key;
+        let key = self.tree.nodes[i].key;
         let revealed = secret && self.reveal_toggle(i, base, reveal_w, height);
         let cleared = search
             && !value.is_empty()
@@ -106,7 +106,7 @@ impl Ui {
             value.clear();
         }
         let stepped = number && self.number_buttons(i, base, [spinner, height, pad], value, desc);
-        self.last_closed = i;
+        self.tree.last_closed = i;
         let mut r = self.respond(key);
         r.changed |= cleared || stepped;
         // Only the real focus edits; a forced one (the probe's) only shows.
@@ -171,7 +171,7 @@ impl Ui {
         } else {
             shown
         };
-        let disabled = self.nodes[i].disabled;
+        let disabled = self.tree.nodes[i].disabled;
         let ink = self.field_ink(base, focused, invalid, disabled);
         let (step, color) = if placeholder {
             (ink.placeholder_step, ink.placeholder)
@@ -208,10 +208,10 @@ impl Ui {
         };
         // The frame draws the text; the host measures it.
         if let Some(slot) = frame {
-            self.nodes[slot].content = Content::Text(content.clone());
-            self.nodes[slot].widget = Widget::Field(edit);
+            self.tree.nodes[slot].content = Content::Text(content.clone());
+            self.tree.nodes[slot].widget = Widget::Field(edit);
         }
-        let n = &mut self.nodes[i];
+        let n = &mut self.tree.nodes[i];
         n.content = Content::Text(content);
         n.widget = Widget::Field(edit);
         n.probe_text = if value.is_empty() {
@@ -238,12 +238,12 @@ impl Ui {
         let [width, height, inset] = geometry;
         let now = self.seconds();
         let mut accelerated = self.interaction.input.shift;
-        let mut direction = if self.interaction.state.focus == self.nodes[owner].key {
+        let mut direction = if self.interaction.state.focus == self.tree.nodes[owner].key {
             -f64::from(self.interaction.nav.adjust_y)
         } else {
             0.0
         };
-        self.stack.push(owner);
+        self.tree.stack.push(owner);
         for (id, class, sign, end) in [
             ("Increment", "inc", 1.0, inset),
             ("Decrement", "dec", -1.0, inset + width),
@@ -258,14 +258,14 @@ impl Ui {
                     ..Element::default()
                 },
             );
-            let response = self.respond(self.nodes[i].key);
-            self.nodes[i].props.position = crate::element::Position::Absolute;
-            self.nodes[i].props.insets = crate::element::Edges {
+            let response = self.respond(self.tree.nodes[i].key);
+            self.tree.nodes[i].props.position = crate::element::Position::Absolute;
+            self.tree.nodes[i].props.insets = crate::element::Edges {
                 end: Some(end),
                 top: Some(0.0),
                 ..Default::default()
             };
-            self.nodes[i].el.part = Some(
+            self.tree.nodes[i].el.part = Some(
                 crate::dress::PartRef {
                     part: "button",
                     ..base
@@ -276,8 +276,8 @@ impl Ui {
                 .flag_if(response.pressed, "pressed")
                 .flag_if(desc.readonly, "disabled"),
             );
-            let part = self.nodes[i].el.part.unwrap();
-            self.nodes[i].shapes.push(Shape::Rect {
+            let part = self.tree.nodes[i].el.part.unwrap();
+            self.tree.nodes[i].shapes.push(Shape::Rect {
                 frame: crate::layout::Frame::centered(
                     -width / 2.0,
                     0.0,
@@ -288,21 +288,22 @@ impl Ui {
                 color: self.env.theme.palette.ink_muted,
             });
             for side in [-1.0, 1.0] {
-                self.nodes[i].shapes.push(Shape::Bar {
+                self.tree.nodes[i].shapes.push(Shape::Bar {
                     part,
                     frame: crate::layout::Frame::centered(side * 2.5, 0.0, 7.0, 2.0),
                     angle: side * sign as f32 * std::f32::consts::FRAC_PI_4,
                     color: self.env.theme.palette.ink,
                 });
             }
-            self.nodes[i].a11y.name = Some(if sign > 0.0 { "Increase" } else { "Decrease" }.into());
-            self.nodes[i].disabled = desc.readonly;
+            self.tree.nodes[i].a11y.name =
+                Some(if sign > 0.0 { "Increase" } else { "Decrease" }.into());
+            self.tree.nodes[i].disabled = desc.readonly;
             self.control_part(i, "button");
             let since_id = format!("{id}~since");
             let repeat_id = format!("{id}~repeat");
             let since = self.memory(&since_id, -1.0);
             let last = self.memory(&repeat_id, -1.0);
-            if response.pressed && !desc.readonly && !self.nodes[owner].disabled {
+            if response.pressed && !desc.readonly && !self.tree.nodes[owner].disabled {
                 if since < 0.0 {
                     direction = sign;
                     self.remember(&since_id, now);
@@ -324,7 +325,7 @@ impl Ui {
                 self.remember(&repeat_id, -1.0);
             }
         }
-        self.stack.pop();
+        self.tree.stack.pop();
         if direction == 0.0 || desc.readonly {
             return false;
         }
@@ -398,10 +399,10 @@ impl Ui {
     /// shows, after this tick's press.
     fn reveal_toggle(&mut self, i: usize, base: crate::dress::PartRef, w: f32, h: f32) -> bool {
         use std::f32::consts::FRAC_PI_2;
-        let field = self.nodes[i].key;
+        let field = self.tree.nodes[i].key;
         let memory = child_key(field, "reveal");
         let mut revealed = self.has_anim(memory) && self.anim(memory).h == 1;
-        self.stack.push(i);
+        self.tree.stack.push(i);
         let j = self.leaf(
             "button",
             Id::from("Reveal"),
@@ -413,9 +414,9 @@ impl Ui {
                 ..Element::default()
             },
         );
-        self.stack.pop();
-        self.nodes[j].props.position = crate::element::Position::Absolute;
-        self.nodes[j].props.insets = crate::element::Edges {
+        self.tree.stack.pop();
+        self.tree.nodes[j].props.position = crate::element::Position::Absolute;
+        self.tree.nodes[j].props.insets = crate::element::Edges {
             end: Some(0.0),
             top: Some(0.0),
             ..Default::default()
@@ -423,8 +424,8 @@ impl Ui {
         // No focus stop of its own: a press gives the focus to the field
         // around it (the caret stays, a phone's keyboard stays up), and a
         // screen reader presses it by its button.
-        let r = self.respond(self.nodes[j].key);
-        if r.clicked && !self.nodes[i].disabled {
+        let r = self.respond(self.tree.nodes[j].key);
+        if r.clicked && !self.tree.nodes[i].disabled {
             revealed = !revealed;
         }
         self.set_anim(
@@ -455,7 +456,7 @@ impl Ui {
         let radius = (ew * ew / 4.0 + eh * eh / 4.0) / eh;
         let half = ((ew / 2.0) / radius).clamp(-1.0, 1.0).asin();
         let thick = (s * 0.09).max(1.0);
-        let n = &mut self.nodes[j];
+        let n = &mut self.tree.nodes[j];
         n.el.part = Some(part);
         n.shapes.clear();
         for (dy, mid) in [
@@ -503,7 +504,7 @@ impl Ui {
     /// Clear. Like the reveal toggle it is no focus stop (a press keeps
     /// the field's focus). Answers whether it was pressed this tick.
     fn clear_button(&mut self, i: usize, base: crate::dress::PartRef, w: f32, h: f32) -> bool {
-        self.stack.push(i);
+        self.tree.stack.push(i);
         let j = self.leaf(
             "button",
             Id::from("Clear"),
@@ -515,14 +516,14 @@ impl Ui {
                 ..Element::default()
             },
         );
-        self.stack.pop();
-        self.nodes[j].props.position = crate::element::Position::Absolute;
-        self.nodes[j].props.insets = crate::element::Edges {
+        self.tree.stack.pop();
+        self.tree.nodes[j].props.position = crate::element::Position::Absolute;
+        self.tree.nodes[j].props.insets = crate::element::Edges {
             end: Some(0.0),
             top: Some(0.0),
             ..Default::default()
         };
-        let r = self.respond(self.nodes[j].key);
+        let r = self.respond(self.tree.nodes[j].key);
         let p = self.env.theme.palette;
         let part = crate::dress::PartRef {
             part: "clear",
@@ -538,7 +539,7 @@ impl Ui {
         let color = if r.hovered { p.ink } else { p.ink_muted };
         let s = (w.min(h) * 0.32).max(6.0);
         let thick = (s * 0.16).max(1.0);
-        let n = &mut self.nodes[j];
+        let n = &mut self.tree.nodes[j];
         n.el.part = Some(part);
         n.shapes.clear();
         for angle in [std::f32::consts::FRAC_PI_4, -std::f32::consts::FRAC_PI_4] {
@@ -552,16 +553,16 @@ impl Ui {
         n.probe_text = "Clear".into();
         n.a11y.name = Some("Clear".into());
         self.control_part(j, "clear");
-        r.clicked && !self.nodes[i].disabled
+        r.clicked && !self.tree.nodes[i].disabled
     }
 
     /// A text control's button (`reveal`, `clear`, a number's `button`) as
     /// a persistent part box filling it: the box takes the part's CSS and
     /// draws the icon; the button keeps its input and semantics.
     fn control_part(&mut self, j: usize, name: &'static str) {
-        let element = self.nodes[j].el;
+        let element = self.tree.nodes[j].el;
         let part = element.part.expect("a dressed text control button");
-        let shapes = std::mem::take(&mut self.nodes[j].shapes);
+        let shapes = std::mem::take(&mut self.tree.nodes[j].shapes);
         let slot = self.write_part(
             j,
             part,
@@ -575,8 +576,8 @@ impl Ui {
             },
             Content::None,
         );
-        self.nodes[j].content_slot = slot;
-        self.nodes[slot].shapes = shapes;
+        self.tree.nodes[j].content_slot = slot;
+        self.tree.nodes[slot].shapes = shapes;
     }
 
     /// A text control's frame (`<component>::part(frame)`): a persistent
@@ -584,7 +585,7 @@ impl Ui {
     /// the frame's CSS, paints the ground and draws the text; the host
     /// keeps the layout, input, focus and semantics.
     fn field_frame(&mut self, i: usize, base: crate::dress::PartRef) -> usize {
-        let el = self.nodes[i].el;
+        let el = self.tree.nodes[i].el;
         let slot = self.write_part(
             i,
             base,
@@ -605,10 +606,10 @@ impl Ui {
             bottom: Some(0.0),
             ..Default::default()
         };
-        let part = self.nodes[slot].part_box.as_mut().expect("frame part");
+        let part = self.tree.nodes[slot].part_box.as_mut().expect("frame part");
         part.intrinsic_props.position = crate::element::Position::Absolute;
         part.intrinsic_props.insets = fill;
-        let props = &mut self.nodes[slot].props;
+        let props = &mut self.tree.nodes[slot].props;
         props.position = crate::element::Position::Absolute;
         props.insets = fill;
         slot
@@ -642,7 +643,7 @@ impl Ui {
     /// Whether node `i` is a text control whose frame part box paints it:
     /// the host draws no ground or text of its own.
     pub(crate) fn framed_text(&self, i: usize) -> bool {
-        let n = &self.nodes[i];
+        let n = &self.tree.nodes[i];
         n.content_slot != NONE
             && n.part_box.is_none()
             && matches!(n.widget, Widget::Field(_) | Widget::TextArea { .. })
@@ -651,18 +652,18 @@ impl Ui {
     /// The node whose document state a text control's drawing reads (its
     /// `::selection`, its caret's part animation): a frame's host.
     pub(crate) fn text_owner(&self, i: usize) -> usize {
-        self.nodes[i]
+        self.tree.nodes[i]
             .part_box
             .as_ref()
             .map(|p| p.owner)
-            .filter(|&o| self.nodes[o].content_slot == i && self.framed_text(o))
+            .filter(|&o| self.tree.nodes[o].content_slot == i && self.framed_text(o))
             .unwrap_or(i)
     }
 
     /// Whether node `i` has a fill a focus ring or outline follows, and
     /// whether it is a focused text control that rings itself.
     pub(crate) fn field_rings(&self, i: usize) -> (bool, bool) {
-        let n = &self.nodes[i];
+        let n = &self.tree.nodes[i];
         let framed = n.sampled.background.is_some() || self.framed_text(i);
         let ring = match &n.widget {
             Widget::Field(e) | Widget::TextArea { edit: e, .. } => {
@@ -679,13 +680,13 @@ impl Ui {
     /// taking the host's own document ground, radius and direction unless
     /// the frame declares them.
     pub(crate) fn text_frame_box(&mut self, i: usize, r: &crate::doc::build::Resolved) {
-        let Some(owner) = self.nodes[i].part_box.as_ref().map(|p| p.owner) else {
+        let Some(owner) = self.tree.nodes[i].part_box.as_ref().map(|p| p.owner) else {
             return;
         };
-        if self.nodes[owner].content_slot != i || !self.framed_text(owner) {
+        if self.tree.nodes[owner].content_slot != i || !self.framed_text(owner) {
             return;
         }
-        let host = &self.nodes[owner];
+        let host = &self.tree.nodes[owner];
         let border = host
             .decor
             .as_ref()
@@ -709,7 +710,7 @@ impl Ui {
         ]
         .iter()
         .any(|name| r.has(name));
-        let n = &mut self.nodes[i];
+        let n = &mut self.tree.nodes[i];
         if !declared {
             n.el.padding = Insets {
                 top: (padding.top - border[0]).max(0.0),
@@ -764,16 +765,16 @@ impl Ui {
         bare: bool,
     ) {
         let Some(slot) = frame.filter(|_| !bare) else {
-            let n = &mut self.nodes[i];
+            let n = &mut self.tree.nodes[i];
             n.el.background = None;
             n.el.part = None;
             return;
         };
         let p = self.env.theme.palette;
-        let key = self.nodes[i].key;
+        let key = self.tree.nodes[i].key;
         let f = self.spring_to(child_key(key, "focus"), if focused { 1.0 } else { 0.0 });
         let ground = mix_srgba(p.control, p.panel, f.clamp(0.0, 1.0));
-        let n = &mut self.nodes[i];
+        let n = &mut self.tree.nodes[i];
         let part = base
             .flag_if(focused, "focused")
             .flag_if(invalid, "invalid")
@@ -783,7 +784,7 @@ impl Ui {
         n.el.part = Some(part);
         n.el.background = None;
         n.content_slot = slot;
-        let frame = &mut self.nodes[slot];
+        let frame = &mut self.tree.nodes[slot];
         frame.el.background = Some(ground);
         let part_box = frame.part_box.as_mut().expect("frame part");
         part_box.reference = part;
@@ -825,11 +826,11 @@ impl Ui {
                 ..Element::default()
             },
         );
-        self.nodes[i].focusable = true;
-        self.nodes[i].nav = true;
-        self.nodes[i].multiline = true;
+        self.tree.nodes[i].focusable = true;
+        self.tree.nodes[i].nav = true;
+        self.tree.nodes[i].multiline = true;
         let frame = (!desc.bare).then(|| self.field_frame(i, base));
-        let key = self.nodes[i].key;
+        let key = self.tree.nodes[i].key;
         let mut r = self.respond(key);
         // Only the real focus edits; a forced one (the probe's) only shows.
         if self.interaction.state.focus == key {
@@ -868,7 +869,7 @@ impl Ui {
         {
             target.readonly = desc.readonly;
         }
-        let disabled = self.nodes[i].disabled;
+        let disabled = self.tree.nodes[i].disabled;
         let ink = self.field_ink(base, focused, invalid, disabled);
         self.field_part(i, frame, base, focused, invalid, desc.bare);
         let widget = Widget::TextArea {
@@ -880,9 +881,9 @@ impl Ui {
         };
         // The frame draws the lines; the host measures them.
         if let Some(slot) = frame {
-            self.nodes[slot].widget = widget.clone();
+            self.tree.nodes[slot].widget = widget.clone();
         }
-        let n = &mut self.nodes[i];
+        let n = &mut self.tree.nodes[i];
         n.widget = widget;
         n.probe_text = if value.is_empty() {
             desc.placeholder.clone()
@@ -899,7 +900,7 @@ impl Ui {
     /// Editing and scrolling still paint through `text_area_commands`.
     pub(crate) fn field_measurement(&mut self, i: usize, content: bool) -> Option<f32> {
         // A frame part box fills its host, which sizes to the content.
-        if self.nodes[i].part_box.is_some() {
+        if self.tree.nodes[i].part_box.is_some() {
             return None;
         }
         if let Widget::TextArea {
@@ -908,7 +909,7 @@ impl Ui {
             ink,
             line_height,
             ..
-        } = &self.nodes[i].widget
+        } = &self.tree.nodes[i].widget
         {
             let height = *line_height;
             let measured = if content {
@@ -924,12 +925,12 @@ impl Ui {
             } else {
                 Content::None
             };
-            self.nodes[i].content = measured;
+            self.tree.nodes[i].content = measured;
             return content.then_some(height);
         }
         if content
-            && matches!(self.nodes[i].widget, Widget::Field(_))
-            && let Content::Text(text) = &self.nodes[i].content
+            && matches!(self.tree.nodes[i].widget, Widget::Field(_))
+            && let Content::Text(text) = &self.tree.nodes[i].content
         {
             return Some(text.line_height());
         }
@@ -1017,6 +1018,7 @@ impl Ui {
         let n = composition.map_or(0, |(s, e)| e - s);
         if let Some(h) = self.hit(key) {
             let path = self
+                .tree
                 .nodes
                 .iter()
                 .position(|n| n.key == key)
@@ -1050,14 +1052,14 @@ impl Ui {
         let dpr = self.env.viewport.dpr();
         let boxes = crate::edit::boxes(mk.m, mk.text, self.env.direction, mk.size, mk.tracking);
         let n = mk.text.chars().count();
-        let key = self.nodes[self.text_owner(i)].key;
+        let key = self.tree.nodes[self.text_owner(i)].key;
         let mark = |name, rect: Rect, color: Srgba, cmds: &mut Vec<DrawCmd>| {
             let part = crate::dress::PartRef::of("TextEdit", name, None);
             let values = self.part_values(&part, Some(key));
             self.part_commands_at(
                 Some(key),
                 &part,
-                values.part_rect(rect, self.nodes[i].rect).snapped(dpr),
+                values.part_rect(rect, self.tree.nodes[i].rect).snapped(dpr),
                 Some(values.color("color").unwrap_or(color)),
                 0.0,
                 mk.alpha,
@@ -1125,7 +1127,7 @@ impl Ui {
         if self.framed_text(i) {
             return;
         }
-        let n = &self.nodes[i];
+        let n = &self.tree.nodes[i];
         let Widget::TextArea {
             edit,
             text,

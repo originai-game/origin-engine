@@ -86,9 +86,9 @@ impl Ui {
                 ..Element::default()
             },
         );
-        let key = self.nodes[swatch].key;
-        self.nodes[swatch].a11y.role = Some("button");
-        self.nodes[swatch].a11y.value = Some(to_hex(rgb));
+        let key = self.tree.nodes[swatch].key;
+        self.tree.nodes[swatch].a11y.role = Some("button");
+        self.tree.nodes[swatch].a11y.value = Some(to_hex(rgb));
         let pressed = self.respond(key);
         let open_key = crate::id::child_key(key, "~open");
         let mut open = self.has_anim(open_key) && self.anim(open_key).h != 0;
@@ -127,9 +127,9 @@ impl Ui {
                 },
             );
             let square = ui.parent();
-            let square_key = ui.nodes[square].key;
-            ui.nodes[square].a11y.role = Some("slider");
-            ui.nodes[square].a11y.name = Some("Saturation and brightness".into());
+            let square_key = ui.tree.nodes[square].key;
+            ui.tree.nodes[square].a11y.role = Some("slider");
+            ui.tree.nodes[square].a11y.name = Some("Saturation and brightness".into());
             let lit = |c: [f32; 3], a: f32| ColorRef::Literal(srgba(c, a));
             let across = |from: [f32; 2], to: [f32; 2], a: ColorRef, z: ColorRef| {
                 Paint::Gradient(Gradient {
@@ -201,9 +201,9 @@ impl Ui {
                         ..Element::default()
                     },
                 );
-                ui.nodes[i].props.position = crate::element::Position::Absolute;
-                ui.nodes[i].props.insets.start = Some(s * rect.width - ring / 2.0);
-                ui.nodes[i].props.insets.top = Some((1.0 - v) * rect.height - ring / 2.0);
+                ui.tree.nodes[i].props.position = crate::element::Position::Absolute;
+                ui.tree.nodes[i].props.insets.start = Some(s * rect.width - ring / 2.0);
+                ui.tree.nodes[i].props.insets.top = Some((1.0 - v) * rect.height - ring / 2.0);
             }
             ui.close();
             let hue = ui.value_slider(

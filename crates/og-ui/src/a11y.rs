@@ -656,8 +656,8 @@ impl crate::Ui {
     /// false, with a frame warning, when there is no element before it or
     /// the role is none of [`ROLES`].
     pub fn semantics(&mut self, s: &Semantics) -> bool {
-        let i = self.last_closed;
-        if i >= self.nodes.len() {
+        let i = self.tree.last_closed;
+        if i >= self.tree.nodes.len() {
             self.out.warnings.push(
                 "semantics with no element before it: call ui.semantics() right after the element"
                     .into(),
@@ -677,8 +677,8 @@ impl crate::Ui {
                 }
             },
         };
-        self.nodes[i].disabled |= s.disabled;
-        let a = &mut self.nodes[i].a11y;
+        self.tree.nodes[i].disabled |= s.disabled;
+        let a = &mut self.tree.nodes[i].a11y;
         if role.is_some() {
             a.role = role;
         }

@@ -450,7 +450,7 @@ impl Ui {
             AnimationTimeline::Document | AnimationTimeline::None => return None,
             AnimationTimeline::Scroll { source, axis } => {
                 let s = match source {
-                    ScrollSource::Own => Some(i).filter(|&i| self.nodes[i].scrolls()),
+                    ScrollSource::Own => Some(i).filter(|&i| self.tree.nodes[i].scrolls()),
                     ScrollSource::Nearest => self.scroll_ancestor(i),
                     ScrollSource::Root => {
                         let mut out = None;
@@ -473,7 +473,7 @@ impl Ui {
                     (self.scroll_ancestor(d)?, Some(d), t.axis, t.inset)
                 } else {
                     (
-                        Some(d).filter(|&d| self.nodes[d].scrolls())?,
+                        Some(d).filter(|&d| self.tree.nodes[d].scrolls())?,
                         None,
                         t.axis,
                         none,
@@ -481,7 +481,7 @@ impl Ui {
                 }
             }
         };
-        let s = &self.nodes[scroller];
+        let s = &self.tree.nodes[scroller];
         let pad = s.el.padding;
         let (offset, max, start, port) = if axis.horizontal() {
             let max = s.max_scroll_x();
@@ -517,7 +517,7 @@ impl Ui {
         // Laid out at this offset: its place in the content is where it is
         // plus the offset.
         let subject = subject.map(|j| {
-            let r = self.nodes[j].rect;
+            let r = self.tree.nodes[j].rect;
             if axis.horizontal() {
                 (r.x - start + offset, r.width)
             } else {
@@ -534,12 +534,12 @@ impl Ui {
     }
 
     fn scroll_ancestor(&self, i: usize) -> Option<usize> {
-        let mut p = self.nodes[i].parent;
+        let mut p = self.tree.nodes[i].parent;
         while p != NONE {
-            if self.nodes[p].scrolls() {
+            if self.tree.nodes[p].scrolls() {
                 return Some(p);
             }
-            p = self.nodes[p].parent;
+            p = self.tree.nodes[p].parent;
         }
         None
     }
@@ -549,7 +549,7 @@ impl Ui {
     /// declaration in that ancestor's subtree (none, or several: inactive).
     fn named_timeline(&self, i: usize, name: &str) -> Option<(usize, &NamedTimeline)> {
         let declares = |j: usize| {
-            self.nodes[j]
+            self.tree.nodes[j]
                 .props
                 .timelines
                 .iter()
@@ -561,7 +561,7 @@ impl Ui {
             if let Some(t) = declares(at) {
                 return Some((at, t));
             }
-            let n = &self.nodes[at];
+            let n = &self.tree.nodes[at];
             if n.props
                 .timeline_scope
                 .iter()
@@ -576,7 +576,7 @@ impl Ui {
                         }
                         found = Some((j, t));
                     }
-                    stack.extend(self.nodes[j].children.iter().rev().copied());
+                    stack.extend(self.tree.nodes[j].children.iter().rev().copied());
                 }
                 return found;
             }
