@@ -30,7 +30,7 @@ impl Renderer {
         scene: &RenderScene,
     ) -> Result<(Vec<Batch>, instances::Sorted), RenderError> {
         let (meshes, materials) = (&self.cache.meshes, &self.cache.materials);
-        let sorted = self.sorted.update(
+        let sorted = self.instances.sorted.update(
             scene,
             meshes.len(),
             |m| (meshes[m].bounds, meshes[m].index_count == 0),
@@ -1084,7 +1084,8 @@ impl Renderer {
                 baked_joints + matrices.len()
             )));
         }
-        self.palette
+        self.instances
+            .palette
             .prepare_bakes(&self.device, &self.queue, &scene.baked_clips, &used);
         let mut order: Vec<usize> = (0..scene.skinned_instances.len()).collect();
         // Each instance's reflection probe: the one holding the centre of
@@ -1216,10 +1217,11 @@ impl Renderer {
                 // transform belongs to the frame's dynamic palette.
                 let clip = &scene.baked_clips[b.clip as usize];
                 let (k, t) = clip.at(b.frame);
-                let now = self.palette.baked_offset(b.clip) + k * clip.joints as usize;
+                let now = self.instances.palette.baked_offset(b.clip) + k * clip.joints as usize;
                 let before = &scene.baked_clips[b.previous_clip as usize];
                 let (pk, pt) = before.at(b.previous_frame);
-                let then = self.palette.baked_offset(b.previous_clip) + pk * before.joints as usize;
+                let then = self.instances.palette.baked_offset(b.previous_clip)
+                    + pk * before.joints as usize;
                 // Motion effects read it; otherwise a crowd costs its clips alone.
                 let mut transform_at = 0;
                 if taa {
@@ -1356,7 +1358,7 @@ impl Renderer {
             },
             cache.materials.len(),
             &|m| cache.materials[m].shader.is_some(),
-            &|c| self.palette.baked_offset(c),
+            &|c| self.instances.palette.baked_offset(c),
             motion,
             scene.lod_bias,
         )
@@ -1603,6 +1605,29 @@ fn deferred<T: crate::deferred::AnywhereOnce + 'static>(
     #[cfg(target_arch = "wasm32")]
     d.get();
     d
+}
+
+/// The instance records every pass that draws meshes reads: this
+/// frame's and the previous frame's, the skinned instances', the joint
+/// palette, the sway and the debris moved on the GPU.
+pub(crate) struct InstanceRecords {
+    /// The CPU cull's per-instance scratch ([`Renderer::cull`]), kept
+    /// between frames so no pass allocates it.
+    /// The sorted instances, kept across frames (`instances.rs`).
+    pub(crate) sorted: instances::SortedInstances,
+    pub(crate) instance_buffer: wgpu::Buffer,
+    /// What `instance_buffer` holds, so a frame writes only what changed.
+    pub(crate) instance_upload: upload::DirtyUpload,
+    pub(crate) prev_instance_buffer: wgpu::Buffer,
+    /// What `prev_instance_buffer` holds ([`upload::DirtyUpload`]).
+    pub(crate) prev_instance_upload: upload::DirtyUpload,
+    pub(crate) skinned_buffer: wgpu::Buffer,
+    pub(crate) palette: skin::GpuPalette,
+    /// Each instance's sway at the last drawn frame, by instance index
+    /// ([`Instance::sway`]): a swaying vertex's motion vector starts there.
+    pub(crate) previous_sway: Vec<f32>,
+    /// The debris layer's bodies (`debris.rs`).
+    pub(crate) debris: debris::DebrisLayer,
 }
 
 #[cfg(test)]

@@ -128,7 +128,7 @@ impl Renderer {
         // one probe).
         let active_probes: Vec<ReflectionProbe> = probe_frame.active.iter().map(|a| a.0).collect();
         let probe_boxes = probe_select::boxes(&active_probes[..probe_frame.sampled]);
-        self.sorted.set_probes(probe_boxes.clone());
+        self.instances.sorted.set_probes(probe_boxes.clone());
         (probe_frame, active_probes, probe_boxes)
     }
 

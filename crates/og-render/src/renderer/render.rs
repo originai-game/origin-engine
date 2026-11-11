@@ -253,7 +253,7 @@ impl Renderer {
         }
         let skinned_data = std::mem::take(&mut skinned.data);
         let mut joint_matrices = std::mem::take(&mut skinned.matrices);
-        let joints_drawn = (joint_matrices.len() + self.palette.baked_len()) as u32;
+        let joints_drawn = (joint_matrices.len() + self.instances.palette.baked_len()) as u32;
         // TAA's skinned motion vectors: the previous frame's joints and
         // blendshape weights in a second section of the palette (skin.rs,
         // its layout), read by the skinned prepass at `Fx::decal_info.w`.
@@ -1195,8 +1195,8 @@ impl Renderer {
         // including array materials whose current layer word is occupied.
         let foliage_instances = batches.iter().any(|b| b.foliage);
         let auxiliary_instances = object_motion || foliage_instances;
-        let previous_sway = if self.previous_sway.len() == scene.instances.len() {
-            self.previous_sway.as_slice()
+        let previous_sway = if self.instances.previous_sway.len() == scene.instances.len() {
+            self.instances.previous_sway.as_slice()
         } else {
             &[]
         };
@@ -2250,15 +2250,15 @@ impl Renderer {
         let instance_bytes: &[u8] = bytemuck::cast_slice(cpu_instances);
         if grow(
             &self.device,
-            &mut self.instance_buffer,
+            &mut self.instances.instance_buffer,
             "instances",
             instance_bytes.len() as u64,
         ) {
-            self.instance_upload.invalidate();
+            self.instances.instance_upload.invalidate();
         }
-        let mut instance_upload_bytes = self.instance_upload.write(
+        let mut instance_upload_bytes = self.instances.instance_upload.write(
             &self.queue,
-            &self.instance_buffer,
+            &self.instances.instance_buffer,
             instance_bytes,
             &drawn_bytes,
         );
@@ -2289,21 +2289,21 @@ impl Renderer {
             let bytes: &[u8] = bytemuck::cast_slice(&prev);
             if grow(
                 &self.device,
-                &mut self.prev_instance_buffer,
+                &mut self.instances.prev_instance_buffer,
                 "previous instances",
                 bytes.len() as u64,
             ) {
-                self.prev_instance_upload.invalidate();
+                self.instances.prev_instance_upload.invalidate();
             }
-            instance_upload_bytes += self.prev_instance_upload.write(
+            instance_upload_bytes += self.instances.prev_instance_upload.write(
                 &self.queue,
-                &self.prev_instance_buffer,
+                &self.instances.prev_instance_buffer,
                 bytes,
                 &drawn_bytes,
             );
         } else {
             // Not written this frame: what it holds is not known next time.
-            self.prev_instance_upload.invalidate();
+            self.instances.prev_instance_upload.invalidate();
         }
         // The debris layer: its pieces stepped and their transforms
         // written into the records just uploaded (and last frame's beside
@@ -2337,24 +2337,25 @@ impl Renderer {
             }
             let base = if gpu_cull { sorted as usize } else { 0 };
             targets.push(crate::debris::Target {
-                instances: &self.instance_buffer,
-                previous: auxiliary_instances.then_some(&self.prev_instance_buffer),
+                instances: &self.instances.instance_buffer,
+                previous: auxiliary_instances.then_some(&self.instances.prev_instance_buffer),
                 records: records(base..base + cpu_instances.len(), base),
             });
-            self.debris
+            self.instances
+                .debris
                 .encode(&self.device, &self.queue, scene, &targets)
         };
-        self.sorted.restore(transforms, spheres);
+        self.instances.sorted.restore(transforms, spheres);
         if !skinned_data.is_empty() || crowd_gpu {
             grow_and_write(
                 &self.device,
                 &self.queue,
-                &mut self.skinned_buffer,
+                &mut self.instances.skinned_buffer,
                 "skinned instances",
                 bytemuck::cast_slice(&skinned_data),
             );
             let morphs_changed = std::mem::take(&mut self.cache.morphs_dirty);
-            self.palette.write(
+            self.instances.palette.write(
                 &self.device,
                 &self.queue,
                 &self.palette_layout,
@@ -4058,7 +4059,7 @@ impl Renderer {
                         &mut self.cache.garments,
                         scene,
                         &skinned.garments,
-                        self.palette.buffer(),
+                        self.instances.palette.buffer(),
                         skinned_motion.map(|_| joints_drawn),
                         self.visual.as_ref(),
                     );
@@ -4103,7 +4104,7 @@ impl Renderer {
             )
         })
         .unwrap_or_default();
-        let palette_group = self.palette.bind_group.as_ref();
+        let palette_group = self.instances.palette.bind_group.as_ref();
         // The main pass draws physical materials with their pipelines, the
         // planar reflection with the standard ones.
         let lit_skinned: Vec<&wgpu::RenderPipeline> = skinned_visible
@@ -4806,8 +4807,9 @@ impl Renderer {
             strength: 0.0,
             ..Wind::default()
         });
-        self.previous_sway.clear();
-        self.previous_sway
+        self.instances.previous_sway.clear();
+        self.instances
+            .previous_sway
             .extend(scene.instances.iter().map(|i| i.sway));
         self.history.previous_wind = Some((wind, scene.tick, scene.tick_rate));
         self.frame_index += 1;

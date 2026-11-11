@@ -4,6 +4,7 @@ use super::*;
 
 mod assets;
 mod batches;
+pub(crate) use batches::InstanceRecords;
 mod buffers;
 mod config;
 pub(crate) mod history;

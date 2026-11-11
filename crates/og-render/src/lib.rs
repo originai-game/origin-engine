@@ -564,10 +564,10 @@ pub struct Renderer {
     /// Each pass's GPU time where the device has timestamp queries and a
     /// clock is set (`timing.rs`, `gpu_timings`).
     gpu_timer: Option<timing::GpuTimer>,
-    /// The CPU cull's per-instance scratch ([`Renderer::cull`]), kept
-    /// between frames so no pass allocates it.
-    /// The sorted instances, kept across frames (`instances.rs`).
-    sorted: instances::SortedInstances,
+    /// The instance records every pass that draws meshes reads: this
+    /// frame's and the previous frame's, the skinned instances', the joint
+    /// palette, the sway and the debris moved on the GPU.
+    instances: renderer::InstanceRecords,
     /// The secondary cameras' GPU state (`views.rs`).
     views: views::Views,
     /// The custom post passes on the device (`post_custom.rs`).
@@ -711,11 +711,6 @@ pub struct Renderer {
     sprite_fx_layout: wgpu::BindGroupLayout,
     sprite_fx_buffer: wgpu::Buffer,
     palette_layout: wgpu::BindGroupLayout,
-    palette: skin::GpuPalette,
-    skinned_buffer: wgpu::Buffer,
-    prev_instance_buffer: wgpu::Buffer,
-    /// What `prev_instance_buffer` holds ([`upload::DirtyUpload`]).
-    prev_instance_upload: upload::DirtyUpload,
     ribbon_buffer: wgpu::Buffer,
     ribbon_sampler: wgpu::Sampler,
     /// Lines, points and wireframes (`lines.rs`).
@@ -736,9 +731,6 @@ pub struct Renderer {
     /// What the frame carries to the next: the previous camera, clock and
     /// wind (motion vectors), TAA's history, and the origin it is in.
     history: renderer::history::FrameHistory,
-    /// Each instance's sway at the last drawn frame, by instance index
-    /// ([`Instance::sway`]): a swaying vertex's motion vector starts there.
-    previous_sway: Vec<f32>,
     /// What the shadow layers keep from frame to frame (`shadow_cache.rs`),
     /// and per shadow slot the texture a layer's static casters are kept
     /// in while dynamic ones are drawn over it.
@@ -784,9 +776,6 @@ pub struct Renderer {
     canvas_stats: (Option<(usize, u64)>, [f32; 2]),
     default_normal: wgpu::TextureView,
     white_sprite_group: wgpu::BindGroup,
-    instance_buffer: wgpu::Buffer,
-    /// What `instance_buffer` holds, so a frame writes only what changed.
-    instance_upload: upload::DirtyUpload,
     sprite_buffer: wgpu::Buffer,
     overlay: overlay::OverlayRenderer,
     /// The UI pass's pipelines, tables and layers (src/ui/pass.rs).
@@ -826,8 +815,6 @@ pub struct Renderer {
     wind_field: wind_field::WindFieldSim,
     /// The grass trample map (`trample.rs`).
     trample: trample::Trample,
-    /// The debris layer's bodies (`debris.rs`).
-    debris: debris::DebrisLayer,
     /// The frame whose lit image screen-space GI's copy holds
     /// (`Persistent::gi`, without TAA); forgotten with the TAA history.
     gi_history: Option<u64>,

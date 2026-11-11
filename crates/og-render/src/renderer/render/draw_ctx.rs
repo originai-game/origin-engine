@@ -474,7 +474,7 @@ impl<'f> DrawCtx<'f> {
             let range = start..start + count as u64 * INSTANCE_STRIDE;
             // A view's GPU-culled list: its pass's region and draws.
             let indirect = list.indirect.zip(culled_gpu);
-            let instances = indirect.map_or(&r.instance_buffer, |(_, gc)| &gc.instances);
+            let instances = indirect.map_or(&r.instances.instance_buffer, |(_, gc)| &gc.instances);
             pass.set_vertex_buffer(0, mesh.vertex_buffer(batch.compact).slice(..));
             pass.set_vertex_buffer(1, instances.slice(range.clone()));
             pass.set_vertex_buffer(2, instances.slice(range));

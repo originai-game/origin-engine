@@ -149,8 +149,8 @@ impl Renderer {
         )
         .0;
         let mut sway = vec![0.0f32; self.cache.meshes.len()];
-        let previous = if self.previous_sway.len() == scene.instances.len() {
-            self.previous_sway.as_slice()
+        let previous = if self.instances.previous_sway.len() == scene.instances.len() {
+            self.instances.previous_sway.as_slice()
         } else {
             &[]
         };

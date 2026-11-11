@@ -243,7 +243,7 @@ impl Renderer {
         self.reset_history();
         self.history.prev_view_proj = None;
         self.history.previous_time = None;
-        self.previous_sway.clear();
+        self.instances.previous_sway.clear();
         self.history.previous_wind = None;
     }
 }

@@ -105,7 +105,7 @@ impl Renderer {
                 _ => {
                     let (records, first) = match indirect {
                         Some((gc, g)) => (&gc.skinned, gc.skinned_region(g, batch.first)),
-                        None => (&self.skinned_buffer, batch.first),
+                        None => (&self.instances.skinned_buffer, batch.first),
                     };
                     let start = first as u64 * skin::SKINNED_INSTANCE_STRIDE;
                     let end = start + batch.count as u64 * skin::SKINNED_INSTANCE_STRIDE;

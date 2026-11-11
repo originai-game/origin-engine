@@ -274,7 +274,7 @@ impl Renderer {
             prev_view_proj: self.history.prev_view_proj,
             previous_time: self.history.previous_time,
             previous_wind: self.history.previous_wind,
-            previous_sway: self.previous_sway.clone(),
+            previous_sway: self.instances.previous_sway.clone(),
             drawn_origin: self.history.drawn_origin,
             stylise_chain: self.stylise_chain,
             terrain: self.terrain.save(),
@@ -339,7 +339,7 @@ impl Renderer {
         self.history.prev_view_proj = s.prev_view_proj;
         self.history.previous_time = s.previous_time;
         self.history.previous_wind = s.previous_wind;
-        self.previous_sway.clone_from(&s.previous_sway);
+        self.instances.previous_sway.clone_from(&s.previous_sway);
         self.history.drawn_origin = s.drawn_origin;
         self.stylise_chain = s.stylise_chain;
         self.terrain.restore(&s.terrain);

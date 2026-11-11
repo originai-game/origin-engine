@@ -320,10 +320,10 @@ impl Renderer {
             &self.shadow_buffer,
             &self.fx_buffer,
             &self.sprite_fx_buffer,
-            &self.skinned_buffer,
-            &self.prev_instance_buffer,
+            &self.instances.skinned_buffer,
+            &self.instances.prev_instance_buffer,
             &self.ribbon_buffer,
-            &self.instance_buffer,
+            &self.instances.instance_buffer,
             &self.sprite_buffer,
         ]
         .into_iter()

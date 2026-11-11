@@ -161,7 +161,7 @@ impl Renderer {
             let start = first as u64 * INSTANCE_STRIDE;
             let instances = match (list.indirect, culled_gpu) {
                 (Some(_), Some(gc)) => &gc.instances,
-                _ => &self.instance_buffer,
+                _ => &self.instances.instance_buffer,
             };
             pass.set_vertex_buffer(
                 1,

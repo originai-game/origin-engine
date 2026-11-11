@@ -48,7 +48,7 @@ impl Renderer {
         if cards.is_empty() {
             return;
         }
-        let Some(palette) = self.palette.bind_group.clone() else {
+        let Some(palette) = self.instances.palette.bind_group.clone() else {
             return;
         };
         let imp = self.crowd_impostors.get_or_insert_with(|| {
@@ -95,7 +95,7 @@ impl Renderer {
             };
             let bake = BakeGpu {
                 clip: [
-                    self.palette.baked_offset(card.impostor.clip) as u32,
+                    self.instances.palette.baked_offset(card.impostor.clip) as u32,
                     clip.joints,
                     clip.frame_count() as u32,
                     0,

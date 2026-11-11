@@ -185,7 +185,7 @@ impl Renderer {
             self.ssr.reset();
             self.history.previous_time = None;
             self.history.previous_wind = None;
-            self.previous_sway.clear();
+            self.instances.previous_sway.clear();
             self.shadow_cache = Default::default();
         }
         for index in self.cache.shaders.len()..scene.shaders().len() {
@@ -641,7 +641,7 @@ impl Renderer {
             self.cache.material_serial = Some(serial);
         }
         // Also when the pass was skipped: nothing is stamped in that frame.
-        self.sorted.set_params_moved(params_moved);
+        self.instances.sorted.set_params_moved(params_moved);
         let stale_fonts: Vec<usize> = (0..self.cache.fonts.len())
             .filter(|&i| {
                 replaced.contains(&scene.fonts()[i].atlas.index())
