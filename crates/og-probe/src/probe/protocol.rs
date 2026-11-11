@@ -281,7 +281,7 @@ impl Probe {
             if self.schedule.shot.is_none() {
                 self.pump(world);
             }
-            if self.clock.quit || self.held(world) {
+            if self.clock.quit || self.clock.held(world) {
                 break;
             }
             self.tick_once(world)?;
