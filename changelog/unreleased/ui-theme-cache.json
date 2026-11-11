@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "UI: the cost of beginning a frame",
+      "summary": "Every frame's begin read the theme from the `:root` tokens again: a full root cascade and a parse of every colour, length and type step, about 1.6 ms a frame with no UI on screen. The UI now keeps that reading for the theme it started from and the media context, and reads again when the part CSS, the style pack, the theme, the fonts or the media context change. No theme value changes: every kept theme equalled a fresh one across the og-ui and og-runtime suites."
+    }
+  ]
+}
