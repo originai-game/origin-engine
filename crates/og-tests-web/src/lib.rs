@@ -22,7 +22,7 @@
 // og-tests-cooked's `support`).
 #[cfg(target_arch = "wasm32")]
 #[allow(dead_code, unused_imports)]
-#[path = "../../og-ui/tests/support/scenes.rs"]
+#[path = "../../og-tests-ui/tests/support/scenes.rs"]
 mod scenes;
 #[cfg(target_arch = "wasm32")]
 #[allow(dead_code)]

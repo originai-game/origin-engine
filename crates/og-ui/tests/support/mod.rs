@@ -5,6 +5,7 @@
 #![allow(dead_code)]
 
 mod doc;
+#[path = "../../../og-tests-ui/tests/support/scenes.rs"]
 mod scenes;
 mod screens;
 

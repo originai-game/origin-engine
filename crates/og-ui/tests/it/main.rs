@@ -18,9 +18,9 @@ mod component_documents;
 mod control_props;
 #[path = "../css_contain.rs"]
 mod css_contain;
-#[path = "../css_effects.rs"]
+#[path = "../../../og-tests-ui/tests/css_effects.rs"]
 mod css_effects;
-#[path = "../css_filters.rs"]
+#[path = "../../../og-tests-ui/tests/css_filters.rs"]
 mod css_filters;
 #[path = "../css_interact.rs"]
 mod css_interact;
@@ -38,7 +38,7 @@ mod dressing;
 mod features;
 #[path = "../fields.rs"]
 mod fields;
-#[path = "../gfx.rs"]
+#[path = "../../../og-tests-ui/tests/gfx.rs"]
 mod gfx;
 #[path = "../glyphs.rs"]
 mod glyphs;
@@ -48,11 +48,11 @@ mod html_controls;
 mod html_text;
 #[path = "../hud_layout.rs"]
 mod hud_layout;
-#[path = "../inline_svg.rs"]
+#[path = "../../../og-tests-ui/tests/inline_svg.rs"]
 mod inline_svg;
 #[path = "../input_types.rs"]
 mod input_types;
-#[path = "../kit_gfx.rs"]
+#[path = "../../../og-tests-ui/tests/kit_gfx.rs"]
 mod kit_gfx;
 #[path = "../layout.rs"]
 mod layout;
@@ -60,7 +60,7 @@ mod layout;
 mod linebreak;
 #[path = "../motion.rs"]
 mod motion;
-#[path = "../mounted_layers.rs"]
+#[path = "../../../og-tests-ui/tests/mounted_layers.rs"]
 mod mounted_layers;
 #[path = "../perf.rs"]
 mod perf;
@@ -74,7 +74,7 @@ mod rich;
 mod rtl;
 #[path = "../runs.rs"]
 mod runs;
-#[path = "../screen_layers.rs"]
+#[path = "../../../og-tests-ui/tests/screen_layers.rs"]
 mod screen_layers;
 #[path = "../slots.rs"]
 mod slots;
@@ -84,9 +84,9 @@ mod style;
 mod style_pack;
 #[path = "../support/mod.rs"]
 mod support;
-#[path = "../svg_defs.rs"]
+#[path = "../../../og-tests-ui/tests/svg_defs.rs"]
 mod svg_defs;
-#[path = "../svg_text.rs"]
+#[path = "../../../og-tests-ui/tests/svg_text.rs"]
 mod svg_text;
 #[path = "../text.rs"]
 mod text;
@@ -94,7 +94,7 @@ mod text;
 mod text_path;
 #[path = "../theme.rs"]
 mod theme;
-#[path = "../touch_controls.rs"]
+#[path = "../../../og-tests-ui/tests/touch_controls.rs"]
 mod touch_controls;
 #[path = "../ui_debug.rs"]
 mod ui_debug;
