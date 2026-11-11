@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og cook",
+      "summary": "A cooked navmesh stores its walkable heightfield as two meshopt vertex streams (a column's span count, then the spans) instead of two plain tables, and no longer writes each column's first span, which is the sum of the counts before it. The third-person sample's navmesh goes from 1,397,804 to 40,220 bytes on disk (70,207 to 13,100 after brotli). `og.NavMesh` is schema version 2: the next cook rewrites every navmesh, and the baked mesh and what `og.nav` answers are unchanged."
+    }
+  ]
+}

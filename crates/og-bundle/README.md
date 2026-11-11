@@ -61,7 +61,7 @@ type (`format::type_hash`); the schema version is the root's. All in
 | `og.MaterialShader` | `ShaderMeta` (text bytes) | `text` (the canonical shader file, its code inlined) |
 | `og.Behaviour` | `BehaviourMeta` (text bytes) | `text` (the validated behaviour file) |
 | `og.Strings` | `StringsMeta` (text bytes) | `text` (the validated string table) |
-| `og.NavMesh` | `NavMeshMeta` (cell size and height, the agent's height, radius, climb and slope, tile size, max error, origin, grid width and depth, tile count) | `columns` `NavColumnRow`, `spans` `NavSpanRow` (the walkable heightfield), `tiles` `NavTileRow`, `verts` `NavVertRow`, `polys` `NavPolyRow`, `poly_verts` (u32) |
+| `og.NavMesh` | `NavMeshMeta` (cell size and height, the agent's height, radius, climb and slope, tile size, max error, origin, grid width and depth, tile count) | `columns` (a meshopt vertex stream of `NavColumnRow`, one a grid column), `spans` (a meshopt vertex stream of `NavSpanRow`; the two are the walkable heightfield), `tiles` `NavTileRow`, `verts` `NavVertRow`, `polys` `NavPolyRow`, `poly_verts` (u32) |
 | `og.StreamPack` (`cooked/stream/<group>.ogb`) | `StreamPackMeta` (file count) | `files` `StreamFileRow` (name and data ranges), `names` (paths under `cooked/`), `data` (the files, each 16-aligned) |
 
 Besides the blobs, `cooked/` holds the manifest `.cook.ogt` (og-cook README §Asset ids)

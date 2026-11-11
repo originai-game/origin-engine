@@ -42,7 +42,7 @@
 //! | behaviour (`og.Behaviour`, an `.ogt` of `type behaviour`) | [`BehaviourMeta`] | `text` (the validated behaviour file) |
 //! | dialogue (`og.Dialogue`, a `.yarn` script) | [`DialogueMeta`] | `text` (serialized engine story IR with base strings) |
 //! | quest (`og.Quest`, an `.ogt` of `type quest`) | [`QuestMeta`] | `text` (the validated quest file) |
-//! | navmesh (`og.NavMesh`, an `.ogt` of `type navmesh`) | [`NavMeshMeta`] | `columns` [`NavColumnRow`], `spans` [`NavSpanRow`] (the walkable heightfield), `tiles` [`NavTileRow`], `verts` [`NavVertRow`], `polys` [`NavPolyRow`], `poly_verts` (u32) |
+//! | navmesh (`og.NavMesh`, an `.ogt` of `type navmesh`) | [`NavMeshMeta`] | `columns` (a meshopt vertex stream of [`NavColumnRow`], one a grid column), `spans` (a meshopt vertex stream of [`NavSpanRow`]; the two are the walkable heightfield), `tiles` [`NavTileRow`], `verts` [`NavVertRow`], `polys` [`NavPolyRow`], `poly_verts` (u32) |
 //! | string table (`og.Strings`, an `.ogt` of `type strings`) | [`StringsMeta`] | `text` (the validated table) |
 //! | font pack (`og.FontPack`, a font pack's `extension.json`) | [`FontPackMeta`] | `text` (og-i18n's `FontPack` index: languages, faces, coverage) |
 //! | humanoid rig (`og.Rig`, an `.ogt` of `type rig`) | [`RigMeta`] | `text` (the canonical rig: its scheme and the bones it names) |

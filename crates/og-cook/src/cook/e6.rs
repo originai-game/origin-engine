@@ -911,22 +911,40 @@ fn navmesh_blob(
         depth: field.depth,
         tiles: mesh.tiles.len() as u32,
     };
-    let columns: Vec<format::NavColumnRow> = field
-        .columns
-        .iter()
-        .map(|c| format::NavColumnRow {
-            first: c[0],
-            count: c[1],
-        })
-        .collect();
-    let spans: Vec<format::NavSpanRow> = field
-        .spans
-        .iter()
-        .map(|s| format::NavSpanRow {
-            floor: s.floor,
-            clear: s.clear,
-        })
-        .collect();
+    // The heightfield as two meshopt vertex streams. A column's first span
+    // is where the previous column's end, so only its count is written.
+    let stream = |rows: Vec<u8>, stride: usize| -> Result<Vec<u8>, CookError> {
+        if rows.is_empty() {
+            return Ok(Vec::new());
+        }
+        super::model::encode_vertices(&rows, rows.len() / stride, stride)
+            .map_err(|e| CookError(format!("navmesh heightfield: {e}")))
+    };
+    let mut next = 0;
+    for &[first, count] in &field.columns {
+        if first != next {
+            return Err(CookError(
+                "navmesh heightfield: a column's spans do not follow the previous column's".into(),
+            ));
+        }
+        next += count;
+    }
+    let columns = stream(
+        field
+            .columns
+            .iter()
+            .flat_map(|c| c[1].to_le_bytes())
+            .collect(),
+        size_of::<format::NavColumnRow>(),
+    )?;
+    let spans = stream(
+        field
+            .spans
+            .iter()
+            .flat_map(|s| [s.floor.to_le_bytes(), s.clear.to_le_bytes()].concat())
+            .collect(),
+        size_of::<format::NavSpanRow>(),
+    )?;
     let (mut tiles, mut verts, mut polys, mut indices) =
         (Vec::new(), Vec::new(), Vec::new(), Vec::new());
     for t in &mesh.tiles {
@@ -961,12 +979,8 @@ fn navmesh_blob(
         stamp,
     );
     w.table("meta", &[meta], format::row_hash::<format::NavMeshMeta>())
-        .table(
-            "columns",
-            &columns,
-            format::row_hash::<format::NavColumnRow>(),
-        )
-        .table("spans", &spans, format::row_hash::<format::NavSpanRow>())
+        .raw("columns", columns, 16)
+        .raw("spans", spans, 16)
         .table("tiles", &tiles, format::row_hash::<format::NavTileRow>())
         .table("verts", &verts, format::row_hash::<format::NavVertRow>())
         .table("polys", &polys, format::row_hash::<format::NavPolyRow>())

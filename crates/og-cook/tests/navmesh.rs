@@ -148,3 +148,59 @@ fn agent_profiles_bake_one_mesh_each_and_the_first_fills_the_blob_s_own_tables()
     let bytes = bundle.read("nav/one.ogt").unwrap();
     assert!(!bytes.windows(8).any(|w| w == b"profiles"));
 }
+
+#[test]
+fn the_heightfield_loads_as_baked_from_its_packed_streams() {
+    // A floor in two halves with a gap at x 8–10, and a platform 2 m above
+    // the second half: columns of no, one and two floors.
+    let text = "type navmesh\nversion 1\n---\nagent {\n  radius 0.25\n  height 1\n}\ncellSize 0.25\ncellHeight 0.1\ntileSize 16\nbounds {\n  min -1 -1 -1\n  max 21 4 11\n}\nbox {\n  center 4 -0.1 5\n  size 8 0.2 10\n}\nbox {\n  center 15 -0.1 5\n  size 10 0.2 10\n}\nbox {\n  center 15 2 5\n  size 4 0.2 4\n}\n";
+    let root = project("heightfield", &[("nav/floors.ogt", text)]);
+    cook(&root).unwrap();
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let bytes = bundle.read("nav/floors.ogt").unwrap();
+    let (field, _) = bundle.navmesh("nav/floors.ogt", &bytes).unwrap();
+    assert_eq!((field.width, field.depth), (88, 48));
+    // Every column's spans follow the previous column's, and none is left over.
+    let mut next = 0;
+    for &[first, count] in &field.columns {
+        assert_eq!(first, next);
+        next += count;
+    }
+    assert_eq!(next as usize, field.spans.len());
+    // Heights in metres above the bounds' floor, 0.1 m a cell.
+    let floors = |x: f32, z: f32| -> Vec<(f32, Option<f32>)> {
+        let cell = |v: f32, o: f32| ((v - o) / field.params.cell_size) as i32;
+        field
+            .column(cell(x, field.origin.x), cell(z, field.origin.z))
+            .map(|s| field.spans[s])
+            .map(|s| {
+                let open = s.clear == u32::MAX / 4;
+                (
+                    field.origin.y + s.floor as f32 * 0.1,
+                    (!open).then_some(s.clear as f32 * 0.1),
+                )
+            })
+            .collect()
+    };
+    let near = |a: f32, b: f32| (a - b).abs() <= 0.11;
+    assert_eq!(floors(9.0, 5.0), [], "the gap");
+    let ground = floors(4.0, 5.0);
+    assert!(
+        matches!(ground[..], [(y, None)] if near(y, 0.0)),
+        "{ground:?}"
+    );
+    let stacked = floors(15.0, 5.0);
+    assert!(
+        matches!(stacked[..], [(low, Some(room)), (high, None)]
+            if near(low, 0.0) && near(room, 1.9) && near(high, 2.1)),
+        "{stacked:?}"
+    );
+    // The two tables are streams: far under the 4 bytes a column's count
+    // alone takes as a row.
+    assert!(
+        bytes.len() < field.columns.len() * 4,
+        "{} bytes for {} columns",
+        bytes.len(),
+        field.columns.len()
+    );
+}
