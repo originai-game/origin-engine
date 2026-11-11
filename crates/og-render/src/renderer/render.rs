@@ -73,7 +73,9 @@ use pass_particles::{ParticlesPass, ParticlesPlan};
 mod pre_graph;
 use pre_graph::pre_graph;
 mod pass_shadows;
-use pass_shadows::{CascadePass, CascadePlan, ShelterPass, ShelterPlan};
+use pass_shadows::{
+    CascadePass, CascadePlan, LocalFacePass, LocalFacePlan, ShelterPass, ShelterPlan,
+};
 mod setup;
 
 impl Renderer {
@@ -4233,6 +4235,12 @@ impl Renderer {
                 list,
                 view: shelter_view,
             });
+        plans.local_face = Some(LocalFacePlan {
+            lists: &local_lists,
+            plans: &local_plans,
+            frustums: &local_frustums,
+            views: &local_views,
+        });
         plans.cascade = Some(CascadePlan {
             cascades: &cascades,
             lists: &cascade_lists,
@@ -4268,29 +4276,6 @@ impl Renderer {
                         slot,
                     },
                 ) => {}
-                FramePass::LocalFace(layer) => {
-                    let l = layer as usize;
-                    ctx.shadow_pass(
-                        &mut encoder,
-                        &self.local_map.layers[l],
-                        &self.local_map.depth,
-                        (
-                            &self.local_map.texture,
-                            layer,
-                            &self.local_map.depth_texture,
-                        ),
-                        CASCADES + l,
-                        local_lists[l].as_ref().expect("a list per shadowed face"),
-                        local_plans[l],
-                        local_frustums[l]
-                            .as_ref()
-                            .expect("a frustum per shadowed face"),
-                        local_views[l],
-                        &mut stats,
-                        true,
-                        &ShadowTarget::LOCAL,
-                    )
-                }
                 FramePass::Prepass => self.encode_prepass(PrepassPassInputs {
                     ctx: &ctx,
                     water_draws: &water_draws,

@@ -98,3 +98,56 @@ impl Pass for ShelterPass {
         );
     }
 }
+
+/// A frame's shadowed local lights' faces: each layer's casters, cache
+/// plan, frustum and meshlet view, by layer.
+pub(super) struct LocalFacePlan<'f> {
+    pub lists: &'f [Option<[DrawList; 2]>],
+    pub plans: &'f [crate::shadow_cache::Plan],
+    pub frustums: &'f [Option<Frustum>],
+    pub views: &'f [u32],
+}
+
+pub(super) struct LocalFacePass;
+
+impl Pass for LocalFacePass {
+    const DESC: PassDesc = PassDesc {
+        pass: FramePass::LocalFace(0),
+        name: "local-shadows",
+        needs: Caps::NONE,
+    };
+    type State = ShadowMap;
+    type Plan<'f> = LocalFacePlan<'f>;
+
+    fn state(r: &Renderer) -> &Self::State {
+        &r.local_map
+    }
+
+    fn encode<'f>(
+        st: &Self::State,
+        plan: &LocalFacePlan<'f>,
+        pass: FramePass,
+        cx: &mut EncodeCx<'_, 'f>,
+    ) {
+        let FramePass::LocalFace(layer) = pass else {
+            unreachable!("a local face pass")
+        };
+        let l = layer as usize;
+        cx.ctx.shadow_pass(
+            cx.encoder,
+            &st.layers[l],
+            &st.depth,
+            (&st.texture, layer, &st.depth_texture),
+            CASCADES + l,
+            plan.lists[l].as_ref().expect("a list per shadowed face"),
+            plan.plans[l],
+            plan.frustums[l]
+                .as_ref()
+                .expect("a frustum per shadowed face"),
+            plan.views[l],
+            cx.stats,
+            true,
+            &ShadowTarget::LOCAL,
+        );
+    }
+}
