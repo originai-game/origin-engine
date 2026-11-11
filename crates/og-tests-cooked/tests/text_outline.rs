@@ -123,7 +123,7 @@ fn measured_outline(font: &str) -> f32 {
     });
     scene.overlay = Some(o);
     scene.environment.background = Background::Color(Vec3::ONE);
-    scene.post.tonemap = Tonemap::None;
+    scene.look.post.tonemap = Tonemap::None;
     let desc = RenderDesc {
         width: w,
         height: h,

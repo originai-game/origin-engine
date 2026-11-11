@@ -10,10 +10,10 @@ fn effects_off_add_no_passes() {
     let built = scenes::build("gltf-reference").expect("scene");
     let (_, stats) = frame(&built.desc, &built.scene);
     let mut with = scenes::build("gltf-reference").expect("scene");
-    with.scene.post.ao = Some(AmbientOcclusion::default());
-    with.scene.post.depth_of_field = Some(DepthOfField::default());
-    with.scene.post.motion_blur = Some(MotionBlur::default());
-    with.scene.post.god_rays = Some(GodRays::default());
+    with.scene.look.post.ao = Some(AmbientOcclusion::default());
+    with.scene.look.post.depth_of_field = Some(DepthOfField::default());
+    with.scene.look.post.motion_blur = Some(MotionBlur::default());
+    with.scene.look.post.god_rays = Some(GodRays::default());
     let (_, all) = frame(&with.desc, &with.scene);
     println!(
         "graph passes: off {}, on {}",
@@ -119,12 +119,12 @@ fn the_high_preset_refines_ao_reflections_and_fog_and_medium_moves_nothing() {
 
     // Ambient occlusion: the scene asks half resolution.
     let half = |s: &mut RenderScene| {
-        if let Some(ao) = &mut s.post.ao {
+        if let Some(ao) = &mut s.look.post.ao {
             ao.resolution = AoResolution::Half;
         }
     };
     let full = |s: &mut RenderScene| {
-        if let Some(ao) = &mut s.post.ao {
+        if let Some(ao) = &mut s.look.post.ao {
             ao.resolution = AoResolution::Full;
         }
     };
@@ -150,7 +150,7 @@ fn the_high_preset_refines_ao_reflections_and_fog_and_medium_moves_nothing() {
     // Screen-space reflections: the scene asks 48 steps.
     let steps = |n: u32| {
         move |s: &mut RenderScene| {
-            if let Some(ssr) = &mut s.post.ssr {
+            if let Some(ssr) = &mut s.look.post.ssr {
                 ssr.steps = n;
             }
         }

@@ -80,8 +80,8 @@ fn a_look_that_switches_the_stylisation_resets_the_taa_history() {
         assert!(a.pixels == b.pixels, "frame {f}: the two renderers agree");
     }
     // The new look: posterized and toon-shaded. `cut` is told it is a cut.
-    scene.stylise.quantize = Some(quantize(6));
-    scene.stylise.material.toon = true;
+    scene.look.stylise.quantize = Some(quantize(6));
+    scene.look.stylise.material.toon = true;
     cut.reset_history();
     let (a, blend_a) = draw(&mut look, &scene);
     let (b, blend_b) = draw(&mut cut, &scene);
@@ -93,10 +93,10 @@ fn a_look_that_switches_the_stylisation_resets_the_taa_history() {
     );
     // The next frame blends again, and a setting alone keeps the history.
     assert!(draw(&mut look, &scene).1);
-    scene.stylise.quantize = Some(quantize(8));
+    scene.look.stylise.quantize = Some(quantize(8));
     assert!(draw(&mut look, &scene).1, "a posterize level is no cut");
     // Back to the plain look: a cut again.
-    scene.stylise = Default::default();
+    scene.look.stylise = Default::default();
     assert!(!draw(&mut look, &scene).1, "the stylisation switched off");
 }
 

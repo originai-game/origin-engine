@@ -42,7 +42,7 @@ fn stage() -> RenderScene {
         ..Default::default()
     });
     scene.add_instance(ground, grey, Mat4::IDENTITY);
-    scene.post.ao = Some(AmbientOcclusion {
+    scene.look.post.ao = Some(AmbientOcclusion {
         radius: 0.6,
         intensity: 1.2,
         method: AoMethod::Gtao,

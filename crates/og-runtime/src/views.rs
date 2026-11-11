@@ -365,12 +365,12 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, keys: &[(u64, u32)], 
     }
 
     // PostEffects.custom, in order, a 0 (or a pass not loaded) skipped.
-    scene.custom_post.clear();
+    scene.look.custom_post.clear();
     if let Some(p) = resource(world, rs.draw.fx.post.as_ref()) {
         let passes = p["custom"].as_array().map_or(&[][..], Vec::as_slice);
         for v in passes.iter().take(POST_SLOTS) {
             if let Some(h) = index(v).and_then(|i| rs.views.posts.get(i).copied()) {
-                scene.custom_post.push(h);
+                scene.look.custom_post.push(h);
             }
         }
     }

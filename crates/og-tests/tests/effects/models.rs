@@ -220,7 +220,7 @@ fn deformed_vertices_replace_the_mesh() {
         let mut gpu = Renderer::new_blocking(&taa).expect("compute garment");
         let mut cpu = Renderer::new_blocking(&taa).expect("reference garment");
         let mut scene = build(Some(0.));
-        scene.post.motion_blur = Some(MotionBlur::default());
+        scene.look.post.motion_blur = Some(MotionBlur::default());
         let mut previous = None::<og_render::GarmentDeformation>;
         for step in 0..3 {
             let world = Mat4::from_translation(Vec3::new(step as f32 * 0.2, 0., 0.));

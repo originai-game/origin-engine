@@ -21,7 +21,7 @@ fn luma(img: &RgbaImage, x: u32, y: u32) -> f32 {
 
 fn moon(phase: f32, size: f32) -> RgbaImage {
     let mut scene = p2_scenes::moon_scene(phase, size);
-    scene.post.bloom = None;
+    scene.look.post.bloom = None;
     frame(&scene)
 }
 

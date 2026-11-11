@@ -39,7 +39,7 @@ fn a_sprite_draws_the_layer_of_its_texture_array() {
     }
     scene.camera = Camera::orthographic_2d(Vec2::ZERO, 10.0);
     scene.environment.background = Background::Color(Vec3::ZERO);
-    scene.post.tonemap = Tonemap::None;
+    scene.look.post.tonemap = Tonemap::None;
     let desc = scenes::base_desc();
     let (img, stats) = frame(&desc, &scene, 1);
     let at = |x: u32| {
@@ -97,7 +97,7 @@ fn rgb_array(scene: &mut RenderScene) -> og_render::TextureArrayHandle {
     scene.set_texture_array_filter(array, og_render::TextureFilter::Nearest);
     scene.camera = Camera::orthographic_2d(Vec2::ZERO, 10.0);
     scene.environment.background = Background::Color(Vec3::ZERO);
-    scene.post.tonemap = Tonemap::None;
+    scene.look.post.tonemap = Tonemap::None;
     array
 }
 

@@ -124,17 +124,17 @@ impl Renderer {
                     },
                 ]
             },
-            stylise: crate::Retro3d::uniform(scene.stylise.retro, self.width, self.height),
+            stylise: crate::Retro3d::uniform(scene.look.stylise.retro, self.width, self.height),
             shadow_tint: {
-                let m = &scene.stylise.material;
+                let m = &scene.look.stylise.material;
                 let a = m.shadow_tint_amount.clamp(0.0, 1.0);
                 [m.shadow_tint[0], m.shadow_tint[1], m.shadow_tint[2], a]
             },
             outline_style: [
-                scene.stylise.material.outline_distance.max(0.0),
-                scene.stylise.material.shadow_darkness.clamp(0.0, 1.0),
+                scene.look.stylise.material.outline_distance.max(0.0),
+                scene.look.stylise.material.shadow_darkness.clamp(0.0, 1.0),
                 // The terrain's toon (terrain_lit.wgsl): it has no material to carry it.
-                f32::from(u8::from(scene.stylise.material.toon)),
+                f32::from(u8::from(scene.look.stylise.material.toon)),
                 0.0,
             ],
             probe: [[0.0; 4]; 3],
@@ -150,7 +150,7 @@ impl Renderer {
                 let g = scene.hemisphere.1;
                 [g[0], g[1], g[2], 0.0]
             },
-            material_surface: scene.stylise.material.surface_uniform(),
+            material_surface: scene.look.stylise.material.surface_uniform(),
             origin: scene.origin.extend(0.0).to_array(),
             env_dome: crate::GroundProjection::gpu(scene.environment.ground),
             foliage_wind: crate::foliage::foliage_winds(
@@ -160,8 +160,8 @@ impl Renderer {
             )
             .1,
             toon: [
-                scene.stylise.material.toon_softness.clamp(0.0, 4.0),
-                scene.stylise.material.toon_ambient.clamp(0.0, 1.0),
+                scene.look.stylise.material.toon_softness.clamp(0.0, 4.0),
+                scene.look.stylise.material.toon_ambient.clamp(0.0, 1.0),
                 0.0,
                 0.0,
             ],

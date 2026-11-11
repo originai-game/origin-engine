@@ -75,7 +75,7 @@ fn scene(offset: Vec3, space: StyliseSpace) -> RenderScene {
         exposure: Exposure::linear(0.9),
         ..Default::default()
     };
-    scene.stylise.hatching = Some(Hatching {
+    scene.look.stylise.hatching = Some(Hatching {
         strength: 0.9,
         scale: 5.0,
         levels: 4,

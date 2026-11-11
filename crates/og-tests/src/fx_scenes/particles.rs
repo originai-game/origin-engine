@@ -339,7 +339,7 @@ pub fn particles_scene() -> RenderScene {
             ..Default::default()
         },
     ];
-    scene.post.bloom = Some(Bloom {
+    scene.look.post.bloom = Some(Bloom {
         threshold: 1.0,
         knee: 0.6,
         intensity: 0.7,
@@ -641,7 +641,7 @@ pub fn trails_scene() -> RenderScene {
         seed: 9,
         ..Default::default()
     });
-    scene.post.bloom = Some(Bloom::default());
+    scene.look.post.bloom = Some(Bloom::default());
     scene.camera = Camera {
         position: Vec3::new(0.5, 3.0, 7.0),
         target: Vec3::new(0.3, 1.0, -0.8),

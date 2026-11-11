@@ -39,7 +39,7 @@ fn flat() -> RenderScene {
     let mut scene = RenderScene::new();
     scene.camera = Camera::orthographic_2d(Vec2::ZERO, 10.0);
     scene.environment.background = Background::Color(Vec3::ZERO);
-    scene.post.tonemap = Tonemap::None;
+    scene.look.post.tonemap = Tonemap::None;
     scene
 }
 

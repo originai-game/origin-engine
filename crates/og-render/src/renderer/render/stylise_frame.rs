@@ -33,7 +33,7 @@ impl Renderer {
             prepass,
         }: PrepareFrameStyliseInputs<'_>,
     ) -> PrepareFrameStyliseOutputs {
-        let st = &scene.stylise;
+        let st = &scene.look.stylise;
         // The stylise passes' parameters, palette and canvas.
         let (colors, revision) = scene.conformed_colors();
         if revision != self.conformed.0 {

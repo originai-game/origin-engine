@@ -1163,7 +1163,7 @@ impl Renderer {
             Default::default();
         let mut previous_slots = Vec::new();
         let mut baked_moved = false;
-        let taa = self.info.antialias.temporal() || scene.post.motion_blur.is_some();
+        let taa = self.info.antialias.temporal() || scene.look.post.motion_blur.is_some();
         for &i in &order {
             let s = &scene.skinned_instances[i];
             let (mesh, material, cast) = (s.mesh.index(), s.material.index(), s.cast_shadows);

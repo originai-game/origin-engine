@@ -606,7 +606,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // Emissive spheres over a dark ground with bloom.
         "bloom" => |g, _| {
             g.scene = emissive_spheres();
-            g.scene.post.bloom = Some(Bloom {
+            g.scene.look.post.bloom = Some(Bloom {
                 threshold: 1.0,
                 knee: 0.5,
                 intensity: 0.8,
@@ -816,12 +816,12 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // of ACES: the brightest cores go to white instead of skewing hue.
         "post-agx" => |g, _| {
             g.scene = emissive_spheres();
-            g.scene.post.bloom = Some(Bloom {
+            g.scene.look.post.bloom = Some(Bloom {
                 threshold: 1.0,
                 knee: 0.5,
                 intensity: 0.8,
             });
-            g.scene.post.tonemap = Tonemap::Agx;
+            g.scene.look.post.tonemap = Tonemap::Agx;
             Ok(())
         },
         // Spheres from mirror to rough, chrome and white, lit only by a
@@ -1118,7 +1118,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         "post-crt" => |g, _| {
             g.scene = crate::target_scenes::room();
             let crt = g.scene.add_post(og_render::example_crt());
-            g.scene.custom_post.push(crt);
+            g.scene.look.custom_post.push(crt);
             Ok(())
         },
         // The depth wave's light (docs/design.md §10.7, light_scenes.rs): rect
@@ -1484,12 +1484,12 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // and shifts, and the brightest cores roll to white.
         "post-neutral" => |g, _| {
             g.scene = emissive_spheres();
-            g.scene.post.bloom = Some(Bloom {
+            g.scene.look.post.bloom = Some(Bloom {
                 threshold: 1.0,
                 knee: 0.5,
                 intensity: 0.8,
             });
-            g.scene.post.tonemap = Tonemap::Neutral;
+            g.scene.look.post.tonemap = Tonemap::Neutral;
             Ok(())
         },
         // The spike's scene through a centred barrel lens (0.35): the
@@ -1497,7 +1497,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // corners.
         "post-lens" => |g, _| {
             g.scene = spike_gltf_scene()?;
-            g.scene.post.lens_distortion = Some(og_render::LensDistortion {
+            g.scene.look.post.lens_distortion = Some(og_render::LensDistortion {
                 amount: 0.35,
                 ..Default::default()
             });
@@ -1642,12 +1642,12 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // streaks.
         "post-blur" => |g, _| {
             g.scene = emissive_spheres();
-            g.scene.post.bloom = Some(Bloom {
+            g.scene.look.post.bloom = Some(Bloom {
                 threshold: 1.0,
                 knee: 0.5,
                 intensity: 0.8,
             });
-            g.scene.post.screen_blur = Some(og_render::ScreenBlur {
+            g.scene.look.post.screen_blur = Some(og_render::ScreenBlur {
                 kind: og_render::ScreenBlurKind::Zoom,
                 strength: 0.15,
                 center: Vec2::new(0.42, 0.4),

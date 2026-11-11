@@ -77,12 +77,12 @@ pub fn showcase_effects(scene: &mut RenderScene) {
             tick: SHOWCASE_TICK,
         });
     }
-    scene.post.ao = Some(AmbientOcclusion::default());
+    scene.look.post.ao = Some(AmbientOcclusion::default());
     grade(scene);
-    if let Some(g) = &mut scene.post.film_grain {
+    if let Some(g) = &mut scene.look.post.film_grain {
         g.intensity = 0.025;
     }
-    scene.post.chromatic_aberration = Some(ChromaticAberration { intensity: 1.2 });
+    scene.look.post.chromatic_aberration = Some(ChromaticAberration { intensity: 1.2 });
     // The title glows warm against the graded sky.
     for t in &mut scene.texts {
         t.color = [2.4, 0.9, 0.25, 1.0];

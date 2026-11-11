@@ -110,7 +110,7 @@ pub(super) fn showcase() -> Result<RenderScene, String> {
         background: Background::Sky,
         ..Environment::default()
     };
-    scene.post.bloom = Some(Bloom::default());
+    scene.look.post.bloom = Some(Bloom::default());
     scene.camera = Camera {
         position: Vec3::new(0.5, 3.2, 9.0),
         target: Vec3::new(0.0, 1.3, -1.5),

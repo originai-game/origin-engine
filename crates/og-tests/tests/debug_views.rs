@@ -35,10 +35,10 @@ fn scene(name: &str, remove: bool) -> RenderScene {
             .copied()
             .collect();
     }
-    s.post = Default::default();
-    s.post.ao = Some(AmbientOcclusion::default());
+    s.look.post = Default::default();
+    s.look.post.ao = Some(AmbientOcclusion::default());
     s.camera.exposure = Exposure::linear(1.0);
-    s.post.tonemap = Tonemap::None;
+    s.look.post.tonemap = Tonemap::None;
     if name != "sky-only" {
         s.environment.background = Background::Color(Vec3::ZERO);
     }
@@ -236,7 +236,7 @@ fn terrain_projection_and_vertical_density_use_the_sampled_axes() {
         }],
         ..Terrain::new(h)
     });
-    s.post.tonemap = Tonemap::None;
+    s.look.post.tonemap = Tonemap::None;
     s.camera = Camera {
         position: Vec3::new(0.0, 10.0, 0.0),
         target: Vec3::ZERO,

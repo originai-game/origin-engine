@@ -155,7 +155,7 @@ fn solar_probe() -> RenderScene {
         exposure: og_render::Exposure::Manual { ev: -6.0 },
         ..Default::default()
     };
-    scene.post.tonemap = og_render::Tonemap::None;
+    scene.look.post.tonemap = og_render::Tonemap::None;
     scene
 }
 

@@ -175,7 +175,7 @@ pub fn world(
         ..Default::default()
     };
     scene.environment.background = Background::Color(Vec3::new(0.25, 0.35, 0.55));
-    scene.post.tonemap = Tonemap::None;
+    scene.look.post.tonemap = Tonemap::None;
     let mut o = Overlay::new(W, H, 0.0);
     o.ui.tick = 100;
     let outline = Some((2.0, [0.02, 0.02, 0.03, 1.0]));
@@ -479,7 +479,7 @@ pub fn panel() -> RenderScene {
         ..Default::default()
     };
     scene.environment.background = Background::Color(Vec3::new(0.25, 0.35, 0.55));
-    scene.post.tonemap = Tonemap::None;
+    scene.look.post.tonemap = Tonemap::None;
     let mut o = Overlay::new(W, H, 0.0);
     let (x, y) = (760.0, 380.0);
     o.ui.layers.push(og_render::UiLayer {

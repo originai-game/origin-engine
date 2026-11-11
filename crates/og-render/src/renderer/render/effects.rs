@@ -60,7 +60,7 @@ impl Renderer {
             scene_water,
         }: DecideEffectsInputs<'_>,
     ) -> FrameEffects {
-        let post_fx = &scene.post;
+        let post_fx = &scene.look.post;
         // The quality's resolution, where it sets one, over the scene's.
         let ao = post_fx
             .ao
@@ -126,11 +126,11 @@ impl Renderer {
                 .fluids_3d
                 .iter()
                 .any(|f| !f.particles.is_empty() || f.visual.is_some());
-        let depth_bands = scene.stylise.depth_bands.filter(|b| b.count >= 2);
+        let depth_bands = scene.look.stylise.depth_bands.filter(|b| b.count >= 2);
         // Ink or hatching on depth edges reads the prepass in the lines
         // pass, a canvas, hatching or halftone on surfaces in the paint or
         // lines pass.
-        let ink_depth = scene.stylise.depth_edges();
+        let ink_depth = scene.look.stylise.depth_edges();
         // Screen-space reflections, traced through the prepass before the
         // main pass (ssr.rs).
         let ssr = self.frame_ssr(scene);
@@ -156,17 +156,17 @@ impl Renderer {
             || volumetric_fog.is_some()
             || depth_bands.is_some()
             || ink_depth
-            || scene.stylise.on_surfaces()
+            || scene.look.stylise.on_surfaces()
             // The painterly filter's object edges and detail, and the
             // Ben-Day dots' facing (halftone_faces), where meshes
             // are drawn (a 2D scene's prepass would hold nothing).
             || (WORLD_3D
-                && (scene.stylise.paint.is_some_and(|p| p.detail_aware())
+                && (scene.look.stylise.paint.is_some_and(|p| p.detail_aware())
                     // The watercolour wash's outer boundaries (object
                     // edges, silhouettes, creases), where its rim pools
                     // and its dry brush skips.
-                    || scene.stylise.paint.is_some_and(|p| p.watercolor.edges())
-                    || scene.stylise.halftone_faces())
+                    || scene.look.stylise.paint.is_some_and(|p| p.watercolor.edges())
+                    || scene.look.stylise.halftone_faces())
                 && !(batches.is_empty() && skinned_batches.is_empty()))
             || outline
             || dof.is_some()

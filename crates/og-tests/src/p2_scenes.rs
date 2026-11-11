@@ -430,7 +430,7 @@ pub fn skinned_hooks_scene() -> RenderScene {
     for s in &mut scene.skinned_instances {
         s.material = m;
     }
-    scene.post.ao = Some(og_render::AmbientOcclusion {
+    scene.look.post.ao = Some(og_render::AmbientOcclusion {
         radius: 0.6,
         intensity: 1.0,
         method: og_render::AoMethod::Gtao,

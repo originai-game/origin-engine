@@ -1428,9 +1428,9 @@ impl MeshletGpu {
                     indices: &pools.indices,
                     vertices: &pools.vertices,
                     lod_debug: scene.lod_debug,
-                    stylise: crate::Retro3d::uniform(scene.stylise.retro, width, height),
+                    stylise: crate::Retro3d::uniform(scene.look.stylise.retro, width, height),
                     wind: winds.1,
-                    extra: scene.stylise.material.surface_on() || !pools.foliage.is_empty(),
+                    extra: scene.look.stylise.material.surface_on() || !pools.foliage.is_empty(),
                     max_binding: self.max_binding,
                 },
             );

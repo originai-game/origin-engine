@@ -43,7 +43,7 @@ fn the_showcase_frame_is_recorded_from_its_graph() {
         stats.transient_textures
     );
     // Bloom off: its passes and targets leave the graph.
-    built.scene.post.bloom = None;
+    built.scene.look.post.bloom = None;
     let without = renderer
         .render(&built.scene, &RenderTarget::Offscreen)
         .expect("render");
@@ -87,7 +87,7 @@ fn half_resolution_ao_adds_its_upsample_and_halves_its_targets() {
     assert!(!names.iter().any(|n| n == "ao-upsample"), "{names:?}");
     assert_eq!((raw, blur, ao), (Some((w, h)), None, Some((w, h))));
 
-    built.scene.post.ao.as_mut().expect("ao").resolution = og_render::AoResolution::Half;
+    built.scene.look.post.ao.as_mut().expect("ao").resolution = og_render::AoResolution::Half;
     let (names, raw, blur, ao) = graph(&mut renderer, &built.scene);
     let at = |n: &str| {
         names

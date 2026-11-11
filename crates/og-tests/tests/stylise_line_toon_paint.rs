@@ -67,7 +67,7 @@ fn sphere_scene(material: StandardMaterial, toon: bool, env: f32) -> RenderScene
         exposure: Exposure::linear(1.0),
         ..Default::default()
     };
-    scene.stylise.material = MaterialStyle {
+    scene.look.stylise.material = MaterialStyle {
         toon,
         ..Default::default()
     };
@@ -127,7 +127,7 @@ fn toon_ambient_is_flat() {
     assert!(lo > 10.0, "the ambient reaches the sphere ({lo})");
     assert!(hi - lo < 4.0, "one flat colour: {lo:.1} to {hi:.1}");
     // The PBR ambient (toon_ambient 1) keeps the gradient: the control.
-    scene.stylise.material.toon_ambient = 1.0;
+    scene.look.stylise.material.toon_ambient = 1.0;
     let img = draw(&mut renderer, &scene);
     let l: Vec<f32> = disc.iter().map(|&(x, y)| luma(px(&img, x, y))).collect();
     let (lo, hi) = l
@@ -163,7 +163,7 @@ fn box_scene(place: OutlinePlace, width: f32) -> RenderScene {
         exposure: Exposure::linear(1.0),
         ..Default::default()
     };
-    scene.stylise.material = MaterialStyle {
+    scene.look.stylise.material = MaterialStyle {
         outline_width: width,
         outline_color: [1.0, 0.0, 0.0],
         outline_place: place,

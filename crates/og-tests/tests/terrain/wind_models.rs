@@ -23,7 +23,7 @@ fn model_wind_velocity_stops_when_the_wind_stops_changing() {
         samples: 16,
         max_pixels: 24.0,
     };
-    scene.post.motion_blur = Some(blur);
+    scene.look.post.motion_blur = Some(blur);
     let mut renderer = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
     let draw = |r: &mut Renderer, s: &RenderScene| {
         r.render(s, &RenderTarget::Offscreen).expect("render");
@@ -31,7 +31,7 @@ fn model_wind_velocity_stops_when_the_wind_stops_changing() {
     };
     draw(&mut renderer, &scene);
     let stationary = draw(&mut renderer, &scene);
-    scene.post.motion_blur = None;
+    scene.look.post.motion_blur = None;
     let crisp = draw(&mut renderer, &scene);
     let different = |a: &RgbaImage, b: &RgbaImage| {
         a.pixels
@@ -50,10 +50,10 @@ fn model_wind_velocity_stops_when_the_wind_stops_changing() {
     // Change strength without a tick: motion is between drawn frames, not
     // inferred from elapsed tick time or a hard-coded previous tick.
     scene.set_shader_param(red, "wind", &[1.0, 0.0, 0.4, 0.0]);
-    scene.post.motion_blur = Some(blur);
+    scene.look.post.motion_blur = Some(blur);
     let moving = draw(&mut renderer, &scene);
     let paused = draw(&mut renderer, &scene);
-    scene.post.motion_blur = None;
+    scene.look.post.motion_blur = None;
     let crisp = draw(&mut renderer, &scene);
     assert!(
         different(&moving, &crisp) > 50,

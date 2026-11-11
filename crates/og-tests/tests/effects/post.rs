@@ -26,8 +26,8 @@ fn lens_distortion_bends_by_its_formula() {
         s.camera = Camera::orthographic_2d(Vec2::ZERO, 10.0);
         // Dark grey, so a black corner (beyond the image) shows.
         s.environment.background = Background::Color(Vec3::splat(0.05));
-        s.post.tonemap = Tonemap::None;
-        s.post.lens_distortion = lens;
+        s.look.post.tonemap = Tonemap::None;
+        s.look.post.lens_distortion = lens;
         s
     };
     // The centroid of the white marker's pixels within 30 px of `near`, in
@@ -129,7 +129,7 @@ fn depth_of_field_blurs_outside_the_focus_band() {
     let low = fx::dof_scene(DofQuality::Low).expect("scene");
     let (blurred, _) = frame(&desc, &low);
     let mut off = fx::dof_scene(DofQuality::Low).expect("scene");
-    off.post.depth_of_field = None;
+    off.look.post.depth_of_field = None;
     let (sharp, _) = frame(&desc, &off);
     let (high, _) = frame(&desc, &fx::dof_scene(DofQuality::High).expect("scene"));
     // The near ground (bottom rows) and the focused figure (z = 2 - 2.6 * 2... the 3rd).
@@ -168,8 +168,8 @@ fn depth_of_field_blurs_outside_the_focus_band() {
         (t.x - (-2.0 + 0.8 * 2.0)).abs() < 1e-3 && (t.z - (2.0 - 2.6 * 2.0)).abs() < 1e-3
     };
     let plain = |s: &mut RenderScene| {
-        s.post.depth_of_field = None;
-        s.post.bloom = None;
+        s.look.post.depth_of_field = None;
+        s.look.post.bloom = None;
     };
     let alone = |background: Vec3| {
         let mut s = fx::dof_scene(DofQuality::Low).expect("scene");
@@ -277,6 +277,7 @@ fn depth_of_field_blurs_outside_the_focus_band() {
     // requirement, rather than merely producing a different image.
     let mut defocused = low;
     defocused
+        .look
         .post
         .depth_of_field
         .as_mut()

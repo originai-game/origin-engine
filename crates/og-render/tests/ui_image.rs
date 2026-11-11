@@ -28,7 +28,7 @@ fn render(images: impl FnOnce(&mut RenderScene) -> Vec<([f32; 4], UiImage)>) -> 
     }
     scene.overlay = Some(o);
     scene.environment.background = Background::Color(Vec3::ZERO);
-    scene.post.tonemap = Tonemap::None;
+    scene.look.post.tonemap = Tonemap::None;
     let mut renderer = Renderer::new_blocking(&RenderDesc {
         width: W,
         height: W,

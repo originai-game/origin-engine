@@ -388,7 +388,7 @@ pub fn effect_materials_scene() -> RenderScene {
         7,
         0,
     ));
-    scene.post.bloom = Some(Bloom::default());
+    scene.look.post.bloom = Some(Bloom::default());
     scene.camera = Camera {
         position: Vec3::new(0.6, 2.4, 9.5),
         target: Vec3::new(0.6, 1.1, 0.0),

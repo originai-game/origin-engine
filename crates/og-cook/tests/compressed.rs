@@ -356,7 +356,7 @@ fn cooked_reference(
     scene.light = src.light;
     scene.lights = src.lights.clone();
     scene.environment = src.environment;
-    scene.post = src.post;
+    scene.look.post = src.look.post;
     scene.debug = src.debug;
     gfx.scene = scene;
     (gfx, counts)

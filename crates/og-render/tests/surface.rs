@@ -23,7 +23,7 @@ fn ball(style: MaterialStyle) -> RenderScene {
         target: Vec3::ZERO,
         ..Default::default()
     };
-    scene.stylise.material = style;
+    scene.look.stylise.material = style;
     scene
 }
 
@@ -106,7 +106,7 @@ fn a_made_surface_keeps_the_normal_where_it_lies_in_the_face() {
             target: Vec3::ZERO,
             ..Default::default()
         };
-        scene.stylise.material = MaterialStyle {
+        scene.look.stylise.material = MaterialStyle {
             surface,
             surface_strength: 1.0,
             ..Default::default()

@@ -46,7 +46,7 @@ impl RenderBackend for Recorder {
         (64, 64)
     }
     fn render(&mut self, scene: &og_render::RenderScene) -> Result<(), String> {
-        self.0.set(Some(scene.stylise.paint));
+        self.0.set(Some(scene.look.stylise.paint));
         Ok(())
     }
     fn capture(

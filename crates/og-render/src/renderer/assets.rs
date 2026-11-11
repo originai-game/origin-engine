@@ -477,8 +477,8 @@ impl Renderer {
         };
         // The scene's material style: every lit material takes it where it
         // leaves a field at its default, so a change restyles them all.
-        let restyle = self.cache.material_style != scene.stylise.material;
-        self.cache.material_style = scene.stylise.material;
+        let restyle = self.cache.material_style != scene.look.stylise.material;
+        self.cache.material_style = scene.look.stylise.material;
         // Every material as it was and its uniform up to date: nothing to do
         // (a pass over thousands of materials costs most of a millisecond
         // on the web, engine s96).
@@ -528,7 +528,7 @@ impl Renderer {
                 }
                 continue;
             }
-            let styled = material::styled(material, &scene.stylise.material);
+            let styled = material::styled(material, &scene.look.stylise.material);
             let material = &styled;
             let hooked = scene.material_shader(MaterialHandle::from_index(i));
             if material.draws_array_maps() && hooked.is_none() && self.lit.array_maps.is_none() {
@@ -629,7 +629,7 @@ impl Renderer {
                     && gpu.physical.is_none()
                     && !gpu.effects
                     && !gpu.outline
-                    && !(scene.stylise.material.surface_on()
+                    && !(scene.look.stylise.material.surface_on()
                         && material.unlit == 0
                         && material.styled != 0)
                     && material.textures().iter().all(Option::is_none),

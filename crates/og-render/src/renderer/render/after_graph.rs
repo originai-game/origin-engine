@@ -92,7 +92,7 @@ impl Renderer {
                 &self.queue,
                 encoder,
                 p,
-                scene.post.tonemap,
+                scene.look.post.tonemap,
                 self.hdr.as_ref().map_or([0.0; 4], |h| h.curve),
                 dest,
                 viewport_format,

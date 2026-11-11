@@ -24,7 +24,7 @@ fn draw(mesh: MeshData, material: EffectMaterial, scale: Vec3, color: f32) -> (V
         ..Environment::default()
     };
     scene.light.intensity = 0.0;
-    scene.post = PostEffects {
+    scene.look.post = PostEffects {
         tonemap: Tonemap::None,
         ..Default::default()
     };

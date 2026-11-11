@@ -180,7 +180,7 @@ fn daylight() -> RenderScene {
         },
         ..Environment::default()
     };
-    scene.post.bloom = Some(Bloom::default());
+    scene.look.post.bloom = Some(Bloom::default());
     scene.tick_rate = 60.0;
     scene
 }
@@ -937,7 +937,7 @@ pub fn visual_particles_scene() -> RenderScene {
         range: 5.0,
         ..Default::default()
     }];
-    scene.post.bloom = Some(Bloom {
+    scene.look.post.bloom = Some(Bloom {
         threshold: 1.0,
         knee: 0.6,
         intensity: 0.45,

@@ -134,7 +134,7 @@ fn no_decals(s: &mut RenderScene) {
 }
 
 fn no_probes(s: &mut RenderScene) {
-    s.post.gi_probes = None;
+    s.look.post.gi_probes = None;
 }
 
 fn no_caustics(s: &mut RenderScene) {

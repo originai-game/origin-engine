@@ -51,8 +51,8 @@ impl Renderer {
             smaa_t2x,
         }: PassListInputs<'_>,
     ) -> Vec<FramePass> {
-        let post_fx = &scene.post;
-        let st = &scene.stylise;
+        let post_fx = &scene.look.post;
+        let st = &scene.look.stylise;
         let auto_exposure = matches!(camera.exposure, Exposure::Auto { .. });
         let bloom = post_fx.bloom.is_some_and(|b| b.intensity > 0.0) || glow;
         let lens = post_fx.lens_distortion.filter(|l| l.amount != 0.0);
@@ -81,7 +81,7 @@ impl Renderer {
                 depth_bands: effects.depth_bands.is_some(),
                 glow,
                 outline: effects.outline,
-                outline_outside: scene.stylise.material.outline_place
+                outline_outside: scene.look.stylise.material.outline_place
                     != crate::OutlinePlace::Inside,
                 taa,
                 taa_sharpen: self.post.taa_sharpen > 0.0,

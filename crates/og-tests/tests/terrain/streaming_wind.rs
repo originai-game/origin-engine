@@ -50,7 +50,7 @@ fn scattered_copies_are_drawn_from_chunks_and_shrink_over_the_fade() {
         impostor_distance: 0.0,
     });
     scene.fog = None;
-    scene.post.tonemap = Tonemap::None;
+    scene.look.post.tonemap = Tonemap::None;
     scene.environment.background = Background::Color(Vec3::ZERO);
     scene.light.cast_shadows = false;
     scene.camera = Camera {
@@ -320,7 +320,7 @@ fn wind_sways_scattered_copies_downwind() {
         impostor_distance: 0.0,
     });
     scene.fog = None;
-    scene.post.tonemap = Tonemap::None;
+    scene.look.post.tonemap = Tonemap::None;
     scene.environment.background = Background::Color(Vec3::ZERO);
     scene.light.cast_shadows = false;
     scene.camera = Camera {
@@ -467,7 +467,7 @@ fn wind_sways_scattered_copies_downwind() {
         ..Default::default()
     });
     scene.scatters[0].material = dim;
-    scene.post.motion_blur = Some(og_render::MotionBlur {
+    scene.look.post.motion_blur = Some(og_render::MotionBlur {
         shutter: 1.0,
         samples: 16,
         max_pixels: 16.0,

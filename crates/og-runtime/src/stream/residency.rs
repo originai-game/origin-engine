@@ -388,13 +388,13 @@ fn in_use(rs: &super::extract::RenderState, held: Held, tick: u64) -> Option<&'s
         }
         Held::Palette(i) => {
             let h = rs.fx.look.palettes.get(i)?.1?;
-            (rs.scene.stylise.quantize.and_then(|q| q.palette) == Some(h))
+            (rs.scene.look.stylise.quantize.and_then(|q| q.palette) == Some(h))
                 .then_some("Stylise.palette quantises the frame to it")
         }
         Held::Look(i) => (rs.fx.look.applied == Some(i)).then_some("it is the look applied"),
         Held::Lut(i) => {
             let h = rs.fx.luts.get(i)?.handle?;
-            (rs.scene.post.color_grading.map(|g| g.lut) == Some(h))
+            (rs.scene.look.post.color_grading.map(|g| g.lut) == Some(h))
                 .then_some("PostEffects.lut grades the frame with it")
         }
     }

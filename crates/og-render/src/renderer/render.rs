@@ -247,7 +247,7 @@ impl Renderer {
         // Crowds (crowd.rs): their members as the crowd cull's tables, and
         // where each member's previous transform goes under TAA (after the
         // palette's previous section, skin.rs).
-        let crowd_motion = temporal || scene.post.motion_blur.is_some();
+        let crowd_motion = temporal || scene.look.post.motion_blur.is_some();
         let crowd_frame = self.build_crowds(scene, crowd_motion)?;
         let crowd_batches = self.crowd_batches(scene, &crowd_frame);
         let crowd_previous = crowd_motion.then(|| {
@@ -342,7 +342,7 @@ impl Renderer {
         // blendshape weights in a second section of the palette (skin.rs,
         // its layout), read by the skinned prepass at `Fx::decal_info.w`.
         let taa_on = temporal;
-        let skinned_motion = if taa_on || scene.post.motion_blur.is_some() {
+        let skinned_motion = if taa_on || scene.look.post.motion_blur.is_some() {
             skin::append_previous(
                 &scene.joint_palettes,
                 &scene.previous_joint_palettes,
@@ -360,7 +360,7 @@ impl Renderer {
         }
 
         // Effects this frame.
-        let post_fx = &scene.post;
+        let post_fx = &scene.look.post;
         let particle_frame = self.particles.gpu.prepare(
             &self.device,
             &self.queue,
@@ -484,7 +484,10 @@ impl Renderer {
         let glass_on = self.prepare_frame_overlay(scene, &overlay_frame);
         // The frame goes through the glass source when glass reads it or a
         // colour filter recolours it on its way to the output.
-        let color_filter = scene.color_filter.filter(|_| self.glass_targets.is_some());
+        let color_filter = scene
+            .look
+            .color_filter
+            .filter(|_| self.glass_targets.is_some());
         let routed = glass_on || color_filter.is_some();
         let line_frame = self.prepare_frame_lines(scene, &cam);
         // The strips and sprites of the camera, the views and the probe faces,

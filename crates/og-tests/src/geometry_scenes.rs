@@ -426,7 +426,7 @@ pub fn debug_scene() -> Result<RenderScene, String> {
         colour(0.6, 0.6, 0.65),
         Mat4::from_translation(Vec3::new(1.6, 0.8, 0.8)),
     );
-    scene.post.bloom = Some(og_render::Bloom {
+    scene.look.post.bloom = Some(og_render::Bloom {
         threshold: 1.0,
         knee: 0.5,
         intensity: 0.8,

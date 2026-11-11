@@ -112,7 +112,7 @@ fn render(width: u32, height: u32) -> (Vec<u8>, og_render::RenderInfo) {
     scene.overlay = Some(overlay);
     let bg = ui.theme().palette.backdrop.linear();
     scene.environment.background = Background::Color(og_core::glam::Vec3::new(bg[0], bg[1], bg[2]));
-    scene.post.tonemap = Tonemap::None;
+    scene.look.post.tonemap = Tonemap::None;
     let mut renderer = Renderer::new_blocking(&RenderDesc {
         width,
         height,

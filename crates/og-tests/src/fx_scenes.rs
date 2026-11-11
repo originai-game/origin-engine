@@ -425,7 +425,7 @@ pub fn decals_scene() -> RenderScene {
         ..Default::default()
     };
     scene.environment.sky.sun_direction = sun;
-    scene.post.bloom = Some(Bloom::default());
+    scene.look.post.bloom = Some(Bloom::default());
     scene.camera = Camera {
         position: Vec3::new(0.0, 4.2, 6.2),
         target: Vec3::new(0.0, 0.4, -0.6),

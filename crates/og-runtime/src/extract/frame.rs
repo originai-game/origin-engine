@@ -47,7 +47,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     scene.sprites.clear();
     scene.sprite_meshes.clear();
     scene.overlay = None;
-    scene.color_filter = None;
+    scene.look.color_filter = None;
     scene.joint_palettes.clear();
     scene.skinned_instances.clear();
     scene.crowds.clear();
@@ -135,15 +135,15 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
         if on(s, "sky", false) {
             scene.environment.background = og_render::Background::Sky;
         }
-        scene.post.bloom = on(s, "bloom", false).then(|| og_render::Bloom {
+        scene.look.post.bloom = on(s, "bloom", false).then(|| og_render::Bloom {
             threshold: f(s, "bloomThreshold", 1.0),
             knee: f(s, "bloomKnee", 0.5),
             intensity: f(s, "bloomIntensity", 0.6),
         });
         let radius = f(s, "bloomRadius", -1.0);
-        scene.post.bloom_unreal = (radius >= 0.0).then(|| radius.min(1.0));
-        scene.post.bloom_contrast = f(s, "bloomContrast", 1.0).clamp(0.5, 2.0);
-        scene.post.tonemap = if on(s, "toneMapped", true) {
+        scene.look.post.bloom_unreal = (radius >= 0.0).then(|| radius.min(1.0));
+        scene.look.post.bloom_contrast = f(s, "bloomContrast", 1.0).clamp(0.5, 2.0);
+        scene.look.post.tonemap = if on(s, "toneMapped", true) {
             match s["toneMapping"].as_u64().or_else(|| {
                 s["toneMapping"]
                     .as_str()
@@ -813,7 +813,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     super::geometry::extract(world, rs, &mut h, vp);
     // Teleported into this frame: drawn without per-object motion.
     let mut cut = IdMap::new();
-    if rs.interp.drawn.is_some() && (rs.scene.post.motion_blur.is_some() || super::fx::taa(rs)) {
+    if rs.interp.drawn.is_some() && (rs.scene.look.post.motion_blur.is_some() || super::fx::taa(rs))
+    {
         for &(e, _) in &keys {
             if !cut.contains_key(&e) && h.cut(e) {
                 cut.insert(e, ());

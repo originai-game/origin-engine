@@ -114,6 +114,6 @@ pub(super) fn text_scene() -> Result<RenderScene, String> {
     });
     scene.camera = Camera::orthographic_2d(Vec2::ZERO, 10.5);
     scene.environment.background = Background::Color(Vec3::new(0.015, 0.02, 0.035));
-    scene.post.tonemap = Tonemap::None;
+    scene.look.post.tonemap = Tonemap::None;
     Ok(scene)
 }

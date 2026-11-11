@@ -87,15 +87,15 @@ impl RenderScene {
     /// Adds a custom post pass; it runs while [`RenderScene::custom_post`]
     /// lists it.
     pub fn add_post(&mut self, post: PostShader) -> PostHandle {
-        self.post_params.push(post.defaults());
-        self.posts.push(post);
-        PostHandle(self.posts.len() as u32 - 1)
+        self.look.post_params.push(post.defaults());
+        self.look.posts.push(post);
+        PostHandle(self.look.posts.len() as u32 - 1)
     }
 
     /// Sets parameter `name` of a post pass (as many numbers as its type
     /// takes; missing ones are 0). False for a bad handle or name.
     pub fn set_post_param(&mut self, post: PostHandle, name: &str, value: &[f32]) -> bool {
-        let Some(shader) = self.posts.get(post.index()) else {
+        let Some(shader) = self.look.posts.get(post.index()) else {
             return false;
         };
         let Some((slot, kind)) = shader.param(name) else {
@@ -105,7 +105,7 @@ impl RenderScene {
         for (d, s) in v.iter_mut().zip(value.iter().take(kind.count())) {
             *d = *s;
         }
-        self.post_params[post.index()][slot] = v;
+        self.look.post_params[post.index()][slot] = v;
         true
     }
 }
@@ -226,9 +226,9 @@ impl CustomPosts {
     pub fn prepare(&mut self, device: &wgpu::Device, scene: &RenderScene) -> Vec<usize> {
         self.layout(device);
         let mut run = Vec::new();
-        for h in scene.custom_post.iter().take(MAX_CUSTOM_POSTS) {
+        for h in scene.look.custom_post.iter().take(MAX_CUSTOM_POSTS) {
             let i = h.index();
-            let Some(post) = scene.posts.get(i) else {
+            let Some(post) = scene.look.posts.get(i) else {
                 continue;
             };
             let key = (scene.id(), i);
@@ -358,7 +358,7 @@ impl CustomPosts {
         };
         let (group_layout, _, sampler) = self.layout.as_ref().expect("made in prepare");
         let u = PostUniform {
-            params: scene.post_params[post],
+            params: scene.look.post_params[post],
             screen: [
                 size.0 as f32,
                 size.1 as f32,
@@ -383,7 +383,7 @@ impl CustomPosts {
         );
         crate::post::fullscreen_pass(
             encoder,
-            &scene.posts[post].name,
+            &scene.look.posts[post].name,
             write,
             wgpu::LoadOp::Clear(wgpu::Color::BLACK),
             pipeline,
@@ -446,9 +446,9 @@ mod tests {
     fn post_params_set_by_name() {
         let mut scene = RenderScene::new();
         let h = scene.add_post(example_crt());
-        assert_eq!(scene.post_params[0][0][0], 0.12);
+        assert_eq!(scene.look.post_params[0][0][0], 0.12);
         assert!(scene.set_post_param(h, "curve", &[0.3, 9.0]));
-        assert_eq!(scene.post_params[0][0], [0.3, 0.0, 0.0, 0.0]);
+        assert_eq!(scene.look.post_params[0][0], [0.3, 0.0, 0.0, 0.0]);
         assert!(!scene.set_post_param(h, "nope", &[1.0]));
         assert!(!scene.set_post_param(PostHandle(4), "curve", &[1.0]));
         let mut bad = example_crt();

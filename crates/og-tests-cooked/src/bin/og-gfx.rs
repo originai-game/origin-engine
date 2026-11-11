@@ -197,7 +197,7 @@ fn run(
         built.scene.debug = og_render::DebugView::AmbientOcclusion;
     }
     if std::env::var_os("OG_GFX_AO_HALF").is_some()
-        && let Some(ao) = &mut built.scene.post.ao
+        && let Some(ao) = &mut built.scene.look.post.ao
     {
         ao.resolution = og_render::AoResolution::Half;
     }
@@ -341,55 +341,57 @@ const VARIANTS: &[Variant] = &[
     ("no shadows at all", |g| g.scene.light.cast_shadows = false),
     ("TAA", |g| g.desc.antialias = Antialias::Taa),
     ("MSAA 4x", |g| g.desc.antialias = Antialias::Msaa4),
-    ("bloom", |g| g.scene.post.bloom = Some(Bloom::default())),
+    ("bloom", |g| {
+        g.scene.look.post.bloom = Some(Bloom::default())
+    }),
     ("auto exposure", |g| {
         g.scene.camera.exposure = Exposure::auto()
     }),
     ("4 point/spot lights", |g| local_lights(g, false)),
     ("4 lights, 2 shadowed", |g| local_lights(g, true)),
     ("E1: AO (GTAO)", |g| {
-        g.scene.post.ao = Some(og_render::AmbientOcclusion {
+        g.scene.look.post.ao = Some(og_render::AmbientOcclusion {
             method: og_render::AoMethod::Gtao,
             ..Default::default()
         })
     }),
     ("E1: AO (SSAO)", |g| {
-        g.scene.post.ao = Some(og_render::AmbientOcclusion {
+        g.scene.look.post.ao = Some(og_render::AmbientOcclusion {
             method: og_render::AoMethod::Ssao,
             ..Default::default()
         })
     }),
     ("E1: AO (GTAO, half resolution)", |g| {
-        g.scene.post.ao = Some(og_render::AmbientOcclusion {
+        g.scene.look.post.ao = Some(og_render::AmbientOcclusion {
             method: og_render::AoMethod::Gtao,
             resolution: og_render::AoResolution::Half,
             ..Default::default()
         })
     }),
     ("E1: AO (SSAO, half resolution)", |g| {
-        g.scene.post.ao = Some(og_render::AmbientOcclusion {
+        g.scene.look.post.ao = Some(og_render::AmbientOcclusion {
             method: og_render::AoMethod::Ssao,
             resolution: og_render::AoResolution::Half,
             ..Default::default()
         })
     }),
     ("E1: outline (scene-wide)", |g| {
-        g.scene.post.outline = Some(og_render::Outline::default())
+        g.scene.look.post.outline = Some(og_render::Outline::default())
     }),
     ("E1: depth of field (low)", |g| {
-        g.scene.post.depth_of_field = Some(og_render::DepthOfField::default())
+        g.scene.look.post.depth_of_field = Some(og_render::DepthOfField::default())
     }),
     ("E1: depth of field (high)", |g| {
-        g.scene.post.depth_of_field = Some(og_render::DepthOfField {
+        g.scene.look.post.depth_of_field = Some(og_render::DepthOfField {
             quality: og_render::DofQuality::High,
             ..Default::default()
         })
     }),
     ("E1: motion blur", |g| {
-        g.scene.post.motion_blur = Some(og_render::MotionBlur::default())
+        g.scene.look.post.motion_blur = Some(og_render::MotionBlur::default())
     }),
     ("E1: god rays", |g| {
-        g.scene.post.god_rays = Some(og_render::GodRays::default())
+        g.scene.look.post.god_rays = Some(og_render::GodRays::default())
     }),
     ("E1: grading (LUT, vignette, aberration, grain)", |g| {
         og_tests::fx_scenes::grade(&mut g.scene)
@@ -426,7 +428,7 @@ const VARIANTS: &[Variant] = &[
         "all (TAA, bloom, auto exposure, 4 lights / 2 shadowed)",
         |g| {
             g.desc.antialias = Antialias::Taa;
-            g.scene.post.bloom = Some(Bloom::default());
+            g.scene.look.post.bloom = Some(Bloom::default());
             g.scene.camera.exposure = Exposure::auto();
             local_lights(g, true);
         },
@@ -486,7 +488,7 @@ fn effect_table(frames: u32, only: Option<&str>) -> Result<String, String> {
         ("fx-2d", "2D lights + soft shadows", |g| {
             g.scene.lighting_2d = None;
         }),
-        ("fx-2d", "2D glow buffer", |g| g.scene.post.glow = None),
+        ("fx-2d", "2D glow buffer", |g| g.scene.look.post.glow = None),
         ("trails-beams", "trails, ribbon, beams", |g| {
             g.scene.trails.clear();
             g.scene.ribbons.clear();
@@ -494,7 +496,7 @@ fn effect_table(frames: u32, only: Option<&str>) -> Result<String, String> {
         }),
         ("decals", "5 decals", |g| g.scene.decals.clear()),
         ("stylised", "outlines (prepass + pass)", |g| {
-            g.scene.post.outline = None;
+            g.scene.look.post.outline = None;
             let handles: Vec<_> = g.scene.material_handles().collect();
             for h in handles {
                 if let Some(m) = g.scene.standard_material(h).copied() {

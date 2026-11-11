@@ -54,6 +54,7 @@ impl Renderer {
     ) -> Option<ssr::ScreenSpaceReflections> {
         let perspective = matches!(scene.camera.projection, Projection::Perspective { .. });
         scene
+            .look
             .post
             .ssr
             .filter(|s| {

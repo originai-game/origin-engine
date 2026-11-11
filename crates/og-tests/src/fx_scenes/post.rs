@@ -21,23 +21,23 @@ pub fn teal_orange() -> ColorLut {
 
 pub fn grade(scene: &mut RenderScene) {
     let lut = scene.add_lut(teal_orange());
-    scene.post.color_grading = Some(ColorGrading {
+    scene.look.post.color_grading = Some(ColorGrading {
         lut,
         intensity: 1.0,
     });
-    scene.post.vignette = Some(Vignette::default());
-    scene.post.chromatic_aberration = Some(ChromaticAberration { intensity: 2.5 });
-    scene.post.film_grain = Some(FilmGrain::default());
+    scene.look.post.vignette = Some(Vignette::default());
+    scene.look.post.chromatic_aberration = Some(ChromaticAberration { intensity: 2.5 });
+    scene.look.post.film_grain = Some(FilmGrain::default());
 }
 
 /// The teal-orange LUT at 0.6, then colour adjustments baked with it.
 pub fn adjust(scene: &mut RenderScene) {
     let lut = scene.add_lut(teal_orange());
-    scene.post.color_grading = Some(ColorGrading {
+    scene.look.post.color_grading = Some(ColorGrading {
         lut,
         intensity: 0.6,
     });
-    scene.post.color_adjust = Some(ColorAdjust {
+    scene.look.post.color_adjust = Some(ColorAdjust {
         temperature: 0.06,
         contrast: 0.15,
         vibrance: 0.25,
@@ -130,7 +130,7 @@ pub fn ao_scene(method: AoMethod) -> RenderScene {
         background: Background::Sky,
         ..Environment::default()
     };
-    scene.post.ao = Some(AmbientOcclusion {
+    scene.look.post.ao = Some(AmbientOcclusion {
         radius: 0.7,
         intensity: 1.2,
         method,
@@ -225,7 +225,7 @@ pub fn gi_scene(gi: bool) -> RenderScene {
         background: Background::Sky,
         ..Environment::default()
     };
-    scene.post.gi = gi.then(og_render::ScreenSpaceGlobalIllumination::default);
+    scene.look.post.gi = gi.then(og_render::ScreenSpaceGlobalIllumination::default);
     scene.camera = Camera {
         position: Vec3::new(0.0, 2.2, 6.0),
         target: Vec3::new(0.0, 0.9, -1.0),
@@ -257,7 +257,7 @@ pub fn room_probes() -> og_render::ProbeGlobalIllumination {
 /// and the sphere's right side mint.
 pub fn gi_probe_scene(probes: bool) -> RenderScene {
     let mut scene = gi_scene(false);
-    scene.post.gi_probes = probes.then(room_probes);
+    scene.look.post.gi_probes = probes.then(room_probes);
     scene
 }
 
@@ -330,12 +330,12 @@ pub fn gi_shelter_scene(probes: bool, ao: bool) -> RenderScene {
         background: Background::Sky,
         ..Environment::default()
     };
-    scene.post.gi_probes = probes.then(|| og_render::ProbeGlobalIllumination {
+    scene.look.post.gi_probes = probes.then(|| og_render::ProbeGlobalIllumination {
         spacing: 1.0,
         cascades: 2,
         ..Default::default()
     });
-    scene.post.ao = ao.then(|| AmbientOcclusion {
+    scene.look.post.ao = ao.then(|| AmbientOcclusion {
         radius: 0.5,
         intensity: 1.0,
         method: og_render::AoMethod::Gtao,
@@ -454,7 +454,7 @@ pub fn light_volume_scene(realtime: bool, colour: Vec3, mirror: Option<f32>) -> 
     // keep their bounce and their lamp light. Most of this room's light is
     // the lamp's, so the occlusion reaches a little of it too (at most a
     // fifth, where fully occluded), or the contact would not read.
-    scene.post.ao = Some(AmbientOcclusion {
+    scene.look.post.ao = Some(AmbientOcclusion {
         radius: 0.5,
         intensity: 1.0,
         method: AoMethod::Gtao,
@@ -546,8 +546,8 @@ pub fn dof_scene(quality: DofQuality) -> Result<RenderScene, String> {
         background: Background::Color(Vec3::new(0.01, 0.012, 0.02)),
         ..Environment::default()
     };
-    scene.post.bloom = Some(Bloom::default());
-    scene.post.depth_of_field = Some(DepthOfField {
+    scene.look.post.bloom = Some(Bloom::default());
+    scene.look.post.depth_of_field = Some(DepthOfField {
         focus_distance: 10.2,
         focus_range: 1.2,
         max_blur: 0.014,
@@ -608,11 +608,11 @@ pub fn god_rays_scene() -> RenderScene {
         background: Background::Sky,
         ..Environment::default()
     };
-    scene.post.god_rays = Some(GodRays {
+    scene.look.post.god_rays = Some(GodRays {
         intensity: 0.7,
         ..Default::default()
     });
-    scene.post.bloom = Some(Bloom::default());
+    scene.look.post.bloom = Some(Bloom::default());
     scene.camera = Camera {
         position: Vec3::new(0.0, 1.8, 6.0),
         target: Vec3::new(0.3, 3.2, -12.0),
@@ -643,8 +643,8 @@ fn flare_sky(scene: &mut RenderScene, sun: Vec3, color: Vec3, intensity: f32) {
         background: Background::Sky,
         ..Environment::default()
     };
-    scene.post.bloom = Some(Bloom::default());
-    scene.post.lens_flare = Some(LensFlare::default());
+    scene.look.post.bloom = Some(Bloom::default());
+    scene.look.post.lens_flare = Some(LensFlare::default());
 }
 
 /// A courtyard at noon, the camera on the ground looking up past the roofs
@@ -786,8 +786,8 @@ pub fn flare_lights_scene() -> RenderScene {
         background: Background::Color(Vec3::new(0.004, 0.006, 0.014)),
         ..Environment::default()
     };
-    scene.post.bloom = Some(Bloom::default());
-    scene.post.lens_flare = Some(LensFlare::default());
+    scene.look.post.bloom = Some(Bloom::default());
+    scene.look.post.lens_flare = Some(LensFlare::default());
     scene.camera = Camera {
         position: eye,
         target: Vec3::new(0.6, 2.0, -10.0),
@@ -837,7 +837,7 @@ pub fn motion_blur_scene() -> RenderScene {
             Mat4::from_translation(Vec3::new(-5.0 + i as f32 * 2.0, 0.5, -3.0)),
         );
     }
-    scene.post.motion_blur = Some(MotionBlur::default());
+    scene.look.post.motion_blur = Some(MotionBlur::default());
     scene
 }
 

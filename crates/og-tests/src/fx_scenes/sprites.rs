@@ -265,10 +265,10 @@ pub fn fx_2d_scene() -> Result<RenderScene, String> {
         layer: 100,
         ..Text::new(font, "Dungeon 1   coins x3")
     });
-    scene.post.glow = Some(Glow { intensity: 1.0 });
+    scene.look.post.glow = Some(Glow { intensity: 1.0 });
     scene.camera = Camera::orthographic_2d(Vec2::ZERO, 12.0);
     scene.environment.background = Background::Color(Vec3::ZERO);
-    scene.post.tonemap = Tonemap::None;
+    scene.look.post.tonemap = Tonemap::None;
     Ok(scene)
 }
 
@@ -459,6 +459,6 @@ pub fn tilemap_lit_scene() -> RenderScene {
     ];
     scene.camera = Camera::orthographic_2d(Vec2::ZERO, 18.0);
     scene.environment.background = Background::Color(Vec3::ZERO);
-    scene.post.tonemap = Tonemap::None;
+    scene.look.post.tonemap = Tonemap::None;
     scene
 }

@@ -95,7 +95,7 @@ pub fn physical_light(
         sky: 0.0,
         ..Default::default()
     });
-    scene.post.bloom = Some(Bloom::default());
+    scene.look.post.bloom = Some(Bloom::default());
     look
 }
 

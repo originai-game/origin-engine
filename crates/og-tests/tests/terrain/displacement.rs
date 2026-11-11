@@ -13,7 +13,7 @@ fn magenta(p: [f32; 3]) -> bool {
 fn on_magenta(mut scene: RenderScene) -> RenderScene {
     scene.fog = None;
     scene.environment.background = Background::Color(Vec3::new(1.0, 0.0, 1.0));
-    scene.post.tonemap = Tonemap::None;
+    scene.look.post.tonemap = Tonemap::None;
     scene
 }
 

@@ -398,7 +398,7 @@ pub fn view_kinds_scene(kinds: &[ViewKind], view_layers: u32, tick: u64) -> Rend
 pub fn depth_scene() -> RenderScene {
     let mut scene = RenderScene::new();
     scene.environment.sky.sun_direction = Vec3::new(-0.4, 0.8, 0.5);
-    scene.post.tonemap = og_render::Tonemap::None;
+    scene.look.post.tonemap = og_render::Tonemap::None;
     let grey = scene.add_standard_material(colour(0.6, 0.6, 0.6));
     let ground = scene.add_mesh(shapes::plane(12.0, 12.0));
     scene.add_instance(ground, grey, Mat4::IDENTITY);
@@ -595,7 +595,7 @@ pub fn view_fx_scene(fx: ViewFx, on: bool) -> RenderScene {
         }
     }
     if fx == ViewFx::Glow {
-        scene.post.glow = Some(og_render::Glow { intensity: 1.0 });
+        scene.look.post.glow = Some(og_render::Glow { intensity: 1.0 });
         scene.add_sprite(og_render::Sprite {
             position: Vec3::ZERO,
             size: glam::Vec2::new(0.8, 0.8),

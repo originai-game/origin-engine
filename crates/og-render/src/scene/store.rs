@@ -57,8 +57,14 @@ impl RenderScene {
             lights: Vec::new(),
             environment: Environment::default(),
             environment_map: None,
-            post: PostEffects::default(),
-            stylise: crate::Stylise::default(),
+            look: SceneLook {
+                post: PostEffects::default(),
+                stylise: crate::Stylise::default(),
+                posts: Vec::new(),
+                post_params: Vec::new(),
+                custom_post: Vec::new(),
+                color_filter: None,
+            },
             sprites: Vec::new(),
             texts: Vec::new(),
             debug: DebugView::None,
@@ -96,11 +102,8 @@ impl RenderScene {
             lod_bias: 1.0,
             lod_debug: false,
             visibility_buffer: true,
-            posts: Vec::new(),
-            post_params: Vec::new(),
             ui_vectors: Vec::new(),
             ui_materials: Vec::new(),
-            custom_post: Vec::new(),
             origin: glam::Vec3::ZERO,
             views: Vec::new(),
             tick: 0,
@@ -139,7 +142,6 @@ impl RenderScene {
             joint_palettes: Vec::new(),
             skinned_instances: Vec::new(),
             overlay: None,
-            color_filter: None,
             fog: None,
             clouds: None,
             aurora: None,
@@ -223,7 +225,7 @@ impl RenderScene {
         {
             return Some(format!("the environment map {} was removed", e.map.index()));
         }
-        if let Some(g) = self.post.color_grading
+        if let Some(g) = self.look.post.color_grading
             && !self.contains_lut(g.lut)
         {
             return Some(format!(
@@ -231,7 +233,7 @@ impl RenderScene {
                 g.lut.index()
             ));
         }
-        if let Some(p) = self.stylise.quantize.and_then(|q| q.palette)
+        if let Some(p) = self.look.stylise.quantize.and_then(|q| q.palette)
             && !self.contains_palette(p)
         {
             return Some(format!(

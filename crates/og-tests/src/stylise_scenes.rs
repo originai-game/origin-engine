@@ -80,12 +80,12 @@ fn dusk_palette() -> Palette {
 
 pub fn pixel_scene() -> Result<RenderScene, String> {
     let mut scene = crate::fx_scenes::stylised_scene()?;
-    scene.stylise.pixel = Some(PixelScale {
+    scene.look.stylise.pixel = Some(PixelScale {
         height: 180,
         upscale: 0,
         snap: true,
     });
-    scene.stylise.quantize = Some(Quantize {
+    scene.look.stylise.quantize = Some(Quantize {
         posterize: 6,
         mode: Default::default(),
         palette: None,
@@ -100,12 +100,12 @@ pub fn pixel_scene() -> Result<RenderScene, String> {
 pub fn palette_scene() -> Result<RenderScene, String> {
     let mut scene = crate::fx_scenes::stylised_scene()?;
     let palette = scene.add_palette(dusk_palette());
-    scene.stylise.pixel = Some(PixelScale {
+    scene.look.stylise.pixel = Some(PixelScale {
         height: 240,
         upscale: 0,
         snap: true,
     });
-    scene.stylise.quantize = Some(Quantize {
+    scene.look.stylise.quantize = Some(Quantize {
         posterize: 0,
         mode: Default::default(),
         palette: Some(palette),
@@ -119,7 +119,7 @@ pub fn palette_scene() -> Result<RenderScene, String> {
 
 pub fn print_scene() -> RenderScene {
     let mut scene = crate::physical_scenes::physical_scene();
-    scene.stylise.hatching = Some(Hatching {
+    scene.look.stylise.hatching = Some(Hatching {
         strength: 0.9,
         scale: 6.0,
         levels: 4,
@@ -130,7 +130,7 @@ pub fn print_scene() -> RenderScene {
         depth: 0.0,
         keep_color: false,
     });
-    scene.stylise.ink = Some(Ink {
+    scene.look.stylise.ink = Some(Ink {
         threshold: 0.12,
         width: 1.5,
         color: [0.02, 0.02, 0.03],
@@ -142,7 +142,7 @@ pub fn print_scene() -> RenderScene {
 
 pub fn halftone_scene() -> Result<RenderScene, String> {
     let mut scene = crate::fx_scenes::stylised_scene()?;
-    scene.stylise.halftone = Some(Halftone {
+    scene.look.stylise.halftone = Some(Halftone {
         strength: 1.0,
         size: 7.0,
         angle_degrees: 30.0,
@@ -157,7 +157,7 @@ pub fn halftone_scene() -> Result<RenderScene, String> {
 
 pub fn halftone_surface_scene() -> Result<RenderScene, String> {
     let mut scene = crate::fx_scenes::stylised_scene()?;
-    scene.stylise.halftone = Some(Halftone {
+    scene.look.stylise.halftone = Some(Halftone {
         strength: 1.0,
         size: 9.0,
         angle_degrees: 30.0,
@@ -167,7 +167,7 @@ pub fn halftone_surface_scene() -> Result<RenderScene, String> {
         misregistration: 0.0,
         region: HalftoneRegion::All,
     });
-    scene.stylise.ink = Some(Ink {
+    scene.look.stylise.ink = Some(Ink {
         threshold: 0.4,
         width: 1.0,
         color: [0.02, 0.02, 0.03],
@@ -179,7 +179,7 @@ pub fn halftone_surface_scene() -> Result<RenderScene, String> {
 
 pub fn paint_scene() -> RenderScene {
     let mut scene = crate::physical_scenes::physical_scene();
-    scene.stylise.paint = Some(Paint {
+    scene.look.stylise.paint = Some(Paint {
         radius: 4.0,
         anisotropy: 0.6,
         edge_darkening: 0.6,
@@ -196,7 +196,7 @@ pub fn paint_scene() -> RenderScene {
 
 pub fn bands_scene() -> Result<RenderScene, String> {
     let mut scene = crate::fx_scenes::stylised_scene()?;
-    scene.stylise.depth_bands = Some(DepthBands {
+    scene.look.stylise.depth_bands = Some(DepthBands {
         count: 4,
         near: 4.0,
         far: 30.0,
@@ -209,12 +209,12 @@ pub fn bands_scene() -> Result<RenderScene, String> {
 
 pub fn retro_scene() -> RenderScene {
     let mut scene = crate::physical_scenes::physical_scene();
-    scene.stylise.pixel = Some(PixelScale {
+    scene.look.stylise.pixel = Some(PixelScale {
         height: 240,
         upscale: 0,
         snap: false,
     });
-    scene.stylise.retro = Some(Retro3d {
+    scene.look.stylise.retro = Some(Retro3d {
         vertex_snap: 2.0,
         affine: 1.0,
         depth_bits: 12,
@@ -224,7 +224,7 @@ pub fn retro_scene() -> RenderScene {
 
 pub fn material_scene() -> RenderScene {
     let mut scene = crate::physical_scenes::physical_scene();
-    scene.stylise.material = MaterialStyle {
+    scene.look.stylise.material = MaterialStyle {
         toon: true,
         gradient_map: None,
         shadow_tint: [0.5, 0.2, 0.1],
@@ -281,7 +281,7 @@ pub fn ink_depth_scene() -> RenderScene {
         exposure: Exposure::linear(1.0),
         ..Default::default()
     };
-    scene.stylise.ink = Some(Ink {
+    scene.look.stylise.ink = Some(Ink {
         threshold: 0.15,
         width: 1.5,
         color: [0.03, 0.02, 0.04],
@@ -375,7 +375,7 @@ pub fn surface_scene() -> RenderScene {
         exposure: Exposure::linear(0.9),
         ..Default::default()
     };
-    scene.stylise.hatching = Some(Hatching {
+    scene.look.stylise.hatching = Some(Hatching {
         strength: 0.9,
         scale: 7.0,
         levels: 4,
@@ -386,7 +386,7 @@ pub fn surface_scene() -> RenderScene {
         depth: 0.0,
         keep_color: false,
     });
-    scene.stylise.paint = Some(Paint {
+    scene.look.stylise.paint = Some(Paint {
         radius: 0.0,
         anisotropy: 0.0,
         edge_darkening: 0.0,
@@ -398,7 +398,7 @@ pub fn surface_scene() -> RenderScene {
         canvas_world_scale: 96.0,
         ..Paint::DEFAULT
     });
-    scene.stylise.ink = Some(Ink {
+    scene.look.stylise.ink = Some(Ink {
         threshold: 0.5,
         width: 1.5,
         color: [0.03, 0.025, 0.02],
@@ -438,8 +438,13 @@ pub fn object_scene() -> RenderScene {
         ),
     );
     for space in [
-        scene.stylise.hatching.as_mut().map(|h| &mut h.space),
-        scene.stylise.paint.as_mut().map(|p| &mut p.canvas_space),
+        scene.look.stylise.hatching.as_mut().map(|h| &mut h.space),
+        scene
+            .look
+            .stylise
+            .paint
+            .as_mut()
+            .map(|p| &mut p.canvas_space),
     ]
     .into_iter()
     .flatten()
@@ -618,7 +623,7 @@ pub fn outline_voxels_scene() -> RenderScene {
         clay,
         Mat4::from_translation(Vec3::new(1.4, 0.45, 1.5)) * Mat4::from_scale(Vec3::splat(0.9)),
     );
-    scene.stylise.material = MaterialStyle {
+    scene.look.stylise.material = MaterialStyle {
         toon: true,
         outline_color: [0.04, 0.03, 0.06],
         outline_width: 2.5,
@@ -716,7 +721,7 @@ pub fn toon_physical_scene() -> RenderScene {
                 * Mat4::from_scale(Vec3::splat(1.2)),
         );
     }
-    scene.stylise.material = MaterialStyle {
+    scene.look.stylise.material = MaterialStyle {
         toon: true,
         shadow_tint: [0.18, 0.16, 0.42],
         shadow_tint_amount: 0.7,
@@ -877,8 +882,8 @@ pub fn untonemapped_sprites_scene() -> RenderScene {
     };
     scene.environment.sky.sun_direction = sun;
     scene.environment.intensity = 0.8;
-    scene.post.tonemap = Tonemap::Agx;
-    scene.post.bloom = Some(Bloom {
+    scene.look.post.tonemap = Tonemap::Agx;
+    scene.look.post.bloom = Some(Bloom {
         threshold: 1.0,
         knee: 0.5,
         intensity: 0.8,
@@ -935,7 +940,7 @@ pub fn bands_tint_scene() -> RenderScene {
             );
         }
     }
-    scene.stylise.depth_bands = Some(DepthBands {
+    scene.look.stylise.depth_bands = Some(DepthBands {
         count: 5,
         near: 3.0,
         far: 40.0,
@@ -989,7 +994,7 @@ pub fn outline_ground_scene(width: f32, distance: f32) -> RenderScene {
             Mat4::from_translation(Vec3::new(5.0, 0.45, z)),
         );
     }
-    scene.stylise.material = MaterialStyle {
+    scene.look.stylise.material = MaterialStyle {
         outline_color: [0.25, 0.94, 1.0],
         outline_width: width,
         outline_distance: distance,

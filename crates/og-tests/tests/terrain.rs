@@ -71,7 +71,7 @@ fn decals_project_on_terrain_and_reject_back_faces() {
         exposure: Exposure::linear(1.0),
         ..Default::default()
     };
-    scene.post.tonemap = Tonemap::None;
+    scene.look.post.tonemap = Tonemap::None;
     let mut capture = |s: &RenderScene| {
         let stats = renderer
             .render_capture(s, &RenderTarget::Offscreen)
@@ -263,7 +263,7 @@ fn layers_follow_slope_altitude_and_the_control_map() {
         intensity: 0.3,
         ..Default::default()
     };
-    scene.post.tonemap = Tonemap::None;
+    scene.look.post.tonemap = Tonemap::None;
     scene.camera = Camera {
         position: Vec3::new(0.0, 170.0, 150.0),
         target: Vec3::new(0.0, 10.0, 0.0),

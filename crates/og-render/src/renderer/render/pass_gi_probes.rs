@@ -57,6 +57,7 @@ impl Renderer {
     /// probes before the frame groups that bind it are made.
     pub(super) fn prepare_gi_probes(&mut self, scene: &RenderScene) {
         let desc = scene
+            .look
             .post
             .gi_probes
             .filter(|_| WORLD_3D && scene.quality.global_illumination)

@@ -69,7 +69,7 @@ fn srgb_to_linear(c: u8) -> f32 {
 /// so the frame shows `rgb` exactly.
 fn field(rgb: [u8; 3]) -> RenderScene {
     let mut scene = RenderScene::new();
-    scene.post.tonemap = Tonemap::None;
+    scene.look.post.tonemap = Tonemap::None;
     scene.environment.background = Background::Color(Vec3::from(rgb.map(srgb_to_linear)));
     scene.camera = Camera {
         exposure: Exposure::linear(1.0),
@@ -108,7 +108,7 @@ const ART: [u8; 3] = [110, 150, 100];
 
 fn posterized(rgb: [u8; 3]) -> RenderScene {
     let mut scene = field(rgb);
-    scene.stylise.quantize = Some(Quantize {
+    scene.look.stylise.quantize = Some(Quantize {
         posterize: 4,
         mode: Default::default(),
         palette: None,
@@ -157,7 +157,7 @@ fn conformed_art_keeps_its_colour_while_the_rest_still_quantises() {
     // tone-mapped colour, off the art's by more than the reach, and
     // stepped the art into a dither.
     let mut toned = posterized(ART);
-    toned.post.tonemap = Tonemap::Aces;
+    toned.look.post.tonemap = Tonemap::Aces;
     toned.add_conformed_colors(&[ART]);
     let curved = colours(&frame(&mut renderer, &toned));
     println!("tone-mapped: {curved:?}");
@@ -170,7 +170,7 @@ fn conformed_art_keeps_its_colour_while_the_rest_still_quantises() {
     // its conformed art dithers too. Old code kept it one flat colour, a
     // hole through the dither.
     let mut one_bit = posterized(ART);
-    if let Some(q) = &mut one_bit.stylise.quantize {
+    if let Some(q) = &mut one_bit.look.stylise.quantize {
         q.posterize = 2;
     }
     one_bit.add_conformed_colors(&[ART]);
@@ -200,7 +200,7 @@ fn tone_posterize_keeps_a_colours_hue_as_its_light_moves() {
     let lit = |rgb: [u8; 3], k: f32, mode: PosterizeMode| {
         let mut scene = field(rgb);
         scene.environment.background = Background::Color(Vec3::from(rgb.map(srgb_to_linear)) * k);
-        scene.stylise.quantize = Some(Quantize {
+        scene.look.stylise.quantize = Some(Quantize {
             posterize: 6,
             mode,
             palette: None,

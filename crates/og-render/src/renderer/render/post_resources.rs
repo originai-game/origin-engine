@@ -7,7 +7,7 @@ use super::*;
 impl Renderer {
     /// Bakes the adjusted grading table; returns whether the frame adjusts.
     pub(super) fn prepare_colour_lut(&mut self, scene: &RenderScene) -> bool {
-        let post_fx = &scene.post;
+        let post_fx = &scene.look.post;
         // Colour adjustments: the grading table and the adjustments baked
         // into one (when either changed), bound under scene id 0, which no
         // scene has, so the bindings are made again when it comes or goes.

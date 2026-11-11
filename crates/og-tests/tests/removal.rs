@@ -34,7 +34,7 @@ fn center(img: &RgbaImage) -> [u8; 3] {
 fn flat_scene() -> RenderScene {
     let mut scene = RenderScene::new();
     scene.environment.background = Background::Color(Vec3::ZERO);
-    scene.post.tonemap = Tonemap::None;
+    scene.look.post.tonemap = Tonemap::None;
     scene.light.cast_shadows = false;
     scene.camera = Camera {
         position: Vec3::new(0.0, 10.0, 0.0),
@@ -152,7 +152,7 @@ fn environment_maps_texture_arrays_and_palettes_leave_the_frame_and_its_bytes() 
         colors: vec![[0, 0, 0], [255, 255, 255]],
     });
     scene.environment_map = Some(EnvironmentMap::new(env));
-    scene.stylise.quantize = Some(Quantize {
+    scene.look.stylise.quantize = Some(Quantize {
         posterize: 0,
         mode: Default::default(),
         palette: Some(palette),
@@ -201,7 +201,7 @@ fn environment_maps_texture_arrays_and_palettes_leave_the_frame_and_its_bytes() 
             other.map(|_| ())
         ),
     }
-    scene.stylise.quantize = None;
+    scene.look.stylise.quantize = None;
     assert!(scene.remove_texture_array(array));
     assert!(!scene.set_texture_array_filter(array, og_render::TextureFilter::Nearest));
     assert!(scene.texture_array(array).is_none());

@@ -187,7 +187,7 @@ fn posed_trickster(root: &Path, clip: &str, t: f32) -> og_render::RgbaImage {
     scene.light = src.light;
     scene.lights = src.lights.clone();
     scene.environment = src.environment;
-    scene.post = src.post;
+    scene.look.post = src.look.post;
     gfx.scene = scene;
     og_tests::gfx::render_built(&mut gfx).unwrap().image
 }

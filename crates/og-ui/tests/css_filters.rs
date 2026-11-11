@@ -47,7 +47,7 @@ fn color_matrix_preserves_texture_tint_multiplication() {
     }
     let mut scene = RenderScene::new();
     scene.environment.background = Background::Color(og_core::glam::Vec3::new(0.08, 0.2, 0.4));
-    scene.post.tonemap = Tonemap::None;
+    scene.look.post.tonemap = Tonemap::None;
     let texture = scene.add_texture(TextureData {
         width: 2,
         height: 2,
@@ -323,7 +323,7 @@ fn render(width: u32, height: u32) -> (Vec<u8>, og_render::RenderInfo) {
     scene.overlay = Some(overlay);
     let bg = ui.theme().palette.backdrop.linear();
     scene.environment.background = Background::Color(og_core::glam::Vec3::new(bg[0], bg[1], bg[2]));
-    scene.post.tonemap = Tonemap::None;
+    scene.look.post.tonemap = Tonemap::None;
     let mut renderer = Renderer::new_blocking(&RenderDesc {
         width,
         height,
@@ -523,7 +523,7 @@ fn render_space(width: u32, height: u32) -> (Vec<u8>, og_render::RenderInfo) {
     scene.overlay = Some(overlay);
     let bg = ui.theme().palette.backdrop.linear();
     scene.environment.background = Background::Color(og_core::glam::Vec3::new(bg[0], bg[1], bg[2]));
-    scene.post.tonemap = Tonemap::None;
+    scene.look.post.tonemap = Tonemap::None;
     let mut renderer = Renderer::new_blocking(&RenderDesc {
         width,
         height,

@@ -1677,7 +1677,7 @@ fn css_parts_render_their_background_border_and_shadow() {
     let mut overlay = Overlay::new(width as f32, height as f32, 1.0);
     ui.frame().emit(&EmitDesc::default(), &mut overlay);
     scene.overlay = Some(overlay);
-    scene.post.tonemap = Tonemap::None;
+    scene.look.post.tonemap = Tonemap::None;
     let mut renderer = Renderer::new_blocking(&RenderDesc {
         width,
         height,

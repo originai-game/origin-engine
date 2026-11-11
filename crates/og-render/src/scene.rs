@@ -9,10 +9,12 @@
 //! [`RenderScene::set_texture`]).
 
 mod environment;
+mod groups;
 mod resources;
 mod sprites;
 mod store;
 pub use environment::*;
+pub use groups::*;
 pub use resources::*;
 pub use sprites::*;
 
@@ -134,10 +136,9 @@ pub struct RenderScene {
     /// (sky, ground linear RGB; intensity 0: off). Unlike light baked into
     /// the environment map it adds no reflection.
     pub hemisphere: ([f32; 3], [f32; 3], f32),
-    pub post: PostEffects,
-    /// Stylisation after (and, for depth bands, with) the post stack: off
-    /// by default ([`crate::Stylise`]).
-    pub stylise: crate::Stylise,
+    /// The frame's look: its post effects and stylise, the custom post passes
+    /// and their parameters, and the colour filter.
+    pub look: SceneLook,
     /// 2D quads drawn after the 3D scene, blended, sorted by layer.
     pub sprites: Vec<Sprite>,
     /// MSDF text, sorted with the sprites by layer.
@@ -254,9 +255,6 @@ pub struct RenderScene {
     pub skinned_instances: Vec<SkinnedInstance>,
     /// Screen-space sprites and text over the finished frame (`None`: none).
     pub overlay: Option<Overlay>,
-    /// The player's colour vision filter over the finished frame, scene and
-    /// overlay alike (`None`: none; crate::ColorFilter).
-    pub color_filter: Option<crate::ColorFilter>,
     /// Fog over the main pass (`None`: none).
     pub fog: Option<crate::Fog>,
     /// Clouds in the procedural sky (`clouds.rs`; `None`: none). Drawn
@@ -430,19 +428,11 @@ pub struct RenderScene {
     /// Secondary cameras drawn into render targets or viewports of the
     /// frame, before it in [`crate::View::order`] (`views.rs`).
     pub views: Vec<crate::View>,
-    /// Custom post passes ([`RenderScene::add_post`], `post_custom.rs`) and
-    /// their parameters, by handle.
-    pub posts: Vec<crate::PostShader>,
-    pub post_params: Vec<[[f32; 4]; crate::MAX_SHADER_PARAMS]>,
     /// Cooked vectors the overlay's UI draws ([`RenderScene::add_ui_vector`]).
     pub ui_vectors: Vec<crate::ui::UiVectorData>,
     /// Custom materials UI layers composite through
     /// ([`RenderScene::add_ui_material`]).
     pub ui_materials: Vec<crate::ui::UiMaterialShader>,
-    /// The custom post passes the frame runs, in order (at most
-    /// [`crate::MAX_CUSTOM_POSTS`]), after the built-in effects and before
-    /// exposure, bloom and the tone curve (`PostEffects.custom` in the API).
-    pub custom_post: Vec<crate::PostHandle>,
     /// Where the zero of the scene's coordinates is in the caller's world
     /// ([`RenderScene::rebase`], `origin.rs`): the frame is drawn relative
     /// to it, and the shaders that read world position for its look add

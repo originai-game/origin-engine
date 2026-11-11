@@ -92,7 +92,7 @@ pub fn day_night_scene(hours: f32, fog: bool) -> RenderScene {
             ..Default::default()
         });
     }
-    scene.post.bloom = Some(Bloom::default());
+    scene.look.post.bloom = Some(Bloom::default());
     scene.camera = colonnade_camera();
     scene
 }
@@ -263,7 +263,7 @@ pub fn water_2d_scene() -> RenderScene {
     });
     scene.camera = Camera::orthographic_2d(Vec2::ZERO, 12.0);
     scene.environment.background = Background::Color(Vec3::new(0.05, 0.06, 0.09));
-    scene.post.tonemap = Tonemap::None;
+    scene.look.post.tonemap = Tonemap::None;
     scene
 }
 
@@ -350,7 +350,7 @@ pub fn fluid_2d_scene() -> RenderScene {
     });
     scene.camera = Camera::orthographic_2d(Vec2::new(-0.6, -1.5), 9.0);
     scene.environment.background = Background::Color(Vec3::new(0.08, 0.08, 0.1));
-    scene.post.tonemap = Tonemap::None;
+    scene.look.post.tonemap = Tonemap::None;
     scene
 }
 
@@ -494,7 +494,7 @@ pub fn fluid_groups_scene() -> RenderScene {
     }
     scene.camera = Camera::orthographic_2d(Vec2::new(-0.4, 0.4), 7.0);
     scene.environment.background = Background::Color(Vec3::new(0.08, 0.08, 0.1));
-    scene.post.tonemap = Tonemap::None;
+    scene.look.post.tonemap = Tonemap::None;
     scene
 }
 
@@ -647,7 +647,7 @@ pub fn hooks_scene_parts(tick: u64) -> (RenderScene, og_render::MaterialHandle) 
         exposure: Exposure::linear(0.9),
         ..Default::default()
     };
-    scene.post.bloom = Some(Bloom::default());
+    scene.look.post.bloom = Some(Bloom::default());
     (scene, teal)
 }
 

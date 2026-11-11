@@ -694,7 +694,7 @@ pub fn ground() -> RenderScene {
         ..Default::default()
     };
     scene.environment.background = Background::Color(Vec3::new(0.25, 0.35, 0.55));
-    scene.post.tonemap = Tonemap::None;
+    scene.look.post.tonemap = Tonemap::None;
     let mut o = Overlay::new(W, H, 0.0);
     let (x0, y0) = (100_000.0, 0.0);
     for j in 0..8 {

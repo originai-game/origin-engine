@@ -77,7 +77,7 @@ pub(super) fn sprite_field(n: usize) -> Result<RenderScene, String> {
     }
     scene.camera = Camera::orthographic_2d(Vec2::ZERO, 20.0);
     scene.environment.background = Background::Color(Vec3::new(0.02, 0.02, 0.03));
-    scene.post.tonemap = Tonemap::None;
+    scene.look.post.tonemap = Tonemap::None;
     Ok(scene)
 }
 
@@ -748,10 +748,10 @@ pub fn sprite_array_fx_scene() -> RenderScene {
         ..Default::default()
     });
     scene.overlay = Some(overlay);
-    scene.post.glow = Some(Glow { intensity: 0.8 });
+    scene.look.post.glow = Some(Glow { intensity: 0.8 });
     scene.camera = Camera::orthographic_2d(Vec2::new(0.0, -1.0), 12.0);
     scene.environment.background = Background::Color(Vec3::new(0.02, 0.02, 0.03));
-    scene.post.tonemap = Tonemap::None;
+    scene.look.post.tonemap = Tonemap::None;
     scene
 }
 
@@ -854,7 +854,7 @@ pub fn sprite_array_scene() -> RenderScene {
     }
     scene.camera = Camera::orthographic_2d(Vec2::new(0.0, -1.0), 12.0);
     scene.environment.background = Background::Color(Vec3::new(0.02, 0.02, 0.03));
-    scene.post.tonemap = Tonemap::None;
+    scene.look.post.tonemap = Tonemap::None;
     scene
 }
 
@@ -962,7 +962,7 @@ pub fn lights_2d_scene(angles: u32, normals: bool) -> RenderScene {
     }
     scene.camera = Camera::orthographic_2d(Vec2::ZERO, 18.0);
     scene.environment.background = Background::Color(Vec3::ZERO);
-    scene.post.tonemap = Tonemap::None;
+    scene.look.post.tonemap = Tonemap::None;
     scene
 }
 

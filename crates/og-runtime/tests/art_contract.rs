@@ -182,6 +182,7 @@ impl og_runtime::RenderBackend for PaletteRecorder {
     }
     fn render(&mut self, scene: &og_render::RenderScene) -> Result<(), String> {
         *self.0.borrow_mut() = scene
+            .look
             .stylise
             .quantize
             .and_then(|q| q.palette)

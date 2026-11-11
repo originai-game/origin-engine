@@ -196,7 +196,7 @@ fn the_debugger_overlay_matches_its_reference_frames() {
             let bg = game.theme().palette.backdrop.linear();
             scene.environment.background =
                 Background::Color(og_core::glam::Vec3::new(bg[0], bg[1], bg[2]));
-            scene.post.tonemap = Tonemap::None;
+            scene.look.post.tonemap = Tonemap::None;
             let desc = RenderDesc {
                 width: w,
                 height: h,

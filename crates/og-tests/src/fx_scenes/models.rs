@@ -146,11 +146,11 @@ pub fn stylised_scene() -> Result<RenderScene, String> {
         background: Background::Color(Vec3::new(0.35, 0.55, 0.85)),
         ..Environment::default()
     };
-    scene.post.outline = Some(Outline {
+    scene.look.post.outline = Some(Outline {
         width: 1.5,
         ..Default::default()
     });
-    scene.post.bloom = Some(Bloom::default());
+    scene.look.post.bloom = Some(Bloom::default());
     scene.camera = Camera {
         position: Vec3::new(0.0, 3.2, 7.0),
         target: Vec3::new(0.0, 0.7, 0.0),

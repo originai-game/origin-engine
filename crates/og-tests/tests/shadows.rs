@@ -275,7 +275,7 @@ fn contact_shadows_never_darken_what_lies_behind_a_silhouette() {
         let frames = |scene: &dyn Fn() -> RenderScene| {
             let take = |shadows: bool, on: bool| {
                 let mut s = scene();
-                s.post.tonemap = Tonemap::None;
+                s.look.post.tonemap = Tonemap::None;
                 s.lights[0].cast_shadows = shadows;
                 if !on {
                     s.lights[0].intensity = 0.0;

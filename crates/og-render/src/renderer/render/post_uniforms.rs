@@ -132,7 +132,7 @@ impl Renderer {
             outline_color: global_outline.map_or([0.0; 4], |o| o.color),
             // w: where silhouette lines lie (MaterialStyle::outline_place).
             outline: {
-                let place = scene.stylise.material.outline_place.code();
+                let place = scene.look.stylise.material.outline_place.code();
                 match global_outline {
                     Some(o) => [
                         o.width.max(0.0),

@@ -236,7 +236,7 @@ fn street() -> RenderScene {
         ..SurfaceWeather::default()
     });
     // The puddles and the lacquer mirror the lamps and the walls.
-    scene.post.ssr = Some(ScreenSpaceReflections::default());
+    scene.look.post.ssr = Some(ScreenSpaceReflections::default());
     scene.camera = Camera {
         position: Vec3::new(-1.2, 1.5, 6.0),
         target: Vec3::new(0.6, 0.9, -30.0),
@@ -294,7 +294,7 @@ fn puddles() -> RenderScene {
         ..SurfaceWeather::default()
     });
     // The still puddles mirror the rocks and the sky.
-    scene.post.ssr = Some(ScreenSpaceReflections::default());
+    scene.look.post.ssr = Some(ScreenSpaceReflections::default());
     scene.camera = Camera {
         position: Vec3::new(0.0, 1.7, 3.0),
         target: Vec3::new(0.5, 0.0, -12.0),

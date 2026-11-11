@@ -50,7 +50,7 @@ impl Renderer {
             stylise_key,
         }: PrepareGraphInputs<'_>,
     ) -> Result<(), RenderError> {
-        let st = &scene.stylise;
+        let st = &scene.look.stylise;
         let FrameEffects {
             ao,
             gi,

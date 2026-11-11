@@ -214,7 +214,7 @@ fn the_frame_is_the_cpu_filter_of_the_unfiltered_frame() {
         ] {
             for filter in [ColorVisionFilter::Correct, ColorVisionFilter::Simulate] {
                 let f = ColorFilter::new(vision, filter, 1.0).unwrap();
-                scene.color_filter = Some(f);
+                scene.look.color_filter = Some(f);
                 let got = frame(&scene);
                 let mut worst = 0u8;
                 let mut moved = 0usize;
@@ -245,7 +245,7 @@ fn the_frame_is_the_cpu_filter_of_the_unfiltered_frame() {
                 }
             }
         }
-        scene.color_filter = None;
+        scene.look.color_filter = None;
         assert_eq!(frame(&scene), plain, "no filter leaves the frame as it was");
     }
 }

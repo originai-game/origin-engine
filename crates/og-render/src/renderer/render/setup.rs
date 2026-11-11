@@ -30,14 +30,14 @@ impl Renderer {
         // So is a camera cut (`RenderScene::camera_cut`): TAA keeps no
         // ghost of the previous shot. TAA is the only history the renderer
         // reprojects; motion vectors take the cut from `prev_view_proj`.
-        let chain = scene.stylise.chain_bits();
+        let chain = scene.look.stylise.chain_bits();
         if scene.camera_cut || self.stylise_chain.is_some_and(|c| c != chain) {
             self.history.taa_history = None;
             self.gi_history = None;
             self.ssr.reset();
         }
         self.stylise_chain = Some(chain);
-        let (grid, upscale, grid_offset) = self.pixel_grid(scene.stylise.pixel);
+        let (grid, upscale, grid_offset) = self.pixel_grid(scene.look.stylise.pixel);
         // The render scale's frame (upscale 0, not a pixel grid) below the
         // output under TAA is resolved to the output by TAA itself (TAAU);
         // above it, it is supersampled and scaled down after TAA.

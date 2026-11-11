@@ -405,7 +405,7 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
     scene.decal_atlas = resource(world, render_settings.as_ref())
         .and_then(|s| handle_index(&s["decalAtlas"]))
         .and_then(|i| textures.get(i).copied());
-    let post = &mut scene.post;
+    let post = &mut scene.look.post;
     post.ao = None;
     post.outline = None;
     post.depth_of_field = None;
@@ -597,7 +597,7 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
             );
         }
     }
-    scene.stylise = stylise(
+    scene.look.stylise = stylise(
         resource(world, layouts.stylise.as_ref()),
         resource(world, layouts.material_style.as_ref()),
         &fx.look.palettes,
@@ -606,7 +606,7 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
     // Painted 2D (super::art::texel_paint): the cook painted and washed
     // each texture in its own texels, and the frame draws neither pass.
     if art.texel_paint {
-        scene.stylise.paint = None;
+        scene.look.stylise.paint = None;
     }
     if let Some(p) = resource(world, layouts.lens_flare.as_ref())
         && on(&p, "enabled", false)
@@ -627,11 +627,11 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
         });
     }
     // The art contract's line round meshes (ArtLine, art.rs).
-    super::art::mesh_line(&art.frame, &mut scene.stylise.material);
+    super::art::mesh_line(&art.frame, &mut scene.look.stylise.material);
     // Under the art contract a frame that quantises without a palette of
     // its own takes the contract's (ArtPalette.colors): the colours the
     // cook put the art on are the ones the frame keeps.
-    if let Some(q) = scene.stylise.quantize.as_mut()
+    if let Some(q) = scene.look.stylise.quantize.as_mut()
         && q.palette.is_none()
     {
         q.palette = art.frame.palette;
@@ -691,7 +691,7 @@ pub(crate) fn snap_to_grid(rs: &mut RenderState) {
     // The frame's grid (Stylise.pixelHeight with pixelSnap), else the art
     // contract's (ArtCamera.pixelPerfect: ArtPixels.logicalHeight rows of
     // the view, or 1 / ArtPixels.unit world units).
-    let rows = match scene.stylise.pixel.filter(|p| p.snap && p.height > 0) {
+    let rows = match scene.look.stylise.pixel.filter(|p| p.snap && p.height > 0) {
         Some(p) => Some(p.height),
         None if art.pixel_perfect && art.logical_height > 0 => Some(art.logical_height),
         None => None,
@@ -1771,7 +1771,7 @@ pub(crate) fn motion(rs: &mut RenderState, keys: &[(u64, u32)], tick: u64, cut: 
     scene.previous_joint_palettes.clear();
     scene.previous_morph_weights.clear();
     scene.previous_deformed_vertices.clear();
-    let blur = scene.post.motion_blur.is_some();
+    let blur = scene.look.post.motion_blur.is_some();
     let keyed = keys.len() == scene.instances.len();
     if blur && keyed {
         let previous = fx

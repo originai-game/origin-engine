@@ -27,7 +27,7 @@ fn wire_cube(
     let material = scene.add_standard_material(StandardMaterial { map, ..m });
     let cube = scene.add_mesh(shapes::cuboid(Vec3::ONE));
     scene.add_instance(cube, material, Mat4::IDENTITY);
-    scene.stylise.material = style;
+    scene.look.stylise.material = style;
     scene.environment.background = Background::Color(Vec3::new(0.0, 0.0, 0.6));
     scene.environment.intensity = 0.0;
     scene.light = DirectionalLight {

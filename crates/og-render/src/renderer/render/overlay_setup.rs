@@ -51,7 +51,7 @@ impl Renderer {
             .as_ref()
             .is_some_and(overlay::OverlayFrame::reads_backdrop);
         // A colour filter reads the whole frame from the same source.
-        if (glass_on || scene.color_filter.is_some())
+        if (glass_on || scene.look.color_filter.is_some())
             && self
                 .glass_targets
                 .as_ref()
@@ -86,7 +86,7 @@ impl Renderer {
         } else {
             cam.view.inverse().w_axis
         };
-        let scene_outline = scene.post.outline.is_some();
+        let scene_outline = scene.look.post.outline.is_some();
         let line_frame = self
             .lines
             .prepare(&self.device, &self.queue, scene, any_wire, eye, |m| {

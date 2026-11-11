@@ -178,7 +178,7 @@ pub fn ssr_scene(ssr: bool) -> RenderScene {
         Mat4::from_translation(Vec3::new(1.4, 1.0, -0.8)),
     );
     if ssr {
-        scene.post.ssr = Some(ScreenSpaceReflections {
+        scene.look.post.ssr = Some(ScreenSpaceReflections {
             max_distance: 10.0,
             steps: 48,
             ..Default::default()
@@ -194,7 +194,7 @@ pub fn ssr_metal_scene(roughness: f32, max_roughness: f32) -> RenderScene {
     let mut scene = ssr_scene(true);
     let floor = scene.instances[0].material;
     scene.set_standard_material(floor, mat(Vec3::splat(0.9), 1.0, roughness));
-    if let Some(ssr) = scene.post.ssr.as_mut() {
+    if let Some(ssr) = scene.look.post.ssr.as_mut() {
         ssr.max_roughness = max_roughness;
     }
     scene

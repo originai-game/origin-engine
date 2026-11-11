@@ -216,7 +216,7 @@ pub fn water_glint_scene() -> RenderScene {
         glint: 2.0,
         ..Default::default()
     });
-    scene.post.tonemap = Tonemap::None;
+    scene.look.post.tonemap = Tonemap::None;
     scene.camera = Camera {
         position: GLINT_EYE,
         target: glint_point(),
@@ -372,7 +372,7 @@ pub fn hemisphere_scene() -> RenderScene {
 /// also on the direct light (`direct` 1).
 pub fn ao_direct_scene() -> RenderScene {
     let mut scene = crate::fx_scenes::ao_scene(AoMethod::Gtao);
-    if let Some(ao) = &mut scene.post.ao {
+    if let Some(ao) = &mut scene.look.post.ao {
         ao.direct = 1.0;
     }
     scene
@@ -414,7 +414,7 @@ pub fn ao_screen_water_scene(water: bool) -> RenderScene {
         wave_strength: 0.0,
         ..Default::default()
     });
-    scene.post.ao = Some(AmbientOcclusion {
+    scene.look.post.ao = Some(AmbientOcclusion {
         method: AoMethod::Screen,
         intensity: 1.0,
         direct: 1.0,
@@ -446,7 +446,7 @@ pub fn sharpen_scene() -> RenderScene {
         dark,
         Mat4::from_translation(Vec3::new(0.0, 0.75, 0.0)),
     );
-    scene.post.sharpen = Some(1.0);
+    scene.look.post.sharpen = Some(1.0);
     scene.camera = Camera {
         position: Vec3::new(0.0, 1.6, 6.0),
         target: Vec3::new(0.0, 0.8, -4.0),
@@ -460,13 +460,13 @@ pub fn sharpen_scene() -> RenderScene {
 /// and contrast 1, strength 0.2 (its halo squares the strength and spans the
 /// frame at the classic bloom's 0.8).
 pub fn bloom_unreal(mut scene: RenderScene) -> RenderScene {
-    scene.post.bloom = Some(Bloom {
+    scene.look.post.bloom = Some(Bloom {
         threshold: 1.0,
         knee: 0.5,
         intensity: 0.2,
     });
-    scene.post.bloom_unreal = Some(0.5);
-    scene.post.bloom_contrast = 1.0;
+    scene.look.post.bloom_unreal = Some(0.5);
+    scene.look.post.bloom_contrast = 1.0;
     scene
 }
 
@@ -481,7 +481,7 @@ pub fn alpha_to_coverage_scene(a2c: bool) -> RenderScene {
     let mut scene = RenderScene::new();
     scene.environment.background = Background::Color(Vec3::ZERO);
     scene.light.intensity = 0.0;
-    scene.post.tonemap = Tonemap::None;
+    scene.look.post.tonemap = Tonemap::None;
     let ramp = scene.add_texture(texture(256, ColorSpace::Srgb, |u, v| {
         let r = (Vec2::new(u, v) - 0.5).length() * 2.0;
         [
@@ -550,7 +550,7 @@ pub const HOOK_EYE: Vec3 = Vec3::new(0.0, 1.0, 5.0);
 pub fn hooks_eye_front_scene() -> RenderScene {
     let mut scene = RenderScene::new();
     scene.environment.background = Background::Color(Vec3::ZERO);
-    scene.post.tonemap = Tonemap::None;
+    scene.look.post.tonemap = Tonemap::None;
     let shader = scene.add_shader(eye_front_shader());
     let m = scene.add_standard_material(StandardMaterial {
         unlit: 1,
@@ -669,7 +669,7 @@ pub fn hooks_screen_ao_scene() -> RenderScene {
         ..Default::default()
     });
     scene.add_instance(block, grey, Mat4::from_translation(AO_HOOK_BLOCK));
-    scene.post.ao = Some(AmbientOcclusion {
+    scene.look.post.ao = Some(AmbientOcclusion {
         radius: 0.8,
         intensity: 1.5,
         method: AoMethod::Gtao,

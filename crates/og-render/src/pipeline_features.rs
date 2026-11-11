@@ -154,7 +154,7 @@ impl Features {
             .with(Features::WEATHER, scene.surface_weather.is_some() || shore)
             .with(Features::LOCAL_LIGHTS, !scene.lights.is_empty())
             .with(Features::DECALS, !scene.decals.is_empty())
-            .with(Features::GI, scene.post.gi_probes.is_some())
+            .with(Features::GI, scene.look.post.gi_probes.is_some())
             .with(
                 Features::CAUSTICS,
                 scene.water.iter().any(|w| w.caustics > 0.0),
@@ -163,7 +163,7 @@ impl Features {
             .with(Features::GRASS, !scene.grass.is_empty())
             .with(
                 Features::SURFACE,
-                scene.stylise.material.surface_uniform()[0] > 0.5,
+                scene.look.stylise.material.surface_uniform()[0] > 0.5,
             )
             .with(
                 Features::SOFT_SHADOWS,

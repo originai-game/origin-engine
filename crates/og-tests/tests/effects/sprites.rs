@@ -113,7 +113,7 @@ fn a_normal_mapped_sprite_is_lit_by_where_its_normal_faces() {
         });
         scene.camera = Camera::orthographic_2d(Vec2::ZERO, 8.0);
         scene.environment.background = Background::Color(Vec3::ZERO);
-        scene.post.tonemap = Tonemap::None;
+        scene.look.post.tonemap = Tonemap::None;
         frame(&small(), &scene).0
     };
     let cam = Camera::orthographic_2d(Vec2::ZERO, 8.0);

@@ -187,7 +187,7 @@ fn trails_remember_the_path_for_their_lifetime() {
     });
     scene.camera = Camera::orthographic_2d(Vec2::ZERO, 6.0);
     scene.environment.background = Background::Color(Vec3::ZERO);
-    scene.post.tonemap = Tonemap::None;
+    scene.look.post.tonemap = Tonemap::None;
     let mut r = Renderer::new_blocking(&small()).expect("renderer");
     // The trail's lit pixels: how many, and the columns they span. The
     // history lives on the GPU, so what it draws is the evidence.

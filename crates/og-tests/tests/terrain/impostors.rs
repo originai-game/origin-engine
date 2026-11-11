@@ -81,8 +81,8 @@ fn crossfade_scene() -> RenderScene {
 fn the_crossfade_turns_its_noise_every_render_frame() {
     let mut scene = crossfade_scene();
     scene.debug = og_render::DebugView::Albedo;
-    scene.post = Default::default();
-    scene.post.tonemap = Tonemap::None;
+    scene.look.post = Default::default();
+    scene.look.post.tonemap = Tonemap::None;
     scene.camera.exposure = Exposure::linear(1.0);
     let mut r = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
     r.render(&scene, &RenderTarget::Offscreen).unwrap();
