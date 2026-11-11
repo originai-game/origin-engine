@@ -28,6 +28,7 @@ mod a11y;
 pub mod actions;
 pub mod bind;
 pub mod colr;
+mod control;
 pub mod css_color;
 pub(crate) mod decor;
 pub mod doc;
