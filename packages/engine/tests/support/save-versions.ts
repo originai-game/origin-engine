@@ -149,7 +149,9 @@ function dump(world: World) {
   const e = world.openSave(snap.value);
   if (!e.ok) return e.reason;
   const out: Record<string, unknown> = {};
-  for (const t of e.value.types()) out[t.name] = e.value.records(t.name);
+  const types = e.value.types();
+  if (!types.ok) return types.reason;
+  for (const t of types.value) out[t.name] = e.value.records(t.name);
   e.value.close();
   return out;
 }

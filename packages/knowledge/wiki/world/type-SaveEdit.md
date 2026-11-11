@@ -41,17 +41,17 @@ prop version u32 "The game's save version the save was written at (1 for a save 
 The types the save holds, in its table's order.
 
 ```ts
-SaveEdit.types(): readonly SaveType[]
+SaveEdit.types(): Result<readonly SaveType[]>
 ```
 
-**Returns** `readonly SaveType[]`.
+**Returns** `Result<readonly SaveType[]>`: Refused once the save is closed.
 
 Binding symbol `og_save_edit_types` · publish builds: kept
 
 ```ogt
 fn types {
   doc "The types the save holds, in its table's order."
-  returns List.SaveType
+  returns Result.List.SaveType "Refused once the save is closed."
 }
 ```
 

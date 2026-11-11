@@ -13728,7 +13728,7 @@
       "owner": "SaveEdit",
       "name": "types",
       "params": [],
-      "returns": "List<SaveType>",
+      "returns": "Result<List<SaveType>>",
       "publish": true
     },
     {
@@ -17051,7 +17051,7 @@
           "optional": false
         }
       ],
-      "returns": "DisplayInfo",
+      "returns": "Option<DisplayInfo>",
       "publish": true
     },
     {

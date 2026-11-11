@@ -610,27 +610,58 @@ pub(crate) fn declare_hook(name: String, component: String, desc: &Value, run: u
 }
 
 pub(crate) fn declare_game(desc: &Value) -> u32 {
-    use crate::wire::OneOf;
+    // The TypeScript runtime sends forms the public type does not have: -1 for
+    // a system or hook token it has no handle for (skipped), and each
+    // migration as its `from` alone (the steps run in TypeScript). Those three
+    // lists are read here; the rest of the desc through the generated type.
+    let mut errors = Vec::new();
+    let handles = |key: &str, errors: &mut Vec<String>| -> Vec<u32> {
+        let mut out = Vec::new();
+        for (i, h) in desc[key].as_array().into_iter().flatten().enumerate() {
+            match h.as_i64() {
+                Some(-1) => {}
+                Some(n) if u32::try_from(n).is_ok() => out.push(n as u32),
+                _ => errors.push(format!(
+                    "og.game: desc.{key}[{i}]: expected a handle, got {h}"
+                )),
+            }
+        }
+        out
+    };
+    let systems = handles("systems", &mut errors);
+    let hooks = handles("hooks", &mut errors);
+    let mut migrations = Vec::new();
+    for (i, m) in desc["migrations"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .enumerate()
+    {
+        match m.as_u64().or_else(|| m["from"].as_u64()).and_then(|n| u32::try_from(n).ok()) {
+            Some(from) => migrations.push(from),
+            None => errors.push(format!(
+                "og.game: desc.migrations[{i}]: expected a version number or a SaveMigration, got {m}"
+            )),
+        }
+    }
+    let mut rest = desc.clone();
+    if let Some(o) = rest.as_object_mut() {
+        for key in ["systems", "hooks", "migrations"] {
+            o.remove(key);
+        }
+    }
     // A refused desc refuses the engine (Declarations.errors); the game is
     // declared at the defaults so its handle stays valid.
-    let g: crate::wire::GameDesc = crate::wire::value(desc, "desc").unwrap_or_else(|e| {
-        DECL.with(|d| d.borrow_mut().errors.push(format!("og.game: {e}")));
+    let g: crate::wire::GameDesc = crate::wire::value(&rest, "desc").unwrap_or_else(|e| {
+        errors.push(format!("og.game: {e}"));
         Default::default()
     });
-    // -1 is a token the TypeScript runtime has no handle for: skipped.
-    let handles = |list: Vec<OneOf<u32, i32>>| -> Vec<u32> {
-        list.into_iter()
-            .filter_map(|h| match h {
-                OneOf::A(h) => Some(h),
-                OneOf::B(_) => None,
-            })
-            .collect()
-    };
+    DECL.with(|d| d.borrow_mut().errors.extend(errors));
     let game = GameDecl {
         tick: g.tick,
         seed: g.seed,
-        systems: handles(g.systems),
-        hooks: handles(g.hooks),
+        systems,
+        hooks,
         states: g
             .states
             .into_iter()
@@ -661,14 +692,7 @@ pub(crate) fn declare_game(desc: &Value) -> u32 {
         ui_setup: g.ui,
         look: g.look,
         save_version: g.save_version.max(1),
-        migrations: g
-            .migrations
-            .into_iter()
-            .map(|m| match m {
-                OneOf::A(m) => m.from,
-                OneOf::B(from) => from,
-            })
-            .collect(),
+        migrations,
         given: Given {
             tick: desc["tick"].is_u64(),
             seed: desc["seed"].is_u64(),

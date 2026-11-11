@@ -118,7 +118,9 @@ test("a world holds only its own game's records: another game's resource and com
     if (!s.ok) throw new Error(s.reason);
     const opened = engine.world.openSave(s.value);
     if (!opened.ok) throw new Error(opened.reason);
-    return opened.value.types().map((t) => t.name);
+    const types = opened.value.types();
+    if (!types.ok) throw new Error(types.reason);
+    return types.value.map((t) => t.name);
   };
   expect(types()).not.toContain("SvRun");
   expect(types()).not.toContain("SvPos");

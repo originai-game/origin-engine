@@ -285,9 +285,7 @@ function swampYard(filtered: boolean) {
 }
 
 function types(world: World): string[] {
-  return must(world.openSave(must(world.snapshot())))
-    .types()
-    .map((t) => t.name);
+  return must(must(world.openSave(must(world.snapshot()))).types()).map((t) => t.name);
 }
 
 test("og.nav: areas reroute filtered paths and agents, shapes carve, and og.NavFilter joins the type table only when used", () => {

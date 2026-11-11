@@ -1938,7 +1938,8 @@
               "name": "types",
               "doc": "The types the save holds, in its table's order.",
               "params": [],
-              "returns": "List<SaveType>",
+              "returns": "Result<List<SaveType>>",
+              "returnsDoc": "Refused once the save is closed.",
               "publish": true
             },
             {
@@ -5036,7 +5037,8 @@
               "doc": "The world asked."
             }
           ],
-          "returns": "DisplayInfo",
+          "returns": "Option<DisplayInfo>",
+          "returnsDoc": "Null when the world has no engine, or when its renderer is in use and cannot be read at that moment.",
           "publish": true
         },
         {
@@ -17299,35 +17301,17 @@
         "systems": {
           "type": "array",
           "items": {
-            "anyOf": [
-              {
-                "x-og-type": "System"
-              },
-              {
-                "type": "integer",
-                "minimum": -2147483648,
-                "maximum": 2147483647
-              }
-            ]
+            "x-og-type": "System"
           },
-          "description": "The systems, in declaration order before `after`/`before` constraints apply. -1 is skipped: the TypeScript runtime sends it for a token defineSystem did not make.",
+          "description": "The systems, in declaration order before `after`/`before` constraints apply.",
           "default": []
         },
         "hooks": {
           "type": "array",
           "items": {
-            "anyOf": [
-              {
-                "x-og-type": "Hook"
-              },
-              {
-                "type": "integer",
-                "minimum": -2147483648,
-                "maximum": 2147483647
-              }
-            ]
+            "x-og-type": "Hook"
           },
-          "description": "The hooks (og.defineHook), in the order they run. -1 is skipped: the TypeScript runtime sends it for a token og.defineHook did not make.",
+          "description": "The hooks (og.defineHook), in the order they run.",
           "default": []
         },
         "states": {
@@ -17424,18 +17408,9 @@
         "migrations": {
           "type": "array",
           "items": {
-            "anyOf": [
-              {
-                "$ref": "#/$defs/SaveMigration"
-              },
-              {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 4294967295
-              }
-            ]
+            "$ref": "#/$defs/SaveMigration"
           },
-          "description": "The game's save migrations: world.restore runs each one whose `from` lies between the save's version and saveVersion, in order (rename a field, transform values with the old record in hand, drop or split a type, add an entity). A number is a step's `from` alone, as the TypeScript runtime sends it (the steps run in TypeScript). The save envelope must be og-save:3; earlier envelope formats are refused with both versions in the error, never converted.",
+          "description": "The game's save migrations: world.restore runs each one whose `from` lies between the save's version and saveVersion, in order (rename a field, transform values with the old record in hand, drop or split a type, add an entity). The save envelope must be og-save:3; earlier envelope formats are refused with both versions in the error, never converted.",
           "default": []
         },
         "explore": {

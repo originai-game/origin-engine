@@ -108,7 +108,7 @@ module world {
     prop version u32 "The game's save version the save was written at (1 for a save of a game that never declared one)."
     fn types {
       doc "The types the save holds, in its table's order."
-      returns List.SaveType
+      returns Result.List.SaveType "Refused once the save is closed."
     }
     fn has {
       doc "Whether the save holds a type."

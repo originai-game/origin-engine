@@ -1,0 +1,16 @@
+{
+  "breaking": [
+    {
+      "member": "SaveEdit.types",
+      "change": "SaveEdit.types answers a Result, as the host always did: { ok: true, value: SaveType[] }, refused once the save is closed. It used to be typed as the bare list, and the runtime answered [] for a closed save.",
+      "fix": "Check `.ok` and read `.value`: `const t = edit.types(); if (t.ok) for (const type of t.value) ...`.",
+      "find": [".types()"]
+    },
+    {
+      "member": "og.render.display",
+      "change": "og.render.display is typed DisplayInfo | null: it answers null when the world has no engine or its renderer cannot be read at that moment, which it always did but the type did not say.",
+      "fix": "Check for null before reading the answer: `const d = og.render.display(world); if (d) save(d.settings);`.",
+      "find": ["og.render.display"]
+    }
+  ]
+}

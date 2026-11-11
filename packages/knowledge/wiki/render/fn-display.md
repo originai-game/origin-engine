@@ -9,14 +9,14 @@ Module [`render`](../render.md) · [index](../index.md)
 What the display draws now: the settings, the frame cap resolved, the render scale automatic quality chose, the scene's size, the device losses survived, the GPU memory, and what the browser decides (vsync, fullscreen now, the adapter's power preference and whether a restart is needed).
 
 ```ts
-og.render.display(world: World): DisplayInfo
+og.render.display(world: World): DisplayInfo | null
 ```
 
 | Parameter | Type | Optional | Doc |
 |---|---|---|---|
 | `world` | `World` | no | The world asked. |
 
-**Returns** `DisplayInfo`.
+**Returns** `DisplayInfo | null`: Null when the world has no engine, or when its renderer is in use and cannot be read at that moment.
 
 Binding symbol `og_render_display` · publish builds: kept
 
@@ -24,7 +24,7 @@ Binding symbol `og_render_display` · publish builds: kept
 fn display {
   doc "What the display draws now: the settings, the frame cap resolved, the render scale automatic quality chose, the scene's size, the device losses survived, the GPU memory, and what the browser decides (vsync, fullscreen now, the adapter's power preference and whether a restart is needed)."
   param world World "The world asked."
-  returns DisplayInfo
+  returns Option.DisplayInfo "Null when the world has no engine, or when its renderer is in use and cannot be read at that moment."
 }
 ```
 

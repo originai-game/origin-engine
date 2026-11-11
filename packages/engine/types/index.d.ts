@@ -1557,8 +1557,12 @@ export interface SaveEdit {
    * The game's save version the save was written at (1 for a save of a game that never declared one).
    */
   readonly version: number;
-  /** The types the save holds, in its table's order. */
-  types(): readonly SaveType[];
+  /**
+   * The types the save holds, in its table's order.
+   *
+   * @returns Refused once the save is closed.
+   */
+  types(): Result<readonly SaveType[]>;
   /**
    * Whether the save holds a type.
    *
@@ -2235,17 +2239,17 @@ export interface GameDesc {
    */
   readonly scene?: string;
   /**
-   * The systems, in declaration order before `after`/`before` constraints apply. -1 is skipped: the TypeScript runtime sends it for a token defineSystem did not make.
+   * The systems, in declaration order before `after`/`before` constraints apply.
    *
    * @default []
    */
-  readonly systems?: readonly (System | number)[];
+  readonly systems?: readonly System[];
   /**
-   * The hooks (og.defineHook), in the order they run. -1 is skipped: the TypeScript runtime sends it for a token og.defineHook did not make.
+   * The hooks (og.defineHook), in the order they run.
    *
    * @default []
    */
-  readonly hooks?: readonly (Hook | number)[];
+  readonly hooks?: readonly Hook[];
   /**
    * The state machines systems bind to (SystemDesc.state).
    *
@@ -2310,11 +2314,11 @@ export interface GameDesc {
    */
   readonly saveVersion?: number;
   /**
-   * The game's save migrations: world.restore runs each one whose `from` lies between the save's version and saveVersion, in order (rename a field, transform values with the old record in hand, drop or split a type, add an entity). A number is a step's `from` alone, as the TypeScript runtime sends it (the steps run in TypeScript). The save envelope must be og-save:3; earlier envelope formats are refused with both versions in the error, never converted.
+   * The game's save migrations: world.restore runs each one whose `from` lies between the save's version and saveVersion, in order (rename a field, transform values with the old record in hand, drop or split a type, add an entity). The save envelope must be og-save:3; earlier envelope formats are refused with both versions in the error, never converted.
    *
    * @default []
    */
-  readonly migrations?: readonly (SaveMigration | number)[];
+  readonly migrations?: readonly SaveMigration[];
   /**
    * How `og explore` searches this game's states: what a cell reads and which inputs it presses. Left out, cells come from every field of the game's resources and components and the inputs from every button action and none of the intents. Read by the tool only; the engine and the world never see it.
    *
@@ -33069,8 +33073,9 @@ export declare namespace og {
      * What the display draws now: the settings, the frame cap resolved, the render scale automatic quality chose, the scene's size, the device losses survived, the GPU memory, and what the browser decides (vsync, fullscreen now, the adapter's power preference and whether a restart is needed).
      *
      * @param world The world asked.
+     * @returns Null when the world has no engine, or when its renderer is in use and cannot be read at that moment.
      */
-    function display(world: World): DisplayInfo;
+    function display(world: World): DisplayInfo | null;
     /**
      * The look last applied (by og.render.applyLook or GameDesc.look), as og.load.lookInfo describes it; null before any.
      *

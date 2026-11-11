@@ -1119,13 +1119,13 @@ export class SaveEditImpl {
     return abi().og_save_edit_get_version(this.#id);
   }
 
-  types(): readonly { name: string; version: number; fields: readonly string[] }[] {
-    const r = parse<Result<readonly { name: string; version: number; fields: readonly string[] }[]>>(abi().og_save_edit_types(this.#id));
-    return r.ok ? r.value : [];
+  types(): Result<readonly { name: string; version: number; fields: readonly string[] }[]> {
+    return parse(abi().og_save_edit_types(this.#id));
   }
 
   has(name: string): boolean {
-    return this.types().some((t) => t.name === name);
+    const r = this.types();
+    return r.ok && r.value.some((t) => t.name === name);
   }
 
   records(name: string): Result<readonly { entity: number | null; value: Record<string, unknown> }[]> {
