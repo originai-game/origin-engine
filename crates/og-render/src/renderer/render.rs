@@ -4037,30 +4037,32 @@ impl Renderer {
                 fluids.encode(e);
             }
         });
-        if let Some(pipelines) = &self.surfaces {
-            for mesh in &self.cache.meshes {
-                if let Some(surface) = &mesh.surface {
-                    pipelines.encode(&mut encoder, surface, &mesh.vertices, scene.camera_cut);
+        pre_graph(&mut encoder, self.info.caps, pre_graph::SURFACES, |e| {
+            if let Some(pipelines) = &self.surfaces {
+                for mesh in &self.cache.meshes {
+                    if let Some(surface) = &mesh.surface {
+                        pipelines.encode(e, surface, &mesh.vertices, scene.camera_cut);
+                    }
                 }
             }
-        }
-        if let Some(pipelines) = &self.garments {
-            if !skinned.garments.is_empty() {
-                pipelines.encode(
-                    &self.device,
-                    &self.queue,
-                    &mut encoder,
-                    &mut self.cache.garments,
-                    scene,
-                    &skinned.garments,
-                    self.palette.buffer(),
-                    skinned_motion.map(|_| joints_drawn),
-                    self.visual.as_ref(),
-                );
-            } else {
-                self.cache.garments.clear();
+            if let Some(pipelines) = &self.garments {
+                if !skinned.garments.is_empty() {
+                    pipelines.encode(
+                        &self.device,
+                        &self.queue,
+                        e,
+                        &mut self.cache.garments,
+                        scene,
+                        &skinned.garments,
+                        self.palette.buffer(),
+                        skinned_motion.map(|_| joints_drawn),
+                        self.visual.as_ref(),
+                    );
+                } else {
+                    self.cache.garments.clear();
+                }
             }
-        }
+        });
         // Every terrain level's corners, before every pass that draws them.
         terrain::encode_corners(&mut encoder, &terrain_draws);
         // The grass's blades, generated before every pass that draws them.

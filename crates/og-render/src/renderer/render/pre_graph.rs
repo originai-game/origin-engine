@@ -39,8 +39,15 @@ pub(crate) const VISUAL: PreGraphDesc = PreGraphDesc {
     needs: Caps::COMPUTE.union(Caps::VERTEX_STORAGE),
 };
 
+/// The deforming surfaces' and the garments' vertices (surface.rs,
+/// garment_gpu.rs), written in compute before every pass that draws them.
+pub(crate) const SURFACES: PreGraphDesc = PreGraphDesc {
+    name: "surfaces",
+    needs: Caps::COMPUTE.union(Caps::VERTEX_STORAGE),
+};
+
 /// The passes before the graph, in the frame encoder's order.
-pub(crate) const PRE_GRAPH: &[PreGraphDesc] = &[CROWD_CULL, WIND, VISUAL];
+pub(crate) const PRE_GRAPH: &[PreGraphDesc] = &[CROWD_CULL, WIND, VISUAL, SURFACES];
 
 /// Encodes the pass `desc` with `encode` where `caps` has its needs, the
 /// encoder checking what it opens against them (`Encoder::expect`), and
