@@ -83,7 +83,7 @@ impl Ui {
         // children to its shape (a map's view larger than its frame draws
         // only inside the frame).
         let clips = |j: usize| -> bool {
-            self.draw_of(j).is_some_and(|d| {
+            self.paint.draw_of(j, &self.tree).is_some_and(|d| {
                 matches!(
                     d.clip,
                     crate::paint::Clip::Shape | crate::paint::Clip::Cut(_)

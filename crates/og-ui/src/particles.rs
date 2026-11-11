@@ -10,7 +10,6 @@
 
 use crate::layout::Rect;
 use crate::style::Srgba;
-use crate::ui::Ui;
 use crate::world::{Reader, WorldCmd};
 use og_core::glam::Vec2;
 use og_draw::{
@@ -266,24 +265,32 @@ fn rand01(key: u64, tick: u64, i: u32, salt: u64) -> f32 {
     (z >> 40) as f32 / (1u64 << 24) as f32
 }
 
-impl Ui {
+impl crate::ui::Paint {
     /// A burst (the preset [`ParticlesDesc::burst`]) on node `i` from tick
     /// `since`, after `delay` ticks.
-    pub(crate) fn burst_particles(&mut self, i: usize, desc: &crate::BurstDesc, since: u64) {
-        let t = self.env.theme;
+    pub(crate) fn burst_particles(
+        &mut self,
+        i: usize,
+        desc: &crate::BurstDesc,
+        since: u64,
+        world: &mut crate::world::WorldUi,
+        env: &crate::ui::Env,
+        tree: &crate::ui::Tree,
+    ) {
+        let t = env.theme;
         let ms = if desc.duration_ms > 0.0 {
             desc.duration_ms
         } else {
             t.durations_ms.slow + t.durations_ms.base
         };
-        let size = match self.tree.nodes[i].el.width {
+        let size = match tree.nodes[i].el.width {
             crate::layout::Size::Fixed(w) => w,
             _ => 32.0,
         };
         let color = desc.color.unwrap_or(t.palette.primary);
-        let delay = (desc.delay_ms * self.env.ticks_per_second as f32 / 1000.0).round() as u64;
-        let key = crate::id::child_key(self.tree.nodes[i].key, "burst");
-        self.world.emitters.push(EmitterEntry {
+        let delay = (desc.delay_ms * env.ticks_per_second as f32 / 1000.0).round() as u64;
+        let key = crate::id::child_key(tree.nodes[i].key, "burst");
+        world.emitters.push(EmitterEntry {
             node: i,
             key,
             desc: ParticlesDesc::burst(desc, color, size, ms),
@@ -292,16 +299,23 @@ impl Ui {
     }
 
     /// Spawns this tick's particles and makes each emitter's batch.
-    pub(crate) fn world_particles(&mut self, tick: u32) {
-        let now = self.interaction.state.tick;
-        let reduced = self.env.theme.reduced_motion;
-        let accent = self.env.theme.palette.primary;
-        let tps = self.env.ticks_per_second as f32;
-        let emitters = std::mem::take(&mut self.world.emitters);
+    pub(crate) fn world_particles(
+        &mut self,
+        tick: u32,
+        ui_world: &mut crate::world::WorldUi,
+        env: &crate::ui::Env,
+        interaction: &crate::ui::Interaction,
+        tree: &crate::ui::Tree,
+    ) {
+        let now = interaction.state.tick;
+        let reduced = env.theme.reduced_motion;
+        let accent = env.theme.palette.primary;
+        let tps = env.ticks_per_second as f32;
+        let emitters = std::mem::take(&mut ui_world.emitters);
         let mut live = Vec::new();
         for e in &emitters {
             live.push(e.key);
-            let n = &self.tree.nodes[e.node];
+            let n = &tree.nodes[e.node];
             let (rect, world, clip) = (n.rect, n.world, n.clip);
             let d = &e.desc;
             let life = ((if d.lifetime_ms > 0.0 {
@@ -312,7 +326,7 @@ impl Ui {
                 / 1000.0)
                 .round()
                 .max(1.0) as u32;
-            let st = self.world.state.particles.entry(e.key).or_default();
+            let st = ui_world.state.particles.entry(e.key).or_default();
             st.template = Some(template(
                 d.shape,
                 d.size,
@@ -421,14 +435,14 @@ impl Ui {
                 layer: 0,
                 clip: None,
             };
-            let vp = self.env.viewport;
+            let vp = env.viewport;
             let clip = if d.clip {
                 clip
             } else {
                 Rect::new(0.0, 0.0, vp.width, vp.height)
             };
-            let key = self.tree.nodes[e.node].key;
-            self.world
+            let key = tree.nodes[e.node].key;
+            ui_world
                 .marks
                 .entry(key)
                 .or_default()
@@ -441,10 +455,10 @@ impl Ui {
         }
         // Emitters not built this tick keep their particles flying (over
         // the screen, unclipped) until they end.
-        let vp = self.env.viewport;
+        let vp = env.viewport;
         let screen = Rect::new(0.0, 0.0, vp.width, vp.height);
         let mut orphans = Vec::new();
-        self.world.state.particles.retain(|k, st| {
+        ui_world.state.particles.retain(|k, st| {
             if live.contains(k) {
                 return true;
             }
@@ -477,10 +491,10 @@ impl Ui {
                 })
                 .collect::<Vec<_>>();
             // On the root, after everything.
-            let root = self.tree.nodes[0].key;
-            self.world.marks.entry(root).or_default().leave.extend(cmds);
+            let root = tree.nodes[0].key;
+            ui_world.marks.entry(root).or_default().leave.extend(cmds);
         }
-        self.world.emitters = emitters;
+        ui_world.emitters = emitters;
     }
 }
 

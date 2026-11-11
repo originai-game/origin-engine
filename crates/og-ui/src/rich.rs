@@ -846,8 +846,8 @@ impl Ui {
             return Vec::new();
         };
         let sk = n.scale;
-        let inner = self.rich_inner(i);
-        if let Some(v) = self.rich_vertical(i) {
+        let inner = self.tree.rich_inner(i);
+        if let Some(v) = self.tree.rich_vertical(i) {
             return self
                 .vertical_rich_pieces(i, rc, v)
                 .0
@@ -962,7 +962,7 @@ impl Ui {
                 }
             }
         }
-        if let Some(v) = self.rich_vertical(i) {
+        if let Some(v) = self.tree.rich_vertical(i) {
             self.vertical_rich_commands(i, rc, v, cmds);
             return;
         }
@@ -1347,7 +1347,7 @@ impl Ui {
     ) -> (Vec<(usize, DrawnPiece)>, Vec<(f32, f32)>) {
         let n = &self.tree.nodes[i];
         let sk = n.scale;
-        let inner = self.rich_inner(i);
+        let inner = self.tree.rich_inner(i);
         let from_bottom = self.rich_from_bottom(i, v);
         let mut out = Vec::new();
         let mut cols = Vec::with_capacity(n.rich_lines.len());
@@ -1448,7 +1448,7 @@ impl Ui {
     /// icon or a key cap none).
     pub(crate) fn vertical_rich_lines(&self, i: usize) -> Vec<crate::ui::VerticalLine> {
         let n = &self.tree.nodes[i];
-        let (Content::Rich(rc), Some(v)) = (&n.content, self.rich_vertical(i)) else {
+        let (Content::Rich(rc), Some(v)) = (&n.content, self.tree.rich_vertical(i)) else {
             return Vec::new();
         };
         let (pieces, cols) = self.vertical_rich_pieces(i, rc, v);
@@ -1881,15 +1881,15 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Tree {
     /// A rich node's vertical setting, `None` when its lines run across.
     pub(crate) fn rich_vertical(&self, i: usize) -> Option<crate::layout::flow::VerticalText> {
-        self.tree.nodes[i].rich_vertical()
+        self.nodes[i].rich_vertical()
     }
 
     /// Rich node `i`'s content box.
     fn rich_inner(&self, i: usize) -> Rect {
-        let n = &self.tree.nodes[i];
+        let n = &self.nodes[i];
         let (sk, pad) = (n.scale, n.el.padding);
         Rect::new(
             n.rect.x + pad.left * sk,

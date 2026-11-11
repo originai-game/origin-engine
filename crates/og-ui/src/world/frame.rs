@@ -172,7 +172,7 @@ impl Ui {
                 // Its burst fires, and its `for` counts, from when it first stands.
                 let owner = *key;
                 let key = crate::id::child_key(*key, "particles");
-                let at = self.since(owner, key);
+                let at = self.interaction.since(owner, key);
                 self.world.emitters.push(crate::particles::EmitterEntry {
                     node: i,
                     key,
@@ -392,7 +392,13 @@ impl Ui {
     /// applied.
     pub(crate) fn world_finish(&mut self) {
         let tick = self.interaction.state.tick as u32;
-        self.world_particles(tick);
+        self.paint.world_particles(
+            tick,
+            &mut self.world,
+            &self.env,
+            &self.interaction,
+            &self.tree,
+        );
         // Pools: instances past their life leave.
         let templates = &self.world.templates;
         self.world.state.pools.retain(|&k, pool| {

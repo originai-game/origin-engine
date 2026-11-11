@@ -305,7 +305,8 @@ impl Ui {
                         shift(&mut c.0, dx, dy);
                         c
                     }));
-                    self.moved_subtree(&order[k..ends[k]], dx, dy);
+                    self.paint
+                        .moved_subtree(&order[k..ends[k]], dx, dy, &self.tree);
                     self.paint.cache.shifted_out = true;
                 } else if cmds.is_empty() && from == 0 && len == last.len() {
                     // Last frame's whole list, as it was: taken, not copied.
@@ -379,7 +380,7 @@ impl Ui {
                 // A 3D plane draws into a layer of its own, laid onto it.
                 cmds.push((plane_begin(), Affine::IDENTITY));
             }
-            let draw = self.draw_of(i).cloned();
+            let draw = self.paint.draw_of(i, &self.tree).cloned();
             let n = &self.tree.nodes[i];
             if let Some(m) = self.world.world_marks(n.key) {
                 cmds.extend(m.enter.iter().map(|c| (c.clone(), Affine::IDENTITY)));
@@ -394,7 +395,7 @@ impl Ui {
                 let n = &ui.tree.nodes[i];
                 // CSS accent-color: the primary ink of its control's parts.
                 let mut theme = theme;
-                if let Some(a) = ui.nearest(i, |n| n.accent) {
+                if let Some(a) = ui.tree.nearest(i, |n| n.accent) {
                     theme.palette.primary = a;
                     theme.palette.primary_hover = a;
                     theme.palette.primary_active = a;
@@ -430,7 +431,7 @@ impl Ui {
                     kept_now = true;
                 } else {
                     // CSS accent-color: its controls' primary ink.
-                    let accent = self.nearest(i, |n| n.accent);
+                    let accent = self.tree.nearest(i, |n| n.accent);
                     if let Some(a) = accent {
                         self.env.theme.palette.primary = a;
                         self.env.theme.palette.primary_hover = a;
@@ -509,7 +510,7 @@ impl Ui {
             }
             if !ring.is_empty() {
                 rings.push((
-                    self.ring_over(i),
+                    self.paint.ring_over(i, &self.world, &self.tree),
                     ring.into_iter().map(|c| (c, world)).collect(),
                 ));
             }
@@ -538,7 +539,7 @@ impl Ui {
         for (g, ghost) in ghosts.iter().enumerate() {
             if !drawn[g] {
                 reused_roots = false;
-                self.ghost_commands(ghost, &mut cmds);
+                self.tree.ghost_commands(ghost, &mut cmds);
             }
         }
         self.interaction.state.motion.ghosts = ghosts;
@@ -597,12 +598,18 @@ impl Ui {
                 for (g, ghost) in ghosts.iter().enumerate() {
                     if !drawn[g] && ghost.frozen.parent == key {
                         drawn[g] = true;
-                        self.ghost_commands(ghost, cmds);
+                        self.tree.ghost_commands(ghost, cmds);
                     }
                 }
                 if self.tree.nodes[j].scrolls() && self.tree.nodes[j].el.fade > 0.0 {
                     let mut fades = Vec::new();
-                    self.scroll_fade_commands(j, &mut fades);
+                    self.paint.scroll_fade_commands(
+                        j,
+                        &mut fades,
+                        &self.env,
+                        &self.interaction,
+                        &self.tree,
+                    );
                     let w = self.tree.nodes[j].world;
                     cmds.extend(fades.into_iter().map(|c| (c, w)));
                 }
@@ -622,7 +629,7 @@ impl Ui {
                     cmds.extend(grip.into_iter().map(|c| (c, w)));
                 }
                 let w = self.tree.nodes[j].world;
-                if let Some(d) = self.draw_of(j) {
+                if let Some(d) = self.paint.draw_of(j, &self.tree) {
                     let at = placed(&self.tree.nodes[j]);
                     let hidden = self.tree.orders.hidden_of.get(j) == Some(&true)
                         || self.tree.orders.skip_of.get(j).is_some_and(|&s| s != 0);
@@ -936,7 +943,7 @@ impl Ui {
         // all, never a part of it below.
         let ringed: Vec<usize> = self.paint.cache.ringed.iter().copied().collect();
         for i in ringed {
-            let over = self.ring_over(i);
+            let over = self.paint.ring_over(i, &self.world, &self.tree);
             let mut j = i;
             while j != over && j != NONE {
                 r.unclean(j);
@@ -981,7 +988,7 @@ impl Ui {
         let p = &t.palette;
         let dpr = self.env.viewport.dpr();
         let sn = &self.tree.nodes[s];
-        let clip = self.scroll_clip(s);
+        let clip = self.tree.scroll_clip(s);
         // CSS `scrollbar-width: thin` halves the bar; `scrollbar-color`
         // paints its thumb and a track along the whole edge under it.
         let css = sn.el.scroll_css;
@@ -1067,25 +1074,31 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Paint {
     /// Staggered entrances: under a node with a stagger, the k-th drawn
     /// leaf (a label, a control, an icon) enters `k` steps after the first;
     /// a long list shortens the step so the cascade ends within one more
     /// entrance. The cascade is only seen: a control takes input as soon as
     /// the panel's own entrance (inert while it moves) has played, where it
     /// is drawn, not when its place in the cascade has.
-    pub(super) fn apply_stagger(&mut self, order: &[usize]) {
-        let now = self.interaction.state.tick as f32;
-        let (reduced, distance) = (self.env.theme.reduced_motion, self.env.theme.space.lg);
+    pub(super) fn apply_stagger(
+        &mut self,
+        order: &[usize],
+        env: &crate::ui::Env,
+        interaction: &crate::ui::Interaction,
+        tree: &mut crate::ui::Tree,
+    ) {
+        let now = interaction.state.tick as f32;
+        let (reduced, distance) = (env.theme.reduced_motion, env.theme.space.lg);
         for &i in order {
-            let Some(st) = self.tree.nodes[i].stagger else {
+            let Some(st) = tree.nodes[i].stagger else {
                 continue;
             };
-            let leaves: Vec<usize> = preorder(&self.tree.nodes, i)
+            let leaves: Vec<usize> = preorder(&tree.nodes, i)
                 .into_iter()
                 .skip(1)
                 .filter(|&j| {
-                    let n = &self.tree.nodes[j];
+                    let n = &tree.nodes[j];
                     n.children.is_empty()
                         && !matches!(n.widget, Widget::Spacer)
                         && (!matches!(n.content, Content::None)
@@ -1103,13 +1116,12 @@ impl Ui {
             for (k, &j) in leaves.iter().enumerate() {
                 let start = st.since as f32 + step * k as f32;
                 let p = ((now - start + 1.0) / st.ticks).clamp(0.0, 1.0);
-                if p >= 1.0 || self.tree.nodes[j].fx.is_some() {
+                if p >= 1.0 || tree.nodes[j].fx.is_some() {
                     continue;
                 }
-                self.tree.nodes[j].fx = Some(crate::motion::fx(
+                tree.nodes[j].fx = Some(crate::motion::fx(
                     st.kind,
-                    self.env
-                        .theme
+                    env.theme
                         .tokens
                         .ease(crate::tokens::EaseRole::WidgetEnter)
                         .apply(p),
@@ -1122,20 +1134,19 @@ impl Ui {
 
     /// The nodes of a subtree copied moved by `(dx, dy)`: their signatures
     /// and kept commands are where they are drawn now.
-    fn moved_subtree(&mut self, nodes: &[usize], dx: f32, dy: f32) {
+    fn moved_subtree(&mut self, nodes: &[usize], dx: f32, dy: f32, tree: &crate::ui::Tree) {
         for &j in nodes {
-            let key = self.tree.nodes[j].key;
-            self.paint
-                .cache
-                .sigs_set(j, key, crate::layout::DrawSig::of(&self.tree.nodes[j]));
-            if let Some((_, local, sig)) = self.paint.cache.cmds.get_mut(&key) {
+            let key = tree.nodes[j].key;
+            self.cache
+                .sigs_set(j, key, crate::layout::DrawSig::of(&tree.nodes[j]));
+            if let Some((_, local, sig)) = self.cache.cmds.get_mut(&key) {
                 if local.iter().all(shiftable) {
                     for c in local.iter_mut() {
                         shift(c, dx, dy);
                     }
-                    *sig = crate::layout::DrawSig::of(&self.tree.nodes[j]);
+                    *sig = crate::layout::DrawSig::of(&tree.nodes[j]);
                 } else {
-                    self.paint.cache.cmds.remove(&key);
+                    self.cache.cmds.remove(&key);
                 }
             }
         }
@@ -1146,14 +1157,11 @@ impl Ui {
     /// The subtree node `i`'s focus ring draws after: its screen's (the
     /// root's child it is in), or the world-placed element's it is in, so
     /// a ring stays in that element's space.
-    fn ring_over(&self, i: usize) -> usize {
+    fn ring_over(&self, i: usize, world: &crate::world::WorldUi, tree: &crate::ui::Tree) -> usize {
         let mut j = i;
         loop {
-            let parent = self.tree.nodes[j].parent;
-            if parent == NONE
-                || parent == 0
-                || self.world.world_marks(self.tree.nodes[j].key).is_some()
-            {
+            let parent = tree.nodes[j].parent;
+            if parent == NONE || parent == 0 || world.world_marks(tree.nodes[j].key).is_some() {
                 return j;
             }
             j = parent;
@@ -1164,16 +1172,22 @@ impl Ui {
     /// content lies beyond, as strong as the content past that edge is
     /// over the fade's reach: none at the top of a list, full a fade's
     /// length into it, so a cut row reads as "there is more".
-    fn scroll_fade_commands(&self, s: usize, cmds: &mut Vec<DrawCmd>) {
+    fn scroll_fade_commands(
+        &self,
+        s: usize,
+        cmds: &mut Vec<DrawCmd>,
+        env: &crate::ui::Env,
+        interaction: &crate::ui::Interaction,
+        tree: &crate::ui::Tree,
+    ) {
         use crate::paint::{ColorRef, ElementDraw, Gradient, Paint, Placed, Stop};
-        let sn = &self.tree.nodes[s];
+        let sn = &tree.nodes[s];
         let reach = sn.el.fade;
-        let into = sn.el.fade_into.unwrap_or(self.env.theme.palette.panel);
-        let clip = self.scroll_clip(s);
+        let into = sn.el.fade_into.unwrap_or(env.theme.palette.panel);
+        let clip = tree.scroll_clip(s);
         let r = sn.rect;
         let max_y = sn.max_scroll();
-        let off_y = self
-            .interaction
+        let off_y = interaction
             .state
             .scroll
             .get(&sn.key)
@@ -1181,8 +1195,7 @@ impl Ui {
             .unwrap_or(0.0)
             .clamp(0.0, max_y);
         let max_x = sn.max_scroll_x();
-        let off_x = self
-            .interaction
+        let off_x = interaction
             .state
             .scroll_x
             .get(&sn.key)
@@ -1255,24 +1268,23 @@ impl Ui {
                 clip,
                 alpha: sn.alpha * k,
             };
-            cmds.extend(draw.enter(&self.env.theme, &at));
+            cmds.extend(draw.enter(&env.theme, &at));
         }
     }
 }
 
-impl Ui {
+impl crate::ui::Interaction {
     /// The clock's first tick, kept for the lifetime of its semantic owner.
     pub(crate) fn since(&mut self, owner: u64, key: u64) -> u64 {
-        self.interaction
-            .state
+        self.state
             .clocks
             .entry(key)
-            .or_insert((owner, self.interaction.state.tick))
+            .or_insert((owner, self.state.tick))
             .1
     }
 }
 
-impl Ui {
+impl crate::ui::Tree {
     /// A leaving element's frozen drawing, moved by its exit (about its
     /// box's centre) or onto the element it morphs into, and faded.
     fn ghost_commands(&self, g: &crate::motion::state::Ghost, cmds: &mut Vec<(DrawCmd, Affine)>) {
@@ -1285,7 +1297,6 @@ impl Ui {
         }
         let world = if g.morph_to != 0 {
             let to = self
-                .tree
                 .nodes
                 .iter()
                 .find(|n| n.key == g.morph_to)
@@ -1330,7 +1341,7 @@ impl Ui {
     }
 
     fn scroll_clip(&self, s: usize) -> Rect {
-        let sn = &self.tree.nodes[s];
+        let sn = &self.nodes[s];
         if sn.world.is_identity() {
             sn.clip.intersect(&sn.rect)
         } else {
@@ -1799,7 +1810,7 @@ impl Reuse {
     }
 }
 
-impl Ui {
+impl crate::ui::Tree {
     /// The value `get` gives of node `i` or its nearest ancestor that has
     /// one (an inherited CSS colour of a control's parts).
     pub(crate) fn nearest<T>(
@@ -1807,11 +1818,11 @@ impl Ui {
         mut i: usize,
         get: impl Fn(&crate::layout::Node) -> Option<T>,
     ) -> Option<T> {
-        while i != crate::layout::NONE && i < self.tree.nodes.len() {
-            if let Some(v) = get(&self.tree.nodes[i]) {
+        while i != crate::layout::NONE && i < self.nodes.len() {
+            if let Some(v) = get(&self.nodes[i]) {
                 return Some(v);
             }
-            i = self.tree.nodes[i].parent;
+            i = self.nodes[i].parent;
         }
         None
     }

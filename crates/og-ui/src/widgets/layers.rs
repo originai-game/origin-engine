@@ -285,7 +285,9 @@ impl Ui {
         self.tree.nodes[panel].a11y.role = Some("dialog");
         self.tree.nodes[panel].a11y.name = Some(desc.title.clone());
         if open && t.art.motion.stagger_ms > 0.0 {
-            let since = self.since(key, crate::id::child_key(key, "enter"));
+            let since = self
+                .interaction
+                .since(key, crate::id::child_key(key, "enter"));
             self.enter(panel, since, None);
         }
         let moving = fx(kind, e, t.space.xl, t.reduced_motion);

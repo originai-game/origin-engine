@@ -94,7 +94,8 @@ impl Ui {
             .get(parent)
             .is_some_and(|p| p.el.interactive);
         if let Some((dx, _, blur, _)) = self
-            .text_drop(desc.font.effect_index(), step.size, grid)
+            .paint
+            .text_drop(desc.font.effect_index(), step.size, grid, &self.env)
             .filter(|_| scrolled && !in_control)
         {
             let reach = (dx.abs() + blur / 2.0).ceil();
@@ -248,7 +249,7 @@ impl Ui {
         .flag_if(desc.size == ControlSize::Small, "small")
         .flag_if(desc.size == ControlSize::Large, "large")
         .flag_if(desc.square, "square")
-        .flag_if(self.narrow_button(key, width), "narrow");
+        .flag_if(self.interaction.narrow_button(key, width), "narrow");
         part.hover = amounts.0;
         part.press = amounts.1;
         let resolved = self.part_values(&part, Some(key));

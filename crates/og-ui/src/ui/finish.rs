@@ -843,7 +843,8 @@ impl Ui {
         }
         self.apply_shakes(order);
         let staggered = self.tree.orders.with(visit::feat::STAGGER).to_vec();
-        self.apply_stagger(&staggered);
+        self.paint
+            .apply_stagger(&staggered, &self.env, &self.interaction, &mut self.tree);
         let animated = self.run_motion(restyle.as_deref());
         self.out.stats.animated = animated.len() as u32;
         // What motion wrote is placed and painted again.
@@ -1824,16 +1825,13 @@ impl crate::ui::Layout {
 /// The width (CSS px) under which a button is `[narrow]`.
 pub const NARROW_BUTTON: f32 = 160.0;
 
-impl Ui {
+impl crate::ui::Interaction {
     /// Whether a button of `width` is `[narrow]`: its fixed width, else its
     /// width as laid out last tick (none yet: not narrow).
     pub(crate) fn narrow_button(&self, key: u64, width: Size) -> bool {
         match width {
             Size::Fixed(w) => w < NARROW_BUTTON,
-            _ => self
-                .interaction
-                .hit(key)
-                .is_some_and(|h| h.full.width < NARROW_BUTTON),
+            _ => self.hit(key).is_some_and(|h| h.full.width < NARROW_BUTTON),
         }
     }
 }

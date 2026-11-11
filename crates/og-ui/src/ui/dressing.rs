@@ -157,7 +157,7 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Paint {
     /// An ornament in `rect`, mirrored across x and or y.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn ornament(
@@ -170,8 +170,9 @@ impl Ui {
         alpha: f32,
         clip: Rect,
         cmds: &mut Vec<DrawCmd>,
+        env: &crate::ui::Env,
     ) {
-        let Some(atlas) = self.env.theme.art.atlas else {
+        let Some(atlas) = env.theme.art.atlas else {
             return;
         };
         let [u0, v0, u1, v1] = o.uv;
@@ -179,7 +180,7 @@ impl Ui {
         let (v0, v1) = if flip_y { (v1, v0) } else { (v0, v1) };
         let mut color = tint.unwrap_or_else(|| match o.ink {
             Ink::Authored => Srgba::WHITE.linear(),
-            ink => ink.color(&self.env.theme.palette).linear(),
+            ink => ink.color(&env.theme.palette).linear(),
         });
         color[3] *= alpha;
         cmds.push(DrawCmd::Image {
@@ -191,11 +192,14 @@ impl Ui {
         });
     }
 
-    pub(crate) fn draw_of(&self, i: usize) -> Option<&crate::paint::ElementDraw> {
-        self.paint
-            .decor_draws
+    pub(crate) fn draw_of<'a>(
+        &'a self,
+        i: usize,
+        tree: &'a crate::ui::Tree,
+    ) -> Option<&'a crate::paint::ElementDraw> {
+        self.decor_draws
             .get(&i)
-            .or_else(|| self.paint.part_draws.get(&i))
-            .or_else(|| self.tree.draws.get(&i))
+            .or_else(|| self.part_draws.get(&i))
+            .or_else(|| tree.draws.get(&i))
     }
 }
