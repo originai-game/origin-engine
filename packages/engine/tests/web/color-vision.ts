@@ -1,5 +1,5 @@
 // Colour-blind modes on the web (docs/ui.md §3.2): og-ui's colour vision
-// frame (crates/og-ui/tests/support/scenes.rs `color_vision_scene`, the
+// frame (crates/og-tests-ui/tests/support/scenes.rs `color_vision_scene`, the
 // overlay's swatches over a scene colour) drawn by crates/og-tests-web in
 // headless Chrome on WebGPU at 1280×720 and 390×844, once unfiltered and
 // once for each colour vision and filter. Each filtered frame must be the
@@ -7,7 +7,7 @@
 // within 2/255 on every channel of every pixel, must change at least an
 // eighth of the pixels, and taking the filter off must give back the
 // unfiltered frame exactly: the same checks as the native test
-// (crates/og-ui/tests/color_vision.rs), so the WGSL pass and its routing
+// (crates/og-tests-ui/tests/color_vision.rs), so the WGSL pass and its routing
 // through the glass source behave alike on both hosts.
 //
 //   bun tests/web/color-vision.ts [--chrome <path>]

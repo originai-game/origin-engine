@@ -251,7 +251,8 @@ crates/            Rust workspace
   og-bake          lightmaps and light volumes (CPU)
   og-probe         command channel and probe over JSON-RPC
   og-cli           the `og` tool
-  og-tests         gfx reference harness; og-tests-cooked, og-tests-web: cooked and in-browser variants
+  og-tests         gfx reference harness; og-tests-cooked, og-tests-web: cooked and in-browser variants;
+                   og-tests-ui: the frames of og-ui (og-ui's own tests build no renderer)
 packages/
   engine           @origingame/engine: TypeScript API and runtime, web hosts, shell, the UI kit (src/ui); a dist's engine/
   create           @origingame/create-game: the templates `og new` writes; a dist's create/

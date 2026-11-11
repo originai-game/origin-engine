@@ -707,9 +707,9 @@ counts. The native counterpart is `og-gfx <scene> --frames <n>`, with
 
 The same module carries og-ui's reference scenes as `og-ui/<name>`
 (`sample-screen`, `text-glow`, `glass`, `widget-set`, `text-fields-2`),
-built by `crates/og-ui/tests/support/scenes.rs` (included into
+built by `crates/og-tests-ui/tests/support/scenes.rs` (included into
 og-tests-web by `#[path]`) and judged against
-`crates/og-ui/references/<tier>/<name>.png`, else `vulkan`; and the four
+`crates/og-tests-ui/references/<tier>/<name>.png`, else `vulkan`; and the four
 cooked-font text frames (`og-ui/text-bidi`, `text-kerning`, `text-edit`,
 `text-mixed-runs`, `crates/og-tests-cooked/tests/support/text_scenes.rs`).
 The module cannot cook, so the runner first cooks
@@ -804,7 +804,9 @@ git diff --stat -- '*/references/vulkan/*'                         # see which f
 ```
 
 `OG_GFX_CAPTURE` takes `1` or a comma list of og-tests scenes;
-`OG_UI_CAPTURE=1` rewrites og-ui's frames, including the cooked-font and
+`OG_UI_CAPTURE=1` rewrites og-ui's frames (crates/og-tests-ui/references:
+og-tests-ui draws them, so og-ui's own tests build no renderer and a
+renderer edit does not rerun them), including the cooked-font and
 material frames og-tests-cooked writes there. Record twice and compare the
 two sets byte for byte before committing, so no frame flips on the host.
 

@@ -15,6 +15,6 @@
 | `assets/fonts/NotoSansHebrew-subset.ttf`, `assets/fonts/NotoSansDevanagari-subset.ttf` | SIL Open Font License 1.1 (`assets/fonts/OFL.txt`) | Noto Sans Hebrew and Noto Sans Devanagari (notofonts; Godot 4.7's thirdparty copies) subset to the text screen's strings by `tools/make-faces.py`, layout features kept for shaping |
 | `assets/fonts/test_glyphs-glyf_colr_1.ttf` | Apache-2.0 (`assets/fonts/LICENSE-color-fonts.txt`) | googlefonts/color-fonts' COLR v1 test font (via fontations' font-test-data), unmodified: its characters at U+F0100 and up (Supplementary Private Use Area-A, as icon fonts map theirs) for the colour glyph cook and GPU tests |
 | `assets/strings/*.ogt` | CC0 1.0 | self-written string tables for the five locales |
-| `screens/*.png` | CC0 1.0 | downscaled from `crates/og-ui/references/metal/kit-*.png`, which these playtests render |
+| `screens/*.png` | CC0 1.0 | downscaled from `crates/og-tests-ui/references/metal/kit-*.png`, which these playtests render |
 | `../styles/<style>/` (pixel, cartoon, fantasy, scifi, paper, neon) | CC0 1.0 art and style files; SIL OFL 1.1 fonts | atlases, icons and `style.ogt` drawn by `tools/make-styles.py` (deterministic); fonts and their origins in each style's `LICENSES.md` and `OFL.txt` |
 | `assets/audio/ui-*.wav` | CC0 1.0 | self-made: short synthesized blips for the UI sound hooks, `tools/make-styles.py` |
