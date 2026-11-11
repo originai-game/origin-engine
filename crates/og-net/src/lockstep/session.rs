@@ -194,12 +194,14 @@ impl Lockstep {
         let me = self.me;
         let peers = std::mem::take(&mut self.peers);
         let names = std::mem::take(&mut self.names);
+        let was = std::mem::take(&mut self.was);
         let now = self.now;
         self.reset();
         self.me = me;
         self.heard = peers.keys().map(|p| (*p, now)).collect();
         self.peers = peers;
         self.names = names;
+        self.was = was;
         self.rejoining = true;
         self.notes.push(
             "lockstep: this peer was dropped (it stalled); it waits for the authority's world to rejoin".into(),

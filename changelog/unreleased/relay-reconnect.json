@@ -1,0 +1,22 @@
+{
+  "added": [
+    {
+      "member": "net",
+      "summary": "A lost connection to an og relay is mended instead of ending the room: og run --room and relayRooms connect again for 30 s (250 ms, then twice as long up to 4 s) and join the room again, so the engine hears og.RoomJoined once more with a new peer number, the others og.RoomPeerLeft and og.RoomPeerJoined, and with og.Lockstep.rejoin the player takes its own seat again (og.SeatDropped, then og.SeatRejoined), named or not. What roomSend sent meanwhile is lost; only when the 30 s pass or the room refuses does the engine leave the room. relayRooms(url, { reconnectMs }) sets the window (0 never tries again)."
+    },
+    {
+      "member": "net",
+      "summary": "og relay and its clients notice a dead connection themselves: either end pings one silent for 3 s and gives up one silent for 10 s, where before a peer gone without a close held its room until the system's TCP timeout."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "net",
+      "summary": "A quick play room on og relay could be joined by anyone who knew its id (roomJoin of `quick-N`): it is joined by id only with the key its matched peers were given, which their clients use to come back after a lost connection."
+    },
+    {
+      "member": "net",
+      "summary": "In a lockstep room with two or more peers left running, a player that came back before its old seat's drop was agreed was admitted as a spectator (the seat was still held); the authority now admits a newcomer once the drops being agreed are done, so it finds its seat."
+    }
+  ]
+}

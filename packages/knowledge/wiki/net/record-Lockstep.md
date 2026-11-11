@@ -24,7 +24,7 @@ Token `og.Lockstep`, registered under the schema name `og.Lockstep`; its value t
 | `running` | `boolean` | `false` | — | — | read only | Whether lockstep runs: the room filled the seats and the authority started (until this peer leaves the room or turns it off). |
 | `mode` | `NetMode` | `"lockstep"` | — | — | — | lockstep (the default: every tick waits for every input) or rollback (ticks run on predicted inputs and are rewound when an input differs; set before the room starts, the authority's is the room's). |
 | `stallTimeout` | `number` | `5000` | 0 … 600000 | `ms` | — | Milliseconds a running peer may stay silent before its seat is dropped (og.SeatDropped); 0 never drops a peer still in the room, so the room waits for it as long as it takes. The authority's is the room's. |
-| `rejoin` | `boolean` | `true` | — | — | — | Whether a dropped player that comes back (or a newcomer of the same name) takes its seat again (og.SeatRejoined); when off, a seat once dropped stays empty and newcomers take only seats never held. The authority's is the room's. |
+| `rejoin` | `boolean` | `true` | — | — | — | Whether a dropped player that comes back (also under a new peer number after a lost connection, or as a newcomer of the same name) takes its seat again (og.SeatRejoined); when off, a seat once dropped stays empty and newcomers take only seats never held. The authority's is the room's. |
 | `maxPrediction` | `number` | `8` | 1 … 30 | `ticks` | — | In rollback, the most ticks this peer runs past the last tick whose inputs are all in before it waits (a peer also predicts no further than it can re-simulate in half a frame). See `networking §3`. |
 
 ```ogt
@@ -64,7 +64,7 @@ resource Lockstep {
     max 600000
     unit ms
   }
-  field rejoin bool "Whether a dropped player that comes back (or a newcomer of the same name) takes its seat again (og.SeatRejoined); when off, a seat once dropped stays empty and newcomers take only seats never held. The authority's is the room's." {
+  field rejoin bool "Whether a dropped player that comes back (also under a new peer number after a lost connection, or as a newcomer of the same name) takes its seat again (og.SeatRejoined); when off, a seat once dropped stays empty and newcomers take only seats never held. The authority's is the room's." {
     default true
   }
   field maxPrediction u32 "In rollback, the most ticks this peer runs past the last tick whose inputs are all in before it waits (a peer also predicts no further than it can re-simulate in half a frame)." {

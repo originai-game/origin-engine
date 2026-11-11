@@ -53,7 +53,7 @@ module net {
       max 600000
       unit ms
     }
-    field rejoin bool "Whether a dropped player that comes back (or a newcomer of the same name) takes its seat again (og.SeatRejoined); when off, a seat once dropped stays empty and newcomers take only seats never held. The authority's is the room's." {
+    field rejoin bool "Whether a dropped player that comes back (also under a new peer number after a lost connection, or as a newcomer of the same name) takes its seat again (og.SeatRejoined); when off, a seat once dropped stays empty and newcomers take only seats never held. The authority's is the room's." {
       default true
     }
     field maxPrediction u32 "In rollback, the most ticks this peer runs past the last tick whose inputs are all in before it waits (a peer also predicts no further than it can re-simulate in half a frame)." {

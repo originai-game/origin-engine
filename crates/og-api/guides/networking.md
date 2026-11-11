@@ -123,6 +123,15 @@ const Send = defineSystem("Send", { reads: [og.Input], writes: [] }, (q, time, w
 - With og.Lockstep's `rejoin`, a dropped player that comes back (the same
   peer, or a newcomer of the same name) takes its seat again from the
   authority's world, with og.SeatRejoined at one tick on every peer.
+- A lost connection to an `og relay` is mended by the host: for 30 s it
+  connects again and joins the room again. This engine then hears
+  og.RoomJoined once more with a new peer number, the others
+  og.RoomPeerLeft and og.RoomPeerJoined, and with `rejoin` the player
+  takes its own seat again as above. What was sent with roomSend meanwhile
+  is lost. Only when the 30 s pass, or the room refuses, does
+  og.RoomPeerLeft name this engine's own peer.
+- Keep nothing by peer number across og.RoomJoined: key a player's state
+  by seat (og.SeatDropped and og.SeatRejoined name both).
 - Wall time decides only when a peer is reported and dropped, never what
   the confirmed world is. `stallTimeout` 0 never drops a peer still in the
   room: the room waits as long as it takes.

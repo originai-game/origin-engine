@@ -14,9 +14,12 @@ impl Lockstep {
                 let now = self.now;
                 self.heard = self.peers.keys().map(|p| (*p, now)).collect();
             }
-            Event::PeerJoined { peer, name } => {
+            Event::PeerJoined { peer, name, was } => {
                 self.peers.insert(*peer, name.clone());
                 self.names.insert(*peer, name.clone());
+                if let Some(was) = was {
+                    self.was.insert(*peer, *was);
+                }
                 self.heard.insert(*peer, self.now);
             }
             Event::PeerLeft { peer } => self.departed(*peer),

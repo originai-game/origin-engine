@@ -374,6 +374,9 @@ pub struct Lockstep {
     drops: u64,
     /// Every peer's name seen in the room, so a returning player is known.
     names: IdMap<u32, String>,
+    /// The number a peer had before it lost its connection and came back
+    /// under a new one (`peer_joined`'s `was`).
+    was: IdMap<u32, u32>,
 }
 
 /// A drop the authority is agreeing with the other peers: every running
@@ -622,6 +625,12 @@ mod tests {
         }
 
         fn join(&mut self, id: u32, cfg: Config) {
+            self.join_as(id, cfg, None);
+        }
+
+        /// Peer `id` joins; `was` is the number it had before it lost its
+        /// connection, as the relay says it to the others.
+        fn join_as(&mut self, id: u32, cfg: Config, was: Option<u32>) {
             self.route();
             let peers: Vec<(u32, String)> = self
                 .peers
@@ -633,6 +642,7 @@ mod tests {
                 p.ls.on_event(&Event::PeerJoined {
                     peer: id,
                     name: String::new(),
+                    was,
                 });
             }
             let mut ls = Lockstep::new();
@@ -1335,6 +1345,53 @@ mod tests {
             assert_eq!(holds.iter().filter(|h| h.0 == s).count(), 2, "{holds:?}");
             assert!(holds.contains(&(s, 2, Some(drop_tick - 1))), "{holds:?}");
             assert_eq!(h[0], Some(offline_holds(3, 2, t, &holds)), "{mode:?}");
+            for p in &room.peers {
+                assert_eq!(p.ls.dump()["desync"], json!(false), "{mode:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn peers_that_lost_their_connections_take_their_own_seats_back_in_any_order() {
+        let modes = [
+            cfg(4, 2, 1),
+            Config {
+                rollback: true,
+                max_prediction: 6,
+                ..cfg(4, 2, 1)
+            },
+        ];
+        for (mode, seed) in [(modes[0], 7), (modes[1], 19)] {
+            let mut room = Room::new(lossy(seed, 3, 3, 10));
+            for id in 0..4 {
+                room.join(id, mode);
+            }
+            room.run_to(120);
+            // Two connections are lost and mended before the authority and
+            // peer 1 agreed the drops; the peer that was 3 is back first,
+            // and nameless.
+            room.leave(3);
+            room.leave(2);
+            room.join_as(4, mode, Some(3));
+            room.join_as(5, mode, Some(2));
+            let a = room.peers[0].world.tick;
+            room.run_to(a + 200);
+            let t = room.peers.iter().map(|p| p.ls.hashed).min().unwrap();
+            let h = room.hashes(t);
+            assert!(
+                h[0].is_some() && h.iter().all(|x| *x == h[0]),
+                "{mode:?}: {h:?}"
+            );
+            for (i, seat) in [(2, 3), (3, 2)] {
+                let p = &room.peers[i];
+                assert_eq!(
+                    p.ls.seat(p.world.tick + 5),
+                    Some(seat),
+                    "{mode:?}: peer {} was {seat}: {}",
+                    p.id,
+                    room.peers[0].ls.status()["seats"]
+                );
+            }
             for p in &room.peers {
                 assert_eq!(p.ls.dump()["desync"], json!(false), "{mode:?}");
             }
