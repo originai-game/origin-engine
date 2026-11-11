@@ -16,7 +16,6 @@ use super::wire::{
     self, BonePose, PhysicsPhase, PhysicsStats, RagdollBoneDesc, RagdollRigDesc, SoftBodyPoints,
     ToJson, WheelPose,
 };
-use super::{ok_void, refuse};
 use glam::{Mat4, Quat, Vec3};
 use og_ecs::{Entity, World};
 use og_physics::{PhysicsSystem, RagdollBone, RagdollRig};
@@ -66,8 +65,8 @@ fn push(
     (name, value): (&str, &str),
     point: Option<&str>,
     apply: impl FnOnce(&PhysicsSystem, Entity, Vec3, Option<Vec3>) -> og_core::Result<()>,
-) -> String {
-    let answer = (|| -> Result<(), String> {
+) -> Result<(), String> {
+    (|| {
         let eng = engine(world)?;
         let p = physics(&eng)?;
         let e = entity(e)?;
@@ -92,14 +91,15 @@ fn push(
             .map(|p| wire::arg::<Vec3>(Some(p), "point"))
             .transpose()?;
         apply(&p, e, vector, point).map_err(|e| e.to_string())
-    })();
-    match answer {
-        Ok(()) => ok_void(),
-        Err(e) => refuse(e),
-    }
+    })()
 }
 
-pub fn og_physics_apply_force(world: u32, e: f64, force: String, point: Option<String>) -> String {
+pub fn og_physics_apply_force(
+    world: u32,
+    e: f64,
+    force: String,
+    point: Option<String>,
+) -> Result<(), String> {
     push(
         world,
         e,
@@ -114,7 +114,7 @@ pub fn og_physics_apply_impulse(
     e: f64,
     impulse: String,
     point: Option<String>,
-) -> String {
+) -> Result<(), String> {
     push(
         world,
         e,
@@ -124,13 +124,13 @@ pub fn og_physics_apply_impulse(
     )
 }
 
-pub fn og_physics_apply_torque(world: u32, e: f64, torque: String) -> String {
+pub fn og_physics_apply_torque(world: u32, e: f64, torque: String) -> Result<(), String> {
     push(world, e, ("torque", &torque), None, |p, e, v, _| {
         p.apply_torque(e, v)
     })
 }
 
-pub fn og_physics_apply_torque_impulse(world: u32, e: f64, torque: String) -> String {
+pub fn og_physics_apply_torque_impulse(world: u32, e: f64, torque: String) -> Result<(), String> {
     push(world, e, ("torque", &torque), None, |p, e, v, _| {
         p.apply_torque_impulse(e, v)
     })

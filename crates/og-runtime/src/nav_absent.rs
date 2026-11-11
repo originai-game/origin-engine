@@ -143,8 +143,8 @@ pub fn og_nav_nearest(
     None
 }
 
-pub fn og_nav_path_of(_world: u32, _entity: f64) -> String {
-    Value::Null.to_string()
+pub fn og_nav_path_of(_world: u32, _entity: f64) -> Option<Value> {
+    None
 }
 
 fn refused() -> og_core::Error {

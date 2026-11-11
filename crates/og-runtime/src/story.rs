@@ -1123,10 +1123,8 @@ pub fn og_story_history(world: u32, conversation: u32) -> Vec<crate::wire::Story
     .unwrap_or_default()
 }
 
-pub fn og_story_conversations(world: u32) -> String {
-    story(world, |_, s| json!(s.convs.keys().collect::<Vec<_>>()))
-        .unwrap_or_else(|_| json!([]))
-        .to_string()
+pub fn og_story_conversations(world: u32) -> Vec<u32> {
+    story(world, |_, s| s.convs.keys().copied().collect()).unwrap_or_default()
 }
 
 pub fn og_story_advance(world: u32, conversation: u32) -> Result<(), String> {
@@ -1305,12 +1303,11 @@ pub fn og_story_set_saliency(world: u32, strategy: String) -> Result<(), String>
     })()
 }
 
-pub fn og_story_get(world: u32, name: String) -> String {
+pub fn og_story_get(world: u32, name: String) -> Option<Value> {
     story(world, |lib, s| s.get(lib, &name))
         .ok()
         .flatten()
-        .map_or(Value::Null, |v| val_json(&v))
-        .to_string()
+        .map(|v| val_json(&v))
 }
 
 pub fn og_story_set(world: u32, name: String, value: String) -> Result<(), String> {

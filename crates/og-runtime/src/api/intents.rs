@@ -54,12 +54,10 @@ pub fn og_input_intent(world: u32, event: String, payload: String) -> Result<(),
     })()
 }
 
-pub fn og_input_take_intents(world: u32) -> String {
+pub fn og_input_take_intents(world: u32) -> Vec<Value> {
     engine(world).map_or_else(
-        |_| "[]".into(),
-        |eng| {
-            Value::Array(std::mem::take(&mut eng.state.borrow_mut().recorded_intents)).to_string()
-        },
+        |_| Vec::new(),
+        |eng| std::mem::take(&mut eng.state.borrow_mut().recorded_intents),
     )
 }
 

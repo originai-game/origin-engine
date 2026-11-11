@@ -86,9 +86,16 @@ impl Hooks for Game {
                 if tick == PUSH_AT {
                     let boxed: f64 = serde_json::from_str(&og_world_find(w, "box".into())).unwrap();
                     let up = json!({ "x": 0.5, "y": 6.0, "z": 0.0 }).to_string();
-                    value(og_physics_apply_impulse(w, boxed, up.clone(), None));
+                    value(og_runtime::host_impl::answer(og_physics_apply_impulse(
+                        w,
+                        boxed,
+                        up.clone(),
+                        None,
+                    )));
                     s.pushes
-                        .push(og_physics_apply_impulse(w, counter, up, None));
+                        .push(og_runtime::host_impl::answer(og_physics_apply_impulse(
+                            w, counter, up, None,
+                        )));
                 }
                 return Ok(String::new());
             }

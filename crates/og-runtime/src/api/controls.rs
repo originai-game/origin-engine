@@ -36,11 +36,10 @@ pub fn og_transform_compose(position: String, quaternion: String, scale: String)
     glam::Mat4::from_scale_rotation_translation(s, q, p)
 }
 
-pub fn og_transform_decompose(matrix: String) -> String {
+pub fn og_transform_decompose(matrix: String) -> Value {
     let m: glam::Mat4 = wire::arg(Some(&matrix), "matrix").unwrap_or_default();
     let (s, q, p) = m.to_scale_rotation_translation();
     json!({ "position": vec3_json(p), "quaternion": quat_json(q), "scale": vec3_json(s) })
-        .to_string()
 }
 
 /// The rotation that points -Z from `eye` towards `target`, +Y up by default.
@@ -192,22 +191,21 @@ fn weighted(r: &mut Rng, text: &str) -> i32 {
     og_core::procgen::weighted(r, &weights(text)).map_or(-1, |i| i as i32)
 }
 
-fn permutation(r: &mut Rng, n: u32) -> String {
-    serde_json::to_string(&og_core::procgen::permutation(r, n.min(1 << 24)))
-        .unwrap_or_else(|_| "[]".into())
+fn permutation(r: &mut Rng, n: u32) -> Vec<u32> {
+    og_core::procgen::permutation(r, n.min(1 << 24))
 }
 
 pub fn og_rng_stream_weighted(stream: u32, weights: String) -> i32 {
     with_stream(stream, -1, |r| weighted(r, &weights))
 }
-pub fn og_rng_stream_permutation(stream: u32, n: u32) -> String {
-    with_stream(stream, "[]".into(), |r| permutation(r, n))
+pub fn og_rng_stream_permutation(stream: u32, n: u32) -> Vec<u32> {
+    with_stream(stream, Vec::new(), |r| permutation(r, n))
 }
 pub fn og_rng_weighted(world: u32, weights: String) -> i32 {
     with_rng(world, -1, |r| weighted(r, &weights))
 }
-pub fn og_rng_permutation(world: u32, n: u32) -> String {
-    with_rng(world, "[]".into(), |r| permutation(r, n))
+pub fn og_rng_permutation(world: u32, n: u32) -> Vec<u32> {
+    with_rng(world, Vec::new(), |r| permutation(r, n))
 }
 pub fn og_rng_next(world: u32) -> f64 {
     with_rng(world, f64::NAN, Rng::next_f64)

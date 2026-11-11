@@ -85,6 +85,11 @@ fn answer(text: String) -> Value {
     serde_json::from_str(&text).expect("wire JSON")
 }
 
+/// og.render.display's answer as the hosts send it.
+fn display(engine: u32) -> Value {
+    answer(og_runtime::host_impl::json(og_render_display(engine)))
+}
+
 fn engine(presents: bool) -> (u32, Rc<RefCell<Seen>>) {
     engine_sized(presents, (200, 100))
 }
@@ -171,7 +176,7 @@ fn graphics_settings_round_trip_and_apply() {
         og_runtime::og_world_resource(e, "og.RenderSettings".into()),
     ));
     assert_eq!(settings, game, "RenderSettings keep the game's quality");
-    let saved = answer(og_render_display(e))["settings"].clone();
+    let saved = display(e)["settings"].clone();
     for (k, v) in chosen.as_object().unwrap() {
         let got = &saved[k];
         let same = match (got.as_f64(), v.as_f64()) {
@@ -188,7 +193,7 @@ fn graphics_settings_round_trip_and_apply() {
         set(f, serde_json::from_str(&text).unwrap())["ok"],
         json!(true)
     );
-    assert_eq!(answer(og_render_display(f))["settings"], saved);
+    assert_eq!(display(f)["settings"], saved);
     frames(f, 1);
     assert_eq!(
         seen_f.borrow().quality,
@@ -197,7 +202,7 @@ fn graphics_settings_round_trip_and_apply() {
 
     // A partial call keeps the rest; quality null is the game's own again.
     set(f, json!({ "frameCap": "fps120", "quality": null }));
-    let now = answer(og_render_display(f))["settings"].clone();
+    let now = display(f)["settings"].clone();
     assert_eq!(now["frameCap"], json!("fps120"));
     assert_eq!(now["renderScale"], saved["renderScale"]);
     assert_eq!(now["fullscreen"], json!(true));
@@ -213,9 +218,9 @@ fn graphics_settings_round_trip_and_apply() {
         answer(og_runtime::host_impl::answer(og_render_reset_display(f)))["ok"],
         json!(true)
     );
-    let reset = answer(og_render_display(f))["settings"].clone();
+    let reset = display(f)["settings"].clone();
     let (g, _) = engine(false);
-    assert_eq!(reset, answer(og_render_display(g))["settings"]);
+    assert_eq!(reset, display(g)["settings"]);
     assert_eq!(
         (
             reset["frameCap"].clone(),
@@ -248,7 +253,7 @@ fn graphics_settings_round_trip_and_apply() {
 fn the_page_reports_fullscreen_power_and_raw_mouse() {
     let (e, _) = engine(true);
     og_runtime::set_power_preference(e, false);
-    let info = answer(og_render_display(e));
+    let info = display(e);
     assert_eq!(
         (
             info["vsync"].clone(),
@@ -263,7 +268,7 @@ fn the_page_reports_fullscreen_power_and_raw_mouse() {
         Some(json!({ "fullscreen": true, "powerPreference": "lowPower" }).to_string()),
     ));
     assert_eq!(frames(e, 1)["fullscreen"], json!(true));
-    let info = answer(og_render_display(e));
+    let info = display(e);
     assert_eq!(
         info["restartNeeded"],
         json!(true),
@@ -275,10 +280,10 @@ fn the_page_reports_fullscreen_power_and_raw_mouse() {
         "not yet: the page has not gone fullscreen"
     );
     og_runtime::set_fullscreen(e, true);
-    assert_eq!(answer(og_render_display(e))["fullscreen"], json!(true));
+    assert_eq!(display(e)["fullscreen"], json!(true));
     // The player pressed Escape.
     og_runtime::set_fullscreen(e, false);
-    let info = answer(og_render_display(e));
+    let info = display(e);
     assert_eq!(
         (
             info["fullscreen"].clone(),
@@ -293,7 +298,7 @@ fn the_page_reports_fullscreen_power_and_raw_mouse() {
     );
     // Booted on the low-power adapter: no restart for lowPower.
     og_runtime::set_power_preference(e, true);
-    assert_eq!(answer(og_render_display(e))["restartNeeded"], json!(false));
+    assert_eq!(display(e)["restartNeeded"], json!(false));
 
     let mouse = |e| answer(og_runtime::host_impl::json(og_runtime::og_input_mouse(e)));
     assert_eq!(
@@ -315,5 +320,5 @@ fn the_page_reports_fullscreen_power_and_raw_mouse() {
 
     // A native run presents nothing: no vsync to speak of.
     let (n, _) = engine(false);
-    assert_eq!(answer(og_render_display(n))["vsync"], json!(false));
+    assert_eq!(display(n)["vsync"], json!(false));
 }

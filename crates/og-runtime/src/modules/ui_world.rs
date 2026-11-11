@@ -207,20 +207,15 @@ fn instances(theme: &Theme, text: &str) -> Vec<UiMassInstance> {
 
 // ── og.ui's members ─────────────────────────────────────────────────────────
 
-pub fn og_ui_define_mass(name: String, desc: Option<String>) -> String {
-    let d: MassTemplateDesc = match wire::arg(desc.as_deref(), "desc") {
-        Ok(d) => d,
-        Err(e) => return crate::refuse(e),
-    };
+pub fn og_ui_define_mass(name: String, desc: Option<String>) -> Result<u32, String> {
+    let d: MassTemplateDesc = wire::arg(desc.as_deref(), "desc")?;
     let eng = ui_engine().and_then(|id| engine(id).ok());
     with_ui("og.ui.defineMass", |ui| {
         let theme = *ui.theme();
-        match template(&theme, eng.as_deref(), d) {
-            Ok((t, space)) => crate::ok(json!(ui.define_mass(&name, t, space).0)),
-            Err(reason) => crate::refuse(reason),
-        }
+        let (t, space) = template(&theme, eng.as_deref(), d)?;
+        Ok(ui.define_mass(&name, t, space).0)
     })
-    .unwrap_or_else(|| crate::refuse("og.ui.defineMass requires an active UI frame"))
+    .unwrap_or_else(|| Err("og.ui.defineMass requires an active UI frame".into()))
 }
 
 pub fn og_ui_spawn_mass(template: u32, list: String) {

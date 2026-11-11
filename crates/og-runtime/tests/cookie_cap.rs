@@ -96,7 +96,7 @@ fn cookies_past_the_cap_are_reported() {
     let game = og_game_game(Some(r#"{"seed":1}"#.into()));
     let engine = value(og_engine_create(game, "{}".into())).as_u64().unwrap() as u32;
     set_render_backend(engine, Some(Box::new(Blank))).unwrap();
-    let caps: Value = serde_json::from_str(&og_render_capabilities(engine)).unwrap();
+    let caps: Value = og_render_capabilities(engine);
     assert_eq!(caps["maxLightCookies"], json!(24), "{caps}");
 
     // Four point cookies: 24 layers, all drawn.

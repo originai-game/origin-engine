@@ -27,8 +27,10 @@
 //! never the confirmed world).
 
 use super::engine::{Engine, engine, running};
-use super::wire::{self, LockstepSeat, LockstepStatus, RoomInfo, RoomMessageData, RoomPeer};
-use super::{ok_void, parse, refuse};
+use super::parse;
+use super::wire::{
+    self, LockstepSeat, LockstepStatus, RoomInfo, RoomMessageData, RoomPeer, ToJson,
+};
 use og_core::IdMap;
 use og_ecs::{QueryDesc, SystemDesc, World};
 use og_net::protocol::{self, Event, LOCKSTEP_CHANNEL, MAX_MESSAGE, Payload};
@@ -439,45 +441,44 @@ pub fn og_platform_room_join(world: u32, room: String) -> Result<(), String> {
     })
 }
 
-pub fn og_platform_room_leave(world: u32) -> String {
+pub fn og_platform_room_leave(world: u32) -> Result<(), String> {
     with(world, |n| {
         if n.stage == Stage::None {
-            return refuse("in no room");
+            return Err("in no room".into());
         }
         n.outbox.push(protocol::leave());
-        ok_void()
+        Ok(())
     })
 }
 
-pub fn og_platform_room_send(world: u32, data: String, to: Option<u32>) -> String {
-    let v = match parse(Some(&data)) {
-        Ok(v) => v,
-        Err(e) => return refuse(e),
-    };
+pub fn og_platform_room_send(world: u32, data: String, to: Option<u32>) -> Result<(), String> {
+    let v = parse(Some(&data))?;
     let payload = match v.get(BYTES_KEY).and_then(Value::as_str) {
         Some(b) => match og_net::base64::decode(b) {
             Some(bytes) => Payload::Bytes(bytes),
-            None => return refuse("the message's bytes are not base64"),
+            None => return Err("the message's bytes are not base64".into()),
         },
         None => Payload::Json(v),
     };
     if payload.size() > MAX_MESSAGE {
-        return refuse(format!(
+        return Err(format!(
             "a message is at most {MAX_MESSAGE} bytes encoded; this one is {}",
             payload.size()
         ));
     }
     with(world, |n| {
         if n.stage != Stage::In {
-            return refuse("in no room: roomJoin or roomCreate first, and wait for og.RoomJoined");
+            return Err(
+                "in no room: roomJoin or roomCreate first, and wait for og.RoomJoined".into(),
+            );
         }
         if let Some(t) = to
             && !n.peers.contains_key(&t)
         {
-            return refuse(format!("no peer {t} in room '{}'", n.room));
+            return Err(format!("no peer {t} in room '{}'", n.room));
         }
         n.outbox.push(protocol::send(to, None, &payload));
-        ok_void()
+        Ok(())
     })
 }
 
@@ -496,11 +497,11 @@ fn room_peers(n: &Net) -> Vec<RoomPeer> {
         .collect()
 }
 
-pub fn og_platform_room_peers(world: u32) -> String {
-    with(world, |n| wire::text_of(&room_peers(n)))
+pub fn og_platform_room_peers(world: u32) -> Vec<RoomPeer> {
+    with(world, |n| room_peers(n))
 }
 
-pub fn og_platform_room_info(world: u32) -> String {
+pub fn og_platform_room_info(world: u32) -> RoomInfo {
     with(world, |n| {
         let state = match n.stage {
             Stage::None => "none",
@@ -509,7 +510,7 @@ pub fn og_platform_room_info(world: u32) -> String {
         };
         let host = if n.host.is_empty() { "none" } else { &n.host };
         let inside = n.stage == Stage::In;
-        wire::text_of(&RoomInfo {
+        RoomInfo {
             state: state.to_string(),
             room: if inside {
                 n.room.clone()
@@ -520,20 +521,18 @@ pub fn og_platform_room_info(world: u32) -> String {
             link: n.link.clone(),
             peer: if inside { n.peer } else { 0 },
             peers: room_peers(n),
-        })
+        }
     })
 }
 
-pub fn og_platform_room_message(world: u32, message: u32) -> String {
+pub fn og_platform_room_message(world: u32, message: u32) -> Option<RoomMessageData> {
     with(world, |n| {
-        let Some(m) = n.messages.iter().find(|m| m.id == message) else {
-            return "null".into();
-        };
+        let m = n.messages.iter().find(|m| m.id == message)?;
         let (data, bytes) = match &m.payload {
             Payload::Json(d) => (d.clone(), None),
             Payload::Bytes(b) => (Value::Null, Some(json!(og_net::base64::encode(b)))),
         };
-        wire::text_of(&RoomMessageData {
+        Some(RoomMessageData {
             message: m.id,
             from: m.from,
             tick: m.tick.unwrap_or(0) as u32,
@@ -773,53 +772,46 @@ pub fn og_net_submit_input(world: u32, component: String, value: String) -> Resu
     }
 }
 
-pub fn og_net_command(world: u32, component: String, value: String) -> String {
-    let (shape, eng) = match engine_of(world) {
-        Ok(e) => (with(world, |n| n.shape.clone()), e),
-        Err(e) => return refuse(e),
-    };
+pub fn og_net_command(world: u32, component: String, value: String) -> Result<(), String> {
+    let eng = engine_of(world)?;
+    let shape = with(world, |n| n.shape.clone());
     let name =
         token_name(&serde_json::from_str(&component).unwrap_or(Value::String(component.clone())))
             .unwrap_or(component);
     if shape.command.is_empty() {
-        return refuse(
-            "og.net.command needs a command component: og.net.shape(world, { command: MyCommand })",
+        return Err(
+            "og.net.command needs a command component: og.net.shape(world, { command: MyCommand })"
+                .into(),
         );
     }
     if name != shape.command {
-        return refuse(format!(
+        return Err(format!(
             "og.net.command takes '{}', og.net.shape's command; not '{name}'",
             shape.command
         ));
     }
-    let v = match parse(Some(&value)) {
-        Ok(v) => v,
-        Err(e) => return refuse(e),
-    };
+    let v = parse(Some(&value))?;
     if v.get("player").is_some() {
-        return refuse("og.net.command: `player` is the engine's (the seat that gave it)");
+        return Err("og.net.command: `player` is the engine's (the seat that gave it)".into());
     }
     let Some(layout) = eng.state.borrow().layouts.get(&name).cloned() else {
-        return refuse(format!("'{name}' is not registered in this world"));
+        return Err(format!("'{name}' is not registered in this world"));
     };
-    let bytes = match layout.encode(None, Some(&v)) {
-        Ok(b) => b,
-        Err(e) => return refuse(e),
-    };
+    let bytes = layout.encode(None, Some(&v))?;
     let tick = tick_of(world);
     with(world, |n| {
         // A re-simulated tick's commands went out on its first run.
         if n.ls.resimulating(tick) {
-            return ok_void();
+            return Ok(());
         }
         if n.given.len() >= shape.max_commands as usize {
-            return refuse(format!(
+            return Err(format!(
                 "og.net.command: {} commands this tick already (og.net.shape's maxCommands)",
                 shape.max_commands
             ));
         }
         n.given.push(bytes);
-        ok_void()
+        Ok(())
     })
 }
 
@@ -880,7 +872,7 @@ pub fn og_net_commands(world: u32, component: String) -> Result<serde_json::Valu
     Ok(Value::Array(out))
 }
 
-pub fn og_net_status(world: u32) -> String {
+pub fn og_net_status(world: u32) -> LockstepStatus {
     with(world, |n| {
         let s = n.ls.status();
         // og-net's status, read field by field into the IDL's type: an
@@ -899,7 +891,7 @@ pub fn og_net_status(world: u32) -> String {
                     .collect()
             })
             .unwrap_or_default();
-        wire::text_of(&LockstepStatus {
+        LockstepStatus {
             running: read(&s["running"]),
             peer: read(&s["peer"]),
             peers: read(&s["peers"]),
@@ -921,7 +913,7 @@ pub fn og_net_status(world: u32) -> String {
             snapshot_bytes: read(&s["snapshotBytes"]),
             stalled: read(&s["stalled"]),
             drops: read(&s["drops"]),
-        })
+        }
     })
 }
 
@@ -935,12 +927,12 @@ pub fn og_net_resimulating(world: u32) -> bool {
     with(world, |n| n.ls.resimulating(tick_of(world)))
 }
 
-pub fn og_net_final_hash(world: u32, tick: f64) -> String {
+pub fn og_net_final_hash(world: u32, tick: f64) -> Option<String> {
     with(world, |n| {
         let h = (tick >= 0.0 && tick.fract() == 0.0)
             .then(|| n.ls.final_hash(tick as u64))
             .flatten();
-        json!(h.map(|h| format!("{h:016x}"))).to_string()
+        h.map(|h| format!("{h:016x}"))
     })
 }
 
@@ -954,14 +946,12 @@ pub fn world_snapshot_bytes(world: u32) -> Result<Vec<u8>, String> {
     engine_of(world).and_then(|e| e.world().map(|w| w.snapshot()))
 }
 
+/// The hash as text, or `error: <reason>`; the host writes it as a JSON
+/// string.
 pub fn og_net_hash(world: u32) -> String {
-    let bytes = match world_snapshot_bytes(world) {
-        Ok(b) => b,
-        Err(e) => return json!(format!("error: {e}")).to_string(),
-    };
-    match shared_hash(&bytes) {
-        Ok(h) => json!(format!("{h:016x}")).to_string(),
-        Err(e) => json!(format!("error: {e}")).to_string(),
+    match world_snapshot_bytes(world).and_then(|bytes| shared_hash(&bytes)) {
+        Ok(h) => format!("{h:016x}"),
+        Err(e) => format!("error: {e}"),
     }
 }
 
@@ -1339,12 +1329,14 @@ pub(crate) fn register(probe: &mut og_probe::Probe, engine: u32) {
         },
         0,
         move |_world, _args| {
-            let info: Value = serde_json::from_str(&og_platform_room_info(engine)).unwrap_or(Value::Null);
-            let status: Value = serde_json::from_str(&og_net_status(engine)).unwrap_or(Value::Null);
             let cost = with(engine, |n| {
                 json!({ "tickMs": n.cost.tick_ms, "keepMs": n.cost.keep_ms, "rewindMs": n.cost.rewind_ms })
             });
-            Ok(json!({ "room": info, "lockstep": status, "cost": cost }))
+            Ok(json!({
+                "room": og_platform_room_info(engine).to_json(),
+                "lockstep": og_net_status(engine).to_json(),
+                "cost": cost,
+            }))
         },
     );
 }

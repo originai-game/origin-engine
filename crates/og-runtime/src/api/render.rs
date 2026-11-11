@@ -274,7 +274,7 @@ pub fn og_render_update_material(
     })()
 }
 
-pub fn og_render_capabilities(world: u32) -> String {
+pub fn og_render_capabilities(world: u32) -> Value {
     let caps = engine(world).ok().and_then(|eng| {
         let rs = eng.render.borrow();
         rs.backend.as_ref().map(|b| {
@@ -326,7 +326,6 @@ pub fn og_render_capabilities(world: u32) -> String {
         })
     });
     caps.unwrap_or_else(|| json!({ "tier": "none", "compute": false, "antialias": "off", "hdrSupported": false, "hdr": false, "maxLights": 0, "maxShadowedLights": 0, "maxMsaaSamples": 0, "pointShadows": "cube", "width": 0, "height": 0, "stylise": [], "ssr": false, "reflectionProbes": 0, "renderTargetDepth": false, "maxRenderTargetSize": 0, "maxCustomPosts": 0, "volumetricFog": "raymarch", "volumetricLights": 0, "maxLightCookies": 0, "gpuTimestamps": false, "planarReflections": 0, "without": [], "visualSimulation": false, "upscalers": [], "transparency": "weighted", "gpuCrowds": false, "world3d": og_render::WORLD_3D, "exrDecode": crate::uncooked::EXR_DECODE, "visibilityBuffer": false, "visibilityBufferRefused": null }))
-        .to_string()
 }
 
 /// `og.render.snap`: `entity` drawn at its tick until the next tick

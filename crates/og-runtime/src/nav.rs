@@ -752,17 +752,17 @@ fn path_of(engine: u32, e: Entity) -> Option<og_nav::system::PathState> {
     super::e6::with(engine, |m| m.nav.as_ref().and_then(|n| n.path_of(e))).flatten()
 }
 
-pub fn og_nav_path_of(world: u32, entity: f64) -> String {
-    match path_of(world, Entity::from_bits(handle(entity))) {
-        Some(p) if !p.corners.is_empty() => wire::text_of(&path_value(
+pub fn og_nav_path_of(world: u32, entity: f64) -> Option<NavPath> {
+    let p = path_of(world, Entity::from_bits(handle(entity)))?;
+    (!p.corners.is_empty()).then(|| {
+        path_value(
             &p.corners,
             p.status != og_nav::STATUS_PARTIAL,
             0,
             "agent",
             &p.links,
-        )),
-        _ => "null".into(),
-    }
+        )
+    })
 }
 
 /// `dump_nav`'s JSON: the agent's path, the corner it heads for and its status.

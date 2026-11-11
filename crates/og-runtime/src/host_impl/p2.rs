@@ -163,7 +163,7 @@ macro_rules! __og_host_bindings_p2 {
                 $crate::host_impl::answer($crate::og_motion_status(world, entity))
             }
             fn og_motion_capabilities(&self, world: u32) -> String {
-                $crate::og_motion_capabilities(world)
+                $crate::host_impl::json($crate::og_motion_capabilities(world))
             }
             fn og_motion_set_backend(&self, world: u32, backend: String) -> String {
                 $crate::host_impl::answer($crate::og_motion_set_backend(world, backend))
@@ -172,7 +172,7 @@ macro_rules! __og_host_bindings_p2 {
                 $crate::host_impl::answer($crate::og_motion_presentation(world, entity))
             }
             fn og_motion_poses(&self) -> String {
-                $crate::og_motion_poses()
+                $crate::host_impl::json($crate::og_motion_poses())
             }
         }
 

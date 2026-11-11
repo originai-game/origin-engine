@@ -13,7 +13,7 @@
 
 use super::{MAX_VALUE, call, request, valid_key, with};
 use crate::engine::{engine, running};
-use crate::{parse, refuse, wire};
+use crate::{parse, wire};
 use og_core::Reflect;
 use serde_json::{Value, json};
 
@@ -69,16 +69,13 @@ fn token(what: &str, id: &str) -> Result<(), String> {
 }
 
 /// A request from validated arguments, or the refusal.
-fn ask(world: u32, method: &str, args: Result<Value, String>) -> String {
-    match args {
-        Ok(a) => request(world, method, a),
-        Err(e) => refuse(e),
-    }
+fn ask(world: u32, method: &str, args: Result<Value, String>) -> Result<u32, String> {
+    request(world, method, args?)
 }
 
 // ── purchases ────────────────────────────────────────────────────────────
 
-pub fn og_platform_products(world: u32, desc: Option<String>) -> String {
+pub fn og_platform_products(world: u32, desc: Option<String>) -> Result<u32, String> {
     ask(
         world,
         "purchase.products",
@@ -99,7 +96,7 @@ pub fn og_platform_products(world: u32, desc: Option<String>) -> String {
     )
 }
 
-pub fn og_platform_purchase(world: u32, desc: Option<String>) -> String {
+pub fn og_platform_purchase(world: u32, desc: Option<String>) -> Result<u32, String> {
     ask(
         world,
         "purchase.buy",
@@ -117,7 +114,7 @@ pub fn og_platform_entitlements(world: u32) -> u32 {
     call(world, "purchase.entitlements", json!({}), false).unwrap_or(0)
 }
 
-pub fn og_platform_consume(world: u32, purchase: String) -> String {
+pub fn og_platform_consume(world: u32, purchase: String) -> Result<u32, String> {
     ask(
         world,
         "purchase.consume",
@@ -199,17 +196,17 @@ fn ad_args(desc: Option<String>) -> Result<Value, String> {
     Ok(json!({ "kind": kind, "placement": placement }))
 }
 
-pub fn og_platform_ad_ready(world: u32, desc: Option<String>) -> String {
+pub fn og_platform_ad_ready(world: u32, desc: Option<String>) -> Result<u32, String> {
     ask(world, "ad.ready", ad_args(desc))
 }
 
-pub fn og_platform_show_ad(world: u32, desc: Option<String>) -> String {
+pub fn og_platform_show_ad(world: u32, desc: Option<String>) -> Result<u32, String> {
     ask(world, "ad.show", ad_args(desc))
 }
 
 // ── achievements ─────────────────────────────────────────────────────────
 
-pub fn og_platform_achievement_unlock(world: u32, id: String) -> String {
+pub fn og_platform_achievement_unlock(world: u32, id: String) -> Result<u32, String> {
     ask(
         world,
         "achievement.unlock",
@@ -217,7 +214,7 @@ pub fn og_platform_achievement_unlock(world: u32, id: String) -> String {
     )
 }
 
-pub fn og_platform_achievement_progress(world: u32, desc: Option<String>) -> String {
+pub fn og_platform_achievement_progress(world: u32, desc: Option<String>) -> Result<u32, String> {
     ask(
         world,
         "achievement.progress",
@@ -255,7 +252,7 @@ pub fn og_platform_friends(world: u32, desc: Option<String>) -> u32 {
 /// An invite's payload, encoded, at most this.
 const MAX_PAYLOAD: usize = 1024;
 
-pub fn og_platform_invite_send(world: u32, desc: Option<String>) -> String {
+pub fn og_platform_invite_send(world: u32, desc: Option<String>) -> Result<u32, String> {
     ask(
         world,
         "invite.send",
@@ -291,7 +288,7 @@ pub fn og_platform_invites(world: u32) -> u32 {
 
 // ── share ────────────────────────────────────────────────────────────────
 
-pub fn og_platform_share(world: u32, desc: Option<String>) -> String {
+pub fn og_platform_share(world: u32, desc: Option<String>) -> Result<u32, String> {
     ask(
         world,
         "share",

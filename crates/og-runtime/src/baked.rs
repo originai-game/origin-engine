@@ -352,13 +352,12 @@ pub(crate) fn apply(
 }
 
 /// `og.render.bakedLighting`.
-pub fn og_render_baked_lighting(world: u32) -> String {
+pub fn og_render_baked_lighting(world: u32) -> Vec<super::wire::BakedScene> {
     let Ok(eng) = super::engine::engine(world) else {
-        return "[]".to_string();
+        return Vec::new();
     };
     let rs = eng.render.borrow();
-    let list: Vec<super::wire::BakedScene> = rs
-        .baked
+    rs.baked
         .scenes
         .iter()
         .map(|s| {
@@ -382,6 +381,5 @@ pub fn og_render_baked_lighting(world: u32) -> String {
                 probes: s.probes,
             }
         })
-        .collect();
-    super::wire::text_of(&list)
+        .collect()
 }

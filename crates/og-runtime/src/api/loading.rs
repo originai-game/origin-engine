@@ -153,12 +153,10 @@ pub fn og_render_apply_quality(world: u32, preset: String) -> Result<(), String>
     })
 }
 
-pub fn og_render_look(world: u32) -> String {
-    let info = engine(world).ok().and_then(|eng| {
-        let applied = eng.render.borrow().fx.look.applied;
-        applied.and_then(|i| super::look::info(&eng, i).ok())
-    });
-    info.unwrap_or(Value::Null).to_string()
+pub fn og_render_look(world: u32) -> Option<Value> {
+    let eng = engine(world).ok()?;
+    let applied = eng.render.borrow().fx.look.applied?;
+    super::look::info(&eng, applied).ok()
 }
 
 pub fn og_load_texture_array(world: u32, path: String) -> Result<serde_json::Value, String> {
@@ -230,18 +228,16 @@ pub fn og_load_status(world: u32, asset: f64) -> String {
     .into()
 }
 
-pub fn og_load_error(world: u32, asset: f64) -> String {
-    let reason = engine(world).ok().and_then(|eng| {
-        let a = eng.assets.borrow();
-        match index_of(asset).and_then(|i| a.entries.get(i)) {
-            Some(e) => match &e.status {
-                Status::Failed(r) => Some(r.clone()),
-                _ => None,
-            },
-            None => Some(format!("{asset} is not an asset handle")),
-        }
-    });
-    json!(reason).to_string()
+pub fn og_load_error(world: u32, asset: f64) -> Option<String> {
+    let eng = engine(world).ok()?;
+    let a = eng.assets.borrow();
+    match index_of(asset).and_then(|i| a.entries.get(i)) {
+        Some(e) => match &e.status {
+            Status::Failed(r) => Some(r.clone()),
+            _ => None,
+        },
+        None => Some(format!("{asset} is not an asset handle")),
+    }
 }
 
 /// A model's clip names from its `#anim` blob, in glTF order; none when the
@@ -368,10 +364,10 @@ pub fn og_load_release(world: u32, asset: f64) -> Result<(), String> {
     engine(world).and_then(|eng| crate::uncooked::release(&eng, index_of(asset)))
 }
 
-pub fn og_load_completions(world: u32) -> String {
+pub fn og_load_completions(world: u32) -> Value {
     match engine(world) {
-        Ok(eng) => crate::uncooked::completions(&eng).to_string(),
-        Err(_) => "[]".into(),
+        Ok(eng) => crate::uncooked::completions(&eng),
+        Err(_) => Value::Array(Vec::new()),
     }
 }
 

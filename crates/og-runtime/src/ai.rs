@@ -122,11 +122,10 @@ fn from_json(v: &Value) -> Option<AiValue> {
     }
 }
 
-pub fn og_ai_get(world: u32, entity: f64, key: String) -> String {
+pub fn og_ai_get(world: u32, entity: f64, key: String) -> Option<Value> {
     system(world)
         .and_then(|s| s.get(Entity::from_bits(handle(entity)), &key))
-        .map_or(Value::Null, to_json)
-        .to_string()
+        .map(to_json)
 }
 
 pub fn og_ai_set(world: u32, entity: f64, key: String, value: String) -> Result<(), String> {

@@ -21,7 +21,7 @@ use glam::{DVec2, DVec3, Mat4, Quat, Vec2, Vec3};
 use og_ecs::World;
 use og_render::geometry::{self as geo, Bvh};
 use og_render::{LineLayer, LineMode, Lines, MeshHandle, Points, debug};
-use serde_json::{Value, json};
+use serde_json::Value;
 use std::collections::{BTreeSet, HashMap};
 use std::rc::Rc;
 use std::sync::Arc;
@@ -915,12 +915,12 @@ pub fn og_debug_set_view(world: u32, view: String) {
     }
 }
 
-pub fn og_debug_view(world: u32) -> String {
+pub fn og_debug_view(world: u32) -> &'static str {
     let i = engine(world).map_or(0, |eng| {
         let rs = eng.render.borrow();
         rs.geo.view_index(&rs.options)
     });
-    json!(VIEWS[i]).to_string()
+    VIEWS[i]
 }
 
 pub fn og_debug_set_enabled(world: u32, enabled: bool) {
