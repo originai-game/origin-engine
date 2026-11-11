@@ -65,6 +65,8 @@ mod pass_light_2d;
 use pass_light_2d::{Light2dPass, Light2dPlan};
 mod pass_metaballs;
 use pass_metaballs::MetaballsPass;
+mod pass_fluid_3d;
+use pass_fluid_3d::Fluid3dPass;
 mod setup;
 
 impl Renderer {
@@ -3775,6 +3777,7 @@ impl Renderer {
             ),
             _ => None,
         };
+        plans.fluid_3d = fluids_3d.then_some(fluid_frame.as_ref());
         if let Some(fluids) = self.visual_fluids.as_mut() {
             let slots = match fluid_frame {
                 Some(_) => self.fluid3d.visual.as_slice(),
@@ -4219,6 +4222,7 @@ impl Renderer {
                         encoder: &mut encoder,
                         stats: &mut stats,
                         frame_bind_group,
+                        scene_depth,
                         sky_group,
                         slot,
                     },
@@ -4321,15 +4325,6 @@ impl Renderer {
                         &gpu_sprites,
                         &self.particle_sprite_buffer,
                     );
-                }
-                FramePass::Fluid3d => {
-                    if let (Some(f), Some(views)) =
-                        (&fluid_frame, fluid3d::views(&self.graph, scene_depth))
-                    {
-                        stats.draw_calls +=
-                            self.fluid3d
-                                .encode(&mut encoder, f, frame_bind_group, &views);
-                    }
                 }
                 FramePass::Probes => self.encode_probes(ProbesPassInputs {
                     ctx: &ctx,

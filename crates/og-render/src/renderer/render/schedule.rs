@@ -28,6 +28,7 @@ pub(crate) const PASSES: &[PassDesc] = &[
     LiveSkyPass::DESC,
     Light2dPass::DESC,
     MetaballsPass::DESC,
+    Fluid3dPass::DESC,
     GiProbesPass::DESC,
     // Three colour targets: normals and velocity, linear depth, outline ids.
     PassDesc {

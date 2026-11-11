@@ -16,6 +16,9 @@ pub(super) struct EncodeCx<'a, 'f> {
     pub stats: &'a mut FrameStats,
     /// The frame's group 0 (the camera's uniform, shadows, IBL, lights).
     pub frame_bind_group: &'f wgpu::BindGroup,
+    /// The depth the scene's passes read: the prepass's, or the main
+    /// pass's own.
+    pub scene_depth: &'f wgpu::TextureView,
     /// The sky pipelines' group.
     pub sky_group: &'f wgpu::BindGroup,
     /// This frame's slot of the two-frame histories.
@@ -91,4 +94,5 @@ passes! {
     ssr: pass_ssr::SsrPass => FramePass::Ssr,
     light_2d: pass_light_2d::Light2dPass => FramePass::Light2d,
     metaballs: pass_metaballs::MetaballsPass => FramePass::Metaballs,
+    fluid_3d: pass_fluid_3d::Fluid3dPass => FramePass::Fluid3d,
 }
