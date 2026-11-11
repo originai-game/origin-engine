@@ -1020,7 +1020,7 @@ impl Probe {
                     self.inject.stamp = 0.0;
                 }
                 Queued::Inject(event) => {
-                    if !self.deliver(world, &event) {
+                    if !self.inject.deliver(world, &mut *self.host.input, &event) {
                         self.out
                             .note(now, true, format!("type: {} was refused", event.to_json()));
                     }
@@ -1136,14 +1136,21 @@ impl Probe {
         }
         Ok(())
     }
+}
 
-    fn deliver(&mut self, world: &mut World, event: &InjectedInput) -> bool {
-        let taken = self.inject.filter.as_mut().is_some_and(|f| f(world, event));
-        let accepted = taken || self.host.input.inject_at(world, event, self.inject.stamp);
+impl state::Inject {
+    fn deliver(
+        &mut self,
+        world: &mut World,
+        input: &mut dyn InputSink,
+        event: &InjectedInput,
+    ) -> bool {
+        let taken = self.filter.as_mut().is_some_and(|f| f(world, event));
+        let accepted = taken || input.inject_at(world, event, self.stamp);
         if accepted {
             match event {
                 InjectedInput::Pointer { x, y, id: 0, .. } | InjectedInput::Wheel { x, y, .. } => {
-                    self.inject.pointer = (*x, *y);
+                    self.pointer = (*x, *y);
                 }
                 InjectedInput::Pointer { .. }
                 | InjectedInput::Key { .. }
@@ -1160,10 +1167,11 @@ impl Probe {
     fn pointer_event(
         &mut self,
         world: &mut World,
+        input: &mut dyn InputSink,
         action: PointerAction,
         button: PointerButton,
     ) -> Result<(), String> {
-        let (x, y) = self.inject.pointer;
+        let (x, y) = self.pointer;
         let event = InjectedInput::Pointer {
             action,
             x,
@@ -1173,13 +1181,15 @@ impl Probe {
             movement_x: 0.0,
             movement_y: 0.0,
         };
-        if self.deliver(world, &event) {
+        if self.deliver(world, input, &event) {
             Ok(())
         } else {
             Err("the input layer refused the pointer event".into())
         }
     }
+}
 
+impl Probe {
     fn execute(&mut self, world: &mut World, step: CommandStep) {
         let tick = world.time().tick;
         self.timeline.step(tick, &step);

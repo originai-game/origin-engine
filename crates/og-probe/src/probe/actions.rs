@@ -145,7 +145,12 @@ impl Probe {
                 self.inject.target_missed = false;
                 let (x, y) = element.center();
                 self.inject.pointer = (x, y);
-                self.pointer_event(world, PointerAction::Move, PointerButton::None)
+                self.inject.pointer_event(
+                    world,
+                    &mut *self.host.input,
+                    PointerAction::Move,
+                    PointerButton::None,
+                )
             }
             "touch_move" => {
                 let xy = numbers(arg(0, "touch_move:x,y")?)?;
@@ -154,7 +159,12 @@ impl Probe {
                 };
                 self.inject.target_missed = false;
                 self.inject.pointer = (x, y);
-                self.pointer_event(world, PointerAction::Move, PointerButton::None)
+                self.inject.pointer_event(
+                    world,
+                    &mut *self.host.input,
+                    PointerAction::Move,
+                    PointerButton::None,
+                )
             }
             "touch_start" | "touch_end" => {
                 if self.inject.target_missed {
@@ -168,7 +178,8 @@ impl Probe {
                 } else {
                     PointerAction::Up
                 };
-                self.pointer_event(world, action, PointerButton::Left)
+                self.inject
+                    .pointer_event(world, &mut *self.host.input, action, PointerButton::Left)
             }
             "mouse_move" => {
                 let d = numbers(arg(0, "mouse_move:dx,dy")?)?;
@@ -185,7 +196,7 @@ impl Probe {
                     movement_x: dx,
                     movement_y: dy,
                 };
-                if self.deliver(world, &event) {
+                if self.inject.deliver(world, &mut *self.host.input, &event) {
                     Ok(())
                 } else {
                     Err("the input layer refused the mouse move".into())
@@ -201,7 +212,11 @@ impl Probe {
                         ));
                     }
                 };
-                if self.deliver(world, &InjectedInput::PointerLock { locked }) {
+                if self.inject.deliver(
+                    world,
+                    &mut *self.host.input,
+                    &InjectedInput::PointerLock { locked },
+                ) {
                     Ok(())
                 } else {
                     Err("the input layer refused the pointer lock report".into())
@@ -219,7 +234,7 @@ impl Probe {
                     delta_x: dx,
                     delta_y: dy,
                 };
-                if self.deliver(world, &event) {
+                if self.inject.deliver(world, &mut *self.host.input, &event) {
                     Ok(())
                 } else {
                     Err("the input layer refused the wheel event".into())
@@ -269,7 +284,7 @@ impl Probe {
                     movement_x: 0.0,
                     movement_y: 0.0,
                 };
-                if self.deliver(world, &event) {
+                if self.inject.deliver(world, &mut *self.host.input, &event) {
                     Ok(())
                 } else {
                     Err(format!("the input layer refused touch {id}"))
@@ -321,7 +336,10 @@ impl Probe {
                     };
                     state.triggers = [lt, rt];
                 }
-                if self.deliver(world, &InjectedInput::Gamepad(state)) {
+                if self
+                    .inject
+                    .deliver(world, &mut *self.host.input, &InjectedInput::Gamepad(state))
+                {
                     Ok(())
                 } else {
                     Err("the input layer refused the gamepad state".into())
@@ -369,7 +387,7 @@ impl Probe {
                     layout_hash: schema.layout_hash(),
                     payload,
                 };
-                if self.deliver(world, &event) {
+                if self.inject.deliver(world, &mut *self.host.input, &event) {
                     Ok(())
                 } else {
                     Err(format!("the input layer refused intent '{name}'"))
@@ -398,7 +416,7 @@ impl Probe {
                     events.extend(held.iter().rev().map(|c| modifier(c)));
                 }
                 for event in &events {
-                    if !self.deliver(world, event) {
+                    if !self.inject.deliver(world, &mut *self.host.input, event) {
                         return Err(format!(
                             "the input layer refused key '{key}'; keys are KeyboardEvent.code names such as KeyW, Space, ArrowLeft"
                         ));
@@ -453,7 +471,7 @@ impl Probe {
                 if step.action == "commit" && joined.is_empty() {
                     return Err("missing argument; write `commit:<text>`".into());
                 }
-                if self.deliver(world, &event) {
+                if self.inject.deliver(world, &mut *self.host.input, &event) {
                     Ok(())
                 } else {
                     Err("the input layer refused the text (no og.TextInput in this world)".into())
