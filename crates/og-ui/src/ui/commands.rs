@@ -1,68 +1,6 @@
 use super::*;
 
 impl Ui {
-    /// Staggered entrances: under a node with a stagger, the k-th drawn
-    /// leaf (a label, a control, an icon) enters `k` steps after the first;
-    /// a long list shortens the step so the cascade ends within one more
-    /// entrance. The cascade is only seen: a control takes input as soon as
-    /// the panel's own entrance (inert while it moves) has played, where it
-    /// is drawn, not when its place in the cascade has.
-    pub(super) fn apply_stagger(&mut self, order: &[usize]) {
-        let now = self.interaction.state.tick as f32;
-        let (reduced, distance) = (self.env.theme.reduced_motion, self.env.theme.space.lg);
-        for &i in order {
-            let Some(st) = self.tree.nodes[i].stagger else {
-                continue;
-            };
-            let leaves: Vec<usize> = preorder(&self.tree.nodes, i)
-                .into_iter()
-                .skip(1)
-                .filter(|&j| {
-                    let n = &self.tree.nodes[j];
-                    n.children.is_empty()
-                        && !matches!(n.widget, Widget::Spacer)
-                        && (!matches!(n.content, Content::None)
-                            || n.el.background.is_some()
-                            || !matches!(n.widget, Widget::None)
-                            || !n.shapes.is_empty())
-                })
-                .collect();
-            // The whole cascade takes at most one entrance more.
-            let step = if leaves.len() > 1 {
-                st.step.min(st.ticks / (leaves.len() - 1) as f32)
-            } else {
-                st.step
-            };
-            for (k, &j) in leaves.iter().enumerate() {
-                let start = st.since as f32 + step * k as f32;
-                let p = ((now - start + 1.0) / st.ticks).clamp(0.0, 1.0);
-                if p >= 1.0 || self.tree.nodes[j].fx.is_some() {
-                    continue;
-                }
-                self.tree.nodes[j].fx = Some(crate::motion::fx(
-                    st.kind,
-                    self.env
-                        .theme
-                        .tokens
-                        .ease(crate::tokens::EaseRole::WidgetEnter)
-                        .apply(p),
-                    distance,
-                    reduced,
-                ));
-            }
-        }
-    }
-
-    /// The clock's first tick, kept for the lifetime of its semantic owner.
-    pub(crate) fn since(&mut self, owner: u64, key: u64) -> u64 {
-        self.interaction
-            .state
-            .clocks
-            .entry(key)
-            .or_insert((owner, self.interaction.state.tick))
-            .1
-    }
-
     /// Each element's map onto the screen (docs/ui.md §2): its layout
     /// animation, its drag and pinch, its transition's movement and its own
     /// transform, about its box, composed with its parent's; its opacity
@@ -1038,6 +976,150 @@ impl Ui {
         )
     }
 
+    fn scroll_bar_commands(&self, s: usize, cmds: &mut Vec<DrawCmd>) {
+        let t = &self.env.theme;
+        let p = &t.palette;
+        let dpr = self.env.viewport.dpr();
+        let sn = &self.tree.nodes[s];
+        let clip = self.scroll_clip(s);
+        // CSS `scrollbar-width: thin` halves the bar; `scrollbar-color`
+        // paints its thumb and a track along the whole edge under it.
+        let css = sn.el.scroll_css;
+        let thick = if css.thin {
+            t.space.xs / 2.0
+        } else {
+            t.space.xs
+        };
+        let bar = |axis, rect: Rect, track: Rect, cmds: &mut Vec<DrawCmd>| {
+            if let Some([thumb, ground]) = css.colors {
+                cmds.push(DrawCmd::Quad {
+                    rect: track.snapped(dpr),
+                    radius: t.radius.bar,
+                    color: ground.linear(),
+                    clip,
+                });
+                cmds.push(DrawCmd::Quad {
+                    rect: rect.snapped(dpr),
+                    radius: t.radius.bar,
+                    color: thumb.linear(),
+                    clip,
+                });
+                return;
+            }
+            let part = crate::dress::PartRef::of("Scroll", "bar", None).attr("axis", axis);
+            let values = self.part_values(&part, Some(sn.key));
+            self.part_commands_at(
+                Some(sn.key),
+                &part,
+                values.part_rect(rect, sn.rect).snapped(dpr),
+                Some(values.color("color").unwrap_or(p.control_strong)),
+                t.radius.bar,
+                1.0,
+                clip,
+                cmds,
+            );
+        };
+        let max_x = sn.max_scroll_x();
+        if max_x > 0.0 {
+            let inner_w = sn.w - sn.el.padding.horizontal();
+            let track = sn.rect;
+            let bar_w = crate::scroll::bar_len(track.width, inner_w, sn.content_w, t.space.xl);
+            let off = self
+                .interaction
+                .state
+                .scroll_x
+                .get(&sn.key)
+                .copied()
+                .unwrap_or(0.0);
+            let x = crate::scroll::bar_start(track.x, track.width, bar_w, off, max_x);
+            let h = thick;
+            let y = track.bottom() - h - t.space.xxs;
+            bar(
+                "horizontal",
+                Rect::new(x, y, bar_w, h),
+                Rect::new(track.x, y, track.width, h),
+                cmds,
+            );
+        }
+        let max = sn.max_scroll();
+        if max > 0.0 {
+            let inner_h = sn.h - sn.el.padding.vertical();
+            let track = sn.rect;
+            let bar_h = (track.height * inner_h / sn.content_h).max(t.space.xl);
+            let off = self
+                .interaction
+                .state
+                .scroll
+                .get(&sn.key)
+                .copied()
+                .unwrap_or(0.0)
+                .clamp(0.0, max);
+            let y = track.y + (track.height - bar_h) * off / max;
+            let w = thick;
+            let x = track.right() - w - t.space.xxs;
+            bar(
+                "vertical",
+                Rect::new(x, y, w, bar_h),
+                Rect::new(x, track.y, w, track.height),
+                cmds,
+            );
+        }
+    }
+}
+
+impl Ui {
+    /// Staggered entrances: under a node with a stagger, the k-th drawn
+    /// leaf (a label, a control, an icon) enters `k` steps after the first;
+    /// a long list shortens the step so the cascade ends within one more
+    /// entrance. The cascade is only seen: a control takes input as soon as
+    /// the panel's own entrance (inert while it moves) has played, where it
+    /// is drawn, not when its place in the cascade has.
+    pub(super) fn apply_stagger(&mut self, order: &[usize]) {
+        let now = self.interaction.state.tick as f32;
+        let (reduced, distance) = (self.env.theme.reduced_motion, self.env.theme.space.lg);
+        for &i in order {
+            let Some(st) = self.tree.nodes[i].stagger else {
+                continue;
+            };
+            let leaves: Vec<usize> = preorder(&self.tree.nodes, i)
+                .into_iter()
+                .skip(1)
+                .filter(|&j| {
+                    let n = &self.tree.nodes[j];
+                    n.children.is_empty()
+                        && !matches!(n.widget, Widget::Spacer)
+                        && (!matches!(n.content, Content::None)
+                            || n.el.background.is_some()
+                            || !matches!(n.widget, Widget::None)
+                            || !n.shapes.is_empty())
+                })
+                .collect();
+            // The whole cascade takes at most one entrance more.
+            let step = if leaves.len() > 1 {
+                st.step.min(st.ticks / (leaves.len() - 1) as f32)
+            } else {
+                st.step
+            };
+            for (k, &j) in leaves.iter().enumerate() {
+                let start = st.since as f32 + step * k as f32;
+                let p = ((now - start + 1.0) / st.ticks).clamp(0.0, 1.0);
+                if p >= 1.0 || self.tree.nodes[j].fx.is_some() {
+                    continue;
+                }
+                self.tree.nodes[j].fx = Some(crate::motion::fx(
+                    st.kind,
+                    self.env
+                        .theme
+                        .tokens
+                        .ease(crate::tokens::EaseRole::WidgetEnter)
+                        .apply(p),
+                    distance,
+                    reduced,
+                ));
+            }
+        }
+    }
+
     /// The nodes of a subtree copied moved by `(dx, dy)`: their signatures
     /// and kept commands are where they are drawn now.
     fn moved_subtree(&mut self, nodes: &[usize], dx: f32, dy: f32) {
@@ -1059,62 +1141,6 @@ impl Ui {
         }
     }
 
-    /// A leaving element's frozen drawing, moved by its exit (about its
-    /// box's centre) or onto the element it morphs into, and faded.
-    fn ghost_commands(&self, g: &crate::motion::state::Ghost, cmds: &mut Vec<(DrawCmd, Affine)>) {
-        let f = &g.frozen;
-        let mut v = [0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0];
-        for (c, ch) in &g.channels {
-            if let Some(slot) = v.get_mut(*c as usize) {
-                *slot = ch.value;
-            }
-        }
-        let world = if g.morph_to != 0 {
-            let to = self
-                .tree
-                .nodes
-                .iter()
-                .find(|n| n.key == g.morph_to)
-                .map(|n| n.screen);
-            match to {
-                Some(to) => Affine::rect_to_rect(&f.world.map_rect(&f.rect), &to).mul(&f.world),
-                None => f.world,
-            }
-        } else {
-            let t = crate::element::Transform {
-                x: v[0],
-                y: v[1],
-                scale_x: v[2],
-                scale_y: v[3],
-                rotate: v[4],
-                skew_x: v[5],
-                skew_y: v[6],
-                ..crate::element::Transform::IDENTITY
-            };
-            f.world.mul(&t.matrix(&f.rect))
-        };
-        let fade = v[7].clamp(0.0, 1.0);
-        if fade <= 0.0 {
-            return;
-        }
-        let exit = |c: usize| g.channels.iter().find(|(k, _)| *k as usize == c);
-        let blur = exit(19).map_or(0.0, |(_, ch)| ch.value.max(0.0));
-        let drawn = exit(20).map_or(0.0, |(_, ch)| ch.value.clamp(0.0, 1.0));
-        let layer = (blur > 0.0).then(|| blur_layer(blur, f.rect, Rect::new(-1e9, -1e9, 2e9, 2e9)));
-        if let Some((begin, _)) = &layer {
-            cmds.push((begin.clone(), world));
-        }
-        for (c, rel) in &f.cmds {
-            let mut c = c.clone();
-            fade_cmd(&mut c, fade);
-            undraw(std::slice::from_mut(&mut c), drawn);
-            cmds.push((c, world.mul(rel)));
-        }
-        if let Some((_, end)) = layer {
-            cmds.push((end, world));
-        }
-    }
-
     /// A scroll container's bars, over its content.
     /// A scroll container's clip in its own space.
     /// The subtree node `i`'s focus ring draws after: its screen's (the
@@ -1131,18 +1157,6 @@ impl Ui {
                 return j;
             }
             j = parent;
-        }
-    }
-
-    fn scroll_clip(&self, s: usize) -> Rect {
-        let sn = &self.tree.nodes[s];
-        if sn.world.is_identity() {
-            sn.clip.intersect(&sn.rect)
-        } else {
-            sn.world
-                .invert()
-                .map_or(sn.clip, |inv| inv.map_rect(&sn.clip))
-                .intersect(&sn.rect)
         }
     }
 
@@ -1244,94 +1258,86 @@ impl Ui {
             cmds.extend(draw.enter(&self.env.theme, &at));
         }
     }
+}
 
-    fn scroll_bar_commands(&self, s: usize, cmds: &mut Vec<DrawCmd>) {
-        let t = &self.env.theme;
-        let p = &t.palette;
-        let dpr = self.env.viewport.dpr();
-        let sn = &self.tree.nodes[s];
-        let clip = self.scroll_clip(s);
-        // CSS `scrollbar-width: thin` halves the bar; `scrollbar-color`
-        // paints its thumb and a track along the whole edge under it.
-        let css = sn.el.scroll_css;
-        let thick = if css.thin {
-            t.space.xs / 2.0
-        } else {
-            t.space.xs
-        };
-        let bar = |axis, rect: Rect, track: Rect, cmds: &mut Vec<DrawCmd>| {
-            if let Some([thumb, ground]) = css.colors {
-                cmds.push(DrawCmd::Quad {
-                    rect: track.snapped(dpr),
-                    radius: t.radius.bar,
-                    color: ground.linear(),
-                    clip,
-                });
-                cmds.push(DrawCmd::Quad {
-                    rect: rect.snapped(dpr),
-                    radius: t.radius.bar,
-                    color: thumb.linear(),
-                    clip,
-                });
-                return;
+impl Ui {
+    /// The clock's first tick, kept for the lifetime of its semantic owner.
+    pub(crate) fn since(&mut self, owner: u64, key: u64) -> u64 {
+        self.interaction
+            .state
+            .clocks
+            .entry(key)
+            .or_insert((owner, self.interaction.state.tick))
+            .1
+    }
+}
+
+impl Ui {
+    /// A leaving element's frozen drawing, moved by its exit (about its
+    /// box's centre) or onto the element it morphs into, and faded.
+    fn ghost_commands(&self, g: &crate::motion::state::Ghost, cmds: &mut Vec<(DrawCmd, Affine)>) {
+        let f = &g.frozen;
+        let mut v = [0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0];
+        for (c, ch) in &g.channels {
+            if let Some(slot) = v.get_mut(*c as usize) {
+                *slot = ch.value;
             }
-            let part = crate::dress::PartRef::of("Scroll", "bar", None).attr("axis", axis);
-            let values = self.part_values(&part, Some(sn.key));
-            self.part_commands_at(
-                Some(sn.key),
-                &part,
-                values.part_rect(rect, sn.rect).snapped(dpr),
-                Some(values.color("color").unwrap_or(p.control_strong)),
-                t.radius.bar,
-                1.0,
-                clip,
-                cmds,
-            );
-        };
-        let max_x = sn.max_scroll_x();
-        if max_x > 0.0 {
-            let inner_w = sn.w - sn.el.padding.horizontal();
-            let track = sn.rect;
-            let bar_w = crate::scroll::bar_len(track.width, inner_w, sn.content_w, t.space.xl);
-            let off = self
-                .interaction
-                .state
-                .scroll_x
-                .get(&sn.key)
-                .copied()
-                .unwrap_or(0.0);
-            let x = crate::scroll::bar_start(track.x, track.width, bar_w, off, max_x);
-            let h = thick;
-            let y = track.bottom() - h - t.space.xxs;
-            bar(
-                "horizontal",
-                Rect::new(x, y, bar_w, h),
-                Rect::new(track.x, y, track.width, h),
-                cmds,
-            );
         }
-        let max = sn.max_scroll();
-        if max > 0.0 {
-            let inner_h = sn.h - sn.el.padding.vertical();
-            let track = sn.rect;
-            let bar_h = (track.height * inner_h / sn.content_h).max(t.space.xl);
-            let off = self
-                .interaction
-                .state
-                .scroll
-                .get(&sn.key)
-                .copied()
-                .unwrap_or(0.0)
-                .clamp(0.0, max);
-            let y = track.y + (track.height - bar_h) * off / max;
-            let w = thick;
-            let x = track.right() - w - t.space.xxs;
-            bar(
-                "vertical",
-                Rect::new(x, y, w, bar_h),
-                Rect::new(x, track.y, w, track.height),
-                cmds,
-            );
+        let world = if g.morph_to != 0 {
+            let to = self
+                .tree
+                .nodes
+                .iter()
+                .find(|n| n.key == g.morph_to)
+                .map(|n| n.screen);
+            match to {
+                Some(to) => Affine::rect_to_rect(&f.world.map_rect(&f.rect), &to).mul(&f.world),
+                None => f.world,
+            }
+        } else {
+            let t = crate::element::Transform {
+                x: v[0],
+                y: v[1],
+                scale_x: v[2],
+                scale_y: v[3],
+                rotate: v[4],
+                skew_x: v[5],
+                skew_y: v[6],
+                ..crate::element::Transform::IDENTITY
+            };
+            f.world.mul(&t.matrix(&f.rect))
+        };
+        let fade = v[7].clamp(0.0, 1.0);
+        if fade <= 0.0 {
+            return;
+        }
+        let exit = |c: usize| g.channels.iter().find(|(k, _)| *k as usize == c);
+        let blur = exit(19).map_or(0.0, |(_, ch)| ch.value.max(0.0));
+        let drawn = exit(20).map_or(0.0, |(_, ch)| ch.value.clamp(0.0, 1.0));
+        let layer = (blur > 0.0).then(|| blur_layer(blur, f.rect, Rect::new(-1e9, -1e9, 2e9, 2e9)));
+        if let Some((begin, _)) = &layer {
+            cmds.push((begin.clone(), world));
+        }
+        for (c, rel) in &f.cmds {
+            let mut c = c.clone();
+            fade_cmd(&mut c, fade);
+            undraw(std::slice::from_mut(&mut c), drawn);
+            cmds.push((c, world.mul(rel)));
+        }
+        if let Some((_, end)) = layer {
+            cmds.push((end, world));
+        }
+    }
+
+    fn scroll_clip(&self, s: usize) -> Rect {
+        let sn = &self.tree.nodes[s];
+        if sn.world.is_identity() {
+            sn.clip.intersect(&sn.rect)
+        } else {
+            sn.world
+                .invert()
+                .map_or(sn.clip, |inv| inv.map_rect(&sn.clip))
+                .intersect(&sn.rect)
         }
     }
 }

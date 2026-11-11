@@ -1287,11 +1287,6 @@ impl Ui {
 }
 
 impl Ui {
-    /// A rich node's vertical setting, `None` when its lines run across.
-    pub(crate) fn rich_vertical(&self, i: usize) -> Option<crate::layout::flow::VerticalText> {
-        self.tree.nodes[i].rich_vertical()
-    }
-
     /// What one rich span's text is drawn with down a vertical line whose
     /// column is `col` (`lh` wide, its middle `mid`).
     #[allow(clippy::too_many_arguments)]
@@ -1327,18 +1322,6 @@ impl Ui {
             space_extra: 0.0,
             draw,
         }
-    }
-
-    /// Rich node `i`'s content box.
-    fn rich_inner(&self, i: usize) -> Rect {
-        let n = &self.tree.nodes[i];
-        let (sk, pad) = (n.scale, n.el.padding);
-        Rect::new(
-            n.rect.x + pad.left * sk,
-            n.rect.y + pad.top * sk,
-            n.rect.width - pad.horizontal() * sk,
-            n.rect.height - pad.vertical() * sk,
-        )
     }
 
     /// Whether a vertical rich line starts at its column's bottom (an
@@ -1895,6 +1878,25 @@ impl Ui {
                 rule(mid);
             }
         }
+    }
+}
+
+impl Ui {
+    /// A rich node's vertical setting, `None` when its lines run across.
+    pub(crate) fn rich_vertical(&self, i: usize) -> Option<crate::layout::flow::VerticalText> {
+        self.tree.nodes[i].rich_vertical()
+    }
+
+    /// Rich node `i`'s content box.
+    fn rich_inner(&self, i: usize) -> Rect {
+        let n = &self.tree.nodes[i];
+        let (sk, pad) = (n.scale, n.el.padding);
+        Rect::new(
+            n.rect.x + pad.left * sk,
+            n.rect.y + pad.top * sk,
+            n.rect.width - pad.horizontal() * sk,
+            n.rect.height - pad.vertical() * sk,
+        )
     }
 }
 
