@@ -30,7 +30,10 @@ impl Renderer {
     /// draw on the hardware meshlet path, as with
     /// `RenderScene::visibility_buffer` off.
     pub fn visibility_buffer_refused(&self) -> Option<&str> {
-        self.meshlet.as_ref()?.visibility_buffer_refused()
+        self.visibility
+            .meshlet
+            .as_ref()?
+            .visibility_buffer_refused()
     }
 
     /// Why this device times no pass on the GPU (no timestamp queries), or
@@ -1134,7 +1137,14 @@ impl Renderer {
             clock: None,
             pass_ms: Vec::new(),
             gpu_timer: None,
-            cull_inside: CullScratch::default(),
+            visibility: Visibility {
+                cull_inside: CullScratch::default(),
+                desc_culling: desc.culling,
+                indirect,
+                gpu_cull: None,
+                meshlet: None,
+                culling_counts: false,
+            },
             shelter_key: None,
             probes: probes::Probes::default(),
             instances: InstanceRecords {
@@ -1273,14 +1283,9 @@ impl Renderer {
             phase_base: 0,
             saves: Default::default(),
             pipeline_disk,
-            desc_culling: desc.culling,
-            indirect,
             crowd_indirect,
             crowd_gpu: None,
             crowd_impostors: None,
-            gpu_cull: None,
-            meshlet: None,
-            culling_counts: false,
             wind_field,
             trample,
             gi_history: None,

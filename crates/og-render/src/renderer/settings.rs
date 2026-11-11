@@ -38,7 +38,8 @@ impl Renderer {
     /// browsers (og-tests-web's `og_gfx_cull_buffer`).
     #[cfg(not(feature = "publish"))]
     pub fn debug_cull_counts(&self) -> Option<(u32, u32)> {
-        self.gpu_cull
+        self.visibility
+            .gpu_cull
             .as_ref()
             .filter(|c| c.n > 0)
             .map(|c| (c.n, c.b))
@@ -65,7 +66,8 @@ impl Renderer {
     /// culled on the GPU).
     #[cfg(not(feature = "publish"))]
     pub fn debug_cull_buffers(&self) -> Vec<(&'static str, &wgpu::Buffer)> {
-        self.gpu_cull
+        self.visibility
+            .gpu_cull
             .as_ref()
             .filter(|c| c.n > 0)
             .map(|c| c.debug_buffers().to_vec())

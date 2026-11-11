@@ -17,7 +17,7 @@ impl Renderer {
     /// requested frame's. Natively [`Renderer::finish_stats`] needs no
     /// request for the last frame rendered.
     pub fn request_culling_counts(&mut self) {
-        self.culling_counts = true;
+        self.visibility.culling_counts = true;
     }
 
     /// Makes one pipeline no frame has drawn with yet, the likeliest to be
@@ -116,6 +116,7 @@ impl Renderer {
             return false;
         }
         let Some((exact, given)) = self
+            .visibility
             .gpu_cull
             .as_mut()
             .and_then(|gc| gc.finish(&self.device, &self.queue, stats.frame))

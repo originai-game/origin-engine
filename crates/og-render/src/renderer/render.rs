@@ -189,7 +189,7 @@ impl Renderer {
         // instances on the CPU); else as skinned instances.
         let crowd_gpu = crowd_frame.len() > 0
             && self.crowd_indirect
-            && self.desc_culling != Culling::Cpu
+            && self.visibility.desc_culling != Culling::Cpu
             && scene.views.is_empty()
             && probe_frame.due.is_empty()
             && crowd_batches.iter().all(|b| !b.transparent)
@@ -204,6 +204,7 @@ impl Renderer {
                 // GPU culling must take the frame too (its pyramid, its
                 // passes): checked for every instance the frame may sort.
                 let culls = self
+                    .visibility
                     .gpu_cull
                     .get_or_insert_with(|| {
                         cull_gpu::GpuCulling::new(&self.device, max, self.info.indirect_per_draw)
@@ -1112,7 +1113,7 @@ impl Renderer {
         // Never with stylise's object pass, which redraws the camera list's
         // instances. Its cluster pools (meshlet_gpu.rs) are made by the
         // first frame that runs it.
-        let meshlet_on = self.indirect
+        let meshlet_on = self.visibility.indirect
             && (self.gpu_culls(sorted + skinned_n) || crowd_gpu)
             && !object_space
             && scene.meshlets
@@ -1122,7 +1123,8 @@ impl Renderer {
             let max = limits
                 .max_storage_buffer_binding_size
                 .min(limits.max_buffer_size);
-            self.meshlet
+            self.visibility
+                .meshlet
                 .get_or_insert_with(|| {
                     meshlet_gpu::MeshletGpu::new(
                         &self.device,
@@ -1132,7 +1134,7 @@ impl Renderer {
                 })
                 .sync(&self.device, &self.queue, scene);
         }
-        let mut meshlet_taken: Vec<u32> = match self.meshlet.as_ref() {
+        let mut meshlet_taken: Vec<u32> = match self.visibility.meshlet.as_ref() {
             Some(m) if meshlet_on => batches
                 .iter()
                 .enumerate()
@@ -1151,8 +1153,12 @@ impl Renderer {
         // The work items the dispatch writes, within the device's storage
         // binding limit: the camera's first, then each shadow view while
         // they fit (a view past it culls and draws its casters as before).
-        let meshlet_max = self.meshlet.as_ref().map_or(0, |m| m.max_items());
-        let mut meshlet_items = match self.meshlet.as_ref() {
+        let meshlet_max = self
+            .visibility
+            .meshlet
+            .as_ref()
+            .map_or(0, |m| m.max_items());
+        let mut meshlet_items = match self.visibility.meshlet.as_ref() {
             Some(m) => m.items(&batches, &meshlet_taken, true),
             None => None,
         }
@@ -1167,7 +1173,7 @@ impl Renderer {
             && (!batches.is_empty() || skinned_n > 0 || crowd_gpu)
             && {
                 let limits = self.device.limits();
-                let gc = self.gpu_cull.get_or_insert_with(|| {
+                let gc = self.visibility.gpu_cull.get_or_insert_with(|| {
                     cull_gpu::GpuCulling::new(
                         &self.device,
                         limits
@@ -1248,13 +1254,17 @@ impl Renderer {
                 cull_passes.len() as u32 - 1
             };
         // Lent to every CPU cull of this frame, given back after the last.
-        let mut cull_inside = std::mem::take(&mut self.cull_inside);
+        let mut cull_inside = std::mem::take(&mut self.visibility.cull_inside);
         cull_inside.whole.clear();
         // Occlusion needs a batch that can occlude and an earlier frame's
         // camera visibility (its visible occluders); without them the
         // occluders' depth, the pyramid and the occlusion test are skipped.
         let occlusion = gpu_cull
-            && self.gpu_cull.as_ref().is_some_and(|gc| gc.primed())
+            && self
+                .visibility
+                .gpu_cull
+                .as_ref()
+                .is_some_and(|gc| gc.primed())
             && batches
                 .iter()
                 .any(|b| self.cache.materials[b.material].occluder);
@@ -1299,7 +1309,7 @@ impl Renderer {
             taken: Vec::new(),
             ..meshlet_views[0].clone()
         };
-        let meshlet_gpu = self.meshlet.as_ref();
+        let meshlet_gpu = self.visibility.meshlet.as_ref();
         let mut meshlet_view = |v: meshlet_gpu::MeshletView| -> u32 {
             if v.taken.is_empty() {
                 return 0;
@@ -2022,7 +2032,7 @@ impl Renderer {
                 local_lists[layer] = Some(list);
             }
         }
-        self.cull_inside = cull_inside;
+        self.visibility.cull_inside = cull_inside;
         // The cache textures this frame's plans copy through, made at their
         // layer's side on first need.
         let local_side = self.local_shadow_size;
@@ -2053,9 +2063,10 @@ impl Renderer {
         // sprites. With GPU culling the sorted instances go to its buffer and
         // this one holds only the transparent draws.
         let mut gpu_counts = None;
-        let copy_counts = std::mem::take(&mut self.culling_counts);
+        let copy_counts = std::mem::take(&mut self.visibility.culling_counts);
         let cull_commands = if gpu_cull {
             let gc = self
+                .visibility
                 .gpu_cull
                 .as_mut()
                 .expect("made when gpu_cull was decided");
@@ -2141,8 +2152,8 @@ impl Renderer {
             let mut commands = vec![commands];
             // The clustered batches' culling, after GPU culling's (it
             // reads the camera pass's survivors and the pyramid).
-            if let Some(m) = self.meshlet.as_mut() {
-                let gc = self.gpu_cull.as_ref().expect("made above");
+            if let Some(m) = self.visibility.meshlet.as_mut() {
+                let gc = self.visibility.gpu_cull.as_ref().expect("made above");
                 // Last frame's transforms at the same (sorted) slots: with
                 // object motion, region 0 of GPU culling's `previous`.
                 let previous = if object_motion {
@@ -2202,14 +2213,18 @@ impl Renderer {
                     );
                 }
             }
-            if self.meshlet.as_ref().is_some_and(|m| !m.frame.is_empty())
-                && let Some(gc) = self.gpu_cull.as_mut()
+            if self
+                .visibility
+                .meshlet
+                .as_ref()
+                .is_some_and(|m| !m.frame.is_empty())
+                && let Some(gc) = self.visibility.gpu_cull.as_mut()
             {
                 gc.counted_by_meshlets(&meshlet_views[0].taken);
             }
             commands
         } else {
-            if let Some(m) = self.meshlet.as_mut() {
+            if let Some(m) = self.visibility.meshlet.as_mut() {
                 m.frame.clear();
             }
             Vec::new()
@@ -2231,7 +2246,7 @@ impl Renderer {
         if !gpu_cull {
             for (b, _) in batches
                 .iter()
-                .zip(&self.cull_inside.whole)
+                .zip(&self.visibility.cull_inside.whole)
                 .filter(|(_, w)| **w)
             {
                 draw(b.first as usize..(b.first + b.count) as usize);
@@ -2262,7 +2277,7 @@ impl Renderer {
             instance_bytes,
             &drawn_bytes,
         );
-        if gpu_cull && let Some(gc) = &self.gpu_cull {
+        if gpu_cull && let Some(gc) = &self.visibility.gpu_cull {
             instance_upload_bytes += gc.uploaded;
         }
         if auxiliary_instances {
@@ -2328,7 +2343,7 @@ impl Renderer {
                         .collect()
                 };
             let mut targets = Vec::new();
-            if gpu_cull && let Some(gc) = &self.gpu_cull {
+            if gpu_cull && let Some(gc) = &self.visibility.gpu_cull {
                 targets.push(crate::debris::Target {
                     instances: &gc.instances,
                     previous: auxiliary_instances.then_some(&gc.previous),
@@ -3268,7 +3283,7 @@ impl Renderer {
         if matches!(target, RenderTarget::Surface)
             && COVERED.load(std::sync::atomic::Ordering::Relaxed)
         {
-            if let Some(gc) = self.gpu_cull.as_mut().filter(|_| gpu_cull) {
+            if let Some(gc) = self.visibility.gpu_cull.as_mut().filter(|_| gpu_cull) {
                 gc.dropped();
             }
             return Ok(FrameStats::default());
@@ -4006,7 +4021,7 @@ impl Renderer {
                 pre_graph::encode_crowd_cull(
                     e,
                     (&self.device, &self.queue, (self.width, self.height)),
-                    self.gpu_cull.as_ref().expect("made above"),
+                    self.visibility.gpu_cull.as_ref().expect("made above"),
                     self.crowd_gpu
                         .as_mut()
                         .expect("made when crowd_gpu was decided"),
@@ -4022,7 +4037,7 @@ impl Renderer {
             None
         };
         // GPU culling's counts' readback, after every cull that writes them.
-        if gpu_cull && let Some(gc) = self.gpu_cull.as_mut() {
+        if gpu_cull && let Some(gc) = self.visibility.gpu_cull.as_mut() {
             gc.copy_counts(&mut encoder);
         }
         // The wind field and the trample map step before any pass reads them.
@@ -4094,6 +4109,7 @@ impl Renderer {
                     camera: camera.position,
                     size: (self.width, self.height),
                     pyramid: self
+                        .visibility
                         .gpu_cull
                         .as_ref()
                         .filter(|_| gpu_cull)
@@ -4148,7 +4164,7 @@ impl Renderer {
         } else {
             Vec::new()
         };
-        let culled_gpu = self.gpu_cull.as_ref().filter(|_| gpu_cull);
+        let culled_gpu = self.visibility.gpu_cull.as_ref().filter(|_| gpu_cull);
         let crowd_cull = self.crowd_gpu.as_ref().filter(|_| crowd_gpu);
         // The effect groups of the standard and the physical pipelines, in
         // the passes that draw physical materials with theirs.
@@ -4773,7 +4789,7 @@ impl Renderer {
         {
             arena.after_submit();
         }
-        if let Some(gc) = self.gpu_cull.as_mut().filter(|_| gpu_cull) {
+        if let Some(gc) = self.visibility.gpu_cull.as_mut().filter(|_| gpu_cull) {
             gc.after_submit();
         }
         if let (Some(t), Some(c)) = (self.gpu_timer.as_mut(), self.clock) {
@@ -4986,8 +5002,8 @@ impl Renderer {
     /// renderer's culling choice goes (the frame may still fall back: its
     /// motion blur, an empty frame, buffers over the device's limits).
     fn gpu_culls(&self, sorted: u32) -> bool {
-        self.indirect
-            && match self.desc_culling {
+        self.visibility.indirect
+            && match self.visibility.desc_culling {
                 Culling::Auto => sorted >= GPU_CULLING_MIN_INSTANCES,
                 Culling::Gpu => true,
                 Culling::Cpu => false,

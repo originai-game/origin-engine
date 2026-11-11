@@ -4,7 +4,7 @@ use super::*;
 
 mod assets;
 mod batches;
-pub(crate) use batches::InstanceRecords;
+pub(crate) use batches::{InstanceRecords, Visibility};
 mod buffers;
 mod config;
 pub(crate) mod history;

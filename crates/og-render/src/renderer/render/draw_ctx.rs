@@ -584,7 +584,7 @@ impl<'f> DrawCtx<'f> {
                 // The clustered casters (meshlet_gpu.rs), each one draw of
                 // the clusters the pass's view kept.
                 if view > 0
-                    && let Some(m) = r.meshlet.as_ref()
+                    && let Some(m) = r.visibility.meshlet.as_ref()
                 {
                     stats.draw_calls += m.draw_shadow(pass, shadow, batches, view, |b| {
                         &r.cache.materials[b.material].bind_group

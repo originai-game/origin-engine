@@ -149,7 +149,12 @@ impl Renderer {
             }
             stats.prepass_draws += 1;
         }
-        if let Some(m) = self.meshlet.as_ref().filter(|m| !m.frame.is_empty()) {
+        if let Some(m) = self
+            .visibility
+            .meshlet
+            .as_ref()
+            .filter(|m| !m.frame.is_empty())
+        {
             stats.prepass_draws += m.draw(
                 &mut p,
                 batches,

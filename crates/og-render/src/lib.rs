@@ -572,7 +572,9 @@ pub struct Renderer {
     views: views::Views,
     /// The custom post passes on the device (`post_custom.rs`).
     custom_posts: post_custom::CustomPosts,
-    cull_inside: CullScratch,
+    /// Visibility: where instances are culled, and the GPU culling, indirect
+    /// draws and meshlets every view registers into.
+    visibility: renderer::Visibility,
     /// What the weather occlusion map in the cascade array's last layer
     /// was last drawn from (`weather::shelter_key`; `None`: not drawn
     /// since the array was made).
@@ -793,12 +795,6 @@ pub struct Renderer {
     saves: renderer::history::Saves,
     /// Compiled pipelines kept across runs (`pipeline_cache.rs`), when kept.
     pipeline_disk: Option<pipeline_cache::DiskCache>,
-    /// Where instances are culled ([`RenderDesc::culling`]), whether the
-    /// adapter can on the GPU (compute and indirect draws), and the GPU
-    /// path's state once a frame used it.
-    desc_culling: Culling,
-    indirect: bool,
-    gpu_cull: Option<cull_gpu::GpuCulling>,
     /// Whether crowds can be culled and drawn on the GPU (indirect draws
     /// with a first instance), and their culling once a frame used it.
     crowd_indirect: bool,
@@ -806,11 +802,6 @@ pub struct Renderer {
     /// Crowd impostors' atlases (`crowd_impostor.rs`), made when a crowd
     /// with an impostor is first drawn.
     crowd_impostors: Option<crowd_impostor::CrowdImpostors>,
-    /// The meshlet path (meshlet_gpu.rs), once a scene has a clustered mesh.
-    meshlet: Option<meshlet_gpu::MeshletGpu>,
-    /// Whether the next frame's GPU culling counts are read back
-    /// ([`Renderer::request_culling_counts`]).
-    culling_counts: bool,
     /// The vegetation's simulated wind field (`wind_field.rs`).
     wind_field: wind_field::WindFieldSim,
     /// The grass trample map (`trample.rs`).

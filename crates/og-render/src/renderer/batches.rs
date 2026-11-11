@@ -1630,6 +1630,23 @@ pub(crate) struct InstanceRecords {
     pub(crate) debris: debris::DebrisLayer,
 }
 
+/// Visibility: where instances are culled, and the GPU culling, indirect
+/// draws and meshlets every view registers into.
+pub(crate) struct Visibility {
+    pub(crate) cull_inside: CullScratch,
+    /// Where instances are culled ([`RenderDesc::culling`]), whether the
+    /// adapter can on the GPU (compute and indirect draws), and the GPU
+    /// path's state once a frame used it.
+    pub(crate) desc_culling: Culling,
+    pub(crate) indirect: bool,
+    pub(crate) gpu_cull: Option<cull_gpu::GpuCulling>,
+    /// The meshlet path (meshlet_gpu.rs), once a scene has a clustered mesh.
+    pub(crate) meshlet: Option<meshlet_gpu::MeshletGpu>,
+    /// Whether the next frame's GPU culling counts are read back
+    /// ([`Renderer::request_culling_counts`]).
+    pub(crate) culling_counts: bool,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

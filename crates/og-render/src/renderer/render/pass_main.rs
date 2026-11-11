@@ -58,7 +58,7 @@ impl Renderer {
         batches: &[Batch],
         view: u32,
     ) -> u32 {
-        match self.meshlet.as_ref() {
+        match self.visibility.meshlet.as_ref() {
             Some(m) if view > 0 => m.draw(
                 pass,
                 batches,
@@ -205,7 +205,12 @@ impl Renderer {
         stats.draw_calls += main_list.ranges.len() as u32;
         // The clustered batches (meshlet_gpu.rs), each one draw of its
         // visible clusters.
-        if let Some(m) = self.meshlet.as_ref().filter(|m| !m.frame.is_empty()) {
+        if let Some(m) = self
+            .visibility
+            .meshlet
+            .as_ref()
+            .filter(|m| !m.frame.is_empty())
+        {
             let mut binder = probe_select::Binder::new(probe_binding);
             stats.draw_calls += m.draw(
                 &mut pass,
