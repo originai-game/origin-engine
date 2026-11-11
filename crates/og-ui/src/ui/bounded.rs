@@ -13,7 +13,7 @@ pub(crate) fn checking() -> bool {
 /// Panics where the bounded frame `ui` differs from the whole frame `twin`.
 pub(super) fn compare(ui: &Ui, twin: &Ui) {
     let at = |what: &str| format!("bounded frame differs from the whole frame: {what}");
-    let (a, b) = (&ui.frame, &twin.frame);
+    let (a, b) = (&ui.out.frame, &twin.out.frame);
     if a.items != b.items {
         let k = a.items.iter().zip(&b.items).position(|(x, y)| x != y);
         panic!(

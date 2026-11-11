@@ -521,6 +521,7 @@ impl Ui {
         match (emitter, meta) {
             (Ok(e), Ok(m)) => self.document_effects(i, e.flatten(), m.flatten()),
             (Err(e), _) | (_, Err(e)) => self
+                .out
                 .warnings
                 .push(format!("{}:{} ({path}): {e}", b.doc.source, n.line)),
         }
@@ -554,7 +555,8 @@ impl Ui {
         let desc = match panel_desc(r, el, if ground { None } else { texture }, ground) {
             Ok(d) => d,
             Err(e) => {
-                self.warnings
+                self.out
+                    .warnings
                     .push(format!("{}:{} ({path}): {e}", b.doc.source, n.line));
                 return None;
             }
@@ -595,7 +597,7 @@ impl Ui {
             (None, Some(p)) => match vec3(p) {
                 Some(v) => WorldTarget::Point(v),
                 None => {
-                    self.warnings.push(format!(
+                    self.out.warnings.push(format!(
                         "{}:{} ({path}): at=\"{p}\" is three numbers, x y z",
                         b.doc.source, n.line
                     ));
@@ -603,7 +605,7 @@ impl Ui {
                 }
             },
             (None, None) => {
-                self.warnings.push(format!(
+                self.out.warnings.push(format!(
                     "{}:{} ({path}): an <anchor mass> takes entity={{…}} or at=\"x y z\"",
                     b.doc.source, n.line
                 ));
@@ -779,7 +781,8 @@ impl Ui {
         let desc = match anchor_desc(r, el) {
             Ok(d) => d,
             Err(e) => {
-                self.warnings
+                self.out
+                    .warnings
                     .push(format!("{}:{} ({path}): {e}", b.doc.source, n.line));
                 return None;
             }

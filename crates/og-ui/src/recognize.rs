@@ -281,7 +281,7 @@ impl Ui {
                     Some(j) => to[k] = self.landing(j),
                     None => {
                         let at = self.path_of(i);
-                        self.warnings.push(format!(
+                        self.out.warnings.push(format!(
                             "'{at}' moves focus to '{path}', which is not on screen: nav takes a full path (Hud/Bag) or a sibling's id"
                         ));
                     }
@@ -376,7 +376,7 @@ impl Ui {
             let Some(i) = self.tree.find(key) else {
                 continue;
             };
-            self.events.push(crate::motion::UiEvent {
+            self.out.events.push(crate::motion::UiEvent {
                 kind: kind.into(),
                 target: self.path_of(i),
                 pitch: 1.0,

@@ -231,7 +231,7 @@ impl Ui {
                                 .unwrap_or((0, &(0.0, 0.0)));
                             to = Vec2::new(sx, sy);
                             g.snapped = k as i32;
-                            self.events.push(UiEvent {
+                            self.out.events.push(UiEvent {
                                 kind: "snap".into(),
                                 name: k.to_string(),
                                 target: self.path_of(i),
@@ -249,7 +249,7 @@ impl Ui {
                         }
                     } else {
                         g.dismissed = true;
-                        self.events.push(UiEvent {
+                        self.out.events.push(UiEvent {
                             kind: "dismiss".into(),
                             target: self.path_of(i),
                             pitch: 1.0,
@@ -259,7 +259,7 @@ impl Ui {
                     if g.over != 0 {
                         g.dropped_on = g.over;
                         let target = self.drop_paths.get(&g.over).cloned().unwrap_or_default();
-                        self.events.push(UiEvent {
+                        self.out.events.push(UiEvent {
                             kind: "drop".into(),
                             name: target,
                             target: self.path_of(i),

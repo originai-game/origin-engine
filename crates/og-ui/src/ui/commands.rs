@@ -400,7 +400,7 @@ impl Ui {
                     self.paint_cache.aligned.push(start..cmds.len());
                     self.paint_cache.aligned_kept += 1;
                 }
-                self.stats.kept_commands += count;
+                self.out.stats.kept_commands += count;
                 let base = open.last().map_or(0, |o| o.1);
                 self.paint_cache
                     .ranges
@@ -485,7 +485,7 @@ impl Ui {
                     && let Some((b, c, _)) = self.paint_cache.cmds.get(&n.key)
                 {
                     (background, local) = (*b, c.clone());
-                    self.stats.kept_commands += 1;
+                    self.out.stats.kept_commands += 1;
                     kept_now = true;
                 } else {
                     // CSS accent-color: its controls' primary ink.
@@ -496,13 +496,13 @@ impl Ui {
                         self.env.theme.palette.primary_active = a;
                     }
                     if world.is_identity() {
-                        self.stats.painted += 1;
+                        self.out.stats.painted += 1;
                         let screen_clip = n.clip;
                         self.nodes[i].clip = draw_clip;
                         background = self.node_commands(i, &mut local, &snap);
                         self.nodes[i].clip = screen_clip;
                     } else if let Some(inv) = world.invert() {
-                        self.stats.painted += 1;
+                        self.out.stats.painted += 1;
                         // Drawn in its layout box: its screen clip taken there.
                         let screen_clip = n.clip;
                         self.nodes[i].clip = inv.map_rect(&draw_clip);

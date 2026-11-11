@@ -208,9 +208,9 @@ impl Ui {
     /// Lays out the frame, updates the interaction state and returns the frame.
     pub fn end(&mut self) -> &UiFrame {
         if let Err(error) = self.end_with_layout_queries(Ui::settle_document_containers) {
-            self.warnings.push(error.to_string());
+            self.out.warnings.push(error.to_string());
         }
-        &self.frame
+        &self.out.frame
     }
 
     /// [`Ui::end`], settling container queries with `resolve`. Under the
@@ -239,7 +239,7 @@ impl Ui {
             if bounded.is_ok() {
                 bounded::compare(self, &twin);
             }
-            return bounded.map(|()| &self.frame);
+            return bounded.map(|()| &self.out.frame);
         }
         self.end_frame(&mut resolve)
     }
@@ -252,13 +252,14 @@ impl Ui {
         ) -> Result<Vec<usize>, settlement::SettlementError>,
     ) -> Result<&UiFrame, settlement::SettlementError> {
         if !self.building {
-            self.warnings
+            self.out
+                .warnings
                 .push("end without begin: call ui.begin() at the start of the tick".into());
-            return Ok(&self.frame);
+            return Ok(&self.out.frame);
         }
         while self.stack.len() > 1 {
             let i = self.stack.pop().unwrap_or(0);
-            self.warnings.push(format!(
+            self.out.warnings.push(format!(
                 "'{}' was not closed; every ui.open() takes one ui.close()",
                 self.path_of(i)
             ));
@@ -904,7 +905,7 @@ impl Ui {
         // The trees' orders and features, kept where nothing changed shape.
         self.update_orders(whole);
         let order = std::mem::take(&mut self.orders.pre);
-        self.stats.elements = order.len() as u32;
+        self.out.stats.elements = order.len() as u32;
         let baselines = self.orders.with(visit::feat::BASELINE).to_vec();
         self.align_baselines(&baselines);
         let anchored = self.orders.with(visit::feat::ANCHORED).to_vec();
@@ -946,7 +947,7 @@ impl Ui {
         let staggered = self.orders.with(visit::feat::STAGGER).to_vec();
         self.apply_stagger(&staggered);
         let animated = self.run_motion(restyle.as_deref());
-        self.stats.animated = animated.len() as u32;
+        self.out.stats.animated = animated.len() as u32;
         // What motion wrote is placed and painted again.
         if let Some(seeds) = seeds.as_mut() {
             seeds.extend_from_slice(&animated);
@@ -1089,7 +1090,8 @@ impl Ui {
                 .flat_map(|&i| o.hit_of[i].iter().copied())
                 .collect();
         }
-        self.warnings
+        self.out
+            .warnings
             .extend(o.hit_nodes.iter().filter_map(|&i| o.warn_of[i].clone()));
         let hits = std::mem::take(&mut self.state.hits);
         // The topmost scope open (not leaving).
@@ -1315,9 +1317,9 @@ impl Ui {
         let kept_items = view.is_none()
             && self.paint_cache.reused_all
             && tail == self.paint_cache.last_tail
-            && self.frame.unit == self.env.unit;
+            && self.out.frame.unit == self.env.unit;
         let (items, missing_glyphs) = if kept_items {
-            (std::mem::take(&mut self.frame.items), Vec::new())
+            (std::mem::take(&mut self.out.frame.items), Vec::new())
         } else if let Some(relevelled) = view
             .is_none()
             .then(|| self.relevel(&trees, &tail))
@@ -1384,25 +1386,25 @@ impl Ui {
         }
         self.orders.draw = order;
         self.note_relevance();
-        self.frame = UiFrame {
+        self.out.frame = UiFrame {
             viewport: vp,
             items,
-            warnings: std::mem::take(&mut self.warnings),
+            warnings: std::mem::take(&mut self.out.warnings),
             missing_glyphs,
             focus_paths,
             text_input: self.text_target.take(),
-            events: std::mem::take(&mut self.events),
+            events: std::mem::take(&mut self.out.events),
             grounds: std::mem::take(&mut self.world.grounds),
             stats: LayoutStats {
                 laid_out: self.kept.laid_out,
-                ..self.stats
+                ..self.out.stats
             },
             unit: self.env.unit,
             cursor,
             cursor_images,
         };
         self.inspection = Default::default();
-        Ok(&self.frame)
+        Ok(&self.out.frame)
     }
 
     /// [`UiFrame::missing_glyphs`] of a frame's commands: read from each
@@ -1422,7 +1424,7 @@ impl Ui {
         if self.paint_cache.levels.is_none()
             || self.paint_cache.aligned.len() != self.paint_cache.aligned_kept
             || self.paint_cache.shifted_out
-            || self.frame.unit != self.env.unit
+            || self.out.frame.unit != self.env.unit
             || trees.len() != self.paint_cache.prev_len
             || tail.len() != self.paint_cache.last_tail.len()
         {
@@ -1465,7 +1467,7 @@ impl Ui {
             .collect();
         self.kept_spans.clear();
         let missing_glyphs = self.missing_glyphs(&baked);
-        let mut items = std::mem::take(&mut self.frame.items);
+        let mut items = std::mem::take(&mut self.out.frame.items);
         let replaced = changed
             .into_iter()
             .zip(baked)
@@ -1473,7 +1475,7 @@ impl Ui {
             .collect();
         let levels = self.paint_cache.levels.as_mut().expect("checked");
         if !levels.update(&mut items, replaced, self.env.unit) {
-            self.frame.items = items;
+            self.out.frame.items = items;
             return None;
         }
         #[cfg(debug_assertions)]
@@ -1500,7 +1502,7 @@ impl Ui {
         trees: &[(DrawCmd, Affine)],
         tail: &[(DrawCmd, Affine)],
     ) -> Option<(Vec<DrawItem>, MissingGlyphs)> {
-        if self.paint_cache.copied.is_empty() || self.frame.unit != self.env.unit {
+        if self.paint_cache.copied.is_empty() || self.out.frame.unit != self.env.unit {
             return None;
         }
         let levels = self.paint_cache.levels.as_mut()?;
@@ -1553,7 +1555,7 @@ impl Ui {
                 }
             });
         }
-        let old = std::mem::take(&mut self.frame.items);
+        let old = std::mem::take(&mut self.out.frame.items);
         let items = levels.splice(old, next, self.env.unit);
         if items.is_none() {
             self.paint_cache.levels = None;
@@ -1601,7 +1603,7 @@ impl Ui {
                 if ch.is_whitespace()
                     || ch.is_control()
                     || face.metrics.has(ch)
-                    || !self.glyphs_missed.insert((*font, ch))
+                    || !self.out.glyphs_missed.insert((*font, ch))
                 {
                     continue;
                 }

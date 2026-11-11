@@ -273,7 +273,7 @@ mod tests {
                         }
                     );
                     if width == 400.0 && sizes[0].previous.is_none() {
-                        assert_eq!(ui.frame.items.len(), 0);
+                        assert_eq!(ui.out.frame.items.len(), 0);
                     }
                     ui.nodes[child].el.width = Size::Fixed(if sizes[0].current.width > 300.0 {
                         91.0
@@ -456,7 +456,7 @@ mod tests {
             .unwrap();
         direct.end();
         assert_eq!(patched.elements(), direct.elements());
-        assert_eq!(patched.frame.items, direct.frame.items);
+        assert_eq!(patched.out.frame.items, direct.out.frame.items);
         assert_eq!(patched.a11y(), direct.a11y());
     }
 
@@ -531,7 +531,7 @@ mod tests {
             settled_floating(&mut queried, width);
             floating(&mut direct, width, if width == 400.0 { 91.0 } else { 37.0 });
             direct.end();
-            assert_eq!(queried.frame.items, direct.frame.items);
+            assert_eq!(queried.out.frame.items, direct.out.frame.items);
             assert_eq!(queried.elements(), direct.elements());
             let checkpoint = queried.save_state();
             queried.restore_state(&checkpoint).unwrap();

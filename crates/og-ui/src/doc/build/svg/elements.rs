@@ -46,7 +46,7 @@ impl Ui {
                     up = doc.nodes[up].parent;
                 }
                 if inside {
-                    self.warnings.push(format!(
+                    self.out.warnings.push(format!(
                         "{}:{}: <feImage href=\"#{id}\"> draws an element the filter is on or inside",
                         doc.source, doc.nodes[of].line
                     ));
@@ -384,7 +384,7 @@ impl Ui {
         self.nodes[i].props = p;
         for e in warnings {
             let tag = n.selector_tag.as_deref().unwrap_or("text");
-            self.warnings.push(format!(
+            self.out.warnings.push(format!(
                 "{}:{} ({path}): <{tag}>: {e}",
                 b.doc.source, n.line
             ));
@@ -629,7 +629,7 @@ impl Ui {
             ..ElementDraw::default()
         });
         for e in warnings {
-            self.warnings.push(format!(
+            self.out.warnings.push(format!(
                 "{}:{} ({path}): <foreignObject>: {e}",
                 b.doc.source, n.line
             ));
@@ -757,7 +757,7 @@ impl Ui {
             .unwrap_or(Affine::IDENTITY);
         let warn = |ui: &mut Ui, e: String| {
             let tag = n.selector_tag.as_deref().unwrap_or("svg");
-            ui.warnings.push(format!(
+            ui.out.warnings.push(format!(
                 "{}:{} ({path}): <{tag}>: {e}",
                 b.doc.source, n.line
             ));

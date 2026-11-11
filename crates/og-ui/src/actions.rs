@@ -440,7 +440,7 @@ impl Ui {
             }
         };
         if let Err(e) = self.reactive.execute(command) {
-            self.warnings.push(format!("$ui store: {e}"));
+            self.out.warnings.push(format!("$ui store: {e}"));
             return;
         }
         self.docs.ui_store = Some(value);

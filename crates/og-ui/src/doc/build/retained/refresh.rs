@@ -566,7 +566,8 @@ impl RetainedHost {
         );
         self.css.selectors += work.selectors;
         self.css.candidates += work.candidates;
-        ui.warnings
+        ui.out
+            .warnings
             .extend(values.cascade.diagnostics.iter().map(|error| {
                 format!(
                     "{}:{} ({}): {error}",

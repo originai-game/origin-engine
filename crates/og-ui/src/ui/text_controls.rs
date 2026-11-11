@@ -940,7 +940,8 @@ impl Ui {
         match crate::dress::PartRef::parse(&format!("{component}::part(frame)"), class) {
             Ok(p) => p,
             Err(error) => {
-                self.warnings
+                self.out
+                    .warnings
                     .push(format!("text control host '{component}': {error}"));
                 crate::dress::PartRef::of("", "frame", None)
             }

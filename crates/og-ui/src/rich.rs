@@ -650,7 +650,7 @@ impl Ui {
     ) -> RichTextResponse {
         let t = self.env.theme;
         let (parsed, warnings) = parse_markup(markup);
-        self.warnings.extend(warnings);
+        self.out.warnings.extend(warnings);
         let base_step = desc.step.unwrap_or(t.type_ramp.body);
         let base_color = desc.color.unwrap_or(t.palette.ink);
         let mut spans = Vec::with_capacity(parsed.len());
@@ -663,6 +663,7 @@ impl Ui {
                 match crate::style_file::ramp_step(&mut ramp, name) {
                     Some(st) => step = *st,
                     None => self
+                        .out
                         .warnings
                         .push(format!("rich text: [size={name}] is not a TypeStepName")),
                 }
@@ -675,7 +676,7 @@ impl Ui {
             if let Some(name) = &s.color {
                 match crate::style_file::parse_color(name).or_else(|| t.color(name)) {
                     Some(c) => color = c,
-                    None => self.warnings.push(format!(
+                    None => self.out.warnings.push(format!(
                         "rich text: [color={name}] is neither a colour role (a ThemeColor or one the style declares) nor #rrggbb"
                     )),
                 }
@@ -694,7 +695,7 @@ impl Ui {
                 match (w, c) {
                     (Some(w), Some(c)) => Some((w, c)),
                     _ => {
-                        self.warnings.push(format!(
+                        self.out.warnings.push(format!(
                             "rich text: [outline={v}] is not a width above 0 and a colour role or #rrggbb"
                         ));
                         None
@@ -706,7 +707,8 @@ impl Ui {
                 match self.env.icons.find(name) {
                     Some(k) => Some(Atom::Icon(k)),
                     None => {
-                        self.warnings
+                        self.out
+                            .warnings
                             .push(format!("rich text: [icon={name}] is not in the icon atlas"));
                         continue;
                     }
@@ -715,7 +717,7 @@ impl Ui {
                 match self.env.images.get(name) {
                     Some(im) => Some(Atom::Image(*im)),
                     None => {
-                        self.warnings.push(format!(
+                        self.out.warnings.push(format!(
                             "rich text: [img={name}] is no picture the game registered (UiDesc.images)"
                         ));
                         continue;
@@ -734,7 +736,7 @@ impl Ui {
                         }
                     }
                     None => {
-                        self.warnings.push(format!(
+                        self.out.warnings.push(format!(
                             "rich text: [action={name}] is no action with a binding on this device"
                         ));
                         continue;

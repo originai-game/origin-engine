@@ -118,7 +118,7 @@ impl Ui {
             let start = a.position as usize;
             let end = start.checked_add(a.length as usize);
             let Some(end) = end.filter(|&end| start <= count && end <= count) else {
-                self.warnings.push(format!(
+                self.out.warnings.push(format!(
                     "rich text: span '{}' range {}+{} exceeds {count} Unicode scalars",
                     a.name, a.position, a.length
                 ));
@@ -187,7 +187,7 @@ impl Ui {
                         InlineAtom::Image(name) => match self.env.images.get(name) {
                             Some(im) => Some(crate::rich::Atom::Image(*im)),
                             None => {
-                                self.warnings.push(format!(
+                                self.out.warnings.push(format!(
                                     "text: <img src=\"{name}\"> is no picture the game registered (UiDesc.images)"
                                 ));
                                 None
@@ -196,7 +196,7 @@ impl Ui {
                         InlineAtom::Icon(name) => match self.env.icons.find(name) {
                             Some(k) => Some(crate::rich::Atom::Icon(k)),
                             None => {
-                                self.warnings.push(format!(
+                                self.out.warnings.push(format!(
                                     "text: <og-icon name=\"{name}\"> is not in the icon atlas"
                                 ));
                                 None

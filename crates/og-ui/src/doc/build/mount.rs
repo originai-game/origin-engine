@@ -327,7 +327,7 @@ impl Ui {
     pub(crate) fn play_rive(&mut self, node: usize, id: &str, path: &str) {
         let key = self.nodes[node].key;
         let Some(board) = self.docs.rive.get(id).cloned() else {
-            self.warnings.push(format!(
+            self.out.warnings.push(format!(
                 "{path}: og-rive src=\"{id}\" names no Rive artboard the UI has; og.load.document loads those its document names"
             ));
             return;
@@ -360,7 +360,7 @@ impl Ui {
             }) if b == id => {
                 let mut p = crate::rive::Player::new(board, None);
                 if let Err(e) = p.restore(&saved) {
-                    self.warnings.push(format!(
+                    self.out.warnings.push(format!(
                         "{path}: the saved state of Rive artboard {id} does not fit it ({e}); it is kept and not drawn"
                     ));
                     self.state.rive.insert(
@@ -418,7 +418,7 @@ impl Ui {
         env: &dyn Env,
     ) -> DocResponse {
         let Some(doc) = self.docs.docs.get(name).cloned() else {
-            self.warnings.push(format!(
+            self.out.warnings.push(format!(
                 "Ui::component: no document named '{name}' (load its .ogt with og.load.document)"
             ));
             return DocResponse::default();
@@ -481,7 +481,7 @@ impl Ui {
                 true
             }
             _ => {
-                self.warnings.push(format!(
+                self.out.warnings.push(format!(
                     "Ui::open_slot: no slot '{path}' this tick (mount the document first; slots: {})",
                     self.docs.slots.keys().cloned().collect::<Vec<_>>().join(", ")
                 ));

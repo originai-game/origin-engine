@@ -238,7 +238,8 @@ impl Ui {
     /// Adds a node under the open element and returns its index.
     pub(crate) fn push(&mut self, kind: &'static str, id: Id, el: Element) -> usize {
         if !self.building {
-            self.warnings
+            self.out
+                .warnings
                 .push("an element was added outside begin/end; call ui.begin() first".into());
             self.begin(InputFrame::default(), self.env.viewport);
         }
@@ -256,7 +257,7 @@ impl Ui {
         } else {
             let name = id.as_str();
             if name.contains('/') {
-                self.warnings.push(format!(
+                self.out.warnings.push(format!(
                     "id '{name}' contains '/', the path separator; it is used as '{}'",
                     name.replace('/', "_")
                 ));
@@ -276,7 +277,7 @@ impl Ui {
                 n += 1;
             }
             let renamed = format!("{local}~{n}");
-            self.warnings.push(format!(
+            self.out.warnings.push(format!(
                 "duplicate id '{local}' under '{}'; this one is '{renamed}': give siblings distinct ids (ui_idi(name, index))",
                 self.path_of(parent)
             ));
@@ -427,7 +428,7 @@ impl Ui {
         if let Some(&last) = self.emitted.last() {
             if self.draws.contains_key(&last) {
                 let path = self.path_of(last);
-                self.warnings.push(format!(
+                self.out.warnings.push(format!(
                     "setDraw replaced the draw set on {path} this tick: setDraw draws the element added last, \
                      so call it right after the element's open or control, before its children"
                 ));
@@ -464,7 +465,8 @@ impl Ui {
     /// Closes the open container. For an `interactive` element, its response.
     pub fn close(&mut self) -> Response {
         if self.stack.len() <= 1 {
-            self.warnings
+            self.out
+                .warnings
                 .push("close without open: every ui.open() takes one ui.close()".into());
             return Response::default();
         }
@@ -624,7 +626,7 @@ impl Ui {
     pub fn tooltip(&mut self, text: &str) {
         let anchor = self.last_closed;
         if anchor == NONE {
-            self.warnings.push(
+            self.out.warnings.push(
                 "tooltip with no element before it: call ui.tooltip() right after the control"
                     .into(),
             );
@@ -703,7 +705,8 @@ impl Ui {
         anchor: usize,
     ) -> usize {
         if !self.building {
-            self.warnings
+            self.out
+                .warnings
                 .push("an element was added outside begin/end; call ui.begin() first".into());
             self.begin(InputFrame::default(), self.env.viewport);
         }
@@ -724,7 +727,7 @@ impl Ui {
                 n += 1;
             }
             let renamed = format!("{local}~{n}");
-            self.warnings.push(format!(
+            self.out.warnings.push(format!(
                 "duplicate layer id '{local}'; this one is '{renamed}': give each anchored group, dialog and menu its own id"
             ));
             local = renamed;
