@@ -431,30 +431,33 @@ impl Ui {
                     kept_now = true;
                 } else {
                     // CSS accent-color: its controls' primary ink.
-                    let accent = self.tree.nearest(i, |n| n.accent);
-                    if let Some(a) = accent {
-                        self.env.theme.palette.primary = a;
-                        self.env.theme.palette.primary_hover = a;
-                        self.env.theme.palette.primary_active = a;
+                    let mut ink = self.env.theme;
+                    if let Some(a) = self.tree.nearest(i, |n| n.accent) {
+                        ink.palette.primary = a;
+                        ink.palette.primary_hover = a;
+                        ink.palette.primary_active = a;
                     }
                     if world.is_identity() {
                         self.out.stats.painted += 1;
-                        let screen_clip = n.clip;
-                        self.tree.nodes[i].clip = draw_clip;
+                        self.paint.ctx = Some(PaintCtx {
+                            node: i,
+                            clip: draw_clip,
+                            map: Affine::IDENTITY,
+                            theme: ink,
+                        });
                         background = self.node_commands(i, &mut local, &snap);
-                        self.tree.nodes[i].clip = screen_clip;
+                        self.paint.ctx = None;
                     } else if let Some(inv) = world.invert() {
                         self.out.stats.painted += 1;
                         // Drawn in its layout box: its screen clip taken there.
-                        let screen_clip = n.clip;
-                        self.tree.nodes[i].clip = inv.map_rect(&draw_clip);
-                        self.paint.drawing = world;
+                        self.paint.ctx = Some(PaintCtx {
+                            node: i,
+                            clip: inv.map_rect(&draw_clip),
+                            map: world,
+                            theme: ink,
+                        });
                         background = self.node_commands(i, &mut local, &snap);
-                        self.paint.drawing = Affine::IDENTITY;
-                        self.tree.nodes[i].clip = screen_clip;
-                    }
-                    if accent.is_some() {
-                        self.env.theme.palette = theme.palette;
+                        self.paint.ctx = None;
                     }
                 }
                 if let Some(d) = &draw {
@@ -496,17 +499,23 @@ impl Ui {
             let mut ring = Vec::new();
             if hidden {
             } else if world.is_identity() {
-                let screen_clip = self.tree.nodes[i].clip;
-                self.tree.nodes[i].clip = draw_clip;
+                self.paint.ctx = Some(PaintCtx {
+                    node: i,
+                    clip: draw_clip,
+                    map: Affine::IDENTITY,
+                    theme: self.env.theme,
+                });
                 self.focus_ring_commands(i, &mut ring);
-                self.tree.nodes[i].clip = screen_clip;
+                self.paint.ctx = None;
             } else if let Some(inv) = world.invert() {
-                let screen_clip = self.tree.nodes[i].clip;
-                self.tree.nodes[i].clip = inv.map_rect(&draw_clip);
-                self.paint.drawing = world;
+                self.paint.ctx = Some(PaintCtx {
+                    node: i,
+                    clip: inv.map_rect(&draw_clip),
+                    map: world,
+                    theme: self.env.theme,
+                });
                 self.focus_ring_commands(i, &mut ring);
-                self.paint.drawing = Affine::IDENTITY;
-                self.tree.nodes[i].clip = screen_clip;
+                self.paint.ctx = None;
             }
             if !ring.is_empty() {
                 rings.push((

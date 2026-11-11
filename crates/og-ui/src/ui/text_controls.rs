@@ -1059,7 +1059,7 @@ impl Ui {
 
 impl Ui {
     pub(crate) fn edit_marks(&self, i: usize, mk: &EditMarks<'_>, cmds: &mut Vec<DrawCmd>) {
-        let p = &self.env.theme.palette;
+        let p = &self.paint_theme().palette;
         let dpr = self.env.viewport.dpr();
         let boxes = crate::edit::boxes(mk.m, mk.text, self.env.direction, mk.size, mk.tracking);
         let n = mk.text.chars().count();
@@ -1100,7 +1100,7 @@ impl Ui {
                 }
             };
         let e = mk.edit;
-        let ch = mk.size + self.env.theme.space.xxs * 2.0;
+        let ch = mk.size + self.paint_theme().space.xxs * 2.0;
         let cy = mk.top + (mk.line_h - ch) / 2.0;
         if mk.under {
             let selection = self
@@ -1149,7 +1149,7 @@ impl Ui {
         else {
             return;
         };
-        let t = &self.env.theme;
+        let t = self.paint_theme();
         let (shown, color, step) = if text.is_empty() {
             (placeholder.as_str(), ink.placeholder, ink.placeholder_step)
         } else {

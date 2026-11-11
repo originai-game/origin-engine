@@ -934,12 +934,12 @@ impl Ui {
     ) {
         use crate::draw::DrawCmd;
         let n = &self.tree.nodes[i];
-        let t = &self.env.theme;
+        let t = self.paint_theme();
         let p = &t.palette;
         let alpha = n.alpha;
         let dpr = self.env.viewport.dpr();
         let snap = |v: f32| crate::layout::snap(v, dpr);
-        let clip = n.clip;
+        let clip = self.paint_clip(n);
         let tick = self.interaction.state.tick as f32;
         let still = t.reduced_motion;
         // A link focused by keys or a pad: the focus ring around it, under the text.
@@ -1527,8 +1527,8 @@ impl Ui {
     ) {
         use crate::draw::DrawCmd;
         let n = &self.tree.nodes[i];
-        let p = &self.env.theme.palette;
-        let (alpha, dpr, clip) = (n.alpha, self.env.viewport.dpr(), n.clip);
+        let p = &self.paint_theme().palette;
+        let (alpha, dpr, clip) = (n.alpha, self.env.viewport.dpr(), self.paint_clip(n));
         let from_bottom = self.rich_from_bottom(i, v);
         // The player's selection: each line's selected stretch, merged,
         // filled under the text, its column a line wide.

@@ -7,7 +7,7 @@ impl Ui {
     /// that scroll widened by the ring's reach. No background-coloured cut
     /// can cover art.
     pub(super) fn focus_ring_commands(&self, i: usize, cmds: &mut Vec<DrawCmd>) {
-        let t = &self.env.theme;
+        let t = self.paint_theme();
         let n = &self.tree.nodes[i];
         let rect = n.rect;
         let ring = |player: usize, outline: bool| {
@@ -39,10 +39,10 @@ impl Ui {
                         .sampled
                         .radius
                 }),
-                clip: n.clip,
+                clip: self.paint_clip(n),
                 alpha: n.alpha,
             };
-            if n.clip_src != NONE && self.paint.drawing.is_identity() {
+            if n.clip_src != NONE && self.paint.map().is_identity() {
                 let outside = draw
                     .borders
                     .as_ref()
@@ -100,10 +100,10 @@ impl Ui {
 
     /// The element's background (its fill or dressed atlas frame).
     fn background_commands(&self, i: usize, cmds: &mut Vec<DrawCmd>) {
-        let t = &self.env.theme;
+        let t = self.paint_theme();
         let n = &self.tree.nodes[i];
         let rect = n.rect;
-        let clip = n.clip;
+        let clip = self.paint_clip(n);
         let alpha = n.alpha;
         let quad = |rect: Rect, radius: f32, color: Srgba| DrawCmd::Quad {
             rect,
@@ -159,11 +159,11 @@ impl Ui {
 
     /// The element's content and selection markers (after its background).
     fn content_commands(&self, i: usize, cmds: &mut Vec<DrawCmd>, snap: &dyn Fn(f32) -> f32) {
-        let t = &self.env.theme;
+        let t = self.paint_theme();
         let p = &t.palette;
         let n = &self.tree.nodes[i];
         let rect = n.rect;
-        let clip = n.clip;
+        let clip = self.paint_clip(n);
         let dpr = self.env.viewport.dpr();
         let alpha = n.alpha;
         let part = n.el.part.or_else(|| n.el.frame.map(StylePart::part_ref));
@@ -687,7 +687,7 @@ impl crate::ui::Paint {
         grid: u32,
         env: &crate::ui::Env,
     ) -> Option<(f32, f32, f32, crate::Srgba)> {
-        let sh = env.theme.art.text_shadows[role]?;
+        let sh = self.theme(env).art.text_shadows[role]?;
         if grid > 0 {
             let cell = size / grid as f32;
             let step = |v: f32| cell * v.signum() * f32::from(v != 0.0);
@@ -702,8 +702,8 @@ impl crate::ui::Paint {
 
 impl Ui {
     fn shape_commands(&self, n: &Node, cmds: &mut Vec<DrawCmd>) {
-        let t = &self.env.theme;
-        let clip = n.clip;
+        let t = self.paint_theme();
+        let clip = self.paint_clip(n);
         let alpha = n.alpha;
         let dpr = self.env.viewport.dpr();
         for shape in &n.shapes {
@@ -822,7 +822,7 @@ impl Ui {
                         ..ElementDraw::default()
                     };
                     cmds.extend(draw.enter(
-                        &self.env.theme,
+                        self.paint_theme(),
                         &Placed {
                             rect,
                             radius: 0.0,
@@ -1004,7 +1004,7 @@ impl Ui {
         let walk = crate::text_path::Walk::new(&subs, closed);
         // One line: its breaks are spaces.
         let line: String = tc.text.replace('\n', " ");
-        let t = &self.env.theme;
+        let t = self.paint_theme();
         let dpr = self.env.viewport.dpr();
         let role = tc.font.effect_index();
         let weight = t.art.text_weights[role] * sk / dpr + tc.emphasis * size;
@@ -1256,7 +1256,7 @@ impl Ui {
             (rect.height - pad.vertical() * sk).max(0.0),
         );
         let dpr = self.env.viewport.dpr();
-        let t = &self.env.theme;
+        let t = self.paint_theme();
         let role = tc.font.effect_index();
         let weight = t.art.text_weights[role] * sk / dpr + tc.emphasis * size;
         let color = n.sampled.ink.fade(n.alpha).linear();
@@ -1589,7 +1589,7 @@ impl Ui {
             }
             first += count + 1;
             // The player's selection (`user-select`), under the text.
-            let across = size + self.env.theme.space.xxs * 2.0;
+            let across = size + self.paint_theme().space.xxs * 2.0;
             let x0 = glyphs.col + (lh - across) / 2.0;
             let fills: Vec<Rect> = runs
                 .iter()
@@ -1722,7 +1722,7 @@ impl Ui {
             .selection
             .get(&n.key)
             .and_then(|s| s.background)
-            .unwrap_or(self.env.theme.palette.control_strong);
+            .unwrap_or(self.paint_theme().palette.control_strong);
         let part = crate::dress::PartRef::of("TextEdit", "selection", None);
         let values = self.part_values(&part, Some(n.key));
         for r in rects {

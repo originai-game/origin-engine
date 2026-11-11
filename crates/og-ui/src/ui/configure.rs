@@ -105,7 +105,7 @@ impl Ui {
                 part_draws: Default::default(),
                 part_changed: Default::default(),
                 decor_draws: Default::default(),
-                drawing: Affine::IDENTITY,
+                ctx: None,
                 prev_draws: Default::default(),
                 inspection: Default::default(),
                 cache: Default::default(),
@@ -390,7 +390,7 @@ impl Ui {
     /// The theme in effect: the configured one ([`Ui::set_theme`]) with the
     /// viewport's reduced-motion and contrast preferences applied.
     pub fn theme(&self) -> &Theme {
-        &self.env.theme
+        self.paint_theme()
     }
 
     pub fn set_theme(&mut self, theme: Theme) {

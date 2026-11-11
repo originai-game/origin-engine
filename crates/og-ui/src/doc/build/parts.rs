@@ -398,8 +398,8 @@ impl Ui {
                 computed: Arc::make_mut(&mut global.computed),
                 reads: &mut global.inherited_reads,
                 diagnostics: &mut global.diagnostics,
-                theme: &self.env.theme,
-                current: self.env.theme.palette.ink,
+                theme: self.paint_theme(),
+                current: self.paint_theme().palette.ink,
                 step: body,
                 declared: &|name| self.style.family_declared(name, &self.env),
             });
