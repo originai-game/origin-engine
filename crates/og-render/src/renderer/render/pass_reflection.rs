@@ -175,7 +175,7 @@ impl Pass for ReflectionPass {
     type Plan<'f> = ReflectionPlan<'f>;
 
     fn state(r: &Renderer) -> &Self::State {
-        &r.reflection_buffer
+        &r.reflections.reflection_buffer
     }
 
     fn encode<'f>(

@@ -111,7 +111,7 @@ impl Renderer {
         // The planar reflection's clusters: the same light records seen by
         // the mirrored camera (its oblique projection moves only depth).
         for (k, (_, mirrored, f, _, (rw, rh))) in reflections.iter().enumerate() {
-            self.reflection_clusters[k].build_kept(
+            self.reflections.reflection_clusters[k].build_kept(
                 &scene.lights,
                 &self.lights.clusters.kept,
                 &clusters::ClusterView {
@@ -126,14 +126,14 @@ impl Renderer {
             );
             if !lights_gpu.is_empty() {
                 self.queue.write_buffer(
-                    &self.reflection_light_buffers[k][1],
+                    &self.reflections.reflection_light_buffers[k][1],
                     0,
-                    bytemuck::cast_slice(&self.reflection_clusters[k].table),
+                    bytemuck::cast_slice(&self.reflections.reflection_clusters[k].table),
                 );
                 self.queue.write_buffer(
-                    &self.reflection_light_buffers[k][2],
+                    &self.reflections.reflection_light_buffers[k][2],
                     0,
-                    bytemuck::cast_slice(&self.reflection_clusters[k].ref_words()),
+                    bytemuck::cast_slice(&self.reflections.reflection_clusters[k].ref_words()),
                 );
             }
         }

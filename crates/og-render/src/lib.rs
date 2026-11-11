@@ -597,14 +597,8 @@ pub struct Renderer {
     lights: renderer::Lights,
     /// Volumetric fog (made on first use).
     volumetric: volumetric::Volumetric,
-    /// Per planar reflection slot, as many as [`RenderInfo::planar_reflections`] (0: the one material shaders read
-    /// with two, 1: a second surface's): the frame uniform of its mirrored camera.
-    reflection_buffer: Vec<wgpu::Buffer>,
-    /// Its effect uniform (decals; no screen-space AO).
-    reflection_fx_buffer: Vec<wgpu::Buffer>,
-    /// Its cluster table and references, over the main view's light records.
-    reflection_light_buffers: Vec<[wgpu::Buffer; 3]>,
-    reflection_clusters: Vec<clusters::ClusterBuilder>,
+    /// The planar reflections' per-slot buffers and clusters: their frame and effects uniforms, their light tables and the clusters the mirrored cameras build, and whether a missing planar slot was reported.
+    reflections: renderer::ReflectionTargets,
     /// The lit passes' pipelines: the standard, lean and physical ones by key,
     /// their layouts and shader, the array maps' variants, and the features a
     /// scene used that the renderer was made without.
@@ -673,10 +667,6 @@ pub struct Renderer {
     /// What the frame carries to the next: the previous camera, clock and
     /// wind (motion vectors), TAA's history, and the origin it is in.
     history: renderer::history::FrameHistory,
-    /// A second water surface asked for a planar reflection the renderer
-    /// does not draw ([`RenderDesc::planar_reflections`] 1), and the log
-    /// said so once.
-    warned_planar: bool,
     mips: mips::MipGenerator,
     /// The copy of the opaque scene transmission refracts, with its mip
     /// chain, at the renderer's size (made when a frame first needs it),

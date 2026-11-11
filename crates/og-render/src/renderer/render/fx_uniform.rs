@@ -125,8 +125,11 @@ impl Renderer {
             u.prev_view_proj = view_proj.to_cols_array_2d();
             u.screen = [*rw as f32, *rh as f32, 1.0 / *rw as f32, 1.0 / *rh as f32];
             fx::unclustered(&mut u);
-            self.queue
-                .write_buffer(&self.reflection_fx_buffer[k], 0, bytemuck::bytes_of(&u));
+            self.queue.write_buffer(
+                &self.reflections.reflection_fx_buffer[k],
+                0,
+                bytemuck::bytes_of(&u),
+            );
         }
         WriteFxUniformsOutputs {
             fx_uniform,

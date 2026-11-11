@@ -1083,11 +1083,11 @@ impl Renderer {
             wgpu::BindingResource::TextureView(self.ssr.frame_view()),
         ];
         let group = bind_group(&self.device, "frame", &self.frame_layout, &entries);
-        let reflection_group = (0..self.reflection_buffer.len()).map(|k| {
+        let reflection_group = (0..self.reflections.reflection_buffer.len()).map(|k| {
             let mut reflected = entries.clone();
-            reflected[0] = self.reflection_buffer[k].as_entire_binding();
-            reflected[8] = self.reflection_light_buffers[k][1].as_entire_binding();
-            reflected[9] = self.reflection_light_buffers[k][2].as_entire_binding();
+            reflected[0] = self.reflections.reflection_buffer[k].as_entire_binding();
+            reflected[8] = self.reflections.reflection_light_buffers[k][1].as_entire_binding();
+            reflected[9] = self.reflections.reflection_light_buffers[k][2].as_entire_binding();
             bind_group(
                 &self.device,
                 "frame (planar reflection)",

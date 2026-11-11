@@ -251,7 +251,7 @@ impl Renderer {
                     "fx (planar reflection)",
                     &self.fx_layout,
                     &[
-                        self.reflection_fx_buffer[k].as_entire_binding(),
+                        self.reflections.reflection_fx_buffer[k].as_entire_binding(),
                         wgpu::BindingResource::TextureView(&self.post.white),
                         wgpu::BindingResource::TextureView(atlas_view),
                         wgpu::BindingResource::Sampler(&self.trilinear_sampler),
@@ -270,7 +270,11 @@ impl Renderer {
                 let atlas_view = scene.decal_atlas.map_or(&self.default_white, |t| {
                     &self.cache.textures[t.index()].view
                 });
-                self.fx_lean_group(&self.reflection_fx_buffer[k], &self.post.white, atlas_view)
+                self.fx_lean_group(
+                    &self.reflections.reflection_fx_buffer[k],
+                    &self.post.white,
+                    atlas_view,
+                )
             })
             .collect();
         let fx_lean = groups.fx_lean.as_ref();

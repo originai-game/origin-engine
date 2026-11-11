@@ -771,6 +771,22 @@ pub(crate) struct SkyState {
     pub(crate) sky_capture: Option<sky_capture::SkyCapture>,
 }
 
+/// The planar reflections' per-slot buffers and clusters: their frame and effects uniforms, their light tables and the clusters the mirrored cameras build, and whether a missing planar slot was reported.
+pub(crate) struct ReflectionTargets {
+    /// Per planar reflection slot, as many as [`RenderInfo::planar_reflections`] (0: the one material shaders read
+    /// with two, 1: a second surface's): the frame uniform of its mirrored camera.
+    pub(crate) reflection_buffer: Vec<wgpu::Buffer>,
+    /// Its effect uniform (decals; no screen-space AO).
+    pub(crate) reflection_fx_buffer: Vec<wgpu::Buffer>,
+    /// Its cluster table and references, over the main view's light records.
+    pub(crate) reflection_light_buffers: Vec<[wgpu::Buffer; 3]>,
+    pub(crate) reflection_clusters: Vec<clusters::ClusterBuilder>,
+    /// A second water surface asked for a planar reflection the renderer
+    /// does not draw ([`RenderDesc::planar_reflections`] 1), and the log
+    /// said so once.
+    pub(crate) warned_planar: bool,
+}
+
 #[cfg(test)]
 mod foliage_layout_tests {
     use super::*;

@@ -328,9 +328,9 @@ impl Renderer {
         ]
         .into_iter()
         .chain(&self.lights.light_buffers)
-        .chain(&self.reflection_buffer)
-        .chain(&self.reflection_fx_buffer)
-        .chain(self.reflection_light_buffers.iter().flatten())
+        .chain(&self.reflections.reflection_buffer)
+        .chain(&self.reflections.reflection_fx_buffer)
+        .chain(self.reflections.reflection_light_buffers.iter().flatten())
         .map(wgpu::Buffer::size)
         .sum::<u64>()
             + self.oit.bytes();

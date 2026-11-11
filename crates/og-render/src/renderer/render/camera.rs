@@ -93,8 +93,11 @@ impl Renderer {
                     .collect();
                 let first = asks.iter().find(|a| a.1).or(asks.first()).map(|a| a.0);
                 let second = asks.iter().find(|a| Some(a.0) != first && a.2).map(|a| a.0);
-                if second.is_some() && self.info.planar_reflections < 2 && !self.warned_planar {
-                    self.warned_planar = true;
+                if second.is_some()
+                    && self.info.planar_reflections < 2
+                    && !self.reflections.warned_planar
+                {
+                    self.reflections.warned_planar = true;
                     log::warn!(
                         "og-render: a second water surface in view asks for a planar reflection; the renderer \
                          draws one (RenderOptions.planarReflections 1), so it reflects without one"
