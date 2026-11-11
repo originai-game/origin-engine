@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og check",
+      "summary": "A UI document that does not parse is an error of the check (OG9102, with its file, line and the cook's message) instead of a note beside \"og check: ok\"; og ui types exits non-zero on it. A document's @import sheets are read as the cook reads them, so such a document is typed."
+    }
+  ]
+}
