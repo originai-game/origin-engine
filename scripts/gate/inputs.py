@@ -3,6 +3,7 @@ from functools import lru_cache
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 
@@ -17,10 +18,31 @@ def metadata():
     return json.loads((LOGS / 'cargo.json').read_text())
 
 
+# What a package's tests run that Cargo's graph does not name: og-cli's run
+# `og` (CARGO_BIN_EXE_og, which Cargo gives that package alone), and `og`
+# loads the addon the build step made from og-host-node.
+RUNS = {'og-cli': ['og-host-node']}
+READ = re.compile(r'(?:\.\./|crates/)(og-[a-z0-9-]+(?:/[A-Za-z0-9_.-]+)*)')
+
+
+@lru_cache(maxsize=None)
+def path_reads(directory):
+    """The paths under crates/ that a crate's Rust sources name as `../og-x/...`
+    or `crates/og-x/...`: `#[path]` modules, shared test support and the
+    generated sources the IDL compares, read with or without a Cargo edge."""
+    found = set()
+    for source in (ROOT / directory).rglob('*.rs'):
+        for path in READ.findall(source.read_text(errors='replace')):
+            if (ROOT / 'crates' / path).exists():
+                found.add('crates/' + path)
+    return found
+
+
 def crate_inputs(names):
     meta = metadata()
     packages = {p['id']: p for p in meta['packages']}
     nodes = {n['id']: n['dependencies'] for n in meta['resolve']['nodes']}
+    ids = {p['name']: p['id'] for p in packages.values() if p['id'] in meta['workspace_members']}
     pending = [p['id'] for p in packages.values() if p['name'] in names]
     if len(pending) < len(set(names)):
         return {'.'}
@@ -31,9 +53,11 @@ def crate_inputs(names):
             continue
         seen.add(package)
         pending.extend(nodes[package])
+        pending.extend(ids[n] for n in RUNS.get(packages[package]['name'], ()))
         directory = Path(packages[package]['manifest_path']).parent
         if directory.is_relative_to(ROOT):
             paths.add(str(directory.relative_to(ROOT)))
+            paths |= path_reads(str(directory.relative_to(ROOT)))
     return paths
 
 
@@ -53,12 +77,15 @@ def within(file, paths):
 
 
 def inert(file):
-    """A path no build, Rust test or fixture reads: prose (docs/, tasks/),
+    """A path no build, Rust test or fixture reads: prose (docs/, tasks/, the
+    root's AGENTS.md and README.md; a package's own README may be its data),
     changelog fragments (read by scripts/changelog.ts alone), and Bun test
     files and their support (packages/<pkg>/tests/*.test.ts and tests/support/;
     bun-quick and bun-test select those by their import graph). Fixtures
     under packages/<pkg>/tests/fixtures/ are read by Rust tests and stay out."""
     parts = file.split('/')
+    if file in ('AGENTS.md', 'README.md'):
+        return True
     if parts[0] in ('docs', 'tasks'):
         return file.endswith('.md')
     if parts[:2] == ['changelog', 'unreleased']:

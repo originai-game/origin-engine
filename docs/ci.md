@@ -244,7 +244,15 @@ under `target/og-gate/green`. Changes whose consumers are not proven,
 including runtime resources, native inputs, generated files and dynamic
 loads, run checks rather than skipping them. Rust source selection remains
 conservative at the binary's crate closure where shared helper usage is
-unknown. Bun records each test file separately. A failure invalidates its
+unknown. A test binary's closure is its own package's: the workspace crates
+Cargo resolves for it (dev- and build-dependencies included), every path
+under `crates/` their Rust sources name as `../og-x/...` or `crates/og-x/...`
+(a `#[path]` module, shared test support, the generated sources og-idl
+compares), and, for og-cli alone, og-host-node, whose addon the `og` its
+tests run loads. A Rust test outside og-cli that ran `og`, or one that
+reached another crate's `.rs` file without naming its path that way, would
+be skipped wrongly: add it to `RUNS` in `scripts/gate/inputs.py`, or name
+the path. Bun records each test file separately. A failure invalidates its
 record; an unchecked GPU run never creates a passing record.
 
 The Cargo profiles are `dev` (native tests), `release` (native shipping),

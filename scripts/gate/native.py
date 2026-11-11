@@ -80,8 +80,7 @@ def run(kind):
         if not tests:
             continue
         key = 'rust.' + kind + '.' + hashlib.sha256(binary_id.encode()).hexdigest()[:20]
-        # Tests may invoke the CLI or addon without a Cargo dependency edge.
-        inputs = crate_inputs([packages[entry['binary']['package-id']], 'og-cli', 'og-host-node'])
+        inputs = crate_inputs([packages[entry['binary']['package-id']]])
         if unaffected(key, inputs):
             print(f'SKIPPED {binary_id} {kind}: dependency inputs unchanged')
             continue
