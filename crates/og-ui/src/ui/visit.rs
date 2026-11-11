@@ -632,7 +632,7 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Tree {
     /// What this frame may change, before its passes: the nodes written,
     /// laid out or put back, those that entered a tree or whose parent's
     /// children changed, those the frame's own passes wrote last frame,
@@ -641,39 +641,41 @@ impl Ui {
     /// and of them, those whose style may change (`restyle`): sampled
     /// again and moved by motion. A node only laid out or moved among its
     /// siblings keeps its sampled style (made from what was written).
-    pub(super) fn frame_seeds(&self) -> (Vec<usize>, Vec<usize>) {
-        let o = &self.tree.orders;
+    pub(super) fn frame_seeds(
+        &self,
+        style: &crate::ui::Style,
+        layout: &crate::ui::Layout,
+        interaction: &crate::ui::Interaction,
+    ) -> (Vec<usize>, Vec<usize>) {
+        let o = &self.orders;
         let mut restyle: Vec<usize> = self
-            .tree
             .emitted
             .iter()
             .chain(&o.wrote_last)
-            .chain(&self.style.motion.motion_moving)
-            .chain(&self.layout.cache.anchor_toggled)
+            .chain(&style.motion.motion_moving)
+            .chain(&layout.cache.anchor_toggled)
             .chain(o.with(feat::GESTURE))
             .chain(o.with(feat::MATCH))
             .chain(o.with(feat::WORLD))
             .copied()
             .collect();
-        for &k in &self.tree.index.moved_keys {
-            restyle.extend(self.tree.index.by_key.get(&k).copied());
+        for &k in &self.index.moved_keys {
+            restyle.extend(self.index.by_key.get(&k).copied());
         }
         // Scroll-driven animations whose timeline moved (a scroll, a
         // layout change of the scroller or the subject).
-        for (k, last) in &self.style.motion.timelines {
-            let Some(&i) = self.tree.index.by_key.get(k) else {
+        for (k, last) in &style.motion.timelines {
+            let Some(&i) = self.index.by_key.get(k) else {
                 continue;
             };
-            let moved = self.tree.nodes[i]
+            let moved = self.nodes[i]
                 .props
                 .animations
                 .iter()
                 .enumerate()
                 .any(|(x, a)| {
                     !a.timeline.ticks()
-                        && self
-                            .style
-                            .timeline_progress(i, a, &self.interaction, &self.tree)
+                        && style.timeline_progress(i, a, interaction, self)
                             != last.get(x).copied().flatten()
                 });
             if moved {
@@ -681,12 +683,12 @@ impl Ui {
             }
         }
         let mut seeds = restyle.clone();
-        seeds.extend(self.layout.cache.laid.iter().chain(&self.tree.floating));
-        for &p in &self.tree.index.restructured {
-            seeds.extend_from_slice(&self.tree.nodes[p].ordered_children);
+        seeds.extend(layout.cache.laid.iter().chain(&self.floating));
+        for &p in &self.index.restructured {
+            seeds.extend_from_slice(&self.nodes[p].ordered_children);
         }
         for list in [&mut restyle, &mut seeds] {
-            list.retain(|&i| i < self.tree.nodes.len() && self.tree.index.has(i));
+            list.retain(|&i| i < self.nodes.len() && self.index.has(i));
             list.sort_unstable();
             list.dedup();
         }
@@ -695,17 +697,16 @@ impl Ui {
 
     /// Whether a point on an SVG shape's hit ([`HIT_SHAPE`]) is on the
     /// geometry its `pointer-events` names.
-    pub(crate) fn shape_hit(&self, h: &Hit, x: f32, y: f32) -> bool {
-        let Some(i) = self.tree.index.find(h.key) else {
+    pub(crate) fn shape_hit(&self, h: &Hit, x: f32, y: f32, paint: &crate::ui::Paint) -> bool {
+        let Some(i) = self.index.find(h.key) else {
             return false;
         };
-        let (crate::element::PointerEvents::Svg(bits), Some(d)) = (
-            self.tree.orders.pointer_of[i],
-            self.paint.draw_of(i, &self.tree),
-        ) else {
+        let (crate::element::PointerEvents::Svg(bits), Some(d)) =
+            (self.orders.pointer_of[i], paint.draw_of(i, self))
+        else {
             return true;
         };
-        let r = &self.tree.nodes[i].rect;
+        let r = &self.nodes[i].rect;
         let (lx, ly) = if h.inv.is_identity() {
             (x, y)
         } else {

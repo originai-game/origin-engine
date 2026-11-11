@@ -623,7 +623,8 @@ impl Ui {
             crate::ui::pick_hit(&self.interaction.state.hits, p.x, p.y, |h| {
                 !h.has(HIT_OFFSCREEN)
                     && h.has(HIT_POINTER | HIT_SCROLL | HIT_TEXT)
-                    && (!h.has(crate::ui::HIT_SHAPE) || self.shape_hit(h, p.x, p.y))
+                    && (!h.has(crate::ui::HIT_SHAPE)
+                        || self.tree.shape_hit(h, p.x, p.y, &self.paint))
             })
         } else {
             0
