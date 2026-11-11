@@ -109,29 +109,6 @@ impl TextLines {
 }
 
 impl Ui {
-    /// Node `i`'s selectable text: its source and its laid-out lines (a
-    /// plain text's, or a vertical rich text's, each line its pieces'
-    /// text); `None` for any other node.
-    pub(crate) fn select_source(&self, i: usize) -> Option<(String, Vec<crate::text::Line>)> {
-        let n = &self.tree.nodes[i];
-        match &n.content {
-            Content::Text(tc) => Some((tc.text.clone(), n.lines.clone())),
-            Content::Rich(rc) if n.rich_vertical().is_some() => {
-                let source = rc.spans.iter().filter(|s| s.atom.is_none());
-                let lines = n
-                    .rich_lines
-                    .iter()
-                    .map(|l| crate::text::Line {
-                        text: l.pieces.iter().map(|p| p.text.as_str()).collect(),
-                        width: l.width,
-                    })
-                    .collect();
-                Some((source.map(|s| s.text.as_str()).collect(), lines))
-            }
-            _ => None,
-        }
-    }
-
     /// Node `i`'s text lines as [`Ui::node_commands`] draws them, `None`
     /// for a node that is not a plain text or a vertical rich text.
     pub(crate) fn text_lines(&self, i: usize) -> Option<TextLines> {
@@ -237,19 +214,6 @@ impl Ui {
         })
     }
 
-    /// The topmost selectable text under `p` drawn over `hot` (what a
-    /// press there would otherwise land on): a scroll container or panel
-    /// behind it, or nothing.
-    pub(crate) fn select_hit_at(&self, p: Vec2, hot: u64) -> Option<u64> {
-        let hits = &self.interaction.state.hits;
-        let above = hits.iter().rposition(|h| h.key == hot).map_or(0, |k| k + 1);
-        hits[above..]
-            .iter()
-            .rev()
-            .find(|h| h.has(HIT_SELECT) && !h.has(HIT_OFFSCREEN) && h.contains(p.x, p.y))
-            .map(|h| h.key)
-    }
-
     /// The character under screen point `p` in text `key` (last frame's
     /// lines, through its transform), and its whole length.
     fn select_point(&self, key: u64, p: Vec2) -> Option<(u32, TextLines)> {
@@ -261,62 +225,6 @@ impl Ui {
             .unwrap_or(Affine::IDENTITY)
             .apply(p.x, p.y);
         Some((t.at(x, y), t))
-    }
-
-    /// A drag's text: the one under the pointer, else the selectable text
-    /// level with it nearest across (a drag past a line's end), else the
-    /// nearest above or below (a drag between paragraphs or past the last
-    /// selects up to its edge), as a page picks.
-    fn select_drag_target(&self, p: Vec2) -> Option<u64> {
-        let off = |a: f32, lo: f32, hi: f32| (lo - a).max(a - hi).max(0.0);
-        self.select_hit_at(p, 0).or_else(|| {
-            self.interaction
-                .state
-                .hits
-                .iter()
-                .filter(|h| h.has(HIT_SELECT) && !h.has(HIT_OFFSCREEN))
-                .min_by(|a, b| {
-                    let d = |h: &Hit| {
-                        let r = &h.full;
-                        (off(p.y, r.y, r.bottom()), off(p.x, r.x, r.right()))
-                    };
-                    let (da, db) = (d(a), d(b));
-                    da.0.total_cmp(&db.0).then(da.1.total_cmp(&db.1))
-                })
-                .map(|h| h.key)
-        })
-    }
-
-    /// Where `end` falls in the trees' order (its element's place, then
-    /// its character).
-    fn select_order(&self, end: SelectEnd) -> (u32, u32) {
-        let pos = self
-            .tree
-            .index
-            .find(end.0)
-            .and_then(|i| self.tree.orders.pre_pos.get(i).copied())
-            .unwrap_or(u32::MAX);
-        (pos, end.1)
-    }
-
-    /// The unit a press of `count` selects around character `k` of `key`.
-    fn select_unit(&self, key: u64, t: &TextLines, count: u8, k: u32) -> (SelectEnd, SelectEnd) {
-        let all = self
-            .tree
-            .index
-            .find(key)
-            .is_some_and(|i| self.tree.orders.select_of.get(i) == Some(&UserSelect::All));
-        let (a, b) = if all {
-            (0, t.len() as usize)
-        } else {
-            let flat = t.flat();
-            match count {
-                2 => crate::edit::word_at(&flat, k as usize),
-                3 => crate::edit::line_at(&flat, k as usize),
-                _ => (k as usize, k as usize),
-            }
-        };
-        ((key, a as u32), (key, b as u32))
     }
 
     /// This tick's pointer and keys on selectable text, after the press
@@ -440,6 +348,152 @@ impl Ui {
         }
     }
 
+    /// The selection's marks on one line of node `i`, under its text: the
+    /// text control's `selection` part (`TextEdit.selection`).
+    pub(crate) fn select_marks(
+        &self,
+        i: usize,
+        line: &str,
+        first: u32,
+        (x, top, lh): (f32, f32, f32),
+        clip: Rect,
+        cmds: &mut Vec<DrawCmd>,
+    ) {
+        let n = &self.tree.nodes[i];
+        let (Some((a, b)), Content::Text(tc)) = (n.selected, &n.content) else {
+            return;
+        };
+        let count = line.chars().count() as u32;
+        if b <= first || a >= first + count {
+            return;
+        }
+        let font = self
+            .env
+            .fonts
+            .for_styled(tc.font, tc.step.weight, false, &tc.text)
+            .0;
+        let edit = crate::layout::EditView {
+            focused: true,
+            selection: (a as usize, b as usize),
+            ..Default::default()
+        };
+        self.edit_marks(
+            i,
+            &EditMarks {
+                m: &font.metrics,
+                text: line,
+                x,
+                top,
+                line_h: lh,
+                size: tc.step.size * n.scale,
+                tracking: tc.tracking(),
+                first: first as usize,
+                edit: &edit,
+                clip,
+                alpha: n.alpha,
+                under: true,
+                caret_here: false,
+            },
+            cmds,
+        );
+    }
+}
+
+impl Ui {
+    /// Node `i`'s selectable text: its source and its laid-out lines (a
+    /// plain text's, or a vertical rich text's, each line its pieces'
+    /// text); `None` for any other node.
+    pub(crate) fn select_source(&self, i: usize) -> Option<(String, Vec<crate::text::Line>)> {
+        let n = &self.tree.nodes[i];
+        match &n.content {
+            Content::Text(tc) => Some((tc.text.clone(), n.lines.clone())),
+            Content::Rich(rc) if n.rich_vertical().is_some() => {
+                let source = rc.spans.iter().filter(|s| s.atom.is_none());
+                let lines = n
+                    .rich_lines
+                    .iter()
+                    .map(|l| crate::text::Line {
+                        text: l.pieces.iter().map(|p| p.text.as_str()).collect(),
+                        width: l.width,
+                    })
+                    .collect();
+                Some((source.map(|s| s.text.as_str()).collect(), lines))
+            }
+            _ => None,
+        }
+    }
+
+    /// Where `end` falls in the trees' order (its element's place, then
+    /// its character).
+    fn select_order(&self, end: SelectEnd) -> (u32, u32) {
+        let pos = self
+            .tree
+            .index
+            .find(end.0)
+            .and_then(|i| self.tree.orders.pre_pos.get(i).copied())
+            .unwrap_or(u32::MAX);
+        (pos, end.1)
+    }
+
+    /// The unit a press of `count` selects around character `k` of `key`.
+    fn select_unit(&self, key: u64, t: &TextLines, count: u8, k: u32) -> (SelectEnd, SelectEnd) {
+        let all = self
+            .tree
+            .index
+            .find(key)
+            .is_some_and(|i| self.tree.orders.select_of.get(i) == Some(&UserSelect::All));
+        let (a, b) = if all {
+            (0, t.len() as usize)
+        } else {
+            let flat = t.flat();
+            match count {
+                2 => crate::edit::word_at(&flat, k as usize),
+                3 => crate::edit::line_at(&flat, k as usize),
+                _ => (k as usize, k as usize),
+            }
+        };
+        ((key, a as u32), (key, b as u32))
+    }
+}
+
+impl Ui {
+    /// The topmost selectable text under `p` drawn over `hot` (what a
+    /// press there would otherwise land on): a scroll container or panel
+    /// behind it, or nothing.
+    pub(crate) fn select_hit_at(&self, p: Vec2, hot: u64) -> Option<u64> {
+        let hits = &self.interaction.state.hits;
+        let above = hits.iter().rposition(|h| h.key == hot).map_or(0, |k| k + 1);
+        hits[above..]
+            .iter()
+            .rev()
+            .find(|h| h.has(HIT_SELECT) && !h.has(HIT_OFFSCREEN) && h.contains(p.x, p.y))
+            .map(|h| h.key)
+    }
+
+    /// A drag's text: the one under the pointer, else the selectable text
+    /// level with it nearest across (a drag past a line's end), else the
+    /// nearest above or below (a drag between paragraphs or past the last
+    /// selects up to its edge), as a page picks.
+    fn select_drag_target(&self, p: Vec2) -> Option<u64> {
+        let off = |a: f32, lo: f32, hi: f32| (lo - a).max(a - hi).max(0.0);
+        self.select_hit_at(p, 0).or_else(|| {
+            self.interaction
+                .state
+                .hits
+                .iter()
+                .filter(|h| h.has(HIT_SELECT) && !h.has(HIT_OFFSCREEN))
+                .min_by(|a, b| {
+                    let d = |h: &Hit| {
+                        let r = &h.full;
+                        (off(p.y, r.y, r.bottom()), off(p.x, r.x, r.right()))
+                    };
+                    let (da, db) = (d(a), d(b));
+                    da.0.total_cmp(&db.0).then(da.1.total_cmp(&db.1))
+                })
+                .map(|h| h.key)
+        })
+    }
+
     /// The selected elements and their ranges, in the trees' order: the
     /// selectable texts from the selection's first end to its last.
     pub(crate) fn selected_ranges(&self) -> Vec<(usize, (u32, u32))> {
@@ -551,56 +605,6 @@ impl Ui {
             self.interaction.selected.push(self.tree.nodes[i].key);
         }
         changed
-    }
-
-    /// The selection's marks on one line of node `i`, under its text: the
-    /// text control's `selection` part (`TextEdit.selection`).
-    pub(crate) fn select_marks(
-        &self,
-        i: usize,
-        line: &str,
-        first: u32,
-        (x, top, lh): (f32, f32, f32),
-        clip: Rect,
-        cmds: &mut Vec<DrawCmd>,
-    ) {
-        let n = &self.tree.nodes[i];
-        let (Some((a, b)), Content::Text(tc)) = (n.selected, &n.content) else {
-            return;
-        };
-        let count = line.chars().count() as u32;
-        if b <= first || a >= first + count {
-            return;
-        }
-        let font = self
-            .env
-            .fonts
-            .for_styled(tc.font, tc.step.weight, false, &tc.text)
-            .0;
-        let edit = crate::layout::EditView {
-            focused: true,
-            selection: (a as usize, b as usize),
-            ..Default::default()
-        };
-        self.edit_marks(
-            i,
-            &EditMarks {
-                m: &font.metrics,
-                text: line,
-                x,
-                top,
-                line_h: lh,
-                size: tc.step.size * n.scale,
-                tracking: tc.tracking(),
-                first: first as usize,
-                edit: &edit,
-                clip,
-                alpha: n.alpha,
-                under: true,
-                caret_here: false,
-            },
-            cmds,
-        );
     }
 
     /// The selection as the probe reads it (`dump_ui`'s `selection`):

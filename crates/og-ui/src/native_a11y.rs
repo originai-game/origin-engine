@@ -609,7 +609,9 @@ impl Ui {
             }
         }
     }
+}
 
+impl Ui {
     pub(crate) fn accessibility_number(
         &mut self,
         key: u64,

@@ -117,7 +117,9 @@ impl Ui {
         let v = &self.interaction.state.vcursor;
         v.desc.map(|_| (v.pos, v.shown))
     }
+}
 
+impl Ui {
     /// The topmost control of last frame under `p` (0: none).
     fn control_at(&self, p: Vec2) -> Option<&crate::ui::Hit> {
         self.interaction.state.hits.iter().rev().find(|h| {

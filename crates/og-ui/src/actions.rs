@@ -129,18 +129,6 @@ impl ActionHint {
 }
 
 impl Ui {
-    fn ensure_actions(&mut self) {
-        if !self.interaction.actions.defined {
-            self.interaction.actions.defined = true;
-            self.interaction.actions.defs = default_actions();
-            self.interaction.actions.pad = Device::Xbox;
-        }
-        self.interaction
-            .actions
-            .states
-            .resize(self.interaction.actions.defs.len(), ActionState::default());
-    }
-
     /// Defines (or redefines) a UI action.
     pub fn define_action(&mut self, desc: ActionDesc) {
         self.ensure_actions();
@@ -169,21 +157,6 @@ impl Ui {
     /// The action fired this tick.
     pub fn action(&self, name: &str) -> bool {
         self.action_fired(name)
-    }
-
-    pub(crate) fn action_fired(&self, name: &str) -> bool {
-        self.interaction.actions.fired.iter().any(|a| a == name)
-    }
-
-    /// The action's input is down this tick (held, before or past any hold).
-    pub(crate) fn action_down(&self, name: &str) -> bool {
-        self.interaction
-            .actions
-            .defs
-            .iter()
-            .position(|d| d.name == name)
-            .and_then(|k| self.interaction.actions.states.get(k))
-            .is_some_and(|s| s.down)
     }
 
     /// A hold action is held (its press past the hold, or its toggle on).
@@ -309,6 +282,91 @@ impl Ui {
         out
     }
 
+    /// The engine's `$ui` store (docs/ui.md §2): the device used last, a
+    /// coarse pointer, and the action bar (each action's hint, glyph and
+    /// hold), as a document reads it.
+    pub(crate) fn ui_store_value(&self) -> Value {
+        json!({
+            "device": self.interaction.actions.device.name(),
+            "coarsePointer": self.env.viewport.coarse_pointer,
+            // `<svelte:window>`'s innerWidth and innerHeight, CSS px.
+            "width": self.env.viewport.width,
+            "height": self.env.viewport.height,
+            "actions": self.action_bar().iter().map(ActionHint::to_json).collect::<Vec<_>>(),
+        })
+    }
+
+    /// Publishes `$ui` to mounted documents when it changed, so only what
+    /// reads it rebuilds.
+    pub(crate) fn publish_ui_store(&mut self) {
+        use crate::reactive::session::Command;
+        let value = self.ui_store_value();
+        if self.docs.host.ui_store.as_ref() == Some(&value) {
+            return;
+        }
+        let command = if self.docs.host.ui_store.is_none() {
+            Command::Signal {
+                source: crate::doc::UI_STORE.clone(),
+                initial: value.clone(),
+                readable: false,
+            }
+        } else {
+            Command::Set {
+                source: crate::doc::UI_STORE.clone(),
+                value: value.clone(),
+                force: false,
+            }
+        };
+        if let Err(e) = self.docs.reactive.execute(command) {
+            self.out.warnings.push(format!("$ui store: {e}"));
+            return;
+        }
+        self.docs.host.ui_store = Some(value);
+    }
+
+    /// The actions' state as JSON (dump_ui's `actions`).
+    pub fn actions_json(&self) -> Value {
+        let fired = self.interaction.actions.fired.clone();
+        json!({
+            "device": self.interaction.actions.device.name(),
+            "fired": fired,
+            "defined": self.action_defs().iter().map(|d| json!({
+                "name": d.name, "keys": d.keys, "buttons": d.buttons, "label": d.label, "toggle": d.toggle, "action": d.action,
+                "trigger": match d.trigger { ActionTrigger::Press => json!("press"), ActionTrigger::Release => json!("release"), ActionTrigger::Hold(ms) => json!({ "hold": ms }) },
+            })).collect::<Vec<_>>(),
+            "bar": self.action_bar().iter().map(ActionHint::to_json).collect::<Vec<_>>(),
+        })
+    }
+}
+
+impl Ui {
+    fn ensure_actions(&mut self) {
+        if !self.interaction.actions.defined {
+            self.interaction.actions.defined = true;
+            self.interaction.actions.defs = default_actions();
+            self.interaction.actions.pad = Device::Xbox;
+        }
+        self.interaction
+            .actions
+            .states
+            .resize(self.interaction.actions.defs.len(), ActionState::default());
+    }
+
+    pub(crate) fn action_fired(&self, name: &str) -> bool {
+        self.interaction.actions.fired.iter().any(|a| a == name)
+    }
+
+    /// The action's input is down this tick (held, before or past any hold).
+    pub(crate) fn action_down(&self, name: &str) -> bool {
+        self.interaction
+            .actions
+            .defs
+            .iter()
+            .position(|d| d.name == name)
+            .and_then(|k| self.interaction.actions.states.get(k))
+            .is_some_and(|s| s.down)
+    }
+
     /// Reads this tick's input into the actions and the last device (from `begin`).
     pub(crate) fn actions_begin(&mut self, input: &InputFrame) {
         self.ensure_actions();
@@ -428,61 +486,5 @@ impl Ui {
                 self.interaction.actions.fired.push(d.name.clone());
             }
         }
-    }
-
-    /// The engine's `$ui` store (docs/ui.md §2): the device used last, a
-    /// coarse pointer, and the action bar (each action's hint, glyph and
-    /// hold), as a document reads it.
-    pub(crate) fn ui_store_value(&self) -> Value {
-        json!({
-            "device": self.interaction.actions.device.name(),
-            "coarsePointer": self.env.viewport.coarse_pointer,
-            // `<svelte:window>`'s innerWidth and innerHeight, CSS px.
-            "width": self.env.viewport.width,
-            "height": self.env.viewport.height,
-            "actions": self.action_bar().iter().map(ActionHint::to_json).collect::<Vec<_>>(),
-        })
-    }
-
-    /// Publishes `$ui` to mounted documents when it changed, so only what
-    /// reads it rebuilds.
-    pub(crate) fn publish_ui_store(&mut self) {
-        use crate::reactive::session::Command;
-        let value = self.ui_store_value();
-        if self.docs.host.ui_store.as_ref() == Some(&value) {
-            return;
-        }
-        let command = if self.docs.host.ui_store.is_none() {
-            Command::Signal {
-                source: crate::doc::UI_STORE.clone(),
-                initial: value.clone(),
-                readable: false,
-            }
-        } else {
-            Command::Set {
-                source: crate::doc::UI_STORE.clone(),
-                value: value.clone(),
-                force: false,
-            }
-        };
-        if let Err(e) = self.docs.reactive.execute(command) {
-            self.out.warnings.push(format!("$ui store: {e}"));
-            return;
-        }
-        self.docs.host.ui_store = Some(value);
-    }
-
-    /// The actions' state as JSON (dump_ui's `actions`).
-    pub fn actions_json(&self) -> Value {
-        let fired = self.interaction.actions.fired.clone();
-        json!({
-            "device": self.interaction.actions.device.name(),
-            "fired": fired,
-            "defined": self.action_defs().iter().map(|d| json!({
-                "name": d.name, "keys": d.keys, "buttons": d.buttons, "label": d.label, "toggle": d.toggle, "action": d.action,
-                "trigger": match d.trigger { ActionTrigger::Press => json!("press"), ActionTrigger::Release => json!("release"), ActionTrigger::Hold(ms) => json!({ "hold": ms }) },
-            })).collect::<Vec<_>>(),
-            "bar": self.action_bar().iter().map(ActionHint::to_json).collect::<Vec<_>>(),
-        })
     }
 }

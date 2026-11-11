@@ -256,46 +256,6 @@ impl Ui {
         hud.changed = now;
     }
 
-    /// The tick of the frame being built, or of the one about to begin
-    /// (the edit mode's input runs before `begin` counts it).
-    fn hud_now(&self) -> u64 {
-        self.interaction.state.tick + u64::from(!self.tree.building)
-    }
-
-    /// The topmost customisable element of last frame under `p`.
-    fn hud_target_at(&self, p: Vec2) -> Option<HudTarget> {
-        self.interaction
-            .state
-            .hud
-            .targets
-            .iter()
-            .rev()
-            .find(|t| t.shown.contains(p.x, p.y))
-            .cloned()
-    }
-
-    fn placement(&self, key: &str) -> HudPlacement {
-        let hud = &self.interaction.state.hud;
-        hud.layouts[usize::from(hud.player)]
-            .get(key)
-            .copied()
-            .unwrap_or_default()
-    }
-
-    fn place(&mut self, t: &HudTarget, p: HudPlacement) {
-        let (w, h) = (self.env.viewport.width, self.env.viewport.height);
-        let p = p.limited(t, w, h);
-        let now = self.hud_now();
-        let hud = &mut self.interaction.state.hud;
-        let l = &mut hud.layouts[usize::from(hud.player)];
-        if p == HudPlacement::default() {
-            l.remove(&t.key);
-        } else {
-            l.insert(t.key.clone(), p);
-        }
-        hud.changed = now;
-    }
-
     /// The edit mode's input: a press on a customisable element selects it
     /// and takes the press (the element answers nothing), a drag moves it,
     /// a second touch pinches it, the wheel over it scales it, and pad 0's
@@ -397,64 +357,6 @@ impl Ui {
             input.down = false;
             input.released = false;
             input.pointers = og_input::Pointers::default();
-        }
-    }
-
-    /// Each customisable element's placement into its node before the
-    /// frame's transforms (`apply_world`).
-    pub(crate) fn hud_apply(&mut self, order: &[usize]) {
-        for &i in order {
-            let Some(spec) = &self.tree.nodes[i].props.customize else {
-                continue;
-            };
-            let key = if spec.key.is_empty() {
-                self.tree.path_of(i)
-            } else {
-                spec.key.clone()
-            };
-            let p = self.placement(&key);
-            self.tree.nodes[i].custom = [p.x, p.y, p.scale, p.opacity];
-        }
-    }
-
-    /// The frame's customisable elements, after its transforms, for the
-    /// next tick's edit mode.
-    pub(crate) fn hud_collect(&mut self, order: &[usize]) {
-        let mut targets = Vec::new();
-        let editor = match self.front.hud_editor_key {
-            0 => Rect::default(),
-            k => self
-                .tree
-                .index
-                .find(k)
-                .map_or(Rect::default(), |i| self.tree.nodes[i].screen),
-        };
-        for &i in order {
-            let n = &self.tree.nodes[i];
-            let Some(spec) = &n.props.customize else {
-                continue;
-            };
-            let pw = if n.parent == crate::layout::NONE {
-                crate::Affine::IDENTITY
-            } else {
-                self.tree.nodes[n.parent].world
-            };
-            targets.push(HudTarget {
-                key: if spec.key.is_empty() {
-                    self.tree.path_of(i)
-                } else {
-                    spec.key.clone()
-                },
-                base: pw.map_rect(&n.rect),
-                shown: n.screen,
-                spec: spec.clone(),
-            });
-        }
-        let hud = &mut self.interaction.state.hud;
-        hud.targets = targets;
-        hud.editor = editor;
-        if !hud.selected.is_empty() && !hud.targets.iter().any(|t| t.key == hud.selected) {
-            hud.selected.clear();
         }
     }
 
@@ -656,5 +558,107 @@ impl Ui {
         self.close();
         self.close();
         out
+    }
+}
+
+impl Ui {
+    /// The tick of the frame being built, or of the one about to begin
+    /// (the edit mode's input runs before `begin` counts it).
+    fn hud_now(&self) -> u64 {
+        self.interaction.state.tick + u64::from(!self.tree.building)
+    }
+
+    /// The topmost customisable element of last frame under `p`.
+    fn hud_target_at(&self, p: Vec2) -> Option<HudTarget> {
+        self.interaction
+            .state
+            .hud
+            .targets
+            .iter()
+            .rev()
+            .find(|t| t.shown.contains(p.x, p.y))
+            .cloned()
+    }
+
+    fn placement(&self, key: &str) -> HudPlacement {
+        let hud = &self.interaction.state.hud;
+        hud.layouts[usize::from(hud.player)]
+            .get(key)
+            .copied()
+            .unwrap_or_default()
+    }
+
+    fn place(&mut self, t: &HudTarget, p: HudPlacement) {
+        let (w, h) = (self.env.viewport.width, self.env.viewport.height);
+        let p = p.limited(t, w, h);
+        let now = self.hud_now();
+        let hud = &mut self.interaction.state.hud;
+        let l = &mut hud.layouts[usize::from(hud.player)];
+        if p == HudPlacement::default() {
+            l.remove(&t.key);
+        } else {
+            l.insert(t.key.clone(), p);
+        }
+        hud.changed = now;
+    }
+
+    /// The frame's customisable elements, after its transforms, for the
+    /// next tick's edit mode.
+    pub(crate) fn hud_collect(&mut self, order: &[usize]) {
+        let mut targets = Vec::new();
+        let editor = match self.front.hud_editor_key {
+            0 => Rect::default(),
+            k => self
+                .tree
+                .index
+                .find(k)
+                .map_or(Rect::default(), |i| self.tree.nodes[i].screen),
+        };
+        for &i in order {
+            let n = &self.tree.nodes[i];
+            let Some(spec) = &n.props.customize else {
+                continue;
+            };
+            let pw = if n.parent == crate::layout::NONE {
+                crate::Affine::IDENTITY
+            } else {
+                self.tree.nodes[n.parent].world
+            };
+            targets.push(HudTarget {
+                key: if spec.key.is_empty() {
+                    self.tree.path_of(i)
+                } else {
+                    spec.key.clone()
+                },
+                base: pw.map_rect(&n.rect),
+                shown: n.screen,
+                spec: spec.clone(),
+            });
+        }
+        let hud = &mut self.interaction.state.hud;
+        hud.targets = targets;
+        hud.editor = editor;
+        if !hud.selected.is_empty() && !hud.targets.iter().any(|t| t.key == hud.selected) {
+            hud.selected.clear();
+        }
+    }
+}
+
+impl Ui {
+    /// Each customisable element's placement into its node before the
+    /// frame's transforms (`apply_world`).
+    pub(crate) fn hud_apply(&mut self, order: &[usize]) {
+        for &i in order {
+            let Some(spec) = &self.tree.nodes[i].props.customize else {
+                continue;
+            };
+            let key = if spec.key.is_empty() {
+                self.tree.path_of(i)
+            } else {
+                spec.key.clone()
+            };
+            let p = self.placement(&key);
+            self.tree.nodes[i].custom = [p.x, p.y, p.scale, p.opacity];
+        }
     }
 }

@@ -58,6 +58,69 @@ pub struct GestureInfo {
 }
 
 impl Ui {
+    /// What the drag or pinch on `id` (under the open element) is doing:
+    /// last tick's answer, as responses are.
+    pub fn gesture(&self, id: &str) -> GestureInfo {
+        let key = self.key_for(id);
+        self.gesture_of(key)
+    }
+
+    /// [`Ui::gesture`] of the element at a full path.
+    pub fn gesture_at(&self, path: &str) -> GestureInfo {
+        self.gesture_of(crate::id::key_of_path(path))
+    }
+
+    pub(crate) fn gesture_of(&self, key: u64) -> GestureInfo {
+        let m = &self.interaction.state.motion;
+        let g = m.gestures.get(&key).copied().unwrap_or(Gesture {
+            snapped: -1,
+            scale: 1.0,
+            ..Gesture::default()
+        });
+        let path = |k: u64| {
+            self.interaction
+                .drop_paths
+                .get(&k)
+                .cloned()
+                .unwrap_or_default()
+        };
+        let source = m
+            .gestures
+            .iter()
+            .find(|(_, s)| s.dropped_on == key && key != 0)
+            .map(|(k, _)| *k);
+        GestureInfo {
+            held: g.held,
+            dragging: g.dragging,
+            offset_x: g.offset.x,
+            offset_y: g.offset.y,
+            velocity_x: g.velocity.x,
+            velocity_y: g.velocity.y,
+            scale: g.scale,
+            rotation: g.rotation,
+            snapped: g.snapped,
+            dismissed: g.dismissed,
+            over: path(g.over),
+            dropped_on: path(g.dropped_on),
+            hovering: m.gestures.values().any(|s| s.over == key && s.dragging),
+            received: source
+                .map(|k| {
+                    self.interaction
+                        .drag_paths
+                        .get(&k)
+                        .cloned()
+                        .unwrap_or_default()
+                })
+                .unwrap_or_default(),
+            tapped: key != 0 && (self.interaction.nav.tapped == key || self.tapped_by_keys(key)),
+            double_tapped: key != 0 && self.interaction.nav.double_tapped == key,
+            long_pressed: key != 0 && self.interaction.nav.long_pressed == key,
+            long_press: self.long_press_progress(key),
+        }
+    }
+}
+
+impl Ui {
     /// One element's drag and pinch for this tick: answers its offset,
     /// scale and turn.
     pub(crate) fn run_gesture(&mut self, i: usize, m: &mut MotionState) -> [f32; 4] {
@@ -359,67 +422,6 @@ impl Ui {
             .insert(channel_key(key, DRAG_X), Channel::at(offset.x, now));
         m.channels
             .insert(channel_key(key, DRAG_Y), Channel::at(offset.y, now));
-    }
-
-    /// What the drag or pinch on `id` (under the open element) is doing:
-    /// last tick's answer, as responses are.
-    pub fn gesture(&self, id: &str) -> GestureInfo {
-        let key = self.key_for(id);
-        self.gesture_of(key)
-    }
-
-    /// [`Ui::gesture`] of the element at a full path.
-    pub fn gesture_at(&self, path: &str) -> GestureInfo {
-        self.gesture_of(crate::id::key_of_path(path))
-    }
-
-    pub(crate) fn gesture_of(&self, key: u64) -> GestureInfo {
-        let m = &self.interaction.state.motion;
-        let g = m.gestures.get(&key).copied().unwrap_or(Gesture {
-            snapped: -1,
-            scale: 1.0,
-            ..Gesture::default()
-        });
-        let path = |k: u64| {
-            self.interaction
-                .drop_paths
-                .get(&k)
-                .cloned()
-                .unwrap_or_default()
-        };
-        let source = m
-            .gestures
-            .iter()
-            .find(|(_, s)| s.dropped_on == key && key != 0)
-            .map(|(k, _)| *k);
-        GestureInfo {
-            held: g.held,
-            dragging: g.dragging,
-            offset_x: g.offset.x,
-            offset_y: g.offset.y,
-            velocity_x: g.velocity.x,
-            velocity_y: g.velocity.y,
-            scale: g.scale,
-            rotation: g.rotation,
-            snapped: g.snapped,
-            dismissed: g.dismissed,
-            over: path(g.over),
-            dropped_on: path(g.dropped_on),
-            hovering: m.gestures.values().any(|s| s.over == key && s.dragging),
-            received: source
-                .map(|k| {
-                    self.interaction
-                        .drag_paths
-                        .get(&k)
-                        .cloned()
-                        .unwrap_or_default()
-                })
-                .unwrap_or_default(),
-            tapped: key != 0 && (self.interaction.nav.tapped == key || self.tapped_by_keys(key)),
-            double_tapped: key != 0 && self.interaction.nav.double_tapped == key,
-            long_pressed: key != 0 && self.interaction.nav.long_pressed == key,
-            long_press: self.long_press_progress(key),
-        }
     }
 }
 
