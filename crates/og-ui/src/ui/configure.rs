@@ -104,6 +104,7 @@ impl Ui {
             drag_paths: IdMap::new(),
             drop_accepts: IdMap::new(),
             kept: Default::default(),
+            paint_cache: Default::default(),
             stats: LayoutStats::default(),
             drawing: Affine::IDENTITY,
             draws: Default::default(),

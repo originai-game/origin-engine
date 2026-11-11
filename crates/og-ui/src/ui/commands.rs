@@ -296,16 +296,16 @@ impl Ui {
         let dpr = self.viewport.dpr();
         let snap = |v: f32| crate::layout::snap(v, dpr);
         let ends = std::mem::take(&mut self.orders.ends);
-        let mut last = std::mem::take(&mut self.kept.last_cmds);
-        self.kept.prev_len = last.len();
-        self.kept.aligned.clear();
-        self.kept.aligned_kept = 0;
-        self.kept.shifted_out = false;
-        self.kept.copied.clear();
+        let mut last = std::mem::take(&mut self.paint_cache.last_cmds);
+        self.paint_cache.prev_len = last.len();
+        self.paint_cache.aligned.clear();
+        self.paint_cache.aligned_kept = 0;
+        self.paint_cache.shifted_out = false;
+        self.paint_cache.copied.clear();
         let mut cmds: Vec<(DrawCmd, Affine)> = Vec::with_capacity(last.len());
         let ghosts = std::mem::take(&mut self.state.motion.ghosts);
         let mut drawn = vec![false; ghosts.len()];
-        self.kept.named.clear();
+        self.paint_cache.named.clear();
         let mut frozen: IdMap<u64, crate::motion::state::Frozen> = IdMap::new();
         // Open subtrees: (node, its first command, the order position past
         // it, where its commands began in last frame's list).
@@ -315,7 +315,7 @@ impl Ui {
         let prev_kinds = std::mem::take(&mut self.prev_kinds);
         self.kept_spans.clear();
         let reuse = self.paint_reuse(order, &ends, changed, &ghosts, &prev_kinds);
-        self.kept.repainted = reuse.repainted.clone();
+        self.paint_cache.repainted = reuse.repainted.clone();
         let mut reused_roots = true;
         let theme = self.theme;
         // An element's draw (crate::paint) in its layout box, at its
@@ -336,7 +336,7 @@ impl Ui {
             let i = order[k];
             // Where its subtree's commands began in last frame's list.
             let up = open.last().map(|o| o.3);
-            let at_last = match self.kept.ranges.get(&self.nodes[i].key) {
+            let at_last = match self.paint_cache.ranges.get(&self.nodes[i].key) {
                 Some(&(rel, len, count)) => match up {
                     Some(Some(base)) => Some((base + rel, len, count)),
                     Some(None) => None,
@@ -366,7 +366,7 @@ impl Ui {
                         c
                     }));
                     self.moved_subtree(&order[k..ends[k]], dx, dy);
-                    self.kept.shifted_out = true;
+                    self.paint_cache.shifted_out = true;
                 } else if cmds.is_empty() && from == 0 && len == last.len() {
                     // Last frame's whole list, as it was: taken, not copied.
                     cmds = std::mem::take(&mut last);
@@ -377,7 +377,10 @@ impl Ui {
                     #[cfg(debug_assertions)]
                     if bounded::checking() {
                         assert!(
-                            self.kept.aligned.last().is_none_or(|r| r.end <= from),
+                            self.paint_cache
+                                .aligned
+                                .last()
+                                .is_none_or(|r| r.end <= from),
                             "a range of last frame's commands is kept twice"
                         );
                     }
@@ -391,14 +394,14 @@ impl Ui {
                     cmds.extend_from_slice(&last[from..from + len]);
                 }
                 self.kept_spans.push(start..cmds.len());
-                self.kept.copied.push((start, from, len, (dx, dy)));
+                self.paint_cache.copied.push((start, from, len, (dx, dy)));
                 if !moved && from == start {
-                    self.kept.aligned.push(start..cmds.len());
-                    self.kept.aligned_kept += 1;
+                    self.paint_cache.aligned.push(start..cmds.len());
+                    self.paint_cache.aligned_kept += 1;
                 }
                 self.stats.kept_commands += count;
                 let base = open.last().map_or(0, |o| o.1);
-                self.kept
+                self.paint_cache
                     .ranges
                     .insert(self.nodes[i].key, (start - base, len, count));
                 k = ends[k];
@@ -478,7 +481,7 @@ impl Ui {
                 let mut background = 0;
                 let mut kept_now = false;
                 if reuse.same(i)
-                    && let Some((b, c, _)) = self.kept.cmds.get(&n.key)
+                    && let Some((b, c, _)) = self.paint_cache.cmds.get(&n.key)
                 {
                     (background, local) = (*b, c.clone());
                     self.stats.kept_commands += 1;
@@ -520,7 +523,9 @@ impl Ui {
                 }
                 let key = self.nodes[i].key;
                 if !kept_now {
-                    self.kept.cmds.insert(key, (background, local.clone(), sig));
+                    self.paint_cache
+                        .cmds
+                        .insert(key, (background, local.clone(), sig));
                 }
                 let kept_at = kept_now.then_some(local.len());
                 let mut local = local.into_iter().map(|c| (c, world));
@@ -574,7 +579,7 @@ impl Ui {
                 // its own: its layer ends with its own drawing.
                 cmds.push((plane_end(self.nodes[i].key, clip), Affine::IDENTITY));
             }
-            self.kept.sigs_set(i, self.nodes[i].key, sig);
+            self.paint_cache.sigs_set(i, self.nodes[i].key, sig);
             open.push((i, start, ends[k], at_last.map(|a| a.0), k));
             k += 1;
             self.close_subtrees(
@@ -597,12 +602,13 @@ impl Ui {
         self.state.motion.frozen = frozen;
         self.nest_named();
         // The same trees as last frame, each drawn whole as it was.
-        let same_roots = self.orders.roots == self.kept.last_roots;
-        self.kept.last_roots.clone_from(&self.orders.roots);
+        let same_roots = self.orders.roots == self.paint_cache.last_roots;
+        self.paint_cache.last_roots.clone_from(&self.orders.roots);
         self.orders.ends = ends;
         self.orders.reuse = reuse;
-        self.kept.reused_all = reused_roots && same_roots && !self.kept.fresh && !self.kept.whole;
-        self.kept.prev_cmds = last;
+        self.paint_cache.reused_all =
+            reused_roots && same_roots && !self.kept.fresh && !self.kept.whole;
+        self.paint_cache.prev_cmds = last;
         for commit in self.part_commits.take().into_values() {
             self.commit_styles(&commit);
         }
@@ -756,8 +762,8 @@ impl Ui {
                     );
                     // Every later command moves one place: no span is kept.
                     self.kept_spans.retain(|r| r.end <= first);
-                    self.kept.aligned.retain(|r| r.end <= first);
-                    shift_named(&mut self.kept.named, first);
+                    self.paint_cache.aligned.retain(|r| r.end <= first);
+                    shift_named(&mut self.paint_cache.named, first);
                     cmds.insert(first, (begin, nj.world));
                     cmds.push((end, nj.world));
                 }
@@ -767,8 +773,8 @@ impl Ui {
                 if nj.sampled.blur > 0.0 {
                     let (begin, end) = blur_layer(nj.sampled.blur, nj.rect, nj.clip);
                     self.kept_spans.retain(|r| r.end <= first);
-                    self.kept.aligned.retain(|r| r.end <= first);
-                    shift_named(&mut self.kept.named, first);
+                    self.paint_cache.aligned.retain(|r| r.end <= first);
+                    shift_named(&mut self.paint_cache.named, first);
                     cmds.insert(first, (begin, nj.world));
                     cmds.push((end, nj.world));
                 }
@@ -780,7 +786,7 @@ impl Ui {
                         "auto" | "match-element" => crate::view_transition::element_name(key),
                         n => n.to_string(),
                     };
-                    self.kept.named.push(crate::view_transition::Named {
+                    self.paint_cache.named.push(crate::view_transition::Named {
                         node: j,
                         key,
                         name,
@@ -800,7 +806,7 @@ impl Ui {
                 // Its range for the next frame, from its parent's start.
                 let base = open.last().map_or(0, |o| o.1);
                 let count = (k - pos) as u32;
-                self.kept
+                self.paint_cache
                     .ranges
                     .insert(self.nodes[j].key, (first - base, cmds.len() - first, count));
             }
@@ -924,7 +930,7 @@ impl Ui {
                 } else {
                     // A retained node not written again: its own inputs are
                     // as they were; what the frame moves is in its signature.
-                    self.kept.sigs.get(i).is_some_and(|s| {
+                    self.paint_cache.sigs.get(i).is_some_and(|s| {
                         s.is_some_and(|(k, sig)| {
                             k == node.key && sig == crate::layout::DrawSig::of(node)
                         })
@@ -937,7 +943,7 @@ impl Ui {
             } else if !written(i)
                 && !self.draws.contains_key(&i)
                 && !matches!(node.content, Content::Rich(_))
-                && let Some(Some((k, old))) = self.kept.sigs.get(i)
+                && let Some(Some((k, old))) = self.paint_cache.sigs.get(i)
                 && *k == node.key
                 && let Some(d) = crate::layout::DrawSig::of(node).moved_from(old)
                 && parent.is_none_or(|p| p == (0.0, 0.0) || p == d)
@@ -1029,16 +1035,16 @@ impl Ui {
     fn moved_subtree(&mut self, nodes: &[usize], dx: f32, dy: f32) {
         for &j in nodes {
             let key = self.nodes[j].key;
-            self.kept
+            self.paint_cache
                 .sigs_set(j, key, crate::layout::DrawSig::of(&self.nodes[j]));
-            if let Some((_, local, sig)) = self.kept.cmds.get_mut(&key) {
+            if let Some((_, local, sig)) = self.paint_cache.cmds.get_mut(&key) {
                 if local.iter().all(shiftable) {
                     for c in local.iter_mut() {
                         shift(c, dx, dy);
                     }
                     *sig = crate::layout::DrawSig::of(&self.nodes[j]);
                 } else {
-                    self.kept.cmds.remove(&key);
+                    self.paint_cache.cmds.remove(&key);
                 }
             }
         }

@@ -245,10 +245,6 @@ pub(crate) struct LayoutCache {
     pub sig: Option<(crate::Theme, og_i18n::Direction, f32)>,
     /// This frame keeps nothing (`epoch` or `sig` changed).
     pub fresh: bool,
-    /// Each element's own draw commands last frame, by key, reused while
-    /// everything it draws from is unchanged, with how many of them are
-    /// its background (its draw paints between those and the rest).
-    pub cmds: crate::id::KeyMap<(usize, Vec<crate::DrawCmd>, DrawSig)>,
     pub measurements: crate::ui::settlement::Measurements,
     pub query_roots: Option<std::collections::BTreeSet<usize>>,
     /// Nodes whose laid-out size changed since they were last laid out.
@@ -282,6 +278,32 @@ pub(crate) struct LayoutCache {
     pub unclean: Vec<usize>,
     /// Asks for `full` on every frame (the bounded walk's check).
     pub whole: bool,
+    /// The animated nodes still moving after the motion pass (visited
+    /// again next tick), each visited node's state groups, and the
+    /// widgets' channels stepped since the pass last read them
+    /// (`Ui::run_motion`, `Ui::animate_key`).
+    pub motion_moving: Vec<usize>,
+    /// Anchor-positioned nodes `position-visibility` showed or hid this
+    /// frame (visited again).
+    pub anchor_toggled: Vec<usize>,
+    pub motion_groups: crate::id::KeyMap<Vec<u64>>,
+    pub widget_channels: Vec<u64>,
+    /// Each element's progress-based animations' progress at the last
+    /// motion step, by its `animation` list (`None`: time-based or
+    /// inactive): what its computed values are sampled at.
+    pub timelines: crate::id::KeyMap<Vec<Option<f32>>>,
+    /// Elements whose computed values follow a timeline that moved: built
+    /// again next frame.
+    pub timeline_restyle: Vec<u64>,
+}
+
+/// Last frame's paint, reused where nothing it draws from changed.
+#[derive(Clone, Debug, Default)]
+pub(crate) struct PaintCache {
+    /// Each element's own draw commands last frame, by key, reused while
+    /// everything it draws from is unchanged, with how many of them are
+    /// its background (its draw paints between those and the rest).
+    pub cmds: crate::id::KeyMap<(usize, Vec<crate::DrawCmd>, DrawSig)>,
     /// Last frame's commands of the screen and its layers, before baking,
     /// and each painted subtree's range in them: its start from its
     /// parent's (a layer's from the list's), its length and its nodes.
@@ -319,23 +341,15 @@ pub(crate) struct LayoutCache {
     pub prev_len: usize,
     /// What last frame's levelling decided (`None`: level afresh).
     pub levels: Option<crate::draw::Levels>,
-    /// The animated nodes still moving after the motion pass (visited
-    /// again next tick), each visited node's state groups, and the
-    /// widgets' channels stepped since the pass last read them
-    /// (`Ui::run_motion`, `Ui::animate_key`).
-    pub motion_moving: Vec<usize>,
-    /// Anchor-positioned nodes `position-visibility` showed or hid this
-    /// frame (visited again).
-    pub anchor_toggled: Vec<usize>,
-    pub motion_groups: crate::id::KeyMap<Vec<u64>>,
-    pub widget_channels: Vec<u64>,
-    /// Each element's progress-based animations' progress at the last
-    /// motion step, by its `animation` list (`None`: time-based or
-    /// inactive): what its computed values are sampled at.
-    pub timelines: crate::id::KeyMap<Vec<Option<f32>>>,
-    /// Elements whose computed values follow a timeline that moved: built
-    /// again next frame.
-    pub timeline_restyle: Vec<u64>,
+}
+
+impl PaintCache {
+    pub(crate) fn sigs_set(&mut self, i: usize, key: u64, sig: DrawSig) {
+        if self.sigs.len() <= i {
+            self.sigs.resize(i + 1, None);
+        }
+        self.sigs[i] = Some((key, sig));
+    }
 }
 
 /// What the frame changes about a node's drawing without writing it again:
@@ -497,13 +511,6 @@ impl LayoutCache {
     }
 
     /// Records the signature slot `i` was painted with.
-    pub(crate) fn sigs_set(&mut self, i: usize, key: u64, sig: DrawSig) {
-        if self.sigs.len() <= i {
-            self.sigs.resize(i + 1, None);
-        }
-        self.sigs[i] = Some((key, sig));
-    }
-
     /// Records that node `i` was laid out this frame.
     fn lay(&mut self, i: usize) {
         if self.laid_mark.len() <= i {

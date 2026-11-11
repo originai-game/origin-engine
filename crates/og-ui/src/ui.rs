@@ -605,6 +605,8 @@ pub struct Ui {
     /// Last frame's input hash of each element and its subtree, with its
     /// layout, for reuse (docs/ui.md §2).
     pub(crate) kept: crate::layout::LayoutCache,
+    /// Last frame's paint, for reuse.
+    pub(crate) paint_cache: crate::layout::PaintCache,
     /// This frame's counts (into `UiFrame::stats`).
     pub(crate) stats: LayoutStats,
     /// The map of the element whose commands are being made: a nine-slice
