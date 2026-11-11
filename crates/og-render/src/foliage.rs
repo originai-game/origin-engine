@@ -23,7 +23,7 @@ pub(crate) fn foliage_winds(
     previous: Option<(Wind, u64, f32)>,
     grid: crate::wind_field::WindGrid,
 ) -> ([Wind; 2], [FoliageWind; 2]) {
-    let current = scene.wind.unwrap_or(Wind {
+    let current = scene.atmosphere.wind.unwrap_or(Wind {
         strength: 0.0,
         ..Wind::default()
     });

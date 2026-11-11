@@ -723,7 +723,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     // Cloth meshes are instances too: keyed for per-object motion.
     keys.extend(super::atmosphere::extract(world, rs, &mut h));
     // The wind copies' parameters, from the og.Wind just read.
-    let (wind, tick, rate) = (rs.scene.wind, rs.scene.tick, rs.scene.tick_rate);
+    let (wind, tick, rate) = (rs.scene.atmosphere.wind, rs.scene.tick, rs.scene.tick_rate);
     rs.wind.present(&mut rs.scene, wind, tick, rate);
     super::environment::extract(world, rs);
     super::probes::extract(world, rs, &mut h);

@@ -294,11 +294,11 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         scene, draw, atmo, ..
     } = rs;
     let layouts = &draw.atmo;
-    scene.fog = None;
-    scene.volumetric_fog = None;
+    scene.atmosphere.fog = None;
+    scene.atmosphere.volumetric_fog = None;
     // No twilight adaptation unless the day-night cycle sets one below.
-    scene.adaptation = 1.0;
-    scene.wind = resource(world, layouts.wind.as_ref()).and_then(|w| {
+    scene.atmosphere.adaptation = 1.0;
+    scene.atmosphere.wind = resource(world, layouts.wind.as_ref()).and_then(|w| {
         let strength = f(&w, "strength", 0.0);
         (strength > 0.0).then(|| og_render::Wind {
             strength,
@@ -311,7 +311,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
     });
     // og.WindMotor: local pushes on the simulated wind field, placed by
     // their entities (wind_field.rs keeps the nearest).
-    scene.wind_motors.clear();
+    scene.atmosphere.wind_motors.clear();
     for (e, v) in kept_rows(world, layouts.wind_motor.as_ref()) {
         let m = h.world_of(e);
         let kind = match v["kind"].as_str() {
@@ -319,7 +319,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             Some("vortex") => og_render::WindMotorKind::Vortex,
             _ => og_render::WindMotorKind::Omni,
         };
-        scene.wind_motors.push(og_render::WindMotor {
+        scene.atmosphere.wind_motors.push(og_render::WindMotor {
             position: m.transform_point3(Vec3::ZERO),
             direction: m.transform_vector3(Vec3::NEG_Z),
             radius: f(&v, "radius", 6.0),
@@ -416,7 +416,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         scene.light.color = look.light_color;
         scene.light.intensity = intensity;
         scene.environment.intensity = look.ambient;
-        scene.adaptation = look.adaptation;
+        scene.atmosphere.adaptation = look.adaptation;
         scene.environment.sky = ProceduralSky {
             sun_direction: stepped.sun_direction,
             sun_color: stepped.sun_color,
@@ -433,7 +433,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
 
     // Clouds over the procedural sky (they bring the built-in one when no
     // sky resource drew it), dimming the light by their cover.
-    scene.clouds = resource(world, layouts.clouds.as_ref())
+    scene.atmosphere.clouds = resource(world, layouts.clouds.as_ref())
         .filter(|c| on(c, "enabled", false))
         .map(|c| og_render::Clouds {
             coverage: f(&c, "coverage", 0.45),
@@ -451,7 +451,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             flash: glam::Vec4::ZERO,
         });
     // The aurora, in the same procedural sky.
-    scene.aurora = resource(world, layouts.aurora.as_ref())
+    scene.atmosphere.aurora = resource(world, layouts.aurora.as_ref())
         .filter(|a| on(a, "enabled", false))
         .map(|a| og_render::Aurora {
             intensity: f(&a, "intensity", 1.0),
@@ -467,8 +467,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             red: color(&a["redColor"], og_render::Aurora::SPECTRAL[1]),
             nitrogen: color(&a["nitrogenColor"], og_render::Aurora::SPECTRAL[2]),
         });
-    if scene.aurora.is_some()
-        && scene.clouds.is_none()
+    if scene.atmosphere.aurora.is_some()
+        && scene.atmosphere.clouds.is_none()
         && !matches!(scene.environment.background, Background::Procedural { .. })
     {
         let dir = scene.light.direction_to_light.normalize_or(Vec3::Y);
@@ -477,7 +477,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             sun_color: scene.environment.sky.sun_color,
         };
     }
-    if scene.clouds.is_some()
+    if scene.atmosphere.clouds.is_some()
         && !matches!(scene.environment.background, Background::Procedural { .. })
     {
         let dir = scene.light.direction_to_light.normalize_or(Vec3::Y);
@@ -513,7 +513,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         // Fog.volumetric: the same medium lit (og-render's volumetric.rs),
         // which replaces the plain fog where the renderer draws it.
         if on(&v, "volumetric", false) {
-            scene.volumetric_fog = Some(og_render::VolumetricFog {
+            scene.atmosphere.volumetric_fog = Some(og_render::VolumetricFog {
                 color: fog.color,
                 density: fog.density,
                 height: fog.height,
@@ -524,9 +524,9 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
                 distance: f(&v, "volumetricDistance", 48.0),
             });
         }
-        scene.fog = Some(fog);
+        scene.atmosphere.fog = Some(fog);
     }
-    if let Some(c) = scene.clouds {
+    if let Some(c) = scene.atmosphere.clouds {
         c.light_scene(scene);
     }
     if let Some(w) = resource(world, layouts.weather.as_ref()) {
@@ -542,7 +542,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             f(&w, "dim", 1.0),
             layer,
         );
-        if scene.fog.is_none()
+        if scene.atmosphere.fog.is_none()
             && let Some(mut fog) = look.fog
         {
             if let Some((t, sun)) = fog_tint {
@@ -551,7 +551,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
                     fog.sun_color = sun;
                 }
             }
-            scene.fog = Some(fog);
+            scene.atmosphere.fog = Some(fog);
         }
         scene.light.cover(look.light);
         scene.environment.intensity *= 0.5 + 0.5 * look.light;
@@ -1070,7 +1070,7 @@ fn lightning_and_surfaces(
     layouts: &AtmoLayouts,
     tick: u64,
 ) {
-    scene.surface_weather = None;
+    scene.atmosphere.surface_weather = None;
     let Some(st) = resource(world, layouts.weather_state.as_ref()) else {
         return;
     };
@@ -1091,7 +1091,7 @@ fn lightning_and_surfaces(
     };
     let drift = Vec3::new(drift.x, 0.0, drift.z).clamp_length_max(down);
     let fall = drift - Vec3::Y * down;
-    scene.surface_weather = Some(og_render::SurfaceWeather {
+    scene.atmosphere.surface_weather = Some(og_render::SurfaceWeather {
         wetness: f(&st, "wetness", 0.0),
         puddles: f(&st, "puddles", 0.0),
         snow: f(&st, "snowDepth", 0.0) / f(&st, "snowCover", 0.08).max(1e-3),
@@ -1110,7 +1110,7 @@ fn lightning_and_surfaces(
     let rate = f64::from(world.time().dt).recip();
     let since = (tick.saturating_sub(u64::from(u(&st, "lastStrike", 0)))) as f64 / rate;
     let at = super::fx::vec3(&st["strikePosition"]);
-    let base = scene.clouds.map_or(600.0, |c| c.base.max(50.0));
+    let base = scene.atmosphere.clouds.map_or(600.0, |c| c.base.max(50.0));
     og_render::add_lightning(scene, at, at.y + base, strikes, since as f32);
 }
 

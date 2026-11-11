@@ -171,7 +171,7 @@ fn a_mesh_moved_by_the_wind_in_its_hooks_draws_shadows_and_occludes_where_it_mov
         scene.set_material_shader(m, Some(shader));
         let mut at = Vec3::new(-1.0, 0.8, 0.0);
         if by_wind {
-            scene.wind = Some(Wind {
+            scene.atmosphere.wind = Some(Wind {
                 strength,
                 direction,
                 ..Default::default()

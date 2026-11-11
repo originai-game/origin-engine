@@ -461,7 +461,7 @@ pub fn add_lightning(
     let toward = (channel - scene.camera.position).normalize_or(Vec3::Y);
     let bolt_light = 2.0 * flash;
     // The cloud over the root glows from inside (the clouds' own flash).
-    if let Some(c) = scene.clouds.as_mut() {
+    if let Some(c) = scene.atmosphere.clouds.as_mut() {
         // In the cloud's underside over the bolt's top, a little towards the
         // camera, so the glow lights the base from inside where the channel
         // enters it rather than a ball in the deck's middle.

@@ -128,7 +128,7 @@ impl Renderer {
         self.gi_history = gi_copy.then_some(self.frame_index);
         self.history.prev_view_proj = Some(cam.view_proj);
         self.history.previous_time = Some(t[0]);
-        let wind = scene.wind.unwrap_or(Wind {
+        let wind = scene.atmosphere.wind.unwrap_or(Wind {
             strength: 0.0,
             ..Wind::default()
         });

@@ -81,7 +81,7 @@ pub fn day_night_scene(hours: f32, fog: bool) -> RenderScene {
         ..Environment::default()
     };
     if fog {
-        scene.fog = Some(Fog {
+        scene.atmosphere.fog = Some(Fog {
             color: look.fog_color,
             density: 0.012,
             start: 8.0,
@@ -666,7 +666,7 @@ pub fn weather_scene(kind: u32) -> RenderScene {
         1.0,
         None,
     );
-    scene.fog = look.fog;
+    scene.atmosphere.fog = look.fog;
     scene.light.cover(look.light);
     scene.environment.intensity *= 0.5 + 0.5 * look.light;
     if let Some(e) = look.emitter.clone() {

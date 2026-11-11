@@ -82,7 +82,7 @@ impl Renderer {
                 // is the one above them, as the sky draws its disc (its
                 // colour and intensity, through the air under the physical
                 // sky), undimmed by their mean cover (`Clouds::light`).
-                let clouded = scene.clouds.filter(|_| {
+                let clouded = scene.atmosphere.clouds.filter(|_| {
                     matches!(scene.environment.background, Background::Procedural { .. })
                 });
                 let mut irradiance = light.color * light.intensity;

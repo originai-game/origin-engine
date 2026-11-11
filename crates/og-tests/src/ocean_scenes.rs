@@ -58,7 +58,7 @@ const SEA: f32 = 6000.0;
 /// does not show against the sky: gradually, half of it by about 1.2 km
 /// near sea level. Its density decreases through the marine boundary layer.
 fn sea_haze(scene: &mut RenderScene) {
-    if let Some(f) = scene.fog.as_mut() {
+    if let Some(f) = scene.atmosphere.fog.as_mut() {
         // Lenain & Melville 2017, doi:10.1175/JPO-D-16-0058.1, reports
         // marine aerosol layers hundreds of metres deep. A 300m exponential
         // scale is this fixture's approximation, not a measured profile fit.
@@ -373,7 +373,7 @@ pub fn ocean_scene(name: &str) -> RenderScene {
                 ..Clouds::default()
             };
             clouds.light_scene(&mut scene);
-            scene.clouds = Some(clouds);
+            scene.atmosphere.clouds = Some(clouds);
             let mut gale = sea(Vec2::new(7.0, -18.7), 1.0);
             // Grey-green deep water under the overcast.
             gale.deep = Vec3::new(0.012, 0.035, 0.035);
@@ -433,7 +433,7 @@ pub fn ocean_scene(name: &str) -> RenderScene {
                 ..Clouds::default()
             };
             clouds.light_scene(&mut scene);
-            scene.clouds = Some(clouds);
+            scene.atmosphere.clouds = Some(clouds);
             let mut gale = sea(Vec2::new(5.0, -14.0), 0.85);
             gale.deep = Vec3::new(0.012, 0.035, 0.035);
             scene.water.push(gale);
@@ -476,10 +476,10 @@ pub fn ocean_scene(name: &str) -> RenderScene {
                 ..Clouds::default()
             };
             clouds.light_scene(&mut scene);
-            if let Some(f) = scene.fog.as_mut() {
+            if let Some(f) = scene.atmosphere.fog.as_mut() {
                 (f.color, f.sun_color) = clouds.fog_under(f.color, f.sun_color);
             }
-            scene.clouds = Some(clouds);
+            scene.atmosphere.clouds = Some(clouds);
             let mut gale = sea(Vec2::new(4.0, -15.0), 1.0);
             gale.deep = Vec3::new(0.012, 0.035, 0.035);
             beach(&mut scene, gale, 1.5);
@@ -614,7 +614,7 @@ pub fn flow_map_scene(scene: &mut RenderScene, mapped: bool) {
     // 1.5 m beside the boulder and not at all at its nose.
     scene.tick = 90;
     scene.tick_rate = 60.0;
-    scene.fog = None::<Fog>;
+    scene.atmosphere.fog = None::<Fog>;
 }
 
 /// The beach's extent (m) and samples a side (2 m apart).

@@ -1529,16 +1529,19 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
     }
     // og.GrassPusher: what presses the grass and scattered copies (the
     // renderer's trample map), placed by their entities' drawn transforms.
-    rs.scene.grass_pushers.clear();
+    rs.scene.atmosphere.grass_pushers.clear();
     let layout = rs.draw.grass_pusher.clone();
     for (e, v) in kept_rows(world, layout.as_ref()) {
         let m = h.world_of(e);
-        rs.scene.grass_pushers.push(og_render::GrassPusher {
-            position: m.transform_point3(glam::Vec3::ZERO),
-            radius: f(&v, "radius", 0.5),
-            height: f(&v, "height", 1.8),
-            strength: f(&v, "strength", 1.0),
-        });
+        rs.scene
+            .atmosphere
+            .grass_pushers
+            .push(og_render::GrassPusher {
+                position: m.transform_point3(glam::Vec3::ZERO),
+                radius: f(&v, "radius", 0.5),
+                height: f(&v, "height", 1.8),
+                strength: f(&v, "strength", 1.0),
+            });
     }
     // The unedited terrains' tiles, as the camera needs them.
     if !streamed.is_empty() {

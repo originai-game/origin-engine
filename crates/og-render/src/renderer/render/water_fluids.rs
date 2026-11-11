@@ -73,7 +73,7 @@ impl Renderer {
                     &self.post.white
                 },
                 ao.map_or(0.0, |a| a.direct),
-                scene.adaptation,
+                scene.atmosphere.adaptation,
                 scene.origin,
                 water::seconds(scene),
                 &scene.camera,

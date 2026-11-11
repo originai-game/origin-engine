@@ -515,7 +515,7 @@ fn effect_table(frames: u32, only: Option<&str>) -> Result<String, String> {
         }),
         // The E5 round.
         ("atmosphere-fog", "E5: fog (distance and height)", |g| {
-            g.scene.fog = None
+            g.scene.atmosphere.fog = None
         }),
         (
             "atmosphere-dusk",
@@ -555,7 +555,7 @@ fn effect_table(frames: u32, only: Option<&str>) -> Result<String, String> {
             "E5: rain preset (particles, fog, dimming)",
             |g| {
                 g.scene.particles.clear();
-                g.scene.fog = None;
+                g.scene.atmosphere.fog = None;
             },
         ),
         // Phase 2: terrain and water.

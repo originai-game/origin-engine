@@ -127,7 +127,7 @@ pub fn weather_scene(name: &str) -> RenderScene {
 /// An overcast physical sky at `hours`.
 fn overcast(scene: &mut RenderScene, hours: f32, coverage: f32) {
     physical_light(scene, hours, PhysicalAtmosphere::EARTH);
-    scene.clouds = Some(Clouds {
+    scene.atmosphere.clouds = Some(Clouds {
         coverage,
         color: Vec3::splat(0.7),
         base: 900.0,
@@ -228,7 +228,7 @@ fn street() -> RenderScene {
             ..Default::default()
         },
     );
-    scene.surface_weather = Some(SurfaceWeather {
+    scene.atmosphere.surface_weather = Some(SurfaceWeather {
         wetness: 1.0,
         puddles: 0.75,
         rain: 1.0,
@@ -286,7 +286,7 @@ fn puddles() -> RenderScene {
             ),
         );
     }
-    scene.surface_weather = Some(SurfaceWeather {
+    scene.atmosphere.surface_weather = Some(SurfaceWeather {
         wetness: 0.45,
         puddles: 0.6,
         rain: 0.0,
@@ -395,7 +395,7 @@ fn snow_buildup() -> RenderScene {
             ),
         );
     }
-    scene.surface_weather = Some(SurfaceWeather {
+    scene.atmosphere.surface_weather = Some(SurfaceWeather {
         snow: 0.75,
         snow_depth: 0.06,
         ..SurfaceWeather::default()
@@ -467,7 +467,7 @@ fn desert() -> RenderScene {
             ..Default::default()
         },
     );
-    scene.surface_weather = Some(SurfaceWeather {
+    scene.atmosphere.surface_weather = Some(SurfaceWeather {
         dust: 0.8,
         dust_color: Vec3::new(0.86, 0.74, 0.56),
         ..SurfaceWeather::default()
@@ -565,7 +565,7 @@ fn cloth() -> RenderScene {
 pub fn cloth_with(left: StandardMaterial, right: StandardMaterial) -> RenderScene {
     let mut scene = RenderScene::new();
     physical_light(&mut scene, 15.5, PhysicalAtmosphere::EARTH);
-    scene.fog = None;
+    scene.atmosphere.fog = None;
     ground(
         &mut scene,
         40.0,
@@ -616,7 +616,7 @@ pub fn cloth_with(left: StandardMaterial, right: StandardMaterial) -> RenderScen
 /// the running film, the drops splashing on them.
 fn cobbles_wet() -> RenderScene {
     let mut scene = crate::terrain_scenes::displaced_scene(crate::terrain_scenes::DISPLACED_RELIEF);
-    scene.surface_weather = Some(SurfaceWeather {
+    scene.atmosphere.surface_weather = Some(SurfaceWeather {
         wetness: 1.0,
         puddles: 0.55,
         rain: 1.0,

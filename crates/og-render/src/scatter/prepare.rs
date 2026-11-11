@@ -115,7 +115,7 @@ impl ScatterRenderer {
         self.placed_chunks.clear();
         let noise = crossfade_noise_offset(frame_index);
         let mut batches = Vec::new();
-        let wind = scene.wind.filter(|w| w.strength > 0.0);
+        let wind = scene.atmosphere.wind.filter(|w| w.strength > 0.0);
         let previous = self.last_tick.unwrap_or(scene.tick);
         self.last_tick = Some(scene.tick);
         queue.write_buffer(

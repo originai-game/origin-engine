@@ -107,7 +107,7 @@ impl log::Log for Collect {
 fn weather_scene(wet: bool) -> (RenderDesc, RenderScene, u32) {
     let (desc, mut scene, frames) = built("weather-wet");
     if !wet {
-        scene.surface_weather = None;
+        scene.atmosphere.surface_weather = None;
     }
     let shader = scene.add_shader(p2_scenes::ripple_shader());
     let m = scene.add_standard_material(StandardMaterial {

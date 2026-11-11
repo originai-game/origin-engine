@@ -291,7 +291,7 @@ fn give_foliage(scene: &mut RenderScene, parts: &[(MeshHandle, MaterialHandle, M
 
 /// The strong wind `meshlet-sway` blows (towards +x), at a tick past 0.
 fn windy(scene: &mut RenderScene) {
-    scene.wind = Some(og_render::Wind {
+    scene.atmosphere.wind = Some(og_render::Wind {
         strength: 0.5,
         direction: Vec3::X,
         speed: 3.0,

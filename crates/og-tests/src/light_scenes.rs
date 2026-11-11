@@ -367,7 +367,7 @@ pub fn volumetric_fog_scene() -> RenderScene {
         range: 9.0,
         cast_shadows: true,
     }];
-    scene.volumetric_fog = Some(VolumetricFog {
+    scene.atmosphere.volumetric_fog = Some(VolumetricFog {
         color: Vec3::new(0.9, 0.92, 0.96),
         density: 0.06,
         height: 0.0,
@@ -774,7 +774,7 @@ pub fn rect_meadow_scene(grass: bool) -> (RenderScene, [Vec3; 2]) {
     scene.light.cast_shadows = false;
     scene.environment.intensity = 0.02;
     scene.environment.background = Background::Color(Vec3::new(0.004, 0.006, 0.015));
-    scene.fog = None;
+    scene.atmosphere.fog = None;
     let eye = scene.camera.position;
     let ahead = (scene.camera.target - eye) * Vec3::new(1.0, 0.0, 1.0);
     let forward = ahead.normalize();

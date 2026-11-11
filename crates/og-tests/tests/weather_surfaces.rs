@@ -79,7 +79,7 @@ fn plain(m: StandardMaterial, wall: bool, weather: Option<SurfaceWeather>) -> Rg
             ..Default::default()
         };
     }
-    scene.surface_weather = weather.map(|w| SurfaceWeather { shelter: 0.0, ..w });
+    scene.atmosphere.surface_weather = weather.map(|w| SurfaceWeather { shelter: 0.0, ..w });
     frame(&scene)
 }
 
@@ -216,6 +216,6 @@ fn plain_with(
         exposure: Exposure::linear(1.0),
         ..Default::default()
     };
-    scene.surface_weather = weather.map(|w| SurfaceWeather { shelter: 0.0, ..w });
+    scene.atmosphere.surface_weather = weather.map(|w| SurfaceWeather { shelter: 0.0, ..w });
     frame(&scene)
 }

@@ -855,7 +855,10 @@ impl Renderer {
     pub(crate) fn fit_shelter_layer(&mut self, scene: &RenderScene) {
         // Only the weather on surfaces reads it (RenderDesc::without).
         let shelter = !self.info.without.contains(LitFeatures::SURFACE_WEATHER)
-            && scene.surface_weather.is_some_and(|w| w.shelter > 0.0);
+            && scene
+                .atmosphere
+                .surface_weather
+                .is_some_and(|w| w.shelter > 0.0);
         let wanted = self.frame_cascades(scene) + u32::from(shelter);
         if self.shadows.cascade_map.layers.len() as u32 == wanted {
             return;
@@ -990,13 +993,13 @@ impl Renderer {
         };
         // The first frame with clouds draws their noise and makes the sky
         // group again with it.
-        if scene.clouds.is_some() && !self.sky.cloud_noise.made {
+        if scene.atmosphere.clouds.is_some() && !self.sky.cloud_noise.made {
             self.sky.cloud_noise.make(&self.device, &self.queue);
             self.lights.environment = None;
         }
         // The aurora's footprint follows the clock every frame; the first
         // frame with one makes its texture, and the sky group again.
-        if let Some(a) = &scene.aurora {
+        if let Some(a) = &scene.atmosphere.aurora {
             let made = self.sky.aurora_map.made();
             let viewer = scene.camera.position + scene.origin;
             let rate = if scene.tick_rate > 0.0 {

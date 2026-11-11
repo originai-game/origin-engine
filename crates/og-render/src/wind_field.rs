@@ -411,8 +411,8 @@ impl WindFieldSim {
         scene: &crate::RenderScene,
     ) {
         self.steps = 0;
-        let wind = scene.wind.filter(|w| w.strength > 0.0);
-        let motors_on = !scene.wind_motors.is_empty();
+        let wind = scene.atmosphere.wind.filter(|w| w.strength > 0.0);
+        let motors_on = !scene.atmosphere.wind_motors.is_empty();
         let driven = wind.is_some() || motors_on;
         let off = |me: &mut Self| {
             me.grid = NO_GRID;
@@ -599,6 +599,7 @@ impl WindFieldSim {
 fn motors_gpu(scene: &crate::RenderScene, eye: glam::DVec3) -> ([[f32; 4]; 2 * MAX_MOTORS], usize) {
     let origin = scene.origin.as_dvec3();
     let mut near: Vec<&WindMotor> = scene
+        .atmosphere
         .wind_motors
         .iter()
         .filter(|m| m.radius > 0.0 && m.strength.is_finite() && m.strength != 0.0)

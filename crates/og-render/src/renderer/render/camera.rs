@@ -65,13 +65,13 @@ impl Renderer {
         .filter(|_| line.is_none());
         // Volumetric fog replaces the plain fog (volumetric.rs): above
         // water, for a perspective camera, where the quality lets it.
-        let volumetric_fog = scene.volumetric_fog.filter(|_| {
+        let volumetric_fog = scene.atmosphere.volumetric_fog.filter(|_| {
             WORLD_3D && scene.quality.volumetric_fog && under.is_none() && !cam.orthographic
         });
         let frame_fog = match under {
             Some(i) => Some(water::underwater_fog(&scene_water[i])),
             None if volumetric_fog.is_some() => None,
-            None => scene.fog,
+            None => scene.atmosphere.fog,
         };
         // Up to `planar_reflections` surfaces mirror the scene, each in its own pass: slot 0 a grid surface first,
         // such as a lake, else the first that asks (with two, the one material shaders read: `planar_reflection`),

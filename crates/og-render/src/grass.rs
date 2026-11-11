@@ -557,7 +557,7 @@ pub(crate) fn far_gpu(scene: &crate::RenderScene, terrain: usize) -> FarGpu {
     // The far tint brightens in og.Wind's analytic gusts (the terrain
     // does not read the simulated field).
     gpu.wind = crate::wind::field_gpu(
-        scene.wind,
+        scene.atmosphere.wind,
         scene.tick,
         scene.tick,
         scene.tick_rate,
@@ -675,6 +675,7 @@ fn look_gpu(g: &Grass) -> [[f32; 4]; 4] {
 /// the shadow pass).
 fn snow_weight(scene: &crate::RenderScene) -> f32 {
     let snow = scene
+        .atmosphere
         .surface_weather
         .as_ref()
         .map_or(0.0, |w| w.snow.clamp(0.0, 1.0));
@@ -1264,7 +1265,7 @@ impl GrassRenderer {
         let previous = self.last_tick.unwrap_or(scene.tick);
         self.last_tick = (!scene.grass.is_empty()).then_some(scene.tick);
         let wind = crate::wind::field_gpu(
-            scene.wind,
+            scene.atmosphere.wind,
             scene.tick,
             previous,
             scene.tick_rate,

@@ -102,9 +102,13 @@ impl Renderer {
                     )),
                     _ => None,
                 },
-                scene.clouds.as_ref().map(|c| (c, scene.sky_captured())),
-                scene.aurora.as_ref(),
-                scene.surface_weather.as_ref(),
+                scene
+                    .atmosphere
+                    .clouds
+                    .as_ref()
+                    .map(|c| (c, scene.sky_captured())),
+                scene.atmosphere.aurora.as_ref(),
+                scene.atmosphere.surface_weather.as_ref(),
                 scene.tick,
                 scene.tick_rate,
             ),
@@ -213,7 +217,11 @@ impl Renderer {
         // last (never a constant: cascades or cached layers may come first).
         if let Some((view_proj, ..)) = &shelter {
             let side = self.info.shadow_map_size as f32;
-            let w = scene.surface_weather.as_ref().expect("filtered above");
+            let w = scene
+                .atmosphere
+                .surface_weather
+                .as_ref()
+                .expect("filtered above");
             let texel = w.shelter.clamp(4.0, 1024.0) / side;
             uniform.atmosphere.shelter = [
                 view_proj.x_axis.to_array(),

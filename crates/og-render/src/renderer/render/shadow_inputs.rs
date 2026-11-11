@@ -46,7 +46,7 @@ impl Renderer {
         // stood still long enough to stay in the cached shadow layers.
         let shadow_split = {
             let wind = |w: Option<&crate::scatter::Wind>| w.is_some_and(|w| w.strength != 0.0);
-            let swaying = wind(scene.wind.as_ref())
+            let swaying = wind(scene.atmosphere.wind.as_ref())
                 || wind(self.history.previous_wind.as_ref().map(|w| &w.0));
             let (meshes, materials) = (&self.cache.meshes, &self.cache.materials);
             // Hashed again only where an instance or its mesh's or
@@ -96,6 +96,7 @@ impl Renderer {
         // cascade array's last layer (`fit_shelter_layer` gave it one):
         // drawn again only when what it was drawn from changes.
         let shelter = scene
+            .atmosphere
             .surface_weather
             .as_ref()
             .filter(|_| self.shadows.cascade_map.layers.len() as u32 > self.frame_cascades(scene))

@@ -282,7 +282,7 @@ pub fn afternoon(scene: &mut RenderScene) {
         background: Background::Sky,
         ..Environment::default()
     };
-    scene.fog = Some(Fog {
+    scene.atmosphere.fog = Some(Fog {
         color: Vec3::new(0.62, 0.7, 0.8),
         density: 0.00018,
         start: 150.0,

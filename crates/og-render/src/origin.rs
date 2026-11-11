@@ -59,10 +59,10 @@ impl RenderScene {
         if let crate::ShadowBounds::Sphere { center, .. } = &mut self.light.shadow_bounds {
             *center += d;
         }
-        for m in &mut self.wind_motors {
+        for m in &mut self.atmosphere.wind_motors {
             m.position -= origin;
         }
-        for p in &mut self.grass_pushers {
+        for p in &mut self.atmosphere.grass_pushers {
             p.position -= origin;
         }
         for l in &mut self.lights {
@@ -157,10 +157,10 @@ impl RenderScene {
         if let Some(g) = &mut self.environment.ground {
             g.center += d;
         }
-        if let Some(f) = &mut self.fog {
+        if let Some(f) = &mut self.atmosphere.fog {
             f.height += d.y;
         }
-        if let Some(f) = &mut self.volumetric_fog {
+        if let Some(f) = &mut self.atmosphere.volumetric_fog {
             f.height += d.y;
         }
         for w in &mut self.water {

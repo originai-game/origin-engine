@@ -82,8 +82,8 @@ pub fn physical_light(
         },
         ..Environment::default()
     };
-    scene.adaptation = look.adaptation;
-    scene.fog = Some(Fog {
+    scene.atmosphere.adaptation = look.adaptation;
+    scene.atmosphere.fog = Some(Fog {
         color: look.fog_color,
         sun_color: look.fog_sun.unwrap_or(Fog::default().sun_color),
         // Light ground haze, not homogeneous fog up to the cloud layer:
@@ -109,7 +109,7 @@ pub fn physical_light(
 pub fn live_sky_scene(clouds: bool) -> RenderScene {
     let mut scene = RenderScene::new();
     physical_light(&mut scene, 14.0, PhysicalAtmosphere::EARTH);
-    scene.fog = None;
+    scene.atmosphere.fog = None;
     let ground = scene.add_mesh(shapes::plane(200.0, 1.0));
     let grey = scene.add_standard_material(StandardMaterial {
         color: Vec3::splat(0.35),
@@ -129,7 +129,7 @@ pub fn live_sky_scene(clouds: bool) -> RenderScene {
     scene.camera = colonnade_camera();
     scene.camera.position = Vec3::new(0.0, 2.2, 4.5);
     scene.camera.target = at;
-    scene.clouds = Some(Clouds {
+    scene.atmosphere.clouds = Some(Clouds {
         coverage: if clouds { 0.95 } else { 0.0 },
         density: 0.06,
         color: Vec3::new(1.0, 0.45, 0.5),
@@ -152,7 +152,7 @@ fn clouded(mut scene: RenderScene, clouds: Clouds) -> RenderScene {
     if scene.environment.sky.sun_direction.y > 0.0 {
         scene = exposed(scene, 1.5 * t * t * (3.0 - 2.0 * t));
     }
-    scene.clouds = Some(clouds);
+    scene.atmosphere.clouds = Some(clouds);
     scene.camera.target += Vec3::Y * 14.0;
     scene
 }
@@ -170,7 +170,7 @@ fn weathered(hours: f32, weather: SurfaceWeather) -> RenderScene {
             ..Clouds::default()
         },
     );
-    scene.surface_weather = Some(weather);
+    scene.atmosphere.surface_weather = Some(weather);
     scene.camera.position = Vec3::new(1.5, 1.6, 4.0);
     scene.camera.target = Vec3::new(-1.0, 0.2, -30.0);
     scene
@@ -296,7 +296,7 @@ fn auroral(aurora: Aurora) -> RenderScene {
     if let Some(look) = scene.environment.sky.look.as_mut() {
         look.moon_size = 0.0;
     }
-    scene.aurora = Some(aurora);
+    scene.atmosphere.aurora = Some(aurora);
     scene.camera.target += Vec3::Y * 22.0;
     scene
 }
@@ -415,7 +415,7 @@ pub fn sky_scene(name: &str) -> RenderScene {
         }),
         "aurora-arcs-clear" => {
             let mut scene = auroral(Aurora::default());
-            scene.aurora = None;
+            scene.atmosphere.aurora = None;
             scene
         }
         // A substorm's breakup of soft electrons (red tops), behind broken

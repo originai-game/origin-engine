@@ -92,7 +92,7 @@ pub fn grass_scene(view: &str) -> RenderScene {
 /// `grass-wind`: the near view in [`wind`] at `tick` (60 Hz).
 pub fn grass_wind_scene(tick: u64) -> RenderScene {
     let mut scene = grass_scene("near");
-    scene.wind = Some(wind());
+    scene.atmosphere.wind = Some(wind());
     scene.tick = tick;
     scene
 }

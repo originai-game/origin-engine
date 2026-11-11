@@ -1508,7 +1508,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // gust passes.
         "terrain-grass-wind" => |g, _| {
             g.scene = crate::terrain_scenes::grass_scene();
-            g.scene.wind = Some(og_render::Wind {
+            g.scene.atmosphere.wind = Some(og_render::Wind {
                 strength: 0.4,
                 direction: Vec3::new(1.0, 0.0, 0.4),
                 speed: 3.0,

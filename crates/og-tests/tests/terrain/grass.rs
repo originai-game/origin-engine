@@ -48,7 +48,7 @@ fn trample_scene() -> RenderScene {
             ..Default::default()
         },
     });
-    scene.fog = None;
+    scene.atmosphere.fog = None;
     scene.environment.background = Background::Color(Vec3::ZERO);
     scene.light.cast_shadows = false;
     scene.camera = Camera {
@@ -93,7 +93,7 @@ fn a_grass_pusher_tramples_the_blades_and_they_recover() {
     let untouched = blade_pixels_above(&draw(&mut scene, 0));
     // The pusher covers every drawn blade near its centre (radius 6 m,
     // the field 2.5 m: pressed at least 97 %).
-    scene.grass_pushers = vec![og_render::GrassPusher {
+    scene.atmosphere.grass_pushers = vec![og_render::GrassPusher {
         position: Vec3::new(0.0, 0.0, 0.0),
         radius: 6.0,
         height: 1.8,
@@ -105,7 +105,7 @@ fn a_grass_pusher_tramples_the_blades_and_they_recover() {
     }
     keep("grass-trample", &pressed);
     let under = blade_pixels_above(&pressed);
-    scene.grass_pushers.clear();
+    scene.atmosphere.grass_pushers.clear();
     // 1.5 s later (the recovery and half a second), drawn every 4 ticks.
     let mut after = pressed.clone();
     for tick in (14..=100).step_by(4) {

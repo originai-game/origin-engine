@@ -49,7 +49,7 @@ fn water_and_volumetric_fog_are_not_drawn_in_the_2d_profile() {
         opacity: 1.0,
         ..Default::default()
     });
-    world.volumetric_fog = Some(VolumetricFog {
+    world.atmosphere.volumetric_fog = Some(VolumetricFog {
         density: 0.5,
         ..Default::default()
     });

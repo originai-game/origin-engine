@@ -49,7 +49,7 @@ fn scattered_copies_are_drawn_from_chunks_and_shrink_over_the_fade() {
         impostor: None,
         impostor_distance: 0.0,
     });
-    scene.fog = None;
+    scene.atmosphere.fog = None;
     scene.look.post.tonemap = Tonemap::None;
     scene.environment.background = Background::Color(Vec3::ZERO);
     scene.light.cast_shadows = false;
@@ -319,7 +319,7 @@ fn wind_sways_scattered_copies_downwind() {
         impostor: None,
         impostor_distance: 0.0,
     });
-    scene.fog = None;
+    scene.atmosphere.fog = None;
     scene.look.post.tonemap = Tonemap::None;
     scene.environment.background = Background::Color(Vec3::ZERO);
     scene.light.cast_shadows = false;
@@ -393,7 +393,7 @@ fn wind_sways_scattered_copies_downwind() {
     };
     let dir = Vec2::new(0.6, 0.8);
     for tick in [0, 37] {
-        scene.wind = Some(steady);
+        scene.atmosphere.wind = Some(steady);
         let moved = offsets(&draw(&mut scene, tick), dir);
         let worst = moved.iter().map(|o| o.distance(dir)).fold(0.0, f32::max);
         println!(
@@ -405,7 +405,7 @@ fn wind_sways_scattered_copies_downwind() {
             "tick {tick}: moved {moved:?}, not {dir} (0.5 × 2 m)"
         );
     }
-    scene.wind = Some(Wind {
+    scene.atmosphere.wind = Some(Wind {
         strength: 0.0,
         ..steady
     });
@@ -413,14 +413,14 @@ fn wind_sways_scattered_copies_downwind() {
         draw(&mut scene, 9).pixels == still.pixels,
         "strength 0 moved a copy"
     );
-    scene.wind = Some(steady);
+    scene.atmosphere.wind = Some(steady);
     scene.scatters[0].scatter.sway = 0.0;
     assert!(
         draw(&mut scene, 9).pixels == still.pixels,
         "sway 0 moved a copy"
     );
     scene.scatters[0].scatter.sway = 1.0;
-    scene.wind = Some(Wind {
+    scene.atmosphere.wind = Some(Wind {
         gust: 1.0,
         direction: Vec3::X,
         ..steady

@@ -305,7 +305,7 @@ impl Trample {
         scene: &crate::RenderScene,
     ) {
         self.steps = 0;
-        let wanted = !scene.grass_pushers.is_empty() || self.last.is_some();
+        let wanted = !scene.atmosphere.grass_pushers.is_empty() || self.last.is_some();
         let vegetation = !scene.grass.is_empty() || !scene.scatters.is_empty();
         if self.layout.is_none() || !crate::WORLD_3D || !wanted || !vegetation {
             self.grid = [0.0; 4];
@@ -390,6 +390,7 @@ fn pushers_gpu(
 ) -> ([[f32; 4]; 2 * MAX_PUSHERS], usize) {
     let origin = scene.origin.as_dvec3();
     let mut near: Vec<&GrassPusher> = scene
+        .atmosphere
         .grass_pushers
         .iter()
         .filter(|p| p.radius > 0.0 && p.strength > 0.0 && p.position.is_finite())

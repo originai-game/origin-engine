@@ -73,7 +73,7 @@ pub(super) fn layer_look(l: &TerrainLayer, origin: Vec3) -> LayerGpu {
 /// picking and what stands on the ground keep the field), so it stays
 /// small enough that nothing visibly floats or sinks.
 pub(crate) fn snow_lift(scene: &crate::RenderScene) -> f32 {
-    scene.surface_weather.as_ref().map_or(0.0, |w| {
+    scene.atmosphere.surface_weather.as_ref().map_or(0.0, |w| {
         let t = (w.snow / 0.3).clamp(0.0, 1.0);
         w.snow_depth.clamp(0.0, 0.1) * t * t * (3.0 - 2.0 * t)
     })

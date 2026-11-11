@@ -174,10 +174,10 @@ impl Clouds {
         if !scene.sky_captured() {
             scene.environment.intensity *= sky;
         }
-        if let Some(fog) = &mut scene.fog {
+        if let Some(fog) = &mut scene.atmosphere.fog {
             (fog.color, fog.sun_color) = self.fog_under(fog.color, fog.sun_color);
         }
-        if let Some(fog) = &mut scene.volumetric_fog {
+        if let Some(fog) = &mut scene.atmosphere.volumetric_fog {
             fog.color = self.fog_under(fog.color, fog.color).0;
         }
     }
@@ -359,19 +359,19 @@ mod tests {
             ..Clouds::default()
         };
         let mut scene = crate::RenderScene::new();
-        scene.fog = Some(crate::Fog {
+        scene.atmosphere.fog = Some(crate::Fog {
             color: blue,
             sun_color: sun,
             ..Default::default()
         });
-        scene.volumetric_fog = Some(crate::VolumetricFog {
+        scene.atmosphere.volumetric_fog = Some(crate::VolumetricFog {
             color: blue,
             ..Default::default()
         });
         storm.light_scene(&mut scene);
-        let fog = scene.fog.unwrap();
+        let fog = scene.atmosphere.fog.unwrap();
         let (c, s) = (fog.color, fog.sun_color);
-        assert_eq!(scene.volumetric_fog.unwrap().color, c);
+        assert_eq!(scene.atmosphere.volumetric_fog.unwrap().color, c);
         assert!(
             c.max_element() - c.min_element() < 0.1 * c.max_element(),
             "grey: {c}"

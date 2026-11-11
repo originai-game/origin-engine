@@ -151,7 +151,10 @@ impl Features {
             .iter()
             .any(|w| w.mesh.is_none() && w.shore.is_some());
         Features::NONE
-            .with(Features::WEATHER, scene.surface_weather.is_some() || shore)
+            .with(
+                Features::WEATHER,
+                scene.atmosphere.surface_weather.is_some() || shore,
+            )
             .with(Features::LOCAL_LIGHTS, !scene.lights.is_empty())
             .with(Features::DECALS, !scene.decals.is_empty())
             .with(Features::GI, scene.look.post.gi_probes.is_some())
