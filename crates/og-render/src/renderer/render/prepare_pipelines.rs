@@ -144,6 +144,10 @@ impl Renderer {
                 );
             }
         }
+        // The main pass starts from the prepass's depth (depth_seed.rs).
+        if prepass && self.samples == 1 && self.prepass.depth_seed.is_none() {
+            self.prepass.depth_seed = Some(depth_seed::DepthSeed::new(&self.device));
+        }
         // A pattern in object space: the object pass after the prepass.
         let object_space = prepass && scene.look.stylise.in_object_space();
         if object_space {

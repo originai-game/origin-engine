@@ -48,6 +48,14 @@ impl Renderer {
             .graph
             .try_view("ao-depth")
             .filter(|_| !water_draws.is_empty());
+        // The main pass's depth starts from the prepass's (depth_seed.rs),
+        // so every pass here that tests against it leaves it stored.
+        let seeds = self.samples == 1;
+        let kept = if seeds {
+            wgpu::StoreOp::Store
+        } else {
+            wgpu::StoreOp::Discard
+        };
         let attachment = |view, clear: f64| {
             Some(wgpu::RenderPassColorAttachment {
                 view,
@@ -75,8 +83,9 @@ impl Renderer {
                 view: self.graph.view("pre-depth"),
                 depth_ops: Some(wgpu::Operations {
                     load: wgpu::LoadOp::Clear(1.0),
-                    // Stylise's object pass tests against it.
-                    store: if object_space || ao_depth.is_some() {
+                    // Stylise's object pass and the water's AO depth test
+                    // against it.
+                    store: if object_space || ao_depth.is_some() || seeds {
                         wgpu::StoreOp::Store
                     } else {
                         wgpu::StoreOp::Discard
@@ -215,7 +224,7 @@ impl Renderer {
                     view: self.graph.view("pre-depth"),
                     depth_ops: Some(wgpu::Operations {
                         load: wgpu::LoadOp::Load,
-                        store: wgpu::StoreOp::Discard,
+                        store: kept,
                     }),
                     stencil_ops: None,
                 }),
@@ -292,7 +301,7 @@ impl Renderer {
                         view: self.graph.view("pre-depth"),
                         depth_ops: Some(wgpu::Operations {
                             load: wgpu::LoadOp::Load,
-                            store: wgpu::StoreOp::Discard,
+                            store: kept,
                         }),
                         stencil_ops: None,
                     }),

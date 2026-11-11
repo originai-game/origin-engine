@@ -77,6 +77,7 @@ pub fn shader_sources() -> Vec<ShaderSource> {
         crate::material::array_shadow_source(&crate::shadow_source(&hooks)),
     );
     add("stylise object", crate::stylise_object::object_source());
+    add("depth seed", crate::depth_seed::DEPTH_SEED_WGSL.to_string());
     // A full custom shader (custom.rs), lit and unlit, and its casters.
     let example = crate::custom::example();
     for lit in [true, false] {

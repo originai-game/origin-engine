@@ -703,7 +703,7 @@ pub(crate) fn meshlet_shadow_pipeline(
 }
 
 /// The depth prepass's pipelines: the standard and the lean ones by key,
-/// and stylise's object pass.
+/// stylise's object pass, and the main pass's depth seed.
 pub(crate) struct PrepassState {
     /// Prepass pipelines by (side, skinned).
     pub(crate) prepass_pipelines:
@@ -714,6 +714,9 @@ pub(crate) struct PrepassState {
     /// Stylise's object pass, made the first frame a pattern is laid in
     /// object space (`stylise_object.rs`).
     pub(crate) stylise_object: Option<stylise_object::ObjectPass>,
+    /// The main pass's depth seeded from the prepass's, made the first
+    /// frame a prepass runs without multisampling (`depth_seed.rs`).
+    pub(crate) depth_seed: Option<depth_seed::DepthSeed>,
 }
 
 /// The lit passes' pipelines: the standard, lean and physical ones by key,
