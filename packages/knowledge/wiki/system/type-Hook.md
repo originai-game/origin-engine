@@ -14,7 +14,7 @@ interface Hook {
   # members follow, each quoted below
 ```
 
-<sub>Module `system` line 65</sub>
+<sub>Module `system` line 66</sub>
 
 <a id="member-Hook-name"></a>
 
@@ -32,4 +32,4 @@ Binding symbol `og_hook_get_name` · publish builds: kept
 prop name String "The hook's unique name."
 ```
 
-<sub>Module `system` line 67</sub>
+<sub>Module `system` line 68</sub>

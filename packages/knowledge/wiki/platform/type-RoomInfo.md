@@ -29,4 +29,4 @@ struct RoomInfo {
 }
 ```
 
-<sub>Module `platform` line 509</sub>
+<sub>Module `platform` line 510</sub>

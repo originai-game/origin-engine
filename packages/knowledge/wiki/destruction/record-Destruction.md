@@ -59,4 +59,4 @@ resource Destruction {
 }
 ```
 
-<sub>Module `destruction` line 127</sub>
+<sub>Module `destruction` line 128</sub>

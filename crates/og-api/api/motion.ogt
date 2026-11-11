@@ -2,6 +2,7 @@ module motion {
   doc "Generated motion for humanoids: the engine's motion model moves a character between the game's goals, on the GPU. Give a humanoid og.Skeleton an og.MotionAgent, then queue goals (og.motion.walkTo, og.motion.jump, og.motion.pose, ...)."
   doc "Presentation only (docs/design.md §2.4): the generated pose replaces og.anim's joint palette when drawn, and nothing a tick reads depends on it. og.Transform is always the root. og.motion.status answers the goals by fixed rules; game logic never branches on og.motion.presentation. Until the weights are resident, og.anim's player or graph draws the agent."
   guide "animation §10"
+  core MotionAgent pose face walkTo jump PoseGoalDesc FaceGoalDesc WalkGoalDesc JumpGoalDesc
 
   enum MotionGoalKind {
     doc "What a goal asks for."

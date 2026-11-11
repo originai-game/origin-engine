@@ -4,6 +4,7 @@ module reflect {
   doc "A field holds one value, or a list of at most a fixed number of one number type or handle (`list(u32(), 8)`, the list factory below). A handle is a 64-bit number: keep it in a field of its own kind (`Asset()`, `Texture()`, `Entity()`: every handle type has its factory, named as the type), never another; a `u32` field refuses one and an `f64` loses its type."
   guide "saves §3"
   place top
+  core Vector2 Vector3 Quaternion Color FieldOptions f32 u32 defineComponent defineResource
 
   struct FieldOptions {
     doc "Metadata of one field. Ranges and units are what Tune and the probe's bounds show. Nothing clamps writes: world.insert and writes from outside the game (the probe's `set`, `patch` and sweeps, Tune, a look's fields at cook) are refused outside min..max with the range named. Game code's other writes (world.set, a resource field, a column) are stored as given."

@@ -14,7 +14,7 @@ interface System {
   # members follow, each quoted below
 ```
 
-<sub>Module `system` line 87</sub>
+<sub>Module `system` line 88</sub>
 
 <a id="member-System-name"></a>
 
@@ -32,7 +32,7 @@ Binding symbol `og_system_get_name` · publish builds: kept
 prop name String "The system's unique name."
 ```
 
-<sub>Module `system` line 89</sub>
+<sub>Module `system` line 90</sub>
 
 <a id="member-System-reads"></a>
 
@@ -50,7 +50,7 @@ Binding symbol `og_system_get_reads` · publish builds: kept
 prop reads List.AnyReflected "What it reads."
 ```
 
-<sub>Module `system` line 90</sub>
+<sub>Module `system` line 91</sub>
 
 <a id="member-System-writes"></a>
 
@@ -68,4 +68,4 @@ Binding symbol `og_system_get_writes` · publish builds: kept
 prop writes List.AnyReflected "What it writes."
 ```
 
-<sub>Module `system` line 91</sub>
+<sub>Module `system` line 92</sub>

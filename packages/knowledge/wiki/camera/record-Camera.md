@@ -224,7 +224,7 @@ resource Camera {
 }
 ```
 
-<sub>Module `camera` line 6</sub>
+<sub>Module `camera` line 7</sub>
 
 <a id="member-Camera-lookAt"></a>
 
@@ -251,7 +251,7 @@ fn lookAt {
 }
 ```
 
-<sub>Module `camera` line 131</sub>
+<sub>Module `camera` line 132</sub>
 
 <a id="member-Camera-worldToScreen"></a>
 
@@ -282,7 +282,7 @@ fn worldToScreen {
 }
 ```
 
-<sub>Module `camera` line 135</sub>
+<sub>Module `camera` line 136</sub>
 
 <a id="member-Camera-screenToRay"></a>
 
@@ -312,4 +312,4 @@ fn screenToRay {
 }
 ```
 
-<sub>Module `camera` line 141</sub>
+<sub>Module `camera` line 142</sub>

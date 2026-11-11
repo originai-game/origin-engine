@@ -32,4 +32,4 @@ fn damage {
 }
 ```
 
-<sub>Module `destruction` line 264</sub>
+<sub>Module `destruction` line 265</sub>

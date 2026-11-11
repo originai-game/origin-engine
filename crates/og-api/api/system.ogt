@@ -2,6 +2,7 @@ module system {
   doc "Systems: functions the engine calls once per tick with their matched archetypes."
   doc "A system declares what it reads and writes; a write to an undeclared component is refused at registration with the field name. Its query is every component of its reads and writes (none of `without`). world.query is refused inside one: another archetype is a system of its own, and what crosses between systems goes in a resource. Resources and events it reaches through the world must be declared too: undeclared, they throw in a dev or release build and fail the tick; publish refuses them, logged once per system."
   place top
+  core SystemDesc defineSystem
 
   enum StateWhen {
     doc "When a system bound to a state machine's value runs."

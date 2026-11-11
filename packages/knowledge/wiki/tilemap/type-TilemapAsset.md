@@ -14,4 +14,4 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle TilemapAsset "A loaded map: its layers, tilesets and objects."
 ```
 
-<sub>Module `tilemap` line 6</sub>
+<sub>Module `tilemap` line 7</sub>

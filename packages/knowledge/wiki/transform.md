@@ -6,6 +6,7 @@ Transforms in the three.js vocabulary: position, quaternion and scale, composed 
 
 - **TypeScript**: functions are the namespace `og.transform`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
+- **Core** (what most games use): `og.Transform`, `og.MatrixWorld`, `og.transform.lookAt`, `og.transform.fromAxisAngle`; 7 more are advanced (`og api show transform --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -49,4 +50,4 @@ column WorldOriginPlane {
 }
 ```
 
-<sub>Module `transform` line 35</sub>
+<sub>Module `transform` line 36</sub>

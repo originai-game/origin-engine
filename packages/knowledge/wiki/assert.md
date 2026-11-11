@@ -10,6 +10,7 @@ See `testing §2`.
 
 - **TypeScript**: functions are the namespace `og.assert`; components, resources and events are tokens on `og`.
 - **Publish builds**: dropped (members may override).
+- **Core** (what most games use): `og.assert.always`, `og.assert.sometimes`, `og.assert.reachable`; 15 more are advanced (`og api show assert --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt

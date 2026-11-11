@@ -36,4 +36,4 @@ fn shake {
 }
 ```
 
-<sub>Module `camera` line 560</sub>
+<sub>Module `camera` line 561</sub>

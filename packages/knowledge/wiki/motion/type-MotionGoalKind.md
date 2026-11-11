@@ -31,4 +31,4 @@ enum MotionGoalKind {
 }
 ```
 
-<sub>Module `motion` line 6</sub>
+<sub>Module `motion` line 7</sub>

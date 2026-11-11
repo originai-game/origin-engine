@@ -31,7 +31,7 @@ fn clip {
 }
 ```
 
-<sub>Module `anim` line 740</sub>
+<sub>Module `anim` line 741</sub>
 
 <a id="fn-clip-2"></a>
 
@@ -62,7 +62,7 @@ fn clip {
 }
 ```
 
-<sub>Module `anim` line 748</sub>
+<sub>Module `anim` line 749</sub>
 
 <a id="fn-clip-3"></a>
 
@@ -93,4 +93,4 @@ fn clip {
 }
 ```
 
-<sub>Module `anim` line 756</sub>
+<sub>Module `anim` line 757</sub>

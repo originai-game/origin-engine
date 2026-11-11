@@ -6,6 +6,7 @@ The game entry: what the bundle's default export declares.
 
 - **TypeScript**: functions are members of the root object `og` (`og.<fn>`); components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
+- **Core** (what most games use): `GameDesc`, `og.game`; 6 more are advanced (`og api show game --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt

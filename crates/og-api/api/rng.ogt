@@ -1,6 +1,7 @@
 module rng {
   doc "Deterministic randomness. Every random draw comes from an Rng stream; the sequence for a seed is identical on every host and in the Web scaffold's rng.ts."
   doc "Inside a system: forking needs og.Rng among the reads (a fork is derived from the seed and the label, and leaves the main stream where it is); drawing from og.Rng itself (next, range, integer, chance, weighted, permutation) moves its state, so it needs og.Rng among the writes. A stream a fork returned is the system's own to draw from."
+  core Rng
 
   interface RngStream {
     doc "One generator stream, forked from the Rng resource for a subsystem that must not perturb the main sequence."

@@ -26,4 +26,4 @@ struct SaveSlotDesc {
 }
 ```
 
-<sub>Module `platform` line 68</sub>
+<sub>Module `platform` line 69</sub>

@@ -10,6 +10,7 @@ See `camera`.
 
 - **TypeScript**: functions are the namespace `og.camera`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
+- **Core** (what most games use): `og.Camera`, `og.Follow2D`, `og.camera.shake`; 9 more are advanced (`og api show camera --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt

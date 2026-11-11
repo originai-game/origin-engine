@@ -120,4 +120,4 @@ component PixelTerrain {
 }
 ```
 
-<sub>Module `destruction` line 307</sub>
+<sub>Module `destruction` line 308</sub>

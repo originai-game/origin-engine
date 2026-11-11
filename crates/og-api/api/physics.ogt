@@ -3,6 +3,7 @@ module physics {
   doc "The profile is project.ogt's `profile`. In 2D, bodies move in the xy plane and rotate about z; a transform keeps its z. A collider without a RigidBody is static at its transform."
   doc "The rapier world persists between ticks and is world state: snapshots, restore and the world hash cover the whole simulation. Events sent in tick N are read in tick N + 1."
   guide "physics"
+  core RigidBody Collider Velocity CharacterController Vehicle SHAPE_BOX SHAPE_SPHERE SHAPE_HEIGHTFIELD
 
   const MAX_RAYCAST_HITS u32 256 "The most hits og.physics.castRayAll returns."
   const LOCK_TRANSLATION_X u32 1 "RigidBody.lock bit: no translation along x."

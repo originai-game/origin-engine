@@ -8,6 +8,7 @@ Inside a system: forking needs og.Rng among the reads (a fork is derived from th
 
 - **TypeScript**: functions are none at module level (its members live on the types below); components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
+- **Core** (what most games use): `og.Rng`; 1 more are advanced (`og api show rng --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt

@@ -12,6 +12,7 @@ See `saves §3`.
 
 - **TypeScript**: functions are named exports of the package: `import { … } from "@origingame/engine"`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
+- **Core** (what most games use): `FieldOptions`, `f32()`, `u32()`, `Vector2()`, `Vector3()`, `Quaternion()`, `Color()`, `defineComponent`, `defineResource`; 7 more are advanced (`og api show reflect --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -73,7 +74,7 @@ column f32 {
 }
 ```
 
-<sub>Module `reflect` line 21</sub>
+<sub>Module `reflect` line 22</sub>
 
 ```ogt
 column f64 {
@@ -84,7 +85,7 @@ column f64 {
 }
 ```
 
-<sub>Module `reflect` line 28</sub>
+<sub>Module `reflect` line 29</sub>
 
 ```ogt
 column u32 {
@@ -95,7 +96,7 @@ column u32 {
 }
 ```
 
-<sub>Module `reflect` line 35</sub>
+<sub>Module `reflect` line 36</sub>
 
 ```ogt
 column i32 {
@@ -106,7 +107,7 @@ column i32 {
 }
 ```
 
-<sub>Module `reflect` line 42</sub>
+<sub>Module `reflect` line 43</sub>
 
 ```ogt
 column bool {
@@ -117,7 +118,7 @@ column bool {
 }
 ```
 
-<sub>Module `reflect` line 49</sub>
+<sub>Module `reflect` line 50</sub>
 
 ```ogt
 column Vector2 {
@@ -128,7 +129,7 @@ column Vector2 {
 }
 ```
 
-<sub>Module `reflect` line 56</sub>
+<sub>Module `reflect` line 57</sub>
 
 ```ogt
 column Vector3 {
@@ -139,7 +140,7 @@ column Vector3 {
 }
 ```
 
-<sub>Module `reflect` line 63</sub>
+<sub>Module `reflect` line 64</sub>
 
 ```ogt
 column Quaternion {
@@ -150,7 +151,7 @@ column Quaternion {
 }
 ```
 
-<sub>Module `reflect` line 70</sub>
+<sub>Module `reflect` line 71</sub>
 
 ```ogt
 column Matrix4 {
@@ -161,7 +162,7 @@ column Matrix4 {
 }
 ```
 
-<sub>Module `reflect` line 77</sub>
+<sub>Module `reflect` line 78</sub>
 
 ```ogt
 column Color {
@@ -172,7 +173,7 @@ column Color {
 }
 ```
 
-<sub>Module `reflect` line 84</sub>
+<sub>Module `reflect` line 85</sub>
 
 ```ogt
 column str {
@@ -184,7 +185,7 @@ column str {
 }
 ```
 
-<sub>Module `reflect` line 91</sub>
+<sub>Module `reflect` line 92</sub>
 
 ```ogt
 column list {
@@ -194,4 +195,4 @@ column list {
 }
 ```
 
-<sub>Module `reflect` line 99</sub>
+<sub>Module `reflect` line 100</sub>

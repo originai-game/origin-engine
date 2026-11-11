@@ -10,6 +10,7 @@ See `animation §10`.
 
 - **TypeScript**: functions are the namespace `og.motion`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
+- **Core** (what most games use): `og.MotionAgent`, `PoseGoalDesc`, `FaceGoalDesc`, `WalkGoalDesc`, `JumpGoalDesc`, `og.motion.pose`, `og.motion.face`, `og.motion.walkTo`, `og.motion.jump`; 19 more are advanced (`og api show motion --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -71,4 +72,4 @@ column MotionGoalKind {
 }
 ```
 
-<sub>Module `motion` line 16</sub>
+<sub>Module `motion` line 17</sub>

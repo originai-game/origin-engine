@@ -33,4 +33,4 @@ fn explode2d {
 }
 ```
 
-<sub>Module `destruction` line 500</sub>
+<sub>Module `destruction` line 501</sub>

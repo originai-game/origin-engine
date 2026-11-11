@@ -1,14 +1,14 @@
 // How often game code uses each member of the engine API, counted by the
 // symbol the TypeScript checker resolves (not by name: `color` and `size`
 // are fields of dozens of types). The input for the API's core/advanced
-// tiers (`tier advanced` in crates/og-api/api/*.ogt) and the list of members
+// tiers (`core` lines in crates/og-api/api/*.ogt) and the list of members
 // no fixture exercises. A member nobody uses is not a removal candidate.
 //
 //   bun scripts/api-usage.ts              per module: items used, zero-use items
 //   bun scripts/api-usage.ts --tsv        one row per entry (module, entry,
 //                                         kind, game files, game sites, test files)
-//   bun scripts/api-usage.ts --tiers      the tier rule applied: the items it
-//                                         marks advanced, and the IDL that disagrees
+//   bun scripts/api-usage.ts --core       the tier rule applied: each module's
+//                                         `core` line for crates/og-api/api
 //
 // Game code: tests/fixtures, templates (looks' sample sets), the project
 // skeleton (packages/create/template), packages/engine/examples and the
@@ -237,40 +237,20 @@ if (args.includes("--tsv")) {
     const u = uses.get(e);
     console.log(`${e.module}\t${e.name}\t${e.kind}\t${u?.game.size ?? 0}\t${u?.sites ?? 0}\t${u?.test.size ?? 0}`);
   }
-} else if (args.includes("--tiers")) {
-  // The rule: an item is core when game code uses it (one file is enough)
-  // or a guide's flow names it; everything else is advanced. Methods and
-  // fields follow their item. The IDL's `tier advanced` lines are compared.
-  const guides = readdirSync(join(root, "crates/og-api/guides"))
-    .filter((f) => f.endsWith(".md"))
-    .map((f) => readFileSync(join(root, "crates/og-api/guides", f), "utf8"))
-    .join("\n");
-  const named = (e: Entry) => {
-    const short = e.name.replace(/^og\./, "");
-    return new RegExp(`(^|[^\\w.])(og\\.)?${short.replace(/\./g, "\\.")}(?![\\w])`).test(guides);
-  };
-  const idl = readdirSync(join(root, "crates/og-api/api"))
-    .filter((f) => f.endsWith(".ogt"))
-    .map((f) => readFileSync(join(root, "crates/og-api/api", f), "utf8"))
-    .join("\n");
-  const marked = new Set<string>();
-  let current = "";
-  for (const line of idl.split("\n")) {
-    const m = line.match(/^  (fn|struct|enum|union|interface|component|resource|event|handle|callback|value|const) (\w+)/);
-    if (m) current = m[2]!;
-    if (/^\s+tier advanced\b/.test(line)) marked.add(current);
+} else if (args.includes("--core")) {
+  // The tier rule: an item is core when at least one game file uses it.
+  // Methods and fields count for the item that holds them. A module no game
+  // file uses gets no core line, so all its items stay listed (and are
+  // fixture coverage gaps). Prints the `core` lines for each module's IDL.
+  const modules = [...new Set(items.map((e) => e.module))].sort();
+  for (const m of modules) {
+    const core = items
+      .filter((e) => e.module === m && used(e) > 0)
+      .map((e) => e.name.split(".").pop()!);
+    const all = items.filter((e) => e.module === m).length;
+    if (core.length > 0) console.log(`${m}\t${core.length}/${all}\tcore ${[...new Set(core)].join(" ")}`);
+    else console.log(`${m}\t0/${all}\t(untiered: no game file uses it)`);
   }
-  const rows: string[] = [];
-  let disagree = 0;
-  for (const e of items.sort((a, b) => a.module.localeCompare(b.module) || a.name.localeCompare(b.name))) {
-    if (["math", "prelude"].includes(e.module)) continue;
-    const advanced = used(e) === 0 && !named(e);
-    const bare = e.name.split(".").pop()!;
-    if (advanced !== marked.has(bare)) disagree++;
-    if (advanced) rows.push(`${e.module}\t${e.name}\t${e.kind}${marked.has(bare) ? "" : "\t(not marked)"}`);
-  }
-  console.log(rows.join("\n"));
-  console.log(`\n${rows.length} advanced of ${items.length} items; ${disagree} differ from the IDL's tier lines`);
 } else {
   const modules = [...new Set(all.map((e) => e.module))].sort();
   console.log(`${gameFiles} game files, ${testFiles} engine test files\n`);

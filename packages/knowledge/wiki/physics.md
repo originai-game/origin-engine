@@ -12,6 +12,7 @@ See `physics`.
 
 - **TypeScript**: functions are the namespace `og.physics`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
+- **Core** (what most games use): `SHAPE_BOX`, `SHAPE_SPHERE`, `SHAPE_HEIGHTFIELD`, `og.RigidBody`, `og.Collider`, `og.Velocity`, `og.CharacterController`, `og.Vehicle`; 111 more are advanced (`og api show physics --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -165,7 +166,7 @@ column RigidBodyType {
 }
 ```
 
-<sub>Module `physics` line 34</sub>
+<sub>Module `physics` line 35</sub>
 
 ## Constants
 
@@ -223,280 +224,280 @@ column RigidBodyType {
 const MAX_RAYCAST_HITS u32 256 "The most hits og.physics.castRayAll returns."
 ```
 
-<sub>Module `physics` line 7</sub>
+<sub>Module `physics` line 8</sub>
 
 ```ogt
 const LOCK_TRANSLATION_X u32 1 "RigidBody.lock bit: no translation along x."
 ```
 
-<sub>Module `physics` line 8</sub>
+<sub>Module `physics` line 9</sub>
 
 ```ogt
 const LOCK_TRANSLATION_Y u32 2 "RigidBody.lock bit: no translation along y."
 ```
 
-<sub>Module `physics` line 9</sub>
+<sub>Module `physics` line 10</sub>
 
 ```ogt
 const LOCK_TRANSLATION_Z u32 4 "RigidBody.lock bit: no translation along z."
 ```
 
-<sub>Module `physics` line 10</sub>
+<sub>Module `physics` line 11</sub>
 
 ```ogt
 const LOCK_ROTATION_X u32 8 "RigidBody.lock bit: no rotation about x."
 ```
 
-<sub>Module `physics` line 11</sub>
+<sub>Module `physics` line 12</sub>
 
 ```ogt
 const LOCK_ROTATION_Y u32 16 "RigidBody.lock bit: no rotation about y."
 ```
 
-<sub>Module `physics` line 12</sub>
+<sub>Module `physics` line 13</sub>
 
 ```ogt
 const LOCK_ROTATION_Z u32 32 "RigidBody.lock bit: no rotation about z (the 2D profile's only rotation)."
 ```
 
-<sub>Module `physics` line 13</sub>
+<sub>Module `physics` line 14</sub>
 
 ```ogt
 const SHAPE_BOX u32 0 "Collider.shape: a box of `size` (both profiles)."
 ```
 
-<sub>Module `physics` line 14</sub>
+<sub>Module `physics` line 15</sub>
 
 ```ogt
 const SHAPE_SPHERE u32 1 "Collider.shape: a sphere of `radius` (a circle in 2D)."
 ```
 
-<sub>Module `physics` line 15</sub>
+<sub>Module `physics` line 16</sub>
 
 ```ogt
 const SHAPE_CAPSULE u32 2 "Collider.shape: a capsule along y of `radius`, with `height` between the cap centres (both profiles)."
 ```
 
-<sub>Module `physics` line 16</sub>
+<sub>Module `physics` line 17</sub>
 
 ```ogt
 const SHAPE_CYLINDER u32 3 "Collider.shape: a cylinder along y of `radius` and `height` (3D only)."
 ```
 
-<sub>Module `physics` line 17</sub>
+<sub>Module `physics` line 18</sub>
 
 ```ogt
 const SHAPE_CONVEX u32 4 "Collider.shape: the convex hull of the vertices of `mesh` (3D), or of their xy (a convex polygon, 2D)."
 ```
 
-<sub>Module `physics` line 18</sub>
+<sub>Module `physics` line 19</sub>
 
 ```ogt
 const SHAPE_TRIMESH u32 5 "Collider.shape: the triangles of `mesh` (for static and kinematic bodies); in 2D the outline of their xy (the edges no two triangles share) as a hollow polyline, which stops what comes from outside."
 ```
 
-<sub>Module `physics` line 19</sub>
+<sub>Module `physics` line 20</sub>
 
 ```ogt
 const SHAPE_HEIGHTFIELD u32 6 "Collider.shape: the height field registered as `mesh`, centred on the entity (3D only; a terrain: og.terrain.load's TerrainInfo.geometry)."
 ```
 
-<sub>Module `physics` line 20</sub>
+<sub>Module `physics` line 21</sub>
 
 ```ogt
 const SHAPE_DIAMOND u32 7 "Collider.shape: a rhombus whose diagonals are size.x (along x) and size.y (along y), an isometric tile's diamond; in 3D a prism size.z deep (both profiles)."
 ```
 
-<sub>Module `physics` line 21</sub>
+<sub>Module `physics` line 22</sub>
 
 ```ogt
 const SHAPE_HEXAGON u32 8 "Collider.shape: a pointy-top hexagon in the box size.x by size.y, corners at the top and bottom middles and a quarter down each side, a hex tile's (turn it a quarter about z for a flat-top one); in 3D a prism size.z deep (both profiles)."
 ```
 
-<sub>Module `physics` line 22</sub>
+<sub>Module `physics` line 23</sub>
 
 ```ogt
 const PROFILE_2D u32 2 "Physics.profile: rapier2d, bodies in the xy plane rotating about z."
 ```
 
-<sub>Module `physics` line 23</sub>
+<sub>Module `physics` line 24</sub>
 
 ```ogt
 const PROFILE_3D u32 3 "Physics.profile: rapier3d."
 ```
 
-<sub>Module `physics` line 24</sub>
+<sub>Module `physics` line 25</sub>
 
 ```ogt
 const JOINT_FIXED u32 0 "`Joint.kind`: the two bodies move as one."
 ```
 
-<sub>Module `physics` line 298</sub>
+<sub>Module `physics` line 299</sub>
 
 ```ogt
 const JOINT_REVOLUTE u32 1 "`Joint.kind`: a hinge about `axis` (2D: about z), with optional limits and a motor."
 ```
 
-<sub>Module `physics` line 299</sub>
+<sub>Module `physics` line 300</sub>
 
 ```ogt
 const JOINT_PRISMATIC u32 2 "`Joint.kind`: a slider along `axis`, with optional limits and a motor."
 ```
 
-<sub>Module `physics` line 300</sub>
+<sub>Module `physics` line 301</sub>
 
 ```ogt
 const JOINT_SPRING u32 3 "`Joint.kind`: a damped spring pulling the anchors to `restLength` apart."
 ```
 
-<sub>Module `physics` line 301</sub>
+<sub>Module `physics` line 302</sub>
 
 ```ogt
 const JOINT_ROPE u32 4 "`Joint.kind`: a rope: the anchors stay at most `length` apart, free inside it."
 ```
 
-<sub>Module `physics` line 302</sub>
+<sub>Module `physics` line 303</sub>
 
 ```ogt
 const JOINT_BALL u32 5 "`Joint.kind`: a ball and socket (3D; the 2D profile treats it as a hinge)."
 ```
 
-<sub>Module `physics` line 303</sub>
+<sub>Module `physics` line 304</sub>
 
 ```ogt
 const MOTOR_NONE u32 0 "`Joint.motor`: no motor."
 ```
 
-<sub>Module `physics` line 304</sub>
+<sub>Module `physics` line 305</sub>
 
 ```ogt
 const MOTOR_VELOCITY u32 1 "`Joint.motor`: drive towards `motorTarget` speed (rad/s or m/s)."
 ```
 
-<sub>Module `physics` line 305</sub>
+<sub>Module `physics` line 306</sub>
 
 ```ogt
 const MOTOR_POSITION u32 2 "`Joint.motor`: spring towards `motorTarget` angle or position (a servo)."
 ```
 
-<sub>Module `physics` line 306</sub>
+<sub>Module `physics` line 307</sub>
 
 ```ogt
 const CHARACTER_JUMPED u32 1 "`CharacterEvent.kind`: a jump from the ground (or in coyote time)."
 ```
 
-<sub>Module `physics` line 680</sub>
+<sub>Module `physics` line 681</sub>
 
 ```ogt
 const CHARACTER_LANDED u32 2 "`CharacterEvent.kind`: touched the ground after being in the air."
 ```
 
-<sub>Module `physics` line 681</sub>
+<sub>Module `physics` line 682</sub>
 
 ```ogt
 const CHARACTER_WALL_JUMPED u32 3 "`CharacterEvent.kind`: a jump off a wall."
 ```
 
-<sub>Module `physics` line 682</sub>
+<sub>Module `physics` line 683</sub>
 
 ```ogt
 const CHARACTER_AIR_JUMPED u32 4 "`CharacterEvent.kind`: a jump in the air (PlatformerController.airJumps)."
 ```
 
-<sub>Module `physics` line 683</sub>
+<sub>Module `physics` line 684</sub>
 
 ```ogt
 const CHARACTER_LEFT_GROUND u32 5 "`CharacterEvent.kind`: left the ground without jumping (ran off an edge)."
 ```
 
-<sub>Module `physics` line 684</sub>
+<sub>Module `physics` line 685</sub>
 
 ```ogt
 const CHARACTER_BUMPED u32 6 "`CharacterEvent.kind`: hit a ceiling while rising."
 ```
 
-<sub>Module `physics` line 685</sub>
+<sub>Module `physics` line 686</sub>
 
 ```ogt
 const DRIVE_REAR u32 0 "`Vehicle.drive`: the rear wheels drive."
 ```
 
-<sub>Module `physics` line 699</sub>
+<sub>Module `physics` line 700</sub>
 
 ```ogt
 const DRIVE_FRONT u32 1 "`Vehicle.drive`: the front wheels drive."
 ```
 
-<sub>Module `physics` line 700</sub>
+<sub>Module `physics` line 701</sub>
 
 ```ogt
 const DRIVE_ALL u32 2 "`Vehicle.drive`: every wheel drives."
 ```
 
-<sub>Module `physics` line 701</sub>
+<sub>Module `physics` line 702</sub>
 
 ```ogt
 const VEHICLE_ARCADE u32 0 "`Vehicle.model`: the arcade car: engineForce, faded out towards maxSpeed."
 ```
 
-<sub>Module `physics` line 702</sub>
+<sub>Module `physics` line 703</sub>
 
 ```ogt
 const VEHICLE_DRIVETRAIN u32 1 "`Vehicle.model`: an engine with a torque curve driving through a gearbox."
 ```
 
-<sub>Module `physics` line 703</sub>
+<sub>Module `physics` line 704</sub>
 
 ```ogt
 const SIMULATION_GAMEPLAY u32 0 "`Cloth.simulation`, `SoftBody.simulation`, `Garment.simulation`: simulated in the physics step on the CPU, deterministic: its points are world state that snapshots, replays, lockstep and the hash carry, and that og.physics.clothPoints, softBodyPoints and garmentPoints read. The default."
 ```
 
-<sub>Module `physics` line 1012</sub>
+<sub>Module `physics` line 1013</sub>
 
 ```ogt
 const SIMULATION_VISUAL u32 1 "`Cloth.simulation`, `SoftBody.simulation`, `Garment.simulation`: simulated by the renderer on the GPU for looks only, never read back. The tick's points are the rest shape carried rigidly by the entity (a garment's: the skinned pose). Without RenderCapabilities.visualSimulation it draws that shape."
 ```
 
-<sub>Module `physics` line 1013</sub>
+<sub>Module `physics` line 1014</sub>
 
 ```ogt
 const PIN_TOP u32 1 "`Cloth.pins` bit: the whole top row is pinned."
 ```
 
-<sub>Module `physics` line 1014</sub>
+<sub>Module `physics` line 1015</sub>
 
 ```ogt
 const PIN_TOP_CORNERS u32 2 "`Cloth.pins` bit: the top-left and top-right corners are pinned."
 ```
 
-<sub>Module `physics` line 1015</sub>
+<sub>Module `physics` line 1016</sub>
 
 ```ogt
 const PIN_LEFT u32 4 "`Cloth.pins` bit: the whole left column is pinned (a flag on a pole)."
 ```
 
-<sub>Module `physics` line 1016</sub>
+<sub>Module `physics` line 1017</sub>
 
 ```ogt
 const PIN_TOP_RINGS u32 8 "`Cloth.pins` bit: every fourth point of the top row (curtain rings)."
 ```
 
-<sub>Module `physics` line 1017</sub>
+<sub>Module `physics` line 1018</sub>
 
 ```ogt
 const SOFT_SPHERE u32 0 "`SoftBody.shape`: a sphere of `radius` (an icosphere; 2D a ring)."
 ```
 
-<sub>Module `physics` line 1186</sub>
+<sub>Module `physics` line 1187</sub>
 
 ```ogt
 const SOFT_BOX u32 1 "`SoftBody.shape`: a box of `size` (each face a grid of `detail` + 1 cells; 2D a rectangle)."
 ```
 
-<sub>Module `physics` line 1187</sub>
+<sub>Module `physics` line 1188</sub>
 
 ```ogt
 const SOFT_MESH u32 2 "`SoftBody.shape`: the closed surface of geometry `mesh` (3D only)."
 ```
 
-<sub>Module `physics` line 1188</sub>
+<sub>Module `physics` line 1189</sub>

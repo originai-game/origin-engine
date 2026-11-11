@@ -12,6 +12,7 @@ See `input`.
 
 - **TypeScript**: functions are the namespace `og.input`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
+- **Core** (what most games use): `og.Input`; 88 more are advanced (`og api show input --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -129,10 +130,10 @@ module input {
 const MAX_POINTERS u32 5 "The most pointers og.Pointers tracks at once: ids 0 (the primary pointer) to 4."
 ```
 
-<sub>Module `input` line 7</sub>
+<sub>Module `input` line 8</sub>
 
 ```ogt
 const MAX_GAMEPADS u32 8 "The most gamepads og.Gamepad reads: pads 0 to 7."
 ```
 
-<sub>Module `input` line 8</sub>
+<sub>Module `input` line 9</sub>

@@ -32,4 +32,4 @@ fn cell2d {
 }
 ```
 
-<sub>Module `destruction` line 517</sub>
+<sub>Module `destruction` line 518</sub>
