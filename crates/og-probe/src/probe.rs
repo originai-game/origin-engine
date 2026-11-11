@@ -973,7 +973,10 @@ impl Probe {
     /// `screenshot` whose frame lands on a later call (the web) holds the
     /// steps after it until it lands.
     pub fn pump(&mut self, world: &mut World) {
-        if self.shot_waits(world) {
+        if self
+            .schedule
+            .shot_waits(world, &mut self.host, &mut self.out)
+        {
             return;
         }
         let mut inbox = self.commands.inbox.take().into_iter();
@@ -1061,14 +1064,16 @@ impl Probe {
         }
         Ok(taken)
     }
+}
 
+impl state::Schedule {
     /// Polls a screenshot whose frame is in flight and writes it when it
     /// lands; true while it still waits.
-    fn shot_waits(&mut self, world: &World) -> bool {
-        let Some(shot) = self.schedule.shot.as_mut() else {
+    fn shot_waits(&mut self, world: &World, host: &mut state::Host, out: &mut state::Out) -> bool {
+        let Some(shot) = self.shot.as_mut() else {
             return false;
         };
-        let frame = match self.host.capture.as_mut() {
+        let frame = match host.capture.as_mut() {
             Some(capture) => capture.capture(world, shot.width, shot.height),
             None => None,
         };
@@ -1076,9 +1081,9 @@ impl Probe {
         if frame.is_none() && shot.polls < MAX_CAPTURE_POLLS {
             return true;
         }
-        let shot = self.schedule.shot.take().expect("waiting");
+        let shot = self.shot.take().expect("waiting");
         match frame {
-            Some(frame) => self.out.emit(
+            Some(frame) => out.emit(
                 shot.at,
                 Output {
                     tick: shot.tick,
@@ -1091,7 +1096,7 @@ impl Probe {
                     },
                 },
             ),
-            None => self.out.note(
+            None => out.note(
                 shot.tick,
                 true,
                 format!(
@@ -1102,7 +1107,9 @@ impl Probe {
         }
         false
     }
+}
 
+impl Probe {
     fn tick_once(&mut self, world: &mut World) -> og_core::Result<()> {
         let replaying = self.clock.replaying(world);
         if let Some(before) = self.clock.before_tick.as_mut() {

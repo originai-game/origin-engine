@@ -604,7 +604,11 @@ impl Probe {
         }
         let deferred = self.host.capture.as_ref().is_some_and(|c| c.deferred());
         // A screenshot's frame in flight goes first: they may share a size.
-        if deferred && self.shot_waits(world) {
+        if deferred
+            && self
+                .schedule
+                .shot_waits(world, &mut self.host, &mut self.out)
+        {
             return Ok(None);
         }
         let saved = self.save(world);
