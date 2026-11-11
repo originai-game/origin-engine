@@ -92,6 +92,8 @@ mod shadow_plan;
 use shadow_plan::{PlanShadowsInputs, PlanShadowsOutputs};
 mod reflection_lists;
 use reflection_lists::{PlanReflectionListsInputs, PlanReflectionListsOutputs};
+mod probe_lists;
+use probe_lists::{PlanProbeListsInputs, PlanProbeListsOutputs};
 mod setup;
 
 impl Renderer {
@@ -1105,65 +1107,28 @@ impl Renderer {
             mask,
             cull_n,
         });
-        // Reflection probes: each due capture's faces culled, their
-        // transparent meshes sorted back to front from the probe (probes.rs).
-        let mut probe_lists: Vec<DrawList> = Vec::new();
-        let mut probe_blended: Vec<DrawList> = Vec::new();
-        let mut probe_views: Vec<u32> = Vec::new();
-        for (d, cams) in probe_faces.iter().enumerate() {
-            let probe = &active_probes[probe_frame.due[d].1];
-            let eye = probe.position;
-            for (face, f) in cams.iter().enumerate() {
-                let frustum = Frustum::from_view_proj(f.view_proj);
-                // A face with a depth prepass keeps its list (the prepass
-                // draws it).
-                let view = if face_depth {
-                    0
-                } else {
-                    vis.meshlet_view(
-                        meshlet_gpu,
-                        &batches,
-                        meshlet_gpu::MeshletView::seen(
-                            frustum.planes(),
-                            meshlet_all.clone(),
-                            eye,
-                            f.view_proj,
-                            probe.face_size(),
-                        ),
-                    )
-                };
-                probe_views.push(view);
-                probe_lists.push(
-                    self.cull(
-                        &batches,
-                        &spheres,
-                        &mut transforms,
-                        &mut origins,
-                        &mut cull_inside,
-                        &frustum,
-                        !gpu_cull,
-                        |b| !b.transparent && !(view > 0 && in_meshlet(b)),
-                    )
-                    .0,
-                );
-                probe_blended.push(
-                    self.sort_transparent(
-                        &batches,
-                        &spheres,
-                        &submission,
-                        &mut transforms,
-                        &mut origins,
-                        &frustum,
-                        eye,
-                        f.forward,
-                        u32::MAX,
-                        &sprites::depths(&face_boards[6 * d + face].0),
-                    )
-                    .0,
-                );
-            }
-        }
-
+        // The reflection probes' face lists (probe_lists.rs).
+        let PlanProbeListsOutputs {
+            mut probe_lists,
+            mut probe_blended,
+            probe_views,
+        } = self.plan_probe_lists(PlanProbeListsInputs {
+            batches: &batches,
+            vis: &mut vis,
+            gpu_cull,
+            spheres: &spheres,
+            transforms: &mut transforms,
+            origins: &mut origins,
+            cull_inside: &mut cull_inside,
+            submission: &submission,
+            in_meshlet: &in_meshlet,
+            probe_faces: &probe_faces,
+            active_probes: &active_probes,
+            probe_frame: &probe_frame,
+            face_depth,
+            meshlet_all: &meshlet_all,
+            face_boards: &face_boards,
+        });
         // Each view's transparent meshes on its layers, back to front from
         // its eye.
         let mut view_blended: Vec<DrawList> = view_plans
