@@ -112,6 +112,8 @@ mod fx_uniform;
 use fx_uniform::{WriteFxUniformsInputs, WriteFxUniformsOutputs};
 mod view_uniforms;
 use view_uniforms::{WriteViewUniformsInputs, WriteViewUniformsOutputs};
+mod effects;
+use effects::{DecideEffectsInputs, FrameEffects};
 mod setup;
 
 impl Renderer {
@@ -344,130 +346,41 @@ impl Renderer {
                 |t| textures.get(t.index()).map(|g| &g.view),
             )?;
         }
-        // The quality's resolution, where it sets one, over the scene's.
-        let ao = post_fx
-            .ao
-            .filter(|a| scene.quality.ambient_occlusion && a.intensity > 0.0 && a.radius > 0.0)
-            .map(|a| AmbientOcclusion {
-                resolution: scene.quality.ao_resolution.unwrap_or(a.resolution),
-                ..a
-            });
-        // Screen-space GI (ssgi.rs), in the AO passes' place: its targets
-        // hold the AO too, at the GI's resolution when both are on.
-        let gi = post_fx
-            .gi
-            .filter(|g| scene.quality.global_illumination && g.intensity > 0.0)
-            .map(|g| ScreenSpaceGlobalIllumination {
-                resolution: scene.quality.ao_resolution.unwrap_or(g.resolution),
-                ..g
-            });
-        let ao = ao.map(|a| AmbientOcclusion {
-            resolution: gi.map_or(a.resolution, |g| g.resolution),
-            ..a
+        // The frame's effects and its depth prepass (effects.rs).
+        let FrameEffects {
+            ao,
+            gi,
+            ao_target,
+            contact,
+            bent,
+            outline,
+            dof,
+            motion_blur,
+            screen_blur,
+            god_rays,
+            lens_flare,
+            flare_sources_on,
+            fluids_3d,
+            depth_bands,
+            ssr,
+            custom_posts,
+            motion_read,
+            ui_depth,
+            prepass,
+        } = self.decide_effects(DecideEffectsInputs {
+            scene,
+            cam: &cam,
+            batches: &batches,
+            skinned_batches: &skinned_batches,
+            skinned: &skinned,
+            skinned_motion,
+            temporal,
+            taa_on,
+            volumetric_fog: &volumetric_fog,
+            particle_frame: &particle_frame,
+            scene_water,
         });
-        // The AO passes run (for the AO, the GI or both).
-        let ao_target = ao.is_some() || gi.is_some();
-        // Screen-space contact shadows for the shadowed point and spot
-        // lights (contact.wgsl, `post/contact.rs`): they resolve the centimetres
-        // where a caster meets its receiver, which a local shadow map's
-        // texels (a few centimetres at a few metres) cannot. Their masks
-        // share the AO texture (gba), which the GI's bounce fills instead.
-        let contact = WORLD_3D
-            && self.runs(FramePass::Contact)
-            && gi.is_none()
-            && scene.quality.shadowed_lights.min(self.info.shadowed_lights) > 0
-            && scene
-                .lights
-                .iter()
-                .any(|l| l.cast_shadows && !matches!(l.kind, LightKind::Rect { .. }));
-        // GTAO's bent normals for the probe GI (fxpost.wgsl `fs_gtao_bent`):
-        // the AO targets hold them in gba, where the screen GI's bounce or
-        // the contact shadows' masks would be, so either takes the place.
-        let bent = WORLD_3D
-            && gi.is_none()
-            && !contact
-            && ao.is_some_and(|a| a.method == AoMethod::Gtao)
-            && post_fx.gi_probes.is_some()
-            && scene.quality.global_illumination
-            && !self.info.without.contains(LitFeatures::GI);
-        let outline = post_fx.outline.is_some()
-            || batches
-                .iter()
-                .chain(&skinned_batches)
-                .any(|b| !b.transparent && self.cache.materials[b.material].outline);
-        let dof = post_fx.depth_of_field;
-        let motion_blur = post_fx.motion_blur;
-        let screen_blur = post_fx.screen_blur.filter(|b| b.strength != 0.0);
-        let god_rays = post_fx.god_rays;
-        // Lens flare (post/flare.rs), after bloom. The sun's and the
-        // lights' own flares, seen by a perspective 3D camera, read the
-        // prepass depth for their occlusion.
-        let lens_flare = post_fx.lens_flare.filter(|f| f.intensity > 0.0);
-        let flare_sources_on = WORLD_3D && !cam.orthographic && lens_flare.is_some();
-        let fluids_3d = WORLD_3D
-            && scene
-                .fluids_3d
-                .iter()
-                .any(|f| !f.particles.is_empty() || f.visual.is_some());
-        let depth_bands = scene.stylise.depth_bands.filter(|b| b.count >= 2);
-        // Ink or hatching on depth edges reads the prepass in the lines
-        // pass, a canvas, hatching or halftone on surfaces in the paint or
-        // lines pass.
-        let ink_depth = scene.stylise.depth_edges();
-        // Screen-space reflections, traced through the prepass before the
-        // main pass (ssr.rs).
-        plans.ssr = self.frame_ssr(scene);
-        let ssr = plans.ssr;
-        // Custom post passes (post_custom.rs) that compiled; they read the
-        // prepass's depth and normals.
-        let custom_posts = self.custom_posts.prepare(&self.device, scene);
-        // Whether anything reads the prepass's motion vectors this frame:
-        // TAA (and the temporal upscalers), motion blur, the reflections'
-        // temporal pass (ssr.wgsl `ssr_velocity`), screen-space GI's
-        // reprojection (ssgi.wgsl) and a custom post pass, which binds the
-        // whole prepass target.
-        let motion_read = temporal
-            || motion_blur.is_some()
-            || ssr.is_some()
-            || gi.is_some()
-            || !custom_posts.is_empty();
-        let ui_depth = scene.overlay.as_ref().is_some_and(|o| o.ui.needs_depth());
-        let prepass = !custom_posts.is_empty()
-            || ao_target
-            || contact
-            || ssr.is_some()
-            // Volumetric fog reads each pixel's depth.
-            || volumetric_fog.is_some()
-            || depth_bands.is_some()
-            || ink_depth
-            || scene.stylise.on_surfaces()
-            // The painterly filter's object edges and detail, and the
-            // Ben-Day dots' facing (halftone_faces), where meshes
-            // are drawn (a 2D scene's prepass would hold nothing).
-            || (WORLD_3D
-                && (scene.stylise.paint.is_some_and(|p| p.detail_aware())
-                    // The watercolour wash's outer boundaries (object
-                    // edges, silhouettes, creases), where its rim pools
-                    // and its dry brush skips.
-                    || scene.stylise.paint.is_some_and(|p| p.watercolor.edges())
-                    || scene.stylise.halftone_faces())
-                && !(batches.is_empty() && skinned_batches.is_empty()))
-            || outline
-            || dof.is_some()
-            || motion_blur.is_some()
-            || god_rays.is_some()
-            || flare_sources_on
-            || particle_frame.needs_depth
-            // Water and 3D fluids read the depth below them.
-            || !scene_water.is_empty()
-            || fluids_3d
-            // UI occluders and mass elements the scene hides (§14).
-            || ui_depth
-            // TAA's motion vectors of what moved besides the camera (GPU
-            // culling and the meshlet path carry the previous transforms
-            // too: cull_gpu.rs `previous`).
-            || (taa_on
-                && (skinned_motion == Some(true) || batches.iter().any(|b| b.simulated) || !skinned.garments.is_empty() || skinned.baked_moved || objects_moved(scene) || crate::debris::moving(scene)));
+        plans.ssr = ssr;
         // What the frame will draw with beyond its batches starts compiling
         // on worker threads before the batches' pipelines (deferred.rs):
         // the terrains', the frame's longest compiles, the sky's and the
