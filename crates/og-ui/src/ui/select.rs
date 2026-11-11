@@ -609,7 +609,7 @@ impl Ui {
         let Some(s) = self.interaction.state.selection else {
             return serde_json::Value::Null;
         };
-        let path = |k: u64| self.tree.index.find(k).map(|i| self.path_of(i));
+        let path = |k: u64| self.tree.index.find(k).map(|i| self.tree.path_of(i));
         serde_json::json!({
             "text": self.selected_text().unwrap_or_default(),
             "anchor": { "path": path(s.anchor.0), "at": s.anchor.1 },

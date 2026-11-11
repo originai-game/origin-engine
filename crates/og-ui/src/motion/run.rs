@@ -747,7 +747,7 @@ impl Ui {
                         EventKind::Sound { name, pitch } => css_events.push(UiEvent {
                             kind: "sound".into(),
                             name: name.clone(),
-                            target: self.path_of(i),
+                            target: self.tree.path_of(i),
                             pitch: *pitch,
                             ..UiEvent::default()
                         }),
@@ -1002,7 +1002,7 @@ impl Ui {
                         .index
                         .by_key
                         .get(&target)
-                        .map_or(String::new(), |&i| self.path_of(i));
+                        .map_or(String::new(), |&i| self.tree.path_of(i));
                     let pitch_of = |pitch: f32| {
                         (if pitch > 0.0 { pitch } else { 1.0 }) * 1.06f32.powi(clip.index as i32)
                     };
@@ -1694,13 +1694,13 @@ impl Ui {
             if let Some(d) = &n.props.drop {
                 let key = n.key;
                 let accept = d.accept.clone();
-                let path = self.path_of(i);
+                let path = self.tree.path_of(i);
                 self.interaction.drop_paths.insert(key, path);
                 self.interaction.drop_accepts.insert(key, accept);
             }
             if self.tree.nodes[i].props.drag.is_some() {
                 let key = self.tree.nodes[i].key;
-                let path = self.path_of(i);
+                let path = self.tree.path_of(i);
                 self.interaction.drag_paths.insert(key, path);
             }
         }
@@ -1772,7 +1772,7 @@ impl Ui {
                 continue;
             }
             out.push(MotionDump {
-                path: self.path_of(i),
+                path: self.tree.path_of(i),
                 states,
                 moving,
                 plays,

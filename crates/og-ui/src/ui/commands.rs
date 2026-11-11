@@ -739,7 +739,7 @@ impl Ui {
                             } else {
                                 0
                             },
-                            path: self.path_of(j),
+                            path: self.tree.path_of(j),
                             exit: nj.props.exit.clone(),
                             match_key: if nj.props.match_key.is_empty() {
                                 0

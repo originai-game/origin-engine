@@ -105,7 +105,7 @@ impl Ui {
         let drag_key = crate::id::child_key(key, "~drag");
         let mut changed = false;
         let mut hex_out = None;
-        let path = self.path_of(swatch).replace('/', "_");
+        let path = self.tree.path_of(swatch).replace('/', "_");
         let content = Element {
             direction: Direction::Column,
             width: Size::Fixed(self.by_text(240.0)),

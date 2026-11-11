@@ -408,7 +408,7 @@ impl Ui {
                 continue;
             };
             let key = if spec.key.is_empty() {
-                self.path_of(i)
+                self.tree.path_of(i)
             } else {
                 spec.key.clone()
             };
@@ -441,7 +441,7 @@ impl Ui {
             };
             targets.push(HudTarget {
                 key: if spec.key.is_empty() {
-                    self.path_of(i)
+                    self.tree.path_of(i)
                 } else {
                     spec.key.clone()
                 },

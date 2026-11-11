@@ -257,7 +257,7 @@ impl Ui {
             let i = self.tree.stack.pop().unwrap_or(0);
             self.out.warnings.push(format!(
                 "'{}' was not closed; every ui.open() takes one ui.close()",
-                self.path_of(i)
+                self.tree.path_of(i)
             ));
         }
         crate::layers::build_without_host(self);
@@ -955,10 +955,11 @@ impl Ui {
     ) -> (Vec<usize>, Vec<usize>) {
         self.tree.orders.pre = order;
         // Drawn and hit in z order among siblings.
-        self.update_draw_order(animated);
+        self.tree
+            .update_draw_order(animated, &self.world, &self.layout);
         #[cfg(debug_assertions)]
         if bounded::checking() {
-            self.check_orders();
+            self.tree.check_orders(&self.world, &self.layout);
         }
         let order = std::mem::take(&mut self.tree.orders.draw);
         let custom = self.tree.orders.drawn(visit::feat::CUSTOM);
@@ -1352,12 +1353,13 @@ impl Ui {
                     self.paint.cache.sigs.get(i).copied().flatten(),
                     Some((n.key, crate::layout::DrawSig::of(n))),
                     "'{}' paints with another signature than it was kept by",
-                    self.path_of(i)
+                    self.tree.path_of(i)
                 );
             }
         }
         let repainted = self.paint.cache.repainted.take();
-        self.note_semantics(repainted.as_deref());
+        self.tree
+            .note_semantics(repainted.as_deref(), &self.layout, &self.interaction);
         let matched = self.tree.orders.with(visit::feat::MATCH).to_vec();
         self.record_matches(&matched);
         // A view transition's groups draw over the trees (and a cover);
@@ -1449,7 +1451,7 @@ impl Ui {
             if key != 0
                 && let Some(i) = self.tree.index.find(key)
             {
-                focus_paths[slot] = self.path_of(i);
+                focus_paths[slot] = self.tree.path_of(i);
                 if let Some(l) = self.tree.nodes[i]
                     .links
                     .iter()

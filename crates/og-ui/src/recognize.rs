@@ -299,7 +299,7 @@ impl Ui {
                 match self.node_at(path, i) {
                     Some(j) => to[k] = self.landing(j),
                     None => {
-                        let at = self.path_of(i);
+                        let at = self.tree.path_of(i);
                         self.out.warnings.push(format!(
                             "'{at}' moves focus to '{path}', which is not on screen: nav takes a full path (Hud/Bag) or a sibling's id"
                         ));
@@ -402,7 +402,7 @@ impl Ui {
             };
             self.out.events.push(crate::motion::UiEvent {
                 kind: kind.into(),
-                target: self.path_of(i),
+                target: self.tree.path_of(i),
                 pitch: 1.0,
                 ..crate::motion::UiEvent::default()
             });

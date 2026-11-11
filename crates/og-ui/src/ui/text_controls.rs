@@ -1027,7 +1027,7 @@ impl Ui {
                 .nodes
                 .iter()
                 .position(|n| n.key == key)
-                .map(|i| self.path_of(i))
+                .map(|i| self.tree.path_of(i))
                 .unwrap_or_default();
             self.interaction.text_target = Some(TextTarget {
                 path,

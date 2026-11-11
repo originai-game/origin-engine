@@ -149,7 +149,7 @@ impl Ui {
             }
             let p = self.tree.nodes[i].props.clone();
             let Some(t) = self.node_at(&p.anchor_to, i) else {
-                let at = self.path_of(i);
+                let at = self.tree.path_of(i);
                 self.out.warnings.push(format!(
                     "'{at}' is anchored to '{}', which is not on screen: anchorTo takes a full path (Hud/Coins) or a sibling's id",
                     p.anchor_to
@@ -333,7 +333,7 @@ impl Ui {
                     if !seen.insert(pair) || out.len() >= MAX {
                         continue;
                     }
-                    let (pa, po) = (self.path_of(a), self.path_of(o));
+                    let (pa, po) = (self.tree.path_of(a), self.tree.path_of(o));
                     if declared(a, &po) || declared(o, &pa) {
                         continue;
                     }
@@ -393,7 +393,7 @@ impl Ui {
                     if !area(&r) || out.len() >= MAX {
                         continue;
                     }
-                    let (pa, pb) = (self.path_of(a), self.path_of(b));
+                    let (pa, pb) = (self.tree.path_of(a), self.tree.path_of(b));
                     if declared(a, &pb) || declared(b, &pa) {
                         continue;
                     }
