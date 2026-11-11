@@ -744,6 +744,7 @@ impl Renderer {
                 prepass_pipelines: HashMap::new(),
                 lean_prepass_pipelines: HashMap::new(),
                 stylise_object: None,
+                depth_seed: None,
             },
             world: WorldRenderers {
                 water,

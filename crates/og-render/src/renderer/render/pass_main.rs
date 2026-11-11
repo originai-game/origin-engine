@@ -185,6 +185,15 @@ impl Renderer {
                 .forget_lifetime()
         };
         let mut pass = begin(encoder, true, split || oit.is_some(), "main");
+        // What the prepass drew hides what lies behind it from here on.
+        if let (false, Some(seed), Some(pre_depth)) = (
+            msaa,
+            &self.prepass.depth_seed,
+            self.graph.try_view("pre-depth"),
+        ) {
+            seed.draw(&self.device, &mut pass, pre_depth);
+            stats.draw_calls += 1;
+        }
         pass.set_bind_group(0, frame_bind_group, &[]);
         pass.set_bind_group(2, fx_group, &[]);
         ctx.draw_list(

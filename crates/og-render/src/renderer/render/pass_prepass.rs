@@ -75,8 +75,10 @@ impl Renderer {
                 view: self.graph.view("pre-depth"),
                 depth_ops: Some(wgpu::Operations {
                     load: wgpu::LoadOp::Clear(1.0),
-                    // Stylise's object pass tests against it.
-                    store: if object_space || ao_depth.is_some() {
+                    // The main pass's depth starts from it (depth_seed.rs);
+                    // stylise's object pass and the water's AO depth test
+                    // against it.
+                    store: if object_space || ao_depth.is_some() || self.samples == 1 {
                         wgpu::StoreOp::Store
                     } else {
                         wgpu::StoreOp::Discard

@@ -302,6 +302,7 @@ mod shadows;
 pub mod shapes;
 mod skin;
 pub use garment::{GarmentDeformation, GarmentTopology};
+mod depth_seed;
 mod sky_physical;
 mod sprite_array;
 mod sprite_hooks;

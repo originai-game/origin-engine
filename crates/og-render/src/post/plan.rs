@@ -576,7 +576,12 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                 h,
                 DEPTH_FORMAT,
                 1,
-                wgpu::TextureUsages::RENDER_ATTACHMENT,
+                // The main pass's depth starts from it (depth_seed.rs).
+                if msaa {
+                    wgpu::TextureUsages::RENDER_ATTACHMENT
+                } else {
+                    attach_bind
+                },
             ),
         )
         .transient("gbuffer", desc(w, h, GBUFFER_FORMAT, 1, attach_bind))
@@ -896,6 +901,9 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                 }
                 if prepass {
                     reads.push("lindepth");
+                    if !msaa {
+                        reads.push("pre-depth");
+                    }
                 }
                 if has(FramePass::Particles) {
                     reads.push("particles");
