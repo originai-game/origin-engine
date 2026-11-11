@@ -20,7 +20,7 @@ use glam::{Mat4, Vec3};
 use og_bundle::runtime::SceneDesc;
 use og_core::IdMap;
 use og_render::{BakedLighting, BakedMesh, LightmapPages, LightmapUvs, MeshData, ProbeVolume};
-use serde_json::{Value, json};
+use serde_json::Value;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
@@ -357,7 +357,7 @@ pub fn og_render_baked_lighting(world: u32) -> String {
         return "[]".to_string();
     };
     let rs = eng.render.borrow();
-    let list: Vec<Value> = rs
+    let list: Vec<super::wire::BakedScene> = rs
         .baked
         .scenes
         .iter()
@@ -371,17 +371,17 @@ pub fn og_render_baked_lighting(world: u32) -> String {
             } else {
                 String::new()
             };
-            json!({
-                "scene": s.scene,
-                "baked": reason.is_empty(),
-                "reason": reason,
-                "models": s.models,
-                "pages": s.pages,
-                "texels": s.texels,
-                "volumes": s.volumes,
-                "probes": s.probes,
-            })
+            super::wire::BakedScene {
+                scene: s.scene.clone(),
+                baked: reason.is_empty(),
+                reason,
+                models: s.models,
+                pages: s.pages,
+                texels: s.texels,
+                volumes: s.volumes,
+                probes: s.probes,
+            }
         })
         .collect();
-    Value::Array(list).to_string()
+    super::wire::text_of(&list)
 }

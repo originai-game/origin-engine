@@ -25,6 +25,7 @@ use super::assets;
 use super::codec::Layout;
 use super::engine::{Engine, engine};
 use super::extract::RenderState;
+use super::wire::{self, ToJson, VideoCapabilities, VideoInfo};
 use og_core::IdMap;
 use og_ecs::{Entity, QueryDesc, SchemaId, SystemContext, SystemDesc, World};
 use serde_json::{Value, json};
@@ -186,7 +187,7 @@ pub(crate) struct LoadedVideo {
     /// VideoInfo.texture, the others made as further players claimed one.
     /// A texture is never dropped (a snapshot may name it).
     pub views: Vec<(u64, Frames)>,
-    pub info: Value,
+    pub info: VideoInfo,
     /// A stream's units and where they are read from; `None` for a clip.
     pub stream: Option<StreamSource>,
 }
@@ -686,7 +687,7 @@ fn scene_key(sv: &StreamView) -> u64 {
 #[cfg(not(target_arch = "wasm32"))]
 const DECODE_THREADS: u32 = 4;
 
-fn load_video(eng: &Engine, path: &str) -> Result<Value, String> {
+fn load_video(eng: &Engine, path: &str) -> Result<VideoInfo, String> {
     let id = og_bundle::runtime::asset_id(path).to_string();
     if let Some(v) = eng.render.borrow().videos.iter().find(|v| v.id == id) {
         return Ok(v.info.clone());
@@ -771,14 +772,21 @@ fn load_video(eng: &Engine, path: &str) -> Result<Value, String> {
     });
     let texture = assets::handle(rs.textures.len() - 1);
     let video = assets::handle(rs.videos.len());
-    let info = json!({
-        "video": video as f64, "texture": texture as f64, "sound": sound as f64,
-        "width": meta.width, "height": meta.height, "frames": meta.frames, "fps": meta.fps,
-        "seconds": meta.seconds, "format": format, "bytes": bytes,
-        "streamed": stream.is_some(),
-        "codec": if stream.is_some() { "av1" } else { "" },
-        "poster": poster.unwrap_or(texture) as f64,
-    });
+    let info = VideoInfo {
+        video,
+        texture,
+        sound,
+        width: meta.width,
+        height: meta.height,
+        frames: meta.frames,
+        fps: meta.fps,
+        seconds: meta.seconds,
+        format: format.to_string(),
+        bytes,
+        streamed: stream.is_some(),
+        codec: if stream.is_some() { "av1" } else { "" }.to_string(),
+        poster: poster.unwrap_or(texture),
+    };
     rs.videos.push(LoadedVideo {
         id,
         views: vec![(texture, view)],
@@ -801,9 +809,9 @@ fn load_video(eng: &Engine, path: &str) -> Result<Value, String> {
     Ok(info)
 }
 
-fn wire(r: Result<Value, String>) -> String {
+fn wire<T: ToJson>(r: Result<T, String>) -> String {
     match r {
-        Ok(v) => json!({ "ok": true, "value": v }).to_string(),
+        Ok(v) => wire::ok(&v),
         Err(e) => json!({ "ok": false, "reason": e }).to_string(),
     }
 }
@@ -830,12 +838,11 @@ pub fn og_video_capabilities(world: u32) -> String {
     let d = super::engine::hooks()
         .map_or_else(super::engine::VideoDecoder::default, |h| h.video_decoder());
     let streamed = rendered && d.name != "none";
-    json!({
-        "streamed": streamed,
-        "decoder": if streamed { d.name.as_str() } else { "none" },
-        "hardware": streamed && d.hardware,
-        "maxWidth": if streamed { d.max_width } else { 0 },
-        "maxHeight": if streamed { d.max_height } else { 0 },
+    wire::text_of(&VideoCapabilities {
+        streamed,
+        decoder: if streamed { d.name.as_str() } else { "none" }.to_string(),
+        hardware: streamed && d.hardware,
+        max_width: if streamed { d.max_width } else { 0 },
+        max_height: if streamed { d.max_height } else { 0 },
     })
-    .to_string()
 }

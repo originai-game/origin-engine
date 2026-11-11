@@ -78,14 +78,13 @@ pub fn og_render_geometry_info(world: u32, geometry: f64) -> String {
             .and_then(|h| rs.scene.mesh(*h))
             .ok_or_else(|| format!("geometry {geometry} is not alive"))?;
         let i = geo::info(mesh);
-        let v = |p: Vec3| json!({ "x": p.x, "y": p.y, "z": p.z });
-        Ok(json!({
-            "vertices": i.vertices,
-            "triangles": i.triangles,
-            "min": v(i.min),
-            "max": v(i.max),
-            "dynamic": rs.geo.dynamic.contains(&index),
-        }))
+        Ok(wire::GeometryInfo {
+            vertices: i.vertices,
+            triangles: i.triangles,
+            min: i.min,
+            max: i.max,
+            dynamic: rs.geo.dynamic.contains(&index),
+        })
     })())
 }
 

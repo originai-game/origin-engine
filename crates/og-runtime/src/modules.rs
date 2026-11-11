@@ -29,7 +29,7 @@ pub use ui_desc::{
     og_ui_set_focus, og_ui_theme, og_ui_viewport,
 };
 pub(crate) use ui_desc::{anchor_of, step, texture_of, ui_engine, with_ui};
-use ui_desc::{insets, paint, rect_json, ui_rect};
+use ui_desc::{insets, paint, ui_rect};
 mod widgets;
 pub(crate) use widgets::emit;
 mod game_widgets;
@@ -403,30 +403,7 @@ pub fn set_viewport(engine_id: u32, viewport: Value) -> Result<(), String> {
     Ok(())
 }
 
-/// A viewport as og.ui.viewport answers it, with the HUD band the UI's
-/// `hud_max_aspect` makes of it (og-ui's `Ui::hud_area`).
-fn viewport_json(v: &Viewport, hud_max_aspect: f32) -> Value {
-    json!({
-        "hud": rect_json(&v.hud_rect(hud_max_aspect)),
-        "width": v.width, "height": v.height, "dpr": v.dpr,
-        "safeArea": { "left": v.safe_area.left, "top": v.safe_area.top, "right": v.safe_area.right, "bottom": v.safe_area.bottom },
-        "smallWidth": v.extremes()[0][0], "smallHeight": v.extremes()[0][1],
-        "largeWidth": v.extremes()[1][0], "largeHeight": v.extremes()[1][1],
-        "coarsePointer": v.coarse_pointer,
-        "reducedMotion": v.reduced_motion,
-        "highContrast": v.high_contrast,
-        "reducedTransparency": v.reduced_transparency,
-        "macKeys": v.mac_keys,
-        "covered": rect_json(&v.covered),
-        "breakpoint": v.breakpoint().name(),
-    })
-}
-
 // ── physics ─────────────────────────────────────────────────────────────────
-
-fn v3(v: Vec3) -> Value {
-    json!({ "x": v.x, "y": v.y, "z": v.z })
-}
 
 /// og-physics' filter for a QueryFilter; an `exclude` of 0 names no entity.
 fn filter(f: wire::QueryFilter) -> Result<QueryFilter, String> {
@@ -496,7 +473,7 @@ fn ok_text(value: &str) -> String {
 }
 
 /// A hit as JSON text, written straight into `out` (s106): the same text as
-/// serde_json gives the `json!` object of its fields (keys in order, its
+/// the generated writer gives its `wire::RaycastHit` (keys in order, its
 /// shortest float digits, `null` for a value that is not finite) without
 /// building, formatting and dropping that object, which was most of a
 /// castRay's cost after the ray itself (0.44 of 1.23 ms a tick in a game
@@ -512,7 +489,7 @@ fn hit_text(h: &og_physics::RaycastHit, out: &mut String) {
     out.push('}');
 }
 
-/// [`v3`]'s object as JSON text.
+/// A Vector3's object as JSON text.
 fn vec3_text(v: Vec3, out: &mut String) {
     out.push_str(r#"{"x":"#);
     float_text(v.x, out);
@@ -575,15 +552,17 @@ pub fn og_physics_project_point(world: u32, desc: Option<String>) -> String {
             filter: filter(d.filter)?,
         };
         let p = query(world)?.project_point(&desc).map_err(err)?;
-        Ok(p.map_or(Value::Null, |p| {
-            json!({
-                "entity": p.entity.to_bits(), "body": p.body.to_bits(), "point": v3(p.point),
-                "normal": v3(p.normal), "distance": p.distance, "inside": p.inside,
-            })
+        Ok(p.map(|p| wire::PointProjection {
+            entity: p.entity.to_bits(),
+            body: p.body.to_bits(),
+            point: p.point,
+            normal: p.normal,
+            distance: p.distance,
+            inside: p.inside,
         }))
     })();
     match answer {
-        Ok(v) => ok(v),
+        Ok(v) => wire::ok(&v),
         Err(e) => refuse(e),
     }
 }
@@ -600,12 +579,15 @@ pub fn og_physics_shape_cast(world: u32, desc: Option<String>) -> String {
             filter: filter(d.filter)?,
         };
         let hit = query(world)?.shape_cast(&desc).map_err(err)?;
-        Ok(hit.map_or(Value::Null, |h| {
-            json!({ "entity": h.entity.to_bits(), "distance": h.distance, "point": v3(h.point), "normal": v3(h.normal) })
+        Ok(hit.map(|h| wire::ShapeCastHit {
+            entity: h.entity.to_bits(),
+            distance: h.distance,
+            point: h.point,
+            normal: h.normal,
         }))
     })();
     match answer {
-        Ok(v) => ok(v),
+        Ok(v) => wire::ok(&v),
         Err(e) => refuse(e),
     }
 }
@@ -726,17 +708,22 @@ fn preview_of(engine_id: u32) -> Option<Viewport> {
 mod tests {
     use super::*;
 
-    /// A raycast answer is the text serde_json gives the `json!` object of
-    /// the hit (s106 writes it directly): its keys in order, the f32s'
+    /// A raycast answer is the text the generated writer gives the hit's
+    /// `wire::RaycastHit` (s106 writes it directly): its keys in order, the f32s'
     /// shortest f64 digits (not their own), `null` where one is not finite,
     /// entity bits past 2^53 whole; the answer of no hit and of every hit too.
     #[test]
     fn a_raycast_answer_is_the_text_of_the_hits_json_object() {
+        use crate::wire::ToJson;
         let object = |h: &og_physics::RaycastHit| {
-            json!({
-                "entity": h.entity.to_bits(), "body": h.body.to_bits(), "distance": h.distance,
-                "point": v3(h.point), "normal": v3(h.normal),
-            })
+            wire::RaycastHit {
+                entity: h.entity.to_bits(),
+                body: h.body.to_bits(),
+                distance: h.distance,
+                point: h.point,
+                normal: h.normal,
+            }
+            .to_json()
         };
         let hit = |entity: u64, body: u64, distance: f32, point: [f32; 3], normal: [f32; 3]| {
             og_physics::RaycastHit {

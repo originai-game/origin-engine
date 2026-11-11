@@ -1,7 +1,10 @@
 //! Flipbook and tilemap loading, tilemap calls and collider state.
 
 use super::*;
-use crate::wire::{FillDesc, ResizeDesc, SetTileDesc, TilemapDesc};
+use crate::wire::{
+    self, FillDesc, FlipMode, FlipbookClipInfo, FlipbookInfo, ResizeDesc, SetTileDesc, TileCell,
+    TileLayerInfo, TileObject, TileOrientation, TilemapDesc, TilemapInfo, ToJson,
+};
 
 // ── loading ────────────────────────────────────────────────────────────────
 
@@ -52,39 +55,44 @@ pub(crate) fn load_flipbook(eng: &Engine, path: &str) -> Result<Value, String> {
         .add_sheet(handle, sheet.clone())
         .map_err(|e| format!("{id}: {}", e.reason()))?;
     lock(&feel.sheet_textures).insert(handle, image);
-    let clips: Vec<Value> = sheet
+    let clips: Vec<FlipbookClipInfo> = sheet
         .clips
         .iter()
         .enumerate()
         .map(|(i, c)| {
             let mut events: Vec<(u32, String)> = c.events.clone();
             og_core::sort::sort(&mut events);
-            json!({
-                "clip": i,
-                "name": c.name,
-                "frames": c.frames.len(),
-                "duration": c.duration(),
-                "mode": c.mode.name(),
-                "events": events.into_iter().map(|e| e.1).collect::<Vec<_>>(),
-            })
+            FlipbookClipInfo {
+                clip: i as u32,
+                name: c.name.clone(),
+                frames: c.frames.len() as u32,
+                duration: c.duration(),
+                mode: match c.mode {
+                    og_anim::FlipMode::Loop => FlipMode::Loop,
+                    og_anim::FlipMode::PingPong => FlipMode::PingPong,
+                    og_anim::FlipMode::Once => FlipMode::Once,
+                },
+                events: events.into_iter().map(|e| e.1).collect(),
+            }
         })
         .collect();
     let first = sheet.frames.first().map_or([0; 4], |f| f.rect);
-    let answer = json!({
-        "sheet": handle as f64,
-        "texture": match image {
-            SheetImage::Texture(t) => super::assets::handle(t) as f64,
-            SheetImage::Array(_) => 0.0,
+    let answer = FlipbookInfo {
+        sheet: handle,
+        texture: match image {
+            SheetImage::Texture(t) => super::assets::handle(t),
+            SheetImage::Array(_) => 0,
         },
-        "array": match image {
-            SheetImage::Texture(_) => 0.0,
-            SheetImage::Array(a) => super::assets::handle(a) as f64,
+        array: match image {
+            SheetImage::Texture(_) => 0,
+            SheetImage::Array(a) => super::assets::handle(a),
         },
-        "clips": clips,
-        "frames": sheet.frames.len(),
-        "frameWidth": first[2],
-        "frameHeight": first[3],
-    });
+        clips,
+        frames: sheet.frames.len() as u32,
+        frame_width: first[2],
+        frame_height: first[3],
+    }
+    .to_json();
     st.feel_assets.sheets.insert(handle, (sheet, Some(image)));
     st.feel_assets.loaded.insert(key, answer.clone());
     Ok(answer)
@@ -138,43 +146,45 @@ fn build_map(eng: &Engine, id: &str, asset: TilemapAsset) -> Result<Arc<MapAsset
 /// What og.load.tilemap and og.tilemap.create answer (TilemapInfo).
 fn map_info(handle: u64, asset: &TilemapAsset) -> Value {
     let tile = asset.tile_size();
-    let layers: Vec<Value> = asset
-        .layers
-        .iter()
-        .enumerate()
-        .map(|(i, l)| {
-            json!({
-                "name": l.name, "index": i, "z": l.z,
-                "parallax": { "x": l.parallax.x, "y": l.parallax.y },
-                "collision": l.collision, "terrain": l.terrain.clone().unwrap_or_default(), "visible": l.visible,
-                "lit": l.lit,
-                "colliderLayers": l.collider_layers, "colliderMask": l.collider_mask,
-                "cellColliders": l.cell_colliders,
+    TilemapInfo {
+        map: handle,
+        width: asset.width,
+        height: asset.height,
+        tile_width: tile.x,
+        tile_height: tile.y,
+        layers: asset
+            .layers
+            .iter()
+            .enumerate()
+            .map(|(i, l)| TileLayerInfo {
+                name: l.name.clone(),
+                index: i as u32,
+                z: l.z,
+                parallax: l.parallax,
+                collision: l.collision,
+                collider_layers: l.collider_layers,
+                collider_mask: l.collider_mask,
+                cell_colliders: l.cell_colliders,
+                terrain: l.terrain.clone().unwrap_or_default(),
+                visible: l.visible,
+                lit: l.lit,
             })
-        })
-        .collect();
-    let objects: Vec<Value> = asset
-        .objects
-        .iter()
-        .map(|o| {
-            let mut props = serde_json::Map::new();
-            props.extend(o.properties.iter().map(|(k, v)| (k.clone(), json!(v))));
-            json!({
-                "name": o.name, "kind": o.kind,
-                "position": { "x": o.x, "y": o.y },
-                "size": { "x": o.width, "y": o.height },
-                "center": { "x": o.x + o.width / 2.0, "y": o.y - o.height / 2.0 },
-                "properties": props,
+            .collect(),
+        objects: asset
+            .objects
+            .iter()
+            .map(|o| TileObject {
+                name: o.name.clone(),
+                kind: o.kind.clone(),
+                position: Vec2::new(o.x, o.y),
+                size: Vec2::new(o.width, o.height),
+                center: Vec2::new(o.x + o.width / 2.0, o.y - o.height / 2.0),
+                properties: o.properties.iter().cloned().collect(),
             })
-        })
-        .collect();
-    json!({
-        "map": handle as f64,
-        "width": asset.width, "height": asset.height,
-        "tileWidth": tile.x, "tileHeight": tile.y,
-        "layers": layers, "objects": objects,
-        "orientation": asset.orientation.name(),
-    })
+            .collect(),
+        orientation: TileOrientation::parse(asset.orientation.name()).unwrap_or_default(),
+    }
+    .to_json()
 }
 
 fn load_tilemap(eng: &Engine, path: &str) -> Result<Value, String> {
@@ -401,13 +411,12 @@ pub fn og_tilemap_neighbours(world: u32, map: f64, x: u32, y: u32) -> String {
         .and_then(|feel| lock(&feel.tiles).maps.get(&(map as u64)).cloned())
         .map(|m| og_tilemap::neighbours(&m.asset, x, y))
         .unwrap_or_default();
-    json!(
-        cells
+    wire::text_of(
+        &cells
             .iter()
-            .map(|&(x, y)| json!({ "x": x, "y": y, "inside": true }))
-            .collect::<Vec<_>>()
+            .map(|&(x, y)| TileCell { x, y, inside: true })
+            .collect::<Vec<_>>(),
     )
-    .to_string()
 }
 
 pub fn og_tilemap_get_tile(world: u32, entity: f64, layer: String, x: u32, y: u32) -> i32 {
@@ -425,11 +434,14 @@ pub fn og_tilemap_cell_at(world: u32, entity: f64, point: String) -> String {
     })
     .ok()
     .flatten();
-    match cell {
-        Some((x, y)) => json!({ "x": x, "y": y, "inside": true }),
-        None => json!({ "x": 0, "y": 0, "inside": false }),
-    }
-    .to_string()
+    wire::text_of(&match cell {
+        Some((x, y)) => TileCell { x, y, inside: true },
+        None => TileCell {
+            x: 0,
+            y: 0,
+            inside: false,
+        },
+    })
 }
 
 pub fn og_tilemap_cell_center(world: u32, entity: f64, x: u32, y: u32) -> String {
@@ -442,7 +454,7 @@ pub fn og_tilemap_cell_center(world: u32, entity: f64, x: u32, y: u32) -> String
         ))
     })
     .unwrap_or(Vec3::ZERO);
-    json!({ "x": c.x, "y": c.y, "z": c.z }).to_string()
+    wire::text_of(&c)
 }
 
 // ── the og.tilemap system ──────────────────────────────────────────────────

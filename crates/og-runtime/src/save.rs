@@ -38,6 +38,7 @@
 //! tick delivers og.WorldRestored ([`before_tick`]).
 
 use super::engine::{Engine, engine, running};
+use super::wire::{SaveRecord, SaveType, ToJson};
 use og_ecs::{SnapshotEdit, TypeValues, World};
 use serde_json::{Value, json};
 use std::cell::RefCell;
@@ -527,9 +528,9 @@ fn with_open<T>(handle: u32, f: impl FnOnce(&mut Open) -> Result<T, String>) -> 
     })
 }
 
-fn answer<T: Into<Value>>(r: Result<T, String>) -> String {
+fn answer<T: ToJson>(r: Result<T, String>) -> String {
     match r {
-        Ok(v) => ok(v.into()),
+        Ok(v) => super::wire::ok(&v),
         Err(e) => refuse(e),
     }
 }
@@ -551,12 +552,10 @@ pub fn og_save_edit_types(edit: u32) -> String {
         Ok(o.edit
             .schemas()
             .iter()
-            .map(|t| {
-                json!({
-                    "name": t.name,
-                    "version": t.version,
-                    "fields": t.fields.iter().map(|f| f.name.clone()).collect::<Vec<_>>(),
-                })
+            .map(|t| SaveType {
+                name: t.name.clone(),
+                version: t.version,
+                fields: t.fields.iter().map(|f| f.name.clone()).collect(),
             })
             .collect::<Vec<_>>())
     }))
@@ -578,14 +577,20 @@ fn saved_layout(edit: &SnapshotEdit, ty: &str) -> Result<super::codec::Layout, S
 pub fn og_save_edit_records(edit: u32, ty: String) -> String {
     answer(with_open(edit, |o| {
         let layout = saved_layout(&o.edit, &ty)?;
-        let mut out: Vec<Value> = o
+        let mut out: Vec<SaveRecord> = o
             .edit
             .components(&ty)
             .iter()
-            .map(|(e, b)| json!({ "entity": e.to_bits(), "value": layout.decode(b) }))
+            .map(|(e, b)| SaveRecord {
+                entity: Some(e.to_bits()),
+                value: layout.decode(b),
+            })
             .collect();
         if let Some(b) = o.edit.resource(&ty) {
-            out.push(json!({ "entity": null, "value": layout.decode(b) }));
+            out.push(SaveRecord {
+                entity: None,
+                value: layout.decode(b),
+            });
         }
         Ok(out)
     }))

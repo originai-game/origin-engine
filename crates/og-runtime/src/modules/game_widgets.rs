@@ -1,5 +1,5 @@
 use super::*;
-use crate::wire;
+use crate::wire::{self, ToJson};
 
 pub fn og_ui_bounds(path: String) -> String {
     let b = with_ui("og.ui.bounds", |ui| {
@@ -7,19 +7,19 @@ pub fn og_ui_bounds(path: String) -> String {
             .map(|e| og_ui::Rect::new(e.x, e.y, e.width, e.height))
     })
     .flatten();
-    b.map_or(Value::Null, |r| rect_json(&r)).to_string()
+    wire::text_of(&b.map(|r| super::ui_desc::rect_wire(&r)))
 }
 
 pub fn og_ui_scroll_state(path: String) -> String {
     let s = with_ui("og.ui.scrollState", |ui| ui.scroll_state(&path)).flatten();
-    s.map_or(Value::Null, |s| {
-        json!({
-            "offsetX": s.offset_x, "offsetY": s.offset_y,
-            "viewWidth": s.view_width, "viewHeight": s.view_height,
-            "contentWidth": s.content_width, "contentHeight": s.content_height,
-        })
-    })
-    .to_string()
+    wire::text_of(&s.map(|s| wire::ScrollState {
+        offset_x: s.offset_x,
+        offset_y: s.offset_y,
+        view_width: s.view_width,
+        view_height: s.view_height,
+        content_width: s.content_width,
+        content_height: s.content_height,
+    }))
 }
 
 /// The UI of an engine, for calls that work between ticks too.
@@ -104,10 +104,12 @@ pub fn og_ui_set_virtual_cursor(desc: String) {
 }
 
 pub fn og_ui_virtual_cursor() -> String {
-    match with_ui("og.ui.virtualCursor", |ui| ui.virtual_cursor()).flatten() {
-        Some((p, shown)) => json!({ "x": p.x, "y": p.y, "shown": shown }).to_string(),
-        None => "null".into(),
-    }
+    let c = with_ui("og.ui.virtualCursor", |ui| ui.virtual_cursor()).flatten();
+    wire::text_of(&c.map(|(p, shown)| wire::VirtualCursor {
+        x: p.x,
+        y: p.y,
+        shown,
+    }))
 }
 
 pub fn og_ui_set_hud_edit(on: bool) {
@@ -121,12 +123,19 @@ pub fn og_ui_set_hud_player(player: u32) {
 pub fn og_ui_hud_edit() -> String {
     let e = with_ui("og.ui.hudEdit", |ui| ui.hud_edit()).unwrap_or_default();
     let p = e.placement;
-    json!({
-        "on": e.on, "player": e.player, "selected": e.selected,
-        "placement": { "x": p.x, "y": p.y, "scale": p.scale, "opacity": p.opacity },
-        "keys": e.keys, "changed": e.changed,
+    wire::text_of(&wire::HudEdit {
+        on: e.on,
+        player: e.player,
+        selected: e.selected,
+        placement: wire::HudPlacement {
+            x: p.x,
+            y: p.y,
+            scale: p.scale,
+            opacity: p.opacity,
+        },
+        keys: e.keys,
+        changed: e.changed,
     })
-    .to_string()
 }
 
 pub fn og_ui_hud_layout(player: u32) -> String {
@@ -167,24 +176,40 @@ pub fn og_ui_focus(pad: u32) -> String {
 /// game's units, as og.ui.a11y gives them; the frame's og-ui unit: CSS px,
 /// as the page's mirror places its nodes).
 pub(crate) fn a11y_json(t: &og_ui::A11yTree, unit: f32) -> Value {
-    let nodes: Vec<Value> = t
-        .nodes
-        .iter()
-        .map(|n| {
-            json!({
-                "path": n.path, "parent": n.parent, "role": n.role, "name": n.name,
-                "description": n.description, "value": n.value, "states": n.states,
-                "valueMin": n.value_min, "valueMax": n.value_max, "valueNow": n.value_now,
-                "level": n.level, "live": n.live, "atomic": n.atomic, "notify": n.notify, "x": n.x * unit, "y": n.y * unit, "width": n.width * unit, "height": n.height * unit,
+    wire::A11yTree {
+        nodes: t
+            .nodes
+            .iter()
+            .map(|n| wire::A11yNode {
+                path: n.path.clone(),
+                parent: n.parent.clone(),
+                role: n.role.clone(),
+                name: n.name.clone(),
+                description: n.description.clone(),
+                value: n.value.clone(),
+                states: n.states.clone(),
+                value_min: n.value_min,
+                value_max: n.value_max,
+                value_now: n.value_now,
+                level: n.level.map(u32::from),
+                live: n.live.clone(),
+                atomic: n.atomic,
+                notify: n.notify,
+                x: n.x * unit,
+                y: n.y * unit,
+                width: n.width * unit,
+                height: n.height * unit,
             })
-        })
-        .collect();
-    json!({"nodes": nodes, "focusOrder": t.focus_order, "focused": t.focused})
+            .collect(),
+        focus_order: t.focus_order.clone(),
+        focused: t.focused.clone(),
+    }
+    .to_json()
 }
 
 pub fn og_ui_a11y() -> String {
     with_ui("og.ui.a11y", |ui| a11y_json(ui.a11y(), 1.0).to_string())
-        .unwrap_or_else(|| r#"{"nodes":[],"focusOrder":[],"focused":""}"#.to_string())
+        .unwrap_or_else(|| wire::text_of(&wire::A11yTree::default()))
 }
 
 pub fn og_ui_tick() -> u32 {

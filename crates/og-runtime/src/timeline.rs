@@ -34,7 +34,7 @@ pub use playback::{og_timeline_pause, og_timeline_play, og_timeline_seek, og_tim
 
 use super::codec::{Layout, RecordKind};
 use super::engine::{Engine, engine};
-use super::{ok, ok_void, parse, refuse};
+use super::{ok_void, parse, refuse};
 use glam::{Mat3, Quat, Vec3};
 use og_core::IdMap;
 use og_core::{Error, ErrorKind, Reflect, Str64};
@@ -92,9 +92,9 @@ fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
     m.lock().unwrap_or_else(|e| e.into_inner())
 }
 
-fn wire(r: Result<Value, String>) -> String {
+fn wire<T: super::wire::ToJson>(r: Result<T, String>) -> String {
     match r {
-        Ok(v) => ok(v),
+        Ok(v) => super::wire::ok(&v),
         Err(e) => refuse(e),
     }
 }
@@ -306,12 +306,15 @@ fn with_path<T>(world: u32, path: f64, f: impl FnOnce(&Path) -> T) -> Result<T, 
     Ok(f(&p))
 }
 
-fn sample_json(s: og_timeline::PathSample) -> Value {
-    json!({ "position": jv3(s.position), "tangent": jv3(s.tangent), "up": jv3(s.up) })
-}
-
 pub fn og_path_sample(world: u32, path: f64, t: f64) -> String {
-    wire(with_path(world, path, |p| sample_json(p.sample(t as f32))))
+    wire(with_path(world, path, |p| {
+        let s = p.sample(t as f32);
+        super::wire::PathSample {
+            position: s.position,
+            tangent: s.tangent,
+            up: s.up,
+        }
+    }))
 }
 
 pub fn og_path_length(world: u32, path: f64) -> String {
@@ -323,7 +326,11 @@ pub fn og_path_nearest(world: u32, path: f64, point: String) -> String {
         super::wire::arg::<Vec3>(Some(&point), "point").and_then(|q| {
             with_path(world, path, |p| {
                 let n = p.nearest(q);
-                json!({ "t": n.t, "position": jv3(n.position), "distance": n.distance })
+                super::wire::PathNearest {
+                    t: n.t,
+                    position: n.position,
+                    distance: n.distance,
+                }
             })
         }),
     )
@@ -620,14 +627,22 @@ pub fn og_timeline_info(world: u32, asset: f64) -> String {
             }
         }
         og_core::sort::sort_by(&mut markers, |a, b| a.0.total_cmp(&b.0));
-        Ok(json!({
-            "asset": asset,
-            "name": tl.name,
-            "duration": tl.duration,
-            "tracks": tl.tracks.iter().map(|t| json!({ "kind": t.kind(), "target": t.target(), "keys": t.key_count() })).collect::<Vec<_>>(),
-            "paths": tl.paths.iter().map(|(n, _)| n.clone()).collect::<Vec<_>>(),
-            "markers": markers.into_iter().map(|m| m.1).collect::<Vec<_>>(),
-        }))
+        Ok(super::wire::TimelineInfo {
+            asset: asset as u64,
+            name: tl.name.clone(),
+            duration: tl.duration,
+            tracks: tl
+                .tracks
+                .iter()
+                .map(|t| super::wire::TimelineTrackInfo {
+                    kind: t.kind().to_string(),
+                    target: t.target().to_string(),
+                    keys: t.key_count() as u32,
+                })
+                .collect(),
+            paths: tl.paths.iter().map(|(n, _)| n.clone()).collect(),
+            markers: markers.into_iter().map(|m| m.1).collect(),
+        })
     })())
 }
 

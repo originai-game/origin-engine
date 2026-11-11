@@ -4,16 +4,17 @@
 //! the world's.
 
 use super::engine::engine;
-use super::{ok, ok_void, parse, refuse};
+use super::wire::{self, AiDescription, BehaviourInfo, ToJson};
+use super::{ok_void, parse, refuse};
 use og_ai::{AiSystem, Behaviour, Root, Value as AiValue};
 use og_core::glam::Vec3;
 use og_ecs::{Entity, World};
 use serde_json::{Value, json};
 use std::sync::Arc;
 
-fn wire(r: Result<Value, String>) -> String {
+fn answer(r: Result<BehaviourInfo, String>) -> String {
     match r {
-        Ok(v) => ok(v),
+        Ok(v) => wire::ok(&v),
         Err(e) => refuse(e),
     }
 }
@@ -30,22 +31,25 @@ fn system(engine: u32) -> Option<AiSystem> {
     super::e6::with(engine, |m| m.ai.clone()).flatten()
 }
 
-fn info(h: u64, b: &Behaviour) -> Value {
+fn info(h: u64, b: &Behaviour) -> BehaviourInfo {
     let (kind, states) = match &b.root {
         Root::Tree(_) => ("tree", Vec::new()),
         Root::Machine { states, .. } => {
             ("machine", states.iter().map(|s| s.name.clone()).collect())
         }
     };
-    json!({
-        "behaviour": h, "name": b.name, "kind": kind, "states": states,
-        "nodes": b.nodes.iter().map(|n| n.name.clone()).collect::<Vec<_>>(),
-        "keys": b.keys.iter().map(|k| k.0.clone()).collect::<Vec<_>>(),
-        "subtrees": b.subtrees,
-    })
+    BehaviourInfo {
+        behaviour: h,
+        name: b.name.clone(),
+        kind: kind.into(),
+        states,
+        nodes: b.nodes.iter().map(|n| n.name.clone()).collect(),
+        keys: b.keys.iter().map(|k| k.0.clone()).collect(),
+        subtrees: b.subtrees.clone(),
+    }
 }
 
-fn insert(world: u32, b: Behaviour) -> Result<Value, String> {
+fn insert(world: u32, b: Behaviour) -> Result<BehaviourInfo, String> {
     // A behaviour with a game action: og.AiActionStarted and
     // og.AiActionStopped join the world (lazy records).
     if og_ai::has_actions(&b) {
@@ -74,7 +78,7 @@ fn cooked_text(world: u32, path: &str) -> Result<String, String> {
 }
 
 pub fn og_ai_load(world: u32, path: String) -> String {
-    wire((|| {
+    answer((|| {
         let id = og_bundle::runtime::asset_id(&path).to_string();
         let text = cooked_text(world, &id)?;
         let mut read = |p: &str| cooked_text(world, p);
@@ -84,7 +88,7 @@ pub fn og_ai_load(world: u32, path: String) -> String {
 }
 
 pub fn og_ai_parse(world: u32, text: String) -> String {
-    wire(engine(world).and_then(|_| {
+    answer(engine(world).and_then(|_| {
         let mut read = |p: &str| cooked_text(world, p);
         insert(world, Behaviour::parse_with(&text, "", &mut read)?)
     }))
@@ -182,7 +186,11 @@ pub fn og_ai_noise(world: u32, desc: Option<String>) -> String {
     }
 }
 
-fn describe_value(world_id: u32, e: Entity, perception: Option<(bool, u64)>) -> Option<Value> {
+fn describe_value(
+    world_id: u32,
+    e: Entity,
+    perception: Option<(bool, u64)>,
+) -> Option<AiDescription> {
     let s = system(world_id)?;
     let mem = s.memory(e)?;
     let reg = super::e6::with(world_id, |m| m.behaviours.clone())?;
@@ -203,11 +211,17 @@ fn describe_value(world_id: u32, e: Entity, perception: Option<(bool, u64)>) -> 
     let mut blackboard = serde_json::Map::new();
     blackboard.extend(mem.keys.iter().map(|(k, v)| (k.clone(), to_json(*v))));
     let (sees, target) = perception.unwrap_or((false, 0));
-    Some(json!({
-        "behaviour": b.name, "kind": kind, "state": state,
-        "node": b.node_name(mem.leaf as usize), "path": d.path(&b), "status": status,
-        "blackboard": blackboard, "sees": sees, "target": target,
-    }))
+    Some(AiDescription {
+        behaviour: b.name.clone(),
+        kind: kind.into(),
+        state,
+        node: b.node_name(mem.leaf as usize).into(),
+        path: d.path(&b),
+        status: status.into(),
+        blackboard: Value::Object(blackboard),
+        sees,
+        target,
+    })
 }
 
 fn perception_of(world: &World, e: Entity) -> Option<(bool, u64)> {
@@ -225,14 +239,12 @@ pub fn og_ai_describe(world: u32, entity: f64) -> String {
         }
         eng.world().ok().and_then(|w| perception_of(w, e))
     });
-    describe_value(world, e, p)
-        .unwrap_or(Value::Null)
-        .to_string()
+    wire::text_of(&describe_value(world, e, p))
 }
 
 /// `dump_ai`'s JSON.
 pub(crate) fn describe_json(engine: u32, world: &World, e: Entity) -> Option<Value> {
-    let mut v = describe_value(engine, e, perception_of(world, e))?;
+    let mut v = describe_value(engine, e, perception_of(world, e))?.to_json();
     v["entity"] = json!(og_probe::Names.id_of(world, e));
     if let Ok(p) = world.get::<og_ai::Perception>(e) {
         v["perception"] = json!({

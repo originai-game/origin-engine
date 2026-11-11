@@ -134,12 +134,14 @@ fn with_index<T>(h: u32, f: impl FnOnce(&og_ecs::SpatialHash) -> T) -> Option<T>
 }
 
 fn neighbours(list: Vec<og_ecs::Neighbour>) -> String {
-    Value::Array(
-        list.into_iter()
-            .map(|n| json!({ "entity": n.entity.to_bits(), "distance": n.distance }))
-            .collect(),
-    )
-    .to_string()
+    let list: Vec<wire::Neighbour> = list
+        .into_iter()
+        .map(|n| wire::Neighbour {
+            entity: n.entity.to_bits(),
+            distance: n.distance,
+        })
+        .collect();
+    wire::text_of(&list)
 }
 
 fn center(v: &str) -> [f32; 3] {

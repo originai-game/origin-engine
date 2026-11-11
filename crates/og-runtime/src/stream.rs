@@ -63,7 +63,8 @@ pub(crate) use residency::{
 use residency::{downgrade, release, retry_retained, upgrade};
 
 use super::engine::{Engine, engine, hooks};
-use super::{ok, ok_void, refuse};
+use super::wire::{self, StreamBudget, StreamState, StreamStatus, ToJson};
+use super::{ok_void, refuse};
 use og_bundle::runtime::{CookedSound, ManifestStream, StreamTrigger};
 use og_core::IdMap;
 use og_core::{Reflect, Str64};
@@ -102,12 +103,17 @@ pub(crate) enum State {
 
 impl State {
     fn name(self) -> &'static str {
+        self.wire().as_str()
+    }
+
+    /// The IDL's StreamState.
+    fn wire(self) -> StreamState {
         match self {
-            State::Unloaded => "unloaded",
-            State::Queued => "queued",
-            State::Loading => "loading",
-            State::Resident => "resident",
-            State::Failed => "failed",
+            State::Unloaded => StreamState::Unloaded,
+            State::Queued => StreamState::Queued,
+            State::Loading => StreamState::Loading,
+            State::Resident => StreamState::Resident,
+            State::Failed => StreamState::Failed,
         }
     }
 }
@@ -465,39 +471,37 @@ fn trigger_json(t: &StreamTrigger) -> Value {
     }
 }
 
-fn status_json(g: &Group) -> Value {
-    json!({
-        "name": g.desc.name,
-        "scene": g.desc.scene,
-        "state": g.state.name(),
-        "wanted": g.wanted,
-        "requested": g.requested,
-        "priority": g.desc.priority,
-        "trigger": trigger_json(&g.desc.trigger)["kind"].clone(),
-        "memory": g.desc.memory as f64,
-        "bytes": g.desc.bytes as f64,
-        "assets": g.desc.assets,
-        "reason": g.reason,
-        "since": g.since as f64,
-        "loads": g.loads,
-    })
+/// A group's status, with the bytes it keeps for the frame.
+fn group_status(s: &Streams, g: &Group) -> StreamStatus {
+    StreamStatus {
+        name: g.desc.name.clone(),
+        scene: g.desc.scene.clone(),
+        state: g.state.wire(),
+        wanted: g.wanted,
+        requested: g.requested,
+        priority: g.desc.priority,
+        trigger: trigger_json(&g.desc.trigger)["kind"]
+            .as_str()
+            .unwrap_or_default()
+            .to_string(),
+        memory: g.desc.memory as f64,
+        bytes: g.desc.bytes as f64,
+        assets: g.desc.assets.clone(),
+        reason: g.reason.clone(),
+        since: g.since as f64,
+        loads: g.loads,
+        kept: s.kept_by(&g.desc.name) as f64,
+    }
 }
 
-/// [`status_json`] with the bytes the group keeps for the frame.
-fn group_json(s: &Streams, g: &Group) -> Value {
-    let mut j = status_json(g);
-    j["kept"] = json!(s.kept_by(&g.desc.name) as f64);
-    j
-}
-
-fn budget_json(s: &Streams) -> Value {
-    json!({
-        "budget": s.budget() as f64,
-        "used": s.used() as f64,
-        "kept": s.kept() as f64,
-        "peak": s.peak as f64,
-        "groups": s.groups.iter().map(|g| group_json(s, g)).collect::<Vec<_>>(),
-    })
+fn stream_budget(s: &Streams) -> StreamBudget {
+    StreamBudget {
+        budget: s.budget() as f64,
+        used: s.used() as f64,
+        kept: s.kept() as f64,
+        peak: s.peak as f64,
+        groups: s.groups.iter().map(|g| group_status(s, g)).collect(),
+    }
 }
 
 /// The streaming budget for the probe's `memory`: the budget, what the
@@ -520,12 +524,12 @@ pub(crate) fn dump(engine_id: u32) -> Value {
     open(&eng);
     let a = eng.assets.borrow();
     let s = &a.stream;
-    let mut v = budget_json(s);
+    let mut v = stream_budget(s).to_json();
     v["groups"] = json!(
         s.groups
             .iter()
             .map(|g| {
-                let mut j = group_json(s, g);
+                let mut j = group_status(s, g).to_json();
                 j["trigger"] = trigger_json(&g.desc.trigger);
                 j["file"] = json!(g.desc.file);
                 j["slots"] = json!(s.slots.get(&g.desc.name).map_or(0, Vec::len));
@@ -574,8 +578,8 @@ fn with_group<T>(
 
 /// `og.stream.status`.
 pub fn og_stream_status(world: u32, group: String) -> String {
-    match with_group(world, &group, |_, s, i| group_json(s, &s.groups[i])) {
-        Ok(v) => ok(v),
+    match with_group(world, &group, |_, s, i| group_status(s, &s.groups[i])) {
+        Ok(v) => wire::ok(&v),
         Err(e) => refuse(e),
     }
 }
@@ -602,7 +606,7 @@ pub fn og_stream_budget(world: u32) -> String {
     match engine(world) {
         Ok(eng) => {
             open(&eng);
-            ok(budget_json(&eng.assets.borrow().stream))
+            wire::ok(&stream_budget(&eng.assets.borrow().stream))
         }
         Err(e) => refuse(e),
     }

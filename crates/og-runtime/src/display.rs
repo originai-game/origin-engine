@@ -23,6 +23,7 @@
 
 use super::engine::engine;
 use super::extract::RenderState;
+use super::wire::ToJson;
 use super::{ok_void, refuse, wire};
 use og_render::{AutoQuality, AutoQualityBounds, FrameSample, QualityPreset};
 use serde_json::{Value, json};
@@ -37,8 +38,14 @@ const PRESETS: [(&str, QualityPreset); 3] = [
     ("high", QualityPreset::High),
 ];
 
-/// The IDL `PowerPreference`'s variants, in order (`false`, `true`: low power).
-const POWER: [&str; 2] = ["highPerformance", "lowPower"];
+/// The IDL `PowerPreference` of a low-power choice.
+fn power(low_power: bool) -> wire::PowerPreference {
+    if low_power {
+        wire::PowerPreference::LowPower
+    } else {
+        wire::PowerPreference::HighPerformance
+    }
+}
 
 /// The battery saver's frame rate and largest render scale.
 const SAVER_FPS: u32 = 30;
@@ -155,19 +162,22 @@ impl Settings {
         })
     }
 
-    fn json(&self) -> Value {
-        json!({
-            "frameCap": FRAME_CAPS[self.frame_cap],
-            "batterySaver": self.battery_saver,
-            "renderScale": self.render_scale,
-            "clothSubdivisions": self.cloth_subdivisions,
-            "autoQuality": self.auto_quality,
-            "autoMinScale": self.auto_min_scale,
-            "autoPresetSteps": self.auto_preset_steps,
-            "quality": self.quality.map(|q| PRESETS.iter().find(|(_, p)| *p == q).map_or("medium", |(n, _)| n)),
-            "fullscreen": self.fullscreen,
-            "powerPreference": POWER[usize::from(self.low_power)],
-        })
+    fn wire(&self) -> wire::DisplaySettings {
+        wire::DisplaySettings {
+            frame_cap: wire::FrameCap::ALL[self.frame_cap],
+            battery_saver: self.battery_saver,
+            render_scale: self.render_scale,
+            cloth_subdivisions: self.cloth_subdivisions,
+            auto_quality: self.auto_quality,
+            auto_min_scale: self.auto_min_scale,
+            auto_preset_steps: u32::from(self.auto_preset_steps),
+            quality: self.quality.map(|q| {
+                let i = PRESETS.iter().position(|(_, p)| *p == q).unwrap_or(0);
+                wire::GraphicsQuality::ALL[i]
+            }),
+            fullscreen: self.fullscreen,
+            power_preference: power(self.low_power),
+        }
     }
 
     /// The most frames a second (0: the display's rate) on a device of
@@ -446,16 +456,18 @@ pub fn lose_device(id: u32) -> bool {
 
 /// The renderer's GPU memory as `GpuMemory`, or null without one.
 pub(crate) fn gpu_memory(rs: &RenderState) -> Value {
-    match rs.backend.as_ref().and_then(|b| b.gpu_memory()) {
-        Some(m) => json!({
-            "textures": m.textures as f64,
-            "meshes": m.meshes as f64,
-            "renderTargets": m.render_targets as f64,
-            "buffers": m.buffers as f64,
-            "total": m.total() as f64,
-        }),
-        None => Value::Null,
-    }
+    gpu(rs).to_json()
+}
+
+fn gpu(rs: &RenderState) -> Option<wire::GpuMemory> {
+    let m = rs.backend.as_ref().and_then(|b| b.gpu_memory())?;
+    Some(wire::GpuMemory {
+        textures: m.textures as f64,
+        meshes: m.meshes as f64,
+        render_targets: m.render_targets as f64,
+        buffers: m.buffers as f64,
+        total: m.total() as f64,
+    })
 }
 
 /// `og.render.setDisplay`.
@@ -504,26 +516,31 @@ pub fn og_render_display(world: u32) -> String {
     let d = &rs.display;
     let presenting = rs.backend.as_ref().is_some_and(|b| b.presents());
     let (w, h) = rs.backend.as_ref().map_or((0, 0), |b| b.scene_size());
-    json!({
-        "settings": d.settings.json(),
-        "presenting": presenting,
-        "maxFps": max_fps(&rs),
-        "displayHz": if d.display_ms > 0.0 { 1000.0 / d.display_ms } else { 0.0 },
-        "renderScale": if presenting { d.scale } else { 1.0 },
-        "presetSteps": if presenting { d.step } else { 0 },
-        "sceneWidth": w,
-        "sceneHeight": h,
-        "frameMs": d.auto.as_ref().map_or(0.0, |a| a.cost_ms()),
-        "deviceLosses": rs.backend.as_ref().map_or(0, |b| b.device_losses()),
-        "gpu": gpu_memory(&rs),
+    wire::text_of(&wire::DisplayInfo {
+        settings: d.settings.wire(),
+        presenting,
+        max_fps: max_fps(&rs),
+        display_hz: if d.display_ms > 0.0 {
+            (1000.0 / d.display_ms) as f32
+        } else {
+            0.0
+        },
+        render_scale: if presenting { d.scale } else { 1.0 },
+        preset_steps: if presenting { u32::from(d.step) } else { 0 },
+        scene_width: w,
+        scene_height: h,
+        frame_ms: d.auto.as_ref().map_or(0.0, |a| a.cost_ms()) as f32,
+        device_losses: rs.backend.as_ref().map_or(0, |b| b.device_losses()),
+        gpu: gpu(&rs),
         // A browser presents every frame on the display's refresh and has
         // no switch for it; a native run presents nothing.
-        "vsync": presenting,
-        "fullscreen": d.fullscreen,
-        "powerPreference": POWER[usize::from(d.booted_low_power.unwrap_or(false))],
-        "restartNeeded": d.booted_low_power.is_some_and(|b| b != d.settings.low_power),
+        vsync: presenting,
+        fullscreen: d.fullscreen,
+        power_preference: power(d.booted_low_power.unwrap_or(false)),
+        restart_needed: d
+            .booted_low_power
+            .is_some_and(|b| b != d.settings.low_power),
     })
-    .to_string()
 }
 
 #[cfg(test)]

@@ -11,7 +11,12 @@
 //! (lazy::before_restore), so the block is there to take its bytes.
 
 use super::engine::engine;
-use super::{ok, ok_void, parse, refuse};
+use super::wire::{
+    BarkView, CheckView, ChoiceView, ChosenView, DialogueView, MarkerView, ObjectiveView, OneOf,
+    QuestView, RewardView, RollView, SpeakerView, StoryAsset, StoryLine, TextSpan, TimerView,
+    ToJson,
+};
+use super::{ok_void, parse, refuse};
 use og_core::{IdMap, Rng};
 use og_ecs::{Entity, QueryDesc, StateBlock, SystemContext, SystemDesc, World};
 use og_story::{Dialogue, Event, Library, Quest, Story, Val, Wait};
@@ -636,9 +641,9 @@ fn story<T>(engine_id: u32, f: impl FnOnce(&Library, &mut Story) -> T) -> Result
     r.ok_or_else(|| "no dialogue or quest is loaded: og.story.load one in setup".to_string())
 }
 
-fn wire(r: Result<Value, String>) -> String {
+fn wire<T: ToJson>(r: Result<T, String>) -> String {
     match r {
-        Ok(v) => ok(v),
+        Ok(v) => super::wire::ok(&v),
         Err(e) => refuse(e),
     }
 }
@@ -685,7 +690,7 @@ fn tr(engine: u32, key: &str, args: &Value) -> String {
 
 /// Localize first: both the display text and its scalar ranges belong to the
 /// active locale, never to the source-language string saved in a conversation.
-fn rich_line(engine_id: u32, key: &str, args: &Value) -> (String, Vec<og_ui::TextSpan>) {
+fn rich_line(engine_id: u32, key: &str, args: &Value) -> (String, Vec<TextSpan>) {
     use og_story::yarn::markup::{Property, parse};
     let formatted_args = Value::Object(
         args.as_object()
@@ -716,7 +721,7 @@ fn rich_line(engine_id: u32, key: &str, args: &Value) -> (String, Vec<og_ui::Tex
     let spans = markup
         .spans
         .into_iter()
-        .map(|span| og_ui::TextSpan {
+        .map(|span| TextSpan {
             name: span.name,
             position: span.position,
             length: span.length,
@@ -725,9 +730,9 @@ fn rich_line(engine_id: u32, key: &str, args: &Value) -> (String, Vec<og_ui::Tex
                 .into_iter()
                 .map(|(name, value)| {
                     let value = match value {
-                        Property::String(value) => og_ui::TextSpanValue::String(value),
-                        Property::Number(value) => og_ui::TextSpanValue::Number(value),
-                        Property::Bool(value) => og_ui::TextSpanValue::Bool(value),
+                        Property::String(value) => OneOf::A(value),
+                        Property::Number(value) => OneOf::B(OneOf::A(value)),
+                        Property::Bool(value) => OneOf::B(OneOf::B(value)),
                     };
                     (name, value)
                 })
@@ -739,7 +744,7 @@ fn rich_line(engine_id: u32, key: &str, args: &Value) -> (String, Vec<og_ui::Tex
 
 // ── loading ─────────────────────────────────────────────────────────────
 
-fn insert(engine_id: u32, text: &str) -> Result<Value, String> {
+fn insert(engine_id: u32, text: &str) -> Result<StoryAsset, String> {
     let ty = if text
         .lines()
         .map(str::trim)
@@ -766,12 +771,13 @@ fn insert(engine_id: u32, text: &str) -> Result<Value, String> {
     }
     if ty == og_story::QUEST_TYPE {
         let q = Quest::parse(text)?;
-        let info = json!({
-            "kind": "quest", "name": q.id,
-            "nodes": q.stages.iter().map(|s| s.id.clone()).collect::<Vec<_>>(),
-            "speakers": [],
-            "variables": q.vars.iter().map(|v| v.name.clone()).collect::<Vec<_>>(),
-        });
+        let info = StoryAsset {
+            kind: "quest".into(),
+            name: q.id.clone(),
+            nodes: q.stages.iter().map(|s| s.id.clone()).collect(),
+            speakers: Vec::new(),
+            variables: q.vars.iter().map(|v| v.name.clone()).collect(),
+        };
         let id = q.id.clone();
         let old = with(engine_id, |rt| {
             rt.lib.quests.insert(id.clone(), Arc::new(q))
@@ -792,12 +798,18 @@ fn insert(engine_id: u32, text: &str) -> Result<Value, String> {
         };
         super::i18n::base_strings(&eng, &d.locale, &d.strings)?;
         load_voices(&eng, engine_id, &d);
-        let info = json!({
-            "kind": "dialogue", "name": d.name,
-            "nodes": d.nodes.iter().filter(|n| n.id == n.title).map(|n| n.id.clone()).collect::<Vec<_>>(),
-            "speakers": d.speakers.iter().map(|s| s.id.clone()).collect::<Vec<_>>(),
-            "variables": d.vars.iter().map(|v| v.name.clone()).collect::<Vec<_>>(),
-        });
+        let info = StoryAsset {
+            kind: "dialogue".into(),
+            name: d.name.clone(),
+            nodes: d
+                .nodes
+                .iter()
+                .filter(|n| n.id == n.title)
+                .map(|n| n.id.clone())
+                .collect(),
+            speakers: d.speakers.iter().map(|s| s.id.clone()).collect(),
+            variables: d.vars.iter().map(|v| v.name.clone()).collect(),
+        };
         let name = d.name.clone();
         let old = with(engine_id, |rt| {
             rt.lib.dialogues.insert(name.clone(), Arc::new(d))
@@ -921,13 +933,13 @@ pub fn og_story_start(world: u32, desc: Option<String>) -> String {
     })())
 }
 
-fn speaker_json(
+fn speaker_view(
     engine: u32,
     d: &Dialogue,
     c: &og_story::Conv,
     id: &str,
     expression: &str,
-) -> Value {
+) -> SpeakerView {
     let sp = d.speaker(id);
     let name = sp.map_or(String::new(), |s| tr(engine, &s.name, &json!({})));
     let expression = if expression.is_empty() {
@@ -935,17 +947,17 @@ fn speaker_json(
     } else {
         expression
     };
-    json!({
-        "id": id,
-        "name": name,
-        "entity": c.cast.get(id).copied().unwrap_or(0),
-        "portrait": sp.map_or("", |s| s.portrait.as_str()),
-        "expression": expression,
-        "side": sp.map_or("left", |s| s.side.as_str()),
-    })
+    SpeakerView {
+        id: id.to_string(),
+        name,
+        entity: c.cast.get(id).copied().unwrap_or(0),
+        portrait: sp.map_or("", |s| s.portrait.as_str()).to_string(),
+        expression: expression.to_string(),
+        side: sp.map_or("left", |s| s.side.as_str()).to_string(),
+    }
 }
 
-fn line_json(engine: u32, d: &Dialogue, c: &og_story::Conv, l: &og_story::Shown) -> Value {
+fn story_line(engine: u32, d: &Dialogue, c: &og_story::Conv, l: &og_story::Shown) -> StoryLine {
     let args = args_json(&l.args);
     let (text, spans) = rich_line(engine, &l.key, &args);
     let chosen = l.chosen.as_ref().and_then(|(i, id)| {
@@ -955,29 +967,36 @@ fn line_json(engine: u32, d: &Dialogue, c: &og_story::Conv, l: &og_story::Shown)
             .flat_map(|n| &n.choices)
             .find(|c| &c.id == id)?;
         let (text, spans) = rich_line(engine, &choice.text.key, &args_json(&l.chosen_args));
-        Some(json!({ "index": i, "text": text, "spans": spans }))
+        Some(ChosenView {
+            index: *i,
+            text,
+            spans,
+        })
     });
-    json!({
-        "seq": l.seq,
-        "node": d.node(&l.node).map_or(l.node.as_str(), |n| n.title.as_str()),
-        "speaker": speaker_json(engine, d, c, &l.speaker, &l.expression),
-        "key": l.key,
-        "text": text,
-        "spans": spans,
-        "args": args,
-        "voice": l.voice,
-        "seen": l.seen,
-        "chosen": chosen,
-    })
+    StoryLine {
+        seq: l.seq,
+        node: d
+            .node(&l.node)
+            .map_or(l.node.as_str(), |n| n.title.as_str())
+            .to_string(),
+        speaker: speaker_view(engine, d, c, &l.speaker, &l.expression),
+        key: l.key.clone(),
+        text,
+        spans,
+        args,
+        voice: l.voice.clone(),
+        seen: l.seen,
+        chosen,
+    }
 }
 
 pub fn og_story_view(world: u32, conversation: u32) -> String {
-    story(world, |lib, s| -> Option<Value> {
+    let view = story(world, |lib, s| -> Option<DialogueView> {
         let d = s.resolve(lib, conversation).ok()?;
         let c = s.convs.get(&conversation)?;
         let last = c.history.last();
         let mut choices = Vec::new();
-        let mut timer = Value::Null;
+        let mut timer = None;
         if c.wait == Wait::Choices
             && let Some(node) = d.node(&c.node)
         {
@@ -1005,31 +1024,41 @@ pub fn og_story_view(world: u32, conversation: u32) -> String {
                             _ => 0.0,
                         }
                     });
-                    json!({
-                        "stat": k.stat, "target": target, "chance": chance,
-                        "kind": if k.active { "active" } else { "passive" },
-                    })
+                    CheckView {
+                        stat: k.stat.clone(),
+                        target: target as f32,
+                        chance: chance as f32,
+                        kind: if k.active { "active" } else { "passive" }.to_string(),
+                    }
                 });
                 let (text, spans) = rich_line(world, &ch.text.key, &args);
-                choices.push(json!({
-                    "index": i,
-                    "id": ch.id,
-                    "text": text,
-                    "spans": spans,
-                    "key": ch.text.key,
-                    "args": args,
-                    "enabled": enabled,
-                    "reason": if enabled { String::new() } else { tr(world, &reason_key, &reason_args) },
-                    "reasonKey": reason_key,
-                    "reasonArgs": reason_args,
-                    "visited": c.visited.contains(&format!("{}/{}", node.id, ch.id)),
-                    "kind": ch.kind,
-                    "check": check,
-                }));
+                choices.push(ChoiceView {
+                    index: i as u32,
+                    id: ch.id.clone(),
+                    text,
+                    spans,
+                    key: ch.text.key.clone(),
+                    args,
+                    enabled,
+                    reason: if enabled {
+                        String::new()
+                    } else {
+                        tr(world, &reason_key, &reason_args)
+                    },
+                    reason_key,
+                    reason_args,
+                    visited: c.visited.contains(&format!("{}/{}", node.id, ch.id)),
+                    kind: ch.kind.clone(),
+                    check,
+                });
             }
             if let (Some((left, total)), Some((_, t))) = (c.timer, &node.timer) {
                 let default = node.choices.iter().position(|ch| &ch.id == t).unwrap_or(0);
-                timer = json!({ "ticksLeft": left, "ticksTotal": total, "defaultChoice": default });
+                timer = Some(TimerView {
+                    ticks_left: left,
+                    ticks_total: total,
+                    default_choice: default as u32,
+                });
             }
         }
         let empty = og_story::Shown {
@@ -1051,49 +1080,58 @@ pub fn og_story_view(world: u32, conversation: u32) -> String {
         let l = last.unwrap_or(&empty);
         let args = args_json(&l.args);
         let (text, spans) = rich_line(world, &l.key, &args);
-        Some(json!({
-            "conversation": conversation,
-            "node": d.node(&c.node).map_or(c.node.as_str(), |n| n.title.as_str()),
-            "seq": l.seq,
-            "seen": l.seen,
-            "key": l.key,
-            "args": args,
-            "text": text,
-            "spans": spans,
-            "voice": l.voice,
-            "voiceTicks": if l.voice.is_empty() { 0 } else { l.voice_ticks },
-            "voiceLeft": if c.wait == Wait::Ended { 0 } else { l.voice_left(s.tick) },
-            "speaker": speaker_json(world, &d, c, &l.speaker, &l.expression),
-            "shot": l.shot,
-            "choices": choices,
-            "timer": timer,
-            "lastCheck": c.last_roll.as_ref().map(|r| json!({
-                "stat": r.stat, "target": r.target, "roll": r.roll, "passed": r.passed,
-            })),
-            "ended": c.wait == Wait::Ended,
-        }))
+        Some(DialogueView {
+            conversation,
+            node: d
+                .node(&c.node)
+                .map_or(c.node.as_str(), |n| n.title.as_str())
+                .to_string(),
+            seq: l.seq,
+            seen: l.seen,
+            key: l.key.clone(),
+            args,
+            text,
+            spans,
+            voice: l.voice.clone(),
+            voice_ticks: if l.voice.is_empty() { 0 } else { l.voice_ticks },
+            voice_left: if c.wait == Wait::Ended {
+                0
+            } else {
+                l.voice_left(s.tick)
+            },
+            speaker: speaker_view(world, &d, c, &l.speaker, &l.expression),
+            shot: l.shot.clone(),
+            choices,
+            timer,
+            last_check: c.last_roll.as_ref().map(|r| RollView {
+                stat: r.stat.clone(),
+                target: r.target as f32,
+                roll: r.roll,
+                passed: r.passed,
+            }),
+            ended: c.wait == Wait::Ended,
+        })
     })
     .ok()
-    .flatten()
-    .unwrap_or(Value::Null)
-    .to_string()
+    .flatten();
+    super::wire::text_of(&view)
 }
 
 pub fn og_story_history(world: u32, conversation: u32) -> String {
-    story(world, |lib, s| -> Option<Value> {
+    let lines = story(world, |lib, s| -> Option<Vec<StoryLine>> {
         let c = s.convs.get(&conversation)?;
         let d = lib.dialogues.get(&c.dialogue)?;
-        Some(Value::Array(
+        Some(
             c.history
                 .iter()
-                .map(|l| line_json(world, d, c, l))
+                .map(|l| story_line(world, d, c, l))
                 .collect(),
-        ))
+        )
     })
     .ok()
     .flatten()
-    .unwrap_or_else(|| json!([]))
-    .to_string()
+    .unwrap_or_default();
+    super::wire::text_of(&lines)
 }
 
 pub fn og_story_conversations(world: u32) -> String {
@@ -1159,46 +1197,44 @@ pub fn og_story_ambient(world: u32, desc: Option<String>) -> String {
     })())
 }
 
-fn bark_json(engine: u32, lib: &Library, s: &Story, e: u64, b: &og_story::Said) -> Value {
+fn bark_view(engine: u32, lib: &Library, s: &Story, e: u64, b: &og_story::Said) -> BarkView {
     let args = args_json(&b.args);
     let d = lib.dialogues.get(&b.dialogue);
     let sp = d.and_then(|d| d.speaker(&b.speaker));
     let (text, spans) = rich_line(engine, &b.key, &args);
-    json!({
-        "entity": e,
-        "dialogue": b.dialogue,
-        "bark": b.bark,
-        "seq": b.seq,
-        "key": b.key,
-        "args": args,
-        "text": text,
-        "spans": spans,
-        "speaker": {
-            "id": b.speaker,
-            "name": sp.map_or(String::new(), |x| tr(engine, &x.name, &json!({}))),
-            "entity": e,
-            "portrait": sp.map_or("", |x| x.portrait.as_str()),
-            "expression": sp.map_or("", |x| x.expression.as_str()),
-            "side": sp.map_or("left", |x| x.side.as_str()),
+    BarkView {
+        entity: e,
+        dialogue: b.dialogue.clone(),
+        bark: b.bark.clone(),
+        seq: b.seq,
+        key: b.key.clone(),
+        args,
+        text,
+        spans,
+        speaker: SpeakerView {
+            id: b.speaker.clone(),
+            name: sp.map_or(String::new(), |x| tr(engine, &x.name, &json!({}))),
+            entity: e,
+            portrait: sp.map_or("", |x| x.portrait.as_str()).to_string(),
+            expression: sp.map_or("", |x| x.expression.as_str()).to_string(),
+            side: sp.map_or("left", |x| x.side.as_str()).to_string(),
         },
-        "voice": b.voice,
-        "voiceLeft": b.voice_left(s.tick),
-        "ticksLeft": b.until.saturating_sub(s.tick),
-        "priority": b.priority,
-    })
+        voice: b.voice.clone(),
+        voice_left: b.voice_left(s.tick),
+        ticks_left: b.until.saturating_sub(s.tick),
+        priority: b.priority,
+    }
 }
 
 pub fn og_story_barks(world: u32) -> String {
-    story(world, |lib, s| {
-        Value::Array(
-            s.barks
-                .iter()
-                .map(|(e, b)| bark_json(world, lib, s, *e, b))
-                .collect(),
-        )
+    let barks = story(world, |lib, s| {
+        s.barks
+            .iter()
+            .map(|(e, b)| bark_view(world, lib, s, *e, b))
+            .collect::<Vec<_>>()
     })
-    .unwrap_or_else(|_| json!([]))
-    .to_string()
+    .unwrap_or_default();
+    super::wire::text_of(&barks)
 }
 
 /// `dump_story`: the whole story as the probe writes it.
@@ -1347,15 +1383,16 @@ pub fn og_story_fail_quest(world: u32, quest: String) -> String {
     quest_op(world, og_story::QuestOp::Fail(quest))
 }
 
-fn quest_json(engine: u32, lib: &Library, s: &Story, q: &og_story::QuestState) -> Value {
+fn quest_view(engine: u32, lib: &Library, s: &Story, q: &og_story::QuestState) -> QuestView {
     let def = lib.quests.get(&q.id);
     let none = json!({});
     let t = |k: &str| tr(engine, k, &none);
     let stage = def.and_then(|d| d.stage(&q.stage));
     let mut objectives = Vec::new();
-    let mut marker = q
-        .marker
-        .map(|(e, p)| json!({ "entity": e, "position": { "x": p[0], "y": p[1], "z": p[2] } }));
+    let mut marker = q.marker.map(|(e, p)| MarkerView {
+        entity: e,
+        position: glam::Vec3::from_array(p),
+    });
     if let Some(st) = stage {
         for o in &st.objectives {
             let count = q.counts.get(&o.id).copied().unwrap_or(0);
@@ -1367,19 +1404,21 @@ fn quest_json(engine: u32, lib: &Library, s: &Story, q: &og_story::QuestState) -
                 && !done
                 && let Some(p) = o.marker
             {
-                marker =
-                    Some(json!({ "entity": 0, "position": { "x": p[0], "y": p[1], "z": p[2] } }));
+                marker = Some(MarkerView {
+                    entity: 0,
+                    position: glam::Vec3::from_array(p),
+                });
             }
-            objectives.push(json!({
-                "id": o.id,
-                "text": tr(engine, &o.text.key, &args),
-                "count": count,
-                "target": o.target,
-                "done": done,
-                "failed": q.failed.contains(&o.id),
-                "optional": o.optional,
-                "hidden": o.hidden && count == 0 && !done,
-            }));
+            objectives.push(ObjectiveView {
+                id: o.id.clone(),
+                text: tr(engine, &o.text.key, &args),
+                count,
+                target: o.target,
+                done,
+                failed: q.failed.contains(&o.id),
+                optional: o.optional,
+                hidden: o.hidden && count == 0 && !done,
+            });
         }
     }
     let summary = stage
@@ -1387,48 +1426,53 @@ fn quest_json(engine: u32, lib: &Library, s: &Story, q: &og_story::QuestState) -
         .filter(|k| !k.is_empty())
         .or(def.map(|d| d.summary.as_str()))
         .unwrap_or("");
-    json!({
-        "id": q.id,
-        "title": def.map_or(String::new(), |d| t(&d.title)),
-        "summary": t(summary),
-        "category": def.map_or("", |d| d.category.as_str()),
-        "stage": q.stage,
-        "status": q.status,
-        "tracked": q.tracked,
-        "isNew": q.is_new,
-        "updated": q.updated,
-        "updatedTick": q.updated_tick,
-        "giver": def.map_or(String::new(), |d| t(&d.giver)),
-        "region": def.map_or(String::new(), |d| t(&d.region)),
-        "marker": marker,
-        "rewards": def.map_or(Vec::new(), |d| d.rewards.iter().map(|r| json!({
-            "name": t(&r.name), "amount": r.amount, "image": r.image, "rarity": r.rarity,
-        })).collect()),
-        "objectives": objectives,
-    })
+    QuestView {
+        id: q.id.clone(),
+        title: def.map_or(String::new(), |d| t(&d.title)),
+        summary: t(summary),
+        category: def.map_or("", |d| d.category.as_str()).to_string(),
+        stage: q.stage.clone(),
+        status: q.status.to_string(),
+        tracked: q.tracked,
+        is_new: q.is_new,
+        updated: q.updated,
+        updated_tick: q.updated_tick,
+        giver: def.map_or(String::new(), |d| t(&d.giver)),
+        region: def.map_or(String::new(), |d| t(&d.region)),
+        marker,
+        rewards: def.map_or(Vec::new(), |d| {
+            d.rewards
+                .iter()
+                .map(|r| RewardView {
+                    name: t(&r.name),
+                    amount: r.amount,
+                    image: r.image.clone(),
+                    rarity: r.rarity.clone(),
+                })
+                .collect()
+        }),
+        objectives,
+    }
 }
 
 pub fn og_story_quest(world: u32, id: String) -> String {
-    story(world, |lib, s| {
-        s.quest(&id).map(|q| quest_json(world, lib, s, q))
+    let quest = story(world, |lib, s| {
+        s.quest(&id).map(|q| quest_view(world, lib, s, q))
     })
     .ok()
-    .flatten()
-    .unwrap_or(Value::Null)
-    .to_string()
+    .flatten();
+    super::wire::text_of(&quest)
 }
 
 pub fn og_story_quests(world: u32) -> String {
-    story(world, |lib, s| {
-        Value::Array(
-            s.quests
-                .iter()
-                .map(|q| quest_json(world, lib, s, q))
-                .collect(),
-        )
+    let quests = story(world, |lib, s| {
+        s.quests
+            .iter()
+            .map(|q| quest_view(world, lib, s, q))
+            .collect::<Vec<_>>()
     })
-    .unwrap_or_else(|_| json!([]))
-    .to_string()
+    .unwrap_or_default();
+    super::wire::text_of(&quests)
 }
 
 fn with_quest(world: u32, id: &str, f: impl FnOnce(&mut og_story::QuestState)) -> bool {

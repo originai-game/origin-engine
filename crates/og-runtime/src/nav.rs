@@ -4,11 +4,12 @@
 //! og.nav's system and state block are the world's.
 
 use super::engine::{Engine, engine};
+use super::refuse;
 use super::wire::{
-    self, FlowDesc, NavAlgorithm, NavAreaDesc, NavBox, NavGridDesc, NavLinkDesc, NavLinkKind,
-    NavMeshDesc, NavShape, NavShapeKind, PathDesc, TilemapGridDesc,
+    self, FlowDesc, NavAlgorithm, NavAreaDesc, NavBox, NavCell, NavGridDesc, NavLinkDesc,
+    NavLinkKind, NavMeshDesc, NavMeshInfo, NavPath, NavRebuild, NavShape, NavShapeKind, PathDesc,
+    TilemapGridDesc, ToJson,
 };
-use super::{ok, refuse};
 use og_core::glam::{Vec2, Vec3};
 use og_ecs::{Entity, World};
 use og_nav::{
@@ -21,10 +22,18 @@ fn j3(v: Vec3) -> Value {
     json!({ "x": v.x, "y": v.y, "z": v.z })
 }
 
-fn wire(r: Result<Value, String>) -> String {
+fn wire<T: ToJson>(r: Result<T, String>) -> String {
     match r {
-        Ok(v) => ok(v),
+        Ok(v) => wire::ok(&v),
         Err(e) => refuse(e),
+    }
+}
+
+/// What a navmesh edit rebuilt: its tiles, and the mesh's polygons after.
+fn rebuild(tiles: Vec<usize>, m: &NavMesh) -> NavRebuild {
+    NavRebuild {
+        tiles: tiles.into_iter().map(|t| t as u32).collect(),
+        polygons: m.poly_count() as u32,
     }
 }
 
@@ -79,13 +88,13 @@ fn edit_mesh(
     world: u32,
     mesh: f64,
     edit: impl FnOnce(&mut NavMesh) -> Vec<usize>,
-) -> Result<Value, String> {
+) -> Result<NavRebuild, String> {
     let n = navs(world)?;
     let mut n = lock(&n);
     match n.get_mut(handle(mesh)) {
         Some(Nav::Mesh(m)) => {
             let tiles = edit(m);
-            Ok(json!({ "tiles": tiles, "polygons": m.poly_count() }))
+            Ok(rebuild(tiles, m))
         }
         _ => Err(format!(
             "{mesh} is not a navmesh (og.nav.load, og.nav.build)"
@@ -304,11 +313,14 @@ pub fn og_nav_cell_at(world: u32, grid: f64, point: String) -> String {
             Some(Nav::Grid(g)) => g.cell_at(plane.to_plane(p)),
             _ => None,
         });
-    match cell {
-        Some((x, y)) => json!({ "x": x, "y": y, "inside": true }),
-        None => json!({ "x": 0, "y": 0, "inside": false }),
-    }
-    .to_string()
+    wire::text_of(&match cell {
+        Some((x, y)) => NavCell { x, y, inside: true },
+        None => NavCell {
+            x: 0,
+            y: 0,
+            inside: false,
+        },
+    })
 }
 
 fn path_value(
@@ -317,13 +329,15 @@ fn path_value(
     expanded: u32,
     algorithm: &str,
     links: &[og_nav::PathLink],
-) -> Value {
-    let length: f32 = points.windows(2).map(|w| w[0].distance(w[1])).sum();
-    json!({
-        "points": points.iter().map(|p| j3(*p)).collect::<Vec<_>>(),
-        "length": length, "complete": complete, "expanded": expanded, "algorithm": algorithm,
-        "links": links.iter().map(|l| l.corner).collect::<Vec<_>>(),
-    })
+) -> NavPath {
+    NavPath {
+        points: points.to_vec(),
+        length: points.windows(2).map(|w| w[0].distance(w[1])).sum(),
+        complete,
+        expanded,
+        algorithm: algorithm.into(),
+        links: links.iter().map(|l| l.corner).collect(),
+    }
 }
 
 /// og-nav's off-mesh link for a NavLinkDesc.
@@ -539,15 +553,23 @@ pub fn og_nav_flow_at(world: u32, field: f64, point: String) -> String {
             Some(Nav::Flow { field, .. }) => Some(field.sample(plane.to_plane(p))),
             _ => None,
         });
-    j3(d.map_or(Vec3::ZERO, |d| plane.to_world(d, 0.0))).to_string()
+    wire::text_of(&d.map_or(Vec3::ZERO, |d| plane.to_world(d, 0.0)))
 }
 
 /// `NavMeshInfo`: the bounds are its polygons' (FINDINGS #9 of
 /// kestrel-stair: the floor's origin plus the agent's height was
 /// not where a baked level's terraces are).
-fn mesh_info(h: u64, m: &NavMesh) -> Value {
+fn mesh_info(h: u64, m: &NavMesh) -> NavMeshInfo {
     let (min, max) = m.bounds();
-    json!({ "mesh": h, "polygons": m.poly_count(), "tiles": m.tiles.len(), "min": j3(min), "max": j3(max), "cellSize": m.field.params.cell_size, "profile": "" })
+    NavMeshInfo {
+        mesh: h,
+        polygons: m.poly_count() as u32,
+        tiles: m.tiles.len() as u32,
+        min,
+        max,
+        cell_size: m.field.params.cell_size,
+        profile: String::new(),
+    }
 }
 
 pub fn og_nav_load(world: u32, path: String, profile: Option<String>) -> String {
@@ -605,11 +627,9 @@ pub fn og_nav_load(world: u32, path: String, profile: Option<String>) -> String 
         }
         let n = navs(world)?;
         let mut n = lock(&n);
-        let info = mesh_info(0, &mesh);
-        let h = n.insert(Nav::Mesh(Box::new(mesh)));
-        let mut info = info;
-        info["mesh"] = json!(h);
-        info["profile"] = json!(profile);
+        let mut info = mesh_info(0, &mesh);
+        info.mesh = n.insert(Nav::Mesh(Box::new(mesh)));
+        info.profile = profile;
         Ok(info)
     }))
 }
@@ -659,7 +679,7 @@ pub fn og_nav_build(world: u32, desc: Option<String>) -> String {
         let n = navs(world)?;
         let mut n = lock(&n);
         let mut info = mesh_info(0, &mesh);
-        info["mesh"] = json!(n.insert(Nav::Mesh(Box::new(mesh))));
+        info.mesh = n.insert(Nav::Mesh(Box::new(mesh)));
         Ok(info)
     })())
 }
@@ -675,7 +695,7 @@ pub fn og_nav_set_obstacle(world: u32, mesh: f64, id: u32, obstacle: Option<Stri
         match n.get_mut(handle(mesh)) {
             Some(Nav::Mesh(m)) => {
                 let tiles = m.set_obstacle(id, o);
-                Ok(json!({ "tiles": tiles, "polygons": m.poly_count() }))
+                Ok(rebuild(tiles, m))
             }
             _ => Err(format!(
                 "{mesh} is not a navmesh (og.nav.load, og.nav.build)"
@@ -696,7 +716,7 @@ pub fn og_nav_nearest(world: u32, mesh: f64, point: String, extent: Option<Strin
             Some(Nav::Mesh(m)) => m.nearest(p, e).map(|r| r.1),
             _ => None,
         });
-    hit.map_or(Value::Null, j3).to_string()
+    wire::text_of(&hit)
 }
 
 fn path_of(engine: u32, e: Entity) -> Option<og_nav::system::PathState> {
@@ -705,14 +725,13 @@ fn path_of(engine: u32, e: Entity) -> Option<og_nav::system::PathState> {
 
 pub fn og_nav_path_of(world: u32, entity: f64) -> String {
     match path_of(world, Entity::from_bits(handle(entity))) {
-        Some(p) if !p.corners.is_empty() => path_value(
+        Some(p) if !p.corners.is_empty() => wire::text_of(&path_value(
             &p.corners,
             p.status != og_nav::STATUS_PARTIAL,
             0,
             "agent",
             &p.links,
-        )
-        .to_string(),
+        )),
         _ => "null".into(),
     }
 }

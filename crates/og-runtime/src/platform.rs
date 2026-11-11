@@ -13,6 +13,7 @@
 //! host input, which a replay with the same answers repeats.
 
 use super::engine::{engine, running};
+use super::wire::{self, PlatformError, PlatformInfo, PlatformNoticeData, PlatformResult, ToJson};
 use super::{ok, ok_void, parse, refuse};
 use og_core::IdMap;
 use og_core::Reflect;
@@ -797,26 +798,34 @@ fn time_of(v: &Value) -> Option<f64> {
     v["time"].as_f64().filter(|t| t.is_finite() && *t > 0.0)
 }
 
-fn result_of(id: u32, r: &Record) -> Option<Value> {
+fn result_of(id: u32, r: &Record) -> Option<PlatformResult> {
     let (answer, tick) = r.answer.as_ref()?;
     let ok = answer["ok"].as_bool() == Some(true);
-    let mut v = json!({
-        "request": id, "method": r.method, "ok": ok,
-        "data": if ok { answer.get("data").cloned().unwrap_or(Value::Null) } else { Value::Null },
-        "tick": tick,
-        "time": time_of(answer).unwrap_or(0.0),
-    });
-    if !ok {
+    let error = (!ok).then(|| {
         let e = &answer["error"];
         let code = e["code"].as_str().unwrap_or("failed");
-        v["error"] = json!({
-            "code": code,
-            "message": e["message"].as_str().unwrap_or(""),
-            "retryable": e["retryable"].as_bool().unwrap_or(RETRYABLE.contains(&code)),
-            "revision": e["revision"].as_u64().unwrap_or(0),
-        });
-    }
-    Some(v)
+        PlatformError {
+            code: code.to_string(),
+            message: e["message"].as_str().unwrap_or("").to_string(),
+            retryable: e["retryable"]
+                .as_bool()
+                .unwrap_or(RETRYABLE.contains(&code)),
+            revision: e["revision"].as_u64().unwrap_or(0) as u32,
+        }
+    });
+    Some(PlatformResult {
+        request: id,
+        method: r.method.clone(),
+        ok,
+        data: if ok {
+            answer.get("data").cloned().unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        error,
+        tick: *tick as u32,
+        time: time_of(answer).unwrap_or(0.0),
+    })
 }
 
 /// Whether the running system may not hear platform answers and notices:
@@ -863,24 +872,23 @@ pub fn og_platform_result(world: u32, request: u32) -> String {
         return "null".into();
     }
     with(world, |p| {
-        p.log
-            .get(&request)
-            .and_then(|r| result_of(request, r))
-            .unwrap_or(Value::Null)
+        wire::text_of(&p.log.get(&request).and_then(|r| result_of(request, r)))
     })
-    .to_string()
 }
 
 pub fn og_platform_info(world: u32) -> String {
     with(world, |p| {
-        json!({
-            "host": p.host.clone().unwrap_or_else(|| "none".into()),
-            "capabilities": p.capabilities,
-            "pending": p.log.values().filter(|r| r.answer.is_none() && !r.oneway).count(),
-            "clock": p.clock.clone().unwrap_or_else(|| "none".into()),
+        wire::text_of(&PlatformInfo {
+            host: p.host.clone().unwrap_or_else(|| "none".into()),
+            capabilities: p.capabilities.clone(),
+            pending: p
+                .log
+                .values()
+                .filter(|r| r.answer.is_none() && !r.oneway)
+                .count() as u32,
+            clock: p.clock.clone().unwrap_or_else(|| "none".into()),
         })
     })
-    .to_string()
 }
 
 /// The fixed tick's length in milliseconds of the engine's world.
@@ -931,11 +939,14 @@ pub fn og_platform_notice(world: u32, notice: u32) -> String {
         return "null".into();
     }
     with(world, |p| {
-        p.notices.get(&notice).map_or(Value::Null, |n| {
-            json!({ "notice": notice, "kind": n.kind, "data": n.data, "tick": n.tick, "time": n.time })
-        })
+        wire::text_of(&p.notices.get(&notice).map(|n| PlatformNoticeData {
+            notice,
+            kind: n.kind.clone(),
+            data: n.data.clone(),
+            tick: n.tick as u32,
+            time: n.time,
+        }))
     })
-    .to_string()
 }
 
 // ── the host's side (lifecycle members) ─────────────────────────────────
@@ -1161,7 +1172,7 @@ pub(crate) fn dump(engine: u32) -> Value {
                     (None, _) => c["state"] = json!("pending"),
                     (Some(_), _) => {
                         c["state"] = json!("answered");
-                        c["result"] = result_of(*id, r).unwrap_or(Value::Null);
+                        c["result"] = result_of(*id, r).to_json();
                     }
                 }
                 c

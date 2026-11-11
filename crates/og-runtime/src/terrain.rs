@@ -20,8 +20,11 @@
 use super::engine::{Engine, engine};
 use super::extract::{Hierarchy, RenderState};
 use super::fx::{color, f, kept_rows, on, u};
-use super::wire::{self, TerrainBrush, TerrainLayerDesc, TerrainSampleDesc, TerrainStampDesc};
-use super::{ok, parse, refuse};
+use super::wire::{
+    self, Color, TerrainBounds, TerrainBrush, TerrainEdit, TerrainInfo, TerrainLayerDesc,
+    TerrainSample, TerrainSampleDesc, TerrainStampDesc, ToJson,
+};
+use super::{parse, refuse};
 use glam::{Mat3, Mat4, Quat, Vec2, Vec3};
 use og_core::IdMap;
 use og_ecs::World;
@@ -452,9 +455,9 @@ impl LoadedTerrain {
     }
 }
 
-fn wire(r: Result<Value, String>) -> String {
+fn wire<T: ToJson>(r: Result<T, String>) -> String {
     match r {
-        Ok(v) => ok(v),
+        Ok(v) => wire::ok(&v),
         Err(e) => refuse(e),
     }
 }
@@ -471,10 +474,6 @@ fn index_of(eng: &Engine, data: f64) -> Result<usize, String> {
 
 fn v3(v: &Value) -> Vec3 {
     Vec3::new(f(v, "x", 0.0), f(v, "y", 0.0), f(v, "z", 0.0))
-}
-
-fn j3(v: Vec3) -> Value {
-    json!({ "x": v.x, "y": v.y, "z": v.z })
 }
 
 /// A terrain's placement from its entity's world position, rotation and
@@ -567,27 +566,29 @@ fn edit_heightfield(
     Ok(())
 }
 
-fn info(index: usize, t: &LoadedTerrain) -> Value {
+fn info(index: usize, t: &LoadedTerrain) -> TerrainInfo {
     let (lo, hi) = t.range();
-    let size = t.size();
-    json!({
-        "data": handle(index),
-        "geometry": GEOMETRY_BASE + index as u64,
-        "size": { "x": size.x, "y": size.y },
-        "columns": t.cooked.layout.columns,
-        "rows": t.cooked.layout.rows,
-        "minHeight": lo,
-        "maxHeight": hi,
-        "layers": t.layers.len(),
-        "collision": t.collision,
-        "castShadows": t.cast_shadows,
-        "seaLevel": t.cooked.sea_level,
-        "holes": t.field.as_ref().map_or(t.cooked.layout.holes, |f| f.holes.is_some()),
-    })
+    TerrainInfo {
+        data: handle(index),
+        geometry: GEOMETRY_BASE + index as u64,
+        size: t.size(),
+        columns: t.cooked.layout.columns,
+        rows: t.cooked.layout.rows,
+        min_height: lo,
+        max_height: hi,
+        layers: t.layers.len() as u32,
+        collision: t.collision,
+        cast_shadows: t.cast_shadows,
+        sea_level: t.cooked.sea_level,
+        holes: t
+            .field
+            .as_ref()
+            .map_or(t.cooked.layout.holes, |f| f.holes.is_some()),
+    }
 }
 
 /// `og.terrain.load`.
-pub(crate) fn load(eng: &Engine, path: &str) -> Result<Value, String> {
+pub(crate) fn load(eng: &Engine, path: &str) -> Result<TerrainInfo, String> {
     let id = og_bundle::runtime::asset_id(path).to_string();
     if let Some(&i) = eng.render.borrow().terrain.by_id.get(&id) {
         return Ok(info(i, &eng.render.borrow().terrain.loaded[i]));
@@ -751,13 +752,13 @@ pub fn og_terrain_sample(world: u32, desc: Option<String>) -> String {
         let (h, n) = t.with_sampler(|s| s(p));
         let n = (Mat3::from_mat4(m).inverse().transpose() * n).normalize_or(Vec3::Y);
         let surface = m.transform_point3(Vec3::new(p.x, h, p.y));
-        Ok(json!({
-            "height": surface.y,
-            "normal": j3(n),
-            "slope": og_core::math::acos(n.y.clamp(-1.0, 1.0)).to_degrees(),
-            "inside": inside,
-            "hole": inside && t.hole(p),
-        }))
+        Ok(TerrainSample {
+            height: surface.y,
+            normal: n,
+            slope: og_core::math::acos(n.y.clamp(-1.0, 1.0)).to_degrees(),
+            inside,
+            hole: inside && t.hole(p),
+        })
     })())
 }
 
@@ -790,7 +791,7 @@ pub fn og_terrain_bounds(
             min = min.min(corner);
             max = max.max(corner);
         }
-        Ok(json!({ "min": j3(min), "max": j3(max) }))
+        Ok(TerrainBounds { min, max })
     })())
 }
 
@@ -1029,6 +1030,11 @@ fn terrain_id(t: &TerrainState, i: usize) -> String {
 /// Applies a brush or a stamp's patch to loaded terrain `i` (and logs it
 /// and hands its heights to physics, unless replaying).
 fn edit_loaded(eng: &Engine, i: usize, b: &Value, log: bool) -> Result<Value, String> {
+    edit(eng, i, b, log).map(|e| e.to_json())
+}
+
+/// [`edit_loaded`]'s answer, typed.
+fn edit(eng: &Engine, i: usize, b: &Value, log: bool) -> Result<TerrainEdit, String> {
     {
         let (touched, snapshot, collision) = {
             let mut rs = eng.render.borrow_mut();
@@ -1074,8 +1080,13 @@ fn edit_loaded(eng: &Engine, i: usize, b: &Value, log: bool) -> Result<Value, St
             }
         }
         let (lo, hi) = data.range();
-        let stamp = b["stamp"].as_u64().unwrap_or(0);
-        Ok(json!({ "samples": touched, "minHeight": lo, "maxHeight": hi, "stamp": stamp }))
+        let stamp = b["stamp"].as_u64().unwrap_or(0) as u32;
+        Ok(TerrainEdit {
+            samples: touched,
+            min_height: lo,
+            max_height: hi,
+            stamp,
+        })
     }
 }
 
@@ -1085,7 +1096,7 @@ pub fn og_terrain_edit(world: u32, data: f64, brush: Option<String>) -> String {
         replay_if_restored(&eng)?;
         let i = index_of(&eng, data)?;
         let b = parse(brush.as_deref())?;
-        edit_loaded(&eng, i, &b, true)
+        edit(&eng, i, &b, true)
     })())
 }
 
@@ -1104,26 +1115,30 @@ pub fn og_terrain_unstamp(world: u32, data: f64, stamp: u32) -> String {
     wire((|| stamp::unstamp(&*engine(world)?, data, stamp))())
 }
 
-fn layer_json(l: &TerrainLayer) -> Value {
-    json!({
-        "color": { "r": l.color.x, "g": l.color.y, "b": l.color.z },
-        "roughness": l.roughness,
-        "tile": l.tile,
-        "triplanar": l.triplanar,
-        "normalStrength": l.normal_strength,
-        "slopeMin": l.slope[0],
-        "slopeMax": l.slope[1],
-        "slopeFade": l.slope_fade,
-        "altitudeMin": l.altitude[0],
-        "altitudeMax": l.altitude[1],
-        "altitudeFade": l.altitude_fade,
-        "projectSlope": l.project_slope,
-        "antiTiling": l.anti_tiling,
-        "heightContrast": l.height_contrast,
-        "macroVariation": l.macro_variation,
-        "displacement": l.displacement,
-        "cellVariation": l.cell_variation,
-    })
+fn layer_desc(l: &TerrainLayer) -> TerrainLayerDesc {
+    TerrainLayerDesc {
+        color: Color {
+            r: l.color.x,
+            g: l.color.y,
+            b: l.color.z,
+        },
+        roughness: l.roughness,
+        tile: l.tile,
+        triplanar: l.triplanar,
+        normal_strength: l.normal_strength,
+        slope_min: l.slope[0],
+        slope_max: l.slope[1],
+        slope_fade: l.slope_fade,
+        altitude_min: l.altitude[0],
+        altitude_max: l.altitude[1],
+        altitude_fade: l.altitude_fade,
+        project_slope: l.project_slope,
+        anti_tiling: l.anti_tiling,
+        height_contrast: l.height_contrast,
+        macro_variation: l.macro_variation,
+        displacement: l.displacement,
+        cell_variation: l.cell_variation,
+    }
 }
 
 pub fn og_terrain_layer(world: u32, data: f64, index: u32) -> String {
@@ -1134,7 +1149,7 @@ pub fn og_terrain_layer(world: u32, data: f64, index: u32) -> String {
         let t = &rs.terrain.loaded[i];
         t.layers
             .get(index as usize)
-            .map(layer_json)
+            .map(layer_desc)
             .ok_or_else(|| format!("layer {index}: the terrain has {} layer(s)", t.layers.len()))
     })())
 }

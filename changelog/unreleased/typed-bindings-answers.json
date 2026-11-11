@@ -1,0 +1,12 @@
+{
+  "fixed": [
+    {
+      "member": "og.input",
+      "summary": "Answers are written by types generated from the IDL, so they carry what the IDL declares: a binding in og.input.actions (bindings, defaults) and og.input.capture now has every declared field (control, negative, positive, up, down, left, right, scale, invertY, deadzone, zone, radius); a field at its default used to be left out."
+    },
+    {
+      "member": "og.story.view, og.render.display, og.commands.parse, og.load.soundInfo",
+      "summary": "Numbers the IDL declares f32 are written as f32, as the API types them: choices[].check.target and chance, lastCheck.target, displayHz, frameMs, parse's at and soundInfo's seconds can differ in the last digits (0.1 reads as 0.10000000149011612)."
+    }
+  ]
+}

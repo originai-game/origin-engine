@@ -16,7 +16,7 @@ use super::assets::{self, index_of};
 use super::engine::{Engine, engine, running};
 use super::extract::{Hierarchy, RenderState};
 use super::wire;
-use super::{ok, ok_void, parse, refuse};
+use super::{ok_void, parse, refuse};
 use glam::{DVec2, DVec3, Mat4, Quat, Vec2, Vec3};
 use og_ecs::World;
 use og_render::geometry::{self as geo, Bvh};
@@ -435,9 +435,9 @@ fn mesh_of_desc(d: &wire::BufferGeometryDesc) -> Result<og_render::MeshData, Str
     })
 }
 
-fn wire(r: Result<Value, String>) -> String {
+fn wire<T: wire::ToJson>(r: Result<T, String>) -> String {
     match r {
-        Ok(v) => ok(v),
+        Ok(v) => wire::ok(&v),
         Err(e) => refuse(e),
     }
 }
@@ -786,15 +786,19 @@ pub fn og_render_raycast(world: u32, ray: String, desc: Option<String>) -> Strin
                 let p = origin + dir * hit.t;
                 hits.push((
                     hit.t,
-                    json!({
-                        "entity": t.entity,
-                        "geometry": if t.geometry == usize::MAX { 0.0 } else { assets::handle(t.geometry) as f64 },
-                        "distance": hit.t,
-                        "point": { "x": p.x, "y": p.y, "z": p.z },
-                        "normal": { "x": n.x, "y": n.y, "z": n.z },
-                        "uv": { "x": hit.uv[0], "y": hit.uv[1] },
-                        "faceIndex": hit.face,
-                    }),
+                    wire::GeometryHit {
+                        entity: t.entity,
+                        geometry: if t.geometry == usize::MAX {
+                            0
+                        } else {
+                            assets::handle(t.geometry)
+                        },
+                        distance: hit.t,
+                        point: p,
+                        normal: n,
+                        uv: Vec2::from_array(hit.uv),
+                        face_index: hit.face,
+                    },
                 ));
                 if first {
                     reach = reach.min(hit.t);
@@ -805,7 +809,7 @@ pub fn og_render_raycast(world: u32, ray: String, desc: Option<String>) -> Strin
         if first {
             hits.truncate(1);
         }
-        Ok(Value::Array(hits.into_iter().map(|(_, v)| v).collect()))
+        Ok(hits.into_iter().map(|(_, v)| v).collect::<Vec<_>>())
     })())
 }
 

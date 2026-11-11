@@ -22,8 +22,11 @@
 //! `#anim` blob's streams the first time such an entity is drawn.
 
 use super::engine::{Engine, engine};
-use super::wire::{self, GraphDesc, HumanoidDesc, MirrorDesc, RetargetDesc};
-use super::{ok, parse, refuse};
+use super::wire::{
+    self, Animation, ClipInfo, GraphDesc, HumanBone, Humanoid, HumanoidDesc, MirrorDesc,
+    RetargetDesc, ToJson,
+};
+use super::{parse, refuse};
 use og_anim::{AnimationSystem, ClipAsset, GraphAsset, HumanoidMap, RigAsset, SkeletonAsset};
 use og_core::IdMap;
 use serde_json::{Value, json};
@@ -110,10 +113,20 @@ fn system(eng: &Engine) -> Result<AnimationSystem, String> {
         .ok_or_else(|| "this engine has no animation system".to_string())
 }
 
-fn wire(r: Result<Value, String>) -> String {
+fn wire<T: ToJson>(r: Result<T, String>) -> String {
     match r {
-        Ok(v) => ok(v),
+        Ok(v) => wire::ok(&v),
         Err(e) => refuse(e),
+    }
+}
+
+/// A clip as og.load.animation, og.anim.retarget and og.anim.mirror answer it.
+fn clip_info(h: u64, c: &ClipAsset) -> ClipInfo {
+    ClipInfo {
+        clip: h,
+        name: c.name.clone(),
+        duration: c.duration,
+        markers: c.events.iter().map(|e| e.name.clone()).collect(),
     }
 }
 
@@ -162,20 +175,26 @@ pub(crate) fn load_animation(eng: &Engine, path: &str) -> Result<Value, String> 
         sys.add_clip(h, c.clone())
             .map_err(|e| format!("{id}: clip {}: {}", c.name, e.reason()))?;
         assets.clips.insert(h, c.clone());
-        clips.push(json!({
-            "clip": h as f64,
-            "name": c.name,
-            "duration": c.duration,
-            "markers": c.events.iter().map(|e| e.name.clone()).collect::<Vec<_>>(),
-        }));
+        clips.push(clip_info(h, c));
     }
-    let answer = json!({
-        "skeleton": skeleton as f64,
-        "clips": clips,
-        "nodes": cooked.skeleton.nodes.iter().map(|n| n.name.clone()).collect::<Vec<_>>(),
-        "skins": cooked.skeleton.skins.iter().map(|s| s.joints.len()).collect::<Vec<_>>(),
-        "morphTargets": cooked.morphs.iter().map(|m| m.names.len()).sum::<usize>(),
-    });
+    let answer = Animation {
+        skeleton,
+        clips,
+        nodes: cooked
+            .skeleton
+            .nodes
+            .iter()
+            .map(|n| n.name.clone())
+            .collect(),
+        skins: cooked
+            .skeleton
+            .skins
+            .iter()
+            .map(|s| s.joints.len() as u32)
+            .collect(),
+        morph_targets: cooked.morphs.iter().map(|m| m.names.len()).sum::<usize>() as u32,
+    }
+    .to_json();
     assets.loaded.insert(id, answer.clone());
     Ok(answer)
 }
@@ -306,17 +325,20 @@ pub(crate) fn humanoid_of(
     Ok((skeleton, map))
 }
 
-fn humanoid(eng: &Engine, desc: &HumanoidDesc) -> Result<Value, String> {
+fn humanoid(eng: &Engine, desc: &HumanoidDesc) -> Result<Humanoid, String> {
     let sys = system(eng)?;
     let (skeleton, map) = humanoid_of(eng, &sys, desc.skeleton, desc.rig, "skeleton")?;
-    Ok(json!({
-        "scheme": map.scheme,
-        "bones": map
+    Ok(Humanoid {
+        bones: map
             .bones(&skeleton)
             .into_iter()
-            .map(|(bone, node)| json!({ "bone": bone, "node": node }))
-            .collect::<Vec<_>>(),
-    }))
+            .map(|(bone, node)| HumanBone {
+                bone: bone.into(),
+                node: node.into(),
+            })
+            .collect(),
+        scheme: map.scheme,
+    })
 }
 
 pub fn og_anim_humanoid(world: u32, desc: Option<String>) -> String {
@@ -353,12 +375,7 @@ pub(crate) fn retarget(eng: &Engine, desc: &Value) -> Result<Value, String> {
     let h = assets.mint();
     sys.add_clip(h, out.clip.clone())
         .map_err(|e| format!("og.anim.retarget: {}", e.reason()))?;
-    let answer = json!({
-        "clip": h as f64,
-        "name": out.clip.name,
-        "duration": out.clip.duration,
-        "markers": out.clip.events.iter().map(|e| e.name.clone()).collect::<Vec<_>>(),
-    });
+    let answer = clip_info(h, &out.clip).to_json();
     assets.clips.insert(h, out.clip);
     assets.retargeted.insert(key, answer.clone());
     Ok(answer)
@@ -391,12 +408,7 @@ fn mirror(eng: &Engine, desc: &MirrorDesc) -> Result<Value, String> {
     let h = assets.mint();
     sys.add_clip(h, out.clone())
         .map_err(|e| format!("og.anim.mirror: {}", e.reason()))?;
-    let answer = json!({
-        "clip": h as f64,
-        "name": out.name,
-        "duration": out.duration,
-        "markers": out.events.iter().map(|e| e.name.clone()).collect::<Vec<_>>(),
-    });
+    let answer = clip_info(h, &out).to_json();
     assets.clips.insert(h, out);
     assets.mirrored.insert(key, answer.clone());
     Ok(answer)

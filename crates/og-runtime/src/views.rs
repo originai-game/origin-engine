@@ -14,6 +14,7 @@ use super::codec::Layout;
 use super::engine::engine;
 use super::extract::{Hierarchy, RenderState};
 use super::fx::{color, f, on, resource, rows};
+use super::wire::{PostError, RenderTargetInfo};
 use super::{ok, ok_void, refuse};
 use glam::{Mat4, Vec3};
 use og_ecs::{Entity, QueryDesc, World};
@@ -56,7 +57,7 @@ pub(crate) struct ViewState {
 // ── og.render.renderTarget ──────────────────────────────────────────────────
 
 pub fn og_render_render_target(world: u32, desc: Option<String>) -> String {
-    let r = (|| -> Result<Value, String> {
+    let r = (|| -> Result<RenderTargetInfo, String> {
         let eng = engine(world)?;
         let d: super::wire::RenderTargetDesc = super::wire::arg(desc.as_deref(), "desc")?;
         let (width, height) = (d.width.max(1), d.height.max(1));
@@ -89,16 +90,16 @@ pub fn og_render_render_target(world: u32, desc: Option<String>) -> String {
             None => 0,
         };
         rs.views.targets.push(t);
-        Ok(json!({
-            "target": handle(rs.views.targets.len() - 1),
-            "texture": texture,
-            "depthTexture": depth_texture,
-            "width": width,
-            "height": height,
-        }))
+        Ok(RenderTargetInfo {
+            target: handle(rs.views.targets.len() - 1),
+            texture,
+            depth_texture,
+            width,
+            height,
+        })
     })();
     match r {
-        Ok(v) => ok(v),
+        Ok(v) => super::wire::ok(&v),
         Err(e) => refuse(e),
     }
 }
@@ -192,11 +193,14 @@ pub fn og_render_post_errors(world: u32) -> String {
             .into_iter()
             .filter_map(|(p, message)| {
                 let i = rs.views.posts.iter().position(|h| h.0 == p)?;
-                Some(json!({ "post": handle(i), "message": message }))
+                Some(PostError {
+                    post: handle(i),
+                    message,
+                })
             })
             .collect()
     });
-    Value::Array(errors).to_string()
+    super::wire::text_of(&errors)
 }
 
 // ── extraction ──────────────────────────────────────────────────────────────

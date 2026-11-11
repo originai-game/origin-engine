@@ -25,9 +25,16 @@ pub(crate) fn send_intent(
             .map_err(err)?;
         world.time().tick
     };
-    eng.state.borrow_mut().recorded_intents.push(json!({
-        "tick": tick, "name": name, "layoutHash": hash.to_string(), "payload": payload,
-    }));
+    let record = wire::RecordedIntent {
+        tick: tick as f64,
+        name: name.to_string(),
+        layout_hash: hash.to_string(),
+        payload: payload.iter().map(|&b| u32::from(b)).collect(),
+    };
+    eng.state
+        .borrow_mut()
+        .recorded_intents
+        .push(wire::ToJson::to_json(&record));
     Ok(())
 }
 

@@ -13,41 +13,46 @@
 use super::engine::{Engine, engine};
 use super::extract::{Hierarchy, RenderState};
 use super::feel::{feel_of, set_filter};
-use super::{ok, refuse};
+use super::refuse;
+use super::wire::{self, Rig2DClipInfo, Rig2DInfo, Skeleton2DBox, ToJson};
 use glam::{Mat4, Vec2, Vec3, Vec4};
 use og_anim::{IkTarget2D, Rig2dAsset, Skeleton2D, Transform};
 use og_core::IdMap;
 use og_ecs::{Entity, QueryDesc, World};
-use serde_json::{Value, json};
+use serde_json::Value;
 
-fn wire(r: Result<Value, String>) -> String {
+fn wire<T: ToJson>(r: Result<T, String>) -> String {
     match r {
-        Ok(v) => ok(v),
+        Ok(v) => wire::ok(&v),
         Err(e) => refuse(e),
     }
 }
 
 /// What og.load.rig2d and og.anim.rig2dInfo answer for a rig.
-fn info(handle: u64, rig: &Rig2dAsset, texture: usize) -> Value {
-    let names = |v: Vec<&String>| v.into_iter().cloned().collect::<Vec<_>>();
-    json!({
-        "rig": handle as f64,
-        "texture": super::assets::handle(texture) as f64,
-        "unit": rig.unit,
-        "bones": names(rig.bones.iter().map(|b| &b.name).collect()),
-        "slots": names(rig.slots.iter().map(|s| &s.name).collect()),
-        "constraints": names(rig.iks.iter().map(|k| &k.name).collect()),
-        "skins": std::iter::once("default".to_string())
+fn info(handle: u64, rig: &Rig2dAsset, texture: usize) -> Rig2DInfo {
+    Rig2DInfo {
+        rig: handle,
+        texture: super::assets::handle(texture),
+        unit: rig.unit,
+        bones: rig.bones.iter().map(|b| b.name.clone()).collect(),
+        slots: rig.slots.iter().map(|s| s.name.clone()).collect(),
+        constraints: rig.iks.iter().map(|k| k.name.clone()).collect(),
+        skins: std::iter::once("default".to_string())
             .chain(rig.skins.iter().map(|k| k.name.clone()))
-            .collect::<Vec<_>>(),
-        "clips": rig.clips.iter().enumerate().map(|(i, c)| json!({
-            "clip": i,
-            "name": c.name,
-            "duration": c.duration,
-            "loop": c.looping,
-            "events": c.events.iter().map(|e| e.1.clone()).collect::<Vec<_>>(),
-        })).collect::<Vec<_>>(),
-    })
+            .collect(),
+        clips: rig
+            .clips
+            .iter()
+            .enumerate()
+            .map(|(i, c)| Rig2DClipInfo {
+                clip: i as u32,
+                name: c.name.clone(),
+                duration: c.duration,
+                r#loop: c.looping,
+                events: c.events.iter().map(|e| e.1.clone()).collect(),
+            })
+            .collect(),
+    }
 }
 
 fn load_rig2d(eng: &Engine, path: &str) -> Result<Value, String> {
@@ -76,7 +81,8 @@ fn load_rig2d(eng: &Engine, path: &str) -> Result<Value, String> {
         .lock()
         .unwrap_or_else(|e| e.into_inner())
         .insert(handle, texture);
-    let answer = info(handle, &rig, texture);
+    // Kept as written: a second load of the path answers the same.
+    let answer = info(handle, &rig, texture).to_json();
     st.feel_assets.rigs.insert(handle, (rig, texture));
     st.feel_assets.loaded.insert(key, answer.clone());
     Ok(answer)
@@ -114,16 +120,14 @@ pub fn og_anim_skeleton2d_boxes(world: u32, entity: f64) -> String {
                     "entity {entity} has not been posed by og.skeleton2d (no og.Skeleton2D with a loaded rig, or before its first tick)"
                 )
             })?;
-        Ok(json!(
-            boxes
-                .into_iter()
-                .map(|b| json!({
-                    "slot": b.slot,
-                    "name": b.name,
-                    "points": b.points.iter().map(|p| json!({ "x": p.x, "y": p.y })).collect::<Vec<_>>(),
-                }))
-                .collect::<Vec<_>>()
-        ))
+        Ok(boxes
+            .into_iter()
+            .map(|b| Skeleton2DBox {
+                slot: b.slot,
+                name: b.name,
+                points: b.points,
+            })
+            .collect::<Vec<_>>())
     }))
 }
 

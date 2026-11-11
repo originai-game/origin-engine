@@ -28,7 +28,10 @@ pub use performance::{og_motion_look_at, og_motion_react};
 
 use super::codec::{Layout, RecordKind};
 use super::engine::{Engine, engine};
-use super::wire::{self, FaceGoalDesc, JumpGoalDesc, PlaceGoalDesc, PoseGoalDesc, WalkGoalDesc};
+use super::wire::{
+    self, FaceGoalDesc, JumpGoalDesc, MotionBackend, MotionCapabilities, MotionGoalKind,
+    MotionStatus, PlaceGoalDesc, PoseGoalDesc, WalkGoalDesc,
+};
 use super::{ok, ok_void, parse, refuse};
 use glam::{Quat, Vec3};
 use og_core::math::{atan2, sin_cos};
@@ -1196,12 +1199,8 @@ pub fn og_motion_status(world: u32, entity: f64) -> String {
         let goals = shared(world);
         let goals = lock(&goals);
         let a = goals.agents.get(&e.to_bits()).cloned().unwrap_or_default();
-        let v3 = |p: Vec3| json!({ "x": p.x, "y": p.y, "z": p.z });
-        let mut status = match a.current {
-            None => json!({
-                "goal": "none", "pose": "", "target": v3(Vec3::ZERO), "heading": 0.0,
-                "elapsed": 0.0, "queued": a.queue.len(), "completed": a.completed,
-            }),
+        let (goal, pose, target, heading, elapsed) = match a.current {
+            None => (MotionGoalKind::None, "", Vec3::ZERO, 0.0, 0.0),
             Some(c) => {
                 let g = c.goal;
                 let (target, heading) = match g.kind {
@@ -1217,28 +1216,37 @@ pub fn og_motion_status(world: u32, entity: f64) -> String {
                         (c.start + Vec3::new(sx, 0.0, cz) * g.speed, g.heading)
                     }
                 };
-                json!({
-                    "goal": KIND_NAMES[g.kind as usize],
-                    "pose": if g.kind == Kind::Face { "" } else { POSES[g.pose as usize] },
-                    "target": v3(target),
-                    "heading": heading,
-                    "elapsed": c.elapsed,
-                    "queued": a.queue.len(),
-                    "completed": a.completed,
-                })
+                (
+                    MotionGoalKind::ALL[g.kind as usize],
+                    if g.kind == Kind::Face {
+                        ""
+                    } else {
+                        POSES[g.pose as usize]
+                    },
+                    target,
+                    heading,
+                    c.elapsed,
+                )
             }
         };
-        status["airborne"] = json!(
-            a.current
+        Ok::<_, String>(MotionStatus {
+            goal,
+            pose: pose.into(),
+            target,
+            heading,
+            elapsed,
+            airborne: a
+                .current
                 .and_then(|c| c.jump)
-                .is_some_and(|j| j.stage == JumpStage::Air)
-        );
-        status["looking"] = json!(a.performance.looking());
-        status["reacting"] = json!(a.performance.reacting());
-        Ok::<_, String>(status)
+                .is_some_and(|j| j.stage == JumpStage::Air),
+            queued: a.queue.len() as u32,
+            completed: a.completed,
+            looking: a.performance.looking(),
+            reacting: a.performance.reacting(),
+        })
     })();
     match r {
-        Ok(v) => ok(v),
+        Ok(v) => wire::ok(&v),
         Err(e) => refuse(e),
     }
 }
@@ -1266,7 +1274,11 @@ pub fn og_motion_presentation(world: u32, entity: f64) -> String {
 pub fn og_motion_capabilities(world: u32) -> String {
     match engine(world) {
         Ok(eng) => present::capabilities(&eng).to_string(),
-        Err(e) => json!({ "backend": "none", "reason": e, "modelBytes": 0 }).to_string(),
+        Err(e) => wire::text_of(&MotionCapabilities {
+            backend: MotionBackend::None,
+            reason: e,
+            model_bytes: 0.0,
+        }),
     }
 }
 

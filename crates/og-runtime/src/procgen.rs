@@ -1,13 +1,15 @@
 //! `og.procgen`: og-core's generators over the wire. Each is a pure
 //! function of its desc (the seed in it included), so it needs no world.
 
-use super::{ok, refuse, wire};
+use super::refuse;
+use super::wire::{self, ToJson};
+use og_core::glam::Vec2;
 use og_core::procgen::{self, BspDesc, Fbm, NoiseKind, Wfc, WfcTile};
-use serde_json::{Value, json};
+use serde_json::json;
 
-fn wire(r: Result<Value, String>) -> String {
+fn wire<T: ToJson>(r: Result<T, String>) -> String {
     match r {
-        Ok(v) => ok(v),
+        Ok(v) => wire::ok(&v),
         Err(e) => refuse(e),
     }
 }
@@ -60,16 +62,17 @@ pub fn og_procgen_poisson_disk(desc: Option<String>) -> String {
             d.max_points.min(1 << 20) as usize,
         )
         .map_err(|e| e.reason().to_string())?;
-        Ok(json!(
-            pts.iter()
-                .map(|p| json!({ "x": p[0], "y": p[1] }))
-                .collect::<Vec<_>>()
-        ))
+        Ok(pts.into_iter().map(Vec2::from_array).collect::<Vec<_>>())
     })())
 }
 
-fn rect(r: &procgen::CellRect) -> Value {
-    json!({ "x": r.x, "y": r.y, "width": r.width, "height": r.height })
+fn rect(r: &procgen::CellRect) -> wire::CellRect {
+    wire::CellRect {
+        x: r.x,
+        y: r.y,
+        width: r.width,
+        height: r.height,
+    }
 }
 
 pub fn og_procgen_bsp(desc: Option<String>) -> String {
@@ -86,11 +89,11 @@ pub fn og_procgen_bsp(desc: Option<String>) -> String {
             corridor: d.corridor,
         })
         .map_err(|e| e.reason().to_string())?;
-        Ok(json!({
-            "rooms": out.rooms.iter().map(rect).collect::<Vec<_>>(),
-            "corridors": out.corridors.iter().map(rect).collect::<Vec<_>>(),
-            "cells": out.cells,
-        }))
+        Ok(wire::BspResult {
+            rooms: out.rooms.iter().map(rect).collect(),
+            corridors: out.corridors.iter().map(rect).collect(),
+            cells: out.cells.into_iter().map(u32::from).collect(),
+        })
     })())
 }
 
@@ -121,6 +124,10 @@ pub fn og_procgen_wfc(desc: Option<String>) -> String {
             attempts: d.attempts.clamp(1, 1000),
         })
         .map_err(|e| e.reason().to_string())?;
-        Ok(json!({ "tiles": out.tiles, "rotations": out.rotations, "attempt": out.attempt }))
+        Ok(wire::WfcResult {
+            tiles: out.tiles,
+            rotations: out.rotations,
+            attempt: out.attempt,
+        })
     })())
 }

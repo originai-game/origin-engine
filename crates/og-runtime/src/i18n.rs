@@ -3,7 +3,8 @@
 //! chain and direction for the active locale.
 
 use super::engine::{Engine, engine};
-use super::{ok, parse, refuse};
+use super::wire::{self, LocaleInfo};
+use super::{parse, refuse};
 use og_core::IdMap;
 use og_i18n::{Arg, Catalog, StringTable};
 use serde_json::{Value, json};
@@ -58,16 +59,16 @@ pub(crate) fn base_strings(
     Ok(())
 }
 
-fn info(engine: u32) -> Value {
+fn info(engine: u32) -> LocaleInfo {
     with(engine, |s| {
         let active = s.catalog.active();
-        json!({
-            "requested": s.catalog.requested().unwrap_or(""),
-            "active": active.map_or("", |t| t.locale.as_str()),
-            "direction": s.catalog.direction().as_str(),
-            "locales": s.catalog.locales(),
-            "fonts": s.fonts,
-        })
+        LocaleInfo {
+            requested: s.catalog.requested().unwrap_or("").to_string(),
+            active: active.map_or("", |t| t.locale.as_str()).to_string(),
+            direction: s.catalog.direction().as_str().to_string(),
+            locales: s.catalog.locales(),
+            fonts: s.fonts.clone(),
+        }
     })
 }
 
@@ -307,7 +308,7 @@ pub fn fonts_pending() -> u32 {
 }
 
 pub fn og_i18n_load(world: u32, path: String) -> String {
-    let r = (|| -> Result<Value, String> {
+    let r = (|| -> Result<LocaleInfo, String> {
         let eng = engine(world)?;
         let id = og_bundle::runtime::asset_id(&path).to_string();
         let text = {
@@ -323,7 +324,7 @@ pub fn og_i18n_load(world: u32, path: String) -> String {
         Ok(info(world))
     })();
     match r {
-        Ok(v) => ok(v),
+        Ok(v) => wire::ok(&v),
         Err(e) => refuse(e),
     }
 }
@@ -335,11 +336,11 @@ pub fn og_i18n_set_locale(world: u32, locale: String) -> String {
     {
         note(world, format!("og.i18n.setLocale: {e}"));
     }
-    info(world).to_string()
+    wire::text_of(&info(world))
 }
 
 pub fn og_i18n_locale(world: u32) -> String {
-    info(world).to_string()
+    wire::text_of(&info(world))
 }
 
 fn note(world: u32, text: String) {

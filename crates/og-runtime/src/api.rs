@@ -42,6 +42,14 @@ fn result(r: Result<Value, String>) -> String {
     }
 }
 
+/// A `Result<T>` answer written through its generated type.
+fn typed<T: wire::ToJson>(r: Result<T, String>) -> String {
+    match r {
+        Ok(v) => wire::ok(&v),
+        Err(e) => refuse(e),
+    }
+}
+
 fn result_void(r: Result<(), String>) -> String {
     match r {
         Ok(()) => ok_void(),

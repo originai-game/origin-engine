@@ -21,7 +21,7 @@ pub fn og_load_bundle(world: u32, path: String) -> String {
 }
 
 pub fn og_load_bundle_info(world: u32, asset: f64) -> String {
-    result((|| {
+    typed((|| {
         let eng = engine(world)?;
         let a = eng.assets.borrow();
         let e = index_of(asset)
@@ -32,7 +32,11 @@ pub fn og_load_bundle_info(world: u32, asset: f64) -> String {
             (Status::Pending, _) => Err(format!("{} is still loading", e.path)),
             (_, Payload::Bundle { bundle, dir }) => {
                 let m = bundle.manifest();
-                Ok(json!({ "path": dir, "assets": m.assets.len(), "outputs": m.outputs().count() }))
+                Ok(wire::BundleInfo {
+                    path: dir.clone(),
+                    assets: m.assets.len() as u32,
+                    outputs: m.outputs().count() as u32,
+                })
             }
             _ => Err(format!("{} is not a bundle", e.path)),
         }
@@ -193,7 +197,7 @@ pub fn og_load_sound(world: u32, path: String) -> String {
 }
 
 pub fn og_load_sound_info(world: u32, sound: f64) -> String {
-    result((|| {
+    typed((|| {
         let eng = engine(world)?;
         let i = assets::sound_index(&eng, sound);
         let a = eng.assets.borrow();
@@ -201,10 +205,13 @@ pub fn og_load_sound_info(world: u32, sound: f64) -> String {
             .and_then(|i| a.sounds.get(i))
             .ok_or_else(|| format!("sound {sound} is not alive"))?;
         let m = &s.meta;
-        Ok(json!({
-            "rate": m.sample_rate, "channels": m.channels, "frames": m.frames, "chunks": m.chunk_count,
-            "seconds": f64::from(m.frames) / f64::from(m.sample_rate.max(1)),
-        }))
+        Ok(wire::SoundInfo {
+            rate: m.sample_rate,
+            channels: m.channels,
+            frames: m.frames,
+            chunks: m.chunk_count,
+            seconds: (f64::from(m.frames) / f64::from(m.sample_rate.max(1))) as f32,
+        })
     })())
 }
 
@@ -251,7 +258,7 @@ fn clip_names(a: &assets::Assets, model: &str) -> Result<Vec<String>, String> {
 }
 
 pub fn og_load_gltf_info(world: u32, asset: f64) -> String {
-    result((|| {
+    typed((|| {
         let eng = engine(world)?;
         let a = eng.assets.borrow();
         let e = index_of(asset)
@@ -266,22 +273,36 @@ pub fn og_load_gltf_info(world: u32, asset: f64) -> String {
                 lights,
             } => {
                 let rs = eng.render.borrow();
-                let parts = rs.models.get(&(asset as u64)).into_iter().flatten().map(|(mesh, material, transform)| {
-                    json!({
-                        "geometry": assets::handle(rs.geometries.iter().position(|m| m == mesh).expect("registered model geometry")) as f64,
-                        "material": assets::handle(rs.materials.iter().position(|m| m == material).expect("registered model material")) as f64,
-                        "transform": {"elements": transform.to_cols_array()},
+                let parts = rs
+                    .models
+                    .get(&(asset as u64))
+                    .into_iter()
+                    .flatten()
+                    .map(|(mesh, material, transform)| wire::GltfPart {
+                        geometry: assets::handle(
+                            rs.geometries
+                                .iter()
+                                .position(|m| m == mesh)
+                                .expect("registered model geometry"),
+                        ),
+                        material: assets::handle(
+                            rs.materials
+                                .iter()
+                                .position(|m| m == material)
+                                .expect("registered model material"),
+                        ),
+                        transform: *transform,
                     })
-                }).collect::<Vec<_>>();
-                Ok(json!({
-                "variants": variants,
-                "lights": lights.len(),
-                "scenes": scenes,
-                "geometries": geometries.iter().map(|g| *g as f64).collect::<Vec<_>>(),
-                "parts": parts,
-                "materials": materials.iter().map(|m| *m as f64).collect::<Vec<_>>(),
-                "animations": clip_names(&a, &e.path)?,
-                }))
+                    .collect();
+                Ok(wire::GltfInfo {
+                    variants: variants.clone(),
+                    lights: lights.len() as u32,
+                    scenes: *scenes,
+                    geometries: geometries.clone(),
+                    parts,
+                    materials: materials.clone(),
+                    animations: clip_names(&a, &e.path)?,
+                })
             }
             // An uncooked load (og.load.gltfData) on its way, or failed.
             Payload::Uncooked => match &e.status {

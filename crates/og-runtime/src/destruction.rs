@@ -26,8 +26,11 @@
 
 use super::codec::{Layout, RecordKind};
 use super::engine::{Engine, engine};
-use super::wire::{self, DamageDesc, ExplosionDesc};
-use super::{ok, ok_void, refuse};
+use super::wire::{
+    self, DamageDesc, DestructibleInfo, DestructibleMaterial, DestructionCapabilities,
+    ExplosionDesc,
+};
+use super::{ok_void, refuse};
 use glam::{Quat, Vec3};
 use og_core::{Error, ErrorKind};
 use og_destruct::{Damage, FractureAsset, Instance, Material, Support, stress::StressLimits};
@@ -2240,20 +2243,22 @@ pub fn og_destruction_info(world: u32, entity: f64) -> String {
             .map(|(b, h)| b.area * h)
             .sum();
         let support = a.support as usize;
-        Ok::<_, String>(json!({
-            "chunks": a.support,
-            "children": a.chunks.len() - support,
-            "bonds": a.bonds.len(),
-            "intact": inst.bonds.iter().filter(|&&h| h > 0.0).count(),
-            "islands": inst.islands(&a).len(),
-            "anchored": (0..support).filter(|&c| inst.anchors[c] > 0.0 && !inst.shattered[c]).count(),
-            "health": if total > 0.0 { left / total } else { 1.0 },
-            "debris": debris,
-            "crumbs": crumbs,
-        }))
+        Ok::<_, String>(DestructibleInfo {
+            chunks: a.support,
+            children: (a.chunks.len() - support) as u32,
+            bonds: a.bonds.len() as u32,
+            intact: inst.bonds.iter().filter(|&&h| h > 0.0).count() as u32,
+            islands: inst.islands(&a).len() as u32,
+            anchored: (0..support)
+                .filter(|&c| inst.anchors[c] > 0.0 && !inst.shattered[c])
+                .count() as u32,
+            health: if total > 0.0 { left / total } else { 1.0 },
+            debris: debris as u32,
+            crumbs: crumbs as u32,
+        })
     })();
     match r {
-        Ok(v) => ok(v),
+        Ok(v) => wire::ok(&v),
         Err(e) => refuse(e),
     }
 }
@@ -2294,15 +2299,15 @@ pub fn og_destruction_material(world: u32, kind: u32) -> String {
     let Some(m) = MATERIALS.get(kind as usize) else {
         return refuse(format!("{kind} is none of og.MATERIAL_*"));
     };
-    ok(json!({
-        "toughness": m[0],
-        "strength": m[1],
-        "friction": m[2],
-        "tension": m[3],
-        "density": m[4],
-        "impactThreshold": m[5],
-        "impactRadius": m[6],
-    }))
+    wire::ok(&DestructibleMaterial {
+        toughness: m[0],
+        strength: m[1],
+        friction: m[2],
+        tension: m[3],
+        density: m[4],
+        impact_threshold: m[5],
+        impact_radius: m[6],
+    })
 }
 
 pub fn og_destruction_capabilities(world: u32) -> String {
@@ -2310,10 +2315,9 @@ pub fn og_destruction_capabilities(world: u32) -> String {
     // particle burst: drawn where a renderer runs compute passes (every
     // renderer the engine makes: og.render.capabilities' compute).
     let compute = engine(world).is_ok_and(|e| e.render.borrow().backend.is_some());
-    json!({
-        "visualDebris": compute,
-        "maxVisualDebris": og_render::MAX_DEBRIS,
-        "visualDebrisContacts": "world",
+    wire::text_of(&DestructionCapabilities {
+        visual_debris: compute,
+        max_visual_debris: og_render::MAX_DEBRIS as u32,
+        visual_debris_contacts: "world".into(),
     })
-    .to_string()
 }

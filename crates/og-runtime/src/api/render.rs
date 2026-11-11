@@ -727,7 +727,7 @@ pub fn og_render_ribbon(world: u32, desc: Option<String>) -> String {
 }
 
 pub fn og_render_measure_text(world: u32, desc: Option<String>) -> String {
-    result((|| {
+    typed((|| -> Result<wire::TextMetrics, String> {
         let eng = engine(world)?;
         let d: wire::TextMeasureDesc = wire::arg(desc.as_deref(), "desc")?;
         let font = d
@@ -750,8 +750,10 @@ pub fn og_render_measure_text(world: u32, desc: Option<String>) -> String {
             .iter()
             .map(|l| metrics.measure(l, size))
             .fold(0.0f32, f32::max);
-        Ok(
-            json!({ "width": width, "height": lines.len() as f32 * line_height * size, "lines": lines.len() }),
-        )
+        Ok(wire::TextMetrics {
+            width,
+            height: lines.len() as f32 * line_height * size,
+            lines: lines.len() as u32,
+        })
     })())
 }

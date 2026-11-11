@@ -27,6 +27,7 @@
 //! never the confirmed world).
 
 use super::engine::{Engine, engine, running};
+use super::wire::{self, LockstepSeat, LockstepStatus, RoomInfo, RoomMessageData, RoomPeer};
 use super::{ok_void, parse, refuse};
 use og_core::IdMap;
 use og_ecs::{QueryDesc, SystemDesc, World};
@@ -479,23 +480,23 @@ pub fn og_platform_room_send(world: u32, data: String, to: Option<u32>) -> Strin
     })
 }
 
-fn peers_json(n: &Net) -> Value {
-    Value::Array(
-        n.peers
-            .iter()
-            .map(|(p, name)| json!({ "peer": p, "name": name, "local": n.stage == Stage::In && *p == n.peer }))
-            .collect(),
-    )
+/// The room's peers; none outside a room.
+fn room_peers(n: &Net) -> Vec<RoomPeer> {
+    if n.stage != Stage::In {
+        return Vec::new();
+    }
+    n.peers
+        .iter()
+        .map(|(p, name)| RoomPeer {
+            peer: *p,
+            name: name.clone(),
+            local: *p == n.peer,
+        })
+        .collect()
 }
 
 pub fn og_platform_room_peers(world: u32) -> String {
-    with(world, |n| {
-        if n.stage == Stage::In {
-            peers_json(n).to_string()
-        } else {
-            "[]".into()
-        }
-    })
+    with(world, |n| wire::text_of(&room_peers(n)))
 }
 
 pub fn og_platform_room_info(world: u32) -> String {
@@ -507,15 +508,18 @@ pub fn og_platform_room_info(world: u32) -> String {
         };
         let host = if n.host.is_empty() { "none" } else { &n.host };
         let inside = n.stage == Stage::In;
-        json!({
-            "state": state,
-            "room": if inside { n.room.as_str() } else { "" },
-            "host": host,
-            "link": n.link,
-            "peer": if inside { n.peer } else { 0 },
-            "peers": if inside { peers_json(n) } else { json!([]) },
+        wire::text_of(&RoomInfo {
+            state: state.to_string(),
+            room: if inside {
+                n.room.clone()
+            } else {
+                String::new()
+            },
+            host: host.to_string(),
+            link: n.link.clone(),
+            peer: if inside { n.peer } else { 0 },
+            peers: room_peers(n),
         })
-        .to_string()
     })
 }
 
@@ -525,11 +529,16 @@ pub fn og_platform_room_message(world: u32, message: u32) -> String {
             return "null".into();
         };
         let (data, bytes) = match &m.payload {
-            Payload::Json(d) => (d.clone(), Value::Null),
-            Payload::Bytes(b) => (Value::Null, json!(og_net::base64::encode(b))),
+            Payload::Json(d) => (d.clone(), None),
+            Payload::Bytes(b) => (Value::Null, Some(json!(og_net::base64::encode(b)))),
         };
-        json!({ "message": m.id, "from": m.from, "tick": m.tick.unwrap_or(0), "data": data, "bytes": bytes })
-            .to_string()
+        wire::text_of(&RoomMessageData {
+            message: m.id,
+            from: m.from,
+            tick: m.tick.unwrap_or(0) as u32,
+            data,
+            bytes,
+        })
     })
 }
 
@@ -892,39 +901,52 @@ pub fn og_net_commands(world: u32, component: String) -> String {
 pub fn og_net_status(world: u32) -> String {
     with(world, |n| {
         let s = n.ls.status();
-        let seats: Vec<Value> = s["seats"]
+        // og-net's status, read field by field into the IDL's type: an
+        // absent or `null` value is the field's default.
+        let seats = s["seats"]
             .as_array()
             .map(|a| {
                 a.iter()
-                    .map(|h| json!({ "seat": h[0], "peer": h[1], "since": h[2], "until": h[3], "left": h[4].as_bool().unwrap_or(false) }))
+                    .map(|h| LockstepSeat {
+                        seat: read(&h[0]),
+                        peer: read(&h[1]),
+                        since: read(&h[2]),
+                        until: read(&h[3]),
+                        left: read(&h[4]),
+                    })
                     .collect()
             })
             .unwrap_or_default();
-        json!({
-            "running": s["running"],
-            "peer": s["peer"],
-            "peers": s["peers"],
-            "startTick": s["startTick"],
-            "players": s["players"],
-            "seats": seats,
-            "spectators": if s["spectators"].is_null() { json!([]) } else { s["spectators"].clone() },
-            "waitingFor": s["waitingFor"],
-            "waits": s["waits"],
-            "desync": s["desync"]["tick"],
-            "rollback": s["rollback"].as_bool().unwrap_or(false),
-            "maxPrediction": s["maxPrediction"],
-            "confirmedTick": s["confirmedTick"],
-            "finalTick": s["finalTick"],
-            "acknowledged": s["acknowledged"],
-            "predicted": s["predicted"].as_u64().unwrap_or(0),
-            "rollbacks": s["rollbacks"],
-            "resimulatedTicks": s["resimulatedTicks"],
-            "snapshotBytes": s["snapshotBytes"],
-            "stalled": if s["stalled"].is_null() { json!([]) } else { s["stalled"].clone() },
-            "drops": s["drops"],
+        wire::text_of(&LockstepStatus {
+            running: read(&s["running"]),
+            peer: read(&s["peer"]),
+            peers: read(&s["peers"]),
+            start_tick: read(&s["startTick"]),
+            players: read(&s["players"]),
+            seats,
+            spectators: read(&s["spectators"]),
+            waiting_for: read(&s["waitingFor"]),
+            waits: read(&s["waits"]),
+            desync: read(&s["desync"]["tick"]),
+            rollback: read(&s["rollback"]),
+            max_prediction: read(&s["maxPrediction"]),
+            confirmed_tick: read(&s["confirmedTick"]),
+            final_tick: read(&s["finalTick"]),
+            acknowledged: read(&s["acknowledged"]),
+            predicted: read(&s["predicted"]),
+            rollbacks: read(&s["rollbacks"]),
+            resimulated_ticks: read(&s["resimulatedTicks"]),
+            snapshot_bytes: read(&s["snapshotBytes"]),
+            stalled: read(&s["stalled"]),
+            drops: read(&s["drops"]),
         })
-        .to_string()
     })
+}
+
+/// `v` read as `T`; `T`'s default when it is absent, `null` or of
+/// another type.
+fn read<T: wire::FromJson + Default>(v: &Value) -> T {
+    wire::value(v, "").unwrap_or_default()
 }
 
 pub fn og_net_resimulating(world: u32) -> bool {

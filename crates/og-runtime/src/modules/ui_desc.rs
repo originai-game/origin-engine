@@ -1,4 +1,5 @@
 use super::*;
+use std::collections::BTreeMap;
 
 // ── ui: decoding descs ──────────────────────────────────────────────────────
 
@@ -144,7 +145,7 @@ pub fn og_ui_viewport(world: u32) -> String {
             let ui = ui.lock();
             (ui.hud_max_aspect(), ui.unit_for(&css))
         });
-    viewport_json(&css.zoomed(unit), hud).to_string()
+    wire::text_of(&viewport_wire(&css.zoomed(unit), hud))
 }
 
 pub fn og_ui_theme(world: u32) -> String {
@@ -160,7 +161,41 @@ pub fn og_ui_theme(world: u32) -> String {
             let s = t.sizes(&Viewport::default());
             (t, s, String::new())
         });
-    theme_json(theme, sizes, &style)
+    wire::text_of(&theme_wire(theme, sizes, &style))
+}
+
+/// A viewport as og.ui.viewport answers it, with the HUD band the UI's
+/// `hud_max_aspect` makes of it (og-ui's `Ui::hud_area`).
+fn viewport_wire(v: &Viewport, hud_max_aspect: f32) -> wire::Viewport {
+    let [small, large] = v.extremes();
+    wire::Viewport {
+        width: v.width,
+        height: v.height,
+        dpr: v.dpr,
+        safe_area: wire::Insets {
+            left: v.safe_area.left,
+            top: v.safe_area.top,
+            right: v.safe_area.right,
+            bottom: v.safe_area.bottom,
+        },
+        small_width: Some(small[0]),
+        small_height: Some(small[1]),
+        large_width: Some(large[0]),
+        large_height: Some(large[1]),
+        coarse_pointer: v.coarse_pointer,
+        reduced_motion: Some(v.reduced_motion),
+        high_contrast: Some(v.high_contrast),
+        reduced_transparency: Some(v.reduced_transparency),
+        mac_keys: Some(v.mac_keys),
+        covered: Some(rect_wire(&v.covered)),
+        breakpoint: match v.breakpoint() {
+            og_ui::Breakpoint::PhonePortrait => wire::Breakpoint::PhonePortrait,
+            og_ui::Breakpoint::PhoneLandscape => wire::Breakpoint::PhoneLandscape,
+            og_ui::Breakpoint::Tablet => wire::Breakpoint::Tablet,
+            og_ui::Breakpoint::Desktop => wire::Breakpoint::Desktop,
+        },
+        hud: Some(rect_wire(&v.hud_rect(hud_max_aspect))),
+    }
 }
 
 pub fn og_ui_frame_viewport() -> String {
@@ -182,7 +217,7 @@ pub fn og_ui_frame_viewport() -> String {
         {
             return text.clone();
         }
-        let text = viewport_json(&v, hud).to_string();
+        let text = wire::text_of(&viewport_wire(&v, hud));
         *last = Some((v, hud, text.clone()));
         text
     })
@@ -200,17 +235,23 @@ pub fn og_ui_frame_cursor() -> String {
 }
 
 pub fn og_ui_frame_pointer() -> String {
-    with_ui("og.ui.framePointer", |ui| {
-        let i = ui.input();
-        json!({
-            "x": i.pointer.x, "y": i.pointer.y, "inside": i.pointer_inside, "down": i.down,
-            "pressed": i.pressed, "released": i.released, "shift": i.shift, "ctrl": i.ctrl, "alt": i.alt,
+    wire::text_of(
+        &with_ui("og.ui.framePointer", |ui| {
+            let i = ui.input();
+            wire::UiPointer {
+                x: i.pointer.x,
+                y: i.pointer.y,
+                inside: i.pointer_inside,
+                down: i.down,
+                pressed: i.pressed,
+                released: i.released,
+                shift: i.shift,
+                ctrl: i.ctrl,
+                alt: i.alt,
+            }
         })
-    })
-    .unwrap_or_else(|| {
-        json!({ "x": 0.0, "y": 0.0, "inside": false, "down": false, "pressed": false, "released": false, "shift": false, "ctrl": false, "alt": false })
-    })
-    .to_string()
+        .unwrap_or_default(),
+    )
 }
 
 pub fn og_ui_frame_direction() -> String {
@@ -261,69 +302,122 @@ pub fn og_ui_frame_theme() -> String {
         {
             return text.clone();
         }
-        let text = theme_json(theme, sizes, &style);
+        let text = wire::text_of(&theme_wire(theme, sizes, &style));
         *last = Some((theme, sizes, style, text.clone()));
         text
     })
 }
 
-fn theme_json(theme: Theme, sizes: og_ui::Density, style: &str) -> String {
-    let hex = |c: Srgba| {
-        let [r, g, b] = c.rgb;
-        if c.alpha >= 1.0 {
-            format!("#{r:02x}{g:02x}{b:02x}")
-        } else {
-            format!(
-                "#{r:02x}{g:02x}{b:02x}{:02x}",
-                (c.alpha.clamp(0.0, 1.0) * 255.0).round() as u8
-            )
-        }
-    };
-    let mut palette = Map::new();
+fn theme_wire(theme: Theme, sizes: og_ui::Density, style: &str) -> wire::UiTheme {
+    let mut palette = BTreeMap::new();
     for name in THEME_COLORS {
         if let Some(c) = token(&theme, name) {
-            palette.insert(name.to_string(), json!(hex(c)));
+            palette.insert(name.to_string(), hex(c));
         }
     }
     for (name, c) in theme.roles.iter() {
-        palette.insert(name.to_string(), json!(hex(c)));
+        palette.insert(name.to_string(), hex(c));
     }
-    let mut ramp = Map::new();
+    let mut type_ramp = BTreeMap::new();
     for name in TYPE_STEPS {
         if let Some(s) = step(&theme, name) {
-            ramp.insert(
+            type_ramp.insert(
                 name.to_string(),
-                json!({ "size": s.size, "lineHeight": s.line_height, "trackingEm": s.tracking_em, "cjkLineHeight": s.cjk_line_height, "cjkTrackingEm": s.cjk_tracking_em, "weight": s.weight, "uppercase": s.uppercase, "features": s.features.tags().collect::<Vec<_>>() }),
+                wire::TypeStep {
+                    size: s.size,
+                    line_height: s.line_height,
+                    tracking_em: s.tracking_em,
+                    cjk_line_height: s.cjk_line_height,
+                    cjk_tracking_em: s.cjk_tracking_em,
+                    weight: s.weight.into(),
+                    uppercase: s.uppercase,
+                    features: s.features.tags().map(str::to_string).collect(),
+                },
             );
         }
     }
+    let named = |v: &[(&str, f32)]| -> BTreeMap<String, f32> {
+        v.iter().map(|&(k, x)| (k.to_string(), x)).collect()
+    };
     let sp = theme.space;
     let r = theme.radius;
     let d = theme.durations_ms;
-    json!({
-        "scheme": if theme.scheme == Scheme::Light { "light" } else { "dark" },
-        "palette": palette,
-        "space": { "xxs": sp.xxs, "xs": sp.xs, "sm": sp.sm, "md": sp.md, "lg": sp.lg, "xl": sp.xl, "xxl": sp.xxl, "xl3": sp.xl3 },
-        "radius": { "small": r.small, "control": r.control, "bar": r.bar, "panel": r.panel },
-        "typeRamp": ramp,
-        "sizes": { "controlSm": sizes.control_sm, "controlMd": sizes.control_md, "controlLg": sizes.control_lg, "gutter": sizes.gutter, "header": sizes.header, "row": sizes.row, "section": sizes.section },
-        "durationsMs": { "instant": d.instant, "fast": d.fast, "base": d.base, "slow": d.slow, "spring": d.spring, "bounce": d.bounce },
-        "style": style,
-        "styleVersion": if theme.art.legacy { 1 } else { 2 },
-        "contrast": if theme.contrast == og_ui::Contrast::High { "high" } else { "standard" },
-        "reducedMotion": theme.reduced_motion,
-        "reducedTransparency": theme.reduced_transparency,
-        "colorVision": theme.color_vision.name(),
-        "colorVisionFilter": match theme.color_vision_filter {
-            og_render::ColorVisionFilter::Correct => "correct",
-            og_render::ColorVisionFilter::Simulate => "simulate",
+    wire::UiTheme {
+        scheme: match theme.scheme {
+            Scheme::Light => wire::Scheme::Light,
+            Scheme::Dark => wire::Scheme::Dark,
         },
-        "colorVisionStrength": theme.color_vision_strength,
-        "textScale": theme.text_scale,
-        "unit": theme.unit,
-        "tokens": tokens_json(&theme.tokens),
-    })
-    .to_string()
+        palette,
+        space: named(&[
+            ("xxs", sp.xxs),
+            ("xs", sp.xs),
+            ("sm", sp.sm),
+            ("md", sp.md),
+            ("lg", sp.lg),
+            ("xl", sp.xl),
+            ("xxl", sp.xxl),
+            ("xl3", sp.xl3),
+        ]),
+        radius: named(&[
+            ("small", r.small),
+            ("control", r.control),
+            ("bar", r.bar),
+            ("panel", r.panel),
+        ]),
+        type_ramp,
+        sizes: wire::ControlSizes {
+            control_sm: sizes.control_sm,
+            control_md: sizes.control_md,
+            control_lg: sizes.control_lg,
+            gutter: sizes.gutter,
+            header: sizes.header,
+            row: sizes.row,
+            section: sizes.section,
+        },
+        durations_ms: named(&[
+            ("instant", d.instant),
+            ("fast", d.fast),
+            ("base", d.base),
+            ("slow", d.slow),
+            ("spring", d.spring),
+            ("bounce", d.bounce),
+        ]),
+        style: style.to_string(),
+        style_version: if theme.art.legacy { 1 } else { 2 },
+        contrast: match theme.contrast {
+            og_ui::Contrast::Standard => wire::Contrast::Standard,
+            og_ui::Contrast::High => wire::Contrast::High,
+        },
+        reduced_motion: theme.reduced_motion,
+        reduced_transparency: theme.reduced_transparency,
+        color_vision: match theme.color_vision {
+            og_render::ColorVision::Typical => wire::ColorVision::None,
+            og_render::ColorVision::Protanopia => wire::ColorVision::Protanopia,
+            og_render::ColorVision::Deuteranopia => wire::ColorVision::Deuteranopia,
+            og_render::ColorVision::Tritanopia => wire::ColorVision::Tritanopia,
+        },
+        color_vision_filter: match theme.color_vision_filter {
+            og_render::ColorVisionFilter::Correct => wire::ColorVisionFilter::Correct,
+            og_render::ColorVisionFilter::Simulate => wire::ColorVisionFilter::Simulate,
+        },
+        color_vision_strength: theme.color_vision_strength,
+        text_scale: theme.text_scale,
+        unit: theme.unit,
+        tokens: tokens_json(&theme.tokens),
+    }
+}
+
+/// A colour as `#rrggbb`, or `#rrggbbaa` when it is translucent.
+fn hex(c: Srgba) -> String {
+    let [r, g, b] = c.rgb;
+    if c.alpha >= 1.0 {
+        format!("#{r:02x}{g:02x}{b:02x}")
+    } else {
+        format!(
+            "#{r:02x}{g:02x}{b:02x}{:02x}",
+            (c.alpha.clamp(0.0, 1.0) * 255.0).round() as u8
+        )
+    }
 }
 
 /// The style's tokens (docs/ui.md §3.1) as og.ui.theme answers them
@@ -479,8 +573,14 @@ pub(crate) fn anchor_of(v: &Value) -> Option<Anchor> {
     })
 }
 
-pub(super) fn rect_json(r: &og_ui::Rect) -> Value {
-    json!({ "x": r.x, "y": r.y, "width": r.width, "height": r.height })
+/// A rectangle as the IDL's `UiRect`.
+pub(super) fn rect_wire(r: &og_ui::Rect) -> wire::UiRect {
+    wire::UiRect {
+        x: r.x,
+        y: r.y,
+        width: r.width,
+        height: r.height,
+    }
 }
 
 /// The engine whose UI frame is open, else the one opened last.

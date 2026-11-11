@@ -7,7 +7,7 @@ use og_ui::{
     Choreo, Ease, EventKind, Key, KeyEase, MotionToken, PlayDesc, Prop, Repeat, SpringSpec,
     StaggerFrom, Theme, Timeline, TimelineEvent, TimelineTrack, Transition,
 };
-use serde_json::{Value, json};
+use serde_json::json;
 
 fn spring(s: &wire::SpringSpec) -> SpringSpec {
     SpringSpec::new(s.duration_ms, s.bounce)
@@ -226,15 +226,14 @@ pub fn og_ui_stop(play: u32) -> bool {
 }
 
 pub fn og_ui_play_info(play: u32) -> String {
-    with_ui("og.ui.playInfo", |ui| ui.play_info(play))
-        .flatten()
-        .map_or(Value::Null, |p| {
-            json!({
-                "atMs": p.at_ms, "lengthMs": p.length_ms, "paused": p.paused,
-                "reverse": p.reverse, "ended": p.ended,
-            })
-        })
-        .to_string()
+    let p = with_ui("og.ui.playInfo", |ui| ui.play_info(play)).flatten();
+    wire::text_of(&p.map(|p| wire::PlayInfo {
+        at_ms: p.at_ms,
+        length_ms: p.length_ms,
+        paused: p.paused,
+        reverse: p.reverse,
+        ended: p.ended,
+    }))
 }
 
 pub fn og_ui_force_state(path: String, group: String, state: String) {
@@ -261,58 +260,70 @@ pub fn og_ui_animate(id: String, target: f64, transition_desc: String) -> f64 {
 
 pub fn og_ui_gesture(path: String) -> String {
     let g = with_ui("og.ui.gesture", |ui| ui.gesture_at(&path)).unwrap_or_default();
-    json!({
-        "held": g.held, "dragging": g.dragging,
-        "offsetX": g.offset_x, "offsetY": g.offset_y,
-        "velocityX": g.velocity_x, "velocityY": g.velocity_y,
-        "scale": g.scale, "rotation": g.rotation, "snapped": g.snapped,
-        "dismissed": g.dismissed, "over": g.over, "droppedOn": g.dropped_on,
-        "hovering": g.hovering, "received": g.received,
-        "tapped": g.tapped, "doubleTapped": g.double_tapped,
-        "longPressed": g.long_pressed, "longPress": g.long_press,
+    wire::text_of(&wire::GestureInfo {
+        held: g.held,
+        dragging: g.dragging,
+        offset_x: g.offset_x,
+        offset_y: g.offset_y,
+        velocity_x: g.velocity_x,
+        velocity_y: g.velocity_y,
+        scale: g.scale,
+        rotation: g.rotation,
+        snapped: g.snapped,
+        dismissed: g.dismissed,
+        over: g.over,
+        dropped_on: g.dropped_on,
+        hovering: g.hovering,
+        received: g.received,
+        tapped: g.tapped,
+        double_tapped: g.double_tapped,
+        long_pressed: g.long_pressed,
+        long_press: g.long_press,
     })
-    .to_string()
 }
 
 pub fn og_ui_motion_events() -> String {
     let events = with_ui("og.ui.motionEvents", |ui| {
         ui.events()
             .iter()
-            .map(|e| {
-                json!({
-                    "kind": e.kind, "name": e.name, "target": e.target,
-                    "play": e.play, "index": e.index, "playbackRate": e.pitch,
-                })
+            .map(|e| wire::UiMotionEvent {
+                kind: e.kind.clone(),
+                name: e.name.clone(),
+                target: e.target.clone(),
+                play: e.play,
+                index: e.index,
+                playback_rate: e.pitch,
             })
             .collect::<Vec<_>>()
     })
     .unwrap_or_default();
-    Value::Array(events).to_string()
+    wire::text_of(&events)
 }
 
 pub fn og_ui_overlaps() -> String {
     let all = with_ui("og.ui.overlaps", |ui| {
         ui.overlaps()
             .iter()
-            .map(|o| {
-                json!({
-                    "path": o.path, "other": o.other, "rect": super::rect_json(&o.rect),
-                    "inFlow": o.in_flow,
-                })
+            .map(|o| wire::UiOverlap {
+                path: o.path.clone(),
+                other: o.other.clone(),
+                rect: super::ui_desc::rect_wire(&o.rect),
+                in_flow: o.in_flow,
             })
             .collect::<Vec<_>>()
     })
     .unwrap_or_default();
-    Value::Array(all).to_string()
+    wire::text_of(&all)
 }
 
 pub fn og_ui_layout_stats() -> String {
     let s = with_ui("og.ui.layoutStats", |ui| ui.frame().stats).unwrap_or_default();
-    json!({
-        "elements": s.elements, "rebuilt": s.rebuilt, "laidOut": s.laid_out,
-        "keptCommands": s.kept_commands,
+    wire::text_of(&wire::UiLayoutStats {
+        elements: s.elements,
+        rebuilt: s.rebuilt,
+        laid_out: s.laid_out,
+        kept_commands: s.kept_commands,
     })
-    .to_string()
 }
 
 #[cfg(test)]

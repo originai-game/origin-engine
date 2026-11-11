@@ -55,16 +55,29 @@ pub fn og_commands_register(name: String, handler: u32, desc: Option<String>) ->
 
 pub fn og_commands_parse(script: String) -> String {
     match og_probe::command::parse(&script) {
-        Ok(steps) => ok(Value::Array(steps.iter().map(|s| s.to_json()).collect())),
+        Ok(steps) => wire::ok(
+            &steps
+                .into_iter()
+                .map(|s| wire::CommandStep {
+                    at: s.at as f32,
+                    action: s.action,
+                    args: s.args,
+                })
+                .collect::<Vec<_>>(),
+        ),
         Err(e) => refuse(e.to_string()),
     }
 }
 
 pub fn og_commands_schedule(world: u32, script: String) -> String {
-    result((|| {
+    typed((|| {
         let eng = engine(world)?;
         with_probe(&eng, false, |p, w| p.schedule(w, &script))?
-            .map(|r| r.to_json())
+            .map(|r| wire::CommandsReport {
+                scheduled: r.scheduled,
+                until_tick: r.until_tick as u32,
+                warnings: r.warnings,
+            })
             .map_err(|e| e.to_string())
     })())
 }
@@ -73,18 +86,30 @@ pub fn og_commands_help(world: u32) -> String {
     let list = engine(world)
         .ok()
         .and_then(|eng| {
-            eng.probe
-                .try_borrow()
-                .ok()
-                .map(|p| p.help().iter().map(|c| c.to_json()).collect::<Vec<_>>())
+            eng.probe.try_borrow().ok().map(|p| {
+                p.help()
+                    .iter()
+                    .map(|c| wire::CommandInfo {
+                        name: c.name.clone(),
+                        usage: c.usage.clone(),
+                        doc: c.doc.clone(),
+                        core: c.core,
+                    })
+                    .collect::<Vec<_>>()
+            })
         })
         .unwrap_or_else(|| {
             og_probe::command::CORE_ACTIONS
                 .iter()
-                .map(|(n, u, d)| json!({ "name": n, "usage": u, "doc": d, "core": true }))
+                .map(|(n, u, d)| wire::CommandInfo {
+                    name: n.to_string(),
+                    usage: u.to_string(),
+                    doc: d.to_string(),
+                    core: true,
+                })
                 .collect()
         });
-    Value::Array(list).to_string()
+    wire::text_of(&list)
 }
 
 // ── probe ───────────────────────────────────────────────────────────────────

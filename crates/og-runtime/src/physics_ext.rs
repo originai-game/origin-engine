@@ -12,8 +12,11 @@
 use super::engine::{Engine, engine, running};
 use super::extract::RenderState;
 use super::fx::{f, rows};
-use super::wire::{self, RagdollRigDesc};
-use super::{ok, ok_void, refuse};
+use super::wire::{
+    self, BonePose, PhysicsPhase, PhysicsStats, RagdollBoneDesc, RagdollRigDesc, SoftBodyPoints,
+    ToJson, WheelPose,
+};
+use super::{ok_void, refuse};
 use glam::{Mat4, Quat, Vec3};
 use og_ecs::{Entity, World};
 use og_physics::{PhysicsSystem, RagdollBone, RagdollRig};
@@ -34,28 +37,20 @@ fn entity(e: f64) -> Result<Entity, String> {
     Ok(Entity::from_bits(e as u64))
 }
 
-fn v3(v: Vec3) -> Value {
-    json!({ "x": v.x, "y": v.y, "z": v.z })
-}
-
-fn q4(q: Quat) -> Value {
-    json!({ "x": q.x, "y": q.y, "z": q.z, "w": q.w })
-}
-
-fn answer(r: Result<Value, String>) -> String {
+fn answer<T: ToJson>(r: Result<T, String>) -> String {
     match r {
-        Ok(v) => ok(v),
+        Ok(v) => wire::ok(&v),
         Err(e) => refuse(e),
     }
 }
 
 /// A readout of the last step for `e`, refused with `what` when it has none.
-fn readout<T>(
+fn readout<T, W: ToJson>(
     world: u32,
     e: f64,
     what: &str,
     read: impl FnOnce(&PhysicsSystem, Entity) -> Option<T>,
-    wire: impl FnOnce(T) -> Value,
+    wire: impl FnOnce(T) -> W,
 ) -> String {
     answer((|| {
         let eng = engine(world)?;
@@ -149,23 +144,11 @@ pub fn og_physics_apply_torque_impulse(world: u32, e: f64, torque: String) -> St
 }
 
 pub fn og_physics_rope_points(world: u32, e: f64) -> String {
-    readout(
-        world,
-        e,
-        "og.Rope",
-        |p, e| p.rope_points(e),
-        |pts| json!(pts.into_iter().map(v3).collect::<Vec<_>>()),
-    )
+    readout(world, e, "og.Rope", |p, e| p.rope_points(e), |pts| pts)
 }
 
 pub fn og_physics_cloth_points(world: u32, e: f64) -> String {
-    readout(
-        world,
-        e,
-        "og.Cloth",
-        |p, e| p.cloth_points(e),
-        |c| json!(c.points.into_iter().map(v3).collect::<Vec<_>>()),
-    )
+    readout(world, e, "og.Cloth", |p, e| p.cloth_points(e), |c| c.points)
 }
 
 pub fn og_physics_garment_points(world: u32, e: f64) -> String {
@@ -174,7 +157,7 @@ pub fn og_physics_garment_points(world: u32, e: f64) -> String {
         e,
         "og.Garment",
         |p, e| p.garment_points(e),
-        |g| json!(g.points.into_iter().map(v3).collect::<Vec<_>>()),
+        |g| g.points,
     )
 }
 
@@ -184,11 +167,9 @@ pub fn og_physics_soft_body_points(world: u32, e: f64) -> String {
         e,
         "og.SoftBody",
         |p, e| p.soft_body_points(e),
-        |s| {
-            json!({
-                "points": s.points.into_iter().map(v3).collect::<Vec<_>>(),
-                "indices": s.indices,
-            })
+        |s| SoftBodyPoints {
+            points: s.points,
+            indices: s.indices,
         },
     )
 }
@@ -199,13 +180,7 @@ pub fn og_physics_fluid_particles(world: u32, e: f64) -> String {
         e,
         "og.Fluid2D",
         |p, e| p.fluid_particles(e),
-        |pts| {
-            json!(
-                pts.into_iter()
-                    .map(|p| json!({ "x": p.x, "y": p.y }))
-                    .collect::<Vec<_>>()
-            )
-        },
+        |pts| pts,
     )
 }
 
@@ -215,7 +190,7 @@ pub fn og_physics_fluid3d_particles(world: u32, e: f64) -> String {
         e,
         "og.Fluid3D",
         |p, e| p.fluid3d_particles(e),
-        |pts| json!(pts.into_iter().map(v3).collect::<Vec<_>>()),
+        |pts| pts,
     )
 }
 
@@ -226,12 +201,17 @@ pub fn og_physics_vehicle_wheels(world: u32, e: f64) -> String {
         "og.Vehicle",
         |p, e| p.vehicle_wheels(e),
         |wheels| {
-            json!(
             wheels
                 .into_iter()
-                .map(|w| json!({ "position": v3(w.position), "rotation": q4(w.quaternion), "contact": w.contact, "slip": w.slip, "sideSpeed": w.side_speed, "entity": w.entity }))
+                .map(|w| WheelPose {
+                    position: w.position,
+                    rotation: w.quaternion,
+                    contact: w.contact,
+                    slip: w.slip,
+                    side_speed: w.side_speed,
+                    entity: w.entity,
+                })
                 .collect::<Vec<_>>()
-        )
         },
     )
 }
@@ -243,12 +223,10 @@ pub fn og_physics_ragdoll_pose(world: u32, e: f64) -> String {
         "og.Ragdoll",
         |p, e| p.ragdoll_pose(e),
         |bones| {
-            json!(
-                bones
-                    .into_iter()
-                    .map(|(p, q)| json!({ "position": v3(p), "rotation": q4(q) }))
-                    .collect::<Vec<_>>()
-            )
+            bones
+                .into_iter()
+                .map(|(position, rotation)| BonePose { position, rotation })
+                .collect::<Vec<_>>()
         },
     )
 }
@@ -259,28 +237,36 @@ pub fn og_physics_stats(world: u32) -> String {
     answer((|| {
         let eng = engine(world)?;
         let stats = physics(&eng)?.stats();
-        let phases: Vec<Value> = stats
+        let phases: Vec<PhysicsPhase> = stats
             .phases
             .iter()
-            .map(|p| json!({ "name": p.name, "ms": p.ms, "split": p.split }))
+            .map(|p| PhysicsPhase {
+                name: p.name.into(),
+                ms: p.ms,
+                split: p.split,
+            })
             .collect();
         // Before the first step, every phase at zero.
         let phases = if phases.is_empty() {
             og_physics::Phase::ALL
                 .iter()
-                .map(|p| json!({ "name": p.name(), "ms": 0.0, "split": false }))
+                .map(|p| PhysicsPhase {
+                    name: p.name().into(),
+                    ms: 0.0,
+                    split: false,
+                })
                 .collect()
         } else {
             phases
         };
-        Ok(json!({
-            "tick": stats.tick as f64,
-            "bodies": stats.bodies,
-            "threads": stats.threads,
-            "pool": stats.pool,
-            "ms": stats.ms,
-            "phases": phases,
-        }))
+        Ok(PhysicsStats {
+            tick: stats.tick as f64,
+            bodies: stats.bodies,
+            threads: stats.threads,
+            pool: stats.pool,
+            ms: stats.ms,
+            phases,
+        })
     })())
 }
 
@@ -614,7 +600,7 @@ pub fn og_physics_set_ragdoll_rig(world: u32, e: f64, desc: Option<String>) -> S
 /// A rig from a skeleton's first skin: a bone per joint, parents first,
 /// each from its joint's rest pose in model space to its first child joint
 /// (a leaf gets 60% of its parent's length, pointing on).
-pub(crate) fn rig_from_skeleton(s: &og_anim::SkeletonAsset) -> Result<Value, String> {
+pub(crate) fn rig_from_skeleton(s: &og_anim::SkeletonAsset) -> Result<RagdollRigDesc, String> {
     let skin = s.skins.first().ok_or("the skeleton has no skin")?;
     let model = s.model_space(&s.rest_pose());
     let joint_of = |node: u32| skin.joints.iter().position(|&n| n == node);
@@ -644,7 +630,7 @@ pub(crate) fn rig_from_skeleton(s: &og_anim::SkeletonAsset) -> Result<Value, Str
     let mut order: Vec<usize> = (0..skin.joints.len()).collect();
     og_core::sort::sort_by_key(&mut order, |&j| (depth(j), j));
     let bone_of = |j: usize| order.iter().position(|&o| o == j);
-    let mut bones: Vec<Value> = Vec::with_capacity(order.len());
+    let mut bones: Vec<RagdollBoneDesc> = Vec::with_capacity(order.len());
     let mut lengths: Vec<f32> = Vec::with_capacity(order.len());
     for &j in &order {
         let node = skin.joints[j];
@@ -667,16 +653,16 @@ pub(crate) fn rig_from_skeleton(s: &og_anim::SkeletonAsset) -> Result<Value, Str
         let length = length.max(0.02);
         lengths.push(length);
         let axis = axis.normalize_or(Vec3::Y);
-        bones.push(json!({
-            "parent": parent.map_or(-1, |p| p as i64),
-            "position": v3(at.translation),
-            "rotation": q4(at.rotation),
-            "length": length,
-            "axis": v3(axis),
-            "joint": j,
-        }));
+        bones.push(RagdollBoneDesc {
+            parent: parent.map_or(-1, |p| p as i32),
+            position: at.translation,
+            rotation: at.rotation,
+            length,
+            axis,
+            joint: j as i32,
+        });
     }
-    Ok(json!({ "bones": bones }))
+    Ok(RagdollRigDesc { bones, skeleton: 0 })
 }
 
 /// The system that hands each og.Ragdoll the animation's pose of this
@@ -787,7 +773,7 @@ pub fn og_physics_ragdoll_rig_from_skeleton(world: u32, skeleton: f64) -> String
             .skeleton(skeleton as u64)
             .ok_or_else(|| format!("{skeleton} is not a loaded skeleton (og.load.animation)"))?;
         let mut rig = rig_from_skeleton(&s)?;
-        rig["skeleton"] = json!(skeleton);
+        rig.skeleton = skeleton as u64;
         Ok(rig)
     })())
 }

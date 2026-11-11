@@ -219,9 +219,9 @@ fn loaded(engine: u32, asset: f64) -> Result<Arc<Loaded>, String> {
         .ok_or_else(|| format!("{asset} is not a vfx loaded in this world (og.load.vfx)"))
 }
 
-fn wire(r: Result<Value, String>) -> String {
+fn wire<T: super::wire::ToJson>(r: Result<T, String>) -> String {
     match r {
-        Ok(v) => super::ok(v),
+        Ok(v) => super::wire::ok(&v),
         Err(e) => super::refuse(e),
     }
 }
@@ -249,14 +249,22 @@ pub fn og_vfx_info(world: u32, asset: f64) -> String {
         super::engine::engine(world)?;
         let l = loaded(world, asset)?;
         let v = &l.vfx;
-        Ok(json!({
-            "asset": asset,
-            "duration": v.duration,
-            "loop": v.looping,
-            "events": v.events.iter().map(|e| e.name.clone()).collect::<Vec<_>>(),
-            "impact": v.events.iter().find(|e| e.name == og_bundle::vfx::IMPACT).map_or(-1.0, |e| e.time),
-            "elements": v.elements.iter().map(|e| e.kind.name()).collect::<Vec<_>>(),
-        }))
+        Ok(super::wire::VfxInfo {
+            asset: asset as u64,
+            duration: v.duration,
+            r#loop: v.looping,
+            events: v.events.iter().map(|e| e.name.clone()).collect(),
+            impact: v
+                .events
+                .iter()
+                .find(|e| e.name == og_bundle::vfx::IMPACT)
+                .map_or(-1.0, |e| e.time),
+            elements: v
+                .elements
+                .iter()
+                .map(|e| e.kind.name().to_string())
+                .collect(),
+        })
     })())
 }
 

@@ -33,9 +33,7 @@ pub fn og_transform_compose(position: String, quaternion: String, scale: String)
     let p: glam::Vec3 = wire::arg(Some(&position), "position").unwrap_or_default();
     let q: glam::Quat = wire::arg(Some(&quaternion), "quaternion").unwrap_or_default();
     let s: glam::Vec3 = wire::arg(Some(&scale), "scale").unwrap_or_default();
-    let m = glam::Mat4::from_scale_rotation_translation(s, q, p);
-    let elements: Vec<f64> = m.to_cols_array().iter().map(|&e| f64::from(e)).collect();
-    json!({ "elements": elements }).to_string()
+    wire::text_of(&glam::Mat4::from_scale_rotation_translation(s, q, p))
 }
 
 pub fn og_transform_decompose(matrix: String) -> String {
@@ -66,12 +64,12 @@ pub fn og_transform_look_at(eye: String, target: String, up: Option<String>) -> 
     let eye: glam::Vec3 = wire::arg(Some(&eye), "eye").unwrap_or_default();
     let target: glam::Vec3 = wire::arg(Some(&target), "target").unwrap_or_default();
     let up: glam::Vec3 = wire::arg(up.as_deref(), "up").unwrap_or_default();
-    quat_json(look_rotation(eye, target, up)).to_string()
+    wire::text_of(&look_rotation(eye, target, up))
 }
 
 pub fn og_transform_from_axis_angle(axis: String, angle: f64) -> String {
     let axis: glam::Vec3 = wire::arg(Some(&axis), "axis").unwrap_or_default();
-    quat_json(og_core::math::quat_from_axis_angle(axis, angle as f32)).to_string()
+    wire::text_of(&og_core::math::quat_from_axis_angle(axis, angle as f32))
 }
 
 // ── rng ─────────────────────────────────────────────────────────────────────
@@ -400,7 +398,7 @@ pub fn og_input_axis2(world: u32, left: String, right: String, down: String, up:
         |i| i.axis2(&left, &right, &down, &up),
         og_core::glam::Vec2::ZERO,
     );
-    json!({ "x": f64::from(v.x), "y": f64::from(v.y) }).to_string()
+    wire::text_of(&v)
 }
 pub fn og_input_button_down(world: u32, b: String) -> bool {
     input(world, |i| i.button_down(button(&b)), false)
@@ -432,10 +430,6 @@ pub(super) fn input_res<R: og_core::Reflect + Copy + Send + Sync + 'static, T>(
     }
 }
 
-fn vec2_json(v: og_core::glam::Vec2) -> String {
-    json!({ "x": f64::from(v.x), "y": f64::from(v.y) }).to_string()
-}
-
 pub fn og_pointers_down(world: u32, id: u32) -> bool {
     input_res(world, |p: &og_input::Pointers| p.down(id), false)
 }
@@ -446,14 +440,14 @@ pub fn og_pointers_released(world: u32, id: u32) -> bool {
     input_res(world, |p: &og_input::Pointers| p.is_released(id), false)
 }
 pub fn og_pointers_position(world: u32, id: u32) -> String {
-    vec2_json(input_res(
+    wire::text_of(&input_res(
         world,
         |p: &og_input::Pointers| p.position(id),
         Default::default(),
     ))
 }
 pub fn og_pointers_start(world: u32, id: u32) -> String {
-    vec2_json(input_res(
+    wire::text_of(&input_res(
         world,
         |p: &og_input::Pointers| p.start(id),
         Default::default(),
@@ -589,34 +583,37 @@ fn camera_view_proj(cam: &Value, w: f32, h: f32) -> glam::Mat4 {
 }
 
 pub fn og_camera_world_to_screen(world: u32, point: String) -> String {
-    let answer = (|| -> Result<Value, String> {
+    let answer = (|| -> Result<Option<glam::Vec2>, String> {
         let eng = engine(world)?;
         let (vp, _, w, h) = view_proj(&eng)?;
         let p = vp * wire::arg::<glam::Vec3>(Some(&point), "point")?.extend(1.0);
         if p.w <= 0.0 {
-            return Ok(Value::Null);
+            return Ok(None);
         }
         let ndc = p.truncate() / p.w;
-        Ok(
-            json!({ "x": f64::from((ndc.x + 1.0) / 2.0 * w), "y": f64::from((1.0 - ndc.y) / 2.0 * h) }),
-        )
+        Ok(Some(glam::Vec2::new(
+            (ndc.x + 1.0) / 2.0 * w,
+            (1.0 - ndc.y) / 2.0 * h,
+        )))
     })();
-    answer.unwrap_or(Value::Null).to_string()
+    wire::text_of(&answer.ok().flatten())
 }
 
 pub fn og_camera_screen_to_ray(world: u32, x: f64, y: f64) -> String {
-    let answer = (|| -> Result<Value, String> {
+    let answer = (|| -> Result<wire::Ray, String> {
         let eng = engine(world)?;
         let (_, inv, w, h) = view_proj(&eng)?;
         let nx = x as f32 / w * 2.0 - 1.0;
         let ny = 1.0 - y as f32 / h * 2.0;
         let near = inv.project_point3(glam::Vec3::new(nx, ny, 0.0));
         let far = inv.project_point3(glam::Vec3::new(nx, ny, 1.0));
-        Ok(
-            json!({ "origin": vec3_json(near), "direction": vec3_json((far - near).normalize_or_zero()) }),
-        )
+        Ok(wire::Ray {
+            origin: near,
+            direction: (far - near).normalize_or_zero(),
+        })
     })();
-    answer
-        .unwrap_or_else(|_| json!({ "origin": vec3_json(glam::Vec3::ZERO), "direction": vec3_json(glam::Vec3::NEG_Z) }))
-        .to_string()
+    wire::text_of(&answer.unwrap_or(wire::Ray {
+        origin: glam::Vec3::ZERO,
+        direction: glam::Vec3::NEG_Z,
+    }))
 }

@@ -167,7 +167,7 @@ fn spawn(engine: u32, components: &[(&str, Value)]) -> f64 {
 fn an_array_flipbook_draws_its_frame_as_the_layer() {
     let (engine, seen) = engine();
     let info = value(og_load_flipbook(engine, "sprites/run.ogt".into()));
-    assert_eq!(info["texture"], json!(0.0), "no texture: {info}");
+    assert_eq!(info["texture"].as_f64(), Some(0.0), "no texture: {info}");
     assert!(info["array"].as_f64().unwrap() > 0.0, "{info}");
     assert_eq!(info["frames"], json!(5));
     let e = spawn(
