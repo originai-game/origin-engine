@@ -146,11 +146,11 @@ struct FlexInputs {
 fn flex_inputs(n: &Node, horizontal: bool, inner: f32) -> FlexInputs {
     let axis = usize::from(!horizontal);
     let (size, pref, min) = if horizontal {
-        (n.el.width, n.layout.pref_w, n.layout.min_w)
+        (n.layout.used.width, n.layout.pref_w, n.layout.min_w)
     } else {
-        (n.el.height, n.layout.pref_h, n.layout.min_h)
+        (n.layout.used.height, n.layout.pref_h, n.layout.min_h)
     };
-    let f = n.el.flex.unwrap_or(match size {
+    let f = n.layout.used.flex.unwrap_or(match size {
         Size::Grow { .. } => FlexItem {
             grow: 1.0,
             ..FlexItem::default()
@@ -179,7 +179,7 @@ fn flex_inputs(n: &Node, horizontal: bool, inner: f32) -> FlexInputs {
         .and_then(|b| b.definite(pref, min, Some(inner)))
         .or(specified)
         .unwrap_or(pref);
-    let explicit = n.el.bounds[axis][0]
+    let explicit = n.layout.used.bounds[axis][0]
         .and_then(|b| b.definite(pref, min, Some(inner)))
         .or(match size {
             Size::Fit { min: m, .. } | Size::Grow { min: m, .. } if m > 0.0 => Some(m),
@@ -188,9 +188,9 @@ fn flex_inputs(n: &Node, horizontal: bool, inner: f32) -> FlexInputs {
     // Its automatic minimum: its content's least size, at most its
     // specified one; a scroll container's is 0.
     let scrolls = if horizontal {
-        n.el.scroll_x
+        n.layout.used.scroll_x
     } else {
-        n.el.scroll
+        n.layout.used.scroll
     };
     let content = n.layout.min_content[axis];
     let auto = if scrolls {
@@ -199,7 +199,7 @@ fn flex_inputs(n: &Node, horizontal: bool, inner: f32) -> FlexInputs {
         specified.map_or(min, |s| content.min(s))
     };
     let lo = explicit.unwrap_or(auto);
-    let hi = n.el.bounds[axis][1]
+    let hi = n.layout.used.bounds[axis][1]
         .and_then(|b| b.definite(pref, min, Some(inner)))
         .or(match size {
             Size::Fit { max, .. } | Size::Grow { max, .. } => Some(max),
@@ -292,7 +292,7 @@ fn css_flex(items: &[FlexInputs], avail: f32) -> Vec<f32> {
 /// Whether a line of `kids` lays out by CSS Flexbox's algorithm: one of
 /// them declares flex factors.
 pub(super) fn css_line(nodes: &[Node], kids: &[usize]) -> bool {
-    kids.iter().any(|&c| nodes[c].el.flex.is_some())
+    kids.iter().any(|&c| nodes[c].layout.used.flex.is_some())
 }
 
 /// Main-axis sizes of a line of children: base, then grow or shrink.
@@ -317,9 +317,9 @@ fn main_sizes(
     for &c in kids {
         let n = &nodes[c];
         let (size, pref, min) = if horizontal {
-            (n.el.width, n.layout.pref_w, n.layout.min_w)
+            (n.layout.used.width, n.layout.pref_w, n.layout.min_w)
         } else {
-            (n.el.height, n.layout.pref_h, n.layout.min_h)
+            (n.layout.used.height, n.layout.pref_h, n.layout.min_h)
         };
         let base = size.definite(pref, min, Some(inner)).unwrap_or(pref);
         sizes.push(clamp_to(n, usize::from(!horizontal), Some(inner), base));

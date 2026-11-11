@@ -168,7 +168,7 @@ impl Ui {
         let sk = n.placed.scale;
         let size = tc.step.size * sk;
         let lh = tc.line_height() * sk;
-        let pad = n.el.padding;
+        let pad = n.layout.used.padding;
         let rect = n.placed.rect;
         let inner = Rect::new(
             rect.x + pad.left * sk,

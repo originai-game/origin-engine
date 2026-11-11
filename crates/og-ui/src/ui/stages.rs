@@ -171,9 +171,9 @@ pub(crate) struct Layout {
     /// Container queries: the measurements watched and the roots a
     /// settlement lays out again.
     pub(crate) queries: settlement::ContainerQueries,
-    /// Slots whose box placement replaced (floating sizes, a modal's safe
-    /// padding): their authored box comes back before the next layout.
-    pub(crate) layout_mutated: Vec<usize>,
+    /// Nodes whose used box placement fixed (a layer's size, a modal's
+    /// safe padding): let go before the next layout measures them.
+    pub(crate) placed: Vec<usize>,
 }
 
 /// Interaction: the frame's input, the persisted interaction state and what navigation, gestures and selection decided.

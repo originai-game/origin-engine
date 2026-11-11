@@ -638,7 +638,7 @@ impl Ui {
         {
             return fallback;
         }
-        let (hr, sr, p) = (h.placed.rect, s.placed.rect, s.el.padding);
+        let (hr, sr, p) = (h.placed.rect, s.placed.rect, s.layout.used.padding);
         Insets {
             top: sr.y - hr.y + p.top,
             right: hr.right() - sr.right() + p.right,
@@ -1166,7 +1166,7 @@ impl Ui {
         let size = step.size * sk;
         let lh = line_height * sk;
         let tracking = crate::layout::step_tracking(&step, shown);
-        let pad = n.el.padding;
+        let pad = n.layout.used.padding;
         let inner = Rect::new(
             rect.x + pad.left * sk,
             rect.y + pad.top * sk,

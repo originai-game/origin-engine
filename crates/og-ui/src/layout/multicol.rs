@@ -96,11 +96,15 @@ fn pieces(nodes: &[Node], run: &[usize], tops: &[f32], h: &dyn Fn(&Node) -> f32)
     for (k, &c) in run.iter().enumerate() {
         let n = &nodes[c];
         let (top, bottom) = (tops[k], tops[k] + h(n));
-        let forced = k > 0 && (after || n.el.breaks & BREAK_BEFORE != 0);
-        after = n.el.breaks & BREAK_AFTER != 0;
+        let forced = k > 0 && (after || n.layout.used.breaks & BREAK_BEFORE != 0);
+        after = n.layout.used.breaks & BREAK_AFTER != 0;
         let lines = n.layout.lines.len();
         let lh = match &n.content {
-            Content::Text(t) if n.el.breaks & AVOID_INSIDE == 0 && !n.el.scroll => t.line_height(),
+            Content::Text(t)
+                if n.layout.used.breaks & AVOID_INSIDE == 0 && !n.layout.used.scroll =>
+            {
+                t.line_height()
+            }
             _ => 0.0,
         };
         if lh <= 0.0 || lines < 2 * KEEP {
@@ -114,7 +118,7 @@ fn pieces(nodes: &[Node], run: &[usize], tops: &[f32], h: &dyn Fn(&Node) -> f32)
             continue;
         }
         // Breaks between lines `KEEP..=lines - KEEP`.
-        let y0 = top + n.el.padding.top;
+        let y0 = top + n.layout.used.padding.top;
         let mut starts = vec![0];
         starts.extend(KEEP..=lines - KEEP);
         for (j, &s) in starts.iter().enumerate() {
@@ -202,7 +206,7 @@ fn runs(nodes: &[Node], kids: &[usize]) -> Vec<Result<std::ops::Range<usize>, us
     let mut out = Vec::new();
     let mut start = 0;
     for (k, &c) in kids.iter().enumerate() {
-        if nodes[c].el.span_all {
+        if nodes[c].layout.used.span_all {
             if k > start {
                 out.push(Ok(start..k));
             }
@@ -219,13 +223,13 @@ fn runs(nodes: &[Node], kids: &[usize]) -> Vec<Result<std::ops::Range<usize>, us
 /// Whether child `c` of a multi-column container lays out in a column (a
 /// spanning one takes the whole width).
 pub(crate) fn in_column(n: &Node) -> bool {
-    !n.el.span_all
+    !n.layout.used.span_all
 }
 
 /// The height columns may not pass: a definite height's content box.
 fn limit(n: &Node) -> Option<f32> {
-    match n.el.height {
-        Size::Fixed(v) => Some((v - n.el.padding.vertical()).max(0.0)),
+    match n.layout.used.height {
+        Size::Fixed(v) => Some((v - n.layout.used.padding.vertical()).max(0.0)),
         _ => None,
     }
 }
@@ -240,7 +244,7 @@ pub(crate) fn height(
     (lead, between, trail): (f32, &[f32], f32),
 ) -> f32 {
     let n = &nodes[i];
-    let Some(m) = n.el.multicol else {
+    let Some(m) = n.layout.used.multicol else {
         return 0.0;
     };
     let kids = &n.children;
@@ -281,12 +285,12 @@ pub(crate) fn height(
 /// by the flow, into its columns, splits a text across a break
 /// ([`Node::frag`]) and keeps the rules between the columns.
 pub(crate) fn place(nodes: &mut [Node], i: usize) {
-    let Some(m) = nodes[i].el.multicol else {
+    let Some(m) = nodes[i].layout.used.multicol else {
         return;
     };
     let (cols, w) = nodes[i].layout.cols;
     let kids = nodes[i].children.clone();
-    let x0 = nodes[i].layout.x + nodes[i].el.padding.left;
+    let x0 = nodes[i].layout.x + nodes[i].layout.used.padding.left;
     let limit = limit(&nodes[i]);
     let mut rules = Vec::new();
     for &c in &kids {

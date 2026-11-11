@@ -428,7 +428,7 @@ pub(crate) fn draw_eq(a: &Node, b: &Node) -> bool {
         && a.disabled == b.disabled
         && a.placed.scale == b.placed.scale
         && a.style.sampled == b.style.sampled
-        && a.el == b.el
+        && a.layout.used == b.layout.used
         && a.content == b.content
         && a.widget == b.widget
         && a.shapes == b.shapes
@@ -670,10 +670,10 @@ pub(crate) fn layout(
     kept.laid_out += cx.laid;
     let measure = cx.measure;
     let r = &nodes[root];
-    let w = match r.el.width {
+    let w = match r.layout.used.width {
         Size::Fit { .. } => r.layout.pref_w.min(area.width).max(r.layout.min_w),
         Size::Grow { .. } => {
-            let (lo, hi) = r.el.width.bounds();
+            let (lo, hi) = r.layout.used.width.bounds();
             area.width.clamp(lo, hi)
         }
         size => size
@@ -733,10 +733,10 @@ pub(crate) fn layout(
         }
     }
     let r = &nodes[root];
-    let h = match r.el.height {
+    let h = match r.layout.used.height {
         Size::Fit { .. } => r.layout.pref_h,
         Size::Grow { .. } => {
-            let (lo, hi) = r.el.height.bounds();
+            let (lo, hi) = r.layout.used.height.bounds();
             area.height.clamp(lo, hi)
         }
         size => size
@@ -807,7 +807,7 @@ pub(crate) fn layout(
             (clip, NONE)
         } else {
             let p = &nodes[n.up];
-            if p.el.scroll || p.el.scroll_x {
+            if p.layout.used.scroll || p.layout.used.scroll_x {
                 (p.layout.laid_clip.intersect(&p.layout.laid_rect), n.up)
             } else {
                 (p.layout.laid_clip, p.placed.clip_src)
@@ -843,8 +843,8 @@ pub(crate) fn layout(
         queries.measurements.observe(
             nodes[i].key,
             crate::ui::settlement::ContentBox {
-                width: (nodes[i].layout.w - nodes[i].el.padding.horizontal()).max(0.0),
-                height: (nodes[i].layout.h - nodes[i].el.padding.vertical()).max(0.0),
+                width: (nodes[i].layout.w - nodes[i].layout.used.padding.horizontal()).max(0.0),
+                height: (nodes[i].layout.h - nodes[i].layout.used.padding.vertical()).max(0.0),
             },
         );
         k += 1;

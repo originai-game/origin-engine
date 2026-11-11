@@ -283,7 +283,7 @@ impl crate::ui::Paint {
         } else {
             t.durations_ms.slow + t.durations_ms.base
         };
-        let size = match tree.nodes[i].el.width {
+        let size = match tree.nodes[i].layout.used.width {
             crate::layout::Size::Fixed(w) => w,
             _ => 32.0,
         };

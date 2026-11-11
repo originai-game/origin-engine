@@ -534,24 +534,41 @@ impl Default for Placed {
     }
 }
 
+/// The box placement fixes for a node after it measured it: its size and
+/// the padding it adds (the safe area under a modal's backdrop).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct Placement {
+    pub size: [f32; 2],
+    pub padding: Insets,
+}
+
 /// What layout computes for a node: its sizes, its place in its parent,
 /// its lines, rows, tracks and floats, and what the layout cache keeps.
 #[derive(Clone, Debug)]
 pub(crate) struct LayoutBox {
-    /// The scroll gutter added to its right padding (`Ui::apply_gutter`).
+    /// The element layout lays it out with, and what paint, scrolling, hit
+    /// testing and inspection read of its box: its authored element
+    /// ([`Node::el`]) with what the frame decides on top of it
+    /// ([`Node::derive_used`]). Layout writes this, never the authored one.
+    pub used: Element,
+    /// Its insets as layout reads them (a vertical frame turns them).
+    pub insets: crate::element::Edges,
+    /// The room its scroll bar takes beside its content, added to its
+    /// used padding (`Layout::apply_gutter`).
     pub gutter: f32,
-    /// Its authored width, height and padding while placement replaced
-    /// them for one frame (`Ui::layout_mutated`).
-    pub authored_box: Option<(Size, Size, Insets)>,
+    /// The box placement gave it this frame: a layer's, a screen-placed or
+    /// anchor-positioned element's (`Layout::placed`).
+    pub placement: Option<Placement>,
+    /// The inline size its container variants were last matched at.
+    pub query_w: Option<f32>,
     /// One of its children in the flow aligns by its own baseline
     /// (`align-self: baseline`).
     pub baseline_items: bool,
     /// A table's cells and the boxes of its rows, groups and columns.
     pub table: Option<crate::layout::Table>,
     /// It holds inline-level children and lays them out in lines (CSS 2
-    /// §9.4.2): its authored direction, wrap, cross and align, kept to put
-    /// back when it no longer does.
-    pub line_box: Option<(Direction, bool, Cross, Align)>,
+    /// §9.4.2), as a wrapping row: the direction it has as a block.
+    pub line_box: Option<Direction>,
     /// Its content's least width and height, padding included, before its
     /// own size applies (a flex item's automatic minimum, CSS Flexbox §4.5).
     pub min_content: [f32; 2],
@@ -652,8 +669,11 @@ pub(crate) struct LayoutBox {
 impl Default for LayoutBox {
     fn default() -> Self {
         Self {
+            used: Element::default(),
+            insets: crate::element::Edges::default(),
             gutter: 0.0,
-            authored_box: None,
+            placement: None,
+            query_w: None,
             baseline_items: false,
             table: None,
             line_box: None,
@@ -846,7 +866,7 @@ impl Node {
     /// Its rich text's vertical setting (its element's writing mode), `None`
     /// when its lines run across; a rich text combines nothing upright.
     pub(crate) fn rich_vertical(&self) -> Option<crate::layout::flow::VerticalText> {
-        self.el.vertical?;
+        self.layout.used.vertical?;
         self.props
             .flow
             .vertical_text("")
@@ -856,12 +876,54 @@ impl Node {
             })
     }
 
+    /// The element layout uses, from the authored one: the line box it
+    /// lays inline children out in, its scroll bar's gutter, with `placed`
+    /// the box placement fixed, and its container variants at the size
+    /// they were last matched at.
+    pub(crate) fn derived(&self, placed: bool) -> Element {
+        let mut u = self.el;
+        if self.layout.line_box.is_some() {
+            u.direction = Direction::Row;
+            u.wrap = true;
+            u.cross = Cross::Baseline;
+            u.align = u.line_align;
+        }
+        if self.layout.gutter != 0.0 {
+            u.padding.right += self.layout.gutter;
+            // `scrollbar-gutter: stable both-edges`: the same room at the start.
+            if u.scroll_css.gutter == 2 {
+                u.padding.left += self.layout.gutter;
+            }
+        }
+        if let Some(p) = self.layout.placement.filter(|_| placed) {
+            u.width = Size::Fixed(p.size[0]);
+            u.height = Size::Fixed(p.size[1]);
+            u.padding = u.padding.add(&p.padding);
+        }
+        if let Some(w) = self.layout.query_w {
+            for v in &self.props.variants {
+                if v.when.container && crate::layout::width_in(w, &v.when) {
+                    crate::layout::patch_box(&mut u, &v.set);
+                }
+            }
+        }
+        u
+    }
+
+    /// Makes [`LayoutBox::used`] and its insets again from the authored
+    /// element and props: after they were written, and wherever the frame
+    /// changes what it decides on top of them.
+    pub(crate) fn derive_used(&mut self) {
+        self.layout.used = self.derived(true);
+        self.layout.insets = self.props.insets;
+    }
+
     pub(crate) fn sample_style(&mut self) {
         self.style.sampled = SampledStyle {
             transform: self.props.transform,
             opacity: self.props.opacity,
-            radius: self.el.radius,
-            background: self.el.background,
+            radius: self.layout.used.radius,
+            background: self.layout.used.background,
             ink: match &self.content {
                 Content::Text(text) => text.color,
                 _ => Srgba::WHITE,
@@ -880,7 +942,10 @@ impl Node {
             parent,
             children: Vec::new(),
             built_children: Vec::new(),
-            layout: LayoutBox::default(),
+            layout: LayoutBox {
+                used: el,
+                ..LayoutBox::default()
+            },
             up: parent,
             ordered_children: Vec::new(),
             el,
@@ -981,7 +1046,7 @@ impl Node {
     /// `auto` while it skips its contents, else 0 (CSS Containment 2
     /// §3.1, CSS Sizing 4 §5). `None` without size containment there.
     pub(crate) fn contained_size(&self, axis: usize) -> Option<f32> {
-        let c = &self.el.contain;
+        let c = &self.layout.used.contain;
         let bit = [
             crate::layout::Contain::SIZE_W,
             crate::layout::Contain::SIZE_H,
@@ -1008,22 +1073,22 @@ impl Node {
 
     /// The scroll range: how far the content overflows the inner height.
     pub fn max_scroll(&self) -> f32 {
-        if !self.el.scroll {
+        if !self.layout.used.scroll {
             return 0.0;
         }
-        (self.layout.content_h - (self.layout.h - self.el.padding.vertical())).max(0.0)
+        (self.layout.content_h - (self.layout.h - self.layout.used.padding.vertical())).max(0.0)
     }
 
     /// The horizontal scroll range: how far the content overflows the inner width.
     pub fn max_scroll_x(&self) -> f32 {
-        if !self.el.scroll_x {
+        if !self.layout.used.scroll_x {
             return 0.0;
         }
-        (self.layout.content_w - (self.layout.w - self.el.padding.horizontal())).max(0.0)
+        (self.layout.content_w - (self.layout.w - self.layout.used.padding.horizontal())).max(0.0)
     }
 
     /// Scrolls either way.
     pub fn scrolls(&self) -> bool {
-        self.el.scroll || self.el.scroll_x
+        self.layout.used.scroll || self.layout.used.scroll_x
     }
 }

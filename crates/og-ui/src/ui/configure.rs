@@ -88,7 +88,7 @@ impl Ui {
                 texts: Default::default(),
                 cache: Default::default(),
                 queries: Default::default(),
-                layout_mutated: Vec::new(),
+                placed: Vec::new(),
             },
             out: Out {
                 frame: UiFrame::default(),

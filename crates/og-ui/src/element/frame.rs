@@ -2,7 +2,7 @@ use super::*;
 
 // ── The element model's part of the frame ──────────────────────────────────
 
-use crate::layout::{Content, Float, NONE, Node, apply_patch, preorder, width_in};
+use crate::layout::{Content, Float, NONE, Node, preorder, width_in};
 use crate::ui::Ui;
 
 /// Whether `path` is `decl` or inside it (an ancestor path covers its subtree).
@@ -17,7 +17,7 @@ fn covers(decl: &str, path: &str) -> bool {
 /// It draws something of its own.
 fn painted(n: &Node) -> bool {
     !n.placed.rect.is_empty()
-        && (n.el.background.is_some()
+        && (n.layout.used.background.is_some()
             || !matches!(n.content, Content::None)
             || !matches!(
                 n.widget,
@@ -220,7 +220,7 @@ impl crate::ui::Layout {
             // from the start edge (a long list's rows meet only their
             // neighbours, where a check of every pair is quadratic), then
             // in the children's order, as each pair is reported.
-            let column = n.el.direction == Direction::Column;
+            let column = n.layout.used.direction == Direction::Column;
             let span = |r: &Rect| {
                 if column {
                     (r.y, r.y + r.height)
@@ -289,7 +289,7 @@ impl crate::ui::Layout {
                     .0
                     .metrics;
                 let lh = tc.line_height();
-                let inner = n.placed.rect.inset(&n.el.padding);
+                let inner = n.placed.rect.inset(&n.layout.used.padding);
                 let block = lh * n.layout.lines.len() as f32;
                 let top = inner.y + ((inner.height - block) / 2.0).max(0.0);
                 Some(m.baseline(&line.text, top, lh, tc.step.size))
@@ -298,7 +298,7 @@ impl crate::ui::Layout {
                 let l = n.layout.rich_lines.first()?;
                 // A first line floats moved down (`Node::wrap_lines`).
                 let drop = n.layout.wrap_lines.first().map_or(0.0, |w| w[1]);
-                Some(n.placed.rect.y + n.el.padding.top + drop + l.baseline)
+                Some(n.placed.rect.y + n.layout.used.padding.top + drop + l.baseline)
             }
             _ => n
                 .children
@@ -321,13 +321,13 @@ impl crate::ui::Layout {
         for &i in order {
             let n = &tree.nodes[i];
             if !crate::ui::visit::baseline_row(n)
-                || n.el.direction != crate::layout::Direction::Row
+                || n.layout.used.direction != crate::layout::Direction::Row
                 || n.props.layout != LayoutMode::Flex
                 || n.children.is_empty()
             {
                 continue;
             }
-            let parent = n.el.cross;
+            let parent = n.layout.used.cross;
             // Across a vertical line: +1 from a left block-start, -1 from
             // a right one (`Element::vertical`'s sides).
             let across =
@@ -335,7 +335,7 @@ impl crate::ui::Layout {
                     .filter(|s| s[0] % 2 == 1)
                     .map(|s| if s[0] == 3 { 1.0 } else { -1.0 });
             let kids = n.children.clone();
-            let lines = if n.el.wrap && !n.layout.rows.is_empty() {
+            let lines = if n.layout.used.wrap && !n.layout.rows.is_empty() {
                 n.layout.rows.clone()
             } else {
                 vec![(0, kids.len())]
@@ -453,7 +453,10 @@ impl crate::ui::Layout {
                         .is_none_or(|o| (o == Orientation::Portrait) == portrait)
                     && width_in(vp.width, q);
                 if ok {
-                    apply_patch(&mut tree.nodes[i], &v.set);
+                    let n = &mut tree.nodes[i];
+                    crate::layout::patch_box(&mut n.el, &v.set);
+                    n.derive_used();
+                    crate::layout::patch_style(n, &v.set);
                 }
             }
         }
@@ -472,7 +475,7 @@ impl crate::ui::Layout {
                     .0
                     .metrics;
                 let lh = tc.line_height();
-                let inner = n.placed.rect.inset(&n.el.padding);
+                let inner = n.placed.rect.inset(&n.layout.used.padding);
                 let block = lh * n.layout.lines.len() as f32;
                 let top = inner.y + ((inner.height - block) / 2.0).max(0.0);
                 let top = top + lh * (n.layout.lines.len() - 1) as f32;
@@ -482,7 +485,7 @@ impl crate::ui::Layout {
                 let (last, before) = n.layout.rich_lines.split_last()?;
                 let above: f32 = before.iter().map(|l| l.height).sum();
                 let drop = n.layout.wrap_lines.last().map_or(0.0, |w| w[1]);
-                Some(n.placed.rect.y + n.el.padding.top + above + drop + last.baseline)
+                Some(n.placed.rect.y + n.layout.used.padding.top + above + drop + last.baseline)
             }
             _ => n
                 .children
@@ -540,7 +543,7 @@ impl crate::ui::Tree {
                 };
                 n.layout.lines.first()?;
                 let lh = tc.line_height();
-                let inner = n.placed.rect.inset(&n.el.padding);
+                let inner = n.placed.rect.inset(&n.layout.used.padding);
                 let off = ((inner.width - lh * n.layout.lines.len() as f32) / 2.0).max(0.0);
                 Some(if v.mode.block_rl() {
                     inner.right() - off - (k as f32 + 0.5) * lh
@@ -623,8 +626,8 @@ impl crate::ui::Layout {
                 let moved = a.props.position == Position::Anchored
                     || a.props.position == Position::Screen
                     || a.props.variants.iter().any(|v| v.when.container)
-                    || (a.el.cross == crate::layout::Cross::Baseline
-                        && a.el.direction == crate::layout::Direction::Row);
+                    || (a.layout.used.cross == crate::layout::Cross::Baseline
+                        && a.layout.used.direction == crate::layout::Direction::Row);
                 if moved {
                     inv.forced.insert(i);
                 } else {
@@ -677,7 +680,7 @@ impl crate::ui::Layout {
                 if a.el.block != b.el.block || a.props.layout != b.props.layout {
                     reflowed.push(i);
                 }
-                let same_layout = crate::layout::el_layout_eq(&a.el, &b.el)
+                let same_layout = crate::layout::el_layout_eq(&a.layout.used, &b.layout.used)
                     && crate::layout::content_layout_eq(&a.content, &b.content)
                     && crate::layout::props_layout_eq(&a.props, &b.props)
                     && a.shape_outside == b.shape_outside
@@ -687,7 +690,7 @@ impl crate::ui::Layout {
                     && a.out == b.out
                     && a.floats == b.floats;
                 let same = same_layout
-                    && a.el == b.el
+                    && a.layout.used == b.layout.used
                     && a.content == b.content
                     && a.widget == b.widget
                     && a.shapes == b.shapes
@@ -712,15 +715,15 @@ impl crate::ui::Layout {
                     // A fixed box still lays out its dirty contents, but
                     // those contents cannot change its parent's sizing.
                     k.clean[c]
-                        || matches!(child.el.width, Size::Fixed(_))
-                            && matches!(child.el.height, Size::Fixed(_))
+                        || matches!(child.layout.used.width, Size::Fixed(_))
+                            && matches!(child.layout.used.height, Size::Fixed(_))
                             // Nor can they through its edge, unless a
                             // child's top margin collapses through it.
                             && (written[c] || !child.layout.collapse_in[0])
                             && (!written[c]
                                 || k.prev.get(&c).is_some_and(|old| {
-                                    child.el.width == old.el.width
-                                        && child.el.height == old.el.height
+                                    child.layout.used.width == old.layout.used.width
+                                        && child.layout.used.height == old.layout.used.height
                                         && child.el.margin == old.el.margin
                                         && !old.layout.collapse_in[0]
                                         && child.props.place == old.props.place

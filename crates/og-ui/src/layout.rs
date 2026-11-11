@@ -38,8 +38,8 @@ use grid::{grid_columns, grid_intrinsic, grid_rows, place_grid};
 pub use multicol::Multicol;
 use node::truncate_lines;
 pub(crate) use node::{
-    Content, EditView, NONE, Node, ObjectFit, PartBox, PartGeometry, Shape, Stagger, TextContent,
-    Widget, WrapStyle, ellipsis_of, snap_pixel_text, step_tracking, text_features,
+    Content, EditView, NONE, Node, ObjectFit, PartBox, PartGeometry, Placement, Shape, Stagger,
+    TextContent, Widget, WrapStyle, ellipsis_of, snap_pixel_text, step_tracking, text_features,
 };
 pub use node::{Family, FontRole};
 
@@ -1135,32 +1135,71 @@ pub(crate) fn width_in(w: f32, q: &Query) -> bool {
     (q.min_width <= 0.0 || w >= q.min_width) && (q.max_width <= 0.0 || w <= q.max_width)
 }
 
-/// Applies a variant's patch to a node.
-pub(crate) fn apply_patch(n: &mut Node, p: &Patch) {
+/// Applies the box part of a variant's patch to an element: its layout
+/// props, and its radius and background among the animatable values (set
+/// as [`write_values`] writes them).
+pub(crate) fn patch_box(el: &mut Element, p: &Patch) {
     if let Some(v) = p.direction {
-        n.el.direction = v;
+        el.direction = v;
     }
     if let Some(v) = p.width {
-        n.el.width = v;
+        el.width = v;
     }
     if let Some(v) = p.height {
-        n.el.height = v;
+        el.height = v;
     }
     if let Some(v) = p.padding {
-        n.el.padding = v;
+        el.padding = v;
     }
     if let Some(v) = p.gap {
-        n.el.gap = v;
+        el.gap = v;
     }
     if let Some(v) = p.align {
-        n.el.align = v;
+        el.align = v;
     }
     if let Some(v) = p.cross {
-        n.el.cross = v;
+        el.cross = v;
     }
     if let Some(v) = p.wrap {
-        n.el.wrap = v;
+        el.wrap = v;
     }
+    if !p.values.is_empty() {
+        let bg = el.background.unwrap_or(Srgba {
+            rgb: [0, 0, 0],
+            alpha: 0.0,
+        });
+        let c = |v: u8| f32::from(v) / 255.0;
+        // Channels 8 to 12: the radius and the background (`read_values`).
+        let mut row = [
+            el.radius,
+            c(bg.rgb[0]),
+            c(bg.rgb[1]),
+            c(bg.rgb[2]),
+            bg.alpha,
+        ];
+        for &(prop, v) in &p.values {
+            for &c in prop.channels() {
+                if (8..=12).contains(&c) {
+                    row[c - 8] = v;
+                }
+            }
+        }
+        el.radius = row[0].max(0.0);
+        let u = |x: f32| (x.clamp(0.0, 1.0) * 255.0).round() as u8;
+        let bg = Srgba {
+            rgb: [u(row[1]), u(row[2]), u(row[3])],
+            alpha: row[4].clamp(0.0, 1.0),
+        };
+        if el.background.is_some() || bg.alpha > 0.0 {
+            el.background = Some(bg);
+        }
+    }
+}
+
+/// Applies the rest of a variant's patch to a node: its arrangement,
+/// whether it shows, and its animatable values (the box part is
+/// [`patch_box`]'s, in the element layout uses).
+pub(crate) fn patch_style(n: &mut Node, p: &Patch) {
     if let Some(v) = p.layout {
         n.props.layout = v;
     }
@@ -1183,8 +1222,6 @@ pub(crate) fn apply_patch(n: &mut Node, p: &Patch) {
         n.props.opacity = n.style.sampled.opacity;
         n.props.z = n.style.sampled.z;
         n.props.inert = n.style.sampled.inert;
-        n.el.radius = n.style.sampled.radius;
-        n.el.background = n.style.sampled.background;
         if let Content::Text(text) = &mut n.content {
             text.color = n.style.sampled.ink;
         }

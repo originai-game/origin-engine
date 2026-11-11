@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "ui",
+      "summary": "A scroll container restyled by a container query keeps the room for its scroll bar beside its content in the frame it restyles and after; it was dropped until the element was built again."
+    }
+  ]
+}
