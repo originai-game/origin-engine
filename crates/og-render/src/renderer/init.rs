@@ -10,6 +10,10 @@ mod samplers;
 use samplers::{SamplersAndShadowMapsInputs, SamplersAndShadowMapsOutputs};
 mod uniforms;
 use uniforms::{UniformBuffersInputs, UniformBuffersOutputs};
+mod sky;
+use sky::{SkyResourcesInputs, SkyResourcesOutputs};
+mod strips;
+use strips::{StripPipelinesInputs, StripPipelinesOutputs};
 impl Renderer {
     /// Times each render-graph pass's CPU encoding with `clock` (ms) and,
     /// where the device has timestamp queries, its GPU time
@@ -494,40 +498,21 @@ impl Renderer {
                 &[&shadow_bind_layout, &material_layout, &palette_layout],
             ),
         ];
-        // At the far plane, after the opaque batches: only uncovered pixels pass.
-        let sky_state = |fs: &'static str| {
-            deferred_hdr(
-                &device,
-                &sky_pl,
-                sky_shader.clone(),
-                samples,
-                move |layout, module| HdrPipeline {
-                    alpha_to_coverage: false,
-                    label: "sky",
-                    layout,
-                    module,
-                    vs: "vs_sky",
-                    fs,
-                    buffers: &[],
-                    cull: None,
-                    depth_write: false,
-                    depth_compare: wgpu::CompareFunction::LessEqual,
-                    blend: None,
-                    samples,
-                },
-            )
-        };
-        let sky_pipeline = sky_state("fs_sky");
-        let sky_look_pipeline = sky_state("fs_sky_look");
-        let ibl = ibl::IblGenerator::new(&device);
-        let cloud_noise = clouds::CloudNoise::placeholder(&device, &queue);
-        let sky_params = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("sky params"),
-            size: std::mem::size_of::<SkyParams>() as u64,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
+        // The sky's pipelines and resources (init/sky.rs).
+        let SkyResourcesOutputs {
+            sky_pipeline,
+            sky_look_pipeline,
+            ibl,
+            cloud_noise,
+            sky_params,
+            aurora_map,
+        } = Self::sky_resources(SkyResourcesInputs {
+            device: &device,
+            queue: &queue,
+            sky_pl: &sky_pl,
+            sky_shader: &sky_shader,
+            samples,
         });
-        let aurora_map = aurora::AuroraMap::placeholder(&device, &queue);
         let surfaces = ribbons_gpu::GpuTrails::supported(flags)
             .then(|| surface::SurfacePipelines::new(&device));
         let garments = surfaces
@@ -580,67 +565,20 @@ impl Renderer {
             sprite_shader: &sprite_shader,
             samples,
         });
-        let ribbon_state = |blend| {
-            deferred_hdr(
-                &device,
-                &ribbon_pl,
-                ribbon_shader.clone(),
-                samples,
-                move |layout, module| HdrPipeline {
-                    alpha_to_coverage: false,
-                    label: "ribbon",
-                    layout,
-                    module,
-                    vs: "vs",
-                    fs: "fs",
-                    buffers: RIBBON_BUFFERS,
-                    cull: None,
-                    depth_write: false,
-                    depth_compare: wgpu::CompareFunction::LessEqual,
-                    blend: Some(blend),
-                    samples,
-                },
-            )
-        };
-        let ribbon_pipelines = [
-            ribbon_state(additive),
-            ribbon_state(wgpu::BlendState::ALPHA_BLENDING),
-        ];
-        // The strips expanded from their points (ribbons_gpu.rs), where
-        // the device can: `vs_strip` reads them from group 2.
-        let gpu_trails = ribbons_gpu::GpuTrails::supported(flags).then(|| {
-            let points = ribbons_gpu::GpuTrails::draw_layout(&device);
-            let strip_pl = pipeline_layout(
-                "strip",
-                &[&frame_layout, &sprite_layout, &points, &effects.layout],
-            );
-            let strip_state = |blend| {
-                deferred_hdr(
-                    &device,
-                    &strip_pl,
-                    ribbon_shader.clone(),
-                    samples,
-                    move |layout, module| HdrPipeline {
-                        alpha_to_coverage: false,
-                        label: "strip",
-                        layout,
-                        module,
-                        vs: "vs_strip",
-                        fs: "fs",
-                        buffers: &[],
-                        cull: None,
-                        depth_write: false,
-                        depth_compare: wgpu::CompareFunction::LessEqual,
-                        blend: Some(blend),
-                        samples,
-                    },
-                )
-            };
-            let pipelines = [
-                strip_state(additive),
-                strip_state(wgpu::BlendState::ALPHA_BLENDING),
-            ];
-            ribbons_gpu::GpuTrails::new(&device, points, pipelines)
+        // The strips' pipelines (init/strips.rs).
+        let StripPipelinesOutputs {
+            ribbon_pipelines,
+            gpu_trails,
+        } = Self::strip_pipelines(StripPipelinesInputs {
+            device: &device,
+            ribbon_pl: &ribbon_pl,
+            ribbon_shader: &ribbon_shader,
+            samples,
+            additive,
+            flags,
+            frame_layout: &frame_layout,
+            sprite_layout: &sprite_layout,
+            effects_layout: &effects.layout,
         });
         let particles = Particles::new(
             &device,
