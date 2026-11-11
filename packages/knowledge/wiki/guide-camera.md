@@ -75,12 +75,10 @@ if (brain.ok) brain.value.solo = talking ? closeUp : 0;   // 0 releases it
   the look point and eases back out over `damping`. It queries the
   colliders as the tick started and never moves a body.
 
-| Blend | Seconds | Ease |
+| Blend | Value | Source |
 |---|---|---|
-| a cut (a hard scene change, a dialogue reverse shot) | 0 | — |
-| gameplay state (aim in, a vehicle) | 0.25 to 0.5 | power2.inOut |
-| shot to shot in a cutscene | 1 to 2 | power2.inOut, sine.inOut |
-| a slow reveal | 3 and up | sine.inOut |
+| og.CameraBrain.blendTime | 1 s | engine default |
+| og.VirtualCamera.blendTime | -1: the brain's | engine default |
 
 <a id="guide-camera-3"></a>
 ### `camera §3` 2D cameras: follow, zones and rails
@@ -99,12 +97,12 @@ if (brain.ok) brain.value.solo = talking ? closeUp : 0;   // 0 releases it
   entity: corridors, a side-scroller's track, a 3D chase on rails. For
   more than eight points give it a `path` (og.path.create).
 
-| Follow2D | Typical |
-|---|---|
-| `smoothTime` | 0.1 to 0.2 s; 0 snaps |
-| `deadZone` | a quarter to a third of the view's half size |
-| `lookAhead` | 0.2 to 0.5 s, `lookAheadMax` within a third of the view |
-| zone `scrollTime` | 0.4 to 0.8 s for a room transition |
+| Field | Value | Source |
+|---|---|---|
+| Follow2D `smoothTime` | 0.15 s; 0 snaps | engine default |
+| Follow2D `lookAheadMax` | 3, 1.5 | engine default |
+| Follow2D `deadZone`, `lookAhead` | 0: none | engine default |
+| CameraZone `scrollTime` | 0: the view jumps | engine default |
 
 <a id="guide-camera-4"></a>
 ### `camera §4` Shake, punch and kick
@@ -114,11 +112,10 @@ follow smooth noise of the tick, so a replay shakes the same. Systems may
 call them; they take effect at the engine's og.camera system the same
 tick.
 
-| Effect | Light | Medium | Heavy |
-|---|---|---|---|
-| og.camera.shake trauma | 0.1 to 0.2 (a hit) | 0.25 to 0.4 | 0.5 to 0.8 (an explosion, a boss slam) |
-| og.camera.punch amount | 0.05 (a tap) | 0.1 | 0.15 (a slam) |
-| og.camera.kick distance | 0.05 m (recoil) | 0.15 m | 0.3 m (an impact) |
+| Field | Value | Source |
+|---|---|---|
+| og.Camera.traumaDecay | 1.5 per second | engine default |
+| trauma | clamped to 1 | engine limit |
 
 - Trauma adds up and clamps to 1; the shake grows with trauma squared.
   1 is almost never right: it is nauseating.

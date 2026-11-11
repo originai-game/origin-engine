@@ -234,7 +234,7 @@ wants proportionally more `engineForce` and `brakeForce`.
 | `engineForce` 2500 (per driven wheel) | two rear wheels push 1,000 kg at 5 m/s² | scale with mass |
 | `brakeForce` 2000 (per wheel) | four wheels stop 1,000 kg at 8 m/s² | scale with mass |
 | `grip` 2 | a road car holds a bend | below 1 slides like a drift car |
-| `rollInfluence` 0 | corners flat, never tips from steering | 0.05 to 0.1 for body roll |
+| `rollInfluence` 0 | corners flat, never tips from steering | above 0 for body roll |
 | `handbrakeGrip` 0.2 | the tail steps out in a bend at speed | 1 holds the line |
 | `driftGrip` 1 | off | about 0.6 holds a slide that throttle and steering balance |
 
@@ -447,21 +447,19 @@ pieces stay.
 <a id="guide-physics-10"></a>
 ### `physics §10` Thresholds
 
-| Quantity | Value | Choose |
+| Quantity | Value | Source |
 |---|---|---|
-| A character's height | about 1.8 m | capsule radius 0.3 to 0.4 |
-| Gravity | 9.81 m/s² | change scale, not gravity |
-| Object size | 0.05 to 100 m | outside it, rescale the game |
-| Bullet speed that tunnels | over about 30 m/s | `ccd` or a ray per tick |
-| Physics.sleepTicks | about 30 | 0 only for tiny scenes |
-| Physics.substeps | 1; 2 to 4 | raise for stacks, chains, fast bodies |
-| Crate mass | 10 to 50 kg | so pushing and impacts look right |
-| Car mass | 1,000 kg | the Vehicle defaults' |
-| Wheel slip for smoke | above about 0.2 | fade squeal with it |
-| CharacterController.stepHeight | 0.3 m | 0 for no stairs |
-| Platformer coyote / buffer | 0.1 s / 0.12 s | 0.08 to 0.15 |
-| Fluid3D particles | a few thousand | SIMULATION_VISUAL past that |
-| Destruction.maxChunks | 256 | lower on mobile |
+| A character's height | about 1.8 m | determinism §2 |
+| Gravity | 9.81 m/s²; change scale, not gravity | standard gravity (CGPM 1901) |
+| Object size | 0.05 to 100 m | determinism §2 |
+| Bullet speed that tunnels | over about 30 m/s: `ccd` or a ray per tick | determinism §2 |
+| Physics.sleepTicks | 0: never sleeps | engine default |
+| Physics.substeps | 1; raise for stacks, chains, fast bodies | engine default |
+| Car mass | 1,000 kg | what the Vehicle defaults are sized for (§7) |
+| CharacterController.stepHeight | 0.3 m; 0 for no stairs | engine default |
+| PlatformerController coyote / buffer | 0.1 s / 0.12 s | engine defaults |
+| Fluid3D particles | 2,000 cost about 0.9 ms CPU a tick at 1 substep | measured on an Apple M4 Pro (§8) |
+| Destruction.maxChunks | 256 | engine default |
 
 <a id="guide-physics-11"></a>
 ### `physics §11` Pitfalls
