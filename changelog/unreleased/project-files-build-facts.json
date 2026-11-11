@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og build",
+      "summary": "The size table's cache (each file's brotli size and the host's probe, by sha256) is no longer written into the engine's install as dist/.build-cache.json, where a read-only install silently recomputed brotli -q 11 of the engine modules on every build. Builds keep it in ~/.cache/origingame/build-v1/facts.json (OG_BUILD_CACHE names another directory; off keeps nothing), written atomically and merged with what a build running beside it wrote. A packed engine carries the facts of its own modules in dist/build-facts.json, so the first build of a new install does not compute them."
+    }
+  ]
+}

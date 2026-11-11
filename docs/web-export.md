@@ -1004,6 +1004,13 @@ determinism, icons) is.
   prints one JSON line instead (with `downloads`). The web host comes from
   `packages/engine/dist/web` or `dist/web-publish`; a checkout without them
   is told to run `bun run build` in `packages/engine`.
+  A file's compressed size and a host's probe depend only on bytes and are
+  slow (brotli `-q 11` of an engine module takes a core for a minute), so
+  they are kept by sha256 between builds: the engine's own modules' in
+  `dist/build-facts.json`, written when it is packed (`web-build.ts
+  --engine-facts`), which an install only reads; every other in
+  `~/.cache/origingame/build-v1/facts.json`. `OG_BUILD_CACHE` names another
+  directory; `off` keeps nothing.
 - `og run` (the native host under bun) supervises the game process: when it
   dies with a failure, `og run` says at once how (its exit status, or the
   signal), whether its probe had been serving (`--port`), and its last
