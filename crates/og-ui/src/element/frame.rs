@@ -268,16 +268,20 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Layout {
     /// Where node `i`'s first line of text sits (its baseline, CSS px), if
     /// it or its first descendant in the flow has text.
-    fn first_baseline(&self, i: usize) -> Option<f32> {
-        let n = &self.tree.nodes[i];
+    fn first_baseline(
+        &self,
+        i: usize,
+        env: &crate::ui::Env,
+        tree: &crate::ui::Tree,
+    ) -> Option<f32> {
+        let n = &tree.nodes[i];
         match &n.content {
             Content::Text(tc) => {
                 let line = n.lines.first()?;
-                let m = &self
-                    .env
+                let m = &env
                     .fonts
                     .for_styled(tc.font, tc.step.weight, false, &tc.text)
                     .0
@@ -294,7 +298,10 @@ impl Ui {
                 let drop = n.wrap_lines.first().map_or(0.0, |w| w[1]);
                 Some(n.rect.y + n.el.padding.top + drop + l.baseline)
             }
-            _ => n.children.iter().find_map(|&c| self.first_baseline(c)),
+            _ => n
+                .children
+                .iter()
+                .find_map(|&c| self.first_baseline(c, env, tree)),
         }
     }
 
@@ -302,10 +309,15 @@ impl Ui {
     /// baselines meet (per line of a wrapping row). A vertical element's
     /// rows are its lines down the page: their items move across, from
     /// its block-start side, so their central baselines meet.
-    pub(crate) fn align_baselines(&mut self, order: &[usize]) {
+    pub(crate) fn align_baselines(
+        &mut self,
+        order: &[usize],
+        env: &crate::ui::Env,
+        tree: &mut crate::ui::Tree,
+    ) {
         use crate::layout::Cross;
         for &i in order {
-            let n = &self.tree.nodes[i];
+            let n = &tree.nodes[i];
             if !crate::ui::visit::baseline_row(n)
                 || n.el.direction != crate::layout::Direction::Row
                 || n.props.layout != LayoutMode::Flex
@@ -347,14 +359,14 @@ impl Ui {
                 let bs: Vec<Option<f32>> = kids[s..e]
                     .iter()
                     .map(|&c| {
-                        if self.tree.nodes[c].el.align_self.unwrap_or(parent) != want {
+                        if tree.nodes[c].el.align_self.unwrap_or(parent) != want {
                             None
                         } else if let Some(dir) = across {
-                            self.tree.central_baseline(c, last).map(|x| dir * x)
+                            tree.central_baseline(c, last).map(|x| dir * x)
                         } else if last {
-                            self.layout.last_baseline(c, &self.env, &self.tree)
+                            self.last_baseline(c, env, tree)
                         } else {
-                            self.first_baseline(c)
+                            self.first_baseline(c, env, tree)
                         }
                     })
                     .collect();
@@ -369,8 +381,8 @@ impl Ui {
                 for (&c, b) in kids[s..e].iter().zip(bs) {
                     if let Some(b) = b {
                         match across {
-                            Some(dir) => self.tree.shift_subtree(c, dir * (max - b), 0.0, false),
-                            None => self.tree.shift_subtree(c, 0.0, max - b, false),
+                            Some(dir) => tree.shift_subtree(c, dir * (max - b), 0.0, false),
+                            None => tree.shift_subtree(c, 0.0, max - b, false),
                         }
                     }
                 }
@@ -379,15 +391,20 @@ impl Ui {
     }
 
     /// Anchored elements onto their targets' rectangles.
-    pub(crate) fn place_anchored(&mut self, order: &[usize]) {
+    pub(crate) fn place_anchored(
+        &mut self,
+        order: &[usize],
+        out: &mut crate::ui::Out,
+        tree: &mut crate::ui::Tree,
+    ) {
         for &i in order {
-            if self.tree.nodes[i].props.position != Position::Anchored {
+            if tree.nodes[i].props.position != Position::Anchored {
                 continue;
             }
-            let p = self.tree.nodes[i].props.clone();
-            let Some(t) = self.node_at(&p.anchor_to, i) else {
-                let at = self.tree.path_of(i);
-                self.out.warnings.push(format!(
+            let p = tree.nodes[i].props.clone();
+            let Some(t) = tree.node_at(&p.anchor_to, i) else {
+                let at = tree.path_of(i);
+                out.warnings.push(format!(
                     "'{at}' is anchored to '{}', which is not on screen: anchorTo takes a full path (Hud/Coins) or a sibling's id",
                     p.anchor_to
                 ));
@@ -395,22 +412,22 @@ impl Ui {
             };
             // Its target's box before a right-to-left mirror, as laid out
             // this frame or kept from the last.
-            let tr = self.tree.nodes[t].laid_rect;
-            let n = &self.tree.nodes[i];
+            let tr = tree.nodes[t].laid_rect;
+            let n = &tree.nodes[i];
             let (ax, ay) = p.anchor_at.fractions();
             let (ox, oy) = p.anchor_self.fractions();
             let x = tr.x + ax * tr.width - ox * n.rect.width + p.insets.start.unwrap_or(0.0);
             let y = tr.y + ay * tr.height - oy * n.rect.height + p.insets.top.unwrap_or(0.0);
             let (dx, dy) = (x - n.rect.x, y - n.rect.y);
-            self.tree.shift_subtree(i, dx, dy, true);
+            tree.shift_subtree(i, dx, dy, true);
         }
     }
 }
 
-impl Ui {
+impl crate::ui::Tree {
     /// The node a path names: a full path, else one relative to `from`'s parent.
     pub(crate) fn node_at(&self, path: &str, from: usize) -> Option<usize> {
-        crate::ui::node_in(&self.tree.index, &self.tree.nodes, path, from)
+        crate::ui::node_in(&self.index, &self.nodes, path, from)
     }
 }
 
