@@ -148,6 +148,8 @@ mod after_graph;
 use after_graph::{EncodeAfterGraphInputs, EncodeAfterGraphOutputs};
 mod submit_frame;
 use submit_frame::SubmitFrameInputs;
+mod skinned_pipelines;
+use skinned_pipelines::SkinnedPipelines;
 mod setup;
 
 impl Renderer {
@@ -1292,51 +1294,13 @@ impl Renderer {
                 .filter_map(|(fx, lean)| Some((fx, lean?)))
                 .collect();
         let palette_group = self.instances.palette.bind_group.as_ref();
-        // The main pass draws physical materials with their pipelines, the
-        // planar reflection with the standard ones.
-        let lit_skinned: Vec<&wgpu::RenderPipeline> = skinned_visible
-            .iter()
-            .map(|b| self.lit_pipeline_of(b, true, b.physical))
-            .collect();
-        let lit_skinned_standard: Vec<&wgpu::RenderPipeline> = skinned_visible
-            .iter()
-            .map(|b| self.lit_pipeline_of(b, true, false))
-            .collect();
-        let shadow_skinned: Vec<&ShadowSet> = skinned_batches
-            .iter()
-            .map(|b| match b.shader {
-                Some(sh) => self.cache.hook_shadow_pipelines[&(sh, b.side, true)].get(),
-                None => self.shadows.shadow_pipelines[&(b.side, true, b.dissolve)].get(),
-            })
-            .collect();
-        let prepass_skinned: Vec<&wgpu::RenderPipeline> = if prepass {
-            skinned_visible
-                .iter()
-                .map(|b| {
-                    let hooked = b
-                        .shader
-                        .and_then(|sh| self.cache.hook_prepass_pipelines.get(&(sh, b.side, true)));
-                    let array = self
-                        .lit
-                        .array_maps
-                        .as_ref()
-                        .filter(|_| b.array)
-                        .and_then(|a| a.prepass.get(&(b.side, true)));
-                    hooked
-                        .or(array)
-                        .map(|p| p.get())
-                        .or_else(|| {
-                            self.prepass
-                                .prepass_pipelines
-                                .get(&(b.side, true))
-                                .map(|p| p.get(self.frame_features))
-                        })
-                        .unwrap_or(lit_skinned[0])
-                })
-                .collect()
-        } else {
-            Vec::new()
-        };
+        // The skinned batches' pipelines by pass (skinned_pipelines.rs).
+        let SkinnedPipelines {
+            lit: lit_skinned,
+            lit_standard: lit_skinned_standard,
+            shadow: shadow_skinned,
+            prepass: prepass_skinned,
+        } = self.skinned_pipelines(&skinned_visible, &skinned_batches, prepass);
         let culled_gpu = self.visibility.gpu_cull.as_ref().filter(|_| gpu_cull);
         let crowd_cull = self.crowd_gpu.as_ref().filter(|_| crowd_gpu);
         // The effect groups of the standard and the physical pipelines, in
