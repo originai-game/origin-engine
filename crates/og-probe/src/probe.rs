@@ -220,23 +220,10 @@ pub struct Probe {
     /// What the host gave ([`Probe::set_capture`] and the other `set_*`).
     pub(crate) host: state::Host,
     pub(crate) names: Names,
-    /// Expectations evaluated since the host last took them.
-    pub(crate) expectations: Vec<ExpectResult>,
+    /// What a run asserts: its expectations, assertions, invariants and counted events.
+    pub(crate) checks: state::Checks,
     /// The run's events since `timeline` last read them ([`timeline::Recorder`]).
     pub(crate) timeline: timeline::Recorder,
-    /// The run's assertions: the game's, the default invariants' and the
-    /// script's `invariant:` steps' (shared with the host, which records
-    /// the game's calls while a system runs).
-    pub(crate) assertions: Rc<RefCell<Assertions>>,
-    /// The script's `invariant:` steps, each an expectation (its words
-    /// after `invariant:`) evaluated after every tick.
-    pub(crate) invariants: Vec<Vec<String>>,
-    /// An invariant is being evaluated: its expectation is not kept or logged.
-    pub(crate) quiet: bool,
-    /// Event types an expectation counts, with their counts, and each
-    /// one's count when the script that asks began.
-    pub(crate) events: BTreeMap<String, Watch>,
-    pub(crate) event_base: BTreeMap<String, u64>,
     /// Fields `set` and `patch` wrote (`save_scene` writes them back).
     tuned: BTreeSet<String>,
     /// The last tick's milliseconds per system and per render pass.
@@ -473,13 +460,15 @@ impl Probe {
                 register: None,
             },
             names: Names,
-            expectations: Vec::new(),
+            checks: state::Checks {
+                expectations: Vec::new(),
+                assertions: Rc::default(),
+                invariants: Vec::new(),
+                quiet: false,
+                events: BTreeMap::new(),
+                event_base: BTreeMap::new(),
+            },
             timeline: timeline::Recorder::default(),
-            assertions: Rc::default(),
-            invariants: Vec::new(),
-            quiet: false,
-            events: BTreeMap::new(),
-            event_base: BTreeMap::new(),
             tuned: BTreeSet::new(),
             systems_ms: Vec::new(),
             passes_ms: Vec::new(),
@@ -1108,7 +1097,7 @@ impl Probe {
         if let Some(before) = self.clock.before_tick.as_mut() {
             before(world);
         }
-        let counting = !self.events.is_empty();
+        let counting = !self.checks.events.is_empty();
         if counting {
             self.count_events(world, true);
         }

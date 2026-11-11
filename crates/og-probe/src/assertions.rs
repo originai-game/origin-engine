@@ -473,7 +473,7 @@ impl crate::Probe {
     /// into it while a system runs (the probe is busy then) and its
     /// default invariants after every tick.
     pub fn assertions(&self) -> std::rc::Rc<std::cell::RefCell<Assertions>> {
-        self.assertions.clone()
+        self.checks.assertions.clone()
     }
 
     /// `invariant:<expectation>`: the expectation (any form of `expect:`
@@ -489,12 +489,12 @@ impl crate::Probe {
                 "invariant:{text}: a region or frame expectation reads a frame, which every tick cannot afford; check it with expect: at the tick it matters"
             ));
         }
-        self.assertions.borrow_mut().declare(
+        self.checks.assertions.borrow_mut().declare(
             Origin::Playtest,
             &format!("invariant {text}"),
             "playtest",
         );
-        self.invariants.push(args.to_vec());
+        self.checks.invariants.push(args.to_vec());
         Ok(())
     }
 
@@ -503,17 +503,17 @@ impl crate::Probe {
     /// og.assert and the default invariants number it) with the observed value.
     #[cfg(not(feature = "publish"))]
     pub(crate) fn check_invariants(&mut self, world: &mut og_ecs::World, ran: u64) {
-        if self.invariants.is_empty() {
+        if self.checks.invariants.is_empty() {
             return;
         }
-        let invariants = std::mem::take(&mut self.invariants);
-        self.quiet = true;
+        let invariants = std::mem::take(&mut self.checks.invariants);
+        self.checks.quiet = true;
         for args in &invariants {
             let Ok(r) = self.expect_args(world, args, None) else {
                 continue;
             };
             if r.status == crate::Status::Fail {
-                self.assertions.borrow_mut().fail(
+                self.checks.assertions.borrow_mut().fail(
                     Origin::Playtest,
                     &format!("invariant {}", r.expect),
                     "playtest",
@@ -527,8 +527,8 @@ impl crate::Probe {
                 );
             }
         }
-        self.quiet = false;
-        self.invariants = invariants;
+        self.checks.quiet = false;
+        self.checks.invariants = invariants;
     }
 }
 
