@@ -255,7 +255,7 @@ impl Probe {
             .collect();
         json!({
             "tick": world.time().tick,
-            "paused": self.paused,
+            "paused": self.clock.paused,
             "seed": seed,
             "timings": {
                 "step": self.step_ms,
@@ -281,7 +281,7 @@ impl Probe {
             if self.shot.is_none() {
                 self.pump(world);
             }
-            if self.quit || self.held(world) {
+            if self.clock.quit || self.held(world) {
                 break;
             }
             self.tick_once(world)?;
@@ -291,14 +291,14 @@ impl Probe {
 
     /// `pause`: hold the clock.
     pub fn pause(&mut self) -> bool {
-        self.paused = true;
+        self.clock.paused = true;
         true
     }
 
     /// `resume`: release the clock.
     pub fn resume(&mut self) -> bool {
-        self.paused = false;
-        self.script_paused = false;
+        self.clock.paused = false;
+        self.clock.script_paused = false;
         true
     }
 
@@ -893,7 +893,7 @@ impl Probe {
         };
         let ok = self.load(world, &saved).is_ok();
         if ok {
-            self.quit = false;
+            self.clock.quit = false;
         }
         ok
     }

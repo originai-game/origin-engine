@@ -248,12 +248,8 @@ pub struct Probe {
     seq: u64,
     snapshots: VecDeque<(String, Saved)>,
     next_snapshot: u64,
-    paused: bool,
-    /// The clock was held by a script's `pause`: the script's later steps
-    /// run in order on the held world instead of waiting for ticks that
-    /// will not come.
-    script_paused: bool,
-    quit: bool,
+    /// Whether the next tick runs: the holds and the host's hooks around a tick.
+    pub(crate) clock: state::Clock,
     step_ms: f64,
     render_ms: f64,
     triangles: u64,
@@ -274,19 +270,8 @@ pub struct Probe {
     /// it (its time and action): a second step naming one is written beside
     /// it, suffixed, with a warning naming both ([`Probe::emit`]).
     written: BTreeMap<String, (f64, String)>,
-    /// The host's end-of-tick work ([`Probe::set_after_tick`]).
-    after_tick: Option<AfterTickFn>,
-    /// The host's start-of-tick work ([`Probe::set_before_tick`]).
-    before_tick: Option<AfterTickFn>,
-    /// The host's tick gate ([`Probe::set_gate`]).
-    gate: Option<GateFn>,
     /// The host's input filter ([`Probe::set_input_filter`]).
     filter: Option<InputFilterFn>,
-    /// After a rollback's rewind (the gate moved `Time` back): the tick the
-    /// world had reached. The ticks below it run again: they take no share
-    /// of a frame's ticks, and the input's edges, which belong to the
-    /// present tick, stay for it.
-    replay_until: u64,
 }
 
 /// The host's tick gate: asked before every tick the clock takes (a frame's
@@ -518,9 +503,15 @@ impl Probe {
             seq: 0,
             snapshots: VecDeque::new(),
             next_snapshot: 1,
-            paused: false,
-            script_paused: false,
-            quit: false,
+            clock: state::Clock {
+                paused: false,
+                script_paused: false,
+                quit: false,
+                after_tick: None,
+                before_tick: None,
+                gate: None,
+                replay_until: 0,
+            },
             step_ms: 0.0,
             render_ms: 0.0,
             triangles: 0,
@@ -533,11 +524,7 @@ impl Probe {
             sweeping: None,
             gets: (u64::MAX, 0),
             written: BTreeMap::new(),
-            after_tick: None,
-            before_tick: None,
-            gate: None,
             filter: None,
-            replay_until: 0,
         })
     }
 
@@ -600,7 +587,7 @@ impl Probe {
     /// When it moves `Time` (a game restoring a save), the scheduled steps
     /// keep their remaining delays ([`Probe::shift_schedule`]).
     pub fn set_after_tick(&mut self, after: AfterTickFn) {
-        self.after_tick = Some(after);
+        self.clock.after_tick = Some(after);
     }
 
     /// Work the host does as every tick starts, just before the step (after
@@ -608,13 +595,13 @@ impl Probe {
     /// that tick, and the world between ticks is untouched by them (a
     /// restore's og.WorldRestored).
     pub fn set_before_tick(&mut self, before: AfterTickFn) {
-        self.before_tick = Some(before);
+        self.clock.before_tick = Some(before);
     }
 
     /// The host's tick gate ([`GateFn`]): a frame takes no further tick, and
     /// `advance` stops, while it holds.
     pub fn set_gate(&mut self, gate: GateFn) {
-        self.gate = Some(gate);
+        self.clock.gate = Some(gate);
     }
 
     /// The host's input filter ([`InputFilterFn`]): an event it takes never
@@ -630,21 +617,21 @@ impl Probe {
     /// script step (a `quit`, an `expect`) on the same tick. A step whose
     /// tick the jump passed runs at the next tick, in order.
     fn held(&mut self, world: &mut World) -> bool {
-        let Some(gate) = self.gate.as_mut() else {
+        let Some(gate) = self.clock.gate.as_mut() else {
             return false;
         };
         let before = world.time().tick;
         let go = gate(world);
         let after = world.time().tick;
         if after < before {
-            self.replay_until = self.replay_until.max(before);
+            self.clock.replay_until = self.clock.replay_until.max(before);
         }
         !go
     }
 
     /// Whether the next tick runs again after a rollback's rewind.
     fn replaying(&self, world: &World) -> bool {
-        world.time().tick < self.replay_until
+        world.time().tick < self.clock.replay_until
     }
 
     /// The world's clock jumped from `from` to `to` outside a tick (a game
@@ -743,12 +730,12 @@ impl Probe {
 
     /// Whether the clock is held (the host's loop then takes no ticks).
     pub fn paused(&self) -> bool {
-        self.paused
+        self.clock.paused
     }
 
     /// Whether a `quit` ran: the host ends the run.
     pub fn quit_requested(&self) -> bool {
-        self.quit
+        self.clock.quit
     }
 
     /// Steps still scheduled.
@@ -986,7 +973,7 @@ impl Probe {
             return;
         }
         let mut inbox = self.inbox.take().into_iter();
-        while !self.quit && self.shot.is_none() {
+        while !self.clock.quit && self.shot.is_none() {
             let Some((action, args)) = inbox.next() else {
                 break;
             };
@@ -999,16 +986,16 @@ impl Probe {
                 },
             );
         }
-        if !self.quit {
+        if !self.clock.quit {
             self.inbox.requeue(inbox.collect());
         }
-        while !self.quit && self.shot.is_none() {
+        while !self.clock.quit && self.shot.is_none() {
             let now = world.time().tick;
             let Some((&key, _)) = self.queue.first_key_value() else {
                 break;
             };
             if key.0 > now {
-                if !(self.paused && self.script_paused) {
+                if !(self.clock.paused && self.clock.script_paused) {
                     break;
                 }
                 // Held by the script: the rest of it moves up to now and
@@ -1042,7 +1029,7 @@ impl Probe {
     /// its frame, it takes no tick.
     pub fn step(&mut self, world: &mut World) -> og_core::Result<()> {
         self.pump(world);
-        if self.quit || self.shot.is_some() || self.held(world) {
+        if self.clock.quit || self.shot.is_some() || self.held(world) {
             return Ok(());
         }
         self.tick_once(world)
@@ -1054,9 +1041,9 @@ impl Probe {
     pub fn frame(&mut self, world: &mut World, due: u32) -> og_core::Result<u32> {
         self.pump(world);
         let mut taken = 0;
-        while taken < due && !self.paused && !self.quit && self.shot.is_none() {
+        while taken < due && !self.clock.paused && !self.clock.quit && self.shot.is_none() {
             self.pump(world);
-            if self.quit || self.shot.is_some() || self.held(world) {
+            if self.clock.quit || self.shot.is_some() || self.held(world) {
                 break;
             }
             // A re-simulated tick is the past again, not one of the frame's.
@@ -1112,7 +1099,7 @@ impl Probe {
 
     fn tick_once(&mut self, world: &mut World) -> og_core::Result<()> {
         let replaying = self.replaying(world);
-        if let Some(before) = self.before_tick.as_mut() {
+        if let Some(before) = self.clock.before_tick.as_mut() {
             before(world);
         }
         let counting = !self.events.is_empty();
@@ -1128,7 +1115,7 @@ impl Probe {
         if !replaying {
             self.host.input.end_tick(world);
         }
-        if let Some(after) = self.after_tick.as_mut() {
+        if let Some(after) = self.clock.after_tick.as_mut() {
             let next = world.time().tick;
             after(world);
             let now = world.time().tick;

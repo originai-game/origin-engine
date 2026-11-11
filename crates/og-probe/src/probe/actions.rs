@@ -764,13 +764,13 @@ impl Probe {
                 Ok(())
             }
             "pause" => {
-                self.paused = true;
-                self.script_paused = true;
+                self.clock.paused = true;
+                self.clock.script_paused = true;
                 Ok(())
             }
             "resume" => {
-                self.paused = false;
-                self.script_paused = false;
+                self.clock.paused = false;
+                self.clock.script_paused = false;
                 Ok(())
             }
             "advance" => {
@@ -797,7 +797,7 @@ impl Probe {
                 advanced.map(|_| ()).map_err(|e| e.reason().to_owned())
             }
             "quit" => {
-                self.quit = true;
+                self.clock.quit = true;
                 Ok(())
             }
             #[cfg(not(feature = "publish"))]
