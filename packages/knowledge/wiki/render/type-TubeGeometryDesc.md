@@ -18,6 +18,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `radius` | `number` | `1` | ≥ 0 | `m` | — | The tube's radius. |
 | `radialSegments` | `number` | `8` | ≥ 3 | — | — | Segments around it. |
 | `closed` | `boolean` | `false` | — | — | — | Join the last point back to the first. |
+| `uvRepeat` | `Vector2` | `{ x: 1, y: 1 }` | — | — | — | How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping). |
 
 ```ogt
 struct TubeGeometryDesc {
@@ -41,7 +42,10 @@ struct TubeGeometryDesc {
     min 3
   }
   field closed bool "Join the last point back to the first."
+  field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping)." {
+    default 1 1
+  }
 }
 ```
 
-<sub>Module `render` line 3090</sub>
+<sub>Module `render` line 3108</sub>

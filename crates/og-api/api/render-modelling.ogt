@@ -9,7 +9,7 @@
   struct ShapeGeometryDesc {
     doc "A flat shape with holes in the xy plane facing +Z, as three.js ShapeGeometry(shapes, curveSegments): triangulated by earcut (three.js's own port), the outline made clockwise and the holes counter-clockwise first, so its vertices and triangles are three.js's for the same shape. uvs are world x and y (v flipped to run down the image)."
     desc true
-    field shapes Option.OneOf.Path2.OneOf.List.Path2.List.Vector2 "One og.Shape (an og.Path2 is a shape without holes), a list of them, or the outline's points. Without it, three.js's default triangle (0, 0.5), (-0.5, -0.5), (0.5, -0.5)."
+    field shapes Option.OneOf.Path2.OneOf.List.Path2.OneOf.List.Vector2.List.ShapePoints "One og.Shape (an og.Path2 is a shape without holes), a list of them, the outline's points, or a list of ShapePoints (og.Shape.extractPoints; what an og.Shape crosses to the engine as). Without it, three.js's default triangle (0, 0.5), (-0.5, -0.5), (0.5, -0.5)."
     field curveSegments u32 "Points per curve when an og.Shape's curves are flattened (three.js extractPoints(curveSegments); an ellipse takes twice as many, a spline as many per point)." {
       default 12
       min 1
@@ -26,7 +26,7 @@
   struct ExtrudeGeometryDesc {
     doc "Shapes pushed along +Z, or along a path, as three.js ExtrudeGeometry(shapes, options) with its option names and defaults: a closed solid, its lids from earcut and its walls ring by ring, rounded by a bevel of bevelSegments rings at each face. Unindexed as three.js's (every triangle its own vertices, flat normals), three.js's vertex order and counts; uvs from three.js's WorldUVGenerator (v flipped to run down the image)."
     desc true
-    field shapes Option.OneOf.Path2.OneOf.List.Path2.List.Vector2 "One og.Shape, a list of them, or the outline's points. Without it, three.js's default square of side 1."
+    field shapes Option.OneOf.Path2.OneOf.List.Path2.OneOf.List.Vector2.List.ShapePoints "One og.Shape, a list of them, the outline's points, or a list of ShapePoints (og.Shape.extractPoints). Without it, three.js's default square of side 1."
     field depth f32 "How far the shape is pushed along +Z (without extrudePath)." {
       default 1
       min 0
@@ -147,7 +147,7 @@
   struct SweepGeometryDesc {
     doc "A section swept along a path, scaled and twisted over it: horns, tusks, handles, blades, tapered pipes, twisted columns (img2threejs's tapered sweep; three.js has no class for it). The section's x lies along the path's normal and y along its binormal (three.js's Frenet frames), rings evenly spaced along the path's length; u runs along the path, v round the section (flipped to run down the image), the sides smooth. An open path's ends are capped."
     desc true
-    field section Option.OneOf.Path2.List.Vector2 "The section's outline: an og.Shape or og.Path2 (flattened by curveSegments; holes are not swept) or its points, at least three, either winding."
+    field section Option.OneOf.Path2.OneOf.List.Vector2.ShapePoints "The section's outline: an og.Shape or og.Path2 (flattened by curveSegments; holes are not swept), its points, at least three, either winding, or a ShapePoints (its holes are not swept)."
     field path Path "The path (og.path.create or og.path.find)."
     field steps u32 "Rings along the path, less one." {
       default 64

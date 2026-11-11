@@ -1,0 +1,10 @@
+{
+  "breaking": [
+    {
+      "member": "og.ui.defineAction",
+      "change": "UiActionDesc.holdMs 0 (or left out) on a hold action is a 500 ms hold, as the IDL says; it used to fire at once when holdMs was 0.",
+      "fix": "For a hold action that fires at once, pass holdMs: 1 (or use trigger press); leave holdMs out for the 500 ms default.",
+      "find": ["holdMs", "og.ui.defineAction"]
+    }
+  ]
+}

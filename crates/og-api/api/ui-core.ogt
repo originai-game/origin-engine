@@ -124,10 +124,12 @@ module ui {
 
   struct Viewport {
     doc "The play surface the UI lays out in, in og-ui units (CSS px over UiTheme.unit) and device pixels per unit."
-    field width f32 "Its width." {
+    field width f32 "Its width; omitted is 1280." {
+      default 1280
       unit cssPx
     }
-    field height f32 "Its height." {
+    field height f32 "Its height; omitted is 720." {
+      default 720
       unit cssPx
     }
     field dpr f32 "Device pixels per CSS pixel; rectangles snap to device pixels." {
@@ -212,7 +214,7 @@ module ui {
     field images List.UiInlineImage "Pictures rich text draws inline by name ([img=<name>]): a portrait in a line of dialogue, an item's art in a tooltip. Any texture, not only the icon atlas's cells; each one em tall at its aspect, in its own colours."
     field toastAnchor Option.Anchor "Where toasts stack; null is the bottom centre."
     field hudMaxAspect f32 "The widest the HUD band is, over its height: on a wider surface (a 21:9 or 32:9 ultrawide monitor) the toasts and a HUD document placed at its CSS env(-og-hud-inset-*) (`right: calc(env(-og-hud-inset-right) + 24px)`) lay out in a band this wide, centred in the safe area, so the player's eyes stay near the play; og.ui.viewport's hud is that band. 16/9 keeps a 16:9 game's HUD where it was designed; 0 is the whole safe area (a HUD at the screen's edges). Full-screen layers (dialogs, menus, scrims, world-space markers and their edge clamping) keep the whole surface. The UI itself never stretches: it lays out in CSS pixels at every aspect." {
-      default 2.3333
+      default 2.3333333
       min 0
     }
     field style Option.Style "A UI style from og.load.style: its palette, radii, type ramp, fonts, icons, frames, ornaments, motion and sounds replace the default style (fonts, icons and a primary colour given here still win); null is the default style, the design language the engine shares with origin-agent."

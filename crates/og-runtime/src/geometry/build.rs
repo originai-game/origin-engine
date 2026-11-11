@@ -110,17 +110,42 @@ fn segments(n: u32, min: u32) -> u32 {
     n.min(1 << 16).max(min)
 }
 
-/// A three.js primitive. Its desc declares no `uvRepeat`, which is read by
-/// hand from the raw desc as the box, plane and sphere read it.
-fn primitive<D: wire::FromJson + Default>(
+/// A three.js primitive's desc: its `uvRepeat`.
+trait Primitive {
+    fn uv_repeat(&self) -> Vec2;
+}
+
+macro_rules! primitive_desc {
+    ($($t:ident),*) => {$(
+        impl Primitive for wire::$t {
+            fn uv_repeat(&self) -> Vec2 {
+                self.uv_repeat
+            }
+        }
+    )*};
+}
+
+primitive_desc!(
+    CylinderGeometryDesc,
+    ConeGeometryDesc,
+    CapsuleGeometryDesc,
+    TorusGeometryDesc,
+    RingGeometryDesc,
+    CircleGeometryDesc,
+    TubeGeometryDesc
+);
+
+/// A three.js primitive, made with its desc's `uvRepeat`.
+fn primitive<D: wire::FromJson + Default + Primitive>(
     world: u32,
     desc: Option<String>,
     build: impl FnOnce(D) -> Result<og_render::MeshData, String>,
 ) -> String {
     wire((|| {
-        let raw = parse(desc.as_deref())?;
-        let mut mesh = build(wire::value(&raw, "desc")?)?;
-        uv_repeat(&raw, &mut mesh)?;
+        let d: D = wire::arg(desc.as_deref(), "desc")?;
+        let repeat = d.uv_repeat();
+        let mut mesh = build(d)?;
+        uv_repeat(repeat, &mut mesh)?;
         make(world, mesh, true, false)
     })())
 }
@@ -308,29 +333,16 @@ made!(
     MergeGeometriesDesc
 );
 
-/// A procedural geometry: built from its desc (read without the keys in
-/// `hand`, which `build` reads by hand from the raw desc), refused when it
-/// holds no triangle, made with the desc's `uvRepeat`, `physics` and
-/// `dynamic`.
+/// A procedural geometry: built from its desc, refused when it holds no
+/// triangle, made with the desc's `uvRepeat`, `physics` and `dynamic`.
 fn generated<D: wire::FromJson + Default + Made>(
     world: u32,
     desc: Option<String>,
-    hand: &[&str],
-    build: impl FnOnce(&Value, &D) -> Result<og_geom::Mesh, String>,
+    build: impl FnOnce(&D) -> Result<og_geom::Mesh, String>,
 ) -> String {
     wire((|| {
-        let raw = parse(desc.as_deref())?;
-        let d: D = match raw.as_object() {
-            Some(o) if hand.iter().any(|k| o.contains_key(*k)) => {
-                let mut o = o.clone();
-                for k in hand {
-                    o.remove(*k);
-                }
-                wire::value(&Value::Object(o), "desc")?
-            }
-            _ => wire::value(&raw, "desc")?,
-        };
-        let mesh = build(&raw, &d)?;
+        let d: D = wire::arg(desc.as_deref(), "desc")?;
+        let mesh = build(&d)?;
         if mesh.indices.is_empty() {
             return Err("the geometry made holds no triangle".into());
         }
@@ -347,62 +359,63 @@ fn generated<D: wire::FromJson + Default + Made>(
     })())
 }
 
-fn dvec2_list(v: &Value, what: &str) -> Result<Vec<DVec2>, String> {
-    let list = v
-        .as_array()
-        .ok_or_else(|| format!("{what} is not a list of points"))?;
-    let out: Vec<DVec2> = list
-        .iter()
-        .map(|p| {
-            DVec2::new(
-                p["x"].as_f64().unwrap_or(0.0),
-                p["y"].as_f64().unwrap_or(0.0),
-            )
-        })
-        .collect();
-    if out.iter().any(|p| !p.is_finite()) {
-        return Err(format!("{what} holds a point that is not finite"));
+/// Points as og-geom reads them, refused when one is not finite.
+fn dvec2s(points: &[Vec2], what: &str) -> Result<Vec<DVec2>, String> {
+    if let Some(i) = points.iter().position(|p| !p.is_finite()) {
+        return Err(format!("{what}[{i}] is not a finite point"));
     }
-    Ok(out)
+    Ok(points.iter().map(|p| p.as_dvec2()).collect())
 }
 
-/// `shapes` as the TypeScript runtime sends them (og.Shape and og.Path2
-/// flattened to `{ shape, holes }`), or a plain points array.
-fn shapes_of(d: &Value, default: &[[f64; 2]]) -> Result<Vec<og_geom::ShapePoints>, String> {
-    let v = &d["shapes"];
-    let fallback = || og_geom::ShapePoints {
-        points: default.iter().map(|p| DVec2::new(p[0], p[1])).collect(),
-        holes: Vec::new(),
-    };
-    let Some(list) = v.as_array() else {
-        return if v.is_null() {
-            Ok(vec![fallback()])
-        } else {
-            Err("shapes is not an og.Shape, a list of them, or a list of points".into())
-        };
-    };
-    if list.first().is_some_and(|p| p.get("x").is_some()) {
-        return Ok(vec![og_geom::ShapePoints {
-            points: dvec2_list(v, "shapes")?,
+/// A ShapePoints as og-geom reads one.
+fn shape_points(s: &wire::ShapePoints, what: &str) -> Result<og_geom::ShapePoints, String> {
+    Ok(og_geom::ShapePoints {
+        points: dvec2s(&s.shape, &format!("{what}.shape"))?,
+        holes: s
+            .holes
+            .iter()
+            .enumerate()
+            .map(|(i, h)| dvec2s(h, &format!("{what}.holes[{i}]")))
+            .collect::<Result<_, _>>()?,
+    })
+}
+
+/// The refusal of an og.Shape or og.Path2 that crossed as a handle: the
+/// TypeScript runtime flattens them to points (geom.ts).
+fn unflattened(what: &str) -> String {
+    format!("{what}: an og.Shape or og.Path2 crosses as its points (ShapePoints); got a number")
+}
+
+/// ShapeGeometryDesc.shapes and ExtrudeGeometryDesc.shapes as they read.
+type Shapes =
+    wire::OneOf<u32, wire::OneOf<Vec<u32>, wire::OneOf<Vec<Vec2>, Vec<wire::ShapePoints>>>>;
+
+/// `shapes` (`desc.shapes`): the outline's points or a list of ShapePoints,
+/// as the TypeScript runtime sends an og.Shape, a list of them or points;
+/// absent, `default`.
+fn shapes_of(
+    shapes: &Option<Shapes>,
+    default: &[[f64; 2]],
+) -> Result<Vec<og_geom::ShapePoints>, String> {
+    use wire::OneOf::{A, B};
+    match shapes {
+        None => Ok(vec![og_geom::ShapePoints {
+            points: default.iter().map(|p| DVec2::new(p[0], p[1])).collect(),
             holes: Vec::new(),
-        }]);
+        }]),
+        Some(A(_)) => Err(unflattened("desc.shapes")),
+        Some(B(A(list))) if list.is_empty() => Ok(Vec::new()),
+        Some(B(A(_))) => Err(unflattened("desc.shapes")),
+        Some(B(B(A(points)))) => Ok(vec![og_geom::ShapePoints {
+            points: dvec2s(points, "desc.shapes")?,
+            holes: Vec::new(),
+        }]),
+        Some(B(B(B(list)))) => list
+            .iter()
+            .enumerate()
+            .map(|(i, s)| shape_points(s, &format!("desc.shapes[{i}]")))
+            .collect(),
     }
-    list.iter()
-        .enumerate()
-        .map(|(i, s)| {
-            let holes = match s["holes"].as_array() {
-                Some(h) => h
-                    .iter()
-                    .map(|x| dvec2_list(x, &format!("shapes[{i}].holes")))
-                    .collect::<Result<_, _>>()?,
-                None => Vec::new(),
-            };
-            Ok(og_geom::ShapePoints {
-                points: dvec2_list(&s["shape"], &format!("shapes[{i}]"))?,
-                holes,
-            })
-        })
-        .collect()
 }
 
 /// A live og.path as og-geom samples one: its point and unit tangent at a
@@ -433,51 +446,45 @@ fn fnum(v: f64, k: &str) -> Result<f64, String> {
 }
 
 pub fn og_render_shape_geometry(world: u32, desc: Option<String>) -> String {
-    generated(
-        world,
-        desc,
-        &["shapes"],
-        |raw, _: &wire::ShapeGeometryDesc| {
-            let shapes = shapes_of(raw, &[[0.0, 0.5], [-0.5, -0.5], [0.5, -0.5]])?;
-            Ok(og_geom::shape_geometry(&shapes))
-        },
-    )
+    generated(world, desc, |d: &wire::ShapeGeometryDesc| {
+        let shapes = shapes_of(&d.shapes, &[[0.0, 0.5], [-0.5, -0.5], [0.5, -0.5]])?;
+        Ok(og_geom::shape_geometry(&shapes))
+    })
 }
 
 pub fn og_render_extrude_geometry(world: u32, desc: Option<String>) -> String {
-    generated(
-        world,
-        desc,
-        &["shapes"],
-        |raw, d: &wire::ExtrudeGeometryDesc| {
-            let shapes = shapes_of(raw, &[[0.5, 0.5], [-0.5, 0.5], [-0.5, -0.5], [0.5, -0.5]])?;
-            let thickness = fsize(d.bevel_thickness, "bevelThickness")?;
-            let o = og_geom::Extrude {
-                depth: fsize(d.depth, "depth")?,
-                steps: segments(d.steps, 1),
-                bevel_enabled: d.bevel_enabled,
-                bevel_thickness: thickness,
-                bevel_size: fnum(d.bevel_size.map_or(thickness - 0.1, f64::from), "bevelSize")?,
-                bevel_offset: fnum(f64::from(d.bevel_offset), "bevelOffset")?,
-                bevel_segments: segments(d.bevel_segments, 1),
-            };
-            let path = path_sampler(world, d.extrude_path, "desc.extrudePath")?;
-            let sample = |t: f64| sample_path(path.as_deref().expect("a path"), t);
-            let along = path.as_ref().map(|p| og_geom::extrude::ExtrudePath {
-                sample: &sample,
-                closed: p.desc().closed,
-            });
-            Ok(og_geom::extrude(&shapes, &o, along.as_ref()))
-        },
-    )
+    generated(world, desc, |d: &wire::ExtrudeGeometryDesc| {
+        let shapes = shapes_of(
+            &d.shapes,
+            &[[0.5, 0.5], [-0.5, 0.5], [-0.5, -0.5], [0.5, -0.5]],
+        )?;
+        let thickness = fsize(d.bevel_thickness, "bevelThickness")?;
+        let o = og_geom::Extrude {
+            depth: fsize(d.depth, "depth")?,
+            steps: segments(d.steps, 1),
+            bevel_enabled: d.bevel_enabled,
+            bevel_thickness: thickness,
+            bevel_size: fnum(d.bevel_size.map_or(thickness - 0.1, f64::from), "bevelSize")?,
+            bevel_offset: fnum(f64::from(d.bevel_offset), "bevelOffset")?,
+            bevel_segments: segments(d.bevel_segments, 1),
+        };
+        let path = path_sampler(world, d.extrude_path, "desc.extrudePath")?;
+        let sample = |t: f64| sample_path(path.as_deref().expect("a path"), t);
+        let along = path.as_ref().map(|p| og_geom::extrude::ExtrudePath {
+            sample: &sample,
+            closed: p.desc().closed,
+        });
+        Ok(og_geom::extrude(&shapes, &o, along.as_ref()))
+    })
 }
 
 pub fn og_render_lathe_geometry(world: u32, desc: Option<String>) -> String {
-    generated(world, desc, &[], |raw, d: &wire::LatheGeometryDesc| {
+    let given = parse(desc.as_deref()).is_ok_and(|v| !v["points"].is_null());
+    generated(world, desc, |d: &wire::LatheGeometryDesc| {
         let mut l = og_geom::Lathe::default();
         // Unset or null, three.js's default profile (the IDL's doc); an
         // empty list is refused below.
-        if !raw["points"].is_null() {
+        if given {
             l.points = d.points.iter().map(|p| p.as_dvec2()).collect();
             if l.points.iter().any(|p| !p.is_finite()) {
                 return Err("points holds a point that is not finite".into());
@@ -497,7 +504,7 @@ pub fn og_render_lathe_geometry(world: u32, desc: Option<String>) -> String {
 }
 
 pub fn og_render_polyhedron_geometry(world: u32, desc: Option<String>) -> String {
-    generated(world, desc, &[], |_, d: &wire::PolyhedronGeometryDesc| {
+    generated(world, desc, |d: &wire::PolyhedronGeometryDesc| {
         if d.vertices.iter().any(|v| !v.is_finite()) {
             return Err("vertices holds something that is not a finite number".into());
         }
@@ -514,7 +521,7 @@ pub fn og_render_polyhedron_geometry(world: u32, desc: Option<String>) -> String
 }
 
 fn solid(world: u32, desc: Option<String>, make: fn(f64, u32) -> og_geom::Mesh) -> String {
-    generated(world, desc, &[], |_, d: &wire::SolidGeometryDesc| {
+    generated(world, desc, |d: &wire::SolidGeometryDesc| {
         Ok(make(fsize(d.radius, "radius")?, d.detail.min(64)))
     })
 }
@@ -545,37 +552,33 @@ fn keys(list: &[wire::SweepKey]) -> Vec<og_geom::Key> {
 }
 
 pub fn og_render_sweep_geometry(world: u32, desc: Option<String>) -> String {
-    generated(
-        world,
-        desc,
-        &["section"],
-        |raw, d: &wire::SweepGeometryDesc| {
-            let path = path_sampler(world, d.path, "desc.path")?
-                .ok_or("a sweep needs a path (og.path.create or og.path.find)")?;
-            // A Shape or Path2 crosses as `{ shape, holes }`; its holes are not
-            // swept. The IDL types it as a Path2 handle, so it is read by hand.
-            let section = match &raw["section"] {
-                v if v.get("shape").is_some() => dvec2_list(&v["shape"], "section")?,
-                Value::Null => Vec::new(),
-                v => dvec2_list(v, "section")?,
-            };
-            let s = og_geom::Sweep {
-                section,
-                steps: segments(d.steps, 1),
-                scale: keys(&d.scale),
-                twist: keys(&d.twist),
-                caps: d.caps,
-            };
-            let sample = |t: f64| sample_path(&path, t);
-            og_geom::sweep(
-                &s,
-                &og_geom::extrude::ExtrudePath {
-                    sample: &sample,
-                    closed: path.desc().closed,
-                },
-            )
-        },
-    )
+    generated(world, desc, |d: &wire::SweepGeometryDesc| {
+        use wire::OneOf::{A, B};
+        let path = path_sampler(world, d.path, "desc.path")?
+            .ok_or("a sweep needs a path (og.path.create or og.path.find)")?;
+        // Its points, or a ShapePoints whose holes are not swept.
+        let section = match &d.section {
+            None => Vec::new(),
+            Some(A(_)) => return Err(unflattened("desc.section")),
+            Some(B(A(points))) => dvec2s(points, "desc.section")?,
+            Some(B(B(s))) => dvec2s(&s.shape, "desc.section.shape")?,
+        };
+        let s = og_geom::Sweep {
+            section,
+            steps: segments(d.steps, 1),
+            scale: keys(&d.scale),
+            twist: keys(&d.twist),
+            caps: d.caps,
+        };
+        let sample = |t: f64| sample_path(&path, t);
+        og_geom::sweep(
+            &s,
+            &og_geom::extrude::ExtrudePath {
+                sample: &sample,
+                closed: path.desc().closed,
+            },
+        )
+    })
 }
 
 /// A GeometryPart: its geometry's mesh and where it goes.
@@ -620,7 +623,7 @@ fn placed(
 }
 
 pub fn og_render_csg_geometry(world: u32, desc: Option<String>) -> String {
-    generated(world, desc, &[], |_, d: &wire::CsgGeometryDesc| {
+    generated(world, desc, |d: &wire::CsgGeometryDesc| {
         let op = match d.op {
             wire::CsgOp::Union => og_geom::CsgOp::Union,
             wire::CsgOp::Subtract => og_geom::CsgOp::Subtract,
@@ -634,7 +637,7 @@ pub fn og_render_csg_geometry(world: u32, desc: Option<String>) -> String {
 }
 
 pub fn og_render_merge_geometries(world: u32, desc: Option<String>) -> String {
-    generated(world, desc, &[], |_, d: &wire::MergeGeometriesDesc| {
+    generated(world, desc, |d: &wire::MergeGeometriesDesc| {
         let list = &d.parts;
         if list.is_empty() {
             return Err("mergeGeometries needs at least one part".into());

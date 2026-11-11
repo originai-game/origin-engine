@@ -253,27 +253,20 @@ fn note(engine: u32, text: String) {
 // ── og.path ────────────────────────────────────────────────────────────────
 
 fn curve_desc(v: &Value) -> Result<PathDesc, String> {
-    // `kind` takes its code (0 to 2) as well as the IDL's name: read by hand.
-    let mut typed = v.clone();
-    if let Some(o) = typed.as_object_mut() {
-        o.remove("kind");
-    }
-    let c: super::wire::CurveDesc = super::wire::value(&typed, "desc")?;
+    let c: super::wire::CurveDesc = super::wire::value(v, "desc")?;
     if v["points"].is_null() {
         return Err("desc.points is the list of points ({x, y, z})".into());
     }
-    let mut d = PathDesc {
+    let d = PathDesc {
         points: c.points,
         closed: c.closed,
         tension: c.tension,
-        ..PathDesc::default()
+        kind: match c.kind {
+            super::wire::PathKind::CatmullRom => PathKind::CatmullRom,
+            super::wire::PathKind::Bezier => PathKind::Bezier,
+            super::wire::PathKind::Linear => PathKind::Linear,
+        },
     };
-    if let Some(k) = v["kind"].as_str() {
-        d.kind = PathKind::from_name(k)
-            .ok_or_else(|| format!("desc.kind '{k}' is not catmullRom, bezier or linear"))?;
-    } else if let Some(k) = v["kind"].as_u64() {
-        d.kind = PathKind::from_code(k as u32).ok_or("desc.kind is 0 to 2")?;
-    }
     Ok(d)
 }
 

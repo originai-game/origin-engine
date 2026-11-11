@@ -13,7 +13,7 @@ One assertion call the runtime reports to the engine (og.assert.record): its fir
 | `kind` | `AssertKind` | `"always"` | — | — | — | The assertion's kind. |
 | `name` | `string` | `""` | — | — | — | Its name. |
 | `location` | `string` | `""` | — | — | — | Where it is called (`src/player.ts:42`); empty when the build did not record one. |
-| `condition` | `boolean` | `false` | — | — | — | The condition (true for reachable and unreachable, which have none). |
+| `condition` | `boolean \| null` | `null` | — | — | — | The condition (true for reachable and unreachable, which have none). Required: a record without one is refused (the call answers the epoch and counts nothing). |
 | `key` | `string` | `""` | — | — | — | The bucket of an each, as text; empty otherwise. |
 | `details` | `unknown` | `null` | — | — | — | What the call passed as details (null for none). |
 | `tick` | `number` | `0` | — | — | — | The tick of the call. |
@@ -25,7 +25,7 @@ struct AssertRecord {
   field kind AssertKind "The assertion's kind."
   field name String "Its name."
   field location String "Where it is called (`src/player.ts:42`); empty when the build did not record one."
-  field condition bool "The condition (true for reachable and unreachable, which have none)."
+  field condition Option.bool "The condition (true for reachable and unreachable, which have none). Required: a record without one is refused (the call answers the epoch and counts nothing)."
   field key String "The bucket of an each, as text; empty otherwise."
   field details Json "What the call passed as details (null for none)."
   field tick u32 "The tick of the call."

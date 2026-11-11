@@ -12,7 +12,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `to` | `readonly number[]` | `[]` | — | — | — | The value at the step's end. |
+| `to` | `number \| readonly number[] \| null` | `null` | — | — | — | The value at the step's end: one number for every lane, or a list, one per lane. Required: a step without one is refused. |
 | `duration` | `number \| null` | `null` | — | `s` | — | Seconds; null takes the tween's. |
 | `ease` | `Ease \| null` | `null` | — | — | — | The curve; null takes the tween's. |
 | `delay` | `number` | `0` | ≥ 0 | `s` | — | Seconds after the step before. |
@@ -21,7 +21,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 struct TweenKeyframe {
   doc "One step of a tween's keyframes: from where the step before ended to `to`."
   desc true
-  field to List.f32 "The value at the step's end."
+  field to Option.OneOf.f32.List.f32 "The value at the step's end: one number for every lane, or a list, one per lane. Required: a step without one is refused."
   field duration Option.f32 "Seconds; null takes the tween's." {
     unit s
   }

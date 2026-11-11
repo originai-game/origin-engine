@@ -10,7 +10,7 @@
 // Which imports are used depends on what the IDL declares.
 #![allow(unused_imports)]
 
-use super::{FromJson, OneOf, ToJson, at, field, object, text, unknown_variant};
+use super::{FromJson, OneOf, ToJson, at, field, object, text, unknown_variant, variant};
 use glam::{Mat4, Quat, Vec2, Vec3, Vec4};
 use serde_json::{Map, Value};
 use std::collections::BTreeMap;
@@ -582,7 +582,7 @@ impl StateWhen {
 
 impl FromJson for StateWhen {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "StateWhen", Self::NAMES)?)
     }
 }
 
@@ -742,7 +742,7 @@ impl HookEvent {
 
 impl FromJson for HookEvent {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "HookEvent", Self::NAMES)?)
     }
 }
 
@@ -801,8 +801,8 @@ pub struct GameDesc {
     pub seed: u32,
     pub scenes: BTreeMap<String, String>,
     pub scene: String,
-    pub systems: Vec<u32>,
-    pub hooks: Vec<u32>,
+    pub systems: Vec<OneOf<u32, i32>>,
+    pub hooks: Vec<OneOf<u32, i32>>,
     pub states: Vec<StateDesc>,
     pub resources: Vec<Value>,
     pub commands: BTreeMap<String, u32>,
@@ -813,7 +813,7 @@ pub struct GameDesc {
     pub ui: Option<u32>,
     pub render: RenderOptions,
     pub save_version: u32,
-    pub migrations: Vec<SaveMigration>,
+    pub migrations: Vec<OneOf<SaveMigration, u32>>,
     pub explore: ExploreDesc,
     pub look: String,
 }
@@ -1012,7 +1012,7 @@ impl NoiseKind {
 
 impl FromJson for NoiseKind {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "NoiseKind", Self::NAMES)?)
     }
 }
 
@@ -1620,7 +1620,7 @@ impl InputDevice {
 
 impl FromJson for InputDevice {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "InputDevice", Self::NAMES)?)
     }
 }
 
@@ -1659,7 +1659,7 @@ impl ActionKind {
 
 impl FromJson for ActionKind {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "ActionKind", Self::NAMES)?)
     }
 }
 
@@ -2063,7 +2063,7 @@ impl ConflictPolicy {
 
 impl FromJson for ConflictPolicy {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "ConflictPolicy", Self::NAMES)?)
     }
 }
 
@@ -2190,7 +2190,7 @@ impl CaptureAccept {
 
 impl FromJson for CaptureAccept {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "CaptureAccept", Self::NAMES)?)
     }
 }
 
@@ -2661,7 +2661,7 @@ impl GamepadButton {
 
 impl FromJson for GamepadButton {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "GamepadButton", Self::NAMES)?)
     }
 }
 
@@ -2703,7 +2703,7 @@ impl GamepadAxis {
 
 impl FromJson for GamepadAxis {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "GamepadAxis", Self::NAMES)?)
     }
 }
 
@@ -2742,7 +2742,7 @@ impl KeyAction {
 
 impl FromJson for KeyAction {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "KeyAction", Self::NAMES)?)
     }
 }
 
@@ -2782,7 +2782,7 @@ impl PointerAction {
 
 impl FromJson for PointerAction {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "PointerAction", Self::NAMES)?)
     }
 }
 
@@ -2822,7 +2822,7 @@ impl PointerButton {
 
 impl FromJson for PointerButton {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "PointerButton", Self::NAMES)?)
     }
 }
 
@@ -3214,7 +3214,7 @@ impl A11yActionKind {
 
 impl FromJson for A11yActionKind {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "A11yActionKind", Self::NAMES)?)
     }
 }
 
@@ -3365,7 +3365,7 @@ impl Side {
 
 impl FromJson for Side {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "Side", Self::NAMES)?)
     }
 }
 
@@ -3406,7 +3406,7 @@ impl RenderTier {
 
 impl FromJson for RenderTier {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "RenderTier", Self::NAMES)?)
     }
 }
 
@@ -3449,7 +3449,7 @@ impl Antialias {
 
 impl FromJson for Antialias {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "Antialias", Self::NAMES)?)
     }
 }
 
@@ -3488,7 +3488,7 @@ impl PointShadows {
 
 impl FromJson for PointShadows {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "PointShadows", Self::NAMES)?)
     }
 }
 
@@ -3526,7 +3526,7 @@ impl TaaHistory {
 
 impl FromJson for TaaHistory {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "TaaHistory", Self::NAMES)?)
     }
 }
 
@@ -3580,7 +3580,7 @@ impl DebugView {
 
 impl FromJson for DebugView {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "DebugView", Self::NAMES)?)
     }
 }
 
@@ -3618,7 +3618,7 @@ impl Transparency {
 
 impl FromJson for Transparency {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "Transparency", Self::NAMES)?)
     }
 }
 
@@ -3659,7 +3659,7 @@ impl LitFeature {
 
 impl FromJson for LitFeature {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "LitFeature", Self::NAMES)?)
     }
 }
 
@@ -4196,7 +4196,7 @@ impl GraphicsQuality {
 
 impl FromJson for GraphicsQuality {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "GraphicsQuality", Self::NAMES)?)
     }
 }
 
@@ -4234,7 +4234,7 @@ impl SpriteBlend {
 
 impl FromJson for SpriteBlend {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "SpriteBlend", Self::NAMES)?)
     }
 }
 
@@ -4273,7 +4273,7 @@ impl SpriteFacing {
 
 impl FromJson for SpriteFacing {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "SpriteFacing", Self::NAMES)?)
     }
 }
 
@@ -4311,7 +4311,7 @@ impl StripBlend {
 
 impl FromJson for StripBlend {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "StripBlend", Self::NAMES)?)
     }
 }
 
@@ -5205,7 +5205,7 @@ impl FrameCap {
 
 impl FromJson for FrameCap {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "FrameCap", Self::NAMES)?)
     }
 }
 
@@ -5243,7 +5243,7 @@ impl PowerPreference {
 
 impl FromJson for PowerPreference {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "PowerPreference", Self::NAMES)?)
     }
 }
 
@@ -5586,6 +5586,7 @@ pub struct CylinderGeometryDesc {
     pub open_ended: bool,
     pub theta_start: f32,
     pub theta_length: f32,
+    pub uv_repeat: Vec2,
 }
 
 impl Default for CylinderGeometryDesc {
@@ -5599,6 +5600,7 @@ impl Default for CylinderGeometryDesc {
             open_ended: Default::default(),
             theta_start: Default::default(),
             theta_length: 6.283185307179586_f32,
+            uv_repeat: Vec2::new(1.0_f32, 1.0_f32),
         }
     }
 }
@@ -5618,6 +5620,7 @@ impl FromJson for CylinderGeometryDesc {
             open_ended: field(o, "openEnded", d.open_ended)?,
             theta_start: field(o, "thetaStart", d.theta_start)?,
             theta_length: field(o, "thetaLength", d.theta_length)?,
+            uv_repeat: field(o, "uvRepeat", d.uv_repeat)?,
         })
     }
 }
@@ -5633,6 +5636,7 @@ impl ToJson for CylinderGeometryDesc {
         o.insert("openEnded".into(), self.open_ended.to_json());
         o.insert("thetaStart".into(), self.theta_start.to_json());
         o.insert("thetaLength".into(), self.theta_length.to_json());
+        o.insert("uvRepeat".into(), self.uv_repeat.to_json());
         Value::Object(o)
     }
 }
@@ -5645,6 +5649,7 @@ pub struct ConeGeometryDesc {
     pub radial_segments: u32,
     pub height_segments: u32,
     pub open_ended: bool,
+    pub uv_repeat: Vec2,
 }
 
 impl Default for ConeGeometryDesc {
@@ -5655,6 +5660,7 @@ impl Default for ConeGeometryDesc {
             radial_segments: 32,
             height_segments: 1,
             open_ended: Default::default(),
+            uv_repeat: Vec2::new(1.0_f32, 1.0_f32),
         }
     }
 }
@@ -5671,6 +5677,7 @@ impl FromJson for ConeGeometryDesc {
             radial_segments: field(o, "radialSegments", d.radial_segments)?,
             height_segments: field(o, "heightSegments", d.height_segments)?,
             open_ended: field(o, "openEnded", d.open_ended)?,
+            uv_repeat: field(o, "uvRepeat", d.uv_repeat)?,
         })
     }
 }
@@ -5683,6 +5690,7 @@ impl ToJson for ConeGeometryDesc {
         o.insert("radialSegments".into(), self.radial_segments.to_json());
         o.insert("heightSegments".into(), self.height_segments.to_json());
         o.insert("openEnded".into(), self.open_ended.to_json());
+        o.insert("uvRepeat".into(), self.uv_repeat.to_json());
         Value::Object(o)
     }
 }
@@ -5695,6 +5703,7 @@ pub struct CapsuleGeometryDesc {
     pub cap_segments: u32,
     pub radial_segments: u32,
     pub height_segments: u32,
+    pub uv_repeat: Vec2,
 }
 
 impl Default for CapsuleGeometryDesc {
@@ -5705,6 +5714,7 @@ impl Default for CapsuleGeometryDesc {
             cap_segments: 4,
             radial_segments: 8,
             height_segments: 1,
+            uv_repeat: Vec2::new(1.0_f32, 1.0_f32),
         }
     }
 }
@@ -5721,6 +5731,7 @@ impl FromJson for CapsuleGeometryDesc {
             cap_segments: field(o, "capSegments", d.cap_segments)?,
             radial_segments: field(o, "radialSegments", d.radial_segments)?,
             height_segments: field(o, "heightSegments", d.height_segments)?,
+            uv_repeat: field(o, "uvRepeat", d.uv_repeat)?,
         })
     }
 }
@@ -5733,6 +5744,7 @@ impl ToJson for CapsuleGeometryDesc {
         o.insert("capSegments".into(), self.cap_segments.to_json());
         o.insert("radialSegments".into(), self.radial_segments.to_json());
         o.insert("heightSegments".into(), self.height_segments.to_json());
+        o.insert("uvRepeat".into(), self.uv_repeat.to_json());
         Value::Object(o)
     }
 }
@@ -5745,6 +5757,7 @@ pub struct TorusGeometryDesc {
     pub radial_segments: u32,
     pub tubular_segments: u32,
     pub arc: f32,
+    pub uv_repeat: Vec2,
 }
 
 impl Default for TorusGeometryDesc {
@@ -5755,6 +5768,7 @@ impl Default for TorusGeometryDesc {
             radial_segments: 12,
             tubular_segments: 48,
             arc: 6.283185307179586_f32,
+            uv_repeat: Vec2::new(1.0_f32, 1.0_f32),
         }
     }
 }
@@ -5771,6 +5785,7 @@ impl FromJson for TorusGeometryDesc {
             radial_segments: field(o, "radialSegments", d.radial_segments)?,
             tubular_segments: field(o, "tubularSegments", d.tubular_segments)?,
             arc: field(o, "arc", d.arc)?,
+            uv_repeat: field(o, "uvRepeat", d.uv_repeat)?,
         })
     }
 }
@@ -5783,6 +5798,7 @@ impl ToJson for TorusGeometryDesc {
         o.insert("radialSegments".into(), self.radial_segments.to_json());
         o.insert("tubularSegments".into(), self.tubular_segments.to_json());
         o.insert("arc".into(), self.arc.to_json());
+        o.insert("uvRepeat".into(), self.uv_repeat.to_json());
         Value::Object(o)
     }
 }
@@ -5796,6 +5812,7 @@ pub struct RingGeometryDesc {
     pub phi_segments: u32,
     pub theta_start: f32,
     pub theta_length: f32,
+    pub uv_repeat: Vec2,
 }
 
 impl Default for RingGeometryDesc {
@@ -5807,6 +5824,7 @@ impl Default for RingGeometryDesc {
             phi_segments: 1,
             theta_start: Default::default(),
             theta_length: 6.283185307179586_f32,
+            uv_repeat: Vec2::new(1.0_f32, 1.0_f32),
         }
     }
 }
@@ -5824,6 +5842,7 @@ impl FromJson for RingGeometryDesc {
             phi_segments: field(o, "phiSegments", d.phi_segments)?,
             theta_start: field(o, "thetaStart", d.theta_start)?,
             theta_length: field(o, "thetaLength", d.theta_length)?,
+            uv_repeat: field(o, "uvRepeat", d.uv_repeat)?,
         })
     }
 }
@@ -5837,6 +5856,7 @@ impl ToJson for RingGeometryDesc {
         o.insert("phiSegments".into(), self.phi_segments.to_json());
         o.insert("thetaStart".into(), self.theta_start.to_json());
         o.insert("thetaLength".into(), self.theta_length.to_json());
+        o.insert("uvRepeat".into(), self.uv_repeat.to_json());
         Value::Object(o)
     }
 }
@@ -5848,6 +5868,7 @@ pub struct CircleGeometryDesc {
     pub segments: u32,
     pub theta_start: f32,
     pub theta_length: f32,
+    pub uv_repeat: Vec2,
 }
 
 impl Default for CircleGeometryDesc {
@@ -5857,6 +5878,7 @@ impl Default for CircleGeometryDesc {
             segments: 32,
             theta_start: Default::default(),
             theta_length: 6.283185307179586_f32,
+            uv_repeat: Vec2::new(1.0_f32, 1.0_f32),
         }
     }
 }
@@ -5872,6 +5894,7 @@ impl FromJson for CircleGeometryDesc {
             segments: field(o, "segments", d.segments)?,
             theta_start: field(o, "thetaStart", d.theta_start)?,
             theta_length: field(o, "thetaLength", d.theta_length)?,
+            uv_repeat: field(o, "uvRepeat", d.uv_repeat)?,
         })
     }
 }
@@ -5883,6 +5906,7 @@ impl ToJson for CircleGeometryDesc {
         o.insert("segments".into(), self.segments.to_json());
         o.insert("thetaStart".into(), self.theta_start.to_json());
         o.insert("thetaLength".into(), self.theta_length.to_json());
+        o.insert("uvRepeat".into(), self.uv_repeat.to_json());
         Value::Object(o)
     }
 }
@@ -5896,6 +5920,7 @@ pub struct TubeGeometryDesc {
     pub radius: f32,
     pub radial_segments: u32,
     pub closed: bool,
+    pub uv_repeat: Vec2,
 }
 
 impl Default for TubeGeometryDesc {
@@ -5907,6 +5932,7 @@ impl Default for TubeGeometryDesc {
             radius: 1.0_f32,
             radial_segments: 8,
             closed: Default::default(),
+            uv_repeat: Vec2::new(1.0_f32, 1.0_f32),
         }
     }
 }
@@ -5924,6 +5950,7 @@ impl FromJson for TubeGeometryDesc {
             radius: field(o, "radius", d.radius)?,
             radial_segments: field(o, "radialSegments", d.radial_segments)?,
             closed: field(o, "closed", d.closed)?,
+            uv_repeat: field(o, "uvRepeat", d.uv_repeat)?,
         })
     }
 }
@@ -5937,6 +5964,45 @@ impl ToJson for TubeGeometryDesc {
         o.insert("radius".into(), self.radius.to_json());
         o.insert("radialSegments".into(), self.radial_segments.to_json());
         o.insert("closed".into(), self.closed.to_json());
+        o.insert("uvRepeat".into(), self.uv_repeat.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `ShapePoints`: packages/knowledge/wiki/render.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ShapePoints {
+    pub shape: Vec<Vec2>,
+    pub holes: Vec<Vec<Vec2>>,
+}
+
+impl Default for ShapePoints {
+    fn default() -> Self {
+        Self {
+            shape: Default::default(),
+            holes: Default::default(),
+        }
+    }
+}
+
+impl FromJson for ShapePoints {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            shape: field(o, "shape", d.shape)?,
+            holes: field(o, "holes", d.holes)?,
+        })
+    }
+}
+
+impl ToJson for ShapePoints {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("shape".into(), self.shape.to_json());
+        o.insert("holes".into(), self.holes.to_json());
         Value::Object(o)
     }
 }
@@ -5944,7 +6010,7 @@ impl ToJson for TubeGeometryDesc {
 /// `ShapeGeometryDesc`: packages/knowledge/wiki/render.md.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ShapeGeometryDesc {
-    pub shapes: Option<OneOf<u32, OneOf<Vec<u32>, Vec<Vec2>>>>,
+    pub shapes: Option<OneOf<u32, OneOf<Vec<u32>, OneOf<Vec<Vec2>, Vec<ShapePoints>>>>>,
     pub curve_segments: u32,
     pub uv_repeat: Vec2,
     pub physics: bool,
@@ -5994,7 +6060,7 @@ impl ToJson for ShapeGeometryDesc {
 /// `ExtrudeGeometryDesc`: packages/knowledge/wiki/render.md.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ExtrudeGeometryDesc {
-    pub shapes: Option<OneOf<u32, OneOf<Vec<u32>, Vec<Vec2>>>>,
+    pub shapes: Option<OneOf<u32, OneOf<Vec<u32>, OneOf<Vec<Vec2>, Vec<ShapePoints>>>>>,
     pub depth: f32,
     pub steps: u32,
     pub bevel_enabled: bool,
@@ -6280,7 +6346,7 @@ impl ToJson for SweepKey {
 /// `SweepGeometryDesc`: packages/knowledge/wiki/render.md.
 #[derive(Clone, Debug, PartialEq)]
 pub struct SweepGeometryDesc {
-    pub section: Option<OneOf<u32, Vec<Vec2>>>,
+    pub section: Option<OneOf<u32, OneOf<Vec<Vec2>, ShapePoints>>>,
     pub path: u64,
     pub steps: u32,
     pub scale: Vec<SweepKey>,
@@ -6377,7 +6443,7 @@ impl MirrorAxis {
 
 impl FromJson for MirrorAxis {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "MirrorAxis", Self::NAMES)?)
     }
 }
 
@@ -6466,7 +6532,7 @@ impl CsgOp {
 
 impl FromJson for CsgOp {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "CsgOp", Self::NAMES)?)
     }
 }
 
@@ -6605,7 +6671,7 @@ impl LineMode {
 
 impl FromJson for LineMode {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "LineMode", Self::NAMES)?)
     }
 }
 
@@ -6887,7 +6953,7 @@ impl RenderTargetFormat {
 
 impl FromJson for RenderTargetFormat {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "RenderTargetFormat", Self::NAMES)?)
     }
 }
 
@@ -7059,7 +7125,7 @@ impl VolumetricFog {
 
 impl FromJson for VolumetricFog {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "VolumetricFog", Self::NAMES)?)
     }
 }
 
@@ -7160,7 +7226,7 @@ impl LoadStatus {
 
 impl FromJson for LoadStatus {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "LoadStatus", Self::NAMES)?)
     }
 }
 
@@ -7599,7 +7665,7 @@ impl ImageKind {
 
 impl FromJson for ImageKind {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "ImageKind", Self::NAMES)?)
     }
 }
 
@@ -9066,7 +9132,7 @@ impl FlipMode {
 
 impl FromJson for FlipMode {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "FlipMode", Self::NAMES)?)
     }
 }
 
@@ -9348,8 +9414,8 @@ pub struct TweenDesc {
     pub entity: u64,
     pub component: Option<Value>,
     pub field: String,
-    pub to: Vec<f32>,
-    pub from: Option<Vec<f32>>,
+    pub to: Option<OneOf<f32, Vec<f32>>>,
+    pub from: Option<OneOf<f32, Vec<f32>>>,
     pub relative: bool,
     pub duration: f32,
     pub delay: f32,
@@ -9430,7 +9496,7 @@ pub struct TweenFromDesc {
     pub entity: u64,
     pub component: Option<Value>,
     pub field: String,
-    pub from: Vec<f32>,
+    pub from: Option<OneOf<f32, Vec<f32>>>,
     pub duration: f32,
     pub delay: f32,
     pub ease: String,
@@ -9717,7 +9783,7 @@ impl ToJson for StaggerDesc {
 /// `TweenKeyframe`: packages/knowledge/wiki/tween.md.
 #[derive(Clone, Debug, PartialEq)]
 pub struct TweenKeyframe {
-    pub to: Vec<f32>,
+    pub to: Option<OneOf<f32, Vec<f32>>>,
     pub duration: Option<f32>,
     pub ease: Option<String>,
     pub delay: f32,
@@ -9765,8 +9831,8 @@ impl ToJson for TweenKeyframe {
 pub struct TimelineTweenVars {
     pub component: Option<Value>,
     pub field: String,
-    pub to: Option<Vec<f32>>,
-    pub from: Option<Vec<f32>>,
+    pub to: Option<OneOf<f32, Vec<f32>>>,
+    pub from: Option<OneOf<f32, Vec<f32>>>,
     pub relative: bool,
     pub duration: Option<f32>,
     pub delay: f32,
@@ -9989,7 +10055,7 @@ impl TileOrientation {
 
 impl FromJson for TileOrientation {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "TileOrientation", Self::NAMES)?)
     }
 }
 
@@ -10384,7 +10450,7 @@ impl Default for SetTileDesc {
             layer: Default::default(),
             x: Default::default(),
             y: Default::default(),
-            tile: Default::default(),
+            tile: -1,
         }
     }
 }
@@ -10621,7 +10687,7 @@ impl NavAlgorithm {
 
 impl FromJson for NavAlgorithm {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "NavAlgorithm", Self::NAMES)?)
     }
 }
 
@@ -10661,7 +10727,7 @@ impl NavLinkKind {
 
 impl FromJson for NavLinkKind {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "NavLinkKind", Self::NAMES)?)
     }
 }
 
@@ -10763,7 +10829,7 @@ impl NavShapeKind {
 
 impl FromJson for NavShapeKind {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "NavShapeKind", Self::NAMES)?)
     }
 }
 
@@ -11554,7 +11620,7 @@ impl StorySaliency {
 
 impl FromJson for StorySaliency {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "StorySaliency", Self::NAMES)?)
     }
 }
 
@@ -12616,7 +12682,7 @@ impl PlatformOrder {
 
 impl FromJson for PlatformOrder {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "PlatformOrder", Self::NAMES)?)
     }
 }
 
@@ -12676,7 +12742,7 @@ impl ToJson for StoreSetDesc {
 #[derive(Clone, Debug, PartialEq)]
 pub struct LeaderboardSubmitDesc {
     pub board: String,
-    pub score: f64,
+    pub score: Option<f64>,
     pub order: PlatformOrder,
 }
 
@@ -13092,7 +13158,7 @@ impl AdKind {
 
 impl FromJson for AdKind {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "AdKind", Self::NAMES)?)
     }
 }
 
@@ -13686,7 +13752,7 @@ impl DateStyle {
 
 impl FromJson for DateStyle {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "DateStyle", Self::NAMES)?)
     }
 }
 
@@ -13724,7 +13790,7 @@ impl TimeStyle {
 
 impl FromJson for TimeStyle {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "TimeStyle", Self::NAMES)?)
     }
 }
 
@@ -13926,7 +13992,7 @@ impl DurationStyle {
 
 impl FromJson for DurationStyle {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "DurationStyle", Self::NAMES)?)
     }
 }
 
@@ -13965,7 +14031,7 @@ impl TextAlign {
 
 impl FromJson for TextAlign {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "TextAlign", Self::NAMES)?)
     }
 }
 
@@ -14003,7 +14069,7 @@ impl Scheme {
 
 impl FromJson for Scheme {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "Scheme", Self::NAMES)?)
     }
 }
 
@@ -14043,7 +14109,7 @@ impl DensityMode {
 
 impl FromJson for DensityMode {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "DensityMode", Self::NAMES)?)
     }
 }
 
@@ -14118,7 +14184,7 @@ impl ThemeColor {
 
 impl FromJson for ThemeColor {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "ThemeColor", Self::NAMES)?)
     }
 }
 
@@ -14244,8 +14310,8 @@ pub struct Viewport {
 impl Default for Viewport {
     fn default() -> Self {
         Self {
-            width: Default::default(),
-            height: Default::default(),
+            width: 1280.0_f32,
+            height: 720.0_f32,
             dpr: 1.0_f32,
             safe_area: Default::default(),
             small_width: Default::default(),
@@ -14385,7 +14451,7 @@ impl Default for UiDesc {
             fallback_icons: Default::default(),
             images: Default::default(),
             toast_anchor: Default::default(),
-            hud_max_aspect: 2.3333_f32,
+            hud_max_aspect: 2.3333333_f32,
             style: Default::default(),
             sounds: Default::default(),
         }
@@ -14813,7 +14879,7 @@ impl Anchor {
 
 impl FromJson for Anchor {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "Anchor", Self::NAMES)?)
     }
 }
 
@@ -14856,7 +14922,7 @@ impl Tone {
 
 impl FromJson for Tone {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "Tone", Self::NAMES)?)
     }
 }
 
@@ -14896,7 +14962,7 @@ impl Breakpoint {
 
 impl FromJson for Breakpoint {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "Breakpoint", Self::NAMES)?)
     }
 }
 
@@ -14936,7 +15002,7 @@ impl ColorVision {
 
 impl FromJson for ColorVision {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "ColorVision", Self::NAMES)?)
     }
 }
 
@@ -14974,7 +15040,7 @@ impl ColorVisionFilter {
 
 impl FromJson for ColorVisionFilter {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "ColorVisionFilter", Self::NAMES)?)
     }
 }
 
@@ -15012,7 +15078,7 @@ impl Contrast {
 
 impl FromJson for Contrast {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "Contrast", Self::NAMES)?)
     }
 }
 
@@ -15056,7 +15122,7 @@ impl NavIntent {
 
 impl FromJson for NavIntent {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "NavIntent", Self::NAMES)?)
     }
 }
 
@@ -15746,7 +15812,7 @@ impl UiProp {
 
 impl FromJson for UiProp {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "UiProp", Self::NAMES)?)
     }
 }
 
@@ -15788,7 +15854,7 @@ impl MotionToken {
 
 impl FromJson for MotionToken {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "MotionToken", Self::NAMES)?)
     }
 }
 
@@ -15827,7 +15893,7 @@ impl Repeat {
 
 impl FromJson for Repeat {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "Repeat", Self::NAMES)?)
     }
 }
 
@@ -16099,7 +16165,7 @@ impl Cursor {
 
 impl FromJson for Cursor {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "Cursor", Self::NAMES)?)
     }
 }
 
@@ -17368,7 +17434,7 @@ impl WorldOcclusion {
 
 impl FromJson for WorldOcclusion {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "WorldOcclusion", Self::NAMES)?)
     }
 }
 
@@ -17409,7 +17475,7 @@ impl MassKind {
 
 impl FromJson for MassKind {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "MassKind", Self::NAMES)?)
     }
 }
 
@@ -17447,7 +17513,7 @@ impl MassSpace {
 
 impl FromJson for MassSpace {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "MassSpace", Self::NAMES)?)
     }
 }
 
@@ -17486,7 +17552,7 @@ impl ParticleShape {
 
 impl FromJson for ParticleShape {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "ParticleShape", Self::NAMES)?)
     }
 }
 
@@ -17599,7 +17665,7 @@ impl Default for MassTemplateDesc {
             bar_radius: Default::default(),
             particle_shape: Default::default(),
             size: Default::default(),
-            pivot: Default::default(),
+            pivot: Vec2::new(0.5_f32, 0.5_f32),
             lifetime: Default::default(),
             keys: Default::default(),
             drift: Default::default(),
@@ -17927,7 +17993,7 @@ impl UiActionTrigger {
 
 impl FromJson for UiActionTrigger {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "UiActionTrigger", Self::NAMES)?)
     }
 }
 
@@ -18033,7 +18099,7 @@ impl UiDevice {
 
 impl FromJson for UiDevice {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "UiDevice", Self::NAMES)?)
     }
 }
 
@@ -19100,7 +19166,7 @@ impl BuildProfile {
 
 impl FromJson for BuildProfile {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "BuildProfile", Self::NAMES)?)
     }
 }
 
@@ -19990,7 +20056,7 @@ impl DumpKind {
 
 impl FromJson for DumpKind {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "DumpKind", Self::NAMES)?)
     }
 }
 
@@ -21069,7 +21135,7 @@ impl ExpectStatus {
 
 impl FromJson for ExpectStatus {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "ExpectStatus", Self::NAMES)?)
     }
 }
 
@@ -21328,7 +21394,7 @@ impl TerrainBrushMode {
 
 impl FromJson for TerrainBrushMode {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "TerrainBrushMode", Self::NAMES)?)
     }
 }
 
@@ -21366,7 +21432,7 @@ impl TerrainStampMode {
 
 impl FromJson for TerrainStampMode {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "TerrainStampMode", Self::NAMES)?)
     }
 }
 
@@ -21907,7 +21973,7 @@ impl StreamState {
 
 impl FromJson for StreamState {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "StreamState", Self::NAMES)?)
     }
 }
 
@@ -22262,7 +22328,7 @@ impl AssertKind {
 
 impl FromJson for AssertKind {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "AssertKind", Self::NAMES)?)
     }
 }
 
@@ -22278,7 +22344,7 @@ pub struct AssertRecord {
     pub kind: AssertKind,
     pub name: String,
     pub location: String,
-    pub condition: bool,
+    pub condition: Option<bool>,
     pub key: String,
     pub details: Value,
     pub tick: u32,
@@ -22363,7 +22429,7 @@ impl AssertOrigin {
 
 impl FromJson for AssertOrigin {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "AssertOrigin", Self::NAMES)?)
     }
 }
 
@@ -22900,7 +22966,7 @@ impl PathKind {
 
 impl FromJson for PathKind {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "PathKind", Self::NAMES)?)
     }
 }
 
@@ -23424,7 +23490,7 @@ impl MotionGoalKind {
 
 impl FromJson for MotionGoalKind {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "MotionGoalKind", Self::NAMES)?)
     }
 }
 
@@ -23463,7 +23529,7 @@ impl MotionBackend {
 
 impl FromJson for MotionBackend {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "MotionBackend", Self::NAMES)?)
     }
 }
 
@@ -23907,7 +23973,7 @@ impl MotionPresentationState {
 
 impl FromJson for MotionPresentationState {
     fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(text(v)?)
+        Self::parse(variant(v, "MotionPresentationState", Self::NAMES)?)
     }
 }
 

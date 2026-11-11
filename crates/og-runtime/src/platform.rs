@@ -325,13 +325,15 @@ pub fn og_platform_leaderboard_submit(world: u32, desc: Option<String>) -> Strin
         Ok(d) => d,
         Err(e) => return refuse(e),
     };
-    if !d.score.is_finite() {
-        return refuse("score must be a finite number");
-    }
+    let score = match d.score {
+        Some(s) if s.is_finite() => s,
+        Some(s) => return refuse(format!("desc.score: expected a finite number, got {s}")),
+        None => return refuse("desc.score: expected a finite number, got nothing"),
+    };
     request(
         world,
         "leaderboard.submit",
-        json!({ "board": board_of(d.board), "score": d.score, "order": d.order.as_str() }),
+        json!({ "board": board_of(d.board), "score": score, "order": d.order.as_str() }),
     )
 }
 

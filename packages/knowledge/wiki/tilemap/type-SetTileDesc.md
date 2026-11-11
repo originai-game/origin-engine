@@ -16,7 +16,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `layer` | `string` | `""` | — | — | — | The layer's name. |
 | `x` | `number` | `0` | — | — | — | The column (0 is the left). |
 | `y` | `number` | `0` | — | — | — | The row (0 is the top). |
-| `tile` | `number` | `0` | ≥ -1 | — | — | A tile layer: the tile id, -1 empty. A terrain layer: 1 fills, 0 clears, and the neighbours re-tile. |
+| `tile` | `number` | `-1` | ≥ -1 | — | — | A tile layer: the tile id, -1 empty. A terrain layer: 1 fills, 0 clears, and the neighbours re-tile. |
 
 ```ogt
 struct SetTileDesc {
@@ -27,6 +27,7 @@ struct SetTileDesc {
   field x u32 "The column (0 is the left)."
   field y u32 "The row (0 is the top)."
   field tile i32 "A tile layer: the tile id, -1 empty. A terrain layer: 1 fills, 0 clears, and the neighbours re-tile." {
+    default -1
     min -1
   }
 }

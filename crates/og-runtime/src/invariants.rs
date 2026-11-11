@@ -435,9 +435,14 @@ pub fn og_assert_record(world: u32, record: String) -> u32 {
         return 0;
     };
     let mut a = eng.assertions.borrow_mut();
+    // A refused record (one without a condition among them) counts as
+    // neither true nor false: the call answers the epoch.
     let Ok(Some(r)) =
         crate::wire::arg::<Option<crate::wire::AssertRecord>>(Some(&record), "record")
     else {
+        return a.epoch();
+    };
+    let Some(condition) = r.condition else {
         return a.epoch();
     };
     use crate::wire::AssertKind as K;
@@ -453,7 +458,7 @@ pub fn og_assert_record(world: u32, record: String) -> u32 {
         origin: Origin::Game,
         name: r.name,
         location: r.location,
-        condition: r.condition,
+        condition,
         key: r.key,
         details: r.details,
         tick: u64::from(r.tick),

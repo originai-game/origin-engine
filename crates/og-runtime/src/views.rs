@@ -14,7 +14,7 @@ use super::codec::Layout;
 use super::engine::engine;
 use super::extract::{Hierarchy, RenderState};
 use super::fx::{color, f, on, resource, rows};
-use super::{ok, ok_void, parse, refuse};
+use super::{ok, ok_void, refuse};
 use glam::{Mat4, Vec3};
 use og_ecs::{Entity, QueryDesc, World};
 use serde_json::{Value, json};
@@ -58,22 +58,9 @@ pub(crate) struct ViewState {
 pub fn og_render_render_target(world: u32, desc: Option<String>) -> String {
     let r = (|| -> Result<Value, String> {
         let eng = engine(world)?;
-        let mut raw = parse(desc.as_deref())?;
-        // Hand read: `format` as an index (1 is hdr), which the IDL's
-        // RenderTargetFormat (a name) does not hold.
-        let index = match raw.get("format") {
-            Some(Value::Number(n)) => Some(n.as_u64() == Some(1)),
-            _ => None,
-        };
-        if index.is_some()
-            && let Some(o) = raw.as_object_mut()
-        {
-            o.remove("format");
-        }
-        let d: super::wire::RenderTargetDesc = super::wire::value(&raw, "desc")?;
+        let d: super::wire::RenderTargetDesc = super::wire::arg(desc.as_deref(), "desc")?;
         let (width, height) = (d.width.max(1), d.height.max(1));
-        let hdr = index.unwrap_or(d.format == super::wire::RenderTargetFormat::Hdr);
-        let format = if hdr {
+        let format = if d.format == super::wire::RenderTargetFormat::Hdr {
             og_render::TargetFormat::Rgba16Float
         } else {
             og_render::TargetFormat::Rgba8

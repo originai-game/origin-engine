@@ -10,8 +10,8 @@ The play surface the UI lays out in, in og-ui units (CSS px over UiTheme.unit) a
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `width` | `number` | `0` | — | `cssPx` | — | Its width. |
-| `height` | `number` | `0` | — | `cssPx` | — | Its height. |
+| `width` | `number` | `1280` | — | `cssPx` | — | Its width; omitted is 1280. |
+| `height` | `number` | `720` | — | `cssPx` | — | Its height; omitted is 720. |
 | `dpr` | `number` | `1` | — | — | — | Device pixels per CSS pixel; rectangles snap to device pixels. |
 | `safeArea` | `Insets` | `{ left: 0, top: 0, right: 0, bottom: 0 }` | — | — | — | The device's unsafe margins (notch, home indicator); the root pads by them, and CSS env(safe-area-inset-*) reads them with the covered region folded in (covered). |
 | `smallWidth` | `number` | `0` | — | `cssPx` | optional | The surface's width with the browser's own controls (address bar, toolbars) shown, as CSS's small viewport: what svw, svi and svmin read; vw and dvw read width. Omitted or 0 is width (native hosts have no such controls). |
@@ -30,10 +30,12 @@ The play surface the UI lays out in, in og-ui units (CSS px over UiTheme.unit) a
 ```ogt
 struct Viewport {
   doc "The play surface the UI lays out in, in og-ui units (CSS px over UiTheme.unit) and device pixels per unit."
-  field width f32 "Its width." {
+  field width f32 "Its width; omitted is 1280." {
+    default 1280
     unit cssPx
   }
-  field height f32 "Its height." {
+  field height f32 "Its height; omitted is 720." {
+    default 720
     unit cssPx
   }
   field dpr f32 "Device pixels per CSS pixel; rectangles snap to device pixels." {

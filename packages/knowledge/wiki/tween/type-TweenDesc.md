@@ -15,8 +15,8 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `entity` | `Entity` | `0` | — | — | — | The entity whose component is tweened. |
 | `component` | `AnyComponent \| null` | `null` | — | — | — | The component token (og.Transform, og.Sprite, a game's own); null is og.Transform. |
 | `field` | `string` | `""` | — | — | — | The field, or one lane of it: `position`, `position.y`, `scale`, `color.r`, `opacity`. f32, f64, i32 and u32 fields (rounded), vectors, colours and quaternions (as a rotation) tween; bool, enum and handle fields do not. |
-| `to` | `readonly number[]` | `[]` | — | — | — | The end value: one number for a scalar or for every lane, or one per lane. |
-| `from` | `readonly number[] \| null` | `null` | — | — | — | The start value, written from the tick the tween is started and held through its delay; null takes the field's value when the tween starts (after its delay). |
+| `to` | `number \| readonly number[] \| null` | `null` | — | — | — | The end value: one number for a scalar or for every lane, or a list, one per lane. Required: a desc without one is refused. |
+| `from` | `number \| readonly number[] \| null` | `null` | — | — | — | The start value (a number for every lane, or one per lane), written from the tick the tween is started and held through its delay; null takes the field's value when the tween starts (after its delay). |
 | `relative` | `boolean` | `false` | — | — | — | `to` is added to the start value. |
 | `duration` | `number` | `0.3` | ≥ 0 | `s` | — | Seconds from start to end (one cycle). |
 | `delay` | `number` | `0` | ≥ 0 | `s` | — | Seconds before it starts. |
@@ -33,8 +33,8 @@ struct TweenDesc {
   field entity Entity "The entity whose component is tweened."
   field component Option.AnyComponent "The component token (og.Transform, og.Sprite, a game's own); null is og.Transform."
   field field String "The field, or one lane of it: `position`, `position.y`, `scale`, `color.r`, `opacity`. f32, f64, i32 and u32 fields (rounded), vectors, colours and quaternions (as a rotation) tween; bool, enum and handle fields do not."
-  field to List.f32 "The end value: one number for a scalar or for every lane, or one per lane."
-  field from Option.List.f32 "The start value, written from the tick the tween is started and held through its delay; null takes the field's value when the tween starts (after its delay)."
+  field to Option.OneOf.f32.List.f32 "The end value: one number for a scalar or for every lane, or a list, one per lane. Required: a desc without one is refused."
+  field from Option.OneOf.f32.List.f32 "The start value (a number for every lane, or one per lane), written from the tick the tween is started and held through its delay; null takes the field's value when the tween starts (after its delay)."
   field relative bool "`to` is added to the start value."
   field duration f32 "Seconds from start to end (one cycle)." {
     default 0.3

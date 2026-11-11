@@ -29,6 +29,13 @@ pub trait FromJson: Sized {
         let _ = base;
         Self::from_json(v)
     }
+    /// Whether `v` has this type's shape, for [`OneOf`] to choose between
+    /// readers that ignore unknown fields: a vector is not an object
+    /// whose keys are all others' (`{ shape, holes }` is no Vector2).
+    fn reads(v: &Value) -> bool {
+        let _ = v;
+        true
+    }
 }
 
 /// The JSON argument `text` (absent, empty or `null`: the default) read as
@@ -78,14 +85,34 @@ pub fn text(v: &Value) -> Result<&str, String> {
         .ok_or_else(|| format!("expected a string, got {}", shown(v)))
 }
 
-/// The refusal of an unknown enum variant or union tag.
-pub fn unknown_variant(what: &str, got: &str, names: &[&str]) -> String {
-    let article = if what.starts_with(['A', 'E', 'I', 'O', 'U']) {
+/// `v` as an enum's variant name: a string, else refused naming the
+/// variants (an enum is never its index).
+pub fn variant<'a>(v: &'a Value, what: &str, names: &[&str]) -> Result<&'a str, String> {
+    v.as_str().ok_or_else(|| {
+        format!(
+            "expected {} {what} name ({}), got {}",
+            article(what),
+            names.join(", "),
+            shown(v)
+        )
+    })
+}
+
+fn article(what: &str) -> &'static str {
+    if what.starts_with(['A', 'E', 'I', 'O', 'U']) {
         "an"
     } else {
         "a"
-    };
-    format!("'{got}' is not {article} {what}: {}", names.join(", "))
+    }
+}
+
+/// The refusal of an unknown enum variant or union tag.
+pub fn unknown_variant(what: &str, got: &str, names: &[&str]) -> String {
+    format!(
+        "'{got}' is not {} {what}: {}",
+        article(what),
+        names.join(", ")
+    )
 }
 
 /// `v` for a message, cut short.
@@ -114,6 +141,9 @@ fn whole(v: &Value, lo: f64, hi: f64, what: &str) -> Result<f64, String> {
 }
 
 impl FromJson for bool {
+    fn reads(v: &Value) -> bool {
+        v.is_boolean()
+    }
     fn from_json(v: &Value) -> Result<Self, String> {
         v.as_bool()
             .ok_or_else(|| format!("expected true or false, got {}", shown(v)))
@@ -121,18 +151,27 @@ impl FromJson for bool {
 }
 
 impl FromJson for f32 {
+    fn reads(v: &Value) -> bool {
+        v.is_number()
+    }
     fn from_json(v: &Value) -> Result<Self, String> {
         number(v).map(|n| n as f32)
     }
 }
 
 impl FromJson for f64 {
+    fn reads(v: &Value) -> bool {
+        v.is_number()
+    }
     fn from_json(v: &Value) -> Result<Self, String> {
         number(v)
     }
 }
 
 impl FromJson for u32 {
+    fn reads(v: &Value) -> bool {
+        v.is_number()
+    }
     fn from_json(v: &Value) -> Result<Self, String> {
         whole(
             v,
@@ -145,6 +184,9 @@ impl FromJson for u32 {
 }
 
 impl FromJson for i32 {
+    fn reads(v: &Value) -> bool {
+        v.is_number()
+    }
     fn from_json(v: &Value) -> Result<Self, String> {
         whole(
             v,
@@ -157,6 +199,9 @@ impl FromJson for i32 {
 }
 
 impl FromJson for u8 {
+    fn reads(v: &Value) -> bool {
+        v.is_number()
+    }
     fn from_json(v: &Value) -> Result<Self, String> {
         whole(v, 0.0, 255.0, "a whole number from 0 to 255").map(|n| n as u8)
     }
@@ -164,6 +209,9 @@ impl FromJson for u8 {
 
 /// A handle: a JavaScript number, exact below 2^53.
 impl FromJson for u64 {
+    fn reads(v: &Value) -> bool {
+        v.is_number()
+    }
     fn from_json(v: &Value) -> Result<Self, String> {
         if let Some(n) = v.as_u64() {
             return Ok(n);
@@ -173,6 +221,9 @@ impl FromJson for u64 {
 }
 
 impl FromJson for String {
+    fn reads(v: &Value) -> bool {
+        v.is_string()
+    }
     fn from_json(v: &Value) -> Result<Self, String> {
         text(v).map(str::to_string)
     }
@@ -190,6 +241,9 @@ impl<T: FromJson> FromJson for Option<T> {
             Value::Null => Ok(None),
             v => T::from_json(v).map(Some),
         }
+    }
+    fn reads(v: &Value) -> bool {
+        v.is_null() || T::reads(v)
     }
     fn from_json_over(v: &Value, base: Self) -> Result<Self, String> {
         match (v, base) {
@@ -209,6 +263,9 @@ impl<T: FromJson> FromJson for Vec<T> {
             .enumerate()
             .map(|(i, x)| T::from_json(x).map_err(|e| at(&format!("[{i}]"), e)))
             .collect()
+    }
+    fn reads(v: &Value) -> bool {
+        v.as_array().is_some_and(|a| a.iter().all(T::reads))
     }
 }
 
@@ -250,18 +307,26 @@ impl<A: Default, B> Default for OneOf<A, B> {
     }
 }
 
+/// An `A` when the value has `A`'s shape ([`FromJson::reads`]) and reads
+/// as one, else a `B`. A value of `A`'s shape refused inside (a field
+/// path, such as `[1].x: expected a number`) is refused with that.
 impl<A: FromJson, B: FromJson> FromJson for OneOf<A, B> {
     fn from_json(v: &Value) -> Result<Self, String> {
-        match A::from_json(v) {
-            Ok(a) => Ok(OneOf::A(a)),
-            Err(ea) => B::from_json(v).map(OneOf::B).map_err(|eb| {
-                if ea == eb {
-                    ea
-                } else {
-                    format!("{ea}; or {eb}")
-                }
-            }),
-        }
+        let ea = match A::from_json(v) {
+            Ok(a) if A::reads(v) => return Ok(OneOf::A(a)),
+            // It has A's shape and failed inside: A's refusal.
+            Err(e) if A::reads(v) && e.contains(PATH) => return Err(e),
+            Ok(_) => None,
+            Err(e) => Some(e),
+        };
+        B::from_json(v).map(OneOf::B).map_err(|eb| match ea {
+            None => eb,
+            Some(ea) if ea == eb || eb.contains(PATH) => eb,
+            Some(ea) => format!("{ea}; or {eb}"),
+        })
+    }
+    fn reads(v: &Value) -> bool {
+        A::reads(v) || B::reads(v)
     }
 }
 
@@ -278,9 +343,18 @@ fn components<const N: usize>(
     Ok(out)
 }
 
+/// Whether `v` is an object that names one of `keys`, or names nothing.
+fn names_any(v: &Value, keys: &[&str]) -> bool {
+    v.as_object()
+        .is_some_and(|o| o.is_empty() || keys.iter().any(|k| o.contains_key(*k)))
+}
+
 impl FromJson for Vec2 {
     fn from_json(v: &Value) -> Result<Self, String> {
         components(v, ["x", "y"], [0.0; 2]).map(Vec2::from_array)
+    }
+    fn reads(v: &Value) -> bool {
+        names_any(v, &["x", "y"])
     }
     fn from_json_over(v: &Value, base: Self) -> Result<Self, String> {
         components(v, ["x", "y"], base.to_array()).map(Vec2::from_array)
@@ -288,6 +362,9 @@ impl FromJson for Vec2 {
 }
 
 impl FromJson for Vec3 {
+    fn reads(v: &Value) -> bool {
+        names_any(v, &["x", "y", "z"])
+    }
     fn from_json(v: &Value) -> Result<Self, String> {
         components(v, ["x", "y", "z"], [0.0; 3]).map(Vec3::from_array)
     }
@@ -297,6 +374,9 @@ impl FromJson for Vec3 {
 }
 
 impl FromJson for Vec4 {
+    fn reads(v: &Value) -> bool {
+        names_any(v, &["x", "y", "z", "w"])
+    }
     fn from_json(v: &Value) -> Result<Self, String> {
         components(v, ["x", "y", "z", "w"], [0.0; 4]).map(Vec4::from_array)
     }
@@ -307,6 +387,9 @@ impl FromJson for Vec4 {
 
 /// A quaternion; an absent `w` is 1 (the IDL's zero value is the identity).
 impl FromJson for Quat {
+    fn reads(v: &Value) -> bool {
+        names_any(v, &["x", "y", "z", "w"])
+    }
     fn from_json(v: &Value) -> Result<Self, String> {
         components(v, ["x", "y", "z", "w"], [0.0, 0.0, 0.0, 1.0]).map(Quat::from_array)
     }

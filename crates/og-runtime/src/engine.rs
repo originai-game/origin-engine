@@ -610,77 +610,65 @@ pub(crate) fn declare_hook(name: String, component: String, desc: &Value, run: u
 }
 
 pub(crate) fn declare_game(desc: &Value) -> u32 {
-    let num = |k: &str, default: u32| desc[k].as_u64().map_or(default, |n| n as u32);
+    use crate::wire::OneOf;
+    // A refused desc refuses the engine (Declarations.errors); the game is
+    // declared at the defaults so its handle stays valid.
+    let g: crate::wire::GameDesc = crate::wire::value(desc, "desc").unwrap_or_else(|e| {
+        DECL.with(|d| d.borrow_mut().errors.push(format!("og.game: {e}")));
+        Default::default()
+    });
+    // -1 is a token the TypeScript runtime has no handle for: skipped.
+    let handles = |list: Vec<OneOf<u32, i32>>| -> Vec<u32> {
+        list.into_iter()
+            .filter_map(|h| match h {
+                OneOf::A(h) => Some(h),
+                OneOf::B(_) => None,
+            })
+            .collect()
+    };
     let game = GameDecl {
-        tick: num("tick", 60),
-        seed: num("seed", 0),
-        systems: desc["systems"]
-            .as_array()
-            .map(|a| {
-                a.iter()
-                    .filter_map(|s| s.as_u64().map(|n| n as u32))
-                    .collect()
+        tick: g.tick,
+        seed: g.seed,
+        systems: handles(g.systems),
+        hooks: handles(g.hooks),
+        states: g
+            .states
+            .into_iter()
+            .map(|s| og_ecs::StateDesc {
+                name: s.name,
+                values: s.values,
+                initial: s.initial.unwrap_or_default(),
             })
-            .unwrap_or_default(),
-        hooks: desc["hooks"]
-            .as_array()
-            .map(|a| {
-                a.iter()
-                    .filter_map(|s| s.as_u64().map(|n| n as u32))
-                    .collect()
-            })
-            .unwrap_or_default(),
-        states: desc["states"]
-            .as_array()
-            .map(|a| {
-                a.iter()
-                    .map(|s| og_ecs::StateDesc {
-                        name: s["name"].as_str().unwrap_or_default().to_string(),
-                        values: strings(&s["values"]),
-                        initial: s["initial"].as_str().unwrap_or_default().to_string(),
-                    })
-                    .collect()
-            })
-            .unwrap_or_default(),
-        resources: strings(&desc["resources"]),
-        commands: desc["commands"]
-            .as_object()
-            .map(|o| {
-                o.iter()
-                    .filter_map(|(k, v)| Some((k.clone(), v.as_u64()? as u32)))
-                    .collect()
-            })
-            .unwrap_or_default(),
-        command_help: desc["commandHelp"]
-            .as_object()
-            .map(|o| {
-                og_core::sort::map(o.iter().map(|(k, v)| {
-                    let text = |f: &str| v[f].as_str().unwrap_or_default().to_string();
-                    (k.clone(), (text("usage"), text("doc")))
-                }))
-            })
-            .unwrap_or_default(),
-        max_catch_up: num("maxCatchUp", 4),
-        facts: desc["facts"].as_u64().map(|n| n as u32),
-        scene: desc["scene"].as_str().unwrap_or("main").to_string(),
-        scenes: desc["scenes"]
-            .as_object()
-            .map(|o| {
-                og_core::sort::map(
-                    o.iter()
-                        .filter_map(|(k, v)| Some((k.clone(), v.as_str()?.to_string()))),
-                )
-            })
-            .unwrap_or_default(),
+            .collect(),
+        resources: g
+            .resources
+            .iter()
+            .filter_map(|r| r.as_str().map(str::to_string))
+            .collect(),
+        commands: g.commands.into_iter().collect(),
+        command_help: g
+            .command_help
+            .into_iter()
+            .map(|(k, c)| (k, (c.usage, c.doc)))
+            .collect(),
+        max_catch_up: g.max_catch_up,
+        facts: g.facts,
+        scene: g.scene,
+        scenes: g.scenes,
+        // As given: the renderer and the look read which fields it sets.
         render: desc["render"].clone(),
-        start: desc["start"].as_u64().map(|n| n as u32),
-        ui_setup: desc["ui"].as_u64().map(|n| n as u32),
-        look: desc["look"].as_str().unwrap_or_default().to_string(),
-        save_version: num("saveVersion", 1).max(1),
-        migrations: desc["migrations"]
-            .as_array()
-            .map(|a| a.iter().map(|v| v.as_u64().unwrap_or(0) as u32).collect())
-            .unwrap_or_default(),
+        start: g.start,
+        ui_setup: g.ui,
+        look: g.look,
+        save_version: g.save_version.max(1),
+        migrations: g
+            .migrations
+            .into_iter()
+            .map(|m| match m {
+                OneOf::A(m) => m.from,
+                OneOf::B(from) => from,
+            })
+            .collect(),
         given: Given {
             tick: desc["tick"].is_u64(),
             seed: desc["seed"].is_u64(),

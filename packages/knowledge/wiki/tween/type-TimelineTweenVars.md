@@ -14,8 +14,8 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 |---|---|---|---|---|---|---|
 | `component` | `AnyComponent \| null` | `null` | — | — | — | The component; null takes the timeline's defaults, else og.Transform. |
 | `field` | `string` | `""` | — | — | — | The numeric field or lane, as in TweenDesc. |
-| `to` | `readonly number[] \| null` | `null` | — | — | — | The end value (to, fromTo, set); one for every lane, or one per lane. |
-| `from` | `readonly number[] \| null` | `null` | — | — | — | The start value (from, fromTo). |
+| `to` | `number \| readonly number[] \| null` | `null` | — | — | — | The end value (to, fromTo, set): one number for every lane, or a list, one per lane. |
+| `from` | `number \| readonly number[] \| null` | `null` | — | — | — | The start value (from, fromTo): one number for every lane, or a list, one per lane. |
 | `relative` | `boolean` | `false` | — | — | — | `to` is added to the start value. |
 | `duration` | `number \| null` | `null` | — | `s` | — | Seconds per cycle; null takes the timeline's defaults. |
 | `delay` | `number` | `0` | ≥ 0 | `s` | — | Seconds added to its position. |
@@ -36,8 +36,8 @@ struct TimelineTweenVars {
   desc true
   field component Option.AnyComponent "The component; null takes the timeline's defaults, else og.Transform."
   field field String "The numeric field or lane, as in TweenDesc."
-  field to Option.List.f32 "The end value (to, fromTo, set); one for every lane, or one per lane."
-  field from Option.List.f32 "The start value (from, fromTo)."
+  field to Option.OneOf.f32.List.f32 "The end value (to, fromTo, set): one number for every lane, or a list, one per lane."
+  field from Option.OneOf.f32.List.f32 "The start value (from, fromTo): one number for every lane, or a list, one per lane."
   field relative bool "`to` is added to the start value."
   field duration Option.f32 "Seconds per cycle; null takes the timeline's defaults." {
     unit s

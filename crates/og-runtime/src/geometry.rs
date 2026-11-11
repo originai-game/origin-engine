@@ -916,8 +916,8 @@ pub fn og_debug_clear(world: u32) {
 
 pub fn og_debug_set_view(world: u32, view: String) {
     if let Ok(eng) = engine(world) {
-        let v = parse(Some(&view)).unwrap_or(Value::String(view));
-        eng.render.borrow_mut().geo.view = Some(view_of(&v));
+        // A DebugView by name (an index is not part of the API).
+        eng.render.borrow_mut().geo.view = Some(view_of(&Value::String(view)));
     }
 }
 

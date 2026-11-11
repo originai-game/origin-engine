@@ -17,6 +17,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `capSegments` | `number` | `4` | ≥ 1 | — | — | Rows in each hemisphere. |
 | `radialSegments` | `number` | `8` | ≥ 3 | — | — | Segments around. |
 | `heightSegments` | `number` | `1` | ≥ 1 | — | — | Rows along the middle. |
+| `uvRepeat` | `Vector2` | `{ x: 1, y: 1 }` | — | — | — | How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping). |
 
 ```ogt
 struct CapsuleGeometryDesc {
@@ -44,7 +45,10 @@ struct CapsuleGeometryDesc {
     default 1
     min 1
   }
+  field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping)." {
+    default 1 1
+  }
 }
 ```
 
-<sub>Module `render` line 2985</sub>
+<sub>Module `render` line 2991</sub>

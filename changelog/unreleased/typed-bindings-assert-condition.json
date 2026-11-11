@@ -1,0 +1,10 @@
+{
+  "breaking": [
+    {
+      "member": "og.assert.record",
+      "change": "AssertRecord.condition is required: a record without one (or with a condition that is not true or false) is refused, so it counts as neither true nor false and the call answers the epoch. It used to count as false, so an always or each record without a condition was reported as a violation. AssertRecord.kind left out is always, as the IDL says. og.assert.always, sometimes, reachable, unreachable and each send a condition and are unchanged.",
+      "fix": "Send condition (true for reachable and unreachable) in every record a tool passes to og.assert.record.",
+      "find": ["og.assert.record"]
+    }
+  ]
+}

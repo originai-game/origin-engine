@@ -12,7 +12,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `shapes` | `Path2 \| readonly Path2[] \| readonly Vector2[] \| null` | `null` | — | — | — | One og.Shape (an og.Path2 is a shape without holes), a list of them, or the outline's points. Without it, three.js's default triangle (0, 0.5), (-0.5, -0.5), (0.5, -0.5). |
+| `shapes` | `Path2 \| readonly Path2[] \| readonly Vector2[] \| readonly ShapePoints[] \| null` | `null` | — | — | — | One og.Shape (an og.Path2 is a shape without holes), a list of them, the outline's points, or a list of ShapePoints (og.Shape.extractPoints; what an og.Shape crosses to the engine as). Without it, three.js's default triangle (0, 0.5), (-0.5, -0.5), (0.5, -0.5). |
 | `curveSegments` | `number` | `12` | ≥ 1 | — | — | Points per curve when an og.Shape's curves are flattened (three.js extractPoints(curveSegments); an ellipse takes twice as many, a spline as many per point). |
 | `uvRepeat` | `Vector2` | `{ x: 1, y: 1 }` | — | — | — | How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping). |
 | `physics` | `boolean` | `true` | — | — | — | Register it as a physics mesh too (BufferGeometryDesc.physics). |
@@ -22,7 +22,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 struct ShapeGeometryDesc {
   doc "A flat shape with holes in the xy plane facing +Z, as three.js ShapeGeometry(shapes, curveSegments): triangulated by earcut (three.js's own port), the outline made clockwise and the holes counter-clockwise first, so its vertices and triangles are three.js's for the same shape. uvs are world x and y (v flipped to run down the image)."
   desc true
-  field shapes Option.OneOf.Path2.OneOf.List.Path2.List.Vector2 "One og.Shape (an og.Path2 is a shape without holes), a list of them, or the outline's points. Without it, three.js's default triangle (0, 0.5), (-0.5, -0.5), (0.5, -0.5)."
+  field shapes Option.OneOf.Path2.OneOf.List.Path2.OneOf.List.Vector2.List.ShapePoints "One og.Shape (an og.Path2 is a shape without holes), a list of them, the outline's points, or a list of ShapePoints (og.Shape.extractPoints; what an og.Shape crosses to the engine as). Without it, three.js's default triangle (0, 0.5), (-0.5, -0.5), (0.5, -0.5)."
   field curveSegments u32 "Points per curve when an og.Shape's curves are flattened (three.js extractPoints(curveSegments); an ellipse takes twice as many, a spline as many per point)." {
     default 12
     min 1
@@ -37,4 +37,4 @@ struct ShapeGeometryDesc {
 }
 ```
 
-<sub>Module `render` line 3170</sub>
+<sub>Module `render` line 3191</sub>

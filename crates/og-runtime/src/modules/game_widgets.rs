@@ -192,10 +192,7 @@ pub fn og_ui_tick() -> u32 {
 }
 
 pub fn og_ui_preview_viewport(world: u32, viewport: String) {
-    let raw = parse(Some(&viewport)).unwrap_or(Value::Null);
-    let v = wire::value::<Option<wire::Viewport>>(&raw, "viewport").unwrap_or_default();
-    // An absent width or height is a 1280 × 720 surface's.
-    let or = |key: &str, x: f32, d: f32| if raw[key].is_null() { d } else { x };
+    let v = wire::arg::<Option<wire::Viewport>>(Some(&viewport), "viewport").unwrap_or_default();
     let set = PREVIEW.with(|p| {
         let mut p = p.borrow_mut();
         if let Some(v) = v {
@@ -204,8 +201,8 @@ pub fn og_ui_preview_viewport(world: u32, viewport: String) {
             p.insert(
                 world,
                 Viewport {
-                    width: or("width", v.width, 1280.0).max(1.0),
-                    height: or("height", v.height, 720.0).max(1.0),
+                    width: v.width.max(1.0),
+                    height: v.height.max(1.0),
                     dpr: v.dpr,
                     safe_area: Insets {
                         left: a.left,

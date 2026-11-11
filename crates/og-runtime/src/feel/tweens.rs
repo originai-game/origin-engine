@@ -1,7 +1,7 @@
 //! Tween calls and squash and flash presets.
 
 use super::*;
-use crate::wire::{FlashDesc, SquashDesc, TweenDesc, TweenFromDesc, TweenGroupDesc};
+use crate::wire::{FlashDesc, OneOf, SquashDesc, TweenDesc, TweenFromDesc, TweenGroupDesc};
 
 // ── tweens ─────────────────────────────────────────────────────────────────
 
@@ -76,43 +76,23 @@ pub(super) fn ease_of(n: &str, default: Ease) -> Result<Ease, String> {
     })
 }
 
-/// `v` without the fields `keys`: lane values (`to`, `from`) take a bare
-/// number as well as the IDL's `List.f32`, so they are read by hand with
-/// [`floats`] and the rest of the desc is read typed.
-pub(super) fn without(v: &Value, keys: &[&str]) -> Value {
-    let mut v = v.clone();
-    if let Some(o) = v.as_object_mut() {
-        for k in keys {
-            o.remove(*k);
-        }
-    }
-    v
+/// A lane value (`to`, `from`): one number for every lane, or one per lane.
+pub(super) fn lanes(v: Option<OneOf<f32, Vec<f32>>>) -> Option<Vec<f32>> {
+    v.map(|v| match v {
+        OneOf::A(n) => vec![n],
+        OneOf::B(list) => list,
+    })
 }
 
-pub(super) fn floats(v: &Value, what: &str) -> Result<Vec<f32>, String> {
-    match v {
-        Value::Number(n) => Ok(vec![n.as_f64().unwrap_or(0.0) as f32]),
-        Value::Array(a) => a
-            .iter()
-            .map(|x| {
-                x.as_f64()
-                    .map(|f| f as f32)
-                    .ok_or_else(|| format!("{what} holds numbers"))
-            })
-            .collect(),
-        _ => Err(format!("{what} is a number or a list of numbers")),
-    }
+/// A required lane value `what` that was left out.
+pub(super) fn required(what: &str) -> String {
+    format!("{what}: expected a number or a list of numbers, got nothing")
 }
 
-/// A TweenDesc read typed, but for its lane values (`to`, `from`).
-fn tween_desc(raw: &Value, name: &str) -> Result<TweenDesc, String> {
-    crate::wire::value(&without(raw, &["to", "from"]), name)
-}
-
-/// A TweenDesc as a leaf (checked against the entity and the field), its
-/// lane values `to` and `from` read by hand.
-fn leaf_of(eng: &Engine, d: &TweenDesc, to: &Value, from: &Value) -> Result<Leaf, String> {
+/// A TweenDesc as a leaf (checked against the entity and the field).
+fn leaf_of(eng: &Engine, d: TweenDesc) -> Result<Leaf, String> {
     let entity = entity_of(d.entity)?;
+    let to = lanes(d.to).ok_or_else(|| required("desc.to"))?;
     let name = match &d.component {
         None => "og.Transform".to_string(),
         Some(c) => token_name(c).ok_or("desc.component is a component token, such as og.Sprite")?,
@@ -125,14 +105,14 @@ fn leaf_of(eng: &Engine, d: &TweenDesc, to: &Value, from: &Value) -> Result<Leaf
         return Err("desc.field names the field, such as `position.y`".into());
     }
     let target = Target::resolve(&schema, index, entity, &d.field).map_err(err)?;
-    let mut leaf = Leaf::new(target, floats(to, "desc.to")?)
+    let mut leaf = Leaf::new(target, to)
         .duration(d.duration)
         .delay(d.delay)
         .ease(ease_of(&d.ease, Ease::QuadOut)?)
         .relative(d.relative)
         .loops(d.repeat, d.yoyo);
-    if !from.is_null() {
-        leaf = leaf.from(floats(from, "desc.from")?);
+    if let Some(from) = lanes(d.from) {
+        leaf = leaf.from(from);
     }
     Ok(leaf)
 }
@@ -145,20 +125,19 @@ fn start(eng: &Engine, node: Node, unscaled: bool, tag: u32) -> Result<Value, St
 
 pub fn og_tween_to(world: u32, desc: Option<String>) -> String {
     wire(engine(world).and_then(|eng| {
-        let raw = parse(desc.as_deref())?;
-        let d = tween_desc(&raw, "desc")?;
-        let leaf = leaf_of(&eng, &d, &raw["to"], &raw["from"])?;
-        start(&eng, Node::Leaf(leaf), d.unscaled, d.tag)
+        let d: TweenDesc = crate::wire::arg(desc.as_deref(), "desc")?;
+        let (unscaled, tag) = (d.unscaled, d.tag);
+        let leaf = leaf_of(&eng, d)?;
+        start(&eng, Node::Leaf(leaf), unscaled, tag)
     }))
 }
 
 pub fn og_tween_from(world: u32, desc: Option<String>) -> String {
     wire(engine(world).and_then(|eng| {
-        let raw = parse(desc.as_deref())?;
-        if !raw.is_object() {
-            return Err("desc must contain entity, field and from".into());
+        let f: TweenFromDesc = crate::wire::arg(desc.as_deref(), "desc")?;
+        if f.from.is_none() {
+            return Err(required("desc.from"));
         }
-        let f: TweenFromDesc = crate::wire::value(&without(&raw, &["from"]), "desc")?;
         let d = TweenDesc {
             entity: f.entity,
             component: f.component,
@@ -170,9 +149,12 @@ pub fn og_tween_from(world: u32, desc: Option<String>) -> String {
             yoyo: f.yoyo,
             unscaled: f.unscaled,
             tag: f.tag,
+            to: f.from.clone(),
+            from: f.from,
             ..TweenDesc::default()
         };
-        let mut leaf = leaf_of(&eng, &d, &raw["from"], &raw["from"])?;
+        let (unscaled, tag) = (d.unscaled, d.tag);
+        let mut leaf = leaf_of(&eng, d)?;
         let entity = Entity::from_bits(leaf.target.entity);
         let component = SchemaId::from_index(leaf.target.component);
         let bytes = with_world(
@@ -182,36 +164,30 @@ pub fn og_tween_from(world: u32, desc: Option<String>) -> String {
         )?;
         leaf.to = leaf.target.read(&bytes).ok_or("cannot read tween target")?;
         leaf.relative = false;
-        start(&eng, Node::Leaf(leaf), d.unscaled, d.tag)
+        start(&eng, Node::Leaf(leaf), unscaled, tag)
     }))
 }
 
 pub fn og_tween_from_to(world: u32, desc: Option<String>) -> String {
     wire(engine(world).and_then(|eng| {
-        let raw = parse(desc.as_deref())?;
-        if raw["from"].is_null() {
-            return Err("fromTo requires desc.from and desc.to".into());
+        let d: TweenDesc = crate::wire::arg(desc.as_deref(), "desc")?;
+        if d.from.is_none() {
+            return Err(required("desc.from"));
         }
-        let d = tween_desc(&raw, "desc")?;
-        let leaf = leaf_of(&eng, &d, &raw["to"], &raw["from"])?;
-        start(&eng, Node::Leaf(leaf), d.unscaled, d.tag)
+        let (unscaled, tag) = (d.unscaled, d.tag);
+        let leaf = leaf_of(&eng, d)?;
+        start(&eng, Node::Leaf(leaf), unscaled, tag)
     }))
 }
 
 fn group(world: u32, kind: GroupKind, list: &str, desc: Option<String>) -> String {
     wire(engine(world).and_then(|eng| {
-        let list = parse(Some(list))?;
+        let list: Vec<TweenDesc> = crate::wire::arg(Some(list), "tweens")?;
         let d: TweenGroupDesc = crate::wire::arg(desc.as_deref(), "desc")?;
         let leaves = list
-            .as_array()
-            .ok_or("the tweens are a list of TweenDesc")?
-            .iter()
+            .into_iter()
             .enumerate()
-            .map(|(i, t)| {
-                tween_desc(t, "desc")
-                    .and_then(|d| leaf_of(&eng, &d, &t["to"], &t["from"]))
-                    .map_err(|e| format!("tween {i}: {e}"))
-            })
+            .map(|(i, t)| leaf_of(&eng, t).map_err(|e| format!("tween {i}: {e}")))
             .collect::<Result<Vec<_>, _>>()?;
         let node = Node::group(kind, leaves, d.repeat);
         start(&eng, node, d.unscaled, d.tag)

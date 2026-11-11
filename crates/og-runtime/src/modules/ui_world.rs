@@ -100,18 +100,11 @@ fn linear(theme: &Theme, p: &Option<wire::Paint>, d: [f32; 4]) -> [f32; 4] {
         .map_or(d, |c| c.linear())
 }
 
-/// `key` of the desc `raw`: the typed `value` when given, else `default`
-/// (the IDL's Vector2 has no default of its own: the zero vector).
-fn given(raw: &Value, key: &str, value: Vec2, default: Vec2) -> Vec2 {
-    if raw[key].is_null() { default } else { value }
-}
-
 fn template(
     theme: &Theme,
     eng: Option<&Engine>,
-    raw: &Value,
+    d: MassTemplateDesc,
 ) -> Result<(UiMassTemplate, UiMassSpace), String> {
-    let d: MassTemplateDesc = wire::value(raw, "desc")?;
     let kind = match d.kind {
         MassKind::Text => UiMassKind::Text {
             strings: d.strings.clone(),
@@ -137,12 +130,14 @@ fn template(
             compact: d.compact,
         },
     };
+    // A size component of 0 is the kind's default.
     let size = match kind {
         UiMassKind::Number { .. } | UiMassKind::Text { .. } => Vec2::splat(24.0),
         UiMassKind::Bar { .. } => Vec2::new(80.0, 8.0),
         UiMassKind::Icon { .. } => Vec2::splat(32.0),
         UiMassKind::Particle { .. } => Vec2::splat(8.0),
     };
+    let size = Vec2::select(d.size.cmpeq(Vec2::ZERO), size, d.size);
     let font = d
         .font
         .and_then(|h| eng.and_then(|e| super::ui_font(e, h as f64).ok()))
@@ -162,8 +157,8 @@ fn template(
         kind,
         font,
         texture: texture_of(d.texture),
-        size: given(raw, "size", d.size, size),
-        pivot: given(raw, "pivot", d.pivot, Vec2::new(0.5, 0.5)),
+        size,
+        pivot: d.pivot,
         lifetime: d.lifetime,
         keys,
         drift: d.drift,
@@ -213,14 +208,14 @@ fn instances(theme: &Theme, text: &str) -> Vec<UiMassInstance> {
 // ── og.ui's members ─────────────────────────────────────────────────────────
 
 pub fn og_ui_define_mass(name: String, desc: Option<String>) -> String {
-    let d = match parse(desc.as_deref()) {
+    let d: MassTemplateDesc = match wire::arg(desc.as_deref(), "desc") {
         Ok(d) => d,
         Err(e) => return crate::refuse(e),
     };
     let eng = ui_engine().and_then(|id| engine(id).ok());
     with_ui("og.ui.defineMass", |ui| {
         let theme = *ui.theme();
-        match template(&theme, eng.as_deref(), &d) {
+        match template(&theme, eng.as_deref(), d) {
             Ok((t, space)) => crate::ok(json!(ui.define_mass(&name, t, space).0)),
             Err(reason) => crate::refuse(reason),
         }

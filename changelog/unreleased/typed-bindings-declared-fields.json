@@ -1,0 +1,58 @@
+{
+  "breaking": [
+    {
+      "member": "og.render.setDisplay",
+      "change": "DisplaySettings.frameCap, quality and powerPreference are read by name only: an index (frameCap: 1, quality: 2, powerPreference: 1) used to pick the variant at that position and is now refused with the field and the names, such as `settings.frameCap: expected a FrameCap name (auto, display, ...), got 1`.",
+      "fix": "Pass the variant's name (frameCap: \"fps30\", quality: \"high\", powerPreference: \"lowPower\"), as og.render.display(world).settings answers them.",
+      "find": ["og.render.setDisplay", "frameCap", "powerPreference"]
+    },
+    {
+      "member": "og.render.renderTarget",
+      "change": "RenderTargetDesc.format is read by name only: format: 1 used to mean hdr and is now refused (`desc.format: expected a RenderTargetFormat name (...), got 1`).",
+      "fix": "Pass format: \"hdr\" or \"ldr\".",
+      "find": ["og.render.renderTarget"]
+    },
+    {
+      "member": "og.path.create",
+      "change": "CurveDesc.kind is read by name only: kind 0, 1 or 2 used to pick catmullRom, bezier or linear and is now refused (`desc.kind: expected a PathKind name (catmullRom, bezier, linear), got 0`).",
+      "fix": "Pass kind: \"catmullRom\", \"bezier\" or \"linear\".",
+      "find": ["og.path.create"]
+    },
+    {
+      "member": "og.tween",
+      "change": "TweenDesc, TweenFromDesc, TimelineTweenVars and TweenKeyframe are read whole by the generated types, `to` and `from` included: a lane list holding something other than a number is refused with its index (`desc.to[1]: expected a number, got \"a\"`) instead of a message without the path; a desc that is not an object is refused as `desc: expected an object`.",
+      "fix": "Pass `to` and `from` as one number or a list of numbers.",
+      "find": ["og.tween.to", "og.tween.from", "og.tween.fromTo", "og.tween.sequence", "og.tween.parallel", "og.tween.timeline"]
+    },
+    {
+      "member": "og.render.shapeGeometry",
+      "change": "ShapeGeometryDesc.shapes, ExtrudeGeometryDesc.shapes and SweepGeometryDesc.section are read by the generated types: a point whose x or y is not a number used to read as 0 and is now refused with its path (`desc.shapes[0].holes[0][2].y: expected a number, got \"1\"`). The uvRepeat of cylinderGeometry, coneGeometry, capsuleGeometry, torusGeometry, ringGeometry, circleGeometry and tubeGeometry is read the same way: a component that is not a number used to be 1 and is refused.",
+      "fix": "Pass points as { x, y } numbers and uvRepeat as a Vector2 of numbers; og.Shape and og.Path2 are flattened by the TypeScript runtime as before.",
+      "find": ["og.render.shapeGeometry", "og.render.extrudeGeometry", "og.render.sweepGeometry", "uvRepeat"]
+    },
+    {
+      "member": "og.game",
+      "change": "GameDesc is read by the generated type: a field of the wrong type (a string tick, a scene that is not a string, a state without a name string) used to fall back to its default silently and now refuses the engine with the field's path, such as `og.game: desc.tick: expected a whole number from 0 to 4294967295, got \"60\"`.",
+      "fix": "Pass each GameDesc field as the IDL types it.",
+      "find": ["og.game"]
+    }
+  ],
+  "added": [
+    {
+      "member": "og.tween",
+      "summary": "TweenDesc.to and from, TweenFromDesc.from, TimelineTweenVars.to and from and TweenKeyframe.to are typed as one number or a list (number | number[]), as the engine always read them."
+    },
+    {
+      "member": "og.render.cylinderGeometry",
+      "summary": "uvRepeat is declared on CylinderGeometryDesc, ConeGeometryDesc, CapsuleGeometryDesc, TorusGeometryDesc, RingGeometryDesc, CircleGeometryDesc and TubeGeometryDesc (default 1 1), as the engine already applied it."
+    },
+    {
+      "member": "og.render.shapeGeometry",
+      "summary": "ShapeGeometryDesc.shapes and ExtrudeGeometryDesc.shapes take a list of ShapePoints (og.Shape.extractPoints) and SweepGeometryDesc.section a ShapePoints, as an og.Shape crosses to the engine."
+    },
+    {
+      "member": "og.ui.defineMass",
+      "summary": "MassTemplateDesc.pivot defaults to 0.5 0.5 and a size component of 0 is the kind's default (text and numbers 24, bars 80 × 8, icons 32, particles 8), as declared in the IDL; og.ui.previewViewport's Viewport.width and height default to 1280 and 720."
+    }
+  ]
+}

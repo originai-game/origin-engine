@@ -12,7 +12,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `shapes` | `Path2 \| readonly Path2[] \| readonly Vector2[] \| null` | `null` | — | — | — | One og.Shape, a list of them, or the outline's points. Without it, three.js's default square of side 1. |
+| `shapes` | `Path2 \| readonly Path2[] \| readonly Vector2[] \| readonly ShapePoints[] \| null` | `null` | — | — | — | One og.Shape, a list of them, the outline's points, or a list of ShapePoints (og.Shape.extractPoints). Without it, three.js's default square of side 1. |
 | `depth` | `number` | `1` | ≥ 0 | `m` | — | How far the shape is pushed along +Z (without extrudePath). |
 | `steps` | `number` | `1` | ≥ 1 | — | — | Rings along the depth or the path. |
 | `bevelEnabled` | `boolean` | `true` | — | — | — | Round the edges of both faces. |
@@ -30,7 +30,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 struct ExtrudeGeometryDesc {
   doc "Shapes pushed along +Z, or along a path, as three.js ExtrudeGeometry(shapes, options) with its option names and defaults: a closed solid, its lids from earcut and its walls ring by ring, rounded by a bevel of bevelSegments rings at each face. Unindexed as three.js's (every triangle its own vertices, flat normals), three.js's vertex order and counts; uvs from three.js's WorldUVGenerator (v flipped to run down the image)."
   desc true
-  field shapes Option.OneOf.Path2.OneOf.List.Path2.List.Vector2 "One og.Shape, a list of them, or the outline's points. Without it, three.js's default square of side 1."
+  field shapes Option.OneOf.Path2.OneOf.List.Path2.OneOf.List.Vector2.List.ShapePoints "One og.Shape, a list of them, the outline's points, or a list of ShapePoints (og.Shape.extractPoints). Without it, three.js's default square of side 1."
   field depth f32 "How far the shape is pushed along +Z (without extrudePath)." {
     default 1
     min 0
@@ -73,4 +73,4 @@ struct ExtrudeGeometryDesc {
 }
 ```
 
-<sub>Module `render` line 3187</sub>
+<sub>Module `render` line 3208</sub>

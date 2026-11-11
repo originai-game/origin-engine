@@ -2235,17 +2235,17 @@ export interface GameDesc {
    */
   readonly scene?: string;
   /**
-   * The systems, in declaration order before `after`/`before` constraints apply.
+   * The systems, in declaration order before `after`/`before` constraints apply. -1 is skipped: the TypeScript runtime sends it for a token defineSystem did not make.
    *
    * @default []
    */
-  readonly systems?: readonly System[];
+  readonly systems?: readonly (System | number)[];
   /**
-   * The hooks (og.defineHook), in the order they run.
+   * The hooks (og.defineHook), in the order they run. -1 is skipped: the TypeScript runtime sends it for a token og.defineHook did not make.
    *
    * @default []
    */
-  readonly hooks?: readonly Hook[];
+  readonly hooks?: readonly (Hook | number)[];
   /**
    * The state machines systems bind to (SystemDesc.state).
    *
@@ -2310,11 +2310,11 @@ export interface GameDesc {
    */
   readonly saveVersion?: number;
   /**
-   * The game's save migrations: world.restore runs each one whose `from` lies between the save's version and saveVersion, in order (rename a field, transform values with the old record in hand, drop or split a type, add an entity). The save envelope must be og-save:3; earlier envelope formats are refused with both versions in the error, never converted.
+   * The game's save migrations: world.restore runs each one whose `from` lies between the save's version and saveVersion, in order (rename a field, transform values with the old record in hand, drop or split a type, add an entity). A number is a step's `from` alone, as the TypeScript runtime sends it (the steps run in TypeScript). The save envelope must be og-save:3; earlier envelope formats are refused with both versions in the error, never converted.
    *
    * @default []
    */
-  readonly migrations?: readonly SaveMigration[];
+  readonly migrations?: readonly (SaveMigration | number)[];
   /**
    * How `og explore` searches this game's states: what a cell reads and which inputs it presses. Left out, cells come from every field of the game's resources and components and the inputs from every button action and none of the intents. Read by the tool only; the engine and the world never see it.
    *
@@ -10765,6 +10765,12 @@ export interface CylinderGeometryDesc {
    * @unit rad (radians)
    */
   readonly thetaLength?: number;
+  /**
+   * How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping).
+   *
+   * @default { x: 1, y: 1 }
+   */
+  readonly uvRepeat?: Vector2;
 }
 
 /**
@@ -10809,6 +10815,12 @@ export interface ConeGeometryDesc {
    * @default false
    */
   readonly openEnded?: boolean;
+  /**
+   * How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping).
+   *
+   * @default { x: 1, y: 1 }
+   */
+  readonly uvRepeat?: Vector2;
 }
 
 /**
@@ -10854,6 +10866,12 @@ export interface CapsuleGeometryDesc {
    * @range 1..
    */
   readonly heightSegments?: number;
+  /**
+   * How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping).
+   *
+   * @default { x: 1, y: 1 }
+   */
+  readonly uvRepeat?: Vector2;
 }
 
 /**
@@ -10899,6 +10917,12 @@ export interface TorusGeometryDesc {
    * @unit rad (radians)
    */
   readonly arc?: number;
+  /**
+   * How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping).
+   *
+   * @default { x: 1, y: 1 }
+   */
+  readonly uvRepeat?: Vector2;
 }
 
 /**
@@ -10951,6 +10975,12 @@ export interface RingGeometryDesc {
    * @unit rad (radians)
    */
   readonly thetaLength?: number;
+  /**
+   * How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping).
+   *
+   * @default { x: 1, y: 1 }
+   */
+  readonly uvRepeat?: Vector2;
 }
 
 /**
@@ -10988,6 +11018,12 @@ export interface CircleGeometryDesc {
    * @unit rad (radians)
    */
   readonly thetaLength?: number;
+  /**
+   * How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping).
+   *
+   * @default { x: 1, y: 1 }
+   */
+  readonly uvRepeat?: Vector2;
 }
 
 /**
@@ -11037,6 +11073,12 @@ export interface TubeGeometryDesc {
    * @default false
    */
   readonly closed?: boolean;
+  /**
+   * How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping).
+   *
+   * @default { x: 1, y: 1 }
+   */
+  readonly uvRepeat?: Vector2;
 }
 
 
@@ -11063,11 +11105,11 @@ export interface ShapePoints {
  */
 export interface ShapeGeometryDesc {
   /**
-   * One og.Shape (an og.Path2 is a shape without holes), a list of them, or the outline's points. Without it, three.js's default triangle (0, 0.5), (-0.5, -0.5), (0.5, -0.5).
+   * One og.Shape (an og.Path2 is a shape without holes), a list of them, the outline's points, or a list of ShapePoints (og.Shape.extractPoints; what an og.Shape crosses to the engine as). Without it, three.js's default triangle (0, 0.5), (-0.5, -0.5), (0.5, -0.5).
    *
    * @default null
    */
-  readonly shapes?: Path2 | readonly Path2[] | readonly Vector2[] | null;
+  readonly shapes?: Path2 | readonly Path2[] | readonly Vector2[] | readonly ShapePoints[] | null;
   /**
    * Points per curve when an og.Shape's curves are flattened (three.js extractPoints(curveSegments); an ellipse takes twice as many, a spline as many per point).
    *
@@ -11102,11 +11144,11 @@ export interface ShapeGeometryDesc {
  */
 export interface ExtrudeGeometryDesc {
   /**
-   * One og.Shape, a list of them, or the outline's points. Without it, three.js's default square of side 1.
+   * One og.Shape, a list of them, the outline's points, or a list of ShapePoints (og.Shape.extractPoints). Without it, three.js's default square of side 1.
    *
    * @default null
    */
-  readonly shapes?: Path2 | readonly Path2[] | readonly Vector2[] | null;
+  readonly shapes?: Path2 | readonly Path2[] | readonly Vector2[] | readonly ShapePoints[] | null;
   /**
    * How far the shape is pushed along +Z (without extrudePath).
    *
@@ -11359,11 +11401,11 @@ export interface SweepKey {
  */
 export interface SweepGeometryDesc {
   /**
-   * The section's outline: an og.Shape or og.Path2 (flattened by curveSegments; holes are not swept) or its points, at least three, either winding.
+   * The section's outline: an og.Shape or og.Path2 (flattened by curveSegments; holes are not swept), its points, at least three, either winding, or a ShapePoints (its holes are not swept).
    *
    * @default null
    */
-  readonly section?: Path2 | readonly Vector2[] | null;
+  readonly section?: Path2 | readonly Vector2[] | ShapePoints | null;
   /**
    * The path (og.path.create or og.path.find).
    *
@@ -19155,17 +19197,17 @@ export interface TweenDesc {
    */
   readonly field?: string;
   /**
-   * The end value: one number for a scalar or for every lane, or one per lane.
-   *
-   * @default []
-   */
-  readonly to?: readonly number[];
-  /**
-   * The start value, written from the tick the tween is started and held through its delay; null takes the field's value when the tween starts (after its delay).
+   * The end value: one number for a scalar or for every lane, or a list, one per lane. Required: a desc without one is refused.
    *
    * @default null
    */
-  readonly from?: readonly number[] | null;
+  readonly to?: number | readonly number[] | null;
+  /**
+   * The start value (a number for every lane, or one per lane), written from the tick the tween is started and held through its delay; null takes the field's value when the tween starts (after its delay).
+   *
+   * @default null
+   */
+  readonly from?: number | readonly number[] | null;
   /**
    * `to` is added to the start value.
    *
@@ -19246,11 +19288,11 @@ export interface TweenFromDesc {
    */
   readonly field?: string;
   /**
-   * The explicit start value: one per lane, or one for all lanes. Held through the delay.
+   * The explicit start value: one number for all lanes, or a list, one per lane. Held through the delay. Required: a desc without one is refused.
    *
-   * @default []
+   * @default null
    */
-  readonly from?: readonly number[];
+  readonly from?: number | readonly number[] | null;
   /**
    * Seconds per cycle.
    *
@@ -19524,11 +19566,11 @@ export interface StaggerDesc {
  */
 export interface TweenKeyframe {
   /**
-   * The value at the step's end.
+   * The value at the step's end: one number for every lane, or a list, one per lane. Required: a step without one is refused.
    *
-   * @default []
+   * @default null
    */
-  readonly to?: readonly number[];
+  readonly to?: number | readonly number[] | null;
   /**
    * Seconds; null takes the tween's.
    *
@@ -19571,17 +19613,17 @@ export interface TimelineTweenVars {
    */
   readonly field?: string;
   /**
-   * The end value (to, fromTo, set); one for every lane, or one per lane.
+   * The end value (to, fromTo, set): one number for every lane, or a list, one per lane.
    *
    * @default null
    */
-  readonly to?: readonly number[] | null;
+  readonly to?: number | readonly number[] | null;
   /**
-   * The start value (from, fromTo).
+   * The start value (from, fromTo): one number for every lane, or a list, one per lane.
    *
    * @default null
    */
-  readonly from?: readonly number[] | null;
+  readonly from?: number | readonly number[] | null;
   /**
    * `to` is added to the start value.
    *
@@ -20258,7 +20300,7 @@ export interface SetTileDesc {
   /**
    * A tile layer: the tile id, -1 empty. A terrain layer: 1 fills, 0 clears, and the neighbours re-tile.
    *
-   * @default 0
+   * @default -1
    * @range -1..
    */
   readonly tile?: number;
@@ -23312,11 +23354,11 @@ export interface LeaderboardSubmitDesc {
    */
   readonly board?: string;
   /**
-   * The score, or a time in seconds for an ascending board.
+   * The score, or a time in seconds for an ascending board. Required: a desc without one is refused, never submitted as 0.
    *
-   * @default 0
+   * @default null
    */
-  readonly score?: number;
+  readonly score?: number | null;
   /**
    * How the board sorts, fixed by its first submission.
    *
@@ -24191,14 +24233,16 @@ export interface Paint {
  */
 export interface Viewport {
   /**
-   * Its width.
+   * Its width; omitted is 1280.
    *
+   * @default 1280
    * @unit cssPx (CSS pixels of the play surface, origin at the top left)
    */
   readonly width: number;
   /**
-   * Its height.
+   * Its height; omitted is 720.
    *
+   * @default 720
    * @unit cssPx (CSS pixels of the play surface, origin at the top left)
    */
   readonly height: number;
@@ -24401,7 +24445,7 @@ export interface UiDesc {
   /**
    * The widest the HUD band is, over its height: on a wider surface (a 21:9 or 32:9 ultrawide monitor) the toasts and a HUD document placed at its CSS env(-og-hud-inset-*) (`right: calc(env(-og-hud-inset-right) + 24px)`) lay out in a band this wide, centred in the safe area, so the player's eyes stay near the play; og.ui.viewport's hud is that band. 16/9 keeps a 16:9 game's HUD where it was designed; 0 is the whole safe area (a HUD at the screen's edges). Full-screen layers (dialogs, menus, scrims, world-space markers and their edge clamping) keep the whole surface. The UI itself never stretches: it lays out in CSS pixels at every aspect.
    *
-   * @default 2.3333
+   * @default 2.3333333
    * @range 0..
    */
   readonly hudMaxAspect?: number;
@@ -26075,7 +26119,7 @@ export interface MassTemplateDesc {
    */
   readonly particleShape?: ParticleShape;
   /**
-   * Text and numbers: x is the em size; bars, icons and particles: width and height.
+   * Text and numbers: x is the em size; bars, icons and particles: width and height. 0: the kind's default, per component (text and numbers 24 × 24, bars 80 × 8, icons 32 × 32, particles 8 × 8).
    *
    * @default { x: 0, y: 0 }
    * @unit cssPx (CSS pixels of the play surface, origin at the top left)
@@ -26084,7 +26128,7 @@ export interface MassTemplateDesc {
   /**
    * The element's point on its position, fractions (0.5, 1: its bottom centre).
    *
-   * @default { x: 0, y: 0 }
+   * @default { x: 0.5, y: 0.5 }
    */
   readonly pivot?: Vector2;
   /**
@@ -29515,8 +29559,10 @@ export interface AssertRecord {
   readonly name: string;
   /** Where it is called (`src/player.ts:42`); empty when the build did not record one. */
   readonly location: string;
-  /** The condition (true for reachable and unreachable, which have none). */
-  readonly condition: boolean;
+  /**
+   * The condition (true for reachable and unreachable, which have none). Required: a record without one is refused (the call answers the epoch and counts nothing).
+   */
+  readonly condition: boolean | null;
   /** The bucket of an each, as text; empty otherwise. */
   readonly key: string;
   /** What the call passed as details (null for none). */

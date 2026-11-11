@@ -5,7 +5,7 @@
 //! `RngStream` is): its world, its tween handle, its defaults and its last
 //! refusal. The timeline itself is og.tween's state, so snapshots cover it.
 
-use super::tweens::{component_schema, ease_of, floats, has, token_name, without};
+use super::tweens::{component_schema, ease_of, has, lanes, required, token_name};
 use super::*;
 use crate::engine::HANDLES;
 use crate::wire::{
@@ -234,20 +234,6 @@ fn stagger_of(v: &Option<OneOf<f32, StaggerDesc>>) -> Result<Option<Stagger>, St
     }))
 }
 
-/// TimelineTweenVars read typed, but for the lane values (`to`, `from`
-/// and each keyframe's `to`), which take a bare number too.
-fn vars_of(raw: &Value) -> Result<TimelineTweenVars, String> {
-    let mut v = without(raw, &["to", "from"]);
-    if let Some(Value::Array(frames)) = v.get_mut("keyframes") {
-        for k in frames {
-            if let Some(o) = k.as_object_mut() {
-                o.remove("to");
-            }
-        }
-    }
-    crate::wire::value(&v, "vars")
-}
-
 /// The children one tween call adds (one per target, offset by its
 /// stagger), at time 0 of the call.
 fn tweens(
@@ -255,14 +241,13 @@ fn tweens(
     world: u32,
     tween: u64,
     targets: &[u64],
-    raw: &Value,
+    v: TimelineTweenVars,
     defaults: &TweenDefaults,
     mode: Mode,
 ) -> Result<Vec<Child>, String> {
     if targets.is_empty() {
         return Err("targets is empty".into());
     }
-    let v = vars_of(raw)?;
     let component = v
         .component
         .as_ref()
@@ -289,15 +274,7 @@ fn tweens(
     let yoyo = v.yoyo;
     let repeat_delay = seconds(v.repeat_delay, "repeatDelay")? as f32;
     let calls = callbacks(&v.on_start, &v.on_update, &v.on_complete, &v.on_repeat)?;
-    // Lane values take a bare number too: read by hand.
-    let values = |k: &str| -> Result<Option<Vec<f32>>, String> {
-        if raw[k].is_null() {
-            Ok(None)
-        } else {
-            floats(&raw[k], &format!("vars.{k}")).map(Some)
-        }
-    };
-    let (to, from) = (values("to")?, values("from")?);
+    let (to, from) = (lanes(v.to.clone()), lanes(v.from.clone()));
     let keyframes: Option<&[TweenKeyframe]> = v.keyframes.as_deref();
     match mode {
         Mode::To if keyframes.is_none() && to.is_none() => {
@@ -353,7 +330,8 @@ fn tweens(
             nested.on = calls.clone();
             let mut at = 0.0;
             for (i, k) in frames.iter().enumerate() {
-                let to = floats(&raw["keyframes"][i]["to"], &format!("keyframes[{i}].to"))?;
+                let to = lanes(k.to.clone())
+                    .ok_or_else(|| required(&format!("vars.keyframes[{i}].to")))?;
                 at += seconds(k.delay, "delay")?;
                 let d = k
                     .duration
@@ -429,10 +407,10 @@ fn add_tweens(
 ) -> u32 {
     let world = with_ref(h, |r| r.world).unwrap_or(0);
     build(h, |eng, tween, defaults| {
-        let v = parse(vars.as_deref())?;
+        let v: TimelineTweenVars = crate::wire::arg(vars.as_deref(), "vars")?;
         let targets = entities(&targets)?;
         let position = position(pos.as_deref())?;
-        let children = tweens(eng, world, tween, &targets, &v, defaults, mode)?;
+        let children = tweens(eng, world, tween, &targets, v, defaults, mode)?;
         place(eng, tween, children, position)
     })
 }

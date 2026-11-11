@@ -18,6 +18,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `phiSegments` | `number` | `1` | ≥ 1 | — | — | Rings from the inside out. |
 | `thetaStart` | `number` | `0` | — | `rad` | — | Where it starts, from +X towards +Y. |
 | `thetaLength` | `number` | `6.283185307179586` | — | `rad` | — | How far around it goes. |
+| `uvRepeat` | `Vector2` | `{ x: 1, y: 1 }` | — | — | — | How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping). |
 
 ```ogt
 struct RingGeometryDesc {
@@ -48,7 +49,10 @@ struct RingGeometryDesc {
     default 6.283185307179586
     unit rad
   }
+  field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping)." {
+    default 1 1
+  }
 }
 ```
 
-<sub>Module `render` line 3039</sub>
+<sub>Module `render` line 3051</sub>

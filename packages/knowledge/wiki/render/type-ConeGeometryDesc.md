@@ -17,6 +17,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `radialSegments` | `number` | `32` | ≥ 3 | — | — | Segments around. |
 | `heightSegments` | `number` | `1` | ≥ 1 | — | — | Rows along the height. |
 | `openEnded` | `boolean` | `false` | — | — | — | Leave the base open. |
+| `uvRepeat` | `Vector2` | `{ x: 1, y: 1 }` | — | — | — | How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping). |
 
 ```ogt
 struct ConeGeometryDesc {
@@ -41,7 +42,10 @@ struct ConeGeometryDesc {
     min 1
   }
   field openEnded bool "Leave the base open."
+  field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping)." {
+    default 1 1
+  }
 }
 ```
 
-<sub>Module `render` line 2961</sub>
+<sub>Module `render` line 2964</sub>

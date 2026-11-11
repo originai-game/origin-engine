@@ -13,7 +13,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `board` | `string` | `"main"` | — | — | — | The board (default `main`). |
-| `score` | `number` | `0` | — | — | — | The score, or a time in seconds for an ascending board. |
+| `score` | `number \| null` | `null` | — | — | — | The score, or a time in seconds for an ascending board. Required: a desc without one is refused, never submitted as 0. |
 | `order` | `PlatformOrder` | `"desc"` | — | — | — | How the board sorts, fixed by its first submission. |
 
 ```ogt
@@ -23,7 +23,7 @@ struct LeaderboardSubmitDesc {
   field board String "The board (default `main`)." {
     default "main"
   }
-  field score f64 "The score, or a time in seconds for an ascending board."
+  field score Option.f64 "The score, or a time in seconds for an ascending board. Required: a desc without one is refused, never submitted as 0."
   field order PlatformOrder "How the board sorts, fixed by its first submission."
 }
 ```

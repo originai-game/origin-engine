@@ -12,7 +12,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `section` | `Path2 \| readonly Vector2[] \| null` | `null` | — | — | — | The section's outline: an og.Shape or og.Path2 (flattened by curveSegments; holes are not swept) or its points, at least three, either winding. |
+| `section` | `Path2 \| readonly Vector2[] \| ShapePoints \| null` | `null` | — | — | — | The section's outline: an og.Shape or og.Path2 (flattened by curveSegments; holes are not swept), its points, at least three, either winding, or a ShapePoints (its holes are not swept). |
 | `path` | `Path` | `0` | — | — | — | The path (og.path.create or og.path.find). |
 | `steps` | `number` | `64` | ≥ 1 | — | — | Rings along the path, less one. |
 | `scale` | `readonly SweepKey[]` | `[]` | — | — | — | The section's scale over the path (none: 1 throughout). A horn: [{ t: 0, value: 1 }, { t: 1, value: 0.05 }]. |
@@ -27,7 +27,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 struct SweepGeometryDesc {
   doc "A section swept along a path, scaled and twisted over it: horns, tusks, handles, blades, tapered pipes, twisted columns (img2threejs's tapered sweep; three.js has no class for it). The section's x lies along the path's normal and y along its binormal (three.js's Frenet frames), rings evenly spaced along the path's length; u runs along the path, v round the section (flipped to run down the image), the sides smooth. An open path's ends are capped."
   desc true
-  field section Option.OneOf.Path2.List.Vector2 "The section's outline: an og.Shape or og.Path2 (flattened by curveSegments; holes are not swept) or its points, at least three, either winding."
+  field section Option.OneOf.Path2.OneOf.List.Vector2.ShapePoints "The section's outline: an og.Shape or og.Path2 (flattened by curveSegments; holes are not swept), its points, at least three, either winding, or a ShapePoints (its holes are not swept)."
   field path Path "The path (og.path.create or og.path.find)."
   field steps u32 "Rings along the path, less one." {
     default 64
@@ -52,4 +52,4 @@ struct SweepGeometryDesc {
 }
 ```
 
-<sub>Module `render` line 3308</sub>
+<sub>Module `render` line 3329</sub>

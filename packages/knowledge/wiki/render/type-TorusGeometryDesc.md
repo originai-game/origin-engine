@@ -17,6 +17,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `radialSegments` | `number` | `12` | ≥ 2 | — | — | Segments around the tube. |
 | `tubularSegments` | `number` | `48` | ≥ 3 | — | — | Segments around the ring. |
 | `arc` | `number` | `6.283185307179586` | — | `rad` | — | How far around the ring goes. |
+| `uvRepeat` | `Vector2` | `{ x: 1, y: 1 }` | — | — | — | How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping). |
 
 ```ogt
 struct TorusGeometryDesc {
@@ -44,7 +45,10 @@ struct TorusGeometryDesc {
     default 6.283185307179586
     unit rad
   }
+  field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping)." {
+    default 1 1
+  }
 }
 ```
 
-<sub>Module `render` line 3012</sub>
+<sub>Module `render` line 3021</sub>

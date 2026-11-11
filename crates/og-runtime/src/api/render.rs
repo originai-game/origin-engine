@@ -477,14 +477,7 @@ pub(crate) fn add_geometry(
 }
 
 /// A geometry desc's `uvRepeat` applied (og_render::shapes::repeat_uv).
-pub(crate) fn uv_repeat(d: &Value, mesh: &mut og_render::MeshData) -> Result<(), String> {
-    let r = &d["uvRepeat"];
-    let axis = |k: &str| r[k].as_f64().unwrap_or(1.0) as f32;
-    repeat_uv(glam::Vec2::new(axis("x"), axis("y")), mesh)
-}
-
-/// A geometry desc's typed `uvRepeat` applied (og_render::shapes::repeat_uv).
-fn repeat_uv(r: glam::Vec2, mesh: &mut og_render::MeshData) -> Result<(), String> {
+pub(crate) fn uv_repeat(r: glam::Vec2, mesh: &mut og_render::MeshData) -> Result<(), String> {
     for (k, v) in [("x", r.x), ("y", r.y)] {
         if !v.is_finite() {
             return Err(format!("uvRepeat.{k} must be finite, got {v}"));
@@ -511,7 +504,7 @@ pub fn og_render_box_geometry(world: u32, desc: Option<String>) -> String {
             size_of("depth", d.depth)?,
         );
         let mut mesh = og_render::shapes::cuboid(size);
-        repeat_uv(d.uv_repeat, &mut mesh)?;
+        uv_repeat(d.uv_repeat, &mut mesh)?;
         add_geometry(world, mesh, true)
     })())
 }
@@ -521,7 +514,7 @@ pub fn og_render_plane_geometry(world: u32, desc: Option<String>) -> String {
         let d: wire::PlaneGeometryDesc = wire::arg(desc.as_deref(), "desc")?;
         let mut mesh =
             og_render::shapes::plane_xy(size_of("width", d.width)?, size_of("height", d.height)?);
-        repeat_uv(d.uv_repeat, &mut mesh)?;
+        uv_repeat(d.uv_repeat, &mut mesh)?;
         add_geometry(world, mesh, true)
     })())
 }
@@ -538,7 +531,7 @@ pub fn og_render_sphere_geometry(world: u32, desc: Option<String>) -> String {
                 *c *= radius * 2.0;
             }
         }
-        repeat_uv(d.uv_repeat, &mut mesh)?;
+        uv_repeat(d.uv_repeat, &mut mesh)?;
         add_geometry(world, mesh, false)
     })())
 }

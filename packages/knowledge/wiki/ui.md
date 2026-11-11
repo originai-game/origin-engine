@@ -220,7 +220,7 @@ column VectorArt {
 }
 ```
 
-<sub>Module `ui` line 1295</sub>
+<sub>Module `ui` line 1297</sub>
 
 ```ogt
 column UiMaterial {
@@ -231,4 +231,4 @@ column UiMaterial {
 }
 ```
 
-<sub>Module `ui` line 1302</sub>
+<sub>Module `ui` line 1304</sub>

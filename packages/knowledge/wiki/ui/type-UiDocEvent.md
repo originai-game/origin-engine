@@ -29,4 +29,4 @@ struct UiDocEvent {
 }
 ```
 
-<sub>Module `ui` line 1620</sub>
+<sub>Module `ui` line 1624</sub>

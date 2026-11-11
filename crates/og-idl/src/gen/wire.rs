@@ -487,7 +487,8 @@ impl<'a> Gen<'a, '_> {
         let _ = writeln!(out, "impl FromJson for {} {{", e.name);
         let _ = writeln!(
             out,
-            "    fn from_json(v: &Value) -> Result<Self, String> {{\n        Self::parse(text(v)?)\n    }}\n}}\n"
+            "    fn from_json(v: &Value) -> Result<Self, String> {{\n        Self::parse(variant(v, {:?}, Self::NAMES)?)\n    }}\n}}\n",
+            e.name
         );
         let _ = writeln!(
             out,
@@ -637,7 +638,7 @@ pub fn wire_rs(ix: &Index<'_>) -> String {
     );
     let _ = writeln!(
         out,
-        "use super::{{FromJson, OneOf, ToJson, at, field, object, text, unknown_variant}};"
+        "use super::{{FromJson, OneOf, ToJson, at, field, object, text, unknown_variant, variant}};"
     );
     let _ = writeln!(out, "use glam::{{Mat4, Quat, Vec2, Vec3, Vec4}};");
     let _ = writeln!(out, "use serde_json::{{Map, Value}};");

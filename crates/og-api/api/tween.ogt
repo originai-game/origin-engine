@@ -56,8 +56,8 @@ module tween {
     field entity Entity "The entity whose component is tweened."
     field component Option.AnyComponent "The component token (og.Transform, og.Sprite, a game's own); null is og.Transform."
     field field String "The field, or one lane of it: `position`, `position.y`, `scale`, `color.r`, `opacity`. f32, f64, i32 and u32 fields (rounded), vectors, colours and quaternions (as a rotation) tween; bool, enum and handle fields do not."
-    field to List.f32 "The end value: one number for a scalar or for every lane, or one per lane."
-    field from Option.List.f32 "The start value, written from the tick the tween is started and held through its delay; null takes the field's value when the tween starts (after its delay)."
+    field to Option.OneOf.f32.List.f32 "The end value: one number for a scalar or for every lane, or a list, one per lane. Required: a desc without one is refused."
+    field from Option.OneOf.f32.List.f32 "The start value (a number for every lane, or one per lane), written from the tick the tween is started and held through its delay; null takes the field's value when the tween starts (after its delay)."
     field relative bool "`to` is added to the start value."
     field duration f32 "Seconds from start to end (one cycle)." {
       default 0.3
@@ -83,7 +83,7 @@ module tween {
     field entity Entity "The entity whose component is tweened."
     field component Option.AnyComponent "The component token; null is og.Transform."
     field field String "The numeric field or lane, as in TweenDesc."
-    field from List.f32 "The explicit start value: one per lane, or one for all lanes. Held through the delay."
+    field from Option.OneOf.f32.List.f32 "The explicit start value: one number for all lanes, or a list, one per lane. Held through the delay. Required: a desc without one is refused."
     field duration f32 "Seconds per cycle." {
       default 0.3
       min 0
@@ -186,7 +186,7 @@ module tween {
   struct TweenKeyframe {
     doc "One step of a tween's keyframes: from where the step before ended to `to`."
     desc true
-    field to List.f32 "The value at the step's end."
+    field to Option.OneOf.f32.List.f32 "The value at the step's end: one number for every lane, or a list, one per lane. Required: a step without one is refused."
     field duration Option.f32 "Seconds; null takes the tween's." {
       unit s
     }
@@ -202,8 +202,8 @@ module tween {
     desc true
     field component Option.AnyComponent "The component; null takes the timeline's defaults, else og.Transform."
     field field String "The numeric field or lane, as in TweenDesc."
-    field to Option.List.f32 "The end value (to, fromTo, set); one for every lane, or one per lane."
-    field from Option.List.f32 "The start value (from, fromTo)."
+    field to Option.OneOf.f32.List.f32 "The end value (to, fromTo, set): one number for every lane, or a list, one per lane."
+    field from Option.OneOf.f32.List.f32 "The start value (from, fromTo): one number for every lane, or a list, one per lane."
     field relative bool "`to` is added to the start value."
     field duration Option.f32 "Seconds per cycle; null takes the timeline's defaults." {
       unit s

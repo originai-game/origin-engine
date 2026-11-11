@@ -170,6 +170,7 @@ module tilemap {
     field x u32 "The column (0 is the left)."
     field y u32 "The row (0 is the top)."
     field tile i32 "A tile layer: the tile id, -1 empty. A terrain layer: 1 fills, 0 clears, and the neighbours re-tile." {
+      default -1
       min -1
     }
   }

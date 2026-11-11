@@ -617,7 +617,7 @@ column LineMode {
 }
 ```
 
-<sub>Module `render` line 3476</sub>
+<sub>Module `render` line 3497</sub>
 
 ```ogt
 column RenderTargetFormat {
@@ -628,7 +628,7 @@ column RenderTargetFormat {
 }
 ```
 
-<sub>Module `render` line 3686</sub>
+<sub>Module `render` line 3707</sub>
 
 ```ogt
 column RenderTarget {
@@ -639,7 +639,7 @@ column RenderTarget {
 }
 ```
 
-<sub>Module `render` line 3695</sub>
+<sub>Module `render` line 3716</sub>
 
 ```ogt
 column Post {
@@ -650,7 +650,7 @@ column Post {
 }
 ```
 
-<sub>Module `render` line 3831</sub>
+<sub>Module `render` line 3852</sub>
 
 ## Constants
 

@@ -93,43 +93,24 @@ impl Settings {
         if !d.is_object() && !d.is_null() {
             return Err(format!("display settings are an object, not {d}"));
         }
-        // Hand read: frameCap, quality and powerPreference as an index,
-        // which the IDL's enums (names) do not hold; the typed read takes
-        // the rest.
-        let mut typed = d.clone();
-        let mut index = |k: &str| match typed.get(k) {
-            Some(Value::Number(n)) => {
-                let n = n.as_u64();
-                typed.as_object_mut().map(|o| o.remove(k));
-                Some(n)
-            }
-            _ => None,
-        };
-        let (cap_index, quality_index, power_index) = (
-            index("frameCap"),
-            index("quality"),
-            index("powerPreference"),
-        );
-        let t: wire::DisplaySettings = wire::value(&typed, "settings")?;
+        let t: wire::DisplaySettings = wire::value(d, "settings")?;
         // Patch: a field left out (or null) keeps `base`'s value.
         let given = |k: &str| d.get(k).is_some_and(|v| !v.is_null());
-        let frame_cap = match cap_index {
-            Some(i) => i.map_or(0, |i| i as usize).min(FRAME_CAPS.len() - 1),
-            None if given("frameCap") => t.frame_cap as usize,
-            None => base.frame_cap,
+        let frame_cap = if given("frameCap") {
+            t.frame_cap as usize
+        } else {
+            base.frame_cap
         };
         // `quality: null` is the game's own quality.
-        let quality = match quality_index {
-            Some(i) => i.and_then(|i| PRESETS.get(i as usize)).map(|(_, p)| *p),
-            None if d.get("quality").is_some() => t.quality.map(|q| PRESETS[q as usize].1),
-            None => base.quality,
+        let quality = if d.get("quality").is_some() {
+            t.quality.map(|q| PRESETS[q as usize].1)
+        } else {
+            base.quality
         };
-        let low_power = match power_index {
-            Some(i) => i == Some(1),
-            None if given("powerPreference") => {
-                t.power_preference == wire::PowerPreference::LowPower
-            }
-            None => base.low_power,
+        let low_power = if given("powerPreference") {
+            t.power_preference == wire::PowerPreference::LowPower
+        } else {
+            base.low_power
         };
         let scale = |v: f32| v.clamp(og_render::MIN_RENDER_SCALE, og_render::MAX_RENDER_SCALE);
         Ok(Settings {

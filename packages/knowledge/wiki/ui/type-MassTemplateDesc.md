@@ -25,8 +25,8 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `barGhost` | `Paint \| null` | `null` | — | — | — | Bars: the ghost's ink; null is pale. |
 | `barRadius` | `number` | `0` | ≥ 0 | `cssPx` | — | Bars: corner radius. |
 | `particleShape` | `ParticleShape` | `"square"` | — | — | — | Particles: the shape. |
-| `size` | `Vector2` | `{ x: 0, y: 0 }` | — | `cssPx` | — | Text and numbers: x is the em size; bars, icons and particles: width and height. |
-| `pivot` | `Vector2` | `{ x: 0, y: 0 }` | — | — | — | The element's point on its position, fractions (0.5, 1: its bottom centre). |
+| `size` | `Vector2` | `{ x: 0, y: 0 }` | — | `cssPx` | — | Text and numbers: x is the em size; bars, icons and particles: width and height. 0: the kind's default, per component (text and numbers 24 × 24, bars 80 × 8, icons 32 × 32, particles 8 × 8). |
+| `pivot` | `Vector2` | `{ x: 0.5, y: 0.5 }` | — | — | — | The element's point on its position, fractions (0.5, 1: its bottom centre). |
 | `lifetime` | `number` | `0` | — | — | — | Ticks an instance lives; 0 shows pushed instances for their tick only. |
 | `keys` | `readonly MassKey[]` | `[]` | — | — | — | The timeline over its life (up to 8). |
 | `drift` | `number` | `0` | — | `cssPx` | — | Each instance drifts sideways up to this far over its life, by its seed. |
@@ -60,10 +60,12 @@ struct MassTemplateDesc {
     min 0
   }
   field particleShape ParticleShape "Particles: the shape."
-  field size Vector2 "Text and numbers: x is the em size; bars, icons and particles: width and height." {
+  field size Vector2 "Text and numbers: x is the em size; bars, icons and particles: width and height. 0: the kind's default, per component (text and numbers 24 × 24, bars 80 × 8, icons 32 × 32, particles 8 × 8)." {
     unit cssPx
   }
-  field pivot Vector2 "The element's point on its position, fractions (0.5, 1: its bottom centre)."
+  field pivot Vector2 "The element's point on its position, fractions (0.5, 1: its bottom centre)." {
+    default 0.5 0.5
+  }
   field lifetime u32 "Ticks an instance lives; 0 shows pushed instances for their tick only."
   field keys List.MassKey "The timeline over its life (up to 8)."
   field drift f32 "Each instance drifts sideways up to this far over its life, by its seed." {
@@ -100,4 +102,4 @@ struct MassTemplateDesc {
 }
 ```
 
-<sub>Module `ui` line 1410</sub>
+<sub>Module `ui` line 1412</sub>

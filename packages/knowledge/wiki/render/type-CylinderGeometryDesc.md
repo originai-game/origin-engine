@@ -20,6 +20,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `openEnded` | `boolean` | `false` | — | — | — | Leave the ends open (no caps). |
 | `thetaStart` | `number` | `0` | — | `rad` | — | Where the side starts around y, from +Z towards +X. |
 | `thetaLength` | `number` | `6.283185307179586` | — | `rad` | — | How far around the side goes; 2 pi is whole. |
+| `uvRepeat` | `Vector2` | `{ x: 1, y: 1 }` | — | — | — | How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping). |
 
 ```ogt
 struct CylinderGeometryDesc {
@@ -55,6 +56,9 @@ struct CylinderGeometryDesc {
   field thetaLength f32 "How far around the side goes; 2 pi is whole." {
     default 6.283185307179586
     unit rad
+  }
+  field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping)." {
+    default 1 1
   }
 }
 ```
