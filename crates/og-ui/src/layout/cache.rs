@@ -237,8 +237,6 @@ pub(crate) struct LayoutCache {
     pub clean: Vec<bool>,
     /// Nodes laid out this frame (the rest kept their layout).
     pub laid_out: u32,
-    pub measurements: crate::ui::settlement::Measurements,
-    pub query_roots: Option<std::collections::BTreeSet<usize>>,
     /// Nodes whose laid-out size changed since they were last laid out.
     pub resized: Vec<usize>,
     /// Subtrees laid out afresh this frame, whatever they kept: an
@@ -630,8 +628,9 @@ pub(crate) fn layout(
     dpr: f32,
     clip: Rect,
     kept: &mut LayoutCache,
+    queries: &mut crate::ui::settlement::ContainerQueries,
 ) {
-    if let Some(roots) = &kept.query_roots {
+    if let Some(roots) = &queries.query_roots {
         let mut at = root;
         while nodes[at].parent != NONE {
             at = nodes[at].parent;
@@ -838,7 +837,7 @@ pub(crate) fn layout(
             Content::Text(text) if !text.fit.is_empty() => Some(text.step),
             _ => None,
         };
-        kept.measurements.observe(
+        queries.measurements.observe(
             nodes[i].key,
             crate::ui::settlement::ContentBox {
                 width: (nodes[i].w - nodes[i].el.padding.horizontal()).max(0.0),

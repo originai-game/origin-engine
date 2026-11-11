@@ -88,7 +88,7 @@ impl Ui {
         let rtl = self.env.direction == og_i18n::Direction::Rtl;
         self.lay_out(vp, dpr, screen, rtl, &mut *resolve)?;
         self.tree.place_popover_arrows();
-        self.layout.cache.query_roots = None;
+        self.layout.queries.query_roots = None;
         if !self.tree.index.pending.is_empty() {
             self.tree.sync_tree(&[], &[], false);
         }
@@ -358,7 +358,7 @@ impl Ui {
             &[settlement::ContainerMeasurement],
         ) -> Result<Vec<usize>, settlement::SettlementError>,
     ) -> Result<(), settlement::SettlementError> {
-        self.layout.cache.query_roots = None;
+        self.layout.queries.query_roots = None;
         let mut settlement = settlement::Settlement::default();
         let part_geometry = self
             .tree
@@ -367,7 +367,7 @@ impl Ui {
             .any(|node| node.part_geometry.is_some());
         loop {
             let mut layout_inputs =
-                settlement::LayoutInputs::new(&self.layout.cache.measurements, part_geometry);
+                settlement::LayoutInputs::new(&self.layout.queries.measurements, part_geometry);
             let scroll = self.interaction.state.scroll.clone();
             let scroll_x = self.interaction.state.scroll_x.clone();
             let offset = |k: u64| {
@@ -390,6 +390,7 @@ impl Ui {
                 dpr,
                 screen,
                 &mut self.layout.cache,
+                &mut self.layout.queries,
             );
             let safe = Rect::new(
                 vp.safe_area.left,
@@ -481,6 +482,7 @@ impl Ui {
                             dpr,
                             screen,
                             &mut self.layout.cache,
+                            &mut self.layout.queries,
                         );
                     }
                     continue;
@@ -499,6 +501,7 @@ impl Ui {
                         dpr,
                         clip,
                         &mut self.layout.cache,
+                        &mut self.layout.queries,
                     );
                     continue;
                 }
@@ -521,6 +524,7 @@ impl Ui {
                         dpr,
                         screen,
                         &mut self.layout.cache,
+                        &mut self.layout.queries,
                     );
                     continue;
                 }
@@ -542,6 +546,7 @@ impl Ui {
                     dpr,
                     screen,
                     &mut self.layout.cache,
+                    &mut self.layout.queries,
                 );
                 let (w, h) = (self.tree.nodes[f].w, self.tree.nodes[f].h);
                 let (x, y) = match float {
@@ -615,6 +620,7 @@ impl Ui {
                     dpr,
                     screen,
                     &mut self.layout.cache,
+                    &mut self.layout.queries,
                 );
             }
             // Elements placed on the screen (Position::Screen): laid out again in
@@ -644,6 +650,7 @@ impl Ui {
                     dpr,
                     screen,
                     &mut self.layout.cache,
+                    &mut self.layout.queries,
                 );
             }
             // Anchor-positioned elements (CSS Anchor Positioning 1): placed
@@ -770,6 +777,7 @@ impl Ui {
                         dpr,
                         screen,
                         &mut self.layout.cache,
+                        &mut self.layout.queries,
                     );
                 }
             }

@@ -408,6 +408,7 @@ impl Ui {
         self.restore_docs_state(&docs).map_err(bad)?;
         self.interaction.state = s;
         self.layout.cache = Default::default();
+        self.layout.queries = Default::default();
         self.paint.cache = Default::default();
         self.style.motion = Default::default();
         self.tree.invalidation = Default::default();
