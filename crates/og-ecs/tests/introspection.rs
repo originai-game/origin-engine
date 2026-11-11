@@ -1,6 +1,7 @@
 //! What the probe's `dump_world` and the host's view stamps read from the
 //! world: `system_info` (declarations and matched counts), entity names (in
-//! snapshots and the hash), and the structural-change counter.
+//! snapshots and the hash), the structural-change counter, and a
+//! component's write stamp in an archetype.
 
 use og_core::math::Vec3;
 use og_ecs::{QueryDesc, Reflect, SystemDesc, World, WorldDesc};
@@ -202,4 +203,80 @@ fn the_structural_counter_moves_exactly_on_structural_operations() {
         before,
         "a tick that only sets values"
     );
+}
+
+#[test]
+fn a_components_write_stamp_moves_on_every_write_of_it_and_on_no_other() {
+    let mut w = world();
+    let a = w.spawn((p(), v())).unwrap();
+    let b = w.spawn((p(), v())).unwrap();
+    let tagged = w.spawn((p(), Sleeping)).unwrap();
+    let (pos, vel, sleeping) = (
+        w.id::<Pos>().unwrap(),
+        w.id::<Vel>().unwrap(),
+        w.id::<Sleeping>().unwrap(),
+    );
+    let moving = QueryDesc::new().read::<Pos>().write::<Vel>();
+    // The stamps of Pos and Vel in the one archetype that has both.
+    let stamps = |w: &World| {
+        let views: Vec<_> = w.query(&moving).unwrap().collect();
+        assert_eq!(views.len(), 1);
+        let (p, v) = (views[0].written(pos), views[0].written(vel));
+        (p.unwrap(), v.unwrap())
+    };
+
+    // Reads move neither.
+    let s0 = stamps(&w);
+    assert_eq!(w.get::<Pos>(a).unwrap(), p());
+    for view in w.query(&moving).unwrap() {
+        assert_eq!(
+            view.read::<Vec3>(w.field::<Vel>("v").unwrap())
+                .unwrap()
+                .len(),
+            2
+        );
+    }
+    assert_eq!(stamps(&w), s0);
+
+    // A component set in place moves its own stamp alone.
+    w.insert(a, Pos { p: Vec3::Y }).unwrap();
+    let s1 = stamps(&w);
+    assert!(s1.0 > s0.0 && s1.1 == s0.1, "{s0:?} then {s1:?}");
+
+    // So does a column taken to write, written or not; while it is held,
+    // nothing can be said of the component.
+    for view in w.query(&moving).unwrap() {
+        let held = view.write::<Vec3>(w.field::<Vel>("v").unwrap()).unwrap();
+        assert_eq!(view.written(vel), None);
+        assert_eq!(view.written(pos), Some(s1.0));
+        drop(held);
+    }
+    let s2 = stamps(&w);
+    assert!(s2.0 == s1.0 && s2.1 > s1.1, "{s1:?} then {s2:?}");
+
+    // A write elsewhere (another archetype's Pos) moves neither.
+    w.insert(tagged, Pos { p: Vec3::X }).unwrap();
+    assert_eq!(stamps(&w), s2);
+
+    // A row added or removed moves every component's: one out and one in
+    // leave the row count where it was, and the stamps say they changed.
+    w.despawn(b).unwrap();
+    let s3 = stamps(&w);
+    assert!(s3.0 > s2.0 && s3.1 > s2.1, "{s2:?} then {s3:?}");
+    w.spawn((p(), v())).unwrap();
+    let s4 = stamps(&w);
+    assert!(s4.0 > s3.0 && s4.1 > s3.1, "{s3:?} then {s4:?}");
+
+    // A restore fills every column again.
+    let snap = w.snapshot();
+    w.restore(&snap).unwrap();
+    let s5 = stamps(&w);
+    assert!(s5.0 > s4.0 && s5.1 > s4.1, "{s4:?} then {s5:?}");
+
+    // No stamp for a component the archetype has not, or one with no field.
+    let all = QueryDesc::new().read::<Pos>();
+    for view in w.query(&all).unwrap() {
+        assert_eq!(view.written(vel).is_some(), view.has(vel));
+        assert_eq!(view.written(sleeping), None);
+    }
 }

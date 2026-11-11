@@ -282,6 +282,27 @@ impl<'w> ArchetypeView<'w> {
         &self.arch.types
     }
 
+    /// The write clock ([`World::write_clock`]) at the last mutable access
+    /// to any column of component `id` in this archetype (a row added,
+    /// removed or set, a view written through). A stamp is given once in
+    /// the process, so the value an earlier call gave, given again, says
+    /// those columns hold what they held then: a reader may keep what it
+    /// decoded from them. `None` when nothing can say so: the archetype has
+    /// no `id`, `id` has no field, or a column of it is held mutably now.
+    ///
+    /// A view outside a system is stamped when it is taken and may be
+    /// written through for as long as it is held, so only a reader no such
+    /// view outlives (a system: views end with the call they were taken
+    /// in) may rely on it.
+    pub fn written(&self, id: SchemaId) -> Option<u64> {
+        let mut latest = None;
+        for c in self.arch.columns_of(self.arch.position(id)?) {
+            let at = self.arch.columns[c].try_borrow().ok()?.written();
+            latest = latest.max(Some(at));
+        }
+        latest
+    }
+
     fn column(&self, field: FieldRef, write: bool) -> Result<usize> {
         self.registry.check_field(field)?;
         let allowed = if write {
