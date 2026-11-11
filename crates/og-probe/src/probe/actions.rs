@@ -6,12 +6,20 @@ impl Probe {
     pub(super) fn action(&mut self, world: &mut World, step: &CommandStep) -> Result<(), String> {
         match step.action.as_str() {
             #[cfg(not(feature = "publish"))]
-            "screenshot" | "listen" => self.capture_step(world, step),
+            "screenshot" | "listen" => capture_step(
+                &mut self.host,
+                &mut self.schedule,
+                &mut self.out,
+                world,
+                step,
+            ),
             "touch_move_to" | "move_to_text" | "touch_move" | "touch_start" | "touch_end"
-            | "mouse_move" | "pointer_lock" | "scroll" | "touch" => self.pointer_step(world, step),
-            "gamepad" | "intent" | "key_down" | "key_up" | "type" | "compose" | "commit" => {
-                self.key_step(world, step)
+            | "mouse_move" | "pointer_lock" | "scroll" | "touch" => {
+                self.inject.pointer_step(&mut self.host, world, step)
             }
+            "gamepad" | "intent" | "key_down" | "key_up" | "type" | "compose" | "commit" => self
+                .inject
+                .key_step(&mut self.host, &mut self.schedule, world, step),
             "teleport" | "frame_entity" | "set" | "seed" => self.world_step(world, step),
             #[cfg(not(feature = "publish"))]
             "describe" | "expect" | "invariant" | "apply_prefab" | "revert_prefab"
@@ -28,125 +36,137 @@ impl Probe {
             | "revert_prefab" | "dump_world" | "dump_ui" | "dump_entity" | "get" | "help" => Err(
                 format!("`{}` is not built into a publish build", step.action),
             ),
-            _ => self.registered_step(world, step),
+            _ => self.commands.registered_step(&mut self.out, world, step),
         }
     }
+}
 
-    /// `screenshot` and `listen`: what the renderer and the mixer made, as outputs.
-    #[cfg(not(feature = "publish"))]
-    fn capture_step(&mut self, world: &mut World, step: &CommandStep) -> Result<(), String> {
-        let tick = world.time().tick;
-        let args = &step.args;
-        match step.action.as_str() {
-            #[cfg(not(feature = "publish"))]
-            "screenshot" => {
-                let mut path = None;
-                let mut edge = None;
-                for a in args {
-                    if a == "full" {
-                        edge = None;
-                    } else if let Ok(n) = a.parse::<u32>() {
-                        edge = Some(n.clamp(1, MAX_CAPTURE_EDGE));
-                    } else if path.is_none() && !a.is_empty() {
-                        path = output_path(Some(a))?;
+/// `screenshot` and `listen`: what the renderer and the mixer made, as outputs.
+#[cfg(not(feature = "publish"))]
+fn capture_step(
+    host: &mut state::Host,
+    schedule: &mut state::Schedule,
+    out: &mut state::Out,
+    world: &mut World,
+    step: &CommandStep,
+) -> Result<(), String> {
+    let tick = world.time().tick;
+    let args = &step.args;
+    match step.action.as_str() {
+        #[cfg(not(feature = "publish"))]
+        "screenshot" => {
+            let mut path = None;
+            let mut edge = None;
+            for a in args {
+                if a == "full" {
+                    edge = None;
+                } else if let Ok(n) = a.parse::<u32>() {
+                    edge = Some(n.clamp(1, MAX_CAPTURE_EDGE));
+                } else if path.is_none() && !a.is_empty() {
+                    path = output_path(Some(a))?;
+                } else {
+                    return Err(format!(
+                        "unexpected argument '{a}'; write `screenshot[:path][:full|:N]`"
+                    ));
+                }
+            }
+            // No renderer is a host configuration, not a fault: the
+            // step notes the frame it did not take and the run goes on
+            // exactly as it would with one (rendering never feeds back).
+            let Some(capture) = host.capture.as_mut().filter(|c| c.has_renderer()) else {
+                let file = path.unwrap_or_else(|| format!("screenshot-{tick:06}.png"));
+                out.note(
+                    tick,
+                    false,
+                    format!("{}s {FRAME_UNCHECKED} ({file})", step.at),
+                );
+                return Ok(());
+            };
+            let (width, height) = match edge {
+                None => (0, 0),
+                Some(n) => {
+                    let (tw, th) = capture.target_size();
+                    let (tw, th) = (f64::from(tw.max(1)), f64::from(th.max(1)));
+                    if tw >= th {
+                        (n, ((f64::from(n) * th / tw).round() as u32).max(1))
                     } else {
-                        return Err(format!(
-                            "unexpected argument '{a}'; write `screenshot[:path][:full|:N]`"
-                        ));
+                        (((f64::from(n) * tw / th).round() as u32).max(1), n)
                     }
                 }
-                // No renderer is a host configuration, not a fault: the
-                // step notes the frame it did not take and the run goes on
-                // exactly as it would with one (rendering never feeds back).
-                let Some(capture) = self.host.capture.as_mut().filter(|c| c.has_renderer()) else {
-                    let file = path.unwrap_or_else(|| format!("screenshot-{tick:06}.png"));
-                    self.out.note(
-                        tick,
-                        false,
-                        format!("{}s {FRAME_UNCHECKED} ({file})", step.at),
-                    );
-                    return Ok(());
-                };
-                let (width, height) = match edge {
-                    None => (0, 0),
-                    Some(n) => {
-                        let (tw, th) = capture.target_size();
-                        let (tw, th) = (f64::from(tw.max(1)), f64::from(th.max(1)));
-                        if tw >= th {
-                            (n, ((f64::from(n) * th / tw).round() as u32).max(1))
-                        } else {
-                            (((f64::from(n) * tw / th).round() as u32).max(1), n)
-                        }
-                    }
-                };
-                let frame = capture.capture(world, width, height);
-                let Some(frame) = frame else {
-                    if !capture.deferred() {
-                        return Err(match capture.capture_error() {
-                            Some(why) => format!("the renderer produced no frame: {why}"),
-                            None => "the renderer produced no frame".into(),
-                        });
-                    }
-                    // Its frame lands on a later call: written then.
-                    self.schedule.shot = Some(Shot {
-                        tick,
-                        at: step.at,
-                        path,
-                        width,
-                        height,
-                        polls: 0,
+            };
+            let frame = capture.capture(world, width, height);
+            let Some(frame) = frame else {
+                if !capture.deferred() {
+                    return Err(match capture.capture_error() {
+                        Some(why) => format!("the renderer produced no frame: {why}"),
+                        None => "the renderer produced no frame".into(),
                     });
-                    return Ok(());
-                };
-                self.out.emit(
-                    step.at,
-                    Output {
-                        tick,
-                        action: step.action.clone(),
-                        path,
-                        payload: Payload::Png {
-                            width: frame.width,
-                            height: frame.height,
-                            bytes: frame.png,
-                        },
-                    },
-                );
-                Ok(())
-            }
-            #[cfg(not(feature = "publish"))]
-            "listen" => {
-                let mut path = None;
-                let mut seconds = 1.0f32;
-                for a in args {
-                    if let Ok(s) = a.parse::<f32>() {
-                        seconds = s.clamp(0.0, 2.0);
-                    } else if path.is_none() && !a.is_empty() {
-                        path = output_path(Some(a))?;
-                    }
                 }
-                let listen = self
-                    .host
-                    .listen
-                    .as_ref()
-                    .ok_or("no audio in this host: nothing to listen to")?;
-                let heard = listen(seconds).ok_or("the mixer has rendered nothing yet")?;
-                self.out.emit(
-                    step.at,
-                    Output {
-                        tick,
-                        action: step.action.clone(),
-                        path,
-                        payload: Payload::Wav(heard.wav),
+                // Its frame lands on a later call: written then.
+                schedule.shot = Some(Shot {
+                    tick,
+                    at: step.at,
+                    path,
+                    width,
+                    height,
+                    polls: 0,
+                });
+                return Ok(());
+            };
+            out.emit(
+                step.at,
+                Output {
+                    tick,
+                    action: step.action.clone(),
+                    path,
+                    payload: Payload::Png {
+                        width: frame.width,
+                        height: frame.height,
+                        bytes: frame.png,
                     },
-                );
-                Ok(())
-            }
-            _ => unreachable!("`action` sends this family's names only"),
+                },
+            );
+            Ok(())
         }
+        #[cfg(not(feature = "publish"))]
+        "listen" => {
+            let mut path = None;
+            let mut seconds = 1.0f32;
+            for a in args {
+                if let Ok(s) = a.parse::<f32>() {
+                    seconds = s.clamp(0.0, 2.0);
+                } else if path.is_none() && !a.is_empty() {
+                    path = output_path(Some(a))?;
+                }
+            }
+            let listen = host
+                .listen
+                .as_ref()
+                .ok_or("no audio in this host: nothing to listen to")?;
+            let heard = listen(seconds).ok_or("the mixer has rendered nothing yet")?;
+            out.emit(
+                step.at,
+                Output {
+                    tick,
+                    action: step.action.clone(),
+                    path,
+                    payload: Payload::Wav(heard.wav),
+                },
+            );
+            Ok(())
+        }
+        _ => unreachable!("`action` sends this family's names only"),
     }
+}
 
+impl state::Inject {
     /// The pointer's actions: the mouse, the wheel, the lock and the touches.
-    fn pointer_step(&mut self, world: &mut World, step: &CommandStep) -> Result<(), String> {
+    fn pointer_step(
+        &mut self,
+        host: &mut state::Host,
+        world: &mut World,
+        step: &CommandStep,
+    ) -> Result<(), String> {
         let args = &step.args;
         let arg = |i: usize, usage: &str| -> Result<&str, String> {
             args.get(i)
@@ -165,7 +185,7 @@ impl Probe {
                     }
                     joined.clone()
                 };
-                let elements = match &self.host.ui {
+                let elements = match &host.ui {
                     Some(ui) => ui.elements(world),
                     None => Vec::new(),
                 };
@@ -175,18 +195,18 @@ impl Probe {
                     find_by_text(&elements, &target)
                 };
                 let Some(element) = found else {
-                    self.inject.target_missed = true;
+                    self.target_missed = true;
                     return Err(format!(
                         "target not found: '{target}' ({} UI elements; `dump_ui` lists them); the next touch_start/touch_end are skipped",
                         elements.len()
                     ));
                 };
-                self.inject.target_missed = false;
+                self.target_missed = false;
                 let (x, y) = element.center();
-                self.inject.pointer = (x, y);
-                self.inject.pointer_event(
+                self.pointer = (x, y);
+                self.pointer_event(
                     world,
-                    &mut *self.host.input,
+                    &mut *host.input,
                     PointerAction::Move,
                     PointerButton::None,
                 )
@@ -196,19 +216,19 @@ impl Probe {
                 let [x, y] = xy[..] else {
                     return Err("write `touch_move:x,y` with two numbers".into());
                 };
-                self.inject.target_missed = false;
-                self.inject.pointer = (x, y);
-                self.inject.pointer_event(
+                self.target_missed = false;
+                self.pointer = (x, y);
+                self.pointer_event(
                     world,
-                    &mut *self.host.input,
+                    &mut *host.input,
                     PointerAction::Move,
                     PointerButton::None,
                 )
             }
             "touch_start" | "touch_end" => {
-                if self.inject.target_missed {
+                if self.target_missed {
                     if step.action == "touch_end" {
-                        self.inject.target_missed = false;
+                        self.target_missed = false;
                     }
                     return Err("skipped: the last touch target was not found".into());
                 }
@@ -217,15 +237,14 @@ impl Probe {
                 } else {
                     PointerAction::Up
                 };
-                self.inject
-                    .pointer_event(world, &mut *self.host.input, action, PointerButton::Left)
+                self.pointer_event(world, &mut *host.input, action, PointerButton::Left)
             }
             "mouse_move" => {
                 let d = numbers(arg(0, "mouse_move:dx,dy")?)?;
                 let [dx, dy] = d[..] else {
                     return Err("write `mouse_move:dx,dy` with two numbers".into());
                 };
-                let (x, y) = self.inject.pointer;
+                let (x, y) = self.pointer;
                 let event = InjectedInput::Pointer {
                     action: PointerAction::Move,
                     x,
@@ -235,7 +254,7 @@ impl Probe {
                     movement_x: dx,
                     movement_y: dy,
                 };
-                if self.inject.deliver(world, &mut *self.host.input, &event) {
+                if self.deliver(world, &mut *host.input, &event) {
                     Ok(())
                 } else {
                     Err("the input layer refused the mouse move".into())
@@ -251,9 +270,9 @@ impl Probe {
                         ));
                     }
                 };
-                if self.inject.deliver(
+                if self.deliver(
                     world,
-                    &mut *self.host.input,
+                    &mut *host.input,
                     &InjectedInput::PointerLock { locked },
                 ) {
                     Ok(())
@@ -266,14 +285,14 @@ impl Probe {
                 let [dx, dy] = d[..] else {
                     return Err("write `scroll:dx,dy` with two numbers".into());
                 };
-                let (x, y) = self.inject.pointer;
+                let (x, y) = self.pointer;
                 let event = InjectedInput::Wheel {
                     x,
                     y,
                     delta_x: dx,
                     delta_y: dy,
                 };
-                if self.inject.deliver(world, &mut *self.host.input, &event) {
+                if self.deliver(world, &mut *host.input, &event) {
                     Ok(())
                 } else {
                     Err("the input layer refused the wheel event".into())
@@ -300,7 +319,7 @@ impl Probe {
                 let (x, y) = match numbers(&target).ok().as_deref() {
                     Some(&[x, y]) => (x, y),
                     _ => {
-                        let elements = match &self.host.ui {
+                        let elements = match &host.ui {
                             Some(ui) => ui.elements(world),
                             None => Vec::new(),
                         };
@@ -323,7 +342,7 @@ impl Probe {
                     movement_x: 0.0,
                     movement_y: 0.0,
                 };
-                if self.inject.deliver(world, &mut *self.host.input, &event) {
+                if self.deliver(world, &mut *host.input, &event) {
                     Ok(())
                 } else {
                     Err(format!("the input layer refused touch {id}"))
@@ -334,7 +353,13 @@ impl Probe {
     }
 
     /// The pad's, the keys' and the text's actions, and `intent`.
-    fn key_step(&mut self, world: &mut World, step: &CommandStep) -> Result<(), String> {
+    fn key_step(
+        &mut self,
+        host: &mut state::Host,
+        schedule: &mut state::Schedule,
+        world: &mut World,
+        step: &CommandStep,
+    ) -> Result<(), String> {
         let tick = world.time().tick;
         let args = &step.args;
         let arg = |i: usize, usage: &str| -> Result<&str, String> {
@@ -391,10 +416,7 @@ impl Probe {
                     };
                     state.triggers = [lt, rt];
                 }
-                if self
-                    .inject
-                    .deliver(world, &mut *self.host.input, &InjectedInput::Gamepad(state))
-                {
+                if self.deliver(world, &mut *host.input, &InjectedInput::Gamepad(state)) {
                     Ok(())
                 } else {
                     Err("the input layer refused the gamepad state".into())
@@ -442,7 +464,7 @@ impl Probe {
                     layout_hash: schema.layout_hash(),
                     payload,
                 };
-                if self.inject.deliver(world, &mut *self.host.input, &event) {
+                if self.deliver(world, &mut *host.input, &event) {
                     Ok(())
                 } else {
                     Err(format!("the input layer refused intent '{name}'"))
@@ -471,7 +493,7 @@ impl Probe {
                     events.extend(held.iter().rev().map(|c| modifier(c)));
                 }
                 for event in &events {
-                    if !self.inject.deliver(world, &mut *self.host.input, event) {
+                    if !self.deliver(world, &mut *host.input, event) {
                         return Err(format!(
                             "the input layer refused key '{key}'; keys are KeyboardEvent.code names such as KeyW, Space, ArrowLeft"
                         ));
@@ -499,14 +521,14 @@ impl Probe {
                                 ..Modifiers::default()
                             },
                         };
-                        self.schedule.seq += 1;
-                        self.schedule
+                        schedule.seq += 1;
+                        schedule
                             .queue
-                            .insert((at, self.schedule.seq), Queued::Inject(event));
+                            .insert((at, schedule.seq), Queued::Inject(event));
                     }
-                    self.schedule.seq += 1;
-                    self.schedule.queue.insert(
-                        (at, self.schedule.seq),
+                    schedule.seq += 1;
+                    schedule.queue.insert(
+                        (at, schedule.seq),
                         Queued::Inject(InjectedInput::Text {
                             text: c.to_string(),
                             composing: false,
@@ -526,7 +548,7 @@ impl Probe {
                 if step.action == "commit" && joined.is_empty() {
                     return Err("missing argument; write `commit:<text>`".into());
                 }
-                if self.inject.deliver(world, &mut *self.host.input, &event) {
+                if self.deliver(world, &mut *host.input, &event) {
                     Ok(())
                 } else {
                     Err("the input layer refused the text (no og.TextInput in this world)".into())
@@ -535,7 +557,9 @@ impl Probe {
             _ => unreachable!("`action` sends this family's names only"),
         }
     }
+}
 
+impl Probe {
     /// The actions that write the world: `teleport`, `frame_entity`, `set`, `seed`.
     fn world_step(&mut self, world: &mut World, step: &CommandStep) -> Result<(), String> {
         let args = &step.args;
@@ -945,13 +969,20 @@ impl Probe {
             _ => unreachable!("`action` sends this family's names only"),
         }
     }
+}
 
+impl state::Commands {
     /// A registered action: a module's or a game's command, or a dump.
-    fn registered_step(&mut self, world: &mut World, step: &CommandStep) -> Result<(), String> {
+    fn registered_step(
+        &self,
+        out: &mut state::Out,
+        world: &mut World,
+        step: &CommandStep,
+    ) -> Result<(), String> {
         let tick = world.time().tick;
         let args = &step.args;
         let name = step.action.as_str();
-        let Some(registered) = self.commands.registered.get(name) else {
+        let Some(registered) = self.registered.get(name) else {
             return Err(format!(
                 "unknown action '{name}', skipped; `help` lists the actions"
             ));
@@ -965,7 +996,7 @@ impl Probe {
                     (&args[..], None)
                 };
                 let value = handler(world, head)?;
-                self.out.emit(
+                out.emit(
                     step.at,
                     Output {
                         tick,
