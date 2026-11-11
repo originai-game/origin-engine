@@ -22,10 +22,13 @@ impl Probe {
                 .key_step(&mut self.host, &mut self.schedule, world, step),
             "teleport" | "frame_entity" | "set" | "seed" => self.world_step(world, step),
             #[cfg(not(feature = "publish"))]
-            "describe" | "expect" | "invariant" | "apply_prefab" | "revert_prefab"
-            | "save_scene" | "dump_world" | "dump_ui" | "dump_entity" | "get" | "help" => {
-                self.report_step(world, step)
+            "describe" | "dump_world" | "dump_ui" | "dump_entity" | "get" | "help" => {
+                self.dump_step(world, step)
             }
+            #[cfg(not(feature = "publish"))]
+            "apply_prefab" | "revert_prefab" | "save_scene" => self.scene_step(world, step),
+            #[cfg(not(feature = "publish"))]
+            "expect" | "invariant" => self.check_step(world, step),
             "pause" | "resume" | "advance" | "quit" => self.clock_step(world, step),
             // A publish build runs the actions that change the world (input,
             // set, teleport, the clock, registered commands: what og.ai's
@@ -648,10 +651,10 @@ impl Probe {
         }
     }
 
-    /// The actions that observe the world for a tool: the dumps, `describe`,
-    /// `get`, `help`, the expectations and the scene's write-back.
+    /// The actions that write what the world holds as an output: the dumps,
+    /// `describe`, `get` and `help`.
     #[cfg(not(feature = "publish"))]
-    fn report_step(&mut self, world: &mut World, step: &CommandStep) -> Result<(), String> {
+    fn dump_step(&mut self, world: &mut World, step: &CommandStep) -> Result<(), String> {
         let tick = world.time().tick;
         let args = &step.args;
         let arg = |i: usize, usage: &str| -> Result<&str, String> {
@@ -676,9 +679,133 @@ impl Probe {
                 Ok(())
             }
             #[cfg(not(feature = "publish"))]
-            "expect" => self.expect_args(world, args, Some(step.at)).map(|_| ()),
+            "dump_world" | "dump_ui" => {
+                // `dump_ui:layers[:path]`: the layer stack alone;
+                // `dump_ui:motion[:path]`: the motion alone.
+                let part = args
+                    .first()
+                    .filter(|a| {
+                        step.action == "dump_ui" && matches!(a.as_str(), "layers" | "motion")
+                    })
+                    .cloned();
+                let args: &[String] = if part.is_some() { &args[1..] } else { args };
+                let dump = if step.action == "dump_world" {
+                    self.dump_world(world)
+                } else if part.as_deref() == Some("layers") {
+                    self.dump_layers(world)
+                } else if part.is_some() {
+                    self.dump_motion(world)
+                } else {
+                    self.dump_ui(world)
+                };
+                self.out.emit(
+                    step.at,
+                    Output {
+                        tick,
+                        action: step.action.clone(),
+                        path: output_path(args.first())?,
+                        payload: Payload::Json(dump),
+                    },
+                );
+                Ok(())
+            }
             #[cfg(not(feature = "publish"))]
-            "invariant" => self.checks.add_invariant(args),
+            "dump_entity" => {
+                let id = arg(0, "dump_entity:<entity>[:path]")?;
+                let e = self.entity_of(world, id)?;
+                let dump = self.dump_entity(world, e);
+                self.out.emit(
+                    step.at,
+                    Output {
+                        tick,
+                        action: step.action.clone(),
+                        path: output_path(args.get(1))?,
+                        payload: Payload::Json(dump),
+                    },
+                );
+                Ok(())
+            }
+            #[cfg(not(feature = "publish"))]
+            "get" => {
+                let usage = "get:<Resource>[.<field>] or get:<entity>[.<component>[.<field>]]";
+                let target = arg(0, usage)?.trim();
+                let value = self.read_target(world, target)?;
+                let mut shown = value.to_string();
+                if shown.len() > 160 {
+                    let mut end = 157;
+                    while !shown.is_char_boundary(end) {
+                        end -= 1;
+                    }
+                    shown.truncate(end);
+                    shown.push_str("...");
+                }
+                self.out
+                    .note(tick, false, format!("get {target} = {shown}"));
+                // Unnamed gets on one tick: get-<tick>.json, then -2, -3, ...
+                let mut path = output_path(args.get(1))?;
+                if path.is_none() {
+                    self.out.gets = if self.out.gets.0 == tick {
+                        (tick, self.out.gets.1 + 1)
+                    } else {
+                        (tick, 1)
+                    };
+                    if self.out.gets.1 > 1 {
+                        path = Some(format!("get-{tick:06}-{}.json", self.out.gets.1));
+                    }
+                }
+                self.out.emit(
+                    step.at,
+                    Output {
+                        tick,
+                        action: "get".into(),
+                        path,
+                        payload: Payload::Json(json!({
+                            "kind": "get",
+                            "target": target,
+                            "tick": tick,
+                            "value": value,
+                        })),
+                    },
+                );
+                Ok(())
+            }
+            #[cfg(not(feature = "publish"))]
+            "help" => {
+                let mut text = String::new();
+                for info in self.help() {
+                    let origin = if info.core { "" } else { " (registered)" };
+                    text.push_str(&format!("{}{origin}\n    {}\n", info.usage, info.doc));
+                }
+                self.out
+                    .note(tick, false, format!("help: {} actions", self.help().len()));
+                self.out.emit(
+                    step.at,
+                    Output {
+                        tick,
+                        action: "help".into(),
+                        path: output_path(args.first())?,
+                        payload: Payload::Text(text),
+                    },
+                );
+                Ok(())
+            }
+            _ => unreachable!("`action` sends this family's names only"),
+        }
+    }
+
+    /// The actions that write the world back to its sources: the prefab
+    /// edits and `save_scene`.
+    #[cfg(not(feature = "publish"))]
+    fn scene_step(&mut self, world: &mut World, step: &CommandStep) -> Result<(), String> {
+        let tick = world.time().tick;
+        let args = &step.args;
+        let arg = |i: usize, usage: &str| -> Result<&str, String> {
+            args.get(i)
+                .map(String::as_str)
+                .filter(|a| !a.is_empty())
+                .ok_or_else(|| format!("missing argument; write `{usage}`"))
+        };
+        match step.action.as_str() {
             #[cfg(not(feature = "publish"))]
             "apply_prefab" | "revert_prefab" => {
                 // `<action>:<entity>[:<Component>[.<field>]][:base]`, over
@@ -794,117 +921,19 @@ impl Probe {
                 }
                 Ok(())
             }
+            _ => unreachable!("`action` sends this family's names only"),
+        }
+    }
+
+    /// `expect` and `invariant`: what the run asserts.
+    #[cfg(not(feature = "publish"))]
+    fn check_step(&mut self, world: &mut World, step: &CommandStep) -> Result<(), String> {
+        let args = &step.args;
+        match step.action.as_str() {
             #[cfg(not(feature = "publish"))]
-            "dump_world" | "dump_ui" => {
-                // `dump_ui:layers[:path]`: the layer stack alone;
-                // `dump_ui:motion[:path]`: the motion alone.
-                let part = args
-                    .first()
-                    .filter(|a| {
-                        step.action == "dump_ui" && matches!(a.as_str(), "layers" | "motion")
-                    })
-                    .cloned();
-                let args: &[String] = if part.is_some() { &args[1..] } else { args };
-                let dump = if step.action == "dump_world" {
-                    self.dump_world(world)
-                } else if part.as_deref() == Some("layers") {
-                    self.dump_layers(world)
-                } else if part.is_some() {
-                    self.dump_motion(world)
-                } else {
-                    self.dump_ui(world)
-                };
-                self.out.emit(
-                    step.at,
-                    Output {
-                        tick,
-                        action: step.action.clone(),
-                        path: output_path(args.first())?,
-                        payload: Payload::Json(dump),
-                    },
-                );
-                Ok(())
-            }
+            "expect" => self.expect_args(world, args, Some(step.at)).map(|_| ()),
             #[cfg(not(feature = "publish"))]
-            "dump_entity" => {
-                let id = arg(0, "dump_entity:<entity>[:path]")?;
-                let e = self.entity_of(world, id)?;
-                let dump = self.dump_entity(world, e);
-                self.out.emit(
-                    step.at,
-                    Output {
-                        tick,
-                        action: step.action.clone(),
-                        path: output_path(args.get(1))?,
-                        payload: Payload::Json(dump),
-                    },
-                );
-                Ok(())
-            }
-            #[cfg(not(feature = "publish"))]
-            "get" => {
-                let usage = "get:<Resource>[.<field>] or get:<entity>[.<component>[.<field>]]";
-                let target = arg(0, usage)?.trim();
-                let value = self.read_target(world, target)?;
-                let mut shown = value.to_string();
-                if shown.len() > 160 {
-                    let mut end = 157;
-                    while !shown.is_char_boundary(end) {
-                        end -= 1;
-                    }
-                    shown.truncate(end);
-                    shown.push_str("...");
-                }
-                self.out
-                    .note(tick, false, format!("get {target} = {shown}"));
-                // Unnamed gets on one tick: get-<tick>.json, then -2, -3, ...
-                let mut path = output_path(args.get(1))?;
-                if path.is_none() {
-                    self.out.gets = if self.out.gets.0 == tick {
-                        (tick, self.out.gets.1 + 1)
-                    } else {
-                        (tick, 1)
-                    };
-                    if self.out.gets.1 > 1 {
-                        path = Some(format!("get-{tick:06}-{}.json", self.out.gets.1));
-                    }
-                }
-                self.out.emit(
-                    step.at,
-                    Output {
-                        tick,
-                        action: "get".into(),
-                        path,
-                        payload: Payload::Json(json!({
-                            "kind": "get",
-                            "target": target,
-                            "tick": tick,
-                            "value": value,
-                        })),
-                    },
-                );
-                Ok(())
-            }
-            #[cfg(not(feature = "publish"))]
-            "help" => {
-                let mut text = String::new();
-                for info in self.help() {
-                    let origin = if info.core { "" } else { " (registered)" };
-                    text.push_str(&format!("{}{origin}\n    {}\n", info.usage, info.doc));
-                }
-                self.out
-                    .note(tick, false, format!("help: {} actions", self.help().len()));
-                self.out.emit(
-                    step.at,
-                    Output {
-                        tick,
-                        action: "help".into(),
-                        path: output_path(args.first())?,
-                        payload: Payload::Text(text),
-                    },
-                );
-                Ok(())
-            }
+            "invariant" => self.checks.add_invariant(args),
             _ => unreachable!("`action` sends this family's names only"),
         }
     }
