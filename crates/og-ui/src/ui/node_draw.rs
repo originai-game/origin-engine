@@ -59,7 +59,7 @@ impl Ui {
                 clip: n.clip,
                 alpha: n.alpha,
             };
-            if n.clip_src != NONE && self.drawing.is_identity() {
+            if n.clip_src != NONE && self.paint.drawing.is_identity() {
                 let outside = draw
                     .borders
                     .as_ref()
@@ -127,7 +127,7 @@ impl Ui {
         };
         // A part the UI pass draws (`part_draws`) has its background there.
         if let Some(bg) = n.sampled.background.filter(|bg| {
-            bg.alpha > 0.0 && !self.part_draws.contains_key(&i) && !self.framed_text(i)
+            bg.alpha > 0.0 && !self.paint.part_draws.contains_key(&i) && !self.framed_text(i)
         }) {
             let r = if matches!(n.widget, Widget::Button { pressed: true, .. }) {
                 rect.scaled(t.press_scale)

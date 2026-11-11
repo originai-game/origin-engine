@@ -77,10 +77,10 @@ impl Ui {
         let at = crate::paint::Placed {
             rect,
             radius,
-            clip: if self.drawing.is_identity() {
+            clip: if self.paint.drawing.is_identity() {
                 clip
             } else {
-                self.drawing.map_rect(&clip)
+                self.paint.drawing.map_rect(&clip)
             },
             alpha,
         };
@@ -90,15 +90,16 @@ impl Ui {
     }
 
     pub(crate) fn draw_of(&self, i: usize) -> Option<&crate::paint::ElementDraw> {
-        self.decor_draws
+        self.paint
+            .decor_draws
             .get(&i)
-            .or_else(|| self.part_draws.get(&i))
+            .or_else(|| self.paint.part_draws.get(&i))
             .or_else(|| self.draws.get(&i))
     }
 
     pub(super) fn build_part_draws(&mut self, order: &[usize]) {
-        let previous = std::mem::take(&mut self.part_draws);
-        self.part_changed.clear();
+        let previous = std::mem::take(&mut self.paint.part_draws);
+        self.paint.part_changed.clear();
         for &i in order {
             if self.draws.contains_key(&i) && !self.dressable.contains(&i) {
                 continue;
@@ -120,17 +121,17 @@ impl Ui {
                 self.draws.get(&i),
             ) {
                 Ok(draw) => {
-                    self.part_draws.insert(i, draw);
+                    self.paint.part_draws.insert(i, draw);
                 }
                 Err(errors) => self.out.warnings.extend(errors),
             }
         }
-        self.part_changed.extend(
+        self.paint.part_changed.extend(
             previous
                 .keys()
-                .chain(self.part_draws.keys())
+                .chain(self.paint.part_draws.keys())
                 .copied()
-                .filter(|i| previous.get(i) != self.part_draws.get(i)),
+                .filter(|i| previous.get(i) != self.paint.part_draws.get(i)),
         );
     }
 

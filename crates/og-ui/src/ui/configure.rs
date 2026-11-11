@@ -68,15 +68,22 @@ impl Ui {
                 clipboard: None,
                 stats: LayoutStats::default(),
             },
-            kept_spans: Vec::new(),
+            paint: Paint {
+                kept_spans: Vec::new(),
+                part_draws: Default::default(),
+                part_changed: Default::default(),
+                decor_draws: Default::default(),
+                drawing: Affine::IDENTITY,
+                prev_draws: Default::default(),
+                inspection: Default::default(),
+                cache: Default::default(),
+            },
             tree: Default::default(),
             orders: Default::default(),
             semantics: Default::default(),
             building: false,
             state: State::default(),
-            inspection: Default::default(),
             prev_floating: Vec::new(),
-            prev_draws: Default::default(),
             nav: NavFrame::default(),
             touched: Default::default(),
             nav_on: true,
@@ -98,9 +105,6 @@ impl Ui {
                 pending_plays: Vec::new(),
                 motion: Default::default(),
             },
-            part_draws: Default::default(),
-            part_changed: Default::default(),
-            decor_draws: Default::default(),
             selected: Vec::new(),
             text_target: None,
             cover: None,
@@ -113,8 +117,6 @@ impl Ui {
             drop_accepts: IdMap::new(),
             kept: Default::default(),
             invalidation: Default::default(),
-            paint_cache: Default::default(),
-            drawing: Affine::IDENTITY,
             draws: Default::default(),
             dressable: Default::default(),
             docs: Docs {
@@ -556,8 +558,9 @@ impl Ui {
         let persistent = &self.persistent;
         self.prev_floating = self.floating.clone();
         self.floating.retain(|&f| persistent[f]);
-        self.prev_draws = std::mem::take(&mut self.draws);
+        self.paint.prev_draws = std::mem::take(&mut self.draws);
         self.draws = self
+            .paint
             .prev_draws
             .iter()
             .filter(|&(&i, _)| persistent[i])

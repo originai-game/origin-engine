@@ -556,7 +556,7 @@ impl Ui {
     /// `nearest` in the nearest shared ancestor's, a name in the ancestor's
     /// of that name (else as normal). With every one normal, none nests.
     pub(crate) fn nest_named(&mut self) {
-        let named = &mut self.paint_cache.named;
+        let named = &mut self.paint.cache.named;
         if named.iter().all(|n| n.group.is_empty()) {
             return;
         }
@@ -603,7 +603,7 @@ impl Ui {
         {
             return;
         }
-        let (last, named) = (&self.paint_cache.last_cmds, &self.paint_cache.named);
+        let (last, named) = (&self.paint.cache.last_cmds, &self.paint.cache.named);
         let old = named
             .iter()
             .filter(|n| n.range.end <= last.len())
@@ -682,7 +682,8 @@ impl Ui {
             false
         };
         let new: Vec<Named> = self
-            .paint_cache
+            .paint
+            .cache
             .named
             .iter()
             .filter(|n| leaving.is_empty() || !in_leaving(self, n.node))
@@ -761,7 +762,7 @@ impl Ui {
             let s = &g.style;
             end = end.max(ends(&[&s.group, &s.pair, &s.old, &s.new, &s.children]));
         }
-        let all = &self.paint_cache.named;
+        let all = &self.paint.cache.named;
         let mut tail = Vec::new();
         for k in 0..groups.len() {
             if groups[k].parent.is_none() {
@@ -773,7 +774,8 @@ impl Ui {
             return None;
         }
         let hidden = self
-            .paint_cache
+            .paint
+            .cache
             .named
             .iter()
             .filter(|n| {

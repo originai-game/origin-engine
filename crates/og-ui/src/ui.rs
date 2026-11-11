@@ -482,16 +482,11 @@ pub struct Ui {
     pub(crate) orders: visit::Orders,
     /// What may have changed for screen readers, by frame (`tree`).
     pub(crate) semantics: tree::SemanticLog,
-    /// This frame's command ranges kept from last frame's paint, in order.
-    pub(crate) kept_spans: Vec<std::ops::Range<usize>>,
     pub(crate) building: bool,
     pub(crate) state: State,
-    /// The last frame's inspection, made when asked for (`inspect`).
-    pub(crate) inspection: inspect::Inspection,
     /// Last frame's layers and draws while this frame is built, for
     /// inspecting the last frame mid-build.
     pub(crate) prev_floating: Vec<usize>,
-    pub(crate) prev_draws: std::collections::HashMap<usize, crate::paint::ElementDraw>,
     pub(crate) nav: NavFrame,
     /// Widget memories used this frame (others are dropped at `end`).
     pub(crate) touched: std::collections::BTreeSet<u64>,
@@ -512,14 +507,6 @@ pub struct Ui {
     /// Text a control keeps between ticks while it is open (a dropdown's
     /// filter), by key: names of the frame's UI, dropped when it closes.
     pub(crate) kept_texts: crate::id::KeyMap<String>,
-    /// What each part of this frame draws through the UI pass, by node
-    /// (made at `end` from its dressing, or the tokens).
-    pub(crate) part_draws: std::collections::HashMap<usize, crate::paint::ElementDraw>,
-    /// Parts whose computed paint changed since the preceding frame.
-    pub(crate) part_changed: std::collections::HashSet<usize>,
-    /// This frame's draws of elements with CSS box decorations: their
-    /// draw or dressing with the decorations over it.
-    pub(crate) decor_draws: std::collections::HashMap<usize, crate::paint::ElementDraw>,
     /// The keys of the text elements last painted with a selection.
     pub(crate) selected: Vec<u64>,
     /// The focused text control this frame (into [`UiFrame::text_input`]).
@@ -546,11 +533,6 @@ pub struct Ui {
     pub(crate) kept: crate::layout::LayoutCache,
     /// What this frame may keep from the last.
     pub(crate) invalidation: crate::layout::Invalidation,
-    /// Last frame's paint, for reuse.
-    pub(crate) paint_cache: crate::layout::PaintCache,
-    /// The map of the element whose commands are being made: a nine-slice
-    /// is cut at its size on the screen, its corners kept crisp.
-    drawing: Affine,
     /// What elements of this frame draw with ([`Ui::set_draw`]), by node.
     pub(crate) draws: std::collections::HashMap<usize, crate::paint::ElementDraw>,
     /// The draws of [`Ui::set_draw_dressable`]: a component's own look for
@@ -569,6 +551,8 @@ pub struct Ui {
     pub(crate) docs: Docs,
     /// Style: the part rules and tokens, the motion pass's memory, timelines and the plays asked for.
     pub(crate) style: Style,
+    /// Paint: its reuse cache, the part and decoration draws, the map being drawn and the last frame's draws and inspection.
+    pub(crate) paint: Paint,
 }
 
 /// One UI event's feedback as the host plays it ([`Ui::take_feedback`]).
