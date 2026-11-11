@@ -1,0 +1,187 @@
+use super::*;
+mod fx;
+mod images;
+mod media;
+mod models;
+mod text;
+mod world;
+use fx::*;
+use images::*;
+use media::*;
+use models::*;
+use text::*;
+use world::*;
+
+/// What every stage after the art contract reads.
+#[derive(Clone, Copy)]
+pub(super) struct Cx<'a> {
+    pub(super) root: &'a Path,
+    pub(super) assets_dir: &'a Path,
+    pub(super) cooked_dir: &'a Path,
+    pub(super) options: &'a CookOptions,
+    pub(super) sources: &'a [Source],
+    pub(super) known: &'a BTreeSet<String>,
+    pub(super) prefab_texts: &'a BTreeMap<String, String>,
+    pub(super) group_of: &'a BTreeMap<String, String>,
+    pub(super) pack_faces: &'a BTreeSet<String>,
+    pub(super) old_outputs: &'a BTreeMap<&'a str, &'a ManifestOutput>,
+    pub(super) schemas: &'a BTreeMap<String, Schema>,
+    pub(super) budgets: &'a stats::Budgets,
+    pub(super) tex_desc: &'a str,
+    pub(super) mesh_desc: &'a str,
+    pub(super) font_desc: &'a str,
+    pub(super) budget_desc: &'a str,
+    pub(super) schema_hash: [u8; 8],
+    pub(super) style_tokens_hash: [u8; 8],
+    pub(super) story_functions: &'a BTreeMap<String, og_story::yarn::types::Function>,
+    pub(super) story_functions_stamp: &'a [u8],
+    pub(super) document_themes: &'a [og_ui::Theme],
+}
+
+/// What planning writes as it goes: the errors it finds, the references it
+/// parses and the glTF textures already planned.
+pub(super) struct PlanState {
+    pub(super) early_errors: Vec<EarlyError>,
+    pub(super) parsed_refs: BTreeMap<String, BTreeSet<String>>,
+    // glTF textures of models outside streaming groups are cooked once per
+    // image and use, whichever models use them: a scene exported in many
+    // glTFs (cells, tiles) repeats its images in every file, and a copy per
+    // model multiplied the cooked bytes, the load's transcoding and the
+    // GPU's memory (og-runtime's add_gltf shares them by these ids).
+    planned_textures: std::collections::HashSet<String>,
+}
+
+/// One planned output: its id, type, stamp and work.
+type Out<'a> = (String, &'static str, u64, Work<'a>);
+
+// Plan every output with its stamp.
+pub(super) fn plan<'a>(
+    cx: &Cx<'a>,
+    early_errors: Vec<EarlyError>,
+) -> (Vec<Planned<'a>>, PlanState) {
+    let Cx {
+        sources,
+        cooked_dir,
+        pack_faces,
+        old_outputs,
+        ..
+    } = *cx;
+    let mut state = PlanState {
+        early_errors,
+        parsed_refs: BTreeMap::new(),
+        planned_textures: std::collections::HashSet::new(),
+    };
+    let mut plan: Vec<Planned> = Vec::new();
+    for (si, s) in sources.iter().enumerate() {
+        if s.error.is_some() {
+            continue;
+        }
+        // These cookers consume only bytes/options. The other kinds resolve
+        // relative references or write source-derived names/sub-asset ids;
+        // their location remains part of the action, not the content hash.
+        let hash = match s.kind {
+            Kind::Texture
+            | Kind::Sound
+            | Kind::Font
+            | Kind::Lut
+            | Kind::Emitter
+            | Kind::Document
+            | Kind::Dialogue
+            | Kind::Quest
+            | Kind::Strings
+            | Kind::Shader
+            | Kind::Post
+            | Kind::Tileset
+            | Kind::Rig
+            | Kind::MotionAction
+            | Kind::Palette => stamp(&[&s.hash.to_le_bytes(), ext(&s.rel).as_bytes()]),
+            _ => stamp(&[&s.hash.to_le_bytes(), s.rel.as_bytes()]),
+        }
+        .to_le_bytes();
+        let mut outs: Vec<Out> = Vec::new();
+        plan_kind(cx, &mut state, s, hash, &mut outs);
+        for (id, ty, st, work) in outs {
+            let file = if pack_faces.contains(&id) {
+                format!("{id}.{}", og_bundle::runtime::FONT_PACK_FACE)
+            } else {
+                output_file(&id)
+            };
+            // Up to date: the manifest's stamp and file agree, and the file
+            // still holds the type and schema version the loader expects
+            // today (a schema change without a cooker bump would otherwise
+            // keep a blob the loader refuses).
+            let want = format::expected_header(ty);
+            let fresh = old_outputs.get(id.as_str()).is_some_and(|o| {
+                o.stamp == st
+                    && o.ty == ty
+                    && std::fs::read(cooked_dir.join(&o.file)).is_ok_and(|b| {
+                        b.len() as u64 == o.bytes
+                            && hash_bytes(&b) == o.hash
+                            && og_blob::Blob::parse(&b, &file).is_ok_and(|blob| {
+                                let h = blob.header();
+                                want == Some((h.type_hash, h.schema_version))
+                            })
+                    })
+            });
+            plan.push(Planned {
+                source: si,
+                id,
+                file,
+                ty,
+                stamp: st,
+                work: (!fresh).then_some(work),
+            });
+        }
+    }
+    (plan, state)
+}
+
+/// Plans a source's outputs by its kind.
+fn plan_kind<'a>(
+    cx: &Cx<'a>,
+    state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    match s.kind {
+        Kind::Model => plan_model(cx, state, s, hash, outs),
+        Kind::Texture => plan_texture(cx, state, s, hash, outs),
+        Kind::Sound if s.rel.ends_with(".ogt") => plan_sfx(cx, state, s, hash, outs),
+        Kind::Sound => plan_sound(cx, state, s, hash, outs),
+        Kind::Lut => plan_lut(cx, state, s, hash, outs),
+        Kind::Emitter => plan_emitter(cx, state, s, hash, outs),
+        Kind::Effect => plan_effect(cx, state, s, hash, outs),
+        Kind::Vfx => plan_vfx(cx, state, s, hash, outs),
+        Kind::Shader => plan_shader(cx, state, s, hash, outs),
+        Kind::Post => plan_post(cx, state, s, hash, outs),
+        Kind::UiMaterial => plan_ui_material(cx, state, s, hash, outs),
+        Kind::Vector => plan_vector(cx, state, s, hash, outs),
+        Kind::Rive => plan_rive(cx, state, s, hash, outs),
+        Kind::Style => plan_style(cx, state, s, hash, outs),
+        Kind::Document => plan_document(cx, state, s, hash, outs),
+        Kind::Tileset => plan_tileset(cx, state, s, hash, outs),
+        Kind::Tilemap => plan_tilemap(cx, state, s, hash, outs),
+        Kind::Rig2d => plan_rig2d(cx, state, s, hash, outs),
+        Kind::Flipbook => plan_flipbook(cx, state, s, hash, outs),
+        Kind::Behaviour => plan_behaviour(cx, state, s, hash, outs),
+        Kind::Dialogue => plan_dialogue(cx, state, s, hash, outs),
+        Kind::Quest => plan_quest(cx, state, s, hash, outs),
+        Kind::Strings => plan_strings(cx, state, s, hash, outs),
+        Kind::FontPack => plan_font_pack(cx, state, s, hash, outs),
+        Kind::Rig => plan_rig(cx, state, s, hash, outs),
+        Kind::MotionAction => plan_motion_action(cx, state, s, hash, outs),
+        Kind::Icons => plan_icons(cx, state, s, hash, outs),
+        Kind::Terrain => plan_terrain(cx, state, s, hash, outs),
+        Kind::Lightmap => plan_lightmap(cx, state, s, hash, outs),
+        Kind::Timeline => plan_timeline(cx, state, s, hash, outs),
+        Kind::TextureArray => plan_texture_array(cx, state, s, hash, outs),
+        Kind::Video => plan_video(cx, state, s, hash, outs),
+        Kind::Environment => plan_environment(cx, state, s, hash, outs),
+        Kind::Look => plan_look(cx, state, s, hash, outs),
+        Kind::Palette => plan_palette(cx, state, s, hash, outs),
+        Kind::NavMesh => plan_nav_mesh(cx, state, s, hash, outs),
+        Kind::Font => plan_font(cx, state, s, hash, outs),
+        Kind::Scene | Kind::Prefab => plan_scene(cx, state, s, hash, outs),
+    }
+}
