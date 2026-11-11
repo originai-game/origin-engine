@@ -3988,6 +3988,7 @@ impl Renderer {
                 }),
             gpu_set,
         );
+        encoder.expect(self.info.caps, self.info.caps);
         // The crowds' cull, in the frame's (timed) encoder: after GPU
         // culling's commands and the pyramid's last build (the meshlets'
         // first phase draws into its depth), before any pass draws them.
@@ -4733,6 +4734,18 @@ impl Renderer {
             .chain(scatter_queries.into_iter().map(|(n, q)| (n.to_string(), q)))
             .collect();
         for &pass in self.graph.order() {
+            // What the pass needs here: its kind's, and what this frame's
+            // instance of it adds (schedule.rs).
+            encoder.expect(
+                self.info.caps,
+                pass.needs()
+                    | match pass {
+                        FramePass::Light2d if lightdir_on => Caps::MRT,
+                        FramePass::Main if oit_mode.is_some() => Caps::MRT,
+                        FramePass::Taa | FramePass::TaaSharpen if fsr => Caps::COMPUTE,
+                        _ => Caps::NONE,
+                    },
+            );
             let t0 = clock.map(|c| c());
             let q0 = encoder.used();
             let _span = pass.redrawn().then(FrameSpan::open);
@@ -5159,6 +5172,7 @@ impl Renderer {
                 pass_queries.push((pass.name(), q0..encoder.used()));
             }
         }
+        encoder.expect(self.info.caps, self.info.caps);
         for &(slot, _) in &probe_frame.due {
             self.probes.slots[slot].captured = Some(scene.tick);
         }

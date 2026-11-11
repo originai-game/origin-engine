@@ -139,6 +139,10 @@ impl FrameMarks {
 pub(crate) struct Encoder {
     raw: wgpu::CommandEncoder,
     marks: Option<FrameMarks>,
+    /// Debug builds: the device's capabilities and what the pass being
+    /// encoded declared it needs ([`Encoder::expect`]).
+    #[cfg(all(debug_assertions, not(feature = "publish")))]
+    expected: Option<(crate::Caps, crate::Caps)>,
 }
 
 impl std::ops::Deref for Encoder {
@@ -157,7 +161,61 @@ impl std::ops::DerefMut for Encoder {
 impl Encoder {
     /// An encoder timing its passes with `marks`, or none with `None`.
     pub fn new(raw: wgpu::CommandEncoder, marks: Option<FrameMarks>) -> Encoder {
-        Encoder { raw, marks }
+        Encoder {
+            raw,
+            marks,
+            #[cfg(all(debug_assertions, not(feature = "publish")))]
+            expected: None,
+        }
+    }
+
+    /// From here on, what the encoder opens is checked (debug builds
+    /// only, never `publish`): against `device`, the device's capabilities,
+    /// and `declared`, what the pass being encoded declared it needs
+    /// (`renderer/render/schedule.rs`; `device` again outside a declared
+    /// pass). A compute pass needs [`crate::Caps::COMPUTE`], a render pass
+    /// with more than one colour target [`crate::Caps::MRT`], a timestamp
+    /// write [`crate::Caps::TIMESTAMPS`] (of the device alone: the frame's
+    /// timing is not a pass's). A use outside either panics, naming the
+    /// pass, so a declaration that is wrong fails every test that encodes
+    /// the pass, on any device.
+    #[cfg_attr(
+        not(all(debug_assertions, not(feature = "publish"))),
+        allow(unused_variables)
+    )]
+    pub fn expect(&mut self, device: crate::Caps, declared: crate::Caps) {
+        #[cfg(all(debug_assertions, not(feature = "publish")))]
+        {
+            self.expected = Some((device, declared));
+        }
+    }
+
+    /// Checks `uses` for the pass `label` (see [`Encoder::expect`]).
+    #[cfg_attr(
+        not(all(debug_assertions, not(feature = "publish"))),
+        allow(unused_variables)
+    )]
+    fn uses(&self, label: Option<&str>, uses: crate::Caps, timestamps: bool) {
+        #[cfg(all(debug_assertions, not(feature = "publish")))]
+        if let Some((device, declared)) = self.expected {
+            let label = label.unwrap_or("(unlabelled)");
+            let lacking = device.missing(
+                uses | if timestamps {
+                    crate::Caps::TIMESTAMPS
+                } else {
+                    crate::Caps::NONE
+                },
+            );
+            assert!(
+                lacking == crate::Caps::NONE,
+                "og-render: pass '{label}' uses {lacking:?}, which the device's capabilities lack"
+            );
+            let undeclared = declared.missing(uses);
+            assert!(
+                undeclared == crate::Caps::NONE,
+                "og-render: pass '{label}' uses {undeclared:?}, which its declaration leaves out (renderer/render/schedule.rs)"
+            );
+        }
     }
 
     /// An encoder outside a timed frame (uploads, bakes, readbacks).
@@ -189,7 +247,14 @@ impl Encoder {
         &'e mut self,
         desc: &wgpu::RenderPassDescriptor<'_>,
     ) -> wgpu::RenderPass<'e> {
-        let Encoder { raw, marks } = self;
+        let targets = desc.color_attachments.iter().flatten().count();
+        let mrt = if targets > 1 {
+            crate::Caps::MRT
+        } else {
+            crate::Caps::NONE
+        };
+        self.uses(desc.label, mrt, desc.timestamp_writes.is_some());
+        let Encoder { raw, marks, .. } = self;
         let pair = match desc.timestamp_writes {
             Some(_) => None,
             None => marks.as_mut().and_then(FrameMarks::pair),
@@ -223,7 +288,12 @@ impl Encoder {
         &'e mut self,
         desc: &wgpu::ComputePassDescriptor<'_>,
     ) -> wgpu::ComputePass<'e> {
-        let Encoder { raw, marks } = self;
+        self.uses(
+            desc.label,
+            crate::Caps::COMPUTE,
+            desc.timestamp_writes.is_some(),
+        );
+        let Encoder { raw, marks, .. } = self;
         let pair = match desc.timestamp_writes {
             Some(_) => None,
             None => marks.as_mut().and_then(FrameMarks::pair),

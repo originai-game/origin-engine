@@ -96,6 +96,11 @@ impl Caps {
         Caps(needs.0 & !self.0)
     }
 
+    /// The set with `other`.
+    pub const fn union(self, other: Caps) -> Caps {
+        Caps(self.0 | other.0)
+    }
+
     /// The set less `other`.
     pub const fn without(self, other: Caps) -> Caps {
         Caps(self.0 & !other.0)
