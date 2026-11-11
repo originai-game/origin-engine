@@ -411,6 +411,9 @@ impl FromJson for Mat4 {
 /// field only when it is set, numbers as `json!` writes them (so a typed
 /// answer is the text the hand-written `json!` answered).
 pub trait ToJson {
+    /// Whether this is `()`, a `Result<void>`'s value, which the answer
+    /// leaves out (`{ ok: true }`).
+    const VOID: bool = false;
     fn to_json(&self) -> Value;
 }
 
@@ -454,6 +457,7 @@ impl ToJson for Value {
 }
 
 impl ToJson for () {
+    const VOID: bool = true;
     fn to_json(&self) -> Value {
         Value::Null
     }
