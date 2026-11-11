@@ -108,6 +108,8 @@ mod frame_uniform;
 use frame_uniform::{WriteFrameUniformsInputs, WriteFrameUniformsOutputs};
 mod sun_and_post;
 use sun_and_post::{WriteSunAndPostInputs, WriteSunAndPostOutputs};
+mod fx_uniform;
+use fx_uniform::{WriteFxUniformsInputs, WriteFxUniformsOutputs};
 mod setup;
 
 impl Renderer {
@@ -1345,85 +1347,27 @@ impl Renderer {
             glow,
             sprite_frame: &sprite_frame,
         });
-        let mut fx_uniform =
-            fx::fx_uniform(cam.view_proj, prev_view_proj, (self.width, self.height));
-        // The prepass moves vertices by their material shader's offset of
-        // the frame before only for a reader of the motion vectors.
-        if !motion_read {
-            fx_uniform.motion[0] = 0.0;
-        }
-        // The decals: their records, and the main view's clusters they reach
-        // (none in a renderer made without them, RenderDesc::without).
-        let (decals, decals_dropped) = self.lights.prepare_decals(
-            (&self.device, &self.queue),
-            if self.info.without.contains(LitFeatures::DECALS) {
-                &[]
-            } else {
-                &scene.decals
-            },
-            &clusters::ClusterView {
-                camera: &cam,
-                frustum: &view_frustum,
-                position: camera.position,
-                near: camera.near,
-                far: camera.far,
-                width: self.width,
-                height: self.height,
-            },
-            scene.decals.len() as u32,
-        );
-        // The previous joints' section (`skin::append_previous`).
-        if skinned_motion.is_some() {
-            fx_uniform.decal_info[3] = joints_drawn as f32;
-        }
-        fx_uniform.decal_info[0] = decals as f32;
-        fx_uniform.decal_info[1] = match scene.decal_atlas {
-            None => 0.0,
-            Some(t) if scene.texture_color_space(t) == Some(ColorSpace::Srgb) => 2.0,
-            Some(_) => 1.0,
-        };
-        self.terrain
-            .decals
-            .write(&self.queue, fx_uniform.decal_info);
-        // w: 1 with the GI's bounce in the AO texture's gba, 2 with GTAO's
-        // bent normal there.
-        if ao_target {
-            fx_uniform.ao = [
-                1.0,
-                1.0,
-                ao.map_or(0.0, |a| a.direct),
-                if gi.is_some() {
-                    1.0
-                } else if bent {
-                    2.0
-                } else {
-                    0.0
-                },
-            ];
-        }
-        // The planar reflection's plane (n, n·at) for the material shaders
-        // that read it (pbr.wgsl `planar_reflection`); 0 without one.
-        if let Some((i, ..)) = &reflection {
-            let w = &scene.water[*i];
-            let (n, at, ..) = water::surface(w, w.mesh.and_then(|m| scene.mesh(m)));
-            fx_uniform.planar = n.extend(n.dot(at)).to_array();
-        }
-        self.queue
-            .write_buffer(&self.lights.fx_buffer, 0, bytemuck::bytes_of(&fx_uniform));
-        for (k, (_, _, _, view_proj, (rw, rh))) in reflections.iter().enumerate() {
-            let mut u = fx_uniform;
-            u.ao = [0.0; 4];
-            // Drawing the reflection itself: no plane, w -1 (a surface that
-            // reads it may leave itself out, as three.js's readers of the
-            // mirror do).
-            u.planar = [0.0, 0.0, 0.0, -1.0];
-            u.view_proj_unjittered = view_proj.to_cols_array_2d();
-            u.prev_view_proj = view_proj.to_cols_array_2d();
-            u.screen = [*rw as f32, *rh as f32, 1.0 / *rw as f32, 1.0 / *rh as f32];
-            fx::unclustered(&mut u);
-            self.queue
-                .write_buffer(&self.reflection_fx_buffer[k], 0, bytemuck::bytes_of(&u));
-        }
+        // The effects uniform and the decals (fx_uniform.rs).
+        let WriteFxUniformsOutputs {
+            fx_uniform,
+            decals,
+            decals_dropped,
+        } = self.write_fx_uniforms(WriteFxUniformsInputs {
+            scene,
+            camera: &camera,
+            cam: &cam,
+            view_frustum: &view_frustum,
+            prev_view_proj,
+            motion_read,
+            skinned_motion,
+            joints_drawn,
+            ao_target,
+            ao,
+            gi: gi.is_some(),
+            bent,
+            reflection,
+            reflections: &reflections,
+        });
         let viewport_format = self.viewport_format(target);
         self.views.write(
             &self.device,
