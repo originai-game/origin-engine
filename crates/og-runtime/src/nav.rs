@@ -4,7 +4,11 @@
 //! og.nav's system and state block are the world's.
 
 use super::engine::{Engine, engine};
-use super::{ok, parse, refuse};
+use super::wire::{
+    self, FlowDesc, NavAlgorithm, NavAreaDesc, NavBox, NavGridDesc, NavLinkDesc, NavLinkKind,
+    NavMeshDesc, NavShape, NavShapeKind, PathDesc, TilemapGridDesc,
+};
+use super::{ok, refuse};
 use og_core::glam::{Vec2, Vec3};
 use og_ecs::{Entity, World};
 use og_nav::{
@@ -12,14 +16,6 @@ use og_nav::{
     Scratch, Shape,
 };
 use serde_json::{Value, json};
-
-fn f(v: &Value, key: &str, default: f32) -> f32 {
-    v[key].as_f64().map_or(default, |x| x as f32)
-}
-
-fn v3(v: &Value) -> Vec3 {
-    Vec3::new(f(v, "x", 0.0), f(v, "y", 0.0), f(v, "z", 0.0))
-}
 
 fn j3(v: Vec3) -> Value {
     json!({ "x": v.x, "y": v.y, "z": v.z })
@@ -32,65 +28,50 @@ fn wire(r: Result<Value, String>) -> String {
     }
 }
 
-/// A NavShape from its JSON.
-fn shape(v: &Value) -> Result<Shape, String> {
-    Ok(match v["kind"].as_str().unwrap_or("box") {
-        "box" => Shape::Box {
-            min: v3(&v["min"]),
-            max: v3(&v["max"]),
+/// og-nav's shape for a NavShape.
+fn shape(s: NavShape) -> Result<Shape, String> {
+    Ok(match s.kind {
+        NavShapeKind::Box => Shape::Box {
+            min: s.min,
+            max: s.max,
         },
-        "orientedBox" => Shape::Oriented {
-            center: v3(&v["center"]),
-            half: v3(&v["size"]) * 0.5,
-            yaw: f(v, "yaw", 0.0),
+        NavShapeKind::OrientedBox => Shape::Oriented {
+            center: s.center,
+            half: s.size * 0.5,
+            yaw: s.yaw,
         },
-        "cylinder" => Shape::Cylinder {
-            base: v3(&v["center"]),
-            radius: f(v, "radius", 0.0).max(0.0),
-            height: f(v, "height", 0.0).max(0.0),
+        NavShapeKind::Cylinder => Shape::Cylinder {
+            base: s.center,
+            radius: s.radius.max(0.0),
+            height: s.height.max(0.0),
         },
-        "convex" => {
-            let points: Vec<Vec2> = v["points"]
-                .as_array()
-                .map(|a| {
-                    a.iter()
-                        .map(|p| Vec2::new(f(p, "x", 0.0), f(p, "z", 0.0)))
-                        .collect()
-                })
-                .unwrap_or_default();
-            if points.len() < 3 {
+        NavShapeKind::Convex => {
+            if s.points.len() < 3 {
                 return Err(format!(
                     "a convex shape needs at least three points, got {}",
-                    points.len()
+                    s.points.len()
                 ));
             }
             Shape::Convex {
-                points,
-                bottom: f(&v["min"], "y", 0.0),
-                top: f(&v["max"], "y", 0.0),
+                points: s.points.iter().map(|p| Vec2::new(p.x, p.z)).collect(),
+                bottom: s.min.y,
+                top: s.max.y,
             }
-        }
-        k => {
-            return Err(format!(
-                "'{k}' is not a NavShapeKind: box, orientedBox, cylinder or convex"
-            ));
         }
     })
 }
 
-/// A path filter from areaCosts and excluded (PathDesc, og.NavFilter).
-fn filter(d: &Value) -> Filter {
-    let costs = d["areaCosts"]
-        .as_array()
-        .map(|a| a.iter().map(|c| c.as_f64().unwrap_or(1.0) as f32).collect())
-        .unwrap_or_default();
+/// A path filter from areaCosts and excluded (PathDesc, og.NavFilter);
+/// area ids past 63 exclude nothing.
+fn filter(d: &PathDesc) -> Filter {
     let mut excluded = 0u64;
-    for a in d["excluded"].as_array().into_iter().flatten() {
-        if let Some(a) = a.as_u64().filter(|&a| a < 64) {
-            excluded |= 1 << a;
-        }
+    for &a in d.excluded.iter().filter(|&&a| a < 64) {
+        excluded |= 1 << a;
     }
-    Filter { costs, excluded }
+    Filter {
+        costs: d.area_costs.clone(),
+        excluded,
+    }
 }
 
 /// A navmesh edit on mesh handle `mesh`: what it rebuilt.
@@ -114,25 +95,23 @@ fn edit_mesh(
 
 pub fn og_nav_carve(world: u32, mesh: f64, id: u32, desc: Option<String>) -> String {
     wire((|| {
-        let s = match desc.as_deref().map(|t| parse(Some(t))).transpose()? {
-            Some(v) if v.is_object() => Some(shape(&v)?),
-            _ => None,
-        };
+        let s = wire::arg::<Option<NavShape>>(desc.as_deref(), "shape")?
+            .map(shape)
+            .transpose()?;
         edit_mesh(world, mesh, |m| m.carve(id, s))
     })())
 }
 
 pub fn og_nav_set_area(world: u32, mesh: f64, id: u32, desc: Option<String>) -> String {
     wire((|| {
-        let a = match desc.as_deref().map(|t| parse(Some(t))).transpose()? {
-            Some(v) if v.is_object() => {
-                let area = v["area"].as_u64().unwrap_or(0);
-                if area > 63 {
-                    return Err(format!("an area id is 0 to 63, got {area}"));
+        let a = match wire::arg::<Option<NavAreaDesc>>(desc.as_deref(), "desc")? {
+            Some(d) => {
+                if d.area > 63 {
+                    return Err(format!("an area id is 0 to 63, got {}", d.area));
                 }
-                Some((shape(&v["shape"])?, area as u8))
+                Some((shape(d.shape)?, d.area as u8))
             }
-            _ => None,
+            None => None,
         };
         edit_mesh(world, mesh, |m| m.set_area(id, a))
     })())
@@ -161,27 +140,23 @@ fn lock<T>(m: &std::sync::Mutex<T>) -> std::sync::MutexGuard<'_, T> {
 pub fn og_nav_grid(world: u32, desc: Option<String>) -> String {
     wire((|| {
         engine(world)?;
-        let d = parse(desc.as_deref())?;
-        let w = d["width"].as_u64().unwrap_or(32).clamp(1, 4096) as u32;
-        let h = d["height"].as_u64().unwrap_or(32).clamp(1, 4096) as u32;
-        let cs = f(&d, "cellSize", 1.0);
-        let origin = Vec2::new(f(&d["origin"], "x", 0.0), f(&d["origin"], "y", 0.0));
-        let grid = match d["costs"].as_array().filter(|c| !c.is_empty()) {
-            None => Grid::new(w, h, cs, origin),
-            Some(c) => {
-                if c.len() != (w * h) as usize {
-                    return Err(format!(
-                        "costs has {} values; a {w} × {h} grid needs {} (or none)",
-                        c.len(),
-                        w * h
-                    ));
-                }
-                let costs = c
-                    .iter()
-                    .map(|x| x.as_u64().unwrap_or(1).min(255) as u8)
-                    .collect();
-                Grid::from_costs(w, h, cs, origin, costs).ok_or("the costs do not fit the grid")?
+        let d: NavGridDesc = wire::arg(desc.as_deref(), "desc")?;
+        let w = d.width.clamp(1, 4096);
+        let h = d.height.clamp(1, 4096);
+        let (cs, origin) = (d.cell_size, d.origin);
+        let grid = if d.costs.is_empty() {
+            Grid::new(w, h, cs, origin)
+        } else {
+            let c = &d.costs;
+            if c.len() != (w * h) as usize {
+                return Err(format!(
+                    "costs has {} values; a {w} × {h} grid needs {} (or none)",
+                    c.len(),
+                    w * h
+                ));
             }
+            let costs = c.iter().map(|&x| x.min(255) as u8).collect();
+            Grid::from_costs(w, h, cs, origin, costs).ok_or("the costs do not fit the grid")?
         };
         let n = navs(world)?;
         let h = lock(&n).insert(Nav::Grid(grid));
@@ -197,8 +172,8 @@ fn grid_from_tilemap(eng: &Engine, world: u32, desc: Option<String>) -> Result<V
     if super::engine::running(world).is_some() {
         return Err("og.nav.gridFromTilemap reads the map's components: call it in GameDesc.start or a command, not inside a system".into());
     }
-    let d = parse(desc.as_deref())?;
-    let e = Entity::from_bits(handle(d["entity"].as_f64().unwrap_or(0.0)));
+    let d: TilemapGridDesc = wire::arg(desc.as_deref(), "desc")?;
+    let e = Entity::from_bits(d.entity);
     let (map, origin) = {
         let st = eng.state.borrow();
         let w = eng.world()?;
@@ -223,7 +198,7 @@ fn grid_from_tilemap(eng: &Engine, world: u32, desc: Option<String>) -> Result<V
         );
         (
             t["map"].as_f64().map_or(0, |m| m as u64),
-            v3(&p["position"]),
+            wire::value::<Vec3>(&p["position"], "position")?,
         )
     };
     let asset = {
@@ -238,14 +213,7 @@ fn grid_from_tilemap(eng: &Engine, world: u32, desc: Option<String>) -> Result<V
     };
     let state = og_tilemap::MapState::new(&asset.asset, &asset.tilesets)
         .map_err(|e| e.reason().to_string())?;
-    let names: Vec<String> = d["layers"]
-        .as_array()
-        .map(|a| {
-            a.iter()
-                .filter_map(|x| x.as_str().map(String::from))
-                .collect()
-        })
-        .unwrap_or_default();
+    let names = &d.layers;
     let layers: Vec<usize> = (0..asset.asset.layers.len())
         .filter(|&l| {
             if names.is_empty() {
@@ -278,7 +246,7 @@ fn grid_from_tilemap(eng: &Engine, world: u32, desc: Option<String>) -> Result<V
             }
         }
     }
-    let inflate = d["inflate"].as_u64().unwrap_or(0).min(8) as i32;
+    let inflate = d.inflate.min(8) as i32;
     if inflate > 0 {
         let base = grid.clone();
         for y in 0..h as i32 {
@@ -328,7 +296,7 @@ pub fn og_nav_set_cost(world: u32, grid: f64, x: u32, y: u32, cost: u32) -> Stri
 }
 
 pub fn og_nav_cell_at(world: u32, grid: f64, point: String) -> String {
-    let p = parse(Some(&point)).map(|v| v3(&v)).unwrap_or_default();
+    let p: Vec3 = wire::arg(Some(&point), "point").unwrap_or_default();
     let plane = plane_of(world);
     let cell = navs(world)
         .ok()
@@ -358,29 +326,23 @@ fn path_value(
     })
 }
 
-/// An off-mesh link from its NavLinkDesc JSON.
-fn link_desc(v: &Value) -> Result<og_nav::Link, String> {
-    let kind = match v["kind"].as_str().unwrap_or("jump") {
-        "jump" => og_nav::LinkKind::Jump,
-        "ladder" => og_nav::LinkKind::Ladder,
-        "door" => og_nav::LinkKind::Door,
-        "teleport" => og_nav::LinkKind::Teleport,
-        k => {
-            return Err(format!(
-                "'{k}' is not a NavLinkKind: jump, ladder, door or teleport"
-            ));
-        }
-    };
-    Ok(og_nav::Link {
-        start: v3(&v["start"]),
-        end: v3(&v["end"]),
-        kind,
-        bidirectional: v["bidirectional"].as_bool().unwrap_or(true),
-        cost: f(v, "cost", 0.0).max(0.0),
-        open: v["open"].as_bool().unwrap_or(true),
-        duration: f(v, "duration", 0.0).max(0.0),
-        game: v["game"].as_bool().unwrap_or(false),
-    })
+/// og-nav's off-mesh link for a NavLinkDesc.
+fn link_desc(d: NavLinkDesc) -> og_nav::Link {
+    og_nav::Link {
+        start: d.start,
+        end: d.end,
+        kind: match d.kind {
+            NavLinkKind::Jump => og_nav::LinkKind::Jump,
+            NavLinkKind::Ladder => og_nav::LinkKind::Ladder,
+            NavLinkKind::Door => og_nav::LinkKind::Door,
+            NavLinkKind::Teleport => og_nav::LinkKind::Teleport,
+        },
+        bidirectional: d.bidirectional,
+        cost: d.cost.max(0.0),
+        open: d.open,
+        duration: d.duration.max(0.0),
+        game: d.game,
+    }
 }
 
 /// og.NavLinkReached joins the world (a lazy record) once a mesh has a link.
@@ -395,10 +357,7 @@ fn links_used(world: u32) -> Result<(), String> {
 
 pub fn og_nav_set_link(world: u32, mesh: f64, id: u32, desc: Option<String>) -> String {
     wire((|| {
-        let l = match desc.as_deref().map(|t| parse(Some(t))).transpose()? {
-            Some(v) if v.is_object() => Some(link_desc(&v)?),
-            _ => None,
-        };
+        let l = wire::arg::<Option<NavLinkDesc>>(desc.as_deref(), "desc")?.map(link_desc);
         if l.is_some() {
             links_used(world)?;
         }
@@ -443,18 +402,16 @@ pub fn og_nav_finish_link(world: u32, entity: f64) -> bool {
 
 pub fn og_nav_find_path(world: u32, desc: Option<String>) -> String {
     wire((|| {
-        let d = parse(desc.as_deref())?;
+        let d: PathDesc = wire::arg(desc.as_deref(), "desc")?;
         let plane = plane_of(world);
-        let from = v3(&d["from"]);
-        let to = v3(&d["to"]);
+        let (from, to) = (d.from, d.to);
         let n = navs(world)?;
         let n = lock(&n);
-        match n.get(handle(d["nav"].as_f64().unwrap_or(0.0))) {
+        match n.get(d.nav) {
             Some(Nav::Grid(g)) => {
-                let algorithm = if d["algorithm"].as_str() == Some("astar") {
-                    Algorithm::AStar
-                } else {
-                    Algorithm::Jps
+                let algorithm = match d.algorithm {
+                    NavAlgorithm::Astar => Algorithm::AStar,
+                    NavAlgorithm::Jps => Algorithm::Jps,
                 };
                 let (a, b) = (plane.to_plane(from), plane.to_plane(to));
                 let sc = g
@@ -480,8 +437,8 @@ pub fn og_nav_find_path(world: u32, desc: Option<String>) -> String {
                         ));
                     }
                 };
-                let smooth = d["smooth"].as_bool().unwrap_or(true);
-                let clearance = (f(&d, "radius", 0.0) / g.cell_size).min(0.45);
+                let smooth = d.smooth;
+                let clearance = (d.radius / g.cell_size).min(0.45);
                 let end = if g.cell_at(b) == Some(gc) {
                     b
                 } else {
@@ -521,28 +478,24 @@ pub fn og_nav_find_path(world: u32, desc: Option<String>) -> String {
     })())
 }
 
-fn cells_of(g: &Grid, plane: Plane, targets: &Value) -> Vec<(u32, u32)> {
+fn cells_of(g: &Grid, plane: Plane, targets: &[Vec3]) -> Vec<(u32, u32)> {
     targets
-        .as_array()
-        .map(|a| {
-            a.iter()
-                .filter_map(|t| g.cell_at(plane.to_plane(v3(t))))
-                .collect()
-        })
-        .unwrap_or_default()
+        .iter()
+        .filter_map(|&t| g.cell_at(plane.to_plane(t)))
+        .collect()
 }
 
 pub fn og_nav_flow_field(world: u32, desc: Option<String>) -> String {
     wire((|| {
-        let d = parse(desc.as_deref())?;
+        let d: FlowDesc = wire::arg(desc.as_deref(), "desc")?;
         let plane = plane_of(world);
         let n = navs(world)?;
         let mut n = lock(&n);
-        let gh = handle(d["grid"].as_f64().unwrap_or(0.0));
+        let gh = d.grid;
         let Some(Nav::Grid(g)) = n.get(gh) else {
             return Err("desc.grid is not a grid of this world".into());
         };
-        let targets = cells_of(g, plane, &d["targets"]);
+        let targets = cells_of(g, plane, &d.targets);
         let field = FlowField::build(g, &targets);
         Ok(json!(n.insert(Nav::Flow {
             grid: gh,
@@ -555,7 +508,7 @@ pub fn og_nav_flow_field(world: u32, desc: Option<String>) -> String {
 pub fn og_nav_set_flow_targets(world: u32, field: f64, targets: String) -> String {
     match (|| -> Result<(), String> {
         let plane = plane_of(world);
-        let t = parse(Some(&targets))?;
+        let t: Vec<Vec3> = wire::arg(Some(&targets), "targets")?;
         let n = navs(world)?;
         let mut n = lock(&n);
         let gh = match n.get(handle(field)) {
@@ -578,7 +531,7 @@ pub fn og_nav_set_flow_targets(world: u32, field: f64, targets: String) -> Strin
 }
 
 pub fn og_nav_flow_at(world: u32, field: f64, point: String) -> String {
-    let p = parse(Some(&point)).map(|v| v3(&v)).unwrap_or_default();
+    let p: Vec3 = wire::arg(Some(&point), "point").unwrap_or_default();
     let plane = plane_of(world);
     let d = navs(world)
         .ok()
@@ -664,21 +617,16 @@ pub fn og_nav_load(world: u32, path: String, profile: Option<String>) -> String 
 pub fn og_nav_build(world: u32, desc: Option<String>) -> String {
     wire((|| {
         engine(world)?;
-        let d = parse(desc.as_deref())?;
-        let min = v3(&d["min"]);
-        let max = if d["max"].is_object() {
-            v3(&d["max"])
-        } else {
-            Vec3::new(16.0, 1.0, 16.0)
-        };
+        let d: NavMeshDesc = wire::arg(desc.as_deref(), "desc")?;
+        let (min, max) = (d.min, d.max);
         if max.x <= min.x || max.z <= min.z {
             return Err("the floor is empty: max must be beyond min on x and z".into());
         }
         let params = NavParams {
-            cell_size: f(&d, "cellSize", 0.25).clamp(0.02, 4.0),
-            agent_radius: f(&d, "agentRadius", 0.4).max(0.0),
-            agent_height: f(&d, "agentHeight", 1.8).max(0.1),
-            tile_size: d["tileSize"].as_u64().unwrap_or(32).clamp(8, 256) as u32,
+            cell_size: d.cell_size.clamp(0.02, 4.0),
+            agent_radius: d.agent_radius.max(0.0),
+            agent_height: d.agent_height.max(0.1),
+            tile_size: d.tile_size.clamp(8, 256),
             ..NavParams::default()
         };
         let cs = params.cell_size;
@@ -691,10 +639,7 @@ pub fn og_nav_build(world: u32, desc: Option<String>) -> String {
         }
         let origin = Vec3::new(min.x, min.y, min.z);
         let r = params.agent_radius;
-        let boxes: Vec<(Vec3, Vec3)> = d["blocked"]
-            .as_array()
-            .map(|a| a.iter().map(|b| (v3(&b["min"]), v3(&b["max"]))).collect())
-            .unwrap_or_default();
+        let boxes: Vec<(Vec3, Vec3)> = d.blocked.iter().map(|b| (b.min, b.max)).collect();
         let rc = params.radius_cells();
         let field = Heightfield::flat(params, origin, width, depth).without(|x, z| {
             // The floor's edge and every box, grown by the agent radius.
@@ -721,13 +666,10 @@ pub fn og_nav_build(world: u32, desc: Option<String>) -> String {
 
 pub fn og_nav_set_obstacle(world: u32, mesh: f64, id: u32, obstacle: Option<String>) -> String {
     wire((|| {
-        let o = match obstacle.as_deref().map(|t| parse(Some(t))).transpose()? {
-            Some(v) if v.is_object() => Some(Obstacle {
-                min: v3(&v["min"]),
-                max: v3(&v["max"]),
-            }),
-            _ => None,
-        };
+        let o = wire::arg::<Option<NavBox>>(obstacle.as_deref(), "obstacle")?.map(|b| Obstacle {
+            min: b.min,
+            max: b.max,
+        });
         let n = navs(world)?;
         let mut n = lock(&n);
         match n.get_mut(handle(mesh)) {
@@ -743,11 +685,9 @@ pub fn og_nav_set_obstacle(world: u32, mesh: f64, id: u32, obstacle: Option<Stri
 }
 
 pub fn og_nav_nearest(world: u32, mesh: f64, point: String, extent: Option<String>) -> String {
-    let p = parse(Some(&point)).map(|v| v3(&v)).unwrap_or_default();
-    let e = extent
-        .as_deref()
-        .and_then(|t| parse(Some(t)).ok())
-        .map(|v| v3(&v))
+    let p: Vec3 = wire::arg(Some(&point), "point").unwrap_or_default();
+    let e = wire::arg::<Vec3>(extent.as_deref(), "extent")
+        .ok()
         .filter(|e| *e != Vec3::ZERO)
         .unwrap_or(Vec3::splat(2.0));
     let hit = navs(world)
