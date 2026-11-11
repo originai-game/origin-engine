@@ -21,7 +21,7 @@ function files(root: string): string[] {
 test("no-prompt creation uses source choices even with an outdated packed catalogue", () => {
   const checkout = join(scratch, "checkout");
   const source = join(checkout, "packages/create");
-  for (const part of ["bin", "template"]) cpSync(join(pkg, part), join(source, part), { recursive: true });
+  for (const part of ["bin", "template", "package.json"]) cpSync(join(pkg, part), join(source, part), { recursive: true });
   cpSync(fontPacksDir(), join(checkout, "templates/fonts"), { recursive: true });
   mkdirSync(join(source, "looks"), { recursive: true });
   mkdirSync(join(checkout, "packages/knowledge/looks"), { recursive: true });
@@ -165,6 +165,10 @@ test("the packed package creates the same skeleton and briefs from its own prese
   mkdirSync(join(installed, "template/.og"), { recursive: true });
   symlinkSync("..", join(installed, "template/.og/engine"), "dir");
   symlinkSync(".", join(installed, "template/loop"), "dir");
+  // A file left in template/ that the manifest does not list (a checkout's untracked file) is not part of the skeleton.
+  writeFileSync(join(installed, "template/stray.png"), "left behind");
+  mkdirSync(join(installed, "template/tests/references"), { recursive: true });
+  writeFileSync(join(installed, "template/tests/references/frame.png"), "left behind");
   expect(files(join(installed, "template"))).not.toContain(".og/engine");
   const packed = Bun.spawnSync(["bun", "pm", "pack", "--dry-run", "--ignore-scripts"], { cwd: installed });
   expect(packed.exitCode, new TextDecoder().decode(packed.stderr)).toBe(0);
@@ -176,6 +180,8 @@ test("the packed package creates the same skeleton and briefs from its own prese
   expect(r.exitCode, new TextDecoder().decode(r.stderr)).toBe(0);
   expect(existsSync(join(scratch, "packed/.og"))).toBeFalse();
   expect(existsSync(join(scratch, "packed/loop"))).toBeFalse();
+  expect(existsSync(join(scratch, "packed/stray.png"))).toBeFalse();
+  expect(readdirSync(join(scratch, "packed/tests"))).toEqual(["smoke.og.ts"]);
   expect(read("packed/src/main.ts")).toBe(readFileSync(join(pkg, "template/src/main.ts"), "utf8"));
   expect(readdirSync(join(scratch, "packed/assets")).sort()).toEqual([".gitkeep", "fonts", "looks"]);
   expect(readdirSync(join(scratch, "packed/assets/fonts"))).toEqual(["latin"]);
