@@ -539,7 +539,7 @@ impl Ui {
                     n.part_box
                         .as_ref()
                         .map(|p| p.reference)
-                        .or(n.el.part)
+                        .or(n.part())
                         .or_else(|| n.el.frame.map(StylePart::part_ref)),
                 );
                 elements.push(UiElement {

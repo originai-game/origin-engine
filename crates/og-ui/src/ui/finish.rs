@@ -1212,13 +1212,10 @@ impl Ui {
         // decides its own as it builds (its label's ink follows the art).
         for k in 0..self.tree.orders.with(visit::feat::BUTTON_PART).len() {
             let i = self.tree.orders.with(visit::feat::BUTTON_PART)[k];
-            let build = self.tree.build();
             let n = &mut self.tree.nodes[i];
-            if n.placed.rect.width < NARROW_BUTTON
-                && let Some(p) = n.el.write(build).part.as_mut()
-            {
-                *p = p.flag("narrow");
-                n.layout.used.part = n.el.part;
+            if n.placed.rect.width < NARROW_BUTTON && n.el.part.is_some() {
+                n.placed.narrow = true;
+                n.layout.used.part = n.part();
             }
         }
         // Parts a style dresses, and game draws it may restyle.
