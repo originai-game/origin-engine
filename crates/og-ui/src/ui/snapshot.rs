@@ -408,7 +408,7 @@ impl Ui {
         self.restore_docs_state(&docs).map_err(bad)?;
         self.state = s;
         self.kept = Default::default();
-        self.paint_cache = Default::default();
+        self.paint.cache = Default::default();
         self.style.motion = Default::default();
         self.invalidation = Default::default();
         // What nodes say next is the restored state, not news.

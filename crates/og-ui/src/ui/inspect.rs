@@ -76,9 +76,9 @@ impl Ui {
             ui.kinds[i] = k;
         }
         ui.floating = self.prev_floating.clone();
-        ui.draws = self.prev_draws.clone();
+        ui.draws = self.paint.prev_draws.clone();
         ui.building = false;
-        ui.inspection = Default::default();
+        ui.paint.inspection = Default::default();
         std::borrow::Cow::Owned(ui)
     }
 
@@ -110,7 +110,8 @@ impl Ui {
     /// its name, value, states and bounds, and the focus order
     /// (`crate::a11y`).
     pub fn a11y(&self) -> &crate::a11y::A11yTree {
-        self.inspection
+        self.paint
+            .inspection
             .a11y
             .get_or_init(|| self.finished().inspected_a11y())
     }
@@ -118,7 +119,7 @@ impl Ui {
     /// Overlaps between elements (docs/ui.md §2), other than those the
     /// engine places on purpose, for `og ui check`.
     pub fn overlaps(&self) -> &[Overlap] {
-        self.inspection.overlaps.get_or_init(|| {
+        self.paint.inspection.overlaps.get_or_init(|| {
             let ui = self.finished();
             ui.find_overlaps(&ui.inspected_preorder())
         })
@@ -127,7 +128,7 @@ impl Ui {
     /// The paths of the elements whose props say dense (a dense HUD's
     /// readouts, docs/ui.md §6.1), each covering its subtree.
     pub fn dense(&self) -> &[String] {
-        self.inspection.dense.get_or_init(|| {
+        self.paint.inspection.dense.get_or_init(|| {
             let ui = self.finished();
             ui.inspected_preorder()
                 .into_iter()
@@ -141,7 +142,7 @@ impl Ui {
     /// tracks dragged sideways (a carousel's): a line their edge cuts
     /// across scrolls into view.
     pub fn sideways(&self) -> &[String] {
-        self.inspection.sideways.get_or_init(|| {
+        self.paint.inspection.sideways.get_or_init(|| {
             let ui = self.finished();
             ui.inspected_preorder()
                 .into_iter()
@@ -160,7 +161,7 @@ impl Ui {
 
     /// Elements in visual states and the animations in flight, for `dump_ui`.
     pub fn motion_dump(&self) -> &[crate::motion::run::MotionDump] {
-        self.inspection.motion.get_or_init(|| {
+        self.paint.inspection.motion.get_or_init(|| {
             let ui = self.finished();
             ui.motion_dump_of(&ui.inspected_draw_order())
         })
@@ -489,7 +490,8 @@ impl Ui {
     }
 
     fn inspected_elements(&self) -> &(Vec<UiElement>, Vec<Option<crate::dress::PartRef>>) {
-        self.inspection
+        self.paint
+            .inspection
             .elements
             .get_or_init(|| self.finished().element_list())
     }

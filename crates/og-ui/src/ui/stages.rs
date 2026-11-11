@@ -92,3 +92,26 @@ pub(crate) struct Style {
     /// The motion pass's memory between ticks.
     pub(crate) motion: crate::layout::MotionCache,
 }
+
+/// Paint: its reuse cache, the part and decoration draws, the map being drawn and the last frame's draws and inspection.
+#[derive(Clone, Debug)]
+pub(crate) struct Paint {
+    /// This frame's command ranges kept from last frame's paint, in order.
+    pub(crate) kept_spans: Vec<std::ops::Range<usize>>,
+    /// What each part of this frame draws through the UI pass, by node
+    /// (made at `end` from its dressing, or the tokens).
+    pub(crate) part_draws: std::collections::HashMap<usize, crate::paint::ElementDraw>,
+    /// Parts whose computed paint changed since the preceding frame.
+    pub(crate) part_changed: std::collections::HashSet<usize>,
+    /// This frame's draws of elements with CSS box decorations: their
+    /// draw or dressing with the decorations over it.
+    pub(crate) decor_draws: std::collections::HashMap<usize, crate::paint::ElementDraw>,
+    /// The map of the element whose commands are being made: a nine-slice
+    /// is cut at its size on the screen, its corners kept crisp.
+    pub(crate) drawing: Affine,
+    pub(crate) prev_draws: std::collections::HashMap<usize, crate::paint::ElementDraw>,
+    /// The last frame's inspection, made when asked for (`inspect`).
+    pub(crate) inspection: inspect::Inspection,
+    /// Last frame's paint, for reuse.
+    pub(crate) cache: crate::layout::PaintCache,
+}

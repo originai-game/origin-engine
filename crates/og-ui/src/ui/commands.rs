@@ -297,16 +297,16 @@ impl Ui {
         let dpr = self.env.viewport.dpr();
         let snap = |v: f32| crate::layout::snap(v, dpr);
         let ends = std::mem::take(&mut self.orders.ends);
-        let mut last = std::mem::take(&mut self.paint_cache.last_cmds);
-        self.paint_cache.prev_len = last.len();
-        self.paint_cache.aligned.clear();
-        self.paint_cache.aligned_kept = 0;
-        self.paint_cache.shifted_out = false;
-        self.paint_cache.copied.clear();
+        let mut last = std::mem::take(&mut self.paint.cache.last_cmds);
+        self.paint.cache.prev_len = last.len();
+        self.paint.cache.aligned.clear();
+        self.paint.cache.aligned_kept = 0;
+        self.paint.cache.shifted_out = false;
+        self.paint.cache.copied.clear();
         let mut cmds: Vec<(DrawCmd, Affine)> = Vec::with_capacity(last.len());
         let ghosts = std::mem::take(&mut self.state.motion.ghosts);
         let mut drawn = vec![false; ghosts.len()];
-        self.paint_cache.named.clear();
+        self.paint.cache.named.clear();
         let mut frozen: IdMap<u64, crate::motion::state::Frozen> = IdMap::new();
         // Open subtrees: (node, its first command, the order position past
         // it, where its commands began in last frame's list).
@@ -314,9 +314,9 @@ impl Ui {
         // Focus rings waiting for the subtree they draw over (`ring_over`).
         let mut rings: Vec<(usize, Vec<(DrawCmd, Affine)>)> = Vec::new();
         let prev_kinds = std::mem::take(&mut self.prev_kinds);
-        self.kept_spans.clear();
+        self.paint.kept_spans.clear();
         let reuse = self.paint_reuse(order, &ends, changed, &ghosts, &prev_kinds);
-        self.paint_cache.repainted = reuse.repainted.clone();
+        self.paint.cache.repainted = reuse.repainted.clone();
         let mut reused_roots = true;
         let theme = self.env.theme;
         // An element's draw (crate::paint) in its layout box, at its
@@ -337,7 +337,7 @@ impl Ui {
             let i = order[k];
             // Where its subtree's commands began in last frame's list.
             let up = open.last().map(|o| o.3);
-            let at_last = match self.paint_cache.ranges.get(&self.nodes[i].key) {
+            let at_last = match self.paint.cache.ranges.get(&self.nodes[i].key) {
                 Some(&(rel, len, count)) => match up {
                     Some(Some(base)) => Some((base + rel, len, count)),
                     Some(None) => None,
@@ -367,7 +367,7 @@ impl Ui {
                         c
                     }));
                     self.moved_subtree(&order[k..ends[k]], dx, dy);
-                    self.paint_cache.shifted_out = true;
+                    self.paint.cache.shifted_out = true;
                 } else if cmds.is_empty() && from == 0 && len == last.len() {
                     // Last frame's whole list, as it was: taken, not copied.
                     cmds = std::mem::take(&mut last);
@@ -378,7 +378,8 @@ impl Ui {
                     #[cfg(debug_assertions)]
                     if bounded::checking() {
                         assert!(
-                            self.paint_cache
+                            self.paint
+                                .cache
                                 .aligned
                                 .last()
                                 .is_none_or(|r| r.end <= from),
@@ -394,15 +395,16 @@ impl Ui {
                 } else {
                     cmds.extend_from_slice(&last[from..from + len]);
                 }
-                self.kept_spans.push(start..cmds.len());
-                self.paint_cache.copied.push((start, from, len, (dx, dy)));
+                self.paint.kept_spans.push(start..cmds.len());
+                self.paint.cache.copied.push((start, from, len, (dx, dy)));
                 if !moved && from == start {
-                    self.paint_cache.aligned.push(start..cmds.len());
-                    self.paint_cache.aligned_kept += 1;
+                    self.paint.cache.aligned.push(start..cmds.len());
+                    self.paint.cache.aligned_kept += 1;
                 }
                 self.out.stats.kept_commands += count;
                 let base = open.last().map_or(0, |o| o.1);
-                self.paint_cache
+                self.paint
+                    .cache
                     .ranges
                     .insert(self.nodes[i].key, (start - base, len, count));
                 k = ends[k];
@@ -482,7 +484,7 @@ impl Ui {
                 let mut background = 0;
                 let mut kept_now = false;
                 if reuse.same(i)
-                    && let Some((b, c, _)) = self.paint_cache.cmds.get(&n.key)
+                    && let Some((b, c, _)) = self.paint.cache.cmds.get(&n.key)
                 {
                     (background, local) = (*b, c.clone());
                     self.out.stats.kept_commands += 1;
@@ -506,9 +508,9 @@ impl Ui {
                         // Drawn in its layout box: its screen clip taken there.
                         let screen_clip = n.clip;
                         self.nodes[i].clip = inv.map_rect(&draw_clip);
-                        self.drawing = world;
+                        self.paint.drawing = world;
                         background = self.node_commands(i, &mut local, &snap);
-                        self.drawing = Affine::IDENTITY;
+                        self.paint.drawing = Affine::IDENTITY;
                         self.nodes[i].clip = screen_clip;
                     }
                     if accent.is_some() {
@@ -524,7 +526,8 @@ impl Ui {
                 }
                 let key = self.nodes[i].key;
                 if !kept_now {
-                    self.paint_cache
+                    self.paint
+                        .cache
                         .cmds
                         .insert(key, (background, local.clone(), sig));
                 }
@@ -544,8 +547,8 @@ impl Ui {
                 cmds.extend(text.into_iter().map(|c| (c, world)));
                 // Kept commands were read for missing glyphs when painted.
                 if kept_at.is_some() {
-                    self.kept_spans.push(from..behind);
-                    self.kept_spans.push(over..cmds.len());
+                    self.paint.kept_spans.push(from..behind);
+                    self.paint.kept_spans.push(over..cmds.len());
                 }
             } else {
                 cmds.extend(over_background(self));
@@ -560,9 +563,9 @@ impl Ui {
             } else if let Some(inv) = world.invert() {
                 let screen_clip = self.nodes[i].clip;
                 self.nodes[i].clip = inv.map_rect(&draw_clip);
-                self.drawing = world;
+                self.paint.drawing = world;
                 self.focus_ring_commands(i, &mut ring);
-                self.drawing = Affine::IDENTITY;
+                self.paint.drawing = Affine::IDENTITY;
                 self.nodes[i].clip = screen_clip;
             }
             if !ring.is_empty() {
@@ -580,7 +583,7 @@ impl Ui {
                 // its own: its layer ends with its own drawing.
                 cmds.push((plane_end(self.nodes[i].key, clip), Affine::IDENTITY));
             }
-            self.paint_cache.sigs_set(i, self.nodes[i].key, sig);
+            self.paint.cache.sigs_set(i, self.nodes[i].key, sig);
             open.push((i, start, ends[k], at_last.map(|a| a.0), k));
             k += 1;
             self.close_subtrees(
@@ -603,13 +606,13 @@ impl Ui {
         self.state.motion.frozen = frozen;
         self.nest_named();
         // The same trees as last frame, each drawn whole as it was.
-        let same_roots = self.orders.roots == self.paint_cache.last_roots;
-        self.paint_cache.last_roots.clone_from(&self.orders.roots);
+        let same_roots = self.orders.roots == self.paint.cache.last_roots;
+        self.paint.cache.last_roots.clone_from(&self.orders.roots);
         self.orders.ends = ends;
-        self.paint_cache.reuse = reuse;
-        self.paint_cache.reused_all =
+        self.paint.cache.reuse = reuse;
+        self.paint.cache.reused_all =
             reused_roots && same_roots && !self.invalidation.fresh && !self.invalidation.whole;
-        self.paint_cache.prev_cmds = last;
+        self.paint.cache.prev_cmds = last;
         cmds
     }
 
@@ -759,9 +762,9 @@ impl Ui {
                         nj.clip,
                     );
                     // Every later command moves one place: no span is kept.
-                    self.kept_spans.retain(|r| r.end <= first);
-                    self.paint_cache.aligned.retain(|r| r.end <= first);
-                    shift_named(&mut self.paint_cache.named, first);
+                    self.paint.kept_spans.retain(|r| r.end <= first);
+                    self.paint.cache.aligned.retain(|r| r.end <= first);
+                    shift_named(&mut self.paint.cache.named, first);
                     cmds.insert(first, (begin, nj.world));
                     cmds.push((end, nj.world));
                 }
@@ -770,9 +773,9 @@ impl Ui {
                 let nj = &self.nodes[j];
                 if nj.sampled.blur > 0.0 {
                     let (begin, end) = blur_layer(nj.sampled.blur, nj.rect, nj.clip);
-                    self.kept_spans.retain(|r| r.end <= first);
-                    self.paint_cache.aligned.retain(|r| r.end <= first);
-                    shift_named(&mut self.paint_cache.named, first);
+                    self.paint.kept_spans.retain(|r| r.end <= first);
+                    self.paint.cache.aligned.retain(|r| r.end <= first);
+                    shift_named(&mut self.paint.cache.named, first);
                     cmds.insert(first, (begin, nj.world));
                     cmds.push((end, nj.world));
                 }
@@ -784,7 +787,7 @@ impl Ui {
                         "auto" | "match-element" => crate::view_transition::element_name(key),
                         n => n.to_string(),
                     };
-                    self.paint_cache.named.push(crate::view_transition::Named {
+                    self.paint.cache.named.push(crate::view_transition::Named {
                         node: j,
                         key,
                         name,
@@ -804,7 +807,8 @@ impl Ui {
                 // Its range for the next frame, from its parent's start.
                 let base = open.last().map_or(0, |o| o.1);
                 let count = (k - pos) as u32;
-                self.paint_cache
+                self.paint
+                    .cache
                     .ranges
                     .insert(self.nodes[j].key, (first - base, cmds.len() - first, count));
             }
@@ -828,27 +832,27 @@ impl Ui {
         prev_kinds: &std::collections::HashMap<usize, (&'static str, bool)>,
     ) -> Reuse {
         let n = self.nodes.len();
-        let mut r = std::mem::take(&mut self.paint_cache.reuse);
+        let mut r = std::mem::take(&mut self.paint.cache.reuse);
         r.begin(n);
         // The bounded frame's check paints its whole twin afresh.
         if self.invalidation.fresh || self.invalidation.whole || self.tree.all_restructured {
-            let p = &mut self.paint_cache;
+            let p = &mut self.paint.cache;
             p.volatile.clear();
             p.ringed.clear();
             for &i in order {
                 r.set(i, false, false, (f32::NAN, f32::NAN));
                 let (v, ring) = self.paints_alone(i);
                 if v {
-                    self.paint_cache.volatile.insert(i);
+                    self.paint.cache.volatile.insert(i);
                 }
                 if ring {
-                    self.paint_cache.ringed.insert(i);
+                    self.paint.cache.ringed.insert(i);
                 }
             }
             r.repainted = None;
             return r;
         }
-        let (o, p) = (&self.orders, &mut self.paint_cache);
+        let (o, p) = (&self.orders, &mut self.paint.cache);
         // What the frame draws again on its own, kept until it does not.
         p.volatile.retain(|&i| o.pos[i] != u32::MAX);
         p.ringed.retain(|&i| o.pos[i] != u32::MAX);
@@ -856,7 +860,7 @@ impl Ui {
             .draws
             .keys()
             .chain(&self.tree.restructured)
-            .chain(&self.part_changed)
+            .chain(&self.paint.part_changed)
             .copied()
             .collect();
         let keyed = ghosts
@@ -928,7 +932,7 @@ impl Ui {
                 } else {
                     // A retained node not written again: its own inputs are
                     // as they were; what the frame moves is in its signature.
-                    self.paint_cache.sigs.get(i).is_some_and(|s| {
+                    self.paint.cache.sigs.get(i).is_some_and(|s| {
                         s.is_some_and(|(k, sig)| {
                             k == node.key && sig == crate::layout::DrawSig::of(node)
                         })
@@ -941,7 +945,7 @@ impl Ui {
             } else if !written(i)
                 && !self.draws.contains_key(&i)
                 && !matches!(node.content, Content::Rich(_))
-                && let Some(Some((k, old))) = self.paint_cache.sigs.get(i)
+                && let Some(Some((k, old))) = self.paint.cache.sigs.get(i)
                 && *k == node.key
                 && let Some(d) = crate::layout::DrawSig::of(node).moved_from(old)
                 && parent.is_none_or(|p| p == (0.0, 0.0) || p == d)
@@ -951,7 +955,7 @@ impl Ui {
                 (f32::NAN, f32::NAN)
             };
             let (own_volatile, ring) = self.paints_alone(i);
-            let p = &mut self.paint_cache;
+            let p = &mut self.paint.cache;
             if own_volatile {
                 p.volatile.insert(i);
             } else {
@@ -986,7 +990,7 @@ impl Ui {
         // A focus ring is drawn at the end of the subtree it draws over
         // (`ring_over`): that subtree is copied whole with it or not at
         // all, never a part of it below.
-        let ringed: Vec<usize> = self.paint_cache.ringed.iter().copied().collect();
+        let ringed: Vec<usize> = self.paint.cache.ringed.iter().copied().collect();
         for i in ringed {
             let over = self.ring_over(i);
             let mut j = i;
@@ -1033,16 +1037,17 @@ impl Ui {
     fn moved_subtree(&mut self, nodes: &[usize], dx: f32, dy: f32) {
         for &j in nodes {
             let key = self.nodes[j].key;
-            self.paint_cache
+            self.paint
+                .cache
                 .sigs_set(j, key, crate::layout::DrawSig::of(&self.nodes[j]));
-            if let Some((_, local, sig)) = self.paint_cache.cmds.get_mut(&key) {
+            if let Some((_, local, sig)) = self.paint.cache.cmds.get_mut(&key) {
                 if local.iter().all(shiftable) {
                     for c in local.iter_mut() {
                         shift(c, dx, dy);
                     }
                     *sig = crate::layout::DrawSig::of(&self.nodes[j]);
                 } else {
-                    self.paint_cache.cmds.remove(&key);
+                    self.paint.cache.cmds.remove(&key);
                 }
             }
         }
