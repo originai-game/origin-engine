@@ -226,10 +226,8 @@ pub struct Probe {
     pub(crate) timeline: timeline::Recorder,
     /// Fields `set` and `patch` wrote (`save_scene` writes them back).
     tuned: BTreeSet<String>,
-    /// The last tick's milliseconds per system and per render pass.
-    systems_ms: Vec<(String, f64)>,
-    passes_ms: Vec<(String, f64)>,
-    gpu_passes_ms: Vec<(String, f64)>,
+    /// The host's last measurements, for `state().timings`.
+    pub(crate) stats: state::Stats,
     /// The command channel: the registered actions and the ones modules push.
     pub(crate) commands: state::Commands,
     /// The script's steps waiting to run, and the screenshot that holds them.
@@ -238,9 +236,6 @@ pub struct Probe {
     next_snapshot: u64,
     /// Whether the next tick runs: the holds and the host's hooks around a tick.
     pub(crate) clock: state::Clock,
-    step_ms: f64,
-    render_ms: f64,
-    triangles: u64,
     /// What a run hands back to the host: output files and log lines.
     pub(crate) out: state::Out,
     /// The input being injected: where the pointer is and when in the tick.
@@ -470,9 +465,14 @@ impl Probe {
             },
             timeline: timeline::Recorder::default(),
             tuned: BTreeSet::new(),
-            systems_ms: Vec::new(),
-            passes_ms: Vec::new(),
-            gpu_passes_ms: Vec::new(),
+            stats: state::Stats {
+                systems_ms: Vec::new(),
+                passes_ms: Vec::new(),
+                gpu_passes_ms: Vec::new(),
+                step_ms: 0.0,
+                render_ms: 0.0,
+                triangles: 0,
+            },
             inject: state::Inject {
                 stamp: 0.0,
                 pointer: (0.0, 0.0),
@@ -499,9 +499,6 @@ impl Probe {
                 gate: None,
                 replay_until: 0,
             },
-            step_ms: 0.0,
-            render_ms: 0.0,
-            triangles: 0,
             out: state::Out {
                 outputs: Vec::new(),
                 log: Vec::new(),
@@ -683,12 +680,12 @@ impl Probe {
     /// The last tick's timings for `state().timings`, measured by the host.
     /// The last frame's main-pass triangles (`ProbeTimings.triangles`).
     pub fn set_triangles(&mut self, triangles: u64) {
-        self.triangles = triangles;
+        self.stats.triangles = triangles;
     }
 
     pub fn set_timings(&mut self, step_ms: f64, render_ms: f64) {
-        self.step_ms = step_ms;
-        self.render_ms = render_ms;
+        self.stats.step_ms = step_ms;
+        self.stats.render_ms = render_ms;
     }
 
     /// The last tick's milliseconds per system (in run order) and the last
@@ -702,9 +699,9 @@ impl Probe {
         passes: Vec<(String, f64)>,
         gpu: Vec<(String, f64)>,
     ) {
-        self.systems_ms = systems;
-        self.passes_ms = passes;
-        self.gpu_passes_ms = gpu;
+        self.stats.systems_ms = systems;
+        self.stats.passes_ms = passes;
+        self.stats.gpu_passes_ms = gpu;
     }
 
     /// Probe ids over the world's names (`World::set_name` names entities).
