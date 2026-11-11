@@ -23,7 +23,7 @@ pub const FIELD: usize = 300;
 /// Descriptions over budget that predate it. `og api check` fails when the
 /// count grows past this; each one fixed lowers it, and at zero any
 /// description over budget fails.
-pub const BACKLOG: usize = 340;
+pub const BACKLOG: usize = 16;
 
 /// One description over its budget.
 #[derive(Debug, Clone, PartialEq)]
@@ -79,7 +79,12 @@ pub fn over(api: &Api) -> Vec<Over> {
             match item {
                 Item::Fn(f) => function(&mut check, &m.name, f),
                 Item::Const(c) => check(format!("const {}", c.name), &c.doc, c.line, FIELD),
-                Item::Value(v) => check(format!("value {}.{}", m.name, v.name), &v.doc, v.line, FIELD),
+                Item::Value(v) => check(
+                    format!("value {}.{}", m.name, v.name),
+                    &v.doc,
+                    v.line,
+                    FIELD,
+                ),
                 Item::Handle(h) => check(format!("handle {}", h.name), &h.doc, h.line, ITEM),
                 Item::Struct(s) => {
                     check(format!("struct {}", s.name), &s.doc, s.line, ITEM);
@@ -88,7 +93,12 @@ pub fn over(api: &Api) -> Vec<Over> {
                 Item::Enum(e) => {
                     check(format!("enum {}", e.name), &e.doc, e.line, ITEM);
                     for v in e.variants.iter().chain(&e.patterns) {
-                        check(format!("variant {}.{}", e.name, v.name), &v.doc, v.line, FIELD);
+                        check(
+                            format!("variant {}.{}", e.name, v.name),
+                            &v.doc,
+                            v.line,
+                            FIELD,
+                        );
                     }
                 }
                 Item::Union(u) => {
@@ -111,12 +121,22 @@ pub fn over(api: &Api) -> Vec<Over> {
                 Item::Callback(c) => {
                     check(format!("callback {}", c.name), &c.doc, c.line, ITEM);
                     for p in &c.params {
-                        check(format!("param {}({})", c.name, p.name), &p.doc, p.line, FIELD);
+                        check(
+                            format!("param {}({})", c.name, p.name),
+                            &p.doc,
+                            p.line,
+                            FIELD,
+                        );
                     }
                 }
                 Item::Column(c) => check(format!("column {}", c.name), &c.doc, c.line, ITEM),
                 Item::Record(r) => {
-                    check(format!("{} {}", r.kind.as_str(), r.name), &r.doc, r.line, ITEM);
+                    check(
+                        format!("{} {}", r.kind.as_str(), r.name),
+                        &r.doc,
+                        r.line,
+                        ITEM,
+                    );
                     fields(&mut check, &r.name, &r.fields);
                     for f in &r.methods {
                         function(&mut check, &r.name, f);

@@ -6,7 +6,9 @@ Module [`anim`](../anim.md) · [index](../index.md)
 
 ### `og.anim.retarget`
 
-A new clip for `target` from a clip of `source`: each animated humanoid bone turns as the source's does from its rest pose (after a rest correction, so a T-pose drives an A-pose and other bone frames agree; fingers turn from their hand, so a hand pose holds whatever the arm does), the target keeps its bone lengths, the hips travel the source's distance scaled by the leg ratio (root motion kept, hip height scaled), and with footIk the feet land where the source's do, scaled, on the ground each rig's `footHeight` names (else its rest pose's foot heights). The target's twist bones (unmapped nodes named `twist`, or Rigify's `DEF-….001`, on an upper or lower arm or leg) take a share of their segment's twist by how far along it they sit. Same name, duration and markers. The cook does the same for a model's `animation { library }` import setting; this is for clips chosen at run time.
+A new clip for `target` from a clip of `source`: each animated humanoid bone turns as the source's does from its rest pose (after a rest correction; fingers from their hand), bone lengths stay the target's, the hips travel the source's distance scaled by the leg ratio (root motion kept, hip height scaled), and with footIk the feet land where the source's do, scaled, on the ground each rig's `footHeight` names (else its rest foot heights). Twist bones (unmapped nodes named `twist`, or Rigify's `DEF-….001`, on a limb) take a share of its twist by position. Same name, duration and markers.
+
+See `animation §7`.
 
 ```ts
 og.anim.retarget(world: World, desc?: RetargetDesc): Result<ClipInfo>
@@ -23,11 +25,12 @@ Binding symbol `og_anim_retarget` · publish builds: kept
 
 ```ogt
 fn retarget {
-  doc "A new clip for `target` from a clip of `source`: each animated humanoid bone turns as the source's does from its rest pose (after a rest correction, so a T-pose drives an A-pose and other bone frames agree; fingers turn from their hand, so a hand pose holds whatever the arm does), the target keeps its bone lengths, the hips travel the source's distance scaled by the leg ratio (root motion kept, hip height scaled), and with footIk the feet land where the source's do, scaled, on the ground each rig's `footHeight` names (else its rest pose's foot heights). The target's twist bones (unmapped nodes named `twist`, or Rigify's `DEF-….001`, on an upper or lower arm or leg) take a share of their segment's twist by how far along it they sit. Same name, duration and markers. The cook does the same for a model's `animation { library }` import setting; this is for clips chosen at run time."
+  doc "A new clip for `target` from a clip of `source`: each animated humanoid bone turns as the source's does from its rest pose (after a rest correction; fingers from their hand), bone lengths stay the target's, the hips travel the source's distance scaled by the leg ratio (root motion kept, hip height scaled), and with footIk the feet land where the source's do, scaled, on the ground each rig's `footHeight` names (else its rest foot heights). Twist bones (unmapped nodes named `twist`, or Rigify's `DEF-….001`, on a limb) take a share of its twist by position. Same name, duration and markers."
+  guide "animation §7"
   param world World "The world whose animation owns the skeletons and the clip."
   param desc RetargetDesc "The clip, the two skeletons and their rigs."
   returns Result.ClipInfo "The new clip (what AnimationPlayer.clip takes). Refused for an unregistered clip, skeleton or rig, a skeleton without recognisable hips (name them in a `type rig` file), or a rig naming a missing node."
 }
 ```
 
-<sub>Module `anim` line 632</sub>
+<sub>Module `anim` line 638</sub>

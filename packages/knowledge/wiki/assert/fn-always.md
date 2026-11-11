@@ -37,4 +37,4 @@ fn always {
 }
 ```
 
-<sub>Module `assert` line 168</sub>
+<sub>Module `assert` line 166</sub>

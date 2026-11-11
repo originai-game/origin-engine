@@ -30,4 +30,4 @@ fn status {
 }
 ```
 
-<sub>Module `stream` line 121</sub>
+<sub>Module `stream` line 122</sub>

@@ -2,9 +2,11 @@
 
 # The `art` module
 
-A game's art contract: what every asset of its style holds, as seven resources a look sets beside the render ones (docs/art.md §2.1): the palette its texels sit on (ArtPalette), one pixel size for 2D art (ArtPixels), one texel density for 3D surfaces (ArtTexels), the shape language of its models (ArtShape), its line (ArtLine), the step of its motion (ArtMotion) and its camera (ArtCamera). A style is the assets, not a filter on the frame: the look's render resources treat the frame, these say what the assets themselves must be.
+A game's art contract: what every asset of its style holds, as seven resources a look sets beside the render ones (docs/art.md §2.1): ArtPalette, ArtPixels, ArtTexels, ArtShape, ArtLine, ArtMotion and ArtCamera. A style is the assets, not a filter on the frame.
 
-Every field is no constraint at its zero value (0, false, the first variant, an empty list), so a look without these blocks, and every game made before them, cooks and draws exactly as before. The built-in presets (templates/looks/<slug>.ogt) carry each catalogue style's values and a game's look overrides them field by field. They are resources, so game code reads the contract too (a sprite snapping to ArtPixels.unit, a spawner picking colours from ArtPalette); project.ogt's `look` names the look whose contract the cook reads. Writing them changes neither the frame nor the simulation: the cook's conformance of assets, the runtime defaults from them and og style check are docs/art.md §2.3 to §2.5.
+Every field is no constraint at its zero value, so a look without these blocks cooks and draws as before. Writing them changes neither the frame nor the simulation; the cook reads the contract of project.ogt's `look`.
+
+See `art-review §6`.
 
 - **TypeScript**: functions are none at module level (its members live on the types below); components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
@@ -12,8 +14,8 @@ Every field is no constraint at its zero value (0, false, the first variant, an 
 
 ```ogt
 module art {
-  doc "A game's art contract: what every asset of its style holds, as seven resources a look sets beside the render ones (docs/art.md §2.1): the palette its texels sit on (ArtPalette), one pixel size for 2D art (ArtPixels), one texel density for 3D surfaces (ArtTexels), the shape language of its models (ArtShape), its line (ArtLine), the step of its motion (ArtMotion) and its camera (ArtCamera). A style is the assets, not a filter on the frame: the look's render resources treat the frame, these say what the assets themselves must be."
-  doc "Every field is no constraint at its zero value (0, false, the first variant, an empty list), so a look without these blocks, and every game made before them, cooks and draws exactly as before. The built-in presets (templates/looks/<slug>.ogt) carry each catalogue style's values and a game's look overrides them field by field. They are resources, so game code reads the contract too (a sprite snapping to ArtPixels.unit, a spawner picking colours from ArtPalette); project.ogt's `look` names the look whose contract the cook reads. Writing them changes neither the frame nor the simulation: the cook's conformance of assets, the runtime defaults from them and og style check are docs/art.md §2.3 to §2.5."
+  doc "A game's art contract: what every asset of its style holds, as seven resources a look sets beside the render ones (docs/art.md §2.1): ArtPalette, ArtPixels, ArtTexels, ArtShape, ArtLine, ArtMotion and ArtCamera. A style is the assets, not a filter on the frame."
+  doc "Every field is no constraint at its zero value, so a look without these blocks cooks and draws as before. Writing them changes neither the frame nor the simulation; the cook reads the contract of project.ogt's `look`."
   # declarations follow, each on its own page
 ```
 
@@ -68,7 +70,7 @@ column ArtRotation {
 }
 ```
 
-<sub>Module `art` line 13</sub>
+<sub>Module `art` line 14</sub>
 
 ```ogt
 column ArtFilter {
@@ -79,7 +81,7 @@ column ArtFilter {
 }
 ```
 
-<sub>Module `art` line 27</sub>
+<sub>Module `art` line 28</sub>
 
 ```ogt
 column ArtMips {
@@ -90,7 +92,7 @@ column ArtMips {
 }
 ```
 
-<sub>Module `art` line 41</sub>
+<sub>Module `art` line 42</sub>
 
 ```ogt
 column ArtNormals {
@@ -101,7 +103,7 @@ column ArtNormals {
 }
 ```
 
-<sub>Module `art` line 56</sub>
+<sub>Module `art` line 57</sub>
 
 ```ogt
 column ArtLinePlace {
@@ -112,7 +114,7 @@ column ArtLinePlace {
 }
 ```
 
-<sub>Module `art` line 70</sub>
+<sub>Module `art` line 71</sub>
 
 ```ogt
 column ArtBrush {
@@ -123,7 +125,7 @@ column ArtBrush {
 }
 ```
 
-<sub>Module `art` line 84</sub>
+<sub>Module `art` line 85</sub>
 
 ```ogt
 column ArtProjection {
@@ -134,4 +136,4 @@ column ArtProjection {
 }
 ```
 
-<sub>Module `art` line 98</sub>
+<sub>Module `art` line 99</sub>

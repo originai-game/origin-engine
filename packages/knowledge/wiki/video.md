@@ -2,9 +2,11 @@
 
 # The `video` module
 
-Footage in a game (docs/design.md §2.9): a `type video` asset cooked by ffmpeg, loaded with og.load.video and played by og.VideoPlayer. A clip (the default, for short loops: at most 256 frames) is cooked into a texture array of its frames; a stream (`stream true`: any length) is cooked to AV1 and decoded as it plays, natively by rav1d on a thread of its own, on the web by WebCodecs, or by rav1d in a Worker of its own where the browser has no AV1 decoder (og.video.capabilities says which). Either way the frame shown is a Texture (VideoInfo.texture, also VideoPlayer.texture) any material map, og.Sprite or UI image draws, and the sound plays on the entity's og.AudioSource in step with it.
+Footage in a game (docs/design.md §2.9): a `type video` asset cooked by ffmpeg, loaded with og.load.video and played by og.VideoPlayer. A clip (the default: at most 256 frames) is cooked into a texture array; a stream (`stream true`: any length) is cooked to AV1 and decoded as it plays. The frame is a Texture; the sound plays on the entity's og.AudioSource in step with it.
 
-Playback is simulation, decoding is presentation: the og.video system (after the game's systems, before og.audio) advances VideoPlayer.time by the tick's dt times `speed` (not the time scale, so the picture stays with its sound; a paused game, whose ticks do not run, pauses both), so the frame a player is at on a tick is the same on both hosts, in every run and after a snapshot is restored. With a 30 Hz tick a player started at 0 is at the source's frame 3 s in at tick 90. A stream's texture shows that frame once it is decoded: an executor (og run, og render, og test) waits for it, so every capture shows exactly its tick's frame; a game on the web keeps the last frame decoded until it is, and nothing the decoder has or has not finished reaches the world.
+Playback is simulation, decoding is presentation: og.video advances VideoPlayer.time each tick, so a player's frame on a tick is the same on both hosts and after a restore; nothing the decoder has finished reaches the world.
+
+See `audio §8`.
 
 - **TypeScript**: functions are the namespace `og.video`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
@@ -12,8 +14,8 @@ Playback is simulation, decoding is presentation: the og.video system (after the
 
 ```ogt
 module video {
-  doc "Footage in a game (docs/design.md §2.9): a `type video` asset cooked by ffmpeg, loaded with og.load.video and played by og.VideoPlayer. A clip (the default, for short loops: at most 256 frames) is cooked into a texture array of its frames; a stream (`stream true`: any length) is cooked to AV1 and decoded as it plays, natively by rav1d on a thread of its own, on the web by WebCodecs, or by rav1d in a Worker of its own where the browser has no AV1 decoder (og.video.capabilities says which). Either way the frame shown is a Texture (VideoInfo.texture, also VideoPlayer.texture) any material map, og.Sprite or UI image draws, and the sound plays on the entity's og.AudioSource in step with it."
-  doc "Playback is simulation, decoding is presentation: the og.video system (after the game's systems, before og.audio) advances VideoPlayer.time by the tick's dt times `speed` (not the time scale, so the picture stays with its sound; a paused game, whose ticks do not run, pauses both), so the frame a player is at on a tick is the same on both hosts, in every run and after a snapshot is restored. With a 30 Hz tick a player started at 0 is at the source's frame 3 s in at tick 90. A stream's texture shows that frame once it is decoded: an executor (og run, og render, og test) waits for it, so every capture shows exactly its tick's frame; a game on the web keeps the last frame decoded until it is, and nothing the decoder has or has not finished reaches the world."
+  doc "Footage in a game (docs/design.md §2.9): a `type video` asset cooked by ffmpeg, loaded with og.load.video and played by og.VideoPlayer. A clip (the default: at most 256 frames) is cooked into a texture array; a stream (`stream true`: any length) is cooked to AV1 and decoded as it plays. The frame is a Texture; the sound plays on the entity's og.AudioSource in step with it."
+  doc "Playback is simulation, decoding is presentation: og.video advances VideoPlayer.time each tick, so a player's frame on a tick is the same on both hosts and after a restore; nothing the decoder has finished reaches the world."
   # declarations follow, each on its own page
 ```
 
@@ -29,7 +31,7 @@ module video {
 | [`VideoCapabilities`](video/type-VideoCapabilities.md) | struct |  | How this host plays streams. |
 | [`og.video.capabilities`](video/fn-capabilities.md) | function | `(world: World): VideoCapabilities` | How streams play on this host: the decoder, whether it is hardware and its largest real-time size. |
 | [`og.MediaIntent`](video/record-MediaIntent.md) | event |  | A document's `<video>` or `<audio>` asking its player to change at the next tick boundary (docs/ui.md §2), sent through the recorded intent path as UI pause is, so playback stays world state. |
-| [`og.VideoPlayer`](video/record-VideoPlayer.md) | component |  | Plays a loaded video: VideoInfo.texture shows its current frame (frame n is the source at n / fps seconds; a stream's once decoded), and when the entity has an og.AudioSource the og.video system sets… |
+| [`og.VideoPlayer`](video/record-VideoPlayer.md) | component |  | Plays a loaded video: its texture shows its current frame (frame n is the source at n / fps seconds; a stream's once decoded), and when the entity has an og.AudioSource the og.video system sets its s… |
 
 ## Column kinds
 
@@ -48,4 +50,4 @@ column Video {
 }
 ```
 
-<sub>Module `video` line 7</sub>
+<sub>Module `video` line 8</sub>

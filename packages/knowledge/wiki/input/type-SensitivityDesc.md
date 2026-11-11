@@ -6,7 +6,9 @@ Module [`input`](../input.md) · [index](../index.md)
 
 ### `SensitivityDesc` (desc struct)
 
-The player's sensitivity and inversion of an axis action on one device class: a look action's mouse and its stick each have their own (a settings screen's Mouse sensitivity and Stick sensitivity sliders, Invert Y). Kept by og.input.saveBindings, forgotten by og.input.resetBindings; a world whose player set none saves and hashes as before.
+The player's sensitivity and inversion of an axis action on one device class: a look action's mouse and its stick each have their own. Kept by og.input.saveBindings, forgotten by og.input.resetBindings.
+
+See `input §5`.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
@@ -20,7 +22,8 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 ```ogt
 struct SensitivityDesc {
-  doc "The player's sensitivity and inversion of an axis action on one device class: a look action's mouse and its stick each have their own (a settings screen's Mouse sensitivity and Stick sensitivity sliders, Invert Y). Kept by og.input.saveBindings, forgotten by og.input.resetBindings; a world whose player set none saves and hashes as before."
+  doc "The player's sensitivity and inversion of an axis action on one device class: a look action's mouse and its stick each have their own. Kept by og.input.saveBindings, forgotten by og.input.resetBindings."
+  guide "input §5"
   desc true
   field action String "The action (axis or axis2)."
   field device InputDevice "The device class it is for: keyboardMouse (the mouse's movement and the wheel; inversion turns the keys over too), any pad family (every pad), or touch (a touch stick)."
@@ -34,4 +37,4 @@ struct SensitivityDesc {
 }
 ```
 
-<sub>Module `input` line 244</sub>
+<sub>Module `input` line 245</sub>

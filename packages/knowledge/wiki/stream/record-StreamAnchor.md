@@ -13,7 +13,7 @@ Token `og.StreamAnchor`, registered under the schema name `og.StreamAnchor`; its
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `reach` | `number` | `0` | ≥ 0 | `m` | — | Added to every cell's load and unload distances for this anchor: a fast vehicle reaches further than a walker. |
-| `maxSpeed` | `number` | `0` | ≥ 0 | `mps` | — | The fastest it moves, for reading ahead: a cell's asset group (`cell` in its sub-scene's stream block) is fetched once this anchor is within the cell's load distance plus reach plus 2 seconds at this speed, so it has landed when the cell loads and the tick never waits for it. Read only for fetching, never by a tick (0: fetched at the load distance). |
+| `maxSpeed` | `number` | `0` | ≥ 0 | `mps` | — | The fastest it moves, for reading ahead: a cell's asset group is fetched once this anchor is within the cell's load distance plus reach plus 2 seconds at this speed. Read only for fetching, never by a tick (0: fetched at the load distance). See `world §5`. |
 
 ```ogt
 component StreamAnchor {
@@ -22,7 +22,8 @@ component StreamAnchor {
     unit m
     min 0
   }
-  field maxSpeed f32 "The fastest it moves, for reading ahead: a cell's asset group (`cell` in its sub-scene's stream block) is fetched once this anchor is within the cell's load distance plus reach plus 2 seconds at this speed, so it has landed when the cell loads and the tick never waits for it. Read only for fetching, never by a tick (0: fetched at the load distance)." {
+  field maxSpeed f32 "The fastest it moves, for reading ahead: a cell's asset group is fetched once this anchor is within the cell's load distance plus reach plus 2 seconds at this speed. Read only for fetching, never by a tick (0: fetched at the load distance)." {
+    guide "world §5"
     unit mps
     min 0
   }

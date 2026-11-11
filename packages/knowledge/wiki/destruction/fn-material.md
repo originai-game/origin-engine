@@ -30,4 +30,4 @@ fn material {
 }
 ```
 
-<sub>Module `destruction` line 287</sub>
+<sub>Module `destruction` line 294</sub>

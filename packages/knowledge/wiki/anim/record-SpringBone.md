@@ -6,7 +6,9 @@ Module [`anim`](../anim.md) · [index](../index.md)
 
 ### `og.SpringBone` (component)
 
-A spring (jiggle) bone chain, three-vrm's VRMSpringBone: `joint` and its `bones` - 1 parents swing after their parents' motion. Each joint's tail (the next joint of the chain; for the last joint its first child, or its parent bone continued at the same length) is a point pulled towards where the animated pose puts it by a damped spring (`frequency`, `damping`), under `gravity`, held at the bone's length, and the joint turns to point at it. Applied after og.IkChain and og.LookAt, top joint first; put it on its own entity (a tail, an ear, a strand of hair, a single jiggling node), one per chain. Deterministic under the fixed tick; the tails' positions and velocities are world state (the `og.anim` state block), so a restore continues a swing exactly. A changed chain (another skeleton, length or space) restarts at the animated pose.
+A spring (jiggle) bone chain, three-vrm's VRMSpringBone: `joint` and its `bones` - 1 parents swing after their parents' motion. Each joint's tail (the next joint; for the last, its first child or its bone continued at the same length) is pulled towards its animated place by a damped spring (`frequency`, `damping`) under `gravity`, held at the bone's length, and the joint turns to it. Applied after og.IkChain and og.LookAt, top joint first. Tail positions and velocities are world state (the `og.anim` state block); a changed chain (skeleton, length or space) restarts at the animated pose.
+
+See `animation §8`.
 
 Token `og.SpringBone`, registered under the schema name `og.SpringBone`; its value type is `SpringBone`.
 
@@ -28,7 +30,8 @@ Token `og.SpringBone`, registered under the schema name `og.SpringBone`; its val
 
 ```ogt
 component SpringBone {
-  doc "A spring (jiggle) bone chain, three-vrm's VRMSpringBone: `joint` and its `bones` - 1 parents swing after their parents' motion. Each joint's tail (the next joint of the chain; for the last joint its first child, or its parent bone continued at the same length) is a point pulled towards where the animated pose puts it by a damped spring (`frequency`, `damping`), under `gravity`, held at the bone's length, and the joint turns to point at it. Applied after og.IkChain and og.LookAt, top joint first; put it on its own entity (a tail, an ear, a strand of hair, a single jiggling node), one per chain. Deterministic under the fixed tick; the tails' positions and velocities are world state (the `og.anim` state block), so a restore continues a swing exactly. A changed chain (another skeleton, length or space) restarts at the animated pose."
+  doc "A spring (jiggle) bone chain, three-vrm's VRMSpringBone: `joint` and its `bones` - 1 parents swing after their parents' motion. Each joint's tail (the next joint; for the last, its first child or its bone continued at the same length) is pulled towards its animated place by a damped spring (`frequency`, `damping`) under `gravity`, held at the bone's length, and the joint turns to it. Applied after og.IkChain and og.LookAt, top joint first. Tail positions and velocities are world state (the `og.anim` state block); a changed chain (skeleton, length or space) restarts at the animated pose."
+  guide "animation §8"
   field skeleton Entity "The entity with the og.Skeleton whose joints this swings."
   field joint u32 "The chain's last joint (an index into the skin's joints): the tip of a tail, an ear." {
     min 0
@@ -88,4 +91,4 @@ component SpringBone {
 }
 ```
 
-<sub>Module `anim` line 442</sub>
+<sub>Module `anim` line 446</sub>

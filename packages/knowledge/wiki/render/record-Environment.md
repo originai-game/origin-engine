@@ -18,7 +18,7 @@ Token `og.Environment`, registered under the schema name `og.Environment`; its v
 | `background` | `boolean` | `false` | — | — | — | Draw the map behind the scene, as three.js scene.background = the environment (Camera.background, og.Sky and RenderSettings.sky give way); false leaves the background as they set it. |
 | `backgroundIntensity` | `number` | `1` | ≥ 0 | — | tunable | Multiplies the map where it is drawn behind the scene, as three.js scene.backgroundIntensity; the light is not changed. |
 | `backgroundBlurriness` | `number` | `0` | 0 … 1 | — | tunable | Blurs the sky where it is drawn behind the scene, as three.js scene.backgroundBlurriness: 0 sharp to 1 the roughest of the prefiltered (GGX) levels the light already reads, so it costs nothing extra; the light is not changed. Applies to the sky background with or without a map. |
-| `groundHeight` | `number` | `0` | ≥ 0 | `m` | tunable | Draws the sky on a dome with a flat ground under it, as three.js GroundedSkybox: how far above the ground the map was photographed (metres). Objects then stand on the map's ground instead of floating over its horizon, and reflections of the environment (mirrors, water, clear coats) show the same projected ground. 0 (the default) draws the sky at infinity. |
+| `groundHeight` | `number` | `0` | ≥ 0 | `m` | tunable | Draws the sky on a dome with a flat ground under it, as three.js GroundedSkybox: how far above the ground the map was photographed (metres). Objects stand on the map's ground, and the environment's reflections show it too. 0 (the default) draws the sky at infinity. See `render §4`. |
 | `groundRadius` | `number` | `100` | ≥ 0 | `m` | tunable | The grounded dome's radius (metres, larger than groundHeight), as GroundedSkybox's radius: the ground looks flat out to about this distance. |
 | `groundCenter` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | worldspace `world` | The ground point under where the map was photographed: the dome's centre is groundHeight above it. |
 | `blendTo` | `EnvironmentMap` | `0` | — | — | — | A second map from og.load.environment that the light and the background blend towards (indoor to outdoor); 0 is none. Both maps turn by rotation and the background is scaled by backgroundIntensity. |
@@ -52,7 +52,8 @@ resource Environment {
     max 1
     tunable true
   }
-  field groundHeight f32 "Draws the sky on a dome with a flat ground under it, as three.js GroundedSkybox: how far above the ground the map was photographed (metres). Objects then stand on the map's ground instead of floating over its horizon, and reflections of the environment (mirrors, water, clear coats) show the same projected ground. 0 (the default) draws the sky at infinity." {
+  field groundHeight f32 "Draws the sky on a dome with a flat ground under it, as three.js GroundedSkybox: how far above the ground the map was photographed (metres). Objects stand on the map's ground, and the environment's reflections show it too. 0 (the default) draws the sky at infinity." {
+    guide "render §4"
     default 0
     min 0
     unit m
@@ -89,4 +90,4 @@ resource Environment {
 }
 ```
 
-<sub>Module `render` line 753</sub>
+<sub>Module `render` line 818</sub>

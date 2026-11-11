@@ -28,4 +28,4 @@ fn enabled {
 }
 ```
 
-<sub>Module `debug` line 93</sub>
+<sub>Module `debug` line 94</sub>

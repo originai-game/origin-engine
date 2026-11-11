@@ -8,41 +8,50 @@ Module [`render`](../render.md) · [index](../index.md)
 
 A physically based metallic-roughness material with three.js MeshStandardMaterial parameter names.
 
-It is og-render's reflected StandardMaterial field for field: metalnessMap and roughnessMap read a glTF metallic-roughness texture (blue metal, green rough), so give both the same texture; alphaTest above 0 discards below that alpha; transparent blends, sorted back to front.
+It is og-render's reflected StandardMaterial field for field. Its tangents come from the model (the cook generates MikkTSpace ones where a glTF has none) or are generated when the geometry is made; normals follow a non-uniform scale correctly.
 
-The stylised fields: unlit (three.js MeshBasicMaterial), toon with its gradientMap ramp, a rim (fresnel) light, a hit flash, dissolve with a glowing edge, and a per-material outline. All are off at their defaults. og.MaterialStyle fills the ones a material leaves at their defaults unless the material sets styled false.
-
-The MeshPhysicalMaterial fields, under three.js's names and glTF's KHR_materials_* meanings, all off at their defaults: clearcoat with clearcoatMap, clearcoatRoughnessMap and clearcoatNormalMap; sheen (velvet, cloth) with sheenColor, sheenRoughness and their maps; transmission (glass, water) refracting the opaque scene behind through thickness, attenuationColor and ior; iridescence (soap film, oil) with its film's iridescenceIOR and iridescenceThicknessRange; anisotropy (brushed metal) along anisotropyRotation or anisotropyMap. They draw on every backend; unlit and toon materials ignore them.
-
-A transmissive material is drawn after the opaque scene, back to front with the transparent ones, and refracts what was drawn before it (not other transmissive or transparent objects); thickness is in the mesh's own units, scaled with it.
-
-normalMap is read in glTF's tangent frame: red tilts towards +u, green up the image. The tangents come from the model (the cook generates MikkTSpace ones where a glTF has none) or are generated when the geometry is made; normals follow a non-uniform scale correctly.
+See `render §6`.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
+#### Surface
+
+The metallic-roughness surface and its maps.
+
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `foliage` | `FoliageDesc` | `{}` | — | — | — | Leaf shading; omitted parameters keep their values on updateMaterial. The reflected foliage vector stores translucency in x and domeNormals in y. |
 | `color` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | The base colour. |
 | `map` | `Texture \| null` | `null` | — | — | — | The base colour texture. |
 | `metalness` | `number` | `0` | 0 … 1 | — | — | How metallic the surface is. |
-| `metalnessMap` | `Texture \| null` | `null` | — | — | — | Metalness from the texture's blue channel. |
+| `metalnessMap` | `Texture \| null` | `null` | — | — | — | Metalness from the texture's blue channel (a glTF metallic-roughness texture, the same as roughnessMap's). |
 | `roughness` | `number` | `1` | 0 … 1 | — | — | How rough the surface is. |
 | `roughnessMap` | `Texture \| null` | `null` | — | — | — | Roughness from the texture's green channel. |
-| `normalMap` | `Texture \| null` | `null` | — | — | — | A tangent-space normal map. |
+| `normalMap` | `Texture \| null` | `null` | — | — | — | A tangent-space normal map in glTF's tangent frame: red tilts towards +u, green up the image. |
+| `normalScale` | `Vector2` | `{ x: 1, y: 1 }` | — | — | — | How strongly the normal map bends the normal, per tangent axis. |
 | `aoMap` | `Texture \| null` | `null` | — | — | — | Ambient occlusion from the texture's red channel. |
+| `aoMapIntensity` | `number` | `1` | ≥ 0 | — | — | How strongly aoMap darkens the ambient light. |
 | `emissive` | `Color` | `{ r: 0, g: 0, b: 0 }` | — | — | — | The emitted colour. |
 | `emissiveIntensity` | `number` | `1` | ≥ 0 | — | — | A multiplier on the emitted colour. |
 | `emissiveMap` | `Texture \| null` | `null` | — | — | — | The emitted colour texture. |
+| `envMapIntensity` | `number` | `1` | ≥ 0 | — | — | A multiplier on image-based lighting. |
+
+#### Alpha and faces
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
 | `opacity` | `number` | `1` | 0 … 1 | — | — | The opacity; below 1 only with transparent. |
-| `transparent` | `boolean` | `false` | — | — | — | Blend instead of writing opaque pixels. |
-| `alphaTest` | `number` | `0` | 0 … 1 | — | — | Discard pixels whose alpha is below this. |
+| `transparent` | `boolean` | `false` | — | — | — | Blend instead of writing opaque pixels, composited as RenderOptions.transparency says. See `render §2`. |
+| `alphaTest` | `number` | `0` | 0 … 1 | — | — | Above 0, discard pixels whose alpha is below this. |
+| `alphaToCoverage` | `boolean` | `false` | — | — | — | With MSAA (antialias msaa4), an alpha-tested material turns alpha into sample coverage instead of a hard cut at alphaTest, as three.js alphaToCoverage. Without MSAA it cuts half a pixel's change of alpha below alphaTest (where coverage reaches 0): an edge keeps a few more pixels. See `render §6`. |
 | `side` | `Side` | `"front"` | — | — | — | Which faces are drawn. |
 | `flatShading` | `boolean` | `false` | — | — | — | Shade with face normals. |
-| `alphaToCoverage` | `boolean` | `false` | — | — | — | With MSAA (antialias msaa4), an alpha-tested material turns its alpha into sample coverage instead of a hard cut at alphaTest, as three.js alphaToCoverage: minified foliage cards cover part of a pixel and the scene shows between them instead of drawing as solid sheets. Without MSAA it is a hard cut too, half a pixel's change of alpha below alphaTest (where the coverage reaches 0), so an edge keeps a few more pixels than alphaTest's own cut. |
-| `envMapIntensity` | `number` | `1` | ≥ 0 | — | — | A multiplier on image-based lighting. |
-| `normalScale` | `Vector2` | `{ x: 1, y: 1 }` | — | — | — | How strongly the normal map bends the normal, per tangent axis. |
-| `aoMapIntensity` | `number` | `1` | ≥ 0 | — | — | How strongly aoMap darkens the ambient light. |
+
+#### Stylised
+
+Unlit, toon, rim, hit flash, dissolve and outline, all off at their defaults; og.MaterialStyle fills the ones a material leaves at their defaults (styled).
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
 | `unlit` | `boolean` | `false` | — | — | — | No lighting at all, as three.js MeshBasicMaterial: the colour (times map) plus emissive. |
 | `toon` | `boolean` | `false` | — | — | — | Cel shading, as three.js MeshToonMaterial: light is quantized by gradientMap (three built-in bands without one), highlights are hard. |
 | `gradientMap` | `Texture \| null` | `null` | — | — | — | The toon ramp: a texture whose first row maps the light's angle (left dark, right lit) to the light received, read without filtering. |
@@ -57,22 +66,29 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `dissolveEdgeWidth` | `number` | `0.0625` | 0 … 1 | — | — | The width of the glowing band in noise units. |
 | `dissolveScale` | `number` | `4` | ≥ 0 | — | — | The frequency of the built-in noise (cells per object-space unit). |
 | `outlineColor` | `Color` | `{ r: 0, g: 0, b: 0 }` | — | — | — | This material's outline colour (linear). |
-| `outlineWidth` | `number` | `0` | 0 … 31 | — | — | This material's outline width in pixels; 0 is none (PostEffects.outline outlines everything). A hull outline, as toon shading draws one: the object's silhouette, where one part of it passes in front of another, and its creases against other objects (where it meets the ground or a wall), never the edges between its own faces, so a .vox model or any flat-shaded, hard-edged mesh keeps clean faces inside its silhouette; a face seen at a grazing angle (a box's side nearly edge-on, a large ground plane) is not lined across, only where it ends. Creases inside an object are Stylise.inkDepth's. |
-| `styled` | `boolean` | `true` | — | — | — | Whether og.MaterialStyle (a look's scene-wide toon, rim, outline, flat facets, shadow tint and outline distance) reaches this material. false keeps it exactly as declared under any look: a lantern's lacquer, a UI-like prop, a hero kept photographic in a toon scene. A material with a MeshPhysicalMaterial lobe (clearcoat, sheen, transmission, iridescence, anisotropy, an ior other than 1.5) keeps its physical shading under the style's toon even when styled (toon would drop those lobes) and takes the rest of the style; its own toon true still makes it toon. |
+| `outlineWidth` | `number` | `0` | 0 … 31 | — | — | This material's hull outline width in pixels; 0 is none (PostEffects.outline outlines everything). It lines the silhouette, where one part passes in front of another and creases against other objects, never edges between its own faces; a face at a grazing angle is lined only where it ends. See `render §6`. |
+| `styled` | `boolean` | `true` | — | — | — | Whether og.MaterialStyle (a look's scene-wide stylised fields) reaches this material; false keeps it as declared under any look. A material with a physical lobe (any Physical layers field, or ior not 1.5) keeps that shading under the style's toon and takes the rest; its own toon still applies. See `render §6`. |
+
+#### Physical layers
+
+MeshPhysicalMaterial's fields under three.js's names and glTF's KHR_materials_* meanings, all off at their defaults; drawn on every backend, ignored by unlit and toon materials.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
 | `clearcoat` | `number` | `0` | 0 … 1 | `ratio` | — | A clear lacquer over the surface, as three.js MeshPhysicalMaterial.clearcoat: a second, 4 % reflective specular layer on the surface's normal before normalMap (car paint, varnished wood, wet plastic); 0 is none. |
 | `clearcoatRoughness` | `number` | `0` | 0 … 1 | `ratio` | — | How rough the clear coat is, as three.js MeshPhysicalMaterial.clearcoatRoughness. |
 | `clearcoatMap` | `Texture \| null` | `null` | — | — | — | The coat's strength from the texture's red channel, times clearcoat (MeshPhysicalMaterial.clearcoatMap). |
 | `clearcoatRoughnessMap` | `Texture \| null` | `null` | — | — | — | The coat's roughness from the texture's green channel, times clearcoatRoughness. |
 | `clearcoatNormalMap` | `Texture \| null` | `null` | — | — | — | A tangent-space normal map of the coat alone; the base keeps normalMap (MeshPhysicalMaterial.clearcoatNormalMap). |
 | `clearcoatNormalScale` | `Vector2` | `{ x: 1, y: 1 }` | — | — | — | How strongly clearcoatNormalMap bends the coat's normal, per tangent axis. |
-| `sheen` | `number` | `0` | 0 … 1 | `ratio` | — | A velvet-like layer that brightens grazing angles (cloth, fuzz, peach skin), as MeshPhysicalMaterial.sheen and glTF KHR_materials_sheen: Estevez and Kulla's Charlie fibres with their shadowing and soft terminator, lit by the environment through its directional albedo, and what it reflects taken from the surface under it, so cloth never glows (velvet: a very dark base, a bright desaturated sheenColor, sheenRoughness about 0.5; cotton and wool: a dim sheenColor at sheenRoughness 0.8 to 1; roughness 1 on both). Its strength, times sheenColor; 0 is none. |
+| `sheen` | `number` | `0` | 0 … 1 | `ratio` | — | A velvet layer brightening grazing angles, as MeshPhysicalMaterial.sheen (KHR_materials_sheen): Estevez and Kulla's Charlie fibres with shadowing and a soft terminator, lit by the environment through its directional albedo, its light taken from the surface below. Strength times sheenColor; 0 none. See `render §6`. |
 | `sheenColor` | `Color` | `{ r: 0, g: 0, b: 0 }` | — | — | — | The sheen's colour (linear), times sheenColorMap; black is none. |
 | `sheenRoughness` | `number` | `1` | 0 … 1 | `ratio` | — | How rough the sheen is: low keeps it to a thin rim, high spreads it over the surface. |
 | `sheenColorMap` | `Texture \| null` | `null` | — | — | — | The sheen's colour from the texture's RGB (sRGB). |
 | `sheenRoughnessMap` | `Texture \| null` | `null` | — | — | — | The sheen's roughness from the texture's alpha channel. |
-| `transmission` | `number` | `0` | 0 … 1 | `ratio` | — | How much light passes through, as MeshPhysicalMaterial.transmission (glass, water, thin plastic): the opaque scene behind is refracted and blurred by roughness; 0 is none. Unlike opacity, the surface keeps its reflections. |
+| `transmission` | `number` | `0` | 0 … 1 | `ratio` | — | How much light passes through, as MeshPhysicalMaterial.transmission (glass, water): drawn after the opaque scene, back to front with the transparent ones, it refracts what was drawn before it (not other transmissive or transparent objects), blurred by roughness; 0 is none. It keeps its reflections. |
 | `transmissionMap` | `Texture \| null` | `null` | — | — | — | Transmission from the texture's red channel. |
-| `thickness` | `number` | `0` | ≥ 0 | — | — | The volume's thickness under the surface in the mesh's own units (glTF KHR_materials_volume): how far refraction bends the view and how much attenuationColor absorbs; 0 is a thin wall. |
+| `thickness` | `number` | `0` | ≥ 0 | — | — | The volume's thickness under the surface in the mesh's own units, scaled with it (glTF KHR_materials_volume): how far refraction bends the view and how much attenuationColor absorbs; 0 is a thin wall. |
 | `thicknessMap` | `Texture \| null` | `null` | — | — | — | Thickness from the texture's green channel. |
 | `attenuationDistance` | `number` | `0` | ≥ 0 | — | — | The distance light travels in the volume before it is tinted to attenuationColor (world units); 0 is no absorption, three.js's Infinity. |
 | `attenuationColor` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | The colour white light becomes after attenuationDistance in the volume (linear). |
@@ -85,16 +101,28 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `anisotropy` | `number` | `0` | 0 … 1 | `ratio` | — | Stretches the specular highlight along a direction of the surface, as MeshPhysicalMaterial.anisotropy (brushed metal, hair, satin); 0 is none, 1 fully stretched. Needs the geometry's tangents (generated when it has none). |
 | `anisotropyRotation` | `number` | `0` | — | — | — | The stretch's direction in radians from the tangent (+u) towards the bitangent. |
 | `anisotropyMap` | `Texture \| null` | `null` | — | — | — | The stretch's direction in red and green (-1 to 1 in the tangent frame, turned by anisotropyRotation) and its strength in blue, times anisotropy. |
-| `mapArray` | `TextureArray \| null` | `null` | — | — | — | The base colour from layer mapLayer of a texture array (og.load.textureArray) instead of map: variants of one look (tiles, skins, damage states) are one material, each Mesh picking its layer with Mesh.materialLayer, and every mesh of the material is one draw whichever layer it shows. A material with mapArray or normalMapArray reads its base colour and normal map from arrays only (map and normalMap are not read). Physical materials (the MeshPhysicalMaterial fields) and shader materials do not take arrays. |
+
+#### Texture arrays
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `mapArray` | `TextureArray \| null` | `null` | — | — | — | The base colour from layer mapLayer of a texture array (og.load.textureArray) instead of map, each Mesh picking its layer (Mesh.materialLayer), in one draw. With mapArray or normalMapArray, colour and normals come from arrays only (map and normalMap unread). Physical and shader materials take none. See `render §6`. |
 | `mapLayer` | `number` | `0` | — | — | — | The layer of mapArray drawn where the Mesh does not pick one (past the array's last layer: the last). |
 | `normalMapArray` | `TextureArray \| null` | `null` | — | — | — | A tangent-space normal map from layer normalMapLayer of a texture array (linear: cook it with `kind normal`), the counterpart of mapArray. |
 | `normalMapLayer` | `number` | `0` | — | — | — | The layer of normalMapArray read where the Mesh does not pick one. |
-| `mapOffset` | `Vector2` | `{ x: 0, y: 0 }` | — | — | — | The uv offset map is sampled at, as three.js Texture.offset and glTF KHR_texture_transform: uv' = offset + rotation(rotation) * (repeat * uv), glTF's order. A loaded glTF's transform is here unless the cook baked it into the model's uvs. A transform's own texCoord (a second uv set) is not read: the cook notes it and every map samples TEXCOORD_0. |
+
+#### Texture transforms
+
+Every map samples TEXCOORD_0; a glTF transform's own texCoord (a second uv set) is not read, and the cook notes it.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `mapOffset` | `Vector2` | `{ x: 0, y: 0 }` | — | — | — | The uv offset map is sampled at, as three.js Texture.offset and glTF KHR_texture_transform: uv' = offset + rotation(rotation) * (repeat * uv), glTF's order. A loaded glTF's transform is here unless the cook baked it into the model's uvs. See `render §6`. |
 | `mapRepeat` | `Vector2` | `{ x: 1, y: 1 }` | — | — | — | How many times map repeats across the uvs, as three.js Texture.repeat (glTF's scale): tiling and atlas cells. |
 | `mapRotation` | `number` | `0` | — | `rad` | — | The uv rotation of map, counter-clockwise in uv space about the uv origin, as glTF KHR_texture_transform's rotation. |
-| `metalnessMapOffset` | `Vector2` | `{ x: 0, y: 0 }` | — | — | — | The uv offset metalnessMap and roughnessMap (one glTF texture; a physical material's other maps and aoMap are packed with them and sampled here too) is sampled at, as three.js Texture.offset and glTF KHR_texture_transform: uv' = offset + rotation(rotation) * (repeat * uv), glTF's order. A loaded glTF's transform is here unless the cook baked it into the model's uvs. |
-| `metalnessMapRepeat` | `Vector2` | `{ x: 1, y: 1 }` | — | — | — | How many times metalnessMap and roughnessMap (one glTF texture; a physical material's other maps and aoMap are packed with them and sampled here too) repeats across the uvs, as three.js Texture.repeat (glTF's scale): tiling and atlas cells. |
-| `metalnessMapRotation` | `number` | `0` | — | `rad` | — | The uv rotation of metalnessMap and roughnessMap (one glTF texture; a physical material's other maps and aoMap are packed with them and sampled here too), counter-clockwise in uv space about the uv origin, as glTF KHR_texture_transform's rotation. |
+| `metalnessMapOffset` | `Vector2` | `{ x: 0, y: 0 }` | — | — | — | The uv offset metalnessMap and roughnessMap (one glTF texture; a physical material's other maps and aoMap are packed with them and sampled here too) are sampled at, as mapOffset. A loaded glTF's transform is here unless the cook baked it into the model's uvs. |
+| `metalnessMapRepeat` | `Vector2` | `{ x: 1, y: 1 }` | — | — | — | How many times metalnessMap and roughnessMap (and the maps packed with them, as metalnessMapOffset) repeat across the uvs, as three.js Texture.repeat (glTF's scale): tiling and atlas cells. |
+| `metalnessMapRotation` | `number` | `0` | — | `rad` | — | The uv rotation of metalnessMap and roughnessMap (and the maps packed with them, as metalnessMapOffset), counter-clockwise in uv space about the uv origin, as glTF KHR_texture_transform's rotation. |
 | `normalMapOffset` | `Vector2` | `{ x: 0, y: 0 }` | — | — | — | The uv offset normalMap is sampled at, as three.js Texture.offset and glTF KHR_texture_transform: uv' = offset + rotation(rotation) * (repeat * uv), glTF's order. A loaded glTF's transform is here unless the cook baked it into the model's uvs. |
 | `normalMapRepeat` | `Vector2` | `{ x: 1, y: 1 }` | — | — | — | How many times normalMap repeats across the uvs, as three.js Texture.repeat (glTF's scale): tiling and atlas cells. |
 | `normalMapRotation` | `number` | `0` | — | `rad` | — | The uv rotation of normalMap, counter-clockwise in uv space about the uv origin, as glTF KHR_texture_transform's rotation. |
@@ -104,22 +132,30 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `aoMapOffset` | `Vector2` | `{ x: 0, y: 0 }` | — | — | — | The uv offset aoMap is sampled at, as three.js Texture.offset and glTF KHR_texture_transform: uv' = offset + rotation(rotation) * (repeat * uv), glTF's order. A loaded glTF's transform is here unless the cook baked it into the model's uvs. |
 | `aoMapRepeat` | `Vector2` | `{ x: 1, y: 1 }` | — | — | — | How many times aoMap repeats across the uvs, as three.js Texture.repeat (glTF's scale): tiling and atlas cells. |
 | `aoMapRotation` | `number` | `0` | — | `rad` | — | The uv rotation of aoMap, counter-clockwise in uv space about the uv origin, as glTF KHR_texture_transform's rotation. |
-| `wireframe` | `boolean` | `false` | — | — | — | Draw the edges of the mesh's triangles instead of its faces, as three.js Material.wireframe: one CSS pixel wide, in the colour the surface shows along each edge (color times map and the vertex colours, plus emissive times emissiveMap) or wireframeColor, unlit, depth tested; drawn as lines, not a polygon mode (WebGPU has none). Its meshes cast no shadow. |
+
+#### Wireframe
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `wireframe` | `boolean` | `false` | — | — | — | Draw the edges of the mesh's triangles instead of its faces, as three.js Material.wireframe: one CSS pixel wide lines, unlit, depth tested, in the surface's colour along each edge (color × map × vertex colour + emissive × emissiveMap) or wireframeColor. Its meshes cast no shadow. See `render §6`. |
 | `wireframeAngle` | `number` | `0` | 0 … 180 | `deg` | — | With wireframe: only the mesh's feature edges, its open borders and the edges whose two faces meet at more than this angle (welded by position, so uv seams and split hard edges do not show): a box's 12 edges, nothing across a smooth sphere but where it ends. 0 is every triangle edge. |
 | `wireframeColor` | `Color` | `{ r: 0, g: 0, b: 0 }` | — | — | — | With wireframe: one colour for every edge (linear, above 1 blooms) instead of the colour the surface shows along it; black (the zero value) is the surface's. |
+
+#### Leaves, paint and weather
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `foliage` | `FoliageDesc` | `{}` | — | — | — | Leaf shading; omitted parameters keep their values on updateMaterial. The reflected foliage vector stores translucency in x and domeNormals in y. |
 | `paintDetail` | `number` | `0` | 0 … 1 | `ratio` | — | How much of its detail the painterly filter (Stylise.paintRadius) keeps on this material, times Stylise.paintDetail: 0 painted at the full radius, 1 kept as drawn (a face, a hand, a sign's lettering). |
 | `weathering` | `number` | `1` | 0 … 1 | `ratio` | — | How much og.WeatherState reaches this material: its wetness, rain streaks, puddles, snow and dust (1 all of it, 0 none). 0 for what the weather never touches: an indoor floor seen through a door, a screen, a hero kept clean, a surface a game wets itself; between for a coat that sheds some. |
 
 ```ogt
 struct StandardMaterialDesc {
   doc "A physically based metallic-roughness material with three.js MeshStandardMaterial parameter names."
-  doc "It is og-render's reflected StandardMaterial field for field: metalnessMap and roughnessMap read a glTF metallic-roughness texture (blue metal, green rough), so give both the same texture; alphaTest above 0 discards below that alpha; transparent blends, sorted back to front."
-  doc "The stylised fields: unlit (three.js MeshBasicMaterial), toon with its gradientMap ramp, a rim (fresnel) light, a hit flash, dissolve with a glowing edge, and a per-material outline. All are off at their defaults. og.MaterialStyle fills the ones a material leaves at their defaults unless the material sets styled false."
-  doc "The MeshPhysicalMaterial fields, under three.js's names and glTF's KHR_materials_* meanings, all off at their defaults: clearcoat with clearcoatMap, clearcoatRoughnessMap and clearcoatNormalMap; sheen (velvet, cloth) with sheenColor, sheenRoughness and their maps; transmission (glass, water) refracting the opaque scene behind through thickness, attenuationColor and ior; iridescence (soap film, oil) with its film's iridescenceIOR and iridescenceThicknessRange; anisotropy (brushed metal) along anisotropyRotation or anisotropyMap. They draw on every backend; unlit and toon materials ignore them."
-  doc "A transmissive material is drawn after the opaque scene, back to front with the transparent ones, and refracts what was drawn before it (not other transmissive or transparent objects); thickness is in the mesh's own units, scaled with it."
-  doc "normalMap is read in glTF's tangent frame: red tilts towards +u, green up the image. The tangents come from the model (the cook generates MikkTSpace ones where a glTF has none) or are generated when the geometry is made; normals follow a non-uniform scale correctly."
+  doc "It is og-render's reflected StandardMaterial field for field. Its tangents come from the model (the cook generates MikkTSpace ones where a glTF has none) or are generated when the geometry is made; normals follow a non-uniform scale correctly."
+  guide "render §6"
   desc true
-  field foliage FoliageDesc "Leaf shading; omitted parameters keep their values on updateMaterial. The reflected foliage vector stores translucency in x and domeNormals in y."
+  group "Surface" "The metallic-roughness surface and its maps."
   field color Color "The base colour." {
     default 1 1 1
   }
@@ -128,45 +164,51 @@ struct StandardMaterialDesc {
     min 0
     max 1
   }
-  field metalnessMap Option.Texture "Metalness from the texture's blue channel."
+  field metalnessMap Option.Texture "Metalness from the texture's blue channel (a glTF metallic-roughness texture, the same as roughnessMap's)."
   field roughness f32 "How rough the surface is." {
     default 1
     min 0
     max 1
   }
   field roughnessMap Option.Texture "Roughness from the texture's green channel."
-  field normalMap Option.Texture "A tangent-space normal map."
+  field normalMap Option.Texture "A tangent-space normal map in glTF's tangent frame: red tilts towards +u, green up the image."
+  field normalScale Vector2 "How strongly the normal map bends the normal, per tangent axis." {
+    default 1 1
+  }
   field aoMap Option.Texture "Ambient occlusion from the texture's red channel."
+  field aoMapIntensity f32 "How strongly aoMap darkens the ambient light." {
+    default 1
+    min 0
+  }
   field emissive Color "The emitted colour."
   field emissiveIntensity f32 "A multiplier on the emitted colour." {
     default 1
     min 0
   }
   field emissiveMap Option.Texture "The emitted colour texture."
+  field envMapIntensity f32 "A multiplier on image-based lighting." {
+    default 1
+    min 0
+  }
+  group "Alpha and faces"
   field opacity f32 "The opacity; below 1 only with transparent." {
     default 1
     min 0
     max 1
   }
-  field transparent bool "Blend instead of writing opaque pixels."
-  field alphaTest f32 "Discard pixels whose alpha is below this." {
+  field transparent bool "Blend instead of writing opaque pixels, composited as RenderOptions.transparency says." {
+    guide "render §2"
+  }
+  field alphaTest f32 "Above 0, discard pixels whose alpha is below this." {
     min 0
     max 1
   }
+  field alphaToCoverage bool "With MSAA (antialias msaa4), an alpha-tested material turns alpha into sample coverage instead of a hard cut at alphaTest, as three.js alphaToCoverage. Without MSAA it cuts half a pixel's change of alpha below alphaTest (where coverage reaches 0): an edge keeps a few more pixels." {
+    guide "render §6"
+  }
   field side Side "Which faces are drawn."
   field flatShading bool "Shade with face normals."
-  field alphaToCoverage bool "With MSAA (antialias msaa4), an alpha-tested material turns its alpha into sample coverage instead of a hard cut at alphaTest, as three.js alphaToCoverage: minified foliage cards cover part of a pixel and the scene shows between them instead of drawing as solid sheets. Without MSAA it is a hard cut too, half a pixel's change of alpha below alphaTest (where the coverage reaches 0), so an edge keeps a few more pixels than alphaTest's own cut."
-  field envMapIntensity f32 "A multiplier on image-based lighting." {
-    default 1
-    min 0
-  }
-  field normalScale Vector2 "How strongly the normal map bends the normal, per tangent axis." {
-    default 1 1
-  }
-  field aoMapIntensity f32 "How strongly aoMap darkens the ambient light." {
-    default 1
-    min 0
-  }
+  group "Stylised" "Unlit, toon, rim, hit flash, dissolve and outline, all off at their defaults; og.MaterialStyle fills the ones a material leaves at their defaults (styled)."
   field unlit bool "No lighting at all, as three.js MeshBasicMaterial: the colour (times map) plus emissive."
   field toon bool "Cel shading, as three.js MeshToonMaterial: light is quantized by gradientMap (three built-in bands without one), highlights are hard."
   field gradientMap Option.Texture "The toon ramp: a texture whose first row maps the light's angle (left dark, right lit) to the light received, read without filtering."
@@ -205,13 +247,16 @@ struct StandardMaterialDesc {
     min 0
   }
   field outlineColor Color "This material's outline colour (linear)."
-  field outlineWidth f32 "This material's outline width in pixels; 0 is none (PostEffects.outline outlines everything). A hull outline, as toon shading draws one: the object's silhouette, where one part of it passes in front of another, and its creases against other objects (where it meets the ground or a wall), never the edges between its own faces, so a .vox model or any flat-shaded, hard-edged mesh keeps clean faces inside its silhouette; a face seen at a grazing angle (a box's side nearly edge-on, a large ground plane) is not lined across, only where it ends. Creases inside an object are Stylise.inkDepth's." {
+  field outlineWidth f32 "This material's hull outline width in pixels; 0 is none (PostEffects.outline outlines everything). It lines the silhouette, where one part passes in front of another and creases against other objects, never edges between its own faces; a face at a grazing angle is lined only where it ends." {
     min 0
     max 31
+    guide "render §6"
   }
-  field styled bool "Whether og.MaterialStyle (a look's scene-wide toon, rim, outline, flat facets, shadow tint and outline distance) reaches this material. false keeps it exactly as declared under any look: a lantern's lacquer, a UI-like prop, a hero kept photographic in a toon scene. A material with a MeshPhysicalMaterial lobe (clearcoat, sheen, transmission, iridescence, anisotropy, an ior other than 1.5) keeps its physical shading under the style's toon even when styled (toon would drop those lobes) and takes the rest of the style; its own toon true still makes it toon." {
+  field styled bool "Whether og.MaterialStyle (a look's scene-wide stylised fields) reaches this material; false keeps it as declared under any look. A material with a physical lobe (any Physical layers field, or ior not 1.5) keeps that shading under the style's toon and takes the rest; its own toon still applies." {
     default true
+    guide "render §6"
   }
+  group "Physical layers" "MeshPhysicalMaterial's fields under three.js's names and glTF's KHR_materials_* meanings, all off at their defaults; drawn on every backend, ignored by unlit and toon materials."
   field clearcoat f32 "A clear lacquer over the surface, as three.js MeshPhysicalMaterial.clearcoat: a second, 4 % reflective specular layer on the surface's normal before normalMap (car paint, varnished wood, wet plastic); 0 is none." {
     min 0
     max 1
@@ -228,10 +273,11 @@ struct StandardMaterialDesc {
   field clearcoatNormalScale Vector2 "How strongly clearcoatNormalMap bends the coat's normal, per tangent axis." {
     default 1 1
   }
-  field sheen f32 "A velvet-like layer that brightens grazing angles (cloth, fuzz, peach skin), as MeshPhysicalMaterial.sheen and glTF KHR_materials_sheen: Estevez and Kulla's Charlie fibres with their shadowing and soft terminator, lit by the environment through its directional albedo, and what it reflects taken from the surface under it, so cloth never glows (velvet: a very dark base, a bright desaturated sheenColor, sheenRoughness about 0.5; cotton and wool: a dim sheenColor at sheenRoughness 0.8 to 1; roughness 1 on both). Its strength, times sheenColor; 0 is none." {
+  field sheen f32 "A velvet layer brightening grazing angles, as MeshPhysicalMaterial.sheen (KHR_materials_sheen): Estevez and Kulla's Charlie fibres with shadowing and a soft terminator, lit by the environment through its directional albedo, its light taken from the surface below. Strength times sheenColor; 0 none." {
     min 0
     max 1
     unit ratio
+    guide "render §6"
   }
   field sheenColor Color "The sheen's colour (linear), times sheenColorMap; black is none."
   field sheenRoughness f32 "How rough the sheen is: low keeps it to a thin rim, high spreads it over the surface." {
@@ -242,13 +288,13 @@ struct StandardMaterialDesc {
   }
   field sheenColorMap Option.Texture "The sheen's colour from the texture's RGB (sRGB)."
   field sheenRoughnessMap Option.Texture "The sheen's roughness from the texture's alpha channel."
-  field transmission f32 "How much light passes through, as MeshPhysicalMaterial.transmission (glass, water, thin plastic): the opaque scene behind is refracted and blurred by roughness; 0 is none. Unlike opacity, the surface keeps its reflections." {
+  field transmission f32 "How much light passes through, as MeshPhysicalMaterial.transmission (glass, water): drawn after the opaque scene, back to front with the transparent ones, it refracts what was drawn before it (not other transmissive or transparent objects), blurred by roughness; 0 is none. It keeps its reflections." {
     min 0
     max 1
     unit ratio
   }
   field transmissionMap Option.Texture "Transmission from the texture's red channel."
-  field thickness f32 "The volume's thickness under the surface in the mesh's own units (glTF KHR_materials_volume): how far refraction bends the view and how much attenuationColor absorbs; 0 is a thin wall." {
+  field thickness f32 "The volume's thickness under the surface in the mesh's own units, scaled with it (glTF KHR_materials_volume): how far refraction bends the view and how much attenuationColor absorbs; 0 is a thin wall." {
     min 0
   }
   field thicknessMap Option.Texture "Thickness from the texture's green channel."
@@ -285,22 +331,28 @@ struct StandardMaterialDesc {
   }
   field anisotropyRotation f32 "The stretch's direction in radians from the tangent (+u) towards the bitangent."
   field anisotropyMap Option.Texture "The stretch's direction in red and green (-1 to 1 in the tangent frame, turned by anisotropyRotation) and its strength in blue, times anisotropy."
-  field mapArray Option.TextureArray "The base colour from layer mapLayer of a texture array (og.load.textureArray) instead of map: variants of one look (tiles, skins, damage states) are one material, each Mesh picking its layer with Mesh.materialLayer, and every mesh of the material is one draw whichever layer it shows. A material with mapArray or normalMapArray reads its base colour and normal map from arrays only (map and normalMap are not read). Physical materials (the MeshPhysicalMaterial fields) and shader materials do not take arrays."
+  group "Texture arrays"
+  field mapArray Option.TextureArray "The base colour from layer mapLayer of a texture array (og.load.textureArray) instead of map, each Mesh picking its layer (Mesh.materialLayer), in one draw. With mapArray or normalMapArray, colour and normals come from arrays only (map and normalMap unread). Physical and shader materials take none." {
+    guide "render §6"
+  }
   field mapLayer u32 "The layer of mapArray drawn where the Mesh does not pick one (past the array's last layer: the last)."
   field normalMapArray Option.TextureArray "A tangent-space normal map from layer normalMapLayer of a texture array (linear: cook it with `kind normal`), the counterpart of mapArray."
   field normalMapLayer u32 "The layer of normalMapArray read where the Mesh does not pick one."
-  field mapOffset Vector2 "The uv offset map is sampled at, as three.js Texture.offset and glTF KHR_texture_transform: uv' = offset + rotation(rotation) * (repeat * uv), glTF's order. A loaded glTF's transform is here unless the cook baked it into the model's uvs. A transform's own texCoord (a second uv set) is not read: the cook notes it and every map samples TEXCOORD_0."
+  group "Texture transforms" "Every map samples TEXCOORD_0; a glTF transform's own texCoord (a second uv set) is not read, and the cook notes it."
+  field mapOffset Vector2 "The uv offset map is sampled at, as three.js Texture.offset and glTF KHR_texture_transform: uv' = offset + rotation(rotation) * (repeat * uv), glTF's order. A loaded glTF's transform is here unless the cook baked it into the model's uvs." {
+    guide "render §6"
+  }
   field mapRepeat Vector2 "How many times map repeats across the uvs, as three.js Texture.repeat (glTF's scale): tiling and atlas cells." {
     default 1 1
   }
   field mapRotation f32 "The uv rotation of map, counter-clockwise in uv space about the uv origin, as glTF KHR_texture_transform's rotation." {
     unit rad
   }
-  field metalnessMapOffset Vector2 "The uv offset metalnessMap and roughnessMap (one glTF texture; a physical material's other maps and aoMap are packed with them and sampled here too) is sampled at, as three.js Texture.offset and glTF KHR_texture_transform: uv' = offset + rotation(rotation) * (repeat * uv), glTF's order. A loaded glTF's transform is here unless the cook baked it into the model's uvs."
-  field metalnessMapRepeat Vector2 "How many times metalnessMap and roughnessMap (one glTF texture; a physical material's other maps and aoMap are packed with them and sampled here too) repeats across the uvs, as three.js Texture.repeat (glTF's scale): tiling and atlas cells." {
+  field metalnessMapOffset Vector2 "The uv offset metalnessMap and roughnessMap (one glTF texture; a physical material's other maps and aoMap are packed with them and sampled here too) are sampled at, as mapOffset. A loaded glTF's transform is here unless the cook baked it into the model's uvs."
+  field metalnessMapRepeat Vector2 "How many times metalnessMap and roughnessMap (and the maps packed with them, as metalnessMapOffset) repeat across the uvs, as three.js Texture.repeat (glTF's scale): tiling and atlas cells." {
     default 1 1
   }
-  field metalnessMapRotation f32 "The uv rotation of metalnessMap and roughnessMap (one glTF texture; a physical material's other maps and aoMap are packed with them and sampled here too), counter-clockwise in uv space about the uv origin, as glTF KHR_texture_transform's rotation." {
+  field metalnessMapRotation f32 "The uv rotation of metalnessMap and roughnessMap (and the maps packed with them, as metalnessMapOffset), counter-clockwise in uv space about the uv origin, as glTF KHR_texture_transform's rotation." {
     unit rad
   }
   field normalMapOffset Vector2 "The uv offset normalMap is sampled at, as three.js Texture.offset and glTF KHR_texture_transform: uv' = offset + rotation(rotation) * (repeat * uv), glTF's order. A loaded glTF's transform is here unless the cook baked it into the model's uvs."
@@ -324,13 +376,18 @@ struct StandardMaterialDesc {
   field aoMapRotation f32 "The uv rotation of aoMap, counter-clockwise in uv space about the uv origin, as glTF KHR_texture_transform's rotation." {
     unit rad
   }
-  field wireframe bool "Draw the edges of the mesh's triangles instead of its faces, as three.js Material.wireframe: one CSS pixel wide, in the colour the surface shows along each edge (color times map and the vertex colours, plus emissive times emissiveMap) or wireframeColor, unlit, depth tested; drawn as lines, not a polygon mode (WebGPU has none). Its meshes cast no shadow."
+  group "Wireframe"
+  field wireframe bool "Draw the edges of the mesh's triangles instead of its faces, as three.js Material.wireframe: one CSS pixel wide lines, unlit, depth tested, in the surface's colour along each edge (color × map × vertex colour + emissive × emissiveMap) or wireframeColor. Its meshes cast no shadow." {
+    guide "render §6"
+  }
   field wireframeAngle f32 "With wireframe: only the mesh's feature edges, its open borders and the edges whose two faces meet at more than this angle (welded by position, so uv seams and split hard edges do not show): a box's 12 edges, nothing across a smooth sphere but where it ends. 0 is every triangle edge." {
     min 0
     max 180
     unit deg
   }
   field wireframeColor Color "With wireframe: one colour for every edge (linear, above 1 blooms) instead of the colour the surface shows along it; black (the zero value) is the surface's."
+  group "Leaves, paint and weather"
+  field foliage FoliageDesc "Leaf shading; omitted parameters keep their values on updateMaterial. The reflected foliage vector stores translucency in x and domeNormals in y."
   field paintDetail f32 "How much of its detail the painterly filter (Stylise.paintRadius) keeps on this material, times Stylise.paintDetail: 0 painted at the full radius, 1 kept as drawn (a face, a hand, a sign's lettering)." {
     min 0
     max 1
@@ -345,4 +402,4 @@ struct StandardMaterialDesc {
 }
 ```
 
-<sub>Module `render` line 159</sub>
+<sub>Module `render` line 175</sub>

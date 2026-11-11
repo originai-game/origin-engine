@@ -26,4 +26,4 @@ struct BarkDesc {
 }
 ```
 
-<sub>Module `story` line 187</sub>
+<sub>Module `story` line 188</sub>

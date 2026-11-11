@@ -6,7 +6,7 @@ Module [`physics`](../physics.md) · [index](../index.md)
 
 ### `og.SoftBody` (component)
 
-A PBD soft volume: a closed surface of points (2D: a ring in the xy plane) held by distance constraints along its edges and by one constraint on the volume it encloses (2D: its area), dropped under gravity and pushed out of every solid collider, so it lands, squashes and springs back: jelly, a water balloon, a slime. Built at the entity's world pose (its og.Transform after its parents') when it appears or its shape changes. It moves nothing (one-way like og.Cloth). Its points are world state (the og.physics state block); og.physics.softBodyPoints reads them and the renderer draws its surface with `material`.
+A PBD soft volume: a closed surface of points (2D: a ring in the xy plane) held by distance constraints along its edges and by one constraint on the volume it encloses (2D: its area), dropped under gravity and pushed out of every solid collider, so it lands, squashes and springs back: jelly, a water balloon, a slime. Built at the entity's world pose (its og.Transform after its parents') when it appears or its shape changes. It moves nothing (one-way like og.Cloth). Its points are world state; og.physics.softBodyPoints reads them and the renderer draws its surface with `material`.
 
 Token `og.SoftBody`, registered under the schema name `og.SoftBody`; its value type is `SoftBody`.
 
@@ -15,7 +15,7 @@ Token `og.SoftBody`, registered under the schema name `og.SoftBody`; its value t
 | `shape` | `number` | `0` | 0 … 2 | — | — | SOFT_SPHERE 0, SOFT_BOX 1 or SOFT_MESH 2. |
 | `radius` | `number` | `0.5` | ≥ 0.01 | `m` | tunable | A sphere's radius. |
 | `size` | `Vector3` | `{ x: 1, y: 1, z: 1 }` | ≥ 0 | `m` | — | A box's full extents. |
-| `detail` | `number` | `2` | 0 … 7 | — | — | How finely its surface is divided: a sphere 0 to 3 (12, 42, 162 or 642 points; 2D 12 to 96), a box 0 to 7 (cells along a face's edge, minus one). A finer surface needs more iterations to hold its shape: at 642 points and stiffness below 1 the default 8 lets it spread. |
+| `detail` | `number` | `2` | 0 … 7 | — | — | How finely its surface is divided: a sphere 0 to 3 (12, 42, 162 or 642 points; 2D 12 to 96), a box 0 to 7 (cells along a face's edge, minus one). See `physics §8`. |
 | `mesh` | `Geometry` | `0` | — | — | — | SOFT_MESH's geometry: a loaded glTF's (registered automatically) or one given to og.physics.setMesh; closed, its vertices welded where they meet. |
 | `stiffness` | `number` | `1` | 0 … 1 | — | tunable | How stiff its edges are, 0 to 1 a pass: 1 holds their length, lower lets the surface stretch and wobble. |
 | `pressure` | `number` | `1` | 0 … 4 | — | tunable | The volume it keeps, as a share of its rest volume: 1 holds it, above inflates it, 0 holds none (it slumps like cloth). |
@@ -29,13 +29,13 @@ Token `og.SoftBody`, registered under the schema name `og.SoftBody`; its value t
 | `pinTop` | `number` | `0` | ≥ 0 | `m` | — | Points within this height of its top at rest are pinned to the entity and follow it (0: none): a water balloon on a string. |
 | `material` | `Material` | `0` | — | — | — | The material it is drawn with (og.render.standardMaterial); 0 is a plain one. |
 | `visible` | `boolean` | `true` | — | — | — | Whether the renderer draws it. |
-| `simulation` | `number` | `0` | 0 … 1 | — | — | SIMULATION_GAMEPLAY 0 (in the tick, world state) or SIMULATION_VISUAL 1 (on the GPU, for looks only; see SIMULATION_VISUAL). |
-| `volume` | `number` | `1` | — | — | read only | Written: its volume (2D: area) now over its rest volume; below 1 squashed, above inflated. |
+| `simulation` | `number` | `0` | 0 … 1 | — | — | SIMULATION_GAMEPLAY 0 (in the tick, world state) or SIMULATION_VISUAL 1 (on the GPU, for looks only; see SIMULATION_VISUAL). See `physics §8`. |
+| `volume` | `number` | `1` | — | — | read only | Written: its volume (2D: area) now over its rest volume; below 1 squashed, above inflated; 1 when SIMULATION_VISUAL. |
 | `center` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | read only, worldspace `world` | Written: the mean of its points, in world space. |
 
 ```ogt
 component SoftBody {
-  doc "A PBD soft volume: a closed surface of points (2D: a ring in the xy plane) held by distance constraints along its edges and by one constraint on the volume it encloses (2D: its area), dropped under gravity and pushed out of every solid collider, so it lands, squashes and springs back: jelly, a water balloon, a slime. Built at the entity's world pose (its og.Transform after its parents') when it appears or its shape changes. It moves nothing (one-way like og.Cloth). Its points are world state (the og.physics state block); og.physics.softBodyPoints reads them and the renderer draws its surface with `material`."
+  doc "A PBD soft volume: a closed surface of points (2D: a ring in the xy plane) held by distance constraints along its edges and by one constraint on the volume it encloses (2D: its area), dropped under gravity and pushed out of every solid collider, so it lands, squashes and springs back: jelly, a water balloon, a slime. Built at the entity's world pose (its og.Transform after its parents') when it appears or its shape changes. It moves nothing (one-way like og.Cloth). Its points are world state; og.physics.softBodyPoints reads them and the renderer draws its surface with `material`."
   field shape u32 "SOFT_SPHERE 0, SOFT_BOX 1 or SOFT_MESH 2." {
     min 0
     max 2
@@ -51,7 +51,8 @@ component SoftBody {
     min 0
     unit m
   }
-  field detail u32 "How finely its surface is divided: a sphere 0 to 3 (12, 42, 162 or 642 points; 2D 12 to 96), a box 0 to 7 (cells along a face's edge, minus one). A finer surface needs more iterations to hold its shape: at 642 points and stiffness below 1 the default 8 lets it spread." {
+  field detail u32 "How finely its surface is divided: a sphere 0 to 3 (12, 42, 162 or 642 points; 2D 12 to 96), a box 0 to 7 (cells along a face's edge, minus one)." {
+    guide "physics §8"
     default 2
     min 0
     max 7
@@ -119,10 +120,11 @@ component SoftBody {
     default true
   }
   field simulation u32 "SIMULATION_GAMEPLAY 0 (in the tick, world state) or SIMULATION_VISUAL 1 (on the GPU, for looks only; see SIMULATION_VISUAL)." {
+    guide "physics §8"
     min 0
     max 1
   }
-  field volume f32 "Written: its volume (2D: area) now over its rest volume; below 1 squashed, above inflated." {
+  field volume f32 "Written: its volume (2D: area) now over its rest volume; below 1 squashed, above inflated; 1 when SIMULATION_VISUAL." {
     default 1
     readonly true
   }
@@ -134,4 +136,4 @@ component SoftBody {
 }
 ```
 
-<sub>Module `physics` line 1163</sub>
+<sub>Module `physics` line 1190</sub>

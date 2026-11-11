@@ -6,9 +6,11 @@ Module [`anim`](../anim.md) · [index](../index.md)
 
 ### `og.AnimationGraph` (component)
 
-Runs a blend-tree graph (og.anim.graph) on a skeleton: its layers' state machines pick motions by the parameters p0...p7, which the graph names in `param` order (`param speed` is p0, the next `param` is p1, ...).
+Runs a blend-tree graph (og.anim.graph) on a skeleton: its layers' state machines pick motions by the parameters p0...p7, named in the graph's `param` order (`param speed` is p0).
 
-On an entity with an og.Flipbook or an og.Skeleton2D, a graph registered with GraphDesc.sprite drives it instead: its `clip` lines name the sheet's or rig's clips, so one graph serves every sheet with those names. A flipbook shows the heaviest clip (an upper override layer at weight 0.5 or more wins over the layers under it) and its rate: transitions cut, never fade, and wait for the frame on screen to end; a cut within one state (a blend's other clip) or between states of one sync group keeps the phase. A 2D skeleton blends the two heaviest clips (Skeleton2D.clip and blendClip, their times and `blend`) and cross-fades over a transition's `fade`. Additive layers and masks are skeleton-only. The machines are world state (the og.flipbook and og.skeleton2d state blocks); weight is not used there.
+On an og.Flipbook or og.Skeleton2D entity a GraphDesc.sprite graph drives it instead. A flipbook shows the heaviest clip (an upper override layer at weight 0.5 or more wins) at its rate, cutting on frame ends and keeping the phase within a state or sync group; a 2D skeleton blends the two heaviest clips and cross-fades over a transition's `fade`. Additive layers and masks are skeleton-only.
+
+See `animation §9`.
 
 Token `og.AnimationGraph`, registered under the schema name `og.AnimationGraph`; its value type is `AnimationGraph`.
 
@@ -30,8 +32,9 @@ Token `og.AnimationGraph`, registered under the schema name `og.AnimationGraph`;
 
 ```ogt
 component AnimationGraph {
-  doc "Runs a blend-tree graph (og.anim.graph) on a skeleton: its layers' state machines pick motions by the parameters p0...p7, which the graph names in `param` order (`param speed` is p0, the next `param` is p1, ...)."
-  doc "On an entity with an og.Flipbook or an og.Skeleton2D, a graph registered with GraphDesc.sprite drives it instead: its `clip` lines name the sheet's or rig's clips, so one graph serves every sheet with those names. A flipbook shows the heaviest clip (an upper override layer at weight 0.5 or more wins over the layers under it) and its rate: transitions cut, never fade, and wait for the frame on screen to end; a cut within one state (a blend's other clip) or between states of one sync group keeps the phase. A 2D skeleton blends the two heaviest clips (Skeleton2D.clip and blendClip, their times and `blend`) and cross-fades over a transition's `fade`. Additive layers and masks are skeleton-only. The machines are world state (the og.flipbook and og.skeleton2d state blocks); weight is not used there."
+  doc "Runs a blend-tree graph (og.anim.graph) on a skeleton: its layers' state machines pick motions by the parameters p0...p7, named in the graph's `param` order (`param speed` is p0)."
+  doc "On an og.Flipbook or og.Skeleton2D entity a GraphDesc.sprite graph drives it instead. A flipbook shows the heaviest clip (an upper override layer at weight 0.5 or more wins) at its rate, cutting on frame ends and keeping the phase within a state or sync group; a 2D skeleton blends the two heaviest clips and cross-fades over a transition's `fade`. Additive layers and masks are skeleton-only."
+  guide "animation §9"
   field asset GraphAsset "The graph asset; 0 is none."
   field weight f32 "How much of the pose the graph decides over the rest pose." {
     default 1
@@ -79,4 +82,4 @@ component AnimationGraph {
 }
 ```
 
-<sub>Module `anim` line 167</sub>
+<sub>Module `anim` line 169</sub>

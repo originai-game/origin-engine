@@ -6,25 +6,11 @@ Module [`render`](../render.md) · [index](../index.md)
 
 ### `og.render.applyQuality`
 
-Apply a graphics preset: write its row of RenderSettings' quality fields (the rest of RenderSettings keeps its values) and record it in RenderSettings.quality. The renderer reads those fields and nothing else, so what the probe and dump_world show of RenderSettings is what the next frame draws. A game calls it when the player picks a preset on its settings page, and applies a saved preset itself at start. Inside a system, the system must declare RenderSettings among its writes. The rows:
+Apply a graphics preset: write its row of RenderSettings' quality fields (the rest of RenderSettings keeps its values) and record it in RenderSettings.quality. The renderer reads those fields, so what the probe and dump_world show is what the next frame draws. Medium is every field's default. The device caps shadowedLights by RenderCapabilities.maxShadowedLights and msaaSamples by maxMsaaSamples; the fields keep the row's value. Inside a system, the system must declare RenderSettings among its writes.
 
-| Field | low | medium | high |
-|---|---|---|---|
-| rectShadows | false | true | true |
-| shadowedLights | 2 | 8 | 16 |
-| shadowCascades | 2 | 3 | 4 |
-| shadowMapScale | 0.5 | 1 | 2 |
-| volumetricFog | false | true | true |
-| softParticles | false | true | true |
-| screenSpaceReflections | false | true | true |
-| ambientOcclusion | false | true | true |
-| aoResolution | half | postEffects | full |
-| ssrStepScale | 0.5 | 1 | 2 |
-| volumetricStepScale | 0.5 | 1 | 2 |
-| msaaSamples | 1 | 4 | 4 |
-| upscaler | taau | taau | fsr3 |
+See `looks §16`.
 
-Medium is every field's default, the frame drawn before any preset. The device caps two of the rows, as RenderCapabilities says: shadowedLights by maxShadowedLights and msaaSamples by maxMsaaSamples; the fields keep the row's value.
+Also known as: graphics quality, low medium high graphics, graphics options menu, quality preset
 
 ```ts
 og.render.applyQuality(world: World, preset: GraphicsQuality): Result<void>
@@ -41,27 +27,13 @@ Binding symbol `og_render_apply_quality` · publish builds: kept
 
 ```ogt
 fn applyQuality {
-  doc "Apply a graphics preset: write its row of RenderSettings' quality fields (the rest of RenderSettings keeps its values) and record it in RenderSettings.quality. The renderer reads those fields and nothing else, so what the probe and dump_world show of RenderSettings is what the next frame draws. A game calls it when the player picks a preset on its settings page, and applies a saved preset itself at start. Inside a system, the system must declare RenderSettings among its writes. The rows:"
-  doc "| Field | low | medium | high |"
-  doc "|---|---|---|---|"
-  doc "| rectShadows | false | true | true |"
-  doc "| shadowedLights | 2 | 8 | 16 |"
-  doc "| shadowCascades | 2 | 3 | 4 |"
-  doc "| shadowMapScale | 0.5 | 1 | 2 |"
-  doc "| volumetricFog | false | true | true |"
-  doc "| softParticles | false | true | true |"
-  doc "| screenSpaceReflections | false | true | true |"
-  doc "| ambientOcclusion | false | true | true |"
-  doc "| aoResolution | half | postEffects | full |"
-  doc "| ssrStepScale | 0.5 | 1 | 2 |"
-  doc "| volumetricStepScale | 0.5 | 1 | 2 |"
-  doc "| msaaSamples | 1 | 4 | 4 |"
-  doc "| upscaler | taau | taau | fsr3 |"
-  doc "Medium is every field's default, the frame drawn before any preset. The device caps two of the rows, as RenderCapabilities says: shadowedLights by maxShadowedLights and msaaSamples by maxMsaaSamples; the fields keep the row's value."
+  aliases "graphics quality, low medium high graphics, graphics options menu, quality preset"
+  doc "Apply a graphics preset: write its row of RenderSettings' quality fields (the rest of RenderSettings keeps its values) and record it in RenderSettings.quality. The renderer reads those fields, so what the probe and dump_world show is what the next frame draws. Medium is every field's default. The device caps shadowedLights by RenderCapabilities.maxShadowedLights and msaaSamples by maxMsaaSamples; the fields keep the row's value. Inside a system, the system must declare RenderSettings among its writes."
+  guide "looks §16"
   param world World "The world whose RenderSettings change."
   param preset GraphicsQuality "The preset."
   returns Result.Void "Refused for a world that is not alive, or inside a system that did not declare RenderSettings among its writes."
 }
 ```
 
-<sub>Module `render` line 2722</sub>
+<sub>Module `render` line 2934</sub>

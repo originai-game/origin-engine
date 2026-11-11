@@ -6,7 +6,9 @@ Module [`atmosphere`](../atmosphere.md) · [index](../index.md)
 
 ### `og.Aurora` (resource)
 
-The aurora: curtains of light in the upper atmosphere, raymarched in the procedural sky (after Lawlor and Genetti, Interactive Volume Rendering Aurora on the GPU, 2011). Each curtain is a sheet of falling electrons along the auroral oval, folded by slow travelling waves and curled by a Kelvin-Helmholtz instability, extruded upward by how the electrons deposit their energy in the air: green oxygen light peaking near 114 km, a pink-violet nitrogen border below it where the electrons are hard, red oxygen light above 200 km where they are soft (the heights observed by Whiter et al., 2023). Emission only, under the clouds and dimmed by the air near the horizon; invisible against a daylight sky. The display follows the tick's clock, so it looks the same on every run and after a restore. Drawn over the procedural sky (og.Sky, og.DayNight or og.PhysicalSky). Visual only: nothing in the simulation reads it.
+The aurora: curtains of light in the upper atmosphere raymarched in the procedural sky (after Lawlor and Genetti 2011), each a sheet of falling electrons along the auroral oval, folded by travelling waves and curled by a Kelvin-Helmholtz instability, glowing by height as the electrons' energy deposits (green oxygen near 114 km, a nitrogen border below, red oxygen above 200 km; Whiter et al. 2023). Emission only, under the clouds; invisible against a daylight sky. It follows the tick's clock. Drawn over the procedural sky. Visual only.
+
+See `render §7`.
 
 Token `og.Aurora`, registered under the schema name `og.Aurora`; its value type is `Aurora`.
 
@@ -28,7 +30,8 @@ Token `og.Aurora`, registered under the schema name `og.Aurora`; its value type 
 
 ```ogt
 resource Aurora {
-  doc "The aurora: curtains of light in the upper atmosphere, raymarched in the procedural sky (after Lawlor and Genetti, Interactive Volume Rendering Aurora on the GPU, 2011). Each curtain is a sheet of falling electrons along the auroral oval, folded by slow travelling waves and curled by a Kelvin-Helmholtz instability, extruded upward by how the electrons deposit their energy in the air: green oxygen light peaking near 114 km, a pink-violet nitrogen border below it where the electrons are hard, red oxygen light above 200 km where they are soft (the heights observed by Whiter et al., 2023). Emission only, under the clouds and dimmed by the air near the horizon; invisible against a daylight sky. The display follows the tick's clock, so it looks the same on every run and after a restore. Drawn over the procedural sky (og.Sky, og.DayNight or og.PhysicalSky). Visual only: nothing in the simulation reads it."
+  doc "The aurora: curtains of light in the upper atmosphere raymarched in the procedural sky (after Lawlor and Genetti 2011), each a sheet of falling electrons along the auroral oval, folded by travelling waves and curled by a Kelvin-Helmholtz instability, glowing by height as the electrons' energy deposits (green oxygen near 114 km, a nitrogen border below, red oxygen above 200 km; Whiter et al. 2023). Emission only, under the clouds; invisible against a daylight sky. It follows the tick's clock. Drawn over the procedural sky. Visual only."
+  guide "render §7"
   field enabled bool "Draw the aurora."
   field intensity f32 "How bright the display is: 1 a bright display against a night sky, 0.3 a faint one." {
     default 1
@@ -91,4 +94,4 @@ resource Aurora {
 }
 ```
 
-<sub>Module `atmosphere` line 330</sub>
+<sub>Module `atmosphere` line 337</sub>

@@ -6,7 +6,9 @@ Module [`world`](../world.md) · [index](../index.md)
 
 ### `og.WorldRestored` (event)
 
-A world.restore applied: the tick after it (the first whole tick after a save taken mid-tick, whose next step completes the saved tick) delivers this, read through world.events like any event. Everything in the world came back as saved, request numbers and resources the session filled included; the session did not, so a system that reads this resets what belongs to the session: it forgets requests answered long ago, asks the store again for the settings and progress, and closes a menu the player had open. Sent as that tick starts, not when the restore applies, so the world between the two hashes as the save did.
+A world.restore applied: sent as the tick after it starts (after a mid-tick save, the first whole tick), not when the restore applies, so the world between the two hashes as the save did; read through world.events. The world came back as saved, request numbers and resources the session filled included; the session did not, so a system that reads this resets what belongs to the session.
+
+See `saves §4`.
 
 Token `og.WorldRestored`, registered under the schema name `og.WorldRestored`; its value type is `WorldRestored`.
 
@@ -17,7 +19,8 @@ Token `og.WorldRestored`, registered under the schema name `og.WorldRestored`; i
 
 ```ogt
 event WorldRestored {
-  doc "A world.restore applied: the tick after it (the first whole tick after a save taken mid-tick, whose next step completes the saved tick) delivers this, read through world.events like any event. Everything in the world came back as saved, request numbers and resources the session filled included; the session did not, so a system that reads this resets what belongs to the session: it forgets requests answered long ago, asks the store again for the settings and progress, and closes a menu the player had open. Sent as that tick starts, not when the restore applies, so the world between the two hashes as the save did."
+  doc "A world.restore applied: sent as the tick after it starts (after a mid-tick save, the first whole tick), not when the restore applies, so the world between the two hashes as the save did; read through world.events. The world came back as saved, request numbers and resources the session filled included; the session did not, so a system that reads this resets what belongs to the session."
+  guide "saves §4"
   field from u32 "The tick the world was at when the restore applied." {
     unit ticks
   }
@@ -27,4 +30,4 @@ event WorldRestored {
 }
 ```
 
-<sub>Module `world` line 178</sub>
+<sub>Module `world` line 185</sub>

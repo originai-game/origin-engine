@@ -14,7 +14,7 @@ interface SaveEdit {
   # members follow, each quoted below
 ```
 
-<sub>Module `world` line 106</sub>
+<sub>Module `world` line 112</sub>
 
 <a id="member-SaveEdit-version"></a>
 
@@ -32,7 +32,7 @@ Binding symbol `og_save_edit_get_version` · publish builds: kept
 prop version u32 "The game's save version the save was written at (1 for a save of a game that never declared one)."
 ```
 
-<sub>Module `world` line 108</sub>
+<sub>Module `world` line 114</sub>
 
 <a id="member-SaveEdit-types"></a>
 
@@ -55,7 +55,7 @@ fn types {
 }
 ```
 
-<sub>Module `world` line 109</sub>
+<sub>Module `world` line 115</sub>
 
 <a id="member-SaveEdit-has"></a>
 
@@ -84,7 +84,7 @@ fn has {
 }
 ```
 
-<sub>Module `world` line 113</sub>
+<sub>Module `world` line 119</sub>
 
 <a id="member-SaveEdit-records"></a>
 
@@ -112,7 +112,7 @@ fn records {
 }
 ```
 
-<sub>Module `world` line 119</sub>
+<sub>Module `world` line 125</sub>
 
 <a id="member-SaveEdit-setRecords"></a>
 
@@ -142,7 +142,7 @@ fn setRecords {
 }
 ```
 
-<sub>Module `world` line 124</sub>
+<sub>Module `world` line 130</sub>
 
 <a id="member-SaveEdit-transform"></a>
 
@@ -175,13 +175,15 @@ fn transform {
 }
 ```
 
-<sub>Module `world` line 130</sub>
+<sub>Module `world` line 136</sub>
 
 <a id="member-SaveEdit-split"></a>
 
 #### `SaveEdit.split`
 
-Split a type into several: each saved value is handed to `map`, whose answer names the new types' records; the old type goes. The migrated world holds the records a world built at the new version holds, and every peer and every restore of the same save migrates to the same world and hash; its hash differs from a built one's only by the archetypes the built one passed through (inserting the new types one at a time leaves an empty archetype of the first alone, which the split never makes), so compare a split's result record by record, not by hash. renameField, renameType, transform, dropType and spawn keep which types sit together: those migrate to a built world's hash exactly.
+Split a type into several: each saved value is handed to `map`, whose answer names the new types' records; the old type goes. Every restore of the same save migrates to the same world and hash; it holds the records a world built at the new version holds, but its hash may differ from that world's by empty archetypes, so compare a split's result record by record, not by hash.
+
+See `saves §5`.
 
 ```ts
 SaveEdit.split(name: string, map: SplitFn): Result<void>
@@ -198,7 +200,8 @@ Implemented by the TypeScript runtime over the members of this module: no bindin
 
 ```ogt
 fn split {
-  doc "Split a type into several: each saved value is handed to `map`, whose answer names the new types' records; the old type goes. The migrated world holds the records a world built at the new version holds, and every peer and every restore of the same save migrates to the same world and hash; its hash differs from a built one's only by the archetypes the built one passed through (inserting the new types one at a time leaves an empty archetype of the first alone, which the split never makes), so compare a split's result record by record, not by hash. renameField, renameType, transform, dropType and spawn keep which types sit together: those migrate to a built world's hash exactly."
+  doc "Split a type into several: each saved value is handed to `map`, whose answer names the new types' records; the old type goes. Every restore of the same save migrates to the same world and hash; it holds the records a world built at the new version holds, but its hash may differ from that world's by empty archetypes, so compare a split's result record by record, not by hash."
+  guide "saves §5"
   host false
   param name String "The saved type."
   param map SplitFn "The old record to the new types' records."
@@ -206,7 +209,7 @@ fn split {
 }
 ```
 
-<sub>Module `world` line 138</sub>
+<sub>Module `world` line 144</sub>
 
 <a id="member-SaveEdit-renameType"></a>
 
@@ -236,7 +239,7 @@ fn renameType {
 }
 ```
 
-<sub>Module `world` line 145</sub>
+<sub>Module `world` line 152</sub>
 
 <a id="member-SaveEdit-renameField"></a>
 
@@ -268,7 +271,7 @@ fn renameField {
 }
 ```
 
-<sub>Module `world` line 151</sub>
+<sub>Module `world` line 158</sub>
 
 <a id="member-SaveEdit-dropType"></a>
 
@@ -296,7 +299,7 @@ fn dropType {
 }
 ```
 
-<sub>Module `world` line 158</sub>
+<sub>Module `world` line 165</sub>
 
 <a id="member-SaveEdit-spawn"></a>
 
@@ -324,7 +327,7 @@ fn spawn {
 }
 ```
 
-<sub>Module `world` line 163</sub>
+<sub>Module `world` line 170</sub>
 
 <a id="member-SaveEdit-text"></a>
 
@@ -347,7 +350,7 @@ fn text {
 }
 ```
 
-<sub>Module `world` line 168</sub>
+<sub>Module `world` line 175</sub>
 
 <a id="member-SaveEdit-close"></a>
 
@@ -370,4 +373,4 @@ fn close {
 }
 ```
 
-<sub>Module `world` line 172</sub>
+<sub>Module `world` line 179</sub>

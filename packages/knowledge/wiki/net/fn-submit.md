@@ -6,7 +6,9 @@ Module [`net`](../net.md) · [index](../index.md)
 
 ### `og.net.submit`
 
-Give this peer's player's input: in lockstep, for the tick inputDelay ticks from the one running (sent to every peer when the tick ends); otherwise, for the next tick. It holds until the next call, so a game calls it once a tick from a system that reads og.Input (or og.Gamepad, or the UI's touch controls). Callable from a system.
+Give this peer's player's input: in lockstep, for the tick inputDelay ticks from the one running (sent to every peer when the tick ends); otherwise, for the next tick. It holds until the next call. Callable from a system.
+
+See `networking §3`.
 
 ```ts
 og.net.submit(world: World, input?: InputDesc): Result<void>
@@ -23,11 +25,12 @@ Binding symbol `og_net_submit` · publish builds: kept
 
 ```ogt
 fn submit {
-  doc "Give this peer's player's input: in lockstep, for the tick inputDelay ticks from the one running (sent to every peer when the tick ends); otherwise, for the next tick. It holds until the next call, so a game calls it once a tick from a system that reads og.Input (or og.Gamepad, or the UI's touch controls). Callable from a system."
+  doc "Give this peer's player's input: in lockstep, for the tick inputDelay ticks from the one running (sent to every peer when the tick ends); otherwise, for the next tick. It holds until the next call. Callable from a system."
+  guide "networking §3"
   param world World "The world."
   param input InputDesc "The buttons and axes."
   returns Result.Void "Refused for an axis that is not finite."
 }
 ```
 
-<sub>Module `net` line 193</sub>
+<sub>Module `net` line 195</sub>

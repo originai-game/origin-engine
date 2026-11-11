@@ -231,3 +231,38 @@ arbitrary Yarn headers and hashtags remain metadata.
 Replace old `type dialogue` sources with `.yarn`; keep their localization
 keys as `#line:` ids and move the base text into the script. Re-cook all
 dialogue assets after changing the profile or registered functions.
+
+## 8. Run dialogue, barks and quests from the game
+
+```ts
+// setup
+og.story.load(world, "story/smith.yarn");
+// on talking to the smith
+const c = og.story.start(world, { dialogue: "smith" });
+// each frame: read the view, then answer it
+const v = c.ok ? og.story.view(world, c.value) : null;
+if (v && v.choices.length === 0) og.story.advance(world, c.value);
+else if (v) og.story.choose(world, c.value, v.choices[0].index);
+```
+
+- og.story resolves every line through og.i18n on every read, so a
+  locale switch re-translates the current line and choices (§2). Dialogue
+  text keeps its `Speaker:` prefix and carries typed spans (§5).
+- A line's `#voice:` plays through og.audio on the conversation's own
+  entity, an og.AudioSource on the sfx bus, from the tick after the line
+  is shown; it stops when the line moves on. For auto-advance, advance
+  once the view's `voiceLeft` reaches 0.
+- A line's `#shot:` (else its node's) names a virtual camera's entity or a
+  cast role. While the line shows, og.story makes that og.VirtualCamera
+  og.CameraBrain.solo (with `soloBlend` -1): a name is the entity of that
+  name, a role the cast entity's own og.VirtualCamera, else the first one
+  whose lookAt is that entity. When no running conversation's line has a
+  shot, the game's own solo is handed back (`camera §2`).
+- Barks: og.story.bark asks for one of a topic, og.story.ambient asks
+  periodically, og.story.barks lists those being said, to draw over their
+  entities.
+- Quests start with `<<quest start rescue>>` in Yarn or og.story.startQuest,
+  count with og.story.progress (or `on Event` objectives) and advance their
+  stages themselves; og.story.quests lists them for a quest log.
+- Choice timers, bark durations and cooldowns count ticks, never wall time.
+- A world without loaded stories keeps its existing saves and hash.

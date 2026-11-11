@@ -6,9 +6,11 @@ Module [`audio`](../audio.md) · [index](../index.md)
 
 ### `og.AudioSnapshot` (component)
 
-A mixer snapshot (combat, underwater, paused): per-bus volumes and filters the mix blends towards while `active`, and back from when not, over `fade` seconds. Each tick og.audio moves `weight` by tickDuration / fade towards 1 or 0 and sends the blend in the stream; the bus gains ramp linearly across each tick, so a blend is a straight line to the sample, not a staircase.
+A mixer snapshot (combat, underwater, paused): per-bus volumes and filters the mix blends towards while `active`, and back when not. Each tick og.audio moves `weight` by tickDuration / fade and sends the blend in the stream; bus gains ramp linearly across each tick.
 
-At weight w a bus's gain is multiplied by 1 + w * (volume - 1); its low-pass moves from 20 kHz and its high-pass from 20 Hz towards the snapshot's cutoffs in octaves (log2-linear in w). Several snapshots multiply their volumes and take the lowest low-pass and the highest high-pass. Audio's bus volumes and the AudioBusFx filters stay what the game set: the snapshot gain multiplies them, and of its cutoffs and the AudioBusFx's the lower low-pass and the higher high-pass count.
+At weight w a bus's gain is multiplied by 1 + w * (volume - 1); its low-pass moves from 20 kHz and its high-pass from 20 Hz to the snapshot's cutoffs, log2-linear in w. Snapshots multiply gains and meet filters (the lowest low-pass and highest high-pass, AudioBusFx's included); they never write og.Audio or og.AudioBusFx.
+
+See `audio §4`.
 
 Token `og.AudioSnapshot`, registered under the schema name `og.AudioSnapshot`; its value type is `AudioSnapshot`.
 
@@ -23,8 +25,9 @@ Token `og.AudioSnapshot`, registered under the schema name `og.AudioSnapshot`; i
 
 ```ogt
 component AudioSnapshot {
-  doc "A mixer snapshot (combat, underwater, paused): per-bus volumes and filters the mix blends towards while `active`, and back from when not, over `fade` seconds. Each tick og.audio moves `weight` by tickDuration / fade towards 1 or 0 and sends the blend in the stream; the bus gains ramp linearly across each tick, so a blend is a straight line to the sample, not a staircase."
-  doc "At weight w a bus's gain is multiplied by 1 + w * (volume - 1); its low-pass moves from 20 kHz and its high-pass from 20 Hz towards the snapshot's cutoffs in octaves (log2-linear in w). Several snapshots multiply their volumes and take the lowest low-pass and the highest high-pass. Audio's bus volumes and the AudioBusFx filters stay what the game set: the snapshot gain multiplies them, and of its cutoffs and the AudioBusFx's the lower low-pass and the higher high-pass count."
+  doc "A mixer snapshot (combat, underwater, paused): per-bus volumes and filters the mix blends towards while `active`, and back when not. Each tick og.audio moves `weight` by tickDuration / fade and sends the blend in the stream; bus gains ramp linearly across each tick."
+  doc "At weight w a bus's gain is multiplied by 1 + w * (volume - 1); its low-pass moves from 20 kHz and its high-pass from 20 Hz to the snapshot's cutoffs, log2-linear in w. Snapshots multiply gains and meet filters (the lowest low-pass and highest high-pass, AudioBusFx's included); they never write og.Audio or og.AudioBusFx."
+  guide "audio §4"
   field active bool "Blends in while true, out while false."
   field fade f32 "Seconds a full blend in or out takes; 0 is at once." {
     default 0.5
@@ -44,4 +47,4 @@ component AudioSnapshot {
 }
 ```
 
-<sub>Module `audio` line 455</sub>
+<sub>Module `audio` line 472</sub>

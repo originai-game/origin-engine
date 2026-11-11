@@ -15,7 +15,7 @@ A string: one of the variants below. The zero value is `"purchase"`.
 | `"purchase"` | A purchase settled: a pending one completed or failed, or one was refunded. Data `{ purchase, product, quantity, state }`, state `completed`, `failed` or `refunded`. |
 | `"entitlements"` | The player's entitlements changed without a call (bought on another device, a subscription expired): data `{ entitlements }`, the entitlements answer's shape. |
 | `"invite"` | An invite to this game arrived: data `{ invite, from: { player, name }, payload, time }`. |
-| `"host"` | A message from the page that frames the game, outside any platform service (a site steering a showcase, a launcher handing over a choice): data `{ name, ... }`, its meaning agreed between the game and that page. The engine gives it no meaning of its own; a game reading it handles an unknown name by ignoring it. |
+| `"host"` | A message from the page that frames the game, outside any platform service (a site steering a showcase, a launcher handing over a choice): data `{ name, ... }`, its meaning agreed between game and page. The engine gives it none; a game ignores a name it does not know. |
 
 ```ogt
 enum PlatformNoticeKind {
@@ -23,8 +23,8 @@ enum PlatformNoticeKind {
   variant purchase "A purchase settled: a pending one completed or failed, or one was refunded. Data `{ purchase, product, quantity, state }`, state `completed`, `failed` or `refunded`."
   variant entitlements "The player's entitlements changed without a call (bought on another device, a subscription expired): data `{ entitlements }`, the entitlements answer's shape."
   variant invite "An invite to this game arrived: data `{ invite, from: { player, name }, payload, time }`."
-  variant host "A message from the page that frames the game, outside any platform service (a site steering a showcase, a launcher handing over a choice): data `{ name, ... }`, its meaning agreed between the game and that page. The engine gives it no meaning of its own; a game reading it handles an unknown name by ignoring it."
+  variant host "A message from the page that frames the game, outside any platform service (a site steering a showcase, a launcher handing over a choice): data `{ name, ... }`, its meaning agreed between game and page. The engine gives it none; a game ignores a name it does not know."
 }
 ```
 
-<sub>Module `platform` line 222</sub>
+<sub>Module `platform` line 224</sub>

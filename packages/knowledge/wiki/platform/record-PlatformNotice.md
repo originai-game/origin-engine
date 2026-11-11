@@ -8,6 +8,8 @@ Module [`platform`](../platform.md) · [index](../index.md)
 
 Unasked host input arrived: sent by og.platform at the start of the tick it was applied, read by systems the tick after; read it with og.platform.notice. Registered when a game first names it (a system's reads); without it notices are still logged and readable.
 
+See `saves §8`.
+
 Token `og.PlatformNotice`, registered under the schema name `og.PlatformNotice`; its value type is `PlatformNotice`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -18,9 +20,10 @@ Token `og.PlatformNotice`, registered under the schema name `og.PlatformNotice`;
 ```ogt
 event PlatformNotice {
   doc "Unasked host input arrived: sent by og.platform at the start of the tick it was applied, read by systems the tick after; read it with og.platform.notice. Registered when a game first names it (a system's reads); without it notices are still logged and readable."
+  guide "saves §8"
   field notice u32 "The notice's number, for og.platform.notice: 1 for the first, counting up."
   field kind PlatformNoticeKind "What it is about."
 }
 ```
 
-<sub>Module `platform` line 230</sub>
+<sub>Module `platform` line 232</sub>

@@ -3673,13 +3673,13 @@ impl ToJson for LitFeature {
 #[derive(Clone, Debug, PartialEq)]
 pub struct RenderOptions {
     pub antialias: Antialias,
+    pub taa_history: TaaHistory,
+    pub taa_sharpen: f32,
     pub hdr: bool,
     pub paper_white_nits: f32,
     pub peak_nits: f32,
     pub shadow_map_size: u32,
     pub point_shadows: PointShadows,
-    pub taa_history: TaaHistory,
-    pub taa_sharpen: f32,
     pub planar_reflections: u32,
     pub transparency: Transparency,
     pub transparency_layers: u32,
@@ -3691,13 +3691,13 @@ impl Default for RenderOptions {
     fn default() -> Self {
         Self {
             antialias: Default::default(),
+            taa_history: Default::default(),
+            taa_sharpen: Default::default(),
             hdr: Default::default(),
             paper_white_nits: Default::default(),
             peak_nits: Default::default(),
             shadow_map_size: 2048,
             point_shadows: Default::default(),
-            taa_history: Default::default(),
-            taa_sharpen: Default::default(),
             planar_reflections: 1,
             transparency: Default::default(),
             transparency_layers: 0,
@@ -3715,13 +3715,13 @@ impl FromJson for RenderOptions {
         let o = object(v)?;
         Ok(Self {
             antialias: field(o, "antialias", d.antialias)?,
+            taa_history: field(o, "taaHistory", d.taa_history)?,
+            taa_sharpen: field(o, "taaSharpen", d.taa_sharpen)?,
             hdr: field(o, "hdr", d.hdr)?,
             paper_white_nits: field(o, "paperWhiteNits", d.paper_white_nits)?,
             peak_nits: field(o, "peakNits", d.peak_nits)?,
             shadow_map_size: field(o, "shadowMapSize", d.shadow_map_size)?,
             point_shadows: field(o, "pointShadows", d.point_shadows)?,
-            taa_history: field(o, "taaHistory", d.taa_history)?,
-            taa_sharpen: field(o, "taaSharpen", d.taa_sharpen)?,
             planar_reflections: field(o, "planarReflections", d.planar_reflections)?,
             transparency: field(o, "transparency", d.transparency)?,
             transparency_layers: field(o, "transparencyLayers", d.transparency_layers)?,
@@ -3735,13 +3735,13 @@ impl ToJson for RenderOptions {
     fn to_json(&self) -> Value {
         let mut o = Map::new();
         o.insert("antialias".into(), self.antialias.to_json());
+        o.insert("taaHistory".into(), self.taa_history.to_json());
+        o.insert("taaSharpen".into(), self.taa_sharpen.to_json());
         o.insert("hdr".into(), self.hdr.to_json());
         o.insert("paperWhiteNits".into(), self.paper_white_nits.to_json());
         o.insert("peakNits".into(), self.peak_nits.to_json());
         o.insert("shadowMapSize".into(), self.shadow_map_size.to_json());
         o.insert("pointShadows".into(), self.point_shadows.to_json());
-        o.insert("taaHistory".into(), self.taa_history.to_json());
-        o.insert("taaSharpen".into(), self.taa_sharpen.to_json());
         o.insert("planarReflections".into(), self.planar_reflections.to_json());
         o.insert("transparency".into(), self.transparency.to_json());
         o.insert("transparencyLayers".into(), self.transparency_layers.to_json());
@@ -3792,7 +3792,6 @@ impl ToJson for FoliageDesc {
 /// `StandardMaterialDesc`: packages/knowledge/wiki/render.md.
 #[derive(Clone, Debug, PartialEq)]
 pub struct StandardMaterialDesc {
-    pub foliage: FoliageDesc,
     pub color: Color,
     pub map: Option<u64>,
     pub metalness: f32,
@@ -3800,19 +3799,19 @@ pub struct StandardMaterialDesc {
     pub roughness: f32,
     pub roughness_map: Option<u64>,
     pub normal_map: Option<u64>,
+    pub normal_scale: Vec2,
     pub ao_map: Option<u64>,
+    pub ao_map_intensity: f32,
     pub emissive: Color,
     pub emissive_intensity: f32,
     pub emissive_map: Option<u64>,
+    pub env_map_intensity: f32,
     pub opacity: f32,
     pub transparent: bool,
     pub alpha_test: f32,
+    pub alpha_to_coverage: bool,
     pub side: Side,
     pub flat_shading: bool,
-    pub alpha_to_coverage: bool,
-    pub env_map_intensity: f32,
-    pub normal_scale: Vec2,
-    pub ao_map_intensity: f32,
     pub unlit: bool,
     pub toon: bool,
     pub gradient_map: Option<u64>,
@@ -3877,6 +3876,7 @@ pub struct StandardMaterialDesc {
     pub wireframe: bool,
     pub wireframe_angle: f32,
     pub wireframe_color: Color,
+    pub foliage: FoliageDesc,
     pub paint_detail: f32,
     pub weathering: f32,
 }
@@ -3884,7 +3884,6 @@ pub struct StandardMaterialDesc {
 impl Default for StandardMaterialDesc {
     fn default() -> Self {
         Self {
-            foliage: Default::default(),
             color: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
             map: Default::default(),
             metalness: Default::default(),
@@ -3892,19 +3891,19 @@ impl Default for StandardMaterialDesc {
             roughness: 1.0_f32,
             roughness_map: Default::default(),
             normal_map: Default::default(),
+            normal_scale: Vec2::new(1.0_f32, 1.0_f32),
             ao_map: Default::default(),
+            ao_map_intensity: 1.0_f32,
             emissive: Default::default(),
             emissive_intensity: 1.0_f32,
             emissive_map: Default::default(),
+            env_map_intensity: 1.0_f32,
             opacity: 1.0_f32,
             transparent: Default::default(),
             alpha_test: Default::default(),
+            alpha_to_coverage: Default::default(),
             side: Default::default(),
             flat_shading: Default::default(),
-            alpha_to_coverage: Default::default(),
-            env_map_intensity: 1.0_f32,
-            normal_scale: Vec2::new(1.0_f32, 1.0_f32),
-            ao_map_intensity: 1.0_f32,
             unlit: Default::default(),
             toon: Default::default(),
             gradient_map: Default::default(),
@@ -3969,6 +3968,7 @@ impl Default for StandardMaterialDesc {
             wireframe: Default::default(),
             wireframe_angle: Default::default(),
             wireframe_color: Default::default(),
+            foliage: Default::default(),
             paint_detail: Default::default(),
             weathering: 1.0_f32,
         }
@@ -3982,7 +3982,6 @@ impl FromJson for StandardMaterialDesc {
     fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
         let o = object(v)?;
         Ok(Self {
-            foliage: field(o, "foliage", d.foliage)?,
             color: field(o, "color", d.color)?,
             map: field(o, "map", d.map)?,
             metalness: field(o, "metalness", d.metalness)?,
@@ -3990,19 +3989,19 @@ impl FromJson for StandardMaterialDesc {
             roughness: field(o, "roughness", d.roughness)?,
             roughness_map: field(o, "roughnessMap", d.roughness_map)?,
             normal_map: field(o, "normalMap", d.normal_map)?,
+            normal_scale: field(o, "normalScale", d.normal_scale)?,
             ao_map: field(o, "aoMap", d.ao_map)?,
+            ao_map_intensity: field(o, "aoMapIntensity", d.ao_map_intensity)?,
             emissive: field(o, "emissive", d.emissive)?,
             emissive_intensity: field(o, "emissiveIntensity", d.emissive_intensity)?,
             emissive_map: field(o, "emissiveMap", d.emissive_map)?,
+            env_map_intensity: field(o, "envMapIntensity", d.env_map_intensity)?,
             opacity: field(o, "opacity", d.opacity)?,
             transparent: field(o, "transparent", d.transparent)?,
             alpha_test: field(o, "alphaTest", d.alpha_test)?,
+            alpha_to_coverage: field(o, "alphaToCoverage", d.alpha_to_coverage)?,
             side: field(o, "side", d.side)?,
             flat_shading: field(o, "flatShading", d.flat_shading)?,
-            alpha_to_coverage: field(o, "alphaToCoverage", d.alpha_to_coverage)?,
-            env_map_intensity: field(o, "envMapIntensity", d.env_map_intensity)?,
-            normal_scale: field(o, "normalScale", d.normal_scale)?,
-            ao_map_intensity: field(o, "aoMapIntensity", d.ao_map_intensity)?,
             unlit: field(o, "unlit", d.unlit)?,
             toon: field(o, "toon", d.toon)?,
             gradient_map: field(o, "gradientMap", d.gradient_map)?,
@@ -4067,6 +4066,7 @@ impl FromJson for StandardMaterialDesc {
             wireframe: field(o, "wireframe", d.wireframe)?,
             wireframe_angle: field(o, "wireframeAngle", d.wireframe_angle)?,
             wireframe_color: field(o, "wireframeColor", d.wireframe_color)?,
+            foliage: field(o, "foliage", d.foliage)?,
             paint_detail: field(o, "paintDetail", d.paint_detail)?,
             weathering: field(o, "weathering", d.weathering)?,
         })
@@ -4076,7 +4076,6 @@ impl FromJson for StandardMaterialDesc {
 impl ToJson for StandardMaterialDesc {
     fn to_json(&self) -> Value {
         let mut o = Map::new();
-        o.insert("foliage".into(), self.foliage.to_json());
         o.insert("color".into(), self.color.to_json());
         o.insert("map".into(), self.map.to_json());
         o.insert("metalness".into(), self.metalness.to_json());
@@ -4084,19 +4083,19 @@ impl ToJson for StandardMaterialDesc {
         o.insert("roughness".into(), self.roughness.to_json());
         o.insert("roughnessMap".into(), self.roughness_map.to_json());
         o.insert("normalMap".into(), self.normal_map.to_json());
+        o.insert("normalScale".into(), self.normal_scale.to_json());
         o.insert("aoMap".into(), self.ao_map.to_json());
+        o.insert("aoMapIntensity".into(), self.ao_map_intensity.to_json());
         o.insert("emissive".into(), self.emissive.to_json());
         o.insert("emissiveIntensity".into(), self.emissive_intensity.to_json());
         o.insert("emissiveMap".into(), self.emissive_map.to_json());
+        o.insert("envMapIntensity".into(), self.env_map_intensity.to_json());
         o.insert("opacity".into(), self.opacity.to_json());
         o.insert("transparent".into(), self.transparent.to_json());
         o.insert("alphaTest".into(), self.alpha_test.to_json());
+        o.insert("alphaToCoverage".into(), self.alpha_to_coverage.to_json());
         o.insert("side".into(), self.side.to_json());
         o.insert("flatShading".into(), self.flat_shading.to_json());
-        o.insert("alphaToCoverage".into(), self.alpha_to_coverage.to_json());
-        o.insert("envMapIntensity".into(), self.env_map_intensity.to_json());
-        o.insert("normalScale".into(), self.normal_scale.to_json());
-        o.insert("aoMapIntensity".into(), self.ao_map_intensity.to_json());
         o.insert("unlit".into(), self.unlit.to_json());
         o.insert("toon".into(), self.toon.to_json());
         o.insert("gradientMap".into(), self.gradient_map.to_json());
@@ -4161,6 +4160,7 @@ impl ToJson for StandardMaterialDesc {
         o.insert("wireframe".into(), self.wireframe.to_json());
         o.insert("wireframeAngle".into(), self.wireframe_angle.to_json());
         o.insert("wireframeColor".into(), self.wireframe_color.to_json());
+        o.insert("foliage".into(), self.foliage.to_json());
         o.insert("paintDetail".into(), self.paint_detail.to_json());
         o.insert("weathering".into(), self.weathering.to_json());
         Value::Object(o)
@@ -5262,8 +5262,8 @@ pub struct DisplaySettings {
     pub render_scale: f32,
     pub auto_quality: bool,
     pub auto_min_scale: f32,
-    pub cloth_subdivisions: u32,
     pub auto_preset_steps: u32,
+    pub cloth_subdivisions: u32,
     pub fullscreen: bool,
     pub power_preference: PowerPreference,
 }
@@ -5277,8 +5277,8 @@ impl Default for DisplaySettings {
             render_scale: 1.0_f32,
             auto_quality: true,
             auto_min_scale: 0.5_f32,
-            cloth_subdivisions: 0,
             auto_preset_steps: 1,
+            cloth_subdivisions: 0,
             fullscreen: Default::default(),
             power_preference: Default::default(),
         }
@@ -5298,8 +5298,8 @@ impl FromJson for DisplaySettings {
             render_scale: field(o, "renderScale", d.render_scale)?,
             auto_quality: field(o, "autoQuality", d.auto_quality)?,
             auto_min_scale: field(o, "autoMinScale", d.auto_min_scale)?,
-            cloth_subdivisions: field(o, "clothSubdivisions", d.cloth_subdivisions)?,
             auto_preset_steps: field(o, "autoPresetSteps", d.auto_preset_steps)?,
+            cloth_subdivisions: field(o, "clothSubdivisions", d.cloth_subdivisions)?,
             fullscreen: field(o, "fullscreen", d.fullscreen)?,
             power_preference: field(o, "powerPreference", d.power_preference)?,
         })
@@ -5315,8 +5315,8 @@ impl ToJson for DisplaySettings {
         o.insert("renderScale".into(), self.render_scale.to_json());
         o.insert("autoQuality".into(), self.auto_quality.to_json());
         o.insert("autoMinScale".into(), self.auto_min_scale.to_json());
-        o.insert("clothSubdivisions".into(), self.cloth_subdivisions.to_json());
         o.insert("autoPresetSteps".into(), self.auto_preset_steps.to_json());
+        o.insert("clothSubdivisions".into(), self.cloth_subdivisions.to_json());
         o.insert("fullscreen".into(), self.fullscreen.to_json());
         o.insert("powerPreference".into(), self.power_preference.to_json());
         Value::Object(o)

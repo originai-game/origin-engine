@@ -30,4 +30,4 @@ struct LeaderboardQueryDesc {
 }
 ```
 
-<sub>Module `platform` line 40</sub>
+<sub>Module `platform` line 36</sub>

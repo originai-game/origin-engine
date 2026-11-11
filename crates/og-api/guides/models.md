@@ -28,6 +28,15 @@ An `.ogt` under `assets/` (for example `assets/models/crate.ogt`) that starts `t
   and `mergeGeometries` of nested `part` blocks), and its placement
   (`position`, `quaternion`, `scale`, `mirror`).
 
+A three.js outline pastes into og.Shape as it is. Make shapes in start or
+a command. A geometry's `shape` block is og.Shape's calls, one a line, with
+`hole { }` blocks inside it:
+`extrudeGeometry { shape { absarc 0 0 1 0 6.283185307179586 false } depth 0.2 }`.
+Several `at { }` blocks place one mesh drawn instanced. `og cook` builds
+the file into the model blob a glTF cooks to (levels of detail, raycast
+BVH, nodes) and refuses it past project.ogt's triangle and vertex budgets;
+`og dev` re-cooks it on an edit.
+
 A scene's `model` line names the file, and `og.load.gltf` loads its blob
 like any glTF. The look presets carry examples under
 `templates/looks/<slug>/models/`, such as paper-craft's `tree.ogt` and

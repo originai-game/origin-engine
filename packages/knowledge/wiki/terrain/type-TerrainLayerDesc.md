@@ -20,8 +20,8 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `antiTiling` | `number` | `0` | 0 … 1 | `ratio` | — | How far the texture's repeat is broken: each point blends three hexagonal tiles of it, each turned (by up to half a turn at 1) and moved by its own hash, so no period shows across a field. 0: the plain repeat. |
 | `heightContrast` | `number` | `0` | 0 … 1 | `ratio` | — | How sharp the height blend (the terrain file's `heightBlend`) is at this layer's edges: 0 the default window, 1 ten times narrower (a crisp rim). |
 | `macroVariation` | `number` | `0` | 0 … 1 | `ratio` | — | A slow drift of brightness and hue over the ground and, with distance, the texture at a quarter of its frequency blended in, so a field of one layer does not read as one texture from afar. 0: none. |
-| `displacement` | `number` | `0` | 0 … 4 | `m` | — | Metres the drawn ground rises and falls by the layer's height map (its albedo's alpha, about its middle) near the camera (og.Terrain's `displacementDistance`), where the layer shows and the ground is not steep: pebbles, cobbles and rock stand out of the ground at its silhouette and in its shadows. Only drawn: collision, og.terrain.sample and picking keep the height field. 0: flat. |
-| `cellVariation` | `number` | `0` | 0 … 1 | `ratio` | — | How much each cell of the layer's pattern (a sett, a flag, a tile) takes its own tone: its normal map's alpha names the cell (any value per cell, 0 to 1; opaque for none), and each cell's brightness and warmth move by up to 25 % and 20 % at 1, so a field of stones laid in one texture reads as stones of different quarries. 0: none. |
+| `displacement` | `number` | `0` | 0 … 4 | `m` | — | Metres the drawn ground rises and falls by the layer's height map (its albedo's alpha, about its middle) within og.Terrain's `displacementDistance`, where the layer shows and the ground is not steep. Only drawn: collision, og.terrain.sample and picking keep the height field. 0: flat. See `world §2`. |
+| `cellVariation` | `number` | `0` | 0 … 1 | `ratio` | — | How much each cell of the layer's pattern takes its own tone: its normal map's alpha names the cell (0 to 1; opaque for none), and at 1 each cell's brightness and warmth move by up to 25 % and 20 %. 0: none. See `world §2`. |
 | `normalStrength` | `number` | `1` | 0 … 4 | — | — | How strongly its normal map bends the surface. |
 | `slopeMin` | `number` | `0` | 0 … 90 | `deg` | — | The flattest slope it shows on. |
 | `slopeMax` | `number` | `90` | 0 … 90 | `deg` | — | The steepest. |
@@ -69,12 +69,14 @@ struct TerrainLayerDesc {
     max 1
     unit ratio
   }
-  field displacement f32 "Metres the drawn ground rises and falls by the layer's height map (its albedo's alpha, about its middle) near the camera (og.Terrain's `displacementDistance`), where the layer shows and the ground is not steep: pebbles, cobbles and rock stand out of the ground at its silhouette and in its shadows. Only drawn: collision, og.terrain.sample and picking keep the height field. 0: flat." {
+  field displacement f32 "Metres the drawn ground rises and falls by the layer's height map (its albedo's alpha, about its middle) within og.Terrain's `displacementDistance`, where the layer shows and the ground is not steep. Only drawn: collision, og.terrain.sample and picking keep the height field. 0: flat." {
+    guide "world §2"
     min 0
     max 4
     unit m
   }
-  field cellVariation f32 "How much each cell of the layer's pattern (a sett, a flag, a tile) takes its own tone: its normal map's alpha names the cell (any value per cell, 0 to 1; opaque for none), and each cell's brightness and warmth move by up to 25 % and 20 % at 1, so a field of stones laid in one texture reads as stones of different quarries. 0: none." {
+  field cellVariation f32 "How much each cell of the layer's pattern takes its own tone: its normal map's alpha names the cell (0 to 1; opaque for none), and at 1 each cell's brightness and warmth move by up to 25 % and 20 %. 0: none." {
+    guide "world §2"
     min 0
     max 1
     unit ratio
@@ -117,4 +119,4 @@ struct TerrainLayerDesc {
 }
 ```
 
-<sub>Module `terrain` line 542</sub>
+<sub>Module `terrain` line 553</sub>

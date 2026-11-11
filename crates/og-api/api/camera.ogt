@@ -1,15 +1,18 @@
 module camera {
   doc "The main camera, as a resource with three.js PerspectiveCamera and OrthographicCamera parameter names."
   doc "Camera controllers are components (OrbitCamera, FollowCamera, Follow2D) on the entity the camera orbits or follows; the systems that drive them ship in TypeScript as og.systems.cameras."
+  guide "camera"
 
   resource Camera {
     doc "The camera the frame is rendered from. Rendering reads it after the tick; it never feeds back into the simulation."
     aliases "main camera, view, PerspectiveCamera, Camera3D"
+    group "Pose"
     field position Vector3 "Where the camera is." {
       worldspace world
       unit m
     }
     field quaternion Quaternion "Its rotation; the camera looks down its local -Z."
+    group "Projection"
     field fov f32 "The vertical field of view of the perspective projection." {
       default 50
       min 1
@@ -39,6 +42,7 @@ module camera {
       min 0.01
       unit m
     }
+    group "Output"
     field background Color "The clear colour, as three.js Scene.background. The default is the brand ink #14161b in linear RGB." {
       default 0.00699 0.00803 0.01096
     }
@@ -48,6 +52,7 @@ module camera {
       max 16
       tunable true
     }
+    group "Shake"
     field trauma f32 "Screen shake, 0 to 1, added by og.camera.shake and decayed by traumaDecay every tick (unscaled, so a hit stop still shakes). The offset and roll grow with trauma squared and follow smooth noise of the tick: visual only, a replay shakes the same." {
       min 0
       max 1
@@ -75,6 +80,7 @@ module camera {
       min 0
       unit hz
     }
+    group "Punch and kick"
     field punch f32 "A zoom punch in progress (og.camera.punch): the view is narrowed by this fraction, decaying by punchDecay. Visual only." {
       min -0.9
       max 4
@@ -94,6 +100,7 @@ module camera {
       unit perSecond
       tunable true
     }
+    group "Zones"
     field zoneActive bool "The followed entity is in an og.CameraZone: the view keeps inside zoneMin to zoneMax. Written by the og.camera system."
     field zoneMin Vector2 "The zone the view keeps inside: its bottom-left corner." {
       worldspace world
@@ -137,6 +144,7 @@ module camera {
       param y f32 "Vertical position in CSS pixels."
       returns Ray
     }
+    group "Layers"
     field layers u32 "Three.js layers, as Camera.layers.mask: the frame draws the meshes, models, world sprites, particle systems, lines and points whose layers share a bit with it. 1 (layer 0) by default, as every object's." {
       default 1
     }
@@ -144,7 +152,8 @@ module camera {
 
   component OrbitCamera {
     doc "Orbits og.Camera around the entity carrying it, as three.js OrbitControls: a left-button drag on the play surface turns it, the wheel zooms, autoRotate turns it on its own."
-    doc "Camera controllers are game-level systems the engine ships in TypeScript (og.systems.cameras); list them in GameDesc.systems: `systems: [...og.systems.cameras, ...yours]`. The first entity carrying one, in query order, drives the camera."
+    doc "Driven by og.systems.cameras; the first entity carrying one, in query order, drives the camera."
+    guide "camera §1"
     doc "The camera sits `distance` from the orbited point (the entity's position plus `target`) in the direction given by `azimuth` about +Y and `polar` from +Y, and looks at the point. Every angle is computed with deterministic arithmetic, so a replay moves the camera identically on every host."
     field target Vector3 "The orbited point, relative to the entity's position." {
       worldspace none
@@ -361,14 +370,17 @@ module camera {
   }
 
   component VirtualCamera {
-    doc "A shot og.Camera can take, as Cinemachine's virtual cameras: a position (its own entity's, or following another entity), what it looks at, a field of view, roll and focus. The engine's og.camera system (og.CameraBrain) makes the enabled one with the highest priority live and writes its pose into og.Camera, blending from the previous shot over the incoming one's blendTime by its blendEase. This is the way to drive the camera in a new 3D game: a vcam with `follow` and `collide` replaces og.FollowCamera, and a cutscene or a dialogue switches shots by priority or og.CameraBrain.solo."
-    doc "Registered when a game first names it, with og.CameraBrain and og.CameraCut: a world without virtual cameras keeps its hash. Its pose is tick state on every host, drawing on no randomness; it changes only og.Camera (and og.PostEffects' depth of field for a vcam with focus), which the simulation reads only if the game does. While a timeline's camera track plays, the timeline drives og.Camera and the brain waits. A vcam drives og.Camera after the game's systems, so do not also give the game an og.OrbitCamera or og.FollowCamera."
+    doc "A shot og.Camera can take, as Cinemachine's virtual cameras: a position, what it looks at, a field of view, roll and focus. og.CameraBrain makes the enabled one with the highest priority live and blends og.Camera to it over the incoming shot's blendTime by its blendEase."
+    doc "Registered when a game first names it (with og.CameraBrain and og.CameraCut), so a world without one keeps its hash. Its pose is tick state, drawing on no randomness; it changes only og.Camera and, with focus, og.PostEffects' depth of field. While a timeline's camera track plays, the timeline drives og.Camera; the brain waits."
+    guide "camera §2"
+    group "Pick"
     field priority i32 "Of the enabled virtual cameras the highest priority is live; of equal ones, the one enabled last (`activated`), then the first in query order." {
       tunable true
     }
     field enabled bool "Takes part in the brain's pick. Disabling the live camera blends to the next one." {
       default true
     }
+    group "Position"
     field follow Entity "The entity it follows: it sits at followOffset from it, easing by smoothTime. 0: it sits at its own entity's og.Transform position."
     field followOffset Vector3 "Where it sits relative to the followed entity: in that entity's own axes with followRotation, else in world axes." {
       default 0 2 6
@@ -382,12 +394,14 @@ module camera {
       unit s
       tunable true
     }
+    group "Aim"
     field lookAt Entity "The entity it looks at, at lookOffset from its position. 0: it keeps its own entity's og.Transform rotation."
     field lookOffset Vector3 "The point it looks at, relative to the lookAt entity's position (and the point collision keeps clear from)." {
       default 0 1 0
       unit m
       tunable true
     }
+    group "Lens"
     field fov f32 "The vertical field of view it gives og.Camera." {
       default 50
       min 1
@@ -410,6 +424,7 @@ module camera {
       unit m
       tunable true
     }
+    group "Blend"
     field blendTime f32 "Seconds the brain takes to blend to it when it goes live (0 cuts); below 0 uses og.CameraBrain's blendTime and blendEase." {
       default -1
       unit s
@@ -417,6 +432,7 @@ module camera {
     field blendEase Ease "The curve of the blend to it: position lerped, rotation slerped, fov, roll and focus lerped by the curve's value at the blend's time." {
       default power2.inOut
     }
+    group "Collision"
     field collide bool "Keep a sphere of `radius` clear of colliders between the look point and where it sits: it pulls in towards the look point at once and eases back out over damping. Against the colliders as the tick started (og.physics' query view): it never moves a body."
     field radius f32 "The sphere collision keeps clear." {
       default 0.2
@@ -430,6 +446,7 @@ module camera {
       tunable true
     }
     field collisionLayers u32 "The physics layers collision considers (a collider counts when its layers meet these); 0 every layer."
+    group "Controller state"
     field eased Vector3 "Controller state: the followed point after smoothing, before collision, in world space (a floating-origin rebase shifts it)." {
       readonly true
       worldspace world
@@ -449,8 +466,9 @@ module camera {
 
   resource CameraBrain {
     doc "Picks the live og.VirtualCamera every tick and blends og.Camera to it, as Cinemachine's brain: the solo shot if one is set, else the enabled one with the highest priority. A change of live camera blends from the previous camera (still moving) over the incoming one's blendTime by its blendEase; a change during a blend starts from the blended pose, so the view never jumps. The first live camera of a world cuts. With no live camera og.Camera is left where it is."
-    doc "Registered with og.VirtualCamera. Its state fields are world state, saved and restored with the world, so a replay or a restore mid-blend continues the same blend."
-    doc "Read and write it as any resource: `const brain = world.resource(og.CameraBrain)`; when `brain.ok`, `brain.value.live` is the live shot and `brain.value.solo = shot` makes one solo (0 releases it). A system that reads it lists og.CameraBrain among its reads, one that sets solo among its writes."
+    doc "Registered with og.VirtualCamera. Its state fields are world state, so a replay or a restore mid-blend continues the same blend."
+    guide "camera §2"
+    group "Blending"
     field enabled bool "Drive og.Camera; false leaves it to the game (the vcams' state still updates)." {
       default true
     }
@@ -463,14 +481,16 @@ module camera {
     field blendEase Ease "The curve of those blends." {
       default power2.inOut
     }
-    field solo Entity "A shot that outranks every priority while it is set (a cutscene or a dialogue close-up): an entity with an og.VirtualCamera, live even when it is not enabled; 0 releases it and the brain blends back to the highest priority. Anything else is ignored. og.story sets it for a dialogue line's `shot` and a timeline's shot track for its keys."
-    field soloBlend f32 "Seconds of the blend to the solo shot when it goes live (0 cuts); below 0 the solo camera's own blendTime and blendEase (then the brain's). A timeline's shot key sets it with solo; og.story sets it to -1." {
+    group "Solo"
+    field solo Entity "A shot that outranks every priority while it is set (a cutscene or a dialogue close-up): an entity with an og.VirtualCamera, live even when it is not enabled; 0 releases it and the brain blends back to the highest priority. Anything else is ignored."
+    field soloBlend f32 "Seconds of the blend to the solo shot when it goes live (0 cuts); below 0 the solo camera's own blendTime and blendEase (then the brain's)." {
       default -1
       unit s
     }
     field soloEase Ease "The curve of that blend when soloBlend is 0 or more." {
       default power2.inOut
     }
+    group "State"
     field live Entity "The live camera (0: none)." {
       readonly true
     }
@@ -511,6 +531,7 @@ module camera {
     field activations u32 "How many times a virtual camera has been enabled (og.VirtualCamera.activated)." {
       readonly true
     }
+    group "Depth of field held"
     field focusHeld bool "The brain is driving og.PostEffects' depth of field and holds what it found: heldDepthOfField, heldFocusDistance and heldFocusRange, handed back when no live camera has focus." {
       readonly true
     }
@@ -537,15 +558,17 @@ module camera {
   }
 
   fn shake {
-    doc "Add screen shake: trauma, clamped to 1, which og.Camera decays by traumaDecay. The shake grows with trauma squared, so 0.1-0.2 is a light hit, 0.25-0.4 a medium one, 0.5-0.8 an explosion or a boss slam; 1 is almost never right (nauseating). Visual only. Systems may call it; it takes effect at the engine's og.camera system this tick."
-    aliases "screen shake, camera shake, trauma, Cinemachine impulse"
+    doc "Add screen shake: trauma, clamped to 1, which og.Camera decays by traumaDecay. The shake grows with trauma squared. Visual only. Systems may call it; it takes effect at the engine's og.camera system this tick."
+    aliases "screen shake, camera shake, screen trembles when hit, hit shake, trauma, Cinemachine impulse"
+    guide "camera §4"
     param world World "The world."
     param trauma f32 "Trauma to add, 0 to 1."
     returns Result.Void
   }
 
   fn punch {
-    doc "A zoom punch: the view narrows by `amount` (0.05 is a tap, 0.15 a slam) and springs back by Camera.punchDecay. Visual only."
+    doc "A zoom punch: the view narrows by `amount` and springs back by Camera.punchDecay. Visual only."
+    guide "camera §4"
     param world World "The world."
     param amount f32 "The fraction to zoom in (negative zooms out), -0.9 to 4."
     returns Result.Void
@@ -553,6 +576,7 @@ module camera {
 
   fn kick {
     doc "A directional nudge of the view (recoil, an impact from one side): offset by `distance` along `direction`, returning by Camera.kickDecay. Visual only."
+    guide "camera §4"
     param world World "The world."
     param direction Vector3 "The direction to push the view (normalised here; zero does nothing)."
     param distance f32 "How far, in world units."

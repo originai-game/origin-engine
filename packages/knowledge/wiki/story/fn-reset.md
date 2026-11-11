@@ -27,4 +27,4 @@ fn reset {
 }
 ```
 
-<sub>Module `story` line 380</sub>
+<sub>Module `story` line 381</sub>

@@ -28,7 +28,7 @@ Token `og.Pointers`, registered under the schema name `og.Pointers`; its value t
 | `start2` | `Vector2` | `{ x: 0, y: 0 }` | — | `cssPx` | read only, worldspace `none` | Where pointer 2 went down. |
 | `start3` | `Vector2` | `{ x: 0, y: 0 }` | — | `cssPx` | read only, worldspace `none` | Where pointer 3 went down. |
 | `start4` | `Vector2` | `{ x: 0, y: 0 }` | — | `cssPx` | read only, worldspace `none` | Where pointer 4 went down. |
-| `movement` | `Vector2` | `{ x: 0, y: 0 }` | — | `cssPx` | read only | The mouse's relative movement this tick: the sum of the movementX, movementY of pointer 0's events since the last tick (y down), zero again when the tick ends. Mouse-look reads it: it keeps coming while the pointer is locked (og.PointerLock), when the position stands still. The web shell fills it from the browser's movementX/Y; headless, only injected pointer events with movementX/Y move it. |
+| `movement` | `Vector2` | `{ x: 0, y: 0 }` | — | `cssPx` | read only | The mouse's relative movement this tick: the sum of pointer 0's movementX, movementY since the last tick (y down), zero again when the tick ends. It keeps coming while the pointer is locked (og.PointerLock) and the position stands still; headless, only injected movementX/Y moves it. See `input §2`. |
 
 ```ogt
 resource Pointers {
@@ -96,7 +96,8 @@ resource Pointers {
     readonly true
     unit cssPx
   }
-  field movement Vector2 "The mouse's relative movement this tick: the sum of the movementX, movementY of pointer 0's events since the last tick (y down), zero again when the tick ends. Mouse-look reads it: it keeps coming while the pointer is locked (og.PointerLock), when the position stands still. The web shell fills it from the browser's movementX/Y; headless, only injected pointer events with movementX/Y move it." {
+  field movement Vector2 "The mouse's relative movement this tick: the sum of pointer 0's movementX, movementY since the last tick (y down), zero again when the tick ends. It keeps coming while the pointer is locked (og.PointerLock) and the position stands still; headless, only injected movementX/Y moves it." {
+    guide "input §2"
     readonly true
     unit cssPx
   }
@@ -132,7 +133,7 @@ resource Pointers {
 }
 ```
 
-<sub>Module `input` line 878</sub>
+<sub>Module `input` line 888</sub>
 
 <a id="member-Pointers-down"></a>
 
@@ -160,7 +161,7 @@ fn down {
 }
 ```
 
-<sub>Module `input` line 947</sub>
+<sub>Module `input` line 958</sub>
 
 <a id="member-Pointers-pressed"></a>
 
@@ -188,7 +189,7 @@ fn pressed {
 }
 ```
 
-<sub>Module `input` line 952</sub>
+<sub>Module `input` line 963</sub>
 
 <a id="member-Pointers-released"></a>
 
@@ -216,7 +217,7 @@ fn released {
 }
 ```
 
-<sub>Module `input` line 957</sub>
+<sub>Module `input` line 968</sub>
 
 <a id="member-Pointers-position"></a>
 
@@ -244,7 +245,7 @@ fn position {
 }
 ```
 
-<sub>Module `input` line 962</sub>
+<sub>Module `input` line 973</sub>
 
 <a id="member-Pointers-start"></a>
 
@@ -272,7 +273,7 @@ fn start {
 }
 ```
 
-<sub>Module `input` line 967</sub>
+<sub>Module `input` line 978</sub>
 
 <a id="member-Pointers-count"></a>
 
@@ -295,4 +296,4 @@ fn count {
 }
 ```
 
-<sub>Module `input` line 972</sub>
+<sub>Module `input` line 983</sub>

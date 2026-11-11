@@ -14,7 +14,7 @@ interface TweenTimeline {
   # members follow, each quoted below
 ```
 
-<sub>Module `tween` line 232</sub>
+<sub>Module `tween` line 230</sub>
 
 <a id="member-TweenTimeline-tween"></a>
 
@@ -32,7 +32,7 @@ Binding symbol `og_tween_timeline_get_tween` · publish builds: kept
 prop tween Tween "Its handle: og.TweenCompleted and og.TweenEvent carry it, og.tween.cancel and active take it."
 ```
 
-<sub>Module `tween` line 234</sub>
+<sub>Module `tween` line 232</sub>
 
 <a id="member-TweenTimeline-error"></a>
 
@@ -50,7 +50,7 @@ Binding symbol `og_tween_timeline_get_error` · publish builds: kept
 prop error Option.String "Why the last refused call added nothing; null when none was refused."
 ```
 
-<sub>Module `tween` line 235</sub>
+<sub>Module `tween` line 233</sub>
 
 <a id="member-TweenTimeline-to"></a>
 
@@ -84,7 +84,7 @@ fn to {
 }
 ```
 
-<sub>Module `tween` line 236</sub>
+<sub>Module `tween` line 234</sub>
 
 <a id="member-TweenTimeline-from"></a>
 
@@ -118,7 +118,7 @@ fn from {
 }
 ```
 
-<sub>Module `tween` line 245</sub>
+<sub>Module `tween` line 243</sub>
 
 <a id="member-TweenTimeline-fromTo"></a>
 
@@ -152,7 +152,7 @@ fn fromTo {
 }
 ```
 
-<sub>Module `tween` line 254</sub>
+<sub>Module `tween` line 252</sub>
 
 <a id="member-TweenTimeline-set"></a>
 
@@ -186,7 +186,7 @@ fn set {
 }
 ```
 
-<sub>Module `tween` line 263</sub>
+<sub>Module `tween` line 261</sub>
 
 <a id="member-TweenTimeline-call"></a>
 
@@ -218,7 +218,7 @@ fn call {
 }
 ```
 
-<sub>Module `tween` line 272</sub>
+<sub>Module `tween` line 270</sub>
 
 <a id="member-TweenTimeline-addLabel"></a>
 
@@ -250,7 +250,7 @@ fn addLabel {
 }
 ```
 
-<sub>Module `tween` line 280</sub>
+<sub>Module `tween` line 278</sub>
 
 <a id="member-TweenTimeline-add"></a>
 
@@ -282,7 +282,7 @@ fn add {
 }
 ```
 
-<sub>Module `tween` line 288</sub>
+<sub>Module `tween` line 286</sub>
 
 <a id="member-TweenTimeline-play"></a>
 
@@ -312,7 +312,7 @@ fn play {
 }
 ```
 
-<sub>Module `tween` line 296</sub>
+<sub>Module `tween` line 294</sub>
 
 <a id="member-TweenTimeline-pause"></a>
 
@@ -342,7 +342,7 @@ fn pause {
 }
 ```
 
-<sub>Module `tween` line 303</sub>
+<sub>Module `tween` line 301</sub>
 
 <a id="member-TweenTimeline-resume"></a>
 
@@ -365,7 +365,7 @@ fn resume {
 }
 ```
 
-<sub>Module `tween` line 310</sub>
+<sub>Module `tween` line 308</sub>
 
 <a id="member-TweenTimeline-reverse"></a>
 
@@ -395,7 +395,7 @@ fn reverse {
 }
 ```
 
-<sub>Module `tween` line 314</sub>
+<sub>Module `tween` line 312</sub>
 
 <a id="member-TweenTimeline-restart"></a>
 
@@ -418,7 +418,7 @@ fn restart {
 }
 ```
 
-<sub>Module `tween` line 321</sub>
+<sub>Module `tween` line 319</sub>
 
 <a id="member-TweenTimeline-seek"></a>
 
@@ -446,7 +446,7 @@ fn seek {
 }
 ```
 
-<sub>Module `tween` line 325</sub>
+<sub>Module `tween` line 323</sub>
 
 <a id="member-TweenTimeline-progress"></a>
 
@@ -476,7 +476,7 @@ fn progress {
 }
 ```
 
-<sub>Module `tween` line 330</sub>
+<sub>Module `tween` line 328</sub>
 
 <a id="member-TweenTimeline-time"></a>
 
@@ -499,7 +499,7 @@ fn time {
 }
 ```
 
-<sub>Module `tween` line 337</sub>
+<sub>Module `tween` line 335</sub>
 
 <a id="member-TweenTimeline-duration"></a>
 
@@ -522,7 +522,7 @@ fn duration {
 }
 ```
 
-<sub>Module `tween` line 341</sub>
+<sub>Module `tween` line 339</sub>
 
 <a id="member-TweenTimeline-timeScale"></a>
 
@@ -552,7 +552,7 @@ fn timeScale {
 }
 ```
 
-<sub>Module `tween` line 345</sub>
+<sub>Module `tween` line 343</sub>
 
 <a id="member-TweenTimeline-isActive"></a>
 
@@ -575,7 +575,7 @@ fn isActive {
 }
 ```
 
-<sub>Module `tween` line 352</sub>
+<sub>Module `tween` line 350</sub>
 
 <a id="member-TweenTimeline-kill"></a>
 
@@ -598,4 +598,4 @@ fn kill {
 }
 ```
 
-<sub>Module `tween` line 356</sub>
+<sub>Module `tween` line 354</sub>

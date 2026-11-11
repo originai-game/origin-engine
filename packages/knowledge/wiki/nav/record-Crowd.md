@@ -6,7 +6,9 @@ Module [`nav`](../nav.md) · [index](../index.md)
 
 ### `og.Crowd` (component)
 
-Reciprocal crowd avoidance (ORCA) for an agent: beside an og.NavAgent, each tick its velocity is the one nearest what its path and steering want that keeps it clear of its nearest agents for `horizon` seconds and of the navmesh's walls for `obstacleHorizon`, each pair of crowd agents sharing the avoidance. Every agent solves from the same start-of-tick state in a fixed order, so crowds replay identically on every host; agents meeting perfectly symmetrically (a ring swapping places) are kept from locking by a margin of up to 5% of the radius picked from the entity, so a game adds no jitter of its own. Without one an agent moves as before (og.Steering's separation only).
+Reciprocal crowd avoidance (ORCA) for an agent: beside an og.NavAgent, each tick its velocity is the one nearest what its path and steering want that keeps it clear of its nearest agents for `horizon` seconds and of the navmesh's walls for `obstacleHorizon`, each pair sharing the avoidance. Every agent solves from the same start-of-tick state in a fixed order, so crowds replay identically on every host; perfectly symmetric meetings are kept from locking by the engine. Without one an agent has only og.Steering's separation.
+
+See `world §9`.
 
 Token `og.Crowd`, registered under the schema name `og.Crowd`; its value type is `Crowd`.
 
@@ -19,7 +21,8 @@ Token `og.Crowd`, registered under the schema name `og.Crowd`; its value type is
 
 ```ogt
 component Crowd {
-  doc "Reciprocal crowd avoidance (ORCA) for an agent: beside an og.NavAgent, each tick its velocity is the one nearest what its path and steering want that keeps it clear of its nearest agents for `horizon` seconds and of the navmesh's walls for `obstacleHorizon`, each pair of crowd agents sharing the avoidance. Every agent solves from the same start-of-tick state in a fixed order, so crowds replay identically on every host; agents meeting perfectly symmetrically (a ring swapping places) are kept from locking by a margin of up to 5% of the radius picked from the entity, so a game adds no jitter of its own. Without one an agent moves as before (og.Steering's separation only)."
+  doc "Reciprocal crowd avoidance (ORCA) for an agent: beside an og.NavAgent, each tick its velocity is the one nearest what its path and steering want that keeps it clear of its nearest agents for `horizon` seconds and of the navmesh's walls for `obstacleHorizon`, each pair sharing the avoidance. Every agent solves from the same start-of-tick state in a fixed order, so crowds replay identically on every host; perfectly symmetric meetings are kept from locking by the engine. Without one an agent has only og.Steering's separation."
+  guide "world §9"
   field neighbours u32 "How many nearest agents it avoids (at most 32)." {
     default 8
     min 0

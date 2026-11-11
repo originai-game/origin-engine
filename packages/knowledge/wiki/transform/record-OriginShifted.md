@@ -6,7 +6,7 @@ Module [`transform`](../transform.md) · [index](../index.md)
 
 ### `og.OriginShifted` (event)
 
-og.WorldOrigin shifted the world as this tick started, before any system ran: every marked place moved by `delta`. Add it to the world positions a game keeps of its own.
+og.WorldOrigin shifted the world as this tick started, before any system ran: every marked place moved by `delta`. Values a game keeps outside the marked fields (a world position in its own component, a key it set in an og.ai blackboard) are its own: add `delta` to them.
 
 Token `og.OriginShifted`, registered under the schema name `og.OriginShifted`; its value type is `OriginShifted`.
 
@@ -19,7 +19,7 @@ Token `og.OriginShifted`, registered under the schema name `og.OriginShifted`; i
 
 ```ogt
 event OriginShifted {
-  doc "og.WorldOrigin shifted the world as this tick started, before any system ran: every marked place moved by `delta`. Add it to the world positions a game keeps of its own."
+  doc "og.WorldOrigin shifted the world as this tick started, before any system ran: every marked place moved by `delta`. Values a game keeps outside the marked fields (a world position in its own component, a key it set in an og.ai blackboard) are its own: add `delta` to them."
   field delta Vector3 "How far every place moved (a whole multiple of og.WorldOrigin.step along each axis of its plane)." {
     worldspace none
     unit m

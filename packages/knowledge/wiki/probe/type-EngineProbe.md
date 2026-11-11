@@ -50,13 +50,11 @@ fn hello {
 
 The frame of the current tick, rendered offscreen and read back as a PNG; null without a renderer (hello's tier `none`).
 
-Size rule: width and height are both 0 (or absent), which is the render target's size, or both 1 to 4096, which renders that size with the same camera (the aspect follows the requested size); one zero and one not is a malformed call.
+Size: width and height both 0 (or absent) is the render target's size; both 1 to 4096 renders that size with the same camera; one zero and one not is malformed. On the web the readback is asynchronous: requested on tick N, answered on N + 1.
 
-On the web the readback is asynchronous: through the request ring the answer arrives when the copy completes; a synchronous in-page call answers null on the first tick and the frame from then on (a capture is requested on tick N and answered on N + 1).
+Fit: a long side past `fit` (CAPTURE_FIT, 1280, by default; 0 keeps the size) is downscaled by area mean. Region: a box of the surface (CSS px) cut before fitting.
 
-Fit rule: a PNG whose long side exceeds fit is downscaled to it with the aspect kept, each pixel the mean of the area it covers (CAPTURE_FIT, 1280, by default: the size a model reads a whole frame at); 0 keeps the rendered size, as a reference frame needs.
-
-Region: a box of the play surface (CSS px) cut from the rendered frame before fitting, so a detail comes at full resolution as its own image; scale and region map its pixels back to the surface.
+See `captures §1`.
 
 Also known as: screenshot, take a screenshot, grab the screen, frame capture, crop, zoom
 
@@ -78,10 +76,9 @@ Binding symbol `og_engine_probe_capture` · publish builds: kept
 ```ogt
 fn capture {
   doc "The frame of the current tick, rendered offscreen and read back as a PNG; null without a renderer (hello's tier `none`)."
-  doc "Size rule: width and height are both 0 (or absent), which is the render target's size, or both 1 to 4096, which renders that size with the same camera (the aspect follows the requested size); one zero and one not is a malformed call."
-  doc "On the web the readback is asynchronous: through the request ring the answer arrives when the copy completes; a synchronous in-page call answers null on the first tick and the frame from then on (a capture is requested on tick N and answered on N + 1)."
-  doc "Fit rule: a PNG whose long side exceeds fit is downscaled to it with the aspect kept, each pixel the mean of the area it covers (CAPTURE_FIT, 1280, by default: the size a model reads a whole frame at); 0 keeps the rendered size, as a reference frame needs."
-  doc "Region: a box of the play surface (CSS px) cut from the rendered frame before fitting, so a detail comes at full resolution as its own image; scale and region map its pixels back to the surface."
+  doc "Size: width and height both 0 (or absent) is the render target's size; both 1 to 4096 renders that size with the same camera; one zero and one not is malformed. On the web the readback is asynchronous: requested on tick N, answered on N + 1."
+  doc "Fit: a long side past `fit` (CAPTURE_FIT, 1280, by default; 0 keeps the size) is downscaled by area mean. Region: a box of the surface (CSS px) cut before fitting."
+  guide "captures §1"
   aliases "screenshot, take a screenshot, grab the screen, frame capture, crop, zoom"
   publish true
   param width u32 "Width in pixels; 0 is the render target's." {
@@ -106,11 +103,11 @@ fn capture {
 
 #### `EngineProbe.marks`
 
-The frame of the current tick with a numbered box over each UI element and each scene entity it shows (Set-of-Mark), and what each number is: its path, kind, text, box, a point to pick or touch it at, and the document or scene line that made it, with the style part and rule of an element. A reviewer names a number; the map says where to change it.
+The frame of the current tick with a numbered box over each UI element and each scene entity it shows (Set-of-Mark), and what each number is: its path, kind, text, box, a point to pick it at, and the document or scene line that made it.
 
-The elements are those pickUi answers (they show something or take input) inside the surface, an element and an ancestor of the same box (within a CSS pixel) marked once, as the one that takes input or else the topmost; a backdrop that covers the whole surface and takes no input is not boxed. The entities are describe's, the main camera's, nearest first. The image follows capture's size and fit rules; the marks are drawn at the fitted size, so the numbers stay legible.
+The elements are those pickUi answers inside the surface, an element and a same-box ancestor marked once (the one that takes input, else the topmost); the entities are describe's, nearest first. Size and fit as capture's, the marks drawn at the fitted size; on the web it waits for its readback as capture does.
 
-On the web it waits for its readback as capture does.
+See `captures §2`.
 
 Also known as: set of mark, set-of-mark, som, annotated screenshot, labelled screenshot, numbered boxes
 
@@ -128,9 +125,9 @@ Binding symbol `og_engine_probe_marks` · publish builds: dropped
 
 ```ogt
 fn marks {
-  doc "The frame of the current tick with a numbered box over each UI element and each scene entity it shows (Set-of-Mark), and what each number is: its path, kind, text, box, a point to pick or touch it at, and the document or scene line that made it, with the style part and rule of an element. A reviewer names a number; the map says where to change it."
-  doc "The elements are those pickUi answers (they show something or take input) inside the surface, an element and an ancestor of the same box (within a CSS pixel) marked once, as the one that takes input or else the topmost; a backdrop that covers the whole surface and takes no input is not boxed. The entities are describe's, the main camera's, nearest first. The image follows capture's size and fit rules; the marks are drawn at the fitted size, so the numbers stay legible."
-  doc "On the web it waits for its readback as capture does."
+  doc "The frame of the current tick with a numbered box over each UI element and each scene entity it shows (Set-of-Mark), and what each number is: its path, kind, text, box, a point to pick it at, and the document or scene line that made it."
+  doc "The elements are those pickUi answers inside the surface, an element and a same-box ancestor marked once (the one that takes input, else the topmost); the entities are describe's, nearest first. Size and fit as capture's, the marks drawn at the fitted size; on the web it waits for its readback as capture does."
+  guide "captures §2"
   aliases "set of mark, set-of-mark, som, annotated screenshot, labelled screenshot, numbered boxes"
   param desc MarksDesc "The size, the fit, what to mark and how many." {
     flatten true
@@ -139,7 +136,7 @@ fn marks {
 }
 ```
 
-<sub>Module `probe` line 766</sub>
+<sub>Module `probe` line 765</sub>
 
 <a id="member-EngineProbe-timeline"></a>
 
@@ -162,7 +159,7 @@ fn timeline {
 }
 ```
 
-<sub>Module `probe` line 776</sub>
+<sub>Module `probe` line 775</sub>
 
 <a id="member-EngineProbe-sweep"></a>
 
@@ -192,7 +189,7 @@ fn sweep {
 }
 ```
 
-<sub>Module `probe` line 780</sub>
+<sub>Module `probe` line 779</sub>
 
 <a id="member-EngineProbe-reload"></a>
 
@@ -215,7 +212,7 @@ fn reload {
 }
 ```
 
-<sub>Module `probe` line 787</sub>
+<sub>Module `probe` line 786</sub>
 
 <a id="member-EngineProbe-snapshot"></a>
 
@@ -238,7 +235,7 @@ fn snapshot {
 }
 ```
 
-<sub>Module `probe` line 791</sub>
+<sub>Module `probe` line 790</sub>
 
 <a id="member-EngineProbe-restore"></a>
 
@@ -266,7 +263,7 @@ fn restore {
 }
 ```
 
-<sub>Module `probe` line 795</sub>
+<sub>Module `probe` line 794</sub>
 
 <a id="member-EngineProbe-dump"></a>
 
@@ -296,7 +293,7 @@ fn dump {
 }
 ```
 
-<sub>Module `probe` line 800</sub>
+<sub>Module `probe` line 799</sub>
 
 <a id="member-EngineProbe-commands"></a>
 
@@ -324,7 +321,7 @@ fn commands {
 }
 ```
 
-<sub>Module `probe` line 807</sub>
+<sub>Module `probe` line 806</sub>
 
 <a id="member-EngineProbe-listen"></a>
 
@@ -354,7 +351,7 @@ fn listen {
 }
 ```
 
-<sub>Module `probe` line 812</sub>
+<sub>Module `probe` line 811</sub>
 
 <a id="member-EngineProbe-memory"></a>
 
@@ -377,7 +374,7 @@ fn memory {
 }
 ```
 
-<sub>Module `probe` line 819</sub>
+<sub>Module `probe` line 818</sub>
 
 <a id="member-EngineProbe-describe"></a>
 
@@ -400,7 +397,7 @@ fn describe {
 }
 ```
 
-<sub>Module `probe` line 823</sub>
+<sub>Module `probe` line 822</sub>
 
 <a id="member-EngineProbe-expect"></a>
 
@@ -428,7 +425,7 @@ fn expect {
 }
 ```
 
-<sub>Module `probe` line 827</sub>
+<sub>Module `probe` line 826</sub>
 
 <a id="member-EngineProbe-expectations"></a>
 
@@ -451,7 +448,7 @@ fn expectations {
 }
 ```
 
-<sub>Module `probe` line 832</sub>
+<sub>Module `probe` line 831</sub>
 
 <a id="member-EngineProbe-assertions"></a>
 
@@ -481,7 +478,7 @@ fn assertions {
 }
 ```
 
-<sub>Module `probe` line 836</sub>
+<sub>Module `probe` line 835</sub>
 
 <a id="member-EngineProbe-assertionEvents"></a>
 
@@ -504,7 +501,7 @@ fn assertionEvents {
 }
 ```
 
-<sub>Module `probe` line 843</sub>
+<sub>Module `probe` line 842</sub>
 
 <a id="member-EngineProbe-observe"></a>
 
@@ -538,7 +535,7 @@ fn observe {
 }
 ```
 
-<sub>Module `probe` line 847</sub>
+<sub>Module `probe` line 846</sub>
 
 <a id="member-EngineProbe-saveScene"></a>
 
@@ -572,7 +569,7 @@ fn saveScene {
 }
 ```
 
-<sub>Module `probe` line 857</sub>
+<sub>Module `probe` line 856</sub>
 
 <a id="member-EngineProbe-pickUi"></a>
 
@@ -602,4 +599,4 @@ fn pickUi {
 }
 ```
 
-<sub>Module `probe` line 867</sub>
+<sub>Module `probe` line 866</sub>

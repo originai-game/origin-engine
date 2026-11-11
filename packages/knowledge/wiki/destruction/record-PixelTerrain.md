@@ -6,11 +6,11 @@ Module [`destruction`](../destruction.md) · [index](../index.md)
 
 ### `og.PixelTerrain` (component)
 
-Destructible 2D ground of square cells (Worms, Noita): solid ground, bedrock or empty. Its og.Transform's position is the bottom-left corner of its cell (0, 0), x right and y up (its rotation and scale are not used). The first tick it is seen it is filled: `bedrock` rows at the bottom, then ground up to `ground` of its height; carve2d, fill2d, explode2d and fracture2d change it from then on, in the tick (og.destruction2d runs after the game's systems, before og.physics).
+Destructible 2D ground of square cells: ground, bedrock or empty. Its og.Transform's position is cell (0, 0)'s bottom-left corner, x right, y up (rotation and scale unused). Filled the first tick it is seen; carve2d, fill2d, explode2d and fracture2d change it in the tick (og.destruction2d, before og.physics).
 
-It collides chunk by chunk: each `chunk` × `chunk` block of cells with any solid in it is an entity with a static og.Collider (SHAPE_TRIMESH, an outline in 2D) of its cells' outline, smoothed within `tolerance` cells, so a body rolls along a carved slope rather than bumping down steps. A change rebuilds only the chunks it touched. Solid cells no longer joined (through their four sides) to bedrock or to the bottom row fall: each such island of at least `minPiece` cells becomes an og.PixelPiece, smaller ones vanish.
+Each `chunk` × `chunk` block with a solid cell is an entity with a static og.Collider (SHAPE_TRIMESH) of its outline smoothed within `tolerance`, rebuilt only when a change touches it. Ground no longer joined through cell sides to bedrock or the bottom row falls as og.PixelPiece entities.
 
-Drawn as one sprite of its cells, one texel a cell: ground in `color` with a per-cell `grain`, bedrock in `bedrockColor`, empty clear; the image is remade from the cells only on a frame after they changed. Changing width, height or chunk starts it over (filled again); despawning it takes its colliders with it (its pieces stay).
+See `physics §9`.
 
 Also known as: destructible terrain, pixel terrain, worms terrain, noita, carve ground, deformable terrain, 2D destruction
 
@@ -18,10 +18,10 @@ Token `og.PixelTerrain`, registered under the schema name `og.PixelTerrain`; its
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `width` | `number` | `256` | 1 … 4096 | — | — | Its cells across. |
-| `height` | `number` | `128` | 1 … 4096 | — | — | Its cells up. |
+| `width` | `number` | `256` | 1 … 4096 | — | — | Its cells across. Changing it starts the terrain over, filled again. |
+| `height` | `number` | `128` | 1 … 4096 | — | — | Its cells up. Changing it starts the terrain over, filled again. |
 | `cellSize` | `number` | `0.0625` | ≥ 0.001 | `m` | — | A cell's side. |
-| `chunk` | `number` | `32` | 4 … 256 | — | — | The side of the blocks of cells that collide and rebuild together: smaller rebuilds less per carve and makes more colliders. |
+| `chunk` | `number` | `32` | 4 … 256 | — | — | The side of the blocks of cells that collide and rebuild together: smaller rebuilds less per carve and makes more colliders. Changing it starts the terrain over, filled again. |
 | `ground` | `number` | `0.5` | 0 … 1 | `ratio` | — | How much of its height is ground (bedrock included) when it is first filled; 0 starts it empty, to build with fill2d. |
 | `bedrock` | `number` | `1` | — | — | — | The rows of bedrock at its bottom when it is first filled: never carved, and what the ground must stay joined to (as to the bottom row) to stand. |
 | `seed` | `number` | `0` | — | — | — | The seed of its grain and of the pieces explode2d and fracture2d cut. |
@@ -40,16 +40,16 @@ Token `og.PixelTerrain`, registered under the schema name `og.PixelTerrain`; its
 
 ```ogt
 component PixelTerrain {
-  doc "Destructible 2D ground of square cells (Worms, Noita): solid ground, bedrock or empty. Its og.Transform's position is the bottom-left corner of its cell (0, 0), x right and y up (its rotation and scale are not used). The first tick it is seen it is filled: `bedrock` rows at the bottom, then ground up to `ground` of its height; carve2d, fill2d, explode2d and fracture2d change it from then on, in the tick (og.destruction2d runs after the game's systems, before og.physics)."
-  doc "It collides chunk by chunk: each `chunk` × `chunk` block of cells with any solid in it is an entity with a static og.Collider (SHAPE_TRIMESH, an outline in 2D) of its cells' outline, smoothed within `tolerance` cells, so a body rolls along a carved slope rather than bumping down steps. A change rebuilds only the chunks it touched. Solid cells no longer joined (through their four sides) to bedrock or to the bottom row fall: each such island of at least `minPiece` cells becomes an og.PixelPiece, smaller ones vanish."
-  doc "Drawn as one sprite of its cells, one texel a cell: ground in `color` with a per-cell `grain`, bedrock in `bedrockColor`, empty clear; the image is remade from the cells only on a frame after they changed. Changing width, height or chunk starts it over (filled again); despawning it takes its colliders with it (its pieces stay)."
+  doc "Destructible 2D ground of square cells: ground, bedrock or empty. Its og.Transform's position is cell (0, 0)'s bottom-left corner, x right, y up (rotation and scale unused). Filled the first tick it is seen; carve2d, fill2d, explode2d and fracture2d change it in the tick (og.destruction2d, before og.physics)."
+  doc "Each `chunk` × `chunk` block with a solid cell is an entity with a static og.Collider (SHAPE_TRIMESH) of its outline smoothed within `tolerance`, rebuilt only when a change touches it. Ground no longer joined through cell sides to bedrock or the bottom row falls as og.PixelPiece entities."
+  guide "physics §9"
   aliases "destructible terrain, pixel terrain, worms terrain, noita, carve ground, deformable terrain, 2D destruction"
-  field width u32 "Its cells across." {
+  field width u32 "Its cells across. Changing it starts the terrain over, filled again." {
     default 256
     min 1
     max 4096
   }
-  field height u32 "Its cells up." {
+  field height u32 "Its cells up. Changing it starts the terrain over, filled again." {
     default 128
     min 1
     max 4096
@@ -59,7 +59,7 @@ component PixelTerrain {
     min 0.001
     unit m
   }
-  field chunk u32 "The side of the blocks of cells that collide and rebuild together: smaller rebuilds less per carve and makes more colliders." {
+  field chunk u32 "The side of the blocks of cells that collide and rebuild together: smaller rebuilds less per carve and makes more colliders. Changing it starts the terrain over, filled again." {
     default 32
     min 4
     max 256
@@ -120,4 +120,4 @@ component PixelTerrain {
 }
 ```
 
-<sub>Module `destruction` line 300</sub>
+<sub>Module `destruction` line 307</sub>

@@ -24,4 +24,4 @@ event PauseIntent {
 }
 ```
 
-<sub>Module `input` line 41</sub>
+<sub>Module `input` line 40</sub>

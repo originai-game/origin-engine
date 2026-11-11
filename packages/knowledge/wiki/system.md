@@ -4,11 +4,7 @@
 
 Systems: functions the engine calls once per tick with their matched archetypes.
 
-A system declares what it reads and writes; a write to an undeclared component is refused at registration with the field name.
-
-Its query is every component of its reads and writes together: an entity matches only when it has all of them (and none of `without`). A component declared to read one entity with world.get (the player's car) therefore narrows the loop to entities that have it too, often to none, silently. world.query is refused inside a system, by design (a system reaches only what it declared, so its access is known before it runs): loop over each archetype in a system of its own, declaring only that archetype's components, and carry what crosses between systems in a resource.
-
-Resources and events it reaches through the world must be declared too: in a dev or release build (og run, og test) an undeclared read or write throws with the system's name and the record and fails the tick; a publish build refuses it and logs it once per system in the engine log, and the game keeps running. og.Rng among the reads may fork (a fork reads the seed only and leaves the stream as it is); a draw moves the stream, so it needs og.Rng among the writes.
+A system declares what it reads and writes; a write to an undeclared component is refused at registration with the field name. Its query is every component of its reads and writes (none of `without`). world.query is refused inside one: another archetype is a system of its own, and what crosses between systems goes in a resource. Resources and events it reaches through the world must be declared too: undeclared, they throw in a dev or release build and fail the tick; publish refuses them, logged once per system.
 
 - **TypeScript**: functions are named exports of the package: `import { … } from "@origingame/engine"`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
@@ -17,9 +13,7 @@ Resources and events it reaches through the world must be declared too: in a dev
 ```ogt
 module system {
   doc "Systems: functions the engine calls once per tick with their matched archetypes."
-  doc "A system declares what it reads and writes; a write to an undeclared component is refused at registration with the field name."
-  doc "Its query is every component of its reads and writes together: an entity matches only when it has all of them (and none of `without`). A component declared to read one entity with world.get (the player's car) therefore narrows the loop to entities that have it too, often to none, silently. world.query is refused inside a system, by design (a system reaches only what it declared, so its access is known before it runs): loop over each archetype in a system of its own, declaring only that archetype's components, and carry what crosses between systems in a resource."
-  doc "Resources and events it reaches through the world must be declared too: in a dev or release build (og run, og test) an undeclared read or write throws with the system's name and the record and fails the tick; a publish build refuses it and logs it once per system in the engine log, and the game keeps running. og.Rng among the reads may fork (a fork reads the seed only and leaves the stream as it is); a draw moves the stream, so it needs og.Rng among the writes."
+  doc "A system declares what it reads and writes; a write to an undeclared component is refused at registration with the field name. Its query is every component of its reads and writes (none of `without`). world.query is refused inside one: another archetype is a system of its own, and what crosses between systems goes in a resource. Resources and events it reaches through the world must be declared too: undeclared, they throw in a dev or release build and fail the tick; publish refuses them, logged once per system."
   place top
   # declarations follow, each on its own page
 ```

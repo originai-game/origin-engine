@@ -14,18 +14,19 @@ Token `og.KeyDown`, registered under the schema name `og.KeyDown`; its value typ
 |---|---|---|---|---|---|---|
 | `key` | `string` | `""` | — | — | — | The physical key code. |
 | `repeat` | `boolean` | `false` | — | — | — | Whether this is an auto-repeat. |
-| `at` | `number` | `0` | -1 … 1 | — | — | When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it. |
+| `at` | `number` | `0` | -1 … 1 | — | — | When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. Part of the event, so a replay carries it. See `input §6`. |
 
 ```ogt
 event KeyDown {
   doc "A key went down (a down for a held key is a repeat and sets no edge). Input events are sent between ticks and read by the next tick's systems."
   field key String "The physical key code."
   field repeat bool "Whether this is an auto-repeat."
-  field at f32 "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it." {
+  field at f32 "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. Part of the event, so a replay carries it." {
+    guide "input §6"
     min -1
     max 1
   }
 }
 ```
 
-<sub>Module `input` line 1181</sub>
+<sub>Module `input` line 1201</sub>

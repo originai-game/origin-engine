@@ -6,7 +6,9 @@ Module [`atmosphere`](../atmosphere.md) · [index](../index.md)
 
 ### `og.Sky` (resource)
 
-A procedural sky of chosen colours, drawn behind the scene per pixel and lighting it: the image-based light and the reflections' sky (where a surface reflects no probe and SSR misses) follow it as it is drawn, clouds and all, captured from the camera a slice a frame, eight frames to a whole capture, so a drifting cloud, a lightning flash or a fast day moves in the reflections and the ambient light within sixteen frames (about a quarter of a second at 60 fps). Without it, RenderSettings.sky draws the built-in sky. A DayNight that is enabled sets the sky itself.
+A procedural sky of chosen colours, drawn behind the scene per pixel and lighting it: the image-based light and the reflections' sky (where a surface reflects no probe and SSR misses) follow it as drawn, clouds and all, captured from the camera a slice a frame, eight frames to a whole capture. Without it, RenderSettings.sky draws the built-in sky. A DayNight that is enabled sets the sky itself.
+
+See `render §7`.
 
 Token `og.Sky`, registered under the schema name `og.Sky`; its value type is `Sky`.
 
@@ -32,7 +34,8 @@ Token `og.Sky`, registered under the schema name `og.Sky`; its value type is `Sk
 
 ```ogt
 resource Sky {
-  doc "A procedural sky of chosen colours, drawn behind the scene per pixel and lighting it: the image-based light and the reflections' sky (where a surface reflects no probe and SSR misses) follow it as it is drawn, clouds and all, captured from the camera a slice a frame, eight frames to a whole capture, so a drifting cloud, a lightning flash or a fast day moves in the reflections and the ambient light within sixteen frames (about a quarter of a second at 60 fps). Without it, RenderSettings.sky draws the built-in sky. A DayNight that is enabled sets the sky itself."
+  doc "A procedural sky of chosen colours, drawn behind the scene per pixel and lighting it: the image-based light and the reflections' sky (where a surface reflects no probe and SSR misses) follow it as drawn, clouds and all, captured from the camera a slice a frame, eight frames to a whole capture. Without it, RenderSettings.sky draws the built-in sky. A DayNight that is enabled sets the sky itself."
+  guide "render §7"
   field enabled bool "Draw and light by this sky."
   field zenith Color "Overhead." {
     default 0.18 0.36 0.78
@@ -107,4 +110,4 @@ resource Sky {
 }
 ```
 
-<sub>Module `atmosphere` line 93</sub>
+<sub>Module `atmosphere` line 96</sub>

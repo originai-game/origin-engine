@@ -30,4 +30,4 @@ fn supports {
 }
 ```
 
-<sub>Module `platform` line 431</sub>
+<sub>Module `platform` line 436</sub>

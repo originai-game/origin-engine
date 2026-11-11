@@ -29,18 +29,18 @@ module atmosphere {
 | [`WEATHER_DUST`](#const-WEATHER_DUST) | constant |  | Weather.kind: dust blowing along the wind near the ground, a warm thick fog. |
 | [`WEATHER_MIST`](#const-WEATHER_MIST) | constant |  | Weather.kind: no particles, a dense low height fog. |
 | [`og.Fog`](atmosphere/record-Fog.md) | resource |  | Distance and height fog over the 3D scene and world sprites: distance fog, measured from the camera, thickens exponentially by density per metre past start and, when end > start, also by a linear ram… |
-| [`og.Sky`](atmosphere/record-Sky.md) | resource |  | A procedural sky of chosen colours, drawn behind the scene per pixel and lighting it: the image-based light and the reflections' sky (where a surface reflects no probe and SSR misses) follow it as it… |
-| [`og.DayNight`](atmosphere/record-DayNight.md) | resource |  | A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and the moon disc, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient li… |
-| [`og.PhysicalSky`](atmosphere/record-PhysicalSky.md) | resource |  | A physical sky: sunlight scattered by the air (Rayleigh: the blue overhead, the red sunsets) and by haze (Mie: the white glow around the sun), with ozone keeping the twilight zenith blue, in a spheri… |
-| [`og.Clouds`](atmosphere/record-Clouds.md) | resource |  | Clouds in the procedural sky: a volumetric layer of cumulus raymarched through a curved shell over the planet, lit by the first DirectionalLight (shadowed within themselves, with multiple scattering:… |
-| [`og.Aurora`](atmosphere/record-Aurora.md) | resource |  | The aurora: curtains of light in the upper atmosphere, raymarched in the procedural sky (after Lawlor and Genetti, Interactive Volume Rendering Aurora on the GPU, 2011). |
-| [`og.WeatherState`](atmosphere/record-WeatherState.md) | resource |  | The weather's effect on the world, simulated in the tick from og.Weather (its kind and intensity) so gameplay can read it: how wet the ground is, how much standing water and snow lie on it, and the l… |
+| [`og.Sky`](atmosphere/record-Sky.md) | resource |  | A procedural sky of chosen colours, drawn behind the scene per pixel and lighting it: the image-based light and the reflections' sky (where a surface reflects no probe and SSR misses) follow it as dr… |
+| [`og.DayNight`](atmosphere/record-DayNight.md) | resource |  | A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and moon, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and t… |
+| [`og.PhysicalSky`](atmosphere/record-PhysicalSky.md) | resource |  | A physical sky: sunlight scattered by the air (Rayleigh) and haze (Mie), with ozone, in a spherical atmosphere of Earth's proportions with multiple scattering (Hillaire 2020). |
+| [`og.Clouds`](atmosphere/record-Clouds.md) | resource |  | Clouds in the procedural sky: a volumetric cumulus layer raymarched through a curved shell over the planet, lit by the first DirectionalLight (self-shadowed, with multiple scattering) and the sky, fa… |
+| [`og.Aurora`](atmosphere/record-Aurora.md) | resource |  | The aurora: curtains of light in the upper atmosphere raymarched in the procedural sky (after Lawlor and Genetti 2011), each a sheet of falling electrons along the auroral oval, folded by travelling … |
+| [`og.WeatherState`](atmosphere/record-WeatherState.md) | resource |  | The weather's effect on the world, simulated in the tick from og.Weather so gameplay can read it: how wet the ground is, how much standing water, snow and dust lie on it, and the lightning strikes, d… |
 | [`og.LightningStrike`](atmosphere/record-LightningStrike.md) | event |  | Lightning struck, in the tick og.weather drew it (og.WeatherState.lightning): read in the systems after og.weather that tick, or the next tick's first. |
 | [`og.Weather`](atmosphere/record-Weather.md) | resource |  | A weather preset around the camera: particles (rain, snow, dust), its fog (unless og.Fog is enabled, which takes precedence) and dimmed sunlight. |
-| [`og.Wind`](atmosphere/record-Wind.md) | resource |  | The wind the renderer sways vegetation with: og.TerrainScatter copies and their impostor cards, og.Grass blades, swaying trees, and og.Model instances with a sway, lean downwind and sway in gusts tha… |
+| [`og.Wind`](atmosphere/record-Wind.md) | resource |  | The wind the renderer sways vegetation with (og.TerrainScatter copies and their impostors, og.Grass, swaying trees, og.Model instances with a sway): they lean downwind and sway in gusts sweeping acro… |
 | [`WindMotorKind`](atmosphere/type-WindMotorKind.md) | enum |  | How an og.WindMotor pushes the wind. |
 | [`WindMotorKind()`](#column-WindMotorKind) | column kind |  | A WindMotorKind field: the variant's index. |
-| [`og.WindMotor`](atmosphere/record-WindMotor.md) | component |  | A local push on the wind the renderer sways vegetation with, at the entity's position: grass blades, og.TerrainScatter copies and their impostor cards, and swaying trees within `radius` lean away fro… |
+| [`og.WindMotor`](atmosphere/record-WindMotor.md) | component |  | A local push on the renderer's wind at the entity's position: vegetation within `radius` leans away from it (omni), along it (directional) or around it (vortex), fading to nothing at the edge, and th… |
 | [`og.Water`](atmosphere/record-Water.md) | component |  | A planar water surface on the entity's xz plane (centred on it, turned with it): colour by the water's depth over what is below, foam where it meets geometry, animated waves, refraction and reflectio… |
 | [`og.Water2D`](atmosphere/record-Water2D.md) | component |  | Draws the og.WaterLine on the same entity in the sprite order: the body from its surface down, a gradient from the top colour to the bottom one, and a bright lip along the surface. |
 | [`og.atmosphere.timeOfDay`](atmosphere/fn-timeOfDay.md) | function | `(world: World): number` | The DayNight clock at the current tick, in hours from 0 to 24 (its start when the cycle is off): for lamps that light at dusk and shops that close at night. |
@@ -62,7 +62,7 @@ column WindMotorKind {
 }
 ```
 
-<sub>Module `atmosphere` line 603</sub>
+<sub>Module `atmosphere` line 620</sub>
 
 ## Constants
 

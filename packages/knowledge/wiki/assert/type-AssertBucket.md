@@ -23,4 +23,4 @@ struct AssertBucket {
 }
 ```
 
-<sub>Module `assert` line 37</sub>
+<sub>Module `assert` line 35</sub>

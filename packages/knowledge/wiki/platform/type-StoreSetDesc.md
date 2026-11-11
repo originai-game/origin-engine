@@ -28,4 +28,4 @@ struct StoreSetDesc {
 }
 ```
 
-<sub>Module `platform` line 21</sub>
+<sub>Module `platform` line 17</sub>

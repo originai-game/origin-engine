@@ -8,6 +8,8 @@ Module [`platform`](../platform.md) · [index](../index.md)
 
 Read a slot saveSlot wrote: its manifest, then its parts, joined and checked against the manifest's length and checksum. One request for all of it.
 
+See `saves §1`.
+
 ```ts
 og.platform.loadSlot(world: World, desc?: LoadSlotDesc): Result<number>
 ```
@@ -24,10 +26,11 @@ Binding symbol `og_platform_load_slot` · publish builds: kept
 ```ogt
 fn loadSlot {
   doc "Read a slot saveSlot wrote: its manifest, then its parts, joined and checked against the manifest's length and checksum. One request for all of it."
+  guide "saves §1"
   param world World "The world."
   param desc LoadSlotDesc "The slot, and whether to read its meta alone."
   returns Result.u32 "Refused for a malformed slot name. The answer's data is `{ slot, text, meta, parts, bytes, revision }`: text and meta null for a slot never saved, text null with metaOnly; `invalid` for a key that holds no slot manifest or parts that do not match it."
 }
 ```
 
-<sub>Module `platform` line 207</sub>
+<sub>Module `platform` line 208</sub>

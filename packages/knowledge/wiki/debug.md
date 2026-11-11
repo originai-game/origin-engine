@@ -2,9 +2,11 @@
 
 # The `debug` module
 
-Debug draw: lines, boxes, spheres, arrows, axes and labels in the world, each for a number of ticks, drawn over the finished frame (after every post effect, before the UI) so they read in every capture and never hide behind geometry; and the debug views (physics, navigation, bounds, levels of detail, and the lit image's terms: shadow cascades, ambient occlusion, albedo, image-based and direct light) the command channel's `debug:` actions switch.
+Debug draw: lines, boxes, spheres, arrows, axes and labels in the world, each for a number of ticks, drawn over the finished frame (after every post effect, before the UI); and the debug views the command channel's `debug:` actions switch.
 
-Development only: not in publish builds, where every member does nothing and answers its default, so a game may leave its debug draws in. Debug draw is rendering: it never feeds back into the simulation, and its draws are not world state (a snapshot or a replay does not carry them).
+Development only: in publish builds every member does nothing and answers its default. Debug draw is rendering: it never feeds back into the simulation and is not world state.
+
+See `testing §8`.
 
 - **TypeScript**: functions are the namespace `og.debug`; components, resources and events are tokens on `og`.
 - **Publish builds**: dropped (members may override).
@@ -12,9 +14,8 @@ Development only: not in publish builds, where every member does nothing and ans
 
 ```ogt
 module debug {
-  doc "Debug draw: lines, boxes, spheres, arrows, axes and labels in the world, each for a number of ticks, drawn over the finished frame (after every post effect, before the UI) so they read in every capture and never hide behind geometry; and the debug views (physics, navigation, bounds, levels of detail, and the lit image's terms: shadow cascades, ambient occlusion, albedo, image-based and direct light) the command channel's `debug:` actions switch."
-  doc "Development only: not in publish builds, where every member does nothing and answers its default, so a game may leave its debug draws in. Debug draw is rendering: it never feeds back into the simulation, and its draws are not world state (a snapshot or a replay does not carry them)."
-  publish false
+  doc "Debug draw: lines, boxes, spheres, arrows, axes and labels in the world, each for a number of ticks, drawn over the finished frame (after every post effect, before the UI); and the debug views the command channel's `debug:` actions switch."
+  doc "Development only: in publish builds every member does nothing and answers its default. Debug draw is rendering: it never feeds back into the simulation and is not world state."
   # declarations follow, each on its own page
 ```
 

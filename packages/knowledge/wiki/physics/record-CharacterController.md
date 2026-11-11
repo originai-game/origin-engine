@@ -6,7 +6,9 @@ Module [`physics`](../physics.md) · [index](../index.md)
 
 ### `og.CharacterController` (component)
 
-A kinematic character (3D, or top-down 2D): the entity's capsule (or any og.Collider) moved by `move` each tick, sliding along walls, climbing slopes up to `maxSlope` and steps up to `stepHeight`, snapped to the ground, carried by the moving platform it stands on and falling by gravity. It keeps `skin` off every surface, standing that far over the ground; a step is climbed when the ground beyond it is at most `stepHeight` over the ground it stands on. What blocks it is every solid collider its og.Collider's `layers` and `mask` interact with (each one's layers meeting the other's mask), as for bodies. The entity needs an og.Transform and an og.Collider; the step makes it a kinematic body and pushes the dynamic bodies it walks into (`pushBodies`) with at most `pushStrength`, so a light one is shoved and a heavy one holds.
+A kinematic character (3D, or top-down 2D): the entity's capsule (or any og.Collider) moved by `move` each tick, sliding along walls, climbing slopes up to `maxSlope` and steps up to `stepHeight`, snapped to the ground, carried by the moving platform it stands on and falling by gravity. It keeps `skin` off every surface. What blocks it is every solid collider its og.Collider's `layers` and `mask` interact with, as for bodies. It needs an og.Transform and an og.Collider; the step makes it a kinematic body that pushes dynamic bodies (`pushBodies`, `pushStrength`).
+
+See `physics §6`.
 
 Also known as: player controller, kinematic character, Unity CharacterController, Godot CharacterBody3D
 
@@ -19,13 +21,13 @@ Token `og.CharacterController`, registered under the schema name `og.CharacterCo
 | `jumpSpeed` | `number` | `6` | ≥ 0 | `mps` | tunable | The upward speed of a jump. |
 | `gravityScale` | `number` | `1` | 0 … 10 | — | tunable | Multiplies og.Physics.gravity; 0 for top-down movement in any direction. |
 | `maxSlope` | `number` | `45` | 0 … 89 | `deg` | tunable | The steepest slope it walks up. |
-| `stepHeight` | `number` | `0.3` | ≥ 0 | `m` | tunable | The highest step it climbs without jumping (0: none). |
+| `stepHeight` | `number` | `0.3` | ≥ 0 | `m` | tunable | The highest step it climbs without jumping: the ground beyond the step at most this over the ground it stands on (0: none). |
 | `snapDistance` | `number` | `0.2` | ≥ 0 | `m` | tunable | How far below it the ground still holds it (stairs down, slopes): 0 lets it leave every edge. |
 | `skin` | `number` | `0.02` | ≥ 0.001 | `m` | — | The gap kept between it and every surface. |
 | `coyoteTime` | `number` | `0.1` | ≥ 0 | `s` | tunable | After leaving an edge, a jump still starts within this time. |
 | `maxFallSpeed` | `number` | `40` | ≥ 0 | `mps` | tunable | The fastest fall. |
 | `pushBodies` | `boolean` | `true` | — | — | — | Push dynamic bodies it walks into, with at most `pushStrength`. |
-| `pushStrength` | `number` | `1000` | ≥ 0 | `newton` | tunable | The most force it pushes with: each tick the bodies it walks into share an impulse of at most this times the tick's length (mass times the speed it asks of them, capped), so a body of a few kilograms is shoved at its speed while one whose friction holds more (a tonne on the ground) does not move. 0 leaves every body where it is, as `pushBodies` false does. |
+| `pushStrength` | `number` | `1000` | ≥ 0 | `newton` | tunable | The most force it pushes with: each tick the bodies it walks into share an impulse of at most this times the tick's length (mass times the speed it asks of them, capped). 0 leaves every body where it is, as `pushBodies` false does. See `physics §6`. |
 | `grounded` | `boolean` | `false` | — | — | read only | Written: standing on walkable ground after the step. |
 | `sliding` | `boolean` | `false` | — | — | read only | Written: sliding down a slope steeper than maxSlope. |
 | `velocity` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `mps` | read only | Written: the velocity it moved at this tick (the platform's carry included). |
@@ -36,7 +38,8 @@ Token `og.CharacterController`, registered under the schema name `og.CharacterCo
 
 ```ogt
 component CharacterController {
-  doc "A kinematic character (3D, or top-down 2D): the entity's capsule (or any og.Collider) moved by `move` each tick, sliding along walls, climbing slopes up to `maxSlope` and steps up to `stepHeight`, snapped to the ground, carried by the moving platform it stands on and falling by gravity. It keeps `skin` off every surface, standing that far over the ground; a step is climbed when the ground beyond it is at most `stepHeight` over the ground it stands on. What blocks it is every solid collider its og.Collider's `layers` and `mask` interact with (each one's layers meeting the other's mask), as for bodies. The entity needs an og.Transform and an og.Collider; the step makes it a kinematic body and pushes the dynamic bodies it walks into (`pushBodies`) with at most `pushStrength`, so a light one is shoved and a heavy one holds."
+  doc "A kinematic character (3D, or top-down 2D): the entity's capsule (or any og.Collider) moved by `move` each tick, sliding along walls, climbing slopes up to `maxSlope` and steps up to `stepHeight`, snapped to the ground, carried by the moving platform it stands on and falling by gravity. It keeps `skin` off every surface. What blocks it is every solid collider its og.Collider's `layers` and `mask` interact with, as for bodies. It needs an og.Transform and an og.Collider; the step makes it a kinematic body that pushes dynamic bodies (`pushBodies`, `pushStrength`)."
+  guide "physics §6"
   aliases "player controller, kinematic character, Unity CharacterController, Godot CharacterBody3D"
   field move Vector3 "The wanted velocity across the ground (m/s, world space; y is ignored unless gravityScale is 0). Set it every tick." {
     unit mps
@@ -61,7 +64,7 @@ component CharacterController {
     unit deg
     tunable true
   }
-  field stepHeight f32 "The highest step it climbs without jumping (0: none)." {
+  field stepHeight f32 "The highest step it climbs without jumping: the ground beyond the step at most this over the ground it stands on (0: none)." {
     default 0.3
     min 0
     unit m
@@ -93,7 +96,8 @@ component CharacterController {
   field pushBodies bool "Push dynamic bodies it walks into, with at most `pushStrength`." {
     default true
   }
-  field pushStrength f32 "The most force it pushes with: each tick the bodies it walks into share an impulse of at most this times the tick's length (mass times the speed it asks of them, capped), so a body of a few kilograms is shoved at its speed while one whose friction holds more (a tonne on the ground) does not move. 0 leaves every body where it is, as `pushBodies` false does." {
+  field pushStrength f32 "The most force it pushes with: each tick the bodies it walks into share an impulse of at most this times the tick's length (mass times the speed it asks of them, capped). 0 leaves every body where it is, as `pushBodies` false does." {
+    guide "physics §6"
     default 1000
     min 0
     unit newton
@@ -124,4 +128,4 @@ component CharacterController {
 }
 ```
 
-<sub>Module `physics` line 382</sub>
+<sub>Module `physics` line 392</sub>

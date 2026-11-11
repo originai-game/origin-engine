@@ -6,7 +6,9 @@ Module [`render`](../render.md) · [index](../index.md)
 
 ### `og.ReflectionProbe` (component)
 
-A local reflection: a cube of what is around the entity's position, sampled by every lit surface inside its box with box projection (the reflected ray meets the box, so a room's walls reflect where they are, not at infinity) and blended with the environment map over blendDistance at the box's faces. Interiors that the sky must not light: a chrome sphere in a room shows the room. Overlapping probes: the smallest wins. The cube is rendered from the probe's position without it (nothing is drawn twice) and without the probes' own reflections. It holds the light as it reaches surfaces: its sky scaled by the environment's intensity (RenderSettings.environmentIntensity, og.Environment.intensity), as a surface outside the box takes the sky's light, and the surfaces as drawn, so crossing the box's face changes what is reflected, not how bright the light is.
+A local reflection: a cube of what is around the entity's position, sampled by every lit surface inside its box with box projection (a room's walls reflect where they are, not at infinity) and blended with the environment map over blendDistance at the box's faces. Overlapping probes: the smallest wins. The cube is rendered from the probe's position without it and without the probes' own reflections, and holds the light as it reaches surfaces.
+
+See `looks §15`.
 
 Token `og.ReflectionProbe`, registered under the schema name `og.ReflectionProbe`; its value type is `ReflectionProbe`.
 
@@ -22,7 +24,8 @@ Token `og.ReflectionProbe`, registered under the schema name `og.ReflectionProbe
 
 ```ogt
 component ReflectionProbe {
-  doc "A local reflection: a cube of what is around the entity's position, sampled by every lit surface inside its box with box projection (the reflected ray meets the box, so a room's walls reflect where they are, not at infinity) and blended with the environment map over blendDistance at the box's faces. Interiors that the sky must not light: a chrome sphere in a room shows the room. Overlapping probes: the smallest wins. The cube is rendered from the probe's position without it (nothing is drawn twice) and without the probes' own reflections. It holds the light as it reaches surfaces: its sky scaled by the environment's intensity (RenderSettings.environmentIntensity, og.Environment.intensity), as a surface outside the box takes the sky's light, and the surfaces as drawn, so crossing the box's face changes what is reflected, not how bright the light is."
+  doc "A local reflection: a cube of what is around the entity's position, sampled by every lit surface inside its box with box projection (a room's walls reflect where they are, not at infinity) and blended with the environment map over blendDistance at the box's faces. Overlapping probes: the smallest wins. The cube is rendered from the probe's position without it and without the probes' own reflections, and holds the light as it reaches surfaces."
+  guide "looks §15"
   field size Vector3 "The box's full extents in world units, centred on the entity (its rotation is ignored: the box is axis-aligned)." {
     default 10 10 10
   }
@@ -53,4 +56,4 @@ component ReflectionProbe {
 }
 ```
 
-<sub>Module `render` line 2633</sub>
+<sub>Module `render` line 2843</sub>

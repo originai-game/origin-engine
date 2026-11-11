@@ -6,7 +6,9 @@ Module [`net`](../net.md) · [index](../index.md)
 
 ### `og.net.hash`
 
-The world's shared hash now, hex: the hash lockstep compares, which leaves this peer's session out (og.Input, og.Lockstep, input and room events, the UI's focus; module docs). Two peers at the same tick agree on it exactly when their simulations agree; the world dump's `hash` covers everything and differs between peers.
+The world's shared hash now, hex: the hash lockstep compares, which leaves this peer's session out (og.Input, og.Lockstep, input and room events, the UI's focus, ...). Two peers at the same tick agree on it exactly when their simulations agree; the world dump's `hash` covers everything and differs between peers.
+
+See `networking §6`.
 
 ```ts
 og.net.hash(world: World): string
@@ -22,10 +24,11 @@ Binding symbol `og_net_hash` · publish builds: kept
 
 ```ogt
 fn hash {
-  doc "The world's shared hash now, hex: the hash lockstep compares, which leaves this peer's session out (og.Input, og.Lockstep, input and room events, the UI's focus; module docs). Two peers at the same tick agree on it exactly when their simulations agree; the world dump's `hash` covers everything and differs between peers."
+  doc "The world's shared hash now, hex: the hash lockstep compares, which leaves this peer's session out (og.Input, og.Lockstep, input and room events, the UI's focus, ...). Two peers at the same tick agree on it exactly when their simulations agree; the world dump's `hash` covers everything and differs between peers."
+  guide "networking §6"
   param world World "The world."
   returns String
 }
 ```
 
-<sub>Module `net` line 252</sub>
+<sub>Module `net` line 255</sub>

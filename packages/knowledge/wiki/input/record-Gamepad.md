@@ -6,16 +6,25 @@ Module [`input`](../input.md) · [index](../index.md)
 
 ### `og.Gamepad` (resource)
 
-Up to eight gamepads at the start of this tick (og-input's og.Gamepad, version 2), in the W3C standard layout: on the web the shell polls the pads each display frame, maps a pad the browser does not map (Firefox, Linux, many third-party pads) through its table, and sends their state through the input ring, so a pad is world state and replays; it also maps pads to keys for games that only read keys.
+Up to eight gamepads at the start of this tick (og-input's og.Gamepad, version 2), in the W3C standard layout. A pad is world state and replays.
 
 Button masks are bit `GamepadButton` index per pad; edges last exactly one tick, and a press and a release between two ticks leave both edges set. Read them through the methods. Sticks and triggers are raw: dead zones are the actions' (og.input.setDeadzones). `devices` holds each pad's family as the host told it (og.input.padDevice).
 
+See `input §4`.
+
 Token `og.Gamepad`, registered under the schema name `og.Gamepad`; its value type is `Gamepad`.
+
+#### Pads
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `connectedMask` | `number` | `0` | — | — | read only | Connected pads: bit `pad`. |
 | `devices` | `number` | `0` | — | — | read only | Each pad's family, four bits per pad (pad p at bit 4p): an InputDevice index (1 xbox, 2 playstation, 3 switch, 4 gamepad), 0 when the host did not say. |
+
+#### Buttons held
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
 | `buttons0` | `number` | `0` | — | — | read only | Held buttons of pad 0. |
 | `buttons1` | `number` | `0` | — | — | read only | Held buttons of pad 1. |
 | `buttons2` | `number` | `0` | — | — | read only | Held buttons of pad 2. |
@@ -24,6 +33,11 @@ Token `og.Gamepad`, registered under the schema name `og.Gamepad`; its value typ
 | `buttons5` | `number` | `0` | — | — | read only | Held buttons of pad 5. |
 | `buttons6` | `number` | `0` | — | — | read only | Held buttons of pad 6. |
 | `buttons7` | `number` | `0` | — | — | read only | Held buttons of pad 7. |
+
+#### Pressed this tick
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
 | `pressed0` | `number` | `0` | — | — | read only | Buttons of pad 0 that went down this tick. |
 | `pressed1` | `number` | `0` | — | — | read only | Buttons of pad 1 that went down this tick. |
 | `pressed2` | `number` | `0` | — | — | read only | Buttons of pad 2 that went down this tick. |
@@ -32,6 +46,11 @@ Token `og.Gamepad`, registered under the schema name `og.Gamepad`; its value typ
 | `pressed5` | `number` | `0` | — | — | read only | Buttons of pad 5 that went down this tick. |
 | `pressed6` | `number` | `0` | — | — | read only | Buttons of pad 6 that went down this tick. |
 | `pressed7` | `number` | `0` | — | — | read only | Buttons of pad 7 that went down this tick. |
+
+#### Released this tick
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
 | `released0` | `number` | `0` | — | — | read only | Buttons of pad 0 that went up this tick. |
 | `released1` | `number` | `0` | — | — | read only | Buttons of pad 1 that went up this tick. |
 | `released2` | `number` | `0` | — | — | read only | Buttons of pad 2 that went up this tick. |
@@ -40,6 +59,11 @@ Token `og.Gamepad`, registered under the schema name `og.Gamepad`; its value typ
 | `released5` | `number` | `0` | — | — | read only | Buttons of pad 5 that went up this tick. |
 | `released6` | `number` | `0` | — | — | read only | Buttons of pad 6 that went up this tick. |
 | `released7` | `number` | `0` | — | — | read only | Buttons of pad 7 that went up this tick. |
+
+#### Left sticks
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
 | `leftStick0` | `Vector2` | `{ x: 0, y: 0 }` | — | — | read only | The left stick of pad 0, -1 to 1, y down. |
 | `leftStick1` | `Vector2` | `{ x: 0, y: 0 }` | — | — | read only | The left stick of pad 1, -1 to 1, y down. |
 | `leftStick2` | `Vector2` | `{ x: 0, y: 0 }` | — | — | read only | The left stick of pad 2, -1 to 1, y down. |
@@ -48,6 +72,11 @@ Token `og.Gamepad`, registered under the schema name `og.Gamepad`; its value typ
 | `leftStick5` | `Vector2` | `{ x: 0, y: 0 }` | — | — | read only | The left stick of pad 5, -1 to 1, y down. |
 | `leftStick6` | `Vector2` | `{ x: 0, y: 0 }` | — | — | read only | The left stick of pad 6, -1 to 1, y down. |
 | `leftStick7` | `Vector2` | `{ x: 0, y: 0 }` | — | — | read only | The left stick of pad 7, -1 to 1, y down. |
+
+#### Right sticks
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
 | `rightStick0` | `Vector2` | `{ x: 0, y: 0 }` | — | — | read only | The right stick of pad 0, -1 to 1, y down. |
 | `rightStick1` | `Vector2` | `{ x: 0, y: 0 }` | — | — | read only | The right stick of pad 1, -1 to 1, y down. |
 | `rightStick2` | `Vector2` | `{ x: 0, y: 0 }` | — | — | read only | The right stick of pad 2, -1 to 1, y down. |
@@ -56,6 +85,11 @@ Token `og.Gamepad`, registered under the schema name `og.Gamepad`; its value typ
 | `rightStick5` | `Vector2` | `{ x: 0, y: 0 }` | — | — | read only | The right stick of pad 5, -1 to 1, y down. |
 | `rightStick6` | `Vector2` | `{ x: 0, y: 0 }` | — | — | read only | The right stick of pad 6, -1 to 1, y down. |
 | `rightStick7` | `Vector2` | `{ x: 0, y: 0 }` | — | — | read only | The right stick of pad 7, -1 to 1, y down. |
+
+#### Triggers
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
 | `triggers0` | `Vector2` | `{ x: 0, y: 0 }` | — | — | read only | The left (x) and right (y) triggers of pad 0, 0 to 1. |
 | `triggers1` | `Vector2` | `{ x: 0, y: 0 }` | — | — | read only | The left (x) and right (y) triggers of pad 1, 0 to 1. |
 | `triggers2` | `Vector2` | `{ x: 0, y: 0 }` | — | — | read only | The left (x) and right (y) triggers of pad 2, 0 to 1. |
@@ -67,14 +101,17 @@ Token `og.Gamepad`, registered under the schema name `og.Gamepad`; its value typ
 
 ```ogt
 resource Gamepad {
-  doc "Up to eight gamepads at the start of this tick (og-input's og.Gamepad, version 2), in the W3C standard layout: on the web the shell polls the pads each display frame, maps a pad the browser does not map (Firefox, Linux, many third-party pads) through its table, and sends their state through the input ring, so a pad is world state and replays; it also maps pads to keys for games that only read keys."
+  doc "Up to eight gamepads at the start of this tick (og-input's og.Gamepad, version 2), in the W3C standard layout. A pad is world state and replays."
   doc "Button masks are bit `GamepadButton` index per pad; edges last exactly one tick, and a press and a release between two ticks leave both edges set. Read them through the methods. Sticks and triggers are raw: dead zones are the actions' (og.input.setDeadzones). `devices` holds each pad's family as the host told it (og.input.padDevice)."
+  guide "input §4"
+  group "Pads"
   field connectedMask u32 "Connected pads: bit `pad`." {
     readonly true
   }
   field devices u32 "Each pad's family, four bits per pad (pad p at bit 4p): an InputDevice index (1 xbox, 2 playstation, 3 switch, 4 gamepad), 0 when the host did not say." {
     readonly true
   }
+  group "Buttons held"
   field buttons0 u32 "Held buttons of pad 0." {
     readonly true
   }
@@ -99,6 +136,7 @@ resource Gamepad {
   field buttons7 u32 "Held buttons of pad 7." {
     readonly true
   }
+  group "Pressed this tick"
   field pressed0 u32 "Buttons of pad 0 that went down this tick." {
     readonly true
   }
@@ -123,6 +161,7 @@ resource Gamepad {
   field pressed7 u32 "Buttons of pad 7 that went down this tick." {
     readonly true
   }
+  group "Released this tick"
   field released0 u32 "Buttons of pad 0 that went up this tick." {
     readonly true
   }
@@ -147,6 +186,7 @@ resource Gamepad {
   field released7 u32 "Buttons of pad 7 that went up this tick." {
     readonly true
   }
+  group "Left sticks"
   field leftStick0 Vector2 "The left stick of pad 0, -1 to 1, y down." {
     readonly true
   }
@@ -171,6 +211,7 @@ resource Gamepad {
   field leftStick7 Vector2 "The left stick of pad 7, -1 to 1, y down." {
     readonly true
   }
+  group "Right sticks"
   field rightStick0 Vector2 "The right stick of pad 0, -1 to 1, y down." {
     readonly true
   }
@@ -195,6 +236,7 @@ resource Gamepad {
   field rightStick7 Vector2 "The right stick of pad 7, -1 to 1, y down." {
     readonly true
   }
+  group "Triggers"
   field triggers0 Vector2 "The left (x) and right (y) triggers of pad 0, 0 to 1." {
     readonly true
   }
@@ -261,7 +303,7 @@ resource Gamepad {
 }
 ```
 
-<sub>Module `input` line 987</sub>
+<sub>Module `input` line 999</sub>
 
 <a id="member-Gamepad-connected"></a>
 
@@ -291,7 +333,7 @@ fn connected {
 }
 ```
 
-<sub>Module `input` line 1140</sub>
+<sub>Module `input` line 1160</sub>
 
 <a id="member-Gamepad-down"></a>
 
@@ -323,7 +365,7 @@ fn down {
 }
 ```
 
-<sub>Module `input` line 1147</sub>
+<sub>Module `input` line 1167</sub>
 
 <a id="member-Gamepad-pressed"></a>
 
@@ -355,7 +397,7 @@ fn pressed {
 }
 ```
 
-<sub>Module `input` line 1155</sub>
+<sub>Module `input` line 1175</sub>
 
 <a id="member-Gamepad-released"></a>
 
@@ -387,7 +429,7 @@ fn released {
 }
 ```
 
-<sub>Module `input` line 1163</sub>
+<sub>Module `input` line 1183</sub>
 
 <a id="member-Gamepad-axis"></a>
 
@@ -419,4 +461,4 @@ fn axis {
 }
 ```
 
-<sub>Module `input` line 1171</sub>
+<sub>Module `input` line 1191</sub>

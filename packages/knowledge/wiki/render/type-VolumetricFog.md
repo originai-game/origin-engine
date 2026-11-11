@@ -8,19 +8,22 @@ Module [`render`](../render.md) · [index](../index.md)
 
 How the device draws Fog.volumetric (RenderCapabilities.volumetricFog).
 
+See `render §7`.
+
 A string: one of the variants below. The zero value is `"froxel"`.
 
 | Variant | Doc |
 |---|---|
-| `"froxel"` | A grid of view-aligned cells over the camera's frustum (160 by 90 by 64, slices deepening with the square of their index) lit in compute by the sun through its shadow cascades and by the clustered point, spot and rect lights through their shadows and cookies (each cell the mean of eight samples over its depth), then integrated front to back: what the engine draws with. |
-| `"raymarch"` | Each pixel's view ray marched through the fog in 24 jittered steps, each lit by the sun through its cascades and by the first 8 point, spot and rect lights of its screen cluster through their shadows and cookies (RenderCapabilities.volumetricLights), with no compute pass: og-render's alternative to the froxel grid, which the engine draws with. |
+| `"froxel"` | A grid of view-aligned cells over the camera's frustum (160 by 90 by 64, slices deepening quadratically) lit in compute by the sun through its cascades and by the clustered lights through their shadows and cookies (eight samples a cell), integrated front to back: what the engine draws with. |
+| `"raymarch"` | Each pixel's view ray marched through the fog in 24 jittered steps, lit by the sun through its cascades and by the first 8 point, spot and rect lights of its screen cluster (RenderCapabilities.volumetricLights), with no compute pass: og-render's alternative to the froxel grid. |
 
 ```ogt
 enum VolumetricFog {
   doc "How the device draws Fog.volumetric (RenderCapabilities.volumetricFog)."
-  variant froxel "A grid of view-aligned cells over the camera's frustum (160 by 90 by 64, slices deepening with the square of their index) lit in compute by the sun through its shadow cascades and by the clustered point, spot and rect lights through their shadows and cookies (each cell the mean of eight samples over its depth), then integrated front to back: what the engine draws with."
-  variant raymarch "Each pixel's view ray marched through the fog in 24 jittered steps, each lit by the sun through its cascades and by the first 8 point, spot and rect lights of its screen cluster through their shadows and cookies (RenderCapabilities.volumetricLights), with no compute pass: og-render's alternative to the froxel grid, which the engine draws with."
+  guide "render §7"
+  variant froxel "A grid of view-aligned cells over the camera's frustum (160 by 90 by 64, slices deepening quadratically) lit in compute by the sun through its cascades and by the clustered lights through their shadows and cookies (eight samples a cell), integrated front to back: what the engine draws with."
+  variant raymarch "Each pixel's view ray marched through the fog in 24 jittered steps, lit by the sun through its cascades and by the first 8 point, spot and rect lights of its screen cluster (RenderCapabilities.volumetricLights), with no compute pass: og-render's alternative to the froxel grid."
 }
 ```
 
-<sub>Module `render` line 3882</sub>
+<sub>Module `render` line 4091</sub>

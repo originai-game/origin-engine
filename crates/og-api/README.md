@@ -116,6 +116,33 @@ A function, record, struct, enum, union or interface may also carry one
 Godot, Unreal, three.js). The wiki prints it as "Also known as:" and
 `og api find` scores it as a field of its own; no other output reads it.
 
+Three keys keep entries short and the entry point narrow:
+
+- `guide "saves §2"` (or `guide "saves"`) on a module, fn, type, record,
+  field or prop: where its workflow, thresholds and pitfalls are written.
+  The guide must exist in `crates/og-api/guides/` with a `## 2.` section
+  (`og_idl::read` refuses it otherwise); the generators end the doc with
+  "See `saves §2`." in the `.d.ts`, the schema and the wiki.
+- `group "Heading" "optional doc"` in a struct or record: the fields after
+  it, to the next group, are a section of the wiki's field table and sit
+  under a `// ── Heading ──` comment in the `.d.ts`. Groups never reorder a
+  record's fields (the order is the layout).
+- `core name ...` on a module: its core tier, the items game code uses.
+  `og api show <module>` lists only these (`--all` lists every member).
+  The rule is data, not taste: `bun scripts/api-usage.ts --core` prints
+  each module's line from the resolved-symbol counts over the fixtures,
+  looks' sample sets, the skeleton and the examples; a module no game file
+  uses has no line and lists everything.
+
+`og api check` also reports descriptions over budget (`og_idl::budget`):
+an entry's doc text in Unicode characters, its paragraphs summed, at most
+600 for modules, functions and types and 300 for fields, params, props,
+variants, cases, returns, consts, values and units. A description keeps
+what the entry is, its units and defaults, when it errors and its
+contract; workflow, sizes, timings and cross-member caveats go to a guide.
+The check fails when more are over than `budget::BACKLOG`, which falls to
+zero as the backlog clears; `og api check --budget` lists them.
+
 | Declaration | Form | Means |
 |---|---|---|
 | `fn` | `fn name { doc; generic N Bound; param ...; returns Type "doc"; publish bool; host bool }` | a function; in an interface or resource, a method; `host false` is TypeScript sugar the runtime implements over other members (`og.assert.always`): no binding symbol, no trait method |

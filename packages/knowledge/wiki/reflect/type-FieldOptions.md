@@ -19,7 +19,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `label` | `string` | `""` | — | — | — | The person-facing name; empty uses the field name. |
 | `doc` | `string` | `""` | — | — | — | One sentence on what the field means. |
 | `tunable` | `boolean` | `false` | — | — | — | Publish the field to Tune and to the probe's bounds and patch. |
-| `worldspace` | `string` | `""` | — | — | — | Where a Vector2, Vector3, f32 or f64 field's numbers lie when og.WorldOrigin shifts the world: `world` (a point in the world, moved by every shift), `root` (in its entity's Transform frame: moved on an entity without a parent), `none` (an offset, a size, a direction), then optionally its axes (`world y` for an absolute height); empty for a field that is not a coordinate. |
+| `worldspace` | `string` | `""` | — | — | — | Where a Vector2, Vector3, f32 or f64 field's numbers lie when og.WorldOrigin shifts: `world` (a point, moved by every shift), `root` (in its Transform's frame: moved on a root entity), `none` (an offset, size, direction), then optionally axes (`world y`: an absolute height); empty: not a coordinate. |
 
 ```ogt
 struct FieldOptions {
@@ -32,7 +32,7 @@ struct FieldOptions {
   field label String "The person-facing name; empty uses the field name."
   field doc String "One sentence on what the field means."
   field tunable bool "Publish the field to Tune and to the probe's bounds and patch."
-  field worldspace String "Where a Vector2, Vector3, f32 or f64 field's numbers lie when og.WorldOrigin shifts the world: `world` (a point in the world, moved by every shift), `root` (in its entity's Transform frame: moved on an entity without a parent), `none` (an offset, a size, a direction), then optionally its axes (`world y` for an absolute height); empty for a field that is not a coordinate."
+  field worldspace String "Where a Vector2, Vector3, f32 or f64 field's numbers lie when og.WorldOrigin shifts: `world` (a point, moved by every shift), `root` (in its Transform's frame: moved on a root entity), `none` (an offset, size, direction), then optionally axes (`world y`: an absolute height); empty: not a coordinate."
 }
 ```
 

@@ -264,7 +264,10 @@ impl<'a> Validator<'a, '_> {
                 if !module.items.iter().any(|i| i.name() == name) {
                     self.error(
                         module.line,
-                        format!("`core {name}` in module `{}` names no item of it", module.name),
+                        format!(
+                            "`core {name}` in module `{}` names no item of it",
+                            module.name
+                        ),
                     );
                 }
                 if !core.insert(name.as_str()) {
@@ -286,7 +289,10 @@ impl<'a> Validator<'a, '_> {
                         self.error(g.line, format!("duplicate group `{}` in `{owner}`", g.name));
                     }
                     if !fields.iter().any(|f| f.group.as_ref() == Some(&g.name)) {
-                        self.error(g.line, format!("group `{}` in `{owner}` has no field after it", g.name));
+                        self.error(
+                            g.line,
+                            format!("group `{}` in `{owner}` has no field after it", g.name),
+                        );
                     }
                 }
             }
@@ -1138,7 +1144,11 @@ pub(crate) fn guide_refs(api: &Api) -> Vec<Diagnostic> {
                 line: r.line,
                 message: format!(
                     "`guide \"{r}\"` names no guide: crates/og-api/guides/ has {}",
-                    api.guides.iter().map(|g| g.name.as_str()).collect::<Vec<_>>().join(", ")
+                    api.guides
+                        .iter()
+                        .map(|g| g.name.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ")
                 ),
             });
             continue;
@@ -1148,7 +1158,10 @@ pub(crate) fn guide_refs(api: &Api) -> Vec<Diagnostic> {
         {
             out.push(Diagnostic {
                 line: r.line,
-                message: format!("`guide \"{r}\"`: the `{}` guide has no section `## {n}.`", g.name),
+                message: format!(
+                    "`guide \"{r}\"`: the `{}` guide has no section `## {n}.`",
+                    g.name
+                ),
             });
         }
     }

@@ -6,9 +6,9 @@ Reflection: components and resources are declared once with their field layout a
 
 The inspector, Tune, the probe, scene text and the wiki read this one schema. Each column factory below makes one field.
 
-A field holds one value, or a list of at most a fixed number of one number type or handle: `list(u32(), 8)`, `list(Asset(), 4)` (the list factory below). A list is read as a frozen copy (`push` throws) and written whole (`chain.passes = [...chain.passes, h]`); one over its capacity is refused, never truncated. A few vectors are numbered fields (`p0` to `p7`, as og.CameraRail does); a list of things with fields of their own is an entity each, with its own component, looped over by a query (a ring of skid marks, the laps of a race); a long record (a lap's taped inputs) is text in `str` fields of at most 4,096 bytes each, chunked over entities. Keep none of it in module variables: they are not world state, so a snapshot, a replay and a hot reload lose them.
+A field holds one value, or a list of at most a fixed number of one number type or handle (`list(u32(), 8)`, the list factory below). A handle is a 64-bit number: keep it in a field of its own kind (`Asset()`, `Texture()`, `Entity()`: every handle type has its factory, named as the type), never another; a `u32` field refuses one and an `f64` loses its type.
 
-A handle (an og.load answer, a texture, a sound, a geometry, a material, an entity) is a 64-bit number: keep it in a field of its own kind (`Asset()`, `Texture()`, `Sound()`, `Font()`, `Style()`, `Geometry()`, `Material()`, `Entity()`: every handle type of the API has its factory, named as the type), never cast to another kind, in a component or a resource. A `u32` field refuses one (handles pass 2^32: `4294967298 is not a u32`); an `f64` holds the number but loses its type.
+See `saves §3`.
 
 - **TypeScript**: functions are named exports of the package: `import { … } from "@origingame/engine"`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
@@ -18,9 +18,7 @@ A handle (an og.load answer, a texture, a sound, a geometry, a material, an enti
 module reflect {
   doc "Reflection: components and resources are declared once with their field layout and metadata, and registered by name."
   doc "The inspector, Tune, the probe, scene text and the wiki read this one schema. Each column factory below makes one field."
-  doc "A field holds one value, or a list of at most a fixed number of one number type or handle: `list(u32(), 8)`, `list(Asset(), 4)` (the list factory below). A list is read as a frozen copy (`push` throws) and written whole (`chain.passes = [...chain.passes, h]`); one over its capacity is refused, never truncated. A few vectors are numbered fields (`p0` to `p7`, as og.CameraRail does); a list of things with fields of their own is an entity each, with its own component, looped over by a query (a ring of skid marks, the laps of a race); a long record (a lap's taped inputs) is text in `str` fields of at most 4,096 bytes each, chunked over entities. Keep none of it in module variables: they are not world state, so a snapshot, a replay and a hot reload lose them."
-  doc "A handle (an og.load answer, a texture, a sound, a geometry, a material, an entity) is a 64-bit number: keep it in a field of its own kind (`Asset()`, `Texture()`, `Sound()`, `Font()`, `Style()`, `Geometry()`, `Material()`, `Entity()`: every handle type of the API has its factory, named as the type), never cast to another kind, in a component or a resource. A `u32` field refuses one (handles pass 2^32: `4294967298 is not a u32`); an `f64` holds the number but loses its type."
-  place top
+  doc "A field holds one value, or a list of at most a fixed number of one number type or handle (`list(u32(), 8)`, the list factory below). A handle is a 64-bit number: keep it in a field of its own kind (`Asset()`, `Texture()`, `Entity()`: every handle type has its factory, named as the type), never another; a `u32` field refuses one and an `f64` loses its type."
   # declarations follow, each on its own page
 ```
 
@@ -42,7 +40,7 @@ module reflect {
 | [`Matrix4()`](#column-Matrix4) | column kind |  | A Matrix4 field: sixteen column-major elements per entity. |
 | [`Color()`](#column-Color) | column kind |  | A Color field: r, g, b interleaved. |
 | [`str()`](#column-str) | column kind |  | Text of at most `capacity` bytes of UTF-8, stored inline and zero-padded, so it is world state like a number: a player's name, a label. |
-| [`list()`](#column-list) | column kind |  | A list of at most `capacity` values of one number column (`f32`, `f64`, `u32`, `i32`) or handle column (`Asset`, `Entity`, `Post`, ...), stored inline: a count, then the elements, zeros past the coun… |
+| [`list()`](#column-list) | column kind |  | At most `capacity` (1 to 1,024) values of one number or handle column (`f32`, `u32`, `Asset`, `Entity`, ...) stored inline as world state: a count, then the elements, zeros past it, so `[]` and `[0]`… |
 | [`defineComponent`](reflect/fn-defineComponent.md) | function | `<F extends Fields>(name: string, fields: F): ComponentType<F>` | Declare a component: plain data stored per entity in engine memory, one column per field. |
 | [`defineResource`](reflect/fn-defineResource.md) | function | `<F extends Fields>(name: string, fields: F): ResourceType<F>` | Declare a resource: a reflected singleton, such as a tuning table. |
 | [`defineEvent`](reflect/fn-defineEvent.md) | function | `<F extends Fields>(name: string, fields: F): EventType<FieldValues<F>>` | Declare a reflected gameplay event. |
@@ -64,7 +62,7 @@ Each is a factory, `f32(value?, options?)`, that makes one field of a component 
 | <a id="column-Matrix4"></a>`Matrix4` | `Matrix4` | `Float32Array` | 16 | A Matrix4 field: sixteen column-major elements per entity. |
 | <a id="column-Color"></a>`Color` | `Color` | `Float32Array` | 3 | A Color field: r, g, b interleaved. |
 | <a id="column-str"></a>`str` | `string` | `Uint8Array` | the capacity | Text of at most `capacity` bytes of UTF-8, stored inline and zero-padded, so it is world state like a number: a player's name, a label. `str(48)` holds any 12 characters (four bytes covers every script). The capacity is 1 to 4,096 bytes: a larger one is refused when the game starts (`a string field holds 1 to 4096 bytes`), so longer text goes in chunks, an entity each. Get and set it as a JavaScript string; text over the capacity is refused with the fix named (an error value from world.insert/world.set, a throw from a resource's setter), never truncated. Its view is the raw bytes. |
-| <a id="column-list"></a>`list` | an array of the element's | the element's | the element's × (capacity + 1) | A list of at most `capacity` values of one number column (`f32`, `f64`, `u32`, `i32`) or handle column (`Asset`, `Entity`, `Post`, ...), stored inline: a count, then the elements, zeros past the count, so `[]` and `[0]` differ and the list is world state like a number. The capacity is 1 to 1,024 elements; it starts empty and is never tunable. Reading it answers a frozen array, a copy: `push`, `splice` and index writes throw, so change it by writing a whole array (`v.passes = [...v.passes, h]`, `v.passes = []`). A list over the capacity is refused with the fix named (an error value from world.insert/world.set, a throw from a resource's setter), never truncated. Scene text and looks give it on one line, its elements in order (`passes 3 5`), the key alone for the empty list. Its view is the element's typed array with a stride of (capacity + 1) elements, the count first. |
+| <a id="column-list"></a>`list` | an array of the element's | the element's | the element's × (capacity + 1) | At most `capacity` (1 to 1,024) values of one number or handle column (`f32`, `u32`, `Asset`, `Entity`, ...) stored inline as world state: a count, then the elements, zeros past it, so `[]` and `[0]` differ. It starts empty; never tunable. A read is a frozen copy (`push`, `splice` and index writes throw); write a whole array. Over capacity is refused naming the fix (world.insert/set err, a resource setter throws), never truncated. Scene text and looks write it on one line (`passes 3 5`; empty, the key alone). Its view: the element's typed array, stride capacity + 1, count first. |
 
 ```ogt
 column f32 {
@@ -190,8 +188,8 @@ column str {
 
 ```ogt
 column list {
-  doc "A list of at most `capacity` values of one number column (`f32`, `f64`, `u32`, `i32`) or handle column (`Asset`, `Entity`, `Post`, ...), stored inline: a count, then the elements, zeros past the count, so `[]` and `[0]` differ and the list is world state like a number. The capacity is 1 to 1,024 elements; it starts empty and is never tunable."
-  doc "Reading it answers a frozen array, a copy: `push`, `splice` and index writes throw, so change it by writing a whole array (`v.passes = [...v.passes, h]`, `v.passes = []`). A list over the capacity is refused with the fix named (an error value from world.insert/world.set, a throw from a resource's setter), never truncated. Scene text and looks give it on one line, its elements in order (`passes 3 5`), the key alone for the empty list. Its view is the element's typed array with a stride of (capacity + 1) elements, the count first."
+  doc "At most `capacity` (1 to 1,024) values of one number or handle column (`f32`, `u32`, `Asset`, `Entity`, ...) stored inline as world state: a count, then the elements, zeros past it, so `[]` and `[0]` differ. It starts empty; never tunable."
+  doc "A read is a frozen copy (`push`, `splice` and index writes throw); write a whole array. Over capacity is refused naming the fix (world.insert/set err, a resource setter throws), never truncated. Scene text and looks write it on one line (`passes 3 5`; empty, the key alone). Its view: the element's typed array, stride capacity + 1, count first."
   list true
 }
 ```

@@ -6,7 +6,9 @@ Module [`input`](../input.md) · [index](../index.md)
 
 ### `ActionDesc` (desc struct)
 
-A gameplay action: a name the game reads instead of keys (`jump`, `move`, `look`), its kind and default bindings over keys, the mouse, pads and touch. Actions are read once per tick, before the game's systems, from og.Input, og.Pointers and og.Gamepad, so they replay with them; the player rebinds them (og.input.rebind, og.input.startCapture) and a settings screen lists them (og.input.actions).
+A gameplay action: a name the game reads instead of keys (`jump`, `move`, `look`), its kind and default bindings over keys, the mouse, pads and touch. Read once per tick, before the game's systems, from og.Input, og.Pointers and og.Gamepad.
+
+See `input §1`.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
@@ -25,7 +27,8 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 ```ogt
 struct ActionDesc {
-  doc "A gameplay action: a name the game reads instead of keys (`jump`, `move`, `look`), its kind and default bindings over keys, the mouse, pads and touch. Actions are read once per tick, before the game's systems, from og.Input, og.Pointers and og.Gamepad, so they replay with them; the player rebinds them (og.input.rebind, og.input.startCapture) and a settings screen lists them (og.input.actions)."
+  doc "A gameplay action: a name the game reads instead of keys (`jump`, `move`, `look`), its kind and default bindings over keys, the mouse, pads and touch. Read once per tick, before the game's systems, from og.Input, og.Pointers and og.Gamepad."
+  guide "input §1"
   desc true
   field name String "Its name."
   field kind ActionKind "Button, one axis or two."

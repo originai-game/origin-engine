@@ -40,4 +40,4 @@ resource ArtPalette {
 }
 ```
 
-<sub>Module `art` line 105</sub>
+<sub>Module `art` line 106</sub>

@@ -29,4 +29,4 @@ enum TileOrientation {
 }
 ```
 
-<sub>Module `tilemap` line 50</sub>
+<sub>Module `tilemap` line 47</sub>

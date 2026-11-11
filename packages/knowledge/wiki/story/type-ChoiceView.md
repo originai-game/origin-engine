@@ -43,4 +43,4 @@ struct ChoiceView {
 }
 ```
 
-<sub>Module `story` line 113</sub>
+<sub>Module `story` line 112</sub>

@@ -1,6 +1,6 @@
 module time {
   doc "Simulation time. Game code never reads the wall clock; it reads Time."
-  doc "Time groups slow or freeze some entities and not others (a bullet-time enemy beside a player at full speed, a frozen boss, a paused UI diorama): put an entity in a group with og.TimeGroup and set the group's scale with og.time.setGroupScale. og.anim, flipbooks, 2D skeletons, the entity's scaled tweens and its og.nav agent then advance by scaledDt times its group's scale, and its og.ParticleSystem's particles spawn, age and move at the group's scale (the renderer's particles do not follow the global scale or hit stop, so only the group's applies). Physics stays on the global scale (one solver steps every body together; slow a body's motion with its velocity, or move it kinematically), and timelines and the UI keep their own pace. A world that never names og.TimeGroup or og.TimeGroups keeps its saves and hash."
+  doc "Time groups slow or freeze some entities and not others (a bullet-time enemy beside a player at full speed, a frozen boss, a paused UI diorama): put an entity in a group with og.TimeGroup and set the group's scale with og.time.setGroupScale. Physics stays on the global scale, and timelines and the UI keep their own pace."
 
   resource Time {
     doc "The fixed tick's clock. Every value is a function of the tick count, so a replay sees the same numbers. The world keeps the time scale in a second resource, og.TimeScale (`scale`, `hitStop`, and `elapsed`, which is scaledElapsed), set through og.time.setScale and og.time.hitStop; read og.Time, which carries all of it. The probe's `get:og.Time` answers every field here, as a system's `time` does; `set:og.TimeScale.scale=0.5` slows time from a script."
@@ -41,14 +41,14 @@ module time {
   }
 
   component TimeGroup {
-    doc "Which time group the entity is in (0 to 15): its animation (og.anim, flipbooks, 2D skeletons), its scaled tweens and its og.nav agent advance by scaledDt times og.time.setGroupScale's scale for the group, and its og.ParticleSystem's particles at the group's scale. Physics stays on the global scale: a body in a slowed group falls at the world's pace. An entity without one is at the global pace."
+    doc "Which time group the entity is in (0 to 15): its animation (og.anim, flipbooks, 2D skeletons), its scaled tweens and its og.nav agent advance by scaledDt times og.time.setGroupScale's scale for the group, and its og.ParticleSystem's particles spawn, age and move at the group's scale alone (they follow neither the global scale nor hit stop). Physics stays on the global scale: a body in a slowed group falls at the world's pace. An entity without one is at the global pace."
     field group u32 "The group, 0 to 15." {
       max 15
     }
   }
 
   resource TimeGroups {
-    doc "Each time group's scale on top of the global one, set with og.time.setGroupScale (every group starts at 1). Registered when a game first names og.TimeGroup or og.TimeGroups. Physics stays on the global scale."
+    doc "Each time group's scale on top of the global one, set with og.time.setGroupScale (every group starts at 1). Registered when a game first names og.TimeGroup or og.TimeGroups; a world that never names them keeps its saves and hash. Physics stays on the global scale (one solver steps every body together): slow a body with its velocity, or move it kinematically."
     field scales List.f32.16 "Per group, its scale (0 to 10); past the list's length 1."
   }
 

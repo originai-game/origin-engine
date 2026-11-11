@@ -35,4 +35,4 @@ fn reachable {
 }
 ```
 
-<sub>Module `assert` line 189</sub>
+<sub>Module `assert` line 187</sub>

@@ -28,4 +28,4 @@ fn noiseGrid {
 }
 ```
 
-<sub>Module `procgen` line 69</sub>
+<sub>Module `procgen` line 70</sub>

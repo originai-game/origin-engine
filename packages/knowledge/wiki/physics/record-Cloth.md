@@ -21,7 +21,7 @@ Token `og.Cloth`, registered under the schema name `og.Cloth`; its value type is
 | `iterations` | `number` | `8` | 1 … 64 | — | tunable | Constraint passes per step. |
 | `damping` | `number` | `0.985` | 0 … 1 | — | tunable | How much of its velocity each point keeps per tick. |
 | `gravityScale` | `number` | `1` | -10 … 10 | — | tunable | Multiplies og.Physics.gravity. |
-| `wind` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `mps2` | tunable | A steady acceleration (wind); the cloth flutters with it. |
+| `wind` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `mps2` | tunable | A steady acceleration (wind); the cloth flutters with it. A visual cloth (SIMULATION_VISUAL) takes it as air moving at its magnitude in m/s. See `physics §8`. |
 | `gust` | `number` | `0.6` | 0 … 2 | — | tunable | How much the wind varies over the cloth and the tick (0: steady). |
 | `radius` | `number` | `0.04` | ≥ 0 | `m` | tunable | The thickness it collides at (0: no collision). |
 | `thickness` | `number` | `0` | ≥ 0 | `m` | tunable | Self-collision: how far apart its points keep from the points of the cloth that are not their near neighbours (0: none). About `spacing` keeps a cloth that folds or piles up from passing through itself. |
@@ -29,7 +29,7 @@ Token `og.Cloth`, registered under the schema name `og.Cloth`; its value type is
 | `friction` | `number` | `0` | 0 … 1 | — | tunable | How much of its sliding a point touching a solid loses each step (0: it slides freely; near 1 it sticks where it lands, so a cloth lowered onto the floor folds instead of spreading). |
 | `material` | `Material` | `0` | — | — | — | The material it is drawn with (og.render.standardMaterial); 0 is a plain cloth. |
 | `visible` | `boolean` | `true` | — | — | — | Whether the renderer draws it. |
-| `simulation` | `number` | `0` | 0 … 1 | — | — | SIMULATION_GAMEPLAY 0 (in the tick, world state) or SIMULATION_VISUAL 1 (on the GPU, for looks only; see SIMULATION_VISUAL). |
+| `simulation` | `number` | `0` | 0 … 1 | — | — | SIMULATION_GAMEPLAY 0 (in the tick, world state) or SIMULATION_VISUAL 1 (on the GPU, for looks only; see SIMULATION_VISUAL). See `physics §8`. |
 
 ```ogt
 component Cloth {
@@ -72,7 +72,8 @@ component Cloth {
     max 10
     tunable true
   }
-  field wind Vector3 "A steady acceleration (wind); the cloth flutters with it." {
+  field wind Vector3 "A steady acceleration (wind); the cloth flutters with it. A visual cloth (SIMULATION_VISUAL) takes it as air moving at its magnitude in m/s." {
+    guide "physics §8"
     unit mps2
     tunable true
   }
@@ -108,10 +109,11 @@ component Cloth {
     default true
   }
   field simulation u32 "SIMULATION_GAMEPLAY 0 (in the tick, world state) or SIMULATION_VISUAL 1 (on the GPU, for looks only; see SIMULATION_VISUAL)." {
+    guide "physics §8"
     min 0
     max 1
   }
 }
 ```
 
-<sub>Module `physics` line 997</sub>
+<sub>Module `physics` line 1019</sub>

@@ -8,24 +8,27 @@ Module [`input`](../input.md) · [index](../index.md)
 
 Pointer lock for mouse-look (a first- or third-person camera turned by the mouse), as browser games ask for it with requestPointerLock: the game sets `wanted` (a system that writes og.PointerLock), the host hides the cursor and locks the pointer to the play surface, and og.Pointers.movement carries the mouse's movement each tick. Off by default.
 
-On the web the shell reads `wanted` from each frame and asks for the lock on the next press on the canvas (browsers grant it only to a gesture, so the click that starts play takes it), releases it when `wanted` goes false, and reports `locked` from pointerlockchange: the player's Escape releases it, and `locked` goes false while `wanted` stays true, so show a "click to look" prompt then. While locked, og.Input.pointer and og.Pointers' positions stand still (the UI's hover stays where it was) and the mouse's buttons still press. Native runs (og run, og dev) are headless: `locked` stays false unless a script injects `{ kind: "pointerLock", locked: true }`. `locked` is the host's (session state, as og.Input is: a restore keeps it, lockstep peers do not compare it).
+While locked, og.Input.pointer and og.Pointers' positions stand still and the mouse's buttons still press. `locked` is the host's session state: a restore keeps it, lockstep peers do not compare it.
+
+See `input §2`.
 
 Token `og.PointerLock`, registered under the schema name `og.PointerLock`; its value type is `PointerLock`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `wanted` | `boolean` | `false` | — | — | — | The game wants the pointer locked and the cursor hidden. |
-| `locked` | `boolean` | `false` | — | — | read only | The pointer is locked now, as the host last reported it. |
+| `locked` | `boolean` | `false` | — | — | read only | The pointer is locked now, as the host last reported it (the player's Escape releases it while `wanted` stays true; headless runs stay unlocked unless a script injects a pointerLock report). |
 
 ```ogt
 resource PointerLock {
   doc "Pointer lock for mouse-look (a first- or third-person camera turned by the mouse), as browser games ask for it with requestPointerLock: the game sets `wanted` (a system that writes og.PointerLock), the host hides the cursor and locks the pointer to the play surface, and og.Pointers.movement carries the mouse's movement each tick. Off by default."
-  doc "On the web the shell reads `wanted` from each frame and asks for the lock on the next press on the canvas (browsers grant it only to a gesture, so the click that starts play takes it), releases it when `wanted` goes false, and reports `locked` from pointerlockchange: the player's Escape releases it, and `locked` goes false while `wanted` stays true, so show a \"click to look\" prompt then. While locked, og.Input.pointer and og.Pointers' positions stand still (the UI's hover stays where it was) and the mouse's buttons still press. Native runs (og run, og dev) are headless: `locked` stays false unless a script injects `{ kind: \"pointerLock\", locked: true }`. `locked` is the host's (session state, as og.Input is: a restore keeps it, lockstep peers do not compare it)."
+  doc "While locked, og.Input.pointer and og.Pointers' positions stand still and the mouse's buttons still press. `locked` is the host's session state: a restore keeps it, lockstep peers do not compare it."
+  guide "input §2"
   field wanted bool "The game wants the pointer locked and the cursor hidden."
-  field locked bool "The pointer is locked now, as the host last reported it." {
+  field locked bool "The pointer is locked now, as the host last reported it (the player's Escape releases it while `wanted` stays true; headless runs stay unlocked unless a script injects a pointerLock report)." {
     readonly true
   }
 }
 ```
 
-<sub>Module `input` line 978</sub>
+<sub>Module `input` line 989</sub>

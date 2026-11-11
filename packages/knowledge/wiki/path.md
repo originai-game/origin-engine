@@ -2,9 +2,11 @@
 
 # The `path` module
 
-Paths: a curve through or controlled by points, measured by arc length so a parameter t from 0 to 1 moves along it at an even speed however its points are spaced. catmullRom passes through every point (three.js CatmullRomCurve3, tension 0.5), bezier chains cubic segments `p0 c0 c1 p1 c2 c3 p2 ...` (three.js CubicBezierCurve3 in a CurvePath), linear joins the points with straight segments. A closed path joins its last point to its first and wraps t.
+Paths: a curve through or controlled by points, measured by arc length so a parameter t from 0 to 1 moves along it at an even speed. catmullRom passes through every point (tension 0.5), bezier chains cubic segments `p0 c0 c1 p1 c2 c3 p2 ...`, linear joins straight segments; a closed path joins its last point to its first and wraps t.
 
-Make one with og.path.create, or declare it in a scene (`path "<name>" { kind catmullRom; closed false; point x y z ... }`) and find it by name with og.path.find; a timeline's camera rides one with `rail "<name>"`. og.PathFollower moves an entity along one, og.CameraRail.path moves the camera along one, og.render.tubeGeometry makes a tube along one (TubeGeometryDesc.path). Paths are assets: they are not world state, and a hot reload registers them again.
+Make one with og.path.create, or declare it in a scene and find it with og.path.find. Paths are assets, not world state.
+
+See `world §8`.
 
 - **TypeScript**: functions are the namespace `og.path`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
@@ -12,8 +14,8 @@ Make one with og.path.create, or declare it in a scene (`path "<name>" { kind ca
 
 ```ogt
 module path {
-  doc "Paths: a curve through or controlled by points, measured by arc length so a parameter t from 0 to 1 moves along it at an even speed however its points are spaced. catmullRom passes through every point (three.js CatmullRomCurve3, tension 0.5), bezier chains cubic segments `p0 c0 c1 p1 c2 c3 p2 ...` (three.js CubicBezierCurve3 in a CurvePath), linear joins the points with straight segments. A closed path joins its last point to its first and wraps t."
-  doc "Make one with og.path.create, or declare it in a scene (`path \"<name>\" { kind catmullRom; closed false; point x y z ... }`) and find it by name with og.path.find; a timeline's camera rides one with `rail \"<name>\"`. og.PathFollower moves an entity along one, og.CameraRail.path moves the camera along one, og.render.tubeGeometry makes a tube along one (TubeGeometryDesc.path). Paths are assets: they are not world state, and a hot reload registers them again."
+  doc "Paths: a curve through or controlled by points, measured by arc length so a parameter t from 0 to 1 moves along it at an even speed. catmullRom passes through every point (tension 0.5), bezier chains cubic segments `p0 c0 c1 p1 c2 c3 p2 ...`, linear joins straight segments; a closed path joins its last point to its first and wraps t."
+  doc "Make one with og.path.create, or declare it in a scene and find it with og.path.find. Paths are assets, not world state."
   # declarations follow, each on its own page
 ```
 
@@ -55,7 +57,7 @@ column Path {
 }
 ```
 
-<sub>Module `path` line 7</sub>
+<sub>Module `path` line 8</sub>
 
 ```ogt
 column PathKind {
@@ -66,4 +68,4 @@ column PathKind {
 }
 ```
 
-<sub>Module `path` line 21</sub>
+<sub>Module `path` line 22</sub>

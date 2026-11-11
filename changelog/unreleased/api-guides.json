@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {"member":"og api show","summary":"A module lists its core members (the ones game code uses), `--all` every member; `--guide` shows a guide named like a module (physics, input, camera, audio, render); `og api show \"saves §2\"` prints one guide section."},
+    {"member":"guides","summary":"New task guides: saves (and og.platform), physics (and character control), input, camera, audio, networking, render, loading, world and localization; start §5 is now a map from a task to its guide and functions."},
+    {"member":"index.d.ts","summary":"Descriptions are shorter: workflow, sizes, timings and caveats moved to the guides, each entry ending \"See `<guide> §N`.\"; large desc structs and records show their fields under group headings."},
+    {"member":"og api check","summary":"Reports descriptions over budget (600 characters for modules, functions and types, 300 for fields and the rest); `--budget` lists them."}
+  ]
+}

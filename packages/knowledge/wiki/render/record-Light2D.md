@@ -75,4 +75,4 @@ component Light2D {
 }
 ```
 
-<sub>Module `render` line 1873</sub>
+<sub>Module `render` line 2017</sub>

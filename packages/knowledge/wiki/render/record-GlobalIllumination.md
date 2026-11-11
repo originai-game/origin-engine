@@ -6,7 +6,11 @@ Module [`render`](../render.md) · [index](../index.md)
 
 ### `og.GlobalIllumination` (resource)
 
-Global illumination: light bounces between surfaces, so shade is lit by what stands around it. By method: in screen space (`screen`), each pixel casts rays over the hemisphere of its normal through the depth-normal prepass, and where a ray meets a surface it takes the light that surface sent on the previous frame (so a few frames give many bounces): a red wall tints the floor beside it, a sunlit patch lights the room's ceiling, an emissive panel lights what faces it; light from off screen, or behind what the screen shows, is not bounced. With probes (`probes`), cascades of probes around the camera trace the scene in software and every lit surface (meshes, terrain, grass, scattered copies) takes its ambient light from them: the bounce from the whole scene, and the sky occluded by it. The bounce adds to the diffuse ambient light, and the rays that hit something take their share of the ambient light (the environment, the sky, baked lightmaps and LightVolumes) away, as ambient occlusion does; with PostEffects.ao on, its term does that, and with probes its bent normals (GTAO) pick the probes' light from the direction a crease opens to. Under TAA the screen rays change every frame and TAA averages them; without it a still frame keeps one pattern, blurred. Off by default. Read after each tick; it never feeds back into the simulation, and a world that never names this resource keeps the type table, saves and hash it had without it.
+Global illumination: light bounces between surfaces, so shade is lit by what stands around it, traced in screen space, with probes, or both (method). The bounce adds to the diffuse ambient light, and the rays that hit something take their share of the ambient light away, as ambient occlusion does (with PostEffects.ao on, its term does that).
+
+Off by default. Read after each tick; it never feeds back into the simulation, and a world that never names this resource keeps the type table, saves and hash it had without it.
+
+See `render §4`.
 
 Token `og.GlobalIllumination`, registered under the schema name `og.GlobalIllumination`; its value type is `GlobalIllumination`.
 
@@ -28,7 +32,9 @@ Token `og.GlobalIllumination`, registered under the schema name `og.GlobalIllumi
 
 ```ogt
 resource GlobalIllumination {
-  doc "Global illumination: light bounces between surfaces, so shade is lit by what stands around it. By method: in screen space (`screen`), each pixel casts rays over the hemisphere of its normal through the depth-normal prepass, and where a ray meets a surface it takes the light that surface sent on the previous frame (so a few frames give many bounces): a red wall tints the floor beside it, a sunlit patch lights the room's ceiling, an emissive panel lights what faces it; light from off screen, or behind what the screen shows, is not bounced. With probes (`probes`), cascades of probes around the camera trace the scene in software and every lit surface (meshes, terrain, grass, scattered copies) takes its ambient light from them: the bounce from the whole scene, and the sky occluded by it. The bounce adds to the diffuse ambient light, and the rays that hit something take their share of the ambient light (the environment, the sky, baked lightmaps and LightVolumes) away, as ambient occlusion does; with PostEffects.ao on, its term does that, and with probes its bent normals (GTAO) pick the probes' light from the direction a crease opens to. Under TAA the screen rays change every frame and TAA averages them; without it a still frame keeps one pattern, blurred. Off by default. Read after each tick; it never feeds back into the simulation, and a world that never names this resource keeps the type table, saves and hash it had without it."
+  doc "Global illumination: light bounces between surfaces, so shade is lit by what stands around it, traced in screen space, with probes, or both (method). The bounce adds to the diffuse ambient light, and the rays that hit something take their share of the ambient light away, as ambient occlusion does (with PostEffects.ao on, its term does that)."
+  doc "Off by default. Read after each tick; it never feeds back into the simulation, and a world that never names this resource keeps the type table, saves and hash it had without it."
+  guide "render §4"
   field enabled bool "Bounce the light."
   field method GiMethod "In screen space, with probes, or both."
   field intensity f32 "Scales the bounced light; 1 is physical. With probes the sky's light and emission are not scaled, only what surfaces bounce." {
@@ -86,4 +92,4 @@ resource GlobalIllumination {
 }
 ```
 
-<sub>Module `render` line 1316</sub>
+<sub>Module `render` line 1413</sub>

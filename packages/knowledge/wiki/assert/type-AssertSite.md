@@ -41,4 +41,4 @@ struct AssertSite {
 }
 ```
 
-<sub>Module `assert` line 44</sub>
+<sub>Module `assert` line 42</sub>

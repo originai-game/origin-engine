@@ -79,7 +79,7 @@ module probe {
     }
     field systems List.ProbeTiming "The last tick's systems in run order, each with its milliseconds."
     field passes List.ProbeTiming "The last rendered frame's render passes in the render graph's order, each with its milliseconds of CPU encoding (empty without a renderer)."
-    field gpuPasses List.ProbeTiming "The render passes of the newest frame the GPU's timestamps were read back for (a frame or two behind `passes`), each with the GPU's milliseconds from the end of the pass before it to its own end; empty where the device has no timestamp queries (RenderCapabilities.gpuTimestamps) or without a renderer."
+    field gpuPasses List.ProbeTiming "The render passes of the newest frame the GPU's timestamps were read back for (a frame or two behind `passes`), each with the GPU's milliseconds since the end of the pass before it; empty where the device has no timestamp queries (RenderCapabilities.gpuTimestamps) or without a renderer."
     field triangles u32 "Triangles the last frame's main pass drew (after culling and level of detail); 0 without a renderer."
   }
 
@@ -210,7 +210,7 @@ module probe {
     field text String "The text the element shows, or the entity's name; empty for none."
     field rect MarkRect "Its box on the image."
     field point ScreenPoint "A point of the play surface on it, for pick, pickUi or touch_move_to: the element's centre, or a visible point of the entity (describe's point)."
-    field source Option.String "Where a person would change it: the document line that built the element (`ui/shop.ogt:42`), the scene line that declares the entity (`scenes/main.ogt:12`), or the TypeScript line that spawned it (`src/enemies.ts:42`, SpawnDesc.source); null for code-built UI, and for spawned entities in a publish build."
+    field source Option.String "Where a person would change it: the document line that built the element (`ui/shop.ogt:42`), the scene line that declares the entity (`scenes/main.ogt:12`), or the TypeScript line that spawned it (SpawnDesc.source); null for code-built UI, and for spawned entities in a publish build."
     field part Option.String "The style part the element is drawn as (`Button.base[primary]`); null for an entity or an element no style dresses."
     field rule Option.UiPickRule "The most specific style rule that dresses the element; null when none does."
     field depth Option.f32 "The entity's distance from the camera to its nearest visible point; null for an element." {
@@ -443,7 +443,7 @@ module probe {
     field disabled bool "A disabled control (its text is exempt from contrast rules, as WCAG exempts inactive controls)."
     field clipped bool "Only part of it shows: a scroll container or the surface cuts it, and the bounds are the part that shows."
     field text String "The text it shows, if any."
-    field role String "Its accessibility role (og.ui.a11y): button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, radiogroup, progressbar, meter, timer, status, alert, dialog, tooltip, separator, group; empty for a presentational element (a layout container, a spacer)."
+    field role String "Its accessibility role (og.ui.a11y): button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, radiogroup, progressbar, meter, timer, status, alert, dialog, tooltip, separator, group; empty for a presentational element."
     field name String "Its accessible name: its text, a name the widget gives it (an icon's name, a dialog's title, Decrease and Increase for a stepper's buttons), a control's own text gathered from its children, or else its id."
     field value String "Its value as text: a slider's or stepper's number, a progress's or meter's amount, a field's text, a select's choice; empty for none."
     field states List.String "Its states: disabled, focused, focusable (keys and pads reach it now, in this order), checked, selected, expanded, collapsed (expandable and closed), pressed, busy, current (`aria-current`)."
@@ -488,7 +488,7 @@ module probe {
     field tick Option.u32 "The first divergent tick: og.Time.tick of the two worlds that differ."
     field local Json "This peer: `{ peer, player, hash }`."
     field remote Json "The other peer: `{ peer, player, hash }`."
-    field diff Json "What differs: `{ components: [{ entity, component, fields: [{ field, local, remote }] }], entities: { onlyLocal, onlyRemote }, resources, events, blocks, allocator }`, in the local world's entity order (the first entry is the first difference in storage order); `{ pending }` until the other peer's snapshot arrived."
+    field diff Json "What differs: `{ components: [{ entity, component, fields: [{ field, local, remote }] }], entities: { onlyLocal, onlyRemote }, resources, events, blocks, allocator }`, in the local world's entity order; `{ pending }` until the other peer's snapshot arrived."
   }
 
   union DumpResult {
@@ -532,7 +532,7 @@ module probe {
     field name Option.String "Its name."
     field order u32 "Its depth order: 0 is the nearest."
     field archetype List.String "Its components, by name."
-    field labels List.String "What draws it: `model` with its asset path, `mesh`, `terrain`, `terrainStamp`, `grass`, `skinned`, `sprite`. A `grass` field is seen at field fidelity, not per blade: its coverage is the ground it grows on lifted half its tallest blade, so a pixel between blades answers the field and a tip above that height answers what is behind it."
+    field labels List.String "What draws it: `model` with its asset path, `mesh`, `terrain`, `terrainStamp`, `grass`, `skinned`, `sprite`. A `grass` field is seen as the ground it grows on lifted half its tallest blade, not per blade."
     field box ScreenBox "The box of its visible pixels."
     field drawn ScreenBox "The box of what it covers with nothing in front of it."
     field point ScreenPoint "A visible point nearest the box's centre: pick answers this entity there."
@@ -743,10 +743,9 @@ module probe {
     }
     fn capture {
       doc "The frame of the current tick, rendered offscreen and read back as a PNG; null without a renderer (hello's tier `none`)."
-      doc "Size rule: width and height are both 0 (or absent), which is the render target's size, or both 1 to 4096, which renders that size with the same camera (the aspect follows the requested size); one zero and one not is a malformed call."
-      doc "On the web the readback is asynchronous: through the request ring the answer arrives when the copy completes; a synchronous in-page call answers null on the first tick and the frame from then on (a capture is requested on tick N and answered on N + 1)."
-      doc "Fit rule: a PNG whose long side exceeds fit is downscaled to it with the aspect kept, each pixel the mean of the area it covers (CAPTURE_FIT, 1280, by default: the size a model reads a whole frame at); 0 keeps the rendered size, as a reference frame needs."
-      doc "Region: a box of the play surface (CSS px) cut from the rendered frame before fitting, so a detail comes at full resolution as its own image; scale and region map its pixels back to the surface."
+      doc "Size: width and height both 0 (or absent) is the render target's size; both 1 to 4096 renders that size with the same camera; one zero and one not is malformed. On the web the readback is asynchronous: requested on tick N, answered on N + 1."
+      doc "Fit: a long side past `fit` (CAPTURE_FIT, 1280, by default; 0 keeps the size) is downscaled by area mean. Region: a box of the surface (CSS px) cut before fitting."
+      guide "captures §1"
       aliases "screenshot, take a screenshot, grab the screen, frame capture, crop, zoom"
       publish true
       param width u32 "Width in pixels; 0 is the render target's." {
@@ -764,9 +763,9 @@ module probe {
       returns Option.Capture "Null without a renderer, or for a region outside the surface."
     }
     fn marks {
-      doc "The frame of the current tick with a numbered box over each UI element and each scene entity it shows (Set-of-Mark), and what each number is: its path, kind, text, box, a point to pick or touch it at, and the document or scene line that made it, with the style part and rule of an element. A reviewer names a number; the map says where to change it."
-      doc "The elements are those pickUi answers (they show something or take input) inside the surface, an element and an ancestor of the same box (within a CSS pixel) marked once, as the one that takes input or else the topmost; a backdrop that covers the whole surface and takes no input is not boxed. The entities are describe's, the main camera's, nearest first. The image follows capture's size and fit rules; the marks are drawn at the fitted size, so the numbers stay legible."
-      doc "On the web it waits for its readback as capture does."
+      doc "The frame of the current tick with a numbered box over each UI element and each scene entity it shows (Set-of-Mark), and what each number is: its path, kind, text, box, a point to pick it at, and the document or scene line that made it."
+      doc "The elements are those pickUi answers inside the surface, an element and a same-box ancestor marked once (the one that takes input, else the topmost); the entities are describe's, nearest first. Size and fit as capture's, the marks drawn at the fitted size; on the web it waits for its readback as capture does."
+      guide "captures §2"
       aliases "set of mark, set-of-mark, som, annotated screenshot, labelled screenshot, numbered boxes"
       param desc MarksDesc "The size, the fit, what to mark and how many." {
         flatten true

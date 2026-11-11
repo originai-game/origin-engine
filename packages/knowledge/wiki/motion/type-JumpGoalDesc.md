@@ -6,7 +6,9 @@ Module [`motion`](../motion.md) · [index](../index.md)
 
 ### `JumpGoalDesc` (desc struct)
 
-A jump (og.motion.jump); needs og.MotionAgent.drive. The simulation owns its whole arc: after `prepare` the og.motion system takes off in the tick, with an og.CharacterController through the controller's jump (it sets the controller's jumpSpeed for `height` under the controller's gravity and holds `jump` on the takeoff tick, so a ceiling cuts the rise and the landing is wherever the controller reaches ground), without one by the fixed ballistic arc of `height` back to the takeoff height. The goal ends `recover` seconds after the landing tick. The generated jump is drawn in place on that flight, never adding the model's own vertical travel (docs/design.md §2.7).
+A jump (og.motion.jump); needs og.MotionAgent.drive. The simulation owns its whole arc: after `prepare` it takes off in the tick, through an og.CharacterController's jump when there is one (landing where the controller reaches ground), else on the fixed ballistic arc of `height` back to the takeoff height. The goal ends `recover` seconds after the landing tick. The generated jump is drawn in place on that flight (docs/design.md §2.7).
+
+See `animation §10`.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
@@ -21,7 +23,8 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 ```ogt
 struct JumpGoalDesc {
-  doc "A jump (og.motion.jump); needs og.MotionAgent.drive. The simulation owns its whole arc: after `prepare` the og.motion system takes off in the tick, with an og.CharacterController through the controller's jump (it sets the controller's jumpSpeed for `height` under the controller's gravity and holds `jump` on the takeoff tick, so a ceiling cuts the rise and the landing is wherever the controller reaches ground), without one by the fixed ballistic arc of `height` back to the takeoff height. The goal ends `recover` seconds after the landing tick. The generated jump is drawn in place on that flight, never adding the model's own vertical travel (docs/design.md §2.7)."
+  doc "A jump (og.motion.jump); needs og.MotionAgent.drive. The simulation owns its whole arc: after `prepare` it takes off in the tick, through an og.CharacterController's jump when there is one (landing where the controller reaches ground), else on the fixed ballistic arc of `height` back to the takeoff height. The goal ends `recover` seconds after the landing tick. The generated jump is drawn in place on that flight (docs/design.md §2.7)."
+  guide "animation §10"
   desc true
   field height f32 "The apex over the takeoff height, with gravity og.Physics.gravity (times the controller's gravityScale)." {
     default 0.5

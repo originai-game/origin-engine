@@ -6,7 +6,9 @@ Module [`terrain`](../terrain.md) · [index](../index.md)
 
 ### `og.TerrainScatter` (component)
 
-Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, so each copy keeps its place, size and turn as the camera moves, every cell growing one with the probability of the layer's weight there (its control-map channel times its slope and altitude rules, over all the layers' weights). Over the outer `fade` of `distance` copies shrink and thin out, each shrinking to nothing over its own part of the fade (no dither, so no grain under TAA). The renderer places them itself, a chunk of the grid at a time, once, and draws the chunks in range: copies cost about nothing per frame while the camera stays. They grow over the og.Terrain drawing the same data, placed as it is. Drawn only: no colliders, and the copies are not entities.
+Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, each cell growing one with the probability of the layer's weight there. Over the outer `fade` of `distance` copies shrink and thin out. The renderer places them a chunk at a time, once. They grow over the og.Terrain drawing the same data, placed as it is. Drawn only: no colliders, and the copies are not entities.
+
+See `world §3`.
 
 Token `og.TerrainScatter`, registered under the schema name `og.TerrainScatter`; its value type is `TerrainScatter`.
 
@@ -25,19 +27,20 @@ Token `og.TerrainScatter`, registered under the schema name `og.TerrainScatter`;
 | `seed` | `number` | `1` | — | — | — | Another seed places the copies elsewhere. |
 | `castShadows` | `boolean` | `true` | — | — | — | Whether the copies cast shadows (grass usually does not: three.js meshes cast only with castShadow set). |
 | `sway` | `number` | `1` | 0 … 2 | — | tunable | How much og.Wind sways the copies: 1 as it blows, 0 still (stones), between for stiffer stems. Each vertex above the mesh's origin moves by its height, so model the copy with its root at the origin. |
-| `impostor` | `Asset` | `0` | — | — | — | A glTF (og.load.gltf) of the same complete mesh, cooked with an octahedral impostor (its import settings' `model { impostor true }`): copies farther than impostorDistance draw as that impostor, cross-dithered over the last tenth before it by a blue-noise pattern that changes every frame, which temporal antialiasing resolves to a smooth blend. Mesh and impostor bounds must agree in model space; a mismatch skips the scatter and reports render.scatterIssue in its entity dump and a runtime warning. None: the supplied geometry at every distance, without model placement. |
+| `impostor` | `Asset` | `0` | — | — | — | A glTF (og.load.gltf) of the same mesh cooked with an octahedral impostor (`model { impostor true }`): copies past impostorDistance draw as it. Mesh and impostor bounds must agree in model space, else the scatter is skipped (render.scatterIssue). None: the mesh at every distance. See `world §3`. |
 | `impostorDistance` | `number` | `0` | 0 … 500 | `m` | tunable | How far from the camera, along x and z, copies draw as their mesh before their impostor takes over; 0 never switches. Useful below `distance`. |
 | `noiseScale` | `number` | `8` | 0.1 … 1000 | `m` | tunable | The size of the patches noiseThreshold gathers copies into. |
 | `noiseThreshold` | `number` | `0` | 0 … 1 | `ratio` | tunable | Gathers the copies into patches: a cell grows its copy only where a smooth noise of noiseScale patches (0 to 1, about half of it past 0.5) rises past this, the patches' edges thinning over a short band. 0: everywhere. |
 | `footprint` | `number` | `0` | 0 … 100 | `m` | tunable | How far, along x and z, this scatter's copies keep from the copies of every og.TerrainScatter placed before it over the same og.Terrain: the larger of the two footprints (trees placed first keep flowers from their trunks). 0: none. |
 | `priority` | `number` | `0` | — | — | — | Scatters of a higher priority over the same og.Terrain are placed first, their footprints cleared in the ones after; equal priorities are placed in entity order. |
 | `avoidWater` | `number` | `0` | 0 … 100 | `m` | tunable | Grows no copy whose ground stands less than this above an og.Water surface over it (an endless sea everywhere), nor under it: reeds stop short of the shore. 0: anywhere. |
-| `densityMap` | `Texture` | `0` | — | — | — | Thins the copies where its red channel is below 1, over the terrain's extent (its top row along the terrain's -z edge, as the control map; loaded linear), each copy kept while its own value is below the map's: a path cleared through the flowers. Drawn only, where the renderer culls copies on the GPU (RenderCapabilities.compute): placement and footprints do not read it. 0: none. |
-| `gpuPlacement` | `boolean` | `true` | — | — | — | Place the copies on the GPU, a visual mode for dense or far fields: each chunk of the grid is placed by a compute pass when it comes into range, by the same rules (the layer's weight, holes, noiseThreshold, avoidWater and the footprints of the scatters placed before it) from the terrain's finest tiles, with nothing per copy on the CPU. The copies match the CPU's placement but for the last bits of the arithmetic; where the renderer has no compute (RenderCapabilities.compute), or a footprint chain is too long or too wide, the CPU places them. On by default; false places every chunk on the CPU. |
+| `densityMap` | `Texture` | `0` | — | — | — | Thins the copies where its red channel is below 1, over the terrain's extent (top row along -z, loaded linear), each copy kept while its own value is below the map's. Drawn only, where the renderer culls on the GPU (RenderCapabilities.compute). 0: none. See `world §3`. |
+| `gpuPlacement` | `boolean` | `true` | — | — | — | Place the copies on the GPU, a chunk per compute pass by the same rules, nothing per copy on the CPU; matching the CPU's but for the last bits. Without compute (RenderCapabilities.compute), or for a footprint chain too long or wide, the CPU places them. False places every chunk on the CPU. See `world §3`. |
 
 ```ogt
 component TerrainScatter {
-  doc "Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, so each copy keeps its place, size and turn as the camera moves, every cell growing one with the probability of the layer's weight there (its control-map channel times its slope and altitude rules, over all the layers' weights). Over the outer `fade` of `distance` copies shrink and thin out, each shrinking to nothing over its own part of the fade (no dither, so no grain under TAA). The renderer places them itself, a chunk of the grid at a time, once, and draws the chunks in range: copies cost about nothing per frame while the camera stays. They grow over the og.Terrain drawing the same data, placed as it is. Drawn only: no colliders, and the copies are not entities."
+  doc "Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, each cell growing one with the probability of the layer's weight there. Over the outer `fade` of `distance` copies shrink and thin out. The renderer places them a chunk at a time, once. They grow over the og.Terrain drawing the same data, placed as it is. Drawn only: no colliders, and the copies are not entities."
+  guide "world §3"
   field data TerrainData "The terrain (og.terrain.load's TerrainInfo.data)."
   field geometry Geometry "The mesh, its origin at its root. When it belongs to the named impostor model, all of that primitive's node placements are applied in model space, at every distance (including impostorDistance 0). Other geometry must already be in that space."
   field material Material "Its material."
@@ -92,7 +95,9 @@ component TerrainScatter {
     max 2
     tunable true
   }
-  field impostor Asset "A glTF (og.load.gltf) of the same complete mesh, cooked with an octahedral impostor (its import settings' `model { impostor true }`): copies farther than impostorDistance draw as that impostor, cross-dithered over the last tenth before it by a blue-noise pattern that changes every frame, which temporal antialiasing resolves to a smooth blend. Mesh and impostor bounds must agree in model space; a mismatch skips the scatter and reports render.scatterIssue in its entity dump and a runtime warning. None: the supplied geometry at every distance, without model placement."
+  field impostor Asset "A glTF (og.load.gltf) of the same mesh cooked with an octahedral impostor (`model { impostor true }`): copies past impostorDistance draw as it. Mesh and impostor bounds must agree in model space, else the scatter is skipped (render.scatterIssue). None: the mesh at every distance." {
+    guide "world §3"
+  }
   field impostorDistance f32 "How far from the camera, along x and z, copies draw as their mesh before their impostor takes over; 0 never switches. Useful below `distance`." {
     min 0
     max 500
@@ -125,11 +130,14 @@ component TerrainScatter {
     unit m
     tunable true
   }
-  field densityMap Texture "Thins the copies where its red channel is below 1, over the terrain's extent (its top row along the terrain's -z edge, as the control map; loaded linear), each copy kept while its own value is below the map's: a path cleared through the flowers. Drawn only, where the renderer culls copies on the GPU (RenderCapabilities.compute): placement and footprints do not read it. 0: none."
-  field gpuPlacement bool "Place the copies on the GPU, a visual mode for dense or far fields: each chunk of the grid is placed by a compute pass when it comes into range, by the same rules (the layer's weight, holes, noiseThreshold, avoidWater and the footprints of the scatters placed before it) from the terrain's finest tiles, with nothing per copy on the CPU. The copies match the CPU's placement but for the last bits of the arithmetic; where the renderer has no compute (RenderCapabilities.compute), or a footprint chain is too long or too wide, the CPU places them. On by default; false places every chunk on the CPU." {
+  field densityMap Texture "Thins the copies where its red channel is below 1, over the terrain's extent (top row along -z, loaded linear), each copy kept while its own value is below the map's. Drawn only, where the renderer culls on the GPU (RenderCapabilities.compute). 0: none." {
+    guide "world §3"
+  }
+  field gpuPlacement bool "Place the copies on the GPU, a chunk per compute pass by the same rules, nothing per copy on the CPU; matching the CPU's but for the last bits. Without compute (RenderCapabilities.compute), or for a footprint chain too long or wide, the CPU places them. False places every chunk on the CPU." {
+    guide "world §3"
     default true
   }
 }
 ```
 
-<sub>Module `terrain` line 87</sub>
+<sub>Module `terrain` line 89</sub>

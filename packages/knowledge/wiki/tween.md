@@ -2,17 +2,13 @@
 
 # The `tween` module
 
-Tweens: animate any numeric field of a component (og.Transform.position, og.Sprite.color, og.Sprite.opacity, a game's own f32) from its value to a target over time with an easing curve, a delay, repeat and yoyo; chain them in sequences or run them in parallel. Advanced by the engine's og.tween system after the game's systems and before og.anim and physics, by scaled time (slow motion, hit stop) unless unscaled.
+Tweens: animate any numeric field of a component (og.Transform.position, a game's own f32) to a target over time with an easing curve, a delay, repeat and yoyo, in sequences or in parallel. Advanced by og.tween after the game's systems, before og.anim and physics, by scaled time unless unscaled.
 
-Running tweens are world state (the og.tween state block): snapshots, restore and the world hash cover them. og.TweenCompleted reports a tween or group that ends on its own; a cancelled one, or one whose entity or component went away, ends silently.
+Running tweens are world state (the og.tween state block). og.TweenCompleted reports one that ends on its own. og.tween.squash and og.tween.flash are feel presets.
 
-Feel presets are tweens too: og.tween.squash (squash and stretch that recovers) and og.tween.flash (a hit flash that fades).
+Timelines (og.tween.timeline) are GSAP's, over entity fields, rendered from the playhead; callbacks are names sent as og.TweenEvent.
 
-Timelines are GSAP's: `const tl = og.tween.timeline(world, { defaults: { duration: 0.4, ease: "back.out" }, repeat: 1, yoyo: true })`, then `tl.to(enemies, { field: "position.y", to: 2, stagger: { each: 0.05, from: "center" } }).to(door, { field: "position.x", to: 3 }, "<0.1").call("door.open").addLabel("out", "+=0.5")`. Targets are entities and one numeric field per call (`field` and `to`, as og.tween.to), not JavaScript objects; vectors take one value per lane. Position is GSAP's: seconds, `"<"` (the start of what was added last), `">"` (its end), `"+=1"` and `"-=0.5"` (from the timeline's end), a label, `"label+=0.2"`, `"<50%"` (half way through what was added last) and `"-=25%"` (a quarter of what is inserted); none appends at the end. A label a position names that does not exist is added at the end.
-
-A timeline renders from its playhead, never accumulated: play, pause, reverse, seek, progress and timeScale move it, and what they change is written in the next og.tween run (this tick, from a system before it). A child is written only when its own time changes, so a finished tween leaves its field to the game. from and fromTo write their start values on the timeline's first render, before their time (GSAP's immediateRender). A timeline stays when it completes (og.TweenCompleted is sent), so it can be reversed, restarted or extended, until kill() or `autoKill`. A refused call (a dead entity, a field that is not numeric, bad position text) adds nothing and its reason is the timeline's `error`; the call still answers the timeline, so chains read as GSAP's.
-
-Callbacks are names, not closures: `onStart`, `onUpdate`, `onComplete` and `onRepeat` on a tween or the timeline, and `.call(name)`, send og.TweenEvent with that name, read by a system in the tick after. A seek or progress jump sends none. Timelines are world state: snapshots and restore cover the whole timeline, its playhead, labels and captured values, and a `random` stagger shuffles from the world's og.Rng seed (a fork: the main stream does not move; a system needs og.Rng among its reads).
+See `animation §12`.
 
 - **TypeScript**: functions are the namespace `og.tween`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
@@ -20,12 +16,9 @@ Callbacks are names, not closures: `onStart`, `onUpdate`, `onComplete` and `onRe
 
 ```ogt
 module tween {
-  doc "Tweens: animate any numeric field of a component (og.Transform.position, og.Sprite.color, og.Sprite.opacity, a game's own f32) from its value to a target over time with an easing curve, a delay, repeat and yoyo; chain them in sequences or run them in parallel. Advanced by the engine's og.tween system after the game's systems and before og.anim and physics, by scaled time (slow motion, hit stop) unless unscaled."
-  doc "Running tweens are world state (the og.tween state block): snapshots, restore and the world hash cover them. og.TweenCompleted reports a tween or group that ends on its own; a cancelled one, or one whose entity or component went away, ends silently."
-  doc "Feel presets are tweens too: og.tween.squash (squash and stretch that recovers) and og.tween.flash (a hit flash that fades)."
-  doc "Timelines are GSAP's: `const tl = og.tween.timeline(world, { defaults: { duration: 0.4, ease: \"back.out\" }, repeat: 1, yoyo: true })`, then `tl.to(enemies, { field: \"position.y\", to: 2, stagger: { each: 0.05, from: \"center\" } }).to(door, { field: \"position.x\", to: 3 }, \"<0.1\").call(\"door.open\").addLabel(\"out\", \"+=0.5\")`. Targets are entities and one numeric field per call (`field` and `to`, as og.tween.to), not JavaScript objects; vectors take one value per lane. Position is GSAP's: seconds, `\"<\"` (the start of what was added last), `\">\"` (its end), `\"+=1\"` and `\"-=0.5\"` (from the timeline's end), a label, `\"label+=0.2\"`, `\"<50%\"` (half way through what was added last) and `\"-=25%\"` (a quarter of what is inserted); none appends at the end. A label a position names that does not exist is added at the end."
-  doc "A timeline renders from its playhead, never accumulated: play, pause, reverse, seek, progress and timeScale move it, and what they change is written in the next og.tween run (this tick, from a system before it). A child is written only when its own time changes, so a finished tween leaves its field to the game. from and fromTo write their start values on the timeline's first render, before their time (GSAP's immediateRender). A timeline stays when it completes (og.TweenCompleted is sent), so it can be reversed, restarted or extended, until kill() or `autoKill`. A refused call (a dead entity, a field that is not numeric, bad position text) adds nothing and its reason is the timeline's `error`; the call still answers the timeline, so chains read as GSAP's."
-  doc "Callbacks are names, not closures: `onStart`, `onUpdate`, `onComplete` and `onRepeat` on a tween or the timeline, and `.call(name)`, send og.TweenEvent with that name, read by a system in the tick after. A seek or progress jump sends none. Timelines are world state: snapshots and restore cover the whole timeline, its playhead, labels and captured values, and a `random` stagger shuffles from the world's og.Rng seed (a fork: the main stream does not move; a system needs og.Rng among its reads)."
+  doc "Tweens: animate any numeric field of a component (og.Transform.position, a game's own f32) to a target over time with an easing curve, a delay, repeat and yoyo, in sequences or in parallel. Advanced by og.tween after the game's systems, before og.anim and physics, by scaled time unless unscaled."
+  doc "Running tweens are world state (the og.tween state block). og.TweenCompleted reports one that ends on its own. og.tween.squash and og.tween.flash are feel presets."
+  doc "Timelines (og.tween.timeline) are GSAP's, over entity fields, rendered from the playhead; callbacks are names sent as og.TweenEvent."
   # declarations follow, each on its own page
 ```
 
@@ -82,7 +75,7 @@ column Tween {
 }
 ```
 
-<sub>Module `tween` line 11</sub>
+<sub>Module `tween` line 9</sub>
 
 ```ogt
 column Ease {
@@ -93,4 +86,4 @@ column Ease {
 }
 ```
 
-<sub>Module `tween` line 46</sub>
+<sub>Module `tween` line 44</sub>

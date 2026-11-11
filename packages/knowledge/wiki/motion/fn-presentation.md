@@ -6,7 +6,9 @@ Module [`motion`](../motion.md) · [index](../index.md)
 
 ### `og.motion.presentation`
 
-Presentation-only readiness on both hosts. Game logic must not branch on this value: it depends on GPU timing and is outside snapshots and hashes; a development build logs a warning when a system reads it on the gpu backend. A host may keep its page or shell cover up while the agent remains in the world and warms, then lift the cover on ready or failed (showing reason). Never write a component, gate a goal or advance a tick from this answer. ready requires generated frames and their palette for the current rendered frame; authored fallback does not count. Available in the probe's dump_motion too.
+Presentation-only readiness on both hosts, for a host's cover: ready once generated frames and their palette exist for the current rendered frame (authored fallback does not count), or failed with a reason. Game logic must not branch on it: it depends on GPU timing and is outside snapshots and hashes; a development build warns when a system reads it on the gpu backend.
+
+See `animation §10`.
 
 ```ts
 og.motion.presentation(world: World, entity: Entity): Result<MotionPresentationStatus>
@@ -23,11 +25,12 @@ Binding symbol `og_motion_presentation` · publish builds: kept
 
 ```ogt
 fn presentation {
-  doc "Presentation-only readiness on both hosts. Game logic must not branch on this value: it depends on GPU timing and is outside snapshots and hashes; a development build logs a warning when a system reads it on the gpu backend. A host may keep its page or shell cover up while the agent remains in the world and warms, then lift the cover on ready or failed (showing reason). Never write a component, gate a goal or advance a tick from this answer. ready requires generated frames and their palette for the current rendered frame; authored fallback does not count. Available in the probe's dump_motion too."
+  doc "Presentation-only readiness on both hosts, for a host's cover: ready once generated frames and their palette exist for the current rendered frame (authored fallback does not count), or failed with a reason. Game logic must not branch on it: it depends on GPU timing and is outside snapshots and hashes; a development build warns when a system reads it on the gpu backend."
+  guide "animation §10"
   param world World "The world."
   param entity Entity "An entity with an og.MotionAgent."
   returns Result.MotionPresentationStatus "Refused for an entity without og.MotionAgent."
 }
 ```
 
-<sub>Module `motion` line 337</sub>
+<sub>Module `motion` line 338</sub>

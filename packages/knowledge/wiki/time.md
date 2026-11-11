@@ -4,7 +4,7 @@
 
 Simulation time. Game code never reads the wall clock; it reads Time.
 
-Time groups slow or freeze some entities and not others (a bullet-time enemy beside a player at full speed, a frozen boss, a paused UI diorama): put an entity in a group with og.TimeGroup and set the group's scale with og.time.setGroupScale. og.anim, flipbooks, 2D skeletons, the entity's scaled tweens and its og.nav agent then advance by scaledDt times its group's scale, and its og.ParticleSystem's particles spawn, age and move at the group's scale (the renderer's particles do not follow the global scale or hit stop, so only the group's applies). Physics stays on the global scale (one solver steps every body together; slow a body's motion with its velocity, or move it kinematically), and timelines and the UI keep their own pace. A world that never names og.TimeGroup or og.TimeGroups keeps its saves and hash.
+Time groups slow or freeze some entities and not others (a bullet-time enemy beside a player at full speed, a frozen boss, a paused UI diorama): put an entity in a group with og.TimeGroup and set the group's scale with og.time.setGroupScale. Physics stays on the global scale, and timelines and the UI keep their own pace.
 
 - **TypeScript**: functions are the namespace `og.time`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
@@ -13,7 +13,7 @@ Time groups slow or freeze some entities and not others (a bullet-time enemy bes
 ```ogt
 module time {
   doc "Simulation time. Game code never reads the wall clock; it reads Time."
-  doc "Time groups slow or freeze some entities and not others (a bullet-time enemy beside a player at full speed, a frozen boss, a paused UI diorama): put an entity in a group with og.TimeGroup and set the group's scale with og.time.setGroupScale. og.anim, flipbooks, 2D skeletons, the entity's scaled tweens and its og.nav agent then advance by scaledDt times its group's scale, and its og.ParticleSystem's particles spawn, age and move at the group's scale (the renderer's particles do not follow the global scale or hit stop, so only the group's applies). Physics stays on the global scale (one solver steps every body together; slow a body's motion with its velocity, or move it kinematically), and timelines and the UI keep their own pace. A world that never names og.TimeGroup or og.TimeGroups keeps its saves and hash."
+  doc "Time groups slow or freeze some entities and not others (a bullet-time enemy beside a player at full speed, a frozen boss, a paused UI diorama): put an entity in a group with og.TimeGroup and set the group's scale with og.time.setGroupScale. Physics stays on the global scale, and timelines and the UI keep their own pace."
   # declarations follow, each on its own page
 ```
 

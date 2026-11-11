@@ -12,12 +12,12 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `reads` | `readonly (AnyReflected \| AnyEvent)[]` | `[]` | — | — | — | Components, resources and events the system reads (world.events). Every component here is also required by its query: a matched entity has all of the reads' and writes' components. |
+| `reads` | `readonly (AnyReflected \| AnyEvent)[]` | `[]` | — | — | — | Components, resources and events the system reads (world.events). Every component here is also required by its query: a matched entity has all of the reads' and writes' components, so one read for a single entity with world.get (the player's car) narrows the loop, often to none. |
 | `writes` | `readonly (AnyReflected \| AnyEvent)[]` | `[]` | — | — | — | Components, resources and events the system writes (world.emit). Every component here is also required by its query, with the reads'. |
 | `without` | `readonly AnyComponent[]` | `[]` | — | — | — | Components a matched entity must not have. |
 | `after` | `readonly string[]` | `[]` | — | — | — | Names of systems that must run before this one. |
 | `before` | `readonly string[]` | `[]` | — | — | — | Names of systems that must run after this one. |
-| `changed` | `readonly AnyComponent[]` | `[]` | — | — | — | Change filters on the query: components (required, as reads) whose value changed since this system last ran. A change is a value that differs from the one last compared, compared after each system and hook for what it writes and as each tick begins for what was written between ticks: counted in system runs, never by a clock, so saves and replays carry it. The archetypes the query hands carry the rows that pass every filter (ArchetypeView.rows). |
+| `changed` | `readonly AnyComponent[]` | `[]` | — | — | — | Change filters: components (required, as reads) whose value changed since the system last ran, compared after each system and hook for its writes, as each tick begins for those between ticks: counted in system runs, never by a clock, so saves and replays carry it. Passing rows: ArchetypeView.rows. |
 | `added` | `readonly AnyComponent[]` | `[]` | — | — | — | Components (required, as reads) added since this system last ran: spawned with, or inserted into an entity without them. |
 | `removed` | `readonly AnyComponent[]` | `[]` | — | — | — | Components the entity lost since this system last ran (a despawned entity: world.removed). |
 | `state` | `string` | `""` | — | — | — | A state machine (GameDesc.states) the system is bound to; empty: none. |
@@ -29,12 +29,12 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 struct SystemDesc {
   doc "A system's declared access and order."
   desc true
-  field reads List.OneOf.AnyReflected.AnyEvent "Components, resources and events the system reads (world.events). Every component here is also required by its query: a matched entity has all of the reads' and writes' components."
+  field reads List.OneOf.AnyReflected.AnyEvent "Components, resources and events the system reads (world.events). Every component here is also required by its query: a matched entity has all of the reads' and writes' components, so one read for a single entity with world.get (the player's car) narrows the loop, often to none."
   field writes List.OneOf.AnyReflected.AnyEvent "Components, resources and events the system writes (world.emit). Every component here is also required by its query, with the reads'."
   field without List.AnyComponent "Components a matched entity must not have."
   field after List.String "Names of systems that must run before this one."
   field before List.String "Names of systems that must run after this one."
-  field changed List.AnyComponent "Change filters on the query: components (required, as reads) whose value changed since this system last ran. A change is a value that differs from the one last compared, compared after each system and hook for what it writes and as each tick begins for what was written between ticks: counted in system runs, never by a clock, so saves and replays carry it. The archetypes the query hands carry the rows that pass every filter (ArchetypeView.rows)."
+  field changed List.AnyComponent "Change filters: components (required, as reads) whose value changed since the system last ran, compared after each system and hook for its writes, as each tick begins for those between ticks: counted in system runs, never by a clock, so saves and replays carry it. Passing rows: ArchetypeView.rows."
   field added List.AnyComponent "Components (required, as reads) added since this system last ran: spawned with, or inserted into an entity without them."
   field removed List.AnyComponent "Components the entity lost since this system last ran (a despawned entity: world.removed)."
   field state String "A state machine (GameDesc.states) the system is bound to; empty: none."
@@ -44,4 +44,4 @@ struct SystemDesc {
 }
 ```
 
-<sub>Module `system` line 30</sub>
+<sub>Module `system` line 28</sub>

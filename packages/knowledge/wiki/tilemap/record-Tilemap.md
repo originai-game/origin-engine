@@ -57,4 +57,4 @@ component Tilemap {
 }
 ```
 
-<sub>Module `tilemap` line 18</sub>
+<sub>Module `tilemap` line 15</sub>

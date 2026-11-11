@@ -215,3 +215,256 @@ camera, captions, audio, animation, events and nested tracks retain their
 ownership and seek rules. It shares the engine's easing curves, but keeps
 absolute-time evaluation; a segment uses the later key's ease and events
 are not retroactive on seek unless authored that way.
+
+<a id="guide-animation-7"></a>
+### `animation §7` Rigs, retargeting, mirroring and crowds
+
+- A model's glTF skins and clips are cooked into its `<model>#anim` blob,
+  which og.load.animation loads.
+- Clips bind to a skeleton's nodes by name, so a clip of one rig plays on
+  another with the same node names. A rig with other names or proportions
+  plays it retargeted: at cook time with a model's `animation { library }`
+  import setting (the usual way, for a library known ahead), at run time
+  with og.anim.retarget for clips chosen while playing.
+- Retargeting corrects each rig's rest pose first, so a T-pose drives an
+  A-pose and differing bone frames agree; fingers turn from their hand, so
+  a hand pose holds whatever the arm does. Name `footHeight` on each rig
+  when the feet do not land on the ground of the rest pose.
+- A mirrored clip known ahead needs no call: a graph's `clip` line with
+  `mirror true` plays it mirrored, and the cook's
+  `animation { mirror "<clip>" }` writes the mirrored clip into the model.
+  og.anim.mirror is for clips chosen at run time; markers keep their
+  names.
+- IK targets in `world` space are in the frame the skeleton entity's
+  og.Transform is written in: a body under a character capsule takes
+  targets relative to the capsule. Transform world points by the parent's
+  inverse yourself.
+- og.CrowdAnimation draws thousands of walkers at no CPU animation cost.
+  Give each member its own `offset` to keep them out of step. Use it for
+  background characters only: nothing reads its pose, a clip change cuts,
+  and crowds do not go through GPU culling or the meshlet path yet (the
+  camera culls each by its bounds on the CPU, as a model og.anim poses).
+
+<a id="guide-animation-8"></a>
+### `animation §8` Procedural bones: foot locks and springs
+
+- og.FootLock keeps a planted foot still through blends and root motion.
+  A foot counts as planted within 5 mm of its lowest in each clip (the
+  notion retargeting uses), weighed across blends and cross-fades. Put each
+  lock on its own entity, one per foot.
+- og.SpringBone swings a tail, an ear, a strand of hair or a single
+  jiggling node after the body's motion; put each chain on its own entity.
+  It is deterministic under the fixed tick, and a restore continues a
+  swing exactly.
+- og.SpringCollider keeps those chains out of the body: a sphere or
+  capsule on the head, the chest or an upper arm, so hair, ears and tails
+  do not swing through it. One entity per shape.
+- The order each tick: root motion, foot locks, og.IkChain, og.LookAt,
+  then spring bones top joint first.
+
+<a id="guide-animation-9"></a>
+### `animation §9` 2D animation: flipbooks and skeletons
+
+- og.Flipbook plays a sheet's clip on the entity's og.Sprite; the sprite
+  keeps its size, colour, flips and layer. It runs on scaled time, so slow
+  motion and hit stop slow it.
+- og.Skeleton2D draws a rig's region attachments as quads and its mesh
+  attachments weighted to bones and deformed by the clip, lit by
+  og.Lighting2D when its layer is in the lights' range. A skin swaps
+  attachments: find one by name with `rig.skins.indexOf("armor")`.
+- One sprite graph (GraphDesc.sprite) serves every sheet or rig whose
+  clips have the names its `clip` lines use. On a flipbook its transitions
+  cut, never fade, and wait for the frame on screen to end, by the sheet's
+  clip names. On a 2D skeleton it drives Skeleton2D's `clip`, `blendClip`,
+  their times and `blend`, and fires both clips' events. Graph weight is
+  not used on sprites; the machines are world state (the flipbook and 2D skeleton
+  state blocks).
+
+<a id="guide-animation-10"></a>
+### `animation §10` og.motion goals, drive and backends
+
+The shortest flow:
+
+```ts
+world.insert(hero, og.MotionAgent, { drive: true });
+og.motion.walkTo(world, hero, { position: { x: 4, y: 0, z: 2 }, speed: 1.4 });
+og.motion.jump(world, hero, { height: 0.5, distance: 1.5 });
+og.motion.pose(world, hero, { pose: "wave" });
+const s = og.motion.status(world, hero);
+if (s.ok && s.value.goal === "none") nextBeat();
+```
+
+- A humanoid rig is one og.anim.humanoid recognises, or one
+  og.MotionAgent.rig names. Until the weights are resident, or when they
+  fail to load, og.motion.capabilities answers backend none.
+- The model is a 17.6M-parameter student distilled from NVIDIA
+  MotionBricks (og-motion). Its library: idle, walk, run, jump, crouch,
+  wave, cheer (og.motion.poses).
+- Goals end by fixed rules: walkTo when the mover arrives, pose, place and
+  face after their duration; then the next queued goal starts. With
+  `drive` the og.motion system moves the Transform with fixed maths inside
+  the tick (walkTo at its speed along a straight line, place over its
+  duration, face at turnSpeed) and the generated pose is re-rooted onto
+  the Transform, its planted feet absorbing the difference. Without
+  `drive` the game moves the Transform (its own physics, path or
+  controller) and the motion follows by how fast it moves. No model root
+  motion ever reaches the simulation.
+- Walks carry speed: a walk starts from the speed the last walk or jump
+  left, so a walk queued after another keeps moving through the first
+  target (braking only to the next walk's speed, less by the corner it
+  turns), and a jump queued after a walk takes off at the speed it arrives
+  with. An `acceleration` of 1000 starts at full speed in the first tick.
+- A jump's arc is the simulation's. With an og.CharacterController the
+  system sets the controller's jumpSpeed for `height` under its gravity
+  and holds `jump` on the takeoff tick, so a ceiling cuts the rise and the
+  landing is wherever the controller reaches ground; without one it flies
+  the fixed ballistic arc back to the takeoff height. The generated jump is
+  drawn in place on that flight, never adding the model's own vertical
+  travel.
+- The weights (35 MB in f16) ship inside @origingame/engine. `og cook`
+  writes them as the optional file cooked/motion/model.ogb only for a
+  project that uses og.motion (the manifest names it); the engine uploads
+  them in the background as soon as the bundle is open (natively on a
+  thread of its own, on the web a fetch after the boot bundle, never in
+  it). One batch serves every agent, submitted in slices of about 3 ms of
+  GPU time a frame so a batch never costs a frame its vsync, and decoded a
+  few characters a frame.
+- Results are applied when they come back, as of the tick they were due,
+  so live frames may vary run to run. A capture, an `og test` screenshot,
+  a reference frame or a fork check waits for every result due by its
+  tick, and reproduces.
+- og.motion.presentation is for a host's cover only: keep the page or
+  shell cover up while the agent warms, lift it on ready or failed (showing
+  the reason). Never write a component, gate a goal or advance a tick from
+  it; a development build warns when a system reads it on the gpu backend.
+  The probe's `dump_motion` reports readiness, generated frames, batches
+  and timings.
+
+| Backend | Cost | Use |
+|---|---|---|
+| gpu (default) | slices of about 3 ms GPU a frame for all agents | most games |
+| cpu | about 21 ms of CPU a generation natively, 23 ms in wasm, spread over the ticks before it is due | a few characters, or no GPU backend |
+
+  Set the backend before the first agent: a later change loads the model
+  again and every agent's generated motion starts over. It is an engine
+  setting, outside the world; a snapshot does not keep it.
+
+<a id="guide-animation-11"></a>
+### `animation §11` Motion reactions
+
+A reaction (og.motion.react: a brace against wind, a flinch) plays an
+authored clip over locomotion: entry, a held interval, exit. Its clip is a
+cooked `type motion-action` asset:
+
+```text
+type motion-action
+version 1
+---
+source "anims/brace.glb"
+clip "brace"
+rig "rigs/meshy.ogt"
+holdStart 0.5
+holdEnd 1.5
+hand right
+handTarget 0.1 -0.05 0.25
+```
+
+- Paths are relative to assets/; `rig` is optional. The hold lies inside
+  the clip (0 <= holdStart < holdEnd < its duration) with matching poses at
+  both ends, so it loops.
+- Author it with a stationary root, +Z facing the reaction's source, entry
+  before the hold and recovery after it. 30 Hz clips are recommended; the
+  cook takes other rates.
+- `hand` and `handTarget` attach that wrist to an offset from the head
+  during the hold (a hood held against the wind): metres along the source
+  head bone's local axes, independent of the GLB's unit scale.
+  Retargeting adjusts it to the target's proportions, and the IK follows
+  the final head pose after the look.
+- The clip owns the stance step and lean: the engine synthesises no
+  untrained action. Keep provenance and licensing beside the source asset.
+
+<a id="guide-animation-12"></a>
+### `animation §12` Tweens: state, timelines and feel presets
+
+- Running tweens and timelines are world state (the og.tween state block):
+  snapshots, restore and the world hash cover the whole timeline, its
+  playhead, labels and captured values. og.TweenCompleted reports a tween,
+  group or timeline that ends on its own; a cancelled one, or one whose
+  entity or component went away, ends silently.
+- A timeline's controls take effect in the next og.tween run: this tick
+  when called from a system before it. A timeline's `from` and `fromTo`
+  write their start values on its first render, before their time.
+- A vector field takes one value per lane (`to: [0, 2, 0]`). A position
+  naming a label that does not exist adds the label at the end.
+- A `random` stagger shuffles from a fork of og.Rng's seed, so the main
+  stream does not move; a system that builds one lists og.Rng among its
+  reads.
+- og.tween.squash and og.tween.flash are the feel presets: squash and
+  stretch that recovers, a hit flash that fades.
+
+| Squash `impact` | x | y | z |
+|---|---|---|---|
+| squash (a landing, a hit) | 1.25 | 0.8 | 0 (a sprite) |
+| stretch (a jump) | 0.8 | 1.25 | 0 |
+| a 3D squash, bulging in x and z | 1.15 | 0.85 | 1.15 |
+
+  A component left out takes its default (x 1.25, y 0.8, z 0); z 0 keeps
+  the rest scale, so a sprite's `{ x, y }` leaves z alone. Under a
+  project's art contract ArtMotion.squash scales the impact: 0.5 keeps it,
+  1 is rubber hose (x 1.5, y 0.6). Keep the recovery short (0.12 to 0.25
+  s); back.out overshoots a little, elastic.out wobbles.
+
+<a id="guide-animation-13"></a>
+### `animation §13` Cutscene timelines
+
+A `type timeline` file has a `duration` in seconds, `path "<name>" { ... }`
+blocks (as og.path's) and `track <kind> ["<entity>"] { key <seconds> { ... } }`
+blocks; `og cook` cooks it (importing caption files) and og.load.timeline
+loads it. An og.Timeline component plays it on its entity.
+
+| Track | Keys |
+|---|---|
+| `camera` | position and target, or `rail "<path>"` with `at` 0..1 along it, or `follow "<entity>"` with offsets; fov; `roll` (degrees about the view direction); `focus` (a distance) or `focusOn "<entity>"` and `focusRange`, which set og.PostEffects' depth of field while the track owns the camera; eased |
+| `transform "<entity>"` | position, rotation in degrees or a quaternion, scale; eased |
+| `animation "<entity>"` | clip, speed, blendIn, loop; `model` names the glTF whose clips they are, else the entity's og.Model |
+| `audio` | sound, volume, playbackRate, bus |
+| `music` | sound, volume, fadeIn, fadeOut, end, loop, bus |
+| `caption` | text from `key` to `end`, with a UI type step `style` and an `anchor`; `captions "narration.srt" [offset]` imports a SubRip file or word timestamps `.json` |
+| `event` | `do "<command-channel action>"`: teleport, set, a game's registered command; `retroactive true` runs it when a seek passes it |
+| `transition` | kind cut, fade, wipe, dissolve, iris or slide; mode through, in or out; duration, color, from; over og.ui's screen cover |
+| `marker` | `name`, sending og.TimelineMarker when played past |
+| `property ["<entity>"]` | `field "og.PointLight.distance"` and keys of `value`: any reflected field of a component on the entity, or of a resource without one |
+| `light "<entity>"` | its og.DirectionalLight, og.PointLight, og.SpotLight, og.RectLight or og.Light2D: color, intensity, distance, angle, ... |
+| `visibility "<entity>"` | `visible true` or `false` of whatever it draws, stepped |
+| `post` | og.PostEffects' fields |
+| `blendshape "<entity>"` | og.Blendshapes w0 to w7; its source becomes component |
+| `material "<entity>"` | its og.Mesh's material, or its og.Model's material `index N`: StandardMaterialDesc fields by name, other names the material shader's parameters |
+| `timeline` | `play "<timeline>"`, speed, loop: from its key until the next, another timeline plays nested at (time − key) × speed, its markers sent as `<file>/<marker>`, at most four deep |
+| `shot` | `camera "<entity>"` (a virtual camera's name) or `none`; `blend` seconds and `ease`: from its key until the next, that og.VirtualCamera is og.CameraBrain.solo, blended over the key's blend by its ease or by the camera's own; `none` and the timeline's end hand back the solo it found |
+
+- The cook checks every field against the engine's records (a field the
+  record lacks, one a timeline cannot drive, a value of the wrong shape),
+  refuses nesting in a cycle or deeper than four, and refuses a track kind
+  this engine does not read, naming it and the engine's version.
+- Between two keys the later key's `ease` (og.tween's Ease names, linear
+  when it gives none) mixes them; before the first and after the last the
+  value is held. Values are evaluated at the timeline's time, kept exactly
+  in steps of a thousandth of a tick, so seeking to a time and playing to
+  it give the same world: a seek is how a video render starts at any
+  frame.
+- og.timeline runs after the game's systems and tweens, before og.anim and
+  physics, so what it sets is what animation, physics and the frame see
+  that tick. Event keys' actions run at the start of the next tick, as
+  og.ai's commands do.
+- While a timeline with a camera track plays or is paused it owns
+  og.Camera and the camera brain waits; it hands back the camera it found
+  when it stops or ends.
+- Loading a timeline (og.load.timeline, outside a system) grants
+  og.timeline the records its tracks write. Values it wrote stay when it
+  stops; the camera, its depth of field and the materials go back. A
+  material track is presentation, applied every frame from the timeline's
+  time, so a restored save draws the right material on its next frame.
+- The command channel plays them: `timeline:play:<name>`
+  (`timelines/<name>.ogt`, or an asset id), `timeline:seek:<seconds>[:<name>]`,
+  `timeline:pause[:<name>]`, `timeline:resume[:<name>]`,
+  `timeline:stop[:<name>]`.

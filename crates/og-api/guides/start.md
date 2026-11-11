@@ -53,7 +53,8 @@ Never write API from memory of other engines. The answers, in order:
 - `og api find <words>`: matching entries, one line each.
 - `og api show <name>`: one entry in full (`og api show og.physics.castRay`).
 - `og api show <module>`: a module's overview and its members.
-- `og api show <guide>`: one of the guides of §5.
+- `og api show <guide>`: one of the guides of §5 (`--guide` when a module
+  has the same name).
 - `node_modules/@origingame/engine/types/index.d.ts`: the generated types
   the type checker uses; what is not there does not exist.
 
@@ -95,22 +96,40 @@ with a reflected event type so recorded input can replay them without
 the presentation checkpoint. A fresh-process restore runs `start`, then
 `ui`, then restores saved values by ID.
 
-## 5. The guides
+## 5. The map
 
-`og api show <guide>` prints a guide; `og api find` returns its sections
-beside the API entries.
+`og api show <guide>` prints a guide (`--guide` for one named like a
+module: `og api show physics --guide`) and `og api show "<guide> §N"` one
+section of it; `og api find` returns sections beside the API entries.
+`og api show <module>` lists the module's core members, the ones games use
+most; `--all` lists every member.
 
-| Guide | Covers |
-|---|---|
-| `start` | this page: the brief, the order, the API |
-| `testing` | the build, check and test loop; invariants; frames; performance |
-| `determinism` | determinism, physics, destruction, lockstep |
-| `looks` | the look, light, 2D and 3D, rendering cost |
-| `art-review` | choosing the style, asset briefs, reviewing frames and models |
-| `models` | the `type model` asset: props and characters as code |
-| `screens` | screens, HUDs, the UI packs, text and languages |
-| `animation` | clips, og.motion, tweens and the timings that read |
-| `three-to-og` | three.js classes and idioms mapped to the engine's |
+| To | Read | Start with |
+|---|---|---|
+| begin a game, find the API | `start` | `og.game`, `defineComponent`, `defineSystem` (`og api show system`) |
+| write systems that replay and save | determinism §1 | `World`, `og.Time`, `og.Rng` |
+| test the loop, measure frames | `testing` | `og.assert.always`, `og.assert.sometimes`, `og.assert.reachable` |
+| save and load progress | `saves` | `World.snapshot`, `World.restore`, `og.platform.saveSlot`, `og.platform.loadSlot` |
+| call the platform (store, scores, purchases) | saves §7 | `og.platform.storeGet`, `og.platform.result` |
+| read the player's input | `input` | `og.Input`, `og.input.action`, `og.Gamepad` |
+| move bodies, cast rays, control a character | `physics` | `og.RigidBody`, `og.Collider`, `og.CharacterController`, `og.physics.castRay` |
+| break things | physics §9, determinism §4 | `og.Destructible`, `og.destruction.explode` |
+| point the camera | `camera` | `og.Camera`, `og.Follow2D`, `og.camera.shake` |
+| play sound and music | `audio` | `og.AudioSource`, `og.audio.createSound` |
+| play online | `networking`, determinism §3 | `og.Lockstep`, `og.PlayerInput`, `og.net.submit` |
+| load models, textures, sounds | `loading` | `og.load.gltf`, `og.load.texture`, `og.load.flipbook` |
+| choose the look | `looks`, `art-review` | `og.render.applyLook`, `og.Stylise` |
+| light and render the scene | `render`, looks §3, looks §5 | `og.Mesh`, `og.DirectionalLight`, `og.RenderSettings`, `og.render.standardMaterial` |
+| draw 2D sprites and lights | looks §13, render §11 | `og.Sprite`, `og.Light2D`, `og.Lighting2D` |
+| make models in code | `models` | the `type model` asset |
+| animate characters and props | `animation` | `og.AnimationPlayer`, `og.anim.clip`, `og.MotionAgent`, `og.tween` |
+| build terrain, tilemaps, paths, AI | `world` | `og.Terrain`, `og.Tilemap`, `og.tilemap.setTile`, `og.nav` |
+| add effects | loading §11, `pixel-vfx`, `effect-packs` | `og.vfx.spawn`, `og.ParticleSystem` |
+| write screens and HUDs | `screens`, `kits`, `components` | `og.ui.configure`, `og.ui.scope` |
+| translate text | `localization`, screens §6 | `og.i18n.t` |
+| write dialogue and quests | `yarn` | `og.story` |
+| port three.js code | `three-to-og` | `og migrate three` |
+| explore a game's states | `explore` | `og explore` |
 
 ## 6. Pitfalls
 

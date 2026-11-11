@@ -45,4 +45,4 @@ struct AssertViolation {
 }
 ```
 
-<sub>Module `assert` line 62</sub>
+<sub>Module `assert` line 60</sub>

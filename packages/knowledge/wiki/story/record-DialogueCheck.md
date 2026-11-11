@@ -29,4 +29,4 @@ event DialogueCheck {
 }
 ```
 
-<sub>Module `story` line 47</sub>
+<sub>Module `story` line 46</sub>

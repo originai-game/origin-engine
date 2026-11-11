@@ -33,4 +33,4 @@ fn arrow {
 }
 ```
 
-<sub>Module `debug` line 46</sub>
+<sub>Module `debug` line 47</sub>

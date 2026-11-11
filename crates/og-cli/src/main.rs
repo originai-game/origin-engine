@@ -284,10 +284,11 @@ commands:
                       the API reference and guide entries for the words (a name, a purpose, a
                       typo), ranked by BM25F over name, summary, members and body fused with
                       static word embeddings, one line each; --json adds the scores
-  api show <name> [--all]
+  api show <name> [--all] [--guide]
                       one API entry in full: signature, fields, doc (og.CharacterController,
                       og.physics.castRay, SHAPE_BOX, \"saves §2\"; og. may be left out); a module
-                      shows its overview and its core members, --all every member
+                      shows its overview and its core members, --all every member; --guide shows
+                      the guide named like a module (physics, input, camera, audio, render)
   api gen [--wiki] [--root <dir>]
                       regenerate the IDL outputs (packages/engine/{types,schema}, the hosts' glue,
                       the knowledge wiki); --wiki writes only the wiki

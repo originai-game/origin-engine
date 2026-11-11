@@ -8,20 +8,32 @@ Module [`camera`](../camera.md) · [index](../index.md)
 
 Picks the live og.VirtualCamera every tick and blends og.Camera to it, as Cinemachine's brain: the solo shot if one is set, else the enabled one with the highest priority. A change of live camera blends from the previous camera (still moving) over the incoming one's blendTime by its blendEase; a change during a blend starts from the blended pose, so the view never jumps. The first live camera of a world cuts. With no live camera og.Camera is left where it is.
 
-Registered with og.VirtualCamera. Its state fields are world state, saved and restored with the world, so a replay or a restore mid-blend continues the same blend.
+Registered with og.VirtualCamera. Its state fields are world state, so a replay or a restore mid-blend continues the same blend.
 
-Read and write it as any resource: `const brain = world.resource(og.CameraBrain)`; when `brain.ok`, `brain.value.live` is the live shot and `brain.value.solo = shot` makes one solo (0 releases it). A system that reads it lists og.CameraBrain among its reads, one that sets solo among its writes.
+See `camera §2`.
 
 Token `og.CameraBrain`, registered under the schema name `og.CameraBrain`; its value type is `CameraBrain`.
+
+#### Blending
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `enabled` | `boolean` | `true` | — | — | — | Drive og.Camera; false leaves it to the game (the vcams' state still updates). |
 | `blendTime` | `number` | `1` | ≥ 0 | `s` | tunable | Seconds of a blend to a camera whose blendTime is below 0. |
 | `blendEase` | `Ease` | `"power2.inOut"` | — | — | — | The curve of those blends. |
-| `solo` | `Entity` | `0` | — | — | — | A shot that outranks every priority while it is set (a cutscene or a dialogue close-up): an entity with an og.VirtualCamera, live even when it is not enabled; 0 releases it and the brain blends back to the highest priority. Anything else is ignored. og.story sets it for a dialogue line's `shot` and a timeline's shot track for its keys. |
-| `soloBlend` | `number` | `-1` | — | `s` | — | Seconds of the blend to the solo shot when it goes live (0 cuts); below 0 the solo camera's own blendTime and blendEase (then the brain's). A timeline's shot key sets it with solo; og.story sets it to -1. |
+
+#### Solo
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `solo` | `Entity` | `0` | — | — | — | A shot that outranks every priority while it is set (a cutscene or a dialogue close-up): an entity with an og.VirtualCamera, live even when it is not enabled; 0 releases it and the brain blends back to the highest priority. Anything else is ignored. |
+| `soloBlend` | `number` | `-1` | — | `s` | — | Seconds of the blend to the solo shot when it goes live (0 cuts); below 0 the solo camera's own blendTime and blendEase (then the brain's). |
 | `soloEase` | `Ease` | `"power2.inOut"` | — | — | — | The curve of that blend when soloBlend is 0 or more. |
+
+#### State
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
 | `live` | `Entity` | `0` | — | — | read only | The live camera (0: none). |
 | `from` | `Entity` | `0` | — | — | read only | The camera being blended from; 0 when the blend starts from a held pose (an interrupted blend). |
 | `blend` | `number` | `1` | — | — | read only | How far the blend has come, 0 to 1 (1: settled on the live camera); the weight is the curve at this time. |
@@ -33,6 +45,11 @@ Token `og.CameraBrain`, registered under the schema name `og.CameraBrain`; its v
 | `fromFocus` | `number` | `0` | — | `m` | read only | Its focus distance (0: none). |
 | `fromFocusRange` | `number` | `0` | — | `m` | read only | Its focus range. |
 | `activations` | `number` | `0` | — | — | read only | How many times a virtual camera has been enabled (og.VirtualCamera.activated). |
+
+#### Depth of field held
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
 | `focusHeld` | `boolean` | `false` | — | — | read only | The brain is driving og.PostEffects' depth of field and holds what it found: heldDepthOfField, heldFocusDistance and heldFocusRange, handed back when no live camera has focus. |
 | `heldDepthOfField` | `boolean` | `false` | — | — | read only | og.PostEffects.depthOfField as the brain found it. |
 | `heldFocusDistance` | `number` | `0` | — | `m` | read only | og.PostEffects.dofFocusDistance as the brain found it. |
@@ -41,8 +58,9 @@ Token `og.CameraBrain`, registered under the schema name `og.CameraBrain`; its v
 ```ogt
 resource CameraBrain {
   doc "Picks the live og.VirtualCamera every tick and blends og.Camera to it, as Cinemachine's brain: the solo shot if one is set, else the enabled one with the highest priority. A change of live camera blends from the previous camera (still moving) over the incoming one's blendTime by its blendEase; a change during a blend starts from the blended pose, so the view never jumps. The first live camera of a world cuts. With no live camera og.Camera is left where it is."
-  doc "Registered with og.VirtualCamera. Its state fields are world state, saved and restored with the world, so a replay or a restore mid-blend continues the same blend."
-  doc "Read and write it as any resource: `const brain = world.resource(og.CameraBrain)`; when `brain.ok`, `brain.value.live` is the live shot and `brain.value.solo = shot` makes one solo (0 releases it). A system that reads it lists og.CameraBrain among its reads, one that sets solo among its writes."
+  doc "Registered with og.VirtualCamera. Its state fields are world state, so a replay or a restore mid-blend continues the same blend."
+  guide "camera §2"
+  group "Blending"
   field enabled bool "Drive og.Camera; false leaves it to the game (the vcams' state still updates)." {
     default true
   }
@@ -55,14 +73,16 @@ resource CameraBrain {
   field blendEase Ease "The curve of those blends." {
     default power2.inOut
   }
-  field solo Entity "A shot that outranks every priority while it is set (a cutscene or a dialogue close-up): an entity with an og.VirtualCamera, live even when it is not enabled; 0 releases it and the brain blends back to the highest priority. Anything else is ignored. og.story sets it for a dialogue line's `shot` and a timeline's shot track for its keys."
-  field soloBlend f32 "Seconds of the blend to the solo shot when it goes live (0 cuts); below 0 the solo camera's own blendTime and blendEase (then the brain's). A timeline's shot key sets it with solo; og.story sets it to -1." {
+  group "Solo"
+  field solo Entity "A shot that outranks every priority while it is set (a cutscene or a dialogue close-up): an entity with an og.VirtualCamera, live even when it is not enabled; 0 releases it and the brain blends back to the highest priority. Anything else is ignored."
+  field soloBlend f32 "Seconds of the blend to the solo shot when it goes live (0 cuts); below 0 the solo camera's own blendTime and blendEase (then the brain's)." {
     default -1
     unit s
   }
   field soloEase Ease "The curve of that blend when soloBlend is 0 or more." {
     default power2.inOut
   }
+  group "State"
   field live Entity "The live camera (0: none)." {
     readonly true
   }
@@ -103,6 +123,7 @@ resource CameraBrain {
   field activations u32 "How many times a virtual camera has been enabled (og.VirtualCamera.activated)." {
     readonly true
   }
+  group "Depth of field held"
   field focusHeld bool "The brain is driving og.PostEffects' depth of field and holds what it found: heldDepthOfField, heldFocusDistance and heldFocusRange, handed back when no live camera has focus." {
     readonly true
   }
@@ -120,4 +141,4 @@ resource CameraBrain {
 }
 ```
 
-<sub>Module `camera` line 450</sub>
+<sub>Module `camera` line 467</sub>

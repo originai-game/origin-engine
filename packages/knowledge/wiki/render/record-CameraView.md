@@ -6,9 +6,13 @@ Module [`render`](../render.md) · [index](../index.md)
 
 ### `og.CameraView` (component)
 
-A secondary camera, as a second three.js camera rendered with setRenderTarget or setViewport: it draws the scene from the entity's MatrixWorld (looking down its local -Z, as og.Camera) into a render target (target), or, without one, into a rect of the frame (viewport: split-screen, picture-in-picture) over the finished image and under the UI.
+A secondary camera, as three.js's setRenderTarget or setViewport: it draws the scene from the entity's MatrixWorld (looking down its local -Z) into a render target, or without one into a viewport rect over the finished image and under the UI. Views draw lowest order first, all before the frame.
 
-It draws what the main camera draws, from its own eye and on its own layers: the meshes and models (skinned and with any material: hooks and full shaders run their vertex and fragment entries), opaque then transparent back to front, the terrain and the sky, the particle systems, og.Lines and og.Points, world sprites (og.Sprite, og.render.sprite) and world text, lit by the frame's lights and shadowed by its shadow maps. Each view is a draw of everything its layers admit: keep a view cheap with its layers and `every`. Screen sprites, the UI and debug draw stay on the main frame. Of the post chain, an ldr target and a viewport carry the view's exposure (its camera's) and the frame's tone curve; an hdr target carries linear radiance before exposure, exposed by the frame that shows it. Neither runs the frame's bloom, AO, SSR, depth of field, colour grading or custom post passes, whose inputs are the main camera's. Sprites in a view are not 2D-lit and do not glow; trails and 2D fluids draw on the main frame only. Views draw lowest order first, all before the frame.
+It draws what the main camera draws on its own layers. An ldr target and a viewport carry its exposure and the frame's tone curve; an hdr target carries linear radiance. Neither runs the frame's post effects; screen sprites, the UI, debug draw, trails and 2D fluids stay on the main frame.
+
+See `render §11`.
+
+Also known as: picture-in-picture, rear-view mirror, split screen, second camera, minimap camera
 
 Token `og.CameraView`, registered under the schema name `og.CameraView`; its value type is `CameraView`.
 
@@ -35,8 +39,10 @@ Token `og.CameraView`, registered under the schema name `og.CameraView`; its val
 
 ```ogt
 component CameraView {
-  doc "A secondary camera, as a second three.js camera rendered with setRenderTarget or setViewport: it draws the scene from the entity's MatrixWorld (looking down its local -Z, as og.Camera) into a render target (target), or, without one, into a rect of the frame (viewport: split-screen, picture-in-picture) over the finished image and under the UI."
-  doc "It draws what the main camera draws, from its own eye and on its own layers: the meshes and models (skinned and with any material: hooks and full shaders run their vertex and fragment entries), opaque then transparent back to front, the terrain and the sky, the particle systems, og.Lines and og.Points, world sprites (og.Sprite, og.render.sprite) and world text, lit by the frame's lights and shadowed by its shadow maps. Each view is a draw of everything its layers admit: keep a view cheap with its layers and `every`. Screen sprites, the UI and debug draw stay on the main frame. Of the post chain, an ldr target and a viewport carry the view's exposure (its camera's) and the frame's tone curve; an hdr target carries linear radiance before exposure, exposed by the frame that shows it. Neither runs the frame's bloom, AO, SSR, depth of field, colour grading or custom post passes, whose inputs are the main camera's. Sprites in a view are not 2D-lit and do not glow; trails and 2D fluids draw on the main frame only. Views draw lowest order first, all before the frame."
+  aliases "picture-in-picture, rear-view mirror, split screen, second camera, minimap camera"
+  doc "A secondary camera, as three.js's setRenderTarget or setViewport: it draws the scene from the entity's MatrixWorld (looking down its local -Z) into a render target, or without one into a viewport rect over the finished image and under the UI. Views draw lowest order first, all before the frame."
+  doc "It draws what the main camera draws on its own layers. An ldr target and a viewport carry its exposure and the frame's tone curve; an hdr target carries linear radiance. Neither runs the frame's post effects; screen sprites, the UI, debug draw, trails and 2D fluids stay on the main frame."
+  guide "render §11"
   field target RenderTarget "The target it draws into; 0 draws into the viewport rect of the frame."
   field viewportX f32 "The viewport's left edge, as a fraction of the frame's width (without a target)." {
     min 0
@@ -107,4 +113,4 @@ component CameraView {
 }
 ```
 
-<sub>Module `render` line 3754</sub>
+<sub>Module `render` line 3961</sub>
