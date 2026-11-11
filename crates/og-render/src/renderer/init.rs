@@ -226,7 +226,8 @@ impl Renderer {
             Caps::of(adapter_features, adapter_flags, &adapter.limits()) & desc.tier.ceiling();
         let adapter_features = caps.features(adapter_features);
         let flags = caps.downlevel(adapter_flags);
-        let indirect = caps.contains(Caps::INDIRECT);
+        // GPU culling and the meshlet path: compute dispatches and indirect draws.
+        let indirect = caps.contains(Caps::INDIRECT | Caps::COMPUTE);
         let msaa_ok = supports_msaa(&adapter);
         let antialias = match desc.antialias {
             Antialias::Off => Antialias::Off,
@@ -273,7 +274,8 @@ impl Renderer {
         // Crowds on the GPU-driven path (crowd_gpu.rs) start each level's
         // indirect draw at the first instance the cull found; without the
         // feature they are drawn through the CPU's skinned lists.
-        let crowd_indirect = caps.contains(Caps::INDIRECT | Caps::INDIRECT_FIRST_INSTANCE);
+        let crowd_indirect =
+            caps.contains(Caps::COMPUTE | Caps::INDIRECT | Caps::INDIRECT_FIRST_INSTANCE);
         if crowd_indirect {
             features |= wgpu::Features::INDIRECT_FIRST_INSTANCE;
         }
@@ -296,7 +298,11 @@ impl Renderer {
             texture_formats,
             pipeline_cache: false,
             max_texture_size: limits.max_texture_dimension_2d,
-            volumetric: desc.volumetric.unwrap_or(VolumetricMethod::Froxel),
+            // The froxel grid is a compute pass: the raymarch without one.
+            volumetric: match desc.volumetric {
+                _ if !caps.contains(Caps::COMPUTE) => VolumetricMethod::Raymarch,
+                v => v.unwrap_or(VolumetricMethod::Froxel),
+            },
             volumetric_lights: 0,
             sprite_anisotropy: if flags.contains(wgpu::DownlevelFlags::ANISOTROPIC_FILTERING)
                 && !is_software_adapter(adapter_info.device_type, &adapter_info.name)

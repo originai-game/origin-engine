@@ -46,7 +46,7 @@ impl Renderer {
         self.prepare_gi_probes(scene);
         // The reflections' targets (ssr.rs), before the frame groups that
         // bind them: new ones make the groups again.
-        if let Some(s) = Self::frame_ssr(scene)
+        if let Some(s) = self.frame_ssr(scene)
             && self
                 .ssr
                 .ensure_targets(&self.device, &s, (self.width, self.height))
@@ -61,13 +61,20 @@ impl Renderer {
     /// The frame's screen-space reflections (ssr.rs): a perspective 3D
     /// camera's only, as an orthographic view reflects nothing it shows.
     pub(in crate::renderer) fn frame_ssr(
+        &self,
         scene: &RenderScene,
     ) -> Option<ssr::ScreenSpaceReflections> {
         let perspective = matches!(scene.camera.projection, Projection::Perspective { .. });
         scene
             .post
             .ssr
-            .filter(|s| WORLD_3D && perspective && scene.quality.ssr && s.intensity > 0.0)
+            .filter(|s| {
+                WORLD_3D
+                    && self.runs(FramePass::Ssr)
+                    && perspective
+                    && scene.quality.ssr
+                    && s.intensity > 0.0
+            })
             .map(|s| ssr::ScreenSpaceReflections {
                 steps: scene.quality.ssr_steps(s.steps),
                 ..s

@@ -211,7 +211,7 @@ impl Renderer {
         self.post.forget_exposure();
         let warmup = if self.info.antialias.temporal() {
             frame::jitter_phases((self.width, self.height), self.history_size())
-        } else if Self::frame_ssr(scene).is_some()
+        } else if self.frame_ssr(scene).is_some()
             || scene.post.gi.is_some_and(|g| g.intensity > 0.0)
         {
             CAPTURE_WARMUP

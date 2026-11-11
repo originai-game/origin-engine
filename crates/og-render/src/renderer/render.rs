@@ -47,6 +47,7 @@ mod view_culling;
 
 mod camera;
 
+mod schedule;
 mod setup;
 
 impl Renderer {
@@ -254,7 +255,8 @@ impl Renderer {
             &self.device,
             &self.queue,
             scene,
-            self.desc_particles == ParticleSimulation::Auto,
+            // Without compute every emitter simulates on the CPU.
+            self.desc_particles == ParticleSimulation::Auto && self.runs(FramePass::Particles),
             self.cache.textures.len(),
             camera.position,
             cam.forward,
@@ -303,6 +305,7 @@ impl Renderer {
         // texels (a few centimetres at a few metres) cannot. Their masks
         // share the AO texture (gba), which the GI's bounce fills instead.
         let contact = WORLD_3D
+            && self.runs(FramePass::Contact)
             && gi.is_none()
             && scene.quality.shadowed_lights.min(self.info.shadowed_lights) > 0
             && scene
@@ -345,7 +348,7 @@ impl Renderer {
         let ink_depth = scene.stylise.depth_edges();
         // Screen-space reflections, traced through the prepass before the
         // main pass (ssr.rs).
-        let ssr = Self::frame_ssr(scene);
+        let ssr = self.frame_ssr(scene);
         // Custom post passes (post_custom.rs) that compiled; they read the
         // prepass's depth and normals.
         let custom_posts = self.custom_posts.prepare(&self.device, scene);
@@ -779,7 +782,9 @@ impl Renderer {
         // What needs no culling: billboards, particles and strips.
         let oit_candidates =
             !oit_billboards.is_empty() || oit_particles || oit_strips.0 || oit_strips.1;
+        // Its targets are three (sorted blending without MRT).
         let oit_frame = (scene.debug == DebugView::None
+            && self.info.caps.contains(Caps::MRT)
             && (oit_candidates
                 || batches.iter().any(|b| b.transparent && b.blend)
                 || skinned_batches.iter().any(|b| b.transparent && b.blend)))
@@ -2920,180 +2925,63 @@ impl Renderer {
             Some(AoMethod::Ssao | AoMethod::Screen) => false,
             _ => true,
         };
-        // The live sky's step first: what the frame's passes sample is its
-        // last complete capture (sky_capture.rs).
-        let mut passes: Vec<FramePass> = self
-            .sky_capture
-            .as_ref()
-            .map(|_| FramePass::LiveSky)
-            .into_iter()
-            .chain(
-                self.gi_probes
-                    .as_ref()
-                    .filter(|g| g.due())
-                    .map(|_| FramePass::GiProbes),
-            )
-            .chain((0..cascades.len() as u32).map(FramePass::Cascade))
-            .collect();
-        if shelter_redraw {
-            passes.push(FramePass::Shelter);
-        }
         self.shelter_key = shelter.as_ref().map(|s| s.2);
-        for ls in &local_shadows {
-            for face in 0..ls.faces.len() {
-                passes.push(FramePass::LocalFace((ls.layer + face) as u32));
-            }
-        }
-        if prepass {
-            passes.push(FramePass::Prepass);
-        }
-        let ao_resolution = gi.map(|g| g.resolution).or(ao.map(|a| a.resolution));
-        if let Some(resolution) = ao_resolution {
-            passes.extend([FramePass::Ao, FramePass::AoBlur]);
-            if resolution == AoResolution::Half {
-                passes.push(FramePass::AoUpsample);
-            }
-        }
-        if contact {
-            passes.push(FramePass::Contact);
-        }
-        if particle_frame.any_gpu {
-            passes.push(FramePass::Particles);
-        }
-        if scene.lighting_2d.is_some() {
-            passes.push(FramePass::Light2d);
-        }
-        if fluids > 0 {
-            passes.push(FramePass::Metaballs);
-        }
-        if fluids_3d {
-            passes.push(FramePass::Fluid3d);
-        }
-        if !probe_frame.due.is_empty() {
-            passes.push(FramePass::Probes);
-        }
-        for k in 0..reflections.len() {
-            passes.push(FramePass::Reflection(k as u8));
-        }
-        passes.extend((0..view_plans.len() as u32).map(FramePass::View));
-        if volumetric_fog.is_some() && self.volumetric.method == VolumetricMethod::Froxel {
-            passes.push(FramePass::Volumetric);
-        }
-        if ssr.is_some() {
-            passes.push(FramePass::Ssr);
-        }
-        passes.push(FramePass::Main);
-        if depth_bands.is_some() {
-            passes.push(FramePass::DepthBands);
-        }
-        if glow {
-            passes.push(FramePass::Glow);
-        }
-        if outline {
-            passes.push(FramePass::Outline);
-            // Lines outside the silhouettes: the jump flood (fxpost.wgsl).
-            if scene.stylise.material.outline_place != crate::OutlinePlace::Inside {
-                passes.push(FramePass::OutlineSeed);
-                passes.extend((0..post::JFA_STEPS.len() as u32).map(FramePass::OutlineJump));
-                passes.push(FramePass::OutlineWide);
-            }
-        }
-        if taa {
-            passes.push(FramePass::Taa);
-            if self.post.taa_sharpen > 0.0 {
-                passes.push(FramePass::TaaSharpen);
-            }
-        }
-        if dof.is_some() {
-            passes.extend([
-                FramePass::DofCoc,
-                FramePass::DofBlur,
-                FramePass::DofComposite,
-            ]);
-        }
-        if motion_blur.is_some() {
-            passes.push(FramePass::MotionBlur);
-        }
-        if screen_blur.is_some() {
-            passes.push(FramePass::ScreenBlur);
-        }
-        passes.extend((0..custom_posts.len() as u32).map(FramePass::CustomPost));
-        if god_rays.is_some() {
-            passes.extend([FramePass::GodRaysMask, FramePass::GodRaysBlur]);
-        }
-        if auto_exposure {
-            passes.push(FramePass::Meter);
-            passes.extend((0..post::meter_levels() - 1).map(FramePass::Reduce));
-            if camera.exposure.adaptation().is_some() {
-                passes.push(FramePass::Adapt);
-            }
-        }
-        // The lens flare reads the chain's first level before the
-        // upsamples add onto it: with bloom off, the prefilter runs for it
-        // alone.
-        if bloom || lens_flare.is_some() {
-            passes.push(FramePass::BloomPrefilter);
-        }
-        if lens_flare.is_some() {
-            if flare_sources_on {
-                passes.push(FramePass::FlareOcclusion);
-            }
-            passes.extend([
-                FramePass::Flare,
-                FramePass::FlareBlurX,
-                FramePass::FlareBlurY,
-            ]);
-        }
-        if bloom {
-            let (pw, ph) = self.history_size();
-            let levels = post::bloom_levels(pw, ph);
-            passes.extend((0..levels - 1).map(FramePass::BloomDown));
-            passes.extend((0..levels - 1).rev().map(FramePass::BloomUp));
-        }
-        passes.push(FramePass::Tonemap);
-        // Temporal resolve precedes distortion: motion and depth remain in
-        // scene coordinates. The overlay never enters either history slot.
-        if smaa_t2x {
-            passes.extend([
-                FramePass::SmaaEdges,
-                FramePass::SmaaWeights,
-                FramePass::SmaaBlend,
-                FramePass::SmaaResolve,
-            ]);
-        }
-        // The stylisation chain (post.rs `chain_passes`), then FXAA, then
-        // the pixel grid scaled up to the output.
         let st = &scene.stylise;
-        if st.paint.is_some_and(|p| p.paints()) {
-            passes.push(FramePass::Paint);
-        }
-        if st.paint.is_some_and(|p| p.watercolor.active()) {
-            passes.push(FramePass::Watercolor);
-        }
-        if st.hatching.is_some() || st.halftone.is_some() || st.ink.is_some() {
-            passes.push(FramePass::Lines);
-        }
         let lens = post_fx.lens_distortion.filter(|l| l.amount != 0.0);
-        if lens.is_some() {
-            passes.push(FramePass::Lens);
-        }
-        if st.quantize.is_some() {
-            passes.push(FramePass::Quantize);
-        }
-        if self.info.antialias == Antialias::Fxaa {
-            passes.push(FramePass::Fxaa);
-        }
-        if self.info.antialias == Antialias::Smaa {
-            passes.extend([
-                FramePass::SmaaEdges,
-                FramePass::SmaaWeights,
-                FramePass::SmaaBlend,
-            ]);
-        }
-        // Under TAAU the frame after TAA is already the output's size.
-        if self.history_size() != (self.out_width, self.out_height) {
-            passes.push(FramePass::Upscale);
-        }
+        let passes = schedule::frame_passes(
+            &schedule::PassDecisions {
+                live_sky: self.sky_capture.is_some(),
+                gi_probes: self.gi_probes.as_ref().is_some_and(|g| g.due()),
+                cascades: cascades.len() as u32,
+                shelter: shelter_redraw,
+                local_shadows: &local_shadows,
+                prepass,
+                ao: gi.map(|g| g.resolution).or(ao.map(|a| a.resolution)),
+                contact,
+                particles: particle_frame.any_gpu,
+                light_2d: scene.lighting_2d.is_some(),
+                metaballs: fluids > 0,
+                fluid_3d: fluids_3d,
+                probes: !probe_frame.due.is_empty(),
+                reflections: reflections.len() as u8,
+                views: view_plans.len() as u32,
+                froxels: volumetric_fog.is_some()
+                    && self.volumetric.method == VolumetricMethod::Froxel,
+                ssr: ssr.is_some(),
+                depth_bands: depth_bands.is_some(),
+                glow,
+                outline,
+                outline_outside: scene.stylise.material.outline_place
+                    != crate::OutlinePlace::Inside,
+                taa,
+                taa_sharpen: self.post.taa_sharpen > 0.0,
+                dof: dof.is_some(),
+                motion_blur: motion_blur.is_some(),
+                screen_blur: screen_blur.is_some(),
+                custom_posts: custom_posts.len() as u32,
+                god_rays: god_rays.is_some(),
+                auto_exposure,
+                adapt: camera.exposure.adaptation().is_some(),
+                bloom,
+                bloom_levels: {
+                    let (pw, ph) = self.history_size();
+                    post::bloom_levels(pw, ph)
+                },
+                lens_flare: lens_flare.is_some(),
+                flare_sources: flare_sources_on,
+                smaa_t2x,
+                paint: st.paint.is_some_and(|p| p.paints()),
+                watercolor: st.paint.is_some_and(|p| p.watercolor.active()),
+                lines: st.hatching.is_some() || st.halftone.is_some() || st.ink.is_some(),
+                lens: lens.is_some(),
+                quantize: st.quantize.is_some(),
+                fxaa: self.info.antialias == Antialias::Fxaa,
+                smaa: self.info.antialias == Antialias::Smaa,
+                // Under TAAU the frame after TAA is already the output's size.
+                upscale: self.history_size() != (self.out_width, self.out_height),
+            },
+            self.info.caps,
+        );
         self.post.ensure_chain(&self.device, &passes);
         // The stylise passes' parameters, palette and canvas.
         let palette_view = st
@@ -3157,7 +3045,11 @@ impl Renderer {
             .map_or(0.5, |l| l.resolution.clamp(0.25, 1.0));
         // The lights' directions beside the light map, for normal-mapped
         // receivers (sprite_normals.rs).
-        let lightdir_on = scene.lighting_2d.is_some() && scene.has_texture_normals();
+        // A second target beside the light map (without MRT, normal-mapped
+        // receivers are lit as flat ones).
+        let lightdir_on = scene.lighting_2d.is_some()
+            && scene.has_texture_normals()
+            && self.info.caps.contains(Caps::MRT);
         // The light map: its strips side by side (light2d.rs).
         let lightmap_size = light2d::strips_size(
             (
@@ -3271,6 +3163,7 @@ impl Renderer {
         // it and the frame is not supersampled.
         let post_size = self.history_size();
         let fsr = taa
+            && self.info.caps.contains(Caps::COMPUTE)
             && scene.quality.upscaler == crate::Upscaler::Fsr3
             && self.width <= post_size.0
             && self.height <= post_size.1;
