@@ -8,7 +8,7 @@ use super::{
     from_heightfield, from_mesh, pose, primitive, rp, unangvel, unpose, unv, v,
 };
 use super::{VehicleState, ext, platformers, ragdolls, vehicles};
-use crate::gather::{Body, Scene};
+use crate::gather::{Body, Scene, Static, StaticRun};
 use crate::schema::*;
 use crate::stats::{Laps, Phase};
 use crate::{ContactHook, OverlapDesc, ShapeDesc};
@@ -289,6 +289,14 @@ pub(crate) struct Sim {
     /// never read by the tick).
     #[serde(skip)]
     pub(crate) wakes: IdMap<u64, crate::water::Wakes>,
+    /// The scene's static colliders, by archetype, as the last [`sync`]
+    /// left `statics` and the rapier world in line with them
+    /// ([`Scene::static_runs`]): the next one passes over the archetypes
+    /// nothing wrote since. Not world state (never saved): a simulation
+    /// that was loaded has none, and its next sync reads every static.
+    /// (A shift of the origin writes the columns it moves.)
+    #[serde(skip)]
+    static_runs: Vec<StaticRun>,
     /// Saved in the block's extension sections, not here.
     #[serde(skip)]
     pub(crate) ext: SimExt,

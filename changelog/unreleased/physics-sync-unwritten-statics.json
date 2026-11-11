@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "physics: bringing the static colliders into the step each tick",
+      "summary": "The step compared every static collider with the one it had built, every tick. It now passes over an archetype of static colliders whose og.Transform and og.Collider nothing wrote since the last tick, and looks for removed ones only after a row was added or removed; a mesh or height field registered again or edited makes it read them all once. What it does to the simulation, and in what order, is unchanged, so no tick changes. A level of 20,000 static colliders under 64 bodies, native release, one thread: this part 2.0 ms to under 0.01 ms a tick, the physics system 2.5 ms to 0.5 ms; with one static moved every tick, 1.8 ms to 1.25 ms (its archetype is read, the others are not)."
+    }
+  ]
+}

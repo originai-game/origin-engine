@@ -184,8 +184,56 @@ fn retain_live<T>(map: &mut IdMap<u64, T>, live: &[u64], mut gone: impl FnMut(&T
     });
 }
 
+/// Whether `runs` hold the entities `synced` held, run for run: an
+/// archetype whose og.Collider columns have the stamp they had lost and
+/// gained no row since, and neither run left a row out.
+fn same_statics(synced: &[StaticRun], runs: &[StaticRun]) -> bool {
+    synced.len() == runs.len()
+        && synced
+            .iter()
+            .zip(runs)
+            .all(|(a, b)| matches!((a.written, b.written), (Some(a), Some(b)) if a.1 == b.1))
+}
+
+/// The static colliders of `scene` a sync has to read, each with the index
+/// of its run: all of them, less (when `settled`) each archetype's run
+/// that is the run `synced` has at its place, which the sync that recorded
+/// it left nothing to do for.
+fn unsynced<'s>(
+    scene: &'s Scene,
+    synced: &'s [StaticRun],
+    settled: bool,
+) -> impl Iterator<Item = (usize, &'s Static)> {
+    let mut rest = scene.statics.as_slice();
+    let runs = scene.static_runs.iter().enumerate();
+    runs.flat_map(move |(i, run)| {
+        let (statics, after) = rest.split_at(run.len);
+        rest = after;
+        let same = settled && run.written.is_some() && synced.get(i) == Some(run);
+        let read = if same { &[] } else { statics };
+        read.iter().map(move |s| (i, s))
+    })
+}
+
+/// Whether `s` equals itself. One with a NaN in it never equals what was
+/// tracked of it, so every sync moves it or builds it again: its run is
+/// never one to pass over.
+#[allow(clippy::eq_op)]
+fn exact(s: &Static) -> bool {
+    s.position == s.position
+        && s.quaternion == s.quaternion
+        && s.scale == s.scale
+        && s.collider == s.collider
+}
+
 /// Brings the persistent rapier world in line with `scene` (bodies and
 /// static colliders); returns each body's handle.
+///
+/// The static colliders are read by archetype: one whose og.Transform and
+/// og.Collider columns were not written since the last sync holds the
+/// statics that sync left tracked and built, and is passed over. What is
+/// done to rapier, and in what order, is what reading them all would do:
+/// nothing is done for a static that is as it was tracked.
 pub(super) fn sync<'s>(
     settings: &Physics,
     dt: f32,
@@ -198,9 +246,12 @@ pub(super) fn sync<'s>(
         world: w,
         bodies: tracked,
         statics: tracked_statics,
+        static_runs,
         ext,
         ..
     } = sim;
+    // Taken: a sync that fails leaves none.
+    let synced = std::mem::take(static_runs);
     let compounds = &mut ext.compounds;
     w.gravity = v(settings.gravity);
     w.integration_parameters.dt = dt / substeps as f32;
@@ -215,17 +266,20 @@ pub(super) fn sync<'s>(
     if !compounds.is_empty() {
         retain_live(compounds, &live, |_| {});
     }
-    let live = sorted_keys(scene.statics.iter().map(|s| s.entity.to_bits()));
-    if !ext.fields.is_empty() {
-        retain_live(&mut ext.fields, &live, |chunks| {
-            for &h in &chunks[1..] {
-                w.remove_collider(h);
-            }
+    // (No static is gone when every archetype holds the entities it did.)
+    if !same_statics(&synced, &scene.static_runs) {
+        let live = sorted_keys(scene.statics.iter().map(|s| s.entity.to_bits()));
+        if !ext.fields.is_empty() {
+            retain_live(&mut ext.fields, &live, |chunks| {
+                for &h in &chunks[1..] {
+                    w.remove_collider(h);
+                }
+            });
+        }
+        retain_live(tracked_statics, &live, |t| {
+            w.remove_collider(t.handle);
         });
     }
-    retain_live(tracked_statics, &live, |t| {
-        w.remove_collider(t.handle);
-    });
 
     let stale = std::mem::take(&mut shared.stale_meshes);
     let edits = std::mem::take(&mut shared.field_edits);
@@ -284,7 +338,14 @@ pub(super) fn sync<'s>(
         };
         by_body.push(h);
     }
-    for s in &scene.statics {
+    // A mesh or height field registered anew rebuilds colliders no write
+    // touched: every static is read then.
+    let settled = stale.is_empty() && edits.is_empty();
+    let mut runs = scene.static_runs.clone();
+    for (run, s) in unsynced(scene, &synced, settled) {
+        if !exact(s) {
+            runs[run].written = None;
+        }
         let key = s.entity.to_bits();
         let at = pose(s.position, s.quaternion) * local_pose(&s.collider, s.scale);
         let field = chunked(&s.collider, shared);
@@ -372,6 +433,8 @@ pub(super) fn sync<'s>(
             }
         }
     }
+
+    *static_runs = runs;
 
     // Bodies that are no longer bodies (now static colliders or gone) were
     // removed above; a body re-made this tick keeps its joints out until

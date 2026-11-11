@@ -412,6 +412,20 @@ pub(crate) struct Static {
     pub collider: Collider,
 }
 
+/// The statics one archetype gave a scene, with what says whether they are
+/// the ones it gave before.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) struct StaticRun {
+    /// How many of [`Scene::statics`], after the runs before this one.
+    pub len: usize,
+    /// The write stamps of the archetype's og.Transform and og.Collider
+    /// columns ([`ArchetypeView::written`]) when every row of it is in the
+    /// run (none joined a body as a child collider): a run that has the
+    /// stamps and the length of an earlier one is that run, static for
+    /// static. `None` when nothing says so.
+    pub written: Option<(u64, u64)>,
+}
+
 /// The scene: bodies (RigidBody entities in query order, then the
 /// controllers without one), static colliders, and the components physics
 /// steps beyond rigid bodies, each in query order.
@@ -419,6 +433,11 @@ pub(crate) struct Static {
 pub(crate) struct Scene {
     pub bodies: Vec<Body>,
     pub statics: Vec<Static>,
+    /// `statics` by the archetype they were read from, in order, for the
+    /// step to pass over the runs it already brought rapier in line with
+    /// (`sim::sync`). Only a gather inside a system makes runs a step may
+    /// rely on (see [`Kept`]), and only those reach a step.
+    pub static_runs: Vec<StaticRun>,
     pub joints: Vec<(Entity, Joint)>,
     pub vehicles: Vec<(Entity, Vehicle)>,
     pub ropes: Vec<(Entity, Vec3, Rope)>,
@@ -836,6 +855,7 @@ pub(crate) fn gather<'w>(
         let quaternion = a.read::<Quat>(ids.t_quaternion)?;
         let scale = a.read::<Vec3>(ids.t_scale)?;
         let rows = ids.colliders(&mut kept.static_colliders, at, &a)?;
+        let first = scene.statics.len();
         for (row, (e, collider)) in a.entities().iter().zip(rows.iter().copied()).enumerate() {
             let own = (position[row], quaternion[row], scale[row]);
             if any_parent
@@ -860,6 +880,13 @@ pub(crate) fn gather<'w>(
                 collider,
             });
         }
+        let len = scene.statics.len() - first;
+        scene.static_runs.push(StaticRun {
+            len,
+            written: (len == a.len())
+                .then(|| a.written(ids.transform).zip(a.written(ids.collider)))
+                .flatten(),
+        });
     }
     if joined {
         for b in &mut scene.bodies {
