@@ -2,45 +2,38 @@
 
 use super::*;
 
-pub(super) struct ProbesPassInputs<'a> {
-    /// What the frame draws with (draw_ctx.rs).
-    pub(super) ctx: &'a DrawCtx<'a>,
-    pub(super) scene: &'a RenderScene,
-    pub(super) probe_frame: &'a probes::ProbeFrame,
+pub(super) struct ProbesPlan<'f> {
+    pub(super) scene: &'f RenderScene,
+    pub(super) probe_frame: &'f probes::ProbeFrame,
     pub(super) face_depth: bool,
-    pub(super) face_water: &'a [Vec<water::WaterDraw>],
-    pub(super) face_fluids: &'a [Option<fluid3d::Fluid3dFrame>],
-    pub(super) probe_faces: &'a [[frame::CameraFrame; 6]],
-    pub(super) active_probes: &'a [ReflectionProbe],
-    pub(super) stats: &'a mut FrameStats,
-    pub(super) encoder: &'a mut Encoder,
-    pub(super) face_groups: &'a [wgpu::BindGroup],
-    pub(super) fx_group: &'a wgpu::BindGroup,
-    pub(super) probe_lists: &'a [DrawList],
-    pub(super) probe_skinned: &'a [Vec<Batch>],
-    pub(super) terrain_indices: Option<&'a wgpu::Buffer>,
-    pub(super) terrain_draws: &'a [terrain::TerrainDraw],
-    pub(super) scatter_batches: &'a scatter::ScatterBatches,
-    pub(super) sky_group: &'a wgpu::BindGroup,
-    pub(super) probe_blended: &'a [DrawList],
-    pub(super) face_boards: &'a [sprites::Billboards],
-    pub(super) glow_fx_group: &'a wgpu::BindGroup,
-    pub(super) face_particle_groups: &'a [Option<wgpu::BindGroup>],
-    pub(super) particle_frame: &'a particles_gpu::ParticleFrame,
-    pub(super) line_frame: &'a lines::LineFrame,
-    pub(super) face_line_groups: &'a [wgpu::BindGroup],
-    pub(super) face_sprites: &'a [Vec<sprites::SpriteRun>],
+    pub(super) face_water: &'f [Vec<water::WaterDraw>],
+    pub(super) face_fluids: &'f [Option<fluid3d::Fluid3dFrame>],
+    pub(super) probe_faces: &'f [[frame::CameraFrame; 6]],
+    pub(super) active_probes: &'f [ReflectionProbe],
+    pub(super) face_groups: &'f [wgpu::BindGroup],
+    pub(super) fx_group: &'f wgpu::BindGroup,
+    pub(super) probe_lists: &'f [DrawList],
+    pub(super) probe_skinned: &'f [Vec<Batch>],
+    pub(super) terrain_indices: Option<&'f wgpu::Buffer>,
+    pub(super) terrain_draws: &'f [terrain::TerrainDraw],
+    pub(super) scatter_batches: &'f scatter::ScatterBatches,
+    pub(super) probe_blended: &'f [DrawList],
+    pub(super) face_boards: &'f [sprites::Billboards],
+    pub(super) glow_fx_group: &'f wgpu::BindGroup,
+    pub(super) face_particle_groups: &'f [Option<wgpu::BindGroup>],
+    pub(super) particle_frame: &'f particles_gpu::ParticleFrame,
+    pub(super) line_frame: &'f lines::LineFrame,
+    pub(super) face_line_groups: &'f [wgpu::BindGroup],
+    pub(super) face_sprites: &'f [Vec<sprites::SpriteRun>],
     /// Each pass's view of the meshlet dispatch (0: none), and the
     /// frame's batches it draws.
-    pub(super) meshlet_views: &'a [u32],
-    pub(super) batches: &'a [Batch],
+    pub(super) meshlet_views: &'f [u32],
+    pub(super) batches: &'f [Batch],
 }
 
 impl Renderer {
-    pub(super) fn encode_probes(
-        &self,
-        ProbesPassInputs {
-            ctx,
+    pub(super) fn encode_probes(&self, plan: &ProbesPlan<'_>, cx: &mut EncodeCx<'_, '_>) {
+        let &ProbesPlan {
             scene,
             probe_frame,
             face_depth,
@@ -48,8 +41,6 @@ impl Renderer {
             face_fluids,
             probe_faces,
             active_probes,
-            stats,
-            encoder,
             face_groups,
             fx_group,
             probe_lists,
@@ -57,7 +48,6 @@ impl Renderer {
             terrain_indices,
             terrain_draws,
             scatter_batches,
-            sky_group,
             probe_blended,
             face_boards,
             glow_fx_group,
@@ -68,8 +58,9 @@ impl Renderer {
             face_sprites,
             meshlet_views,
             batches,
-        }: ProbesPassInputs<'_>,
-    ) {
+        } = plan;
+        let (ctx, stats, encoder, sky_group) =
+            (cx.ctx, &mut *cx.stats, &mut *cx.encoder, cx.sky_group);
         // Each due probe's six faces from its position, then
         // its filtering (`probes.rs`).
         let clear = match scene.environment.background {
@@ -352,5 +343,28 @@ impl Renderer {
                 None => self.lights.ibl.record_probe_filter(encoder, &s.filter),
             }
         }
+    }
+}
+
+pub(super) struct ProbesPass;
+
+impl Pass for ProbesPass {
+    /// Each face's depth prepass: the three targets of the camera's; and
+    /// the light volumes' grid captures, projected in compute
+    /// (probe_grid.rs).
+    const DESC: PassDesc = PassDesc {
+        pass: FramePass::Probes,
+        name: "reflection-probes",
+        needs: Caps::MRT.union(Caps::COMPUTE),
+    };
+    type State = probes::Probes;
+    type Plan<'f> = ProbesPlan<'f>;
+
+    fn state(r: &Renderer) -> &Self::State {
+        &r.probes
+    }
+
+    fn encode<'f>(_: &Self::State, plan: &ProbesPlan<'f>, _: FramePass, cx: &mut EncodeCx<'_, 'f>) {
+        cx.ctx.r.encode_probes(plan, cx);
     }
 }

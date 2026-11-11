@@ -99,4 +99,5 @@ passes! {
     fluid_3d: pass_fluid_3d::Fluid3dPass => FramePass::Fluid3d,
     volumetric: pass_volumetric::VolumetricPass => FramePass::Volumetric,
     ssr: pass_ssr::SsrPass => FramePass::Ssr,
+    probes: pass_probes::ProbesPass => FramePass::Probes,
 }

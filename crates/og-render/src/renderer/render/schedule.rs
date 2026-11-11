@@ -45,13 +45,7 @@ pub(crate) const PASSES: &[PassDesc] = &[
         needs: Caps::COMPUTE,
     },
     ParticlesPass::DESC,
-    // Each face's depth prepass: the three targets of the camera's; and
-    // the light volumes' grid captures, projected in compute (probe_grid.rs).
-    PassDesc {
-        pass: FramePass::Probes,
-        name: "reflection-probes",
-        needs: Caps::MRT.union(Caps::COMPUTE),
-    },
+    ProbesPass::DESC,
     // Its own depth prepass, as the probes' faces.
     PassDesc {
         pass: FramePass::View(0),

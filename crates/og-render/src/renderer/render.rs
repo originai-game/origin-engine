@@ -27,7 +27,7 @@ mod post_uniforms;
 use post_uniforms::WriteFramePostUniformsInputs;
 
 mod pass_probes;
-use pass_probes::ProbesPassInputs;
+use pass_probes::{ProbesPass, ProbesPlan};
 
 mod pass_view;
 use pass_view::ViewPassInputs;
@@ -4267,6 +4267,32 @@ impl Renderer {
             plans: &cascade_plans,
             views: &cascade_views,
         });
+        plans.probes = (!probe_frame.due.is_empty()).then(|| ProbesPlan {
+            meshlet_views: &probe_views,
+            batches: &batches,
+            scene,
+            probe_frame: &probe_frame,
+            face_depth,
+            face_water: &face_water,
+            face_fluids: &face_fluids,
+            probe_faces: &probe_faces,
+            active_probes: &active_probes,
+            face_groups: &face_groups,
+            fx_group,
+            probe_lists: &probe_lists,
+            probe_skinned: &probe_skinned,
+            terrain_indices,
+            terrain_draws: &terrain_draws,
+            scatter_batches: &scatter_batches,
+            probe_blended: &probe_blended,
+            face_boards: &face_boards,
+            glow_fx_group,
+            face_particle_groups: &face_particle_groups,
+            particle_frame: &particle_frame,
+            line_frame: &line_frame,
+            face_line_groups: &face_line_groups,
+            face_sprites: &face_sprites,
+        });
         for &pass in self.graph.order() {
             // What the pass needs here: its kind's, and what this frame's
             // instance of it adds (schedule.rs).
@@ -4316,36 +4342,6 @@ impl Renderer {
                     scatter_batches: &scatter_batches,
                     cards: camera_cards,
                     grass_frame: &grass_frame,
-                }),
-                FramePass::Probes => self.encode_probes(ProbesPassInputs {
-                    ctx: &ctx,
-                    meshlet_views: &probe_views,
-                    batches: &batches,
-                    scene,
-                    probe_frame: &probe_frame,
-                    face_depth,
-                    face_water: &face_water,
-                    face_fluids: &face_fluids,
-                    probe_faces: &probe_faces,
-                    active_probes: &active_probes,
-                    stats: &mut stats,
-                    encoder: &mut encoder,
-                    face_groups: &face_groups,
-                    fx_group,
-                    probe_lists: &probe_lists,
-                    probe_skinned: &probe_skinned,
-                    terrain_indices,
-                    terrain_draws: &terrain_draws,
-                    scatter_batches: &scatter_batches,
-                    sky_group,
-                    probe_blended: &probe_blended,
-                    face_boards: &face_boards,
-                    glow_fx_group,
-                    face_particle_groups: &face_particle_groups,
-                    particle_frame: &particle_frame,
-                    line_frame: &line_frame,
-                    face_line_groups: &face_line_groups,
-                    face_sprites: &face_sprites,
                 }),
                 FramePass::Reflection(k) => self.encode_reflection(ReflectionPassInputs {
                     ctx: &ctx,
