@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "Lockstep.maxPrediction",
+      "summary": "A lockstep tick's cost now counts the world's snapshot and hash taken after it, so a rollback peer's maxPrediction budget (the ticks it can re-simulate in half a frame) is no longer over-estimated; dump_room reports it as cost { tickMs, keepMs, rewindMs }."
+    }
+  ]
+}

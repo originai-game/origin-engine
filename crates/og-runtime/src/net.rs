@@ -68,9 +68,12 @@ enum Stage {
 /// What re-simulating costs this peer, on the wall clock (ms).
 #[derive(Default)]
 struct Cost {
-    /// A tick, and a rewind, smoothed.
+    /// A tick with what follows it, and a rewind, smoothed.
     tick_ms: f64,
     rewind_ms: f64,
+    /// Of `tick_ms`, what follows the tick: the world's snapshot, its hash
+    /// and keeping both ([`after_tick`]).
+    keep_ms: f64,
     /// When the tick now running started.
     started: Option<f64>,
 }
@@ -1094,9 +1097,7 @@ pub(crate) fn after_tick(engine: u32, world: &mut World) {
     }
     let tick = world.time().tick;
     with(engine, |n| {
-        if let Some(t0) = n.cost.started.take() {
-            Cost::note(&mut n.cost.tick_ms, super::probe::now_ms() - t0);
-        }
+        let ran = super::probe::now_ms();
         // This tick's commands go with this peer's input inputDelay on,
         // after its state (whole, so the commands start where every peer
         // reads them).
@@ -1114,6 +1115,13 @@ pub(crate) fn after_tick(engine: u32, world: &mut World) {
             let bytes = world.snapshot();
             (shared_hash(&bytes).unwrap_or(0), bytes)
         });
+        // A re-simulated tick pays for its snapshot and hash too, so the
+        // budget counts them.
+        let kept = super::probe::now_ms();
+        Cost::note(&mut n.cost.keep_ms, kept - ran);
+        if let Some(t0) = n.cost.started.take() {
+            Cost::note(&mut n.cost.tick_ms, kept - t0);
+        }
         flush(engine, n, tick);
     });
 }
@@ -1331,13 +1339,16 @@ pub(crate) fn register(probe: &mut og_probe::Probe, engine: u32) {
         "dump_room",
         og_probe::CommandDesc {
             usage: "dump_room[:path]".into(),
-            doc: "the room (og.platform.roomInfo) and lockstep's state (og.net.status): seats, who this peer waits for, the ticks compared".into(),
+            doc: "the room (og.platform.roomInfo), lockstep's state (og.net.status): seats, who this peer waits for, the ticks compared, and what a tick costs this peer to re-simulate (`cost`, ms on the wall clock: `keepMs` is the snapshot and hash after it)".into(),
         },
         0,
         move |_world, _args| {
             let info: Value = serde_json::from_str(&og_platform_room_info(engine)).unwrap_or(Value::Null);
             let status: Value = serde_json::from_str(&og_net_status(engine)).unwrap_or(Value::Null);
-            Ok(json!({ "room": info, "lockstep": status }))
+            let cost = with(engine, |n| {
+                json!({ "tickMs": n.cost.tick_ms, "keepMs": n.cost.keep_ms, "rewindMs": n.cost.rewind_ms })
+            });
+            Ok(json!({ "room": info, "lockstep": status, "cost": cost }))
         },
     );
 }
