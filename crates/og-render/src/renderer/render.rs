@@ -130,6 +130,7 @@ mod pass_list;
 use pass_list::PassListInputs;
 mod stylise_frame;
 use stylise_frame::{PrepareFrameStyliseInputs, PrepareFrameStyliseOutputs};
+mod post_resources;
 mod setup;
 
 impl Renderer {
@@ -1023,23 +1024,12 @@ impl Renderer {
         let (light_2d, lightmap_size, lightdir_on) =
             self.plan_light_2d(scene, &light_slots, lights_2d);
         plans.light_2d = light_2d;
-        // Colour adjustments: the grading table and the adjustments baked
-        // into one (when either changed), bound under scene id 0, which no
-        // scene has, so the bindings are made again when it comes or goes.
-        let adjust = post_fx.adjust();
-        if let Some(a) = &adjust {
-            let grade = post_fx.color_grading.map(|g| {
-                let i = g.lut.index();
-                (
-                    &scene.luts()[i],
-                    (scene.id(), i, scene.lut_revisions()[i]),
-                    g.intensity,
-                )
-            });
-            self.post
-                .bake_adjusted_lut(&self.device, &self.queue, a, grade);
-        }
-        let (lut_key, lut_view) = match (adjust.and(self.post.adjusted_lut()), lut_index) {
+        // The colour adjustments' table and the transmission's scene copy
+        // (post_resources.rs).
+        let adjusted = self.prepare_colour_lut(scene);
+        let transmission = self.prepare_transmission(&batches, &blended_list, &skinned_visible);
+        // The grading table bound: the adjusted one, the scene's, or none.
+        let (lut_key, lut_view) = match (self.post.adjusted_lut().filter(|_| adjusted), lut_index) {
             (Some(view), _) => (Some((0, 0)), view),
             (None, Some(i)) => (
                 Some((scene.id(), i)),
@@ -1047,41 +1037,6 @@ impl Renderer {
             ),
             (None, None) => (None, &self.post.identity_lut),
         };
-        // Transmissive draws refract a copy of the opaque scene with its
-        // mip chain: the main pass splits for it, as for water.
-        let transmission = blended_list
-            .ranges
-            .iter()
-            .any(|r| batches[r.0 as usize].transmissive)
-            || skinned_visible.iter().any(|b| b.transmissive);
-        if transmission {
-            self.mips.prepare(&self.device, HDR_FORMAT);
-            let stale = self
-                .transmission
-                .as_ref()
-                .is_none_or(|(t, ..)| (t.width(), t.height()) != (self.width, self.height));
-            if stale {
-                let texture = self.device.create_texture(&wgpu::TextureDescriptor {
-                    label: Some("transmission"),
-                    size: wgpu::Extent3d {
-                        width: self.width,
-                        height: self.height,
-                        depth_or_array_layers: 1,
-                    },
-                    mip_level_count: mips::mip_count(self.width, self.height),
-                    sample_count: 1,
-                    dimension: wgpu::TextureDimension::D2,
-                    format: HDR_FORMAT,
-                    usage: wgpu::TextureUsages::RENDER_ATTACHMENT
-                        | wgpu::TextureUsages::TEXTURE_BINDING
-                        | wgpu::TextureUsages::COPY_DST,
-                    view_formats: &[],
-                });
-                let view = texture.create_view(&Default::default());
-                let chain = self.mips.chain(&self.device, &texture);
-                self.transmission = Some((texture, view, chain));
-            }
-        }
         // The stylise passes' palette and canvas.
         let palette_view = st
             .quantize
