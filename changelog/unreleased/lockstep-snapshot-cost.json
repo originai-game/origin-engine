@@ -6,7 +6,7 @@
     },
     {
       "member": "Lockstep.hashEvery",
-      "summary": "The per-tick hash reads the snapshot's columns in place instead of decoding every entity: about half the time, the same values."
+      "summary": "The per-tick hash reads the snapshot's columns in place instead of decoding every entity (about half the time, the same values), and the snapshot kept for a rollback is shared with the one kept for comparison instead of copied."
     }
   ]
 }

@@ -208,7 +208,7 @@ impl Lockstep {
     }
 
     /// The state of a run starting (or joined) with the world at `tick`.
-    pub(super) fn begin(&mut self, run: Run, tick: u64, snapshot: Vec<u8>) {
+    pub(super) fn begin(&mut self, run: Run, tick: u64, snapshot: Rc<Vec<u8>>) {
         self.full_since = None;
         self.inputs.retain(|t, _| *t >= tick);
         self.used.clear();

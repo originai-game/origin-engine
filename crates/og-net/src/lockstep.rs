@@ -77,6 +77,7 @@ use crate::state::{Snapshot, diff};
 use og_core::IdMap;
 use serde_json::{Value, json};
 use std::collections::BTreeSet;
+use std::rc::Rc;
 
 mod messages;
 mod peers;
@@ -147,11 +148,11 @@ pub enum Gate {
     Wait,
     /// Restore this snapshot (a peer's world at `tick`: the start, or a late
     /// join), keeping the session, then ask again.
-    Restore { snapshot: Vec<u8>, tick: u64 },
+    Restore { snapshot: Rc<Vec<u8>>, tick: u64 },
     /// Rollback: put the world back to this peer's own snapshot of `tick`
     /// (one this process took, from the ring) and ask again; the ticks from
     /// `tick` run again with the inputs now known.
-    Rewind { snapshot: Vec<u8>, tick: u64 },
+    Rewind { snapshot: Rc<Vec<u8>>, tick: u64 },
 }
 
 /// A seat changing hands at a tick, the same on every peer: og.SeatDropped
@@ -262,7 +263,7 @@ struct Desync {
     peer: u32,
     local_hash: u64,
     remote_hash: u64,
-    local: Vec<u8>,
+    local: Rc<Vec<u8>>,
     remote: Option<Vec<u8>>,
     diff: Option<Value>,
 }
@@ -322,8 +323,9 @@ pub struct Lockstep {
     /// The world's tick of the last final snapshot (the ring's base).
     hashed: u64,
     /// The world before each tick from `hashed` on: (hash, snapshot) of
-    /// the world at that tick, this process's own.
-    ring: IdMap<u64, (u64, Vec<u8>)>,
+    /// the world at that tick, this process's own. A snapshot is taken
+    /// once and shared with `mine`, a rewind and a desync.
+    ring: IdMap<u64, (u64, Rc<Vec<u8>>)>,
     /// The first tick that ran with an input that turned out wrong.
     rewind_to: Option<u64>,
     /// Per other peer, the tick it has every input through (its ack).
@@ -331,7 +333,7 @@ pub struct Lockstep {
     rollbacks: u64,
     resimulated: u64,
     /// This peer's hash and snapshot by tick, until every peer compared.
-    mine: IdMap<u64, (u64, Vec<u8>)>,
+    mine: IdMap<u64, (u64, Rc<Vec<u8>>)>,
     /// Other peers' hashes by tick, until compared.
     theirs: IdMap<u32, IdMap<u64, u64>>,
     /// The last tick compared with each peer.

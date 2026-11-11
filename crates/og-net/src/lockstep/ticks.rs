@@ -24,6 +24,7 @@ impl Lockstep {
                 run.running.len(),
                 mode_text(&run),
             ));
+            let bytes = Rc::new(bytes);
             self.begin(run, at, bytes.clone());
             for (from, d) in std::mem::take(&mut self.deferred) {
                 self.message(from, &d);
@@ -114,7 +115,7 @@ impl Lockstep {
                 // A newcomer gets a confirmed world: this one when every
                 // tick run so far is, else the last final snapshot.
                 let (at, bytes) = if self.confirmed + 1 >= tick && self.rewind_to.is_none() {
-                    (tick, snapshot())
+                    (tick, Rc::new(snapshot()))
                 } else {
                     let (t, (_, b)) = self.ring.iter().next().expect("the ring's base");
                     (*t, b.clone())
@@ -188,7 +189,7 @@ impl Lockstep {
             run.hash_every,
             mode_text(&run),
         ));
-        self.begin(run, tick, bytes);
+        self.begin(run, tick, Rc::new(bytes));
         self.send(None, msg);
     }
 
@@ -319,7 +320,8 @@ impl Lockstep {
             self.send_inputs(None);
         }
         if every > 0 || rollback {
-            self.ring.insert(tick_after, hash());
+            let (hash, bytes) = hash();
+            self.ring.insert(tick_after, (hash, Rc::new(bytes)));
         }
         self.advance_confirmed();
         // Every tick whose world is final now: confirmed, run with its
