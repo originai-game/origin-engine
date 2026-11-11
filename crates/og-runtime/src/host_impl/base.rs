@@ -201,7 +201,7 @@ macro_rules! __og_host_bindings_base {
                 ))
             }
             fn og_world_children(&self, world: u32, entity: f64) -> String {
-                $crate::og_world_children(world, entity)
+                $crate::host_impl::json($crate::og_world_children(world, entity))
             }
             fn og_world_removed(&self, world: u32, component: String) -> String {
                 $crate::host_impl::answer($crate::og_world_removed(world, component))
@@ -210,7 +210,7 @@ macro_rules! __og_host_bindings_base {
                 $crate::host_impl::answer($crate::og_world_spatial(world, desc))
             }
             fn og_world_state(&self, world: u32, name: String) -> String {
-                $crate::og_world_state(world, name)
+                $crate::host_impl::json($crate::og_world_state(world, name))
             }
             fn og_world_set_state(&self, world: u32, name: String, value: String) -> String {
                 $crate::host_impl::answer($crate::og_world_set_state(world, name, value))
@@ -354,7 +354,7 @@ macro_rules! __og_host_bindings_base {
                 $crate::host_impl::json($crate::og_transform_compose(position, quaternion, scale))
             }
             fn og_transform_decompose(&self, matrix: String) -> String {
-                $crate::og_transform_decompose(matrix)
+                $crate::host_impl::json($crate::og_transform_decompose(matrix))
             }
             fn og_transform_look_at(
                 &self,
@@ -407,13 +407,13 @@ macro_rules! __og_host_bindings_base {
                 $crate::og_rng_stream_weighted(rng_stream, weights)
             }
             fn og_rng_stream_permutation(&self, rng_stream: u32, n: u32) -> String {
-                $crate::og_rng_stream_permutation(rng_stream, n)
+                $crate::host_impl::json($crate::og_rng_stream_permutation(rng_stream, n))
             }
             fn og_rng_weighted(&self, world: u32, weights: String) -> i32 {
                 $crate::og_rng_weighted(world, weights)
             }
             fn og_rng_permutation(&self, world: u32, n: u32) -> String {
-                $crate::og_rng_permutation(world, n)
+                $crate::host_impl::json($crate::og_rng_permutation(world, n))
             }
         }
 
@@ -446,7 +446,7 @@ macro_rules! __og_host_bindings_base {
                 $crate::host_impl::json($crate::og_story_history(world, conversation))
             }
             fn og_story_conversations(&self, world: u32) -> String {
-                $crate::og_story_conversations(world)
+                $crate::host_impl::json($crate::og_story_conversations(world))
             }
             fn og_story_advance(&self, world: u32, conversation: u32) -> String {
                 $crate::host_impl::answer($crate::og_story_advance(world, conversation))
@@ -458,7 +458,7 @@ macro_rules! __og_host_bindings_base {
                 $crate::og_story_stop(world, conversation)
             }
             fn og_story_get(&self, world: u32, name: String) -> String {
-                $crate::og_story_get(world, name)
+                $crate::host_impl::json($crate::og_story_get(world, name))
             }
             fn og_story_set(&self, world: u32, name: String, value: String) -> String {
                 $crate::host_impl::answer($crate::og_story_set(world, name, value))
@@ -527,7 +527,7 @@ macro_rules! __og_host_bindings_base {
                 $crate::host_impl::answer($crate::og_input_intent(world, event, payload))
             }
             fn og_input_take_intents(&self, world: u32) -> String {
-                $crate::og_input_take_intents(world)
+                $crate::host_impl::json($crate::og_input_take_intents(world))
             }
             fn og_input_replay_intent(&self, world: u32, intent: String) -> String {
                 $crate::host_impl::answer($crate::og_input_replay_intent(world, intent))
@@ -563,7 +563,7 @@ macro_rules! __og_host_bindings_base {
                 $crate::og_input_set_action_maps(world, contexts)
             }
             fn og_input_action_maps(&self, world: u32) -> String {
-                $crate::og_input_action_maps(world)
+                $crate::host_impl::json($crate::og_input_action_maps(world))
             }
             fn og_input_rebind(&self, world: u32, desc: Option<String>) -> String {
                 $crate::host_impl::answer($crate::og_input_rebind(world, desc))
@@ -596,7 +596,7 @@ macro_rules! __og_host_bindings_base {
                 $crate::host_impl::answer($crate::og_input_apply_capture(world, policy))
             }
             fn og_input_glyph(&self, world: u32, action: String, device: Option<String>) -> String {
-                $crate::og_input_glyph(world, action, device)
+                $crate::host_impl::json($crate::og_input_glyph(world, action, device))
             }
             fn og_input_glyphs(
                 &self,
@@ -604,16 +604,16 @@ macro_rules! __og_host_bindings_base {
                 action: String,
                 device: Option<String>,
             ) -> String {
-                $crate::og_input_glyphs(world, action, device)
+                $crate::host_impl::json($crate::og_input_glyphs(world, action, device))
             }
             fn og_input_control_glyph(&self, control: String, device: Option<String>) -> String {
-                $crate::og_input_control_glyph(control, device)
+                $crate::host_impl::json($crate::og_input_control_glyph(control, device))
             }
             fn og_input_device(&self, world: u32) -> String {
                 $crate::og_input_device(world)
             }
             fn og_input_pad_device(&self, world: u32, pad: u32) -> String {
-                $crate::og_input_pad_device(world, pad)
+                $crate::host_impl::json($crate::og_input_pad_device(world, pad))
             }
             fn og_input_set_deadzones(&self, world: u32, desc: Option<String>) -> String {
                 $crate::host_impl::answer($crate::og_input_set_deadzones(world, desc))
@@ -856,7 +856,7 @@ macro_rules! __og_host_bindings_base {
                 $crate::host_impl::answer($crate::og_render_light2d_at(world, point, layers))
             }
             fn og_render_baked_lighting(&self, world: u32) -> String {
-                $crate::og_render_baked_lighting(world)
+                $crate::host_impl::json($crate::og_render_baked_lighting(world))
             }
             fn og_render_sprite(&self, world: u32, desc: Option<String>) -> String {
                 $crate::host_impl::answer($crate::og_render_sprite(world, desc))
@@ -876,7 +876,7 @@ macro_rules! __og_host_bindings_base {
                 $crate::host_impl::answer($crate::og_render_update_material(world, material, desc))
             }
             fn og_render_capabilities(&self, world: u32) -> String {
-                $crate::og_render_capabilities(world)
+                $crate::host_impl::json($crate::og_render_capabilities(world))
             }
             fn og_render_render_target(&self, world: u32, desc: Option<String>) -> String {
                 $crate::host_impl::answer($crate::og_render_render_target(world, desc))
@@ -910,10 +910,10 @@ macro_rules! __og_host_bindings_base {
                 $crate::host_impl::answer($crate::og_render_reset_display(world))
             }
             fn og_render_display(&self, world: u32) -> String {
-                $crate::og_render_display(world)
+                $crate::host_impl::json($crate::og_render_display(world))
             }
             fn og_render_look(&self, world: u32) -> String {
-                $crate::og_render_look(world)
+                $crate::host_impl::json($crate::og_render_look(world))
             }
             fn og_render_snap(&self, world: u32, entity: f64) -> String {
                 $crate::host_impl::answer($crate::og_render_snap(world, entity))
@@ -1000,7 +1000,7 @@ macro_rules! __og_host_bindings_base {
                 $crate::host_impl::answer($crate::og_load_video_info(world, video))
             }
             fn og_load_error(&self, world: u32, asset: f64) -> String {
-                $crate::og_load_error(world, asset)
+                $crate::host_impl::json($crate::og_load_error(world, asset))
             }
             fn og_load_lut(&self, world: u32, path: String) -> String {
                 $crate::host_impl::answer($crate::og_load_lut(world, path))
@@ -1096,7 +1096,7 @@ macro_rules! __og_host_bindings_base {
             }
 
             fn og_load_completions(&self, world: u32) -> String {
-                $crate::og_load_completions(world)
+                $crate::host_impl::json($crate::og_load_completions(world))
             }
 
             fn og_load_replay_completions(&self, world: u32, completions: String) -> String {
@@ -1169,7 +1169,7 @@ macro_rules! __og_host_bindings_base {
                 $crate::og_tween_timeline_get_tween(tween_timeline)
             }
             fn og_tween_timeline_get_error(&self, tween_timeline: u32) -> String {
-                $crate::og_tween_timeline_get_error(tween_timeline)
+                $crate::host_impl::json($crate::og_tween_timeline_get_error(tween_timeline))
             }
             fn og_tween_timeline_to(
                 &self,
@@ -1367,7 +1367,9 @@ macro_rules! __og_host_bindings_base {
                 force: String,
                 point: Option<String>,
             ) -> String {
-                $crate::og_physics_apply_force(world, entity, force, point)
+                $crate::host_impl::answer($crate::og_physics_apply_force(
+                    world, entity, force, point,
+                ))
             }
             fn og_physics_apply_impulse(
                 &self,
@@ -1376,10 +1378,12 @@ macro_rules! __og_host_bindings_base {
                 impulse: String,
                 point: Option<String>,
             ) -> String {
-                $crate::og_physics_apply_impulse(world, entity, impulse, point)
+                $crate::host_impl::answer($crate::og_physics_apply_impulse(
+                    world, entity, impulse, point,
+                ))
             }
             fn og_physics_apply_torque(&self, world: u32, entity: f64, torque: String) -> String {
-                $crate::og_physics_apply_torque(world, entity, torque)
+                $crate::host_impl::answer($crate::og_physics_apply_torque(world, entity, torque))
             }
             fn og_physics_apply_torque_impulse(
                 &self,
@@ -1387,7 +1391,9 @@ macro_rules! __og_host_bindings_base {
                 entity: f64,
                 torque: String,
             ) -> String {
-                $crate::og_physics_apply_torque_impulse(world, entity, torque)
+                $crate::host_impl::answer($crate::og_physics_apply_torque_impulse(
+                    world, entity, torque,
+                ))
             }
             fn og_physics_ragdoll_rig_from_skeleton(&self, world: u32, skeleton: f64) -> String {
                 $crate::host_impl::answer($crate::og_physics_ragdoll_rig_from_skeleton(
@@ -1439,7 +1445,7 @@ macro_rules! __og_host_bindings_base {
                 $crate::host_impl::json($crate::og_ui_theme(world))
             }
             fn og_ui_define_mass(&self, name: String, desc: Option<String>) -> String {
-                $crate::og_ui_define_mass(name, desc)
+                $crate::host_impl::answer($crate::og_ui_define_mass(name, desc))
             }
             fn og_ui_spawn_mass(&self, template: u32, instances: String) {
                 $crate::og_ui_spawn_mass(template, instances)
@@ -1540,7 +1546,7 @@ macro_rules! __og_host_bindings_base {
             }
 
             fn og_ui_a11y(&self) -> String {
-                $crate::og_ui_a11y()
+                $crate::host_impl::json($crate::og_ui_a11y())
             }
             fn og_ui_tick(&self) -> u32 {
                 $crate::og_ui_tick()
@@ -1615,13 +1621,13 @@ macro_rules! __og_host_bindings_base {
                 $crate::og_ui_clear(world)
             }
             fn og_ui_layers(&self, world: u32) -> String {
-                $crate::og_ui_layers(world)
+                $crate::host_impl::json($crate::og_ui_layers(world))
             }
             fn og_ui_screen_vm(&self, world: u32, screen: String) -> String {
-                $crate::og_ui_screen_vm(world, screen)
+                $crate::host_impl::json($crate::og_ui_screen_vm(world, screen))
             }
             fn og_ui_doc_events(&self, world: u32) -> String {
-                $crate::og_ui_doc_events(world)
+                $crate::host_impl::json($crate::og_ui_doc_events(world))
             }
             fn og_ui_game_input(&self, world: u32) -> bool {
                 $crate::og_ui_game_input(world)
@@ -1642,7 +1648,7 @@ macro_rules! __og_host_bindings_base {
                 $crate::host_impl::json($crate::og_ui_glyph(world, action))
             }
             fn og_ui_frame_glyph(&self, action: String) -> String {
-                $crate::og_ui_frame_glyph(action)
+                $crate::host_impl::json($crate::og_ui_frame_glyph(action))
             }
             fn og_ui_device(&self, world: u32) -> String {
                 $crate::og_ui_device(world)
@@ -1654,7 +1660,7 @@ macro_rules! __og_host_bindings_base {
                 $crate::og_ui_set_device(world, device)
             }
             fn og_ui_action_bar(&self, world: u32) -> String {
-                $crate::og_ui_action_bar(world)
+                $crate::host_impl::json($crate::og_ui_action_bar(world))
             }
             fn og_ui_document_schema(&self) -> String {
                 $crate::og_ui_document_schema()

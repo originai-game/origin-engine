@@ -192,10 +192,8 @@ pub fn og_input_set_action_maps(world: u32, contexts: String) {
     let _ = on_map(world, |m| m.set_contexts(list));
 }
 
-pub fn og_input_action_maps(world: u32) -> String {
-    on_map(world, |m| json!(m.contexts()))
-        .unwrap_or_else(|_| json!([]))
-        .to_string()
+pub fn og_input_action_maps(world: u32) -> Vec<String> {
+    on_map(world, |m| m.contexts().to_vec()).unwrap_or_default()
 }
 
 pub fn og_input_rebind(
@@ -293,43 +291,39 @@ fn glyphs_of(world: u32, action: &str, device: Option<String>) -> Result<Option<
     })
 }
 
-pub fn og_input_glyph(world: u32, action: String, device: Option<String>) -> String {
+pub fn og_input_glyph(
+    world: u32,
+    action: String,
+    device: Option<String>,
+) -> Option<wire::InputGlyph> {
+    let (parts, d) = glyphs_of(world, &action, device).ok()??;
+    let g = og_input::combined_glyph(&parts, d)?;
+    let names: Vec<&str> = parts.iter().map(|(_, n)| n.as_str()).collect();
+    Some(input_glyph(&g, d, &names.join(" ")))
+}
+
+pub fn og_input_glyphs(
+    world: u32,
+    action: String,
+    device: Option<String>,
+) -> Vec<wire::InputGlyph> {
     match glyphs_of(world, &action, device) {
-        Ok(Some((parts, d))) => match og_input::combined_glyph(&parts, d) {
-            Some(g) => {
-                let names: Vec<&str> = parts.iter().map(|(_, n)| n.as_str()).collect();
-                wire::text_of(&input_glyph(&g, d, &names.join(" ")))
-            }
-            None => "null".into(),
-        },
-        _ => "null".into(),
+        Ok(Some((parts, d))) => parts
+            .iter()
+            .map(|(g, name)| input_glyph(g, d, name))
+            .collect(),
+        _ => Vec::new(),
     }
 }
 
-pub fn og_input_glyphs(world: u32, action: String, device: Option<String>) -> String {
-    match glyphs_of(world, &action, device) {
-        Ok(Some((parts, d))) => wire::text_of(
-            &parts
-                .iter()
-                .map(|(g, name)| input_glyph(g, d, name))
-                .collect::<Vec<_>>(),
-        ),
-        _ => "[]".into(),
-    }
-}
-
-pub fn og_input_control_glyph(control: String, device: Option<String>) -> String {
-    let Ok(device) = device_of(device) else {
-        return "null".into();
-    };
-    let Some(c) = Control::parse(&control) else {
-        return "null".into();
-    };
+pub fn og_input_control_glyph(control: String, device: Option<String>) -> Option<wire::InputGlyph> {
+    let device = device_of(device).ok()?;
+    let c = Control::parse(&control)?;
     let d = device.unwrap_or(match c.class() {
         Device::Gamepad => Device::Xbox,
         other => other,
     });
-    wire::text_of(&input_glyph(&c.glyph(d), d, &control))
+    Some(input_glyph(&c.glyph(d), d, &control))
 }
 
 pub fn og_input_device(world: u32) -> String {
@@ -337,13 +331,13 @@ pub fn og_input_device(world: u32) -> String {
         .unwrap_or_else(|_| Device::KeyboardMouse.name().to_string())
 }
 
-pub fn og_input_pad_device(world: u32, pad: u32) -> String {
+pub fn og_input_pad_device(world: u32, pad: u32) -> Option<String> {
     let device = input_res(
         world,
         |g: &og_input::Gamepad| g.is_connected(pad).then(|| g.device(pad)).flatten(),
         None,
     );
-    device.map_or_else(|| "null".into(), |d| json!(d.name()).to_string())
+    device.map(|d| d.name().to_string())
 }
 
 pub fn og_input_set_deadzones(world: u32, desc: Option<String>) -> Result<(), String> {

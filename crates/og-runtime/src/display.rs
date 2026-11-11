@@ -507,17 +507,13 @@ pub fn og_render_reset_display(world: u32) -> Result<(), String> {
 }
 
 /// `og.render.display`.
-pub fn og_render_display(world: u32) -> String {
-    let Ok(eng) = engine(world) else {
-        return Value::Null.to_string();
-    };
-    let Ok(rs) = eng.render.try_borrow() else {
-        return Value::Null.to_string();
-    };
+pub fn og_render_display(world: u32) -> Option<wire::DisplayInfo> {
+    let eng = engine(world).ok()?;
+    let rs = eng.render.try_borrow().ok()?;
     let d = &rs.display;
     let presenting = rs.backend.as_ref().is_some_and(|b| b.presents());
     let (w, h) = rs.backend.as_ref().map_or((0, 0), |b| b.scene_size());
-    wire::text_of(&wire::DisplayInfo {
+    Some(wire::DisplayInfo {
         settings: d.settings.wire(),
         presenting,
         max_fps: max_fps(&rs),

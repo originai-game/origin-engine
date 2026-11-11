@@ -28,7 +28,7 @@ fn entity_list(list: Vec<Entity>) -> Value {
     Value::Array(list.into_iter().map(|e| json!(e.to_bits())).collect())
 }
 
-pub fn og_world_children(world: u32, entity_id: f64) -> String {
+pub fn og_world_children(world: u32, entity_id: f64) -> Value {
     let list = (|| -> Result<Vec<Entity>, String> {
         let eng = engine(world)?;
         let Ok(e) = entity(entity_id) else {
@@ -50,7 +50,7 @@ pub fn og_world_children(world: u32, entity_id: f64) -> String {
         }
         w.referencing(field, e).map_err(err)
     })();
-    entity_list(list.unwrap_or_default()).to_string()
+    entity_list(list.unwrap_or_default())
 }
 
 pub fn og_world_removed(world: u32, comp: String) -> Result<serde_json::Value, String> {
@@ -162,8 +162,8 @@ pub fn og_spatial_index_nearest(h: u32, c: String, count: u32) -> Vec<crate::wir
     neighbours(with_index(h, |i| i.nearest(c, count as usize)).unwrap_or_default())
 }
 
-pub fn og_world_state(world: u32, name: String) -> String {
-    let value = (|| -> Result<String, String> {
+pub fn og_world_state(world: u32, name: String) -> Option<String> {
+    (|| -> Result<String, String> {
         if let Some(f) = running(world) {
             // SAFETY: the frame is published while its system runs.
             return unsafe { f.ctx() }
@@ -173,11 +173,8 @@ pub fn og_world_state(world: u32, name: String) -> String {
         }
         let eng = engine(world)?;
         eng.world()?.state(&name).map(str::to_string).map_err(err)
-    })();
-    match value {
-        Ok(v) => json!(v).to_string(),
-        Err(_) => "null".into(),
-    }
+    })()
+    .ok()
 }
 
 pub fn og_world_set_state(world: u32, name: String, value: String) -> Result<(), String> {

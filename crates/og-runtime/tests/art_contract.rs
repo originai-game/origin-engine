@@ -101,7 +101,7 @@ impl Hooks for Host {
 
 /// og.render.look's name (an Option, not a Result, on the wire).
 fn look_name(e: u32) -> Value {
-    serde_json::from_str::<Value>(&og_render_look(e)).unwrap()["name"].clone()
+    og_render_look(e).unwrap_or(Value::Null)["name"].clone()
 }
 
 fn field(e: u32, resource: &str, name: &str) -> Value {

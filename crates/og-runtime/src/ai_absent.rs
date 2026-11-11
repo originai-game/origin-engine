@@ -27,8 +27,8 @@ pub fn og_ai_parse(_world: u32, _text: String) -> Result<crate::wire::BehaviourI
     Err(ABSENT.into())
 }
 
-pub fn og_ai_get(_world: u32, _entity: f64, _key: String) -> String {
-    Value::Null.to_string()
+pub fn og_ai_get(_world: u32, _entity: f64, _key: String) -> Option<Value> {
+    None
 }
 
 pub fn og_ai_set(_world: u32, _entity: f64, _key: String, _value: String) -> Result<(), String> {

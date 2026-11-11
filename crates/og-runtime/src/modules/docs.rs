@@ -12,7 +12,7 @@
 use super::super::engine::{Engine, engine};
 use super::super::parse;
 use super::{BUILDING, ui_of, with_ui};
-use crate::wire;
+use crate::wire::{self, ToJson};
 use og_ui::{ActionDesc, ActionTrigger, Device, SharedUi, Ui, UiDocument};
 use serde_json::{Map, Value, json};
 use std::cell::{Cell, RefCell};
@@ -632,40 +632,34 @@ fn layer_wire(l: &og_ui::LayerInfo) -> crate::wire::UiLayer {
     }
 }
 
-pub fn og_ui_layers(world: u32) -> String {
+pub fn og_ui_layers(world: u32) -> Vec<wire::UiLayer> {
     on_ui(world, |ui| {
-        wire::text_of(&ui.layer_stack().iter().map(layer_wire).collect::<Vec<_>>())
+        ui.layer_stack().iter().map(layer_wire).collect()
     })
-    .unwrap_or_else(|_| "[]".into())
+    .unwrap_or_default()
 }
 
-pub fn og_ui_screen_vm(world: u32, screen: String) -> String {
-    on_ui(world, |ui| {
-        ui.screen_vm(&screen)
-            .cloned()
-            .unwrap_or(Value::Null)
-            .to_string()
-    })
-    .unwrap_or_else(|_| "null".into())
+pub fn og_ui_screen_vm(world: u32, screen: String) -> Option<Value> {
+    on_ui(world, |ui| ui.screen_vm(&screen).cloned())
+        .ok()
+        .flatten()
 }
 
-pub fn og_ui_doc_events(world: u32) -> String {
+pub fn og_ui_doc_events(world: u32) -> Vec<wire::UiDocEvent> {
     on_ui(world, |ui| {
-        wire::text_of(
-            &ui.take_doc_events()
-                .into_iter()
-                .map(|e| wire::UiDocEvent {
-                    mount: e.mount,
-                    path: e.path,
-                    row_key: e.row_key,
-                    kind: e.kind,
-                    name: e.name,
-                    value: e.value,
-                })
-                .collect::<Vec<_>>(),
-        )
+        ui.take_doc_events()
+            .into_iter()
+            .map(|e| wire::UiDocEvent {
+                mount: e.mount,
+                path: e.path,
+                row_key: e.row_key,
+                kind: e.kind,
+                name: e.name,
+                value: e.value,
+            })
+            .collect()
     })
-    .unwrap_or_else(|_| "[]".into())
+    .unwrap_or_default()
 }
 
 pub fn og_ui_game_input(world: u32) -> bool {
@@ -728,13 +722,13 @@ pub fn og_ui_glyph(world: u32, action: String) -> Option<crate::wire::UiGlyph> {
     on_ui(world, |ui| glyph_wire(ui, &action)).ok().flatten()
 }
 
-pub fn og_ui_frame_glyph(action: String) -> String {
+pub fn og_ui_frame_glyph(action: String) -> Value {
     let g = with_ui("og.ui.frameGlyph", |ui| glyph_wire(ui, &action)).flatten();
     // Not a UI action: a gameplay action of og.input, on the device used
     // last in the world whose frame is being built (an ability slot's key).
     match (g, BUILDING.with(Cell::get)) {
-        (None, Some(world)) => super::super::og_input_glyph(world, action, None),
-        (g, _) => wire::text_of(&g),
+        (None, Some(world)) => super::super::og_input_glyph(world, action, None).to_json(),
+        (g, _) => g.to_json(),
     }
 }
 
@@ -761,22 +755,20 @@ pub fn og_ui_set_device(world: u32, device: String) {
     }
 }
 
-pub fn og_ui_action_bar(world: u32) -> String {
+pub fn og_ui_action_bar(world: u32) -> Vec<wire::UiActionHint> {
     on_ui(world, |ui| {
-        wire::text_of(
-            &ui.action_bar()
-                .into_iter()
-                .map(|h| wire::UiActionHint {
-                    action: h.action,
-                    hint: h.hint,
-                    icon: h.glyph.icon,
-                    text: h.glyph.text,
-                    hold: h.hold,
-                })
-                .collect::<Vec<_>>(),
-        )
+        ui.action_bar()
+            .into_iter()
+            .map(|h| wire::UiActionHint {
+                action: h.action,
+                hint: h.hint,
+                icon: h.glyph.icon,
+                text: h.glyph.text,
+                hold: h.hold,
+            })
+            .collect()
     })
-    .unwrap_or_else(|_| "[]".into())
+    .unwrap_or_default()
 }
 
 pub fn og_ui_document_schema() -> String {

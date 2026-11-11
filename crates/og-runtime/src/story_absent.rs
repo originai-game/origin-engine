@@ -85,8 +85,8 @@ pub fn og_story_history(_world: u32, _conversation: u32) -> Vec<crate::wire::Sto
     Vec::new()
 }
 
-pub fn og_story_conversations(_world: u32) -> String {
-    json!([]).to_string()
+pub fn og_story_conversations(_world: u32) -> Vec<u32> {
+    Vec::new()
 }
 
 pub fn og_story_advance(_world: u32, _conversation: u32) -> Result<(), String> {
@@ -117,8 +117,8 @@ pub fn og_story_set_saliency(_world: u32, _strategy: String) -> Result<(), Strin
     Err(ABSENT.into())
 }
 
-pub fn og_story_get(_world: u32, _name: String) -> String {
-    Value::Null.to_string()
+pub fn og_story_get(_world: u32, _name: String) -> Option<Value> {
+    None
 }
 
 pub fn og_story_set(_world: u32, _name: String, _value: String) -> Result<(), String> {

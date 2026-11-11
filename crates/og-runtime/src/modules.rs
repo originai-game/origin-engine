@@ -34,7 +34,7 @@ mod widgets;
 pub(crate) use widgets::emit;
 mod game_widgets;
 use crate::{art, assets, extract};
-pub(crate) use game_widgets::a11y_json;
+pub(crate) use game_widgets::a11y_tree;
 use game_widgets::ui_of;
 pub use game_widgets::{
     og_ui_a11y, og_ui_back, og_ui_bounds, og_ui_dismiss_toast, og_ui_feedback, og_ui_focus,

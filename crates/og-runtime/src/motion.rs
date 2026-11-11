@@ -31,7 +31,7 @@ use super::engine::{Engine, Mount, engine};
 use super::parse;
 use super::wire::{
     self, FaceGoalDesc, JumpGoalDesc, MotionBackend, MotionCapabilities, MotionGoalKind,
-    MotionStatus, PlaceGoalDesc, PoseGoalDesc, WalkGoalDesc,
+    MotionStatus, PlaceGoalDesc, PoseGoalDesc, ToJson, WalkGoalDesc,
 };
 use glam::{Quat, Vec3};
 use og_core::math::{atan2, sin_cos};
@@ -1258,14 +1258,15 @@ pub fn og_motion_presentation(world: u32, entity: f64) -> Result<serde_json::Val
     })()
 }
 
-pub fn og_motion_capabilities(world: u32) -> String {
+pub fn og_motion_capabilities(world: u32) -> Value {
     match engine(world) {
-        Ok(eng) => present::capabilities(&eng).to_string(),
-        Err(e) => wire::text_of(&MotionCapabilities {
+        Ok(eng) => present::capabilities(&eng),
+        Err(e) => MotionCapabilities {
             backend: MotionBackend::None,
             reason: e,
             model_bytes: 0.0,
-        }),
+        }
+        .to_json(),
     }
 }
 
@@ -1286,8 +1287,8 @@ pub fn og_motion_set_backend(world: u32, backend: String) -> Result<serde_json::
     }
 }
 
-pub fn og_motion_poses() -> String {
-    json!(POSES).to_string()
+pub fn og_motion_poses() -> Value {
+    json!(POSES)
 }
 
 /// The probe's `dump_motion`: every agent's goals (the simulation's) and

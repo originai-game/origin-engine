@@ -13,8 +13,8 @@
 //! host input, which a replay with the same answers repeats.
 
 use super::engine::{engine, running};
-use super::wire::{self, PlatformError, PlatformInfo, PlatformNoticeData, PlatformResult, ToJson};
-use super::{ok, parse, refuse};
+use super::parse;
+use super::wire::{PlatformError, PlatformInfo, PlatformNoticeData, PlatformResult, ToJson};
 use og_core::IdMap;
 use og_core::Reflect;
 use og_ecs::{SystemDesc, World};
@@ -238,11 +238,8 @@ fn issue(
     Ok(id)
 }
 
-fn request(world: u32, method: &str, args: Value) -> String {
-    match call(world, method, args, false) {
-        Ok(id) => ok(json!(id)),
-        Err(e) => refuse(e),
-    }
+fn request(world: u32, method: &str, args: Value) -> Result<u32, String> {
+    call(world, method, args, false)
 }
 
 fn valid_key(key: &str) -> bool {
@@ -261,30 +258,27 @@ fn board_of(board: String) -> String {
     }
 }
 
-pub fn og_platform_store_get(world: u32, key: String) -> String {
+pub fn og_platform_store_get(world: u32, key: String) -> Result<u32, String> {
     if !valid_key(&key) {
-        return refuse(format!(
+        return Err(format!(
             "'{key}' is not a store key: 1 to 64 of letters, digits, '.', '_' and '-'"
         ));
     }
     request(world, "store.get", json!({ "key": key }))
 }
 
-pub fn og_platform_store_set(world: u32, desc: Option<String>) -> String {
-    let d: super::wire::StoreSetDesc = match super::wire::arg(desc.as_deref(), "desc") {
-        Ok(d) => d,
-        Err(e) => return refuse(e),
-    };
+pub fn og_platform_store_set(world: u32, desc: Option<String>) -> Result<u32, String> {
+    let d: super::wire::StoreSetDesc = super::wire::arg(desc.as_deref(), "desc")?;
     let key = d.key;
     if !valid_key(&key) {
-        return refuse(format!(
+        return Err(format!(
             "'{key}' is not a store key: 1 to 64 of letters, digits, '.', '_' and '-'"
         ));
     }
     let value = d.value;
     let size = value.to_string().len();
     if size > MAX_VALUE {
-        return refuse(format!(
+        return Err(format!(
             "the value is {size} bytes encoded; a store value is at most {MAX_VALUE}"
         ));
     }
@@ -304,14 +298,13 @@ pub fn og_platform_load_settings(world: u32) -> u32 {
     call(world, "store.get", json!({ "key": SETTINGS_KEY }), false).unwrap_or(0)
 }
 
-pub fn og_platform_save_settings(world: u32, value: String) -> String {
-    let v = match parse(Some(&value)) {
-        Ok(v) if v.is_object() => v,
-        Ok(_) => return refuse("settings are an object: { volume: 0.8, ... }"),
-        Err(e) => return refuse(e),
-    };
+pub fn og_platform_save_settings(world: u32, value: String) -> Result<u32, String> {
+    let v = parse(Some(&value))?;
+    if !v.is_object() {
+        return Err("settings are an object: { volume: 0.8, ... }".into());
+    }
     if v.to_string().len() > MAX_VALUE {
-        return refuse(format!("settings are at most {MAX_VALUE} bytes encoded"));
+        return Err(format!("settings are at most {MAX_VALUE} bytes encoded"));
     }
     request(
         world,
@@ -324,15 +317,12 @@ pub fn og_platform_store_list(world: u32) -> u32 {
     call(world, "store.list", json!({}), false).unwrap_or(0)
 }
 
-pub fn og_platform_leaderboard_submit(world: u32, desc: Option<String>) -> String {
-    let d: super::wire::LeaderboardSubmitDesc = match super::wire::arg(desc.as_deref(), "desc") {
-        Ok(d) => d,
-        Err(e) => return refuse(e),
-    };
+pub fn og_platform_leaderboard_submit(world: u32, desc: Option<String>) -> Result<u32, String> {
+    let d: super::wire::LeaderboardSubmitDesc = super::wire::arg(desc.as_deref(), "desc")?;
     let score = match d.score {
         Some(s) if s.is_finite() => s,
-        Some(s) => return refuse(format!("desc.score: expected a finite number, got {s}")),
-        None => return refuse("desc.score: expected a finite number, got nothing"),
+        Some(s) => return Err(format!("desc.score: expected a finite number, got {s}")),
+        None => return Err("desc.score: expected a finite number, got nothing".into()),
     };
     request(
         world,
@@ -412,14 +402,11 @@ pub fn og_platform_telemetry(
     }
 }
 
-pub fn og_platform_point(world: u32, desc: Option<String>) -> String {
-    let d: super::wire::PointDesc = match super::wire::arg(desc.as_deref(), "desc") {
-        Ok(d) => d,
-        Err(e) => return refuse(e),
-    };
+pub fn og_platform_point(world: u32, desc: Option<String>) -> Result<u32, String> {
+    let d: super::wire::PointDesc = super::wire::arg(desc.as_deref(), "desc")?;
     let reason = d.reason.trim().to_string();
     if reason.is_empty() || !valid_key(&reason) {
-        return refuse(format!(
+        return Err(format!(
             "'{reason}' is not a reason: 1 to 64 of letters, digits, '.', '_' and '-', as `level.completed`"
         ));
     }
@@ -431,11 +418,8 @@ pub fn og_platform_point(world: u32, desc: Option<String>) -> String {
     )
 }
 
-pub fn og_platform_ai_mark(world: u32, desc: Option<String>) -> String {
-    let d: super::wire::AiMarkDesc = match super::wire::arg(desc.as_deref(), "desc") {
-        Ok(d) => d,
-        Err(e) => return refuse(e),
-    };
+pub fn og_platform_ai_mark(world: u32, desc: Option<String>) -> Result<u32, String> {
+    let d: super::wire::AiMarkDesc = super::wire::arg(desc.as_deref(), "desc")?;
     let kind = d.kind.trim().to_string();
     let label = d.label.trim().to_string();
     let kind_ok = kind.len() <= 32
@@ -444,14 +428,12 @@ pub fn og_platform_ai_mark(world: u32, desc: Option<String>) -> String {
             .bytes()
             .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || matches!(c, b'_' | b'-'));
     if !kind_ok || label.is_empty() || label.chars().count() > 120 {
-        return refuse(
-            "an AI mark needs a kind (1 to 32 of a-z, 0-9, '_' and '-', a letter first: `text`, `image`) and a label of 1 to 120 characters",
-        );
+        return Err("an AI mark needs a kind (1 to 32 of a-z, 0-9, '_' and '-', a letter first: `text`, `image`) and a label of 1 to 120 characters".into());
     }
     let mut args = json!({ "kind": kind, "label": label });
     if let Some(m) = Some(d.model.as_str()).filter(|m| !m.is_empty()) {
         if m.chars().count() > 80 {
-            return refuse("an AI mark's model is at most 80 characters");
+            return Err("an AI mark's model is at most 80 characters".into());
         }
         args["model"] = json!(m);
     }
@@ -515,12 +497,15 @@ fn part_key(slot: &str, bank: &str, i: usize) -> String {
     format!("{slot}.{bank}{i}")
 }
 
-fn start_slot(world: u32, method: &str, slot: &str, args: Value, op: SlotOp) -> String {
-    let tick = match tick_now(world) {
-        Ok(t) => t,
-        Err(e) => return refuse(e),
-    };
-    let started = with(world, |p| {
+fn start_slot(
+    world: u32,
+    method: &str,
+    slot: &str,
+    args: Value,
+    op: SlotOp,
+) -> Result<u32, String> {
+    let tick = tick_now(world)?;
+    with(world, |p| {
         let outer = issue(p, method, args, tick, false, true)?;
         let get = match issue(p, "store.get", json!({ "key": slot }), tick, false, false) {
             Ok(id) => id,
@@ -538,26 +523,17 @@ fn start_slot(world: u32, method: &str, slot: &str, args: Value, op: SlotOp) -> 
             },
         );
         Ok(outer)
-    });
-    match started {
-        Ok(id) => ok(json!(id)),
-        Err(e) => refuse(e),
-    }
+    })
 }
 
-pub fn og_platform_save_slot(world: u32, desc: Option<String>) -> String {
-    let d: super::wire::SaveSlotDesc = match super::wire::arg(desc.as_deref(), "desc") {
-        Ok(d) => d,
-        Err(e) => return refuse(e),
-    };
+pub fn og_platform_save_slot(world: u32, desc: Option<String>) -> Result<u32, String> {
+    let d: super::wire::SaveSlotDesc = super::wire::arg(desc.as_deref(), "desc")?;
     let slot = d.slot;
-    if let Err(e) = valid_slot(&slot) {
-        return refuse(e);
-    }
+    valid_slot(&slot)?;
     let text = d.text;
     let parts = split(&text).len();
     if parts > MAX_PARTS {
-        return refuse(format!(
+        return Err(format!(
             "the text is {} bytes, {parts} parts of a store key's 64 KiB; a slot holds at most {MAX_PARTS} (512 KiB): save a selection (world.snapshot's SnapshotDesc) of what the game keeps",
             text.len()
         ));
@@ -565,7 +541,7 @@ pub fn og_platform_save_slot(world: u32, desc: Option<String>) -> String {
     let meta = d.meta;
     let meta_size = meta.to_string().len();
     if meta_size > MAX_META {
-        return refuse(format!(
+        return Err(format!(
             "the meta is {meta_size} bytes encoded; a slot's meta is at most {MAX_META}"
         ));
     }
@@ -573,15 +549,10 @@ pub fn og_platform_save_slot(world: u32, desc: Option<String>) -> String {
     start_slot(world, "slot.save", &slot, args, SlotOp::Save { text, meta })
 }
 
-pub fn og_platform_load_slot(world: u32, desc: Option<String>) -> String {
-    let d: super::wire::LoadSlotDesc = match super::wire::arg(desc.as_deref(), "desc") {
-        Ok(d) => d,
-        Err(e) => return refuse(e),
-    };
+pub fn og_platform_load_slot(world: u32, desc: Option<String>) -> Result<u32, String> {
+    let d: super::wire::LoadSlotDesc = super::wire::arg(desc.as_deref(), "desc")?;
     let slot = d.slot;
-    if let Err(e) = valid_slot(&slot) {
-        return refuse(e);
-    }
+    valid_slot(&slot)?;
     let meta_only = d.meta_only;
     let args = json!({ "slot": slot, "metaOnly": meta_only });
     start_slot(world, "slot.load", &slot, args, SlotOp::Load { meta_only })
@@ -874,27 +845,25 @@ pub(crate) fn withheld(world: u32) -> bool {
     true
 }
 
-pub fn og_platform_result(world: u32, request: u32) -> String {
+pub fn og_platform_result(world: u32, request: u32) -> Option<PlatformResult> {
     if withheld(world) {
-        return "null".into();
+        return None;
     }
     with(world, |p| {
-        wire::text_of(&p.log.get(&request).and_then(|r| result_of(request, r)))
+        p.log.get(&request).and_then(|r| result_of(request, r))
     })
 }
 
-pub fn og_platform_info(world: u32) -> String {
-    with(world, |p| {
-        wire::text_of(&PlatformInfo {
-            host: p.host.clone().unwrap_or_else(|| "none".into()),
-            capabilities: p.capabilities.clone(),
-            pending: p
-                .log
-                .values()
-                .filter(|r| r.answer.is_none() && !r.oneway)
-                .count() as u32,
-            clock: p.clock.clone().unwrap_or_else(|| "none".into()),
-        })
+pub fn og_platform_info(world: u32) -> PlatformInfo {
+    with(world, |p| PlatformInfo {
+        host: p.host.clone().unwrap_or_else(|| "none".into()),
+        capabilities: p.capabilities.clone(),
+        pending: p
+            .log
+            .values()
+            .filter(|r| r.answer.is_none() && !r.oneway)
+            .count() as u32,
+        clock: p.clock.clone().unwrap_or_else(|| "none".into()),
     })
 }
 
@@ -941,18 +910,18 @@ pub fn og_platform_now(world: u32) -> f64 {
     time + tick.saturating_sub(at) as f64 * tick_ms(world)
 }
 
-pub fn og_platform_notice(world: u32, notice: u32) -> String {
+pub fn og_platform_notice(world: u32, notice: u32) -> Option<PlatformNoticeData> {
     if withheld(world) {
-        return "null".into();
+        return None;
     }
     with(world, |p| {
-        wire::text_of(&p.notices.get(&notice).map(|n| PlatformNoticeData {
+        p.notices.get(&notice).map(|n| PlatformNoticeData {
             notice,
             kind: n.kind.clone(),
             data: n.data.clone(),
             tick: n.tick as u32,
             time: n.time,
-        }))
+        })
     })
 }
 
@@ -1192,6 +1161,29 @@ pub(crate) fn dump(engine: u32) -> Value {
 mod tests {
     use super::*;
     use std::collections::BTreeMap;
+
+    /// The bindings under test as the hosts send their answers.
+    macro_rules! sent {
+        ($($writer:ident $name:ident($($arg:ident: $t:ty),*);)*) => {$(
+            fn $name($($arg: $t),*) -> String {
+                crate::host_impl::$writer(super::$name($($arg),*))
+            }
+        )*};
+    }
+    sent! {
+        answer og_platform_store_get(world: u32, key: String);
+        answer og_platform_save_slot(world: u32, desc: Option<String>);
+        answer og_platform_load_slot(world: u32, desc: Option<String>);
+        answer og_platform_products(world: u32, desc: Option<String>);
+        answer og_platform_purchase(world: u32, desc: Option<String>);
+        answer og_platform_consume(world: u32, purchase: String);
+        answer og_platform_show_ad(world: u32, desc: Option<String>);
+        answer og_platform_achievement_progress(world: u32, desc: Option<String>);
+        answer og_platform_invite_send(world: u32, desc: Option<String>);
+        answer og_platform_share(world: u32, desc: Option<String>);
+        json og_platform_result(world: u32, request: u32);
+        json og_platform_notice(world: u32, notice: u32);
+    }
 
     fn value(answer: &str) -> Value {
         let v: Value = serde_json::from_str(answer).expect("JSON");

@@ -1,5 +1,5 @@
 use super::*;
-use crate::wire::{self, ToJson};
+use crate::wire;
 
 pub fn og_ui_bounds(path: String) -> Option<crate::wire::UiRect> {
     let b = with_ui("og.ui.bounds", |ui| {
@@ -175,7 +175,7 @@ pub fn og_ui_focus(pad: u32) -> String {
 /// The accessibility tree as JSON, its rectangles times `unit` (1: the
 /// game's units, as og.ui.a11y gives them; the frame's og-ui unit: CSS px,
 /// as the page's mirror places its nodes).
-pub(crate) fn a11y_json(t: &og_ui::A11yTree, unit: f32) -> Value {
+pub(crate) fn a11y_tree(t: &og_ui::A11yTree, unit: f32) -> wire::A11yTree {
     wire::A11yTree {
         nodes: t
             .nodes
@@ -204,12 +204,10 @@ pub(crate) fn a11y_json(t: &og_ui::A11yTree, unit: f32) -> Value {
         focus_order: t.focus_order.clone(),
         focused: t.focused.clone(),
     }
-    .to_json()
 }
 
-pub fn og_ui_a11y() -> String {
-    with_ui("og.ui.a11y", |ui| a11y_json(ui.a11y(), 1.0).to_string())
-        .unwrap_or_else(|| wire::text_of(&wire::A11yTree::default()))
+pub fn og_ui_a11y() -> wire::A11yTree {
+    with_ui("og.ui.a11y", |ui| a11y_tree(ui.a11y(), 1.0)).unwrap_or_default()
 }
 
 pub fn og_ui_tick() -> u32 {

@@ -467,6 +467,12 @@ impl ToJson for str {
     }
 }
 
+impl<T: ToJson + ?Sized> ToJson for &T {
+    fn to_json(&self) -> Value {
+        (**self).to_json()
+    }
+}
+
 impl ToJson for Value {
     fn to_json(&self) -> Value {
         self.clone()

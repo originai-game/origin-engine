@@ -160,9 +160,8 @@ pub fn og_tween_timeline_get_tween(h: u32) -> f64 {
     with_ref(h, |r| r.tween as f64).unwrap_or(0.0)
 }
 
-pub fn og_tween_timeline_get_error(h: u32) -> String {
-    with_ref(h, |r| json!(r.error).to_string())
-        .unwrap_or_else(|| json!("not a timeline").to_string())
+pub fn og_tween_timeline_get_error(h: u32) -> Option<String> {
+    with_ref(h, |r| r.error.clone()).unwrap_or_else(|| Some("not a timeline".into()))
 }
 
 #[derive(Clone, Copy, PartialEq)]

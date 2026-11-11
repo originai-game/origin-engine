@@ -43,7 +43,7 @@ macro_rules! __og_host_bindings_depth {
                 $crate::og_debug_set_view(world, view)
             }
             fn og_debug_view(&self, world: u32) -> String {
-                $crate::og_debug_view(world)
+                $crate::host_impl::json($crate::og_debug_view(world))
             }
             fn og_debug_set_enabled(&self, world: u32, enabled: bool) {
                 $crate::og_debug_set_enabled(world, enabled)

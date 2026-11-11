@@ -67,7 +67,7 @@ impl RenderBackend for Made {
 #[ignore = "requires GPU"]
 fn the_capabilities_report_what_the_renderer_was_made_without() {
     let without = |e: u32| {
-        let caps: Value = serde_json::from_str(&og_render_capabilities(e)).unwrap();
+        let caps: Value = og_render_capabilities(e);
         caps["without"].clone()
     };
     let e = engine(json!({ "without": ["decals", "areaLights"] }));

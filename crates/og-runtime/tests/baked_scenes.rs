@@ -233,7 +233,10 @@ fn instantiate(engine: u32, scene: &str) {
 
 /// `og.render.bakedLighting`: per scene, whether it is baked and why not.
 fn reported(engine: u32) -> Vec<(String, bool, String)> {
-    let list: Value = serde_json::from_str(&og_render_baked_lighting(engine)).unwrap();
+    let list: Value = serde_json::from_str(&og_runtime::host_impl::json(og_render_baked_lighting(
+        engine,
+    )))
+    .unwrap();
     list.as_array()
         .unwrap()
         .iter()

@@ -278,7 +278,8 @@ fn a11y_changed(eng: &Engine) -> Option<Value> {
         _ => Vec::new(),
     };
     st.a11y_sent = Some((frame, tree.clone()));
-    let mut json = super::modules::a11y_json(tree, ui.frame().unit.max(1.0));
+    let mut json =
+        crate::wire::ToJson::to_json(&super::modules::a11y_tree(tree, ui.frame().unit.max(1.0)));
     json["announce"] = Value::from(announce);
     Some(json)
 }
