@@ -538,7 +538,10 @@ impl Ui {
             let pointer = self.tree.orders.pointer_of[i];
             let svg = match pointer {
                 PointerEvents::Svg(bits)
-                    if self.draw_of(i).is_some_and(|d| d.view_box.is_some()) =>
+                    if self
+                        .paint
+                        .draw_of(i, &self.tree)
+                        .is_some_and(|d| d.view_box.is_some()) =>
                 {
                     Some(bits.0)
                 }
@@ -577,7 +580,7 @@ impl Ui {
             }
             svg.is_none_or(|bits| {
                 bits & SvgPointer::BOX != 0
-                    || self.draw_of(i).is_some_and(|d| {
+                    || self.paint.draw_of(i, &self.tree).is_some_and(|d| {
                         d.covers(
                             [n.rect.width, n.rect.height],
                             Vec2::new(x - n.rect.x, y - n.rect.y),

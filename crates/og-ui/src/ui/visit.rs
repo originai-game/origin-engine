@@ -464,9 +464,10 @@ impl Ui {
         let Some(i) = self.tree.index.find(h.key) else {
             return false;
         };
-        let (crate::element::PointerEvents::Svg(bits), Some(d)) =
-            (self.tree.orders.pointer_of[i], self.draw_of(i))
-        else {
+        let (crate::element::PointerEvents::Svg(bits), Some(d)) = (
+            self.tree.orders.pointer_of[i],
+            self.paint.draw_of(i, &self.tree),
+        ) else {
             return true;
         };
         let r = &self.tree.nodes[i].rect;
@@ -495,7 +496,10 @@ impl Ui {
             let (pass, shape) = match o.pointer_of[i] {
                 crate::element::PointerEvents::None => (true, None),
                 crate::element::PointerEvents::Svg(s)
-                    if self.draw_of(i).is_some_and(|d| d.view_box.is_some()) =>
+                    if self
+                        .paint
+                        .draw_of(i, &self.tree)
+                        .is_some_and(|d| d.view_box.is_some()) =>
                 {
                     (false, Some(s.0))
                 }

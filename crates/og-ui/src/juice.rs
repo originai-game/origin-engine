@@ -475,7 +475,14 @@ impl Ui {
                     duration_ms: b.duration_ms,
                     ..BurstDesc::default()
                 };
-                self.burst_particles(i, &desc, b.since);
+                self.paint.burst_particles(
+                    i,
+                    &desc,
+                    b.since,
+                    &mut self.world,
+                    &self.env,
+                    &self.tree,
+                );
             }
         }
     }

@@ -176,7 +176,7 @@ impl Ui {
             && let Some(o) = t.art.divider.filter(|_| t.art.atlas.is_some())
         {
             let (cx, cy) = rect.center();
-            self.ornament(
+            self.paint.ornament(
                 o,
                 Rect::new(cx - o.w / 2.0, cy - o.h / 2.0, o.w, o.h),
                 false,
@@ -185,6 +185,7 @@ impl Ui {
                 alpha,
                 clip,
                 cmds,
+                &self.env,
             );
         }
         use crate::dress::PartRef;
@@ -434,7 +435,10 @@ impl Ui {
                         // note 3; r5 on cartoon's numerals). One hard drop, no
                         // more than 6 % of the size off (at least a pixel), so
                         // a badge's x3 keeps a tight shadow, not a second print.
-                        let own = self.draw_of(i).is_some_and(|d| d.text.is_some());
+                        let own = self
+                            .paint
+                            .draw_of(i, &self.tree)
+                            .is_some_and(|d| d.text.is_some());
                         // A pixel face on a control's plate (a button, a tab,
                         // a chip) or on a shape its parent fills itself (a
                         // coin, a gem) takes no drop: a whole font pixel of it
@@ -452,7 +456,8 @@ impl Ui {
                                             .get(&parent)
                                             .is_some_and(|d| !d.fills.is_empty()))));
                         let drop = self
-                            .text_drop(role, size, m.pixel_grid())
+                            .paint
+                            .text_drop(role, size, m.pixel_grid(), &self.env)
                             .filter(|_| !own && !plated);
                         let dropped = |clip: Rect, cmds: &mut Vec<DrawCmd>| {
                             if let Some((dx, dy, blur, sc)) = drop {
@@ -572,7 +577,7 @@ impl Ui {
                                 }
                                 let tint =
                                     values.color("color").map(Srgba::linear).or(ornament_tint);
-                                self.ornament(
+                                self.paint.ornament(
                                     o,
                                     values.part_rect(rect, n.rect),
                                     flip,
@@ -581,6 +586,7 @@ impl Ui {
                                     alpha * values.num("opacity").unwrap_or(1.0),
                                     clip,
                                     cmds,
+                                    &self.env,
                                 );
                             }
                         }
@@ -668,7 +674,7 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Paint {
     /// The style's drop under text of font role `role` (`FontRole::effect_index`)
     /// at `size`: its offset, blur and colour. No more than 6 % of the size
     /// off (at least a device pixel), so a badge's x3 keeps a tight shadow,
@@ -679,15 +685,16 @@ impl Ui {
         role: usize,
         size: f32,
         grid: u32,
+        env: &crate::ui::Env,
     ) -> Option<(f32, f32, f32, crate::Srgba)> {
-        let sh = self.env.theme.art.text_shadows[role]?;
+        let sh = env.theme.art.text_shadows[role]?;
         if grid > 0 {
             let cell = size / grid as f32;
             let step = |v: f32| cell * v.signum() * f32::from(v != 0.0);
             return Some((step(sh.dx), step(sh.dy), 0.0, sh.color));
         }
         let reach = sh.dx.hypot(sh.dy);
-        let most = (size * 0.06).max(1.0 / self.env.viewport.dpr());
+        let most = (size * 0.06).max(1.0 / env.viewport.dpr());
         let k = if reach > most { most / reach } else { 1.0 };
         Some((sh.dx * k, sh.dy * k, sh.blur * k, sh.color))
     }
@@ -1494,7 +1501,10 @@ impl Ui {
         let lines = self.vertical_lines(i, tc, v, rect, clip, Some(&mut drawn));
         let role = tc.font.effect_index();
         // The style's drop, as a horizontal text's (`content_commands`).
-        let own = self.draw_of(i).is_some_and(|d| d.text.is_some());
+        let own = self
+            .paint
+            .draw_of(i, &self.tree)
+            .is_some_and(|d| d.text.is_some());
         let parent = n.parent;
         let plated = m.pixel_grid() > 0
             && (n.el.interactive
@@ -1506,7 +1516,8 @@ impl Ui {
                             .get(&parent)
                             .is_some_and(|d| !d.fills.is_empty()))));
         let drop = self
-            .text_drop(role, size, m.pixel_grid())
+            .paint
+            .text_drop(role, size, m.pixel_grid(), &self.env)
             .filter(|_| !own && !plated);
         let selection = self
             .docs
