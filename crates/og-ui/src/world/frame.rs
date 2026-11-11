@@ -407,7 +407,7 @@ impl crate::ui::Tree {
                     });
             }
             if let Some(m) = meta {
-                let intensity = self.nodes[i].props.opacity.clamp(0.0, 1.0);
+                let intensity = self.nodes[i].opacity().clamp(0.0, 1.0);
                 world.declared.metas.push((
                     i,
                     MetaDesc {

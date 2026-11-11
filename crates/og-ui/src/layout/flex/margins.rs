@@ -39,7 +39,7 @@ pub(in crate::layout) fn collapse_margins(nodes: &mut [Node], i: usize) {
         && p < nodes.len()
         && nodes[p].layout.used.block
         && nodes[p].layout.used.direction == Direction::Column
-        && nodes[p].props.layout == LayoutMode::Flex
+        && nodes[p].layout_mode() == LayoutMode::Flex
         && nodes[p].children.contains(&i);
     // A flow-root (or a box laying out lines) starts a formatting
     // context: no margin collapses through its edges (CSS 2 §8.3.1).
@@ -47,7 +47,7 @@ pub(in crate::layout) fn collapse_margins(nodes: &mut [Node], i: usize) {
         && n.layout.used.block
         && !n.layout.used.bfc
         && n.layout.used.direction == Direction::Column
-        && n.props.layout == LayoutMode::Flex
+        && n.layout_mode() == LayoutMode::Flex
         && matches!(n.content, Content::None)
         && !n.layout.used.scroll
         && !n.layout.used.scroll_x;

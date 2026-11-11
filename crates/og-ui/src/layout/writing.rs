@@ -121,12 +121,6 @@ pub(super) fn query(n: &mut Node, w: f32) {
     }
     // A frame's root is a formatting context while it lays out (`nest`).
     n.layout.used.bfc = bfc;
-    let variants = n.props.variants.clone();
-    for v in variants.iter().filter(|v| v.when.container) {
-        if width_in(w, &v.when) {
-            patch_style(n, &v.set);
-        }
-    }
 }
 
 /// Where an interval `[at, at + len]` along a frame axis lies along the

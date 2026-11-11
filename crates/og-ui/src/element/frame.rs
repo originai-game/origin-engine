@@ -68,9 +68,9 @@ impl crate::ui::Layout {
             while j != NONE {
                 let n = &tree.nodes[j];
                 let transform = if env.direction == og_i18n::Direction::Rtl {
-                    n.props.transform.mirrored()
+                    n.transform().mirrored()
                 } else {
-                    n.props.transform
+                    n.transform()
                 };
                 if !transform.is_identity() {
                     m = transform.matrix(&n.placed.rect).mul(&m);
@@ -130,7 +130,7 @@ impl crate::ui::Layout {
             let mut j = i;
             let mut s = true;
             while j != NONE {
-                if tree.nodes[j].props.opacity <= 0.0 {
+                if tree.nodes[j].opacity() <= 0.0 {
                     s = false;
                     break;
                 }
@@ -210,7 +210,7 @@ impl crate::ui::Layout {
         // purpose; a grid's cells are its own).
         for &i in order {
             let n = &tree.nodes[i];
-            if n.props.layout != LayoutMode::Flex
+            if n.layout_mode() != LayoutMode::Flex
                 || n.children.len() < 2
                 || over_layers.contains(&i)
             {
@@ -323,7 +323,7 @@ impl crate::ui::Layout {
             let n = &tree.nodes[i];
             if !crate::ui::visit::baseline_row(n)
                 || n.layout.used.direction != crate::layout::Direction::Row
-                || n.props.layout != LayoutMode::Flex
+                || n.layout_mode() != LayoutMode::Flex
                 || n.children.is_empty()
             {
                 continue;
@@ -438,7 +438,8 @@ impl crate::ui::Layout {
     /// Matches each written element's breakpoint and orientation variants
     /// against the viewport (the container ones wait for its width, in
     /// layout): their box part is in the element layout uses
-    /// ([`Node::derived`]), the rest is set on the node.
+    /// ([`Node::derived`]), the rest in what they set over its props
+    /// (`LayoutBox::varied`), both derived from here.
     pub(crate) fn apply_variants(&mut self, env: &crate::ui::Env, tree: &mut crate::ui::Tree) {
         let vp = env.viewport;
         let media = crate::layout::Media {
@@ -455,12 +456,6 @@ impl crate::ui::Layout {
             }
             n.layout.media = Some(media);
             n.derive_used();
-            let vs = n.props.variants.clone();
-            for v in vs.iter().filter(|v| !v.when.container) {
-                if media.matches(&v.when) {
-                    crate::layout::patch_style(n, &v.set);
-                }
-            }
         }
     }
 

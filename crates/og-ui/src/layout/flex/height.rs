@@ -5,14 +5,14 @@ pub(in crate::layout) fn size_h(nodes: &mut [Node], i: usize) {
     let n = &nodes[i];
     let (pref, min) = match &n.content {
         _ if let Some(h) = n.contained_size(1) => (h, h),
-        Content::None if n.props.layout == LayoutMode::Stack => {
+        Content::None if n.layout_mode() == LayoutMode::Stack => {
             let kids = || n.children.iter().map(|&c| &nodes[c]);
             (
                 kids().map(|c| c.layout.pref_h).fold(0.0, f32::max),
                 kids().map(|c| c.layout.min_h).fold(0.0, f32::max),
             )
         }
-        Content::None if n.props.layout == LayoutMode::Grid => grid_intrinsic(nodes, i, false),
+        Content::None if n.layout_mode() == LayoutMode::Grid => grid_intrinsic(nodes, i, false),
         Content::Text(_) if let Some(tp) = &n.props.text_path => {
             let h = tp.extent().map_or(0.0, |e| e.y);
             (h, h)
@@ -139,7 +139,7 @@ pub(in crate::layout) fn distribute_h(nodes: &mut [Node], i: usize, measure: &mu
     if kids.is_empty() {
         return;
     }
-    match nodes[i].props.layout {
+    match nodes[i].layout_mode() {
         LayoutMode::Stack => {
             for &c in &kids {
                 let n = &nodes[c];
@@ -328,7 +328,7 @@ pub(super) fn layout_baseline(nodes: &[Node], c: usize, fonts: &dyn Metrics) -> 
         Content::None => {
             let &k = n.children.first()?;
             let lead = if n.layout.used.direction == Direction::Column
-                && n.props.layout == LayoutMode::Flex
+                && n.layout_mode() == LayoutMode::Flex
             {
                 column_spacing(nodes, c).0
             } else {

@@ -42,7 +42,7 @@ impl Ui {
             .filter_map(|i| self.tree.previous_node(i).map(|n| (i, n)))
             .find(|(i, n)| {
                 n.key == key
-                    && !n.hidden
+                    && !n.is_hidden()
                     && self
                         .tree
                         .prev_kinds

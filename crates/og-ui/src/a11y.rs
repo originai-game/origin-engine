@@ -498,7 +498,7 @@ pub(crate) fn text_within(nodes: &[Node], i: usize) -> String {
     let mut stack = vec![i];
     while let Some(k) = stack.pop() {
         let n = &nodes[k];
-        if n.hidden {
+        if n.is_hidden() {
             continue;
         }
         if !n.probe_text.is_empty() {

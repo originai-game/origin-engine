@@ -328,7 +328,7 @@ fn place_children(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f32, f3
         nodes[c].layout.x = x;
         nodes[c].layout.y = y;
     }
-    if nodes[i].props.layout != LayoutMode::Flex && matches!(nodes[i].content, Content::None) {
+    if nodes[i].layout_mode() != LayoutMode::Flex && matches!(nodes[i].content, Content::None) {
         let n = &nodes[i];
         let (sx, sy) = if n.layout.used.scroll || n.layout.used.scroll_x {
             scroll(n.key)
@@ -353,7 +353,7 @@ fn place_children(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f32, f3
         );
         let (align, cross) = (n.layout.used.align, n.layout.used.cross);
         let kids = n.children.clone();
-        if n.props.layout == LayoutMode::Stack {
+        if n.layout_mode() == LayoutMode::Stack {
             let mut extent = 0.0f32;
             for &c in &kids {
                 let (w, h) = (nodes[c].layout.w, nodes[c].layout.h);

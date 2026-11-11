@@ -113,7 +113,7 @@ fn fits(t: UsedText<'_>, fonts: &dyn Metrics, width: f32) -> bool {
 }
 
 pub(in crate::layout) fn size_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'_>) {
-    if nodes[i].props.layout == LayoutMode::Grid
+    if nodes[i].layout_mode() == LayoutMode::Grid
         && matches!(nodes[i].content, Content::None)
         && !nodes[i].layout.cv_skip
     {
@@ -145,14 +145,14 @@ pub(in crate::layout) fn size_w(nodes: &mut [Node], i: usize, measure: &mut Meas
         }
         Content::Rich(rc) => crate::rich::rich_widths(rc, fonts, n.rich_vertical()),
         Content::Image { .. } => (0.0, 0.0),
-        Content::None if n.props.layout == LayoutMode::Stack => {
+        Content::None if n.layout_mode() == LayoutMode::Stack => {
             let kids = || n.children.iter().map(|&c| &nodes[c]);
             (
                 kids().map(|c| c.layout.pref_w).fold(0.0, f32::max),
                 kids().map(|c| c.layout.min_w).fold(0.0, f32::max),
             )
         }
-        Content::None if n.props.layout == LayoutMode::Grid => grid_intrinsic(nodes, i, true),
+        Content::None if n.layout_mode() == LayoutMode::Grid => grid_intrinsic(nodes, i, true),
         Content::None => {
             let k = n.children.len();
             let kids = n.children.iter().map(|&c| &nodes[c]);
@@ -367,7 +367,7 @@ pub(in crate::layout) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mu
     if kids.is_empty() {
         return;
     }
-    match nodes[i].props.layout {
+    match nodes[i].layout_mode() {
         LayoutMode::Stack => {
             for &c in &kids {
                 let n = &nodes[c];

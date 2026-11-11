@@ -42,7 +42,7 @@ pub const RIGHT: u8 = 2;
 /// `float` does not apply).
 pub(crate) fn container(n: &Node) -> bool {
     n.layout.used.block
-        && n.props.layout == LayoutMode::Flex
+        && n.layout_mode() == LayoutMode::Flex
         && matches!(n.content, Content::None)
         && n.layout.used.multicol.is_none()
 }
