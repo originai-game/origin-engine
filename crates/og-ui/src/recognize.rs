@@ -296,7 +296,7 @@ impl Ui {
                 if path.is_empty() {
                     continue;
                 }
-                match self.node_at(path, i) {
+                match self.tree.node_at(path, i) {
                     Some(j) => to[k] = self.landing(j),
                     None => {
                         let at = self.tree.path_of(i);

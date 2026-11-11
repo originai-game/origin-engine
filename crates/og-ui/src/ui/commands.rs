@@ -1868,23 +1868,26 @@ fn plane_end(key: u64, clip: Rect) -> DrawCmd {
     }
 }
 
-impl Ui {
+impl crate::ui::Layout {
     /// This tick's quads of the CSS 3D planes (`world.grounds`): each
     /// root's layer laid through its map onto the space it stands in, with
     /// its context and depth there. One that shows a hidden back face has
     /// none (it is not drawn); a root gone from the tree leaves the set.
-    pub(super) fn plane_quads(&mut self) {
-        let keys: Vec<u64> = self.world.planes.iter().copied().collect();
+    pub(super) fn plane_quads(
+        &mut self,
+        world: &mut crate::world::WorldUi,
+        tree: &crate::ui::Tree,
+    ) {
+        let keys: Vec<u64> = world.planes.iter().copied().collect();
         for key in keys {
-            let found = self.tree.index.find(key).filter(|&i| {
-                self.tree.nodes[i].key == key
-                    && self.tree.nodes[i].plane.as_ref().is_some_and(|p| p.root)
+            let found = tree.index.find(key).filter(|&i| {
+                tree.nodes[i].key == key && tree.nodes[i].plane.as_ref().is_some_and(|p| p.root)
             });
             let Some(i) = found else {
-                self.world.planes.remove(&key);
+                world.planes.remove(&key);
                 continue;
             };
-            let n = &self.tree.nodes[i];
+            let n = &tree.nodes[i];
             let p = n.plane.as_deref().expect("a plane root");
             if p.hidden {
                 continue;
@@ -1919,7 +1922,7 @@ impl Ui {
                 .all(Option::is_some)
                 .then(|| corners.map(|c| c.unwrap_or_default()));
             let (centre, _) = crate::transform3d::apply(&p.m, [cx, cy, 0.0]);
-            self.world.grounds.push(crate::GroundQuad {
+            world.grounds.push(crate::GroundQuad {
                 key,
                 rect: r,
                 corners,

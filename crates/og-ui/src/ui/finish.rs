@@ -119,9 +119,11 @@ impl Ui {
         let order = std::mem::take(&mut self.tree.orders.pre);
         self.out.stats.elements = order.len() as u32;
         let baselines = self.tree.orders.with(visit::feat::BASELINE).to_vec();
-        self.align_baselines(&baselines);
+        self.layout
+            .align_baselines(&baselines, &self.env, &mut self.tree);
         let anchored = self.tree.orders.with(visit::feat::ANCHORED).to_vec();
-        self.place_anchored(&anchored);
+        self.layout
+            .place_anchored(&anchored, &mut self.out, &mut self.tree);
         let (seeds, animated) = self.frame_motion(&order, whole, vp);
         let (order, mapped) = self.place_frame(order, &seeds, &animated);
 
@@ -129,9 +131,12 @@ impl Ui {
             self.update_interaction(&order, &seeds, &mapped, screen);
 
         let (order, items, missing_glyphs) = self.record_paint(order, &seeds, mapped, selected);
-        let focus_paths = self.focus_paths();
+        let focus_paths = self
+            .layout
+            .focus_paths(&self.docs, &self.interaction, &self.tree);
         self.tree.orders.draw = order;
-        self.note_relevance();
+        self.layout
+            .note_relevance(&self.env, &self.interaction, &mut self.tree);
         self.out.frame = UiFrame {
             viewport: vp,
             items,
@@ -334,7 +339,7 @@ impl Ui {
                 }
             }
         }
-        self.content_visibility();
+        self.layout.content_visibility(&mut self.tree);
         self.layout
             .reuse_check(&self.env, &mut self.out, &self.docs, &mut self.tree);
         let mut floating: Vec<usize> = self
@@ -878,7 +883,7 @@ impl Ui {
             w
         });
         let mapped = self.apply_world(&order, world_seeds.as_deref());
-        self.plane_quads();
+        self.layout.plane_quads(&mut self.world, &self.tree);
         self.hud_collect(&custom);
         self.world_finish();
         let dnd = self.tree.orders.with(visit::feat::DND).to_vec();
@@ -1000,7 +1005,7 @@ impl Ui {
         self.collect_input_specs();
         // Hits where a node's place, map or scopes may have changed (every
         // node when the touch target or the screen did).
-        let touch_min = self.touch_min();
+        let touch_min = self.layout.touch_min(&self.env);
         let hit_seeds = match &seeds {
             Some(_) if self.tree.orders.hit_inputs == Some((touch_min, screen)) => {
                 let mut h = mapped.clone();
@@ -1344,12 +1349,12 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Layout {
     /// The minimum touch target in og-ui units (44 CSS px) on a touch
     /// screen, zero with a fine pointer.
-    pub(crate) fn touch_min(&self) -> f32 {
-        if self.env.viewport.coarse_pointer {
-            TOUCH_TARGET / self.env.unit.max(0.01)
+    pub(crate) fn touch_min(&self, env: &crate::ui::Env) -> f32 {
+        if env.viewport.coarse_pointer {
+            TOUCH_TARGET / env.unit.max(0.01)
         } else {
             0.0
         }
@@ -1360,26 +1365,26 @@ impl Ui {
     /// `auto` does from the frame after it was found far from the screen
     /// with no focus inside it ([`Ui::note_relevance`]). An element that
     /// starts or stops skipping lays out again, its contents afresh.
-    fn content_visibility(&mut self) {
+    fn content_visibility(&mut self, tree: &mut crate::ui::Tree) {
         use crate::layout::ContentVisibility as Cv;
         // A node written again keeps what it had found.
-        for k in 0..self.tree.emitted.len() {
-            let i = self.tree.emitted[k];
-            if let Some(p) = self.layout.cache.prev.get(&i) {
+        for k in 0..tree.emitted.len() {
+            let i = tree.emitted[k];
+            if let Some(p) = self.cache.prev.get(&i) {
                 let (skip, far, remembered) = (p.cv_skip, p.cv_far, p.remembered);
-                let n = &mut self.tree.nodes[i];
+                let n = &mut tree.nodes[i];
                 (n.cv_skip, n.cv_far, n.remembered) = (skip, far, remembered);
             }
         }
-        let mut at: Vec<usize> = self.tree.orders.with(visit::feat::SKIPS).to_vec();
-        at.extend(self.tree.emitted.iter().copied());
+        let mut at: Vec<usize> = tree.orders.with(visit::feat::SKIPS).to_vec();
+        at.extend(tree.emitted.iter().copied());
         at.sort_unstable();
         at.dedup();
         for i in at {
-            if i >= self.tree.nodes.len() {
+            if i >= tree.nodes.len() {
                 continue;
             }
-            let n = &mut self.tree.nodes[i];
+            let n = &mut tree.nodes[i];
             let v = n.el.contain.visibility;
             if v != Cv::Auto {
                 n.cv_far = false;
@@ -1387,7 +1392,7 @@ impl Ui {
             let skip = v == Cv::Hidden || (v == Cv::Auto && n.cv_far);
             if skip != n.cv_skip {
                 n.cv_skip = skip;
-                self.layout.cache.relayout.push(i);
+                self.cache.relayout.push(i);
             }
         }
     }
@@ -1398,24 +1403,29 @@ impl Ui {
     /// focus; one whose answer changed skips its contents, or lays them
     /// out, from the next frame. One laying its contents out remembers its
     /// content box for `contain-intrinsic-size: auto`.
-    fn note_relevance(&mut self) {
-        let vp = self.env.viewport;
+    fn note_relevance(
+        &mut self,
+        env: &crate::ui::Env,
+        interaction: &crate::ui::Interaction,
+        tree: &mut crate::ui::Tree,
+    ) {
+        let vp = env.viewport;
         let screen = Rect::new(0.0, 0.0, vp.width, vp.height);
-        let focus = self.tree.index.find(self.interaction.state.focus);
-        for k in 0..self.tree.orders.with(visit::feat::SKIPS).len() {
-            let i = self.tree.orders.with(visit::feat::SKIPS)[k];
-            if i >= self.tree.nodes.len() || !self.tree.index.has(i) {
+        let focus = tree.index.find(interaction.state.focus);
+        for k in 0..tree.orders.with(visit::feat::SKIPS).len() {
+            let i = tree.orders.with(visit::feat::SKIPS)[k];
+            if i >= tree.nodes.len() || !tree.index.has(i) {
                 continue;
             }
-            let n = &self.tree.nodes[i];
+            let n = &tree.nodes[i];
             if !n.cv_skip {
                 let size = [
                     (n.w - n.el.padding.horizontal()).max(0.0),
                     (n.h - n.el.padding.vertical()).max(0.0),
                 ];
-                self.tree.nodes[i].remembered = Some(size);
+                tree.nodes[i].remembered = Some(size);
             }
-            let n = &self.tree.nodes[i];
+            let n = &tree.nodes[i];
             if n.el.contain.visibility != crate::layout::ContentVisibility::Auto {
                 continue;
             }
@@ -1428,40 +1438,45 @@ impl Ui {
             );
             let mut holds_focus = false;
             let mut at = focus.unwrap_or(NONE);
-            while at != NONE && at < self.tree.nodes.len() {
+            while at != NONE && at < tree.nodes.len() {
                 if at == i {
                     holds_focus = true;
                     break;
                 }
-                at = self.tree.nodes[at].parent;
+                at = tree.nodes[at].parent;
             }
             let far = !holds_focus && !near.overlaps(&n.clip.intersect(&screen));
-            self.tree.nodes[i].cv_far = far;
+            tree.nodes[i].cv_far = far;
         }
     }
 
     /// The paths of the focused controls, pads 1 to 3 after the first.
-    fn focus_paths(&self) -> [String; 4] {
+    fn focus_paths(
+        &self,
+        docs: &crate::ui::Docs,
+        interaction: &crate::ui::Interaction,
+        tree: &crate::ui::Tree,
+    ) -> [String; 4] {
         let mut focus_paths: [String; 4] = Default::default();
         let focused = [
-            self.interaction.state.focus,
-            self.interaction.state.pad_focus[0],
-            self.interaction.state.pad_focus[1],
-            self.interaction.state.pad_focus[2],
+            interaction.state.focus,
+            interaction.state.pad_focus[0],
+            interaction.state.pad_focus[1],
+            interaction.state.pad_focus[2],
         ];
         for (slot, key) in focused.into_iter().enumerate() {
             if key != 0
-                && let Some(i) = self.tree.index.find(key)
+                && let Some(i) = tree.index.find(key)
             {
-                focus_paths[slot] = self.tree.path_of(i);
-                if let Some(l) = self.tree.nodes[i]
+                focus_paths[slot] = tree.path_of(i);
+                if let Some(l) = tree.nodes[i]
                     .links
                     .iter()
-                    .find(|l| child_key(self.tree.nodes[i].key, l) == key)
+                    .find(|l| child_key(tree.nodes[i].key, l) == key)
                 {
                     focus_paths[slot] = format!("{}/{l}", focus_paths[slot]);
                 }
-            } else if let Some(path) = self.docs.host.retained.deferred_focus_path(key) {
+            } else if let Some(path) = docs.host.retained.deferred_focus_path(key) {
                 focus_paths[slot] = path.to_owned();
             }
         }

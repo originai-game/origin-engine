@@ -48,7 +48,7 @@ impl Ui {
         // Tight is the line's height, but never under a finger's reach on a
         // touch screen, where the line is centred in the taller box.
         let height = if desc.tight {
-            ink.line_height(value).max(self.touch_min())
+            ink.line_height(value).max(self.layout.touch_min(&self.env))
         } else {
             sizes.control_md
         };
@@ -62,7 +62,7 @@ impl Ui {
         let spinner = if self.env.viewport.breakpoint().is_phone() {
             44.0
         } else {
-            24.0_f32.max(self.touch_min())
+            24.0_f32.max(self.layout.touch_min(&self.env))
         };
         let reveal_w = if number {
             2.0 * spinner + pad
@@ -824,7 +824,9 @@ impl Ui {
             id.into(),
             Element {
                 width: desc.width.unwrap_or(Size::grow()),
-                height: Size::Fixed((rows as f32 * lh + pad.vertical()).max(self.touch_min())),
+                height: Size::Fixed(
+                    (rows as f32 * lh + pad.vertical()).max(self.layout.touch_min(&self.env)),
+                ),
                 padding: pad,
                 interactive: true,
                 radius: t.radius.control,
