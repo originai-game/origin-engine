@@ -49,7 +49,7 @@ impl Renderer {
     /// the share the FFT cascades draw (render only). Empty without a sea.
     /// A diagnostic of the drawn waterline (the former test sample
     pub fn sea_heights(&self, points: &[glam::Vec2]) -> Result<Vec<[f32; 3]>, RenderError> {
-        let origin = self.drawn_origin;
+        let origin = self.history.drawn_origin;
         let frame: Vec<glam::Vec2> = points
             .iter()
             .map(|p| *p - glam::Vec2::new(origin.x, origin.z))

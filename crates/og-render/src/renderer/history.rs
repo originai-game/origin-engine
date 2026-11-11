@@ -268,14 +268,14 @@ impl Renderer {
             exposure,
             parity: self.frame_index % 2,
             phase: self.phase(),
-            taa_history: self.taa_history,
-            taa_history_frames: self.taa_history_frames,
+            taa_history: self.history.taa_history,
+            taa_history_frames: self.history.taa_history_frames,
             gi_valid: self.gi_history.is_some_and(|f| f + 1 == self.frame_index),
-            prev_view_proj: self.prev_view_proj,
-            previous_time: self.previous_time,
-            previous_wind: self.previous_wind,
+            prev_view_proj: self.history.prev_view_proj,
+            previous_time: self.history.previous_time,
+            previous_wind: self.history.previous_wind,
             previous_sway: self.previous_sway.clone(),
-            drawn_origin: self.drawn_origin,
+            drawn_origin: self.history.drawn_origin,
             stylise_chain: self.stylise_chain,
             terrain: self.terrain.save(),
             gpu: Some(gpu),
@@ -336,11 +336,11 @@ impl Renderer {
             self.frame_index += 1;
         }
         self.phase_base = self.frame_index.saturating_sub(s.phase);
-        self.prev_view_proj = s.prev_view_proj;
-        self.previous_time = s.previous_time;
-        self.previous_wind = s.previous_wind;
+        self.history.prev_view_proj = s.prev_view_proj;
+        self.history.previous_time = s.previous_time;
+        self.history.previous_wind = s.previous_wind;
         self.previous_sway.clone_from(&s.previous_sway);
-        self.drawn_origin = s.drawn_origin;
+        self.history.drawn_origin = s.drawn_origin;
         self.stylise_chain = s.stylise_chain;
         self.terrain.restore(&s.terrain);
         let mut whole = s.gpu.is_some();
@@ -354,8 +354,8 @@ impl Renderer {
                 _ => false,
             };
             if pair(&g.taa, &self.persistent.history, e) {
-                self.taa_history = s.taa_history;
-                self.taa_history_frames = s.taa_history_frames;
+                self.history.taa_history = s.taa_history;
+                self.history.taa_history_frames = s.taa_history_frames;
             } else {
                 whole = false;
             }
@@ -379,4 +379,23 @@ impl Renderer {
         self.queue.submit(Some(encoder.finish()));
         whole
     }
+}
+
+/// What the frame carries to the next: the previous camera, clock and
+/// wind (motion vectors), TAA's history, and the origin it is in.
+pub(crate) struct FrameHistory {
+    /// The previous frame's unjittered view-projection (motion vectors).
+    pub(crate) prev_view_proj: Option<Mat4>,
+    /// The last drawn clock, including frames with no simulation tick.
+    pub(crate) previous_time: Option<f32>,
+    /// The last drawn wind, tick and tick rate, including paused frames.
+    pub(crate) previous_wind: Option<(Wind, u64, f32)>,
+    /// The previous frame's unjittered view-projection, when TAA history is valid.
+    pub(crate) taa_history: Option<Mat4>,
+    /// Frames TAA has accumulated into its history since it was last
+    /// reset, this one included (0 without TAA): [`Renderer::history`].
+    pub(crate) taa_history_frames: u64,
+    /// The scene origin the last frame was drawn at ([`RenderScene::origin`]):
+    /// the history above is in its coordinates.
+    pub(crate) drawn_origin: Vec3,
 }

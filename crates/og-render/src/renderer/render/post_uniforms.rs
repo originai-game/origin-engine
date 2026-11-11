@@ -231,7 +231,7 @@ impl Renderer {
         cam: &frame::CameraFrame,
     ) {
         if taa {
-            let prev = self.taa_history.unwrap_or(cam.view_proj);
+            let prev = self.history.taa_history.unwrap_or(cam.view_proj);
             let jitter = self.taa_jitter();
             let (hw, hh) = self.history_size();
             let taa_uniform = post::TaaUniform {
@@ -239,7 +239,7 @@ impl Renderer {
                 cur_view_proj: cam.view_proj.to_cols_array_2d(),
                 prev_view_proj: prev.to_cols_array_2d(),
                 params: [
-                    post::taa_weight(self.taa_history.is_some()),
+                    post::taa_weight(self.history.taa_history.is_some()),
                     self.width as f32,
                     self.height as f32,
                     self.post.taa_sharpen,

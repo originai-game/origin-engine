@@ -733,12 +733,9 @@ pub struct Renderer {
     visual: Option<visual_sim::VisualPipelines>,
     /// The GPU solver of visual fluids ([`VisualFluid`]), with `visual`.
     visual_fluids: Option<visual_fluid::VisualFluids>,
-    /// The previous frame's unjittered view-projection (motion vectors).
-    prev_view_proj: Option<Mat4>,
-    /// The last drawn clock, including frames with no simulation tick.
-    previous_time: Option<f32>,
-    /// The last drawn wind, tick and tick rate, including paused frames.
-    previous_wind: Option<(Wind, u64, f32)>,
+    /// What the frame carries to the next: the previous camera, clock and
+    /// wind (motion vectors), TAA's history, and the origin it is in.
+    history: renderer::history::FrameHistory,
     /// Each instance's sway at the last drawn frame, by instance index
     /// ([`Instance::sway`]): a swaying vertex's motion vector starts there.
     previous_sway: Vec<f32>,
@@ -825,11 +822,6 @@ pub struct Renderer {
     /// Whether the next frame's GPU culling counts are read back
     /// ([`Renderer::request_culling_counts`]).
     culling_counts: bool,
-    /// The previous frame's unjittered view-projection, when TAA history is valid.
-    taa_history: Option<Mat4>,
-    /// Frames TAA has accumulated into its history since it was last
-    /// reset, this one included (0 without TAA): [`Renderer::history`].
-    taa_history_frames: u64,
     /// The vegetation's simulated wind field (`wind_field.rs`).
     wind_field: wind_field::WindFieldSim,
     /// The grass trample map (`trample.rs`).
@@ -841,9 +833,6 @@ pub struct Renderer {
     gi_history: Option<u64>,
     /// Screen-space reflections' passes, targets and history (`ssr.rs`).
     ssr: ssr::SsrRenderer,
-    /// The scene origin the last frame was drawn at ([`RenderScene::origin`]):
-    /// the history above is in its coordinates.
-    drawn_origin: Vec3,
     /// The last frame's stylisation primitives, on or off
     /// ([`Stylise::chain_bits`]): a change resets the TAA history.
     stylise_chain: Option<u16>,

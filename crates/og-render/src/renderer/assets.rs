@@ -180,11 +180,11 @@ impl Renderer {
                 scene_id: scene.id(),
                 ..Default::default()
             };
-            self.taa_history = None;
+            self.history.taa_history = None;
             self.gi_history = None;
             self.ssr.reset();
-            self.previous_time = None;
-            self.previous_wind = None;
+            self.history.previous_time = None;
+            self.history.previous_wind = None;
             self.previous_sway.clear();
             self.shadow_cache = Default::default();
         }

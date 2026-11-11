@@ -1002,8 +1002,8 @@ impl Renderer {
         // stood still long enough to stay in the cached shadow layers.
         let shadow_split = {
             let wind = |w: Option<&crate::scatter::Wind>| w.is_some_and(|w| w.strength != 0.0);
-            let swaying =
-                wind(scene.wind.as_ref()) || wind(self.previous_wind.as_ref().map(|w| &w.0));
+            let swaying = wind(scene.wind.as_ref())
+                || wind(self.history.previous_wind.as_ref().map(|w| &w.0));
             let (meshes, materials) = (&self.cache.meshes, &self.cache.materials);
             // Hashed again only where an instance or its mesh's or
             // material's revision changed (shadow_cache.rs `InstanceHashes`).
@@ -1527,7 +1527,7 @@ impl Renderer {
             .collect();
 
         // Terrains: new or edited data uploaded, this frame's clipmap levels.
-        let prev_view_proj = match self.prev_view_proj {
+        let prev_view_proj = match self.history.prev_view_proj {
             Some(vp) if !scene.camera_cut => vp,
             _ => cam.view_proj,
         };
@@ -2177,7 +2177,7 @@ impl Renderer {
                     {
                         let (w, f) = crate::foliage::foliage_winds(
                             scene,
-                            self.previous_wind,
+                            self.history.previous_wind,
                             self.wind_field.grid(),
                         );
                         (w, f, self.wind_field.lean_cap())
@@ -2523,7 +2523,7 @@ impl Renderer {
             env_dome: crate::GroundProjection::gpu(scene.environment.ground),
             foliage_wind: crate::foliage::foliage_winds(
                 scene,
-                self.previous_wind,
+                self.history.previous_wind,
                 self.wind_field.grid(),
             )
             .1,
@@ -2538,7 +2538,10 @@ impl Renderer {
             // this frame (`sync_assets`; engine s100).
             drawn: [self.frame_index as u32, 0, 0, 0],
         };
-        uniform.atmosphere.time[3] = self.previous_time.unwrap_or(uniform.atmosphere.time[0]);
+        uniform.atmosphere.time[3] = self
+            .history
+            .previous_time
+            .unwrap_or(uniform.atmosphere.time[0]);
         // The shadow passes' clock, and the scene's origin for the hooks
         // (`h.origin`, `origin.rs`).
         let t = uniform.atmosphere.time;
@@ -2885,7 +2888,7 @@ impl Renderer {
             self.gi_history = None;
         }
         let gi_history_valid = if taa {
-            self.taa_history.is_some()
+            self.history.taa_history.is_some()
         } else {
             gi_copy && self.gi_history.is_some_and(|f| f + 1 == self.frame_index)
         };
@@ -2911,7 +2914,7 @@ impl Renderer {
             self.prepare_ssr(s, &cam, &camera, gi_history_valid);
         }
         let slot = (self.frame_index % 2) as usize;
-        let taa_blend = taa && self.taa_history.is_some();
+        let taa_blend = taa && self.history.taa_history.is_some();
         self.write_frame_taa_uniform(temporal, prepass, &cam);
         // The frame's passes, compiled into the render graph (cached while
         // the pass list stays the same).
@@ -3187,10 +3190,11 @@ impl Renderer {
                     phases: frame::jitter_phases((self.width, self.height), post_size),
                     inv_view_proj: cam.jittered_view_proj.inverse(),
                     view_proj: cam.view_proj,
-                    prev_view_proj: self.taa_history.unwrap_or(cam.view_proj),
+                    prev_view_proj: self.history.taa_history.unwrap_or(cam.view_proj),
                     proj: cam.proj,
-                    reset: self.taa_history.is_none(),
+                    reset: self.history.taa_history.is_none(),
                     still: self
+                        .history
                         .taa_history
                         .is_none_or(|p| still_camera(&p, &cam.view_proj)),
                     tick: scene.tick,
@@ -4786,18 +4790,18 @@ impl Renderer {
         if temporal {
             // A history reset since the last frame (a cut, a resize, a
             // look switch) starts the count again.
-            self.taa_history_frames = match self.taa_history {
-                Some(_) => self.taa_history_frames + 1,
+            self.history.taa_history_frames = match self.history.taa_history {
+                Some(_) => self.history.taa_history_frames + 1,
                 None => 1,
             };
-            self.taa_history = Some(cam.view_proj);
+            self.history.taa_history = Some(cam.view_proj);
         } else {
-            self.taa_history_frames = 0;
+            self.history.taa_history_frames = 0;
         }
         // The main pass copied its lit image for the next frame's GI.
         self.gi_history = gi_copy.then_some(self.frame_index);
-        self.prev_view_proj = Some(cam.view_proj);
-        self.previous_time = Some(t[0]);
+        self.history.prev_view_proj = Some(cam.view_proj);
+        self.history.previous_time = Some(t[0]);
         let wind = scene.wind.unwrap_or(Wind {
             strength: 0.0,
             ..Wind::default()
@@ -4805,7 +4809,7 @@ impl Renderer {
         self.previous_sway.clear();
         self.previous_sway
             .extend(scene.instances.iter().map(|i| i.sway));
-        self.previous_wind = Some((wind, scene.tick, scene.tick_rate));
+        self.history.previous_wind = Some((wind, scene.tick, scene.tick_rate));
         self.frame_index += 1;
         // The first frame made the scene's pipelines: keep them now, not
         // only when the renderer is dropped (a killed process never is).

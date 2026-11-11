@@ -181,7 +181,7 @@ impl Renderer {
     /// Forgets the TAA history: the next frame starts from its own samples
     /// (call it on a camera cut).
     pub fn reset_history(&mut self) {
-        self.taa_history = None;
+        self.history.taa_history = None;
         self.gi_history = None;
         self.ssr.reset();
     }
@@ -241,10 +241,10 @@ impl Renderer {
     /// Everything a frame carries from the frame before it, forgotten.
     pub(super) fn forget_frames(&mut self) {
         self.reset_history();
-        self.prev_view_proj = None;
-        self.previous_time = None;
+        self.history.prev_view_proj = None;
+        self.history.previous_time = None;
         self.previous_sway.clear();
-        self.previous_wind = None;
+        self.history.previous_wind = None;
     }
 }
 

@@ -12,7 +12,7 @@ impl Renderer {
     /// 0 when the last frame drew without TAA). What a capture's temporal
     /// noise was resolved over (`dump_render`).
     pub fn history(&self) -> (u64, u64) {
-        (self.frame_index, self.taa_history_frames)
+        (self.frame_index, self.history.taa_history_frames)
     }
 
     pub fn size(&self) -> (u32, u32) {
@@ -104,7 +104,7 @@ impl Renderer {
             self.post.chain_format,
         );
         self.graph.invalidate();
-        self.taa_history = None;
+        self.history.taa_history = None;
         self.gi_history = None;
         self.ssr.reset();
         if let Some((surface, config)) = &mut self.surface {
@@ -276,7 +276,7 @@ impl Renderer {
             self.info.antialias,
             self.post.chain_format,
         );
-        self.taa_history = None;
+        self.history.taa_history = None;
         self.gi_history = None;
         self.ssr.reset();
     }

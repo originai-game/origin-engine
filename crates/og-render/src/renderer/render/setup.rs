@@ -7,18 +7,22 @@ impl Renderer {
         self.apply_quality(&scene.quality);
         // The render origin moved (`origin.rs`): what the renderer keeps
         // from the frames before moves with it, so the move is invisible.
-        if scene.origin != self.drawn_origin {
-            let d = self.drawn_origin - scene.origin;
-            self.prev_view_proj = self
+        if scene.origin != self.history.drawn_origin {
+            let d = self.history.drawn_origin - scene.origin;
+            self.history.prev_view_proj = self
+                .history
                 .prev_view_proj
                 .map(|m| crate::origin::shift_matrix(m, d));
-            self.taa_history = self.taa_history.map(|m| crate::origin::shift_matrix(m, d));
+            self.history.taa_history = self
+                .history
+                .taa_history
+                .map(|m| crate::origin::shift_matrix(m, d));
             self.particles.gpu.shift(d);
             self.trails.shift(d);
             if let Some(g) = &mut self.gpu_trails {
                 g.shift(d);
             }
-            self.drawn_origin = scene.origin;
+            self.history.drawn_origin = scene.origin;
         }
         // A look that switches the stylisation on or off (passes added or
         // removed, the pixel grid, the material style) is a cut: no ghost of
@@ -28,7 +32,7 @@ impl Renderer {
         // reprojects; motion vectors take the cut from `prev_view_proj`.
         let chain = scene.stylise.chain_bits();
         if scene.camera_cut || self.stylise_chain.is_some_and(|c| c != chain) {
-            self.taa_history = None;
+            self.history.taa_history = None;
             self.gi_history = None;
             self.ssr.reset();
         }
