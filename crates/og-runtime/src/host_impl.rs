@@ -67,3 +67,20 @@ macro_rules! host_bindings {
         $crate::__og_host_bindings_depth!($host);
     };
 }
+
+/// The answer of a binding that returns `Result<T>`, as both hosts send
+/// it: `{ ok: true, value }`, `{ ok: true }` for `Result<void>`, or
+/// `{ ok: false, reason }`. Every such answer is written here.
+pub fn answer<T: crate::wire::ToJson>(r: Result<T, String>) -> String {
+    match r {
+        Ok(_) if T::VOID => crate::ok_void(),
+        Ok(v) => crate::ok(v.to_json()),
+        Err(e) => crate::refuse(e),
+    }
+}
+
+/// The answer of a binding that returns a structured value outright: its
+/// JSON text.
+pub fn json<T: crate::wire::ToJson>(value: T) -> String {
+    value.to_json().to_string()
+}
