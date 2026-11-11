@@ -20,6 +20,8 @@ mod world_sims;
 use world_sims::{WorldSimsInputs, WorldSimsOutputs};
 mod world_ground;
 use world_ground::{WorldGroundInputs, WorldGroundOutputs};
+mod shaders;
+use shaders::{ShadersAndLayoutsInputs, ShadersAndLayoutsOutputs};
 impl Renderer {
     /// Times each render-graph pass's CPU encoding with `clock` (ms) and,
     /// where the device has timestamp queries, its GPU time
@@ -351,60 +353,36 @@ impl Renderer {
             info: &info,
             shadow_bind_layout: &shadow_bind_layout,
         });
-        // Pipelines.
-        // Parsed when the first pipeline that uses them is made
-        // (deferred.rs): a frame compiles only what it draws.
-        // The features the renderer is made without are in none of the
-        // modules that carry their code (pipeline_features.rs).
-        let off = info.without.features();
-        let pbr_shader = deferred::module(
-            &device,
-            "pbr",
-            off.leave_out(lit_source_with(&hooks::default_hooks(), planar)),
-        );
-        let sky_shader = deferred::module(&device, "sky", off.leave_out(sky_source()));
-        let sprite_shader = deferred::module(&device, "sprite", off.leave_out(sprite_source()));
-        let ribbon_shader = deferred::module(&device, "ribbon", off.leave_out(ribbon_source()));
-        let shadow_shader =
-            deferred::module(&device, "shadow", shadow_source(&hooks::default_hooks()));
-        let pipeline_layout = |label: &str, layouts: &[&wgpu::BindGroupLayout]| {
-            let layouts: Vec<_> = layouts.iter().map(|l| Some(*l)).collect();
-            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some(label),
-                bind_group_layouts: &layouts,
-                immediate_size: 0,
-            })
-        };
-        let pbr_layout = pipeline_layout("pbr", &[&frame_layout, &material_layout, &fx_layout]);
-        let lightmaps = lightmap::Lightmaps::new(&device, &queue, &frame_layout);
-        let pbr_skinned_layout = pipeline_layout(
-            "pbr skinned",
-            &[&frame_layout, &material_layout, &fx_layout, &palette_layout],
-        );
-        let sky_pl = pipeline_layout("sky", &[&frame_layout, &sky_layout]);
-        let sprite_pl = pipeline_layout(
-            "sprite",
-            &[&frame_layout, &sprite_layout, &sprite_fx_layout],
-        );
-        // Effect materials (effect.rs): group 3 of the particle and strip draws.
-        let effects = crate::effect::EffectRenderer::new(&device, &queue);
-        let ribbon_pl = pipeline_layout(
-            "ribbon",
-            &[
-                &frame_layout,
-                &sprite_layout,
-                &effects.empty_layout,
-                &effects.layout,
-            ],
-        );
-        let shadow_layouts = [
-            pipeline_layout("shadow", &[&shadow_bind_layout]),
-            pipeline_layout("shadow dissolve", &[&shadow_bind_layout, &material_layout]),
-            pipeline_layout(
-                "shadow skinned",
-                &[&shadow_bind_layout, &material_layout, &palette_layout],
-            ),
-        ];
+        // Shader modules and shared pipeline layouts (init/shaders.rs).
+        let ShadersAndLayoutsOutputs {
+            off,
+            pbr_shader,
+            sky_shader,
+            sprite_shader,
+            ribbon_shader,
+            shadow_shader,
+            pbr_layout,
+            lightmaps,
+            pbr_skinned_layout,
+            sky_pl,
+            sprite_pl,
+            effects,
+            ribbon_pl,
+            shadow_layouts,
+        } = Self::shaders_and_layouts(ShadersAndLayoutsInputs {
+            device: &device,
+            queue: &queue,
+            info: &info,
+            planar,
+            frame_layout: &frame_layout,
+            material_layout: &material_layout,
+            fx_layout: &fx_layout,
+            palette_layout: &palette_layout,
+            sky_layout: &sky_layout,
+            sprite_layout: &sprite_layout,
+            sprite_fx_layout: &sprite_fx_layout,
+            shadow_bind_layout: &shadow_bind_layout,
+        });
         // The sky's pipelines and resources (init/sky.rs).
         let SkyResourcesOutputs {
             sky_pipeline,
