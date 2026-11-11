@@ -18,7 +18,7 @@ impl Ui {
         let identity = (node.key, node.parent);
         let i = if let Some(&i) = self.render_slots.get(&identity) {
             let previous = std::mem::replace(&mut self.nodes[i], node);
-            self.kept.prev.entry(i).or_insert(previous);
+            self.layout.cache.prev.entry(i).or_insert(previous);
             self.prev_kinds.entry(i).or_insert(self.kinds[i]);
             self.kinds[i] = kind;
             i
@@ -71,7 +71,7 @@ impl Ui {
         let mut vacant = Node::new(0, String::new(), NONE, Element::default());
         vacant.hidden = true;
         let old = std::mem::replace(&mut self.nodes[i], vacant);
-        self.kept.prev.entry(i).or_insert(old);
+        self.layout.cache.prev.entry(i).or_insert(old);
         self.prev_kinds.entry(i).or_insert(self.kinds[i]);
         self.kinds[i] = ("vacant", false);
         self.draws.remove(&i);
@@ -135,7 +135,7 @@ impl Ui {
     }
 
     pub(crate) fn previous_node(&self, i: usize) -> Option<&Node> {
-        self.kept.prev.get(&i).or_else(|| self.nodes.get(i))
+        self.layout.cache.prev.get(&i).or_else(|| self.nodes.get(i))
     }
 
     pub(crate) fn previous_nodes(&self) -> impl Iterator<Item = &Node> {
@@ -203,7 +203,8 @@ impl Ui {
             && self.nodes[owner].built_children.contains(&i)
         {
             if !self.emitted.contains(&i) {
-                self.kept
+                self.layout
+                    .cache
                     .prev
                     .entry(i)
                     .or_insert_with(|| self.nodes[i].clone());

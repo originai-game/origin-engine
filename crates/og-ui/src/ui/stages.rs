@@ -115,3 +115,16 @@ pub(crate) struct Paint {
     /// Last frame's paint, for reuse.
     pub(crate) cache: crate::layout::PaintCache,
 }
+
+/// Layout: its text measurements, its reuse cache and the boxes placement replaced for one frame.
+#[derive(Clone, Debug)]
+pub(crate) struct Layout {
+    /// Text measurements kept from the frames before (layout's).
+    pub(crate) texts: crate::layout::TextCache,
+    /// Last frame's input hash of each element and its subtree, with its
+    /// layout, for reuse (docs/ui.md §2).
+    pub(crate) cache: crate::layout::LayoutCache,
+    /// Slots whose box placement replaced (floating sizes, a modal's safe
+    /// padding): their authored box comes back before the next layout.
+    pub(crate) layout_mutated: Vec<usize>,
+}

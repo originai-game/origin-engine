@@ -69,7 +69,7 @@ impl Ui {
             return std::borrow::Cow::Borrowed(self);
         }
         let mut ui = self.clone();
-        for (&i, n) in &self.kept.prev {
+        for (&i, n) in &self.layout.cache.prev {
             ui.nodes[i] = n.clone();
         }
         for (&i, &k) in &self.prev_kinds {

@@ -29,7 +29,8 @@ impl Resolved {
 impl Ui {
     pub(super) fn apply_part_box(&mut self, i: usize) {
         if !self.emitted.contains(&i) {
-            self.kept
+            self.layout
+                .cache
                 .prev
                 .entry(i)
                 .or_insert_with(|| self.nodes[i].clone());

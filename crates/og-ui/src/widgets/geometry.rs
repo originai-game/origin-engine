@@ -7,7 +7,7 @@ impl Ui {
     pub(crate) fn settle_part_geometry(&mut self) -> (Vec<ContainerMeasurement>, Vec<usize>) {
         let mut measurements = Vec::new();
         let mut dirty = Vec::new();
-        for host in self.kept.laid.clone() {
+        for host in self.layout.cache.laid.clone() {
             let Some(geometry) = self.nodes[host].part_geometry.clone() else {
                 continue;
             };
@@ -80,7 +80,8 @@ impl Ui {
                         [(mark, k.width, k.height), (tick, tick_size, tick_size)]
                     {
                         if !self.emitted.contains(&index) {
-                            self.kept
+                            self.layout
+                                .cache
                                 .prev
                                 .entry(index)
                                 .or_insert_with(|| self.nodes[index].clone());

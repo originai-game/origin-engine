@@ -369,7 +369,7 @@ impl Ui {
             log.note(self.nodes[i].key);
         }
         let mut offsets = crate::id::KeyMap::default();
-        for &i in &self.kept.scrollers {
+        for &i in &self.layout.cache.scrollers {
             let key = self.nodes[i].key;
             let at = (
                 self.state.scroll_x.get(&key).copied().unwrap_or(0.0),

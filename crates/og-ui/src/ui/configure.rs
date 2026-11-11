@@ -52,7 +52,11 @@ impl Ui {
             persistent: Vec::new(),
             owning: Vec::new(),
             in_place: None,
-            layout_mutated: Vec::new(),
+            layout: Layout {
+                texts: Default::default(),
+                cache: Default::default(),
+                layout_mutated: Vec::new(),
+            },
             built: Default::default(),
             anonymous: Default::default(),
             stack: Vec::new(),
@@ -111,11 +115,9 @@ impl Ui {
             gesture: false,
             resize_moved: None,
             accent: None,
-            texts: Default::default(),
             drop_paths: IdMap::new(),
             drag_paths: IdMap::new(),
             drop_accepts: IdMap::new(),
-            kept: Default::default(),
             invalidation: Default::default(),
             draws: Default::default(),
             dressable: Default::default(),
@@ -440,7 +442,7 @@ impl Ui {
         self.env.fonts = fonts;
         self.invalidation.epoch += 1;
         self.env.fonts.link();
-        self.texts.clear();
+        self.layout.texts.clear();
     }
 
     /// How many text measurements the last frame's layout made: a text's
@@ -448,7 +450,7 @@ impl Ui {
     /// type size and width are as the frame before made none (they are
     /// kept). For profiling and tests; never world state.
     pub fn text_measurements(&self) -> u32 {
-        self.texts.measured()
+        self.layout.texts.measured()
     }
 
     /// The writing direction (left to right by default).
@@ -542,7 +544,7 @@ impl Ui {
         // The style's atlas at the density this surface draws at.
         self.env.theme.art.atlas = self.env.configured.art.atlas_for(viewport.dpr());
         self.retire_nodes();
-        self.kept.prev.clear();
+        self.layout.cache.prev.clear();
         self.prev_kinds.clear();
         std::mem::swap(&mut self.emitted, &mut self.retiring);
         self.emitted.clear();

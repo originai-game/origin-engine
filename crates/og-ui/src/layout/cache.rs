@@ -948,10 +948,14 @@ mod text_cache {
         let mut ui = fresh();
         frame(&mut ui, 120.0, 1);
         // Each label's widths and lines.
-        let first = ui.texts.len();
-        assert_eq!(first, 6, "{:?}", ui.texts);
+        let first = ui.layout.texts.len();
+        assert_eq!(first, 6, "{:?}", ui.layout.texts);
         frame(&mut ui, 120.0, 1);
-        assert_eq!(ui.texts.len(), first, "the same frame keeps what it had");
+        assert_eq!(
+            ui.layout.texts.len(),
+            first,
+            "the same frame keeps what it had"
+        );
         // A count that changes every frame leaves its old texts behind; they
         // go once the cache has doubled, so it stays bounded.
         for count in 2..2000 {
@@ -959,15 +963,15 @@ mod text_cache {
             assert_eq!(ui.text_measurements(), 2, "frame {count}");
         }
         assert!(
-            ui.texts.len() <= 2 * (SWEEP_MIN + 2 * SWEEP_AGE as usize),
+            ui.layout.texts.len() <= 2 * (SWEEP_MIN + 2 * SWEEP_AGE as usize),
             "{}",
-            ui.texts.len()
+            ui.layout.texts.len()
         );
-        assert!(ui.texts.lines.contains_key("score 1999"));
-        assert!(!ui.texts.lines.contains_key("score 1"));
+        assert!(ui.layout.texts.lines.contains_key("score 1999"));
+        assert!(!ui.layout.texts.lines.contains_key("score 1"));
         // New fonts forget every measurement.
         let fonts = ui.fonts().clone();
         ui.set_fonts(fonts);
-        assert_eq!(ui.texts.len(), 0);
+        assert_eq!(ui.layout.texts.len(), 0);
     }
 }
