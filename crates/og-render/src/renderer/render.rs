@@ -139,6 +139,7 @@ mod graph_prepare;
 use graph_prepare::PrepareGraphInputs;
 mod frame_stats;
 use frame_stats::{FrameStatsInputs, FrameStatsOutputs};
+mod fx_groups;
 mod setup;
 
 impl Renderer {
@@ -1117,6 +1118,9 @@ impl Renderer {
             }
             _ => None,
         };
+        // The effect bind groups, rebuilt only when what they read changed
+        // (fx_groups.rs).
+        self.update_fx_groups(scene, ao_target || contact, reflection.is_some());
         // The water's and the 3D fluids' draws (water_fluids.rs).
         let PrepareWaterAndFluidsOutputs {
             water_draws,
@@ -1188,84 +1192,6 @@ impl Renderer {
             skinned_visible: &skinned_visible,
             skinned_gpu,
         });
-        // Per-frame bind groups of the effects.
-        // The effect bind groups, rebuilt only when what they read changed.
-        let fx_key = (
-            self.graph.generation,
-            scene.id(),
-            scene.decal_atlas,
-            self.lights.decal_buffers.generation,
-            ao_target || contact,
-            scene.lighting_2d.is_some(),
-            reflection.is_some(),
-        );
-        if self.lights.fx_groups.as_ref().map(|g| g.key) != Some(fx_key) {
-            let atlas_view = scene.decal_atlas.map_or(&self.default_white, |t| {
-                &self.cache.textures[t.index()].view
-            });
-            self.terrain.decals.bind(
-                &self.device,
-                atlas_view,
-                &self.trilinear_sampler,
-                &self.lights.decal_buffers,
-            );
-            let ao_view = if ao_target || contact {
-                self.graph.view("ao")
-            } else {
-                &self.post.white
-            };
-            // This frame's planar reflection, for the material shaders that
-            // read it (pbr.wgsl `planar_reflection`; fx `reserved` says
-            // whether it is there).
-            let planar_view = if reflection.is_some() {
-                self.graph.view("reflection")
-            } else {
-                &self.post.white
-            };
-            let lightmap_view = if scene.lighting_2d.is_some() {
-                self.graph.view("lightmap")
-            } else {
-                &self.default_white
-            };
-            // The lights' directions (normal-mapped receivers), black
-            // (none) without.
-            let lightdir_view = self.graph.try_view("lightdir").unwrap_or(&self.post.black);
-            let sprite_group = |light: &wgpu::TextureView, dir, label: &str| {
-                bind_group(
-                    &self.device,
-                    label,
-                    &self.sprite_fx_layout,
-                    &[
-                        wgpu::BindingResource::TextureView(light),
-                        wgpu::BindingResource::Sampler(&self.trilinear_sampler),
-                        self.sprite_fx_buffer.as_entire_binding(),
-                        wgpu::BindingResource::TextureView(dir),
-                    ],
-                )
-            };
-            let groups = FxGroups {
-                key: fx_key,
-                fx: fx::fx_group(
-                    &self.device,
-                    "fx",
-                    &self.fx_layout,
-                    &[
-                        self.lights.fx_buffer.as_entire_binding(),
-                        wgpu::BindingResource::TextureView(ao_view),
-                        wgpu::BindingResource::TextureView(atlas_view),
-                        wgpu::BindingResource::Sampler(&self.trilinear_sampler),
-                        wgpu::BindingResource::TextureView(planar_view),
-                    ][..if self.planar_slot() { 5 } else { 4 }],
-                    &self.lights.decal_buffers,
-                ),
-                fx_lean: self.fx_lean_group(&self.lights.fx_buffer, ao_view, atlas_view),
-                sprite: sprite_group(lightmap_view, lightdir_view, "sprite fx"),
-                // The glow pass draws into a target that may alias the light
-                // map: its sprites read a placeholder instead.
-                glow: sprite_group(&self.default_white, &self.post.black, "sprite fx (glow)"),
-            };
-            self.lights.fx_groups = Some(groups);
-        }
         let (_, frame_bind_group, sky_group, reflection_frame_group) = self
             .lights
             .environment
