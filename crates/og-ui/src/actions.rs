@@ -131,7 +131,7 @@ impl ActionHint {
 impl Ui {
     /// Defines (or redefines) a UI action.
     pub fn define_action(&mut self, desc: ActionDesc) {
-        self.ensure_actions();
+        self.interaction.ensure_actions();
         match self
             .interaction
             .actions
@@ -142,7 +142,7 @@ impl Ui {
             Some(d) => *d = desc,
             None => self.interaction.actions.defs.push(desc),
         }
-        self.ensure_actions();
+        self.interaction.ensure_actions();
     }
 
     /// Every action defined (the defaults until one is).
@@ -156,7 +156,7 @@ impl Ui {
 
     /// The action fired this tick.
     pub fn action(&self, name: &str) -> bool {
-        self.action_fired(name)
+        self.interaction.action_fired(name)
     }
 
     /// A hold action is held (its press past the hold, or its toggle on).
@@ -185,7 +185,7 @@ impl Ui {
     pub fn fire_action(&mut self, name: &str) {
         if !self.tree.building {
             self.interaction.actions.pending.push(name.to_string());
-        } else if !self.action_fired(name) {
+        } else if !self.interaction.action_fired(name) {
             self.interaction.actions.fired.push(name.to_string());
         }
     }
@@ -339,74 +339,69 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Interaction {
     fn ensure_actions(&mut self) {
-        if !self.interaction.actions.defined {
-            self.interaction.actions.defined = true;
-            self.interaction.actions.defs = default_actions();
-            self.interaction.actions.pad = Device::Xbox;
+        if !self.actions.defined {
+            self.actions.defined = true;
+            self.actions.defs = default_actions();
+            self.actions.pad = Device::Xbox;
         }
-        self.interaction
-            .actions
+        self.actions
             .states
-            .resize(self.interaction.actions.defs.len(), ActionState::default());
+            .resize(self.actions.defs.len(), ActionState::default());
     }
 
     pub(crate) fn action_fired(&self, name: &str) -> bool {
-        self.interaction.actions.fired.iter().any(|a| a == name)
+        self.actions.fired.iter().any(|a| a == name)
     }
 
     /// The action's input is down this tick (held, before or past any hold).
     pub(crate) fn action_down(&self, name: &str) -> bool {
-        self.interaction
-            .actions
+        self.actions
             .defs
             .iter()
             .position(|d| d.name == name)
-            .and_then(|k| self.interaction.actions.states.get(k))
+            .and_then(|k| self.actions.states.get(k))
             .is_some_and(|s| s.down)
     }
 
     /// Reads this tick's input into the actions and the last device (from `begin`).
-    pub(crate) fn actions_begin(&mut self, input: &InputFrame) {
+    pub(crate) fn actions_begin(&mut self, input: &InputFrame, env: &crate::ui::Env) {
         self.ensure_actions();
-        self.interaction.actions.fired = std::mem::take(&mut self.interaction.actions.pending);
-        self.interaction.actions.feed.clone_from(&input.actions);
+        self.actions.fired = std::mem::take(&mut self.actions.pending);
+        self.actions.feed.clone_from(&input.actions);
         // The last device: a key or the mouse, a pad, a touch.
         let pad_used = input.gamepad.pressed != 0 || input.gamepad.stick.length() > 0.5;
         if pad_used && let Some(family) = input.gamepad.device {
-            self.interaction.actions.pad = family;
+            self.actions.pad = family;
         }
-        let touch =
-            self.env.viewport.coarse_pointer && (input.pressed || input.pointers.pressed != 0);
+        let touch = env.viewport.coarse_pointer && (input.pressed || input.pointers.pressed != 0);
         let keys = !input.keys_held.is_empty()
             && input
                 .keys_held
                 .iter()
                 .any(|k| input.keys_pressed.contains(k));
-        let mouse =
-            !self.env.viewport.coarse_pointer && (input.pressed || input.wheel.length() > 0.0);
+        let mouse = !env.viewport.coarse_pointer && (input.pressed || input.wheel.length() > 0.0);
         if pad_used {
-            self.interaction.actions.device = self.interaction.actions.pad;
+            self.actions.device = self.actions.pad;
         } else if touch {
-            self.interaction.actions.device = Device::Touch;
+            self.actions.device = Device::Touch;
         } else if keys || mouse {
-            self.interaction.actions.device = Device::KeyboardMouse;
+            self.actions.device = Device::KeyboardMouse;
         }
-        let now = self.interaction.state.tick;
-        let tps = self.env.ticks_per_second.max(1);
-        for (k, d) in self.interaction.actions.defs.iter().enumerate() {
+        let now = self.state.tick;
+        let tps = env.ticks_per_second.max(1);
+        for (k, d) in self.actions.defs.iter().enumerate() {
             if !d.action.is_empty() {
                 // A followed action: its state is og-input's this tick.
                 let s = self
-                    .interaction
                     .actions
                     .feed
                     .iter()
                     .find(|f| f.name == d.action)
                     .map(|f| f.state)
                     .unwrap_or_default();
-                let st = &mut self.interaction.actions.states[k];
+                let st = &mut self.actions.states[k];
                 let was = st.down;
                 st.down = s.down;
                 let fire = match d.trigger {
@@ -434,7 +429,7 @@ impl Ui {
                     }
                 };
                 if fire {
-                    self.interaction.actions.fired.push(d.name.clone());
+                    self.actions.fired.push(d.name.clone());
                 }
                 continue;
             }
@@ -453,7 +448,7 @@ impl Ui {
                 .iter()
                 .any(|c| input.keys_pressed.iter().any(|h| h == c))
                 || input.gamepad.pressed & button_bits != 0;
-            let s = &mut self.interaction.actions.states[k];
+            let s = &mut self.actions.states[k];
             let was = s.down;
             let pressed = pressed || (down && !was);
             let released = was && !down;
@@ -483,7 +478,7 @@ impl Ui {
                 }
             }
             if fire {
-                self.interaction.actions.fired.push(d.name.clone());
+                self.actions.fired.push(d.name.clone());
             }
         }
     }

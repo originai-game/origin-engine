@@ -112,7 +112,8 @@ impl Ui {
                         .unwrap_or_default()
                 })
                 .unwrap_or_default(),
-            tapped: key != 0 && (self.interaction.nav.tapped == key || self.tapped_by_keys(key)),
+            tapped: key != 0
+                && (self.interaction.nav.tapped == key || self.interaction.tapped_by_keys(key)),
             double_tapped: key != 0 && self.interaction.nav.double_tapped == key,
             long_pressed: key != 0 && self.interaction.nav.long_pressed == key,
             long_press: self.long_press_progress(key),
@@ -120,21 +121,28 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Interaction {
     /// One element's drag and pinch for this tick: answers its offset,
     /// scale and turn.
-    pub(crate) fn run_gesture(&mut self, i: usize, m: &mut MotionState) -> [f32; 4] {
-        let n = &self.tree.nodes[i];
+    pub(crate) fn run_gesture(
+        &mut self,
+        i: usize,
+        m: &mut MotionState,
+        env: &crate::ui::Env,
+        ui_out: &mut crate::ui::Out,
+        tree: &crate::ui::Tree,
+    ) -> [f32; 4] {
+        let n = &tree.nodes[i];
         let key = n.key;
-        let now = self.interaction.state.tick;
-        let tps = self.env.ticks_per_second;
-        let tokens = self.env.theme.motion;
+        let now = self.state.tick;
+        let tps = env.ticks_per_second;
+        let tokens = env.theme.motion;
         let drag = n.props.drag.clone();
         let pinch = n.props.pinch;
         let size = Vec2::new(n.rect.width, n.rect.height);
-        let input = self.interaction.input.clone();
+        let input = self.input.clone();
         let p = input.pointer;
-        let held_here = self.interaction.state.active == key;
+        let held_here = self.state.active == key;
         let mut g = m.gestures.get(&key).copied().unwrap_or(Gesture {
             snapped: -1,
             scale: 1.0,
@@ -211,14 +219,13 @@ impl Ui {
                     cy.velocity = g.velocity.y;
                     // The drop target under the pointer that takes it.
                     g.over = self
-                        .interaction
                         .state
                         .hits
                         .iter()
                         .rev()
                         .find(|h| h.key != key && h.has(HIT_DROP) && h.contains(p.x, p.y))
                         .filter(|h| {
-                            let accept = self.interaction.drop_accepts.get(&h.key);
+                            let accept = self.drop_accepts.get(&h.key);
                             accept.is_none_or(|a| a.is_empty() || a.contains(&spec.tag))
                         })
                         .map_or(0, |h| h.key);
@@ -229,7 +236,7 @@ impl Ui {
                 g.held = false;
                 if g.dragging {
                     g.dragging = false;
-                    let v = if self.env.theme.reduced_motion {
+                    let v = if env.theme.reduced_motion {
                         Vec2::ZERO
                     } else {
                         g.velocity
@@ -269,8 +276,7 @@ impl Ui {
                         if along(projected).abs() >= dist || along(v).abs() >= vel {
                             dismissed = true;
                             let sign = if along(projected) < 0.0 { -1.0 } else { 1.0 };
-                            let far =
-                                self.env.viewport.width.max(self.env.viewport.height) + axis_size;
+                            let far = env.viewport.width.max(env.viewport.height) + axis_size;
                             to = match g.lock {
                                 2 => Vec2::new(at.x, sign * far),
                                 1 => Vec2::new(sign * far, at.y),
@@ -295,10 +301,10 @@ impl Ui {
                                 .unwrap_or((0, &(0.0, 0.0)));
                             to = Vec2::new(sx, sy);
                             g.snapped = k as i32;
-                            self.out.events.push(UiEvent {
+                            ui_out.events.push(UiEvent {
                                 kind: "snap".into(),
                                 name: k.to_string(),
-                                target: self.tree.path_of(i),
+                                target: tree.path_of(i),
                                 pitch: 1.0,
                                 ..UiEvent::default()
                             });
@@ -313,25 +319,20 @@ impl Ui {
                         }
                     } else {
                         g.dismissed = true;
-                        self.out.events.push(UiEvent {
+                        ui_out.events.push(UiEvent {
                             kind: "dismiss".into(),
-                            target: self.tree.path_of(i),
+                            target: tree.path_of(i),
                             pitch: 1.0,
                             ..UiEvent::default()
                         });
                     }
                     if g.over != 0 {
                         g.dropped_on = g.over;
-                        let target = self
-                            .interaction
-                            .drop_paths
-                            .get(&g.over)
-                            .cloned()
-                            .unwrap_or_default();
-                        self.out.events.push(UiEvent {
+                        let target = self.drop_paths.get(&g.over).cloned().unwrap_or_default();
+                        ui_out.events.push(UiEvent {
                             kind: "drop".into(),
                             name: target,
-                            target: self.tree.path_of(i),
+                            target: tree.path_of(i),
                             pitch: 1.0,
                             ..UiEvent::default()
                         });
@@ -340,7 +341,7 @@ impl Ui {
                     let t = spec
                         .spring
                         .unwrap_or(Transition::Token(super::MotionToken::Ui));
-                    let t = if self.env.theme.reduced_motion {
+                    let t = if env.theme.reduced_motion {
                         Transition::Instant
                     } else {
                         t
@@ -360,7 +361,7 @@ impl Ui {
         }
         if let Some(ps) = pinch {
             let pts = &input.pointers;
-            let rect = self.interaction.hit(key).copied();
+            let rect = self.hit(key).copied();
             let held: Vec<u32> = (0..og_input::MAX_POINTERS as u32)
                 .filter(|&id| pts.down(id))
                 .filter(|&id| {
@@ -405,8 +406,8 @@ impl Ui {
     /// Places element `key`'s drag at rest at `offset` (a sheet opening at
     /// its first detent), as if a release had settled it there.
     pub(crate) fn seed_drag(&mut self, key: u64, offset: Vec2) {
-        let now = self.interaction.state.tick;
-        let m = &mut self.interaction.state.motion;
+        let now = self.state.tick;
+        let m = &mut self.state.motion;
         let g = m.gestures.entry(key).or_insert(Gesture {
             snapped: -1,
             scale: 1.0,

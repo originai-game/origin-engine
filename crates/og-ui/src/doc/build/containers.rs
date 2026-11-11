@@ -72,7 +72,7 @@ impl Ui {
         keys.extend(self.docs.host.retained.scroll_reads());
         let mut states = BTreeMap::new();
         for key in keys {
-            let offset = self.offset(key);
+            let offset = self.interaction.offset(key);
             let (old_offset, old) = self
                 .docs
                 .host
@@ -90,7 +90,10 @@ impl Ui {
                 scrolled &= !((LEFT | RIGHT) << 10);
                 scrolled |= if d.x < 0.0 { LEFT } else { RIGHT } << 10;
             }
-            let flags = self.scroll_flags_now(key) | scrolled;
+            let flags = self
+                .interaction
+                .scroll_flags_now(key, &self.layout, &self.tree)
+                | scrolled;
             if flags != old {
                 self.docs.host.scroll_changed.insert(key);
             }

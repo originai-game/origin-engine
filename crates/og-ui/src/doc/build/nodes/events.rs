@@ -112,7 +112,8 @@ impl Ui {
                 || self.interaction.input.gamepad.held & crate::input::GamepadFrame::A != 0);
         let pressing = (self.interaction.input.down && self.interaction.state.active == key)
             || focused
-            || r.str("dataAction").is_some_and(|a| self.action_down(a));
+            || r.str("dataAction")
+                .is_some_and(|a| self.interaction.action_down(a));
         let memory = crate::id::child_key(key, "~hold");
         let ticks = if pressing { self.anim(memory).h + 1 } else { 0 };
         if pressing || self.has_anim(memory) {
@@ -235,7 +236,7 @@ impl Ui {
                 When::Toggle | When::Close | When::Revealed => happened.contains(&t.when),
                 When::Action(a) => {
                     self.docs.host.accepts
-                        && self.action_fired(a)
+                        && self.interaction.action_fired(a)
                         // A disabled control's shortcut activates nothing,
                         // as its press does not (a `<fieldset disabled>`'s
                         // controls included).

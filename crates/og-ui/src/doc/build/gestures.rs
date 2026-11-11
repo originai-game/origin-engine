@@ -152,7 +152,7 @@ impl Ui {
             } else {
                 og_core::glam::Vec2::new(0.0, first)
             };
-            self.seed_drag(key, start);
+            self.interaction.seed_drag(key, start);
             return false;
         }
         open && was && self.gesture_of(key).dismissed

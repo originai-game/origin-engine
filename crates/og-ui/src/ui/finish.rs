@@ -34,7 +34,8 @@ impl Ui {
     pub(crate) fn apply_gutter(&mut self, i: usize) {
         let node = &self.tree.nodes[i];
         let gutter = if node.el.scroll && !node.el.scroll_x && !node.el.hide_bars {
-            self.bar_gutter(node.key, node.el.scroll_css)
+            self.interaction
+                .bar_gutter(node.key, node.el.scroll_css, &self.env)
         } else {
             0.0
         };
@@ -881,7 +882,7 @@ impl Ui {
         }
         let order = std::mem::take(&mut self.tree.orders.draw);
         let custom = self.tree.orders.drawn(visit::feat::CUSTOM);
-        self.hud_apply(&custom);
+        self.tree.hud_apply(&custom, &self.interaction);
         // Maps, opacity and inertness where they may have changed, and
         // below wherever they did.
         let world_seeds = seeds.as_ref().map(|s| {
@@ -892,7 +893,8 @@ impl Ui {
         });
         let mapped = self.apply_world(&order, world_seeds.as_deref());
         self.layout.plane_quads(&mut self.world, &self.tree);
-        self.hud_collect(&custom);
+        self.interaction
+            .hud_collect(&custom, &self.tree, &self.front);
         self.world_finish();
         let dnd = self.tree.orders.with(visit::feat::DND).to_vec();
         self.note_drag_and_drop(&dnd);
@@ -1010,7 +1012,8 @@ impl Ui {
         });
         let scoped = self.visit(order, scope_seeds.as_deref(), Self::scope_step);
         // Focus groups, explicit moves and gesture recognisers for the next frame.
-        self.collect_input_specs();
+        self.interaction
+            .collect_input_specs(&mut self.out, &self.tree);
         // Hits where a node's place, map or scopes may have changed (every
         // node when the touch target or the screen did).
         let touch_min = self.layout.touch_min(&self.env);
@@ -1151,7 +1154,7 @@ impl Ui {
         self.interaction.state.scope_locked = top_locked;
         self.interaction.state.nav_off = !self.interaction.nav_on;
         self.interaction.state.hits = hits;
-        self.note_groups();
+        self.interaction.note_groups();
         self.note_taps();
         let (cursor, cursor_images) = if self.interaction.state.vcursor.shown
             && self.interaction.state.vcursor.desc.is_some()
@@ -1161,7 +1164,7 @@ impl Ui {
         } else {
             self.resolve_cursor(order)
         };
-        let selected = self.mark_selection();
+        let selected = self.interaction.mark_selection(&mut self.tree);
         (cursor, cursor_images, selected)
     }
 
@@ -1295,7 +1298,8 @@ impl Ui {
         }
         let mut over = Vec::new();
         self.hud_edit_commands(&mut over);
-        self.virtual_cursor_commands(&mut over);
+        self.interaction
+            .virtual_cursor_commands(&mut over, &self.env);
         tail.extend(over.into_iter().map(|c| (c, Affine::IDENTITY)));
         // Every tree drew as last frame, and what is over them too: the
         // frame's items are last frame's.

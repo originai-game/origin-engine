@@ -231,16 +231,16 @@ impl Ui {
         let Some(t) = hud.targets.iter().find(|t| t.key == hud.selected).cloned() else {
             return;
         };
-        let mut p = self.placement(&t.key);
+        let mut p = self.interaction.placement(&t.key);
         p.scale *= SCALE_STEP.powi(scale.signum());
         p.opacity += OPACITY_STEP * opacity.signum() as f32;
-        self.place(&t, p);
+        self.interaction.place(&t, p, &self.env, &self.tree);
     }
 
     /// Puts the selected element (empty `key`), or every one (`"*"`), back
     /// where it was laid out.
     pub fn hud_reset(&mut self, key: &str) {
-        let now = self.hud_now();
+        let now = self.interaction.hud_now(&self.tree);
         let hud = &mut self.interaction.state.hud;
         let player = usize::from(hud.player);
         if key == "*" {
@@ -269,9 +269,10 @@ impl Ui {
         let over_editor = self.interaction.state.hud.editor.contains(p.x, p.y);
         let mut took = false;
         if input.pressed && input.pointer_inside && !over_editor {
-            if let Some(t) = self.hud_target_at(p) {
+            if let Some(t) = self.interaction.hud_target_at(p) {
                 self.interaction.state.hud.selected = t.key.clone();
-                self.interaction.state.hud.drag = Some((p, self.placement(&t.key), 0.0));
+                self.interaction.state.hud.drag =
+                    Some((p, self.interaction.placement(&t.key), 0.0));
                 self.sound(crate::style_file::UiSound::Press);
                 took = true;
             }
@@ -314,7 +315,7 @@ impl Ui {
                 l.insert(t.key.clone(), to);
             } else {
                 self.interaction.state.hud.drag = None;
-                self.interaction.state.hud.changed = self.hud_now();
+                self.interaction.state.hud.changed = self.interaction.hud_now(&self.tree);
                 let hud = &mut self.interaction.state.hud;
                 hud.layouts[usize::from(hud.player)].retain(|_, p| *p != HudPlacement::default());
             }
@@ -323,12 +324,12 @@ impl Ui {
         if input.wheel.y != 0.0
             && input.pointer_inside
             && !over_editor
-            && let Some(t) = self.hud_target_at(p)
+            && let Some(t) = self.interaction.hud_target_at(p)
         {
             self.interaction.state.hud.selected = t.key.clone();
-            let mut to = self.placement(&t.key);
+            let mut to = self.interaction.placement(&t.key);
             to.scale *= 0.998f32.powf(input.wheel.y);
-            self.place(&t, to);
+            self.interaction.place(&t, to, &self.env, &self.tree);
             input.wheel = Vec2::ZERO;
         }
         // With no virtual cursor, pad 0's stick moves the selected element.
@@ -344,11 +345,11 @@ impl Ui {
                 .find(|t| t.key == sel)
                 .cloned()
             {
-                let mut to = self.placement(&t.key);
+                let mut to = self.interaction.placement(&t.key);
                 let step = 400.0 / self.env.ticks_per_second.max(1) as f32;
                 to.x += stick.x * step;
                 to.y += stick.y * step;
-                self.place(&t, to);
+                self.interaction.place(&t, to, &self.env, &self.tree);
                 input.gamepad.stick = Vec2::ZERO;
             }
         }
@@ -561,17 +562,16 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Interaction {
     /// The tick of the frame being built, or of the one about to begin
     /// (the edit mode's input runs before `begin` counts it).
-    fn hud_now(&self) -> u64 {
-        self.interaction.state.tick + u64::from(!self.tree.building)
+    fn hud_now(&self, tree: &crate::ui::Tree) -> u64 {
+        self.state.tick + u64::from(!tree.building)
     }
 
     /// The topmost customisable element of last frame under `p`.
     fn hud_target_at(&self, p: Vec2) -> Option<HudTarget> {
-        self.interaction
-            .state
+        self.state
             .hud
             .targets
             .iter()
@@ -581,18 +581,24 @@ impl Ui {
     }
 
     fn placement(&self, key: &str) -> HudPlacement {
-        let hud = &self.interaction.state.hud;
+        let hud = &self.state.hud;
         hud.layouts[usize::from(hud.player)]
             .get(key)
             .copied()
             .unwrap_or_default()
     }
 
-    fn place(&mut self, t: &HudTarget, p: HudPlacement) {
-        let (w, h) = (self.env.viewport.width, self.env.viewport.height);
+    fn place(
+        &mut self,
+        t: &HudTarget,
+        p: HudPlacement,
+        env: &crate::ui::Env,
+        tree: &crate::ui::Tree,
+    ) {
+        let (w, h) = (env.viewport.width, env.viewport.height);
         let p = p.limited(t, w, h);
-        let now = self.hud_now();
-        let hud = &mut self.interaction.state.hud;
+        let now = self.hud_now(tree);
+        let hud = &mut self.state.hud;
         let l = &mut hud.layouts[usize::from(hud.player)];
         if p == HudPlacement::default() {
             l.remove(&t.key);
@@ -604,29 +610,33 @@ impl Ui {
 
     /// The frame's customisable elements, after its transforms, for the
     /// next tick's edit mode.
-    pub(crate) fn hud_collect(&mut self, order: &[usize]) {
+    pub(crate) fn hud_collect(
+        &mut self,
+        order: &[usize],
+        tree: &crate::ui::Tree,
+        front: &crate::ui::Front,
+    ) {
         let mut targets = Vec::new();
-        let editor = match self.front.hud_editor_key {
+        let editor = match front.hud_editor_key {
             0 => Rect::default(),
-            k => self
-                .tree
+            k => tree
                 .index
                 .find(k)
-                .map_or(Rect::default(), |i| self.tree.nodes[i].screen),
+                .map_or(Rect::default(), |i| tree.nodes[i].screen),
         };
         for &i in order {
-            let n = &self.tree.nodes[i];
+            let n = &tree.nodes[i];
             let Some(spec) = &n.props.customize else {
                 continue;
             };
             let pw = if n.parent == crate::layout::NONE {
                 crate::Affine::IDENTITY
             } else {
-                self.tree.nodes[n.parent].world
+                tree.nodes[n.parent].world
             };
             targets.push(HudTarget {
                 key: if spec.key.is_empty() {
-                    self.tree.path_of(i)
+                    tree.path_of(i)
                 } else {
                     spec.key.clone()
                 },
@@ -635,7 +645,7 @@ impl Ui {
                 spec: spec.clone(),
             });
         }
-        let hud = &mut self.interaction.state.hud;
+        let hud = &mut self.state.hud;
         hud.targets = targets;
         hud.editor = editor;
         if !hud.selected.is_empty() && !hud.targets.iter().any(|t| t.key == hud.selected) {
@@ -644,21 +654,21 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Tree {
     /// Each customisable element's placement into its node before the
     /// frame's transforms (`apply_world`).
-    pub(crate) fn hud_apply(&mut self, order: &[usize]) {
+    pub(crate) fn hud_apply(&mut self, order: &[usize], interaction: &crate::ui::Interaction) {
         for &i in order {
-            let Some(spec) = &self.tree.nodes[i].props.customize else {
+            let Some(spec) = &self.nodes[i].props.customize else {
                 continue;
             };
             let key = if spec.key.is_empty() {
-                self.tree.path_of(i)
+                self.path_of(i)
             } else {
                 spec.key.clone()
             };
-            let p = self.placement(&key);
-            self.tree.nodes[i].custom = [p.x, p.y, p.scale, p.opacity];
+            let p = interaction.placement(&key);
+            self.nodes[i].custom = [p.x, p.y, p.scale, p.opacity];
         }
     }
 }

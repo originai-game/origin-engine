@@ -396,12 +396,15 @@ impl Ui {
             (a, b) if a > 0.0 && b >= a => (a, b),
             _ => (1.0, 4.0),
         };
-        let s = self.zoom_state(key).unwrap_or(crate::scroll::ZoomState {
-            zoom: min,
-            center: og_core::glam::Vec2::splat(0.5),
-            min,
-            max,
-        });
+        let s = self
+            .interaction
+            .zoom_state(key)
+            .unwrap_or(crate::scroll::ZoomState {
+                zoom: min,
+                center: og_core::glam::Vec2::splat(0.5),
+                min,
+                max,
+            });
         let s = crate::scroll::ZoomState { min, max, ..s };
         self.set_zoom_state(key, s);
         // Keys and pads reach it; while focused its arrows (↑ ↓ too) are
@@ -412,7 +415,7 @@ impl Ui {
             let adjust = self.interaction.nav.adjust;
             self.zoom_keys(key, adjust);
         }
-        let s = self.zoom_state(key).unwrap_or(s);
+        let s = self.interaction.zoom_state(key).unwrap_or(s);
         let [u0, v0, u1, v1] = desc.uv.unwrap_or([0.0, 0.0, 1.0, 1.0]);
         let half = 0.5 / s.zoom;
         let (fx0, fy0) = (s.center.x - half, s.center.y - half);

@@ -39,7 +39,6 @@
 use crate::input::UiKey;
 use crate::layout::{FontRole, Rect};
 use crate::text::FontMetrics;
-use crate::ui::Ui;
 use og_core::glam::Vec2;
 use og_i18n::Direction;
 
@@ -618,43 +617,45 @@ pub(crate) struct Edited {
     pub left: bool,
 }
 
-impl Ui {
+impl crate::ui::Interaction {
     /// Edits `value` as the focused text control `key`: pointer, typed and
     /// composed text, editing keys, undo and redo. The caret, selection
     /// anchor, composition, click count and history live in the UI state
     /// (and its saved bytes).
-    pub(crate) fn edit(&mut self, key: u64, value: &mut String, d: &EditDesc) -> Edited {
+    pub(crate) fn edit(
+        &mut self,
+        key: u64,
+        value: &mut String,
+        d: &EditDesc,
+        env: &crate::ui::Env,
+        ui_out: &mut crate::ui::Out,
+    ) -> Edited {
         let mut out = Edited::default();
-        let dir = self.env.direction;
-        let tick = self.interaction.state.tick;
+        let dir = env.direction;
+        let tick = self.state.tick;
         let mut chars: Vec<char> = value.chars().collect();
         let mut before = chars.clone();
         // Focus arrived: the caret at the end (a press moves it below).
-        if self.interaction.state.edit_key != key {
-            self.interaction.state.edit_key = key;
-            self.interaction.state.caret = chars.len();
-            self.interaction.state.anchor = chars.len();
-            self.interaction.state.composition.clear();
-            self.interaction.state.edit_scroll = 0.0;
-            self.interaction.state.edit_tick = tick;
-            self.interaction.state.caret_upstream = false;
-            self.interaction.state.killing = false;
+        if self.state.edit_key != key {
+            self.state.edit_key = key;
+            self.state.caret = chars.len();
+            self.state.anchor = chars.len();
+            self.state.composition.clear();
+            self.state.edit_scroll = 0.0;
+            self.state.edit_tick = tick;
+            self.state.caret_upstream = false;
+            self.state.killing = false;
         }
-        let mut caret = self.interaction.state.caret.min(chars.len());
-        let mut anchor = self.interaction.state.anchor.min(chars.len());
+        let mut caret = self.state.caret.min(chars.len());
+        let mut anchor = self.state.anchor.min(chars.len());
         let mut sel_before = (caret, anchor);
-        let mut upstream = self.interaction.state.caret_upstream;
-        let mut killing = self.interaction.state.killing;
-        let mut kill = std::mem::take(&mut self.interaction.state.kill);
-        let mut composition = std::mem::take(&mut self.interaction.state.composition);
+        let mut upstream = self.state.caret_upstream;
+        let mut killing = self.state.killing;
+        let mut kill = std::mem::take(&mut self.state.kill);
+        let mut composition = std::mem::take(&mut self.state.composition);
         let mut clipboard = None;
         // This control's history; a text the game set since starts it again.
-        let mut history = self
-            .interaction
-            .state
-            .histories
-            .remove(&key)
-            .unwrap_or_default();
+        let mut history = self.state.histories.remove(&key).unwrap_or_default();
         if history.seen != text_hash(&chars) {
             history = History::default();
         }
@@ -665,13 +666,12 @@ impl Ui {
                 _ => k,
             });
         };
-        let mut click = self.interaction.state.click;
+        let mut click = self.state.click;
         // A drag past the edge scrolled the text this tick: it owns the scroll.
         let mut autoscrolled = false;
         let secret = d.input_type == crate::InputType::Password;
         {
-            let m = &self
-                .env
+            let m = &env
                 .fonts
                 .for_text(d.role, if secret { "\u{2022}" } else { value.as_str() })
                 .metrics;
@@ -692,7 +692,7 @@ impl Ui {
                     word_at(chars, k)
                 }
             };
-            let mut scroll = self.interaction.state.edit_scroll;
+            let mut scroll = self.state.edit_scroll;
             let (size, tracking) = (d.size, d.tracking);
             // The text's lines now: (start, end, boxes, y from the text's top).
             let layout = |chars: &[char]| -> Vec<(usize, usize, Vec<GlyphBox>)> {
@@ -730,15 +730,12 @@ impl Ui {
             // A press places the caret, a drag (the press held) selects; a
             // second press in a row selects a word, a third the line, and a
             // drag from them extends by words or lines.
-            let pressed_here =
-                self.interaction.input.pressed && self.interaction.state.active == key;
-            let dragging = !self.interaction.input.pressed
-                && self.interaction.input.down
-                && self.interaction.state.active == key;
+            let pressed_here = self.input.pressed && self.state.active == key;
+            let dragging = !self.input.pressed && self.input.down && self.state.active == key;
             if (pressed_here || dragging)
                 && let Some(inner) = d.inner
             {
-                let mut p = self.interaction.input.pointer;
+                let mut p = self.input.pointer;
                 let lines = layout(&chars);
                 // A drag past the text's edge scrolls it, faster the further
                 // out, and selects up to the edge.
@@ -778,7 +775,7 @@ impl Ui {
                             autoscrolled = true;
                         }
                     }
-                    self.interaction.state.edit_scroll = scroll;
+                    self.state.edit_scroll = scroll;
                 }
                 let (y0, x0) = if d.multiline {
                     (inner.y - scroll, 0.0)
@@ -800,8 +797,7 @@ impl Ui {
                 killing = false;
                 if pressed_here {
                     let near = (p - click.at).length() <= CLICK_SLOP;
-                    let soon =
-                        tick.saturating_sub(click.tick) <= click_ticks(self.env.ticks_per_second);
+                    let soon = tick.saturating_sub(click.tick) <= click_ticks(env.ticks_per_second);
                     click.count = if click.count > 0 && !click.moved && near && soon {
                         (click.count + 1).min(3)
                     } else {
@@ -810,7 +806,7 @@ impl Ui {
                     click.tick = tick;
                     click.at = p;
                     click.moved = false;
-                    if self.interaction.input.shift {
+                    if self.input.shift {
                         click.count = 1;
                         caret = k;
                     } else {
@@ -820,7 +816,7 @@ impl Ui {
                         caret = b;
                     }
                 } else {
-                    if (self.interaction.input.pointer - click.at).length() > CLICK_SLOP {
+                    if (self.input.pointer - click.at).length() > CLICK_SLOP {
                         click.moved = true;
                     }
                     if click.count >= 2 {
@@ -839,7 +835,7 @@ impl Ui {
                 }
             }
             // An input method's composition replaces the selection as it starts.
-            if let Some(c) = &self.interaction.input.composition {
+            if let Some(c) = &self.input.composition {
                 if !c.is_empty() && composition.is_empty() && caret != anchor {
                     let (a, b) = (caret.min(anchor), caret.max(anchor));
                     chars.drain(a..b);
@@ -855,8 +851,7 @@ impl Ui {
             }
             // Typed text replaces the selection.
             #[cfg(not(target_arch = "wasm32"))]
-            if let Some(accesskit::ActionData::Value(value)) =
-                self.interaction.native_input.values.remove(&key)
+            if let Some(accesskit::ActionData::Value(value)) = self.native_input.values.remove(&key)
             {
                 chars = value
                     .chars()
@@ -873,7 +868,6 @@ impl Ui {
                 note(&mut kind, EditKind::Other);
             }
             let typed: Vec<char> = self
-                .interaction
                 .input
                 .text
                 .chars()
@@ -894,13 +888,9 @@ impl Ui {
                 killing = false;
                 note(&mut kind, EditKind::Typing);
             }
-            let shift = self.interaction.input.shift;
-            let (ctrl, meta, alt) = (
-                self.interaction.input.ctrl,
-                self.interaction.input.meta,
-                self.interaction.input.alt,
-            );
-            let mac = self.env.viewport.mac_keys;
+            let shift = self.input.shift;
+            let (ctrl, meta, alt) = (self.input.ctrl, self.input.meta, self.input.alt);
+            let mac = env.viewport.mac_keys;
             // The shortcut key (A, C, X, Z, Y): Command under mac keys;
             // elsewhere Control, and Command too (the OS's own there).
             let shortcut = if mac { meta } else { ctrl || meta };
@@ -967,7 +957,7 @@ impl Ui {
                     li.checked_sub(1).map_or((k, up), |p| (lines[p].1, false))
                 }
             };
-            for k in self.interaction.input.keys.iter().copied() {
+            for k in self.input.keys.iter().copied() {
                 let (a, b) = (caret.min(anchor), caret.max(anchor));
                 let selected = a != b;
                 let mut moved = None;
@@ -1247,9 +1237,7 @@ impl Ui {
             // Keep the caret in view: horizontally in a field, by lines in an
             // area (not while a drag past the edge scrolls it).
             if let Some(inner) = d.inner
-                && !(autoscrolled
-                    && self.interaction.input.keys.is_empty()
-                    && self.interaction.input.text.is_empty())
+                && !(autoscrolled && self.input.keys.is_empty() && self.input.text.is_empty())
             {
                 let mut shown = chars.clone();
                 let comp: Vec<char> = composition.chars().collect();
@@ -1257,7 +1245,7 @@ impl Ui {
                 shown.splice(at..at, comp.iter().copied());
                 let lines = layout(&shown);
                 let (li, x) = locate(&lines, at + comp.len());
-                let mut s = self.interaction.state.edit_scroll;
+                let mut s = self.state.edit_scroll;
                 if d.multiline {
                     let top = li as f32 * d.line_height;
                     let bottom = top + d.line_height;
@@ -1280,7 +1268,7 @@ impl Ui {
                     }
                     s = s.min((width - room).max(0.0)).max(0.0);
                 }
-                self.interaction.state.edit_scroll = s;
+                self.state.edit_scroll = s;
             }
         }
         // A read-only text keeps its text: what this tick would have
@@ -1308,10 +1296,9 @@ impl Ui {
         }
         history.seen = text_hash(&chars);
         history.used = tick;
-        self.interaction.state.histories.insert(key, history);
-        if self.interaction.state.histories.len() > HISTORY_FIELDS
+        self.state.histories.insert(key, history);
+        if self.state.histories.len() > HISTORY_FIELDS
             && let Some(oldest) = self
-                .interaction
                 .state
                 .histories
                 .iter()
@@ -1319,33 +1306,33 @@ impl Ui {
                 .min_by_key(|(_, h)| h.used)
                 .map(|(k, _)| *k)
         {
-            self.interaction.state.histories.remove(&oldest);
+            self.state.histories.remove(&oldest);
         }
-        self.interaction.state.click = click;
+        self.state.click = click;
         let text: String = chars.iter().collect();
         if text != *value {
             *value = text;
             out.changed = true;
         }
         if out.changed
-            || caret != self.interaction.state.caret
-            || anchor != self.interaction.state.anchor
-            || composition != self.interaction.state.composition
+            || caret != self.state.caret
+            || anchor != self.state.anchor
+            || composition != self.state.composition
         {
-            self.interaction.state.edit_tick = tick;
+            self.state.edit_tick = tick;
         }
-        self.interaction.state.caret = caret;
-        self.interaction.state.anchor = anchor;
-        self.interaction.state.caret_upstream = upstream;
-        self.interaction.state.killing = killing;
-        self.interaction.state.kill = kill;
-        self.interaction.state.composition = composition;
+        self.state.caret = caret;
+        self.state.anchor = anchor;
+        self.state.caret_upstream = upstream;
+        self.state.killing = killing;
+        self.state.kill = kill;
+        self.state.composition = composition;
         if clipboard.is_some() {
-            self.out.clipboard = clipboard;
+            ui_out.clipboard = clipboard;
         }
         if out.left {
-            self.interaction.state.focus = 0;
-            self.interaction.state.composition.clear();
+            self.state.focus = 0;
+            self.state.composition.clear();
         }
         out
     }
@@ -1353,19 +1340,12 @@ impl Ui {
     /// Whether the caret shows this tick: always under reduced motion, else
     /// the 530 ms half period, shown after an edit or
     /// move and then hidden as long, by the tick.
-    pub(crate) fn caret_shown(&self) -> bool {
-        if self.env.theme.reduced_motion {
+    pub(crate) fn caret_shown(&self, env: &crate::ui::Env) -> bool {
+        if env.theme.reduced_motion {
             return true;
         }
         let ms = 530.0;
-        let half =
-            ((self.env.ticks_per_second.max(1) as f32 * (ms / 1000.0)).round() as u64).max(1);
-        (self
-            .interaction
-            .state
-            .tick
-            .saturating_sub(self.interaction.state.edit_tick)
-            / half)
-            .is_multiple_of(2)
+        let half = ((env.ticks_per_second.max(1) as f32 * (ms / 1000.0)).round() as u64).max(1);
+        (self.state.tick.saturating_sub(self.state.edit_tick) / half).is_multiple_of(2)
     }
 }

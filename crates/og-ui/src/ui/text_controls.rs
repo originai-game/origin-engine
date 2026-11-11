@@ -113,7 +113,7 @@ impl Ui {
         if self.interaction.state.focus == key {
             let inset = self.frame_inset(i, frame, padding);
             let inner = self.interaction.hit(key).map(|h| h.full.inset(&inset));
-            let e = self.edit(
+            let e = self.interaction.edit(
                 key,
                 value,
                 &crate::edit::EditDesc {
@@ -128,6 +128,8 @@ impl Ui {
                     masked: secret && !revealed,
                     readonly: desc.readonly,
                 },
+                &self.env,
+                &mut self.out,
             );
             r.changed = e.changed || cleared || stepped;
             r.submitted = e.submitted;
@@ -843,7 +845,7 @@ impl Ui {
         if self.interaction.state.focus == key {
             let inset = self.frame_inset(i, frame, pad);
             let inner = self.interaction.hit(key).map(|h| h.full.inset(&inset));
-            let e = self.edit(
+            let e = self.interaction.edit(
                 key,
                 value,
                 &crate::edit::EditDesc {
@@ -858,6 +860,8 @@ impl Ui {
                     masked: false,
                     readonly: desc.readonly,
                 },
+                &self.env,
+                &mut self.out,
             );
             r.changed = e.changed;
             r.submitted = e.submitted;
@@ -1046,7 +1050,7 @@ impl Ui {
             selection: (a, b),
             composition,
             scroll: self.interaction.state.edit_scroll,
-            caret_on: self.caret_shown(),
+            caret_on: self.interaction.caret_shown(&self.env),
             upstream: self.interaction.state.caret_upstream && n == 0,
             placeholder: false,
         }

@@ -669,7 +669,10 @@ impl Ui {
         if !disabled {
             let tkey = crate::id::key_of_path(&built.path);
             let mut set = v;
-            if self.accessibility_number(tkey, &mut set, lo, hi, step) {
+            if self
+                .interaction
+                .accessibility_number(tkey, &mut set, lo, hi, step)
+            {
                 v = snap(set, min, max, step);
                 committed = true;
             }
@@ -1181,7 +1184,7 @@ impl Ui {
         #[cfg(not(target_arch = "wasm32"))]
         if !disabled {
             let mut set = v;
-            if self.accessibility_number(
+            if self.interaction.accessibility_number(
                 vkey,
                 &mut set,
                 min.unwrap_or(f32::MIN),
