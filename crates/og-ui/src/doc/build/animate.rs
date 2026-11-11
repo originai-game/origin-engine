@@ -440,7 +440,7 @@ impl Ui {
             }
         }
         if commit.running
-            && let Some(owned) = self.owning.last_mut()
+            && let Some(owned) = self.tree.owning.last_mut()
         {
             owned.restyle = true;
         }

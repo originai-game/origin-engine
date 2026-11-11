@@ -94,17 +94,17 @@ impl Ui {
             .decor_draws
             .get(&i)
             .or_else(|| self.paint.part_draws.get(&i))
-            .or_else(|| self.draws.get(&i))
+            .or_else(|| self.tree.draws.get(&i))
     }
 
     pub(super) fn build_part_draws(&mut self, order: &[usize]) {
         let previous = std::mem::take(&mut self.paint.part_draws);
         self.paint.part_changed.clear();
         for &i in order {
-            if self.draws.contains_key(&i) && !self.dressable.contains(&i) {
+            if self.tree.draws.contains_key(&i) && !self.tree.dressable.contains(&i) {
                 continue;
             }
-            let n = &self.nodes[i];
+            let n = &self.tree.nodes[i];
             if n.part_box.is_some() || n.content_slot != NONE {
                 continue;
             }
@@ -118,7 +118,7 @@ impl Ui {
                 &values,
                 [n.rect.width, n.rect.height],
                 n.sampled.background,
-                self.draws.get(&i),
+                self.tree.draws.get(&i),
             ) {
                 Ok(draw) => {
                     self.paint.part_draws.insert(i, draw);
@@ -145,9 +145,9 @@ impl Ui {
 
     fn background_behind(&self, i: usize, sampled: bool) -> Srgba {
         let mut fills = Vec::new();
-        let mut j = self.nodes[i].parent;
+        let mut j = self.tree.nodes[i].parent;
         while j != NONE {
-            let node = &self.nodes[j];
+            let node = &self.tree.nodes[j];
             let fill = if sampled {
                 node.sampled.background
             } else {

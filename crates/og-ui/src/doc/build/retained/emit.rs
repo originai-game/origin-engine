@@ -114,12 +114,12 @@ impl RetainedHost {
             ui.docs.host.seen.insert(identity.key);
         }
         if in_place {
-            ui.in_place = Some((identity.key, parent_slot));
+            ui.tree.in_place = Some((identity.key, parent_slot));
         }
         ui.docs.host.keeps_hidden = e
             .slot
             .is_some_and(|slot| ui.holds(slot, identity.key, parent_slot));
-        ui.owning.push(Default::default());
+        ui.tree.owning.push(Default::default());
         ui.docs.host.capture.push(Default::default());
         let resolved = e.resolved.as_ref().expect("resolved mount");
         let mut b = e.build(env, resolved.values.cascade.computed.clone());
@@ -146,8 +146,8 @@ impl RetainedHost {
         if let Some(saved) = saved_run {
             ui.docs.host.run = saved;
         }
-        ui.in_place = None;
-        let owned = ui.owning.pop().expect("pushed");
+        ui.tree.in_place = None;
+        let owned = ui.tree.owning.pop().expect("pushed");
         let record = ui.docs.host.capture.pop().expect("pushed");
         events.extend(b.events);
         writes.extend(
@@ -156,8 +156,8 @@ impl RetainedHost {
                 .map(|(path, value)| (e.context.clone(), path, value)),
         );
         let slot = owned.slots.iter().copied().find(|&i| {
-            ui.nodes[i].key == identity.key
-                && (ui.nodes[i].parent == parent_slot || ui.nodes[i].parent == NONE)
+            ui.tree.nodes[i].key == identity.key
+                && (ui.tree.nodes[i].parent == parent_slot || ui.tree.nodes[i].parent == NONE)
         });
         let mut retired: Vec<usize> = e.owned.clone();
         let mut kept = owned.slots.clone();
@@ -169,7 +169,7 @@ impl RetainedHost {
         }
         let mut keys = Vec::with_capacity(owned.slots.len());
         for &i in &owned.slots {
-            let node = &ui.nodes[i];
+            let node = &ui.tree.nodes[i];
             keys.push(node.key);
             keys.extend(node.links.iter().map(|l| crate::id::child_key(node.key, l)));
         }
@@ -210,7 +210,7 @@ impl RetainedHost {
         element.slot = slot;
         // The parent its node stands under: the open element, or none for
         // a world layer.
-        element.parent_slot = slot.map_or(parent_slot, |i| ui.nodes[i].parent);
+        element.parent_slot = slot.map_or(parent_slot, |i| ui.tree.nodes[i].parent);
         element.owned = owned.slots;
         element.keys = keys;
         element.record = record;
@@ -312,16 +312,16 @@ impl RetainedHost {
             (ui.docs.host.accepts, ui.docs.host.building) = (accepts, building);
             // A world layer's own arm opens its layer again.
             if parent != NONE {
-                let owner = ui.nodes[parent]
+                let owner = ui.tree.nodes[parent]
                     .part_box
                     .as_ref()
-                    .filter(|part| ui.nodes[part.owner].content_slot == parent)
+                    .filter(|part| ui.tree.nodes[part.owner].content_slot == parent)
                     .map_or(parent, |part| part.owner);
-                ui.stack.push(owner);
+                ui.tree.stack.push(owner);
             }
             let result = self.emit_element(ui, &identity, true, env, events, writes);
             if parent != NONE {
-                ui.stack.pop();
+                ui.tree.stack.pop();
             }
             (ui.docs.host.accepts, ui.docs.host.building) = outer;
             result?;

@@ -189,8 +189,8 @@ impl RetainedHost {
         self.refresh_collections(ui, env)?;
         self.sync_interaction(ui)?;
         let presentation_changed =
-            std::mem::replace(&mut self.presentation_epoch, ui.invalidation.epoch)
-                != ui.invalidation.epoch;
+            std::mem::replace(&mut self.presentation_epoch, ui.tree.invalidation.epoch)
+                != ui.tree.invalidation.epoch;
         if self
             .theme
             .replace(*ui.theme())

@@ -10,7 +10,7 @@ impl RetainedHost {
             direction: ui.env.direction,
             locale: ui.env.locale.clone(),
             style: ui.env.style_name.clone(),
-            style_epoch: ui.invalidation.epoch,
+            style_epoch: ui.tree.invalidation.epoch,
             players: ui.interaction.players,
             nav_on: ui.interaction.nav_on,
         };
@@ -48,11 +48,11 @@ impl RetainedHost {
             // else to what holds the focus (a dialog in place).
             input.push(s.scope);
             if s.focus != 0
-                && let Some(mut i) = ui.nodes.iter().position(|node| node.key == s.focus)
+                && let Some(mut i) = ui.tree.nodes.iter().position(|node| node.key == s.focus)
             {
-                while ui.nodes[i].parent != NONE {
-                    i = ui.nodes[i].parent;
-                    input.push(ui.nodes[i].key);
+                while ui.tree.nodes[i].parent != NONE {
+                    i = ui.tree.nodes[i].parent;
+                    input.push(ui.tree.nodes[i].key);
                 }
             }
         }
@@ -81,7 +81,7 @@ impl RetainedHost {
         // Nodes whose laid-out size moved: their widgets read last frame's
         // geometry (a narrow button, a list measuring its rows).
         for slot in std::mem::take(&mut ui.layout.cache.resized) {
-            if let Some(owner) = self.owner_of.get(&ui.nodes[slot].key) {
+            if let Some(owner) = self.owner_of.get(&ui.tree.nodes[slot].key) {
                 self.emit.insert(owner.clone());
             }
         }
@@ -148,9 +148,9 @@ impl RetainedHost {
                 .interaction
                 .state
                 .rive
-                .get(&ui.nodes[index].key)
+                .get(&ui.tree.nodes[index].key)
                 .is_some_and(|s| s.built == ui.interaction.state.tick);
-            if !built && !ui.nodes[index].hidden {
+            if !built && !ui.tree.nodes[index].hidden {
                 ui.play_rive(index, board, &resolved.path);
             }
         }

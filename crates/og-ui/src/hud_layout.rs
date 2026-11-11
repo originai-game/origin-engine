@@ -259,7 +259,7 @@ impl Ui {
     /// The tick of the frame being built, or of the one about to begin
     /// (the edit mode's input runs before `begin` counts it).
     fn hud_now(&self) -> u64 {
-        self.interaction.state.tick + u64::from(!self.building)
+        self.interaction.state.tick + u64::from(!self.tree.building)
     }
 
     /// The topmost customisable element of last frame under `p`.
@@ -404,7 +404,7 @@ impl Ui {
     /// frame's transforms (`apply_world`).
     pub(crate) fn hud_apply(&mut self, order: &[usize]) {
         for &i in order {
-            let Some(spec) = &self.nodes[i].props.customize else {
+            let Some(spec) = &self.tree.nodes[i].props.customize else {
                 continue;
             };
             let key = if spec.key.is_empty() {
@@ -413,7 +413,7 @@ impl Ui {
                 spec.key.clone()
             };
             let p = self.placement(&key);
-            self.nodes[i].custom = [p.x, p.y, p.scale, p.opacity];
+            self.tree.nodes[i].custom = [p.x, p.y, p.scale, p.opacity];
         }
     }
 
@@ -425,18 +425,19 @@ impl Ui {
             0 => Rect::default(),
             k => self
                 .tree
+                .index
                 .find(k)
-                .map_or(Rect::default(), |i| self.nodes[i].screen),
+                .map_or(Rect::default(), |i| self.tree.nodes[i].screen),
         };
         for &i in order {
-            let n = &self.nodes[i];
+            let n = &self.tree.nodes[i];
             let Some(spec) = &n.props.customize else {
                 continue;
             };
             let pw = if n.parent == crate::layout::NONE {
                 crate::Affine::IDENTITY
             } else {
-                self.nodes[n.parent].world
+                self.tree.nodes[n.parent].world
             };
             targets.push(HudTarget {
                 key: if spec.key.is_empty() {
@@ -548,7 +549,7 @@ impl Ui {
                 ..PanelDesc::default()
             },
         );
-        self.hud_editor_key = self.nodes[self.parent()].key;
+        self.hud_editor_key = self.tree.nodes[self.parent()].key;
         self.label(
             "Title",
             &or(&desc.title, "Edit HUD"),

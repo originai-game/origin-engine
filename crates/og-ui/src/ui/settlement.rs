@@ -138,10 +138,10 @@ impl Ui {
         let changes = self.layout.cache.measurements.take();
         // Placement temporarily fixes floating dimensions and adds safe-area
         // padding. Resolvers patch authored inputs, not those derived values.
-        inputs.swap(&mut self.nodes);
+        inputs.swap(&mut self.tree.nodes);
         let (geometry, mut dirty) = self.settle_part_geometry();
         if changes.is_empty() && geometry.is_empty() {
-            inputs.swap(&mut self.nodes);
+            inputs.swap(&mut self.tree.nodes);
             return Ok(false);
         }
         for change in changes.iter().chain(&geometry) {
@@ -155,33 +155,34 @@ impl Ui {
         settlement.seen.push(settlement.changed.clone());
         dirty.extend(resolve(self, &changes)?);
         if dirty.is_empty() {
-            inputs.swap(&mut self.nodes);
+            inputs.swap(&mut self.tree.nodes);
             return Ok(false);
         }
         let mut roots = std::collections::BTreeSet::new();
         for i in dirty {
-            if i >= self.nodes.len() {
+            if i >= self.tree.nodes.len() {
                 return Err(SettlementError::InvalidNode(i));
             }
-            let parent = self.nodes[i].parent;
+            let parent = self.tree.nodes[i].parent;
             if parent != NONE
-                && self.nodes[i].props.out_of_flow() != self.nodes[parent].out.contains(&i)
+                && self.tree.nodes[i].props.out_of_flow()
+                    != self.tree.nodes[parent].out.contains(&i)
             {
-                let (out, flow) = self.nodes[parent]
+                let (out, flow) = self.tree.nodes[parent]
                     .ordered_children
                     .iter()
                     .copied()
-                    .partition(|&child| self.nodes[child].props.out_of_flow());
-                self.nodes[parent].out = out;
-                self.nodes[parent].children = flow;
+                    .partition(|&child| self.tree.nodes[child].props.out_of_flow());
+                self.tree.nodes[parent].out = out;
+                self.tree.nodes[parent].children = flow;
             }
             // Its subtree and the path to it are laid out again.
-            self.layout.cache.reach(&self.nodes, i, true);
+            self.layout.cache.reach(&self.tree.nodes, i, true);
             let mut at = i;
             loop {
                 self.layout.cache.clean[at] = false;
                 self.layout.cache.unclean.push(at);
-                let parent = self.nodes[at].parent;
+                let parent = self.tree.nodes[at].parent;
                 if parent == NONE {
                     roots.insert(at);
                     break;
@@ -191,14 +192,14 @@ impl Ui {
         }
         // Popovers depend on anchors and HUD groups avoid each other. Their
         // placement must settle too, even if their own styles did not change.
-        roots.extend(self.floating.iter().copied());
+        roots.extend(self.tree.floating.iter().copied());
         self.layout.cache.query_roots = Some(roots);
         Ok(true)
     }
 
     pub(crate) fn abort_layout_queries(&mut self) {
         self.layout.cache.query_roots = None;
-        self.invalidation.epoch += 1;
+        self.tree.invalidation.epoch += 1;
         self.layout.cache.measurements.pending.clear();
         self.layout
             .cache
@@ -230,7 +231,7 @@ mod tests {
             },
         );
         let container = ui.parent();
-        ui.watch_layout_container(ui.nodes[container].key);
+        ui.watch_layout_container(ui.tree.nodes[container].key);
         ui.open(
             "child",
             Element {
@@ -253,7 +254,7 @@ mod tests {
             // Once per finish: the bounded frame's check finishes a whole
             // twin too (`end_with_layout_queries`), resolving it as well.
             #[cfg(debug_assertions)]
-            let finishes = if crate::ui::bounded::checking() && !ui.invalidation.whole {
+            let finishes = if crate::ui::bounded::checking() && !ui.tree.invalidation.whole {
                 2
             } else {
                 1
@@ -265,7 +266,7 @@ mod tests {
                 .end_with_layout_queries(|ui, sizes| {
                     calls += 1;
                     assert_eq!(sizes.len(), 1);
-                    assert_eq!(sizes[0].key, ui.nodes[container].key);
+                    assert_eq!(sizes[0].key, ui.tree.nodes[container].key);
                     assert_eq!(
                         sizes[0].current,
                         ContentBox {
@@ -276,11 +277,12 @@ mod tests {
                     if width == 400.0 && sizes[0].previous.is_none() {
                         assert_eq!(ui.out.frame.items.len(), 0);
                     }
-                    ui.nodes[child].el.width = Size::Fixed(if sizes[0].current.width > 300.0 {
-                        91.0
-                    } else {
-                        37.0
-                    });
+                    ui.tree.nodes[child].el.width =
+                        Size::Fixed(if sizes[0].current.width > 300.0 {
+                            91.0
+                        } else {
+                            37.0
+                        });
                     Ok(vec![child])
                 })
                 .unwrap();
@@ -336,7 +338,7 @@ mod tests {
                 },
                 Viewport::new(width, 300.0),
             );
-            ui.watch_layout_container(ui.nodes[0].key);
+            ui.watch_layout_container(ui.tree.nodes[0].key);
             ui.label(
                 "label",
                 "before",
@@ -345,13 +347,13 @@ mod tests {
                     ..Default::default()
                 },
             );
-            let label = ui.last_closed;
+            let label = ui.tree.last_closed;
             let desc = ButtonDesc {
                 variant: ButtonVariant::Primary,
                 ..Default::default()
             };
             let response = ui.button("button", "Confirm", desc);
-            let button = ui.last_closed;
+            let button = ui.tree.last_closed;
             ui.set_focus("button");
             ui.end_with_layout_queries(|ui, sizes| {
                 let before = ui.save_state();
@@ -431,7 +433,7 @@ mod tests {
                 },
             );
         }
-        patched.watch_layout_container(patched.nodes[0].key);
+        patched.watch_layout_container(patched.tree.nodes[0].key);
         patched
             .end_with_layout_queries(|ui, _| {
                 let before = ui.save_state();
@@ -490,7 +492,7 @@ mod tests {
             },
         );
         let container = ui.parent();
-        ui.watch_layout_container(ui.nodes[container].key);
+        ui.watch_layout_container(ui.tree.nodes[container].key);
         ui.open(
             "patch",
             Element {
@@ -514,11 +516,11 @@ mod tests {
             } else {
                 37.0
             };
-            if ui.nodes[child].el.width == Size::Fixed(side) {
+            if ui.tree.nodes[child].el.width == Size::Fixed(side) {
                 return Ok(Vec::new());
             }
-            ui.nodes[child].el.width = Size::Fixed(side);
-            ui.nodes[child].el.height = Size::Fixed(side / 2.0);
+            ui.tree.nodes[child].el.width = Size::Fixed(side);
+            ui.tree.nodes[child].el.height = Size::Fixed(side / 2.0);
             Ok(vec![child])
         })
         .unwrap();
@@ -544,7 +546,7 @@ mod tests {
         let mut ui = Ui::default();
         let (container, _) = build(&mut ui, 400.0);
         let result = ui.end_with_layout_queries(|ui, sizes| {
-            ui.nodes[container].el.width = Size::Fixed(if sizes[0].current.width > 200.0 {
+            ui.tree.nodes[container].el.width = Size::Fixed(if sizes[0].current.width > 200.0 {
                 100.0
             } else {
                 400.0

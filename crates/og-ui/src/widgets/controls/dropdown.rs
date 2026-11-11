@@ -131,11 +131,11 @@ fn kept_suggestions<'a>(
 impl Ui {
     fn select_list_part(&mut self) {
         let owner = self.parent();
-        let element = self.nodes[owner].el;
+        let element = self.tree.nodes[owner].el;
         let reference = element.part.expect("select list part");
-        self.nodes[owner].el.padding = Insets::default();
-        self.nodes[owner].el.background = None;
-        self.nodes[owner].el.radius = 0.0;
+        self.tree.nodes[owner].el.padding = Insets::default();
+        self.tree.nodes[owner].el.background = None;
+        self.tree.nodes[owner].el.radius = 0.0;
         // The old list inset included the painted one-pixel rim. The
         // persistent CSS box now accounts for that rim in its padding.
         let padding = element.padding;
@@ -157,7 +157,7 @@ impl Ui {
             },
             crate::layout::Content::None,
         );
-        self.nodes[owner].content_slot = slot;
+        self.tree.nodes[owner].content_slot = slot;
     }
 
     /// A text input's suggestion list (HTML's `list` naming a
@@ -194,7 +194,7 @@ impl Ui {
         let content = Element {
             direction: Direction::Column,
             width: Size::px(
-                self.last_bounds(self.nodes[field].key)
+                self.last_bounds(self.tree.nodes[field].key)
                     .map_or(240.0, |b| b.width),
             ),
             padding: Insets::xy(0.0, t.space.xxs),
@@ -466,7 +466,7 @@ impl Ui {
             // Its rim and shadow are the part's (a floating surface's) dressing.
             let m = self.floating(&list_id, open, trig_node, content, |ui| {
                 let layer = ui.parent();
-                ui.nodes[layer].part_source = trig_node;
+                ui.tree.nodes[layer].part_source = trig_node;
                 list(ui, layer);
                 ui.select_list_part();
                 if searchable {

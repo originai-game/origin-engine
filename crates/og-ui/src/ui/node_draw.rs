@@ -31,14 +31,15 @@ impl Ui {
     /// can cover art.
     pub(super) fn focus_ring_commands(&self, i: usize, cmds: &mut Vec<DrawCmd>) {
         let t = &self.env.theme;
-        let n = &self.nodes[i];
+        let n = &self.tree.nodes[i];
         let rect = n.rect;
         let ring = |player: usize, outline: bool| {
             use crate::paint::Placed;
-            let mut part =
-                n.el.part
-                    .or_else(|| n.el.frame.map(StylePart::part_ref))
-                    .unwrap_or_else(|| crate::dress::PartRef::of(self.kinds[i].0, "focus", None));
+            let mut part = n
+                .el
+                .part
+                .or_else(|| n.el.frame.map(StylePart::part_ref))
+                .unwrap_or_else(|| crate::dress::PartRef::of(self.tree.kinds[i].0, "focus", None));
             part.part = "focus";
             part.class = None;
             part.level = None;
@@ -53,9 +54,14 @@ impl Ui {
             };
             let mut at = Placed {
                 rect: values.part_rect(rect, rect),
-                radius: values
-                    .num("radius")
-                    .unwrap_or_else(|| self.nodes.get(n.content_slot).unwrap_or(n).sampled.radius),
+                radius: values.num("radius").unwrap_or_else(|| {
+                    self.tree
+                        .nodes
+                        .get(n.content_slot)
+                        .unwrap_or(n)
+                        .sampled
+                        .radius
+                }),
                 clip: n.clip,
                 alpha: n.alpha,
             };
@@ -74,7 +80,10 @@ impl Ui {
                 .into_iter()
                 .fold(0.0_f32, f32::max)
                     + outside;
-                at.clip = n.clip.outset(reach).intersect(&self.nodes[n.clip_src].clip);
+                at.clip = n
+                    .clip
+                    .outset(reach)
+                    .intersect(&self.tree.nodes[n.clip_src].clip);
             }
             let mut commands = draw.enter(t, &at);
             commands.extend(draw.children(&at));
@@ -115,7 +124,7 @@ impl Ui {
     /// The element's background (its fill or dressed atlas frame).
     fn background_commands(&self, i: usize, cmds: &mut Vec<DrawCmd>) {
         let t = &self.env.theme;
-        let n = &self.nodes[i];
+        let n = &self.tree.nodes[i];
         let rect = n.rect;
         let clip = n.clip;
         let alpha = n.alpha;
@@ -175,7 +184,7 @@ impl Ui {
     fn content_commands(&self, i: usize, cmds: &mut Vec<DrawCmd>, snap: &dyn Fn(f32) -> f32) {
         let t = &self.env.theme;
         let p = &t.palette;
-        let n = &self.nodes[i];
+        let n = &self.tree.nodes[i];
         let rect = n.rect;
         let clip = n.clip;
         let dpr = self.env.viewport.dpr();
@@ -186,7 +195,7 @@ impl Ui {
                 .color("color")
                 .map(Srgba::linear)
         });
-        if self.kinds[i].0 == "divider"
+        if self.tree.kinds[i].0 == "divider"
             && let Some(o) = t.art.divider.filter(|_| t.art.atlas.is_some())
         {
             let (cx, cy) = rect.center();
@@ -341,7 +350,7 @@ impl Ui {
                         }
                         // `::selection`'s ink, lines and shadows: the line's
                         // selected glyphs drawn again, clipped to their runs.
-                        let owner = self.nodes[self.text_owner(i)].key;
+                        let owner = self.tree.nodes[self.text_owner(i)].key;
                         let selection = self.docs.host.selection.get(&owner).filter(|s| {
                             s.color.is_some() || s.decoration.is_some() || s.shadows.is_some()
                         });
@@ -459,8 +468,9 @@ impl Ui {
                         let plated = m.pixel_grid() > 0
                             && (n.el.interactive
                                 || (parent != NONE
-                                    && (self.nodes[parent].el.interactive
+                                    && (self.tree.nodes[parent].el.interactive
                                         || self
+                                            .tree
                                             .draws
                                             .get(&parent)
                                             .is_some_and(|d| !d.fills.is_empty()))));
@@ -958,7 +968,7 @@ impl Ui {
         clip: Rect,
         cmds: &mut Vec<DrawCmd>,
     ) {
-        let n = &self.nodes[i];
+        let n = &self.tree.nodes[i];
         let font = self
             .env
             .fonts
@@ -1217,7 +1227,7 @@ impl Ui {
     ) -> Vec<VerticalLine> {
         use crate::layout::flow::WritingMode;
         use crate::text::vertical::runs;
-        let n = &self.nodes[i];
+        let n = &self.tree.nodes[i];
         let font = self
             .env
             .fonts
@@ -1465,7 +1475,7 @@ impl Ui {
         clip: Rect,
         cmds: &mut Vec<DrawCmd>,
     ) {
-        let n = &self.nodes[i];
+        let n = &self.tree.nodes[i];
         let font = self
             .env
             .fonts
@@ -1487,8 +1497,12 @@ impl Ui {
         let plated = m.pixel_grid() > 0
             && (n.el.interactive
                 || (parent != NONE
-                    && (self.nodes[parent].el.interactive
-                        || self.draws.get(&parent).is_some_and(|d| !d.fills.is_empty()))));
+                    && (self.tree.nodes[parent].el.interactive
+                        || self
+                            .tree
+                            .draws
+                            .get(&parent)
+                            .is_some_and(|d| !d.fills.is_empty()))));
         let drop = self
             .text_drop(role, size, m.pixel_grid())
             .filter(|_| !own && !plated);
@@ -1687,7 +1701,7 @@ impl Ui {
         if rects.is_empty() {
             return;
         }
-        let n = &self.nodes[i];
+        let n = &self.tree.nodes[i];
         let (alpha, dpr) = (n.alpha, self.env.viewport.dpr());
         let fill = self
             .docs

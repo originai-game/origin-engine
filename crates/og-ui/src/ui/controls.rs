@@ -12,8 +12,9 @@ impl Ui {
         // A centred or end-aligned label left to fit its text in a column
         // takes the column's width, as a CSS block does: aligned in a box
         // only as wide as its text, it would sit at the column's start.
-        let parent = self.nodes[i].parent;
+        let parent = self.tree.nodes[i].parent;
         let in_column = self
+            .tree
             .nodes
             .get(parent)
             .is_some_and(|p| p.el.direction == Direction::Column);
@@ -22,9 +23,9 @@ impl Ui {
         } else {
             desc.width
         };
-        self.nodes[i].el.width = width;
-        self.nodes[i].el.padding = Insets::default();
-        self.draws.remove(&i);
+        self.tree.nodes[i].el.width = width;
+        self.tree.nodes[i].el.padding = Insets::default();
+        self.tree.draws.remove(&i);
         let ink = self.content_ink();
         // Borrowed, not copied: a label is the most frequent element.
         let t = &self.env.theme;
@@ -33,7 +34,7 @@ impl Ui {
         let fit = desc.fit_min.map_or_else(Vec::new, |min| {
             crate::style_file::fit_steps(&t.type_ramp, step, min)
         });
-        let n = &mut self.nodes[i];
+        let n = &mut self.tree.nodes[i];
         n.content = Content::Text(TextContent {
             text: text.to_owned(),
             step,
@@ -58,7 +59,7 @@ impl Ui {
         n.heading = desc.heading;
         if desc.on_scene {
             use crate::paint::{ColorRef, ElementDraw, TextEffects, TextShadow};
-            self.draws.insert(
+            self.tree.draws.insert(
                 i,
                 ElementDraw {
                     text: Some(TextEffects {
@@ -77,23 +78,27 @@ impl Ui {
         // clips it (pixel's results figures lost their last font pixel of
         // drop to the view's edge); elsewhere a drop draws past its box, and
         // reserving room there would change the layout of every large label.
-        let grid = match &self.nodes[i].content {
+        let grid = match &self.tree.nodes[i].content {
             Content::Text(tc) => tc.metrics(&self.env.fonts).pixel_grid(),
             _ => 0,
         };
         let mut ancestor = parent;
         let mut scrolled = false;
-        while let Some(node) = self.nodes.get(ancestor) {
+        while let Some(node) = self.tree.nodes.get(ancestor) {
             scrolled |= node.el.scroll || node.el.scroll_x;
             ancestor = node.parent;
         }
-        let in_control = self.nodes.get(parent).is_some_and(|p| p.el.interactive);
+        let in_control = self
+            .tree
+            .nodes
+            .get(parent)
+            .is_some_and(|p| p.el.interactive);
         if let Some((dx, _, blur, _)) = self
             .text_drop(desc.font.effect_index(), step.size, grid)
             .filter(|_| scrolled && !in_control)
         {
             let reach = (dx.abs() + blur / 2.0).ceil();
-            let pad = &mut self.nodes[i].el.padding;
+            let pad = &mut self.tree.nodes[i].el.padding;
             if dx > 0.0 {
                 pad.right = pad.right.max(reach);
             } else if dx < 0.0 {
@@ -114,7 +119,7 @@ impl Ui {
     /// colour of their own take its ink.
     pub(crate) fn open_button(&mut self, id: impl Into<Id>, desc: ButtonDesc) -> Response {
         let i = self.push("button", id.into(), Element::default());
-        self.stack.push(i);
+        self.tree.stack.push(i);
         self.button_ink.push((i, self.env.theme.palette.ink));
         self.button_at(i, "", desc)
     }
@@ -134,10 +139,10 @@ impl Ui {
     }
 
     fn button_at(&mut self, i: usize, text: &str, desc: ButtonDesc) -> Response {
-        self.nodes[i].disabled = desc.disabled;
+        self.tree.nodes[i].disabled = desc.disabled;
         let refused = desc.disabled
             && self.env.theme.art.motion.shake > 0.0
-            && self.respond(self.nodes[i].key).clicked;
+            && self.respond(self.tree.nodes[i].key).clicked;
         let r = if desc.disabled {
             Response::default()
         } else {
@@ -145,7 +150,7 @@ impl Ui {
         };
         // What opens takes the focus (as a dialog's first control and a
         // dialogue box do): appearing, outside a dialog.
-        let key = self.nodes[i].key;
+        let key = self.tree.nodes[i].key;
         if desc.autofocus
             && !desc.disabled
             && self.interaction.state.scope == 0
@@ -215,10 +220,10 @@ impl Ui {
         amounts: (f32, f32),
         press: f32,
     ) {
-        self.nodes[i].el = self.button_box(desc);
-        self.nodes[i].disabled = desc.disabled;
-        let width = self.nodes[i].el.width;
-        let key = self.nodes[i].key;
+        self.tree.nodes[i].el = self.button_box(desc);
+        self.tree.nodes[i].disabled = desc.disabled;
+        let width = self.tree.nodes[i].el.width;
+        let key = self.tree.nodes[i].key;
         let variant = match desc.variant {
             ButtonVariant::Primary => "primary",
             ButtonVariant::Secondary => "secondary",
@@ -254,7 +259,7 @@ impl Ui {
         if let Some(top) = self.button_ink.last_mut().filter(|(at, _)| *at == i) {
             top.1 = fg;
         }
-        let n = &mut self.nodes[i];
+        let n = &mut self.tree.nodes[i];
         n.el.part = Some(part);
         n.el.frame = None;
         n.content = if text.is_empty() {
@@ -281,7 +286,7 @@ impl Ui {
         n.el.background = None;
         n.el.radius = 0.0;
         let slot = self.write_part(i, part, ("base", 0), element, content);
-        self.nodes[i].content_slot = slot;
+        self.tree.nodes[i].content_slot = slot;
     }
 
     /// A texture region, or a solid rectangle without a texture; with
@@ -292,19 +297,19 @@ impl Ui {
     }
 
     pub(crate) fn apply_image(&mut self, i: usize, desc: ImageDesc) {
-        self.nodes[i].el = Element {
+        self.tree.nodes[i].el = Element {
             width: desc.width,
             height: desc.height,
             aspect: desc.aspect.max(0.0),
             ..Element::default()
         };
-        self.nodes[i].content = Content::Image {
+        self.tree.nodes[i].content = Content::Image {
             texture: desc.texture,
             uv: desc.uv.unwrap_or([0.0, 0.0, 1.0, 1.0]),
             tint: desc.tint.unwrap_or(Srgba::WHITE),
             object: Default::default(),
         };
-        self.nodes[i].probe_text = desc.label;
+        self.tree.nodes[i].probe_text = desc.label;
     }
 
     /// A capsule track filled to `value` (0–1).
@@ -327,7 +332,7 @@ impl Ui {
         let ms = t.art.motion.progress_ms;
         if ms > 0.0 && !t.reduced_motion {
             // Eases toward the value: a constant share of the gap per tick.
-            let key = child_key(self.nodes[i].key, "ease");
+            let key = child_key(self.tree.nodes[i].key, "ease");
             let fresh = !self.has_anim(key);
             let mut a = self.anim(key);
             if fresh {
@@ -342,7 +347,7 @@ impl Ui {
             self.set_anim(key, a);
             v = a.a;
         }
-        self.nodes[i].widget = Widget::Progress { value: v };
+        self.tree.nodes[i].widget = Widget::Progress { value: v };
     }
 
     /// A button's style motion: the hover lift and the press squash on the
@@ -355,7 +360,7 @@ impl Ui {
         if art.hover.is_none() && art.press.is_none() && art.motion.shake <= 0.0 {
             return if r.pressed { 1.0 } else { 0.0 };
         }
-        let key = self.nodes[i].key;
+        let key = self.tree.nodes[i].key;
         let hover_spring = art
             .motion
             .hover_spring
@@ -419,7 +424,7 @@ impl Ui {
             }
         }
         if f != Fx::default() {
-            self.nodes[i].fx = Some(f);
+            self.tree.nodes[i].fx = Some(f);
         }
         press
     }

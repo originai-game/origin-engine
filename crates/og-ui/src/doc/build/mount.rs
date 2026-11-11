@@ -329,7 +329,7 @@ impl Ui {
     /// rebuilt from its bytes, a new one starts; the element draws it over
     /// its background ([`crate::paint::ElementDraw::rive`]).
     pub(crate) fn play_rive(&mut self, node: usize, id: &str, path: &str) {
-        let key = self.nodes[node].key;
+        let key = self.tree.nodes[node].key;
         let Some(board) = self.docs.host.rive.get(id).cloned() else {
             self.out.warnings.push(format!(
                 "{path}: og-rive src=\"{id}\" names no Rive artboard the UI has; og.load.document loads those its document names"
@@ -383,14 +383,14 @@ impl Ui {
             }
             _ => crate::rive::Player::new(board, None),
         };
-        self.draws.insert(
+        self.tree.draws.insert(
             node,
             crate::paint::ElementDraw {
                 rive: Some(crate::paint::RiveDraw(player.clone())),
                 ..crate::paint::ElementDraw::default()
             },
         );
-        self.dressable.remove(&node);
+        self.tree.dressable.remove(&node);
         self.interaction.state.rive.insert(
             key,
             crate::ui::RiveSlot {
@@ -480,8 +480,8 @@ impl Ui {
     /// such slot was built this tick.
     pub fn open_slot(&mut self, path: &str) -> bool {
         match self.docs.host.slots.get(path) {
-            Some(&i) if i < self.nodes.len() => {
-                self.stack.push(i);
+            Some(&i) if i < self.tree.nodes.len() => {
+                self.tree.stack.push(i);
                 true
             }
             _ => {

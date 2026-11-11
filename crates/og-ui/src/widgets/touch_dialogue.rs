@@ -67,8 +67,8 @@ impl Ui {
                 ..Element::default()
             },
         );
-        self.stack.push(i);
-        let key = self.nodes[i].key;
+        self.tree.stack.push(i);
+        let key = self.tree.nodes[i].key;
         // A dialogue that appears takes the focus (the topmost owns it: the
         // README §Focus navigation), so Enter, Space and the
         // pad's A reach it at once; under an open dialog it waits.
@@ -141,17 +141,17 @@ impl Ui {
             };
             match (desc.portrait, icon) {
                 (Some((tex, uv)), _) => {
-                    ui.nodes[s].content = Content::Image {
+                    ui.tree.nodes[s].content = Content::Image {
                         texture: Some(tex),
                         uv,
                         tint: Srgba::WHITE,
                         object: Default::default(),
                     };
                 }
-                (None, Some(shape)) => ui.nodes[s].shapes.push(shape),
+                (None, Some(shape)) => ui.tree.nodes[s].shapes.push(shape),
                 (None, None) => {
                     let initial: String = desc.speaker.chars().take(1).collect();
-                    ui.nodes[s].shapes.push(Shape::Text {
+                    ui.tree.nodes[s].shapes.push(Shape::Text {
                         part: crate::dress::PartRef::of("Dialogue", "initial", None),
                         frame: Frame::FULL,
                         text: initial,
@@ -213,7 +213,7 @@ impl Ui {
                 ((now / self.ticks_for(t.durations_ms.slow) as u64) % 2) as f32 * 2.0
             };
             for side in [-1.0f32, 1.0] {
-                self.nodes[i].shapes.push(Shape::Bar {
+                self.tree.nodes[i].shapes.push(Shape::Bar {
                     part: crate::dress::PartRef::of("Dialogue", "continue", None)
                         .attr("side", if side < 0.0 { "left" } else { "right" }),
                     frame: Frame {
@@ -230,7 +230,7 @@ impl Ui {
                 });
             }
         }
-        self.nodes[i].probe_text = shown;
+        self.tree.nodes[i].probe_text = shown;
         self.close();
         out
     }
@@ -270,9 +270,9 @@ impl Ui {
         );
         // One translucent ring the thumb rests in, not a plate.
         self.set_draw_dressable(touch_disc(tok("hud", 0.42), tok("lineStrong", 0.55), 2.0));
-        self.nodes[i].props.customize = desc.customize;
-        self.nodes[i].disabled = desc.disabled;
-        let key = self.nodes[i].key;
+        self.tree.nodes[i].props.customize = desc.customize;
+        self.tree.nodes[i].disabled = desc.disabled;
+        let key = self.tree.nodes[i].key;
         let mut out = JoystickResponse::default();
         let radius = size / 2.0;
         let (mut kx, mut ky) = (0.0, 0.0);
@@ -314,7 +314,7 @@ impl Ui {
             radius: d,
             color,
         };
-        let n = &mut self.nodes[i];
+        let n = &mut self.tree.nodes[i];
         let (kx, ky) = (kx * travel, ky * travel);
         // The knob: a drop, a rim, its face in the knob's colour, a sheen.
         n.shapes.push(disc(
@@ -438,9 +438,9 @@ impl Ui {
         // One round pad with four directions on it (a controller's cross
         // under the thumb), not four keys.
         self.set_draw_dressable(touch_disc(tok("hud", 0.42), tok("lineStrong", 0.55), 2.0));
-        self.nodes[pad].props.customize = desc.customize;
-        self.nodes[pad].disabled = desc.disabled;
-        let key = self.nodes[pad].key;
+        self.tree.nodes[pad].props.customize = desc.customize;
+        self.tree.nodes[pad].disabled = desc.disabled;
+        let key = self.tree.nodes[pad].key;
         let mut out = DpadResponse::default();
         if let Some(finger) = self.touch_owner(key, desc.disabled)
             && let Some(h) = self.hit(key)
@@ -456,7 +456,7 @@ impl Ui {
                 out.up = matches!(way, 5..=7);
             }
         }
-        self.stack.push(pad);
+        self.tree.stack.push(pad);
         let cells: [Option<(&str, f32)>; 9] = [
             None,
             Some(("Up", -FRAC_PI_2)),
@@ -476,7 +476,7 @@ impl Ui {
             };
             let Some((name, angle)) = cell else {
                 let i = self.leaf("spacer", Id::default(), el);
-                self.nodes[i].widget = Widget::Spacer;
+                self.tree.nodes[i].widget = Widget::Spacer;
                 continue;
             };
             let i = self.leaf("button", Id::from(*name), el);
@@ -487,7 +487,7 @@ impl Ui {
                 _ => out.right,
             };
             let ink = if held { p.on_primary } else { p.ink.fade(0.85) };
-            let n = &mut self.nodes[i];
+            let n = &mut self.tree.nodes[i];
             if held {
                 // The held direction lights under its chevron.
                 n.shapes.push(Shape::DressedRect {
@@ -580,9 +580,9 @@ impl Ui {
                 ..Element::default()
             },
         );
-        self.nodes[i].props.customize = desc.customize.clone();
-        self.nodes[i].disabled = desc.disabled;
-        let key = self.nodes[i].key;
+        self.tree.nodes[i].props.customize = desc.customize.clone();
+        self.tree.nodes[i].disabled = desc.disabled;
+        let key = self.tree.nodes[i].key;
         let mut r = if desc.disabled {
             Response::default()
         } else {
@@ -707,15 +707,15 @@ impl Ui {
             face.fills.clear();
             face.strokes.remove(0);
         }
-        self.nodes[i].el.part = Some(
+        self.tree.nodes[i].el.part = Some(
             crate::dress::PartRef::new("ActionButton", "face", crate::tokens::ElementClass::Hud)
                 .flag_if(desc.primary, "primary")
                 .flag_if(r.pressed, "pressed")
                 .flag_if(desc.disabled, "disabled"),
         );
-        self.draws.insert(i, face);
-        self.dressable.insert(i);
-        let n = &mut self.nodes[i];
+        self.tree.draws.insert(i, face);
+        self.tree.dressable.insert(i);
+        let n = &mut self.tree.nodes[i];
         n.widget = Widget::Button {
             pressed: r.pressed,
             press: if r.pressed { 1.0 } else { 0.0 },

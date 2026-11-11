@@ -879,7 +879,8 @@ mod text_cache {
         );
         ui.label("count", &format!("score {count}"), LabelDesc::default());
         ui.end();
-        ui.nodes
+        ui.tree
+            .nodes
             .iter()
             .filter(|n| matches!(n.content, Content::Text(_)))
             .map(|n| {

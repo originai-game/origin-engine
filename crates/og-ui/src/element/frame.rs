@@ -33,12 +33,12 @@ impl Ui {
         let vp = self.env.viewport;
         let bp = vp.breakpoint();
         let portrait = vp.height >= vp.width;
-        for k in 0..self.emitted.len() {
-            let i = self.emitted[k];
-            if self.nodes[i].props.variants.is_empty() {
+        for k in 0..self.tree.emitted.len() {
+            let i = self.tree.emitted[k];
+            if self.tree.nodes[i].props.variants.is_empty() {
                 continue;
             }
-            let vs = self.nodes[i].props.variants.clone();
+            let vs = self.tree.nodes[i].props.variants.clone();
             for v in vs.iter().filter(|v| !v.when.container) {
                 let q = &v.when;
                 let ok = (q.breakpoints.is_empty() || q.breakpoints.contains(&bp))
@@ -46,7 +46,7 @@ impl Ui {
                         .is_none_or(|o| (o == Orientation::Portrait) == portrait)
                     && width_in(vp.width, q);
                 if ok {
-                    apply_patch(&mut self.nodes[i], &v.set);
+                    apply_patch(&mut self.tree.nodes[i], &v.set);
                 }
             }
         }
@@ -60,10 +60,10 @@ impl Ui {
         if dx == 0.0 && dy == 0.0 {
             return;
         }
-        let sub = preorder(&self.nodes, i);
+        let sub = preorder(&self.tree.nodes, i);
         let inside: std::collections::BTreeSet<usize> = sub.iter().copied().collect();
         for &j in &sub {
-            let n = &mut self.nodes[j];
+            let n = &mut self.tree.nodes[j];
             if layout {
                 n.x += dx;
                 n.y += dy;
@@ -84,7 +84,7 @@ impl Ui {
     /// Where node `i`'s first line of text sits (its baseline, CSS px), if
     /// it or its first descendant in the flow has text.
     fn first_baseline(&self, i: usize) -> Option<f32> {
-        let n = &self.nodes[i];
+        let n = &self.tree.nodes[i];
         match &n.content {
             Content::Text(tc) => {
                 let line = n.lines.first()?;
@@ -113,7 +113,7 @@ impl Ui {
     /// Where node `i`'s last line of text sits, if it or its last
     /// descendant in the flow with text has one.
     fn last_baseline(&self, i: usize) -> Option<f32> {
-        let n = &self.nodes[i];
+        let n = &self.tree.nodes[i];
         match &n.content {
             Content::Text(tc) => {
                 let line = n.lines.last()?;
@@ -146,7 +146,7 @@ impl Ui {
     /// (CSS Writing Modes 4 §4.2); a horizontal text in it (an orthogonal
     /// flow) has none.
     fn central_baseline(&self, i: usize, last: bool) -> Option<f32> {
-        let n = &self.nodes[i];
+        let n = &self.tree.nodes[i];
         match &n.content {
             Content::Text(tc) => {
                 let v = tc.vertical?;
@@ -185,7 +185,7 @@ impl Ui {
     pub(crate) fn align_baselines(&mut self, order: &[usize]) {
         use crate::layout::Cross;
         for &i in order {
-            let n = &self.nodes[i];
+            let n = &self.tree.nodes[i];
             if !crate::ui::visit::baseline_row(n)
                 || n.el.direction != crate::layout::Direction::Row
                 || n.props.layout != LayoutMode::Flex
@@ -227,7 +227,7 @@ impl Ui {
                 let bs: Vec<Option<f32>> = kids[s..e]
                     .iter()
                     .map(|&c| {
-                        if self.nodes[c].el.align_self.unwrap_or(parent) != want {
+                        if self.tree.nodes[c].el.align_self.unwrap_or(parent) != want {
                             None
                         } else if let Some(dir) = across {
                             self.central_baseline(c, last).map(|x| dir * x)
@@ -260,16 +260,16 @@ impl Ui {
 
     /// The node a path names: a full path, else one relative to `from`'s parent.
     pub(crate) fn node_at(&self, path: &str, from: usize) -> Option<usize> {
-        crate::ui::node_in(&self.tree, &self.nodes, path, from)
+        crate::ui::node_in(&self.tree.index, &self.tree.nodes, path, from)
     }
 
     /// Anchored elements onto their targets' rectangles.
     pub(crate) fn place_anchored(&mut self, order: &[usize]) {
         for &i in order {
-            if self.nodes[i].props.position != Position::Anchored {
+            if self.tree.nodes[i].props.position != Position::Anchored {
                 continue;
             }
-            let p = self.nodes[i].props.clone();
+            let p = self.tree.nodes[i].props.clone();
             let Some(t) = self.node_at(&p.anchor_to, i) else {
                 let at = self.path_of(i);
                 self.out.warnings.push(format!(
@@ -280,8 +280,8 @@ impl Ui {
             };
             // Its target's box before a right-to-left mirror, as laid out
             // this frame or kept from the last.
-            let tr = self.nodes[t].laid_rect;
-            let n = &self.nodes[i];
+            let tr = self.tree.nodes[t].laid_rect;
+            let n = &self.tree.nodes[i];
             let (ax, ay) = p.anchor_at.fractions();
             let (ox, oy) = p.anchor_self.fractions();
             let x = tr.x + ax * tr.width - ox * n.rect.width + p.insets.start.unwrap_or(0.0);
@@ -304,7 +304,7 @@ impl Ui {
         let declared = |a: usize, b_path: &str| -> bool {
             let mut j = a;
             while j != NONE {
-                if self.nodes[j]
+                if self.tree.nodes[j]
                     .props
                     .overlaps
                     .iter()
@@ -312,7 +312,7 @@ impl Ui {
                 {
                     return true;
                 }
-                j = self.nodes[j].parent;
+                j = self.tree.nodes[j].parent;
             }
             false
         };
@@ -324,7 +324,7 @@ impl Ui {
             let mut m = Affine::IDENTITY;
             let mut j = i;
             while j != NONE {
-                let n = &self.nodes[j];
+                let n = &self.tree.nodes[j];
                 let transform = if self.env.direction == og_i18n::Direction::Rtl {
                     n.props.transform.mirrored()
                 } else {
@@ -336,9 +336,9 @@ impl Ui {
                 j = n.parent;
             }
             if m.is_identity() {
-                self.nodes[i].rect
+                self.tree.nodes[i].rect
             } else {
-                m.map_rect(&self.nodes[i].rect)
+                m.map_rect(&self.tree.nodes[i].rect)
             }
         };
         // What of a node a scroll leaves in view: its rectangle cut by every
@@ -359,15 +359,15 @@ impl Ui {
         // other, every element of a placed group against every element), and
         // each answer walks its ancestors.
         let shown_at: std::cell::RefCell<Vec<Option<Rect>>> =
-            std::cell::RefCell::new(vec![None; self.nodes.len()]);
+            std::cell::RefCell::new(vec![None; self.tree.nodes.len()]);
         let shown = |i: usize| -> Rect {
             if let Some(r) = shown_at.borrow()[i] {
                 return r;
             }
             let mut r = posed(i);
-            let mut j = self.nodes[i].parent;
+            let mut j = self.tree.nodes[i].parent;
             while j != NONE {
-                let n = &self.nodes[j];
+                let n = &self.tree.nodes[j];
                 if n.el.scroll || n.el.scroll_x || clips(j) {
                     r = r.intersect(&posed(j));
                 }
@@ -380,7 +380,7 @@ impl Ui {
         // nothing (a counter's invisible sizer, holding its widest value's
         // room) covers nothing.
         let seen_at: std::cell::RefCell<Vec<Option<bool>>> =
-            std::cell::RefCell::new(vec![None; self.nodes.len()]);
+            std::cell::RefCell::new(vec![None; self.tree.nodes.len()]);
         let seen_at_all = |i: usize| -> bool {
             if let Some(s) = seen_at.borrow()[i] {
                 return s;
@@ -388,11 +388,11 @@ impl Ui {
             let mut j = i;
             let mut s = true;
             while j != NONE {
-                if self.nodes[j].props.opacity <= 0.0 {
+                if self.tree.nodes[j].props.opacity <= 0.0 {
                     s = false;
                     break;
                 }
-                j = self.nodes[j].parent;
+                j = self.tree.nodes[j].parent;
             }
             seen_at.borrow_mut()[i] = Some(s);
             s
@@ -401,17 +401,18 @@ impl Ui {
             let mut set = std::collections::BTreeSet::new();
             while j != NONE {
                 set.insert(j);
-                j = self.nodes[j].parent;
+                j = self.tree.nodes[j].parent;
             }
             set
         };
         // Layers meant to be over the rest (dialogs, menus, tips, toasts).
         let over_layers: std::collections::BTreeSet<usize> = self
+            .tree
             .floating
             .iter()
             .copied()
-            .filter(|&f| !matches!(self.nodes[f].float, Float::Anchored { .. }))
-            .flat_map(|f| preorder(&self.nodes, f))
+            .filter(|&f| !matches!(self.tree.nodes[f].float, Float::Anchored { .. }))
+            .flat_map(|f| preorder(&self.tree.nodes, f))
             .collect();
         let placed: Vec<usize> = order
             .iter()
@@ -419,25 +420,28 @@ impl Ui {
             .filter(|&i| {
                 i != 0
                     && !over_layers.contains(&i)
-                    && (self.nodes[i].props.out_of_flow()
-                        || (self.nodes[i].parent == NONE
-                            && matches!(self.nodes[i].float, Float::Anchored { .. })))
+                    && (self.tree.nodes[i].props.out_of_flow()
+                        || (self.tree.nodes[i].parent == NONE
+                            && matches!(self.tree.nodes[i].float, Float::Anchored { .. })))
             })
             .collect();
         let others: Vec<usize> = order
             .iter()
             .copied()
             .filter(|&i| {
-                i != 0 && !over_layers.contains(&i) && painted(&self.nodes[i]) && seen_at_all(i)
+                i != 0
+                    && !over_layers.contains(&i)
+                    && painted(&self.tree.nodes[i])
+                    && seen_at_all(i)
             })
             .collect();
         for &p in &placed {
             let sub: std::collections::BTreeSet<usize> =
-                preorder(&self.nodes, p).into_iter().collect();
+                preorder(&self.tree.nodes, p).into_iter().collect();
             let up = ancestors(p);
             for &a in sub
                 .iter()
-                .filter(|&&a| painted(&self.nodes[a]) && seen_at_all(a))
+                .filter(|&&a| painted(&self.tree.nodes[a]) && seen_at_all(a))
             {
                 for &o in &others {
                     if sub.contains(&o) || up.contains(&o) {
@@ -467,7 +471,7 @@ impl Ui {
         // Siblings in the flow of a row or column (a stack overlays them on
         // purpose; a grid's cells are its own).
         for &i in order {
-            let n = &self.nodes[i];
+            let n = &self.tree.nodes[i];
             if n.props.layout != LayoutMode::Flex
                 || n.children.len() < 2
                 || over_layers.contains(&i)
@@ -533,8 +537,8 @@ impl Ui {
     /// boxes, and the frame's counts: elements built and rebuilt.
     pub(crate) fn reuse_check(&mut self) {
         let k = &mut self.layout.cache;
-        let inv = &mut self.invalidation;
-        let nodes = &self.nodes;
+        let inv = &mut self.tree.invalidation;
+        let nodes = &self.tree.nodes;
         let n = nodes.len();
         let sig = (self.env.theme, self.env.direction, self.env.viewport.dpr());
         let fresh = inv.epoch != inv.prev_epoch || inv.sig != Some(sig);
@@ -558,7 +562,7 @@ impl Ui {
         }
         let mut written = vec![false; n];
         let mut rebuilt = 0u32;
-        for &i in &self.emitted {
+        for &i in &self.tree.emitted {
             written[i] = true;
         }
         // What may lay out otherwise than last frame: the nodes written
@@ -567,18 +571,18 @@ impl Ui {
         // layout moves after it places them; with their ancestors. Every
         // other node keeps its layout, so the walk leaves it out.
         let roots: Vec<usize> = std::iter::once(0)
-            .chain(self.floating.iter().copied())
+            .chain(self.tree.floating.iter().copied())
             .collect();
         if !k.full {
-            let mut sources: Vec<usize> = Vec::with_capacity(self.emitted.len() * 2);
-            for &i in &self.emitted {
+            let mut sources: Vec<usize> = Vec::with_capacity(self.tree.emitted.len() * 2);
+            for &i in &self.tree.emitted {
                 sources.push(i);
                 sources.push(nodes[i].parent);
             }
             sources.extend(std::mem::take(&mut inv.rederive));
             sources.extend(roots.iter().copied());
             sources.extend(k.scrollers.iter().copied());
-            for &i in &self.emitted {
+            for &i in &self.tree.emitted {
                 let a = &nodes[i];
                 let moved = a.props.position == Position::Anchored
                     || a.props.position == Position::Screen
@@ -703,9 +707,9 @@ impl Ui {
                 }
             }
         }
-        for &i in &self.emitted {
+        for &i in &self.tree.emitted {
             if let Some(previous) = k.prev.get(&i) {
-                self.nodes[i].inherit_layout(previous, k.clean[i]);
+                self.tree.nodes[i].inherit_layout(previous, k.clean[i]);
             }
         }
         self.out.stats = LayoutStats {
@@ -723,13 +727,13 @@ impl Ui {
     pub fn open_with(&mut self, id: impl Into<crate::Id>, el: crate::Element, props: Props) {
         self.open(id, el);
         let i = self.parent();
-        self.nodes[i].props = props;
+        self.tree.nodes[i].props = props;
     }
 
     /// Sets the props of the element built just before (any widget, or a
     /// container just closed). Answers false when there is none.
     pub fn set_props(&mut self, props: Props) -> bool {
-        if let Some(node) = self.nodes.get_mut(self.last_closed)
+        if let Some(node) = self.tree.nodes.get_mut(self.tree.last_closed)
             && let Some(part) = node.part_box.as_mut()
         {
             part.intrinsic_props = props.clone();
@@ -745,13 +749,13 @@ impl Ui {
 
     /// The props of the element built just before, to change in place.
     pub fn props_mut(&mut self) -> Option<&mut Props> {
-        let i = self.last_closed;
-        if i == NONE || i >= self.nodes.len() {
+        let i = self.tree.last_closed;
+        if i == NONE || i >= self.tree.nodes.len() {
             self.out.warnings.push(
                 "props with no element before it: call ui.props() right after the element".into(),
             );
             return None;
         }
-        Some(&mut self.nodes[i].props)
+        Some(&mut self.tree.nodes[i].props)
     }
 }

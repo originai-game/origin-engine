@@ -107,10 +107,10 @@ impl Ui {
     /// otherwise only the nodes written and the parents whose children
     /// were derived again (`parents`), and the layers.
     pub(crate) fn sync_tree(&mut self, parents: &[usize], written: &[usize], whole: bool) {
-        let n = self.nodes.len();
-        let t = &mut self.tree;
+        let n = self.tree.nodes.len();
+        let t = &mut self.tree.index;
         t.grow(n);
-        let nodes = &self.nodes;
+        let nodes = &self.tree.nodes;
         t.all_restructured |= whole;
         let shape = t.shape + 1;
         if whole {
@@ -120,8 +120,8 @@ impl Ui {
             for i in 0..n {
                 t.kids[i].clone_from(&nodes[i].ordered_children);
             }
-            t.floats.clone_from(&self.floating);
-            for r in std::iter::once(0).chain(self.floating.iter().copied()) {
+            t.floats.clone_from(&self.tree.floating);
+            for r in std::iter::once(0).chain(self.tree.floating.iter().copied()) {
                 if !nodes[r].hidden {
                     t.mark(nodes, r, true);
                 }
@@ -145,11 +145,11 @@ impl Ui {
             queue.extend(old.iter().filter(|c| !new.contains(c)));
             queue.extend(new.iter().filter(|c| !old.contains(c)));
         }
-        if t.floats != self.floating {
+        if t.floats != self.tree.floating {
             t.shape = shape;
-            let old = std::mem::replace(&mut t.floats, self.floating.clone());
-            queue.extend(old.iter().filter(|c| !self.floating.contains(c)));
-            queue.extend(self.floating.iter().filter(|c| !old.contains(c)));
+            let old = std::mem::replace(&mut t.floats, self.tree.floating.clone());
+            queue.extend(old.iter().filter(|c| !self.tree.floating.contains(c)));
+            queue.extend(self.tree.floating.iter().filter(|c| !old.contains(c)));
         }
         // The screen's root is always in its tree.
         if n > 0 && !t.in_tree[0] {
@@ -197,12 +197,12 @@ impl Ui {
 
     /// Takes a vacated slot out of the index.
     pub(crate) fn untree(&mut self, i: usize) {
-        let t = &mut self.tree;
+        let t = &mut self.tree.index;
         if i >= t.in_tree.len() {
             return;
         }
         if t.in_tree[i] {
-            let nodes = &self.nodes;
+            let nodes = &self.tree.nodes;
             t.mark(nodes, i, false);
         }
         t.kids[i].clear();
@@ -316,7 +316,7 @@ impl Ui {
     /// elsewhere (`repainted`), the focus moved, the scope changed, and
     /// scrollers moved.
     pub(crate) fn note_semantics(&mut self, repainted: Option<&[usize]>) {
-        let log = &mut self.semantics;
+        let log = &mut self.tree.semantics;
         let s = &self.interaction.state;
         let focus = [s.focus, s.pad_focus[0], s.pad_focus[1], s.pad_focus[2]];
         if repainted.is_none() || s.scope != log.scope {
@@ -333,44 +333,49 @@ impl Ui {
         // A node entered or left: a bridge reads it (or drops it) and the
         // children of the parents whose children changed, in the tree's
         // order.
-        for key in std::mem::take(&mut self.tree.moved_keys) {
+        for key in std::mem::take(&mut self.tree.index.moved_keys) {
             log.note(key);
         }
-        for &i in &self.tree.restructured {
-            if let Some(n) = self.nodes.get(i) {
+        for &i in &self.tree.index.restructured {
+            if let Some(n) = self.tree.nodes.get(i) {
                 log.note_shape(if i == 0 { 0 } else { n.key });
             }
         }
-        for &i in self.emitted.iter().chain(repainted.unwrap_or_default()) {
+        for &i in self
+            .tree
+            .emitted
+            .iter()
+            .chain(repainted.unwrap_or_default())
+        {
             // A rich text's links are nodes of their own: the shape again.
-            if !self.nodes[i].links.is_empty() {
+            if !self.tree.nodes[i].links.is_empty() {
                 log.note_all();
             }
         }
         // Node 0 is the frame's root, emitted every frame and never an
         // accessibility record.
-        for &i in self.emitted.iter().filter(|&&i| i != 0) {
+        for &i in self.tree.emitted.iter().filter(|&&i| i != 0) {
             let mut j = i;
-            while j != NONE && j != 0 && j < self.nodes.len() {
-                log.note(self.nodes[j].key);
-                j = self.nodes[j].parent;
+            while j != NONE && j != 0 && j < self.tree.nodes.len() {
+                log.note(self.tree.nodes[j].key);
+                j = self.tree.nodes[j].parent;
             }
-            let parent = self.nodes[i].parent;
+            let parent = self.tree.nodes[i].parent;
             if parent != NONE {
-                let kids = &self.nodes[parent].children;
+                let kids = &self.tree.nodes[parent].children;
                 if let Some(at) = kids.iter().position(|&c| c == i)
                     && let Some(&next) = kids.get(at + 1)
                 {
-                    log.note(self.nodes[next].key);
+                    log.note(self.tree.nodes[next].key);
                 }
             }
         }
         for &i in repainted.unwrap_or_default() {
-            log.note(self.nodes[i].key);
+            log.note(self.tree.nodes[i].key);
         }
         let mut offsets = crate::id::KeyMap::default();
         for &i in &self.layout.cache.scrollers {
-            let key = self.nodes[i].key;
+            let key = self.tree.nodes[i].key;
             let at = (
                 self.interaction
                     .state
@@ -406,7 +411,7 @@ impl Ui {
     /// read it at `since` (`None`: it reads the whole tree), and the frame
     /// it has now read up to.
     pub fn semantic_changes(&self, since: Option<u64>) -> (Option<Vec<u64>>, u64) {
-        (self.semantics.since(since), self.semantics.frame)
+        (self.tree.semantics.since(since), self.tree.semantics.frame)
     }
 
     /// Whether what changed since a bridge last read at `since` is news
@@ -416,13 +421,13 @@ impl Ui {
     /// closing) is news: the page's nodes stay in the tree with their
     /// words, so only what changed with it (a toast) is heard.
     pub fn semantic_news(&self, since: Option<u64>) -> bool {
-        since.is_some_and(|s| self.semantics.quiet <= s)
+        since.is_some_and(|s| self.tree.semantics.quiet <= s)
     }
 
     /// The nodes whose children may have changed since a bridge last read
     /// at `since` (`0`: the frame's root), beside [`Ui::semantic_changes`];
     /// `None` when it reads the whole tree.
     pub fn semantic_shapes(&self, since: Option<u64>) -> Option<Vec<u64>> {
-        self.semantics.shapes_since(since)
+        self.tree.semantics.shapes_since(since)
     }
 }

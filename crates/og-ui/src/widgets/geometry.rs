@@ -8,7 +8,7 @@ impl Ui {
         let mut measurements = Vec::new();
         let mut dirty = Vec::new();
         for host in self.layout.cache.laid.clone() {
-            let Some(geometry) = self.nodes[host].part_geometry.clone() else {
+            let Some(geometry) = self.tree.nodes[host].part_geometry.clone() else {
                 continue;
             };
             match geometry {
@@ -20,16 +20,16 @@ impl Ui {
                     measured,
                 } => {
                     let [track, knob, mark, tick] = [track, knob, mark, tick]
-                        .map(|key| self.tree.find(key).expect("owned switch part"));
-                    let t = self.nodes[track].laid_rect;
-                    let k = self.nodes[knob].laid_rect;
+                        .map(|key| self.tree.index.find(key).expect("owned switch part"));
+                    let t = self.tree.nodes[track].laid_rect;
+                    let k = self.tree.nodes[knob].laid_rect;
                     let current = [t.width, t.height, k.width, k.height];
                     if measured == Some(current) {
                         continue;
                     }
                     for (index, at) in [(track, 0), (knob, 2)] {
                         measurements.push(ContainerMeasurement {
-                            key: self.nodes[index].key,
+                            key: self.tree.nodes[index].key,
                             previous: measured.map(|v| ContentBox {
                                 width: v[at],
                                 height: v[at + 1],
@@ -41,7 +41,7 @@ impl Ui {
                         });
                     }
                     let Some(PartGeometry::Switch { measured, .. }) =
-                        &mut self.nodes[host].part_geometry
+                        &mut self.tree.nodes[host].part_geometry
                     else {
                         unreachable!()
                     };
@@ -55,7 +55,7 @@ impl Ui {
                         } else {
                             1.0
                         };
-                    let part = self.nodes[knob].part_box.as_mut().expect("knob part");
+                    let part = self.tree.nodes[knob].part_box.as_mut().expect("knob part");
                     part.element.width = Size::px(diameter);
                     part.element.height = Size::px(diameter);
                     part.element.radius = diameter / 2.0;
@@ -79,18 +79,18 @@ impl Ui {
                     for (index, width, height) in
                         [(mark, k.width, k.height), (tick, tick_size, tick_size)]
                     {
-                        if !self.emitted.contains(&index) {
+                        if !self.tree.emitted.contains(&index) {
                             self.layout
                                 .cache
                                 .prev
                                 .entry(index)
-                                .or_insert_with(|| self.nodes[index].clone());
-                            self.emitted.push(index);
+                                .or_insert_with(|| self.tree.nodes[index].clone());
+                            self.tree.emitted.push(index);
                         }
-                        self.nodes[index].el.width = Size::px(width);
-                        self.nodes[index].el.height = Size::px(height);
+                        self.tree.nodes[index].el.width = Size::px(width);
+                        self.tree.nodes[index].el.height = Size::px(height);
                     }
-                    let draw = self.draws.get_mut(&tick).expect("switch tick draw");
+                    let draw = self.tree.draws.get_mut(&tick).expect("switch tick draw");
                     if let crate::paint::ShapeKind::Path { points, width, .. } = &mut draw.shape {
                         *points = [[0.2, 0.53], [0.42, 0.74], [0.8, 0.28]]
                             .map(|p| [p[0] * tick_size, p[1] * tick_size])

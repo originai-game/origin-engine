@@ -38,7 +38,7 @@ impl Ui {
         // first appears; an instant panel is settled from there (`h` 1).
         let m = self.env.theme.art.motion;
         if desc.background.is_some() && (m.enter.is_some() || m.stagger_ms > 0.0) {
-            let key = crate::id::child_key(self.nodes[i].key, "enter");
+            let key = crate::id::child_key(self.tree.nodes[i].key, "enter");
             let fresh = !self.has_anim(key);
             let mut a = self.anim(key);
             if fresh {
@@ -69,11 +69,11 @@ impl Ui {
                 t.reduced_motion,
             );
             f.inert = true;
-            self.nodes[i].fx = Some(f);
+            self.tree.nodes[i].fx = Some(f);
         }
         let stagger = t.art.motion.stagger_ms;
         if stagger > 0.0 && !t.reduced_motion {
-            self.nodes[i].stagger = Some(crate::layout::Stagger {
+            self.tree.nodes[i].stagger = Some(crate::layout::Stagger {
                 since,
                 step: stagger * self.env.ticks_per_second as f32 / 1000.0,
                 ticks,
@@ -148,8 +148,8 @@ impl Ui {
                 ..Element::default()
             },
         );
-        self.stack.push(i);
-        let key = self.nodes[i].key;
+        self.tree.stack.push(i);
+        let key = self.tree.nodes[i].key;
         let ms = if desc.duration_ms > 0.0 {
             desc.duration_ms
         } else {
@@ -163,8 +163,8 @@ impl Ui {
         };
         let mut f = fx(desc.kind, e, distance, self.env.theme.reduced_motion);
         f.inert = pr.progress < 1.0 || !show;
-        self.nodes[i].fx = Some(f);
-        self.nodes[i].hidden = !pr.visible;
+        self.tree.nodes[i].fx = Some(f);
+        self.tree.nodes[i].hidden = !pr.visible;
         pr
     }
 
@@ -206,7 +206,7 @@ impl Ui {
             Float::Modal,
             NONE,
         );
-        let key = self.nodes[backdrop].key;
+        let key = self.tree.nodes[backdrop].key;
         let kind = desc
             .transition
             .or(t.art.motion.enter)
@@ -224,7 +224,7 @@ impl Ui {
             dismissed: false,
         };
         {
-            let n = &mut self.nodes[backdrop];
+            let n = &mut self.tree.nodes[backdrop];
             n.hidden = !pr.visible;
             n.backdrop = true;
             n.scope = true;
@@ -281,15 +281,15 @@ impl Ui {
                 ..Element::default()
             },
         );
-        self.stack.push(panel);
-        self.nodes[panel].a11y.role = Some("dialog");
-        self.nodes[panel].a11y.name = Some(desc.title.clone());
+        self.tree.stack.push(panel);
+        self.tree.nodes[panel].a11y.role = Some("dialog");
+        self.tree.nodes[panel].a11y.name = Some(desc.title.clone());
         if open && t.art.motion.stagger_ms > 0.0 {
             let since = self.since(key, crate::id::child_key(key, "enter"));
             self.enter(panel, since, None);
         }
         let moving = fx(kind, e, t.space.xl, t.reduced_motion);
-        self.nodes[panel].fx = Some(crate::motion::Fx {
+        self.tree.nodes[panel].fx = Some(crate::motion::Fx {
             alpha: 1.0,
             inert: false,
             ..moving
@@ -335,7 +335,8 @@ impl Ui {
             // Its place in the tree: a retained document finds the dialog's
             // node by its id under its parent, and the backdrop is a layer
             // outside the tree (keyed as `open_layer` keys it).
-            let layer = crate::id::child_key(self.nodes[0].key, &id.as_str().replace('/', "_"));
+            let layer =
+                crate::id::child_key(self.tree.nodes[0].key, &id.as_str().replace('/', "_"));
             self.layer_place(&id, layer);
             let r = self.open_modal(
                 id,
@@ -351,13 +352,13 @@ impl Ui {
             );
             let panel = self.parent();
             // The scrim is `Dialog.backdrop` to a style (CSS `::backdrop`).
-            let scrim = self.nodes[panel].parent;
-            self.nodes[scrim].el.part = crate::dress::PartRef::parse(
+            let scrim = self.tree.nodes[panel].parent;
+            self.tree.nodes[scrim].el.part = crate::dress::PartRef::parse(
                 "dialog::part(backdrop)",
                 None::<crate::tokens::ElementClass>,
             )
             .ok();
-            self.nodes[panel].a11y.name = Some(desc.name.clone());
+            self.tree.nodes[panel].a11y.name = Some(desc.name.clone());
             return r;
         }
         let t = self.env.theme;
@@ -422,10 +423,10 @@ impl Ui {
                 ..Element::default()
             },
         );
-        self.stack.push(i);
-        self.nodes[i].hidden = !open;
-        self.nodes[i].a11y.role = Some("dialog");
-        self.nodes[i].a11y.name = Some(desc.name.clone());
+        self.tree.stack.push(i);
+        self.tree.nodes[i].hidden = !open;
+        self.tree.nodes[i].a11y.role = Some("dialog");
+        self.tree.nodes[i].a11y.name = Some(desc.name.clone());
         r
     }
 
@@ -474,7 +475,7 @@ impl Ui {
         };
         self.interaction.state.next_toast += 1;
         let id = self.interaction.state.next_toast;
-        let born = self.interaction.state.tick + u64::from(!self.building);
+        let born = self.interaction.state.tick + u64::from(!self.tree.building);
         let ticks = self.ticks_for(ms);
         match desc.tone {
             Tone::Success => self.sound(crate::style_file::UiSound::Success),
@@ -599,19 +600,19 @@ impl Ui {
                     ..Element::default()
                 },
             );
-            self.stack.push(i);
-            self.nodes[i].a11y.notify = true;
+            self.tree.stack.push(i);
+            self.tree.nodes[i].a11y.notify = true;
             let mut f = fx(kind, e, distance, t.reduced_motion);
             f.inert = toast.leaving != 0;
-            self.nodes[i].fx = Some(f);
-            if self.respond(self.nodes[i].key).clicked {
+            self.tree.nodes[i].fx = Some(f);
+            if self.respond(self.tree.nodes[i].key).clicked {
                 dismiss.push(toast.id);
             }
             let tone = Tone::from_index(toast.tone);
             if tone != Tone::Neutral {
                 let dot = t.space.sm;
                 let c = self.tone_dot(tone);
-                self.nodes[i].shapes.push(Shape::DressedRect {
+                self.tree.nodes[i].shapes.push(Shape::DressedRect {
                     part: crate::dress::PartRef::of("Toast", "indicator", None)
                         .attr("tone", tone.name()),
                     frame: Frame {
@@ -625,7 +626,7 @@ impl Ui {
                     radius: dot,
                     color: c,
                 });
-                self.nodes[i].el.padding.left = t.space.lg + dot + t.space.sm;
+                self.tree.nodes[i].el.padding.left = t.space.lg + dot + t.space.sm;
             }
             self.label(
                 "Text",
@@ -635,7 +636,7 @@ impl Ui {
                     ..Default::default()
                 },
             );
-            self.nodes[i].probe_text = toast.text.clone();
+            self.tree.nodes[i].probe_text = toast.text.clone();
             self.close();
         }
         self.close();
@@ -698,7 +699,7 @@ impl Ui {
             NONE,
         );
         // The modal placement pads by the safe area; the shades must not.
-        self.nodes[layer].el.padding = Insets::default();
+        self.tree.nodes[layer].el.padding = Insets::default();
         let mut out = Response::default();
         let mut shade = |ui: &mut Ui, name: &str, w: Size, hgt: Size| {
             let i = ui.leaf(
@@ -712,7 +713,7 @@ impl Ui {
                     ..Element::default()
                 },
             );
-            let r = ui.respond(ui.nodes[i].key);
+            let r = ui.respond(ui.tree.nodes[i].key);
             out.clicked |= r.clicked;
             out.hovered |= r.hovered;
         };
@@ -767,7 +768,7 @@ impl Ui {
                     },
                 ];
                 for frame in edges {
-                    self.nodes[hole].shapes.push(Shape::DressedRect {
+                    self.tree.nodes[hole].shapes.push(Shape::DressedRect {
                         part: crate::doc::schema::parts::SPOTLIGHT_EDGE.reference(None),
                         frame,
                         radius: 0.0,

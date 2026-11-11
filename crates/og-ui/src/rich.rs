@@ -799,8 +799,8 @@ impl Ui {
                 links.push(l.clone());
             }
         }
-        let out = self.respond_links(self.nodes[i].key, &links);
-        let n = &mut self.nodes[i];
+        let out = self.respond_links(self.tree.nodes[i].key, &links);
+        let n = &mut self.tree.nodes[i];
         n.probe_text = probe;
         n.content = Content::Rich(RichContent {
             spans,
@@ -841,7 +841,7 @@ impl Ui {
     /// pieces are reordered and so are runs of either direction within one
     /// piece (a piece split by a direction change is several segments).
     pub(crate) fn rich_pieces(&self, i: usize) -> Vec<DrawnPiece> {
-        let n = &self.nodes[i];
+        let n = &self.tree.nodes[i];
         let Content::Rich(rc) = &n.content else {
             return Vec::new();
         };
@@ -896,7 +896,7 @@ impl Ui {
 
     /// The rectangle of each link of rich node `i` (the union of its pieces).
     pub(crate) fn rich_links(&self, i: usize) -> Vec<(String, Rect)> {
-        let n = &self.nodes[i];
+        let n = &self.tree.nodes[i];
         let Content::Rich(rc) = &n.content else {
             return Vec::new();
         };
@@ -933,7 +933,7 @@ impl Ui {
         cmds: &mut Vec<crate::draw::DrawCmd>,
     ) {
         use crate::draw::DrawCmd;
-        let n = &self.nodes[i];
+        let n = &self.tree.nodes[i];
         let t = &self.env.theme;
         let p = &t.palette;
         let alpha = n.alpha;
@@ -1289,7 +1289,7 @@ impl Ui {
 impl Ui {
     /// A rich node's vertical setting, `None` when its lines run across.
     pub(crate) fn rich_vertical(&self, i: usize) -> Option<crate::layout::flow::VerticalText> {
-        self.nodes[i].rich_vertical()
+        self.tree.nodes[i].rich_vertical()
     }
 
     /// What one rich span's text is drawn with down a vertical line whose
@@ -1331,7 +1331,7 @@ impl Ui {
 
     /// Rich node `i`'s content box.
     fn rich_inner(&self, i: usize) -> Rect {
-        let n = &self.nodes[i];
+        let n = &self.tree.nodes[i];
         let (sk, pad) = (n.scale, n.el.padding);
         Rect::new(
             n.rect.x + pad.left * sk,
@@ -1362,7 +1362,7 @@ impl Ui {
         rc: &RichContent,
         v: crate::layout::flow::VerticalText,
     ) -> (Vec<(usize, DrawnPiece)>, Vec<(f32, f32)>) {
-        let n = &self.nodes[i];
+        let n = &self.tree.nodes[i];
         let sk = n.scale;
         let inner = self.rich_inner(i);
         let from_bottom = self.rich_from_bottom(i, v);
@@ -1464,7 +1464,7 @@ impl Ui {
     /// cluster's characters counted over its line's pieces (a picture, an
     /// icon or a key cap none).
     pub(crate) fn vertical_rich_lines(&self, i: usize) -> Vec<crate::ui::VerticalLine> {
-        let n = &self.nodes[i];
+        let n = &self.tree.nodes[i];
         let (Content::Rich(rc), Some(v)) = (&n.content, self.rich_vertical(i)) else {
             return Vec::new();
         };
@@ -1543,7 +1543,7 @@ impl Ui {
         cmds: &mut Vec<crate::draw::DrawCmd>,
     ) {
         use crate::draw::DrawCmd;
-        let n = &self.nodes[i];
+        let n = &self.tree.nodes[i];
         let p = &self.env.theme.palette;
         let (alpha, dpr, clip) = (n.alpha, self.env.viewport.dpr(), n.clip);
         let from_bottom = self.rich_from_bottom(i, v);

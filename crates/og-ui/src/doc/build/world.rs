@@ -566,9 +566,9 @@ impl Ui {
         let mut p = Self::resolved_props(n, r);
         p.states = props.states;
         p.state = props.state;
-        self.nodes[i].props = p;
+        self.tree.nodes[i].props = p;
         if let Some(name) = r.str("name").filter(|n| !n.is_empty()) {
-            self.nodes[i].a11y.name = Some(name.to_string());
+            self.tree.nodes[i].a11y.name = Some(name.to_string());
         }
         self.keep_world_panel(i, key);
         self.note_built(built);
@@ -727,8 +727,8 @@ impl Ui {
                 ..Element::default()
             },
         );
-        self.nodes[i].hidden = true;
-        let owner = self.nodes[i].key;
+        self.tree.nodes[i].hidden = true;
+        let owner = self.tree.nodes[i].key;
         debug_assert_eq!(owner, key, "the leaf takes the element's key");
         self.document_mass(
             key,
@@ -792,11 +792,11 @@ impl Ui {
         let mut p = Self::resolved_props(n, r);
         p.states = props.states;
         p.state = props.state;
-        self.nodes[i].props = p;
+        self.tree.nodes[i].props = p;
         if let Some(name) = r.str("name").filter(|n| !n.is_empty()) {
-            self.nodes[i].a11y.name = Some(name.to_string());
+            self.tree.nodes[i].a11y.name = Some(name.to_string());
         }
-        self.world.kept.insert(self.nodes[i].key, (desc, key));
+        self.world.kept.insert(self.tree.nodes[i].key, (desc, key));
         self.note_built(built);
         build_children(self, b, None);
         let resp = self.close();
@@ -993,15 +993,19 @@ mod tests {
         assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
         let path = "test:sign/Box/Line/Word";
         let word = ui
+            .tree
             .nodes
             .iter()
             .position(|n| n.id == "Word")
             .expect("the word is built");
-        assert_eq!(ui.nodes[word].key, crate::id::key_of_path(path));
+        assert_eq!(ui.tree.nodes[word].key, crate::id::key_of_path(path));
         assert!(ui.element(path).is_some(), "{path}");
-        let layer = ui.nodes[ui.nodes[ui.nodes[word].parent].parent].parent;
-        assert_eq!(ui.nodes[layer].parent, crate::layout::NONE);
-        assert_eq!(ui.nodes[layer].key, crate::id::key_of_path("test:sign"));
+        let layer = ui.tree.nodes[ui.tree.nodes[ui.tree.nodes[word].parent].parent].parent;
+        assert_eq!(ui.tree.nodes[layer].parent, crate::layout::NONE);
+        assert_eq!(
+            ui.tree.nodes[layer].key,
+            crate::id::key_of_path("test:sign")
+        );
     }
 
     /// A keyed each of `<anchor mass>`: a row with an animation spawns one

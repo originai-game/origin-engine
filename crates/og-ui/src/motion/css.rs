@@ -608,10 +608,10 @@ mod document_tests {
         ui.set_screen_vm("m", vm.clone());
         ui.begin(InputFrame::default(), Viewport::new(640.0, 480.0));
         ui.end();
-        let i = (0..ui.nodes.len())
+        let i = (0..ui.tree.nodes.len())
             .find(|&i| ui.path_of(i) == "m/Card")
             .expect("the card");
-        crate::layout::read_values(&ui.nodes[i])
+        crate::layout::read_values(&ui.tree.nodes[i])
     }
 
     fn close(a: f32, b: f32) -> bool {
@@ -814,10 +814,10 @@ mod document_tests {
         let mut at = |width: f32| {
             ui.begin(InputFrame::default(), Viewport::new(width, 480.0));
             ui.end();
-            let i = (0..ui.nodes.len())
+            let i = (0..ui.tree.nodes.len())
                 .find(|&i| ui.path_of(i) == "m/Box/Card")
                 .unwrap();
-            crate::layout::read_values(&ui.nodes[i])[SCALE]
+            crate::layout::read_values(&ui.tree.nodes[i])[SCALE]
         };
         // 640: Box 320, no media or container match: the top-level 2.
         for _ in 0..18 {
@@ -857,10 +857,10 @@ mod document_tests {
         );
         let size = |ui: &mut Ui, on: bool, paused: bool| {
             tick(ui, &json!({"on": on, "paused": paused}));
-            let i = (0..ui.nodes.len())
+            let i = (0..ui.tree.nodes.len())
                 .find(|&i| ui.path_of(i) == "m/Card")
                 .unwrap();
-            (ui.nodes[i].rect.width, ui.nodes[i].rect.height)
+            (ui.tree.nodes[i].rect.width, ui.tree.nodes[i].rect.height)
         };
         size(&mut ui, false, false);
         for j in 0..3 {
@@ -913,12 +913,12 @@ mod document_tests {
         let off = json!({"on": false, "paused": false});
         for j in 0..9 {
             let v = tick(&mut ui, &off);
-            let i = (0..ui.nodes.len())
+            let i = (0..ui.tree.nodes.len())
                 .find(|&i| ui.path_of(i) == "m/Card")
                 .unwrap();
             let k = (j as f32 / 6.0).min(1.0);
             assert!(close(v[OPACITY], k), "opacity at {j}: {}", v[OPACITY]);
-            let w = ui.nodes[i].rect.width;
+            let w = ui.tree.nodes[i].rect.width;
             assert!((w - (10.0 + 30.0 * k)).abs() <= 0.5, "width at {j}: {w}");
         }
         assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);

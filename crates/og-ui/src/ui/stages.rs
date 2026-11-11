@@ -162,3 +162,54 @@ pub(crate) struct Interaction {
     /// Named UI actions and the last device (docs/ui.md §2.1).
     pub(crate) actions: crate::actions::Actions,
 }
+
+/// Tree: the node arena and its slots, the build cursor, the trees' index and orders, and what the frame may keep.
+#[derive(Clone, Debug)]
+pub(crate) struct Tree {
+    pub(crate) nodes: Vec<Node>,
+    pub(crate) kinds: Vec<(&'static str, bool)>,
+    /// Last frame's `kinds`, beside `kept.prev`.
+    pub(crate) prev_kinds: std::collections::HashMap<usize, (&'static str, bool)>,
+    pub(crate) render_slots: std::collections::HashMap<(u64, usize), usize>,
+    pub(crate) free_slots: Vec<usize>,
+    pub(crate) emitted: Vec<usize>,
+    pub(crate) retiring: Vec<usize>,
+    pub(crate) slot_present: Vec<bool>,
+    /// Per slot: owned by a retained element, so it lives across frames
+    /// until its owner retires it (`retire_owned`), not for one frame.
+    pub(crate) persistent: Vec<bool>,
+    /// The slots each retained element being emitted writes: its own node
+    /// and its widget's internal nodes, innermost element last.
+    pub(crate) owning: Vec<build::Owned>,
+    /// A retained element re-emitted into the slot it already holds in its
+    /// parent's children: `(key, parent)` of the push that must not append.
+    pub(crate) in_place: Option<(u64, usize)>,
+    /// This frame's element keys under a parent, which a repeated id
+    /// would take again (`Ui::push` renames it), and the anonymous
+    /// elements of each kind under each parent: kept as built, so a
+    /// long list pays no scan of its siblings for each element.
+    pub(crate) built: crate::id::KeySet,
+    pub(crate) anonymous: crate::id::KeyMap<u32>,
+    pub(crate) stack: Vec<usize>,
+    pub(crate) floating: Vec<usize>,
+    pub(crate) last_closed: usize,
+    /// The trees' membership, keys and features (`tree`).
+    pub(crate) index: tree::TreeIndex,
+    /// The frame's orders and each feature's nodes (`visit`).
+    pub(crate) orders: visit::Orders,
+    /// What may have changed for screen readers, by frame (`tree`).
+    pub(crate) semantics: tree::SemanticLog,
+    pub(crate) building: bool,
+    /// Open focus scopes this frame, in build order.
+    pub(crate) scopes: Vec<usize>,
+    /// What elements of this frame draw with ([`Ui::set_draw`]), by node.
+    pub(crate) draws: std::collections::HashMap<usize, crate::paint::ElementDraw>,
+    /// The draws of [`Ui::set_draw_dressable`]: a component's own look for
+    /// a part, which a style that dresses the part restyles.
+    pub(crate) dressable: std::collections::HashSet<usize>,
+    /// Last frame's layers and draws while this frame is built, for
+    /// inspecting the last frame mid-build.
+    pub(crate) prev_floating: Vec<usize>,
+    /// What this frame may keep from the last.
+    pub(crate) invalidation: crate::layout::Invalidation,
+}

@@ -87,7 +87,7 @@ impl Ui {
         }
         let i = self.open_world_layer("world", id, key, el);
         self.world.want(desc.target);
-        let info = self.anchor_info(self.nodes[i].key, &desc);
+        let info = self.anchor_info(self.tree.nodes[i].key, &desc);
         self.world.anchors.push(AnchorEntry { node: i, desc });
         info
     }
@@ -101,14 +101,14 @@ impl Ui {
             .world
             .anchors
             .iter()
-            .map(|a| self.nodes[a.node].key)
+            .map(|a| self.tree.nodes[a.node].key)
             .collect();
         let mut kept = std::mem::take(&mut self.world.kept);
         kept.retain(|key, (desc, owner)| {
             if built.contains(key) {
                 return true;
             }
-            match self.tree.by_key.get(key) {
+            match self.tree.index.by_key.get(key) {
                 Some(&node) if self.docs.host.retained.owns(*owner) => {
                     self.world.want(desc.target);
                     self.world.anchors.push(AnchorEntry {
@@ -125,14 +125,14 @@ impl Ui {
             .world
             .panels
             .iter()
-            .map(|p| self.nodes[p.node].key)
+            .map(|p| self.tree.nodes[p.node].key)
             .collect();
         let mut kept = std::mem::take(&mut self.world.kept_panels);
         kept.retain(|key, (desc, rect, owner)| {
             if built.contains(key) {
                 return true;
             }
-            match self.tree.by_key.get(key) {
+            match self.tree.index.by_key.get(key) {
                 Some(&node) if self.docs.host.retained.owns(*owner) => {
                     if let Some((t, ..)) = desc.quad {
                         self.world.want(t);
@@ -182,7 +182,7 @@ impl Ui {
         emitter: Option<crate::particles::ParticlesDesc>,
         meta: Option<MetaDesc>,
     ) {
-        let key = self.nodes[i].key;
+        let key = self.tree.nodes[i].key;
         if emitter.is_none() && meta.is_none() {
             self.world.kept_effects.remove(&key);
         } else {
@@ -194,7 +194,7 @@ impl Ui {
     fn keep_effects(&mut self) {
         let mut kept = std::mem::take(&mut self.world.kept_effects);
         kept.retain(|key, (emitter, meta)| {
-            let Some(&i) = self.tree.by_key.get(key) else {
+            let Some(&i) = self.tree.index.by_key.get(key) else {
                 return self.docs.host.retained.owns(*key);
             };
             if let Some(d) = emitter {
@@ -210,7 +210,7 @@ impl Ui {
                 });
             }
             if let Some(m) = meta {
-                let intensity = self.nodes[i].props.opacity.clamp(0.0, 1.0);
+                let intensity = self.tree.nodes[i].props.opacity.clamp(0.0, 1.0);
                 self.world.metas.push((
                     i,
                     MetaDesc {
@@ -252,7 +252,7 @@ impl Ui {
     /// ticks it is not built again, while the retained element `owner`
     /// stands (see [`Ui::keep_world_anchors`]).
     pub(crate) fn keep_world_panel(&mut self, node: usize, owner: u64) {
-        let key = self.nodes[node].key;
+        let key = self.tree.nodes[node].key;
         if let Some(p) = self.world.panels.iter().rev().find(|p| p.node == node) {
             let kept = (p.desc.clone(), p.rect, owner);
             self.world.kept_panels.insert(key, kept);
@@ -301,7 +301,7 @@ impl Ui {
         if let Some((t, ..)) = desc.quad {
             self.world.want(t);
         }
-        let key = self.nodes[i].key;
+        let key = self.tree.nodes[i].key;
         self.world.panels.push(PanelEntry {
             node: i,
             desc,

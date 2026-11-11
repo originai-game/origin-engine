@@ -57,27 +57,38 @@ impl Ui {
                 drop_accepts: IdMap::new(),
                 actions: Default::default(),
             },
-            nodes: Vec::new(),
-            kinds: Vec::new(),
-            prev_kinds: Default::default(),
-            render_slots: Default::default(),
-            free_slots: Vec::new(),
-            emitted: Vec::new(),
-            retiring: Vec::new(),
-            slot_present: Vec::new(),
-            persistent: Vec::new(),
-            owning: Vec::new(),
-            in_place: None,
+            tree: Tree {
+                nodes: Vec::new(),
+                kinds: Vec::new(),
+                prev_kinds: Default::default(),
+                render_slots: Default::default(),
+                free_slots: Vec::new(),
+                emitted: Vec::new(),
+                retiring: Vec::new(),
+                slot_present: Vec::new(),
+                persistent: Vec::new(),
+                owning: Vec::new(),
+                in_place: None,
+                built: Default::default(),
+                anonymous: Default::default(),
+                stack: Vec::new(),
+                floating: Vec::new(),
+                last_closed: NONE,
+                index: Default::default(),
+                orders: Default::default(),
+                semantics: Default::default(),
+                building: false,
+                scopes: Vec::new(),
+                draws: Default::default(),
+                dressable: Default::default(),
+                prev_floating: Vec::new(),
+                invalidation: Default::default(),
+            },
             layout: Layout {
                 texts: Default::default(),
                 cache: Default::default(),
                 layout_mutated: Vec::new(),
             },
-            built: Default::default(),
-            anonymous: Default::default(),
-            stack: Vec::new(),
-            floating: Vec::new(),
-            last_closed: NONE,
             out: Out {
                 frame: UiFrame::default(),
                 warnings: Vec::new(),
@@ -98,15 +109,9 @@ impl Ui {
                 inspection: Default::default(),
                 cache: Default::default(),
             },
-            tree: Default::default(),
-            orders: Default::default(),
-            semantics: Default::default(),
-            building: false,
-            prev_floating: Vec::new(),
             touched: Default::default(),
             hud_editor_key: 0,
             button_ink: Vec::new(),
-            scopes: Vec::new(),
             kept_texts: Default::default(),
             style: Style {
                 part_rules,
@@ -121,9 +126,6 @@ impl Ui {
             },
             cover: None,
             accent: None,
-            invalidation: Default::default(),
-            draws: Default::default(),
-            dressable: Default::default(),
             docs: Docs {
                 host: Default::default(),
                 reactive: Default::default(),
@@ -285,7 +287,7 @@ impl Ui {
         &self,
         i: usize,
     ) -> (&'static str, String, String, String, Vec<String>) {
-        crate::a11y::node_info(&self.nodes, &self.kinds, i)
+        crate::a11y::node_info(&self.tree.nodes, &self.tree.kinds, i)
     }
 
     /// The path of the control pad `pad`'s focus is on in the last frame
@@ -352,7 +354,7 @@ impl Ui {
     /// The widget memory of `key`, marked as used this frame.
     pub(crate) fn anim(&mut self, key: u64) -> Anim {
         self.touched.insert(key);
-        if let Some(owned) = self.owning.last_mut() {
+        if let Some(owned) = self.tree.owning.last_mut() {
             owned.memories.push(key);
         }
         self.interaction
@@ -370,7 +372,7 @@ impl Ui {
     pub(crate) fn set_anim(&mut self, key: u64, a: Anim) {
         self.touched.insert(key);
         let old = self.interaction.state.anims.insert(key, a);
-        if let Some(owned) = self.owning.last_mut() {
+        if let Some(owned) = self.tree.owning.last_mut() {
             owned.memories.push(key);
             owned.moved |= old != Some(a);
         }
@@ -378,7 +380,7 @@ impl Ui {
 
     /// The key the next element with this id would get under the open element.
     pub(crate) fn key_for(&self, id: &str) -> u64 {
-        let parent = self.nodes.get(self.parent()).map_or(1, |n| n.key);
+        let parent = self.tree.nodes.get(self.parent()).map_or(1, |n| n.key);
         child_key(parent, id)
     }
 
@@ -393,16 +395,16 @@ impl Ui {
         self.env.configured = theme;
         self.env.theme = effective_theme(theme, &self.env.viewport);
         self.read_theme_tokens();
-        self.invalidation.epoch += 1;
+        self.tree.invalidation.epoch += 1;
     }
 
     /// Set a host attribute on the open element's part. Returns whether a
     /// matching CSS rule tests that attribute.
     pub fn part_attr(&mut self, key: &str, value: &str) -> bool {
-        let Some(&i) = self.stack.last() else {
+        let Some(&i) = self.tree.stack.last() else {
             return false;
         };
-        let el = &mut self.nodes[i].el;
+        let el = &mut self.tree.nodes[i].el;
         let part = el
             .part
             .or_else(|| el.frame.map(StylePart::part_ref))
@@ -448,7 +450,7 @@ impl Ui {
 
     pub fn set_fonts(&mut self, fonts: Fonts) {
         self.env.fonts = fonts;
-        self.invalidation.epoch += 1;
+        self.tree.invalidation.epoch += 1;
         self.env.fonts.link();
         self.layout.texts.clear();
     }
@@ -469,7 +471,7 @@ impl Ui {
     /// Node `i`'s text runs right to left, and how its paragraphs take
     /// their direction: a document element's own flow, else the surface's.
     pub(crate) fn text_flow(&self, i: usize) -> (bool, crate::text::Para) {
-        let flow = self.nodes[i].props.flow;
+        let flow = self.tree.nodes[i].props.flow;
         if flow.doc {
             (flow.rtl, flow.para())
         } else {
@@ -539,7 +541,7 @@ impl Ui {
             input.released = false;
             input.down = false;
         }
-        if self.building {
+        if self.tree.building {
             self.out.warnings.push(
                 "begin without end: the previous frame was dropped; call ui.end() once per tick"
                     .into(),
@@ -553,33 +555,33 @@ impl Ui {
         self.env.theme.art.atlas = self.env.configured.art.atlas_for(viewport.dpr());
         self.retire_nodes();
         self.layout.cache.prev.clear();
-        self.prev_kinds.clear();
-        std::mem::swap(&mut self.emitted, &mut self.retiring);
-        self.emitted.clear();
-        for &i in &self.retiring {
-            self.slot_present[i] = false;
+        self.tree.prev_kinds.clear();
+        std::mem::swap(&mut self.tree.emitted, &mut self.tree.retiring);
+        self.tree.emitted.clear();
+        for &i in &self.tree.retiring {
+            self.tree.slot_present[i] = false;
         }
-        self.built.clear();
-        self.anonymous.clear();
-        self.stack.clear();
-        self.owning.clear();
-        self.in_place = None;
+        self.tree.built.clear();
+        self.tree.anonymous.clear();
+        self.tree.stack.clear();
+        self.tree.owning.clear();
+        self.tree.in_place = None;
         // Retained slots keep their layers and draws until written again.
-        let persistent = &self.persistent;
-        self.prev_floating = self.floating.clone();
-        self.floating.retain(|&f| persistent[f]);
-        self.paint.prev_draws = std::mem::take(&mut self.draws);
-        self.draws = self
+        let persistent = &self.tree.persistent;
+        self.tree.prev_floating = self.tree.floating.clone();
+        self.tree.floating.retain(|&f| persistent[f]);
+        self.paint.prev_draws = std::mem::take(&mut self.tree.draws);
+        self.tree.draws = self
             .paint
             .prev_draws
             .iter()
             .filter(|&(&i, _)| persistent[i])
             .map(|(&i, d)| (i, d.clone()))
             .collect();
-        self.dressable.retain(|&i| persistent[i]);
+        self.tree.dressable.retain(|&i| persistent[i]);
         self.out.warnings.clear();
-        self.last_closed = NONE;
-        self.building = true;
+        self.tree.last_closed = NONE;
+        self.tree.building = true;
 
         self.interaction.state.tick += 1;
         // A Rive player whose element was not built last tick is gone.
@@ -591,7 +593,7 @@ impl Ui {
         self.interaction.nav = NavFrame::default();
         self.touched.clear();
         self.interaction.request_focus = 0;
-        self.scopes.clear();
+        self.tree.scopes.clear();
         self.interaction.nav_on = true;
         self.interaction.players = 1;
         self.interaction.vcursor = None;
@@ -674,7 +676,7 @@ impl Ui {
         el.padding = el.padding.add(&viewport.safe_area);
         el.scroll = false;
         self.write_node(Node::new(1, String::new(), NONE, el), ("root", false));
-        self.stack.push(0);
+        self.tree.stack.push(0);
     }
 }
 
@@ -829,7 +831,7 @@ impl Ui {
     /// How far into hover and press node `i` is for its response `r`, on
     /// the style's `ui` spring: what its part's states mix by.
     pub(crate) fn state_amounts(&mut self, i: usize, r: &Response) -> (f32, f32) {
-        let key = self.nodes[i].key;
+        let key = self.tree.nodes[i].key;
         let h = self.spring_to(
             child_key(key, "state.hover"),
             if r.hovered { 1.0 } else { 0.0 },

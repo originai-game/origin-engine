@@ -92,13 +92,13 @@ impl Ui {
         key: u64,
         resp: crate::ui::Response,
     ) {
-        let at = self.last_closed;
-        if at == NONE || at >= self.nodes.len() || self.nodes[at].key != key {
+        let at = self.tree.last_closed;
+        if at == NONE || at >= self.tree.nodes.len() || self.tree.nodes[at].key != key {
             return;
         }
         if let Some(title) = r.str("title").filter(|t| !t.is_empty()) {
-            if self.nodes[at].a11y.description.is_none() {
-                self.nodes[at].a11y.description = Some(title.to_string());
+            if self.tree.nodes[at].a11y.description.is_none() {
+                self.tree.nodes[at].a11y.description = Some(title.to_string());
             }
             self.tooltip(title);
         }
@@ -116,7 +116,7 @@ impl Ui {
                 link.point = None;
                 self.set_popover_open(pk, next);
             }
-            self.nodes[at].a11y.expanded = Some(self.popover_open(pk));
+            self.tree.nodes[at].a11y.expanded = Some(self.popover_open(pk));
         }
         // HTML's former `contextmenu` attribute: a secondary press or a long
         // press on it opens the popover at the pointer.
@@ -166,7 +166,7 @@ impl Ui {
         built: Built,
         build_children: impl FnOnce(&mut Ui, &mut Build<'_>, Option<Props>),
     ) -> Option<String> {
-        if let Some(owned) = self.owning.last_mut() {
+        if let Some(owned) = self.tree.owning.last_mut() {
             owned.moved = true;
         }
         let mode = match r.str("popover") {
@@ -181,7 +181,7 @@ impl Ui {
             *l
         };
         let (anchor, invoker) = link.invoker;
-        let anchor = if anchor < self.nodes.len() && self.nodes[anchor].key == invoker {
+        let anchor = if anchor < self.tree.nodes.len() && self.tree.nodes[anchor].key == invoker {
             anchor
         } else {
             NONE
@@ -213,8 +213,8 @@ impl Ui {
                 ..Element::default()
             },
         );
-        let at = self.last_closed;
-        self.nodes[at].props.position = crate::element::Position::Absolute;
+        let at = self.tree.last_closed;
+        self.tree.nodes[at].props.position = crate::element::Position::Absolute;
         self.note_built(built);
         let t = self.env.theme;
         let content = Self::box_of(
@@ -246,7 +246,7 @@ impl Ui {
         if mode == Mode::Auto {
             let out = self.floating(&local, open, anchor, content, |ui| {
                 layer_at = ui.parent();
-                layer = ui.nodes[layer_at].key;
+                layer = ui.tree.nodes[layer_at].key;
                 build_children(ui, b, None);
             });
             if out.dismissed {
@@ -265,7 +265,7 @@ impl Ui {
                 float,
                 anchor,
             );
-            layer = self.nodes[i].key;
+            layer = self.tree.nodes[i].key;
             layer_at = i;
             build_children(self, b, None);
             self.close();
@@ -287,7 +287,7 @@ impl Ui {
     /// (the layout pass reads its `anchor` node, or `point`), and its arrow.
     fn place_popover(&mut self, r: &Resolved, at: usize, point: Option<[f32; 2]>) {
         let (spec, authored) = Self::anchor_spec(r, &mut Props::default());
-        let n = &mut self.nodes[at];
+        let n = &mut self.tree.nodes[at];
         if authored {
             n.props.anchor = Some(Box::new(spec));
         }

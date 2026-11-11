@@ -329,11 +329,11 @@ impl Ui {
             },
         );
         let at = self.parent();
-        self.nodes[at].a11y.role = Some("group");
+        self.tree.nodes[at].a11y.role = Some("group");
         if let Some(name) = r.str("name") {
-            self.nodes[at].a11y.name = Some(name.to_string());
+            self.tree.nodes[at].a11y.name = Some(name.to_string());
         }
-        self.nodes[at].a11y.value = Some(format(ty, now, seconds));
+        self.tree.nodes[at].a11y.value = Some(format(ty, now, seconds));
         let mut values: Vec<i64> = Vec::new();
         let mut changed = false;
         let mut keep_day = false;

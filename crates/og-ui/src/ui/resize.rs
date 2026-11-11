@@ -57,10 +57,11 @@ impl Ui {
                 .find(|h| h.rect.contains(p.x, p.y) && h.flags & HIT_PASS == 0)
                 .map(|h| h.key);
             self.interaction.state.resizing = top.and_then(|k| {
-                self.orders
+                self.tree
+                    .orders
                     .with(visit::feat::RESIZE)
                     .iter()
-                    .map(|&i| &self.nodes[i])
+                    .map(|&i| &self.tree.nodes[i])
                     .find(|n| grip_key(n.key) == k)
                     .map(|n| Resizing {
                         key: n.key,
@@ -108,16 +109,16 @@ impl Ui {
             return;
         }
         if let Some(key) = self.interaction.resize_moved.take()
-            && let Some(i) = self.tree.find(key)
-            && !self.emitted.contains(&i)
+            && let Some(i) = self.tree.index.find(key)
+            && !self.tree.emitted.contains(&i)
         {
-            let previous = self.nodes[i].clone();
+            let previous = self.tree.nodes[i].clone();
             self.layout.cache.prev.entry(i).or_insert(previous);
-            self.emitted.push(i);
+            self.tree.emitted.push(i);
         }
-        for k in 0..self.emitted.len() {
-            let i = self.emitted[k];
-            let n = &mut self.nodes[i];
+        for k in 0..self.tree.emitted.len() {
+            let i = self.tree.emitted[k];
+            let n = &mut self.tree.nodes[i];
             if n.el.resize == 0 {
                 continue;
             }
@@ -136,7 +137,7 @@ impl Ui {
     /// Node `s`'s resize handle: three rows of dots in its bottom end
     /// corner, the style's strong control ink.
     pub(super) fn resizer_commands(&self, s: usize, cmds: &mut Vec<DrawCmd>) {
-        let n = &self.nodes[s];
+        let n = &self.tree.nodes[s];
         let rtl = self.env.direction == og_i18n::Direction::Rtl;
         let g = grip_rect(n, rtl);
         let dpr = self.env.viewport.dpr();

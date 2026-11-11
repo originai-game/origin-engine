@@ -87,8 +87,8 @@ impl Ui {
         if inside {
             return;
         }
-        let at = self.last_closed;
-        let props = &mut self.nodes[at].props;
+        let at = self.tree.last_closed;
+        let props = &mut self.tree.nodes[at].props;
         props.position = crate::element::Position::Anchored;
         props.anchor_to = item.to_string();
         props.anchor_at = crate::layout::Anchor::TopLeft;
@@ -197,7 +197,7 @@ impl Ui {
         };
         let at = self.parent();
         if props != Props::default() {
-            self.nodes[at].props = props;
+            self.tree.nodes[at].props = props;
         }
         for k in range.first..range.last.min(count) {
             self.structure_row(k as usize);

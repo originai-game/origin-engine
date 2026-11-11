@@ -36,13 +36,13 @@ impl Ui {
     /// line of its own; its authored layout comes back when none is.
     fn line_box(&mut self, i: usize, flow: &[usize]) {
         let wanted = {
-            let n = &self.nodes[i];
+            let n = &self.tree.nodes[i];
             n.el.block
                 && n.props.layout == crate::LayoutMode::Flex
                 && matches!(n.content, Content::None)
-                && flow.iter().any(|&c| self.nodes[c].el.inline)
+                && flow.iter().any(|&c| self.tree.nodes[c].el.inline)
         };
-        let n = &mut self.nodes[i];
+        let n = &mut self.tree.nodes[i];
         let ours = n.el.direction == crate::Direction::Row && n.el.wrap;
         match (wanted, n.line_box) {
             (true, saved) if saved.is_none() || !ours => {
@@ -64,7 +64,7 @@ impl Ui {
     }
 
     pub(crate) fn prepare_layout_node(&mut self, i: usize) {
-        let node = &mut self.nodes[i];
+        let node = &mut self.tree.nodes[i];
         if let Content::Text(text) = &mut node.content
             && self.env.theme.art.display_min > 0.0
             && text.font == crate::FontRole::Display
@@ -87,14 +87,14 @@ impl Ui {
                 _ => {}
             }
         }
-        crate::layout::snap_pixel_text(&mut self.nodes[i..i + 1], &self.env.fonts);
+        crate::layout::snap_pixel_text(&mut self.tree.nodes[i..i + 1], &self.env.fonts);
     }
 
     /// A vertical scroller's bar gutter on its right padding, as its last
     /// frame's range needs it: replaced, never added again, so a retained
     /// scroller that is not built again keeps one gutter.
     pub(crate) fn apply_gutter(&mut self, i: usize) {
-        let node = &self.nodes[i];
+        let node = &self.tree.nodes[i];
         let gutter = if node.el.scroll && !node.el.scroll_x && !node.el.hide_bars {
             self.bar_gutter(node.key, node.el.scroll_css)
         } else {
@@ -102,7 +102,7 @@ impl Ui {
         };
         // `scrollbar-gutter: stable both-edges`: the same room at the start.
         let both = node.el.scroll_css.gutter == 2;
-        let node = &mut self.nodes[i];
+        let node = &mut self.tree.nodes[i];
         node.el.padding.right += gutter - node.gutter;
         if both {
             node.el.padding.left += gutter - node.gutter;
@@ -128,23 +128,23 @@ impl Ui {
     fn content_visibility(&mut self) {
         use crate::layout::ContentVisibility as Cv;
         // A node written again keeps what it had found.
-        for k in 0..self.emitted.len() {
-            let i = self.emitted[k];
+        for k in 0..self.tree.emitted.len() {
+            let i = self.tree.emitted[k];
             if let Some(p) = self.layout.cache.prev.get(&i) {
                 let (skip, far, remembered) = (p.cv_skip, p.cv_far, p.remembered);
-                let n = &mut self.nodes[i];
+                let n = &mut self.tree.nodes[i];
                 (n.cv_skip, n.cv_far, n.remembered) = (skip, far, remembered);
             }
         }
-        let mut at: Vec<usize> = self.orders.with(visit::feat::SKIPS).to_vec();
-        at.extend(self.emitted.iter().copied());
+        let mut at: Vec<usize> = self.tree.orders.with(visit::feat::SKIPS).to_vec();
+        at.extend(self.tree.emitted.iter().copied());
         at.sort_unstable();
         at.dedup();
         for i in at {
-            if i >= self.nodes.len() {
+            if i >= self.tree.nodes.len() {
                 continue;
             }
-            let n = &mut self.nodes[i];
+            let n = &mut self.tree.nodes[i];
             let v = n.el.contain.visibility;
             if v != Cv::Auto {
                 n.cv_far = false;
@@ -166,21 +166,21 @@ impl Ui {
     fn note_relevance(&mut self) {
         let vp = self.env.viewport;
         let screen = Rect::new(0.0, 0.0, vp.width, vp.height);
-        let focus = self.tree.find(self.interaction.state.focus);
-        for k in 0..self.orders.with(visit::feat::SKIPS).len() {
-            let i = self.orders.with(visit::feat::SKIPS)[k];
-            if i >= self.nodes.len() || !self.tree.has(i) {
+        let focus = self.tree.index.find(self.interaction.state.focus);
+        for k in 0..self.tree.orders.with(visit::feat::SKIPS).len() {
+            let i = self.tree.orders.with(visit::feat::SKIPS)[k];
+            if i >= self.tree.nodes.len() || !self.tree.index.has(i) {
                 continue;
             }
-            let n = &self.nodes[i];
+            let n = &self.tree.nodes[i];
             if !n.cv_skip {
                 let size = [
                     (n.w - n.el.padding.horizontal()).max(0.0),
                     (n.h - n.el.padding.vertical()).max(0.0),
                 ];
-                self.nodes[i].remembered = Some(size);
+                self.tree.nodes[i].remembered = Some(size);
             }
-            let n = &self.nodes[i];
+            let n = &self.tree.nodes[i];
             if n.el.contain.visibility != crate::layout::ContentVisibility::Auto {
                 continue;
             }
@@ -193,15 +193,15 @@ impl Ui {
             );
             let mut holds_focus = false;
             let mut at = focus.unwrap_or(NONE);
-            while at != NONE && at < self.nodes.len() {
+            while at != NONE && at < self.tree.nodes.len() {
                 if at == i {
                     holds_focus = true;
                     break;
                 }
-                at = self.nodes[at].parent;
+                at = self.tree.nodes[at].parent;
             }
             let far = !holds_focus && !near.overlaps(&n.clip.intersect(&screen));
-            self.nodes[i].cv_far = far;
+            self.tree.nodes[i].cv_far = far;
         }
     }
 
@@ -226,9 +226,9 @@ impl Ui {
         ) -> Result<Vec<usize>, settlement::SettlementError>,
     ) -> Result<&UiFrame, settlement::SettlementError> {
         #[cfg(debug_assertions)]
-        if self.building && !self.invalidation.whole && bounded::checking() {
+        if self.tree.building && !self.tree.invalidation.whole && bounded::checking() {
             let mut twin = self.clone();
-            twin.invalidation.whole = true;
+            twin.tree.invalidation.whole = true;
             let whole = twin.end_frame(&mut resolve).is_ok();
             let bounded = self.end_frame(&mut resolve).map(|_| ());
             assert_eq!(
@@ -251,14 +251,14 @@ impl Ui {
             &[settlement::ContainerMeasurement],
         ) -> Result<Vec<usize>, settlement::SettlementError>,
     ) -> Result<&UiFrame, settlement::SettlementError> {
-        if !self.building {
+        if !self.tree.building {
             self.out
                 .warnings
                 .push("end without begin: call ui.begin() at the start of the tick".into());
             return Ok(&self.out.frame);
         }
-        while self.stack.len() > 1 {
-            let i = self.stack.pop().unwrap_or(0);
+        while self.tree.stack.len() > 1 {
+            let i = self.tree.stack.pop().unwrap_or(0);
             self.out.warnings.push(format!(
                 "'{}' was not closed; every ui.open() takes one ui.close()",
                 self.path_of(i)
@@ -267,14 +267,14 @@ impl Ui {
         crate::layers::build_without_host(self);
         self.build_toasts();
         self.retire_nodes();
-        self.building = false;
+        self.tree.building = false;
         // A retained node placement resized last frame lays out from its
         // authored box again (a written node is authored afresh).
         for i in std::mem::take(&mut self.layout.layout_mutated) {
-            if let Some((width, height, padding)) = self.nodes[i].authored_box.take() {
-                let el = &mut self.nodes[i].el;
+            if let Some((width, height, padding)) = self.tree.nodes[i].authored_box.take() {
+                let el = &mut self.tree.nodes[i].el;
                 (el.width, el.height, el.padding) = (width, height, padding);
-                self.invalidation.restored.push(i);
+                self.tree.invalidation.restored.push(i);
             }
         }
         // Breakpoint and orientation variants (docs/ui.md §2), before
@@ -286,17 +286,22 @@ impl Ui {
         // Hidden slots (a closed dialog, a finished transition) take no room.
         // A node's lists follow from its built children and their own
         // props: derived again where those were written or a child left.
-        let whole = self.invalidation.whole
-            || self.invalidation.epoch != self.invalidation.prev_epoch
-            || self.invalidation.sig
+        let whole = self.tree.invalidation.whole
+            || self.tree.invalidation.epoch != self.tree.invalidation.prev_epoch
+            || self.tree.invalidation.sig
                 != Some((self.env.theme, self.env.direction, self.env.viewport.dpr()));
         let derive: Vec<usize> = if whole {
-            (0..self.nodes.len()).collect()
+            (0..self.tree.nodes.len()).collect()
         } else {
             let mut d: Vec<usize> = std::iter::once(0)
-                .chain(self.emitted.iter().flat_map(|&i| [i, self.nodes[i].parent]))
-                .chain(self.invalidation.rederive.iter().copied())
-                .filter(|&i| i < self.nodes.len())
+                .chain(
+                    self.tree
+                        .emitted
+                        .iter()
+                        .flat_map(|&i| [i, self.tree.nodes[i].parent]),
+                )
+                .chain(self.tree.invalidation.rederive.iter().copied())
+                .filter(|&i| i < self.tree.nodes.len())
                 .collect();
             // A box that hands its children on (`display: contents`, a
             // table's rows and groups) derives with the box it hands them to.
@@ -307,11 +312,12 @@ impl Ui {
             };
             for k in 0..d.len() {
                 let mut at = d[k];
-                while at < self.nodes.len()
-                    && self.nodes[at].parent != NONE
-                    && (handed(&self.nodes[at]) || handed(&self.nodes[self.nodes[at].parent]))
+                while at < self.tree.nodes.len()
+                    && self.tree.nodes[at].parent != NONE
+                    && (handed(&self.tree.nodes[at])
+                        || handed(&self.tree.nodes[self.tree.nodes[at].parent]))
                 {
-                    at = self.nodes[at].parent;
+                    at = self.tree.nodes[at].parent;
                     d.push(at);
                 }
             }
@@ -320,20 +326,21 @@ impl Ui {
             d
         };
         for &i in &derive {
-            if self.nodes[i].hidden {
+            if self.tree.nodes[i].hidden {
                 continue;
             }
             use crate::layout::TablePart;
             // Its children are laid out by another box: it has none.
-            let n = &self.nodes[i];
+            let n = &self.tree.nodes[i];
             let in_table = |p: usize| {
                 p != NONE
-                    && (self.nodes[p].el.table == TablePart::Table
+                    && (self.tree.nodes[p].el.table == TablePart::Table
                         || matches!(
-                            self.nodes[p].el.table,
+                            self.tree.nodes[p].el.table,
                             TablePart::Header | TablePart::Body | TablePart::Footer
-                        ) && self.nodes[p].parent != NONE
-                            && self.nodes[self.nodes[p].parent].el.table == TablePart::Table)
+                        ) && self.tree.nodes[p].parent != NONE
+                            && self.tree.nodes[self.tree.nodes[p].parent].el.table
+                                == TablePart::Table)
             };
             let handed = i != 0
                 && (n.el.contents
@@ -347,7 +354,7 @@ impl Ui {
                             | TablePart::ColumnGroup
                     ) && in_table(n.parent));
             if handed {
-                let n = &mut self.nodes[i];
+                let n = &mut self.tree.nodes[i];
                 n.ordered_children.clear();
                 n.children.clear();
                 n.out.clear();
@@ -355,15 +362,15 @@ impl Ui {
                 n.table = None;
                 continue;
             }
-            let shown = crate::layout::shown_children(&self.nodes, i);
+            let shown = crate::layout::shown_children(&self.tree.nodes, i);
             // Out of the flow (absolute, anchored): laid out against the box.
             let (out, inside): (Vec<usize>, Vec<usize>) = shown
                 .iter()
-                .partition(|&&c| self.nodes[c].props.out_of_flow());
+                .partition(|&&c| self.tree.nodes[c].props.out_of_flow());
             // A table draws its rows and groups under their cells, places
             // them itself, and lays out its captions and cells by slot.
-            let (kept, mut flow, table) = if self.nodes[i].el.table == TablePart::Table {
-                let (mut draw, flow, t) = crate::layout::derive_table(&self.nodes, &inside);
+            let (kept, mut flow, table) = if self.tree.nodes[i].el.table == TablePart::Table {
+                let (mut draw, flow, t) = crate::layout::derive_table(&self.tree.nodes, &inside);
                 draw.extend(&out);
                 (draw, flow, Some(t))
             } else {
@@ -371,33 +378,33 @@ impl Ui {
             };
             // A block's floated children leave its flow (CSS 2 §9.5); in
             // a flex, grid or multi-column container `float` does not apply.
-            let floats: Vec<usize> = if crate::layout::float::container(&self.nodes[i]) {
+            let floats: Vec<usize> = if crate::layout::float::container(&self.tree.nodes[i]) {
                 let floats = flow
                     .iter()
                     .copied()
-                    .filter(|&c| self.nodes[c].el.float != crate::layout::FloatSide::None)
+                    .filter(|&c| self.tree.nodes[c].el.float != crate::layout::FloatSide::None)
                     .collect();
-                flow.retain(|&c| self.nodes[c].el.float == crate::layout::FloatSide::None);
+                flow.retain(|&c| self.tree.nodes[c].el.float == crate::layout::FloatSide::None);
                 floats
             } else {
                 Vec::new()
             };
             for &c in &kept {
-                self.nodes[c].up = i;
+                self.tree.nodes[c].up = i;
             }
             // A block holding inline-level children lays them out in lines.
             self.line_box(i, &flow);
             // Flex and grid items lay out in CSS `order`, then as built.
-            if table.is_none() && flow.iter().any(|&c| self.nodes[c].el.order != 0) {
-                og_core::sort::sort_by_key(&mut flow, |&c| self.nodes[c].el.order);
+            if table.is_none() && flow.iter().any(|&c| self.tree.nodes[c].el.order != 0) {
+                og_core::sort::sort_by_key(&mut flow, |&c| self.tree.nodes[c].el.order);
             }
             let baseline_items = flow.iter().any(|&c| {
                 matches!(
-                    self.nodes[c].el.align_self,
+                    self.tree.nodes[c].el.align_self,
                     Some(crate::layout::Cross::Baseline | crate::layout::Cross::LastBaseline)
                 )
             });
-            let n = &mut self.nodes[i];
+            let n = &mut self.tree.nodes[i];
             n.ordered_children = kept;
             n.children = flow;
             n.out = out;
@@ -405,21 +412,21 @@ impl Ui {
             n.baseline_items = baseline_items;
             n.table = table;
         }
-        for k in 0..self.emitted.len() {
-            self.prepare_layout_node(self.emitted[k]);
+        for k in 0..self.tree.emitted.len() {
+            self.prepare_layout_node(self.tree.emitted[k]);
         }
         // A gutter follows its node's props and last frame's scroll range.
         if whole {
-            for i in 0..self.nodes.len() {
+            for i in 0..self.tree.nodes.len() {
                 self.apply_gutter(i);
             }
         } else {
-            for k in 0..self.emitted.len() {
-                self.apply_gutter(self.emitted[k]);
+            for k in 0..self.tree.emitted.len() {
+                self.apply_gutter(self.tree.emitted[k]);
             }
             for k in 0..self.layout.cache.scrollers.len() {
                 let i = self.layout.cache.scrollers[k];
-                if i < self.nodes.len() {
+                if i < self.tree.nodes.len() {
                     self.apply_gutter(i);
                 }
             }
@@ -427,18 +434,19 @@ impl Ui {
         self.content_visibility();
         self.reuse_check();
         let mut floating: Vec<usize> = self
+            .tree
             .floating
             .iter()
             .copied()
-            .filter(|&f| !self.nodes[f].hidden)
+            .filter(|&f| !self.tree.nodes[f].hidden)
             .collect();
-        og_core::sort::sort_by_key(&mut floating, |&f| self.nodes[f].float.rank());
-        self.floating = floating;
-        let written = std::mem::take(&mut self.emitted);
-        self.tree.restructured.clear();
-        self.tree.all_restructured = false;
+        og_core::sort::sort_by_key(&mut floating, |&f| self.tree.nodes[f].float.rank());
+        self.tree.floating = floating;
+        let written = std::mem::take(&mut self.tree.emitted);
+        self.tree.index.restructured.clear();
+        self.tree.index.all_restructured = false;
         self.sync_tree(&derive, &written, whole);
-        self.emitted = written;
+        self.tree.emitted = written;
 
         let vp = self.env.viewport;
         let dpr = vp.dpr();
@@ -446,7 +454,11 @@ impl Ui {
         let rtl = self.env.direction == og_i18n::Direction::Rtl;
         self.layout.cache.query_roots = None;
         let mut settlement = settlement::Settlement::default();
-        let part_geometry = self.nodes.iter().any(|node| node.part_geometry.is_some());
+        let part_geometry = self
+            .tree
+            .nodes
+            .iter()
+            .any(|node| node.part_geometry.is_some());
         loop {
             let mut layout_inputs =
                 settlement::LayoutInputs::new(&self.layout.cache.measurements, part_geometry);
@@ -464,7 +476,7 @@ impl Ui {
                 body: self.env.theme.type_ramp.body,
             };
             layout(
-                &mut self.nodes,
+                &mut self.tree.nodes,
                 0,
                 screen,
                 &mut measure,
@@ -499,9 +511,10 @@ impl Ui {
             // off the others), then the other layers in their order (a popover
             // reads its anchor's final place).
             let (groups, rest): (Vec<usize>, Vec<usize>) = self
+                .tree
                 .floating
                 .iter()
-                .partition(|&&f| matches!(self.nodes[f].float, Float::Anchored { .. }));
+                .partition(|&&f| matches!(self.tree.nodes[f].float, Float::Anchored { .. }));
             let mut spots: Vec<(usize, Rect)> = Vec::new();
             for f in groups.into_iter().chain([NONE]).chain(rest) {
                 // NONE marks the groups' end: place them, then go on to the rest.
@@ -509,7 +522,8 @@ impl Ui {
                     if !covered.is_empty() {
                         for k in 0..spots.len() {
                             let (g, r) = spots[k];
-                            let Float::Anchored { anchor, margin, .. } = self.nodes[g].float else {
+                            let Float::Anchored { anchor, margin, .. } = self.tree.nodes[g].float
+                            else {
                                 continue;
                             };
                             let others: Vec<Rect> = spots
@@ -526,13 +540,19 @@ impl Ui {
                     // (which keep their places) and of the host's control.
                     for k in 0..spots.len() {
                         let (g, r) = spots[k];
-                        if !matches!(self.nodes[g].float, Float::Anchored { avoid: true, .. }) {
+                        if !matches!(
+                            self.tree.nodes[g].float,
+                            Float::Anchored { avoid: true, .. }
+                        ) {
                             continue;
                         }
                         let mut others: Vec<Rect> = spots
                             .iter()
                             .filter(|&&(o, _)| {
-                                !matches!(self.nodes[o].float, Float::Anchored { avoid: true, .. })
+                                !matches!(
+                                    self.tree.nodes[o].float,
+                                    Float::Anchored { avoid: true, .. }
+                                )
                             })
                             .map(|&(_, o)| o)
                             .collect();
@@ -542,12 +562,12 @@ impl Ui {
                         spots[k].1 = step_clear(r, &others, gap, safe);
                     }
                     for &(g, placed) in &spots {
-                        layout_inputs.remember(g, &self.nodes[g]);
-                        authored_box(&mut self.nodes, &mut self.layout.layout_mutated, g);
-                        self.nodes[g].el.width = Size::Fixed(placed.width);
-                        self.nodes[g].el.height = Size::Fixed(placed.height);
+                        layout_inputs.remember(g, &self.tree.nodes[g]);
+                        authored_box(&mut self.tree.nodes, &mut self.layout.layout_mutated, g);
+                        self.tree.nodes[g].el.width = Size::Fixed(placed.width);
+                        self.tree.nodes[g].el.height = Size::Fixed(placed.height);
                         layout(
-                            &mut self.nodes,
+                            &mut self.tree.nodes,
                             g,
                             placed,
                             &mut measure,
@@ -559,13 +579,13 @@ impl Ui {
                     }
                     continue;
                 }
-                let float = self.nodes[f].float;
+                let float = self.tree.nodes[f].float;
                 if float == Float::World {
                     // At its own size: an anchor where it is projected later, a
                     // panel in its slot off the screen.
                     let (area, clip) = self.world.area(f, screen);
                     layout(
-                        &mut self.nodes,
+                        &mut self.tree.nodes,
                         f,
                         area,
                         &mut measure,
@@ -578,15 +598,16 @@ impl Ui {
                 }
                 if float == Float::Modal {
                     // The backdrop covers the surface; the safe area pads its content.
-                    layout_inputs.remember(f, &self.nodes[f]);
-                    authored_box(&mut self.nodes, &mut self.layout.layout_mutated, f);
-                    self.nodes[f].el.width = Size::Fixed(vp.width);
-                    self.nodes[f].el.height = Size::Fixed(vp.height);
-                    if self.nodes[f].backdrop {
-                        self.nodes[f].el.padding = self.nodes[f].el.padding.add(&vp.safe_area);
+                    layout_inputs.remember(f, &self.tree.nodes[f]);
+                    authored_box(&mut self.tree.nodes, &mut self.layout.layout_mutated, f);
+                    self.tree.nodes[f].el.width = Size::Fixed(vp.width);
+                    self.tree.nodes[f].el.height = Size::Fixed(vp.height);
+                    if self.tree.nodes[f].backdrop {
+                        self.tree.nodes[f].el.padding =
+                            self.tree.nodes[f].el.padding.add(&vp.safe_area);
                     }
                     layout(
-                        &mut self.nodes,
+                        &mut self.tree.nodes,
                         f,
                         screen,
                         &mut measure,
@@ -607,7 +628,7 @@ impl Ui {
                     _ => safe,
                 };
                 layout(
-                    &mut self.nodes,
+                    &mut self.tree.nodes,
                     f,
                     area,
                     &mut measure,
@@ -616,7 +637,7 @@ impl Ui {
                     screen,
                     &mut self.layout.cache,
                 );
-                let (w, h) = (self.nodes[f].w, self.nodes[f].h);
+                let (w, h) = (self.tree.nodes[f].w, self.tree.nodes[f].h);
                 let (x, y) = match float {
                     Float::Anchored { anchor, dx, dy, .. } => {
                         let (ax, ay) = anchor.fractions();
@@ -633,11 +654,12 @@ impl Ui {
                         )
                     }
                     _ => {
-                        let a = match self.nodes[f].anchor_point {
+                        let a = match self.tree.nodes[f].anchor_point {
                             Some([px, py]) => Rect::new(px, py, 0.0, 0.0),
                             None => self
+                                .tree
                                 .nodes
-                                .get(self.nodes[f].anchor)
+                                .get(self.tree.nodes[f].anchor)
                                 .map_or(safe, |n| n.rect),
                         };
                         let popover = float == Float::Popover;
@@ -659,7 +681,7 @@ impl Ui {
                             y = y.min(safe.bottom() - h).max(safe.y);
                         }
                         // The side it sits on, for its arrow.
-                        self.nodes[f].anchor_placed.side = if y >= a.bottom() - 0.5 {
+                        self.tree.nodes[f].anchor_placed.side = if y >= a.bottom() - 0.5 {
                             Some(crate::anchor::PlacedSide::Bottom)
                         } else if y + h <= a.y + 0.5 {
                             Some(crate::anchor::PlacedSide::Top)
@@ -674,12 +696,12 @@ impl Ui {
                     spots.push((f, placed));
                     continue;
                 }
-                layout_inputs.remember(f, &self.nodes[f]);
-                authored_box(&mut self.nodes, &mut self.layout.layout_mutated, f);
-                self.nodes[f].el.width = Size::Fixed(w);
-                self.nodes[f].el.height = Size::Fixed(h);
+                layout_inputs.remember(f, &self.tree.nodes[f]);
+                authored_box(&mut self.tree.nodes, &mut self.layout.layout_mutated, f);
+                self.tree.nodes[f].el.width = Size::Fixed(w);
+                self.tree.nodes[f].el.height = Size::Fixed(h);
                 layout(
-                    &mut self.nodes,
+                    &mut self.tree.nodes,
                     f,
                     placed,
                     &mut measure,
@@ -692,23 +714,23 @@ impl Ui {
             // Elements placed on the screen (Position::Screen): laid out again in
             // the whole surface, under the safe area their layer keeps clear,
             // and clipped by nothing but the surface.
-            let mut placed_order = preorder(&self.nodes, 0);
-            for &f in &self.floating {
-                placed_order.extend(preorder(&self.nodes, f));
+            let mut placed_order = preorder(&self.tree.nodes, 0);
+            for &f in &self.tree.floating {
+                placed_order.extend(preorder(&self.tree.nodes, f));
             }
             for &i in &placed_order {
-                if self.nodes[i].props.position != crate::element::Position::Screen
-                    || skipped(&self.nodes, i)
+                if self.tree.nodes[i].props.position != crate::element::Position::Screen
+                    || skipped(&self.tree.nodes, i)
                 {
                     continue;
                 }
-                let r = crate::layout::on_screen(&self.nodes[i], &screen);
-                layout_inputs.remember(i, &self.nodes[i]);
-                authored_box(&mut self.nodes, &mut self.layout.layout_mutated, i);
-                self.nodes[i].el.width = Size::Fixed(r.width);
-                self.nodes[i].el.height = Size::Fixed(r.height);
+                let r = crate::layout::on_screen(&self.tree.nodes[i], &screen);
+                layout_inputs.remember(i, &self.tree.nodes[i]);
+                authored_box(&mut self.tree.nodes, &mut self.layout.layout_mutated, i);
+                self.tree.nodes[i].el.width = Size::Fixed(r.width);
+                self.tree.nodes[i].el.height = Size::Fixed(r.height);
                 layout(
-                    &mut self.nodes,
+                    &mut self.tree.nodes,
                     i,
                     r,
                     &mut measure,
@@ -724,26 +746,26 @@ impl Ui {
             self.layout.cache.anchor_toggled.clear();
             if placed_order
                 .iter()
-                .any(|&i| self.nodes[i].props.anchor.is_some())
+                .any(|&i| self.tree.nodes[i].props.anchor.is_some())
             {
                 let names: Vec<(usize, &[String])> = placed_order
                     .iter()
-                    .filter(|&&i| !self.nodes[i].props.anchor_names.is_empty())
-                    .map(|&i| (i, self.nodes[i].props.anchor_names.as_slice()))
+                    .filter(|&&i| !self.tree.nodes[i].props.anchor_names.is_empty())
+                    .map(|&i| (i, self.tree.nodes[i].props.anchor_names.as_slice()))
                     .collect();
                 let named: Vec<(usize, String)> = names
                     .iter()
                     .flat_map(|(i, n)| n.iter().map(move |n| (*i, n.clone())))
                     .collect();
                 for &i in &placed_order {
-                    let Some(spec) = self.nodes[i].props.anchor.clone() else {
+                    let Some(spec) = self.tree.nodes[i].props.anchor.clone() else {
                         continue;
                     };
-                    if skipped(&self.nodes, i) {
+                    if skipped(&self.tree.nodes, i) {
                         continue;
                     }
                     let box_of = |j: usize| {
-                        let n = &self.nodes[j];
+                        let n = &self.tree.nodes[j];
                         Rect::new(n.x, n.y, n.w, n.h)
                     };
                     // The last element in tree order by that name, not inside
@@ -755,7 +777,7 @@ impl Ui {
                             if at == i {
                                 return true;
                             }
-                            at = self.nodes[at].parent;
+                            at = self.tree.nodes[at].parent;
                         }
                         false
                     };
@@ -768,20 +790,23 @@ impl Ui {
                     };
                     // A popover's implicit anchor (HTML): the control that
                     // opened it, or the point a context menu opened at.
-                    let popover = matches!(self.nodes[i].float, Float::Popover | Float::Tooltip)
-                        && self.floating.contains(&i);
-                    let point = self.nodes[i]
+                    let popover =
+                        matches!(self.tree.nodes[i].float, Float::Popover | Float::Tooltip)
+                            && self.tree.floating.contains(&i);
+                    let point = self.tree.nodes[i]
                         .anchor_point
                         .filter(|_| popover && spec.anchor.is_empty())
                         .map(|[x, y]| Rect::new(x, y, 0.0, 0.0));
                     let default = if spec.anchor.is_empty() {
-                        let to = &self.nodes[i].props.anchor_to;
-                        let implicit = self.nodes[i].anchor;
+                        let to = &self.tree.nodes[i].props.anchor_to;
+                        let implicit = self.tree.nodes[i].anchor;
                         (!to.is_empty())
-                            .then(|| crate::ui::node_in(&self.tree, &self.nodes, to, i))
+                            .then(|| crate::ui::node_in(&self.tree.index, &self.tree.nodes, to, i))
                             .flatten()
-                            .or((popover && point.is_none() && implicit < self.nodes.len())
-                                .then_some(implicit))
+                            .or(
+                                (popover && point.is_none() && implicit < self.tree.nodes.len())
+                                    .then_some(implicit),
+                            )
                     } else {
                         by_name(&spec.anchor)
                     };
@@ -792,7 +817,7 @@ impl Ui {
                             by_name(name).map(box_of)
                         }
                     };
-                    let n = &self.nodes[i];
+                    let n = &self.tree.nodes[i];
                     let cb = match n.props.position {
                         // A popover keeps inside the safe area, as it does unanchored.
                         _ if popover => safe,
@@ -815,23 +840,23 @@ impl Ui {
                     if spec.visibility == crate::anchor::Visibility::AnchorsVisible
                         && let Some(a) = default
                     {
-                        let a = &self.nodes[a];
+                        let a = &self.tree.nodes[a];
                         placed.hidden = a.hidden || !a.laid_clip.overlaps(&a.laid_rect);
                     }
-                    if placed.hidden != self.nodes[i].anchor_placed.hidden {
+                    if placed.hidden != self.tree.nodes[i].anchor_placed.hidden {
                         self.layout.cache.anchor_toggled.push(i);
                     }
                     let here = box_of(i);
-                    self.nodes[i].anchor_placed = placed;
+                    self.tree.nodes[i].anchor_placed = placed;
                     if r == here {
                         continue;
                     }
-                    layout_inputs.remember(i, &self.nodes[i]);
-                    authored_box(&mut self.nodes, &mut self.layout.layout_mutated, i);
-                    self.nodes[i].el.width = Size::Fixed(r.width);
-                    self.nodes[i].el.height = Size::Fixed(r.height);
+                    layout_inputs.remember(i, &self.tree.nodes[i]);
+                    authored_box(&mut self.tree.nodes, &mut self.layout.layout_mutated, i);
+                    self.tree.nodes[i].el.width = Size::Fixed(r.width);
+                    self.tree.nodes[i].el.height = Size::Fixed(r.height);
                     layout(
-                        &mut self.nodes,
+                        &mut self.tree.nodes,
                         i,
                         r,
                         &mut measure,
@@ -857,21 +882,21 @@ impl Ui {
         // allows, hidden while no side faces it. A context menu (opened at
         // a point) draws none: its corner is at the point, as a desktop's
         // and a game's context menus are.
-        for k in 0..self.floating.len() {
-            let f = self.floating[k];
-            let n = &self.nodes[f];
+        for k in 0..self.tree.floating.len() {
+            let f = self.tree.floating[k];
+            let n = &self.tree.nodes[f];
             let Some((size, color)) = n.arrow else {
                 continue;
             };
             let a = match n.anchor_point {
                 Some([x, y]) => Rect::new(x, y, 0.0, 0.0),
-                None => match self.nodes.get(n.anchor) {
+                None => match self.tree.nodes.get(n.anchor) {
                     Some(a) => a.rect,
                     None => continue,
                 },
             };
             let (b, placed, point) = (n.rect, n.anchor_placed, n.anchor_point);
-            self.nodes[f].shapes.retain(|s| {
+            self.tree.nodes[f].shapes.retain(|s| {
                 !matches!(s, crate::layout::Shape::Bar { part, .. }
                     if part.component == "Popover" && part.part == "arrow")
             });
@@ -889,7 +914,7 @@ impl Ui {
                 crate::anchor::PlacedSide::Left => (b.right(), along(b.y, b.height, ay)),
             };
             let (bx, by) = b.center();
-            self.nodes[f].shapes.push(crate::layout::Shape::Bar {
+            self.tree.nodes[f].shapes.push(crate::layout::Shape::Bar {
                 part: crate::dress::PartRef::of("Popover", "arrow", None),
                 frame: crate::layout::Frame::centered(cx - bx, cy - by, size, size),
                 angle: std::f32::consts::FRAC_PI_4,
@@ -897,18 +922,18 @@ impl Ui {
             });
         }
         self.layout.cache.query_roots = None;
-        if !self.tree.pending.is_empty() {
+        if !self.tree.index.pending.is_empty() {
             self.sync_tree(&[], &[], false);
         }
         self.layout.texts.sweep();
 
         // The trees' orders and features, kept where nothing changed shape.
         self.update_orders(whole);
-        let order = std::mem::take(&mut self.orders.pre);
+        let order = std::mem::take(&mut self.tree.orders.pre);
         self.out.stats.elements = order.len() as u32;
-        let baselines = self.orders.with(visit::feat::BASELINE).to_vec();
+        let baselines = self.tree.orders.with(visit::feat::BASELINE).to_vec();
         self.align_baselines(&baselines);
-        let anchored = self.orders.with(visit::feat::ANCHORED).to_vec();
+        let anchored = self.tree.orders.with(visit::feat::ANCHORED).to_vec();
         self.place_anchored(&anchored);
         // What may change this frame (`visit`): every node on a fresh one.
         let (mut seeds, restyle) = match whole {
@@ -920,7 +945,7 @@ impl Ui {
         };
         let sampled: &[usize] = restyle.as_deref().unwrap_or(&order);
         for &i in sampled {
-            self.nodes[i].sample_style();
+            self.tree.nodes[i].sample_style();
         }
         if self.env.direction == og_i18n::Direction::Rtl {
             // Right to left: the whole layout mirrored about the surface's
@@ -928,23 +953,23 @@ impl Ui {
             // A node layout left out is mirrored as it was last frame.
             for k in 0..self.layout.cache.laid.len() {
                 let i = self.layout.cache.laid[k];
-                let r = &mut self.nodes[i].rect;
+                let r = &mut self.tree.nodes[i].rect;
                 r.x = vp.width - r.x - r.width;
                 // Its clip too (a scroll container's box, laid out left to right): unmirrored, it
                 // would cut away the content of a scroller off the surface's centre line.
-                let c = &mut self.nodes[i].clip;
+                let c = &mut self.tree.nodes[i].clip;
                 c.x = vp.width - c.x - c.width;
             }
             for &i in sampled {
-                let t = self.nodes[i].sampled.transform;
+                let t = self.tree.nodes[i].sampled.transform;
                 // A document's transforms are physical: they turn as written.
-                if !t.is_identity() && !self.nodes[i].props.flow.doc {
-                    self.nodes[i].sampled.transform = t.mirrored();
+                if !t.is_identity() && !self.tree.nodes[i].props.flow.doc {
+                    self.tree.nodes[i].sampled.transform = t.mirrored();
                 }
             }
         }
         self.apply_shakes(&order);
-        let staggered = self.orders.with(visit::feat::STAGGER).to_vec();
+        let staggered = self.tree.orders.with(visit::feat::STAGGER).to_vec();
         self.apply_stagger(&staggered);
         let animated = self.run_motion(restyle.as_deref());
         self.out.stats.animated = animated.len() as u32;
@@ -954,21 +979,21 @@ impl Ui {
         }
         self.apply_bursts(&order);
         self.world_place();
-        self.orders.pre = order;
+        self.tree.orders.pre = order;
         // Drawn and hit in z order among siblings.
         self.update_draw_order(&animated);
         #[cfg(debug_assertions)]
         if bounded::checking() {
             self.check_orders();
         }
-        let order = std::mem::take(&mut self.orders.draw);
-        let custom = self.orders.drawn(visit::feat::CUSTOM);
+        let order = std::mem::take(&mut self.tree.orders.draw);
+        let custom = self.tree.orders.drawn(visit::feat::CUSTOM);
         self.hud_apply(&custom);
         // Maps, opacity and inertness where they may have changed, and
         // below wherever they did.
         let world_seeds = seeds.as_ref().map(|s| {
             let mut w = s.clone();
-            w.extend_from_slice(&self.orders.wrote);
+            w.extend_from_slice(&self.tree.orders.wrote);
             w.extend_from_slice(&custom);
             w
         });
@@ -976,7 +1001,7 @@ impl Ui {
         self.plane_quads();
         self.hud_collect(&custom);
         self.world_finish();
-        let dnd = self.orders.with(visit::feat::DND).to_vec();
+        let dnd = self.tree.orders.with(visit::feat::DND).to_vec();
         self.note_drag_and_drop(&dnd);
 
         // Interaction state for the next tick: what is on screen is what
@@ -985,34 +1010,37 @@ impl Ui {
         if bounded::checking() {
             bounded::compare_tree(self, &order);
         }
-        let present = |k: &u64| self.tree.find(*k);
+        let present = |k: &u64| self.tree.index.find(*k);
         self.interaction
             .state
             .scroll
-            .retain(|k, _| present(k).is_some_and(|i| self.nodes[i].el.scroll));
+            .retain(|k, _| present(k).is_some_and(|i| self.tree.nodes[i].el.scroll));
         self.interaction
             .state
             .virtual_lists
             .retain(|k, _| present(k).is_some());
         for (k, v) in self.interaction.state.scroll.iter_mut() {
-            *v = v.clamp(0.0, present(k).map_or(0.0, |i| self.nodes[i].max_scroll()));
+            *v = v.clamp(
+                0.0,
+                present(k).map_or(0.0, |i| self.tree.nodes[i].max_scroll()),
+            );
         }
         self.interaction
             .state
             .scroll_x
-            .retain(|k, _| present(k).is_some_and(|i| self.nodes[i].el.scroll_x));
+            .retain(|k, _| present(k).is_some_and(|i| self.tree.nodes[i].el.scroll_x));
         for (k, v) in self.interaction.state.scroll_x.iter_mut() {
             *v = v.clamp(
                 0.0,
-                present(k).map_or(0.0, |i| self.nodes[i].max_scroll_x()),
+                present(k).map_or(0.0, |i| self.tree.nodes[i].max_scroll_x()),
             );
         }
         // Each scroll container's ranges and bar lengths, as drawn.
-        self.layout.cache.scrollers = self.orders.drawn(visit::feat::SCROLLS);
+        self.layout.cache.scrollers = self.tree.orders.drawn(visit::feat::SCROLLS);
         let min_bar = self.env.theme.space.xl;
         self.interaction.state.scroll_info =
             IdMap::from_iter(self.layout.cache.scrollers.iter().map(|&i| {
-                let n = &self.nodes[i];
+                let n = &self.tree.nodes[i];
                 let range = Vec2::new(n.max_scroll_x(), n.max_scroll());
                 let bar = Vec2::new(
                     crate::scroll::bar_len(
@@ -1031,11 +1059,17 @@ impl Ui {
                 (n.key, crate::scroll::ScrollInfo { range, bar })
             }));
         if let Some((k, _)) = self.interaction.state.fling
-            && self.tree.find(k).is_none()
+            && self.tree.index.find(k).is_none()
         {
             self.interaction.state.fling = None;
         }
-        if !self.interaction.input.down || self.tree.find(self.interaction.state.active).is_none() {
+        if !self.interaction.input.down
+            || self
+                .tree
+                .index
+                .find(self.interaction.state.active)
+                .is_none()
+        {
             self.interaction.state.active = 0;
         }
         let touched = std::mem::take(&mut self.touched);
@@ -1044,7 +1078,7 @@ impl Ui {
             .state
             .anims
             .retain(|k, _| touched.contains(k) || retained.keeps_memory(*k));
-        let tree = &self.tree;
+        let tree = &self.tree.index;
         self.interaction
             .state
             .clocks
@@ -1065,7 +1099,7 @@ impl Ui {
         let scope_seeds = seeds.as_ref().map(|s| {
             let mut w = mapped.clone();
             w.extend_from_slice(s);
-            w.extend_from_slice(&self.floating);
+            w.extend_from_slice(&self.tree.floating);
             w
         });
         let scoped = self.visit(&order, scope_seeds.as_deref(), Self::scope_step);
@@ -1075,24 +1109,24 @@ impl Ui {
         // node when the touch target or the screen did).
         let touch_min = self.touch_min();
         let hit_seeds = match &seeds {
-            Some(_) if self.orders.hit_inputs == Some((touch_min, screen)) => {
+            Some(_) if self.tree.orders.hit_inputs == Some((touch_min, screen)) => {
                 let mut h = mapped.clone();
                 h.extend(scoped);
                 Some(h)
             }
             _ => None,
         };
-        self.orders.hit_inputs = Some((touch_min, screen));
+        self.tree.orders.hit_inputs = Some((touch_min, screen));
         let mut hits_changed = hit_seeds.is_none()
-            || self.invalidation.fresh
-            || std::mem::take(&mut self.orders.hits_moved);
+            || self.tree.invalidation.fresh
+            || std::mem::take(&mut self.tree.orders.hits_moved);
         let hit_seeds = hit_seeds.unwrap_or_else(|| order.clone());
         for i in hit_seeds {
-            if self.orders.pos[i] != u32::MAX {
+            if self.tree.orders.pos[i] != u32::MAX {
                 hits_changed |= self.hit_step(i, touch_min, screen);
             }
         }
-        let o = &self.orders;
+        let o = &self.tree.orders;
         if hits_changed || self.interaction.state.hits.is_empty() {
             self.interaction.state.hits = o
                 .hit_nodes
@@ -1109,8 +1143,8 @@ impl Ui {
             .drawn(visit::feat::SCOPE)
             .into_iter()
             .rev()
-            .filter(|&i| i != order[0] && !self.nodes[i].inert)
-            .map(|i| (self.nodes[i].key, self.nodes[i].locked))
+            .filter(|&i| i != order[0] && !self.tree.nodes[i].inert)
+            .map(|i| (self.tree.nodes[i].key, self.tree.nodes[i].locked))
             .next()
             .unwrap_or((0, false));
         // Focus: kept while its control is on screen (or reachable); a scope
@@ -1226,9 +1260,9 @@ impl Ui {
         // out: a style draws it plain (fantasy's hairline and bevel, no
         // ornament under 160 px, art review 2026-11-04). `Ui::button`
         // decides its own as it builds (its label's ink follows the art).
-        for k in 0..self.orders.with(visit::feat::BUTTON_PART).len() {
-            let i = self.orders.with(visit::feat::BUTTON_PART)[k];
-            let n = &mut self.nodes[i];
+        for k in 0..self.tree.orders.with(visit::feat::BUTTON_PART).len() {
+            let i = self.tree.orders.with(visit::feat::BUTTON_PART)[k];
+            let n = &mut self.tree.nodes[i];
             if let Some(p) = n.el.part.as_mut()
                 && n.rect.width < NARROW_BUTTON
             {
@@ -1236,14 +1270,20 @@ impl Ui {
             }
         }
         // Parts a style dresses, and game draws it may restyle.
-        let mut parts = self.orders.with(visit::feat::PART).to_vec();
-        parts.extend(self.draws.keys().copied().filter(|&i| self.tree.has(i)));
+        let mut parts = self.tree.orders.with(visit::feat::PART).to_vec();
+        parts.extend(
+            self.tree
+                .draws
+                .keys()
+                .copied()
+                .filter(|&i| self.tree.index.has(i)),
+        );
         self.build_part_draws(&parts);
         self.paint.decor_draws.clear();
-        for k in 0..self.orders.with(visit::feat::DECOR).len() {
-            let i = self.orders.with(visit::feat::DECOR)[k];
-            if let Some(decor) = &self.nodes[i].decor {
-                let n = &self.nodes[i];
+        for k in 0..self.tree.orders.with(visit::feat::DECOR).len() {
+            let i = self.tree.orders.with(visit::feat::DECOR)[k];
+            if let Some(decor) = &self.tree.nodes[i].decor {
+                let n = &self.tree.nodes[i];
                 let r = n.rect;
                 // A scroller's content as a `local` layer's area: its
                 // scrolled padding box.
@@ -1274,7 +1314,10 @@ impl Ui {
                     )
                 });
                 let d = decor.over(
-                    self.draws.get(&i).or_else(|| self.paint.part_draws.get(&i)),
+                    self.tree
+                        .draws
+                        .get(&i)
+                        .or_else(|| self.paint.part_draws.get(&i)),
                     crate::doc::paint_css::LayerFrame {
                         size: [r.width, r.height],
                         viewport: [self.env.viewport.width, self.env.viewport.height],
@@ -1303,7 +1346,7 @@ impl Ui {
         #[cfg(debug_assertions)]
         if bounded::checking() {
             for &i in &order {
-                let n = &self.nodes[i];
+                let n = &self.tree.nodes[i];
                 assert_eq!(
                     self.paint.cache.sigs.get(i).copied().flatten(),
                     Some((n.key, crate::layout::DrawSig::of(n))),
@@ -1314,7 +1357,7 @@ impl Ui {
         }
         let repainted = self.paint.cache.repainted.take();
         self.note_semantics(repainted.as_deref());
-        let matched = self.orders.with(visit::feat::MATCH).to_vec();
+        let matched = self.tree.orders.with(visit::feat::MATCH).to_vec();
         self.record_matches(&matched);
         // A view transition's groups draw over the trees (and a cover);
         // the live elements taking part are left out of the items.
@@ -1390,13 +1433,13 @@ impl Ui {
         ];
         for (slot, key) in focused.into_iter().enumerate() {
             if key != 0
-                && let Some(i) = self.tree.find(key)
+                && let Some(i) = self.tree.index.find(key)
             {
                 focus_paths[slot] = self.path_of(i);
-                if let Some(l) = self.nodes[i]
+                if let Some(l) = self.tree.nodes[i]
                     .links
                     .iter()
-                    .find(|l| child_key(self.nodes[i].key, l) == key)
+                    .find(|l| child_key(self.tree.nodes[i].key, l) == key)
                 {
                     focus_paths[slot] = format!("{}/{l}", focus_paths[slot]);
                 }
@@ -1404,7 +1447,7 @@ impl Ui {
                 focus_paths[slot] = path.to_owned();
             }
         }
-        self.orders.draw = order;
+        self.tree.orders.draw = order;
         self.note_relevance();
         self.out.frame = UiFrame {
             viewport: vp,

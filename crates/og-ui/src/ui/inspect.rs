@@ -38,12 +38,18 @@ impl Ui {
     /// box cut to its clip), even while this frame is being built; `None`
     /// when it was not drawn.
     pub(crate) fn last_bounds(&self, key: u64) -> Option<Rect> {
-        (0..self.nodes.len())
+        (0..self.tree.nodes.len())
             .filter_map(|i| self.previous_node(i).map(|n| (i, n)))
             .find(|(i, n)| {
                 n.key == key
                     && !n.hidden
-                    && self.prev_kinds.get(i).unwrap_or(&self.kinds[*i]).0 != "vacant"
+                    && self
+                        .tree
+                        .prev_kinds
+                        .get(i)
+                        .unwrap_or(&self.tree.kinds[*i])
+                        .0
+                        != "vacant"
             })
             .and_then(|(_, n)| {
                 let (r, c) = (&n.screen, &n.clip);
@@ -65,19 +71,19 @@ impl Ui {
     /// ended, or while a frame is being built, a copy with last frame's
     /// nodes put back (made only when something is asked mid-frame).
     pub(super) fn finished(&self) -> std::borrow::Cow<'_, Ui> {
-        if !self.building {
+        if !self.tree.building {
             return std::borrow::Cow::Borrowed(self);
         }
         let mut ui = self.clone();
         for (&i, n) in &self.layout.cache.prev {
-            ui.nodes[i] = n.clone();
+            ui.tree.nodes[i] = n.clone();
         }
-        for (&i, &k) in &self.prev_kinds {
-            ui.kinds[i] = k;
+        for (&i, &k) in &self.tree.prev_kinds {
+            ui.tree.kinds[i] = k;
         }
-        ui.floating = self.prev_floating.clone();
-        ui.draws = self.paint.prev_draws.clone();
-        ui.building = false;
+        ui.tree.floating = self.tree.prev_floating.clone();
+        ui.tree.draws = self.paint.prev_draws.clone();
+        ui.tree.building = false;
         ui.paint.inspection = Default::default();
         std::borrow::Cow::Owned(ui)
     }
@@ -132,7 +138,7 @@ impl Ui {
             let ui = self.finished();
             ui.inspected_preorder()
                 .into_iter()
-                .filter(|&i| ui.nodes[i].props.dense)
+                .filter(|&i| ui.tree.nodes[i].props.dense)
                 .map(|i| ui.path_of(i))
                 .collect()
         })
@@ -147,7 +153,7 @@ impl Ui {
             ui.inspected_preorder()
                 .into_iter()
                 .filter(|&i| {
-                    let n = &ui.nodes[i];
+                    let n = &ui.tree.nodes[i];
                     n.el.scroll_x
                         || n.props
                             .drag
@@ -169,24 +175,24 @@ impl Ui {
 
     /// The finished frame's trees in preorder (the base, then its layers).
     fn inspected_preorder(&self) -> Vec<usize> {
-        if self.nodes.is_empty() {
+        if self.tree.nodes.is_empty() {
             return Vec::new();
         }
-        let mut order = preorder(&self.nodes, 0);
-        for &f in &self.floating {
-            order.extend(preorder(&self.nodes, f));
+        let mut order = preorder(&self.tree.nodes, 0);
+        for &f in &self.tree.floating {
+            order.extend(preorder(&self.tree.nodes, f));
         }
         order
     }
 
     /// The finished frame's trees in drawing order.
     fn inspected_draw_order(&self) -> Vec<usize> {
-        if self.nodes.is_empty() {
+        if self.tree.nodes.is_empty() {
             return Vec::new();
         }
-        let mut order = crate::layout::draw_order(&self.nodes, 0);
-        for &f in &self.floating {
-            order.extend(crate::layout::draw_order(&self.nodes, f));
+        let mut order = crate::layout::draw_order(&self.tree.nodes, 0);
+        for &f in &self.tree.floating {
+            order.extend(crate::layout::draw_order(&self.tree.nodes, f));
         }
         self.world_order(&mut order);
         order
@@ -217,7 +223,7 @@ impl Ui {
     /// Scrolled or clipped out of view: not on screen. A zero-size element
     /// (an empty spacer) is on screen where it sits.
     fn offscreen(&self, i: usize) -> bool {
-        let n = &self.nodes[i];
+        let n = &self.tree.nodes[i];
         let (r, c) = (&n.screen, &n.clip);
         let outside = r.x > c.right() || r.right() < c.x || r.y > c.bottom() || r.bottom() < c.y;
         outside || (r.intersect(c).is_empty() && !r.is_empty())
@@ -229,9 +235,9 @@ impl Ui {
         let mut tree: Vec<(u64, crate::a11y::A11yNode)> = Vec::new();
         // The path of each node with a role, by node: read for every node's
         // nearest named ancestor, so an array, not a map.
-        let mut tree_path: Vec<Option<String>> = vec![None; self.nodes.len()];
+        let mut tree_path: Vec<Option<String>> = vec![None; self.tree.nodes.len()];
         for &i in order.iter().skip(1) {
-            let n = &self.nodes[i];
+            let n = &self.tree.nodes[i];
             let parent = || {
                 let mut up = if n.parent == NONE { n.anchor } else { n.parent };
                 loop {
@@ -281,7 +287,7 @@ impl Ui {
     /// The node above `i` in the accessibility tree's walk: its parent, or
     /// for a layer the element it is placed against.
     fn a11y_up(&self, i: usize) -> usize {
-        let n = &self.nodes[i];
+        let n = &self.tree.nodes[i];
         if n.parent == NONE { n.anchor } else { n.parent }
     }
 
@@ -292,14 +298,14 @@ impl Ui {
         i: usize,
         parent: impl FnOnce() -> String,
     ) -> Option<crate::a11y::A11yNode> {
-        let n = &self.nodes[i];
+        let n = &self.tree.nodes[i];
         let (role, name, description, value, mut states) = self.a11y_info(i);
         // CSS `visibility: hidden` leaves the tree (its visible children stay).
         // Skipped by `content-visibility: hidden` too; an `auto` element's
         // skipped contents stay in the tree (CSS Containment 2 §4.1).
         if role.is_empty()
-            || self.orders.hidden_of.get(i) == Some(&true)
-            || self.orders.skip_of.get(i) == Some(&super::visit::SKIP_HIDDEN)
+            || self.tree.orders.hidden_of.get(i) == Some(&true)
+            || self.tree.orders.skip_of.get(i) == Some(&super::visit::SKIP_HIDDEN)
         {
             return None;
         }
@@ -336,9 +342,10 @@ impl Ui {
     /// its role's setting is [`crate::a11y::live_of`]'s).
     pub(crate) fn a11y_live(&self, key: u64) -> (Option<crate::a11y::Live>, Option<bool>, bool) {
         self.tree
+            .index
             .by_key
             .get(&key)
-            .and_then(|&i| self.nodes.get(i))
+            .and_then(|&i| self.tree.nodes.get(i))
             .map(|n| (n.a11y.live, n.a11y.atomic, n.a11y.notify))
             .unwrap_or_default()
     }
@@ -348,7 +355,7 @@ impl Ui {
     /// reader's bridge reads for a node that changed. `reach` is
     /// [`Ui::a11y_reach`]'s.
     pub(crate) fn a11y_node(&self, key: u64, reach: &[u64]) -> Option<crate::a11y::A11yNode> {
-        let i = self.tree.by_key.get(&key).copied()?;
+        let i = self.tree.index.by_key.get(&key).copied()?;
         if i == 0 {
             return None;
         }
@@ -379,14 +386,14 @@ impl Ui {
         let mut i = if key == 0 {
             return Some(0);
         } else {
-            *self.tree.by_key.get(&key)?
+            *self.tree.index.by_key.get(&key)?
         };
         if !own {
             i = self.a11y_up(i);
         }
         while i != NONE && i != 0 {
             if !self.a11y_info(i).0.is_empty() {
-                return Some(self.nodes[i].key);
+                return Some(self.tree.nodes[i].key);
             }
             i = self.a11y_up(i);
         }
@@ -403,14 +410,14 @@ impl Ui {
         let at = if owner == 0 {
             0
         } else {
-            *self.tree.by_key.get(&owner)?
+            *self.tree.index.by_key.get(&owner)?
         };
         let named = |j: usize| !self.a11y_info(j).0.is_empty();
         let mut out = Vec::new();
         let walk = |root: usize, out: &mut Vec<(u64, String)>| -> Option<()> {
             let mut stack = vec![root];
             while let Some(j) = stack.pop() {
-                let n = &self.nodes[j];
+                let n = &self.tree.nodes[j];
                 if n.float == Float::World || !n.links.is_empty() {
                     return None;
                 }
@@ -419,8 +426,8 @@ impl Ui {
                     continue;
                 }
                 let mut kids = crate::layout::all_children(n);
-                if kids.iter().any(|&c| self.nodes[c].sampled.z != 0) {
-                    og_core::sort::sort_by_key(&mut kids, |&c| self.nodes[c].sampled.z);
+                if kids.iter().any(|&c| self.tree.nodes[c].sampled.z != 0) {
+                    og_core::sort::sort_by_key(&mut kids, |&c| self.tree.nodes[c].sampled.z);
                 }
                 stack.extend(kids.into_iter().rev());
             }
@@ -428,8 +435,8 @@ impl Ui {
         };
         walk(at, &mut out)?;
         // Layers whose nearest record above them is `owner`.
-        for &f in &self.floating {
-            if self.nodes[f].float == Float::World {
+        for &f in &self.tree.floating {
+            if self.tree.nodes[f].float == Float::World {
                 return None;
             }
             let mut up = self.a11y_up(f);
@@ -443,7 +450,7 @@ impl Ui {
             };
             if reaches {
                 if named(f) {
-                    out.push((self.nodes[f].key, self.path_of(f)));
+                    out.push((self.tree.nodes[f].key, self.path_of(f)));
                 } else {
                     walk(f, &mut out)?;
                 }
@@ -454,7 +461,7 @@ impl Ui {
 
     /// A rich text's links: nodes of their own under its node.
     fn link_nodes(&self, i: usize, parent: String, tree: &mut Vec<(u64, crate::a11y::A11yNode)>) {
-        let n = &self.nodes[i];
+        let n = &self.tree.nodes[i];
         if n.links.is_empty() {
             return;
         }
@@ -507,7 +514,7 @@ impl Ui {
                 if self.offscreen(i) {
                     continue;
                 }
-                let n = &self.nodes[i];
+                let n = &self.tree.nodes[i];
                 let (role, name, _, value, mut states) = self.a11y_info(i);
                 if !role.is_empty() {
                     self.mark(&reach, n.key, &mut states);
@@ -515,13 +522,14 @@ impl Ui {
                 let r = &n.screen;
                 let visible = n.screen.intersect(&n.clip);
                 let parent = if n.parent == NONE {
-                    self.nodes
+                    self.tree
+                        .nodes
                         .get(n.anchor)
                         .map_or(String::new(), |a| a.id.clone())
                 } else if n.parent == 0 {
                     String::new()
                 } else {
-                    self.nodes[n.parent].id.clone()
+                    self.tree.nodes[n.parent].id.clone()
                 };
                 parts.push(
                     n.part_box
@@ -534,7 +542,7 @@ impl Ui {
                     id: n.id.clone(),
                     parent,
                     path: self.probe_path(i),
-                    kind: self.kinds.get(i).map_or("", |k| k.0).to_string(),
+                    kind: self.tree.kinds.get(i).map_or("", |k| k.0).to_string(),
                     disabled: n.disabled,
                     clipped: visible.width + 0.01 < r.width || visible.height + 0.01 < r.height,
                     // As read: bidi marks and isolates steer the drawing only.
@@ -560,7 +568,7 @@ impl Ui {
                 // A Rive frame's drawn objects: children for dump_ui, describe
                 // and pick, their source the artboard's id and the object.
                 if let Some(crate::paint::RiveDraw(player)) =
-                    self.draws.get(&i).and_then(|d| d.rive.as_ref())
+                    self.tree.draws.get(&i).and_then(|d| d.rive.as_ref())
                 {
                     let board = self
                         .interaction

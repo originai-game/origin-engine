@@ -168,7 +168,7 @@ impl Ui {
                 ..crate::Element::default()
             },
         );
-        let key = self.nodes[i].key;
+        let key = self.tree.nodes[i].key;
         let (kf, kt) = (child_key(key, "count"), child_key(key, "to"));
         let now = self.interaction.state.tick;
         let fresh = !self.has_anim(kf);
@@ -218,7 +218,7 @@ impl Ui {
             format_count(shown, desc.decimals),
             desc.suffix
         );
-        let n = &mut self.nodes[i];
+        let n = &mut self.tree.nodes[i];
         n.content = Content::Text(crate::layout::TextContent {
             text: text.clone(),
             step: desc.step.unwrap_or(t.type_ramp.body),
@@ -242,7 +242,7 @@ impl Ui {
             let b = (now as f64 - end) / f64::from(self.ticks_for(t.durations_ms.fast));
             if (0.0..1.0).contains(&b) {
                 let b = b as f32;
-                self.nodes[i].fx = Some(Fx {
+                self.tree.nodes[i].fx = Some(Fx {
                     scale: 1.0 + pop * 4.0 * b * (1.0 - b),
                     ..Fx::default()
                 });
@@ -257,7 +257,7 @@ impl Ui {
     /// it). A second shake restarts it. Still under reduced motion (the
     /// sound, when asked, still plays).
     pub fn shake(&mut self, desc: ShakeDesc) {
-        let anchor = self.last_closed;
+        let anchor = self.tree.last_closed;
         if anchor == NONE {
             self.out.warnings.push(
                 "shake with no element before it: call ui.shake() right after the element".into(),
@@ -277,7 +277,7 @@ impl Ui {
         } else {
             t.durations_ms.slow
         };
-        let key = child_key(self.nodes[anchor].key, "shake");
+        let key = child_key(self.tree.nodes[anchor].key, "shake");
         let ticks = self.ticks_for(ms) as f32;
         self.set_anim(
             key,
@@ -303,7 +303,7 @@ impl Ui {
         let now = self.interaction.state.tick;
         let still = self.env.theme.reduced_motion;
         for &i in order {
-            let key = child_key(self.nodes[i].key, "shake");
+            let key = child_key(self.tree.nodes[i].key, "shake");
             let Some(&a) = self
                 .interaction
                 .state
@@ -324,9 +324,9 @@ impl Ui {
             // Three decaying swings, arithmetic only (a triangle wave).
             let x = k * 3.0;
             let tri = 4.0 * (x - x.floor() - 0.5).abs() - 1.0;
-            let mut f = self.nodes[i].fx.unwrap_or_default();
+            let mut f = self.tree.nodes[i].fx.unwrap_or_default();
             f.dx += a.a * (1.0 - k) * tri;
-            self.nodes[i].fx = Some(f);
+            self.tree.nodes[i].fx = Some(f);
         }
     }
 
@@ -466,7 +466,7 @@ impl Ui {
         }
         let bursts = self.interaction.state.motion.bursts.clone();
         for &i in order {
-            let key = self.nodes[i].key;
+            let key = self.tree.nodes[i].key;
             for b in bursts.iter().filter(|b| b.key == key) {
                 let desc = BurstDesc {
                     count: b.count,

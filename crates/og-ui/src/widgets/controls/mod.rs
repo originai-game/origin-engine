@@ -326,7 +326,7 @@ impl Ui {
     /// control without text of its own.
     fn label_before(&self) -> Option<String> {
         let parent = self.parent();
-        let n = self.nodes.get(parent)?;
+        let n = self.tree.nodes.get(parent)?;
         if n.el.direction != Direction::Row {
             return None;
         }
@@ -334,11 +334,12 @@ impl Ui {
         // siblings: the label before is the one just ahead of it.
         let kids = &n.built_children;
         let end = self
+            .tree
             .in_place
-            .and_then(|(key, _)| kids.iter().position(|&c| self.nodes[c].key == key))
+            .and_then(|(key, _)| kids.iter().position(|&c| self.tree.nodes[c].key == key))
             .unwrap_or(kids.len());
         let &last = kids[..end].last()?;
-        (self.kinds.get(last)?.0 == "label").then(|| self.nodes[last].probe_text.clone())
+        (self.tree.kinds.get(last)?.0 == "label").then(|| self.tree.nodes[last].probe_text.clone())
     }
 
     // ── the frame's facts ───────────────────────────────────────────────
@@ -558,11 +559,11 @@ impl Ui {
             },
         );
         let part_slot = d.part_node.then(|| {
-            let owner = *self.stack.last().unwrap();
-            let element = self.nodes[owner].el;
-            self.nodes[owner].el.padding = Insets::default();
-            self.nodes[owner].el.background = None;
-            self.nodes[owner].el.radius = 0.0;
+            let owner = *self.tree.stack.last().unwrap();
+            let element = self.tree.nodes[owner].el;
+            self.tree.nodes[owner].el.padding = Insets::default();
+            self.tree.nodes[owner].el.background = None;
+            self.tree.nodes[owner].el.radius = 0.0;
             let slot = self.write_part(
                 owner,
                 part,
@@ -579,13 +580,13 @@ impl Ui {
                 },
                 crate::layout::Content::None,
             );
-            self.nodes[owner].content_slot = slot;
+            self.tree.nodes[owner].content_slot = slot;
             slot
         });
         build(self, ix);
         let r = self.close();
         let path = self.last_path();
-        let node = self.last_closed;
+        let node = self.tree.last_closed;
         let want = if touch { d.touch } else { 0.0 };
         let slop = if want > 0.0 {
             self.bounds_of(&path).map_or(0.0, |b| {
@@ -607,8 +608,12 @@ impl Ui {
         props.state = state;
         if let Some(slot) = part_slot {
             props.state.push(("interaction".into(), ix.name().into()));
-            self.nodes[slot].part_box.as_mut().unwrap().intrinsic_props = props;
-            self.nodes[node].props.hit_slop = slop;
+            self.tree.nodes[slot]
+                .part_box
+                .as_mut()
+                .unwrap()
+                .intrinsic_props = props;
+            self.tree.nodes[node].props.hit_slop = slop;
         } else {
             self.set_props(props);
         }
@@ -1074,7 +1079,7 @@ impl Ui {
         content: Element,
         build: impl FnOnce(&mut Ui),
     ) -> crate::widgets::ModalResponse {
-        let key = crate::id::child_key(self.nodes[0].key, &id.replace('/', "_"));
+        let key = crate::id::child_key(self.tree.nodes[0].key, &id.replace('/', "_"));
         let mut dismissed = false;
         if open {
             // Last tick's hits: what the press landed on.
@@ -1083,7 +1088,7 @@ impl Ui {
                 let at = self.interaction.input.pointer;
                 // A press on what takes no input inside it (a disabled
                 // option, its padding) is inside it too.
-                let inside = hot == self.nodes[anchor].key
+                let inside = hot == self.tree.nodes[anchor].key
                     || self
                         .hit(hot)
                         .is_some_and(|h| h.scope == key || h.key == key)
@@ -1113,7 +1118,7 @@ impl Ui {
                 crate::layout::Float::Popover,
                 anchor,
             );
-            self.nodes[layer].scope = true;
+            self.tree.nodes[layer].scope = true;
             build(self);
             self.close();
             self.set_props(Props {

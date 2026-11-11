@@ -113,7 +113,7 @@ impl Ui {
     /// plain text's, or a vertical rich text's, each line its pieces'
     /// text); `None` for any other node.
     pub(crate) fn select_source(&self, i: usize) -> Option<(String, Vec<crate::text::Line>)> {
-        let n = &self.nodes[i];
+        let n = &self.tree.nodes[i];
         match &n.content {
             Content::Text(tc) => Some((tc.text.clone(), n.lines.clone())),
             Content::Rich(rc) if n.rich_vertical().is_some() => {
@@ -135,7 +135,7 @@ impl Ui {
     /// Node `i`'s text lines as [`Ui::node_commands`] draws them, `None`
     /// for a node that is not a plain text or a vertical rich text.
     pub(crate) fn text_lines(&self, i: usize) -> Option<TextLines> {
-        let n = &self.nodes[i];
+        let n = &self.tree.nodes[i];
         if matches!(n.content, Content::Rich(_)) {
             let (_, lines) = self.select_source(i)?;
             let v = n.rich_vertical()?;
@@ -253,9 +253,9 @@ impl Ui {
     /// The character under screen point `p` in text `key` (last frame's
     /// lines, through its transform), and its whole length.
     fn select_point(&self, key: u64, p: Vec2) -> Option<(u32, TextLines)> {
-        let i = self.tree.find(key)?;
+        let i = self.tree.index.find(key)?;
         let t = self.text_lines(i)?;
-        let (x, y) = self.nodes[i]
+        let (x, y) = self.tree.nodes[i]
             .world
             .invert()
             .unwrap_or(Affine::IDENTITY)
@@ -292,8 +292,9 @@ impl Ui {
     fn select_order(&self, end: SelectEnd) -> (u32, u32) {
         let pos = self
             .tree
+            .index
             .find(end.0)
-            .and_then(|i| self.orders.pre_pos.get(i).copied())
+            .and_then(|i| self.tree.orders.pre_pos.get(i).copied())
             .unwrap_or(u32::MAX);
         (pos, end.1)
     }
@@ -302,8 +303,9 @@ impl Ui {
     fn select_unit(&self, key: u64, t: &TextLines, count: u8, k: u32) -> (SelectEnd, SelectEnd) {
         let all = self
             .tree
+            .index
             .find(key)
-            .is_some_and(|i| self.orders.select_of.get(i) == Some(&UserSelect::All));
+            .is_some_and(|i| self.tree.orders.select_of.get(i) == Some(&UserSelect::All));
         let (a, b) = if all {
             (0, t.len() as usize)
         } else {
@@ -442,10 +444,13 @@ impl Ui {
         let Some(s) = self.interaction.state.selection else {
             return Vec::new();
         };
-        let (Some(ia), Some(ib)) = (self.tree.find(s.anchor.0), self.tree.find(s.focus.0)) else {
+        let (Some(ia), Some(ib)) = (
+            self.tree.index.find(s.anchor.0),
+            self.tree.index.find(s.focus.0),
+        ) else {
             return Vec::new();
         };
-        let o = &self.orders;
+        let o = &self.tree.orders;
         let (pa, pb) = (o.pre_pos[ia], o.pre_pos[ib]);
         if pa == u32::MAX || pb == u32::MAX {
             return Vec::new();
@@ -519,7 +524,8 @@ impl Ui {
     /// whose element left the trees is dropped.
     pub(crate) fn mark_selection(&mut self) -> Vec<usize> {
         if let Some(s) = self.interaction.state.selection
-            && (self.tree.find(s.anchor.0).is_none() || self.tree.find(s.focus.0).is_none())
+            && (self.tree.index.find(s.anchor.0).is_none()
+                || self.tree.index.find(s.focus.0).is_none())
         {
             self.interaction.state.selection = None;
         }
@@ -527,19 +533,19 @@ impl Ui {
         let mut changed = Vec::new();
         let last = std::mem::take(&mut self.interaction.selected);
         for &key in &last {
-            if let Some(i) = self.tree.find(key)
+            if let Some(i) = self.tree.index.find(key)
                 && !now.iter().any(|&(j, _)| j == i)
-                && self.nodes[i].selected.take().is_some()
+                && self.tree.nodes[i].selected.take().is_some()
             {
                 changed.push(i);
             }
         }
         for &(i, r) in &now {
-            if self.nodes[i].selected != Some(r) {
-                self.nodes[i].selected = Some(r);
+            if self.tree.nodes[i].selected != Some(r) {
+                self.tree.nodes[i].selected = Some(r);
                 changed.push(i);
             }
-            self.interaction.selected.push(self.nodes[i].key);
+            self.interaction.selected.push(self.tree.nodes[i].key);
         }
         changed
     }
@@ -555,7 +561,7 @@ impl Ui {
         clip: Rect,
         cmds: &mut Vec<DrawCmd>,
     ) {
-        let n = &self.nodes[i];
+        let n = &self.tree.nodes[i];
         let (Some((a, b)), Content::Text(tc)) = (n.selected, &n.content) else {
             return;
         };
@@ -600,7 +606,7 @@ impl Ui {
         let Some(s) = self.interaction.state.selection else {
             return serde_json::Value::Null;
         };
-        let path = |k: u64| self.tree.find(k).map(|i| self.path_of(i));
+        let path = |k: u64| self.tree.index.find(k).map(|i| self.path_of(i));
         serde_json::json!({
             "text": self.selected_text().unwrap_or_default(),
             "anchor": { "path": path(s.anchor.0), "at": s.anchor.1 },

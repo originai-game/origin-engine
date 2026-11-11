@@ -61,7 +61,7 @@ impl Ui {
     /// One element's drag and pinch for this tick: answers its offset,
     /// scale and turn.
     pub(crate) fn run_gesture(&mut self, i: usize, m: &mut MotionState) -> [f32; 4] {
-        let n = &self.nodes[i];
+        let n = &self.tree.nodes[i];
         let key = n.key;
         let now = self.interaction.state.tick;
         let tps = self.env.ticks_per_second;
