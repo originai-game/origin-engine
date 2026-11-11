@@ -781,81 +781,11 @@ impl Ui {
                 }
             }
             "dialog" => {
-                let open = open_now(self);
-                let out = self.open_dialog(id.as_str(), open, &dialog);
-                // `::backdrop` styles the scrim, the panel's parent.
-                if dialog.modal
-                    && let Some(backdrop) = self.pseudo_node(b, r, &path, "backdrop")
-                {
-                    let scrim = self.tree.nodes[self.parent()].parent;
-                    self.style_pseudo_box(b, scrim, "backdrop", &backdrop);
-                }
-                shows_content = out.visible;
-                if out.dismissed {
-                    opened = Some(false);
-                }
-                if dialog.modal
-                    && let Some(d) = r.str("dataDetents")
-                    && self.sheet(
-                        id.as_str(),
-                        d,
-                        r.str("dataEdge")
-                            .and_then(|e| super::gestures::sheet_edge(e).ok())
-                            .unwrap_or_default(),
-                        open,
-                    )
-                {
-                    opened = Some(false);
-                }
+                (opened, shows_content) =
+                    self.doc_dialog(b, id, &path, r, &dialog, &open_now, opened);
             }
             "details" => {
-                let mut open = open_now(self);
-                // An exclusive accordion (`<details name>`): the open one
-                // of its name in this mount is widget memory; another
-                // open one closes.
-                let group = r
-                    .str("exclusive")
-                    .filter(|g| !g.is_empty())
-                    .map(|g| crate::id::child_key(crate::id::child_key(0, &b.mount), g));
-                let holder = group.map_or(0, |g| self.anim(g).h);
-                let closing = open && holder != 0 && holder != key;
-                open &= !closing;
-                let out = self.open_details(
-                    id.as_str(),
-                    &crate::widgets::DetailsDesc {
-                        summary: r.str("summary").unwrap_or_default().to_string(),
-                        open,
-                        disabled: r.flag("disabled"),
-                        width: r.size("width"),
-                    },
-                );
-                shows_content = out.open;
-                if out.toggled || closing {
-                    opened = Some(out.open);
-                }
-                if let Some(g) = group {
-                    let now = if out.open {
-                        key
-                    } else if holder == key {
-                        0
-                    } else {
-                        holder
-                    };
-                    if now != holder || (out.open && !self.has_anim(g)) {
-                        self.set_anim(
-                            g,
-                            crate::ui::Anim {
-                                h: now,
-                                ..Default::default()
-                            },
-                        );
-                    }
-                    // The others of its name build again next tick, and close.
-                    if out.toggled && out.open {
-                        let name = r.str("exclusive").unwrap_or_default();
-                        self.interaction.actions.pending.push(details_action(name));
-                    }
-                }
+                (opened, shows_content) = self.doc_details(b, id, key, r, &open_now, opened);
             }
             "button" => {
                 resp = self.open_button(id.as_str(), r.button_desc());
@@ -1036,6 +966,122 @@ impl Ui {
         self.hold(key, n, r, self.tree.last_closed);
         self.fire(b, n, key, &path, resp);
         Some(path)
+    }
+
+    /// The document's `dialog` element: the dialog it opens; whether it is opened and shows
+    /// its content.
+    #[allow(
+        clippy::too_many_arguments,
+        clippy::ptr_arg,
+        clippy::needless_borrow,
+        clippy::needless_late_init
+    )]
+    fn doc_dialog(
+        &mut self,
+        b: &mut Build<'_>,
+        id: &String,
+        path: &String,
+        r: &Resolved,
+        dialog: &crate::widgets::DialogDesc,
+        open_now: &impl Fn(&mut Ui) -> bool,
+        mut opened: Option<bool>,
+    ) -> (Option<bool>, bool) {
+        let shows_content;
+        let open = open_now(self);
+        let out = self.open_dialog(id.as_str(), open, &dialog);
+        // `::backdrop` styles the scrim, the panel's parent.
+        if dialog.modal
+            && let Some(backdrop) = self.pseudo_node(b, r, &path, "backdrop")
+        {
+            let scrim = self.tree.nodes[self.parent()].parent;
+            self.style_pseudo_box(b, scrim, "backdrop", &backdrop);
+        }
+        shows_content = out.visible;
+        if out.dismissed {
+            opened = Some(false);
+        }
+        if dialog.modal
+            && let Some(d) = r.str("dataDetents")
+            && self.sheet(
+                id.as_str(),
+                d,
+                r.str("dataEdge")
+                    .and_then(|e| super::gestures::sheet_edge(e).ok())
+                    .unwrap_or_default(),
+                open,
+            )
+        {
+            opened = Some(false);
+        }
+        (opened, shows_content)
+    }
+
+    /// The document's `details` element: the disclosure it opens; whether it is opened and shows
+    /// its content.
+    #[allow(
+        clippy::too_many_arguments,
+        clippy::ptr_arg,
+        clippy::needless_borrow,
+        clippy::needless_late_init
+    )]
+    fn doc_details(
+        &mut self,
+        b: &mut Build<'_>,
+        id: &String,
+        key: u64,
+        r: &Resolved,
+        open_now: &impl Fn(&mut Ui) -> bool,
+        mut opened: Option<bool>,
+    ) -> (Option<bool>, bool) {
+        let shows_content;
+        let mut open = open_now(self);
+        // An exclusive accordion (`<details name>`): the open one
+        // of its name in this mount is widget memory; another
+        // open one closes.
+        let group = r
+            .str("exclusive")
+            .filter(|g| !g.is_empty())
+            .map(|g| crate::id::child_key(crate::id::child_key(0, &b.mount), g));
+        let holder = group.map_or(0, |g| self.anim(g).h);
+        let closing = open && holder != 0 && holder != key;
+        open &= !closing;
+        let out = self.open_details(
+            id.as_str(),
+            &crate::widgets::DetailsDesc {
+                summary: r.str("summary").unwrap_or_default().to_string(),
+                open,
+                disabled: r.flag("disabled"),
+                width: r.size("width"),
+            },
+        );
+        shows_content = out.open;
+        if out.toggled || closing {
+            opened = Some(out.open);
+        }
+        if let Some(g) = group {
+            let now = if out.open {
+                key
+            } else if holder == key {
+                0
+            } else {
+                holder
+            };
+            if now != holder || (out.open && !self.has_anim(g)) {
+                self.set_anim(
+                    g,
+                    crate::ui::Anim {
+                        h: now,
+                        ..Default::default()
+                    },
+                );
+            }
+            // The others of its name build again next tick, and close.
+            if out.toggled && out.open {
+                let name = r.str("exclusive").unwrap_or_default();
+                self.interaction.actions.pending.push(details_action(name));
+            }
+        }
+        (opened, shows_content)
     }
 
     /// The document's `label` element.
