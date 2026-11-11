@@ -79,14 +79,7 @@ impl Ui {
                     for (index, width, height) in
                         [(mark, k.width, k.height), (tick, tick_size, tick_size)]
                     {
-                        if !self.tree.emitted.contains(&index) {
-                            self.layout
-                                .cache
-                                .prev
-                                .entry(index)
-                                .or_insert_with(|| self.tree.nodes[index].clone());
-                            self.tree.emitted.push(index);
-                        }
+                        self.tree.rewrite(index);
                         self.tree.nodes[index].el.width = Size::px(width);
                         self.tree.nodes[index].el.height = Size::px(height);
                     }

@@ -577,7 +577,6 @@ impl Ui {
                 ..element
             },
             Content::None,
-            &mut self.layout,
         );
         self.tree.nodes[j].content_slot = slot;
         self.tree.nodes[slot].shapes = shapes;
@@ -601,7 +600,6 @@ impl Ui {
                 ..Element::default()
             },
             Content::None,
-            &mut self.layout,
         );
         let fill = crate::element::Edges {
             start: Some(0.0),
@@ -625,10 +623,7 @@ impl Ui {
         let Some(slot) = frame else {
             return fallback;
         };
-        let (Some(h), Some(s)) = (
-            self.tree.previous_node(i, &self.layout),
-            self.tree.previous_node(slot, &self.layout),
-        ) else {
+        let (Some(h), Some(s)) = (self.tree.previous_node(i), self.tree.previous_node(slot)) else {
             return fallback;
         };
         if s.part_box.is_none()

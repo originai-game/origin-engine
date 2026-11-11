@@ -2,7 +2,7 @@ use super::*;
 
 // ── The element model's part of the frame ──────────────────────────────────
 
-use crate::layout::{Content, Float, NONE, Node, preorder};
+use crate::layout::{Changed, Content, Float, NONE, Node, preorder};
 use crate::ui::Ui;
 
 /// Whether `path` is `decl` or inside it (an ancestor path covers its subtree).
@@ -576,6 +576,15 @@ impl crate::ui::Layout {
         docs: &crate::ui::Docs,
         tree: &mut crate::ui::Tree,
     ) {
+        // What each written node's input changed against the node it
+        // replaced: all the walk below reads of the last frame's inputs.
+        for k in 0..tree.emitted.len() {
+            let i = tree.emitted[k];
+            tree.nodes[i].changed = match tree.replaced.get(&i) {
+                Some(old) => crate::layout::input_changes(&tree.nodes[i], old),
+                None => Changed::NEW,
+            };
+        }
         let k = &mut self.cache;
         let inv = &mut tree.invalidation;
         let nodes = &tree.nodes;
@@ -670,36 +679,21 @@ impl crate::ui::Layout {
         for &i in order.iter().rev() {
             let a = &nodes[i];
             let same_layout = if written[i] {
-                let Some(b) = k.prev.get(&i) else {
+                if a.changed.has(Changed::NEW) {
                     rebuilt += 1;
                     k.clean[i] = false;
                     k.unclean.push(i);
                     continue;
-                };
+                }
                 // Its children's margins collapse through their edges only
                 // in a block's flow: a change there is theirs too.
-                if a.el.block != b.el.block || a.props.layout != b.props.layout {
+                if a.changed.has(Changed::FLOW) {
                     reflowed.push(i);
                 }
-                let same_layout = crate::layout::el_layout_eq(&a.layout.used, &b.layout.used)
-                    && crate::layout::content_layout_eq(&a.content, &b.content)
-                    && crate::layout::props_layout_eq(&a.props, &b.props)
-                    && a.shape_outside == b.shape_outside
-                    && a.float == b.float
-                    && a.float == Float::None
-                    && a.children == b.children
-                    && a.out == b.out
-                    && a.floats == b.floats;
-                let same = same_layout
-                    && a.layout.used == b.layout.used
-                    && a.content == b.content
-                    && a.widget == b.widget
-                    && a.shapes == b.shapes
-                    && a.props == b.props;
-                if !same {
+                if a.changed.has(Changed::INPUT) {
                     rebuilt += 1;
                 }
-                same_layout
+                !a.changed.has(Changed::LAYOUT)
             } else {
                 a.float == Float::None && !a.props.variants.iter().any(|v| v.when.container)
             };
@@ -721,19 +715,8 @@ impl crate::ui::Layout {
                             // Nor can they through its edge, unless a
                             // child's top margin collapses through it.
                             && (written[c] || !child.layout.collapse_in[0])
-                            && (!written[c]
-                                || k.prev.get(&c).is_some_and(|old| {
-                                    child.layout.used.width == old.layout.used.width
-                                        && child.layout.used.height == old.layout.used.height
-                                        && child.el.margin == old.el.margin
-                                        && !old.layout.collapse_in[0]
-                                        && child.props.place == old.props.place
-                                        && child.props.position == old.props.position
-                                        && child.props.insets == old.props.insets
-                                        && child.props.view_place == old.props.view_place
-                                        && child.float == old.float
-                                        && child.shape_outside == old.shape_outside
-                                }))
+                            // Written again, it is the box it was.
+                            && (!written[c] || !child.changed.has(Changed::NEW | Changed::BOX))
                 });
             if !k.clean[i] {
                 k.unclean.push(i);
@@ -748,7 +731,7 @@ impl crate::ui::Layout {
             }
         }
         for &i in &tree.emitted {
-            if let Some(previous) = k.prev.get(&i) {
+            if let Some(previous) = tree.replaced.get(&i) {
                 tree.nodes[i].inherit_layout(previous, k.clean[i]);
             }
         }

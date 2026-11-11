@@ -189,7 +189,7 @@ impl Ui {
             let total = full.chars().count();
             let first = self
                 .style
-                .first_line_chars(key, &self.layout, &self.tree)
+                .first_line_chars(key, &self.tree)
                 .unwrap_or(total)
                 .min(total);
             if let Some(owned) = self.tree.owning.last_mut() {
@@ -427,14 +427,9 @@ impl Ui {
 impl crate::ui::Style {
     /// How many characters the first line of text node `key` held in the
     /// last layout.
-    fn first_line_chars(
-        &self,
-        key: u64,
-        layout: &crate::ui::Layout,
-        tree: &crate::ui::Tree,
-    ) -> Option<usize> {
+    fn first_line_chars(&self, key: u64, tree: &crate::ui::Tree) -> Option<usize> {
         let n = tree
-            .previous_nodes(layout)
+            .previous_nodes()
             .find(|n| n.key == key)
             .or_else(|| tree.index.find(key).map(|i| &tree.nodes[i]))?;
         if let Some(line) = n.layout.rich_lines.first() {

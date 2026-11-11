@@ -156,7 +156,6 @@ impl Ui {
                 ..element
             },
             crate::layout::Content::None,
-            &mut self.layout,
         );
         self.tree.nodes[owner].content_slot = slot;
     }

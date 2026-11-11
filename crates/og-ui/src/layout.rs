@@ -28,7 +28,7 @@ mod writing;
 
 pub(crate) use cache::{
     DrawSig, Invalidation, LayoutCache, Measure, Metrics, MotionCache, PaintCache, TextCache,
-    content_layout_eq, draw_eq, el_layout_eq, layout, props_layout_eq,
+    draw_eq, input_changes, layout,
 };
 use flex::*;
 pub(crate) use flex::{on_screen, text_preferred};
@@ -38,8 +38,8 @@ use grid::{grid_columns, grid_intrinsic, grid_rows, place_grid};
 pub use multicol::Multicol;
 use node::truncate_lines;
 pub(crate) use node::{
-    Content, EditView, Media, NONE, Node, ObjectFit, PartBox, PartGeometry, Placement, Shape,
-    Stagger, TextContent, Widget, WrapStyle, ellipsis_of, snap_pixel_text, step_tracking,
+    Changed, Content, EditView, Media, NONE, Node, ObjectFit, PartBox, PartGeometry, Placement,
+    Shape, Stagger, TextContent, Widget, WrapStyle, ellipsis_of, snap_pixel_text, step_tracking,
     text_features,
 };
 pub use node::{Family, FontRole};

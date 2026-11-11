@@ -34,7 +34,7 @@ impl Ui {
             .map(|i| self.tree.nodes[i].placed.rect)
             .or_else(|| {
                 self.tree
-                    .previous_nodes(&self.layout)
+                    .previous_nodes()
                     .find(|n| n.key == key)
                     .map(|n| n.placed.rect)
             })
@@ -206,9 +206,9 @@ impl Ui {
                 .collect(),
             None => self
                 .tree
-                .previous_nodes(&self.layout)
+                .previous_nodes()
                 .filter_map(|n| {
-                    let parent = self.tree.previous_node(n.parent, &self.layout)?;
+                    let parent = self.tree.previous_node(n.parent)?;
                     if parent.key != container {
                         return None;
                     }

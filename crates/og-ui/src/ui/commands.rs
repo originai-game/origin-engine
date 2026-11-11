@@ -273,6 +273,9 @@ impl Ui {
         let prev_kinds = std::mem::take(&mut self.tree.prev_kinds);
         self.paint.kept_spans.clear();
         let reuse = self.paint_reuse(order, &ends, changed, &ghosts, &prev_kinds);
+        // The frame has compared every written node with the one it
+        // replaced: the last frame's nodes are let go.
+        self.tree.replaced.clear();
         self.paint.cache.repainted = reuse.repainted.clone();
         let mut reused_roots = true;
         let theme = self.env.theme;
@@ -905,7 +908,7 @@ impl Ui {
                 && !matches!(node.content, Content::Rich(_))
                 && if written(i) {
                     // A node written again: as it was drawn last frame.
-                    self.layout.cache.prev.get(&i).is_some_and(|b| {
+                    self.tree.replaced.get(&i).is_some_and(|b| {
                         crate::layout::draw_eq(node, b)
                             && Some(&self.tree.kinds[i]) == prev_kinds.get(&i)
                     })

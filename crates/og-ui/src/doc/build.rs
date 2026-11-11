@@ -577,14 +577,7 @@ impl Ui {
             .filter(|&i| self.tree.nodes[i].part_box.is_some())
             .collect();
         for i in moving {
-            if !self.tree.emitted.contains(&i) {
-                self.layout
-                    .cache
-                    .prev
-                    .entry(i)
-                    .or_insert_with(|| self.tree.nodes[i].clone());
-                self.tree.emitted.push(i);
-            }
+            self.tree.rewrite(i);
         }
         for k in 0..self.tree.emitted.len() {
             self.apply_part_appearance(self.tree.emitted[k]);

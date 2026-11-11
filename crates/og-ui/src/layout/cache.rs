@@ -226,13 +226,11 @@ impl<V> Sweep for std::collections::HashMap<String, Vec<Kept<V>>> {
     }
 }
 
-/// Last frame's nodes and which nodes have unchanged layout inputs. A
-/// fixed-size child can isolate changed contents from its parent's inputs;
-/// the child still lays out even when the parent reuses its own layout.
+/// Which nodes have unchanged layout inputs. A fixed-size child can
+/// isolate changed contents from its parent's inputs; the child still lays
+/// out even when the parent reuses its own layout.
 #[derive(Clone, Debug, Default)]
 pub(crate) struct LayoutCache {
-    /// Replaced or removed slots, with their previous layout.
-    pub prev: std::collections::HashMap<usize, Node>,
     /// Per node: its own layout inputs and child size contributions are unchanged.
     pub clean: Vec<bool>,
     /// Nodes laid out this frame (the rest kept their layout).
@@ -539,8 +537,53 @@ impl LayoutCache {
     }
 }
 
+/// What written node `a`'s input changed against `b`, the node it
+/// replaced (as the last frame left it).
+pub(crate) fn input_changes(a: &Node, b: &Node) -> Changed {
+    let mut changed = Changed::default();
+    if a.layout.used.block != b.layout.used.block || a.props.layout != b.props.layout {
+        changed |= Changed::FLOW;
+    }
+    let same_layout = el_layout_eq(&a.layout.used, &b.layout.used)
+        && content_layout_eq(&a.content, &b.content)
+        && props_layout_eq(&a.props, &b.props)
+        && a.shape_outside == b.shape_outside
+        && a.float == b.float
+        // A layer's layout is made again every frame.
+        && a.float == Float::None
+        && a.children == b.children
+        && a.out == b.out
+        && a.floats == b.floats;
+    if !same_layout {
+        changed |= Changed::LAYOUT;
+    }
+    let same = same_layout
+        && a.layout.used == b.layout.used
+        && a.content == b.content
+        && a.widget == b.widget
+        && a.shapes == b.shapes
+        && a.props == b.props;
+    if !same {
+        changed |= Changed::INPUT;
+    }
+    let same_box = a.layout.used.width == b.layout.used.width
+        && a.layout.used.height == b.layout.used.height
+        && a.layout.used.margin == b.layout.used.margin
+        && !b.layout.collapse_in[0]
+        && a.props.place == b.props.place
+        && a.props.position == b.props.position
+        && a.props.insets == b.props.insets
+        && a.props.view_place == b.props.view_place
+        && a.float == b.float
+        && a.shape_outside == b.shape_outside;
+    if !same_box {
+        changed |= Changed::BOX;
+    }
+    changed
+}
+
 /// The box props layout reads are equal.
-pub(crate) fn el_layout_eq(a: &Element, b: &Element) -> bool {
+fn el_layout_eq(a: &Element, b: &Element) -> bool {
     a.direction == b.direction
         && a.width == b.width
         && a.height == b.height
@@ -584,7 +627,7 @@ pub(crate) fn el_layout_eq(a: &Element, b: &Element) -> bool {
 }
 
 /// The content layout measures is equal (an ink may differ).
-pub(crate) fn content_layout_eq(a: &Content, b: &Content) -> bool {
+fn content_layout_eq(a: &Content, b: &Content) -> bool {
     match (a, b) {
         (Content::Text(x), Content::Text(y)) => {
             x.text == y.text
@@ -604,7 +647,7 @@ pub(crate) fn content_layout_eq(a: &Content, b: &Content) -> bool {
 }
 
 /// The element-model props layout reads are equal.
-pub(crate) fn props_layout_eq(a: &crate::element::Props, b: &crate::element::Props) -> bool {
+fn props_layout_eq(a: &crate::element::Props, b: &crate::element::Props) -> bool {
     a.position == b.position
         && a.insets == b.insets
         && a.anchor == b.anchor

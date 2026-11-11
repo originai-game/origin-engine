@@ -160,7 +160,7 @@ impl Ui {
         }
         crate::layers::build_without_host(self);
         self.build_toasts();
-        self.tree.retire_nodes(&mut self.layout);
+        self.tree.retire_nodes();
         self.tree.building = false;
         // A retained node placement resized last frame lays out from its
         // own box again (a written node starts without a placement).
@@ -171,8 +171,7 @@ impl Ui {
         // node keeps what they set; a new viewport emits it again).
         self.layout.apply_variants(&self.env, &mut self.tree);
         self.apply_part_appearances();
-        self.tree
-            .apply_resized(&mut self.layout, &mut self.interaction);
+        self.tree.apply_resized(&mut self.interaction);
         // The written nodes' inputs are complete: what layout uses of them.
         for k in 0..self.tree.emitted.len() {
             let i = self.tree.emitted[k];
@@ -1449,7 +1448,7 @@ impl crate::ui::Layout {
         // A node written again keeps what it had found.
         for k in 0..tree.emitted.len() {
             let i = tree.emitted[k];
-            if let Some(p) = self.cache.prev.get(&i) {
+            if let Some(p) = tree.replaced.get(&i) {
                 let (skip, far, remembered) =
                     (p.layout.cv_skip, p.layout.cv_far, p.layout.remembered);
                 let n = &mut tree.nodes[i];

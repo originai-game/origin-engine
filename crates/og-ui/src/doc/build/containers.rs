@@ -232,7 +232,6 @@ impl crate::ui::Docs {
     /// `scrolled` keeps each axis's most recent direction.
     pub(super) fn sync_scroll_states(
         &mut self,
-        layout: &crate::ui::Layout,
         interaction: &crate::ui::Interaction,
         tree: &crate::ui::Tree,
     ) {
@@ -258,7 +257,7 @@ impl crate::ui::Docs {
                 scrolled &= !((LEFT | RIGHT) << 10);
                 scrolled |= if d.x < 0.0 { LEFT } else { RIGHT } << 10;
             }
-            let flags = interaction.scroll_flags_now(key, layout, tree) | scrolled;
+            let flags = interaction.scroll_flags_now(key, tree) | scrolled;
             if flags != old {
                 self.host.scroll_changed.insert(key);
             }
