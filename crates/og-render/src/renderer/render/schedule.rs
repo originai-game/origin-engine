@@ -56,11 +56,7 @@ pub(crate) const PASSES: &[PassDesc] = &[
         name: "view",
         needs: Caps::MRT,
     },
-    PassDesc {
-        pass: FramePass::Volumetric,
-        name: "volumetric",
-        needs: Caps::COMPUTE,
-    },
+    VolumetricPass::DESC,
     PassDesc {
         pass: FramePass::Ssr,
         name: "ssr",

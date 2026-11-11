@@ -70,4 +70,5 @@ macro_rules! passes {
 passes! {
     live_sky: pass_live_sky::LiveSkyPass => FramePass::LiveSky,
     gi_probes: pass_gi_probes::GiProbesPass => FramePass::GiProbes,
+    volumetric: pass_volumetric::VolumetricPass => FramePass::Volumetric,
 }

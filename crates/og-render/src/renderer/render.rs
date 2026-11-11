@@ -57,6 +57,8 @@ use draw_ctx::DrawCtx;
 use pass_gi_probes::GiProbesPass;
 mod pass_live_sky;
 use pass_live_sky::LiveSkyPass;
+mod pass_volumetric;
+use pass_volumetric::VolumetricPass;
 mod setup;
 
 impl Renderer {
@@ -1889,17 +1891,15 @@ impl Renderer {
             self.cookies
                 .patch(scene, &self.clusters.kept, &mut lights_gpu, cookie_base);
         }
-        if let Some(fog) = &volumetric_fog {
-            self.volumetric.prepare(
-                &self.device,
-                &self.queue,
-                &self.frame_layout,
-                fog,
-                (self.width, self.height),
-                scene.tick,
-                &scene.quality,
-            );
-        }
+        plans.volumetric = VolumetricPass::plan(
+            &mut self.volumetric,
+            &self.device,
+            &self.queue,
+            &self.frame_layout,
+            volumetric_fog.as_ref(),
+            (self.width, self.height),
+            scene,
+        );
         if !lights_gpu.is_empty() {
             self.queue
                 .write_buffer(&self.light_buffers[0], 0, bytemuck::cast_slice(&lights_gpu));
@@ -2949,8 +2949,7 @@ impl Renderer {
                 probes: !probe_frame.due.is_empty(),
                 reflections: reflections.len() as u8,
                 views: view_plans.len() as u32,
-                froxels: volumetric_fog.is_some()
-                    && self.volumetric.method == VolumetricMethod::Froxel,
+                froxels: plans.volumetric.is_some(),
                 ssr: ssr.is_some(),
                 depth_bands: depth_bands.is_some(),
                 glow,
@@ -4426,18 +4425,6 @@ impl Renderer {
                     view_glow_runs: &view_glow_runs,
                     post_fx,
                 }),
-                FramePass::Volumetric => self.volumetric.encode_froxels(
-                    &self.device,
-                    &mut encoder,
-                    &self.frame_buffer,
-                    &self.cascade_map.array_view,
-                    &self.local_map.array_view,
-                    [
-                        &self.light_buffers[0],
-                        &self.light_buffers[1],
-                        &self.light_buffers[2],
-                    ],
-                ),
                 FramePass::Main => {
                     self.encode_main(MainPassInputs {
                         ctx: &ctx,
