@@ -100,6 +100,8 @@ mod world_prepare;
 use world_prepare::{PrepareWorldInputs, PrepareWorldOutputs};
 mod lights_stage;
 use lights_stage::{PrepareLightsInputs, PrepareLightsOutputs};
+mod instances_stage;
+use instances_stage::{UploadInstancesInputs, UploadInstancesOutputs};
 mod setup;
 
 impl Renderer {
@@ -1239,72 +1241,41 @@ impl Renderer {
             shelter: &shelter,
             local_shadows: &local_shadows,
         });
-        // Upload instances, previous transforms, skinned data, strips and
-        // sprites. With GPU culling the sorted instances go to its buffer and
-        // this one holds only the transparent draws.
-        let copy_counts = std::mem::take(&mut self.visibility.culling_counts);
-        let (cull_commands, gpu_counts) = if gpu_cull {
-            let (commands, counts) = self.encode_gpu_cull(GpuCullInputs {
-                scene,
-                batches: &batches,
-                transforms: &transforms,
-                origins: &origins,
-                sorted,
-                vis: &vis,
-                max_passes,
-                auxiliary_instances,
-                previous_valid,
-                object_motion,
-                prepass,
-                skinned: skinned_gpu.then_some(cull_gpu::SkinnedCull {
-                    batches: &skinned_batches[..skinned_plain],
-                    records: &skinned_data,
-                    boxes: &skinned.boxes,
-                }),
-                cam: &cam,
-                copy_counts,
-            });
-            // The CPU-culled lists sit after the sorted instances, in this buffer.
-            for list in reflection_list
-                .iter_mut()
-                .filter(|l| l.indirect.is_none())
-                .chain(&mut reflection_blended)
-                .chain(std::iter::once(&mut blended_list))
-            {
-                for r in &mut list.ranges {
-                    r.1 -= sorted;
-                }
-            }
-            for r in probe_lists
-                .iter_mut()
-                .chain(probe_blended.iter_mut())
-                .chain(view_lists.iter_mut().filter(|l| l.indirect.is_none()))
-                .chain(view_blended.iter_mut())
-                .flat_map(|l| &mut l.ranges)
-            {
-                r.1 -= sorted;
-            }
-            (commands, Some(counts))
-        } else {
-            if let Some(m) = self.visibility.meshlet.as_mut() {
-                m.frame.clear();
-            }
-            (Vec::new(), None)
-        };
-        // The records a draw reads and the debris step (instance_uploads.rs).
-        let (instance_upload_bytes, debris_commands) =
-            self.upload_instance_records(InstanceUploadInputs {
-                scene,
-                batches: &batches,
-                transforms: &transforms,
-                origins: &origins,
-                debris_instances: &debris_instances,
-                sorted,
-                gpu_cull,
-                auxiliary_instances,
-                previous_valid,
-            });
-        self.instances.sorted.restore(transforms, spheres);
+        // The GPU culling's encode and the instance records (instances_stage.rs).
+        let UploadInstancesOutputs {
+            cull_commands,
+            gpu_counts,
+            instance_upload_bytes,
+            debris_commands,
+        } = self.upload_instances(UploadInstancesInputs {
+            scene,
+            cam: &cam,
+            batches: &batches,
+            transforms,
+            spheres,
+            origins: &origins,
+            debris_instances: &debris_instances,
+            sorted,
+            vis: &vis,
+            gpu_cull,
+            max_passes,
+            auxiliary_instances,
+            previous_valid,
+            object_motion,
+            prepass,
+            skinned_gpu,
+            skinned_batches: &skinned_batches,
+            skinned_plain,
+            skinned_data: &skinned_data,
+            skinned: &skinned,
+            reflection_list: &mut reflection_list,
+            reflection_blended: &mut reflection_blended,
+            blended_list: &mut blended_list,
+            probe_lists: &mut probe_lists,
+            probe_blended: &mut probe_blended,
+            view_lists: &mut view_lists,
+            view_blended: &mut view_blended,
+        });
         if !skinned_data.is_empty() || crowd_gpu {
             grow_and_write(
                 &self.device,
