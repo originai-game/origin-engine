@@ -273,7 +273,7 @@ impl Ui {
         let reduced = self.theme.reduced_motion;
         let mut m = std::mem::take(&mut self.state.motion);
         // Last step's asks were taken by this frame's build.
-        self.kept.timeline_restyle.clear();
+        self.motion_cache.timeline_restyle.clear();
         let mut touched =
             crate::id::KeySet::with_capacity_and_hasher(m.channels.len(), Default::default());
 
@@ -512,7 +512,7 @@ impl Ui {
         // Visited nodes still moving: visited next tick too.
         let mut moving = Vec::new();
         if whole {
-            self.kept.motion_groups.clear();
+            self.motion_cache.motion_groups.clear();
         }
         for i in animating {
             let key = self.nodes[i].key;
@@ -793,12 +793,12 @@ impl Ui {
                 run.last_ms = sample.active_ms;
             }
             if scrolled {
-                let old = self.kept.timelines.insert(key, progress.clone());
+                let old = self.motion_cache.timelines.insert(key, progress.clone());
                 if styled && old.as_ref() != Some(&progress) {
-                    self.kept.timeline_restyle.push(key);
+                    self.motion_cache.timeline_restyle.push(key);
                 }
             } else {
-                self.kept.timelines.remove(&key);
+                self.motion_cache.timelines.remove(&key);
             }
             if row != base {
                 write_values(&mut self.nodes[i], &row);
@@ -873,16 +873,16 @@ impl Ui {
             }
             // The groups it no longer has are forgotten (on a whole tick,
             // with everything untouched, below).
-            if !whole && let Some(old) = self.kept.motion_groups.get(&key) {
+            if !whole && let Some(old) = self.motion_cache.motion_groups.get(&key) {
                 for gk in old.iter().filter(|gk| !node_groups.contains(gk)) {
                     m.groups.remove(gk);
                     m.set_states.remove(gk);
                 }
             }
             if node_groups.is_empty() {
-                self.kept.motion_groups.remove(&key);
+                self.motion_cache.motion_groups.remove(&key);
             } else {
-                self.kept.motion_groups.insert(key, node_groups);
+                self.motion_cache.motion_groups.insert(key, node_groups);
             }
         }
 
@@ -1072,7 +1072,7 @@ impl Ui {
                 }
                 touched || c.stepped >= now
             });
-            self.kept.widget_channels = stepped;
+            self.motion_cache.widget_channels = stepped;
             m.groups.retain(|k, _| touched.contains(k));
             m.set_states.retain(|k, _| touched.contains(k));
             m.flip.retain(|k, _| self.tree.by_key.contains_key(k));
@@ -1080,7 +1080,7 @@ impl Ui {
         } else {
             // A widget's channel nothing stepped this tick is forgotten,
             // as the whole frame forgets it.
-            let mut lately = std::mem::take(&mut self.kept.widget_channels);
+            let mut lately = std::mem::take(&mut self.motion_cache.widget_channels);
             lately.sort_unstable();
             lately.dedup();
             lately.retain(|k| match m.channels.get(k) {
@@ -1092,7 +1092,7 @@ impl Ui {
                 Some(_) => true,
                 None => false,
             });
-            self.kept.widget_channels = lately;
+            self.motion_cache.widget_channels = lately;
             // What left the trees is forgotten whole.
             for &key in &self.tree.moved_keys {
                 if self.tree.by_key.contains_key(&key) {
@@ -1106,7 +1106,12 @@ impl Ui {
                         m.channels.remove(&ck);
                     }
                 }
-                for gk in self.kept.motion_groups.remove(&key).unwrap_or_default() {
+                for gk in self
+                    .motion_cache
+                    .motion_groups
+                    .remove(&key)
+                    .unwrap_or_default()
+                {
                     m.groups.remove(&gk);
                     m.set_states.remove(&gk);
                 }
@@ -1128,7 +1133,7 @@ impl Ui {
                     }
                 }
                 if !visited.contains(&i)
-                    && let Some(old) = self.kept.motion_groups.remove(&key)
+                    && let Some(old) = self.motion_cache.motion_groups.remove(&key)
                 {
                     for gk in old {
                         m.groups.remove(&gk);
@@ -1141,7 +1146,7 @@ impl Ui {
         // or its `animation-name`.
         m.css.retain(|r| r.stepped == now);
         let tree = &self.tree;
-        self.kept
+        self.motion_cache
             .timelines
             .retain(|k, _| tree.by_key.contains_key(k));
         // Transitions of computed values outlive no element.
@@ -1156,7 +1161,7 @@ impl Ui {
         }
         events.extend(css_events);
         self.state.motion = m;
-        self.kept.motion_moving = moving;
+        self.motion_cache.motion_moving = moving;
         self.events.extend(events);
         for (key, name) in starts {
             self.start_play(
@@ -1398,7 +1403,7 @@ impl Ui {
             transition
         };
         let (kind, mode) = pack(&t, &tokens);
-        self.kept.widget_channels.push(key);
+        self.motion_cache.widget_channels.push(key);
         let ch = self.state.motion.channels.entry(key).or_insert_with(|| {
             let mut c = Channel::at(from.unwrap_or(target), now.saturating_sub(1));
             c.stepped = now.saturating_sub(1);

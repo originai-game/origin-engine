@@ -607,6 +607,8 @@ pub struct Ui {
     pub(crate) kept: crate::layout::LayoutCache,
     /// Last frame's paint, for reuse.
     pub(crate) paint_cache: crate::layout::PaintCache,
+    /// The motion pass's memory between ticks.
+    pub(crate) motion_cache: crate::layout::MotionCache,
     /// This frame's counts (into `UiFrame::stats`).
     pub(crate) stats: LayoutStats,
     /// The map of the element whose commands are being made: a nine-slice

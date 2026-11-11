@@ -278,14 +278,20 @@ pub(crate) struct LayoutCache {
     pub unclean: Vec<usize>,
     /// Asks for `full` on every frame (the bounded walk's check).
     pub whole: bool,
+    /// Anchor-positioned nodes `position-visibility` showed or hid this
+    /// frame (visited again).
+    pub anchor_toggled: Vec<usize>,
+}
+
+/// The motion pass's memory between ticks: what it visits again and the
+/// channels and timelines it steps.
+#[derive(Clone, Debug, Default)]
+pub(crate) struct MotionCache {
     /// The animated nodes still moving after the motion pass (visited
     /// again next tick), each visited node's state groups, and the
     /// widgets' channels stepped since the pass last read them
     /// (`Ui::run_motion`, `Ui::animate_key`).
     pub motion_moving: Vec<usize>,
-    /// Anchor-positioned nodes `position-visibility` showed or hid this
-    /// frame (visited again).
-    pub anchor_toggled: Vec<usize>,
     pub motion_groups: crate::id::KeyMap<Vec<u64>>,
     pub widget_channels: Vec<u64>,
     /// Each element's progress-based animations' progress at the last

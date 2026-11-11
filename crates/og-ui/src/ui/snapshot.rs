@@ -409,6 +409,7 @@ impl Ui {
         self.state = s;
         self.kept = Default::default();
         self.paint_cache = Default::default();
+        self.motion_cache = Default::default();
         // What nodes say next is the restored state, not news.
         self.semantics.note_quiet();
         // The restored mounts emit afresh; the nodes they owned retire
