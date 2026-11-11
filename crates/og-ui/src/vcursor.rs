@@ -119,10 +119,10 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Interaction {
     /// The topmost control of last frame under `p` (0: none).
     fn control_at(&self, p: Vec2) -> Option<&crate::ui::Hit> {
-        self.interaction.state.hits.iter().rev().find(|h| {
+        self.state.hits.iter().rev().find(|h| {
             !h.has(HIT_OFFSCREEN) && h.has(HIT_NAV | HIT_POINTER | HIT_TEXT) && h.contains(p.x, p.y)
         })
     }
@@ -130,10 +130,16 @@ impl Ui {
     /// Moves the virtual cursor and turns pad 0 into the pointer while it
     /// shows: its place, A as the button, the right stick as the wheel.
     /// Run on the input in units before anything reads it.
-    pub(crate) fn virtual_cursor_input(&mut self, input: &mut InputFrame, w: f32, h: f32) {
-        let mut v = self.interaction.state.vcursor;
+    pub(crate) fn virtual_cursor_input(
+        &mut self,
+        input: &mut InputFrame,
+        w: f32,
+        h: f32,
+        env: &crate::ui::Env,
+    ) {
+        let mut v = self.state.vcursor;
         let Some(d) = v.desc else {
-            self.interaction.state.vcursor = VCursorState::default();
+            self.state.vcursor = VCursorState::default();
             return;
         };
         let real = input.pointer;
@@ -156,10 +162,9 @@ impl Ui {
             v.pos = Vec2::new(w / 2.0, h / 2.0);
             v.placed = true;
         }
-        let tps = self.env.ticks_per_second.max(1) as f32;
+        let tps = env.ticks_per_second.max(1) as f32;
         let magnet = d.magnet(
-            self.env
-                .theme
+            env.theme
                 .art
                 .motion
                 .magnet
@@ -224,19 +229,19 @@ impl Ui {
         } else if stick.is_some() {
             input.gamepad.stick = Vec2::ZERO;
         }
-        self.interaction.state.vcursor = v;
+        self.state.vcursor = v;
     }
 
     /// The virtual cursor as the style draws it: a ring in the focus colour
     /// on a shadow, a dot of ink at its point; larger over a control and
     /// smaller while pressed.
-    pub(crate) fn virtual_cursor_commands(&self, cmds: &mut Vec<DrawCmd>) {
-        let v = &self.interaction.state.vcursor;
+    pub(crate) fn virtual_cursor_commands(&self, cmds: &mut Vec<DrawCmd>, env: &crate::ui::Env) {
+        let v = &self.state.vcursor;
         if v.desc.is_none() || !v.shown {
             return;
         }
-        let p = &self.env.theme.palette;
-        let screen = Rect::new(0.0, 0.0, self.env.viewport.width, self.env.viewport.height);
+        let p = &env.theme.palette;
+        let screen = Rect::new(0.0, 0.0, env.viewport.width, env.viewport.height);
         let mut r = 11.0;
         if v.over != 0 {
             r *= 1.25;

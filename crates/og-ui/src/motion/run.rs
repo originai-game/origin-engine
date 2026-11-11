@@ -612,7 +612,9 @@ impl Ui {
                 continue;
             }
             let key = n.key;
-            let out = self.run_gesture(i, m);
+            let out = self
+                .interaction
+                .run_gesture(i, m, &self.env, &mut self.out, &self.tree);
             self.tree.nodes[i].gesture = out;
             touched.insert(channel_key(key, DRAG_X));
             touched.insert(channel_key(key, DRAG_Y));

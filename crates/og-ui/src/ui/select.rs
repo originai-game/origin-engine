@@ -114,7 +114,7 @@ impl Ui {
     pub(crate) fn text_lines(&self, i: usize) -> Option<TextLines> {
         let n = &self.tree.nodes[i];
         if matches!(n.content, Content::Rich(_)) {
-            let (_, lines) = self.select_source(i)?;
+            let (_, lines) = self.tree.select_source(i)?;
             let v = n.rich_vertical()?;
             let up =
                 self.text_flow(i).0 != (v.mode == crate::layout::flow::WritingMode::SidewaysLr);
@@ -244,7 +244,7 @@ impl Ui {
             .map(|h| h.key);
         let mut start = None;
         if input.pressed && input.pointer_inside {
-            let at = self.select_hit_at(p, hot);
+            let at = self.interaction.select_hit_at(p, hot);
             let near = (p - press.at).length() <= SELECT_SLOP;
             let soon = tick.saturating_sub(press.tick) <= hold;
             press.count = if at.is_some() && press.count > 0 && !press.moved && near && soon {
@@ -272,7 +272,7 @@ impl Ui {
             // A long press, still: the word under it.
             if press.long && !press.moved && tick.saturating_sub(press.tick) >= hold {
                 press.long = false;
-                if let Some(key) = self.select_hit_at(press.at, 0) {
+                if let Some(key) = self.interaction.select_hit_at(press.at, 0) {
                     start = Some((key, 2));
                 }
             } else if press.moved {
@@ -284,7 +284,7 @@ impl Ui {
         self.interaction.state.select_press = press;
         if let Some((key, count)) = start {
             if let Some((k, t)) = self.select_point(key, press.at) {
-                let (a, b) = self.select_unit(key, &t, count, k);
+                let (a, b) = self.tree.select_unit(key, &t, count, k);
                 let extend = input.shift && count == 1 && !coarse;
                 self.interaction.state.selection = Some(match self.interaction.state.selection {
                     Some(s) if extend => Selection {
@@ -306,18 +306,18 @@ impl Ui {
             && !input.pressed
             && held_key.is_some()
             && let Some(mut s) = self.interaction.state.selection
-            && let Some(key) = self.select_drag_target(p)
+            && let Some(key) = self.interaction.select_drag_target(p)
             && let Some((k, t)) = self.select_point(key, p)
         {
             if s.unit >= 2 {
-                let (a, b) = self.select_unit(key, &t, s.unit, k);
+                let (a, b) = self.tree.select_unit(key, &t, s.unit, k);
                 let (o0, o1) = s.origin;
-                if self.select_order(a) < self.select_order(o0) {
+                if self.tree.select_order(a) < self.tree.select_order(o0) {
                     s.anchor = o1;
                     s.focus = a;
                 } else {
                     s.anchor = o0;
-                    s.focus = if self.select_order(b) > self.select_order(o1) {
+                    s.focus = if self.tree.select_order(b) > self.tree.select_order(o1) {
                         b
                     } else {
                         o1
@@ -342,7 +342,10 @@ impl Ui {
         if shortcut
             && !editing
             && input.keys.contains(&crate::input::UiKey::KeyC)
-            && let Some(text) = self.selected_text().filter(|t| !t.is_empty())
+            && let Some(text) = self
+                .interaction
+                .selected_text(&self.tree)
+                .filter(|t| !t.is_empty())
         {
             self.out.clipboard = Some(text);
         }
@@ -399,12 +402,12 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Tree {
     /// Node `i`'s selectable text: its source and its laid-out lines (a
     /// plain text's, or a vertical rich text's, each line its pieces'
     /// text); `None` for any other node.
     pub(crate) fn select_source(&self, i: usize) -> Option<(String, Vec<crate::text::Line>)> {
-        let n = &self.tree.nodes[i];
+        let n = &self.nodes[i];
         match &n.content {
             Content::Text(tc) => Some((tc.text.clone(), n.lines.clone())),
             Content::Rich(rc) if n.rich_vertical().is_some() => {
@@ -427,10 +430,9 @@ impl Ui {
     /// its character).
     fn select_order(&self, end: SelectEnd) -> (u32, u32) {
         let pos = self
-            .tree
             .index
             .find(end.0)
-            .and_then(|i| self.tree.orders.pre_pos.get(i).copied())
+            .and_then(|i| self.orders.pre_pos.get(i).copied())
             .unwrap_or(u32::MAX);
         (pos, end.1)
     }
@@ -438,10 +440,9 @@ impl Ui {
     /// The unit a press of `count` selects around character `k` of `key`.
     fn select_unit(&self, key: u64, t: &TextLines, count: u8, k: u32) -> (SelectEnd, SelectEnd) {
         let all = self
-            .tree
             .index
             .find(key)
-            .is_some_and(|i| self.tree.orders.select_of.get(i) == Some(&UserSelect::All));
+            .is_some_and(|i| self.orders.select_of.get(i) == Some(&UserSelect::All));
         let (a, b) = if all {
             (0, t.len() as usize)
         } else {
@@ -456,12 +457,12 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Interaction {
     /// The topmost selectable text under `p` drawn over `hot` (what a
     /// press there would otherwise land on): a scroll container or panel
     /// behind it, or nothing.
     pub(crate) fn select_hit_at(&self, p: Vec2, hot: u64) -> Option<u64> {
-        let hits = &self.interaction.state.hits;
+        let hits = &self.state.hits;
         let above = hits.iter().rposition(|h| h.key == hot).map_or(0, |k| k + 1);
         hits[above..]
             .iter()
@@ -477,8 +478,7 @@ impl Ui {
     fn select_drag_target(&self, p: Vec2) -> Option<u64> {
         let off = |a: f32, lo: f32, hi: f32| (lo - a).max(a - hi).max(0.0);
         self.select_hit_at(p, 0).or_else(|| {
-            self.interaction
-                .state
+            self.state
                 .hits
                 .iter()
                 .filter(|h| h.has(HIT_SELECT) && !h.has(HIT_OFFSCREEN))
@@ -496,17 +496,14 @@ impl Ui {
 
     /// The selected elements and their ranges, in the trees' order: the
     /// selectable texts from the selection's first end to its last.
-    pub(crate) fn selected_ranges(&self) -> Vec<(usize, (u32, u32))> {
-        let Some(s) = self.interaction.state.selection else {
+    pub(crate) fn selected_ranges(&self, tree: &crate::ui::Tree) -> Vec<(usize, (u32, u32))> {
+        let Some(s) = self.state.selection else {
             return Vec::new();
         };
-        let (Some(ia), Some(ib)) = (
-            self.tree.index.find(s.anchor.0),
-            self.tree.index.find(s.focus.0),
-        ) else {
+        let (Some(ia), Some(ib)) = (tree.index.find(s.anchor.0), tree.index.find(s.focus.0)) else {
             return Vec::new();
         };
-        let o = &self.tree.orders;
+        let o = &tree.orders;
         let (pa, pb) = (o.pre_pos[ia], o.pre_pos[ib]);
         if pa == u32::MAX || pb == u32::MAX {
             return Vec::new();
@@ -522,7 +519,7 @@ impl Ui {
             if !matches!(o.select_of[i], UserSelect::Text | UserSelect::All) {
                 continue;
             }
-            let Some((_, lines)) = self.select_source(i) else {
+            let Some((_, lines)) = tree.select_source(i) else {
                 continue;
             };
             let n = lines
@@ -542,8 +539,8 @@ impl Ui {
     /// The selected text as the clipboard takes it: each element's
     /// characters, a wrapped line's break as its source had it (a space,
     /// nothing between CJK, a line break), elements on lines of their own.
-    pub(crate) fn selected_text(&self) -> Option<String> {
-        let ranges = self.selected_ranges();
+    pub(crate) fn selected_text(&self, tree: &crate::ui::Tree) -> Option<String> {
+        let ranges = self.selected_ranges(tree);
         if ranges.is_empty() {
             return None;
         }
@@ -552,7 +549,7 @@ impl Ui {
             if k > 0 {
                 out.push('\n');
             }
-            let Some((source, lines)) = self.select_source(i) else {
+            let Some((source, lines)) = tree.select_source(i) else {
                 continue;
             };
             let seps = line_breaks(&source, &lines);
@@ -579,43 +576,42 @@ impl Ui {
     /// element's range on its node, and the nodes whose range changed (to
     /// be painted again); a selection whose element left the trees is
     /// dropped. Paint reads the ranges and writes none.
-    pub(crate) fn mark_selection(&mut self) -> Vec<usize> {
-        if let Some(s) = self.interaction.state.selection
-            && (self.tree.index.find(s.anchor.0).is_none()
-                || self.tree.index.find(s.focus.0).is_none())
+    pub(crate) fn mark_selection(&mut self, tree: &mut crate::ui::Tree) -> Vec<usize> {
+        if let Some(s) = self.state.selection
+            && (tree.index.find(s.anchor.0).is_none() || tree.index.find(s.focus.0).is_none())
         {
-            self.interaction.state.selection = None;
+            self.state.selection = None;
         }
-        let now = self.selected_ranges();
+        let now = self.selected_ranges(tree);
         let mut changed = Vec::new();
-        let last = std::mem::take(&mut self.interaction.selected);
+        let last = std::mem::take(&mut self.selected);
         for &key in &last {
-            if let Some(i) = self.tree.index.find(key)
+            if let Some(i) = tree.index.find(key)
                 && !now.iter().any(|&(j, _)| j == i)
-                && self.tree.nodes[i].selected.take().is_some()
+                && tree.nodes[i].selected.take().is_some()
             {
                 changed.push(i);
             }
         }
         for &(i, r) in &now {
-            if self.tree.nodes[i].selected != Some(r) {
-                self.tree.nodes[i].selected = Some(r);
+            if tree.nodes[i].selected != Some(r) {
+                tree.nodes[i].selected = Some(r);
                 changed.push(i);
             }
-            self.interaction.selected.push(self.tree.nodes[i].key);
+            self.selected.push(tree.nodes[i].key);
         }
         changed
     }
 
     /// The selection as the probe reads it (`dump_ui`'s `selection`):
     /// its text and its ends' paths and characters, `null` with none.
-    pub(crate) fn selection_json(&self) -> serde_json::Value {
-        let Some(s) = self.interaction.state.selection else {
+    pub(crate) fn selection_json(&self, tree: &crate::ui::Tree) -> serde_json::Value {
+        let Some(s) = self.state.selection else {
             return serde_json::Value::Null;
         };
-        let path = |k: u64| self.tree.index.find(k).map(|i| self.tree.path_of(i));
+        let path = |k: u64| tree.index.find(k).map(|i| tree.path_of(i));
         serde_json::json!({
-            "text": self.selected_text().unwrap_or_default(),
+            "text": self.selected_text(tree).unwrap_or_default(),
             "anchor": { "path": path(s.anchor.0), "at": s.anchor.1 },
             "focus": { "path": path(s.focus.0), "at": s.focus.1 },
         })

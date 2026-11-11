@@ -169,7 +169,8 @@ impl Ui {
             focused: s.focus == key || forced == Some("focused"),
             pad,
             focused_by,
-            tapped: key != 0 && (self.interaction.nav.tapped == key || self.tapped_by_keys(key)),
+            tapped: key != 0
+                && (self.interaction.nav.tapped == key || self.interaction.tapped_by_keys(key)),
             double_tapped: key != 0 && self.interaction.nav.double_tapped == key,
             long_pressed: key != 0 && self.interaction.nav.long_pressed == key,
             long_press: self.long_press_progress(key),

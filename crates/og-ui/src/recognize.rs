@@ -83,10 +83,10 @@ impl Ui {
         if t.taken || t.chain.is_empty() || !self.interaction.input.down {
             return 0.0;
         }
-        if self.winner(&t.chain, |s| s.long_press) != Some(key) {
+        if self.interaction.winner(&t.chain, |s| s.long_press) != Some(key) {
             return 0.0;
         }
-        let s = self.spec(key).unwrap_or_default();
+        let s = self.interaction.spec(key).unwrap_or_default();
         if t.travel > slop(&s) {
             return 0.0;
         }
@@ -95,13 +95,13 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Interaction {
     /// The element of `chain` that wins a gesture `wants`: the highest
     /// priority, the innermost of equals.
     fn winner(&self, chain: &[u64], wants: impl Fn(&GestureSpec) -> bool) -> Option<u64> {
         let mut best: Option<(i32, u64)> = None;
         for &k in chain {
-            let Some((s, _)) = self.interaction.state.recognizers.get(&k) else {
+            let Some((s, _)) = self.state.recognizers.get(&k) else {
                 continue;
             };
             if wants(s) && best.is_none_or(|(p, _)| s.priority > p) {
@@ -112,32 +112,34 @@ impl Ui {
     }
 
     fn spec(&self, key: u64) -> Option<GestureSpec> {
-        self.interaction
-            .state
-            .recognizers
-            .get(&key)
-            .map(|(s, _)| *s)
+        self.state.recognizers.get(&key).map(|(s, _)| *s)
     }
 
     /// This tick's taps, double taps and long presses, from `input` and the
     /// hit under the press (`hot`, not a scrollbar grab), into the frame's
     /// navigation answers.
-    pub(crate) fn recognize(&mut self, input: &InputFrame, hot: u64, grabbed: bool) {
-        let now = self.interaction.state.tick;
-        let tps = self.env.ticks_per_second;
+    pub(crate) fn recognize(
+        &mut self,
+        input: &InputFrame,
+        hot: u64,
+        grabbed: bool,
+        env: &crate::ui::Env,
+    ) {
+        let now = self.state.tick;
+        let tps = env.ticks_per_second;
         let ticks = |ms: f32| u64::from(crate::style::Theme::ticks(ms, tps));
         // A tap left waiting for its double: past the window, it is a tap.
-        let w = self.interaction.state.tap.waiting;
+        let w = self.state.tap.waiting;
         if w != 0 {
             match self.spec(w) {
-                Some(s) if now - self.interaction.state.tap.waiting_tick > ticks(double_ms(&s)) => {
+                Some(s) if now - self.state.tap.waiting_tick > ticks(double_ms(&s)) => {
                     if s.tap {
-                        self.interaction.nav.tapped = w;
+                        self.nav.tapped = w;
                     }
-                    self.interaction.state.tap.waiting = 0;
+                    self.state.tap.waiting = 0;
                 }
                 Some(_) => {}
-                None => self.interaction.state.tap.waiting = 0,
+                None => self.state.tap.waiting = 0,
             }
         }
         let p = input.pointer;
@@ -146,91 +148,81 @@ impl Ui {
             let mut k = if grabbed {
                 0
             } else {
-                self.interaction.hit(hot).map_or(0, |h| h.gesture)
+                self.hit(hot).map_or(0, |h| h.gesture)
             };
             while k != 0 && chain.len() < 16 {
                 chain.push(k);
-                k = self
-                    .interaction
-                    .state
-                    .recognizers
-                    .get(&k)
-                    .map_or(0, |r| r.1);
+                k = self.state.recognizers.get(&k).map_or(0, |r| r.1);
             }
-            let t = &mut self.interaction.state.tap;
+            let t = &mut self.state.tap;
             t.chain = chain;
             t.start = p;
             t.since = now;
             t.travel = 0.0;
             t.taken = false;
         }
-        if self.interaction.state.tap.chain.is_empty() {
+        if self.state.tap.chain.is_empty() {
             return;
         }
         let travel = self
-            .interaction
             .state
             .tap
             .travel
-            .max((p - self.interaction.state.tap.start).length());
-        self.interaction.state.tap.travel = travel;
-        let chain = self.interaction.state.tap.chain.clone();
-        if (input.down || input.released) && !self.interaction.state.tap.taken {
-            let held = now - self.interaction.state.tap.since;
+            .max((p - self.state.tap.start).length());
+        self.state.tap.travel = travel;
+        let chain = self.state.tap.chain.clone();
+        if (input.down || input.released) && !self.state.tap.taken {
+            let held = now - self.state.tap.since;
             if let Some(w) = self.winner(&chain, |s| s.long_press) {
                 let s = self.spec(w).unwrap_or_default();
                 if travel <= slop(&s) && held >= ticks(long_ms(&s)).max(1) {
-                    self.interaction.nav.long_pressed = w;
-                    self.interaction.state.tap.taken = true;
-                    self.interaction.state.tap.waiting = 0;
+                    self.nav.long_pressed = w;
+                    self.state.tap.taken = true;
+                    self.state.tap.waiting = 0;
                 }
             }
         }
         if input.released || !input.down {
-            if !self.interaction.state.tap.taken
+            if !self.state.tap.taken
                 && input.released
                 && let Some(w) = self.winner(&chain, |s| s.tap || s.double_tap)
             {
                 let s = self.spec(w).unwrap_or_default();
-                let over = self
-                    .interaction
-                    .hit(w)
-                    .is_some_and(|h| h.contains(p.x, p.y));
+                let over = self.hit(w).is_some_and(|h| h.contains(p.x, p.y));
                 if travel <= slop(&s) && over {
-                    let t = &self.interaction.state.tap;
+                    let t = &self.state.tap;
                     // Another element's waiting tap is settled by this one.
                     if t.waiting != 0 && t.waiting != w {
                         if self.spec(t.waiting).is_some_and(|o| o.tap) {
-                            self.interaction.nav.tapped = t.waiting;
+                            self.nav.tapped = t.waiting;
                         }
-                        self.interaction.state.tap.waiting = 0;
+                        self.state.tap.waiting = 0;
                     }
-                    let t = &self.interaction.state.tap;
+                    let t = &self.state.tap;
                     if !s.double_tap {
-                        self.interaction.nav.tapped = w;
+                        self.nav.tapped = w;
                     } else if t.waiting == w
                         && now - t.waiting_tick <= ticks(double_ms(&s))
                         && (p - t.waiting_at).length() <= 2.0 * slop(&s)
                     {
-                        self.interaction.nav.double_tapped = w;
-                        self.interaction.state.tap.waiting = 0;
+                        self.nav.double_tapped = w;
+                        self.state.tap.waiting = 0;
                     } else {
-                        let t = &mut self.interaction.state.tap;
+                        let t = &mut self.state.tap;
                         t.waiting = w;
                         t.waiting_tick = now;
                         t.waiting_at = p;
                     }
                 }
             }
-            self.interaction.state.tap.chain.clear();
+            self.state.tap.chain.clear();
         }
     }
 
     /// Keys and pads tap a recognising control by activating it.
     pub(crate) fn tapped_by_keys(&self, key: u64) -> bool {
         key != 0
-            && (self.interaction.nav.activate == key
-                || self.interaction.nav.pad_activate.contains(&key))
+            && (self.nav.activate == key || self.nav.pad_activate.contains(&key))
             && self.spec(key).is_some_and(|s| s.tap)
     }
 
@@ -238,14 +230,14 @@ impl Ui {
     /// this frame's nodes for the next frame, from the nodes that have
     /// them and each node's nearest group and recogniser around it
     /// (`visit::Orders::group_of`, `gesture_of`).
-    pub(crate) fn collect_input_specs(&mut self) {
-        let o = &self.tree.orders;
+    pub(crate) fn collect_input_specs(&mut self, out: &mut crate::ui::Out, tree: &crate::ui::Tree) {
+        let o = &tree.orders;
         // A group's parent group: its parent's (a layer's anchor's, where
         // the anchor is drawn before it).
         let around = |i: usize, of: &[u64]| {
-            let n = &self.tree.nodes[i];
+            let n = &tree.nodes[i];
             let up = if n.parent == NONE { n.anchor } else { n.parent };
-            if up == NONE || up >= self.tree.nodes.len() || o.pos[up] > o.pos[i] {
+            if up == NONE || up >= tree.nodes.len() || o.pos[up] > o.pos[i] {
                 0
             } else {
                 of[up]
@@ -253,16 +245,11 @@ impl Ui {
         };
         let mut groups: IdMap<u64, GroupState> = IdMap::new();
         for &i in o.with(crate::ui::visit::feat::GROUP) {
-            let n = &self.tree.nodes[i];
+            let n = &tree.nodes[i];
             let Some(spec) = n.props.focus_group else {
                 continue;
             };
-            let last = self
-                .interaction
-                .state
-                .groups
-                .get(&n.key)
-                .map_or(0, |g| g.last);
+            let last = self.state.groups.get(&n.key).map_or(0, |g| g.last);
             groups.insert(
                 n.key,
                 GroupState {
@@ -275,19 +262,19 @@ impl Ui {
         }
         let mut recognizers: IdMap<u64, (GestureSpec, u64)> = IdMap::new();
         for &i in o.with(crate::ui::visit::feat::RECOGNIZER) {
-            let n = &self.tree.nodes[i];
+            let n = &tree.nodes[i];
             if let Some(spec) = n.props.gestures.filter(GestureSpec::any)
                 && !n.inert
             {
                 recognizers.insert(n.key, (spec, around(i, &o.gesture_of)));
             }
         }
-        self.interaction.state.groups = groups;
-        self.interaction.state.recognizers = recognizers;
+        self.state.groups = groups;
+        self.state.recognizers = recognizers;
         // Explicit moves: each path resolved to where it lands.
         let mut links: IdMap<u64, [u64; 6]> = IdMap::new();
-        for i in self.tree.orders.drawn(crate::ui::visit::feat::NAV_LINKS) {
-            let nav = self.tree.nodes[i].props.nav.clone();
+        for i in tree.orders.drawn(crate::ui::visit::feat::NAV_LINKS) {
+            let nav = tree.nodes[i].props.nav.clone();
             let mut to = [0u64; 6];
             for (k, path) in [
                 &nav.up, &nav.down, &nav.left, &nav.right, &nav.next, &nav.prev,
@@ -298,44 +285,44 @@ impl Ui {
                 if path.is_empty() {
                     continue;
                 }
-                match self.tree.node_at(path, i) {
-                    Some(j) => to[k] = self.landing(j),
+                match tree.node_at(path, i) {
+                    Some(j) => to[k] = tree.landing(j),
                     None => {
-                        let at = self.tree.path_of(i);
-                        self.out.warnings.push(format!(
+                        let at = tree.path_of(i);
+                        out.warnings.push(format!(
                             "'{at}' moves focus to '{path}', which is not on screen: nav takes a full path (Hud/Bag) or a sibling's id"
                         ));
                     }
                 }
             }
-            links.insert(self.tree.nodes[i].key, to);
+            links.insert(tree.nodes[i].key, to);
         }
-        self.interaction.state.nav_links = links;
+        self.state.nav_links = links;
     }
 
     /// After this frame's hits: each group's first member, and the member
     /// the focus is on remembered by every group around it.
     pub(crate) fn note_groups(&mut self) {
-        if self.interaction.state.groups.is_empty() {
+        if self.state.groups.is_empty() {
             return;
         }
-        let hits = std::mem::take(&mut self.interaction.state.hits);
+        let hits = std::mem::take(&mut self.state.hits);
         for h in hits.iter().filter(|h| h.has(HIT_NAV | HIT_TEXT)) {
             let mut g = h.group;
             while g != 0 {
-                let Some(gs) = self.interaction.state.groups.get_mut(&g) else {
+                let Some(gs) = self.state.groups.get_mut(&g) else {
                     break;
                 };
                 if gs.first == 0 {
                     gs.first = h.key;
                 }
-                if h.key == self.interaction.state.focus && gs.spec.memory {
+                if h.key == self.state.focus && gs.spec.memory {
                     gs.last = h.key;
                 }
                 g = gs.parent;
             }
         }
-        self.interaction.state.hits = hits;
+        self.state.hits = hits;
     }
 
     /// Whether group `inner` is `outer` or inside it.
@@ -347,35 +334,30 @@ impl Ui {
             if inner == outer {
                 return true;
             }
-            inner = self
-                .interaction
-                .state
-                .groups
-                .get(&inner)
-                .map_or(0, |g| g.parent);
+            inner = self.state.groups.get(&inner).map_or(0, |g| g.parent);
         }
         false
     }
 }
 
-impl Ui {
+impl crate::ui::Tree {
     /// Where a focus move to node `j` lands: a group (resolved when the
     /// move is made), a focusable control, or the first focusable control
     /// inside it.
     fn landing(&self, j: usize) -> u64 {
-        let n = &self.tree.nodes[j];
+        let n = &self.nodes[j];
         if n.props.focus_group.is_some() || n.nav || n.focusable {
             return n.key;
         }
         // Its subtree in drawing order.
-        let mut sub = crate::layout::preorder(&self.tree.nodes, j);
-        sub.sort_unstable_by_key(|&o| self.tree.orders.pos[o]);
+        let mut sub = crate::layout::preorder(&self.nodes, j);
+        sub.sort_unstable_by_key(|&o| self.orders.pos[o]);
         sub.into_iter()
             .find(|&o| {
-                let m: &Node = &self.tree.nodes[o];
+                let m: &Node = &self.nodes[o];
                 (m.nav || m.focusable) && !m.inert
             })
-            .map_or(0, |o| self.tree.nodes[o].key)
+            .map_or(0, |o| self.nodes[o].key)
     }
 }
 
@@ -392,7 +374,7 @@ impl Ui {
         let keyed = [self.interaction.nav.activate]
             .into_iter()
             .chain(self.interaction.nav.pad_activate)
-            .filter(|&k| self.tapped_by_keys(k) && k != self.interaction.nav.tapped);
+            .filter(|&k| self.interaction.tapped_by_keys(k) && k != self.interaction.nav.tapped);
         let keyed: Vec<u64> = keyed.collect();
         for (kind, key) in fired
             .into_iter()

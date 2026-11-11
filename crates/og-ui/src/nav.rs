@@ -290,7 +290,12 @@ impl Ui {
         use og_input::A11yAct;
         for (act, path) in acts {
             let key = crate::id::key_of_path(path);
-            let Some(hit) = self.focusables().into_iter().find(|h| h.key == key) else {
+            let Some(hit) = self
+                .interaction
+                .focusables()
+                .into_iter()
+                .find(|h| h.key == key)
+            else {
                 let step = match act {
                     A11yAct::Increment => 1,
                     A11yAct::Decrement => -1,
@@ -311,7 +316,13 @@ impl Ui {
                     format!("{frame}/Dec"),
                 ]
                 .map(|p| crate::id::key_of_path(&p));
-                if spin && self.focusables().iter().any(|h| buttons.contains(&h.key)) {
+                if spin
+                    && self
+                        .interaction
+                        .focusables()
+                        .iter()
+                        .any(|h| buttons.contains(&h.key))
+                {
                     let (k, n) = self.interaction.nav.spin;
                     self.interaction.nav.spin = (key, if k == key { n + step } else { step });
                 }
@@ -353,7 +364,8 @@ impl Ui {
             return;
         }
         if (!self.interaction.state.nav_off || self.interaction.state.scope != 0)
-            && let Some((container, mut index)) = self.virtual_item(self.interaction.state.focus)
+            && let Some((container, mut index)) =
+                self.interaction.virtual_item(self.interaction.state.focus)
         {
             let v = &self.interaction.state.virtual_lists[&container];
             let mut moved = false;
@@ -384,6 +396,7 @@ impl Ui {
             return;
         }
         let cands: Vec<Hit> = self
+            .interaction
             .focusables()
             .into_iter()
             .filter(|h| h.group == from.group)
@@ -538,7 +551,7 @@ impl Ui {
                 }
                 _ => {}
             }
-            let cands = self.focusables_of(0);
+            let cands = self.interaction.focusables_of(0);
             if cands.is_empty() {
                 continue;
             }
@@ -575,7 +588,7 @@ impl Ui {
                 (Nav::Next, None) => Some(cands[0].key),
                 (Nav::Prev, None) => Some(cands[cands.len() - 1].key),
                 (_, None) => Some(cands[0].key),
-                (dir, Some(i)) => self.step_focus(&cands, i, dir),
+                (dir, Some(i)) => self.interaction.step_focus(&cands, i, dir),
             };
             if let Some(k) = next {
                 self.interaction.state.focus = k;
@@ -656,7 +669,7 @@ impl Ui {
                     }
                     _ => {}
                 }
-                let cands = self.focusables_of(k);
+                let cands = self.interaction.focusables_of(k);
                 if cands.is_empty() {
                     continue;
                 }
@@ -680,7 +693,7 @@ impl Ui {
                             .min_by(|a, b| d(a).total_cmp(&d(b)))
                             .map(|h| h.key)
                     }
-                    (dir, Some(i)) => self.step_focus(&cands, i, dir),
+                    (dir, Some(i)) => self.interaction.step_focus(&cands, i, dir),
                 };
                 if let Some(next) = next.filter(|&n| n != focus) {
                     self.interaction.state.pad_focus[k - 1] = next;
@@ -714,8 +727,10 @@ impl Ui {
         let Some(view) = self.interaction.hit(h.scroller).map(|s| s.rect) else {
             return;
         };
-        let (view, area) = self.scroll_areas(key, h.full, h.scroller, view);
-        let at = self.offset(h.scroller);
+        let (view, area) = self
+            .interaction
+            .scroll_areas(key, h.full, h.scroller, view, &self.tree);
+        let at = self.interaction.offset(h.scroller);
         let d = og_core::glam::Vec2::new(
             (area.x + area.width / 2.0) - (view.x + view.width / 2.0),
             (area.y + area.height / 2.0) - (view.y + view.height / 2.0),
@@ -724,7 +739,7 @@ impl Ui {
     }
 
     fn scroll_into_view(&mut self, key: u64) {
-        if let Some((container, index)) = self.virtual_item(key) {
+        if let Some((container, index)) = self.interaction.virtual_item(key) {
             let off = self
                 .interaction
                 .state
@@ -746,8 +761,10 @@ impl Ui {
             return;
         };
         let pad = self.theme().space.xs;
-        let (view, full) = self.scroll_areas(key, h.full, h.scroller, view);
-        let mut to = self.offset(h.scroller);
+        let (view, full) = self
+            .interaction
+            .scroll_areas(key, h.full, h.scroller, view, &self.tree);
+        let mut to = self.interaction.offset(h.scroller);
         if full.y < view.y {
             to.y -= view.y - full.y + pad;
         } else if full.bottom() > view.bottom() {
@@ -762,7 +779,7 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Interaction {
     /// Where an explicit move to `target` (a control's or a group's key)
     /// lands among `cands`: the control, or a group's remembered member
     /// (with memory), else its first member on screen.
@@ -770,7 +787,7 @@ impl Ui {
         if cands.iter().any(|h| h.key == target) {
             return Some(target);
         }
-        let g = self.interaction.state.groups.get(&target)?;
+        let g = self.state.groups.get(&target)?;
         if g.spec.memory && g.last != 0 && cands.iter().any(|h| h.key == g.last) {
             return Some(g.last);
         }
@@ -790,7 +807,7 @@ impl Ui {
         let mut g = to.group;
         let mut pick = k;
         while g != 0 {
-            let Some(gs) = self.interaction.state.groups.get(&g) else {
+            let Some(gs) = self.state.groups.get(&g) else {
                 break;
             };
             if self.in_group(from.group, g) {
@@ -809,14 +826,14 @@ impl Ui {
     pub(crate) fn step_focus(&self, cands: &[Hit], i: usize, nav: Nav) -> Option<u64> {
         let from = cands[i];
         if let Some(slot) = link_slot(nav)
-            && let Some(links) = self.interaction.state.nav_links.get(&from.key)
+            && let Some(links) = self.state.nav_links.get(&from.key)
             && links[slot] != 0
             && let Some(k) = self.land(links[slot], cands)
         {
             return Some(k);
         }
         if let Some((container, index)) = self.virtual_item(from.key) {
-            let v = &self.interaction.state.virtual_lists[&container];
+            let v = &self.state.virtual_lists[&container];
             let delta = match nav {
                 Nav::Down => v.columns as isize,
                 Nav::Up => -(v.columns as isize),
@@ -879,13 +896,7 @@ impl Ui {
             if level == 0 {
                 return None;
             }
-            let g = self
-                .interaction
-                .state
-                .groups
-                .get(&level)
-                .copied()
-                .unwrap_or_default();
+            let g = self.state.groups.get(&level).copied().unwrap_or_default();
             if g.spec.wrap
                 && let Some(k) = neighbour_in(&from.full, &set, nav, true)
             {
@@ -897,9 +908,8 @@ impl Ui {
 
     /// The focusable controls of last frame in reading order, inside the open scope.
     pub(crate) fn focusables(&self) -> Vec<Hit> {
-        let scope = self.interaction.state.scope;
-        self.interaction
-            .state
+        let scope = self.state.scope;
+        self.state
             .hits
             .iter()
             .filter(|h| h.has(HIT_NAV | HIT_TEXT) && (scope == 0 || h.scope == scope))
@@ -919,7 +929,7 @@ impl Ui {
             return cands;
         }
         let region = cands.iter().any(|h| h.player == own);
-        let dialog = self.interaction.state.scope != 0;
+        let dialog = self.state.scope != 0;
         cands.retain(|h| h.player == own || (h.player == 0 && (!region || dialog)));
         cands
     }
@@ -927,11 +937,18 @@ impl Ui {
     /// Scroll container `scroller`'s `view` inset by its CSS
     /// `scroll-padding`, and element `key`'s box `full` grown by its
     /// `scroll-margin`: what a scroll into view lines up.
-    fn scroll_areas(&self, key: u64, full: Rect, scroller: u64, view: Rect) -> (Rect, Rect) {
-        let [t, r, b, l] = self
+    fn scroll_areas(
+        &self,
+        key: u64,
+        full: Rect,
+        scroller: u64,
+        view: Rect,
+        tree: &crate::ui::Tree,
+    ) -> (Rect, Rect) {
+        let [t, r, b, l] = tree
             .scroll_css(scroller)
             .padding_px(view.width, view.height);
-        let [mt, mr, mb, ml] = self.scroll_css(key).margin;
+        let [mt, mr, mb, ml] = tree.scroll_css(key).margin;
         (
             Rect::new(
                 view.x + l,
@@ -950,19 +967,14 @@ impl Ui {
 
     /// Scrolls the containers around `key` so it is in their view.
     fn virtual_item(&self, key: u64) -> Option<(u64, usize)> {
-        self.interaction
-            .state
-            .virtual_lists
-            .iter()
-            .find_map(|(&container, v)| {
-                v.keys
-                    .iter()
-                    .position(|k| {
-                        crate::id::child_key(container, &crate::virtualize::item_id(k, v.grid))
-                            == key
-                    })
-                    .map(|i| (container, i))
-            })
+        self.state.virtual_lists.iter().find_map(|(&container, v)| {
+            v.keys
+                .iter()
+                .position(|k| {
+                    crate::id::child_key(container, &crate::virtualize::item_id(k, v.grid)) == key
+                })
+                .map(|i| (container, i))
+        })
     }
 }
 

@@ -531,7 +531,12 @@ impl Ui {
         self.env.unit = unit;
         // A pad's virtual cursor is the pointer while it shows, and the
         // HUD edit mode takes the presses on what it edits.
-        self.virtual_cursor_input(&mut input, viewport.width, viewport.height);
+        self.interaction.virtual_cursor_input(
+            &mut input,
+            viewport.width,
+            viewport.height,
+            &self.env,
+        );
         self.env.viewport = viewport;
         self.hud_edit_input(&mut input);
         // Scrolling first: a press on a scrollbar grabs it before anything
@@ -609,7 +614,7 @@ impl Ui {
         self.world
             .world_begin(&mut input, &self.env, &self.interaction);
         self.docs_begin();
-        self.actions_begin(&input);
+        self.interaction.actions_begin(&input, &self.env);
         self.publish_ui_store();
 
         // Hit test against last frame's rectangles, topmost first.
@@ -662,7 +667,8 @@ impl Ui {
         if grabbed.is_none() {
             self.select_input(&input, hot);
         }
-        self.recognize(&input, hot, grabbed.is_some());
+        self.interaction
+            .recognize(&input, hot, grabbed.is_some(), &self.env);
         let intents = self.intents(&input);
         self.apply_nav(&intents);
         self.apply_list_keys(&input);

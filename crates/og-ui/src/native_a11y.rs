@@ -587,13 +587,13 @@ impl Ui {
                             Action::ScrollLeft => og_core::math::Vec2::new(-scroll.view_width, 0.0),
                             _ => og_core::math::Vec2::new(scroll.view_width, 0.0),
                         };
-                        self.scroll_by(key, delta);
+                        self.interaction.scroll_by(key, delta);
                     }
                     continue;
                 }
                 Action::ScrollIntoView => {
                     // The focus scope still gates offscreen controls.
-                    if self.focusables().iter().any(|h| h.key == key) {
+                    if self.interaction.focusables().iter().any(|h| h.key == key) {
                         self.scroll_into_view_path(&request.path, false);
                     }
                     continue;
@@ -611,7 +611,7 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Interaction {
     pub(crate) fn accessibility_number(
         &mut self,
         key: u64,
@@ -620,7 +620,7 @@ impl Ui {
         max: f32,
         step: f32,
     ) -> bool {
-        let number = match self.interaction.native_input.values.remove(&key) {
+        let number = match self.native_input.values.remove(&key) {
             Some(ActionData::NumericValue(v)) => v,
             Some(ActionData::Value(v)) => match v.parse::<f64>() {
                 Ok(v) => v,

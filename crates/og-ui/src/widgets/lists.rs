@@ -497,7 +497,9 @@ impl Ui {
         let gap = if desc.gap > 0.0 { desc.gap } else { t.space.sm };
         let key = self.key_for(id.as_str());
         // Its bar's gutter while its rows ran past it.
-        let gutter = self.bar_gutter(key, Default::default());
+        let gutter = self
+            .interaction
+            .bar_gutter(key, Default::default(), &self.env);
         // The width the cells had last frame (the grid's, inside its padding).
         // Last frame's whole box, on screen or not: out of view a grid
         // guessed the viewport's width, built a dozen columns of rows and
