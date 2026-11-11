@@ -44,7 +44,7 @@ impl RenderFields {
             host_key,
             kind,
             element: *node.el,
-            widget_props: node.props.clone(),
+            widget_props: (*node.props).clone(),
             document_props,
             text: node.probe_text.clone(),
             response,
@@ -471,7 +471,7 @@ impl Ui {
         if let Some(host) = self.tree.nodes.iter_mut().rfind(|n| n.key == base.host_key) {
             host.part_host = r.part_host.clone();
         }
-        self.tree.nodes[i].props = base.widget_props.clone();
+        *self.tree.props_mut(i) = base.widget_props.clone();
         let css = r.text.as_deref();
         self.tree.nodes[i].accent = css.and_then(|t| t.accent);
         self.tree.nodes[i].caret = css.and_then(|t| t.caret);
@@ -1041,7 +1041,7 @@ impl Ui {
         let Some(step) = self.tree.nodes[slot].text().map(|t| t.step) else {
             return;
         };
-        let crate::layout::Content::Text(shown) = &mut self.tree.nodes[slot].content else {
+        let crate::layout::Content::Text(shown) = self.tree.content_mut(slot) else {
             return;
         };
         shown.ellipsis = true;
@@ -1082,9 +1082,9 @@ impl Ui {
                     .filter(|g| !n.groups.iter().any(|x| x.name == g.name))
                     .cloned(),
             );
-            self.tree.nodes[i].props = props;
+            *self.tree.props_mut(i) = props;
         }
-        self.tree.nodes[i].props.flow = flow;
+        self.tree.props_mut(i).flow = flow;
         // A vertical text sets its lines down: a plain text by its own
         // setting, a rich text by its node's (`Ui::rich_vertical`).
         // Text on a path follows its path's physical geometry: its box is
@@ -1092,7 +1092,7 @@ impl Ui {
         // as a vertical line's along the path.
         let build = self.tree.build();
         let node = &mut self.tree.nodes[i];
-        match &mut node.content {
+        match node.content.write(build) {
             crate::layout::Content::Text(t) if node.props.text_path.is_some() => {
                 node.el.write(build).vertical = None;
                 t.vertical = flow.vertical_text(&t.text);
@@ -1109,7 +1109,7 @@ impl Ui {
         }
         // A split screen's region (`Props::player`).
         if let Some(k) = r.num("player") {
-            self.tree.nodes[i].props.player = Some(k.clamp(0.0, 3.0) as u8);
+            self.tree.props_mut(i).player = Some(k.clamp(0.0, 3.0) as u8);
         }
         // `role`, `aria-live` and `aria-atomic` over the tag's.
         if let Some(role) = r
@@ -1168,7 +1168,7 @@ impl crate::ui::Tree {
             .str("ellipsisText")
             .filter(|s| !s.is_empty())
             .map(str::to_owned);
-        if let crate::layout::Content::Text(t) = &mut self.nodes[i].content {
+        if let crate::layout::Content::Text(t) = self.content_mut(i) {
             t.wrap_style = style;
             t.cut = cut;
         }
@@ -1185,7 +1185,7 @@ impl crate::ui::Tree {
             Some("scaleDown") => og_draw::UiFit::ScaleDown,
             _ => og_draw::UiFit::Fill,
         };
-        if let crate::layout::Content::Image { object, .. } = &mut self.nodes[i].content {
+        if let crate::layout::Content::Image { object, .. } = self.content_mut(i) {
             *object = crate::layout::ObjectFit {
                 fit,
                 focal: at.map_or([0.5; 2], |a| a[0]),

@@ -26,7 +26,7 @@ pub(in crate::layout) fn inline_rows(nodes: &mut [Node], i: usize, measure: &Mea
     let (step, font) = n
         .children
         .iter()
-        .find_map(|&c| match &nodes[c].content {
+        .find_map(|&c| match &*nodes[c].content {
             Content::Text(t) => Some((nodes[c].used_text(t).step, t.font)),
             Content::Rich(rc) => Some(rc.base),
             _ => None,
@@ -328,7 +328,7 @@ fn place_children(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f32, f3
         nodes[c].layout.x = x;
         nodes[c].layout.y = y;
     }
-    if nodes[i].layout_mode() != LayoutMode::Flex && matches!(nodes[i].content, Content::None) {
+    if nodes[i].layout_mode() != LayoutMode::Flex && matches!(*nodes[i].content, Content::None) {
         let n = &nodes[i];
         let (sx, sy) = if n.layout.used.scroll || n.layout.used.scroll_x {
             scroll(n.key)

@@ -218,8 +218,9 @@ impl Ui {
             format_count(shown, desc.decimals),
             desc.suffix
         );
+        let build = self.tree.build();
         let n = &mut self.tree.nodes[i];
-        n.content = Content::Text(crate::layout::TextContent {
+        *n.content.write(build) = Content::Text(crate::layout::TextContent {
             text: text.clone(),
             step: desc.step.unwrap_or(t.type_ramp.body),
             color: desc.color.unwrap_or(t.palette.ink),

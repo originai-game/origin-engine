@@ -210,11 +210,12 @@ impl Ui {
         };
         // The frame draws the text; the host measures it.
         if let Some(slot) = frame {
-            self.tree.nodes[slot].content = Content::Text(content.clone());
+            *self.tree.content_mut(slot) = Content::Text(content.clone());
             self.tree.nodes[slot].widget = Widget::Field(edit);
         }
+        let build = self.tree.build();
         let n = &mut self.tree.nodes[i];
-        n.content = Content::Text(content);
+        *n.content.write(build) = Content::Text(content);
         n.widget = Widget::Field(edit);
         n.probe_text = if value.is_empty() {
             desc.placeholder.clone()
@@ -261,8 +262,8 @@ impl Ui {
                 },
             );
             let response = self.respond(self.tree.nodes[i].key);
-            self.tree.nodes[i].props.position = crate::element::Position::Absolute;
-            self.tree.nodes[i].props.insets = crate::element::Edges {
+            self.tree.props_mut(i).position = crate::element::Position::Absolute;
+            self.tree.props_mut(i).insets = crate::element::Edges {
                 end: Some(end),
                 top: Some(0.0),
                 ..Default::default()
@@ -279,7 +280,7 @@ impl Ui {
                 .flag_if(desc.readonly, "disabled"),
             );
             let part = self.tree.nodes[i].el.part.unwrap();
-            self.tree.nodes[i].shapes.push(Shape::Rect {
+            self.tree.shapes_mut(i).push(Shape::Rect {
                 frame: crate::layout::Frame::centered(
                     -width / 2.0,
                     0.0,
@@ -290,7 +291,7 @@ impl Ui {
                 color: self.env.theme.palette.ink_muted,
             });
             for side in [-1.0, 1.0] {
-                self.tree.nodes[i].shapes.push(Shape::Bar {
+                self.tree.shapes_mut(i).push(Shape::Bar {
                     part,
                     frame: crate::layout::Frame::centered(side * 2.5, 0.0, 7.0, 2.0),
                     angle: side * sign as f32 * std::f32::consts::FRAC_PI_4,
@@ -417,8 +418,8 @@ impl Ui {
             },
         );
         self.tree.stack.pop();
-        self.tree.nodes[j].props.position = crate::element::Position::Absolute;
-        self.tree.nodes[j].props.insets = crate::element::Edges {
+        self.tree.props_mut(j).position = crate::element::Position::Absolute;
+        self.tree.props_mut(j).insets = crate::element::Edges {
             end: Some(0.0),
             top: Some(0.0),
             ..Default::default()
@@ -459,13 +460,14 @@ impl Ui {
         let half = ((ew / 2.0) / radius).clamp(-1.0, 1.0).asin();
         let thick = (s * 0.09).max(1.0);
         self.tree.el_mut(j).part = Some(part);
+        let build = self.tree.build();
         let n = &mut self.tree.nodes[j];
-        n.shapes.clear();
+        n.shapes.write(build).clear();
         for (dy, mid) in [
             (radius - eh / 2.0, -FRAC_PI_2),
             (eh / 2.0 - radius, FRAC_PI_2),
         ] {
-            n.shapes.push(Shape::Arc {
+            n.shapes.write(build).push(Shape::Arc {
                 part: icon,
                 frame: crate::layout::Frame::centered(0.0, dy, 2.0 * radius, 2.0 * radius),
                 start: mid - half,
@@ -475,13 +477,13 @@ impl Ui {
             });
         }
         let pupil = s * 0.26;
-        n.shapes.push(Shape::Rect {
+        n.shapes.write(build).push(Shape::Rect {
             frame: crate::layout::Frame::centered(0.0, 0.0, pupil, pupil),
             radius: pupil,
             color,
         });
         if revealed {
-            n.shapes.push(Shape::Bar {
+            n.shapes.write(build).push(Shape::Bar {
                 part: icon,
                 frame: crate::layout::Frame::centered(0.0, 0.0, s * 1.05, thick),
                 angle: std::f32::consts::FRAC_PI_4,
@@ -519,8 +521,8 @@ impl Ui {
             },
         );
         self.tree.stack.pop();
-        self.tree.nodes[j].props.position = crate::element::Position::Absolute;
-        self.tree.nodes[j].props.insets = crate::element::Edges {
+        self.tree.props_mut(j).position = crate::element::Position::Absolute;
+        self.tree.props_mut(j).insets = crate::element::Edges {
             end: Some(0.0),
             top: Some(0.0),
             ..Default::default()
@@ -542,10 +544,11 @@ impl Ui {
         let s = (w.min(h) * 0.32).max(6.0);
         let thick = (s * 0.16).max(1.0);
         self.tree.el_mut(j).part = Some(part);
+        let build = self.tree.build();
         let n = &mut self.tree.nodes[j];
-        n.shapes.clear();
+        n.shapes.write(build).clear();
         for angle in [std::f32::consts::FRAC_PI_4, -std::f32::consts::FRAC_PI_4] {
-            n.shapes.push(Shape::Bar {
+            n.shapes.write(build).push(Shape::Bar {
                 part: icon,
                 frame: crate::layout::Frame::centered(0.0, 0.0, s * 1.4, thick),
                 angle,
@@ -564,7 +567,7 @@ impl Ui {
     fn control_part(&mut self, j: usize, name: &'static str) {
         let element = *self.tree.nodes[j].el;
         let part = element.part.expect("a dressed text control button");
-        let shapes = std::mem::take(&mut self.tree.nodes[j].shapes);
+        let shapes = std::mem::take(self.tree.shapes_mut(j));
         let slot = self.tree.write_part(
             j,
             part,
@@ -579,7 +582,7 @@ impl Ui {
             Content::None,
         );
         self.tree.nodes[j].content_slot = slot;
-        self.tree.nodes[slot].shapes = shapes;
+        *self.tree.shapes_mut(slot) = shapes;
     }
 
     /// A text control's frame (`<component>::part(frame)`): a persistent
@@ -611,7 +614,7 @@ impl Ui {
         let part = self.tree.nodes[slot].part_box.as_mut().expect("frame part");
         part.intrinsic_props.position = crate::element::Position::Absolute;
         part.intrinsic_props.insets = fill;
-        let props = &mut self.tree.nodes[slot].props;
+        let props = self.tree.props_mut(slot);
         props.position = crate::element::Position::Absolute;
         props.insets = fill;
         slot
@@ -738,14 +741,14 @@ impl Ui {
             let inset = border.iter().copied().fold(0.0_f32, f32::max);
             el.radius = (radius - inset).max(0.0);
         }
-        n.props.flow = flow;
+        n.props.write(build).flow = flow;
         if !r.has("position") && border != [0.0; 4] {
             let (start, end) = if rtl {
                 (border[1], border[3])
             } else {
                 (border[3], border[1])
             };
-            n.props.insets = crate::element::Edges {
+            n.props.write(build).insets = crate::element::Edges {
                 start: Some(start),
                 top: Some(border[0]),
                 end: Some(end),
@@ -935,7 +938,7 @@ impl Ui {
             } else {
                 Content::None
             };
-            self.tree.nodes[i].content = measured;
+            *self.tree.content_mut(i) = measured;
             return content.then_some(height);
         }
         if content

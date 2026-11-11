@@ -99,7 +99,7 @@ fn pieces(nodes: &[Node], run: &[usize], tops: &[f32], h: &dyn Fn(&Node) -> f32)
         let forced = k > 0 && (after || n.layout.used.breaks & BREAK_BEFORE != 0);
         after = n.layout.used.breaks & BREAK_AFTER != 0;
         let lines = n.layout.lines.len();
-        let lh = match &n.content {
+        let lh = match &*n.content {
             Content::Text(t)
                 if n.layout.used.breaks & AVOID_INSIDE == 0 && !n.layout.used.scroll =>
             {

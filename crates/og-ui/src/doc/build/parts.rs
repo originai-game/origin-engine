@@ -120,8 +120,8 @@ impl Ui {
             props.opacity = intrinsic.opacity;
         }
         props.flow = r.own_flow();
-        self.tree.nodes[i].props = props;
-        let text_style = match &self.tree.nodes[i].content {
+        *self.tree.props_mut(i) = props;
+        let text_style = match &*self.tree.nodes[i].content {
             crate::layout::Content::Text(text) => {
                 Some(r.part_text(&self.env.theme, text.step, &|name| {
                     self.style.family_declared(name, &self.env)
@@ -129,7 +129,7 @@ impl Ui {
             }
             _ => None,
         };
-        if let crate::layout::Content::Text(text) = &mut self.tree.nodes[i].content {
+        if let crate::layout::Content::Text(text) = self.tree.content_mut(i) {
             let style = text_style.unwrap();
             text.step = style.step(text.step);
             let role = style.font_role.unwrap_or(text.font);

@@ -214,7 +214,7 @@ impl Ui {
         let mut p = Self::resolved_props(n, r);
         p.states = props.states;
         p.state = props.state;
-        self.tree.nodes[i].props = p;
+        *self.tree.props_mut(i) = p;
         if let Some(name) = r.str("name").filter(|n| !n.is_empty()) {
             self.tree.nodes[i].a11y.name = Some(name.to_string());
         }

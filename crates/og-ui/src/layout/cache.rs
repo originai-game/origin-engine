@@ -931,7 +931,7 @@ mod text_cache {
         ui.tree
             .nodes
             .iter()
-            .filter(|n| matches!(n.content, Content::Text(_)))
+            .filter(|n| matches!(*n.content, Content::Text(_)))
             .map(|n| {
                 let lines = n.layout.lines.iter().map(|l| (l.text.clone(), l.width));
                 (lines.collect(), n.placed.rect)

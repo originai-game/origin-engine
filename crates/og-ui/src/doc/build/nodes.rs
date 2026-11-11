@@ -160,7 +160,7 @@ impl Ui {
                     let props = self.props_of(b, n, self.tree.nodes[last].key, &rp, &mut built);
                     *self.tree.el_mut(last) = el;
                     if props != Props::default() {
-                        self.tree.nodes[last].props = props;
+                        *self.tree.props_mut(last) = props;
                     }
                 }
                 // Its two-way writes reach the bound paths of the user.

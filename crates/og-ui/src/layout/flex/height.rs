@@ -3,7 +3,7 @@ use super::*;
 pub(in crate::layout) fn size_h(nodes: &mut [Node], i: usize) {
     collapse_margins(nodes, i);
     let n = &nodes[i];
-    let (pref, min) = match &n.content {
+    let (pref, min) = match &*n.content {
         _ if let Some(h) = n.contained_size(1) => (h, h),
         Content::None if n.layout_mode() == LayoutMode::Stack => {
             let kids = || n.children.iter().map(|&c| &nodes[c]);
@@ -310,7 +310,7 @@ pub(super) fn line_extra(nodes: &[Node], i: usize, inner: f32) -> f32 {
 /// or its first descendant in the flow has text.
 pub(super) fn layout_baseline(nodes: &[Node], c: usize, fonts: &dyn Metrics) -> Option<f32> {
     let n = &nodes[c];
-    match &n.content {
+    match &*n.content {
         Content::Text(t) => {
             let t = n.used_text(t);
             let line = n.layout.lines.first()?;

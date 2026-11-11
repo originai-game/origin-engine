@@ -48,11 +48,11 @@ pub(in crate::layout) fn collapse_margins(nodes: &mut [Node], i: usize) {
         && !n.layout.used.bfc
         && n.layout.used.direction == Direction::Column
         && n.layout_mode() == LayoutMode::Flex
-        && matches!(n.content, Content::None)
+        && matches!(*n.content, Content::None)
         && !n.layout.used.scroll
         && !n.layout.used.scroll_x;
     let auto_height = matches!(n.layout.used.height, Size::Fit { min, .. } if min <= 0.0);
-    let empty_text = matches!(&n.content, Content::Text(t) if t.text.is_empty());
+    let empty_text = matches!(&*n.content, Content::Text(t) if t.text.is_empty());
     let through = in_block_flow
         && !n.layout.used.bfc
         && auto_height

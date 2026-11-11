@@ -18,7 +18,7 @@ fn covers(decl: &str, path: &str) -> bool {
 fn painted(n: &Node) -> bool {
     !n.placed.rect.is_empty()
         && (n.layout.used.background.is_some()
-            || !matches!(n.content, Content::None)
+            || !matches!(*n.content, Content::None)
             || !matches!(
                 n.widget,
                 crate::layout::Widget::None | crate::layout::Widget::Spacer
@@ -280,7 +280,7 @@ impl crate::ui::Layout {
         tree: &crate::ui::Tree,
     ) -> Option<f32> {
         let n = &tree.nodes[i];
-        match &n.content {
+        match &*n.content {
             Content::Text(tc) => {
                 let tc = n.used_text(tc);
                 let line = n.layout.lines.first()?;
@@ -463,7 +463,7 @@ impl crate::ui::Layout {
     /// descendant in the flow with text has one.
     fn last_baseline(&self, i: usize, env: &crate::ui::Env, tree: &crate::ui::Tree) -> Option<f32> {
         let n = &tree.nodes[i];
-        match &n.content {
+        match &*n.content {
             Content::Text(tc) => {
                 let tc = n.used_text(tc);
                 let line = n.layout.lines.last()?;
@@ -531,7 +531,7 @@ impl crate::ui::Tree {
     /// flow) has none.
     fn central_baseline(&self, i: usize, last: bool) -> Option<f32> {
         let n = &self.nodes[i];
-        match &n.content {
+        match &*n.content {
             Content::Text(tc) => {
                 let tc = n.used_text(tc);
                 let v = tc.vertical?;
@@ -748,7 +748,7 @@ impl Ui {
     pub fn open_with(&mut self, id: impl Into<crate::Id>, el: crate::Element, props: Props) {
         self.open(id, el);
         let i = self.tree.parent();
-        self.tree.nodes[i].props = props;
+        *self.tree.props_mut(i) = props;
     }
 
     /// Sets the props of the element built just before (any widget, or a
@@ -777,6 +777,6 @@ impl Ui {
             );
             return None;
         }
-        Some(&mut self.tree.nodes[i].props)
+        Some(self.tree.props_mut(i))
     }
 }

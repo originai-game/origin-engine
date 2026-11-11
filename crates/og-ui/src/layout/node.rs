@@ -247,14 +247,14 @@ pub(crate) fn text_features(step: &TypeStep, font: FontRole) -> crate::shape::Fe
 /// so each of the font's pixels is a whole number of CSS pixels and lands
 /// on the device-pixel grid the pen is snapped to. A step's line height is
 /// kept. Text in an outline font is unchanged.
-pub(crate) fn snap_pixel_text(nodes: &mut [Node], fonts: &dyn Metrics) {
+pub(crate) fn snap_pixel_text(nodes: &mut [Node], fonts: &dyn Metrics, build: authored::Build) {
     let snap = |s: &mut TypeStep, m: &FontMetrics| {
         s.size = m.pixel_size(s.size);
         s.tracking_em = m.pixel_tracking(s.tracking_em);
         s.cjk_tracking_em = m.pixel_tracking(s.cjk_tracking_em);
     };
     for n in nodes {
-        match &mut n.content {
+        match n.content.write(build) {
             Content::Text(t) => {
                 let m = t.authored().metrics(fonts);
                 if m.pixel_grid() > 0 {
@@ -935,14 +935,16 @@ pub(crate) struct Node {
     pub changed: Changed,
     /// Its element as authored: layout reads it and lays out
     /// [`LayoutBox::used`].
-    pub el: Authored,
+    pub el: Authored<Element>,
     pub part_host: Option<std::sync::Arc<crate::doc::build::PartHost>>,
     /// The semantic owner of a detached widget surface's CSS parts.
     /// Placement anchors alone do not imply shared CSS ownership.
     pub part_source: usize,
     pub part_box: Option<PartBox>,
     pub content_slot: usize,
-    pub content: Content,
+    /// Its content as authored: layout and paint read a text through
+    /// [`Node::text`].
+    pub content: Authored<Content>,
     pub widget: Widget,
     pub part_geometry: Option<PartGeometry>,
     /// The text the probe reports for it.
@@ -977,8 +979,9 @@ pub(crate) struct Node {
     /// A scope Back does not close (a locked dialog): while it is the
     /// topmost, Back reaches `Ui::back`.
     pub locked: bool,
-    /// Drawn after the background.
-    pub shapes: Vec<Shape>,
+    /// Drawn after the background, as authored ([`Node::drawn_shapes`]
+    /// adds what placement draws).
+    pub shapes: Authored<Vec<Shape>>,
     /// A document's CSS border, outline, shadows and clip
     /// ([`crate::decor::BoxDecor`]), painted over its draw.
     pub decor: Option<Box<crate::decor::BoxDecor>>,
@@ -992,8 +995,9 @@ pub(crate) struct Node {
     pub a11y: crate::a11y::A11y,
     /// Its descendants enter one after another (a style's stagger).
     pub stagger: Option<Stagger>,
-    /// The element model beyond its box (`crate::element`).
-    pub props: crate::element::Props,
+    /// The element model beyond its box (`crate::element`), as authored
+    /// (what its variants set over it: [`LayoutBox::varied`]).
+    pub props: Authored<crate::element::Props>,
     /// What style and motion sample for it this tick ([`StyleNode`]).
     pub style: StyleNode,
     /// CSS `accent-color` and `caret-color` it declares or inherits as a
@@ -1038,7 +1042,7 @@ impl Node {
     /// Its text as layout and paint read it: at the step layout chose for
     /// an auto-fit text, else its own.
     pub(crate) fn text(&self) -> Option<UsedText<'_>> {
-        match &self.content {
+        match &*self.content {
             Content::Text(t) => Some(self.used_text(t)),
             _ => None,
         }
@@ -1216,7 +1220,7 @@ impl Node {
     /// Its text's ink (white without a text): its content's, or with a
     /// matching variant's values.
     pub(crate) fn ink(&self) -> Srgba {
-        match (&self.content, &self.layout.varied.values) {
+        match (&*self.content, &self.layout.varied.values) {
             (Content::Text(_), Some(v)) => v.ink,
             (Content::Text(text), None) => text.color,
             _ => Srgba::WHITE,
@@ -1239,7 +1243,7 @@ impl Node {
         SampledStyle {
             transform: self.props.transform,
             opacity: self.props.opacity,
-            ink: match &self.content {
+            ink: match &*self.content {
                 Content::Text(text) => text.color,
                 _ => Srgba::WHITE,
             },
@@ -1282,7 +1286,7 @@ impl Node {
             part_source: NONE,
             part_box: None,
             content_slot: NONE,
-            content: Content::None,
+            content: Authored::new(Content::None),
             widget: Widget::None,
             part_geometry: None,
             probe_text: String::new(),
@@ -1301,13 +1305,13 @@ impl Node {
             backdrop: false,
             scope: false,
             locked: false,
-            shapes: Vec::new(),
+            shapes: Authored::new(Vec::new()),
             decor: None,
             aux: [0.0; 3],
             heading: false,
             a11y: crate::a11y::A11y::default(),
             stagger: None,
-            props: crate::element::Props::default(),
+            props: Authored::new(crate::element::Props::default()),
             style: StyleNode::default(),
             accent: None,
             caret: None,

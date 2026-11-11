@@ -352,8 +352,9 @@ impl Ui {
         };
         let k = usize::from(selected);
         self.tree.el_mut(i).background = Some(rest[k]);
+        let build = self.tree.build();
         let n = &mut self.tree.nodes[i];
-        n.props.states = vec![
+        n.props.write(build).states = vec![
             StateGroup {
                 name: "selection".into(),
                 states: vec![state("off", rest[0]), state("on", rest[1])],
@@ -371,7 +372,7 @@ impl Ui {
                 transitions: Vec::new(),
             },
         ];
-        n.props.state = vec![(
+        n.props.write(build).state = vec![(
             "selection".into(),
             if selected { "on" } else { "off" }.into(),
         )];

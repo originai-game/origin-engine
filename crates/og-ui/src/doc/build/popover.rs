@@ -214,7 +214,7 @@ impl Ui {
             },
         );
         let at = self.tree.last_closed;
-        self.tree.nodes[at].props.position = crate::element::Position::Absolute;
+        self.tree.props_mut(at).position = crate::element::Position::Absolute;
         self.docs.note_built(built);
         let t = self.env.theme;
         let content = Self::box_of(
@@ -287,9 +287,10 @@ impl Ui {
     /// (the layout pass reads its `anchor` node, or `point`), and its arrow.
     fn place_popover(&mut self, r: &Resolved, at: usize, point: Option<[f32; 2]>) {
         let (spec, authored) = Self::anchor_spec(r, &mut Props::default());
+        let build = self.tree.build();
         let n = &mut self.tree.nodes[at];
         if authored {
-            n.props.anchor = Some(Box::new(spec));
+            n.props.write(build).anchor = Some(Box::new(spec));
         }
         n.anchor_point = point;
         n.arrow = r

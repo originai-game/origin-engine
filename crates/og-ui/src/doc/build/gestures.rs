@@ -122,7 +122,7 @@ impl Ui {
         let at = |h: f32| sign * (max - h.min(max));
         let travel = max - min;
         let lo = if sign < 0.0 { -travel } else { 0.0 };
-        self.tree.nodes[panel].props.drag = Some(DragSpec {
+        self.tree.props_mut(panel).drag = Some(DragSpec {
             axis: if side {
                 crate::element::DragAxis::X
             } else {

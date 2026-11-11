@@ -588,13 +588,13 @@ impl crate::ui::Tree {
             self.stage(i);
             self.nodes[i].part_box = Some(part);
             *self.el_mut(i) = element;
-            self.nodes[i].content = content;
+            *self.content_mut(i) = content;
             self.invalidation.rederive.push(owner);
             return i;
         }
         let mut node = Node::new(key, id, owner, element);
         node.part_box = Some(part);
-        node.content = content;
+        *node.content.write(self.build()) = content;
         let i = self.write_node(node, ("part", false));
         self.nodes[owner].built_children.push(i);
         i
@@ -708,7 +708,7 @@ impl Ui {
         };
         let mut content = self.tree.text_content(text, t.type_ramp.meta, ink);
         content.wrap = false;
-        node.content = Content::Text(content);
+        *node.content.write(self.tree.build()) = Content::Text(content);
         node.widget = Widget::Tooltip;
         node.probe_text = text.to_owned();
         node.anchor = anchor;

@@ -469,7 +469,7 @@ impl Ui {
         if n.layout.links.is_empty() {
             return;
         }
-        let Content::Rich(rc) = &n.content else {
+        let Content::Rich(rc) = &*n.content else {
             return;
         };
         let at = self.tree.path_of(i);
@@ -622,7 +622,7 @@ impl Ui {
                 }
                 // A rich text's links: children for the probe.
                 if !n.layout.links.is_empty() {
-                    let Content::Rich(rc) = &n.content else {
+                    let Content::Rich(rc) = &*n.content else {
                         unreachable!("links come from rich text")
                     };
                     for (l, lr) in self.rich_links(i) {
