@@ -463,7 +463,7 @@ impl Ui {
     /// A node's state groups: their states now, the plays they start, the
     /// transition each moved channel takes and the values they set; the
     /// groups are handed back.
-    #[allow(clippy::too_many_arguments, clippy::needless_borrow)]
+    #[allow(clippy::too_many_arguments)]
     fn step_states(
         &mut self,
         i: usize,
@@ -478,7 +478,7 @@ impl Ui {
     ) -> Vec<super::StateGroup> {
         let groups = self.tree.nodes[i].props.states.clone();
         for g in &groups {
-            let cur = self.state_of(i, g, &m);
+            let cur = self.state_of(i, g, m);
             let gk = group_key(key, &g.name);
             touched.insert(gk);
             node_groups.push(gk);
@@ -534,7 +534,7 @@ impl Ui {
 
     /// A node's channels: each one's transition, delay and value this tick;
     /// the values and whether any is still moving.
-    #[allow(clippy::too_many_arguments, clippy::needless_borrow)]
+    #[allow(clippy::too_many_arguments)]
     fn step_channels(
         &mut self,
         i: usize,
@@ -672,7 +672,7 @@ impl Ui {
 
     /// A node's CSS animations, over its channels' values: later entries
     /// win.
-    #[allow(clippy::too_many_arguments, clippy::needless_borrow)]
+    #[allow(clippy::too_many_arguments)]
     fn step_animations(
         &mut self,
         i: usize,
@@ -702,7 +702,7 @@ impl Ui {
                 styled |= !frames.styles.is_empty();
                 if let Some(p) = p {
                     let (b, active) = a.on_progress(p);
-                    for (c, v) in b.sample_active(&frames, active, &row, false).values {
+                    for (c, v) in b.sample_active(&frames, active, row, false).values {
                         row[c] = v;
                     }
                 }
@@ -737,7 +737,7 @@ impl Ui {
                     run.ticks += 1;
                 }
             }
-            let sample = a.sample(&frames, run.ticks, tps, &row, reduced);
+            let sample = a.sample(&frames, run.ticks, tps, row, reduced);
             for (c, v) in sample.values {
                 row[c] = v;
             }
@@ -784,7 +784,7 @@ impl Ui {
 
     /// FLIP: from a node's last laid-out rectangle to this one, relative
     /// to the nearest ancestor that animates its layout too.
-    #[allow(clippy::too_many_arguments, clippy::needless_borrow)]
+    #[allow(clippy::too_many_arguments)]
     fn step_flip(
         &mut self,
         i: usize,
@@ -832,8 +832,8 @@ impl Ui {
                 let get = |m: &MotionState, k: u64, d: f32| {
                     m.channels.get(&k).copied().unwrap_or(Channel::at(d, now))
                 };
-                let (mut cx, mut cy) = (get(&m, keys[0], 0.0), get(&m, keys[1], 0.0));
-                let (mut sx, mut sy) = (get(&m, keys[2], 1.0), get(&m, keys[3], 1.0));
+                let (mut cx, mut cy) = (get(m, keys[0], 0.0), get(m, keys[1], 0.0));
+                let (mut sx, mut sy) = (get(m, keys[2], 1.0), get(m, keys[3], 1.0));
                 // Where it shows now, kept: the offset takes up the move.
                 cx.value += prev.x - rel.x;
                 cy.value += prev.y - rel.y;
@@ -1072,13 +1072,7 @@ impl Ui {
     }
 
     /// Drags and pinches.
-    #[allow(clippy::needless_borrow)]
-    fn step_gestures(
-        &mut self,
-        mut m: &mut MotionState,
-        touched: &mut crate::id::KeySet,
-        now: u64,
-    ) {
+    fn step_gestures(&mut self, m: &mut MotionState, touched: &mut crate::id::KeySet, now: u64) {
         // Drags and pinches.
         for k in 0..self.tree.orders.with(feat::GESTURE).len() {
             let i = self.tree.orders.with(feat::GESTURE)[k];
@@ -1087,7 +1081,7 @@ impl Ui {
                 continue;
             }
             let key = n.key;
-            let out = self.run_gesture(i, &mut m);
+            let out = self.run_gesture(i, m);
             self.tree.nodes[i].gesture = out;
             touched.insert(channel_key(key, DRAG_X));
             touched.insert(channel_key(key, DRAG_Y));
