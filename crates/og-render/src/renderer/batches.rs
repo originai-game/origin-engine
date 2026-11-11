@@ -179,7 +179,7 @@ impl Renderer {
                 wgpu::BindingResource::TextureView(atlas),
                 wgpu::BindingResource::Sampler(&self.trilinear_sampler),
             ],
-            &self.decal_buffers,
+            &self.lights.decal_buffers,
         ))
     }
 

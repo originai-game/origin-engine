@@ -1143,7 +1143,7 @@ impl Renderer {
                         scene,
                         b,
                         m.clustered(b.mesh),
-                        self.lightmaps.group(b.mesh).is_some(),
+                        self.lights.lightmaps.group(b.mesh).is_some(),
                     ) && !self.cache.materials[b.material].wire_only
                 })
                 .map(|(i, _)| i as u32)
@@ -1850,7 +1850,7 @@ impl Renderer {
         });
 
         // Local lights: the clusters they reach, their records, their shadow faces.
-        self.clusters.build(
+        self.lights.clusters.build(
             &scene.lights,
             &clusters::ClusterView {
                 camera: &cam,
@@ -1864,7 +1864,7 @@ impl Renderer {
         );
         let (mut lights_gpu, local_shadows, shadowed_dropped) = frame::local_lights(
             &scene.lights,
-            &self.clusters.kept,
+            &self.lights.clusters.kept,
             camera.position,
             frame::LocalShadowBudget {
                 max_shadowed: self.info.shadowed_lights.min(scene.quality.shadowed_lights) as usize,
@@ -1914,8 +1914,12 @@ impl Renderer {
                 cookie_base,
                 |h| textures.get(h.index()).map(|t| &t.view),
             );
-            self.cookies
-                .patch(scene, &self.clusters.kept, &mut lights_gpu, cookie_base);
+            self.cookies.patch(
+                scene,
+                &self.lights.clusters.kept,
+                &mut lights_gpu,
+                cookie_base,
+            );
         }
         plans.volumetric = VolumetricPass::plan(
             &mut self.volumetric,
@@ -1927,17 +1931,20 @@ impl Renderer {
             scene,
         );
         if !lights_gpu.is_empty() {
-            self.queue
-                .write_buffer(&self.light_buffers[0], 0, bytemuck::cast_slice(&lights_gpu));
             self.queue.write_buffer(
-                &self.light_buffers[1],
+                &self.lights.light_buffers[0],
                 0,
-                bytemuck::cast_slice(&self.clusters.table),
+                bytemuck::cast_slice(&lights_gpu),
             );
             self.queue.write_buffer(
-                &self.light_buffers[2],
+                &self.lights.light_buffers[1],
                 0,
-                bytemuck::cast_slice(&self.clusters.ref_words()),
+                bytemuck::cast_slice(&self.lights.clusters.table),
+            );
+            self.queue.write_buffer(
+                &self.lights.light_buffers[2],
+                0,
+                bytemuck::cast_slice(&self.lights.clusters.ref_words()),
             );
         }
         // The planar reflection's clusters: the same light records seen by
@@ -1945,7 +1952,7 @@ impl Renderer {
         for (k, (_, mirrored, f, _, (rw, rh))) in reflections.iter().enumerate() {
             self.reflection_clusters[k].build_kept(
                 &scene.lights,
-                &self.clusters.kept,
+                &self.lights.clusters.kept,
                 &clusters::ClusterView {
                     camera: f,
                     frustum: &Frustum::from_view_proj(f.view_proj),
@@ -2466,7 +2473,7 @@ impl Renderer {
                 .to_array(),
             cascade_view_proj: [[[0.0; 4]; 4]; CASCADES],
             cascade_bias: [[0.0; 4]; CASCADES],
-            cluster: self.clusters.params,
+            cluster: self.lights.clusters.params,
             local_view_proj: [[[0.0; 4]; 4]; LOCAL_SHADOW_LAYERS],
             atmosphere: atmosphere::AtmosphereGpu::new(
                 frame_fog.as_ref(),
@@ -2617,7 +2624,7 @@ impl Renderer {
             };
         }
         self.queue
-            .write_buffer(&self.frame_buffer, 0, bytemuck::bytes_of(&uniform));
+            .write_buffer(&self.lights.frame_buffer, 0, bytemuck::bytes_of(&uniform));
         // The live sky's faces due this frame see the sky as it is drawn.
         LiveSkyPass::write(&self.sky_capture, &self.queue, &uniform, &camera);
         let probe_positions: Vec<Vec3> = probe_frame
@@ -2774,13 +2781,13 @@ impl Renderer {
             } else {
                 &scene.decals
             },
-            &mut self.decal_records,
-            &mut self.decal_spheres,
+            &mut self.lights.decal_records,
+            &mut self.lights.decal_spheres,
         );
-        let decals = self.decal_records.len() as u32;
+        let decals = self.lights.decal_records.len() as u32;
         if decals > 0 {
-            self.clusters.bin_decals(
-                &self.decal_spheres,
+            self.lights.clusters.bin_decals(
+                &self.lights.decal_spheres,
                 &clusters::ClusterView {
                     camera: &cam,
                     frustum: &view_frustum,
@@ -2790,18 +2797,18 @@ impl Renderer {
                     width: self.width,
                     height: self.height,
                 },
-                &mut self.decal_bins,
+                &mut self.lights.decal_bins,
             );
-            self.decal_buffers.write(
+            self.lights.decal_buffers.write(
                 &self.device,
                 &self.queue,
-                &self.decal_records,
-                &self.decal_bins.cells,
+                &self.lights.decal_records,
+                &self.lights.decal_bins.cells,
             );
         }
         let decals_dropped = scene.decals.len() as u32 - decals
             + if decals > 0 {
-                self.decal_bins.refs_dropped
+                self.lights.decal_bins.refs_dropped
             } else {
                 0
             };
@@ -2842,7 +2849,7 @@ impl Renderer {
             fx_uniform.planar = n.extend(n.dot(at)).to_array();
         }
         self.queue
-            .write_buffer(&self.fx_buffer, 0, bytemuck::bytes_of(&fx_uniform));
+            .write_buffer(&self.lights.fx_buffer, 0, bytemuck::bytes_of(&fx_uniform));
         for (k, (_, _, _, view_proj, (rw, rh))) in reflections.iter().enumerate() {
             let mut u = fx_uniform;
             u.ao = [0.0; 4];
@@ -2862,7 +2869,7 @@ impl Renderer {
             &self.device,
             &self.queue,
             self.samples,
-            &self.clusters.kept,
+            &self.lights.clusters.kept,
             scene,
             &view_plans,
             &uniform,
@@ -3181,7 +3188,7 @@ impl Renderer {
                 },
                 &self.post,
                 &self.persistent,
-                &self.lightmaps.probe_buffer,
+                &self.lights.lightmaps.probe_buffer,
                 (lut_key, lut_view),
                 (palette_view, canvas_view, &self.conformed.1, stylise_key),
             )
@@ -3344,7 +3351,7 @@ impl Renderer {
             RenderTarget::View(_) => None,
         };
 
-        let cluster_stats = &self.clusters.stats;
+        let cluster_stats = &self.lights.clusters.stats;
         let mut stats = FrameStats {
             instance_upload_bytes,
             terrain_tiles: self.terrain.resident,
@@ -3355,7 +3362,7 @@ impl Renderer {
             culled,
             triangles: main_list.triangles + blended_list.triangles,
             in_view_triangles: main_list.in_view_triangles,
-            lights: self.clusters.kept.len() as u32,
+            lights: self.lights.clusters.kept.len() as u32,
             shadowed_lights: local_shadows.len() as u32,
             shadowed_lights_dropped: shadowed_dropped,
             lights_dropped: cluster_stats.dropped,
@@ -3447,12 +3454,12 @@ impl Renderer {
             self.graph.generation,
             scene.id(),
             scene.decal_atlas,
-            self.decal_buffers.generation,
+            self.lights.decal_buffers.generation,
             ao_target || contact,
             scene.lighting_2d.is_some(),
             reflection.is_some(),
         );
-        if self.fx_groups.as_ref().map(|g| g.key) != Some(fx_key) {
+        if self.lights.fx_groups.as_ref().map(|g| g.key) != Some(fx_key) {
             let atlas_view = scene.decal_atlas.map_or(&self.default_white, |t| {
                 &self.cache.textures[t.index()].view
             });
@@ -3460,7 +3467,7 @@ impl Renderer {
                 &self.device,
                 atlas_view,
                 &self.trilinear_sampler,
-                &self.decal_buffers,
+                &self.lights.decal_buffers,
             );
             let ao_view = if ao_target || contact {
                 self.graph.view("ao")
@@ -3503,23 +3510,24 @@ impl Renderer {
                     "fx",
                     &self.fx_layout,
                     &[
-                        self.fx_buffer.as_entire_binding(),
+                        self.lights.fx_buffer.as_entire_binding(),
                         wgpu::BindingResource::TextureView(ao_view),
                         wgpu::BindingResource::TextureView(atlas_view),
                         wgpu::BindingResource::Sampler(&self.trilinear_sampler),
                         wgpu::BindingResource::TextureView(planar_view),
                     ][..if self.planar_slot() { 5 } else { 4 }],
-                    &self.decal_buffers,
+                    &self.lights.decal_buffers,
                 ),
-                fx_lean: self.fx_lean_group(&self.fx_buffer, ao_view, atlas_view),
+                fx_lean: self.fx_lean_group(&self.lights.fx_buffer, ao_view, atlas_view),
                 sprite: sprite_group(lightmap_view, lightdir_view, "sprite fx"),
                 // The glow pass draws into a target that may alias the light
                 // map: its sprites read a placeholder instead.
                 glow: sprite_group(&self.default_white, &self.post.black, "sprite fx (glow)"),
             };
-            self.fx_groups = Some(groups);
+            self.lights.fx_groups = Some(groups);
         }
         let (_, frame_bind_group, sky_group, reflection_frame_group) = self
+            .lights
             .environment
             .as_ref()
             .expect("environment generated above");
@@ -3536,7 +3544,7 @@ impl Renderer {
             .zip(self.oit.arena.as_ref())
             .filter(|_| oit_mode.is_some_and(oit::Oit::arena));
         let (probe_groups, face_groups, oit_frame_group, oit_probe_groups) = {
-            let ibl = self.ibl.views();
+            let ibl = self.lights.ibl.views();
             // The reflections' read (frame.wgsl ssr_tex), whose rows the
             // uniforms switch: on in the main camera's and its probes'.
             let ssr_view = self.ssr.frame_view();
@@ -3554,12 +3562,12 @@ impl Renderer {
                     wgpu::BindingResource::TextureView(b),
                     wgpu::BindingResource::TextureView(&ibl.brdf_lut),
                     wgpu::BindingResource::Sampler(&ibl.sampler),
-                    self.light_buffers[0].as_entire_binding(),
-                    self.light_buffers[1].as_entire_binding(),
-                    self.light_buffers[2].as_entire_binding(),
-                    self.lightmaps.probe_buffer.as_entire_binding(),
-                    self.ltc.as_entire_binding(),
-                    self.caustic_grid.as_entire_binding(),
+                    self.lights.light_buffers[0].as_entire_binding(),
+                    self.lights.light_buffers[1].as_entire_binding(),
+                    self.lights.light_buffers[2].as_entire_binding(),
+                    self.lights.lightmaps.probe_buffer.as_entire_binding(),
+                    self.lights.ltc.as_entire_binding(),
+                    self.lights.caustic_grid.as_entire_binding(),
                     wgpu::BindingResource::TextureView(ssr_view),
                 ];
                 entries.extend(arena.map(|a| a.as_entire_binding()));
@@ -3570,7 +3578,7 @@ impl Renderer {
                     layout,
                     Some(&arena.buffer),
                     "frame (oit lists)",
-                    self.frame_buffer.as_entire_binding(),
+                    self.lights.frame_buffer.as_entire_binding(),
                     &ibl.irradiance,
                     &ibl.prefiltered,
                 )
@@ -3589,12 +3597,12 @@ impl Renderer {
                         wgpu::BindingResource::TextureView(b),
                         wgpu::BindingResource::TextureView(&ibl.brdf_lut),
                         wgpu::BindingResource::Sampler(&ibl.sampler),
-                        self.light_buffers[0].as_entire_binding(),
-                        self.light_buffers[1].as_entire_binding(),
-                        self.light_buffers[2].as_entire_binding(),
-                        self.lightmaps.probe_buffer.as_entire_binding(),
-                        self.ltc.as_entire_binding(),
-                        self.caustic_grid.as_entire_binding(),
+                        self.lights.light_buffers[0].as_entire_binding(),
+                        self.lights.light_buffers[1].as_entire_binding(),
+                        self.lights.light_buffers[2].as_entire_binding(),
+                        self.lights.lightmaps.probe_buffer.as_entire_binding(),
+                        self.lights.ltc.as_entire_binding(),
+                        self.lights.caustic_grid.as_entire_binding(),
                         wgpu::BindingResource::TextureView(ssr_view),
                     ],
                 )
@@ -3645,7 +3653,7 @@ impl Renderer {
                 groups: &oit_probe_groups,
                 frame,
             });
-        let groups = self.fx_groups.as_ref().expect("made above");
+        let groups = self.lights.fx_groups.as_ref().expect("made above");
         let (fx_group, sprite_fx_group, glow_fx_group) = (&groups.fx, &groups.sprite, &groups.glow);
         // The physical pipelines' effect group: the same plus the scene copy
         // (a placeholder in a frame without transmission).
@@ -3668,7 +3676,7 @@ impl Renderer {
                         "physical fx",
                         &p.fx_layout,
                         &[
-                            self.fx_buffer.as_entire_binding(),
+                            self.lights.fx_buffer.as_entire_binding(),
                             wgpu::BindingResource::TextureView(ao_view),
                             wgpu::BindingResource::TextureView(atlas_view),
                             wgpu::BindingResource::Sampler(&self.trilinear_sampler),
@@ -3676,7 +3684,7 @@ impl Renderer {
                                 transmission_view.map_or(&self.post.white, |(v, _)| v),
                             ),
                         ],
-                        &self.decal_buffers,
+                        &self.lights.decal_buffers,
                     )
                 })
         });
@@ -3729,7 +3737,7 @@ impl Renderer {
                 &scene.camera,
                 &scene.quality,
                 &self.post.white,
-                &self.caustic_grid,
+                &self.lights.caustic_grid,
                 &|h| {
                     self.cache
                         .meshes
@@ -3869,7 +3877,7 @@ impl Renderer {
                         // Not the reflection itself: this pass draws it.
                         wgpu::BindingResource::TextureView(&self.post.white),
                     ][..if self.planar_slot() { 5 } else { 4 }],
-                    &self.decal_buffers,
+                    &self.lights.decal_buffers,
                 )
             })
             .collect();

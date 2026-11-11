@@ -23,13 +23,13 @@ impl Pass for VolumetricPass {
         st.encode_froxels(
             &r.device,
             cx.encoder,
-            &r.frame_buffer,
+            &r.lights.frame_buffer,
             &r.cascade_map.array_view,
             &r.local_map.array_view,
             [
-                &r.light_buffers[0],
-                &r.light_buffers[1],
-                &r.light_buffers[2],
+                &r.lights.light_buffers[0],
+                &r.lights.light_buffers[1],
+                &r.lights.light_buffers[2],
             ],
         );
     }

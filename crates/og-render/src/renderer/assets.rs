@@ -21,7 +21,10 @@ impl Renderer {
                 image
                     .validate()
                     .map_err(|e| RenderError::InvalidData(format!("environment map {i}: {e}")))?;
-                let (texture, view) = self.ibl.bake_equirect(&self.device, &self.queue, image);
+                let (texture, view) =
+                    self.lights
+                        .ibl
+                        .bake_equirect(&self.device, &self.queue, image);
                 Some(GpuEnvironmentMap {
                     _texture: texture,
                     view,
@@ -416,7 +419,7 @@ impl Renderer {
                 self.cache.ribbon_groups[index] = None;
             }
             self.queue.submit(Some(encoder.finish()));
-            self.fx_groups = None;
+            self.lights.fx_groups = None;
             self.terrain.forget_groups();
         }
         // Stream textures' new frames, written in place (no rebinding). A

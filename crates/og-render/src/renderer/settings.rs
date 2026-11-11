@@ -150,7 +150,7 @@ impl Renderer {
                 LOCAL_SHADOW_FORMAT,
             );
             // The frame groups bind them: ensure_environment makes them again.
-            self.environment = None;
+            self.lights.environment = None;
         }
         // The device's samples cap the quality's (RenderInfo::msaa_samples):
         // where it resolved no MSAA, one sample whatever the quality asks.
@@ -232,7 +232,7 @@ impl Renderer {
         if let Some(p) = &mut self.physical {
             p.pipelines.clear();
         }
-        self.lightmaps.forget_pipelines();
+        self.lights.lightmaps.forget_pipelines();
     }
 
     /// The size the scene is drawn at this frame: the output's, the

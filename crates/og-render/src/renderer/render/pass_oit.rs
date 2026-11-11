@@ -91,7 +91,7 @@ impl Renderer {
         for b in batches.iter().filter(|b| b.transparent && b.blend) {
             let physical = b.physical && self.physical.is_some();
             wanted.push(Self::oit_lit_source(b, false, physical));
-            if let Some(f) = Self::lightmap_family(&self.lightmaps, b, physical) {
+            if let Some(f) = Self::lightmap_family(&self.lights.lightmaps, b, physical) {
                 wanted.push(Source::Lightmap(f, b.side, b.effects));
             }
         }
@@ -261,7 +261,7 @@ impl Renderer {
                             )
                         }
                     };
-                    let pages = self.lightmaps.pages_layout();
+                    let pages = self.lights.lightmaps.pages_layout();
                     let layout = self
                         .oit
                         .layout(&device, name, mode, frame, &[groups[0], groups[1], pages])

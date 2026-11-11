@@ -869,7 +869,7 @@ impl Renderer {
         );
         self.shelter_key = None;
         self.shadow_cache.forget_layers();
-        self.environment = None;
+        self.lights.environment = None;
     }
 
     /// The cascades a frame of `scene` draws: its quality's count within
@@ -922,7 +922,7 @@ impl Renderer {
             LOCAL_SHADOW_FORMAT,
         );
         self.shadow_cache.forget_layers();
-        self.environment = None;
+        self.lights.environment = None;
     }
 
     /// (Re)generates the image-based lighting when the sky, or the
@@ -992,7 +992,7 @@ impl Renderer {
         // group again with it.
         if scene.clouds.is_some() && !self.cloud_noise.made {
             self.cloud_noise.make(&self.device, &self.queue);
-            self.environment = None;
+            self.lights.environment = None;
         }
         // The aurora's footprint follows the clock every frame; the first
         // frame with one makes its texture, and the sky group again.
@@ -1012,10 +1012,15 @@ impl Renderer {
                 glam::Vec2::new(viewer.x, viewer.z),
             );
             if !made {
-                self.environment = None;
+                self.lights.environment = None;
             }
         }
-        if self.environment.as_ref().is_some_and(|(k, ..)| *k == key) {
+        if self
+            .lights
+            .environment
+            .as_ref()
+            .is_some_and(|(k, ..)| *k == key)
+        {
             return;
         }
         let view = |i: usize| {
@@ -1035,7 +1040,7 @@ impl Renderer {
                     ),
                     None => *first,
                 };
-                self.ibl.generate_map(
+                self.lights.ibl.generate_map(
                     &self.device,
                     &self.queue,
                     view(m.map.index()),
@@ -1045,7 +1050,7 @@ impl Renderer {
                     m.background_intensity.max(0.0),
                 )
             }
-            None => self.ibl.generate(
+            None => self.lights.ibl.generate(
                 &self.device,
                 &self.queue,
                 sky.sun_direction,
@@ -1058,21 +1063,21 @@ impl Renderer {
         if let Some(c) = &mut self.sky_capture {
             c.restart();
         }
-        let ibl = self.ibl.views();
+        let ibl = self.lights.ibl.views();
         let entries = [
-            self.frame_buffer.as_entire_binding(),
+            self.lights.frame_buffer.as_entire_binding(),
             wgpu::BindingResource::TextureView(&self.cascade_map.array_view),
             wgpu::BindingResource::TextureView(&self.local_map.array_view),
             wgpu::BindingResource::TextureView(&ibl.irradiance),
             wgpu::BindingResource::TextureView(&ibl.prefiltered),
             wgpu::BindingResource::TextureView(&ibl.brdf_lut),
             wgpu::BindingResource::Sampler(&ibl.sampler),
-            self.light_buffers[0].as_entire_binding(),
-            self.light_buffers[1].as_entire_binding(),
-            self.light_buffers[2].as_entire_binding(),
-            self.lightmaps.probe_buffer.as_entire_binding(),
-            self.ltc.as_entire_binding(),
-            self.caustic_grid.as_entire_binding(),
+            self.lights.light_buffers[0].as_entire_binding(),
+            self.lights.light_buffers[1].as_entire_binding(),
+            self.lights.light_buffers[2].as_entire_binding(),
+            self.lights.lightmaps.probe_buffer.as_entire_binding(),
+            self.lights.ltc.as_entire_binding(),
+            self.lights.caustic_grid.as_entire_binding(),
             // The main camera's reflections (ssr.rs; `Frame.ssr` switches
             // them, off in the planar reflections' uniforms).
             wgpu::BindingResource::TextureView(self.ssr.frame_view()),
@@ -1105,12 +1110,12 @@ impl Renderer {
                 wgpu::BindingResource::TextureView(&self.aurora_map.view),
             ],
         );
-        self.environment = Some((key, group, sky_group, reflection_group));
+        self.lights.environment = Some((key, group, sky_group, reflection_group));
         if live && self.sky_capture.is_none() {
             self.sky_capture = Some(crate::sky_capture::SkyCapture::new(
                 &self.device,
                 &self.queue,
-                &self.ibl,
+                &self.lights.ibl,
                 [&self.frame_layout, &self.sky_layout],
                 self.info.without.features(),
             ));

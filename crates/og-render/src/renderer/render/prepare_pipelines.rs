@@ -99,7 +99,8 @@ impl Renderer {
         for b in &*batches {
             let physical = [b.physical, false];
             for physical in &physical[..if b.physical { 2 } else { 1 }] {
-                let Some(family) = Self::lightmap_family(&self.lightmaps, b, *physical) else {
+                let Some(family) = Self::lightmap_family(&self.lights.lightmaps, b, *physical)
+                else {
                     continue;
                 };
                 use lightmap::Family;
@@ -126,7 +127,7 @@ impl Renderer {
                         ([&p.material_layout, &p.fx_layout], module)
                     }
                 };
-                self.lightmaps.ensure_pipeline(
+                self.lights.lightmaps.ensure_pipeline(
                     &self.device,
                     family,
                     groups,

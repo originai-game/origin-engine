@@ -605,21 +605,14 @@ pub struct Renderer {
     aurora_map: aurora::AuroraMap,
     material_layout: wgpu::BindGroupLayout,
     sprite_layout: wgpu::BindGroupLayout,
-    frame_buffer: wgpu::Buffer,
-    /// The local lights, the cluster table and its light references (`clusters.rs`).
-    light_buffers: [wgpu::Buffer; 3],
-    /// Baked lighting: lightmap pages and uvs, the light volumes' buffer
-    /// (frame binding 10).
-    lightmaps: lightmap::Lightmaps,
-    /// The rect lights' LTC table (frame binding 11).
-    ltc: wgpu::Buffer,
-    /// A sea's caustics grid (W2, `water::caustic_buffer`), in the frame group.
-    caustic_grid: wgpu::Buffer,
+    /// The frame's lighting every lit pass binds: the frame uniform, the light
+    /// tables and clusters, the light volumes, the IBL and environment, the
+    /// decals, and the effect buffer and groups.
+    lights: renderer::Lights,
     /// Light cookies in the local shadow array's last layers.
     cookies: area::Cookies,
     /// Volumetric fog (made on first use).
     volumetric: volumetric::Volumetric,
-    clusters: clusters::ClusterBuilder,
     /// Per planar reflection slot, as many as [`RenderInfo::planar_reflections`] (0: the one material shaders read
     /// with two, 1: a second surface's): the frame uniform of its mirrored camera.
     reflection_buffer: Vec<wgpu::Buffer>,
@@ -677,8 +670,6 @@ pub struct Renderer {
     scatter: scatter::ScatterRenderer,
     grass: grass::GrassRenderer,
     metaballs: metaballs::MetaballRenderer,
-    /// The image-based light, regenerated into the same textures for a new sky.
-    ibl: ibl::IblGenerator,
     /// The live sky (`sky_capture.rs`): made while the background is the
     /// per-pixel sky.
     sky_capture: Option<sky_capture::SkyCapture>,
@@ -703,13 +694,6 @@ pub struct Renderer {
     /// texture (`Renderer::fx_lean_group`). `None` with one: `fx_layout`
     /// serves them.
     fx_lean_layout: Option<wgpu::BindGroupLayout>,
-    fx_buffer: wgpu::Buffer,
-    /// The frame's decal records and their clusters (`fx.rs`), and the CPU
-    /// vectors they are packed in, kept between frames.
-    decal_buffers: fx::DecalBuffers,
-    decal_records: Vec<fx::DecalGpu>,
-    decal_spheres: Vec<(glam::Vec3, f32)>,
-    decal_bins: clusters::DecalBins,
     sprite_fx_layout: wgpu::BindGroupLayout,
     sprite_fx_buffer: wgpu::Buffer,
     palette_layout: wgpu::BindGroupLayout,
@@ -747,7 +731,6 @@ pub struct Renderer {
     /// The features the renderer was made without that a scene used
     /// ([`RenderDesc::without`]): the log said so once for each.
     warned_without: LitFeatures,
-    fx_groups: Option<FxGroups>,
     mips: mips::MipGenerator,
     /// The physical lit pipelines, made when a scene first draws a physical
     /// material (`physical.rs`).
@@ -760,14 +743,6 @@ pub struct Renderer {
     /// its view and the chain's views and bind groups (made with it, not
     /// every frame).
     transmission: Option<(wgpu::Texture, wgpu::TextureView, mips::MipChain)>,
-    /// The frame bind group (camera, shadow maps, IBL) and the sky pass's
-    /// (the sky cube) for the sky they were generated from.
-    environment: Option<(
-        EnvironmentKey,
-        wgpu::BindGroup,
-        wgpu::BindGroup,
-        Vec<wgpu::BindGroup>,
-    )>,
     default_white: wgpu::TextureView,
     /// The conformed colours' hash table the stylise quantiser reads
     /// (`stylise::conformed_table`) and the scene revision it was made at.

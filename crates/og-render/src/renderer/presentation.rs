@@ -315,10 +315,10 @@ impl Renderer {
             + self.gi_probes.as_ref().map_or(0, |g| g.bytes())
             + self.volumetric.bytes();
         let buffers = [
-            &self.frame_buffer,
-            &self.ltc,
+            &self.lights.frame_buffer,
+            &self.lights.ltc,
             &self.shadow_buffer,
-            &self.fx_buffer,
+            &self.lights.fx_buffer,
             &self.sprite_fx_buffer,
             &self.instances.skinned_buffer,
             &self.instances.prev_instance_buffer,
@@ -327,7 +327,7 @@ impl Renderer {
             &self.sprite_buffer,
         ]
         .into_iter()
-        .chain(&self.light_buffers)
+        .chain(&self.lights.light_buffers)
         .chain(&self.reflection_buffer)
         .chain(&self.reflection_fx_buffer)
         .chain(self.reflection_light_buffers.iter().flatten())
@@ -337,7 +337,7 @@ impl Renderer {
         GpuMemory {
             textures: textures.iter().map(|t| t.bytes).sum::<u64>()
                 + self.asset_bytes()
-                + self.ibl.bytes(),
+                + self.lights.ibl.bytes(),
             meshes,
             render_targets,
             buffers,

@@ -1288,7 +1288,7 @@ impl crate::Renderer {
         scene: &crate::RenderScene,
         plans: &[ViewPlan],
     ) -> Vec<(wgpu::BindGroup, wgpu::BindGroup, Option<wgpu::BindGroup>)> {
-        let ibl = self.ibl.views();
+        let ibl = self.lights.ibl.views();
         let atlas_view = scene.decal_atlas.map_or(&self.default_white, |t| {
             &self.cache.textures[t.index()].view
         });
@@ -1308,12 +1308,12 @@ impl crate::Renderer {
                         wgpu::BindingResource::TextureView(&ibl.prefiltered),
                         wgpu::BindingResource::TextureView(&ibl.brdf_lut),
                         wgpu::BindingResource::Sampler(&ibl.sampler),
-                        self.light_buffers[0].as_entire_binding(),
+                        self.lights.light_buffers[0].as_entire_binding(),
                         slot.light_buffers[1].as_entire_binding(),
                         slot.light_buffers[2].as_entire_binding(),
-                        self.lightmaps.probe_buffer.as_entire_binding(),
-                        self.ltc.as_entire_binding(),
-                        self.caustic_grid.as_entire_binding(),
+                        self.lights.lightmaps.probe_buffer.as_entire_binding(),
+                        self.lights.ltc.as_entire_binding(),
+                        self.lights.caustic_grid.as_entire_binding(),
                         wgpu::BindingResource::TextureView(self.ssr.off_view()),
                     ],
                 );
@@ -1329,7 +1329,7 @@ impl crate::Renderer {
                         // No planar reflection in a view (the main camera's).
                         wgpu::BindingResource::TextureView(&self.post.white),
                     ][..if self.planar_slot() { 5 } else { 4 }],
-                    &self.decal_buffers,
+                    &self.lights.decal_buffers,
                 );
                 let lean = self.fx_lean_group(&slot.fx_buffer, &self.post.white, atlas_view);
                 (frame, fx, lean)

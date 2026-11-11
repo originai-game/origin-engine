@@ -21,7 +21,7 @@ impl Pass for LiveSkyPass {
     fn encode<'f>(st: &Self::State, _: &(), _: FramePass, cx: &mut EncodeCx<'_, 'f>) {
         let r = cx.ctx.r;
         let c = st.as_ref().expect("planned with it");
-        let ibl = r.ibl.views();
+        let ibl = r.lights.ibl.views();
         let frame = |uniform: wgpu::BindingResource| {
             bind_group(
                 &r.device,
@@ -35,17 +35,17 @@ impl Pass for LiveSkyPass {
                     wgpu::BindingResource::TextureView(&ibl.prefiltered),
                     wgpu::BindingResource::TextureView(&ibl.brdf_lut),
                     wgpu::BindingResource::Sampler(&ibl.sampler),
-                    r.light_buffers[0].as_entire_binding(),
-                    r.light_buffers[1].as_entire_binding(),
-                    r.light_buffers[2].as_entire_binding(),
-                    r.lightmaps.probe_buffer.as_entire_binding(),
-                    r.ltc.as_entire_binding(),
-                    r.caustic_grid.as_entire_binding(),
+                    r.lights.light_buffers[0].as_entire_binding(),
+                    r.lights.light_buffers[1].as_entire_binding(),
+                    r.lights.light_buffers[2].as_entire_binding(),
+                    r.lights.lightmaps.probe_buffer.as_entire_binding(),
+                    r.lights.ltc.as_entire_binding(),
+                    r.lights.caustic_grid.as_entire_binding(),
                     wgpu::BindingResource::TextureView(r.ssr.off_view()),
                 ],
             )
         };
-        c.record(cx.encoder, &r.ibl, frame, cx.sky_group);
+        c.record(cx.encoder, &r.lights.ibl, frame, cx.sky_group);
     }
 }
 

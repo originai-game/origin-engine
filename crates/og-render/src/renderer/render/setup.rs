@@ -55,7 +55,7 @@ impl Renderer {
                 .ssr
                 .ensure_targets(&self.device, &s, (self.width, self.height))
         {
-            self.environment = None;
+            self.lights.environment = None;
         }
         self.ensure_environment(scene);
         self.write_sky_params(scene);
@@ -87,7 +87,7 @@ impl Renderer {
     /// Whether `light`'s kind is drawn: a renderer made without rect lights
     /// (RenderDesc::without) keeps none ([`clusters::ClusterBuilder::skip_rects`]).
     pub(crate) fn kept_kind(&self, light: &Light) -> bool {
-        !(self.clusters.skip_rects && matches!(light.kind, LightKind::Rect { .. }))
+        !(self.lights.clusters.skip_rects && matches!(light.kind, LightKind::Rect { .. }))
     }
 
     pub(super) fn prepare_frame_probes(
@@ -102,16 +102,17 @@ impl Renderer {
             &[]
         };
         let grid = self
+            .lights
             .lightmaps
             .prepare(&self.device, &self.queue, &scene.baked, realtime);
         // The probe GI's header rows, after the volumes' (gi_probes.rs).
         if let Some(g) = &mut self.gi_probes {
-            g.write_header(&self.queue, &self.lightmaps.probe_buffer, false);
+            g.write_header(&self.queue, &self.lights.lightmaps.probe_buffer, false);
         }
         let probe_frame = self.probes.prepare(
             &self.device,
             &self.queue,
-            &self.ibl,
+            &self.lights.ibl,
             &scene.reflection_probes,
             scene.tick,
             self.samples,

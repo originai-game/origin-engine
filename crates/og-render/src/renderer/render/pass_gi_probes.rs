@@ -21,21 +21,26 @@ impl Pass for GiProbesPass {
     fn encode<'f>(st: &Self::State, _: &(), _: FramePass, cx: &mut EncodeCx<'_, 'f>) {
         let r = cx.ctx.r;
         let g = st.as_ref().expect("planned with it");
-        let ibl = r.ibl.views();
+        let ibl = r.lights.ibl.views();
         let frame = crate::volumetric::bind_at(
             &r.device,
             "gi probes frame",
             &g.frame_layout,
             &[
-                (0, r.frame_buffer.as_entire_binding()),
+                (0, r.lights.frame_buffer.as_entire_binding()),
                 (3, wgpu::BindingResource::TextureView(&ibl.irradiance)),
                 (4, wgpu::BindingResource::TextureView(&ibl.prefiltered)),
                 (6, wgpu::BindingResource::Sampler(&ibl.sampler)),
-                (7, r.light_buffers[0].as_entire_binding()),
-                (10, r.lightmaps.probe_buffer.as_entire_binding()),
+                (7, r.lights.light_buffers[0].as_entire_binding()),
+                (10, r.lights.lightmaps.probe_buffer.as_entire_binding()),
             ],
         );
-        g.record(&r.device, cx.encoder, &frame, &r.lightmaps.probe_buffer);
+        g.record(
+            &r.device,
+            cx.encoder,
+            &frame,
+            &r.lights.lightmaps.probe_buffer,
+        );
     }
 }
 
@@ -69,12 +74,13 @@ impl Renderer {
             .get_or_insert_with(|| crate::gi_probes::GiProbes::new(&self.device));
         let need = region + crate::gi_probes::region_vec4s(&desc);
         if self
+            .lights
             .lightmaps
             .ensure_capacity(&self.device, &self.queue, need)
         {
             // The groups binding the buffer: the frame's and the effect
             // passes' (the screen GI reads the probes).
-            self.environment = None;
+            self.lights.environment = None;
             self.graph.invalidate();
             g.restart();
         }

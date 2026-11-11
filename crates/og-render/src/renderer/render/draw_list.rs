@@ -68,15 +68,16 @@ impl Renderer {
                     batch.array,
                 );
                 let oit = oit.filter(|_| batch.blend);
-                let lightmap = Self::lightmap_family(&self.lightmaps, batch, physical)
+                let lightmap = Self::lightmap_family(&self.lights.lightmaps, batch, physical)
                     .and_then(|f| match oit {
                         Some(m) => self
                             .oit_pipeline(oit::Source::Lightmap(f, batch.side, batch.effects), m),
                         None => self
+                            .lights
                             .lightmaps
                             .pipeline(f, (batch.side, batch.blend, batch.effects)),
                     })
-                    .zip(self.lightmaps.group(batch.mesh))
+                    .zip(self.lights.lightmaps.group(batch.mesh))
                     // Where the planar reflection takes a slot, a pass
                     // without the lean group draws it unbaked.
                     .filter(|_| physical || self.fx_lean_layout.is_none() || lean.is_some());
@@ -167,7 +168,7 @@ impl Renderer {
                 1,
                 instances.slice(start..start + count as u64 * INSTANCE_STRIDE),
             );
-            if lightmapped && let Some(uvs) = self.lightmaps.uvs(batch.mesh) {
+            if lightmapped && let Some(uvs) = self.lights.lightmaps.uvs(batch.mesh) {
                 pass.set_vertex_buffer(2, uvs.slice(..));
             }
             pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);

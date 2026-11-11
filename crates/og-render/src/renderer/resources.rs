@@ -592,6 +592,41 @@ impl ShadowMap {
     }
 }
 
+/// The frame's lighting every lit pass binds: the frame uniform, the light
+/// tables and clusters, the light volumes, the IBL and environment, the
+/// decals, and the effect buffer and groups.
+pub(crate) struct Lights {
+    pub(crate) frame_buffer: wgpu::Buffer,
+    /// The local lights, the cluster table and its light references (`clusters.rs`).
+    pub(crate) light_buffers: [wgpu::Buffer; 3],
+    pub(crate) clusters: clusters::ClusterBuilder,
+    /// Baked lighting: lightmap pages and uvs, the light volumes' buffer
+    /// (frame binding 10).
+    pub(crate) lightmaps: lightmap::Lightmaps,
+    /// The rect lights' LTC table (frame binding 11).
+    pub(crate) ltc: wgpu::Buffer,
+    /// A sea's caustics grid (W2, `water::caustic_buffer`), in the frame group.
+    pub(crate) caustic_grid: wgpu::Buffer,
+    /// The image-based light, regenerated into the same textures for a new sky.
+    pub(crate) ibl: ibl::IblGenerator,
+    /// The frame bind group (camera, shadow maps, IBL) and the sky pass's
+    /// (the sky cube) for the sky they were generated from.
+    pub(crate) environment: Option<(
+        EnvironmentKey,
+        wgpu::BindGroup,
+        wgpu::BindGroup,
+        Vec<wgpu::BindGroup>,
+    )>,
+    /// The frame's decal records and their clusters (`fx.rs`), and the CPU
+    /// vectors they are packed in, kept between frames.
+    pub(crate) decal_buffers: fx::DecalBuffers,
+    pub(crate) decal_records: Vec<fx::DecalGpu>,
+    pub(crate) decal_spheres: Vec<(glam::Vec3, f32)>,
+    pub(crate) decal_bins: clusters::DecalBins,
+    pub(crate) fx_buffer: wgpu::Buffer,
+    pub(crate) fx_groups: Option<FxGroups>,
+}
+
 #[cfg(test)]
 mod foliage_layout_tests {
     use super::*;
