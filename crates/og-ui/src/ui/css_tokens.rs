@@ -164,8 +164,8 @@ impl Ui {
             }
         });
         values.retain(|name, value| old.get(name) != Some(value));
-        self.root_tokens = values.into_iter().collect();
-        self.root_type_tokens = Breakpoint::ALL.map(|bp| {
+        self.style.root_tokens = values.into_iter().collect();
+        self.style.root_type_tokens = Breakpoint::ALL.map(|bp| {
             let baseline = typography(&Theme::new(theme.scheme), bp, &self.env.fonts);
             typography(&theme, bp, &self.env.fonts)
                 .into_iter()

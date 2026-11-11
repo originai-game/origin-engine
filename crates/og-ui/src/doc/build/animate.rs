@@ -242,7 +242,8 @@ impl Ui {
                 // Its timeline's progress as the motion step last read it
                 // (the motion step asks for a build when it moves).
                 let Some(p) = self
-                    .motion_cache
+                    .style
+                    .motion
                     .timelines
                     .get(&key)
                     .and_then(|v| v.get(index).copied().flatten())

@@ -181,7 +181,7 @@ impl Ui {
                     haptic: fallback.haptic,
                     ..crate::tokens::Feedback::SILENT
                 },
-                |s| s.bind(&self.css_sounds, fallback.haptic),
+                |s| s.bind(&self.style.css_sounds, fallback.haptic),
             )
     }
 
@@ -207,16 +207,16 @@ impl Ui {
             states: &Default::default(),
             text: "",
         };
-        let mut inline = self.root_tokens.clone();
-        inline.extend_from_slice(&self.root_type_tokens[self.breakpoint() as usize]);
+        let mut inline = self.style.root_tokens.clone();
+        inline.extend_from_slice(&self.style.root_type_tokens[self.breakpoint() as usize]);
         cascade::values_with(
-            &self.part_rules,
+            &self.style.part_rules,
             &cascade::Options {
                 inline: &inline,
                 inherited: &Default::default(),
                 basis: None,
                 attr: &|_| None,
-                sheet: Some(&self.part_sheet),
+                sheet: Some(&self.style.part_sheet),
                 starting: false,
                 carry: false,
             },
@@ -228,8 +228,8 @@ impl Ui {
     /// sheet unchanged. This does not install a legacy dressing.
     pub fn set_part_css(&mut self, css: &str) -> Result<(), String> {
         let (rules, sheet) = crate::doc::stylesheet::part_rules(css)?;
-        self.part_rules = rules;
-        self.part_sheet = sheet;
+        self.style.part_rules = rules;
+        self.style.part_sheet = sheet;
         self.read_theme_tokens();
         self.invalidation.epoch += 1;
         Ok(())
@@ -237,11 +237,13 @@ impl Ui {
 
     /// Preserve the installed part stylesheet when rebuilding a UI.
     pub fn inherit_part_css(&mut self, source: &Ui) {
-        self.part_rules.clone_from(&source.part_rules);
-        self.part_sheet.clone_from(&source.part_sheet);
-        self.css_sounds.clone_from(&source.css_sounds);
-        self.root_tokens.clone_from(&source.root_tokens);
-        self.root_type_tokens.clone_from(&source.root_type_tokens);
+        self.style.part_rules.clone_from(&source.style.part_rules);
+        self.style.part_sheet.clone_from(&source.style.part_sheet);
+        self.style.css_sounds.clone_from(&source.style.css_sounds);
+        self.style.root_tokens.clone_from(&source.style.root_tokens);
+        self.style
+            .root_type_tokens
+            .clone_from(&source.style.root_type_tokens);
         self.read_theme_tokens();
         self.invalidation.epoch += 1;
     }
@@ -277,7 +279,8 @@ impl Ui {
         part: &crate::dress::PartRef,
     ) -> Vec<&crate::doc::StyleRule> {
         part.with_facts(|facts| {
-            self.part_rules
+            self.style
+                .part_rules
                 .iter()
                 .filter(|rule| self.part_matches(rule, &facts))
                 .collect()
@@ -309,8 +312,8 @@ impl Ui {
     pub(crate) fn part_values(&self, part: &crate::dress::PartRef, key: Option<u64>) -> Resolved {
         let host = key.and_then(|k| self.part_host(k));
         let document = host.and_then(|h| self.docs.host.docs.get(&h.document));
-        let mut rules = std::borrow::Cow::Borrowed(&self.part_rules);
-        let mut sheet = std::borrow::Cow::Borrowed(&self.part_sheet);
+        let mut rules = std::borrow::Cow::Borrowed(&self.style.part_rules);
+        let mut sheet = std::borrow::Cow::Borrowed(&self.style.part_sheet);
         if let Some(doc) = document.filter(|d| !d.part_rules.is_empty()) {
             let rules = rules.to_mut();
             let sheet = sheet.to_mut();
@@ -476,7 +479,8 @@ impl Ui {
                 )
             });
             if let (Some(key), Some(commit)) = (key, &style) {
-                self.part_commits
+                self.style
+                    .part_commits
                     .borrow_mut()
                     .insert((key, part.part), commit.clone());
             }

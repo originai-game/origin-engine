@@ -94,7 +94,7 @@ impl StylePack {
 impl crate::Ui {
     /// Bind cooked sound asset IDs used by the active CSS pack.
     pub fn set_css_sounds(&mut self, sounds: std::collections::BTreeMap<String, u64>) {
-        self.css_sounds = sounds;
+        self.style.css_sounds = sounds;
     }
 
     /// Seed the checkpointed presentation random stream from the engine seed.
@@ -106,8 +106,8 @@ impl crate::Ui {
     /// Game document styles remain in their own scopes and higher layers.
     pub fn set_style_pack(&mut self, pack: &StylePack) -> Result<(), String> {
         self.style_documents(Some(pack))?;
-        self.part_rules.clone_from(&pack.rules);
-        self.part_sheet.clone_from(&pack.sheet);
+        self.style.part_rules.clone_from(&pack.rules);
+        self.style.part_sheet.clone_from(&pack.sheet);
         self.set_style_name(&pack.name);
         self.read_theme_tokens();
         self.invalidation.epoch += 1;

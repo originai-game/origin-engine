@@ -512,20 +512,6 @@ pub struct Ui {
     /// Text a control keeps between ticks while it is open (a dropdown's
     /// filter), by key: names of the frame's UI, dropped when it closes.
     pub(crate) kept_texts: crate::id::KeyMap<String>,
-    pub(crate) css_sounds: std::collections::BTreeMap<String, u64>,
-    /// Global CSS part rules in cascade order and their at-rule descriptors.
-    pub(crate) part_rules: Vec<crate::doc::StyleRule>,
-    pub(crate) part_sheet: crate::doc::at_rules::Sheet,
-    pub(crate) root_tokens: Vec<(String, String)>,
-    pub(crate) root_type_tokens: [Vec<(String, String)>; 4],
-    /// Part samples read one before-change state throughout a frame. Commit
-    /// their next state together after rendering the owning nodes.
-    pub(crate) part_commits: std::cell::RefCell<
-        std::collections::BTreeMap<
-            (u64, &'static str),
-            std::sync::Arc<crate::doc::build::StyleCommit>,
-        >,
-    >,
     /// What each part of this frame draws through the UI pass, by node
     /// (made at `end` from its dressing, or the tokens).
     pub(crate) part_draws: std::collections::HashMap<usize, crate::paint::ElementDraw>,
@@ -550,10 +536,6 @@ pub struct Ui {
     pub(crate) accent: Option<crate::Srgba>,
     /// Text measurements kept from the frames before (layout's).
     pub(crate) texts: crate::layout::TextCache,
-    /// Timelines by name hash (`define_timeline`): configuration, like the theme.
-    pub(crate) timelines: std::collections::BTreeMap<u64, (String, Timeline)>,
-    /// Plays asked for this tick, flattened at `end`.
-    pub(crate) pending_plays: Vec<crate::motion::run::PendingPlay>,
     /// Last frame's drop targets and dragged elements: their paths, and the
     /// tags each target takes.
     pub(crate) drop_paths: IdMap<u64, String>,
@@ -566,8 +548,6 @@ pub struct Ui {
     pub(crate) invalidation: crate::layout::Invalidation,
     /// Last frame's paint, for reuse.
     pub(crate) paint_cache: crate::layout::PaintCache,
-    /// The motion pass's memory between ticks.
-    pub(crate) motion_cache: crate::layout::MotionCache,
     /// The map of the element whose commands are being made: a nine-slice
     /// is cut at its size on the screen, its corners kept crisp.
     drawing: Affine,
@@ -587,6 +567,8 @@ pub struct Ui {
     pub(crate) out: Out,
     /// Documents: their mounts, the layer stack and the reactive session.
     pub(crate) docs: Docs,
+    /// Style: the part rules and tokens, the motion pass's memory, timelines and the plays asked for.
+    pub(crate) style: Style,
 }
 
 /// One UI event's feedback as the host plays it ([`Ui::take_feedback`]).
