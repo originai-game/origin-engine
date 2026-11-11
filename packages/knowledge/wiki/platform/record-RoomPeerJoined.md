@@ -23,4 +23,4 @@ event RoomPeerJoined {
 }
 ```
 
-<sub>Module `platform` line 538</sub>
+<sub>Module `platform` line 539</sub>

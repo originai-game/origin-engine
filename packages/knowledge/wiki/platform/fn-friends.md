@@ -32,4 +32,4 @@ fn friends {
 }
 ```
 
-<sub>Module `platform` line 406</sub>
+<sub>Module `platform` line 407</sub>

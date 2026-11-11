@@ -23851,7 +23851,10 @@ export interface LoadSlotDesc {
   readonly metaOnly?: boolean;
 }
 
-/** Why a call failed. */
+/**
+ * Why a call failed.
+ * Errors carry the Player's stable codes: offline, timeout, invalid, unauthorized, not_found, conflict, too_large, rate_limited, unavailable, failed, cancelled (the player backed out of a purchase, an ad or a share sheet) and no_fill (no ad to show now); retryable is true for offline, timeout, unavailable, rate_limited and no_fill.
+ */
 export interface PlatformError {
   /**
    * offline, timeout, invalid, unauthorized, not_found, conflict, too_large, rate_limited, unavailable, failed, cancelled or no_fill.
@@ -23896,7 +23899,7 @@ export interface PlatformInfo {
    */
   readonly host: string;
   /**
-   * The methods it answers, by their wire names (`store.get`, `purchase.buy`, `share`, ...); og.platform.supports asks for one.
+   * The methods it answers: store.get, store.set, store.list, leaderboard.submit, leaderboard.top, leaderboard.around, telemetry, point, ai.mark, purchase.products, purchase.buy, purchase.entitlements, purchase.consume, ad.ready, ad.show, achievement.unlock, achievement.progress, achievement.list, player.get, friends.list, invite.send, invite.list, share (og.platform.supports asks for one).
    * See `saves §7`.
    */
   readonly capabilities: readonly string[];

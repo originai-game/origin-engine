@@ -28,4 +28,4 @@ fn roomInfo {
 }
 ```
 
-<sub>Module `platform` line 606</sub>
+<sub>Module `platform` line 607</sub>

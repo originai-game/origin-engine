@@ -8,6 +8,8 @@ Module [`platform`](../platform.md) · [index](../index.md)
 
 Why a call failed.
 
+Errors carry the Player's stable codes: offline, timeout, invalid, unauthorized, not_found, conflict, too_large, rate_limited, unavailable, failed, cancelled (the player backed out of a purchase, an ad or a share sheet) and no_fill (no ad to show now); retryable is true for offline, timeout, unavailable, rate_limited and no_fill.
+
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `code` | `string` | `""` | — | — | — | offline, timeout, invalid, unauthorized, not_found, conflict, too_large, rate_limited, unavailable, failed, cancelled or no_fill. |
@@ -18,6 +20,7 @@ Why a call failed.
 ```ogt
 struct PlatformError {
   doc "Why a call failed."
+  doc "Errors carry the Player's stable codes: offline, timeout, invalid, unauthorized, not_found, conflict, too_large, rate_limited, unavailable, failed, cancelled (the player backed out of a purchase, an ad or a share sheet) and no_fill (no ad to show now); retryable is true for offline, timeout, unavailable, rate_limited and no_fill."
   field code String "offline, timeout, invalid, unauthorized, not_found, conflict, too_large, rate_limited, unavailable, failed, cancelled or no_fill."
   field message String "What happened, in words."
   field retryable bool "Whether the same call may succeed later."

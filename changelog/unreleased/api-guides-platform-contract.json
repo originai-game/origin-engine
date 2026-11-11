@@ -1,0 +1,6 @@
+{
+  "fixed": [
+    {"member":"PlatformError","summary":"The docs list og.platform's error codes again, and which of them are retryable."},
+    {"member":"PlatformInfo.capabilities","summary":"The docs list every method a host can answer again."}
+  ]
+}
