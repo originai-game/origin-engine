@@ -88,3 +88,22 @@ test("a restore that moves og.Time past the script's last scheduled tick still r
     rmSync(out, { recursive: true, force: true });
   }
 }, 120_000);
+
+test("og run --profile writes the CPU profile at the path named, its locations in the game's source", () => {
+  const out = mkdtempSync(join(tmpdir(), "og-profile-"));
+  try {
+    const md = join(out, "game.md");
+    const r = spawn([ogBin(), "run", "--headless", "packages/engine/examples/hello.ts", "--no-render", "--ticks", "300", "--setup", "spawn_wave:10000", "--profile", md], repo);
+    if (r.exitCode !== 0) throw new Error(`og run exited ${r.exitCode}: ${r.stderr}${r.stdout}`);
+    // The bundle is what runs; its source map is what names hello.ts.
+    const profile = readFileSync(md, "utf8");
+    expect(profile).toContain("Hot Functions");
+    expect(profile).toMatch(/examples\/hello\.ts:\d+/);
+    expect(profile).not.toContain("game.native.js");
+    const device = spawn([ogBin(), "run", "--device", "chrome", "packages/engine/examples/hello.ts", "--profile", md], repo);
+    expect(device.exitCode).not.toBe(0);
+    expect(device.stderr).toContain("--profile is a native run's option");
+  } finally {
+    rmSync(out, { recursive: true, force: true });
+  }
+}, 120_000);

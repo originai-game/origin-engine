@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og run",
+      "summary": "`og run --profile out.cpuprofile` (or `out.md`) samples the game's TypeScript on the native host while it runs and writes a CPU profile whose locations are the game's `src/` files and lines: a `.cpuprofile` for Chrome's and VS Code's profile views, a `.md` as hot-function and call-tree tables to read. Time inside the engine shows on the binding that called it. Not an option of `og run --device`."
+    }
+  ]
+}
