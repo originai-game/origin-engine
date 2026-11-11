@@ -239,6 +239,23 @@ opt-level = 3
 opt-level = 3
 [profile.dev.package.simd-adler32]
 opt-level = 3
+# A frame test saves its frame as a PNG and opens its reference: the encoder
+# and decoder around miniz_oxide (png, fdeflate, crc32fast), image's buffer
+# conversions and the colour management it links (moxcms, pxfm). At -O0
+# saving one 1280x720 frame took 135 ms and opening its reference 56 ms;
+# optimised 32 ms and 9 ms, the PNG's bytes the same.
+[profile.dev.package.png]
+opt-level = 3
+[profile.dev.package.fdeflate]
+opt-level = 3
+[profile.dev.package.crc32fast]
+opt-level = 3
+[profile.dev.package.image]
+opt-level = 3
+[profile.dev.package.moxcms]
+opt-level = 3
+[profile.dev.package.pxfm]
+opt-level = 3
 # The engine API's arguments and answers are JSON text (og-runtime's parse
 # and the json! answers): at -O0 serde_json was more than half of a UI kit
 # frame (3964 of 6911 samples, templates/ui-kit patterns without a
