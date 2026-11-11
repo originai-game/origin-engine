@@ -542,6 +542,24 @@ pub(crate) struct Placement {
     pub padding: Insets,
 }
 
+/// What a breakpoint or orientation variant's query reads of the viewport.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct Media {
+    pub breakpoint: crate::style::Breakpoint,
+    pub portrait: bool,
+    pub width: f32,
+}
+
+impl Media {
+    /// Whether a variant's query (not a container's) holds.
+    pub(crate) fn matches(&self, q: &crate::element::Query) -> bool {
+        (q.breakpoints.is_empty() || q.breakpoints.contains(&self.breakpoint))
+            && q.orientation
+                .is_none_or(|o| (o == crate::element::Orientation::Portrait) == self.portrait)
+            && crate::layout::width_in(self.width, q)
+    }
+}
+
 /// What layout computes for a node: its sizes, its place in its parent,
 /// its lines, rows, tracks and floats, and what the layout cache keeps.
 #[derive(Clone, Debug)]
@@ -559,6 +577,9 @@ pub(crate) struct LayoutBox {
     /// The box placement gave it this frame: a layer's, a screen-placed or
     /// anchor-positioned element's (`Layout::placed`).
     pub placement: Option<Placement>,
+    /// The viewport its breakpoint and orientation variants were matched
+    /// against when it was written (`None`: it has none).
+    pub media: Option<Media>,
     /// The inline size its container variants were last matched at.
     pub query_w: Option<f32>,
     /// One of its children in the flow aligns by its own baseline
@@ -673,6 +694,7 @@ impl Default for LayoutBox {
             insets: crate::element::Edges::default(),
             gutter: 0.0,
             placement: None,
+            media: None,
             query_w: None,
             baseline_items: false,
             table: None,
@@ -876,12 +898,19 @@ impl Node {
             })
     }
 
-    /// The element layout uses, from the authored one: the line box it
-    /// lays inline children out in, its scroll bar's gutter, with `placed`
-    /// the box placement fixed, and its container variants at the size
-    /// they were last matched at.
+    /// The element layout uses, from the authored one: its breakpoint and
+    /// orientation variants, the line box it lays inline children out in,
+    /// its scroll bar's gutter, with `placed` the box placement fixed, and
+    /// its container variants at the size they were last matched at.
     pub(crate) fn derived(&self, placed: bool) -> Element {
         let mut u = self.el;
+        if let Some(m) = self.layout.media {
+            for v in &self.props.variants {
+                if !v.when.container && m.matches(&v.when) {
+                    crate::layout::patch_box(&mut u, &v.set);
+                }
+            }
+        }
         if self.layout.line_box.is_some() {
             u.direction = Direction::Row;
             u.wrap = true;
