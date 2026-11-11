@@ -9,7 +9,7 @@ use super::codec::Layout;
 use super::extract::{Hierarchy, RenderState};
 use glam::{Mat4, Vec2, Vec3};
 use og_core::IdMap;
-use og_ecs::{Entity, QueryDesc, World};
+use og_ecs::{Entity, World};
 use og_render::{
     AmbientOcclusion, AoMethod, AoResolution, Beam, CameraShake, ChromaticAberration, ColorAdjust,
     ColorCurve, ColorGrading, Curve, Decal, DepthOfField, DofQuality, FilmGrain, Glow, GodRays,
@@ -325,21 +325,16 @@ pub(crate) fn rows(world: &World, layout: Option<&Layout>) -> Vec<(u64, Value)> 
     let Some(layout) = layout else {
         return Vec::new();
     };
-    let Ok(id) = world.id_by_name(&layout.schema) else {
-        return Vec::new();
-    };
-    let q = QueryDesc {
-        read: vec![layout.schema.clone()],
-        ..QueryDesc::default()
-    };
-    let Ok(all) = world.query(&q) else {
-        return Vec::new();
-    };
-    let mut entities: Vec<Entity> = all.flat_map(|a| a.entities().to_vec()).collect();
-    og_core::sort::sort_by_key(&mut entities, |e| e.index());
-    entities
-        .into_iter()
-        .filter_map(|e| Some((e.to_bits(), layout.decode(&world.get_bytes(e, id).ok()?))))
+    let rows = super::extract::column_rows(world, layout);
+    let mut rows: Vec<_> = rows.iter().collect();
+    og_core::sort::sort_by_key(&mut rows, |(e, _)| Entity::from_bits(*e).index());
+    let mut bytes = Vec::new();
+    rows.into_iter()
+        .map(|(e, row)| {
+            bytes.clear();
+            row.pack(&mut bytes);
+            (e, layout.decode(&bytes))
+        })
         .collect()
 }
 
@@ -357,34 +352,24 @@ pub(crate) fn kept_rows(world: &World, layout: Option<&Layout>) -> Vec<(u64, Arc
     let Some(layout) = layout else {
         return Vec::new();
     };
-    let Ok(id) = world.id_by_name(&layout.schema) else {
-        return Vec::new();
-    };
-    let q = QueryDesc {
-        read: vec![layout.schema.clone()],
-        ..QueryDesc::default()
-    };
-    let Ok(all) = world.query(&q) else {
-        return Vec::new();
-    };
-    let mut entities: Vec<Entity> = all.flat_map(|a| a.entities().to_vec()).collect();
-    og_core::sort::sort_by_key(&mut entities, |e| e.index());
+    let rows = super::extract::column_rows(world, layout);
+    let mut rows: Vec<_> = rows.iter().collect();
+    og_core::sort::sort_by_key(&mut rows, |(e, _)| Entity::from_bits(*e).index());
     let mut kept = layout
         .kept_rows
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     let last = std::mem::take(&mut *kept);
-    let mut out = Vec::with_capacity(entities.len());
-    for e in entities {
-        let Ok(bytes) = world.get_bytes(e, id) else {
-            continue;
-        };
+    let mut out = Vec::with_capacity(rows.len());
+    for (e, row) in rows {
+        let mut bytes = Vec::new();
+        row.pack(&mut bytes);
         let value = match last.get(out.len()) {
             Some((b, v)) if *b == bytes => v.clone(),
             _ => Arc::new(layout.decode(&bytes)),
         };
         kept.push((bytes, value.clone()));
-        out.push((e.to_bits(), value));
+        out.push((e, value));
     }
     out
 }
@@ -1490,24 +1475,20 @@ pub(crate) struct CrowdPlay {
 /// The entities with og.CrowdAnimation and its fields, read in place (a
 /// crowd is thousands of rows: no JSON a row).
 pub(crate) fn crowds(world: &World, rs: &RenderState) -> IdMap<u64, CrowdPlay> {
-    use super::codec::{Rec, Row, Slot};
+    use super::codec::{Rec, Slot};
     let Some(layout) = rs.draw.fx.crowd.as_ref() else {
-        return IdMap::new();
-    };
-    let Ok(id) = world.id_by_name(&layout.schema) else {
         return IdMap::new();
     };
     let slot = |key| Slot::of(layout, key);
     let (skeleton, skin, clip) = (slot("skeleton"), slot("skin"), slot("clip"));
     let (offset, speed, looping, rate) =
         (slot("offset"), slot("speed"), slot("loop"), slot("rate"));
-    super::feel::byte_rows(world, id, layout)
+    super::extract::column_rows(world, layout)
         .iter()
-        .map(|(e, bytes)| {
-            let v = Row::new(layout, bytes);
+        .map(|(e, v)| {
             let num = |s: &Slot, d: f64| v.num(s).unwrap_or(d);
             (
-                *e,
+                e,
                 CrowdPlay {
                     skeleton: num(&skeleton, 0.0) as u64,
                     skin: num(&skin, 0.0) as u32,

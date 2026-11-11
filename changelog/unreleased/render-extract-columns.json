@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "rendering: per-frame extraction",
+      "summary": "Reading sprites, models and the effect components for a frame is faster: their rows are read in place from the world's columns, where each row was first copied out through its entity, and a model's part list is no longer cloned every frame. What is drawn does not change. 20,000 models extract in 0.42 of the time and 20,000 sprites in 0.6 (a release build on a 2.6 GHz Xeon)."
+    }
+  ]
+}

@@ -28,7 +28,7 @@ pub(crate) use frame::extract;
 pub use hierarchy::Hierarchy;
 pub(crate) use hierarchy::{Blend, blend};
 
-use super::codec::{Layout, Rec, Row, Slot as FieldSlot};
+use super::codec::{Cells, Col, ColRow, Layout, Rec, Slot as FieldSlot};
 use glam::{Mat4, Quat, Vec3};
 use og_core::IdMap;
 use og_ecs::{Entity, QueryDesc, World};
@@ -561,33 +561,111 @@ pub(crate) fn resource(world: &World, layout: Option<&Layout>) -> Option<std::sy
     Some(layout.decode_kept(bytes))
 }
 
-/// Decoded rows of one component: `(entity bits, value)`.
-pub(crate) fn rows(world: &World, layout: &Layout) -> Vec<(u64, Value)> {
-    let Ok(id) = world.id_by_name(&layout.schema) else {
-        return Vec::new();
-    };
+/// Every row of one component, read in place from its archetypes' columns
+/// in query order ([`column_rows`]).
+pub(crate) struct ColumnRows<'a> {
+    layout: &'a Layout,
+    /// Per archetype holding a row: its entities and their values.
+    archetypes: Vec<(&'a [Entity], Cells<'a>)>,
+}
+
+impl ColumnRows<'_> {
+    pub(crate) fn is_empty(&self) -> bool {
+        self.archetypes.is_empty()
+    }
+
+    /// `(entity bits, row)` for every row, in query order.
+    pub(crate) fn iter(&self) -> impl Iterator<Item = (u64, ColRow<'_>)> + '_ {
+        let layout = self.layout;
+        self.archetypes.iter().flat_map(move |(entities, cells)| {
+            entities
+                .iter()
+                .enumerate()
+                .map(move |(i, e)| (e.to_bits(), ColRow::new(layout, cells, i)))
+        })
+    }
+}
+
+/// The rows of `layout`'s component, borrowed from the world's columns: no
+/// row is copied or looked up by its entity (a packed copy of each row,
+/// found through its entity, was most of reading 20,000 sprites or models).
+/// An archetype one of whose columns a view holds mutably has no rows here,
+/// as its rows had no bytes before.
+pub(crate) fn column_rows<'a>(world: &'a World, layout: &'a Layout) -> ColumnRows<'a> {
+    let mut archetypes = Vec::new();
     let q = QueryDesc {
         read: vec![layout.schema.clone()],
         ..QueryDesc::default()
     };
-    let Ok(all) = world.query(&q) else {
-        return Vec::new();
-    };
-    // The bytes are read serially (the world is one thread's); decoding them
-    // is a lane per row natively, the rows staying in entity order.
-    let cells: Vec<(u64, Vec<u8>)> = all
-        .flat_map(|a| a.entities().to_vec())
-        .filter_map(|e| Some((e.to_bits(), world.get_bytes(e, id).ok()?)))
+    if let (Ok(id), Ok(all)) = (world.id_by_name(&layout.schema), world.query(&q)) {
+        for a in all {
+            if a.is_empty() {
+                continue;
+            }
+            let Ok(columns) = a.component_bytes(id) else {
+                continue;
+            };
+            let fields = &layout.fields;
+            let cells = if columns.len() == fields.len()
+                && columns
+                    .iter()
+                    .zip(fields.iter())
+                    .all(|(c, f)| c.len() == a.len() * f.ty.size())
+            {
+                Cells::Columns(
+                    columns
+                        .into_iter()
+                        .zip(fields.iter())
+                        .map(|(c, f)| Col::of(c, f))
+                        .collect(),
+                )
+            } else {
+                // Not the layout's fields: each row packed as the world
+                // packs it, read by the layout's offsets as it was.
+                let stride = columns.iter().map(|c| c.len()).sum::<usize>() / a.len();
+                let mut bytes = Vec::with_capacity(stride * a.len());
+                for row in 0..a.len() {
+                    for c in &columns {
+                        let n = c.len() / a.len();
+                        bytes.extend_from_slice(&c[row * n..(row + 1) * n]);
+                    }
+                }
+                Cells::Rows { bytes, stride }
+            };
+            archetypes.push((a.entities(), cells));
+        }
+    }
+    ColumnRows { layout, archetypes }
+}
+
+/// Decoded rows of one component: `(entity bits, value)`.
+pub(crate) fn rows(world: &World, layout: &Layout) -> Vec<(u64, Value)> {
+    // The bytes are read serially (the world is one thread's), each row
+    // packed into one buffer; decoding them is a lane per row natively, the
+    // rows staying in entity order.
+    let rows = column_rows(world, layout);
+    let mut bytes = Vec::new();
+    let cells: Vec<(u64, std::ops::Range<usize>)> = rows
+        .iter()
+        .map(|(e, row)| {
+            let at = bytes.len();
+            row.pack(&mut bytes);
+            (e, at..bytes.len())
+        })
         .collect();
+    let bytes = bytes.as_slice();
     if cfg!(target_arch = "wasm32") {
         // A row's decode is allocations (a JSON map per row), and the lanes
         // wasm has one allocator behind one lock: 20,000 og.Mesh rows split
         // over eight Workers spent 116 ms of a 137 ms frame waiting for the
         // lanes (owed row 50, the former test sample
-        return cells.iter().map(|(e, b)| (*e, layout.decode(b))).collect();
+        return cells
+            .iter()
+            .map(|(e, at)| (*e, layout.decode(&bytes[at.clone()])))
+            .collect();
     }
-    og_lanes::map(og_lanes::Site::Extract, &cells, ROW_GRAIN, |(e, bytes)| {
-        (*e, layout.decode(bytes))
+    og_lanes::map(og_lanes::Site::Extract, &cells, ROW_GRAIN, |(e, at)| {
+        (*e, layout.decode(&bytes[at.clone()]))
     })
 }
 
