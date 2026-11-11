@@ -239,6 +239,12 @@ writer. The game's art-contract measurements remain available through
   and report their names. A winning declaration with an invalid value
   does not revive a lower-priority declaration. Unshadowed engine tokens
   resolve from the active style. `::part` declarations use the same cascade.
+- A `<button>`'s own `background`, `border`, `border-radius` and
+  `box-shadow` (`button.buy { background: #ff7a2e; border-radius: 30px; }`)
+  restyle its plate, replacing the style's fill and painted frame, as CSS
+  on an HTML button does. A rule for the plate itself
+  (`button.buy::part(base):hover { background: … }`) wins over them and is
+  where its states go.
 - Transition values with standard CSS: `transition: opacity 120ms ease-out,
   translate 200ms ease-out 50ms` or the longhands `transition-property`,
   `-duration`, `-timing-function` and `-delay`; `all` covers every

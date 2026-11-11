@@ -22,6 +22,11 @@
 //!   container around it (or `auto` no longer chaining), and
 //!   `scroll-padding` not insetting where a snap lines its area up →
 //!   `overscroll_contains_and_scroll_padding_insets_snaps`
+//! - a `<button>`'s own `background`, `border` or `border-radius` drawn on a
+//!   second box under the style's plate (which covers it), the style's
+//!   plate images left over the author's fill, the plate lost when the
+//!   button's part has another name, or the document's `::part(base)`
+//!   rule losing to the button's own → `a_buttons_own_box_styles_are_its_plate`
 //! - a wheel settling past a `scroll-snap-stop: always` area it crossed,
 //!   or `scrollbar-color` not inherited →
 //!   `a_wheel_stops_at_snap_stop_always_and_scrollbar_color_inherits`
@@ -421,4 +426,130 @@ fn bad_decorations_are_refused() {
     assert!(err("box-shadow: 0 0 -2px #000").contains("blur is not negative"));
     assert!(err("overflow: sideways").contains("not an overflow"));
     assert!(err("outline: 1px hidden").contains("hidden"));
+}
+
+#[test]
+fn a_buttons_own_box_styles_are_its_plate() {
+    let text = r#"<meta name="component" content="t">
+<meta name="parts" content="item">
+<div><div id="Root">
+  <button id="Own">Go</button>
+  <button id="Plain">Go</button>
+  <button id="Part">Go</button>
+  <button id="Named" part="item">Go</button>
+  <button id="Holds"><span>Go</span></button>
+</div></div>
+<style>
+#Root { width: 400px; gap: 20px; }
+#Own { background: #ff7a2e; border: 3px solid #102030; border-radius: 30px; }
+#Part { background: #ff0000; }
+#Part::part(base):hover { background: #0000ff; transition: none; }
+#Named { background: #ff00ff; }
+#Holds { background: #00ff00; border-radius: 9px; }
+</style>"#;
+    /// What fills `id`'s box, bottom to top: each fill's corner and its
+    /// colour (`None`: an image), then its strokes' widths and colours.
+    type Paints = (Vec<(f32, Option<[f32; 4]>)>, Vec<(f32, [f32; 4])>);
+    fn paints(d: &Doc, id: &str) -> Paints {
+        let e = d.get(id);
+        let inside = |x: f32, y: f32| Rect::new(e.x, e.y, e.width, e.height).contains(x, y);
+        let (mut fills, mut strokes) = (Vec::new(), Vec::new());
+        for item in &d.ui.frame().items {
+            match &item.cmd {
+                DrawCmd::Quad {
+                    rect,
+                    radius,
+                    color,
+                    ..
+                } if inside(rect.center().0, rect.center().1) => {
+                    fills.push((*radius, Some(*color)));
+                }
+                DrawCmd::Shape { shape, .. } if inside(shape.center.x, shape.center.y) => {
+                    let solid = match shape.paint {
+                        og_draw::UiPaint::Solid(c) => Some(c),
+                        _ => None,
+                    };
+                    let radius = match shape.geometry {
+                        og_draw::UiGeometry::Rect { radii, .. } => radii[0],
+                        _ => 0.0,
+                    };
+                    match shape.mode {
+                        UiMode::Fill => fills.push((radius, solid)),
+                        UiMode::Stroke(s) => {
+                            strokes.push((s.width, solid.expect("a solid border")))
+                        }
+                        _ => {}
+                    }
+                }
+                _ => {}
+            }
+        }
+        (fills, strokes)
+    }
+    let is = |paint: &(f32, Option<[f32; 4]>), radius: f32, hex: &str| {
+        paint.0 == radius && paint.1.is_some_and(|c| close(c, lin(hex)))
+    };
+    both(text, &[], |d| {
+        // One plate, the author's: no style plate over it and no second
+        // box under it.
+        let (fills, strokes) = paints(d, "Own");
+        assert!(
+            fills.len() == 1 && is(&fills[0], 30.0, "#ff7a2e"),
+            "{fills:?}"
+        );
+        assert!(
+            matches!(strokes[..], [(3.0, c)] if close(c, lin("#102030"))),
+            "{strokes:?}"
+        );
+        let (plain, _) = paints(d, "Plain");
+        assert!(plain.len() == 1 && plain[0].0 != 30.0, "{plain:?}");
+        assert!(!is(&plain[0], plain[0].0, "#ff7a2e"), "the style's plate");
+        // A plate under another name (`part="item"`) is the same plate.
+        let (named, _) = paints(d, "Named");
+        assert!(
+            named.len() == 1 && is(&named[0], named[0].0, "#ff00ff"),
+            "{named:?}"
+        );
+        // A button that holds elements (a kit's) is dressed the same.
+        let (holds, _) = paints(d, "Holds");
+        assert!(
+            holds.len() == 1 && is(&holds[0], 9.0, "#00ff00"),
+            "{holds:?}"
+        );
+        // What the document writes for the part itself stays above the
+        // button's own.
+        let (rest, _) = paints(d, "Part");
+        assert!(
+            rest.len() == 1 && is(&rest[0], rest[0].0, "#ff0000"),
+            "{rest:?}"
+        );
+        let p = d.get("Part");
+        for _ in 0..3 {
+            d.step(InputFrame::hover(p.x + 10.0, p.y + 10.0));
+        }
+        let (hovered, _) = paints(d, "Part");
+        assert!(
+            hovered.len() == 1 && is(&hovered[0], hovered[0].0, "#0000ff"),
+            "{hovered:?}"
+        );
+        // A style that paints its plate with images: the button's fill
+        // and border replace them, as the shorthands reset the image.
+        d.ui.set_part_css(
+            "button::part(base) { background: linear-gradient(#000000, #ffffff); \
+             border-image: linear-gradient(#ff0000, #0000ff) 4 fill; }",
+        )
+        .unwrap();
+        d.step(InputFrame::default());
+        d.step(InputFrame::default());
+        let (fills, _) = paints(d, "Own");
+        assert!(
+            fills.len() == 1 && is(&fills[0], 30.0, "#ff7a2e"),
+            "{fills:?}"
+        );
+        let (plain, _) = paints(d, "Plain");
+        assert!(
+            plain.iter().any(|(_, colour)| colour.is_none()),
+            "{plain:?}"
+        );
+    });
 }

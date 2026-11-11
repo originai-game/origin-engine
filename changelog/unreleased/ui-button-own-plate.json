@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "ui documents",
+      "summary": "A `<button>`'s own box styles restyle its plate: `button.buy { background: #ff7a2e; border: 3px solid #102030; border-radius: 30px; box-shadow: … }` now paints the button that way, replacing the style's fill and painted frame, as CSS on an HTML button does. The style's plate was drawn over the button's own box, so the declared colour never showed. A rule for the plate itself (`button.buy::part(base):hover { … }`) still wins and is where states go. A button that declared a background or border the plate used to hide now shows it; remove the declaration to keep the style's plate. The kits whose buttons declare their own box (`hero-button`, `action-button`, `hold-button`, `ability-slot`, `cooldown`, `menu`, `radial-menu` and others) no longer carry the style's plate, with its hover and press tint, over it."
+    }
+  ]
+}

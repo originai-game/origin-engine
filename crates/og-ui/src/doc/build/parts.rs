@@ -505,6 +505,28 @@ impl Ui {
                     V::Color(color.resolve(&crate::css_color::Context::of(self.theme()))),
                 ));
             }
+            // A button's own plate, above the style's (`Resolved::get`
+            // reads the last) and below what its document writes for the
+            // part itself (`button.buy::part(base):hover`). The focus ring
+            // is the same host's part, without the class.
+            if let Some(host) = host.filter(|h| {
+                part.class == Some(crate::tokens::ElementClass::Button) && !h.plate.is_empty()
+            }) {
+                let own = document.filter(|d| !d.part_rules.is_empty()).map(|d| {
+                    let mut own = cascade::values_with(&d.part_rules, &options, |r| {
+                        self.part_matches(r, &facts)
+                    });
+                    cascade::route(&mut own, flow);
+                    own.props
+                });
+                let own = own.unwrap_or_default();
+                vals.extend(
+                    host.plate
+                        .iter()
+                        .filter(|(spec, _)| !own.iter().any(|p| p.spec == *spec))
+                        .cloned(),
+                );
+            }
             Resolved {
                 vals,
                 cascade: values,

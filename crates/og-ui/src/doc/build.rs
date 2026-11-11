@@ -98,6 +98,20 @@ pub(crate) struct PartHost {
     pub tag: String,
     pub attributes: BTreeMap<String, Value>,
     pub computed: Arc<super::variables::Computed>,
+    /// A button's own plate ([`plate_prop`]) as its author declared it: its
+    /// plate part takes these over the style's, and the host draws none.
+    plate: Vec<(usize, V)>,
+}
+
+/// Whether `name` paints an element's box: its background, border, corners
+/// and shadows.
+fn plate_prop(name: &str) -> bool {
+    name == "radius"
+        || name == "boxShadow"
+        || name.starts_with("background")
+        || name.starts_with("border")
+        || crate::doc::boxes::CORNER_RADII.contains(&name)
+        || crate::doc::boxes::CORNER_SHAPES.contains(&name)
 }
 
 #[derive(Clone)]
@@ -1255,11 +1269,44 @@ impl Ui {
                     .filter(|(name, ..)| cascade::inherited_property(name))
                     .map(|(name, value, _)| (name.clone(), value.clone())),
             );
+            // A button is its plate: what its author writes for its box
+            // (`button.buy { background: … }`) restyles the plate part
+            // that covers it, as CSS on an HTML button restyles the button.
+            let mut plate = Vec::new();
+            if n.kind == NodeKind::Element("button") {
+                let (own, rest) = std::mem::take(&mut r.vals)
+                    .into_iter()
+                    .partition(|(spec, _)| plate_prop(PROPS[*spec].name));
+                plate = own;
+                r.vals = rest;
+                // Its fill replaces the style's whole background and its
+                // border the style's painted frame, as the `background`
+                // and `border` shorthands reset the image beside them.
+                let has = |plate: &[(usize, V)], name: &str| {
+                    plate.iter().any(|(spec, _)| PROPS[*spec].name == name)
+                };
+                let border = plate.iter().any(|(spec, _)| {
+                    let name = PROPS[*spec].name;
+                    name.starts_with("border") && !name.starts_with("borderImage")
+                });
+                for (written, image) in [
+                    (has(&plate, "background"), "backgroundImage"),
+                    (border, "borderImageSource"),
+                ] {
+                    if written
+                        && !has(&plate, image)
+                        && let Some((spec, _)) = schema::prop(image)
+                    {
+                        plate.push((spec, V::Str("none".into())));
+                    }
+                }
+            }
             Arc::new(PartHost {
                 document: b.doc.name.clone(),
                 tag: tag.clone(),
                 attributes: structure::selector_facts(n, |e| b.eval(e)),
                 computed: Arc::new(computed),
+                plate,
             })
         });
         if recording {
