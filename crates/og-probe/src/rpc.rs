@@ -187,6 +187,106 @@ fn coordinate(params: &Value, key: &str) -> Option<f32> {
         .map(|v| v as f32)
 }
 
+/// `sweep`'s parameters.
+#[cfg(not(feature = "publish"))]
+fn sweep_desc(p: &Value) -> Result<SweepDesc, RpcError> {
+    let values = p
+        .get("values")
+        .and_then(Value::as_array)
+        .filter(|v| !v.is_empty() && v.len() <= MAX_SWEEP_VALUES)
+        .ok_or_else(|| {
+            RpcError::invalid(format!(
+                "values must be an array of 1 to {MAX_SWEEP_VALUES} values"
+            ))
+        })?;
+    let (width, height) = size(p)?;
+    Ok(SweepDesc {
+        id: string(p, "id")?.to_owned(),
+        parameter: string(p, "parameter")?.to_owned(),
+        values: values.clone(),
+        steps: steps(p)?,
+        width,
+        height,
+    })
+}
+
+/// `marks`' parameters.
+#[cfg(not(feature = "publish"))]
+fn marks_desc(p: &Value) -> Result<crate::probe::MarksDesc, RpcError> {
+    let (width, height) = size(p)?;
+    let flag = |k: &str| p.get(k).and_then(Value::as_bool).unwrap_or(true);
+    let max = match p.get("max") {
+        None | Some(Value::Null) => 64,
+        Some(v) => v
+            .as_u64()
+            .filter(|n| *n <= 999)
+            .ok_or_else(|| RpcError::invalid("max must be an integer in [0, 999]"))?
+            as usize,
+    };
+    Ok(crate::probe::MarksDesc {
+        width,
+        height,
+        fit: fit(p)?,
+        ui: flag("ui"),
+        entities: flag("entities"),
+        max,
+    })
+}
+
+/// `dump`'s parameters: what to dump, and the entity's id for an entity.
+#[cfg(not(feature = "publish"))]
+fn dump_target(p: &Value) -> Result<(DumpKind, &str), RpcError> {
+    let kind = match string(p, "what")? {
+        "world" => DumpKind::World,
+        "entity" => DumpKind::Entity,
+        "ui" => DumpKind::Ui,
+        "desync" => DumpKind::Desync,
+        _ => {
+            return Err(RpcError::invalid(
+                "what must be world, entity, ui or desync",
+            ));
+        }
+    };
+    let id = if kind == DumpKind::Entity {
+        string(p, "id")?
+    } else {
+        ""
+    };
+    Ok((kind, id))
+}
+
+/// `listen`'s seconds: 0 to 2, 1 when absent.
+#[cfg(not(feature = "publish"))]
+fn listen_seconds(p: &Value) -> Result<f32, RpcError> {
+    Ok(match p.get("seconds") {
+        None | Some(Value::Null) => 1.0,
+        Some(v) => v
+            .as_f64()
+            .filter(|s| s.is_finite() && (0.0..=2.0).contains(s))
+            .ok_or_else(|| RpcError::invalid("seconds must be a number from 0 to 2"))?
+            as f32,
+    })
+}
+
+/// `expectations`' answer: the results taken, counted by status.
+#[cfg(not(feature = "publish"))]
+fn expectations_json(taken: &[crate::expect::ExpectResult]) -> Value {
+    let failed = taken
+        .iter()
+        .filter(|r| r.status == crate::expect::Status::Fail)
+        .count();
+    let passed = taken
+        .iter()
+        .filter(|r| r.status == crate::expect::Status::Pass)
+        .count();
+    json!({
+        "passed": passed,
+        "failed": failed,
+        "unchecked": taken.len() - passed - failed,
+        "results": taken.iter().map(|r| r.to_json()).collect::<Vec<_>>(),
+    })
+}
+
 impl Probe {
     /// The transport-free entry: one JSON-RPC text frame in, one out. The web
     /// host drives it from its request ring; the WebSocket server from its
@@ -298,52 +398,11 @@ impl Probe {
                 or_null(self.capture(world, width, height, fit(p)?, region))
             }
             #[cfg(not(feature = "publish"))]
-            "marks" => {
-                let (width, height) = size(p)?;
-                let flag = |k: &str| p.get(k).and_then(Value::as_bool).unwrap_or(true);
-                let max =
-                    match p.get("max") {
-                        None | Some(Value::Null) => 64,
-                        Some(v) => v.as_u64().filter(|n| *n <= 999).ok_or_else(|| {
-                            RpcError::invalid("max must be an integer in [0, 999]")
-                        })? as usize,
-                    };
-                or_null(self.marks(
-                    world,
-                    crate::probe::MarksDesc {
-                        width,
-                        height,
-                        fit: fit(p)?,
-                        ui: flag("ui"),
-                        entities: flag("entities"),
-                        max,
-                    },
-                ))
-            }
+            "marks" => or_null(self.marks(world, marks_desc(p)?)),
             #[cfg(not(feature = "publish"))]
             "timeline" => self.timeline(world),
             #[cfg(not(feature = "publish"))]
-            "sweep" => {
-                let values = p
-                    .get("values")
-                    .and_then(Value::as_array)
-                    .filter(|v| !v.is_empty() && v.len() <= MAX_SWEEP_VALUES)
-                    .ok_or_else(|| {
-                        RpcError::invalid(format!(
-                            "values must be an array of 1 to {MAX_SWEEP_VALUES} values"
-                        ))
-                    })?;
-                let (width, height) = size(p)?;
-                let desc = SweepDesc {
-                    id: string(p, "id")?.to_owned(),
-                    parameter: string(p, "parameter")?.to_owned(),
-                    values: values.clone(),
-                    steps: steps(p)?,
-                    width,
-                    height,
-                };
-                or_null(self.sweep(world, &desc).map_err(internal)?)
-            }
+            "sweep" => or_null(self.sweep(world, &sweep_desc(p)?).map_err(internal)?),
             #[cfg(not(feature = "publish"))]
             "reload" => or_null(self.reload(world)),
             #[cfg(not(feature = "publish"))]
@@ -352,38 +411,13 @@ impl Probe {
             "restore" => json!(self.restore(world, string(p, "id")?)),
             #[cfg(not(feature = "publish"))]
             "dump" => {
-                let kind = match string(p, "what")? {
-                    "world" => DumpKind::World,
-                    "entity" => DumpKind::Entity,
-                    "ui" => DumpKind::Ui,
-                    "desync" => DumpKind::Desync,
-                    _ => {
-                        return Err(RpcError::invalid(
-                            "what must be world, entity, ui or desync",
-                        ));
-                    }
-                };
-                let id = if kind == DumpKind::Entity {
-                    string(p, "id")?
-                } else {
-                    ""
-                };
+                let (kind, id) = dump_target(p)?;
                 or_null(self.dump(world, kind, id))
             }
             #[cfg(not(feature = "publish"))]
             "commands" => or_null(self.commands(world, string(p, "script")?)),
             #[cfg(not(feature = "publish"))]
-            "listen" => {
-                let seconds = match p.get("seconds") {
-                    None | Some(Value::Null) => 1.0,
-                    Some(v) => v
-                        .as_f64()
-                        .filter(|s| s.is_finite() && (0.0..=2.0).contains(s))
-                        .ok_or_else(|| RpcError::invalid("seconds must be a number from 0 to 2"))?
-                        as f32,
-                };
-                or_null(self.listen(world, seconds))
-            }
+            "listen" => or_null(self.listen(world, listen_seconds(p)?)),
             #[cfg(not(feature = "publish"))]
             "memory" => or_null(self.memory(world)),
             #[cfg(not(feature = "publish"))]
@@ -394,23 +428,7 @@ impl Probe {
                 Err(reason) => return Err(RpcError::invalid(reason)),
             },
             #[cfg(not(feature = "publish"))]
-            "expectations" => {
-                let taken = self.take_expectations();
-                let failed = taken
-                    .iter()
-                    .filter(|r| r.status == crate::expect::Status::Fail)
-                    .count();
-                let passed = taken
-                    .iter()
-                    .filter(|r| r.status == crate::expect::Status::Pass)
-                    .count();
-                json!({
-                    "passed": passed,
-                    "failed": failed,
-                    "unchecked": taken.len() - passed - failed,
-                    "results": taken.iter().map(|r| r.to_json()).collect::<Vec<_>>(),
-                })
-            }
+            "expectations" => expectations_json(&self.take_expectations()),
             #[cfg(not(feature = "publish"))]
             "assertions" => {
                 let take = p.get("take").and_then(Value::as_bool).unwrap_or(false);
