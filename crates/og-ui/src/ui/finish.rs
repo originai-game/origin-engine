@@ -257,6 +257,63 @@ impl Ui {
                 .push("end without begin: call ui.begin() at the start of the tick".into());
             return Ok(&self.out.frame);
         }
+        let whole = self.finish_build();
+
+        let vp = self.env.viewport;
+        let dpr = vp.dpr();
+        let screen = Rect::new(0.0, 0.0, vp.width, vp.height);
+        let rtl = self.env.direction == og_i18n::Direction::Rtl;
+        self.lay_out(vp, dpr, screen, rtl, &mut *resolve)?;
+        self.place_popover_arrows();
+        self.layout.cache.query_roots = None;
+        if !self.tree.index.pending.is_empty() {
+            self.sync_tree(&[], &[], false);
+        }
+        self.layout.texts.sweep();
+
+        // The trees' orders and features, kept where nothing changed shape.
+        self.update_orders(whole);
+        let order = std::mem::take(&mut self.tree.orders.pre);
+        self.out.stats.elements = order.len() as u32;
+        let baselines = self.tree.orders.with(visit::feat::BASELINE).to_vec();
+        self.align_baselines(&baselines);
+        let anchored = self.tree.orders.with(visit::feat::ANCHORED).to_vec();
+        self.place_anchored(&anchored);
+        let (seeds, animated) = self.frame_motion(&order, whole, vp);
+        let (order, mapped) = self.place_frame(order, &seeds, &animated);
+
+        let (cursor, cursor_images) = self.update_interaction(&order, &seeds, &mapped, screen);
+
+        let (order, items, missing_glyphs) = self.record_paint(order, &seeds, mapped);
+        let focus_paths = self.focus_paths();
+        self.tree.orders.draw = order;
+        self.note_relevance();
+        self.out.frame = UiFrame {
+            viewport: vp,
+            items,
+            warnings: std::mem::take(&mut self.out.warnings),
+            missing_glyphs,
+            focus_paths,
+            text_input: self.interaction.text_target.take(),
+            events: std::mem::take(&mut self.out.events),
+            grounds: std::mem::take(&mut self.world.grounds),
+            stats: LayoutStats {
+                laid_out: self.layout.cache.laid_out,
+                ..self.out.stats
+            },
+            unit: self.env.unit,
+            cursor,
+            cursor_images,
+        };
+        self.paint.inspection = Default::default();
+        Ok(&self.out.frame)
+    }
+
+    /// Closes the build: unclosed elements, layers, toasts and retired
+    /// nodes, then variants and appearances, each node's lists, gutters,
+    /// content visibility, layout reuse and the trees' index. Whether
+    /// nothing is kept from last frame.
+    fn finish_build(&mut self) -> bool {
         while self.tree.stack.len() > 1 {
             let i = self.tree.stack.pop().unwrap_or(0);
             self.out.warnings.push(format!(
@@ -447,11 +504,21 @@ impl Ui {
         self.tree.index.all_restructured = false;
         self.sync_tree(&derive, &written, whole);
         self.tree.emitted = written;
+        whole
+    }
 
-        let vp = self.env.viewport;
-        let dpr = vp.dpr();
-        let screen = Rect::new(0.0, 0.0, vp.width, vp.height);
-        let rtl = self.env.direction == og_i18n::Direction::Rtl;
+    /// Lays the trees out, settling container queries until they hold.
+    fn lay_out(
+        &mut self,
+        vp: Viewport,
+        dpr: f32,
+        screen: Rect,
+        rtl: bool,
+        resolve: &mut impl FnMut(
+            &mut Ui,
+            &[settlement::ContainerMeasurement],
+        ) -> Result<Vec<usize>, settlement::SettlementError>,
+    ) -> Result<(), settlement::SettlementError> {
         self.layout.cache.query_roots = None;
         let mut settlement = settlement::Settlement::default();
         let part_geometry = self
@@ -877,6 +944,10 @@ impl Ui {
                 }
             }
         }
+        Ok(())
+    }
+
+    fn place_popover_arrows(&mut self) {
         // Popovers' arrows (`::-og-arrow`): a square turned 45° across the
         // edge facing the anchor, over the anchor's middle where the box
         // allows, hidden while no side faces it. A context menu (opened at
@@ -921,20 +992,18 @@ impl Ui {
                 color,
             });
         }
-        self.layout.cache.query_roots = None;
-        if !self.tree.index.pending.is_empty() {
-            self.sync_tree(&[], &[], false);
-        }
-        self.layout.texts.sweep();
+    }
 
-        // The trees' orders and features, kept where nothing changed shape.
-        self.update_orders(whole);
-        let order = std::mem::take(&mut self.tree.orders.pre);
-        self.out.stats.elements = order.len() as u32;
-        let baselines = self.tree.orders.with(visit::feat::BASELINE).to_vec();
-        self.align_baselines(&baselines);
-        let anchored = self.tree.orders.with(visit::feat::ANCHORED).to_vec();
-        self.place_anchored(&anchored);
+    /// Samples the style, mirrors right to left, then shakes, staggers and
+    /// motion; what may change this frame (`None`: everything) and what
+    /// motion moved.
+    #[allow(clippy::needless_borrow)]
+    fn frame_motion(
+        &mut self,
+        order: &[usize],
+        whole: bool,
+        vp: Viewport,
+    ) -> (Option<Vec<usize>>, Vec<usize>) {
         // What may change this frame (`visit`): every node on a fresh one.
         let (mut seeds, restyle) = match whole {
             true => (None, None),
@@ -979,6 +1048,18 @@ impl Ui {
         }
         self.apply_bursts(&order);
         self.world_place();
+        (seeds, animated)
+    }
+
+    /// The drawing order, the HUD's placements, the maps and the world:
+    /// the drawing order and the nodes whose maps were made again.
+    #[allow(clippy::needless_borrow)]
+    fn place_frame(
+        &mut self,
+        order: Vec<usize>,
+        seeds: &Option<Vec<usize>>,
+        animated: &[usize],
+    ) -> (Vec<usize>, Vec<usize>) {
         self.tree.orders.pre = order;
         // Drawn and hit in z order among siblings.
         self.update_draw_order(&animated);
@@ -1003,7 +1084,19 @@ impl Ui {
         self.world_finish();
         let dnd = self.tree.orders.with(visit::feat::DND).to_vec();
         self.note_drag_and_drop(&dnd);
+        (order, mapped)
+    }
 
+    /// Interaction state for the next tick (scroll ranges, scopes, input
+    /// specs, hits, focus, pads, taps) and the cursor.
+    #[allow(clippy::ptr_arg, clippy::needless_borrow)]
+    fn update_interaction(
+        &mut self,
+        order: &Vec<usize>,
+        seeds: &Option<Vec<usize>>,
+        mapped: &Vec<usize>,
+        screen: Rect,
+    ) -> (crate::Cursor, Vec<crate::CursorImage>) {
         // Interaction state for the next tick: what is on screen is what
         // the trees' index holds (`tree`), a rich text's links with it.
         #[cfg(debug_assertions)]
@@ -1255,7 +1348,22 @@ impl Ui {
         } else {
             self.resolve_cursor(&order)
         };
+        (cursor, cursor_images)
+    }
 
+    /// Parts, decorations, selection marks, the trees' commands and the
+    /// frame's items; the drawing order is handed back.
+    #[allow(clippy::type_complexity)]
+    fn record_paint(
+        &mut self,
+        order: Vec<usize>,
+        seeds: &Option<Vec<usize>>,
+        mapped: Vec<usize>,
+    ) -> (
+        Vec<usize>,
+        Vec<DrawItem>,
+        Vec<(og_draw::FontHandle, Vec<char>)>,
+    ) {
         // A button narrower than an ornament's span is `[narrow]`, laid
         // out: a style draws it plain (fantasy's hairline and bevel, no
         // ornament under 160 px, art review 2026-11-04). `Ui::button`
@@ -1424,6 +1532,11 @@ impl Ui {
         self.paint.cache.prev_cmds = Vec::new();
         self.paint.cache.last_cmds = trees;
         self.paint.cache.last_tail = tail;
+        (order, items, missing_glyphs)
+    }
+
+    /// The paths of the focused controls, pads 1 to 3 after the first.
+    fn focus_paths(&self) -> [String; 4] {
         let mut focus_paths: [String; 4] = Default::default();
         let focused = [
             self.interaction.state.focus,
@@ -1447,27 +1560,7 @@ impl Ui {
                 focus_paths[slot] = path.to_owned();
             }
         }
-        self.tree.orders.draw = order;
-        self.note_relevance();
-        self.out.frame = UiFrame {
-            viewport: vp,
-            items,
-            warnings: std::mem::take(&mut self.out.warnings),
-            missing_glyphs,
-            focus_paths,
-            text_input: self.interaction.text_target.take(),
-            events: std::mem::take(&mut self.out.events),
-            grounds: std::mem::take(&mut self.world.grounds),
-            stats: LayoutStats {
-                laid_out: self.layout.cache.laid_out,
-                ..self.out.stats
-            },
-            unit: self.env.unit,
-            cursor,
-            cursor_images,
-        };
-        self.paint.inspection = Default::default();
-        Ok(&self.out.frame)
+        focus_paths
     }
 
     /// [`UiFrame::missing_glyphs`] of a frame's commands: read from each
