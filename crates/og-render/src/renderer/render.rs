@@ -87,45 +87,45 @@ use instance_uploads::InstanceUploadInputs;
 mod gpu_cull_stage;
 use gpu_cull_stage::GpuCullInputs;
 mod sprite_arenas;
-use sprite_arenas::{SpriteArenaInputs, SpriteArenas};
+use sprite_arenas::SpriteArenaInputs;
 mod shadow_plan;
-use shadow_plan::{PlanShadowsInputs, PlanShadowsOutputs};
+use shadow_plan::PlanShadowsInputs;
 mod reflection_lists;
-use reflection_lists::{PlanReflectionListsInputs, PlanReflectionListsOutputs};
+use reflection_lists::PlanReflectionListsInputs;
 mod probe_lists;
-use probe_lists::{PlanProbeListsInputs, PlanProbeListsOutputs};
+use probe_lists::PlanProbeListsInputs;
 mod view_lists;
-use view_lists::{PlanViewListsInputs, PlanViewListsOutputs};
+use view_lists::PlanViewListsInputs;
 mod world_prepare;
-use world_prepare::{PrepareWorldInputs, PrepareWorldOutputs};
+use world_prepare::PrepareWorldInputs;
 mod lights_stage;
-use lights_stage::{PrepareLightsInputs, PrepareLightsOutputs};
+use lights_stage::PrepareLightsInputs;
 mod instances_stage;
-use instances_stage::{UploadInstancesInputs, UploadInstancesOutputs};
+use instances_stage::UploadInstancesInputs;
 mod uploads_stage;
-use uploads_stage::{UploadFrameInputs, UploadFrameOutputs};
+use uploads_stage::UploadFrameInputs;
 mod frame_uniform;
-use frame_uniform::{WriteFrameUniformsInputs, WriteFrameUniformsOutputs};
+use frame_uniform::WriteFrameUniformsInputs;
 mod sun_and_post;
-use sun_and_post::{WriteSunAndPostInputs, WriteSunAndPostOutputs};
+use sun_and_post::WriteSunAndPostInputs;
 mod fx_uniform;
-use fx_uniform::{WriteFxUniformsInputs, WriteFxUniformsOutputs};
+use fx_uniform::WriteFxUniformsInputs;
 mod view_uniforms;
 use view_uniforms::{WriteViewUniformsInputs, WriteViewUniformsOutputs};
 mod effects;
 use effects::{DecideEffectsInputs, FrameEffects};
 mod water_fluids;
-use water_fluids::{PrepareWaterAndFluidsInputs, PrepareWaterAndFluidsOutputs};
+use water_fluids::PrepareWaterAndFluidsInputs;
 mod oit_frame;
-use oit_frame::{PlanOitFrameInputs, PlanOitFrameOutputs};
+use oit_frame::PlanOitFrameInputs;
 mod sprite_groups;
 use sprite_groups::PrepareSpriteGroupsInputs;
 mod shadow_inputs;
-use shadow_inputs::{PrepareShadowInputsInputs, PrepareShadowInputsOutputs};
+use shadow_inputs::PrepareShadowInputsInputs;
 mod culling_plan;
-use culling_plan::{PlanCullingInputs, PlanCullingOutputs};
+use culling_plan::PlanCullingInputs;
 mod camera_lists;
-use camera_lists::{PlanCameraListsInputs, PlanCameraListsOutputs};
+use camera_lists::PlanCameraListsInputs;
 mod pass_list;
 use pass_list::PassListInputs;
 mod stylise_frame;
@@ -143,7 +143,7 @@ mod fx_groups;
 mod pre_graph_stage;
 use pre_graph_stage::{EncodePreGraphInputs, EncodePreGraphOutputs};
 mod frame_binds;
-use frame_binds::{BindFrameInputs, BindFrameOutputs};
+use frame_binds::BindFrameInputs;
 mod after_graph;
 use after_graph::{EncodeAfterGraphInputs, EncodeAfterGraphOutputs};
 mod submit_frame;
@@ -487,20 +487,7 @@ impl Renderer {
         // The strips and sprites of the camera, the views and the probe faces,
         // appended in that order to the frame's strip and sprite buffers
         // (sprite_arenas.rs).
-        let SpriteArenas {
-            ribbon_frame,
-            light_slots,
-            lit_range,
-            view_ribbons,
-            fluids,
-            gpu_sprites,
-            sprite_frame,
-            view_sprites,
-            view_glow_runs,
-            view_boards,
-            face_sprites,
-            face_boards,
-        } = self.build_sprite_arenas(SpriteArenaInputs {
+        let arenas = self.build_sprite_arenas(SpriteArenaInputs {
             scene,
             camera: &camera,
             cam: &cam,
@@ -512,31 +499,28 @@ impl Renderer {
             probe_faces: &probe_faces,
             active_probes: &active_probes,
         })?;
-        plans.metaballs = (fluids > 0).then_some(());
+        plans.metaballs = (arenas.fluids > 0).then_some(());
         // Order-independent transparency's frame mode (oit_frame.rs).
-        let PlanOitFrameOutputs {
-            oit_candidates,
-            oit_frame,
-        } = self.plan_oit_frame(PlanOitFrameInputs {
+        let oit = self.plan_oit_frame(PlanOitFrameInputs {
             scene,
             batches: &batches,
             skinned_batches: &skinned_batches,
-            sprite_frame: &sprite_frame,
-            ribbon_frame: &ribbon_frame,
+            sprite_frame: &arenas.sprite_frame,
+            ribbon_frame: &arenas.ribbon_frame,
             particle_frame: &particle_frame,
         });
         // The sprites' groups, tiles and sprite meshes (sprite_groups.rs).
         self.prepare_sprite_groups(PrepareSpriteGroupsInputs {
             scene,
-            sprite_frame: &sprite_frame,
-            view_sprites: &view_sprites,
-            view_glow_runs: &view_glow_runs,
-            face_sprites: &face_sprites,
-            view_boards: &view_boards,
-            face_boards: &face_boards,
-            gpu_sprites: &gpu_sprites,
-            light_slots: &light_slots,
-            lit_range,
+            sprite_frame: &arenas.sprite_frame,
+            view_sprites: &arenas.view_sprites,
+            view_glow_runs: &arenas.view_glow_runs,
+            face_sprites: &arenas.face_sprites,
+            view_boards: &arenas.view_boards,
+            face_boards: &arenas.face_boards,
+            gpu_sprites: &arenas.gpu_sprites,
+            light_slots: &arenas.light_slots,
+            lit_range: arenas.lit_range,
             particle_frame: &particle_frame,
         });
         if let Some(t) = scene.decal_atlas
@@ -561,7 +545,7 @@ impl Renderer {
                 g.lut.index()
             )));
         }
-        let glow = post_fx.glow.is_some() && !sprite_frame.glow_runs.is_empty();
+        let glow = post_fx.glow.is_some() && !arenas.sprite_frame.glow_runs.is_empty();
 
         // GPU-driven culling (cull_gpu.rs): each pass's list is indirect
         // draws the compute fills; the CPU sorts the transparent instances
@@ -582,11 +566,7 @@ impl Renderer {
             .max()
             .unwrap_or(0);
         // The static shadow cache's split and the shelter map (shadow_inputs.rs).
-        let PrepareShadowInputsOutputs {
-            shadow_split,
-            shelter,
-            shelter_redraw,
-        } = self.prepare_shadow_inputs(PrepareShadowInputsInputs {
+        let shadow_inputs = self.prepare_shadow_inputs(PrepareShadowInputsInputs {
             scene,
             camera: &camera,
             batches: &batches,
@@ -599,25 +579,12 @@ impl Renderer {
             debris_instances: &debris_instances,
         });
         // How the frame culls (culling_plan.rs).
-        let PlanCullingOutputs {
-            max_passes,
-            meshlet_taken,
-            meshlet_max,
-            meshlet_items,
-            gpu_cull,
-            skinned_gpu,
-            cull_n,
-            object_motion,
-            auxiliary_instances,
-            meshlet_casters,
-            meshlet_all,
-            meshlet_firsts,
-        } = self.plan_culling(PlanCullingInputs {
+        let cull = self.plan_culling(PlanCullingInputs {
             scene,
             batches: &batches,
             view_plans: &view_plans,
             reflection,
-            shelter_redraw,
+            shelter_redraw: shadow_inputs.shelter_redraw,
             sorted,
             skinned_n,
             crowd_gpu,
@@ -629,115 +596,90 @@ impl Renderer {
             blur_motion,
             temporal,
         });
-        let in_meshlet = |b: &Batch| b.count > 0 && meshlet_firsts.binary_search(&b.first).is_ok();
+        let in_meshlet =
+            |b: &Batch| b.count > 0 && cull.meshlet_firsts.binary_search(&b.first).is_ok();
         let on_layers = |mask: u32| -> Vec<u32> {
-            meshlet_all
+            cull.meshlet_all
                 .iter()
                 .copied()
                 .filter(|&b| batches[b as usize].layers & mask != 0)
                 .collect()
         };
         // The main camera's lists (camera_lists.rs).
-        let PlanCameraListsOutputs {
-            mut vis,
-            mut cull_inside,
-            mask,
-            oit_mode,
-            main_list,
-            culled,
-            mut blended_list,
-        } = self.plan_camera_lists(PlanCameraListsInputs {
+        let mut camera_lists = self.plan_camera_lists(PlanCameraListsInputs {
             scene,
             camera: &camera,
             cam: &cam,
             view_frustum: &view_frustum,
             batches: &batches,
-            gpu_cull,
-            cull_n,
-            meshlet_items,
-            meshlet_max,
-            meshlet_taken,
+            gpu_cull: cull.gpu_cull,
+            cull_n: cull.cull_n,
+            meshlet_items: cull.meshlet_items,
+            meshlet_max: cull.meshlet_max,
+            meshlet_taken: cull.meshlet_taken,
             spheres: &spheres,
             transforms: &mut transforms,
             origins: &mut origins,
             submission: &submission,
-            sprite_frame: &sprite_frame,
+            sprite_frame: &arenas.sprite_frame,
             skinned_visible: &skinned_visible,
             skinned_culled,
-            oit_frame,
-            oit_candidates,
+            oit_frame: oit.oit_frame,
+            oit_candidates: oit.oit_candidates,
         });
         // The planar reflections' lists (reflection_lists.rs).
-        let PlanReflectionListsOutputs {
-            mut reflection_list,
-            reflection_meshlets,
-            mut reflection_blended,
-        } = self.plan_reflection_lists(PlanReflectionListsInputs {
+        let mut mirror = self.plan_reflection_lists(PlanReflectionListsInputs {
             batches: &batches,
-            vis: &mut vis,
-            gpu_cull,
+            vis: &mut camera_lists.vis,
+            gpu_cull: cull.gpu_cull,
             spheres: &spheres,
             transforms: &mut transforms,
             origins: &mut origins,
-            cull_inside: &mut cull_inside,
+            cull_inside: &mut camera_lists.cull_inside,
             submission: &submission,
             in_meshlet: &in_meshlet,
             on_layers: &on_layers,
             reflections: &reflections,
-            mask,
-            cull_n,
+            mask: camera_lists.mask,
+            cull_n: cull.cull_n,
         });
         // The reflection probes' face lists (probe_lists.rs).
-        let PlanProbeListsOutputs {
-            mut probe_lists,
-            mut probe_blended,
-            probe_views,
-        } = self.plan_probe_lists(PlanProbeListsInputs {
+        let mut faces = self.plan_probe_lists(PlanProbeListsInputs {
             batches: &batches,
-            vis: &mut vis,
-            gpu_cull,
+            vis: &mut camera_lists.vis,
+            gpu_cull: cull.gpu_cull,
             spheres: &spheres,
             transforms: &mut transforms,
             origins: &mut origins,
-            cull_inside: &mut cull_inside,
+            cull_inside: &mut camera_lists.cull_inside,
             submission: &submission,
             in_meshlet: &in_meshlet,
             probe_faces: &probe_faces,
             active_probes: &active_probes,
             probe_frame: &probe_frame,
             face_depth,
-            meshlet_all: &meshlet_all,
-            face_boards: &face_boards,
+            meshlet_all: &cull.meshlet_all,
+            face_boards: &arenas.face_boards,
         });
         // The views' lists (view_lists.rs).
-        let PlanViewListsOutputs {
-            mut view_blended,
-            view_views,
-            mut view_lists,
-        } = self.plan_view_lists(PlanViewListsInputs {
+        let mut view_set = self.plan_view_lists(PlanViewListsInputs {
             batches: &batches,
-            vis: &mut vis,
-            gpu_cull,
+            vis: &mut camera_lists.vis,
+            gpu_cull: cull.gpu_cull,
             spheres: &spheres,
             transforms: &mut transforms,
             origins: &mut origins,
-            cull_inside: &mut cull_inside,
+            cull_inside: &mut camera_lists.cull_inside,
             submission: &submission,
             in_meshlet: &in_meshlet,
             on_layers: &on_layers,
             view_plans: &view_plans,
-            view_boards: &view_boards,
+            view_boards: &arenas.view_boards,
             particle_frame: &particle_frame,
-            cull_n,
+            cull_n: cull.cull_n,
         });
         // Terrains, scattered copies and grass (world_prepare.rs).
-        let PrepareWorldOutputs {
-            prev_view_proj,
-            terrain_draws,
-            terrain_casters,
-            mut scatter_batches,
-            grass_frame,
-        } = self.prepare_world(PrepareWorldInputs {
+        let mut world = self.prepare_world(PrepareWorldInputs {
             scene,
             camera: &camera,
             cam: &cam,
@@ -754,17 +696,11 @@ impl Renderer {
         // that casts nothing still need the cascades (their shadows, and
         // the grass canopy's own shading, read them).
         let has_casters = batches.iter().chain(&skinned_batches).any(|b| b.cast)
-            || terrain_casters
-            || grass_frame.casts()
-            || scatter_batches.casts();
+            || world.terrain_casters
+            || world.grass_frame.casts()
+            || world.scatter_batches.casts();
         // The local lights (lights_stage.rs).
-        let PrepareLightsOutputs {
-            lights_gpu,
-            local_shadows,
-            shadowed_dropped,
-            contact_rows,
-            volumetric,
-        } = self.prepare_lights(PrepareLightsInputs {
+        let lights_frame = self.prepare_lights(PrepareLightsInputs {
             scene,
             camera: &camera,
             cam: &cam,
@@ -773,20 +709,9 @@ impl Renderer {
             volumetric_fog: &volumetric_fog,
             reflections: &reflections,
         });
-        plans.volumetric = volumetric;
+        plans.volumetric = lights_frame.volumetric;
         // The shadow passes' plan and lists (shadow_plan.rs).
-        let PlanShadowsOutputs {
-            cascades,
-            cascade_views,
-            local_views,
-            cascade_plans,
-            cascade_lists,
-            shelter_view,
-            shelter_list,
-            local_lists,
-            local_frustums,
-            local_plans,
-        } = self.plan_shadows(PlanShadowsInputs {
+        let shadow_plan = self.plan_shadows(PlanShadowsInputs {
             scene,
             camera: &camera,
             cam: &cam,
@@ -797,30 +722,25 @@ impl Renderer {
             to_light,
             shadow_size,
             aspect,
-            cull_n,
-            meshlet_casters: &meshlet_casters,
-            shadow_split: &shadow_split,
+            cull_n: cull.cull_n,
+            meshlet_casters: &cull.meshlet_casters,
+            shadow_split: &shadow_inputs.shadow_split,
             skinned_batches: &skinned_batches,
-            scatter_batches: &scatter_batches,
-            grass_frame: &grass_frame,
-            terrain_casters,
-            terrain_draws: &terrain_draws,
-            gpu_cull,
-            vis: &mut vis,
+            scatter_batches: &world.scatter_batches,
+            grass_frame: &world.grass_frame,
+            terrain_casters: world.terrain_casters,
+            terrain_draws: &world.terrain_draws,
+            gpu_cull: cull.gpu_cull,
+            vis: &mut camera_lists.vis,
             spheres: &spheres,
             transforms: &mut transforms,
             origins: &mut origins,
-            cull_inside,
-            shelter: &shelter,
-            local_shadows: &local_shadows,
+            cull_inside: camera_lists.cull_inside,
+            shelter: &shadow_inputs.shelter,
+            local_shadows: &lights_frame.local_shadows,
         });
         // The GPU culling's encode and the instance records (instances_stage.rs).
-        let UploadInstancesOutputs {
-            cull_commands,
-            gpu_counts,
-            instance_upload_bytes,
-            debris_commands,
-        } = self.upload_instances(UploadInstancesInputs {
+        let instance_uploads = self.upload_instances(UploadInstancesInputs {
             scene,
             cam: &cam,
             batches: &batches,
@@ -829,32 +749,28 @@ impl Renderer {
             origins: &origins,
             debris_instances: &debris_instances,
             sorted,
-            vis: &vis,
-            gpu_cull,
-            max_passes,
-            auxiliary_instances,
+            vis: &camera_lists.vis,
+            gpu_cull: cull.gpu_cull,
+            max_passes: cull.max_passes,
+            auxiliary_instances: cull.auxiliary_instances,
             previous_valid,
-            object_motion,
+            object_motion: cull.object_motion,
             prepass: effects.prepass,
-            skinned_gpu,
+            skinned_gpu: cull.skinned_gpu,
             skinned_batches: &skinned_batches,
             skinned_plain,
             skinned_data: &skinned_data,
             skinned: &skinned,
-            reflection_list: &mut reflection_list,
-            reflection_blended: &mut reflection_blended,
-            blended_list: &mut blended_list,
-            probe_lists: &mut probe_lists,
-            probe_blended: &mut probe_blended,
-            view_lists: &mut view_lists,
-            view_blended: &mut view_blended,
+            reflection_list: &mut mirror.reflection_list,
+            reflection_blended: &mut mirror.reflection_blended,
+            blended_list: &mut camera_lists.blended_list,
+            probe_lists: &mut faces.probe_lists,
+            probe_blended: &mut faces.probe_blended,
+            view_lists: &mut view_set.view_lists,
+            view_blended: &mut view_set.view_blended,
         });
         // The skinned, sprite, particle, overlay and 2D light uploads (uploads_stage.rs).
-        let UploadFrameOutputs {
-            ui_uniform,
-            lights_2d,
-            occluders_2d,
-        } = self.upload_frame(UploadFrameInputs {
+        let uploads = self.upload_frame(UploadFrameInputs {
             scene,
             target,
             cam: &cam,
@@ -862,67 +778,58 @@ impl Renderer {
             skinned_data: &skinned_data,
             joint_matrices: &joint_matrices,
             crowd_frame: &crowd_frame,
-            scatter_batches: &mut scatter_batches,
-            ribbon_frame: &ribbon_frame,
-            sprite_frame: &sprite_frame,
+            scatter_batches: &mut world.scatter_batches,
+            ribbon_frame: &arenas.ribbon_frame,
+            sprite_frame: &arenas.sprite_frame,
             particle_frame: &particle_frame,
-            gpu_sprites: &gpu_sprites,
+            gpu_sprites: &arenas.gpu_sprites,
             overlay_frame: &overlay_frame,
-            light_slots: &light_slots,
+            light_slots: &arenas.light_slots,
         });
         // The frame uniform, its shadow slots and its copies (frame_uniform.rs).
-        let WriteFrameUniformsOutputs { uniform, time: t } =
-            self.write_frame_uniforms(WriteFrameUniformsInputs {
-                scene,
-                camera: &camera,
-                cam: &cam,
-                light,
-                to_light,
-                shadow_size,
-                taa,
-                frame_fog: &frame_fog,
-                scene_water,
-                lights_gpu: &lights_gpu,
-                cascades: &cascades,
-                local_shadows: &local_shadows,
-                shelter: &shelter,
-                probe_frame: &probe_frame,
-                active_probes: &active_probes,
-                probe_faces: &probe_faces,
-                reflections: &reflections,
-                ssr: effects.ssr.as_ref(),
-            });
+        let frame_uniforms = self.write_frame_uniforms(WriteFrameUniformsInputs {
+            scene,
+            camera: &camera,
+            cam: &cam,
+            light,
+            to_light,
+            shadow_size,
+            taa,
+            frame_fog: &frame_fog,
+            scene_water,
+            lights_gpu: &lights_frame.lights_gpu,
+            cascades: &shadow_plan.cascades,
+            local_shadows: &lights_frame.local_shadows,
+            shelter: &shadow_inputs.shelter,
+            probe_frame: &probe_frame,
+            active_probes: &active_probes,
+            probe_faces: &probe_faces,
+            reflections: &reflections,
+            ssr: effects.ssr.as_ref(),
+        });
         // The sun on screen, the flare's and the post chain's uniforms (sun_and_post.rs).
-        let WriteSunAndPostOutputs {
-            sun_ndc,
-            sun_fade,
-            god_visible,
-        } = self.write_sun_and_post(WriteSunAndPostInputs {
+        let sun = self.write_sun_and_post(WriteSunAndPostInputs {
             scene,
             camera: &camera,
             cam: &cam,
             aspect,
             light,
             to_light,
-            uniform: &uniform,
+            uniform: &frame_uniforms.uniform,
             post_fx,
             god_rays: effects.god_rays,
             lens_flare: effects.lens_flare,
             flare_sources_on: effects.flare_sources_on,
             glow,
-            sprite_frame: &sprite_frame,
+            sprite_frame: &arenas.sprite_frame,
         });
-        // The effects uniform and the decals (fx_uniform.rs).
-        let WriteFxUniformsOutputs {
-            fx_uniform,
-            decals,
-            decals_dropped,
-        } = self.write_fx_uniforms(WriteFxUniformsInputs {
+        // The effects frame_uniforms.uniform and the decals (fx_uniform.rs).
+        let fx_frame = self.write_fx_uniforms(WriteFxUniformsInputs {
             scene,
             camera: &camera,
             cam: &cam,
             view_frustum: &view_frustum,
-            prev_view_proj,
+            prev_view_proj: world.prev_view_proj,
             motion_read: effects.motion_read,
             skinned_motion,
             joints_drawn,
@@ -939,14 +846,14 @@ impl Renderer {
                 scene,
                 target,
                 view_plans: &view_plans,
-                uniform: &uniform,
-                fx_uniform: &fx_uniform,
-                lights_on: !lights_gpu.is_empty(),
-                light_slots: &light_slots,
-                fluids,
+                uniform: &frame_uniforms.uniform,
+                fx_uniform: &fx_frame.fx_uniform,
+                lights_on: !lights_frame.lights_gpu.is_empty(),
+                light_slots: &arenas.light_slots,
+                fluids: arenas.fluids,
                 particle_soft: particle_frame.soft,
                 post_fx,
-                view_glow_runs: &view_glow_runs,
+                view_glow_runs: &arenas.view_glow_runs,
             });
         // The post chain's uniforms, the GI's history, SSR and TAA (post_uniforms.rs).
         let FramePostHistory { gi_copy, taa_blend } =
@@ -960,12 +867,12 @@ impl Renderer {
                 dof: effects.dof,
                 motion_blur: effects.motion_blur,
                 god_rays: effects.god_rays,
-                sun_ndc,
-                god_visible,
-                sun_fade,
+                sun_ndc: sun.sun_ndc,
+                god_visible: sun.god_visible,
+                sun_fade: sun.sun_fade,
                 depth_bands: effects.depth_bands,
                 screen_blur: effects.screen_blur,
-                contact: contact_rows,
+                contact: lights_frame.contact_rows,
                 ssr: effects.ssr.as_ref(),
                 taa,
                 temporal,
@@ -977,13 +884,13 @@ impl Renderer {
             Some(AoMethod::Ssao | AoMethod::Screen) => false,
             _ => true,
         };
-        self.shadows.shelter_key = shelter.as_ref().map(|s| s.2);
+        self.shadows.shelter_key = shadow_inputs.shelter.as_ref().map(|s| s.2);
         let lens = post_fx.lens_distortion.filter(|l| l.amount != 0.0);
         plans.live_sky = LiveSkyPass::plan(&self.sky_capture);
         plans.gi_probes = GiProbesPass::plan(&self.gi_probes);
         plans.particles = particle_frame.any_gpu.then_some(ParticlesPlan {
             frame: &particle_frame,
-            sprites: &gpu_sprites,
+            sprites: &arenas.gpu_sprites,
         });
         // The frame's passes, compiled into the render graph (cached while
         // the pass list stays the same; pass_list.rs).
@@ -997,9 +904,9 @@ impl Renderer {
             light_2d: plans.light_2d.is_some(),
             metaballs: plans.metaballs.is_some(),
             froxels: plans.volumetric.is_some(),
-            cascades: cascades.len() as u32,
-            shelter_redraw,
-            local_shadows: &local_shadows,
+            cascades: shadow_plan.cascades.len() as u32,
+            shelter_redraw: shadow_inputs.shelter_redraw,
+            local_shadows: &lights_frame.local_shadows,
             probes: !probe_frame.due.is_empty(),
             reflections: reflections.len() as u8,
             views: view_plans.len() as u32,
@@ -1007,7 +914,7 @@ impl Renderer {
             taa,
             smaa_t2x,
         });
-        // The stylise passes' table, key and uniform (stylise_frame.rs).
+        // The stylise passes' table, key and frame_uniforms.uniform (stylise_frame.rs).
         let PrepareFrameStyliseOutputs { stylise_key } =
             self.prepare_frame_stylise(PrepareFrameStyliseInputs {
                 scene,
@@ -1021,12 +928,13 @@ impl Renderer {
         // The 2D light map's size, its directions target and the light
         // pass's plan (pass_light_2d.rs).
         let (light_2d, lightmap_size, lightdir_on) =
-            self.plan_light_2d(scene, &light_slots, lights_2d);
+            self.plan_light_2d(scene, &arenas.light_slots, uploads.lights_2d);
         plans.light_2d = light_2d;
         // The colour adjustments' table and the transmission's scene copy
         // (post_resources.rs).
         let adjusted = self.prepare_colour_lut(scene);
-        let transmission = self.prepare_transmission(&batches, &blended_list, &skinned_visible);
+        let transmission =
+            self.prepare_transmission(&batches, &camera_lists.blended_list, &skinned_visible);
         // The render graph for the frame's passes (graph_prepare.rs).
         self.prepare_graph(PrepareGraphInputs {
             scene,
@@ -1039,10 +947,10 @@ impl Renderer {
             scene_water,
             distortion: particle_frame.distortion,
             transmission,
-            fluids,
+            fluids: arenas.fluids,
             reflections: &reflections,
             object_space,
-            oit_mode,
+            oit_mode: camera_lists.oit_mode,
             adjusted,
             lut_index,
             stylise_key,
@@ -1059,7 +967,7 @@ impl Renderer {
             scene,
             cam: &cam,
             overlay_frame: &overlay_frame,
-            ui_uniform,
+            ui_uniform: uploads.ui_uniform,
             glass_on,
         });
         // Fork s70: a covered surface's frame ends prepared: its passes would
@@ -1068,7 +976,7 @@ impl Renderer {
         if matches!(target, RenderTarget::Surface)
             && COVERED.load(std::sync::atomic::Ordering::Relaxed)
         {
-            if let Some(gc) = self.visibility.gpu_cull.as_mut().filter(|_| gpu_cull) {
+            if let Some(gc) = self.visibility.gpu_cull.as_mut().filter(|_| cull.gpu_cull) {
                 gc.dropped();
             }
             return Ok(FrameStats::default());
@@ -1116,14 +1024,8 @@ impl Renderer {
             effects.ao_target || effects.contact,
             reflection.is_some(),
         );
-        // The water's and the 3D fluids' draws (water_fluids.rs).
-        let PrepareWaterAndFluidsOutputs {
-            water_draws,
-            face_water,
-            fluid_bounds,
-            fluid_frame,
-            face_fluids,
-        } = self.prepare_water_and_fluids(PrepareWaterAndFluidsInputs {
+        // The water's and the 3D arenas.fluids' draws (water_fluids.rs).
+        let water_fluids = self.prepare_water_and_fluids(PrepareWaterAndFluidsInputs {
             scene,
             cam: &cam,
             scene_water,
@@ -1135,7 +1037,9 @@ impl Renderer {
             fluids_3d: effects.fluids_3d,
             face_fluid,
         });
-        plans.fluid_3d = effects.fluids_3d.then_some(fluid_frame.as_ref());
+        plans.fluid_3d = effects
+            .fluids_3d
+            .then_some(water_fluids.fluid_frame.as_ref());
         // The frame's encoder and the compute before the graph (pre_graph_stage.rs).
         let EncodePreGraphOutputs {
             mut encoder,
@@ -1149,13 +1053,13 @@ impl Renderer {
             crowd_gpu,
             crowd_frame: &crowd_frame,
             crowd_previous,
-            vis: &vis,
-            gpu_cull,
+            vis: &camera_lists.vis,
+            gpu_cull: cull.gpu_cull,
             skinned: &skinned,
             skinned_motion,
             joints_drawn,
-            terrain_draws: &terrain_draws,
-            grass_frame: &grass_frame,
+            terrain_draws: &world.terrain_draws,
+            grass_frame: &world.grass_frame,
         });
         let transmission_view = self
             .transmission
@@ -1186,61 +1090,36 @@ impl Renderer {
         let FrameStatsOutputs { mut stats } = self.frame_stats(FrameStatsInputs {
             scene,
             batches: &batches,
-            instance_upload_bytes,
-            culled,
-            main_list: &main_list,
-            blended_list: &blended_list,
-            local_shadows: &local_shadows,
-            shadowed_dropped,
-            sprite_frame: &sprite_frame,
+            instance_upload_bytes: instance_uploads.instance_upload_bytes,
+            culled: camera_lists.culled,
+            main_list: &camera_lists.main_list,
+            blended_list: &camera_lists.blended_list,
+            local_shadows: &lights_frame.local_shadows,
+            shadowed_dropped: lights_frame.shadowed_dropped,
+            sprite_frame: &arenas.sprite_frame,
             particle_frame: &particle_frame,
-            ribbon_frame: &ribbon_frame,
+            ribbon_frame: &arenas.ribbon_frame,
             line_frame: &line_frame,
-            decals,
-            decals_dropped,
-            lights_2d,
-            occluders_2d,
+            decals: fx_frame.decals,
+            decals_dropped: fx_frame.decals_dropped,
+            lights_2d: uploads.lights_2d,
+            occluders_2d: uploads.occluders_2d,
             joints_drawn,
             taa_blend,
-            oit_mode,
-            gpu_counts,
+            oit_mode: camera_lists.oit_mode,
+            gpu_counts: instance_uploads.gpu_counts,
             overlay_frame: &overlay_frame,
             skinned_visible: &skinned_visible,
-            skinned_gpu,
+            skinned_gpu: cull.skinned_gpu,
         });
-        if !water_draws.is_empty() {
+        if !water_fluids.water_draws.is_empty() {
             (stats.water_submits, stats.foam_steps) = self.water.submitted;
         }
         // The frame's bind groups (frame_binds.rs).
-        let BindFrameOutputs {
-            frame_bind_group,
-            sky_group,
-            reflection_frame_group,
-            probe_groups,
-            oit_probe_groups,
-            face_groups,
-            oit_frame_group,
-            fx_group,
-            sprite_fx_group,
-            glow_fx_group,
-            physical_fx_group,
-            scene_depth,
-            particle_group,
-            metaball_groups,
-            reflection_fx_group,
-            view_groups,
-            fx_lean,
-            reflection_fx_lean,
-            view_fields,
-            view_sprite_fx,
-            view_particle_groups,
-            view_line_groups,
-            face_particle_groups,
-            face_line_groups,
-        } = self.bind_frame(BindFrameInputs {
+        let binds = self.bind_frame(BindFrameInputs {
             scene,
             batches: &batches,
-            oit_mode,
+            oit_mode: camera_lists.oit_mode,
             probe_frame: &probe_frame,
             active_probes: &active_probes,
             probe_faces: &probe_faces,
@@ -1255,27 +1134,29 @@ impl Renderer {
         });
         // The groups that select among them: the probes' (per active probe,
         // and with OIT's arena), and the effect groups' lean twins.
-        let probe_binding = (!probe_groups.is_empty()).then_some(probe_select::ProbeGroups {
+        let probe_binding = (!binds.probe_groups.is_empty()).then_some(probe_select::ProbeGroups {
             boxes: &probe_boxes,
-            groups: &probe_groups,
-            frame: frame_bind_group,
+            groups: &binds.probe_groups,
+            frame: binds.frame_bind_group,
         });
-        let oit_probe_binding = oit_frame_group
+        let oit_probe_binding = binds
+            .oit_frame_group
             .as_ref()
-            .filter(|_| !oit_probe_groups.is_empty())
+            .filter(|_| !binds.oit_probe_groups.is_empty())
             .map(|frame| probe_select::ProbeGroups {
                 boxes: &probe_boxes,
-                groups: &oit_probe_groups,
+                groups: &binds.oit_probe_groups,
                 frame,
             });
         let fx_leans: Vec<(&wgpu::BindGroup, &wgpu::BindGroup)> =
-            std::iter::once((fx_group, fx_lean))
+            std::iter::once((binds.fx_group, binds.fx_lean))
                 .chain(
-                    reflection_fx_group
+                    binds
+                        .reflection_fx_group
                         .iter()
-                        .zip(reflection_fx_lean.iter().map(Option::as_ref)),
+                        .zip(binds.reflection_fx_lean.iter().map(Option::as_ref)),
                 )
-                .chain(view_groups.iter().map(|g| (&g.1, g.2.as_ref())))
+                .chain(binds.view_groups.iter().map(|g| (&g.1, g.2.as_ref())))
                 .filter_map(|(fx, lean)| Some((fx, lean?)))
                 .collect();
         let palette_group = self.instances.palette.bind_group.as_ref();
@@ -1286,11 +1167,14 @@ impl Renderer {
             shadow: shadow_skinned,
             prepass: prepass_skinned,
         } = self.skinned_pipelines(&skinned_visible, &skinned_batches, effects.prepass);
-        let culled_gpu = self.visibility.gpu_cull.as_ref().filter(|_| gpu_cull);
+        let culled_gpu = self.visibility.gpu_cull.as_ref().filter(|_| cull.gpu_cull);
         let crowd_cull = self.crowd_gpu.as_ref().filter(|_| crowd_gpu);
         // The effect groups of the standard and the physical pipelines, in
         // the passes that draw physical materials with theirs.
-        let physical_fx = physical_fx_group.as_ref().map(|p| (fx_group, p));
+        let physical_fx = binds
+            .physical_fx_group
+            .as_ref()
+            .map(|p| (binds.fx_group, p));
         // What every pass below draws with (draw_ctx.rs).
         let ctx = DrawCtx {
             r: self,
@@ -1300,26 +1184,28 @@ impl Renderer {
             crowd_cull,
             fx_leans: &fx_leans,
             palette_group,
-            skinned_gpu,
-            sprite_frame: &sprite_frame,
-            blended_list: &blended_list,
-            main_list: &main_list,
+            skinned_gpu: cull.skinned_gpu,
+            sprite_frame: &arenas.sprite_frame,
+            blended_list: &camera_lists.blended_list,
+            main_list: &camera_lists.main_list,
             skinned_visible: &skinned_visible,
             lit_skinned: &lit_skinned,
             physical_fx,
-            fx_group,
-            sprite_fx_group,
-            glow_fx_group,
+            fx_group: binds.fx_group,
+            sprite_fx_group: binds.sprite_fx_group,
+            glow_fx_group: binds.glow_fx_group,
             terrain_indices: self.terrain.index_buffer(),
-            terrain_draws: &terrain_draws,
-            scatter_batches: &scatter_batches,
-            grass_frame: &grass_frame,
+            terrain_draws: &world.terrain_draws,
+            scatter_batches: &world.scatter_batches,
+            grass_frame: &world.grass_frame,
             shadow_skinned: &shadow_skinned,
             skinned_batches: &skinned_batches,
-            terrain_casters,
+            terrain_casters: world.terrain_casters,
         };
         let camera_cards = ctx.card_source(
-            vis.cull_passes
+            camera_lists
+                .vis
+                .cull_passes
                 .iter()
                 .position(|p| p.kind == cull_gpu::PassKind::Main)
                 .map(|g| g as u32),
@@ -1337,144 +1223,145 @@ impl Renderer {
             .into_iter()
             .chain(scatter_queries.into_iter().map(|(n, q)| (n.to_string(), q)))
             .collect();
-        plans.shelter = shelter
+        plans.shelter = shadow_inputs
+            .shelter
             .as_ref()
-            .zip(shelter_list.as_ref())
+            .zip(shadow_plan.shelter_list.as_ref())
             .map(|(s, list)| ShelterPlan {
                 frustum: &s.1,
                 list,
-                view: shelter_view,
+                view: shadow_plan.shelter_view,
             });
         plans.local_face = Some(LocalFacePlan {
-            lists: &local_lists,
-            plans: &local_plans,
-            frustums: &local_frustums,
-            views: &local_views,
+            lists: &shadow_plan.local_lists,
+            plans: &shadow_plan.local_plans,
+            frustums: &shadow_plan.local_frustums,
+            views: &shadow_plan.local_views,
         });
         plans.cascade = Some(CascadePlan {
-            cascades: &cascades,
-            lists: &cascade_lists,
-            plans: &cascade_plans,
-            views: &cascade_views,
+            cascades: &shadow_plan.cascades,
+            lists: &shadow_plan.cascade_lists,
+            plans: &shadow_plan.cascade_plans,
+            views: &shadow_plan.cascade_views,
         });
         plans.probes = (!probe_frame.due.is_empty()).then(|| ProbesPlan {
-            meshlet_views: &probe_views,
+            meshlet_views: &faces.probe_views,
             batches: &batches,
             scene,
             probe_frame: &probe_frame,
             face_depth,
-            face_water: &face_water,
-            face_fluids: &face_fluids,
+            face_water: &water_fluids.face_water,
+            face_fluids: &water_fluids.face_fluids,
             probe_faces: &probe_faces,
             active_probes: &active_probes,
-            face_groups: &face_groups,
-            fx_group,
-            probe_lists: &probe_lists,
+            face_groups: &binds.face_groups,
+            fx_group: binds.fx_group,
+            probe_lists: &faces.probe_lists,
             probe_skinned: &probe_skinned,
             terrain_indices,
-            terrain_draws: &terrain_draws,
-            scatter_batches: &scatter_batches,
-            probe_blended: &probe_blended,
-            face_boards: &face_boards,
-            glow_fx_group,
-            face_particle_groups: &face_particle_groups,
+            terrain_draws: &world.terrain_draws,
+            scatter_batches: &world.scatter_batches,
+            probe_blended: &faces.probe_blended,
+            face_boards: &arenas.face_boards,
+            glow_fx_group: binds.glow_fx_group,
+            face_particle_groups: &binds.face_particle_groups,
             particle_frame: &particle_frame,
             line_frame: &line_frame,
-            face_line_groups: &face_line_groups,
-            face_sprites: &face_sprites,
+            face_line_groups: &binds.face_line_groups,
+            face_sprites: &arenas.face_sprites,
         });
         plans.reflection = (!reflections.is_empty()).then(|| ReflectionPlan {
-            meshlet_views: &reflection_meshlets,
+            meshlet_views: &mirror.reflection_meshlets,
             batches: &batches,
             scene,
-            reflection_frame_group,
-            reflection_fx_group: &reflection_fx_group,
-            reflection_list: &reflection_list,
+            reflection_frame_group: binds.reflection_frame_group,
+            reflection_fx_group: &binds.reflection_fx_group,
+            reflection_list: &mirror.reflection_list,
             skinned_visible: &skinned_visible,
             lit_skinned_standard: &lit_skinned_standard,
             terrain_indices,
             reflections: &reflections,
-            terrain_draws: &terrain_draws,
-            reflection_blended: &reflection_blended,
+            terrain_draws: &world.terrain_draws,
+            reflection_blended: &mirror.reflection_blended,
         });
         plans.view = (!view_plans.is_empty()).then(|| ViewPlan {
-            meshlet_views: &view_views,
+            meshlet_views: &view_set.view_views,
             batches: &batches,
             scene,
             view_plans: &view_plans,
-            lights_2d,
-            view_groups: &view_groups,
-            view_lists: &view_lists,
+            lights_2d: uploads.lights_2d,
+            view_groups: &binds.view_groups,
+            view_lists: &view_set.view_lists,
             view_skinned: &view_skinned,
             terrain_indices,
-            terrain_draws: &terrain_draws,
-            view_blended: &view_blended,
-            view_boards: &view_boards,
-            view_sprite_fx: &view_sprite_fx,
-            view_particle_groups: &view_particle_groups,
+            terrain_draws: &world.terrain_draws,
+            view_blended: &view_set.view_blended,
+            view_boards: &arenas.view_boards,
+            view_sprite_fx: &binds.view_sprite_fx,
+            view_particle_groups: &binds.view_particle_groups,
             particle_frame: &particle_frame,
-            view_ribbons: &view_ribbons,
+            view_ribbons: &arenas.view_ribbons,
             line_frame: &line_frame,
-            view_line_groups: &view_line_groups,
-            view_sprites: &view_sprites,
-            view_fields: &view_fields,
-            view_glow_runs: &view_glow_runs,
+            view_line_groups: &binds.view_line_groups,
+            view_sprites: &arenas.view_sprites,
+            view_fields: &binds.view_fields,
+            view_glow_runs: &arenas.view_glow_runs,
             post_fx,
         });
         plans.prepass = (effects.prepass).then(|| PrepassPlan {
-            water_draws: &water_draws,
+            water_draws: &water_fluids.water_draws,
             object_space,
-            frame_bind_group,
-            fx_group,
-            main_list: &main_list,
+            frame_bind_group: binds.frame_bind_group,
+            fx_group: binds.fx_group,
+            main_list: &camera_lists.main_list,
             culled_gpu,
-            object_motion,
+            object_motion: cull.object_motion,
             batches: &batches,
             skinned_visible: &skinned_visible,
             prepass_skinned: &prepass_skinned,
             terrain_indices,
-            terrain_draws: &terrain_draws,
+            terrain_draws: &world.terrain_draws,
             view_frustum: &view_frustum,
-            scatter_batches: &scatter_batches,
+            scatter_batches: &world.scatter_batches,
             cards: camera_cards,
-            grass_frame: &grass_frame,
+            grass_frame: &world.grass_frame,
         });
         plans.main = Some(MainPlan {
             scene,
-            water_draws: &water_draws,
-            fluid_frame: &fluid_frame,
+            water_draws: &water_fluids.water_draws,
+            fluid_frame: &water_fluids.fluid_frame,
             transmission_view,
             taa: temporal,
-            frame_bind_group,
-            fx_group,
-            main_list: &main_list,
+            frame_bind_group: binds.frame_bind_group,
+            fx_group: binds.fx_group,
+            main_list: &camera_lists.main_list,
             batches: &batches,
             physical_fx,
             probe_binding,
             skinned_visible: &skinned_visible,
             lit_skinned: &lit_skinned,
             terrain_indices,
-            terrain_draws: &terrain_draws,
+            terrain_draws: &world.terrain_draws,
             view_frustum: &view_frustum,
-            scatter_batches: &scatter_batches,
+            scatter_batches: &world.scatter_batches,
             cards: camera_cards,
-            grass_frame: &grass_frame,
-            fluid_bounds,
-            blended_list: &blended_list,
-            sprite_frame: &sprite_frame,
-            sprite_fx_group,
-            particle_group: &particle_group,
+            grass_frame: &world.grass_frame,
+            fluid_bounds: water_fluids.fluid_bounds,
+            blended_list: &camera_lists.blended_list,
+            sprite_frame: &arenas.sprite_frame,
+            sprite_fx_group: binds.sprite_fx_group,
+            particle_group: &binds.particle_group,
             particle_frame: &particle_frame,
-            ribbon_frame: &ribbon_frame,
+            ribbon_frame: &arenas.ribbon_frame,
             line_frame: &line_frame,
-            metaball_groups: &metaball_groups,
+            metaball_groups: &binds.metaball_groups,
             volumetric_fog,
-            oit: oit_mode,
-            oit_frame_group: oit_frame_group.as_ref(),
+            oit: camera_lists.oit_mode,
+            oit_frame_group: binds.oit_frame_group.as_ref(),
             oit_probe_binding,
             gi_copy,
         });
-        plans.glow = glow.then_some(sprite_frame.glow_runs.as_slice());
+        plans.glow = glow.then_some(arenas.sprite_frame.glow_runs.as_slice());
         plans.custom_post = (!effects.custom_posts.is_empty()).then(|| CustomPostPlan {
             scene,
             posts: &effects.custom_posts,
@@ -1485,9 +1372,9 @@ impl Renderer {
             plans: &plans,
             encoder: &mut encoder,
             stats: &mut stats,
-            frame_bind_group,
-            scene_depth,
-            sky_group,
+            frame_bind_group: binds.frame_bind_group,
+            scene_depth: binds.scene_depth,
+            sky_group: binds.sky_group,
             slot,
             fsr,
             routed,
@@ -1531,15 +1418,15 @@ impl Renderer {
             cam: &cam,
             encoder,
             surface_frame,
-            debris_commands,
-            cull_commands,
+            debris_commands: instance_uploads.debris_commands,
+            cull_commands: instance_uploads.cull_commands,
             pass_ms,
             pass_queries,
-            oit_mode,
-            gpu_cull,
+            oit_mode: camera_lists.oit_mode,
+            gpu_cull: cull.gpu_cull,
             temporal,
             gi_copy,
-            t,
+            t: frame_uniforms.time,
             stats: &mut stats,
         });
         Ok(stats)
