@@ -73,7 +73,7 @@ use pass_particles::{ParticlesPass, ParticlesPlan};
 mod pre_graph;
 use pre_graph::pre_graph;
 mod pass_shadows;
-use pass_shadows::{CascadePass, CascadePlan};
+use pass_shadows::{CascadePass, CascadePlan, ShelterPass, ShelterPlan};
 mod setup;
 
 impl Renderer {
@@ -4225,6 +4225,14 @@ impl Renderer {
             .into_iter()
             .chain(scatter_queries.into_iter().map(|(n, q)| (n.to_string(), q)))
             .collect();
+        plans.shelter = shelter
+            .as_ref()
+            .zip(shelter_list.as_ref())
+            .map(|(s, list)| ShelterPlan {
+                frustum: &s.1,
+                list,
+                view: shelter_view,
+            });
         plans.cascade = Some(CascadePlan {
             cascades: &cascades,
             lists: &cascade_lists,
@@ -4260,27 +4268,6 @@ impl Renderer {
                         slot,
                     },
                 ) => {}
-                FramePass::Shelter => {
-                    let s = shelter.as_ref().expect("a shelter pass has its view");
-                    ctx.shadow_pass(
-                        &mut encoder,
-                        self.cascade_map.layers.last().expect("fit_shelter_layer"),
-                        &self.cascade_map.depth,
-                        (
-                            &self.cascade_map.texture,
-                            self.cascade_map.layers.len() as u32 - 1,
-                            &self.cascade_map.depth_texture,
-                        ),
-                        SHELTER_SLOT,
-                        shelter_list.as_ref().expect("a list when redrawn"),
-                        crate::shadow_cache::Plan::ALL,
-                        &s.1,
-                        shelter_view,
-                        &mut stats,
-                        false,
-                        &[ShadowTarget::Cascade],
-                    )
-                }
                 FramePass::LocalFace(layer) => {
                     let l = layer as usize;
                     ctx.shadow_pass(

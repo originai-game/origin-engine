@@ -31,6 +31,7 @@ pub(crate) const PASSES: &[PassDesc] = &[
     Fluid3dPass::DESC,
     GiProbesPass::DESC,
     CascadePass::DESC,
+    ShelterPass::DESC,
     // Three colour targets: normals and velocity, linear depth, outline ids.
     PassDesc {
         pass: FramePass::Prepass,

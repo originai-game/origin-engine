@@ -53,3 +53,48 @@ impl Pass for CascadePass {
         );
     }
 }
+
+/// A frame's shelter map: its view, frustum and casters, when redrawn.
+pub(super) struct ShelterPlan<'f> {
+    pub frustum: &'f Frustum,
+    pub list: &'f [DrawList; 2],
+    pub view: u32,
+}
+
+pub(super) struct ShelterPass;
+
+impl Pass for ShelterPass {
+    const DESC: PassDesc = PassDesc {
+        pass: FramePass::Shelter,
+        name: "shelter",
+        needs: Caps::NONE,
+    };
+    type State = ShadowMap;
+    type Plan<'f> = ShelterPlan<'f>;
+
+    fn state(r: &Renderer) -> &Self::State {
+        &r.cascade_map
+    }
+
+    fn encode<'f>(
+        st: &Self::State,
+        plan: &ShelterPlan<'f>,
+        _: FramePass,
+        cx: &mut EncodeCx<'_, 'f>,
+    ) {
+        cx.ctx.shadow_pass(
+            cx.encoder,
+            st.layers.last().expect("fit_shelter_layer"),
+            &st.depth,
+            (&st.texture, st.layers.len() as u32 - 1, &st.depth_texture),
+            SHELTER_SLOT,
+            plan.list,
+            crate::shadow_cache::Plan::ALL,
+            plan.frustum,
+            plan.view,
+            cx.stats,
+            false,
+            &[ShadowTarget::Cascade],
+        );
+    }
+}
