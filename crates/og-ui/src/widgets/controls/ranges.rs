@@ -437,7 +437,7 @@ impl Ui {
     /// widget's and is kept whole.
     fn border_inside(&mut self, host: usize) {
         let slot = self.tree.nodes[host].content_slot;
-        let Some(reference) = self.tree.nodes[host].el.part else {
+        let Some(reference) = self.tree.nodes[host].part() else {
             return;
         };
         let r = self.part_values(&reference, Some(self.tree.nodes[slot].key));

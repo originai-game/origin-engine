@@ -32,7 +32,7 @@ impl Ui {
         let part = self.tree.nodes[i].part_box.clone().expect("part node");
         let owner = &self.tree.nodes[part.owner];
         let reference = if owner.content_slot == i {
-            owner.el.part.unwrap_or(part.reference)
+            owner.part().unwrap_or(part.reference)
         } else {
             part.reference
         };
@@ -156,7 +156,7 @@ impl Ui {
                     .nodes
                     .iter()
                     .rfind(|n| n.key == k)
-                    .and_then(|n| n.el.part)
+                    .and_then(|n| n.part())
                     .map(|p| self.part_values(&p, Some(k)).cascade)
             })
             .unwrap_or_else(|| self.css_root_cascade());

@@ -67,7 +67,7 @@ impl Ui {
             if n.part_box.is_some() || n.content_slot != NONE {
                 continue;
             }
-            let part = match (n.el.part, n.el.frame) {
+            let part = match (n.part(), n.el.frame) {
                 (Some(p), _) => p,
                 (None, Some(f)) if n.style.sampled.background.is_some() => f.part_ref(),
                 _ => continue,

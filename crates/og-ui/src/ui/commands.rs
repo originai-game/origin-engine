@@ -283,7 +283,7 @@ impl Ui {
         // opacity; its clip is the screen's (bake leaves draw commands be).
         let press_scale = theme.press_scale;
         let marked = |n: &crate::layout::Node| {
-            n.el.part
+            n.part()
                 .is_some_and(|p| p.has("selected") || p.has("focused"))
         };
         let placed = |n: &crate::layout::Node| crate::paint::Placed {
@@ -608,7 +608,7 @@ impl Ui {
     ) {
         let theme = self.env.theme;
         let marked = |n: &crate::layout::Node| {
-            n.el.part
+            n.part()
                 .is_some_and(|p| p.has("selected") || p.has("focused"))
         };
         let press_scale = theme.press_scale;

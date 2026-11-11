@@ -48,7 +48,7 @@ impl RenderFields {
             document_props,
             text: node.probe_text.clone(),
             response,
-            amounts: node.el.part.map_or((0.0, 0.0), |p| (p.hover, p.press)),
+            amounts: node.part().map_or((0.0, 0.0), |p| (p.hover, p.press)),
             press: match node.widget {
                 crate::layout::Widget::Button { press, .. } => press,
                 _ => 0.0,

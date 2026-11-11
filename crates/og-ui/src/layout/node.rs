@@ -560,6 +560,11 @@ pub(crate) struct Placed {
     pub clip_src: usize,
     pub clip: Rect,
     pub rect: Rect,
+    /// A styled button part painted under `NARROW_BUTTON` wide since it
+    /// was written: its part carries `narrow`
+    /// ([`Node::part`]). Paint sets it; a node written again starts
+    /// without it.
+    pub narrow: bool,
 }
 
 impl Default for Placed {
@@ -574,6 +579,7 @@ impl Default for Placed {
             clip_src: NONE,
             clip: Rect::default(),
             rect: Rect::default(),
+            narrow: false,
         }
     }
 }
@@ -1041,8 +1047,8 @@ impl Node {
     /// The element layout uses, from the authored one: its breakpoint and
     /// orientation variants, the size the user resized it to, the line box
     /// it lays inline children out in, its scroll bar's gutter, with
-    /// `placed` the box placement fixed, and its container variants at the
-    /// size they were last matched at.
+    /// `placed` the box placement fixed, its container variants at the
+    /// size they were last matched at, and its part as styling matches it.
     pub(crate) fn derived(&self, placed: bool) -> Element {
         let mut u = *self.el;
         if let Some(m) = self.layout.media {
@@ -1083,7 +1089,15 @@ impl Node {
                 }
             }
         }
+        u.part = self.part();
         u
+    }
+
+    /// Its part as styling matches it: its element's, flagged `narrow`
+    /// where paint found its box narrow ([`Placed::narrow`]).
+    pub(crate) fn part(&self) -> Option<crate::dress::PartRef> {
+        let part = self.el.part?;
+        Some(part.flag_if(self.placed.narrow, "narrow"))
     }
 
     /// What its matching variants set over its props ([`Varied`]): the

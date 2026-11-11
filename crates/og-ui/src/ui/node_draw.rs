@@ -168,7 +168,7 @@ impl Ui {
         let clip = self.paint_clip(n);
         let dpr = self.env.viewport.dpr();
         let alpha = n.placed.alpha;
-        let part = n.el.part.or_else(|| n.el.frame.map(StylePart::part_ref));
+        let part = n.part().or_else(|| n.el.frame.map(StylePart::part_ref));
         let ornament_tint = part.and_then(|p| {
             self.part_values(&p, Some(n.key))
                 .color("color")
@@ -945,7 +945,7 @@ impl Ui {
 /// Where an element's part draws: its rectangle, a pressed control's
 /// shrunk by the theme's press scale as far into the press as it is.
 pub(super) fn part_rect(n: &crate::layout::Node, press_scale: f32) -> Rect {
-    match (n.el.part, &n.widget) {
+    match (n.part(), &n.widget) {
         (Some(p), Widget::Button { .. }) if p.press > 0.0 => n
             .placed
             .rect
