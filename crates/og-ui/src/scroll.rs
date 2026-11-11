@@ -141,52 +141,6 @@ pub(crate) struct Thumb {
 }
 
 impl Ui {
-    /// The room at the end of vertical scroller `key` its bar takes, the bar
-    /// being drawn over its right edge: the bar and a hairline either side
-    /// while its content ran past it last frame, so that content (a results
-    /// stat's figure, a grade) never lies under the bar; else 0. Narrower,
-    /// the content is no shorter, so it keeps overflowing and the gutter
-    /// holds. Layout gives it to every vertical-only scroller with bars.
-    /// CSS `scrollbar-gutter: stable` keeps it while nothing overflows,
-    /// and `scrollbar-width: thin` halves the bar's part of it.
-    pub(crate) fn bar_gutter(&self, key: u64, css: ScrollCss) -> f32 {
-        if css.gutter != 0
-            || self
-                .interaction
-                .state
-                .scroll_info
-                .get(&key)
-                .is_some_and(|s| s.range.y > 0.0)
-        {
-            let bar = if css.thin {
-                self.env.theme.space.xs / 2.0
-            } else {
-                self.env.theme.space.xs
-            };
-            bar + 2.0 * self.env.theme.space.xxs
-        } else {
-            0.0
-        }
-    }
-
-    /// The zoom view `key`'s state, when `key` is one.
-    pub(crate) fn zoom_state(&self, key: u64) -> Option<ZoomState> {
-        let z = self.interaction.state.anims.get(&zoom_key(key))?;
-        let p = self
-            .interaction
-            .state
-            .anims
-            .get(&pan_key(key))
-            .copied()
-            .unwrap_or_default();
-        Some(ZoomState {
-            zoom: z.a,
-            center: Vec2::new(p.a, p.b),
-            min: f32::from_bits(z.t as u32),
-            max: f32::from_bits(z.h as u32),
-        })
-    }
-
     /// Stores a zoom view's state (marking it used this frame), clamped:
     /// the zoom to its limits, the centre so the view stays on the picture.
     pub(crate) fn set_zoom_state(&mut self, key: u64, s: ZoomState) {
@@ -412,97 +366,6 @@ impl Ui {
         })
     }
 
-    /// Element `key`'s `scroll-state()` flags ([`crate::doc::media::scroll`])
-    /// as the last frame laid it out: the edges a scroll container can still
-    /// scroll toward, and the axes on which a snap area sits at its
-    /// scroller's snap position, and the edges a sticky box is held to.
-    /// `scrolled` is the document layer's.
-    pub(crate) fn scroll_flags_now(&self, key: u64) -> u16 {
-        use crate::doc::media::scroll::*;
-        let get = |i: usize| {
-            if self.tree.building {
-                self.tree.previous_node(i, &self.layout)
-            } else {
-                self.tree.nodes.get(i)
-            }
-        };
-        // Kept (retained) nodes stay in the tree while a tick builds;
-        // rebuilt ones are among the retiring nodes.
-        let found = self
-            .tree
-            .index
-            .find(key)
-            .and_then(get)
-            .filter(|n| n.key == key)
-            .or_else(|| {
-                self.tree
-                    .building
-                    .then(|| {
-                        self.tree
-                            .previous_nodes(&self.layout)
-                            .find(|n| n.key == key)
-                    })
-                    .flatten()
-            });
-        let Some(n) = found else {
-            return 0;
-        };
-        let mut flags = 0;
-        let at = self.offset(key);
-        if n.el.scroll {
-            flags |= if at.y > 0.5 { TOP } else { 0 };
-            flags |= if at.y < n.max_scroll() - 0.5 {
-                BOTTOM
-            } else {
-                0
-            };
-        }
-        if n.el.scroll_x {
-            flags |= if at.x > 0.5 { LEFT } else { 0 };
-            flags |= if at.x < n.max_scroll_x() - 0.5 {
-                RIGHT
-            } else {
-                0
-            };
-        }
-        flags |= u16::from(n.stuck) << STUCK.trailing_zeros();
-        let align = n.el.snap_align;
-        let mut p = n.parent;
-        while align != 0 && p != crate::layout::NONE {
-            let Some(s) = get(p) else { break };
-            if !s.scrolls() {
-                p = s.parent;
-                continue;
-            }
-            let at = self.offset(s.key);
-            let max = [s.max_scroll_x(), s.max_scroll()];
-            let view = snapport(s);
-            for axis in 0..2 {
-                let a = (align >> (2 * axis)) & 3;
-                if s.el.snap & (1 << axis) == 0 || a == 0 {
-                    continue;
-                }
-                let d = snap_delta(axis, a, n, view);
-                let now = at[axis];
-                if ((now + d).clamp(0.0, max[axis].max(0.0)) - now).abs() < 0.5 {
-                    flags |= 1 << (4 + axis);
-                }
-            }
-            break;
-        }
-        flags
-    }
-
-    /// Element `key`'s CSS scroll properties, as last laid out.
-    pub(crate) fn scroll_css(&self, key: u64) -> crate::scroll::ScrollCss {
-        self.tree
-            .index
-            .find(key)
-            .and_then(|i| self.tree.nodes.get(i))
-            .map(|n| n.el.scroll_css)
-            .unwrap_or_default()
-    }
-
     /// The fraction of a fling's velocity a tick keeps off (1 − its decay).
     fn fling_keep(&self) -> f32 {
         let response = (crate::theme::SPRING_MOMENTUM.response_ms / 1000.0).max(1e-3);
@@ -543,239 +406,6 @@ impl Ui {
         if to.y != at.y {
             self.interaction.state.scroll.insert(key, to.y);
         }
-    }
-
-    /// The offset of scroll container `key` (x, y).
-    pub(crate) fn offset(&self, key: u64) -> Vec2 {
-        Vec2::new(
-            self.interaction
-                .state
-                .scroll_x
-                .get(&key)
-                .copied()
-                .unwrap_or(0.0),
-            self.interaction
-                .state
-                .scroll
-                .get(&key)
-                .copied()
-                .unwrap_or(0.0),
-        )
-    }
-
-    /// Moves `key` by `d` as far as its range allows; answers what it could
-    /// not take (for the container around it).
-    pub(crate) fn scroll_by(&mut self, key: u64, d: Vec2) -> Vec2 {
-        let info = self
-            .interaction
-            .state
-            .scroll_info
-            .get(&key)
-            .copied()
-            .unwrap_or_default();
-        let at = self.offset(key);
-        let to = (at + d).clamp(Vec2::ZERO, info.range.max(Vec2::ZERO));
-        if to.x != at.x {
-            self.interaction.state.scroll_x.insert(key, to.x);
-        }
-        if to.y != at.y {
-            self.interaction.state.scroll.insert(key, to.y);
-        }
-        d - (to - at)
-    }
-
-    /// Whether scroll container `key` snaps (CSS `scroll-snap-type`).
-    fn snaps(&self, key: u64) -> bool {
-        self.tree
-            .index
-            .find(key)
-            .is_some_and(|i| self.tree.nodes[i].el.snap & 3 != 0)
-    }
-
-    /// Where snapping container `key` settles from offset `projected` (CSS
-    /// Scroll Snap 1): on each snapping axis, the nearest snap position of
-    /// the areas inside it (not those inside a nested scroller), clamped to
-    /// its range; `mandatory` always, `proximity` only within a third of
-    /// its view, else `projected`. Read from last frame's boxes, which were
-    /// laid out at its offset now. Walks only down to the snap areas, and
-    /// only while the container settles.
-    /// `from` is where the scroll started (the offset before the wheel
-    /// moved it, else now): it does not pass a `scroll-snap-stop: always`
-    /// area on its way from there.
-    fn snap_target(&self, key: u64, projected: Vec2, from: Vec2) -> Option<Vec2> {
-        let i = self.tree.index.find(key)?;
-        let n = &self.tree.nodes[i];
-        let snap = n.el.snap;
-        if snap & 3 == 0 {
-            return None;
-        }
-        let view = snapport(n);
-        let at = self.offset(key);
-        // Each axis's snap positions, and whether the area says
-        // `scroll-snap-stop: always`.
-        let mut found: [Vec<(f32, bool)>; 2] = Default::default();
-        let mut stack: Vec<usize> = n.children.clone();
-        while let Some(c) = stack.pop() {
-            let cn = &self.tree.nodes[c];
-            if cn.hidden {
-                continue;
-            }
-            let a = cn.el.snap_align;
-            if a == 0 {
-                if !(cn.el.scroll || cn.el.scroll_x) {
-                    stack.extend(cn.children.iter().copied());
-                }
-                continue;
-            }
-            for (axis, found) in found.iter_mut().enumerate() {
-                let align = (a >> (2 * axis)) & 3;
-                if snap & (1 << axis) == 0 || align == 0 {
-                    continue;
-                }
-                let d = snap_delta(axis, align, cn, view);
-                found.push((at[axis] + d, cn.el.scroll_css.snap_stop));
-            }
-        }
-        let range = self
-            .interaction
-            .state
-            .scroll_info
-            .get(&key)
-            .map_or(Vec2::ZERO, |s| s.range)
-            .max(Vec2::ZERO);
-        let mut out = projected.clamp(Vec2::ZERO, range);
-        for axis in 0..2 {
-            let p = out[axis];
-            let Some(mut best) = found[axis]
-                .iter()
-                .map(|c| c.0.clamp(0.0, range[axis]))
-                .min_by(|a, b| (a - p).abs().total_cmp(&(b - p).abs()))
-            else {
-                continue;
-            };
-            // CSS Scroll Snap 1 §6.2: a fling or a wheel does not pass an
-            // area that says always; it stops at the first one on its way.
-            let now = from[axis];
-            if let Some(stop) = found[axis]
-                .iter()
-                .filter(|c| c.1)
-                .map(|c| c.0.clamp(0.0, range[axis]))
-                .filter(|&c| (c - now).abs() > 0.5 && (c - now) * (p - now) > 0.0)
-                .filter(|&c| (c - now).abs() < (best - now).abs())
-                .min_by(|a, b| (a - now).abs().total_cmp(&(b - now).abs()))
-            {
-                best = stop;
-            }
-            let size = if axis == 0 { view.width } else { view.height };
-            if snap & 4 == 0 || (best - p).abs() <= size / 3.0 {
-                out[axis] = best;
-            }
-        }
-        Some(out)
-    }
-
-    /// `key` and the scroll containers around it, innermost first.
-    fn scroll_chain(&self, key: u64) -> Vec<u64> {
-        let mut out = Vec::new();
-        let mut k = key;
-        while k != 0 && out.len() < 32 {
-            out.push(k);
-            k = self.interaction.hit(k).map_or(0, |h| h.scroller);
-        }
-        out
-    }
-
-    /// Moves `d` through `key`'s chain: what one container cannot take
-    /// goes to the one around it (nested scroll handoff).
-    fn scroll_chain_by(&mut self, key: u64, d: Vec2) -> Vec2 {
-        let mut rest = d;
-        for k in self.scroll_chain(key) {
-            if rest == Vec2::ZERO {
-                break;
-            }
-            rest = self.scroll_by(k, rest);
-            // CSS `overscroll-behavior` contain or none: no chaining past
-            // it on an axis it scrolls.
-            if let Some(n) = self.tree.index.find(k).and_then(|i| self.tree.nodes.get(i)) {
-                let o = n.el.scroll_css.overscroll;
-                if n.el.scroll_x && o[0] != Overscroll::Auto {
-                    rest.x = 0.0;
-                }
-                if n.el.scroll && o[1] != Overscroll::Auto {
-                    rest.y = 0.0;
-                }
-            }
-        }
-        rest
-    }
-
-    /// The scrollbar under `p`, if a press there grabs one.
-    fn thumb_at(&self, p: Vec2) -> Option<Thumb> {
-        self.interaction.state.hits.iter().rev().find_map(|h| {
-            if !h.has(HIT_SCROLL) || !h.rect.contains(p.x, p.y) {
-                return None;
-            }
-            let info = self.interaction.state.scroll_info.get(&h.key)?;
-            let grab_w = if self.scroll_css(h.key).thin {
-                BAR_GRAB / 2.0
-            } else {
-                BAR_GRAB
-            };
-            let r = h.full;
-            let off = self.offset(h.key);
-            if info.range.y > 0.0 && p.x >= h.rect.right() - grab_w {
-                let start = bar_start(r.y, r.height, info.bar.y, off.y, info.range.y);
-                let grab = (p.y - start).clamp(0.0, info.bar.y);
-                return Some(Thumb {
-                    key: h.key,
-                    axis: 1,
-                    grab,
-                });
-            }
-            if info.range.x > 0.0 && p.y >= h.rect.bottom() - grab_w {
-                let start = bar_start(r.x, r.width, info.bar.x, off.x, info.range.x);
-                let grab = (p.x - start).clamp(0.0, info.bar.x);
-                return Some(Thumb {
-                    key: h.key,
-                    axis: 0,
-                    grab,
-                });
-            }
-            None
-        })
-    }
-
-    /// This tick's scrolling: a grabbed bar, the wheel, a drag (with its
-    /// velocity) and a fling, before interaction is decided. Answers the
-    /// scroll container a press on a scrollbar grabbed (it holds the press).
-    /// A touch drag's move `d` (content offset) as CSS `touch-action`
-    /// lets the element it started on pan: an axis or direction it does
-    /// not allow is dropped. A fine pointer pans freely.
-    fn touch_allows(&self, key: u64, d: Vec2) -> Vec2 {
-        use crate::element::Interact as I;
-        if !self.env.viewport.coarse_pointer {
-            return d;
-        }
-        let Some(t) = self
-            .tree
-            .index
-            .find(key)
-            .and_then(|i| self.tree.orders.touch_of.get(i))
-        else {
-            return d;
-        };
-        // A finger moving left moves the content's offset right.
-        let ok = |v: f32, fwd: u8, back: u8| {
-            if (v > 0.0 && t & fwd != 0) || (v < 0.0 && t & back != 0) {
-                v
-            } else {
-                0.0
-            }
-        };
-        Vec2::new(
-            ok(d.x, I::PAN_LEFT, I::PAN_RIGHT),
-            ok(d.y, I::PAN_UP, I::PAN_DOWN),
-        )
     }
 
     pub(crate) fn scroll_input(&mut self, input: &crate::input::InputFrame) -> Option<u64> {
@@ -947,6 +577,380 @@ impl Ui {
             self.interaction.state.fling = Some((k, Vec2::ZERO));
         }
         grabbed
+    }
+}
+
+impl Ui {
+    /// The room at the end of vertical scroller `key` its bar takes, the bar
+    /// being drawn over its right edge: the bar and a hairline either side
+    /// while its content ran past it last frame, so that content (a results
+    /// stat's figure, a grade) never lies under the bar; else 0. Narrower,
+    /// the content is no shorter, so it keeps overflowing and the gutter
+    /// holds. Layout gives it to every vertical-only scroller with bars.
+    /// CSS `scrollbar-gutter: stable` keeps it while nothing overflows,
+    /// and `scrollbar-width: thin` halves the bar's part of it.
+    pub(crate) fn bar_gutter(&self, key: u64, css: ScrollCss) -> f32 {
+        if css.gutter != 0
+            || self
+                .interaction
+                .state
+                .scroll_info
+                .get(&key)
+                .is_some_and(|s| s.range.y > 0.0)
+        {
+            let bar = if css.thin {
+                self.env.theme.space.xs / 2.0
+            } else {
+                self.env.theme.space.xs
+            };
+            bar + 2.0 * self.env.theme.space.xxs
+        } else {
+            0.0
+        }
+    }
+
+    /// The zoom view `key`'s state, when `key` is one.
+    pub(crate) fn zoom_state(&self, key: u64) -> Option<ZoomState> {
+        let z = self.interaction.state.anims.get(&zoom_key(key))?;
+        let p = self
+            .interaction
+            .state
+            .anims
+            .get(&pan_key(key))
+            .copied()
+            .unwrap_or_default();
+        Some(ZoomState {
+            zoom: z.a,
+            center: Vec2::new(p.a, p.b),
+            min: f32::from_bits(z.t as u32),
+            max: f32::from_bits(z.h as u32),
+        })
+    }
+
+    /// Element `key`'s `scroll-state()` flags ([`crate::doc::media::scroll`])
+    /// as the last frame laid it out: the edges a scroll container can still
+    /// scroll toward, and the axes on which a snap area sits at its
+    /// scroller's snap position, and the edges a sticky box is held to.
+    /// `scrolled` is the document layer's.
+    pub(crate) fn scroll_flags_now(&self, key: u64) -> u16 {
+        use crate::doc::media::scroll::*;
+        let get = |i: usize| {
+            if self.tree.building {
+                self.tree.previous_node(i, &self.layout)
+            } else {
+                self.tree.nodes.get(i)
+            }
+        };
+        // Kept (retained) nodes stay in the tree while a tick builds;
+        // rebuilt ones are among the retiring nodes.
+        let found = self
+            .tree
+            .index
+            .find(key)
+            .and_then(get)
+            .filter(|n| n.key == key)
+            .or_else(|| {
+                self.tree
+                    .building
+                    .then(|| {
+                        self.tree
+                            .previous_nodes(&self.layout)
+                            .find(|n| n.key == key)
+                    })
+                    .flatten()
+            });
+        let Some(n) = found else {
+            return 0;
+        };
+        let mut flags = 0;
+        let at = self.offset(key);
+        if n.el.scroll {
+            flags |= if at.y > 0.5 { TOP } else { 0 };
+            flags |= if at.y < n.max_scroll() - 0.5 {
+                BOTTOM
+            } else {
+                0
+            };
+        }
+        if n.el.scroll_x {
+            flags |= if at.x > 0.5 { LEFT } else { 0 };
+            flags |= if at.x < n.max_scroll_x() - 0.5 {
+                RIGHT
+            } else {
+                0
+            };
+        }
+        flags |= u16::from(n.stuck) << STUCK.trailing_zeros();
+        let align = n.el.snap_align;
+        let mut p = n.parent;
+        while align != 0 && p != crate::layout::NONE {
+            let Some(s) = get(p) else { break };
+            if !s.scrolls() {
+                p = s.parent;
+                continue;
+            }
+            let at = self.offset(s.key);
+            let max = [s.max_scroll_x(), s.max_scroll()];
+            let view = snapport(s);
+            for axis in 0..2 {
+                let a = (align >> (2 * axis)) & 3;
+                if s.el.snap & (1 << axis) == 0 || a == 0 {
+                    continue;
+                }
+                let d = snap_delta(axis, a, n, view);
+                let now = at[axis];
+                if ((now + d).clamp(0.0, max[axis].max(0.0)) - now).abs() < 0.5 {
+                    flags |= 1 << (4 + axis);
+                }
+            }
+            break;
+        }
+        flags
+    }
+
+    /// The offset of scroll container `key` (x, y).
+    pub(crate) fn offset(&self, key: u64) -> Vec2 {
+        Vec2::new(
+            self.interaction
+                .state
+                .scroll_x
+                .get(&key)
+                .copied()
+                .unwrap_or(0.0),
+            self.interaction
+                .state
+                .scroll
+                .get(&key)
+                .copied()
+                .unwrap_or(0.0),
+        )
+    }
+
+    /// Moves `key` by `d` as far as its range allows; answers what it could
+    /// not take (for the container around it).
+    pub(crate) fn scroll_by(&mut self, key: u64, d: Vec2) -> Vec2 {
+        let info = self
+            .interaction
+            .state
+            .scroll_info
+            .get(&key)
+            .copied()
+            .unwrap_or_default();
+        let at = self.offset(key);
+        let to = (at + d).clamp(Vec2::ZERO, info.range.max(Vec2::ZERO));
+        if to.x != at.x {
+            self.interaction.state.scroll_x.insert(key, to.x);
+        }
+        if to.y != at.y {
+            self.interaction.state.scroll.insert(key, to.y);
+        }
+        d - (to - at)
+    }
+
+    /// Where snapping container `key` settles from offset `projected` (CSS
+    /// Scroll Snap 1): on each snapping axis, the nearest snap position of
+    /// the areas inside it (not those inside a nested scroller), clamped to
+    /// its range; `mandatory` always, `proximity` only within a third of
+    /// its view, else `projected`. Read from last frame's boxes, which were
+    /// laid out at its offset now. Walks only down to the snap areas, and
+    /// only while the container settles.
+    /// `from` is where the scroll started (the offset before the wheel
+    /// moved it, else now): it does not pass a `scroll-snap-stop: always`
+    /// area on its way from there.
+    fn snap_target(&self, key: u64, projected: Vec2, from: Vec2) -> Option<Vec2> {
+        let i = self.tree.index.find(key)?;
+        let n = &self.tree.nodes[i];
+        let snap = n.el.snap;
+        if snap & 3 == 0 {
+            return None;
+        }
+        let view = snapport(n);
+        let at = self.offset(key);
+        // Each axis's snap positions, and whether the area says
+        // `scroll-snap-stop: always`.
+        let mut found: [Vec<(f32, bool)>; 2] = Default::default();
+        let mut stack: Vec<usize> = n.children.clone();
+        while let Some(c) = stack.pop() {
+            let cn = &self.tree.nodes[c];
+            if cn.hidden {
+                continue;
+            }
+            let a = cn.el.snap_align;
+            if a == 0 {
+                if !(cn.el.scroll || cn.el.scroll_x) {
+                    stack.extend(cn.children.iter().copied());
+                }
+                continue;
+            }
+            for (axis, found) in found.iter_mut().enumerate() {
+                let align = (a >> (2 * axis)) & 3;
+                if snap & (1 << axis) == 0 || align == 0 {
+                    continue;
+                }
+                let d = snap_delta(axis, align, cn, view);
+                found.push((at[axis] + d, cn.el.scroll_css.snap_stop));
+            }
+        }
+        let range = self
+            .interaction
+            .state
+            .scroll_info
+            .get(&key)
+            .map_or(Vec2::ZERO, |s| s.range)
+            .max(Vec2::ZERO);
+        let mut out = projected.clamp(Vec2::ZERO, range);
+        for axis in 0..2 {
+            let p = out[axis];
+            let Some(mut best) = found[axis]
+                .iter()
+                .map(|c| c.0.clamp(0.0, range[axis]))
+                .min_by(|a, b| (a - p).abs().total_cmp(&(b - p).abs()))
+            else {
+                continue;
+            };
+            // CSS Scroll Snap 1 §6.2: a fling or a wheel does not pass an
+            // area that says always; it stops at the first one on its way.
+            let now = from[axis];
+            if let Some(stop) = found[axis]
+                .iter()
+                .filter(|c| c.1)
+                .map(|c| c.0.clamp(0.0, range[axis]))
+                .filter(|&c| (c - now).abs() > 0.5 && (c - now) * (p - now) > 0.0)
+                .filter(|&c| (c - now).abs() < (best - now).abs())
+                .min_by(|a, b| (a - now).abs().total_cmp(&(b - now).abs()))
+            {
+                best = stop;
+            }
+            let size = if axis == 0 { view.width } else { view.height };
+            if snap & 4 == 0 || (best - p).abs() <= size / 3.0 {
+                out[axis] = best;
+            }
+        }
+        Some(out)
+    }
+
+    /// `key` and the scroll containers around it, innermost first.
+    fn scroll_chain(&self, key: u64) -> Vec<u64> {
+        let mut out = Vec::new();
+        let mut k = key;
+        while k != 0 && out.len() < 32 {
+            out.push(k);
+            k = self.interaction.hit(k).map_or(0, |h| h.scroller);
+        }
+        out
+    }
+
+    /// The scrollbar under `p`, if a press there grabs one.
+    fn thumb_at(&self, p: Vec2) -> Option<Thumb> {
+        self.interaction.state.hits.iter().rev().find_map(|h| {
+            if !h.has(HIT_SCROLL) || !h.rect.contains(p.x, p.y) {
+                return None;
+            }
+            let info = self.interaction.state.scroll_info.get(&h.key)?;
+            let grab_w = if self.scroll_css(h.key).thin {
+                BAR_GRAB / 2.0
+            } else {
+                BAR_GRAB
+            };
+            let r = h.full;
+            let off = self.offset(h.key);
+            if info.range.y > 0.0 && p.x >= h.rect.right() - grab_w {
+                let start = bar_start(r.y, r.height, info.bar.y, off.y, info.range.y);
+                let grab = (p.y - start).clamp(0.0, info.bar.y);
+                return Some(Thumb {
+                    key: h.key,
+                    axis: 1,
+                    grab,
+                });
+            }
+            if info.range.x > 0.0 && p.y >= h.rect.bottom() - grab_w {
+                let start = bar_start(r.x, r.width, info.bar.x, off.x, info.range.x);
+                let grab = (p.x - start).clamp(0.0, info.bar.x);
+                return Some(Thumb {
+                    key: h.key,
+                    axis: 0,
+                    grab,
+                });
+            }
+            None
+        })
+    }
+
+    /// This tick's scrolling: a grabbed bar, the wheel, a drag (with its
+    /// velocity) and a fling, before interaction is decided. Answers the
+    /// scroll container a press on a scrollbar grabbed (it holds the press).
+    /// A touch drag's move `d` (content offset) as CSS `touch-action`
+    /// lets the element it started on pan: an axis or direction it does
+    /// not allow is dropped. A fine pointer pans freely.
+    fn touch_allows(&self, key: u64, d: Vec2) -> Vec2 {
+        use crate::element::Interact as I;
+        if !self.env.viewport.coarse_pointer {
+            return d;
+        }
+        let Some(t) = self
+            .tree
+            .index
+            .find(key)
+            .and_then(|i| self.tree.orders.touch_of.get(i))
+        else {
+            return d;
+        };
+        // A finger moving left moves the content's offset right.
+        let ok = |v: f32, fwd: u8, back: u8| {
+            if (v > 0.0 && t & fwd != 0) || (v < 0.0 && t & back != 0) {
+                v
+            } else {
+                0.0
+            }
+        };
+        Vec2::new(
+            ok(d.x, I::PAN_LEFT, I::PAN_RIGHT),
+            ok(d.y, I::PAN_UP, I::PAN_DOWN),
+        )
+    }
+}
+
+impl Ui {
+    /// Element `key`'s CSS scroll properties, as last laid out.
+    pub(crate) fn scroll_css(&self, key: u64) -> crate::scroll::ScrollCss {
+        self.tree
+            .index
+            .find(key)
+            .and_then(|i| self.tree.nodes.get(i))
+            .map(|n| n.el.scroll_css)
+            .unwrap_or_default()
+    }
+
+    /// Whether scroll container `key` snaps (CSS `scroll-snap-type`).
+    fn snaps(&self, key: u64) -> bool {
+        self.tree
+            .index
+            .find(key)
+            .is_some_and(|i| self.tree.nodes[i].el.snap & 3 != 0)
+    }
+
+    /// Moves `d` through `key`'s chain: what one container cannot take
+    /// goes to the one around it (nested scroll handoff).
+    fn scroll_chain_by(&mut self, key: u64, d: Vec2) -> Vec2 {
+        let mut rest = d;
+        for k in self.scroll_chain(key) {
+            if rest == Vec2::ZERO {
+                break;
+            }
+            rest = self.scroll_by(k, rest);
+            // CSS `overscroll-behavior` contain or none: no chaining past
+            // it on an axis it scrolls.
+            if let Some(n) = self.tree.index.find(k).and_then(|i| self.tree.nodes.get(i)) {
+                let o = n.el.scroll_css.overscroll;
+                if n.el.scroll_x && o[0] != Overscroll::Auto {
+                    rest.x = 0.0;
+                }
+                if n.el.scroll && o[1] != Overscroll::Auto {
+                    rest.y = 0.0;
+                }
+            }
+        }
+        rest
     }
 }
 

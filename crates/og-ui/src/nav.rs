@@ -192,138 +192,6 @@ fn link_slot(nav: Nav) -> Option<usize> {
 }
 
 impl Ui {
-    /// Where an explicit move to `target` (a control's or a group's key)
-    /// lands among `cands`: the control, or a group's remembered member
-    /// (with memory), else its first member on screen.
-    fn land(&self, target: u64, cands: &[Hit]) -> Option<u64> {
-        if cands.iter().any(|h| h.key == target) {
-            return Some(target);
-        }
-        let g = self.interaction.state.groups.get(&target)?;
-        if g.spec.memory && g.last != 0 && cands.iter().any(|h| h.key == g.last) {
-            return Some(g.last);
-        }
-        cands
-            .iter()
-            .find(|h| self.in_group(h.group, target))
-            .map(|h| h.key)
-    }
-
-    /// A spatial move's landing `k`, from `from`: focus coming into a
-    /// group that remembers (the outermost one entered) goes to its last
-    /// member instead.
-    fn enter_groups(&self, k: u64, from: &Hit, cands: &[Hit]) -> u64 {
-        let Some(to) = cands.iter().find(|h| h.key == k) else {
-            return k;
-        };
-        let mut g = to.group;
-        let mut pick = k;
-        while g != 0 {
-            let Some(gs) = self.interaction.state.groups.get(&g) else {
-                break;
-            };
-            if self.in_group(from.group, g) {
-                break;
-            }
-            if gs.spec.memory && gs.last != 0 && cands.iter().any(|h| h.key == gs.last) {
-                pick = gs.last;
-            }
-            g = gs.parent;
-        }
-        pick
-    }
-
-    /// The control a move `nav` from `cands[i]` lands on (`None`: it stays):
-    /// its explicit move, else within its focus groups, else spatially.
-    pub(crate) fn step_focus(&self, cands: &[Hit], i: usize, nav: Nav) -> Option<u64> {
-        let from = cands[i];
-        if let Some(slot) = link_slot(nav)
-            && let Some(links) = self.interaction.state.nav_links.get(&from.key)
-            && links[slot] != 0
-            && let Some(k) = self.land(links[slot], cands)
-        {
-            return Some(k);
-        }
-        if let Some((container, index)) = self.virtual_item(from.key) {
-            let v = &self.interaction.state.virtual_lists[&container];
-            let delta = match nav {
-                Nav::Down => v.columns as isize,
-                Nav::Up => -(v.columns as isize),
-                Nav::Next | Nav::Right => 1,
-                Nav::Prev | Nav::Left => -1,
-                _ => 0,
-            };
-            if let Some(next) = index.checked_add_signed(delta)
-                && let Some(key) = v.keys.get(next)
-            {
-                return Some(crate::id::child_key(
-                    container,
-                    &crate::virtualize::item_id(key, v.grid),
-                ));
-            }
-        }
-        if matches!(nav, Nav::Next | Nav::Prev) {
-            let n = cands.len();
-            return Some(if nav == Nav::Next {
-                cands[(i + 1) % n].key
-            } else {
-                cands[(i + n - 1) % n].key
-            });
-        }
-        // A control in a scroll is scored by its part in view, the focus as
-        // its candidates: its whole box, past the scroll's edge, reached
-        // under a button floating over the scroll's foot (a tall shop tile
-        // under the Gallery button) and took every move meant for that
-        // button's neighbour. Wholly scrolled out, it keeps its whole box.
-        let placed = |h: &Hit| -> Rect {
-            if h.scroller != 0 && h.rect.width > 0.5 && h.rect.height > 0.5 {
-                h.rect
-            } else {
-                h.full
-            }
-        };
-        let pick = |level: u64| -> Vec<(u64, Rect)> {
-            cands
-                .iter()
-                .filter(|h| h.key != from.key && self.in_group(h.group, level))
-                .map(|h| (h.key, placed(h)))
-                .collect()
-        };
-        let from = Hit {
-            full: placed(&from),
-            ..from
-        };
-        if from.group == 0 {
-            return neighbour(&from.full, &pick(0), nav)
-                .map(|k| self.enter_groups(k, &from, cands));
-        }
-        // Inside groups: each level outwards, the root last; a wrapping
-        // group goes round inside itself, the root does not.
-        let mut level = from.group;
-        loop {
-            let set = pick(level);
-            if let Some(k) = neighbour_in(&from.full, &set, nav, false) {
-                return Some(self.enter_groups(k, &from, cands));
-            }
-            if level == 0 {
-                return None;
-            }
-            let g = self
-                .interaction
-                .state
-                .groups
-                .get(&level)
-                .copied()
-                .unwrap_or_default();
-            if g.spec.wrap
-                && let Some(k) = neighbour_in(&from.full, &set, nav, true)
-            {
-                return Some(self.enter_groups(k, &from, cands));
-            }
-            level = g.parent;
-        }
-    }
-
     /// This tick's intents: queued ones, then the keyboard, then the gamepad.
     pub(crate) fn intents(&mut self, input: &InputFrame) -> Vec<Nav> {
         // Moves queued while the focus was on nothing: the first puts it on
@@ -407,35 +275,6 @@ impl Ui {
             }
         }
         out
-    }
-
-    /// The focusable controls of last frame in reading order, inside the open scope.
-    pub(crate) fn focusables(&self) -> Vec<Hit> {
-        let scope = self.interaction.state.scope;
-        self.interaction
-            .state
-            .hits
-            .iter()
-            .filter(|h| h.has(HIT_NAV | HIT_TEXT) && (scope == 0 || h.scope == scope))
-            .copied()
-            .collect()
-    }
-
-    /// Pad `pad`'s focusable controls (0: the keyboard's and the
-    /// pointer's), in reading order: on a split screen, those inside its
-    /// player's region (`Props::player`), and with a shared dialog open the
-    /// dialog's too; without a region of its own, those outside every
-    /// region. The same as [`Self::focusables`] on a screen with none.
-    pub(crate) fn focusables_of(&self, pad: usize) -> Vec<Hit> {
-        let own = pad as u8 + 1;
-        let mut cands = self.focusables();
-        if cands.iter().all(|h| h.player == 0) {
-            return cands;
-        }
-        let region = cands.iter().any(|h| h.player == own);
-        let dialog = self.interaction.state.scope != 0;
-        cands.retain(|h| h.player == own || (h.player == 0 && (!region || dialog)));
-        cands
     }
 
     /// An assistive technology's requests (og-input's `og.A11yAction`,
@@ -884,6 +723,207 @@ impl Ui {
         self.scroll_to(h.scroller, at + d);
     }
 
+    fn scroll_into_view(&mut self, key: u64) {
+        if let Some((container, index)) = self.virtual_item(key) {
+            let off = self
+                .interaction
+                .state
+                .scroll
+                .get(&container)
+                .copied()
+                .unwrap_or(0.0);
+            let next = self.interaction.state.virtual_lists[&container].reveal(index, off);
+            self.interaction.state.scroll.insert(container, next);
+            return;
+        }
+        let Some(h) = self.interaction.hit(key).copied() else {
+            return;
+        };
+        if h.scroller == 0 {
+            return;
+        }
+        let Some(view) = self.interaction.hit(h.scroller).map(|s| s.rect) else {
+            return;
+        };
+        let pad = self.theme().space.xs;
+        let (view, full) = self.scroll_areas(key, h.full, h.scroller, view);
+        let mut to = self.offset(h.scroller);
+        if full.y < view.y {
+            to.y -= view.y - full.y + pad;
+        } else if full.bottom() > view.bottom() {
+            to.y += full.bottom() - view.bottom() + pad;
+        }
+        if full.x < view.x {
+            to.x -= view.x - full.x + pad;
+        } else if full.right() > view.right() {
+            to.x += full.right() - view.right() + pad;
+        }
+        self.scroll_to(h.scroller, to.max(og_core::glam::Vec2::ZERO));
+    }
+}
+
+impl Ui {
+    /// Where an explicit move to `target` (a control's or a group's key)
+    /// lands among `cands`: the control, or a group's remembered member
+    /// (with memory), else its first member on screen.
+    fn land(&self, target: u64, cands: &[Hit]) -> Option<u64> {
+        if cands.iter().any(|h| h.key == target) {
+            return Some(target);
+        }
+        let g = self.interaction.state.groups.get(&target)?;
+        if g.spec.memory && g.last != 0 && cands.iter().any(|h| h.key == g.last) {
+            return Some(g.last);
+        }
+        cands
+            .iter()
+            .find(|h| self.in_group(h.group, target))
+            .map(|h| h.key)
+    }
+
+    /// A spatial move's landing `k`, from `from`: focus coming into a
+    /// group that remembers (the outermost one entered) goes to its last
+    /// member instead.
+    fn enter_groups(&self, k: u64, from: &Hit, cands: &[Hit]) -> u64 {
+        let Some(to) = cands.iter().find(|h| h.key == k) else {
+            return k;
+        };
+        let mut g = to.group;
+        let mut pick = k;
+        while g != 0 {
+            let Some(gs) = self.interaction.state.groups.get(&g) else {
+                break;
+            };
+            if self.in_group(from.group, g) {
+                break;
+            }
+            if gs.spec.memory && gs.last != 0 && cands.iter().any(|h| h.key == gs.last) {
+                pick = gs.last;
+            }
+            g = gs.parent;
+        }
+        pick
+    }
+
+    /// The control a move `nav` from `cands[i]` lands on (`None`: it stays):
+    /// its explicit move, else within its focus groups, else spatially.
+    pub(crate) fn step_focus(&self, cands: &[Hit], i: usize, nav: Nav) -> Option<u64> {
+        let from = cands[i];
+        if let Some(slot) = link_slot(nav)
+            && let Some(links) = self.interaction.state.nav_links.get(&from.key)
+            && links[slot] != 0
+            && let Some(k) = self.land(links[slot], cands)
+        {
+            return Some(k);
+        }
+        if let Some((container, index)) = self.virtual_item(from.key) {
+            let v = &self.interaction.state.virtual_lists[&container];
+            let delta = match nav {
+                Nav::Down => v.columns as isize,
+                Nav::Up => -(v.columns as isize),
+                Nav::Next | Nav::Right => 1,
+                Nav::Prev | Nav::Left => -1,
+                _ => 0,
+            };
+            if let Some(next) = index.checked_add_signed(delta)
+                && let Some(key) = v.keys.get(next)
+            {
+                return Some(crate::id::child_key(
+                    container,
+                    &crate::virtualize::item_id(key, v.grid),
+                ));
+            }
+        }
+        if matches!(nav, Nav::Next | Nav::Prev) {
+            let n = cands.len();
+            return Some(if nav == Nav::Next {
+                cands[(i + 1) % n].key
+            } else {
+                cands[(i + n - 1) % n].key
+            });
+        }
+        // A control in a scroll is scored by its part in view, the focus as
+        // its candidates: its whole box, past the scroll's edge, reached
+        // under a button floating over the scroll's foot (a tall shop tile
+        // under the Gallery button) and took every move meant for that
+        // button's neighbour. Wholly scrolled out, it keeps its whole box.
+        let placed = |h: &Hit| -> Rect {
+            if h.scroller != 0 && h.rect.width > 0.5 && h.rect.height > 0.5 {
+                h.rect
+            } else {
+                h.full
+            }
+        };
+        let pick = |level: u64| -> Vec<(u64, Rect)> {
+            cands
+                .iter()
+                .filter(|h| h.key != from.key && self.in_group(h.group, level))
+                .map(|h| (h.key, placed(h)))
+                .collect()
+        };
+        let from = Hit {
+            full: placed(&from),
+            ..from
+        };
+        if from.group == 0 {
+            return neighbour(&from.full, &pick(0), nav)
+                .map(|k| self.enter_groups(k, &from, cands));
+        }
+        // Inside groups: each level outwards, the root last; a wrapping
+        // group goes round inside itself, the root does not.
+        let mut level = from.group;
+        loop {
+            let set = pick(level);
+            if let Some(k) = neighbour_in(&from.full, &set, nav, false) {
+                return Some(self.enter_groups(k, &from, cands));
+            }
+            if level == 0 {
+                return None;
+            }
+            let g = self
+                .interaction
+                .state
+                .groups
+                .get(&level)
+                .copied()
+                .unwrap_or_default();
+            if g.spec.wrap
+                && let Some(k) = neighbour_in(&from.full, &set, nav, true)
+            {
+                return Some(self.enter_groups(k, &from, cands));
+            }
+            level = g.parent;
+        }
+    }
+
+    /// The focusable controls of last frame in reading order, inside the open scope.
+    pub(crate) fn focusables(&self) -> Vec<Hit> {
+        let scope = self.interaction.state.scope;
+        self.interaction
+            .state
+            .hits
+            .iter()
+            .filter(|h| h.has(HIT_NAV | HIT_TEXT) && (scope == 0 || h.scope == scope))
+            .copied()
+            .collect()
+    }
+
+    /// Pad `pad`'s focusable controls (0: the keyboard's and the
+    /// pointer's), in reading order: on a split screen, those inside its
+    /// player's region (`Props::player`), and with a shared dialog open the
+    /// dialog's too; without a region of its own, those outside every
+    /// region. The same as [`Self::focusables`] on a screen with none.
+    pub(crate) fn focusables_of(&self, pad: usize) -> Vec<Hit> {
+        let own = pad as u8 + 1;
+        let mut cands = self.focusables();
+        if cands.iter().all(|h| h.player == 0) {
+            return cands;
+        }
+        let region = cands.iter().any(|h| h.player == own);
+        let dialog = self.interaction.state.scope != 0;
+        cands.retain(|h| h.player == own || (h.player == 0 && (!region || dialog)));
+        cands
+    }
+
     /// Scroll container `scroller`'s `view` inset by its CSS
     /// `scroll-padding`, and element `key`'s box `full` grown by its
     /// `scroll-margin`: what a scroll into view lines up.
@@ -923,44 +963,6 @@ impl Ui {
                     })
                     .map(|i| (container, i))
             })
-    }
-
-    fn scroll_into_view(&mut self, key: u64) {
-        if let Some((container, index)) = self.virtual_item(key) {
-            let off = self
-                .interaction
-                .state
-                .scroll
-                .get(&container)
-                .copied()
-                .unwrap_or(0.0);
-            let next = self.interaction.state.virtual_lists[&container].reveal(index, off);
-            self.interaction.state.scroll.insert(container, next);
-            return;
-        }
-        let Some(h) = self.interaction.hit(key).copied() else {
-            return;
-        };
-        if h.scroller == 0 {
-            return;
-        }
-        let Some(view) = self.interaction.hit(h.scroller).map(|s| s.rect) else {
-            return;
-        };
-        let pad = self.theme().space.xs;
-        let (view, full) = self.scroll_areas(key, h.full, h.scroller, view);
-        let mut to = self.offset(h.scroller);
-        if full.y < view.y {
-            to.y -= view.y - full.y + pad;
-        } else if full.bottom() > view.bottom() {
-            to.y += full.bottom() - view.bottom() + pad;
-        }
-        if full.x < view.x {
-            to.x -= view.x - full.x + pad;
-        } else if full.right() > view.right() {
-            to.x += full.right() - view.right() + pad;
-        }
-        self.scroll_to(h.scroller, to.max(og_core::glam::Vec2::ZERO));
     }
 }
 

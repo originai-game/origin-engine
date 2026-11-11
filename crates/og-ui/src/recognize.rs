@@ -76,6 +76,26 @@ fn slop(s: &GestureSpec) -> f32 {
 }
 
 impl Ui {
+    /// How far into its long press the held press is on `key` (0–1; 0:
+    /// none or it is not the press's long-press winner).
+    pub(crate) fn long_press_progress(&self, key: u64) -> f32 {
+        let t = &self.interaction.state.tap;
+        if t.taken || t.chain.is_empty() || !self.interaction.input.down {
+            return 0.0;
+        }
+        if self.winner(&t.chain, |s| s.long_press) != Some(key) {
+            return 0.0;
+        }
+        let s = self.spec(key).unwrap_or_default();
+        if t.travel > slop(&s) {
+            return 0.0;
+        }
+        let total = self.ticks_for(long_ms(&s)).max(1) as f32;
+        ((self.interaction.state.tick - t.since) as f32 / total).clamp(0.0, 1.0)
+    }
+}
+
+impl Ui {
     /// The element of `chain` that wins a gesture `wants`: the highest
     /// priority, the innermost of equals.
     fn winner(&self, chain: &[u64], wants: impl Fn(&GestureSpec) -> bool) -> Option<u64> {
@@ -206,24 +226,6 @@ impl Ui {
         }
     }
 
-    /// How far into its long press the held press is on `key` (0–1; 0:
-    /// none or it is not the press's long-press winner).
-    pub(crate) fn long_press_progress(&self, key: u64) -> f32 {
-        let t = &self.interaction.state.tap;
-        if t.taken || t.chain.is_empty() || !self.interaction.input.down {
-            return 0.0;
-        }
-        if self.winner(&t.chain, |s| s.long_press) != Some(key) {
-            return 0.0;
-        }
-        let s = self.spec(key).unwrap_or_default();
-        if t.travel > slop(&s) {
-            return 0.0;
-        }
-        let total = self.ticks_for(long_ms(&s)).max(1) as f32;
-        ((self.interaction.state.tick - t.since) as f32 / total).clamp(0.0, 1.0)
-    }
-
     /// Keys and pads tap a recognising control by activating it.
     pub(crate) fn tapped_by_keys(&self, key: u64) -> bool {
         key != 0
@@ -311,25 +313,6 @@ impl Ui {
         self.interaction.state.nav_links = links;
     }
 
-    /// Where a focus move to node `j` lands: a group (resolved when the
-    /// move is made), a focusable control, or the first focusable control
-    /// inside it.
-    fn landing(&self, j: usize) -> u64 {
-        let n = &self.tree.nodes[j];
-        if n.props.focus_group.is_some() || n.nav || n.focusable {
-            return n.key;
-        }
-        // Its subtree in drawing order.
-        let mut sub = crate::layout::preorder(&self.tree.nodes, j);
-        sub.sort_unstable_by_key(|&o| self.tree.orders.pos[o]);
-        sub.into_iter()
-            .find(|&o| {
-                let m: &Node = &self.tree.nodes[o];
-                (m.nav || m.focusable) && !m.inert
-            })
-            .map_or(0, |o| self.tree.nodes[o].key)
-    }
-
     /// After this frame's hits: each group's first member, and the member
     /// the focus is on remembered by every group around it.
     pub(crate) fn note_groups(&mut self) {
@@ -372,6 +355,27 @@ impl Ui {
                 .map_or(0, |g| g.parent);
         }
         false
+    }
+}
+
+impl Ui {
+    /// Where a focus move to node `j` lands: a group (resolved when the
+    /// move is made), a focusable control, or the first focusable control
+    /// inside it.
+    fn landing(&self, j: usize) -> u64 {
+        let n = &self.tree.nodes[j];
+        if n.props.focus_group.is_some() || n.nav || n.focusable {
+            return n.key;
+        }
+        // Its subtree in drawing order.
+        let mut sub = crate::layout::preorder(&self.tree.nodes, j);
+        sub.sort_unstable_by_key(|&o| self.tree.orders.pos[o]);
+        sub.into_iter()
+            .find(|&o| {
+                let m: &Node = &self.tree.nodes[o];
+                (m.nav || m.focusable) && !m.inert
+            })
+            .map_or(0, |o| self.tree.nodes[o].key)
     }
 }
 
