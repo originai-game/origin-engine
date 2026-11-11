@@ -44,6 +44,12 @@ pub const LOCKSTEP_CHANNEL: &str = "og.lockstep";
 pub const MAX_MESSAGE: usize = 64 * 1024;
 /// The largest engine message (a world snapshot for a late joiner).
 pub const MAX_ENGINE_MESSAGE: usize = 16 << 20;
+/// The largest WebSocket frame the relay and its client read. An engine
+/// message at its limit is about 22.4 MiB as base64 inside its JSON frame,
+/// over the 16 MiB a WebSocket library reads by default; twice the limit
+/// carries it, and lets the relay read a message somewhat too large and
+/// answer `too_large` instead of losing the connection.
+pub const MAX_FRAME: usize = 2 * MAX_ENGINE_MESSAGE;
 /// The most peers a room takes.
 pub const MAX_CAPACITY: u32 = 16;
 

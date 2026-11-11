@@ -3,6 +3,7 @@
 //! blocks on the network. `og run --room ws://127.0.0.1:P/<room>` connects
 //! with the room in the path: the relay joins it at once.
 
+use crate::protocol::MAX_FRAME;
 use serde_json::Value;
 use std::io;
 use std::net::TcpStream;
@@ -12,6 +13,7 @@ use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread;
 use std::time::Duration;
 use tungstenite::Message;
+use tungstenite::protocol::WebSocketConfig;
 use tungstenite::stream::MaybeTlsStream;
 
 /// A connection to a relay. Dropping it closes the connection.
@@ -32,9 +34,15 @@ impl RelayClient {
                 "'{url}' is not a relay URL: write ws://127.0.0.1:<port>/<room> (og relay prints its port)"
             ));
         }
-        let (mut socket, _) = tungstenite::connect(url).map_err(|e| {
-            format!("cannot reach the relay at {url} ({e}); start one with `og relay`")
-        })?;
+        // The relay's frame limit: an engine message at its limit is larger
+        // than the 16 MiB frame a WebSocket reads by default.
+        let config = WebSocketConfig::default()
+            .max_frame_size(Some(MAX_FRAME))
+            .max_message_size(Some(MAX_FRAME));
+        let (mut socket, _) = tungstenite::client::connect_with_config(url, Some(config), 3)
+            .map_err(|e| {
+                format!("cannot reach the relay at {url} ({e}); start one with `og relay`")
+            })?;
         if let MaybeTlsStream::Plain(s) = socket.get_ref() {
             let _ = s.set_nodelay(true);
             let _ = s.set_read_timeout(Some(Duration::from_millis(1)));
@@ -233,6 +241,84 @@ mod tests {
         let d = RelayClient::connect(&format!("ws://127.0.0.1:{}/", relay.port())).unwrap();
         d.send(&protocol::join(room, "d"));
         assert!(matches!(&until(&d, 1)[0], Event::Error { code, .. } if code == "full"));
+    }
+
+    /// As `until`, for up to a minute: a 16 MiB message takes seconds in a
+    /// debug build.
+    fn slowly(c: &RelayClient, n: usize) -> Vec<Event> {
+        let mut got = Vec::new();
+        for _ in 0..60_000 {
+            got.extend(c.poll().iter().map(|v| Event::parse(v).expect("an event")));
+            if got.len() >= n {
+                return got;
+            }
+            thread::sleep(Duration::from_millis(1));
+        }
+        panic!("waited a minute for {n} events, got {}", got.len());
+    }
+
+    #[test]
+    fn an_engine_message_at_its_limit_crosses_and_a_larger_one_is_answered_too_large() {
+        use crate::protocol::MAX_ENGINE_MESSAGE;
+        let relay = Relay::bind(SocketAddr::from((Ipv4Addr::LOCALHOST, 0))).unwrap();
+        let url = format!("ws://127.0.0.1:{}/big", relay.port());
+        let a = RelayClient::connect(&url).unwrap();
+        until(&a, 1);
+        let b = RelayClient::connect(&url).unwrap();
+        until(&b, 1);
+        until(&a, 1);
+        // The largest engine message (a late joiner's snapshot) arrives whole.
+        let mut world = vec![7u8; MAX_ENGINE_MESSAGE];
+        world[MAX_ENGINE_MESSAGE - 1] = 9;
+        a.send(&protocol::send(
+            Some(1),
+            Some("og.lockstep"),
+            &Payload::Bytes(world.clone()),
+        ));
+        let Event::Message {
+            from: 0,
+            payload: Payload::Bytes(got),
+            ..
+        } = slowly(&b, 1).remove(0)
+        else {
+            panic!("b did not get the message")
+        };
+        assert!(got == world, "the bytes changed on the way");
+        // One byte more is refused by name, and the sender stays in the room.
+        world.push(1);
+        a.send(&protocol::send(
+            Some(1),
+            Some("og.lockstep"),
+            &Payload::Bytes(world),
+        ));
+        let refused = slowly(&a, 1);
+        assert!(
+            matches!(&refused[0], Event::Error { op, code, .. } if op == "send" && code == "too_large"),
+            "{refused:?}"
+        );
+        a.send(&protocol::send(
+            None,
+            None,
+            &Payload::Json(serde_json::json!("still here")),
+        ));
+        assert_eq!(
+            slowly(&b, 1),
+            vec![Event::Message {
+                from: 0,
+                channel: None,
+                payload: Payload::Json(serde_json::json!("still here"))
+            }]
+        );
+        // A frame the relay cannot read at all is refused by name too, and
+        // then the connection ends: a WebSocket cannot skip a frame.
+        a.send(&serde_json::json!({ "op": "send", "data": "x".repeat(protocol::MAX_FRAME) }));
+        let ended = slowly(&a, 2);
+        assert!(
+            matches!(&ended[0], Event::Error { op, code, .. } if op == "send" && code == "too_large"),
+            "{ended:?}"
+        );
+        assert!(matches!(&ended[1], Event::Left { .. }), "{ended:?}");
+        assert_eq!(slowly(&b, 1), vec![Event::PeerLeft { peer: 0 }]);
     }
 
     #[test]

@@ -31,12 +31,12 @@
 //! whole relay.
 
 use crate::protocol::{
-    self, Event, LOCKSTEP_CHANNEL, MAX_CAPACITY, MAX_ENGINE_MESSAGE, MAX_MESSAGE,
+    self, Event, LOCKSTEP_CHANNEL, MAX_CAPACITY, MAX_ENGINE_MESSAGE, MAX_FRAME, MAX_MESSAGE,
 };
 use og_core::IdMap;
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
-use std::io;
+use std::io::{self, Read};
 use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
@@ -45,6 +45,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 use tungstenite::Message;
 use tungstenite::handshake::server::{ErrorResponse, Request, Response};
+use tungstenite::protocol::WebSocketConfig;
 
 /// The port `og relay` serves on unless told otherwise.
 pub const DEFAULT_PORT: u16 = 47900;
@@ -667,7 +668,10 @@ fn connection(stream: TcpStream, rooms: Shared, stop: Arc<AtomicBool>, log: Send
         path = request.uri().path().to_string();
         Ok(response)
     };
-    let Ok(mut socket) = tungstenite::accept_hdr(stream, callback) else {
+    let config = WebSocketConfig::default()
+        .max_frame_size(Some(MAX_FRAME))
+        .max_message_size(Some(MAX_FRAME));
+    let Ok(mut socket) = tungstenite::accept_hdr_with_config(stream, callback, Some(config)) else {
         return;
     };
     let _ = socket
@@ -702,6 +706,7 @@ fn connection(stream: TcpStream, rooms: Shared, stop: Arc<AtomicBool>, log: Send
             ));
         }
     }
+    let mut unread = false;
     let why = loop {
         if stop.load(Ordering::Relaxed) {
             break "the relay stopped";
@@ -734,10 +739,47 @@ fn connection(stream: TcpStream, rooms: Shared, stop: Arc<AtomicBool>, log: Send
                         | io::ErrorKind::TimedOut
                         | io::ErrorKind::Interrupted
                 ) => {}
+            // A frame over MAX_FRAME is refused before it is read. A
+            // WebSocket cannot skip a frame, so the connection ends, but
+            // the peer hears why first.
+            Err(tungstenite::Error::Capacity(_)) => {
+                let _ = socket.write(Message::text(error(
+                    "send",
+                    "too_large",
+                    format!("a frame is at most {MAX_FRAME} bytes; the connection is closed"),
+                )));
+                unread = true;
+                break "it sent a frame too large to read";
+            }
             Err(_) => break "the connection failed",
         }
     };
     peer.leave(why);
     let _ = socket.close(None);
     let _ = socket.flush();
+    if unread {
+        discard(socket.get_mut(), &stop);
+    }
+}
+
+/// Reads and drops what a peer is still sending, until it closes or ten
+/// seconds pass: closing on a peer in the middle of a frame resets the
+/// connection, and it would lose the answer just written to it.
+fn discard(stream: &mut TcpStream, stop: &AtomicBool) {
+    let until = Instant::now() + Duration::from_secs(10);
+    let mut buf = vec![0u8; 64 * 1024];
+    while Instant::now() < until && !stop.load(Ordering::Relaxed) {
+        match stream.read(&mut buf) {
+            Ok(0) => return,
+            Ok(_) => {}
+            Err(e)
+                if matches!(
+                    e.kind(),
+                    io::ErrorKind::WouldBlock
+                        | io::ErrorKind::TimedOut
+                        | io::ErrorKind::Interrupted
+                ) => {}
+            Err(_) => return,
+        }
+    }
 }
