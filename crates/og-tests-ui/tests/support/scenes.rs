@@ -51,15 +51,21 @@ pub fn shot(ui: Ui, mut scene: RenderScene, vp: Viewport) -> Shot {
     let mut overlay = og_render::Overlay::new(vp.width, vp.height, vp.dpr);
     ui.frame().emit(&EmitDesc::default(), &mut overlay);
     scene.ui.overlay = Some(overlay);
-    let bg = ui.theme().palette.backdrop.linear();
-    scene.lighting.environment.background = Background::Color(Vec3::new(bg[0], bg[1], bg[2]));
-    scene.look.post.tonemap = Tonemap::None;
+    on_backdrop(&ui, &mut scene);
     let desc = RenderDesc {
         width: (vp.width * vp.dpr) as u32,
         height: (vp.height * vp.dpr) as u32,
         ..RenderDesc::default()
     };
     Shot { ui, scene, desc }
+}
+
+/// Puts `scene` on `ui`'s theme backdrop with no tonemap: what a UI frame
+/// is drawn over, so its colours come out as the theme states them.
+pub fn on_backdrop(ui: &Ui, scene: &mut RenderScene) {
+    let bg = ui.theme().palette.backdrop.linear();
+    scene.lighting.environment.background = Background::Color(Vec3::new(bg[0], bg[1], bg[2]));
+    scene.look.post.tonemap = Tonemap::None;
 }
 
 /// `references/<tier>/sample-screen.png`: the sample screen after its
@@ -169,9 +175,7 @@ pub fn text_fields_shot(font: &FontFiles) -> Shot {
     area.frame().emit(&EmitDesc::default(), &mut overlay);
     ui.frame().emit(&EmitDesc::default(), &mut overlay);
     scene.ui.overlay = Some(overlay);
-    let bg = ui.theme().palette.backdrop.linear();
-    scene.lighting.environment.background = Background::Color(Vec3::new(bg[0], bg[1], bg[2]));
-    scene.look.post.tonemap = Tonemap::None;
+    on_backdrop(&ui, &mut scene);
     let desc = RenderDesc {
         width: (vp.width * vp.dpr) as u32,
         height: (vp.height * vp.dpr) as u32,
@@ -240,9 +244,7 @@ pub fn glow_scene(font: &FontFiles, glow: bool, labels: usize) -> (RenderScene, 
     let mut overlay = og_render::Overlay::new(vp.width, vp.height, vp.dpr);
     ui.frame().emit(&EmitDesc::default(), &mut overlay);
     scene.ui.overlay = Some(overlay);
-    let bg = ui.theme().palette.backdrop.linear();
-    scene.lighting.environment.background = Background::Color(Vec3::new(bg[0], bg[1], bg[2]));
-    scene.look.post.tonemap = Tonemap::None;
+    on_backdrop(&ui, &mut scene);
     let desc = RenderDesc {
         width: vp.width as u32,
         height: vp.height as u32,
@@ -419,9 +421,7 @@ pub fn user_select_scene(font: &FontFiles, width: u32, height: u32) -> (RenderSc
     let mut overlay = og_render::Overlay::new(vp.width, vp.height, 1.0);
     ui.frame().emit(&EmitDesc::default(), &mut overlay);
     scene.ui.overlay = Some(overlay);
-    let bg = ui.theme().palette.backdrop.linear();
-    scene.lighting.environment.background = Background::Color(Vec3::new(bg[0], bg[1], bg[2]));
-    scene.look.post.tonemap = Tonemap::None;
+    on_backdrop(&ui, &mut scene);
     (
         scene,
         RenderDesc {
@@ -448,9 +448,7 @@ pub fn text_path_scene(font: &FontFiles, width: u32, height: u32) -> (RenderScen
     let mut overlay = og_render::Overlay::new(vp.width, vp.height, 1.0);
     ui.frame().emit(&EmitDesc::default(), &mut overlay);
     scene.ui.overlay = Some(overlay);
-    let bg = ui.theme().palette.backdrop.linear();
-    scene.lighting.environment.background = Background::Color(Vec3::new(bg[0], bg[1], bg[2]));
-    scene.look.post.tonemap = Tonemap::None;
+    on_backdrop(&ui, &mut scene);
     (
         scene,
         RenderDesc {
