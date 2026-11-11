@@ -93,7 +93,51 @@ pub(crate) struct Style {
     pub(crate) motion: crate::layout::MotionCache,
 }
 
-/// Paint: its reuse cache, the part and decoration draws, the map being drawn and the last frame's draws and inspection.
+impl Paint {
+    /// The map of the element whose commands are being made.
+    pub(crate) fn map(&self) -> Affine {
+        self.ctx.map_or(Affine::IDENTITY, |c| c.map)
+    }
+
+    /// The theme the element being painted draws with.
+    pub(crate) fn theme<'a>(&'a self, env: &'a Env) -> &'a Theme {
+        self.ctx.as_ref().map_or(&env.theme, |c| &c.theme)
+    }
+}
+
+impl crate::ui::Ui {
+    /// The theme paint draws with: the environment's, its primary ink the
+    /// painted element's `accent-color`.
+    pub(crate) fn paint_theme(&self) -> &Theme {
+        self.paint.theme(&self.env)
+    }
+
+    /// Node `n`'s clip as paint draws it: the painted element's where its
+    /// commands draw.
+    pub(crate) fn paint_clip(&self, n: &Node) -> Rect {
+        match &self.paint.ctx {
+            Some(c) if std::ptr::eq(n, &self.tree.nodes[c.node]) => c.clip,
+            _ => n.clip,
+        }
+    }
+}
+
+/// What paint draws one element with, set around its commands: its clip
+/// where they draw (a 3D plane's in its layer, mapped back to its layout
+/// box under a map), the map (a nine-slice is cut at its size on the
+/// screen, its corners kept crisp) and the theme with its CSS
+/// `accent-color` as the primary ink. Paint reads it in place of the
+/// node's clip and the environment's theme, which it no longer writes.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct PaintCtx {
+    pub(crate) node: usize,
+    pub(crate) clip: Rect,
+    pub(crate) map: Affine,
+    pub(crate) theme: Theme,
+}
+
+/// Paint: its reuse cache, the part and decoration draws, the element
+/// being drawn and the last frame's draws and inspection.
 #[derive(Clone, Debug)]
 pub(crate) struct Paint {
     /// This frame's command ranges kept from last frame's paint, in order.
@@ -106,9 +150,9 @@ pub(crate) struct Paint {
     /// This frame's draws of elements with CSS box decorations: their
     /// draw or dressing with the decorations over it.
     pub(crate) decor_draws: std::collections::HashMap<usize, crate::paint::ElementDraw>,
-    /// The map of the element whose commands are being made: a nine-slice
-    /// is cut at its size on the screen, its corners kept crisp.
-    pub(crate) drawing: Affine,
+    /// The element whose commands are being made (`None` between
+    /// elements): its clip, map and theme as paint draws it.
+    pub(crate) ctx: Option<PaintCtx>,
     pub(crate) prev_draws: std::collections::HashMap<usize, crate::paint::ElementDraw>,
     /// The last frame's inspection, made when asked for (`inspect`).
     pub(crate) inspection: inspect::Inspection,

@@ -44,16 +44,16 @@ impl Ui {
         let at = crate::paint::Placed {
             rect,
             radius,
-            clip: if self.paint.drawing.is_identity() {
+            clip: if self.paint.map().is_identity() {
                 clip
             } else {
-                self.paint.drawing.map_rect(&clip)
+                self.paint.map().map_rect(&clip)
             },
             alpha,
         };
-        cmds.extend(draw.enter(&self.env.theme, &at));
+        cmds.extend(draw.enter(self.paint_theme(), &at));
         cmds.extend(draw.children(&at));
-        cmds.extend(draw.leave(&self.env.theme, &at));
+        cmds.extend(draw.leave(self.paint_theme(), &at));
     }
 
     pub(super) fn build_part_draws(&mut self, order: &[usize]) {
@@ -142,14 +142,14 @@ impl Ui {
                     )
                 },
             );
-            let ground = crate::dress::ground_of(&draw, &self.env.theme, Srgba::TRANSPARENT);
+            let ground = crate::dress::ground_of(&draw, self.paint_theme(), Srgba::TRANSPARENT);
             fills.push(ground);
             if ground.alpha >= 1.0 {
                 break;
             }
             j = node.parent;
         }
-        let mut color = self.env.theme.palette.backdrop;
+        let mut color = self.paint_theme().palette.backdrop;
         for fill in fills.iter().rev() {
             color = fill.over(color);
         }
@@ -172,7 +172,7 @@ impl crate::ui::Paint {
         cmds: &mut Vec<DrawCmd>,
         env: &crate::ui::Env,
     ) {
-        let Some(atlas) = env.theme.art.atlas else {
+        let Some(atlas) = self.theme(env).art.atlas else {
             return;
         };
         let [u0, v0, u1, v1] = o.uv;
@@ -180,7 +180,7 @@ impl crate::ui::Paint {
         let (v0, v1) = if flip_y { (v1, v0) } else { (v0, v1) };
         let mut color = tint.unwrap_or_else(|| match o.ink {
             Ink::Authored => Srgba::WHITE.linear(),
-            ink => ink.color(&env.theme.palette).linear(),
+            ink => ink.color(&self.theme(env).palette).linear(),
         });
         color[3] *= alpha;
         cmds.push(DrawCmd::Image {
