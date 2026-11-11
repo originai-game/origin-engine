@@ -9,7 +9,12 @@
 //! shape, or one re-registered unchanged disturbs the simulation; a restore
 //! into a world that has run on keeps the newer rapier state; the step
 //! reads a collider or a body as it decoded it a tick ago, after game code
-//! wrote it, another took its row, or a restore put an older one there.
+//! wrote it, another took its row, or a restore put an older one there; the
+//! step passes over an archetype of static colliders it still has work
+//! for: one was moved (og.Transform written, og.Collider not), a mesh of
+//! theirs has new geometry, one became a body's child collider while
+//! another stopped being one, or one has a NaN in its pose and is moved
+//! every tick (nothing of theirs written in the last three).
 
 use crate::support;
 
@@ -89,21 +94,39 @@ fn a_mesh_registered_again_changes_its_colliders_only_when_its_geometry_changes(
             RigidBody::dynamic(),
             Collider::convex(1),
         );
+        // A static collider of the mesh, with a box on its top (y = 2).
+        spawn_static(&mut w, at(8.0, 1.5, 0.0), Collider::convex(1));
+        let rider = spawn_body(
+            &mut w,
+            at(8.0, 2.3, 0.0),
+            RigidBody::dynamic(),
+            Collider::cuboid(Vec3::splat(0.6)),
+        );
         run(&mut w, 30);
-        (w, p, b)
+        (w, p, b, rider)
     };
-    let (mut a, _pa, _) = build();
-    let (mut same, p_same, _) = build();
+    let (mut a, _pa, _, _) = build();
+    let (mut same, p_same, _, _) = build();
     p_same.set_mesh(1, cube(0.5)).unwrap();
     run(&mut a, 90);
     run(&mut same, 90);
     assert_eq!(same.snapshot(), a.snapshot(), "unchanged geometry");
 
-    let (mut big, p_big, b) = build();
+    let (mut big, p_big, b, _) = build();
     p_big.set_mesh(1, cube(1.5)).unwrap();
     run(&mut big, 120);
     let y = transform(&big, b).position.y;
     assert!((y - 1.5).abs() < 0.03, "rests on the 3 m hull: {y}");
+
+    // The static one too, though nothing wrote a component of it: the box
+    // on it comes down to the smaller hull's top (y = 1.75).
+    let (mut small, p_small, _, rider) = build();
+    let y = transform(&small, rider).position.y;
+    assert!((y - 2.3).abs() < 0.02, "on the 1 m hull: {y}");
+    p_small.set_mesh(1, cube(0.25)).unwrap();
+    run(&mut small, 90);
+    let y = transform(&small, rider).position.y;
+    assert!((y - 2.05).abs() < 0.03, "rests on the 0.5 m hull: {y}");
 }
 
 #[test]
@@ -149,8 +172,22 @@ fn what_the_step_kept_of_colliders_and_bodies_does_not_outlive_a_write() {
         (w, p)
     };
     let (mut w, _p) = build();
-    floor(&mut w);
+    let ground = floor(&mut w);
     let ledge = Collider::cuboid(Vec3::new(2.0, 0.5, 2.0));
+    // Two colliders in one archetype, each under a parent: the post's is a
+    // child collider of that body, the ground's a static collider.
+    let post = spawn_body(&mut w, at(0.0, 6.0, 8.0), RigidBody::fixed(), ledge);
+    let under = |e: Entity| Parent {
+        entity: e.to_bits(),
+    };
+    let hung =
+        [post, ground].map(|e| w.spawn((at(3.0, 1.0, 8.0), Collider::sphere(0.5), under(e))));
+    let hung = hung.map(|e| e.unwrap());
+    // A static collider nowhere (a NaN in its pose), in an archetype of
+    // its own: never where it was tracked, so moved every tick.
+    let nowhere = at(f32::NAN, 9.0, -8.0);
+    w.spawn((nowhere, Collider::sphere(0.5), Prop {}, under(ground)))
+        .unwrap();
     let x = |i: usize| i as f32 * 3.0 - 10.5;
     let mut ledges = Vec::new();
     let mut boxes = Vec::new();
@@ -181,6 +218,20 @@ fn what_the_step_kept_of_colliders_and_bodies_does_not_outlive_a_write() {
         assert!(w.snapshot() == fresh.snapshot(), "after {what}");
     };
     check(&mut w, "nothing");
+
+    // A static collider moved in place: the box on it comes down with it.
+    w.insert(ledges[3], at(x(3), 1.0, 0.0)).unwrap();
+    check(&mut w, "a ledge was moved");
+    assert!(y(&w, boxes[3]) < 2.4, "came down with its ledge");
+
+    // The two under a parent set to the other's: as many static colliders
+    // in their archetype as before, and no Transform or Collider written.
+    w.insert(hung[0], under(ground)).unwrap();
+    w.insert(hung[1], under(post)).unwrap();
+    check(
+        &mut w,
+        "a static collider and a child collider changed places",
+    );
 
     // A static collider set in place: the box on it falls through it.
     w.insert(
