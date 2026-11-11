@@ -7,6 +7,7 @@ import re
 import shutil
 import subprocess
 import sys
+from xml.etree import ElementTree
 
 from inputs import LOGS, GREEN, crate_inputs, mark, unaffected
 
@@ -49,7 +50,8 @@ def build():
             # The adapter-aware harness reports a GPU requirement without
             # creating an adapter. Nextest later preserves genuine ignored tests.
             gpu = 'OG_RENDERER=none' in (record.get('ignore_message') or '')
-            tests.append({'name': record['name'], 'source': record.get('source_path'), 'gpu': gpu})
+            tests.append({'name': record['name'], 'source': record.get('source_path'), 'gpu': gpu,
+                          'ignored': bool(record.get('ignore')) and not gpu})
         discovered[binary_id] = {'binary': binary, 'tests': tests}
     (LOGS / 'discovered.json').write_text(json.dumps(discovered, indent=2))
 
@@ -71,10 +73,22 @@ def selection(binary_id, tests, gpu):
     return f'(binary_id(={binary_id}) & test(/^(?:{mine})$/))'
 
 
+def passed(junit, expected):
+    """The binaries of a failed run that ran every one of their tests and
+    failed none, from that run's JUnit report: one failing binary does not
+    send the others back through the next run."""
+    try:
+        suites = ElementTree.parse(junit).getroot().iter('testsuite')
+        return {s.get('name') for s in suites if s.get('failures') == '0' and s.get('errors') == '0'
+                and len(s.findall('testcase')) == expected.get(s.get('name'))}
+    except (OSError, ElementTree.ParseError):
+        return set()
+
+
 def run(kind):
     discovered = json.loads((LOGS / 'discovered.json').read_text())
     packages = {p['id']: p['name'] for p in json.loads((LOGS / 'cargo.json').read_text())['packages']}
-    groups, keys = [], []
+    groups, keys, expected = [], {}, {}
     for binary_id, entry in discovered.items():
         tests = [t for t in entry['tests'] if t['gpu'] == (kind == 'gpu')]
         if not tests:
@@ -85,7 +99,8 @@ def run(kind):
             print(f'SKIPPED {binary_id} {kind}: dependency inputs unchanged')
             continue
         (GREEN / key).unlink(missing_ok=True)
-        keys.append(key)
+        keys[binary_id] = key
+        expected[binary_id] = sum(not t.get('ignored') for t in tests)
         groups.append(selection(binary_id, entry['tests'], kind == 'gpu'))
     if not groups:
         return 3
@@ -98,20 +113,21 @@ def run(kind):
     command = ['cargo', 'nextest', 'run', '--cargo-metadata', str(LOGS / 'cargo.json'),
                '--binaries-metadata', str(LOGS / 'binaries.json'), '--profile', kind,
                '--test-threads', os.environ['OG_GATE_THREADS'], '-E', ' | '.join(groups)]
-    rc = subprocess.call(command, env=env)
     junit = Path(os.environ['OG_TARGET_DIR']) / 'nextest' / kind / 'junit.xml'
+    junit.unlink(missing_ok=True)
+    rc = subprocess.call(command, env=env)
     if junit.exists():
         shutil.copyfile(junit, LOGS / f'rust-{kind}.junit.xml')
-    if rc:
-        return rc
     if kind == 'gpu' and list(reports.glob('*.txt')):
         for report in reports.glob('*.txt'):
             print(report.read_text(), end='')
         print('GPU checks are unchecked; no passing snapshot recorded')
-        return 3
-    for key in keys:
-        mark(key)
-    return 0
+        return rc or 3
+    green = passed(junit, expected) if rc else set(keys)
+    for binary_id, key in keys.items():
+        if binary_id in green:
+            mark(key)
+    return rc
 
 
 if __name__ == '__main__':

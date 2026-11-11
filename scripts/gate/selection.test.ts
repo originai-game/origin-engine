@@ -76,3 +76,21 @@ test("a binary's inputs are its own closure and the sources that closure names b
   // A file that is not Rust source has no proven reader: it runs everything.
   expect(ws.skipsAfter("crates/og-b/data.txt")).toBe(false);
 });
+
+test("after a failed run only the binaries that ran every test and failed none are green", () => {
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "og-gate-passed-")));
+  roots.push(root);
+  const suite = (name: string, failures: number, cases: number) =>
+    `<testsuite name="${name}" tests="${cases}" failures="${failures}" errors="0">` +
+    '<testcase name="t" classname="c"/>'.repeat(cases) + "</testsuite>";
+  writeFileSync(join(root, "junit.xml"),
+    `<testsuites>${suite("og-a::tests", 0, 3)}${suite("og-b::tests", 1, 3)}${suite("og-c::tests", 0, 2)}</testsuites>`);
+  const expected = { "og-a::tests": 3, "og-b::tests": 3, "og-c::tests": 3, "og-d::tests": 1 };
+  const run = spawnSync("python3", ["-c",
+    `import json, native; print(json.dumps(sorted(native.passed('junit.xml', ${JSON.stringify(expected)}))))`], {
+    cwd: root, encoding: "utf8",
+    env: { ...process.env, PYTHONPATH: import.meta.dir, GATE_LOGS: root, OG_TARGET_DIR: join(root, "target") },
+  });
+  // og-b failed a test, og-c stopped before its third, og-d never started.
+  expect(JSON.parse(run.stdout)).toEqual(["og-a::tests"]);
+});

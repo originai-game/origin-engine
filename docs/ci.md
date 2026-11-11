@@ -253,7 +253,10 @@ tests run loads. A Rust test outside og-cli that ran `og`, or one that
 reached another crate's `.rs` file without naming its path that way, would
 be skipped wrongly: add it to `RUNS` in `scripts/gate/inputs.py`, or name
 the path. Bun records each test file separately. A failure invalidates its
-record; an unchecked GPU run never creates a passing record.
+record: after a failed nextest run, a binary keeps a passing record only
+when the run's JUnit report shows every one of its tests ran and none
+failed, so one failing binary does not send the others through the next
+run. An unchecked GPU run never creates a passing record.
 
 The Cargo profiles are `dev` (native tests), `release` (native shipping),
 `wasm-test` (functional and browser wasm), and `wasm` (shipping wasm and
