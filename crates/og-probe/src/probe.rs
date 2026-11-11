@@ -963,26 +963,6 @@ impl Probe {
     }
 }
 
-impl state::Host {
-    /// [`Probe::listen`].
-    pub(super) fn listen(&mut self, world: &World, seconds: f32) -> Option<Value> {
-        let h = (self.listen.as_ref()?)(seconds.clamp(0.0, 2.0))?;
-        Some(json!({
-            "tick": world.time().tick,
-            "rate": h.rate,
-            "frames": h.frames,
-            "peak": h.peak,
-            "rms": h.rms,
-            "wav": base64::encode(&h.wav),
-        }))
-    }
-
-    /// [`Probe::memory`].
-    pub(super) fn memory(&self, world: &World) -> Option<Value> {
-        self.memory.as_ref().map(|f| f(world))
-    }
-}
-
 /// A key with the modifiers held for it, as `key_down` and `key_up` take
 /// it: `ArrowLeft`, `Shift+ArrowLeft`, `Meta+Shift+KeyZ` (`Shift`, `Ctrl`
 /// or `Control`, `Alt` or `Option`, `Meta`, `Cmd` or `Command`; any case).
