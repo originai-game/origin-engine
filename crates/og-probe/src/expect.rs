@@ -807,7 +807,7 @@ impl Probe {
         if self.checks.quiet {
             return r;
         }
-        self.note(r.tick, r.status == Status::Fail, r.line());
+        self.out.note(r.tick, r.status == Status::Fail, r.line());
         self.timeline.expect(&r);
         self.checks.expectations.push(r.clone());
         r

@@ -36,7 +36,7 @@ impl Probe {
                 // exactly as it would with one (rendering never feeds back).
                 let Some(capture) = self.host.capture.as_mut().filter(|c| c.has_renderer()) else {
                     let file = path.unwrap_or_else(|| format!("screenshot-{tick:06}.png"));
-                    self.note(
+                    self.out.note(
                         tick,
                         false,
                         format!("{}s {FRAME_UNCHECKED} ({file})", step.at),
@@ -74,7 +74,7 @@ impl Probe {
                     });
                     return Ok(());
                 };
-                self.emit(
+                self.out.emit(
                     step.at,
                     Output {
                         tick,
@@ -106,7 +106,7 @@ impl Probe {
                     .as_ref()
                     .ok_or("no audio in this host: nothing to listen to")?;
                 let heard = listen(seconds).ok_or("the mixer has rendered nothing yet")?;
-                self.emit(
+                self.out.emit(
                     step.at,
                     Output {
                         tick,
@@ -528,7 +528,7 @@ impl Probe {
             #[cfg(not(feature = "publish"))]
             "describe" => {
                 let value = self.describe(world);
-                self.emit(
+                self.out.emit(
                     step.at,
                     Output {
                         tick,
@@ -565,7 +565,7 @@ impl Probe {
                     write: true,
                 };
                 let saved = self.prefab_edit(world, &edit)?;
-                self.note(
+                self.out.note(
                     tick,
                     false,
                     format!(
@@ -589,7 +589,7 @@ impl Probe {
                 let path = output_path(args.iter().find(|a| *a != "spawned"))?;
                 let saved = self.save_scene(world, path.is_none(), spawned)?;
                 let scenes = saved["scenes"].as_array().cloned().unwrap_or_default();
-                self.note(
+                self.out.note(
                     tick,
                     false,
                     format!(
@@ -645,7 +645,7 @@ impl Probe {
                                 format!("{dir}/{rel}")
                             }
                         };
-                        self.emit(
+                        self.out.emit(
                             step.at,
                             Output {
                                 tick,
@@ -678,7 +678,7 @@ impl Probe {
                 } else {
                     self.dump_ui(world)
                 };
-                self.emit(
+                self.out.emit(
                     step.at,
                     Output {
                         tick,
@@ -694,7 +694,7 @@ impl Probe {
                 let id = arg(0, "dump_entity:<entity>[:path]")?;
                 let e = self.entity_of(world, id)?;
                 let dump = self.dump_entity(world, e);
-                self.emit(
+                self.out.emit(
                     step.at,
                     Output {
                         tick,
@@ -726,7 +726,8 @@ impl Probe {
                     shown.truncate(end);
                     shown.push_str("...");
                 }
-                self.note(tick, false, format!("get {target} = {shown}"));
+                self.out
+                    .note(tick, false, format!("get {target} = {shown}"));
                 // Unnamed gets on one tick: get-<tick>.json, then -2, -3, ...
                 let mut path = output_path(args.get(1))?;
                 if path.is_none() {
@@ -739,7 +740,7 @@ impl Probe {
                         path = Some(format!("get-{tick:06}-{}.json", self.out.gets.1));
                     }
                 }
-                self.emit(
+                self.out.emit(
                     step.at,
                     Output {
                         tick,
@@ -809,8 +810,9 @@ impl Probe {
                     let origin = if info.core { "" } else { " (registered)" };
                     text.push_str(&format!("{}{origin}\n    {}\n", info.usage, info.doc));
                 }
-                self.note(tick, false, format!("help: {} actions", self.help().len()));
-                self.emit(
+                self.out
+                    .note(tick, false, format!("help: {} actions", self.help().len()));
+                self.out.emit(
                     step.at,
                     Output {
                         tick,
@@ -845,7 +847,7 @@ impl Probe {
                             (&args[..], None)
                         };
                         let value = handler(world, head)?;
-                        self.emit(
+                        self.out.emit(
                             step.at,
                             Output {
                                 tick,

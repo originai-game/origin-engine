@@ -737,7 +737,9 @@ impl Probe {
     pub fn take_outputs(&mut self) -> Vec<Output> {
         std::mem::take(&mut self.out.outputs)
     }
+}
 
+impl state::Out {
     /// Hands an output a step made to the host. A file an earlier step of
     /// this script already wrote is not overwritten: the second is written
     /// beside it as `<stem>-2.<ext>` (then `-3`, ...), with a warning naming
@@ -748,7 +750,7 @@ impl Probe {
         let wanted = output.file_name();
         let mut name = wanted.clone();
         let mut n = 1;
-        while self.out.written.contains_key(&name) {
+        while self.written.contains_key(&name) {
             n += 1;
             name = suffixed(&wanted, n);
         }
@@ -756,7 +758,7 @@ impl Probe {
             output.path = Some(name.clone());
             // Unnamed outputs are the probe's own names: suffixed quietly.
             if named {
-                let (first_at, first_action) = &self.out.written[&wanted];
+                let (first_at, first_action) = &self.written[&wanted];
                 self.note(
                     output.tick,
                     true,
@@ -767,23 +769,29 @@ impl Probe {
                 );
             }
         }
-        self.out.written.insert(name, (at, output.action.clone()));
-        self.out.outputs.push(output);
+        self.written.insert(name, (at, output.action.clone()));
+        self.outputs.push(output);
     }
+}
 
+impl Probe {
     /// Log lines since the last call.
     pub fn take_log(&mut self) -> Vec<LogLine> {
         std::mem::take(&mut self.out.log)
     }
+}
 
+impl state::Out {
     pub(crate) fn note(&mut self, tick: u64, warning: bool, text: String) {
-        self.out.log.push(LogLine {
+        self.log.push(LogLine {
             tick,
             warning,
             text,
         });
     }
+}
 
+impl Probe {
     // ---- the command channel ---------------------------------------------
 
     /// Register an action (a module's or a game's `commands:`). Refused for
@@ -1009,7 +1017,8 @@ impl Probe {
                 }
                 Queued::Inject(event) => {
                     if !self.deliver(world, &event) {
-                        self.note(now, true, format!("type: {} was refused", event.to_json()));
+                        self.out
+                            .note(now, true, format!("type: {} was refused", event.to_json()));
                     }
                 }
             }
@@ -1065,7 +1074,7 @@ impl Probe {
         }
         let shot = self.schedule.shot.take().expect("waiting");
         match frame {
-            Some(frame) => self.emit(
+            Some(frame) => self.out.emit(
                 shot.at,
                 Output {
                     tick: shot.tick,
@@ -1078,7 +1087,7 @@ impl Probe {
                     },
                 },
             ),
-            None => self.note(
+            None => self.out.note(
                 shot.tick,
                 true,
                 format!(
@@ -1172,7 +1181,7 @@ impl Probe {
         self.timeline.step(tick, &step);
         let result = self.action(world, &step);
         if let Err(reason) = result {
-            self.note(
+            self.out.note(
                 tick,
                 true,
                 format!("{}s {}: {reason}", step.at, step.action),
