@@ -594,12 +594,7 @@ impl Ui {
 
     /// A container element and its content: a dialog, a disclosure, a
     /// spotlight, a button with content and the rest.
-    #[allow(
-        clippy::too_many_arguments,
-        clippy::ptr_arg,
-        clippy::needless_borrow,
-        clippy::needless_return
-    )]
+    #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
     fn doc_container(
         &mut self,
         b: &mut Build<'_>,
@@ -650,7 +645,7 @@ impl Ui {
         match kind {
             "dialog" if open_now(self) && r.str("spotlight").is_some() => {
                 let target = r.str("spotlight").unwrap_or_default();
-                let (shade, anchored) = self.open_spotlight(id.as_str(), (key, &path), target, &r);
+                let (shade, anchored) = self.open_spotlight(id.as_str(), (key, &path), target, r);
                 spot = anchored;
                 if shade.clicked && r.str("closedby") == Some("any") {
                     opened = Some(false);
@@ -661,7 +656,7 @@ impl Ui {
                 let out = self.open_dialog(id.as_str(), open, &dialog);
                 // `::backdrop` styles the scrim, the panel's parent.
                 if dialog.modal
-                    && let Some(backdrop) = self.pseudo_node(b, &r, &path, "backdrop")
+                    && let Some(backdrop) = self.pseudo_node(b, r, &path, "backdrop")
                 {
                     let scrim = self.tree.nodes[self.parent()].parent;
                     self.style_pseudo_box(b, scrim, "backdrop", &backdrop);
@@ -760,7 +755,7 @@ impl Ui {
                 if b.cached.is_some() {
                     build_children(self, b, Some(props.clone()));
                 } else {
-                    self.build_virtual(b, n, kind, &id, &r, props.clone(), &path);
+                    self.build_virtual(b, n, kind, id, r, props.clone(), &path);
                 }
                 b.inherited = inherited;
                 let at = self.tree.last_closed;
@@ -791,11 +786,11 @@ impl Ui {
         }
         let fields =
             fields::RenderFields::capture(self, key, self.parent(), kind, resp, props, None);
-        self.apply_document_fields(&doc, n, &r, &fields);
+        self.apply_document_fields(doc, n, r, &fields);
         self.note_render_fields(key, fields);
         // A content button feeds og-input's action as a text one does.
         if kind == "button" && r.has("dataOgTouch") {
-            self.note_touch_button(&r);
+            self.note_touch_button(r);
         }
         if kind == "box"
             && n.selector_tag.as_deref() == Some("li")
@@ -803,7 +798,7 @@ impl Ui {
         {
             // `::marker { content }` replaces the list style's text;
             // its color inks either.
-            let (content, ink) = self.marker_override(b, n, &r);
+            let (content, ink) = self.marker_override(b, n, r);
             let style = crate::doc::lists::marker(marker, r.ordinal.unwrap_or(1));
             let inside = r.str("markerPosition") == Some("inside");
             // `list-style-image`: the picture stands for the marker.
@@ -847,7 +842,7 @@ impl Ui {
         }
         if r.has("emitter") || r.has("meta") || self.world.kept_effects.contains_key(&key) {
             let at = self.parent();
-            self.world_effects(b, n, &r, at, &path);
+            self.world_effects(b, n, r, at, &path);
         }
         if kind == "slot" {
             let at = self.parent();
@@ -881,9 +876,9 @@ impl Ui {
                 }
             }
             let inherited = std::mem::replace(&mut b.inherited, r.cascade.computed.clone());
-            self.generated_box(b, n, &r, &path, true);
+            self.generated_box(b, n, r, &path, true);
             build_children(self, b, None);
-            self.generated_box(b, n, &r, &path, false);
+            self.generated_box(b, n, r, &path, false);
             b.inherited = inherited;
         }
         match kind {
@@ -908,19 +903,14 @@ impl Ui {
             }
             self.write_back(b, n, "open", json!(open));
         }
-        self.popover_invoker(b, &r, key, resp);
-        self.hold(key, n, &r, self.tree.last_closed);
+        self.popover_invoker(b, r, key, resp);
+        self.hold(key, n, r, self.tree.last_closed);
         self.fire(b, n, key, &path, resp);
-        return Some(path);
+        Some(path)
     }
 
     /// The document's `label` element.
-    #[allow(
-        clippy::too_many_arguments,
-        clippy::ptr_arg,
-        clippy::needless_borrow,
-        clippy::needless_late_init
-    )]
+    #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
     fn doc_label(
         &mut self,
         b: &mut Build<'_>,
@@ -935,14 +925,14 @@ impl Ui {
         text_of: &impl Fn(&Resolved, &Build<'_>) -> String,
     ) -> Option<crate::ui::Response> {
         let mut resp = crate::ui::Response::default();
-        let text = text_of(&r, b);
+        let text = text_of(r, b);
         let desc = r.label_desc(&t, self.fonts(), r.own_flow().rtl);
         if !n.inline.is_empty() {
-            self.inline_links(b, n, &r, &path, key);
+            self.inline_links(b, n, r, path, key);
         }
         // `::before`, `::after` and `::first-letter` join the text
         // as styled runs.
-        if let Some((full, runs)) = self.generated_text(b, n, &styled, key, &text) {
+        if let Some((full, runs)) = self.generated_text(b, n, styled, key, &text) {
             let attributes: Vec<crate::TextSpan> =
                 runs.iter().map(|(span, _)| span.clone()).collect();
             resp = self
@@ -1019,24 +1009,19 @@ impl Ui {
                 .response;
         } else {
             if let Some(count) = styled.num("count") {
-                self.count_text(id.as_str(), count, &desc, &styled);
+                self.count_text(id.as_str(), count, &desc, styled);
             } else {
                 let shown = self.reveal(key, &text, styled.num("reveal"));
                 let i = self.leaf("label", id.as_str().into(), Default::default());
                 self.apply_label(i, shown, desc);
-                self.css_text_content(i, &styled);
+                self.css_text_content(i, styled);
             }
         }
         Some(resp)
     }
 
     /// The document's `select` element.
-    #[allow(
-        clippy::too_many_arguments,
-        clippy::ptr_arg,
-        clippy::needless_borrow,
-        clippy::needless_late_init
-    )]
+    #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
     fn doc_select(
         &mut self,
         b: &mut Build<'_>,
@@ -1046,7 +1031,6 @@ impl Ui {
         r: &Resolved,
         styled: &Resolved,
     ) -> crate::ui::Response {
-        let resp;
         let strs = |name: &str| match r.get(name) {
             Some(V::Strs(s)) => s.clone(),
             _ => Vec::new(),
@@ -1087,7 +1071,7 @@ impl Ui {
         // `::picker(select)` styles the open list; its `max-height`
         // bounds the rows before they scroll.
         let picker = self
-            .pseudo_node(b, &styled, &path, "picker")
+            .pseudo_node(b, styled, path, "picker")
             .map(|(at, mut p)| {
                 let max = p.values.size("maxHeight");
                 if let Some((spec, _)) = schema::prop("maxHeight") {
@@ -1122,7 +1106,7 @@ impl Ui {
                 }
             },
         );
-        resp = crate::Response {
+        let resp = crate::Response {
             changed: out.changed,
             ..crate::Response::default()
         };
@@ -1137,12 +1121,7 @@ impl Ui {
     }
 
     /// The document's `slider` element.
-    #[allow(
-        clippy::too_many_arguments,
-        clippy::ptr_arg,
-        clippy::needless_borrow,
-        clippy::needless_late_init
-    )]
+    #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
     fn doc_slider(
         &mut self,
         b: &mut Build<'_>,
@@ -1151,7 +1130,6 @@ impl Ui {
         r: &Resolved,
         text_of: &impl Fn(&Resolved, &Build<'_>) -> String,
     ) -> crate::ui::Response {
-        let resp;
         let v0 = r.num("value").unwrap_or(0.0);
         // Its `<datalist>`'s options: a tick at each value.
         let marks: Vec<crate::widgets::SliderMark> =
@@ -1178,7 +1156,7 @@ impl Ui {
                 min: r.num("min").unwrap_or(0.0),
                 max: r.num("max").unwrap_or(1.0),
                 step: r.num("stepBy").unwrap_or(0.0),
-                label: text_of(&r, b),
+                label: text_of(r, b),
                 show_value: !r.has("showValue") || r.flag("showValue"),
                 width: r.size("width"),
                 marks,
@@ -1187,7 +1165,7 @@ impl Ui {
                 ..crate::widgets::ValueSliderDesc::default()
             },
         );
-        resp = crate::Response {
+        let resp = crate::Response {
             changed: out.changed,
             ..out.response
         };
@@ -1198,12 +1176,7 @@ impl Ui {
     }
 
     /// The document's `toggle` element.
-    #[allow(
-        clippy::too_many_arguments,
-        clippy::ptr_arg,
-        clippy::needless_borrow,
-        clippy::needless_late_init
-    )]
+    #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
     fn doc_toggle(
         &mut self,
         b: &mut Build<'_>,
@@ -1213,7 +1186,6 @@ impl Ui {
         styled: &Resolved,
         text_of: &impl Fn(&Resolved, &Build<'_>) -> String,
     ) -> crate::ui::Response {
-        let resp;
         let on = r.flag("checked");
         // Source order, swapped by the label's row-reverse.
         let side = if (r.str("side") == Some("end"))
@@ -1228,7 +1200,7 @@ impl Ui {
                 id.as_str(),
                 on,
                 &crate::widgets::ToggleSwitchDesc {
-                    label: text_of(&r, b),
+                    label: text_of(r, b),
                     description: r.str("description").unwrap_or_default().to_string(),
                     disabled: r.flag("disabled"),
                     side,
@@ -1245,7 +1217,7 @@ impl Ui {
                 id.as_str(),
                 on,
                 &crate::widgets::CheckFieldDesc {
-                    label: text_of(&r, b),
+                    label: text_of(r, b),
                     description: r.str("description").unwrap_or_default().to_string(),
                     mixed: r.flag("indeterminate"),
                     disabled: r.flag("disabled"),
@@ -1255,7 +1227,7 @@ impl Ui {
                 },
             )
         };
-        resp = crate::Response {
+        let resp = crate::Response {
             changed: out.changed,
             ..out.response
         };
@@ -1266,12 +1238,7 @@ impl Ui {
     }
 
     /// The document's `file` element.
-    #[allow(
-        clippy::too_many_arguments,
-        clippy::ptr_arg,
-        clippy::needless_borrow,
-        clippy::needless_late_init
-    )]
+    #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
     fn doc_file(
         &mut self,
         b: &mut Build<'_>,
@@ -1282,7 +1249,6 @@ impl Ui {
         r: &Resolved,
         text_of: &impl Fn(&Resolved, &Build<'_>) -> String,
     ) -> Option<crate::ui::Response> {
-        let resp;
         if !self.env.file_picker {
             self.out.warnings.push(format!(
                 "{}:{}: <input type=\"file\"> needs a host file picker, which this host lacks (og.ui.filePicker is false); take files in a TS system",
@@ -1291,15 +1257,15 @@ impl Ui {
             return None;
         }
         let chosen = r.str("fileValue").unwrap_or_default();
-        let text = match text_of(&r, b) {
+        let text = match text_of(r, b) {
             t if !t.is_empty() => t,
             _ if !chosen.is_empty() => chosen.to_string(),
             _ => "Choose file…".to_string(),
         };
-        resp = self.button(id.as_str(), &text, r.button_desc());
+        let resp = self.button(id.as_str(), &text, r.button_desc());
         if resp.clicked && !r.flag("disabled") {
             b.event(
-                &path,
+                path,
                 "filepick",
                 &n.id,
                 json!({ "accept": r.str("accept").unwrap_or_default(), "multiple": r.flag("multiple") }),
@@ -1309,12 +1275,7 @@ impl Ui {
     }
 
     /// The document's `radio` element.
-    #[allow(
-        clippy::too_many_arguments,
-        clippy::ptr_arg,
-        clippy::needless_borrow,
-        clippy::needless_late_init
-    )]
+    #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
     fn doc_radio(
         &mut self,
         b: &mut Build<'_>,
@@ -1323,7 +1284,6 @@ impl Ui {
         r: &Resolved,
         text_of: &impl Fn(&Resolved, &Build<'_>) -> String,
     ) -> crate::ui::Response {
-        let resp;
         let choice = r.str("choice").unwrap_or("on").to_string();
         let on = if r.has("group") {
             r.str("group") == Some(choice.as_str())
@@ -1335,7 +1295,7 @@ impl Ui {
             id.as_str(),
             &crate::widgets::RadioGroupDesc {
                 options: vec![crate::widgets::RadioOption {
-                    label: text_of(&r, b),
+                    label: text_of(r, b),
                     description: r.str("description").unwrap_or_default().to_string(),
                     ..Default::default()
                 }],
@@ -1345,7 +1305,7 @@ impl Ui {
                 ..Default::default()
             },
         );
-        resp = crate::Response {
+        let resp = crate::Response {
             changed: out.changed,
             ..crate::Response::default()
         };
@@ -1356,12 +1316,7 @@ impl Ui {
     }
 
     /// The document's `tabs` element.
-    #[allow(
-        clippy::too_many_arguments,
-        clippy::ptr_arg,
-        clippy::needless_borrow,
-        clippy::needless_late_init
-    )]
+    #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
     fn doc_tabs(
         &mut self,
         b: &mut Build<'_>,
@@ -1370,7 +1325,6 @@ impl Ui {
         r: &Resolved,
         text_of: &impl Fn(&Resolved, &Build<'_>) -> String,
     ) -> crate::ui::Response {
-        let resp;
         let strs = |name: &str| match r.get(name) {
             Some(V::Strs(s)) => s.clone(),
             _ => Vec::new(),
@@ -1424,13 +1378,13 @@ impl Ui {
                 } else {
                     Size::fit()
                 })),
-                label: text_of(&r, b),
+                label: text_of(r, b),
                 size: Default::default(),
                 disabled: r.flag("disabled"),
             },
         );
         selected = usize::try_from(out.selected).unwrap_or(0);
-        resp = crate::Response {
+        let resp = crate::Response {
             changed: out.changed || stepped,
             focused: out.focused >= 0,
             ..crate::Response::default()
@@ -1445,12 +1399,7 @@ impl Ui {
     }
 
     /// The document's `field` element.
-    #[allow(
-        clippy::too_many_arguments,
-        clippy::ptr_arg,
-        clippy::needless_borrow,
-        clippy::needless_late_init
-    )]
+    #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
     fn doc_field(
         &mut self,
         b: &mut Build<'_>,
@@ -1478,7 +1427,7 @@ impl Ui {
             step: r.num("stepBy").map(f64::from),
         };
         resp = if r.flag("multiline") {
-            self.docs.host.placeholder_ink = self.pseudo_ink(&styled);
+            self.docs.host.placeholder_ink = self.pseudo_ink(styled);
             let out = self.text_area(
                 id.as_str(),
                 &mut s,
@@ -1498,7 +1447,7 @@ impl Ui {
             self.docs.host.placeholder_ink = None;
             out
         } else {
-            self.docs.host.placeholder_ink = self.pseudo_ink(&styled);
+            self.docs.host.placeholder_ink = self.pseudo_ink(styled);
             let out = self.text_field(
                 id.as_str(),
                 &mut s,
@@ -1536,7 +1485,7 @@ impl Ui {
             out
         };
         if !r.flag("readonly") {
-            self.pad_keyboard(&path, &r, &mut s, &mut resp);
+            self.pad_keyboard(path, r, &mut s, &mut resp);
         }
         if let Some(V::Strs(all)) = r.get("suggestions") {
             let labels = match r.get("suggestionLabels") {
@@ -1560,7 +1509,7 @@ impl Ui {
                 .collect();
             let field = self.tree.last_closed;
             if let Some(c) =
-                self.suggestions(&path, field, (resp.focused, resp.changed), &s, all, &labels)
+                self.suggestions(path, field, (resp.focused, resp.changed), &s, all, &labels)
             {
                 s = c;
                 resp.changed = true;
