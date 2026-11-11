@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {"member":"standardMaterial anisotropy (specular)","summary":"An anisotropic material's specular from the lights was capped where the lobe's visibility passes 1, at grazing angles, so it was darker there than the same material with anisotropy 0 and its highlight jumped as the anisotropy reached 0. The cap is removed: the anisotropic lobe with equal roughness both ways is now the isotropic one."}
+  ]
+}

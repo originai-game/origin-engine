@@ -112,11 +112,15 @@ fn d_ggx_aniso(alpha_t: f32, alpha_b: f32, n_dot_h: f32, t_dot_h: f32, b_dot_h: 
   return a2 * w2 * w2 / PI;
 }
 
+// With alpha_t = alpha_b it is ggx.wgsl's v_ggx, and like it is not held
+// under 1 (three.js saturates it): the visibility passes 1 at grazing
+// angles, where a cap would leave the lobe darker than the isotropic one
+// it tends to as the anisotropy goes to 0.
 fn v_ggx_aniso(alpha_t: f32, alpha_b: f32, tv: f32, bv: f32, tl: f32, bl: f32, n_dot_v: f32, n_dot_l: f32) -> f32 {
   // (Not `gl`: GLSL reserves the gl_ prefix naga's renaming would give it.)
   let lambda_v = n_dot_l * length(vec3<f32>(alpha_t * tv, alpha_b * bv, n_dot_v));
   let lambda_l = n_dot_v * length(vec3<f32>(alpha_t * tl, alpha_b * bl, n_dot_l));
-  return clamp(0.5 / (lambda_v + lambda_l), 0.0, 1.0);
+  return 0.5 / max(lambda_v + lambda_l, 1e-6);
 }
 
 // Thin-film iridescence (Belcour and Barla 2017, as three.js): the
