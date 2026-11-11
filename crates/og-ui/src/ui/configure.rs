@@ -565,52 +565,10 @@ impl Ui {
         self.env.theme = effective_theme(self.env.theme, &viewport).to_unit(unit);
         // The style's atlas at the density this surface draws at.
         self.env.theme.art.atlas = self.env.configured.art.atlas_for(viewport.dpr());
-        self.tree.retire_nodes(&mut self.layout);
-        self.layout.cache.prev.clear();
-        self.tree.prev_kinds.clear();
-        std::mem::swap(&mut self.tree.emitted, &mut self.tree.retiring);
-        self.tree.emitted.clear();
-        for &i in &self.tree.retiring {
-            self.tree.slot_present[i] = false;
-        }
-        self.tree.built.clear();
-        self.tree.anonymous.clear();
-        self.tree.stack.clear();
-        self.tree.owning.clear();
-        self.tree.in_place = None;
-        // Retained slots keep their layers and draws until written again.
-        let persistent = &self.tree.persistent;
-        self.tree.prev_floating = self.tree.floating.clone();
-        self.tree.floating.retain(|&f| persistent[f]);
-        self.paint.prev_draws = std::mem::take(&mut self.tree.draws);
-        self.tree.draws = self
-            .paint
-            .prev_draws
-            .iter()
-            .filter(|&(&i, _)| persistent[i])
-            .map(|(&i, d)| (i, d.clone()))
-            .collect();
-        self.tree.dressable.retain(|&i| persistent[i]);
         self.out.warnings.clear();
-        self.tree.last_closed = NONE;
-        self.tree.building = true;
-
-        self.interaction.state.tick += 1;
-        // A Rive player whose element was not built last tick is gone.
-        let tick = self.interaction.state.tick;
-        self.interaction
-            .state
-            .rive
-            .retain(|_, s| s.built + 1 >= tick);
-        self.interaction.nav = NavFrame::default();
-        self.front.touched.clear();
-        self.interaction.request_focus = 0;
-        self.tree.scopes.clear();
-        self.interaction.nav_on = true;
-        self.interaction.players = 1;
-        self.interaction.vcursor = None;
-        self.front.hud_editor_key = 0;
-        self.front.cover = None;
+        self.tree.begin(&mut self.layout, &mut self.paint);
+        self.interaction.begin();
+        self.front.begin();
         // A pointer on a world panel is moved onto the panel's layout.
         self.world
             .world_begin(&mut input, &self.env, &self.interaction);
@@ -912,5 +870,67 @@ impl Ui {
         c.font = self.type_font(role);
         c.wrap = false;
         c
+    }
+}
+
+impl crate::ui::Tree {
+    /// Starts a frame's build: last frame's nodes retire, and only
+    /// retained slots keep their layers and draws (last frame's draws go
+    /// to paint) until written again.
+    pub(crate) fn begin(&mut self, layout: &mut crate::ui::Layout, paint: &mut crate::ui::Paint) {
+        self.retire_nodes(layout);
+        layout.cache.prev.clear();
+        self.prev_kinds.clear();
+        std::mem::swap(&mut self.emitted, &mut self.retiring);
+        self.emitted.clear();
+        for &i in &self.retiring {
+            self.slot_present[i] = false;
+        }
+        self.built.clear();
+        self.anonymous.clear();
+        self.stack.clear();
+        self.owning.clear();
+        self.in_place = None;
+        // Retained slots keep their layers and draws until written again.
+        let persistent = &self.persistent;
+        self.prev_floating = self.floating.clone();
+        self.floating.retain(|&f| persistent[f]);
+        paint.prev_draws = std::mem::take(&mut self.draws);
+        self.draws = paint
+            .prev_draws
+            .iter()
+            .filter(|&(&i, _)| persistent[i])
+            .map(|(&i, d)| (i, d.clone()))
+            .collect();
+        self.dressable.retain(|&i| persistent[i]);
+        self.last_closed = NONE;
+        self.building = true;
+        self.scopes.clear();
+    }
+}
+
+impl crate::ui::Interaction {
+    /// Starts a frame's interaction: the next tick, and this frame's
+    /// navigation, focus requests, players and virtual cursor unset.
+    pub(crate) fn begin(&mut self) {
+        self.state.tick += 1;
+        // A Rive player whose element was not built last tick is gone.
+        let tick = self.state.tick;
+        self.state.rive.retain(|_, s| s.built + 1 >= tick);
+        self.nav = NavFrame::default();
+        self.request_focus = 0;
+        self.nav_on = true;
+        self.players = 1;
+        self.vcursor = None;
+    }
+}
+
+impl crate::ui::Front {
+    /// Starts a frame of the immediate front end: nothing touched, no HUD
+    /// editor, no cover.
+    pub(crate) fn begin(&mut self) {
+        self.touched.clear();
+        self.hud_editor_key = 0;
+        self.cover = None;
     }
 }
