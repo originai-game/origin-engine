@@ -212,14 +212,28 @@ status `docs/roadmap.md`. Platform contracts implemented here:
   art, a paper port) may go to Claude Code with
   `["model:claude-fable-5-1","effort:high"]`, briefed with every attempt.
   A stopped thread is not resumed; a new one starts from `origin/main`.
-- Authors work on their branch on macrunner (or an orb) and run the CPU
-  side themselves: `cargo check`, their crates' tests and
-  `scripts/check.sh quick --only fmt clippy rust-cpu drift bun-quick`. GPU
-  work runs in stages, not on every edit: at a milestone the author pushes
-  the branch and asks the GPU integrator, the one thread in the `gcp-l4`
-  orb, for its GPU check (the GPU host has one L4, so GPU runs queue there,
-  FIFO, run by the coordinator). A Metal capture is a compatibility check,
-  never evidence for landing.
+- **Prerequisites first, then one stack.** The coordinator resolves what
+  other work depends on before anything else. Work with no prerequisite left
+  is finished whole and sent as one stack, landed in one `land.sh` run, not
+  batch by batch. Inside the stack, commits stay logical (a move and a logic
+  edit never share a commit), so a later failure bisects to one commit. A
+  stream does not stop between pieces of its work: it reports when its stack
+  is sent, or when a decision is needed.
+- Authors work on their branch on macrunner (or an orb) and run only the
+  fast checks before sending: `cargo check --workspace --all-targets`, Clippy
+  and the tests of their crates, and any identity check the change relies on
+  (cooked bytes, draw items, snapshot bytes). `land.sh`'s quick is the one
+  full CPU gate; a head it fails goes back to its branch. GPU work runs in
+  stages, not on every edit: at a milestone the author pushes the branch and
+  asks the GPU integrator, the one thread in the `gcp-l4` orb, for its GPU
+  check (the GPU host has one L4, so GPU runs queue there, FIFO, run by the
+  coordinator). A Metal capture is a compatibility check, never evidence for
+  landing.
+- **A refactor that must move no frame** (such as #41) lands on the CPU
+  gate alone (`OG_GATE_SKIP=rust-gpu`, set by the coordinator for that work
+  only) and is verified once on the GPU host after its last stack: the full
+  rust-gpu, the fixtures and the reference suites. A moved frame is bisected
+  across the refactor's commits and its captures go to the coordinator.
 - **Landing.** The GPU integrator lands every head with `scripts/land.sh`
   in the `gcp-l4` orb, then posts to Slack; a head that moves no reference
   frame and changes no look needs no review. The command is a merge queue: quick runs first outside it, then a FIFO landing lock is
