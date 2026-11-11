@@ -35,18 +35,6 @@ impl Ui {
 
     // ── anchored elements ────────────────────────────────────────────────
 
-    /// Where an anchor stands as of now: its distance and level from the
-    /// current view, the rest from last tick.
-    fn anchor_info(&self, key: u64, desc: &WorldAnchorDesc) -> AnchorInfo {
-        let mut info = self.world.last.get(&key).copied().unwrap_or_default();
-        if let (Some(view), Some((p, _))) = (self.world.view, self.world.pose_of(desc.target)) {
-            let p = p + desc.offset;
-            info.distance = (p - view.eye).length();
-            info.lod = lod_of(&desc.lod, info.distance);
-        }
-        info
-    }
-
     /// Opens an anchored element; its children follow until [`Ui::close`].
     pub fn open_world_anchor(&mut self, id: impl Into<Id>, desc: WorldAnchorDesc) -> AnchorInfo {
         self.open_world_anchor_keyed(id.into(), None, desc)
@@ -173,23 +161,6 @@ impl Ui {
         self.keep_effects();
     }
 
-    /// A document element's emitter and meta effects (`None` both:
-    /// none): kept by its key and registered on node `i` every tick it
-    /// stands ([`Ui::keep_world_anchors`]).
-    pub(crate) fn document_effects(
-        &mut self,
-        i: usize,
-        emitter: Option<crate::particles::ParticlesDesc>,
-        meta: Option<MetaDesc>,
-    ) {
-        let key = self.tree.nodes[i].key;
-        if emitter.is_none() && meta.is_none() {
-            self.world.kept_effects.remove(&key);
-        } else {
-            self.world.kept_effects.insert(key, (emitter, meta));
-        }
-    }
-
     /// Registers the kept effects of the elements that stand this tick.
     fn keep_effects(&mut self) {
         let mut kept = std::mem::take(&mut self.world.kept_effects);
@@ -245,17 +216,6 @@ impl Ui {
                 ..m.instance
             };
             self.spawn_mass(m.handle, instance);
-        }
-    }
-
-    /// Keeps a document's world panel `node` for placement and rays on the
-    /// ticks it is not built again, while the retained element `owner`
-    /// stands (see [`Ui::keep_world_anchors`]).
-    pub(crate) fn keep_world_panel(&mut self, node: usize, owner: u64) {
-        let key = self.tree.nodes[node].key;
-        if let Some(p) = self.world.panels.iter().rev().find(|p| p.node == node) {
-            let kept = (p.desc.clone(), p.rect, owner);
-            self.world.kept_panels.insert(key, kept);
         }
     }
 
@@ -415,6 +375,70 @@ impl Ui {
 
     // ── the frame ────────────────────────────────────────────────────────
 
+    /// Places this frame's world layers once laid out: anchors on their
+    /// projected points (scaled, faded, decluttered, clamped), panels in
+    /// their targets, meta layers over the screen. Called by `end` before
+    /// transforms are applied.
+    pub(crate) fn world_place(&mut self) {
+        self.world_anchors();
+        self.world_panels();
+        self.world_metas();
+    }
+
+    /// Spawns particles where their elements are drawn, ages the pools and
+    /// makes the frame's own batches. Called by `end` once transforms are
+    /// applied.
+    pub(crate) fn world_finish(&mut self) {
+        let tick = self.interaction.state.tick as u32;
+        self.world_particles(tick);
+        // Pools: instances past their life leave.
+        let templates = &self.world.templates;
+        self.world.state.pools.retain(|&k, pool| {
+            let Some((_, t, _)) = templates.get(k as usize) else {
+                return false;
+            };
+            pool.retain(|i| tick.wrapping_sub(i.start) < t.lifetime);
+            !pool.is_empty()
+        });
+        // The frame's own batches: pools, then this tick's instances.
+        let mut batches = Vec::new();
+        for (k, (_, t, space)) in self.world.templates.iter().enumerate() {
+            let k = k as u32;
+            let mut instances = self.world.state.pools.get(&k).cloned().unwrap_or_default();
+            if let Some(now) = self.world.immediate.get(&k) {
+                instances.extend_from_slice(now);
+            }
+            if instances.is_empty() {
+                continue;
+            }
+            let mut b = UiMassBatch {
+                template: t.clone(),
+                space: *space,
+                instances,
+                layer: 0,
+                clip: None,
+            };
+            // Drawn in CSS px like the frame's commands (the og-ui unit).
+            crate::draw::zoom_mass(&mut b, self.env.unit);
+            batches.push(b);
+        }
+        self.world.frame = WorldFrame { tick, batches };
+    }
+}
+
+impl Ui {
+    /// Where an anchor stands as of now: its distance and level from the
+    /// current view, the rest from last tick.
+    fn anchor_info(&self, key: u64, desc: &WorldAnchorDesc) -> AnchorInfo {
+        let mut info = self.world.last.get(&key).copied().unwrap_or_default();
+        if let (Some(view), Some((p, _))) = (self.world.view, self.world.pose_of(desc.target)) {
+            let p = p + desc.offset;
+            info.distance = (p - view.eye).length();
+            info.lod = lod_of(&desc.lod, info.distance);
+        }
+        info
+    }
+
     /// Starts the world part of a frame: the pointer retargeted onto a
     /// world panel its ray meets, before anything is hit tested.
     pub(crate) fn world_begin(&mut self, input: &mut crate::input::InputFrame) {
@@ -482,55 +506,35 @@ impl Ui {
             ));
         }
     }
+}
 
-    /// Places this frame's world layers once laid out: anchors on their
-    /// projected points (scaled, faded, decluttered, clamped), panels in
-    /// their targets, meta layers over the screen. Called by `end` before
-    /// transforms are applied.
-    pub(crate) fn world_place(&mut self) {
-        self.world_anchors();
-        self.world_panels();
-        self.world_metas();
+impl Ui {
+    /// A document element's emitter and meta effects (`None` both:
+    /// none): kept by its key and registered on node `i` every tick it
+    /// stands ([`Ui::keep_world_anchors`]).
+    pub(crate) fn document_effects(
+        &mut self,
+        i: usize,
+        emitter: Option<crate::particles::ParticlesDesc>,
+        meta: Option<MetaDesc>,
+    ) {
+        let key = self.tree.nodes[i].key;
+        if emitter.is_none() && meta.is_none() {
+            self.world.kept_effects.remove(&key);
+        } else {
+            self.world.kept_effects.insert(key, (emitter, meta));
+        }
     }
 
-    /// Spawns particles where their elements are drawn, ages the pools and
-    /// makes the frame's own batches. Called by `end` once transforms are
-    /// applied.
-    pub(crate) fn world_finish(&mut self) {
-        let tick = self.interaction.state.tick as u32;
-        self.world_particles(tick);
-        // Pools: instances past their life leave.
-        let templates = &self.world.templates;
-        self.world.state.pools.retain(|&k, pool| {
-            let Some((_, t, _)) = templates.get(k as usize) else {
-                return false;
-            };
-            pool.retain(|i| tick.wrapping_sub(i.start) < t.lifetime);
-            !pool.is_empty()
-        });
-        // The frame's own batches: pools, then this tick's instances.
-        let mut batches = Vec::new();
-        for (k, (_, t, space)) in self.world.templates.iter().enumerate() {
-            let k = k as u32;
-            let mut instances = self.world.state.pools.get(&k).cloned().unwrap_or_default();
-            if let Some(now) = self.world.immediate.get(&k) {
-                instances.extend_from_slice(now);
-            }
-            if instances.is_empty() {
-                continue;
-            }
-            let mut b = UiMassBatch {
-                template: t.clone(),
-                space: *space,
-                instances,
-                layer: 0,
-                clip: None,
-            };
-            // Drawn in CSS px like the frame's commands (the og-ui unit).
-            crate::draw::zoom_mass(&mut b, self.env.unit);
-            batches.push(b);
+    /// Keeps a document's world panel `node` for placement and rays on the
+    /// ticks it is not built again, while the retained element `owner`
+    /// stands (see [`Ui::keep_world_anchors`]).
+    pub(crate) fn keep_world_panel(&mut self, node: usize, owner: u64) {
+        let key = self.tree.nodes[node].key;
+        if let Some(p) = self.world.panels.iter().rev().find(|p| p.node == node) {
+            let kept = (p.desc.clone(), p.rect, owner);
+            self.world.kept_panels.insert(key, kept);
         }
-        self.world.frame = WorldFrame { tick, batches };
     }
 }
 

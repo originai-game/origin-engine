@@ -580,7 +580,9 @@ impl Ui {
             })
         })
     }
+}
 
+impl Ui {
     /// The `cursor` declared on node `i` or the nearest element around it
     /// that declares one (a keyword other than `auto`, or images over
     /// `auto`), and that element (`NONE`: none does).

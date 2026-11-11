@@ -230,98 +230,6 @@ impl Orders {
 }
 
 impl Ui {
-    /// Brings the preorder and the features up to date with the trees:
-    /// made again where their shape changed, a feature read again on the
-    /// nodes written or laid out this frame.
-    pub(super) fn update_orders(&mut self, whole: bool) {
-        let n = self.tree.nodes.len();
-        let o = &mut self.tree.orders;
-        if o.feat.len() < n {
-            o.feat.resize(n, 0);
-            o.z.resize(n, 0);
-            o.seen.resize(n, 0);
-            o.scope_of.resize(n, 0);
-            o.scroller_of.resize(n, 0);
-            o.owner_of.resize(n, 0);
-            o.group_of.resize(n, 0);
-            o.gesture_of.resize(n, 0);
-            o.player_of.resize(n, 0);
-            o.select_of.resize(n, crate::element::UserSelect::None);
-            o.pointer_of.resize(n, crate::element::PointerEvents::Auto);
-            o.hidden_of.resize(n, false);
-            o.skip_of.resize(n, 0);
-            o.skip_in.resize(n, 0);
-            o.touch_of.resize(n, u8::MAX);
-            o.hit_of.resize(n, Vec::new());
-            o.warn_of.resize(n, None);
-            o.written_at.resize(n, 0);
-        }
-        o.written_stamp = o.written_stamp.wrapping_add(1);
-        if o.written_stamp == 0 {
-            o.written_at.fill(0);
-            o.written_stamp = 1;
-        }
-        for &i in &self.tree.emitted {
-            if i < n {
-                o.written_at[i] = o.written_stamp;
-            }
-        }
-        o.wrote_last = std::mem::take(&mut o.wrote);
-        let reshaped = whole || o.shape != Some(self.tree.index.shape);
-        if reshaped {
-            o.shape = Some(self.tree.index.shape);
-            o.pre = crate::layout::preorder(&self.tree.nodes, 0);
-            for &f in &self.tree.floating {
-                o.pre.extend(crate::layout::preorder(&self.tree.nodes, f));
-            }
-            o.pre_pos.clear();
-            o.pre_pos.resize(n, u32::MAX);
-            for (k, &i) in o.pre.iter().enumerate() {
-                o.pre_pos[i] = k as u32;
-            }
-            o.draw_ok = false;
-            o.lists_ok = false;
-            if whole {
-                for &i in &o.pre {
-                    o.feat[i] = features(&self.tree.nodes[i]);
-                }
-            }
-        }
-        let read = self
-            .tree
-            .emitted
-            .iter()
-            .chain(&self.layout.cache.laid)
-            .chain(&self.tree.invalidation.restored);
-        for &i in read {
-            if i < n {
-                let f = features(&self.tree.nodes[i]);
-                if f != o.feat[i] {
-                    o.feat[i] = f;
-                    o.lists_ok = false;
-                }
-            }
-        }
-        if reshaped && !whole {
-            // A node that entered a tree reads its features as it is.
-            for &i in &o.pre {
-                o.feat[i] = features(&self.tree.nodes[i]);
-            }
-        }
-        if !o.lists_ok {
-            o.lists_ok = true;
-            o.lists = vec![Vec::new(); feat::COUNT];
-            for &i in &o.pre {
-                let mut f = o.feat[i];
-                while f != 0 {
-                    let b = f.trailing_zeros() as usize;
-                    o.lists[b].push(i);
-                    f &= f - 1;
-                }
-            }
-        }
-    }
-
     /// What this frame may change, before its passes: the nodes written,
     /// laid out or put back, those that entered a tree or whose parent's
     /// children changed, those the frame's own passes wrote last frame,
@@ -885,6 +793,100 @@ impl Ui {
                 want, self.tree.orders.lists[b],
                 "the kept list of feature {b} differs"
             );
+        }
+    }
+}
+
+impl Ui {
+    /// Brings the preorder and the features up to date with the trees:
+    /// made again where their shape changed, a feature read again on the
+    /// nodes written or laid out this frame.
+    pub(super) fn update_orders(&mut self, whole: bool) {
+        let n = self.tree.nodes.len();
+        let o = &mut self.tree.orders;
+        if o.feat.len() < n {
+            o.feat.resize(n, 0);
+            o.z.resize(n, 0);
+            o.seen.resize(n, 0);
+            o.scope_of.resize(n, 0);
+            o.scroller_of.resize(n, 0);
+            o.owner_of.resize(n, 0);
+            o.group_of.resize(n, 0);
+            o.gesture_of.resize(n, 0);
+            o.player_of.resize(n, 0);
+            o.select_of.resize(n, crate::element::UserSelect::None);
+            o.pointer_of.resize(n, crate::element::PointerEvents::Auto);
+            o.hidden_of.resize(n, false);
+            o.skip_of.resize(n, 0);
+            o.skip_in.resize(n, 0);
+            o.touch_of.resize(n, u8::MAX);
+            o.hit_of.resize(n, Vec::new());
+            o.warn_of.resize(n, None);
+            o.written_at.resize(n, 0);
+        }
+        o.written_stamp = o.written_stamp.wrapping_add(1);
+        if o.written_stamp == 0 {
+            o.written_at.fill(0);
+            o.written_stamp = 1;
+        }
+        for &i in &self.tree.emitted {
+            if i < n {
+                o.written_at[i] = o.written_stamp;
+            }
+        }
+        o.wrote_last = std::mem::take(&mut o.wrote);
+        let reshaped = whole || o.shape != Some(self.tree.index.shape);
+        if reshaped {
+            o.shape = Some(self.tree.index.shape);
+            o.pre = crate::layout::preorder(&self.tree.nodes, 0);
+            for &f in &self.tree.floating {
+                o.pre.extend(crate::layout::preorder(&self.tree.nodes, f));
+            }
+            o.pre_pos.clear();
+            o.pre_pos.resize(n, u32::MAX);
+            for (k, &i) in o.pre.iter().enumerate() {
+                o.pre_pos[i] = k as u32;
+            }
+            o.draw_ok = false;
+            o.lists_ok = false;
+            if whole {
+                for &i in &o.pre {
+                    o.feat[i] = features(&self.tree.nodes[i]);
+                }
+            }
+        }
+        let read = self
+            .tree
+            .emitted
+            .iter()
+            .chain(&self.layout.cache.laid)
+            .chain(&self.tree.invalidation.restored);
+        for &i in read {
+            if i < n {
+                let f = features(&self.tree.nodes[i]);
+                if f != o.feat[i] {
+                    o.feat[i] = f;
+                    o.lists_ok = false;
+                }
+            }
+        }
+        if reshaped && !whole {
+            // A node that entered a tree reads its features as it is.
+            for &i in &o.pre {
+                o.feat[i] = features(&self.tree.nodes[i]);
+            }
+        }
+        if !o.lists_ok {
+            o.lists_ok = true;
+            o.lists = vec![Vec::new(); feat::COUNT];
+            for &i in &o.pre {
+                let mut f = o.feat[i];
+                while f != 0 {
+                    let b = f.trailing_zeros() as usize;
+                    o.lists[b].push(i);
+                    f &= f - 1;
+                }
+            }
         }
     }
 }
