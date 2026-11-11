@@ -2,7 +2,7 @@
 //! Unsupported features fail cooking instead of behaving like a false query.
 use cssparser::{ParseError, Parser, Token};
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Context {
     pub width: f32,
     pub height: f32,

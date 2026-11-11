@@ -108,6 +108,7 @@ impl crate::Ui {
         self.style_documents(Some(pack))?;
         self.style.part_rules.clone_from(&pack.rules);
         self.style.part_sheet.clone_from(&pack.sheet);
+        self.style.root_inputs_changed();
         self.set_style_name(&pack.name);
         self.read_theme_tokens();
         self.tree.invalidation.epoch += 1;

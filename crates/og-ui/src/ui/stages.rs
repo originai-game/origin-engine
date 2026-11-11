@@ -76,6 +76,14 @@ pub(crate) struct Style {
     pub(crate) part_sheet: crate::doc::at_rules::Sheet,
     pub(crate) root_tokens: Vec<(String, String)>,
     pub(crate) root_type_tokens: [Vec<(String, String)>; 4],
+    /// The root cascade of the four inputs above for one media context.
+    /// Derived from them alone: a write of any calls `root_inputs_changed`.
+    pub(crate) root_cascade: std::cell::RefCell<
+        Option<(
+            crate::doc::media::Context,
+            std::sync::Arc<crate::doc::build::cascade::Cascade>,
+        )>,
+    >,
     /// Part samples read one before-change state throughout a frame. Commit
     /// their next state together after rendering the owning nodes.
     pub(crate) part_commits: std::cell::RefCell<
@@ -91,6 +99,13 @@ pub(crate) struct Style {
     pub(crate) pending_plays: Vec<crate::motion::run::PendingPlay>,
     /// The motion pass's memory between ticks.
     pub(crate) motion: crate::layout::MotionCache,
+}
+
+impl Style {
+    /// The part rules, their sheet or the root tokens were written.
+    pub(crate) fn root_inputs_changed(&mut self) {
+        *self.root_cascade.get_mut() = None;
+    }
 }
 
 impl Paint {

@@ -279,5 +279,6 @@ impl crate::ui::Style {
                 .filter(|(name, value)| baseline.get(name) != Some(value))
                 .collect()
         });
+        self.root_inputs_changed();
     }
 }

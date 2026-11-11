@@ -124,6 +124,7 @@ impl Ui {
                 part_sheet,
                 root_tokens: Vec::new(),
                 root_type_tokens: Default::default(),
+                root_cascade: Default::default(),
                 part_commits: Default::default(),
                 css_sounds: Default::default(),
                 timelines: Default::default(),

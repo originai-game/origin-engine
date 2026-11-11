@@ -157,7 +157,7 @@ impl Ui {
                     .iter()
                     .rfind(|n| n.key == k)
                     .and_then(|n| n.part())
-                    .map(|p| self.part_values(&p, Some(k)).cascade)
+                    .map(|p| Arc::new(self.part_values(&p, Some(k)).cascade))
             })
             .unwrap_or_else(|| self.css_root_cascade());
         let root = self.css_root_cascade();
@@ -182,10 +182,29 @@ impl Ui {
     }
 
     pub(crate) fn css_root_variables(&self) -> Arc<super::super::variables::Computed> {
-        self.css_root_cascade().computed
+        self.css_root_cascade().computed.clone()
     }
 
-    pub(crate) fn css_root_cascade(&self) -> cascade::Cascade {
+    /// The cascade of the `:root` rules and theme tokens. It depends only on
+    /// the style inputs and the media context, so it is computed once for
+    /// each and kept until `Style::root_inputs_changed`.
+    pub(crate) fn css_root_cascade(&self) -> Arc<cascade::Cascade> {
+        let context = self.media_context();
+        if let Some((_, cascade)) = self
+            .style
+            .root_cascade
+            .borrow()
+            .as_ref()
+            .filter(|(of, _)| *of == context)
+        {
+            return cascade.clone();
+        }
+        let cascade = Arc::new(self.compute_root_cascade());
+        *self.style.root_cascade.borrow_mut() = Some((context, cascade.clone()));
+        cascade
+    }
+
+    fn compute_root_cascade(&self) -> cascade::Cascade {
         let attributes = BTreeMap::from([(
             "data-scheme".into(),
             Value::String(if self.theme().scheme == crate::Scheme::Light {
@@ -226,6 +245,7 @@ impl Ui {
         let (rules, sheet) = crate::doc::stylesheet::part_rules(css)?;
         self.style.part_rules = rules;
         self.style.part_sheet = sheet;
+        self.style.root_inputs_changed();
         self.read_theme_tokens();
         self.tree.invalidation.epoch += 1;
         Ok(())
@@ -240,6 +260,7 @@ impl Ui {
         self.style
             .root_type_tokens
             .clone_from(&source.style.root_type_tokens);
+        self.style.root_inputs_changed();
         self.read_theme_tokens();
         self.tree.invalidation.epoch += 1;
     }
