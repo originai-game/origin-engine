@@ -663,6 +663,69 @@ pub(crate) struct Shadows {
     pub(crate) cookies: area::Cookies,
 }
 
+impl Lights {
+    /// The local lights: the clusters they reach seen by `view`, and their
+    /// records. Answers the records, the shadowed faces and the shadowed
+    /// lights the budget dropped (frame.rs `local_lights`).
+    pub(crate) fn prepare(
+        &mut self,
+        scene: &RenderScene,
+        view: &clusters::ClusterView,
+        position: Vec3,
+        budget: frame::LocalShadowBudget,
+    ) -> (Vec<frame::LightGpu>, Vec<frame::LocalShadow>, u32) {
+        self.clusters.build(&scene.lights, view);
+        frame::local_lights(&scene.lights, &self.clusters.kept, position, budget)
+    }
+
+    /// The light tables every lit pass binds: the records, and the
+    /// clusters' table and words.
+    pub(crate) fn write(&self, queue: &wgpu::Queue, lights_gpu: &[frame::LightGpu]) {
+        if lights_gpu.is_empty() {
+            return;
+        }
+        queue.write_buffer(&self.light_buffers[0], 0, bytemuck::cast_slice(lights_gpu));
+        queue.write_buffer(
+            &self.light_buffers[1],
+            0,
+            bytemuck::cast_slice(&self.clusters.table),
+        );
+        queue.write_buffer(
+            &self.light_buffers[2],
+            0,
+            bytemuck::cast_slice(&self.clusters.ref_words()),
+        );
+    }
+}
+
+impl Shadows {
+    /// Cookies in the local shadow array past its shadow layers (area.rs),
+    /// from layer `base`, and the records of the lights (`kept`) that cast
+    /// them.
+    pub(crate) fn prepare_cookies<'a>(
+        &mut self,
+        (device, queue): (&wgpu::Device, &wgpu::Queue),
+        scene: &RenderScene,
+        kept: &[usize],
+        lights_gpu: &mut [frame::LightGpu],
+        base: u32,
+        view: impl Fn(TextureHandle) -> Option<&'a wgpu::TextureView>,
+    ) {
+        if scene.light_cookies.is_empty() || self.local_map.layers.len() as u32 <= base {
+            return;
+        }
+        self.cookies.prepare(
+            device,
+            queue,
+            scene,
+            (&self.local_map.texture, &self.local_map.layers),
+            base,
+            view,
+        );
+        self.cookies.patch(scene, kept, lights_gpu, base);
+    }
+}
+
 #[cfg(test)]
 mod foliage_layout_tests {
     use super::*;

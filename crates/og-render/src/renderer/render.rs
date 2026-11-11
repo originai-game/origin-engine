@@ -1838,8 +1838,8 @@ impl Renderer {
         });
 
         // Local lights: the clusters they reach, their records, their shadow faces.
-        self.lights.clusters.build(
-            &scene.lights,
+        let (mut lights_gpu, local_shadows, shadowed_dropped) = self.lights.prepare(
+            scene,
             &clusters::ClusterView {
                 camera: &cam,
                 frustum: &view_frustum,
@@ -1849,10 +1849,6 @@ impl Renderer {
                 width: self.width,
                 height: self.height,
             },
-        );
-        let (mut lights_gpu, local_shadows, shadowed_dropped) = frame::local_lights(
-            &scene.lights,
-            &self.lights.clusters.kept,
             camera.position,
             frame::LocalShadowBudget {
                 max_shadowed: self.info.shadowed_lights.min(scene.quality.shadowed_lights) as usize,
@@ -1892,28 +1888,15 @@ impl Renderer {
         // Cookies in the local shadow array past its shadow layers (area.rs).
         let cookie_base =
             shadows::capacity(self.info.shadowed_lights as usize, self.info.point_shadows) as u32;
-        if !scene.light_cookies.is_empty()
-            && self.shadows.local_map.layers.len() as u32 > cookie_base
-        {
-            let textures = &self.cache.textures;
-            self.shadows.cookies.prepare(
-                &self.device,
-                &self.queue,
-                scene,
-                (
-                    &self.shadows.local_map.texture,
-                    &self.shadows.local_map.layers,
-                ),
-                cookie_base,
-                |h| textures.get(h.index()).map(|t| &t.view),
-            );
-            self.shadows.cookies.patch(
-                scene,
-                &self.lights.clusters.kept,
-                &mut lights_gpu,
-                cookie_base,
-            );
-        }
+        let textures = &self.cache.textures;
+        self.shadows.prepare_cookies(
+            (&self.device, &self.queue),
+            scene,
+            &self.lights.clusters.kept,
+            &mut lights_gpu,
+            cookie_base,
+            |h| textures.get(h.index()).map(|t| &t.view),
+        );
         plans.volumetric = VolumetricPass::plan(
             &mut self.volumetric,
             &self.device,
@@ -1923,23 +1906,7 @@ impl Renderer {
             (self.width, self.height),
             scene,
         );
-        if !lights_gpu.is_empty() {
-            self.queue.write_buffer(
-                &self.lights.light_buffers[0],
-                0,
-                bytemuck::cast_slice(&lights_gpu),
-            );
-            self.queue.write_buffer(
-                &self.lights.light_buffers[1],
-                0,
-                bytemuck::cast_slice(&self.lights.clusters.table),
-            );
-            self.queue.write_buffer(
-                &self.lights.light_buffers[2],
-                0,
-                bytemuck::cast_slice(&self.lights.clusters.ref_words()),
-            );
-        }
+        self.lights.write(&self.queue, &lights_gpu);
         // The planar reflection's clusters: the same light records seen by
         // the mirrored camera (its oblique projection moves only depth).
         for (k, (_, mirrored, f, _, (rw, rh))) in reflections.iter().enumerate() {
