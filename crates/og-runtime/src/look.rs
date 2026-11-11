@@ -310,17 +310,8 @@ pub(crate) fn apply(eng: &Engine, index: usize) -> Result<(), String> {
     if let Some(style) = style {
         // Every other field keeps the last UiDesc's value (og.ui.configure merges).
         let desc = json!({ "style": handle_value(style) });
-        let answer = crate::host_impl::answer(super::modules::og_ui_configure(
-            eng.id,
-            Some(desc.to_string()),
-        ));
-        if let Ok(Value::Object(o)) = serde_json::from_str::<Value>(&answer)
-            && o.get("ok") == Some(&Value::Bool(false))
-        {
-            return Err(format!(
-                "the ui style: {}",
-                o.get("reason").and_then(Value::as_str).unwrap_or_default()
-            ));
+        if let Err(reason) = super::modules::og_ui_configure(eng.id, Some(desc.to_string())) {
+            return Err(format!("the ui style: {reason}"));
         }
     }
     eng.render.borrow_mut().fx.look.applied = Some(index);

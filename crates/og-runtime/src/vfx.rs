@@ -215,16 +215,6 @@ fn loaded(engine: u32, asset: f64) -> Result<Arc<Loaded>, String> {
         .ok_or_else(|| format!("{asset} is not a vfx loaded in this world (og.load.vfx)"))
 }
 
-/// A wire answer's value, or its reason.
-fn answer(text: &str) -> Result<Value, String> {
-    let v: Value = serde_json::from_str(text).map_err(|e| e.to_string())?;
-    if v["ok"].as_bool() == Some(true) {
-        Ok(v["value"].clone())
-    } else {
-        Err(v["reason"].as_str().unwrap_or("refused").to_string())
-    }
-}
-
 pub fn og_load_vfx(world: u32, path: String) -> Result<serde_json::Value, String> {
     super::engine::engine(world)
         .and_then(|eng| load(&eng, &path))
@@ -277,10 +267,7 @@ pub fn og_vfx_spawn(world: u32, desc: Option<String>) -> Result<Value, String> {
         if let Some(parent) = d.parent {
             spawn.insert("parent".into(), json!(parent));
         }
-        let e = answer(&crate::host_impl::answer(super::api::og_world_spawn(
-            world,
-            Some(Value::Object(spawn).to_string()),
-        )))?;
+        let e = super::api::og_world_spawn(world, Some(Value::Object(spawn).to_string()))?;
         let bits = e.as_u64().ok_or("world.spawn answered no entity")?;
         let seed = match d.seed {
             0 => (splitmix(bits) as u32).max(1),
@@ -298,12 +285,7 @@ pub fn og_vfx_spawn(world: u32, desc: Option<String>) -> Result<Value, String> {
             let t = &d.tint;
             v["tint"] = json!({ "r": t.r, "g": t.g, "b": t.b });
         }
-        answer(&crate::host_impl::answer(super::api::og_world_insert(
-            world,
-            bits as f64,
-            COMPONENT.into(),
-            Some(v.to_string()),
-        )))?;
+        super::api::og_world_insert(world, bits as f64, COMPONENT.into(), Some(v.to_string()))?;
         Ok(e)
     })()
 }
