@@ -653,6 +653,77 @@ pub fn og_world_set(world: u32, entity_id: f64, comp: String, value: String) -> 
     })()
 }
 
+/// `og_engine_read_component`: the packed bytes of component `component`
+/// (its number, `og_engine_component_id`) of an entity, written to the
+/// start of the shared buffer. Answers the layout epoch they were read
+/// under, or 0 when refused: `og_world_get` then says why, so nothing is
+/// logged or registered here.
+pub fn og_engine_read_component(world: u32, entity_id: f64, component: u32) -> u32 {
+    let read = || -> Option<u32> {
+        let eng = engine(world).ok()?;
+        let e = entity(entity_id).ok()?;
+        let id = og_ecs::SchemaId::from_index(component);
+        let bytes = match running(world) {
+            // SAFETY: the frame is published while its system runs.
+            Some(f) => unsafe { f.ctx() }.get_bytes(e, id).ok()?,
+            None => eng.world().ok()?.get_bytes(e, id).ok()?,
+        };
+        crate::shared::with(|s| {
+            s.get_mut(..bytes.len())?.copy_from_slice(&bytes);
+            Some(())
+        })?;
+        Some(super::engine::layout_epoch())
+    };
+    read().unwrap_or(0)
+}
+
+/// `og_engine_write_component`: overwrites the byte ranges the shared
+/// buffer names in a component the entity has. The record is at the
+/// buffer's start; from the next word boundary after it come a count and
+/// that many `(offset, size)` word pairs, the fields the value named. The
+/// other bytes keep their value, as `og_world_set` keeps the fields a value
+/// does not name. Answers the layout epoch: the write happened only when
+/// that is `epoch`, the one the bytes were made with. 0 when refused:
+/// `og_world_set` then says why.
+pub fn og_engine_write_component(world: u32, entity_id: f64, component: u32, epoch: u32) -> u32 {
+    let current = super::engine::layout_epoch();
+    if epoch != current {
+        return current;
+    }
+    // The record with the named ranges taken from the shared buffer.
+    let patched = |mut bytes: Vec<u8>| -> Option<Vec<u8>> {
+        crate::shared::with(|s| {
+            let word = |at: usize| -> Option<usize> {
+                Some(u32::from_le_bytes(s.get(at..at + 4)?.try_into().ok()?) as usize)
+            };
+            let mut at = bytes.len().next_multiple_of(4);
+            for _ in 0..word(at)? {
+                let from = word(at + 4)?;
+                let to = from.checked_add(word(at + 8)?)?;
+                bytes.get_mut(from..to)?.copy_from_slice(&s[from..to]);
+                at += 8;
+            }
+            Some(bytes)
+        })
+    };
+    let write = || -> Option<()> {
+        let eng = engine(world).ok()?;
+        let e = entity(entity_id).ok()?;
+        let id = og_ecs::SchemaId::from_index(component);
+        if let Some(f) = running(world) {
+            // SAFETY: the frame is published while its system runs.
+            let ctx = unsafe { f.ctx() };
+            let bytes = patched(ctx.get_bytes(e, id).ok()?)?;
+            return ctx.set_bytes(e, id, &bytes).ok();
+        }
+        // The entity has the component, so this overwrites and adds nothing.
+        let bytes = patched(eng.world().ok()?.get_bytes(e, id).ok()?)?;
+        before_structural(&eng);
+        eng.world().ok()?.insert_bytes(e, id, &bytes).ok()
+    };
+    write().map_or(0, |()| current)
+}
+
 fn time_json(t: Time, scale: og_core::TimeScale, rate: u32) -> Value {
     let mut v =
         json!({ "tick": t.tick, "dt": f64::from(t.dt), "elapsed": t.elapsed, "rate": rate });

@@ -105,6 +105,24 @@ pub fn og_engine_component_id(env: Env, world: u32, component: String) -> u32 {
     <Host as Lifecycle>::og_engine_component_id(&Host, world, component)
 }
 
+#[napi(js_name = "og_engine_component_layout")]
+pub fn og_engine_component_layout(env: Env, world: u32, component: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as Lifecycle>::og_engine_component_layout(&Host, world, component)
+}
+
+#[napi(js_name = "og_engine_read_component")]
+pub fn og_engine_read_component(env: Env, world: u32, entity: f64, component: u32) -> u32 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as Lifecycle>::og_engine_read_component(&Host, world, entity, component)
+}
+
+#[napi(js_name = "og_engine_write_component")]
+pub fn og_engine_write_component(env: Env, world: u32, entity: f64, component: u32, epoch: u32) -> u32 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as Lifecycle>::og_engine_write_component(&Host, world, entity, component, epoch)
+}
+
 #[napi(js_name = "og_engine_query_archetypes")]
 pub fn og_engine_query_archetypes(env: Env, query: u32, from: u32) -> u32 {
     let _env = crate::EnvScope::enter(&env);

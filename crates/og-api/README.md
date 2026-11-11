@@ -278,7 +278,8 @@ the validator refuses a declaration that would repeat one.
 `Lifecycle` (create, destroy, advance, command, frame, write a resource,
 a resource's packed layout and its bytes read and written, set the
 dispatcher, the shared buffer, a component's number, a query's archetypes
-and a view's columns), each method named after its binding symbol. `Host` is all of
+and a view's columns, a component's packed layout and its bytes read and
+written), each method named after its binding symbol. `Host` is all of
 them. Every trait is implemented once, in `og_runtime::host_impl`, which
 each host expands for itself in its `src/host.rs` beside its `Wire` types and
 what it does differently (`HostWire`); its generated glue calls each method,
@@ -314,6 +315,18 @@ type count and types. A type is a component's number in that world
 until the layout epoch moves. `Query.archetypes`, `ArchetypeView.has` and
 `ArchetypeView.column` are `host false`: the runtime answers them from the
 description.
+
+`world.get` and `world.set` cross the same way, as the component's packed
+bytes (the layout a resource's bytes have, `og_engine_component_layout`:
+the layout epoch, the component's number, its size and its fields in name
+order). `og_engine_read_component` writes an entity's bytes to the start of
+the shared buffer; `og_engine_write_component` takes them from there, with
+a count and that many `(offset, size)` word pairs from the next word
+boundary: the fields the value named, the only bytes it overwrites. Both
+answer the layout epoch, or 0 when refused. The runtime decodes and encodes
+only what reads the same as the engine's JSON; anything else (a refusal, an
+`Ease` field, a value JSON carries differently) goes to `og_world_get` and
+`og_world_set`, which word every reason, so a Result is the same either way.
 
 Optional parameters are `Option<..>` / `| undefined`. Exports outside
 `publish` builds (the commands module, the probe's non-player members) carry

@@ -54,6 +54,21 @@ macro_rules! __og_host_bindings_base {
             fn og_engine_component_id(&self, world: u32, component: String) -> u32 {
                 $crate::og_engine_component_id(world, component)
             }
+            fn og_engine_component_layout(&self, world: u32, component: String) -> String {
+                $crate::og_engine_component_layout(world, component)
+            }
+            fn og_engine_read_component(&self, world: u32, entity: f64, component: u32) -> u32 {
+                $crate::og_engine_read_component(world, entity, component)
+            }
+            fn og_engine_write_component(
+                &self,
+                world: u32,
+                entity: f64,
+                component: u32,
+                epoch: u32,
+            ) -> u32 {
+                $crate::og_engine_write_component(world, entity, component, epoch)
+            }
             fn og_engine_query_archetypes(&self, query: u32, from: u32) -> u32 {
                 $crate::og_engine_query_archetypes(query, from)
             }

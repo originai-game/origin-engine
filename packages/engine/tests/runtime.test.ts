@@ -2,7 +2,7 @@
 // views, stale views throw with their tick and system, the dispatcher refuses
 // an unknown system id, declared order holds, refusals are Results.
 import { beforeAll, expect, test } from "bun:test";
-import { og, defineComponent, defineResource, defineSystem, f32, u32, Vector3 } from "@origingame/engine";
+import { og, defineComponent, defineResource, defineSystem, bool, f32, i32, list, str, u32, Quaternion, Vector3 } from "@origingame/engine";
 import type { World, Entity } from "@origingame/engine";
 import { loadNativeHost, native } from "../src/node/index.ts";
 import { boundHost, createEngine, type Engine, type GameToken } from "../src/runtime.ts";
@@ -364,4 +364,58 @@ test("a system's declared components are borrowed only when it takes a view, so 
   const after = viewing.world.get(viewing.world.find("mover-0") as Entity, Pos);
   expect(after.ok && after.value.p.x).toBe(200);
   viewing.destroy();
+});
+
+// world.get and world.set cross as packed bytes; og_world_get and
+// og_world_set are the engine's own reading of the same value.
+const Mixed = defineComponent("RtMixed", { f: f32(1.5), n: i32(-4), on: bool(true), name: str(8, "hey"), turn: Quaternion(), at: Vector3(), slots: list(u32(), 3) });
+const mixedValues: unknown[] = [
+  { f: 2.25, n: 7, on: false, name: "héllo", turn: { x: 0, y: 1, z: 0, w: 0 }, at: { x: 1, y: 2, z: 3 }, slots: [3, 1] },
+  // JSON carries -0 as 0, and leaves an undefined field out.
+  { f: -0, at: { x: -0, y: 0, z: 0 }, n: undefined },
+  { name: "12345678", slots: [] },
+  {},
+  // Refused, each with the engine's reason: nothing of the value is written.
+  { f: 3, nope: 1 }, { n: 1.5 }, { name: "123456789" }, { name: "a\0b" }, { at: { x: 1 } }, { slots: [1, 2, 3, 4] }, { f: Number.NaN }, { on: 1 },
+];
+let mixedInSystem: (() => void) | null = null;
+const MixedSystem = defineSystem("RtMixedSystem", { writes: [Mixed] }, () => {
+  mixedInSystem?.();
+  mixedInSystem = null;
+});
+
+test("world.get and world.set answer and write what the engine's own reading of the value does, in a system and outside", () => {
+  const engine = start(og.game({ systems: [MixedSystem] }) as unknown as GameToken);
+  const world = engine.world;
+  const abi = boundHost()!.abi;
+  const id = (world as unknown as { id: number }).id;
+  const [a, b] = [0, 1].map((i) => {
+    const e = world.spawn({ name: `mixed-${i}` });
+    if (!e.ok) throw new Error(e.reason);
+    expect(world.insert(e.value, Mixed)).toMatchObject({ ok: true });
+    return e.value;
+  }) as [Entity, Entity];
+  const compare = () => {
+    for (const value of mixedValues) {
+      const set = world.set(a, Mixed, value as never);
+      expect<unknown>(set).toEqual(JSON.parse(abi.og_world_set(id, b, Mixed.name, JSON.stringify(value))));
+      // The same bytes on both entities, and the same answer about them: values, key order, -0.
+      const read = abi.og_world_get(id, a, Mixed.name);
+      expect(read).toBe(abi.og_world_get(id, b, Mixed.name));
+      expect(JSON.stringify(world.get(a, Mixed))).toBe(JSON.stringify(JSON.parse(read)));
+    }
+    // An entity without the component, and a handle no entity has.
+    const bare = world.spawn({ name: `bare-${world.tick}` });
+    for (const e of [bare.ok ? bare.value : 0, 5] as Entity[]) {
+      expect<unknown>(world.get(e, Mixed)).toEqual(JSON.parse(abi.og_world_get(id, e, Mixed.name)));
+      expect<unknown>(world.set(e, Mixed, { f: 1 })).toEqual(JSON.parse(abi.og_world_set(id, e, Mixed.name, '{"f":1}')));
+    }
+  };
+  compare();
+  const got = world.get(a, Mixed);
+  expect(got.ok && got.value).toEqual({ at: { x: 0, y: 0, z: 0 }, f: 0, n: 7, name: "12345678", on: false, slots: [], turn: { w: 0, x: 0, y: 1, z: 0 } });
+  mixedInSystem = compare;
+  expect(engine.advance(1)).toEqual({ ok: true, value: 1 });
+  expect(mixedInSystem).toBeNull();
+  engine.destroy();
 });

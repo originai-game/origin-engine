@@ -40,6 +40,12 @@ export interface HostAbi<A, V> {
   og_engine_write_resource_bytes(world: number, resource: string, bytes: Uint8Array): string;
   /** A component's number in this world (its schema id index): what og_engine_query_archetypes lists as an archetype's types and og_engine_view_column takes. 4294967295 for a name this world has not registered as a component. It holds until the layout epoch moves. */
   og_engine_component_id(world: number, component: string): number;
+  /** A component's packed layout, as og_engine_resource_layout answers a resource's, with its number (`id`, og_engine_component_id's) and its fields in the order world.get answers them (by name). A Result; refused for a name this world has not registered as a component. */
+  og_engine_component_layout(world: number, component: string): string;
+  /** world.get without text: write the packed bytes of a component (og_engine_component_id's number) of an entity to the start of the shared buffer, and answer the layout epoch they were read under. 0 when refused (no such entity or component, undeclared in the running system, a column a view holds): the runtime then asks og_world_get for the reason. */
+  og_engine_read_component(world: number, entity: number, component: number): number;
+  /** world.set without text: overwrite fields of a component the entity has from the shared buffer. The packed record is at the buffer's start; from the next word boundary after it come a count and that many (offset, size) word pairs, the byte ranges to take (the fields the value named); the rest keeps its value. `epoch` is the layout epoch the bytes were made with. The answer is the layout epoch now, and the write happened only when the two are equal. 0 when refused (as og_engine_read_component, or an invalid value): the runtime then calls og_world_set, which says why. */
+  og_engine_write_component(world: number, entity: number, component: number, epoch: number): number;
   /** Write a query's archetypes, from its `from`th, to the shared buffer as u32 words from word 0, and answer how many were written: the query's archetype count, how many follow, their tick and the layout epoch; then per archetype its view handle, its entity count, its type count and its types (og_engine_component_id's numbers). What did not fit is asked for with a later `from`. `from` 0 makes a world query's views (Query.archetypes outside systems). */
   og_engine_query_archetypes(query: number, from: number): number;
   /** ArchetypeView.column: the columns of a component (og_engine_component_id's number) in a view, one per field in field order. A running system's view borrows them when first asked and holds them until the system returns. Empty when refused (a stale view, a component the system did not declare or the archetype lacks, a column borrowed otherwise). */
@@ -1886,6 +1892,9 @@ export const SYMBOLS: readonly string[] = [
   "og_engine_read_resource",
   "og_engine_write_resource_bytes",
   "og_engine_component_id",
+  "og_engine_component_layout",
+  "og_engine_read_component",
+  "og_engine_write_component",
   "og_engine_query_archetypes",
   "og_engine_view_column",
   "og_engine_ui_patch",

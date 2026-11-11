@@ -126,6 +126,36 @@ fn kind_name(f: &super::codec::FieldLayout) -> &'static str {
     }
 }
 
+/// A record's packed layout as the runtime's typed readers take it:
+/// `{ name, kind, offset, size, readonly }` per field, in packed order.
+fn layout_fields(layout: &Layout) -> (Vec<Value>, usize) {
+    let mut offset = 0;
+    let fields = layout
+        .fields
+        .iter()
+        .map(|f| {
+            let size = f.ty.size();
+            let mut v = json!({
+                "name": f.name, "kind": kind_name(f), "offset": offset, "size": size,
+                "readonly": f.readonly,
+            });
+            // A list: its element's kind and its capacity in elements;
+            // the count lane comes first, each lane the element's size.
+            if let Some((_, capacity)) = f.ty.list_of() {
+                v["kind"] = json!("list");
+                v["element"] = json!(kind_name(f));
+                v["capacity"] = json!(capacity);
+            }
+            if !f.variants.is_empty() {
+                v["variants"] = json!(f.variants);
+            }
+            offset += size;
+            v
+        })
+        .collect();
+    (fields, offset)
+}
+
 /// `og_engine_resource_layout`.
 pub fn resource_layout(world: u32, resource: &str) -> String {
     let answer = (|| {
@@ -139,31 +169,35 @@ pub fn resource_layout(world: u32, resource: &str) -> String {
             .get(resource)
             .filter(|l| l.kind == RecordKind::Resource)
             .ok_or_else(|| format!("'{resource}' is not a registered resource"))?;
-        let mut offset = 0;
-        let fields: Vec<Value> = layout
-            .fields
+        let (fields, size) = layout_fields(layout);
+        Ok(json!({ "epoch": layout_epoch(), "size": size, "fields": fields }))
+    })();
+    match answer {
+        Ok(v) => ok(v),
+        Err(e) => refuse(e),
+    }
+}
+
+/// `og_engine_component_layout`: a component's packed layout and its
+/// number in this world, its fields in the order `world.get` answers them
+/// (by name). Asking registers nothing.
+pub fn component_layout(world: u32, component: &str) -> String {
+    let answer = (|| -> Result<Value, String> {
+        let eng = engine(world)?;
+        let st = eng.state.borrow();
+        let layout = st
+            .layouts
+            .get(component)
+            .filter(|l| l.kind == RecordKind::Component)
+            .ok_or_else(|| format!("'{component}' is not a registered component"))?;
+        let id = st
+            .names_by_id
             .iter()
-            .map(|f| {
-                let size = f.ty.size();
-                let mut v = json!({
-                    "name": f.name, "kind": kind_name(f), "offset": offset, "size": size,
-                    "readonly": f.readonly,
-                });
-                // A list: its element's kind and its capacity in elements;
-                // the count lane comes first, each lane the element's size.
-                if let Some((_, capacity)) = f.ty.list_of() {
-                    v["kind"] = json!("list");
-                    v["element"] = json!(kind_name(f));
-                    v["capacity"] = json!(capacity);
-                }
-                if !f.variants.is_empty() {
-                    v["variants"] = json!(f.variants);
-                }
-                offset += size;
-                v
-            })
-            .collect();
-        Ok(json!({ "epoch": layout_epoch(), "size": offset, "fields": fields }))
+            .position(|n| n == component)
+            .ok_or_else(|| format!("'{component}' is not registered with this world"))?;
+        let (mut fields, size) = layout_fields(layout);
+        fields.sort_by(|a, b| a["name"].as_str().cmp(&b["name"].as_str()));
+        Ok(json!({ "epoch": layout_epoch(), "id": id, "size": size, "fields": fields }))
     })();
     match answer {
         Ok(v) => ok(v),

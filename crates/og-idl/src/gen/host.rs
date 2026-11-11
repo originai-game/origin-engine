@@ -292,6 +292,36 @@ const LIFECYCLE: &[LifecycleMember] = &[
         "A component's number in this world (its schema id index): what og_engine_query_archetypes lists as an archetype's types and og_engine_view_column takes. 4294967295 for a name this world has not registered as a component. It holds until the layout epoch moves.",
     ),
     (
+        "og_engine_component_layout",
+        &[
+            ("world", "u32", "number"),
+            ("component", "String", "string"),
+        ],
+        "String",
+        "A component's packed layout, as og_engine_resource_layout answers a resource's, with its number (`id`, og_engine_component_id's) and its fields in the order world.get answers them (by name). A Result; refused for a name this world has not registered as a component.",
+    ),
+    (
+        "og_engine_read_component",
+        &[
+            ("world", "u32", "number"),
+            ("entity", "f64", "number"),
+            ("component", "u32", "number"),
+        ],
+        "u32",
+        "world.get without text: write the packed bytes of a component (og_engine_component_id's number) of an entity to the start of the shared buffer, and answer the layout epoch they were read under. 0 when refused (no such entity or component, undeclared in the running system, a column a view holds): the runtime then asks og_world_get for the reason.",
+    ),
+    (
+        "og_engine_write_component",
+        &[
+            ("world", "u32", "number"),
+            ("entity", "f64", "number"),
+            ("component", "u32", "number"),
+            ("epoch", "u32", "number"),
+        ],
+        "u32",
+        "world.set without text: overwrite fields of a component the entity has from the shared buffer. The packed record is at the buffer's start; from the next word boundary after it come a count and that many (offset, size) word pairs, the byte ranges to take (the fields the value named); the rest keeps its value. `epoch` is the layout epoch the bytes were made with. The answer is the layout epoch now, and the write happened only when the two are equal. 0 when refused (as og_engine_read_component, or an invalid value): the runtime then calls og_world_set, which says why.",
+    ),
+    (
         "og_engine_query_archetypes",
         &[("query", "u32", "number"), ("from", "u32", "number")],
         "u32",

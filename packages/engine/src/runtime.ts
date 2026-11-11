@@ -15,7 +15,7 @@ import { SYMBOLS, checkEntities } from "./generated/abi.ts";
 import { noPlatform, type PlatformAnswer, type PlatformCall, type PlatformHost, type PlatformLink, type PlatformNotice } from "./platform-local.ts";
 import { UiReactor } from "./ui/reactive.ts";
 import { spawnSite } from "./spawn-site.ts";
-import { decodeField, encodeField, type RecordField } from "./runtime/record-bytes.ts";
+import { decodeComponentField, decodeField, encodeComponentField, encodeField, plain, type RecordField } from "./runtime/record-bytes.ts";
 import { checkedProbe } from "./runtime/probe-params.ts";
 
 // ── host binding ──────────────────────────────────────────────────────────
@@ -73,6 +73,7 @@ const queue: Array<(abi: HostAbi<Uint32Array, unknown>) => void> = [];
 let uiRegistrationErrors: string[] | null = null;
 const uiRegistrationReads = new Set([
   "og_engine_ui_patch", "og_engine_resource_layout", "og_engine_read_resource",
+  "og_engine_component_id", "og_engine_component_layout", "og_engine_read_component",
   "og_world_resource", "og_world_get", "og_world_has", "og_world_find",
   "og_world_name_of", "og_world_alive", "og_world_get_tick",
 ]);
@@ -109,7 +110,7 @@ export function bindHost(binding: HostBinding): void {
   publishBuild = null;
   // Another host's shared buffer and component numbers are not this one's.
   sharedWords = new Uint32Array(0);
-  componentIds.clear();
+  forgetComponents();
   binding.abi.og_host_set_dispatcher(dispatch);
   for (const declare of queue.splice(0)) declare(binding.abi);
 }
@@ -144,6 +145,8 @@ const FRAME_QUERY_WORD = 8;
 
 let sharedWords: Uint32Array = new Uint32Array(0);
 let sharedFloats: Float64Array = new Float64Array(0);
+let sharedBytes: Uint8Array = new Uint8Array(0);
+let sharedView: DataView = new DataView(new ArrayBuffer(0));
 
 /**
  * Moves on whenever the engine may have written the buffer again (a call
@@ -152,12 +155,14 @@ let sharedFloats: Float64Array = new Float64Array(0);
  */
 let sharedStamp = 0;
 
-/** The buffer as words (and `sharedFloats` with it), made again once a grown wasm memory detached them. */
+/** The buffer as words (and its other views with it), made again once a grown wasm memory detached them. */
 function words(): Uint32Array {
   if (sharedWords.length === 0) {
     const { buffer, offset } = host!.shared();
     sharedWords = new Uint32Array(buffer, offset, SHARED_BYTES / 4);
     sharedFloats = new Float64Array(buffer, offset, SHARED_BYTES / 8);
+    sharedBytes = new Uint8Array(buffer, offset, SHARED_BYTES);
+    sharedView = new DataView(buffer, offset, SHARED_BYTES);
   }
   return sharedWords;
 }
@@ -180,6 +185,83 @@ function componentId(engine: number, name: string): number {
     if (id !== NO_COMPONENT) ids.set(name, id);
   }
   return id;
+}
+
+// ── components as packed records ──────────────────────────────────────────
+//
+// world.get and world.set cross as the component's packed bytes in the
+// shared buffer, read and written here field by field
+// (runtime/record-bytes.ts), with the component named by its number. Only
+// what the bytes answer exactly as the engine's JSON does goes this way:
+// every refusal, and every value JSON would carry differently, is left to
+// og_world_get and og_world_set, so a Result reads the same either way.
+
+/** A component's packed layout in one engine (`og_engine_component_layout`). */
+interface ComponentRecord {
+  readonly id: number;
+  readonly epoch: number;
+  /** In the order world.get answers them: by name. */
+  readonly fields: readonly RecordField[];
+  readonly byName: ReadonlyMap<string, RecordField>;
+  /** The word after the record in the shared buffer: where a write's ranges start. */
+  readonly rangesAt: number;
+}
+
+/** Per engine, per component: its record, or null for one only JSON reads (an ease field). */
+const componentRecords = new Map<number, Map<string, ComponentRecord | null>>();
+
+/** Layouts were declared again (a new engine, a reload): numbers and offsets may have moved. */
+function forgetComponents(): void {
+  componentIds.clear();
+  componentRecords.clear();
+}
+
+function componentRecord(engine: number, name: string): ComponentRecord | null {
+  let byName = componentRecords.get(engine);
+  if (!byName) componentRecords.set(engine, (byName = new Map()));
+  const known = byName.get(name);
+  if (known !== undefined) return known;
+  type Layout = { epoch: number; id: number; size: number; fields: RecordField[] };
+  const answer = parse<Result<Layout>>(abi().og_engine_component_layout(engine, name));
+  // An unregistered name is asked for again: a later use may register it.
+  if (!answer.ok) return null;
+  const { epoch, id, size, fields } = answer.value;
+  const rangesAt = Math.ceil(size / 4);
+  const read = fields.every((f) => f.kind !== "ease" && f.name !== "__proto__") && (rangesAt + 1 + fields.length * 2) * 4 <= SHARED_BYTES;
+  const record = read ? { id, epoch, fields, byName: new Map(fields.map((f) => [f.name, f])), rangesAt } : null;
+  byName.set(name, record);
+  return record;
+}
+
+/** The component the engine wrote to the shared buffer, as og_world_get's value; undefined when only JSON reads it. */
+function decodeComponent(c: ComponentRecord): Record<string, unknown> | undefined {
+  words();
+  const out: Record<string, unknown> = {};
+  const fields = c.fields;
+  for (let i = 0; i < fields.length; i++) {
+    const f = fields[i]!;
+    const value = decodeComponentField(sharedView, sharedBytes, f);
+    if (value === undefined) return undefined;
+    out[f.name] = value;
+  }
+  return out;
+}
+
+/** Writes the fields `value` names to the shared buffer, and their ranges after the record; false when og_world_set must take the value. */
+function encodeComponent(c: ComponentRecord, value: Record<string, unknown>): boolean {
+  const w = words();
+  let at = c.rangesAt + 1;
+  for (const key in value) {
+    const x = value[key];
+    // JSON leaves an undefined value out.
+    if (x === undefined) continue;
+    const f = c.byName.get(key);
+    if (!f || !encodeComponentField(sharedView, sharedBytes, f, x)) return false;
+    w[at++] = f.offset;
+    w[at++] = f.size;
+  }
+  w[c.rangesAt] = (at - c.rangesAt - 1) / 2;
+  return true;
 }
 
 /** Run now if a host is bound, else when one is. */
@@ -676,7 +758,7 @@ class QueryImpl {
       const tick = w[at + 2]!;
       if (w[at + 3] !== componentIdsEpoch) {
         // Layouts were declared again (a new engine, a reload): the numbers may have moved.
-        componentIds.clear();
+        forgetComponents();
         componentIdsEpoch = w[at + 3]!;
       }
       let p = at + 4;
@@ -1062,10 +1144,35 @@ export class WorldImpl {
   }
 
   get(entity: number, component: Token): Result<unknown> {
+    const c = typeof entity === "number" ? componentRecord(this.id, component.name) : null;
+    if (c) {
+      const engine = abi();
+      // The answer overwrites what a system's query found in the shared buffer.
+      sharedStamp++;
+      const epoch = engine.og_engine_read_component(this.id, entity, c.id);
+      if (epoch === c.epoch) {
+        const value = decodeComponent(c);
+        if (value !== undefined) return { ok: true, value };
+      } else if (epoch !== 0) {
+        forgetComponents();
+      }
+    }
+    // Refused, or a value only JSON reads: the engine says which, as it always has.
     return parse(abi().og_world_get(this.id, entity, component.name));
   }
 
   set(entity: number, component: Token, value: unknown): Result<void> {
+    // GameDesc.ui's refusal of a write names og_world_set.
+    const c = typeof entity === "number" && !uiRegistrationErrors && plain(value) ? componentRecord(this.id, component.name) : null;
+    if (c) {
+      const engine = abi();
+      sharedStamp++;
+      if (encodeComponent(c, value as Record<string, unknown>)) {
+        const epoch = engine.og_engine_write_component(this.id, entity, c.id, c.epoch);
+        if (epoch === c.epoch) return structural({ ok: true, value: undefined });
+        if (epoch !== 0) forgetComponents();
+      }
+    }
     return structural(parse(abi().og_world_set(this.id, entity, component.name, JSON.stringify(value ?? {}))));
   }
 

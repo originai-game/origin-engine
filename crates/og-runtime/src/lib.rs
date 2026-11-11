@@ -415,6 +415,10 @@ pub fn og_engine_resource_layout(world: u32, resource: String) -> String {
     engine::resource_layout(world, &resource)
 }
 
+pub fn og_engine_component_layout(world: u32, component: String) -> String {
+    engine::component_layout(world, &component)
+}
+
 pub fn og_engine_read_resource(world: u32, resource: String) -> Vec<u8> {
     engine::read_resource(world, &resource)
 }

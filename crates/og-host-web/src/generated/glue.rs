@@ -89,6 +89,21 @@ pub fn og_engine_component_id(world: u32, component: String) -> u32 {
 }
 
 #[wasm_bindgen]
+pub fn og_engine_component_layout(world: u32, component: String) -> String {
+    <Host as Lifecycle>::og_engine_component_layout(&Host, world, component)
+}
+
+#[wasm_bindgen]
+pub fn og_engine_read_component(world: u32, entity: f64, component: u32) -> u32 {
+    <Host as Lifecycle>::og_engine_read_component(&Host, world, entity, component)
+}
+
+#[wasm_bindgen]
+pub fn og_engine_write_component(world: u32, entity: f64, component: u32, epoch: u32) -> u32 {
+    <Host as Lifecycle>::og_engine_write_component(&Host, world, entity, component, epoch)
+}
+
+#[wasm_bindgen]
 pub fn og_engine_query_archetypes(query: u32, from: u32) -> u32 {
     <Host as Lifecycle>::og_engine_query_archetypes(&Host, query, from)
 }

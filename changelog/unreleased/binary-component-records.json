@@ -1,0 +1,9 @@
+{
+  "breaking": [
+    {
+      "member": "host ABI (og_engine_component_layout, og_engine_read_component, og_engine_write_component)",
+      "change": "world.get and world.set cross as the component's packed bytes in the shared buffer (og_host_shared), asked for by the component's number, not as JSON by name. The addon and the wasm module gain three lifecycle exports, and the binding ids after them move up. Game code is unchanged: world.get and world.set answer the same Results with the same values, key order and reasons, and worlds, snapshots and world hashes are the same bytes.",
+      "fix": "Nothing in a game. A host's native addon or wasm module and the packages/engine runtime that loads it must be the same engine version, as a release always ships them."
+    }
+  ]
+}

@@ -16,10 +16,12 @@ interface RecordField {
 // ES2022 alone, which has no TextEncoder.
 const utf8 = globalThis as unknown as {
   TextEncoder: new () => { encode(text: string): Uint8Array };
-  TextDecoder: new () => { decode(bytes: Uint8Array): string };
+  TextDecoder: new (label?: string, options?: { fatal?: boolean; ignoreBOM?: boolean }) => { decode(bytes: Uint8Array): string };
 };
 const utf8in = new utf8.TextEncoder();
 const utf8out = new utf8.TextDecoder();
+/** Throws on bytes that are not UTF-8 and keeps a leading U+FEFF, as the engine reads text. */
+const utf8strict = new utf8.TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 
 const LANES: Readonly<Record<string, readonly string[]>> = {
   Vector2: ["x", "y"],
@@ -201,5 +203,196 @@ function encodeField(v: DataView, bytes: Uint8Array, f: RecordField, value: unkn
   }
 }
 
+// ── components ────────────────────────────────────────────────────────────
+//
+// world.get and world.set through a component's packed bytes. They answer
+// exactly what the engine's JSON answers (og_world_get, og_world_set): a
+// value JSON would carry differently, or would refuse, is left to it.
+
+/** A float as JSON carries it: null when it is not finite. */
+function finite(x: number): number | null {
+  return x - x === 0 ? x : null;
+}
+
+/**
+ * A component field's value as `og_world_get`'s JSON holds it (a struct's
+ * keys in name order, a list a plain array), or undefined when only the
+ * JSON path reads it: a kind without bytes here, text that is not UTF-8.
+ */
+function decodeComponentField(v: DataView, bytes: Uint8Array, f: RecordField): unknown {
+  const o = f.offset;
+  switch (f.kind) {
+    case "f32": return finite(v.getFloat32(o, true));
+    case "f64": return finite(v.getFloat64(o, true));
+    case "u32": return v.getUint32(o, true);
+    case "i32": return v.getInt32(o, true);
+    case "bool": return bytes[o] !== 0;
+    case "handle": return v.getUint32(o, true) + v.getUint32(o + 4, true) * 4294967296;
+    case "enum": {
+      const i = v.getUint32(o, true);
+      return f.variants?.[i] ?? i;
+    }
+    case "str": {
+      const stop = o + f.size;
+      let end = o;
+      let ascii = true;
+      for (; end < stop; end++) {
+        const c = bytes[end]!;
+        if (c === 0) break;
+        if (c > 127) ascii = false;
+      }
+      if (ascii) return String.fromCharCode.apply(null, bytes.subarray(o, end) as unknown as number[]);
+      try {
+        // A copy: a decoder may refuse a view of the engine's memory.
+        return utf8strict.decode(bytes.slice(o, end));
+      } catch {
+        return undefined;
+      }
+    }
+    case "Vector2": return { x: finite(v.getFloat32(o, true)), y: finite(v.getFloat32(o + 4, true)) };
+    case "Vector3": return { x: finite(v.getFloat32(o, true)), y: finite(v.getFloat32(o + 4, true)), z: finite(v.getFloat32(o + 8, true)) };
+    case "Quaternion": return { w: finite(v.getFloat32(o + 12, true)), x: finite(v.getFloat32(o, true)), y: finite(v.getFloat32(o + 4, true)), z: finite(v.getFloat32(o + 8, true)) };
+    case "Color": return { b: finite(v.getFloat32(o + 8, true)), g: finite(v.getFloat32(o + 4, true)), r: finite(v.getFloat32(o, true)) };
+    case "Matrix4": {
+      const elements: (number | null)[] = [];
+      for (let i = 0; i < 16; i++) elements.push(finite(v.getFloat32(o + i * 4, true)));
+      return { elements };
+    }
+    case "list": {
+      const element = f.element ?? "f32";
+      const lane = LANE_SIZE[element] ?? 4;
+      const float = element === "f32" || element === "f64";
+      // A count that is not a whole number up to the capacity reads as empty.
+      const n = readLane(v, o, element);
+      const count = Number.isInteger(n) && n >= 0 && n <= (f.capacity ?? 0) ? n : 0;
+      const out: (number | null)[] = [];
+      for (let i = 0; i < count; i++) {
+        const x = readLane(v, o + lane * (i + 1), element);
+        out.push(float ? finite(x) : x);
+      }
+      return out;
+    }
+    default: return undefined;
+  }
+}
+
+/** An object JSON.stringify writes key by key: no class behind it and no toJSON. */
+function plain(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== "object" || value === null) return false;
+  const proto = Object.getPrototypeOf(value);
+  return (proto === Object.prototype || proto === null) && (value as { toJSON?: unknown }).toJSON === undefined;
+}
+
+function finiteNumber(value: unknown): value is number {
+  return typeof value === "number" && value - value === 0;
+}
+
+/** Whether `value` is a lane of a list of `element`s as the engine takes it. */
+function laneValue(value: unknown, element: string): value is number {
+  if (!finiteNumber(value)) return false;
+  switch (element) {
+    case "f32": case "f64": return true;
+    case "u32": return Number.isInteger(value) && value >= 0 && value <= 4294967295;
+    case "i32": return Number.isInteger(value) && value >= -2147483648 && value <= 2147483647;
+    default: return Number.isSafeInteger(value) && value >= 0;
+  }
+}
+
+/**
+ * Writes `value` into a component field's bytes as `og_world_set` would
+ * pack it, or answers false and leaves the write to it: a value it refuses
+ * (it words the reason) or takes another way (null, a class instance). A
+ * refused value may leave bytes behind: the buffer is scratch until the
+ * write is sent. `+ 0` is JSON's -0, which it carries as 0.
+ */
+function encodeComponentField(v: DataView, bytes: Uint8Array, f: RecordField, value: unknown): boolean {
+  const o = f.offset;
+  switch (f.kind) {
+    case "f32":
+      if (!finiteNumber(value)) return false;
+      v.setFloat32(o, value + 0, true);
+      return true;
+    case "f64":
+      if (!finiteNumber(value)) return false;
+      v.setFloat64(o, value + 0, true);
+      return true;
+    case "u32":
+      if (!laneValue(value, "u32")) return false;
+      v.setUint32(o, value, true);
+      return true;
+    case "i32":
+      if (!laneValue(value, "i32")) return false;
+      v.setInt32(o, value, true);
+      return true;
+    case "bool":
+      if (typeof value !== "boolean") return false;
+      bytes[o] = value ? 1 : 0;
+      return true;
+    case "handle":
+      if (!laneValue(value, "handle")) return false;
+      writeLane(v, o, "handle", value);
+      return true;
+    case "enum": {
+      const variants = f.variants ?? [];
+      const i = typeof value === "string" ? variants.indexOf(value) : Number.isInteger(value) ? (value as number) : -1;
+      if (i < 0 || i >= variants.length) return false;
+      v.setUint32(o, i, true);
+      return true;
+    }
+    case "str": {
+      if (typeof value !== "string" || value.length > f.size) return false;
+      let i = 0;
+      for (; i < value.length; i++) {
+        const c = value.charCodeAt(i);
+        if (c === 0) return false;
+        if (c > 127) break;
+        bytes[o + i] = c;
+      }
+      if (i < value.length) {
+        // Not ASCII: a lone surrogate is refused by the engine's JSON, not replaced.
+        const wellFormed = (value as { isWellFormed?: () => boolean }).isWellFormed;
+        if (typeof wellFormed !== "function" || !wellFormed.call(value) || value.includes("\0")) return false;
+        const encoded = utf8in.encode(value);
+        if (encoded.length > f.size) return false;
+        bytes.set(encoded, o);
+        i = encoded.length;
+      }
+      bytes.fill(0, o + i, o + f.size);
+      return true;
+    }
+    case "Vector2": case "Vector3": case "Quaternion": case "Color": {
+      if (!plain(value)) return false;
+      const keys = LANES[f.kind]!;
+      for (let i = 0; i < keys.length; i++) {
+        const x = value[keys[i]!];
+        if (!finiteNumber(x)) return false;
+        v.setFloat32(o + i * 4, x + 0, true);
+      }
+      return true;
+    }
+    case "Matrix4": {
+      if (!plain(value)) return false;
+      const elements = value.elements;
+      if (!Array.isArray(elements) || elements.length !== 16 || !elements.every(finiteNumber)) return false;
+      for (let i = 0; i < 16; i++) v.setFloat32(o + i * 4, elements[i] + 0, true);
+      return true;
+    }
+    case "list": {
+      const element = f.element ?? "f32";
+      if (!Array.isArray(value) || value.length > (f.capacity ?? 0)) return false;
+      const lane = LANE_SIZE[element] ?? 4;
+      bytes.fill(0, o, o + f.size);
+      writeLane(v, o, element, value.length);
+      for (let i = 0; i < value.length; i++) {
+        const x: unknown = value[i];
+        if (!laneValue(x, element)) return false;
+        writeLane(v, o + lane * (i + 1), element, x + 0);
+      }
+      return true;
+    }
+    default: return false;
+  }
+}
+
 export type { RecordField };
-export { decodeField, encodeField };
+export { decodeField, encodeField, decodeComponentField, encodeComponentField, plain };

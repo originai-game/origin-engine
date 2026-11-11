@@ -33,7 +33,7 @@ pub(crate) use resources::{
     bump_layout_epoch, layout_epoch, world_query_views, write_resource_value,
 };
 pub use resources::{
-    read_resource, resource_layout, view_columns, view_entities, write_resource,
+    component_layout, read_resource, resource_layout, view_columns, view_entities, write_resource,
     write_resource_bytes,
 };
 
