@@ -1032,18 +1032,21 @@ fn locale_fonts_lint(p: &Project, json: bool, to_stderr: bool) {
     }
 }
 
-/// The lockstep lint (`lockstep_lint`) over a project's sources, beside
-/// the entry: printed as warnings (`<file>(<line>,<col>): warning OG<code>:`)
-/// or, with `json`, as one `lockstep-lint` event. Never fails a check.
+/// The determinism lint (`lockstep_lint`) over a project's sources, beside
+/// the entry, for every game: printed as warnings
+/// (`<file>(<line>,<col>): warning OG<code>:`) or, with `json`, as one
+/// `lockstep-lint` event (the name it had when only lockstep games were
+/// linted; `lockstep` says whether this one is). Never fails a check.
 fn lockstep_lint(p: &Project, json: bool, to_stderr: bool) {
     let dir = p.entry.parent().unwrap_or(&p.root);
-    let found = crate::lockstep_lint::lint(&p.root, dir);
+    let (lockstep, found) = crate::lockstep_lint::lint(&p.root, dir);
     if found.is_empty() {
         return;
     }
     let text = if json {
         serde_json::json!({
             "event": "lockstep-lint",
+            "lockstep": lockstep,
             "warnings": found.iter().map(|(file, f)| serde_json::json!({
                 "file": file, "line": f.line, "col": f.col, "code": f.code, "message": f.message,
             })).collect::<Vec<_>>(),
@@ -1059,10 +1062,17 @@ fn lockstep_lint(p: &Project, json: bool, to_stderr: bool) {
                 )
             })
             .collect();
-        t.push(format!(
-            "og check: {} lockstep warning(s): a peer that runs these parts from the room (`og api show determinism`, §3); `// lockstep-ok` on a line that only draws",
-            found.len()
-        ));
+        t.push(if lockstep {
+            format!(
+                "og check: {} determinism warning(s): a peer that runs these parts from the room, and a replay or a save differs on the other host (`og api show determinism`, §1 and §3); `// og-ok` on a line that only draws",
+                found.len()
+            )
+        } else {
+            format!(
+                "og check: {} determinism warning(s): where a system that changes the world runs these, a replay, a restored save or a playtest's end hash differs (`og api show determinism`, §1); `// og-ok` on a line that only draws",
+                found.len()
+            )
+        });
         t.join("\n")
     };
     if to_stderr && !json {

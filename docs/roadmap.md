@@ -207,10 +207,14 @@ From the review of expo/exact (thread
 - **Loaded on demand.** Optional capabilities (GPU extras, physics,
   navigation, video) as separate artifacts loaded after the first frame;
   this serves the size principle, native packages and subpackages alike.
-- **Determinism for every game.** `og check` reports the lockstep lint's
-  findings (`Math.random`, `Date.now`/`performance.now`, host trig,
-  unordered container iteration) for every game with the replacement to
-  use, reporting without refusing, also at publish and packaging; check
+- **Determinism for every game.** Done: `og check` reports the lint's
+  findings for every game with the replacement to use, reporting without
+  refusing: `Math.random`, the clocks and `new Date()`, timers, host trig,
+  and what reaches outside the host ABI (`fetch`, sockets, the browser's
+  storage). Open: unordered container iteration (not a lexical finding);
+  the report at publish and packaging; a `connect-src` policy for the
+  play origin is a platform ask, since only the page can confine a
+  Worker; check
   that wasm and native both disable floating-point contraction; tick and
   save proof pins in the fixtures.
 - **Agent observability:** a `visible` reason code (frustum, occluded,
