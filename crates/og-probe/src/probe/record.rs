@@ -73,13 +73,6 @@ impl Probe {
     }
 }
 
-impl super::state::Host {
-    /// [`Probe::frame_rgba`].
-    pub(super) fn frame_rgba(&mut self) -> Option<RawFrame> {
-        self.capture.as_mut()?.frame()
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
