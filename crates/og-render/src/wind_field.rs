@@ -567,7 +567,7 @@ impl WindFieldSim {
     }
 
     /// Records this frame's steps, before any pass that reads the field.
-    pub(crate) fn encode(&self, encoder: &mut wgpu::CommandEncoder) {
+    pub(crate) fn encode(&self, encoder: &mut crate::Encoder) {
         let Some(gpu) = self.gpu.as_ref().filter(|_| self.steps > 0) else {
             return;
         };

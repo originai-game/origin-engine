@@ -80,10 +80,10 @@ impl Renderer {
     /// capabilities its device (under [`RenderDesc::tier`]) lacks for it.
     /// Empty on the full tier.
     pub fn absent_passes(&self) -> impl Iterator<Item = (&'static str, Caps)> + '_ {
-        PASSES
-            .iter()
-            .filter(|d| !self.info.caps.contains(d.needs))
-            .map(|d| (d.name, self.info.caps.missing(d.needs)))
+        let pre = pre_graph::PRE_GRAPH.iter().map(|d| (d.name, d.needs));
+        pre.chain(PASSES.iter().map(|d| (d.name, d.needs)))
+            .filter(|&(_, needs)| !self.info.caps.contains(needs))
+            .map(|(name, needs)| (name, self.info.caps.missing(needs)))
     }
 }
 

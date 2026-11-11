@@ -70,6 +70,8 @@ use pass_fluid_3d::Fluid3dPass;
 mod pass_particles;
 pub(crate) use pass_particles::Particles;
 use pass_particles::{ParticlesPass, ParticlesPlan};
+mod pre_graph;
+use pre_graph::pre_graph;
 mod setup;
 
 impl Renderer {
@@ -4041,8 +4043,10 @@ impl Renderer {
             gc.copy_counts(&mut encoder);
         }
         // The wind field and the trample map step before any pass reads them.
-        self.wind_field.encode(&mut encoder);
-        self.trample.encode(&mut encoder);
+        pre_graph(&mut encoder, self.info.caps, pre_graph::WIND, |e| {
+            self.wind_field.encode(e);
+            self.trample.encode(e);
+        });
         if let Some(pipelines) = &self.visual {
             for mesh in &self.cache.meshes {
                 if let Some(v) = mesh.surface.as_ref().and_then(|s| s.visual.as_ref()) {
