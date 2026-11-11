@@ -5,6 +5,7 @@ mod actions;
 #[cfg(not(feature = "publish"))]
 mod marks;
 mod protocol;
+mod state;
 mod timeline;
 
 #[cfg(not(feature = "publish"))]
@@ -216,19 +217,9 @@ pub type ReaderFn = Box<dyn Fn(&str) -> Option<Vec<u8>>>;
 /// The probe is not `Send`: hooks and command handlers may hold host
 /// objects (JavaScript values on the web). Create it on the engine thread.
 pub struct Probe {
-    engine: String,
+    /// What the host gave ([`Probe::set_capture`] and the other `set_*`).
+    pub(crate) host: state::Host,
     pub(crate) names: Names,
-    input: Box<dyn InputSink>,
-    pub(crate) capture: Option<Box<dyn Capture>>,
-    pub(crate) ui: Option<Box<dyn UiTree>>,
-    reloader: Option<Box<dyn Reloader>>,
-    pub(crate) facts: Option<FactsFn>,
-    /// The frame as data and picking ([`Probe::set_scene_view`]).
-    pub(crate) scene_view: Option<Box<dyn SceneView>>,
-    /// The boot scene's write-back ([`Probe::set_scene_writer`]).
-    pub(crate) scene_writer: Option<Box<dyn SceneWriter>>,
-    /// Reference files for `expect:frame` ([`Probe::set_reader`]).
-    pub(crate) reader: Option<ReaderFn>,
     /// Expectations evaluated since the host last took them.
     pub(crate) expectations: Vec<ExpectResult>,
     /// The run's events since `timeline` last read them ([`timeline::Recorder`]).
@@ -271,15 +262,11 @@ pub struct Probe {
     pointer: (f32, f32),
     target_missed: bool,
     inbox: Inbox,
-    listen: Option<ListenFn>,
-    memory: Option<MemoryFn>,
     /// The sub-tick stamp of the input being delivered (InputSink::inject_at).
     stamp: f32,
     /// A screenshot waiting on its frame: it holds the clock and later steps.
     shot: Option<Shot>,
     sweeping: Option<SweepJob>,
-    derive: Option<DeriveFn>,
-    register: Option<RegisterFn>,
     /// The tick of the last unnamed `get` and how many it has had, so a
     /// second one on the same tick writes `get-<tick>-2.json`.
     gets: (u64, u32),
@@ -498,16 +485,22 @@ impl Probe {
     pub fn with_input(world: &mut World, mut input: Box<dyn InputSink>) -> og_core::Result<Probe> {
         input.attach(world)?;
         Ok(Probe {
-            engine: ENGINE_VERSION.to_owned(),
+            host: state::Host {
+                engine: ENGINE_VERSION.to_owned(),
+                input,
+                capture: None,
+                ui: None,
+                reloader: None,
+                facts: None,
+                scene_view: None,
+                scene_writer: None,
+                reader: None,
+                listen: None,
+                memory: None,
+                derive: None,
+                register: None,
+            },
             names: Names,
-            input,
-            capture: None,
-            ui: None,
-            reloader: None,
-            facts: None,
-            scene_view: None,
-            scene_writer: None,
-            reader: None,
             expectations: Vec::new(),
             timeline: timeline::Recorder::default(),
             assertions: Rc::default(),
@@ -519,8 +512,6 @@ impl Probe {
             systems_ms: Vec::new(),
             passes_ms: Vec::new(),
             gpu_passes_ms: Vec::new(),
-            listen: None,
-            memory: None,
             stamp: 0.0,
             commands: BTreeMap::new(),
             queue: BTreeMap::new(),
@@ -540,8 +531,6 @@ impl Probe {
             inbox: Inbox::default(),
             shot: None,
             sweeping: None,
-            derive: None,
-            register: None,
             gets: (u64::MAX, 0),
             written: BTreeMap::new(),
             after_tick: None,
@@ -556,28 +545,28 @@ impl Probe {
 
     /// `hello.engine`, such as `origin-engine 0.1.0`.
     pub fn set_engine_version(&mut self, engine: impl Into<String>) {
-        self.engine = engine.into();
+        self.host.engine = engine.into();
     }
 
     /// The renderer: frames for `capture`, `sweep`, `screenshot`, and `pick`.
     pub fn set_capture(&mut self, capture: Box<dyn Capture>) {
-        self.capture = Some(capture);
+        self.host.capture = Some(capture);
     }
 
     /// The UI tree for `dump_ui`, `touch_move_to` and `move_to_text`.
     pub fn set_ui(&mut self, ui: Box<dyn UiTree>) {
-        self.ui = Some(ui);
+        self.host.ui = Some(ui);
     }
 
     /// The frame as data (`describe`) and picking where the capture hook
     /// does not pick.
     pub fn set_scene_view(&mut self, view: Box<dyn SceneView>) {
-        self.scene_view = Some(view);
+        self.host.scene_view = Some(view);
     }
 
     /// The boot scene's write-back for `save_scene`.
     pub fn set_scene_writer(&mut self, writer: Box<dyn SceneWriter>) {
-        self.scene_writer = Some(writer);
+        self.host.scene_writer = Some(writer);
     }
 
     /// Reads `expect:frame` references (project-relative paths).
@@ -587,24 +576,24 @@ impl Probe {
         let _ = read;
         #[cfg(not(feature = "publish"))]
         {
-            self.reader = Some(Box::new(read));
+            self.host.reader = Some(Box::new(read));
         }
     }
 
     /// The bundle swap for `reload`.
     pub fn set_reloader(&mut self, reloader: Box<dyn Reloader>) {
-        self.reloader = Some(reloader);
+        self.host.reloader = Some(reloader);
     }
 
     /// What `get` answers for records the engine derives from other state
     /// ([`DeriveFn`]).
     pub fn set_derive(&mut self, derive: DeriveFn) {
-        self.derive = Some(derive);
+        self.host.derive = Some(derive);
     }
 
     /// How `set` registers a lazy record it names ([`RegisterFn`]).
     pub fn set_register(&mut self, register: RegisterFn) {
-        self.register = Some(register);
+        self.host.register = Some(register);
     }
 
     /// Work the host does after every tick, between ticks ([`AfterTickFn`]).
@@ -674,7 +663,7 @@ impl Probe {
 
     /// The game's own facts for `state().facts` (`GameDesc.facts`).
     pub fn set_facts(&mut self, facts: impl Fn(&World) -> Value + 'static) {
-        self.facts = Some(Box::new(facts));
+        self.host.facts = Some(Box::new(facts));
     }
 
     /// Gives `listen` the host's audio: the last seconds its mixer rendered.
@@ -684,7 +673,7 @@ impl Probe {
         let _ = listen;
         #[cfg(not(feature = "publish"))]
         {
-            self.listen = Some(Box::new(listen));
+            self.host.listen = Some(Box::new(listen));
         }
     }
 
@@ -692,7 +681,7 @@ impl Probe {
     /// rendered, a WAV in base64 with its rate, frames, peak and RMS; `None`
     /// without audio or before anything was rendered.
     pub fn listen(&mut self, world: &World, seconds: f32) -> Option<Value> {
-        let h = (self.listen.as_ref()?)(seconds.clamp(0.0, 2.0))?;
+        let h = (self.host.listen.as_ref()?)(seconds.clamp(0.0, 2.0))?;
         Some(json!({
             "tick": world.time().tick,
             "rate": h.rate,
@@ -710,14 +699,14 @@ impl Probe {
         let _ = memory;
         #[cfg(not(feature = "publish"))]
         {
-            self.memory = Some(Box::new(memory));
+            self.host.memory = Some(Box::new(memory));
         }
     }
 
     /// `memory`: what the engine holds (`ProbeMemory`); `None` from a host
     /// that gave no figures.
     pub fn memory(&self, world: &World) -> Option<Value> {
-        self.memory.as_ref().map(|f| f(world))
+        self.host.memory.as_ref().map(|f| f(world))
     }
 
     /// The last tick's timings for `state().timings`, measured by the host.
@@ -1086,7 +1075,7 @@ impl Probe {
         let Some(shot) = self.shot.as_mut() else {
             return false;
         };
-        let frame = match self.capture.as_mut() {
+        let frame = match self.host.capture.as_mut() {
             Some(capture) => capture.capture(world, shot.width, shot.height),
             None => None,
         };
@@ -1137,7 +1126,7 @@ impl Probe {
             self.count_events(world, false);
         }
         if !replaying {
-            self.input.end_tick(world);
+            self.host.input.end_tick(world);
         }
         if let Some(after) = self.after_tick.as_mut() {
             let next = world.time().tick;
@@ -1148,7 +1137,7 @@ impl Probe {
         #[cfg(not(feature = "publish"))]
         self.check_invariants(world, ran);
         #[cfg(not(feature = "publish"))]
-        if let Some(ui) = self.ui.as_ref() {
+        if let Some(ui) = self.host.ui.as_ref() {
             let screens = ui.screens(world);
             self.timeline.screens(world.time().tick, screens);
         }
@@ -1157,7 +1146,7 @@ impl Probe {
 
     fn deliver(&mut self, world: &mut World, event: &InjectedInput) -> bool {
         let taken = self.filter.as_mut().is_some_and(|f| f(world, event));
-        let accepted = taken || self.input.inject_at(world, event, self.stamp);
+        let accepted = taken || self.host.input.inject_at(world, event, self.stamp);
         if accepted {
             match event {
                 InjectedInput::Pointer { x, y, id: 0, .. } | InjectedInput::Wheel { x, y, .. } => {

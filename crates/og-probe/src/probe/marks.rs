@@ -41,6 +41,7 @@ impl Probe {
     pub fn marks(&mut self, world: &mut World, desc: MarksDesc) -> Option<Value> {
         let described = desc.entities.then(|| self.describe(world));
         let frame = self
+            .host
             .capture
             .as_mut()?
             .capture(world, desc.width, desc.height)?;
@@ -51,7 +52,7 @@ impl Probe {
 
         let mut candidates = Vec::new();
         if desc.ui
-            && let Some(ui) = self.ui.as_ref()
+            && let Some(ui) = self.host.ui.as_ref()
         {
             let surface = ui.surface(world);
             candidates.extend(ui_marks(&ui.elements(world), surface));
@@ -67,7 +68,8 @@ impl Probe {
                 ];
                 let id = e["id"].as_str().unwrap_or_default().to_owned();
                 let source = self.names.resolve(world, &id).and_then(|entity| {
-                    self.scene_writer
+                    self.host
+                        .scene_writer
                         .as_ref()
                         .and_then(|w| w.source(world, entity))
                 });

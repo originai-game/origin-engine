@@ -34,7 +34,7 @@ impl Probe {
                 // No renderer is a host configuration, not a fault: the
                 // step notes the frame it did not take and the run goes on
                 // exactly as it would with one (rendering never feeds back).
-                let Some(capture) = self.capture.as_mut().filter(|c| c.has_renderer()) else {
+                let Some(capture) = self.host.capture.as_mut().filter(|c| c.has_renderer()) else {
                     let file = path.unwrap_or_else(|| format!("screenshot-{tick:06}.png"));
                     self.note(
                         tick,
@@ -101,6 +101,7 @@ impl Probe {
                     }
                 }
                 let listen = self
+                    .host
                     .listen
                     .as_ref()
                     .ok_or("no audio in this host: nothing to listen to")?;
@@ -125,7 +126,7 @@ impl Probe {
                     }
                     joined.clone()
                 };
-                let elements = match &self.ui {
+                let elements = match &self.host.ui {
                     Some(ui) => ui.elements(world),
                     None => Vec::new(),
                 };
@@ -245,7 +246,7 @@ impl Probe {
                 let (x, y) = match numbers(&target).ok().as_deref() {
                     Some(&[x, y]) => (x, y),
                     _ => {
-                        let elements = match &self.ui {
+                        let elements = match &self.host.ui {
                             Some(ui) => ui.elements(world),
                             None => Vec::new(),
                         };
@@ -480,7 +481,7 @@ impl Probe {
                 }
                 let parameter = format!("{}.position", schema.name);
                 self.write_field(world, e, &parameter, &json!(xyz), false)?;
-                if let Some(c) = self.capture.as_mut() {
+                if let Some(c) = self.host.capture.as_mut() {
                     c.teleported(world, e);
                 }
                 Ok(())

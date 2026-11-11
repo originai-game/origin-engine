@@ -68,7 +68,7 @@ impl Probe {
         let usage = "set:<entity>.<component>.<field>=<value> or set:<Resource>.<field>=<value>";
         // `<Resource>.<field>` names the resource, as a game's write would:
         // a lazy one is registered first ([`super::RegisterFn`]).
-        if let (Some(register), Some((name, _))) = (&self.register, target.rsplit_once('.'))
+        if let (Some(register), Some((name, _))) = (&self.host.register, target.rsplit_once('.'))
             && world.id_by_name(name).is_err()
         {
             register(world, name);
@@ -151,7 +151,7 @@ impl Probe {
             if schema.name == <og_core::Time as og_core::Reflect>::NAME {
                 fields = time_json(world);
             }
-            if let Some(derive) = &self.derive {
+            if let Some(derive) = &self.host.derive {
                 derive(world, None, &schema.name, &mut fields);
             }
             Ok((schema.name.clone(), fields))
@@ -191,7 +191,7 @@ impl Probe {
             let schema = world.schema(id).ok()?;
             let bytes = world.get_bytes(e, id).ok()?;
             let mut fields = value::component_json(schema, &bytes);
-            if let Some(derive) = &self.derive {
+            if let Some(derive) = &self.host.derive {
                 derive(world, Some(e), &schema.name, &mut fields);
             }
             Some(fields)
@@ -231,9 +231,9 @@ impl Probe {
             "protocol": PROBE_VERSION,
             "wire": PROBE_WIRE_VERSION,
             "substrate": "origin-engine",
-            "engine": self.engine,
+            "engine": self.host.engine,
             "ticksPerSecond": tick_rate(world),
-            "tier": self.capture.as_ref().map_or("none", |c| c.tier()),
+            "tier": self.host.capture.as_ref().map_or("none", |c| c.tier()),
             "build": BUILD,
             "members": served_members(),
         })
@@ -267,7 +267,7 @@ impl Probe {
                 "gpuPasses": self.gpu_passes_ms.iter().map(|(name, ms)| json!({"name": name, "ms": ms})).collect::<Vec<_>>(),
             },
             "entities": entities,
-            "facts": self.facts.as_ref().map_or(Value::Null, |f| f(world)),
+            "facts": self.host.facts.as_ref().map_or(Value::Null, |f| f(world)),
         })
     }
 
@@ -321,7 +321,7 @@ impl Probe {
 
     /// `accepted`: events the input layer accepted since load.
     pub fn accepted(&self) -> u32 {
-        self.input.accepted()
+        self.host.input.accepted()
     }
 
     /// `pick_ui`: the UI element under a point (CSS px of the play
@@ -330,7 +330,7 @@ impl Probe {
     /// that dress it ([`crate::hooks::pick_ui`]); `None` when there is none
     /// or no UI.
     pub fn pick_ui(&self, world: &World, x: f32, y: f32) -> Option<Value> {
-        let elements = self.ui.as_ref()?.elements(world);
+        let elements = self.host.ui.as_ref()?.elements(world);
         let e = crate::hooks::pick_ui(&elements, x, y)?;
         let d = &e.detail;
         let field = |k: &str| d.get(k).cloned().unwrap_or(Value::Null);
@@ -354,12 +354,13 @@ impl Probe {
     /// element over the point as `ui` ([`Probe::pick_ui`]); `None` without
     /// a renderer that picks, or nothing there.
     pub fn pick(&mut self, world: &World, x: f32, y: f32) -> Option<Value> {
-        let hit = match self.capture.as_mut().and_then(|c| c.pick(world, x, y)) {
+        let hit = match self.host.capture.as_mut().and_then(|c| c.pick(world, x, y)) {
             Some(hit) => hit,
-            None => self.scene_view.as_mut()?.pick(world, x, y)?,
+            None => self.host.scene_view.as_mut()?.pick(world, x, y)?,
         };
         let source = hit.source.or_else(|| {
-            self.scene_writer
+            self.host
+                .scene_writer
                 .as_ref()
                 .and_then(|w| w.source(world, hit.entity))
         });
@@ -515,7 +516,7 @@ impl Probe {
         fit: u32,
         region: Option<[f32; 4]>,
     ) -> Option<Value> {
-        let frame = self.capture.as_mut()?.capture(world, width, height)?;
+        let frame = self.host.capture.as_mut()?.capture(world, width, height)?;
         // The rendered size answers as is: no decode, no encode.
         if region.is_none() && crate::frame::Rgba::fit_scale(frame.width, frame.height, fit) >= 1.0
         {
@@ -553,7 +554,7 @@ impl Probe {
     /// Frame pixels per CSS pixel of the play surface for a frame
     /// `width` pixels wide: 1 without a UI module that knows the surface.
     pub(crate) fn surface_scale(&self, world: &World, width: u32) -> f32 {
-        match self.ui.as_ref().and_then(|u| u.surface(world)) {
+        match self.host.ui.as_ref().and_then(|u| u.surface(world)) {
             Some((w, _, _)) if w > 0.0 => width as f32 / w,
             _ => 1.0,
         }
@@ -565,16 +566,16 @@ impl Probe {
             hash: world.world_hash(),
             world: bytes,
             tick: world.time().tick,
-            render: self.capture.as_mut().map_or(0, |c| c.save_state()),
+            render: self.host.capture.as_mut().map_or(0, |c| c.save_state()),
         }
     }
 
     fn load(&mut self, world: &mut World, saved: &Saved) -> og_core::Result<()> {
-        if let Some(c) = self.capture.as_ref() {
+        if let Some(c) = self.host.capture.as_ref() {
             c.validate_restore(saved.render)?;
         }
         world.restore(&saved.world)?;
-        if let Some(c) = self.capture.as_mut() {
+        if let Some(c) = self.host.capture.as_mut() {
             c.restore_state(saved.render);
         }
         Ok(())
@@ -589,7 +590,7 @@ impl Probe {
     /// again": each call with the same description on the same world goes
     /// on from the frames it has, and the last answers them all.
     pub fn sweep(&mut self, world: &mut World, desc: &SweepDesc) -> og_core::Result<Option<Value>> {
-        if !self.capture.as_ref().is_some_and(|c| c.has_renderer()) {
+        if !self.host.capture.as_ref().is_some_and(|c| c.has_renderer()) {
             return Ok(None);
         }
         let Some(e) = self.names.resolve(world, &desc.id) else {
@@ -601,7 +602,7 @@ impl Probe {
         if !tunable {
             return Ok(None);
         }
-        let deferred = self.capture.as_ref().is_some_and(|c| c.deferred());
+        let deferred = self.host.capture.as_ref().is_some_and(|c| c.deferred());
         // A screenshot's frame in flight goes first: they may share a size.
         if deferred && self.shot_waits(world) {
             return Ok(None);
@@ -636,7 +637,7 @@ impl Probe {
             for _ in 0..desc.steps {
                 self.tick_once(world)?;
             }
-            let capture = self.capture.as_mut().expect("checked");
+            let capture = self.host.capture.as_mut().expect("checked");
             let Some(frame) = capture.capture(world, desc.width, desc.height) else {
                 return Ok(None);
             };
@@ -688,7 +689,7 @@ impl Probe {
                     job.polls = 0;
                 }
             }
-            let capture = self.capture.as_mut().expect("checked");
+            let capture = self.host.capture.as_mut().expect("checked");
             match capture.capture(world, desc.width, desc.height) {
                 Some(frame) => {
                     job.frames.push(json!({
@@ -715,7 +716,7 @@ impl Probe {
     /// changed layout (field-by-field migration needs og-ecs support).
     pub fn reload(&mut self, world: &mut World) -> Option<Value> {
         let tick = world.time().tick;
-        let Some(reloader) = self.reloader.as_mut() else {
+        let Some(reloader) = self.host.reloader.as_mut() else {
             self.note(tick, true, "reload: this host has no bundle loader".into());
             return None;
         };
@@ -734,7 +735,7 @@ impl Probe {
             }
         };
         let mut next = rebuilt.world;
-        if let Err(err) = self.input.attach(&mut next) {
+        if let Err(err) = self.host.input.attach(&mut next) {
             self.note(tick, true, format!("reload: input: {}", err.reason()));
             return None;
         }
@@ -858,6 +859,7 @@ impl Probe {
         let id = format!("s{}", self.next_snapshot);
         self.next_snapshot += 1;
         let presentation = self
+            .host
             .capture
             .as_ref()
             .and_then(|c| c.presentation_hash())
@@ -942,6 +944,7 @@ impl Probe {
     ) -> Result<Value, String> {
         let tuned: Vec<String> = self.tuned.iter().cloned().collect();
         let writer = self
+            .host
             .scene_writer
             .as_mut()
             .ok_or("this host has no scene write-back")?;
@@ -974,6 +977,7 @@ impl Probe {
         edit: &crate::PrefabEdit,
     ) -> Result<crate::SavedScene, String> {
         let writer = self
+            .host
             .scene_writer
             .as_mut()
             .ok_or("this host has no scene write-back")?;
@@ -1046,6 +1050,7 @@ impl Probe {
             "components": components,
         });
         if let Some(r) = self
+            .host
             .capture
             .as_ref()
             .and_then(|c| c.entity_render(world, e))
@@ -1064,7 +1069,7 @@ impl Probe {
     /// `Component.field`); none for another entity or a host without
     /// scene write-back.
     pub fn entity_prefab(&self, world: &World, e: Entity) -> Option<Value> {
-        let mut p = self.scene_writer.as_ref()?.entity_prefab(world, e)?;
+        let mut p = self.host.scene_writer.as_ref()?.entity_prefab(world, e)?;
         if let Some(bits) = p["root"].as_f64() {
             p["root"] = json!(self.names.id_of(world, Entity::from_bits(bits as u64)));
         }
@@ -1074,21 +1079,28 @@ impl Probe {
     /// The UI tree in draw order; empty without a UI module.
     pub fn dump_ui(&self, world: &World) -> Value {
         let elements: Vec<Value> = self
+            .host
             .ui
             .as_ref()
             .map(|ui| ui.elements(world).iter().map(|e| e.to_json()).collect())
             .unwrap_or_default();
-        let surface = self.ui.as_ref().and_then(|ui| ui.surface(world)).map_or(
-            Value::Null,
-            |(w, h, dpr)| json!({ "width": w, "height": h, "dpr": dpr }),
-        );
+        let surface = self
+            .host
+            .ui
+            .as_ref()
+            .and_then(|ui| ui.surface(world))
+            .map_or(
+                Value::Null,
+                |(w, h, dpr)| json!({ "width": w, "height": h, "dpr": dpr }),
+            );
         // The style's name ("" is the engine's default style): a
         // check that the game dressed its UI reads it here.
-        let style = self.ui.as_ref().and_then(|ui| ui.style(world));
+        let style = self.host.ui.as_ref().and_then(|ui| ui.style(world));
         let mut dump = json!({"kind": "ui", "tick": world.time().tick, "surface": surface, "style": style, "elements": elements});
-        if let (Some(extra), Value::Object(o)) =
-            (self.ui.as_ref().and_then(|ui| ui.extra(world)), &mut dump)
-        {
+        if let (Some(extra), Value::Object(o)) = (
+            self.host.ui.as_ref().and_then(|ui| ui.extra(world)),
+            &mut dump,
+        ) {
             for (k, v) in extra {
                 o.entry(k).or_insert(v);
             }
@@ -1099,6 +1111,7 @@ impl Probe {
     /// `dump_ui:layers`: the layer stack alone (docs/ui.md §6).
     pub fn dump_layers(&self, world: &World) -> Value {
         let layers = self
+            .host
             .ui
             .as_ref()
             .and_then(|ui| ui.extra(world))
@@ -1112,6 +1125,7 @@ impl Probe {
     /// plays and whether it is leaving.
     pub fn dump_motion(&self, world: &World) -> Value {
         let motion = self
+            .host
             .ui
             .as_ref()
             .and_then(|ui| ui.extra(world))
