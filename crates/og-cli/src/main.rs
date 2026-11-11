@@ -25,6 +25,7 @@ mod device;
 mod doctor;
 mod doctor_project;
 mod explore;
+mod fmt;
 mod frame;
 mod i18n;
 mod keyframes;
@@ -147,6 +148,10 @@ commands:
                       --near uses caller-chosen Hamming distance 0..64; --project DIR selects a project
   assets mv <from> <to> [--project DIR] [--json]
                       move a source and its import settings, rewrite static OGT/TS asset references
+  fmt [path…] [--check] [--json]
+                      rewrite .ogt files in the canonical layout, comments kept: a file, a directory,
+                      or a project's project.ogt and assets/ (the default, here); entries keep their
+                      order; --check writes nothing, lists what would change and exits 1 if any does
   cache gc [--max-bytes N] [--json]
                       trim the shared cook action/content cache (default cap 10 GiB)
   bake lightmaps [project] [--samples N] [--bounces N] [--texels-per-metre N] [--sky R,G,B] [--scene <id>]
@@ -385,6 +390,7 @@ fn main() -> ExitCode {
         ["build", rest @ ..] => bundle::run(rest),
         ["cook", rest @ ..] => cook::run(rest),
         ["assets", rest @ ..] => assets::run(rest),
+        ["fmt", rest @ ..] => fmt::run(rest),
         ["cache", rest @ ..] => cache::run(rest),
         ["bake", "projection", rest @ ..] => bake_projection::run(rest),
         ["bake", "probes", rest @ ..] => bake_probes::run(rest),

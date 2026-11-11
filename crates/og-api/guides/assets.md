@@ -105,3 +105,26 @@ If recovery cannot finish, the command retains backups and reports their path.
 An interrupted move's journal must be recovered before another move starts.
 The command does not recook. Run `og cook` afterward to refresh outputs and
 the inventory. `--json` returns `from`, `to`, `rewritten`, and `warnings`.
+
+## 6. Format OGT text
+
+`og fmt [path…] [--check] [--json]` rewrites `.ogt` files in the canonical
+layout: two spaces per level, one space between tokens, canonical strings,
+`\n` line ends. Comments stay on their lines; a trailing comment follows its
+tokens after two spaces. Runs of blank lines become one, and blank lines at
+the start or end of a block are removed. Entries keep their order, because
+order is data.
+
+A path is a file, a directory, or a project. For a project the command
+formats `project.ogt` and every `.ogt` under `assets/`; with no path it uses
+the current directory. It skips styles, UI screens and components, and 2D
+effects, whose bodies are not OGT lines, and installed packs (a directory
+with an `extension.json`). A file named outright is always formatted.
+
+The cooked output of a formatted file is unchanged: the command refuses to
+write text that reads back as different data. A file the reader refuses is
+reported with its line and left as it is.
+
+`--check` writes nothing, lists the files that would change, and exits 1
+when there are any. `--json` returns `files`, `check`, `changed`, and
+`errors`.

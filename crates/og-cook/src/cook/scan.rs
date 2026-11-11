@@ -64,6 +64,19 @@ fn kind_by_extension(ext: &str) -> Option<Kind> {
     })
 }
 
+/// Whether an `.ogt` of type `ty` has lines of its own below its header
+/// (CSS declarations, a recipe), which `.ogt`'s reader and `og fmt` leave
+/// alone.
+pub fn own_lines(ty: &str) -> bool {
+    [
+        "style",
+        og_ui::doc::SCREEN_TYPE,
+        og_ui::doc::COMPONENT_TYPE,
+        vfx2d::VFX2D_TYPE,
+    ]
+    .contains(&ty)
+}
+
 /// The extensions of the texts the scan reads more than once.
 const TEXTS: [&str; 3] = ["ogt", "css", "json"];
 
@@ -166,15 +179,7 @@ pub(super) fn scan_with(
                     .map_err(|_| CookError(format!("{}: not UTF-8 text", path.display())))?;
                 // Styles and UI documents have lines of their own (CSS
                 // declarations): their header says what they are.
-                let own_lines = Document::parse_header(&text).is_ok_and(|h| {
-                    [
-                        "style",
-                        og_ui::doc::SCREEN_TYPE,
-                        og_ui::doc::COMPONENT_TYPE,
-                        vfx2d::VFX2D_TYPE,
-                    ]
-                    .contains(&h.ty.as_str())
-                });
+                let own_lines = Document::parse_header(&text).is_ok_and(|h| own_lines(&h.ty));
                 let doc = if own_lines {
                     Document::parse_header(&text)
                 } else {
