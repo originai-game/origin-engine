@@ -28,27 +28,6 @@ fn skipped(nodes: &[Node], i: usize) -> bool {
 }
 
 impl Ui {
-    /// A vertical scroller's bar gutter on its right padding, as its last
-    /// frame's range needs it: replaced, never added again, so a retained
-    /// scroller that is not built again keeps one gutter.
-    pub(crate) fn apply_gutter(&mut self, i: usize) {
-        let node = &self.tree.nodes[i];
-        let gutter = if node.el.scroll && !node.el.scroll_x && !node.el.hide_bars {
-            self.interaction
-                .bar_gutter(node.key, node.el.scroll_css, &self.env)
-        } else {
-            0.0
-        };
-        // `scrollbar-gutter: stable both-edges`: the same room at the start.
-        let both = node.el.scroll_css.gutter == 2;
-        let node = &mut self.tree.nodes[i];
-        node.el.padding.right += gutter - node.gutter;
-        if both {
-            node.el.padding.left += gutter - node.gutter;
-        }
-        node.gutter = gutter;
-    }
-
     /// Lays out the frame, updates the interaction state and returns the frame.
     pub fn end(&mut self) -> &UiFrame {
         if let Err(error) = self.end_with_layout_queries(Ui::settle_document_containers) {
@@ -1359,6 +1338,29 @@ impl Ui {
         self.paint.cache.last_cmds = trees;
         self.paint.cache.last_tail = tail;
         (order, items, missing_glyphs)
+    }
+}
+
+impl Ui {
+    /// A vertical scroller's bar gutter on its right padding, as its last
+    /// frame's range needs it: replaced, never added again, so a retained
+    /// scroller that is not built again keeps one gutter.
+    pub(crate) fn apply_gutter(&mut self, i: usize) {
+        let node = &self.tree.nodes[i];
+        let gutter = if node.el.scroll && !node.el.scroll_x && !node.el.hide_bars {
+            self.interaction
+                .bar_gutter(node.key, node.el.scroll_css, &self.env)
+        } else {
+            0.0
+        };
+        // `scrollbar-gutter: stable both-edges`: the same room at the start.
+        let both = node.el.scroll_css.gutter == 2;
+        let node = &mut self.tree.nodes[i];
+        node.el.padding.right += gutter - node.gutter;
+        if both {
+            node.el.padding.left += gutter - node.gutter;
+        }
+        node.gutter = gutter;
     }
 }
 
