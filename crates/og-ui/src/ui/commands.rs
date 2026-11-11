@@ -273,6 +273,9 @@ impl Ui {
         let prev_kinds = std::mem::take(&mut self.tree.prev_kinds);
         self.paint.kept_spans.clear();
         let reuse = self.paint_reuse(order, &ends, changed, &ghosts, &prev_kinds);
+        // The frame has compared every written node with the one it
+        // replaced: the last frame's nodes are let go.
+        self.tree.replaced.clear();
         self.paint.cache.repainted = reuse.repainted.clone();
         let mut reused_roots = true;
         let theme = self.env.theme;
@@ -280,7 +283,7 @@ impl Ui {
         // opacity; its clip is the screen's (bake leaves draw commands be).
         let press_scale = theme.press_scale;
         let marked = |n: &crate::layout::Node| {
-            n.el.part
+            n.part()
                 .is_some_and(|p| p.has("selected") || p.has("focused"))
         };
         let placed = |n: &crate::layout::Node| crate::paint::Placed {
@@ -480,10 +483,9 @@ impl Ui {
                     }
                 }
                 if let Some(d) = &draw {
-                    let grid = match &self.tree.nodes[i].content {
-                        Content::Text(t) => t.metrics(&self.env.fonts).pixel_grid(),
-                        _ => 0,
-                    };
+                    let grid = self.tree.nodes[i]
+                        .text()
+                        .map_or(0, |t| t.metrics(&self.env.fonts).pixel_grid());
                     d.style_text(&theme, &mut local, grid);
                 }
                 let key = self.tree.nodes[i].key;
@@ -606,7 +608,7 @@ impl Ui {
     ) {
         let theme = self.env.theme;
         let marked = |n: &crate::layout::Node| {
-            n.el.part
+            n.part()
                 .is_some_and(|p| p.has("selected") || p.has("focused"))
         };
         let press_scale = theme.press_scale;
@@ -902,10 +904,10 @@ impl Ui {
             let up = node.parent;
             let own = !volatile.contains(&i)
                 && !self.tree.draws.contains_key(&i)
-                && !matches!(node.content, Content::Rich(_))
+                && !matches!(*node.content, Content::Rich(_))
                 && if written(i) {
                     // A node written again: as it was drawn last frame.
-                    self.layout.cache.prev.get(&i).is_some_and(|b| {
+                    self.tree.replaced.get(&i).is_some_and(|b| {
                         crate::layout::draw_eq(node, b)
                             && Some(&self.tree.kinds[i]) == prev_kinds.get(&i)
                     })
@@ -924,7 +926,7 @@ impl Ui {
                 (0.0, 0.0)
             } else if !written(i)
                 && !self.tree.draws.contains_key(&i)
-                && !matches!(node.content, Content::Rich(_))
+                && !matches!(*node.content, Content::Rich(_))
                 && let Some(Some((k, old))) = self.paint.cache.sigs.get(i)
                 && *k == node.key
                 && let Some(d) = crate::layout::DrawSig::of(node).moved_from(old)
@@ -1057,7 +1059,7 @@ impl Ui {
         };
         let max_x = sn.max_scroll_x();
         if max_x > 0.0 {
-            let inner_w = sn.layout.w - sn.el.padding.horizontal();
+            let inner_w = sn.layout.w - sn.layout.used.padding.horizontal();
             let track = sn.placed.rect;
             let bar_w =
                 crate::scroll::bar_len(track.width, inner_w, sn.layout.content_w, t.space.xl);
@@ -1080,7 +1082,7 @@ impl Ui {
         }
         let max = sn.max_scroll();
         if max > 0.0 {
-            let inner_h = sn.layout.h - sn.el.padding.vertical();
+            let inner_h = sn.layout.h - sn.layout.used.padding.vertical();
             let track = sn.placed.rect;
             let bar_h = (track.height * inner_h / sn.layout.content_h).max(t.space.xl);
             let off = self
@@ -1131,10 +1133,10 @@ impl crate::ui::Paint {
                     let n = &tree.nodes[j];
                     n.children.is_empty()
                         && !matches!(n.widget, Widget::Spacer)
-                        && (!matches!(n.content, Content::None)
-                            || n.el.background.is_some()
+                        && (!matches!(*n.content, Content::None)
+                            || n.layout.used.background.is_some()
                             || !matches!(n.widget, Widget::None)
-                            || !n.shapes.is_empty())
+                            || n.drawn_shapes().next().is_some())
                 })
                 .collect();
             // The whole cascade takes at most one entrance more.
@@ -1873,7 +1875,7 @@ fn reference_box(n: &crate::layout::Node, b: crate::transform3d::TransformBox) -
     match b {
         crate::transform3d::TransformBox::BorderBox => r,
         crate::transform3d::TransformBox::ContentBox => {
-            let p = n.el.padding;
+            let p = n.layout.used.padding;
             Rect::new(
                 r.x + p.left,
                 r.y + p.top,

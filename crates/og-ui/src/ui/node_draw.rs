@@ -168,7 +168,7 @@ impl Ui {
         let clip = self.paint_clip(n);
         let dpr = self.env.viewport.dpr();
         let alpha = n.placed.alpha;
-        let part = n.el.part.or_else(|| n.el.frame.map(StylePart::part_ref));
+        let part = n.part().or_else(|| n.el.frame.map(StylePart::part_ref));
         let ornament_tint = part.and_then(|p| {
             self.part_values(&p, Some(n.key))
                 .color("color")
@@ -215,17 +215,18 @@ impl Ui {
         if matches!(n.widget, Widget::TextArea { .. }) {
             self.text_area_commands(i, rect, clip, cmds);
         }
-        match &n.content {
+        match &*n.content {
             Content::Text(_) if matches!(n.widget, Widget::TextArea { .. }) => {}
             // A framed text control's frame draws its text (`Ui::field_frame`).
             Content::Text(_) if self.framed_text(i) => {}
             Content::Text(tc) if let Some(tp) = &n.props.text_path => {
-                self.path_text_commands(i, tc, tp, rect, clip, cmds);
+                self.path_text_commands(i, n.used_text(tc), tp, rect, clip, cmds);
             }
             Content::Text(tc) if let Some(v) = tc.vertical => {
-                self.vertical_text_commands(i, tc, v, rect, clip, cmds);
+                self.vertical_text_commands(i, n.used_text(tc), v, rect, clip, cmds);
             }
             Content::Text(tc) => {
+                let tc = n.used_text(tc);
                 let font = self
                     .env
                     .fonts
@@ -236,7 +237,7 @@ impl Ui {
                     let sk = n.placed.scale;
                     let size = tc.step.size * sk;
                     let lh = tc.line_height() * sk;
-                    let pad = n.el.padding;
+                    let pad = n.layout.used.padding;
                     let inner = Rect::new(
                         rect.x + pad.left * sk,
                         rect.y + pad.top * sk,
@@ -702,7 +703,7 @@ impl Ui {
         let clip = self.paint_clip(n);
         let alpha = n.placed.alpha;
         let dpr = self.env.viewport.dpr();
-        for shape in &n.shapes {
+        for shape in n.drawn_shapes() {
             match shape {
                 Shape::Part { frame, part, fill } => {
                     let r = self
@@ -944,7 +945,7 @@ impl Ui {
 /// Where an element's part draws: its rectangle, a pressed control's
 /// shrunk by the theme's press scale as far into the press as it is.
 pub(super) fn part_rect(n: &crate::layout::Node, press_scale: f32) -> Rect {
-    match (n.el.part, &n.widget) {
+    match (n.part(), &n.widget) {
         (Some(p), Widget::Button { .. }) if p.press > 0.0 => n
             .placed
             .rect
@@ -968,7 +969,7 @@ impl Ui {
     fn path_text_commands(
         &self,
         i: usize,
-        tc: &crate::layout::TextContent,
+        tc: crate::layout::UsedText<'_>,
         tp: &crate::text_path::TextPath,
         rect: Rect,
         clip: Rect,
@@ -987,7 +988,7 @@ impl Ui {
         let sk = n.placed.scale;
         let size = tc.step.size * sk;
         let tracking = tc.tracking();
-        let pad = n.el.padding;
+        let pad = n.layout.used.padding;
         let origin = Vec2::new(rect.x + pad.left * sk, rect.y + pad.top * sk);
         let inner = Vec2::new(
             (rect.width - pad.horizontal() * sk).max(0.0),
@@ -1225,7 +1226,7 @@ impl Ui {
     pub(crate) fn vertical_lines(
         &self,
         i: usize,
-        tc: &crate::layout::TextContent,
+        tc: crate::layout::UsedText<'_>,
         v: crate::layout::flow::VerticalText,
         rect: Rect,
         clip: Rect,
@@ -1245,7 +1246,7 @@ impl Ui {
         let lh = tc.line_height() * sk;
         let tracking = tc.tracking();
         let features = tc.features();
-        let pad = n.el.padding;
+        let pad = n.layout.used.padding;
         let inner = Rect::new(
             rect.x + pad.left * sk,
             rect.y + pad.top * sk,
@@ -1475,7 +1476,7 @@ impl Ui {
     fn vertical_text_commands(
         &self,
         i: usize,
-        tc: &crate::layout::TextContent,
+        tc: crate::layout::UsedText<'_>,
         v: crate::layout::flow::VerticalText,
         rect: Rect,
         clip: Rect,

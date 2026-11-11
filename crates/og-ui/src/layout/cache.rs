@@ -48,7 +48,7 @@ struct TextKey {
 }
 
 impl TextKey {
-    fn of(t: &TextContent, width: Option<f32>) -> TextKey {
+    fn of(t: UsedText<'_>, width: Option<f32>) -> TextKey {
         TextKey {
             font: t.font,
             size: t.step.size.to_bits(),
@@ -147,7 +147,7 @@ fn kept<V: Clone>(
 impl TextCache {
     pub(super) fn widths(
         &mut self,
-        t: &TextContent,
+        t: UsedText<'_>,
         measure: impl FnOnce() -> (f32, f32),
     ) -> (f32, f32) {
         kept(
@@ -162,7 +162,7 @@ impl TextCache {
 
     pub(super) fn lines(
         &mut self,
-        t: &TextContent,
+        t: UsedText<'_>,
         width: Option<f32>,
         measure: impl FnOnce() -> Vec<Line>,
     ) -> Vec<Line> {
@@ -226,13 +226,11 @@ impl<V> Sweep for std::collections::HashMap<String, Vec<Kept<V>>> {
     }
 }
 
-/// Last frame's nodes and which nodes have unchanged layout inputs. A
-/// fixed-size child can isolate changed contents from its parent's inputs;
-/// the child still lays out even when the parent reuses its own layout.
+/// Which nodes have unchanged layout inputs. A fixed-size child can
+/// isolate changed contents from its parent's inputs; the child still lays
+/// out even when the parent reuses its own layout.
 #[derive(Clone, Debug, Default)]
 pub(crate) struct LayoutCache {
-    /// Replaced or removed slots, with their previous layout.
-    pub prev: std::collections::HashMap<usize, Node>,
     /// Per node: its own layout inputs and child size contributions are unchanged.
     pub clean: Vec<bool>,
     /// Nodes laid out this frame (the rest kept their layout).
@@ -428,10 +426,12 @@ pub(crate) fn draw_eq(a: &Node, b: &Node) -> bool {
         && a.disabled == b.disabled
         && a.placed.scale == b.placed.scale
         && a.style.sampled == b.style.sampled
-        && a.el == b.el
+        && a.layout.used == b.layout.used
         && a.content == b.content
+        && a.layout.fit_step == b.layout.fit_step
         && a.widget == b.widget
         && a.shapes == b.shapes
+        && a.placed.arrow == b.placed.arrow
         && a.decor == b.decor
         && a.layout.lines == b.layout.lines
         && a.marks.selected == b.marks.selected
@@ -539,8 +539,67 @@ impl LayoutCache {
     }
 }
 
+/// What written node `a`'s input changed against `b`, the node it
+/// replaced (as the last frame left it).
+pub(crate) fn input_changes(a: &Node, b: &Node) -> Changed {
+    let mut changed = Changed::default();
+    if a.layout.used.block != b.layout.used.block || a.layout_mode() != b.layout_mode() {
+        changed |= Changed::FLOW;
+    }
+    let same_layout = el_layout_eq(&a.layout.used, &b.layout.used)
+        && content_layout_eq(&a.content, &b.content)
+        && props_layout_eq(&a.props, &b.props)
+        && a.layout_mode() == b.layout_mode()
+        && a.grid().columns == b.grid().columns
+        && a.shape_outside == b.shape_outside
+        && a.float == b.float
+        // A layer's layout is made again every frame.
+        && a.float == Float::None
+        && a.children == b.children
+        && a.out == b.out
+        && a.floats == b.floats;
+    if !same_layout {
+        changed |= Changed::LAYOUT;
+    }
+    let same = same_layout
+        && a.layout.used == b.layout.used
+        && a.content == b.content
+        // An auto-fit text last drawn at another step than it is written
+        // with was drawn otherwise than its input says.
+        && a.text().map(|t| t.step) == b.text().map(|t| t.step)
+        && a.widget == b.widget
+        && a.shapes == b.shapes
+        // A popover written again has no arrow until it is placed: one
+        // last drawn with an arrow counts as changed, as before.
+        && a.placed.arrow == b.placed.arrow
+        && a.props == b.props
+        // What its variants set over them, as it was last laid out and drawn.
+        && a.transform() == b.transform()
+        && a.opacity() == b.opacity()
+        && a.z() == b.z()
+        && a.inert() == b.inert()
+        && a.ink() == b.ink();
+    if !same {
+        changed |= Changed::INPUT;
+    }
+    let same_box = a.layout.used.width == b.layout.used.width
+        && a.layout.used.height == b.layout.used.height
+        && a.layout.used.margin == b.layout.used.margin
+        && !b.layout.collapse_in[0]
+        && a.props.place == b.props.place
+        && a.props.position == b.props.position
+        && a.props.insets == b.props.insets
+        && a.props.view_place == b.props.view_place
+        && a.float == b.float
+        && a.shape_outside == b.shape_outside;
+    if !same_box {
+        changed |= Changed::BOX;
+    }
+    changed
+}
+
 /// The box props layout reads are equal.
-pub(crate) fn el_layout_eq(a: &Element, b: &Element) -> bool {
+fn el_layout_eq(a: &Element, b: &Element) -> bool {
     a.direction == b.direction
         && a.width == b.width
         && a.height == b.height
@@ -584,7 +643,7 @@ pub(crate) fn el_layout_eq(a: &Element, b: &Element) -> bool {
 }
 
 /// The content layout measures is equal (an ink may differ).
-pub(crate) fn content_layout_eq(a: &Content, b: &Content) -> bool {
+fn content_layout_eq(a: &Content, b: &Content) -> bool {
     match (a, b) {
         (Content::Text(x), Content::Text(y)) => {
             x.text == y.text
@@ -604,7 +663,7 @@ pub(crate) fn content_layout_eq(a: &Content, b: &Content) -> bool {
 }
 
 /// The element-model props layout reads are equal.
-pub(crate) fn props_layout_eq(a: &crate::element::Props, b: &crate::element::Props) -> bool {
+fn props_layout_eq(a: &crate::element::Props, b: &crate::element::Props) -> bool {
     a.position == b.position
         && a.insets == b.insets
         && a.anchor == b.anchor
@@ -670,10 +729,10 @@ pub(crate) fn layout(
     kept.laid_out += cx.laid;
     let measure = cx.measure;
     let r = &nodes[root];
-    let w = match r.el.width {
+    let w = match r.layout.used.width {
         Size::Fit { .. } => r.layout.pref_w.min(area.width).max(r.layout.min_w),
         Size::Grow { .. } => {
-            let (lo, hi) = r.el.width.bounds();
+            let (lo, hi) = r.layout.used.width.bounds();
             area.width.clamp(lo, hi)
         }
         size => size
@@ -682,7 +741,7 @@ pub(crate) fn layout(
     };
     nodes[root].layout.w = super::flex::clamp_to(r, 0, Some(area.width), w);
     // A clean node at the width it had keeps its children's widths, its
-    // lines and its tracks.
+    // lines (an auto-fit text, the step they were broken at) and its tracks.
     let same_w = |nodes: &[Node], kept: &LayoutCache, i: usize| {
         kept.is_clean(i) && nodes[i].layout.layout_size[0] == nodes[i].layout.w
     };
@@ -693,15 +752,7 @@ pub(crate) fn layout(
             k += 1;
             continue;
         }
-        if same_w(nodes, kept, i) {
-            // An auto-fit text keeps the step its lines were broken at.
-            let step = nodes[i].layout.layout_step;
-            if let (Content::Text(a), Some(step)) = (&mut nodes[i].content, step)
-                && !a.fit.is_empty()
-            {
-                a.step = step;
-            }
-        } else {
+        if !same_w(nodes, kept, i) {
             kept.laid_out += 1;
             if !nodes[i].layout.cv_skip {
                 distribute_w(nodes, i, measure);
@@ -733,10 +784,10 @@ pub(crate) fn layout(
         }
     }
     let r = &nodes[root];
-    let h = match r.el.height {
+    let h = match r.layout.used.height {
         Size::Fit { .. } => r.layout.pref_h,
         Size::Grow { .. } => {
-            let (lo, hi) = r.el.height.bounds();
+            let (lo, hi) = r.layout.used.height.bounds();
             area.height.clamp(lo, hi)
         }
         size => size
@@ -807,7 +858,7 @@ pub(crate) fn layout(
             (clip, NONE)
         } else {
             let p = &nodes[n.up];
-            if p.el.scroll || p.el.scroll_x {
+            if p.layout.used.scroll || p.layout.used.scroll_x {
                 (p.layout.laid_clip.intersect(&p.layout.laid_rect), n.up)
             } else {
                 (p.layout.laid_clip, p.placed.clip_src)
@@ -836,15 +887,11 @@ pub(crate) fn layout(
                 nodes[i].layout.y - parent.layout.y,
             ]
         };
-        nodes[i].layout.layout_step = match &nodes[i].content {
-            Content::Text(text) if !text.fit.is_empty() => Some(text.step),
-            _ => None,
-        };
         queries.measurements.observe(
             nodes[i].key,
             crate::ui::settlement::ContentBox {
-                width: (nodes[i].layout.w - nodes[i].el.padding.horizontal()).max(0.0),
-                height: (nodes[i].layout.h - nodes[i].el.padding.vertical()).max(0.0),
+                width: (nodes[i].layout.w - nodes[i].layout.used.padding.horizontal()).max(0.0),
+                height: (nodes[i].layout.h - nodes[i].layout.used.padding.vertical()).max(0.0),
             },
         );
         k += 1;
@@ -884,7 +931,7 @@ mod text_cache {
         ui.tree
             .nodes
             .iter()
-            .filter(|n| matches!(n.content, Content::Text(_)))
+            .filter(|n| matches!(*n.content, Content::Text(_)))
             .map(|n| {
                 let lines = n.layout.lines.iter().map(|l| (l.text.clone(), l.width));
                 (lines.collect(), n.placed.rect)

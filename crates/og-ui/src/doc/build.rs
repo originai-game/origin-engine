@@ -577,14 +577,7 @@ impl Ui {
             .filter(|&i| self.tree.nodes[i].part_box.is_some())
             .collect();
         for i in moving {
-            if !self.tree.emitted.contains(&i) {
-                self.layout
-                    .cache
-                    .prev
-                    .entry(i)
-                    .or_insert_with(|| self.tree.nodes[i].clone());
-                self.tree.emitted.push(i);
-            }
+            self.tree.rewrite(i);
         }
         for k in 0..self.tree.emitted.len() {
             self.apply_part_appearance(self.tree.emitted[k]);
@@ -608,33 +601,35 @@ impl Ui {
             return;
         };
         let r = self.part_values(&part, Some(self.tree.nodes[i].key));
-        let step = match &self.tree.nodes[i].content {
+        let step = match &*self.tree.nodes[i].content {
             crate::layout::Content::Text(text) => r.part_type(&self.env.theme, text.step),
             _ => self.env.theme.type_ramp.body,
         };
         let ink = r.color("color");
         let em = step.size;
+        let build = self.tree.build();
         let n = &mut self.tree.nodes[i];
-        n.el = Self::box_of(&r, n.el, em);
+        let el = n.el.write(build);
+        *el = Self::box_of(&r, *el, em);
         if let Some(radius) = n.decor.as_ref().and_then(|d| d.radius) {
-            n.el.radius = radius;
+            el.radius = radius;
         }
         if let Some(x) = r.num("x") {
-            n.props.transform.x = x;
+            n.props.write(build).transform.x = x;
         }
         if let Some(y) = r.num("y") {
-            n.props.transform.y = y;
+            n.props.write(build).transform.y = y;
         }
         if let Some(x) = r.num("xShift") {
-            n.props.transform.shift_x = x;
+            n.props.write(build).transform.shift_x = x;
         }
         if let Some(y) = r.num("yShift") {
-            n.props.transform.shift_y = y;
+            n.props.write(build).transform.shift_y = y;
         }
         if let Some(V::Transition(t)) = r.get("motion") {
-            n.props.motion = Some(*t);
+            n.props.write(build).motion = Some(*t);
         }
-        if let crate::layout::Content::Text(text) = &mut n.content {
+        if let crate::layout::Content::Text(text) = n.content.write(build) {
             if let Some(color) = ink {
                 text.color = color;
             }

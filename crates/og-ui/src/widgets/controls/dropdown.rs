@@ -131,11 +131,11 @@ fn kept_suggestions<'a>(
 impl Ui {
     fn select_list_part(&mut self) {
         let owner = self.tree.parent();
-        let element = self.tree.nodes[owner].el;
+        let element = *self.tree.nodes[owner].el;
         let reference = element.part.expect("select list part");
-        self.tree.nodes[owner].el.padding = Insets::default();
-        self.tree.nodes[owner].el.background = None;
-        self.tree.nodes[owner].el.radius = 0.0;
+        self.tree.el_mut(owner).padding = Insets::default();
+        self.tree.el_mut(owner).background = None;
+        self.tree.el_mut(owner).radius = 0.0;
         // The old list inset included the painted one-pixel rim. The
         // persistent CSS box now accounts for that rim in its padding.
         let padding = element.padding;
@@ -156,7 +156,6 @@ impl Ui {
                 ..element
             },
             crate::layout::Content::None,
-            &mut self.layout,
         );
         self.tree.nodes[owner].content_slot = slot;
     }

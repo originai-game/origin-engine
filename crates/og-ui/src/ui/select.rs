@@ -113,7 +113,7 @@ impl Ui {
     /// for a node that is not a plain text or a vertical rich text.
     pub(crate) fn text_lines(&self, i: usize) -> Option<TextLines> {
         let n = &self.tree.nodes[i];
-        if matches!(n.content, Content::Rich(_)) {
+        if matches!(*n.content, Content::Rich(_)) {
             let (_, lines) = self.tree.select_source(i)?;
             let v = n.rich_vertical()?;
             let up =
@@ -135,9 +135,7 @@ impl Ui {
                 column: Some(column),
             });
         }
-        let Content::Text(tc) = &n.content else {
-            return None;
-        };
+        let tc = n.text()?;
         if let Some(v) = tc.vertical {
             // Down vertical lines: each cluster's stretch along y, a
             // bottom-up one with its caret at its bottom.
@@ -168,7 +166,7 @@ impl Ui {
         let sk = n.placed.scale;
         let size = tc.step.size * sk;
         let lh = tc.line_height() * sk;
-        let pad = n.el.padding;
+        let pad = n.layout.used.padding;
         let rect = n.placed.rect;
         let inner = Rect::new(
             rect.x + pad.left * sk,
@@ -365,7 +363,7 @@ impl Ui {
         cmds: &mut Vec<DrawCmd>,
     ) {
         let n = &self.tree.nodes[i];
-        let (Some((a, b)), Content::Text(tc)) = (n.marks.selected, &n.content) else {
+        let (Some((a, b)), Some(tc)) = (n.marks.selected, n.text()) else {
             return;
         };
         let count = line.chars().count() as u32;
@@ -410,7 +408,7 @@ impl crate::ui::Tree {
     /// text); `None` for any other node.
     pub(crate) fn select_source(&self, i: usize) -> Option<(String, Vec<crate::text::Line>)> {
         let n = &self.nodes[i];
-        match &n.content {
+        match &*n.content {
             Content::Text(tc) => Some((tc.text.clone(), n.layout.lines.clone())),
             Content::Rich(rc) if n.rich_vertical().is_some() => {
                 let source = rc.spans.iter().filter(|s| s.atom.is_none());

@@ -339,7 +339,7 @@ impl Ui {
         let key = crate::id::key_of_path(path);
         let n = if self.tree.building {
             self.tree
-                .previous_nodes(&self.layout)
+                .previous_nodes()
                 .find(|n| n.key == key && n.scrolls())
         } else {
             self.tree
@@ -348,8 +348,8 @@ impl Ui {
                 .map(|i| &self.tree.nodes[i])
                 .filter(|n| n.key == key && n.scrolls())
         }?;
-        let view_width = (n.layout.w - n.el.padding.horizontal()).max(0.0);
-        let view_height = (n.layout.h - n.el.padding.vertical()).max(0.0);
+        let view_width = (n.layout.w - n.layout.used.padding.horizontal()).max(0.0);
+        let view_height = (n.layout.h - n.layout.used.padding.vertical()).max(0.0);
         let at = self.interaction.offset(key);
         Some(ScrollState {
             offset_x: at.x.clamp(0.0, n.max_scroll_x()),
@@ -645,16 +645,11 @@ impl crate::ui::Interaction {
     /// scroll toward, and the axes on which a snap area sits at its
     /// scroller's snap position, and the edges a sticky box is held to.
     /// `scrolled` is the document layer's.
-    pub(crate) fn scroll_flags_now(
-        &self,
-        key: u64,
-        layout: &crate::ui::Layout,
-        tree: &crate::ui::Tree,
-    ) -> u16 {
+    pub(crate) fn scroll_flags_now(&self, key: u64, tree: &crate::ui::Tree) -> u16 {
         use crate::doc::media::scroll::*;
         let get = |i: usize| {
             if tree.building {
-                tree.previous_node(i, layout)
+                tree.previous_node(i)
             } else {
                 tree.nodes.get(i)
             }
@@ -668,7 +663,7 @@ impl crate::ui::Interaction {
             .filter(|n| n.key == key)
             .or_else(|| {
                 tree.building
-                    .then(|| tree.previous_nodes(layout).find(|n| n.key == key))
+                    .then(|| tree.previous_nodes().find(|n| n.key == key))
                     .flatten()
             });
         let Some(n) = found else {
@@ -779,7 +774,7 @@ impl crate::ui::Interaction {
         let mut stack: Vec<usize> = n.children.clone();
         while let Some(c) = stack.pop() {
             let cn = &tree.nodes[c];
-            if cn.hidden {
+            if cn.is_hidden() {
                 continue;
             }
             let a = cn.el.snap_align;
@@ -971,7 +966,7 @@ impl crate::ui::Tree {
 /// A scroll container's snapport (CSS Scroll Snap 1 §5.1): its view inside
 /// its padding, inset by its `scroll-padding`.
 fn snapport(n: &crate::layout::Node) -> crate::layout::Rect {
-    let pad = n.el.padding;
+    let pad = n.layout.used.padding;
     let (w, h) = (
         (n.placed.rect.width - pad.horizontal()).max(0.0),
         (n.placed.rect.height - pad.vertical()).max(0.0),

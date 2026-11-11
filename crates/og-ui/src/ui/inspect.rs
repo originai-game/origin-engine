@@ -39,10 +39,10 @@ impl Ui {
     /// when it was not drawn.
     pub(crate) fn last_bounds(&self, key: u64) -> Option<Rect> {
         (0..self.tree.nodes.len())
-            .filter_map(|i| self.tree.previous_node(i, &self.layout).map(|n| (i, n)))
+            .filter_map(|i| self.tree.previous_node(i).map(|n| (i, n)))
             .find(|(i, n)| {
                 n.key == key
-                    && !n.hidden
+                    && !n.is_hidden()
                     && self
                         .tree
                         .prev_kinds
@@ -75,7 +75,7 @@ impl Ui {
             return std::borrow::Cow::Borrowed(self);
         }
         let mut ui = self.clone();
-        for (&i, n) in &self.layout.cache.prev {
+        for (&i, n) in &self.tree.replaced {
             ui.tree.nodes[i] = n.clone();
         }
         for (&i, &k) in &self.tree.prev_kinds {
@@ -469,7 +469,7 @@ impl Ui {
         if n.layout.links.is_empty() {
             return;
         }
-        let Content::Rich(rc) = &n.content else {
+        let Content::Rich(rc) = &*n.content else {
             return;
         };
         let at = self.tree.path_of(i);
@@ -539,7 +539,7 @@ impl Ui {
                     n.part_box
                         .as_ref()
                         .map(|p| p.reference)
-                        .or(n.el.part)
+                        .or(n.part())
                         .or_else(|| n.el.frame.map(StylePart::part_ref)),
                 );
                 elements.push(UiElement {
@@ -622,7 +622,7 @@ impl Ui {
                 }
                 // A rich text's links: children for the probe.
                 if !n.layout.links.is_empty() {
-                    let Content::Rich(rc) = &n.content else {
+                    let Content::Rich(rc) = &*n.content else {
                         unreachable!("links come from rich text")
                     };
                     for (l, lr) in self.rich_links(i) {

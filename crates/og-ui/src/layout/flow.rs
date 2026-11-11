@@ -321,20 +321,20 @@ impl Flow {
 /// is its horizontal scroll offset.
 pub(super) fn flip_children(nodes: &mut [super::Node], i: usize, sx: f32) {
     let n = &nodes[i];
-    let inner = (n.layout.w - n.el.padding.horizontal()).max(0.0);
-    let width = if n.el.scroll_x {
+    let inner = (n.layout.w - n.layout.used.padding.horizontal()).max(0.0);
+    let width = if n.layout.used.scroll_x {
         inner.max(n.layout.content_w)
     } else {
         inner
     };
-    let x0 = n.layout.x + n.el.padding.left - sx;
+    let x0 = n.layout.x + n.layout.used.padding.left - sx;
     let basis = n.layout.w;
     let free = |c: &super::Node| {
         !c.props.out_of_flow()
-            || (c.props.insets.start.is_none()
-                && c.props.insets.end.is_none()
-                && !c.props.insets.center_x
-                && c.props.insets.across.is_none()
+            || (c.layout.insets.start.is_none()
+                && c.layout.insets.end.is_none()
+                && !c.layout.insets.center_x
+                && c.layout.insets.across.is_none()
                 && c.props.anchor.is_none())
     };
     let kids: Vec<usize> = n
@@ -350,13 +350,16 @@ pub(super) fn flip_children(nodes: &mut [super::Node], i: usize, sx: f32) {
             continue;
         }
         let [ml, mr] = if k.props.out_of_flow() {
-            [k.el.margin[3].of(basis), k.el.margin[1].of(basis)]
+            [
+                k.layout.used.margin[3].of(basis),
+                k.layout.used.margin[1].of(basis),
+            ]
         } else {
             k.layout.margin_x
         };
         nodes[c].layout.x = 2.0 * x0 + width - k.layout.x - k.layout.w - mr + ml;
     }
-    let pl = nodes[i].el.padding.left;
+    let pl = nodes[i].layout.used.padding.left;
     for r in &mut nodes[i].layout.col_rules {
         r[0] = 2.0 * pl + width - r[0];
     }

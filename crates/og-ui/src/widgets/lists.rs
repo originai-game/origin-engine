@@ -34,7 +34,7 @@ impl Ui {
             .map(|i| self.tree.nodes[i].placed.rect)
             .or_else(|| {
                 self.tree
-                    .previous_nodes(&self.layout)
+                    .previous_nodes()
                     .find(|n| n.key == key)
                     .map(|n| n.placed.rect)
             })
@@ -206,9 +206,9 @@ impl Ui {
                 .collect(),
             None => self
                 .tree
-                .previous_nodes(&self.layout)
+                .previous_nodes()
                 .filter_map(|n| {
-                    let parent = self.tree.previous_node(n.parent, &self.layout)?;
+                    let parent = self.tree.previous_node(n.parent)?;
                     if parent.key != container {
                         return None;
                     }
@@ -351,9 +351,10 @@ impl Ui {
             ..VisualState::default()
         };
         let k = usize::from(selected);
+        self.tree.el_mut(i).background = Some(rest[k]);
+        let build = self.tree.build();
         let n = &mut self.tree.nodes[i];
-        n.el.background = Some(rest[k]);
-        n.props.states = vec![
+        n.props.write(build).states = vec![
             StateGroup {
                 name: "selection".into(),
                 states: vec![state("off", rest[0]), state("on", rest[1])],
@@ -371,7 +372,7 @@ impl Ui {
                 transitions: Vec::new(),
             },
         ];
-        n.props.state = vec![(
+        n.props.write(build).state = vec![(
             "selection".into(),
             if selected { "on" } else { "off" }.into(),
         )];
@@ -644,7 +645,7 @@ impl Ui {
             [hover, lifted(0.18)],
             [p.control_strong, p.selection],
         );
-        if let Some(part) = self.tree.nodes[i].el.part.as_mut() {
+        if let Some(part) = self.tree.el_mut(i).part.as_mut() {
             *part = part
                 .flag_if(r.pressed, "pressed")
                 .flag_if(r.hovered && !r.pressed, "hover")

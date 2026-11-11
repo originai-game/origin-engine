@@ -56,7 +56,7 @@ pub(crate) mod feat {
 /// align by a baseline.
 pub(crate) fn baseline_row(n: &Node) -> bool {
     use crate::layout::Cross;
-    matches!(n.el.cross, Cross::Baseline | Cross::LastBaseline) || n.layout.baseline_items
+    matches!(n.layout.used.cross, Cross::Baseline | Cross::LastBaseline) || n.layout.baseline_items
 }
 
 /// The features of node `n`.
@@ -65,8 +65,8 @@ pub(crate) fn features(n: &Node) -> u32 {
     let p = &n.props;
     let mut f = 0;
     if baseline_row(n)
-        && n.el.direction == crate::layout::Direction::Row
-        && p.layout == crate::element::LayoutMode::Flex
+        && n.layout.used.direction == crate::layout::Direction::Row
+        && n.layout_mode() == crate::element::LayoutMode::Flex
     {
         f |= feat::BASELINE;
     }
@@ -125,7 +125,7 @@ pub(crate) fn features(n: &Node) -> u32 {
     if n.float == Float::World {
         f |= feat::WORLD;
     }
-    if matches!(n.content, Content::Rich(_)) {
+    if matches!(*n.content, Content::Rich(_)) {
         f |= feat::RICH;
     }
     if n.decor.is_some() {
@@ -487,8 +487,8 @@ impl Ui {
             if n.nav {
                 flags |= HIT_NAV;
             }
-            if (matches!(n.content, Content::Text(_))
-                || matches!(n.content, Content::Rich(_)) && n.rich_vertical().is_some())
+            if (matches!(*n.content, Content::Text(_))
+                || matches!(*n.content, Content::Rich(_)) && n.rich_vertical().is_some())
                 && n.props.text_path.is_none()
                 && !matches!(n.widget, Widget::Field(_))
                 && matches!(

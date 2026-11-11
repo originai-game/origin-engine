@@ -80,7 +80,7 @@ impl Ui {
         let r = n.placed.screen;
         // A margin's percentage reads its parent's content width.
         let basis = ui.tree.nodes.get(n.parent).map_or(r.width, |p| {
-            p.placed.screen.width - p.el.padding.left - p.el.padding.right
+            p.placed.screen.width - p.layout.used.padding.left - p.layout.used.padding.right
         });
         let [mt, mr, mb, ml] = n.el.margin.map(|m| m.of(basis));
         let line = |k: usize| {
@@ -98,7 +98,7 @@ impl Ui {
         };
         // Layout's padding holds the border inside it (a border takes room
         // as CSS's does): the CSS padding is what is left.
-        let inner = n.el.padding;
+        let inner = n.layout.used.padding;
         let p = Insets {
             left: (inner.left - border.left).max(0.0),
             top: (inner.top - border.top).max(0.0),
@@ -137,8 +137,8 @@ impl Ui {
         if n.parent == crate::layout::NONE || ui.tree.floating.contains(&i) {
             boundaries.push("layer");
         }
-        if matches!(n.el.width, crate::Size::Fixed(_))
-            && matches!(n.el.height, crate::Size::Fixed(_))
+        if matches!(n.layout.used.width, crate::Size::Fixed(_))
+            && matches!(n.layout.used.height, crate::Size::Fixed(_))
         {
             boundaries.push("fixed");
         }

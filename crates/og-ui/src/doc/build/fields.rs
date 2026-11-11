@@ -43,12 +43,12 @@ impl RenderFields {
             index,
             host_key,
             kind,
-            element: node.el,
-            widget_props: node.props.clone(),
+            element: *node.el,
+            widget_props: (*node.props).clone(),
             document_props,
             text: node.probe_text.clone(),
             response,
-            amounts: node.el.part.map_or((0.0, 0.0), |p| (p.hover, p.press)),
+            amounts: node.part().map_or((0.0, 0.0), |p| (p.hover, p.press)),
             press: match node.widget {
                 crate::layout::Widget::Button { press, .. } => press,
                 _ => 0.0,
@@ -467,11 +467,11 @@ impl Ui {
         base: &RenderFields,
     ) {
         let i = base.index;
-        self.tree.nodes[i].el = base.element;
+        *self.tree.el_mut(i) = base.element;
         if let Some(host) = self.tree.nodes.iter_mut().rfind(|n| n.key == base.host_key) {
             host.part_host = r.part_host.clone();
         }
-        self.tree.nodes[i].props = base.widget_props.clone();
+        *self.tree.props_mut(i) = base.widget_props.clone();
         let css = r.text.as_deref();
         self.tree.nodes[i].accent = css.and_then(|t| t.accent);
         self.tree.nodes[i].caret = css.and_then(|t| t.caret);
@@ -538,7 +538,7 @@ impl Ui {
                     // keeps the box its path gives (a `circle()` centres in
                     // it), never the column's width a centred line takes.
                     if r.has("textPath") {
-                        self.tree.nodes[i].el.width = width;
+                        self.tree.el_mut(i).width = width;
                     }
                 }
             }
@@ -557,7 +557,7 @@ impl Ui {
                 if !n.children.is_empty()
                     && let crate::layout::Size::Fixed(h) = self.tree.nodes[i].el.height
                 {
-                    self.tree.nodes[i].el.height = crate::layout::Size::Fit {
+                    self.tree.el_mut(i).height = crate::layout::Size::Fit {
                         min: h,
                         max: f32::INFINITY,
                     };
@@ -632,17 +632,17 @@ impl Ui {
                 // root (the parent) the CSS width too (`DetailsDesc.width`).
                 let root = self.tree.nodes[i].parent;
                 if root != crate::layout::NONE {
-                    self.tree.nodes[root].el.width = r.size("width").unwrap_or(Size::grow());
+                    self.tree.el_mut(root).width = r.size("width").unwrap_or(Size::grow());
                 }
             }
             "spacer" => {
                 let size = r.size("width").or(r.size("height")).unwrap_or(Size::grow());
-                self.tree.nodes[i].el.width = size;
-                self.tree.nodes[i].el.height = size;
+                self.tree.el_mut(i).width = size;
+                self.tree.el_mut(i).height = size;
             }
             "divider" => {
                 if let Some(color) = r.color("color") {
-                    self.tree.nodes[i].el.background = Some(color);
+                    self.tree.el_mut(i).background = Some(color);
                 }
             }
             _ => {}
@@ -666,7 +666,7 @@ impl Ui {
         // replace their previous values, including when a declaration vanishes.
         let content = r.str("fieldSizing") == Some("content");
         let field_line = self.field_measurement(i, content);
-        let mut el = self.tree.nodes[i].el;
+        let mut el = *self.tree.nodes[i].el;
         if field_line.is_some() {
             el.width = Size::fit();
             el.height = Size::fit();
@@ -1019,7 +1019,7 @@ impl Ui {
         if source.kind == "file" && !content {
             self.fixed_file_width(i, &mut el, r);
         }
-        self.tree.nodes[i].el = el;
+        *self.tree.el_mut(i) = el;
         self.tree.nodes[i].decor = decor.map(Box::new);
     }
 
@@ -1038,14 +1038,17 @@ impl Ui {
         let Size::Fit { min, max } = el.width else {
             return;
         };
-        let crate::layout::Content::Text(shown) = &mut self.tree.nodes[slot].content else {
+        let Some(step) = self.tree.nodes[slot].text().map(|t| t.step) else {
+            return;
+        };
+        let crate::layout::Content::Text(shown) = self.tree.content_mut(slot) else {
             return;
         };
         shown.ellipsis = true;
         let mut label = shown.clone();
         label.text = super::nodes::FILE_LABEL.into();
         let pad = self.tree.nodes[slot].el.padding.horizontal() + el.padding.horizontal();
-        let w = crate::layout::text_preferred(&label, &self.env.fonts) + pad;
+        let w = crate::layout::text_preferred(label.at(step), &self.env.fonts) + pad;
         el.width = Size::Fixed(w.min(max).max(min));
     }
 
@@ -1079,18 +1082,19 @@ impl Ui {
                     .filter(|g| !n.groups.iter().any(|x| x.name == g.name))
                     .cloned(),
             );
-            self.tree.nodes[i].props = props;
+            *self.tree.props_mut(i) = props;
         }
-        self.tree.nodes[i].props.flow = flow;
+        self.tree.props_mut(i).flow = flow;
         // A vertical text sets its lines down: a plain text by its own
         // setting, a rich text by its node's (`Ui::rich_vertical`).
         // Text on a path follows its path's physical geometry: its box is
         // the path's extent, whatever the writing mode; its glyphs are set
         // as a vertical line's along the path.
+        let build = self.tree.build();
         let node = &mut self.tree.nodes[i];
-        match &mut node.content {
+        match node.content.write(build) {
             crate::layout::Content::Text(t) if node.props.text_path.is_some() => {
-                node.el.vertical = None;
+                node.el.write(build).vertical = None;
                 t.vertical = flow.vertical_text(&t.text);
             }
             crate::layout::Content::Text(t) => t.vertical = flow.vertical_text(&t.text),
@@ -1105,7 +1109,7 @@ impl Ui {
         }
         // A split screen's region (`Props::player`).
         if let Some(k) = r.num("player") {
-            self.tree.nodes[i].props.player = Some(k.clamp(0.0, 3.0) as u8);
+            self.tree.props_mut(i).player = Some(k.clamp(0.0, 3.0) as u8);
         }
         // `role`, `aria-live` and `aria-atomic` over the tag's.
         if let Some(role) = r
@@ -1124,7 +1128,7 @@ impl Ui {
         // The part its `part` attribute names, over the control's own: the
         // control's states, variant, class and motion stay.
         if let Some(named) = r.part {
-            let el = &mut self.tree.nodes[i].el;
+            let el = self.tree.el_mut(i);
             el.part = Some(match el.part {
                 Some(own) => {
                     let mut p = crate::dress::PartRef {
@@ -1164,7 +1168,7 @@ impl crate::ui::Tree {
             .str("ellipsisText")
             .filter(|s| !s.is_empty())
             .map(str::to_owned);
-        if let crate::layout::Content::Text(t) = &mut self.nodes[i].content {
+        if let crate::layout::Content::Text(t) = self.content_mut(i) {
             t.wrap_style = style;
             t.cut = cut;
         }
@@ -1181,7 +1185,7 @@ impl crate::ui::Tree {
             Some("scaleDown") => og_draw::UiFit::ScaleDown,
             _ => og_draw::UiFit::Fill,
         };
-        if let crate::layout::Content::Image { object, .. } = &mut self.nodes[i].content {
+        if let crate::layout::Content::Image { object, .. } = self.content_mut(i) {
             *object = crate::layout::ObjectFit {
                 fit,
                 focal: at.map_or([0.5; 2], |a| a[0]),

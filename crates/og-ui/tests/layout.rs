@@ -427,3 +427,64 @@ fn a_container_variant_follows_the_writing_mode() {
     let (v, kid) = (rect(&ui, "V"), rect(&ui, "V/Kid"));
     assert_eq!(kid[1] - v[1], 0.0, "150px down: none, though 250px across");
 }
+
+/// A container variant is matched at the inline size its element ends the
+/// layout with. A box whose width follows its height by its aspect ratio
+/// is laid out at its content's width first: a variant that matched there
+/// and not at its final width sets nothing, neither its box nor its
+/// arrangement.
+#[test]
+fn a_container_variant_that_stops_matching_sets_nothing() {
+    let mut ui = Ui::new(UiDesc::default());
+    ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+    ui.open(
+        "Column",
+        Element {
+            width: Size::Fixed(700.0),
+            height: Size::Fixed(160.0),
+            cross: Cross::Start,
+            ..Element::column()
+        },
+    );
+    let props = Props {
+        variants: vec![Variant {
+            when: Query {
+                max_width: 100.0,
+                container: true,
+                ..Query::default()
+            },
+            set: Patch {
+                layout: Some(LayoutMode::Grid),
+                columns: Some(vec![Track::Px(10.0), Track::Px(60.0)]),
+                gap: Some(0.0),
+                ..Patch::default()
+            },
+        }],
+        ..Props::default()
+    };
+    let el = Element {
+        width: Size::fit(),
+        height: Size::grow(),
+        aspect: 4.0,
+        padding: Insets::all(4.0),
+        gap: 4.0,
+        ..Element::row()
+    };
+    ui.open_with("Wide", el, props);
+    label(&mut ui, "A", "ab");
+    label(&mut ui, "B", "cd");
+    ui.close();
+    ui.close();
+    ui.end();
+    let (wide, a, b) = (
+        rect(&ui, "Column/Wide"),
+        rect(&ui, "Column/Wide/A"),
+        rect(&ui, "Column/Wide/B"),
+    );
+    assert_eq!(wide[2], 616.0, "four times its inner height, padded");
+    assert_eq!(
+        b[0] - a[0],
+        a[2] + 4.0,
+        "a row with its own gap, not the variant's grid: {a:?} {b:?}"
+    );
+}

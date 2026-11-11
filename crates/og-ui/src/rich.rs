@@ -800,9 +800,10 @@ impl Ui {
             }
         }
         let out = self.respond_links(self.tree.nodes[i].key, &links);
+        let build = self.tree.build();
         let n = &mut self.tree.nodes[i];
         n.probe_text = probe;
-        n.content = Content::Rich(RichContent {
+        *n.content.write(build) = Content::Rich(RichContent {
             spans,
             base: (
                 desc.step.unwrap_or(self.env.theme.type_ramp.body),
@@ -842,7 +843,7 @@ impl Ui {
     /// piece (a piece split by a direction change is several segments).
     pub(crate) fn rich_pieces(&self, i: usize) -> Vec<DrawnPiece> {
         let n = &self.tree.nodes[i];
-        let Content::Rich(rc) = &n.content else {
+        let Content::Rich(rc) = &*n.content else {
             return Vec::new();
         };
         let sk = n.placed.scale;
@@ -897,7 +898,7 @@ impl Ui {
     /// The rectangle of each link of rich node `i` (the union of its pieces).
     pub(crate) fn rich_links(&self, i: usize) -> Vec<(String, Rect)> {
         let n = &self.tree.nodes[i];
-        let Content::Rich(rc) = &n.content else {
+        let Content::Rich(rc) = &*n.content else {
             return Vec::new();
         };
         let pieces = self.rich_pieces(i);
@@ -1449,7 +1450,7 @@ impl Ui {
     /// icon or a key cap none).
     pub(crate) fn vertical_rich_lines(&self, i: usize) -> Vec<crate::ui::VerticalLine> {
         let n = &self.tree.nodes[i];
-        let (Content::Rich(rc), Some(v)) = (&n.content, self.tree.rich_vertical(i)) else {
+        let (Content::Rich(rc), Some(v)) = (&*n.content, self.tree.rich_vertical(i)) else {
             return Vec::new();
         };
         let (pieces, cols) = self.vertical_rich_pieces(i, rc, v);
@@ -1897,7 +1898,7 @@ impl crate::ui::Tree {
     /// Rich node `i`'s content box.
     fn rich_inner(&self, i: usize) -> Rect {
         let n = &self.nodes[i];
-        let (sk, pad) = (n.placed.scale, n.el.padding);
+        let (sk, pad) = (n.placed.scale, n.layout.used.padding);
         Rect::new(
             n.placed.rect.x + pad.left * sk,
             n.placed.rect.y + pad.top * sk,

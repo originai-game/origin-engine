@@ -21,7 +21,7 @@ type Sides = [u8; 4];
 const LAYOUT_SPACE: Sides = [0, 1, 2, 3];
 
 fn sides_of(n: &Node) -> Sides {
-    n.el.vertical.unwrap_or(LAYOUT_SPACE)
+    n.layout.used.vertical.unwrap_or(LAYOUT_SPACE)
 }
 
 /// The frame's axes cross the space's (a vertical frame in a horizontal
@@ -34,7 +34,9 @@ fn turns(s: Sides) -> bool {
 /// box it lays out in.
 pub(super) fn island(nodes: &[Node], i: usize) -> bool {
     let up = nodes[i].up;
-    up != NONE && up < nodes.len() && nodes[up].el.vertical != nodes[i].el.vertical
+    up != NONE
+        && up < nodes.len()
+        && nodes[up].layout.used.vertical != nodes[i].layout.used.vertical
 }
 
 /// Node `i`'s subtree, `i` first, in preorder.
@@ -77,10 +79,10 @@ fn sides4<T: Copy>(v: [T; 4], s: Sides, into: bool) -> [T; 4] {
     out
 }
 
-/// Turns node `n`'s box (its sizes, bounds, padding, margins, insets,
+/// Turns node `n`'s used box (its sizes, bounds, padding, margins, insets,
 /// overflow and snapping) into frame `s`, or back.
 fn turn_box(n: &mut Node, s: Sides, into: bool) {
-    let el = &mut n.el;
+    let el = &mut n.layout.used;
     let p = el.padding;
     let [top, right, bottom, left] = sides4([p.top, p.right, p.bottom, p.left], s, into);
     el.padding = Insets {
@@ -90,7 +92,7 @@ fn turn_box(n: &mut Node, s: Sides, into: bool) {
         bottom,
     };
     el.margin = sides4(el.margin, s, into);
-    let e = &mut n.props.insets;
+    let e = &mut n.layout.insets;
     [e.top, e.end, e.bottom, e.start] = sides4([e.top, e.end, e.bottom, e.start], s, into);
     if turns(s) {
         std::mem::swap(&mut el.width, &mut el.height);
@@ -106,17 +108,19 @@ fn turn_box(n: &mut Node, s: Sides, into: bool) {
     }
 }
 
-/// Applies a variant's patch (physical sides and axes) to node `n`, whose
-/// box is turned into its frame.
-pub(super) fn patch(n: &mut Node, p: &crate::element::Patch) {
-    match n.el.vertical {
-        Some(s) => {
-            turn_box(n, s, false);
-            apply_patch(n, p);
-            turn_box(n, s, true);
-        }
-        None => apply_patch(n, p),
+/// Matches node `n`'s container variants at inline size `w` (its frame's
+/// width) and makes its used element again with their patches, which set
+/// the physical sides and axes: made in layout space, then turned into the
+/// frame its box is laid out in.
+pub(super) fn query(n: &mut Node, w: f32) {
+    let bfc = n.layout.used.bfc;
+    n.layout.query_w = Some(w);
+    n.derive_used();
+    if let Some(s) = n.layout.used.vertical {
+        turn_box(n, s, true);
     }
+    // A frame's root is a formatting context while it lays out (`nest`).
+    n.layout.used.bfc = bfc;
 }
 
 /// Where an interval `[at, at + len]` along a frame axis lies along the
@@ -180,10 +184,10 @@ pub(super) struct Cx<'a, 'b> {
 /// The margins of `r`, which starts a frame, in the frame around it: its
 /// own, none collapsing through it (it is a formatting context).
 pub(super) fn island_margins(nodes: &mut [Node], r: usize) {
-    let bfc = nodes[r].el.bfc;
-    nodes[r].el.bfc = true;
+    let bfc = nodes[r].layout.used.bfc;
+    nodes[r].layout.used.bfc = true;
     collapse_margins(nodes, r);
-    nodes[r].el.bfc = bfc;
+    nodes[r].layout.used.bfc = bfc;
 }
 
 /// Lays out the frame node `r` starts, in place, and returns its size in
@@ -207,8 +211,8 @@ pub(super) fn nest(
     for &m in &members {
         turn_box(&mut nodes[m], s, true);
     }
-    let bfc = nodes[r].el.bfc;
-    nodes[r].el.bfc = true;
+    let bfc = nodes[r].layout.used.bfc;
+    nodes[r].layout.used.bfc = true;
     let flip = |v: [f32; 2]| if turns(s) { [v[1], v[0]] } else { v };
     let (avail, size) = (flip(avail), size.map(flip));
     let inner = |nodes: &[Node], m: usize| m != r && island(nodes, m);
@@ -222,11 +226,11 @@ pub(super) fn nest(
         }
     }
     let n = &nodes[r];
-    let w = match (size, n.el.width) {
+    let w = match (size, n.layout.used.width) {
         (Some(sz), _) => sz[0],
         (None, Size::Fit { .. }) => n.layout.pref_w.min(avail[0]).max(n.layout.min_w),
         (None, Size::Grow { .. }) => {
-            let (lo, hi) = n.el.width.bounds();
+            let (lo, hi) = n.layout.used.width.bounds();
             avail[0].clamp(lo, hi)
         }
         (None, sz) => sz
@@ -259,10 +263,10 @@ pub(super) fn nest(
         }
     }
     let n = &nodes[r];
-    let h = match (size, n.el.height) {
+    let h = match (size, n.layout.used.height) {
         (Some(sz), _) => sz[1],
         (None, Size::Grow { .. }) => {
-            let (lo, hi) = n.el.height.bounds();
+            let (lo, hi) = n.layout.used.height.bounds();
             avail[1].clamp(lo, hi).max(n.layout.pref_h)
         }
         (None, Size::Fit { .. }) => n.layout.pref_h,
@@ -325,7 +329,7 @@ pub(super) fn nest(
     let n = &nodes[r];
     let inline = (n.layout.w, n.layout.min_w.min(n.layout.w));
     let block = n.layout.h;
-    nodes[r].el.bfc = bfc;
+    nodes[r].layout.used.bfc = bfc;
     turn_back(nodes, &members, s);
     for &m in &members[1..] {
         if inner(nodes, m) {
@@ -400,7 +404,10 @@ pub(super) fn frames(
     order: &mut Vec<usize>,
     clean: &dyn Fn(usize) -> bool,
 ) -> Option<Frames> {
-    if !order.iter().any(|&i| nodes[i].el.vertical.is_some()) {
+    if !order
+        .iter()
+        .any(|&i| nodes[i].layout.used.vertical.is_some())
+    {
         return None;
     }
     let mut f = Frames {
@@ -411,7 +418,7 @@ pub(super) fn frames(
     while k < order.len() {
         let i = order[k];
         let starts = if i == root {
-            nodes[i].el.vertical.is_some()
+            nodes[i].layout.used.vertical.is_some()
         } else {
             island(nodes, i)
         };

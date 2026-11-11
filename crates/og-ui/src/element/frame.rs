@@ -2,7 +2,7 @@ use super::*;
 
 // ── The element model's part of the frame ──────────────────────────────────
 
-use crate::layout::{Content, Float, NONE, Node, apply_patch, preorder, width_in};
+use crate::layout::{Changed, Content, Float, NONE, Node, preorder};
 use crate::ui::Ui;
 
 /// Whether `path` is `decl` or inside it (an ancestor path covers its subtree).
@@ -17,13 +17,13 @@ fn covers(decl: &str, path: &str) -> bool {
 /// It draws something of its own.
 fn painted(n: &Node) -> bool {
     !n.placed.rect.is_empty()
-        && (n.el.background.is_some()
-            || !matches!(n.content, Content::None)
+        && (n.layout.used.background.is_some()
+            || !matches!(*n.content, Content::None)
             || !matches!(
                 n.widget,
                 crate::layout::Widget::None | crate::layout::Widget::Spacer
             )
-            || !n.shapes.is_empty())
+            || n.drawn_shapes().next().is_some())
 }
 
 impl crate::ui::Layout {
@@ -68,9 +68,9 @@ impl crate::ui::Layout {
             while j != NONE {
                 let n = &tree.nodes[j];
                 let transform = if env.direction == og_i18n::Direction::Rtl {
-                    n.props.transform.mirrored()
+                    n.transform().mirrored()
                 } else {
-                    n.props.transform
+                    n.transform()
                 };
                 if !transform.is_identity() {
                     m = transform.matrix(&n.placed.rect).mul(&m);
@@ -130,7 +130,7 @@ impl crate::ui::Layout {
             let mut j = i;
             let mut s = true;
             while j != NONE {
-                if tree.nodes[j].props.opacity <= 0.0 {
+                if tree.nodes[j].opacity() <= 0.0 {
                     s = false;
                     break;
                 }
@@ -210,7 +210,7 @@ impl crate::ui::Layout {
         // purpose; a grid's cells are its own).
         for &i in order {
             let n = &tree.nodes[i];
-            if n.props.layout != LayoutMode::Flex
+            if n.layout_mode() != LayoutMode::Flex
                 || n.children.len() < 2
                 || over_layers.contains(&i)
             {
@@ -220,7 +220,7 @@ impl crate::ui::Layout {
             // from the start edge (a long list's rows meet only their
             // neighbours, where a check of every pair is quadratic), then
             // in the children's order, as each pair is reported.
-            let column = n.el.direction == Direction::Column;
+            let column = n.layout.used.direction == Direction::Column;
             let span = |r: &Rect| {
                 if column {
                     (r.y, r.y + r.height)
@@ -280,8 +280,9 @@ impl crate::ui::Layout {
         tree: &crate::ui::Tree,
     ) -> Option<f32> {
         let n = &tree.nodes[i];
-        match &n.content {
+        match &*n.content {
             Content::Text(tc) => {
+                let tc = n.used_text(tc);
                 let line = n.layout.lines.first()?;
                 let m = &env
                     .fonts
@@ -289,7 +290,7 @@ impl crate::ui::Layout {
                     .0
                     .metrics;
                 let lh = tc.line_height();
-                let inner = n.placed.rect.inset(&n.el.padding);
+                let inner = n.placed.rect.inset(&n.layout.used.padding);
                 let block = lh * n.layout.lines.len() as f32;
                 let top = inner.y + ((inner.height - block) / 2.0).max(0.0);
                 Some(m.baseline(&line.text, top, lh, tc.step.size))
@@ -298,7 +299,7 @@ impl crate::ui::Layout {
                 let l = n.layout.rich_lines.first()?;
                 // A first line floats moved down (`Node::wrap_lines`).
                 let drop = n.layout.wrap_lines.first().map_or(0.0, |w| w[1]);
-                Some(n.placed.rect.y + n.el.padding.top + drop + l.baseline)
+                Some(n.placed.rect.y + n.layout.used.padding.top + drop + l.baseline)
             }
             _ => n
                 .children
@@ -321,13 +322,13 @@ impl crate::ui::Layout {
         for &i in order {
             let n = &tree.nodes[i];
             if !crate::ui::visit::baseline_row(n)
-                || n.el.direction != crate::layout::Direction::Row
-                || n.props.layout != LayoutMode::Flex
+                || n.layout.used.direction != crate::layout::Direction::Row
+                || n.layout_mode() != LayoutMode::Flex
                 || n.children.is_empty()
             {
                 continue;
             }
-            let parent = n.el.cross;
+            let parent = n.layout.used.cross;
             // Across a vertical line: +1 from a left block-start, -1 from
             // a right one (`Element::vertical`'s sides).
             let across =
@@ -335,7 +336,7 @@ impl crate::ui::Layout {
                     .filter(|s| s[0] % 2 == 1)
                     .map(|s| if s[0] == 3 { 1.0 } else { -1.0 });
             let kids = n.children.clone();
-            let lines = if n.el.wrap && !n.layout.rows.is_empty() {
+            let lines = if n.layout.used.wrap && !n.layout.rows.is_empty() {
                 n.layout.rows.clone()
             } else {
                 vec![(0, kids.len())]
@@ -434,28 +435,27 @@ impl crate::ui::Tree {
 }
 
 impl crate::ui::Layout {
-    /// Applies each element's breakpoint and orientation variants (the
-    /// container ones wait for its width, in layout).
+    /// Matches each written element's breakpoint and orientation variants
+    /// against the viewport (the container ones wait for its width, in
+    /// layout): their box part is in the element layout uses
+    /// ([`Node::derived`]), the rest in what they set over its props
+    /// (`LayoutBox::varied`), both derived from here.
     pub(crate) fn apply_variants(&mut self, env: &crate::ui::Env, tree: &mut crate::ui::Tree) {
         let vp = env.viewport;
-        let bp = vp.breakpoint();
-        let portrait = vp.height >= vp.width;
+        let media = crate::layout::Media {
+            breakpoint: vp.breakpoint(),
+            portrait: vp.height >= vp.width,
+            width: vp.width,
+        };
         for k in 0..tree.emitted.len() {
             let i = tree.emitted[k];
-            if tree.nodes[i].props.variants.is_empty() {
+            let n = &mut tree.nodes[i];
+            if n.props.variants.is_empty() {
+                n.layout.media = None;
                 continue;
             }
-            let vs = tree.nodes[i].props.variants.clone();
-            for v in vs.iter().filter(|v| !v.when.container) {
-                let q = &v.when;
-                let ok = (q.breakpoints.is_empty() || q.breakpoints.contains(&bp))
-                    && q.orientation
-                        .is_none_or(|o| (o == Orientation::Portrait) == portrait)
-                    && width_in(vp.width, q);
-                if ok {
-                    apply_patch(&mut tree.nodes[i], &v.set);
-                }
-            }
+            n.layout.media = Some(media);
+            n.derive_used();
         }
     }
 
@@ -463,8 +463,9 @@ impl crate::ui::Layout {
     /// descendant in the flow with text has one.
     fn last_baseline(&self, i: usize, env: &crate::ui::Env, tree: &crate::ui::Tree) -> Option<f32> {
         let n = &tree.nodes[i];
-        match &n.content {
+        match &*n.content {
             Content::Text(tc) => {
+                let tc = n.used_text(tc);
                 let line = n.layout.lines.last()?;
                 let m = &env
                     .fonts
@@ -472,7 +473,7 @@ impl crate::ui::Layout {
                     .0
                     .metrics;
                 let lh = tc.line_height();
-                let inner = n.placed.rect.inset(&n.el.padding);
+                let inner = n.placed.rect.inset(&n.layout.used.padding);
                 let block = lh * n.layout.lines.len() as f32;
                 let top = inner.y + ((inner.height - block) / 2.0).max(0.0);
                 let top = top + lh * (n.layout.lines.len() - 1) as f32;
@@ -482,7 +483,7 @@ impl crate::ui::Layout {
                 let (last, before) = n.layout.rich_lines.split_last()?;
                 let above: f32 = before.iter().map(|l| l.height).sum();
                 let drop = n.layout.wrap_lines.last().map_or(0.0, |w| w[1]);
-                Some(n.placed.rect.y + n.el.padding.top + above + drop + last.baseline)
+                Some(n.placed.rect.y + n.layout.used.padding.top + above + drop + last.baseline)
             }
             _ => n
                 .children
@@ -530,8 +531,9 @@ impl crate::ui::Tree {
     /// flow) has none.
     fn central_baseline(&self, i: usize, last: bool) -> Option<f32> {
         let n = &self.nodes[i];
-        match &n.content {
+        match &*n.content {
             Content::Text(tc) => {
+                let tc = n.used_text(tc);
                 let v = tc.vertical?;
                 let k = if last {
                     n.layout.lines.len().checked_sub(1)?
@@ -540,7 +542,7 @@ impl crate::ui::Tree {
                 };
                 n.layout.lines.first()?;
                 let lh = tc.line_height();
-                let inner = n.placed.rect.inset(&n.el.padding);
+                let inner = n.placed.rect.inset(&n.layout.used.padding);
                 let off = ((inner.width - lh * n.layout.lines.len() as f32) / 2.0).max(0.0);
                 Some(if v.mode.block_rl() {
                     inner.right() - off - (k as f32 + 0.5) * lh
@@ -572,6 +574,15 @@ impl crate::ui::Layout {
         docs: &crate::ui::Docs,
         tree: &mut crate::ui::Tree,
     ) {
+        // What each written node's input changed against the node it
+        // replaced: all the walk below reads of the last frame's inputs.
+        for k in 0..tree.emitted.len() {
+            let i = tree.emitted[k];
+            tree.nodes[i].changed = match tree.replaced.get(&i) {
+                Some(old) => crate::layout::input_changes(&tree.nodes[i], old),
+                None => Changed::NEW,
+            };
+        }
         let k = &mut self.cache;
         let inv = &mut tree.invalidation;
         let nodes = &tree.nodes;
@@ -623,8 +634,8 @@ impl crate::ui::Layout {
                 let moved = a.props.position == Position::Anchored
                     || a.props.position == Position::Screen
                     || a.props.variants.iter().any(|v| v.when.container)
-                    || (a.el.cross == crate::layout::Cross::Baseline
-                        && a.el.direction == crate::layout::Direction::Row);
+                    || (a.layout.used.cross == crate::layout::Cross::Baseline
+                        && a.layout.used.direction == crate::layout::Direction::Row);
                 if moved {
                     inv.forced.insert(i);
                 } else {
@@ -666,36 +677,21 @@ impl crate::ui::Layout {
         for &i in order.iter().rev() {
             let a = &nodes[i];
             let same_layout = if written[i] {
-                let Some(b) = k.prev.get(&i) else {
+                if a.changed.has(Changed::NEW) {
                     rebuilt += 1;
                     k.clean[i] = false;
                     k.unclean.push(i);
                     continue;
-                };
+                }
                 // Its children's margins collapse through their edges only
                 // in a block's flow: a change there is theirs too.
-                if a.el.block != b.el.block || a.props.layout != b.props.layout {
+                if a.changed.has(Changed::FLOW) {
                     reflowed.push(i);
                 }
-                let same_layout = crate::layout::el_layout_eq(&a.el, &b.el)
-                    && crate::layout::content_layout_eq(&a.content, &b.content)
-                    && crate::layout::props_layout_eq(&a.props, &b.props)
-                    && a.shape_outside == b.shape_outside
-                    && a.float == b.float
-                    && a.float == Float::None
-                    && a.children == b.children
-                    && a.out == b.out
-                    && a.floats == b.floats;
-                let same = same_layout
-                    && a.el == b.el
-                    && a.content == b.content
-                    && a.widget == b.widget
-                    && a.shapes == b.shapes
-                    && a.props == b.props;
-                if !same {
+                if a.changed.has(Changed::INPUT) {
                     rebuilt += 1;
                 }
-                same_layout
+                !a.changed.has(Changed::LAYOUT)
             } else {
                 a.float == Float::None && !a.props.variants.iter().any(|v| v.when.container)
             };
@@ -712,24 +708,13 @@ impl crate::ui::Layout {
                     // A fixed box still lays out its dirty contents, but
                     // those contents cannot change its parent's sizing.
                     k.clean[c]
-                        || matches!(child.el.width, Size::Fixed(_))
-                            && matches!(child.el.height, Size::Fixed(_))
+                        || matches!(child.layout.used.width, Size::Fixed(_))
+                            && matches!(child.layout.used.height, Size::Fixed(_))
                             // Nor can they through its edge, unless a
                             // child's top margin collapses through it.
                             && (written[c] || !child.layout.collapse_in[0])
-                            && (!written[c]
-                                || k.prev.get(&c).is_some_and(|old| {
-                                    child.el.width == old.el.width
-                                        && child.el.height == old.el.height
-                                        && child.el.margin == old.el.margin
-                                        && !old.layout.collapse_in[0]
-                                        && child.props.place == old.props.place
-                                        && child.props.position == old.props.position
-                                        && child.props.insets == old.props.insets
-                                        && child.props.view_place == old.props.view_place
-                                        && child.float == old.float
-                                        && child.shape_outside == old.shape_outside
-                                }))
+                            // Written again, it is the box it was.
+                            && (!written[c] || !child.changed.has(Changed::NEW | Changed::BOX))
                 });
             if !k.clean[i] {
                 k.unclean.push(i);
@@ -744,7 +729,7 @@ impl crate::ui::Layout {
             }
         }
         for &i in &tree.emitted {
-            if let Some(previous) = k.prev.get(&i) {
+            if let Some(previous) = tree.replaced.get(&i) {
                 tree.nodes[i].inherit_layout(previous, k.clean[i]);
             }
         }
@@ -763,7 +748,7 @@ impl Ui {
     pub fn open_with(&mut self, id: impl Into<crate::Id>, el: crate::Element, props: Props) {
         self.open(id, el);
         let i = self.tree.parent();
-        self.tree.nodes[i].props = props;
+        *self.tree.props_mut(i) = props;
     }
 
     /// Sets the props of the element built just before (any widget, or a
@@ -792,6 +777,6 @@ impl Ui {
             );
             return None;
         }
-        Some(&mut self.tree.nodes[i].props)
+        Some(self.tree.props_mut(i))
     }
 }

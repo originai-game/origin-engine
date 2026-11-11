@@ -487,7 +487,7 @@ impl crate::ui::Style {
             }
         };
         let s = &tree.nodes[scroller];
-        let pad = s.el.padding;
+        let pad = s.layout.used.padding;
         let (offset, max, start, port) = if axis.horizontal() {
             let max = s.max_scroll_x();
             let at = interaction

@@ -23,7 +23,7 @@ pub(in crate::layout) fn margin_basis(nodes: &[Node], i: usize) -> f32 {
     if p == NONE || p >= nodes.len() {
         return 0.0;
     }
-    (nodes[p].layout.w - nodes[p].el.padding.horizontal()).max(0.0)
+    (nodes[p].layout.w - nodes[p].layout.used.padding.horizontal()).max(0.0)
 }
 
 /// Node `i`'s collapsed outer margins, and whether its first child's top
@@ -37,39 +37,39 @@ pub(in crate::layout) fn collapse_margins(nodes: &mut [Node], i: usize) {
     let p = n.up;
     let in_block_flow = p != NONE
         && p < nodes.len()
-        && nodes[p].el.block
-        && nodes[p].el.direction == Direction::Column
-        && nodes[p].props.layout == LayoutMode::Flex
+        && nodes[p].layout.used.block
+        && nodes[p].layout.used.direction == Direction::Column
+        && nodes[p].layout_mode() == LayoutMode::Flex
         && nodes[p].children.contains(&i);
     // A flow-root (or a box laying out lines) starts a formatting
     // context: no margin collapses through its edges (CSS 2 §8.3.1).
     let flows = in_block_flow
-        && n.el.block
-        && !n.el.bfc
-        && n.el.direction == Direction::Column
-        && n.props.layout == LayoutMode::Flex
-        && matches!(n.content, Content::None)
-        && !n.el.scroll
-        && !n.el.scroll_x;
-    let auto_height = matches!(n.el.height, Size::Fit { min, .. } if min <= 0.0);
-    let empty_text = matches!(&n.content, Content::Text(t) if t.text.is_empty());
+        && n.layout.used.block
+        && !n.layout.used.bfc
+        && n.layout.used.direction == Direction::Column
+        && n.layout_mode() == LayoutMode::Flex
+        && matches!(*n.content, Content::None)
+        && !n.layout.used.scroll
+        && !n.layout.used.scroll_x;
+    let auto_height = matches!(n.layout.used.height, Size::Fit { min, .. } if min <= 0.0);
+    let empty_text = matches!(&*n.content, Content::Text(t) if t.text.is_empty());
     let through = in_block_flow
-        && !n.el.bfc
+        && !n.layout.used.bfc
         && auto_height
-        && n.el.padding.top == 0.0
-        && n.el.padding.bottom == 0.0
+        && n.layout.used.padding.top == 0.0
+        && n.layout.used.padding.bottom == 0.0
         && n.out.is_empty()
         && ((flows && n.children.iter().all(|&c| nodes[c].layout.through)) || empty_text);
     let basis = margin_basis(nodes, i);
     let edge = |m: crate::layout::Margin| margin_set(m.of(basis));
-    let mut sets = [edge(n.el.margin[0]), edge(n.el.margin[2])];
+    let mut sets = [edge(n.layout.used.margin[0]), edge(n.layout.used.margin[2])];
     let collapse_in = if through {
         [true, true]
     } else {
         let kids = !n.children.is_empty();
         [
-            flows && kids && n.el.padding.top == 0.0,
-            flows && kids && n.el.padding.bottom == 0.0 && auto_height,
+            flows && kids && n.layout.used.padding.top == 0.0,
+            flows && kids && n.layout.used.padding.bottom == 0.0 && auto_height,
         ]
     };
     // The run of margins that meets an edge: each child that collapses
@@ -117,8 +117,8 @@ pub(in crate::layout) fn column_spacing(nodes: &[Node], i: usize) -> (f32, Vec<f
     let mut before = Vec::with_capacity(kids.len());
     for (j, &c) in kids.iter().enumerate() {
         let k = &nodes[c];
-        let gap = if j > 0 { n.el.main_gap() } else { 0.0 };
-        if n.el.block {
+        let gap = if j > 0 { n.layout.used.main_gap() } else { 0.0 };
+        if n.layout.used.block {
             let set = joined(run, k.layout.margin_sets[0]);
             let total = if outside { 0.0 } else { span(set) };
             before.push(gap + total - used + k.layout.clearance);
@@ -153,14 +153,14 @@ pub(super) fn column_room(nodes: &[Node], i: usize) -> f32 {
 /// intrinsic width: their px (a percentage and `auto` count 0, as CSS
 /// counts them in a min- or max-content contribution).
 pub(in crate::layout) fn side_margins(n: &Node) -> f32 {
-    n.el.margin[1].intrinsic() + n.el.margin[3].intrinsic()
+    n.layout.used.margin[1].intrinsic() + n.layout.used.margin[3].intrinsic()
 }
 
 /// A child's left and right margins against `basis`, with its `auto` ones
 /// taking `free` (CSS 2 §10.3.3 in a block, CSS Flexbox §8.1 in a line):
 /// split between two, all to one. Free space under 0 gives them none.
 pub(in crate::layout) fn place_sides(n: &Node, basis: f32, free: f32) -> [f32; 2] {
-    let [l, r] = [n.el.margin[3], n.el.margin[1]];
+    let [l, r] = [n.layout.used.margin[3], n.layout.used.margin[1]];
     let free = free.max(0.0);
     match (l.auto, r.auto) {
         (true, true) => [free / 2.0, free / 2.0],

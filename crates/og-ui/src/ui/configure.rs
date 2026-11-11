@@ -60,6 +60,7 @@ impl Ui {
             tree: Tree {
                 nodes: Vec::new(),
                 kinds: Vec::new(),
+                replaced: Default::default(),
                 prev_kinds: Default::default(),
                 render_slots: Default::default(),
                 free_slots: Vec::new(),
@@ -88,7 +89,7 @@ impl Ui {
                 texts: Default::default(),
                 cache: Default::default(),
                 queries: Default::default(),
-                layout_mutated: Vec::new(),
+                placed: Vec::new(),
             },
             out: Out {
                 frame: UiFrame::default(),
@@ -407,7 +408,7 @@ impl Ui {
         let Some(&i) = self.tree.stack.last() else {
             return false;
         };
-        let el = &mut self.tree.nodes[i].el;
+        let el = self.tree.el_mut(i);
         let part = el
             .part
             .or_else(|| el.frame.map(StylePart::part_ref))
@@ -566,7 +567,7 @@ impl Ui {
         // The style's atlas at the density this surface draws at.
         self.env.theme.art.atlas = self.env.configured.art.atlas_for(viewport.dpr());
         self.out.warnings.clear();
-        self.tree.begin(&mut self.layout, &mut self.paint);
+        self.tree.begin(&mut self.paint);
         self.interaction.begin();
         self.front.begin();
         // A pointer on a world panel is moved onto the panel's layout.
@@ -651,11 +652,8 @@ impl Ui {
         el.height = Size::Fixed(viewport.height);
         el.padding = el.padding.add(&viewport.safe_area);
         el.scroll = false;
-        self.tree.write_node(
-            Node::new(1, String::new(), NONE, el),
-            ("root", false),
-            &mut self.layout,
-        );
+        self.tree
+            .write_node(Node::new(1, String::new(), NONE, el), ("root", false));
         self.tree.stack.push(0);
     }
 }
@@ -877,9 +875,9 @@ impl crate::ui::Tree {
     /// Starts a frame's build: last frame's nodes retire, and only
     /// retained slots keep their layers and draws (last frame's draws go
     /// to paint) until written again.
-    pub(crate) fn begin(&mut self, layout: &mut crate::ui::Layout, paint: &mut crate::ui::Paint) {
-        self.retire_nodes(layout);
-        layout.cache.prev.clear();
+    pub(crate) fn begin(&mut self, paint: &mut crate::ui::Paint) {
+        self.retire_nodes();
+        self.replaced.clear();
         self.prev_kinds.clear();
         std::mem::swap(&mut self.emitted, &mut self.retiring);
         self.emitted.clear();

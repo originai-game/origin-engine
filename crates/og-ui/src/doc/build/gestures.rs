@@ -94,7 +94,7 @@ impl Ui {
             }
         };
         {
-            let s = &mut self.tree.nodes[scrim].el;
+            let s = self.tree.el_mut(scrim);
             s.padding.bottom = 0.0;
             s.padding.left = 0.0;
             s.padding.right = 0.0;
@@ -109,7 +109,7 @@ impl Ui {
             } else {
                 s.align = crate::layout::Align::End;
             }
-            let p = &mut self.tree.nodes[panel].el;
+            let p = self.tree.el_mut(panel);
             if side {
                 p.width = Size::Fixed(max);
                 p.height = Size::grow();
@@ -122,7 +122,7 @@ impl Ui {
         let at = |h: f32| sign * (max - h.min(max));
         let travel = max - min;
         let lo = if sign < 0.0 { -travel } else { 0.0 };
-        self.tree.nodes[panel].props.drag = Some(DragSpec {
+        self.tree.props_mut(panel).drag = Some(DragSpec {
             axis: if side {
                 crate::element::DragAxis::X
             } else {

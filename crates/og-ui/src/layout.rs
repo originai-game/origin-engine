@@ -28,7 +28,7 @@ mod writing;
 
 pub(crate) use cache::{
     DrawSig, Invalidation, LayoutCache, Measure, Metrics, MotionCache, PaintCache, TextCache,
-    content_layout_eq, draw_eq, el_layout_eq, layout, props_layout_eq,
+    draw_eq, input_changes, layout,
 };
 use flex::*;
 pub(crate) use flex::{on_screen, text_preferred};
@@ -38,8 +38,9 @@ use grid::{grid_columns, grid_intrinsic, grid_rows, place_grid};
 pub use multicol::Multicol;
 use node::truncate_lines;
 pub(crate) use node::{
-    Content, EditView, NONE, Node, ObjectFit, PartBox, PartGeometry, Shape, Stagger, TextContent,
-    Widget, WrapStyle, ellipsis_of, snap_pixel_text, step_tracking, text_features,
+    Changed, Content, EditView, Media, NONE, Node, ObjectFit, PartBox, PartGeometry, Placement,
+    Shape, Stagger, TextContent, UsedText, Widget, WrapStyle, ellipsis_of, snap_pixel_text,
+    step_tracking, text_features,
 };
 pub use node::{Family, FontRole};
 
@@ -1135,70 +1136,80 @@ pub(crate) fn width_in(w: f32, q: &Query) -> bool {
     (q.min_width <= 0.0 || w >= q.min_width) && (q.max_width <= 0.0 || w <= q.max_width)
 }
 
-/// Applies a variant's patch to a node.
-pub(crate) fn apply_patch(n: &mut Node, p: &Patch) {
+/// Applies the box part of a variant's patch to an element: its layout
+/// props, and its radius and background among the animatable values (set
+/// as [`write_values`] writes them).
+pub(crate) fn patch_box(el: &mut Element, p: &Patch) {
     if let Some(v) = p.direction {
-        n.el.direction = v;
+        el.direction = v;
     }
     if let Some(v) = p.width {
-        n.el.width = v;
+        el.width = v;
     }
     if let Some(v) = p.height {
-        n.el.height = v;
+        el.height = v;
     }
     if let Some(v) = p.padding {
-        n.el.padding = v;
+        el.padding = v;
     }
     if let Some(v) = p.gap {
-        n.el.gap = v;
+        el.gap = v;
     }
     if let Some(v) = p.align {
-        n.el.align = v;
+        el.align = v;
     }
     if let Some(v) = p.cross {
-        n.el.cross = v;
+        el.cross = v;
     }
     if let Some(v) = p.wrap {
-        n.el.wrap = v;
-    }
-    if let Some(v) = p.layout {
-        n.props.layout = v;
-    }
-    if let Some(v) = &p.columns {
-        n.props.grid.columns = v.clone();
-    }
-    if let Some(v) = p.hidden {
-        n.hidden = v;
+        el.wrap = v;
     }
     if !p.values.is_empty() {
-        n.sample_style();
-        let mut row = read_values(n);
+        let bg = el.background.unwrap_or(Srgba {
+            rgb: [0, 0, 0],
+            alpha: 0.0,
+        });
+        let c = |v: u8| f32::from(v) / 255.0;
+        // Channels 8 to 12: the radius and the background (`read_values`).
+        let mut row = [
+            el.radius,
+            c(bg.rgb[0]),
+            c(bg.rgb[1]),
+            c(bg.rgb[2]),
+            bg.alpha,
+        ];
         for &(prop, v) in &p.values {
             for &c in prop.channels() {
-                row[c] = v;
+                if (8..=12).contains(&c) {
+                    row[c - 8] = v;
+                }
             }
         }
-        write_values(n, &row);
-        n.props.transform = n.style.sampled.transform;
-        n.props.opacity = n.style.sampled.opacity;
-        n.props.z = n.style.sampled.z;
-        n.props.inert = n.style.sampled.inert;
-        n.el.radius = n.style.sampled.radius;
-        n.el.background = n.style.sampled.background;
-        if let Content::Text(text) = &mut n.content {
-            text.color = n.style.sampled.ink;
+        el.radius = row[0].max(0.0);
+        let u = |x: f32| (x.clamp(0.0, 1.0) * 255.0).round() as u8;
+        let bg = Srgba {
+            rgb: [u(row[1]), u(row[2]), u(row[3])],
+            alpha: row[4].clamp(0.0, 1.0),
+        };
+        if el.background.is_some() || bg.alpha > 0.0 {
+            el.background = Some(bg);
         }
     }
 }
 
 /// A node's animatable values, one per channel (`Prop::channels`).
 pub(crate) fn read_values(n: &Node) -> [f32; crate::element::CHANNELS] {
-    let t = &n.style.sampled.transform;
-    let bg = n.style.sampled.background.unwrap_or(Srgba {
+    values_of(&n.style.sampled)
+}
+
+/// Sampled values, one per channel (`Prop::channels`).
+pub(crate) fn values_of(s: &node::SampledStyle) -> [f32; crate::element::CHANNELS] {
+    let t = &s.transform;
+    let bg = s.background.unwrap_or(Srgba {
         rgb: [0, 0, 0],
         alpha: 0.0,
     });
-    let ink = n.style.sampled.ink;
+    let ink = s.ink;
     let c = |v: u8| f32::from(v) / 255.0;
     [
         t.x,
@@ -1208,8 +1219,8 @@ pub(crate) fn read_values(n: &Node) -> [f32; crate::element::CHANNELS] {
         t.rotate,
         t.skew_x,
         t.skew_y,
-        n.style.sampled.opacity,
-        n.style.sampled.radius,
+        s.opacity,
+        s.radius,
         c(bg.rgb[0]),
         c(bg.rgb[1]),
         c(bg.rgb[2]),
@@ -1218,16 +1229,21 @@ pub(crate) fn read_values(n: &Node) -> [f32; crate::element::CHANNELS] {
         c(ink.rgb[1]),
         c(ink.rgb[2]),
         ink.alpha,
-        n.style.sampled.z as f32,
-        f32::from(u8::from(n.style.sampled.inert)),
-        n.style.sampled.blur,
-        n.style.sampled.draw,
+        s.z as f32,
+        f32::from(u8::from(s.inert)),
+        s.blur,
+        s.draw,
     ]
 }
 
 /// Writes frame output without changing the next tick's authored inputs.
 pub(crate) fn write_values(n: &mut Node, v: &[f32; crate::element::CHANNELS]) {
-    let t = &mut n.style.sampled.transform;
+    set_values(&mut n.style.sampled, v);
+}
+
+/// Sets sampled values from one per channel ([`values_of`]).
+pub(crate) fn set_values(s: &mut node::SampledStyle, v: &[f32; crate::element::CHANNELS]) {
+    let t = &mut s.transform;
     t.x = v[0];
     t.y = v[1];
     t.scale_x = v[2];
@@ -1235,24 +1251,24 @@ pub(crate) fn write_values(n: &mut Node, v: &[f32; crate::element::CHANNELS]) {
     t.rotate = v[4];
     t.skew_x = v[5];
     t.skew_y = v[6];
-    n.style.sampled.opacity = v[7].clamp(0.0, 1.0);
-    n.style.sampled.radius = v[8].max(0.0);
+    s.opacity = v[7].clamp(0.0, 1.0);
+    s.radius = v[8].max(0.0);
     let u = |x: f32| (x.clamp(0.0, 1.0) * 255.0).round() as u8;
     let bg = Srgba {
         rgb: [u(v[9]), u(v[10]), u(v[11])],
         alpha: v[12].clamp(0.0, 1.0),
     };
-    if n.style.sampled.background.is_some() || bg.alpha > 0.0 {
-        n.style.sampled.background = Some(bg);
+    if s.background.is_some() || bg.alpha > 0.0 {
+        s.background = Some(bg);
     }
-    n.style.sampled.ink = Srgba {
+    s.ink = Srgba {
         rgb: [u(v[13]), u(v[14]), u(v[15])],
         alpha: v[16].clamp(0.0, 1.0),
     };
-    n.style.sampled.z = v[17].round() as i32;
-    n.style.sampled.inert = v[18] >= 0.5;
-    n.style.sampled.blur = v[19].max(0.0);
-    n.style.sampled.draw = v[20].clamp(0.0, 1.0);
+    s.z = v[17].round() as i32;
+    s.inert = v[18] >= 0.5;
+    s.blur = v[19].max(0.0);
+    s.draw = v[20].clamp(0.0, 1.0);
 }
 
 #[cfg(test)]

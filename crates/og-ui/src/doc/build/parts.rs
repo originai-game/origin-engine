@@ -28,18 +28,11 @@ impl Resolved {
 
 impl Ui {
     pub(super) fn apply_part_box(&mut self, i: usize) {
-        if !self.tree.emitted.contains(&i) {
-            self.layout
-                .cache
-                .prev
-                .entry(i)
-                .or_insert_with(|| self.tree.nodes[i].clone());
-            self.tree.emitted.push(i);
-        }
+        self.tree.rewrite(i);
         let part = self.tree.nodes[i].part_box.clone().expect("part node");
         let owner = &self.tree.nodes[part.owner];
         let reference = if owner.content_slot == i {
-            owner.el.part.unwrap_or(part.reference)
+            owner.part().unwrap_or(part.reference)
         } else {
             part.reference
         };
@@ -49,7 +42,7 @@ impl Ui {
             .part_host(self.tree.nodes[part.owner].key)
             .and_then(|host| self.docs.host.docs.get(&host.document))
             .cloned();
-        self.tree.nodes[i].el = part.element;
+        *self.tree.el_mut(i) = part.element;
         self.apply_box_fields(
             i,
             &r,
@@ -127,8 +120,8 @@ impl Ui {
             props.opacity = intrinsic.opacity;
         }
         props.flow = r.own_flow();
-        self.tree.nodes[i].props = props;
-        let text_style = match &self.tree.nodes[i].content {
+        *self.tree.props_mut(i) = props;
+        let text_style = match &*self.tree.nodes[i].content {
             crate::layout::Content::Text(text) => {
                 Some(r.part_text(&self.env.theme, text.step, &|name| {
                     self.style.family_declared(name, &self.env)
@@ -136,7 +129,7 @@ impl Ui {
             }
             _ => None,
         };
-        if let crate::layout::Content::Text(text) = &mut self.tree.nodes[i].content {
+        if let crate::layout::Content::Text(text) = self.tree.content_mut(i) {
             let style = text_style.unwrap();
             text.step = style.step(text.step);
             let role = style.font_role.unwrap_or(text.font);
@@ -163,7 +156,7 @@ impl Ui {
                     .nodes
                     .iter()
                     .rfind(|n| n.key == k)
-                    .and_then(|n| n.el.part)
+                    .and_then(|n| n.part())
                     .map(|p| self.part_values(&p, Some(k)).cascade)
             })
             .unwrap_or_else(|| self.css_root_cascade());

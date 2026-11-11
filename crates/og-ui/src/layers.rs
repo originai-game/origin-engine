@@ -756,13 +756,14 @@ impl Ui {
         );
         let key = self.tree.nodes[idx].key;
         {
+            let build = self.tree.build();
             let n = &mut self.tree.nodes[idx];
             n.backdrop = spec.capture || dim;
             n.scope = spec.input != InputMode::Game;
-            n.props.inert = info.inert;
-            n.props.enter = spec.enter.clone();
-            n.props.exit = spec.exit.clone();
-            n.props.animations = animations;
+            n.props.write(build).inert = info.inert;
+            n.props.write(build).enter = spec.enter.clone();
+            n.props.write(build).exit = spec.exit.clone();
+            n.props.write(build).animations = animations;
         }
         // UI actions go to the top layer that takes input; with none, to every game layer.
         let top_taker = infos.iter().rposition(|l| l.spec.input != InputMode::Game);

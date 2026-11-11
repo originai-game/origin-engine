@@ -1,5 +1,8 @@
 use super::*;
 
+mod authored;
+pub(crate) use authored::Authored;
+
 /// Extra drawing of a widget, in its own frame, after its background.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum Shape {
@@ -203,8 +206,9 @@ pub(crate) struct TextContent {
     /// label reads semibold); 0 for most text.
     pub emphasis: f32,
     /// Auto-fit: its own step, then the smaller steps it takes where its
-    /// text does not fit its width, largest first (layout sets `step` to the
-    /// first that fits, else the last); empty: it keeps its step.
+    /// text does not fit its width, largest first (layout chooses the first
+    /// that fits, else the last: [`LayoutBox::fit_step`]); empty: it keeps
+    /// its step.
     pub fit: Vec<TypeStep>,
     /// How its lines are chosen when it wraps (CSS `text-wrap-style`).
     pub wrap_style: WrapStyle,
@@ -243,16 +247,16 @@ pub(crate) fn text_features(step: &TypeStep, font: FontRole) -> crate::shape::Fe
 /// so each of the font's pixels is a whole number of CSS pixels and lands
 /// on the device-pixel grid the pen is snapped to. A step's line height is
 /// kept. Text in an outline font is unchanged.
-pub(crate) fn snap_pixel_text(nodes: &mut [Node], fonts: &dyn Metrics) {
+pub(crate) fn snap_pixel_text(nodes: &mut [Node], fonts: &dyn Metrics, build: authored::Build) {
     let snap = |s: &mut TypeStep, m: &FontMetrics| {
         s.size = m.pixel_size(s.size);
         s.tracking_em = m.pixel_tracking(s.tracking_em);
         s.cjk_tracking_em = m.pixel_tracking(s.cjk_tracking_em);
     };
     for n in nodes {
-        match &mut n.content {
+        match n.content.write(build) {
             Content::Text(t) => {
-                let m = t.metrics(fonts);
+                let m = t.authored().metrics(fonts);
                 if m.pixel_grid() > 0 {
                     snap(&mut t.step, m);
                     for s in &mut t.fit {
@@ -274,9 +278,44 @@ pub(crate) fn snap_pixel_text(nodes: &mut [Node], fonts: &dyn Metrics) {
 }
 
 impl TextContent {
+    /// The text set at `step`: one of the steps an auto-fit text tries, or
+    /// the one layout chose for it.
+    pub(crate) fn at(&self, step: TypeStep) -> UsedText<'_> {
+        UsedText {
+            content: self,
+            step,
+        }
+    }
+
+    /// The text at the step it was written with: what builds it measures
+    /// it so before it is laid out.
+    pub(crate) fn authored(&self) -> UsedText<'_> {
+        self.at(self.step)
+    }
+}
+
+/// A text as layout and paint read it: its content (it derefs to it) at
+/// the step it is set at, which for an auto-fit text is the one layout
+/// chose ([`LayoutBox::fit_step`]), not the one it was written with.
+/// [`Node::text`] makes a node's.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct UsedText<'a> {
+    content: &'a TextContent,
+    pub step: TypeStep,
+}
+
+impl std::ops::Deref for UsedText<'_> {
+    type Target = TextContent;
+
+    fn deref(&self) -> &TextContent {
+        self.content
+    }
+}
+
+impl<'a> UsedText<'a> {
     /// The metrics of the face it is drawn in: its role's nearest its
     /// step's weight ([`crate::Fonts::for_styled`]).
-    pub(crate) fn metrics<'a>(&self, fonts: &'a dyn Metrics) -> &'a FontMetrics {
+    pub(crate) fn metrics<'m>(&self, fonts: &'m dyn Metrics) -> &'m FontMetrics {
         fonts.metrics_styled(self.font, self.step.weight, false, &self.text)
     }
 
@@ -298,6 +337,11 @@ impl TextContent {
             self.step.line_height
         }
     }
+
+    /// The content it reads, for as long as the node holds it.
+    pub(crate) fn content(&self) -> &'a TextContent {
+        self.content
+    }
 }
 
 /// The ellipsis a font draws: "…" when it has the character, else "...".
@@ -309,7 +353,7 @@ pub(crate) fn ellipsis_of(m: &FontMetrics) -> &'static str {
 /// (or a one-line text) wider than `width` loses characters from its end
 /// until it fits with the ellipsis after it (a cut between words drops the
 /// space before the ellipsis).
-pub(super) fn truncate_lines(lines: &mut Vec<Line>, t: &TextContent, m: &FontMetrics, width: f32) {
+pub(super) fn truncate_lines(lines: &mut Vec<Line>, t: UsedText<'_>, m: &FontMetrics, width: f32) {
     let (size, tracking) = (t.step.size, t.tracking());
     let cut = t.max_lines > 0 && lines.len() > t.max_lines as usize;
     if cut {
@@ -516,6 +560,15 @@ pub(crate) struct Placed {
     pub clip_src: usize,
     pub clip: Rect,
     pub rect: Rect,
+    /// A popover's arrow (`::-og-arrow`, [`Node::arrow`]) where placement
+    /// put it this frame, on the side of its box facing its anchor: drawn
+    /// after its shapes ([`Node::drawn_shapes`]). `None`: no side faces it.
+    pub arrow: Option<Shape>,
+    /// A styled button part painted under `NARROW_BUTTON` wide since it
+    /// was written: its part carries `narrow`
+    /// ([`Node::part`]). Paint sets it; a node written again starts
+    /// without it.
+    pub narrow: bool,
 }
 
 impl Default for Placed {
@@ -530,7 +583,103 @@ impl Default for Placed {
             clip_src: NONE,
             clip: Rect::default(),
             rect: Rect::default(),
+            arrow: None,
+            narrow: false,
         }
+    }
+}
+
+/// The box placement fixes for a node after it measured it: its size and
+/// the padding it adds (the safe area under a modal's backdrop).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct Placement {
+    pub size: [f32; 2],
+    pub padding: Insets,
+}
+
+/// What a breakpoint or orientation variant's query reads of the viewport.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct Media {
+    pub breakpoint: crate::style::Breakpoint,
+    pub portrait: bool,
+    pub width: f32,
+}
+
+impl Media {
+    /// Whether a variant's query (not a container's) holds.
+    pub(crate) fn matches(&self, q: &crate::element::Query) -> bool {
+        (q.breakpoints.is_empty() || q.breakpoints.contains(&self.breakpoint))
+            && q.orientation
+                .is_none_or(|o| (o == crate::element::Orientation::Portrait) == self.portrait)
+            && crate::layout::width_in(self.width, q)
+    }
+}
+
+/// What a node's matching variants set over its props and its text's ink
+/// (`None`: as authored): the part of a variant's patch that is not its
+/// box ([`crate::layout::patch_box`]). Made with the used element
+/// ([`Node::derive_used`]), so a variant that stops matching sets nothing;
+/// read through the node ([`Node::layout_mode`], [`Node::grid`],
+/// [`Node::is_hidden`], [`Node::transform`], [`Node::opacity`],
+/// [`Node::z`], [`Node::inert`], [`Node::ink`]).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub(crate) struct Varied {
+    pub layout: Option<LayoutMode>,
+    /// Its grid with the columns a variant gives it.
+    pub grid: Option<Box<crate::element::GridSpec>>,
+    pub hidden: Option<bool>,
+    /// Its animatable values with the variants'.
+    pub values: Option<VariedValues>,
+}
+
+/// A node's animatable values outside its box, as its variants set them.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct VariedValues {
+    pub transform: crate::element::Transform,
+    pub opacity: f32,
+    pub z: i32,
+    pub inert: bool,
+    /// A text's ink.
+    pub ink: Srgba,
+}
+
+/// What the last write of a node's input changed against the node it
+/// replaced, recorded when the build ends ([`crate::layout::input_changes`]):
+/// what the frame decides reuse by, in place of a copy of the last frame's
+/// node. Read only for a node written this frame.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) struct Changed(u8);
+
+impl Changed {
+    /// Nothing was there to compare with: a new node.
+    pub const NEW: Changed = Changed(1);
+    /// Any of its inputs (`LayoutStats::rebuilt` counts it).
+    pub const INPUT: Changed = Changed(2);
+    /// What layout reads of it: its box, content, placement, lists.
+    pub const LAYOUT: Changed = Changed(4);
+    /// What a fixed-size box still gives its parent: its size, margins,
+    /// place and whether a margin collapsed through it.
+    pub const BOX: Changed = Changed(8);
+    /// Whether it is a block or how it arranges its children: their
+    /// margins collapse otherwise.
+    pub const FLOW: Changed = Changed(16);
+
+    /// Whether any of `bits` is set.
+    pub(crate) fn has(self, bits: Changed) -> bool {
+        self.0 & bits.0 != 0
+    }
+}
+
+impl std::ops::BitOr for Changed {
+    type Output = Changed;
+    fn bitor(self, o: Changed) -> Changed {
+        Changed(self.0 | o.0)
+    }
+}
+
+impl std::ops::BitOrAssign for Changed {
+    fn bitor_assign(&mut self, o: Changed) {
+        self.0 |= o.0;
     }
 }
 
@@ -538,20 +687,37 @@ impl Default for Placed {
 /// its lines, rows, tracks and floats, and what the layout cache keeps.
 #[derive(Clone, Debug)]
 pub(crate) struct LayoutBox {
-    /// The scroll gutter added to its right padding (`Ui::apply_gutter`).
+    /// The element layout lays it out with, and what paint, scrolling, hit
+    /// testing and inspection read of its box: its authored element
+    /// ([`Node::el`]) with what the frame decides on top of it
+    /// ([`Node::derive_used`]). Layout writes this, never the authored one.
+    pub used: Element,
+    /// Its insets as layout reads them (a vertical frame turns them).
+    pub insets: crate::element::Edges,
+    /// What its matching variants set over its props ([`Varied`]).
+    pub varied: Varied,
+    /// The room its scroll bar takes beside its content, added to its
+    /// used padding (`Layout::apply_gutter`).
     pub gutter: f32,
-    /// Its authored width, height and padding while placement replaced
-    /// them for one frame (`Ui::layout_mutated`).
-    pub authored_box: Option<(Size, Size, Insets)>,
+    /// The box placement gave it this frame: a layer's, a screen-placed or
+    /// anchor-positioned element's (`Layout::placed`).
+    pub placement: Option<Placement>,
+    /// The viewport its breakpoint and orientation variants were matched
+    /// against when it was written (`None`: it has none).
+    pub media: Option<Media>,
+    /// The width and height the user gave it by its resize handle (CSS
+    /// `resize`), as of when it was written (`Tree::apply_resized`).
+    pub resized: [Option<f32>; 2],
+    /// The inline size its container variants were last matched at.
+    pub query_w: Option<f32>,
     /// One of its children in the flow aligns by its own baseline
     /// (`align-self: baseline`).
     pub baseline_items: bool,
     /// A table's cells and the boxes of its rows, groups and columns.
     pub table: Option<crate::layout::Table>,
     /// It holds inline-level children and lays them out in lines (CSS 2
-    /// §9.4.2): its authored direction, wrap, cross and align, kept to put
-    /// back when it no longer does.
-    pub line_box: Option<(Direction, bool, Cross, Align)>,
+    /// §9.4.2), as a wrapping row: the direction it has as a block.
+    pub line_box: Option<Direction>,
     /// Its content's least width and height, padding included, before its
     /// own size applies (a flex item's automatic minimum, CSS Flexbox §4.5).
     pub min_content: [f32; 2],
@@ -596,7 +762,10 @@ pub(crate) struct LayoutBox {
     /// Constraints and parent-relative position of the cached layout.
     pub layout_size: [f32; 2],
     pub layout_offset: [f32; 2],
-    pub layout_step: Option<TypeStep>,
+    /// An auto-fit text's step: the largest of its steps its text fits its
+    /// width at, chosen where its lines are broken (`distribute_w`) and
+    /// kept with them. `None`: the step it was written with.
+    pub fit_step: Option<TypeStep>,
     /// What layout last gave it before the frame moved it (a right-to-left
     /// mirror, a transformed scroller's clip): its place, its box (with a
     /// baseline or anchor shift) and its clip.
@@ -652,8 +821,14 @@ pub(crate) struct LayoutBox {
 impl Default for LayoutBox {
     fn default() -> Self {
         Self {
+            used: Element::default(),
+            insets: crate::element::Edges::default(),
+            varied: Varied::default(),
             gutter: 0.0,
-            authored_box: None,
+            placement: None,
+            media: None,
+            resized: [None; 2],
+            query_w: None,
             baseline_items: false,
             table: None,
             line_box: None,
@@ -680,7 +855,7 @@ impl Default for LayoutBox {
             rows: Vec::new(),
             layout_size: [0.0; 2],
             layout_offset: [0.0; 2],
-            layout_step: None,
+            fit_step: None,
             laid_xy: [f32::NAN; 2],
             laid_rect: Rect::default(),
             laid_clip: Rect::default(),
@@ -756,14 +931,20 @@ pub(crate) struct Node {
     pub ordered_children: Vec<usize>,
     /// What layout computes and keeps for it ([`LayoutBox`]).
     pub layout: LayoutBox,
-    pub el: Element,
+    /// What its last write changed (`Layout::reuse_check`).
+    pub changed: Changed,
+    /// Its element as authored: layout reads it and lays out
+    /// [`LayoutBox::used`].
+    pub el: Authored<Element>,
     pub part_host: Option<std::sync::Arc<crate::doc::build::PartHost>>,
     /// The semantic owner of a detached widget surface's CSS parts.
     /// Placement anchors alone do not imply shared CSS ownership.
     pub part_source: usize,
     pub part_box: Option<PartBox>,
     pub content_slot: usize,
-    pub content: Content,
+    /// Its content as authored: layout and paint read a text through
+    /// [`Node::text`].
+    pub content: Authored<Content>,
     pub widget: Widget,
     pub part_geometry: Option<PartGeometry>,
     /// The text the probe reports for it.
@@ -798,8 +979,9 @@ pub(crate) struct Node {
     /// A scope Back does not close (a locked dialog): while it is the
     /// topmost, Back reaches `Ui::back`.
     pub locked: bool,
-    /// Drawn after the background.
-    pub shapes: Vec<Shape>,
+    /// Drawn after the background, as authored ([`Node::drawn_shapes`]
+    /// adds what placement draws).
+    pub shapes: Authored<Vec<Shape>>,
     /// A document's CSS border, outline, shadows and clip
     /// ([`crate::decor::BoxDecor`]), painted over its draw.
     pub decor: Option<Box<crate::decor::BoxDecor>>,
@@ -813,8 +995,9 @@ pub(crate) struct Node {
     pub a11y: crate::a11y::A11y,
     /// Its descendants enter one after another (a style's stagger).
     pub stagger: Option<Stagger>,
-    /// The element model beyond its box (`crate::element`).
-    pub props: crate::element::Props,
+    /// The element model beyond its box (`crate::element`), as authored
+    /// (what its variants set over it: [`LayoutBox::varied`]).
+    pub props: Authored<crate::element::Props>,
     /// What style and motion sample for it this tick ([`StyleNode`]).
     pub style: StyleNode,
     /// CSS `accent-color` and `caret-color` it declares or inherits as a
@@ -835,7 +1018,7 @@ pub(crate) struct Node {
     /// that zero-size point rather than its anchor node.
     pub anchor_point: Option<[f32; 2]>,
     /// A popover's `::-og-arrow`: its side and colour, drawn on the side of
-    /// its box facing its anchor once it is placed.
+    /// its box facing its anchor once it is placed ([`Placed::arrow`]).
     pub arrow: Option<(f32, Srgba)>,
     /// Its floated children (CSS 2 §9.5): out of the flow, in
     /// `ordered_children`, placed by [`crate::layout::float`].
@@ -846,7 +1029,7 @@ impl Node {
     /// Its rich text's vertical setting (its element's writing mode), `None`
     /// when its lines run across; a rich text combines nothing upright.
     pub(crate) fn rich_vertical(&self) -> Option<crate::layout::flow::VerticalText> {
-        self.el.vertical?;
+        self.layout.used.vertical?;
         self.props
             .flow
             .vertical_text("")
@@ -856,18 +1039,229 @@ impl Node {
             })
     }
 
-    pub(crate) fn sample_style(&mut self) {
-        self.style.sampled = SampledStyle {
+    /// Its text as layout and paint read it: at the step layout chose for
+    /// an auto-fit text, else its own.
+    pub(crate) fn text(&self) -> Option<UsedText<'_>> {
+        match &*self.content {
+            Content::Text(t) => Some(self.used_text(t)),
+            _ => None,
+        }
+    }
+
+    /// [`Node::text`] of its content `t`, where that is already matched.
+    pub(crate) fn used_text<'a>(&self, t: &'a TextContent) -> UsedText<'a> {
+        t.at(self.layout.fit_step.unwrap_or(t.step))
+    }
+
+    /// The element layout uses, from the authored one: its breakpoint and
+    /// orientation variants, the size the user resized it to, the line box
+    /// it lays inline children out in, its scroll bar's gutter, with
+    /// `placed` the box placement fixed, its container variants at the
+    /// size they were last matched at, and its part as styling matches it.
+    pub(crate) fn derived(&self, placed: bool) -> Element {
+        let mut u = *self.el;
+        if let Some(m) = self.layout.media {
+            for v in &self.props.variants {
+                if !v.when.container && m.matches(&v.when) {
+                    crate::layout::patch_box(&mut u, &v.set);
+                }
+            }
+        }
+        if let Some(w) = self.layout.resized[0] {
+            u.width = Size::Fixed(w);
+        }
+        if let Some(h) = self.layout.resized[1] {
+            u.height = Size::Fixed(h);
+        }
+        if self.layout.line_box.is_some() {
+            u.direction = Direction::Row;
+            u.wrap = true;
+            u.cross = Cross::Baseline;
+            u.align = u.line_align;
+        }
+        if self.layout.gutter != 0.0 {
+            u.padding.right += self.layout.gutter;
+            // `scrollbar-gutter: stable both-edges`: the same room at the start.
+            if u.scroll_css.gutter == 2 {
+                u.padding.left += self.layout.gutter;
+            }
+        }
+        if let Some(p) = self.layout.placement.filter(|_| placed) {
+            u.width = Size::Fixed(p.size[0]);
+            u.height = Size::Fixed(p.size[1]);
+            u.padding = u.padding.add(&p.padding);
+        }
+        if let Some(w) = self.layout.query_w {
+            for v in &self.props.variants {
+                if v.when.container && crate::layout::width_in(w, &v.when) {
+                    crate::layout::patch_box(&mut u, &v.set);
+                }
+            }
+        }
+        u.part = self.part();
+        u
+    }
+
+    /// The shapes drawn after its background: its own, then the arrow
+    /// placement gave it.
+    pub(crate) fn drawn_shapes(&self) -> impl Iterator<Item = &Shape> {
+        self.shapes.iter().chain(&self.placed.arrow)
+    }
+
+    /// Its part as styling matches it: its element's, flagged `narrow`
+    /// where paint found its box narrow ([`Placed::narrow`]).
+    pub(crate) fn part(&self) -> Option<crate::dress::PartRef> {
+        let part = self.el.part?;
+        Some(part.flag_if(self.placed.narrow, "narrow"))
+    }
+
+    /// What its matching variants set over its props ([`Varied`]): the
+    /// breakpoint and orientation ones, then the container ones at the size
+    /// they were last matched at, in the order [`Node::derived`] applies
+    /// their box part.
+    fn varied(&self) -> Varied {
+        let mut out = Varied::default();
+        if self.props.variants.is_empty() {
+            return out;
+        }
+        let mut values: Option<SampledStyle> = None;
+        let matched = |v: &&crate::element::Variant| match v.when.container {
+            false => self.layout.media.is_some_and(|m| m.matches(&v.when)),
+            true => self
+                .layout
+                .query_w
+                .is_some_and(|w| crate::layout::width_in(w, &v.when)),
+        };
+        let media = self.props.variants.iter().filter(|v| !v.when.container);
+        let container = self.props.variants.iter().filter(|v| v.when.container);
+        for v in media.chain(container).filter(matched) {
+            let p = &v.set;
+            if let Some(v) = p.layout {
+                out.layout = Some(v);
+            }
+            if let Some(v) = &p.columns {
+                out.grid
+                    .get_or_insert_with(|| Box::new(self.props.grid.clone()))
+                    .columns
+                    .clone_from(v);
+            }
+            if let Some(v) = p.hidden {
+                out.hidden = Some(v);
+            }
+            if !p.values.is_empty() {
+                let s = values.get_or_insert_with(|| self.authored_sample());
+                let mut row = crate::layout::values_of(s);
+                for &(prop, v) in &p.values {
+                    for &c in prop.channels() {
+                        row[c] = v;
+                    }
+                }
+                crate::layout::set_values(s, &row);
+            }
+        }
+        out.values = values.map(|s| VariedValues {
+            transform: s.transform,
+            opacity: s.opacity,
+            z: s.z,
+            inert: s.inert,
+            ink: s.ink,
+        });
+        out
+    }
+
+    /// How it arranges its children: its props', or a matching variant's.
+    pub(crate) fn layout_mode(&self) -> LayoutMode {
+        self.layout.varied.layout.unwrap_or(self.props.layout)
+    }
+
+    /// Its grid: its props', with the columns a matching variant gives it.
+    pub(crate) fn grid(&self) -> &crate::element::GridSpec {
+        self.layout
+            .varied
+            .grid
+            .as_deref()
+            .unwrap_or(&self.props.grid)
+    }
+
+    /// Not shown: built so, or hidden by a matching variant.
+    pub(crate) fn is_hidden(&self) -> bool {
+        self.layout.varied.hidden.unwrap_or(self.hidden)
+    }
+
+    /// Its declared transform: its props', or with a matching variant's values.
+    pub(crate) fn transform(&self) -> crate::element::Transform {
+        match &self.layout.varied.values {
+            Some(v) => v.transform,
+            None => self.props.transform,
+        }
+    }
+
+    pub(crate) fn opacity(&self) -> f32 {
+        match &self.layout.varied.values {
+            Some(v) => v.opacity,
+            None => self.props.opacity,
+        }
+    }
+
+    pub(crate) fn z(&self) -> i32 {
+        match &self.layout.varied.values {
+            Some(v) => v.z,
+            None => self.props.z,
+        }
+    }
+
+    pub(crate) fn inert(&self) -> bool {
+        match &self.layout.varied.values {
+            Some(v) => v.inert,
+            None => self.props.inert,
+        }
+    }
+
+    /// Its text's ink (white without a text): its content's, or with a
+    /// matching variant's values.
+    pub(crate) fn ink(&self) -> Srgba {
+        match (&*self.content, &self.layout.varied.values) {
+            (Content::Text(_), Some(v)) => v.ink,
+            (Content::Text(text), None) => text.color,
+            _ => Srgba::WHITE,
+        }
+    }
+
+    /// Makes [`LayoutBox::used`], its insets and what its variants set
+    /// ([`LayoutBox::varied`]) again from the authored element and props:
+    /// after they were written, and wherever the frame changes what it
+    /// decides on top of them.
+    pub(crate) fn derive_used(&mut self) {
+        self.layout.used = self.derived(true);
+        self.layout.insets = self.props.insets;
+        self.layout.varied = self.varied();
+    }
+
+    /// Its animatable values outside its box as authored, before any
+    /// variant or motion.
+    fn authored_sample(&self) -> SampledStyle {
+        SampledStyle {
             transform: self.props.transform,
             opacity: self.props.opacity,
-            radius: self.el.radius,
-            background: self.el.background,
-            ink: match &self.content {
+            ink: match &*self.content {
                 Content::Text(text) => text.color,
                 _ => Srgba::WHITE,
             },
             z: self.props.z,
             inert: self.props.inert,
+            ..SampledStyle::default()
+        }
+    }
+
+    pub(crate) fn sample_style(&mut self) {
+        self.style.sampled = SampledStyle {
+            transform: self.transform(),
+            opacity: self.opacity(),
+            radius: self.layout.used.radius,
+            background: self.layout.used.background,
+            ink: self.ink(),
+            z: self.z(),
+            inert: self.inert(),
             blur: 0.0,
             draw: 0.0,
         };
@@ -880,15 +1274,19 @@ impl Node {
             parent,
             children: Vec::new(),
             built_children: Vec::new(),
-            layout: LayoutBox::default(),
+            layout: LayoutBox {
+                used: el,
+                ..LayoutBox::default()
+            },
             up: parent,
             ordered_children: Vec::new(),
-            el,
+            changed: Changed::NEW,
+            el: Authored::new(el),
             part_host: None,
             part_source: NONE,
             part_box: None,
             content_slot: NONE,
-            content: Content::None,
+            content: Authored::new(Content::None),
             widget: Widget::None,
             part_geometry: None,
             probe_text: String::new(),
@@ -907,13 +1305,13 @@ impl Node {
             backdrop: false,
             scope: false,
             locked: false,
-            shapes: Vec::new(),
+            shapes: Authored::new(Vec::new()),
             decor: None,
             aux: [0.0; 3],
             heading: false,
             a11y: crate::a11y::A11y::default(),
             stagger: None,
-            props: crate::element::Props::default(),
+            props: Authored::new(crate::element::Props::default()),
             style: StyleNode::default(),
             accent: None,
             caret: None,
@@ -969,7 +1367,7 @@ impl Node {
             .clone_from(&previous.layout.rich_lines);
         self.layout.rows.clone_from(&previous.layout.rows);
         self.layout.grid.clone_from(&previous.layout.grid);
-        self.layout.layout_step = previous.layout.layout_step;
+        self.layout.fit_step = previous.layout.fit_step;
         self.layout.margin_sets = previous.layout.margin_sets;
         self.layout.collapse_in = previous.layout.collapse_in;
         self.layout.through = previous.layout.through;
@@ -981,7 +1379,7 @@ impl Node {
     /// `auto` while it skips its contents, else 0 (CSS Containment 2
     /// §3.1, CSS Sizing 4 §5). `None` without size containment there.
     pub(crate) fn contained_size(&self, axis: usize) -> Option<f32> {
-        let c = &self.el.contain;
+        let c = &self.layout.used.contain;
         let bit = [
             crate::layout::Contain::SIZE_W,
             crate::layout::Contain::SIZE_H,
@@ -1008,22 +1406,22 @@ impl Node {
 
     /// The scroll range: how far the content overflows the inner height.
     pub fn max_scroll(&self) -> f32 {
-        if !self.el.scroll {
+        if !self.layout.used.scroll {
             return 0.0;
         }
-        (self.layout.content_h - (self.layout.h - self.el.padding.vertical())).max(0.0)
+        (self.layout.content_h - (self.layout.h - self.layout.used.padding.vertical())).max(0.0)
     }
 
     /// The horizontal scroll range: how far the content overflows the inner width.
     pub fn max_scroll_x(&self) -> f32 {
-        if !self.el.scroll_x {
+        if !self.layout.used.scroll_x {
             return 0.0;
         }
-        (self.layout.content_w - (self.layout.w - self.el.padding.horizontal())).max(0.0)
+        (self.layout.content_w - (self.layout.w - self.layout.used.padding.horizontal())).max(0.0)
     }
 
     /// Scrolls either way.
     pub fn scrolls(&self) -> bool {
-        self.el.scroll || self.el.scroll_x
+        self.layout.used.scroll || self.layout.used.scroll_x
     }
 }

@@ -88,7 +88,7 @@ impl Ui {
                     },
                 );
                 let i = self.tree.parent();
-                let p = &mut self.tree.nodes[i].props;
+                let p = self.tree.props_mut(i);
                 p.position = crate::element::Position::Absolute;
                 p.inert = true;
                 p.interact.pointer_events = crate::element::PointerEvents::None;
@@ -359,7 +359,7 @@ impl Ui {
         let i = self.tree.last_closed;
         // Its anchor places it, so it keeps its text's width (a centred
         // label in a column would take the column's).
-        self.tree.nodes[i].el.width = width;
+        self.tree.el_mut(i).width = width;
         let mut p = Self::resolved_props(n, r);
         p.states = props.states;
         p.state = props.state;
@@ -381,7 +381,7 @@ impl Ui {
             },
         });
         p.text_path = text_path;
-        self.tree.nodes[i].props = p;
+        *self.tree.props_mut(i) = p;
         for e in warnings {
             let tag = n.selector_tag.as_deref().unwrap_or("text");
             self.out.warnings.push(format!(
@@ -463,7 +463,7 @@ impl Ui {
             anchor_x: 0.0,
             anchor_y: 0.0,
         });
-        self.tree.nodes[i].props = p;
+        *self.tree.props_mut(i) = p;
         self.set_draw(ElementDraw {
             shape: ShapeKind::Rect {
                 radii: Some([0.0; 4]),
@@ -582,7 +582,7 @@ impl Ui {
                 ..Default::default()
             };
         }
-        self.tree.nodes[i].props = p;
+        *self.tree.props_mut(i) = p;
         if let Some(role) = n.role {
             self.tree.nodes[i].a11y.role = Some(role);
         }
@@ -677,8 +677,8 @@ impl Ui {
                 },
             );
             let i = ui.tree.parent();
-            ui.tree.nodes[i].props.position = crate::element::Position::Absolute;
-            ui.tree.nodes[i].props.insets = crate::element::Edges {
+            ui.tree.props_mut(i).position = crate::element::Position::Absolute;
+            ui.tree.props_mut(i).insets = crate::element::Edges {
                 start: Some(0.0),
                 top: Some(0.0),
                 end: Some(0.0),

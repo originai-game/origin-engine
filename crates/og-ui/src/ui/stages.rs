@@ -171,9 +171,9 @@ pub(crate) struct Layout {
     /// Container queries: the measurements watched and the roots a
     /// settlement lays out again.
     pub(crate) queries: settlement::ContainerQueries,
-    /// Slots whose box placement replaced (floating sizes, a modal's safe
-    /// padding): their authored box comes back before the next layout.
-    pub(crate) layout_mutated: Vec<usize>,
+    /// Nodes whose used box placement fixed (a layer's size, a modal's
+    /// safe padding): let go before the next layout measures them.
+    pub(crate) placed: Vec<usize>,
 }
 
 /// Interaction: the frame's input, the persisted interaction state and what navigation, gestures and selection decided.
@@ -215,7 +215,14 @@ pub(crate) struct Interaction {
 pub(crate) struct Tree {
     pub(crate) nodes: Vec<Node>,
     pub(crate) kinds: Vec<(&'static str, bool)>,
-    /// Last frame's `kinds`, beside `kept.prev`.
+    /// The nodes this frame's build replaced or writes in place, as the
+    /// last frame left them, by slot: what a build reads of the last frame
+    /// (`Tree::previous_node`) and what the frame compares each written
+    /// node with, once for layout (`Layout::reuse_check`, kept as
+    /// `Node::changed`) and once for paint (`Ui::paint_reuse`). Empty from
+    /// then until the next build writes.
+    pub(crate) replaced: std::collections::HashMap<usize, Node>,
+    /// Last frame's `kinds`, beside `replaced`.
     pub(crate) prev_kinds: std::collections::HashMap<usize, (&'static str, bool)>,
     pub(crate) render_slots: std::collections::HashMap<(u64, usize), usize>,
     pub(crate) free_slots: Vec<usize>,

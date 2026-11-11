@@ -427,7 +427,7 @@ impl Ui {
             hit_slop: self.tree.nodes[host].props.hit_slop,
             ..Props::default()
         };
-        self.tree.nodes[host].props = placed;
+        *self.tree.props_mut(host) = placed;
     }
 
     /// A part-node control's CSS border drawn inside the widget's own
@@ -437,7 +437,7 @@ impl Ui {
     /// widget's and is kept whole.
     fn border_inside(&mut self, host: usize) {
         let slot = self.tree.nodes[host].content_slot;
-        let Some(reference) = self.tree.nodes[host].el.part else {
+        let Some(reference) = self.tree.nodes[host].part() else {
             return;
         };
         let r = self.part_values(&reference, Some(self.tree.nodes[slot].key));

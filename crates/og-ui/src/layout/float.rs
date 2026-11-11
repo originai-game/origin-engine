@@ -41,10 +41,10 @@ pub const RIGHT: u8 = 2;
 /// floats leave it (in a flex, grid, table or multi-column container
 /// `float` does not apply).
 pub(crate) fn container(n: &Node) -> bool {
-    n.el.block
-        && n.props.layout == LayoutMode::Flex
-        && matches!(n.content, Content::None)
-        && n.el.multicol.is_none()
+    n.layout.used.block
+        && n.layout_mode() == LayoutMode::Flex
+        && matches!(*n.content, Content::None)
+        && n.layout.used.multicol.is_none()
 }
 
 /// Node `i` lays out in its parent's formatting context: a block in a
@@ -58,13 +58,13 @@ fn joins(nodes: &[Node], i: usize) -> bool {
         && p < nodes.len()
         && container(n)
         && container(&nodes[p])
-        && n.layout.line_box.map_or(n.el.direction, |l| l.0) == Direction::Column
-        && n.el.float == FloatSide::None
+        && n.layout.line_box.unwrap_or(n.layout.used.direction) == Direction::Column
+        && n.layout.used.float == FloatSide::None
         && !n.props.out_of_flow()
-        && !n.el.bfc
-        && !n.el.inline
-        && !n.el.scroll
-        && !n.el.scroll_x
+        && !n.layout.used.bfc
+        && !n.layout.used.inline
+        && !n.layout.used.scroll
+        && !n.layout.used.scroll_x
 }
 
 /// An image's alpha channel on the CPU: one byte per pixel, row-major,
@@ -162,7 +162,7 @@ impl Outside {
         use crate::doc::paint_css::GeoBox;
         use crate::paint::ShapeKind;
         use og_core::glam::Vec2;
-        let vertical = n.el.vertical;
+        let vertical = n.layout.used.vertical;
         let physical = |values: [f32; 4]| {
             let mut out = values;
             if let Some(sides) = vertical {
@@ -172,7 +172,7 @@ impl Outside {
             }
             out
         };
-        let p = n.el.padding;
+        let p = n.layout.used.padding;
         // An image lies over the content box as a replaced element's
         // picture would, stretched to it (CSS Shapes 1 §6.1).
         let reference = if self.image.is_some() {
@@ -194,8 +194,8 @@ impl Outside {
                 -n.layout.margin_x[0],
             ]),
         };
-        let radius = if n.el.radius > 0.0 {
-            (n.el.radius - insets.iter().copied().fold(f32::INFINITY, f32::min)).max(0.0)
+        let radius = if n.layout.used.radius > 0.0 {
+            (n.layout.used.radius - insets.iter().copied().fold(f32::INFINITY, f32::min)).max(0.0)
         } else {
             0.0
         };
@@ -453,7 +453,7 @@ pub(crate) fn flow(
 /// Container `c`'s flow with its content box at `(ox, oy)` in the root's.
 fn walk(nodes: &mut [Node], c: usize, ox: f32, oy: f32, cx: &mut Context<'_, '_>) {
     let n = &nodes[c];
-    let inner = (n.layout.w - n.el.padding.horizontal()).max(0.0);
+    let inner = (n.layout.w - n.layout.used.padding.horizontal()).max(0.0);
     let (x0, x1) = (ox, ox + inner);
     let floats = n.floats.clone();
     if n.layout.line_box.is_some() {
@@ -493,13 +493,13 @@ fn walk(nodes: &mut [Node], c: usize, ox: f32, oy: f32, cx: &mut Context<'_, '_>
         for f in pending.drain(..) {
             place(nodes, f, x0, x1, top, (ox, oy), cx);
         }
-        let clear = (cleared(&cx.floats, nodes[k].el.clear) - top).max(0.0);
+        let clear = (cleared(&cx.floats, nodes[k].layout.used.clear) - top).max(0.0);
         let mut at = top + clear;
         let was = nodes[k].layout.beside;
         nodes[k].layout.beside = false;
         if joins(nodes, k) {
             let kx = child_x(nodes, c, k, x0, inner);
-            let pad = nodes[k].el.padding;
+            let pad = nodes[k].layout.used.padding;
             walk(nodes, k, kx + pad.left, at + pad.top, cx);
             size_h(nodes, k);
             nodes[k].layout.beside = !cx.floats.is_empty();
@@ -526,16 +526,17 @@ fn walk(nodes: &mut [Node], c: usize, ox: f32, oy: f32, cx: &mut Context<'_, '_>
 /// Child `k`'s width and side margins in container `c`'s flow before
 /// floats (as `distribute_w` gives them).
 fn baseline(nodes: &mut [Node], c: usize, k: usize, inner: f32, cx: &mut Context<'_, '_>) {
-    let el = nodes[c].el;
+    let el = nodes[c].layout.used;
     let n = &nodes[k];
-    let fill = (inner - n.el.margin[1].of(inner) - n.el.margin[3].of(inner)).max(0.0);
-    let basis = match n.el.width {
+    let fill =
+        (inner - n.layout.used.margin[1].of(inner) - n.layout.used.margin[3].of(inner)).max(0.0);
+    let basis = match n.layout.used.width {
         Size::Grow { .. } | Size::Fit { .. } => fill,
         _ => inner,
     };
-    let stretch = !el.wrap && n.el.align_self.unwrap_or(el.cross) == Cross::Stretch;
+    let stretch = !el.wrap && n.layout.used.align_self.unwrap_or(el.cross) == Cross::Stretch;
     let w = cross_size(n, 0, basis, inner, stretch);
-    let w = match n.el.width {
+    let w = match n.layout.used.width {
         Size::Fit { .. } if el.scroll_x => w.max(n.layout.pref_w),
         _ => w,
     };
@@ -549,16 +550,16 @@ fn baseline(nodes: &mut [Node], c: usize, k: usize, inner: f32, cx: &mut Context
 /// Where container `c` puts child `k`'s border box across (as
 /// `place_children` does).
 fn child_x(nodes: &[Node], c: usize, k: usize, x0: f32, inner: f32) -> f32 {
-    let el = nodes[c].el;
+    let el = nodes[c].layout.used;
     let n = &nodes[k];
     let [ml, mr] = n.layout.margin_x;
-    if n.el.margin[1].auto || n.el.margin[3].auto {
+    if n.layout.used.margin[1].auto || n.layout.used.margin[3].auto {
         return x0 + ml;
     }
-    let safe = el.safe & 2 != 0 || n.el.safe & 2 != 0;
+    let safe = el.safe & 2 != 0 || n.layout.used.safe & 2 != 0;
     x0 + ml
         + cross_offset(
-            n.el.align_self.unwrap_or(el.cross),
+            n.layout.used.align_self.unwrap_or(el.cross),
             inner - ml - mr,
             n.layout.w,
             safe,
@@ -580,11 +581,11 @@ fn place(
     let [ml, mr] = n.layout.margin_x;
     let (mt, mb) = (span(n.layout.margin_sets[0]), span(n.layout.margin_sets[1]));
     let (w, h) = (n.layout.w + ml + mr, n.layout.pref_h + mt + mb);
-    let left = n.el.float != FloatSide::Right;
+    let left = n.layout.used.float != FloatSide::Right;
     // No higher than an earlier float (rule 5), below those it clears.
     let mut y = y
         .max(cx.floats.last().map_or(f32::NEG_INFINITY, |p| p.y))
-        .max(cleared(&cx.floats, n.el.clear));
+        .max(cleared(&cx.floats, n.layout.used.clear));
     let x = loop {
         let (l, r, next) = room(&cx.floats, y, y + h, x0, x1);
         match next {
@@ -616,7 +617,7 @@ fn place(
 /// A text whose lines floats shorten (an auto-fit, cut or path text keeps
 /// its lines).
 fn wraps(n: &Node) -> bool {
-    matches!(&n.content, Content::Text(t) if t.fit.is_empty() && !t.ellipsis && t.max_lines == 0)
+    matches!(&*n.content, Content::Text(t) if t.fit.is_empty() && !t.ellipsis && t.max_lines == 0)
         && n.props.text_path.is_none()
         && n.widget == Widget::None
 }
@@ -635,9 +636,9 @@ fn text(
     was: bool,
 ) {
     let n = &nodes[k];
-    let Content::Text(t) = &n.content else { return };
+    let Some(t) = n.text() else { return };
     let [ml, mr] = n.layout.margin_x;
-    let pad = n.el.padding;
+    let pad = n.layout.used.padding;
     let fill = (inner - ml - mr).max(0.0);
     let (tx0, tx1) = (x0 + ml + pad.left, x0 + ml + fill - pad.right);
     let ty = top + pad.top;
@@ -653,9 +654,9 @@ fn text(
     let at = |s: &str, w: f32| {
         let part = TextContent {
             text: s.to_string(),
-            ..t.clone()
+            ..t.content().clone()
         };
-        super::flex::text_lines(&part, m, t.wrap.then_some(w + 0.5))
+        super::flex::text_lines(part.at(t.step), m, t.wrap.then_some(w + 0.5))
     };
     let full = (tx1 - tx0).max(0.0);
     let (mut lines, mut shifts) = (Vec::new(), Vec::new());
@@ -721,7 +722,7 @@ fn text(
 
 /// A rich text whose lines floats shorten.
 fn rich_wraps(n: &Node) -> bool {
-    matches!(&n.content, Content::Rich(rc) if rc.wrap)
+    matches!(&*n.content, Content::Rich(rc) if rc.wrap)
         && n.props.text_path.is_none()
         && n.widget == Widget::None
 }
@@ -741,11 +742,11 @@ fn rich(
     was: bool,
 ) {
     let n = &nodes[k];
-    let Content::Rich(rc) = &n.content else {
+    let Content::Rich(rc) = &*n.content else {
         return;
     };
     let [ml, mr] = n.layout.margin_x;
-    let pad = n.el.padding;
+    let pad = n.layout.used.padding;
     let fill = (inner - ml - mr).max(0.0);
     let (tx0, tx1) = (x0 + ml + pad.left, x0 + ml + fill - pad.right);
     let lowest = cx
@@ -1008,7 +1009,7 @@ fn lines(
     let origin = (x0, top);
     let kids = nodes[c].children.clone();
     let inner = (x1 - x0).max(0.0);
-    let el = nodes[c].el;
+    let el = nodes[c].layout.used;
     let (gap, line_gap) = (el.main_gap(), el.line_gap());
     let (base, sides) = row_bases(nodes, &kids, inner);
     let css = css_line(nodes, &kids);
@@ -1036,7 +1037,7 @@ fn lines(
         if !inline_level(&nodes[kids[s]]) {
             let k = kids[s];
             // Below the earlier floats it clears.
-            let clear = (cleared(&cx.floats, nodes[k].el.clear) - y).max(0.0);
+            let clear = (cleared(&cx.floats, nodes[k].layout.used.clear) - y).max(0.0);
             (drop, y) = (drop + clear, y + clear);
             let w0 = nodes[k].layout.w;
             size_row(
@@ -1058,7 +1059,7 @@ fn lines(
                     relayout(nodes, k, w, cx);
                 }
                 let [ml, _] = nodes[k].layout.margin_x;
-                let pad = nodes[k].el.padding;
+                let pad = nodes[k].layout.used.padding;
                 if joins(nodes, k) {
                     walk(nodes, k, x0 + ml + pad.left, at + pad.top, cx);
                     size_h(nodes, k);
@@ -1226,7 +1227,7 @@ fn beside(
             // sides as it mirrors its content: the room is swapped so the
             // box mirrors whole.
             let up = nodes[k].up;
-            nodes[k].layout.margin_x = if up != NONE && nodes[up].el.flip {
+            nodes[k].layout.margin_x = if up != NONE && nodes[up].layout.used.flip {
                 [x1 - br, bl - x0]
             } else {
                 [bl - x0, x1 - br]

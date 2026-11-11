@@ -264,10 +264,11 @@ impl Ui {
             s.synth.bold &= s.bold;
             runs.push(s);
         }
+        self.tree.el_mut(i).width = desc.width;
+        let build = self.tree.build();
         let node = &mut self.tree.nodes[i];
-        node.el.width = desc.width;
         node.probe_text = text.to_owned();
-        node.content = Content::Rich(RichContent {
+        *node.content.write(build) = Content::Rich(RichContent {
             spans: runs,
             base: (desc.step.unwrap_or(t.type_ramp.body), desc.font),
             align: desc.align,

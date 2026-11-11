@@ -355,7 +355,7 @@ impl Ui {
             let panel = self.tree.parent();
             // The scrim is `Dialog.backdrop` to a style (CSS `::backdrop`).
             let scrim = self.tree.nodes[panel].parent;
-            self.tree.nodes[scrim].el.part = crate::dress::PartRef::parse(
+            self.tree.el_mut(scrim).part = crate::dress::PartRef::parse(
                 "dialog::part(backdrop)",
                 None::<crate::tokens::ElementClass>,
             )
@@ -614,7 +614,7 @@ impl Ui {
             if tone != Tone::Neutral {
                 let dot = t.space.sm;
                 let c = self.tone_dot(tone);
-                self.tree.nodes[i].shapes.push(Shape::DressedRect {
+                self.tree.shapes_mut(i).push(Shape::DressedRect {
                     part: crate::dress::PartRef::of("Toast", "indicator", None)
                         .attr("tone", tone.name()),
                     frame: Frame {
@@ -628,7 +628,7 @@ impl Ui {
                     radius: dot,
                     color: c,
                 });
-                self.tree.nodes[i].el.padding.left = t.space.lg + dot + t.space.sm;
+                self.tree.el_mut(i).padding.left = t.space.lg + dot + t.space.sm;
             }
             self.label(
                 "Text",
@@ -701,7 +701,7 @@ impl Ui {
             NONE,
         );
         // The modal placement pads by the safe area; the shades must not.
-        self.tree.nodes[layer].el.padding = Insets::default();
+        self.tree.el_mut(layer).padding = Insets::default();
         let mut out = Response::default();
         let mut shade = |ui: &mut Ui, name: &str, w: Size, hgt: Size| {
             let i = ui.leaf(
@@ -770,7 +770,7 @@ impl Ui {
                     },
                 ];
                 for frame in edges {
-                    self.tree.nodes[hole].shapes.push(Shape::DressedRect {
+                    self.tree.shapes_mut(hole).push(Shape::DressedRect {
                         part: crate::doc::schema::parts::SPOTLIGHT_EDGE.reference(None),
                         frame,
                         radius: 0.0,

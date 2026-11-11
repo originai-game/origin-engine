@@ -55,7 +55,7 @@ impl RetainedHost {
         };
         let at = ui.tree.parent();
         if props != Props::default() {
-            ui.tree.nodes[at].props = props;
+            *ui.tree.props_mut(at) = props;
         }
         let (first, end) = (range.first as usize, range.last.min(count) as usize);
         // What leaves the window and what enters it; the rows staying are

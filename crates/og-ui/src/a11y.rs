@@ -43,7 +43,7 @@ pub(crate) fn node_info(
     if name.is_empty()
         && labelled
         && n.parent != crate::layout::NONE
-        && nodes[n.parent].el.direction == crate::layout::Direction::Row
+        && nodes[n.parent].layout.used.direction == crate::layout::Direction::Row
     {
         let siblings = &nodes[n.parent].children;
         if let Some(at) = siblings.iter().position(|&c| c == i)
@@ -498,7 +498,7 @@ pub(crate) fn text_within(nodes: &[Node], i: usize) -> String {
     let mut stack = vec![i];
     while let Some(k) = stack.pop() {
         let n = &nodes[k];
-        if n.hidden {
+        if n.is_hidden() {
             continue;
         }
         if !n.probe_text.is_empty() {

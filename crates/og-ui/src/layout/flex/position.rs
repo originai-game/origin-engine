@@ -8,8 +8,12 @@ use super::*;
 pub(in crate::layout) fn inline_rows(nodes: &mut [Node], i: usize, measure: &Measure<'_>) {
     use crate::VerticalAlign as V;
     let n = &nodes[i];
-    let shifted =
-        |nodes: &[Node], c: usize| !matches!(nodes[c].el.valign, V::Baseline | V::Top | V::Bottom);
+    let shifted = |nodes: &[Node], c: usize| {
+        !matches!(
+            nodes[c].layout.used.valign,
+            V::Baseline | V::Top | V::Bottom
+        )
+    };
     if n.layout.line_box.is_none() || !n.children.iter().any(|&c| shifted(nodes, c)) {
         if !nodes[i].layout.inline_rows.is_empty() {
             nodes[i].layout.inline_rows.clear();
@@ -22,8 +26,8 @@ pub(in crate::layout) fn inline_rows(nodes: &mut [Node], i: usize, measure: &Mea
     let (step, font) = n
         .children
         .iter()
-        .find_map(|&c| match &nodes[c].content {
-            Content::Text(t) => Some((t.step, t.font)),
+        .find_map(|&c| match &*nodes[c].content {
+            Content::Text(t) => Some((nodes[c].used_text(t).step, t.font)),
             Content::Rich(rc) => Some(rc.base),
             _ => None,
         })
@@ -53,7 +57,7 @@ pub(in crate::layout) fn inline_rows(nodes: &mut [Node], i: usize, measure: &Mea
             let (mt, mb) = (span(k.layout.margin_sets[0]), span(k.layout.margin_sets[1]));
             let b = layout_baseline(nodes, c, fonts).unwrap_or(k.layout.pref_h);
             let (above, below) = (mt + b, k.layout.pref_h - b + mb);
-            let place = match k.el.valign {
+            let place = match k.layout.used.valign {
                 V::Top => InlinePlace::Top,
                 V::Bottom => InlinePlace::Bottom,
                 va => va.place(&strut, step.size, step.line_height, above, below),
@@ -118,7 +122,7 @@ fn line_align(el: &Element) -> Align {
 /// `column-reverse`) and its lines across it (`wrap-reverse`), inside its
 /// content box: each margin box flips, its own margins kept on their sides.
 fn mirror_lines(nodes: &mut [Node], i: usize, x0: f32, y0: f32, inner_w: f32, inner_h: f32) {
-    let el = nodes[i].el;
+    let el = nodes[i].layout.used;
     let row = el.direction == Direction::Row;
     let (flip_x, flip_y) = if row {
         (el.reverse, el.wrap_reverse && el.wrap)
@@ -145,9 +149,9 @@ fn mirror_lines(nodes: &mut [Node], i: usize, x0: f32, y0: f32, inner_w: f32, in
 pub(crate) fn position(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f32, f32)) {
     place_children(nodes, i, scroll);
     super::multicol::place(nodes, i);
-    if nodes[i].el.flip {
+    if nodes[i].layout.used.flip {
         let n = &nodes[i];
-        let sx = if n.el.scroll_x {
+        let sx = if n.layout.used.scroll_x {
             scroll(n.key).0.clamp(0.0, n.max_scroll_x())
         } else {
             0.0
@@ -169,7 +173,7 @@ pub(crate) fn position(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f3
     // Their containing block: its content box, scrolled with its content
     // where it is the scroller.
     let n = &nodes[i];
-    let (sx, sy) = match (n.el.scroll_x, n.el.scroll) {
+    let (sx, sy) = match (n.layout.used.scroll_x, n.layout.used.scroll) {
         (false, false) => (0.0, 0.0),
         (x, y) => {
             let (sx, sy) = scroll(n.key);
@@ -188,18 +192,18 @@ pub(crate) fn position(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f3
         }
     };
     let (iw, ih) = (
-        (n.layout.w - n.el.padding.horizontal()).max(0.0),
-        (n.layout.h - n.el.padding.vertical()).max(0.0),
+        (n.layout.w - n.layout.used.padding.horizontal()).max(0.0),
+        (n.layout.h - n.layout.used.padding.vertical()).max(0.0),
     );
     let cb = Rect::new(
-        n.layout.x + n.el.padding.left - sx,
-        n.layout.y + n.el.padding.top - sy,
+        n.layout.x + n.layout.used.padding.left - sx,
+        n.layout.y + n.layout.used.padding.top - sy,
         if sx > 0.0 {
             iw.max(n.layout.content_w)
         } else {
             iw
         },
-        if n.el.scroll {
+        if n.layout.used.scroll {
             ih.max(n.layout.content_h)
         } else {
             ih
@@ -207,7 +211,7 @@ pub(crate) fn position(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f3
     );
     // The nearest scroller's scrollport, at or above the parent.
     let mut at = i;
-    while at != NONE && !(nodes[at].el.scroll || nodes[at].el.scroll_x) {
+    while at != NONE && !(nodes[at].layout.used.scroll || nodes[at].layout.used.scroll_x) {
         at = nodes[at].up;
     }
     let port = (at != NONE).then(|| {
@@ -219,7 +223,7 @@ pub(crate) fn position(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f3
         )
     });
     for c in kids {
-        let ins = nodes[c].props.insets;
+        let ins = nodes[c].layout.insets;
         let (x, y, w, h) = (
             nodes[c].layout.x,
             nodes[c].layout.y,
@@ -290,7 +294,7 @@ pub(crate) fn position(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f3
 fn flow_insets(n: &Node) -> Edges {
     match n.props.position {
         Position::Relative | Position::Sticky => Edges::default(),
-        _ => n.props.insets,
+        _ => n.layout.insets,
     }
 }
 
@@ -324,32 +328,32 @@ fn place_children(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f32, f3
         nodes[c].layout.x = x;
         nodes[c].layout.y = y;
     }
-    if nodes[i].props.layout != LayoutMode::Flex && matches!(nodes[i].content, Content::None) {
+    if nodes[i].layout_mode() != LayoutMode::Flex && matches!(*nodes[i].content, Content::None) {
         let n = &nodes[i];
-        let (sx, sy) = if n.el.scroll || n.el.scroll_x {
+        let (sx, sy) = if n.layout.used.scroll || n.layout.used.scroll_x {
             scroll(n.key)
         } else {
             (0.0, 0.0)
         };
         let inner = Rect::new(
-            n.layout.x + n.el.padding.left
-                - if n.el.scroll_x {
+            n.layout.x + n.layout.used.padding.left
+                - if n.layout.used.scroll_x {
                     sx.clamp(0.0, n.max_scroll_x())
                 } else {
                     0.0
                 },
-            n.layout.y + n.el.padding.top
-                - if n.el.scroll {
+            n.layout.y + n.layout.used.padding.top
+                - if n.layout.used.scroll {
                     sy.clamp(0.0, n.max_scroll())
                 } else {
                     0.0
                 },
-            (n.layout.w - n.el.padding.horizontal()).max(0.0),
-            (n.layout.h - n.el.padding.vertical()).max(0.0),
+            (n.layout.w - n.layout.used.padding.horizontal()).max(0.0),
+            (n.layout.h - n.layout.used.padding.vertical()).max(0.0),
         );
-        let (align, cross) = (n.el.align, n.el.cross);
+        let (align, cross) = (n.layout.used.align, n.layout.used.cross);
         let kids = n.children.clone();
-        if n.props.layout == LayoutMode::Stack {
+        if n.layout_mode() == LayoutMode::Stack {
             let mut extent = 0.0f32;
             for &c in &kids {
                 let (w, h) = (nodes[c].layout.w, nodes[c].layout.h);
@@ -398,9 +402,9 @@ fn place_children(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f32, f3
     let content_w = {
         let n = &nodes[i];
         let kids = &n.children;
-        let gap = n.el.main_gap();
-        match n.el.direction {
-            Direction::Column if n.el.wrap && !n.layout.rows.is_empty() => {
+        let gap = n.layout.used.main_gap();
+        match n.layout.used.direction {
+            Direction::Column if n.layout.used.wrap && !n.layout.rows.is_empty() => {
                 n.layout
                     .rows
                     .iter()
@@ -411,10 +415,10 @@ fn place_children(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f32, f3
                             .fold(0.0, f32::max)
                     })
                     .sum::<f32>()
-                    + gaps(n.el.line_gap(), n.layout.rows.len())
+                    + gaps(n.layout.used.line_gap(), n.layout.rows.len())
             }
             Direction::Column => kids.iter().map(|&c| outer_w(&nodes[c])).fold(0.0, f32::max),
-            Direction::Row if n.el.wrap && !n.layout.rows.is_empty() => n
+            Direction::Row if n.layout.used.wrap && !n.layout.rows.is_empty() => n
                 .layout
                 .rows
                 .iter()
@@ -429,7 +433,7 @@ fn place_children(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f32, f3
     };
     nodes[i].layout.content_w = content_w;
     let n = &nodes[i];
-    let el = n.el;
+    let el = n.layout.used;
     let inner_w = n.layout.w - el.padding.horizontal();
     let inner_h = n.layout.h - el.padding.vertical();
     let mut x0 = n.layout.x + el.padding.left;
@@ -530,8 +534,8 @@ fn place_children(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f32, f3
                         cross_margins(&nodes[c]),
                     );
                     let [ml, mr] = nodes[c].layout.margin_x;
-                    let cross = nodes[c].el.align_self.unwrap_or(el.cross);
-                    let safe = safe_cross || nodes[c].el.safe & 2 != 0;
+                    let cross = nodes[c].layout.used.align_self.unwrap_or(el.cross);
+                    let safe = safe_cross || nodes[c].layout.used.safe & 2 != 0;
                     nodes[c].layout.x = x + ml;
                     nodes[c].layout.y = y0
                         + line_at
@@ -566,8 +570,8 @@ fn place_children(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f32, f3
                         span(nodes[c].layout.margin_sets[0]),
                         span(nodes[c].layout.margin_sets[1]),
                     );
-                    let cross = nodes[c].el.align_self.unwrap_or(el.cross);
-                    let safe = safe_cross || nodes[c].el.safe & 2 != 0;
+                    let cross = nodes[c].layout.used.align_self.unwrap_or(el.cross);
+                    let safe = safe_cross || nodes[c].layout.used.safe & 2 != 0;
                     nodes[c].layout.y = y + top;
                     nodes[c].layout.x =
                         x0 + line_at + ml + cross_offset(cross, room - ml - mr, w, safe);
@@ -593,8 +597,8 @@ fn place_children(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f32, f3
                 } else {
                     line.iter()
                         .map(|&c| {
-                            nodes[c].el.margin[0].auto as usize
-                                + nodes[c].el.margin[2].auto as usize
+                            nodes[c].layout.used.margin[0].auto as usize
+                                + nodes[c].layout.used.margin[2].auto as usize
                         })
                         .sum()
                 };
@@ -612,7 +616,7 @@ fn place_children(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f32, f3
                 for (j, &c) in line.iter().enumerate() {
                     let (w, h) = (nodes[c].layout.w, nodes[c].layout.h);
                     let [top, bottom] = [0, 2].map(|e| {
-                        if nodes[c].el.margin[e].auto {
+                        if nodes[c].layout.used.margin[e].auto {
                             each
                         } else {
                             0.0
@@ -620,9 +624,10 @@ fn place_children(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f32, f3
                     });
                     let [ml, mr] = nodes[c].layout.margin_x;
                     let room = inner_w.max(if el.scroll_x { ml + w + mr } else { 0.0 }) - ml - mr;
-                    let sideways = nodes[c].el.margin[1].auto || nodes[c].el.margin[3].auto;
-                    let cross = nodes[c].el.align_self.unwrap_or(el.cross);
-                    let safe = safe_cross || nodes[c].el.safe & 2 != 0;
+                    let sideways =
+                        nodes[c].layout.used.margin[1].auto || nodes[c].layout.used.margin[3].auto;
+                    let cross = nodes[c].layout.used.align_self.unwrap_or(el.cross);
+                    let safe = safe_cross || nodes[c].layout.used.safe & 2 != 0;
                     nodes[c].layout.y = y + top;
                     nodes[c].layout.x = x0
                         + ml
@@ -656,9 +661,9 @@ fn outer_w(n: &Node) -> f32 {
 pub(in crate::layout) fn auto_offset(n: &Node, edge: usize, free: f32) -> Option<f32> {
     let free = free.max(0.0);
     let (lead, trail) = if edge == 0 {
-        (n.el.margin[0].auto, n.el.margin[2].auto)
+        (n.layout.used.margin[0].auto, n.layout.used.margin[2].auto)
     } else {
-        (n.el.margin[3].auto, n.el.margin[1].auto)
+        (n.layout.used.margin[3].auto, n.layout.used.margin[1].auto)
     };
     match (lead, trail) {
         (true, true) => Some(free / 2.0),
@@ -723,10 +728,10 @@ fn place_in(bx: &Rect, w: f32, h: f32, ins: &Edges, align: Align, cross: Cross) 
 /// shrinks to fit that room (its max-content, at most the room, at least
 /// its min-content). `stretch` fills the room either way.
 pub(super) fn out_size(n: &Node, axis: usize, outer: f32, basis: f32) -> f32 {
-    let ins = &n.props.insets;
+    let ins = &n.layout.insets;
     let (size, pref, min, a, b, [lead, trail]) = if axis == 0 {
         (
-            n.el.width,
+            n.layout.used.width,
             n.layout.pref_w,
             n.layout.min_w,
             ins.start,
@@ -735,7 +740,7 @@ pub(super) fn out_size(n: &Node, axis: usize, outer: f32, basis: f32) -> f32 {
         )
     } else {
         (
-            n.el.height,
+            n.layout.used.height,
             n.layout.pref_h,
             n.layout.min_h,
             ins.top,
@@ -743,7 +748,7 @@ pub(super) fn out_size(n: &Node, axis: usize, outer: f32, basis: f32) -> f32 {
             [0, 2],
         )
     };
-    let margins = n.el.margin[lead].of(basis) + n.el.margin[trail].of(basis);
+    let margins = n.layout.used.margin[lead].of(basis) + n.layout.used.margin[trail].of(basis);
     let room = (outer - a.unwrap_or(0.0) - b.unwrap_or(0.0) - margins).max(0.0);
     let (lo, hi) = size.bounds();
     let v = match (a, b, size) {
@@ -766,9 +771,9 @@ pub(super) fn out_size(n: &Node, axis: usize, outer: f32, basis: f32) -> f32 {
 /// stands at the block's start, past its margin. Centring and fractional
 /// insets place it as [`place_in`] does.
 fn place_out(bx: &Rect, n: &Node, w: f32, h: f32) -> (f32, f32) {
-    let ins = &n.props.insets;
+    let ins = &n.layout.insets;
     let (x, y) = place_in(bx, w, h, ins, Align::Start, Cross::Start);
-    let m = &n.el.margin;
+    let m = &n.layout.used.margin;
     let at = |lo: f32, len: f32, size: f32, a: Option<f32>, b: Option<f32>, edges: [usize; 2]| {
         let [lead, trail] = edges.map(|e| m[e]);
         let (ml, mr) = (lead.of(bx.width), trail.of(bx.width));

@@ -88,7 +88,7 @@ impl Ui {
             return;
         }
         let at = self.tree.last_closed;
-        let props = &mut self.tree.nodes[at].props;
+        let props = self.tree.props_mut(at);
         props.position = crate::element::Position::Anchored;
         props.anchor_to = item.to_string();
         props.anchor_at = crate::layout::Anchor::TopLeft;
@@ -197,7 +197,7 @@ impl Ui {
         };
         let at = self.tree.parent();
         if props != Props::default() {
-            self.tree.nodes[at].props = props;
+            *self.tree.props_mut(at) = props;
         }
         for k in range.first..range.last.min(count) {
             self.docs.structure_row(k as usize);

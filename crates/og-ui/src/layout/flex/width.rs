@@ -50,7 +50,7 @@ fn rewrap(
 }
 
 /// A text's extent along its line: across, or down a vertical one.
-fn text_measure(t: &TextContent, m: &FontMetrics, text: &str) -> f32 {
+fn text_measure(t: UsedText<'_>, m: &FontMetrics, text: &str) -> f32 {
     let (size, tr, ft) = (t.step.size, t.tracking(), t.features());
     match t.vertical {
         Some(v) => crate::text::vertical::measure(m, text, size, tr, ft, v),
@@ -59,7 +59,7 @@ fn text_measure(t: &TextContent, m: &FontMetrics, text: &str) -> f32 {
 }
 
 /// A text's widest line along its line.
-pub(super) fn text_widest(t: &TextContent, m: &FontMetrics) -> f32 {
+pub(super) fn text_widest(t: UsedText<'_>, m: &FontMetrics) -> f32 {
     let (size, tr, ft) = (t.step.size, t.tracking(), t.features());
     match t.vertical {
         Some(v) => crate::text::vertical::widest_line(&t.text, m, size, tr, ft, v),
@@ -68,7 +68,7 @@ pub(super) fn text_widest(t: &TextContent, m: &FontMetrics) -> f32 {
 }
 
 /// A text's longest unbreakable unit along its line.
-fn text_longest(t: &TextContent, m: &FontMetrics) -> f32 {
+fn text_longest(t: UsedText<'_>, m: &FontMetrics) -> f32 {
     let (size, tr, ft) = (t.step.size, t.tracking(), t.features());
     match t.vertical {
         Some(v) => crate::text::vertical::longest_word(&t.text, m, size, tr, ft, v),
@@ -77,7 +77,7 @@ fn text_longest(t: &TextContent, m: &FontMetrics) -> f32 {
 }
 
 /// A text's lines at `width` along its line (`None`: only at `\n`).
-pub(crate) fn text_lines(t: &TextContent, m: &FontMetrics, width: Option<f32>) -> Vec<Line> {
+pub(crate) fn text_lines(t: UsedText<'_>, m: &FontMetrics, width: Option<f32>) -> Vec<Line> {
     let (size, tr, ft) = (t.step.size, t.tracking(), t.features());
     match t.vertical {
         Some(v) => crate::text::vertical::break_lines(&t.text, m, size, tr, ft, v, width),
@@ -87,7 +87,7 @@ pub(crate) fn text_lines(t: &TextContent, m: &FontMetrics, width: Option<f32>) -
 
 /// A text's preferred width (its widest line) and the least it can take:
 /// its ellipsis, its longest word when it wraps, else all of it.
-fn text_widths(t: &TextContent, fonts: &dyn Metrics) -> (f32, f32) {
+fn text_widths(t: UsedText<'_>, fonts: &dyn Metrics) -> (f32, f32) {
     let m = t.metrics(fonts);
     let pref = text_widest(t, m);
     let min = if t.ellipsis {
@@ -103,7 +103,7 @@ fn text_widths(t: &TextContent, fonts: &dyn Metrics) -> (f32, f32) {
 
 /// A text shows whole at `width` at its step: one line no wider, or (wrapping)
 /// no word wider and no more lines than its limit.
-fn fits(t: &TextContent, fonts: &dyn Metrics, width: f32) -> bool {
+fn fits(t: UsedText<'_>, fonts: &dyn Metrics, width: f32) -> bool {
     let m = t.metrics(fonts);
     if !t.wrap {
         return text_widest(t, m) <= width;
@@ -113,15 +113,15 @@ fn fits(t: &TextContent, fonts: &dyn Metrics, width: f32) -> bool {
 }
 
 pub(in crate::layout) fn size_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'_>) {
-    if nodes[i].props.layout == LayoutMode::Grid
-        && matches!(nodes[i].content, Content::None)
+    if nodes[i].layout_mode() == LayoutMode::Grid
+        && matches!(*nodes[i].content, Content::None)
         && !nodes[i].layout.cv_skip
     {
         place_grid(nodes, i);
     }
     let n = &nodes[i];
     let fonts = measure.fonts;
-    let (pref, min) = match &n.content {
+    let (pref, min) = match &*n.content {
         // Size containment: sized as if empty, or as its
         // `contain-intrinsic-width` says (CSS Containment 2 §3.1).
         _ if let Some(w) = n.contained_size(0) => (w, w),
@@ -131,15 +131,13 @@ pub(in crate::layout) fn size_w(nodes: &mut [Node], i: usize, measure: &mut Meas
             (w, w)
         }
         Content::Text(t) => {
+            let t = n.used_text(t);
             let (pref, min) = measure.texts.widths(t, || text_widths(t, fonts));
             match t.fit.last() {
                 // An auto-fit label can shrink to what its smallest step needs.
                 Some(&small) => {
-                    let s = TextContent {
-                        step: small,
-                        ..t.clone()
-                    };
-                    let (_, m) = measure.texts.widths(&s, || text_widths(&s, fonts));
+                    let s = t.at(small);
+                    let (_, m) = measure.texts.widths(s, || text_widths(s, fonts));
                     (pref, min.min(m))
                 }
                 None => (pref, min),
@@ -147,22 +145,22 @@ pub(in crate::layout) fn size_w(nodes: &mut [Node], i: usize, measure: &mut Meas
         }
         Content::Rich(rc) => crate::rich::rich_widths(rc, fonts, n.rich_vertical()),
         Content::Image { .. } => (0.0, 0.0),
-        Content::None if n.props.layout == LayoutMode::Stack => {
+        Content::None if n.layout_mode() == LayoutMode::Stack => {
             let kids = || n.children.iter().map(|&c| &nodes[c]);
             (
                 kids().map(|c| c.layout.pref_w).fold(0.0, f32::max),
                 kids().map(|c| c.layout.min_w).fold(0.0, f32::max),
             )
         }
-        Content::None if n.props.layout == LayoutMode::Grid => grid_intrinsic(nodes, i, true),
+        Content::None if n.layout_mode() == LayoutMode::Grid => grid_intrinsic(nodes, i, true),
         Content::None => {
             let k = n.children.len();
             let kids = n.children.iter().map(|&c| &nodes[c]);
-            match n.el.direction {
+            match n.layout.used.direction {
                 // Lines: its widest run of inline-level children, or its
                 // widest block-level one (each on a line of its own).
                 Direction::Row if n.layout.line_box.is_some() => {
-                    let gap = n.el.main_gap();
+                    let gap = n.layout.used.main_gap();
                     let (mut pref, mut run, mut count) = (0.0f32, 0.0f32, 0usize);
                     for &c in &n.children {
                         let k = &nodes[c];
@@ -181,13 +179,13 @@ pub(in crate::layout) fn size_w(nodes: &mut [Node], i: usize, measure: &mut Meas
                     (pref.max(run), min)
                 }
                 Direction::Row => {
-                    let gap = n.el.main_gap();
+                    let gap = n.layout.used.main_gap();
                     let pref = kids
                         .clone()
                         .map(|c| c.layout.pref_w + side_margins(c))
                         .sum::<f32>()
                         + gaps(gap, k);
-                    let min = if n.el.wrap {
+                    let min = if n.layout.used.wrap {
                         kids.map(|c| c.layout.min_w + side_margins(c))
                             .fold(0.0, f32::max)
                     } else {
@@ -203,7 +201,7 @@ pub(in crate::layout) fn size_w(nodes: &mut [Node], i: usize, measure: &mut Meas
                     let min = kids
                         .map(|c| c.layout.min_w + side_margins(c))
                         .fold(0.0, f32::max);
-                    match n.el.multicol {
+                    match n.layout.used.multicol {
                         Some(m) => super::multicol::intrinsic(&m, pref, min),
                         None => (pref, min),
                     }
@@ -227,25 +225,29 @@ pub(in crate::layout) fn size_w(nodes: &mut [Node], i: usize, measure: &mut Meas
         )
     };
     // A fixed height and an aspect ratio give the width.
-    let (pref, min) = match (n.el.aspect > 0.0, n.el.height, n.el.width) {
+    let (pref, min) = match (
+        n.layout.used.aspect > 0.0,
+        n.layout.used.height,
+        n.layout.used.width,
+    ) {
         (true, Size::Fixed(h), Size::Fit { .. }) => {
-            let w = (h - n.el.padding.vertical()).max(0.0) * n.el.aspect;
+            let w = (h - n.layout.used.padding.vertical()).max(0.0) * n.layout.used.aspect;
             (w, w)
         }
         _ => (pref, min),
     };
-    let pad = n.el.padding.horizontal();
+    let pad = n.layout.used.padding.horizontal();
     // A horizontal scroller never shrinks its content: it overflows and
     // scrolls. A field scrolls its own text too: its placeholder or its value
     // never holds it wider than its row.
-    let min = if n.el.scroll_x || matches!(n.widget, Widget::Field(_)) {
+    let min = if n.layout.used.scroll_x || matches!(n.widget, Widget::Field(_)) {
         0.0
     } else {
         min
     };
-    let (p, m) = apply_size(n.el.width, pad + pref, pad + min);
+    let (p, m) = apply_size(n.layout.used.width, pad + pref, pad + min);
     let (cp, cm) = (pad + pref, pad + min);
-    let el = n.el;
+    let el = n.layout.used;
     nodes[i].layout.min_content[0] = cm;
     nodes[i].layout.pref_w = el.bounded(0, None, cp, cm, p);
     nodes[i].layout.min_w = el.bounded(0, None, cp, cm, m);
@@ -255,9 +257,9 @@ pub(in crate::layout) fn size_w(nodes: &mut [Node], i: usize, measure: &mut Meas
 /// bounds against `basis` (the parent's inner size, its percentages' basis).
 pub(crate) fn cross_size(n: &Node, axis: usize, inner: f32, basis: f32, stretch: bool) -> f32 {
     let (size, pref, min) = if axis == 0 {
-        (n.el.width, n.layout.pref_w, n.layout.min_w)
+        (n.layout.used.width, n.layout.pref_w, n.layout.min_w)
     } else {
-        (n.el.height, n.layout.pref_h, n.layout.min_h)
+        (n.layout.used.height, n.layout.pref_h, n.layout.min_h)
     };
     let v = match size {
         Size::Grow { .. } => {
@@ -271,15 +273,15 @@ pub(crate) fn cross_size(n: &Node, axis: usize, inner: f32, basis: f32, stretch:
         Size::Fit { .. } => pref.min(inner).max(min),
         _ => size.definite(pref, min, Some(basis)).unwrap_or(pref),
     };
-    n.el.bounded(axis, Some(basis), pref, min, v)
+    n.layout.used.bounded(axis, Some(basis), pref, min, v)
 }
 
 /// Whether node `n` lies in a line beside its siblings (CSS 2 §9.2.2): a
 /// box displayed `inline-*`, a text that is not block-level, or an image.
 pub(in crate::layout) fn inline_level(n: &Node) -> bool {
-    n.el.inline
-        || match n.content {
-            Content::Text(_) | Content::Rich(_) => !n.el.block,
+    n.layout.used.inline
+        || match *n.content {
+            Content::Text(_) | Content::Rich(_) => !n.layout.used.block,
             Content::Image { .. } => true,
             Content::None => false,
         }
@@ -292,7 +294,7 @@ pub(in crate::layout) fn clamp_to(n: &Node, axis: usize, basis: Option<f32>, v: 
     } else {
         (n.layout.pref_h, n.layout.min_h)
     };
-    n.el.bounded(axis, basis, pref, min, v)
+    n.layout.used.bounded(axis, basis, pref, min, v)
 }
 
 pub(in crate::layout) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'_>) {
@@ -301,14 +303,9 @@ pub(in crate::layout) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mu
     // physical sides and axes.
     if nodes[i].props.variants.iter().any(|v| v.when.container) {
         let w = nodes[i].layout.w;
-        let variants = nodes[i].props.variants.clone();
-        for v in variants.iter().filter(|v| v.when.container) {
-            if width_in(w, &v.when) {
-                super::writing::patch(&mut nodes[i], &v.set);
-            }
-        }
+        super::writing::query(&mut nodes[i], w);
     }
-    let inner = (nodes[i].layout.w - nodes[i].el.padding.horizontal()).max(0.0);
+    let inner = (nodes[i].layout.w - nodes[i].layout.used.padding.horizontal()).max(0.0);
     // Out of the flow: sized against the parent's box.
     let outer = nodes[i].layout.w;
     for c in nodes[i].out.clone() {
@@ -316,7 +313,7 @@ pub(in crate::layout) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mu
     }
     let fonts = measure.fonts;
     // An auto-fit label: the largest of its steps its text fits at this width.
-    if let Content::Text(t) = &nodes[i].content
+    if let Content::Text(t) = &*nodes[i].content
         && !t.fit.is_empty()
     {
         let width = inner + 0.5;
@@ -324,13 +321,11 @@ pub(in crate::layout) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mu
             .fit
             .iter()
             .copied()
-            .find(|&step| fits(&TextContent { step, ..t.clone() }, fonts, width))
+            .find(|&step| fits(t.at(step), fonts, width))
             .unwrap_or(t.fit[t.fit.len() - 1]);
-        if let Content::Text(t) = &mut nodes[i].content {
-            t.step = step;
-        }
+        nodes[i].layout.fit_step = Some(step);
     }
-    if let Content::Text(t) = &nodes[i].content {
+    if let Some(t) = nodes[i].text() {
         // A fit width snapped to the device pixel may land up to half a
         // pixel under the text it was measured from: that is no reason to wrap.
         let width = inner + 0.5;
@@ -352,18 +347,19 @@ pub(in crate::layout) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mu
         nodes[i].layout.wrap_lines.clear();
         return;
     }
-    if let Content::Rich(rc) = &nodes[i].content {
+    if let Content::Rich(rc) = &*nodes[i].content {
         let v = nodes[i].rich_vertical();
         let lines = crate::rich::rich_lines(rc, fonts, rc.wrap.then_some(inner + 0.5), v);
         nodes[i].layout.rich_lines = lines;
         nodes[i].layout.wrap_lines.clear();
         return;
     }
-    let el = nodes[i].el;
+    let el = nodes[i].layout.used;
     // A float shrinks to fit (CSS 2 §10.3.5); its `auto` margins are 0.
     for c in nodes[i].floats.clone() {
         let n = &nodes[c];
-        let fill = (inner - n.el.margin[1].of(inner) - n.el.margin[3].of(inner)).max(0.0);
+        let fill = (inner - n.layout.used.margin[1].of(inner) - n.layout.used.margin[3].of(inner))
+            .max(0.0);
         nodes[c].layout.w = cross_size(n, 0, fill, inner, false);
         nodes[c].layout.margin_x = place_sides(&nodes[c], inner, 0.0);
     }
@@ -371,13 +367,13 @@ pub(in crate::layout) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mu
     if kids.is_empty() {
         return;
     }
-    match nodes[i].props.layout {
+    match nodes[i].layout_mode() {
         LayoutMode::Stack => {
             for &c in &kids {
                 let n = &nodes[c];
-                let ins = n.props.insets;
+                let ins = n.layout.insets;
                 let w = match (ins.start, ins.end) {
-                    (Some(s), Some(e)) if !matches!(n.el.width, Size::Fixed(_)) => {
+                    (Some(s), Some(e)) if !matches!(n.layout.used.width, Size::Fixed(_)) => {
                         clamp_to(n, 0, Some(inner), (inner - s - e).max(0.0))
                     }
                     _ => cross_size(n, 0, inner, inner, el.cross == Cross::Stretch),
@@ -409,15 +405,18 @@ pub(in crate::layout) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mu
                 // A percentage, a calc() or a fixed width reads the column's
                 // content width; a stretched or growing one fills what its
                 // margins leave.
-                let fill = (inner - n.el.margin[1].of(inner) - n.el.margin[3].of(inner)).max(0.0);
-                let basis = match n.el.width {
+                let fill =
+                    (inner - n.layout.used.margin[1].of(inner) - n.layout.used.margin[3].of(inner))
+                        .max(0.0);
+                let basis = match n.layout.used.width {
                     Size::Grow { .. } | Size::Fit { .. } => fill,
                     _ => inner,
                 };
-                let stretch = !el.wrap && n.el.align_self.unwrap_or(el.cross) == Cross::Stretch;
+                let stretch =
+                    !el.wrap && n.layout.used.align_self.unwrap_or(el.cross) == Cross::Stretch;
                 let w = cross_size(n, 0, basis, inner, stretch);
                 // In a horizontal scroller a fitting child keeps its width.
-                let w = match n.el.width {
+                let w = match n.layout.used.width {
                     Size::Fit { .. } if el.scroll_x => w.max(n.layout.pref_w),
                     _ => w,
                 };
@@ -428,7 +427,10 @@ pub(in crate::layout) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mu
         Direction::Row if !el.wrap => {
             let sides: f32 = kids
                 .iter()
-                .map(|&c| nodes[c].el.margin[1].of(inner) + nodes[c].el.margin[3].of(inner))
+                .map(|&c| {
+                    nodes[c].layout.used.margin[1].of(inner)
+                        + nodes[c].layout.used.margin[3].of(inner)
+                })
                 .sum();
             let avail = inner - gaps(el.main_gap(), kids.len()) - sides;
             let sizes = main_sizes(nodes, &kids, true, inner, avail, !el.scroll_x);
@@ -495,13 +497,18 @@ pub(crate) fn row_bases(nodes: &[Node], kids: &[usize], inner: f32) -> (Vec<f32>
             let w = if css {
                 flex_inputs(n, true, inner).hypo
             } else {
-                let w =
-                    n.el.width
-                        .definite(n.layout.pref_w, n.layout.min_w, Some(inner))
-                        .unwrap_or_else(|| n.layout.pref_w.min(inner).max(n.layout.min_w));
+                let w = n
+                    .layout
+                    .used
+                    .width
+                    .definite(n.layout.pref_w, n.layout.min_w, Some(inner))
+                    .unwrap_or_else(|| n.layout.pref_w.min(inner).max(n.layout.min_w));
                 clamp_to(n, 0, Some(inner), w)
             };
-            (w, n.el.margin[1].of(inner) + n.el.margin[3].of(inner))
+            (
+                w,
+                n.layout.used.margin[1].of(inner) + n.layout.used.margin[3].of(inner),
+            )
         })
         .unzip()
 }
@@ -532,8 +539,8 @@ pub(in crate::layout) fn size_row(
         let mut sizes = base.to_vec();
         let grow: Vec<Option<f32>> = line
             .iter()
-            .map(|&c| match nodes[c].el.width {
-                Size::Grow { .. } => Some(nodes[c].el.width.bounds().1),
+            .map(|&c| match nodes[c].layout.used.width {
+                Size::Grow { .. } => Some(nodes[c].layout.used.width.bounds().1),
                 _ => None,
             })
             .collect();
@@ -556,7 +563,10 @@ pub(in crate::layout) fn size_row(
 fn line_sides(nodes: &mut [Node], line: &[usize], basis: f32, free: f32) {
     let autos = line
         .iter()
-        .map(|&c| nodes[c].el.margin[1].auto as usize + nodes[c].el.margin[3].auto as usize)
+        .map(|&c| {
+            nodes[c].layout.used.margin[1].auto as usize
+                + nodes[c].layout.used.margin[3].auto as usize
+        })
         .sum::<usize>();
     let each = if autos > 0 {
         free.max(0.0) / autos as f32
@@ -564,7 +574,10 @@ fn line_sides(nodes: &mut [Node], line: &[usize], basis: f32, free: f32) {
         0.0
     };
     for &c in line {
-        let [l, r] = [nodes[c].el.margin[3], nodes[c].el.margin[1]];
+        let [l, r] = [
+            nodes[c].layout.used.margin[3],
+            nodes[c].layout.used.margin[1],
+        ];
         let side = |m: crate::layout::Margin| if m.auto { each } else { m.of(basis) };
         nodes[c].layout.margin_x = [side(l), side(r)];
     }

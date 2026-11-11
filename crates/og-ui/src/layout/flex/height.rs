@@ -3,16 +3,16 @@ use super::*;
 pub(in crate::layout) fn size_h(nodes: &mut [Node], i: usize) {
     collapse_margins(nodes, i);
     let n = &nodes[i];
-    let (pref, min) = match &n.content {
+    let (pref, min) = match &*n.content {
         _ if let Some(h) = n.contained_size(1) => (h, h),
-        Content::None if n.props.layout == LayoutMode::Stack => {
+        Content::None if n.layout_mode() == LayoutMode::Stack => {
             let kids = || n.children.iter().map(|&c| &nodes[c]);
             (
                 kids().map(|c| c.layout.pref_h).fold(0.0, f32::max),
                 kids().map(|c| c.layout.min_h).fold(0.0, f32::max),
             )
         }
-        Content::None if n.props.layout == LayoutMode::Grid => grid_intrinsic(nodes, i, false),
+        Content::None if n.layout_mode() == LayoutMode::Grid => grid_intrinsic(nodes, i, false),
         Content::Text(_) if let Some(tp) = &n.props.text_path => {
             let h = tp.extent().map_or(0.0, |e| e.y);
             (h, h)
@@ -22,7 +22,7 @@ pub(in crate::layout) fn size_h(nodes: &mut [Node], i: usize) {
         Content::Text(t) => {
             // Lines moved down past floats add their drop.
             let drop = n.layout.wrap_lines.last().map_or(0.0, |l| l[1]);
-            let h = n.layout.lines.len().max(1) as f32 * t.line_height() + drop;
+            let h = n.layout.lines.len().max(1) as f32 * n.used_text(t).line_height() + drop;
             (h, h)
         }
         Content::Rich(_) => {
@@ -33,8 +33,8 @@ pub(in crate::layout) fn size_h(nodes: &mut [Node], i: usize) {
         Content::Image { .. } => (0.0, 0.0),
         Content::None => {
             let kids = || n.children.iter().map(|&c| &nodes[c]);
-            match n.el.direction {
-                Direction::Column if n.el.multicol.is_some() => {
+            match n.layout.used.direction {
+                Direction::Column if n.layout.used.multicol.is_some() => {
                     let (lead, between, trail) = column_spacing(nodes, i);
                     let at = |f: &dyn Fn(&Node) -> f32| {
                         super::multicol::height(nodes, i, f, (lead, &between, trail))
@@ -48,7 +48,7 @@ pub(in crate::layout) fn size_h(nodes: &mut [Node], i: usize) {
                         kids().map(|c| c.layout.min_h).sum::<f32>() + room,
                     )
                 }
-                Direction::Row if !n.el.wrap || n.layout.rows.is_empty() => (
+                Direction::Row if !n.layout.used.wrap || n.layout.rows.is_empty() => (
                     kids()
                         .map(|c| c.layout.pref_h + cross_margins(c))
                         .fold(0.0, f32::max),
@@ -64,7 +64,7 @@ pub(in crate::layout) fn size_h(nodes: &mut [Node], i: usize) {
                             .fold(0.0, f32::max)
                     };
                     let rows = n.layout.rows.len();
-                    let gap = n.el.line_gap();
+                    let gap = n.layout.used.line_gap();
                     // A line box that holds a `vertical-align` is as tall
                     // as `inline_rows` says.
                     let held = |r: usize| n.layout.inline_rows.get(r).copied().flatten();
@@ -98,19 +98,20 @@ pub(in crate::layout) fn size_h(nodes: &mut [Node], i: usize) {
     // A formatting context's height holds its floats (CSS 2 §10.6.7).
     let (pref, min) = (pref.max(n.layout.float_h), min.max(n.layout.float_h));
     // An aspect ratio gives a fitting height from the laid-out width.
-    let (pref, min) = match (n.el.aspect > 0.0, n.el.height) {
+    let (pref, min) = match (n.layout.used.aspect > 0.0, n.layout.used.height) {
         (true, Size::Fit { .. }) => {
-            let h = (n.layout.w - n.el.padding.horizontal()).max(0.0) / n.el.aspect;
+            let h =
+                (n.layout.w - n.layout.used.padding.horizontal()).max(0.0) / n.layout.used.aspect;
             (h, h)
         }
         _ => (pref, min),
     };
-    let scroll = n.el.scroll && n.el.aspect <= 0.0;
-    let pad = n.el.padding.vertical();
+    let scroll = n.layout.used.scroll && n.layout.used.aspect <= 0.0;
+    let pad = n.layout.used.padding.vertical();
     let content_min = if scroll { 0.0 } else { min };
-    let (p, m) = apply_size(n.el.height, pad + pref, pad + content_min);
+    let (p, m) = apply_size(n.layout.used.height, pad + pref, pad + content_min);
     let (cp, cm) = (pad + pref, pad + content_min);
-    let el = n.el;
+    let el = n.layout.used;
     nodes[i].layout.min_content[1] = cm;
     nodes[i].layout.content_h = pref;
     nodes[i].layout.pref_h = el.bounded(1, None, cp, cm, p);
@@ -118,7 +119,7 @@ pub(in crate::layout) fn size_h(nodes: &mut [Node], i: usize) {
 }
 
 pub(in crate::layout) fn distribute_h(nodes: &mut [Node], i: usize, measure: &mut Measure<'_>) {
-    let el = nodes[i].el;
+    let el = nodes[i].layout.used;
     let inner = (nodes[i].layout.h - el.padding.vertical()).max(0.0);
     let outer = nodes[i].layout.h;
     for c in nodes[i].out.clone() {
@@ -126,7 +127,7 @@ pub(in crate::layout) fn distribute_h(nodes: &mut [Node], i: usize, measure: &mu
     }
     for c in nodes[i].floats.clone() {
         let n = &nodes[c];
-        let h = match n.el.height {
+        let h = match n.layout.used.height {
             Size::Fit { .. } | Size::Grow { .. } => n.layout.pref_h,
             size => size
                 .definite(n.layout.pref_h, n.layout.min_h, Some(inner))
@@ -138,13 +139,13 @@ pub(in crate::layout) fn distribute_h(nodes: &mut [Node], i: usize, measure: &mu
     if kids.is_empty() {
         return;
     }
-    match nodes[i].props.layout {
+    match nodes[i].layout_mode() {
         LayoutMode::Stack => {
             for &c in &kids {
                 let n = &nodes[c];
-                let ins = n.props.insets;
+                let ins = n.layout.insets;
                 let h = match (ins.top, ins.bottom) {
-                    (Some(t), Some(b)) if !matches!(n.el.height, Size::Fixed(_)) => {
+                    (Some(t), Some(b)) if !matches!(n.layout.used.height, Size::Fixed(_)) => {
                         clamp_to(n, 1, Some(inner), (inner - t - b).max(0.0))
                     }
                     _ => cross_size(n, 1, inner, inner, el.cross == Cross::Stretch),
@@ -205,10 +206,10 @@ pub(in crate::layout) fn distribute_h(nodes: &mut [Node], i: usize, measure: &mu
         Direction::Row if !el.wrap => {
             for &c in &kids {
                 let n = &nodes[c];
-                let stretch = n.el.align_self.unwrap_or(el.cross) == Cross::Stretch;
+                let stretch = n.layout.used.align_self.unwrap_or(el.cross) == Cross::Stretch;
                 let h = cross_size(n, 1, (inner - cross_margins(n)).max(0.0), inner, stretch);
                 // A Fit child keeps its content height across a row.
-                let h = match n.el.height {
+                let h = match n.layout.used.height {
                     Size::Fit { .. } if !stretch => n.layout.pref_h,
                     _ => h,
                 };
@@ -230,10 +231,10 @@ pub(in crate::layout) fn distribute_h(nodes: &mut [Node], i: usize, measure: &mu
                 for &c in line {
                     let n = &nodes[c];
                     let line_h = line_h - cross_margins(n);
-                    let stretch = n.el.align_self.unwrap_or(el.cross) == Cross::Stretch;
-                    let h = match n.el.height {
+                    let stretch = n.layout.used.align_self.unwrap_or(el.cross) == Cross::Stretch;
+                    let h = match n.layout.used.height {
                         Size::Grow { .. } => {
-                            let (lo, hi) = n.el.height.bounds();
+                            let (lo, hi) = n.layout.used.height.bounds();
                             line_h.clamp(lo, hi)
                         }
                         Size::Fit { .. } if stretch => line_h,
@@ -253,15 +254,15 @@ pub(in crate::layout) fn distribute_h(nodes: &mut [Node], i: usize, measure: &mu
         let basis = (nodes[i].layout.w - el.padding.horizontal()).max(0.0);
         for c in kids {
             let n = &nodes[c];
-            if n.el.aspect <= 0.0
-                || !matches!(n.el.width, Size::Fit { .. })
-                || n.el.align_self.unwrap_or(el.cross) == Cross::Stretch
+            if n.layout.used.aspect <= 0.0
+                || !matches!(n.layout.used.width, Size::Fit { .. })
+                || n.layout.used.align_self.unwrap_or(el.cross) == Cross::Stretch
             {
                 continue;
             }
-            let w = (n.layout.h - n.el.padding.vertical()).max(0.0) * n.el.aspect
-                + n.el.padding.horizontal();
-            let (lo, hi) = n.el.width.bounds();
+            let w = (n.layout.h - n.layout.used.padding.vertical()).max(0.0) * n.layout.used.aspect
+                + n.layout.used.padding.horizontal();
+            let (lo, hi) = n.layout.used.width.bounds();
             let w = clamp_to(n, 0, Some(basis), w.clamp(lo, hi));
             if w == n.layout.w {
                 continue;
@@ -286,7 +287,7 @@ pub(in crate::layout) fn distribute_h(nodes: &mut [Node], i: usize, measure: &mu
 /// leave, shared evenly.
 pub(super) fn line_extra(nodes: &[Node], i: usize, inner: f32) -> f32 {
     let n = &nodes[i];
-    if n.el.align_content != Some(Align::Stretch) || n.layout.rows.is_empty() {
+    if n.layout.used.align_content != Some(Align::Stretch) || n.layout.rows.is_empty() {
         return 0.0;
     }
     let used: f32 = n
@@ -300,7 +301,7 @@ pub(super) fn line_extra(nodes: &[Node], i: usize, inner: f32) -> f32 {
                 .fold(0.0, f32::max)
         })
         .sum::<f32>()
-        + gaps(n.el.line_gap(), n.layout.rows.len());
+        + gaps(n.layout.used.line_gap(), n.layout.rows.len());
     ((inner - used) / n.layout.rows.len() as f32).max(0.0)
 }
 
@@ -309,29 +310,31 @@ pub(super) fn line_extra(nodes: &[Node], i: usize, inner: f32) -> f32 {
 /// or its first descendant in the flow has text.
 pub(super) fn layout_baseline(nodes: &[Node], c: usize, fonts: &dyn Metrics) -> Option<f32> {
     let n = &nodes[c];
-    match &n.content {
+    match &*n.content {
         Content::Text(t) => {
+            let t = n.used_text(t);
             let line = n.layout.lines.first()?;
             let lh = t.line_height();
-            let inner = (n.layout.pref_h - n.el.padding.vertical()).max(0.0);
+            let inner = (n.layout.pref_h - n.layout.used.padding.vertical()).max(0.0);
             let block = lh * n.layout.lines.len() as f32;
-            let top = n.el.padding.top + ((inner - block) / 2.0).max(0.0);
+            let top = n.layout.used.padding.top + ((inner - block) / 2.0).max(0.0);
             Some(t.metrics(fonts).baseline(&line.text, top, lh, t.step.size))
         }
         Content::Rich(_) => {
             let drop = n.layout.wrap_lines.first().map_or(0.0, |l| l[1]);
-            Some(n.el.padding.top + drop + n.layout.rich_lines.first()?.baseline)
+            Some(n.layout.used.padding.top + drop + n.layout.rich_lines.first()?.baseline)
         }
         Content::Image { .. } => None,
         Content::None => {
             let &k = n.children.first()?;
-            let lead = if n.el.direction == Direction::Column && n.props.layout == LayoutMode::Flex
+            let lead = if n.layout.used.direction == Direction::Column
+                && n.layout_mode() == LayoutMode::Flex
             {
                 column_spacing(nodes, c).0
             } else {
                 0.0
             };
-            Some(n.el.padding.top + lead + layout_baseline(nodes, k, fonts)?)
+            Some(n.layout.used.padding.top + lead + layout_baseline(nodes, k, fonts)?)
         }
     }
 }

@@ -201,9 +201,9 @@ impl Ui {
                         ..Element::default()
                     },
                 );
-                ui.tree.nodes[i].props.position = crate::element::Position::Absolute;
-                ui.tree.nodes[i].props.insets.start = Some(s * rect.width - ring / 2.0);
-                ui.tree.nodes[i].props.insets.top = Some((1.0 - v) * rect.height - ring / 2.0);
+                ui.tree.props_mut(i).position = crate::element::Position::Absolute;
+                ui.tree.props_mut(i).insets.start = Some(s * rect.width - ring / 2.0);
+                ui.tree.props_mut(i).insets.top = Some((1.0 - v) * rect.height - ring / 2.0);
             }
             ui.close();
             let hue = ui.value_slider(
