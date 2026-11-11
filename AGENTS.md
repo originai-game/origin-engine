@@ -241,7 +241,8 @@ status `docs/roadmap.md`. Platform contracts implemented here:
   the IDL, the generated `.d.ts`), and any stack of more than a few
   commits, also runs `scripts/check.sh full --only fixtures` first: quick
   runs no fixture, and a broken `og check` fails every game's `og test`.
-  A head that changes og-runtime's answers or packages/engine also runs
+  A head that changes og-runtime's answers, packages/engine or the IDL
+  (its docs included: the engine's tests read them) also runs
   `scripts/check.sh full --only bun-test`, which quick does not select.
   Then, by what the head does to frames:
   - **A head that moves no reference frame** (no change to a look, a
