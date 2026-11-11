@@ -153,6 +153,8 @@ mod video_rendition;
 mod virtual_cameras;
 #[path = "../web_findings.rs"]
 mod web_findings;
+#[path = "../wire.rs"]
+mod wire;
 #[path = "../world_origin.rs"]
 mod world_origin;
 #[path = "../world_ui.rs"]

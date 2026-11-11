@@ -136,6 +136,7 @@ mod video;
 mod video;
 mod views;
 mod weather;
+pub mod wire;
 
 pub use ai::{
     og_ai_describe, og_ai_finish, og_ai_get, og_ai_load, og_ai_noise, og_ai_parse, og_ai_restart,
