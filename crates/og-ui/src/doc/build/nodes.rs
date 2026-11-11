@@ -376,79 +376,16 @@ impl Ui {
                 resp = self.button(id.as_str(), &text, r.button_desc());
             }
             "art" => {
-                // An art slot: its art fitted by its spec, or the style's
-                // placeholder for its kind (docs/ui.md §3.3).
-                self.art_spec(&path, &r);
-                let mut spec = self.last_art().clone();
-                let (at, nearest) = r.object_css();
-                if let Some([focal, _]) = at {
-                    spec.focal = focal;
-                }
-                texture = r.handle("texture").and_then(|h| b.env.texture(h));
-                self.art(
-                    id.as_str(),
-                    &crate::widgets::ArtDesc {
-                        spec,
-                        texture,
-                        size: None,
-                        width: r.size("width").unwrap_or_default(),
-                        height: r.size("height").unwrap_or_default(),
-                        label: r.str("name").unwrap_or_default().to_string(),
-                        offset: at.map_or([0.0; 2], |a| a[1]),
-                        nearest,
-                    },
-                );
+                texture = self.doc_art(b, &id, &path, &r);
             }
             "image" => {
-                texture = r.handle("texture").and_then(|h| b.env.texture(h));
-                let i = self.leaf("image", id.as_str().into(), Default::default());
-                self.apply_image(
-                    i,
-                    crate::ui::ImageDesc {
-                        texture,
-                        width: r.size("width").unwrap_or_default(),
-                        height: r.size("height").unwrap_or_default(),
-                        aspect: r
-                            .nums("ratio")
-                            .filter(|n| n.len() == 2 && n[1] > 0.0)
-                            .map_or(r.num("aspect").unwrap_or(0.0), |n| n[0] / n[1]),
-                        label: r.str("name").unwrap_or_default().to_string(),
-                        ..Default::default()
-                    },
-                );
-                self.object_fit(i, &r);
+                texture = self.doc_image(b, &id, &r);
             }
             "icon" => {
-                let name = match (r.str("icon"), r.str("cue")) {
-                    (Some(icon), _) => icon.to_string(),
-                    (None, Some(token)) => self.cue_icon(token).unwrap_or_default(),
-                    (None, None) => String::new(),
-                };
-                self.icon(
-                    id.as_str(),
-                    &name,
-                    crate::widgets::IconDesc {
-                        size: r.num("iconSize").unwrap_or(0.0),
-                        tint: r.color("color"),
-                        secondary: r.str("secondary").map(str::to_string),
-                        secondary_tint: None,
-                        label: r.str("name").map(str::to_string),
-                    },
-                );
+                self.doc_icon(&id, &r);
             }
             "meter" => {
-                self.gauge(
-                    id.as_str(),
-                    &crate::widgets::GaugeDesc {
-                        value: r.num("value").unwrap_or(0.0),
-                        min: r.num("min").unwrap_or(0.0),
-                        max: r.num("max").unwrap_or(1.0),
-                        low: r.num("low"),
-                        high: r.num("high"),
-                        optimum: r.num("optimum"),
-                        width: r.size("width"),
-                    },
-                );
+                self.doc_meter(&id, &r);
             }
             "select" if r.flag("dataCycle") => {
                 let changed = self.cycler(b, n, id.as_str(), &r);
@@ -461,39 +398,10 @@ impl Ui {
                 resp = self.doc_select(b, n, &id, &path, &r, &styled);
             }
             "progress" => {
-                let v = r.num("value").unwrap_or(0.0);
-                self.progress(
-                    id.as_str(),
-                    v,
-                    crate::ui::ProgressDesc {
-                        width: r.size("width"),
-                    },
-                );
+                self.doc_progress(&id, &r);
             }
             "slider" if r.has("high") => {
-                let out = self.range_slider(
-                    id.as_str(),
-                    (
-                        r.num("low").unwrap_or(f32::MIN),
-                        r.num("high").unwrap_or(f32::MAX),
-                    ),
-                    &crate::widgets::RangeSliderDesc {
-                        min: r.num("min").unwrap_or(0.0),
-                        max: r.num("max").unwrap_or(1.0),
-                        step: r.num("stepBy").unwrap_or(0.0),
-                        min_gap: r.num("dataMinGap").unwrap_or(0.0),
-                        label: text_of(&r, b),
-                        show_value: !r.has("showValue") || r.flag("showValue"),
-                        width: r.size("width"),
-                        disabled: r.flag("disabled"),
-                        ..crate::widgets::RangeSliderDesc::default()
-                    },
-                );
-                resp.changed = out.changed;
-                if out.changed {
-                    self.write_back(b, n, "low", json!(out.low));
-                    self.write_back(b, n, "high", json!(out.high));
-                }
+                resp = self.doc_slider_range(b, n, &id, &r, &text_of);
             }
             "slider" => {
                 resp = self.doc_slider(b, n, &id, &r, &text_of);
@@ -511,18 +419,7 @@ impl Ui {
                 resp = self.doc_file(b, n, &doc, &id, &path, &r, &text_of)?;
             }
             "datetime" => {
-                resp = self.datetime_input(b, n, id.as_str(), &r);
-                let barred = r.flag("disabled") || r.flag("readonly");
-                self.docs.host.validity.insert(
-                    key,
-                    super::mount::FieldValidity {
-                        mount: b.mount.clone(),
-                        doc: doc.name.clone(),
-                        node: i,
-                        row_key: b.row_key.clone(),
-                        invalid: !barred && (r.flag("invalid") || super::datetime::invalid(&r)),
-                    },
-                );
+                resp = self.doc_datetime(b, n, i, &doc, &id, key, &r);
             }
             "radio" => {
                 resp = self.doc_radio(b, n, &id, &r, &text_of);
@@ -534,16 +431,7 @@ impl Ui {
                 resp = self.doc_field(b, n, i, &doc, &id, &path, key, &r, &styled);
             }
             "badge" => {
-                let text = text_of(&r, b);
-                let tone = match r.str("tone") {
-                    Some("info") => crate::widgets::Tone::Info,
-                    Some("success") => crate::widgets::Tone::Success,
-                    Some("warn") => crate::widgets::Tone::Warn,
-                    Some("danger") => crate::widgets::Tone::Danger,
-                    Some("accent") => crate::widgets::Tone::Primary,
-                    _ => crate::widgets::Tone::Neutral,
-                };
-                self.badge(id.as_str(), &text, tone);
+                self.doc_badge(b, &id, &r, &text_of);
             }
             "kbd" => {
                 resp = self.kbd(b, n, id.as_str(), &r, text_of(&r, b));
@@ -590,6 +478,247 @@ impl Ui {
         self.hold(key, n, &styled, last);
         self.fire(b, n, key, &path, resp);
         Some(path)
+    }
+
+    /// The document's `art` element.
+    #[allow(
+        clippy::too_many_arguments,
+        clippy::ptr_arg,
+        clippy::needless_borrow,
+        clippy::needless_late_init
+    )]
+    fn doc_art(
+        &mut self,
+        b: &mut Build<'_>,
+        id: &String,
+        path: &String,
+        r: &Resolved,
+    ) -> Option<og_draw::TextureHandle> {
+        let texture;
+        // An art slot: its art fitted by its spec, or the style's
+        // placeholder for its kind (docs/ui.md §3.3).
+        self.art_spec(&path, &r);
+        let mut spec = self.last_art().clone();
+        let (at, nearest) = r.object_css();
+        if let Some([focal, _]) = at {
+            spec.focal = focal;
+        }
+        texture = r.handle("texture").and_then(|h| b.env.texture(h));
+        self.art(
+            id.as_str(),
+            &crate::widgets::ArtDesc {
+                spec,
+                texture,
+                size: None,
+                width: r.size("width").unwrap_or_default(),
+                height: r.size("height").unwrap_or_default(),
+                label: r.str("name").unwrap_or_default().to_string(),
+                offset: at.map_or([0.0; 2], |a| a[1]),
+                nearest,
+            },
+        );
+        texture
+    }
+
+    /// The document's `image` element.
+    #[allow(
+        clippy::too_many_arguments,
+        clippy::ptr_arg,
+        clippy::needless_borrow,
+        clippy::needless_late_init
+    )]
+    fn doc_image(
+        &mut self,
+        b: &mut Build<'_>,
+        id: &String,
+        r: &Resolved,
+    ) -> Option<og_draw::TextureHandle> {
+        let texture;
+        texture = r.handle("texture").and_then(|h| b.env.texture(h));
+        let i = self.leaf("image", id.as_str().into(), Default::default());
+        self.apply_image(
+            i,
+            crate::ui::ImageDesc {
+                texture,
+                width: r.size("width").unwrap_or_default(),
+                height: r.size("height").unwrap_or_default(),
+                aspect: r
+                    .nums("ratio")
+                    .filter(|n| n.len() == 2 && n[1] > 0.0)
+                    .map_or(r.num("aspect").unwrap_or(0.0), |n| n[0] / n[1]),
+                label: r.str("name").unwrap_or_default().to_string(),
+                ..Default::default()
+            },
+        );
+        self.object_fit(i, &r);
+        texture
+    }
+
+    /// The document's `icon` element.
+    #[allow(
+        clippy::too_many_arguments,
+        clippy::ptr_arg,
+        clippy::needless_borrow,
+        clippy::needless_late_init
+    )]
+    fn doc_icon(&mut self, id: &String, r: &Resolved) {
+        let name = match (r.str("icon"), r.str("cue")) {
+            (Some(icon), _) => icon.to_string(),
+            (None, Some(token)) => self.cue_icon(token).unwrap_or_default(),
+            (None, None) => String::new(),
+        };
+        self.icon(
+            id.as_str(),
+            &name,
+            crate::widgets::IconDesc {
+                size: r.num("iconSize").unwrap_or(0.0),
+                tint: r.color("color"),
+                secondary: r.str("secondary").map(str::to_string),
+                secondary_tint: None,
+                label: r.str("name").map(str::to_string),
+            },
+        );
+    }
+
+    /// The document's `meter` element.
+    #[allow(
+        clippy::too_many_arguments,
+        clippy::ptr_arg,
+        clippy::needless_borrow,
+        clippy::needless_late_init
+    )]
+    fn doc_meter(&mut self, id: &String, r: &Resolved) {
+        self.gauge(
+            id.as_str(),
+            &crate::widgets::GaugeDesc {
+                value: r.num("value").unwrap_or(0.0),
+                min: r.num("min").unwrap_or(0.0),
+                max: r.num("max").unwrap_or(1.0),
+                low: r.num("low"),
+                high: r.num("high"),
+                optimum: r.num("optimum"),
+                width: r.size("width"),
+            },
+        );
+    }
+
+    /// The document's `progress` element.
+    #[allow(
+        clippy::too_many_arguments,
+        clippy::ptr_arg,
+        clippy::needless_borrow,
+        clippy::needless_late_init
+    )]
+    fn doc_progress(&mut self, id: &String, r: &Resolved) {
+        let v = r.num("value").unwrap_or(0.0);
+        self.progress(
+            id.as_str(),
+            v,
+            crate::ui::ProgressDesc {
+                width: r.size("width"),
+            },
+        );
+    }
+
+    /// The document's `slider` element.
+    #[allow(
+        clippy::too_many_arguments,
+        clippy::ptr_arg,
+        clippy::needless_borrow,
+        clippy::needless_late_init
+    )]
+    fn doc_slider_range(
+        &mut self,
+        b: &mut Build<'_>,
+        n: &DocNode,
+        id: &String,
+        r: &Resolved,
+        text_of: &impl Fn(&Resolved, &Build<'_>) -> String,
+    ) -> crate::ui::Response {
+        let mut resp = crate::ui::Response::default();
+        let out = self.range_slider(
+            id.as_str(),
+            (
+                r.num("low").unwrap_or(f32::MIN),
+                r.num("high").unwrap_or(f32::MAX),
+            ),
+            &crate::widgets::RangeSliderDesc {
+                min: r.num("min").unwrap_or(0.0),
+                max: r.num("max").unwrap_or(1.0),
+                step: r.num("stepBy").unwrap_or(0.0),
+                min_gap: r.num("dataMinGap").unwrap_or(0.0),
+                label: text_of(&r, b),
+                show_value: !r.has("showValue") || r.flag("showValue"),
+                width: r.size("width"),
+                disabled: r.flag("disabled"),
+                ..crate::widgets::RangeSliderDesc::default()
+            },
+        );
+        resp.changed = out.changed;
+        if out.changed {
+            self.write_back(b, n, "low", json!(out.low));
+            self.write_back(b, n, "high", json!(out.high));
+        }
+        resp
+    }
+
+    /// The document's `datetime` element.
+    #[allow(
+        clippy::too_many_arguments,
+        clippy::ptr_arg,
+        clippy::needless_borrow,
+        clippy::needless_late_init
+    )]
+    fn doc_datetime(
+        &mut self,
+        b: &mut Build<'_>,
+        n: &DocNode,
+        i: usize,
+        doc: &UiDocument,
+        id: &String,
+        key: u64,
+        r: &Resolved,
+    ) -> crate::ui::Response {
+        let resp;
+        resp = self.datetime_input(b, n, id.as_str(), &r);
+        let barred = r.flag("disabled") || r.flag("readonly");
+        self.docs.host.validity.insert(
+            key,
+            super::mount::FieldValidity {
+                mount: b.mount.clone(),
+                doc: doc.name.clone(),
+                node: i,
+                row_key: b.row_key.clone(),
+                invalid: !barred && (r.flag("invalid") || super::datetime::invalid(&r)),
+            },
+        );
+        resp
+    }
+
+    /// The document's `badge` element.
+    #[allow(
+        clippy::too_many_arguments,
+        clippy::ptr_arg,
+        clippy::needless_borrow,
+        clippy::needless_late_init
+    )]
+    fn doc_badge(
+        &mut self,
+        b: &mut Build<'_>,
+        id: &String,
+        r: &Resolved,
+        text_of: &impl Fn(&Resolved, &Build<'_>) -> String,
+    ) {
+        let text = text_of(&r, b);
+        let tone = match r.str("tone") {
+            Some("info") => crate::widgets::Tone::Info,
+            Some("success") => crate::widgets::Tone::Success,
+            Some("warn") => crate::widgets::Tone::Warn,
+            Some("danger") => crate::widgets::Tone::Danger,
+            Some("accent") => crate::widgets::Tone::Primary,
+            _ => crate::widgets::Tone::Neutral,
+        };
+        self.badge(id.as_str(), &text, tone);
     }
 
     /// A container element and its content: a dialog, a disclosure, a
