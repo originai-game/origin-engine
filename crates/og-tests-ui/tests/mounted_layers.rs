@@ -143,57 +143,16 @@ fn mounted_layers_match_their_reference_frames() {
             "mounted-layers-morph",
             capture(&ui, &mut scene, width, height),
         ));
-        for (stem, (pixels, info)) in frames {
-            let name = format!("{stem}-{width}.png");
-            image::save_buffer(
-                out_dir().join(&name),
-                &pixels,
-                width,
-                height,
-                image::ColorType::Rgba8,
-            )
-            .unwrap();
-            let own = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                .join("references")
-                .join(og_tests::compare::RECORDING_TIER)
-                .join(&name);
-            if std::env::var_os("OG_UI_CAPTURE").is_some() {
-                record_reference(&own, width, height, &pixels);
-            }
-            let expected = image::open(&own)
-                .unwrap_or_else(|e| panic!("{}: {e} (OG_UI_CAPTURE=1 records it)", own.display()))
-                .to_rgba8();
-            let (rmse, _) = compare(&pixels, expected.as_raw(), &info, &own)
-                .unwrap_or_else(|e| panic!("{name}: {e}"));
-            println!("{name}: RMSE {rmse:.6}");
+        for (stem, frame) in frames {
+            let name = format!("{stem}-{width}");
+            matches_reference(&name, &frame.image, &frame.info, Against::Recorded);
         }
     }
 }
 
-fn capture(
-    ui: &Ui,
-    scene: &mut og_render::RenderScene,
-    width: u32,
-    height: u32,
-) -> (Vec<u8>, og_render::RenderInfo) {
-    use og_render::*;
-    let mut overlay = Overlay::new(width as f32, height as f32, 1.0);
-    ui.frame().emit(&EmitDesc::default(), &mut overlay);
-    scene.ui.overlay = Some(overlay);
-    let bg = ui.theme().palette.backdrop.linear();
-    scene.lighting.environment.background =
-        Background::Color(og_core::glam::Vec3::new(bg[0], bg[1], bg[2]));
-    scene.look.post.tonemap = Tonemap::None;
-    let mut renderer = Renderer::new_blocking(&RenderDesc {
-        width,
-        height,
-        ..Default::default()
-    })
-    .expect("a headless adapter");
-    let stats = renderer.render(scene, &RenderTarget::Offscreen).unwrap();
-    assert_eq!(stats.missing_glyphs, 0);
-    (
-        renderer.read_offscreen().unwrap().pixels,
-        renderer.info().clone(),
-    )
+/// `ui`'s frame over `scene`, every glyph of it in the font.
+fn capture(ui: &Ui, scene: &mut og_render::RenderScene, width: u32, height: u32) -> Rendered {
+    let frame = render_ui(ui, scene, width, height);
+    assert_eq!(frame.stats.missing_glyphs, 0);
+    frame
 }

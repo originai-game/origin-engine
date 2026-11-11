@@ -14,12 +14,6 @@ use og_ui::*;
 use std::path::PathBuf;
 use support::*;
 
-fn reference_dir(tier: &str) -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("references")
-        .join(tier)
-}
-
 #[test]
 #[ignore = "requires GPU"]
 fn retained_documents_match_immediate_pixels_after_updates_and_restore() {
@@ -273,12 +267,6 @@ fn core_documents_preserve_screen_pixels() {
                         mips: og_render::Mips::Generate,
                     })
                 });
-                let mut renderer = Renderer::new_blocking(&RenderDesc {
-                    width,
-                    height,
-                    ..Default::default()
-                })
-                .unwrap();
                 let mut ui = ui_with_font(font);
                 ui.set_style_name("conversion");
                 ui.define_document(new.clone());
@@ -301,21 +289,13 @@ fn core_documents_preserve_screen_pixels() {
                 ui.frame().emit(&EmitDesc::default(), &mut overlay);
                 scene.ui.overlay = Some(overlay);
                 scene.look.post.tonemap = Tonemap::None;
-                renderer.render(&scene, &RenderTarget::Offscreen).unwrap();
-                let image = renderer.read_offscreen().unwrap();
+                let Rendered { image, info, .. } = render_frame(&scene, &sized(width, height));
                 let filename = format!("{name}-{case}-{width}.png");
-                image::save_buffer(
-                    out_dir().join(&filename),
-                    &image.pixels,
-                    width,
-                    height,
-                    image::ColorType::Rgba8,
-                )
-                .unwrap();
+                save_actual(&filename, &image);
                 let reference_path = reference_dir(og_tests::compare::RECORDING_TIER)
                     .join("documents")
                     .join(&filename);
-                if std::env::var_os("OG_UI_CAPTURE").is_some() && !reference_path.exists() {
+                if capturing() && !reference_path.exists() {
                     record_reference(&reference_path, width, height, &image.pixels);
                 }
                 let reference = image::open(&reference_path).unwrap().to_rgba8();
@@ -333,12 +313,11 @@ fn core_documents_preserve_screen_pixels() {
                 // The tier the frames were recorded on preserves them byte
                 // for byte; another tier is judged against them under the
                 // cross-platform tolerance (`tolerance_for`).
-                let info = renderer.info();
                 let preserved = reference.as_raw() == &image.pixels
                     || (info.backend_tier() != og_tests::compare::RECORDING_TIER
-                        && compare(&image.pixels, reference.as_raw(), info, &reference_path)
+                        && compare(&image.pixels, reference.as_raw(), &info, &reference_path)
                             .is_ok());
-                if !preserved && std::env::var_os("OG_UI_CAPTURE").is_some() {
+                if !preserved && capturing() {
                     record_reference(&reference_path, width, height, &image.pixels);
                 } else if !preserved {
                     failures.push(format!("{name}/{case}/{width}: {rmse:.8}"));
@@ -477,33 +456,13 @@ fn missing_art_slot_kinds_have_intentional_placeholders() {
         assert!(mark.width <= 32.0 && mark.width <= width.min(*height) * 0.36 + 0.01);
     }
     let shot = shot(ui, scene, vp);
-    let mut renderer = Renderer::new_blocking(&shot.desc).unwrap();
-    renderer
-        .render(&shot.scene, &RenderTarget::Offscreen)
-        .unwrap();
-    let image = renderer.read_offscreen().unwrap();
-    let filename = "art-slot-placeholders.png";
-    image::save_buffer(
-        out_dir().join(filename),
-        &image.pixels,
-        image.width,
-        image.height,
-        image::ColorType::Rgba8,
-    )
-    .unwrap();
-    let reference = reference_dir(og_tests::compare::RECORDING_TIER).join(filename);
-    if std::env::var_os("OG_UI_CAPTURE").is_some() {
-        record_reference(&reference, image.width, image.height, &image.pixels);
-    } else {
-        let expected = image::open(&reference).unwrap().to_rgba8();
-        compare(
-            &image.pixels,
-            expected.as_raw(),
-            renderer.info(),
-            &reference,
-        )
-        .unwrap();
-    }
+    let frame = render_frame(&shot.scene, &shot.desc);
+    matches_reference(
+        "art-slot-placeholders",
+        &frame.image,
+        &frame.info,
+        Against::Recorded,
+    );
 }
 
 #[test]
@@ -952,22 +911,8 @@ fn sample_screen_matches_its_reference_frame() {
         "the tooltip shows after the pointer rests on Buy"
     );
 
-    let mut renderer = Renderer::new_blocking(&shot.desc).expect("a headless adapter");
-    let stats = renderer
-        .render(&shot.scene, &RenderTarget::Offscreen)
-        .expect("render");
-    let image = renderer.read_offscreen().expect("read back");
-    let tier = renderer.info().backend_tier();
-    let out = out_dir();
-    let actual = out.join(format!("sample-screen-{tier}.png"));
-    image::save_buffer(
-        &actual,
-        &image.pixels,
-        image.width,
-        image.height,
-        image::ColorType::Rgba8,
-    )
-    .expect("write frame");
+    let rendered = render_frame(&shot.scene, &shot.desc);
+    let stats = rendered.stats;
 
     // The whole UI is a handful of instanced draws: one atlas run and one
     // font run per painter level at most.
@@ -984,45 +929,12 @@ fn sample_screen_matches_its_reference_frame() {
     );
     assert_eq!(stats.missing_glyphs, 0);
 
-    let own = reference_dir(&tier).join("sample-screen.png");
-    if std::env::var_os("OG_UI_CAPTURE").is_some() {
-        record_reference(&own, image.width, image.height, &image.pixels);
-        println!("recorded {}", own.display());
-    }
-    let reference = if own.exists() {
-        own
-    } else {
-        println!(
-            "no {tier} reference ({}); comparing with the {} one. Record it with OG_UI_CAPTURE=1 on that tier",
-            own.display(),
-            og_tests::compare::RECORDING_TIER
-        );
-        reference_dir(og_tests::compare::RECORDING_TIER).join("sample-screen.png")
-    };
-    let expected = image::open(&reference)
-        .unwrap_or_else(|e| panic!("{}: {e} (OG_UI_CAPTURE=1 records it)", reference.display()))
-        .to_rgba8();
-    assert_eq!(
-        (expected.width(), expected.height()),
-        (image.width, image.height)
+    matches_reference(
+        "sample-screen",
+        &rendered.image,
+        &rendered.info,
+        Against::OwnTier,
     );
-    match compare(
-        &image.pixels,
-        expected.as_raw(),
-        renderer.info(),
-        &reference,
-    ) {
-        Ok((rmse, outliers)) => println!(
-            "{tier}: RMSE {rmse:.5}, outliers {:.3}% against {}",
-            outliers * 100.0,
-            reference.display()
-        ),
-        Err(e) => panic!(
-            "{} differs from {}: {e}",
-            actual.display(),
-            reference.display()
-        ),
-    }
 }
 
 /// What a scroll container draws stays inside it, per pixel: the rows it
@@ -1140,16 +1052,11 @@ fn a_scroll_container_clips_everything_it_draws() {
 fn a_text_glow_is_a_halo_from_the_distance_field() {
     let render = |glow: bool| {
         let (scene, desc) = with_test_font(|f| glow_scene(f, glow, 1));
-        let mut renderer = Renderer::new_blocking(&desc).expect("a headless adapter");
-        let stats = renderer
-            .render(&scene, &RenderTarget::Offscreen)
-            .expect("render");
-        let info = renderer.info().clone();
-        (renderer.read_offscreen().expect("read back"), stats, info)
+        let frame = render_frame(&scene, &desc);
+        (frame.image, frame.stats, frame.info)
     };
     let (plain, plain_stats, _) = render(false);
     let (glow, glow_stats, info) = render(true);
-    let tier = info.backend_tier();
     assert_eq!(
         glow_stats.overlay_glyphs,
         2 * plain_stats.overlay_glyphs,
@@ -1209,34 +1116,7 @@ fn a_text_glow_is_a_halo_from_the_distance_field() {
         "the background next to the ink glows ({near} px)"
     );
     assert_eq!(far, 0, "nothing glows past the distance field's reach");
-    let out = out_dir().join(format!("text-glow-{tier}.png"));
-    image::save_buffer(
-        &out,
-        &glow.pixels,
-        glow.width,
-        glow.height,
-        image::ColorType::Rgba8,
-    )
-    .expect("write frame");
-    let own = reference_dir(&tier).join("text-glow.png");
-    if std::env::var_os("OG_UI_CAPTURE").is_some() {
-        record_reference(&own, glow.width, glow.height, &glow.pixels);
-    }
-    let reference = if own.exists() {
-        own
-    } else {
-        reference_dir(og_tests::compare::RECORDING_TIER).join("text-glow.png")
-    };
-    let expected = image::open(&reference)
-        .unwrap_or_else(|e| panic!("{}: {e} (OG_UI_CAPTURE=1 records it)", reference.display()))
-        .to_rgba8();
-    if let Err(e) = compare(&glow.pixels, expected.as_raw(), &info, &reference) {
-        panic!(
-            "{} differs from {}: {e}",
-            out.display(),
-            reference.display()
-        );
-    }
+    matches_reference("text-glow", &glow, &info, Against::OwnTier);
 }
 
 /// A type step of the ramp.
@@ -1531,11 +1411,8 @@ fn a_glass_panel_blurs_the_frame_under_it_and_nothing_else() {
 
 /// `scene` rendered and read back.
 fn rendered(scene: &RenderScene, desc: &RenderDesc) -> (Vec<u8>, og_render::FrameStats) {
-    let mut renderer = Renderer::new_blocking(desc).expect("a headless adapter");
-    let stats = renderer
-        .render(scene, &RenderTarget::Offscreen)
-        .expect("render");
-    (renderer.read_offscreen().expect("read back").pixels, stats)
+    let frame = render_frame(scene, desc);
+    (frame.image.pixels, frame.stats)
 }
 
 /// Glass over overlay content: the panel blurs the overlay layers drawn
@@ -1554,7 +1431,8 @@ fn rendered(scene: &RenderScene, desc: &RenderDesc) -> (Vec<u8>, og_render::Fram
 #[ignore = "requires GPU"]
 fn a_glass_panel_blurs_the_overlay_layers_below_it() {
     let (scene, desc) = glass_reference_scene();
-    let (glass, stats) = rendered(&scene, &desc);
+    let Rendered { image, stats, info } = render_frame(&scene, &desc);
+    let glass = &image.pixels;
     let (mut plain_scene, _) = glass_reference_scene();
     if let Some(o) = plain_scene.ui.overlay.as_mut() {
         o.glass.clear();
@@ -1567,7 +1445,7 @@ fn a_glass_panel_blurs_the_overlay_layers_below_it() {
     };
     // Outside the panel the bar is drawn as it is, sharp.
     assert_eq!(
-        px(&glass, 60, 100),
+        px(glass, 60, 100),
         px(&plain, 60, 100),
         "the bar outside the panel"
     );
@@ -1577,14 +1455,14 @@ fn a_glass_panel_blurs_the_overlay_layers_below_it() {
         "the bar is orange ({orange:?})"
     );
     assert_eq!(
-        px(&glass, 60, 86),
+        px(glass, 60, 86),
         px(&plain, 60, 86),
         "and the stripes above it"
     );
     // Inside the panel the bar is blurred: its primary reaches 8 px above
     // its edge, where the plain frame has grey stripes.
     for x in [150, 154, 158] {
-        let (g, p) = (px(&glass, x, 84), px(&plain, x, 84));
+        let (g, p) = (px(glass, x, 84), px(&plain, x, 84));
         assert_eq!(p[0], p[2], "the plain frame there is a grey stripe ({p:?})");
         assert!(
             g[0] - g[2] > 24,
@@ -1592,7 +1470,7 @@ fn a_glass_panel_blurs_the_overlay_layers_below_it() {
         );
     }
     // On the bar's middle row the stripes no longer show through.
-    let row: Vec<i32> = (150..170).map(|x| px(&glass, x, 100)[2]).collect();
+    let row: Vec<i32> = (150..170).map(|x| px(glass, x, 100)[2]).collect();
     let (lo, hi) = (*row.iter().min().unwrap(), *row.iter().max().unwrap());
     assert!(
         hi - lo < 24,
@@ -1601,41 +1479,14 @@ fn a_glass_panel_blurs_the_overlay_layers_below_it() {
     // The square above the glass is as sharp as without it.
     for (x, y) in [(190, 60), (198, 68), (205, 75)] {
         assert_eq!(
-            px(&glass, x, y),
+            px(glass, x, y),
             px(&plain, x, y),
             "the square above the glass ({x}, {y})"
         );
     }
-    assert_ne!(px(&glass, 188, 68), px(&glass, 191, 68), "with a hard edge");
+    assert_ne!(px(glass, 188, 68), px(glass, 191, 68), "with a hard edge");
     assert!(stats.draw_calls > 0);
-    // The reference frame.
-    let (h, w) = (desc.height, desc.width);
-    let info = Renderer::new_blocking(&RenderDesc::default())
-        .expect("a headless adapter")
-        .info()
-        .clone();
-    let tier = info.backend_tier();
-    let out = out_dir().join(format!("glass-{tier}.png"));
-    image::save_buffer(&out, &glass, w, h, image::ColorType::Rgba8).expect("write frame");
-    let own = reference_dir(&tier).join("glass.png");
-    if std::env::var_os("OG_UI_CAPTURE").is_some() {
-        record_reference(&own, w, h, &glass);
-    }
-    let reference = if own.exists() {
-        own
-    } else {
-        reference_dir(og_tests::compare::RECORDING_TIER).join("glass.png")
-    };
-    let expected = image::open(&reference)
-        .unwrap_or_else(|e| panic!("{}: {e} (OG_UI_CAPTURE=1 records it)", reference.display()))
-        .to_rgba8();
-    if let Err(e) = compare(&glass, expected.as_raw(), &info, &reference) {
-        panic!(
-            "{} differs from {}: {e}",
-            out.display(),
-            reference.display()
-        );
-    }
+    matches_reference("glass", &image, &info, Against::OwnTier);
 }
 
 /// The glass's cost on this machine's GPU at 1280×720: the same frame with
@@ -1793,55 +1644,14 @@ fn text_fields_match_their_reference_frame() {
         frame.text_input.clone().expect("the words field").selection,
         "select"
     );
-    let mut renderer = Renderer::new_blocking(&shot.desc).expect("a headless adapter");
-    let stats = renderer
-        .render(&shot.scene, &RenderTarget::Offscreen)
-        .expect("render");
-    assert_eq!(stats.missing_glyphs, 0);
-    let image = renderer.read_offscreen().expect("read back");
-    let tier = renderer.info().backend_tier();
-    let actual = out_dir().join(format!("text-fields-2-{tier}.png"));
-    image::save_buffer(
-        &actual,
-        &image.pixels,
-        image.width,
-        image.height,
-        image::ColorType::Rgba8,
-    )
-    .expect("write frame");
-    let own = reference_dir(&tier).join("text-fields-2.png");
-    if std::env::var_os("OG_UI_CAPTURE").is_some() {
-        record_reference(&own, image.width, image.height, &image.pixels);
-        println!("recorded {}", own.display());
-    }
-    let reference = if own.exists() {
-        own
-    } else {
-        println!(
-            "no {tier} reference for text-fields-2; comparing with {}",
-            og_tests::compare::RECORDING_TIER
-        );
-        reference_dir(og_tests::compare::RECORDING_TIER).join("text-fields-2.png")
-    };
-    let expected = image::open(&reference)
-        .unwrap_or_else(|e| panic!("{}: {e} (OG_UI_CAPTURE=1 records it)", reference.display()))
-        .to_rgba8();
-    match compare(
-        &image.pixels,
-        expected.as_raw(),
-        renderer.info(),
-        &reference,
-    ) {
-        Ok((rmse, outliers)) => println!(
-            "text-fields-2 {tier}: RMSE {rmse:.5}, outliers {:.3}%",
-            outliers * 100.0
-        ),
-        Err(e) => panic!(
-            "{} differs from {}: {e}",
-            actual.display(),
-            reference.display()
-        ),
-    }
+    let rendered = render_frame(&shot.scene, &shot.desc);
+    assert_eq!(rendered.stats.missing_glyphs, 0);
+    matches_reference(
+        "text-fields-2",
+        &rendered.image,
+        &rendered.info,
+        Against::OwnTier,
+    );
 }
 
 /// A nine-slice's middle row squeezed along one axis keeps its outline as

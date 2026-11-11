@@ -63,7 +63,7 @@ const CARD: &str = r##"<meta name="component" content="defs">
 
 /// `source` mounted and rendered at `width`×`height`: its pixels and the
 /// renderer's info.
-fn render(source: &str, width: u32, height: u32) -> (Vec<u8>, og_render::RenderInfo) {
+fn render(source: &str, width: u32, height: u32) -> Rendered {
     use og_render::*;
     let mut scene = RenderScene::new();
     let font = add_test_font(&mut scene);
@@ -84,50 +84,15 @@ fn render(source: &str, width: u32, height: u32) -> (Vec<u8>, og_render::RenderI
         ui.end();
     }
     assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
-    let mut overlay = Overlay::new(width as f32, height as f32, 1.0);
-    ui.frame().emit(&EmitDesc::default(), &mut overlay);
-    scene.ui.overlay = Some(overlay);
-    let bg = ui.theme().palette.backdrop.linear();
-    scene.lighting.environment.background =
-        Background::Color(og_core::glam::Vec3::new(bg[0], bg[1], bg[2]));
-    scene.look.post.tonemap = Tonemap::None;
-    let mut renderer = Renderer::new_blocking(&RenderDesc {
-        width,
-        height,
-        ..Default::default()
-    })
-    .expect("a headless adapter");
-    renderer.render(&scene, &RenderTarget::Offscreen).unwrap();
-    let pixels = renderer.read_offscreen().unwrap().pixels;
-    (pixels, renderer.info().clone())
+    render_ui(&ui, &mut scene, width, height)
 }
 
 #[test]
 #[ignore = "requires GPU"]
 fn svg_text_matches_its_reference_frames() {
     for (width, height) in [(1280u32, 720u32), (390, 844)] {
-        let (pixels, info) = render(CARD, width, height);
-        let name = format!("svg-text-{width}.png");
-        image::save_buffer(
-            out_dir().join(&name),
-            &pixels,
-            width,
-            height,
-            image::ColorType::Rgba8,
-        )
-        .unwrap();
-        let own = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("references")
-            .join(og_tests::compare::RECORDING_TIER)
-            .join(&name);
-        if std::env::var_os("OG_UI_CAPTURE").is_some() {
-            record_reference(&own, width, height, &pixels);
-        }
-        let expected = image::open(&own)
-            .unwrap_or_else(|e| panic!("{}: {e} (OG_UI_CAPTURE=1 records it)", own.display()))
-            .to_rgba8();
-        let (rmse, _) = compare(&pixels, expected.as_raw(), &info, &own)
-            .unwrap_or_else(|e| panic!("{name}: {e}"));
-        println!("{name}: RMSE {rmse:.6}");
+        let frame = render(CARD, width, height);
+        let name = format!("svg-text-{width}");
+        matches_reference(&name, &frame.image, &frame.info, Against::Recorded);
     }
 }

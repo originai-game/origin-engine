@@ -9,9 +9,8 @@
 use crate::support;
 
 use og_core::glam::Vec2;
-use og_render::{RenderScene, RenderTarget, Renderer};
+use og_render::RenderScene;
 use og_ui::*;
-use std::path::PathBuf;
 use support::*;
 
 #[test]
@@ -52,21 +51,8 @@ fn the_widget_set_matches_its_reference_frame() {
         "half-disc angles {angles:?}, expected {expected:?}"
     );
 
-    let mut renderer = Renderer::new_blocking(&shot.desc).expect("a headless adapter");
-    let stats = renderer
-        .render(&shot.scene, &RenderTarget::Offscreen)
-        .expect("render");
-    let image = renderer.read_offscreen().expect("read back");
-    let tier = renderer.info().backend_tier();
-    let actual = out_dir().join(format!("widget-set-{tier}.png"));
-    image::save_buffer(
-        &actual,
-        &image.pixels,
-        image.width,
-        image.height,
-        image::ColorType::Rgba8,
-    )
-    .expect("write frame");
+    let rendered = render_frame(&shot.scene, &shot.desc);
+    let stats = rendered.stats;
     println!(
         "sprites {} glyphs {} sprite draws {} levels {} missing glyphs {}",
         stats.sprites,
@@ -77,56 +63,12 @@ fn the_widget_set_matches_its_reference_frame() {
     );
     assert_eq!(stats.missing_glyphs, 0);
 
-    matches_reference("widget-set.png", renderer.info(), &actual, &image);
-}
-
-/// `image` against `references/<tier>/<name>` (the metal one where the tier
-/// has none); `OG_UI_CAPTURE=1` records it. `actual` is where it was saved.
-fn matches_reference(
-    name: &str,
-    info: &og_render::RenderInfo,
-    actual: &std::path::Path,
-    image: &og_render::RgbaImage,
-) {
-    let dir = |tier: &str| {
-        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("references")
-            .join(tier)
-    };
-    let tier = &info.backend_tier();
-    let own = dir(tier).join(name);
-    if std::env::var_os("OG_UI_CAPTURE").is_some() {
-        record_reference(&own, image.width, image.height, &image.pixels);
-        println!("recorded {}", own.display());
-    }
-    let reference = if own.exists() {
-        own
-    } else {
-        let recorded = og_tests::compare::RECORDING_TIER;
-        println!(
-            "no {tier} reference; comparing with the {recorded} one. Record it with OG_UI_CAPTURE=1 on that tier"
-        );
-        dir(recorded).join(name)
-    };
-    let expected = image::open(&reference)
-        .unwrap_or_else(|e| panic!("{}: {e} (OG_UI_CAPTURE=1 records it)", reference.display()))
-        .to_rgba8();
-    assert_eq!(
-        (expected.width(), expected.height()),
-        (image.width, image.height)
+    matches_reference(
+        "widget-set",
+        &rendered.image,
+        &rendered.info,
+        Against::OwnTier,
     );
-    match compare(&image.pixels, expected.as_raw(), info, &reference) {
-        Ok((rmse, outliers)) => println!(
-            "{tier}: RMSE {rmse:.5}, outliers {:.3}% against {}",
-            outliers * 100.0,
-            reference.display()
-        ),
-        Err(e) => panic!(
-            "{} differs from {}: {e}",
-            actual.display(),
-            reference.display()
-        ),
-    }
 }
 
 /// The on-screen stick at rest and held by a finger pushed past its rim up
@@ -214,14 +156,10 @@ fn a_held_stick_draws_its_knob_pushed_inside_its_base() {
                 _ => None,
             })
             .collect();
-        let mut renderer = Renderer::new_blocking(&shot.desc).expect("a headless adapter");
-        renderer
-            .render(&shot.scene, &RenderTarget::Offscreen)
-            .expect("render");
-        let image = renderer.read_offscreen().expect("read back");
-        (image, out, base, knob, arcs, renderer.info().clone())
+        let held = render_frame(&shot.scene, &shot.desc);
+        (held, out, base, knob, arcs)
     };
-    let (_, still, base, knob, arcs, _) = render(None);
+    let (_, still, base, knob, arcs) = render(None);
     let (bx, by) = base.center();
     let off = |k: &og_ui::Rect| Vec2::new(k.x + k.width / 2.0 - bx, k.y + k.height / 2.0 - by);
     assert!(!still.active && still.x == 0.0 && still.y == 0.0);
@@ -232,8 +170,7 @@ fn a_held_stick_draws_its_knob_pushed_inside_its_base() {
     assert!(arcs.is_empty(), "at rest no rim is lit");
 
     // Pushed 100 CSS px up and right: past the 64 px rim, so full.
-    let (held, out, _, knob, arcs, info) = render(Some(Vec2::new(100.0, -100.0)));
-    let tier = info.backend_tier();
+    let (held, out, _, knob, arcs) = render(Some(Vec2::new(100.0, -100.0)));
     let full = (out.x * out.x + out.y * out.y).sqrt();
     assert!(out.active && out.x > 0.6 && out.y < -0.6, "{out:?}");
     assert!((full - 1.0).abs() < 1e-3, "clamped to the rim: {full}");
@@ -258,14 +195,5 @@ fn a_held_stick_draws_its_knob_pushed_inside_its_base() {
         (mid + std::f32::consts::FRAC_PI_4).abs() < 1e-3 && sweep > 0.5,
         "the rim lit toward the push: {start} + {sweep}"
     );
-    let actual = out_dir().join(format!("stick-held-{tier}.png"));
-    image::save_buffer(
-        &actual,
-        &held.pixels,
-        held.width,
-        held.height,
-        image::ColorType::Rgba8,
-    )
-    .expect("write frame");
-    matches_reference("stick-held.png", &info, &actual, &held);
+    matches_reference("stick-held", &held.image, &held.info, Against::OwnTier);
 }
