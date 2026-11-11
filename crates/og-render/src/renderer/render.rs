@@ -61,6 +61,8 @@ mod pass_volumetric;
 use pass_volumetric::VolumetricPass;
 mod pass_ssr;
 use pass_ssr::SsrPass;
+mod pass_light_2d;
+use pass_light_2d::{Light2dPass, Light2dPlan};
 mod setup;
 
 impl Renderer {
@@ -2933,7 +2935,7 @@ impl Renderer {
                 ao: gi.map(|g| g.resolution).or(ao.map(|a| a.resolution)),
                 contact,
                 particles: particle_frame.any_gpu,
-                light_2d: scene.lighting_2d.is_some(),
+                light_2d: plans.light_2d.is_some(),
                 metaballs: fluids > 0,
                 fluid_3d: fluids_3d,
                 probes: !probe_frame.due.is_empty(),
@@ -3052,6 +3054,12 @@ impl Renderer {
             light_slots.count(),
             self.device.limits().max_texture_dimension_2d,
         );
+        plans.light_2d = scene.lighting_2d.map(|l| Light2dPlan {
+            ambient: l.ambient,
+            lights: lights_2d,
+            size: lightmap_size,
+            lightdir: lightdir_on,
+        });
         // Colour adjustments: the grading table and the adjustments baked
         // into one (when either changed), bound under scene id 0, which no
         // scene has, so the bindings are made again when it comes or goes.
@@ -4190,8 +4198,8 @@ impl Renderer {
             encoder.expect(
                 self.info.caps,
                 pass.needs()
+                    | plans.needs(pass)
                     | match pass {
-                        FramePass::Light2d if lightdir_on => Caps::MRT,
                         FramePass::Main if oit_mode.is_some() => Caps::MRT,
                         FramePass::Taa | FramePass::TaaSharpen if fsr => Caps::COMPUTE,
                         _ => Caps::NONE,
@@ -4206,6 +4214,7 @@ impl Renderer {
                     &mut EncodeCx {
                         ctx: &ctx,
                         encoder: &mut encoder,
+                        stats: &mut stats,
                         sky_group,
                         slot,
                     },
@@ -4326,17 +4335,6 @@ impl Renderer {
                             self.fluid3d
                                 .encode(&mut encoder, f, frame_bind_group, &views);
                     }
-                }
-                FramePass::Light2d => {
-                    let ambient = scene.lighting_2d.map_or(Vec3::ONE, |l| l.ambient);
-                    self.lights_2d.encode(
-                        &mut encoder,
-                        self.graph.view("lightmap"),
-                        self.graph.try_view("lightdir"),
-                        lightmap_size,
-                        ambient,
-                    );
-                    stats.draw_calls += (lights_2d > 0) as u32;
                 }
                 FramePass::Probes => self.encode_probes(ProbesPassInputs {
                     ctx: &ctx,

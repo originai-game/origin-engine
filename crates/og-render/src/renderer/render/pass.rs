@@ -13,6 +13,7 @@ use super::*;
 pub(super) struct EncodeCx<'a, 'f> {
     pub ctx: &'a DrawCtx<'f>,
     pub encoder: &'a mut Encoder,
+    pub stats: &'a mut FrameStats,
     /// The sky pipelines' group.
     pub sky_group: &'f wgpu::BindGroup,
     /// This frame's slot of the two-frame histories.
@@ -29,6 +30,10 @@ pub(super) trait Pass {
     type Plan<'f>;
     /// Its state in the renderer.
     fn state(r: &Renderer) -> &Self::State;
+    /// What this frame's plan of it needs beyond [`Pass::DESC`]'s.
+    fn needs(_plan: &Self::Plan<'_>) -> Caps {
+        Caps::NONE
+    }
     /// Records the pass (instance `pass`, for an instanced kind).
     fn encode<'f>(
         st: &Self::State,
@@ -50,6 +55,14 @@ macro_rules! passes {
         }
 
         impl<'f> FramePlans<'f> {
+            /// What this frame's plan of `pass` needs beyond its kind's.
+            pub(super) fn needs(&self, pass: FramePass) -> Caps {
+                match pass {
+                    $($pat => self.$field.as_ref().map_or(Caps::NONE, <$ty as Pass>::needs),)*
+                    _ => Caps::NONE,
+                }
+            }
+
             /// Encodes `pass` when it is one of [`passes!`]; false for a
             /// pass `render` still encodes itself.
             pub(super) fn encode(&self, pass: FramePass, cx: &mut EncodeCx<'_, 'f>) -> bool {
@@ -74,4 +87,5 @@ passes! {
     gi_probes: pass_gi_probes::GiProbesPass => FramePass::GiProbes,
     volumetric: pass_volumetric::VolumetricPass => FramePass::Volumetric,
     ssr: pass_ssr::SsrPass => FramePass::Ssr,
+    light_2d: pass_light_2d::Light2dPass => FramePass::Light2d,
 }
