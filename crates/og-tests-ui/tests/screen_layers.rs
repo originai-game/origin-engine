@@ -18,11 +18,9 @@ use crate::support;
 
 use og_core::glam::{Vec2, Vec3};
 use og_render::{
-    Background, RenderDesc, RenderScene, RenderTarget, Renderer, Sprite, Tonemap, UI_LAYER,
-    UI_OVERLAY_LAYER, screen_layer,
+    Background, RenderScene, Sprite, Tonemap, UI_LAYER, UI_OVERLAY_LAYER, screen_layer,
 };
 use og_ui::*;
-use std::path::PathBuf;
 use support::*;
 
 fn square(x: f32, y: f32, size: f32, color: [f32; 4], layer: i32) -> Sprite {
@@ -93,16 +91,8 @@ fn screen_sprites_above_the_ui_layer_draw_over_the_ui() {
     scene.ui.overlay = Some(overlay);
     scene.lighting.environment.background = Background::Color(Vec3::new(0.02, 0.02, 0.03));
     scene.look.post.tonemap = Tonemap::None;
-    let desc = RenderDesc {
-        width: vp.width as u32,
-        height: vp.height as u32,
-        ..RenderDesc::default()
-    };
-    let mut renderer = Renderer::new_blocking(&desc).expect("a headless adapter");
-    renderer
-        .render(&scene, &RenderTarget::Offscreen)
-        .expect("render");
-    let image = renderer.read_offscreen().expect("read back");
+    let frame = render_frame(&scene, &sized(vp.width as u32, vp.height as u32));
+    let image = &frame.image;
     let px = |x: f32, y: f32| {
         let i = ((y as u32 * image.width + x as u32) * 4) as usize;
         [image.pixels[i], image.pixels[i + 1], image.pixels[i + 2]]
@@ -138,43 +128,5 @@ fn screen_sprites_above_the_ui_layer_draw_over_the_ui() {
         "the green square shows past the panel's edge"
     );
 
-    let tier = renderer.info().backend_tier();
-    let actual = out_dir().join(format!("screen-layers-{tier}.png"));
-    image::save_buffer(
-        &actual,
-        &image.pixels,
-        image.width,
-        image.height,
-        image::ColorType::Rgba8,
-    )
-    .expect("write frame");
-    let dir = |tier: &str| {
-        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("references")
-            .join(tier)
-    };
-    let own = dir(&tier).join("screen-layers.png");
-    if std::env::var_os("OG_UI_CAPTURE").is_some() {
-        record_reference(&own, image.width, image.height, &image.pixels);
-    }
-    let reference = if own.exists() {
-        own
-    } else {
-        dir(og_tests::compare::RECORDING_TIER).join("screen-layers.png")
-    };
-    let expected = image::open(&reference)
-        .unwrap_or_else(|e| panic!("{}: {e} (OG_UI_CAPTURE=1 records it)", reference.display()))
-        .to_rgba8();
-    if let Err(e) = compare(
-        &image.pixels,
-        expected.as_raw(),
-        renderer.info(),
-        &reference,
-    ) {
-        panic!(
-            "{} differs from {}: {e}",
-            actual.display(),
-            reference.display()
-        );
-    }
+    matches_reference("screen-layers", image, &frame.info, Against::OwnTier);
 }
