@@ -62,7 +62,7 @@ use pass_volumetric::VolumetricPass;
 mod pass_ssr;
 use pass_ssr::SsrPass;
 mod pass_light_2d;
-use pass_light_2d::{Light2dPass, Light2dPlan};
+use pass_light_2d::Light2dPass;
 mod pass_metaballs;
 use pass_metaballs::MetaballsPass;
 mod pass_fluid_3d;
@@ -1018,31 +1018,11 @@ impl Renderer {
                 lens,
                 prepass,
             });
-        let lightmap_scale = scene
-            .lighting_2d
-            .map_or(0.5, |l| l.resolution.clamp(0.25, 1.0));
-        // The lights' directions beside the light map, for normal-mapped
-        // receivers (sprite_normals.rs).
-        // A second target beside the light map (without MRT, normal-mapped
-        // receivers are lit as flat ones).
-        let lightdir_on = scene.lighting_2d.is_some()
-            && scene.has_texture_normals()
-            && self.info.caps.contains(Caps::MRT);
-        // The light map: its strips side by side (light2d.rs).
-        let lightmap_size = light2d::strips_size(
-            (
-                ((self.width as f32 * lightmap_scale) as u32).max(1),
-                ((self.height as f32 * lightmap_scale) as u32).max(1),
-            ),
-            light_slots.count(),
-            self.device.limits().max_texture_dimension_2d,
-        );
-        plans.light_2d = scene.lighting_2d.map(|l| Light2dPlan {
-            ambient: l.ambient,
-            lights: lights_2d,
-            size: lightmap_size,
-            lightdir: lightdir_on,
-        });
+        // The 2D light map's size, its directions target and the light
+        // pass's plan (pass_light_2d.rs).
+        let (light_2d, lightmap_size, lightdir_on) =
+            self.plan_light_2d(scene, &light_slots, lights_2d);
+        plans.light_2d = light_2d;
         // Colour adjustments: the grading table and the adjustments baked
         // into one (when either changed), bound under scene id 0, which no
         // scene has, so the bindings are made again when it comes or goes.
