@@ -1,7 +1,7 @@
 // Lighting shared by the lit passes (pbr.wgsl, terrain.wgsl, water.wgsl):
-// the GGX BRDF, the directional light's cascaded shadows and the local
-// lights' shadows, read with explicit compares.
-// Prepended after frame.wgsl.
+// the GGX BRDF (its visibility is ggx.wgsl's), the directional light's
+// cascaded shadows and the local lights' shadows, read with explicit
+// compares. Prepended after frame.wgsl.
 
 const PI: f32 = 3.14159265359;
 
@@ -9,14 +9,6 @@ fn d_ggx(n_dot_h: f32, a: f32) -> f32 {
   let a2 = a * a;
   let d = n_dot_h * n_dot_h * (a2 - 1.0) + 1.0;
   return a2 / (PI * d * d + 1e-7);
-}
-
-fn g_smith(n_dot_v: f32, n_dot_l: f32, roughness: f32) -> f32 {
-  let r = roughness + 1.0;
-  let k = (r * r) / 8.0;
-  let gv = n_dot_v / (n_dot_v * (1.0 - k) + k);
-  let gl = n_dot_l / (n_dot_l * (1.0 - k) + k);
-  return gv * gl;
 }
 
 fn f_schlick(cos_theta: f32, f0: vec3<f32>) -> vec3<f32> {
@@ -579,9 +571,8 @@ fn brdf(s: Surface, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>) -> vec3<f32> {
   let h_dot_v = max(dot(h, v), 0.0);
   let a = s.roughness * s.roughness;
   let d = d_ggx(n_dot_h, a);
-  let g = g_smith(n_dot_v, n_dot_l, s.roughness);
   let f = f_schlick(h_dot_v, s.f0);
-  let spec = (d * g * f) / (4.0 * n_dot_v * n_dot_l + 1e-4);
+  let spec = d * v_ggx(n_dot_v, n_dot_l, a) * f;
   let kd = (vec3<f32>(1.0) - f) * (1.0 - s.metallic);
   let base = (kd * s.albedo / PI + spec) * n_dot_l + leaf_transmission(s, n, v, l);
   if (s.coat <= 0.0) { return base; }

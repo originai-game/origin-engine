@@ -188,13 +188,6 @@ fn fs_prefilter(in: VsOut) -> @location(0) vec4<f32> {
   return vec4<f32>(sum / max(weight, 1e-4), 1.0);
 }
 
-fn g_smith_ibl(n_dot_v: f32, n_dot_l: f32, roughness: f32) -> f32 {
-  let k = (roughness * roughness) / 2.0;
-  let gv = n_dot_v / (n_dot_v * (1.0 - k) + k);
-  let gl = n_dot_l / (n_dot_l * (1.0 - k) + k);
-  return gv * gl;
-}
-
 @fragment
 fn fs_brdf_lut(in: VsOut) -> @location(0) vec4<f32> {
   let n_dot_v = max(in.uv.x * 0.5 + 0.5, 1e-3);
@@ -212,8 +205,9 @@ fn fs_brdf_lut(in: VsOut) -> @location(0) vec4<f32> {
     let n_dot_h = max(h.z, 0.0);
     let v_dot_h = saturate(dot(v, h));
     if (n_dot_l > 0.0) {
-      let g = g_smith_ibl(n_dot_v, n_dot_l, roughness);
-      let g_vis = g * v_dot_h / (n_dot_h * n_dot_v + 1e-5);
+      // The lobe's D V over the samples' pdf, D n.h / (4 v.h), times n.l,
+      // with direct light's visibility (ggx.wgsl).
+      let g_vis = 4.0 * v_ggx(n_dot_v, n_dot_l, roughness * roughness) * n_dot_l * v_dot_h / (n_dot_h + 1e-5);
       let fc = pow(1.0 - v_dot_h, 5.0);
       a += (1.0 - fc) * g_vis;
       b += fc * g_vis;

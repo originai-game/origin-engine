@@ -198,9 +198,8 @@ fn physical_brdf(s: Surface, k: Lobes, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>)
     let vis = v_ggx_aniso(k.alpha_t, ab, dot(k.aniso_t, v), dot(k.aniso_b, v), dot(k.aniso_t, l), dot(k.aniso_b, l), n_dot_v, n_dot_l);
     spec = f * d * vis;
   } else {
-    let d = d_ggx(n_dot_h, s.roughness * s.roughness);
-    let g = g_smith(n_dot_v, n_dot_l, s.roughness);
-    spec = (d * g * f) / (4.0 * n_dot_v * n_dot_l + 1e-4);
+    let a = s.roughness * s.roughness;
+    spec = f * d_ggx(n_dot_h, a) * v_ggx(n_dot_v, n_dot_l, a);
   }
   var o: Shade;
   o.diffuse = (vec3<f32>(1.0) - f) * (1.0 - s.metallic) * s.albedo / PI * n_dot_l + leaf_transmission(s, n, v, l);
