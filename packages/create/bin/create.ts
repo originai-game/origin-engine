@@ -116,6 +116,20 @@ export function templateDir(): string {
   return join(dirname(fileURLToPath(import.meta.url)), "../template");
 }
 
+/**
+ * The skeleton's files, relative to template/: the `template/` entries of
+ * the package manifest's `files`, which is also what a release packs. A file
+ * left in template/ of a checkout (a run's output, a stray asset) is not in
+ * the manifest, so it is never part of a new project.
+ */
+export function skeletonFiles(): string[] {
+  const manifest = join(templateDir(), "../package.json");
+  const files = (JSON.parse(readFileSync(manifest, "utf8")) as { files?: string[] }).files ?? [];
+  const skeleton = files.filter((f) => f.startsWith("template/")).map((f) => f.slice("template/".length)).sort();
+  if (!skeleton.length) throw new Error(`${manifest} lists no template/ file in "files"`);
+  return skeleton;
+}
+
 /** Resolve the agent's choices without writing any project files. */
 export function resolveCreationChoices(premise: string, input: CreationInput = {}, profile?: Profile, catalogue?: string): CreationChoices {
   const asked = inferCreationChoices(premise, input);
@@ -153,7 +167,12 @@ export function create(options: CreateOptions): Created {
       }
     }
   }
-  copy(template, dir);
+  for (const file of skeletonFiles()) {
+    const target = join(dir, RENAMED.get(file) ?? file);
+    mkdirSync(dirname(target), { recursive: true });
+    cpSync(join(template, file), target);
+    written.push(relative(dir, target));
+  }
   // The font packs its languages are written in, as `og font add` installs
   // them (assets/fonts/<pack>/); og.i18n puts them in the fallback chain.
   const packs = fontPacksDir();

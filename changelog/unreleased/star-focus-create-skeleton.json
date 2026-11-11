@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og create",
+      "summary": "A new project holds only the skeleton's files, as the package manifest lists them. Files left in the template directory of a checkout (a run's output, stray assets) were copied into every new project."
+    }
+  ]
+}
