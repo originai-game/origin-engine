@@ -880,7 +880,12 @@ mod document_tests {
             );
         }
         assert!(
-            ui.state.motion.styles.values().all(|s| s.runs.is_empty()),
+            ui.interaction
+                .state
+                .motion
+                .styles
+                .values()
+                .all(|s| s.runs.is_empty()),
             "settled transitions are not kept"
         );
         // The keyframes animate height; `add` composes onto grow's value.

@@ -485,7 +485,13 @@ impl Ui {
         let pad = s.el.padding;
         let (offset, max, start, port) = if axis.horizontal() {
             let max = s.max_scroll_x();
-            let at = self.state.scroll_x.get(&s.key).copied().unwrap_or(0.0);
+            let at = self
+                .interaction
+                .state
+                .scroll_x
+                .get(&s.key)
+                .copied()
+                .unwrap_or(0.0);
             (
                 at.clamp(0.0, max),
                 max,
@@ -494,7 +500,13 @@ impl Ui {
             )
         } else {
             let max = s.max_scroll();
-            let at = self.state.scroll.get(&s.key).copied().unwrap_or(0.0);
+            let at = self
+                .interaction
+                .state
+                .scroll
+                .get(&s.key)
+                .copied()
+                .unwrap_or(0.0);
             (
                 at.clamp(0.0, max),
                 max,

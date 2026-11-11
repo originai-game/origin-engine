@@ -452,7 +452,7 @@ impl RetainedHost {
             .cloned()
             .collect();
         for node in removed {
-            ui.state.virtual_lists.remove(&node.key);
+            ui.interaction.state.virtual_lists.remove(&node.key);
             self.release_element(ui, &node);
             self.use_events(&node, "destroy", None);
         }

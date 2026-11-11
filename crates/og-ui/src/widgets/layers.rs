@@ -42,7 +42,7 @@ impl Ui {
             let fresh = !self.has_anim(key);
             let mut a = self.anim(key);
             if fresh {
-                a.t = self.state.tick;
+                a.t = self.interaction.state.tick;
                 a.h = u64::from(desc.instant);
             }
             self.set_anim(key, a);
@@ -58,7 +58,7 @@ impl Ui {
         let t = self.env.theme;
         let ms = kind.map_or(t.durations_ms.base, |k| k.duration_ms(t.durations_ms.base));
         let ticks = self.ticks_for(ms) as f32;
-        let p = ((self.state.tick - since) as f32 + 1.0) / ticks;
+        let p = ((self.interaction.state.tick - since) as f32 + 1.0) / ticks;
         if let Some(kind) = kind
             && p < 1.0
         {
@@ -245,10 +245,10 @@ impl Ui {
             // close it again.
             let entered = pr.progress >= 1.0;
             if (resp.clicked && entered && !desc.ignore_backdrop)
-                || (self.state.scope == key && self.nav.back)
+                || (self.interaction.state.scope == key && self.interaction.nav.back)
             {
-                if self.state.scope == key {
-                    self.nav.back = false;
+                if self.interaction.state.scope == key {
+                    self.interaction.nav.back = false;
                 }
                 r.dismissed = true;
             }
@@ -364,15 +364,15 @@ impl Ui {
         let path = self.child_path(id.as_str());
         let opener_key = format!("{}~opener", id.as_str());
         let was_open = self.memory(&format!("{}~open", id.as_str()), 0.0) > 0.0;
-        let focus = self.state.focus;
+        let focus = self.interaction.state.focus;
         let inside = self.focus_path(0).starts_with(&format!("{path}/"));
         let mut r = ModalResponse {
             visible: open,
             dismissed: false,
         };
         let closes = matches!(desc.closedby, ClosedBy::Any | ClosedBy::CloseRequest);
-        if open && inside && closes && self.nav.back {
-            self.nav.back = false;
+        if open && inside && closes && self.interaction.nav.back {
+            self.interaction.nav.back = false;
             r.dismissed = true;
         }
         if open && !was_open {
@@ -382,7 +382,7 @@ impl Ui {
         let opener = self.memory(&opener_key, 0.0).to_bits();
         if (!open || r.dismissed) && was_open {
             if inside && opener != 0 {
-                self.request_focus = opener;
+                self.interaction.request_focus = opener;
             }
             self.sound(crate::style_file::UiSound::Close);
         }
@@ -472,16 +472,16 @@ impl Ui {
         } else {
             table.toast_hold_ms
         };
-        self.state.next_toast += 1;
-        let id = self.state.next_toast;
-        let born = self.state.tick + u64::from(!self.building);
+        self.interaction.state.next_toast += 1;
+        let id = self.interaction.state.next_toast;
+        let born = self.interaction.state.tick + u64::from(!self.building);
         let ticks = self.ticks_for(ms);
         match desc.tone {
             Tone::Success => self.sound(crate::style_file::UiSound::Success),
             Tone::Danger => self.sound(crate::style_file::UiSound::Error),
             _ => {}
         }
-        self.state.toasts.push(Toast {
+        self.interaction.state.toasts.push(Toast {
             id,
             text: text.to_owned(),
             tone: desc.tone.index(),
@@ -494,8 +494,8 @@ impl Ui {
 
     /// Starts a toast's exit.
     pub fn dismiss_toast(&mut self, id: u32) {
-        let now = self.state.tick;
-        for t in self.state.toasts.iter_mut() {
+        let now = self.interaction.state.tick;
+        for t in self.interaction.state.toasts.iter_mut() {
             if t.id == id && t.leaving == 0 {
                 t.leaving = now.max(1);
             }
@@ -504,7 +504,8 @@ impl Ui {
 
     /// The toasts up now (id, text), oldest first.
     pub fn toasts(&self) -> Vec<(u32, String)> {
-        self.state
+        self.interaction
+            .state
             .toasts
             .iter()
             .map(|t| (t.id, t.text.clone()))
@@ -513,12 +514,12 @@ impl Ui {
 
     /// Builds the toast stack (called by `end`).
     pub(crate) fn build_toasts(&mut self) {
-        let now = self.state.tick;
+        let now = self.interaction.state.tick;
         let exit = u64::from(self.ticks_for(self.env.theme.durations_ms.fast));
         let enter = self.ticks_for(self.env.theme.durations_ms.base);
         // Expire, cap at three, drop the ones whose exit finished.
         let mut up: Vec<usize> = Vec::new();
-        for (k, t) in self.state.toasts.iter_mut().enumerate() {
+        for (k, t) in self.interaction.state.toasts.iter_mut().enumerate() {
             if t.leaving == 0 && now >= t.born + u64::from(t.ticks) {
                 t.leaving = now;
             }
@@ -528,13 +529,14 @@ impl Ui {
         }
         if up.len() > 3 {
             for &k in &up[..up.len() - 3] {
-                self.state.toasts[k].leaving = now;
+                self.interaction.state.toasts[k].leaving = now;
             }
         }
-        self.state
+        self.interaction
+            .state
             .toasts
             .retain(|t| t.leaving == 0 || now < t.leaving + exit);
-        if self.state.toasts.is_empty() {
+        if self.interaction.state.toasts.is_empty() {
             return;
         }
         let t = self.env.theme;
@@ -558,7 +560,7 @@ impl Ui {
             },
             NONE,
         );
-        let toasts = self.state.toasts.clone();
+        let toasts = self.interaction.state.toasts.clone();
         let mut dismiss = Vec::new();
         for toast in toasts {
             let age = now.saturating_sub(toast.born) as f32;

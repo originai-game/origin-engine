@@ -128,3 +128,37 @@ pub(crate) struct Layout {
     /// padding): their authored box comes back before the next layout.
     pub(crate) layout_mutated: Vec<usize>,
 }
+
+/// Interaction: the frame's input, the persisted interaction state and what navigation, gestures and selection decided.
+#[derive(Clone, Debug)]
+pub(crate) struct Interaction {
+    pub(crate) input: InputFrame,
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) native_input: crate::native_a11y::Input,
+    pub(crate) state: State,
+    pub(crate) nav: NavFrame,
+    /// Navigation declared for this frame (`set_navigation`).
+    pub(crate) nav_on: bool,
+    /// Players declared for this frame (`set_players`).
+    pub(crate) players: u32,
+    /// The virtual cursor declared for this frame (`set_virtual_cursor`).
+    pub(crate) vcursor: Option<crate::vcursor::VirtualCursorDesc>,
+    /// The control a widget asked to focus this frame.
+    pub(crate) request_focus: u64,
+    /// Two touches move a scroller or zoom view this tick: the primary
+    /// pointer presses nothing.
+    pub(crate) gesture: bool,
+    /// The element a resize drag moved this tick (written again).
+    pub(crate) resize_moved: Option<u64>,
+    /// The focused text control this frame (into [`UiFrame::text_input`]).
+    pub(crate) text_target: Option<TextTarget>,
+    /// The keys of the text elements last painted with a selection.
+    pub(crate) selected: Vec<u64>,
+    /// Last frame's drop targets and dragged elements: their paths, and the
+    /// tags each target takes.
+    pub(crate) drop_paths: IdMap<u64, String>,
+    pub(crate) drag_paths: IdMap<u64, String>,
+    pub(crate) drop_accepts: IdMap<u64, Vec<String>>,
+    /// Named UI actions and the last device (docs/ui.md §2.1).
+    pub(crate) actions: crate::actions::Actions,
+}

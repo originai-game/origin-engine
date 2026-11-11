@@ -170,7 +170,7 @@ impl Ui {
         );
         let key = self.nodes[i].key;
         let (kf, kt) = (child_key(key, "count"), child_key(key, "to"));
-        let now = self.state.tick;
+        let now = self.interaction.state.tick;
         let fresh = !self.has_anim(kf);
         let mut from = self.anim(kf);
         let mut to = self.anim(kt);
@@ -284,7 +284,7 @@ impl Ui {
             Anim {
                 a: amount,
                 b: ticks,
-                t: self.state.tick,
+                t: self.interaction.state.tick,
                 h: SHAKE,
             },
         );
@@ -297,14 +297,20 @@ impl Ui {
     /// before the transitions apply): the swing of this tick, kept until
     /// it has come to rest.
     pub(crate) fn apply_shakes(&mut self, order: &[usize]) {
-        if !self.state.anims.values().any(|a| a.h == SHAKE) {
+        if !self.interaction.state.anims.values().any(|a| a.h == SHAKE) {
             return;
         }
-        let now = self.state.tick;
+        let now = self.interaction.state.tick;
         let still = self.env.theme.reduced_motion;
         for &i in order {
             let key = child_key(self.nodes[i].key, "shake");
-            let Some(&a) = self.state.anims.get(&key).filter(|a| a.h == SHAKE) else {
+            let Some(&a) = self
+                .interaction
+                .state
+                .anims
+                .get(&key)
+                .filter(|a| a.h == SHAKE)
+            else {
                 continue;
             };
             let k = (now - a.t) as f32 / a.b.max(1.0);
@@ -455,10 +461,10 @@ impl Ui {
 impl Ui {
     /// Bursts a timeline's events started, drawn on their elements.
     pub(crate) fn apply_bursts(&mut self, order: &[usize]) {
-        if self.state.motion.bursts.is_empty() {
+        if self.interaction.state.motion.bursts.is_empty() {
             return;
         }
-        let bursts = self.state.motion.bursts.clone();
+        let bursts = self.interaction.state.motion.bursts.clone();
         for &i in order {
             let key = self.nodes[i].key;
             for b in bursts.iter().filter(|b| b.key == key) {

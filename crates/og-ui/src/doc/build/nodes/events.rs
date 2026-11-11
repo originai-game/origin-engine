@@ -24,7 +24,7 @@ impl Ui {
         let was_open = self.memory(&open_key, 0.0) > 0.0;
         let off = self.memory(&off_key, 0.0) > 0.0;
         if resp.focused {
-            self.remember(&field_key, f64::from_bits(self.state.focus));
+            self.remember(&field_key, f64::from_bits(self.interaction.state.focus));
         }
         let wants =
             resp.focused && self.device().is_pad() && r.str("inputmode") != Some("none") && !off;
@@ -80,7 +80,7 @@ impl Ui {
         if done {
             let back = self.memory(&field_key, 0.0).to_bits();
             if back != 0 {
-                self.request_focus = back;
+                self.interaction.request_focus = back;
             }
         }
         self.remember(&open_key, if open && !done { 1.0 } else { 0.0 });
@@ -102,14 +102,15 @@ impl Ui {
         }
         let ms = r.num("dataHold").unwrap_or(500.0);
         let need = ((ms * self.env.ticks_per_second as f32 / 1000.0).ceil() as u64).max(1);
-        let focused = self.state.focus == key
+        let focused = self.interaction.state.focus == key
             && (self
+                .interaction
                 .input
                 .keys_held
                 .iter()
                 .any(|k| matches!(*k, "Enter" | "NumpadEnter" | "Space"))
-                || self.input.gamepad.held & crate::input::GamepadFrame::A != 0);
-        let pressing = (self.input.down && self.state.active == key)
+                || self.interaction.input.gamepad.held & crate::input::GamepadFrame::A != 0);
+        let pressing = (self.interaction.input.down && self.interaction.state.active == key)
             || focused
             || r.str("dataAction").is_some_and(|a| self.action_down(a));
         let memory = crate::id::child_key(key, "~hold");
@@ -219,7 +220,8 @@ impl Ui {
         }
         let happened = std::mem::take(&mut self.docs.host.happened);
         let held = n.triggers.iter().any(|t| t.when == When::Hold) && self.held(key, n);
-        let context = long || (self.input.secondary_pressed && self.state.hot == key);
+        let context =
+            long || (self.interaction.input.secondary_pressed && self.interaction.state.hot == key);
         for (k, t) in n.triggers.iter().enumerate() {
             let go = match &t.when {
                 When::Click => resp.clicked,
@@ -289,7 +291,7 @@ impl Ui {
                         .min_by(|a, b| (a.1.node, &a.1.row_key).cmp(&(b.1.node, &b.1.row_key)))
                         .map(|(k, _)| *k);
                     match first {
-                        Some(k) => self.request_focus = k,
+                        Some(k) => self.interaction.request_focus = k,
                         None => b.event(path, "emit", action, Value::Null),
                     }
                 }

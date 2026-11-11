@@ -152,6 +152,7 @@ impl Ui {
     pub(crate) fn bar_gutter(&self, key: u64, css: ScrollCss) -> f32 {
         if css.gutter != 0
             || self
+                .interaction
                 .state
                 .scroll_info
                 .get(&key)
@@ -170,8 +171,9 @@ impl Ui {
 
     /// The zoom view `key`'s state, when `key` is one.
     pub(crate) fn zoom_state(&self, key: u64) -> Option<ZoomState> {
-        let z = self.state.anims.get(&zoom_key(key))?;
+        let z = self.interaction.state.anims.get(&zoom_key(key))?;
         let p = self
+            .interaction
             .state
             .anims
             .get(&pan_key(key))
@@ -246,7 +248,7 @@ impl Ui {
         let r = h.full;
         let mid = Vec2::new(r.x + r.width / 2.0, r.y + r.height / 2.0);
         let step = Vec2::new(r.width, r.height) * 0.1;
-        let keys = self.input.keys.clone();
+        let keys = self.interaction.input.keys.clone();
         if adjust != 0 {
             self.zoom_by(key, 1.0, mid, Vec2::new(-step.x * adjust as f32, 0.0));
         }
@@ -285,22 +287,22 @@ impl Ui {
         if held.len() < 2 {
             // Two fingers that scrolled a container fling it as they lift,
             // as one finger's drag does.
-            if let Some(last) = self.state.pinch.take()
+            if let Some(last) = self.interaction.state.pinch.take()
                 && last.key != 0
                 && self.zoom_state(last.key).is_none()
             {
-                let v = self.state.drag_v;
+                let v = self.interaction.state.drag_v;
                 if !self.theme().reduced_motion && v.length() > 1.0 {
-                    self.state.fling = Some((last.key, v));
+                    self.interaction.state.fling = Some((last.key, v));
                 }
-                self.state.drag_v = Vec2::ZERO;
+                self.interaction.state.drag_v = Vec2::ZERO;
             }
             return false;
         }
         let (a, b) = (p.position(held[0]), p.position(held[1]));
         let center = (a + b) / 2.0;
         let spread = a.distance(b);
-        match self.state.pinch {
+        match self.interaction.state.pinch {
             Some(last) => {
                 let moved = center - last.center;
                 if last.key != 0 {
@@ -314,10 +316,11 @@ impl Ui {
                     } else {
                         self.scroll_chain_by(last.key, -moved);
                         // Its velocity, kept for the fling as they lift.
-                        self.state.drag_v = self.state.drag_v * 0.5 - moved * 0.5;
+                        self.interaction.state.drag_v =
+                            self.interaction.state.drag_v * 0.5 - moved * 0.5;
                     }
                 }
-                self.state.pinch = Some(Pinch {
+                self.interaction.state.pinch = Some(Pinch {
                     key: last.key,
                     center,
                     spread,
@@ -328,7 +331,8 @@ impl Ui {
                 // under each): anything else (a stick and a button, two
                 // controls) is not a gesture.
                 let under = |p: Vec2| {
-                    self.state
+                    self.interaction
+                        .state
                         .hits
                         .iter()
                         .rev()
@@ -351,16 +355,16 @@ impl Ui {
                 {
                     return false;
                 }
-                self.state.pinch = Some(Pinch {
+                self.interaction.state.pinch = Some(Pinch {
                     key,
                     center,
                     spread,
                 });
                 // What the first finger pressed is not pressed.
-                self.state.active = 0;
-                self.state.fling = None;
-                self.state.thumb = None;
-                self.state.drag_v = Vec2::ZERO;
+                self.interaction.state.active = 0;
+                self.interaction.state.fling = None;
+                self.interaction.state.thumb = None;
+                self.interaction.state.drag_v = Vec2::ZERO;
             }
         }
         true
@@ -500,6 +504,7 @@ impl Ui {
     /// it exactly), else, or with reduced motion, at once. Stops a fling.
     pub(crate) fn scroll_to(&mut self, key: u64, to: Vec2) {
         let range = self
+            .interaction
             .state
             .scroll_info
             .get(&key)
@@ -511,28 +516,38 @@ impl Ui {
             if range.y > 0.0 { to.y } else { at.y },
         )
         .clamp(Vec2::ZERO, range.max(at));
-        if self.state.fling.is_some_and(|(k, _)| k == key) {
-            self.state.fling = None;
+        if self.interaction.state.fling.is_some_and(|(k, _)| k == key) {
+            self.interaction.state.fling = None;
         }
         if self.scroll_css(key).smooth && !self.theme().reduced_motion {
             if (to - at).length() > 0.25 {
-                self.state.fling = Some((key, (to - at) * self.fling_keep()));
+                self.interaction.state.fling = Some((key, (to - at) * self.fling_keep()));
             }
             return;
         }
         if to.x != at.x {
-            self.state.scroll_x.insert(key, to.x);
+            self.interaction.state.scroll_x.insert(key, to.x);
         }
         if to.y != at.y {
-            self.state.scroll.insert(key, to.y);
+            self.interaction.state.scroll.insert(key, to.y);
         }
     }
 
     /// The offset of scroll container `key` (x, y).
     pub(crate) fn offset(&self, key: u64) -> Vec2 {
         Vec2::new(
-            self.state.scroll_x.get(&key).copied().unwrap_or(0.0),
-            self.state.scroll.get(&key).copied().unwrap_or(0.0),
+            self.interaction
+                .state
+                .scroll_x
+                .get(&key)
+                .copied()
+                .unwrap_or(0.0),
+            self.interaction
+                .state
+                .scroll
+                .get(&key)
+                .copied()
+                .unwrap_or(0.0),
         )
     }
 
@@ -540,6 +555,7 @@ impl Ui {
     /// not take (for the container around it).
     pub(crate) fn scroll_by(&mut self, key: u64, d: Vec2) -> Vec2 {
         let info = self
+            .interaction
             .state
             .scroll_info
             .get(&key)
@@ -548,10 +564,10 @@ impl Ui {
         let at = self.offset(key);
         let to = (at + d).clamp(Vec2::ZERO, info.range.max(Vec2::ZERO));
         if to.x != at.x {
-            self.state.scroll_x.insert(key, to.x);
+            self.interaction.state.scroll_x.insert(key, to.x);
         }
         if to.y != at.y {
-            self.state.scroll.insert(key, to.y);
+            self.interaction.state.scroll.insert(key, to.y);
         }
         d - (to - at)
     }
@@ -608,6 +624,7 @@ impl Ui {
             }
         }
         let range = self
+            .interaction
             .state
             .scroll_info
             .get(&key)
@@ -681,11 +698,11 @@ impl Ui {
 
     /// The scrollbar under `p`, if a press there grabs one.
     fn thumb_at(&self, p: Vec2) -> Option<Thumb> {
-        self.state.hits.iter().rev().find_map(|h| {
+        self.interaction.state.hits.iter().rev().find_map(|h| {
             if !h.has(HIT_SCROLL) || !h.rect.contains(p.x, p.y) {
                 return None;
             }
-            let info = self.state.scroll_info.get(&h.key)?;
+            let info = self.interaction.state.scroll_info.get(&h.key)?;
             let grab_w = if self.scroll_css(h.key).thin {
                 BAR_GRAB / 2.0
             } else {
@@ -749,24 +766,24 @@ impl Ui {
 
     pub(crate) fn scroll_input(&mut self, input: &crate::input::InputFrame) -> Option<u64> {
         let p = input.pointer;
-        self.gesture = self.two_touches(input);
-        if self.gesture {
+        self.interaction.gesture = self.two_touches(input);
+        if self.interaction.gesture {
             return None;
         }
         let mut grabbed = None;
         if input.pressed {
             // A press stops a fling; one on a scrollbar grabs it.
-            self.state.fling = None;
-            self.state.wheel_from = None;
-            self.state.thumb = input.pointer_inside.then(|| self.thumb_at(p)).flatten();
-            grabbed = self.state.thumb.map(|t| t.key);
-            self.state.drag_v = Vec2::ZERO;
+            self.interaction.state.fling = None;
+            self.interaction.state.wheel_from = None;
+            self.interaction.state.thumb = input.pointer_inside.then(|| self.thumb_at(p)).flatten();
+            grabbed = self.interaction.state.thumb.map(|t| t.key);
+            self.interaction.state.drag_v = Vec2::ZERO;
         }
-        if let Some(t) = self.state.thumb {
+        if let Some(t) = self.interaction.state.thumb {
             if input.down || input.pressed {
                 if let (Some(h), Some(info)) = (
                     self.hit(t.key).copied(),
-                    self.state.scroll_info.get(&t.key).copied(),
+                    self.interaction.state.scroll_info.get(&t.key).copied(),
                 ) {
                     let (start, len, bar, range, at) = if t.axis == 1 {
                         (h.full.y, h.full.height, info.bar.y, info.range.y, p.y)
@@ -776,13 +793,13 @@ impl Ui {
                     let travel = (len - bar).max(1.0);
                     let v = ((at - t.grab - start) / travel).clamp(0.0, 1.0) * range;
                     if t.axis == 1 {
-                        self.state.scroll.insert(t.key, v);
+                        self.interaction.state.scroll.insert(t.key, v);
                     } else {
-                        self.state.scroll_x.insert(t.key, v);
+                        self.interaction.state.scroll_x.insert(t.key, v);
                     }
                 }
             } else {
-                self.state.thumb = None;
+                self.interaction.state.thumb = None;
             }
             return grabbed;
         }
@@ -791,8 +808,9 @@ impl Ui {
         // its boxes are laid out at the offset the wheel left).
         let mut wheel_snap = None;
         if input.wheel != Vec2::ZERO && input.pointer_inside {
-            self.state.fling = None;
+            self.interaction.state.fling = None;
             if let Some(h) = self
+                .interaction
                 .state
                 .hits
                 .iter()
@@ -809,43 +827,46 @@ impl Ui {
                     let from = self.offset(key);
                     self.scroll_chain_by(key, input.wheel);
                     wheel_snap = self.snaps(key).then_some(key);
-                    if wheel_snap.is_some() && self.state.wheel_from.is_none_or(|w| w.0 != key) {
-                        self.state.wheel_from = Some((key, from));
+                    if wheel_snap.is_some()
+                        && self.interaction.state.wheel_from.is_none_or(|w| w.0 != key)
+                    {
+                        self.interaction.state.wheel_from = Some((key, from));
                     }
                 }
             }
         }
         // A drag on a container that holds the press, with its velocity kept.
-        let active = self.state.active;
+        let active = self.interaction.state.active;
         if self.zoom_state(active).is_some() {
             // A drag on a zoom view pans it.
             if input.down && !input.pressed {
-                let moved = p - self.state.pointer;
+                let moved = p - self.interaction.state.pointer;
                 self.zoom_by(active, 1.0, p, moved);
             }
         } else if self.hit(active).is_some_and(|h| h.has(HIT_SCROLL)) {
             if input.down && !input.pressed {
-                let d = self.touch_allows(active, self.state.pointer - p);
+                let d = self.touch_allows(active, self.interaction.state.pointer - p);
                 self.scroll_chain_by(active, d);
-                self.state.drag_v = self.state.drag_v * 0.5 + d * 0.5;
+                self.interaction.state.drag_v = self.interaction.state.drag_v * 0.5 + d * 0.5;
             } else if input.released {
-                self.state.wheel_from = None;
-                let v = self.state.drag_v;
+                self.interaction.state.wheel_from = None;
+                let v = self.interaction.state.drag_v;
                 let reduced = self.theme().reduced_motion;
                 if self.snaps(active) {
                     // It settles on a snap position (a still release too).
-                    self.state.fling = Some((active, if reduced { Vec2::ZERO } else { v }));
+                    self.interaction.state.fling =
+                        Some((active, if reduced { Vec2::ZERO } else { v }));
                 } else if !reduced && v.length() > 1.0 {
-                    self.state.fling = Some((active, v));
+                    self.interaction.state.fling = Some((active, v));
                 }
-                self.state.drag_v = Vec2::ZERO;
+                self.interaction.state.drag_v = Vec2::ZERO;
             }
         }
         // A fling: the released drag's velocity, decaying to rest; it stops
         // at the content's end on each axis.
-        if let Some((key, v)) = self.state.fling {
+        if let Some((key, v)) = self.interaction.state.fling {
             if self.hit(key).is_none() {
-                self.state.fling = None;
+                self.interaction.state.fling = None;
             } else {
                 let keep = self.fling_keep();
                 let decay = 1.0 - keep;
@@ -856,6 +877,7 @@ impl Ui {
                 // exactly, so the next tick projects the same target and the
                 // fling needs no state beyond its velocity.
                 let from = self
+                    .interaction
                     .state
                     .wheel_from
                     .filter(|w| w.0 == key)
@@ -863,21 +885,21 @@ impl Ui {
                 if let Some(target) = self.snap_target(key, at + v / keep, from) {
                     if self.theme().reduced_motion {
                         self.scroll_by(key, target - at);
-                        self.state.fling = None;
-                        self.state.wheel_from = None;
+                        self.interaction.state.fling = None;
+                        self.interaction.state.wheel_from = None;
                     } else {
                         self.scroll_by(key, (target - at) * keep);
                         let rest = target - self.offset(key);
                         if rest.length() < 0.25 {
                             self.scroll_by(key, rest);
-                            self.state.fling = None;
-                            self.state.wheel_from = None;
+                            self.interaction.state.fling = None;
+                            self.interaction.state.wheel_from = None;
                         } else {
-                            self.state.fling = Some((key, rest * keep));
+                            self.interaction.state.fling = Some((key, rest * keep));
                         }
                     }
                     if let Some(k) = wheel_snap {
-                        self.state.fling = Some((k, Vec2::ZERO));
+                        self.interaction.state.fling = Some((k, Vec2::ZERO));
                     }
                     return grabbed;
                 }
@@ -892,9 +914,9 @@ impl Ui {
                     next.y = 0.0;
                 }
                 if next.length() >= FLING_STOP {
-                    self.state.fling = Some((key, next));
+                    self.interaction.state.fling = Some((key, next));
                 } else {
-                    self.state.fling = None;
+                    self.interaction.state.fling = None;
                     // A smooth scroll's glide lands exactly where it was
                     // aimed: the rest a decaying fling still had to go.
                     if self.scroll_css(key).smooth && keep > 0.0 {
@@ -904,7 +926,7 @@ impl Ui {
             }
         }
         if let Some(k) = wheel_snap {
-            self.state.fling = Some((k, Vec2::ZERO));
+            self.interaction.state.fling = Some((k, Vec2::ZERO));
         }
         grabbed
     }

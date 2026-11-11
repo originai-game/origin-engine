@@ -72,13 +72,15 @@ impl Ui {
         // A dialogue that appears takes the focus (the topmost owns it: the
         // README §Focus navigation), so Enter, Space and the
         // pad's A reach it at once; under an open dialog it waits.
-        if self.state.scope == 0 && !self.state.hits.iter().any(|h| h.key == key) {
-            self.request_focus = key;
+        if self.interaction.state.scope == 0
+            && !self.interaction.state.hits.iter().any(|h| h.key == key)
+        {
+            self.interaction.request_focus = key;
         }
         let r = self.nav_target(i, false);
         let h = hash_str(&desc.text);
         let mut a = self.anim(key);
-        let now = self.state.tick;
+        let now = self.interaction.state.tick;
         if a.h != h || a.t == 0 {
             a = Anim {
                 a: 0.0,
@@ -370,25 +372,36 @@ impl Ui {
     /// it and no other control holds. A finger that slid onto it from
     /// elsewhere owns nothing.
     fn touch_owner(&mut self, key: u64, disabled: bool) -> Option<og_core::glam::Vec2> {
-        let p = self.input.pointers;
-        self.state.touch_owners.retain(|_, id| p.down(*id));
+        let p = self.interaction.input.pointers;
+        self.interaction
+            .state
+            .touch_owners
+            .retain(|_, id| p.down(*id));
         if disabled {
-            self.state.touch_owners.remove(&key);
+            self.interaction.state.touch_owners.remove(&key);
             return None;
         }
-        if self.state.active == key && (self.input.down || self.input.pressed) {
-            return Some(self.input.pointer);
+        if self.interaction.state.active == key
+            && (self.interaction.input.down || self.interaction.input.pressed)
+        {
+            return Some(self.interaction.input.pointer);
         }
-        if let Some(&id) = self.state.touch_owners.get(&key) {
+        if let Some(&id) = self.interaction.state.touch_owners.get(&key) {
             return Some(p.position(id));
         }
         let rect = self.hit(key)?.rect;
-        let held = |id: &u32| self.state.touch_owners.values().any(|v| v == id);
+        let held = |id: &u32| {
+            self.interaction
+                .state
+                .touch_owners
+                .values()
+                .any(|v| v == id)
+        };
         let id = (1..og_input::MAX_POINTERS as u32).find(|id| {
             let at = p.start(*id);
             p.down(*id) && !held(id) && rect.contains(at.x, at.y)
         })?;
-        self.state.touch_owners.insert(key, id);
+        self.interaction.state.touch_owners.insert(key, id);
         Some(p.position(id))
     }
 

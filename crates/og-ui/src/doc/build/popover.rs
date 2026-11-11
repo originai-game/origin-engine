@@ -123,10 +123,10 @@ impl Ui {
         if let Some(target) = r.str("contextmenu") {
             let context = resp.long_pressed
                 || self.gesture_of(key).long_pressed
-                || (self.input.secondary_pressed && self.state.hot == key);
+                || (self.interaction.input.secondary_pressed && self.interaction.state.hot == key);
             if context {
                 let pk = popover_key(&b.mount, target);
-                let p = self.input.pointer;
+                let p = self.interaction.input.pointer;
                 let link = self.docs.host.popovers.entry(pk).or_default();
                 link.invoker = (at, key);
                 link.point = Some([p.x, p.y]);
@@ -138,7 +138,7 @@ impl Ui {
             let delay = (self.env.theme.durations_ms.slow * self.env.ticks_per_second as f32
                 / 1000.0)
                 .ceil() as u32;
-            let s = &self.state;
+            let s = &self.interaction.state;
             let interest =
                 (s.hot == key && s.hover_ticks >= delay) || (s.focus == key && s.focus_visible);
             let link = self.docs.host.popovers.entry(pk).or_default();
@@ -189,7 +189,7 @@ impl Ui {
         let mut open = self.popover_open(pk);
         // A hint shows while its control holds interest, or while the
         // pointer rests on the hint itself.
-        let pointer = self.input.pointer;
+        let pointer = self.interaction.input.pointer;
         let over = link.layer != 0
             && self
                 .last_bounds(link.layer)

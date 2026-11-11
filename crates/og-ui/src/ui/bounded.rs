@@ -35,15 +35,15 @@ pub(super) fn compare(ui: &Ui, twin: &Ui) {
     );
     assert_eq!(a.focus_paths, b.focus_paths, "{}", at("focus"));
     assert_eq!(
-        format!("{:?}", ui.state.hits),
-        format!("{:?}", twin.state.hits),
+        format!("{:?}", ui.interaction.state.hits),
+        format!("{:?}", twin.interaction.state.hits),
         "{}",
         at("hits")
     );
     // Motion state: the same channels with the same values. The whole
     // frame steps every animated node, the bounded one leaves a settled
     // one unvisited, so when a channel was last stepped is not compared.
-    let (mu, mt) = (&ui.state.motion, &twin.state.motion);
+    let (mu, mt) = (&ui.interaction.state.motion, &twin.interaction.state.motion);
     for (k, c) in &mu.channels {
         let mut c = *c;
         let mut w = *mt

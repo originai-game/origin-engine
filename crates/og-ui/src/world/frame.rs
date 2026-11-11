@@ -378,7 +378,7 @@ impl Ui {
             pool.remove(0);
         }
         pool.push(UiMassInstance {
-            start: self.state.tick as u32,
+            start: self.interaction.state.tick as u32,
             ..instance
         });
     }
@@ -397,7 +397,7 @@ impl Ui {
             .entry(h.0)
             .or_default()
             .push(UiMassInstance {
-                start: self.state.tick as u32,
+                start: self.interaction.state.tick as u32,
                 ..instance
             });
     }
@@ -419,7 +419,7 @@ impl Ui {
     /// world panel its ray meets, before anything is hit tested.
     pub(crate) fn world_begin(&mut self, input: &mut crate::input::InputFrame) {
         let w = &mut self.world;
-        w.last_pointer = self.state.pointer;
+        w.last_pointer = self.interaction.state.pointer;
         w.wanted.clear();
         w.anchors.clear();
         w.panels.clear();
@@ -439,7 +439,7 @@ impl Ui {
         // The screen's own elements are over the world: a pointer on one
         // stays there.
         let p = input.pointer;
-        let on_screen = self.state.hits.iter().any(|h| {
+        let on_screen = self.interaction.state.hits.iter().any(|h| {
             !off_screen(&h.rect) && h.contains(p.x, p.y) && h.flags & crate::ui::HIT_POINTER != 0
         });
         if on_screen {
@@ -497,7 +497,7 @@ impl Ui {
     /// makes the frame's own batches. Called by `end` once transforms are
     /// applied.
     pub(crate) fn world_finish(&mut self) {
-        let tick = self.state.tick as u32;
+        let tick = self.interaction.state.tick as u32;
         self.world_particles(tick);
         // Pools: instances past their life leave.
         let templates = &self.world.templates;

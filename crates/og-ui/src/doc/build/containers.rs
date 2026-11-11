@@ -218,11 +218,16 @@ impl Ui {
         self.apply_document_fields(doc, n, r, &fields);
         // A Rive frame already advanced this tick when its board is unchanged.
         let layout_key = self.nodes[i].key;
-        let playing = self.state.rive.get(&layout_key).map(|s| s.board.clone());
+        let playing = self
+            .interaction
+            .state
+            .rive
+            .get(&layout_key)
+            .map(|s| s.board.clone());
         match r.str("rive") {
             Some(board) if playing.as_deref() != Some(board) => self.play_rive(i, board, path),
             None if playing.is_some() => {
-                self.state.rive.remove(&layout_key);
+                self.interaction.state.rive.remove(&layout_key);
                 if self.draws.get(&i).is_some_and(|d| d.rive.is_some()) {
                     self.draws.remove(&i);
                 }

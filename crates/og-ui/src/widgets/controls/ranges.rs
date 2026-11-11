@@ -1172,8 +1172,8 @@ impl Ui {
         }
         // A screen reader's increment and decrement on the spinbutton, and its set value.
         let vkey = crate::id::key_of_path(&val.path);
-        if self.nav.spin.0 == vkey && !disabled {
-            v = fit(v + step * self.nav.spin.1 as f32);
+        if self.interaction.nav.spin.0 == vkey && !disabled {
+            v = fit(v + step * self.interaction.nav.spin.1 as f32);
         }
         #[cfg(not(target_arch = "wasm32"))]
         if !disabled {

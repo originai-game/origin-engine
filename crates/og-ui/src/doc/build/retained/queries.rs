@@ -261,7 +261,7 @@ panel { width: 10px; height: 10px; }
         // header, a container that does not scroll, ignores its offset.
         let keys: Vec<u64> = ui.docs.host.scroll_states.keys().copied().collect();
         for k in keys {
-            ui.state.scroll.insert(k, 40.0);
+            ui.interaction.state.scroll.insert(k, 40.0);
         }
         let (now, _) = frame(&mut ui);
         assert_eq!(now[..2], [44.0, 33.0]);

@@ -108,19 +108,19 @@ impl Ui {
     /// right stick scrolls under it. The real pointer moving hides it and
     /// the stick shows it again. `None` turns it off.
     pub fn set_virtual_cursor(&mut self, desc: Option<VirtualCursorDesc>) {
-        self.vcursor = desc;
+        self.interaction.vcursor = desc;
     }
 
     /// Where the virtual cursor is (units) and whether it is shown: the
     /// last frame's (`None`: no virtual cursor declared).
     pub fn virtual_cursor(&self) -> Option<(Vec2, bool)> {
-        let v = &self.state.vcursor;
+        let v = &self.interaction.state.vcursor;
         v.desc.map(|_| (v.pos, v.shown))
     }
 
     /// The topmost control of last frame under `p` (0: none).
     fn control_at(&self, p: Vec2) -> Option<&crate::ui::Hit> {
-        self.state.hits.iter().rev().find(|h| {
+        self.interaction.state.hits.iter().rev().find(|h| {
             !h.has(HIT_OFFSCREEN) && h.has(HIT_NAV | HIT_POINTER | HIT_TEXT) && h.contains(p.x, p.y)
         })
     }
@@ -129,9 +129,9 @@ impl Ui {
     /// shows: its place, A as the button, the right stick as the wheel.
     /// Run on the input in units before anything reads it.
     pub(crate) fn virtual_cursor_input(&mut self, input: &mut InputFrame, w: f32, h: f32) {
-        let mut v = self.state.vcursor;
+        let mut v = self.interaction.state.vcursor;
         let Some(d) = v.desc else {
-            self.state.vcursor = VCursorState::default();
+            self.interaction.state.vcursor = VCursorState::default();
             return;
         };
         let real = input.pointer;
@@ -222,14 +222,14 @@ impl Ui {
         } else if stick.is_some() {
             input.gamepad.stick = Vec2::ZERO;
         }
-        self.state.vcursor = v;
+        self.interaction.state.vcursor = v;
     }
 
     /// The virtual cursor as the style draws it: a ring in the focus colour
     /// on a shadow, a dot of ink at its point; larger over a control and
     /// smaller while pressed.
     pub(crate) fn virtual_cursor_commands(&self, cmds: &mut Vec<DrawCmd>) {
-        let v = &self.state.vcursor;
+        let v = &self.interaction.state.vcursor;
         if v.desc.is_none() || !v.shown {
             return;
         }

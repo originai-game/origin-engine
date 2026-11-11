@@ -668,7 +668,7 @@ impl Ui {
             if self.has_anim(clock) {
                 self.anim(clock);
             } else {
-                let t = self.state.tick;
+                let t = self.interaction.state.tick;
                 self.set_anim(
                     clock,
                     crate::ui::Anim {

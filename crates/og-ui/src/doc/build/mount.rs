@@ -336,9 +336,9 @@ impl Ui {
             ));
             return;
         };
-        let tick = self.state.tick;
+        let tick = self.interaction.state.tick;
         let dt = 1.0 / self.env.ticks_per_second.max(1) as f32;
-        let player = match self.state.rive.remove(&key) {
+        let player = match self.interaction.state.rive.remove(&key) {
             Some(crate::ui::RiveSlot {
                 board: b,
                 player: Some(mut p),
@@ -367,7 +367,7 @@ impl Ui {
                     self.out.warnings.push(format!(
                         "{path}: the saved state of Rive artboard {id} does not fit it ({e}); it is kept and not drawn"
                     ));
-                    self.state.rive.insert(
+                    self.interaction.state.rive.insert(
                         key,
                         crate::ui::RiveSlot {
                             board: b,
@@ -391,7 +391,7 @@ impl Ui {
             },
         );
         self.dressable.remove(&node);
-        self.state.rive.insert(
+        self.interaction.state.rive.insert(
             key,
             crate::ui::RiveSlot {
                 board: id.to_owned(),

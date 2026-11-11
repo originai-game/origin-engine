@@ -317,7 +317,7 @@ impl Ui {
     /// scrollers moved.
     pub(crate) fn note_semantics(&mut self, repainted: Option<&[usize]>) {
         let log = &mut self.semantics;
-        let s = &self.state;
+        let s = &self.interaction.state;
         let focus = [s.focus, s.pad_focus[0], s.pad_focus[1], s.pad_focus[2]];
         if repainted.is_none() || s.scope != log.scope {
             log.note_all();
@@ -372,8 +372,18 @@ impl Ui {
         for &i in &self.layout.cache.scrollers {
             let key = self.nodes[i].key;
             let at = (
-                self.state.scroll_x.get(&key).copied().unwrap_or(0.0),
-                self.state.scroll.get(&key).copied().unwrap_or(0.0),
+                self.interaction
+                    .state
+                    .scroll_x
+                    .get(&key)
+                    .copied()
+                    .unwrap_or(0.0),
+                self.interaction
+                    .state
+                    .scroll
+                    .get(&key)
+                    .copied()
+                    .unwrap_or(0.0),
             );
             if log.offsets.get(&key) != Some(&at) {
                 log.note(key);

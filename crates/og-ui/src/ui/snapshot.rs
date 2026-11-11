@@ -6,7 +6,7 @@ impl Ui {
     /// queued navigation) as bytes, for the host's world snapshot: restoring
     /// it with the world replays the UI exactly.
     pub fn save_state(&self) -> Vec<u8> {
-        let s = &self.state;
+        let s = &self.interaction.state;
         let mut b = Vec::new();
         let u32_ = |b: &mut Vec<u8>, v: u32| b.extend_from_slice(&v.to_le_bytes());
         let u64_ = |b: &mut Vec<u8>, v: u64| b.extend_from_slice(&v.to_le_bytes());
@@ -336,7 +336,7 @@ impl Ui {
     /// [`crate::tokens::SoundEvent`] index), kept in the UI state so
     /// snapshots carry it.
     pub fn voices_mut(&mut self) -> &mut [u64; crate::tokens::SoundEvent::COUNT] {
-        &mut self.state.voices
+        &mut self.interaction.state.voices
     }
 
     /// Restores [`Ui::save_state`] bytes. Refused, with nothing changed, for
@@ -406,7 +406,7 @@ impl Ui {
             );
         }
         self.restore_docs_state(&docs).map_err(bad)?;
-        self.state = s;
+        self.interaction.state = s;
         self.layout.cache = Default::default();
         self.paint.cache = Default::default();
         self.style.motion = Default::default();
@@ -465,10 +465,8 @@ impl Ui {
                 if r.at != bytes.len() {
                     return Err(bad("trailing bytes after a version 9 state".into()));
                 }
-                let ui = Ui {
-                    state: s,
-                    ..Ui::default()
-                };
+                let mut ui = Ui::default();
+                ui.interaction.state = s;
                 Ok(ui.save_state())
             }
             11..=22 => {
@@ -488,10 +486,8 @@ impl Ui {
                         "trailing bytes after a version {version} state"
                     )));
                 }
-                let mut ui = Ui {
-                    state: s,
-                    ..Ui::default()
-                };
+                let mut ui = Ui::default();
+                ui.interaction.state = s;
                 ui.restore_docs_state(&docs).map_err(bad)?;
                 Ok(ui.save_state())
             }
@@ -1009,9 +1005,9 @@ mod tests {
     #[test]
     fn a_version_11_state_upgrades_and_restores() {
         let mut ui = Ui::default();
-        ui.state.scope = 7;
-        ui.state.focus = 9;
-        ui.state.focus_returns = vec![(0, 42)];
+        ui.interaction.state.scope = 7;
+        ui.interaction.state.focus = 9;
+        ui.interaction.state.focus_returns = vec![(0, 42)];
         let saved = ui.save_state();
         let v12 = without_v14_tail(&saved);
         // Version 11 wrote the one return as a u64 where 12 writes a counted list.
@@ -1039,8 +1035,11 @@ mod tests {
         fresh
             .restore_state(&up)
             .expect("the upgraded block restores");
-        assert_eq!((fresh.state.scope, fresh.state.focus), (7, 9));
-        assert_eq!(fresh.state.focus_returns, vec![(0, 42)]);
+        assert_eq!(
+            (fresh.interaction.state.scope, fresh.interaction.state.focus),
+            (7, 9)
+        );
+        assert_eq!(fresh.interaction.state.focus_returns, vec![(0, 42)]);
     }
 
     /// A version 13 state (no focus groups, moves or recognisers; hits
@@ -1049,9 +1048,9 @@ mod tests {
     #[test]
     fn a_version_13_state_upgrades_and_restores() {
         let mut ui = Ui::default();
-        ui.state.focus = 9;
-        ui.state.tick = 77;
-        ui.state.hits = vec![Hit {
+        ui.interaction.state.focus = 9;
+        ui.interaction.state.tick = 77;
+        ui.interaction.state.hits = vec![Hit {
             key: 9,
             rect: Rect::new(1.0, 2.0, 3.0, 4.0),
             full: Rect::new(1.0, 2.0, 3.0, 4.0),
@@ -1098,8 +1097,8 @@ mod tests {
             "13 is read only through the upgrade"
         );
         let up = Ui::upgrade_state(&v13).expect("version 13 upgrades");
-        ui.state.hits[0].group = 0;
-        ui.state.hits[0].gesture = 0;
+        ui.interaction.state.hits[0].group = 0;
+        ui.interaction.state.hits[0].gesture = 0;
         assert_eq!(
             up,
             ui.save_state(),
@@ -1108,9 +1107,15 @@ mod tests {
         fresh
             .restore_state(&up)
             .expect("the upgraded block restores");
-        assert_eq!((fresh.state.focus, fresh.state.tick), (9, 77));
-        assert_eq!(fresh.state.hits.len(), 1);
-        assert!(fresh.state.groups.is_empty() && fresh.state.recognizers.is_empty());
+        assert_eq!(
+            (fresh.interaction.state.focus, fresh.interaction.state.tick),
+            (9, 77)
+        );
+        assert_eq!(fresh.interaction.state.hits.len(), 1);
+        assert!(
+            fresh.interaction.state.groups.is_empty()
+                && fresh.interaction.state.recognizers.is_empty()
+        );
     }
 
     /// A version 14 state (no virtual cursor, no HUD layouts) upgrades to
@@ -1119,8 +1124,8 @@ mod tests {
     #[test]
     fn a_version_14_state_upgrades_and_restores() {
         let mut ui = Ui::default();
-        ui.state.focus = 5;
-        ui.state.tick = 31;
+        ui.interaction.state.focus = 5;
+        ui.interaction.state.tick = 31;
         let saved = ui.save_state();
         let mut v14 = cut_before_docs(&saved, V15 + V16 + V17 + V18 + V20);
         v14[..4].copy_from_slice(&14u32.to_le_bytes());
@@ -1134,7 +1139,10 @@ mod tests {
         fresh
             .restore_state(&up)
             .expect("the upgraded block restores");
-        assert_eq!((fresh.state.focus, fresh.state.tick), (5, 31));
+        assert_eq!(
+            (fresh.interaction.state.focus, fresh.interaction.state.tick),
+            (5, 31)
+        );
     }
 
     /// A version 15 state (no touch control holding a finger) upgrades to
@@ -1142,24 +1150,24 @@ mod tests {
     #[test]
     fn a_version_15_state_upgrades_and_touch_owners_round_trip() {
         let mut ui = Ui::default();
-        ui.state.tick = 12;
+        ui.interaction.state.tick = 12;
         let saved = ui.save_state();
         let mut v15 = cut_before_docs(&saved, V16 + V17 + V18 + V20);
         v15[..4].copy_from_slice(&15u32.to_le_bytes());
         assert!(Ui::default().restore_state(&v15).is_err());
         assert_eq!(Ui::upgrade_state(&v15).expect("version 15 upgrades"), saved);
-        ui.state.touch_owners.insert(0xabcd, 3);
+        ui.interaction.state.touch_owners.insert(0xabcd, 3);
         let mut fresh = Ui::default();
         fresh.restore_state(&ui.save_state()).expect("restores");
-        assert_eq!(fresh.state.touch_owners.get(&0xabcd), Some(&3));
+        assert_eq!(fresh.interaction.state.touch_owners.get(&0xabcd), Some(&3));
         // Version 16 (no typeahead) upgrades too; a typeahead in progress round-trips.
         let mut v16 = cut_before_docs(&saved, V17 + V18 + V20);
         v16[..4].copy_from_slice(&16u32.to_le_bytes());
         assert_eq!(Ui::upgrade_state(&v16).expect("version 16 upgrades"), saved);
-        ui.state.typeahead = ("ré".into(), 41);
+        ui.interaction.state.typeahead = ("ré".into(), 41);
         let mut fresh = Ui::default();
         fresh.restore_state(&ui.save_state()).expect("restores");
-        assert_eq!(fresh.state.typeahead, ("ré".into(), 41));
+        assert_eq!(fresh.interaction.state.typeahead, ("ré".into(), 41));
         // Version 17 (no Rive players) upgrades too.
         let mut v17 = cut_before_docs(&saved, V18 + V20);
         v17[..4].copy_from_slice(&17u32.to_le_bytes());
@@ -1180,7 +1188,7 @@ mod tests {
     fn the_virtual_cursor_and_hud_layouts_round_trip() {
         use crate::hud_layout::{HudPlacement, HudTarget};
         let mut ui = Ui::default();
-        let v = &mut ui.state.vcursor;
+        let v = &mut ui.interaction.state.vcursor;
         v.desc = Some(crate::VirtualCursorDesc {
             speed: 700.0,
             accel: -1.0,
@@ -1194,7 +1202,7 @@ mod tests {
         v.held = 7;
         v.over = 0xabcd;
         v.last_pointer = Vec2::new(3.0, 4.0);
-        let h = &mut ui.state.hud;
+        let h = &mut ui.interaction.state.hud;
         let p = HudPlacement {
             x: -40.0,
             y: 12.0,
@@ -1223,8 +1231,8 @@ mod tests {
         let bytes = ui.save_state();
         let mut back = Ui::default();
         back.restore_state(&bytes).expect("restores");
-        assert_eq!(back.state.vcursor, ui.state.vcursor);
-        assert_eq!(back.state.hud, ui.state.hud);
+        assert_eq!(back.interaction.state.vcursor, ui.interaction.state.vcursor);
+        assert_eq!(back.interaction.state.hud, ui.interaction.state.hud);
         assert_eq!(back.save_state(), bytes);
     }
 }

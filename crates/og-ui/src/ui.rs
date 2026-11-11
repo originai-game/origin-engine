@@ -443,9 +443,6 @@ pub(crate) struct NavFrame {
 /// The immediate-mode UI. Call [`Ui::begin`], build, [`Ui::end`] once per tick.
 #[derive(Clone, Debug)]
 pub struct Ui {
-    pub(crate) input: InputFrame,
-    #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) native_input: crate::native_a11y::Input,
     pub(crate) nodes: Vec<Node>,
     pub(crate) kinds: Vec<(&'static str, bool)>,
     /// Last frame's `kinds`, beside `kept.prev`.
@@ -480,23 +477,13 @@ pub struct Ui {
     /// What may have changed for screen readers, by frame (`tree`).
     pub(crate) semantics: tree::SemanticLog,
     pub(crate) building: bool,
-    pub(crate) state: State,
     /// Last frame's layers and draws while this frame is built, for
     /// inspecting the last frame mid-build.
     pub(crate) prev_floating: Vec<usize>,
-    pub(crate) nav: NavFrame,
     /// Widget memories used this frame (others are dropped at `end`).
     pub(crate) touched: std::collections::BTreeSet<u64>,
-    /// Navigation declared for this frame (`set_navigation`).
-    pub(crate) nav_on: bool,
-    /// Players declared for this frame (`set_players`).
-    pub(crate) players: u32,
-    /// The virtual cursor declared for this frame (`set_virtual_cursor`).
-    pub(crate) vcursor: Option<crate::vcursor::VirtualCursorDesc>,
     /// The HUD layout editor's panel this frame (its key; 0: none).
     pub(crate) hud_editor_key: u64,
-    /// The control a widget asked to focus this frame.
-    pub(crate) request_focus: u64,
     /// The content buttons open now and their ink (the innermost last).
     pub(crate) button_ink: Vec<(usize, Srgba)>,
     /// Open focus scopes this frame, in build order.
@@ -504,25 +491,11 @@ pub struct Ui {
     /// Text a control keeps between ticks while it is open (a dropdown's
     /// filter), by key: names of the frame's UI, dropped when it closes.
     pub(crate) kept_texts: crate::id::KeyMap<String>,
-    /// The keys of the text elements last painted with a selection.
-    pub(crate) selected: Vec<u64>,
-    /// The focused text control this frame (into [`UiFrame::text_input`]).
-    pub(crate) text_target: Option<TextTarget>,
     /// This frame's screen-transition cover.
     pub(crate) cover: Option<crate::juice::Cover>,
-    /// Two touches move a scroller or zoom view this tick: the primary
-    /// pointer presses nothing.
-    pub(crate) gesture: bool,
-    /// The element a resize drag moved this tick (written again).
-    pub(crate) resize_moved: Option<u64>,
     /// CSS `accent-color` of the document control being built: its
     /// primary ink (`widgets::controls`' roles).
     pub(crate) accent: Option<crate::Srgba>,
-    /// Last frame's drop targets and dragged elements: their paths, and the
-    /// tags each target takes.
-    pub(crate) drop_paths: IdMap<u64, String>,
-    pub(crate) drag_paths: IdMap<u64, String>,
-    pub(crate) drop_accepts: IdMap<u64, Vec<String>>,
     /// What this frame may keep from the last.
     pub(crate) invalidation: crate::layout::Invalidation,
     /// What elements of this frame draw with ([`Ui::set_draw`]), by node.
@@ -530,8 +503,6 @@ pub struct Ui {
     /// The draws of [`Ui::set_draw_dressable`]: a component's own look for
     /// a part, which a style that dresses the part restyles.
     pub(crate) dressable: std::collections::HashSet<usize>,
-    /// Named UI actions and the last device (docs/ui.md §2.1).
-    pub(crate) actions: crate::actions::Actions,
     /// World-space UI (`crate::world`): anchors, panels, mass elements,
     /// particles, meta layers.
     pub(crate) world: crate::world::WorldUi,
@@ -547,6 +518,8 @@ pub struct Ui {
     pub(crate) paint: Paint,
     /// Layout: its text measurements, its reuse cache and the boxes placement replaced for one frame.
     pub(crate) layout: Layout,
+    /// Interaction: the frame's input, the persisted interaction state and what navigation, gestures and selection decided.
+    pub(crate) interaction: Interaction,
 }
 
 /// One UI event's feedback as the host plays it ([`Ui::take_feedback`]).

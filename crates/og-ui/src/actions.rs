@@ -130,30 +130,37 @@ impl ActionHint {
 
 impl Ui {
     fn ensure_actions(&mut self) {
-        if !self.actions.defined {
-            self.actions.defined = true;
-            self.actions.defs = default_actions();
-            self.actions.pad = Device::Xbox;
+        if !self.interaction.actions.defined {
+            self.interaction.actions.defined = true;
+            self.interaction.actions.defs = default_actions();
+            self.interaction.actions.pad = Device::Xbox;
         }
-        self.actions
+        self.interaction
+            .actions
             .states
-            .resize(self.actions.defs.len(), ActionState::default());
+            .resize(self.interaction.actions.defs.len(), ActionState::default());
     }
 
     /// Defines (or redefines) a UI action.
     pub fn define_action(&mut self, desc: ActionDesc) {
         self.ensure_actions();
-        match self.actions.defs.iter_mut().find(|d| d.name == desc.name) {
+        match self
+            .interaction
+            .actions
+            .defs
+            .iter_mut()
+            .find(|d| d.name == desc.name)
+        {
             Some(d) => *d = desc,
-            None => self.actions.defs.push(desc),
+            None => self.interaction.actions.defs.push(desc),
         }
         self.ensure_actions();
     }
 
     /// Every action defined (the defaults until one is).
     pub fn action_defs(&self) -> Vec<ActionDesc> {
-        if self.actions.defined {
-            self.actions.defs.clone()
+        if self.interaction.actions.defined {
+            self.interaction.actions.defs.clone()
         } else {
             default_actions()
         }
@@ -165,25 +172,38 @@ impl Ui {
     }
 
     pub(crate) fn action_fired(&self, name: &str) -> bool {
-        self.actions.fired.iter().any(|a| a == name)
+        self.interaction.actions.fired.iter().any(|a| a == name)
     }
 
     /// The action's input is down this tick (held, before or past any hold).
     pub(crate) fn action_down(&self, name: &str) -> bool {
-        self.actions
+        self.interaction
+            .actions
             .defs
             .iter()
             .position(|d| d.name == name)
-            .and_then(|k| self.actions.states.get(k))
+            .and_then(|k| self.interaction.actions.states.get(k))
             .is_some_and(|s| s.down)
     }
 
     /// A hold action is held (its press past the hold, or its toggle on).
     pub fn action_held(&self, name: &str) -> bool {
-        let Some(k) = self.actions.defs.iter().position(|d| d.name == name) else {
+        let Some(k) = self
+            .interaction
+            .actions
+            .defs
+            .iter()
+            .position(|d| d.name == name)
+        else {
             return false;
         };
-        let s = self.actions.states.get(k).cloned().unwrap_or_default();
+        let s = self
+            .interaction
+            .actions
+            .states
+            .get(k)
+            .cloned()
+            .unwrap_or_default();
         s.toggled || (s.down && s.held_fired)
     }
 
@@ -191,31 +211,31 @@ impl Ui {
     /// or between ticks the next tick.
     pub fn fire_action(&mut self, name: &str) {
         if !self.building {
-            self.actions.pending.push(name.to_string());
+            self.interaction.actions.pending.push(name.to_string());
         } else if !self.action_fired(name) {
-            self.actions.fired.push(name.to_string());
+            self.interaction.actions.fired.push(name.to_string());
         }
     }
 
     /// The device the player used last (its glyphs are shown).
     pub fn device(&self) -> Device {
-        self.actions.device
+        self.interaction.actions.device
     }
 
     /// Sets the device (the host's when it knows; a test's).
     pub fn set_device(&mut self, device: Device) {
-        self.actions.device = device;
+        self.interaction.actions.device = device;
         if device.is_pad() {
-            self.actions.pad = device;
+            self.interaction.actions.pad = device;
         }
     }
 
     /// The pad family the host saw (Xbox by default): pad input shows its glyphs.
     pub fn set_pad_family(&mut self, device: Device) {
         if device.is_pad() {
-            self.actions.pad = device;
-            if self.actions.device.is_pad() {
-                self.actions.device = device;
+            self.interaction.actions.pad = device;
+            if self.interaction.actions.device.is_pad() {
+                self.interaction.actions.device = device;
             }
         }
     }
@@ -224,9 +244,14 @@ impl Ui {
     /// (a followed og-input action's: [`ActionDesc::action`]).
     pub fn glyph(&self, name: &str) -> Option<Glyph> {
         let d = self.action_defs().into_iter().find(|d| d.name == name)?;
-        let device = self.actions.device;
+        let device = self.interaction.actions.device;
         if !d.action.is_empty() {
-            let feed = self.actions.feed.iter().find(|f| f.name == d.action)?;
+            let feed = self
+                .interaction
+                .actions
+                .feed
+                .iter()
+                .find(|f| f.name == d.action)?;
             let parts = og_input::binding_glyphs(&feed.bindings, device);
             return og_input::combined_glyph(&parts, device).or_else(|| {
                 (device == Device::Touch).then(|| Glyph {
@@ -287,12 +312,12 @@ impl Ui {
     /// Reads this tick's input into the actions and the last device (from `begin`).
     pub(crate) fn actions_begin(&mut self, input: &InputFrame) {
         self.ensure_actions();
-        self.actions.fired = std::mem::take(&mut self.actions.pending);
-        self.actions.feed.clone_from(&input.actions);
+        self.interaction.actions.fired = std::mem::take(&mut self.interaction.actions.pending);
+        self.interaction.actions.feed.clone_from(&input.actions);
         // The last device: a key or the mouse, a pad, a touch.
         let pad_used = input.gamepad.pressed != 0 || input.gamepad.stick.length() > 0.5;
         if pad_used && let Some(family) = input.gamepad.device {
-            self.actions.pad = family;
+            self.interaction.actions.pad = family;
         }
         let touch =
             self.env.viewport.coarse_pointer && (input.pressed || input.pointers.pressed != 0);
@@ -304,25 +329,26 @@ impl Ui {
         let mouse =
             !self.env.viewport.coarse_pointer && (input.pressed || input.wheel.length() > 0.0);
         if pad_used {
-            self.actions.device = self.actions.pad;
+            self.interaction.actions.device = self.interaction.actions.pad;
         } else if touch {
-            self.actions.device = Device::Touch;
+            self.interaction.actions.device = Device::Touch;
         } else if keys || mouse {
-            self.actions.device = Device::KeyboardMouse;
+            self.interaction.actions.device = Device::KeyboardMouse;
         }
-        let now = self.state.tick;
+        let now = self.interaction.state.tick;
         let tps = self.env.ticks_per_second.max(1);
-        for (k, d) in self.actions.defs.iter().enumerate() {
+        for (k, d) in self.interaction.actions.defs.iter().enumerate() {
             if !d.action.is_empty() {
                 // A followed action: its state is og-input's this tick.
                 let s = self
+                    .interaction
                     .actions
                     .feed
                     .iter()
                     .find(|f| f.name == d.action)
                     .map(|f| f.state)
                     .unwrap_or_default();
-                let st = &mut self.actions.states[k];
+                let st = &mut self.interaction.actions.states[k];
                 let was = st.down;
                 st.down = s.down;
                 let fire = match d.trigger {
@@ -350,7 +376,7 @@ impl Ui {
                     }
                 };
                 if fire {
-                    self.actions.fired.push(d.name.clone());
+                    self.interaction.actions.fired.push(d.name.clone());
                 }
                 continue;
             }
@@ -369,7 +395,7 @@ impl Ui {
                 .iter()
                 .any(|c| input.keys_pressed.iter().any(|h| h == c))
                 || input.gamepad.pressed & button_bits != 0;
-            let s = &mut self.actions.states[k];
+            let s = &mut self.interaction.actions.states[k];
             let was = s.down;
             let pressed = pressed || (down && !was);
             let released = was && !down;
@@ -399,7 +425,7 @@ impl Ui {
                 }
             }
             if fire {
-                self.actions.fired.push(d.name.clone());
+                self.interaction.actions.fired.push(d.name.clone());
             }
         }
     }
@@ -409,7 +435,7 @@ impl Ui {
     /// hold), as a document reads it.
     pub(crate) fn ui_store_value(&self) -> Value {
         json!({
-            "device": self.actions.device.name(),
+            "device": self.interaction.actions.device.name(),
             "coarsePointer": self.env.viewport.coarse_pointer,
             // `<svelte:window>`'s innerWidth and innerHeight, CSS px.
             "width": self.env.viewport.width,
@@ -448,9 +474,9 @@ impl Ui {
 
     /// The actions' state as JSON (dump_ui's `actions`).
     pub fn actions_json(&self) -> Value {
-        let fired = self.actions.fired.clone();
+        let fired = self.interaction.actions.fired.clone();
         json!({
-            "device": self.actions.device.name(),
+            "device": self.interaction.actions.device.name(),
             "fired": fired,
             "defined": self.action_defs().iter().map(|d| json!({
                 "name": d.name, "keys": d.keys, "buttons": d.buttons, "label": d.label, "toggle": d.toggle, "action": d.action,

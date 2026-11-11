@@ -149,7 +149,7 @@ impl Ui {
     /// position, and whether it is still held.
     pub(crate) fn touch(&self, key: u64, by_start: bool) -> Option<(Vec2, bool)> {
         let rect = self.hit(key)?.rect;
-        let p = &self.input.pointers;
+        let p = &self.interaction.input.pointers;
         (1..og_input::MAX_POINTERS as u32).find_map(|id| {
             let held = p.down(id);
             if !held && !p.is_released(id) {
@@ -168,7 +168,7 @@ impl Ui {
         if key == 0 {
             return None;
         }
-        self.state.hits.iter().find(|h| h.key == key)
+        self.interaction.state.hits.iter().find(|h| h.key == key)
     }
 
     pub(crate) fn parent(&self) -> usize {
@@ -349,7 +349,7 @@ impl Ui {
     /// of render key `key` (`og.ui.forceState(path, "interaction", …)`):
     /// `hover`, `pressed`, `focused` or `disabled`.
     pub(crate) fn forced_interaction(&self, key: u64) -> Option<&str> {
-        let forced = &self.state.motion.forced;
+        let forced = &self.interaction.state.motion.forced;
         if forced.is_empty() || key == 0 {
             return None;
         }
@@ -359,18 +359,29 @@ impl Ui {
     }
 
     pub(crate) fn respond(&self, key: u64) -> Response {
-        let s = &self.state;
+        let s = &self.interaction.state;
         // A forced state is drawn and matched as the real one is, and
         // activates nothing: it never clicks.
         let forced = self.forced_interaction(key);
         let hovered = (s.hot == key && (s.active == 0 || s.active == key))
             || matches!(forced, Some("hover" | "pressed"));
         let by_pad = (key != 0)
-            .then(|| self.nav.pad_activate.iter().position(|&k| k == key))
+            .then(|| {
+                self.interaction
+                    .nav
+                    .pad_activate
+                    .iter()
+                    .position(|&k| k == key)
+            })
             .flatten();
         let pad = match by_pad {
             Some(k) => Some(k as u32 + 1),
-            None if self.nav.activate == key && key != 0 && self.nav.pad0 => Some(0),
+            None if self.interaction.nav.activate == key
+                && key != 0
+                && self.interaction.nav.pad0 =>
+            {
+                Some(0)
+            }
             None => None,
         };
         let mut focused_by = u32::from(s.focus == key && key != 0);
@@ -379,10 +390,13 @@ impl Ui {
                 focused_by |= 2 << k;
             }
         }
-        let pressed = (s.active == key && self.input.down) || forced == Some("pressed");
+        let pressed = (s.active == key && self.interaction.input.down) || forced == Some("pressed");
         let clicked = forced.is_none()
-            && ((s.active == key && self.input.released && s.hot == key && !s.tap.taken)
-                || (self.nav.activate == key && key != 0)
+            && ((s.active == key
+                && self.interaction.input.released
+                && s.hot == key
+                && !s.tap.taken)
+                || (self.interaction.nav.activate == key && key != 0)
                 || by_pad.is_some());
         // Read only on the frames it is pressed: the hits are a list.
         let player = (pressed || clicked)
@@ -397,9 +411,9 @@ impl Ui {
             focused: s.focus == key || forced == Some("focused"),
             pad,
             focused_by,
-            tapped: key != 0 && (self.nav.tapped == key || self.tapped_by_keys(key)),
-            double_tapped: key != 0 && self.nav.double_tapped == key,
-            long_pressed: key != 0 && self.nav.long_pressed == key,
+            tapped: key != 0 && (self.interaction.nav.tapped == key || self.tapped_by_keys(key)),
+            double_tapped: key != 0 && self.interaction.nav.double_tapped == key,
+            long_pressed: key != 0 && self.interaction.nav.long_pressed == key,
             long_press: self.long_press_progress(key),
             ..Response::default()
         }
@@ -410,7 +424,7 @@ impl Ui {
     pub(crate) fn nav_target(&mut self, i: usize, adjust: bool) -> Response {
         let key = self.nodes[i].key;
         let r = self.respond(key);
-        let ring = (self.state.focus == key && self.state.focus_visible)
+        let ring = (self.interaction.state.focus == key && self.interaction.state.focus_visible)
             || self.forced_interaction(key) == Some("focused");
         let n = &mut self.nodes[i];
         n.nav = true;
@@ -484,10 +498,10 @@ impl Ui {
             let mut r = self.nav_target(i, adjustable);
             self.nodes[i].claim = claim;
             if r.focused && claim & (crate::ui::ARROW_LEFT | crate::ui::ARROW_RIGHT) != 0 {
-                r.adjust = self.nav.adjust;
+                r.adjust = self.interaction.nav.adjust;
             }
             if r.focused && claim & (crate::ui::ARROW_UP | crate::ui::ARROW_DOWN) != 0 {
-                r.adjust_y = self.nav.adjust_y;
+                r.adjust_y = self.interaction.nav.adjust_y;
             }
             r
         } else if self.nodes[i].el.interactive {
@@ -635,7 +649,9 @@ impl Ui {
         }
         let delay = (self.env.theme.durations_ms.slow * self.env.ticks_per_second as f32 / 1000.0)
             .ceil() as u32;
-        if self.state.hot != self.nodes[anchor].key || self.state.hover_ticks < delay {
+        if self.interaction.state.hot != self.nodes[anchor].key
+            || self.interaction.state.hover_ticks < delay
+        {
             return;
         }
         let t = self.env.theme;

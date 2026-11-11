@@ -378,7 +378,7 @@ impl RetainedHost {
 
     /// The mounted elements whose interaction state the probe forced.
     pub(super) fn forced_keys(&self, ui: &Ui) -> Vec<u64> {
-        if ui.state.motion.forced.is_empty() {
+        if ui.interaction.state.motion.forced.is_empty() {
             return Vec::new();
         }
         self.by_key
@@ -393,11 +393,15 @@ impl RetainedHost {
             Active, Focus, FocusVisible, FocusWithin, Hover, PopoverOpen, Target,
         };
         let mut next: [Vec<u64>; 4] = [
-            vec![ui.state.hot],
-            vec![if ui.input.down { ui.state.active } else { 0 }],
-            vec![ui.state.focus],
-            vec![if ui.state.focus_visible {
-                ui.state.focus
+            vec![ui.interaction.state.hot],
+            vec![if ui.interaction.input.down {
+                ui.interaction.state.active
+            } else {
+                0
+            }],
+            vec![ui.interaction.state.focus],
+            vec![if ui.interaction.state.focus_visible {
+                ui.interaction.state.focus
             } else {
                 0
             }],

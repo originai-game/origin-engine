@@ -11,19 +11,23 @@ impl RetainedHost {
             locale: ui.env.locale.clone(),
             style: ui.env.style_name.clone(),
             style_epoch: ui.invalidation.epoch,
-            players: ui.players,
-            nav_on: ui.nav_on,
+            players: ui.interaction.players,
+            nav_on: ui.interaction.nav_on,
         };
         self.restyled = self.signature.as_ref() != Some(&signature);
         if self.restyled {
             self.signature = Some(signature);
             self.emit.extend(self.elements.keys().cloned());
         }
-        let s = &ui.state;
-        let n = &ui.nav;
+        let s = &ui.interaction.state;
+        let n = &ui.interaction.nav;
         let mut input = vec![
             s.hot,
-            if ui.input.down { s.active } else { 0 },
+            if ui.interaction.input.down {
+                s.active
+            } else {
+                0
+            },
             s.focus,
             n.activate,
             n.tapped,
@@ -36,7 +40,7 @@ impl RetainedHost {
         // On-screen controls follow their further touches (og.Pointers):
         // those a touch holds, and every one when a touch goes down.
         input.extend(s.touch_owners.keys());
-        if ui.input.pointers.pressed != 0 {
+        if ui.interaction.input.pointers.pressed != 0 {
             input.extend(ui.docs.host.zones.keys());
         }
         if n.back {
@@ -62,7 +66,15 @@ impl RetainedHost {
         }
         self.last_input = std::mem::replace(&mut self.input, input);
         for (identity, offset) in &self.scrollers {
-            if ui.state.scroll.get(&identity.key).copied().unwrap_or(0.0) != *offset {
+            if ui
+                .interaction
+                .state
+                .scroll
+                .get(&identity.key)
+                .copied()
+                .unwrap_or(0.0)
+                != *offset
+            {
                 self.emit.insert(identity.clone());
             }
         }
@@ -92,7 +104,7 @@ impl RetainedHost {
     fn mark_fired(&mut self, ui: &Ui) {
         // Whether a listener's layer takes input is the build's question
         // (`docs.accepts`): every listener of a fired action is built.
-        let fired = &ui.actions.fired;
+        let fired = &ui.interaction.actions.fired;
         for action in &fired[self.fired.min(fired.len())..] {
             for listener in self.on_action.get(action).into_iter().flatten() {
                 if !self.built_now.contains(listener) {
@@ -133,10 +145,11 @@ impl RetainedHost {
                 continue;
             };
             let built = ui
+                .interaction
                 .state
                 .rive
                 .get(&ui.nodes[index].key)
-                .is_some_and(|s| s.built == ui.state.tick);
+                .is_some_and(|s| s.built == ui.interaction.state.tick);
             if !built && !ui.nodes[index].hidden {
                 ui.play_rive(index, board, &resolved.path);
             }
@@ -153,7 +166,7 @@ impl RetainedHost {
         events: &mut Vec<DocEvent>,
         writes: &mut Vec<(BindingContext, String, Value)>,
     ) -> Result<(), String> {
-        while ui.actions.fired.len() > self.fired {
+        while ui.interaction.actions.fired.len() > self.fired {
             self.mark_fired(ui);
             self.emit_in_place(ui, env, events, writes)?;
         }

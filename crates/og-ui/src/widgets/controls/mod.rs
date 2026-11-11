@@ -1078,9 +1078,9 @@ impl Ui {
         let mut dismissed = false;
         if open {
             // Last tick's hits: what the press landed on.
-            if self.input.pressed {
-                let hot = self.state.hot;
-                let at = self.input.pointer;
+            if self.interaction.input.pressed {
+                let hot = self.interaction.state.hot;
+                let at = self.interaction.input.pointer;
                 // A press on what takes no input inside it (a disabled
                 // option, its padding) is inside it too.
                 let inside = hot == self.nodes[anchor].key
@@ -1092,8 +1092,8 @@ impl Ui {
                         .is_some_and(|r| r.contains(at.x, at.y));
                 dismissed |= !inside;
             }
-            if self.state.scope == key && self.nav.back {
-                self.nav.back = false;
+            if self.interaction.state.scope == key && self.interaction.nav.back {
+                self.interaction.nav.back = false;
                 dismissed = true;
             }
         }

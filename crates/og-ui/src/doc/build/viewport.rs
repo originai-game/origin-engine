@@ -120,8 +120,9 @@ impl Ui {
         }
         let reduced = self.theme().reduced_motion;
         let hit = self.hit(self.nodes[self.last_closed].key).copied();
-        let pinch =
-            super::gestures::two_touches(&self.input, |x, y| hit.is_some_and(|h| h.contains(x, y)));
+        let pinch = super::gestures::two_touches(&self.interaction.input, |x, y| {
+            hit.is_some_and(|h| h.contains(x, y))
+        });
         if let Some((_, now)) = pinch {
             if spread > 0.0 {
                 o[2] *= spread / now;

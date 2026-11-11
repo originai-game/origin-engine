@@ -40,7 +40,7 @@ impl Ui {
         let key = self.nodes[i].key;
         let fresh = !self.has_anim(key);
         let mut a = self.anim(key);
-        let now = self.state.tick;
+        let now = self.interaction.state.tick;
         if fresh {
             a = Anim {
                 a: frac,
@@ -409,7 +409,7 @@ impl Ui {
         let r = self.nav_target(i, true);
         self.nodes[i].multiline = true;
         if r.focused {
-            let adjust = self.nav.adjust;
+            let adjust = self.interaction.nav.adjust;
             self.zoom_keys(key, adjust);
         }
         let s = self.zoom_state(key).unwrap_or(s);

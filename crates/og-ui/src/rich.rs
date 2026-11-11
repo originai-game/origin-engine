@@ -940,12 +940,12 @@ impl Ui {
         let dpr = self.env.viewport.dpr();
         let snap = |v: f32| crate::layout::snap(v, dpr);
         let clip = n.clip;
-        let tick = self.state.tick as f32;
+        let tick = self.interaction.state.tick as f32;
         let still = t.reduced_motion;
         // A link focused by keys or a pad: the focus ring around it, under the text.
-        if self.state.focus_visible {
+        if self.interaction.state.focus_visible {
             for (l, r) in self.rich_links(i) {
-                if self.state.focus == child_key(n.key, &l) {
+                if self.interaction.state.focus == child_key(n.key, &l) {
                     let w = t.space.xxs;
                     cmds.push(DrawCmd::Quad {
                         rect: r.outset(w * 2.0),
@@ -971,7 +971,7 @@ impl Ui {
             let s = &rc.spans[k];
             let size = s.step.size * n.scale;
             let link_key = s.link.as_deref().map(|l| child_key(n.key, l));
-            let hot = link_key.is_some_and(|lk| self.state.hot == lk);
+            let hot = link_key.is_some_and(|lk| self.interaction.state.hot == lk);
             let color = if hot { p.primary_hover } else { s.color };
             if let Some(Atom::Image(im)) = &s.atom {
                 // A picture in its own colours, one em tall on the baseline.
@@ -1597,7 +1597,7 @@ impl Ui {
             let mid = piece.baseline;
             let em = s.step.size * n.scale;
             let link_key = s.link.as_deref().map(|l| child_key(n.key, l));
-            let hot = link_key.is_some_and(|lk| self.state.hot == lk);
+            let hot = link_key.is_some_and(|lk| self.interaction.state.hot == lk);
             let color = if hot { p.primary_hover } else { s.color };
             let upright_box = |w: f32, h: f32| {
                 let h = h.min(r.height.max(1.0));
