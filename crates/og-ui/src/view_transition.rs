@@ -704,14 +704,14 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Style {
     /// Where each of this frame's shared elements' groups nests, by their
     /// `view-transition-group` (the spec's resolved group name): `normal`
     /// and `contain` in the nearest shared ancestor's that is not normal,
     /// `nearest` in the nearest shared ancestor's, a name in the ancestor's
     /// of that name (else as normal). With every one normal, none nests.
-    pub(crate) fn nest_named(&mut self) {
-        let named = &mut self.paint.cache.named;
+    pub(crate) fn nest_named(&mut self, paint: &mut crate::ui::Paint, tree: &crate::ui::Tree) {
+        let named = &mut paint.cache.named;
         if named.iter().all(|n| n.group.is_empty()) {
             return;
         }
@@ -720,12 +720,12 @@ impl Ui {
         for k in 0..named.len() {
             // Its shared ancestors, nearest first.
             let mut up = Vec::new();
-            let mut j = self.tree.nodes[named[k].node].parent;
+            let mut j = tree.nodes[named[k].node].parent;
             while j != NONE {
                 if let Some(&m) = index.get(&j) {
                     up.push(m);
                 }
-                j = self.tree.nodes[j].parent;
+                j = tree.nodes[j].parent;
             }
             let name = |m: &usize| named[*m].name.clone();
             let containing = up.iter().find(|&&m| !named[m].group.is_empty()).map(name);
@@ -742,9 +742,16 @@ impl Ui {
     /// captures last frame's shared elements; the incoming screen's rules
     /// style the groups. Reduced motion starts none (unless the style
     /// keeps motion).
-    pub(crate) fn start_view_transition(&mut self, screen: &str, joining: bool) {
-        let tick = self.interaction.state.tick;
-        if let Some(r) = &mut self.interaction.state.view_transition
+    pub(crate) fn start_view_transition(
+        &mut self,
+        screen: &str,
+        joining: bool,
+        env: &crate::ui::Env,
+        paint: &crate::ui::Paint,
+        interaction: &mut crate::ui::Interaction,
+    ) {
+        let tick = interaction.state.tick;
+        if let Some(r) = &mut interaction.state.view_transition
             && r.since == tick
         {
             if joining {
@@ -752,13 +759,11 @@ impl Ui {
             }
             return;
         }
-        self.interaction.state.view_transition = None;
-        if self.env.theme.reduced_motion
-            && self.env.theme.motion.reduced != crate::motion::Reduced::Keep
-        {
+        interaction.state.view_transition = None;
+        if env.theme.reduced_motion && env.theme.motion.reduced != crate::motion::Reduced::Keep {
             return;
         }
-        let (last, named) = (&self.paint.cache.last_cmds, &self.paint.cache.named);
+        let (last, named) = (&paint.cache.last_cmds, &paint.cache.named);
         let old = named
             .iter()
             .filter(|n| n.range.end <= last.len())
@@ -772,7 +777,7 @@ impl Ui {
                 cmds: image(last, n, named),
             })
             .collect();
-        self.interaction.state.view_transition = Some(Running {
+        interaction.state.view_transition = Some(Running {
             since: tick,
             screen: screen.to_string(),
             old,
@@ -781,12 +786,11 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Interaction {
     /// Whether the view transition that started at `since` was skipped:
     /// its layers end theirs at once.
     pub(crate) fn view_transition_skipped(&self, since: u64) -> bool {
-        self.interaction
-            .state
+        self.state
             .view_transition
             .as_ref()
             .is_some_and(|r| r.skipped && r.since == since)

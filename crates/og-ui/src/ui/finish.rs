@@ -851,7 +851,14 @@ impl Ui {
         if let Some(seeds) = seeds.as_mut() {
             seeds.extend_from_slice(&animated);
         }
-        self.apply_bursts(order);
+        self.style.apply_bursts(
+            order,
+            &mut self.world,
+            &self.env,
+            &mut self.paint,
+            &self.interaction,
+            &self.tree,
+        );
         self.world_place();
         (seeds, animated)
     }
@@ -1254,7 +1261,8 @@ impl Ui {
         let trees = self.commands(&order, seeds.is_some().then_some(&painted[..]));
         // The part styles sampled while painting take their next state.
         for commit in self.style.part_commits.take().into_values() {
-            self.commit_styles(&commit);
+            self.style
+                .commit_styles(&commit, &mut self.interaction, &mut self.tree);
         }
         #[cfg(debug_assertions)]
         if bounded::checking() {

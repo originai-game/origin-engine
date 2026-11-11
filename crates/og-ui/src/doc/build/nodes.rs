@@ -149,7 +149,11 @@ impl Ui {
                     && let Some(&last) = Some(&self.tree.last_closed)
                     && last != NONE
                 {
-                    let el = Ui::box_of(&rp, self.tree.nodes[last].el, self.em_of(&rp));
+                    let el = Ui::box_of(
+                        &rp,
+                        self.tree.nodes[last].el,
+                        self.style.em_of(&rp, &self.env),
+                    );
                     let props = self.props_of(b, n, self.tree.nodes[last].key, &rp, &mut built);
                     self.tree.nodes[last].el = el;
                     if props != Props::default() {
@@ -215,7 +219,7 @@ impl Ui {
         );
         let structural = children.is_some();
         self.docs.host.levels.extend(children);
-        self.run_enter(&r);
+        self.docs.run_enter(&r);
         let built = self.build_resolved_node(
             b,
             i,
@@ -232,7 +236,7 @@ impl Ui {
                 }
             },
         );
-        self.run_exit();
+        self.docs.run_exit();
         if structural {
             self.docs.host.levels.pop();
         }
@@ -262,7 +266,8 @@ impl Ui {
             probe: mut built,
         } = resolved;
         if let Some(commit) = &r.style {
-            self.commit_styles(commit);
+            self.style
+                .commit_styles(commit, &mut self.interaction, &mut self.tree);
         }
         let keeps = std::mem::take(&mut self.docs.host.keeps_hidden);
         // A discrete display exit retains the subtree until the sampled
@@ -538,7 +543,7 @@ impl Ui {
                 ..Default::default()
             },
         );
-        self.object_fit(i, r);
+        self.tree.object_fit(i, r);
         texture
     }
 
@@ -942,7 +947,7 @@ impl Ui {
         let out = self.open_dialog(id.as_str(), open, dialog);
         // `::backdrop` styles the scrim, the panel's parent.
         if dialog.modal
-            && let Some(backdrop) = self.pseudo_node(b, r, path, "backdrop")
+            && let Some(backdrop) = self.style.pseudo_node(b, r, path, "backdrop")
         {
             let scrim = self.tree.nodes[self.tree.parent()].parent;
             self.style_pseudo_box(b, scrim, "backdrop", &backdrop);
@@ -1134,7 +1139,7 @@ impl Ui {
                 let shown = self.reveal(key, &text, styled.num("reveal"));
                 let i = self.leaf("label", id.as_str().into(), Default::default());
                 self.apply_label(i, shown, desc);
-                self.css_text_content(i, styled);
+                self.tree.css_text_content(i, styled);
             }
         }
         Some(resp)
@@ -1191,6 +1196,7 @@ impl Ui {
         // `::picker(select)` styles the open list; its `max-height`
         // bounds the rows before they scroll.
         let picker = self
+            .style
             .pseudo_node(b, styled, path, "picker")
             .map(|(at, mut p)| {
                 let max = p.values.size("maxHeight");

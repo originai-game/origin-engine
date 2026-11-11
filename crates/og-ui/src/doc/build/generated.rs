@@ -26,7 +26,7 @@ impl Ui {
         let Some(which) = (if before { &g.before } else { &g.after }) else {
             return;
         };
-        let Some(text) = self.pseudo_text(b, n, r, which) else {
+        let Some(text) = self.docs.pseudo_text(b, n, r, which) else {
             return;
         };
         let style = self.pseudo_style(&which.style, r);
@@ -46,7 +46,7 @@ impl Ui {
                 |_| style.clone(),
             );
         };
-        match self.pseudo_node(b, r, path, &name[2..]) {
+        match self.style.pseudo_node(b, r, path, &name[2..]) {
             Some((at, node)) => {
                 self.build_resolved_node(b, at, node, |ui, _, _| run(ui));
             }
@@ -121,11 +121,11 @@ impl Ui {
         let pre = g
             .before
             .as_ref()
-            .and_then(|w| Some((self.pseudo_text(b, n, r, w)?, w)));
+            .and_then(|w| Some((self.docs.pseudo_text(b, n, r, w)?, w)));
         let post = g
             .after
             .as_ref()
-            .and_then(|w| Some((self.pseudo_text(b, n, r, w)?, w)));
+            .and_then(|w| Some((self.docs.pseudo_text(b, n, r, w)?, w)));
         if pre.is_none() && post.is_none() && g.first_letter.is_none() && g.first_line.is_none() {
             return None;
         }
@@ -187,7 +187,11 @@ impl Ui {
         // with layout, so the element builds again each frame.
         if let Some(style) = &g.first_line {
             let total = full.chars().count();
-            let first = self.first_line_chars(key).unwrap_or(total).min(total);
+            let first = self
+                .style
+                .first_line_chars(key, &self.layout, &self.tree)
+                .unwrap_or(total)
+                .min(total);
             if let Some(owned) = self.tree.owning.last_mut() {
                 owned.moved = true;
             }
@@ -232,35 +236,35 @@ impl Ui {
         let content = match &m.content {
             Content::Normal => None,
             Content::None => Some(None),
-            Content::Pieces(_) => Some(self.pseudo_text(b, n, r, &m)),
+            Content::Pieces(_) => Some(self.docs.pseudo_text(b, n, r, &m)),
         };
         (content, ink)
     }
 }
 
-impl Ui {
+impl crate::ui::Docs {
     /// Enters an element in the counter run and applies its counter
     /// properties; nothing unless some document uses generated content.
     pub(super) fn run_enter(&mut self, r: &Resolved) {
-        if !self.docs.host.uses_run {
+        if !self.host.uses_run {
             return;
         }
         // Style containment scopes its counters and quotes to its subtree.
         if crate::doc::contain_css::contain(|p| r.str(p).map(str::to_owned))
             .has(crate::layout::Contain::STYLE)
         {
-            self.docs.host.run.enter_contained();
+            self.host.run.enter_contained();
         } else {
-            self.docs.host.run.enter();
+            self.host.run.enter();
         }
         if let Some(g) = &r.generated {
-            self.docs.host.run.apply(&g.ops);
+            self.host.run.apply(&g.ops);
         }
     }
 
     pub(super) fn run_exit(&mut self) {
-        if self.docs.host.uses_run {
-            self.docs.host.run.exit();
+        if self.host.uses_run {
+            self.host.run.exit();
         }
     }
 
@@ -296,7 +300,7 @@ impl Ui {
                 v => v.to_string(),
             })
         };
-        let run = &mut self.docs.host.run;
+        let run = &mut self.host.run;
         run.enter();
         run.apply(&which.ops);
         let text = run.evaluate(pieces, &quotes, &b.doc.sheet, &attr, r.ordinal);
@@ -305,7 +309,7 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Style {
     /// Element `r`'s box pseudo-element `which`, resolved, as the build
     /// takes it, with its node.
     pub(super) fn pseudo_node(
@@ -420,15 +424,19 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Style {
     /// How many characters the first line of text node `key` held in the
     /// last layout.
-    fn first_line_chars(&self, key: u64) -> Option<usize> {
-        let n = self
-            .tree
-            .previous_nodes(&self.layout)
+    fn first_line_chars(
+        &self,
+        key: u64,
+        layout: &crate::ui::Layout,
+        tree: &crate::ui::Tree,
+    ) -> Option<usize> {
+        let n = tree
+            .previous_nodes(layout)
             .find(|n| n.key == key)
-            .or_else(|| self.tree.index.find(key).map(|i| &self.tree.nodes[i]))?;
+            .or_else(|| tree.index.find(key).map(|i| &tree.nodes[i]))?;
         if let Some(line) = n.rich_lines.first() {
             return Some(line.pieces.iter().map(|p| p.text.chars().count()).sum());
         }

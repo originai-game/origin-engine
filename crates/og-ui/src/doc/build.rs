@@ -1246,7 +1246,7 @@ impl Ui {
                 theme: &self.env.theme,
                 current,
                 step,
-                declared: &|name| self.family_declared(name),
+                declared: &|name| self.style.family_declared(name, &self.env),
             });
             cascade.text = local;
             r.text = (text != Default::default()).then(|| Arc::new(text));
@@ -1331,11 +1331,10 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Style {
     /// Whether a family is installed, rather than merely declared in CSS.
-    pub(crate) fn family_declared(&self, name: &str) -> bool {
-        self.env
-            .fonts
+    pub(crate) fn family_declared(&self, name: &str, env: &crate::ui::Env) -> bool {
+        env.fonts
             .families
             .iter()
             .any(|f| f.family.eq_ignore_ascii_case(name))

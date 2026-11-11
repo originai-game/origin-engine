@@ -551,7 +551,7 @@ impl Ui {
                 direction: Direction::Column,
                 ..Element::default()
             },
-            self.em_of(r),
+            self.style.em_of(r, &self.env),
         );
         let texture = r.handle("viewportSrc").and_then(|h| b.env.texture(h));
         let ground = matches!(n.kind, NodeKind::Element("ground"));
@@ -616,7 +616,7 @@ impl Ui {
             }
         };
         let offset = r.str("worldOffset").and_then(vec3).unwrap_or(Vec3::ZERO);
-        let em = self.em_of(r);
+        let em = self.style.em_of(r, &self.env);
         let value = r.num("massValue").unwrap_or(0.0);
         let max = r.num("massMax");
         let px = |s: Option<Size>, d: f32| match s {
@@ -779,7 +779,7 @@ impl Ui {
                 direction: Direction::Column,
                 ..Element::default()
             },
-            self.em_of(r),
+            self.style.em_of(r, &self.env),
         );
         let desc = match anchor_desc(r, el) {
             Ok(d) => d,

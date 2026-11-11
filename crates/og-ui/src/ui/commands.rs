@@ -544,7 +544,7 @@ impl Ui {
         }
         self.interaction.state.motion.ghosts = ghosts;
         self.interaction.state.motion.frozen = frozen;
-        self.nest_named();
+        self.style.nest_named(&mut self.paint, &self.tree);
         // The same trees as last frame, each drawn whole as it was.
         let same_roots = self.tree.orders.roots == self.paint.cache.last_roots;
         self.paint

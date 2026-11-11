@@ -287,9 +287,15 @@ impl Ui {
             since = self.interaction.state.tick;
             let screen = l.screen.clone();
             self.docs.host.layers.layers[k].since = since;
-            self.start_view_transition(&screen, !leaving);
+            self.style.start_view_transition(
+                &screen,
+                !leaving,
+                &self.env,
+                &self.paint,
+                &mut self.interaction,
+            );
         }
-        if self.view_transition_skipped(since) {
+        if self.interaction.view_transition_skipped(since) {
             // Skipped (a shared element's name twice): the update happens
             // without its animations.
             if leaving {

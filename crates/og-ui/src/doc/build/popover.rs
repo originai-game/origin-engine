@@ -238,7 +238,7 @@ impl Ui {
                 }),
                 ..Element::default()
             },
-            self.em_of(r),
+            self.style.em_of(r, &self.env),
         );
         let local = format!("{}~popover", path.replace('/', "_"));
         let mut layer = 0;

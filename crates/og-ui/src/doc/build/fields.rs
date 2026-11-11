@@ -533,7 +533,7 @@ impl Ui {
                 } else {
                     let width = desc.width;
                     self.apply_label(i, &base.text, desc);
-                    self.css_text_content(i, r);
+                    self.tree.css_text_content(i, r);
                     // Path text aligns along its path, not in its box: it
                     // keeps the box its path gives (a `circle()` centres in
                     // it), never the column's width a centred line takes.
@@ -579,7 +579,7 @@ impl Ui {
                         uv: r.nums("uv").and_then(|n| <[f32; 4]>::try_from(n).ok()),
                     },
                 );
-                self.object_fit(i, r);
+                self.tree.object_fit(i, r);
             }
             "icon" => {
                 let name = match (r.str("icon"), r.str("cue")) {
@@ -670,7 +670,7 @@ impl Ui {
             el.width = Size::fit();
             el.height = Size::fit();
         }
-        let em = self.em_of(r);
+        let em = self.style.em_of(r, &self.env);
         if schema::kind(source.kind).is_some_and(|kind| kind.container) {
             el = Self::box_of(r, el, em);
             if !matches!(source.kind, "panel" | "scroll" | "list" | "cells") {
@@ -1050,7 +1050,7 @@ impl Ui {
         if let Some(name) = r.str("name").filter(|n| !n.is_empty()) {
             self.tree.nodes[i].a11y.name = Some(name.to_string());
         }
-        self.apply_aria(i, r);
+        self.tree.apply_aria(i, r);
         // The part its `part` attribute names, over the control's own: the
         // control's states, variant, class and motion stay.
         if let Some(named) = r.part {
@@ -1081,7 +1081,7 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Tree {
     /// A label's CSS `text-wrap-style` and `text-overflow: <string>`.
     pub(super) fn css_text_content(&mut self, i: usize, r: &Resolved) {
         use crate::layout::WrapStyle;
@@ -1094,7 +1094,7 @@ impl Ui {
             .str("ellipsisText")
             .filter(|s| !s.is_empty())
             .map(str::to_owned);
-        if let crate::layout::Content::Text(t) = &mut self.tree.nodes[i].content {
+        if let crate::layout::Content::Text(t) = &mut self.nodes[i].content {
             t.wrap_style = style;
             t.cut = cut;
         }
@@ -1111,7 +1111,7 @@ impl Ui {
             Some("scaleDown") => og_draw::UiFit::ScaleDown,
             _ => og_draw::UiFit::Fill,
         };
-        if let crate::layout::Content::Image { object, .. } = &mut self.tree.nodes[i].content {
+        if let crate::layout::Content::Image { object, .. } = &mut self.nodes[i].content {
             *object = crate::layout::ObjectFit {
                 fit,
                 focal: at.map_or([0.5; 2], |a| a[0]),
@@ -1122,7 +1122,7 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Tree {
     /// An element's ARIA attributes over what its kind tells the tree
     /// (docs/ui.md §2): a role, a description, a value and its range, and
     /// states. Applied with its other fields, so a bound one changes the
@@ -1131,12 +1131,12 @@ impl Ui {
         if let Some(role) = r.str("role")
             && let Some(&k) = crate::a11y::ROLES.iter().find(|&&k| k == role)
         {
-            self.tree.nodes[i].a11y.role = Some(k);
+            self.nodes[i].a11y.role = Some(k);
         }
         if r.flag("ariaDisabled") {
-            self.tree.nodes[i].disabled = true;
+            self.nodes[i].disabled = true;
         }
-        let a = &mut self.tree.nodes[i].a11y;
+        let a = &mut self.nodes[i].a11y;
         if let Some(d) = r.str("ariaDescription").filter(|d| !d.is_empty()) {
             a.description = Some(d.to_string());
         }

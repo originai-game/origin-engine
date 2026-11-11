@@ -409,13 +409,18 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Style {
     /// Keeps what [`Ui::animate_values`] found; a running element builds
     /// again next frame.
-    pub(crate) fn commit_styles(&mut self, commit: &StyleCommit) {
+    pub(crate) fn commit_styles(
+        &mut self,
+        commit: &StyleCommit,
+        interaction: &mut crate::ui::Interaction,
+        tree: &mut crate::ui::Tree,
+    ) {
         match (commit.target, &commit.state) {
             (StyleTarget::Part(key, name), Some(state)) => {
-                self.interaction
+                interaction
                     .state
                     .motion
                     .part_styles
@@ -424,25 +429,21 @@ impl Ui {
                     .insert(name.into(), state.clone());
             }
             (StyleTarget::Part(key, name), None) => {
-                if let Some(styles) = self.interaction.state.motion.part_styles.get_mut(&key) {
+                if let Some(styles) = interaction.state.motion.part_styles.get_mut(&key) {
                     styles.remove(name);
                 }
             }
             (StyleTarget::Element(key), Some(state)) => {
-                if self.interaction.state.motion.styles.get(&key) != Some(state) {
-                    self.interaction
-                        .state
-                        .motion
-                        .styles
-                        .insert(key, state.clone());
+                if interaction.state.motion.styles.get(&key) != Some(state) {
+                    interaction.state.motion.styles.insert(key, state.clone());
                 }
             }
             (StyleTarget::Element(key), None) => {
-                self.interaction.state.motion.styles.remove(&key);
+                interaction.state.motion.styles.remove(&key);
             }
         }
         if commit.running
-            && let Some(owned) = self.tree.owning.last_mut()
+            && let Some(owned) = tree.owning.last_mut()
         {
             owned.restyle = true;
         }

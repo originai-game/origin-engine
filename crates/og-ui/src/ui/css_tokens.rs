@@ -254,8 +254,8 @@ impl Ui {
     }
 }
 
-impl Ui {
-    pub(super) fn write_theme_tokens(&mut self, theme: Theme) {
+impl crate::ui::Style {
+    pub(super) fn write_theme_tokens(&mut self, theme: Theme, env: &crate::ui::Env) {
         let mut baseline = Theme::new(theme.scheme);
         let mut old = palette_css(&baseline);
         lengths(&mut baseline, |name, value| {
@@ -271,10 +271,10 @@ impl Ui {
             }
         });
         values.retain(|name, value| old.get(name) != Some(value));
-        self.style.root_tokens = values.into_iter().collect();
-        self.style.root_type_tokens = Breakpoint::ALL.map(|bp| {
-            let baseline = typography(&Theme::new(theme.scheme), bp, &self.env.fonts);
-            typography(&theme, bp, &self.env.fonts)
+        self.root_tokens = values.into_iter().collect();
+        self.root_type_tokens = Breakpoint::ALL.map(|bp| {
+            let baseline = typography(&Theme::new(theme.scheme), bp, &env.fonts);
+            typography(&theme, bp, &env.fonts)
                 .into_iter()
                 .filter(|(name, value)| baseline.get(name) != Some(value))
                 .collect()
