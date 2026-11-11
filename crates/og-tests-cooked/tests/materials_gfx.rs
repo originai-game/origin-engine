@@ -19,8 +19,7 @@ use og_cook::runtime::{Bundle, CookedFont};
 use og_cook::{CookOptions, cook_project};
 use og_core::glam::{Vec2, Vec3};
 use og_render::{
-    Background, ColorSpace, Glyph, Mips, MsdfFont, RenderDesc, RenderScene, RenderTarget, Renderer,
-    TextureData, Tonemap,
+    Background, ColorSpace, Glyph, Mips, MsdfFont, RenderDesc, RenderScene, TextureData, Tonemap,
 };
 use og_ui::*;
 use std::path::PathBuf;
@@ -435,55 +434,10 @@ fn the_materials_frame_matches_its_reference() {
         height: (v.height * v.dpr) as u32,
         ..RenderDesc::default()
     };
-    let mut renderer = Renderer::new_blocking(&desc).expect("a headless adapter");
-    let stats = renderer
-        .render(&scene, &RenderTarget::Offscreen)
-        .expect("render");
+    let frame = render_frame(&scene, &desc);
     assert_eq!(
-        stats.missing_glyphs, 0,
+        frame.stats.missing_glyphs, 0,
         "every icon and character is in its font"
     );
-    let image = renderer.read_offscreen().expect("read back");
-    let tier = renderer.info().backend_tier();
-    let actual = out_dir().join(format!("materials-{tier}.png"));
-    image::save_buffer(
-        &actual,
-        &image.pixels,
-        image.width,
-        image.height,
-        image::ColorType::Rgba8,
-    )
-    .expect("write frame");
-    let refs = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../og-tests-ui/references");
-    let own = refs.join(&tier).join("materials.png");
-    if std::env::var_os("OG_UI_CAPTURE").is_some() {
-        record_reference(&own, image.width, image.height, &image.pixels);
-        println!("recorded {}", own.display());
-    }
-    let reference = if own.exists() {
-        own
-    } else {
-        let recorded = og_tests::compare::RECORDING_TIER;
-        println!("no {tier} reference for materials; comparing with {recorded}");
-        refs.join(recorded).join("materials.png")
-    };
-    let expected = image::open(&reference)
-        .unwrap_or_else(|e| panic!("{}: {e} (OG_UI_CAPTURE=1 records it)", reference.display()))
-        .to_rgba8();
-    match compare(
-        &image.pixels,
-        expected.as_raw(),
-        renderer.info(),
-        &reference,
-    ) {
-        Ok((rmse, outliers)) => println!(
-            "materials {tier}: RMSE {rmse:.5}, outliers {:.3}%",
-            outliers * 100.0
-        ),
-        Err(e) => panic!(
-            "{} differs from {}: {e}",
-            actual.display(),
-            reference.display()
-        ),
-    }
+    matches_reference("materials", &frame.image, &frame.info, Against::OwnTier);
 }

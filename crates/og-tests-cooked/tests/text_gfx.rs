@@ -18,7 +18,7 @@ use crate::support;
 
 use og_cook::runtime::{Bundle, CookedFont};
 use og_cook::{CookOptions, cook_project};
-use og_render::{RenderDesc, RenderScene, RenderTarget, Renderer};
+use og_render::{RenderDesc, RenderScene};
 use std::path::{Path, PathBuf};
 use support::text_scenes::{FONTS, TEXT_SCENES, fonts_from, text_scene};
 use support::*;
@@ -64,54 +64,9 @@ fn cooked() -> Vec<CookedFont> {
 /// Renders a frame and compares it with its reference; answers the frame's
 /// stats.
 fn check(name: &str, (scene, desc): (RenderScene, RenderDesc)) -> og_render::FrameStats {
-    let mut renderer = Renderer::new_blocking(&desc).expect("a headless adapter");
-    let stats = renderer
-        .render(&scene, &RenderTarget::Offscreen)
-        .expect("render");
-    let image = renderer.read_offscreen().expect("read back");
-    let tier = renderer.info().backend_tier();
-    let actual = out_dir().join(format!("{name}-{tier}.png"));
-    image::save_buffer(
-        &actual,
-        &image.pixels,
-        image.width,
-        image.height,
-        image::ColorType::Rgba8,
-    )
-    .expect("write frame");
-    let refs = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../og-tests-ui/references");
-    let own = refs.join(&tier).join(format!("{name}.png"));
-    if std::env::var_os("OG_UI_CAPTURE").is_some() {
-        record_reference(&own, image.width, image.height, &image.pixels);
-        println!("recorded {}", own.display());
-    }
-    let reference = if own.exists() {
-        own
-    } else {
-        let recorded = og_tests::compare::RECORDING_TIER;
-        println!("no {tier} reference for {name}; comparing with {recorded}");
-        refs.join(recorded).join(format!("{name}.png"))
-    };
-    let expected = image::open(&reference)
-        .unwrap_or_else(|e| panic!("{}: {e} (OG_UI_CAPTURE=1 records it)", reference.display()))
-        .to_rgba8();
-    match compare(
-        &image.pixels,
-        expected.as_raw(),
-        renderer.info(),
-        &reference,
-    ) {
-        Ok((rmse, outliers)) => println!(
-            "{name} {tier}: RMSE {rmse:.5}, outliers {:.3}%",
-            outliers * 100.0
-        ),
-        Err(e) => panic!(
-            "{} differs from {}: {e}",
-            actual.display(),
-            reference.display()
-        ),
-    }
-    stats
+    let frame = render_frame(&scene, &desc);
+    matches_reference(name, &frame.image, &frame.info, Against::OwnTier);
+    frame.stats
 }
 
 #[test]
