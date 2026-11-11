@@ -25,8 +25,12 @@ lockstep. A game keeps it by keeping these rules:
 - State is in components and resources. Module variables, closures that
   capture state, and `Map`s outside the world are lost on restore and
   differ after a replay.
-- Iteration order is the query's. Do not sort by object identity or rely
-  on `Set` order of objects created at different times.
+- Iteration order is the query's. A `Map` or a `Set` iterates in
+  insertion order, the same on every machine only while the insertions
+  are: one filled outside the world (rule above) or in the order events
+  arrived from the host is not. Sort by a simulated value with a total
+  order (`a < b ? -1 : a > b ? 1 : 0` on a number, a handle or a string),
+  never by `localeCompare`, which follows the host's locale.
 - Presentation never feeds back: nothing a system reads may come from
   what was drawn (a pose from og.motion, a UI element's measured box, a
   particle's position, the camera's interpolated frame). Gameplay that
@@ -35,8 +39,11 @@ lockstep. A game keeps it by keeping these rules:
 `og check` reports where a game's sources use what these rules exclude:
 `Math.random`, `crypto.randomUUID`, `Date.now()`, `performance.now()`,
 `new Date()`, `setTimeout` and `setInterval`, Math's approximated
-functions and `**` with a non-integer exponent, and what leaves the game
-without the engine (`fetch`, `WebSocket`, `localStorage`, `indexedDB`).
+functions and `**` with a non-integer exponent, what leaves the game
+without the engine (`fetch`, `WebSocket`, `localStorage`, `indexedDB`),
+what orders or formats by the host's locale (`localeCompare`, the
+`toLocale...` methods, `Intl`) and what observes the garbage collector
+(`WeakRef`, `FinalizationRegistry`).
 Nothing hides these from game code, so the report is the only notice. A
 finding is a warning with its replacement and never fails the check. Fix
 it wherever a system that changes the world runs the line; a line that

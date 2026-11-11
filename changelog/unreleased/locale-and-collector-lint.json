@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og check",
+      "summary": "The determinism report gains OG9007 (a warning, as the others): localeCompare, the toLocale... methods and Intl order and format by the host's locale and its Unicode data, and WeakRef and FinalizationRegistry observe the garbage collector, so a sort, a string or a branch built on them differs between peers and on the other host. `// og-ok` keeps a line that only draws."
+    }
+  ]
+}

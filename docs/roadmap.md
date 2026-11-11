@@ -218,8 +218,13 @@ From the review of expo/exact (thread
 - **Determinism for every game.** Done: `og check` reports the lint's
   findings for every game with the replacement to use, reporting without
   refusing: `Math.random`, the clocks and `new Date()`, timers, host trig,
-  and what reaches outside the host ABI (`fetch`, sockets, the browser's
-  storage). Open: unordered container iteration (not a lexical finding);
+  what reaches outside the host ABI (`fetch`, sockets, the browser's
+  storage), the host's locale (`localeCompare`, `toLocale...`, `Intl`) and
+  the garbage collector (`WeakRef`, `FinalizationRegistry`). `og check`'s
+  OG9101 also covers state a closure handed to `defineSystem` or `og.game`
+  keeps, the way a Map or a Set comes to differ between peers. Open:
+  iteration over a container filled in the host's arrival order (not a
+  lexical finding);
   the report at publish and packaging; a `connect-src` policy for the
   play origin is a platform ask, since only the page can confine a
   Worker; check
