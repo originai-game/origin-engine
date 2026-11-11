@@ -997,7 +997,6 @@ impl Ui {
     /// Samples the style, mirrors right to left, then shakes, staggers and
     /// motion; what may change this frame (`None`: everything) and what
     /// motion moved.
-    #[allow(clippy::needless_borrow)]
     fn frame_motion(
         &mut self,
         order: &[usize],
@@ -1012,7 +1011,7 @@ impl Ui {
                 (Some(seeds), Some(restyle))
             }
         };
-        let sampled: &[usize] = restyle.as_deref().unwrap_or(&order);
+        let sampled: &[usize] = restyle.as_deref().unwrap_or(order);
         for &i in sampled {
             self.tree.nodes[i].sample_style();
         }
@@ -1037,7 +1036,7 @@ impl Ui {
                 }
             }
         }
-        self.apply_shakes(&order);
+        self.apply_shakes(order);
         let staggered = self.tree.orders.with(visit::feat::STAGGER).to_vec();
         self.apply_stagger(&staggered);
         let animated = self.run_motion(restyle.as_deref());
@@ -1046,14 +1045,13 @@ impl Ui {
         if let Some(seeds) = seeds.as_mut() {
             seeds.extend_from_slice(&animated);
         }
-        self.apply_bursts(&order);
+        self.apply_bursts(order);
         self.world_place();
         (seeds, animated)
     }
 
     /// The drawing order, the HUD's placements, the maps and the world:
     /// the drawing order and the nodes whose maps were made again.
-    #[allow(clippy::needless_borrow)]
     fn place_frame(
         &mut self,
         order: Vec<usize>,
@@ -1062,7 +1060,7 @@ impl Ui {
     ) -> (Vec<usize>, Vec<usize>) {
         self.tree.orders.pre = order;
         // Drawn and hit in z order among siblings.
-        self.update_draw_order(&animated);
+        self.update_draw_order(animated);
         #[cfg(debug_assertions)]
         if bounded::checking() {
             self.check_orders();
@@ -1089,7 +1087,7 @@ impl Ui {
 
     /// Interaction state for the next tick (scroll ranges, scopes, input
     /// specs, hits, focus, pads, taps) and the cursor.
-    #[allow(clippy::ptr_arg, clippy::needless_borrow)]
+    #[allow(clippy::ptr_arg)]
     fn update_interaction(
         &mut self,
         order: &Vec<usize>,
@@ -1101,7 +1099,7 @@ impl Ui {
         // the trees' index holds (`tree`), a rich text's links with it.
         #[cfg(debug_assertions)]
         if bounded::checking() {
-            bounded::compare_tree(self, &order);
+            bounded::compare_tree(self, order);
         }
         let present = |k: &u64| self.tree.index.find(*k);
         self.interaction
@@ -1195,7 +1193,7 @@ impl Ui {
             w.extend_from_slice(&self.tree.floating);
             w
         });
-        let scoped = self.visit(&order, scope_seeds.as_deref(), Self::scope_step);
+        let scoped = self.visit(order, scope_seeds.as_deref(), Self::scope_step);
         // Focus groups, explicit moves and gesture recognisers for the next frame.
         self.collect_input_specs();
         // Hits where a node's place, map or scopes may have changed (every
@@ -1346,7 +1344,7 @@ impl Ui {
             // The pad's cursor is drawn; the system's is hidden.
             (crate::Cursor::None, Vec::new())
         } else {
-            self.resolve_cursor(&order)
+            self.resolve_cursor(order)
         };
         (cursor, cursor_images)
     }
