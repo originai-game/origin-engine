@@ -409,7 +409,7 @@ impl Ui {
         self.state = s;
         self.kept = Default::default();
         self.paint_cache = Default::default();
-        self.motion_cache = Default::default();
+        self.style.motion = Default::default();
         self.invalidation = Default::default();
         // What nodes say next is the restored state, not news.
         self.semantics.note_quiet();

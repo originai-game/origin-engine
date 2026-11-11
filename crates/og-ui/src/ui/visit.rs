@@ -335,7 +335,7 @@ impl Ui {
             .emitted
             .iter()
             .chain(&o.wrote_last)
-            .chain(&self.motion_cache.motion_moving)
+            .chain(&self.style.motion.motion_moving)
             .chain(&self.kept.anchor_toggled)
             .chain(o.with(feat::GESTURE))
             .chain(o.with(feat::MATCH))
@@ -347,7 +347,7 @@ impl Ui {
         }
         // Scroll-driven animations whose timeline moved (a scroll, a
         // layout change of the scroller or the subject).
-        for (k, last) in &self.motion_cache.timelines {
+        for (k, last) in &self.style.motion.timelines {
             let Some(&i) = self.tree.by_key.get(k) else {
                 continue;
             };

@@ -133,7 +133,8 @@ impl Ui {
         out: &mut Vec<Clip>,
     ) -> f32 {
         let length = |name: &str| {
-            self.timelines
+            self.style
+                .timelines
                 .get(&name_hash(name))
                 .map_or(0.0, |(_, t)| t.length_ms())
         };
@@ -243,7 +244,7 @@ impl Ui {
                     let cue = out[first..]
                         .iter()
                         .filter_map(|clip| {
-                            let (_, tl) = self.timelines.get(&clip.timeline)?;
+                            let (_, tl) = self.style.timelines.get(&clip.timeline)?;
                             tl.events
                                 .iter()
                                 .filter(|e| matches!(&e.kind, EventKind::Callback(n) if n == on))
@@ -273,12 +274,12 @@ impl Ui {
         let reduced = self.env.theme.reduced_motion;
         let mut m = std::mem::take(&mut self.state.motion);
         // Last step's asks were taken by this frame's build.
-        self.motion_cache.timeline_restyle.clear();
+        self.style.motion.timeline_restyle.clear();
         let mut touched =
             crate::id::KeySet::with_capacity_and_hasher(m.channels.len(), Default::default());
 
         // Plays asked for this tick: flattened now that rectangles are known.
-        for p in std::mem::take(&mut self.pending_plays) {
+        for p in std::mem::take(&mut self.style.pending_plays) {
             if reduced && p.desc.decorative {
                 continue;
             }
@@ -286,7 +287,7 @@ impl Ui {
             let length = self.flatten(&p.choreo, p.root, &self.tree.by_key, 0.0, 0, &mut clips);
             let first = clips
                 .first()
-                .and_then(|c| self.timelines.get(&c.timeline))
+                .and_then(|c| self.style.timelines.get(&c.timeline))
                 .map(|(_, t)| t.clone())
                 .unwrap_or_default();
             let at = first.label(&p.desc.from_label).unwrap_or(p.desc.from_ms);
@@ -373,7 +374,7 @@ impl Ui {
                 });
             }
             for clip in &p.clips {
-                let Some((_, tl)) = self.timelines.get(&clip.timeline) else {
+                let Some((_, tl)) = self.style.timelines.get(&clip.timeline) else {
                     continue;
                 };
                 let local = (t_now - clip.offset_ms).clamp(0.0, tl.length_ms());
@@ -512,7 +513,7 @@ impl Ui {
         // Visited nodes still moving: visited next tick too.
         let mut moving = Vec::new();
         if whole {
-            self.motion_cache.motion_groups.clear();
+            self.style.motion.motion_groups.clear();
         }
         for i in animating {
             let key = self.nodes[i].key;
@@ -793,12 +794,12 @@ impl Ui {
                 run.last_ms = sample.active_ms;
             }
             if scrolled {
-                let old = self.motion_cache.timelines.insert(key, progress.clone());
+                let old = self.style.motion.timelines.insert(key, progress.clone());
                 if styled && old.as_ref() != Some(&progress) {
-                    self.motion_cache.timeline_restyle.push(key);
+                    self.style.motion.timeline_restyle.push(key);
                 }
             } else {
-                self.motion_cache.timelines.remove(&key);
+                self.style.motion.timelines.remove(&key);
             }
             if row != base {
                 write_values(&mut self.nodes[i], &row);
@@ -873,16 +874,16 @@ impl Ui {
             }
             // The groups it no longer has are forgotten (on a whole tick,
             // with everything untouched, below).
-            if !whole && let Some(old) = self.motion_cache.motion_groups.get(&key) {
+            if !whole && let Some(old) = self.style.motion.motion_groups.get(&key) {
                 for gk in old.iter().filter(|gk| !node_groups.contains(gk)) {
                     m.groups.remove(gk);
                     m.set_states.remove(gk);
                 }
             }
             if node_groups.is_empty() {
-                self.motion_cache.motion_groups.remove(&key);
+                self.style.motion.motion_groups.remove(&key);
             } else {
-                self.motion_cache.motion_groups.insert(key, node_groups);
+                self.style.motion.motion_groups.insert(key, node_groups);
             }
         }
 
@@ -1072,7 +1073,7 @@ impl Ui {
                 }
                 touched || c.stepped >= now
             });
-            self.motion_cache.widget_channels = stepped;
+            self.style.motion.widget_channels = stepped;
             m.groups.retain(|k, _| touched.contains(k));
             m.set_states.retain(|k, _| touched.contains(k));
             m.flip.retain(|k, _| self.tree.by_key.contains_key(k));
@@ -1080,7 +1081,7 @@ impl Ui {
         } else {
             // A widget's channel nothing stepped this tick is forgotten,
             // as the whole frame forgets it.
-            let mut lately = std::mem::take(&mut self.motion_cache.widget_channels);
+            let mut lately = std::mem::take(&mut self.style.motion.widget_channels);
             lately.sort_unstable();
             lately.dedup();
             lately.retain(|k| match m.channels.get(k) {
@@ -1092,7 +1093,7 @@ impl Ui {
                 Some(_) => true,
                 None => false,
             });
-            self.motion_cache.widget_channels = lately;
+            self.style.motion.widget_channels = lately;
             // What left the trees is forgotten whole.
             for &key in &self.tree.moved_keys {
                 if self.tree.by_key.contains_key(&key) {
@@ -1107,7 +1108,8 @@ impl Ui {
                     }
                 }
                 for gk in self
-                    .motion_cache
+                    .style
+                    .motion
                     .motion_groups
                     .remove(&key)
                     .unwrap_or_default()
@@ -1133,7 +1135,7 @@ impl Ui {
                     }
                 }
                 if !visited.contains(&i)
-                    && let Some(old) = self.motion_cache.motion_groups.remove(&key)
+                    && let Some(old) = self.style.motion.motion_groups.remove(&key)
                 {
                     for gk in old {
                         m.groups.remove(&gk);
@@ -1146,7 +1148,8 @@ impl Ui {
         // or its `animation-name`.
         m.css.retain(|r| r.stepped == now);
         let tree = &self.tree;
-        self.motion_cache
+        self.style
+            .motion
             .timelines
             .retain(|k, _| tree.by_key.contains_key(k));
         // Transitions of computed values outlive no element.
@@ -1161,7 +1164,7 @@ impl Ui {
         }
         events.extend(css_events);
         self.state.motion = m;
-        self.motion_cache.motion_moving = moving;
+        self.style.motion.motion_moving = moving;
         self.out.events.extend(events);
         for (key, name) in starts {
             self.start_play(
@@ -1181,7 +1184,7 @@ impl Ui {
     pub(crate) fn start_play(&mut self, key: u64, choreo: Choreo, desc: PlayDesc) -> u32 {
         self.state.motion.next_play += 1;
         let id = self.state.motion.next_play;
-        self.pending_plays.push(PendingPlay {
+        self.style.pending_plays.push(PendingPlay {
             id,
             root: key,
             choreo,
@@ -1206,13 +1209,14 @@ impl Ui {
     /// Defines a timeline by name (configuration, like the theme: define
     /// it once, at start). Plays and state groups name it.
     pub fn define_timeline(&mut self, name: &str, timeline: Timeline) {
-        self.timelines
+        self.style
+            .timelines
             .insert(name_hash(name), (name.to_owned(), timeline));
     }
 
     /// A timeline by name, as defined.
     pub fn timeline(&self, name: &str) -> Option<&Timeline> {
-        self.timelines.get(&name_hash(name)).map(|(_, t)| t)
+        self.style.timelines.get(&name_hash(name)).map(|(_, t)| t)
     }
 
     /// The element a play targets: a full path, or empty for the element
@@ -1269,7 +1273,7 @@ impl Ui {
     }
 
     fn with_play(&mut self, id: u32, f: impl FnOnce(&mut Play, f32, u64)) -> bool {
-        if let Some(p) = self.pending_plays.iter_mut().find(|p| p.id == id) {
+        if let Some(p) = self.style.pending_plays.iter_mut().find(|p| p.id == id) {
             // Not started yet: it starts from what is asked.
             let mut tmp = Play {
                 at_ms: p.desc.from_ms,
@@ -1339,10 +1343,10 @@ impl Ui {
     /// Stops a play: its elements go back to their own values (on their
     /// motion, if they have one).
     pub fn stop(&mut self, play: u32) -> bool {
-        let had = self.pending_plays.len() + self.state.motion.plays.len();
-        self.pending_plays.retain(|p| p.id != play);
+        let had = self.style.pending_plays.len() + self.state.motion.plays.len();
+        self.style.pending_plays.retain(|p| p.id != play);
         self.state.motion.plays.retain(|p| p.id != play);
-        had != self.pending_plays.len() + self.state.motion.plays.len()
+        had != self.style.pending_plays.len() + self.state.motion.plays.len()
     }
 
     pub fn play_info(&self, play: u32) -> Option<PlayInfo> {
@@ -1403,7 +1407,7 @@ impl Ui {
             transition
         };
         let (kind, mode) = pack(&t, &tokens);
-        self.motion_cache.widget_channels.push(key);
+        self.style.motion.widget_channels.push(key);
         let ch = self.state.motion.channels.entry(key).or_insert_with(|| {
             let mut c = Channel::at(from.unwrap_or(target), now.saturating_sub(1));
             c.stepped = now.saturating_sub(1);

@@ -67,3 +67,28 @@ pub(crate) struct Docs {
     pub(crate) host: crate::doc::build::DocHost,
     pub(crate) reactive: crate::reactive::session::Session,
 }
+
+/// Style: the part rules and tokens, the motion pass's memory, timelines and the plays asked for.
+#[derive(Clone, Debug)]
+pub(crate) struct Style {
+    /// Global CSS part rules in cascade order and their at-rule descriptors.
+    pub(crate) part_rules: Vec<crate::doc::StyleRule>,
+    pub(crate) part_sheet: crate::doc::at_rules::Sheet,
+    pub(crate) root_tokens: Vec<(String, String)>,
+    pub(crate) root_type_tokens: [Vec<(String, String)>; 4],
+    /// Part samples read one before-change state throughout a frame. Commit
+    /// their next state together after rendering the owning nodes.
+    pub(crate) part_commits: std::cell::RefCell<
+        std::collections::BTreeMap<
+            (u64, &'static str),
+            std::sync::Arc<crate::doc::build::StyleCommit>,
+        >,
+    >,
+    pub(crate) css_sounds: std::collections::BTreeMap<String, u64>,
+    /// Timelines by name hash (`define_timeline`): configuration, like the theme.
+    pub(crate) timelines: std::collections::BTreeMap<u64, (String, Timeline)>,
+    /// Plays asked for this tick, flattened at `end`.
+    pub(crate) pending_plays: Vec<crate::motion::run::PendingPlay>,
+    /// The motion pass's memory between ticks.
+    pub(crate) motion: crate::layout::MotionCache,
+}
