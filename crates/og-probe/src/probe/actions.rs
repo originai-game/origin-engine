@@ -831,7 +831,7 @@ impl Probe {
                 format!("`{}` is not built into a publish build", step.action),
             ),
             name => {
-                let Some(registered) = self.commands.get(name) else {
+                let Some(registered) = self.commands.registered.get(name) else {
                     return Err(format!(
                         "unknown action '{name}', skipped; `help` lists the actions"
                     ));

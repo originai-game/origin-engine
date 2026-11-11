@@ -51,3 +51,9 @@ pub(crate) struct Schedule {
     /// A screenshot waiting on its frame: it holds the clock and later steps.
     pub(super) shot: Option<Shot>,
 }
+
+/// The command channel: the registered actions and the ones modules push.
+pub(crate) struct Commands {
+    pub(super) registered: BTreeMap<String, Registered>,
+    pub(super) inbox: Inbox,
+}

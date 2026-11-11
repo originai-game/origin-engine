@@ -243,7 +243,8 @@ pub struct Probe {
     systems_ms: Vec<(String, f64)>,
     passes_ms: Vec<(String, f64)>,
     gpu_passes_ms: Vec<(String, f64)>,
-    commands: BTreeMap<String, Registered>,
+    /// The command channel: the registered actions and the ones modules push.
+    pub(crate) commands: state::Commands,
     /// The script's steps waiting to run, and the screenshot that holds them.
     pub(crate) schedule: state::Schedule,
     snapshots: VecDeque<(String, Saved)>,
@@ -257,7 +258,6 @@ pub struct Probe {
     log: Vec<LogLine>,
     pointer: (f32, f32),
     target_missed: bool,
-    inbox: Inbox,
     /// The sub-tick stamp of the input being delivered (InputSink::inject_at).
     stamp: f32,
     sweeping: Option<SweepJob>,
@@ -496,7 +496,10 @@ impl Probe {
             passes_ms: Vec::new(),
             gpu_passes_ms: Vec::new(),
             stamp: 0.0,
-            commands: BTreeMap::new(),
+            commands: state::Commands {
+                registered: BTreeMap::new(),
+                inbox: Inbox::default(),
+            },
             schedule: state::Schedule {
                 queue: BTreeMap::new(),
                 seq: 0,
@@ -520,7 +523,6 @@ impl Probe {
             log: Vec::new(),
             pointer: (0.0, 0.0),
             target_missed: false,
-            inbox: Inbox::default(),
             sweeping: None,
             gets: (u64::MAX, 0),
             written: BTreeMap::new(),
@@ -827,13 +829,13 @@ impl Probe {
                 format!("'{name}' is a core action; register under another name"),
             ));
         }
-        if self.commands.contains_key(name) {
+        if self.commands.registered.contains_key(name) {
             return Err(Error::new(
                 ErrorKind::Invalid,
                 format!("'{name}' is already registered"),
             ));
         }
-        self.commands.insert(
+        self.commands.registered.insert(
             name.to_owned(),
             Registered {
                 desc,
@@ -861,7 +863,7 @@ impl Probe {
         #[cfg(not(feature = "publish"))]
         {
             self.register_command(name, desc, |_, _| Ok(()))?;
-            if let Some(r) = self.commands.get_mut(name) {
+            if let Some(r) = self.commands.registered.get_mut(name) {
                 r.handler = Handler::Dump(Rc::new(handler), path_arg);
             }
         }
@@ -871,7 +873,7 @@ impl Probe {
     /// The queue engine modules push actions into from inside a tick; they
     /// run at the start of the next tick (before its scheduled steps).
     pub fn inbox(&self) -> Inbox {
-        self.inbox.clone()
+        self.commands.inbox.clone()
     }
 
     /// Every action the channel knows: core actions, then registered ones by name.
@@ -882,22 +884,26 @@ impl Probe {
             doc: (*doc).to_owned(),
             core: true,
         });
-        let registered = self.commands.iter().map(|(name, r)| CommandInfo {
-            name: name.clone(),
-            usage: if r.desc.usage.is_empty() {
-                name.clone()
-            } else {
-                format!("{name}:{}", r.desc.usage)
-            },
-            doc: r.desc.doc.clone(),
-            core: false,
-        });
+        let registered = self
+            .commands
+            .registered
+            .iter()
+            .map(|(name, r)| CommandInfo {
+                name: name.clone(),
+                usage: if r.desc.usage.is_empty() {
+                    name.clone()
+                } else {
+                    format!("{name}:{}", r.desc.usage)
+                },
+                doc: r.desc.doc.clone(),
+                core: false,
+            });
         core.chain(registered).collect()
     }
 
     fn knows(&self, action: &str) -> bool {
         CORE_ACTIONS.iter().any(|(name, _, _)| *name == action)
-            || self.commands.contains_key(action)
+            || self.commands.registered.contains_key(action)
     }
 
     /// Runs a registered action now, outside the schedule (a host's
@@ -909,7 +915,12 @@ impl Probe {
         action: &str,
         args: &[String],
     ) -> Option<Result<(), String>> {
-        match self.commands.get(action).map(|r| r.handler.clone())? {
+        match self
+            .commands
+            .registered
+            .get(action)
+            .map(|r| r.handler.clone())?
+        {
             Handler::Act(handler) => Some(handler(world, args)),
             Handler::Dump(..) => Some(Err(format!(
                 "`{action}` is a dump; run it through a commands script"
@@ -919,7 +930,7 @@ impl Probe {
 
     /// The registered actions' names, for a refusal that lists them.
     pub fn registered(&self) -> Vec<String> {
-        self.commands.keys().cloned().collect()
+        self.commands.registered.keys().cloned().collect()
     }
 
     /// Schedule a script on simulation time from the current tick: a step at
@@ -973,7 +984,7 @@ impl Probe {
         if self.shot_waits(world) {
             return;
         }
-        let mut inbox = self.inbox.take().into_iter();
+        let mut inbox = self.commands.inbox.take().into_iter();
         while !self.clock.quit && self.schedule.shot.is_none() {
             let Some((action, args)) = inbox.next() else {
                 break;
@@ -988,7 +999,7 @@ impl Probe {
             );
         }
         if !self.clock.quit {
-            self.inbox.requeue(inbox.collect());
+            self.commands.inbox.requeue(inbox.collect());
         }
         while !self.clock.quit && self.schedule.shot.is_none() {
             let now = world.time().tick;

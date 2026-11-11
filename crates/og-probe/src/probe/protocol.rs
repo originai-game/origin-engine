@@ -903,7 +903,12 @@ impl Probe {
         match kind {
             DumpKind::World => Some(self.dump_world(world)),
             DumpKind::Ui => Some(self.dump_ui(world)),
-            DumpKind::Desync => match self.commands.get("dump_desync").map(|r| &r.handler) {
+            DumpKind::Desync => match self
+                .commands
+                .registered
+                .get("dump_desync")
+                .map(|r| &r.handler)
+            {
                 Some(Handler::Dump(handler, _)) => {
                     let mut v = handler.clone()(world, &[]).ok()?;
                     v["kind"] = json!("desync");
