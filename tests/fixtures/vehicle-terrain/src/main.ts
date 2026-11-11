@@ -7,7 +7,7 @@
 // which tests read it.
 //
 //   og run tests/fixtures/vehicle-terrain --commands "0.2:key_down:KeyW;2:key_down:KeyD;3:key_up:KeyD;3.5:quit"
-import { og, defineComponent, defineResource, defineSystem, f32, u32, SHAPE_BOX, SHAPE_HEIGHTFIELD } from "@origingame/engine";
+import { og, math, defineComponent, defineResource, defineSystem, f32, u32, SHAPE_BOX, SHAPE_HEIGHTFIELD } from "@origingame/engine";
 import type { Entity, Quaternion, Vector3, World } from "@origingame/engine";
 
 function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }): T {
@@ -56,7 +56,7 @@ function engineTone(world: World) {
   const samples = new Float32Array(rate);
   for (let i = 0; i < rate; i++) {
     const t = (i / rate) * Math.PI * 2 * 55;
-    samples[i] = 0.3 * Math.sin(t) + 0.15 * Math.sin(2 * t) + 0.08 * Math.sin(3 * t);
+    samples[i] = 0.3 * math.sin(t) + 0.15 * math.sin(2 * t) + 0.08 * math.sin(3 * t);
   }
   return must(og.audio.createSound(world, { samples, rate, channels: 1 }));
 }
@@ -193,7 +193,7 @@ const Chase = defineSystem("Chase", { reads: [og.Transform], writes: [og.Camera]
   const behind = rotate({ x: 0, y: 3.5, z: -8 }, t.quaternion);
   const goal = { x: t.position.x + behind.x, y: t.position.y + behind.y, z: t.position.z + behind.z };
   const cam = must(world.resource(og.Camera));
-  const k = 1 - Math.exp(-4 * time.dt);
+  const k = 1 - math.exp(-4 * time.dt);
   const p = cam.position;
   cam.position = { x: p.x + (goal.x - p.x) * k, y: p.y + (goal.y - p.y) * k, z: p.z + (goal.z - p.z) * k };
   cam.quaternion = og.transform.lookAt(cam.position, { x: t.position.x, y: t.position.y + 1, z: t.position.z });

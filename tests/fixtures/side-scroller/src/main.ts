@@ -5,7 +5,7 @@
 // follows the knight and the cave's far walls scroll by parallax.
 //
 //   og run tests/fixtures/side-scroller --size 960x540 --commands "0.3:run;1.5:attack;3:quit"
-import { og, defineComponent, defineResource, defineSystem, u32, f32 } from "@origingame/engine";
+import { og, math, defineComponent, defineResource, defineSystem, u32, f32 } from "@origingame/engine";
 import type { Entity, FlipbookInfo, World } from "@origingame/engine";
 import { PROPS } from "./art.ts";
 
@@ -128,10 +128,10 @@ function build(world: World): void {
   const fill = (x: number, y: number, r: number, bedrock = false) => must(og.destruction.fill2d(world, cave, { point: { x, y, z: 0 }, radius: r, bedrock }));
   for (let x = CAVE.x; x < CAVE.x + CAVE.w * CELL; x += 0.5) {
     // A floor of rock over bedrock, uneven by a few cells.
-    fill(x, FLOOR - 2 + Math.sin(x * 1.3) * 0.06 + Math.sin(x * 3.1) * 0.04, 2);
+    fill(x, FLOOR - 2 + math.sin(x * 1.3) * 0.06 + math.sin(x * 3.1) * 0.04, 2);
     fill(x, FLOOR - 3.4, 2.6, true);
     // The roof, open over the moon.
-    if (x < 0.8 || x > 4.4) fill(x, 9.4 + Math.sin(x * 0.7) * 0.5, 2.4, true);
+    if (x < 0.8 || x > 4.4) fill(x, 9.4 + math.sin(x * 0.7) * 0.5, 2.4, true);
   }
   fill(MOUND.x, MOUND.y - 0.2, 1.1);
   fill(MOUND.x + 0.8, MOUND.y - 0.5, 0.8);

@@ -10,7 +10,7 @@
 // in view, `lamps:N` swaps the lamps for N shadowed lights in view and
 // `penumbra:R` shows one light of sourceRadius R behind one wall, far from
 // the farm.
-import { og, defineResource, defineSystem, u32, f32 } from "@origingame/engine";
+import { og, math, defineResource, defineSystem, u32, f32 } from "@origingame/engine";
 import type { World } from "@origingame/engine";
 import { MAP, PROPS } from "./art.ts";
 
@@ -99,7 +99,7 @@ function build(world: World): void {
   prop(world, "mailbox", 24.8, 24.6, { shadow: 0.25 });
   prop(world, "sign", 21.2, 14.2, { shadow: 0.25 });
   for (const [k, x, y] of [["crate", 26.2, 15.6], ["barrel", 27.3, 15.8], ["chest", 28.4, 15.5], ["hay", 29.6, 15.9], ["crate", 26.5, 14.9]] as const) prop(world, k, x, y, { shadow: 0.3, castShadow: true });
-  const rnd = (s: number) => { const v = Math.sin(s * 127.1) * 43758.5453; return v - Math.floor(v); };
+  const rnd = (s: number) => { const v = math.sin(s * 127.1) * 43758.5453; return v - Math.floor(v); };
   const wild = ["flowers_a", "flowers_b", "flowers_c", "bush_a", "bush_b", "rock", "stump", "flowers_a"] as const;
   for (let i = 0; i < 70; i++) {
     const x = 1 + rnd(i) * (MAP.w - 2);

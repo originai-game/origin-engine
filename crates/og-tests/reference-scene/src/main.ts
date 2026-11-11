@@ -10,7 +10,7 @@
 // Chrome over WebGPU (isolated with lanes off and on, not isolated);
 // `og run crates/og-tests/reference-scene` shows it.
 
-import { og, defineComponent, defineSystem, f32 } from "@origingame/engine";
+import { og, math, defineComponent, defineSystem, f32 } from "@origingame/engine";
 import type { World } from "@origingame/engine";
 
 /** Turns an entity about +Y at `speed` rad/s. */
@@ -88,8 +88,8 @@ export function build(world: World): void {
   const clips = ["walk", "run", "idle", "wave"].map((n) => anim.clips.find((c) => c.name === n)!.clip);
   for (let i = 0; i < CHARACTERS; i++) {
     const a = (i / CHARACTERS) * Math.PI * 2;
-    const position = { x: Math.cos(a) * 9, y: 0, z: Math.sin(a) * 4 + 10 };
-    const e = must(world.instantiate(model, { name: `character-${i}`, position, quaternion: og.transform.lookAt({ x: 0, y: 0, z: 0 }, { x: -Math.sin(a), y: 0, z: Math.cos(a) }) }));
+    const position = { x: math.cos(a) * 9, y: 0, z: math.sin(a) * 4 + 10 };
+    const e = must(world.instantiate(model, { name: `character-${i}`, position, quaternion: og.transform.lookAt({ x: 0, y: 0, z: 0 }, { x: -math.sin(a), y: 0, z: math.cos(a) }) }));
     world.insert(e, og.Skeleton, { asset: anim.skeleton, rootMotion: "off" });
     world.insert(e, og.AnimationPlayer, { clip: clips[i % clips.length]!, speed: 0.8 + (i % 5) * 0.1, time: (i * 0.137) % 1, loop: true, fade: 0 });
   }
