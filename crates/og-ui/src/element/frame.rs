@@ -108,9 +108,9 @@ impl Ui {
                         if self.tree.nodes[c].el.align_self.unwrap_or(parent) != want {
                             None
                         } else if let Some(dir) = across {
-                            self.central_baseline(c, last).map(|x| dir * x)
+                            self.tree.central_baseline(c, last).map(|x| dir * x)
                         } else if last {
-                            self.last_baseline(c)
+                            self.layout.last_baseline(c, &self.env, &self.tree)
                         } else {
                             self.first_baseline(c)
                         }
@@ -127,8 +127,8 @@ impl Ui {
                 for (&c, b) in kids[s..e].iter().zip(bs) {
                     if let Some(b) = b {
                         match across {
-                            Some(dir) => self.shift_subtree(c, dir * (max - b), 0.0, false),
-                            None => self.shift_subtree(c, 0.0, max - b, false),
+                            Some(dir) => self.tree.shift_subtree(c, dir * (max - b), 0.0, false),
+                            None => self.tree.shift_subtree(c, 0.0, max - b, false),
                         }
                     }
                 }
@@ -165,7 +165,7 @@ impl Ui {
             let x = tr.x + ax * tr.width - ox * n.rect.width + p.insets.start.unwrap_or(0.0);
             let y = tr.y + ay * tr.height - oy * n.rect.height + p.insets.top.unwrap_or(0.0);
             let (dx, dy) = (x - n.rect.x, y - n.rect.y);
-            self.shift_subtree(i, dx, dy, true);
+            self.tree.shift_subtree(i, dx, dy, true);
         }
     }
 
@@ -410,19 +410,19 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Layout {
     /// Applies each element's breakpoint and orientation variants (the
     /// container ones wait for its width, in layout).
-    pub(crate) fn apply_variants(&mut self) {
-        let vp = self.env.viewport;
+    pub(crate) fn apply_variants(&mut self, env: &crate::ui::Env, tree: &mut crate::ui::Tree) {
+        let vp = env.viewport;
         let bp = vp.breakpoint();
         let portrait = vp.height >= vp.width;
-        for k in 0..self.tree.emitted.len() {
-            let i = self.tree.emitted[k];
-            if self.tree.nodes[i].props.variants.is_empty() {
+        for k in 0..tree.emitted.len() {
+            let i = tree.emitted[k];
+            if tree.nodes[i].props.variants.is_empty() {
                 continue;
             }
-            let vs = self.tree.nodes[i].props.variants.clone();
+            let vs = tree.nodes[i].props.variants.clone();
             for v in vs.iter().filter(|v| !v.when.container) {
                 let q = &v.when;
                 let ok = (q.breakpoints.is_empty() || q.breakpoints.contains(&bp))
@@ -430,7 +430,7 @@ impl Ui {
                         .is_none_or(|o| (o == Orientation::Portrait) == portrait)
                     && width_in(vp.width, q);
                 if ok {
-                    apply_patch(&mut self.tree.nodes[i], &v.set);
+                    apply_patch(&mut tree.nodes[i], &v.set);
                 }
             }
         }
@@ -438,13 +438,12 @@ impl Ui {
 
     /// Where node `i`'s last line of text sits, if it or its last
     /// descendant in the flow with text has one.
-    fn last_baseline(&self, i: usize) -> Option<f32> {
-        let n = &self.tree.nodes[i];
+    fn last_baseline(&self, i: usize, env: &crate::ui::Env, tree: &crate::ui::Tree) -> Option<f32> {
+        let n = &tree.nodes[i];
         match &n.content {
             Content::Text(tc) => {
                 let line = n.lines.last()?;
-                let m = &self
-                    .env
+                let m = &env
                     .fonts
                     .for_styled(tc.font, tc.step.weight, false, &tc.text)
                     .0
@@ -462,12 +461,16 @@ impl Ui {
                 let drop = n.wrap_lines.last().map_or(0.0, |w| w[1]);
                 Some(n.rect.y + n.el.padding.top + above + drop + last.baseline)
             }
-            _ => n.children.iter().rev().find_map(|&c| self.last_baseline(c)),
+            _ => n
+                .children
+                .iter()
+                .rev()
+                .find_map(|&c| self.last_baseline(c, env, tree)),
         }
     }
 }
 
-impl Ui {
+impl crate::ui::Tree {
     /// Moves node `i` and its subtree by `(dx, dy)` (with the clips its own
     /// scroll containers make). With `layout` its laid-out position moves
     /// too, which a clean subtree keeps into the next frame; without it only
@@ -476,10 +479,10 @@ impl Ui {
         if dx == 0.0 && dy == 0.0 {
             return;
         }
-        let sub = preorder(&self.tree.nodes, i);
+        let sub = preorder(&self.nodes, i);
         let inside: std::collections::BTreeSet<usize> = sub.iter().copied().collect();
         for &j in &sub {
-            let n = &mut self.tree.nodes[j];
+            let n = &mut self.nodes[j];
             if layout {
                 n.x += dx;
                 n.y += dy;
@@ -503,7 +506,7 @@ impl Ui {
     /// (CSS Writing Modes 4 §4.2); a horizontal text in it (an orthogonal
     /// flow) has none.
     fn central_baseline(&self, i: usize, last: bool) -> Option<f32> {
-        let n = &self.tree.nodes[i];
+        let n = &self.nodes[i];
         match &n.content {
             Content::Text(tc) => {
                 let v = tc.vertical?;
@@ -536,15 +539,21 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Layout {
     /// Which nodes can reuse layout, stopping propagation at unchanged fixed
     /// boxes, and the frame's counts: elements built and rebuilt.
-    pub(crate) fn reuse_check(&mut self) {
-        let k = &mut self.layout.cache;
-        let inv = &mut self.tree.invalidation;
-        let nodes = &self.tree.nodes;
+    pub(crate) fn reuse_check(
+        &mut self,
+        env: &crate::ui::Env,
+        out: &mut crate::ui::Out,
+        docs: &crate::ui::Docs,
+        tree: &mut crate::ui::Tree,
+    ) {
+        let k = &mut self.cache;
+        let inv = &mut tree.invalidation;
+        let nodes = &tree.nodes;
         let n = nodes.len();
-        let sig = (self.env.theme, self.env.direction, self.env.viewport.dpr());
+        let sig = (env.theme, env.direction, env.viewport.dpr());
         let fresh = inv.epoch != inv.prev_epoch || inv.sig != Some(sig);
         inv.prev_epoch = inv.epoch;
         inv.sig = Some(sig);
@@ -566,7 +575,7 @@ impl Ui {
         }
         let mut written = vec![false; n];
         let mut rebuilt = 0u32;
-        for &i in &self.tree.emitted {
+        for &i in &tree.emitted {
             written[i] = true;
         }
         // What may lay out otherwise than last frame: the nodes written
@@ -575,18 +584,18 @@ impl Ui {
         // layout moves after it places them; with their ancestors. Every
         // other node keeps its layout, so the walk leaves it out.
         let roots: Vec<usize> = std::iter::once(0)
-            .chain(self.tree.floating.iter().copied())
+            .chain(tree.floating.iter().copied())
             .collect();
         if !k.full {
-            let mut sources: Vec<usize> = Vec::with_capacity(self.tree.emitted.len() * 2);
-            for &i in &self.tree.emitted {
+            let mut sources: Vec<usize> = Vec::with_capacity(tree.emitted.len() * 2);
+            for &i in &tree.emitted {
                 sources.push(i);
                 sources.push(nodes[i].parent);
             }
             sources.extend(std::mem::take(&mut inv.rederive));
             sources.extend(roots.iter().copied());
             sources.extend(k.scrollers.iter().copied());
-            for &i in &self.tree.emitted {
+            for &i in &tree.emitted {
                 let a = &nodes[i];
                 let moved = a.props.position == Position::Anchored
                     || a.props.position == Position::Screen
@@ -711,15 +720,15 @@ impl Ui {
                 }
             }
         }
-        for &i in &self.tree.emitted {
+        for &i in &tree.emitted {
             if let Some(previous) = k.prev.get(&i) {
-                self.tree.nodes[i].inherit_layout(previous, k.clean[i]);
+                tree.nodes[i].inherit_layout(previous, k.clean[i]);
             }
         }
-        self.out.stats = LayoutStats {
+        out.stats = LayoutStats {
             rebuilt,
-            bindings: self.docs.host.retained.evaluated as u32,
-            reconciled: self.docs.host.retained.reconciled as u32,
+            bindings: docs.host.retained.evaluated as u32,
+            reconciled: docs.host.retained.reconciled as u32,
             ..LayoutStats::default()
         };
     }

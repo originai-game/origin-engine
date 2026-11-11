@@ -194,7 +194,7 @@ impl Ui {
         for &f in &self.tree.floating {
             order.extend(crate::layout::draw_order(&self.tree.nodes, f));
         }
-        self.world_order(&mut order);
+        self.layout.world_order(&mut order, &self.world, &self.tree);
         order
     }
 

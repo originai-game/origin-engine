@@ -727,7 +727,7 @@ impl Ui {
         for &f in &self.tree.floating {
             draw.extend(crate::layout::draw_order(nodes, f));
         }
-        self.world_order(&mut draw);
+        self.layout.world_order(&mut draw, &self.world, &self.tree);
         let o = &mut self.tree.orders;
         o.pos.clear();
         o.pos.resize(n, u32::MAX);
@@ -770,7 +770,7 @@ impl Ui {
         for &f in &self.tree.floating {
             draw.extend(crate::layout::draw_order(&self.tree.nodes, f));
         }
-        self.world_order(&mut draw);
+        self.layout.world_order(&mut draw, &self.world, &self.tree);
         assert_eq!(
             draw, self.tree.orders.draw,
             "the kept drawing order differs"

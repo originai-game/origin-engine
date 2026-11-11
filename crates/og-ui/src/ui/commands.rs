@@ -443,7 +443,7 @@ impl Ui {
             }
             let draw = self.draw_of(i).cloned();
             let n = &self.tree.nodes[i];
-            if let Some(m) = self.world_marks(n.key) {
+            if let Some(m) = self.world.world_marks(n.key) {
                 cmds.extend(m.enter.iter().map(|c| (c.clone(), Affine::IDENTITY)));
             }
             // One order for game and style draws, over the element's
@@ -712,7 +712,7 @@ impl Ui {
                 {
                     cmds.push((plane_end(key, p.clip), Affine::IDENTITY));
                 }
-                if let Some(m) = self.world_marks(key) {
+                if let Some(m) = self.world.world_marks(key) {
                     cmds.extend(m.leave.iter().map(|c| (c.clone(), Affine::IDENTITY)));
                 }
                 let nj = &self.tree.nodes[j];
@@ -1124,7 +1124,10 @@ impl Ui {
         let mut j = i;
         loop {
             let parent = self.tree.nodes[j].parent;
-            if parent == NONE || parent == 0 || self.world_marks(self.tree.nodes[j].key).is_some() {
+            if parent == NONE
+                || parent == 0
+                || self.world.world_marks(self.tree.nodes[j].key).is_some()
+            {
                 return j;
             }
             j = parent;
