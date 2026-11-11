@@ -64,7 +64,7 @@ impl Probe {
                         });
                     }
                     // Its frame lands on a later call: written then.
-                    self.shot = Some(Shot {
+                    self.schedule.shot = Some(Shot {
                         tick,
                         at: step.at,
                         path,
@@ -426,12 +426,14 @@ impl Probe {
                                 ..Modifiers::default()
                             },
                         };
-                        self.seq += 1;
-                        self.queue.insert((at, self.seq), Queued::Inject(event));
+                        self.schedule.seq += 1;
+                        self.schedule
+                            .queue
+                            .insert((at, self.schedule.seq), Queued::Inject(event));
                     }
-                    self.seq += 1;
-                    self.queue.insert(
-                        (at, self.seq),
+                    self.schedule.seq += 1;
+                    self.schedule.queue.insert(
+                        (at, self.schedule.seq),
                         Queued::Inject(InjectedInput::Text {
                             text: c.to_string(),
                             composing: false,
@@ -787,12 +789,12 @@ impl Probe {
                 // dumps tick 300 and quits there, instead of the nested pump
                 // running them (quit included) before the first step.
                 let now = world.time().tick;
-                let later = self.queue.split_off(&(now + 1, 0));
-                let due = std::mem::replace(&mut self.queue, later);
+                let later = self.schedule.queue.split_off(&(now + 1, 0));
+                let due = std::mem::replace(&mut self.schedule.queue, later);
                 let advanced = self.advance(world, ticks);
                 let tick = world.time().tick;
                 for ((_, seq), step) in due {
-                    self.queue.insert((tick, seq), step);
+                    self.schedule.queue.insert((tick, seq), step);
                 }
                 advanced.map(|_| ()).map_err(|e| e.reason().to_owned())
             }

@@ -278,7 +278,7 @@ impl Probe {
     /// the ticks: they run late, once it has landed.
     pub fn advance(&mut self, world: &mut World, steps: u64) -> og_core::Result<u64> {
         for _ in 0..steps {
-            if self.shot.is_none() {
+            if self.schedule.shot.is_none() {
                 self.pump(world);
             }
             if self.clock.quit || self.held(world) {
