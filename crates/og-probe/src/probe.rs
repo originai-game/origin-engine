@@ -5,7 +5,7 @@ mod actions;
 #[cfg(not(feature = "publish"))]
 mod marks;
 mod protocol;
-mod state;
+pub(crate) mod state;
 mod timeline;
 
 #[cfg(not(feature = "publish"))]
@@ -972,7 +972,7 @@ impl Probe {
             .filter(|s| s.action == "expect" && s.args.first().map(String::as_str) == Some("event"))
             .filter_map(|s| s.args.get(1).cloned())
             .collect();
-        self.watch_events(watched.iter().map(String::as_str));
+        self.checks.watch_events(watched.iter().map(String::as_str));
         // A script's outputs are its own: one names each file once.
         self.out.written.clear();
         let rate = f64::from(tick_rate(world));
@@ -1153,13 +1153,13 @@ impl Probe {
         }
         let counting = !self.checks.events.is_empty();
         if counting {
-            self.count_events(world, true);
+            self.checks.count_events(world, true);
         }
         // The tick these systems run as (og.Time.tick inside them).
         let ran = world.time().tick;
         world.step()?;
         if counting {
-            self.count_events(world, false);
+            self.checks.count_events(world, false);
         }
         if !replaying {
             self.host.input.end_tick(world);

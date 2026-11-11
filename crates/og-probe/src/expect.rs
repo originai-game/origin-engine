@@ -610,7 +610,7 @@ impl Probe {
                     fail(&mut r, format!("no event type '{name}' is registered"));
                     return Ok(self.record(r));
                 }
-                let seen = self.events_seen(&name);
+                let seen = self.checks.events_seen(&name);
                 r.observed = json!(seen);
                 let ok = match count {
                     Some(c) => seen == c,
@@ -858,32 +858,27 @@ impl Probe {
     fn css_scale(&self, world: &World, image: &Rgba) -> f32 {
         self.surface_scale(world, image.width)
     }
+}
 
+impl crate::probe::state::Checks {
     /// Events of `name` counted since the script that asked began.
     fn events_seen(&self, name: &str) -> u64 {
-        let total = self.checks.events.get(name).map_or(0, |w| w.total);
-        total
-            - self
-                .checks
-                .event_base
-                .get(name)
-                .copied()
-                .unwrap_or(0)
-                .min(total)
+        let total = self.events.get(name).map_or(0, |w| w.total);
+        total - self.event_base.get(name).copied().unwrap_or(0).min(total)
     }
 
     /// Starts counting the events the expectations among `steps` name, from now.
     pub(crate) fn watch_events<'a>(&mut self, names: impl Iterator<Item = &'a str>) {
         for name in names {
-            let w = self.checks.events.entry(name.to_owned()).or_default();
-            self.checks.event_base.insert(name.to_owned(), w.total);
+            let w = self.events.entry(name.to_owned()).or_default();
+            self.event_base.insert(name.to_owned(), w.total);
         }
     }
 
     /// Counts the watched events sent since the last count (`before`: by
     /// the host between ticks; after: by the tick's systems).
     pub(crate) fn count_events(&mut self, world: &World, before: bool) {
-        for (name, w) in &mut self.checks.events {
+        for (name, w) in &mut self.events {
             let Ok(id) = world.id_by_name(name) else {
                 continue;
             };
