@@ -1,12 +1,18 @@
-//! The lockstep lint `og check` runs over a game that sets og.Lockstep: the
-//! JavaScript calls whose results differ between peers (docs/design.md
-//! §2.10, the `determinism` guide's §3). Math.sin, Math.pow and the rest are
-//! implementation-approximated, so V8, JavaScriptCore and SpiderMonkey
-//! round them differently and a peer in another browser parts from the
-//! room; Math.random and the clock differ on every peer. Each is a warning
-//! naming the replacement (`math` from `@origingame/engine`, og.Rng,
-//! og.Time); none fails the check, since drawing code may use them. A line
-//! holding `lockstep-ok` (in a comment) is not reported.
+//! The determinism lint `og check` runs over every game: the JavaScript a
+//! game can reach that the engine does not own, so that a replay, a save
+//! restored on the other host, a playtest's end hash or a lockstep peer
+//! differs (docs/design.md §2.4 and §2.10, the `determinism` guide's §1 and
+//! §3). Game code runs in a Worker or in bun with the whole of JavaScript
+//! in scope: nothing is hidden from it, so this report is what tells an
+//! author. Math.sin, Math.pow and the rest are implementation-approximated,
+//! so V8, JavaScriptCore and SpiderMonkey round them differently;
+//! Math.random, the clock and timers differ on every run; `fetch`, sockets
+//! and the browser's storage reach outside the host ABI, where neither the
+//! replay nor the platform sees them. Each is a warning naming the
+//! replacement (`math` from `@origingame/engine`, og.Rng, og.Time,
+//! og.platform); none fails the check, since drawing code may use the maths
+//! and the clock. A line holding `og-ok` or `lockstep-ok` (in a comment) is
+//! not reported.
 //!
 //! The scan is lexical: comments, strings and template text are skipped, an
 //! identifier is matched whole, and `x ** y` is reported unless y is an
@@ -50,7 +56,28 @@ const APPROXIMATED: &[(&str, Option<&str>)] = &[
     ("hypot", None),
 ];
 
-const MARK: &str = "lockstep-ok";
+const MARKS: [&str; 2] = ["lockstep-ok", "og-ok"];
+
+/// Globals that reach outside the host ABI when called or constructed.
+const HOST_CALLS: &[&str] = &["fetch", "WebSocket", "XMLHttpRequest", "EventSource"];
+/// The browser's storage, reached through a member.
+const HOST_STORES: &[&str] = &["localStorage", "sessionStorage", "indexedDB"];
+/// Timers: they fire by the host's clock, outside the tick.
+const TIMERS: &[&str] = &["setTimeout", "setInterval", "requestAnimationFrame"];
+/// What names the global object.
+const GLOBALS: &[&str] = &["globalThis", "self", "window"];
+
+fn host_reach(name: &str) -> String {
+    format!(
+        "{name} reaches outside the host ABI: a replay does not record it, the other host may not have it, and the platform sees nothing of it; saves, scores, rooms and purchases go through og.platform, assets through og.load"
+    )
+}
+
+fn timer(name: &str) -> String {
+    format!(
+        "{name} fires by the host's clock, outside the tick, so a replay does not repeat it: count ticks in a component or a resource (og.Time), or use og.tween"
+    )
+}
 
 fn ident_start(c: u8) -> bool {
     c.is_ascii_alphabetic() || c == b'_' || c == b'$'
@@ -75,7 +102,10 @@ pub fn scan(src: &str) -> Vec<Finding> {
         let line = starts.partition_point(|&s| s <= at);
         (line as u32, (at - starts[line - 1] + 1) as u32)
     };
-    let marked: Vec<bool> = src.lines().map(|l| l.contains(MARK)).collect();
+    let marked: Vec<bool> = src
+        .lines()
+        .map(|l| MARKS.iter().any(|m| l.contains(m)))
+        .collect();
     let mut push = |at: usize, code: u32, message: String| {
         let (line, col) = pos(at);
         if !marked.get(line as usize - 1).copied().unwrap_or(false) {
@@ -167,7 +197,7 @@ pub fn scan(src: &str) -> Vec<Finding> {
                     push(
                         at,
                         9004,
-                        "`**` with an exponent that is not an integer literal is Math.pow, rounded differently by each JavaScript engine: under og.Lockstep use math.pow (import { math } from \"@origingame/engine\")".into(),
+                        "`**` with an exponent that is not an integer literal is Math.pow, rounded differently by each JavaScript engine: use math.pow (import { math } from \"@origingame/engine\")".into(),
                     );
                 }
                 i += 2;
@@ -177,16 +207,59 @@ pub fn scan(src: &str) -> Vec<Finding> {
                 let w = word(i);
                 i += w.len();
                 let j = skip_ws(i);
+                if b.get(j) == Some(&b'(') {
+                    // A call or a construction of a global; `function fetch(`
+                    // declares the game's own.
+                    let before = src[..at].trim_end();
+                    if before.ends_with("function") {
+                        continue;
+                    }
+                    if w == "Date"
+                        && b.get(skip_ws(j + 1)) == Some(&b')')
+                        && before.ends_with("new")
+                    {
+                        push(
+                            at,
+                            9003,
+                            "new Date() is the host's clock, different on every run: a system that changes the world reads og.Time (its tick and dt); a date to show the player is og.platform.now".into(),
+                        );
+                    } else if HOST_CALLS.contains(&w) {
+                        push(at, 9005, host_reach(w));
+                    } else if TIMERS.contains(&w) {
+                        push(at, 9006, timer(w));
+                    }
+                    continue;
+                }
                 if b.get(j) != Some(&b'.') {
                     continue;
                 }
                 let k = skip_ws(j + 1);
                 let member = word(k);
+                if HOST_STORES.contains(&w) {
+                    push(at, 9005, host_reach(w));
+                    continue;
+                }
+                if GLOBALS.contains(&w) {
+                    if HOST_CALLS.contains(&member) || HOST_STORES.contains(&member) {
+                        push(at, 9005, host_reach(member));
+                    } else if TIMERS.contains(&member) {
+                        push(at, 9006, timer(member));
+                    }
+                    continue;
+                }
                 match (w, member) {
+                    ("crypto", "getRandomValues" | "randomUUID") => push(
+                        at,
+                        9002,
+                        format!(
+                            "crypto.{member} differs on every run and every peer: draw from og.Rng (world.resource(og.Rng)), seeded by the engine"
+                        ),
+                    ),
+                    ("navigator", "sendBeacon") => push(at, 9005, host_reach("navigator.sendBeacon")),
                     ("Math", "random") => push(
                         at,
                         9002,
-                        "Math.random() differs on every peer: under og.Lockstep draw from og.Rng (world.resource(og.Rng)), seeded the same in the room".into(),
+                        "Math.random() differs on every run and every peer: draw from og.Rng (world.resource(og.Rng)), seeded by the engine and the same in a room".into(),
                     ),
                     ("Math", m) => {
                         if let Some((_, fix)) = APPROXIMATED.iter().find(|(n, _)| *n == m) {
@@ -198,7 +271,7 @@ pub fn scan(src: &str) -> Vec<Finding> {
                                 at,
                                 9001,
                                 format!(
-                                    "Math.{m} is rounded differently by each JavaScript engine, so a peer in another browser parts from the room under og.Lockstep: {fix}"
+                                    "Math.{m} is rounded differently by each JavaScript engine, so a replay on the other host differs and a peer in another browser parts from the room: {fix}"
                                 ),
                             );
                         }
@@ -207,7 +280,7 @@ pub fn scan(src: &str) -> Vec<Finding> {
                         at,
                         9003,
                         format!(
-                            "{w}.now() is this peer's clock: under og.Lockstep a system that changes the world reads og.Time (its tick and dt) instead"
+                            "{w}.now() is the host's clock, different on every run and every peer: a system that changes the world reads og.Time (its tick and dt) instead"
                         ),
                     ),
                     _ => {}
@@ -244,25 +317,24 @@ pub(crate) fn sources(dir: &Path, out: &mut Vec<PathBuf>) {
     }
 }
 
-/// The findings in the sources under `dir` (paths relative to `root`), or
-/// none when no source sets og.Lockstep up.
-pub fn lint(root: &Path, dir: &Path) -> Vec<(String, Finding)> {
+/// The findings in the sources under `dir` (paths relative to `root`), and
+/// whether a source sets og.Lockstep up (the report then speaks of peers).
+pub fn lint(root: &Path, dir: &Path) -> (bool, Vec<(String, Finding)>) {
     let mut files = Vec::new();
     sources(dir, &mut files);
     let texts: Vec<(PathBuf, String)> = files
         .into_iter()
         .filter_map(|p| std::fs::read_to_string(&p).ok().map(|t| (p, t)))
         .collect();
-    if !texts.iter().any(|(_, t)| uses_lockstep(t)) {
-        return Vec::new();
-    }
-    texts
+    let lockstep = texts.iter().any(|(_, t)| uses_lockstep(t));
+    let found = texts
         .iter()
         .flat_map(|(p, t)| {
             let rel = crate::project::typescript_path(p.strip_prefix(root).unwrap_or(p));
             scan(t).into_iter().map(move |f| (rel.clone(), f))
         })
-        .collect()
+        .collect();
+    (lockstep, found)
 }
 
 #[cfg(test)]
@@ -326,8 +398,49 @@ mod tests {
     }
 
     #[test]
-    fn only_a_game_with_lockstep_is_linted() {
-        let dir = std::env::temp_dir().join(format!("og-lockstep-lint-{}", std::process::id()));
+    fn the_host_s_reach_timers_and_other_clocks_are_found() {
+        let src = concat!(
+            "const r = await fetch(url);\n",
+            "const s = new WebSocket(u); const x = new XMLHttpRequest();\n",
+            "localStorage.setItem('a', '1'); const d = indexedDB.open('x');\n",
+            "setTimeout(() => {}, 10); globalThis.setInterval(f, 1); self.fetch(u);\n",
+            "const now = new Date(); const id = crypto.randomUUID();\n",
+            "navigator.sendBeacon(u);\n",
+        );
+        assert_eq!(
+            codes(src),
+            [
+                (1, 17, 9005),
+                (2, 15, 9005),
+                (2, 43, 9005),
+                (3, 1, 9005),
+                (3, 43, 9005),
+                (4, 1, 9006),
+                (4, 27, 9006),
+                (4, 57, 9005),
+                (5, 17, 9003),
+                (5, 36, 9002),
+                (6, 1, 9005),
+            ]
+        );
+        assert!(scan(src)[0].message.contains("og.platform"));
+    }
+
+    #[test]
+    fn a_game_s_own_names_fixed_dates_and_marked_lines_are_not() {
+        let src = concat!(
+            "function fetch(a: number) { return a; }\n",
+            "const a = api.fetch(1) + this.setTimeout(2) + store.localStorage.x;\n",
+            "const d = new Date(2026, 0, 1); const e = new Date(stamp);\n",
+            "const r = await fetch(url); // og-ok: the dev overlay only\n",
+            "const fetchAll = 1; const timer = setTimeoutMs;\n",
+        );
+        assert_eq!(codes(src), []);
+    }
+
+    #[test]
+    fn every_game_is_linted_and_lockstep_is_told_apart() {
+        let dir = std::env::temp_dir().join(format!("og-determinism-lint-{}", std::process::id()));
         let src = dir.join("src");
         std::fs::create_dir_all(src.join("systems")).unwrap();
         std::fs::write(src.join("main.ts"), "export const wobble = Math.sin(1);\n").unwrap();
@@ -336,13 +449,21 @@ mod tests {
             "declare const x: number; // Math.sin\n",
         )
         .unwrap();
-        assert!(lint(&dir, &src).is_empty(), "no og.Lockstep: nothing");
+        let (lockstep, found) = lint(&dir, &src);
+        assert!(!lockstep, "no source names og.Lockstep");
+        assert_eq!(found.len(), 1, "linted without og.Lockstep: {found:?}");
+        assert_eq!(
+            (found[0].0.as_str(), found[0].1.code),
+            ("src/main.ts", 9001)
+        );
         std::fs::write(
             src.join("systems/net.ts"),
             "const lock = world.resource(og.Lockstep);\nconst r = Math.random();\n",
         )
         .unwrap();
-        let found: Vec<(String, u32, u32)> = lint(&dir, &src)
+        let (lockstep, found) = lint(&dir, &src);
+        assert!(lockstep);
+        let found: Vec<(String, u32, u32)> = found
             .into_iter()
             .map(|(f, x)| (f, x.line, x.code))
             .collect();

@@ -1785,8 +1785,13 @@ The engine imports a small set of host functions, each a capability the shell
 grants: `og_net_fetch` (allowlisted, game-scoped token), `og_store_*` (cloud
 save), `og_leaderboard_*`, `og_room_*` (rooms/RTC via the shell),
 `og_telemetry`, `og_point` (Origin Point), `og_ai_mark`. In TypeScript they
-appear under `og.platform.*`. Nothing in game code can reach cookies, the
-DOM or arbitrary origins; the shell owns every credential.
+appear under `og.platform.*`. The shell owns every credential, and game
+code, in the engine Worker, has no DOM and no cookie. The Worker's own
+globals (`fetch`, sockets, the browser's storage) are in scope, as in any
+Worker: the engine does not remove them, `og check` reports each use
+(§6), and what confines a game on the web is the page that hosts it (the
+play origin's scope and any Content-Security-Policy it sends), which is
+the platform's.
 
 **Providers.** The host side of this ABI is a public contract,
 `@origingame/engine/provider` (`packages/engine/src/provider.ts`), so the
@@ -2487,7 +2492,7 @@ passed or unchecked. An invalid revision fails rather than selecting none.
 | stale typed view used after a structural change | throws with the owning tick and the system name |
 | dead handle | error value `{ok:false, reason}`; never a trap |
 | system writes a component it did not declare | refused at registration with the field name |
-| wall-clock read inside a tick | not reachable: `Date`/`performance` are not exposed to systems; the lint flags imports |
+| wall-clock read, `Math.random`, a timer, `fetch` or the browser's storage in game code | reachable, reported: game code runs in a Worker or in bun with the whole of JavaScript in scope and the engine hides none of it. `og check` (and the check `og run`, `og test`, `og build` and `og dev` make) reports each use in every game as a warning with its replacement (og.Time, og.Rng, `math`, og.platform, og.load) and never refuses; `// og-ok` marks a line that only draws (`crates/og-cli/src/lockstep_lint.rs`, the determinism guide §1). What a game reaches that way is outside replays, saves and the platform |
 | wasm trap (engine bug) | the shell shows the crash card with the last 200 log lines and the world dump; telemetry uploads the report |
 | WebGPU unavailable | not supported: the player shell says so instead of starting the engine (§8) |
 | cook stamp mismatch at load | refuse with the asset path and the two stamps |

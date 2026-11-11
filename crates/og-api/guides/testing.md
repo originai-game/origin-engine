@@ -21,7 +21,7 @@ gives each command's flags.
   usually means a large `src/` file or an asset cooked on every save;
   split the file or move the asset's generation into the cook.
 - `og check` warnings are findings, not noise: the locale-font warning
-  (screens §6) and the lockstep warnings (determinism §3) each name their fix.
+  (screens §6) and the determinism warnings (determinism §1) each name their fix.
 - A failing `og test` is read from its first failure: the tick, the
   entity, the field and the value. Fix the cause in the game, never by
   loosening the invariant that caught it.
