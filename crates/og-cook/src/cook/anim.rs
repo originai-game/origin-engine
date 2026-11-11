@@ -268,14 +268,20 @@ fn asset_path(rel: &str, line: usize) -> Result<String, String> {
     Ok(rel.to_string())
 }
 
-/// The import settings document of `rel` under `root` (`<rel>.ogt`), if any.
+/// The import settings document of `rel` under `root`, if any: its
+/// `<rel>.ogt` over its directories' `import.ogt`.
 fn import_settings(root: &Path, rel: &str) -> Result<Option<Document>, String> {
-    let path = root.join(format!("{rel}.ogt"));
-    let Ok(text) = std::fs::read_to_string(&path) else {
-        return Ok(None);
+    let own = match std::fs::read_to_string(root.join(format!("{rel}.ogt"))) {
+        Ok(text) => {
+            let doc = Document::parse(&text).map_err(|e| format!("{rel}.ogt: {e}"))?;
+            (doc.ty == "import").then_some((text, doc))
+        }
+        Err(_) => None,
     };
-    let doc = Document::parse(&text).map_err(|e| format!("{rel}.ogt: {e}"))?;
-    Ok((doc.ty == "import").then_some(doc))
+    let defaults = super::import_defaults::read(root, rel)?;
+    Ok(super::import_defaults::effective(rel, &defaults, own)
+        .0
+        .map(|(_, doc)| doc))
 }
 
 fn settings_of(doc: Option<&Document>) -> Result<AnimSettings, String> {
@@ -293,6 +299,13 @@ pub fn dependencies(root: &Path, settings: &AnimSettings) -> String {
     for l in &settings.libraries {
         files.push(l.clone());
         files.push(format!("{l}.ogt"));
+        // A directory's settings count once they exist; a missing one is
+        // not listed, so a project with none stamps as it did.
+        files.extend(
+            super::import_defaults::candidates(l)
+                .into_iter()
+                .filter(|f| root.join(f).is_file()),
+        );
         if let Ok(Some(d)) = import_settings(root, l)
             && let Ok(a) = settings_of(Some(&d))
         {

@@ -389,7 +389,10 @@ pub(super) fn own_conform_off(s: &Source) -> Option<String> {
             == Some("off")
     };
     if s.settings.as_ref().is_some_and(|(_, d)| off(&d.body)) {
-        Some(format!("conform off (assets/{}.ogt)", s.rel))
+        match s.settings_files.as_slice() {
+            [] => Some(format!("conform off (assets/{}.ogt)", s.rel)),
+            files => Some(format!("conform off (assets/{})", files.join(", assets/"))),
+        }
     } else if s.rel.ends_with(".ogt")
         && Document::parse(&String::from_utf8_lossy(&s.bytes)).is_ok_and(|d| off(&d.body))
     {

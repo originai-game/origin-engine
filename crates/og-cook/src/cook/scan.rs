@@ -140,10 +140,12 @@ pub(super) fn scan_with(
         }
     };
 
-    // Classify; import settings attach to the file they are named after.
+    // Classify; import settings attach to the file they are named after, a
+    // directory's (`import.ogt`) to the files under it that it names.
     let names: BTreeSet<&str> = files.iter().map(|(r, _)| r.as_str()).collect();
     let mut sources: Vec<Source> = Vec::new();
     let mut settings: BTreeMap<String, (String, Document)> = BTreeMap::new();
+    let mut defaults: Vec<import_defaults::Defaults> = Vec::new();
     let mut ignored = Vec::new();
     let mut early_errors: Vec<(String, &'static str, String)> = Vec::new();
     for (rel, path) in &files {
@@ -183,6 +185,11 @@ pub(super) fn scan_with(
                         let target = rel.trim_end_matches(".ogt");
                         if names.contains(target) {
                             settings.insert(target.to_string(), (text, doc));
+                        } else if import_defaults::is_defaults(rel) {
+                            match import_defaults::Defaults::parse(rel, &doc) {
+                                Ok(d) => defaults.push(d),
+                                Err(e) => early_errors.push((rel.clone(), "import", e)),
+                            }
                         } else {
                             early_errors.push((
                                 rel.clone(),
@@ -264,6 +271,7 @@ pub(super) fn scan_with(
             kind,
             bytes,
             settings: None,
+            settings_files: Vec::new(),
             hash: 0,
             gltf: None,
             error: None,
@@ -311,6 +319,7 @@ pub(super) fn scan_with(
             kind: Kind::Style,
             bytes,
             settings: None,
+            settings_files: Vec::new(),
             hash: 0,
             gltf: None,
             error: None,
@@ -321,8 +330,11 @@ pub(super) fn scan_with(
         });
     }
     ignored.retain(|id| ext(id) != "css");
+    // The walk reads a directory's subdirectories before its `import.ogt`.
+    defaults.sort_by_key(|d| d.depth());
     for s in sources.iter_mut() {
-        s.settings = settings.remove(&s.rel);
+        (s.settings, s.settings_files) =
+            import_defaults::effective(&s.rel, &defaults, settings.remove(&s.rel));
     }
     Ok(Scan {
         sources,

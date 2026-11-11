@@ -395,6 +395,7 @@ pub(super) fn expand(sources: &mut Vec<Source>, consumed: &mut BTreeSet<String>)
             kind: super::Kind::Texture,
             bytes: built.png,
             settings: Some((settings, doc)),
+            settings_files: Vec::new(),
             hash: 0,
             gltf: None,
             error: None,

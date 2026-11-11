@@ -314,10 +314,10 @@ pub(super) fn resolve(
         }
     }
     // A file a model references stays an asset of its own as well when it
-    // has import settings of its own (which only a texture cooked on its own
-    // reads) or a terrain names it as a layer (by asset id), s59.
+    // has import settings of its own, not only its directory's (which only a
+    // texture cooked on its own reads) or a terrain names it as a layer (by asset id), s59.
     for s in sources.iter() {
-        if s.kind == Kind::Texture && s.settings.is_some() {
+        if s.kind == Kind::Texture && s.own_settings() {
             consumed.remove(&s.rel);
         }
         if s.kind == Kind::Terrain {
