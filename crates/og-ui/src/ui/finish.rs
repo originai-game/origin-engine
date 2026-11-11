@@ -282,9 +282,10 @@ impl Ui {
         let (seeds, animated) = self.frame_motion(&order, whole, vp);
         let (order, mapped) = self.place_frame(order, &seeds, &animated);
 
-        let (cursor, cursor_images) = self.update_interaction(&order, &seeds, &mapped, screen);
+        let (cursor, cursor_images, selected) =
+            self.update_interaction(&order, &seeds, &mapped, screen);
 
-        let (order, items, missing_glyphs) = self.record_paint(order, &seeds, mapped);
+        let (order, items, missing_glyphs) = self.record_paint(order, &seeds, mapped, selected);
         let focus_paths = self.focus_paths();
         self.tree.orders.draw = order;
         self.note_relevance();
@@ -1086,7 +1087,8 @@ impl Ui {
     }
 
     /// Interaction state for the next tick (scroll ranges, scopes, input
-    /// specs, hits, focus, pads, taps) and the cursor.
+    /// specs, hits, focus, pads, taps), the cursor, and the selection's
+    /// ranges on its elements: those whose range changed, painted again.
     #[allow(clippy::ptr_arg)]
     fn update_interaction(
         &mut self,
@@ -1094,7 +1096,7 @@ impl Ui {
         seeds: &Option<Vec<usize>>,
         mapped: &Vec<usize>,
         screen: Rect,
-    ) -> (crate::Cursor, Vec<crate::CursorImage>) {
+    ) -> (crate::Cursor, Vec<crate::CursorImage>, Vec<usize>) {
         // Interaction state for the next tick: what is on screen is what
         // the trees' index holds (`tree`), a rich text's links with it.
         #[cfg(debug_assertions)]
@@ -1346,7 +1348,8 @@ impl Ui {
         } else {
             self.resolve_cursor(order)
         };
-        (cursor, cursor_images)
+        let selected = self.mark_selection();
+        (cursor, cursor_images, selected)
     }
 
     /// Parts, decorations, selection marks, the trees' commands and the
@@ -1357,6 +1360,7 @@ impl Ui {
         order: Vec<usize>,
         seeds: &Option<Vec<usize>>,
         mapped: Vec<usize>,
+        selected: Vec<usize>,
     ) -> (
         Vec<usize>,
         Vec<DrawItem>,
@@ -1436,9 +1440,6 @@ impl Ui {
         }
         // Painted again where a node's drawing may have changed (every
         // node on a fresh frame).
-        // The selection's ranges on its elements: those whose range
-        // changed are painted again.
-        let selected = self.mark_selection();
         let painted = if selected.is_empty() {
             mapped
         } else {

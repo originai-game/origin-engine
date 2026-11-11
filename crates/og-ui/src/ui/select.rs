@@ -519,9 +519,10 @@ impl Ui {
         Some(out)
     }
 
-    /// Before the paint: each selected element's range on its node, and
-    /// the nodes whose range changed (to be painted again); a selection
-    /// whose element left the trees is dropped.
+    /// The interaction step's last part, before the paint: each selected
+    /// element's range on its node, and the nodes whose range changed (to
+    /// be painted again); a selection whose element left the trees is
+    /// dropped. Paint reads the ranges and writes none.
     pub(crate) fn mark_selection(&mut self) -> Vec<usize> {
         if let Some(s) = self.interaction.state.selection
             && (self.tree.index.find(s.anchor.0).is_none()
