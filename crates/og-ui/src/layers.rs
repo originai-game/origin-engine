@@ -1107,7 +1107,7 @@ mod tests {
                 .nodes
                 .iter()
                 .find(|n| n.id == "test:pause")
-                .map(|n| (n.sampled.opacity, n.props.animations.len()))
+                .map(|n| (n.style.sampled.opacity, n.props.animations.len()))
         };
         let ticks = ui.ticks_for(250.0) as usize;
         let mut seen = Vec::new();

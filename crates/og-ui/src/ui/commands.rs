@@ -46,24 +46,25 @@ impl Ui {
         let rtl = self.env.direction == og_i18n::Direction::Rtl;
         let n = &mut self.tree.nodes[i];
         let shown = !n.layout.anchor_placed.hidden;
-        n.placed.alpha = alpha * n.sampled.opacity.clamp(0.0, 1.0) * f32::from(u8::from(shown));
+        n.placed.alpha =
+            alpha * n.style.sampled.opacity.clamp(0.0, 1.0) * f32::from(u8::from(shown));
         n.placed.scale = 1.0;
-        n.placed.inert = inert || n.sampled.inert || !shown;
+        n.placed.inert = inert || n.style.sampled.inert || !shown;
         let r = n.placed.rect;
         let (cx, cy) = r.center();
         let mut local = Affine::IDENTITY;
-        let [fx, fy, fsx, fsy] = n.flip;
+        let [fx, fy, fsx, fsy] = n.style.flip;
         if fx != 0.0 || fy != 0.0 || fsx != 1.0 || fsy != 1.0 {
             local = Affine::translate(fx, fy).mul(&Affine::scale(fsx, fsy).about(r.x, r.y));
         }
-        let [hx, hy, hs, ho] = n.custom;
+        let [hx, hy, hs, ho] = n.style.custom;
         n.placed.alpha *= ho.clamp(0.0, 1.0);
         if hx != 0.0 || hy != 0.0 || hs != 1.0 {
             local = local
                 .mul(&Affine::translate(hx, hy))
                 .mul(&Affine::scale(hs, hs).about(cx, cy));
         }
-        let [gx, gy, gs, gr] = n.gesture;
+        let [gx, gy, gs, gr] = n.style.gesture;
         if gx != 0.0 || gy != 0.0 || gs != 1.0 || gr != 0.0 {
             let turn = Affine::rotate(gr).mul(&Affine::scale(gs, gs)).about(cx, cy);
             local = local.mul(&Affine::translate(gx, gy)).mul(&turn);
@@ -94,7 +95,7 @@ impl Ui {
         let tbox = space
             .as_ref()
             .map_or(r, |s| reference_box(n, s.transform_box));
-        let mut t = n.sampled.transform;
+        let mut t = n.style.sampled.transform;
         if let Some(s) = space.as_ref().filter(|s| s.origin.is_some()) {
             // `transform-origin` pivots the individual properties too.
             let (ox, oy, _) = s.origin_at(&tbox, (t.pivot_x, t.pivot_y));
@@ -115,7 +116,10 @@ impl Ui {
             use crate::transform3d as t3;
             let mut local4 = t3::from_affine(&local);
             if let Some(s) = &space {
-                let pivot = (n.sampled.transform.pivot_x, n.sampled.transform.pivot_y);
+                let pivot = (
+                    n.style.sampled.transform.pivot_x,
+                    n.style.sampled.transform.pivot_y,
+                );
                 local4 = t3::mul(&local4, &s.matrix(&tbox, pivot));
             }
             if let Some(pm) = &ppersp {
@@ -281,7 +285,7 @@ impl Ui {
         };
         let placed = |n: &crate::layout::Node| crate::paint::Placed {
             rect: part_rect(n, press_scale),
-            radius: n.sampled.radius,
+            radius: n.style.sampled.radius,
             clip: n.placed.clip,
             alpha: n.placed.alpha,
         };
@@ -419,7 +423,7 @@ impl Ui {
                 if !marked(n) {
                     out.extend(d.strokes(&theme, &placed(n)));
                 }
-                undraw(&mut out, n.sampled.draw);
+                undraw(&mut out, n.style.sampled.draw);
                 if let Some(decor) = &n.decor {
                     out.extend(decor.lines(&placed(n)));
                 }
@@ -434,7 +438,7 @@ impl Ui {
                 if let Some(d) = &draw {
                     cmds.extend(d.begin(&theme, &placed(n)).into_iter().map(|c| (c, world)));
                 }
-            } else if i != 0 || n.sampled.background.is_some() {
+            } else if i != 0 || n.style.sampled.background.is_some() {
                 let mut local = Vec::new();
                 let mut background = 0;
                 let mut kept_now = false;
@@ -608,7 +612,7 @@ impl Ui {
         let press_scale = theme.press_scale;
         let placed = |n: &crate::layout::Node| crate::paint::Placed {
             rect: part_rect(n, press_scale),
-            radius: n.sampled.radius,
+            radius: n.style.sampled.radius,
             clip: n.placed.clip,
             alpha: n.placed.alpha,
         };
@@ -662,7 +666,7 @@ impl Ui {
                     } else {
                         d.leave_stroked(&theme, &at)
                     };
-                    undraw(&mut leave, self.tree.nodes[j].sampled.draw);
+                    undraw(&mut leave, self.tree.nodes[j].style.sampled.draw);
                     cmds.extend(leave.into_iter().map(|c| (c, w)));
                 }
                 // Focus rings over everything their subtree drew: later
@@ -715,7 +719,7 @@ impl Ui {
                             } else {
                                 crate::motion::state::name_hash(&nj.props.match_key)
                             },
-                            radius: nj.sampled.radius,
+                            radius: nj.style.sampled.radius,
                         },
                     );
                 }
@@ -746,8 +750,9 @@ impl Ui {
                 // A blurring subtree (Svelte's `blur` transition) draws
                 // through a blur layer, as CSS `filter: blur()` does.
                 let nj = &self.tree.nodes[j];
-                if nj.sampled.blur > 0.0 {
-                    let (begin, end) = blur_layer(nj.sampled.blur, nj.placed.rect, nj.placed.clip);
+                if nj.style.sampled.blur > 0.0 {
+                    let (begin, end) =
+                        blur_layer(nj.style.sampled.blur, nj.placed.rect, nj.placed.clip);
                     self.paint.kept_spans.retain(|r| r.end <= first);
                     self.paint.cache.aligned.retain(|r| r.end <= first);
                     shift_named(&mut self.paint.cache.named, first);
@@ -995,7 +1000,7 @@ impl Ui {
             || !node.props.view_transition_name.is_empty()
             || !node.layout.links.is_empty()
             || node.fx.is_some_and(|f| f.glitch > 0.0)
-            || node.sampled.blur > 0.0
+            || node.style.sampled.blur > 0.0
             || node.decor.as_ref().is_some_and(|d| d.fixed())
             || (node.scrolls() && (node.el.fade > 0.0 || !node.el.hide_bars))
             || node.el.resize != 0;

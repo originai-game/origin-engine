@@ -397,18 +397,18 @@ impl crate::ui::Layout {
             let py = r.y + pl.pivot.1 * r.height;
             let at = pl.at + Vec2::new(s.dx, s.dy);
             let n = &mut tree.nodes[node];
-            n.sampled.transform = Transform {
+            n.style.sampled.transform = Transform {
                 x: at.x - px,
                 y: at.y - py,
                 scale_x: pl.scale,
                 scale_y: pl.scale,
                 pivot_x: pl.pivot.0,
                 pivot_y: pl.pivot.1,
-                ..n.sampled.transform
+                ..n.style.sampled.transform
             };
-            n.sampled.opacity *= s.alpha;
+            n.style.sampled.opacity *= s.alpha;
             if s.alpha < 0.05 {
-                n.sampled.inert = true;
+                n.style.sampled.inert = true;
             }
             let mut info = pl.info;
             info.x = at.x;
@@ -505,7 +505,7 @@ impl crate::ui::Layout {
                 // brackets are the same every tick (the quad goes in the
                 // frame, `UiFrame::grounds`), so a moving camera relevels
                 // and rebuilds nothing. Inert: no ray, no focus.
-                tree.nodes[p.node].sampled.inert = true;
+                tree.nodes[p.node].style.sampled.inert = true;
                 let all = Rect::new(-1e9, -1e9, 2e9, 2e9);
                 ui_world.marks.insert(
                     key,

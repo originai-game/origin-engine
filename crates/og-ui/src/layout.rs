@@ -1103,8 +1103,8 @@ pub(crate) fn draw_order(nodes: &[Node], root: usize) -> Vec<usize> {
     while let Some(i) = stack.pop() {
         order.push(i);
         let mut kids = all_children(&nodes[i]);
-        if kids.iter().any(|&c| nodes[c].sampled.z != 0) {
-            og_core::sort::sort_by_key(&mut kids, |&c| nodes[c].sampled.z);
+        if kids.iter().any(|&c| nodes[c].style.sampled.z != 0) {
+            og_core::sort::sort_by_key(&mut kids, |&c| nodes[c].style.sampled.z);
         }
         stack.extend(kids.into_iter().rev());
     }
@@ -1179,26 +1179,26 @@ pub(crate) fn apply_patch(n: &mut Node, p: &Patch) {
             }
         }
         write_values(n, &row);
-        n.props.transform = n.sampled.transform;
-        n.props.opacity = n.sampled.opacity;
-        n.props.z = n.sampled.z;
-        n.props.inert = n.sampled.inert;
-        n.el.radius = n.sampled.radius;
-        n.el.background = n.sampled.background;
+        n.props.transform = n.style.sampled.transform;
+        n.props.opacity = n.style.sampled.opacity;
+        n.props.z = n.style.sampled.z;
+        n.props.inert = n.style.sampled.inert;
+        n.el.radius = n.style.sampled.radius;
+        n.el.background = n.style.sampled.background;
         if let Content::Text(text) = &mut n.content {
-            text.color = n.sampled.ink;
+            text.color = n.style.sampled.ink;
         }
     }
 }
 
 /// A node's animatable values, one per channel (`Prop::channels`).
 pub(crate) fn read_values(n: &Node) -> [f32; crate::element::CHANNELS] {
-    let t = &n.sampled.transform;
-    let bg = n.sampled.background.unwrap_or(Srgba {
+    let t = &n.style.sampled.transform;
+    let bg = n.style.sampled.background.unwrap_or(Srgba {
         rgb: [0, 0, 0],
         alpha: 0.0,
     });
-    let ink = n.sampled.ink;
+    let ink = n.style.sampled.ink;
     let c = |v: u8| f32::from(v) / 255.0;
     [
         t.x,
@@ -1208,8 +1208,8 @@ pub(crate) fn read_values(n: &Node) -> [f32; crate::element::CHANNELS] {
         t.rotate,
         t.skew_x,
         t.skew_y,
-        n.sampled.opacity,
-        n.sampled.radius,
+        n.style.sampled.opacity,
+        n.style.sampled.radius,
         c(bg.rgb[0]),
         c(bg.rgb[1]),
         c(bg.rgb[2]),
@@ -1218,16 +1218,16 @@ pub(crate) fn read_values(n: &Node) -> [f32; crate::element::CHANNELS] {
         c(ink.rgb[1]),
         c(ink.rgb[2]),
         ink.alpha,
-        n.sampled.z as f32,
-        f32::from(u8::from(n.sampled.inert)),
-        n.sampled.blur,
-        n.sampled.draw,
+        n.style.sampled.z as f32,
+        f32::from(u8::from(n.style.sampled.inert)),
+        n.style.sampled.blur,
+        n.style.sampled.draw,
     ]
 }
 
 /// Writes frame output without changing the next tick's authored inputs.
 pub(crate) fn write_values(n: &mut Node, v: &[f32; crate::element::CHANNELS]) {
-    let t = &mut n.sampled.transform;
+    let t = &mut n.style.sampled.transform;
     t.x = v[0];
     t.y = v[1];
     t.scale_x = v[2];
@@ -1235,24 +1235,24 @@ pub(crate) fn write_values(n: &mut Node, v: &[f32; crate::element::CHANNELS]) {
     t.rotate = v[4];
     t.skew_x = v[5];
     t.skew_y = v[6];
-    n.sampled.opacity = v[7].clamp(0.0, 1.0);
-    n.sampled.radius = v[8].max(0.0);
+    n.style.sampled.opacity = v[7].clamp(0.0, 1.0);
+    n.style.sampled.radius = v[8].max(0.0);
     let u = |x: f32| (x.clamp(0.0, 1.0) * 255.0).round() as u8;
     let bg = Srgba {
         rgb: [u(v[9]), u(v[10]), u(v[11])],
         alpha: v[12].clamp(0.0, 1.0),
     };
-    if n.sampled.background.is_some() || bg.alpha > 0.0 {
-        n.sampled.background = Some(bg);
+    if n.style.sampled.background.is_some() || bg.alpha > 0.0 {
+        n.style.sampled.background = Some(bg);
     }
-    n.sampled.ink = Srgba {
+    n.style.sampled.ink = Srgba {
         rgb: [u(v[13]), u(v[14]), u(v[15])],
         alpha: v[16].clamp(0.0, 1.0),
     };
-    n.sampled.z = v[17].round() as i32;
-    n.sampled.inert = v[18] >= 0.5;
-    n.sampled.blur = v[19].max(0.0);
-    n.sampled.draw = v[20].clamp(0.0, 1.0);
+    n.style.sampled.z = v[17].round() as i32;
+    n.style.sampled.inert = v[18] >= 0.5;
+    n.style.sampled.blur = v[19].max(0.0);
+    n.style.sampled.draw = v[20].clamp(0.0, 1.0);
 }
 
 #[cfg(test)]

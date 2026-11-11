@@ -671,7 +671,7 @@ impl Ui {
     /// whether it is a focused text control that rings itself.
     pub(crate) fn field_rings(&self, i: usize) -> (bool, bool) {
         let n = &self.tree.nodes[i];
-        let framed = n.sampled.background.is_some() || self.framed_text(i);
+        let framed = n.style.sampled.background.is_some() || self.framed_text(i);
         let ring = match &n.widget {
             Widget::Field(e) | Widget::TextArea { edit: e, .. } => {
                 e.focused && n.part_box.is_none() && framed

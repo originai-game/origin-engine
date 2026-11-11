@@ -703,6 +703,32 @@ impl Default for LayoutBox {
     }
 }
 
+/// What the frame's style and motion sample for a node this tick: its
+/// animated values, its layout animation, gesture and HUD offsets.
+#[derive(Clone, Debug)]
+pub(crate) struct StyleNode {
+    /// Frame sampling never changes the authored element, content or props.
+    pub sampled: SampledStyle,
+    /// Layout animation's offset and scale this tick (x, y, sx, sy).
+    pub flip: [f32; 4],
+    /// A drag's offset and a pinch's scale and turn (x, y, scale, radians).
+    pub gesture: [f32; 4],
+    /// The player's HUD placement (`crate::hud_layout`): offset, scale and
+    /// opacity (x, y, scale, opacity).
+    pub custom: [f32; 4],
+}
+
+impl Default for StyleNode {
+    fn default() -> Self {
+        Self {
+            sampled: SampledStyle::default(),
+            flip: [0.0, 0.0, 1.0, 1.0],
+            gesture: [0.0, 0.0, 1.0, 0.0],
+            custom: [0.0, 0.0, 1.0, 1.0],
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct Node {
     pub key: u64,
@@ -778,8 +804,8 @@ pub(crate) struct Node {
     pub stagger: Option<Stagger>,
     /// The element model beyond its box (`crate::element`).
     pub props: crate::element::Props,
-    /// Frame sampling never changes the authored element, content or props.
-    pub sampled: SampledStyle,
+    /// What style and motion sample for it this tick ([`StyleNode`]).
+    pub style: StyleNode,
     /// CSS `accent-color` and `caret-color` it declares or inherits as a
     /// document element (controls under it read the nearest, [`crate::Ui`]).
     pub accent: Option<Srgba>,
@@ -793,13 +819,6 @@ pub(crate) struct Node {
     pub up: usize,
     /// Where the frame places and draws it (layout writes it, paint reads it).
     pub placed: Placed,
-    /// Layout animation's offset and scale this tick (x, y, sx, sy).
-    pub flip: [f32; 4],
-    /// A drag's offset and a pinch's scale and turn (x, y, scale, radians).
-    pub gesture: [f32; 4],
-    /// The player's HUD placement (`crate::hud_layout`): offset, scale and
-    /// opacity (x, y, scale, opacity).
-    pub custom: [f32; 4],
     // Computed.
     /// The characters of its text the player selected (`user-select`),
     /// `[start, end)` over its lines joined by one break each.
@@ -830,7 +849,7 @@ impl Node {
     }
 
     pub(crate) fn sample_style(&mut self) {
-        self.sampled = SampledStyle {
+        self.style.sampled = SampledStyle {
             transform: self.props.transform,
             opacity: self.props.opacity,
             radius: self.el.radius,
@@ -888,14 +907,11 @@ impl Node {
             a11y: crate::a11y::A11y::default(),
             stagger: None,
             props: crate::element::Props::default(),
-            sampled: SampledStyle::default(),
+            style: StyleNode::default(),
             accent: None,
             caret: None,
             out: Vec::new(),
             placed: Placed::default(),
-            flip: [0.0, 0.0, 1.0, 1.0],
-            gesture: [0.0, 0.0, 1.0, 0.0],
-            custom: [0.0, 0.0, 1.0, 1.0],
             selected: None,
             anchor_point: None,
             arrow: None,

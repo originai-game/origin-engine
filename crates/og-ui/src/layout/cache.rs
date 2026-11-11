@@ -409,7 +409,7 @@ impl DrawSig {
             ring: n.ring,
             pad_rings: n.pad_rings,
             scale: n.placed.scale,
-            sampled: n.sampled,
+            sampled: n.style.sampled,
             selected: n.selected,
         }
     }
@@ -427,7 +427,7 @@ pub(crate) fn draw_eq(a: &Node, b: &Node) -> bool {
         && a.heading == b.heading
         && a.disabled == b.disabled
         && a.placed.scale == b.placed.scale
-        && a.sampled == b.sampled
+        && a.style.sampled == b.style.sampled
         && a.el == b.el
         && a.content == b.content
         && a.widget == b.widget

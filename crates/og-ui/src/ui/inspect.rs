@@ -427,8 +427,11 @@ impl Ui {
                     continue;
                 }
                 let mut kids = crate::layout::all_children(n);
-                if kids.iter().any(|&c| self.tree.nodes[c].sampled.z != 0) {
-                    og_core::sort::sort_by_key(&mut kids, |&c| self.tree.nodes[c].sampled.z);
+                if kids
+                    .iter()
+                    .any(|&c| self.tree.nodes[c].style.sampled.z != 0)
+                {
+                    og_core::sort::sort_by_key(&mut kids, |&c| self.tree.nodes[c].style.sampled.z);
                 }
                 stack.extend(kids.into_iter().rev());
             }
@@ -558,7 +561,11 @@ impl Ui {
                     states,
                     // Its fill, solid and at full opacity, covers its box (a
                     // rounded corner's few pixels aside).
-                    opaque: n.sampled.background.is_some_and(|bg| bg.alpha >= 0.999)
+                    opaque: n
+                        .style
+                        .sampled
+                        .background
+                        .is_some_and(|bg| bg.alpha >= 0.999)
                         && n.placed.alpha >= 0.999,
                     x: visible.x,
                     y: visible.y,

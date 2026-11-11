@@ -36,6 +36,7 @@ impl Ui {
                         .nodes
                         .get(n.content_slot)
                         .unwrap_or(n)
+                        .style
                         .sampled
                         .radius
                 }),
@@ -113,7 +114,7 @@ impl Ui {
             clip,
         };
         // A part the UI pass draws (`part_draws`) has its background there.
-        if let Some(bg) = n.sampled.background.filter(|bg| {
+        if let Some(bg) = n.style.sampled.background.filter(|bg| {
             bg.alpha > 0.0 && !self.paint.part_draws.contains_key(&i) && !self.framed_text(i)
         }) {
             let r = if matches!(n.widget, Widget::Button { pressed: true, .. }) {
@@ -121,7 +122,7 @@ impl Ui {
             } else {
                 rect
             };
-            cmds.push(quad(r, n.sampled.radius, bg));
+            cmds.push(quad(r, n.style.sampled.radius, bg));
         }
         // A multi-column container's rules, in the middle of its gaps.
         if let Some(m) = n.el.multicol
@@ -395,7 +396,10 @@ impl Ui {
                         let weight = t.art.text_weights[role] * sk / dpr + tc.emphasis * size;
                         // A style's text glow: the font's distance field, under the glyphs.
                         let glow = t.art.text_glows[role].map(|g| {
-                            let c = g.ink.color(p).fade(g.alpha * n.sampled.ink.alpha * alpha);
+                            let c = g
+                                .ink
+                                .color(p)
+                                .fade(g.alpha * n.style.sampled.ink.alpha * alpha);
                             (c.linear(), TEXT_GLOW_REACH * g.size * sk)
                         });
                         let one = pieces.len() == 1;
@@ -462,7 +466,7 @@ impl Ui {
                             .filter(|_| !own && !plated);
                         let dropped = |clip: Rect, cmds: &mut Vec<DrawCmd>| {
                             if let Some((dx, dy, blur, sc)) = drop {
-                                let c = sc.fade(n.sampled.ink.alpha);
+                                let c = sc.fade(n.style.sampled.ink.alpha);
                                 text(dx, dy, c, None, clip, cmds);
                                 if blur > 0.0 {
                                     let d = blur / 2.0;
@@ -479,16 +483,16 @@ impl Ui {
                         for &(x0, x1) in &runs {
                             let c = band(from, x + x0);
                             dropped(c, cmds);
-                            text(0.0, 0.0, n.sampled.ink, glow, c, cmds);
+                            text(0.0, 0.0, n.style.sampled.ink, glow, c, cmds);
                             from = x + x1;
                         }
                         let rest = band(from, text_clip.right());
                         dropped(rest, cmds);
-                        text(0.0, 0.0, n.sampled.ink, glow, rest, cmds);
+                        text(0.0, 0.0, n.style.sampled.ink, glow, rest, cmds);
                         if let Some(sel) = selection.filter(|_| !runs.is_empty()) {
                             let ink = sel
                                 .color
-                                .map_or(n.sampled.ink, |c| c.fade(n.sampled.ink.alpha));
+                                .map_or(n.style.sampled.ink, |c| c.fade(n.style.sampled.ink.alpha));
                             for &(x0, x1) in &runs {
                                 let c = band(x + x0, x + x1);
                                 let start = cmds.len();
@@ -505,7 +509,9 @@ impl Ui {
                                         .map(|(o, blur, color)| og_draw::UiTextShadow {
                                             offset: og_core::glam::Vec2::new(o[0] * sk, o[1] * sk),
                                             blur: blur * sk,
-                                            color: color.fade(alpha * n.sampled.ink.alpha).linear(),
+                                            color: color
+                                                .fade(alpha * n.style.sampled.ink.alpha)
+                                                .linear(),
                                         })
                                         .collect();
                                     for cmd in &mut cmds[start..] {
@@ -1010,7 +1016,7 @@ impl Ui {
         let dpr = self.env.viewport.dpr();
         let role = tc.font.effect_index();
         let weight = t.art.text_weights[role] * sk / dpr + tc.emphasis * size;
-        let color = n.sampled.ink.fade(n.placed.alpha).linear();
+        let color = n.style.sampled.ink.fade(n.placed.alpha).linear();
         let offset = if tp.percent {
             tp.offset * walk.length
         } else {
@@ -1261,13 +1267,13 @@ impl Ui {
         let t = self.paint_theme();
         let role = tc.font.effect_index();
         let weight = t.art.text_weights[role] * sk / dpr + tc.emphasis * size;
-        let color = n.sampled.ink.fade(n.placed.alpha).linear();
+        let color = n.style.sampled.ink.fade(n.placed.alpha).linear();
         // A style's text glow: the font's distance field, under the glyphs.
         let glow = t.art.text_glows[role].map(|g| {
             let c = g
                 .ink
                 .color(&t.palette)
-                .fade(g.alpha * n.sampled.ink.alpha * n.placed.alpha);
+                .fade(g.alpha * n.style.sampled.ink.alpha * n.placed.alpha);
             (c.linear(), TEXT_GLOW_REACH * g.size * sk)
         });
         let (rtl, para) = self.text_flow(i);
@@ -1619,7 +1625,7 @@ impl Ui {
             }
             let dropped = |band: Rect, cmds: &mut Vec<DrawCmd>| {
                 if let Some((dx, dy, blur, sc)) = drop {
-                    let c = sc.fade(n.sampled.ink.alpha);
+                    let c = sc.fade(n.style.sampled.ink.alpha);
                     copy(line, (dx, dy), Some(c), band, false, cmds);
                     if blur > 0.0 {
                         let d = blur / 2.0;
@@ -1636,7 +1642,7 @@ impl Ui {
             };
             let ink = sel
                 .color
-                .map_or(n.sampled.ink, |c| c.fade(n.sampled.ink.alpha));
+                .map_or(n.style.sampled.ink, |c| c.fade(n.style.sampled.ink.alpha));
             for &(y0, y1) in &runs {
                 let band = Rect::new(clip.x, y0, clip.width, y1 - y0);
                 if sel.shadows.is_none() {
@@ -1650,7 +1656,7 @@ impl Ui {
                         .map(|(o, blur, color)| og_draw::UiTextShadow {
                             offset: og_core::glam::Vec2::new(o[0] * sk, o[1] * sk),
                             blur: blur * sk,
-                            color: color.fade(alpha * n.sampled.ink.alpha).linear(),
+                            color: color.fade(alpha * n.style.sampled.ink.alpha).linear(),
                         })
                         .collect();
                     for cmd in &mut cmds[start..] {

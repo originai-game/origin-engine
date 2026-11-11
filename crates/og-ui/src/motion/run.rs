@@ -633,7 +633,7 @@ impl crate::ui::Style {
             }
             let key = n.key;
             let out = interaction.run_gesture(i, m, env, ui_out, tree);
-            tree.nodes[i].gesture = out;
+            tree.nodes[i].style.gesture = out;
             touched.insert(channel_key(key, DRAG_X));
             touched.insert(channel_key(key, DRAG_Y));
         }
@@ -866,7 +866,7 @@ impl crate::ui::Tree {
                     touched.insert(k);
                 }
             }
-            self.nodes[i].flip = out;
+            self.nodes[i].style.flip = out;
         }
     }
 
@@ -928,11 +928,11 @@ impl crate::ui::Tree {
                 },
                 1.0,
             );
-            let r = self.nodes[i].sampled.radius;
+            let r = self.nodes[i].style.sampled.radius;
             set(8, prev.radius, r);
             // The flip pivots on its top left: fold the scale into the offset
             // so the first frame sits exactly on the old rectangle.
-            self.nodes[i].flip = [
+            self.nodes[i].style.flip = [
                 prev.rect.x - rect.x,
                 prev.rect.y - rect.y,
                 if rect.width > 0.0 {
@@ -946,7 +946,7 @@ impl crate::ui::Tree {
                     1.0
                 },
             ];
-            self.nodes[i].sampled.radius = prev.radius;
+            self.nodes[i].style.sampled.radius = prev.radius;
             if let Some(f) = m.frozen.get(&prev.key).cloned() {
                 let ticks = crate::style::Theme::ticks(t.duration_ms(&tokens), tps);
                 let mut fade = Channel::at(1.0, now);
@@ -1715,7 +1715,7 @@ impl Ui {
                 Matched {
                     key: n.key,
                     rect: n.placed.screen,
-                    radius: n.sampled.radius,
+                    radius: n.style.sampled.radius,
                     tick: now,
                 },
             );

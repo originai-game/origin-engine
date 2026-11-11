@@ -69,14 +69,14 @@ impl Ui {
             }
             let part = match (n.el.part, n.el.frame) {
                 (Some(p), _) => p,
-                (None, Some(f)) if n.sampled.background.is_some() => f.part_ref(),
+                (None, Some(f)) if n.style.sampled.background.is_some() => f.part_ref(),
                 _ => continue,
             };
             let values = self.part_values(&part, Some(n.key));
             match self.part_draw_values(
                 &values,
                 [n.placed.rect.width, n.placed.rect.height],
-                n.sampled.background,
+                n.style.sampled.background,
                 self.tree.draws.get(&i),
             ) {
                 Ok(draw) => {
@@ -108,7 +108,7 @@ impl Ui {
         while j != NONE {
             let node = &self.tree.nodes[j];
             let fill = if sampled {
-                node.sampled.background
+                node.style.sampled.background
             } else {
                 node.el.background
             };

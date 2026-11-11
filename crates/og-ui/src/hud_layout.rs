@@ -668,7 +668,7 @@ impl crate::ui::Tree {
                 spec.key.clone()
             };
             let p = interaction.placement(&key);
-            self.nodes[i].custom = [p.x, p.y, p.scale, p.opacity];
+            self.nodes[i].style.custom = [p.x, p.y, p.scale, p.opacity];
         }
     }
 }

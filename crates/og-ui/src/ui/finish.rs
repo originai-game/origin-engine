@@ -836,10 +836,10 @@ impl Ui {
                 c.x = vp.width - c.x - c.width;
             }
             for &i in sampled {
-                let t = self.tree.nodes[i].sampled.transform;
+                let t = self.tree.nodes[i].style.sampled.transform;
                 // A document's transforms are physical: they turn as written.
                 if !t.is_identity() && !self.tree.nodes[i].props.flow.doc {
-                    self.tree.nodes[i].sampled.transform = t.mirrored();
+                    self.tree.nodes[i].style.sampled.transform = t.mirrored();
                 }
             }
         }

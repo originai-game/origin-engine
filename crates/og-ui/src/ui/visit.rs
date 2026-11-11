@@ -733,7 +733,7 @@ impl crate::ui::Tree {
         let z_moved = moved
             .iter()
             .chain(&self.emitted)
-            .any(|&i| i < n && o.z[i] != nodes[i].sampled.z);
+            .any(|&i| i < n && o.z[i] != nodes[i].style.sampled.z);
         let panels = world.panel_nodes();
         if o.draw_ok && !z_moved && panels == o.panels {
             return;
@@ -750,7 +750,7 @@ impl crate::ui::Tree {
         o.pos.resize(n, u32::MAX);
         for (k, &i) in draw.iter().enumerate() {
             o.pos[i] = k as u32;
-            o.z[i] = self.nodes[i].sampled.z;
+            o.z[i] = self.nodes[i].style.sampled.z;
         }
         o.ends = crate::layout::subtree_ends(&self.nodes, &draw);
         o.roots = draw
