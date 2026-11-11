@@ -329,10 +329,30 @@ fn range(f: &Field) -> String {
     r
 }
 
-fn fields_table(out: &mut String, ix: &Index<'_>, fields: &[Field]) {
-    if fields.is_empty() {
-        return;
+/// The prefix of a module overview's line naming its core items, which
+/// `og api show <module>` reads to list them.
+pub const CORE_PREFIX: &str = "- **Core** (what most games use): ";
+
+/// The fields as one table, or, when the type declares `group`s, one
+/// table under a `#### Heading` per group (fields before the first group first).
+fn fields_table(out: &mut String, ix: &Index<'_>, fields: &[Field], groups: &[FieldGroup]) {
+    let mut start = 0;
+    while start < fields.len() {
+        let group = fields[start].group.as_deref();
+        let end = fields[start..]
+            .iter()
+            .position(|f| f.group.as_deref() != group)
+            .map_or(fields.len(), |n| start + n);
+        if let Some(g) = group.and_then(|n| groups.iter().find(|g| g.name == n)) {
+            let _ = writeln!(out, "#### {}\n", g.name);
+            paragraphs(out, &g.doc);
+        }
+        field_rows(out, ix, &fields[start..end]);
+        start = end;
     }
+}
+
+fn field_rows(out: &mut String, ix: &Index<'_>, fields: &[Field]) {
     out.push_str("| Field | Type | Default | Range | Unit | Notes | Doc |\n");
     out.push_str("|---|---|---|---|---|---|---|\n");
     for f in fields {
@@ -521,7 +541,7 @@ fn record(out: &mut String, ix: &Index<'_>, m: &Module, r: &Record, binds: &[Bin
         schema_name(&r.name),
         r.name
     );
-    fields_table(out, ix, &r.fields);
+    fields_table(out, ix, &r.fields, &r.groups);
     quote(out, ix, &block(&ix.api.source, r.line), r.line, None);
     for f in &r.methods {
         callable(
@@ -554,7 +574,7 @@ fn type_item(out: &mut String, ix: &Index<'_>, item: &Item) {
                     "A desc: every field may be omitted and takes its default; `{}` is valid.\n\n",
                 );
             }
-            fields_table(out, ix, &s.fields);
+            fields_table(out, ix, &s.fields, &s.groups);
             quote(out, ix, &block(src, s.line), s.line, None);
         }
         Item::Enum(e) => {
@@ -692,6 +712,21 @@ fn module_pages(
         "- **Publish builds**: {} (members may override).",
         publish_text(m.publish)
     );
+    if !m.core.is_empty() {
+        let names: Vec<String> = m
+            .items
+            .iter()
+            .filter(|i| m.core.iter().any(|c| c == i.name()))
+            .map(|i| format!("`{}`", item_label(m, i).0))
+            .collect();
+        let _ = writeln!(
+            out,
+            "{CORE_PREFIX}{}; {} more are advanced (`og api show {} --all`).",
+            names.join(", "),
+            m.items.len() - names.len(),
+            m.name
+        );
+    }
     out.push_str("- **Index**: [every module and guide](index.md).\n\n");
     quote(
         &mut out,

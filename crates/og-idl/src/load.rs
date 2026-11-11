@@ -68,12 +68,22 @@ impl Loader {
             doc: self.inline(node, 1),
             place: Place::Namespace,
             publish: true,
+            core: Vec::new(),
+            see: Vec::new(),
             items: Vec::new(),
             line: node.line,
         };
         for child in children(node) {
             match child.key.as_str() {
                 "doc" => module.doc.extend(self.doc_line(child)),
+                "guide" => module.see.extend(self.guide_ref(child)),
+                "core" => {
+                    let words: Option<Vec<&str>> = child.values.iter().map(Value::as_word).collect();
+                    match words {
+                        Some(w) if !w.is_empty() => module.core.extend(w.into_iter().map(str::to_string)),
+                        _ => self.error(child.line, "`core` lists the module's core items by name, written bare"),
+                    }
+                }
                 "place" => match child.values.first().and_then(Value::as_word) {
                     Some("namespace") => module.place = Place::Namespace,
                     Some("root") => module.place = Place::Root,
@@ -146,11 +156,13 @@ impl Loader {
             returns_doc: Vec::new(),
             publish: None,
             host: true,
+            see: Vec::new(),
             line: node.line,
         };
         for child in children(node) {
             match child.key.as_str() {
                 "doc" => f.doc.extend(self.doc_line(child)),
+                "guide" => f.see.extend(self.guide_ref(child)),
                 "aliases" => f.aliases.extend(self.doc_line(child)),
                 "generic" => {
                     let (Some(n), Some(bound)) = (
@@ -183,7 +195,7 @@ impl Loader {
                 "host" => f.host = self.bool_value(child).unwrap_or(true),
                 other => self.error(
                     child.line,
-                    format!("unknown key `{other}` in fn `{}`: expected doc, generic, param, returns, publish or host", f.name),
+                    format!("unknown key `{other}` in fn `{}`: expected doc, guide, generic, param, returns, publish or host", f.name),
                 ),
             }
         }
@@ -245,22 +257,27 @@ impl Loader {
             aliases: Vec::new(),
             desc: false,
             fields: Vec::new(),
+            groups: Vec::new(),
+            see: Vec::new(),
             line: node.line,
         };
         for child in children(node) {
             match child.key.as_str() {
                 "doc" => s.doc.extend(self.doc_line(child)),
+                "guide" => s.see.extend(self.guide_ref(child)),
                 "aliases" => s.aliases.extend(self.doc_line(child)),
                 "desc" => s.desc = self.bool_value(child).unwrap_or(false),
+                "group" => s.groups.extend(self.group(child)),
                 "field" => {
-                    if let Some(f) = self.field(child) {
+                    if let Some(mut f) = self.field(child) {
+                        f.group = s.groups.last().map(|g| g.name.clone());
                         s.fields.push(f);
                     }
                 }
                 other => self.error(
                     child.line,
                     format!(
-                        "unknown key `{other}` in struct `{}`: expected doc, desc or field",
+                        "unknown key `{other}` in struct `{}`: expected doc, guide, aliases, desc, group or field",
                         s.name
                     ),
                 ),
@@ -286,11 +303,14 @@ impl Loader {
             tunable: false,
             readonly: false,
             optional: false,
+            see: Vec::new(),
+            group: None,
             line: node.line,
         };
         for child in children(node) {
             match child.key.as_str() {
                 "doc" => f.doc.extend(self.doc_line(child)),
+                "guide" => f.see.extend(self.guide_ref(child)),
                 "default" => f.default = Some(child.values.clone()),
                 "min" => f.min = self.number_value(child),
                 "max" => f.max = self.number_value(child),
@@ -319,7 +339,7 @@ impl Loader {
                 other => self.error(
                     child.line,
                     format!(
-                        "unknown key `{other}` in field `{}`: expected doc, default, min, max, step, unit, worldspace, label, tunable, readonly or optional",
+                        "unknown key `{other}` in field `{}`: expected doc, guide, default, min, max, step, unit, worldspace, label, tunable, readonly or optional",
                         f.name
                     ),
                 ),
@@ -336,11 +356,13 @@ impl Loader {
             aliases: Vec::new(),
             variants: Vec::new(),
             patterns: Vec::new(),
+            see: Vec::new(),
             line: node.line,
         };
         for child in children(node) {
             match child.key.as_str() {
                 "doc" => e.doc.extend(self.doc_line(child)),
+                "guide" => e.see.extend(self.guide_ref(child)),
                 "aliases" => e.aliases.extend(self.doc_line(child)),
                 "variant" | "pattern" => {
                     let name = if child.key == "pattern" {
@@ -371,7 +393,7 @@ impl Loader {
                 other => self.error(
                     child.line,
                     format!(
-                        "unknown key `{other}` in enum `{}`: expected doc, variant or pattern",
+                        "unknown key `{other}` in enum `{}`: expected doc, guide, aliases, variant or pattern",
                         e.name
                     ),
                 ),
@@ -388,11 +410,13 @@ impl Loader {
             aliases: Vec::new(),
             tag: String::new(),
             cases: Vec::new(),
+            see: Vec::new(),
             line: node.line,
         };
         for child in children(node) {
             match child.key.as_str() {
                 "doc" => u.doc.extend(self.doc_line(child)),
+                "guide" => u.see.extend(self.guide_ref(child)),
                 "aliases" => u.aliases.extend(self.doc_line(child)),
                 "tag" => {
                     u.tag = child
@@ -422,7 +446,7 @@ impl Loader {
                 other => self.error(
                     child.line,
                     format!(
-                        "unknown key `{other}` in union `{}`: expected doc, tag or case",
+                        "unknown key `{other}` in union `{}`: expected doc, guide, aliases, tag or case",
                         u.name
                     ),
                 ),
@@ -443,11 +467,13 @@ impl Loader {
             extends: None,
             publish: None,
             members: Vec::new(),
+            see: Vec::new(),
             line: node.line,
         };
         for child in children(node) {
             match child.key.as_str() {
                 "doc" => i.doc.extend(self.doc_line(child)),
+                "guide" => i.see.extend(self.guide_ref(child)),
                 "aliases" => i.aliases.extend(self.doc_line(child)),
                 "extends" => i.extends = child.values.first().and_then(Value::as_word).map(str::to_string),
                 "publish" => i.publish = self.bool_value(child),
@@ -464,14 +490,16 @@ impl Loader {
                         doc: self.inline(child, 2),
                         publish: None,
                         host: true,
+                        see: Vec::new(),
                         line: child.line,
                     };
                     for g in children(child) {
                         match g.key.as_str() {
                             "doc" => prop.doc.extend(self.doc_line(g)),
+                            "guide" => prop.see.extend(self.guide_ref(g)),
                             "publish" => prop.publish = self.bool_value(g),
                             "host" => prop.host = self.bool_value(g).unwrap_or(true),
-                            other => self.error(g.line, format!("unknown key `{other}` in prop: expected doc, publish or host")),
+                            other => self.error(g.line, format!("unknown key `{other}` in prop: expected doc, guide, publish or host")),
                         }
                     }
                     i.members.push(Member::Prop(prop));
@@ -483,7 +511,7 @@ impl Loader {
                 }
                 other => self.error(
                     child.line,
-                    format!("unknown key `{other}` in interface `{}`: expected doc, extends, publish, prop or fn", i.name),
+                    format!("unknown key `{other}` in interface `{}`: expected doc, guide, aliases, extends, publish, prop or fn", i.name),
                 ),
             }
         }
@@ -576,15 +604,20 @@ impl Loader {
             doc: self.inline(node, 1),
             aliases: Vec::new(),
             fields: Vec::new(),
+            groups: Vec::new(),
             methods: Vec::new(),
+            see: Vec::new(),
             line: node.line,
         };
         for child in children(node) {
             match child.key.as_str() {
                 "doc" => r.doc.extend(self.doc_line(child)),
+                "guide" => r.see.extend(self.guide_ref(child)),
                 "aliases" => r.aliases.extend(self.doc_line(child)),
+                "group" => r.groups.extend(self.group(child)),
                 "field" => {
-                    if let Some(f) = self.field(child) {
+                    if let Some(mut f) = self.field(child) {
+                        f.group = r.groups.last().map(|g| g.name.clone());
                         r.fields.push(f);
                     }
                 }
@@ -596,7 +629,7 @@ impl Loader {
                 other => self.error(
                     child.line,
                     format!(
-                        "unknown key `{other}` in {} `{}`: expected doc, field{}",
+                        "unknown key `{other}` in {} `{}`: expected doc, guide, aliases, group, field{}",
                         kind.as_str(),
                         r.name,
                         if kind == RecordKind::Resource {
@@ -609,6 +642,55 @@ impl Loader {
             }
         }
         Some(r)
+    }
+
+    /// `guide "saves §2"` or `guide "saves"`.
+    fn guide_ref(&mut self, node: &Node) -> Option<GuideRef> {
+        let text = self.string_value(node)?;
+        let (guide, section) = match text.split_once(" §") {
+            Some((g, n)) => match n.parse() {
+                Ok(n) => (g, Some(n)),
+                Err(_) => {
+                    self.error(node.line, format!("`guide \"{text}\"`: the section after § is a number"));
+                    return None;
+                }
+            },
+            None => (text.as_str(), None),
+        };
+        if guide.is_empty() || !guide.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-') {
+            self.error(node.line, format!("`guide \"{text}\"` names a guide by its file name, as `guide \"saves §2\"`"));
+            return None;
+        }
+        Some(GuideRef {
+            guide: guide.to_string(),
+            section,
+            line: node.line,
+        })
+    }
+
+    /// `group "Shadows"` with an optional doc string after it.
+    fn group(&mut self, node: &Node) -> Option<FieldGroup> {
+        match node.values.as_slice() {
+            [Value::String(name), rest @ ..]
+                if node.block.is_none() && rest.iter().all(|v| matches!(v, Value::String(_))) =>
+            {
+                Some(FieldGroup {
+                    name: name.clone(),
+                    doc: rest
+                        .iter()
+                        .filter_map(|v| match v {
+                            Value::String(s) => Some(s.clone()),
+                            _ => None,
+                        })
+                        .collect(),
+                    line: node.line,
+                })
+            }
+            _ => {
+                self.error(node.line, "a group is written `group \"<heading>\"`, optionally followed by a quoted doc");
+                None
+            }
+        }
     }
 
     // ── value helpers ────────────────────────────────────────────────────

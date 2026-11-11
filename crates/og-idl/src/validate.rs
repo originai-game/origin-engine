@@ -259,6 +259,37 @@ impl<'a> Validator<'a, '_> {
                     }
                 }
             }
+            let mut core = BTreeSet::new();
+            for name in &module.core {
+                if !module.items.iter().any(|i| i.name() == name) {
+                    self.error(
+                        module.line,
+                        format!("`core {name}` in module `{}` names no item of it", module.name),
+                    );
+                }
+                if !core.insert(name.as_str()) {
+                    self.error(
+                        module.line,
+                        format!("`core {name}` is listed twice in module `{}`", module.name),
+                    );
+                }
+            }
+            for item in &module.items {
+                let (owner, groups, fields) = match item {
+                    Item::Struct(s) => (&s.name, &s.groups, &s.fields),
+                    Item::Record(r) => (&r.name, &r.groups, &r.fields),
+                    _ => continue,
+                };
+                let mut seen = BTreeSet::new();
+                for g in groups {
+                    if !seen.insert(g.name.as_str()) {
+                        self.error(g.line, format!("duplicate group `{}` in `{owner}`", g.name));
+                    }
+                    if !fields.iter().any(|f| f.group.as_ref() == Some(&g.name)) {
+                        self.error(g.line, format!("group `{}` in `{owner}` has no field after it", g.name));
+                    }
+                }
+            }
         }
     }
 
@@ -1095,4 +1126,31 @@ fn placelike(name: &str) -> bool {
             || (lower.ends_with(w)
                 && name[name.len() - w.len()..].starts_with(|c: char| c.is_ascii_uppercase()))
     })
+}
+
+/// Every `guide` reference names a guide beside the IDL and, when it gives
+/// one, a `## N.` section of it. Run by `read`, once the guides are loaded.
+pub(crate) fn guide_refs(api: &Api) -> Vec<Diagnostic> {
+    let mut out = Vec::new();
+    for r in api.guide_refs() {
+        let Some(g) = api.guides.iter().find(|g| g.name == r.guide) else {
+            out.push(Diagnostic {
+                line: r.line,
+                message: format!(
+                    "`guide \"{r}\"` names no guide: crates/og-api/guides/ has {}",
+                    api.guides.iter().map(|g| g.name.as_str()).collect::<Vec<_>>().join(", ")
+                ),
+            });
+            continue;
+        };
+        if let Some(n) = r.section
+            && !g.sections().contains(&n)
+        {
+            out.push(Diagnostic {
+                line: r.line,
+                message: format!("`guide \"{r}\"`: the `{}` guide has no section `## {n}.`", g.name),
+            });
+        }
+    }
+    out
 }

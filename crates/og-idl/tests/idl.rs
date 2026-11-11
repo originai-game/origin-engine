@@ -75,6 +75,67 @@ module test {
     }
 }
 
+/// `guide`, `group` and `core` reach the outputs: a declaration's guide
+/// reference ends its doc as "See …" in the `.d.ts` and the wiki, a group
+/// heads its fields in both, and the core tier is named on the module's page.
+#[test]
+fn guide_references_field_groups_and_the_core_tier_are_rendered() {
+    let source = r#"type api
+version 1
+---
+package "@origingame/tier-test"
+doc "Tier fixture."
+module test {
+  doc "Tiers."
+  core save
+  struct FieldOptions {
+    doc "Field metadata."
+    desc true
+  }
+  struct SaveDesc {
+    doc "How to save."
+    desc true
+    guide "saves §2"
+    field slot String "The slot."
+    group "Size" "What bounds a save."
+    field limit u32 "The most bytes." {
+      guide "saves"
+    }
+  }
+  fn save {
+    doc "Save the world."
+    param desc SaveDesc "How."
+  }
+  fn load {
+    doc "Load the world."
+  }
+}
+"#;
+    let mut api = og_idl::parse(source).unwrap();
+    let files = og_idl::generate(&api);
+    let text = |end: &str| &files.iter().find(|f| f.path.ends_with(end)).unwrap().contents;
+    let dts = text("types/index.d.ts");
+    assert!(dts.contains(" * How to save.\n * See `saves §2`."), "{dts}");
+    assert!(dts.contains("  // ── Size ──\n  // What bounds a save.\n"), "{dts}");
+    assert!(dts.contains("The most bytes.\n   * See `saves`."), "{dts}");
+    let page = text("wiki/test/type-SaveDesc.md");
+    assert!(page.contains("#### Size\n\nWhat bounds a save.\n\n| Field |"), "{page}");
+    assert!(page.contains("See `saves §2`."), "{page}");
+    let overview = text("wiki/test.md");
+    assert!(
+        overview.contains("- **Core** (what most games use): `og.test.save`; 3 more are advanced"),
+        "{overview}"
+    );
+    // A reference resolves only against a guide that has the section.
+    api.guides = vec![og_idl::Guide {
+        name: "saves".into(),
+        text: "# Saves\n\nSummary.\n\n## 1. One\n\n```\n## 2. not a section\n```\n".into(),
+    }];
+    let refs: Vec<String> = api.guide_refs().iter().map(|r| r.to_string()).collect();
+    assert_eq!(refs, ["saves §2", "saves"]);
+    assert_eq!(api.guides[0].sections(), [1]);
+}
+
 #[test]
 fn the_repository_idl_is_valid_and_covers_the_design() {
     let api = api();
