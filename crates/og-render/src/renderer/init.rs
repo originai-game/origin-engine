@@ -12,7 +12,7 @@ impl Renderer {
         if clock.is_none() {
             self.pass_ms.clear();
             self.gpu_timer = None;
-        } else if self.gpu_timer.is_none() {
+        } else if self.gpu_timer.is_none() && self.info.caps.contains(Caps::TIMESTAMPS) {
             self.gpu_timer = timing::GpuTimer::new(&self.device, &self.queue);
         }
     }
@@ -217,12 +217,16 @@ impl Renderer {
         shared: Option<(wgpu::Device, wgpu::Queue, Option<pipeline_cache::DiskCache>)>,
     ) -> Result<Renderer, RenderError> {
         let adapter_info = adapter.get_info();
-        // What the adapter has, less what the caller treats as absent.
+        // What the adapter has, less what the caller treats as absent,
+        // under the tier's ceiling (caps.rs): every decision below about
+        // the device reads these.
         let adapter_features = adapter.features() - desc.without_features;
-        let indirect = adapter
-            .get_downlevel_capabilities()
-            .flags
-            .contains(wgpu::DownlevelFlags::INDIRECT_EXECUTION);
+        let adapter_flags = adapter.get_downlevel_capabilities().flags;
+        let mut caps =
+            Caps::of(adapter_features, adapter_flags, &adapter.limits()) & desc.tier.ceiling();
+        let adapter_features = caps.features(adapter_features);
+        let flags = caps.downlevel(adapter_flags);
+        let indirect = caps.contains(Caps::INDIRECT);
         let msaa_ok = supports_msaa(&adapter);
         let antialias = match desc.antialias {
             Antialias::Off => Antialias::Off,
@@ -263,16 +267,13 @@ impl Renderer {
         // GPU pass timing (`timing.rs`) where the adapter has timestamps
         // (a publish build has none), and og.motion's slice timing when
         // asked (`RenderDesc::timestamps`), publish too.
-        if (cfg!(not(feature = "publish")) || desc.timestamps)
-            && adapter_features.contains(wgpu::Features::TIMESTAMP_QUERY)
-        {
+        if (cfg!(not(feature = "publish")) || desc.timestamps) && caps.contains(Caps::TIMESTAMPS) {
             features |= wgpu::Features::TIMESTAMP_QUERY;
         }
         // Crowds on the GPU-driven path (crowd_gpu.rs) start each level's
         // indirect draw at the first instance the cull found; without the
         // feature they are drawn through the CPU's skinned lists.
-        let crowd_indirect =
-            indirect && adapter_features.contains(wgpu::Features::INDIRECT_FIRST_INSTANCE);
+        let crowd_indirect = caps.contains(Caps::INDIRECT | Caps::INDIRECT_FIRST_INSTANCE);
         if crowd_indirect {
             features |= wgpu::Features::INDIRECT_FIRST_INSTANCE;
         }
@@ -297,10 +298,7 @@ impl Renderer {
             max_texture_size: limits.max_texture_dimension_2d,
             volumetric: desc.volumetric.unwrap_or(VolumetricMethod::Froxel),
             volumetric_lights: 0,
-            sprite_anisotropy: if adapter
-                .get_downlevel_capabilities()
-                .flags
-                .contains(wgpu::DownlevelFlags::ANISOTROPIC_FILTERING)
+            sprite_anisotropy: if flags.contains(wgpu::DownlevelFlags::ANISOTROPIC_FILTERING)
                 && !is_software_adapter(adapter_info.device_type, &adapter_info.name)
             {
                 SPRITE_ANISOTROPY
@@ -315,10 +313,9 @@ impl Renderer {
             without: desc.without,
             transparency: Transparency::Weighted,
             gpu_crowds: crowd_indirect,
-            visual_simulation: ribbons_gpu::GpuTrails::supported(
-                adapter.get_downlevel_capabilities().flags,
-            ),
+            visual_simulation: ribbons_gpu::GpuTrails::supported(flags),
             indirect_per_draw: desc.indirect_per_draw || webkit(),
+            caps,
         };
         info.volumetric_lights = volumetric::lights(info.volumetric);
         log::info!(
@@ -351,6 +348,12 @@ impl Renderer {
         };
         // Before any pipeline is made: every one is made with the cache.
         info.pipeline_cache = pipeline_disk.is_some();
+        // Timestamps only where the device was made with them (not asked
+        // for in a publish build, or a shared device without them).
+        if !device.features().contains(wgpu::Features::TIMESTAMP_QUERY) {
+            caps = caps.without(Caps::TIMESTAMPS);
+        }
+        info.caps = caps;
         // Natively a validation error panics, as wgpu-core's default
         // handler does (LostFlag::watch keeps that until the device is
         // lost), which is how native hosts and tests fail loudly; logging
@@ -401,7 +404,7 @@ impl Renderer {
             &device,
             desc.transparency,
             desc.transparency_layers,
-            adapter.get_downlevel_capabilities().flags,
+            flags,
             &device.limits(),
             &frame_entries,
         );
@@ -715,9 +718,8 @@ impl Renderer {
             mapped_at_creation: false,
         });
         let aurora_map = aurora::AuroraMap::placeholder(&device, &queue);
-        let surfaces =
-            ribbons_gpu::GpuTrails::supported(adapter.get_downlevel_capabilities().flags)
-                .then(|| surface::SurfacePipelines::new(&device));
+        let surfaces = ribbons_gpu::GpuTrails::supported(flags)
+            .then(|| surface::SurfacePipelines::new(&device));
         let garments = surfaces
             .as_ref()
             .map(|_| crate::garment_gpu::Pipelines::new(&device));
@@ -733,18 +735,11 @@ impl Renderer {
             &off.leave_out(FRAME_WGSL.to_string()),
             &off.leave_out(LIGHTING_WGSL.to_string()),
             samples,
-            adapter
-                .get_downlevel_capabilities()
-                .flags
-                .contains(wgpu::DownlevelFlags::COMPUTE_SHADERS),
+            flags.contains(wgpu::DownlevelFlags::COMPUTE_SHADERS),
             off.contains(crate::pipeline_features::Features::CAUSTICS),
         );
         // The vegetation's wind field (G2), simulated where compute runs.
-        let vegetation_compute = WORLD_3D
-            && adapter
-                .get_downlevel_capabilities()
-                .flags
-                .contains(wgpu::DownlevelFlags::COMPUTE_SHADERS);
+        let vegetation_compute = WORLD_3D && flags.contains(wgpu::DownlevelFlags::COMPUTE_SHADERS);
         let wind_field = crate::wind_field::WindFieldSim::new(&device, vegetation_compute);
         // The grass trample map (G3), pressed where compute runs.
         let trample = crate::trample::Trample::new(&device, vegetation_compute);
@@ -900,10 +895,7 @@ impl Renderer {
         ];
         // The strips expanded from their points (ribbons_gpu.rs), where
         // the device can: `vs_strip` reads them from group 2.
-        let gpu_trails = ribbons_gpu::GpuTrails::supported(
-            adapter.get_downlevel_capabilities().flags,
-        )
-        .then(|| {
+        let gpu_trails = ribbons_gpu::GpuTrails::supported(flags).then(|| {
             let points = ribbons_gpu::GpuTrails::draw_layout(&device);
             let strip_pl = pipeline_layout(
                 "strip",
@@ -1289,18 +1281,14 @@ impl Renderer {
             stylise_chain: None,
             sprite_arrays: None,
             sprite_meshes: None,
-            sprite_skin_supported: sprite_skin::SkinRenderer::supported(
-                adapter.get_downlevel_capabilities().flags,
-            ),
+            sprite_skin_supported: sprite_skin::SkinRenderer::supported(flags),
             sprite_normals: None,
             sprite_hooks: None,
             oit,
             sprite_shader,
             ribbon_shader,
             tiles_gpu: None,
-            tiles_gpu_supported: tiles_gpu::Tiles::supported(
-                adapter.get_downlevel_capabilities().flags,
-            ),
+            tiles_gpu_supported: tiles_gpu::Tiles::supported(flags),
         })
     }
 }

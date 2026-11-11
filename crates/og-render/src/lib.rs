@@ -318,6 +318,8 @@ mod visual_fluid;
 mod visual_sim;
 pub use visual_fluid::{VisualFluid, at_rest as visual_fluid_at_rest};
 pub use visual_sim::{VisualBody, VisualGarment};
+pub mod caps;
+pub use caps::{Caps, Tier};
 mod targets;
 mod terrain;
 mod terrain_error;

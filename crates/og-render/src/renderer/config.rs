@@ -331,6 +331,10 @@ pub struct RenderDesc {
     /// not, and the log says so once ([`RenderInfo::without`]). Not the
     /// adapter's features ([`Self::without_features`]).
     pub without: LitFeatures,
+    /// The tier to run as: a ceiling on the device's capabilities
+    /// ([`Caps`], `caps.rs`), so a limited tier runs on a full device.
+    /// [`Tier::Full`] by default: whatever the device can do.
+    pub tier: Tier,
 }
 
 /// The most planar reflections one frame draws
@@ -395,6 +399,7 @@ impl Default for RenderDesc {
             low_power: false,
             timestamps: false,
             without: LitFeatures::NONE,
+            tier: Tier::Full,
         }
     }
 }
@@ -494,6 +499,9 @@ pub struct RenderInfo {
     /// whose Metal backend races indirect draws that share a buffer, and
     /// where [`RenderDesc::indirect_per_draw`] asks for it.
     pub indirect_per_draw: bool,
+    /// What the device can do under [`RenderDesc::tier`] (`caps.rs`):
+    /// every decision about the device reads it.
+    pub caps: Caps,
 }
 
 /// The anisotropy clamp of the sprite sampler where the device filters
