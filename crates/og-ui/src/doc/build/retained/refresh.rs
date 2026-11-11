@@ -569,7 +569,7 @@ impl RetainedHost {
                 )
             },
         );
-        values.ordinal = ui.ordinal_of(
+        values.ordinal = ui.docs.ordinal_of(
             &e.document.nodes[e.index],
             &values,
             |filter, item_values| {

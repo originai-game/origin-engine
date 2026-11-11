@@ -381,7 +381,8 @@ impl Ui {
         self.close();
         if changed {
             let next = constrain(join(ty, &values, keep_day), min, max, step);
-            self.write_back(b, n, "dateValue", json!(format(ty, next, seconds)));
+            self.docs
+                .write_back(b, n, "dateValue", json!(format(ty, next, seconds)));
         }
         crate::ui::Response {
             changed,

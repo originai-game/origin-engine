@@ -44,7 +44,7 @@ impl Ui {
             !r.flag("autoplay")
         };
         let paused = if first && r.flag("autoplay") && paused {
-            self.write_back(b, n, "paused", json!(false));
+            self.docs.write_back(b, n, "paused", json!(false));
             false
         } else {
             paused
@@ -100,7 +100,8 @@ impl Ui {
         {
             self.docs.host.media_ops.push(op);
         }
-        self.media_write_backs(b, n, r, &state, paused, pending > 0);
+        self.docs
+            .media_write_backs(b, n, r, &state, paused, pending > 0);
         let t = self.env.theme;
         self.open(
             id,
@@ -155,7 +156,7 @@ impl Ui {
                 },
             );
             if resp.clicked {
-                self.write_back(b, n, "paused", json!(!paused));
+                self.docs.write_back(b, n, "paused", json!(!paused));
                 self.docs.host.media_ops.push(MediaOp {
                     player,
                     playing: Some(paused),
@@ -175,7 +176,7 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Docs {
     /// Svelte's read-only media bindings, and `paused` and `currentTime`
     /// as the player moves them.
     fn media_write_backs(

@@ -297,10 +297,10 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Docs {
     /// Positions the next build at a virtual container's row `k`.
     pub(super) fn structure_row(&mut self, k: usize) {
-        if let Some(level) = self.docs.host.levels.last_mut()
+        if let Some(level) = self.host.levels.last_mut()
             && let Some(&first) = level.items.get(k)
         {
             level.current = first.checked_sub(1);
@@ -309,7 +309,7 @@ impl Ui {
 
     /// Whether the element being built is the subject of `selector`.
     pub(super) fn structure_matches(&self, doc: &UiDocument, selector: &Selector) -> bool {
-        let levels = &self.docs.host.levels;
+        let levels = &self.host.levels;
         let Some(top) = levels.len().checked_sub(1) else {
             return false;
         };
@@ -327,7 +327,7 @@ impl Ui {
 
     /// The number of the `<li>` being built ([`crate::doc::lists::ordinal`]).
     pub(super) fn structure_ordinal(&self, filter: &[Selector], item_values: bool) -> i64 {
-        let levels = &self.docs.host.levels;
+        let levels = &self.host.levels;
         match levels
             .len()
             .checked_sub(1)
@@ -346,7 +346,7 @@ impl Ui {
         r: &Resolved,
         count: impl FnOnce(&[Selector], bool) -> i64,
     ) -> Option<i64> {
-        let profile = &self.docs.host.structure;
+        let profile = &self.host.structure;
         (profile.ordinals
             && n.selector_tag.as_deref() == Some("li")
             && r.str("markerType").is_some_and(crate::doc::lists::numbered))

@@ -514,7 +514,7 @@ impl Ui {
                         .ok_or_else(|| {
                             "og-overlay effect: material takes a material, not none".to_string()
                         })
-                        .and_then(|m| self.css_material(m))
+                        .and_then(|m| self.docs.css_material(m))
                 })
             })
             .transpose();
@@ -574,7 +574,7 @@ impl Ui {
             self.tree.nodes[i].a11y.name = Some(name.to_string());
         }
         self.tree.keep_world_panel(i, key, &mut self.world);
-        self.note_built(built);
+        self.docs.note_built(built);
         build_children(self, b, None);
         let resp = self.close();
         self.fire(b, n, key, &path, resp);
@@ -770,7 +770,7 @@ impl Ui {
         if let Some(name) = r.str("mass").filter(|m| !m.is_empty()) {
             let name = name.to_owned();
             self.build_mass(b, n, r, &name, &path, key);
-            self.note_built(built);
+            self.docs.note_built(built);
             return Some(path);
         }
         let el = Self::box_of(
@@ -800,7 +800,7 @@ impl Ui {
             self.tree.nodes[i].a11y.name = Some(name.to_string());
         }
         self.world.kept.insert(self.tree.nodes[i].key, (desc, key));
-        self.note_built(built);
+        self.docs.note_built(built);
         build_children(self, b, None);
         let resp = self.close();
         self.fire(b, n, key, &path, resp);

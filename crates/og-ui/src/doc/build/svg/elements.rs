@@ -478,7 +478,7 @@ impl Ui {
                 b.doc.source, n.line
             ));
         }
-        self.note_built(built);
+        self.docs.note_built(built);
         let inherited = std::mem::replace(&mut b.inherited, computed);
         build_children(self, b, None);
         b.inherited = inherited;
@@ -536,7 +536,7 @@ impl Ui {
             .unwrap_or([0.0, 0.0, DEFAULT_SIZE[0], DEFAULT_SIZE[1]]);
         if kind == "svgText" {
             self.build_svg_text(b, n, id, r, props, &path, key, vb);
-            self.note_built(built);
+            self.docs.note_built(built);
             return Some(path);
         }
         if kind == "svgForeign" {
@@ -619,7 +619,7 @@ impl Ui {
         // an SVG `<filter>`, the innermost of its layers.
         let filter = match r.str("svgFilter").map(str::trim) {
             Some(v) if kind != "svg" && v != "none" && !v.is_empty() => {
-                match self.svg_filter(b, n, kind, r, v, &t, vb) {
+                match self.docs.svg_filter(b, n, kind, r, v, &t, vb, &self.env) {
                     Ok(f) => Some(f),
                     Err(e) => {
                         warn(self, format!("filter: {e}"));
@@ -687,7 +687,7 @@ impl Ui {
             };
         };
         if kind == "svgShape" && n.selector_tag.as_deref() == Some("image") {
-            match self.image_draw(b, r, &t, vb) {
+            match self.docs.image_draw(b, r, &t, vb, &self.env) {
                 Ok(Some(draw)) if cut.is_none() => self.set_draw(filtered(draw)),
                 Ok(Some(draw)) => self.set_draw(draw),
                 Ok(None) => {}
@@ -750,7 +750,7 @@ impl Ui {
             let bbox = f.svg.map_or([0.0; 4], |(_, bbox)| bbox);
             self.build_element_images(b, n, &computed, &[&**f], ImageSpace::Svg(t, bbox));
         }
-        self.note_built(built);
+        self.docs.note_built(built);
         if kind != "svgShape" {
             let inherited = std::mem::replace(&mut b.inherited, computed);
             build_children(self, b, None);
@@ -762,7 +762,7 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Docs {
     /// An `<image href x y width height preserveAspectRatio>`: an atlas
     /// icon by name, or a render texture by handle, filling its rect.
     /// An SVG element's `filter` reference: the `<filter>` in its user
@@ -778,6 +778,7 @@ impl Ui {
         reference: &str,
         t: &Affine,
         vb: [f32; 4],
+        env: &crate::ui::Env,
     ) -> Result<std::sync::Arc<crate::paint::FilterUse>, String> {
         let image = |href: &str| -> Result<(og_draw::TextureHandle, [f32; 4]), String> {
             match href.parse::<f64>() {
@@ -786,7 +787,7 @@ impl Ui {
                     .texture(h)
                     .map(|t| (t, [0.0, 0.0, 1.0, 1.0]))
                     .ok_or_else(|| format!("href {h} names no texture")),
-                Err(_) => match self.env.icons.find(href) {
+                Err(_) => match env.icons.find(href) {
                     Some(crate::ui::IconCell::Image(texture, uv)) => Ok((texture, uv)),
                     _ => Err(format!("href \"{href}\" names no atlas image")),
                 },
@@ -844,6 +845,7 @@ impl Ui {
         r: &Resolved,
         t: &Affine,
         vb: [f32; 4],
+        env: &crate::ui::Env,
     ) -> Result<Option<ElementDraw>, String> {
         let get = |p: &str| r.str(p);
         let len = |p: &str, whole: f32| -> Result<f32, String> {
@@ -876,7 +878,7 @@ impl Ui {
                     .ok_or_else(|| format!("href {h} names no texture"))?,
                 [0.0, 0.0, 1.0, 1.0],
             ),
-            Err(_) => match self.env.icons.find(href) {
+            Err(_) => match env.icons.find(href) {
                 Some(crate::ui::IconCell::Image(texture, uv)) => (texture, uv),
                 Some(_) => {
                     return Err(format!(

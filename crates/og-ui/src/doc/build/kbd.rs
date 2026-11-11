@@ -41,7 +41,8 @@ impl Ui {
                     self.remember(&capturing, 0.0);
                 }
                 if let Some(code) = key {
-                    self.write_back(b, n, "binding", serde_json::json!(code));
+                    self.docs
+                        .write_back(b, n, "binding", serde_json::json!(code));
                 }
             }
             let shown = if on { "…".to_string() } else { cap };

@@ -54,7 +54,7 @@ impl RenderFields {
                 _ => 0.0,
             },
             texture,
-            art: (kind == "art").then(|| ui.last_art_path()),
+            art: (kind == "art").then(|| ui.docs.last_art_path()),
             hidden: node.hidden,
         }
     }
@@ -451,7 +451,7 @@ impl Ui {
             });
         }
         if let Some(Ok(Some(m))) = r.str("material").map(p::material) {
-            match self.css_material(m) {
+            match self.docs.css_material(m) {
                 Ok(l) => c.layer = Some(l),
                 Err(e) => warn.push(e),
             }
@@ -610,7 +610,7 @@ impl Ui {
                 if let Some([focal, _]) = at {
                     spec.focal = focal;
                 }
-                if let Some(slot) = self.art_slot_mut(&path) {
+                if let Some(slot) = self.docs.art_slot_mut(&path) {
                     *slot = spec.clone();
                 }
                 self.apply_art(
@@ -1383,7 +1383,7 @@ mod tests {
                     (
                         node.node,
                         values,
-                        patched.render_fields(key).unwrap().clone(),
+                        patched.docs.render_fields(key).unwrap().clone(),
                     )
                 })
                 .collect();

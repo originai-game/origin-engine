@@ -838,7 +838,9 @@ impl Ui {
     }
 
     pub(crate) fn restore_docs_state(&mut self, v: &Value) -> Result<(), String> {
-        let retained = self.restore_document_mounts(&v["mounts"], &v["mountRegistrations"])?;
+        let retained = self
+            .docs
+            .restore_document_mounts(&v["mounts"], &v["mountRegistrations"])?;
         if let Some(stores) = v.get("stores") {
             self.docs.reactive.restore(stores)?;
         } else {
@@ -906,11 +908,10 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Docs {
     /// The stack index of a mounted layer.
     pub(crate) fn mount_layer(&self, mount: &SourceId) -> Option<usize> {
-        self.docs
-            .host
+        self.host
             .layers
             .layers
             .iter()
@@ -919,11 +920,11 @@ impl Ui {
 
     /// The layer state snapshots carry, as JSON.
     pub(crate) fn docs_state(&self) -> Value {
-        let d = &self.docs.host;
+        let d = &self.host;
         json!({
             "next": d.layers.next,
             "heldScale": d.layers.held_scale,
-            "stores": self.docs.reactive.save(),
+            "stores": self.reactive.save(),
             "mounts": d.retained.save(),
             "mountRegistrations": self.document_registration_state(),
             "seen": d.seen_now.iter().map(u64::to_string).collect::<Vec<_>>(),
@@ -1133,7 +1134,13 @@ mod tests {
             seen.last().is_some_and(|(o, n)| o.is_none() && *n == 0),
             "{seen:?}"
         );
-        assert!(ui.document_mount_inputs().as_array().unwrap().is_empty());
+        assert!(
+            ui.docs
+                .document_mount_inputs()
+                .as_array()
+                .unwrap()
+                .is_empty()
+        );
     }
 
     /// `::view-transition { background-image: url("…") }`: the cover shows
@@ -1216,7 +1223,7 @@ mod tests {
         );
         assert_eq!(seen[gone].2, Some(true));
         assert!(seen.last().unwrap().2.is_none(), "{seen:?}");
-        assert!(ui.document_mount_inputs().as_array().unwrap().len() == 1);
+        assert!(ui.docs.document_mount_inputs().as_array().unwrap().len() == 1);
     }
 
     /// The frame's solid red shapes (the shared element), on the screen.

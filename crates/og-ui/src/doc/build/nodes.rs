@@ -129,7 +129,7 @@ impl Ui {
                 let mut built = Built::default();
                 let opened = self.enter_structure(b, i);
                 let rp = self.resolve(b, n, &mount, &mut built, &b.inherited, &mut |s| {
-                    self.structure_matches(&doc, s)
+                    self.docs.structure_matches(&doc, s)
                 });
                 self.docs.host.component_root = self.docs.host.structure.any;
                 self.out.warnings.extend(
@@ -206,10 +206,10 @@ impl Ui {
         let opened = self.enter_structure(b, i);
         let children = self.child_level(b, n);
         let mut r = self.resolve(b, n, &path, &mut built, &b.inherited, &mut |s| {
-            self.structure_matches(&doc, s)
+            self.docs.structure_matches(&doc, s)
         });
-        r.ordinal = self.ordinal_of(n, &r, |filter, item_values| {
-            self.structure_ordinal(filter, item_values)
+        r.ordinal = self.docs.ordinal_of(n, &r, |filter, item_values| {
+            self.docs.structure_ordinal(filter, item_values)
         });
         self.out.warnings.extend(
             r.cascade
@@ -289,7 +289,7 @@ impl Ui {
         }
         self.docs.host.seen_now.insert(key);
         self.note_selection(key, &r);
-        self.remember_queried(b, i, &path, key, &r);
+        self.docs.remember_queried(b, i, &path, key, &r);
         self.docs
             .host
             .scroll_now
@@ -467,9 +467,9 @@ impl Ui {
                 fields.text = raw_of(&styled, b);
             }
             self.apply_document_fields(&doc, n, &styled, &fields);
-            self.note_render_fields(key, fields);
+            self.docs.note_render_fields(key, fields);
             if styled.has("dataOgTouch") {
-                self.note_touch_button(&styled);
+                self.tree.note_touch_button(&styled, &mut self.docs);
             }
             if styled.has("emitter")
                 || styled.has("meta")
@@ -479,7 +479,7 @@ impl Ui {
             }
         }
         self.popover_invoker(b, &styled, key, resp);
-        self.note_built(built);
+        self.docs.note_built(built);
         self.hold(key, n, &styled, last);
         self.fire(b, n, key, &path, resp);
         Some(path)
@@ -496,8 +496,8 @@ impl Ui {
     ) -> Option<og_draw::TextureHandle> {
         // An art slot: its art fitted by its spec, or the style's
         // placeholder for its kind (docs/ui.md §3.3).
-        self.art_spec(path, r);
-        let mut spec = self.last_art().clone();
+        self.docs.art_spec(path, r);
+        let mut spec = self.docs.last_art().clone();
         let (at, nearest) = r.object_css();
         if let Some([focal, _]) = at {
             spec.focal = focal;
@@ -629,8 +629,8 @@ impl Ui {
         );
         resp.changed = out.changed;
         if out.changed {
-            self.write_back(b, n, "low", json!(out.low));
-            self.write_back(b, n, "high", json!(out.high));
+            self.docs.write_back(b, n, "low", json!(out.low));
+            self.docs.write_back(b, n, "high", json!(out.high));
         }
         resp
     }
@@ -786,9 +786,9 @@ impl Ui {
                     let mut fields =
                         fields::RenderFields::capture(self, key, at, kind, resp, props, None);
                     fields.unstyle_virtual();
-                    self.note_render_fields(key, fields);
+                    self.docs.note_render_fields(key, fields);
                 }
-                self.note_built(built);
+                self.docs.note_built(built);
                 self.fire(b, n, key, &path, resp);
                 return Some(path);
             }
@@ -808,10 +808,10 @@ impl Ui {
         let fields =
             fields::RenderFields::capture(self, key, self.tree.parent(), kind, resp, props, None);
         self.apply_document_fields(doc, n, r, &fields);
-        self.note_render_fields(key, fields);
+        self.docs.note_render_fields(key, fields);
         // A content button feeds og-input's action as a text one does.
         if kind == "button" && r.has("dataOgTouch") {
-            self.note_touch_button(r);
+            self.tree.note_touch_button(r, &mut self.docs);
         }
         if kind == "box"
             && n.selector_tag.as_deref() == Some("li")
@@ -859,7 +859,15 @@ impl Ui {
         }
         if let Some(id) = r.str("rive") {
             let at = self.tree.parent();
-            self.play_rive(at, id, &path);
+            self.docs.play_rive(
+                at,
+                id,
+                &path,
+                &self.env,
+                &mut self.out,
+                &mut self.interaction,
+                &mut self.tree,
+            );
         }
         if r.has("emitter") || r.has("meta") || self.world.kept_effects.contains_key(&key) {
             let at = self.tree.parent();
@@ -871,7 +879,7 @@ impl Ui {
             let short = format!("{}/{}", b.mount, n.id);
             self.docs.host.slots.entry(short).or_insert(at);
         }
-        self.note_built(built);
+        self.docs.note_built(built);
         if shows_content {
             // Its filters' `feImage`s of elements, as its first children.
             let at = self.tree.parent();
@@ -922,7 +930,7 @@ impl Ui {
                     f64::from(u8::from(open)),
                 );
             }
-            self.write_back(b, n, "open", json!(open));
+            self.docs.write_back(b, n, "open", json!(open));
         }
         self.popover_invoker(b, r, key, resp);
         self.hold(key, n, r, self.tree.last_closed);
@@ -1241,7 +1249,7 @@ impl Ui {
                 .ok()
                 .and_then(|k| values.get(k))
         {
-            self.write_back(b, n, "current", json!(v));
+            self.docs.write_back(b, n, "current", json!(v));
         }
         resp
     }
@@ -1296,7 +1304,7 @@ impl Ui {
             ..out.response
         };
         if out.changed {
-            self.write_back(b, n, "value", json!(out.value));
+            self.docs.write_back(b, n, "value", json!(out.value));
         }
         resp
     }
@@ -1358,7 +1366,7 @@ impl Ui {
             ..out.response
         };
         if out.changed {
-            self.write_back(b, n, "checked", json!(out.on));
+            self.docs.write_back(b, n, "checked", json!(out.on));
         }
         resp
     }
@@ -1436,7 +1444,7 @@ impl Ui {
             ..crate::Response::default()
         };
         if out.changed && out.selected == 0 {
-            self.write_back(b, n, "group", json!(choice));
+            self.docs.write_back(b, n, "group", json!(choice));
         }
         resp
     }
@@ -1517,8 +1525,8 @@ impl Ui {
         };
         if resp.changed {
             match values.get(selected) {
-                Some(v) => self.write_back(b, n, "current", json!(v)),
-                None => self.write_back(b, n, "selected", json!(selected)),
+                Some(v) => self.docs.write_back(b, n, "current", json!(v)),
+                None => self.docs.write_back(b, n, "selected", json!(selected)),
             }
         }
         resp
@@ -1642,7 +1650,7 @@ impl Ui {
             }
         }
         if resp.changed {
-            self.write_back(b, n, "input", json!(s));
+            self.docs.write_back(b, n, "input", json!(s));
         }
         // HTML bars disabled and read-only controls from validation.
         let barred = r.flag("disabled") || r.flag("readonly");
@@ -1689,7 +1697,7 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Docs {
     /// A control's two-way prop: its binding's path takes the new value.
     pub(super) fn write_back(&mut self, b: &mut Build<'_>, n: &DocNode, prop: &str, v: Value) {
         let bound = n.props.iter().rev().find(|p| p.name() == prop);
