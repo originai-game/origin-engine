@@ -26,6 +26,16 @@ pub struct CommandStep {
 }
 
 impl CommandStep {
+    /// Argument `i`, or the refusal that names `usage` when it is missing
+    /// or empty.
+    pub(crate) fn arg(&self, i: usize, usage: &str) -> Result<&str, String> {
+        self.args
+            .get(i)
+            .map(String::as_str)
+            .filter(|a| !a.is_empty())
+            .ok_or_else(|| format!("missing argument; write `{usage}`"))
+    }
+
     pub fn to_json(&self) -> Value {
         json!({"at": self.at, "action": self.action, "args": self.args})
     }

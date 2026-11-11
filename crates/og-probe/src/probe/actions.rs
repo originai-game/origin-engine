@@ -46,18 +46,12 @@ impl Probe {
     /// The actions that write the world: `teleport`, `frame_entity`, `set`, `seed`.
     fn world_step(&mut self, world: &mut World, step: &CommandStep) -> Result<(), String> {
         let args = &step.args;
-        let arg = |i: usize, usage: &str| -> Result<&str, String> {
-            args.get(i)
-                .map(String::as_str)
-                .filter(|a| !a.is_empty())
-                .ok_or_else(|| format!("missing argument; write `{usage}`"))
-        };
         let joined = args.join(":");
         match step.action.as_str() {
             "teleport" => {
-                let id = arg(0, "teleport:<entity>:x,y,z")?;
+                let id = step.arg(0, "teleport:<entity>:x,y,z")?;
                 let e = self.entity_of(world, id)?;
-                let mut xyz = numbers(arg(1, "teleport:<entity>:x,y,z")?)?;
+                let mut xyz = numbers(step.arg(1, "teleport:<entity>:x,y,z")?)?;
                 let tid = engine_type(world, "Transform")?;
                 let current = world.get_bytes(e, tid).map_err(|e| e.reason().to_owned())?;
                 let schema = world
@@ -84,7 +78,7 @@ impl Probe {
                 Ok(())
             }
             "frame_entity" => {
-                let id = arg(0, "frame_entity:<entity>")?;
+                let id = step.arg(0, "frame_entity:<entity>")?;
                 let e = self.entity_of(world, id)?;
                 let target = self.position_of(world, e)?;
                 let cid = engine_type(world, "Camera")?;
@@ -128,7 +122,8 @@ impl Probe {
                 self.tune(world, target, text)
             }
             "seed" => {
-                let seed: u32 = arg(0, "seed:<n>")?
+                let seed: u32 = step
+                    .arg(0, "seed:<n>")?
                     .trim()
                     .parse()
                     .map_err(|_| "the seed is a whole number in [0, 4294967295]".to_owned())?;
@@ -147,12 +142,6 @@ impl Probe {
     fn dump_step(&mut self, world: &mut World, step: &CommandStep) -> Result<(), String> {
         let tick = world.time().tick;
         let args = &step.args;
-        let arg = |i: usize, usage: &str| -> Result<&str, String> {
-            args.get(i)
-                .map(String::as_str)
-                .filter(|a| !a.is_empty())
-                .ok_or_else(|| format!("missing argument; write `{usage}`"))
-        };
         match step.action.as_str() {
             #[cfg(not(feature = "publish"))]
             "describe" => {
@@ -201,7 +190,7 @@ impl Probe {
             }
             #[cfg(not(feature = "publish"))]
             "dump_entity" => {
-                let id = arg(0, "dump_entity:<entity>[:path]")?;
+                let id = step.arg(0, "dump_entity:<entity>[:path]")?;
                 let e = self.entity_of(world, id)?;
                 let dump = self.dump_entity(world, e);
                 self.out.emit(
@@ -218,7 +207,7 @@ impl Probe {
             #[cfg(not(feature = "publish"))]
             "get" => {
                 let usage = "get:<Resource>[.<field>] or get:<entity>[.<component>[.<field>]]";
-                let target = arg(0, usage)?.trim();
+                let target = step.arg(0, usage)?.trim();
                 let value = self.read_target(world, target)?;
                 let mut shown = value.to_string();
                 if shown.len() > 160 {
@@ -289,12 +278,6 @@ impl Probe {
     fn scene_step(&mut self, world: &mut World, step: &CommandStep) -> Result<(), String> {
         let tick = world.time().tick;
         let args = &step.args;
-        let arg = |i: usize, usage: &str| -> Result<&str, String> {
-            args.get(i)
-                .map(String::as_str)
-                .filter(|a| !a.is_empty())
-                .ok_or_else(|| format!("missing argument; write `{usage}`"))
-        };
         match step.action.as_str() {
             #[cfg(not(feature = "publish"))]
             "apply_prefab" | "revert_prefab" => {
@@ -306,7 +289,7 @@ impl Probe {
                 } else {
                     "revert_prefab:<entity>[:<Component>[.<field>]]"
                 };
-                let id = arg(0, usage)?;
+                let id = step.arg(0, usage)?;
                 let entity = self.entity_of(world, id)?;
                 let base = apply && args.iter().skip(1).any(|a| a == "base");
                 let target = args.iter().skip(1).find(|a| *a != "base").cloned();
@@ -430,13 +413,6 @@ impl Probe {
 
     /// The clock's actions: `pause`, `resume`, `advance`, `quit`.
     fn clock_step(&mut self, world: &mut World, step: &CommandStep) -> Result<(), String> {
-        let args = &step.args;
-        let arg = |i: usize, usage: &str| -> Result<&str, String> {
-            args.get(i)
-                .map(String::as_str)
-                .filter(|a| !a.is_empty())
-                .ok_or_else(|| format!("missing argument; write `{usage}`"))
-        };
         match step.action.as_str() {
             "pause" => {
                 self.clock.paused = true;
@@ -449,7 +425,8 @@ impl Probe {
                 Ok(())
             }
             "advance" => {
-                let ticks: u64 = arg(0, "advance:<ticks>")?
+                let ticks: u64 = step
+                    .arg(0, "advance:<ticks>")?
                     .trim()
                     .parse()
                     .ok()
@@ -488,182 +465,234 @@ impl state::Inject {
         world: &mut World,
         step: &CommandStep,
     ) -> Result<(), String> {
-        let args = &step.args;
-        let arg = |i: usize, usage: &str| -> Result<&str, String> {
-            args.get(i)
-                .map(String::as_str)
-                .filter(|a| !a.is_empty())
-                .ok_or_else(|| format!("missing argument; write `{usage}`"))
-        };
-        let joined = args.join(":");
         match step.action.as_str() {
-            "touch_move_to" | "move_to_text" => {
-                let target = if step.action == "touch_move_to" {
-                    arg(0, "touch_move_to:<ui id>")?.to_owned()
-                } else {
-                    if joined.is_empty() {
-                        return Err("missing argument; write `move_to_text:[=]text[@N]`".into());
-                    }
-                    joined.clone()
-                };
-                let elements = host.elements(world);
-                let found = if step.action == "touch_move_to" {
-                    find_by_id(&elements, &target)
-                } else {
-                    find_by_text(&elements, &target)
-                };
-                let Some(element) = found else {
-                    self.target_missed = true;
-                    return Err(format!(
-                        "target not found: '{target}' ({} UI elements; `dump_ui` lists them); the next touch_start/touch_end are skipped",
-                        elements.len()
-                    ));
-                };
-                self.target_missed = false;
-                let (x, y) = element.center();
-                self.pointer = (x, y);
-                self.pointer_event(
-                    world,
-                    &mut *host.input,
-                    PointerAction::Move,
-                    PointerButton::None,
-                )
-            }
-            "touch_move" => {
-                let xy = numbers(arg(0, "touch_move:x,y")?)?;
-                let [x, y] = xy[..] else {
-                    return Err("write `touch_move:x,y` with two numbers".into());
-                };
-                self.target_missed = false;
-                self.pointer = (x, y);
-                self.pointer_event(
-                    world,
-                    &mut *host.input,
-                    PointerAction::Move,
-                    PointerButton::None,
-                )
-            }
-            "touch_start" | "touch_end" => {
-                if self.target_missed {
-                    if step.action == "touch_end" {
-                        self.target_missed = false;
-                    }
-                    return Err("skipped: the last touch target was not found".into());
-                }
-                let action = if step.action == "touch_start" {
-                    PointerAction::Down
-                } else {
-                    PointerAction::Up
-                };
-                self.pointer_event(world, &mut *host.input, action, PointerButton::Left)
-            }
-            "mouse_move" => {
-                let d = numbers(arg(0, "mouse_move:dx,dy")?)?;
-                let [dx, dy] = d[..] else {
-                    return Err("write `mouse_move:dx,dy` with two numbers".into());
-                };
-                let (x, y) = self.pointer;
-                let event = InjectedInput::Pointer {
-                    action: PointerAction::Move,
-                    x,
-                    y,
-                    button: PointerButton::None,
-                    id: 0,
-                    movement_x: dx,
-                    movement_y: dy,
-                };
-                if self.deliver(world, &mut *host.input, &event) {
-                    Ok(())
-                } else {
-                    Err("the input layer refused the mouse move".into())
-                }
-            }
-            "pointer_lock" => {
-                let locked = match arg(0, "pointer_lock:<on|off>")? {
-                    "on" => true,
-                    "off" => false,
-                    other => {
-                        return Err(format!(
-                            "'{other}' is not on or off; write `pointer_lock:<on|off>`"
-                        ));
-                    }
-                };
-                if self.deliver(
-                    world,
-                    &mut *host.input,
-                    &InjectedInput::PointerLock { locked },
-                ) {
-                    Ok(())
-                } else {
-                    Err("the input layer refused the pointer lock report".into())
-                }
-            }
-            "scroll" => {
-                let d = numbers(arg(0, "scroll:dx,dy")?)?;
-                let [dx, dy] = d[..] else {
-                    return Err("write `scroll:dx,dy` with two numbers".into());
-                };
-                let (x, y) = self.pointer;
-                let event = InjectedInput::Wheel {
-                    x,
-                    y,
-                    delta_x: dx,
-                    delta_y: dy,
-                };
-                if self.deliver(world, &mut *host.input, &event) {
-                    Ok(())
-                } else {
-                    Err("the input layer refused the wheel event".into())
-                }
-            }
-            "touch" => {
-                let usage = "touch:<id>:<down|move|up>:<x,y | ui id>";
-                let id: u32 = arg(0, usage)?
-                    .parse()
-                    .ok()
-                    .filter(|id| (1..og_input::MAX_POINTERS as u32).contains(id))
-                    .ok_or("the touch id is 1 to 4 (0 is the pointer touch_start drives)")?;
-                let action = match arg(1, usage)? {
-                    "down" => PointerAction::Down,
-                    "move" => PointerAction::Move,
-                    "up" => PointerAction::Up,
-                    other => {
-                        return Err(format!(
-                            "'{other}' is not down, move or up; write `{usage}`"
-                        ));
-                    }
-                };
-                let target = step.args.get(2..).map(|a| a.join(":")).unwrap_or_default();
-                let (x, y) = match numbers(&target).ok().as_deref() {
-                    Some(&[x, y]) => (x, y),
-                    _ => {
-                        let elements = host.elements(world);
-                        let element = find_by_id(&elements, &target).ok_or_else(|| {
-                            format!("touch target not found: '{target}' (x,y or a UI id)")
-                        })?;
-                        element.center()
-                    }
-                };
-                let event = InjectedInput::Pointer {
-                    action,
-                    x,
-                    y,
-                    button: if action == PointerAction::Move {
-                        PointerButton::None
-                    } else {
-                        PointerButton::Left
-                    },
-                    id,
-                    movement_x: 0.0,
-                    movement_y: 0.0,
-                };
-                if self.deliver(world, &mut *host.input, &event) {
-                    Ok(())
-                } else {
-                    Err(format!("the input layer refused touch {id}"))
-                }
-            }
+            "touch_move_to" | "move_to_text" => self.move_to(host, world, step),
+            "touch_move" => self.touch_move(host, world, step),
+            "touch_start" | "touch_end" => self.touch_press(host, world, step),
+            "mouse_move" => self.mouse_move(host, world, step),
+            "pointer_lock" => self.pointer_lock(host, world, step),
+            "scroll" => self.scroll(host, world, step),
+            "touch" => self.touch(host, world, step),
             _ => unreachable!("`action` sends this family's names only"),
+        }
+    }
+
+    /// `touch_move_to` and `move_to_text`: the pointer to a UI element, by id or
+    /// by its text.
+    fn move_to(
+        &mut self,
+        host: &mut state::Host,
+        world: &mut World,
+        step: &CommandStep,
+    ) -> Result<(), String> {
+        let joined = step.args.join(":");
+        let target = if step.action == "touch_move_to" {
+            step.arg(0, "touch_move_to:<ui id>")?.to_owned()
+        } else {
+            if joined.is_empty() {
+                return Err("missing argument; write `move_to_text:[=]text[@N]`".into());
+            }
+            joined.clone()
+        };
+        let elements = host.elements(world);
+        let found = if step.action == "touch_move_to" {
+            find_by_id(&elements, &target)
+        } else {
+            find_by_text(&elements, &target)
+        };
+        let Some(element) = found else {
+            self.target_missed = true;
+            return Err(format!(
+                "target not found: '{target}' ({} UI elements; `dump_ui` lists them); the next touch_start/touch_end are skipped",
+                elements.len()
+            ));
+        };
+        self.target_missed = false;
+        let (x, y) = element.center();
+        self.pointer = (x, y);
+        self.pointer_event(
+            world,
+            &mut *host.input,
+            PointerAction::Move,
+            PointerButton::None,
+        )
+    }
+
+    /// `touch_move`: the pointer to a point.
+    fn touch_move(
+        &mut self,
+        host: &mut state::Host,
+        world: &mut World,
+        step: &CommandStep,
+    ) -> Result<(), String> {
+        let xy = numbers(step.arg(0, "touch_move:x,y")?)?;
+        let [x, y] = xy[..] else {
+            return Err("write `touch_move:x,y` with two numbers".into());
+        };
+        self.target_missed = false;
+        self.pointer = (x, y);
+        self.pointer_event(
+            world,
+            &mut *host.input,
+            PointerAction::Move,
+            PointerButton::None,
+        )
+    }
+
+    /// `touch_start` and `touch_end`: the pointer down and up where it is; skipped
+    /// after a target that was not found.
+    fn touch_press(
+        &mut self,
+        host: &mut state::Host,
+        world: &mut World,
+        step: &CommandStep,
+    ) -> Result<(), String> {
+        if self.target_missed {
+            if step.action == "touch_end" {
+                self.target_missed = false;
+            }
+            return Err("skipped: the last touch target was not found".into());
+        }
+        let action = if step.action == "touch_start" {
+            PointerAction::Down
+        } else {
+            PointerAction::Up
+        };
+        self.pointer_event(world, &mut *host.input, action, PointerButton::Left)
+    }
+
+    /// `mouse_move`: relative movement, as a locked pointer reports it.
+    fn mouse_move(
+        &mut self,
+        host: &mut state::Host,
+        world: &mut World,
+        step: &CommandStep,
+    ) -> Result<(), String> {
+        let d = numbers(step.arg(0, "mouse_move:dx,dy")?)?;
+        let [dx, dy] = d[..] else {
+            return Err("write `mouse_move:dx,dy` with two numbers".into());
+        };
+        let (x, y) = self.pointer;
+        let event = InjectedInput::Pointer {
+            action: PointerAction::Move,
+            x,
+            y,
+            button: PointerButton::None,
+            id: 0,
+            movement_x: dx,
+            movement_y: dy,
+        };
+        if self.deliver(world, &mut *host.input, &event) {
+            Ok(())
+        } else {
+            Err("the input layer refused the mouse move".into())
+        }
+    }
+
+    /// `pointer_lock`: the host's report that the lock was taken or released.
+    fn pointer_lock(
+        &mut self,
+        host: &mut state::Host,
+        world: &mut World,
+        step: &CommandStep,
+    ) -> Result<(), String> {
+        let locked = match step.arg(0, "pointer_lock:<on|off>")? {
+            "on" => true,
+            "off" => false,
+            other => {
+                return Err(format!(
+                    "'{other}' is not on or off; write `pointer_lock:<on|off>`"
+                ));
+            }
+        };
+        if self.deliver(
+            world,
+            &mut *host.input,
+            &InjectedInput::PointerLock { locked },
+        ) {
+            Ok(())
+        } else {
+            Err("the input layer refused the pointer lock report".into())
+        }
+    }
+
+    /// `scroll`: the wheel, where the pointer is.
+    fn scroll(
+        &mut self,
+        host: &mut state::Host,
+        world: &mut World,
+        step: &CommandStep,
+    ) -> Result<(), String> {
+        let d = numbers(step.arg(0, "scroll:dx,dy")?)?;
+        let [dx, dy] = d[..] else {
+            return Err("write `scroll:dx,dy` with two numbers".into());
+        };
+        let (x, y) = self.pointer;
+        let event = InjectedInput::Wheel {
+            x,
+            y,
+            delta_x: dx,
+            delta_y: dy,
+        };
+        if self.deliver(world, &mut *host.input, &event) {
+            Ok(())
+        } else {
+            Err("the input layer refused the wheel event".into())
+        }
+    }
+
+    /// `touch`: one of the other touches (1 to 4), at a point or a UI element.
+    fn touch(
+        &mut self,
+        host: &mut state::Host,
+        world: &mut World,
+        step: &CommandStep,
+    ) -> Result<(), String> {
+        let usage = "touch:<id>:<down|move|up>:<x,y | ui id>";
+        let id: u32 = step
+            .arg(0, usage)?
+            .parse()
+            .ok()
+            .filter(|id| (1..og_input::MAX_POINTERS as u32).contains(id))
+            .ok_or("the touch id is 1 to 4 (0 is the pointer touch_start drives)")?;
+        let action = match step.arg(1, usage)? {
+            "down" => PointerAction::Down,
+            "move" => PointerAction::Move,
+            "up" => PointerAction::Up,
+            other => {
+                return Err(format!(
+                    "'{other}' is not down, move or up; write `{usage}`"
+                ));
+            }
+        };
+        let target = step.args.get(2..).map(|a| a.join(":")).unwrap_or_default();
+        let (x, y) = match numbers(&target).ok().as_deref() {
+            Some(&[x, y]) => (x, y),
+            _ => {
+                let elements = host.elements(world);
+                let element = find_by_id(&elements, &target).ok_or_else(|| {
+                    format!("touch target not found: '{target}' (x,y or a UI id)")
+                })?;
+                element.center()
+            }
+        };
+        let event = InjectedInput::Pointer {
+            action,
+            x,
+            y,
+            button: if action == PointerAction::Move {
+                PointerButton::None
+            } else {
+                PointerButton::Left
+            },
+            id,
+            movement_x: 0.0,
+            movement_y: 0.0,
+        };
+        if self.deliver(world, &mut *host.input, &event) {
+            Ok(())
+        } else {
+            Err(format!("the input layer refused touch {id}"))
         }
     }
 
@@ -675,198 +704,227 @@ impl state::Inject {
         world: &mut World,
         step: &CommandStep,
     ) -> Result<(), String> {
-        let tick = world.time().tick;
-        let args = &step.args;
-        let arg = |i: usize, usage: &str| -> Result<&str, String> {
-            args.get(i)
-                .map(String::as_str)
-                .filter(|a| !a.is_empty())
-                .ok_or_else(|| format!("missing argument; write `{usage}`"))
-        };
-        let joined = args.join(":");
         match step.action.as_str() {
-            "gamepad" => {
-                let usage = "gamepad:<a+b+...|->[@pad][:lx,ly[,rx,ry]][:lt,rt]";
-                let (first, pad) = match arg(0, usage)?.split_once('@') {
-                    Some((buttons, pad)) => (
-                        buttons,
-                        pad.parse::<u32>()
-                            .ok()
-                            .filter(|p| (*p as usize) < og_input::MAX_GAMEPADS)
-                            .ok_or_else(|| {
-                                format!("'@{pad}' is not a pad (0 to 7); write `{usage}`")
-                            })?,
-                    ),
-                    None => (arg(0, usage)?, 0),
-                };
-                let mut state = og_input::GamepadState {
-                    connected: first != "off",
-                    pad,
-                    ..Default::default()
-                };
-                if state.connected && first != "-" {
-                    for name in first.split('+') {
-                        let b = og_input::gamepad_button(name).ok_or_else(|| {
-                            format!(
-                                "'{name}' is not a standard gamepad button ({})",
-                                og_input::GAMEPAD_BUTTONS.join(", ")
-                            )
-                        })?;
-                        state.buttons |= 1 << b;
-                    }
-                }
-                if let Some(axes) = step.args.get(1) {
-                    let v = numbers(axes)?;
-                    if v.len() != 2 && v.len() != 4 {
-                        return Err(format!(
-                            "the axes are lx,ly or lx,ly,rx,ry; write `{usage}`"
-                        ));
-                    }
-                    state.axes[..v.len()].copy_from_slice(&v);
-                }
-                if let Some(t) = step.args.get(2) {
-                    let v = numbers(t)?;
-                    let [lt, rt] = v[..] else {
-                        return Err(format!("the triggers are lt,rt; write `{usage}`"));
-                    };
-                    state.triggers = [lt, rt];
-                }
-                if self.deliver(world, &mut *host.input, &InjectedInput::Gamepad(state)) {
-                    Ok(())
-                } else {
-                    Err("the input layer refused the gamepad state".into())
-                }
-            }
-            "intent" => {
-                let usage = "intent:<Event>[:<fields as JSON>]";
-                let name = arg(0, usage)?.trim();
-                let id = world.id_by_name(name).map_err(|_| {
-                    format!("no event type '{name}' is registered; write `{usage}`")
-                })?;
-                let schema = world.schema(id).map_err(|e| e.reason().to_owned())?.clone();
-                let text = args.get(1..).map(|a| a.join(":")).unwrap_or_default();
-                let fields: serde_json::Map<String, Value> = if text.trim().is_empty() {
-                    serde_json::Map::new()
-                } else {
-                    match serde_json::from_str(&text) {
-                        Ok(Value::Object(m)) => m,
-                        _ => {
-                            return Err(format!(
-                                "'{text}' is not a JSON object of {name}'s fields; write `{usage}`"
-                            ));
-                        }
-                    }
-                };
-                if let Some(k) = fields
-                    .keys()
-                    .find(|k| !schema.fields.iter().any(|f| &f.name == *k))
-                {
-                    return Err(format!("{name} has no field '{k}'"));
-                }
-                // The event's packed bytes: each field named, the others their defaults.
-                let mut payload = Vec::new();
-                for f in &schema.fields {
-                    match fields.get(&f.name) {
-                        Some(v) => payload.extend(
-                            crate::value::json_field(f, v)
-                                .map_err(|e| format!("{name}.{}: {e}", f.name))?,
-                        ),
-                        None => payload.extend(f.default_bytes()),
-                    }
-                }
-                let event = InjectedInput::Intent {
-                    name: name.to_owned(),
-                    layout_hash: schema.layout_hash(),
-                    payload,
-                };
-                if self.deliver(world, &mut *host.input, &event) {
-                    Ok(())
-                } else {
-                    Err(format!("the input layer refused intent '{name}'"))
-                }
-            }
-            "key_down" | "key_up" => {
-                let (modifiers, held, key) = key_chord(arg(0, "key_down:[Mod+]<Key>")?)?;
-                let down = step.action == "key_down";
-                let action = if down { KeyAction::Down } else { KeyAction::Up };
-                // The modifiers go down before the key and up after it.
-                let modifier = |code: &str| InjectedInput::Key {
-                    key: code.to_owned(),
-                    action,
-                    modifiers: Modifiers::default(),
-                };
-                let mut events: Vec<InjectedInput> = Vec::new();
-                if down {
-                    events.extend(held.iter().map(|c| modifier(c)));
-                }
-                events.push(InjectedInput::Key {
-                    key: key.clone(),
-                    action,
-                    modifiers,
-                });
-                if !down {
-                    events.extend(held.iter().rev().map(|c| modifier(c)));
-                }
-                for event in &events {
-                    if !self.deliver(world, &mut *host.input, event) {
-                        return Err(format!(
-                            "the input layer refused key '{key}'; keys are KeyboardEvent.code names such as KeyW, Space, ArrowLeft"
-                        ));
-                    }
-                }
-                Ok(())
-            }
-            "type" => {
-                if joined.is_empty() {
-                    return Err("missing argument; write `type:<text>`".into());
-                }
-                // Per character, one tick apart from the next by two: the
-                // key that types it (a press: down one tick, up the next,
-                // Shift for capitals and symbols) and the character itself
-                // as typed text (og.TextInput), which a text field inserts;
-                // a character no key types (é, 中) is typed text alone.
-                let mut at = tick;
-                for c in joined.chars() {
-                    if let Some((key, shift)) = key_for_char(c) {
-                        let event = InjectedInput::Key {
-                            key,
-                            action: KeyAction::Press,
-                            modifiers: Modifiers {
-                                shift,
-                                ..Modifiers::default()
-                            },
-                        };
-                        schedule.push(at, Queued::Inject(event));
-                    }
-                    schedule.push(
-                        at,
-                        Queued::Inject(InjectedInput::Text {
-                            text: c.to_string(),
-                            composing: false,
-                        }),
-                    );
-                    at += 2;
-                }
-                Ok(())
-            }
-            "compose" | "commit" => {
-                // An input method: `compose` shows its composition so far
-                // (empty ends it), `commit` inserts the committed text.
-                let event = InjectedInput::Text {
-                    text: joined.clone(),
-                    composing: step.action == "compose",
-                };
-                if step.action == "commit" && joined.is_empty() {
-                    return Err("missing argument; write `commit:<text>`".into());
-                }
-                if self.deliver(world, &mut *host.input, &event) {
-                    Ok(())
-                } else {
-                    Err("the input layer refused the text (no og.TextInput in this world)".into())
-                }
-            }
+            "gamepad" => self.gamepad(host, world, step),
+            "intent" => self.intent(host, world, step),
+            "key_down" | "key_up" => self.key(host, world, step),
+            "type" => schedule.type_text(world.time().tick, step),
+            "compose" | "commit" => self.text(host, world, step),
             _ => unreachable!("`action` sends this family's names only"),
         }
+    }
+
+    /// `gamepad`: a pad's whole state (buttons, sticks, triggers), or `off`.
+    fn gamepad(
+        &mut self,
+        host: &mut state::Host,
+        world: &mut World,
+        step: &CommandStep,
+    ) -> Result<(), String> {
+        let usage = "gamepad:<a+b+...|->[@pad][:lx,ly[,rx,ry]][:lt,rt]";
+        let (first, pad) = match step.arg(0, usage)?.split_once('@') {
+            Some((buttons, pad)) => (
+                buttons,
+                pad.parse::<u32>()
+                    .ok()
+                    .filter(|p| (*p as usize) < og_input::MAX_GAMEPADS)
+                    .ok_or_else(|| format!("'@{pad}' is not a pad (0 to 7); write `{usage}`"))?,
+            ),
+            None => (step.arg(0, usage)?, 0),
+        };
+        let mut state = og_input::GamepadState {
+            connected: first != "off",
+            pad,
+            ..Default::default()
+        };
+        if state.connected && first != "-" {
+            for name in first.split('+') {
+                let b = og_input::gamepad_button(name).ok_or_else(|| {
+                    format!(
+                        "'{name}' is not a standard gamepad button ({})",
+                        og_input::GAMEPAD_BUTTONS.join(", ")
+                    )
+                })?;
+                state.buttons |= 1 << b;
+            }
+        }
+        if let Some(axes) = step.args.get(1) {
+            let v = numbers(axes)?;
+            if v.len() != 2 && v.len() != 4 {
+                return Err(format!(
+                    "the axes are lx,ly or lx,ly,rx,ry; write `{usage}`"
+                ));
+            }
+            state.axes[..v.len()].copy_from_slice(&v);
+        }
+        if let Some(t) = step.args.get(2) {
+            let v = numbers(t)?;
+            let [lt, rt] = v[..] else {
+                return Err(format!("the triggers are lt,rt; write `{usage}`"));
+            };
+            state.triggers = [lt, rt];
+        }
+        if self.deliver(world, &mut *host.input, &InjectedInput::Gamepad(state)) {
+            Ok(())
+        } else {
+            Err("the input layer refused the gamepad state".into())
+        }
+    }
+
+    /// `intent`: an event of a registered type, its fields given as JSON.
+    fn intent(
+        &mut self,
+        host: &mut state::Host,
+        world: &mut World,
+        step: &CommandStep,
+    ) -> Result<(), String> {
+        let usage = "intent:<Event>[:<fields as JSON>]";
+        let name = step.arg(0, usage)?.trim();
+        let id = world
+            .id_by_name(name)
+            .map_err(|_| format!("no event type '{name}' is registered; write `{usage}`"))?;
+        let schema = world.schema(id).map_err(|e| e.reason().to_owned())?.clone();
+        let text = step.args.get(1..).map(|a| a.join(":")).unwrap_or_default();
+        let fields: serde_json::Map<String, Value> = if text.trim().is_empty() {
+            serde_json::Map::new()
+        } else {
+            match serde_json::from_str(&text) {
+                Ok(Value::Object(m)) => m,
+                _ => {
+                    return Err(format!(
+                        "'{text}' is not a JSON object of {name}'s fields; write `{usage}`"
+                    ));
+                }
+            }
+        };
+        if let Some(k) = fields
+            .keys()
+            .find(|k| !schema.fields.iter().any(|f| &f.name == *k))
+        {
+            return Err(format!("{name} has no field '{k}'"));
+        }
+        // The event's packed bytes: each field named, the others their defaults.
+        let mut payload = Vec::new();
+        for f in &schema.fields {
+            match fields.get(&f.name) {
+                Some(v) => payload.extend(
+                    crate::value::json_field(f, v)
+                        .map_err(|e| format!("{name}.{}: {e}", f.name))?,
+                ),
+                None => payload.extend(f.default_bytes()),
+            }
+        }
+        let event = InjectedInput::Intent {
+            name: name.to_owned(),
+            layout_hash: schema.layout_hash(),
+            payload,
+        };
+        if self.deliver(world, &mut *host.input, &event) {
+            Ok(())
+        } else {
+            Err(format!("the input layer refused intent '{name}'"))
+        }
+    }
+
+    /// `key_down` and `key_up`: a key, its modifiers down before it and up after.
+    fn key(
+        &mut self,
+        host: &mut state::Host,
+        world: &mut World,
+        step: &CommandStep,
+    ) -> Result<(), String> {
+        let (modifiers, held, key) = key_chord(step.arg(0, "key_down:[Mod+]<Key>")?)?;
+        let down = step.action == "key_down";
+        let action = if down { KeyAction::Down } else { KeyAction::Up };
+        // The modifiers go down before the key and up after it.
+        let modifier = |code: &str| InjectedInput::Key {
+            key: code.to_owned(),
+            action,
+            modifiers: Modifiers::default(),
+        };
+        let mut events: Vec<InjectedInput> = Vec::new();
+        if down {
+            events.extend(held.iter().map(|c| modifier(c)));
+        }
+        events.push(InjectedInput::Key {
+            key: key.clone(),
+            action,
+            modifiers,
+        });
+        if !down {
+            events.extend(held.iter().rev().map(|c| modifier(c)));
+        }
+        for event in &events {
+            if !self.deliver(world, &mut *host.input, event) {
+                return Err(format!(
+                    "the input layer refused key '{key}'; keys are KeyboardEvent.code names such as KeyW, Space, ArrowLeft"
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    /// `compose` and `commit`: an input method's composition and its committed
+    /// text.
+    fn text(
+        &mut self,
+        host: &mut state::Host,
+        world: &mut World,
+        step: &CommandStep,
+    ) -> Result<(), String> {
+        let joined = step.args.join(":");
+        // An input method: `compose` shows its composition so far
+        // (empty ends it), `commit` inserts the committed text.
+        let event = InjectedInput::Text {
+            text: joined.clone(),
+            composing: step.action == "compose",
+        };
+        if step.action == "commit" && joined.is_empty() {
+            return Err("missing argument; write `commit:<text>`".into());
+        }
+        if self.deliver(world, &mut *host.input, &event) {
+            Ok(())
+        } else {
+            Err("the input layer refused the text (no og.TextInput in this world)".into())
+        }
+    }
+}
+
+impl state::Schedule {
+    /// `type`: text as its keys and its characters, queued two ticks apart.
+    fn type_text(&mut self, tick: u64, step: &CommandStep) -> Result<(), String> {
+        let joined = step.args.join(":");
+        if joined.is_empty() {
+            return Err("missing argument; write `type:<text>`".into());
+        }
+        // Per character, one tick apart from the next by two: the
+        // key that types it (a press: down one tick, up the next,
+        // Shift for capitals and symbols) and the character itself
+        // as typed text (og.TextInput), which a text field inserts;
+        // a character no key types (é, 中) is typed text alone.
+        let mut at = tick;
+        for c in joined.chars() {
+            if let Some((key, shift)) = key_for_char(c) {
+                let event = InjectedInput::Key {
+                    key,
+                    action: KeyAction::Press,
+                    modifiers: Modifiers {
+                        shift,
+                        ..Modifiers::default()
+                    },
+                };
+                self.push(at, Queued::Inject(event));
+            }
+            self.push(
+                at,
+                Queued::Inject(InjectedInput::Text {
+                    text: c.to_string(),
+                    composing: false,
+                }),
+            );
+            at += 2;
+        }
+        Ok(())
     }
 }
 

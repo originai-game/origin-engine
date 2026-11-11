@@ -546,103 +546,15 @@ impl Probe {
 
     /// Evaluates `parsed` on the world as it is into `r`, which opens as a
     /// pass: its expected and observed values, and the status and reason
-    /// when it fails or cannot be checked.
+    /// when it fails or cannot be checked. One method per kind.
     fn evaluate(&mut self, world: &mut World, parsed: Expect, r: &mut ExpectResult) {
         match parsed {
             Expect::Within { id, bounds } if bounds.len() == 4 => {
-                r.expected = json!({"x": bounds[0], "y": bounds[1], "width": bounds[2], "height": bounds[3]});
-                let Some(e) = self.names.resolve(world, &id) else {
-                    fail(r, format!("no live entity '{id}'"));
-                    return;
-                };
-                let seen = self.host.seen_now(world);
-                let Some(seen) = seen else {
-                    r.status = Status::Unchecked;
-                    r.reason = "this host has no scene view to describe the frame".into();
-                    return;
-                };
-                match seen.entities.iter().find(|s| s.entity == e) {
-                    None => fail(r, format!("'{id}' shows no pixel in the frame")),
-                    Some(s) => {
-                        let [x, y, w, h] = s.rect;
-                        r.observed = json!({"x": round(x.into(), 2), "y": round(y.into(), 2), "width": round(w.into(), 2), "height": round(h.into(), 2)});
-                        // Half a CSS pixel of slack: the id pass is a quarter of the frame.
-                        let slack = 0.5;
-                        let inside = x >= bounds[0] - slack
-                            && y >= bounds[1] - slack
-                            && x + w <= bounds[0] + bounds[2] + slack
-                            && y + h <= bounds[1] + bounds[3] + slack;
-                        if !inside {
-                            fail(r, format!("'{id}'s visible box leaves the expected box"));
-                        }
-                    }
-                }
+                self.within_frame(world, &id, &bounds, r);
             }
-            Expect::Within { id, bounds } => {
-                r.expected = json!({"min": &bounds[..3], "max": &bounds[3..]});
-                let e = match self.names.resolve(world, &id) {
-                    Some(e) => e,
-                    None => {
-                        fail(r, format!("no live entity '{id}'"));
-                        return;
-                    }
-                };
-                match self.position_of(world, e) {
-                    Err(reason) => fail(r, reason),
-                    Ok(p) => {
-                        r.observed = json!([
-                            round(p[0].into(), 4),
-                            round(p[1].into(), 4),
-                            round(p[2].into(), 4)
-                        ]);
-                        let inside = (0..3).all(|i| p[i] >= bounds[i] && p[i] <= bounds[i + 3]);
-                        if !inside {
-                            fail(r, format!("'{id}'s Transform.position is outside the box"));
-                        }
-                    }
-                }
-            }
-            Expect::Event { name, count } => {
-                r.expected = count.map_or(json!(">= 1"), |c| json!(c));
-                if world.id_by_name(&name).is_err() {
-                    fail(r, format!("no event type '{name}' is registered"));
-                    return;
-                }
-                let seen = self.checks.events_seen(&name);
-                r.observed = json!(seen);
-                let ok = match count {
-                    Some(c) => seen == c,
-                    None => seen >= 1,
-                };
-                if !ok {
-                    fail(
-                        r,
-                        format!("{seen} {name} event(s) were sent since the script began"),
-                    );
-                }
-            }
-            Expect::UiText { query } => {
-                r.expected = json!(query);
-                let elements = self.host.elements(world);
-                match find_by_text(&elements, &query) {
-                    Some(e) => r.observed = json!({"id": e.id, "text": e.text}),
-                    None => {
-                        let texts: Vec<&str> = elements
-                            .iter()
-                            .filter(|e| !e.text.is_empty())
-                            .map(|e| e.text.as_str())
-                            .collect();
-                        r.observed = json!(texts);
-                        fail(
-                            r,
-                            format!(
-                                "no UI element shows it ({} elements; `dump_ui` lists them)",
-                                elements.len()
-                            ),
-                        );
-                    }
-                }
-            }
+            Expect::Within { id, bounds } => self.within_box(world, &id, &bounds, r),
+            Expect::Event { name, count } => self.event_count(world, &name, count, r),
+            Expect::UiText { query } => self.ui_text(world, &query, r),
             Expect::Region {
                 rect,
                 color,
@@ -656,68 +568,199 @@ impl Probe {
                 let facts = self.host.facts(world);
                 check_path(r, &facts, "state().facts", "facts.", &path, op, &value);
             }
-            Expect::Timings { path, op, value } => {
-                // What the renderer measures, without one: unchecked.
-                if !self.host.has_renderer()
-                    && ["triangles", "render", "passes"]
-                        .contains(&path.split('.').next().unwrap_or(""))
-                {
-                    r.status = Status::Unchecked;
-                    r.reason = "no renderer, timings.".to_string() + &path + " unchecked";
-                    return;
-                }
-                let state = self.state(world);
-                check_path(
-                    r,
-                    &state["timings"],
-                    "state().timings",
-                    "timings.",
-                    &path,
-                    op,
-                    &value,
-                );
-            }
+            Expect::Timings { path, op, value } => self.timings(world, &path, op, &value, r),
             Expect::Field {
                 id,
                 path,
                 op,
                 value,
-            } => {
-                let Some(e) = self.names.resolve(world, &id) else {
-                    fail(r, format!("no live entity '{id}'"));
-                    return;
-                };
-                // The renderer's observation (render.lod), without one: unchecked.
-                if !self.host.has_renderer() && path.split('.').next() == Some("render") {
-                    r.status = Status::Unchecked;
-                    r.reason = format!("no renderer, {path} unchecked");
-                    return;
+            } => self.field(world, &id, &path, op, &value, r),
+        }
+    }
+
+    /// `entity:<id>:within:x,y,w,h`: the entity's visible box in the frame
+    /// stays inside the box.
+    fn within_frame(&mut self, world: &mut World, id: &str, bounds: &[f32], r: &mut ExpectResult) {
+        r.expected =
+            json!({"x": bounds[0], "y": bounds[1], "width": bounds[2], "height": bounds[3]});
+        let Some(e) = self.names.resolve(world, id) else {
+            fail(r, format!("no live entity '{id}'"));
+            return;
+        };
+        let seen = self.host.seen_now(world);
+        let Some(seen) = seen else {
+            r.status = Status::Unchecked;
+            r.reason = "this host has no scene view to describe the frame".into();
+            return;
+        };
+        match seen.entities.iter().find(|s| s.entity == e) {
+            None => fail(r, format!("'{id}' shows no pixel in the frame")),
+            Some(s) => {
+                let [x, y, w, h] = s.rect;
+                r.observed = json!({"x": round(x.into(), 2), "y": round(y.into(), 2), "width": round(w.into(), 2), "height": round(h.into(), 2)});
+                // Half a CSS pixel of slack: the id pass is a quarter of the frame.
+                let slack = 0.5;
+                let inside = x >= bounds[0] - slack
+                    && y >= bounds[1] - slack
+                    && x + w <= bounds[0] + bounds[2] + slack
+                    && y + h <= bounds[1] + bounds[3] + slack;
+                if !inside {
+                    fail(r, format!("'{id}'s visible box leaves the expected box"));
                 }
-                let mut dump = self.dump_entity(world, e);
-                // `og.Transform.position` as well as `components.og.Transform...`.
-                let found = at_path(&dump, &path).is_some();
-                if !found && let Some(components) = dump["components"].as_object().cloned() {
-                    for (name, fields) in components {
-                        dump[name] = fields;
-                    }
+            }
+        }
+    }
+
+    /// `entity:<id>:within` with six bounds: its Transform.position is
+    /// inside the box in the world.
+    fn within_box(&mut self, world: &mut World, id: &str, bounds: &[f32], r: &mut ExpectResult) {
+        r.expected = json!({"min": &bounds[..3], "max": &bounds[3..]});
+        let e = match self.names.resolve(world, id) {
+            Some(e) => e,
+            None => {
+                fail(r, format!("no live entity '{id}'"));
+                return;
+            }
+        };
+        match self.position_of(world, e) {
+            Err(reason) => fail(r, reason),
+            Ok(p) => {
+                r.observed = json!([
+                    round(p[0].into(), 4),
+                    round(p[1].into(), 4),
+                    round(p[2].into(), 4)
+                ]);
+                let inside = (0..3).all(|i| p[i] >= bounds[i] && p[i] <= bounds[i + 3]);
+                if !inside {
+                    fail(r, format!("'{id}'s Transform.position is outside the box"));
                 }
-                let at = dump_path(&dump, &path);
-                let rhs = match &value {
-                    Rhs::Value(v) => Some(v),
-                    Rhs::Path(p) => dump_path(&dump, p),
-                };
-                check_value(
+            }
+        }
+    }
+
+    /// `event:<Name>[:count]`: the events sent since the script began.
+    fn event_count(
+        &mut self,
+        world: &mut World,
+        name: &str,
+        count: Option<u64>,
+        r: &mut ExpectResult,
+    ) {
+        r.expected = count.map_or(json!(">= 1"), |c| json!(c));
+        if world.id_by_name(name).is_err() {
+            fail(r, format!("no event type '{name}' is registered"));
+            return;
+        }
+        let seen = self.checks.events_seen(name);
+        r.observed = json!(seen);
+        let ok = match count {
+            Some(c) => seen == c,
+            None => seen >= 1,
+        };
+        if !ok {
+            fail(
+                r,
+                format!("{seen} {name} event(s) were sent since the script began"),
+            );
+        }
+    }
+
+    /// `ui:text:<text>`: a UI element shows the text.
+    fn ui_text(&mut self, world: &mut World, query: &str, r: &mut ExpectResult) {
+        r.expected = json!(query);
+        let elements = self.host.elements(world);
+        match find_by_text(&elements, query) {
+            Some(e) => r.observed = json!({"id": e.id, "text": e.text}),
+            None => {
+                let texts: Vec<&str> = elements
+                    .iter()
+                    .filter(|e| !e.text.is_empty())
+                    .map(|e| e.text.as_str())
+                    .collect();
+                r.observed = json!(texts);
+                fail(
                     r,
-                    at,
-                    rhs,
-                    &format!("dump_entity of '{id}'"),
-                    "",
-                    &path,
-                    op,
-                    &value,
+                    format!(
+                        "no UI element shows it ({} elements; `dump_ui` lists them)",
+                        elements.len()
+                    ),
                 );
             }
         }
+    }
+
+    /// `timings:<path><op><value>`: the probe's timings (`state().timings`).
+    fn timings(
+        &mut self,
+        world: &mut World,
+        path: &str,
+        op: Op,
+        value: &Rhs,
+        r: &mut ExpectResult,
+    ) {
+        // What the renderer measures, without one: unchecked.
+        if !self.host.has_renderer()
+            && ["triangles", "render", "passes"].contains(&path.split('.').next().unwrap_or(""))
+        {
+            r.status = Status::Unchecked;
+            r.reason = "no renderer, timings.".to_string() + path + " unchecked";
+            return;
+        }
+        let state = self.state(world);
+        check_path(
+            r,
+            &state["timings"],
+            "state().timings",
+            "timings.",
+            path,
+            op,
+            value,
+        );
+    }
+
+    /// `entity:<id>:<path><op><value>`: a field of the entity's dump.
+    fn field(
+        &mut self,
+        world: &mut World,
+        id: &str,
+        path: &str,
+        op: Op,
+        value: &Rhs,
+        r: &mut ExpectResult,
+    ) {
+        let Some(e) = self.names.resolve(world, id) else {
+            fail(r, format!("no live entity '{id}'"));
+            return;
+        };
+        // The renderer's observation (render.lod), without one: unchecked.
+        if !self.host.has_renderer() && path.split('.').next() == Some("render") {
+            r.status = Status::Unchecked;
+            r.reason = format!("no renderer, {path} unchecked");
+            return;
+        }
+        let mut dump = self.dump_entity(world, e);
+        // `og.Transform.position` as well as `components.og.Transform...`.
+        let found = at_path(&dump, path).is_some();
+        if !found && let Some(components) = dump["components"].as_object().cloned() {
+            for (name, fields) in components {
+                dump[name] = fields;
+            }
+        }
+        let at = dump_path(&dump, path);
+        let rhs = match value {
+            Rhs::Value(v) => Some(v),
+            Rhs::Path(p) => dump_path(&dump, p),
+        };
+        check_value(
+            r,
+            at,
+            rhs,
+            &format!("dump_entity of '{id}'"),
+            "",
+            path,
+            op,
+            value,
+        );
     }
 
     /// Every `invariant:` step, after tick `ran`: a failure is recorded as a
