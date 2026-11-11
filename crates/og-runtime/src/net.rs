@@ -374,14 +374,11 @@ fn can_join(n: &Net) -> Result<(), String> {
     }
 }
 
-pub fn og_platform_room_create(world: u32, desc: Option<String>) -> String {
-    let d: super::wire::RoomDesc = match super::wire::arg(desc.as_deref(), "desc") {
-        Ok(d) => d,
-        Err(e) => return refuse(e),
-    };
+pub fn og_platform_room_create(world: u32, desc: Option<String>) -> Result<(), String> {
+    let d: super::wire::RoomDesc = super::wire::arg(desc.as_deref(), "desc")?;
     let name = d.name;
     if !name.is_empty() && !protocol::valid_room(&name) {
-        return refuse(format!(
+        return Err(format!(
             "'{name}' is not a room name: at most 64 of letters, digits, '.', '_' and '-'"
         ));
     }
@@ -390,25 +387,22 @@ pub fn og_platform_room_create(world: u32, desc: Option<String>) -> String {
         Ok(()) => {
             n.stage = Stage::Joining;
             n.outbox.push(protocol::create(&name, capacity));
-            ok_void()
+            Ok(())
         }
-        Err(e) => refuse(e),
+        Err(e) => Err(e),
     })
 }
 
-pub fn og_platform_quick_play(world: u32, desc: Option<String>) -> String {
-    let d: super::wire::QuickPlayDesc = match super::wire::arg(desc.as_deref(), "desc") {
-        Ok(d) => d,
-        Err(e) => return refuse(e),
-    };
+pub fn og_platform_quick_play(world: u32, desc: Option<String>) -> Result<(), String> {
+    let d: super::wire::QuickPlayDesc = super::wire::arg(desc.as_deref(), "desc")?;
     let (mode, name) = (d.mode, d.name);
     if !mode.is_empty() && (!protocol::valid_room(&mode) || mode.len() > 32) {
-        return refuse(format!(
+        return Err(format!(
             "'{mode}' is not a quick play mode: at most 32 of letters, digits, '.', '_' and '-'"
         ));
     }
     if !name.is_empty() && !protocol::valid_room(&name) {
-        return refuse(format!(
+        return Err(format!(
             "'{name}' is not a player name: at most 64 of letters, digits, '.', '_' and '-'"
         ));
     }
@@ -419,15 +413,15 @@ pub fn og_platform_quick_play(world: u32, desc: Option<String>) -> String {
             n.stage = Stage::Joining;
             n.outbox
                 .push(protocol::quick(&mode, players, timeout, &name));
-            ok_void()
+            Ok(())
         }
-        Err(e) => refuse(e),
+        Err(e) => Err(e),
     })
 }
 
-pub fn og_platform_room_join(world: u32, room: String) -> String {
+pub fn og_platform_room_join(world: u32, room: String) -> Result<(), String> {
     if !protocol::valid_room(&room) {
-        return refuse(format!(
+        return Err(format!(
             "'{room}' is not a room id: 1 to 64 of letters, digits, '.', '_' and '-'"
         ));
     }
@@ -435,9 +429,9 @@ pub fn og_platform_room_join(world: u32, room: String) -> String {
         Ok(()) => {
             n.stage = Stage::Joining;
             n.outbox.push(protocol::join(&room, ""));
-            ok_void()
+            Ok(())
         }
-        Err(e) => refuse(e),
+        Err(e) => Err(e),
     })
 }
 
@@ -547,15 +541,9 @@ pub fn og_platform_room_message(world: u32, message: u32) -> String {
 
 // ── og.net ───────────────────────────────────────────────────────────────
 
-pub fn og_net_submit(world: u32, input: Option<String>) -> String {
-    let d = match parse(input.as_deref()) {
-        Ok(d) => d,
-        Err(e) => return refuse(e),
-    };
-    let i: super::wire::InputDesc = match super::wire::value(&d, "input") {
-        Ok(i) => i,
-        Err(e) => return refuse(e),
-    };
+pub fn og_net_submit(world: u32, input: Option<String>) -> Result<(), String> {
+    let d = parse(input.as_deref())?;
+    let i: super::wire::InputDesc = super::wire::value(&d, "input")?;
     // Only the fields given are written; the rest keep og.PlayerInput's defaults.
     let mut fields = serde_json::Map::new();
     for (k, v) in [
@@ -569,7 +557,7 @@ pub fn og_net_submit(world: u32, input: Option<String>) -> String {
             continue;
         }
         if !v.as_f64().is_some_and(f64::is_finite) {
-            return refuse(format!("{k} must be a finite number, got {}", d[k]));
+            return Err(format!("{k} must be a finite number, got {}", d[k]));
         }
         fields.insert(k.into(), v);
     }
@@ -577,14 +565,14 @@ pub fn og_net_submit(world: u32, input: Option<String>) -> String {
         o.keys()
             .find(|k| !matches!(k.as_str(), "buttons" | "x" | "y" | "aimX" | "aimY"))
     }) {
-        return refuse(format!(
+        return Err(format!(
             "og.net.submit takes buttons, x, y, aimX and aimY; not '{k}'"
         ));
     }
     if let Some(input) = with(world, |n| {
         (!n.shape.input.is_empty()).then(|| n.shape.input.clone())
     }) {
-        return refuse(format!(
+        return Err(format!(
             "og.net.submit gives og.PlayerInput; og.net.shape named '{input}': og.net.submitInput(world, {input}, {{ ... }})"
         ));
     }
@@ -593,14 +581,11 @@ pub fn og_net_submit(world: u32, input: Option<String>) -> String {
         .and_then(|e| e.state.borrow().layouts.get(PLAYER_INPUT).cloned())
     {
         Some(l) => l,
-        None => return refuse("og.PlayerInput is not registered in this world"),
+        None => return Err("og.PlayerInput is not registered in this world".into()),
     };
-    let bytes = match layout.encode(None, Some(&Value::Object(fields))) {
-        Ok(b) => b,
-        Err(e) => return refuse(e),
-    };
+    let bytes = layout.encode(None, Some(&Value::Object(fields)))?;
     with(world, |n| n.ls.set_local(bytes));
-    ok_void()
+    Ok(())
 }
 
 /// The zero value of the input record `name` (its defaults), packed.
@@ -666,25 +651,20 @@ fn fingerprint(parts: &[&super::codec::Layout], max: u32) -> u64 {
     h.max(1)
 }
 
-pub fn og_net_shape(world: u32, desc: Option<String>) -> String {
-    let d: super::wire::NetShapeDesc = match super::wire::arg(desc.as_deref(), "desc") {
-        Ok(d) => d,
-        Err(e) => return refuse(e),
-    };
-    let eng = match engine_of(world) {
-        Ok(e) => e,
-        Err(e) => return refuse(e),
-    };
+pub fn og_net_shape(world: u32, desc: Option<String>) -> Result<(), String> {
+    let d: super::wire::NetShapeDesc = super::wire::arg(desc.as_deref(), "desc")?;
+    let eng = engine_of(world)?;
     let w = match eng.world() {
         Ok(w) => w,
         Err(_) => {
-            return refuse(
-                "og.net.shape is called outside a system (setup or start), before the room starts",
+            return Err(
+                "og.net.shape is called outside a system (setup or start), before the room starts"
+                    .into(),
             );
         }
     };
     if with(world, |n| n.ls.running()) {
-        return refuse("og.net.shape: lockstep runs; set the shape before the room starts");
+        return Err("og.net.shape: lockstep runs; set the shape before the room starts".into());
     }
     let name = |k: &str, v: &Option<Value>| -> Result<Option<String>, String> {
         match v {
@@ -696,7 +676,7 @@ pub fn og_net_shape(world: u32, desc: Option<String>) -> String {
     };
     let (input, command) = match (name("input", &d.input), name("command", &d.command)) {
         (Ok(i), Ok(c)) => (i.unwrap_or_default(), c.unwrap_or_default()),
-        (Err(e), _) | (_, Err(e)) => return refuse(e),
+        (Err(e), _) | (_, Err(e)) => return Err(e),
     };
     let input = if input == PLAYER_INPUT {
         String::new()
@@ -707,26 +687,26 @@ pub fn og_net_shape(world: u32, desc: Option<String>) -> String {
     let input_layout = if input.is_empty() {
         eng.state.borrow().layouts.get(PLAYER_INPUT).cloned()
     } else {
-        match shape_layout(&eng, &input, "input") {
-            Ok(l) => Some(l),
-            Err(e) => return refuse(e),
+        {
+            let l = shape_layout(&eng, &input, "input")?;
+            Some(l)
         }
     };
     let Some(input_layout) = input_layout else {
-        return refuse("og.PlayerInput is not registered in this world");
+        return Err("og.PlayerInput is not registered in this world".into());
     };
     let command_layout = if command.is_empty() {
         None
     } else {
-        match shape_layout(&eng, &command, "command") {
-            Ok(l) => Some(l),
-            Err(e) => return refuse(e),
+        {
+            let l = shape_layout(&eng, &command, "command")?;
+            Some(l)
         }
     };
     if !input.is_empty()
         && let Err(e) = w.grant(NET_SYSTEM, &[input.as_str()])
     {
-        return refuse(e.reason());
+        return Err(e.reason().into());
     }
     let shape = Shape {
         fingerprint: if input.is_empty() && command.is_empty() {
@@ -753,44 +733,39 @@ pub fn og_net_shape(world: u32, desc: Option<String>) -> String {
         n.shape = shape;
         n.given.clear();
     });
-    ok_void()
+    Ok(())
 }
 
-pub fn og_net_submit_input(world: u32, component: String, value: String) -> String {
-    let (shape, eng) = match engine_of(world) {
-        Ok(e) => (with(world, |n| n.shape.clone()), e),
-        Err(e) => return refuse(e),
+pub fn og_net_submit_input(world: u32, component: String, value: String) -> Result<(), String> {
+    let (shape, eng) = {
+        let e = engine_of(world)?;
+        (with(world, |n| n.shape.clone()), e)
     };
     if shape.input.is_empty() {
-        return refuse(
-            "og.net.submitInput needs og.net.shape's input; og.PlayerInput's is given with og.net.submit",
-        );
+        return Err("og.net.submitInput needs og.net.shape's input; og.PlayerInput's is given with og.net.submit".into());
     }
     let name =
         token_name(&serde_json::from_str(&component).unwrap_or(Value::String(component.clone())))
             .unwrap_or(component);
     if name != shape.input {
-        return refuse(format!(
+        return Err(format!(
             "og.net.submitInput takes '{}', og.net.shape's input; not '{name}'",
             shape.input
         ));
     }
-    let v = match parse(Some(&value)) {
-        Ok(v) => v,
-        Err(e) => return refuse(e),
-    };
+    let v = parse(Some(&value))?;
     if v.get("player").is_some() || v.get("tick").is_some() {
-        return refuse("og.net.submitInput: `player` and `tick` are the engine's");
+        return Err("og.net.submitInput: `player` and `tick` are the engine's".into());
     }
     let Some(layout) = eng.state.borrow().layouts.get(&name).cloned() else {
-        return refuse(format!("'{name}' is not registered in this world"));
+        return Err(format!("'{name}' is not registered in this world"));
     };
     match layout.encode(None, Some(&v)) {
         Ok(bytes) => {
             with(world, |n| n.ls.set_local(bytes));
-            ok_void()
+            Ok(())
         }
-        Err(e) => refuse(e),
+        Err(e) => Err(e),
     }
 }
 
@@ -844,25 +819,25 @@ pub fn og_net_command(world: u32, component: String, value: String) -> String {
     })
 }
 
-pub fn og_net_commands(world: u32, component: String) -> String {
-    let (shape, eng) = match engine_of(world) {
-        Ok(e) => (with(world, |n| n.shape.clone()), e),
-        Err(e) => return refuse(e),
+pub fn og_net_commands(world: u32, component: String) -> Result<serde_json::Value, String> {
+    let (shape, eng) = {
+        let e = engine_of(world)?;
+        (with(world, |n| n.shape.clone()), e)
     };
     let name =
         token_name(&serde_json::from_str(&component).unwrap_or(Value::String(component.clone())))
             .unwrap_or(component);
     if shape.command.is_empty() {
-        return super::ok(json!([]));
+        return Ok(json!([]));
     }
     if name != shape.command {
-        return refuse(format!(
+        return Err(format!(
             "og.net.commands reads '{}', og.net.shape's command; not '{name}'",
             shape.command
         ));
     }
     let Some(layout) = eng.state.borrow().layouts.get(&name).cloned() else {
-        return refuse(format!("'{name}' is not registered in this world"));
+        return Err(format!("'{name}' is not registered in this world"));
     };
     let tick = tick_of(world);
     let size = shape.command_bytes.max(1);
@@ -892,13 +867,13 @@ pub fn og_net_commands(world: u32, component: String) -> String {
     let mut out = Vec::new();
     for (seat, list) in by_seat {
         for c in list {
-            match layout.encode(Some(&c), Some(&json!({ "player": seat }))) {
-                Ok(b) => out.push(layout.decode(&b)),
-                Err(e) => return refuse(e),
+            {
+                let b = layout.encode(Some(&c), Some(&json!({ "player": seat })))?;
+                out.push(layout.decode(&b))
             }
         }
     }
-    super::ok(Value::Array(out))
+    Ok(Value::Array(out))
 }
 
 pub fn og_net_status(world: u32) -> String {

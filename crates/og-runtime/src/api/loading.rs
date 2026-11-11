@@ -2,8 +2,8 @@
 
 use super::*;
 
-pub fn og_load_texture(world: u32, path: String) -> String {
-    result(engine(world).and_then(|eng| assets::load_texture(&eng, &path).map(asset_value)))
+pub fn og_load_texture(world: u32, path: String) -> Result<serde_json::Value, String> {
+    engine(world).and_then(|eng| assets::load_texture(&eng, &path).map(asset_value))
 }
 
 // ── load ────────────────────────────────────────────────────────────────────
@@ -12,16 +12,16 @@ fn asset_value(i: usize) -> Value {
     json!(assets::handle(i) as f64)
 }
 
-pub fn og_load_bundle(world: u32, path: String) -> String {
-    result((|| {
+pub fn og_load_bundle(world: u32, path: String) -> Result<Value, String> {
+    (|| {
         let eng = engine(world)?;
         let i = eng.assets.borrow_mut().open_bundle(&path);
         Ok(asset_value(i))
-    })())
+    })()
 }
 
-pub fn og_load_bundle_info(world: u32, asset: f64) -> String {
-    typed((|| {
+pub fn og_load_bundle_info(world: u32, asset: f64) -> Result<crate::wire::BundleInfo, String> {
+    (|| {
         let eng = engine(world)?;
         let a = eng.assets.borrow();
         let e = index_of(asset)
@@ -40,11 +40,11 @@ pub fn og_load_bundle_info(world: u32, asset: f64) -> String {
             }
             _ => Err(format!("{} is not a bundle", e.path)),
         }
-    })())
+    })()
 }
 
-pub fn og_load_default_bundle(world: u32) -> String {
-    result((|| {
+pub fn og_load_default_bundle(world: u32) -> Result<serde_json::Value, String> {
+    (|| {
         let eng = engine(world)?;
         let a = eng.assets.borrow();
         let i = a
@@ -54,11 +54,11 @@ pub fn og_load_default_bundle(world: u32) -> String {
             Status::Failed(r) => Err(r.clone()),
             _ => Ok(asset_value(i)),
         }
-    })())
+    })()
 }
 
-pub fn og_load_gltf(world: u32, path: String, desc: Option<String>) -> String {
-    result((|| {
+pub fn og_load_gltf(world: u32, path: String, desc: Option<String>) -> Result<Value, String> {
+    (|| {
         let eng = engine(world)?;
         let shadows = assets::ModelShadows::from_desc(&parse(desc.as_deref())?)?;
         let index = assets::load_gltf(&eng, &path)?;
@@ -66,47 +66,47 @@ pub fn og_load_gltf(world: u32, path: String, desc: Option<String>) -> String {
         // instantiated after it.
         eng.assets.borrow_mut().model_shadows.insert(index, shadows);
         Ok(asset_value(index))
-    })())
+    })()
 }
 
-pub fn og_load_scene(world: u32, path: String) -> String {
-    result(engine(world).and_then(|eng| assets::load_scene(&eng, &path).map(asset_value)))
+pub fn og_load_scene(world: u32, path: String) -> Result<serde_json::Value, String> {
+    engine(world).and_then(|eng| assets::load_scene(&eng, &path).map(asset_value))
 }
 
-pub fn og_load_prefab(world: u32, path: String) -> String {
-    result(engine(world).and_then(|eng| crate::prefab::load(&eng, &path).map(asset_value)))
+pub fn og_load_prefab(world: u32, path: String) -> Result<serde_json::Value, String> {
+    engine(world).and_then(|eng| crate::prefab::load(&eng, &path).map(asset_value))
 }
 
-pub fn og_load_lut(world: u32, path: String) -> String {
-    result(engine(world).and_then(|eng| super::fx::load_lut(&eng, &path).map(asset_value)))
+pub fn og_load_lut(world: u32, path: String) -> Result<serde_json::Value, String> {
+    engine(world).and_then(|eng| super::fx::load_lut(&eng, &path).map(asset_value))
 }
 
-pub fn og_load_look(world: u32, path: String) -> String {
-    result(engine(world).and_then(|eng| super::look::load(&eng, &path).map(asset_value)))
+pub fn og_load_look(world: u32, path: String) -> Result<serde_json::Value, String> {
+    engine(world).and_then(|eng| super::look::load(&eng, &path).map(asset_value))
 }
 
-pub fn og_load_look_info(world: u32, look: f64) -> String {
-    result(engine(world).and_then(|eng| super::look::info(&eng, super::look::index(look)?)))
+pub fn og_load_look_info(world: u32, look: f64) -> Result<serde_json::Value, String> {
+    engine(world).and_then(|eng| super::look::info(&eng, super::look::index(look)?))
 }
 
-pub fn og_load_palette(world: u32, path: String) -> String {
-    result(engine(world).and_then(|eng| super::look::load_palette(&eng, &path).map(asset_value)))
+pub fn og_load_palette(world: u32, path: String) -> Result<serde_json::Value, String> {
+    engine(world).and_then(|eng| super::look::load_palette(&eng, &path).map(asset_value))
 }
 
-pub fn og_render_apply_look(world: u32, look: f64) -> String {
-    result_void(engine(world).and_then(|eng| super::look::apply(&eng, super::look::index(look)?)))
+pub fn og_render_apply_look(world: u32, look: f64) -> Result<(), String> {
+    engine(world).and_then(|eng| super::look::apply(&eng, super::look::index(look)?))
 }
 
 /// `og.render.applyQuality`: the preset's row of RenderSettings' quality
 /// fields (og-render's [`og_render::RenderQuality::preset`], the table in
 /// api/render.ogt's doc), written as the game would write them.
-pub fn og_render_apply_quality(world: u32, preset: String) -> String {
+pub fn og_render_apply_quality(world: u32, preset: String) -> Result<(), String> {
     let row = match preset.as_str() {
         "low" => og_render::QualityPreset::Low,
         "medium" => og_render::QualityPreset::Medium,
         "high" => og_render::QualityPreset::High,
         other => {
-            return refuse(format!(
+            return Err(format!(
                 "'{other}' is not a graphics preset (low, medium or high)"
             ));
         }
@@ -128,7 +128,7 @@ pub fn og_render_apply_quality(world: u32, preset: String) -> String {
         "msaaSamples": q.msaa_samples,
         "upscaler": crate::extract::upscaler_setting(q.upscaler),
     });
-    result_void(engine(world).and_then(|eng| {
+    engine(world).and_then(|eng| {
         super::engine::write_resource_value(eng.id, "og.RenderSettings", &fields)?;
         // Screen-space GI's switch lives on its own lazy resource, written
         // only where the world has it: a world that never named it keeps
@@ -150,7 +150,7 @@ pub fn og_render_apply_quality(world: u32, preset: String) -> String {
         }
         eng.render.borrow_mut().fx.gi_preset = (!has_gi).then_some(q.global_illumination);
         Ok(())
-    }))
+    })
 }
 
 pub fn og_render_look(world: u32) -> String {
@@ -161,43 +161,43 @@ pub fn og_render_look(world: u32) -> String {
     info.unwrap_or(Value::Null).to_string()
 }
 
-pub fn og_load_texture_array(world: u32, path: String) -> String {
-    result(engine(world).and_then(|eng| assets::load_texture_array(&eng, &path)))
+pub fn og_load_texture_array(world: u32, path: String) -> Result<serde_json::Value, String> {
+    engine(world).and_then(|eng| assets::load_texture_array(&eng, &path))
 }
 
-pub fn og_load_environment(world: u32, path: String) -> String {
-    result(engine(world).and_then(|eng| super::environment::load(&eng, &path).map(asset_value)))
+pub fn og_load_environment(world: u32, path: String) -> Result<serde_json::Value, String> {
+    engine(world).and_then(|eng| super::environment::load(&eng, &path).map(asset_value))
 }
 
-pub fn og_load_emitter(world: u32, path: String) -> String {
-    result(engine(world).and_then(|eng| super::fx::load_emitter(&eng, &path).map(asset_value)))
+pub fn og_load_emitter(world: u32, path: String) -> Result<serde_json::Value, String> {
+    engine(world).and_then(|eng| super::fx::load_emitter(&eng, &path).map(asset_value))
 }
 
-pub fn og_load_font(world: u32, path: String) -> String {
-    result(engine(world).and_then(|eng| assets::load_font(&eng, &path).map(asset_value)))
+pub fn og_load_font(world: u32, path: String) -> Result<serde_json::Value, String> {
+    engine(world).and_then(|eng| assets::load_font(&eng, &path).map(asset_value))
 }
 
-pub fn og_load_font_info(world: u32, font: f64) -> String {
-    result((|| {
+pub fn og_load_font_info(world: u32, font: f64) -> Result<serde_json::Value, String> {
+    (|| {
         let eng = engine(world)?;
         let a = eng.assets.borrow();
         index_of(font)
             .and_then(|i| a.fonts.get(i))
             .map(|f| f.info.clone())
             .ok_or_else(|| format!("font {font} is not alive"))
-    })())
+    })()
 }
 
-pub fn og_load_sound(world: u32, path: String) -> String {
-    result(engine(world).and_then(|eng| {
+pub fn og_load_sound(world: u32, path: String) -> Result<serde_json::Value, String> {
+    engine(world).and_then(|eng| {
         let i = assets::load_sound(&eng, &path)?;
         let handle = eng.assets.borrow().sound_handles[i];
         Ok(json!(handle as f64))
-    }))
+    })
 }
 
-pub fn og_load_sound_info(world: u32, sound: f64) -> String {
-    typed((|| {
+pub fn og_load_sound_info(world: u32, sound: f64) -> Result<crate::wire::SoundInfo, String> {
+    (|| {
         let eng = engine(world)?;
         let i = assets::sound_index(&eng, sound);
         let a = eng.assets.borrow();
@@ -212,7 +212,7 @@ pub fn og_load_sound_info(world: u32, sound: f64) -> String {
             chunks: m.chunk_count,
             seconds: (f64::from(m.frames) / f64::from(m.sample_rate.max(1))) as f32,
         })
-    })())
+    })()
 }
 
 pub fn og_load_status(world: u32, asset: f64) -> String {
@@ -257,8 +257,8 @@ fn clip_names(a: &assets::Assets, model: &str) -> Result<Vec<String>, String> {
         .map_err(|e| e.to_string())
 }
 
-pub fn og_load_gltf_info(world: u32, asset: f64) -> String {
-    typed((|| {
+pub fn og_load_gltf_info(world: u32, asset: f64) -> Result<crate::wire::GltfInfo, String> {
+    (|| {
         let eng = engine(world)?;
         let a = eng.assets.borrow();
         let e = index_of(asset)
@@ -314,7 +314,7 @@ pub fn og_load_gltf_info(world: u32, asset: f64) -> String {
             },
             _ => Err(format!("{} is not a glTF", e.path)),
         }
-    })())
+    })()
 }
 
 // ── uncooked loads ─────────────────────────────────────────────────────────
@@ -324,18 +324,23 @@ pub fn og_load_image_data(
     name: String,
     bytes: Vec<u8>,
     desc: Option<String>,
-) -> String {
-    result((|| {
+) -> Result<serde_json::Value, String> {
+    (|| {
         let eng = engine(world)?;
         crate::uncooked::image_data(&eng, &name, bytes, &parse(desc.as_deref())?).map(asset_value)
-    })())
+    })()
 }
 
-pub fn og_load_gltf_data(world: u32, name: String, bytes: Vec<u8>, desc: Option<String>) -> String {
-    result((|| {
+pub fn og_load_gltf_data(
+    world: u32,
+    name: String,
+    bytes: Vec<u8>,
+    desc: Option<String>,
+) -> Result<serde_json::Value, String> {
+    (|| {
         let eng = engine(world)?;
         crate::uncooked::gltf_data(&eng, &name, bytes, &parse(desc.as_deref())?).map(asset_value)
-    })())
+    })()
 }
 
 pub fn og_load_environment_data(
@@ -343,24 +348,24 @@ pub fn og_load_environment_data(
     name: String,
     bytes: Vec<u8>,
     desc: Option<String>,
-) -> String {
-    result((|| {
+) -> Result<serde_json::Value, String> {
+    (|| {
         let eng = engine(world)?;
         crate::uncooked::environment_data(&eng, &name, bytes, &parse(desc.as_deref())?)
             .map(asset_value)
-    })())
+    })()
 }
 
-pub fn og_load_environment_info(world: u32, asset: f64) -> String {
-    result(engine(world).and_then(|eng| crate::uncooked::environment_info(&eng, index_of(asset))))
+pub fn og_load_environment_info(world: u32, asset: f64) -> Result<serde_json::Value, String> {
+    engine(world).and_then(|eng| crate::uncooked::environment_info(&eng, index_of(asset)))
 }
 
-pub fn og_load_image_info(world: u32, asset: f64) -> String {
-    result(engine(world).and_then(|eng| crate::uncooked::image_info(&eng, index_of(asset))))
+pub fn og_load_image_info(world: u32, asset: f64) -> Result<serde_json::Value, String> {
+    engine(world).and_then(|eng| crate::uncooked::image_info(&eng, index_of(asset)))
 }
 
-pub fn og_load_release(world: u32, asset: f64) -> String {
-    result_void(engine(world).and_then(|eng| crate::uncooked::release(&eng, index_of(asset))))
+pub fn og_load_release(world: u32, asset: f64) -> Result<(), String> {
+    engine(world).and_then(|eng| crate::uncooked::release(&eng, index_of(asset)))
 }
 
 pub fn og_load_completions(world: u32) -> String {
@@ -370,12 +375,12 @@ pub fn og_load_completions(world: u32) -> String {
     }
 }
 
-pub fn og_load_replay_completions(world: u32, completions: String) -> String {
-    result_void((|| {
+pub fn og_load_replay_completions(world: u32, completions: String) -> Result<(), String> {
+    (|| {
         let eng = engine(world)?;
         let tick = eng.world().map(|w| w.time().tick).unwrap_or(0);
         let list: Value =
             serde_json::from_str(&completions).map_err(|e| format!("completions: {e}"))?;
         crate::uncooked::replay(&eng, tick, &list)
-    })())
+    })()
 }

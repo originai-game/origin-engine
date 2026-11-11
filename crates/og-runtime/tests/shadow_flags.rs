@@ -233,7 +233,11 @@ fn frame(engine: u32) {
 
 /// (castShadow, receiveShadow) of an entity's `component`.
 fn flags(engine: u32, e: f64, component: &str) -> (bool, bool) {
-    let v = value(og_world_get(engine, e, component.into()));
+    let v = value(og_runtime::host_impl::answer(og_world_get(
+        engine,
+        e,
+        component.into(),
+    )));
     (
         v["castShadow"].as_bool().unwrap(),
         v["receiveShadow"].as_bool().unwrap(),
@@ -258,10 +262,18 @@ fn meshes_of(seen: &Rc<RefCell<Seen>>, before: &[(usize, bool, bool)]) -> Vec<us
 #[test]
 fn a_model_loaded_without_flags_casts_and_receives_and_one_turned_off_does_neither() {
     let (engine, seen) = engine();
-    let asset = value(og_load_gltf(engine, "models/crate.vox".into(), None));
-    let plain = value(og_world_instantiate(engine, asset.as_f64().unwrap(), None))
-        .as_f64()
-        .unwrap();
+    let asset = value(og_runtime::host_impl::answer(og_load_gltf(
+        engine,
+        "models/crate.vox".into(),
+        None,
+    )));
+    let plain = value(og_runtime::host_impl::answer(og_world_instantiate(
+        engine,
+        asset.as_f64().unwrap(),
+        None,
+    )))
+    .as_f64()
+    .unwrap();
     assert_eq!(flags(engine, plain, "og.Model"), (true, true));
     frame(engine);
     let crate_meshes = meshes_of(&seen, &[]);
@@ -271,11 +283,19 @@ fn a_model_loaded_without_flags_casts_and_receives_and_one_turned_off_does_neith
     // The same path loaded again with a desc: the same handle, its flags
     // for the models instantiated after it.
     let off = json!({ "castShadow": false, "receiveShadow": false }).to_string();
-    let again = value(og_load_gltf(engine, "models/crate.vox".into(), Some(off)));
+    let again = value(og_runtime::host_impl::answer(og_load_gltf(
+        engine,
+        "models/crate.vox".into(),
+        Some(off),
+    )));
     assert_eq!(again, asset);
-    let dark = value(og_world_instantiate(engine, asset.as_f64().unwrap(), None))
-        .as_f64()
-        .unwrap();
+    let dark = value(og_runtime::host_impl::answer(og_world_instantiate(
+        engine,
+        asset.as_f64().unwrap(),
+        None,
+    )))
+    .as_f64()
+    .unwrap();
     assert_eq!(flags(engine, dark, "og.Model"), (false, false));
     assert_eq!(flags(engine, plain, "og.Model"), (true, true), "kept");
     frame(engine);
@@ -286,7 +306,12 @@ fn a_model_loaded_without_flags_casts_and_receives_and_one_turned_off_does_neith
 
     // Per instance: og.Model's own fields, set after the fact.
     let only_cast = json!({ "castShadow": false }).to_string();
-    value(og_world_set(engine, plain, "og.Model".into(), only_cast));
+    value(og_runtime::host_impl::answer(og_world_set(
+        engine,
+        plain,
+        "og.Model".into(),
+        only_cast,
+    )));
     frame(engine);
     assert_eq!(
         seen.borrow().of(&crate_meshes),
@@ -295,13 +320,25 @@ fn a_model_loaded_without_flags_casts_and_receives_and_one_turned_off_does_neith
 
     // A desc's omitted field is on; a flag that is not a boolean is refused.
     let half = json!({ "receiveShadow": false }).to_string();
-    value(og_load_gltf(engine, "models/crate.vox".into(), Some(half)));
-    let e = value(og_world_instantiate(engine, asset.as_f64().unwrap(), None))
-        .as_f64()
-        .unwrap();
+    value(og_runtime::host_impl::answer(og_load_gltf(
+        engine,
+        "models/crate.vox".into(),
+        Some(half),
+    )));
+    let e = value(og_runtime::host_impl::answer(og_world_instantiate(
+        engine,
+        asset.as_f64().unwrap(),
+        None,
+    )))
+    .as_f64()
+    .unwrap();
     assert_eq!(flags(engine, e, "og.Model"), (true, false));
     let bad = json!({ "castShadow": "no" }).to_string();
-    let reason = refused(og_load_gltf(engine, "models/crate.vox".into(), Some(bad)));
+    let reason = refused(og_runtime::host_impl::answer(og_load_gltf(
+        engine,
+        "models/crate.vox".into(),
+        Some(bad),
+    )));
     assert!(reason.contains("GltfDesc.castShadow"), "{reason}");
 }
 
@@ -311,34 +348,45 @@ fn a_model_loaded_without_flags_casts_and_receives_and_one_turned_off_does_neith
 #[test]
 fn a_hidden_model_draws_nothing_posed_or_not() {
     let (engine, seen) = engine();
-    let crate_asset = value(og_load_gltf(engine, "models/crate.vox".into(), None));
-    let still = value(og_world_instantiate(
+    let crate_asset = value(og_runtime::host_impl::answer(og_load_gltf(
+        engine,
+        "models/crate.vox".into(),
+        None,
+    )));
+    let still = value(og_runtime::host_impl::answer(og_world_instantiate(
         engine,
         crate_asset.as_f64().unwrap(),
         None,
-    ))
+    )))
     .as_f64()
     .unwrap();
-    let anim = value(og_load_animation(engine, "models/walker.glb".into()));
+    let anim = value(og_runtime::host_impl::answer(og_load_animation(
+        engine,
+        "models/walker.glb".into(),
+    )));
     let clip = anim["clips"].as_array().unwrap()[0]["clip"].clone();
-    let walker_asset = value(og_load_gltf(engine, "models/walker.glb".into(), None));
-    let walker = value(og_world_instantiate(
+    let walker_asset = value(og_runtime::host_impl::answer(og_load_gltf(
+        engine,
+        "models/walker.glb".into(),
+        None,
+    )));
+    let walker = value(og_runtime::host_impl::answer(og_world_instantiate(
         engine,
         walker_asset.as_f64().unwrap(),
         None,
-    ))
+    )))
     .as_f64()
     .unwrap();
     for (name, v) in [
         ("og.Skeleton", json!({ "asset": anim["skeleton"] })),
         ("og.AnimationPlayer", json!({ "clip": clip, "loop": true })),
     ] {
-        value(og_world_insert(
+        value(og_runtime::host_impl::answer(og_world_insert(
             engine,
             walker,
             name.into(),
             Some(v.to_string()),
-        ));
+        )));
     }
     for _ in 0..3 {
         frame(engine);
@@ -346,19 +394,33 @@ fn a_hidden_model_draws_nothing_posed_or_not() {
     let shown = (seen.borrow().instances.len(), seen.borrow().skinned.len());
     assert!(shown.0 > 0 && shown.1 > 0, "{shown:?}");
     assert_eq!(
-        value(og_world_get(engine, still, "og.Model".into()))["visible"],
+        value(og_runtime::host_impl::answer(og_world_get(
+            engine,
+            still,
+            "og.Model".into()
+        )))["visible"],
         json!(true)
     );
     for e in [still, walker] {
         let hide = json!({ "visible": false }).to_string();
-        value(og_world_set(engine, e, "og.Model".into(), hide));
+        value(og_runtime::host_impl::answer(og_world_set(
+            engine,
+            e,
+            "og.Model".into(),
+            hide,
+        )));
     }
     frame(engine);
     assert_eq!(seen.borrow().instances.len(), 0);
     assert_eq!(seen.borrow().skinned.len(), 0);
     for e in [still, walker] {
         let show = json!({ "visible": true }).to_string();
-        value(og_world_set(engine, e, "og.Model".into(), show));
+        value(og_runtime::host_impl::answer(og_world_set(
+            engine,
+            e,
+            "og.Model".into(),
+            show,
+        )));
     }
     frame(engine);
     let again = (seen.borrow().instances.len(), seen.borrow().skinned.len());
@@ -373,8 +435,15 @@ fn a_hidden_model_draws_nothing_posed_or_not() {
 #[test]
 fn the_flags_round_trip_through_the_scene_text() {
     let (engine, seen) = engine();
-    let scene = value(og_load_scene(engine, "scenes/flags.ogt".into()));
-    value(og_world_instantiate(engine, scene.as_f64().unwrap(), None));
+    let scene = value(og_runtime::host_impl::answer(og_load_scene(
+        engine,
+        "scenes/flags.ogt".into(),
+    )));
+    value(og_runtime::host_impl::answer(og_world_instantiate(
+        engine,
+        scene.as_f64().unwrap(),
+        None,
+    )));
     let find = |name: &str| {
         serde_json::from_str::<Value>(&og_world_find(engine, name.into()))
             .unwrap()
@@ -385,7 +454,14 @@ fn the_flags_round_trip_through_the_scene_text() {
     assert_eq!(flags(engine, plain, "og.Model"), (true, true));
     assert_eq!(flags(engine, dark, "og.Model"), (false, false));
     assert_eq!(flags(engine, sign, "og.Mesh"), (true, false));
-    let asset = |e: f64| value(og_world_get(engine, e, "og.Model".into()))["asset"].clone();
+    let asset = |e: f64| {
+        value(og_runtime::host_impl::answer(og_world_get(
+            engine,
+            e,
+            "og.Model".into(),
+        )))["asset"]
+            .clone()
+    };
     assert_eq!(
         asset(plain),
         asset(dark),

@@ -100,18 +100,29 @@ fn copies_of_a_model_share_their_mesh_but_not_their_materials() {
     set_render_backend(engine, Some(Box::new(Recorder(seen.clone())))).unwrap();
     let mut materials = Vec::new();
     for name in ["a", "b"] {
-        let asset = value(og_load_gltf(engine, format!("models/{name}.ogt"), None));
+        let asset = value(og_runtime::host_impl::answer(og_load_gltf(
+            engine,
+            format!("models/{name}.ogt"),
+            None,
+        )));
         materials.push(
-            value(og_load_gltf_info(engine, asset.as_f64().unwrap()))["materials"][0].clone(),
+            value(og_runtime::host_impl::answer(og_load_gltf_info(
+                engine,
+                asset.as_f64().unwrap(),
+            )))["materials"][0]
+                .clone(),
         );
-        let e = value(og_world_spawn(engine, Some("{}".into())));
+        let e = value(og_runtime::host_impl::answer(og_world_spawn(
+            engine,
+            Some("{}".into()),
+        )));
         let model = json!({ "asset": asset }).to_string();
-        value(og_world_insert(
+        value(og_runtime::host_impl::answer(og_world_insert(
             engine,
             e.as_f64().unwrap(),
             "og.Model".into(),
             Some(model),
-        ));
+        )));
     }
     assert_ne!(
         materials[0], materials[1],
@@ -129,11 +140,11 @@ fn copies_of_a_model_share_their_mesh_but_not_their_materials() {
 
     // Recolour model a's material: model b keeps its colour.
     let red = json!({ "color": { "r": 1, "g": 0, "b": 0 } }).to_string();
-    value(og_render_update_material(
+    value(og_runtime::host_impl::answer(og_render_update_material(
         engine,
         materials[0].as_f64().unwrap(),
         Some(red),
-    ));
+    )));
     value(og_engine_frame(engine, 1000.0 / 60.0));
     let mut colours: Vec<[f32; 3]> = seen.borrow().iter().map(|i| i.2.color.to_array()).collect();
     colours.sort_by(|x, y| x.partial_cmp(y).unwrap());

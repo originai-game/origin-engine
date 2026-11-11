@@ -1,18 +1,10 @@
 //! `og.procgen`: og-core's generators over the wire. Each is a pure
 //! function of its desc (the seed in it included), so it needs no world.
 
-use super::refuse;
-use super::wire::{self, ToJson};
+use super::wire::{self};
 use og_core::glam::Vec2;
 use og_core::procgen::{self, BspDesc, Fbm, NoiseKind, Wfc, WfcTile};
 use serde_json::json;
-
-fn wire<T: ToJson>(r: Result<T, String>) -> String {
-    match r {
-        Ok(v) => wire::ok(&v),
-        Err(e) => refuse(e),
-    }
-}
 
 /// An FbmDesc read off the wire as og-core's generator.
 fn fbm(d: &wire::FbmDesc) -> Fbm {
@@ -36,8 +28,8 @@ pub fn og_procgen_noise(desc: String, x: f64, y: f64, z: f64) -> f64 {
     }
 }
 
-pub fn og_procgen_noise_grid(desc: Option<String>) -> String {
-    wire((|| {
+pub fn og_procgen_noise_grid(desc: Option<String>) -> Result<serde_json::Value, String> {
+    (|| {
         let d: wire::NoiseGridDesc = wire::arg(desc.as_deref(), "desc")?;
         let (w, h) = (d.width, d.height);
         if w == 0 || h == 0 || u64::from(w) * u64::from(h) > 1 << 24 {
@@ -47,11 +39,11 @@ pub fn og_procgen_noise_grid(desc: Option<String>) -> String {
         }
         let grid = fbm(&d.noise).grid(w, h, d.x, d.y, d.step, d.z, !d.noise.three_d);
         Ok(json!(grid))
-    })())
+    })()
 }
 
-pub fn og_procgen_poisson_disk(desc: Option<String>) -> String {
-    wire((|| {
+pub fn og_procgen_poisson_disk(desc: Option<String>) -> Result<Vec<Vec2>, String> {
+    (|| {
         let d: wire::PoissonDesc = wire::arg(desc.as_deref(), "desc")?;
         let pts = procgen::poisson_disk(
             d.seed,
@@ -63,10 +55,10 @@ pub fn og_procgen_poisson_disk(desc: Option<String>) -> String {
         )
         .map_err(|e| e.reason().to_string())?;
         Ok(pts.into_iter().map(Vec2::from_array).collect::<Vec<_>>())
-    })())
+    })()
 }
 
-fn rect(r: &procgen::CellRect) -> wire::CellRect {
+fn rect(r: &procgen::CellRect) -> crate::wire::CellRect {
     wire::CellRect {
         x: r.x,
         y: r.y,
@@ -75,8 +67,8 @@ fn rect(r: &procgen::CellRect) -> wire::CellRect {
     }
 }
 
-pub fn og_procgen_bsp(desc: Option<String>) -> String {
-    wire((|| {
+pub fn og_procgen_bsp(desc: Option<String>) -> Result<crate::wire::BspResult, String> {
+    (|| {
         let d: wire::BspDesc = wire::arg(desc.as_deref(), "desc")?;
         let out = procgen::bsp_rooms(&BspDesc {
             seed: d.seed,
@@ -94,11 +86,11 @@ pub fn og_procgen_bsp(desc: Option<String>) -> String {
             corridors: out.corridors.iter().map(rect).collect(),
             cells: out.cells.into_iter().map(u32::from).collect(),
         })
-    })())
+    })()
 }
 
-pub fn og_procgen_wfc(desc: Option<String>) -> String {
-    wire((|| {
+pub fn og_procgen_wfc(desc: Option<String>) -> Result<crate::wire::WfcResult, String> {
+    (|| {
         let d: wire::WfcDesc = wire::arg(desc.as_deref(), "desc")?;
         let tiles = d
             .tiles
@@ -129,5 +121,5 @@ pub fn og_procgen_wfc(desc: Option<String>) -> String {
             rotations: out.rotations,
             attempt: out.attempt,
         })
-    })())
+    })()
 }

@@ -310,7 +310,10 @@ pub(crate) fn apply(eng: &Engine, index: usize) -> Result<(), String> {
     if let Some(style) = style {
         // Every other field keeps the last UiDesc's value (og.ui.configure merges).
         let desc = json!({ "style": handle_value(style) });
-        let answer = super::modules::og_ui_configure(eng.id, Some(desc.to_string()));
+        let answer = crate::host_impl::answer(super::modules::og_ui_configure(
+            eng.id,
+            Some(desc.to_string()),
+        ));
         if let Ok(Value::Object(o)) = serde_json::from_str::<Value>(&answer)
             && o.get("ok") == Some(&Value::Bool(false))
         {

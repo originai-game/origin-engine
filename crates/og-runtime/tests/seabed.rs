@@ -114,16 +114,19 @@ fn value(text: String) -> Value {
 
 fn spawn(engine: u32, at: [f32; 3], components: &[(&str, Value)]) -> f64 {
     let desc = json!({ "position": { "x": at[0], "y": at[1], "z": at[2] } });
-    let e = value(og_world_spawn(engine, Some(desc.to_string())))
-        .as_f64()
-        .unwrap();
+    let e = value(og_runtime::host_impl::answer(og_world_spawn(
+        engine,
+        Some(desc.to_string()),
+    )))
+    .as_f64()
+    .unwrap();
     for (name, v) in components {
-        value(og_world_insert(
+        value(og_runtime::host_impl::answer(og_world_insert(
             engine,
             e,
             name.to_string(),
             Some(v.to_string()),
-        ));
+        )));
     }
     e
 }
@@ -139,7 +142,10 @@ fn a_sea_over_its_seabed_shoals_for_the_tick_and_the_frame() {
     let seen = Rc::new(RefCell::new(Seen::default()));
     set_render_backend(engine, Some(Box::new(Recorder(seen.clone())))).unwrap();
     value(og_engine_frame(engine, 1000.0 / 60.0));
-    let info = value(og_terrain_load(engine, "terrain/beach.ogt".into()));
+    let info = value(og_runtime::host_impl::answer(og_terrain_load(
+        engine,
+        "terrain/beach.ogt".into(),
+    )));
     let terrain = spawn(
         engine,
         [0.0, 0.0, 0.0],
@@ -154,9 +160,11 @@ fn a_sea_over_its_seabed_shoals_for_the_tick_and_the_frame() {
     for _ in 0..240 {
         value(og_engine_frame(engine, 1000.0 / 60.0));
         for (span, e) in spans.iter_mut().zip([water, open]) {
-            let h = value(og_physics_water_height(engine, e, -8.0, 0.0))
-                .as_f64()
-                .unwrap();
+            let h = value(og_runtime::host_impl::answer(og_physics_water_height(
+                engine, e, -8.0, 0.0,
+            )))
+            .as_f64()
+            .unwrap();
             *span = (span.0.min(h), span.1.max(h));
         }
     }
@@ -168,9 +176,11 @@ fn a_sea_over_its_seabed_shoals_for_the_tick_and_the_frame() {
     );
     // Off the beach, deep water: the swell is the open sea's.
     let at = |e: f64| {
-        value(og_physics_water_height(engine, e, -600.0, 0.0))
-            .as_f64()
-            .unwrap()
+        value(og_runtime::host_impl::answer(og_physics_water_height(
+            engine, e, -600.0, 0.0,
+        )))
+        .as_f64()
+        .unwrap()
     };
     assert_eq!(at(water), at(open));
     // The frame draws the tick's seabed, read off the terrain's place:

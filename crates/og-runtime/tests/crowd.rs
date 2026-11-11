@@ -123,25 +123,36 @@ fn a_crowd_shares_one_baked_clip_at_its_own_frames() {
     let engine = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
     let seen = Rc::new(RefCell::new(Vec::new()));
     set_render_backend(engine, Some(Box::new(Recorder(seen.clone())))).unwrap();
-    let anim = value(og_load_animation(engine, "models/walker.glb".into()));
+    let anim = value(og_runtime::host_impl::answer(og_load_animation(
+        engine,
+        "models/walker.glb".into(),
+    )));
     let clip = anim["clips"].as_array().unwrap()[0]["clip"].clone();
-    let asset = value(og_load_gltf(engine, "models/walker.glb".into(), None));
+    let asset = value(og_runtime::host_impl::answer(og_load_gltf(
+        engine,
+        "models/walker.glb".into(),
+        None,
+    )));
     const MEMBERS: usize = 40;
     for k in 0..MEMBERS {
-        let e = value(og_world_instantiate(engine, asset.as_f64().unwrap(), None))
-            .as_f64()
-            .unwrap();
+        let e = value(og_runtime::host_impl::answer(og_world_instantiate(
+            engine,
+            asset.as_f64().unwrap(),
+            None,
+        )))
+        .as_f64()
+        .unwrap();
         let crowd = json!({
             "skeleton": anim["skeleton"],
             "clip": clip,
             "offset": k as f64 * 0.137,
         });
-        value(og_world_insert(
+        value(og_runtime::host_impl::answer(og_world_insert(
             engine,
             e,
             "og.CrowdAnimation".into(),
             Some(crowd.to_string()),
-        ));
+        )));
     }
     for _ in 0..4 {
         value(og_engine_frame(engine, 1000.0 / 60.0));

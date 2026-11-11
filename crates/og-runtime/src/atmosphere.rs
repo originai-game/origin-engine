@@ -12,7 +12,7 @@ use super::codec::Layout;
 use super::engine::engine;
 use super::extract::{Hierarchy, RenderState};
 use super::fx::{color, f, kept_rows, on, resource, rows, u, vec2};
-use super::{ok, ok_void, parse, refuse};
+use super::parse;
 use glam::{Mat4, Vec2, Vec3};
 use og_core::IdMap;
 use og_ecs::{Entity, World};
@@ -1251,15 +1251,11 @@ pub fn og_atmosphere_time_of_day(world: u32) -> f64 {
 // ── material shaders ────────────────────────────────────────────────────
 
 /// `og.load.shader`: a cooked shader, added to the scene once per path.
-pub fn og_load_shader(world: u32, path: String) -> String {
-    let r = (|| -> Result<Value, String> {
+pub fn og_load_shader(world: u32, path: String) -> Result<serde_json::Value, String> {
+    (|| -> Result<Value, String> {
         let eng = engine(world)?;
         Ok(json!(super::assets::handle(load_shader(&eng, &path)?)))
-    })();
-    match r {
-        Ok(v) => ok(v),
-        Err(e) => refuse(e),
-    }
+    })()
 }
 
 /// A cooked shader's load index, added to the scene once per path (an
@@ -1284,8 +1280,12 @@ pub(crate) fn load_shader(eng: &super::engine::Engine, path: &str) -> Result<usi
     Ok(i)
 }
 
-pub fn og_render_shader_material(world: u32, shader: f64, desc: Option<String>) -> String {
-    let r = (|| -> Result<Value, String> {
+pub fn og_render_shader_material(
+    world: u32,
+    shader: f64,
+    desc: Option<String>,
+) -> Result<serde_json::Value, String> {
+    (|| -> Result<Value, String> {
         let eng = engine(world)?;
         let desc = parse(desc.as_deref())?;
         let mut rs = eng.render.borrow_mut();
@@ -1302,15 +1302,15 @@ pub fn og_render_shader_material(world: u32, shader: f64, desc: Option<String>) 
         rs.scene.set_material_shader(handle, Some(s));
         rs.materials.push(handle);
         Ok(json!(super::api::material_handle(rs.materials.len() - 1)))
-    })();
-    match r {
-        Ok(v) => ok(v),
-        Err(e) => refuse(e),
-    }
+    })()
 }
 
 /// og.render.setMaterialShader: `shader` is the JSON of a shader handle or null.
-pub fn og_render_set_material_shader(world: u32, material: f64, shader: String) -> String {
+pub fn og_render_set_material_shader(
+    world: u32,
+    material: f64,
+    shader: String,
+) -> Result<(), String> {
     let r = (|| -> Result<(), String> {
         let eng = engine(world)?;
         let shader: Option<u64> = super::wire::arg(Some(&shader), "shader")?;
@@ -1332,8 +1332,8 @@ pub fn og_render_set_material_shader(world: u32, material: f64, shader: String) 
         Ok(())
     })();
     match r {
-        Ok(()) => ok_void(),
-        Err(e) => refuse(e),
+        Ok(()) => Ok(()),
+        Err(e) => Err(e),
     }
 }
 
@@ -1342,7 +1342,7 @@ pub fn og_render_set_shader_param(
     material: f64,
     name: String,
     value: String,
-) -> String {
+) -> Result<(), String> {
     let r = (|| -> Result<(), String> {
         let eng = engine(world)?;
         let value: Vec<f32> = match serde_json::from_str::<Value>(&value) {
@@ -1368,7 +1368,7 @@ pub fn og_render_set_shader_param(
         Ok(())
     })();
     match r {
-        Ok(()) => ok_void(),
-        Err(e) => refuse(e),
+        Ok(()) => Ok(()),
+        Err(e) => Err(e),
     }
 }

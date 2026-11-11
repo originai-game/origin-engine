@@ -99,32 +99,42 @@ fn scaled_node_placements_match_scatter_impostor_bounds_and_report_mismatches() 
         .unwrap() as u32;
     let seen = Rc::new(RefCell::new(Vec::new()));
     set_render_backend(engine, Some(Box::new(Seen(seen.clone())))).unwrap();
-    let model = value(og_load_gltf(engine, "scaled.gltf".into(), None))
-        .as_f64()
-        .unwrap();
-    let info = value(og_load_gltf_info(engine, model));
-    let data = value(og_terrain_load(engine, "ground.ogt".into()))["data"].clone();
-    let entity = value(og_world_spawn(
+    let model = value(og_runtime::host_impl::answer(og_load_gltf(
         engine,
-        Some(json!({"name":"scatter"}).to_string()),
-    ))
+        "scaled.gltf".into(),
+        None,
+    )))
     .as_f64()
     .unwrap();
-    value(og_world_insert(
+    let info = value(og_runtime::host_impl::answer(og_load_gltf_info(
+        engine, model,
+    )));
+    let data = value(og_runtime::host_impl::answer(og_terrain_load(
+        engine,
+        "ground.ogt".into(),
+    )))["data"]
+        .clone();
+    let entity = value(og_runtime::host_impl::answer(og_world_spawn(
+        engine,
+        Some(json!({"name":"scatter"}).to_string()),
+    )))
+    .as_f64()
+    .unwrap();
+    value(og_runtime::host_impl::answer(og_world_insert(
         engine,
         entity,
         "og.Terrain".into(),
         Some(json!({"data":data}).to_string()),
-    ));
+    )));
     let mut desc = json!({"data":data,"geometry":info["geometries"][0],"material":info["materials"][0],"impostor":model,"impostorDistance":12,"sway":0});
     for distance in [0, 12, 40] {
         desc["impostorDistance"] = json!(distance);
-        value(og_world_insert(
+        value(og_runtime::host_impl::answer(og_world_insert(
             engine,
             entity,
             "og.TerrainScatter".into(),
             Some(desc.to_string()),
-        ));
+        )));
         value(og_engine_frame(engine, 1000.0 / 60.0));
         let borrowed = seen.borrow();
         assert_eq!(borrowed.len(), 1);
@@ -145,13 +155,15 @@ fn scaled_node_placements_match_scatter_impostor_bounds_and_report_mismatches() 
             .abs()
             < 1e-6
     );
-    desc["geometry"] = value(og_render_box_geometry(engine, None));
-    value(og_world_insert(
+    desc["geometry"] = value(og_runtime::host_impl::answer(og_render_box_geometry(
+        engine, None,
+    )));
+    value(og_runtime::host_impl::answer(og_world_insert(
         engine,
         entity,
         "og.TerrainScatter".into(),
         Some(desc.to_string()),
-    ));
+    )));
     value(og_engine_frame(engine, 1000.0 / 60.0));
     assert!(seen.borrow().is_empty());
     let id = og_ecs::Entity::from_bits(entity as u64);
@@ -167,12 +179,12 @@ fn scaled_node_placements_match_scatter_impostor_bounds_and_report_mismatches() 
         "{dump}"
     );
     desc["geometry"] = info["geometries"][0].clone();
-    value(og_world_insert(
+    value(og_runtime::host_impl::answer(og_world_insert(
         engine,
         entity,
         "og.TerrainScatter".into(),
         Some(desc.to_string()),
-    ));
+    )));
     value(og_engine_frame(engine, 1000.0 / 60.0));
     let dump = og_engine_probe_dump(
         engine,

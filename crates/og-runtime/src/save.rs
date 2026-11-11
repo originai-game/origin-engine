@@ -38,7 +38,7 @@
 //! tick delivers og.WorldRestored ([`before_tick`]).
 
 use super::engine::{Engine, HANDLES, engine, running};
-use super::wire::{SaveRecord, SaveType, ToJson};
+use super::wire::{SaveRecord, SaveType};
 use og_ecs::{SnapshotEdit, TypeValues, World};
 use serde_json::{Value, json};
 
@@ -95,14 +95,6 @@ fn is_selection(snapshot: &[u8]) -> bool {
     snapshot.get(4..8) == Some(&SELECTION.to_le_bytes()[..])
 }
 
-fn ok(value: Value) -> String {
-    serde_json::json!({ "ok": true, "value": value }).to_string()
-}
-
-fn refuse(reason: impl Into<String>) -> String {
-    serde_json::json!({ "ok": false, "reason": reason.into() }).to_string()
-}
-
 /// A selection's tags and resources, as this world's type ids.
 type SelectionIds = (Vec<og_ecs::SchemaId>, Vec<og_ecs::SchemaId>);
 
@@ -133,15 +125,9 @@ fn selection_ids(
 }
 
 /// `World.snapshot`.
-pub fn og_world_snapshot(world: u32, desc: Option<String>) -> String {
-    let eng = match engine(world) {
-        Ok(e) => e,
-        Err(e) => return refuse(e),
-    };
-    let desc: super::wire::SnapshotDesc = match super::wire::arg(desc.as_deref(), "desc") {
-        Ok(d) => d,
-        Err(e) => return refuse(e),
-    };
+pub fn og_world_snapshot(world: u32, desc: Option<String>) -> Result<serde_json::Value, String> {
+    let eng = engine(world)?;
+    let desc: super::wire::SnapshotDesc = super::wire::arg(desc.as_deref(), "desc")?;
     let version = eng.state.borrow().save_version;
     let taken = if let Some(f) = running(world) {
         // SAFETY: the frame is published while its system runs.
@@ -181,9 +167,9 @@ pub fn og_world_snapshot(world: u32, desc: Option<String>) -> String {
                         .map(super::presentation::UiCheckpoint::save)
                 })
                 .flatten();
-            ok(Value::String(encode(&bytes, tick, version, ui.as_ref())))
+            Ok(Value::String(encode(&bytes, tick, version, ui.as_ref())))
         }
-        Err(e) => refuse(e),
+        Err(e) => Err(e),
     }
 }
 
@@ -333,35 +319,30 @@ fn refusal(e: og_core::Error, migrate: bool) -> String {
 }
 
 /// `World.restore`.
-pub fn og_world_restore(world: u32, save: String, desc: Option<String>) -> String {
-    let eng = match engine(world) {
-        Ok(e) => e,
-        Err(e) => return refuse(e),
-    };
-    let super::wire::RestoreDesc { migrate, session } =
-        match super::wire::arg(desc.as_deref(), "desc") {
-            Ok(d) => d,
-            Err(e) => return refuse(e),
-        };
+pub fn og_world_restore(
+    world: u32,
+    save: String,
+    desc: Option<String>,
+) -> Result<serde_json::Value, String> {
+    let eng = engine(world)?;
+    let super::wire::RestoreDesc { migrate, session } = super::wire::arg(desc.as_deref(), "desc")?;
     let current = eng.state.borrow().save_version;
-    let (snapshot, ui) = match upgraded(&save, current) {
-        Ok(s) => {
-            // What the engine's migrations did, in the log (`og run` prints it).
-            if !s.steps.is_empty() {
-                eng.state.borrow_mut().log.push(json!({
-                    "tick": og_ecs::last_tick(), "warning": false,
-                    "text": format!("world.restore: the engine upgraded the save: {}", s.steps.join("; ")),
-                }));
-            }
-            (s.snapshot, s.ui)
+    let (snapshot, ui) = {
+        let s = upgraded(&save, current)?;
+        // What the engine's migrations did, in the log (`og run` prints it).
+        if !s.steps.is_empty() {
+            eng.state.borrow_mut().log.push(json!({
+                "tick": og_ecs::last_tick(), "warning": false,
+                "text": format!("world.restore: the engine upgraded the save: {}", s.steps.join("; ")),
+            }));
         }
-        Err(e) => return refuse(e),
+        (s.snapshot, s.ui)
     };
     if is_selection(&snapshot) {
         // Checked whole when it applies (restore_selection changes nothing
         // when it refuses); here, only that it reads.
         if let Err(e) = SnapshotEdit::from_bytes(&snapshot) {
-            return refuse(refusal(e, migrate));
+            return Err(refusal(e, migrate));
         }
         if running(world).is_some() || eng.probe.try_borrow_mut().is_err() {
             eng.state.borrow_mut().pending_restore = Some(Pending {
@@ -370,12 +351,9 @@ pub fn og_world_restore(world: u32, save: String, desc: Option<String>) -> Strin
                 session,
                 ui,
             });
-            return ok(Value::Null);
+            return Ok(Value::Null);
         }
-        let w = match eng.world() {
-            Ok(w) => w,
-            Err(e) => return refuse(e),
-        };
+        let w = eng.world()?;
         return match apply(
             &eng,
             w,
@@ -386,8 +364,8 @@ pub fn og_world_restore(world: u32, save: String, desc: Option<String>) -> Strin
                 ui,
             },
         ) {
-            Ok(()) => ok(Value::Null),
-            Err(e) => refuse(e),
+            Ok(()) => Ok(Value::Null),
+            Err(e) => Err(e),
         };
     }
     // The session's types (SESSION) are the host's after a restore, so a
@@ -403,7 +381,7 @@ pub fn og_world_restore(world: u32, save: String, desc: Option<String>) -> Strin
                 session,
                 ui,
             });
-            return ok(Value::Null);
+            return Ok(Value::Null);
         }
         // SAFETY: the frame is published while its system runs.
         let migrate = match unsafe { f.ctx() }.check_snapshot_replacing(
@@ -413,7 +391,7 @@ pub fn og_world_restore(world: u32, save: String, desc: Option<String>) -> Strin
             &engine_owned,
         ) {
             Ok(session_differs) => migrate || session_differs,
-            Err(e) => return refuse(refusal(e, migrate)),
+            Err(e) => return Err(refusal(e, migrate)),
         };
         eng.state.borrow_mut().pending_restore = Some(Pending {
             snapshot,
@@ -421,16 +399,13 @@ pub fn og_world_restore(world: u32, save: String, desc: Option<String>) -> Strin
             session,
             ui,
         });
-        return ok(Value::Null);
+        return Ok(Value::Null);
     }
-    let w = match eng.world() {
-        Ok(w) => w,
-        Err(e) => return refuse(e),
-    };
+    let w = eng.world()?;
     super::lazy::before_restore(&eng, w, &snapshot);
     let migrate = match w.check_snapshot_replacing(&snapshot, migrate, SESSION, &engine_owned) {
         Ok(session_differs) => migrate || session_differs,
-        Err(e) => return refuse(refusal(e, migrate)),
+        Err(e) => return Err(refusal(e, migrate)),
     };
     // A command runs inside the probe's tick: the restore waits for its end.
     let Ok(mut probe) = eng.probe.try_borrow_mut() else {
@@ -440,7 +415,7 @@ pub fn og_world_restore(world: u32, save: String, desc: Option<String>) -> Strin
             session,
             ui,
         });
-        return ok(Value::Null);
+        return Ok(Value::Null);
     };
     let from = w.time().tick;
     let result = apply(
@@ -455,8 +430,8 @@ pub fn og_world_restore(world: u32, save: String, desc: Option<String>) -> Strin
     );
     probe.shift_schedule(from, w.time().tick);
     match result {
-        Ok(()) => ok(Value::Null),
-        Err(e) => refuse(e),
+        Ok(()) => Ok(Value::Null),
+        Err(e) => Err(e),
     }
 }
 
@@ -474,19 +449,13 @@ pub(crate) struct Open {
 
 /// `World.openSave`: the save with the engine's migrations applied, open
 /// for the game's (a handle for the `og_save_edit_*` calls).
-pub fn og_world_open_save(world: u32, save: String) -> String {
-    let eng = match engine(world) {
-        Ok(e) => e,
-        Err(e) => return refuse(e),
-    };
+pub fn og_world_open_save(world: u32, save: String) -> Result<serde_json::Value, String> {
+    let eng = engine(world)?;
     let current = eng.state.borrow().save_version;
-    let s = match upgraded(&save, current) {
-        Ok(s) => s,
-        Err(e) => return refuse(e),
-    };
+    let s = upgraded(&save, current)?;
     let edit = match SnapshotEdit::from_bytes(&s.snapshot) {
         Ok(e) => e,
-        Err(e) => return refuse(format!("the save cannot be opened: {}", e.reason())),
+        Err(e) => return Err(format!("the save cannot be opened: {}", e.reason())),
     };
     let open = Open {
         engine: world,
@@ -508,7 +477,7 @@ pub fn og_world_open_save(world: u32, save: String) -> String {
             }
         }
     });
-    ok(json!(handle + 1))
+    Ok(json!(handle + 1))
 }
 
 fn with_open<T>(handle: u32, f: impl FnOnce(&mut Open) -> Result<T, String>) -> Result<T, String> {
@@ -523,13 +492,6 @@ fn with_open<T>(handle: u32, f: impl FnOnce(&mut Open) -> Result<T, String>) -> 
     })
 }
 
-fn answer<T: ToJson>(r: Result<T, String>) -> String {
-    match r {
-        Ok(v) => super::wire::ok(&v),
-        Err(e) => refuse(e),
-    }
-}
-
 fn reason(e: og_core::Error) -> String {
     let r = e.reason().to_string();
     r.strip_prefix("snapshot: ").unwrap_or(&r).to_string()
@@ -542,8 +504,8 @@ pub fn og_save_edit_get_version(edit: u32) -> u32 {
 
 /// `SaveEdit.types`: every type the save holds, with its saved version
 /// and fields.
-pub fn og_save_edit_types(edit: u32) -> String {
-    answer(with_open(edit, |o| {
+pub fn og_save_edit_types(edit: u32) -> Result<Vec<crate::wire::SaveType>, String> {
+    with_open(edit, |o| {
         Ok(o.edit
             .schemas()
             .iter()
@@ -553,7 +515,7 @@ pub fn og_save_edit_types(edit: u32) -> String {
                 fields: t.fields.iter().map(|f| f.name.clone()).collect(),
             })
             .collect::<Vec<_>>())
-    }))
+    })
 }
 
 /// The saved type's layout, for reading its records.
@@ -569,8 +531,8 @@ fn saved_layout(edit: &SnapshotEdit, ty: &str) -> Result<super::codec::Layout, S
 
 /// `SaveEdit.records`: a type's values as the save holds them, components
 /// by entity in storage order, then its resource (entity null).
-pub fn og_save_edit_records(edit: u32, ty: String) -> String {
-    answer(with_open(edit, |o| {
+pub fn og_save_edit_records(edit: u32, ty: String) -> Result<Vec<crate::wire::SaveRecord>, String> {
+    with_open(edit, |o| {
         let layout = saved_layout(&o.edit, &ty)?;
         let mut out: Vec<SaveRecord> = o
             .edit
@@ -588,7 +550,7 @@ pub fn og_save_edit_records(edit: u32, ty: String) -> String {
             });
         }
         Ok(out)
-    }))
+    })
 }
 
 /// This build's layout and schema of `ty`, for writing into a save.
@@ -614,8 +576,8 @@ fn current(
 /// as this build's `into` (default the type itself): each record's fields
 /// by name, those it leaves out at their defaults. The type's old values
 /// go; its queued events too. A type the save does not hold is added.
-pub fn og_save_edit_set_records(edit: u32, ty: String, desc: Option<String>) -> String {
-    answer(with_open(edit, |o| {
+pub fn og_save_edit_set_records(edit: u32, ty: String, desc: Option<String>) -> Result<(), String> {
+    with_open(edit, |o| {
         let d: super::wire::SetRecordsDesc = super::wire::arg(desc.as_deref(), "desc")?;
         let into = if d.into.is_empty() {
             ty.clone()
@@ -647,12 +609,12 @@ pub fn og_save_edit_set_records(edit: u32, ty: String, desc: Option<String>) -> 
             }
         }
         o.edit.replace_types(remove, vec![values]).map_err(reason)
-    }))
+    })
 }
 
 /// `SaveEdit.renameType`.
-pub fn og_save_edit_rename_type(edit: u32, from: String, to: String) -> String {
-    answer(with_open(edit, |o| {
+pub fn og_save_edit_rename_type(edit: u32, from: String, to: String) -> Result<(), String> {
+    with_open(edit, |o| {
         let mut schema = o
             .edit
             .schema(&from)
@@ -667,12 +629,17 @@ pub fn og_save_edit_rename_type(edit: u32, from: String, to: String) -> String {
         o.edit
             .replace_types(&[from.as_str()], vec![values])
             .map_err(reason)
-    }))
+    })
 }
 
 /// `SaveEdit.renameField`.
-pub fn og_save_edit_rename_field(edit: u32, ty: String, from: String, to: String) -> String {
-    answer(with_open(edit, |o| {
+pub fn og_save_edit_rename_field(
+    edit: u32,
+    ty: String,
+    from: String,
+    to: String,
+) -> Result<(), String> {
+    with_open(edit, |o| {
         let mut schema = o
             .edit
             .schema(&ty)
@@ -688,22 +655,22 @@ pub fn og_save_edit_rename_field(edit: u32, ty: String, from: String, to: String
         o.edit
             .map_type(&ty, schema, &mut |v| Ok(v.to_vec()))
             .map_err(reason)
-    }))
+    })
 }
 
 /// `SaveEdit.dropType`.
-pub fn og_save_edit_drop_type(edit: u32, ty: String) -> String {
-    answer(with_open(edit, |o| {
+pub fn og_save_edit_drop_type(edit: u32, ty: String) -> Result<(), String> {
+    with_open(edit, |o| {
         o.edit
             .replace_types(&[ty.as_str()], Vec::new())
             .map_err(reason)
-    }))
+    })
 }
 
 /// `SaveEdit.spawn`: an entity added to the save, its components written
 /// as this build's types.
-pub fn og_save_edit_spawn(edit: u32, desc: Option<String>) -> String {
-    answer(with_open(edit, |o| {
+pub fn og_save_edit_spawn(edit: u32, desc: Option<String>) -> Result<u64, String> {
+    with_open(edit, |o| {
         let d: super::wire::SaveSpawnDesc = super::wire::arg(desc.as_deref(), "desc")?;
         let mut components = Vec::new();
         for (ty, value) in d.components.as_object().into_iter().flatten() {
@@ -718,16 +685,16 @@ pub fn og_save_edit_spawn(edit: u32, desc: Option<String>) -> String {
             .spawn(name, components)
             .map(|e| e.to_bits())
             .map_err(reason)
-    }))
+    })
 }
 
 /// `SaveEdit.text`: the save as text at the game's current save version
 /// (what world.restore takes after the migrations ran).
-pub fn og_save_edit_text(edit: u32) -> String {
-    answer(with_open(edit, |o| {
+pub fn og_save_edit_text(edit: u32) -> Result<String, String> {
+    with_open(edit, |o| {
         let version = engine(o.engine)?.state.borrow().save_version;
         Ok(encode(&o.edit.to_bytes(), o.tick, version, o.ui.as_ref()))
-    }))
+    })
 }
 
 /// `SaveEdit.close`.

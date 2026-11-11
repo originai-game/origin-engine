@@ -56,10 +56,10 @@ fn engine(game: u32, profile: &str) -> (u32, f64, f64) {
     .as_u64()
     .unwrap() as u32;
     let ball = |x: f32, mass: f32, vx: f32| {
-        let id = value(og_world_spawn(
+        let id = value(og_runtime::host_impl::answer(og_world_spawn(
             e,
             Some(json!({ "position": { "x": x, "y": 3, "z": 0 } }).to_string()),
-        ))
+        )))
         .as_f64()
         .unwrap();
         for (name, v) in [
@@ -73,7 +73,12 @@ fn engine(game: u32, profile: &str) -> (u32, f64, f64) {
                 json!({ "linear": { "x": vx, "y": 0, "z": 0 } }),
             ),
         ] {
-            value(og_world_insert(e, id, name.into(), Some(v.to_string())));
+            value(og_runtime::host_impl::answer(og_world_insert(
+                e,
+                id,
+                name.into(),
+                Some(v.to_string()),
+            )));
         }
         id
     };
@@ -121,7 +126,7 @@ fn a_game_reads_the_impulse_and_the_relative_velocity_and_a_restore_replays_them
         for _ in 0..3 {
             frame(e);
         }
-        let save = value(og_world_snapshot(e, None))
+        let save = value(og_runtime::host_impl::answer(og_world_snapshot(e, None)))
             .as_str()
             .unwrap()
             .to_string();
@@ -144,7 +149,9 @@ fn a_game_reads_the_impulse_and_the_relative_velocity_and_a_restore_replays_them
         );
 
         seen.borrow_mut().clear();
-        value(og_world_restore(e, save, None));
+        value(og_runtime::host_impl::answer(og_world_restore(
+            e, save, None,
+        )));
         let (again_tick, again) = until_hit(e, &seen);
         assert_eq!((again_tick, &again), (tick, &hit), "{profile}: the replay");
     }

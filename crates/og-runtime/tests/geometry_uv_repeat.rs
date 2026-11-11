@@ -38,7 +38,7 @@ fn answer(text: String) -> Value {
     v["value"].clone()
 }
 
-type Make = fn(u32, Option<String>) -> String;
+type Make = fn(u32, Option<String>) -> Result<Value, String>;
 
 #[test]
 fn uv_repeat_scales_every_generated_geometry_s_uvs() {
@@ -50,11 +50,15 @@ fn uv_repeat_scales_every_generated_geometry_s_uvs() {
     let game = og_game_game(Some(r#"{"seed":1}"#.into()));
     let options = json!({ "root": root.to_str().unwrap() }).to_string();
     let w = answer(og_engine_create(game, options)).as_u64().unwrap() as u32;
-    let material = answer(og_render_standard_material(w, Some("{}".into())));
-    let cube = answer(og_render_box_geometry(w, None));
-    let ball = answer(og_render_icosahedron_geometry(
+    let material = answer(og_runtime::host_impl::answer(og_render_standard_material(
         w,
-        Some(json!({ "radius": 0.3, "detail": 1 }).to_string()),
+        Some("{}".into()),
+    )));
+    let cube = answer(og_runtime::host_impl::answer(og_render_box_geometry(
+        w, None,
+    )));
+    let ball = answer(og_runtime::host_impl::answer(
+        og_render_icosahedron_geometry(w, Some(json!({ "radius": 0.3, "detail": 1 }).to_string())),
     ));
     let cases: Vec<(&str, Make, Value)> = vec![
         ("shape", og_render_shape_geometry, json!({})),
@@ -94,10 +98,13 @@ fn uv_repeat_scales_every_generated_geometry_s_uvs() {
             if let Some(r) = repeat {
                 d["uvRepeat"] = r;
             }
-            let g = answer(make(w, Some(d.to_string())));
-            let e = answer(og_world_spawn(w, Some("{}".into())))
-                .as_f64()
-                .unwrap();
+            let g = answer(og_runtime::host_impl::answer(make(w, Some(d.to_string()))));
+            let e = answer(og_runtime::host_impl::answer(og_world_spawn(
+                w,
+                Some("{}".into()),
+            )))
+            .as_f64()
+            .unwrap();
             let x = k as f64 * 10.0;
             let y = j as f64 * 10.0;
             for (c, v) in [
@@ -107,19 +114,24 @@ fn uv_repeat_scales_every_generated_geometry_s_uvs() {
                 ),
                 ("og.Mesh", json!({ "geometry": g, "material": material })),
             ] {
-                answer(og_world_insert(w, e, c.into(), Some(v.to_string())));
+                answer(og_runtime::host_impl::answer(og_world_insert(
+                    w,
+                    e,
+                    c.into(),
+                    Some(v.to_string()),
+                )));
             }
             entities.push((*name, x, y));
         }
     }
     answer(og_engine_frame(w, 1000.0 / 60.0));
     let uv = |x: f64, y: f64| -> (f64, f64) {
-        let hits = answer(og_render_raycast(
+        let hits = answer(og_runtime::host_impl::answer(og_render_raycast(
             w,
             json!({ "origin": { "x": x + 0.13, "y": y + 0.07, "z": 5 }, "direction": { "x": 0, "y": 0, "z": -1 } })
                 .to_string(),
             Some(json!({ "first": true }).to_string()),
-        ));
+        )));
         let h = &hits[0]["uv"];
         (h["x"].as_f64().unwrap(), h["y"].as_f64().unwrap())
     };

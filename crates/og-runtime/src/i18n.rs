@@ -3,8 +3,8 @@
 //! chain and direction for the active locale.
 
 use super::engine::{Engine, engine};
-use super::wire::{self, LocaleInfo};
-use super::{parse, refuse};
+use super::parse;
+use super::wire::LocaleInfo;
 use og_i18n::{Arg, Catalog, StringTable};
 use serde_json::{Value, json};
 use std::cell::RefCell;
@@ -308,8 +308,8 @@ pub fn fonts_pending() -> u32 {
             .sum::<u32>()
 }
 
-pub fn og_i18n_load(world: u32, path: String) -> String {
-    let r = (|| -> Result<LocaleInfo, String> {
+pub fn og_i18n_load(world: u32, path: String) -> Result<crate::wire::LocaleInfo, String> {
+    (|| -> Result<LocaleInfo, String> {
         let eng = engine(world)?;
         let id = og_bundle::runtime::asset_id(&path).to_string();
         let text = {
@@ -323,25 +323,21 @@ pub fn og_i18n_load(world: u32, path: String) -> String {
         with(world, |s| s.catalog.insert(table));
         apply(&eng)?;
         Ok(info(world))
-    })();
-    match r {
-        Ok(v) => wire::ok(&v),
-        Err(e) => refuse(e),
-    }
+    })()
 }
 
-pub fn og_i18n_set_locale(world: u32, locale: String) -> String {
+pub fn og_i18n_set_locale(world: u32, locale: String) -> crate::wire::LocaleInfo {
     with(world, |s| s.catalog.request(&[&locale]));
     if let Ok(eng) = engine(world)
         && let Err(e) = apply(&eng)
     {
         note(world, format!("og.i18n.setLocale: {e}"));
     }
-    wire::text_of(&info(world))
+    info(world)
 }
 
-pub fn og_i18n_locale(world: u32) -> String {
-    wire::text_of(&info(world))
+pub fn og_i18n_locale(world: u32) -> crate::wire::LocaleInfo {
+    info(world)
 }
 
 fn note(world: u32, text: String) {

@@ -22,11 +22,11 @@
 //! `#anim` blob's streams the first time such an entity is drawn.
 
 use super::engine::{Engine, engine};
+use super::parse;
 use super::wire::{
     self, Animation, ClipInfo, GraphDesc, HumanBone, Humanoid, HumanoidDesc, MirrorDesc,
     RetargetDesc, ToJson,
 };
-use super::{parse, refuse};
 use og_anim::{AnimationSystem, ClipAsset, GraphAsset, HumanoidMap, RigAsset, SkeletonAsset};
 use og_core::IdMap;
 use serde_json::{Value, json};
@@ -113,13 +113,6 @@ fn system(eng: &Engine) -> Result<AnimationSystem, String> {
         .ok_or_else(|| "this engine has no animation system".to_string())
 }
 
-fn wire<T: ToJson>(r: Result<T, String>) -> String {
-    match r {
-        Ok(v) => wire::ok(&v),
-        Err(e) => refuse(e),
-    }
-}
-
 /// A clip as og.load.animation, og.anim.retarget and og.anim.mirror answer it.
 fn clip_info(h: u64, c: &ClipAsset) -> ClipInfo {
     ClipInfo {
@@ -199,8 +192,8 @@ pub(crate) fn load_animation(eng: &Engine, path: &str) -> Result<Value, String> 
     Ok(answer)
 }
 
-pub fn og_load_animation(world: u32, path: String) -> String {
-    wire(engine(world).and_then(|eng| load_animation(&eng, &path)))
+pub fn og_load_animation(world: u32, path: String) -> Result<serde_json::Value, String> {
+    engine(world).and_then(|eng| load_animation(&eng, &path))
 }
 
 fn graph(eng: &Engine, desc: &GraphDesc) -> Result<Value, String> {
@@ -294,8 +287,8 @@ pub(crate) fn load_rig(eng: &Engine, path: &str) -> Result<Value, String> {
     Ok(json!(h as f64))
 }
 
-pub fn og_load_rig(world: u32, path: String) -> String {
-    wire(engine(world).and_then(|eng| load_rig(&eng, &path)))
+pub fn og_load_rig(world: u32, path: String) -> Result<serde_json::Value, String> {
+    engine(world).and_then(|eng| load_rig(&eng, &path))
 }
 
 /// The humanoid map of skeleton `h` by rig `rig` (0: detected).
@@ -341,8 +334,8 @@ fn humanoid(eng: &Engine, desc: &HumanoidDesc) -> Result<Humanoid, String> {
     })
 }
 
-pub fn og_anim_humanoid(world: u32, desc: Option<String>) -> String {
-    wire(engine(world).and_then(|eng| humanoid(&eng, &wire::arg(desc.as_deref(), "desc")?)))
+pub fn og_anim_humanoid(world: u32, desc: Option<String>) -> Result<crate::wire::Humanoid, String> {
+    engine(world).and_then(|eng| humanoid(&eng, &wire::arg(desc.as_deref(), "desc")?))
 }
 
 pub(crate) fn retarget(eng: &Engine, desc: &Value) -> Result<Value, String> {
@@ -381,11 +374,11 @@ pub(crate) fn retarget(eng: &Engine, desc: &Value) -> Result<Value, String> {
     Ok(answer)
 }
 
-pub fn og_anim_retarget(world: u32, desc: Option<String>) -> String {
-    wire(engine(world).and_then(|eng| {
+pub fn og_anim_retarget(world: u32, desc: Option<String>) -> Result<serde_json::Value, String> {
+    engine(world).and_then(|eng| {
         let desc = parse(desc.as_deref())?;
         retarget(&eng, &desc)
-    }))
+    })
 }
 
 fn mirror(eng: &Engine, desc: &MirrorDesc) -> Result<Value, String> {
@@ -414,10 +407,10 @@ fn mirror(eng: &Engine, desc: &MirrorDesc) -> Result<Value, String> {
     Ok(answer)
 }
 
-pub fn og_anim_mirror(world: u32, desc: Option<String>) -> String {
-    wire(engine(world).and_then(|eng| mirror(&eng, &wire::arg(desc.as_deref(), "desc")?)))
+pub fn og_anim_mirror(world: u32, desc: Option<String>) -> Result<serde_json::Value, String> {
+    engine(world).and_then(|eng| mirror(&eng, &wire::arg(desc.as_deref(), "desc")?))
 }
 
-pub fn og_anim_graph(world: u32, desc: Option<String>) -> String {
-    wire(engine(world).and_then(|eng| graph(&eng, &wire::arg(desc.as_deref(), "desc")?)))
+pub fn og_anim_graph(world: u32, desc: Option<String>) -> Result<serde_json::Value, String> {
+    engine(world).and_then(|eng| graph(&eng, &wire::arg(desc.as_deref(), "desc")?))
 }

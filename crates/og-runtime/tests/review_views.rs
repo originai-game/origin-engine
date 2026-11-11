@@ -176,17 +176,28 @@ fn views_frame_the_entity_orthographically_from_their_side() {
     let seen = Rc::new(RefCell::new(Vec::new()));
     set_render_backend(w, Some(Box::new(Recorder(seen.clone())))).unwrap();
 
-    let geometry = value(og_render_box_geometry(
+    let geometry = value(og_runtime::host_impl::answer(og_render_box_geometry(
         w,
         Some(json!({ "width": 2, "height": 1, "depth": 0.5 }).to_string()),
-    ));
-    let material = value(og_render_standard_material(w, Some("{}".into())));
+    )));
+    let material = value(og_runtime::host_impl::answer(og_render_standard_material(
+        w,
+        Some("{}".into()),
+    )));
     let mesh = json!({ "geometry": geometry, "material": material }).to_string();
     let at = json!({ "name": "crate", "position": { "x": 3, "y": 1, "z": -2 } });
-    let e = value(og_world_spawn(w, Some(at.to_string())))
-        .as_f64()
-        .unwrap();
-    value(og_world_insert(w, e, "og.Mesh".into(), Some(mesh.clone())));
+    let e = value(og_runtime::host_impl::answer(og_world_spawn(
+        w,
+        Some(at.to_string()),
+    )))
+    .as_f64()
+    .unwrap();
+    value(og_runtime::host_impl::answer(og_world_insert(
+        w,
+        e,
+        "og.Mesh".into(),
+        Some(mesh.clone()),
+    )));
     value(og_engine_frame(w, 1000.0 / 60.0));
 
     // og.Camera's own frame first, to tell it from the views.
@@ -281,10 +292,18 @@ fn views_frame_the_entity_orthographically_from_their_side() {
     // A child through og.Parent is framed with its parent: a box on top
     // raises the front's frame (height now binds: 2 tall, 2 wide).
     let child = json!({ "name": "lid", "position": { "x": 0, "y": 1, "z": 0 }, "parent": e });
-    let k = value(og_world_spawn(w, Some(child.to_string())))
-        .as_f64()
-        .unwrap();
-    value(og_world_insert(w, k, "og.Mesh".into(), Some(mesh.clone())));
+    let k = value(og_runtime::host_impl::answer(og_world_spawn(
+        w,
+        Some(child.to_string()),
+    )))
+    .as_f64()
+    .unwrap();
+    value(og_runtime::host_impl::answer(og_world_insert(
+        w,
+        k,
+        "og.Mesh".into(),
+        Some(mesh.clone()),
+    )));
     let (cams, _) = run(w, &seen, "0:screenshot:framed.png");
     let framed = cams[0];
     let Projection::Orthographic { height } = framed.projection else {

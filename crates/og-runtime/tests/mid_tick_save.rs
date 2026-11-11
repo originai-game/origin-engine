@@ -55,7 +55,11 @@ impl Hooks for Game {
         let w = call.engine;
         let tick = og_world_get_tick(w);
         let counter: f64 = serde_json::from_str(&og_world_find(w, "counter".into())).unwrap();
-        let mut c = value(og_world_get(w, counter, "RpCount".into()));
+        let mut c = value(og_runtime::host_impl::answer(og_world_get(
+            w,
+            counter,
+            "RpCount".into(),
+        )));
         let num = |c: &Value, k: &str| c[k].as_f64().unwrap();
         match call.id {
             COUNT => {
@@ -67,7 +71,7 @@ impl Hooks for Game {
                 let mut s = self.0.borrow_mut();
                 if w == s.saver && tick == SAVE_AT {
                     s.saved = Some(
-                        value(og_world_snapshot(w, None))
+                        value(og_runtime::host_impl::answer(og_world_snapshot(w, None)))
                             .as_str()
                             .unwrap()
                             .to_string(),
@@ -75,7 +79,9 @@ impl Hooks for Game {
                 }
                 if w == s.loader && tick == RESTORE_AT {
                     let saved = s.saved.clone().expect("saved first");
-                    value(og_world_restore(w, saved, None));
+                    value(og_runtime::host_impl::answer(og_world_restore(
+                        w, saved, None,
+                    )));
                 }
                 if tick == PUSH_AT {
                     let boxed: f64 = serde_json::from_str(&og_world_find(w, "box".into())).unwrap();
@@ -91,7 +97,12 @@ impl Hooks for Game {
             }
             _ => return Ok(String::new()),
         }
-        value(og_world_set(w, counter, "RpCount".into(), c.to_string()));
+        value(og_runtime::host_impl::answer(og_world_set(
+            w,
+            counter,
+            "RpCount".into(),
+            c.to_string(),
+        )));
         Ok(String::new())
     }
     fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
@@ -124,16 +135,19 @@ fn game() -> u32 {
 fn engine(game: u32) -> u32 {
     let e = value(og_engine_create(game, "{}".into())).as_u64().unwrap() as u32;
     let spawn = |desc: Value, components: &[(&str, Value)]| {
-        let id = value(og_world_spawn(e, Some(desc.to_string())))
-            .as_f64()
-            .unwrap();
+        let id = value(og_runtime::host_impl::answer(og_world_spawn(
+            e,
+            Some(desc.to_string()),
+        )))
+        .as_f64()
+        .unwrap();
         for (name, v) in components {
-            value(og_world_insert(
+            value(og_runtime::host_impl::answer(og_world_insert(
                 e,
                 id,
                 name.to_string(),
                 Some(v.to_string()),
-            ));
+            )));
         }
     };
     spawn(json!({ "name": "counter" }), &[("RpCount", json!({}))]);
@@ -196,7 +210,12 @@ fn a_replay_from_a_save_taken_inside_a_system_matches_the_run_that_saved() {
     assert_eq!(replayed["hash"], ran["hash"], "the replay diverged");
     let n = |e: u32| {
         let counter: f64 = serde_json::from_str(&og_world_find(e, "counter".into())).unwrap();
-        value(og_world_get(e, counter, "RpCount".into()))["n"].clone()
+        value(og_runtime::host_impl::answer(og_world_get(
+            e,
+            counter,
+            "RpCount".into(),
+        )))["n"]
+            .clone()
     };
     assert_eq!(n(b), json!(30.0), "Count ran once a tick");
     assert_eq!(n(a), n(b));
@@ -206,7 +225,11 @@ fn a_replay_from_a_save_taken_inside_a_system_matches_the_run_that_saved() {
     // tick 30; the counter, without a body, was refused.
     for e in [a, b] {
         let boxed: f64 = serde_json::from_str(&og_world_find(e, "box".into())).unwrap();
-        let y = value(og_world_get(e, boxed, "og.Transform".into()))["position"]["y"]
+        let y = value(og_runtime::host_impl::answer(og_world_get(
+            e,
+            boxed,
+            "og.Transform".into(),
+        )))["position"]["y"]
             .as_f64()
             .unwrap();
         assert!(y > 0.6, "the box is at {y}");

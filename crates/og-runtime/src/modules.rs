@@ -61,7 +61,7 @@ pub use motion::{
 };
 
 use super::engine::{Engine, engine, running};
-use super::{ok, ok_void, parse, refuse, wire};
+use super::{parse, refuse, wire};
 use og_core::glam::Vec3;
 use og_ecs::{Entity, SystemDesc, World};
 use og_physics::{
@@ -542,8 +542,11 @@ pub fn og_physics_raycast_all(world: u32, desc: Option<String>) -> String {
     }
 }
 
-pub fn og_physics_project_point(world: u32, desc: Option<String>) -> String {
-    let answer = (|| -> Result<_, String> {
+pub fn og_physics_project_point(
+    world: u32,
+    desc: Option<String>,
+) -> Result<std::option::Option<crate::wire::PointProjection>, String> {
+    (|| -> Result<_, String> {
         let d: wire::ProjectPointDesc = wire::arg(desc.as_deref(), "desc")?;
         let desc = og_physics::ProjectPointDesc {
             point: d.point,
@@ -560,15 +563,14 @@ pub fn og_physics_project_point(world: u32, desc: Option<String>) -> String {
             distance: p.distance,
             inside: p.inside,
         }))
-    })();
-    match answer {
-        Ok(v) => wire::ok(&v),
-        Err(e) => refuse(e),
-    }
+    })()
 }
 
-pub fn og_physics_shape_cast(world: u32, desc: Option<String>) -> String {
-    let answer = (|| -> Result<_, String> {
+pub fn og_physics_shape_cast(
+    world: u32,
+    desc: Option<String>,
+) -> Result<std::option::Option<crate::wire::ShapeCastHit>, String> {
+    (|| -> Result<_, String> {
         let d: wire::ShapeCastDesc = wire::arg(desc.as_deref(), "desc")?;
         let desc = ShapeCastDesc {
             shape: shape(d.shape),
@@ -585,15 +587,11 @@ pub fn og_physics_shape_cast(world: u32, desc: Option<String>) -> String {
             point: h.point,
             normal: h.normal,
         }))
-    })();
-    match answer {
-        Ok(v) => wire::ok(&v),
-        Err(e) => refuse(e),
-    }
+    })()
 }
 
-pub fn og_physics_overlap(world: u32, desc: Option<String>) -> String {
-    let answer = (|| -> Result<_, String> {
+pub fn og_physics_overlap(world: u32, desc: Option<String>) -> Result<serde_json::Value, String> {
+    (|| -> Result<_, String> {
         let d: wire::OverlapDesc = wire::arg(desc.as_deref(), "desc")?;
         let desc = OverlapDesc {
             shape: shape(d.shape),
@@ -603,11 +601,7 @@ pub fn og_physics_overlap(world: u32, desc: Option<String>) -> String {
         };
         let hits = query(world)?.overlap(&desc).map_err(err)?;
         Ok(json!(hits.iter().map(|e| e.to_bits()).collect::<Vec<_>>()))
-    })();
-    match answer {
-        Ok(v) => ok(v),
-        Err(e) => refuse(e),
-    }
+    })()
 }
 
 /// Registers a mesh with the engine's physics and remembers it, so a hot
@@ -641,7 +635,7 @@ pub(crate) fn set_baked_trimesh(eng: &Engine, handle: u64, bytes: Vec<u8>) -> Re
     Ok(())
 }
 
-pub fn og_physics_set_mesh(world: u32, mesh: f64, desc: Option<String>) -> String {
+pub fn og_physics_set_mesh(world: u32, mesh: f64, desc: Option<String>) -> Result<(), String> {
     let answer = (|| -> Result<_, String> {
         let eng = engine(world)?;
         let d: wire::MeshDesc = wire::arg(desc.as_deref(), "desc")?;
@@ -659,8 +653,8 @@ pub fn og_physics_set_mesh(world: u32, mesh: f64, desc: Option<String>) -> Strin
         set_mesh(&eng, mesh as u64, MeshDesc { positions, indices })
     })();
     match answer {
-        Ok(()) => ok_void(),
-        Err(e) => refuse(e),
+        Ok(()) => Ok(()),
+        Err(e) => Err(e),
     }
 }
 
@@ -757,7 +751,7 @@ mod tests {
             hit_text(h, &mut text);
             assert_eq!(text, object(h).to_string());
         }
-        assert_eq!(ok_text("null"), ok(Value::Null));
+        assert_eq!(ok_text("null"), crate::ok(Value::Null));
         let mut all = String::from("[");
         for (i, h) in hits.iter().enumerate() {
             if i > 0 {
@@ -768,7 +762,7 @@ mod tests {
         all.push(']');
         assert_eq!(
             ok_text(&all),
-            ok(Value::Array(hits.iter().map(object).collect()))
+            crate::ok(Value::Array(hits.iter().map(object).collect()))
         );
     }
 
@@ -777,7 +771,8 @@ mod tests {
     /// Control; one the host set (the web shell's) is kept as it is.
     #[test]
     fn a_native_host_edits_with_the_platforms_keys() {
-        let v: Value = serde_json::from_str(&og_ui_viewport(u32::MAX)).expect("json");
+        let v: Value =
+            serde_json::from_str(&crate::host_impl::json(og_ui_viewport(u32::MAX))).expect("json");
         assert_eq!(
             v["macKeys"].as_bool(),
             Some(cfg!(target_os = "macos")),

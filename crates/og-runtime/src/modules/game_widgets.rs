@@ -1,25 +1,25 @@
 use super::*;
 use crate::wire::{self, ToJson};
 
-pub fn og_ui_bounds(path: String) -> String {
+pub fn og_ui_bounds(path: String) -> Option<crate::wire::UiRect> {
     let b = with_ui("og.ui.bounds", |ui| {
         ui.element(&path)
             .map(|e| og_ui::Rect::new(e.x, e.y, e.width, e.height))
     })
     .flatten();
-    wire::text_of(&b.map(|r| super::ui_desc::rect_wire(&r)))
+    b.map(|r| super::ui_desc::rect_wire(&r))
 }
 
-pub fn og_ui_scroll_state(path: String) -> String {
+pub fn og_ui_scroll_state(path: String) -> Option<crate::wire::ScrollState> {
     let s = with_ui("og.ui.scrollState", |ui| ui.scroll_state(&path)).flatten();
-    wire::text_of(&s.map(|s| wire::ScrollState {
+    s.map(|s| wire::ScrollState {
         offset_x: s.offset_x,
         offset_y: s.offset_y,
         view_width: s.view_width,
         view_height: s.view_height,
         content_width: s.content_width,
         content_height: s.content_height,
-    }))
+    })
 }
 
 /// The UI of an engine, for calls that work between ticks too.
@@ -103,13 +103,13 @@ pub fn og_ui_set_virtual_cursor(desc: String) {
     with_ui("og.ui.setVirtualCursor", |ui| ui.set_virtual_cursor(desc));
 }
 
-pub fn og_ui_virtual_cursor() -> String {
+pub fn og_ui_virtual_cursor() -> Option<crate::wire::VirtualCursor> {
     let c = with_ui("og.ui.virtualCursor", |ui| ui.virtual_cursor()).flatten();
-    wire::text_of(&c.map(|(p, shown)| wire::VirtualCursor {
+    c.map(|(p, shown)| wire::VirtualCursor {
         x: p.x,
         y: p.y,
         shown,
-    }))
+    })
 }
 
 pub fn og_ui_set_hud_edit(on: bool) {
@@ -120,10 +120,10 @@ pub fn og_ui_set_hud_player(player: u32) {
     with_ui("og.ui.setHudPlayer", |ui| ui.set_hud_player(player));
 }
 
-pub fn og_ui_hud_edit() -> String {
+pub fn og_ui_hud_edit() -> crate::wire::HudEdit {
     let e = with_ui("og.ui.hudEdit", |ui| ui.hud_edit()).unwrap_or_default();
     let p = e.placement;
-    wire::text_of(&wire::HudEdit {
+    wire::HudEdit {
         on: e.on,
         player: e.player,
         selected: e.selected,
@@ -135,7 +135,7 @@ pub fn og_ui_hud_edit() -> String {
         },
         keys: e.keys,
         changed: e.changed,
-    })
+    }
 }
 
 pub fn og_ui_hud_layout(player: u32) -> String {

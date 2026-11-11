@@ -2,7 +2,7 @@
 
 use super::*;
 use crate::wire::{
-    self, FillDesc, FlipMode, FlipbookClipInfo, FlipbookInfo, ResizeDesc, SetTileDesc, TileCell,
+    FillDesc, FlipMode, FlipbookClipInfo, FlipbookInfo, ResizeDesc, SetTileDesc, TileCell,
     TileLayerInfo, TileObject, TileOrientation, TilemapDesc, TilemapInfo, ToJson,
 };
 
@@ -98,8 +98,8 @@ pub(crate) fn load_flipbook(eng: &Engine, path: &str) -> Result<Value, String> {
     Ok(answer)
 }
 
-pub fn og_load_flipbook(world: u32, path: String) -> String {
-    wire(engine(world).and_then(|eng| load_flipbook(&eng, &path)))
+pub fn og_load_flipbook(world: u32, path: String) -> Result<serde_json::Value, String> {
+    engine(world).and_then(|eng| load_flipbook(&eng, &path))
 }
 
 /// A map's tilesets and their textures, loaded, and the map checked
@@ -211,8 +211,8 @@ fn load_tilemap(eng: &Engine, path: &str) -> Result<Value, String> {
     Ok(answer)
 }
 
-pub fn og_load_tilemap(world: u32, path: String) -> String {
-    wire(engine(world).and_then(|eng| load_tilemap(&eng, &path)))
+pub fn og_load_tilemap(world: u32, path: String) -> Result<serde_json::Value, String> {
+    engine(world).and_then(|eng| load_tilemap(&eng, &path))
 }
 
 // ── tilemap calls ──────────────────────────────────────────────────────────
@@ -248,8 +248,8 @@ fn layer_index(live: &LiveMap, name: &str) -> Result<usize, String> {
     })
 }
 
-pub fn og_tilemap_set_tile(world: u32, desc: Option<String>) -> String {
-    wire_void((|| {
+pub fn og_tilemap_set_tile(world: u32, desc: Option<String>) -> Result<(), String> {
+    (|| {
         let d: SetTileDesc = crate::wire::arg(desc.as_deref(), "desc")?;
         if d.entity == 0 {
             return Err("desc.entity is the entity with the og.Tilemap".into());
@@ -262,11 +262,11 @@ pub fn og_tilemap_set_tile(world: u32, desc: Option<String>) -> String {
             }
             Ok(())
         })
-    })())
+    })()
 }
 
-pub fn og_tilemap_fill(world: u32, desc: Option<String>) -> String {
-    wire_void((|| {
+pub fn og_tilemap_fill(world: u32, desc: Option<String>) -> Result<(), String> {
+    (|| {
         let d: FillDesc = crate::wire::arg(desc.as_deref(), "desc")?;
         if d.entity == 0 {
             return Err("desc.entity is the entity with the og.Tilemap".into());
@@ -281,7 +281,7 @@ pub fn og_tilemap_fill(world: u32, desc: Option<String>) -> String {
             }
             Ok(())
         })
-    })())
+    })()
 }
 
 /// Run-time map handles: their own range, numbered by the world's counter.
@@ -337,8 +337,8 @@ fn desc_map(d: &TilemapDesc) -> Result<TilemapAsset, String> {
     Ok(asset)
 }
 
-pub fn og_tilemap_create(world: u32, desc: Option<String>) -> String {
-    wire((|| {
+pub fn og_tilemap_create(world: u32, desc: Option<String>) -> Result<Value, String> {
+    (|| {
         let eng = engine(world)?;
         let feel = feel_of(&eng)?;
         let asset = desc_map(&crate::wire::arg(desc.as_deref(), "desc")?)?;
@@ -352,11 +352,11 @@ pub fn og_tilemap_create(world: u32, desc: Option<String>) -> String {
         let answer = map_info(handle, &map.asset);
         eng.state.borrow_mut().feel_assets.maps.insert(handle, map);
         Ok(answer)
-    })())
+    })()
 }
 
-pub fn og_tilemap_resize(world: u32, desc: Option<String>) -> String {
-    wire_void((|| {
+pub fn og_tilemap_resize(world: u32, desc: Option<String>) -> Result<(), String> {
+    (|| {
         let eng = engine(world)?;
         let feel = feel_of(&eng)?;
         let d: ResizeDesc = crate::wire::arg(desc.as_deref(), "desc")?;
@@ -401,22 +401,20 @@ pub fn og_tilemap_resize(world: u32, desc: Option<String>) -> String {
         }
         st.feel_assets.maps.insert(handle, map);
         Ok(())
-    })())
+    })()
 }
 
-pub fn og_tilemap_neighbours(world: u32, map: f64, x: u32, y: u32) -> String {
+pub fn og_tilemap_neighbours(world: u32, map: f64, x: u32, y: u32) -> Vec<crate::wire::TileCell> {
     let cells = engine(world)
         .and_then(|eng| feel_of(&eng))
         .ok()
         .and_then(|feel| lock(&feel.tiles).maps.get(&(map as u64)).cloned())
         .map(|m| og_tilemap::neighbours(&m.asset, x, y))
         .unwrap_or_default();
-    wire::text_of(
-        &cells
-            .iter()
-            .map(|&(x, y)| TileCell { x, y, inside: true })
-            .collect::<Vec<_>>(),
-    )
+    cells
+        .iter()
+        .map(|&(x, y)| TileCell { x, y, inside: true })
+        .collect::<Vec<_>>()
 }
 
 pub fn og_tilemap_get_tile(world: u32, entity: f64, layer: String, x: u32, y: u32) -> i32 {
@@ -426,7 +424,7 @@ pub fn og_tilemap_get_tile(world: u32, entity: f64, layer: String, x: u32, y: u3
     .unwrap_or(-1)
 }
 
-pub fn og_tilemap_cell_at(world: u32, entity: f64, point: String) -> String {
+pub fn og_tilemap_cell_at(world: u32, entity: f64, point: String) -> crate::wire::TileCell {
     let p: Vec3 = crate::wire::arg(Some(&point), "point").unwrap_or_default();
     let cell = with_live(world, entity, |live| {
         let local = Vec2::new(p.x - live.origin.x, p.y - live.origin.y);
@@ -434,18 +432,18 @@ pub fn og_tilemap_cell_at(world: u32, entity: f64, point: String) -> String {
     })
     .ok()
     .flatten();
-    wire::text_of(&match cell {
+    match cell {
         Some((x, y)) => TileCell { x, y, inside: true },
         None => TileCell {
             x: 0,
             y: 0,
             inside: false,
         },
-    })
+    }
 }
 
-pub fn og_tilemap_cell_center(world: u32, entity: f64, x: u32, y: u32) -> String {
-    let c = with_live(world, entity, |live| {
+pub fn og_tilemap_cell_center(world: u32, entity: f64, x: u32, y: u32) -> glam::Vec3 {
+    with_live(world, entity, |live| {
         let c = og_tilemap::cell_center(live.state.asset(), x, y);
         Ok(Vec3::new(
             live.origin.x + c.x,
@@ -453,8 +451,7 @@ pub fn og_tilemap_cell_center(world: u32, entity: f64, x: u32, y: u32) -> String
             live.origin.z,
         ))
     })
-    .unwrap_or(Vec3::ZERO);
-    wire::text_of(&c)
+    .unwrap_or(Vec3::ZERO)
 }
 
 // ── the og.tilemap system ──────────────────────────────────────────────────

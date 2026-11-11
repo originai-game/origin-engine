@@ -30,7 +30,6 @@ use super::wire::{
     self, DamageDesc, DestructibleInfo, DestructibleMaterial, DestructionCapabilities,
     ExplosionDesc,
 };
-use super::{ok_void, refuse};
 use glam::{Quat, Vec3};
 use og_core::{Error, ErrorKind};
 use og_destruct::{Damage, FractureAsset, Instance, Material, Support, stress::StressLimits};
@@ -2439,13 +2438,6 @@ pub(crate) fn drawn(engine: u32) -> Vec<Drawn> {
 
 // ── the API ──────────────────────────────────────────────────────────────────
 
-fn wire_void(r: Result<(), String>) -> String {
-    match r {
-        Ok(()) => ok_void(),
-        Err(e) => refuse(e),
-    }
-}
-
 fn record(eng: &Engine, name: &str, e: Entity) -> Option<Value> {
     let w = eng.world().ok()?;
     let id = w.id_by_name(name).ok()?;
@@ -2491,8 +2483,8 @@ fn radius(r: f32, key: &str) -> Result<f32, String> {
     }
 }
 
-pub fn og_destruction_damage(world: u32, entity: f64, desc: Option<String>) -> String {
-    wire_void((|| {
+pub fn og_destruction_damage(world: u32, entity: f64, desc: Option<String>) -> Result<(), String> {
+    (|| {
         let eng = engine(world)?;
         let target = destructible_of(&eng, Entity::from_bits(entity as u64), true)?;
         let d: DamageDesc = wire::arg(desc.as_deref(), "desc")?;
@@ -2506,11 +2498,11 @@ pub fn og_destruction_damage(world: u32, entity: f64, desc: Option<String>) -> S
         };
         lock(&eng.modules.destruction.state).ops.push(op);
         Ok(())
-    })())
+    })()
 }
 
-pub fn og_destruction_explode(world: u32, desc: Option<String>) -> String {
-    wire_void((|| {
+pub fn og_destruction_explode(world: u32, desc: Option<String>) -> Result<(), String> {
+    (|| {
         let eng = engine(world)?;
         let d: ExplosionDesc = wire::arg(desc.as_deref(), "desc")?;
         let op = Op::Explode {
@@ -2525,22 +2517,25 @@ pub fn og_destruction_explode(world: u32, desc: Option<String>) -> String {
             lock(&eng.modules.destruction.state).ops.push(op);
         }
         Ok(())
-    })())
+    })()
 }
 
-pub fn og_destruction_fracture(world: u32, entity: f64) -> String {
-    wire_void((|| {
+pub fn og_destruction_fracture(world: u32, entity: f64) -> Result<(), String> {
+    (|| {
         let eng = engine(world)?;
         let target = destructible_of(&eng, Entity::from_bits(entity as u64), false)?;
         lock(&eng.modules.destruction.state).ops.push(Op::Fracture {
             entity: target.to_bits(),
         });
         Ok(())
-    })())
+    })()
 }
 
-pub fn og_destruction_info(world: u32, entity: f64) -> String {
-    let r = (|| {
+pub fn og_destruction_info(
+    world: u32,
+    entity: f64,
+) -> Result<crate::wire::DestructibleInfo, String> {
+    (|| {
         let eng = engine(world)?;
         let e = destructible_of(&eng, Entity::from_bits(entity as u64), false)?;
         let model = record(&eng, "og.Model", e)
@@ -2589,11 +2584,7 @@ pub fn og_destruction_info(world: u32, entity: f64) -> String {
             debris: debris as u32,
             crumbs: crumbs as u32,
         })
-    })();
-    match r {
-        Ok(v) => wire::ok(&v),
-        Err(e) => refuse(e),
-    }
+    })()
 }
 
 /// The face a piece of `volume` m³ shows a blast (m²): a blast's push is
@@ -2625,14 +2616,15 @@ const MATERIALS: [[f32; 7]; 5] = [
     [1500.0, 4000.0, 0.8, 0.0, 2600.0, 500.0, 0.4],
 ];
 
-pub fn og_destruction_material(world: u32, kind: u32) -> String {
-    if let Err(e) = engine(world) {
-        return refuse(e);
-    }
+pub fn og_destruction_material(
+    world: u32,
+    kind: u32,
+) -> Result<crate::wire::DestructibleMaterial, String> {
+    engine(world)?;
     let Some(m) = MATERIALS.get(kind as usize) else {
-        return refuse(format!("{kind} is none of og.MATERIAL_*"));
+        return Err(format!("{kind} is none of og.MATERIAL_*"));
     };
-    wire::ok(&DestructibleMaterial {
+    Ok(DestructibleMaterial {
         toughness: m[0],
         strength: m[1],
         friction: m[2],
@@ -2643,14 +2635,14 @@ pub fn og_destruction_material(world: u32, kind: u32) -> String {
     })
 }
 
-pub fn og_destruction_capabilities(world: u32) -> String {
+pub fn og_destruction_capabilities(world: u32) -> crate::wire::DestructionCapabilities {
     // og.Destructible.debris is the renderer's debris layer and a GPU
     // particle burst: drawn where a renderer runs compute passes (every
     // renderer the engine makes: og.render.capabilities' compute).
     let compute = engine(world).is_ok_and(|e| e.render.borrow().backend.is_some());
-    wire::text_of(&DestructionCapabilities {
+    DestructionCapabilities {
         visual_debris: compute,
         max_visual_debris: og_render::MAX_DEBRIS as u32,
         visual_debris_contacts: "world".into(),
-    })
+    }
 }

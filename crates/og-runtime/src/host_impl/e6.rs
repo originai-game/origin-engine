@@ -7,34 +7,34 @@ macro_rules! __og_host_bindings_e6 {
     ($host:ty) => {
         impl $crate::host_impl::api::NavApi for $host {
             fn og_nav_grid(&self, world: u32, desc: Option<String>) -> String {
-                $crate::og_nav_grid(world, desc)
+                $crate::host_impl::answer($crate::og_nav_grid(world, desc))
             }
             fn og_nav_grid_from_tilemap(&self, world: u32, desc: Option<String>) -> String {
-                $crate::og_nav_grid_from_tilemap(world, desc)
+                $crate::host_impl::answer($crate::og_nav_grid_from_tilemap(world, desc))
             }
             fn og_nav_set_cost(&self, world: u32, grid: f64, x: u32, y: u32, cost: u32) -> String {
-                $crate::og_nav_set_cost(world, grid, x, y, cost)
+                $crate::host_impl::answer($crate::og_nav_set_cost(world, grid, x, y, cost))
             }
             fn og_nav_cell_at(&self, world: u32, grid: f64, point: String) -> String {
-                $crate::og_nav_cell_at(world, grid, point)
+                $crate::host_impl::json($crate::og_nav_cell_at(world, grid, point))
             }
             fn og_nav_find_path(&self, world: u32, desc: Option<String>) -> String {
-                $crate::og_nav_find_path(world, desc)
+                $crate::host_impl::answer($crate::og_nav_find_path(world, desc))
             }
             fn og_nav_flow_field(&self, world: u32, desc: Option<String>) -> String {
-                $crate::og_nav_flow_field(world, desc)
+                $crate::host_impl::answer($crate::og_nav_flow_field(world, desc))
             }
             fn og_nav_set_flow_targets(&self, world: u32, field: f64, targets: String) -> String {
-                $crate::og_nav_set_flow_targets(world, field, targets)
+                $crate::host_impl::answer($crate::og_nav_set_flow_targets(world, field, targets))
             }
             fn og_nav_flow_at(&self, world: u32, field: f64, point: String) -> String {
-                $crate::og_nav_flow_at(world, field, point)
+                $crate::host_impl::json($crate::og_nav_flow_at(world, field, point))
             }
             fn og_nav_load(&self, world: u32, path: String, profile: Option<String>) -> String {
-                $crate::og_nav_load(world, path, profile)
+                $crate::host_impl::answer($crate::og_nav_load(world, path, profile))
             }
             fn og_nav_build(&self, world: u32, desc: Option<String>) -> String {
-                $crate::og_nav_build(world, desc)
+                $crate::host_impl::answer($crate::og_nav_build(world, desc))
             }
             fn og_nav_set_obstacle(
                 &self,
@@ -43,7 +43,7 @@ macro_rules! __og_host_bindings_e6 {
                 id: u32,
                 obstacle: Option<String>,
             ) -> String {
-                $crate::og_nav_set_obstacle(world, mesh, id, obstacle)
+                $crate::host_impl::answer($crate::og_nav_set_obstacle(world, mesh, id, obstacle))
             }
             fn og_nav_carve(
                 &self,
@@ -52,7 +52,7 @@ macro_rules! __og_host_bindings_e6 {
                 id: u32,
                 shape: Option<String>,
             ) -> String {
-                $crate::og_nav_carve(world, mesh, id, shape)
+                $crate::host_impl::answer($crate::og_nav_carve(world, mesh, id, shape))
             }
             fn og_nav_set_area(
                 &self,
@@ -61,7 +61,7 @@ macro_rules! __og_host_bindings_e6 {
                 id: u32,
                 desc: Option<String>,
             ) -> String {
-                $crate::og_nav_set_area(world, mesh, id, desc)
+                $crate::host_impl::answer($crate::og_nav_set_area(world, mesh, id, desc))
             }
             fn og_nav_set_link(
                 &self,
@@ -70,10 +70,10 @@ macro_rules! __og_host_bindings_e6 {
                 id: u32,
                 desc: Option<String>,
             ) -> String {
-                $crate::og_nav_set_link(world, mesh, id, desc)
+                $crate::host_impl::answer($crate::og_nav_set_link(world, mesh, id, desc))
             }
             fn og_nav_set_link_open(&self, world: u32, mesh: f64, id: u32, open: bool) -> String {
-                $crate::og_nav_set_link_open(world, mesh, id, open)
+                $crate::host_impl::answer($crate::og_nav_set_link_open(world, mesh, id, open))
             }
             fn og_nav_finish_link(&self, world: u32, entity: f64) -> bool {
                 $crate::og_nav_finish_link(world, entity)
@@ -85,7 +85,7 @@ macro_rules! __og_host_bindings_e6 {
                 point: String,
                 extent: Option<String>,
             ) -> String {
-                $crate::og_nav_nearest(world, mesh, point, extent)
+                $crate::host_impl::json($crate::og_nav_nearest(world, mesh, point, extent))
             }
             fn og_nav_path_of(&self, world: u32, entity: f64) -> String {
                 $crate::og_nav_path_of(world, entity)
@@ -94,22 +94,22 @@ macro_rules! __og_host_bindings_e6 {
 
         impl $crate::host_impl::api::AiApi for $host {
             fn og_ai_load(&self, world: u32, path: String) -> String {
-                $crate::og_ai_load(world, path)
+                $crate::host_impl::answer($crate::og_ai_load(world, path))
             }
             fn og_ai_parse(&self, world: u32, text: String) -> String {
-                $crate::og_ai_parse(world, text)
+                $crate::host_impl::answer($crate::og_ai_parse(world, text))
             }
             fn og_ai_get(&self, world: u32, entity: f64, key: String) -> String {
                 $crate::og_ai_get(world, entity, key)
             }
             fn og_ai_set(&self, world: u32, entity: f64, key: String, value: String) -> String {
-                $crate::og_ai_set(world, entity, key, value)
+                $crate::host_impl::answer($crate::og_ai_set(world, entity, key, value))
             }
             fn og_ai_noise(&self, world: u32, desc: Option<String>) -> String {
-                $crate::og_ai_noise(world, desc)
+                $crate::host_impl::answer($crate::og_ai_noise(world, desc))
             }
             fn og_ai_restart(&self, world: u32, entity: f64) -> String {
-                $crate::og_ai_restart(world, entity)
+                $crate::host_impl::answer($crate::og_ai_restart(world, entity))
             }
 
             fn og_ai_finish(
@@ -122,7 +122,7 @@ macro_rules! __og_host_bindings_e6 {
                 $crate::og_ai_finish(world, entity, success, action)
             }
             fn og_ai_describe(&self, world: u32, entity: f64) -> String {
-                $crate::og_ai_describe(world, entity)
+                $crate::host_impl::json($crate::og_ai_describe(world, entity))
             }
         }
 
@@ -151,7 +151,7 @@ macro_rules! __og_host_bindings_e6 {
                 name: String,
                 attrs: Option<String>,
             ) -> String {
-                $crate::og_platform_telemetry(world, name, attrs)
+                $crate::host_impl::answer($crate::og_platform_telemetry(world, name, attrs))
             }
             fn og_platform_point(&self, world: u32, desc: Option<String>) -> String {
                 $crate::og_platform_point(world, desc)
@@ -184,7 +184,7 @@ macro_rules! __og_host_bindings_e6 {
                 $crate::og_platform_consume(world, purchase)
             }
             fn og_platform_grant(&self, world: u32, purchase: String) -> String {
-                $crate::og_platform_grant(world, purchase)
+                $crate::host_impl::answer($crate::og_platform_grant(world, purchase))
             }
             fn og_platform_granted(&self, world: u32, purchase: String) -> bool {
                 $crate::og_platform_granted(world, purchase)
@@ -235,13 +235,13 @@ macro_rules! __og_host_bindings_e6 {
                 $crate::og_platform_now(world)
             }
             fn og_platform_room_create(&self, world: u32, desc: Option<String>) -> String {
-                $crate::og_platform_room_create(world, desc)
+                $crate::host_impl::answer($crate::og_platform_room_create(world, desc))
             }
             fn og_platform_quick_play(&self, world: u32, desc: Option<String>) -> String {
-                $crate::og_platform_quick_play(world, desc)
+                $crate::host_impl::answer($crate::og_platform_quick_play(world, desc))
             }
             fn og_platform_room_join(&self, world: u32, room: String) -> String {
-                $crate::og_platform_room_join(world, room)
+                $crate::host_impl::answer($crate::og_platform_room_join(world, room))
             }
             fn og_platform_room_leave(&self, world: u32) -> String {
                 $crate::og_platform_room_leave(world)
@@ -262,13 +262,13 @@ macro_rules! __og_host_bindings_e6 {
 
         impl $crate::host_impl::api::I18nApi for $host {
             fn og_i18n_load(&self, world: u32, path: String) -> String {
-                $crate::og_i18n_load(world, path)
+                $crate::host_impl::answer($crate::og_i18n_load(world, path))
             }
             fn og_i18n_set_locale(&self, world: u32, locale: String) -> String {
-                $crate::og_i18n_set_locale(world, locale)
+                $crate::host_impl::json($crate::og_i18n_set_locale(world, locale))
             }
             fn og_i18n_locale(&self, world: u32) -> String {
-                $crate::og_i18n_locale(world)
+                $crate::host_impl::json($crate::og_i18n_locale(world))
             }
             fn og_i18n_t(&self, world: u32, key: String, args: Option<String>) -> String {
                 $crate::og_i18n_t(world, key, args)
@@ -323,19 +323,19 @@ macro_rules! __og_host_bindings_e6 {
 
         impl $crate::host_impl::api::NetApi for $host {
             fn og_net_submit(&self, world: u32, input: Option<String>) -> String {
-                $crate::og_net_submit(world, input)
+                $crate::host_impl::answer($crate::og_net_submit(world, input))
             }
             fn og_net_shape(&self, world: u32, desc: Option<String>) -> String {
-                $crate::og_net_shape(world, desc)
+                $crate::host_impl::answer($crate::og_net_shape(world, desc))
             }
             fn og_net_submit_input(&self, world: u32, component: String, value: String) -> String {
-                $crate::og_net_submit_input(world, component, value)
+                $crate::host_impl::answer($crate::og_net_submit_input(world, component, value))
             }
             fn og_net_command(&self, world: u32, component: String, value: String) -> String {
                 $crate::og_net_command(world, component, value)
             }
             fn og_net_commands(&self, world: u32, component: String) -> String {
-                $crate::og_net_commands(world, component)
+                $crate::host_impl::answer($crate::og_net_commands(world, component))
             }
             fn og_net_status(&self, world: u32) -> String {
                 $crate::og_net_status(world)

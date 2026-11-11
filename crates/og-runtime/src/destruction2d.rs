@@ -31,7 +31,6 @@ use super::codec::{Layout, RecordKind};
 use super::engine::{Engine, Mount, engine, queued_structural, running};
 use super::extract::{Hierarchy, RenderState};
 use super::wire::{self, Carve2dDesc, Explosion2dDesc, Fill2dDesc, Fracture2dDesc};
-use super::{ok, ok_void, refuse};
 use glam::{DVec2, Quat, Vec2, Vec3};
 use og_core::{Error, ErrorKind};
 use og_destruct::terrain2d::{BEDROCK, Cell, PixelTerrain};
@@ -1426,13 +1425,6 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
 
 // ── the calls ───────────────────────────────────────────────────────────────
 
-fn wire_void(r: Result<(), String>) -> String {
-    match r {
-        Ok(()) => ok_void(),
-        Err(e) => refuse(e),
-    }
-}
-
 /// Whether `e` is alive with record `name`: between ticks from the world, inside a
 /// system through its context, which reads only what the system declared
 /// (the calls are queued for og.destruction2d after the game's systems, so
@@ -1494,8 +1486,8 @@ fn queue(eng: &Engine, op: Op) {
     lock(&eng.modules.destruction2d.0).state.ops.push(op);
 }
 
-pub fn og_destruction_carve2d(world: u32, entity: f64, desc: Option<String>) -> String {
-    wire_void((|| {
+pub fn og_destruction_carve2d(world: u32, entity: f64, desc: Option<String>) -> Result<(), String> {
+    (|| {
         let eng = engine(world)?;
         let entity = terrain_of(&eng, entity)?;
         let d: Carve2dDesc = wire::arg(desc.as_deref(), "desc")?;
@@ -1508,11 +1500,11 @@ pub fn og_destruction_carve2d(world: u32, entity: f64, desc: Option<String>) -> 
             },
         );
         Ok(())
-    })())
+    })()
 }
 
-pub fn og_destruction_fill2d(world: u32, entity: f64, desc: Option<String>) -> String {
-    wire_void((|| {
+pub fn og_destruction_fill2d(world: u32, entity: f64, desc: Option<String>) -> Result<(), String> {
+    (|| {
         let eng = engine(world)?;
         let entity = terrain_of(&eng, entity)?;
         let d: Fill2dDesc = wire::arg(desc.as_deref(), "desc")?;
@@ -1526,11 +1518,11 @@ pub fn og_destruction_fill2d(world: u32, entity: f64, desc: Option<String>) -> S
             },
         );
         Ok(())
-    })())
+    })()
 }
 
-pub fn og_destruction_explode2d(world: u32, desc: Option<String>) -> String {
-    wire_void((|| {
+pub fn og_destruction_explode2d(world: u32, desc: Option<String>) -> Result<(), String> {
+    (|| {
         let eng = engine(world)?;
         let d: Explosion2dDesc = wire::arg(desc.as_deref(), "desc")?;
         let op = Op::Explode {
@@ -1552,11 +1544,15 @@ pub fn og_destruction_explode2d(world: u32, desc: Option<String>) -> String {
             queue(&eng, op);
         }
         Ok(())
-    })())
+    })()
 }
 
-pub fn og_destruction_fracture2d(world: u32, entity: f64, desc: Option<String>) -> String {
-    wire_void((|| {
+pub fn og_destruction_fracture2d(
+    world: u32,
+    entity: f64,
+    desc: Option<String>,
+) -> Result<(), String> {
+    (|| {
         let eng = engine(world)?;
         let e = Entity::from_bits(entity as u64);
         if !has(&eng, TERRAIN, e)? && !has(&eng, PIECE, e)? {
@@ -1574,10 +1570,14 @@ pub fn og_destruction_fracture2d(world: u32, entity: f64, desc: Option<String>) 
             },
         );
         Ok(())
-    })())
+    })()
 }
 
-pub fn og_destruction_cell2d(world: u32, entity: f64, point: String) -> String {
+pub fn og_destruction_cell2d(
+    world: u32,
+    entity: f64,
+    point: String,
+) -> Result<serde_json::Value, String> {
     let r = (|| -> Result<u32, String> {
         let eng = engine(world)?;
         let key = terrain_of(&eng, entity)?;
@@ -1593,7 +1593,7 @@ pub fn og_destruction_cell2d(world: u32, entity: f64, point: String) -> String {
         Ok(u32::from(t.grid.get(x as i64, y as i64)))
     })();
     match r {
-        Ok(v) => ok(json!(v)),
-        Err(e) => refuse(e),
+        Ok(v) => Ok(json!(v)),
+        Err(e) => Err(e),
     }
 }

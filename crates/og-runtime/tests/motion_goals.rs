@@ -46,18 +46,18 @@ fn start(drive: bool) -> (u32, f64) {
     let game = og_game_game(Some(r#"{"seed":1}"#.into()));
     let options = json!({ "root": root.to_str().unwrap() }).to_string();
     let w = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
-    let e = value(og_world_spawn(
+    let e = value(og_runtime::host_impl::answer(og_world_spawn(
         w,
         Some(json!({ "name": "hero" }).to_string()),
-    ))
+    )))
     .as_f64()
     .unwrap();
-    value(og_world_insert(
+    value(og_runtime::host_impl::answer(og_world_insert(
         w,
         e,
         "og.MotionAgent".into(),
         Some(json!({ "drive": drive }).to_string()),
-    ));
+    )));
     (w, e)
 }
 
@@ -68,7 +68,11 @@ fn frames(w: u32, n: u32) {
 }
 
 fn position(w: u32, e: f64) -> (f64, f64) {
-    let t = value(og_world_get(w, e, "og.Transform".into()));
+    let t = value(og_runtime::host_impl::answer(og_world_get(
+        w,
+        e,
+        "og.Transform".into(),
+    )));
     (
         t["position"]["x"].as_f64().unwrap(),
         t["position"]["z"].as_f64().unwrap(),
@@ -82,37 +86,51 @@ fn hash(w: u32) -> Value {
 
 fn walk(w: u32, e: f64) {
     // 2.8 m along +X, braking from 1.4 m/s; then a 0.5 s cheer.
-    value(og_motion_walk_to(
+    value(og_runtime::host_impl::answer(og_motion_walk_to(
         w,
         e,
         Some(
             json!({ "position": { "x": 2.8, "y": 0, "z": 0 }, "speed": 1.4, "pose": "wave" })
                 .to_string(),
         ),
-    ));
-    value(og_motion_pose(
+    )));
+    value(og_runtime::host_impl::answer(og_motion_pose(
         w,
         e,
         Some(json!({ "pose": "cheer", "duration": 0.5 }).to_string()),
-    ));
+    )));
 }
 
 #[test]
 fn presentation_is_read_only_and_refuses_non_agents() {
     let (w, e) = start(true);
     let before = hash(w);
-    let snapshot = og_world_snapshot(w, None);
-    let status = og_motion_status(w, e);
-    let presentation = value(og_motion_presentation(w, e));
+    let snapshot = og_runtime::host_impl::answer(og_world_snapshot(w, None));
+    let status = og_runtime::host_impl::answer(og_motion_status(w, e));
+    let presentation = value(og_runtime::host_impl::answer(og_motion_presentation(w, e)));
     assert_eq!(presentation["state"], "loading");
     assert!(!presentation["reason"].as_str().unwrap().is_empty());
     assert_eq!(hash(w), before);
-    assert_eq!(og_world_snapshot(w, None), snapshot);
-    assert_eq!(og_motion_status(w, e), status);
-    let other = value(og_world_spawn(w, None)).as_f64().unwrap();
-    let refused: Value = serde_json::from_str(&og_motion_presentation(w, other)).unwrap();
+    assert_eq!(
+        og_runtime::host_impl::answer(og_world_snapshot(w, None)),
+        snapshot
+    );
+    assert_eq!(
+        og_runtime::host_impl::answer(og_motion_status(w, e)),
+        status
+    );
+    let other = value(og_runtime::host_impl::answer(og_world_spawn(w, None)))
+        .as_f64()
+        .unwrap();
+    let refused: Value = serde_json::from_str(&og_runtime::host_impl::answer(
+        og_motion_presentation(w, other),
+    ))
+    .unwrap();
     assert_eq!(refused["ok"], false);
-    let invalid: Value = serde_json::from_str(&og_motion_presentation(u32::MAX, e)).unwrap();
+    let invalid: Value = serde_json::from_str(&og_runtime::host_impl::answer(
+        og_motion_presentation(u32::MAX, e),
+    ))
+    .unwrap();
     assert_eq!(invalid["ok"], false);
     let scheduled: Value = serde_json::from_str(&og_runtime::og_engine_probe_commands(
         w,
@@ -132,17 +150,20 @@ fn presentation_is_read_only_and_refuses_non_agents() {
     assert_eq!(dump["agents"][0]["entity"], e);
     assert_eq!(
         dump["agents"][0]["presentation"],
-        value(og_motion_presentation(w, e))
+        value(og_runtime::host_impl::answer(og_motion_presentation(w, e)))
     );
 }
 
 #[test]
 fn a_driven_agent_walks_its_goals_and_restores_mid_walk() {
     let (w, e) = start(true);
-    assert_eq!(value(og_motion_status(w, e))["goal"], json!("none"));
+    assert_eq!(
+        value(og_runtime::host_impl::answer(og_motion_status(w, e)))["goal"],
+        json!("none")
+    );
     walk(w, e);
     frames(w, 60);
-    let s = value(og_motion_status(w, e));
+    let s = value(og_runtime::host_impl::answer(og_motion_status(w, e)));
     assert_eq!(s["goal"], json!("walkTo"));
     assert_eq!(s["pose"], json!("wave"));
     assert_eq!(s["queued"], json!(1));
@@ -152,13 +173,13 @@ fn a_driven_agent_walks_its_goals_and_restores_mid_walk() {
     let (x, z) = position(w, e);
     assert!(x > 1.1 && x < 1.22, "x {x} after 1 s");
     assert!(z.abs() < 0.2, "z {z}");
-    let saved = value(og_world_snapshot(w, None))
+    let saved = value(og_runtime::host_impl::answer(og_world_snapshot(w, None)))
         .as_str()
         .unwrap()
         .to_string();
 
     frames(w, 90);
-    let s = value(og_motion_status(w, e));
+    let s = value(og_runtime::host_impl::answer(og_motion_status(w, e)));
     assert_eq!(s["goal"], json!("pose"), "the walk ended on arrival: {s}");
     assert_eq!(s["pose"], json!("cheer"));
     assert_eq!(s["completed"], json!(1));
@@ -168,7 +189,7 @@ fn a_driven_agent_walks_its_goals_and_restores_mid_walk() {
         "arrived at ({x}, {z})"
     );
     frames(w, 40);
-    let s = value(og_motion_status(w, e));
+    let s = value(og_runtime::host_impl::answer(og_motion_status(w, e)));
     assert_eq!(s["goal"], json!("none"));
     assert_eq!(s["completed"], json!(2));
     let ran = hash(w);
@@ -176,24 +197,37 @@ fn a_driven_agent_walks_its_goals_and_restores_mid_walk() {
     // Restored at 1 s into a fresh engine with no goals: it finishes the same.
     let (v, f) = start(true);
     frames(v, 60);
-    value(og_world_restore(v, saved, None));
-    assert_eq!(value(og_motion_status(v, f))["goal"], json!("walkTo"));
+    value(og_runtime::host_impl::answer(og_world_restore(
+        v, saved, None,
+    )));
+    assert_eq!(
+        value(og_runtime::host_impl::answer(og_motion_status(v, f)))["goal"],
+        json!("walkTo")
+    );
     frames(v, 130);
     assert_eq!(hash(v), ran, "the restored run diverged");
 }
 
 fn status(w: u32, e: f64) -> Value {
-    value(og_motion_status(w, e))
+    value(og_runtime::host_impl::answer(og_motion_status(w, e)))
 }
 
 fn height(w: u32, e: f64) -> f64 {
-    value(og_world_get(w, e, "og.Transform".into()))["position"]["y"]
+    value(og_runtime::host_impl::answer(og_world_get(
+        w,
+        e,
+        "og.Transform".into(),
+    )))["position"]["y"]
         .as_f64()
         .unwrap()
 }
 
 fn jump(w: u32, e: f64, desc: Value) {
-    value(og_runtime::og_motion_jump(w, e, Some(desc.to_string())));
+    value(og_runtime::host_impl::answer(og_runtime::og_motion_jump(
+        w,
+        e,
+        Some(desc.to_string()),
+    )));
 }
 
 // A jump the simulation owns (docs/design.md §2.7, "Jumps"). Without a
@@ -226,7 +260,7 @@ fn a_jump_without_a_controller_flies_its_fixed_arc_and_restores_mid_flight() {
             first_air.get_or_insert(tick);
             if air == 10 {
                 saved = Some(
-                    value(og_world_snapshot(w, None))
+                    value(og_runtime::host_impl::answer(og_world_snapshot(w, None)))
                         .as_str()
                         .unwrap()
                         .to_string(),
@@ -274,7 +308,11 @@ fn a_jump_without_a_controller_flies_its_fixed_arc_and_restores_mid_flight() {
 
     let (v, f) = start(true);
     jump(v, f, desc);
-    value(og_world_restore(v, saved.unwrap(), None));
+    value(og_runtime::host_impl::answer(og_world_restore(
+        v,
+        saved.unwrap(),
+        None,
+    )));
     assert_eq!(status(v, f)["airborne"], json!(true));
     frames(v, tick + 15 + 30 - (first_air.unwrap() + 9));
     assert_eq!(
@@ -300,7 +338,12 @@ fn controller_world(ledge: Option<f64>) -> (u32, f64) {
         ),
         ("og.CharacterController", json!({})),
     ] {
-        value(og_world_insert(w, e, name.into(), Some(desc.to_string())));
+        value(og_runtime::host_impl::answer(og_world_insert(
+            w,
+            e,
+            name.into(),
+            Some(desc.to_string()),
+        )));
     }
     let mut boxes = vec![(
         json!({ "x": 0, "y": -0.5, "z": 0 }),
@@ -313,26 +356,32 @@ fn controller_world(ledge: Option<f64>) -> (u32, f64) {
         ));
     }
     for (at, size) in boxes {
-        let b = value(og_world_spawn(w, None)).as_f64().unwrap();
-        value(og_world_insert(
+        let b = value(og_runtime::host_impl::answer(og_world_spawn(w, None)))
+            .as_f64()
+            .unwrap();
+        value(og_runtime::host_impl::answer(og_world_insert(
             w,
             b,
             "og.Transform".into(),
             Some(json!({ "position": at }).to_string()),
-        ));
-        value(og_world_insert(
+        )));
+        value(og_runtime::host_impl::answer(og_world_insert(
             w,
             b,
             "og.Collider".into(),
             Some(json!({ "shape": 0, "size": size }).to_string()),
-        ));
+        )));
     }
     frames(w, 30);
     (w, e)
 }
 
 fn controller(w: u32, e: f64) -> Value {
-    value(og_world_get(w, e, "og.CharacterController".into()))
+    value(og_runtime::host_impl::answer(og_world_get(
+        w,
+        e,
+        "og.CharacterController".into(),
+    )))
 }
 
 // With a CharacterController the jump is the controller's. Ways this could
@@ -493,7 +542,11 @@ fn speeds(w: u32, e: f64, frames_n: u32) -> Vec<(f64, f64)> {
 }
 
 fn walk_to(w: u32, e: f64, desc: Value) {
-    value(og_motion_walk_to(w, e, Some(desc.to_string())));
+    value(og_runtime::host_impl::answer(og_motion_walk_to(
+        w,
+        e,
+        Some(desc.to_string()),
+    )));
 }
 
 #[test]

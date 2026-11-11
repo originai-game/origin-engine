@@ -82,15 +82,18 @@ fn frame(engine: u32) {
 
 fn spawn(engine: u32, x: f32, sprite: Value) {
     let desc = json!({ "position": { "x": x, "y": 0, "z": 0 } });
-    let e = value(og_world_spawn(engine, Some(desc.to_string())))
-        .as_f64()
-        .unwrap();
-    value(og_world_insert(
+    let e = value(og_runtime::host_impl::answer(og_world_spawn(
+        engine,
+        Some(desc.to_string()),
+    )))
+    .as_f64()
+    .unwrap();
+    value(og_runtime::host_impl::answer(og_world_insert(
         engine,
         e,
         "og.Sprite".into(),
         Some(sprite.to_string()),
-    ));
+    )));
 }
 
 #[test]
@@ -113,7 +116,10 @@ fn every_world_sprite_reaches_the_renderer_with_its_facing() {
         v.as_object_mut()
             .unwrap()
             .extend(extra.as_object().unwrap().clone());
-        value(og_render_sprite(engine, Some(v.to_string())));
+        value(og_runtime::host_impl::answer(og_render_sprite(
+            engine,
+            Some(v.to_string()),
+        )));
     };
     sprite(4.0, json!({}));
     sprite(5.0, json!({ "screen": true }));

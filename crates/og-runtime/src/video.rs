@@ -25,7 +25,7 @@ use super::assets;
 use super::codec::Layout;
 use super::engine::{Engine, engine};
 use super::extract::RenderState;
-use super::wire::{self, ToJson, VideoCapabilities, VideoInfo};
+use super::wire::{VideoCapabilities, VideoInfo};
 use og_core::IdMap;
 use og_ecs::{Entity, QueryDesc, SchemaId, SystemContext, SystemDesc, World};
 use serde_json::{Value, json};
@@ -810,40 +810,33 @@ fn load_video(eng: &Engine, path: &str) -> Result<VideoInfo, String> {
     Ok(info)
 }
 
-fn wire<T: ToJson>(r: Result<T, String>) -> String {
-    match r {
-        Ok(v) => wire::ok(&v),
-        Err(e) => json!({ "ok": false, "reason": e }).to_string(),
-    }
-}
-
 /// `og.load.video`.
-pub fn og_load_video(world: u32, path: String) -> String {
-    wire(engine(world).and_then(|eng| load_video(&eng, &path)))
+pub fn og_load_video(world: u32, path: String) -> Result<crate::wire::VideoInfo, String> {
+    engine(world).and_then(|eng| load_video(&eng, &path))
 }
 
 /// `og.load.videoInfo`.
-pub fn og_load_video_info(world: u32, video: f64) -> String {
-    wire(engine(world).and_then(|eng| {
+pub fn og_load_video_info(world: u32, video: f64) -> Result<crate::wire::VideoInfo, String> {
+    engine(world).and_then(|eng| {
         let rs = eng.render.borrow();
         assets::index_of(video)
             .and_then(|i| rs.videos.get(i))
             .map(|v| v.info.clone())
             .ok_or_else(|| format!("video {video} was not loaded by og.load.video"))
-    }))
+    })
 }
 
 /// `og.video.capabilities`.
-pub fn og_video_capabilities(world: u32) -> String {
+pub fn og_video_capabilities(world: u32) -> crate::wire::VideoCapabilities {
     let rendered = engine(world).is_ok_and(|eng| eng.render.borrow().backend.is_some());
     let d = super::engine::hooks()
         .map_or_else(super::engine::VideoDecoder::default, |h| h.video_decoder());
     let streamed = rendered && d.name != "none";
-    wire::text_of(&VideoCapabilities {
+    VideoCapabilities {
         streamed,
         decoder: if streamed { d.name.as_str() } else { "none" }.to_string(),
         hardware: streamed && d.hardware,
         max_width: if streamed { d.max_width } else { 0 },
         max_height: if streamed { d.max_height } else { 0 },
-    })
+    }
 }

@@ -92,9 +92,19 @@ fn reload_replaces_ui_material_code_and_defaults_without_changing_its_handle() {
     let engine = value(og_engine_create(game, json!({ "root": root }).to_string()))
         .as_u64()
         .unwrap() as u32;
-    value(og_runtime::og_load_document(engine, "swatch.svelte".into()));
-    value(og_runtime::og_ui_push(engine, "Swatch".into(), None));
-    let material = value(og_load_ui_material(engine, "effect.ogt".into()));
+    value(og_runtime::host_impl::answer(og_runtime::og_load_document(
+        engine,
+        "swatch.svelte".into(),
+    )));
+    value(og_runtime::host_impl::answer(og_runtime::og_ui_push(
+        engine,
+        "Swatch".into(),
+        None,
+    )));
+    let material = value(og_runtime::host_impl::answer(og_load_ui_material(
+        engine,
+        "effect.ogt".into(),
+    )));
     let seen = Rc::new(RefCell::new(Vec::new()));
     let layers = Rc::new(RefCell::new(Vec::new()));
     set_render_backend(
@@ -123,16 +133,17 @@ fn reload_replaces_ui_material_code_and_defaults_without_changing_its_handle() {
     assert_eq!(parameter["name"], "amount");
     assert_eq!(parameter["type"], "f32");
     assert_eq!(parameter["value"], json!([0.25]));
-    value(og_runtime::og_commands_schedule(
-        engine,
-        "0:ui:material:effect.ogt.offset=0.4 0.9".into(),
+    value(og_runtime::host_impl::answer(
+        og_runtime::og_commands_schedule(engine, "0:ui:material:effect.ogt.offset=0.4 0.9".into()),
     ));
     value(og_engine_frame(engine, 1000.0 / 60.0));
     assert_eq!(layers.borrow()[0].params[1], [0.4, 0.9, 0.0, 0.0]);
     for (input, expected) in [("0.6", 0.6_f32), ("NaN", 0.6), ("1 2", 0.6), ("", 0.25)] {
-        value(og_runtime::og_commands_schedule(
-            engine,
-            format!("0:ui:material:effect.ogt.amount={input}"),
+        value(og_runtime::host_impl::answer(
+            og_runtime::og_commands_schedule(
+                engine,
+                format!("0:ui:material:effect.ogt.amount={input}"),
+            ),
         ));
         value(og_engine_frame(engine, 1000.0 / 60.0));
         let current = dump()["materials"][0]["parameters"][0]["value"][0]
@@ -173,7 +184,10 @@ fn reload_replaces_ui_material_code_and_defaults_without_changing_its_handle() {
     );
     value(og_engine_frame(engine, 1000.0 / 60.0));
     assert_eq!(
-        value(og_load_ui_material(engine, "effect.ogt".into())),
+        value(og_runtime::host_impl::answer(og_load_ui_material(
+            engine,
+            "effect.ogt".into()
+        ))),
         material
     );
     assert_eq!(seen.borrow().len(), 1);

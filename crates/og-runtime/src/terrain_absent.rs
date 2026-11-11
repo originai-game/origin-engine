@@ -115,16 +115,15 @@ pub(crate) fn extract(
     Vec::new()
 }
 
-fn absent() -> String {
-    super::refuse(format!("og.terrain: {ABSENT}"))
+pub fn og_terrain_load(_world: u32, _path: String) -> Result<crate::wire::TerrainInfo, String> {
+    Err(ABSENT.into())
 }
 
-pub fn og_terrain_load(_world: u32, _path: String) -> String {
-    absent()
-}
-
-pub fn og_terrain_sample(_world: u32, _desc: Option<String>) -> String {
-    absent()
+pub fn og_terrain_sample(
+    _world: u32,
+    _desc: Option<String>,
+) -> Result<crate::wire::TerrainSample, String> {
+    Err(ABSENT.into())
 }
 
 pub fn og_terrain_bounds(
@@ -133,24 +132,36 @@ pub fn og_terrain_bounds(
     _origin: Option<String>,
     _quaternion: Option<String>,
     _scale: Option<String>,
-) -> String {
-    absent()
+) -> Result<crate::wire::TerrainBounds, String> {
+    Err(ABSENT.into())
 }
 
-pub fn og_terrain_edit(_world: u32, _data: f64, _brush: Option<String>) -> String {
-    absent()
+pub fn og_terrain_edit(
+    _world: u32,
+    _data: f64,
+    _brush: Option<String>,
+) -> Result<crate::wire::TerrainEdit, String> {
+    Err(ABSENT.into())
 }
 
-pub fn og_terrain_stamp(_world: u32, _desc: Option<String>) -> String {
-    absent()
+pub fn og_terrain_stamp(_world: u32, _desc: Option<String>) -> Result<serde_json::Value, String> {
+    Err(ABSENT.into())
 }
 
-pub fn og_terrain_unstamp(_world: u32, _data: f64, _stamp: u32) -> String {
-    absent()
+pub fn og_terrain_unstamp(
+    _world: u32,
+    _data: f64,
+    _stamp: u32,
+) -> Result<serde_json::Value, String> {
+    Err(ABSENT.into())
 }
 
-pub fn og_terrain_layer(_world: u32, _data: f64, _index: u32) -> String {
-    absent()
+pub fn og_terrain_layer(
+    _world: u32,
+    _data: f64,
+    _index: u32,
+) -> Result<crate::wire::TerrainLayerDesc, String> {
+    Err(ABSENT.into())
 }
 
 pub fn og_terrain_set_layer(
@@ -158,8 +169,8 @@ pub fn og_terrain_set_layer(
     _data: f64,
     _index: u32,
     _layer: Option<String>,
-) -> String {
-    absent()
+) -> Result<(), String> {
+    Err(ABSENT.into())
 }
 
 /// No terrain, no seabed (the full module's `seabed_grid`).

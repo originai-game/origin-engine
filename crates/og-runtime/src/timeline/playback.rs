@@ -78,8 +78,8 @@ fn has_timeline(eng: &Engine, e: Entity) -> Result<u64, String> {
     Ok(bits(&layout.decode(&bytes)["asset"]))
 }
 
-fn op(world: u32, entity: f64, op: Op) -> String {
-    wire_void((|| {
+fn op(world: u32, entity: f64, op: Op) -> Result<(), String> {
+    (|| {
         let eng = engine(world)?;
         let e = Entity::from_bits(entity as u64);
         let asset = has_timeline(&eng, e)?;
@@ -98,22 +98,22 @@ fn op(world: u32, entity: f64, op: Op) -> String {
         }
         lock(&shared(world)).ops.push((e.to_bits(), op));
         Ok(())
-    })())
+    })()
 }
 
-pub fn og_timeline_play(world: u32, entity: f64) -> String {
+pub fn og_timeline_play(world: u32, entity: f64) -> Result<(), String> {
     op(world, entity, Op::Play)
 }
 
-pub fn og_timeline_pause(world: u32, entity: f64) -> String {
+pub fn og_timeline_pause(world: u32, entity: f64) -> Result<(), String> {
     op(world, entity, Op::Pause)
 }
 
-pub fn og_timeline_seek(world: u32, entity: f64, time: f64) -> String {
+pub fn og_timeline_seek(world: u32, entity: f64, time: f64) -> Result<(), String> {
     op(world, entity, Op::Seek(time as f32))
 }
 
-pub fn og_timeline_stop(world: u32, entity: f64) -> String {
+pub fn og_timeline_stop(world: u32, entity: f64) -> Result<(), String> {
     op(world, entity, Op::Stop)
 }
 

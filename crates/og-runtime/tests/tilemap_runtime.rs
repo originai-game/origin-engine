@@ -80,19 +80,22 @@ fn start(root: &PathBuf) -> u32 {
 }
 
 fn place(engine: u32, map: &Value) -> f64 {
-    let entity = value(og_world_spawn(engine, Some("{}".into())))
-        .as_f64()
-        .unwrap();
+    let entity = value(og_runtime::host_impl::answer(og_world_spawn(
+        engine,
+        Some("{}".into()),
+    )))
+    .as_f64()
+    .unwrap();
     for (name, fields) in [
         ("og.Transform", json!({})),
         ("og.Tilemap", json!({ "map": map, "collision": true })),
     ] {
-        value(og_world_insert(
+        value(og_runtime::host_impl::answer(og_world_insert(
             engine,
             entity,
             name.into(),
             Some(fields.to_string()),
-        ));
+        )));
     }
     entity
 }
@@ -102,12 +105,12 @@ fn frame(engine: u32) {
 }
 
 fn set(engine: u32, entity: f64, x: u32, y: u32, tile: i32) {
-    value(og_tilemap_set_tile(
+    value(og_runtime::host_impl::answer(og_tilemap_set_tile(
         engine,
         Some(
             json!({ "entity": entity, "layer": "floor", "x": x, "y": y, "tile": tile }).to_string(),
         ),
-    ));
+    )));
 }
 
 #[test]
@@ -120,7 +123,10 @@ fn a_made_and_resized_map_saves_whole_and_restores_in_a_fresh_session() {
         "orientation": "hex", "tilesets": ["tiles.ogt"],
         "layers": [{ "name": "floor", "collision": true }],
     });
-    let info = value(og_tilemap_create(engine, Some(desc.to_string())));
+    let info = value(og_runtime::host_impl::answer(og_tilemap_create(
+        engine,
+        Some(desc.to_string()),
+    )));
     assert_eq!(info["orientation"], "hex");
     assert_eq!(
         (info["width"].as_u64(), info["height"].as_u64()),
@@ -131,12 +137,12 @@ fn a_made_and_resized_map_saves_whole_and_restores_in_a_fresh_session() {
     set(engine, entity, 2, 1, 0);
     set(engine, entity, 3, 1, 1);
     // Pointy hex, odd row 1 (shifted right): (4, 0) and (3, 0) above it.
-    let n: Value = serde_json::from_str(&og_tilemap_neighbours(
+    let n: Value = serde_json::from_str(&og_runtime::host_impl::json(og_tilemap_neighbours(
         engine,
         info["map"].as_f64().unwrap(),
         3,
         1,
-    ))
+    )))
     .unwrap();
     let cells: Vec<(u64, u64)> = n
         .as_array()
@@ -146,29 +152,34 @@ fn a_made_and_resized_map_saves_whole_and_restores_in_a_fresh_session() {
         .collect();
     assert_eq!(cells, [(4, 0), (4, 1), (4, 2), (3, 2), (2, 1), (3, 0)]);
     frame(engine);
-    let first = value(og_world_snapshot(engine, None))
-        .as_str()
-        .unwrap()
-        .to_string();
+    let first = value(og_runtime::host_impl::answer(og_world_snapshot(
+        engine, None,
+    )))
+    .as_str()
+    .unwrap()
+    .to_string();
     let first_hash = hash(engine);
 
     // A second map from the same call in the same order: a handle of its own.
-    let other = value(og_tilemap_create(engine, Some(desc.to_string())));
+    let other = value(og_runtime::host_impl::answer(og_tilemap_create(
+        engine,
+        Some(desc.to_string()),
+    )));
     assert_ne!(other["map"], info["map"]);
 
-    let refused: Value = serde_json::from_str(&og_tilemap_resize(
+    let refused: Value = serde_json::from_str(&og_runtime::host_impl::answer(og_tilemap_resize(
         engine,
         Some(json!({ "map": info["map"], "width": 12, "height": 9, "x": 1, "y": 1 }).to_string()),
-    ))
+    )))
     .unwrap();
     assert_eq!(
         refused["ok"], false,
         "an odd shift re-staggers a hex map: {refused}"
     );
-    value(og_tilemap_resize(
+    value(og_runtime::host_impl::answer(og_tilemap_resize(
         engine,
         Some(json!({ "map": info["map"], "width": 12, "height": 9, "x": 1, "y": 2 }).to_string()),
-    ));
+    )));
     let at = |e: u32, x: u32, y: u32| og_tilemap_get_tile(e, entity, "floor".into(), x, y);
     assert_eq!(
         (at(engine, 3, 3), at(engine, 4, 3)),
@@ -177,35 +188,51 @@ fn a_made_and_resized_map_saves_whole_and_restores_in_a_fresh_session() {
     );
     assert_eq!(at(engine, 2, 1), -1);
     frame(engine);
-    let resized = value(og_world_snapshot(engine, None))
-        .as_str()
-        .unwrap()
-        .to_string();
+    let resized = value(og_runtime::host_impl::answer(og_world_snapshot(
+        engine, None,
+    )))
+    .as_str()
+    .unwrap()
+    .to_string();
     let resized_hash = hash(engine);
     assert_ne!(resized_hash, first_hash);
 
     // A session that never made a map restores the resized one.
     let fresh = start(&root);
-    value(og_world_restore(fresh, resized.clone(), None));
+    value(og_runtime::host_impl::answer(og_world_restore(
+        fresh,
+        resized.clone(),
+        None,
+    )));
     assert_eq!(
         (at(fresh, 3, 3), at(fresh, 4, 3), at(fresh, 11, 8)),
         (0, 1, -1)
     );
     assert_eq!(hash(fresh), resized_hash);
     // Both restored (a restore is an event of the next tick), both go on alike.
-    value(og_world_restore(engine, resized, None));
+    value(og_runtime::host_impl::answer(og_world_restore(
+        engine, resized, None,
+    )));
     for _ in 0..3 {
         frame(fresh);
         frame(engine);
     }
     assert_eq!(hash(fresh), hash(engine), "both go on alike");
     // The counter came with it: the next map is the one the run made next.
-    let next = value(og_tilemap_create(fresh, Some(desc.to_string())));
-    let after = value(og_tilemap_create(engine, Some(desc.to_string())));
+    let next = value(og_runtime::host_impl::answer(og_tilemap_create(
+        fresh,
+        Some(desc.to_string()),
+    )));
+    let after = value(og_runtime::host_impl::answer(og_tilemap_create(
+        engine,
+        Some(desc.to_string()),
+    )));
     assert_eq!(next["map"], after["map"]);
 
     // The earlier save puts the map back at 9 × 7.
-    value(og_world_restore(engine, first, None));
+    value(og_runtime::host_impl::answer(og_world_restore(
+        engine, first, None,
+    )));
     assert_eq!(
         (at(engine, 2, 1), at(engine, 3, 1), at(engine, 3, 3)),
         (0, 1, -1)
@@ -218,36 +245,60 @@ fn a_resized_loaded_map_saves_whole_and_an_earlier_save_undoes_it() {
     set_hooks(Rc::new(Game));
     let root = project("tilemap-loaded-resize");
     let engine = start(&root);
-    let map = value(og_load_tilemap(engine, "map.ogt".into()))["map"].clone();
+    let map = value(og_runtime::host_impl::answer(og_load_tilemap(
+        engine,
+        "map.ogt".into(),
+    )))["map"]
+        .clone();
     let entity = place(engine, &map);
     frame(engine);
-    let before = value(og_world_snapshot(engine, None))
-        .as_str()
-        .unwrap()
-        .to_string();
+    let before = value(og_runtime::host_impl::answer(og_world_snapshot(
+        engine, None,
+    )))
+    .as_str()
+    .unwrap()
+    .to_string();
     let before_hash = hash(engine);
-    value(og_tilemap_resize(
+    value(og_runtime::host_impl::answer(og_tilemap_resize(
         engine,
         Some(json!({ "map": map, "width": 5, "height": 4, "x": 2, "y": 1 }).to_string()),
-    ));
+    )));
     let at = |e: u32, x: u32, y: u32| og_tilemap_get_tile(e, entity, "floor".into(), x, y);
     assert_eq!((at(engine, 2, 1), at(engine, 0, 0)), (0, -1));
-    assert_eq!(value(og_load_tilemap(engine, "map.ogt".into()))["width"], 5);
+    assert_eq!(
+        value(og_runtime::host_impl::answer(og_load_tilemap(
+            engine,
+            "map.ogt".into()
+        )))["width"],
+        5
+    );
     frame(engine);
-    let resized = value(og_world_snapshot(engine, None))
-        .as_str()
-        .unwrap()
-        .to_string();
+    let resized = value(og_runtime::host_impl::answer(og_world_snapshot(
+        engine, None,
+    )))
+    .as_str()
+    .unwrap()
+    .to_string();
     let resized_hash = hash(engine);
 
     // A session that loads the map as cooked restores it resized.
     let fresh = start(&root);
-    assert_eq!(value(og_load_tilemap(fresh, "map.ogt".into()))["map"], map);
-    value(og_world_restore(fresh, resized, None));
+    assert_eq!(
+        value(og_runtime::host_impl::answer(og_load_tilemap(
+            fresh,
+            "map.ogt".into()
+        )))["map"],
+        map
+    );
+    value(og_runtime::host_impl::answer(og_world_restore(
+        fresh, resized, None,
+    )));
     assert_eq!(at(fresh, 2, 1), 0);
     assert_eq!(hash(fresh), resized_hash);
 
-    value(og_world_restore(engine, before, None));
+    value(og_runtime::host_impl::answer(og_world_restore(
+        engine, before, None,
+    )));
     assert_eq!((at(engine, 0, 0), at(engine, 2, 1)), (0, -1));
     assert_eq!(hash(engine), before_hash);
 }

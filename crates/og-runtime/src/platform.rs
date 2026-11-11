@@ -14,7 +14,7 @@
 
 use super::engine::{engine, running};
 use super::wire::{self, PlatformError, PlatformInfo, PlatformNoticeData, PlatformResult, ToJson};
-use super::{ok, ok_void, parse, refuse};
+use super::{ok, parse, refuse};
 use og_core::IdMap;
 use og_core::Reflect;
 use og_ecs::{SystemDesc, World};
@@ -361,26 +361,30 @@ pub fn og_platform_leaderboard_around(world: u32, desc: Option<String>) -> u32 {
     query(world, "leaderboard.around", desc)
 }
 
-pub fn og_platform_telemetry(world: u32, name: String, attrs: Option<String>) -> String {
+pub fn og_platform_telemetry(
+    world: u32,
+    name: String,
+    attrs: Option<String>,
+) -> Result<(), String> {
     let named = !name.is_empty()
         && name.len() <= 64
         && name
             .bytes()
             .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'_'));
     if !named {
-        return refuse(format!(
+        return Err(format!(
             "'{name}' is not an event name: 1 to 64 of letters, digits, '.' and '_'"
         ));
     }
-    let attrs = match attrs.as_deref().map(|a| parse(Some(a))).transpose() {
-        Ok(a) => a.unwrap_or(json!({})),
-        Err(e) => return refuse(e),
+    let attrs = {
+        let a = attrs.as_deref().map(|a| parse(Some(a))).transpose()?;
+        a.unwrap_or(json!({}))
     };
     let Some(o) = attrs.as_object() else {
-        return refuse("attrs is an object of strings, numbers, booleans or null");
+        return Err("attrs is an object of strings, numbers, booleans or null".into());
     };
     if o.len() > 16 || o.values().any(|v| v.is_array() || v.is_object()) {
-        return refuse("attrs holds at most 16 strings, numbers, booleans or null");
+        return Err("attrs holds at most 16 strings, numbers, booleans or null".into());
     }
     let key_ok = |k: &str| {
         let mut b = k.bytes();
@@ -388,14 +392,14 @@ pub fn og_platform_telemetry(world: u32, name: String, attrs: Option<String>) ->
             && b.all(|c| c.is_ascii_alphanumeric() || c == b'_')
     };
     if let Some(k) = o.keys().find(|k| !key_ok(k)) {
-        return refuse(format!(
+        return Err(format!(
             "attribute '{k}' is not a name: a lowercase letter, then letters, digits and '_'"
         ));
     }
     if o.values()
         .any(|v| v.as_str().is_some_and(|t| t.chars().count() > 512))
     {
-        return refuse("an attribute's string is at most 512 characters");
+        return Err("an attribute's string is at most 512 characters".into());
     }
     match call(
         world,
@@ -403,8 +407,8 @@ pub fn og_platform_telemetry(world: u32, name: String, attrs: Option<String>) ->
         json!({ "name": name, "attrs": attrs }),
         true,
     ) {
-        Ok(_) => ok_void(),
-        Err(e) => refuse(e),
+        Ok(_) => Ok(()),
+        Err(e) => Err(e),
     }
 }
 
@@ -1276,8 +1280,12 @@ mod tests {
         assert!(reason.contains("waiting"), "{reason}");
         assert_eq!(og_platform_store_list(e), 0);
         // One-way telemetry is not held back by them.
-        let sent: Value =
-            serde_json::from_str(&og_platform_telemetry(e, "t".into(), None)).unwrap();
+        let sent: Value = serde_json::from_str(&crate::host_impl::answer(og_platform_telemetry(
+            e,
+            "t".into(),
+            None,
+        )))
+        .unwrap();
         assert_eq!(sent["ok"], json!(true), "{sent}");
     }
 
@@ -1635,7 +1643,7 @@ mod tests {
     }
 
     fn snapshot_of(e: u32) -> String {
-        value(&crate::og_world_snapshot(e, None))
+        value(&crate::host_impl::answer(crate::og_world_snapshot(e, None)))
             .as_str()
             .unwrap()
             .to_string()
@@ -1658,7 +1666,9 @@ mod tests {
         let grant_from_notice = |n: u32| {
             let v: Value = serde_json::from_str(&og_platform_notice(e, n)).unwrap();
             let id = v["data"]["purchase"].as_str().unwrap().to_string();
-            value(&og_platform_grant(e, id)).as_bool().unwrap()
+            value(&crate::host_impl::answer(og_platform_grant(e, id)))
+                .as_bool()
+                .unwrap()
         };
         assert!(og_platform_notify(e, notice.to_string()));
         advance(e, 1);
@@ -1678,25 +1688,33 @@ mod tests {
         let relaunch = engine_at_60();
         host(relaunch, 1.0, "fixed");
         assert!(!og_platform_granted(relaunch, "p-7".into()));
-        let restored: Value =
-            serde_json::from_str(&crate::og_world_restore(relaunch, saved, None)).unwrap();
+        let restored: Value = serde_json::from_str(&crate::host_impl::answer(
+            crate::og_world_restore(relaunch, saved, None),
+        ))
+        .unwrap();
         assert_eq!(restored["ok"], json!(true), "{restored}");
         assert!(og_platform_granted(relaunch, "p-7".into()));
         assert!(og_platform_notify(relaunch, notice.to_string()));
         advance(relaunch, 1);
         let v: Value = serde_json::from_str(&og_platform_notice(relaunch, 1)).unwrap();
-        let again = value(&og_platform_grant(
+        let again = value(&crate::host_impl::answer(og_platform_grant(
             relaunch,
             v["data"]["purchase"].as_str().unwrap().to_string(),
-        ));
+        )));
         assert_eq!(again, json!(false), "a replayed notice granted twice");
         // Another purchase is new; a malformed id is refused.
         assert_eq!(
-            value(&og_platform_grant(relaunch, "p-8".into())),
+            value(&crate::host_impl::answer(og_platform_grant(
+                relaunch,
+                "p-8".into()
+            ))),
             json!(true)
         );
-        let bad: Value =
-            serde_json::from_str(&og_platform_grant(relaunch, "no spaces".into())).unwrap();
+        let bad: Value = serde_json::from_str(&crate::host_impl::answer(og_platform_grant(
+            relaunch,
+            "no spaces".into(),
+        )))
+        .unwrap();
         assert_eq!(bad["ok"], json!(false));
     }
 }

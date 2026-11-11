@@ -71,7 +71,7 @@ fn the_tick_after_a_restore_reads_og_world_restored_once() {
     let e = value(og_engine_create(game, "{}".into())).as_u64().unwrap() as u32;
 
     run_to(e, 10);
-    let save = value(og_world_snapshot(e, None))
+    let save = value(og_runtime::host_impl::answer(og_world_snapshot(e, None)))
         .as_str()
         .unwrap()
         .to_string();
@@ -84,7 +84,9 @@ fn the_tick_after_a_restore_reads_og_world_restored_once() {
     );
     seen.borrow_mut().clear();
 
-    value(og_world_restore(e, save, None));
+    value(og_runtime::host_impl::answer(og_world_restore(
+        e, save, None,
+    )));
     assert_eq!(og_world_get_tick(e), 10);
     assert_eq!(hash(e), saved, "between ticks the world is the save");
 
@@ -106,7 +108,7 @@ fn controller_save_load_differs_only_by_the_restore_notification() {
     use og_runtime::{og_motion_walk_to, og_world_insert, og_world_spawn, save_snapshot_bytes};
 
     fn snapshot(e: u32) -> (String, Vec<u8>) {
-        let text = value(og_world_snapshot(e, None))
+        let text = value(og_runtime::host_impl::answer(og_world_snapshot(e, None)))
             .as_str()
             .unwrap()
             .to_owned();
@@ -118,21 +120,25 @@ fn controller_save_load_differs_only_by_the_restore_notification() {
     og_host_begin_bundle();
     let game = og_game_game(Some(json!({"seed": 11}).to_string()));
     let w = value(og_engine_create(game, "{}".into())).as_u64().unwrap() as u32;
-    let actor = value(og_world_spawn(w, None)).as_f64().unwrap();
+    let actor = value(og_runtime::host_impl::answer(og_world_spawn(w, None)))
+        .as_f64()
+        .unwrap();
     for (name, desc) in [
         ("og.Transform", json!({"position":{"x":0,"y":1,"z":0}})),
         ("og.MotionAgent", json!({"drive":true})),
         ("og.Collider", json!({"shape":2,"radius":0.4,"height":1})),
         ("og.CharacterController", json!({})),
     ] {
-        value(og_world_insert(
+        value(og_runtime::host_impl::answer(og_world_insert(
             w,
             actor,
             name.into(),
             Some(desc.to_string()),
-        ));
+        )));
     }
-    let floor = value(og_world_spawn(w, None)).as_f64().unwrap();
+    let floor = value(og_runtime::host_impl::answer(og_world_spawn(w, None)))
+        .as_f64()
+        .unwrap();
     for (name, desc) in [
         ("og.Transform", json!({"position":{"x":0,"y":-0.5,"z":0}})),
         (
@@ -140,18 +146,18 @@ fn controller_save_load_differs_only_by_the_restore_notification() {
             json!({"shape":0,"size":{"x":20,"y":1,"z":20}}),
         ),
     ] {
-        value(og_world_insert(
+        value(og_runtime::host_impl::answer(og_world_insert(
             w,
             floor,
             name.into(),
             Some(desc.to_string()),
-        ));
+        )));
     }
-    value(og_motion_walk_to(
+    value(og_runtime::host_impl::answer(og_motion_walk_to(
         w,
         actor,
         Some(json!({"position":{"x":2.8,"y":0,"z":0}}).to_string()),
-    ));
+    )));
     run_to(w, 60);
     let (save, saved_bytes) = snapshot(w);
     let saved_hash = hash(w);
@@ -160,7 +166,9 @@ fn controller_save_load_differs_only_by_the_restore_notification() {
         run_to(w, tick);
         expected.push((hash(w), snapshot(w).1));
     }
-    value(og_world_restore(w, save, None));
+    value(og_runtime::host_impl::answer(og_world_restore(
+        w, save, None,
+    )));
     assert_eq!(hash(w), saved_hash);
     assert_eq!(snapshot(w).1, saved_bytes);
     for (i, (expected_hash, bytes)) in expected.into_iter().enumerate() {

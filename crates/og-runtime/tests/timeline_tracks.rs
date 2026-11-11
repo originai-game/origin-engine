@@ -226,19 +226,19 @@ struct Run {
 }
 
 fn spawn(engine: u32, name: &str, parts: &[(&str, Value)]) -> f64 {
-    let e = value(og_world_spawn(
+    let e = value(og_runtime::host_impl::answer(og_world_spawn(
         engine,
         Some(json!({ "name": name }).to_string()),
-    ))
+    )))
     .as_f64()
     .unwrap();
     for (rec, v) in parts {
-        value(og_world_insert(
+        value(og_runtime::host_impl::answer(og_world_insert(
             engine,
             e,
             (*rec).into(),
             Some(v.to_string()),
-        ));
+        )));
     }
     e
 }
@@ -260,14 +260,17 @@ fn start() -> Run {
     let engine = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
     let drawn = Drawn::default();
     set_render_backend(engine, Some(Box::new(Recorder(drawn.clone())))).unwrap();
-    let material = value(og_render_standard_material(
+    let material = value(og_runtime::host_impl::answer(og_render_standard_material(
         engine,
         Some(
             json!({ "emissive": { "r": 1, "g": 0.5, "b": 0.1 }, "emissiveIntensity": 0.5 })
                 .to_string(),
         ),
-    ));
-    let geometry = value(og_render_box_geometry(engine, Some("{}".into())));
+    )));
+    let geometry = value(og_runtime::host_impl::answer(og_render_box_geometry(
+        engine,
+        Some("{}".into()),
+    )));
     let mesh = json!({ "geometry": geometry, "material": material });
     spawn(
         engine,
@@ -278,7 +281,10 @@ fn start() -> Run {
             ("og.Mesh", mesh.clone()),
         ],
     );
-    let crate_mesh = value(og_render_standard_material(engine, Some("{}".into())));
+    let crate_mesh = value(og_runtime::host_impl::answer(og_render_standard_material(
+        engine,
+        Some("{}".into()),
+    )));
     spawn(
         engine,
         "crate",
@@ -303,7 +309,10 @@ fn start() -> Run {
         )],
     );
     spawn(engine, "door", &[("og.Transform", json!({}))]);
-    let asset = value(og_load_timeline(engine, "timelines/t.ogt".into()));
+    let asset = value(og_runtime::host_impl::answer(og_load_timeline(
+        engine,
+        "timelines/t.ogt".into(),
+    )));
     let timeline = spawn(engine, "", &[("og.Timeline", json!({ "asset": asset }))]);
     frame(engine, 1);
     Run {
@@ -327,11 +336,18 @@ fn hash(engine: u32) -> Value {
 
 fn get(r: &Run, name: &str, rec: &str) -> Value {
     let id: f64 = og_world_find(r.engine, name.into()).parse().unwrap();
-    value(og_world_get(r.engine, id, rec.into()))
+    value(og_runtime::host_impl::answer(og_world_get(
+        r.engine,
+        id,
+        rec.into(),
+    )))
 }
 
 fn res(r: &Run, rec: &str) -> Value {
-    value(og_world_resource(r.engine, rec.into()))
+    value(og_runtime::host_impl::answer(og_world_resource(
+        r.engine,
+        rec.into(),
+    )))
 }
 
 fn close(v: &Value, want: f64) -> bool {
@@ -342,16 +358,26 @@ fn close(v: &Value, want: f64) -> bool {
 fn every_new_track_seeks_as_it_plays_and_a_nested_timeline_runs_on_its_own_time() {
     // Played to 1.25 s: one tick at 0, then 75.
     let a = start();
-    value(og_timeline_play(a.engine, a.timeline));
+    value(og_runtime::host_impl::answer(og_timeline_play(
+        a.engine, a.timeline,
+    )));
     frame(a.engine, 76);
     // Sought to 1.25 s from a pause at 0.
     let b = start();
-    value(og_timeline_play(b.engine, b.timeline));
+    value(og_runtime::host_impl::answer(og_timeline_play(
+        b.engine, b.timeline,
+    )));
     frame(b.engine, 1);
-    value(og_timeline_pause(b.engine, b.timeline));
+    value(og_runtime::host_impl::answer(og_timeline_pause(
+        b.engine, b.timeline,
+    )));
     frame(b.engine, 74);
-    value(og_timeline_seek(b.engine, b.timeline, 1.25));
-    value(og_timeline_play(b.engine, b.timeline));
+    value(og_runtime::host_impl::answer(og_timeline_seek(
+        b.engine, b.timeline, 1.25,
+    )));
+    value(og_runtime::host_impl::answer(og_timeline_play(
+        b.engine, b.timeline,
+    )));
     frame(b.engine, 1);
     assert_eq!(og_world_get_tick(a.engine), og_world_get_tick(b.engine));
 
@@ -421,23 +447,34 @@ fn every_new_track_seeks_as_it_plays_and_a_nested_timeline_runs_on_its_own_time(
 fn a_restore_mid_timeline_draws_the_restored_times_material() {
     // Straight: 61 ticks of playing (one at 0, then 60: 1 s).
     let a = start();
-    value(og_timeline_play(a.engine, a.timeline));
+    value(og_runtime::host_impl::answer(og_timeline_play(
+        a.engine, a.timeline,
+    )));
     frame(a.engine, 61);
     let at_1s = a.drawn.borrow().unwrap();
     assert!((at_1s - 1.0).abs() < 1e-5, "4 × 1/4 at 1 s: {at_1s}");
 
     // Saved a tick before 1 s, played on two seconds, restored, one frame.
     let b = start();
-    value(og_timeline_play(b.engine, b.timeline));
+    value(og_runtime::host_impl::answer(og_timeline_play(
+        b.engine, b.timeline,
+    )));
     frame(b.engine, 60);
-    let save = value(og_world_snapshot(b.engine, None))
-        .as_str()
-        .unwrap()
-        .to_string();
+    let save = value(og_runtime::host_impl::answer(og_world_snapshot(
+        b.engine, None,
+    )))
+    .as_str()
+    .unwrap()
+    .to_string();
     frame(b.engine, 120);
     let at_3s = b.drawn.borrow().unwrap();
     assert!((at_3s - 179.0 / 60.0).abs() < 1e-5, "{at_3s}");
-    assert!(value(og_world_restore(b.engine, save, None)).is_null());
+    assert!(
+        value(og_runtime::host_impl::answer(og_world_restore(
+            b.engine, save, None
+        )))
+        .is_null()
+    );
     frame(b.engine, 1);
     assert_eq!(
         b.drawn.borrow().unwrap(),
@@ -452,7 +489,9 @@ fn a_restore_mid_timeline_draws_the_restored_times_material() {
     assert_eq!(res(&a, "og.PostEffects"), res(&b, "og.PostEffects"));
 
     // Stopped: the material as it was made (0.5).
-    value(og_runtime::og_timeline_stop(b.engine, b.timeline));
+    value(og_runtime::host_impl::answer(og_runtime::og_timeline_stop(
+        b.engine, b.timeline,
+    )));
     frame(b.engine, 1);
     assert_eq!(b.drawn.borrow().unwrap(), 0.5);
 }

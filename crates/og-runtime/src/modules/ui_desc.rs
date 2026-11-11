@@ -135,7 +135,7 @@ pub(crate) fn with_ui<T>(call: &str, f: impl FnOnce(&mut Ui) -> T) -> Option<T> 
     Some(f(&mut guard))
 }
 
-pub fn og_ui_viewport(world: u32) -> String {
+pub fn og_ui_viewport(world: u32) -> crate::wire::Viewport {
     // In og-ui units, as the frame lays out (og.ui.frameViewport).
     let css = viewport_of(world);
     let (hud, unit) = engine(world)
@@ -145,10 +145,10 @@ pub fn og_ui_viewport(world: u32) -> String {
             let ui = ui.lock();
             (ui.hud_max_aspect(), ui.unit_for(&css))
         });
-    wire::text_of(&viewport_wire(&css.zoomed(unit), hud))
+    viewport_wire(&css.zoomed(unit), hud)
 }
 
-pub fn og_ui_theme(world: u32) -> String {
+pub fn og_ui_theme(world: u32) -> crate::wire::UiTheme {
     let (theme, sizes, style) = engine(world)
         .ok()
         .and_then(|e| e.state.borrow().ui.clone())
@@ -161,12 +161,12 @@ pub fn og_ui_theme(world: u32) -> String {
             let s = t.sizes(&Viewport::default());
             (t, s, String::new())
         });
-    wire::text_of(&theme_wire(theme, sizes, &style))
+    theme_wire(theme, sizes, &style)
 }
 
 /// A viewport as og.ui.viewport answers it, with the HUD band the UI's
 /// `hud_max_aspect` makes of it (og-ui's `Ui::hud_area`).
-fn viewport_wire(v: &Viewport, hud_max_aspect: f32) -> wire::Viewport {
+fn viewport_wire(v: &Viewport, hud_max_aspect: f32) -> crate::wire::Viewport {
     let [small, large] = v.extremes();
     wire::Viewport {
         width: v.width,
@@ -234,24 +234,22 @@ pub fn og_ui_frame_cursor() -> String {
     .to_string()
 }
 
-pub fn og_ui_frame_pointer() -> String {
-    wire::text_of(
-        &with_ui("og.ui.framePointer", |ui| {
-            let i = ui.input();
-            wire::UiPointer {
-                x: i.pointer.x,
-                y: i.pointer.y,
-                inside: i.pointer_inside,
-                down: i.down,
-                pressed: i.pressed,
-                released: i.released,
-                shift: i.shift,
-                ctrl: i.ctrl,
-                alt: i.alt,
-            }
-        })
-        .unwrap_or_default(),
-    )
+pub fn og_ui_frame_pointer() -> crate::wire::UiPointer {
+    with_ui("og.ui.framePointer", |ui| {
+        let i = ui.input();
+        wire::UiPointer {
+            x: i.pointer.x,
+            y: i.pointer.y,
+            inside: i.pointer_inside,
+            down: i.down,
+            pressed: i.pressed,
+            released: i.released,
+            shift: i.shift,
+            ctrl: i.ctrl,
+            alt: i.alt,
+        }
+    })
+    .unwrap_or_default()
 }
 
 pub fn og_ui_frame_direction() -> String {
@@ -308,7 +306,7 @@ pub fn og_ui_frame_theme() -> String {
     })
 }
 
-fn theme_wire(theme: Theme, sizes: og_ui::Density, style: &str) -> wire::UiTheme {
+fn theme_wire(theme: Theme, sizes: og_ui::Density, style: &str) -> crate::wire::UiTheme {
     let mut palette = BTreeMap::new();
     for name in THEME_COLORS {
         if let Some(c) = token(&theme, name) {
@@ -574,7 +572,7 @@ pub(crate) fn anchor_of(v: &Value) -> Option<Anchor> {
 }
 
 /// A rectangle as the IDL's `UiRect`.
-pub(super) fn rect_wire(r: &og_ui::Rect) -> wire::UiRect {
+pub(super) fn rect_wire(r: &og_ui::Rect) -> crate::wire::UiRect {
     wire::UiRect {
         x: r.x,
         y: r.y,

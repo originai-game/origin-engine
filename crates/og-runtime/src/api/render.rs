@@ -234,8 +234,8 @@ pub(crate) fn material_handle(index: usize) -> f64 {
     assets::handle(index) as f64
 }
 
-pub fn og_render_standard_material(world: u32, desc: Option<String>) -> String {
-    result((|| {
+pub fn og_render_standard_material(world: u32, desc: Option<String>) -> Result<Value, String> {
+    (|| {
         let eng = engine(world)?;
         let desc = parse(desc.as_deref())?;
         // three.js MeshStandardMaterial defaults: white, metalness 0, roughness 1.
@@ -249,11 +249,15 @@ pub fn og_render_standard_material(world: u32, desc: Option<String>) -> String {
         let handle = rs.scene.add_standard_material(m);
         rs.materials.push(handle);
         Ok(json!(material_handle(rs.materials.len() - 1)))
-    })())
+    })()
 }
 
-pub fn og_render_update_material(world: u32, handle: f64, desc: Option<String>) -> String {
-    result_void((|| {
+pub fn og_render_update_material(
+    world: u32,
+    handle: f64,
+    desc: Option<String>,
+) -> Result<(), String> {
+    (|| {
         let eng = engine(world)?;
         let desc = parse(desc.as_deref())?;
         let mut rs = eng.render.borrow_mut();
@@ -267,7 +271,7 @@ pub fn og_render_update_material(world: u32, handle: f64, desc: Option<String>) 
         let m = material(current, &desc, &rs.textures, &rs.texture_arrays)?;
         rs.scene.set_standard_material(h, m);
         Ok(())
-    })())
+    })()
 }
 
 pub fn og_render_capabilities(world: u32) -> String {
@@ -327,8 +331,8 @@ pub fn og_render_capabilities(world: u32) -> String {
 
 /// `og.render.snap`: `entity` drawn at its tick until the next tick
 /// (`super::interpolate`).
-pub fn og_render_snap(world: u32, entity: f64) -> String {
-    result_void((|| {
+pub fn og_render_snap(world: u32, entity: f64) -> Result<(), String> {
+    (|| {
         let eng = engine(world)?;
         let (e, tick) = match running(world) {
             Some(f) => {
@@ -345,7 +349,7 @@ pub fn og_render_snap(world: u32, entity: f64) -> String {
         };
         eng.render.borrow_mut().interp.snap(e.to_bits(), tick);
         Ok(())
-    })())
+    })()
 }
 
 /// `og.render.snapCamera`.
@@ -360,8 +364,8 @@ pub fn og_render_snap_camera(world: u32) {
     }
 }
 
-pub fn og_render_text(world: u32, desc: Option<String>) -> String {
-    result_void((|| {
+pub fn og_render_text(world: u32, desc: Option<String>) -> Result<(), String> {
+    (|| {
         let eng = engine(world)?;
         let d: wire::TextDesc = wire::arg(desc.as_deref(), "desc")?;
         let Some(font) = d.font else {
@@ -453,7 +457,7 @@ pub fn og_render_text(world: u32, desc: Option<String>) -> String {
             });
         }
         Ok(())
-    })())
+    })()
 }
 
 /// Adds a generated geometry; `physics` also registers it as a physics mesh
@@ -495,8 +499,11 @@ fn size_of(key: &str, v: f32) -> Result<f32, String> {
     Ok(v)
 }
 
-pub fn og_render_box_geometry(world: u32, desc: Option<String>) -> String {
-    result((|| {
+pub fn og_render_box_geometry(
+    world: u32,
+    desc: Option<String>,
+) -> Result<serde_json::Value, String> {
+    (|| {
         let d: wire::BoxGeometryDesc = wire::arg(desc.as_deref(), "desc")?;
         let size = glam::Vec3::new(
             size_of("width", d.width)?,
@@ -506,21 +513,27 @@ pub fn og_render_box_geometry(world: u32, desc: Option<String>) -> String {
         let mut mesh = og_render::shapes::cuboid(size);
         uv_repeat(d.uv_repeat, &mut mesh)?;
         add_geometry(world, mesh, true)
-    })())
+    })()
 }
 
-pub fn og_render_plane_geometry(world: u32, desc: Option<String>) -> String {
-    result((|| {
+pub fn og_render_plane_geometry(
+    world: u32,
+    desc: Option<String>,
+) -> Result<serde_json::Value, String> {
+    (|| {
         let d: wire::PlaneGeometryDesc = wire::arg(desc.as_deref(), "desc")?;
         let mut mesh =
             og_render::shapes::plane_xy(size_of("width", d.width)?, size_of("height", d.height)?);
         uv_repeat(d.uv_repeat, &mut mesh)?;
         add_geometry(world, mesh, true)
-    })())
+    })()
 }
 
-pub fn og_render_sphere_geometry(world: u32, desc: Option<String>) -> String {
-    result((|| {
+pub fn og_render_sphere_geometry(
+    world: u32,
+    desc: Option<String>,
+) -> Result<serde_json::Value, String> {
+    (|| {
         let d: wire::SphereGeometryDesc = wire::arg(desc.as_deref(), "desc")?;
         let radius = size_of("radius", d.radius)?;
         let seg = d.width_segments.clamp(3, 512);
@@ -533,7 +546,7 @@ pub fn og_render_sphere_geometry(world: u32, desc: Option<String>) -> String {
         }
         uv_repeat(d.uv_repeat, &mut mesh)?;
         add_geometry(world, mesh, false)
-    })())
+    })()
 }
 
 /// Starts the queued draws of a new tick.
@@ -564,8 +577,8 @@ fn font_metrics(
     Ok((og_ui::FontMetrics::from_msdf(msdf), msdf.line_height))
 }
 
-pub fn og_render_sprite(world: u32, desc: Option<String>) -> String {
-    result_void((|| {
+pub fn og_render_sprite(world: u32, desc: Option<String>) -> Result<(), String> {
+    (|| {
         let eng = engine(world)?;
         let d: wire::SpriteDesc = wire::arg(desc.as_deref(), "desc")?;
         let tick = og_world_get_tick(world) as u64;
@@ -673,11 +686,11 @@ pub fn og_render_sprite(world: u32, desc: Option<String>) -> String {
             });
         }
         Ok(())
-    })())
+    })()
 }
 
-pub fn og_render_ribbon(world: u32, desc: Option<String>) -> String {
-    result_void((|| {
+pub fn og_render_ribbon(world: u32, desc: Option<String>) -> Result<(), String> {
+    (|| {
         let eng = engine(world)?;
         let d: wire::RibbonDesc = wire::arg(desc.as_deref(), "desc")?;
         let points: Vec<og_render::RibbonPoint> = d
@@ -723,11 +736,14 @@ pub fn og_render_ribbon(world: u32, desc: Option<String>) -> String {
             effect: None,
         });
         Ok(())
-    })())
+    })()
 }
 
-pub fn og_render_measure_text(world: u32, desc: Option<String>) -> String {
-    typed((|| -> Result<wire::TextMetrics, String> {
+pub fn og_render_measure_text(
+    world: u32,
+    desc: Option<String>,
+) -> Result<crate::wire::TextMetrics, String> {
+    (|| -> Result<crate::wire::TextMetrics, String> {
         let eng = engine(world)?;
         let d: wire::TextMeasureDesc = wire::arg(desc.as_deref(), "desc")?;
         let font = d
@@ -755,5 +771,5 @@ pub fn og_render_measure_text(world: u32, desc: Option<String>) -> String {
             height: lines.len() as f32 * line_height * size,
             lines: lines.len() as u32,
         })
-    })())
+    })()
 }

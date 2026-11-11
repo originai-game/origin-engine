@@ -225,15 +225,15 @@ pub fn og_ui_stop(play: u32) -> bool {
     with_ui("og.ui.stop", |ui| ui.stop(play)).unwrap_or(false)
 }
 
-pub fn og_ui_play_info(play: u32) -> String {
+pub fn og_ui_play_info(play: u32) -> Option<crate::wire::PlayInfo> {
     let p = with_ui("og.ui.playInfo", |ui| ui.play_info(play)).flatten();
-    wire::text_of(&p.map(|p| wire::PlayInfo {
+    p.map(|p| wire::PlayInfo {
         at_ms: p.at_ms,
         length_ms: p.length_ms,
         paused: p.paused,
         reverse: p.reverse,
         ended: p.ended,
-    }))
+    })
 }
 
 pub fn og_ui_force_state(path: String, group: String, state: String) {
@@ -258,9 +258,9 @@ pub fn og_ui_animate(id: String, target: f64, transition_desc: String) -> f64 {
     with_ui("og.ui.animate", |ui| ui.animate(&id, target as f32, t)).map_or(target, f64::from)
 }
 
-pub fn og_ui_gesture(path: String) -> String {
+pub fn og_ui_gesture(path: String) -> crate::wire::GestureInfo {
     let g = with_ui("og.ui.gesture", |ui| ui.gesture_at(&path)).unwrap_or_default();
-    wire::text_of(&wire::GestureInfo {
+    wire::GestureInfo {
         held: g.held,
         dragging: g.dragging,
         offset_x: g.offset_x,
@@ -279,11 +279,11 @@ pub fn og_ui_gesture(path: String) -> String {
         double_tapped: g.double_tapped,
         long_pressed: g.long_pressed,
         long_press: g.long_press,
-    })
+    }
 }
 
-pub fn og_ui_motion_events() -> String {
-    let events = with_ui("og.ui.motionEvents", |ui| {
+pub fn og_ui_motion_events() -> Vec<crate::wire::UiMotionEvent> {
+    with_ui("og.ui.motionEvents", |ui| {
         ui.events()
             .iter()
             .map(|e| wire::UiMotionEvent {
@@ -296,12 +296,11 @@ pub fn og_ui_motion_events() -> String {
             })
             .collect::<Vec<_>>()
     })
-    .unwrap_or_default();
-    wire::text_of(&events)
+    .unwrap_or_default()
 }
 
-pub fn og_ui_overlaps() -> String {
-    let all = with_ui("og.ui.overlaps", |ui| {
+pub fn og_ui_overlaps() -> Vec<crate::wire::UiOverlap> {
+    with_ui("og.ui.overlaps", |ui| {
         ui.overlaps()
             .iter()
             .map(|o| wire::UiOverlap {
@@ -312,18 +311,17 @@ pub fn og_ui_overlaps() -> String {
             })
             .collect::<Vec<_>>()
     })
-    .unwrap_or_default();
-    wire::text_of(&all)
+    .unwrap_or_default()
 }
 
-pub fn og_ui_layout_stats() -> String {
+pub fn og_ui_layout_stats() -> crate::wire::UiLayoutStats {
     let s = with_ui("og.ui.layoutStats", |ui| ui.frame().stats).unwrap_or_default();
-    wire::text_of(&wire::UiLayoutStats {
+    wire::UiLayoutStats {
         elements: s.elements,
         rebuilt: s.rebuilt,
         laid_out: s.laid_out,
         kept_commands: s.kept_commands,
-    })
+    }
 }
 
 #[cfg(test)]

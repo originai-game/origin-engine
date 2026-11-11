@@ -115,16 +115,24 @@ fn seen(model: &str, height: f32, cover: f32) -> (u64, f32) {
     let e = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
     let drawn = Rc::new(Cell::new(0.0));
     set_render_backend(e, Some(Box::new(Heights(drawn.clone())))).unwrap();
-    let asset = value(og_runtime::og_load_gltf(
+    let asset = value(og_runtime::host_impl::answer(og_runtime::og_load_gltf(
         e,
         format!("models/{model}.glb"),
         None,
-    ));
-    let id = value(og_world_spawn(e, Some(json!({ "name": "it" }).to_string())))
-        .as_f64()
-        .unwrap();
+    )));
+    let id = value(og_runtime::host_impl::answer(og_world_spawn(
+        e,
+        Some(json!({ "name": "it" }).to_string()),
+    )))
+    .as_f64()
+    .unwrap();
     let m = json!({ "asset": asset }).to_string();
-    value(og_world_insert(e, id, "og.Model".into(), Some(m)));
+    value(og_runtime::host_impl::answer(og_world_insert(
+        e,
+        id,
+        "og.Model".into(),
+        Some(m),
+    )));
     // fov 50°: at distance d the view is 2 d tan 25° tall (tan 25° = 0.466 307 66).
     let d = height / cover / (2.0 * 0.466_307_66);
     let camera = json!({

@@ -36,7 +36,12 @@ fn refuse(engine: u32, entity: f64) {
             "minimum -2",
         ),
     ] {
-        let text = og_world_insert(engine, entity, component.into(), Some(fields.to_string()));
+        let text = og_runtime::host_impl::answer(og_world_insert(
+            engine,
+            entity,
+            component.into(),
+            Some(fields.to_string()),
+        ));
         let result: Value = serde_json::from_str(&text).unwrap();
         assert_eq!(result["ok"], false, "{text}");
         assert!(text.contains(field) && text.contains(bound), "{text}");
@@ -83,25 +88,31 @@ fn insert_checks_engine_and_game_ranges_inside_and_outside_systems() {
     );
     let game = og_game_game(Some(json!({"systems": [system]}).to_string()));
     let engine = value(og_engine_create(game, "{}".into())).as_u64().unwrap() as u32;
-    let entity = value(og_world_spawn(engine, None)).as_f64().unwrap();
+    let entity = value(og_runtime::host_impl::answer(og_world_spawn(engine, None)))
+        .as_f64()
+        .unwrap();
     hooks.entity.set(entity);
     for fade in [0.0, 1.0] {
-        value(og_world_insert(
+        value(og_runtime::host_impl::answer(og_world_insert(
             engine,
             entity,
             "og.TerrainScatter".into(),
             Some(json!({"fade": fade}).to_string()),
-        ));
+        )));
     }
-    value(og_world_insert(
+    value(og_runtime::host_impl::answer(og_world_insert(
         engine,
         entity,
         "Bounded".into(),
         Some(json!({"amount": -2, "direction": {"x": 2, "y": -2, "z": 0}}).to_string()),
-    ));
+    )));
     refuse(engine, entity);
     value(og_engine_frame(engine, 1000.0 / 60.0));
     assert!(hooks.called.get());
-    let scatter = value(og_world_get(engine, entity, "og.TerrainScatter".into()));
+    let scatter = value(og_runtime::host_impl::answer(og_world_get(
+        engine,
+        entity,
+        "og.TerrainScatter".into(),
+    )));
     assert_eq!(scatter["fade"], 1.0, "{scatter}");
 }

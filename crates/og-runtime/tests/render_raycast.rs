@@ -88,15 +88,27 @@ fn the_mesh_raycast_answers_the_collider_raycast() {
     let options = json!({ "root": root.to_str().unwrap() }).to_string();
     let w = answer(og_engine_create(game, options)).as_u64().unwrap() as u32;
 
-    let geometry = answer(og_render_buffer_geometry(w, Some(terrain(0.0).to_string())));
-    let info = answer(og_render_geometry_info(w, geometry.as_f64().unwrap()));
+    let geometry = answer(og_runtime::host_impl::answer(og_render_buffer_geometry(
+        w,
+        Some(terrain(0.0).to_string()),
+    )));
+    let info = answer(og_runtime::host_impl::answer(og_render_geometry_info(
+        w,
+        geometry.as_f64().unwrap(),
+    )));
     assert_eq!(info["vertices"], json!(289));
     assert_eq!(info["triangles"], json!(512));
     assert_eq!(info["dynamic"], json!(true));
-    let material = answer(og_render_standard_material(w, Some("{}".into())));
-    let e = answer(og_world_spawn(w, Some("{}".into())))
-        .as_f64()
-        .unwrap();
+    let material = answer(og_runtime::host_impl::answer(og_render_standard_material(
+        w,
+        Some("{}".into()),
+    )));
+    let e = answer(og_runtime::host_impl::answer(og_world_spawn(
+        w,
+        Some("{}".into()),
+    )))
+    .as_f64()
+    .unwrap();
     // An eighth of a turn about y and a move: the ray must go into mesh space.
     let (s, c) = (
         std::f64::consts::FRAC_PI_8.sin(),
@@ -114,7 +126,12 @@ fn the_mesh_raycast_answers_the_collider_raycast() {
         ("og.RigidBody", json!({ "kind": "fixed" })),
         ("og.Collider", json!({ "shape": 5, "mesh": geometry })),
     ] {
-        answer(og_world_insert(w, e, name.into(), Some(v.to_string())));
+        answer(og_runtime::host_impl::answer(og_world_insert(
+            w,
+            e,
+            name.into(),
+            Some(v.to_string()),
+        )));
     }
     for _ in 0..3 {
         answer(og_engine_frame(w, 1000.0 / 60.0));
@@ -135,11 +152,11 @@ fn the_mesh_raycast_answers_the_collider_raycast() {
                 w,
                 Some(json!({ "origin": o, "direction": d, "maxDistance": 100 }).to_string()),
             ));
-            let hits = answer(og_render_raycast(
+            let hits = answer(og_runtime::host_impl::answer(og_render_raycast(
                 w,
                 json!({ "origin": o, "direction": d }).to_string(),
                 Some(json!({ "first": true }).to_string()),
-            ));
+            )));
             if physics.is_null() {
                 assert_eq!(hits, json!([]), "{label}: physics misses {o} {d}");
                 continue;
@@ -166,7 +183,7 @@ fn the_mesh_raycast_answers_the_collider_raycast() {
     let at =
         turn * og_core::glam::Vec3::new(-6.0, 0.7, -0.5) + og_core::glam::Vec3::new(3.0, -1.0, 2.0);
     let along = turn * og_core::glam::Vec3::X;
-    let all = answer(og_render_raycast(
+    let all = answer(og_runtime::host_impl::answer(og_render_raycast(
         w,
         json!({
             "origin": { "x": at.x, "y": at.y, "z": at.z },
@@ -174,7 +191,7 @@ fn the_mesh_raycast_answers_the_collider_raycast() {
         })
         .to_string(),
         None,
-    ));
+    )));
     let d: Vec<f64> = all
         .as_array()
         .unwrap()
@@ -185,11 +202,11 @@ fn the_mesh_raycast_answers_the_collider_raycast() {
     assert!(d[0] < d[1], "{d:?}");
 
     // Raised by a metre: the render answer moves at once, physics after a step.
-    answer(og_render_update_geometry(
+    answer(og_runtime::host_impl::answer(og_render_update_geometry(
         w,
         geometry.as_f64().unwrap(),
         Some(terrain(1.0).to_string()),
-    ));
+    )));
     answer(og_engine_frame(w, 1000.0 / 60.0));
     check("updated");
 }
@@ -216,10 +233,18 @@ fn a_cooked_model_raycasts_without_building_a_bvh() {
     answer(og_engine_frame(w, 1000.0 / 60.0));
 
     let builds = Bvh::builds();
-    let asset = answer(og_load_gltf(w, "models/dropship.glb".into(), None));
-    let e = answer(og_world_instantiate(w, asset.as_f64().unwrap(), None))
-        .as_f64()
-        .unwrap();
+    let asset = answer(og_runtime::host_impl::answer(og_load_gltf(
+        w,
+        "models/dropship.glb".into(),
+        None,
+    )));
+    let e = answer(og_runtime::host_impl::answer(og_world_instantiate(
+        w,
+        asset.as_f64().unwrap(),
+        None,
+    )))
+    .as_f64()
+    .unwrap();
     answer(og_engine_frame(w, 1000.0 / 60.0));
     // Down through the model from above, and across it: both hit it.
     let mut hits = 0;
@@ -237,11 +262,11 @@ fn a_cooked_model_raycasts_without_building_a_bvh() {
             json!({ "x": 0, "y": 0, "z": -1 }),
         ),
     ] {
-        let all = answer(og_render_raycast(
+        let all = answer(og_runtime::host_impl::answer(og_render_raycast(
             w,
             json!({ "origin": o, "direction": d }).to_string(),
             None,
-        ));
+        )));
         for h in all.as_array().unwrap() {
             hits += 1;
             assert!(h["distance"].as_f64().unwrap() > 0.0, "{h}");

@@ -28,11 +28,11 @@ pub use performance::{og_motion_look_at, og_motion_react};
 
 use super::codec::{Layout, RecordKind};
 use super::engine::{Engine, Mount, engine};
+use super::parse;
 use super::wire::{
     self, FaceGoalDesc, JumpGoalDesc, MotionBackend, MotionCapabilities, MotionGoalKind,
     MotionStatus, PlaceGoalDesc, PoseGoalDesc, WalkGoalDesc,
 };
-use super::{ok, ok_void, parse, refuse};
 use glam::{Quat, Vec3};
 use og_core::math::{atan2, sin_cos};
 use og_core::{Error, ErrorKind};
@@ -955,13 +955,6 @@ impl StateBlock for Block {
 
 // ── the API ──────────────────────────────────────────────────────────────────
 
-fn wire_void(r: Result<(), String>) -> String {
-    match r {
-        Ok(()) => ok_void(),
-        Err(e) => refuse(e),
-    }
-}
-
 /// The entity's og.MotionAgent settings, refused for an entity without one.
 fn agent_of(eng: &Engine, e: Entity) -> Result<Settings, String> {
     let w = eng.world()?;
@@ -1012,8 +1005,8 @@ fn queue<T: wire::FromJson + Default>(
     entity: f64,
     desc: Option<String>,
     make: impl FnOnce(T, &Value, &Settings) -> Result<Goal, String>,
-) -> String {
-    wire_void((|| {
+) -> Result<(), String> {
+    (|| {
         let eng = engine(world)?;
         let e = Entity::from_bits(entity as u64);
         let s = agent_of(&eng, e)?;
@@ -1031,7 +1024,7 @@ fn queue<T: wire::FromJson + Default>(
             .queue
             .push_back(goal);
         Ok(())
-    })())
+    })()
 }
 
 fn need_drive(s: &Settings, what: &str) -> Result<(), String> {
@@ -1044,7 +1037,7 @@ fn need_drive(s: &Settings, what: &str) -> Result<(), String> {
     }
 }
 
-pub fn og_motion_pose(world: u32, entity: f64, desc: Option<String>) -> String {
+pub fn og_motion_pose(world: u32, entity: f64, desc: Option<String>) -> Result<(), String> {
     queue(world, entity, desc, |d: PoseGoalDesc, _, _| {
         Ok(Goal {
             kind: Kind::Pose,
@@ -1062,7 +1055,7 @@ pub fn og_motion_pose(world: u32, entity: f64, desc: Option<String>) -> String {
     })
 }
 
-pub fn og_motion_place(world: u32, entity: f64, desc: Option<String>) -> String {
+pub fn og_motion_place(world: u32, entity: f64, desc: Option<String>) -> Result<(), String> {
     queue(world, entity, desc, |d: PlaceGoalDesc, _, s| {
         need_drive(s, "place")?;
         Ok(Goal {
@@ -1081,7 +1074,7 @@ pub fn og_motion_place(world: u32, entity: f64, desc: Option<String>) -> String 
     })
 }
 
-pub fn og_motion_face(world: u32, entity: f64, desc: Option<String>) -> String {
+pub fn og_motion_face(world: u32, entity: f64, desc: Option<String>) -> Result<(), String> {
     queue(world, entity, desc, |d: FaceGoalDesc, _, s| {
         need_drive(s, "face")?;
         Ok(Goal {
@@ -1100,7 +1093,7 @@ pub fn og_motion_face(world: u32, entity: f64, desc: Option<String>) -> String {
     })
 }
 
-pub fn og_motion_walk_to(world: u32, entity: f64, desc: Option<String>) -> String {
+pub fn og_motion_walk_to(world: u32, entity: f64, desc: Option<String>) -> Result<(), String> {
     queue(world, entity, desc, |d: WalkGoalDesc, raw, s| {
         need_drive(s, "walkTo")?;
         let speed = d.speed;
@@ -1143,7 +1136,7 @@ pub fn og_motion_walk_to(world: u32, entity: f64, desc: Option<String>) -> Strin
     })
 }
 
-pub fn og_motion_jump(world: u32, entity: f64, desc: Option<String>) -> String {
+pub fn og_motion_jump(world: u32, entity: f64, desc: Option<String>) -> Result<(), String> {
     queue(world, entity, desc, |d: JumpGoalDesc, raw, s| {
         need_drive(s, "jump")?;
         let (height, distance, prepare, recover) = (d.height, d.distance, d.prepare, d.recover);
@@ -1174,8 +1167,8 @@ pub fn og_motion_jump(world: u32, entity: f64, desc: Option<String>) -> String {
     })
 }
 
-pub fn og_motion_clear(world: u32, entity: f64) -> String {
-    wire_void((|| {
+pub fn og_motion_clear(world: u32, entity: f64) -> Result<(), String> {
+    (|| {
         let eng = engine(world)?;
         let e = Entity::from_bits(entity as u64);
         agent_of(&eng, e)?;
@@ -1190,11 +1183,11 @@ pub fn og_motion_clear(world: u32, entity: f64) -> String {
             }
         }
         Ok(())
-    })())
+    })()
 }
 
-pub fn og_motion_status(world: u32, entity: f64) -> String {
-    let r = (|| {
+pub fn og_motion_status(world: u32, entity: f64) -> Result<crate::wire::MotionStatus, String> {
+    (|| {
         let eng = engine(world)?;
         let e = Entity::from_bits(entity as u64);
         agent_of(&eng, e)?;
@@ -1246,15 +1239,11 @@ pub fn og_motion_status(world: u32, entity: f64) -> String {
             looking: a.performance.looking(),
             reacting: a.performance.reacting(),
         })
-    })();
-    match r {
-        Ok(v) => wire::ok(&v),
-        Err(e) => refuse(e),
-    }
+    })()
 }
 
-pub fn og_motion_presentation(world: u32, entity: f64) -> String {
-    let r = (|| {
+pub fn og_motion_presentation(world: u32, entity: f64) -> Result<serde_json::Value, String> {
+    (|| {
         let eng = engine(world)?;
         let e = Entity::from_bits(entity as u64);
         agent_of(&eng, e)?;
@@ -1266,11 +1255,7 @@ pub fn og_motion_presentation(world: u32, entity: f64) -> String {
             present::warn_read(&eng);
         }
         Ok::<_, String>(present::presentation(&eng, e.to_bits()))
-    })();
-    match r {
-        Ok(v) => ok(v),
-        Err(e) => refuse(e),
-    }
+    })()
 }
 
 pub fn og_motion_capabilities(world: u32) -> String {
@@ -1284,7 +1269,7 @@ pub fn og_motion_capabilities(world: u32) -> String {
     }
 }
 
-pub fn og_motion_set_backend(world: u32, backend: String) -> String {
+pub fn og_motion_set_backend(world: u32, backend: String) -> Result<serde_json::Value, String> {
     let r = (|| {
         let eng = engine(world)?;
         let gpu = match backend.as_str() {
@@ -1296,8 +1281,8 @@ pub fn og_motion_set_backend(world: u32, backend: String) -> String {
         Ok::<_, String>(())
     })();
     match r {
-        Ok(()) => ok(Value::Null),
-        Err(e) => refuse(e),
+        Ok(()) => Ok(Value::Null),
+        Err(e) => Err(e),
     }
 }
 

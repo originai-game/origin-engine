@@ -164,16 +164,24 @@ fn start_with(model: &str, destructible: Value) -> (u32, f64) {
     let game = og_game_game(Some(r#"{"seed":1}"#.into()));
     let options = json!({ "root": root.to_str().unwrap() }).to_string();
     let w = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
-    let asset = value(og_load_gltf(w, model.into(), None)).as_f64().unwrap();
-    let wall = value(og_world_instantiate(w, asset, None))
-        .as_f64()
-        .unwrap();
-    value(og_world_insert(
+    let asset = value(og_runtime::host_impl::answer(og_load_gltf(
+        w,
+        model.into(),
+        None,
+    )))
+    .as_f64()
+    .unwrap();
+    let wall = value(og_runtime::host_impl::answer(og_world_instantiate(
+        w, asset, None,
+    )))
+    .as_f64()
+    .unwrap();
+    value(og_runtime::host_impl::answer(og_world_insert(
         w,
         wall,
         "og.Destructible".into(),
         Some(destructible.to_string()),
-    ));
+    )));
     (w, wall)
 }
 
@@ -189,19 +197,23 @@ fn hash(w: u32) -> Value {
 }
 
 fn destructible(w: u32, e: f64) -> Value {
-    value(og_world_get(w, e, "og.Destructible".into()))
+    value(og_runtime::host_impl::answer(og_world_get(
+        w,
+        e,
+        "og.Destructible".into(),
+    )))
 }
 
 /// A blow at the wall's foot, in its middle.
 fn shoot_foot(w: u32, wall: f64) {
-    value(og_destruction_damage(
+    value(og_runtime::host_impl::answer(og_destruction_damage(
         w,
         wall,
         Some(
             json!({ "point": { "x": 0, "y": 0.1, "z": 0 }, "radius": 0.9, "innerRadius": 0.5, "amount": 4000 })
                 .to_string(),
         ),
-    ));
+    )));
 }
 
 #[test]
@@ -227,7 +239,7 @@ fn replays_and_restores(budget: Option<u32>) {
         frames(w, 5);
         shoot_foot(w, wall);
         frames(w, 12);
-        let mid = value(og_world_snapshot(w, None))
+        let mid = value(og_runtime::host_impl::answer(og_world_snapshot(w, None)))
             .as_str()
             .unwrap()
             .to_string();
@@ -235,7 +247,9 @@ fn replays_and_restores(budget: Option<u32>) {
         let end = hash(w);
         if let Some(n) = restore_at {
             // Restored mid-collapse, it runs on as the uninterrupted world.
-            value(og_world_restore(w, mid, None));
+            value(og_runtime::host_impl::answer(og_world_restore(
+                w, mid, None,
+            )));
             frames(w, n);
             assert_eq!(hash(w), end, "restored mid-collapse");
         }
@@ -260,44 +274,47 @@ fn a_wall_tied_in_at_its_ends_blown_at_its_foot_leaves_two_piers_and_nothing_ove
             "props/brick.ogt",
             json!({ "toughness": 800, "strength": 3000, "density": 1900, "tension": 0.1 }),
         );
-        let chips = value(og_load_emitter(w, "fx/chips.ogt".into()))
-            .as_f64()
-            .unwrap();
-        value(og_world_insert(
+        let chips = value(og_runtime::host_impl::answer(og_load_emitter(
+            w,
+            "fx/chips.ogt".into(),
+        )))
+        .as_f64()
+        .unwrap();
+        value(og_runtime::host_impl::answer(og_world_insert(
             w,
             wall,
             "og.Destructible".into(),
             Some(json!({ "toughness": 800, "strength": 3000, "density": 1900, "debris": chips, "impactThreshold": 400, "tension": 0.1 }).to_string()),
-        ));
+        )));
         // A floor for what falls.
-        let g = value(og_runtime::og_world_spawn(
+        let g = value(og_runtime::host_impl::answer(og_runtime::og_world_spawn(
             w,
             Some(json!({ "position": { "x": 0, "y": -0.25, "z": 0 } }).to_string()),
-        ))
+        )))
         .as_f64()
         .unwrap();
-        value(og_world_insert(
+        value(og_runtime::host_impl::answer(og_world_insert(
             w,
             g,
             "og.RigidBody".into(),
             Some(json!({ "kind": "fixed" }).to_string()),
-        ));
-        value(og_world_insert(
+        )));
+        value(og_runtime::host_impl::answer(og_world_insert(
             w,
             g,
             "og.Collider".into(),
             Some(json!({ "shape": 0, "size": { "x": 20, "y": 0.5, "z": 20 } }).to_string()),
-        ));
+        )));
         frames(w, 10);
         // Where each chunk stands before the blast (every one static, at
         // its own place).
-        let before = value(og_runtime::og_physics_overlap(
+        let before = value(og_runtime::host_impl::answer(og_runtime::og_physics_overlap(
             w,
             Some(
                 json!({ "shape": { "shape": 0, "size": { "x": 12, "y": 6, "z": 12 } }, "position": { "x": 0, "y": 2.5, "z": 0 } })
                     .to_string(),
             ),
-        ));
+        )));
         let rest: std::collections::BTreeMap<u64, (f64, f64)> = before
             .as_array()
             .unwrap()
@@ -305,10 +322,18 @@ fn a_wall_tied_in_at_its_ends_blown_at_its_foot_leaves_two_piers_and_nothing_ove
             .map(|e| e.as_f64().unwrap())
             .filter(|&e| og_world_has(w, e, "og.Chunk".into()))
             .map(|e| {
-                let c = value(og_world_get(w, e, "og.Chunk".into()))["chunk"]
+                let c = value(og_runtime::host_impl::answer(og_world_get(
+                    w,
+                    e,
+                    "og.Chunk".into(),
+                )))["chunk"]
                     .as_u64()
                     .unwrap();
-                let t = value(og_world_get(w, e, "og.Transform".into()));
+                let t = value(og_runtime::host_impl::answer(og_world_get(
+                    w,
+                    e,
+                    "og.Transform".into(),
+                )));
                 (
                     c,
                     (
@@ -321,25 +346,29 @@ fn a_wall_tied_in_at_its_ends_blown_at_its_foot_leaves_two_piers_and_nothing_ove
         // the destruction yard's charge: at the face of its foot, in the middle.
         // Masonry's impactThreshold (heavy blocks land at hundreds of N·s, so
         // a lower one lets every falling block knock the piers apart).
-        value(og_runtime::og_destruction_explode(
+        value(og_runtime::host_impl::answer(og_runtime::og_destruction_explode(
             w,
             Some(
                 json!({ "point": { "x": 0, "y": 0.3, "z": 0.15 }, "radius": radius, "innerRadius": 0.8, "damage": 6000, "impulse": 2500 })
                     .to_string(),
             ),
-        ));
+        )));
         frames(w, 300);
         // Every chunk where it ended, static or loose (a compound child's
         // place through its body's).
-        let near = value(og_runtime::og_physics_overlap(
+        let near = value(og_runtime::host_impl::answer(og_runtime::og_physics_overlap(
             w,
             Some(
                 json!({ "shape": { "shape": 0, "size": { "x": 12, "y": 6, "z": 12 } }, "position": { "x": 0, "y": 2.5, "z": 0 } })
                     .to_string(),
             ),
-        ));
+        )));
         let at = |e: f64| -> (f64, f64) {
-            let t = value(og_world_get(w, e, "og.Transform".into()));
+            let t = value(og_runtime::host_impl::answer(og_world_get(
+                w,
+                e,
+                "og.Transform".into(),
+            )));
             let (x, y) = (
                 t["position"]["x"].as_f64().unwrap(),
                 t["position"]["y"].as_f64().unwrap(),
@@ -347,10 +376,18 @@ fn a_wall_tied_in_at_its_ends_blown_at_its_foot_leaves_two_piers_and_nothing_ove
             if !og_world_has(w, e, "og.Parent".into()) {
                 return (x, y);
             }
-            let b = value(og_world_get(w, e, "og.Parent".into()))["entity"]
+            let b = value(og_runtime::host_impl::answer(og_world_get(
+                w,
+                e,
+                "og.Parent".into(),
+            )))["entity"]
                 .as_f64()
                 .unwrap();
-            let bt = value(og_world_get(w, b, "og.Transform".into()));
+            let bt = value(og_runtime::host_impl::answer(og_world_get(
+                w,
+                b,
+                "og.Transform".into(),
+            )));
             let q = &bt["quaternion"];
             let q = glam::Quat::from_xyzw(
                 q["x"].as_f64().unwrap() as f32,
@@ -379,13 +416,13 @@ fn a_wall_tied_in_at_its_ends_blown_at_its_foot_leaves_two_piers_and_nothing_ove
         // A blast pushes on faces, not once per body: the outer courses are
         // nudged where the middle is thrown, and no brick lands metres past
         // the wall's ends (out of frame), nor far before or behind it.
-        let all = value(og_runtime::og_physics_overlap(
+        let all = value(og_runtime::host_impl::answer(og_runtime::og_physics_overlap(
             w,
             Some(
                 json!({ "shape": { "shape": 0, "size": { "x": 60, "y": 20, "z": 60 } }, "position": { "x": 0, "y": 5, "z": 0 } })
                     .to_string(),
             ),
-        ));
+        )));
         let landed: Vec<(f64, f64)> = all
             .as_array()
             .unwrap()
@@ -395,7 +432,11 @@ fn a_wall_tied_in_at_its_ends_blown_at_its_foot_leaves_two_piers_and_nothing_ove
                 og_world_has(w, e, "og.Chunk".into()) && !og_world_has(w, e, "og.Parent".into())
             })
             .map(|e| {
-                let t = value(og_world_get(w, e, "og.Transform".into()));
+                let t = value(og_runtime::host_impl::answer(og_world_get(
+                    w,
+                    e,
+                    "og.Transform".into(),
+                )));
                 let (x, z) = (
                     t["position"]["x"].as_f64().unwrap(),
                     t["position"]["z"].as_f64().unwrap(),
@@ -421,7 +462,11 @@ fn a_wall_tied_in_at_its_ends_blown_at_its_foot_leaves_two_piers_and_nothing_ove
             .map(|e| e.as_f64().unwrap())
             .filter(|&e| og_world_has(w, e, "og.Chunk".into()))
             .filter_map(|e| {
-                let c = value(og_world_get(w, e, "og.Chunk".into()))["chunk"]
+                let c = value(og_runtime::host_impl::answer(og_world_get(
+                    w,
+                    e,
+                    "og.Chunk".into(),
+                )))["chunk"]
                     .as_u64()
                     .unwrap();
                 let (x0, y0) = *rest.get(&c)?;
@@ -502,7 +547,13 @@ fn a_wall_tied_in_at_its_ends_blown_at_its_foot_leaves_two_piers_and_nothing_ove
             .iter()
             .map(|e| e.as_f64().unwrap())
             .filter(|&e| og_world_has(w, e, "og.Chunk".into()))
-            .map(|e| value(og_world_get(w, e, "og.Chunk".into())))
+            .map(|e| {
+                value(og_runtime::host_impl::answer(og_world_get(
+                    w,
+                    e,
+                    "og.Chunk".into(),
+                )))
+            })
             .filter(|c| c["looseTick"].as_u64() == Some(u32::MAX as u64))
             .map(|c| {
                 let i = c["chunk"].as_u64().unwrap();
@@ -544,7 +595,7 @@ fn a_wall_tied_in_at_its_ends_blown_at_its_foot_leaves_two_piers_and_nothing_ove
                 "radius {radius}: block {i} ({lo:.3} to {hi:.3}, at {y:.2} m) hangs {over:.3} m over air"
             );
         }
-        let info = value(og_destruction_info(w, wall));
+        let info = value(og_runtime::host_impl::answer(og_destruction_info(w, wall)));
         assert!(
             info["islands"].as_u64().unwrap() > 1,
             "radius {radius}: {info}"
@@ -577,35 +628,41 @@ fn a_struck_pillar_falls_to_its_stump() {
     let game = og_game_game(Some(r#"{"seed":1}"#.into()));
     let options = json!({ "root": root.to_str().unwrap() }).to_string();
     let w = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
-    let g = value(og_runtime::og_world_spawn(
+    let g = value(og_runtime::host_impl::answer(og_runtime::og_world_spawn(
         w,
         Some(json!({ "position": { "x": 0, "y": -0.25, "z": 0 } }).to_string()),
-    ))
+    )))
     .as_f64()
     .unwrap();
-    value(og_world_insert(
+    value(og_runtime::host_impl::answer(og_world_insert(
         w,
         g,
         "og.RigidBody".into(),
         Some(json!({ "kind": "fixed" }).to_string()),
-    ));
-    value(og_world_insert(
+    )));
+    value(og_runtime::host_impl::answer(og_world_insert(
         w,
         g,
         "og.Collider".into(),
         Some(json!({ "shape": 0, "size": { "x": 20, "y": 0.5, "z": 20 } }).to_string()),
-    ));
-    let asset = value(og_load_gltf(w, "props/pillar.ogt".into(), None))
-        .as_f64()
-        .unwrap();
-    let p = value(og_world_instantiate(w, asset, None))
-        .as_f64()
-        .unwrap();
-    value(og_world_insert(w, p, "og.Destructible".into(), Some(json!({ "toughness": 2000, "strength": 20000, "density": 2400, "impactThreshold": 150 }).to_string())));
+    )));
+    let asset = value(og_runtime::host_impl::answer(og_load_gltf(
+        w,
+        "props/pillar.ogt".into(),
+        None,
+    )))
+    .as_f64()
+    .unwrap();
+    let p = value(og_runtime::host_impl::answer(og_world_instantiate(
+        w, asset, None,
+    )))
+    .as_f64()
+    .unwrap();
+    value(og_runtime::host_impl::answer(og_world_insert(w, p, "og.Destructible".into(), Some(json!({ "toughness": 2000, "strength": 20000, "density": 2400, "impactThreshold": 150 }).to_string()))));
     frames(w, 10);
-    value(og_destruction_damage(w, p, Some(json!({ "point": { "x": 0, "y": 1.4, "z": 0.25 }, "radius": 0.5, "innerRadius": 0.25, "amount": 8000 }).to_string())));
+    value(og_runtime::host_impl::answer(og_destruction_damage(w, p, Some(json!({ "point": { "x": 0, "y": 1.4, "z": 0.25 }, "radius": 0.5, "innerRadius": 0.25, "amount": 8000 }).to_string()))));
     frames(w, 200);
-    let near = value(og_runtime::og_physics_overlap(w, Some(json!({ "shape": { "shape": 0, "size": { "x": 8, "y": 8, "z": 8 } }, "position": { "x": 0, "y": 4, "z": 0 } }).to_string())));
+    let near = value(og_runtime::host_impl::answer(og_runtime::og_physics_overlap(w, Some(json!({ "shape": { "shape": 0, "size": { "x": 8, "y": 8, "z": 8 } }, "position": { "x": 0, "y": 4, "z": 0 } }).to_string()))));
     // At 48 cells the pillar once cooked a sliver chunk of no mass, which
     // physics disabled mid-flight: the pieces over the blow froze where
     // they were thrown and stood as a column in the air.
@@ -614,11 +671,20 @@ fn a_struck_pillar_falls_to_its_stump() {
         if !og_world_has(w, e, "og.Chunk".into()) {
             continue;
         }
-        let t = value(og_world_get(w, e, "og.Transform".into()));
+        let t = value(og_runtime::host_impl::answer(og_world_get(
+            w,
+            e,
+            "og.Transform".into(),
+        )));
         let y = t["position"]["y"].as_f64().unwrap();
         if y > 1.4 {
             high.push((
-                value(og_world_get(w, e, "og.Chunk".into()))["chunk"].clone(),
+                value(og_runtime::host_impl::answer(og_world_get(
+                    w,
+                    e,
+                    "og.Chunk".into(),
+                )))["chunk"]
+                    .clone(),
                 y,
             ));
         }

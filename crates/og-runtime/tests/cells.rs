@@ -169,8 +169,15 @@ fn engine_on(root: &Path, host: Rc<dyn Hooks>) -> u32 {
 
 fn placed(root: &Path) -> u32 {
     let e = engine(root);
-    let scene = value(og_load_scene(e, "scenes/world.ogt".into()));
-    value(og_world_instantiate(e, scene.as_f64().unwrap(), None));
+    let scene = value(og_runtime::host_impl::answer(og_load_scene(
+        e,
+        "scenes/world.ogt".into(),
+    )));
+    value(og_runtime::host_impl::answer(og_world_instantiate(
+        e,
+        scene.as_f64().unwrap(),
+        None,
+    )));
     e
 }
 
@@ -192,17 +199,21 @@ fn find(e: u32, name: &str) -> Option<f64> {
 }
 
 fn get(e: u32, name: &str, comp: &str) -> Value {
-    value(og_world_get(e, find(e, name).unwrap(), comp.into()))
+    value(og_runtime::host_impl::answer(og_world_get(
+        e,
+        find(e, name).unwrap(),
+        comp.into(),
+    )))
 }
 
 /// Moves the player (the anchor) to `x`.
 fn walk(e: u32, x: f64) {
-    value(og_world_set(
+    value(og_runtime::host_impl::answer(og_world_set(
         e,
         find(e, "player").unwrap(),
         "og.Transform".into(),
         json!({ "position": { "x": x, "y": 0, "z": 0 } }).to_string(),
-    ));
+    )));
 }
 
 /// The probe's dump_stream `cells`, through the command channel (it runs
@@ -283,7 +294,7 @@ fn a_replay_and_a_restored_save_go_tick_for_tick_across_a_cell_load() {
         step(c, 1);
     }
     assert!(loaded(c, "village"));
-    let save = value(og_world_snapshot(c, None))
+    let save = value(og_runtime::host_impl::answer(og_world_snapshot(c, None)))
         .as_str()
         .unwrap()
         .to_string();
@@ -291,7 +302,9 @@ fn a_replay_and_a_restored_save_go_tick_for_tick_across_a_cell_load() {
     // The session boots as the game does (its scene, which loads the
     // sub-scenes the cells' handles name), then restores the save.
     let d = placed(&root);
-    value(og_world_restore(d, save, None));
+    value(og_runtime::host_impl::answer(og_world_restore(
+        d, save, None,
+    )));
     assert_eq!(hash(d), saved);
     walk_script(d, 10, &mut third);
     // The tick after a restore delivers og.WorldRestored, so its hash is
@@ -323,12 +336,12 @@ fn world_with(persist: bool, budget: u32) -> String {
 }
 
 fn set(e: u32, name: &str, comp: &str, v: Value) {
-    value(og_world_set(
+    value(og_runtime::host_impl::answer(og_world_set(
         e,
         find(e, name).unwrap(),
         comp.into(),
         v.to_string(),
-    ));
+    )));
 }
 
 #[test]
@@ -351,12 +364,14 @@ fn a_persisted_cell_keeps_its_edits_through_an_unload_and_a_save() {
     assert!(!loaded(a, "village"));
     assert_eq!(find(a, "well"), None, "despawned while unloaded");
     // A save taken while it is unloaded carries what it kept.
-    let save = value(og_world_snapshot(a, None))
+    let save = value(og_runtime::host_impl::answer(og_world_snapshot(a, None)))
         .as_str()
         .unwrap()
         .to_string();
     let b = placed(&root);
-    value(og_world_restore(b, save, None));
+    value(og_runtime::host_impl::answer(og_world_restore(
+        b, save, None,
+    )));
     // The tick after a restore delivers og.WorldRestored: both take one.
     step(a, 1);
     step(b, 1);
@@ -415,7 +430,7 @@ fn a_budgeted_cell_loads_over_ticks_and_resumes_after_a_restore() {
         !loaded(a, "village"),
         "not loaded until its last entity is in"
     );
-    let save = value(og_world_snapshot(a, None))
+    let save = value(og_runtime::host_impl::answer(og_world_snapshot(a, None)))
         .as_str()
         .unwrap()
         .to_string();
@@ -428,7 +443,9 @@ fn a_budgeted_cell_loads_over_ticks_and_resumes_after_a_restore() {
     assert_eq!(cells(a)[0]["entities"], json!(3));
     // Restored mid-load, it goes on from where the save was.
     let b = placed(&root);
-    value(og_world_restore(b, save, None));
+    value(og_runtime::host_impl::answer(og_world_restore(
+        b, save, None,
+    )));
     assert_eq!(hash(b), saved);
     step(b, 2);
     assert!(loaded(b, "village"));

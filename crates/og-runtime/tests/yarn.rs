@@ -57,14 +57,19 @@ Mae: 🦊 [wave speed=2 active={{true}}]Hi 🌙[/wave] [plural value={{$n}} one=
 "#,
         og_story::yarn::PROFILE
     );
-    value(og_story_parse(engine, script));
-    let conv = value(og_story_start(
+    value(og_runtime::host_impl::answer(og_story_parse(
+        engine, script,
+    )));
+    let conv = value(og_runtime::host_impl::answer(og_story_start(
         engine,
         Some(json!({"dialogue": "localized"}).to_string()),
-    ))
+    )))
     .as_u64()
     .unwrap() as u32;
-    let read = || serde_json::from_str::<Value>(&og_story_view(engine, conv)).unwrap();
+    let read = || {
+        serde_json::from_str::<Value>(&og_runtime::host_impl::json(og_story_view(engine, conv)))
+            .unwrap()
+    };
     let english = read();
     assert_eq!(english["text"], "Mae: 🦊 Hi 🌙 apples 0.1 {literal}");
     let spans: Vec<og_ui::TextSpan> = serde_json::from_value(english["spans"].clone()).unwrap();
@@ -84,21 +89,32 @@ Mae: 🦊 [wave speed=2 active={{true}}]Hi 🌙[/wave] [plural value={{$n}} one=
     // Other conversations consume the shared RNG, but cannot change an
     // already offered check target or its localized reason arguments.
     for _ in 0..3 {
-        value(og_story_start(
+        value(og_runtime::host_impl::answer(og_story_start(
             engine,
             Some(json!({"dialogue": "localized"}).to_string()),
-        ));
+        )));
         assert_eq!(read(), english);
     }
-    value(og_i18n_load(engine, "ru.ogt".into()));
-    let locale: Value = serde_json::from_str(&og_i18n_set_locale(engine, "ru".into())).unwrap();
+    value(og_runtime::host_impl::answer(og_i18n_load(
+        engine,
+        "ru.ogt".into(),
+    )));
+    let locale: Value = serde_json::from_str(&og_runtime::host_impl::json(og_i18n_set_locale(
+        engine,
+        "ru".into(),
+    )))
+    .unwrap();
     assert_eq!(locale["active"], "ru");
     let russian = read();
     assert_eq!(russian["text"], "Мэй: 🦊 Привет 🌙 яблока");
     assert_eq!(russian["seq"], english["seq"]);
     assert_eq!(russian["spans"][1]["position"], 7);
     assert_eq!(russian["spans"][1]["length"], 8);
-    let locale: Value = serde_json::from_str(&og_i18n_set_locale(engine, "en".into())).unwrap();
+    let locale: Value = serde_json::from_str(&og_runtime::host_impl::json(og_i18n_set_locale(
+        engine,
+        "en".into(),
+    )))
+    .unwrap();
     assert_eq!(locale["active"], "en");
     assert_eq!(read(), english);
     assert!(og_engine_destroy(engine));

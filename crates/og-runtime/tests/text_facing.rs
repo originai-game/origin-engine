@@ -136,10 +136,10 @@ fn faced_world_text_reaches_the_renderer_with_its_pivot() {
     let engine = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
     let seen = Rc::new(RefCell::new(Seen::default()));
     set_render_backend(engine, Some(Box::new(Recorder(seen.clone())))).unwrap();
-    let font = value(og_load_font(
+    let font = value(og_runtime::host_impl::answer(og_load_font(
         engine,
         "fonts/ChakraPetch-BoldItalic.ttf".into(),
-    ));
+    )));
     value(og_engine_frame(engine, 1000.0 / 60.0));
 
     let text = |t: &str, extra: Value| {
@@ -147,20 +147,23 @@ fn faced_world_text_reaches_the_renderer_with_its_pivot() {
         d.as_object_mut()
             .unwrap()
             .extend(extra.as_object().unwrap().clone());
-        value(og_render_text(engine, Some(d.to_string())));
+        value(og_runtime::host_impl::answer(og_render_text(
+            engine,
+            Some(d.to_string()),
+        )));
     };
     text("flat", json!({ "align": "center" }));
     text("name", json!({ "align": "center", "facing": "cameraY" }));
     text("sign", json!({ "facing": "camera" }));
     text("hud", json!({ "facing": "camera", "screen": true }));
-    value(og_render_floating_text(
+    value(og_runtime::host_impl::answer(og_render_floating_text(
         engine,
         Some(
             json!({ "font": font, "text": "-12", "position": { "x": -3, "y": 0, "z": 0 },
                     "spread": 0, "facing": "camera" })
             .to_string(),
         ),
-    ));
+    )));
     value(og_engine_frame(engine, 0.0));
     let seen_now = |name: &str| {
         seen.borrow()
@@ -201,12 +204,14 @@ fn faced_world_text_reaches_the_renderer_with_its_pivot() {
     assert_eq!(seen.borrow().screen, 1, "the screen text is the overlay's");
 
     // The floating text's facing is world state: a snapshot keeps it.
-    let save = value(og_world_snapshot(engine, None));
-    value(og_world_restore(
+    let save = value(og_runtime::host_impl::answer(og_world_snapshot(
+        engine, None,
+    )));
+    value(og_runtime::host_impl::answer(og_world_restore(
         engine,
         save.as_str().unwrap().to_string(),
         None,
-    ));
+    )));
     value(og_engine_frame(engine, 1000.0 / 60.0));
     assert_eq!(
         seen_now("-12").2.map(|f| f.facing),
@@ -265,16 +270,22 @@ fn a_floating_text_mixing_a_companion_draws_each_run_in_its_font() {
     let engine = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
     let seen = Rc::new(RefCell::new(Seen::default()));
     set_render_backend(engine, Some(Box::new(Recorder(seen.clone())))).unwrap();
-    let style = value(og_load_style(engine, "styles/mix".into()));
-    let body = value(og_load_font(engine, "styles/mix/Body.ttf".into()));
-    let chinese = value(og_load_font(
+    let style = value(og_runtime::host_impl::answer(og_load_style(
+        engine,
+        "styles/mix".into(),
+    )));
+    let body = value(og_runtime::host_impl::answer(og_load_font(
+        engine,
+        "styles/mix/Body.ttf".into(),
+    )));
+    let chinese = value(og_runtime::host_impl::answer(og_load_font(
         engine,
         "@styles/cjk/NotoSansSC-Regular.ttf".into(),
-    ));
-    value(og_ui_configure(
+    )));
+    value(og_runtime::host_impl::answer(og_ui_configure(
         engine,
         Some(json!({ "style": style, "font": body, "fallbackFonts": [chinese] }).to_string()),
-    ));
+    )));
     value(og_engine_frame(engine, 1000.0 / 60.0));
 
     for (text, x, facing) in [("完美 x2", 4.0, None), ("美完 x3", -2.0, Some("camera"))] {
@@ -282,7 +293,10 @@ fn a_floating_text_mixing_a_companion_draws_each_run_in_its_font() {
         if let Some(f) = facing {
             d["facing"] = json!(f);
         }
-        value(og_render_floating_text(engine, Some(d.to_string())));
+        value(og_runtime::host_impl::answer(og_render_floating_text(
+            engine,
+            Some(d.to_string()),
+        )));
     }
     value(og_engine_frame(engine, 0.0));
     let seen = seen.borrow();

@@ -65,74 +65,70 @@ pub(crate) fn dump(_engine_id: u32) -> Value {
     json!({ "loaded": false, "reason": ABSENT })
 }
 
-fn absent() -> String {
-    super::refuse(ABSENT)
+pub fn og_story_load(_world: u32, _path: String) -> Result<crate::wire::StoryAsset, String> {
+    Err(ABSENT.into())
 }
 
-pub fn og_story_load(_world: u32, _path: String) -> String {
-    absent()
+pub fn og_story_parse(_world: u32, _text: String) -> Result<crate::wire::StoryAsset, String> {
+    Err(ABSENT.into())
 }
 
-pub fn og_story_parse(_world: u32, _text: String) -> String {
-    absent()
+pub fn og_story_start(_world: u32, _desc: Option<String>) -> Result<serde_json::Value, String> {
+    Err(ABSENT.into())
 }
 
-pub fn og_story_start(_world: u32, _desc: Option<String>) -> String {
-    absent()
+pub fn og_story_view(_world: u32, _conversation: u32) -> Option<crate::wire::DialogueView> {
+    None
 }
 
-pub fn og_story_view(_world: u32, _conversation: u32) -> String {
-    Value::Null.to_string()
-}
-
-pub fn og_story_history(_world: u32, _conversation: u32) -> String {
-    json!([]).to_string()
+pub fn og_story_history(_world: u32, _conversation: u32) -> Vec<crate::wire::StoryLine> {
+    Vec::new()
 }
 
 pub fn og_story_conversations(_world: u32) -> String {
     json!([]).to_string()
 }
 
-pub fn og_story_advance(_world: u32, _conversation: u32) -> String {
-    absent()
+pub fn og_story_advance(_world: u32, _conversation: u32) -> Result<(), String> {
+    Err(ABSENT.into())
 }
 
-pub fn og_story_choose(_world: u32, _conversation: u32, _index: u32) -> String {
-    absent()
+pub fn og_story_choose(_world: u32, _conversation: u32, _index: u32) -> Result<(), String> {
+    Err(ABSENT.into())
 }
 
 pub fn og_story_stop(_world: u32, _conversation: u32) -> bool {
     false
 }
 
-pub fn og_story_bark(_world: u32, _desc: Option<String>) -> String {
-    absent()
+pub fn og_story_bark(_world: u32, _desc: Option<String>) -> Result<(), String> {
+    Err(ABSENT.into())
 }
 
-pub fn og_story_ambient(_world: u32, _desc: Option<String>) -> String {
-    absent()
+pub fn og_story_ambient(_world: u32, _desc: Option<String>) -> Result<(), String> {
+    Err(ABSENT.into())
 }
 
-pub fn og_story_barks(_world: u32) -> String {
-    json!([]).to_string()
+pub fn og_story_barks(_world: u32) -> Vec<crate::wire::BarkView> {
+    Vec::new()
 }
 
-pub fn og_story_set_saliency(_world: u32, _strategy: String) -> String {
-    absent()
+pub fn og_story_set_saliency(_world: u32, _strategy: String) -> Result<(), String> {
+    Err(ABSENT.into())
 }
 
 pub fn og_story_get(_world: u32, _name: String) -> String {
     Value::Null.to_string()
 }
 
-pub fn og_story_set(_world: u32, _name: String, _value: String) -> String {
-    absent()
+pub fn og_story_set(_world: u32, _name: String, _value: String) -> Result<(), String> {
+    Err(ABSENT.into())
 }
 
 pub fn og_story_reset(_world: u32) {}
 
-pub fn og_story_start_quest(_world: u32, _id: String) -> String {
-    absent()
+pub fn og_story_start_quest(_world: u32, _id: String) -> Result<serde_json::Value, String> {
+    Err(ABSENT.into())
 }
 
 pub fn og_story_progress(
@@ -144,24 +140,28 @@ pub fn og_story_progress(
     false
 }
 
-pub fn og_story_set_stage(_world: u32, _quest: String, _stage: String) -> String {
-    absent()
+pub fn og_story_set_stage(
+    _world: u32,
+    _quest: String,
+    _stage: String,
+) -> Result<serde_json::Value, String> {
+    Err(ABSENT.into())
 }
 
-pub fn og_story_complete_quest(_world: u32, _quest: String) -> String {
-    absent()
+pub fn og_story_complete_quest(_world: u32, _quest: String) -> Result<serde_json::Value, String> {
+    Err(ABSENT.into())
 }
 
-pub fn og_story_fail_quest(_world: u32, _quest: String) -> String {
-    absent()
+pub fn og_story_fail_quest(_world: u32, _quest: String) -> Result<serde_json::Value, String> {
+    Err(ABSENT.into())
 }
 
-pub fn og_story_quest(_world: u32, _id: String) -> String {
-    Value::Null.to_string()
+pub fn og_story_quest(_world: u32, _id: String) -> Option<crate::wire::QuestView> {
+    None
 }
 
-pub fn og_story_quests(_world: u32) -> String {
-    json!([]).to_string()
+pub fn og_story_quests(_world: u32) -> Vec<crate::wire::QuestView> {
+    Vec::new()
 }
 
 pub fn og_story_track(_world: u32, _id: String, _on: bool) -> bool {

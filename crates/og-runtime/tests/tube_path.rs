@@ -55,20 +55,32 @@ fn a_tube_along_a_path_is_the_tube_through_its_points() {
             json!({ "x": 3.0 * a.cos(), "y": i as f64 * 0.4, "z": 3.0 * a.sin() })
         })
         .collect();
-    let path = answer(og_path_create(
+    let path = answer(og_runtime::host_impl::answer(og_path_create(
         w,
         Some(json!({ "points": points, "kind": "catmullRom" }).to_string()),
-    ));
+    )));
     let shape = json!({ "tubularSegments": 96, "radius": 0.3, "radialSegments": 12 });
     let mut along = shape.clone();
     along["path"] = path.clone();
     let mut through = shape.clone();
     through["points"] = json!(points);
-    let a = answer(og_render_tube_geometry(w, Some(along.to_string())));
-    let b = answer(og_render_tube_geometry(w, Some(through.to_string())));
+    let a = answer(og_runtime::host_impl::answer(og_render_tube_geometry(
+        w,
+        Some(along.to_string()),
+    )));
+    let b = answer(og_runtime::host_impl::answer(og_render_tube_geometry(
+        w,
+        Some(through.to_string()),
+    )));
     let (ia, ib) = (
-        answer(og_render_geometry_info(w, a.as_f64().unwrap())),
-        answer(og_render_geometry_info(w, b.as_f64().unwrap())),
+        answer(og_runtime::host_impl::answer(og_render_geometry_info(
+            w,
+            a.as_f64().unwrap(),
+        ))),
+        answer(og_runtime::host_impl::answer(og_render_geometry_info(
+            w,
+            b.as_f64().unwrap(),
+        ))),
     );
     assert_eq!(ia["vertices"], ib["vertices"]);
     assert_eq!(ia["triangles"], ib["triangles"]);
@@ -84,32 +96,38 @@ fn a_tube_along_a_path_is_the_tube_through_its_points() {
 
     // Drawn side by side, 100 m apart in x, and raycast down at the same
     // offsets over the helix: the same hits.
-    let material = answer(og_render_standard_material(w, Some("{}".into())));
+    let material = answer(og_runtime::host_impl::answer(og_render_standard_material(
+        w,
+        Some("{}".into()),
+    )));
     for (geometry, x) in [(&a, 0.0), (&b, 100.0)] {
-        let e = answer(og_world_spawn(w, Some("{}".into())))
-            .as_f64()
-            .unwrap();
-        answer(og_world_insert(
+        let e = answer(og_runtime::host_impl::answer(og_world_spawn(
+            w,
+            Some("{}".into()),
+        )))
+        .as_f64()
+        .unwrap();
+        answer(og_runtime::host_impl::answer(og_world_insert(
             w,
             e,
             "og.Transform".into(),
             Some(json!({ "position": { "x": x, "y": 0, "z": 0 } }).to_string()),
-        ));
-        answer(og_world_insert(
+        )));
+        answer(og_runtime::host_impl::answer(og_world_insert(
             w,
             e,
             "og.Mesh".into(),
             Some(json!({ "geometry": geometry, "material": material }).to_string()),
-        ));
+        )));
     }
     answer(og_engine_frame(w, 1000.0 / 60.0));
     let down = |x: f64, z: f64| -> Option<f64> {
-        let hits = answer(og_render_raycast(
+        let hits = answer(og_runtime::host_impl::answer(og_render_raycast(
             w,
             json!({ "origin": { "x": x, "y": 20, "z": z }, "direction": { "x": 0, "y": -1, "z": 0 } })
                 .to_string(),
             Some(json!({ "first": true }).to_string()),
-        ));
+        )));
         hits.as_array()
             .unwrap()
             .first()
@@ -136,8 +154,11 @@ fn a_tube_along_a_path_is_the_tube_through_its_points() {
     // A dead path is refused, with its reason.
     let mut dead = shape.clone();
     dead["path"] = json!(path.as_f64().unwrap() + 40.0);
-    let v: Value =
-        serde_json::from_str(&og_render_tube_geometry(w, Some(dead.to_string()))).unwrap();
+    let v: Value = serde_json::from_str(&og_runtime::host_impl::answer(og_render_tube_geometry(
+        w,
+        Some(dead.to_string()),
+    )))
+    .unwrap();
     assert_eq!(v["ok"], json!(false));
     assert!(
         v["reason"].as_str().unwrap().contains("not a live path"),

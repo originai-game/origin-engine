@@ -16,7 +16,6 @@
 use super::codec::Layout;
 use super::extract::RenderState;
 use og_ecs::{SystemContext, SystemDesc, World};
-use serde_json::json;
 use std::collections::BTreeMap;
 
 /// Why footage answers nothing here.
@@ -80,24 +79,23 @@ pub(crate) fn install(
 pub(crate) fn extract(_world: &World, _rs: &mut RenderState) {}
 
 /// `og.load.video`.
-pub fn og_load_video(_world: u32, _path: String) -> String {
-    super::refuse(ABSENT)
+pub fn og_load_video(_world: u32, _path: String) -> Result<crate::wire::VideoInfo, String> {
+    Err(ABSENT.into())
 }
 
 /// `og.load.videoInfo`.
-pub fn og_load_video_info(_world: u32, _video: f64) -> String {
-    super::refuse(ABSENT)
+pub fn og_load_video_info(_world: u32, _video: f64) -> Result<crate::wire::VideoInfo, String> {
+    Err(ABSENT.into())
 }
 
 /// `og.video.capabilities`: nothing streams (as the full module answers
 /// without a decoder).
-pub fn og_video_capabilities(_world: u32) -> String {
-    json!({
-        "streamed": false,
-        "decoder": "none",
-        "hardware": false,
-        "maxWidth": 0,
-        "maxHeight": 0,
-    })
-    .to_string()
+pub fn og_video_capabilities(_world: u32) -> crate::wire::VideoCapabilities {
+    crate::wire::VideoCapabilities {
+        streamed: false,
+        decoder: "none".into(),
+        hardware: false,
+        max_width: 0,
+        max_height: 0,
+    }
 }

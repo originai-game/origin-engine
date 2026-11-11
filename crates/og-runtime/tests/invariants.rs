@@ -64,26 +64,30 @@ fn named<'a>(r: &'a Value, prefix: &str) -> &'a Value {
 #[test]
 fn nan_range_and_dangling_reference_are_violations_and_take_starts_clean() {
     let e = engine();
-    let hero = value(og_world_spawn(e, None)).as_f64().unwrap();
-    let foe = value(og_world_spawn(e, None)).as_f64().unwrap();
-    value(og_world_insert(
+    let hero = value(og_runtime::host_impl::answer(og_world_spawn(e, None)))
+        .as_f64()
+        .unwrap();
+    let foe = value(og_runtime::host_impl::answer(og_world_spawn(e, None)))
+        .as_f64()
+        .unwrap();
+    value(og_runtime::host_impl::answer(og_world_insert(
         e,
         hero,
         "Health".into(),
         Some(json!({"hp": 50}).to_string()),
-    ));
-    value(og_world_insert(
+    )));
+    value(og_runtime::host_impl::answer(og_world_insert(
         e,
         hero,
         "Target".into(),
         Some(json!({"of": foe}).to_string()),
-    ));
-    value(og_world_insert(
+    )));
+    value(og_runtime::host_impl::answer(og_world_insert(
         e,
         hero,
         "og.Music".into(),
         Some(json!({"start": -8.55}).to_string()),
-    ));
+    )));
     value(og_engine_advance(e, 3));
     let clean = report(e, false);
     assert_eq!(clean["violations"], json!([]), "{clean}");
@@ -93,17 +97,17 @@ fn nan_range_and_dangling_reference_are_violations_and_take_starts_clean() {
     );
 
     // A game write is stored as given: -5 is outside Health.hp's 0..1000.
-    value(og_world_set(
+    value(og_runtime::host_impl::answer(og_world_set(
         e,
         hero,
         "Health".into(),
         json!({"hp": -5}).to_string(),
-    ));
+    )));
     // A NaN reaches a resource through its packed bytes, as a JS handle writes it.
     let mut bytes = og_engine_read_resource(e, "Wind".into());
     bytes[..4].copy_from_slice(&f32::NAN.to_le_bytes());
     value(og_engine_write_resource_bytes(e, "Wind".into(), &bytes));
-    value(og_world_despawn(e, foe));
+    value(og_runtime::host_impl::answer(og_world_despawn(e, foe)));
     // A sometimes that never holds, and one that does.
     let call = |name: &str, condition: bool| {
         og_assert_record(
@@ -152,25 +156,27 @@ fn nan_range_and_dangling_reference_are_violations_and_take_starts_clean() {
 #[test]
 fn the_checks_read_only_written_columns_and_everything_after_a_restore() {
     let e = engine();
-    let hero = value(og_world_spawn(e, None)).as_f64().unwrap();
-    value(og_world_insert(
+    let hero = value(og_runtime::host_impl::answer(og_world_spawn(e, None)))
+        .as_f64()
+        .unwrap();
+    value(og_runtime::host_impl::answer(og_world_insert(
         e,
         hero,
         "Health".into(),
         Some(json!({"hp": 50}).to_string()),
-    ));
+    )));
     value(og_engine_advance(e, 2));
     report(e, true);
     // One tick reads what the engine's own systems wrote (input, camera)...
     value(og_engine_advance(e, 1));
     let quiet = report(e, true)["defaults"]["values"].as_u64().unwrap();
     // ...and one with Health written between ticks reads its one row more.
-    value(og_world_set(
+    value(og_runtime::host_impl::answer(og_world_set(
         e,
         hero,
         "Health".into(),
         json!({"hp": 60}).to_string(),
-    ));
+    )));
     value(og_engine_advance(e, 1));
     let written = report(e, true)["defaults"]["values"].as_u64().unwrap();
     assert_eq!(
@@ -179,29 +185,31 @@ fn the_checks_read_only_written_columns_and_everything_after_a_restore() {
         "Health.hp is read once written, and only then"
     );
 
-    value(og_world_set(
+    value(og_runtime::host_impl::answer(og_world_set(
         e,
         hero,
         "Health".into(),
         json!({"hp": -5}).to_string(),
-    ));
+    )));
     value(og_engine_advance(e, 1));
-    let save = value(og_world_snapshot(e, None))
+    let save = value(og_runtime::host_impl::answer(og_world_snapshot(e, None)))
         .as_str()
         .unwrap()
         .to_owned();
     let bad = report(e, true);
     assert_eq!(named(&bad, "in range Health.hp")["tick"], 4, "{bad}");
 
-    value(og_world_set(
+    value(og_runtime::host_impl::answer(og_world_set(
         e,
         hero,
         "Health".into(),
         json!({"hp": 10}).to_string(),
-    ));
+    )));
     value(og_engine_advance(e, 2));
     assert_eq!(report(e, true)["violations"], json!([]));
-    value(og_world_restore(e, save, None));
+    value(og_runtime::host_impl::answer(og_world_restore(
+        e, save, None,
+    )));
     value(og_engine_advance(e, 1));
     let again = report(e, true);
     assert_eq!(
@@ -214,32 +222,34 @@ fn the_checks_read_only_written_columns_and_everything_after_a_restore() {
 #[test]
 fn a_float_field_at_its_declared_bound_is_in_range() {
     let e = engine();
-    let lake = value(og_world_spawn(e, None)).as_f64().unwrap();
+    let lake = value(og_runtime::host_impl::answer(og_world_spawn(e, None)))
+        .as_f64()
+        .unwrap();
     // og.Water.depthFade's minimum is 0.01: its f32 holds 0.0099999998.
-    value(og_world_insert(
+    value(og_runtime::host_impl::answer(og_world_insert(
         e,
         lake,
         "og.Water".into(),
         Some(json!({"depthFade": 0.01}).to_string()),
-    ));
+    )));
     // Fade.depth's maximum 0.3: its f32 holds 0.30000001.
-    value(og_world_insert(
+    value(og_runtime::host_impl::answer(og_world_insert(
         e,
         lake,
         "Fade".into(),
         Some(json!({"depth": 0.3}).to_string()),
-    ));
+    )));
     value(og_engine_advance(e, 2));
     let at_bounds = report(e, true);
     assert_eq!(at_bounds["violations"], json!([]), "{at_bounds}");
 
     // Past a bound by more than the f32's rounding is still out of range.
-    value(og_world_set(
+    value(og_runtime::host_impl::answer(og_world_set(
         e,
         lake,
         "og.Water".into(),
         json!({"depthFade": 0.0099}).to_string(),
-    ));
+    )));
     value(og_engine_advance(e, 1));
     let r = report(e, true);
     let range = named(&r, "in range og.Water.depthFade");

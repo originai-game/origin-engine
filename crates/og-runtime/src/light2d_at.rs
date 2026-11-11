@@ -12,7 +12,6 @@
 
 use super::engine::{engine, running};
 use super::fx::{color, f, on, variant};
-use super::refuse;
 use glam::{Quat, Vec2, Vec3};
 use og_ecs::{Entity, QueryDesc, SchemaId, World};
 use serde_json::Value;
@@ -323,8 +322,12 @@ fn gather(
     Ok((lights, occluders))
 }
 
-pub fn og_render_light2d_at(world: u32, point: String, layers: Option<u32>) -> String {
-    let answer = (|| -> Result<super::wire::Color, String> {
+pub fn og_render_light2d_at(
+    world: u32,
+    point: String,
+    layers: Option<u32>,
+) -> Result<crate::wire::Color, String> {
+    (|| -> Result<crate::wire::Color, String> {
         let eng = engine(world)?;
         let at: Vec2 = super::wire::arg(Some(&point), "point")?;
         if !at.is_finite() {
@@ -343,11 +346,7 @@ pub fn og_render_light2d_at(world: u32, point: String, layers: Option<u32>) -> S
             g: c.y,
             b: c.z,
         })
-    })();
-    match answer {
-        Ok(v) => super::wire::ok(&v),
-        Err(e) => refuse(e),
-    }
+    })()
 }
 
 #[cfg(test)]

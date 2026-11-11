@@ -88,27 +88,47 @@ fn the_terrain_and_its_height_fields_answer_the_profile() {
         .unwrap() as u32;
     wire(&og_engine_frame(engine, 1000.0 / 60.0));
 
-    refused("load", og_terrain_load(engine, "terrain/hill.ogt".into()));
+    refused(
+        "load",
+        og_runtime::host_impl::answer(og_terrain_load(engine, "terrain/hill.ogt".into())),
+    );
     // The calls on a terrain's data: refused for the profile, not as a
     // handle that is not alive.
     let data = 1.0;
     let at = json!({ "data": data, "x": 1, "z": 2 }).to_string();
-    refused("sample", og_terrain_sample(engine, Some(at)));
-    refused("bounds", og_terrain_bounds(engine, data, None, None, None));
+    refused(
+        "sample",
+        og_runtime::host_impl::answer(og_terrain_sample(engine, Some(at))),
+    );
+    refused(
+        "bounds",
+        og_runtime::host_impl::answer(og_terrain_bounds(engine, data, None, None, None)),
+    );
     let brush = json!({ "x": 0, "z": 0, "radius": 2, "strength": 1 }).to_string();
-    refused("edit", og_terrain_edit(engine, data, Some(brush)));
-    refused("layer", og_terrain_layer(engine, data, 0));
+    refused(
+        "edit",
+        og_runtime::host_impl::answer(og_terrain_edit(engine, data, Some(brush))),
+    );
+    refused(
+        "layer",
+        og_runtime::host_impl::answer(og_terrain_layer(engine, data, 0)),
+    );
     refused(
         "setLayer",
-        og_terrain_set_layer(engine, data, 0, Some("{}".into())),
+        og_runtime::host_impl::answer(og_terrain_set_layer(engine, data, 0, Some("{}".into()))),
     );
 
     // A SHAPE_HEIGHTFIELD collider naming a terrain's geometry.
-    let e = wire(&og_world_spawn(engine, None))["value"]
+    let e = wire(&og_runtime::host_impl::answer(og_world_spawn(engine, None)))["value"]
         .as_f64()
         .unwrap();
     let collider = json!({ "shape": 6, "mesh": (0x7eu64 << 32) as f64 });
-    let inserted = og_world_insert(engine, e, "og.Collider".into(), Some(collider.to_string()));
+    let inserted = og_runtime::host_impl::answer(og_world_insert(
+        engine,
+        e,
+        "og.Collider".into(),
+        Some(collider.to_string()),
+    ));
     assert_eq!(wire(&inserted)["ok"], json!(true), "{inserted}");
     let frame = og_engine_frame(engine, 1000.0 / 60.0);
     let log = og_engine_take_log(engine);
@@ -207,7 +227,9 @@ fn a_save_carries_the_terrain_block_and_one_with_edits_is_refused() {
         .unwrap() as u32;
     wire(&og_engine_frame(engine, 1000.0 / 60.0));
 
-    let saved = wire(&og_world_snapshot(engine, None));
+    let saved = wire(&og_runtime::host_impl::answer(og_world_snapshot(
+        engine, None,
+    )));
     assert_eq!(saved["ok"], json!(true), "{saved}");
     let (snapshot, tick) = snapshot_of(saved["value"].as_str().unwrap());
     // The block as the full build's terrain.rs writes it with no edits:
@@ -218,7 +240,11 @@ fn a_save_carries_the_terrain_block_and_one_with_edits_is_refused() {
         .windows(empty.len())
         .position(|w| w == empty)
         .expect("the save carries the og.terrain state block with no edits");
-    let restored = og_world_restore(engine, saved["value"].as_str().unwrap().into(), None);
+    let restored = og_runtime::host_impl::answer(og_world_restore(
+        engine,
+        saved["value"].as_str().unwrap().into(),
+        None,
+    ));
     assert_eq!(wire(&restored)["ok"], json!(true), "{restored}");
 
     // The same save with one edit in the block.
@@ -231,7 +257,8 @@ fn a_save_carries_the_terrain_block_and_one_with_edits_is_refused() {
     let mut edited = snapshot[..at].to_vec();
     edited.extend(block);
     edited.extend_from_slice(&snapshot[at + empty.len()..]);
-    let refused = og_world_restore(engine, save_of(&edited, tick), None);
+    let refused =
+        og_runtime::host_impl::answer(og_world_restore(engine, save_of(&edited, tick), None));
     let v = wire(&refused);
     assert_eq!(v["ok"], json!(false), "{refused}");
     let reason = v["reason"].as_str().unwrap_or_default();

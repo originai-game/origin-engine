@@ -39,7 +39,7 @@ fn device_of(device: Option<String>) -> Result<Option<Device>, String> {
     }
 }
 
-fn input_device(d: Device) -> wire::InputDevice {
+fn input_device(d: Device) -> crate::wire::InputDevice {
     match d {
         Device::KeyboardMouse => wire::InputDevice::KeyboardMouse,
         Device::Xbox => wire::InputDevice::Xbox,
@@ -50,7 +50,7 @@ fn input_device(d: Device) -> wire::InputDevice {
     }
 }
 
-fn input_binding(b: &og_input::Binding) -> wire::InputBinding {
+fn input_binding(b: &og_input::Binding) -> crate::wire::InputBinding {
     wire::InputBinding {
         control: b.control.clone(),
         negative: b.negative.clone(),
@@ -72,7 +72,7 @@ fn input_binding(b: &og_input::Binding) -> wire::InputBinding {
     }
 }
 
-fn binding_conflicts(list: &[og_input::Conflict]) -> Vec<wire::BindingConflict> {
+fn binding_conflicts(list: &[og_input::Conflict]) -> Vec<crate::wire::BindingConflict> {
     list.iter()
         .map(|c| wire::BindingConflict {
             action: c.action.clone(),
@@ -83,14 +83,14 @@ fn binding_conflicts(list: &[og_input::Conflict]) -> Vec<wire::BindingConflict> 
         .collect()
 }
 
-fn rebind_answer(a: og_input::RebindAnswer) -> wire::RebindAnswer {
+fn rebind_answer(a: og_input::RebindAnswer) -> crate::wire::RebindAnswer {
     wire::RebindAnswer {
         applied: a.applied,
         conflicts: binding_conflicts(&a.conflicts),
     }
 }
 
-fn capture_state(c: &og_input::CaptureState) -> wire::CaptureState {
+fn capture_state(c: &og_input::CaptureState) -> crate::wire::CaptureState {
     wire::CaptureState {
         active: c.active,
         done: c.done,
@@ -104,7 +104,7 @@ fn capture_state(c: &og_input::CaptureState) -> wire::CaptureState {
     }
 }
 
-fn input_glyph(g: &Glyph, device: Device, control: &str) -> wire::InputGlyph {
+fn input_glyph(g: &Glyph, device: Device, control: &str) -> crate::wire::InputGlyph {
     wire::InputGlyph {
         icon: g.icon.clone(),
         text: g.text.clone(),
@@ -117,15 +117,14 @@ fn state_of(world: u32, name: &str) -> Option<og_input::ActionState> {
     on_map(world, |m| m.state(name)).ok().flatten()
 }
 
-pub fn og_input_define_action(world: u32, desc: Option<String>) -> String {
-    let r = desc_json(desc)
+pub fn og_input_define_action(world: u32, desc: Option<String>) -> Result<(), String> {
+    desc_json(desc)
         .and_then(|d| ActionDesc::from_json(&d))
-        .and_then(|d| on_map(world, |m| m.define(d))?);
-    result_void(r)
+        .and_then(|d| on_map(world, |m| m.define(d))?)
 }
 
-pub fn og_input_actions(world: u32) -> String {
-    let list = on_map(world, |m| {
+pub fn og_input_actions(world: u32) -> Vec<crate::wire::ActionInfo> {
+    on_map(world, |m| {
         m.infos()
             .iter()
             .map(|i| wire::ActionInfo {
@@ -149,12 +148,11 @@ pub fn og_input_actions(world: u32) -> String {
             })
             .collect::<Vec<_>>()
     })
-    .unwrap_or_default();
-    wire::text_of(&list)
+    .unwrap_or_default()
 }
 
-pub fn og_input_action(world: u32, name: String) -> String {
-    wire::text_of(&state_of(world, &name).map(|s| wire::ActionState {
+pub fn og_input_action(world: u32, name: String) -> Option<crate::wire::ActionState> {
+    state_of(world, &name).map(|s| wire::ActionState {
         down: s.down,
         pressed: s.pressed,
         released: s.released,
@@ -162,7 +160,7 @@ pub fn og_input_action(world: u32, name: String) -> String {
         value: s.value,
         vector: s.vector,
         device: input_device(s.device),
-    }))
+    })
 }
 
 pub fn og_input_is_action_pressed(world: u32, name: String) -> bool {
@@ -185,8 +183,8 @@ pub fn og_input_action_value(world: u32, name: String) -> f64 {
     state_of(world, &name).map_or(0.0, |s| f64::from(s.value))
 }
 
-pub fn og_input_action_vector(world: u32, name: String) -> String {
-    wire::text_of(&state_of(world, &name).map(|s| s.vector).unwrap_or_default())
+pub fn og_input_action_vector(world: u32, name: String) -> glam::Vec2 {
+    state_of(world, &name).map(|s| s.vector).unwrap_or_default()
 }
 
 pub fn og_input_set_action_maps(world: u32, contexts: String) {
@@ -200,14 +198,20 @@ pub fn og_input_action_maps(world: u32) -> String {
         .to_string()
 }
 
-pub fn og_input_rebind(world: u32, desc: Option<String>) -> String {
+pub fn og_input_rebind(
+    world: u32,
+    desc: Option<String>,
+) -> Result<crate::wire::RebindAnswer, String> {
     let r = desc_json(desc)
         .and_then(|d| RebindDesc::from_json(&d))
         .and_then(|d| on_map(world, |m| m.rebind(&d))?);
-    typed(r.map(rebind_answer))
+    r.map(rebind_answer)
 }
 
-pub fn og_input_conflicts(world: u32, desc: Option<String>) -> String {
+pub fn og_input_conflicts(
+    world: u32,
+    desc: Option<String>,
+) -> Result<Vec<crate::wire::BindingConflict>, String> {
     let r = desc_json(desc)
         .and_then(|d| RebindDesc::from_json(&d))
         .and_then(|d| {
@@ -220,65 +224,59 @@ pub fn og_input_conflicts(world: u32, desc: Option<String>) -> String {
                 })
             })?
         });
-    typed(r.map(|a| binding_conflicts(&a.conflicts)))
+    r.map(|a| binding_conflicts(&a.conflicts))
 }
 
-pub fn og_input_reset_bindings(world: u32, action: Option<String>) -> String {
-    result_void(
-        on_map(world, |m| {
-            m.reset(action.as_deref().filter(|a| !a.is_empty()))
-        })
-        .and_then(|r| r),
-    )
+pub fn og_input_reset_bindings(world: u32, action: Option<String>) -> Result<(), String> {
+    on_map(world, |m| {
+        m.reset(action.as_deref().filter(|a| !a.is_empty()))
+    })
+    .and_then(|r| r)
 }
 
-pub fn og_input_set_toggle(world: u32, action: String, on: bool) -> String {
-    result_void(on_map(world, |m| m.set_toggle(&action, Some(on))).and_then(|r| r))
+pub fn og_input_set_toggle(world: u32, action: String, on: bool) -> Result<(), String> {
+    on_map(world, |m| m.set_toggle(&action, Some(on))).and_then(|r| r)
 }
 
 pub fn og_input_save_bindings(world: u32) -> String {
     on_map(world, |m| m.save_bindings()).unwrap_or_default()
 }
 
-pub fn og_input_load_bindings(world: u32, text: String) -> String {
-    result(
-        on_map(world, |m| m.load_bindings(&text))
-            .and_then(|r| r)
-            .map(|w| json!(w)),
-    )
+pub fn og_input_load_bindings(world: u32, text: String) -> Result<serde_json::Value, String> {
+    on_map(world, |m| m.load_bindings(&text))
+        .and_then(|r| r)
+        .map(|w| json!(w))
 }
 
-pub fn og_input_start_capture(world: u32, desc: Option<String>) -> String {
-    let r = desc_json(desc)
+pub fn og_input_start_capture(world: u32, desc: Option<String>) -> Result<(), String> {
+    desc_json(desc)
         .and_then(|d| CaptureDesc::from_json(&d))
-        .and_then(|d| on_map(world, |m| m.start_capture(d))?);
-    result_void(r)
+        .and_then(|d| on_map(world, |m| m.start_capture(d))?)
 }
 
-pub fn og_input_capture(world: u32) -> String {
-    wire::text_of(
-        &on_map(world, |m| capture_state(m.capture()))
-            .unwrap_or_else(|_| capture_state(&og_input::CaptureState::default())),
-    )
+pub fn og_input_capture(world: u32) -> crate::wire::CaptureState {
+    on_map(world, |m| capture_state(m.capture()))
+        .unwrap_or_else(|_| capture_state(&og_input::CaptureState::default()))
 }
 
 pub fn og_input_cancel_capture(world: u32) {
     let _ = on_map(world, |m| m.cancel_capture());
 }
 
-pub fn og_input_apply_capture(world: u32, policy: Option<String>) -> String {
+pub fn og_input_apply_capture(
+    world: u32,
+    policy: Option<String>,
+) -> Result<crate::wire::RebindAnswer, String> {
     let policy = match policy.as_deref() {
         None | Some("") => ConflictPolicy::Refuse,
         Some(p) => match ConflictPolicy::from_name(p) {
             Some(p) => p,
-            None => return refuse(format!("policy is refuse, swap, replace or allow, not {p}")),
+            None => return Err(format!("policy is refuse, swap, replace or allow, not {p}")),
         },
     };
-    typed(
-        on_map(world, |m| m.apply_capture(policy))
-            .and_then(|r| r)
-            .map(rebind_answer),
-    )
+    on_map(world, |m| m.apply_capture(policy))
+        .and_then(|r| r)
+        .map(rebind_answer)
 }
 
 /// A binding's glyphs, each with its control's name, and the device they
@@ -348,20 +346,19 @@ pub fn og_input_pad_device(world: u32, pad: u32) -> String {
     device.map_or_else(|| "null".into(), |d| json!(d.name()).to_string())
 }
 
-pub fn og_input_set_deadzones(world: u32, desc: Option<String>) -> String {
-    let r = wire::arg::<wire::DeadzoneDesc>(desc.as_deref(), "desc").and_then(|d| {
+pub fn og_input_set_deadzones(world: u32, desc: Option<String>) -> Result<(), String> {
+    wire::arg::<wire::DeadzoneDesc>(desc.as_deref(), "desc").and_then(|d| {
         let dz = PadDeadzone {
             stick: d.stick,
             trigger: d.trigger,
         };
         let pad = usize::try_from(d.pad).ok();
         on_map(world, |m| m.set_deadzone(pad, dz))?
-    });
-    result_void(r)
+    })
 }
 
-pub fn og_input_set_sensitivity(world: u32, desc: Option<String>) -> String {
-    let r = wire::arg::<wire::SensitivityDesc>(desc.as_deref(), "desc").and_then(|d| {
+pub fn og_input_set_sensitivity(world: u32, desc: Option<String>) -> Result<(), String> {
+    wire::arg::<wire::SensitivityDesc>(desc.as_deref(), "desc").and_then(|d| {
         let device =
             device_of(Some(d.device.as_str().to_string()))?.unwrap_or(Device::KeyboardMouse);
         let sense = og_input::Sensitivity {
@@ -370,13 +367,17 @@ pub fn og_input_set_sensitivity(world: u32, desc: Option<String>) -> String {
             invert_y: d.invert_y,
         };
         on_map(world, |m| m.set_sensitivity(&d.action, device, sense))?
-    });
-    result_void(r)
+    })
 }
 
-pub fn og_input_sensitivity(world: u32, action: String, device: Option<String>) -> String {
+pub fn og_input_sensitivity(
+    world: u32,
+    action: String,
+    device: Option<String>,
+) -> crate::wire::SensitivityDesc {
     let device = device_of(device).ok().flatten();
-    let answer = on_map(world, |m| {
+
+    on_map(world, |m| {
         let d = device.unwrap_or(m.device());
         let s = m.sensitivity(&action, d);
         // The class's own name: any pad family is the pads'.
@@ -395,8 +396,7 @@ pub fn og_input_sensitivity(world: u32, action: String, device: Option<String>) 
         scale: 1.0,
         invert_x: false,
         invert_y: false,
-    });
-    wire::text_of(&answer)
+    })
 }
 
 pub fn og_input_set_keyboard_layout(labels: String) {
@@ -404,20 +404,18 @@ pub fn og_input_set_keyboard_layout(labels: String) {
     og_input::set_key_labels(list.into_iter().map(|e| (e.code, e.label)));
 }
 
-pub fn og_input_keyboard_layout() -> String {
-    wire::text_of(
-        &og_input::key_labels()
-            .into_iter()
-            .map(|(code, label)| wire::KeyLabel {
-                code: code.to_string(),
-                label: label.to_string(),
-            })
-            .collect::<Vec<_>>(),
-    )
+pub fn og_input_keyboard_layout() -> Vec<crate::wire::KeyLabel> {
+    og_input::key_labels()
+        .into_iter()
+        .map(|(code, label)| wire::KeyLabel {
+            code: code.to_string(),
+            label: label.to_string(),
+        })
+        .collect::<Vec<_>>()
 }
 
-pub fn og_input_set_mouse(world: u32, desc: Option<String>) -> String {
-    let r = (|| -> Result<(), String> {
+pub fn og_input_set_mouse(world: u32, desc: Option<String>) -> Result<(), String> {
+    (|| -> Result<(), String> {
         let eng = engine(world)?;
         // A patch: only the fields the desc names change.
         let v = parse(desc.as_deref())?;
@@ -431,24 +429,23 @@ pub fn og_input_set_mouse(world: u32, desc: Option<String>) -> String {
             rs.display.mouse.raw = d.raw;
         }
         Ok(())
-    })();
-    result_void(r)
+    })()
 }
 
-pub fn og_input_mouse(world: u32) -> String {
+pub fn og_input_mouse(world: u32) -> crate::wire::MouseInfo {
     let m = engine(world)
         .ok()
         .and_then(|eng| eng.render.try_borrow().ok().map(|rs| rs.display.mouse))
         .unwrap_or_default();
-    wire::text_of(&wire::MouseInfo {
+    wire::MouseInfo {
         raw: m.raw,
         raw_active: m.raw_active,
         raw_unsupported: m.raw_unsupported,
-    })
+    }
 }
 
-pub fn og_input_rumble(world: u32, desc: Option<String>) -> String {
-    let r = wire::arg::<wire::RumbleDesc>(desc.as_deref(), "desc").and_then(|d| {
+pub fn og_input_rumble(world: u32, desc: Option<String>) -> Result<(), String> {
+    wire::arg::<wire::RumbleDesc>(desc.as_deref(), "desc").and_then(|d| {
         let r = Rumble {
             pad: d.pad,
             low: d.low,
@@ -456,8 +453,7 @@ pub fn og_input_rumble(world: u32, desc: Option<String>) -> String {
             ms: d.ms,
         };
         on_map(world, |m| m.rumble(r))?
-    });
-    result_void(r)
+    })
 }
 
 /// The rumbles the game asked for since the last frame answer, as the

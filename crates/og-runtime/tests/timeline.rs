@@ -197,20 +197,26 @@ fn start_in(root: &Path) -> Run {
     ));
     let options = json!({ "root": root.to_str().unwrap() }).to_string();
     let engine = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
-    value(og_world_spawn(
+    value(og_runtime::host_impl::answer(og_world_spawn(
         engine,
         Some(json!({ "name": "box" }).to_string()),
-    ));
-    let asset = value(og_load_timeline(engine, "timelines/t.ogt".into()));
-    let timeline = value(og_world_spawn(engine, Some("{}".into())))
-        .as_f64()
-        .unwrap();
-    value(og_world_insert(
+    )));
+    let asset = value(og_runtime::host_impl::answer(og_load_timeline(
+        engine,
+        "timelines/t.ogt".into(),
+    )));
+    let timeline = value(og_runtime::host_impl::answer(og_world_spawn(
+        engine,
+        Some("{}".into()),
+    )))
+    .as_f64()
+    .unwrap();
+    value(og_runtime::host_impl::answer(og_world_insert(
         engine,
         timeline,
         "og.Timeline".into(),
         Some(json!({ "asset": asset }).to_string()),
-    ));
+    )));
     frame(engine, 1);
     Run {
         engine,
@@ -232,13 +238,24 @@ fn hash(engine: u32) -> Value {
 
 fn get(r: &Run, name: &str) -> Value {
     let id: f64 = og_world_find(r.engine, name.into()).parse().unwrap();
-    value(og_world_get(r.engine, id, "og.Transform".into()))
+    value(og_runtime::host_impl::answer(og_world_get(
+        r.engine,
+        id,
+        "og.Transform".into(),
+    )))
 }
 
 fn state(r: &Run) -> (Value, Value) {
     (
-        value(og_world_get(r.engine, r.timeline, "og.Timeline".into())),
-        value(og_world_resource(r.engine, "og.Camera".into())),
+        value(og_runtime::host_impl::answer(og_world_get(
+            r.engine,
+            r.timeline,
+            "og.Timeline".into(),
+        ))),
+        value(og_runtime::host_impl::answer(og_world_resource(
+            r.engine,
+            "og.Camera".into(),
+        ))),
     )
 }
 
@@ -246,17 +263,27 @@ fn state(r: &Run) -> (Value, Value) {
 fn seeking_to_4s_hashes_as_playing_to_4s() {
     // Played: 1 tick at 0, then 240 to 4 s, still playing.
     let a = start();
-    value(og_timeline_play(a.engine, a.timeline));
+    value(og_runtime::host_impl::answer(og_timeline_play(
+        a.engine, a.timeline,
+    )));
     frame(a.engine, 241);
     // Sought: played one tick, paused at 0, waited, then sought to 4 s and
     // resumed in the same tick.
     let b = start();
-    value(og_timeline_play(b.engine, b.timeline));
+    value(og_runtime::host_impl::answer(og_timeline_play(
+        b.engine, b.timeline,
+    )));
     frame(b.engine, 1);
-    value(og_timeline_pause(b.engine, b.timeline));
+    value(og_runtime::host_impl::answer(og_timeline_pause(
+        b.engine, b.timeline,
+    )));
     frame(b.engine, 239);
-    value(og_timeline_seek(b.engine, b.timeline, 4.0));
-    value(og_timeline_play(b.engine, b.timeline));
+    value(og_runtime::host_impl::answer(og_timeline_seek(
+        b.engine, b.timeline, 4.0,
+    )));
+    value(og_runtime::host_impl::answer(og_timeline_play(
+        b.engine, b.timeline,
+    )));
     frame(b.engine, 1);
 
     assert_eq!(og_world_get_tick(a.engine), og_world_get_tick(b.engine));
@@ -298,7 +325,9 @@ fn seeking_to_4s_hashes_as_playing_to_4s() {
 fn a_hot_reload_keeps_playing_from_the_same_time_with_the_edited_keys() {
     let root = fresh_project("og-runtime-timeline-reload");
     let r = start_in(&root);
-    value(og_timeline_play(r.engine, r.timeline));
+    value(og_runtime::host_impl::answer(og_timeline_play(
+        r.engine, r.timeline,
+    )));
     // 2 s in: the box on its way to the key at 3 s (3 0 0), eased power1.in.
     frame(r.engine, 121);
     let (before, camera) = state(&r);

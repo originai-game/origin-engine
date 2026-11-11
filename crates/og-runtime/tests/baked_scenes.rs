@@ -220,8 +220,15 @@ fn frame(engine: u32) {
 }
 
 fn instantiate(engine: u32, scene: &str) {
-    let scene = value(og_load_scene(engine, scene.into()));
-    value(og_world_instantiate(engine, scene.as_f64().unwrap(), None));
+    let scene = value(og_runtime::host_impl::answer(og_load_scene(
+        engine,
+        scene.into(),
+    )));
+    value(og_runtime::host_impl::answer(og_world_instantiate(
+        engine,
+        scene.as_f64().unwrap(),
+        None,
+    )));
 }
 
 /// `og.render.bakedLighting`: per scene, whether it is baked and why not.
@@ -285,7 +292,10 @@ fn two_baked_scenes_both_draw_their_bakes() {
 
     // The hall's box despawned: its bake stops drawing, the annex's stays.
     let found: Value = serde_json::from_str(&og_world_find(engine, "hall-box".into())).unwrap();
-    value(og_world_despawn(engine, found.as_f64().unwrap()));
+    value(og_runtime::host_impl::answer(og_world_despawn(
+        engine,
+        found.as_f64().unwrap(),
+    )));
     frame(engine);
     let s = seen.borrow();
     assert!(s.lightmapped.keys().all(|m| annex.contains(m)));
@@ -314,7 +324,10 @@ fn a_render_snapshot_restores_the_bake_with_its_world() {
     let snapshot = render_snapshot(engine).expect("snapshot");
 
     let found: Value = serde_json::from_str(&og_world_find(engine, "hall-box".into())).unwrap();
-    value(og_world_despawn(engine, found.as_f64().unwrap()));
+    value(og_runtime::host_impl::answer(og_world_despawn(
+        engine,
+        found.as_f64().unwrap(),
+    )));
     frame(engine);
     assert!(
         seen.borrow().lightmapped.is_empty(),

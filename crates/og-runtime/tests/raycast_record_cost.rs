@@ -54,21 +54,36 @@ fn field() -> (u32, Vec<f64>) {
     og_host_begin_bundle();
     let game = og_game_game(Some(r#"{"seed":1}"#.into()));
     let w = value(og_engine_create(game, "{}".into())).as_u64().unwrap() as u32;
-    let geometry = value(og_render_sphere_geometry(
+    let geometry = value(og_runtime::host_impl::answer(og_render_sphere_geometry(
         w,
         Some(r#"{"radius":0.5}"#.into()),
-    ));
-    let material = value(og_render_standard_material(w, Some("{}".into())));
+    )));
+    let material = value(og_runtime::host_impl::answer(og_render_standard_material(
+        w,
+        Some("{}".into()),
+    )));
     let mesh = json!({ "geometry": geometry, "material": material }).to_string();
     let mut all = Vec::with_capacity(COUNT);
     for i in 0..COUNT {
         let (x, z) = ((i % 200) as f64 * 1.2, (i / 200) as f64 * 1.2);
         let at = json!({ "position": { "x": x, "y": 0, "z": z } }).to_string();
-        let e = value(og_world_spawn(w, Some(at))).as_f64().unwrap();
-        value(og_world_insert(w, e, "og.Mesh".into(), Some(mesh.clone())));
+        let e = value(og_runtime::host_impl::answer(og_world_spawn(w, Some(at))))
+            .as_f64()
+            .unwrap();
+        value(og_runtime::host_impl::answer(og_world_insert(
+            w,
+            e,
+            "og.Mesh".into(),
+            Some(mesh.clone()),
+        )));
         if i % 5 == 4 {
             let parent = json!({ "entity": all[i - 1] }).to_string();
-            value(og_world_insert(w, e, "og.Parent".into(), Some(parent)));
+            value(og_runtime::host_impl::answer(og_world_insert(
+                w,
+                e,
+                "og.Parent".into(),
+                Some(parent),
+            )));
         }
         all.push(e);
     }
@@ -87,7 +102,11 @@ fn best_read_ms(w: u32, all: &[f64], runs: usize, moving: bool) -> f64 {
     let desc = Some(json!({ "layers": 0 }).to_string());
     let read = || {
         let t = Instant::now();
-        let hits = value(og_render_raycast(w, ray.clone(), desc.clone()));
+        let hits = value(og_runtime::host_impl::answer(og_render_raycast(
+            w,
+            ray.clone(),
+            desc.clone(),
+        )));
         let ms = t.elapsed().as_secs_f64() * 1000.0;
         assert_eq!(hits, json!([]), "layers 0 tests no mesh");
         ms
@@ -99,7 +118,12 @@ fn best_read_ms(w: u32, all: &[f64], runs: usize, moving: bool) -> f64 {
             let y = 0.01 * (run + 1) as f64;
             for &e in all {
                 let at = json!({ "position": { "x": e % 97.0, "y": y, "z": 0 } }).to_string();
-                value(og_world_set(w, e, "og.Transform".into(), at));
+                value(og_runtime::host_impl::answer(og_world_set(
+                    w,
+                    e,
+                    "og.Transform".into(),
+                    at,
+                )));
             }
         }
         best = best.min(read());

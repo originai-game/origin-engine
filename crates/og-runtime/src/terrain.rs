@@ -20,11 +20,11 @@
 use super::engine::{Engine, engine};
 use super::extract::{Hierarchy, RenderState};
 use super::fx::{color, f, kept_rows, on, u};
+use super::parse;
 use super::wire::{
     self, Color, TerrainBounds, TerrainBrush, TerrainEdit, TerrainInfo, TerrainLayerDesc,
     TerrainSample, TerrainSampleDesc, TerrainStampDesc, ToJson,
 };
-use super::{parse, refuse};
 use glam::{Mat3, Mat4, Quat, Vec2, Vec3};
 use og_core::IdMap;
 use og_ecs::World;
@@ -450,13 +450,6 @@ impl LoadedTerrain {
     }
 }
 
-fn wire<T: ToJson>(r: Result<T, String>) -> String {
-    match r {
-        Ok(v) => wire::ok(&v),
-        Err(e) => refuse(e),
-    }
-}
-
 fn handle(index: usize) -> u64 {
     super::assets::handle(index)
 }
@@ -655,8 +648,8 @@ pub(crate) fn load(eng: &Engine, path: &str) -> Result<TerrainInfo, String> {
     Ok(value)
 }
 
-pub fn og_terrain_load(world: u32, path: String) -> String {
-    wire(engine(world).and_then(|eng| load(&eng, &path)))
+pub fn og_terrain_load(world: u32, path: String) -> Result<crate::wire::TerrainInfo, String> {
+    engine(world).and_then(|eng| load(&eng, &path))
 }
 
 /// The point in the terrain's space (relative to its centre) of world `x`,
@@ -736,8 +729,8 @@ pub(crate) fn ground_drop_shadows(rs: &mut RenderState) {
     }
 }
 
-pub fn og_terrain_sample(world: u32, desc: Option<String>) -> String {
-    wire((|| {
+pub fn og_terrain_sample(world: u32, desc: Option<String>) -> Result<TerrainSample, String> {
+    (|| {
         let eng = engine(world)?;
         replay_if_restored(&eng)?;
         let d: TerrainSampleDesc = wire::arg(desc.as_deref(), "desc")?;
@@ -756,7 +749,7 @@ pub fn og_terrain_sample(world: u32, desc: Option<String>) -> String {
             inside,
             hole: inside && t.hole(p),
         })
-    })())
+    })()
 }
 
 pub fn og_terrain_bounds(
@@ -765,8 +758,8 @@ pub fn og_terrain_bounds(
     origin: Option<String>,
     quaternion: Option<String>,
     scale: Option<String>,
-) -> String {
-    wire((|| {
+) -> Result<TerrainBounds, String> {
+    (|| {
         let eng = engine(world)?;
         let i = index_of(&eng, data)?;
         let m = placed(
@@ -789,7 +782,7 @@ pub fn og_terrain_bounds(
             max = max.max(corner);
         }
         Ok(TerrainBounds { min, max })
-    })())
+    })()
 }
 
 /// The brush's weight at distance `d` from its centre: 1 inside the
@@ -1087,29 +1080,33 @@ fn edit(eng: &Engine, i: usize, b: &Value, log: bool) -> Result<TerrainEdit, Str
     }
 }
 
-pub fn og_terrain_edit(world: u32, data: f64, brush: Option<String>) -> String {
-    wire((|| {
+pub fn og_terrain_edit(
+    world: u32,
+    data: f64,
+    brush: Option<String>,
+) -> Result<crate::wire::TerrainEdit, String> {
+    (|| {
         let eng = engine(world)?;
         replay_if_restored(&eng)?;
         let i = index_of(&eng, data)?;
         let b = parse(brush.as_deref())?;
         edit(&eng, i, &b, true)
-    })())
+    })()
 }
 
-pub fn og_terrain_stamp(world: u32, desc: Option<String>) -> String {
-    wire((|| {
+pub fn og_terrain_stamp(world: u32, desc: Option<String>) -> Result<serde_json::Value, String> {
+    (|| {
         let eng = engine(world)?;
         let d = parse(desc.as_deref())?;
         // Read through the IDL's type to refuse a wrong field; the stamp
         // and its log keep the desc as given.
         wire::value::<TerrainStampDesc>(&d, "desc")?;
         stamp::stamp(&eng, &d)
-    })())
+    })()
 }
 
-pub fn og_terrain_unstamp(world: u32, data: f64, stamp: u32) -> String {
-    wire((|| stamp::unstamp(&*engine(world)?, data, stamp))())
+pub fn og_terrain_unstamp(world: u32, data: f64, stamp: u32) -> Result<serde_json::Value, String> {
+    (|| stamp::unstamp(&*engine(world)?, data, stamp))()
 }
 
 fn layer_desc(l: &TerrainLayer) -> TerrainLayerDesc {
@@ -1138,8 +1135,12 @@ fn layer_desc(l: &TerrainLayer) -> TerrainLayerDesc {
     }
 }
 
-pub fn og_terrain_layer(world: u32, data: f64, index: u32) -> String {
-    wire((|| {
+pub fn og_terrain_layer(
+    world: u32,
+    data: f64,
+    index: u32,
+) -> Result<crate::wire::TerrainLayerDesc, String> {
+    (|| {
         let eng = engine(world)?;
         let i = index_of(&eng, data)?;
         let rs = eng.render.borrow();
@@ -1148,10 +1149,15 @@ pub fn og_terrain_layer(world: u32, data: f64, index: u32) -> String {
             .get(index as usize)
             .map(layer_desc)
             .ok_or_else(|| format!("layer {index}: the terrain has {} layer(s)", t.layers.len()))
-    })())
+    })()
 }
 
-pub fn og_terrain_set_layer(world: u32, data: f64, index: u32, layer: Option<String>) -> String {
+pub fn og_terrain_set_layer(
+    world: u32,
+    data: f64,
+    index: u32,
+    layer: Option<String>,
+) -> Result<(), String> {
     match (|| -> Result<(), String> {
         let eng = engine(world)?;
         let i = index_of(&eng, data)?;
@@ -1186,8 +1192,8 @@ pub fn og_terrain_set_layer(world: u32, data: f64, index: u32, layer: Option<Str
         };
         Ok(())
     })() {
-        Ok(()) => super::ok_void(),
-        Err(e) => refuse(e),
+        Ok(()) => Ok(()),
+        Err(e) => Err(e),
     }
 }
 

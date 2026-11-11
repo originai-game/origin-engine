@@ -96,15 +96,18 @@ fn frame(engine: u32) {
 }
 
 fn spawn(engine: u32, system: Value) -> f64 {
-    let e = value(og_world_spawn(engine, Some("{}".into())))
-        .as_f64()
-        .unwrap();
-    value(og_world_insert(
+    let e = value(og_runtime::host_impl::answer(og_world_spawn(
+        engine,
+        Some("{}".into()),
+    )))
+    .as_f64()
+    .unwrap();
+    value(og_runtime::host_impl::answer(og_world_insert(
         engine,
         e,
         "og.ParticleSystem".into(),
         Some(system.to_string()),
-    ));
+    )));
     e
 }
 
@@ -119,11 +122,22 @@ fn a_one_shot_never_given_a_start_tick_waits_and_a_looping_one_runs() {
     set_render_backend(engine, Some(Box::new(Recorder(seen.clone())))).unwrap();
     frame(engine);
 
-    let hit = value(og_load_emitter(engine, "fx/hit.ogt".into()));
-    let embers = value(og_load_emitter(engine, "fx/embers.ogt".into()));
+    let hit = value(og_runtime::host_impl::answer(og_load_emitter(
+        engine,
+        "fx/hit.ogt".into(),
+    )));
+    let embers = value(og_runtime::host_impl::answer(og_load_emitter(
+        engine,
+        "fx/embers.ogt".into(),
+    )));
     let armed = spawn(engine, json!({ "emitter": hit, "seed": 1 }));
     let lasting = spawn(engine, json!({ "emitter": embers, "seed": 2 }));
-    let start = value(og_world_get(engine, armed, "og.ParticleSystem".into()))["startTick"].clone();
+    let start = value(og_runtime::host_impl::answer(og_world_get(
+        engine,
+        armed,
+        "og.ParticleSystem".into(),
+    )))["startTick"]
+        .clone();
     assert_eq!(
         start,
         json!(4294967295u32),
@@ -146,12 +160,12 @@ fn a_one_shot_never_given_a_start_tick_waits_and_a_looping_one_runs() {
 
     // Its first use: the tick written fires it.
     let tick = og_world_get_tick(engine);
-    value(og_world_set(
+    value(og_runtime::host_impl::answer(og_world_set(
         engine,
         armed,
         "og.ParticleSystem".into(),
         json!({ "startTick": tick }).to_string(),
-    ));
+    )));
     frame(engine);
     assert!(
         seen.borrow().contains(&(id(armed), u64::from(tick))),

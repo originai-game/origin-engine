@@ -96,14 +96,17 @@ fn a_previewed_viewport_lays_the_screen_overlay_on_its_css_surface() {
     let engine = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
     let seen = Rc::new(RefCell::new(None));
     set_render_backend(engine, Some(Box::new(Recorder(seen.clone())))).unwrap();
-    let font = value(og_load_font(
+    let font = value(og_runtime::host_impl::answer(og_load_font(
         engine,
         "fonts/ChakraPetch-BoldItalic.ttf".into(),
-    ));
+    )));
     value(og_engine_frame(engine, 1000.0 / 60.0));
     let screen_text = || {
         let d = json!({ "font": font, "text": "F", "screen": true, "position": { "x": 20, "y": 20, "z": 0 } });
-        value(og_render_text(engine, Some(d.to_string())));
+        value(og_runtime::host_impl::answer(og_render_text(
+            engine,
+            Some(d.to_string()),
+        )));
     };
 
     og_ui_preview_viewport(

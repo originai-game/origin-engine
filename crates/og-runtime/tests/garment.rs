@@ -151,30 +151,46 @@ fn run(frames: usize, model: &str, garment: Value, animated: bool) -> (Vec<Vec<[
     let engine = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
     let seen = Rc::new(RefCell::new(Seen::default()));
     set_render_backend(engine, Some(Box::new(Recorder(seen.clone())))).unwrap();
-    let anim = value(og_load_animation(engine, model.into()));
+    let anim = value(og_runtime::host_impl::answer(og_load_animation(
+        engine,
+        model.into(),
+    )));
     let clip = anim["clips"].as_array().unwrap()[0]["clip"].clone();
-    let asset = value(og_load_gltf(engine, model.into(), None));
-    let e = value(og_world_instantiate(engine, asset.as_f64().unwrap(), None))
-        .as_f64()
-        .unwrap();
+    let asset = value(og_runtime::host_impl::answer(og_load_gltf(
+        engine,
+        model.into(),
+        None,
+    )));
+    let e = value(og_runtime::host_impl::answer(og_world_instantiate(
+        engine,
+        asset.as_f64().unwrap(),
+        None,
+    )))
+    .as_f64()
+    .unwrap();
     for (name, v) in [
         ("og.Skeleton", json!({ "asset": anim["skeleton"] })),
         ("og.Garment", garment),
     ] {
-        value(og_world_insert(engine, e, name.into(), Some(v.to_string())));
+        value(og_runtime::host_impl::answer(og_world_insert(
+            engine,
+            e,
+            name.into(),
+            Some(v.to_string()),
+        )));
     }
     if animated {
-        value(og_world_insert(
+        value(og_runtime::host_impl::answer(og_world_insert(
             engine,
             e,
             "og.AnimationPlayer".into(),
             Some(json!({ "clip": clip, "loop": true }).to_string()),
-        ));
+        )));
     }
     let mut out = Vec::new();
     for _ in 0..frames {
         value(og_engine_frame(engine, 1000.0 / 60.0));
-        let text = og_physics_garment_points(engine, e);
+        let text = og_runtime::host_impl::answer(og_physics_garment_points(engine, e));
         let v: Value = serde_json::from_str(&text).unwrap();
         out.push(
             v["value"]

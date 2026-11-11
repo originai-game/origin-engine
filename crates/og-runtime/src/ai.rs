@@ -4,20 +4,13 @@
 //! the world's.
 
 use super::engine::engine;
-use super::wire::{self, AiDescription, BehaviourInfo, ToJson};
-use super::{ok_void, parse, refuse};
+use super::parse;
+use super::wire::{AiDescription, BehaviourInfo, ToJson};
 use og_ai::{AiSystem, Behaviour, Root, Value as AiValue};
 use og_core::glam::Vec3;
 use og_ecs::{Entity, World};
 use serde_json::{Value, json};
 use std::sync::Arc;
-
-fn answer(r: Result<BehaviourInfo, String>) -> String {
-    match r {
-        Ok(v) => wire::ok(&v),
-        Err(e) => refuse(e),
-    }
-}
 
 fn handle(h: f64) -> u64 {
     if h.is_finite() && h >= 0.0 {
@@ -77,21 +70,21 @@ fn cooked_text(world: u32, path: &str) -> Result<String, String> {
         .map_err(|e| e.to_string())
 }
 
-pub fn og_ai_load(world: u32, path: String) -> String {
-    answer((|| {
+pub fn og_ai_load(world: u32, path: String) -> Result<crate::wire::BehaviourInfo, String> {
+    (|| {
         let id = og_bundle::runtime::asset_id(&path).to_string();
         let text = cooked_text(world, &id)?;
         let mut read = |p: &str| cooked_text(world, p);
         let b = Behaviour::parse_with(&text, &id, &mut read).map_err(|e| format!("{id}: {e}"))?;
         insert(world, b)
-    })())
+    })()
 }
 
-pub fn og_ai_parse(world: u32, text: String) -> String {
-    answer(engine(world).and_then(|_| {
+pub fn og_ai_parse(world: u32, text: String) -> Result<crate::wire::BehaviourInfo, String> {
+    engine(world).and_then(|_| {
         let mut read = |p: &str| cooked_text(world, p);
         insert(world, Behaviour::parse_with(&text, "", &mut read)?)
-    }))
+    })
 }
 
 pub fn og_ai_finish(world: u32, entity: f64, success: bool, action: Option<String>) -> bool {
@@ -136,7 +129,7 @@ pub fn og_ai_get(world: u32, entity: f64, key: String) -> String {
         .to_string()
 }
 
-pub fn og_ai_set(world: u32, entity: f64, key: String, value: String) -> String {
+pub fn og_ai_set(world: u32, entity: f64, key: String, value: String) -> Result<(), String> {
     let r = (|| -> Result<(), String> {
         if og_ai::BUILTIN_KEYS.contains(&key.as_str()) {
             return Err(format!(
@@ -153,23 +146,23 @@ pub fn og_ai_set(world: u32, entity: f64, key: String, value: String) -> String 
         }
     })();
     match r {
-        Ok(()) => ok_void(),
-        Err(e) => refuse(e),
+        Ok(()) => Ok(()),
+        Err(e) => Err(e),
     }
 }
 
 /// `og.ai.restart`: the agent's behaviour starts afresh at its next think.
-pub fn og_ai_restart(world: u32, entity: f64) -> String {
+pub fn og_ai_restart(world: u32, entity: f64) -> Result<(), String> {
     match system(world) {
         Some(s) => {
             s.restart(Entity::from_bits(handle(entity)));
-            ok_void()
+            Ok(())
         }
-        None => refuse("this world has no og.ai".to_string()),
+        None => Err("this world has no og.ai".to_string()),
     }
 }
 
-pub fn og_ai_noise(world: u32, desc: Option<String>) -> String {
+pub fn og_ai_noise(world: u32, desc: Option<String>) -> Result<(), String> {
     let r = (|| -> Result<(), String> {
         let d: super::wire::NoiseDesc = super::wire::arg(desc.as_deref(), "desc")?;
         let s = system(world).ok_or("this world has no og.ai")?;
@@ -181,8 +174,8 @@ pub fn og_ai_noise(world: u32, desc: Option<String>) -> String {
         Ok(())
     })();
     match r {
-        Ok(()) => ok_void(),
-        Err(e) => refuse(e),
+        Ok(()) => Ok(()),
+        Err(e) => Err(e),
     }
 }
 
@@ -231,7 +224,7 @@ fn perception_of(world: &World, e: Entity) -> Option<(bool, u64)> {
         .map(|p| (p.sees, p.target))
 }
 
-pub fn og_ai_describe(world: u32, entity: f64) -> String {
+pub fn og_ai_describe(world: u32, entity: f64) -> Option<crate::wire::AiDescription> {
     let e = Entity::from_bits(handle(entity));
     let p = engine(world).ok().and_then(|eng| {
         if super::engine::running(world).is_some() {
@@ -239,7 +232,7 @@ pub fn og_ai_describe(world: u32, entity: f64) -> String {
         }
         eng.world().ok().and_then(|w| perception_of(w, e))
     });
-    wire::text_of(&describe_value(world, e, p))
+    describe_value(world, e, p)
 }
 
 /// `dump_ai`'s JSON.

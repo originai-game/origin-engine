@@ -116,19 +116,22 @@ fn grid_of(count: usize, kind: Kind) -> (u32, Rc<Cell<usize>>) {
         for i in 0..count {
             let (x, y) = ((i % 200) as f64 * 1.2, (i / 200) as f64 * 1.2);
             let desc = json!({ "position": { "x": x, "y": y, "z": 0 } }).to_string();
-            let e = value(og_world_spawn(world, Some(desc)));
+            let e = value(og_runtime::host_impl::answer(og_world_spawn(
+                world,
+                Some(desc),
+            )));
             let sprite = json!({
                 "width": 1.0, "height": 1.5, "anchor": { "x": 0.5, "y": 0.0 },
                 "color": { "r": 1.0, "g": 0.8, "b": 0.6 }, "opacity": 0.9,
                 "layer": (i % 4) as i32, "sortY": true, "flipX": i % 2 == 0,
             })
             .to_string();
-            value(og_world_insert(
+            value(og_runtime::host_impl::answer(og_world_insert(
                 world,
                 e.as_f64().expect("entity"),
                 "og.Sprite".into(),
                 Some(sprite),
-            ));
+            )));
         }
         let seen = Rc::new(Cell::new(0));
         set_render_backend(engine, Some(Box::new(Counting(seen.clone(), true)))).expect("backend");
@@ -138,39 +141,48 @@ fn grid_of(count: usize, kind: Kind) -> (u32, Rc<Cell<usize>>) {
         for i in 0..count {
             let (x, z) = ((i % 200) as f64 * 1.2, (i / 200) as f64 * 1.2);
             let desc = json!({ "position": { "x": x, "y": 0, "z": z } }).to_string();
-            let e = value(og_world_spawn(world, Some(desc)));
+            let e = value(og_runtime::host_impl::answer(og_world_spawn(
+                world,
+                Some(desc),
+            )));
             let model = json!({
                 "asset": 7, "tint": { "r": 1.0, "g": 0.9, "b": 0.8 }, "flash": 0.25,
                 "castShadow": i % 2 == 0, "lodBias": 1.5,
             })
             .to_string();
-            value(og_world_insert(
+            value(og_runtime::host_impl::answer(og_world_insert(
                 world,
                 e.as_f64().expect("entity"),
                 "og.Model".into(),
                 Some(model),
-            ));
+            )));
         }
         let seen = Rc::new(Cell::new(usize::MAX));
         set_render_backend(engine, Some(Box::new(Counting(seen.clone(), false)))).expect("backend");
         return (engine, seen);
     }
-    let geometry = value(og_render_sphere_geometry(
+    let geometry = value(og_runtime::host_impl::answer(og_render_sphere_geometry(
         world,
         Some(r#"{"radius":0.5,"widthSegments":16,"heightSegments":12}"#.into()),
-    ));
-    let material = value(og_render_standard_material(world, Some("{}".into())));
+    )));
+    let material = value(og_runtime::host_impl::answer(og_render_standard_material(
+        world,
+        Some("{}".into()),
+    )));
     for i in 0..count {
         let (x, z) = ((i % 200) as f64 * 1.2, (i / 200) as f64 * 1.2);
         let desc = json!({ "position": { "x": x, "y": 0, "z": z } }).to_string();
-        let e = value(og_world_spawn(world, Some(desc)));
+        let e = value(og_runtime::host_impl::answer(og_world_spawn(
+            world,
+            Some(desc),
+        )));
         let mesh = json!({ "geometry": geometry, "material": material }).to_string();
-        value(og_world_insert(
+        value(og_runtime::host_impl::answer(og_world_insert(
             world,
             e.as_f64().expect("entity"),
             "og.Mesh".into(),
             Some(mesh),
-        ));
+        )));
     }
     let seen = Rc::new(Cell::new(0));
     set_render_backend(engine, Some(Box::new(Counting(seen.clone(), false)))).expect("backend");
