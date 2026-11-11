@@ -121,7 +121,7 @@ impl Probe {
     /// the assertion events among them by tick.
     pub fn timeline(&mut self, world: &World) -> Value {
         let (mut events, dropped) = self.timeline.take();
-        for e in self.assertions.borrow_mut().take_timeline() {
+        for e in self.checks.assertions.borrow_mut().take_timeline() {
             let outcome = e["outcome"].as_str().unwrap_or("fired");
             let what = format!(
                 "{outcome} {}{}",

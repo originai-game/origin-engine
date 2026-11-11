@@ -80,3 +80,22 @@ pub(crate) struct Inject {
     /// The host's input filter ([`Probe::set_input_filter`]).
     pub(super) filter: Option<InputFilterFn>,
 }
+
+/// What a run asserts: its expectations, assertions, invariants and counted events.
+pub(crate) struct Checks {
+    /// Expectations evaluated since the host last took them.
+    pub(crate) expectations: Vec<ExpectResult>,
+    /// The run's assertions: the game's, the default invariants' and the
+    /// script's `invariant:` steps' (shared with the host, which records
+    /// the game's calls while a system runs).
+    pub(crate) assertions: Rc<RefCell<Assertions>>,
+    /// The script's `invariant:` steps, each an expectation (its words
+    /// after `invariant:`) evaluated after every tick.
+    pub(crate) invariants: Vec<Vec<String>>,
+    /// An invariant is being evaluated: its expectation is not kept or logged.
+    pub(crate) quiet: bool,
+    /// Event types an expectation counts, with their counts, and each
+    /// one's count when the script that asks began.
+    pub(crate) events: BTreeMap<String, Watch>,
+    pub(crate) event_base: BTreeMap<String, u64>,
+}

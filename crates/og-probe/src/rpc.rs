@@ -414,7 +414,7 @@ impl Probe {
             #[cfg(not(feature = "publish"))]
             "assertions" => {
                 let take = p.get("take").and_then(Value::as_bool).unwrap_or(false);
-                let mut a = self.assertions.borrow_mut();
+                let mut a = self.checks.assertions.borrow_mut();
                 if take { a.take() } else { a.report() }
             }
             #[cfg(not(feature = "publish"))]
@@ -430,7 +430,7 @@ impl Probe {
                 self.observe(world, records.as_deref(), types)
             }
             #[cfg(not(feature = "publish"))]
-            "assertion_events" => self.assertions.borrow_mut().take_events(),
+            "assertion_events" => self.checks.assertions.borrow_mut().take_events(),
             #[cfg(not(feature = "publish"))]
             "save_scene" => {
                 let write = p.get("write").and_then(Value::as_bool).unwrap_or(false);

@@ -804,18 +804,18 @@ impl Probe {
 
     fn record(&mut self, r: ExpectResult) -> ExpectResult {
         // An invariant's evaluation, every tick: its result is the caller's alone.
-        if self.quiet {
+        if self.checks.quiet {
             return r;
         }
         self.note(r.tick, r.status == Status::Fail, r.line());
         self.timeline.expect(&r);
-        self.expectations.push(r.clone());
+        self.checks.expectations.push(r.clone());
         r
     }
 
     /// Every expectation evaluated since the last call, in order.
     pub fn take_expectations(&mut self) -> Vec<ExpectResult> {
-        std::mem::take(&mut self.expectations)
+        std::mem::take(&mut self.checks.expectations)
     }
 
     /// The frame at the target's size, or `None` with the result marked
@@ -861,22 +861,29 @@ impl Probe {
 
     /// Events of `name` counted since the script that asked began.
     fn events_seen(&self, name: &str) -> u64 {
-        let total = self.events.get(name).map_or(0, |w| w.total);
-        total - self.event_base.get(name).copied().unwrap_or(0).min(total)
+        let total = self.checks.events.get(name).map_or(0, |w| w.total);
+        total
+            - self
+                .checks
+                .event_base
+                .get(name)
+                .copied()
+                .unwrap_or(0)
+                .min(total)
     }
 
     /// Starts counting the events the expectations among `steps` name, from now.
     pub(crate) fn watch_events<'a>(&mut self, names: impl Iterator<Item = &'a str>) {
         for name in names {
-            let w = self.events.entry(name.to_owned()).or_default();
-            self.event_base.insert(name.to_owned(), w.total);
+            let w = self.checks.events.entry(name.to_owned()).or_default();
+            self.checks.event_base.insert(name.to_owned(), w.total);
         }
     }
 
     /// Counts the watched events sent since the last count (`before`: by
     /// the host between ticks; after: by the tick's systems).
     pub(crate) fn count_events(&mut self, world: &World, before: bool) {
-        for (name, w) in &mut self.events {
+        for (name, w) in &mut self.checks.events {
             let Ok(id) = world.id_by_name(name) else {
                 continue;
             };
