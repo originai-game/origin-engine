@@ -2,56 +2,44 @@
 
 use super::*;
 
-pub(super) struct ViewPassInputs<'a> {
-    /// What the frame draws with (draw_ctx.rs).
-    pub(super) ctx: &'a DrawCtx<'a>,
-    pub(super) i: u32,
-    pub(super) scene: &'a RenderScene,
-    pub(super) view_plans: &'a [views::ViewPlan],
-    pub(super) encoder: &'a mut Encoder,
-    pub(super) stats: &'a mut FrameStats,
+pub(super) struct ViewPlan<'f> {
+    pub(super) scene: &'f RenderScene,
+    pub(super) view_plans: &'f [views::ViewPlan],
     pub(super) lights_2d: u32,
-    pub(super) view_groups: &'a [(wgpu::BindGroup, wgpu::BindGroup, Option<wgpu::BindGroup>)],
-    pub(super) view_lists: &'a [DrawList],
-    pub(super) view_skinned: &'a [Vec<Batch>],
-    pub(super) terrain_indices: Option<&'a wgpu::Buffer>,
-    pub(super) terrain_draws: &'a [terrain::TerrainDraw],
-    pub(super) sky_group: &'a wgpu::BindGroup,
-    pub(super) view_blended: &'a [DrawList],
-    pub(super) view_boards: &'a [sprites::Billboards],
-    pub(super) view_sprite_fx: &'a [wgpu::BindGroup],
-    pub(super) view_particle_groups: &'a [Option<wgpu::BindGroup>],
-    pub(super) particle_frame: &'a particles_gpu::ParticleFrame,
-    pub(super) view_ribbons: &'a [Vec<ribbons::RibbonRun>],
-    pub(super) line_frame: &'a lines::LineFrame,
-    pub(super) view_line_groups: &'a [wgpu::BindGroup],
-    pub(super) view_sprites: &'a [Vec<sprites::SpriteRun>],
-    pub(super) view_fields: &'a [Vec<wgpu::BindGroup>],
-    pub(super) view_glow_runs: &'a [Vec<sprites::SpriteRun>],
-    pub(super) post_fx: &'a PostEffects,
+    pub(super) view_groups: &'f [(wgpu::BindGroup, wgpu::BindGroup, Option<wgpu::BindGroup>)],
+    pub(super) view_lists: &'f [DrawList],
+    pub(super) view_skinned: &'f [Vec<Batch>],
+    pub(super) terrain_indices: Option<&'f wgpu::Buffer>,
+    pub(super) terrain_draws: &'f [terrain::TerrainDraw],
+    pub(super) view_blended: &'f [DrawList],
+    pub(super) view_boards: &'f [sprites::Billboards],
+    pub(super) view_sprite_fx: &'f [wgpu::BindGroup],
+    pub(super) view_particle_groups: &'f [Option<wgpu::BindGroup>],
+    pub(super) particle_frame: &'f particles_gpu::ParticleFrame,
+    pub(super) view_ribbons: &'f [Vec<ribbons::RibbonRun>],
+    pub(super) line_frame: &'f lines::LineFrame,
+    pub(super) view_line_groups: &'f [wgpu::BindGroup],
+    pub(super) view_sprites: &'f [Vec<sprites::SpriteRun>],
+    pub(super) view_fields: &'f [Vec<wgpu::BindGroup>],
+    pub(super) view_glow_runs: &'f [Vec<sprites::SpriteRun>],
+    pub(super) post_fx: &'f PostEffects,
     /// Each pass's view of the meshlet dispatch (0: none), and the
     /// frame's batches it draws.
-    pub(super) meshlet_views: &'a [u32],
-    pub(super) batches: &'a [Batch],
+    pub(super) meshlet_views: &'f [u32],
+    pub(super) batches: &'f [Batch],
 }
 
 impl Renderer {
-    pub(super) fn encode_view(
-        &self,
-        ViewPassInputs {
-            ctx,
-            i,
+    pub(super) fn encode_view(&self, plan: &ViewPlan<'_>, i: u32, cx: &mut EncodeCx<'_, '_>) {
+        let &ViewPlan {
             scene,
             view_plans,
-            encoder,
-            stats,
             lights_2d,
             view_groups,
             view_lists,
             view_skinned,
             terrain_indices,
             terrain_draws,
-            sky_group,
             view_blended,
             view_boards,
             view_sprite_fx,
@@ -66,8 +54,9 @@ impl Renderer {
             post_fx,
             meshlet_views,
             batches,
-        }: ViewPassInputs<'_>,
-    ) {
+        } = plan;
+        let (ctx, encoder, stats, sky_group) =
+            (cx.ctx, &mut *cx.encoder, &mut *cx.stats, cx.sky_group);
         // A secondary camera (views.rs): the main pass's draws
         // on its layers from its eye, then its resolve.
         let (i, clear) = (i as usize, background_clear(&scene.environment.background));
@@ -289,5 +278,34 @@ impl Renderer {
             }
             stats.draw_calls += 1 + depth.is_some() as u32;
         }
+    }
+}
+
+pub(super) struct ViewPass;
+
+impl Pass for ViewPass {
+    /// Its own depth prepass, as the probes' faces.
+    const DESC: PassDesc = PassDesc {
+        pass: FramePass::View(0),
+        name: "view",
+        needs: Caps::MRT,
+    };
+    type State = views::Views;
+    type Plan<'f> = ViewPlan<'f>;
+
+    fn state(r: &Renderer) -> &Self::State {
+        &r.views
+    }
+
+    fn encode<'f>(
+        _: &Self::State,
+        plan: &ViewPlan<'f>,
+        pass: FramePass,
+        cx: &mut EncodeCx<'_, 'f>,
+    ) {
+        let FramePass::View(i) = pass else {
+            unreachable!("a view pass")
+        };
+        cx.ctx.r.encode_view(plan, i, cx);
     }
 }

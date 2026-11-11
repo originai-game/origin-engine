@@ -30,7 +30,7 @@ mod pass_probes;
 use pass_probes::{ProbesPass, ProbesPlan};
 
 mod pass_view;
-use pass_view::ViewPassInputs;
+use pass_view::{ViewPass, ViewPlan};
 
 mod pass_prepass;
 use pass_prepass::PrepassPassInputs;
@@ -4307,6 +4307,30 @@ impl Renderer {
             terrain_draws: &terrain_draws,
             reflection_blended: &reflection_blended,
         });
+        plans.view = (!view_plans.is_empty()).then(|| ViewPlan {
+            meshlet_views: &view_views,
+            batches: &batches,
+            scene,
+            view_plans: &view_plans,
+            lights_2d,
+            view_groups: &view_groups,
+            view_lists: &view_lists,
+            view_skinned: &view_skinned,
+            terrain_indices,
+            terrain_draws: &terrain_draws,
+            view_blended: &view_blended,
+            view_boards: &view_boards,
+            view_sprite_fx: &view_sprite_fx,
+            view_particle_groups: &view_particle_groups,
+            particle_frame: &particle_frame,
+            view_ribbons: &view_ribbons,
+            line_frame: &line_frame,
+            view_line_groups: &view_line_groups,
+            view_sprites: &view_sprites,
+            view_fields: &view_fields,
+            view_glow_runs: &view_glow_runs,
+            post_fx,
+        });
         for &pass in self.graph.order() {
             // What the pass needs here: its kind's, and what this frame's
             // instance of it adds (schedule.rs).
@@ -4356,35 +4380,6 @@ impl Renderer {
                     scatter_batches: &scatter_batches,
                     cards: camera_cards,
                     grass_frame: &grass_frame,
-                }),
-                FramePass::View(i) => self.encode_view(ViewPassInputs {
-                    ctx: &ctx,
-                    meshlet_views: &view_views,
-                    batches: &batches,
-                    i,
-                    scene,
-                    view_plans: &view_plans,
-                    encoder: &mut encoder,
-                    stats: &mut stats,
-                    lights_2d,
-                    view_groups: &view_groups,
-                    view_lists: &view_lists,
-                    view_skinned: &view_skinned,
-                    terrain_indices,
-                    terrain_draws: &terrain_draws,
-                    sky_group,
-                    view_blended: &view_blended,
-                    view_boards: &view_boards,
-                    view_sprite_fx: &view_sprite_fx,
-                    view_particle_groups: &view_particle_groups,
-                    particle_frame: &particle_frame,
-                    view_ribbons: &view_ribbons,
-                    line_frame: &line_frame,
-                    view_line_groups: &view_line_groups,
-                    view_sprites: &view_sprites,
-                    view_fields: &view_fields,
-                    view_glow_runs: &view_glow_runs,
-                    post_fx,
                 }),
                 FramePass::Main => {
                     self.encode_main(MainPassInputs {

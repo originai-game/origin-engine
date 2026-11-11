@@ -101,4 +101,5 @@ passes! {
     ssr: pass_ssr::SsrPass => FramePass::Ssr,
     probes: pass_probes::ProbesPass => FramePass::Probes,
     reflection: pass_reflection::ReflectionPass => FramePass::Reflection(_),
+    view: pass_view::ViewPass => FramePass::View(_),
 }

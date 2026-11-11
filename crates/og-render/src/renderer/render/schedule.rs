@@ -47,12 +47,7 @@ pub(crate) const PASSES: &[PassDesc] = &[
     ParticlesPass::DESC,
     ProbesPass::DESC,
     ReflectionPass::DESC,
-    // Its own depth prepass, as the probes' faces.
-    PassDesc {
-        pass: FramePass::View(0),
-        name: "view",
-        needs: Caps::MRT,
-    },
+    ViewPass::DESC,
     VolumetricPass::DESC,
     SsrPass::DESC,
 ];
