@@ -346,39 +346,39 @@ impl Ui {
         // A button with only text is the leaf control; with content it holds it.
         let container = schema::kind(kind).is_some_and(|k| k.container)
             && (kind != "button" || !n.children.is_empty());
-        // A dialog's or a disclosure's `open`: the bound store's, else the
-        // literal's until the player toggles it (kept as widget memory).
-        let open_now = |ui: &mut Ui| -> bool {
-            let literal = r.flag("open");
-            if bound(n, "open") {
-                literal
-            } else {
-                ui.memory(
-                    &format!("{}~doc-open", id.as_str()),
-                    f64::from(u8::from(literal)),
-                ) > 0.0
-            }
-        };
-        let dialog = crate::widgets::DialogDesc {
-            modal: r.flag("modal"),
-            name: r.str("name").unwrap_or_default().to_string(),
-            width: r.size("width"),
-            backdrop: None,
-            closedby: match r.str("closedby") {
-                Some("any") => crate::widgets::ClosedBy::Any,
-                Some("closerequest") => crate::widgets::ClosedBy::CloseRequest,
-                Some("none") => crate::widgets::ClosedBy::None,
-                _ => crate::widgets::ClosedBy::Auto,
-            },
-            bare: r.str("appearance") == Some("none"),
-        };
-        let mut opened: Option<bool> = None;
-        // A spotlight's callout layer, open (closed by `close`).
-        let mut spot = false;
-        // A closed dialog or disclosure builds no content (HTML renders
-        // none): opened, its controls are built fresh and take input.
-        let mut shows_content = true;
         if container {
+            // A dialog's or a disclosure's `open`: the bound store's, else the
+            // literal's until the player toggles it (kept as widget memory).
+            let open_now = |ui: &mut Ui| -> bool {
+                let literal = r.flag("open");
+                if bound(n, "open") {
+                    literal
+                } else {
+                    ui.memory(
+                        &format!("{}~doc-open", id.as_str()),
+                        f64::from(u8::from(literal)),
+                    ) > 0.0
+                }
+            };
+            let dialog = crate::widgets::DialogDesc {
+                modal: r.flag("modal"),
+                name: r.str("name").unwrap_or_default().to_string(),
+                width: r.size("width"),
+                backdrop: None,
+                closedby: match r.str("closedby") {
+                    Some("any") => crate::widgets::ClosedBy::Any,
+                    Some("closerequest") => crate::widgets::ClosedBy::CloseRequest,
+                    Some("none") => crate::widgets::ClosedBy::None,
+                    _ => crate::widgets::ClosedBy::Auto,
+                },
+                bare: r.str("appearance") == Some("none"),
+            };
+            let mut opened: Option<bool> = None;
+            // A spotlight's callout layer, open (closed by `close`).
+            let mut spot = false;
+            // A closed dialog or disclosure builds no content (HTML renders
+            // none): opened, its controls are built fresh and take input.
+            let mut shows_content = true;
             match kind {
                 "dialog" if open_now(self) && r.str("spotlight").is_some() => {
                     let target = r.str("spotlight").unwrap_or_default();
