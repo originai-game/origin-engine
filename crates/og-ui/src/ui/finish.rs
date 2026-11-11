@@ -1277,14 +1277,14 @@ impl Ui {
             for &i in &order {
                 let n = &self.nodes[i];
                 assert_eq!(
-                    self.kept.sigs.get(i).copied().flatten(),
+                    self.paint_cache.sigs.get(i).copied().flatten(),
                     Some((n.key, crate::layout::DrawSig::of(n))),
                     "'{}' paints with another signature than it was kept by",
                     self.path_of(i)
                 );
             }
         }
-        let repainted = self.kept.repainted.take();
+        let repainted = self.paint_cache.repainted.take();
         self.note_semantics(repainted.as_deref());
         let matched = self.orders.with(visit::feat::MATCH).to_vec();
         self.record_matches(&matched);
@@ -1307,8 +1307,8 @@ impl Ui {
         // Every tree drew as last frame, and what is over them too: the
         // frame's items are last frame's.
         let kept_items = view.is_none()
-            && self.kept.reused_all
-            && tail == self.kept.last_tail
+            && self.paint_cache.reused_all
+            && tail == self.paint_cache.last_tail
             && self.frame.unit == self.unit;
         let (items, missing_glyphs) = if kept_items {
             (std::mem::take(&mut self.frame.items), Vec::new())
@@ -1344,12 +1344,12 @@ impl Ui {
             let (items, levels) = crate::draw::assign_levels_kept(cmds);
             // Levels of a list with elements left out are no base for the
             // next frame's.
-            self.kept.levels = view.is_none().then_some(levels);
+            self.paint_cache.levels = view.is_none().then_some(levels);
             (crate::draw::zoom_items(items, self.unit), missing_glyphs)
         };
-        self.kept.prev_cmds = Vec::new();
-        self.kept.last_cmds = trees;
-        self.kept.last_tail = tail;
+        self.paint_cache.prev_cmds = Vec::new();
+        self.paint_cache.last_cmds = trees;
+        self.paint_cache.last_tail = tail;
         let mut focus_paths: [String; 4] = Default::default();
         let focused = [
             self.state.focus,
@@ -1409,13 +1409,13 @@ impl Ui {
         trees: &[(DrawCmd, Affine)],
         tail: &[(DrawCmd, Affine)],
     ) -> Option<(Vec<DrawItem>, MissingGlyphs)> {
-        let prev = std::mem::take(&mut self.kept.prev_cmds);
-        if self.kept.levels.is_none()
-            || self.kept.aligned.len() != self.kept.aligned_kept
-            || self.kept.shifted_out
+        let prev = std::mem::take(&mut self.paint_cache.prev_cmds);
+        if self.paint_cache.levels.is_none()
+            || self.paint_cache.aligned.len() != self.paint_cache.aligned_kept
+            || self.paint_cache.shifted_out
             || self.frame.unit != self.unit
-            || trees.len() != self.kept.prev_len
-            || tail.len() != self.kept.last_tail.len()
+            || trees.len() != self.paint_cache.prev_len
+            || tail.len() != self.paint_cache.last_tail.len()
         {
             return None;
         }
@@ -1423,7 +1423,7 @@ impl Ui {
         let mut changed = Vec::new();
         let mut at = 0;
         let gaps = self
-            .kept
+            .paint_cache
             .aligned
             .iter()
             .map(|r| (r.start, r.end))
@@ -1439,7 +1439,7 @@ impl Ui {
             }
             at = at.max(end);
         }
-        for (k, (now, was)) in tail.iter().zip(&self.kept.last_tail).enumerate() {
+        for (k, (now, was)) in tail.iter().zip(&self.paint_cache.last_tail).enumerate() {
             if now != was {
                 changed.push(trees.len() + k);
             }
@@ -1462,7 +1462,7 @@ impl Ui {
             .zip(baked)
             .map(|(p, (c, m))| (p, c, m))
             .collect();
-        let levels = self.kept.levels.as_mut().expect("checked");
+        let levels = self.paint_cache.levels.as_mut().expect("checked");
         if !levels.update(&mut items, replaced, self.unit) {
             self.frame.items = items;
             return None;
@@ -1491,17 +1491,17 @@ impl Ui {
         trees: &[(DrawCmd, Affine)],
         tail: &[(DrawCmd, Affine)],
     ) -> Option<(Vec<DrawItem>, MissingGlyphs)> {
-        if self.kept.copied.is_empty() || self.frame.unit != self.unit {
+        if self.paint_cache.copied.is_empty() || self.frame.unit != self.unit {
             return None;
         }
-        let levels = self.kept.levels.as_mut()?;
+        let levels = self.paint_cache.levels.as_mut()?;
         let mut from: Vec<Option<(usize, (f32, f32))>> = vec![None; trees.len()];
-        for &(start, was, len, delta) in &self.kept.copied {
+        for &(start, was, len, delta) in &self.paint_cache.copied {
             for k in 0..len {
                 from[start + k] = Some((was + k, delta));
             }
         }
-        let same_tail = tail.len() == self.kept.last_tail.len();
+        let same_tail = tail.len() == self.paint_cache.last_tail.len();
         let mut fresh = Vec::new();
         let mut next = Vec::with_capacity(trees.len() + tail.len());
         for (p, (c, m)) in trees.iter().enumerate() {
@@ -1528,9 +1528,9 @@ impl Ui {
             });
         }
         for (k, c) in tail.iter().enumerate() {
-            next.push(if same_tail && *c == self.kept.last_tail[k] {
+            next.push(if same_tail && *c == self.paint_cache.last_tail[k] {
                 crate::draw::Spliced {
-                    from: Some(self.kept.prev_len + k),
+                    from: Some(self.paint_cache.prev_len + k),
                     delta: (0.0, 0.0),
                     cmd: None,
                 }
@@ -1547,7 +1547,7 @@ impl Ui {
         let old = std::mem::take(&mut self.frame.items);
         let items = levels.splice(old, next, self.unit);
         if items.is_none() {
-            self.kept.levels = None;
+            self.paint_cache.levels = None;
         }
         let items = items?;
         self.kept_spans.clear();
