@@ -175,6 +175,7 @@ impl Tiles {
         // reloads cannot alias a cached allocation, even across scenes.
         self.layers.retain(|l| {
             scene
+                .sprite
                 .tile_layers
                 .iter()
                 .any(|s| Arc::ptr_eq(&l.source, &s.chunks))
@@ -183,7 +184,7 @@ impl Tiles {
         self.textures.clear();
         let mut params = Vec::with_capacity(draws.len() * 256);
         for draw in draws {
-            let layer = &scene.tile_layers[draw.layer];
+            let layer = &scene.sprite.tile_layers[draw.layer];
             let index = match self
                 .layers
                 .iter()

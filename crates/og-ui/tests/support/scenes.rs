@@ -1062,7 +1062,7 @@ pub fn stripes_scene(glass: &[og_render::Glass]) -> (RenderScene, RenderDesc) {
     scene.camera =
         og_render::Camera::orthographic_2d(Vec2::new(w as f32 / 2.0, h as f32 / 2.0), h as f32);
     for k in 0..(w / 8) {
-        scene.sprites.push(og_render::Sprite {
+        scene.sprite.sprites.push(og_render::Sprite {
             position: Vec3::new(k as f32 * 8.0 + 2.0, h as f32 / 2.0, 0.0),
             size: Vec2::new(4.0, h as f32),
             color: [1.0, 1.0, 1.0, 1.0],

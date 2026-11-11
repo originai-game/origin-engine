@@ -66,7 +66,8 @@ impl Renderer {
         let p = &view_plans[i];
         let frustum = Frustum::from_view_proj(p.frame.view_proj);
         // Its 2D light map, as its camera sees the lights.
-        if let (Some(l), Some(slot)) = (scene.lighting_2d, self.views.slots[p.index].as_ref())
+        if let (Some(l), Some(slot)) =
+            (scene.sprite.lighting_2d, self.views.slots[p.index].as_ref())
             && let Some((size, map)) = slot.light_map.as_ref()
         {
             self.lights_2d

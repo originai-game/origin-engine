@@ -193,10 +193,10 @@ pub fn sprites_shadow_scene() -> RenderScene {
     // Three figures with drop shadows, the third darker; a fourth without
     // one beside the pillar; a wheel drawn from the texture array with one.
     let add = |scene: &mut RenderScene, sprite: Sprite, shadow: f32| {
-        let i = scene.sprites.len() as u32;
+        let i = scene.sprite.sprites.len() as u32;
         scene.add_sprite(sprite);
         if shadow > 0.0 {
-            scene.sprite_shadows.push(SpriteShadow {
+            scene.sprite.sprite_shadows.push(SpriteShadow {
                 sprite: i,
                 opacity: shadow,
                 ..Default::default()
@@ -237,7 +237,7 @@ pub fn sprites_shadow_scene() -> RenderScene {
         0.0,
     );
     let w = add(&mut scene, stand(-0.6, -2.2, 1.2), 0.6);
-    scene.sprite_arrays.push(SpriteArray {
+    scene.sprite.sprite_arrays.push(SpriteArray {
         sprite: w,
         array: wheel,
         layer: 3,
@@ -321,12 +321,12 @@ pub fn billboard_scene() -> RenderScene {
         ..Default::default()
     };
     let add = |scene: &mut RenderScene, sprite: Sprite, facing: SpriteFacing, shadow: f32| {
-        let i = scene.sprites.len();
+        let i = scene.sprite.sprites.len();
         scene.add_sprite(sprite);
-        scene.sprite_facing.resize(i, SpriteFacing::None);
-        scene.sprite_facing.push(facing);
+        scene.sprite.sprite_facing.resize(i, SpriteFacing::None);
+        scene.sprite.sprite_facing.push(facing);
         if shadow > 0.0 {
-            scene.sprite_shadows.push(SpriteShadow {
+            scene.sprite.sprite_shadows.push(SpriteShadow {
                 sprite: i as u32,
                 opacity: shadow,
                 ..Default::default()
@@ -418,14 +418,14 @@ pub fn billboard_scene() -> RenderScene {
         SpriteFacing::CameraY,
         0.0,
     );
-    scene.lighting_2d = Some(Lighting2d {
+    scene.sprite.lighting_2d = Some(Lighting2d {
         ambient: Vec3::splat(0.25),
         min_layer: 1,
         max_layer: 1,
         resolution: 1.0,
         shadow_angles: 1024,
     });
-    scene.lights_2d.push(Light2d {
+    scene.sprite.lights_2d.push(Light2d {
         position: Vec2::new(-5.7, 0.1),
         color: Vec3::new(1.0, 0.7, 0.3),
         intensity: 2.0,
@@ -557,9 +557,9 @@ pub fn sprites_shadow_terrain_scene() -> RenderScene {
         } else {
             ShadowGround::fit(|x, z| data.height(Vec2::new(x, z)), &sprite, sun)
         };
-        let i = scene.sprites.len() as u32;
+        let i = scene.sprite.sprites.len() as u32;
         scene.add_sprite(sprite);
-        scene.sprite_shadows.push(SpriteShadow {
+        scene.sprite.sprite_shadows.push(SpriteShadow {
             sprite: i,
             opacity: 0.6,
             ground,
@@ -646,19 +646,19 @@ pub fn sprite_array_fx_scene() -> RenderScene {
     });
     // Four glowing flipbook sprites: one draw, and one glow draw.
     for (n, k) in [1u32, 3, 5, 7].into_iter().enumerate() {
-        let i = scene.sprites.len() as u32;
+        let i = scene.sprite.sprites.len() as u32;
         scene.add_sprite(Sprite {
             position: Vec3::new(-4.5 + n as f32 * 3.0, 2.5, 0.0),
             size: Vec2::splat(2.0),
             layer: 1,
             ..Default::default()
         });
-        scene.sprite_arrays.push(SpriteArray {
+        scene.sprite.sprite_arrays.push(SpriteArray {
             sprite: i,
             array: flipbook,
             layer: k,
         });
-        scene.sprite_fx.push(SpriteFx {
+        scene.sprite.sprite_fx.push(SpriteFx {
             sprite: i,
             glow: 0.25 + n as f32 * 0.25,
             ..Default::default()
@@ -785,10 +785,10 @@ pub fn sprite_array_scene() -> RenderScene {
     let push = |scene: &mut RenderScene,
                 sprite: Sprite,
                 array: Option<(og_render::TextureArrayHandle, u32)>| {
-        let i = scene.sprites.len() as u32;
+        let i = scene.sprite.sprites.len() as u32;
         scene.add_sprite(sprite);
         if let Some((array, layer)) = array {
-            scene.sprite_arrays.push(SpriteArray {
+            scene.sprite.sprite_arrays.push(SpriteArray {
                 sprite: i,
                 array,
                 layer,
@@ -846,7 +846,7 @@ pub fn sprite_array_scene() -> RenderScene {
             },
             Some((glows, k % 3)),
         );
-        scene.sprite_fx.push(SpriteFx {
+        scene.sprite.sprite_fx.push(SpriteFx {
             sprite: i,
             blend: SpriteBlend::Additive,
             ..Default::default()
@@ -860,8 +860,8 @@ pub fn sprite_array_scene() -> RenderScene {
 
 /// Moves every sprite along the spiral (`frame` 0 is the reference frame).
 pub fn move_sprites(scene: &mut RenderScene, frame: u32) {
-    let n = scene.sprites.len();
-    for (i, s) in scene.sprites.iter_mut().enumerate() {
+    let n = scene.sprite.sprites.len();
+    for (i, s) in scene.sprite.sprites.iter_mut().enumerate() {
         let (p, a) = sprite_at(i, n, frame);
         s.position = p.extend(0.0);
         s.rotation = a;
@@ -930,7 +930,7 @@ pub fn lights_2d_scene(angles: u32, normals: bool) -> RenderScene {
                 .map(|(x, y)| Vec2::new(x, y)),
             ),
         };
-        scene.occluders_2d.push(occluder);
+        scene.sprite.occluders_2d.push(occluder);
         scene.add_sprite(Sprite {
             texture: Some(crate_tex),
             position: center.extend(0.0),
@@ -939,14 +939,14 @@ pub fn lights_2d_scene(angles: u32, normals: bool) -> RenderScene {
             ..Default::default()
         });
     }
-    scene.lighting_2d = Some(Lighting2d {
+    scene.sprite.lighting_2d = Some(Lighting2d {
         ambient: Vec3::splat(0.08),
         shadow_angles: angles,
         ..Default::default()
     });
     for i in 0..64 {
         let t = i as f32 / 64.0;
-        scene.lights_2d.push(Light2d {
+        scene.sprite.lights_2d.push(Light2d {
             position: Vec2::new(-30.0 + 60.0 * t, 14.0 * (t * 37.0).sin()),
             color: Vec3::new(1.0, 0.6 + 0.4 * (t * 9.0).sin().abs(), 0.5 + 0.5 * t),
             radius: 6.0 + 4.0 * (t * 13.0).cos().abs(),
@@ -969,7 +969,7 @@ pub fn lights_2d_scene(angles: u32, normals: bool) -> RenderScene {
 /// Moves [`lights_2d_scene`]'s lights a little each frame, so every frame
 /// traces its shadow rows anew.
 pub fn drift_lights_2d(scene: &mut RenderScene, frame: u32) {
-    for (i, l) in scene.lights_2d.iter_mut().enumerate() {
+    for (i, l) in scene.sprite.lights_2d.iter_mut().enumerate() {
         let a = frame as f32 * 0.02 + i as f32;
         l.position += Vec2::new(a.cos(), a.sin()) * 0.05;
     }

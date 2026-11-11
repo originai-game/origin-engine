@@ -78,7 +78,7 @@ impl Renderer {
                 continue;
             }
             if let RunSource::Mesh(i) = source {
-                let mesh = &scene.sprite_meshes[i as usize];
+                let mesh = &scene.sprite.sprite_meshes[i as usize];
                 if let Some(group) = self.normal_group(scene, mesh.texture) {
                     let normals = self
                         .sprite

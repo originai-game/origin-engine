@@ -121,11 +121,11 @@ pub(crate) fn set_facing(
 }
 
 fn push(scene: &mut og_render::RenderScene, s: SpriteOut) {
-    let index = scene.sprites.len() as u32;
-    set_facing(&mut scene.sprite_facing, index as usize, s.facing);
-    scene.sprites.push(s.sprite);
+    let index = scene.sprite.sprites.len() as u32;
+    set_facing(&mut scene.sprite.sprite_facing, index as usize, s.facing);
+    scene.sprite.sprites.push(s.sprite);
     if let Some((array, layer)) = s.array {
-        scene.sprite_arrays.push(og_render::SpriteArray {
+        scene.sprite.sprite_arrays.push(og_render::SpriteArray {
             sprite: index,
             array,
             layer,
@@ -133,11 +133,12 @@ fn push(scene: &mut og_render::RenderScene, s: SpriteOut) {
     }
     if let Some(key) = s.key {
         scene
+            .sprite
             .sprite_order
             .push(og_render::SpriteOrder { sprite: index, key });
     }
     if let Some((width, pixel, [r, g, b])) = s.outline {
-        scene.sprite_outlines.push(og_render::SpriteOutline {
+        scene.sprite.sprite_outlines.push(og_render::SpriteOutline {
             sprite: index,
             width,
             pixel,
@@ -145,25 +146,26 @@ fn push(scene: &mut og_render::RenderScene, s: SpriteOut) {
         });
     }
     if let Some(material) = s.material {
-        scene.sprite_shading.push(og_render::SpriteShading {
+        scene.sprite.sprite_shading.push(og_render::SpriteShading {
             sprite: index,
             material,
         });
     }
     if s.cast_shadow {
         scene
+            .sprite
             .occluders_2d
             .push(og_render::Occluder2d::from_sprite(&s.sprite, 0.0));
     }
     if s.drop_shadow > 0.0 {
-        scene.sprite_shadows.push(og_render::SpriteShadow {
+        scene.sprite.sprite_shadows.push(og_render::SpriteShadow {
             sprite: index,
             opacity: s.drop_shadow.min(1.0),
             ground: og_render::ShadowGround::level(s.drop_shadow_height),
         });
     }
     if s.flash[3] > 0.0 || s.glow > 0.0 || s.additive || !s.tone_mapped {
-        scene.sprite_fx.push(og_render::SpriteFx {
+        scene.sprite.sprite_fx.push(og_render::SpriteFx {
             sprite: index,
             flash: s.flash,
             glow: s.glow,
@@ -309,7 +311,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
         if !on(&v, &s.visible, true) {
             continue;
         }
-        let first = scene.sprites.len();
+        let first = scene.sprite.sprites.len();
         let m = h.world_of(e);
         let pos = m.w_axis.truncate();
         let xa = m.x_axis.truncate();
@@ -506,7 +508,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
         // A faced nine-slice turns as one panel about the sprite's anchor.
         let one_panel = facing != og_render::SpriteFacing::None && pieces.len() > 1;
         for (i, p) in pieces.into_iter().enumerate() {
-            drawn.push((scene.sprites.len() as u32, e));
+            drawn.push((scene.sprite.sprites.len() as u32, e));
             push(
                 scene,
                 SpriteOut {
@@ -532,17 +534,17 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
         }
         // Its blob shadow, afterimages and pieces carry its mask.
         if layers != 1 {
-            let masks = &mut scene.sprite_layers;
+            let masks = &mut scene.sprite.sprite_layers;
             masks.resize(first, 1);
-            masks.resize(scene.sprites.len(), layers);
+            masks.resize(scene.sprite.sprites.len(), layers);
         }
         // So do its 2D light layers.
         if let Some(&m) = light_masks.get(&e)
             && m != 1
         {
-            let masks = &mut scene.sprite_light_masks;
+            let masks = &mut scene.sprite.sprite_light_masks;
             masks.resize(first, 1);
-            masks.resize(scene.sprites.len(), m);
+            masks.resize(scene.sprite.sprites.len(), m);
         }
     }
     rs.ids.sprites = drawn;
@@ -626,15 +628,15 @@ fn floating(rs: &mut RenderState, feel: &Feel, now: f64) {
                 0.5
             };
             for page in pages {
-                let index = rs.scene.texts.len() as u32;
+                let index = rs.scene.sprite.texts.len() as u32;
                 if faced {
-                    rs.scene.text_facing.push(og_render::TextFacing {
+                    rs.scene.sprite.text_facing.push(og_render::TextFacing {
                         text: index,
                         facing: t.facing,
                         align,
                     });
                 }
-                rs.scene.texts.push(og_render::Text {
+                rs.scene.sprite.texts.push(og_render::Text {
                     font: page,
                     text: piece.text.clone(),
                     position,
@@ -649,7 +651,7 @@ fn floating(rs: &mut RenderState, feel: &Feel, now: f64) {
                     placements: piece.placements.clone(),
                 });
                 if t.outline > 0.0 {
-                    rs.scene.text_outlines.push(og_render::TextOutline {
+                    rs.scene.sprite.text_outlines.push(og_render::TextOutline {
                         text: index,
                         width: t.outline,
                         color: [
@@ -791,7 +793,7 @@ fn tile_layers(
                 Some(p) => super::art::paletted(scene, (&mut *art, &mut *notes), texture, p, row),
                 None => texture,
             };
-            scene.tile_layers.push(og_render::TileLayer {
+            scene.sprite.tile_layers.push(og_render::TileLayer {
                 texture,
                 chunks,
                 origin: at,

@@ -107,9 +107,9 @@ pub(crate) fn ranges(
     scene: &RenderScene,
     texture_count: usize,
 ) -> Result<Vec<(u32, u32)>, RenderError> {
-    let mut out = Vec::with_capacity(scene.sprite_meshes.len());
+    let mut out = Vec::with_capacity(scene.sprite.sprite_meshes.len());
     let mut first = 0u32;
-    for (i, m) in scene.sprite_meshes.iter().enumerate() {
+    for (i, m) in scene.sprite.sprite_meshes.iter().enumerate() {
         if let Some(t) = m.texture
             && t.index() >= texture_count
         {
@@ -158,7 +158,7 @@ pub(crate) fn vertices(
 ) -> Vec<MeshVertex> {
     let mut out = Vec::new();
     let mut influence_base = 0;
-    for m in &scene.sprite_meshes {
+    for m in &scene.sprite.sprite_meshes {
         let lit = lit(m.layer, m.light_mask);
         out.extend(m.indices.iter().map(|&i| {
             let v = &m.vertices[i as usize];
@@ -323,14 +323,14 @@ mod tests {
     #[test]
     fn meshes_take_consecutive_corners_and_bad_indices_are_refused() {
         let mut scene = RenderScene::new();
-        scene.sprite_meshes = vec![tri(0, 2), tri(3, 1)];
+        scene.sprite.sprite_meshes = vec![tri(0, 2), tri(3, 1)];
         assert_eq!(ranges(&scene, 0).unwrap(), [(0, 6), (6, 3)]);
         let v = vertices(&scene, |l, _| f32::from(u8::from(l == 3)), false);
         assert_eq!(v.len(), 9);
         assert_eq!((v[0].lit, v[8].lit), (0.0, 1.0));
-        scene.sprite_meshes[1].indices[2] = 3;
+        scene.sprite.sprite_meshes[1].indices[2] = 3;
         assert!(ranges(&scene, 0).is_err());
-        scene.sprite_meshes[1].indices.pop();
+        scene.sprite.sprite_meshes[1].indices.pop();
         assert!(ranges(&scene, 0).is_err(), "two indices are not a triangle");
     }
 
@@ -358,7 +358,7 @@ mod tests {
             ranges: vec![[0, 5], [0, 0], [0, 5]],
         });
         let mut scene = RenderScene::new();
-        scene.sprite_meshes = vec![m.clone(), m];
+        scene.sprite.sprite_meshes = vec![m.clone(), m];
         assert!(ranges(&scene, 0).is_ok());
         let cpu = vertices(&scene, |_, _| 0.0, false);
         assert_eq!(cpu[0].position, [2.25, -1.625, 1.25]);

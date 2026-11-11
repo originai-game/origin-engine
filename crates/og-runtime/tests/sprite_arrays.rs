@@ -107,7 +107,7 @@ impl RenderBackend for Recorder {
     fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
         let pairs = |list: &[SpriteArray]| list.iter().map(|a| (a.array, a.layer)).collect();
         let mut s = self.0.borrow_mut();
-        s.world = pairs(&scene.sprite_arrays);
+        s.world = pairs(&scene.sprite.sprite_arrays);
         s.overlay = scene
             .ui
             .overlay
@@ -119,7 +119,12 @@ impl RenderBackend for Recorder {
             .iter()
             .map(|p| scene.emitter(p.emitter).and_then(|e| e.array))
             .collect();
-        s.textured = scene.sprites.iter().filter(|s| s.texture.is_some()).count();
+        s.textured = scene
+            .sprite
+            .sprites
+            .iter()
+            .filter(|s| s.texture.is_some())
+            .count();
         Ok(())
     }
     fn capture(&mut self, _: &RenderScene, _: u32, _: u32) -> Option<og_render::RgbaImage> {

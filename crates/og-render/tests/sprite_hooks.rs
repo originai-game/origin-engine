@@ -51,7 +51,7 @@ fn scene(shader: Option<MaterialShader>, cut: Option<f32>) -> RenderScene {
             assert!(scene.set_shader_param(material, "cut", &[cut]));
         }
     }
-    scene.sprite_shading.push(SpriteShading {
+    scene.sprite.sprite_shading.push(SpriteShading {
         sprite: 0,
         material,
     });

@@ -672,13 +672,13 @@ fn colour_glyphs_outline_world_text_under_their_images() {
         let (mut scene, handles, _) = colr_font("og-colr-world", text);
         for &h in &handles {
             if outline {
-                scene.text_outlines.push(TextOutline {
-                    text: scene.texts.len() as u32,
+                scene.sprite.text_outlines.push(TextOutline {
+                    text: scene.sprite.texts.len() as u32,
                     width: 0.8,
                     color: [0.0, 1.0, 0.0, 1.0],
                 });
             }
-            scene.texts.push(Text {
+            scene.sprite.texts.push(Text {
                 position: glam::Vec3::new(-2.0, -0.8, 0.0),
                 size: 1.6,
                 color: [0.85, 0.15, 0.8, 1.0],

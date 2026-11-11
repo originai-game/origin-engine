@@ -477,15 +477,15 @@ pub fn render_ids_from(
             ground: None,
         });
     }
-    for (i, s) in scene.sprites.iter().enumerate() {
+    for (i, s) in scene.sprite.sprites.iter().enumerate() {
         let id = sources.sprites.get(i).copied().unwrap_or(0);
-        let shown = crate::views::layer_of(&scene.sprite_layers, i) & camera.layers != 0;
+        let shown = crate::views::layer_of(&scene.sprite.sprite_layers, i) & camera.layers != 0;
         if id == 0 || !shown || s.size.x == 0.0 || s.size.y == 0.0 {
             continue;
         }
         let (sin, cos) = s.rotation.sin_cos();
         // A billboard faces this camera, as the sprite shader turns it.
-        let facing = crate::sprites::facing_of(&scene.sprite_facing, i);
+        let facing = crate::sprites::facing_of(&scene.sprite.sprite_facing, i);
         let (x, y) =
             crate::sprites::face_axes(facing, view.row(0).truncate(), view.row(1).truncate());
         let corner = |u: f32, v: f32| {

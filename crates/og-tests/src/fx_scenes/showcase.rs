@@ -84,7 +84,7 @@ pub fn showcase_effects(scene: &mut RenderScene) {
     }
     scene.look.post.chromatic_aberration = Some(ChromaticAberration { intensity: 1.2 });
     // The title glows warm against the graded sky.
-    for t in &mut scene.texts {
+    for t in &mut scene.sprite.texts {
         t.color = [2.4, 0.9, 0.25, 1.0];
     }
     // The darker ground meters brighter: hold the sky back.

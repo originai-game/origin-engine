@@ -99,11 +99,11 @@ fn a_normal_mapped_sprite_is_lit_by_where_its_normal_faces() {
             },
             ..Default::default()
         });
-        scene.lighting_2d = Some(Lighting2d {
+        scene.sprite.lighting_2d = Some(Lighting2d {
             ambient: Vec3::splat(0.05),
             ..Default::default()
         });
-        scene.lights_2d.push(Light2d {
+        scene.sprite.lights_2d.push(Light2d {
             position: Vec2::new(light_x, 0.0),
             radius: 8.0,
             falloff: 1.0,

@@ -426,7 +426,7 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
     post.sharpen = None;
     post.flash = None;
     scene.shake = CameraShake::default();
-    scene.lighting_2d = None;
+    scene.sprite.lighting_2d = None;
     if let Some(p) = resource(world, layouts.post.as_ref()) {
         if on(&p, "ao", false) {
             post.ao = Some(AmbientOcclusion {
@@ -670,7 +670,7 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
     if let Some(l) = resource(world, layouts.lighting_2d.as_ref())
         && on(&l, "enabled", false)
     {
-        scene.lighting_2d = Some(Lighting2d {
+        scene.sprite.lighting_2d = Some(Lighting2d {
             ambient: color(&l["ambient"], Vec3::splat(0.15)),
             min_layer: l["minLayer"].as_i64().unwrap_or(-1_000_000) as i32,
             max_layer: l["maxLayer"].as_i64().unwrap_or(99) as i32,
@@ -717,7 +717,7 @@ pub(crate) fn snap_to_grid(rs: &mut RenderState) {
     c.position.x = snap(c.position.x);
     c.position.y = snap(c.position.y);
     c.target = c.position + d;
-    for s in &mut scene.sprites {
+    for s in &mut scene.sprite.sprites {
         s.position.x = snap(s.position.x);
         s.position.y = snap(s.position.y);
     }
@@ -933,8 +933,8 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
         ..
     } = rs;
     let layouts = &draw.fx;
-    scene.lights_2d.clear();
-    scene.occluders_2d.clear();
+    scene.sprite.lights_2d.clear();
+    scene.sprite.occluders_2d.clear();
     scene.effects.decals.clear();
     scene.effects.particles.clear();
     scene.effects.particle_layers.clear();
@@ -953,7 +953,7 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
         // A spot's and a global light's axis: the entity's local +x in
         // the plane.
         let axis = m.x_axis.truncate().truncate();
-        scene.lights_2d.push(Light2d {
+        scene.sprite.lights_2d.push(Light2d {
             position: pos,
             color: color(&v["color"], Vec3::ONE),
             intensity: f(&v, "intensity", 1.0),
@@ -993,7 +993,7 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
         } else {
             Vec::new()
         };
-        scene.occluders_2d.push(Occluder2d {
+        scene.sprite.occluders_2d.push(Occluder2d {
             half_size: Vec2::new(f(&v, "width", 1.0), f(&v, "height", 1.0)) * scale * 0.5,
             layers: mask(&v, "layers", u32::MAX),
             ..Occluder2d::polygon(pos, rot, &polygon)
@@ -1208,36 +1208,37 @@ pub(crate) fn queued(rs: &mut RenderState, fresh: bool, viewport: (f32, f32)) {
             });
             continue;
         }
-        let index = scene.sprites.len() as u32;
-        super::feel::set_facing(&mut scene.sprite_facing, index as usize, q.facing);
-        scene.sprites.push(q.sprite);
+        let index = scene.sprite.sprites.len() as u32;
+        super::feel::set_facing(&mut scene.sprite.sprite_facing, index as usize, q.facing);
+        scene.sprite.sprites.push(q.sprite);
         if let Some((array, layer)) = q.array {
-            scene.sprite_arrays.push(og_render::SpriteArray {
+            scene.sprite.sprite_arrays.push(og_render::SpriteArray {
                 sprite: index,
                 array,
                 layer,
             });
         }
         if q.order != 0.0 {
-            scene.sprite_order.push(og_render::SpriteOrder {
+            scene.sprite.sprite_order.push(og_render::SpriteOrder {
                 sprite: index,
                 key: q.order,
             });
         }
         if q.cast_shadow {
             scene
+                .sprite
                 .occluders_2d
                 .push(og_render::Occluder2d::from_sprite(&q.sprite, 0.0));
         }
         if q.drop_shadow > 0.0 {
-            scene.sprite_shadows.push(og_render::SpriteShadow {
+            scene.sprite.sprite_shadows.push(og_render::SpriteShadow {
                 sprite: index,
                 opacity: q.drop_shadow.min(1.0),
                 ground: og_render::ShadowGround::level(q.drop_shadow_height),
             });
         }
         if q.flash[3] > 0.0 || q.glow > 0.0 || q.additive || !q.tone_mapped {
-            scene.sprite_fx.push(og_render::SpriteFx {
+            scene.sprite.sprite_fx.push(og_render::SpriteFx {
                 sprite: index,
                 flash: q.flash,
                 glow: q.glow,

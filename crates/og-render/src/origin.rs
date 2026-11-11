@@ -75,10 +75,10 @@ impl RenderScene {
                 moved(&mut m.transform, d);
             }
         }
-        for s in &mut self.sprites {
+        for s in &mut self.sprite.sprites {
             s.position += d;
         }
-        for s in &mut self.sprite_shadows {
+        for s in &mut self.sprite.sprite_shadows {
             s.ground.height += d.y;
             if let Some(b) = &mut s.ground.bend {
                 for h in b.heights.iter_mut().flatten() {
@@ -86,10 +86,10 @@ impl RenderScene {
                 }
             }
         }
-        for t in &mut self.texts {
+        for t in &mut self.sprite.texts {
             t.position += d;
         }
-        for m in &mut self.sprite_meshes {
+        for m in &mut self.sprite.sprite_meshes {
             for v in &mut m.vertices {
                 v.position += d;
             }
@@ -99,7 +99,7 @@ impl RenderScene {
                 }
             }
         }
-        for t in &mut self.tile_layers {
+        for t in &mut self.sprite.tile_layers {
             t.origin += d;
         }
         for p in &mut self.effects.particles {
@@ -141,10 +141,10 @@ impl RenderScene {
         for x in &mut self.effects.decals {
             moved(&mut x.transform, d);
         }
-        for l in &mut self.lights_2d {
+        for l in &mut self.sprite.lights_2d {
             l.position += d2;
         }
-        for o in &mut self.occluders_2d {
+        for o in &mut self.sprite.occluders_2d {
             o.center += d2;
         }
         for p in &mut self.lighting.reflection_probes {
@@ -175,10 +175,10 @@ impl RenderScene {
         for t in &mut self.world.terrains {
             moved(&mut t.transform, d);
         }
-        for w in &mut self.water_2d {
+        for w in &mut self.sprite.water_2d {
             w.origin += d2;
         }
-        for m in &mut self.metaballs {
+        for m in &mut self.sprite.metaballs {
             m.particles = m.particles.iter().map(|p| *p + d2).collect();
         }
         for f in &mut self.world.fluids_3d {

@@ -60,13 +60,14 @@ impl Renderer {
         lights_2d: u32,
     ) -> (Option<Light2dPlan>, (u32, u32), bool) {
         let lightmap_scale = scene
+            .sprite
             .lighting_2d
             .map_or(0.5, |l| l.resolution.clamp(0.25, 1.0));
         // The lights' directions beside the light map, for normal-mapped
         // receivers (sprite_normals.rs).
         // A second target beside the light map (without MRT, normal-mapped
         // receivers are lit as flat ones).
-        let lightdir_on = scene.lighting_2d.is_some()
+        let lightdir_on = scene.sprite.lighting_2d.is_some()
             && scene.has_texture_normals()
             && self.info.caps.contains(Caps::MRT);
         // The light map: its strips side by side (light2d.rs).
@@ -78,7 +79,7 @@ impl Renderer {
             light_slots.count(),
             self.device.limits().max_texture_dimension_2d,
         );
-        let plan = scene.lighting_2d.map(|l| Light2dPlan {
+        let plan = scene.sprite.lighting_2d.map(|l| Light2dPlan {
             ambient: l.ambient,
             lights: lights_2d,
             size: lightmap_size,

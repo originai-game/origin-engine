@@ -170,7 +170,7 @@ impl RenderBackend for Recorder {
         let mut s = self.0.borrow_mut();
         s.env = scene.lighting.environment_map.map(|m| m.map);
         s.palette = scene.look.stylise.quantize.and_then(|q| q.palette);
-        s.arrays = scene.sprite_arrays.len();
+        s.arrays = scene.sprite.sprite_arrays.len();
         s.emitters = scene
             .effects
             .particles
@@ -196,7 +196,7 @@ impl RenderBackend for Recorder {
         if let Some(h) = s.palette.filter(|h| !s.every_palette.contains(h)) {
             s.every_palette.push(h);
         }
-        for a in &scene.sprite_arrays {
+        for a in &scene.sprite.sprite_arrays {
             if !s.every_array.contains(&a.array) {
                 s.every_array.push(a.array);
             }
@@ -207,6 +207,7 @@ impl RenderBackend for Recorder {
         assert!(s.lut.is_none_or(|h| scene.contains_lut(h)));
         assert!(
             scene
+                .sprite
                 .sprite_arrays
                 .iter()
                 .all(|a| scene.contains_texture_array(a.array))

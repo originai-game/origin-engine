@@ -31,7 +31,7 @@ fn a_sprite_draws_the_layer_of_its_texture_array() {
             size: Vec2::splat(4.0),
             ..Default::default()
         });
-        scene.sprite_arrays.push(SpriteArray {
+        scene.sprite.sprite_arrays.push(SpriteArray {
             sprite: i as u32,
             array,
             layer,
@@ -59,12 +59,12 @@ fn a_sprite_draws_the_layer_of_its_texture_array() {
     assert_eq!(stats.sprite_draws, 1, "both layers in one draw");
 
     let mut renderer = Renderer::new_blocking(&desc).expect("renderer");
-    scene.sprite_arrays[0].layer = 3;
+    scene.sprite.sprite_arrays[0].layer = 3;
     match renderer.render(&scene, &RenderTarget::Offscreen) {
         Err(RenderError::InvalidData(m)) => assert!(m.contains("layer 3"), "{m}"),
         other => panic!("a layer past the array: {:?}", other.map(|_| ())),
     }
-    scene.sprite_arrays[0].layer = 0;
+    scene.sprite.sprite_arrays[0].layer = 0;
     renderer
         .render(&scene, &RenderTarget::Offscreen)
         .expect("frame");

@@ -738,7 +738,10 @@ impl Views {
             crate::fx::unclustered(&mut f);
             queue.write_buffer(&slot.fx_buffer, 0, bytemuck::bytes_of(&f));
             let strips = light_map.map_or(1, |(_, s)| s.max(1));
-            let ambient = scene.lighting_2d.map_or(glam::Vec3::ONE, |l| l.ambient);
+            let ambient = scene
+                .sprite
+                .lighting_2d
+                .map_or(glam::Vec3::ONE, |l| l.ambient);
             queue.write_buffer(
                 &slot.sprite_fx_buffer,
                 0,

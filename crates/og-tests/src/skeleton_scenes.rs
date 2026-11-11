@@ -137,7 +137,7 @@ pub fn skeleton_scene(skinned: bool) -> Result<RenderScene, String> {
                 }
             })
             .collect();
-        scene.sprite_meshes.push(SpriteMesh {
+        scene.sprite.sprite_meshes.push(SpriteMesh {
             texture: Some(texture),
             vertices,
             indices,
@@ -146,14 +146,14 @@ pub fn skeleton_scene(skinned: bool) -> Result<RenderScene, String> {
             ..Default::default()
         });
     }
-    scene.lighting_2d = Some(Lighting2d {
+    scene.sprite.lighting_2d = Some(Lighting2d {
         ambient: Vec3::new(0.35, 0.38, 0.55),
         min_layer: 0,
         max_layer: 10,
         resolution: 0.5,
         shadow_angles: 1024,
     });
-    scene.lights_2d = vec![Light2d {
+    scene.sprite.lights_2d = vec![Light2d {
         position: Vec2::new(0.6, 0.4),
         color: Vec3::new(1.0, 0.72, 0.35),
         intensity: 1.8,

@@ -86,7 +86,7 @@ impl SkinRenderer {
         }
         let mut bones = Vec::new();
         let mut influences = Vec::new();
-        for mesh in &scene.sprite_meshes {
+        for mesh in &scene.sprite.sprite_meshes {
             if let Some(skin) = &mesh.skin {
                 let base = bones.len() as u32;
                 bones.extend(skin.bones.iter().map(|m| m.to_cols_array()));

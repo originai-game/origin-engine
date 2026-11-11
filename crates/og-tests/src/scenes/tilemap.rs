@@ -98,7 +98,7 @@ pub fn tilemap_256() -> RenderScene {
                 });
             }
         }
-        scene.tile_layers.push(og_render::TileLayer {
+        scene.sprite.tile_layers.push(og_render::TileLayer {
             texture,
             chunks: Arc::new(chunks),
             origin: Vec3::new(0.0, 256.0, 0.0),
@@ -122,7 +122,7 @@ pub fn pan_tilemap(scene: &mut RenderScene, frame: u32) {
     let t = frame as f32;
     let c = Vec2::new(64.0 + (t * 0.37) % 120.0, 128.0 - (t * 0.21) % 60.0);
     scene.camera = Camera::orthographic_2d(c, 45.0);
-    for (i, l) in scene.tile_layers.iter_mut().enumerate() {
+    for (i, l) in scene.sprite.tile_layers.iter_mut().enumerate() {
         l.time = t / 60.0;
         l.origin = if i == 3 {
             Vec3::new(c.x * 0.5, 256.0 + c.y * 0.5, 0.0)

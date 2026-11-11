@@ -48,11 +48,17 @@ impl RenderBackend for Recorder {
     fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
         let mut seen = self.0.borrow_mut();
         seen.sprites = scene
+            .sprite
             .sprites
             .iter()
             .enumerate()
             .map(|(i, s)| {
-                let facing = scene.sprite_facing.get(i).copied().unwrap_or_default();
+                let facing = scene
+                    .sprite
+                    .sprite_facing
+                    .get(i)
+                    .copied()
+                    .unwrap_or_default();
                 (s.position.x, facing)
             })
             .collect();

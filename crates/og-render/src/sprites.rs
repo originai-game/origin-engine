@@ -671,42 +671,42 @@ pub(crate) fn build<'a>(
 ) -> Result<SpriteFrame, RenderError> {
     // Per-sprite effects by index (the last entry for an index wins).
     let mut fx: HashMap<u32, &crate::SpriteFx> = HashMap::new();
-    for f in &scene.sprite_fx {
-        if f.sprite as usize >= scene.sprites.len() {
+    for f in &scene.sprite.sprite_fx {
+        if f.sprite as usize >= scene.sprite.sprites.len() {
             return Err(RenderError::InvalidHandle(format!(
                 "sprite_fx: sprite {} of {}",
                 f.sprite,
-                scene.sprites.len()
+                scene.sprite.sprites.len()
             )));
         }
         fx.insert(f.sprite, f);
     }
     let mut order: HashMap<u32, f32> = HashMap::new();
-    for o in &scene.sprite_order {
-        if o.sprite as usize >= scene.sprites.len() {
+    for o in &scene.sprite.sprite_order {
+        if o.sprite as usize >= scene.sprite.sprites.len() {
             return Err(RenderError::InvalidHandle(format!(
                 "sprite_order: sprite {} of {}",
                 o.sprite,
-                scene.sprites.len()
+                scene.sprite.sprites.len()
             )));
         }
         order.insert(o.sprite, if o.key.is_finite() { o.key } else { 0.0 });
     }
     // Sprites drawn from texture arrays, by index (the last entry wins).
     let arrays = array_entries(
-        &scene.sprite_arrays,
-        scene.sprites.len(),
+        &scene.sprite.sprite_arrays,
+        scene.sprite.sprites.len(),
         "sprite",
         &array_layers,
     )?;
     // Drop shadows by sprite index (the last entry wins), under a sun.
     let mut shadows: HashMap<u32, (f32, crate::ShadowGround)> = HashMap::new();
-    for s in &scene.sprite_shadows {
-        if s.sprite as usize >= scene.sprites.len() {
+    for s in &scene.sprite.sprite_shadows {
+        if s.sprite as usize >= scene.sprite.sprites.len() {
             return Err(RenderError::InvalidHandle(format!(
                 "sprite_shadows: sprite {} of {}",
                 s.sprite,
-                scene.sprites.len()
+                scene.sprite.sprites.len()
             )));
         }
         shadows.insert(s.sprite, (s.opacity.clamp(0.0, 1.0), s.ground));
@@ -715,12 +715,12 @@ pub(crate) fn build<'a>(
         shadow_ground(scene.lighting.light.direction_to_light).filter(|_| !shadows.is_empty());
     // Pixel outlines by sprite index (the last entry wins).
     let mut lines: HashMap<u32, &crate::SpriteOutline> = HashMap::new();
-    for o in &scene.sprite_outlines {
-        if o.sprite as usize >= scene.sprites.len() {
+    for o in &scene.sprite.sprite_outlines {
+        if o.sprite as usize >= scene.sprite.sprites.len() {
             return Err(RenderError::InvalidHandle(format!(
                 "sprite_outlines: sprite {} of {}",
                 o.sprite,
-                scene.sprites.len()
+                scene.sprite.sprites.len()
             )));
         }
         lines.insert(o.sprite, o);
@@ -728,12 +728,12 @@ pub(crate) fn build<'a>(
     // Material shaders by sprite index (the last entry wins); a material
     // without a shader sprites run draws plain.
     let mut shading: HashMap<u32, crate::MaterialHandle> = HashMap::new();
-    for m in &scene.sprite_shading {
-        if m.sprite as usize >= scene.sprites.len() {
+    for m in &scene.sprite.sprite_shading {
+        if m.sprite as usize >= scene.sprite.sprites.len() {
             return Err(RenderError::InvalidHandle(format!(
                 "sprite_shading: sprite {} of {}",
                 m.sprite,
-                scene.sprites.len()
+                scene.sprite.sprites.len()
             )));
         }
         match scene.sprite_shader(m.material) {
@@ -743,18 +743,26 @@ pub(crate) fn build<'a>(
     }
     let mut shadow_count = 0u32;
     let mut culled = 0u32;
-    let outlines: HashMap<u32, &crate::TextOutline> =
-        scene.text_outlines.iter().map(|o| (o.text, o)).collect();
-    let text_facing: HashMap<u32, &crate::TextFacing> =
-        scene.text_facing.iter().map(|t| (t.text, t)).collect();
+    let outlines: HashMap<u32, &crate::TextOutline> = scene
+        .sprite
+        .text_outlines
+        .iter()
+        .map(|o| (o.text, o))
+        .collect();
+    let text_facing: HashMap<u32, &crate::TextFacing> = scene
+        .sprite
+        .text_facing
+        .iter()
+        .map(|t| (t.text, t))
+        .collect();
     // (layer, key, source, untonemapped, instance), in submission order.
     let mut keyed: Vec<(i32, f32, RunSource, bool, SpriteInstance)> =
-        Vec::with_capacity(scene.sprites.len() + extra.len());
+        Vec::with_capacity(scene.sprite.sprites.len() + extra.len());
     let mut glowing: Vec<(RunSource, SpriteInstance)> = Vec::new();
     // Billboards (depth, layer, source, instance) and their drop shadows.
     let mut boards: Vec<(f32, i32, RunSource, SpriteInstance)> = Vec::new();
     let mut board_shadows: Vec<(RunSource, SpriteInstance)> = Vec::new();
-    for (i, s) in scene.sprites.iter().enumerate() {
+    for (i, s) in scene.sprite.sprites.iter().enumerate() {
         if let Some(t) = s.texture
             && t.index() >= texture_count
         {
@@ -763,7 +771,7 @@ pub(crate) fn build<'a>(
                 t.index()
             )));
         }
-        if crate::views::layer_of(&scene.sprite_layers, i) & mask == 0 {
+        if crate::views::layer_of(&scene.sprite.sprite_layers, i) & mask == 0 {
             continue;
         }
         let found = if fx.is_empty() {
@@ -787,14 +795,14 @@ pub(crate) fn build<'a>(
             glow,
             lit(
                 s.layer,
-                crate::views::layer_of(&scene.sprite_light_masks, i),
+                crate::views::layer_of(&scene.sprite.sprite_light_masks, i),
             ),
             false,
         );
         if let Some(o) = lines.get(&(i as u32)) {
             outline(&mut inst, o, s.texture.and_then(|t| scene.texture_size(t)));
         }
-        let facing = facing_of(&scene.sprite_facing, i);
+        let facing = facing_of(&scene.sprite.sprite_facing, i);
         inst.facing = facing_code(facing);
         let faced = facing != SpriteFacing::None;
         // A billboard of its own depth sorts with the transparent meshes
@@ -953,8 +961,8 @@ pub(crate) fn build<'a>(
     // The sprite meshes, sorted as sprites are; each is a run of its own
     // corners (`mesh_ranges`), not an instance.
     let mesh_ranges = crate::sprite_mesh::ranges(scene, texture_count)?;
-    let mesh_count = scene.sprite_meshes.len() as u32;
-    for (i, m) in scene.sprite_meshes.iter().enumerate() {
+    let mesh_count = scene.sprite.sprite_meshes.len() as u32;
+    for (i, m) in scene.sprite.sprite_meshes.iter().enumerate() {
         let key = if m.key.is_finite() { m.key } else { 0.0 };
         let placeholder =
             sprite_instance(&Sprite::default(), [1.0, 1.0, 1.0, 0.0], 0.0, 0.0, false);
@@ -963,7 +971,7 @@ pub(crate) fn build<'a>(
     let sprites = keyed.len() as u32 - shadow_count - mesh_count - gpu_count + sprite_boards;
     let after_sprites = keyed.len() as u32;
     let mut missing_glyphs = 0;
-    for (i, text) in scene.texts.iter().enumerate() {
+    for (i, text) in scene.sprite.texts.iter().enumerate() {
         let font = font(text.font.index()).ok_or_else(|| {
             RenderError::InvalidHandle(format!("text {i}: font {}", text.font.index()))
         })?;
@@ -1081,7 +1089,7 @@ pub(crate) fn build<'a>(
     // Tile layers and layered strips, each before the sprites of its layer
     // (tiles first), in submission order within a layer.
     let mut under: Vec<(i32, u8, usize)> = Vec::new();
-    for (i, t) in scene.tile_layers.iter().enumerate() {
+    for (i, t) in scene.sprite.tile_layers.iter().enumerate() {
         if t.texture.index() >= texture_count {
             return Err(RenderError::InvalidHandle(format!(
                 "tile layer {i}: texture {}",
@@ -1130,7 +1138,7 @@ pub(crate) fn build<'a>(
         while *next_under < under.len() && under[*next_under].0 <= below {
             let (_, kind, i) = under[*next_under];
             if kind == 0 {
-                let layer = &scene.tile_layers[i];
+                let layer = &scene.sprite.tile_layers[i];
                 let first = instances.len() as u32;
                 let gpu_first = gpu_sprites.tiles.as_ref().map_or(0, |t| t.len());
                 // Lit as the sprites of its layer are, unless it opts out.
@@ -1279,15 +1287,15 @@ mod tests {
             ..Default::default()
         };
         // Submitted near to far, a flat one between, one far out to the side.
-        scene.sprites = vec![
+        scene.sprite.sprites = vec![
             at(-2.0, 0),
             at(-6.0, 0),
             at(-4.0, 0),
             at(-9.0, 0),
             at(-3.0, 0),
         ];
-        scene.sprites[3].position.x = 500.0;
-        scene.sprite_facing = vec![
+        scene.sprite.sprites[3].position.x = 500.0;
+        scene.sprite.sprite_facing = vec![
             SpriteFacing::CameraY,
             SpriteFacing::Camera,
             SpriteFacing::None,
@@ -1295,11 +1303,11 @@ mod tests {
             SpriteFacing::Camera,
         ];
         // Its own key wins over the depth.
-        scene.sprite_order = vec![crate::SpriteOrder {
+        scene.sprite.sprite_order = vec![crate::SpriteOrder {
             sprite: 4,
             key: 5.0,
         }];
-        scene.sprite_shadows = vec![crate::SpriteShadow {
+        scene.sprite.sprite_shadows = vec![crate::SpriteShadow {
             sprite: 0,
             opacity: 1.0,
             ..Default::default()
@@ -1430,8 +1438,8 @@ mod tests {
             layer,
             ..Default::default()
         };
-        scene.sprites = vec![sprite(0.0, 1), sprite(2.0, 1), sprite(4.0, 0)];
-        scene.sprite_shadows = vec![SpriteShadow {
+        scene.sprite.sprites = vec![sprite(0.0, 1), sprite(2.0, 1), sprite(4.0, 0)];
+        scene.sprite.sprite_shadows = vec![SpriteShadow {
             sprite: 1,
             opacity: 0.8,
             ..Default::default()
@@ -1449,7 +1457,7 @@ mod tests {
         // No sun above the horizon, no shadow; an index past the sprites is refused.
         scene.lighting.light.direction_to_light = Vec3::new(0.0, -1.0, 0.0);
         assert_eq!(frame(&scene).instances.len(), 3);
-        scene.sprite_shadows[0].sprite = 3;
+        scene.sprite.sprite_shadows[0].sprite = 3;
         assert!(
             build(
                 &scene,
@@ -1473,7 +1481,7 @@ mod tests {
         use crate::ShadowGround;
         let mut scene = RenderScene::new();
         scene.lighting.light.direction_to_light = Vec3::new(1.0, 2.0, -0.5);
-        scene.sprites = vec![
+        scene.sprite.sprites = vec![
             Sprite {
                 position: Vec3::new(0.0, 2.0, 0.0),
                 size: glam::Vec2::new(1.0, 2.0),
@@ -1481,7 +1489,7 @@ mod tests {
             };
             2
         ];
-        scene.sprite_shadows = vec![
+        scene.sprite.sprite_shadows = vec![
             SpriteShadow {
                 sprite: 0,
                 opacity: 1.0,
@@ -1586,8 +1594,8 @@ mod tests {
         // Drawn as eight cells of the quad, each corner at its height.
         let mut scene = RenderScene::new();
         scene.lighting.light.direction_to_light = sun;
-        scene.sprites = vec![sprite];
-        scene.sprite_shadows = vec![SpriteShadow {
+        scene.sprite.sprites = vec![sprite];
+        scene.sprite.sprite_shadows = vec![SpriteShadow {
             sprite: 0,
             opacity: 0.5,
             ground: g,
@@ -1625,13 +1633,13 @@ mod tests {
             layer,
             ..Default::default()
         };
-        scene.sprites = vec![at(0.0, 2), at(1.0, 0), at(2.0, 1)];
+        scene.sprite.sprites = vec![at(0.0, 2), at(1.0, 0), at(2.0, 1)];
         let corner = SpriteMeshVertex {
             color: [1.0; 4],
             ..Default::default()
         };
         // Layer 1, after the layer's sprites (key 1 > their 0); two triangles.
-        scene.sprite_meshes = vec![SpriteMesh {
+        scene.sprite.sprite_meshes = vec![SpriteMesh {
             vertices: vec![corner; 4],
             indices: vec![0, 1, 2, 2, 3, 0],
             layer: 1,
@@ -1656,7 +1664,7 @@ mod tests {
         assert_eq!((f.runs[1].first, f.runs[1].count), (0, 6));
         assert_eq!((f.runs[2].first, f.runs[2].count), (2, 1));
         // An index past its vertices is refused.
-        scene.sprite_meshes[0].indices[5] = 9;
+        scene.sprite.sprite_meshes[0].indices[5] = 9;
         assert!(
             build(
                 &scene,
@@ -1692,7 +1700,7 @@ mod tests {
             layer,
             ..Default::default()
         };
-        scene.sprites = vec![sprite(0.0, 0), sprite(1.0, 2)];
+        scene.sprite.sprites = vec![sprite(0.0, 0), sprite(1.0, 2)];
         let system = |layer: i32, max: u32, glow: f32| crate::particles_gpu::SpriteSystem {
             id: 1,
             draw_entry: 0,

@@ -349,6 +349,7 @@ fn in_use(rs: &super::extract::RenderState, held: Held, tick: u64) -> Option<&'s
             let overlay = rs.scene.ui.overlay.iter().flat_map(|o| &o.sprite_arrays);
             let drawn = rs
                 .scene
+                .sprite
                 .sprite_arrays
                 .iter()
                 .chain(overlay)

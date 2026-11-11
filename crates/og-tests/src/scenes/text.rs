@@ -90,14 +90,14 @@ pub(super) fn text_scene() -> Result<RenderScene, String> {
     let mut scene = RenderScene::new();
     let font = load_font(&mut scene)?;
     for (text, x, y, size, color) in TEXT_LINES {
-        scene.texts.push(Text {
+        scene.sprite.texts.push(Text {
             position: Vec3::new(*x, *y, 0.0),
             size: *size,
             color: *color,
             ..Text::new(font, *text)
         });
     }
-    scene.texts.push(Text {
+    scene.sprite.texts.push(Text {
         position: Vec3::new(1.0, -4.5, 0.0),
         size: 0.9,
         rotation: 0.35,
@@ -106,7 +106,7 @@ pub(super) fn text_scene() -> Result<RenderScene, String> {
         ..Text::new(font, "rotated")
     });
     // A huge glyph: the distance field is magnified ~10x.
-    scene.texts.push(Text {
+    scene.sprite.texts.push(Text {
         position: Vec3::new(6.0, -3.0, 0.0),
         size: 4.5,
         color: [0.35, 0.9, 0.5, 1.0],

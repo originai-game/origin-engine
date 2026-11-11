@@ -1402,7 +1402,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
         };
         let m = h.world_of(k);
         let xa = m.x_axis.truncate();
-        rs.scene.sprites.push(og_render::Sprite {
+        rs.scene.sprite.sprites.push(og_render::Sprite {
             texture: Some(texture),
             position: m.w_axis.truncate(),
             size: Vec2::new(w as f32, ht as f32) * look.cell,

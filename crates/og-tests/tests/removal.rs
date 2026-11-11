@@ -165,7 +165,7 @@ fn environment_maps_texture_arrays_and_palettes_leave_the_frame_and_its_bytes() 
         position: Vec3::new(0.0, 1.0, 0.0),
         ..Default::default()
     });
-    scene.sprite_arrays.push(SpriteArray {
+    scene.sprite.sprite_arrays.push(SpriteArray {
         sprite: 0,
         array,
         layer: 2,
@@ -211,7 +211,7 @@ fn environment_maps_texture_arrays_and_palettes_leave_the_frame_and_its_bytes() 
         }
         other => panic!("a sprite of a removed array: {:?}", other.map(|_| ())),
     }
-    scene.sprite_arrays.clear();
+    scene.sprite.sprite_arrays.clear();
 
     // Freed: the frame's bytes drop by exactly what the three took.
     let after = renderer

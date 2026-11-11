@@ -198,10 +198,10 @@ fn the_cross_platform_tolerance_still_catches_small_regressions() {
             g.scene.lighting.light.cast_shadows = false
         }),
         ("text-msdf", "a paragraph 3 px to the right", |g| {
-            g.scene.texts[2].position.x += 0.088
+            g.scene.sprite.texts[2].position.x += 0.088
         }),
         ("text-msdf", "the subtitle white, not amber", |g| {
-            g.scene.texts[1].color = [1.0, 1.0, 1.0, 1.0]
+            g.scene.sprite.texts[1].color = [1.0, 1.0, 1.0, 1.0]
         }),
     ];
     for (name, what, mutate) in cases {

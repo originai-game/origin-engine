@@ -107,12 +107,13 @@ pub fn fx_2d_scene() -> Result<RenderScene, String> {
             ..Default::default()
         };
         scene
+            .sprite
             .occluders_2d
             .push(Occluder2d::from_sprite(&sprite, 0.02));
         scene.add_sprite(sprite);
     }
     // The hero, hit: a red flash.
-    let hero_index = scene.sprites.len() as u32;
+    let hero_index = scene.sprite.sprites.len() as u32;
     scene.add_sprite(Sprite {
         texture: Some(hero),
         position: Vec3::new(0.8, -0.6, 0.0),
@@ -120,7 +121,7 @@ pub fn fx_2d_scene() -> Result<RenderScene, String> {
         layer: 3,
         ..Default::default()
     });
-    scene.sprite_fx.push(SpriteFx {
+    scene.sprite.sprite_fx.push(SpriteFx {
         sprite: hero_index,
         flash: [1.0, 1.0, 1.0, 0.6],
         ..Default::default()
@@ -136,7 +137,7 @@ pub fn fx_2d_scene() -> Result<RenderScene, String> {
     .iter()
     .enumerate()
     {
-        let index = scene.sprites.len() as u32;
+        let index = scene.sprite.sprites.len() as u32;
         scene.add_sprite(Sprite {
             texture: Some(coin),
             position: p.extend(0.0),
@@ -145,7 +146,7 @@ pub fn fx_2d_scene() -> Result<RenderScene, String> {
             layer: 1,
             ..Default::default()
         });
-        scene.sprite_fx.push(SpriteFx {
+        scene.sprite.sprite_fx.push(SpriteFx {
             sprite: index,
             glow: 1.5 + i as f32 * 0.2,
             ..Default::default()
@@ -218,14 +219,14 @@ pub fn fx_2d_scene() -> Result<RenderScene, String> {
         4,
         0,
     ));
-    scene.lighting_2d = Some(Lighting2d {
+    scene.sprite.lighting_2d = Some(Lighting2d {
         ambient: Vec3::new(0.06, 0.06, 0.1),
         min_layer: 0,
         max_layer: 50,
         resolution: 0.5,
         shadow_angles: 1024,
     });
-    scene.lights_2d = vec![
+    scene.sprite.lights_2d = vec![
         Light2d {
             position: Vec2::new(-5.5, 2.4),
             color: Vec3::new(1.0, 0.65, 0.35),
@@ -258,7 +259,7 @@ pub fn fx_2d_scene() -> Result<RenderScene, String> {
         },
     ];
     let font = crate::scenes::load_font(&mut scene)?;
-    scene.texts.push(Text {
+    scene.sprite.texts.push(Text {
         position: Vec3::new(-9.6, 5.2, 0.0),
         size: 0.6,
         color: [1.0, 0.95, 0.8, 1.0],
@@ -391,18 +392,25 @@ pub fn tilemap_lit_scene() -> RenderScene {
     };
     // The sky, behind the wall's window: unlit.
     scene
+        .sprite
         .tile_layers
         .push(cave_layer(tiles, -21, false, |x, y| {
             window(x, y).then_some(3)
         }));
     // The back wall, with the window cut out.
-    scene.tile_layers.push(cave_layer(tiles, -20, true, |x, y| {
-        (!window(x, y) && !rock(x, y)).then_some(2)
-    }));
+    scene
+        .sprite
+        .tile_layers
+        .push(cave_layer(tiles, -20, true, |x, y| {
+            (!window(x, y) && !rock(x, y)).then_some(2)
+        }));
     // The rock: mossy where open air is above it.
-    scene.tile_layers.push(cave_layer(tiles, -19, true, |x, y| {
-        rock(x, y).then(|| if rock(x, y + 1) || y >= 15 { 0 } else { 1 })
-    }));
+    scene
+        .sprite
+        .tile_layers
+        .push(cave_layer(tiles, -19, true, |x, y| {
+            rock(x, y).then(|| if rock(x, y + 1) || y >= 15 { 0 } else { 1 })
+        }));
     // A figure on the floor, lit as the tiles are.
     scene.add_sprite(Sprite {
         position: Vec3::new(-5.0, -6.0, 0.0),
@@ -412,14 +420,14 @@ pub fn tilemap_lit_scene() -> RenderScene {
         layer: -18,
         ..Default::default()
     });
-    scene.lighting_2d = Some(Lighting2d {
+    scene.sprite.lighting_2d = Some(Lighting2d {
         ambient: Vec3::splat(0.04),
         min_layer: -30,
         max_layer: 50,
         resolution: 0.5,
         shadow_angles: 1024,
     });
-    scene.lights_2d = vec![
+    scene.sprite.lights_2d = vec![
         Light2d {
             position: Vec2::new(-10.0, -4.0),
             color: Vec3::new(1.0, 0.62, 0.3),
@@ -443,7 +451,7 @@ pub fn tilemap_lit_scene() -> RenderScene {
     ];
     // The pillar (x 15..17, y 3..11) and the ledge (x 22..27, y 7), in world
     // units round the origin.
-    scene.occluders_2d = vec![
+    scene.sprite.occluders_2d = vec![
         Occluder2d {
             center: Vec2::new(0.0, -2.0),
             half_size: Vec2::new(1.0, 4.0),

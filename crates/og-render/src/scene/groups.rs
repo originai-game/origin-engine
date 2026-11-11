@@ -177,3 +177,78 @@ pub struct SceneEffects {
     /// The texture decals take their `uv_rect` from (`None`: solid colour).
     pub decal_atlas: Option<TextureHandle>,
 }
+
+/// The 2D scene: sprites and texts with their order, outlines, shadows,
+/// shading, layers, light masks and facing, tile layers, sprite arrays,
+/// sprite effects and meshes, the 2D lighting, lights and occluders, 2D
+/// water and metaballs.
+#[derive(Debug)]
+pub struct SceneSprites {
+    /// 2D quads drawn after the 3D scene, blended, sorted by layer.
+    pub sprites: Vec<Sprite>,
+    /// MSDF text, sorted with the sprites by layer.
+    pub texts: Vec<Text>,
+    /// Sort keys of single sprites within their layer (top-down y sorting):
+    /// a layer draws its sprites by ascending key, then texture, then
+    /// submission order; a sprite without one has key 0.
+    pub sprite_order: Vec<SpriteOrder>,
+    /// Outlines of single world texts, by text index.
+    pub text_outlines: Vec<TextOutline>,
+    /// Tile layers: chunked quads drawn through the sprite batch, each
+    /// under the sprites of its layer.
+    pub tile_layers: Vec<TileLayer>,
+    /// Sprites drawn from a layer of a texture array instead of their
+    /// texture, by sprite index (world sprites only; the last entry for an
+    /// index wins). Sprites of one array draw as one run whatever their
+    /// layers, so a sheet of frames in an array batches across frames.
+    pub sprite_arrays: Vec<SpriteArray>,
+    /// Drop shadows of single world sprites, by sprite index (the last
+    /// entry for an index wins): each a flattened dark copy of the sprite
+    /// on the ground plane y = 0 cast along [`RenderScene::light`], drawn
+    /// before every sprite of its layer.
+    pub sprite_shadows: Vec<SpriteShadow>,
+    /// Pixel outlines of single world sprites, by sprite index (the last
+    /// entry for an index wins; [`SpriteOutline`]).
+    pub sprite_outlines: Vec<SpriteOutline>,
+    /// Material shaders of single world sprites, by sprite index (the last
+    /// entry for an index wins; [`SpriteShading`]).
+    pub sprite_shading: Vec<SpriteShading>,
+    /// The same for the world `sprites` (with their drop shadows, glow and
+    /// afterimages drawn from them).
+    pub sprite_layers: Vec<u32>,
+    /// Each world sprite's 2D light layers (`og.LightMask2D`), by index in
+    /// `sprites`: lit by the [`crate::Light2d`]s whose `layers` share a
+    /// bit with it. An index past the end is 1 (layer 0, every light's
+    /// default). A frame lights at most [`crate::MAX_LIGHT_MASKS_2D`]
+    /// different masks apart; a further one is lit as mask 1.
+    pub sprite_light_masks: Vec<u32>,
+    /// How each world sprite faces the camera, by index in `sprites`
+    /// (billboards): an index past the end is [`SpriteFacing::None`], the
+    /// xy plane. A faced sprite without a [`RenderScene::sprite_order`] key
+    /// (and tone mapped) draws among the transparent meshes, back to front
+    /// with them by the view depth of its anchor from the eye that draws
+    /// it, its drop shadow before them; with a key it keeps the sprites'
+    /// (layer, key) order. Culled by its bounds (a sphere round the anchor
+    /// through the farthest corner) against that camera's frustum. Its
+    /// drop shadow is cast by the quad stood upright facing the sun, so it
+    /// shows the sprite's whole shape from every camera.
+    pub sprite_facing: Vec<SpriteFacing>,
+    /// World texts turned to the camera ([`TextFacing`], by text index; the
+    /// last entry for an index wins; a text without one stays in the xy
+    /// plane), as [`RenderScene::sprite_facing`] turns sprites.
+    pub text_facing: Vec<TextFacing>,
+    /// Effects on single sprites (flash, glow, blend), by sprite index.
+    pub sprite_fx: Vec<SpriteFx>,
+    /// Textured triangles drawn in the sprite order (a 2D skeleton's
+    /// attachments): [`crate::SpriteMesh`].
+    pub sprite_meshes: Vec<crate::SpriteMesh>,
+    /// 2D lighting of the sprite layers (`None`: sprites are unlit).
+    pub lighting_2d: Option<Lighting2d>,
+    pub lights_2d: Vec<Light2d>,
+    pub occluders_2d: Vec<Occluder2d>,
+    /// Side-on 2D water bodies, drawn in the sprite order.
+    pub water_2d: Vec<crate::Water2d>,
+    /// 2D fluids drawn as metaballs in the sprite order (the first
+    /// [`crate::MAX_FLUIDS`]; fluids of one group are one surface).
+    pub metaballs: Vec<crate::Metaballs>,
+}

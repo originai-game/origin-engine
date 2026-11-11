@@ -110,7 +110,7 @@ fn tile_layers_cull_chunks_draw_under_their_layer_repeat_and_animate() {
     let make = |repeat: [Option<f32>; 2]| {
         let mut scene = flat();
         let tex = two_texels(&mut scene);
-        scene.tile_layers.push(TileLayer {
+        scene.sprite.tile_layers.push(TileLayer {
             repeat,
             ..checker_layer(tex, 0)
         });
@@ -162,7 +162,7 @@ fn tile_layers_cull_chunks_draw_under_their_layer_repeat_and_animate() {
         durations: Arc::from(vec![0.25f32, 0.25]),
     });
     layer.time = 0.3; // the second frame: blue
-    animated.tile_layers.push(layer);
+    animated.sprite.tile_layers.push(layer);
     let (img, _) = frame(&animated, 1);
     assert_eq!(at(&img, 0.5, 4.5), [0, 0, 255], "the animated quad");
     assert_eq!(at(&img, 1.5, 4.5), [255, 0, 0], "its neighbour");
@@ -177,7 +177,7 @@ fn tile_layers_cull_chunks_draw_under_their_layer_repeat_and_animate() {
         (0.5, [255, 0, 0]),
         (-0.125, [0, 0, 255]),
     ] {
-        animated.tile_layers[0].time = time;
+        animated.sprite.tile_layers[0].time = time;
         let stats = renderer
             .render(&animated, &RenderTarget::Offscreen)
             .unwrap();
@@ -188,7 +188,7 @@ fn tile_layers_cull_chunks_draw_under_their_layer_repeat_and_animate() {
             "time {time}"
         );
     }
-    let layer = &mut animated.tile_layers[0];
+    let layer = &mut animated.sprite.tile_layers[0];
     layer.time = 0.25;
     Arc::make_mut(&mut layer.chunks)[0].animated[0].uvs =
         Arc::from(vec![[0.5, 0.0, 1.0, 1.0], [0.0, 0.0, 0.5, 1.0]]);
@@ -307,18 +307,18 @@ fn a_2d_penumbra_is_a_smooth_ramp() {
             layer: -5,
             ..Default::default()
         });
-        scene.lighting_2d = Some(Lighting2d {
+        scene.sprite.lighting_2d = Some(Lighting2d {
             ambient: Vec3::ZERO,
             ..Default::default()
         });
-        scene.lights_2d.push(Light2d {
+        scene.sprite.lights_2d.push(Light2d {
             position: Vec2::new(-6.0, 0.0),
             radius: 30.0,
             falloff: 0.1,
             source_radius: r,
             ..Default::default()
         });
-        scene.occluders_2d.push(Occluder2d {
+        scene.sprite.occluders_2d.push(Occluder2d {
             center: Vec2::new(-3.0, 1.5),
             half_size: Vec2::new(0.15, 1.5),
             ..Default::default()
@@ -358,19 +358,19 @@ fn a_2d_penumbra_is_a_smooth_ramp() {
 fn spot_global_and_masked_2d_lights() {
     use og_render::{Light2d, Light2dKind, Lighting2d};
     let white = |scene: &mut RenderScene, x: f32, mask: Option<u32>| {
-        let i = scene.sprites.len();
+        let i = scene.sprite.sprites.len();
         scene.add_sprite(Sprite {
             position: Vec3::new(x, 0.0, 0.0),
             size: Vec2::new(4.0, 8.0),
             ..Default::default()
         });
         if let Some(m) = mask {
-            scene.sprite_light_masks.resize(i, 1);
-            scene.sprite_light_masks.push(m);
+            scene.sprite.sprite_light_masks.resize(i, 1);
+            scene.sprite.sprite_light_masks.push(m);
         }
     };
     let lit = |scene: &mut RenderScene| {
-        scene.lighting_2d = Some(Lighting2d {
+        scene.sprite.lighting_2d = Some(Lighting2d {
             ambient: Vec3::splat(0.0),
             min_layer: -10,
             max_layer: 10,
@@ -383,7 +383,7 @@ fn spot_global_and_masked_2d_lights() {
     white(&mut scene, -4.0, None);
     white(&mut scene, 4.0, None);
     lit(&mut scene);
-    scene.lights_2d.push(Light2d {
+    scene.sprite.lights_2d.push(Light2d {
         position: Vec2::ZERO,
         radius: 8.0,
         falloff: 1.0,
@@ -408,7 +408,7 @@ fn spot_global_and_masked_2d_lights() {
     white(&mut scene, -4.0, None);
     white(&mut scene, 4.0, Some(2));
     lit(&mut scene);
-    scene.lights_2d.push(Light2d {
+    scene.sprite.lights_2d.push(Light2d {
         position: Vec2::new(100.0, 100.0),
         radius: 0.1,
         color: Vec3::new(1.0, 0.0, 0.0),
@@ -417,7 +417,7 @@ fn spot_global_and_masked_2d_lights() {
         layers: 1,
         ..Default::default()
     });
-    scene.lights_2d.push(Light2d {
+    scene.sprite.lights_2d.push(Light2d {
         position: Vec2::ZERO,
         radius: 0.1,
         color: Vec3::new(0.0, 0.0, 1.0),

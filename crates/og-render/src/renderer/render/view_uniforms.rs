@@ -54,6 +54,7 @@ impl Renderer {
             lights_on,
             viewport_format,
             scene
+                .sprite
                 .lighting_2d
                 .map(|l| (l.resolution.clamp(0.25, 1.0), light_slots.count())),
             fluids,
@@ -71,7 +72,7 @@ impl Renderer {
                         .map_or(g.intensity, |b| b.intensity)
                 }),
         );
-        if scene.lighting_2d.is_some() {
+        if scene.sprite.lighting_2d.is_some() {
             for (k, p) in view_plans.iter().enumerate() {
                 self.lights_2d
                     .write_view(&self.device, &self.queue, k, p.frame.view_proj);

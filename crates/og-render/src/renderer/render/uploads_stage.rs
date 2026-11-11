@@ -107,7 +107,7 @@ impl Renderer {
         }
         // The sprite shaders' light map strips and ambient
         // (`SpriteFxFrame::light`).
-        let ambient_2d = scene.lighting_2d.map_or(Vec3::ONE, |l| l.ambient);
+        let ambient_2d = scene.sprite.lighting_2d.map_or(Vec3::ONE, |l| l.ambient);
         self.queue.write_buffer(
             &self.sprite.sprite_fx_buffer,
             16,
@@ -118,13 +118,13 @@ impl Renderer {
                 ambient_2d.z,
             ]),
         );
-        let (lights_2d, occluders_2d) = match scene.lighting_2d {
+        let (lights_2d, occluders_2d) = match scene.sprite.lighting_2d {
             Some(l) => self.lights_2d.write(
                 &self.device,
                 &self.queue,
                 cam.view_proj,
-                &scene.lights_2d,
-                &scene.occluders_2d,
+                &scene.sprite.lights_2d,
+                &scene.sprite.occluders_2d,
                 light_slots,
                 l.shadow_angles,
             ),

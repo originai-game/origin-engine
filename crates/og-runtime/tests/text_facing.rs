@@ -87,11 +87,13 @@ impl RenderBackend for Recorder {
     fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
         let mut seen = self.0.borrow_mut();
         seen.texts = scene
+            .sprite
             .texts
             .iter()
             .enumerate()
             .map(|(i, t)| {
                 let facing = scene
+                    .sprite
                     .text_facing
                     .iter()
                     .rev()
@@ -110,7 +112,7 @@ impl RenderBackend for Recorder {
                 (text, t.position.x, facing)
             })
             .collect();
-        seen.fonts = scene.texts.iter().map(|t| t.font).collect();
+        seen.fonts = scene.sprite.texts.iter().map(|t| t.font).collect();
         seen.screen = scene.ui.overlay.as_ref().map_or(0, |o| o.texts.len());
         Ok(())
     }

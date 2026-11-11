@@ -61,7 +61,7 @@ impl RenderBackend for Counting {
     }
     fn render(&mut self, scene: &og_render::RenderScene) -> Result<(), String> {
         self.0.set(if self.1 {
-            scene.sprites.len()
+            scene.sprite.sprites.len()
         } else {
             scene.instances.len()
         });

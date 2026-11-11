@@ -43,9 +43,9 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     let (models, geometries, materials) = (&rs.models, &rs.geometries, &rs.materials);
     scene.instances.clear();
     scene.lighting.lights.clear();
-    scene.texts.clear();
-    scene.sprites.clear();
-    scene.sprite_meshes.clear();
+    scene.sprite.texts.clear();
+    scene.sprite.sprites.clear();
+    scene.sprite.sprite_meshes.clear();
     scene.ui.overlay = None;
     scene.look.color_filter = None;
     scene.joint_palettes.clear();
@@ -55,25 +55,25 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     scene.previous_deformed_vertices.clear();
     rs.fx.deformed_keys.clear();
     rs.fx.drawn_baked = std::mem::take(&mut rs.fx.baked_now);
-    scene.sprite_order.clear();
-    scene.sprite_fx.clear();
-    scene.sprite_arrays.clear();
-    scene.sprite_shadows.clear();
-    scene.sprite_outlines.clear();
-    scene.sprite_shading.clear();
-    scene.text_outlines.clear();
-    scene.tile_layers.clear();
+    scene.sprite.sprite_order.clear();
+    scene.sprite.sprite_fx.clear();
+    scene.sprite.sprite_arrays.clear();
+    scene.sprite.sprite_shadows.clear();
+    scene.sprite.sprite_outlines.clear();
+    scene.sprite.sprite_shading.clear();
+    scene.sprite.text_outlines.clear();
+    scene.sprite.tile_layers.clear();
     scene.effects.trail_layers.clear();
     scene.effects.lines.clear();
     scene.effects.points.clear();
     // Layer masks of the sprites, lines, points and particle systems
     // (views.rs): filled by what pushes them, 1 past their ends.
-    scene.sprite_layers.clear();
+    scene.sprite.sprite_layers.clear();
     // 2D light masks of the sprites (og.LightMask2D): 1 past the end.
-    scene.sprite_light_masks.clear();
+    scene.sprite.sprite_light_masks.clear();
     // Billboards (sprites' facing): set by what pushes them, none past the end.
-    scene.sprite_facing.clear();
-    scene.text_facing.clear();
+    scene.sprite.sprite_facing.clear();
+    scene.sprite.text_facing.clear();
     scene.effects.line_layers.clear();
     scene.effects.point_layers.clear();
     scene.effects.particle_layers.clear();
@@ -784,20 +784,20 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
                 });
             } else {
                 if t.outline > 0.0 {
-                    scene.text_outlines.push(og_render::TextOutline {
-                        text: scene.texts.len() as u32,
+                    scene.sprite.text_outlines.push(og_render::TextOutline {
+                        text: scene.sprite.texts.len() as u32,
                         width: t.outline,
                         color: t.outline_color,
                     });
                 }
                 if t.facing != og_render::SpriteFacing::None {
-                    scene.text_facing.push(og_render::TextFacing {
-                        text: scene.texts.len() as u32,
+                    scene.sprite.text_facing.push(og_render::TextFacing {
+                        text: scene.sprite.texts.len() as u32,
                         facing: t.facing,
                         align: t.align,
                     });
                 }
-                scene.texts.push(text);
+                scene.sprite.texts.push(text);
             }
         }
     }

@@ -107,9 +107,10 @@ impl RenderBackend for Recorder {
     }
     fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
         self.0.borrow_mut().shadows = scene
+            .sprite
             .sprite_shadows
             .iter()
-            .map(|s| (scene.sprites[s.sprite as usize], s.ground))
+            .map(|s| (scene.sprite.sprites[s.sprite as usize], s.ground))
             .collect();
         Ok(())
     }

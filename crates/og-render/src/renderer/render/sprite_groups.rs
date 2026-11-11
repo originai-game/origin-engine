@@ -61,7 +61,7 @@ impl Renderer {
                 RunSource::Tiles(k) => RunSource::Sprite(
                     SpriteBlend::Alpha,
                     Some(
-                        scene.tile_layers
+                        scene.sprite.tile_layers
                             [gpu_sprites.tiles.as_ref().expect("GPU tiles")[k as usize].layer]
                             .texture,
                     ),
@@ -81,7 +81,7 @@ impl Renderer {
                 }
                 RunSource::Array(_, a) => self.sprite_array_group(scene, a),
                 RunSource::Mesh(i) => {
-                    let t = scene.sprite_meshes[i as usize].texture;
+                    let t = scene.sprite.sprite_meshes[i as usize].texture;
                     self.sprite_group(t);
                     if let Some(t) = t {
                         self.sprite_normal_group(scene, t);
@@ -121,7 +121,7 @@ impl Renderer {
             });
         }
         // The sprite meshes' corners (sprite_mesh.rs), lit as their layers' sprites.
-        if !scene.sprite_meshes.is_empty() {
+        if !scene.sprite.sprite_meshes.is_empty() {
             let corners = sprite_mesh::vertices(scene, lit, self.sprite.sprite_skin_supported);
             let meshes = self.sprite.sprite_meshes.get_or_insert_with(|| {
                 // Fork s60: drawn by the main pass, as the tiles are.

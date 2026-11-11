@@ -817,10 +817,10 @@ pub fn untonemapped_sprites_scene() -> RenderScene {
         ..Default::default()
     };
     let add = |scene: &mut RenderScene, sprite: og_render::Sprite, tone_mapped: bool| {
-        let i = scene.sprites.len() as u32;
+        let i = scene.sprite.sprites.len() as u32;
         scene.add_sprite(sprite);
         if !tone_mapped {
-            scene.sprite_fx.push(SpriteFx {
+            scene.sprite.sprite_fx.push(SpriteFx {
                 sprite: i,
                 tone_mapped,
                 ..Default::default()
@@ -840,7 +840,7 @@ pub fn untonemapped_sprites_scene() -> RenderScene {
         },
         true,
     );
-    scene.sprite_arrays.push(SpriteArray {
+    scene.sprite.sprite_arrays.push(SpriteArray {
         sprite: left,
         array: bubbles,
         layer: 0,
@@ -856,7 +856,7 @@ pub fn untonemapped_sprites_scene() -> RenderScene {
         },
         false,
     );
-    scene.sprite_arrays.push(SpriteArray {
+    scene.sprite.sprite_arrays.push(SpriteArray {
         sprite: a,
         array: bubbles,
         layer: 0,

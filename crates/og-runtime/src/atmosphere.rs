@@ -328,8 +328,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         });
     }
     scene.world.water.clear();
-    scene.water_2d.clear();
-    scene.metaballs.clear();
+    scene.sprite.water_2d.clear();
+    scene.sprite.metaballs.clear();
     scene.world.fluids_3d.clear();
     let time = world.time();
     let tick = time.tick;
@@ -755,7 +755,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             .water_line(Entity::from_bits(e))
             .unwrap_or_else(|| vec![0.0; u(line, "columns", 96).max(2) as usize]);
         let rgba = |c: &str, a: &str, dc: Vec3, da: f32| color(&v[c], dc).extend(f(&v, a, da));
-        scene.water_2d.push(Water2d {
+        scene.sprite.water_2d.push(Water2d {
             origin: Vec2::new(at.x - width * 0.5, at.y),
             width,
             depth: f(line, "depth", 3.0),
@@ -789,7 +789,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             ),
             None => (0, 0, Arc::from(Vec::new())),
         };
-        scene.metaballs.push(Metaballs {
+        scene.sprite.metaballs.push(Metaballs {
             particles: Arc::from(particles),
             radius: f(&v, "radius", 0.18) * f(&v, "blobScale", 1.6),
             threshold: f(&v, "threshold", 0.45),
@@ -919,7 +919,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             for pair in points.windows(2) {
                 let (a, b) = (pair[0], pair[1]);
                 let d = b - a;
-                scene.sprites.push(Sprite {
+                scene.sprite.sprites.push(Sprite {
                     position: ((a + b) * 0.5).truncate().extend(a.z),
                     size: Vec2::new(d.truncate().length() + width, width),
                     rotation: d.y.atan2(d.x),

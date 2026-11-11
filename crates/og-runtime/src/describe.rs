@@ -105,7 +105,7 @@ impl RuntimeView {
             .iter()
             .map(|s| by_palette.get(&s.palette).map_or(0, |&e| id_of(e)))
             .collect();
-        sources.sprites = vec![0; scene.sprites.len()];
+        sources.sprites = vec![0; scene.sprite.sprites.len()];
         for &(i, e) in &rs.ids.sprites {
             if let Some(slot) = sources.sprites.get_mut(i as usize) {
                 *slot = id_of(e);

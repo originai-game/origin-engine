@@ -681,7 +681,7 @@ fn local(size: Vec2, m: Mat4, x: f32, z: f32) -> (Vec2, bool) {
 /// them. Where terrains overlap the highest counts. Runs after the frame's
 /// sprites and terrains are extracted.
 pub(crate) fn ground_drop_shadows(rs: &mut RenderState) {
-    if rs.scene.sprite_shadows.is_empty() || rs.scene.world.terrains.is_empty() {
+    if rs.scene.sprite.sprite_shadows.is_empty() || rs.scene.world.terrains.is_empty() {
         return;
     }
     let loaded = &rs.terrain.loaded;
@@ -713,9 +713,9 @@ pub(crate) fn ground_drop_shadows(rs: &mut RenderState) {
             .reduce(f32::max)
     };
     let sun = scene.lighting.light.direction_to_light;
-    for k in 0..scene.sprite_shadows.len() {
-        let shadow = scene.sprite_shadows[k];
-        let Some(sprite) = scene.sprites.get(shadow.sprite as usize) else {
+    for k in 0..scene.sprite.sprite_shadows.len() {
+        let shadow = scene.sprite.sprite_shadows[k];
+        let Some(sprite) = scene.sprite.sprites.get(shadow.sprite as usize) else {
             continue;
         };
         let Some(h) = height_at(sprite.position.x, sprite.position.z) else {
@@ -726,6 +726,7 @@ pub(crate) fn ground_drop_shadows(rs: &mut RenderState) {
         }
         // A billboard's shadow is cast by its sun-facing card.
         let facing = scene
+            .sprite
             .sprite_facing
             .get(shadow.sprite as usize)
             .copied()
@@ -736,7 +737,7 @@ pub(crate) fn ground_drop_shadows(rs: &mut RenderState) {
             facing,
             sun,
         );
-        scene.sprite_shadows[k].ground = ground;
+        scene.sprite.sprite_shadows[k].ground = ground;
     }
 }
 

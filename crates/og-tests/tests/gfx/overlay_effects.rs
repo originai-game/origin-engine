@@ -112,7 +112,7 @@ fn skeleton_2d_gpu_weighting_matches_cpu_triangles() {
             let make = |gpu| {
                 let mut scene = og_tests::skeleton_scenes::skeleton_scene(gpu).unwrap();
                 if normal {
-                    let texture = scene.sprite_meshes[0].texture.unwrap();
+                    let texture = scene.sprite.sprite_meshes[0].texture.unwrap();
                     let n = scene.add_texture(og_render::TextureData {
                         width: 1,
                         height: 1,
@@ -122,7 +122,7 @@ fn skeleton_2d_gpu_weighting_matches_cpu_triangles() {
                     });
                     assert!(scene.set_texture_normal(texture, Some(n)));
                 }
-                for m in &mut scene.sprite_meshes {
+                for m in &mut scene.sprite.sprite_meshes {
                     m.blend = blend;
                 }
                 scene

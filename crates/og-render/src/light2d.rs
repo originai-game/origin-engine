@@ -194,22 +194,25 @@ impl LightSlots {
     /// The masks of `scene`'s receivers in its lit layers: the sprites',
     /// then the sprite meshes', then the tile layers'.
     pub(crate) fn of(scene: &crate::RenderScene) -> LightSlots {
-        let Some(l) = scene.lighting_2d else {
+        let Some(l) = scene.sprite.lighting_2d else {
             return LightSlots::new([]);
         };
         let lit = |layer: i32| (l.min_layer..=l.max_layer).contains(&layer);
         let sprites = scene
+            .sprite
             .sprite_light_masks
             .iter()
-            .zip(&scene.sprites)
+            .zip(&scene.sprite.sprites)
             .filter(|(_, s)| lit(s.layer))
             .map(|(m, _)| *m);
         let meshes = scene
+            .sprite
             .sprite_meshes
             .iter()
             .filter(|m| lit(m.layer))
             .map(|m| m.light_mask);
         let tiles = scene
+            .sprite
             .tile_layers
             .iter()
             .filter(|t| t.lit && lit(t.layer))

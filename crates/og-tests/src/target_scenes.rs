@@ -307,9 +307,9 @@ fn add_view_kind(scene: &mut RenderScene, kind: ViewKind) {
                 color: [1.0, 0.2, 0.65, 1.0],
                 ..Default::default()
             });
-            let i = scene.sprites.len() - 1;
-            scene.sprite_layers.resize(i + 1, 1);
-            scene.sprite_layers[i] = 2;
+            let i = scene.sprite.sprites.len() - 1;
+            scene.sprite.sprite_layers.resize(i + 1, 1);
+            scene.sprite.sprite_layers[i] = 2;
         }
         ViewKind::Particles => {
             let e = scene.add_emitter(og_render::ParticleEmitter {
@@ -535,11 +535,11 @@ pub fn view_fx_scene(fx: ViewFx, on: bool) -> RenderScene {
                 });
             }
             ViewFx::Lit2d => {
-                scene.lighting_2d = Some(og_render::Lighting2d {
+                scene.sprite.lighting_2d = Some(og_render::Lighting2d {
                     ambient: Vec3::splat(0.05),
                     ..Default::default()
                 });
-                scene.lights_2d.push(og_render::Light2d {
+                scene.sprite.lights_2d.push(og_render::Light2d {
                     position: glam::Vec2::new(0.8, 0.6),
                     color: Vec3::new(1.0, 0.7, 0.4),
                     intensity: 2.0,
@@ -555,14 +555,14 @@ pub fn view_fx_scene(fx: ViewFx, on: bool) -> RenderScene {
                         glam::Vec2::new(r * a.cos(), r * a.sin())
                     })
                     .collect();
-                scene.metaballs.push(og_render::Metaballs {
+                scene.sprite.metaballs.push(og_render::Metaballs {
                     particles: particles.into(),
                     radius: 0.45,
                     ..Default::default()
                 });
             }
             ViewFx::Glow => {
-                scene.sprite_fx.push(og_render::SpriteFx {
+                scene.sprite.sprite_fx.push(og_render::SpriteFx {
                     sprite: 0,
                     glow: 3.0,
                     ..Default::default()

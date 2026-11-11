@@ -74,8 +74,28 @@ impl RenderScene {
                 custom_post: Vec::new(),
                 color_filter: None,
             },
-            sprites: Vec::new(),
-            texts: Vec::new(),
+            sprite: SceneSprites {
+                sprites: Vec::new(),
+                texts: Vec::new(),
+                sprite_order: Vec::new(),
+                text_outlines: Vec::new(),
+                tile_layers: Vec::new(),
+                sprite_arrays: Vec::new(),
+                sprite_shadows: Vec::new(),
+                sprite_outlines: Vec::new(),
+                sprite_shading: Vec::new(),
+                sprite_layers: Vec::new(),
+                sprite_light_masks: Vec::new(),
+                sprite_facing: Vec::new(),
+                text_facing: Vec::new(),
+                sprite_fx: Vec::new(),
+                sprite_meshes: Vec::new(),
+                lighting_2d: None,
+                lights_2d: Vec::new(),
+                occluders_2d: Vec::new(),
+                water_2d: Vec::new(),
+                metaballs: Vec::new(),
+            },
             debug: DebugView::None,
             skins: Vec::new(),
             morphs: Vec::new(),
@@ -99,10 +119,6 @@ impl RenderScene {
             terrain_edits: Vec::new(),
             instance_layers: Vec::new(),
             skinned_layers: Vec::new(),
-            sprite_layers: Vec::new(),
-            sprite_light_masks: Vec::new(),
-            sprite_facing: Vec::new(),
-            text_facing: Vec::new(),
             effects: SceneEffects {
                 particles: Vec::new(),
                 particle_history: Default::default(),
@@ -146,11 +162,6 @@ impl RenderScene {
             },
             debris: Vec::new(),
             css_height: 0.0,
-            lighting_2d: None,
-            lights_2d: Vec::new(),
-            occluders_2d: Vec::new(),
-            sprite_fx: Vec::new(),
-            sprite_meshes: Vec::new(),
             shake: CameraShake::default(),
             previous_transforms: Vec::new(),
             instance_levels: Vec::new(),
@@ -176,15 +187,6 @@ impl RenderScene {
             },
             quality: crate::RenderQuality::default(),
             impostors: Vec::new(),
-            water_2d: Vec::new(),
-            metaballs: Vec::new(),
-            sprite_order: Vec::new(),
-            text_outlines: Vec::new(),
-            tile_layers: Vec::new(),
-            sprite_arrays: Vec::new(),
-            sprite_shadows: Vec::new(),
-            sprite_outlines: Vec::new(),
-            sprite_shading: Vec::new(),
             texture_filters: Vec::new(),
             texture_sizes: Default::default(),
             texture_normals: Vec::new(),
@@ -206,7 +208,7 @@ impl RenderScene {
 
     /// Adds one sprite (the same as pushing onto [`RenderScene::sprites`]).
     pub fn add_sprite(&mut self, sprite: Sprite) {
-        self.sprites.push(sprite);
+        self.sprite.sprites.push(sprite);
     }
 
     /// Every per-frame reference to a removed mesh, material, texture,
@@ -254,7 +256,7 @@ impl RenderScene {
                 p.index()
             ));
         }
-        for s in &self.sprite_arrays {
+        for s in &self.sprite.sprite_arrays {
             if !self.contains_texture_array(s.array) {
                 return Some(format!(
                     "sprite {}: texture array {} was removed",
@@ -290,6 +292,7 @@ impl RenderScene {
         }
         let overlay = self.ui.overlay.as_ref();
         let sprites = self
+            .sprite
             .sprites
             .iter()
             .chain(overlay.into_iter().flat_map(|o| o.sprites.iter()));
@@ -301,6 +304,7 @@ impl RenderScene {
             }
         }
         let texts = self
+            .sprite
             .texts
             .iter()
             .chain(overlay.into_iter().flat_map(|o| o.texts.iter()));

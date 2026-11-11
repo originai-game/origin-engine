@@ -283,7 +283,7 @@ impl Renderer {
     pub(crate) fn sprite_normal_group(&mut self, scene: &RenderScene, t: TextureHandle) {
         let Some(n) = scene
             .texture_normal(t)
-            .filter(|_| scene.lighting_2d.is_some())
+            .filter(|_| scene.sprite.lighting_2d.is_some())
         else {
             return;
         };
@@ -347,7 +347,7 @@ impl Renderer {
         t: Option<TextureHandle>,
     ) -> Option<&wgpu::BindGroup> {
         let t = t?;
-        scene.lighting_2d?;
+        scene.sprite.lighting_2d?;
         scene.texture_normal(t)?;
         self.sprite.sprite_normals.as_ref()?.group(t.index())
     }

@@ -488,7 +488,7 @@ fn effect_table(frames: u32, only: Option<&str>) -> Result<String, String> {
             g.scene.effects.particles.clear()
         }),
         ("fx-2d", "2D lights + soft shadows", |g| {
-            g.scene.lighting_2d = None;
+            g.scene.sprite.lighting_2d = None;
         }),
         ("fx-2d", "2D glow buffer", |g| g.scene.look.post.glow = None),
         ("trails-beams", "trails, ribbon, beams", |g| {
@@ -530,17 +530,17 @@ fn effect_table(frames: u32, only: Option<&str>) -> Result<String, String> {
             |g| g.scene.world.water.clear(),
         ),
         ("water-2d", "E5: 2D water line", |g| {
-            g.scene.water_2d.clear()
+            g.scene.sprite.water_2d.clear()
         }),
         (
             "fluid-2d",
             "E5: 2D fluids as metaballs (2 fluids, 1,500 particles)",
-            |g| g.scene.metaballs.clear(),
+            |g| g.scene.sprite.metaballs.clear(),
         ),
         (
             "fluid-groups",
             "E5, phase 2: ten 2D fluids in three fields, two groups of two",
-            |g| g.scene.metaballs.clear(),
+            |g| g.scene.sprite.metaballs.clear(),
         ),
         (
             "shader-hooks",

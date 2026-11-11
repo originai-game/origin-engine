@@ -1661,7 +1661,7 @@ fn glass_cost() {
         let mut scene = RenderScene::new();
         scene.camera = og_render::Camera::orthographic_2d(Vec2::new(640.0, 360.0), 720.0);
         for k in 0..160 {
-            scene.sprites.push(og_render::Sprite {
+            scene.sprite.sprites.push(og_render::Sprite {
                 position: Vec3::new(k as f32 * 8.0 + 2.0, 360.0, 0.0),
                 size: Vec2::new(4.0, 720.0),
                 ..og_render::Sprite::default()

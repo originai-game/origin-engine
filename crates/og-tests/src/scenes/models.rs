@@ -125,7 +125,7 @@ pub(super) fn showcase() -> Result<RenderScene, String> {
     };
     // A world-space label and a few sprites in the xy plane, facing the camera.
     let font = load_font(&mut scene)?;
-    scene.texts.push(Text {
+    scene.sprite.texts.push(Text {
         position: Vec3::new(-3.1, 4.3, -2.0),
         size: 0.8,
         color: [3.0, 2.6, 1.6, 1.0],

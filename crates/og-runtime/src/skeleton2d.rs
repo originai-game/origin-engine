@@ -206,7 +206,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
                 }
             })
             .collect();
-        rs.scene.sprite_meshes.push(og_render::SpriteMesh {
+        rs.scene.sprite.sprite_meshes.push(og_render::SpriteMesh {
             texture: textures
                 .get(&s.rig)
                 .and_then(|&i| rs.textures.get(i).copied()),

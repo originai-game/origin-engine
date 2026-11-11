@@ -16,7 +16,7 @@ impl Renderer {
             scene.effects.decal_atlas,
             self.lights.decal_buffers.generation,
             ao,
-            scene.lighting_2d.is_some(),
+            scene.sprite.lighting_2d.is_some(),
             reflection,
         );
         if self.lights.fx_groups.as_ref().map(|g| g.key) != Some(fx_key) {
@@ -42,7 +42,7 @@ impl Renderer {
             } else {
                 &self.post.white
             };
-            let lightmap_view = if scene.lighting_2d.is_some() {
+            let lightmap_view = if scene.sprite.lighting_2d.is_some() {
                 self.graph.view("lightmap")
             } else {
                 &self.default_white

@@ -89,7 +89,7 @@ impl Renderer {
             }
             self.ribbon_group(run.texture);
         }
-        let lit_range = scene.lighting_2d.map(|l| (l.min_layer, l.max_layer));
+        let lit_range = scene.sprite.lighting_2d.map(|l| (l.min_layer, l.max_layer));
         // The light map's strips, one per light mask of the lit receivers.
         let light_slots = light2d::LightSlots::of(scene);
         let lit = |layer: i32, mask: u32| light_slots.lit(lit_range, layer, mask);
@@ -104,7 +104,7 @@ impl Renderer {
             }
             Projection::Perspective { .. } => None,
         };
-        water::water_2d_strips(&scene.water_2d, &mut ribbon_frame);
+        water::water_2d_strips(&scene.sprite.water_2d, &mut ribbon_frame);
         // Each view's strips facing its own eye (views.rs): the same strip
         // points and 2D water (the vertex shader faces the view's camera),
         // or, built on the CPU, its own after the main camera's in the
@@ -120,7 +120,7 @@ impl Renderer {
                     self.strips
                         .trails
                         .emit(p.position, p.frame.forward, p.frame.orthographic);
-                water::water_2d_strips(&scene.water_2d, &mut f);
+                water::water_2d_strips(&scene.sprite.water_2d, &mut f);
                 let base = ribbon_frame.vertices.len() as u32;
                 ribbon_frame.vertices.extend_from_slice(&f.vertices);
                 f.runs
@@ -147,11 +147,11 @@ impl Renderer {
         let fluids = self.world.metaballs.prepare(
             &self.device,
             &self.queue,
-            &scene.metaballs,
+            &scene.sprite.metaballs,
             (self.width, self.height),
         );
         layered.extend(
-            metaballs::layers(&scene.metaballs)
+            metaballs::layers(&scene.sprite.metaballs)
                 .into_iter()
                 .map(|(i, layer)| sprites::LayeredStrip {
                     layer,

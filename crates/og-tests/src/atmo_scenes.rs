@@ -253,7 +253,7 @@ pub fn water_2d_scene() -> RenderScene {
             splash + 0.08 * (x * 1.7).sin() + 0.05 * (x * 3.1 + 1.0).sin()
         })
         .collect();
-    scene.water_2d.push(Water2d {
+    scene.sprite.water_2d.push(Water2d {
         origin: Vec2::new(-10.0, -1.2),
         width: 20.0,
         depth: 6.0,
@@ -335,12 +335,12 @@ pub fn fluid_2d_scene() -> RenderScene {
             ..Default::default()
         });
     }
-    scene.metaballs.push(Metaballs {
+    scene.sprite.metaballs.push(Metaballs {
         particles: Arc::from(water),
         radius: 0.26,
         ..Default::default()
     });
-    scene.metaballs.push(Metaballs {
+    scene.sprite.metaballs.push(Metaballs {
         particles: Arc::from(lava),
         radius: 0.28,
         color: glam::Vec4::new(1.4, 0.45, 0.08, 1.0),
@@ -393,7 +393,7 @@ pub fn fluid_groups_scene() -> RenderScene {
         Vec4::new(0.9, 0.35, 0.7, 0.9),
     ];
     for (i, c) in colors.iter().enumerate() {
-        scene.metaballs.push(Metaballs {
+        scene.sprite.metaballs.push(Metaballs {
             particles: Arc::from(disc(
                 Vec2::new(-5.0 + i as f32 * 2.0, 2.4),
                 0.7,
@@ -425,7 +425,7 @@ pub fn fluid_groups_scene() -> RenderScene {
             .map(|p| [1.0 - share(p), share(p), 0.0, 0.0])
             .collect()
     };
-    scene.metaballs.push(Metaballs {
+    scene.sprite.metaballs.push(Metaballs {
         particles: Arc::from(left.clone()),
         radius: 0.24,
         color: Vec4::new(0.12, 0.45, 0.9, 0.9),
@@ -435,7 +435,7 @@ pub fn fluid_groups_scene() -> RenderScene {
         layer: 1,
         ..Default::default()
     });
-    scene.metaballs.push(Metaballs {
+    scene.sprite.metaballs.push(Metaballs {
         particles: Arc::from(right.clone()),
         radius: 0.24,
         color: Vec4::new(1.0, 0.55, 0.1, 0.9),
@@ -468,7 +468,7 @@ pub fn fluid_groups_scene() -> RenderScene {
         let n = ps.len();
         let mut m = [0.0; 4];
         m[lane] = 1.0;
-        scene.metaballs.push(Metaballs {
+        scene.sprite.metaballs.push(Metaballs {
             particles: Arc::from(ps),
             radius: 0.24,
             color: c,
