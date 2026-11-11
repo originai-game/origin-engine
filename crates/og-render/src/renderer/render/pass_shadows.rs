@@ -50,6 +50,7 @@ impl Pass for CascadePass {
             cx.stats,
             true,
             &[ShadowTarget::Cascade],
+            plan.cascades[i as usize].reach,
         );
     }
 }
@@ -95,6 +96,7 @@ impl Pass for ShelterPass {
             cx.stats,
             false,
             &[ShadowTarget::Cascade],
+            f32::INFINITY,
         );
     }
 }
@@ -148,6 +150,7 @@ impl Pass for LocalFacePass {
             cx.stats,
             true,
             &ShadowTarget::LOCAL,
+            f32::INFINITY,
         );
     }
 }

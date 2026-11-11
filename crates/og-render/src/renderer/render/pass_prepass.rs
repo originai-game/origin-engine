@@ -194,10 +194,13 @@ impl Renderer {
             ShadowTarget::Cascade,
         );
         stats.prepass_draws += n;
-        stats.prepass_draws +=
-            self.world
-                .grass
-                .draw(&mut p, grass::GrassPass::Prepass, grass_frame, None);
+        stats.prepass_draws += self.world.grass.draw(
+            &mut p,
+            grass::GrassPass::Prepass,
+            grass_frame,
+            None,
+            f32::INFINITY,
+        );
         stats.draw_calls += stats.prepass_draws;
         drop(p);
         if let Some(object) = self

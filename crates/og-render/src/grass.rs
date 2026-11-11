@@ -772,6 +772,10 @@ pub(crate) struct GrassField {
     arrayed: bool,
     slices: u32,
     cast: bool,
+    /// How far from the camera the nearest ground a blade of LOD 1 and of
+    /// LOD 2 can shade lies (m): a shadow pass whose receivers are all
+    /// nearer draws neither.
+    shades_from: [f32; 2],
 }
 
 /// The fields to generate and draw this frame.
@@ -1088,7 +1092,7 @@ impl GrassRenderer {
             "grass prepass",
             &self.prepass_layout,
             &lit_module,
-            "vs",
+            "vs_prepass",
             "fs_prepass",
             &[
                 target(crate::post::GBUFFER_FORMAT),
@@ -1473,6 +1477,13 @@ impl GrassRenderer {
                 arrayed: td.arrayed,
                 slices: slices.len() as u32,
                 cast,
+                // A level starts half a dither band before its distance;
+                // a blade there reaches up to its length towards the
+                // camera and throws its shadow `shadow` further.
+                shades_from: lod.lod_start.map(|d| {
+                    let blade = g.tallest() * (1.0 + g.lean.abs() + g.clump_lean.abs());
+                    d - lod.band * 0.5 - blade - shadow.length()
+                }),
             });
         }
         if !frame.fields.is_empty() && self.pipelines.is_none() {
@@ -1513,13 +1524,17 @@ impl GrassRenderer {
     }
 
     /// Draws this frame's fields into a pass whose group 0 (and, lit, group
-    /// 2: `fx`) the caller bound. Answers the draws made.
+    /// 2: `fx`) the caller bound: the levels of detail that stand within
+    /// `reach` of the camera or throw their shadow there (a cascade's
+    /// [`crate::frame::Cascade::reach`]; infinite: all of them). Answers
+    /// the draws made.
     pub(crate) fn draw(
         &self,
         pass: &mut wgpu::RenderPass,
         kind: GrassPass,
         frame: &GrassFrame,
         fx: Option<&wgpu::BindGroup>,
+        reach: f32,
     ) -> u32 {
         let Some(pipelines) = &self.pipelines else {
             return 0;
@@ -1538,8 +1553,13 @@ impl GrassRenderer {
                 pass.set_bind_group(2, fx, &[]);
             }
             pass.set_index_buffer(self.indices.slice(..), wgpu::IndexFormat::Uint32);
-            for l in 0..3u64 {
-                pass.draw_indexed_indirect(&f.draws, l * 20);
+            for l in 0..3usize {
+                // A level none of whose blades shades what the pass holds
+                // (a near cascade's: only its vertices would be spent).
+                if l > 0 && field.shades_from[l - 1] > reach {
+                    continue;
+                }
+                pass.draw_indexed_indirect(&f.draws, l as u64 * 20);
                 draws += 1;
             }
         }

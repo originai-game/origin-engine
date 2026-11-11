@@ -567,6 +567,9 @@ impl<'f> DrawCtx<'f> {
         stats: &mut FrameStats,
         all_casters: bool,
         targets: &[ShadowTarget],
+        // How far from the camera the pass's receivers lie (a cascade's
+        // `reach`): grass farther than its shadow reaches stays out.
+        reach: f32,
     ) {
         let &DrawCtx {
             r,
@@ -585,80 +588,81 @@ impl<'f> DrawCtx<'f> {
         stats.shadow_passes += 1;
         stats.shadow_cached += plan.cached() as u32;
         // What every pass of every caster draws besides the instances.
-        let draw_rest =
-            |pass: &mut wgpu::RenderPass, shadow: ShadowTarget, stats: &mut FrameStats| {
-                // The clustered casters (meshlet_gpu.rs), each one draw of
-                // the clusters the pass's view kept.
-                if view > 0
-                    && let Some(m) = r.visibility.meshlet.as_ref()
-                {
-                    stats.draw_calls += m.draw_shadow(pass, shadow, batches, view, |b| {
-                        &r.cache.materials[b.material].bind_group
-                    });
-                }
-                // Terrain levels that reach into the pass's volume.
-                if let Some(indices) = terrain_indices
-                    && terrain_casters
-                {
-                    let (n, _) = terrain::draw_levels(
-                        pass,
-                        terrain_draws,
-                        indices,
-                        terrain::TerrainPass::Shadow(shadow),
-                        frustum,
-                        None,
-                    );
-                    stats.draw_calls += n;
-                    stats.terrain_shadow_draws += n;
-                }
-                if !all_casters {
-                    return;
-                }
-                // Skinned casters: those GPU culling's pass for the layer
-                // kept (its counts hold them), unculled on the CPU path.
-                let g = lists[0].indirect.or(lists[1].indirect);
-                let pipelines: Vec<&wgpu::RenderPipeline> =
-                    shadow_skinned.iter().map(|s| s.get(shadow)).collect();
-                let n = self.draw_skinned(
+        let draw_rest = |pass: &mut wgpu::RenderPass,
+                         shadow: ShadowTarget,
+                         stats: &mut FrameStats| {
+            // The clustered casters (meshlet_gpu.rs), each one draw of
+            // the clusters the pass's view kept.
+            if view > 0
+                && let Some(m) = r.visibility.meshlet.as_ref()
+            {
+                stats.draw_calls += m.draw_shadow(pass, shadow, batches, view, |b| {
+                    &r.cache.materials[b.material].bind_group
+                });
+            }
+            // Terrain levels that reach into the pass's volume.
+            if let Some(indices) = terrain_indices
+                && terrain_casters
+            {
+                let (n, _) = terrain::draw_levels(
                     pass,
-                    skinned_batches,
-                    false,
-                    1,
-                    2,
-                    &pipelines,
+                    terrain_draws,
+                    indices,
+                    terrain::TerrainPass::Shadow(shadow),
+                    frustum,
                     None,
-                    None,
-                    g,
                 );
                 stats.draw_calls += n;
-                if !(skinned_gpu && g.is_some()) {
-                    stats.shadow_casters += skinned_batches
-                        .iter()
-                        .filter(|b| !b.transparent && b.cast)
-                        .map(|b| b.count)
-                        .sum::<u32>();
-                }
-                let (n, _) = r.world.scatter.draw(
-                    pass,
-                    scatter::ScatterPass::Shadow,
-                    scatter_batches,
-                    |m| self.scatter_material(m),
-                    |m| self.scatter_mesh(m),
-                    |c, r| frustum.intersects_sphere(c, r),
-                    None,
-                    None,
-                    false,
-                    self.card_source(g),
-                    shadow,
-                );
-                stats.draw_calls += n; // Grass casts into the first cascades only (grass.rs).
-                if slot < grass::SHADOW_CASCADES {
-                    stats.draw_calls +=
-                        r.world
-                            .grass
-                            .draw(pass, grass::GrassPass::Shadow, grass_frame, None);
-                }
-            };
+                stats.terrain_shadow_draws += n;
+            }
+            if !all_casters {
+                return;
+            }
+            // Skinned casters: those GPU culling's pass for the layer
+            // kept (its counts hold them), unculled on the CPU path.
+            let g = lists[0].indirect.or(lists[1].indirect);
+            let pipelines: Vec<&wgpu::RenderPipeline> =
+                shadow_skinned.iter().map(|s| s.get(shadow)).collect();
+            let n = self.draw_skinned(
+                pass,
+                skinned_batches,
+                false,
+                1,
+                2,
+                &pipelines,
+                None,
+                None,
+                g,
+            );
+            stats.draw_calls += n;
+            if !(skinned_gpu && g.is_some()) {
+                stats.shadow_casters += skinned_batches
+                    .iter()
+                    .filter(|b| !b.transparent && b.cast)
+                    .map(|b| b.count)
+                    .sum::<u32>();
+            }
+            let (n, _) = r.world.scatter.draw(
+                pass,
+                scatter::ScatterPass::Shadow,
+                scatter_batches,
+                |m| self.scatter_material(m),
+                |m| self.scatter_mesh(m),
+                |c, r| frustum.intersects_sphere(c, r),
+                None,
+                None,
+                false,
+                self.card_source(g),
+                shadow,
+            );
+            stats.draw_calls += n; // Grass casts into the first cascades only (grass.rs).
+            if slot < grass::SHADOW_CASCADES {
+                stats.draw_calls +=
+                    r.world
+                        .grass
+                        .draw(pass, grass::GrassPass::Shadow, grass_frame, None, reach);
+            }
+        };
         let draw = |encoder: &mut crate::Encoder,
                     list: &DrawList,
                     rest: bool,

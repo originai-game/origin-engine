@@ -289,6 +289,9 @@ pub(crate) struct Cascade {
     /// Where it starts to fade into the next cascade (view depth; equal to
     /// `split_far` without blending).
     pub blend_start: f32,
+    /// The farthest from the camera a point it shades lies (m): the
+    /// slice's far corners. Infinite for a fixed box.
+    pub reach: f32,
     /// A fixed shadow box ([`fit_box`]): three.js's shadow camera, whose
     /// `depth_bias` is the game's (`DirectionalLight::shadow_bias`), not a
     /// texel, so every receiver is compared towards the light by it, as
@@ -413,6 +416,7 @@ pub(crate) fn fit_box(
         depth_bias: texel.max(bias) / depth_range,
         split_far: 1.0e7,
         blend_start: 1.0e7,
+        reach: f32::INFINITY,
         fixed_box: true,
     }]
 }
@@ -463,6 +467,14 @@ pub(crate) fn fit_cascades(
     let bounds_ls = rotation.transform_point3(bounds.0);
     let mut cascades = Vec::with_capacity(count);
     let blend = blend.clamp(0.0, 1.0);
+    // A far corner's distance from the camera over its view depth.
+    let corner = match cam.projection {
+        Projection::Perspective { fov_y_degrees } => {
+            let t = (fov_y_degrees.to_radians() * 0.5).tan();
+            (1.0 + t * t * (1.0 + aspect * aspect)).sqrt()
+        }
+        Projection::Orthographic { .. } => f32::INFINITY,
+    };
     for i in 0..count {
         // The slice this cascade shades, reaching back over the blend band
         // of the one before it.
@@ -511,6 +523,7 @@ pub(crate) fn fit_cascades(
             depth_bias: texel / depth_range,
             split_far: splits[i + 1],
             blend_start: splits[i + 1] - (splits[i + 1] - splits[i]) * blend,
+            reach: splits[i + 1] * corner,
             fixed_box: false,
         });
     }
@@ -937,6 +950,18 @@ mod tests {
         }
         assert_eq!(fit(CASCADES + 3).len(), CASCADES);
         assert!(four.iter().all(|c| !c.fixed_box));
+        // A cascade's reach is its slice's far corners' distance from the
+        // camera (the corner of the screen, at the split's view depth).
+        let unproject = frame.view_proj.inverse();
+        let ray = (unproject.project_point3(Vec3::new(1.0, 1.0, 0.5)) - cam.position).normalize();
+        for c in &four {
+            let corner = c.split_far / ray.dot(frame.forward);
+            assert!(
+                (c.reach - corner).abs() < 1e-3 * corner,
+                "{} {corner}",
+                c.reach
+            );
+        }
     }
 
     /// A fixed shadow box is one cascade whose depth bias is the game's

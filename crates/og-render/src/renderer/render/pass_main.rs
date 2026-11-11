@@ -275,6 +275,7 @@ impl Renderer {
             grass::GrassPass::Lit,
             grass_frame,
             Some(fx_group),
+            f32::INFINITY,
         );
         let sky = match scene.lighting.environment.background {
             Background::Sky => Some(&self.sky.sky_pipeline),
