@@ -220,12 +220,13 @@ impl Ui {
             // A framed text control's frame draws its text (`Ui::field_frame`).
             Content::Text(_) if self.framed_text(i) => {}
             Content::Text(tc) if let Some(tp) = &n.props.text_path => {
-                self.path_text_commands(i, tc, tp, rect, clip, cmds);
+                self.path_text_commands(i, n.used_text(tc), tp, rect, clip, cmds);
             }
             Content::Text(tc) if let Some(v) = tc.vertical => {
-                self.vertical_text_commands(i, tc, v, rect, clip, cmds);
+                self.vertical_text_commands(i, n.used_text(tc), v, rect, clip, cmds);
             }
             Content::Text(tc) => {
+                let tc = n.used_text(tc);
                 let font = self
                     .env
                     .fonts
@@ -968,7 +969,7 @@ impl Ui {
     fn path_text_commands(
         &self,
         i: usize,
-        tc: &crate::layout::TextContent,
+        tc: crate::layout::UsedText<'_>,
         tp: &crate::text_path::TextPath,
         rect: Rect,
         clip: Rect,
@@ -1225,7 +1226,7 @@ impl Ui {
     pub(crate) fn vertical_lines(
         &self,
         i: usize,
-        tc: &crate::layout::TextContent,
+        tc: crate::layout::UsedText<'_>,
         v: crate::layout::flow::VerticalText,
         rect: Rect,
         clip: Rect,
@@ -1475,7 +1476,7 @@ impl Ui {
     fn vertical_text_commands(
         &self,
         i: usize,
-        tc: &crate::layout::TextContent,
+        tc: crate::layout::UsedText<'_>,
         v: crate::layout::flow::VerticalText,
         rect: Rect,
         clip: Rect,

@@ -50,7 +50,7 @@ fn rewrap(
 }
 
 /// A text's extent along its line: across, or down a vertical one.
-fn text_measure(t: &TextContent, m: &FontMetrics, text: &str) -> f32 {
+fn text_measure(t: UsedText<'_>, m: &FontMetrics, text: &str) -> f32 {
     let (size, tr, ft) = (t.step.size, t.tracking(), t.features());
     match t.vertical {
         Some(v) => crate::text::vertical::measure(m, text, size, tr, ft, v),
@@ -59,7 +59,7 @@ fn text_measure(t: &TextContent, m: &FontMetrics, text: &str) -> f32 {
 }
 
 /// A text's widest line along its line.
-pub(super) fn text_widest(t: &TextContent, m: &FontMetrics) -> f32 {
+pub(super) fn text_widest(t: UsedText<'_>, m: &FontMetrics) -> f32 {
     let (size, tr, ft) = (t.step.size, t.tracking(), t.features());
     match t.vertical {
         Some(v) => crate::text::vertical::widest_line(&t.text, m, size, tr, ft, v),
@@ -68,7 +68,7 @@ pub(super) fn text_widest(t: &TextContent, m: &FontMetrics) -> f32 {
 }
 
 /// A text's longest unbreakable unit along its line.
-fn text_longest(t: &TextContent, m: &FontMetrics) -> f32 {
+fn text_longest(t: UsedText<'_>, m: &FontMetrics) -> f32 {
     let (size, tr, ft) = (t.step.size, t.tracking(), t.features());
     match t.vertical {
         Some(v) => crate::text::vertical::longest_word(&t.text, m, size, tr, ft, v),
@@ -77,7 +77,7 @@ fn text_longest(t: &TextContent, m: &FontMetrics) -> f32 {
 }
 
 /// A text's lines at `width` along its line (`None`: only at `\n`).
-pub(crate) fn text_lines(t: &TextContent, m: &FontMetrics, width: Option<f32>) -> Vec<Line> {
+pub(crate) fn text_lines(t: UsedText<'_>, m: &FontMetrics, width: Option<f32>) -> Vec<Line> {
     let (size, tr, ft) = (t.step.size, t.tracking(), t.features());
     match t.vertical {
         Some(v) => crate::text::vertical::break_lines(&t.text, m, size, tr, ft, v, width),
@@ -87,7 +87,7 @@ pub(crate) fn text_lines(t: &TextContent, m: &FontMetrics, width: Option<f32>) -
 
 /// A text's preferred width (its widest line) and the least it can take:
 /// its ellipsis, its longest word when it wraps, else all of it.
-fn text_widths(t: &TextContent, fonts: &dyn Metrics) -> (f32, f32) {
+fn text_widths(t: UsedText<'_>, fonts: &dyn Metrics) -> (f32, f32) {
     let m = t.metrics(fonts);
     let pref = text_widest(t, m);
     let min = if t.ellipsis {
@@ -103,7 +103,7 @@ fn text_widths(t: &TextContent, fonts: &dyn Metrics) -> (f32, f32) {
 
 /// A text shows whole at `width` at its step: one line no wider, or (wrapping)
 /// no word wider and no more lines than its limit.
-fn fits(t: &TextContent, fonts: &dyn Metrics, width: f32) -> bool {
+fn fits(t: UsedText<'_>, fonts: &dyn Metrics, width: f32) -> bool {
     let m = t.metrics(fonts);
     if !t.wrap {
         return text_widest(t, m) <= width;
@@ -131,15 +131,13 @@ pub(in crate::layout) fn size_w(nodes: &mut [Node], i: usize, measure: &mut Meas
             (w, w)
         }
         Content::Text(t) => {
+            let t = n.used_text(t);
             let (pref, min) = measure.texts.widths(t, || text_widths(t, fonts));
             match t.fit.last() {
                 // An auto-fit label can shrink to what its smallest step needs.
                 Some(&small) => {
-                    let s = TextContent {
-                        step: small,
-                        ..t.clone()
-                    };
-                    let (_, m) = measure.texts.widths(&s, || text_widths(&s, fonts));
+                    let s = t.at(small);
+                    let (_, m) = measure.texts.widths(s, || text_widths(s, fonts));
                     (pref, min.min(m))
                 }
                 None => (pref, min),
@@ -323,13 +321,11 @@ pub(in crate::layout) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mu
             .fit
             .iter()
             .copied()
-            .find(|&step| fits(&TextContent { step, ..t.clone() }, fonts, width))
+            .find(|&step| fits(t.at(step), fonts, width))
             .unwrap_or(t.fit[t.fit.len() - 1]);
-        if let Content::Text(t) = &mut nodes[i].content {
-            t.step = step;
-        }
+        nodes[i].layout.fit_step = Some(step);
     }
-    if let Content::Text(t) = &nodes[i].content {
+    if let Some(t) = nodes[i].text() {
         // A fit width snapped to the device pixel may land up to half a
         // pixel under the text it was measured from: that is no reason to wrap.
         let width = inner + 0.5;

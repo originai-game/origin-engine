@@ -27,7 +27,7 @@ pub(in crate::layout) fn inline_rows(nodes: &mut [Node], i: usize, measure: &Mea
         .children
         .iter()
         .find_map(|&c| match &nodes[c].content {
-            Content::Text(t) => Some((t.step, t.font)),
+            Content::Text(t) => Some((nodes[c].used_text(t).step, t.font)),
             Content::Rich(rc) => Some(rc.base),
             _ => None,
         })

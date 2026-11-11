@@ -22,7 +22,7 @@ pub(in crate::layout) fn size_h(nodes: &mut [Node], i: usize) {
         Content::Text(t) => {
             // Lines moved down past floats add their drop.
             let drop = n.layout.wrap_lines.last().map_or(0.0, |l| l[1]);
-            let h = n.layout.lines.len().max(1) as f32 * t.line_height() + drop;
+            let h = n.layout.lines.len().max(1) as f32 * n.used_text(t).line_height() + drop;
             (h, h)
         }
         Content::Rich(_) => {
@@ -312,6 +312,7 @@ pub(super) fn layout_baseline(nodes: &[Node], c: usize, fonts: &dyn Metrics) -> 
     let n = &nodes[c];
     match &n.content {
         Content::Text(t) => {
+            let t = n.used_text(t);
             let line = n.layout.lines.first()?;
             let lh = t.line_height();
             let inner = (n.layout.pref_h - n.layout.used.padding.vertical()).max(0.0);

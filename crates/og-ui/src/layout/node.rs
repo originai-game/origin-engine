@@ -206,8 +206,9 @@ pub(crate) struct TextContent {
     /// label reads semibold); 0 for most text.
     pub emphasis: f32,
     /// Auto-fit: its own step, then the smaller steps it takes where its
-    /// text does not fit its width, largest first (layout sets `step` to the
-    /// first that fits, else the last); empty: it keeps its step.
+    /// text does not fit its width, largest first (layout chooses the first
+    /// that fits, else the last: [`LayoutBox::fit_step`]); empty: it keeps
+    /// its step.
     pub fit: Vec<TypeStep>,
     /// How its lines are chosen when it wraps (CSS `text-wrap-style`).
     pub wrap_style: WrapStyle,
@@ -255,7 +256,7 @@ pub(crate) fn snap_pixel_text(nodes: &mut [Node], fonts: &dyn Metrics) {
     for n in nodes {
         match &mut n.content {
             Content::Text(t) => {
-                let m = t.metrics(fonts);
+                let m = t.authored().metrics(fonts);
                 if m.pixel_grid() > 0 {
                     snap(&mut t.step, m);
                     for s in &mut t.fit {
@@ -277,9 +278,44 @@ pub(crate) fn snap_pixel_text(nodes: &mut [Node], fonts: &dyn Metrics) {
 }
 
 impl TextContent {
+    /// The text set at `step`: one of the steps an auto-fit text tries, or
+    /// the one layout chose for it.
+    pub(crate) fn at(&self, step: TypeStep) -> UsedText<'_> {
+        UsedText {
+            content: self,
+            step,
+        }
+    }
+
+    /// The text at the step it was written with: what builds it measures
+    /// it so before it is laid out.
+    pub(crate) fn authored(&self) -> UsedText<'_> {
+        self.at(self.step)
+    }
+}
+
+/// A text as layout and paint read it: its content (it derefs to it) at
+/// the step it is set at, which for an auto-fit text is the one layout
+/// chose ([`LayoutBox::fit_step`]), not the one it was written with.
+/// [`Node::text`] makes a node's.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct UsedText<'a> {
+    content: &'a TextContent,
+    pub step: TypeStep,
+}
+
+impl std::ops::Deref for UsedText<'_> {
+    type Target = TextContent;
+
+    fn deref(&self) -> &TextContent {
+        self.content
+    }
+}
+
+impl<'a> UsedText<'a> {
     /// The metrics of the face it is drawn in: its role's nearest its
     /// step's weight ([`crate::Fonts::for_styled`]).
-    pub(crate) fn metrics<'a>(&self, fonts: &'a dyn Metrics) -> &'a FontMetrics {
+    pub(crate) fn metrics<'m>(&self, fonts: &'m dyn Metrics) -> &'m FontMetrics {
         fonts.metrics_styled(self.font, self.step.weight, false, &self.text)
     }
 
@@ -301,6 +337,11 @@ impl TextContent {
             self.step.line_height
         }
     }
+
+    /// The content it reads, for as long as the node holds it.
+    pub(crate) fn content(&self) -> &'a TextContent {
+        self.content
+    }
 }
 
 /// The ellipsis a font draws: "…" when it has the character, else "...".
@@ -312,7 +353,7 @@ pub(crate) fn ellipsis_of(m: &FontMetrics) -> &'static str {
 /// (or a one-line text) wider than `width` loses characters from its end
 /// until it fits with the ellipsis after it (a cut between words drops the
 /// space before the ellipsis).
-pub(super) fn truncate_lines(lines: &mut Vec<Line>, t: &TextContent, m: &FontMetrics, width: f32) {
+pub(super) fn truncate_lines(lines: &mut Vec<Line>, t: UsedText<'_>, m: &FontMetrics, width: f32) {
     let (size, tracking) = (t.step.size, t.tracking());
     let cut = t.max_lines > 0 && lines.len() > t.max_lines as usize;
     if cut {
@@ -680,7 +721,10 @@ pub(crate) struct LayoutBox {
     /// Constraints and parent-relative position of the cached layout.
     pub layout_size: [f32; 2],
     pub layout_offset: [f32; 2],
-    pub layout_step: Option<TypeStep>,
+    /// An auto-fit text's step: the largest of its steps its text fits its
+    /// width at, chosen where its lines are broken (`distribute_w`) and
+    /// kept with them. `None`: the step it was written with.
+    pub fit_step: Option<TypeStep>,
     /// What layout last gave it before the frame moved it (a right-to-left
     /// mirror, a transformed scroller's clip): its place, its box (with a
     /// baseline or anchor shift) and its clip.
@@ -769,7 +813,7 @@ impl Default for LayoutBox {
             rows: Vec::new(),
             layout_size: [0.0; 2],
             layout_offset: [0.0; 2],
-            layout_step: None,
+            fit_step: None,
             laid_xy: [f32::NAN; 2],
             laid_rect: Rect::default(),
             laid_clip: Rect::default(),
@@ -949,6 +993,20 @@ impl Node {
             })
     }
 
+    /// Its text as layout and paint read it: at the step layout chose for
+    /// an auto-fit text, else its own.
+    pub(crate) fn text(&self) -> Option<UsedText<'_>> {
+        match &self.content {
+            Content::Text(t) => Some(self.used_text(t)),
+            _ => None,
+        }
+    }
+
+    /// [`Node::text`] of its content `t`, where that is already matched.
+    pub(crate) fn used_text<'a>(&self, t: &'a TextContent) -> UsedText<'a> {
+        t.at(self.layout.fit_step.unwrap_or(t.step))
+    }
+
     /// The element layout uses, from the authored one: its breakpoint and
     /// orientation variants, the size the user resized it to, the line box
     /// it lays inline children out in, its scroll bar's gutter, with
@@ -1122,7 +1180,7 @@ impl Node {
             .clone_from(&previous.layout.rich_lines);
         self.layout.rows.clone_from(&previous.layout.rows);
         self.layout.grid.clone_from(&previous.layout.grid);
-        self.layout.layout_step = previous.layout.layout_step;
+        self.layout.fit_step = previous.layout.fit_step;
         self.layout.margin_sets = previous.layout.margin_sets;
         self.layout.collapse_in = previous.layout.collapse_in;
         self.layout.through = previous.layout.through;
