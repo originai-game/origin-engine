@@ -17,6 +17,18 @@
         "og.render.csgGeometry",
         "og.render.light2dAt"
       ]
+    },
+    {
+      "member": "og.tween and og.tilemap",
+      "change": "Its arguments are read by types generated from the IDL. A field of the wrong JSON type, a fractional or out-of-range whole number, or an unknown enum name or union kind used to fall back to a default or be truncated silently; it is now refused with the field's path, the value it got and what was expected (`desc.blocked[1].max.y: expected a number, got true`). A timeline desc with a wrong field takes every setting's default (unscaled and tag included) and records the refusal as its error; a fractional or out-of-range tile or size is refused instead of clamped; a target of 0 is refused; an empty ease string is the default ease. Absent and null fields take the IDL defaults; a partial object (`color: { r: 0 }`) fills the rest from its field's default.",
+      "fix": "Pass each field as the IDL types it: numbers as numbers, whole numbers in range for u32, i32 and handle fields, enums and union kinds by their names, lists and objects where the IDL says so. Omit a field (or pass null) for its default.",
+      "find": [
+        "og.tween.to",
+        "og.tween.timeline",
+        "og.tilemap.setTile",
+        "og.tilemap.fill",
+        "og.anim.graph"
+      ]
     }
   ]
 }

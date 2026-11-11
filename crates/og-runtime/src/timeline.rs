@@ -253,20 +253,26 @@ fn note(engine: u32, text: String) {
 // ── og.path ────────────────────────────────────────────────────────────────
 
 fn curve_desc(v: &Value) -> Result<PathDesc, String> {
-    let mut d = PathDesc::default();
-    let pts = v["points"]
-        .as_array()
-        .ok_or("desc.points is the list of points ({x, y, z})")?;
-    d.points = pts.iter().map(v3).collect();
-    d.closed = v["closed"].as_bool().unwrap_or(false);
+    // `kind` takes its code (0 to 2) as well as the IDL's name: read by hand.
+    let mut typed = v.clone();
+    if let Some(o) = typed.as_object_mut() {
+        o.remove("kind");
+    }
+    let c: super::wire::CurveDesc = super::wire::value(&typed, "desc")?;
+    if v["points"].is_null() {
+        return Err("desc.points is the list of points ({x, y, z})".into());
+    }
+    let mut d = PathDesc {
+        points: c.points,
+        closed: c.closed,
+        tension: c.tension,
+        ..PathDesc::default()
+    };
     if let Some(k) = v["kind"].as_str() {
         d.kind = PathKind::from_name(k)
             .ok_or_else(|| format!("desc.kind '{k}' is not catmullRom, bezier or linear"))?;
     } else if let Some(k) = v["kind"].as_u64() {
         d.kind = PathKind::from_code(k as u32).ok_or("desc.kind is 0 to 2")?;
-    }
-    if let Some(t) = v["tension"].as_f64() {
-        d.tension = t as f32;
     }
     Ok(d)
 }
@@ -320,13 +326,14 @@ pub fn og_path_length(world: u32, path: f64) -> String {
 }
 
 pub fn og_path_nearest(world: u32, path: f64, point: String) -> String {
-    wire(parse(Some(&point)).and_then(|v| {
-        let q = v3(&v);
-        with_path(world, path, |p| {
-            let n = p.nearest(q);
-            json!({ "t": n.t, "position": jv3(n.position), "distance": n.distance })
-        })
-    }))
+    wire(
+        super::wire::arg::<Vec3>(Some(&point), "point").and_then(|q| {
+            with_path(world, path, |p| {
+                let n = p.nearest(q);
+                json!({ "t": n.t, "position": jv3(n.position), "distance": n.distance })
+            })
+        }),
+    )
 }
 
 /// The frame of a path's point: -Z along the tangent, +Y its up.

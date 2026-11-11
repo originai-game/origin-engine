@@ -1,6 +1,7 @@
 //! Tween calls and squash and flash presets.
 
 use super::*;
+use crate::wire::{FlashDesc, SquashDesc, TweenDesc, TweenFromDesc, TweenGroupDesc};
 
 // ── tweens ─────────────────────────────────────────────────────────────────
 
@@ -29,12 +30,12 @@ pub(super) fn component_schema(eng: &Engine, name: &str) -> Result<(u32, og_core
     Ok((index as u32, layout.schema()))
 }
 
-pub(super) fn entity_of(v: &Value) -> Result<u64, String> {
-    let e = v.as_f64().ok_or("desc.entity is the entity to tween")?;
-    if e <= 0.0 || e.fract() != 0.0 {
-        return Err(format!("{e} is not an entity"));
+/// A desc's `entity`: 0 (absent) is no entity.
+fn entity_of(e: u64) -> Result<u64, String> {
+    if e == 0 {
+        return Err("desc.entity is the entity to tween".into());
     }
-    Ok(e as u64)
+    Ok(e)
 }
 
 /// Whether `e` is alive and has component `index` (inside a system too:
@@ -62,16 +63,30 @@ pub(super) fn has(eng: &Engine, e: u64, index: u32) -> Result<bool, String> {
     Ok(types.contains(&id))
 }
 
-pub(super) fn ease_of(v: &Value, default: Ease) -> Result<Ease, String> {
-    match v.as_str() {
-        None => Ok(default),
-        Some(n) => Ease::from_text(n).ok_or_else(|| {
-            format!(
-                "invalid ease '{n}': expected a GSAP name ({}), cubic-bezier(x1,y1,x2,y2) with four finite controls and x1,x2 in [0,1], or steps(n[,position]) with integer n >= 1 and position start/end/jump-start/jump-end/jump-none/jump-both (jump-none requires n > 1)",
-                og_tween::EASE_NAMES.join(", ")
-            )
-        }),
+/// An Ease's text; empty (absent) is `default`.
+pub(super) fn ease_of(n: &str, default: Ease) -> Result<Ease, String> {
+    if n.is_empty() {
+        return Ok(default);
     }
+    Ease::from_text(n).ok_or_else(|| {
+        format!(
+            "invalid ease '{n}': expected a GSAP name ({}), cubic-bezier(x1,y1,x2,y2) with four finite controls and x1,x2 in [0,1], or steps(n[,position]) with integer n >= 1 and position start/end/jump-start/jump-end/jump-none/jump-both (jump-none requires n > 1)",
+            og_tween::EASE_NAMES.join(", ")
+        )
+    })
+}
+
+/// `v` without the fields `keys`: lane values (`to`, `from`) take a bare
+/// number as well as the IDL's `List.f32`, so they are read by hand with
+/// [`floats`] and the rest of the desc is read typed.
+pub(super) fn without(v: &Value, keys: &[&str]) -> Value {
+    let mut v = v.clone();
+    if let Some(o) = v.as_object_mut() {
+        for k in keys {
+            o.remove(*k);
+        }
+    }
+    v
 }
 
 pub(super) fn floats(v: &Value, what: &str) -> Result<Vec<f32>, String> {
@@ -89,35 +104,35 @@ pub(super) fn floats(v: &Value, what: &str) -> Result<Vec<f32>, String> {
     }
 }
 
-/// A TweenDesc as a leaf (checked against the entity and the field).
-fn leaf_of(eng: &Engine, d: &Value) -> Result<Leaf, String> {
-    let entity = entity_of(&d["entity"])?;
-    let name = if d["component"].is_null() {
-        "og.Transform".to_string()
-    } else {
-        token_name(&d["component"])
-            .ok_or("desc.component is a component token, such as og.Sprite")?
+/// A TweenDesc read typed, but for its lane values (`to`, `from`).
+fn tween_desc(raw: &Value, name: &str) -> Result<TweenDesc, String> {
+    crate::wire::value(&without(raw, &["to", "from"]), name)
+}
+
+/// A TweenDesc as a leaf (checked against the entity and the field), its
+/// lane values `to` and `from` read by hand.
+fn leaf_of(eng: &Engine, d: &TweenDesc, to: &Value, from: &Value) -> Result<Leaf, String> {
+    let entity = entity_of(d.entity)?;
+    let name = match &d.component {
+        None => "og.Transform".to_string(),
+        Some(c) => token_name(c).ok_or("desc.component is a component token, such as og.Sprite")?,
     };
     let (index, schema) = component_schema(eng, &name)?;
     if !has(eng, entity, index)? {
         return Err(format!("entity {entity} has no {name} (or is not alive)"));
     }
-    let field = d["field"]
-        .as_str()
-        .filter(|s| !s.is_empty())
-        .ok_or("desc.field names the field, such as `position.y`")?;
-    let target = Target::resolve(&schema, index, entity, field).map_err(err)?;
-    let mut leaf = Leaf::new(target, floats(&d["to"], "desc.to")?)
-        .duration(f(d, "duration", 0.3))
-        .delay(f(d, "delay", 0.0))
-        .ease(ease_of(&d["ease"], Ease::QuadOut)?)
-        .relative(on(d, "relative", false))
-        .loops(
-            d["repeat"].as_i64().unwrap_or(0) as i32,
-            on(d, "yoyo", false),
-        );
-    if !d["from"].is_null() {
-        leaf = leaf.from(floats(&d["from"], "desc.from")?);
+    if d.field.is_empty() {
+        return Err("desc.field names the field, such as `position.y`".into());
+    }
+    let target = Target::resolve(&schema, index, entity, &d.field).map_err(err)?;
+    let mut leaf = Leaf::new(target, floats(to, "desc.to")?)
+        .duration(d.duration)
+        .delay(d.delay)
+        .ease(ease_of(&d.ease, Ease::QuadOut)?)
+        .relative(d.relative)
+        .loops(d.repeat, d.yoyo);
+    if !from.is_null() {
+        leaf = leaf.from(floats(from, "desc.from")?);
     }
     Ok(leaf)
 }
@@ -130,25 +145,34 @@ fn start(eng: &Engine, node: Node, unscaled: bool, tag: u32) -> Result<Value, St
 
 pub fn og_tween_to(world: u32, desc: Option<String>) -> String {
     wire(engine(world).and_then(|eng| {
-        let d = parse(desc.as_deref())?;
-        let leaf = leaf_of(&eng, &d)?;
-        start(
-            &eng,
-            Node::Leaf(leaf),
-            on(&d, "unscaled", false),
-            d["tag"].as_u64().unwrap_or(0) as u32,
-        )
+        let raw = parse(desc.as_deref())?;
+        let d = tween_desc(&raw, "desc")?;
+        let leaf = leaf_of(&eng, &d, &raw["to"], &raw["from"])?;
+        start(&eng, Node::Leaf(leaf), d.unscaled, d.tag)
     }))
 }
 
 pub fn og_tween_from(world: u32, desc: Option<String>) -> String {
     wire(engine(world).and_then(|eng| {
-        let mut d = parse(desc.as_deref())?;
-        if !d.is_object() {
+        let raw = parse(desc.as_deref())?;
+        if !raw.is_object() {
             return Err("desc must contain entity, field and from".into());
         }
-        d["to"] = d["from"].clone();
-        let mut leaf = leaf_of(&eng, &d)?;
+        let f: TweenFromDesc = crate::wire::value(&without(&raw, &["from"]), "desc")?;
+        let d = TweenDesc {
+            entity: f.entity,
+            component: f.component,
+            field: f.field,
+            duration: f.duration,
+            delay: f.delay,
+            ease: f.ease,
+            repeat: f.repeat,
+            yoyo: f.yoyo,
+            unscaled: f.unscaled,
+            tag: f.tag,
+            ..TweenDesc::default()
+        };
+        let mut leaf = leaf_of(&eng, &d, &raw["from"], &raw["from"])?;
         let entity = Entity::from_bits(leaf.target.entity);
         let component = SchemaId::from_index(leaf.target.component);
         let bytes = with_world(
@@ -158,49 +182,39 @@ pub fn og_tween_from(world: u32, desc: Option<String>) -> String {
         )?;
         leaf.to = leaf.target.read(&bytes).ok_or("cannot read tween target")?;
         leaf.relative = false;
-        start(
-            &eng,
-            Node::Leaf(leaf),
-            on(&d, "unscaled", false),
-            d["tag"].as_u64().unwrap_or(0) as u32,
-        )
+        start(&eng, Node::Leaf(leaf), d.unscaled, d.tag)
     }))
 }
 
 pub fn og_tween_from_to(world: u32, desc: Option<String>) -> String {
     wire(engine(world).and_then(|eng| {
-        let d = parse(desc.as_deref())?;
-        if d["from"].is_null() {
+        let raw = parse(desc.as_deref())?;
+        if raw["from"].is_null() {
             return Err("fromTo requires desc.from and desc.to".into());
         }
-        let leaf = leaf_of(&eng, &d)?;
-        start(
-            &eng,
-            Node::Leaf(leaf),
-            on(&d, "unscaled", false),
-            d["tag"].as_u64().unwrap_or(0) as u32,
-        )
+        let d = tween_desc(&raw, "desc")?;
+        let leaf = leaf_of(&eng, &d, &raw["to"], &raw["from"])?;
+        start(&eng, Node::Leaf(leaf), d.unscaled, d.tag)
     }))
 }
 
 fn group(world: u32, kind: GroupKind, list: &str, desc: Option<String>) -> String {
     wire(engine(world).and_then(|eng| {
         let list = parse(Some(list))?;
-        let d = parse(desc.as_deref())?;
+        let d: TweenGroupDesc = crate::wire::arg(desc.as_deref(), "desc")?;
         let leaves = list
             .as_array()
             .ok_or("the tweens are a list of TweenDesc")?
             .iter()
             .enumerate()
-            .map(|(i, t)| leaf_of(&eng, t).map_err(|e| format!("tween {i}: {e}")))
+            .map(|(i, t)| {
+                tween_desc(t, "desc")
+                    .and_then(|d| leaf_of(&eng, &d, &t["to"], &t["from"]))
+                    .map_err(|e| format!("tween {i}: {e}"))
+            })
             .collect::<Result<Vec<_>, _>>()?;
-        let node = Node::group(kind, leaves, d["repeat"].as_i64().unwrap_or(0) as i32);
-        start(
-            &eng,
-            node,
-            on(&d, "unscaled", false),
-            d["tag"].as_u64().unwrap_or(0) as u32,
-        )
+        let node = Node::group(kind, leaves, d.repeat);
+        start(&eng, node, d.unscaled, d.tag)
     }))
 }
 
@@ -252,8 +266,8 @@ fn hold_first_tick(node: Node, tick: f32) -> Node {
 
 pub fn og_tween_squash(world: u32, desc: Option<String>) -> String {
     wire(engine(world).and_then(|eng| {
-        let d = parse(desc.as_deref())?;
-        let entity = entity_of(&d["entity"])?;
+        let d: SquashDesc = crate::wire::arg(desc.as_deref(), "desc")?;
+        let entity = entity_of(d.entity)?;
         let (index, schema) = component_schema(&eng, "og.Transform")?;
         if !has(&eng, entity, index)? {
             return Err(format!(
@@ -264,14 +278,14 @@ pub fn og_tween_squash(world: u32, desc: Option<String>) -> String {
         // The components left out take the art contract's squash
         // (ArtMotion.squash; the preset's own without it).
         let style = crate::art::squash_impact(crate::art::squash_amount(&eng));
-        let impact = v3(&d["impact"], style);
-        let rest = v3(&d["rest"], Vec3::ONE);
+        // `impact` is open (a partial vector), read by hand.
+        let impact = v3(&d.impact, style);
         let tick = 1.0 / eng.state.borrow().rate.max(1) as f32;
         let squash = og_tween::presets::Squash {
             impact: impact.to_array(),
-            rest: rest.to_array(),
-            duration: f(&d, "duration", 0.18),
-            ease: ease_of(&d["ease"], Ease::BackOut)?,
+            rest: d.rest.to_array(),
+            duration: d.duration,
+            ease: ease_of(&d.ease, Ease::BackOut)?,
         };
         let feel = feel_of(&eng)?;
         if let Some(old) = lock(&feel.shared).squash.remove(&entity) {
@@ -292,8 +306,8 @@ pub fn og_tween_squash(world: u32, desc: Option<String>) -> String {
 
 pub fn og_tween_flash(world: u32, desc: Option<String>) -> String {
     wire(engine(world).and_then(|eng| {
-        let d = parse(desc.as_deref())?;
-        let entity = entity_of(&d["entity"])?;
+        let d: FlashDesc = crate::wire::arg(desc.as_deref(), "desc")?;
+        let entity = entity_of(d.entity)?;
         let mut found = None;
         // A glTF instance flashes alone: og.Model's flash rides in its
         // instances' records (kestrel-stair #11).
@@ -309,13 +323,12 @@ pub fn og_tween_flash(world: u32, desc: Option<String>) -> String {
         })?;
         let amount = Target::resolve(&schema, index, entity, "flash").map_err(err)?;
         let color = Target::resolve(&schema, index, entity, "flashColor").map_err(err)?;
-        let c = rgb(&d["color"], Vec3::ONE);
         let tick = 1.0 / eng.state.borrow().rate.max(1) as f32;
         let flash = og_tween::presets::Flash {
-            color: c.to_array(),
-            amount: f(&d, "amount", 1.0),
-            duration: f(&d, "duration", 0.12),
-            ease: ease_of(&d["ease"], Ease::QuadIn)?,
+            color: [d.color.r, d.color.g, d.color.b],
+            amount: d.amount,
+            duration: d.duration,
+            ease: ease_of(&d.ease, Ease::QuadIn)?,
         };
         let feel = feel_of(&eng)?;
         if let Some(old) = lock(&feel.shared).flash.remove(&entity) {

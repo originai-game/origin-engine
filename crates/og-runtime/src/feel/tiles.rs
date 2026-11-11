@@ -1,6 +1,7 @@
 //! Flipbook and tilemap loading, tilemap calls and collider state.
 
 use super::*;
+use crate::wire::{FillDesc, ResizeDesc, SetTileDesc, TilemapDesc};
 
 // ── loading ────────────────────────────────────────────────────────────────
 
@@ -239,18 +240,13 @@ fn layer_index(live: &LiveMap, name: &str) -> Result<usize, String> {
 
 pub fn og_tilemap_set_tile(world: u32, desc: Option<String>) -> String {
     wire_void((|| {
-        let d = parse(desc.as_deref())?;
-        let entity = d["entity"]
-            .as_f64()
-            .ok_or("desc.entity is the entity with the og.Tilemap")?;
-        with_live(world, entity, |live| {
-            let layer = layer_index(live, d["layer"].as_str().unwrap_or_default())?;
-            let (x, y) = (
-                d["x"].as_u64().unwrap_or(0) as u32,
-                d["y"].as_u64().unwrap_or(0) as u32,
-            );
-            let tile = d["tile"].as_i64().unwrap_or(-1) as i32;
-            live.state.set(layer, x, y, tile).map_err(err)?;
+        let d: SetTileDesc = crate::wire::arg(desc.as_deref(), "desc")?;
+        if d.entity == 0 {
+            return Err("desc.entity is the entity with the og.Tilemap".into());
+        }
+        with_live(world, d.entity as f64, |live| {
+            let layer = layer_index(live, &d.layer)?;
+            live.state.set(layer, d.x, d.y, d.tile).map_err(err)?;
             if live.state.asset().layers[layer].collision {
                 live.dirty = true;
             }
@@ -261,30 +257,15 @@ pub fn og_tilemap_set_tile(world: u32, desc: Option<String>) -> String {
 
 pub fn og_tilemap_fill(world: u32, desc: Option<String>) -> String {
     wire_void((|| {
-        let d = parse(desc.as_deref())?;
-        let entity = d["entity"]
-            .as_f64()
-            .ok_or("desc.entity is the entity with the og.Tilemap")?;
-        let tiles: Vec<i32> = d["tiles"]
-            .as_array()
-            .map(|a| {
-                a.iter()
-                    .map(|v| {
-                        v.as_i64()
-                            .unwrap_or(-1)
-                            .clamp(i32::MIN as i64, i32::MAX as i64) as i32
-                    })
-                    .collect()
-            })
-            .unwrap_or_default();
-        with_live(world, entity, |live| {
-            let layer = layer_index(live, d["layer"].as_str().unwrap_or_default())?;
-            let (x, y, width) = (
-                d["x"].as_u64().unwrap_or(0).min(u32::MAX as u64) as u32,
-                d["y"].as_u64().unwrap_or(0).min(u32::MAX as u64) as u32,
-                d["width"].as_u64().unwrap_or(0).min(u32::MAX as u64) as u32,
-            );
-            live.state.fill(layer, x, y, width, &tiles).map_err(err)?;
+        let d: FillDesc = crate::wire::arg(desc.as_deref(), "desc")?;
+        if d.entity == 0 {
+            return Err("desc.entity is the entity with the og.Tilemap".into());
+        }
+        with_live(world, d.entity as f64, |live| {
+            let layer = layer_index(live, &d.layer)?;
+            live.state
+                .fill(layer, d.x, d.y, d.width, &d.tiles)
+                .map_err(err)?;
             if live.state.asset().layers[layer].collision {
                 live.dirty = true;
             }
@@ -296,74 +277,48 @@ pub fn og_tilemap_fill(world: u32, desc: Option<String>) -> String {
 /// Run-time map handles: their own range, numbered by the world's counter.
 const RUNTIME_MAPS: u64 = 1 << 33;
 
-fn u32_at(v: &Value, key: &str, default: u32) -> u32 {
-    v[key]
-        .as_u64()
-        .map_or(default, |n| n.min(u64::from(u32::MAX)) as u32)
-}
-
 /// A TilemapDesc on the wire as an empty map.
-fn desc_map(d: &Value) -> Result<TilemapAsset, String> {
-    let (w, h) = (u32_at(d, "width", 16), u32_at(d, "height", 16));
+fn desc_map(d: &TilemapDesc) -> Result<TilemapAsset, String> {
+    let (w, h) = (d.width, d.height);
     if w == 0 || h == 0 || u64::from(w) * u64::from(h) > 1 << 24 {
         return Err(format!(
             "desc.width x desc.height is {w} x {h}: 1 to 16,777,216 cells"
         ));
     }
-    let orientation = match d["orientation"].as_str() {
-        None => og_tilemap::Orientation::Orthogonal,
-        Some(o) => og_tilemap::Orientation::named(o).ok_or_else(|| {
-            format!(
-                "desc.orientation '{o}' is not orthogonal, isometric, staggered, hex or hexFlat"
-            )
-        })?,
-    };
-    let tilesets: Vec<og_tilemap::TilesetRef> = d["tilesets"]
-        .as_array()
-        .map(|a| {
-            a.iter()
-                .map(|t| {
-                    og_tilemap::TilesetRef::Asset(
-                        og_bundle::runtime::asset_id(t.as_str().unwrap_or_default()).to_string(),
-                    )
-                })
-                .collect()
-        })
-        .unwrap_or_default();
+    let o = d.orientation.as_str();
+    let orientation = og_tilemap::Orientation::named(o).ok_or_else(|| {
+        format!("desc.orientation '{o}' is not orthogonal, isometric, staggered, hex or hexFlat")
+    })?;
+    let tilesets: Vec<og_tilemap::TilesetRef> = d
+        .tilesets
+        .iter()
+        .map(|t| og_tilemap::TilesetRef::Asset(og_bundle::runtime::asset_id(t).to_string()))
+        .collect();
     let mut layers: Vec<og_tilemap::Layer> = Vec::new();
-    for l in d["layers"].as_array().into_iter().flatten() {
-        let name = l["name"].as_str().unwrap_or_default();
+    for l in &d.layers {
+        let name = l.name.as_str();
         if name.is_empty() || layers.iter().any(|o| o.name == name) {
             return Err(format!(
                 "every layer needs a name of its own ('{name}' is empty or taken)"
             ));
         }
-        let mut layer = og_tilemap::Layer::new(
-            name,
-            w,
-            h,
-            l["z"]
-                .as_i64()
-                .unwrap_or(0)
-                .clamp(i32::MIN as i64, i32::MAX as i64) as i32,
-        );
-        layer.tileset = u32_at(l, "tileset", 0);
-        let terrain = l["terrain"].as_str().unwrap_or_default();
-        layer.terrain = (!terrain.is_empty()).then(|| terrain.to_string());
-        layer.collision = l["collision"].as_bool().unwrap_or(false);
-        layer.collider_layers = u32_at(l, "colliderLayers", 0);
-        layer.collider_mask = u32_at(l, "colliderMask", 0);
-        layer.cell_colliders = l["cellColliders"].as_bool().unwrap_or(false);
-        layer.visible = l["visible"].as_bool().unwrap_or(true);
+        let mut layer = og_tilemap::Layer::new(name, w, h, l.z);
+        layer.tileset = l.tileset;
+        layer.terrain = (!l.terrain.is_empty()).then(|| l.terrain.clone());
+        layer.collision = l.collision;
+        layer.collider_layers = l.collider_layers;
+        layer.collider_mask = l.collider_mask;
+        layer.cell_colliders = l.cell_colliders;
+        layer.visible = l.visible;
         layers.push(layer);
     }
     let asset = TilemapAsset {
         orientation,
         width: w,
         height: h,
-        tile_width_px: u32_at(d, "tileWidth", 16),
-        tile_height_px: u32_at(d, "tileHeight", 16),
-        unit: d["unit"].as_f64().map_or(1.0, |u| u as f32),
+        tile_width_px: d.tile_width,
+        tile_height_px: d.tile_height,
+        unit: d.unit,
         tilesets,
         layers,
         objects: Vec::new(),
@@ -376,7 +331,7 @@ pub fn og_tilemap_create(world: u32, desc: Option<String>) -> String {
     wire((|| {
         let eng = engine(world)?;
         let feel = feel_of(&eng)?;
-        let asset = desc_map(&parse(desc.as_deref())?)?;
+        let asset = desc_map(&crate::wire::arg(desc.as_deref(), "desc")?)?;
         let map = build_map(&eng, "og.tilemap.create", asset)?;
         let mut t = lock(&feel.tiles);
         t.next_runtime += 1;
@@ -394,11 +349,11 @@ pub fn og_tilemap_resize(world: u32, desc: Option<String>) -> String {
     wire_void((|| {
         let eng = engine(world)?;
         let feel = feel_of(&eng)?;
-        let d = parse(desc.as_deref())?;
-        let handle = d["map"].as_f64().unwrap_or(0.0) as u64;
-        let (w, h) = (u32_at(&d, "width", 16), u32_at(&d, "height", 16));
-        let clamp = |k: &str| d[k].as_i64().unwrap_or(0).clamp(-(1 << 24), 1 << 24) as i32;
-        let (dx, dy) = (clamp("x"), clamp("y"));
+        let d: ResizeDesc = crate::wire::arg(desc.as_deref(), "desc")?;
+        let handle = d.map;
+        let (w, h) = (d.width, d.height);
+        let clamp = |n: i32| n.clamp(-(1 << 24), 1 << 24);
+        let (dx, dy) = (clamp(d.x), clamp(d.y));
         let mut t = lock(&feel.tiles);
         let old = t
             .maps
@@ -463,9 +418,7 @@ pub fn og_tilemap_get_tile(world: u32, entity: f64, layer: String, x: u32, y: u3
 }
 
 pub fn og_tilemap_cell_at(world: u32, entity: f64, point: String) -> String {
-    let p = parse(Some(&point))
-        .map(|v| v3(&v, Vec3::ZERO))
-        .unwrap_or_default();
+    let p: Vec3 = crate::wire::arg(Some(&point), "point").unwrap_or_default();
     let cell = with_live(world, entity, |live| {
         let local = Vec2::new(p.x - live.origin.x, p.y - live.origin.y);
         Ok(og_tilemap::world_to_cell(live.state.asset(), local))

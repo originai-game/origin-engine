@@ -113,14 +113,6 @@ fn v3(v: &Value, default: Vec3) -> Vec3 {
     )
 }
 
-fn rgb(v: &Value, default: Vec3) -> Vec3 {
-    Vec3::new(
-        f(v, "r", default.x),
-        f(v, "g", default.y),
-        f(v, "b", default.z),
-    )
-}
-
 fn bits(v: &Value) -> u64 {
     v.as_f64().map_or(0, |x| x as u64)
 }

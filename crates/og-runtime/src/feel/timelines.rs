@@ -5,9 +5,12 @@
 //! `RngStream` is): its world, its tween handle, its defaults and its last
 //! refusal. The timeline itself is og.tween's state, so snapshots cover it.
 
-use super::tweens::{component_schema, ease_of, entity_of, floats, has, token_name};
+use super::tweens::{component_schema, ease_of, floats, has, token_name, without};
 use super::*;
 use crate::engine::HANDLES;
+use crate::wire::{
+    OneOf, StaggerDesc, TimelineDesc, TimelineTweenVars, TweenDefaults, TweenKeyframe,
+};
 use og_tween::{Callbacks, Child, Item, Position, Stagger, StaggerFrom, Timeline};
 use std::rc::Rc;
 
@@ -16,7 +19,7 @@ use std::rc::Rc;
 pub(crate) struct TimelineRef {
     world: u32,
     tween: u64,
-    defaults: Value,
+    defaults: TweenDefaults,
     error: Option<String>,
 }
 
@@ -25,7 +28,7 @@ fn with_ref<T>(h: u32, f: impl FnOnce(&mut TimelineRef) -> T) -> Option<T> {
 }
 
 /// The timeline of object `h`, its engine and its defaults.
-fn target(h: u32) -> Result<(Rc<Engine>, u64, Value), String> {
+fn target(h: u32) -> Result<(Rc<Engine>, u64, TweenDefaults), String> {
     let (world, tween, defaults) =
         with_ref(h, |r| (r.world, r.tween, r.defaults.clone())).ok_or("not a timeline")?;
     Ok((engine(world)?, tween, defaults))
@@ -33,7 +36,7 @@ fn target(h: u32) -> Result<(Rc<Engine>, u64, Value), String> {
 
 /// Runs `f` on object `h`'s timeline, recording a refusal as its `error`;
 /// answers `h` (so calls chain), or 0 when it is not a timeline.
-fn build(h: u32, f: impl FnOnce(&Engine, u64, &Value) -> Result<(), String>) -> u32 {
+fn build(h: u32, f: impl FnOnce(&Engine, u64, &TweenDefaults) -> Result<(), String>) -> u32 {
     let r = target(h).and_then(|(eng, tween, defaults)| f(&eng, tween, &defaults));
     with_ref(h, |t| {
         t.error = r.err();
@@ -55,83 +58,84 @@ fn on_timeline<T>(
 }
 
 fn position(text: Option<&str>) -> Result<Option<Position>, String> {
-    let v = parse(text)?;
-    Ok(match v {
-        Value::Null => None,
-        Value::Number(n) => Some(Position::At(n.as_f64().unwrap_or(0.0))),
-        Value::String(s) => Some(Position::Text(s)),
-        _ => return Err("a position is seconds or GSAP's position text".into()),
-    })
+    Ok(
+        crate::wire::arg::<Option<OneOf<f64, String>>>(text, "position")?.map(|p| match p {
+            OneOf::A(t) => Position::At(t),
+            OneOf::B(s) => Position::Text(s),
+        }),
+    )
 }
 
 /// A callback's name, at most 63 bytes (og.TweenEvent's `name`).
-fn name_of(v: &Value, key: &str) -> Result<Option<String>, String> {
-    match &v[key] {
-        Value::Null => Ok(None),
-        Value::String(s) if s.len() <= 63 && !s.contains('\0') => Ok(Some(s.clone())),
-        Value::String(s) => Err(format!("{key} \"{s}\" is longer than 63 bytes")),
-        _ => Err(format!("{key} is the name of the og.TweenEvent it sends")),
+fn name_of(name: &Option<String>, key: &str) -> Result<Option<String>, String> {
+    match name {
+        Some(s) if s.len() > 63 || s.contains('\0') => {
+            Err(format!("{key} \"{s}\" is longer than 63 bytes"))
+        }
+        s => Ok(s.clone()),
     }
 }
 
-fn callbacks(v: &Value) -> Result<Callbacks, String> {
+fn callbacks(
+    start: &Option<String>,
+    update: &Option<String>,
+    complete: &Option<String>,
+    repeat: &Option<String>,
+) -> Result<Callbacks, String> {
     Ok(Callbacks {
-        start: name_of(v, "onStart")?,
-        update: name_of(v, "onUpdate")?,
-        complete: name_of(v, "onComplete")?,
-        repeat: name_of(v, "onRepeat")?,
+        start: name_of(start, "onStart")?,
+        update: name_of(update, "onUpdate")?,
+        complete: name_of(complete, "onComplete")?,
+        repeat: name_of(repeat, "onRepeat")?,
     })
 }
 
-fn seconds(v: &Value, key: &str, default: f64) -> Result<f64, String> {
-    match &v[key] {
-        Value::Null => Ok(default),
-        x => x
-            .as_f64()
-            .filter(|s| s.is_finite() && *s >= 0.0)
-            .ok_or_else(|| format!("{key} is seconds, 0 or more")),
+fn seconds(s: f32, key: &str) -> Result<f64, String> {
+    if s.is_finite() && s >= 0.0 {
+        Ok(f64::from(s))
+    } else {
+        Err(format!("{key} is seconds, 0 or more"))
     }
 }
 
-fn repeat_of(v: &Value) -> Result<i32, String> {
-    match v["repeat"].as_i64() {
-        None if v["repeat"].is_null() => Ok(0),
-        Some(n) if n >= -1 && n <= i64::from(i32::MAX) => Ok(n as i32),
-        _ => Err("repeat is -1 (forever), 0 (once) or more".into()),
+fn repeat_of(n: i32) -> Result<i32, String> {
+    if n >= -1 {
+        Ok(n)
+    } else {
+        Err("repeat is -1 (forever), 0 (once) or more".into())
     }
 }
 
 pub fn og_tween_timeline(world: u32, desc: Option<String>) -> u32 {
     let made = (|| -> Result<(u32, Option<String>), String> {
         let eng = engine(world)?;
-        let d = parse(desc.as_deref())?;
+        let raw = parse(desc.as_deref())?;
+        let (d, read) = match crate::wire::value::<TimelineDesc>(&raw, "desc") {
+            Ok(d) => (d, Ok(())),
+            Err(e) => (TimelineDesc::default(), Err(e)),
+        };
         let mut tl = Timeline::default();
         // Refused settings leave their defaults and are the timeline's error.
-        let settings = (|| -> Result<(), String> {
-            tl.repeat = repeat_of(&d)?;
-            tl.yoyo = on(&d, "yoyo", false);
-            tl.repeat_delay = seconds(&d, "repeatDelay", 0.0)? as f32;
-            tl.time_scale = seconds(&d, "timeScale", 1.0)? as f32;
-            tl.paused = on(&d, "paused", false);
-            tl.auto_kill = on(&d, "autoKill", false);
-            tl.on = callbacks(&d)?;
-            let defaults = &d["defaults"];
-            ease_of(&defaults["ease"], Ease::QuadOut)?;
-            seconds(defaults, "duration", 0.3)?;
+        let settings = read.and_then(|()| {
+            tl.repeat = repeat_of(d.repeat)?;
+            tl.yoyo = d.yoyo;
+            tl.repeat_delay = seconds(d.repeat_delay, "repeatDelay")? as f32;
+            tl.time_scale = seconds(d.time_scale, "timeScale")? as f32;
+            tl.paused = d.paused;
+            tl.auto_kill = d.auto_kill;
+            tl.on = callbacks(&d.on_start, &d.on_update, &d.on_complete, &d.on_repeat)?;
+            ease_of(&d.defaults.ease, Ease::QuadOut)?;
+            seconds(d.defaults.duration, "duration")?;
             Ok(())
-        })();
+        });
         let tween = feel_of(&eng)?
             .tweens
-            .start(
-                Node::Timeline(Box::new(tl)),
-                on(&d, "unscaled", false),
-                d["tag"].as_u64().unwrap_or(0) as u32,
-            )
+            .start(Node::Timeline(Box::new(tl)), d.unscaled, d.tag)
             .map_err(err)?;
         let defaults = if settings.is_ok() {
-            d["defaults"].clone()
+            d.defaults
         } else {
-            Value::Null
+            TweenDefaults::default()
         };
         let h = HANDLES.with(|t| {
             t.borrow_mut().timelines.push(TimelineRef {
@@ -170,45 +174,37 @@ enum Mode {
 }
 
 fn entities(text: &str) -> Result<Vec<u64>, String> {
-    let v = parse(Some(text))?;
-    match &v {
-        Value::Array(a) => a.iter().map(entity_of).collect(),
-        Value::Null => Err("targets is an entity or a list of entities".into()),
-        one => Ok(vec![entity_of(one)?]),
+    let targets = match crate::wire::arg::<Option<OneOf<u64, Vec<u64>>>>(Some(text), "targets")? {
+        None => return Err("targets is an entity or a list of entities".into()),
+        Some(OneOf::A(e)) => vec![e],
+        Some(OneOf::B(list)) => list,
+    };
+    if let Some(e) = targets.iter().find(|e| **e == 0) {
+        return Err(format!("{e} is not an entity"));
     }
+    Ok(targets)
 }
 
-fn stagger_of(v: &Value) -> Result<Option<Stagger>, String> {
+fn stagger_of(v: &Option<OneOf<f32, StaggerDesc>>) -> Result<Option<Stagger>, String> {
     let s = match v {
-        Value::Null => return Ok(None),
-        Value::Number(n) => {
-            let each = n
-                .as_f64()
-                .filter(|e| e.is_finite())
-                .ok_or("stagger is seconds")?;
-            return Ok(Some(Stagger::each(each)));
+        None => return Ok(None),
+        Some(OneOf::A(each)) if each.is_finite() => {
+            return Ok(Some(Stagger::each(f64::from(*each))));
         }
-        Value::Object(_) => v,
-        _ => return Err("stagger is seconds or a StaggerDesc".into()),
+        Some(OneOf::A(_)) => return Err("stagger is seconds".into()),
+        Some(OneOf::B(s)) => s,
     };
-    let num = |k: &str| -> Result<Option<f64>, String> {
-        match &s[k] {
-            Value::Null => Ok(None),
-            x => x
-                .as_f64()
-                .filter(|n| n.is_finite())
-                .map(Some)
-                .ok_or_else(|| format!("stagger.{k} is seconds")),
+    let num = |n: Option<f32>, k: &str| -> Result<Option<f64>, String> {
+        match n {
+            None => Ok(None),
+            Some(x) if x.is_finite() => Ok(Some(f64::from(x))),
+            Some(_) => Err(format!("stagger.{k} is seconds")),
         }
     };
-    let from = match &s["from"] {
-        Value::Null => StaggerFrom::Start,
-        Value::Number(n) => StaggerFrom::Index(
-            n.as_u64()
-                .and_then(|i| u32::try_from(i).ok())
-                .ok_or("stagger.from is an index, or start, center, end, edges or random")?,
-        ),
-        Value::String(w) => match w.as_str() {
+    let from = match &s.from {
+        None => StaggerFrom::Start,
+        Some(OneOf::B(i)) => StaggerFrom::Index(*i),
+        Some(OneOf::A(w)) => match w.as_str() {
             "start" => StaggerFrom::Start,
             "center" => StaggerFrom::Center,
             "end" => StaggerFrom::End,
@@ -220,33 +216,36 @@ fn stagger_of(v: &Value) -> Result<Option<Stagger>, String> {
                 ));
             }
         },
-        _ => return Err("stagger.from is start, center, end, edges, random or an index".into()),
     };
-    let grid = match &s["grid"] {
-        Value::Null => None,
-        Value::Array(a) if a.len() == 2 => {
-            let n = |x: &Value| {
-                x.as_u64()
-                    .filter(|n| *n >= 1)
-                    .map(|n| n.min(u64::from(u32::MAX)) as u32)
-            };
-            Some([
-                n(&a[0]).ok_or("stagger.grid is [rows, columns]")?,
-                n(&a[1]).ok_or("stagger.grid is [rows, columns]")?,
-            ])
-        }
-        _ => return Err(
+    let grid = match s.grid.as_deref() {
+        None => None,
+        Some(&[rows, columns]) if rows >= 1 && columns >= 1 => Some([rows, columns]),
+        Some(_) => return Err(
             "stagger.grid is [rows, columns] (\"auto\" needs a layout the engine does not have)"
                 .into(),
         ),
     };
     Ok(Some(Stagger {
-        each: num("each")?,
-        amount: num("amount")?,
+        each: num(s.each, "each")?,
+        amount: num(s.amount, "amount")?,
         from,
         grid,
-        ease: ease_of(&s["ease"], Ease::Linear)?,
+        ease: ease_of(&s.ease, Ease::Linear)?,
     }))
+}
+
+/// TimelineTweenVars read typed, but for the lane values (`to`, `from`
+/// and each keyframe's `to`), which take a bare number too.
+fn vars_of(raw: &Value) -> Result<TimelineTweenVars, String> {
+    let mut v = without(raw, &["to", "from"]);
+    if let Some(Value::Array(frames)) = v.get_mut("keyframes") {
+        for k in frames {
+            if let Some(o) = k.as_object_mut() {
+                o.remove("to");
+            }
+        }
+    }
+    crate::wire::value(&v, "vars")
 }
 
 /// The children one tween call adds (one per target, offset by its
@@ -256,47 +255,50 @@ fn tweens(
     world: u32,
     tween: u64,
     targets: &[u64],
-    v: &Value,
-    defaults: &Value,
+    raw: &Value,
+    defaults: &TweenDefaults,
     mode: Mode,
 ) -> Result<Vec<Child>, String> {
     if targets.is_empty() {
         return Err("targets is empty".into());
     }
-    let component = [&v["component"], &defaults["component"]]
-        .into_iter()
-        .find(|c| !c.is_null())
+    let v = vars_of(raw)?;
+    let component = v
+        .component
+        .as_ref()
+        .or(defaults.component.as_ref())
         .map_or(Some("og.Transform".to_string()), token_name)
         .ok_or("vars.component is a component token, such as og.Sprite")?;
     let (index, schema) = component_schema(eng, &component)?;
-    let field = v["field"]
-        .as_str()
-        .filter(|s| !s.is_empty())
-        .ok_or("vars.field names the field, such as `position.y`")?;
+    if v.field.is_empty() {
+        return Err("vars.field names the field, such as `position.y`".into());
+    }
+    let field = v.field.as_str();
     let duration = if mode == Mode::Set {
         0.0
     } else {
-        seconds(v, "duration", seconds(defaults, "duration", 0.3)?)?
+        let default = seconds(defaults.duration, "duration")?;
+        v.duration.map_or(Ok(default), |s| seconds(s, "duration"))?
     };
-    let ease = if v["ease"].is_null() {
-        ease_of(&defaults["ease"], Ease::QuadOut)?
-    } else {
-        ease_of(&v["ease"], Ease::QuadOut)?
+    let ease = match &v.ease {
+        None => ease_of(&defaults.ease, Ease::QuadOut)?,
+        Some(e) => ease_of(e, Ease::QuadOut)?,
     };
-    let delay = seconds(v, "delay", 0.0)?;
-    let repeat = repeat_of(v)?;
-    let yoyo = on(v, "yoyo", false);
-    let repeat_delay = seconds(v, "repeatDelay", 0.0)? as f32;
-    let calls = callbacks(v)?;
+    let delay = seconds(v.delay, "delay")?;
+    let repeat = repeat_of(v.repeat)?;
+    let yoyo = v.yoyo;
+    let repeat_delay = seconds(v.repeat_delay, "repeatDelay")? as f32;
+    let calls = callbacks(&v.on_start, &v.on_update, &v.on_complete, &v.on_repeat)?;
+    // Lane values take a bare number too: read by hand.
     let values = |k: &str| -> Result<Option<Vec<f32>>, String> {
-        if v[k].is_null() {
+        if raw[k].is_null() {
             Ok(None)
         } else {
-            floats(&v[k], &format!("vars.{k}")).map(Some)
+            floats(&raw[k], &format!("vars.{k}")).map(Some)
         }
     };
     let (to, from) = (values("to")?, values("from")?);
-    let keyframes = v["keyframes"].as_array();
+    let keyframes: Option<&[TweenKeyframe]> = v.keyframes.as_deref();
     match mode {
         Mode::To if keyframes.is_none() && to.is_none() => {
             return Err("to needs vars.to or vars.keyframes".into());
@@ -311,7 +313,7 @@ fn tweens(
     if keyframes.is_some() && mode != Mode::To {
         return Err("keyframes go with to".into());
     }
-    let stagger = stagger_of(&v["stagger"])?;
+    let stagger = stagger_of(&v.stagger)?;
     let offsets = match &stagger {
         None => vec![0.0; targets.len()],
         Some(s) => {
@@ -339,7 +341,7 @@ fn tweens(
             Leaf::new(target, to)
                 .duration(duration as f32)
                 .ease(ease)
-                .relative(on(v, "relative", false))
+                .relative(v.relative)
         };
         let child = if let Some(frames) = keyframes {
             // Keyframes are a nested timeline: repeat and yoyo apply to
@@ -351,13 +353,14 @@ fn tweens(
             nested.on = calls.clone();
             let mut at = 0.0;
             for (i, k) in frames.iter().enumerate() {
-                let to = floats(&k["to"], &format!("keyframes[{i}].to"))?;
-                at += seconds(k, "delay", 0.0)?;
-                let d = seconds(k, "duration", duration)?;
-                let e = if k["ease"].is_null() {
-                    ease
-                } else {
-                    ease_of(&k["ease"], ease)?
+                let to = floats(&raw["keyframes"][i]["to"], &format!("keyframes[{i}].to"))?;
+                at += seconds(k.delay, "delay")?;
+                let d = k
+                    .duration
+                    .map_or(Ok(duration), |s| seconds(s, "duration"))?;
+                let e = match &k.ease {
+                    None => ease,
+                    Some(n) => ease_of(n, ease)?,
                 };
                 let l = leaf(to, d, e);
                 l.check().map_err(err)?;
@@ -472,7 +475,7 @@ pub fn og_tween_timeline_set(
 
 pub fn og_tween_timeline_call(h: u32, name: String, pos: Option<String>) -> u32 {
     build(h, |eng, tween, _| {
-        let name = name_of(&json!({ "call": name }), "call")?.unwrap_or_default();
+        let name = name_of(&Some(name), "call")?.unwrap_or_default();
         place(
             eng,
             tween,
@@ -529,14 +532,14 @@ fn nest(node: Node) -> Child {
 pub fn og_tween_timeline_add(h: u32, child: String, pos: Option<String>) -> u32 {
     build(h, |eng, tween, _| {
         let position = position(pos.as_deref())?;
-        match parse(Some(&child))? {
-            Value::String(label) => on_timeline(eng, tween, |tl| {
+        match crate::wire::arg::<Option<OneOf<u64, String>>>(Some(&child), "child")? {
+            None => Err("add takes a tween handle or a label".into()),
+            Some(OneOf::B(label)) => on_timeline(eng, tween, |tl| {
                 let at = tl.resolve(position.as_ref(), 0.0)?;
                 tl.add_label(&label, at);
                 Ok(())
             })?,
-            v => {
-                let handle = v.as_f64().ok_or("add takes a tween handle or a label")? as u64;
+            Some(OneOf::A(handle)) => {
                 if handle == tween {
                     return Err("a timeline cannot be added to itself".into());
                 }

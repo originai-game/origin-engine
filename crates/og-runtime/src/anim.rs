@@ -22,6 +22,7 @@
 //! `#anim` blob's streams the first time such an entity is drawn.
 
 use super::engine::{Engine, engine};
+use super::wire::{self, GraphDesc, HumanoidDesc, MirrorDesc, RetargetDesc};
 use super::{ok, parse, refuse};
 use og_anim::{AnimationSystem, ClipAsset, GraphAsset, HumanoidMap, RigAsset, SkeletonAsset};
 use og_core::IdMap;
@@ -183,13 +184,14 @@ pub fn og_load_animation(world: u32, path: String) -> String {
     wire(engine(world).and_then(|eng| load_animation(&eng, &path)))
 }
 
-fn graph(eng: &Engine, desc: &Value) -> Result<Value, String> {
-    let text = desc["text"]
-        .as_str()
-        .ok_or("desc.text is the graph's .ogt text (`type animgraph`); it is missing")?;
+fn graph(eng: &Engine, desc: &GraphDesc) -> Result<Value, String> {
+    if desc.text.is_empty() {
+        return Err("desc.text is the graph's .ogt text (`type animgraph`); it is missing".into());
+    }
+    let text = desc.text.as_str();
     // A graph for og.Flipbook and og.Skeleton2D: its clip lines name the
     // sheet's or rig's clips, found as it plays.
-    if desc["sprite"].as_bool() == Some(true) {
+    if desc.sprite {
         let graph = std::sync::Arc::new(
             og_anim::SpriteGraph::parse(text).map_err(|e| format!("the graph: {}", e.reason()))?,
         );
@@ -206,14 +208,14 @@ fn graph(eng: &Engine, desc: &Value) -> Result<Value, String> {
         return Ok(json!(h as f64));
     }
     let mut by_name = BTreeMap::new();
-    for c in desc["clips"].as_array().into_iter().flatten() {
-        let (Some(name), Some(h)) = (c["name"].as_str(), c["clip"].as_f64()) else {
+    for c in &desc.clips {
+        if c.name.is_empty() || c.clip == 0 {
             return Err(
                 "desc.clips holds ClipInfo rows ({clip, name}), as og.load.animation answers them"
                     .into(),
             );
-        };
-        by_name.insert(name.to_string(), h as u64);
+        }
+        by_name.insert(c.name.clone(), c.clip);
     }
     let sys = system(eng)?;
     let known = eng
@@ -277,11 +279,6 @@ pub fn og_load_rig(world: u32, path: String) -> String {
     wire(engine(world).and_then(|eng| load_rig(&eng, &path)))
 }
 
-/// A handle field of a desc (0 when absent).
-fn handle(desc: &Value, key: &str) -> u64 {
-    desc[key].as_f64().map_or(0, |h| h as u64)
-}
-
 /// The humanoid map of skeleton `h` by rig `rig` (0: detected).
 pub(crate) fn humanoid_of(
     eng: &Engine,
@@ -309,15 +306,9 @@ pub(crate) fn humanoid_of(
     Ok((skeleton, map))
 }
 
-fn humanoid(eng: &Engine, desc: &Value) -> Result<Value, String> {
+fn humanoid(eng: &Engine, desc: &HumanoidDesc) -> Result<Value, String> {
     let sys = system(eng)?;
-    let (skeleton, map) = humanoid_of(
-        eng,
-        &sys,
-        handle(desc, "skeleton"),
-        handle(desc, "rig"),
-        "skeleton",
-    )?;
+    let (skeleton, map) = humanoid_of(eng, &sys, desc.skeleton, desc.rig, "skeleton")?;
     Ok(json!({
         "scheme": map.scheme,
         "bones": map
@@ -329,18 +320,16 @@ fn humanoid(eng: &Engine, desc: &Value) -> Result<Value, String> {
 }
 
 pub fn og_anim_humanoid(world: u32, desc: Option<String>) -> String {
-    wire(engine(world).and_then(|eng| {
-        let desc = parse(desc.as_deref())?;
-        humanoid(&eng, &desc)
-    }))
+    wire(engine(world).and_then(|eng| humanoid(&eng, &wire::arg(desc.as_deref(), "desc")?)))
 }
 
 pub(crate) fn retarget(eng: &Engine, desc: &Value) -> Result<Value, String> {
+    let d: RetargetDesc = wire::value(desc, "desc")?;
     let sys = system(eng)?;
-    let clip_h = handle(desc, "clip");
-    let (source_h, target_h) = (handle(desc, "source"), handle(desc, "target"));
-    let (source_rig, target_rig) = (handle(desc, "sourceRig"), handle(desc, "targetRig"));
-    let foot_ik = desc["footIk"].as_bool().unwrap_or(true);
+    let clip_h = d.clip;
+    let (source_h, target_h) = (d.source, d.target);
+    let (source_rig, target_rig) = (d.source_rig, d.target_rig);
+    let foot_ik = d.foot_ik;
     let key = (clip_h, source_h, target_h, source_rig, target_rig, foot_ik);
     if let Some(v) = eng.state.borrow().anim_assets.retargeted.get(&key) {
         return Ok(v.clone());
@@ -382,9 +371,9 @@ pub fn og_anim_retarget(world: u32, desc: Option<String>) -> String {
     }))
 }
 
-fn mirror(eng: &Engine, desc: &Value) -> Result<Value, String> {
+fn mirror(eng: &Engine, desc: &MirrorDesc) -> Result<Value, String> {
     let sys = system(eng)?;
-    let (clip_h, skeleton_h) = (handle(desc, "clip"), handle(desc, "skeleton"));
+    let (clip_h, skeleton_h) = (desc.clip, desc.skeleton);
     let key = (clip_h, skeleton_h);
     if let Some(v) = eng.state.borrow().anim_assets.mirrored.get(&key) {
         return Ok(v.clone());
@@ -414,15 +403,9 @@ fn mirror(eng: &Engine, desc: &Value) -> Result<Value, String> {
 }
 
 pub fn og_anim_mirror(world: u32, desc: Option<String>) -> String {
-    wire(engine(world).and_then(|eng| {
-        let desc = parse(desc.as_deref())?;
-        mirror(&eng, &desc)
-    }))
+    wire(engine(world).and_then(|eng| mirror(&eng, &wire::arg(desc.as_deref(), "desc")?)))
 }
 
 pub fn og_anim_graph(world: u32, desc: Option<String>) -> String {
-    wire(engine(world).and_then(|eng| {
-        let desc = parse(desc.as_deref())?;
-        graph(&eng, &desc)
-    }))
+    wire(engine(world).and_then(|eng| graph(&eng, &wire::arg(desc.as_deref(), "desc")?)))
 }
