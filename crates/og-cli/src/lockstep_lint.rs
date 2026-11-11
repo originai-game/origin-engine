@@ -8,7 +8,10 @@
 //! so V8, JavaScriptCore and SpiderMonkey round them differently;
 //! Math.random, the clock and timers differ on every run; `fetch`, sockets
 //! and the browser's storage reach outside the host ABI, where neither the
-//! replay nor the platform sees them. Each is a warning naming the
+//! replay nor the platform sees them; `localeCompare`, the `toLocale...`
+//! methods and Intl order and format by the host's locale and Unicode data,
+//! and WeakRef and FinalizationRegistry observe the garbage collector.
+//! Each is a warning naming the
 //! replacement (`math` from `@origingame/engine`, og.Rng, og.Time,
 //! og.platform); none fails the check, since drawing code may use the maths
 //! and the clock. A line holding `og-ok` or `lockstep-ok` (in a comment) is
@@ -64,12 +67,30 @@ const HOST_CALLS: &[&str] = &["fetch", "WebSocket", "XMLHttpRequest", "EventSour
 const HOST_STORES: &[&str] = &["localStorage", "sessionStorage", "indexedDB"];
 /// Timers: they fire by the host's clock, outside the tick.
 const TIMERS: &[&str] = &["setTimeout", "setInterval", "requestAnimationFrame"];
+/// String, number and date methods that answer by the host's locale and
+/// its Unicode data.
+const LOCALE_MEMBERS: &[&str] = &[
+    "localeCompare",
+    "toLocaleString",
+    "toLocaleUpperCase",
+    "toLocaleLowerCase",
+    "toLocaleDateString",
+    "toLocaleTimeString",
+];
+/// What observes the garbage collector.
+const COLLECTED: &[&str] = &["WeakRef", "FinalizationRegistry"];
 /// What names the global object.
 const GLOBALS: &[&str] = &["globalThis", "self", "window"];
 
 fn host_reach(name: &str) -> String {
     format!(
         "{name} reaches outside the host ABI: a replay does not record it, the other host may not have it, and the platform sees nothing of it; saves, scores, rooms and purchases go through og.platform, assets through og.load"
+    )
+}
+
+fn locale(name: &str) -> String {
+    format!(
+        "{name} orders and formats by the host's locale and its Unicode data, different on another machine or browser, so a sort or a string built with it differs between peers and on the other host: where a system that changes the world runs it, compare strings with < and > (code units, the same everywhere) and build numbers' text yourself"
     )
 }
 
@@ -202,7 +223,16 @@ pub fn scan(src: &str) -> Vec<Finding> {
                 }
                 i += 2;
             }
-            c if ident_start(c) && (i == 0 || !(ident_char(b[i - 1]) || b[i - 1] == b'.')) => {
+            c if ident_start(c) && i > 0 && b[i - 1] == b'.' => {
+                // A member's name: the locale's methods, on any value.
+                let at = i;
+                let w = word(i);
+                i += w.len();
+                if LOCALE_MEMBERS.contains(&w) && b.get(skip_ws(i)) == Some(&b'(') {
+                    push(at, 9007, locale(w));
+                }
+            }
+            c if ident_start(c) && (i == 0 || !ident_char(b[i - 1])) => {
                 let at = i;
                 let w = word(i);
                 i += w.len();
@@ -227,6 +257,14 @@ pub fn scan(src: &str) -> Vec<Finding> {
                         push(at, 9005, host_reach(w));
                     } else if TIMERS.contains(&w) {
                         push(at, 9006, timer(w));
+                    } else if COLLECTED.contains(&w) && before.ends_with("new") {
+                        push(
+                            at,
+                            9007,
+                            format!(
+                                "{w} observes the garbage collector, which runs at different times on every run and every peer: hold the object, or keep its handle in a component"
+                            ),
+                        );
                     }
                     continue;
                 }
@@ -255,6 +293,7 @@ pub fn scan(src: &str) -> Vec<Finding> {
                             "crypto.{member} differs on every run and every peer: draw from og.Rng (world.resource(og.Rng)), seeded by the engine"
                         ),
                     ),
+                    ("Intl", m) if !m.is_empty() => push(at, 9007, locale(&format!("Intl.{m}"))),
                     ("navigator", "sendBeacon") => push(at, 9005, host_reach("navigator.sendBeacon")),
                     ("Math", "random") => push(
                         at,
@@ -387,6 +426,33 @@ mod tests {
         let src = "const s = `Math.sin(${Math.cos(a)}) {${ {b: 1}.b }} Math.pow`; Math.exp(1);";
         let found = codes(src);
         assert_eq!(found, [(1, 23, 9001), (1, 64, 9001)], "{found:?}");
+    }
+
+    #[test]
+    fn the_locale_s_order_and_the_collector_are_found() {
+        let src = concat!(
+            "names.sort((a, b) => a.localeCompare(b));\n",
+            "const t = n.toLocaleString() + s?.toLocaleUpperCase();\n",
+            "const c = new Intl.Collator('en'); const w = new WeakRef(o);\n",
+            "const r = new FinalizationRegistry(() => {});\n",
+            // The game's own members and names, a string, and a marked line.
+            "const localeCompare = 1; my.locale(); function WeakRef() {} 'a.localeCompare(b)';\n",
+            "hud.text = n.toLocaleString(); // og-ok: shown only\n",
+            "names.sort(); names.sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)); x.toString();\n",
+        );
+        assert_eq!(
+            codes(src),
+            [
+                (1, 24, 9007),
+                (2, 13, 9007),
+                (2, 35, 9007),
+                (3, 15, 9007),
+                (3, 50, 9007),
+                (4, 15, 9007)
+            ]
+        );
+        assert!(scan(src)[3].message.starts_with("Intl.Collator orders"));
+        assert!(scan(src)[4].message.starts_with("WeakRef observes"));
     }
 
     #[test]
