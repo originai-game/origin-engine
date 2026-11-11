@@ -1273,6 +1273,10 @@ impl Ui {
             [mapped, selected].concat()
         };
         let trees = self.commands(&order, seeds.is_some().then_some(&painted[..]));
+        // The part styles sampled while painting take their next state.
+        for commit in self.part_commits.take().into_values() {
+            self.commit_styles(&commit);
+        }
         #[cfg(debug_assertions)]
         if bounded::checking() {
             for &i in &order {

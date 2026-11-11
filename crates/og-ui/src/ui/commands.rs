@@ -609,9 +609,6 @@ impl Ui {
         self.paint_cache.reused_all =
             reused_roots && same_roots && !self.invalidation.fresh && !self.invalidation.whole;
         self.paint_cache.prev_cmds = last;
-        for commit in self.part_commits.take().into_values() {
-            self.commit_styles(&commit);
-        }
         cmds
     }
 
