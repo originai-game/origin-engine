@@ -350,7 +350,7 @@ impl Ui {
                     ..ModalDesc::default()
                 },
             );
-            let panel = self.parent();
+            let panel = self.tree.parent();
             // The scrim is `Dialog.backdrop` to a style (CSS `::backdrop`).
             let scrim = self.tree.nodes[panel].parent;
             self.tree.nodes[scrim].el.part = crate::dress::PartRef::parse(

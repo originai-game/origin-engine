@@ -120,7 +120,7 @@ impl Ui {
             adjust_y: r.adjust_y,
             ..ViewportResponse::default()
         };
-        let Some(hit) = self.hit(key) else {
+        let Some(hit) = self.interaction.hit(key) else {
             return out;
         };
         let rect = hit.local;

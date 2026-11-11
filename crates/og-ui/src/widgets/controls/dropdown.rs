@@ -130,7 +130,7 @@ fn kept_suggestions<'a>(
 
 impl Ui {
     fn select_list_part(&mut self) {
-        let owner = self.parent();
+        let owner = self.tree.parent();
         let element = self.tree.nodes[owner].el;
         let reference = element.part.expect("select list part");
         self.tree.nodes[owner].el.padding = Insets::default();
@@ -139,7 +139,7 @@ impl Ui {
         // The old list inset included the painted one-pixel rim. The
         // persistent CSS box now accounts for that rim in its padding.
         let padding = element.padding;
-        let slot = self.write_part(
+        let slot = self.tree.write_part(
             owner,
             reference,
             ("list", 0),
@@ -156,6 +156,7 @@ impl Ui {
                 ..element
             },
             crate::layout::Content::None,
+            &mut self.layout,
         );
         self.tree.nodes[owner].content_slot = slot;
     }
@@ -465,7 +466,7 @@ impl Ui {
             };
             // Its rim and shadow are the part's (a floating surface's) dressing.
             let m = self.floating(&list_id, open, trig_node, content, |ui| {
-                let layer = ui.parent();
+                let layer = ui.tree.parent();
                 ui.tree.nodes[layer].part_source = trig_node;
                 list(ui, layer);
                 ui.select_list_part();

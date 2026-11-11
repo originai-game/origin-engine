@@ -330,6 +330,7 @@ impl Ui {
         let hold = crate::edit::click_ticks(self.env.ticks_per_second);
         let mut press = self.interaction.state.select_press;
         let held_key = self
+            .interaction
             .hit(self.interaction.state.active)
             .filter(|h| h.has(HIT_SELECT))
             .map(|h| h.key);
@@ -427,6 +428,7 @@ impl Ui {
         };
         // A focused text control copies its own selection.
         let editing = self
+            .interaction
             .hit(self.interaction.state.focus)
             .is_some_and(|h| h.has(HIT_TEXT));
         if shortcut

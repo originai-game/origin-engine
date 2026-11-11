@@ -126,7 +126,7 @@ impl Ui {
             let mut k = if grabbed {
                 0
             } else {
-                self.hit(hot).map_or(0, |h| h.gesture)
+                self.interaction.hit(hot).map_or(0, |h| h.gesture)
             };
             while k != 0 && chain.len() < 16 {
                 chain.push(k);
@@ -172,7 +172,10 @@ impl Ui {
                 && let Some(w) = self.winner(&chain, |s| s.tap || s.double_tap)
             {
                 let s = self.spec(w).unwrap_or_default();
-                let over = self.hit(w).is_some_and(|h| h.contains(p.x, p.y));
+                let over = self
+                    .interaction
+                    .hit(w)
+                    .is_some_and(|h| h.contains(p.x, p.y));
                 if travel <= slop(&s) && over {
                     let t = &self.interaction.state.tap;
                     // Another element's waiting tap is settled by this one.
@@ -460,15 +463,19 @@ impl Ui {
         };
         // Over selectable text (or selecting it): its own cursor where one
         // is set on it or above it, else the I-beam.
-        let selecting = self.hit(key).filter(|h| h.has(HIT_SELECT)).map(|h| h.key);
+        let selecting = self
+            .interaction
+            .hit(key)
+            .filter(|h| h.has(HIT_SELECT))
+            .map(|h| h.key);
         if let Some(t) = selecting.or_else(|| {
             hovered
-                .and_then(|i| self.hit(self.tree.nodes[i].key))
+                .and_then(|i| self.interaction.hit(self.tree.nodes[i].key))
                 .filter(|h| h.has(HIT_SELECT))
                 .map(|h| h.key)
         }) && let Some(i) = self.tree.index.find(t)
         {
-            return match self.declared_cursor(i) {
+            return match self.tree.declared_cursor(i) {
                 (Cursor::Auto, at) => (Cursor::Text, at),
                 c => c,
             };
@@ -493,7 +500,7 @@ impl Ui {
                 None => (Cursor::Default, NONE),
             };
         };
-        let (c, at) = self.declared_cursor(hovered.unwrap_or(i));
+        let (c, at) = self.tree.declared_cursor(hovered.unwrap_or(i));
         if c != Cursor::Auto {
             return (c, at);
         }
@@ -582,14 +589,14 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Tree {
     /// The `cursor` declared on node `i` or the nearest element around it
     /// that declares one (a keyword other than `auto`, or images over
     /// `auto`), and that element (`NONE`: none does).
     fn declared_cursor(&self, i: usize) -> (crate::Cursor, usize) {
         let mut j = i;
-        while j != NONE && j < self.tree.nodes.len() {
-            let n = &self.tree.nodes[j];
+        while j != NONE && j < self.nodes.len() {
+            let n = &self.nodes[j];
             if n.props.cursor != crate::Cursor::Auto || !n.props.cursor_images.is_empty() {
                 return (n.props.cursor, j);
             }

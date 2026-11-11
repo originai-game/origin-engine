@@ -112,7 +112,7 @@ impl Ui {
         // Only the real focus edits; a forced one (the probe's) only shows.
         if self.interaction.state.focus == key {
             let inset = self.frame_inset(i, frame, padding);
-            let inner = self.hit(key).map(|h| h.full.inset(&inset));
+            let inner = self.interaction.hit(key).map(|h| h.full.inset(&inset));
             let e = self.edit(
                 key,
                 value,
@@ -178,7 +178,7 @@ impl Ui {
         } else {
             (ink.step, ink.ink)
         };
-        let mut content = self.text_content(&shown, step, color);
+        let mut content = self.tree.text_content(&shown, step, color);
         content.wrap = false;
         // A placeholder longer than the field ends in an ellipsis; a value scrolls.
         content.ellipsis = placeholder;
@@ -563,7 +563,7 @@ impl Ui {
         let element = self.tree.nodes[j].el;
         let part = element.part.expect("a dressed text control button");
         let shapes = std::mem::take(&mut self.tree.nodes[j].shapes);
-        let slot = self.write_part(
+        let slot = self.tree.write_part(
             j,
             part,
             (name, 0),
@@ -575,6 +575,7 @@ impl Ui {
                 ..element
             },
             Content::None,
+            &mut self.layout,
         );
         self.tree.nodes[j].content_slot = slot;
         self.tree.nodes[slot].shapes = shapes;
@@ -586,7 +587,7 @@ impl Ui {
     /// keeps the layout, input, focus and semantics.
     fn field_frame(&mut self, i: usize, base: crate::dress::PartRef) -> usize {
         let el = self.tree.nodes[i].el;
-        let slot = self.write_part(
+        let slot = self.tree.write_part(
             i,
             base,
             ("frame", 0),
@@ -598,6 +599,7 @@ impl Ui {
                 ..Element::default()
             },
             Content::None,
+            &mut self.layout,
         );
         let fill = crate::element::Edges {
             start: Some(0.0),
@@ -621,7 +623,10 @@ impl Ui {
         let Some(slot) = frame else {
             return fallback;
         };
-        let (Some(h), Some(s)) = (self.previous_node(i), self.previous_node(slot)) else {
+        let (Some(h), Some(s)) = (
+            self.tree.previous_node(i, &self.layout),
+            self.tree.previous_node(slot, &self.layout),
+        ) else {
             return fallback;
         };
         if s.part_box.is_none()
@@ -835,7 +840,7 @@ impl Ui {
         // Only the real focus edits; a forced one (the probe's) only shows.
         if self.interaction.state.focus == key {
             let inset = self.frame_inset(i, frame, pad);
-            let inner = self.hit(key).map(|h| h.full.inset(&inset));
+            let inner = self.interaction.hit(key).map(|h| h.full.inset(&inset));
             let e = self.edit(
                 key,
                 value,
@@ -918,7 +923,7 @@ impl Ui {
                 } else {
                     (text, ink.step, ink.ink)
                 };
-                let mut measured = self.text_content(shown, step, color);
+                let mut measured = self.tree.text_content(shown, step, color);
                 measured.step.line_height = height;
                 measured.step.cjk_line_height = height;
                 Content::Text(measured)
@@ -1016,7 +1021,7 @@ impl Ui {
         let anchor = self.interaction.state.anchor.min(len);
         let (a, b) = (caret.min(anchor), caret.max(anchor));
         let n = composition.map_or(0, |(s, e)| e - s);
-        if let Some(h) = self.hit(key) {
+        if let Some(h) = self.interaction.hit(key) {
             let path = self
                 .tree
                 .nodes

@@ -797,13 +797,13 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Tree {
     /// Brings the preorder and the features up to date with the trees:
     /// made again where their shape changed, a feature read again on the
     /// nodes written or laid out this frame.
-    pub(super) fn update_orders(&mut self, whole: bool) {
-        let n = self.tree.nodes.len();
-        let o = &mut self.tree.orders;
+    pub(super) fn update_orders(&mut self, whole: bool, layout: &crate::ui::Layout) {
+        let n = self.nodes.len();
+        let o = &mut self.orders;
         if o.feat.len() < n {
             o.feat.resize(n, 0);
             o.z.resize(n, 0);
@@ -829,18 +829,18 @@ impl Ui {
             o.written_at.fill(0);
             o.written_stamp = 1;
         }
-        for &i in &self.tree.emitted {
+        for &i in &self.emitted {
             if i < n {
                 o.written_at[i] = o.written_stamp;
             }
         }
         o.wrote_last = std::mem::take(&mut o.wrote);
-        let reshaped = whole || o.shape != Some(self.tree.index.shape);
+        let reshaped = whole || o.shape != Some(self.index.shape);
         if reshaped {
-            o.shape = Some(self.tree.index.shape);
-            o.pre = crate::layout::preorder(&self.tree.nodes, 0);
-            for &f in &self.tree.floating {
-                o.pre.extend(crate::layout::preorder(&self.tree.nodes, f));
+            o.shape = Some(self.index.shape);
+            o.pre = crate::layout::preorder(&self.nodes, 0);
+            for &f in &self.floating {
+                o.pre.extend(crate::layout::preorder(&self.nodes, f));
             }
             o.pre_pos.clear();
             o.pre_pos.resize(n, u32::MAX);
@@ -851,19 +851,18 @@ impl Ui {
             o.lists_ok = false;
             if whole {
                 for &i in &o.pre {
-                    o.feat[i] = features(&self.tree.nodes[i]);
+                    o.feat[i] = features(&self.nodes[i]);
                 }
             }
         }
         let read = self
-            .tree
             .emitted
             .iter()
-            .chain(&self.layout.cache.laid)
-            .chain(&self.tree.invalidation.restored);
+            .chain(&layout.cache.laid)
+            .chain(&self.invalidation.restored);
         for &i in read {
             if i < n {
-                let f = features(&self.tree.nodes[i]);
+                let f = features(&self.nodes[i]);
                 if f != o.feat[i] {
                     o.feat[i] = f;
                     o.lists_ok = false;
@@ -873,7 +872,7 @@ impl Ui {
         if reshaped && !whole {
             // A node that entered a tree reads its features as it is.
             for &i in &o.pre {
-                o.feat[i] = features(&self.tree.nodes[i]);
+                o.feat[i] = features(&self.nodes[i]);
             }
         }
         if !o.lists_ok {

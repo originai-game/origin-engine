@@ -41,27 +41,30 @@ pub(crate) fn grip_rect(n: &Node, rtl: bool) -> Rect {
     Rect::new(x, r.bottom() - s, s, s)
 }
 
-impl Ui {
+impl crate::ui::Tree {
     /// This tick's resizing, before interaction is decided: a press on a
     /// handle grabs it, and while it is held its drag sets the element's
     /// size. Answers whether the pointer is the handle's this tick.
-    pub(crate) fn resize_input(&mut self, input: &crate::input::InputFrame) -> bool {
+    pub(crate) fn resize_input(
+        &mut self,
+        input: &crate::input::InputFrame,
+        env: &crate::ui::Env,
+        interaction: &mut crate::ui::Interaction,
+    ) -> bool {
         let p = input.pointer;
-        if input.pressed && input.pointer_inside && self.interaction.state.thumb.is_none() {
-            let top = self
-                .interaction
+        if input.pressed && input.pointer_inside && interaction.state.thumb.is_none() {
+            let top = interaction
                 .state
                 .hits
                 .iter()
                 .rev()
                 .find(|h| h.rect.contains(p.x, p.y) && h.flags & HIT_PASS == 0)
                 .map(|h| h.key);
-            self.interaction.state.resizing = top.and_then(|k| {
-                self.tree
-                    .orders
+            interaction.state.resizing = top.and_then(|k| {
+                self.orders
                     .with(visit::feat::RESIZE)
                     .iter()
-                    .map(|&i| &self.tree.nodes[i])
+                    .map(|&i| &self.nodes[i])
                     .find(|n| grip_key(n.key) == k)
                     .map(|n| Resizing {
                         key: n.key,
@@ -71,17 +74,16 @@ impl Ui {
                     })
             });
         }
-        let Some(r) = self.interaction.state.resizing else {
+        let Some(r) = interaction.state.resizing else {
             return false;
         };
         if !(input.down || input.pressed) {
-            self.interaction.state.resizing = None;
+            interaction.state.resizing = None;
             return true;
         }
-        let rtl = self.env.direction == og_i18n::Direction::Rtl;
+        let rtl = env.direction == og_i18n::Direction::Rtl;
         let d = p - r.from;
-        let mut size = self
-            .interaction
+        let mut size = interaction
             .state
             .resized
             .get(&r.key)
@@ -94,9 +96,9 @@ impl Ui {
         if r.axes & RESIZE_Y != 0 {
             size[1] = Some((r.size[1] + d.y).max(0.0));
         }
-        if self.interaction.state.resized.get(&r.key) != Some(&size) {
-            self.interaction.state.resized.insert(r.key, size);
-            self.interaction.resize_moved = Some(r.key);
+        if interaction.state.resized.get(&r.key) != Some(&size) {
+            interaction.state.resized.insert(r.key, size);
+            interaction.resize_moved = Some(r.key);
         }
         true
     }
@@ -104,25 +106,29 @@ impl Ui {
     /// Before layout: the sizes the user gave resizable elements, on the
     /// nodes written this frame and on the one a drag moved (written again
     /// for it). Nothing while no element was ever resized.
-    pub(super) fn apply_resized(&mut self) {
-        if self.interaction.state.resized.is_empty() {
+    pub(super) fn apply_resized(
+        &mut self,
+        layout: &mut crate::ui::Layout,
+        interaction: &mut crate::ui::Interaction,
+    ) {
+        if interaction.state.resized.is_empty() {
             return;
         }
-        if let Some(key) = self.interaction.resize_moved.take()
-            && let Some(i) = self.tree.index.find(key)
-            && !self.tree.emitted.contains(&i)
+        if let Some(key) = interaction.resize_moved.take()
+            && let Some(i) = self.index.find(key)
+            && !self.emitted.contains(&i)
         {
-            let previous = self.tree.nodes[i].clone();
-            self.layout.cache.prev.entry(i).or_insert(previous);
-            self.tree.emitted.push(i);
+            let previous = self.nodes[i].clone();
+            layout.cache.prev.entry(i).or_insert(previous);
+            self.emitted.push(i);
         }
-        for k in 0..self.tree.emitted.len() {
-            let i = self.tree.emitted[k];
-            let n = &mut self.tree.nodes[i];
+        for k in 0..self.emitted.len() {
+            let i = self.emitted[k];
+            let n = &mut self.nodes[i];
             if n.el.resize == 0 {
                 continue;
             }
-            let Some(size) = self.interaction.state.resized.get(&n.key) else {
+            let Some(size) = interaction.state.resized.get(&n.key) else {
                 continue;
             };
             if let Some(w) = size[0].filter(|_| n.el.resize & RESIZE_X != 0) {
@@ -136,12 +142,12 @@ impl Ui {
 
     /// Node `s`'s resize handle: three rows of dots in its bottom end
     /// corner, the style's strong control ink.
-    pub(super) fn resizer_commands(&self, s: usize, cmds: &mut Vec<DrawCmd>) {
-        let n = &self.tree.nodes[s];
-        let rtl = self.env.direction == og_i18n::Direction::Rtl;
+    pub(super) fn resizer_commands(&self, s: usize, cmds: &mut Vec<DrawCmd>, env: &crate::ui::Env) {
+        let n = &self.nodes[s];
+        let rtl = env.direction == og_i18n::Direction::Rtl;
         let g = grip_rect(n, rtl);
-        let dpr = self.env.viewport.dpr();
-        let color = self.env.theme.palette.control_strong.linear();
+        let dpr = env.viewport.dpr();
+        let color = env.theme.palette.control_strong.linear();
         let (dot, step) = (2.0, 4.0);
         for row in 0..3 {
             for col in 0..=row {

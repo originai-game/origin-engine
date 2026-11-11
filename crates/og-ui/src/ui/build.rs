@@ -35,8 +35,8 @@ impl Ui {
                 .push("an element was added outside begin/end; call ui.begin() first".into());
             self.begin(InputFrame::default(), self.env.viewport);
         }
-        let owner = self.parent();
-        let parent = self.content_parent();
+        let owner = self.tree.parent();
+        let parent = self.tree.content_parent();
         let anonymous = id.is_empty();
         let parent_key = self.tree.nodes[owner].key;
         let mut local = if anonymous {
@@ -77,7 +77,11 @@ impl Ui {
             local = renamed;
         }
         let in_place = self.tree.in_place == Some((key, parent));
-        let index = self.write_node(Node::new(key, local, parent, el), (kind, anonymous));
+        let index = self.tree.write_node(
+            Node::new(key, local, parent, el),
+            (kind, anonymous),
+            &mut self.layout,
+        );
         if in_place {
             self.tree.in_place = None;
         } else {
@@ -141,7 +145,7 @@ impl Ui {
         let s = &self.interaction.state;
         // A forced state is drawn and matched as the real one is, and
         // activates nothing: it never clicks.
-        let forced = self.forced_interaction(key);
+        let forced = self.interaction.forced_interaction(key);
         let hovered = (s.hot == key && (s.active == 0 || s.active == key))
             || matches!(forced, Some("hover" | "pressed"));
         let by_pad = (key != 0)
@@ -179,7 +183,12 @@ impl Ui {
                 || by_pad.is_some());
         // Read only on the frames it is pressed: the hits are a list.
         let player = (pressed || clicked)
-            .then(|| self.hit(key).map(|h| h.player).filter(|&p| p != 0))
+            .then(|| {
+                self.interaction
+                    .hit(key)
+                    .map(|h| h.player)
+                    .filter(|&p| p != 0)
+            })
             .flatten()
             .map(|p| u32::from(p) - 1);
         Response {
@@ -204,7 +213,7 @@ impl Ui {
         let key = self.tree.nodes[i].key;
         let r = self.respond(key);
         let ring = (self.interaction.state.focus == key && self.interaction.state.focus_visible)
-            || self.forced_interaction(key) == Some("focused");
+            || self.interaction.forced_interaction(key) == Some("focused");
         let n = &mut self.tree.nodes[i];
         n.nav = true;
         n.adjust = adjust;
@@ -395,38 +404,43 @@ impl Ui {
     }
 }
 
-impl Ui {
-    pub(super) fn write_node(&mut self, node: Node, kind: (&'static str, bool)) -> usize {
+impl crate::ui::Tree {
+    pub(super) fn write_node(
+        &mut self,
+        node: Node,
+        kind: (&'static str, bool),
+        layout: &mut crate::ui::Layout,
+    ) -> usize {
         let identity = (node.key, node.parent);
-        let i = if let Some(&i) = self.tree.render_slots.get(&identity) {
-            let previous = std::mem::replace(&mut self.tree.nodes[i], node);
-            self.layout.cache.prev.entry(i).or_insert(previous);
-            self.tree.prev_kinds.entry(i).or_insert(self.tree.kinds[i]);
-            self.tree.kinds[i] = kind;
+        let i = if let Some(&i) = self.render_slots.get(&identity) {
+            let previous = std::mem::replace(&mut self.nodes[i], node);
+            layout.cache.prev.entry(i).or_insert(previous);
+            self.prev_kinds.entry(i).or_insert(self.kinds[i]);
+            self.kinds[i] = kind;
             i
-        } else if let Some(i) = self.tree.free_slots.pop() {
-            self.tree.nodes[i] = node;
-            self.tree.kinds[i] = kind;
-            self.tree.render_slots.insert(identity, i);
+        } else if let Some(i) = self.free_slots.pop() {
+            self.nodes[i] = node;
+            self.kinds[i] = kind;
+            self.render_slots.insert(identity, i);
             i
         } else {
-            let i = self.tree.nodes.len();
-            self.tree.nodes.push(node);
-            self.tree.kinds.push(kind);
-            self.tree.slot_present.push(false);
-            self.tree.persistent.push(false);
-            self.tree.render_slots.insert(identity, i);
+            let i = self.nodes.len();
+            self.nodes.push(node);
+            self.kinds.push(kind);
+            self.slot_present.push(false);
+            self.persistent.push(false);
+            self.render_slots.insert(identity, i);
             i
         };
-        self.tree.slot_present[i] = true;
-        self.tree.emitted.push(i);
+        self.slot_present[i] = true;
+        self.emitted.push(i);
         // A rewritten node sets its draw and layer again as it builds.
-        self.tree.draws.remove(&i);
-        self.tree.dressable.remove(&i);
-        if self.tree.persistent[i] {
-            self.tree.floating.retain(|&f| f != i);
+        self.draws.remove(&i);
+        self.dressable.remove(&i);
+        if self.persistent[i] {
+            self.floating.retain(|&f| f != i);
         }
-        self.tree.persistent[i] = match self.tree.owning.last_mut() {
+        self.persistent[i] = match self.owning.last_mut() {
             Some(owned) => {
                 owned.slots.push(i);
                 true
@@ -438,38 +452,38 @@ impl Ui {
 
     /// Vacates slot `i` after the frame that last drew it: its identity is
     /// free for a new node, its slot for reuse from the next frame on.
-    fn vacate(&mut self, i: usize) {
-        if self.tree.kinds[i].0 == "vacant" {
+    fn vacate(&mut self, i: usize, layout: &mut crate::ui::Layout) {
+        if self.kinds[i].0 == "vacant" {
             return;
         }
         self.untree(i);
-        let old = &self.tree.nodes[i];
-        self.tree.render_slots.remove(&(old.key, old.parent));
+        let old = &self.nodes[i];
+        self.render_slots.remove(&(old.key, old.parent));
         // Its parent derives its children without it.
         if old.parent != NONE {
-            self.tree.invalidation.rederive.push(old.parent);
+            self.invalidation.rederive.push(old.parent);
         }
-        self.tree.invalidation.forced.remove(&i);
+        self.invalidation.forced.remove(&i);
         let mut vacant = Node::new(0, String::new(), NONE, Element::default());
         vacant.hidden = true;
-        let old = std::mem::replace(&mut self.tree.nodes[i], vacant);
-        self.layout.cache.prev.entry(i).or_insert(old);
-        self.tree.prev_kinds.entry(i).or_insert(self.tree.kinds[i]);
-        self.tree.kinds[i] = ("vacant", false);
-        self.tree.draws.remove(&i);
-        self.tree.dressable.remove(&i);
-        self.tree.free_slots.push(i);
+        let old = std::mem::replace(&mut self.nodes[i], vacant);
+        layout.cache.prev.entry(i).or_insert(old);
+        self.prev_kinds.entry(i).or_insert(self.kinds[i]);
+        self.kinds[i] = ("vacant", false);
+        self.draws.remove(&i);
+        self.dressable.remove(&i);
+        self.free_slots.push(i);
     }
 
-    pub(super) fn retire_nodes(&mut self) {
-        for k in 0..self.tree.retiring.len() {
-            let i = self.tree.retiring[k];
-            if self.tree.slot_present[i] || self.tree.persistent[i] {
+    pub(super) fn retire_nodes(&mut self, layout: &mut crate::ui::Layout) {
+        for k in 0..self.retiring.len() {
+            let i = self.retiring[k];
+            if self.slot_present[i] || self.persistent[i] {
                 continue;
             }
-            self.vacate(i);
+            self.vacate(i, layout);
         }
-        self.tree.retiring.clear();
+        self.retiring.clear();
     }
 
     /// Retires slots a retained element owned and no longer writes: they
@@ -477,33 +491,33 @@ impl Ui {
     /// retired slots, never reused inside it.
     pub(crate) fn retire_owned(&mut self, slots: &[usize]) {
         for &i in slots {
-            if !self.tree.persistent[i] {
+            if !self.persistent[i] {
                 continue;
             }
-            self.tree.persistent[i] = false;
-            self.tree.slot_present[i] = false;
-            self.tree.floating.retain(|&f| f != i);
-            self.tree.retiring.push(i);
+            self.persistent[i] = false;
+            self.slot_present[i] = false;
+            self.floating.retain(|&f| f != i);
+            self.retiring.push(i);
         }
     }
 
     /// The slot the node `key` under `parent` was last written to.
     pub(crate) fn render_slot(&self, key: u64, parent: usize) -> Option<usize> {
-        self.tree.render_slots.get(&(key, parent)).copied()
+        self.render_slots.get(&(key, parent)).copied()
     }
 
     /// Whether slot `i` still holds the retained node `key` under `parent`.
     pub(crate) fn holds(&self, i: usize, key: u64, parent: usize) -> bool {
-        self.tree.persistent.get(i).copied().unwrap_or(false)
-            && self.tree.nodes[i].key == key
-            && self.tree.nodes[i].parent == parent
+        self.persistent.get(i).copied().unwrap_or(false)
+            && self.nodes[i].key == key
+            && self.nodes[i].parent == parent
     }
 
     /// Puts a retained node that was not emitted again back under the open
     /// element, with its subtree as it stands.
     pub(crate) fn reattach(&mut self, i: usize) {
         let parent = self.content_parent();
-        self.tree.nodes[parent].built_children.push(i);
+        self.nodes[parent].built_children.push(i);
     }
 
     /// Puts back a retained node the element being emitted owns and does
@@ -511,33 +525,35 @@ impl Ui {
     /// its subtree.
     pub(crate) fn keep_owned(&mut self, i: usize) {
         self.reattach(i);
-        if let Some(owned) = self.tree.owning.last_mut() {
+        if let Some(owned) = self.owning.last_mut() {
             owned.slots.push(i);
         }
     }
 
-    pub(crate) fn previous_node(&self, i: usize) -> Option<&Node> {
-        self.layout
-            .cache
-            .prev
-            .get(&i)
-            .or_else(|| self.tree.nodes.get(i))
+    pub(crate) fn previous_node<'a>(
+        &'a self,
+        i: usize,
+        layout: &'a crate::ui::Layout,
+    ) -> Option<&'a Node> {
+        layout.cache.prev.get(&i).or_else(|| self.nodes.get(i))
     }
 
-    pub(crate) fn previous_nodes(&self) -> impl Iterator<Item = &Node> {
-        self.tree
-            .retiring
+    pub(crate) fn previous_nodes<'a>(
+        &'a self,
+        layout: &'a crate::ui::Layout,
+    ) -> impl Iterator<Item = &'a Node> {
+        self.retiring
             .iter()
-            .filter_map(|&i| self.previous_node(i))
+            .filter_map(|&i| self.previous_node(i, layout))
     }
 
     pub(crate) fn parent(&self) -> usize {
-        self.tree.stack.last().copied().unwrap_or(0)
+        self.stack.last().copied().unwrap_or(0)
     }
 
     pub(crate) fn content_parent(&self) -> usize {
         let owner = self.parent();
-        match self.tree.nodes[owner].content_slot {
+        match self.nodes[owner].content_slot {
             NONE => owner,
             slot => slot,
         }
@@ -550,9 +566,10 @@ impl Ui {
         identity: (&str, usize),
         element: Element,
         content: Content,
+        layout: &mut crate::ui::Layout,
     ) -> usize {
         let id = format!("::part({})#{}", identity.0, identity.1);
-        let key = child_key(self.tree.nodes[owner].key, &id);
+        let key = child_key(self.nodes[owner].key, &id);
         let part = crate::layout::PartBox {
             owner,
             reference,
@@ -560,26 +577,26 @@ impl Ui {
             intrinsic_props: Default::default(),
         };
         if let Some(i) = self.render_slot(key, owner)
-            && self.tree.nodes[owner].built_children.contains(&i)
+            && self.nodes[owner].built_children.contains(&i)
         {
-            if !self.tree.emitted.contains(&i) {
-                self.layout
+            if !self.emitted.contains(&i) {
+                layout
                     .cache
                     .prev
                     .entry(i)
-                    .or_insert_with(|| self.tree.nodes[i].clone());
+                    .or_insert_with(|| self.nodes[i].clone());
             }
-            self.tree.nodes[i].part_box = Some(part);
-            self.tree.nodes[i].el = element;
-            self.tree.nodes[i].content = content;
-            self.tree.invalidation.rederive.push(owner);
+            self.nodes[i].part_box = Some(part);
+            self.nodes[i].el = element;
+            self.nodes[i].content = content;
+            self.invalidation.rederive.push(owner);
             return i;
         }
         let mut node = Node::new(key, id, owner, element);
         node.part_box = Some(part);
         node.content = content;
-        let i = self.write_node(node, ("part", false));
-        self.tree.nodes[owner].built_children.push(i);
+        let i = self.write_node(node, ("part", false), layout);
+        self.nodes[owner].built_children.push(i);
         i
     }
 
@@ -602,7 +619,7 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Interaction {
     /// A further touch (pointers 1 to 4, `og.Pointers`) on the touch control
     /// `key`: the first pointer held, or released this tick, that started on
     /// its last-frame rectangle (`by_start`, a stick that keeps the finger
@@ -610,7 +627,7 @@ impl Ui {
     /// position, and whether it is still held.
     pub(crate) fn touch(&self, key: u64, by_start: bool) -> Option<(Vec2, bool)> {
         let rect = self.hit(key)?.rect;
-        let p = &self.interaction.input.pointers;
+        let p = &self.input.pointers;
         (1..og_input::MAX_POINTERS as u32).find_map(|id| {
             let held = p.down(id);
             if !held && !p.is_released(id) {
@@ -629,14 +646,14 @@ impl Ui {
         if key == 0 {
             return None;
         }
-        self.interaction.state.hits.iter().find(|h| h.key == key)
+        self.state.hits.iter().find(|h| h.key == key)
     }
 
     /// The interaction state the probe or an agent forced on the element
     /// of render key `key` (`og.ui.forceState(path, "interaction", …)`):
     /// `hover`, `pressed`, `focused` or `disabled`.
     pub(crate) fn forced_interaction(&self, key: u64) -> Option<&str> {
-        let forced = &self.interaction.state.motion.forced;
+        let forced = &self.state.motion.forced;
         if forced.is_empty() || key == 0 {
             return None;
         }
@@ -689,14 +706,16 @@ impl Ui {
         } else {
             p.ink
         };
-        let mut content = self.text_content(text, t.type_ramp.meta, ink);
+        let mut content = self.tree.text_content(text, t.type_ramp.meta, ink);
         content.wrap = false;
         node.content = Content::Text(content);
         node.widget = Widget::Tooltip;
         node.probe_text = text.to_owned();
         node.anchor = anchor;
         node.float = Float::Tooltip;
-        let index = self.write_node(node, ("tooltip", false));
+        let index = self
+            .tree
+            .write_node(node, ("tooltip", false), &mut self.layout);
         self.tree.floating.push(index);
     }
 
@@ -707,7 +726,7 @@ impl Ui {
     /// callout keyed as the element itself). One key names one node: the
     /// trees' index, motion and interaction state find the layer by it.
     pub(crate) fn layer_place(&mut self, id: &Id, layer: u64) -> usize {
-        let parent = self.tree.nodes[self.parent()].key;
+        let parent = self.tree.nodes[self.tree.parent()].key;
         let id = if child_key(parent, id.as_str()) == layer {
             Id::from(format!("{}~place", id.as_str()))
         } else {
@@ -782,7 +801,7 @@ impl Ui {
         let mut node = Node::new(key, local, NONE, el);
         node.float = float;
         node.anchor = anchor;
-        let index = self.write_node(node, (kind, false));
+        let index = self.tree.write_node(node, (kind, false), &mut self.layout);
         self.tree.floating.push(index);
         self.tree.stack.push(index);
         index

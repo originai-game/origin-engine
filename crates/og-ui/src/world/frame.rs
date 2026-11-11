@@ -75,7 +75,7 @@ impl Ui {
         }
         let i = self.open_world_layer("world", id, key, el);
         self.world.want(desc.target);
-        let info = self.anchor_info(self.tree.nodes[i].key, &desc);
+        let info = self.world.anchor_info(self.tree.nodes[i].key, &desc);
         self.world.anchors.push(AnchorEntry { node: i, desc });
         info
     }
@@ -426,12 +426,12 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::world::WorldUi {
     /// Where an anchor stands as of now: its distance and level from the
     /// current view, the rest from last tick.
     fn anchor_info(&self, key: u64, desc: &WorldAnchorDesc) -> AnchorInfo {
-        let mut info = self.world.last.get(&key).copied().unwrap_or_default();
-        if let (Some(view), Some((p, _))) = (self.world.view, self.world.pose_of(desc.target)) {
+        let mut info = self.last.get(&key).copied().unwrap_or_default();
+        if let (Some(view), Some((p, _))) = (self.view, self.pose_of(desc.target)) {
             let p = p + desc.offset;
             info.distance = (p - view.eye).length();
             info.lod = lod_of(&desc.lod, info.distance);
@@ -441,9 +441,14 @@ impl Ui {
 
     /// Starts the world part of a frame: the pointer retargeted onto a
     /// world panel its ray meets, before anything is hit tested.
-    pub(crate) fn world_begin(&mut self, input: &mut crate::input::InputFrame) {
-        let w = &mut self.world;
-        w.last_pointer = self.interaction.state.pointer;
+    pub(crate) fn world_begin(
+        &mut self,
+        input: &mut crate::input::InputFrame,
+        env: &crate::ui::Env,
+        interaction: &crate::ui::Interaction,
+    ) {
+        let w = self;
+        w.last_pointer = interaction.state.pointer;
         w.wanted.clear();
         w.anchors.clear();
         w.panels.clear();
@@ -463,13 +468,13 @@ impl Ui {
         // The screen's own elements are over the world: a pointer on one
         // stays there.
         let p = input.pointer;
-        let on_screen = self.interaction.state.hits.iter().any(|h| {
+        let on_screen = interaction.state.hits.iter().any(|h| {
             !off_screen(&h.rect) && h.contains(p.x, p.y) && h.flags & crate::ui::HIT_POINTER != 0
         });
         if on_screen {
             return;
         }
-        let vp = self.env.viewport;
+        let vp = env.viewport;
         let (o, d) = view.ray(p.x, p.y, vp.width, vp.height);
         let mut best: Option<(f32, PanelHit, Vec2)> = None;
         for ph in &w.last_panels {
@@ -508,7 +513,7 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Tree {
     /// A document element's emitter and meta effects (`None` both:
     /// none): kept by its key and registered on node `i` every tick it
     /// stands ([`Ui::keep_world_anchors`]).
@@ -517,23 +522,29 @@ impl Ui {
         i: usize,
         emitter: Option<crate::particles::ParticlesDesc>,
         meta: Option<MetaDesc>,
+        world: &mut crate::world::WorldUi,
     ) {
-        let key = self.tree.nodes[i].key;
+        let key = self.nodes[i].key;
         if emitter.is_none() && meta.is_none() {
-            self.world.kept_effects.remove(&key);
+            world.kept_effects.remove(&key);
         } else {
-            self.world.kept_effects.insert(key, (emitter, meta));
+            world.kept_effects.insert(key, (emitter, meta));
         }
     }
 
     /// Keeps a document's world panel `node` for placement and rays on the
     /// ticks it is not built again, while the retained element `owner`
     /// stands (see [`Ui::keep_world_anchors`]).
-    pub(crate) fn keep_world_panel(&mut self, node: usize, owner: u64) {
-        let key = self.tree.nodes[node].key;
-        if let Some(p) = self.world.panels.iter().rev().find(|p| p.node == node) {
+    pub(crate) fn keep_world_panel(
+        &mut self,
+        node: usize,
+        owner: u64,
+        world: &mut crate::world::WorldUi,
+    ) {
+        let key = self.nodes[node].key;
+        if let Some(p) = world.panels.iter().rev().find(|p| p.node == node) {
             let kept = (p.desc.clone(), p.rect, owner);
-            self.world.kept_panels.insert(key, kept);
+            world.kept_panels.insert(key, kept);
         }
     }
 }

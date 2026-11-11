@@ -101,16 +101,16 @@ impl TreeIndex {
     }
 }
 
-impl Ui {
+impl crate::ui::Tree {
     /// Brings the trees' membership up to date with this
     /// frame's structure: `whole` reads every node again (a fresh frame);
     /// otherwise only the nodes written and the parents whose children
     /// were derived again (`parents`), and the layers.
     pub(crate) fn sync_tree(&mut self, parents: &[usize], written: &[usize], whole: bool) {
-        let n = self.tree.nodes.len();
-        let t = &mut self.tree.index;
+        let n = self.nodes.len();
+        let t = &mut self.index;
         t.grow(n);
-        let nodes = &self.tree.nodes;
+        let nodes = &self.nodes;
         t.all_restructured |= whole;
         let shape = t.shape + 1;
         if whole {
@@ -120,8 +120,8 @@ impl Ui {
             for i in 0..n {
                 t.kids[i].clone_from(&nodes[i].ordered_children);
             }
-            t.floats.clone_from(&self.tree.floating);
-            for r in std::iter::once(0).chain(self.tree.floating.iter().copied()) {
+            t.floats.clone_from(&self.floating);
+            for r in std::iter::once(0).chain(self.floating.iter().copied()) {
                 if !nodes[r].hidden {
                     t.mark(nodes, r, true);
                 }
@@ -145,11 +145,11 @@ impl Ui {
             queue.extend(old.iter().filter(|c| !new.contains(c)));
             queue.extend(new.iter().filter(|c| !old.contains(c)));
         }
-        if t.floats != self.tree.floating {
+        if t.floats != self.floating {
             t.shape = shape;
-            let old = std::mem::replace(&mut t.floats, self.tree.floating.clone());
-            queue.extend(old.iter().filter(|c| !self.tree.floating.contains(c)));
-            queue.extend(self.tree.floating.iter().filter(|c| !old.contains(c)));
+            let old = std::mem::replace(&mut t.floats, self.floating.clone());
+            queue.extend(old.iter().filter(|c| !self.floating.contains(c)));
+            queue.extend(self.floating.iter().filter(|c| !old.contains(c)));
         }
         // The screen's root is always in its tree.
         if n > 0 && !t.in_tree[0] {
@@ -197,12 +197,12 @@ impl Ui {
 
     /// Takes a vacated slot out of the index.
     pub(crate) fn untree(&mut self, i: usize) {
-        let t = &mut self.tree.index;
+        let t = &mut self.index;
         if i >= t.in_tree.len() {
             return;
         }
         if t.in_tree[i] {
-            let nodes = &self.tree.nodes;
+            let nodes = &self.nodes;
             t.mark(nodes, i, false);
         }
         t.kids[i].clear();

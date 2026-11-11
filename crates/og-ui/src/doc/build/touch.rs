@@ -123,7 +123,7 @@ impl Ui {
             .host
             .zones
             .keys()
-            .map(|&k| (k, self.hit(k).map(|h| h.rect)))
+            .map(|&k| (k, self.interaction.hit(k).map(|h| h.rect)))
             .collect();
         for (key, rect) in rects {
             let z = self

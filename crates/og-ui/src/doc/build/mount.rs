@@ -427,7 +427,7 @@ impl Ui {
             ));
             return DocResponse::default();
         };
-        let mount = format!("{}/{id}", self.path_of(self.parent()));
+        let mount = format!("{}/{id}", self.path_of(self.tree.parent()));
         // An immediate document reads `$ui` from its viewmodel.
         if let Some(vm) = props.as_object_mut() {
             vm.insert("$ui".into(), self.ui_store_value());

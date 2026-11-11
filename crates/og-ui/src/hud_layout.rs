@@ -549,7 +549,7 @@ impl Ui {
                 ..PanelDesc::default()
             },
         );
-        self.front.hud_editor_key = self.tree.nodes[self.parent()].key;
+        self.front.hud_editor_key = self.tree.nodes[self.tree.parent()].key;
         self.label(
             "Title",
             &or(&desc.title, "Edit HUD"),

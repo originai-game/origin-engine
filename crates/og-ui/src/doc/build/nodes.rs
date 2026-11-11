@@ -124,7 +124,7 @@ impl Ui {
                 } else {
                     n.id.as_str()
                 });
-                let mount = format!("{}/{id}", self.path_of(self.parent()));
+                let mount = format!("{}/{id}", self.path_of(self.tree.parent()));
                 let before = vm.clone();
                 let mut built = Built::default();
                 let opened = self.enter_structure(b, i);
@@ -184,7 +184,7 @@ impl Ui {
             }
             None => n.id.clone(),
         };
-        let parent_path = self.path_of(self.parent());
+        let parent_path = self.path_of(self.tree.parent());
         let path = if parent_path == "root" {
             id.clone()
         } else {
@@ -801,7 +801,7 @@ impl Ui {
             }
         }
         let fields =
-            fields::RenderFields::capture(self, key, self.parent(), kind, resp, props, None);
+            fields::RenderFields::capture(self, key, self.tree.parent(), kind, resp, props, None);
         self.apply_document_fields(doc, n, r, &fields);
         self.note_render_fields(key, fields);
         // A content button feeds og-input's action as a text one does.
@@ -853,15 +853,15 @@ impl Ui {
             }
         }
         if let Some(id) = r.str("rive") {
-            let at = self.parent();
+            let at = self.tree.parent();
             self.play_rive(at, id, &path);
         }
         if r.has("emitter") || r.has("meta") || self.world.kept_effects.contains_key(&key) {
-            let at = self.parent();
+            let at = self.tree.parent();
             self.world_effects(b, n, r, at, &path);
         }
         if kind == "slot" {
-            let at = self.parent();
+            let at = self.tree.parent();
             self.docs.host.slots.insert(path.clone(), at);
             let short = format!("{}/{}", b.mount, n.id);
             self.docs.host.slots.entry(short).or_insert(at);
@@ -869,7 +869,7 @@ impl Ui {
         self.note_built(built);
         if shows_content {
             // Its filters' `feImage`s of elements, as its first children.
-            let at = self.parent();
+            let at = self.tree.parent();
             let css = self.tree.nodes[at]
                 .decor
                 .as_ref()
@@ -944,7 +944,7 @@ impl Ui {
         if dialog.modal
             && let Some(backdrop) = self.pseudo_node(b, r, path, "backdrop")
         {
-            let scrim = self.tree.nodes[self.parent()].parent;
+            let scrim = self.tree.nodes[self.tree.parent()].parent;
             self.style_pseudo_box(b, scrim, "backdrop", &backdrop);
         }
         let shows_content = out.visible;

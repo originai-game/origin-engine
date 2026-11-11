@@ -195,7 +195,7 @@ impl Ui {
                 },
             )
         };
-        let at = self.parent();
+        let at = self.tree.parent();
         if props != Props::default() {
             self.tree.nodes[at].props = props;
         }

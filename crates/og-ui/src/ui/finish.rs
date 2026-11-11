@@ -267,12 +267,12 @@ impl Ui {
         self.place_popover_arrows();
         self.layout.cache.query_roots = None;
         if !self.tree.index.pending.is_empty() {
-            self.sync_tree(&[], &[], false);
+            self.tree.sync_tree(&[], &[], false);
         }
         self.layout.texts.sweep();
 
         // The trees' orders and features, kept where nothing changed shape.
-        self.update_orders(whole);
+        self.tree.update_orders(whole, &self.layout);
         let order = std::mem::take(&mut self.tree.orders.pre);
         self.out.stats.elements = order.len() as u32;
         let baselines = self.tree.orders.with(visit::feat::BASELINE).to_vec();
@@ -324,7 +324,7 @@ impl Ui {
         }
         crate::layers::build_without_host(self);
         self.build_toasts();
-        self.retire_nodes();
+        self.tree.retire_nodes(&mut self.layout);
         self.tree.building = false;
         // A retained node placement resized last frame lays out from its
         // authored box again (a written node is authored afresh).
@@ -340,7 +340,8 @@ impl Ui {
         // node keeps what they set; a new viewport emits it again).
         self.apply_variants();
         self.apply_part_appearances();
-        self.apply_resized();
+        self.tree
+            .apply_resized(&mut self.layout, &mut self.interaction);
         // Hidden slots (a closed dialog, a finished transition) take no room.
         // A node's lists follow from its built children and their own
         // props: derived again where those were written or a child left.
@@ -503,7 +504,7 @@ impl Ui {
         let written = std::mem::take(&mut self.tree.emitted);
         self.tree.index.restructured.clear();
         self.tree.index.all_restructured = false;
-        self.sync_tree(&derive, &written, whole);
+        self.tree.sync_tree(&derive, &written, whole);
         self.tree.emitted = written;
         whole
     }
@@ -1783,7 +1784,10 @@ impl Ui {
     pub(crate) fn narrow_button(&self, key: u64, width: Size) -> bool {
         match width {
             Size::Fixed(w) => w < NARROW_BUTTON,
-            _ => self.hit(key).is_some_and(|h| h.full.width < NARROW_BUTTON),
+            _ => self
+                .interaction
+                .hit(key)
+                .is_some_and(|h| h.full.width < NARROW_BUTTON),
         }
     }
 }

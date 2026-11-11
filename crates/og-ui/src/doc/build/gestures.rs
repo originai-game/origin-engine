@@ -62,7 +62,7 @@ impl Ui {
     /// that edge onto its detents (the first when it opens) and off it to
     /// close. Answers whether a swipe dismissed it.
     pub(super) fn sheet(&mut self, id: &str, text: &str, edge: SheetEdge, open: bool) -> bool {
-        let panel = self.parent();
+        let panel = self.tree.parent();
         let scrim = self.tree.nodes[panel].parent;
         let side = edge != SheetEdge::BlockEnd;
         let vh = self.env.viewport.height - self.env.viewport.safe_area.vertical();

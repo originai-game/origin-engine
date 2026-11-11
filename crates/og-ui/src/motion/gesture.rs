@@ -297,7 +297,7 @@ impl Ui {
         }
         if let Some(ps) = pinch {
             let pts = &input.pointers;
-            let rect = self.hit(key).copied();
+            let rect = self.interaction.hit(key).copied();
             let held: Vec<u32> = (0..og_input::MAX_POINTERS as u32)
                 .filter(|&id| pts.down(id))
                 .filter(|&id| {
