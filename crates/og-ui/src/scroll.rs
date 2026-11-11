@@ -339,7 +339,7 @@ impl Ui {
         let key = crate::id::key_of_path(path);
         let n = if self.tree.building {
             self.tree
-                .previous_nodes(&self.layout)
+                .previous_nodes()
                 .find(|n| n.key == key && n.scrolls())
         } else {
             self.tree
@@ -645,16 +645,11 @@ impl crate::ui::Interaction {
     /// scroll toward, and the axes on which a snap area sits at its
     /// scroller's snap position, and the edges a sticky box is held to.
     /// `scrolled` is the document layer's.
-    pub(crate) fn scroll_flags_now(
-        &self,
-        key: u64,
-        layout: &crate::ui::Layout,
-        tree: &crate::ui::Tree,
-    ) -> u16 {
+    pub(crate) fn scroll_flags_now(&self, key: u64, tree: &crate::ui::Tree) -> u16 {
         use crate::doc::media::scroll::*;
         let get = |i: usize| {
             if tree.building {
-                tree.previous_node(i, layout)
+                tree.previous_node(i)
             } else {
                 tree.nodes.get(i)
             }
@@ -668,7 +663,7 @@ impl crate::ui::Interaction {
             .filter(|n| n.key == key)
             .or_else(|| {
                 tree.building
-                    .then(|| tree.previous_nodes(layout).find(|n| n.key == key))
+                    .then(|| tree.previous_nodes().find(|n| n.key == key))
                     .flatten()
             });
         let Some(n) = found else {

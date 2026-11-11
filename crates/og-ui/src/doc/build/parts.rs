@@ -28,14 +28,7 @@ impl Resolved {
 
 impl Ui {
     pub(super) fn apply_part_box(&mut self, i: usize) {
-        if !self.tree.emitted.contains(&i) {
-            self.layout
-                .cache
-                .prev
-                .entry(i)
-                .or_insert_with(|| self.tree.nodes[i].clone());
-            self.tree.emitted.push(i);
-        }
+        self.tree.rewrite(i);
         let part = self.tree.nodes[i].part_box.clone().expect("part node");
         let owner = &self.tree.nodes[part.owner];
         let reference = if owner.content_slot == i {

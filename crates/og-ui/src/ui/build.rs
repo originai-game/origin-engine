@@ -77,11 +77,9 @@ impl Ui {
             local = renamed;
         }
         let in_place = self.tree.in_place == Some((key, parent));
-        let index = self.tree.write_node(
-            Node::new(key, local, parent, el),
-            (kind, anonymous),
-            &mut self.layout,
-        );
+        let index = self
+            .tree
+            .write_node(Node::new(key, local, parent, el), (kind, anonymous));
         if in_place {
             self.tree.in_place = None;
         } else {
@@ -408,16 +406,11 @@ impl crate::ui::Tree {
 }
 
 impl crate::ui::Tree {
-    pub(super) fn write_node(
-        &mut self,
-        node: Node,
-        kind: (&'static str, bool),
-        layout: &mut crate::ui::Layout,
-    ) -> usize {
+    pub(super) fn write_node(&mut self, node: Node, kind: (&'static str, bool)) -> usize {
         let identity = (node.key, node.parent);
         let i = if let Some(&i) = self.render_slots.get(&identity) {
             let previous = std::mem::replace(&mut self.nodes[i], node);
-            layout.cache.prev.entry(i).or_insert(previous);
+            self.replaced.entry(i).or_insert(previous);
             self.prev_kinds.entry(i).or_insert(self.kinds[i]);
             self.kinds[i] = kind;
             i
@@ -455,7 +448,7 @@ impl crate::ui::Tree {
 
     /// Vacates slot `i` after the frame that last drew it: its identity is
     /// free for a new node, its slot for reuse from the next frame on.
-    fn vacate(&mut self, i: usize, layout: &mut crate::ui::Layout) {
+    fn vacate(&mut self, i: usize) {
         if self.kinds[i].0 == "vacant" {
             return;
         }
@@ -469,8 +462,7 @@ impl crate::ui::Tree {
         self.invalidation.forced.remove(&i);
         let mut vacant = Node::new(0, String::new(), NONE, Element::default());
         vacant.hidden = true;
-        let old = std::mem::replace(&mut self.nodes[i], vacant);
-        layout.cache.prev.entry(i).or_insert(old);
+        self.nodes[i] = vacant;
         self.prev_kinds.entry(i).or_insert(self.kinds[i]);
         self.kinds[i] = ("vacant", false);
         self.draws.remove(&i);
@@ -478,13 +470,13 @@ impl crate::ui::Tree {
         self.free_slots.push(i);
     }
 
-    pub(super) fn retire_nodes(&mut self, layout: &mut crate::ui::Layout) {
+    pub(super) fn retire_nodes(&mut self) {
         for k in 0..self.retiring.len() {
             let i = self.retiring[k];
             if self.slot_present[i] || self.persistent[i] {
                 continue;
             }
-            self.vacate(i, layout);
+            self.vacate(i);
         }
         self.retiring.clear();
     }
@@ -533,21 +525,33 @@ impl crate::ui::Tree {
         }
     }
 
-    pub(crate) fn previous_node<'a>(
-        &'a self,
-        i: usize,
-        layout: &'a crate::ui::Layout,
-    ) -> Option<&'a Node> {
-        layout.cache.prev.get(&i).or_else(|| self.nodes.get(i))
+    /// Keeps node `i` as it stands before its input is written in place
+    /// (a widget's part, a resized element), as [`Tree::write_node`] keeps
+    /// the node it replaces: what the frame compares the written one with.
+    pub(crate) fn stage(&mut self, i: usize) {
+        if !self.emitted.contains(&i) {
+            self.replaced
+                .entry(i)
+                .or_insert_with(|| self.nodes[i].clone());
+        }
     }
 
-    pub(crate) fn previous_nodes<'a>(
-        &'a self,
-        layout: &'a crate::ui::Layout,
-    ) -> impl Iterator<Item = &'a Node> {
-        self.retiring
-            .iter()
-            .filter_map(|&i| self.previous_node(i, layout))
+    /// [`Tree::stage`], and node `i` counts as written this frame.
+    pub(crate) fn rewrite(&mut self, i: usize) {
+        if !self.emitted.contains(&i) {
+            self.stage(i);
+            self.emitted.push(i);
+        }
+    }
+
+    /// Node `i` as the last frame left it: the node this build replaced
+    /// there, else the node itself.
+    pub(crate) fn previous_node(&self, i: usize) -> Option<&Node> {
+        self.replaced.get(&i).or_else(|| self.nodes.get(i))
+    }
+
+    pub(crate) fn previous_nodes(&self) -> impl Iterator<Item = &Node> {
+        self.retiring.iter().filter_map(|&i| self.previous_node(i))
     }
 
     pub(crate) fn parent(&self) -> usize {
@@ -569,7 +573,6 @@ impl crate::ui::Tree {
         identity: (&str, usize),
         element: Element,
         content: Content,
-        layout: &mut crate::ui::Layout,
     ) -> usize {
         let id = format!("::part({})#{}", identity.0, identity.1);
         let key = child_key(self.nodes[owner].key, &id);
@@ -582,13 +585,7 @@ impl crate::ui::Tree {
         if let Some(i) = self.render_slot(key, owner)
             && self.nodes[owner].built_children.contains(&i)
         {
-            if !self.emitted.contains(&i) {
-                layout
-                    .cache
-                    .prev
-                    .entry(i)
-                    .or_insert_with(|| self.nodes[i].clone());
-            }
+            self.stage(i);
             self.nodes[i].part_box = Some(part);
             self.nodes[i].el = element;
             self.nodes[i].content = content;
@@ -598,7 +595,7 @@ impl crate::ui::Tree {
         let mut node = Node::new(key, id, owner, element);
         node.part_box = Some(part);
         node.content = content;
-        let i = self.write_node(node, ("part", false), layout);
+        let i = self.write_node(node, ("part", false));
         self.nodes[owner].built_children.push(i);
         i
     }
@@ -716,9 +713,7 @@ impl Ui {
         node.probe_text = text.to_owned();
         node.anchor = anchor;
         node.float = Float::Tooltip;
-        let index = self
-            .tree
-            .write_node(node, ("tooltip", false), &mut self.layout);
+        let index = self.tree.write_node(node, ("tooltip", false));
         self.tree.floating.push(index);
     }
 
@@ -804,7 +799,7 @@ impl Ui {
         let mut node = Node::new(key, local, NONE, el);
         node.float = float;
         node.anchor = anchor;
-        let index = self.tree.write_node(node, (kind, false), &mut self.layout);
+        let index = self.tree.write_node(node, (kind, false));
         self.tree.floating.push(index);
         self.tree.stack.push(index);
         index

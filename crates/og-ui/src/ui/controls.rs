@@ -287,9 +287,7 @@ impl Ui {
         n.el.gap = 0.0;
         n.el.background = None;
         n.el.radius = 0.0;
-        let slot = self
-            .tree
-            .write_part(i, part, ("base", 0), element, content, &mut self.layout);
+        let slot = self.tree.write_part(i, part, ("base", 0), element, content);
         self.tree.nodes[i].content_slot = slot;
     }
 
@@ -387,7 +385,6 @@ impl Ui {
                 ..Element::default()
             },
             Content::None,
-            &mut self.layout,
         );
         self.tree.nodes[i].content_slot = slot;
         self.tree.nodes[slot].shapes = shapes;

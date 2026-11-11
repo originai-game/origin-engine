@@ -650,8 +650,7 @@ impl Ui {
         let mut live = std::mem::take(&mut d.containers_now);
         live.extend(d.retained.containers());
         self.watch_document_containers(live);
-        self.docs
-            .sync_scroll_states(&self.layout, &self.interaction, &self.tree);
+        self.docs.sync_scroll_states(&self.interaction, &self.tree);
     }
 }
 

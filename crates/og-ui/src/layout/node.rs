@@ -560,6 +560,46 @@ impl Media {
     }
 }
 
+/// What the last write of a node's input changed against the node it
+/// replaced, recorded when the build ends ([`crate::layout::input_changes`]):
+/// what the frame decides reuse by, in place of a copy of the last frame's
+/// node. Read only for a node written this frame.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) struct Changed(u8);
+
+impl Changed {
+    /// Nothing was there to compare with: a new node.
+    pub const NEW: Changed = Changed(1);
+    /// Any of its inputs (`LayoutStats::rebuilt` counts it).
+    pub const INPUT: Changed = Changed(2);
+    /// What layout reads of it: its box, content, placement, lists.
+    pub const LAYOUT: Changed = Changed(4);
+    /// What a fixed-size box still gives its parent: its size, margins,
+    /// place and whether a margin collapsed through it.
+    pub const BOX: Changed = Changed(8);
+    /// Whether it is a block or how it arranges its children: their
+    /// margins collapse otherwise.
+    pub const FLOW: Changed = Changed(16);
+
+    /// Whether any of `bits` is set.
+    pub(crate) fn has(self, bits: Changed) -> bool {
+        self.0 & bits.0 != 0
+    }
+}
+
+impl std::ops::BitOr for Changed {
+    type Output = Changed;
+    fn bitor(self, o: Changed) -> Changed {
+        Changed(self.0 | o.0)
+    }
+}
+
+impl std::ops::BitOrAssign for Changed {
+    fn bitor_assign(&mut self, o: Changed) {
+        self.0 |= o.0;
+    }
+}
+
 /// What layout computes for a node: its sizes, its place in its parent,
 /// its lines, rows, tracks and floats, and what the layout cache keeps.
 #[derive(Clone, Debug)]
@@ -802,6 +842,8 @@ pub(crate) struct Node {
     pub ordered_children: Vec<usize>,
     /// What layout computes and keeps for it ([`LayoutBox`]).
     pub layout: LayoutBox,
+    /// What its last write changed (`Layout::reuse_check`).
+    pub changed: Changed,
     pub el: Element,
     pub part_host: Option<std::sync::Arc<crate::doc::build::PartHost>>,
     /// The semantic owner of a detached widget surface's CSS parts.
@@ -988,6 +1030,7 @@ impl Node {
             },
             up: parent,
             ordered_children: Vec::new(),
+            changed: Changed::NEW,
             el,
             part_host: None,
             part_source: NONE,

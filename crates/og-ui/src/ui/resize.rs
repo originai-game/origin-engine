@@ -107,21 +107,14 @@ impl crate::ui::Tree {
     /// the nodes written this frame and on the one a drag moved (written
     /// again for it) for the element layout uses (`Node::derived`).
     /// Nothing while no element was ever resized.
-    pub(super) fn apply_resized(
-        &mut self,
-        layout: &mut crate::ui::Layout,
-        interaction: &mut crate::ui::Interaction,
-    ) {
+    pub(super) fn apply_resized(&mut self, interaction: &mut crate::ui::Interaction) {
         if interaction.state.resized.is_empty() {
             return;
         }
         if let Some(key) = interaction.resize_moved.take()
             && let Some(i) = self.index.find(key)
-            && !self.emitted.contains(&i)
         {
-            let previous = self.nodes[i].clone();
-            layout.cache.prev.entry(i).or_insert(previous);
-            self.emitted.push(i);
+            self.rewrite(i);
         }
         for k in 0..self.emitted.len() {
             let i = self.emitted[k];
