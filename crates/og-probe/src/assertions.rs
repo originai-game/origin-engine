@@ -475,7 +475,9 @@ impl crate::Probe {
     pub fn assertions(&self) -> std::rc::Rc<std::cell::RefCell<Assertions>> {
         self.checks.assertions.clone()
     }
+}
 
+impl crate::probe::state::Checks {
     /// `invariant:<expectation>`: the expectation (any form of `expect:`
     /// but `region` and `frame`, which read a frame) is evaluated after
     /// every tick from now on; the first tick it fails is a violation of
@@ -489,15 +491,17 @@ impl crate::Probe {
                 "invariant:{text}: a region or frame expectation reads a frame, which every tick cannot afford; check it with expect: at the tick it matters"
             ));
         }
-        self.checks.assertions.borrow_mut().declare(
+        self.assertions.borrow_mut().declare(
             Origin::Playtest,
             &format!("invariant {text}"),
             "playtest",
         );
-        self.checks.invariants.push(args.to_vec());
+        self.invariants.push(args.to_vec());
         Ok(())
     }
+}
 
+impl crate::Probe {
     /// Every `invariant:` step, after tick `ran`: a failure is recorded as a
     /// violation at `ran` (the tick whose systems produced the state, as
     /// og.assert and the default invariants number it) with the observed value.

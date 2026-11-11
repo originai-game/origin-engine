@@ -6,7 +6,7 @@ mod actions;
 mod marks;
 mod protocol;
 pub(crate) mod state;
-mod timeline;
+pub(crate) mod timeline;
 
 #[cfg(not(feature = "publish"))]
 pub use marks::MarksDesc;
