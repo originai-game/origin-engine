@@ -227,16 +227,7 @@ impl Probe {
 
     /// `hello`: who is speaking.
     pub fn hello(&self, world: &World) -> Value {
-        json!({
-            "protocol": PROBE_VERSION,
-            "wire": PROBE_WIRE_VERSION,
-            "substrate": "origin-engine",
-            "engine": self.host.engine,
-            "ticksPerSecond": tick_rate(world),
-            "tier": self.host.capture.as_ref().map_or("none", |c| c.tier()),
-            "build": BUILD,
-            "members": served_members(),
-        })
+        self.host.hello(world)
     }
 
     /// `tick`: fixed steps since load.
@@ -313,7 +304,7 @@ impl Probe {
 
     /// `accepted`: events the input layer accepted since load.
     pub fn accepted(&self) -> u32 {
-        self.host.input.accepted()
+        self.host.accepted()
     }
 
     /// `pick_ui`: the UI element under a point (CSS px of the play
@@ -322,23 +313,7 @@ impl Probe {
     /// that dress it ([`crate::hooks::pick_ui`]); `None` when there is none
     /// or no UI.
     pub fn pick_ui(&self, world: &World, x: f32, y: f32) -> Option<Value> {
-        let elements = self.host.ui.as_ref()?.elements(world);
-        let e = crate::hooks::pick_ui(&elements, x, y)?;
-        let d = &e.detail;
-        let field = |k: &str| d.get(k).cloned().unwrap_or(Value::Null);
-        let rules = d.get("rules").cloned().unwrap_or_else(|| json!([]));
-        Some(json!({
-            "id": e.id,
-            "path": e.path,
-            "kind": e.kind,
-            "text": e.text,
-            "rect": { "x": e.x, "y": e.y, "width": e.width, "height": e.height },
-            "layer": field("layer"),
-            "source": field("source"),
-            "part": field("part"),
-            "rule": rules.as_array().and_then(|r| r.last()).cloned().unwrap_or(Value::Null),
-            "rules": rules,
-        }))
+        self.host.pick_ui(world, x, y)
     }
 
     /// `pick`: the scene entity under a point, with the scene line that
@@ -508,7 +483,61 @@ impl Probe {
         fit: u32,
         region: Option<[f32; 4]>,
     ) -> Option<Value> {
-        let frame = self.host.capture.as_mut()?.capture(world, width, height)?;
+        self.host.capture(world, width, height, fit, region)
+    }
+}
+
+impl state::Host {
+    /// [`Probe::hello`].
+    pub(super) fn hello(&self, world: &World) -> Value {
+        json!({
+            "protocol": PROBE_VERSION,
+            "wire": PROBE_WIRE_VERSION,
+            "substrate": "origin-engine",
+            "engine": self.engine,
+            "ticksPerSecond": tick_rate(world),
+            "tier": self.capture.as_ref().map_or("none", |c| c.tier()),
+            "build": BUILD,
+            "members": served_members(),
+        })
+    }
+
+    /// [`Probe::accepted`].
+    pub(super) fn accepted(&self) -> u32 {
+        self.input.accepted()
+    }
+
+    /// [`Probe::pick_ui`].
+    pub(super) fn pick_ui(&self, world: &World, x: f32, y: f32) -> Option<Value> {
+        let elements = self.ui.as_ref()?.elements(world);
+        let e = crate::hooks::pick_ui(&elements, x, y)?;
+        let d = &e.detail;
+        let field = |k: &str| d.get(k).cloned().unwrap_or(Value::Null);
+        let rules = d.get("rules").cloned().unwrap_or_else(|| json!([]));
+        Some(json!({
+            "id": e.id,
+            "path": e.path,
+            "kind": e.kind,
+            "text": e.text,
+            "rect": { "x": e.x, "y": e.y, "width": e.width, "height": e.height },
+            "layer": field("layer"),
+            "source": field("source"),
+            "part": field("part"),
+            "rule": rules.as_array().and_then(|r| r.last()).cloned().unwrap_or(Value::Null),
+            "rules": rules,
+        }))
+    }
+
+    /// [`Probe::capture`].
+    pub(super) fn capture(
+        &mut self,
+        world: &World,
+        width: u32,
+        height: u32,
+        fit: u32,
+        region: Option<[f32; 4]>,
+    ) -> Option<Value> {
+        let frame = self.capture.as_mut()?.capture(world, width, height)?;
         // The rendered size answers as is: no decode, no encode.
         if region.is_none() && crate::frame::Rgba::fit_scale(frame.width, frame.height, fit) >= 1.0
         {
@@ -516,13 +545,13 @@ impl Probe {
                 "tick": world.time().tick,
                 "width": frame.width,
                 "height": frame.height,
-                "scale": self.host.surface_scale(world, frame.width),
+                "scale": self.surface_scale(world, frame.width),
                 "region": Value::Null,
                 "png": base64::encode(&frame.png),
             }));
         }
         let image = crate::frame::decode_png(&frame.png).ok()?;
-        let mut scale = self.host.surface_scale(world, image.width);
+        let mut scale = self.surface_scale(world, image.width);
         let image = match region {
             Some([x, y, w, h]) => {
                 let r =
@@ -541,6 +570,66 @@ impl Probe {
             "region": region.map(|[x, y, w, h]| json!({ "x": x, "y": y, "width": w, "height": h })),
             "png": base64::encode(&fitted.png()),
         }))
+    }
+
+    /// [`Probe::prefab_edit`].
+    pub(super) fn prefab_edit(
+        &mut self,
+        world: &mut World,
+        edit: &crate::PrefabEdit,
+    ) -> Result<crate::SavedScene, String> {
+        let writer = self
+            .scene_writer
+            .as_mut()
+            .ok_or("this host has no scene write-back")?;
+        writer.prefab(world, edit)
+    }
+
+    /// [`Probe::dump_ui`].
+    pub(super) fn dump_ui(&self, world: &World) -> Value {
+        let elements: Vec<Value> = self
+            .ui
+            .as_ref()
+            .map(|ui| ui.elements(world).iter().map(|e| e.to_json()).collect())
+            .unwrap_or_default();
+        let surface = self.ui.as_ref().and_then(|ui| ui.surface(world)).map_or(
+            Value::Null,
+            |(w, h, dpr)| json!({ "width": w, "height": h, "dpr": dpr }),
+        );
+        // The style's name ("" is the engine's default style): a
+        // check that the game dressed its UI reads it here.
+        let style = self.ui.as_ref().and_then(|ui| ui.style(world));
+        let mut dump = json!({"kind": "ui", "tick": world.time().tick, "surface": surface, "style": style, "elements": elements});
+        if let (Some(extra), Value::Object(o)) =
+            (self.ui.as_ref().and_then(|ui| ui.extra(world)), &mut dump)
+        {
+            for (k, v) in extra {
+                o.entry(k).or_insert(v);
+            }
+        }
+        dump
+    }
+
+    /// [`Probe::dump_layers`].
+    pub(super) fn dump_layers(&self, world: &World) -> Value {
+        let layers = self
+            .ui
+            .as_ref()
+            .and_then(|ui| ui.extra(world))
+            .and_then(|mut e| e.remove("layers"))
+            .unwrap_or_else(|| json!([]));
+        json!({"kind": "layers", "tick": world.time().tick, "layers": layers})
+    }
+
+    /// [`Probe::dump_motion`].
+    pub(super) fn dump_motion(&self, world: &World) -> Value {
+        let motion = self
+            .ui
+            .as_ref()
+            .and_then(|ui| ui.extra(world))
+            .and_then(|mut e| e.remove("motion"))
+            .unwrap_or_else(|| json!([]));
+        json!({"kind": "motion", "tick": world.time().tick, "motion": motion})
     }
 }
 
@@ -951,12 +1040,7 @@ impl Probe {
         world: &mut World,
         edit: &crate::PrefabEdit,
     ) -> Result<crate::SavedScene, String> {
-        let writer = self
-            .host
-            .scene_writer
-            .as_mut()
-            .ok_or("this host has no scene write-back")?;
-        writer.prefab(world, edit)
+        self.host.prefab_edit(world, edit)
     }
 
     // ---- dumps ------------------------------------------------------------
@@ -1053,59 +1137,18 @@ impl Probe {
 
     /// The UI tree in draw order; empty without a UI module.
     pub fn dump_ui(&self, world: &World) -> Value {
-        let elements: Vec<Value> = self
-            .host
-            .ui
-            .as_ref()
-            .map(|ui| ui.elements(world).iter().map(|e| e.to_json()).collect())
-            .unwrap_or_default();
-        let surface = self
-            .host
-            .ui
-            .as_ref()
-            .and_then(|ui| ui.surface(world))
-            .map_or(
-                Value::Null,
-                |(w, h, dpr)| json!({ "width": w, "height": h, "dpr": dpr }),
-            );
-        // The style's name ("" is the engine's default style): a
-        // check that the game dressed its UI reads it here.
-        let style = self.host.ui.as_ref().and_then(|ui| ui.style(world));
-        let mut dump = json!({"kind": "ui", "tick": world.time().tick, "surface": surface, "style": style, "elements": elements});
-        if let (Some(extra), Value::Object(o)) = (
-            self.host.ui.as_ref().and_then(|ui| ui.extra(world)),
-            &mut dump,
-        ) {
-            for (k, v) in extra {
-                o.entry(k).or_insert(v);
-            }
-        }
-        dump
+        self.host.dump_ui(world)
     }
 
     /// `dump_ui:layers`: the layer stack alone (docs/ui.md §6).
     pub fn dump_layers(&self, world: &World) -> Value {
-        let layers = self
-            .host
-            .ui
-            .as_ref()
-            .and_then(|ui| ui.extra(world))
-            .and_then(|mut e| e.remove("layers"))
-            .unwrap_or_else(|| json!([]));
-        json!({"kind": "layers", "tick": world.time().tick, "layers": layers})
+        self.host.dump_layers(world)
     }
 
     /// `dump_ui:motion`: the motion alone (docs/ui.md §6): each element in
     /// a visual state or animating, with its states, what is moving, what
     /// plays and whether it is leaving.
     pub fn dump_motion(&self, world: &World) -> Value {
-        let motion = self
-            .host
-            .ui
-            .as_ref()
-            .and_then(|ui| ui.extra(world))
-            .and_then(|mut e| e.remove("motion"))
-            .unwrap_or_else(|| json!([]));
-        json!({"kind": "motion", "tick": world.time().tick, "motion": motion})
+        self.host.dump_motion(world)
     }
 }
