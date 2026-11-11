@@ -677,20 +677,104 @@ fn relative(root: &Pose, child: &Pose) -> Pose {
     )
 }
 
+/// The og.destruction system, one tick, as its stages in order: bursts
+/// expire; the props are surveyed (new ones placed, gone ones forgotten);
+/// chunks the game despawned leave their graph; the chunks' poses are
+/// read; the hits are gathered (impacts, then the calls); each prop
+/// breaks; the blasts and the blows push what broke loose; the bodies made
+/// take their velocity; the budgets despawn the oldest; and what the game
+/// reads is written (the destructibles' fields, og.Fractured, the bursts).
 fn run(ctx: &mut SystemContext<'_>, m: &ModuleState, l: &Ls) -> og_core::Result<()> {
-    let time = ctx.time();
-    let tick = time.tick;
-    let dt = time.dt.max(1e-6);
-    let ticks_of = |s: f32| -> u64 { (s.max(0.0) / dt).ceil() as u64 };
-    let res = l.resource.1.decode(&ctx.resource_bytes(l.resource.0)?);
-    let debris_volume = num(&res, "debrisVolume", 0.004);
-    let gravity = v3(&l.physics.1.decode(&ctx.resource_bytes(l.physics.0)?)["gravity"]);
+    let t = Clock::read(ctx, l)?;
     let assets = lock(&m.assets).clone();
     let mut guard = lock(&m.state);
     let st = &mut *guard;
-    let alive = |ctx: &SystemContext<'_>, b: u64| b != 0 && ctx.is_alive(Entity::from_bits(b));
 
-    // Bursts past their lifetime.
+    expire_bursts(ctx, st, t.tick);
+    let settings = survey(ctx, l, st, &assets)?;
+    drop_lost_chunks(ctx, st)?;
+    let poses = chunk_poses(ctx, l, st, &assets);
+    let Gathered {
+        mut hits,
+        bursts,
+        strikes,
+        explosions,
+    } = gather_hits(ctx, l, st, &assets, &settings)?;
+
+    let mut out = Broken {
+        bursts,
+        ..Broken::default()
+    };
+    let mut stress_budget = match t.res["stressBudget"].as_u64().unwrap_or(200_000) {
+        0 => u64::MAX,
+        n => n,
+    };
+    let keys: Vec<u64> = st.props.keys().copied().collect();
+    for k in keys {
+        let p = st.props.get_mut(&k).expect("listed");
+        let a = assets[&p.asset].clone();
+        let at = Breaking {
+            key: k,
+            a: &a,
+            s: &settings[&k],
+            pose: &poses[&k],
+        };
+        let h = hits.remove(&k).unwrap_or_default();
+        break_prop(ctx, m, l, &t, at, p, h, &mut stress_budget, &mut out)?;
+    }
+
+    push_blasted_bodies(
+        ctx,
+        l,
+        st,
+        &assets,
+        &settings,
+        &poses,
+        &explosions,
+        &mut out,
+    )?;
+    push_blasted_pieces(&settings, &explosions, &mut out);
+    push_struck(ctx, l, st, &assets, &settings, &poses, &strikes, &mut out);
+    commit_fresh(ctx, l, st, &mut out)?;
+    enforce_budgets(ctx, st, &assets, &t)?;
+    publish(ctx, l, st, &t, out.events, out.bursts)
+}
+
+/// What the tick reads once: its clock, og.Destruction and the gravity.
+struct Clock {
+    tick: u64,
+    dt: f32,
+    /// og.Destruction, decoded.
+    res: Value,
+    debris_volume: f32,
+    gravity: Vec3,
+}
+
+impl Clock {
+    fn read(ctx: &SystemContext<'_>, l: &Ls) -> og_core::Result<Clock> {
+        let time = ctx.time();
+        let res = l.resource.1.decode(&ctx.resource_bytes(l.resource.0)?);
+        Ok(Clock {
+            tick: time.tick,
+            dt: time.dt.max(1e-6),
+            debris_volume: num(&res, "debrisVolume", 0.004),
+            gravity: v3(&l.physics.1.decode(&ctx.resource_bytes(l.physics.0)?)["gravity"]),
+            res,
+        })
+    }
+
+    /// The ticks `s` seconds take, rounded up.
+    fn ticks_of(&self, s: f32) -> u64 {
+        (s.max(0.0) / self.dt).ceil() as u64
+    }
+}
+
+fn alive(ctx: &SystemContext<'_>, b: u64) -> bool {
+    b != 0 && ctx.is_alive(Entity::from_bits(b))
+}
+
+/// Bursts past their lifetime.
+fn expire_bursts(ctx: &mut SystemContext<'_>, st: &mut State, tick: u64) {
     let mut fx = std::mem::take(&mut st.fx);
     fx.retain(|&(e, at)| {
         if tick < at {
@@ -702,9 +786,18 @@ fn run(ctx: &mut SystemContext<'_>, m: &ModuleState, l: &Ls) -> og_core::Result<
         false
     });
     st.fx = fx;
+}
 
-    // The destructibles and their settings; props whose entity lost its
-    // og.Destructible (or died) are forgotten, their static chunks with them.
+/// The destructibles and their settings; props whose entity lost its
+/// og.Destructible (or died) are forgotten, their static chunks with them,
+/// and a new one is placed (a standing prop's chunks are its colliders
+/// from the start).
+fn survey(
+    ctx: &mut SystemContext<'_>,
+    l: &Ls,
+    st: &mut State,
+    assets: &Assets,
+) -> og_core::Result<BTreeMap<u64, Settings>> {
     let mut rows = Vec::new();
     for a in ctx.query(0)? {
         rows.extend_from_slice(a.entities());
@@ -775,9 +868,12 @@ fn run(ctx: &mut SystemContext<'_>, m: &ModuleState, l: &Ls) -> og_core::Result<
             }
         }
     }
+    Ok(settings)
+}
 
-    // Chunks despawned by the game or a budget: gone from the graph; a
-    // body takes its compound children with it.
+/// Chunks despawned by the game or a budget: gone from the graph; a body
+/// takes its compound children with it.
+fn drop_lost_chunks(ctx: &mut SystemContext<'_>, st: &mut State) -> og_core::Result<()> {
     for p in st.props.values_mut() {
         let dead: Vec<u64> = p
             .entities
@@ -803,9 +899,14 @@ fn run(ctx: &mut SystemContext<'_>, m: &ModuleState, l: &Ls) -> og_core::Result<
             }
         }
     }
+    Ok(())
+}
 
-    // Each prop's chunks where they stand now.
-    let mut poses: BTreeMap<u64, Vec<Option<Pose>>> = BTreeMap::new();
+/// Each prop's chunks where they stand now, by prop.
+type Poses = BTreeMap<u64, Vec<Option<Pose>>>;
+
+fn chunk_poses(ctx: &SystemContext<'_>, l: &Ls, st: &State, assets: &Assets) -> Poses {
+    let mut poses: Poses = BTreeMap::new();
     for (&k, p) in &st.props {
         let a = &assets[&p.asset];
         let frame = pose_of_frame(&p.frame);
@@ -822,8 +923,34 @@ fn run(ctx: &mut SystemContext<'_>, m: &ModuleState, l: &Ls) -> og_core::Result<
             .collect();
         poses.insert(k, list);
     }
+    poses
+}
 
-    // The hits: impacts, then the calls in the order made.
+/// A hit that breaks pieces off drives them on: its prop, its point, the
+/// striker's direction, impactRadius, the impulse past the threshold and
+/// its closing speed.
+type Strike = (u64, Vec3, Vec3, f32, f32, f32);
+
+/// An explosion: its point, inner radius, radius and impulse.
+type Explosion = (Vec3, f32, f32, f32);
+
+/// The tick's hits: what each prop takes, the bursts they make, the
+/// strikes and the explosions.
+struct Gathered {
+    hits: BTreeMap<u64, Hits>,
+    bursts: Vec<(u64, Vec3)>,
+    strikes: Vec<Strike>,
+    explosions: Vec<Explosion>,
+}
+
+/// The hits: impacts, then the calls in the order made.
+fn gather_hits(
+    ctx: &SystemContext<'_>,
+    l: &Ls,
+    st: &mut State,
+    assets: &Assets,
+    settings: &BTreeMap<u64, Settings>,
+) -> og_core::Result<Gathered> {
     let mut hits: BTreeMap<u64, Hits> = BTreeMap::new();
     let mut bursts: Vec<(u64, Vec3)> = Vec::new();
     let mut owner: BTreeMap<u64, u64> = BTreeMap::new();
@@ -835,10 +962,7 @@ fn run(ctx: &mut SystemContext<'_>, m: &ModuleState, l: &Ls) -> og_core::Result<
             owner.insert(e, k);
         }
     }
-    // Hits that break pieces off drive them on: (prop, point, the
-    // striker's direction, impactRadius, impulse past the threshold, its
-    // closing speed).
-    let mut strikes: Vec<(u64, Vec3, Vec3, f32, f32, f32)> = Vec::new();
+    let mut strikes: Vec<Strike> = Vec::new();
     for ev in ctx.events_bytes(l.collision.0)? {
         let v = l.collision.1.decode(&ev);
         let point = v3(&v["point"]);
@@ -849,8 +973,8 @@ fn run(ctx: &mut SystemContext<'_>, m: &ModuleState, l: &Ls) -> og_core::Result<
         let (ea, eb) = (bits(&v, "a"), bits(&v, "b"));
         let closing = v3(&v["relativeVelocity"]).dot(v3(&v["normal"])).max(0.0);
         let (reduced_a, reduced_b) = (
-            mass_of(ctx, l, &st.props, &assets, &settings, ea),
-            mass_of(ctx, l, &st.props, &assets, &settings, eb),
+            mass_of(ctx, l, &st.props, assets, settings, ea),
+            mass_of(ctx, l, &st.props, assets, settings, eb),
         );
         let reduced = match (reduced_a, reduced_b) {
             (Mass::Finite(a), Mass::Finite(b)) => a * b / (a + b),
@@ -900,7 +1024,7 @@ fn run(ctx: &mut SystemContext<'_>, m: &ModuleState, l: &Ls) -> og_core::Result<
             }
         }
     }
-    let mut explosions: Vec<(Vec3, f32, f32, f32)> = Vec::new();
+    let mut explosions: Vec<Explosion> = Vec::new();
     for op in std::mem::take(&mut st.ops) {
         match op {
             Op::Damage {
@@ -962,450 +1086,622 @@ fn run(ctx: &mut SystemContext<'_>, m: &ModuleState, l: &Ls) -> og_core::Result<
             }
         }
     }
+    Ok(Gathered {
+        hits,
+        bursts,
+        strikes,
+        explosions,
+    })
+}
 
-    let mut events: Vec<Vec<u8>> = Vec::new();
-    // Bodies made this run: their velocity, inserted at the end (after
-    // the explosions' push).
-    let mut made: BTreeMap<u64, (Vec3, Vec3)> = BTreeMap::new();
-    let mut fresh_bodies: Vec<u64> = Vec::new();
-    // Fine pieces broken off this tick, and their mass.
-    let mut fresh_debris: Vec<(Debris, f32)> = Vec::new();
-    // Joints broken this tick that shed grit, and the mass of the piece
-    // beside each (which the blast's push is shared by).
-    let mut fresh_crumbs: Vec<(Crumb, f32)> = Vec::new();
-    let mut stress_budget = match res["stressBudget"].as_u64().unwrap_or(200_000) {
-        0 => u64::MAX,
-        n => n,
-    };
-    let keys: Vec<u64> = st.props.keys().copied().collect();
-    for k in keys {
-        let p = st.props.get_mut(&k).expect("listed");
-        let a = assets[&p.asset].clone();
-        let s = &settings[&k];
-        let pose = &poses[&k];
-        let frame = pose_of_frame(&p.frame);
-        let scale = uniform(frame.2);
-        let before = p.inst.bonds.clone();
-        let anchors_before = p.inst.anchors.clone();
-        let shattered_before = p.inst.shattered.clone();
-        let h = hits.remove(&k).unwrap_or_default();
-        let mut cause = None;
-        let place_fn = |c: u32, at: Vec3| -> Vec3 {
-            let ch = &a.chunks[c as usize];
-            match pose[c as usize] {
-                Some(ps) => place_on(&ps, ch.centroid, at),
-                None => place_on(&frame, Vec3::ZERO, at),
-            }
-        };
-        for (d, c) in &h.damage {
-            if p.inst.damage(&a, d, scale, &s.mat, &place_fn) && cause.is_none() {
-                cause = Some(*c);
-            }
+/// What the props' breaking made this tick.
+#[derive(Default)]
+struct Broken {
+    /// og.Fractured, encoded, sent at the end.
+    events: Vec<Vec<u8>>,
+    /// Bodies made this run and their velocity, inserted at the end (after
+    /// the explosions' push).
+    made: BTreeMap<u64, (Vec3, Vec3)>,
+    fresh_bodies: Vec<u64>,
+    /// Fine pieces broken off this tick, and their mass.
+    debris: Vec<(Debris, f32)>,
+    /// Joints broken this tick that shed grit, and the mass of the piece
+    /// beside each (which the blast's push is shared by).
+    crumbs: Vec<(Crumb, f32)>,
+    /// breakFx, hitFx and debris bursts: (emitter, where).
+    bursts: Vec<(u64, Vec3)>,
+}
+
+/// One prop as it breaks: its key, asset, settings and chunk poses.
+#[derive(Clone, Copy)]
+struct Breaking<'a> {
+    key: u64,
+    a: &'a FractureAsset,
+    s: &'a Settings,
+    pose: &'a [Option<Pose>],
+}
+
+/// Model-space point `at` of chunk `c` in the world: on the chunk's pose,
+/// else on the prop's frame.
+fn place_chunk(at: Breaking<'_>, frame: &Pose, c: u32, x: Vec3) -> Vec3 {
+    let ch = &at.a.chunks[c as usize];
+    match at.pose[c as usize] {
+        Some(ps) => place_on(&ps, ch.centroid, x),
+        None => place_on(frame, Vec3::ZERO, x),
+    }
+}
+
+/// The prop's islands; none anchored unless its anchors hold.
+fn islands_of(inst: &Instance, a: &FractureAsset, anchors: bool) -> Vec<og_destruct::Island> {
+    let mut isl = inst.islands(a);
+    if !anchors {
+        isl.iter_mut().for_each(|i| i.anchored = false);
+    }
+    isl
+}
+
+/// One prop's tick: its hits wear its bonds, stress breaks what can no
+/// longer hold, broken joints shed grit, and what broke loose becomes
+/// bodies (islands) or flies apart (shattered chunks).
+#[allow(clippy::too_many_arguments)]
+fn break_prop(
+    ctx: &mut SystemContext<'_>,
+    m: &ModuleState,
+    l: &Ls,
+    t: &Clock,
+    at: Breaking<'_>,
+    p: &mut Prop,
+    h: Hits,
+    stress_budget: &mut u64,
+    out: &mut Broken,
+) -> og_core::Result<()> {
+    let (a, s, k) = (at.a, at.s, at.key);
+    let frame = pose_of_frame(&p.frame);
+    let scale = uniform(frame.2);
+    let before = p.inst.bonds.clone();
+    let anchors_before = p.inst.anchors.clone();
+    let shattered_before = p.inst.shattered.clone();
+    let (mut cause, mut shatter) = wear(at, &frame, p, &h, scale);
+    solve_stress(
+        ctx,
+        m,
+        l,
+        t,
+        at,
+        &frame,
+        p,
+        scale,
+        stress_budget,
+        &mut cause,
+        &mut shatter,
+    );
+    break_masonry(t, at, &frame, p, &before, &mut cause);
+    let broken_now: Vec<bool> = (0..before.len())
+        .map(|i| before[i] > 0.0 && p.inst.bonds[i] <= 0.0)
+        .collect();
+    if s.debris != 0 {
+        shed_crumbs(t, at, &frame, &broken_now, scale, &mut out.crumbs);
+    }
+    let changed = broken_now.iter().any(|&b| b)
+        || (0..anchors_before.len()).any(|i| anchors_before[i] > 0.0 && p.inst.anchors[i] <= 0.0)
+        || p.inst.shattered != shattered_before;
+    if !changed {
+        return Ok(());
+    }
+    let cause = cause.unwrap_or(if shatter.is_empty() {
+        CAUSE_STRESS
+    } else {
+        CAUSE_SHATTER
+    });
+    // A moving prop breaks free: its chunks become entities moving with
+    // it, and it loses its own body.
+    let mut inherit = (Vec3::ZERO, Vec3::ZERO, frame.0);
+    if !p.placed {
+        let e = Entity::from_bits(k);
+        if let Ok(vb) = ctx.get_bytes(e, l.velocity.0) {
+            let v = l.velocity.1.decode(&vb);
+            inherit = (v3(&v["linear"]), v3(&v["angular"]), frame.0);
         }
-        if h.fracture {
-            p.inst.bonds.iter_mut().for_each(|b| *b = 0.0);
-            cause = Some(CAUSE_FRACTURE);
+        place(ctx, l, k, p, a)?;
+    }
+    p.fractured = true;
+    free_islands(
+        ctx,
+        l,
+        t,
+        at,
+        &frame,
+        p,
+        scale,
+        inherit,
+        &broken_now,
+        cause,
+        out,
+    )?;
+    shatter_chunks(ctx, l, t, at, p, scale, &shatter, out)
+}
+
+/// The prop's hits on its bonds, and a forced fracture: the cause of the
+/// first that broke something, and the chunks with children past their
+/// health, which shatter into them.
+fn wear(
+    at: Breaking<'_>,
+    frame: &Pose,
+    p: &mut Prop,
+    h: &Hits,
+    scale: f32,
+) -> (Option<u32>, Vec<u32>) {
+    let (a, s) = (at.a, at.s);
+    let mut cause = None;
+    let place_fn = |c: u32, x: Vec3| place_chunk(at, frame, c, x);
+    for (d, c) in &h.damage {
+        if p.inst.damage(a, d, scale, &s.mat, &place_fn) && cause.is_none() {
+            cause = Some(*c);
         }
-        // A chunk with children past its health shatters into them.
-        let mut shatter = Vec::new();
-        for c in 0..a.support as usize {
-            let ch = &a.chunks[c];
-            if !p.inst.shattered[c]
-                && ch.children.1 > 0
-                && p.inst.chunk_damage[c]
-                    >= Instance::chunk_health(&a, c as u32, scale, s.mat.toughness)
-            {
-                p.inst.shattered[c] = true;
-                p.inst.dirty = true;
-                shatter.push(c as u32);
-            }
+    }
+    if h.fracture {
+        p.inst.bonds.iter_mut().for_each(|b| *b = 0.0);
+        cause = Some(CAUSE_FRACTURE);
+    }
+    // A chunk with children past its health shatters into them.
+    let mut shatter = Vec::new();
+    for c in 0..a.support as usize {
+        let ch = &a.chunks[c];
+        if !p.inst.shattered[c]
+            && ch.children.1 > 0
+            && p.inst.chunk_damage[c] >= Instance::chunk_health(a, c as u32, scale, s.mat.toughness)
+        {
+            p.inst.shattered[c] = true;
+            p.inst.dirty = true;
+            shatter.push(c as u32);
         }
-        let anchors = p.anchors;
-        let islands_of = |inst: &Instance| {
-            let mut isl = inst.islands(&a);
-            if !anchors {
-                isl.iter_mut().for_each(|i| i.anchored = false);
+    }
+    (cause, shatter)
+}
+
+/// The stress solver on what stands (when something changed) and, every
+/// REST_EVERY ticks, on each loose island at rest on what it rests on.
+#[allow(clippy::too_many_arguments)]
+fn solve_stress(
+    ctx: &SystemContext<'_>,
+    m: &ModuleState,
+    l: &Ls,
+    t: &Clock,
+    at: Breaking<'_>,
+    frame: &Pose,
+    p: &mut Prop,
+    scale: f32,
+    stress_budget: &mut u64,
+    cause: &mut Option<u32>,
+    shatter: &mut Vec<u32>,
+) {
+    let (a, s, pose) = (at.a, at.s, at.pose);
+    let (tick, gravity) = (t.tick, t.gravity);
+    let iterations = t.res["stressIterations"].as_u64().unwrap_or(0) as u32;
+    let anchors = p.anchors;
+    if anchors && p.inst.dirty {
+        let islands = islands_of(&p.inst, a, anchors);
+        let down = frame.1.inverse() * gravity;
+        let n = p.inst.stress(
+            a,
+            &islands,
+            &[],
+            down,
+            scale,
+            &s.mat,
+            iterations,
+            stress_budget,
+        );
+        if n > 0 && cause.is_none() {
+            *cause = Some(CAUSE_STRESS);
+        }
+    } else {
+        p.inst.dirty = false;
+    }
+    // A loose island at rest is solved on what it rests on: what spans
+    // a hole between two piers bends, and breaks over it, where a
+    // rigid compound would lie across them as a lintel. One at rest
+    // with nothing under it is wedged by its sides (blocks jammed
+    // between piers into a flat arch, which loose masonry never holds:
+    // its corners crush): it crumbles, into its pieces.
+    if tick.is_multiple_of(REST_EVERY)
+        && let Some(q) = physics(m).and_then(|ph| ph.tick_query().ok())
+    {
+        let held = p.inst.dirty;
+        for isl in islands_of(&p.inst, a, anchors)
+            .into_iter()
+            .filter(|i| !i.anchored)
+        {
+            let body = p.body[isl.chunks[0] as usize];
+            if body == 0 || isl.chunks.iter().any(|&c| p.body[c as usize] != body) {
+                continue;
             }
-            isl
-        };
-        if anchors && p.inst.dirty {
-            let islands = islands_of(&p.inst);
-            let down = frame.1.inverse() * gravity;
+            let speed = ctx
+                .get_bytes(Entity::from_bits(body), l.velocity.0)
+                .map(|vb| v3(&l.velocity.1.decode(&vb)["linear"]).length())
+                .unwrap_or(0.0);
+            // Moving or not, what rests on something is solved on it: a
+            // long run of loose courses pivoting off a pier is a
+            // cantilever, and cracks at the pivot as it swings rather
+            // than turning away whole like a plank.
+            if speed > REST_SPEED && isl.chunks.len() < 2 {
+                continue;
+            }
+            let supports = supports_of(&q, a, pose, &isl.chunks, body, gravity);
+            if supports.is_empty() {
+                if speed > REST_SPEED {
+                    continue;
+                }
+                let freed = isl.chunks.iter().map(|&c| p.loose[c as usize]).min();
+                if freed.is_some_and(|t| tick.saturating_sub(t) >= WEDGED_AFTER) {
+                    crumble(a, &mut p.inst, &isl.chunks, shatter);
+                    cause.get_or_insert(CAUSE_STRESS);
+                }
+                continue;
+            }
+            if isl.chunks.len() < 2 {
+                continue;
+            }
+            let Some(root) = pose[isl.chunks[0] as usize] else {
+                continue;
+            };
             let n = p.inst.stress(
-                &a,
-                &islands,
-                &[],
-                down,
+                a,
+                std::slice::from_ref(&isl),
+                &supports,
+                root.1.inverse() * gravity,
                 scale,
                 &s.mat,
-                res["stressIterations"].as_u64().unwrap_or(0) as u32,
-                &mut stress_budget,
+                iterations,
+                stress_budget,
             );
             if n > 0 && cause.is_none() {
-                cause = Some(CAUSE_STRESS);
+                *cause = Some(CAUSE_STRESS);
             }
-        } else {
-            p.inst.dirty = false;
         }
-        // A loose island at rest is solved on what it rests on: what spans
-        // a hole between two piers bends, and breaks over it, where a
-        // rigid compound would lie across them as a lintel. One at rest
-        // with nothing under it is wedged by its sides (blocks jammed
-        // between piers into a flat arch, which loose masonry never holds:
-        // its corners crush): it crumbles, into its pieces.
-        if tick.is_multiple_of(REST_EVERY)
-            && let Some(q) = physics(m).and_then(|ph| ph.tick_query().ok())
+        p.inst.dirty |= held;
+    }
+}
+
+/// No-tension masonry (tension at most a tenth of a strength above 0;
+/// strength 0 turns stress off, and with it this): every REST_EVERY ticks
+/// a block of what stands that nothing bears from below comes loose,
+/// whole, and what it bore is judged again the next time; and a loose run
+/// of mortared blocks longer than RUN comes apart at its joints the tick
+/// it breaks loose.
+fn break_masonry(
+    t: &Clock,
+    at: Breaking<'_>,
+    frame: &Pose,
+    p: &mut Prop,
+    before: &[f32],
+    cause: &mut Option<u32>,
+) {
+    let (a, s) = (at.a, at.s);
+    let masonry = s.mat.limits.shear_elastic.is_finite()
+        && s.mat.limits.tension_elastic <= 0.1 * s.mat.limits.shear_elastic;
+    let anchors = p.anchors;
+    if anchors && t.tick.is_multiple_of(REST_EVERY) && masonry {
+        let up = -(frame.1.inverse() * t.gravity).normalize_or_zero();
+        for c in p.inst.unsupported(a, &islands_of(&p.inst, a, anchors), up) {
+            p.inst.free(a, c);
+            cause.get_or_insert(CAUSE_STRESS);
+        }
+    }
+    // No-tension masonry in the air holds no bending: a loose run of
+    // mortared blocks longer than RUN comes apart at its joints the
+    // tick it breaks loose, into its blocks (each its own cluster of
+    // bricks), so the top of a blown wall goes up as a spray of
+    // blocks, not a sheet that bends away whole or a beam of courses
+    // lying across the hole.
+    if masonry && (0..before.len()).any(|i| before[i] > 0.0 && p.inst.bonds[i] <= 0.0) {
+        let mut run = vec![false; a.chunks.len()];
+        for isl in islands_of(&p.inst, a, anchors)
+            .into_iter()
+            .filter(|i| !i.anchored && i.chunks.len() > RUN)
         {
-            let held = p.inst.dirty;
-            for isl in islands_of(&p.inst).into_iter().filter(|i| !i.anchored) {
-                let body = p.body[isl.chunks[0] as usize];
-                if body == 0 || isl.chunks.iter().any(|&c| p.body[c as usize] != body) {
-                    continue;
-                }
-                let speed = ctx
-                    .get_bytes(Entity::from_bits(body), l.velocity.0)
-                    .map(|vb| v3(&l.velocity.1.decode(&vb)["linear"]).length())
-                    .unwrap_or(0.0);
-                // Moving or not, what rests on something is solved on it: a
-                // long run of loose courses pivoting off a pier is a
-                // cantilever, and cracks at the pivot as it swings rather
-                // than turning away whole like a plank.
-                if speed > REST_SPEED && isl.chunks.len() < 2 {
-                    continue;
-                }
-                let supports = supports_of(&q, &a, pose, &isl.chunks, body, gravity);
-                if supports.is_empty() {
-                    if speed > REST_SPEED {
-                        continue;
-                    }
-                    let freed = isl.chunks.iter().map(|&c| p.loose[c as usize]).min();
-                    if freed.is_some_and(|t| tick.saturating_sub(t) >= WEDGED_AFTER) {
-                        crumble(&a, &mut p.inst, &isl.chunks, &mut shatter);
-                        cause.get_or_insert(CAUSE_STRESS);
-                    }
-                    continue;
-                }
-                if isl.chunks.len() < 2 {
-                    continue;
-                }
-                let Some(root) = pose[isl.chunks[0] as usize] else {
-                    continue;
-                };
-                let n = p.inst.stress(
-                    &a,
-                    std::slice::from_ref(&isl),
-                    &supports,
-                    root.1.inverse() * gravity,
-                    scale,
-                    &s.mat,
-                    res["stressIterations"].as_u64().unwrap_or(0) as u32,
-                    &mut stress_budget,
-                );
-                if n > 0 && cause.is_none() {
-                    cause = Some(CAUSE_STRESS);
-                }
-            }
-            p.inst.dirty |= held;
+            isl.chunks.iter().for_each(|&c| run[c as usize] = true);
         }
-        // No-tension masonry (tension at most a tenth of a strength above
-        // 0; strength 0 turns stress off, and with it this): a block
-        // of what stands that nothing bears from below comes loose, whole,
-        // and what it bore is judged again the next time.
-        if anchors
-            && tick.is_multiple_of(REST_EVERY)
-            && s.mat.limits.shear_elastic.is_finite()
-            && s.mat.limits.tension_elastic <= 0.1 * s.mat.limits.shear_elastic
-        {
-            let up = -(frame.1.inverse() * gravity).normalize_or_zero();
-            for c in p.inst.unsupported(&a, &islands_of(&p.inst), up) {
-                p.inst.free(&a, c);
-                cause.get_or_insert(CAUSE_STRESS);
-            }
-        }
-        // No-tension masonry in the air holds no bending: a loose run of
-        // mortared blocks longer than RUN comes apart at its joints the
-        // tick it breaks loose, into its blocks (each its own cluster of
-        // bricks), so the top of a blown wall goes up as a spray of
-        // blocks, not a sheet that bends away whole or a beam of courses
-        // lying across the hole.
-        if s.mat.limits.shear_elastic.is_finite()
-            && s.mat.limits.tension_elastic <= 0.1 * s.mat.limits.shear_elastic
-            && (0..before.len()).any(|i| before[i] > 0.0 && p.inst.bonds[i] <= 0.0)
-        {
-            let mut run = vec![false; a.chunks.len()];
-            for isl in islands_of(&p.inst)
-                .into_iter()
-                .filter(|i| !i.anchored && i.chunks.len() > RUN)
-            {
-                isl.chunks.iter().for_each(|&c| run[c as usize] = true);
-            }
-            for (k, b) in a.bonds.iter().enumerate() {
-                if run[b.a as usize] && p.inst.bonds[k] > 0.0 {
-                    p.inst.bonds[k] = 0.0;
-                    p.inst.dirty = true;
-                }
-            }
-        }
-        let broken_now: Vec<bool> = (0..before.len())
-            .map(|i| before[i] > 0.0 && p.inst.bonds[i] <= 0.0)
-            .collect();
-        let broke = |i: usize| broken_now[i];
-        if s.debris != 0 {
-            let fresh: Vec<usize> = (0..before.len()).filter(|&i| broke(i)).collect();
-            let step = fresh.len().div_ceil(CRUMBS_A_TICK).max(1);
-            for &i in fresh.iter().step_by(step) {
-                let b = &a.bonds[i];
-                let rot = pose[b.a as usize].map_or(frame.1, |ps| ps.1);
-                let v = a.chunks[b.a as usize].volume * scale * scale * scale;
-                fresh_crumbs.push((
-                    Crumb {
-                        prop: k,
-                        bond: i as u32,
-                        tick,
-                        point: place_fn(b.a, b.centroid).to_array(),
-                        normal: (rot * b.normal).to_array(),
-                        velocity: [0.0; 3],
-                    },
-                    v * s.mat.density,
-                ));
-            }
-        }
-        let changed = (0..before.len()).any(broke)
-            || (0..anchors_before.len())
-                .any(|i| anchors_before[i] > 0.0 && p.inst.anchors[i] <= 0.0)
-            || p.inst.shattered != shattered_before;
-        if !changed {
-            continue;
-        }
-        let cause = cause.unwrap_or(if shatter.is_empty() {
-            CAUSE_STRESS
-        } else {
-            CAUSE_SHATTER
-        });
-        // A moving prop breaks free: its chunks become entities moving
-        // with it, and it loses its own body.
-        let mut inherit = (Vec3::ZERO, Vec3::ZERO, frame.0);
-        if !p.placed {
-            let e = Entity::from_bits(k);
-            if let Ok(vb) = ctx.get_bytes(e, l.velocity.0) {
-                let v = l.velocity.1.decode(&vb);
-                inherit = (v3(&v["linear"]), v3(&v["angular"]), frame.0);
-            }
-            place(ctx, l, k, p, &a)?;
-        }
-        p.fractured = true;
-        let islands = islands_of(&p.inst);
-        // Each support chunk's role now.
-        let role_of = |p: &Prop, c: usize| -> Role {
-            let (e, b) = (p.entities[c], p.body[c]);
-            if b == 0 {
-                Role::Static
-            } else if b == e {
-                Role::Root
-            } else {
-                match p.entities.iter().position(|&x| x == b) {
-                    Some(r) => Role::Child(r as u32),
-                    None => Role::Static,
-                }
-            }
-        };
-        let roles: Vec<Role> = (0..a.support as usize).map(|c| role_of(p, c)).collect();
-        for isl in &islands {
-            if isl.anchored {
-                continue;
-            }
-            let root_now = |c: u32| match roles[c as usize] {
-                Role::Root => Some(c),
-                Role::Child(r) => Some(r),
-                Role::Static => None,
-            };
-            let first = root_now(isl.chunks[0]);
-            let same = first.is_some()
-                && isl.chunks.iter().all(|&c| root_now(c) == first)
-                && isl.chunks.contains(&first.expect("some"))
-                && (0..a.support).all(|c| isl.chunks.contains(&c) || root_now(c) != first);
-            if same {
-                continue;
-            }
-            let root = isl
-                .chunks
-                .iter()
-                .copied()
-                .find(|&c| roles[c as usize] == Role::Root)
-                .unwrap_or(isl.chunks[0]);
-            let root_pose = pose[root as usize].expect("a placed chunk has a pose");
-            let root_entity = p.entities[root as usize];
-            // The velocity it starts with: its old body's at its place.
-            let (lin, ang) = match roles[root as usize] {
-                Role::Root => (Vec3::ZERO, Vec3::ZERO),
-                Role::Child(r) => {
-                    let b = Entity::from_bits(p.entities[r as usize]);
-                    match ctx.get_bytes(b, l.velocity.0) {
-                        Ok(vb) => {
-                            let v = l.velocity.1.decode(&vb);
-                            let (lin, ang) = (v3(&v["linear"]), v3(&v["angular"]));
-                            let at = pose[r as usize].map_or(root_pose.0, |x| x.0);
-                            (lin + ang.cross(root_pose.0 - at), ang)
-                        }
-                        Err(_) => (Vec3::ZERO, Vec3::ZERO),
-                    }
-                }
-                Role::Static => (
-                    inherit.0 + inherit.1.cross(root_pose.0 - inherit.2),
-                    inherit.1,
-                ),
-            };
-            let mut mass = 0.0;
-            let mut volume = 0.0;
-            let mut centre = Vec3::ZERO;
-            for &c in &isl.chunks {
-                let target = if c == root {
-                    Role::Root
-                } else {
-                    Role::Child(root)
-                };
-                let was = roles[c as usize];
-                let e = Entity::from_bits(p.entities[c as usize]);
-                let cp = pose[c as usize].expect("a placed chunk has a pose");
-                let v = a.chunks[c as usize].volume * scale * scale * scale;
-                volume += v;
-                mass += v * s.mat.density;
-                centre += cp.0 * v;
-                if p.loose[c as usize] == u64::MAX {
-                    p.loose[c as usize] = tick;
-                }
-                p.body[c as usize] = root_entity;
-                set_chunk(ctx, l, e, k, c, 1, root_entity, p.loose[c as usize])?;
-                if was == target {
-                    continue;
-                }
-                match target {
-                    Role::Root => {
-                        if matches!(was, Role::Child(_)) {
-                            ctx.remove_id(e, l.parent.0)?;
-                            set_transform(ctx, l, e, &cp)?;
-                        }
-                        let rb = l.rigid.1.enc(None, Some(&json!({ "kind": "dynamic" })))?;
-                        ctx.insert_bytes(e, l.rigid.0, &rb)?;
-                        made.insert(root_entity, (lin, ang));
-                        fresh_bodies.push(root_entity);
-                    }
-                    Role::Child(_) => {
-                        if was == Role::Root {
-                            ctx.remove_id(e, l.rigid.0)?;
-                            ctx.remove_id(e, l.velocity.0)?;
-                        }
-                        let pb = l
-                            .parent
-                            .1
-                            .enc(None, Some(&json!({ "entity": root_entity as f64 })))?;
-                        ctx.insert_bytes(e, l.parent.0, &pb)?;
-                        set_transform(ctx, l, e, &relative(&root_pose, &cp))?;
-                    }
-                    Role::Static => {}
-                }
-            }
-            // Where it broke: the bonds broken this run along its edge.
-            let mut at = Vec3::ZERO;
-            let mut n = 0.0;
-            for (b, bond) in a.bonds.iter().enumerate() {
-                let touches = isl.chunks.contains(&bond.a) || isl.chunks.contains(&bond.b);
-                if touches && broke(b) {
-                    at += place_fn(bond.a, bond.centroid);
-                    n += 1.0;
-                }
-            }
-            let point = if n > 0.0 {
-                at / n
-            } else {
-                centre / volume.max(1e-12)
-            };
-            events.push(l.fractured.1.enc(
-                None,
-                Some(&json!({
-                    "entity": k as f64, "body": root_entity as f64,
-                    "chunks": isl.chunks.len(), "point": jv(point),
-                    "volume": volume, "mass": mass, "cause": cause,
-                })),
-            )?);
-            if s.break_fx != 0 {
-                bursts.push((s.break_fx, point));
-            }
-        }
-        // Shattered chunks: their children fly, each its own body.
-        for &c in &shatter {
-            let ch = &a.chunks[c as usize];
-            let Some(cp) = pose[c as usize] else {
-                continue;
-            };
-            let (lin, ang) = match p.body[c as usize] {
-                0 => (Vec3::ZERO, Vec3::ZERO),
-                b => match ctx.get_bytes(Entity::from_bits(b), l.velocity.0) {
-                    Ok(vb) => {
-                        let v = l.velocity.1.decode(&vb);
-                        (v3(&v["linear"]), v3(&v["angular"]))
-                    }
-                    Err(_) => (Vec3::ZERO, Vec3::ZERO),
-                },
-            };
-            let e = p.entities[c as usize];
-            if alive(ctx, e) {
-                ctx.despawn(Entity::from_bits(e))?;
-            }
-            p.entities[c as usize] = 0;
-            p.body[c as usize] = 0;
-            let (first, count) = ch.children;
-            let mut volume = 0.0;
-            let mut body = 0;
-            let mut fine = 0;
-            for i in first..first + count {
-                let kid = &a.chunks[i as usize];
-                let v = kid.volume * scale * scale * scale;
-                volume += v;
-                let kp = (place_on(&cp, ch.centroid, kid.centroid), cp.1, cp.2);
-                // Pieces below debrisVolume, given a debris emitter, are
-                // the GPU's (its burst, and the pieces themselves in the
-                // renderer's debris layer): never bodies.
-                if s.debris != 0 && v < debris_volume {
-                    fine += 1;
-                    let at = kp.0;
-                    fresh_debris.push((
-                        Debris {
-                            prop: k,
-                            chunk: i,
-                            tick,
-                            pose: frame_of_pose(kp),
-                            velocity: (lin + ang.cross(at - cp.0)).to_array(),
-                            angular: ang.to_array(),
-                        },
-                        v * s.mat.density,
-                    ));
-                    continue;
-                }
-                let ke = spawn_chunk(ctx, l, k, p, i, 2, &kp, Role::Root, 0, tick)?;
-                body = if body == 0 { ke } else { body };
-                made.insert(ke, (lin + ang.cross(kp.0 - cp.0), ang));
-                fresh_bodies.push(ke);
-            }
-            events.push(l.fractured.1.enc(
-                None,
-                Some(&json!({
-                    "entity": k as f64, "body": body as f64, "chunks": count - fine,
-                    "point": jv(cp.0), "volume": volume,
-                    "mass": volume * s.mat.density, "cause": CAUSE_SHATTER,
-                })),
-            )?);
-            if s.break_fx != 0 {
-                bursts.push((s.break_fx, cp.0));
-            }
-            if fine > 0 {
-                bursts.push((s.debris, cp.0));
+        for (k, b) in a.bonds.iter().enumerate() {
+            if run[b.a as usize] && p.inst.bonds[k] > 0.0 {
+                p.inst.bonds[k] = 0.0;
+                p.inst.dirty = true;
             }
         }
     }
+}
 
-    // The explosions' push on every loose body in reach.
-    for &(point, inner, radius, impulse) in &explosions {
+/// The grit the joints broken this tick shed (spread over at most
+/// CRUMBS_A_TICK of them), with the mass of the piece beside each.
+fn shed_crumbs(
+    t: &Clock,
+    at: Breaking<'_>,
+    frame: &Pose,
+    broken_now: &[bool],
+    scale: f32,
+    crumbs: &mut Vec<(Crumb, f32)>,
+) {
+    let (a, s) = (at.a, at.s);
+    let fresh: Vec<usize> = (0..broken_now.len()).filter(|&i| broken_now[i]).collect();
+    let step = fresh.len().div_ceil(CRUMBS_A_TICK).max(1);
+    for &i in fresh.iter().step_by(step) {
+        let b = &a.bonds[i];
+        let rot = at.pose[b.a as usize].map_or(frame.1, |ps| ps.1);
+        let v = a.chunks[b.a as usize].volume * scale * scale * scale;
+        crumbs.push((
+            Crumb {
+                prop: at.key,
+                bond: i as u32,
+                tick: t.tick,
+                point: place_chunk(at, frame, b.a, b.centroid).to_array(),
+                normal: (rot * b.normal).to_array(),
+                velocity: [0.0; 3],
+            },
+            v * s.mat.density,
+        ));
+    }
+}
+
+/// Each island that is not anchored and not already one body becomes
+/// one: its root chunk a dynamic body with the velocity it had, the rest
+/// its compound children; og.Fractured says where it broke.
+#[allow(clippy::too_many_arguments)]
+fn free_islands(
+    ctx: &mut SystemContext<'_>,
+    l: &Ls,
+    t: &Clock,
+    at: Breaking<'_>,
+    frame: &Pose,
+    p: &mut Prop,
+    scale: f32,
+    inherit: (Vec3, Vec3, Vec3),
+    broken_now: &[bool],
+    cause: u32,
+    out: &mut Broken,
+) -> og_core::Result<()> {
+    let (a, s, k, pose, tick) = (at.a, at.s, at.key, at.pose, t.tick);
+    let islands = islands_of(&p.inst, a, p.anchors);
+    // Each support chunk's role now.
+    let role_of = |p: &Prop, c: usize| -> Role {
+        let (e, b) = (p.entities[c], p.body[c]);
+        if b == 0 {
+            Role::Static
+        } else if b == e {
+            Role::Root
+        } else {
+            match p.entities.iter().position(|&x| x == b) {
+                Some(r) => Role::Child(r as u32),
+                None => Role::Static,
+            }
+        }
+    };
+    let roles: Vec<Role> = (0..a.support as usize).map(|c| role_of(p, c)).collect();
+    for isl in &islands {
+        if isl.anchored {
+            continue;
+        }
+        let root_now = |c: u32| match roles[c as usize] {
+            Role::Root => Some(c),
+            Role::Child(r) => Some(r),
+            Role::Static => None,
+        };
+        let first = root_now(isl.chunks[0]);
+        let same = first.is_some()
+            && isl.chunks.iter().all(|&c| root_now(c) == first)
+            && isl.chunks.contains(&first.expect("some"))
+            && (0..a.support).all(|c| isl.chunks.contains(&c) || root_now(c) != first);
+        if same {
+            continue;
+        }
+        let root = isl
+            .chunks
+            .iter()
+            .copied()
+            .find(|&c| roles[c as usize] == Role::Root)
+            .unwrap_or(isl.chunks[0]);
+        let root_pose = pose[root as usize].expect("a placed chunk has a pose");
+        let root_entity = p.entities[root as usize];
+        // The velocity it starts with: its old body's at its place.
+        let (lin, ang) = match roles[root as usize] {
+            Role::Root => (Vec3::ZERO, Vec3::ZERO),
+            Role::Child(r) => {
+                let b = Entity::from_bits(p.entities[r as usize]);
+                match ctx.get_bytes(b, l.velocity.0) {
+                    Ok(vb) => {
+                        let v = l.velocity.1.decode(&vb);
+                        let (lin, ang) = (v3(&v["linear"]), v3(&v["angular"]));
+                        let at = pose[r as usize].map_or(root_pose.0, |x| x.0);
+                        (lin + ang.cross(root_pose.0 - at), ang)
+                    }
+                    Err(_) => (Vec3::ZERO, Vec3::ZERO),
+                }
+            }
+            Role::Static => (
+                inherit.0 + inherit.1.cross(root_pose.0 - inherit.2),
+                inherit.1,
+            ),
+        };
+        let mut mass = 0.0;
+        let mut volume = 0.0;
+        let mut centre = Vec3::ZERO;
+        for &c in &isl.chunks {
+            let target = if c == root {
+                Role::Root
+            } else {
+                Role::Child(root)
+            };
+            let was = roles[c as usize];
+            let e = Entity::from_bits(p.entities[c as usize]);
+            let cp = pose[c as usize].expect("a placed chunk has a pose");
+            let v = a.chunks[c as usize].volume * scale * scale * scale;
+            volume += v;
+            mass += v * s.mat.density;
+            centre += cp.0 * v;
+            if p.loose[c as usize] == u64::MAX {
+                p.loose[c as usize] = tick;
+            }
+            p.body[c as usize] = root_entity;
+            set_chunk(ctx, l, e, k, c, 1, root_entity, p.loose[c as usize])?;
+            if was == target {
+                continue;
+            }
+            match target {
+                Role::Root => {
+                    if matches!(was, Role::Child(_)) {
+                        ctx.remove_id(e, l.parent.0)?;
+                        set_transform(ctx, l, e, &cp)?;
+                    }
+                    let rb = l.rigid.1.enc(None, Some(&json!({ "kind": "dynamic" })))?;
+                    ctx.insert_bytes(e, l.rigid.0, &rb)?;
+                    out.made.insert(root_entity, (lin, ang));
+                    out.fresh_bodies.push(root_entity);
+                }
+                Role::Child(_) => {
+                    if was == Role::Root {
+                        ctx.remove_id(e, l.rigid.0)?;
+                        ctx.remove_id(e, l.velocity.0)?;
+                    }
+                    let pb = l
+                        .parent
+                        .1
+                        .enc(None, Some(&json!({ "entity": root_entity as f64 })))?;
+                    ctx.insert_bytes(e, l.parent.0, &pb)?;
+                    set_transform(ctx, l, e, &relative(&root_pose, &cp))?;
+                }
+                Role::Static => {}
+            }
+        }
+        // Where it broke: the bonds broken this run along its edge.
+        let mut at_ = Vec3::ZERO;
+        let mut n = 0.0;
+        for (b, bond) in a.bonds.iter().enumerate() {
+            let touches = isl.chunks.contains(&bond.a) || isl.chunks.contains(&bond.b);
+            if touches && broken_now[b] {
+                at_ += place_chunk(at, frame, bond.a, bond.centroid);
+                n += 1.0;
+            }
+        }
+        let point = if n > 0.0 {
+            at_ / n
+        } else {
+            centre / volume.max(1e-12)
+        };
+        out.events.push(l.fractured.1.enc(
+            None,
+            Some(&json!({
+                "entity": k as f64, "body": root_entity as f64,
+                "chunks": isl.chunks.len(), "point": jv(point),
+                "volume": volume, "mass": mass, "cause": cause,
+            })),
+        )?);
+        if s.break_fx != 0 {
+            out.bursts.push((s.break_fx, point));
+        }
+    }
+    Ok(())
+}
+
+/// Shattered chunks: their children fly, each its own body, or, below
+/// debrisVolume with a debris emitter, as fine pieces on the GPU.
+#[allow(clippy::too_many_arguments)]
+fn shatter_chunks(
+    ctx: &mut SystemContext<'_>,
+    l: &Ls,
+    t: &Clock,
+    at: Breaking<'_>,
+    p: &mut Prop,
+    scale: f32,
+    shatter: &[u32],
+    out: &mut Broken,
+) -> og_core::Result<()> {
+    let (a, s, k, pose, tick) = (at.a, at.s, at.key, at.pose, t.tick);
+    for &c in shatter {
+        let ch = &a.chunks[c as usize];
+        let Some(cp) = pose[c as usize] else {
+            continue;
+        };
+        let (lin, ang) = match p.body[c as usize] {
+            0 => (Vec3::ZERO, Vec3::ZERO),
+            b => match ctx.get_bytes(Entity::from_bits(b), l.velocity.0) {
+                Ok(vb) => {
+                    let v = l.velocity.1.decode(&vb);
+                    (v3(&v["linear"]), v3(&v["angular"]))
+                }
+                Err(_) => (Vec3::ZERO, Vec3::ZERO),
+            },
+        };
+        let e = p.entities[c as usize];
+        if alive(ctx, e) {
+            ctx.despawn(Entity::from_bits(e))?;
+        }
+        p.entities[c as usize] = 0;
+        p.body[c as usize] = 0;
+        let (first, count) = ch.children;
+        let mut volume = 0.0;
+        let mut body = 0;
+        let mut fine = 0;
+        for i in first..first + count {
+            let kid = &a.chunks[i as usize];
+            let v = kid.volume * scale * scale * scale;
+            volume += v;
+            let kp = (place_on(&cp, ch.centroid, kid.centroid), cp.1, cp.2);
+            // Pieces below debrisVolume, given a debris emitter, are
+            // the GPU's (its burst, and the pieces themselves in the
+            // renderer's debris layer): never bodies.
+            if s.debris != 0 && v < t.debris_volume {
+                fine += 1;
+                let at = kp.0;
+                out.debris.push((
+                    Debris {
+                        prop: k,
+                        chunk: i,
+                        tick,
+                        pose: frame_of_pose(kp),
+                        velocity: (lin + ang.cross(at - cp.0)).to_array(),
+                        angular: ang.to_array(),
+                    },
+                    v * s.mat.density,
+                ));
+                continue;
+            }
+            let ke = spawn_chunk(ctx, l, k, p, i, 2, &kp, Role::Root, 0, tick)?;
+            body = if body == 0 { ke } else { body };
+            out.made.insert(ke, (lin + ang.cross(kp.0 - cp.0), ang));
+            out.fresh_bodies.push(ke);
+        }
+        out.events.push(l.fractured.1.enc(
+            None,
+            Some(&json!({
+                "entity": k as f64, "body": body as f64, "chunks": count - fine,
+                "point": jv(cp.0), "volume": volume,
+                "mass": volume * s.mat.density, "cause": CAUSE_SHATTER,
+            })),
+        )?);
+        if s.break_fx != 0 {
+            out.bursts.push((s.break_fx, cp.0));
+        }
+        if fine > 0 {
+            out.bursts.push((s.debris, cp.0));
+        }
+    }
+    Ok(())
+}
+
+/// The explosions' push on every loose body in reach: a body made this
+/// tick takes it with its starting velocity, another on its og.Velocity.
+#[allow(clippy::too_many_arguments)]
+fn push_blasted_bodies(
+    ctx: &mut SystemContext<'_>,
+    l: &Ls,
+    st: &State,
+    assets: &Assets,
+    settings: &BTreeMap<u64, Settings>,
+    poses: &Poses,
+    explosions: &[Explosion],
+    out: &mut Broken,
+) -> og_core::Result<()> {
+    let made = &mut out.made;
+    for &(point, inner, radius, impulse) in explosions {
         if impulse <= 0.0 {
             continue;
         }
@@ -1419,7 +1715,7 @@ fn run(ctx: &mut SystemContext<'_>, m: &ModuleState, l: &Ls) -> og_core::Result<
             let a = &assets[&p.asset];
             let scale = uniform(pose_of_frame(&p.frame).2);
             let density = settings.get(&k).map_or(1000.0, |s| s.mat.density);
-            let bodies = loose_bodies(ctx, l, p, a, scale, density, &poses[&k], &made, point);
+            let bodies = loose_bodies(ctx, l, p, a, scale, density, &poses[&k], made, point);
             for (b, (m, at)) in bodies {
                 if m <= 0.0 {
                     continue;
@@ -1442,17 +1738,26 @@ fn run(ctx: &mut SystemContext<'_>, m: &ModuleState, l: &Ls) -> og_core::Result<
                             let mut v = l.velocity.1.decode(&vb);
                             v["linear"] = jv(v3(&v["linear"]) + dv);
                             v["angular"] = jv(v3(&v["angular"]) + dw);
-                            let out = l.velocity.1.enc(Some(&vb), Some(&v))?;
-                            ctx.set_bytes(e, l.velocity.0, &out)?;
+                            let vel = l.velocity.1.enc(Some(&vb), Some(&v))?;
+                            ctx.set_bytes(e, l.velocity.0, &vel)?;
                         }
                     }
                 }
             }
         }
     }
-    // The blasts' push on the fine pieces broken off this tick, as on a
-    // body (the pieces already on the GPU are the renderer's).
-    for &(point, inner, radius, impulse) in &explosions {
+    Ok(())
+}
+
+/// The blasts' push on the fine pieces broken off this tick, as on a body
+/// (the pieces already on the GPU are the renderer's), and on the grit,
+/// which goes with the piece beside its joint.
+fn push_blasted_pieces(
+    settings: &BTreeMap<u64, Settings>,
+    explosions: &[Explosion],
+    out: &mut Broken,
+) {
+    for &(point, inner, radius, impulse) in explosions {
         if impulse <= 0.0 {
             continue;
         }
@@ -1462,7 +1767,7 @@ fn run(ctx: &mut SystemContext<'_>, m: &ModuleState, l: &Ls) -> og_core::Result<
             max_radius: radius,
             amount: impulse,
         };
-        for (d, m) in &mut fresh_debris {
+        for (d, m) in &mut out.debris {
             let density = settings.get(&d.prop).map_or(1000.0, |s| s.mat.density);
             let at = Vec3::new(d.pose[0], d.pose[1], d.pose[2]);
             if let Some((dv, dw)) =
@@ -1473,7 +1778,7 @@ fn run(ctx: &mut SystemContext<'_>, m: &ModuleState, l: &Ls) -> og_core::Result<
             }
         }
         // Grit goes with the piece beside its joint.
-        for (c, m) in &mut fresh_crumbs {
+        for (c, m) in &mut out.crumbs {
             let density = settings.get(&c.prop).map_or(1000.0, |s| s.mat.density);
             let at = Vec3::from(c.point);
             if let Some((dv, _)) = blast_push(&falloff, impulse, at, *m, density, u64::from(c.bond))
@@ -1482,11 +1787,24 @@ fn run(ctx: &mut SystemContext<'_>, m: &ModuleState, l: &Ls) -> og_core::Result<
             }
         }
     }
-    // A hit's or a blow's push on the pieces it broke loose: the impulse
-    // past the threshold (momentum the striker gave up breaking through),
-    // or the blow's, shared by falloff over them, none driven faster than
-    // the striker closed.
-    for &(k, point, dir, radius, amount, speed) in &strikes {
+}
+
+/// A hit's or a blow's push on the pieces it broke loose: the impulse
+/// past the threshold (momentum the striker gave up breaking through), or
+/// the blow's, shared by falloff over them, none driven faster than the
+/// striker closed.
+#[allow(clippy::too_many_arguments)]
+fn push_struck(
+    ctx: &SystemContext<'_>,
+    l: &Ls,
+    st: &State,
+    assets: &Assets,
+    settings: &BTreeMap<u64, Settings>,
+    poses: &Poses,
+    strikes: &[Strike],
+    out: &mut Broken,
+) {
+    for &(k, point, dir, radius, amount, speed) in strikes {
         let (Some(p), Some(s)) = (st.props.get(&k), settings.get(&k)) else {
             continue;
         };
@@ -1498,8 +1816,9 @@ fn run(ctx: &mut SystemContext<'_>, m: &ModuleState, l: &Ls) -> og_core::Result<
             max_radius: radius,
             amount: 1.0,
         };
+        let made = &out.made;
         let freed: Vec<(u64, f32, f32)> =
-            loose_bodies(ctx, l, p, a, scale, s.mat.density, &poses[&k], &made, point)
+            loose_bodies(ctx, l, p, a, scale, s.mat.density, &poses[&k], made, point)
                 .into_iter()
                 .filter(|(b, _)| made.contains_key(b))
                 .map(|(b, (m, at))| (b, m, falloff.at(at)))
@@ -1509,7 +1828,8 @@ fn run(ctx: &mut SystemContext<'_>, m: &ModuleState, l: &Ls) -> og_core::Result<
         // momentum is conserved and the lightest piece is not flung.
         let weighed: f32 = freed.iter().map(|&(_, m, w)| m * w).sum();
         // The fine pieces it broke off this tick move with them.
-        let pieces: f32 = fresh_debris
+        let pieces: f32 = out
+            .debris
             .iter()
             .filter(|(d, _)| d.prop == k)
             .map(|(d, m)| m * falloff.at(Vec3::new(d.pose[0], d.pose[1], d.pose[2])))
@@ -1517,18 +1837,18 @@ fn run(ctx: &mut SystemContext<'_>, m: &ModuleState, l: &Ls) -> og_core::Result<
         let weighed = weighed + pieces;
         for (b, _, w) in freed {
             let dv = (amount * w / weighed).min(speed);
-            if let Some(v) = made.get_mut(&b) {
+            if let Some(v) = out.made.get_mut(&b) {
                 v.0 += dir * dv;
             }
         }
-        for (d, _) in fresh_debris.iter_mut().filter(|(d, _)| d.prop == k) {
+        for (d, _) in out.debris.iter_mut().filter(|(d, _)| d.prop == k) {
             let w = falloff.at(Vec3::new(d.pose[0], d.pose[1], d.pose[2]));
             if w > 0.0 && weighed > 0.0 {
                 let dv = (amount * w / weighed).min(speed);
                 d.velocity = (Vec3::from(d.velocity) + dir * dv).to_array();
             }
         }
-        for (c, _) in fresh_crumbs.iter_mut().filter(|(c, _)| c.prop == k) {
+        for (c, _) in out.crumbs.iter_mut().filter(|(c, _)| c.prop == k) {
             let w = falloff.at(Vec3::from(c.point));
             if w > 0.0 && weighed > 0.0 {
                 let dv = (amount * w / weighed).min(speed);
@@ -1536,22 +1856,43 @@ fn run(ctx: &mut SystemContext<'_>, m: &ModuleState, l: &Ls) -> og_core::Result<
             }
         }
     }
-    st.debris.extend(fresh_debris.into_iter().map(|(d, _)| d));
-    st.crumbs.extend(fresh_crumbs.into_iter().map(|(c, _)| c));
-    for b in fresh_bodies {
-        let (lin, ang) = made[&b];
+}
+
+/// The fine pieces and grit broken off join the state; the bodies made
+/// this tick take their velocity.
+fn commit_fresh(
+    ctx: &mut SystemContext<'_>,
+    l: &Ls,
+    st: &mut State,
+    out: &mut Broken,
+) -> og_core::Result<()> {
+    st.debris.extend(out.debris.drain(..).map(|(d, _)| d));
+    st.crumbs.extend(out.crumbs.drain(..).map(|(c, _)| c));
+    for &b in &out.fresh_bodies {
+        let (lin, ang) = out.made[&b];
         let vb = l.velocity.1.enc(
             None,
             Some(&json!({ "linear": jv(lin), "angular": jv(ang) })),
         )?;
         ctx.insert_bytes(Entity::from_bits(b), l.velocity.0, &vb)?;
     }
+    Ok(())
+}
 
-    // Budgets: loose islands (a body and its children) by when they broke
-    // loose; debris past its lifetime, then the oldest past maxChunks.
-    let max = res["maxChunks"].as_u64().unwrap_or(256) as usize;
+/// Budgets: loose islands (a body and its children) by when they broke
+/// loose; debris past its lifetime, then the oldest past maxChunks; fine
+/// pieces and grit after debrisLifetime, with their prop, and the oldest
+/// past what the renderer holds.
+fn enforce_budgets(
+    ctx: &mut SystemContext<'_>,
+    st: &mut State,
+    assets: &Assets,
+    t: &Clock,
+) -> og_core::Result<()> {
+    let tick = t.tick;
+    let max = t.res["maxChunks"].as_u64().unwrap_or(256) as usize;
 
-    let lifetime = num(&res, "debrisLifetime", 8.0);
+    let lifetime = num(&t.res, "debrisLifetime", 8.0);
     struct Loose {
         tick: u64,
         volume: f32,
@@ -1586,10 +1927,10 @@ fn run(ctx: &mut SystemContext<'_>, m: &ModuleState, l: &Ls) -> og_core::Result<
         (x.tick, x.volume.to_bits(), x.body).cmp(&(y.tick, y.volume.to_bits(), y.body))
     });
     let mut total: usize = order.iter().map(|x| x.chunks.len()).sum();
-    let life = ticks_of(lifetime);
+    let life = t.ticks_of(lifetime);
     for isl in &order {
         let old =
-            lifetime > 0.0 && isl.volume < debris_volume && tick >= isl.tick.saturating_add(life);
+            lifetime > 0.0 && isl.volume < t.debris_volume && tick >= isl.tick.saturating_add(life);
         if !old && total <= max {
             continue;
         }
@@ -1622,8 +1963,20 @@ fn run(ctx: &mut SystemContext<'_>, m: &ModuleState, l: &Ls) -> og_core::Result<
     });
     let over = st.crumbs.len().saturating_sub(MAX_CRUMBS);
     st.crumbs.drain(..over);
+    Ok(())
+}
 
-    // What the game reads: each destructible's written fields.
+/// What the game reads: each destructible's written fields, og.Fractured,
+/// and breakFx and hitFx as one-shot bursts, despawned after fxLifetime.
+fn publish(
+    ctx: &mut SystemContext<'_>,
+    l: &Ls,
+    st: &mut State,
+    t: &Clock,
+    events: Vec<Vec<u8>>,
+    bursts: Vec<(u64, Vec3)>,
+) -> og_core::Result<()> {
+    let tick = t.tick;
     for (&k, p) in &st.props {
         let e = Entity::from_bits(k);
         let Ok(b) = ctx.get_bytes(e, l.destructible.0) else {
@@ -1645,10 +1998,9 @@ fn run(ctx: &mut SystemContext<'_>, m: &ModuleState, l: &Ls) -> og_core::Result<
     for ev in events {
         ctx.send_bytes(l.fractured.0, &ev)?;
     }
-    // breakFx and hitFx: a one-shot burst each, despawned after fxLifetime.
-    let fx_life = ticks_of(num(&res, "fxLifetime", 3.0)).max(1);
+    let fx_life = t.ticks_of(num(&t.res, "fxLifetime", 3.0)).max(1);
     for (i, (emitter, at)) in bursts.into_iter().take(MAX_BURSTS).enumerate() {
-        let t = l
+        let tr = l
             .transform
             .1
             .enc(None, Some(&json!({ "position": jv(at) })))?;
@@ -1657,7 +2009,7 @@ fn run(ctx: &mut SystemContext<'_>, m: &ModuleState, l: &Ls) -> og_core::Result<
             None,
             Some(&json!({ "emitter": emitter as f64, "seed": seed, "startTick": tick as u32 })),
         )?;
-        let e = ctx.spawn_bytes(vec![(l.transform.0, t), (l.particles.0, ps)])?;
+        let e = ctx.spawn_bytes(vec![(l.transform.0, tr), (l.particles.0, ps)])?;
         st.fx.push((e.to_bits(), tick + fx_life));
     }
     Ok(())
