@@ -134,7 +134,8 @@ impl Ui {
         }
         if let Some(target) = r.str("interestfor") {
             let pk = popover_key(&b.mount, target);
-            let delay = (self.theme.durations_ms.slow * self.ticks_per_second as f32 / 1000.0)
+            let delay = (self.env.theme.durations_ms.slow * self.env.ticks_per_second as f32
+                / 1000.0)
                 .ceil() as u32;
             let s = &self.state;
             let interest =
@@ -214,7 +215,7 @@ impl Ui {
         let at = self.last_closed;
         self.nodes[at].props.position = crate::element::Position::Absolute;
         self.note_built(built);
-        let t = self.theme;
+        let t = self.env.theme;
         let content = Self::box_of(
             r,
             // A raised panel, as a browser's popover has its own canvas
@@ -304,7 +305,7 @@ impl Ui {
                 let color = p
                     .color("background")
                     .or(n.el.background)
-                    .unwrap_or(self.theme.palette.panel_raised);
+                    .unwrap_or(self.env.theme.palette.panel_raised);
                 (size, color)
             });
     }

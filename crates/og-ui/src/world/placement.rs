@@ -113,7 +113,7 @@ fn declutter(
 
 impl Ui {
     pub(super) fn world_anchors(&mut self) {
-        let vp = self.viewport;
+        let vp = self.env.viewport;
         let screen = Rect::new(0.0, 0.0, vp.width, vp.height);
         let safe = Rect::new(
             vp.safe_area.left,
@@ -231,7 +231,7 @@ impl Ui {
                 let band = half.x.max(16.0);
                 let k = ((inside_by + band) / (2.0 * band)).clamp(0.0, 1.0);
                 alpha *= k * k * (3.0 - 2.0 * k);
-                let g = self.theme.space.sm;
+                let g = self.env.theme.space.sm;
                 let safe = Rect::new(
                     safe.x + g,
                     safe.y + g,
@@ -295,7 +295,7 @@ impl Ui {
                 .then(a.info.distance.total_cmp(&b.info.distance))
                 .then(x.cmp(&y))
         });
-        let gap = self.theme.space.xs;
+        let gap = self.env.theme.space.xs;
         let mut taken: Vec<Rect> = Vec::new();
         let mut moves = vec![(Vec2::ZERO, 1.0f32); placed.len()];
         for &k in &by_rank {
@@ -494,7 +494,7 @@ impl Ui {
                 if let (Some(view), Some((t, rotation, size))) = (self.world.view, p.desc.quad)
                     && let Some((center, q)) = self.world.pose_of(t)
                 {
-                    let (vp, unit) = (self.viewport, self.unit.max(1e-6));
+                    let (vp, unit) = (self.env.viewport, self.env.unit.max(1e-6));
                     let q = q * rotation;
                     let (hx, hy) = (size.x / 2.0, size.y / 2.0);
                     let r = self.nodes[p.node].rect;
@@ -593,7 +593,7 @@ impl Ui {
 
     pub(super) fn world_metas(&mut self) {
         let metas = std::mem::take(&mut self.world.metas);
-        let vp = self.viewport;
+        let vp = self.env.viewport;
         let seconds = self.seconds() as f32;
         for (i, m) in &metas {
             let pulse = if m.pulse_hz > 0.0 {

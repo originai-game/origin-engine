@@ -36,7 +36,7 @@ impl Ui {
         );
         // A style's entrance and stagger for a screen panel, from the tick it
         // first appears; an instant panel is settled from there (`h` 1).
-        let m = self.theme.art.motion;
+        let m = self.env.theme.art.motion;
         if desc.background.is_some() && (m.enter.is_some() || m.stagger_ms > 0.0) {
             let key = crate::id::child_key(self.nodes[i].key, "enter");
             let fresh = !self.has_anim(key);
@@ -55,7 +55,7 @@ impl Ui {
     /// Plays a style entrance on layer `i` from tick `since`: its own
     /// transition (`kind`) and its controls' stagger.
     fn enter(&mut self, i: usize, since: u64, kind: Option<TransitionKind>) {
-        let t = self.theme;
+        let t = self.env.theme;
         let ms = kind.map_or(t.durations_ms.base, |k| k.duration_ms(t.durations_ms.base));
         let ticks = self.ticks_for(ms) as f32;
         let p = ((self.state.tick - since) as f32 + 1.0) / ticks;
@@ -75,7 +75,7 @@ impl Ui {
         if stagger > 0.0 && !t.reduced_motion {
             self.nodes[i].stagger = Some(crate::layout::Stagger {
                 since,
-                step: stagger * self.ticks_per_second as f32 / 1000.0,
+                step: stagger * self.env.ticks_per_second as f32 / 1000.0,
                 ticks,
                 kind: TransitionKind::SlideUp,
             });
@@ -110,9 +110,14 @@ impl Ui {
         let p = a.a;
         let visible = p > 0.0 || show;
         let e = if show {
-            self.theme.tokens.ease(EaseRole::WidgetEnter).apply(p)
+            self.env.theme.tokens.ease(EaseRole::WidgetEnter).apply(p)
         } else {
-            1.0 - self.theme.tokens.ease(EaseRole::WidgetExit).apply(1.0 - p)
+            1.0 - self
+                .env
+                .theme
+                .tokens
+                .ease(EaseRole::WidgetExit)
+                .apply(1.0 - p)
         };
         (
             Presence {
@@ -148,15 +153,15 @@ impl Ui {
         let ms = if desc.duration_ms > 0.0 {
             desc.duration_ms
         } else {
-            desc.kind.duration_ms(self.theme.durations_ms.base)
+            desc.kind.duration_ms(self.env.theme.durations_ms.base)
         };
         let (pr, e) = self.presence(key, show, ms, desc.instant);
         let distance = if desc.distance > 0.0 {
             desc.distance
         } else {
-            self.theme.space.xl
+            self.env.theme.space.xl
         };
-        let mut f = fx(desc.kind, e, distance, self.theme.reduced_motion);
+        let mut f = fx(desc.kind, e, distance, self.env.theme.reduced_motion);
         f.inert = pr.progress < 1.0 || !show;
         self.nodes[i].fx = Some(f);
         self.nodes[i].hidden = !pr.visible;
@@ -186,7 +191,7 @@ impl Ui {
     /// unless `locked`. The probe sees the backdrop as `<id>` and the panel
     /// as `<id>/Panel`.
     pub fn open_modal(&mut self, id: impl Into<Id>, open: bool, desc: &ModalDesc) -> ModalResponse {
-        let t = self.theme;
+        let t = self.env.theme;
         let backdrop = self.open_layer(
             "modal",
             id.into(),
@@ -248,7 +253,7 @@ impl Ui {
                 r.dismissed = true;
             }
         }
-        let vw = self.viewport.width - self.viewport.safe_area.horizontal();
+        let vw = self.env.viewport.width - self.env.viewport.safe_area.horizontal();
         let width = desc
             .width
             .unwrap_or(Size::Fixed(420.0f32.min(vw - 2.0 * self.sizes().gutter)));
@@ -355,7 +360,7 @@ impl Ui {
             self.nodes[panel].a11y.name = Some(desc.name.clone());
             return r;
         }
-        let t = self.theme;
+        let t = self.env.theme;
         let path = self.child_path(id.as_str());
         let opener_key = format!("{}~opener", id.as_str());
         let was_open = self.memory(&format!("{}~open", id.as_str()), 0.0) > 0.0;
@@ -453,7 +458,7 @@ impl Ui {
     /// duration and leaves; at most three are up (older ones leave first).
     /// A press on one dismisses it. Callable between ticks. Returns its id.
     pub fn toast(&mut self, text: &str, desc: ToastDesc) -> u32 {
-        let (m, table) = (self.theme.art.motion, crate::theme::TIMING);
+        let (m, table) = (self.env.theme.art.motion, crate::theme::TIMING);
         let ms = if desc.duration_ms > 0.0 {
             desc.duration_ms
         } else if desc.tone == Tone::Danger {
@@ -509,8 +514,8 @@ impl Ui {
     /// Builds the toast stack (called by `end`).
     pub(crate) fn build_toasts(&mut self) {
         let now = self.state.tick;
-        let exit = u64::from(self.ticks_for(self.theme.durations_ms.fast));
-        let enter = self.ticks_for(self.theme.durations_ms.base);
+        let exit = u64::from(self.ticks_for(self.env.theme.durations_ms.fast));
+        let enter = self.ticks_for(self.env.theme.durations_ms.base);
         // Expire, cap at three, drop the ones whose exit finished.
         let mut up: Vec<usize> = Vec::new();
         for (k, t) in self.state.toasts.iter_mut().enumerate() {
@@ -532,9 +537,9 @@ impl Ui {
         if self.state.toasts.is_empty() {
             return;
         }
-        let t = self.theme;
+        let t = self.env.theme;
         let top = matches!(
-            self.toast_anchor,
+            self.env.toast_anchor,
             Anchor::Top | Anchor::TopLeft | Anchor::TopRight
         );
         let margin = self.sizes().gutter;
@@ -548,7 +553,7 @@ impl Ui {
                 ..Element::default()
             },
             Float::Toasts {
-                anchor: self.toast_anchor,
+                anchor: self.env.toast_anchor,
                 margin,
             },
             NONE,
@@ -638,7 +643,7 @@ impl Ui {
     }
 
     pub(super) fn tone_dot(&self, tone: Tone) -> Srgba {
-        let p = &self.theme.palette;
+        let p = &self.env.theme.palette;
         match tone {
             Tone::Success => p.success,
             Tone::Warn => p.warn,
@@ -662,9 +667,9 @@ impl Ui {
         hole: Option<crate::Rect>,
         desc: SpotlightDesc,
     ) -> Response {
-        let t = self.theme;
+        let t = self.env.theme;
         let p = t.palette;
-        let vp = self.viewport;
+        let vp = self.env.viewport;
         let pad = if desc.padding > 0.0 {
             desc.padding
         } else {

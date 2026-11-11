@@ -20,7 +20,7 @@ impl Ui {
         }
         match size {
             Some(Size::Fixed(v)) => v,
-            _ => self.viewport.height,
+            _ => self.env.viewport.height,
         }
     }
 
@@ -102,7 +102,7 @@ impl Ui {
                 .hit(key)
                 .map(|h| h.full)
                 .or_else(|| self.prev_rect(key))
-                .map_or(self.viewport.width, |r| r.width);
+                .map_or(self.env.viewport.width, |r| r.width);
             let (range, top, rest) =
                 self.keyed_range(key, keys, 1, row, desc.gap, width, view, false);
             (range.first, range.last, top, rest)
@@ -251,7 +251,7 @@ impl Ui {
     /// Opens row `index` of the open list (`Row#index`): a selectable,
     /// focusable row; its content follows until [`Ui::close`].
     pub fn list_item(&mut self, index: u32, selected: bool) -> Response {
-        let t = self.theme;
+        let t = self.env.theme;
         let list = self.parent();
         let h = self.nodes[list].aux[0];
         let keyed = self
@@ -443,7 +443,7 @@ impl Ui {
         desc: GridDesc,
         keys: Option<Order<'_>>,
     ) -> ListRange {
-        let t = self.theme;
+        let t = self.env.theme;
         let floor = self.min_target();
         let asked = if desc.cell_width > 0.0 {
             desc.cell_width
@@ -484,7 +484,7 @@ impl Ui {
             };
             (c, cw.max(floor))
         } else {
-            let inner_w = known_w.unwrap_or(self.viewport.width - desc.padding.horizontal());
+            let inner_w = known_w.unwrap_or(self.env.viewport.width - desc.padding.horizontal());
             (
                 (((inner_w + gap) / (asked + gap)).floor() as u32).max(1),
                 asked,
@@ -548,7 +548,7 @@ impl Ui {
     /// underline), focusable; its
     /// content follows until [`Ui::close`].
     pub fn grid_item(&mut self, index: u32, selected: bool) -> Response {
-        let t = self.theme;
+        let t = self.env.theme;
         let grid = self.parent();
         let [cw, ch, _] = self.nodes[grid].aux;
         let keyed = self

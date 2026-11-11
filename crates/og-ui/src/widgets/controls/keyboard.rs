@@ -255,8 +255,8 @@ impl Ui {
         desc: &KeyboardDesc,
     ) -> KeyboardResult {
         use KeyboardLayout as L;
-        let t = self.theme;
-        let vp = self.viewport;
+        let t = self.env.theme;
+        let vp = self.env.viewport;
         let was = self.memory(&format!("{id}~was"), 0.0) > 0.0;
         let asked = LAYOUTS.iter().position(|&l| l == desc.layout).unwrap_or(0) as f64;
         if open && !was {

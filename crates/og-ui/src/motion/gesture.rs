@@ -64,8 +64,8 @@ impl Ui {
         let n = &self.nodes[i];
         let key = n.key;
         let now = self.state.tick;
-        let tps = self.ticks_per_second;
-        let tokens = self.theme.motion;
+        let tps = self.env.ticks_per_second;
+        let tokens = self.env.theme.motion;
         let drag = n.props.drag.clone();
         let pinch = n.props.pinch;
         let size = Vec2::new(n.rect.width, n.rect.height);
@@ -165,7 +165,7 @@ impl Ui {
                 g.held = false;
                 if g.dragging {
                     g.dragging = false;
-                    let v = if self.theme.reduced_motion {
+                    let v = if self.env.theme.reduced_motion {
                         Vec2::ZERO
                     } else {
                         g.velocity
@@ -205,7 +205,8 @@ impl Ui {
                         if along(projected).abs() >= dist || along(v).abs() >= vel {
                             dismissed = true;
                             let sign = if along(projected) < 0.0 { -1.0 } else { 1.0 };
-                            let far = self.viewport.width.max(self.viewport.height) + axis_size;
+                            let far =
+                                self.env.viewport.width.max(self.env.viewport.height) + axis_size;
                             to = match g.lock {
                                 2 => Vec2::new(at.x, sign * far),
                                 1 => Vec2::new(sign * far, at.y),
@@ -270,7 +271,7 @@ impl Ui {
                     let t = spec
                         .spring
                         .unwrap_or(Transition::Token(super::MotionToken::Ui));
-                    let t = if self.theme.reduced_motion {
+                    let t = if self.env.theme.reduced_motion {
                         Transition::Instant
                     } else {
                         t

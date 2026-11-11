@@ -29,7 +29,7 @@ impl Ui {
         value: &mut String,
         desc: &FieldDesc,
     ) -> Response {
-        let t = self.theme;
+        let t = self.env.theme;
         let sizes = self.sizes();
         // A bare field sits in a component's own frame, beside its icon; a
         // tight one has no inset at all.
@@ -59,7 +59,7 @@ impl Ui {
         // the same square, kept while it is empty so its text never moves.
         let search = desc.input_type == crate::InputType::Search;
         let number = desc.input_type == crate::InputType::Number;
-        let spinner = if self.viewport.breakpoint().is_phone() {
+        let spinner = if self.env.viewport.breakpoint().is_phone() {
             44.0
         } else {
             24.0_f32.max(self.touch_min())
@@ -72,7 +72,7 @@ impl Ui {
             0.0
         };
         let mut padding = Insets::xy(pad, 0.0);
-        if self.direction == og_i18n::Direction::Rtl {
+        if self.env.direction == og_i18n::Direction::Rtl {
             padding.left += reveal_w;
         } else {
             padding.right += reveal_w;
@@ -159,7 +159,7 @@ impl Ui {
             shown
         };
         let mask = (secret && !revealed).then(|| {
-            crate::edit::mask_char(&self.fonts.for_text(FontRole::Body, "\u{2022}").metrics)
+            crate::edit::mask_char(&self.env.fonts.for_text(FontRole::Body, "\u{2022}").metrics)
         });
         let shown = match mask {
             Some(m) => shown.chars().map(|_| m).collect(),
@@ -284,14 +284,14 @@ impl Ui {
                     (height - 2.0 * inset).max(1.0),
                 ),
                 radius: 0.0,
-                color: self.theme.palette.ink_muted,
+                color: self.env.theme.palette.ink_muted,
             });
             for side in [-1.0, 1.0] {
                 self.nodes[i].shapes.push(Shape::Bar {
                     part,
                     frame: crate::layout::Frame::centered(side * 2.5, 0.0, 7.0, 2.0),
                     angle: side * sign as f32 * std::f32::consts::FRAC_PI_4,
-                    color: self.theme.palette.ink,
+                    color: self.env.theme.palette.ink,
                 });
             }
             self.nodes[i].a11y.name = Some(if sign > 0.0 { "Increase" } else { "Decrease" }.into());
@@ -408,7 +408,7 @@ impl Ui {
                 width: Size::Fixed(w),
                 height: Size::Fixed(h),
                 interactive: true,
-                radius: self.theme.radius.control,
+                radius: self.env.theme.radius.control,
                 ..Element::default()
             },
         );
@@ -433,7 +433,7 @@ impl Ui {
                 ..Anim::default()
             },
         );
-        let p = self.theme.palette;
+        let p = self.env.theme.palette;
         let part = crate::dress::PartRef {
             part: "reveal",
             ..base
@@ -510,7 +510,7 @@ impl Ui {
                 width: Size::Fixed(w),
                 height: Size::Fixed(h),
                 interactive: true,
-                radius: self.theme.radius.control,
+                radius: self.env.theme.radius.control,
                 ..Element::default()
             },
         );
@@ -522,7 +522,7 @@ impl Ui {
             ..Default::default()
         };
         let r = self.respond(self.nodes[j].key);
-        let p = self.theme.palette;
+        let p = self.env.theme.palette;
         let part = crate::dress::PartRef {
             part: "clear",
             ..base
@@ -698,7 +698,7 @@ impl Ui {
         // A radius written on the host rounds its frame, as it rounded
         // the dressing painted on it.
         let written = host.decor.as_ref().and_then(|d| d.radius);
-        let rtl = self.direction == og_i18n::Direction::Rtl;
+        let rtl = self.env.direction == og_i18n::Direction::Rtl;
         let declared = [
             "padding",
             "paddingTop",
@@ -768,7 +768,7 @@ impl Ui {
             n.el.part = None;
             return;
         };
-        let p = self.theme.palette;
+        let p = self.env.theme.palette;
         let key = self.nodes[i].key;
         let f = self.spring_to(child_key(key, "focus"), if focused { 1.0 } else { 0.0 });
         let ground = mix_srgba(p.control, p.panel, f.clamp(0.0, 1.0));
@@ -801,7 +801,7 @@ impl Ui {
         value: &mut String,
         desc: &TextAreaDesc,
     ) -> Response {
-        let t = self.theme;
+        let t = self.env.theme;
         let base = self.field_component(desc.component.as_deref().unwrap_or("textarea"));
         let ink = self.field_ink(base, false, desc.invalid, false);
         let step = ink.step;
@@ -957,7 +957,7 @@ impl Ui {
         invalid: bool,
         disabled: bool,
     ) -> FieldInk {
-        let t = &self.theme;
+        let t = &self.env.theme;
         let of = |part: &'static str| {
             let mut p = base
                 .flag_if(focused, "focused")
@@ -1042,9 +1042,9 @@ impl Ui {
 
 impl Ui {
     pub(crate) fn edit_marks(&self, i: usize, mk: &EditMarks<'_>, cmds: &mut Vec<DrawCmd>) {
-        let p = &self.theme.palette;
-        let dpr = self.viewport.dpr();
-        let boxes = crate::edit::boxes(mk.m, mk.text, self.direction, mk.size, mk.tracking);
+        let p = &self.env.theme.palette;
+        let dpr = self.env.viewport.dpr();
+        let boxes = crate::edit::boxes(mk.m, mk.text, self.env.direction, mk.size, mk.tracking);
         let n = mk.text.chars().count();
         let key = self.nodes[self.text_owner(i)].key;
         let mark = |name, rect: Rect, color: Srgba, cmds: &mut Vec<DrawCmd>| {
@@ -1083,7 +1083,7 @@ impl Ui {
                 }
             };
         let e = mk.edit;
-        let ch = mk.size + self.theme.space.xxs * 2.0;
+        let ch = mk.size + self.env.theme.space.xxs * 2.0;
         let cy = mk.top + (mk.line_h - ch) / 2.0;
         if mk.under {
             let selection = self
@@ -1131,13 +1131,13 @@ impl Ui {
         else {
             return;
         };
-        let t = &self.theme;
+        let t = &self.env.theme;
         let (shown, color, step) = if text.is_empty() {
             (placeholder.as_str(), ink.placeholder, ink.placeholder_step)
         } else {
             (text.as_str(), ink.ink, ink.step)
         };
-        let font = self.fonts.for_text(FontRole::Body, shown);
+        let font = self.env.fonts.for_text(FontRole::Body, shown);
         if font.handle.is_none() {
             return;
         }
@@ -1154,7 +1154,7 @@ impl Ui {
             rect.height - pad.vertical() * sk,
         );
         let clip = clip.intersect(&rect);
-        let dpr = self.viewport.dpr();
+        let dpr = self.env.viewport.dpr();
         let snap = |v: f32| crate::layout::snap(v, dpr);
         let chars: Vec<char> = shown.chars().collect();
         let lines = crate::edit::wrap(&chars, m, size, tracking, inner.width.max(1.0));
@@ -1162,7 +1162,7 @@ impl Ui {
             .iter()
             .rposition(|l| l.0 <= edit.caret && edit.caret <= l.1)
             .unwrap_or(0);
-        let rtl = self.direction == og_i18n::Direction::Rtl;
+        let rtl = self.env.direction == og_i18n::Direction::Rtl;
         let alpha = n.alpha;
         for (li, &(a, b)) in lines.iter().enumerate() {
             let top = inner.y + li as f32 * lh - edit.scroll * sk;
@@ -1197,7 +1197,7 @@ impl Ui {
             };
             marks(true, cmds);
             let baseline = m.baseline(&line, top, lh, size);
-            let pieces = crate::text::pieces(font, &line, self.direction, tracking);
+            let pieces = crate::text::pieces(font, &line, self.env.direction, tracking);
             let one = pieces.len() == 1;
             for pc in pieces {
                 let Some(handle) = pc.font.filter(|_| !pc.text.is_empty()) else {

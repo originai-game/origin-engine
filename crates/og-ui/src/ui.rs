@@ -4,6 +4,8 @@
 pub(crate) mod bounded;
 mod build;
 pub(crate) mod commands;
+pub(crate) mod stages;
+pub(crate) use stages::*;
 mod configure;
 mod controls;
 mod css_tokens;
@@ -441,15 +443,6 @@ pub(crate) struct NavFrame {
 /// The immediate-mode UI. Call [`Ui::begin`], build, [`Ui::end`] once per tick.
 #[derive(Clone, Debug)]
 pub struct Ui {
-    /// The theme as configured ([`Ui::set_theme`]); `theme` is it with the
-    /// viewport's preferences applied.
-    pub(crate) configured: Theme,
-    pub(crate) theme: Theme,
-    pub(crate) fonts: Fonts,
-    pub(crate) ticks_per_second: u32,
-    pub(crate) viewport: Viewport,
-    /// The og-ui unit of the frame being built, CSS px (`begin`).
-    pub(crate) unit: f32,
     pub(crate) input: InputFrame,
     #[cfg(not(target_arch = "wasm32"))]
     pub(crate) native_input: crate::native_a11y::Input,
@@ -516,32 +509,18 @@ pub struct Ui {
     pub(crate) hud_editor_key: u64,
     /// The control a widget asked to focus this frame.
     pub(crate) request_focus: u64,
-    /// The host opens a file picker for `<input type="file">`
-    /// ([`Ui::set_file_picker`]).
-    pub(crate) file_picker: bool,
     /// The content buttons open now and their ink (the innermost last).
     pub(crate) button_ink: Vec<(usize, Srgba)>,
     /// Open focus scopes this frame, in build order.
     pub(crate) scopes: Vec<usize>,
-    pub(crate) icons: IconAtlas,
-    /// The style's icon names, which its colour tokens' icon cues index
-    /// (`Ui::set_cue_icons`); empty: the atlas's own names.
-    pub(crate) cue_icons: Vec<String>,
     /// Text a control keeps between ticks while it is open (a dropdown's
     /// filter), by key: names of the frame's UI, dropped when it closes.
     pub(crate) kept_texts: crate::id::KeyMap<String>,
-    /// Pictures rich text draws by name (`[img=…]`).
-    pub(crate) images: std::collections::BTreeMap<String, InlineImage>,
-    pub(crate) toast_anchor: Anchor,
-    /// The widest the HUD band is, over its height ([`Ui::hud_area`]).
-    pub(crate) hud_max_aspect: f32,
     /// UI events the style gives a sound or a haptic, not yet taken by the
     /// host ([`Ui::take_feedback`]), each with where it is in a rising
     /// cascade (0–1; NaN: a random pitch in the event's range).
     pub(crate) feedback: Vec<(crate::tokens::SoundEvent, f32, crate::tokens::Feedback)>,
     pub(crate) css_sounds: std::collections::BTreeMap<String, u64>,
-    /// The player's haptic strength (0: off, 1: as the style sets it).
-    pub(crate) haptics: f32,
     /// The haptic patterns played since the host last took them
     /// ([`Ui::take_haptics`]).
     pub(crate) haptic_out: Vec<crate::tokens::Haptic>,
@@ -574,18 +553,11 @@ pub struct Ui {
     pub(crate) text_target: Option<TextTarget>,
     /// This frame's screen-transition cover.
     pub(crate) cover: Option<crate::juice::Cover>,
-    /// The configured style's name (empty: the default style).
-    pub(crate) style_name: String,
     /// Two touches move a scroller or zoom view this tick: the primary
     /// pointer presses nothing.
     pub(crate) gesture: bool,
     /// The element a resize drag moved this tick (written again).
     pub(crate) resize_moved: Option<u64>,
-    /// The writing direction: right to left mirrors the layout and turns
-    /// text alignment round (og.i18n's locale, or og.ui.configure).
-    pub(crate) direction: og_i18n::Direction,
-    /// Active BCP-47 locale, for display text casing.
-    pub(crate) locale: String,
     /// CSS `accent-color` of the document control being built: its
     /// primary ink (`widgets::controls`' roles).
     pub(crate) accent: Option<crate::Srgba>,
@@ -629,6 +601,8 @@ pub struct Ui {
     /// World-space UI (`crate::world`): anchors, panels, mass elements,
     /// particles, meta layers.
     pub(crate) world: crate::world::WorldUi,
+    /// Configuration: the theme, fonts, viewport and locale every stage reads.
+    pub(crate) env: Env,
 }
 
 /// One UI event's feedback as the host plays it ([`Ui::take_feedback`]).

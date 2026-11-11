@@ -134,7 +134,7 @@ impl Ui {
         }
         boundaries.sort_unstable();
         boundaries.dedup();
-        let t = self.theme;
+        let t = self.env.theme;
         let mut runs = Vec::new();
         for pair in boundaries.windows(2) {
             let (start, end) = (pair[0], pair[1]);
@@ -184,7 +184,7 @@ impl Ui {
                 if let Some(atom) = &style.atom {
                     s.text.clear();
                     s.atom = match atom {
-                        InlineAtom::Image(name) => match self.images.get(name) {
+                        InlineAtom::Image(name) => match self.env.images.get(name) {
                             Some(im) => Some(crate::rich::Atom::Image(*im)),
                             None => {
                                 self.warnings.push(format!(
@@ -193,7 +193,7 @@ impl Ui {
                                 None
                             }
                         },
-                        InlineAtom::Icon(name) => match self.icons.find(name) {
+                        InlineAtom::Icon(name) => match self.env.icons.find(name) {
                             Some(k) => Some(crate::rich::Atom::Icon(k)),
                             None => {
                                 self.warnings.push(format!(
@@ -203,7 +203,7 @@ impl Ui {
                             }
                         },
                         InlineAtom::Action(name) => match self.glyph(name) {
-                            Some(g) => match self.icons.find(&g.icon) {
+                            Some(g) => match self.env.icons.find(&g.icon) {
                                 Some(k) => Some(crate::rich::Atom::Icon(k)),
                                 None => Some(crate::rich::Atom::Cap(g.text)),
                             },
@@ -256,7 +256,11 @@ impl Ui {
                 }
             }
             s.bold = s.weight >= 700;
-            s.synth = self.fonts.for_styled(s.font, s.weight, s.italic, &s.text).1;
+            s.synth = self
+                .env
+                .fonts
+                .for_styled(s.font, s.weight, s.italic, &s.text)
+                .1;
             s.synth.bold &= s.bold;
             runs.push(s);
         }

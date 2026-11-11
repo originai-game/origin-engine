@@ -158,7 +158,7 @@ impl Ui {
     /// over `duration_ms`) each time `value` changes, and pops when it lands
     /// if the style says so. Returns the number shown this tick.
     pub fn counter(&mut self, id: impl Into<Id>, value: f64, desc: &CounterDesc) -> f64 {
-        let t = self.theme;
+        let t = self.env.theme;
         let value = if value.is_finite() { value } else { 0.0 };
         let i = self.leaf(
             "label",
@@ -180,7 +180,7 @@ impl Ui {
             900.0
         };
         let secs = f64::from(ms) / 1000.0;
-        let tps = f64::from(self.ticks_per_second);
+        let tps = f64::from(self.env.ticks_per_second);
         let at = |from: &Anim, to: &Anim| -> f64 {
             let (a, b) = (f64::from_bits(from.h), f64::from_bits(to.h));
             let k = ((now - from.t) as f64 / tps / secs).clamp(0.0, 1.0);
@@ -264,7 +264,7 @@ impl Ui {
             );
             return;
         }
-        let t = self.theme;
+        let t = self.env.theme;
         let amount = if desc.amount > 0.0 {
             desc.amount
         } else if t.art.motion.shake > 0.0 {
@@ -301,7 +301,7 @@ impl Ui {
             return;
         }
         let now = self.state.tick;
-        let still = self.theme.reduced_motion;
+        let still = self.env.theme.reduced_motion;
         for &i in order {
             let key = child_key(self.nodes[i].key, "shake");
             let Some(&a) = self.state.anims.get(&key).filter(|a| a.h == SHAKE) else {
@@ -337,7 +337,7 @@ impl Ui {
         if amount <= 0.0 {
             return;
         }
-        let t = self.theme;
+        let t = self.env.theme;
         self.cover = Some(Cover {
             kind: if t.reduced_motion {
                 ScreenWipe::Fade
@@ -354,7 +354,7 @@ impl Ui {
 
     /// The cover's draw commands over the whole surface.
     pub(crate) fn cover_commands(&self, c: &Cover, cmds: &mut Vec<DrawCmd>) {
-        let vp = self.viewport;
+        let vp = self.env.viewport;
         let (w, h) = (vp.width, vp.height);
         let screen = Rect::new(0.0, 0.0, w, h);
         let piece = |r: Rect, alpha: f32, cmds: &mut Vec<DrawCmd>| {

@@ -429,7 +429,7 @@ impl Ui {
 
     /// The value bubble over a knob.
     fn bubble(&mut self, f: f32, label: &str, g: Geo) {
-        let t = self.theme;
+        let t = self.env.theme;
         let h = self.by_text(26.0);
         let ink = self.role("ink");
         self.open_part(
@@ -503,7 +503,7 @@ impl Ui {
     ) -> ValueSliderResult {
         let id = id.into();
         let key = id.as_str().to_owned();
-        let t = self.theme;
+        let t = self.env.theme;
         let (min, max, step) = (desc.min, desc.max, desc.step);
         let span = if max - min == 0.0 { 1.0 } else { max - min };
         let disabled = desc.disabled;
@@ -714,7 +714,7 @@ impl Ui {
     ) -> RangeSliderResult {
         let id = id.into();
         let key = id.as_str().to_owned();
-        let t = self.theme;
+        let t = self.env.theme;
         let (min, max, step) = (desc.min.min(desc.max), desc.min.max(desc.max), desc.step);
         let span = if max - min == 0.0 { 1.0 } else { max - min };
         let disabled = desc.disabled;
@@ -916,7 +916,7 @@ impl Ui {
     /// Labelled points under a track.
     fn slider_marks(&mut self, list: &[SliderMark], min: f32, span: f32, g: Geo) {
         let h = self.by_text(18.0);
-        let t = self.theme;
+        let t = self.env.theme;
         self.open(
             "Marks",
             Element {
@@ -982,7 +982,7 @@ impl Ui {
     ) -> NumberResult {
         let id = id.into();
         let key = id.as_str().to_owned();
-        let t = self.theme;
+        let t = self.env.theme;
         let (min, max) = (desc.min, desc.max);
         let step = if desc.step > 0.0 { desc.step } else { 1.0 };
         let large = if desc.large_step > 0.0 {

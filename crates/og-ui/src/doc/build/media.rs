@@ -100,7 +100,7 @@ impl Ui {
             self.docs.media_ops.push(op);
         }
         self.media_write_backs(b, n, r, &state, paused, pending > 0);
-        let t = self.theme;
+        let t = self.env.theme;
         self.open(
             id,
             Element {

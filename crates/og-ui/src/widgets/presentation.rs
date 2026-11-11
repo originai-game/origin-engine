@@ -4,7 +4,7 @@ use crate::ui::IconCell;
 impl Ui {
     /// A chip with a selectable `base` part.
     pub fn chip(&mut self, id: impl Into<Id>, text: &str, desc: ChipDesc) -> Response {
-        let t = self.theme;
+        let t = self.env.theme;
         let p = t.palette;
         let h = self.sizes().control_sm;
         let i = self.leaf(
@@ -13,7 +13,11 @@ impl Ui {
             Element {
                 // A short label ("All") still makes a target a finger hits.
                 width: Size::Fit {
-                    min: if self.viewport.coarse_pointer { h } else { 0.0 },
+                    min: if self.env.viewport.coarse_pointer {
+                        h
+                    } else {
+                        0.0
+                    },
                     max: f32::INFINITY,
                 },
                 height: Size::Fixed(h),
@@ -80,7 +84,7 @@ impl Ui {
     /// white or black would not, the fill moves away from the ink instead
     /// (scifi's mid-blue fill darkens under its pale ink).
     pub fn badge(&mut self, id: impl Into<Id>, text: &str, tone: Tone) {
-        let t = self.theme;
+        let t = self.env.theme;
         let p = t.palette;
         let (bg, fg) = match tone {
             Tone::Neutral => (p.control, p.ink_muted),
@@ -147,8 +151,8 @@ impl Ui {
 
     /// A hairline (`line`) across its parent; `vertical` stands it up.
     pub fn divider(&mut self, id: impl Into<Id>, vertical: bool) {
-        let c = self.theme.palette.line;
-        let px = 1.0 / self.viewport.dpr().max(1.0);
+        let c = self.env.theme.palette.line;
+        let px = 1.0 / self.env.viewport.dpr().max(1.0);
         let px = px.max(0.5);
         self.leaf(
             "divider",
@@ -187,7 +191,7 @@ impl Ui {
 
     /// A key and its value on one row (`inkMuted` key, `ink` value at the end).
     pub fn key_value(&mut self, id: impl Into<Id>, key: &str, value: &str, mono: bool) {
-        let t = self.theme;
+        let t = self.env.theme;
         let h = self.sizes().row;
         self.open(
             id,
@@ -229,7 +233,7 @@ impl Ui {
     /// A skeleton: the neutral fill standing in for content, with a sheen
     /// that passes every 1.6 s (still under reduced motion).
     pub fn skeleton(&mut self, id: impl Into<Id>, desc: SkeletonDesc) {
-        let t = self.theme;
+        let t = self.env.theme;
         let lines = desc.lines.max(1);
         let frame = crate::dress::PartRef::of("Skeleton", "frame", None);
         let sheen = crate::dress::PartRef::of("Skeleton", "sheen", None);
@@ -287,7 +291,7 @@ impl Ui {
 
     /// A loading spinner: eight dots around a circle, the bright one turning.
     pub fn spinner(&mut self, id: impl Into<Id>, size: f32) {
-        let t = self.theme;
+        let t = self.env.theme;
         let base = crate::dress::PartRef::of("Spinner", "base", None);
         let dot_part = crate::dress::PartRef::of("Spinner", "dot", None);
         let s = if size > 0.0 {
@@ -352,7 +356,7 @@ impl Ui {
             (
                 crate::doc::schema::parts::ICON_SECONDARY,
                 name,
-                desc.secondary_tint.unwrap_or(self.theme.palette.accent),
+                desc.secondary_tint.unwrap_or(self.env.theme.palette.accent),
             )
         })) {
             match self.icon_shape(part.reference(None), name, Frame::FULL, tint) {
@@ -380,7 +384,7 @@ impl Ui {
     pub(crate) fn apply_art(&mut self, i: usize, desc: &ArtDesc) {
         use crate::paint::{ColorRef, Effect, ElementDraw, Paint, ShapeKind};
         use crate::slot::{Mask, SlotAspect, Treatment};
-        let t = self.theme;
+        let t = self.env.theme;
         let spec = &desc.spec;
         let aspect = match &spec.aspect {
             SlotAspect::One(a) => a.ratio(),
@@ -501,7 +505,7 @@ impl Ui {
         if desc.texture.is_none() {
             // The kind's silhouette, a third of the shorter side, centred
             // (a little high when the slot's name sits under it).
-            let named = self.style_name.is_empty();
+            let named = self.env.style_name.is_empty();
             let k = 0.36;
             let frame = Frame {
                 fx: 0.5 - k / 2.0,
@@ -556,7 +560,7 @@ impl Ui {
 
     /// Whether the icon atlas has an icon of this name.
     pub fn has_icon(&self, name: &str) -> bool {
-        self.icons.find(name).is_some()
+        self.env.icons.find(name).is_some()
     }
 
     pub(super) fn icon_shape(
@@ -566,7 +570,7 @@ impl Ui {
         frame: Frame,
         color: Srgba,
     ) -> Option<Shape> {
-        Some(match self.icons.find(name)? {
+        Some(match self.env.icons.find(name)? {
             IconCell::Glyph(font, ch) => Shape::Glyph {
                 part,
                 frame,

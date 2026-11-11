@@ -30,7 +30,7 @@ impl Ui {
     /// Applies each element's breakpoint and orientation variants (the
     /// container ones wait for its width, in layout).
     pub(crate) fn apply_variants(&mut self) {
-        let vp = self.viewport;
+        let vp = self.env.viewport;
         let bp = vp.breakpoint();
         let portrait = vp.height >= vp.width;
         for k in 0..self.emitted.len() {
@@ -89,6 +89,7 @@ impl Ui {
             Content::Text(tc) => {
                 let line = n.lines.first()?;
                 let m = &self
+                    .env
                     .fonts
                     .for_styled(tc.font, tc.step.weight, false, &tc.text)
                     .0
@@ -117,6 +118,7 @@ impl Ui {
             Content::Text(tc) => {
                 let line = n.lines.last()?;
                 let m = &self
+                    .env
                     .fonts
                     .for_styled(tc.font, tc.step.weight, false, &tc.text)
                     .0
@@ -323,7 +325,7 @@ impl Ui {
             let mut j = i;
             while j != NONE {
                 let n = &self.nodes[j];
-                let transform = if self.direction == og_i18n::Direction::Rtl {
+                let transform = if self.env.direction == og_i18n::Direction::Rtl {
                     n.props.transform.mirrored()
                 } else {
                     n.props.transform
@@ -534,7 +536,7 @@ impl Ui {
         let inv = &mut self.invalidation;
         let nodes = &self.nodes;
         let n = nodes.len();
-        let sig = (self.theme, self.direction, self.viewport.dpr());
+        let sig = (self.env.theme, self.env.direction, self.env.viewport.dpr());
         let fresh = inv.epoch != inv.prev_epoch || inv.sig != Some(sig);
         inv.prev_epoch = inv.epoch;
         inv.sig = Some(sig);

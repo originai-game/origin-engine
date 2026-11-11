@@ -650,7 +650,7 @@ impl Ui {
             && let Some(frames) = self.docs.keyframes.get(&a.name).cloned()
         {
             lifetime =
-                ((a.duration_ms * self.ticks_per_second as f32 / 1000.0).round() as u32).max(1);
+                ((a.duration_ms * self.env.ticks_per_second as f32 / 1000.0).round() as u32).max(1);
             let track = |prop: crate::element::Prop, t: f32, rest: f32| {
                 let Some(tr) = frames.tracks.iter().find(|tr| tr.prop == prop) else {
                     return rest;
@@ -1073,7 +1073,7 @@ mod tests {
         let hp = ui.mass_handle("hp").expect("the hp template");
         assert_eq!(ui.mass_count(damage), 1);
         let t = &ui.world.templates[damage.0 as usize].1;
-        assert_eq!(t.lifetime, ui.ticks_per_second);
+        assert_eq!(t.lifetime, ui.env.ticks_per_second);
         let last = t.keys.last().expect("keys");
         assert_eq!((last.t, last.offset.y, last.alpha), (1.0, -40.0, 0.0));
         let bars = |ui: &Ui| {

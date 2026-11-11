@@ -12,14 +12,14 @@ impl Ui {
         size: f32,
         grid: u32,
     ) -> Option<(f32, f32, f32, crate::Srgba)> {
-        let sh = self.theme.art.text_shadows[role]?;
+        let sh = self.env.theme.art.text_shadows[role]?;
         if grid > 0 {
             let cell = size / grid as f32;
             let step = |v: f32| cell * v.signum() * f32::from(v != 0.0);
             return Some((step(sh.dx), step(sh.dy), 0.0, sh.color));
         }
         let reach = sh.dx.hypot(sh.dy);
-        let most = (size * 0.06).max(1.0 / self.viewport.dpr());
+        let most = (size * 0.06).max(1.0 / self.env.viewport.dpr());
         let k = if reach > most { most / reach } else { 1.0 };
         Some((sh.dx * k, sh.dy * k, sh.blur * k, sh.color))
     }
@@ -30,7 +30,7 @@ impl Ui {
     /// that scroll widened by the ring's reach. No background-coloured cut
     /// can cover art.
     pub(super) fn focus_ring_commands(&self, i: usize, cmds: &mut Vec<DrawCmd>) {
-        let t = &self.theme;
+        let t = &self.env.theme;
         let n = &self.nodes[i];
         let rect = n.rect;
         let ring = |player: usize, outline: bool| {
@@ -114,7 +114,7 @@ impl Ui {
 
     /// The element's background (its fill or dressed atlas frame).
     fn background_commands(&self, i: usize, cmds: &mut Vec<DrawCmd>) {
-        let t = &self.theme;
+        let t = &self.env.theme;
         let n = &self.nodes[i];
         let rect = n.rect;
         let clip = n.clip;
@@ -141,7 +141,7 @@ impl Ui {
             && let Some(line) = m.rule
         {
             let w = line.width;
-            let rtl = self.direction == og_i18n::Direction::Rtl;
+            let rtl = self.env.direction == og_i18n::Direction::Rtl;
             for &[x, y, h] in &n.col_rules {
                 let x = rect.x + if rtl { rect.width - x } else { x } - w / 2.0;
                 let color = if m.current { t.palette.ink } else { line.color };
@@ -173,12 +173,12 @@ impl Ui {
 
     /// The element's content and selection markers (after its background).
     fn content_commands(&self, i: usize, cmds: &mut Vec<DrawCmd>, snap: &dyn Fn(f32) -> f32) {
-        let t = &self.theme;
+        let t = &self.env.theme;
         let p = &t.palette;
         let n = &self.nodes[i];
         let rect = n.rect;
         let clip = n.clip;
-        let dpr = self.viewport.dpr();
+        let dpr = self.env.viewport.dpr();
         let alpha = n.alpha;
         let part = n.el.part.or_else(|| n.el.frame.map(StylePart::part_ref));
         let ornament_tint = part.and_then(|p| {
@@ -249,6 +249,7 @@ impl Ui {
             }
             Content::Text(tc) => {
                 let font = self
+                    .env
                     .fonts
                     .for_styled(tc.font, tc.step.weight, false, &tc.text)
                     .0;
@@ -361,7 +362,7 @@ impl Ui {
                             (Some(_), Some((a, b))) if a < b => selected_runs(
                                 m,
                                 &line.text,
-                                self.direction,
+                                self.env.direction,
                                 size,
                                 tc.tracking(),
                                 (a, b),
@@ -682,10 +683,10 @@ impl Ui {
 
 impl Ui {
     fn shape_commands(&self, n: &Node, cmds: &mut Vec<DrawCmd>) {
-        let t = &self.theme;
+        let t = &self.env.theme;
         let clip = n.clip;
         let alpha = n.alpha;
-        let dpr = self.viewport.dpr();
+        let dpr = self.env.viewport.dpr();
         for shape in &n.shapes {
             match shape {
                 Shape::Part { frame, part, fill } => {
@@ -802,7 +803,7 @@ impl Ui {
                         ..ElementDraw::default()
                     };
                     cmds.extend(draw.enter(
-                        &self.theme,
+                        &self.env.theme,
                         &Placed {
                             rect,
                             radius: 0.0,
@@ -845,7 +846,7 @@ impl Ui {
                     let alpha = alpha * values.num("opacity").unwrap_or(1.0);
                     let step = &values.part_type(t, *step);
                     let clip = clip.intersect(&within.resolve(&n.rect));
-                    let f = self.fonts.for_text(*font, text);
+                    let f = self.env.fonts.for_text(*font, text);
                     if f.handle.is_none() {
                         continue;
                     }
@@ -862,7 +863,7 @@ impl Ui {
                     let baseline = m.baseline(text, ly, lh, size);
                     let snap = |v: f32| crate::layout::snap(v, dpr);
                     let pieces =
-                        crate::text::pieces_with(f, text, self.direction, tracking, features);
+                        crate::text::pieces_with(f, text, self.env.direction, tracking, features);
                     let one = pieces.len() == 1;
                     for pc in pieces {
                         let Some(handle) = pc.font else { continue };
@@ -959,6 +960,7 @@ impl Ui {
     ) {
         let n = &self.nodes[i];
         let font = self
+            .env
             .fonts
             .for_styled(tc.font, tc.step.weight, false, &tc.text)
             .0;
@@ -983,8 +985,8 @@ impl Ui {
         let walk = crate::text_path::Walk::new(&subs, closed);
         // One line: its breaks are spaces.
         let line: String = tc.text.replace('\n', " ");
-        let t = &self.theme;
-        let dpr = self.viewport.dpr();
+        let t = &self.env.theme;
+        let dpr = self.env.viewport.dpr();
         let role = tc.font.effect_index();
         let weight = t.art.text_weights[role] * sk / dpr + tc.emphasis * size;
         let color = n.sampled.ink.fade(n.alpha).linear();
@@ -1121,7 +1123,7 @@ impl Ui {
             return;
         }
         let chars: Vec<char> = line.chars().collect();
-        let boxes = crate::edit::boxes(m, &line, self.direction, size, tracking);
+        let boxes = crate::edit::boxes(m, &line, self.env.direction, size, tracking);
         let start = start(boxes.iter().map(|b| b.x1).fold(0.0, f32::max));
         for (a, b) in og_i18n::graphemes(&line) {
             let span = boxes.iter().filter(|g| g.index >= a && g.index < b).fold(
@@ -1217,6 +1219,7 @@ impl Ui {
         use crate::text::vertical::runs;
         let n = &self.nodes[i];
         let font = self
+            .env
             .fonts
             .for_styled(tc.font, tc.step.weight, false, &tc.text)
             .0;
@@ -1233,8 +1236,8 @@ impl Ui {
             (rect.width - pad.horizontal() * sk).max(0.0),
             (rect.height - pad.vertical() * sk).max(0.0),
         );
-        let dpr = self.viewport.dpr();
-        let t = &self.theme;
+        let dpr = self.env.viewport.dpr();
+        let t = &self.env.theme;
         let role = tc.font.effect_index();
         let weight = t.art.text_weights[role] * sk / dpr + tc.emphasis * size;
         let color = n.sampled.ink.fade(n.alpha).linear();
@@ -1464,6 +1467,7 @@ impl Ui {
     ) {
         let n = &self.nodes[i];
         let font = self
+            .env
             .fonts
             .for_styled(tc.font, tc.step.weight, false, &tc.text)
             .0;
@@ -1471,7 +1475,7 @@ impl Ui {
             return;
         }
         let m = &font.metrics;
-        let (sk, alpha, dpr) = (n.scale, n.alpha, self.viewport.dpr());
+        let (sk, alpha, dpr) = (n.scale, n.alpha, self.env.viewport.dpr());
         let size = tc.step.size * sk;
         let lh = tc.line_height() * sk;
         let mut drawn = Vec::new();
@@ -1557,7 +1561,7 @@ impl Ui {
             }
             first += count + 1;
             // The player's selection (`user-select`), under the text.
-            let across = size + self.theme.space.xxs * 2.0;
+            let across = size + self.env.theme.space.xxs * 2.0;
             let x0 = glyphs.col + (lh - across) / 2.0;
             let fills: Vec<Rect> = runs
                 .iter()
@@ -1683,13 +1687,13 @@ impl Ui {
             return;
         }
         let n = &self.nodes[i];
-        let (alpha, dpr) = (n.alpha, self.viewport.dpr());
+        let (alpha, dpr) = (n.alpha, self.env.viewport.dpr());
         let fill = self
             .docs
             .selection
             .get(&n.key)
             .and_then(|s| s.background)
-            .unwrap_or(self.theme.palette.control_strong);
+            .unwrap_or(self.env.theme.palette.control_strong);
         let part = crate::dress::PartRef::of("TextEdit", "selection", None);
         let values = self.part_values(&part, Some(n.key));
         for r in rects {

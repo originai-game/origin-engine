@@ -532,7 +532,8 @@ impl Build<'_> {
 impl Ui {
     /// Whether a family is installed, rather than merely declared in CSS.
     pub(crate) fn family_declared(&self, name: &str) -> bool {
-        self.fonts
+        self.env
+            .fonts
             .families
             .iter()
             .any(|f| f.family.eq_ignore_ascii_case(name))
@@ -615,8 +616,8 @@ impl Ui {
         };
         let r = self.part_values(&part, Some(self.nodes[i].key));
         let step = match &self.nodes[i].content {
-            crate::layout::Content::Text(text) => r.part_type(&self.theme, text.step),
-            _ => self.theme.type_ramp.body,
+            crate::layout::Content::Text(text) => r.part_type(&self.env.theme, text.step),
+            _ => self.env.theme.type_ramp.body,
         };
         let ink = r.color("color");
         let em = step.size;
@@ -775,7 +776,7 @@ impl Ui {
                 [s.top, s.right, s.bottom, s.left]
             },
             hud: {
-                let s = vp.hud_insets(self.hud_max_aspect);
+                let s = vp.hud_insets(self.env.hud_max_aspect);
                 [s.top, s.right, s.bottom, s.left]
             },
             containers: super::container::unit_basis(&chain, &self.docs.container_sizes),
@@ -964,7 +965,7 @@ impl Ui {
         r.flow = cascade::flow(
             &mut r.cascade,
             inherited,
-            self.direction == og_i18n::Direction::Rtl,
+            self.env.direction == og_i18n::Direction::Rtl,
             dir.as_deref(),
         );
         r.dir_auto = dir.is_some_and(|d| d.eq_ignore_ascii_case("auto"));
@@ -1233,12 +1234,12 @@ impl Ui {
             )
         );
         if shows_text || !r.cascade.text.is_empty() {
-            let mut ramp = self.theme.type_ramp;
+            let mut ramp = self.env.theme.type_ramp;
             let step = r
                 .str("step")
                 .and_then(|s| crate::style_file::ramp_step(&mut ramp, s).copied())
-                .unwrap_or(self.theme.type_ramp.body);
-            let current = r.color("color").unwrap_or(self.theme.palette.ink);
+                .unwrap_or(self.env.theme.type_ramp.body);
+            let current = r.color("color").unwrap_or(self.env.theme.palette.ink);
             let local = std::mem::take(&mut r.cascade.text);
             let cascade = &mut r.cascade;
             let text = super::text_css::inherit(super::text_css::Inputs {
@@ -1246,7 +1247,7 @@ impl Ui {
                 computed: Arc::make_mut(&mut cascade.computed),
                 reads: &mut cascade.inherited_reads,
                 diagnostics: &mut cascade.diagnostics,
-                theme: &self.theme,
+                theme: &self.env.theme,
                 current,
                 step,
                 declared: &|name| self.family_declared(name),

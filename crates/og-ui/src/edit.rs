@@ -625,7 +625,7 @@ impl Ui {
     /// (and its saved bytes).
     pub(crate) fn edit(&mut self, key: u64, value: &mut String, d: &EditDesc) -> Edited {
         let mut out = Edited::default();
-        let dir = self.direction;
+        let dir = self.env.direction;
         let tick = self.state.tick;
         let mut chars: Vec<char> = value.chars().collect();
         let mut before = chars.clone();
@@ -666,6 +666,7 @@ impl Ui {
         let secret = d.input_type == crate::InputType::Password;
         {
             let m = &self
+                .env
                 .fonts
                 .for_text(d.role, if secret { "\u{2022}" } else { value.as_str() })
                 .metrics;
@@ -792,7 +793,7 @@ impl Ui {
                 if pressed_here {
                     let near = (p - click.at).length() <= CLICK_SLOP;
                     let soon =
-                        tick.saturating_sub(click.tick) <= click_ticks(self.ticks_per_second);
+                        tick.saturating_sub(click.tick) <= click_ticks(self.env.ticks_per_second);
                     click.count = if click.count > 0 && !click.moved && near && soon {
                         (click.count + 1).min(3)
                     } else {
@@ -885,7 +886,7 @@ impl Ui {
             }
             let shift = self.input.shift;
             let (ctrl, meta, alt) = (self.input.ctrl, self.input.meta, self.input.alt);
-            let mac = self.viewport.mac_keys;
+            let mac = self.env.viewport.mac_keys;
             // The shortcut key (A, C, X, Z, Y): Command under mac keys;
             // elsewhere Control, and Command too (the OS's own there).
             let shortcut = if mac { meta } else { ctrl || meta };
@@ -1336,11 +1337,12 @@ impl Ui {
     /// the 530 ms half period, shown after an edit or
     /// move and then hidden as long, by the tick.
     pub(crate) fn caret_shown(&self) -> bool {
-        if self.theme.reduced_motion {
+        if self.env.theme.reduced_motion {
             return true;
         }
         let ms = 530.0;
-        let half = ((self.ticks_per_second.max(1) as f32 * (ms / 1000.0)).round() as u64).max(1);
+        let half =
+            ((self.env.ticks_per_second.max(1) as f32 * (ms / 1000.0)).round() as u64).max(1);
         (self.state.tick.saturating_sub(self.state.edit_tick) / half).is_multiple_of(2)
     }
 }

@@ -333,7 +333,7 @@ impl Ui {
             return;
         };
         let tick = self.state.tick;
-        let dt = 1.0 / self.ticks_per_second.max(1) as f32;
+        let dt = 1.0 / self.env.ticks_per_second.max(1) as f32;
         let player = match self.state.rive.remove(&key) {
             Some(crate::ui::RiveSlot {
                 board: b,

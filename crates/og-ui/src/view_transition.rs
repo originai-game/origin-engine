@@ -598,7 +598,9 @@ impl Ui {
             return;
         }
         self.state.view_transition = None;
-        if self.theme.reduced_motion && self.theme.motion.reduced != crate::motion::Reduced::Keep {
+        if self.env.theme.reduced_motion
+            && self.env.theme.motion.reduced != crate::motion::Reduced::Keep
+        {
             return;
         }
         let (last, named) = (&self.paint_cache.last_cmds, &self.paint_cache.named);
@@ -651,7 +653,7 @@ impl Ui {
             .get(&run.screen)
             .and_then(|d| d.layer.transition.clone())?;
         let t = self.state.tick.saturating_sub(run.since) as f32 * 1000.0
-            / self.ticks_per_second.max(1) as f32;
+            / self.env.ticks_per_second.max(1) as f32;
         // The new view: this frame's shared elements but a leaving layer's.
         let leaving: Vec<String> = self
             .docs

@@ -58,7 +58,7 @@ impl Ui {
         let shown = if self.still() {
             total
         } else {
-            let elapsed = now.saturating_sub(a.t) as f32 / self.ticks_per_second.max(1) as f32;
+            let elapsed = now.saturating_sub(a.t) as f32 / self.env.ticks_per_second.max(1) as f32;
             ((elapsed * cps) as usize).min(total)
         };
         if shown == total && a.a < 1.0 {
@@ -114,7 +114,7 @@ impl Ui {
                 .unwrap_or_else(|| items.get(k).cloned().unwrap_or_default())
         };
         let text = label(now);
-        let t = self.theme;
+        let t = self.env.theme;
         self.open(
             id,
             Element {
@@ -194,7 +194,7 @@ impl Ui {
             hole,
             crate::widgets::SpotlightDesc::default(),
         );
-        let t = self.theme;
+        let t = self.env.theme;
         let content = Self::box_of(
             r,
             Element {

@@ -738,7 +738,7 @@ impl Ui {
             }
             // CSS `resize`: its handle, a hit of its own over it.
             if n.el.resize != 0 && !n.inert && !pass && !transformed {
-                let rtl = self.direction == og_i18n::Direction::Rtl;
+                let rtl = self.env.direction == og_i18n::Direction::Rtl;
                 let g = super::resize::grip_rect(n, rtl).intersect(&n.clip);
                 if !g.is_empty() {
                     hits.push(Hit {

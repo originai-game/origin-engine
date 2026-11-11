@@ -316,7 +316,7 @@ impl Ui {
                 DateType::Time => 0,
             });
         let disabled = r.flag("disabled") || r.flag("readonly");
-        let t = self.theme;
+        let t = self.env.theme;
         self.open(
             id,
             Element {

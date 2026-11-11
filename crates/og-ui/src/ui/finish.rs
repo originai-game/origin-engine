@@ -66,28 +66,28 @@ impl Ui {
     pub(crate) fn prepare_layout_node(&mut self, i: usize) {
         let node = &mut self.nodes[i];
         if let Content::Text(text) = &mut node.content
-            && self.theme.art.display_min > 0.0
+            && self.env.theme.art.display_min > 0.0
             && text.font == crate::FontRole::Display
-            && text.step.size < self.theme.art.display_min
+            && text.step.size < self.env.theme.art.display_min
         {
             text.font = crate::FontRole::Body;
         }
         if !matches!(node.widget, Widget::Field(_) | Widget::TextArea { .. }) {
             match &mut node.content {
                 Content::Text(text) if text.step.uppercase => {
-                    text.text = og_i18n::text::uppercase(&text.text, &self.locale);
+                    text.text = og_i18n::text::uppercase(&text.text, &self.env.locale);
                 }
                 Content::Rich(rich) => {
                     for span in &mut rich.spans {
                         if span.step.uppercase && span.atom.is_none() {
-                            span.text = og_i18n::text::uppercase(&span.text, &self.locale);
+                            span.text = og_i18n::text::uppercase(&span.text, &self.env.locale);
                         }
                     }
                 }
                 _ => {}
             }
         }
-        crate::layout::snap_pixel_text(&mut self.nodes[i..i + 1], &self.fonts);
+        crate::layout::snap_pixel_text(&mut self.nodes[i..i + 1], &self.env.fonts);
     }
 
     /// A vertical scroller's bar gutter on its right padding, as its last
@@ -113,8 +113,8 @@ impl Ui {
     /// The minimum touch target in og-ui units (44 CSS px) on a touch
     /// screen, zero with a fine pointer.
     pub(crate) fn touch_min(&self) -> f32 {
-        if self.viewport.coarse_pointer {
-            TOUCH_TARGET / self.unit.max(0.01)
+        if self.env.viewport.coarse_pointer {
+            TOUCH_TARGET / self.env.unit.max(0.01)
         } else {
             0.0
         }
@@ -164,7 +164,7 @@ impl Ui {
     /// out, from the next frame. One laying its contents out remembers its
     /// content box for `contain-intrinsic-size: auto`.
     fn note_relevance(&mut self) {
-        let vp = self.viewport;
+        let vp = self.env.viewport;
         let screen = Rect::new(0.0, 0.0, vp.width, vp.height);
         let focus = self.tree.find(self.state.focus);
         for k in 0..self.orders.with(visit::feat::SKIPS).len() {
@@ -287,7 +287,8 @@ impl Ui {
         // props: derived again where those were written or a child left.
         let whole = self.invalidation.whole
             || self.invalidation.epoch != self.invalidation.prev_epoch
-            || self.invalidation.sig != Some((self.theme, self.direction, self.viewport.dpr()));
+            || self.invalidation.sig
+                != Some((self.env.theme, self.env.direction, self.env.viewport.dpr()));
         let derive: Vec<usize> = if whole {
             (0..self.nodes.len()).collect()
         } else {
@@ -438,10 +439,10 @@ impl Ui {
         self.sync_tree(&derive, &written, whole);
         self.emitted = written;
 
-        let vp = self.viewport;
+        let vp = self.env.viewport;
         let dpr = vp.dpr();
         let screen = Rect::new(0.0, 0.0, vp.width, vp.height);
-        let rtl = self.direction == og_i18n::Direction::Rtl;
+        let rtl = self.env.direction == og_i18n::Direction::Rtl;
         self.kept.query_roots = None;
         let mut settlement = settlement::Settlement::default();
         let part_geometry = self.nodes.iter().any(|node| node.part_geometry.is_some());
@@ -457,9 +458,9 @@ impl Ui {
                 )
             };
             let mut measure = Measure {
-                fonts: &self.fonts,
+                fonts: &self.env.fonts,
                 texts: &mut self.texts,
-                body: self.theme.type_ramp.body,
+                body: self.env.theme.type_ramp.body,
             };
             layout(
                 &mut self.nodes,
@@ -480,18 +481,18 @@ impl Ui {
             // The HUD band: the safe area at most `hud_max_aspect` wide,
             // centred (an ultrawide's corners stay near the play), where the
             // anchored groups and the toasts lay out.
-            let hud = vp.hud_rect(self.hud_max_aspect);
+            let hud = vp.hud_rect(self.env.hud_max_aspect);
             // The host's control, where the layout stands before a right-to-left
             // mirror (which moves a top-left group to the top right).
             let covered = {
                 let c = vp.covered;
-                if self.direction == og_i18n::Direction::Rtl {
+                if self.env.direction == og_i18n::Direction::Rtl {
                     Rect::new(vp.width - c.x - c.width, c.y, c.width, c.height)
                 } else {
                     c
                 }
             };
-            let gap = self.theme.space.xs;
+            let gap = self.env.theme.space.xs;
             // The anchored groups first, each laid out in its area and placed
             // once all of them are known (so one the host's control moves keeps
             // off the others), then the other layers in their order (a popover
@@ -920,7 +921,7 @@ impl Ui {
         for &i in sampled {
             self.nodes[i].sample_style();
         }
-        if self.direction == og_i18n::Direction::Rtl {
+        if self.env.direction == og_i18n::Direction::Rtl {
             // Right to left: the whole layout mirrored about the surface's
             // centre, and with it each transform (moves and turns the other way).
             // A node layout left out is mirrored as it was last frame.
@@ -1002,7 +1003,7 @@ impl Ui {
         }
         // Each scroll container's ranges and bar lengths, as drawn.
         self.kept.scrollers = self.orders.drawn(visit::feat::SCROLLS);
-        let min_bar = self.theme.space.xl;
+        let min_bar = self.env.theme.space.xl;
         self.state.scroll_info = IdMap::from_iter(self.kept.scrollers.iter().map(|&i| {
             let n = &self.nodes[i];
             let range = Vec2::new(n.max_scroll_x(), n.max_scroll());
@@ -1254,7 +1255,7 @@ impl Ui {
                     self.draws.get(&i).or_else(|| self.part_draws.get(&i)),
                     crate::doc::paint_css::LayerFrame {
                         size: [r.width, r.height],
-                        viewport: [self.viewport.width, self.viewport.height],
+                        viewport: [self.env.viewport.width, self.env.viewport.height],
                         scroll,
                         ..Default::default()
                     },
@@ -1314,7 +1315,7 @@ impl Ui {
         let kept_items = view.is_none()
             && self.paint_cache.reused_all
             && tail == self.paint_cache.last_tail
-            && self.frame.unit == self.unit;
+            && self.frame.unit == self.env.unit;
         let (items, missing_glyphs) = if kept_items {
             (std::mem::take(&mut self.frame.items), Vec::new())
         } else if let Some(relevelled) = view
@@ -1350,7 +1351,10 @@ impl Ui {
             // Levels of a list with elements left out are no base for the
             // next frame's.
             self.paint_cache.levels = view.is_none().then_some(levels);
-            (crate::draw::zoom_items(items, self.unit), missing_glyphs)
+            (
+                crate::draw::zoom_items(items, self.env.unit),
+                missing_glyphs,
+            )
         };
         self.paint_cache.prev_cmds = Vec::new();
         self.paint_cache.last_cmds = trees;
@@ -1393,7 +1397,7 @@ impl Ui {
                 laid_out: self.kept.laid_out,
                 ..self.stats
             },
-            unit: self.unit,
+            unit: self.env.unit,
             cursor,
             cursor_images,
         };
@@ -1418,7 +1422,7 @@ impl Ui {
         if self.paint_cache.levels.is_none()
             || self.paint_cache.aligned.len() != self.paint_cache.aligned_kept
             || self.paint_cache.shifted_out
-            || self.frame.unit != self.unit
+            || self.frame.unit != self.env.unit
             || trees.len() != self.paint_cache.prev_len
             || tail.len() != self.paint_cache.last_tail.len()
         {
@@ -1468,7 +1472,7 @@ impl Ui {
             .map(|(p, (c, m))| (p, c, m))
             .collect();
         let levels = self.paint_cache.levels.as_mut().expect("checked");
-        if !levels.update(&mut items, replaced, self.unit) {
+        if !levels.update(&mut items, replaced, self.env.unit) {
             self.frame.items = items;
             return None;
         }
@@ -1477,7 +1481,7 @@ impl Ui {
             let mut cmds: Vec<(DrawCmd, Affine)> = trees.to_vec();
             cmds.extend(tail.iter().cloned());
             let cmds: Vec<_> = cmds.into_iter().map(|(c, m)| bake(c, m)).collect();
-            let fresh = crate::draw::zoom_items(crate::draw::assign_levels(cmds), self.unit);
+            let fresh = crate::draw::zoom_items(crate::draw::assign_levels(cmds), self.env.unit);
             assert!(
                 fresh == items,
                 "the frame's items levelled again differ from levelling it afresh"
@@ -1496,7 +1500,7 @@ impl Ui {
         trees: &[(DrawCmd, Affine)],
         tail: &[(DrawCmd, Affine)],
     ) -> Option<(Vec<DrawItem>, MissingGlyphs)> {
-        if self.paint_cache.copied.is_empty() || self.frame.unit != self.unit {
+        if self.paint_cache.copied.is_empty() || self.frame.unit != self.env.unit {
             return None;
         }
         let levels = self.paint_cache.levels.as_mut()?;
@@ -1550,7 +1554,7 @@ impl Ui {
             });
         }
         let old = std::mem::take(&mut self.frame.items);
-        let items = levels.splice(old, next, self.unit);
+        let items = levels.splice(old, next, self.env.unit);
         if items.is_none() {
             self.paint_cache.levels = None;
         }
@@ -1562,7 +1566,7 @@ impl Ui {
             let mut cmds: Vec<(DrawCmd, Affine)> = trees.to_vec();
             cmds.extend(tail.iter().cloned());
             let cmds: Vec<_> = cmds.into_iter().map(|(c, m)| bake(c, m)).collect();
-            let fresh = crate::draw::zoom_items(crate::draw::assign_levels(cmds), self.unit);
+            let fresh = crate::draw::zoom_items(crate::draw::assign_levels(cmds), self.env.unit);
             assert!(
                 fresh == items,
                 "the frame's items spliced from last frame's differ from levelling it afresh"
@@ -1590,7 +1594,7 @@ impl Ui {
             let DrawCmd::Text { font, text, .. } = c else {
                 continue;
             };
-            let Some(face) = self.fonts.face(*font) else {
+            let Some(face) = self.env.fonts.face(*font) else {
                 continue;
             };
             for ch in text.chars() {

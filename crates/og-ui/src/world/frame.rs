@@ -339,7 +339,7 @@ impl Ui {
     ) -> MassHandle {
         let mut t = template;
         if t.font.is_none() {
-            t.font = self.fonts.body.handle;
+            t.font = self.env.fonts.body.handle;
         }
         let t = Arc::new(t);
         if let Some(k) = self.world.templates.iter().position(|(n, ..)| n == name) {
@@ -443,7 +443,7 @@ impl Ui {
         if on_screen {
             return;
         }
-        let vp = self.viewport;
+        let vp = self.env.viewport;
         let (o, d) = view.ray(p.x, p.y, vp.width, vp.height);
         let mut best: Option<(f32, PanelHit, Vec2)> = None;
         for ph in &w.last_panels {
@@ -525,7 +525,7 @@ impl Ui {
                 clip: None,
             };
             // Drawn in CSS px like the frame's commands (the og-ui unit).
-            crate::draw::zoom_mass(&mut b, self.unit);
+            crate::draw::zoom_mass(&mut b, self.env.unit);
             batches.push(b);
         }
         self.world.frame = WorldFrame { tick, batches };

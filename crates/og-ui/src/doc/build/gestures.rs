@@ -65,8 +65,8 @@ impl Ui {
         let panel = self.parent();
         let scrim = self.nodes[panel].parent;
         let side = edge != SheetEdge::BlockEnd;
-        let vh = self.viewport.height - self.viewport.safe_area.vertical();
-        let vw = self.viewport.width - self.viewport.safe_area.horizontal();
+        let vh = self.env.viewport.height - self.env.viewport.safe_area.vertical();
+        let vw = self.env.viewport.width - self.env.viewport.safe_area.horizontal();
         let room = if side { vw } else { vh };
         let Ok(hs) = self::detents(text, room) else {
             return false;

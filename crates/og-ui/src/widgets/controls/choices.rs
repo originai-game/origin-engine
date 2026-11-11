@@ -179,7 +179,7 @@ impl Ui {
         if label.is_empty() && description.is_empty() {
             return;
         }
-        let t = self.theme;
+        let t = self.env.theme;
         let owner = &self.nodes[self.parent()];
         let inherited = owner
             .el
@@ -246,7 +246,7 @@ impl Ui {
         desc: &ToggleSwitchDesc,
     ) -> SwitchResult {
         let id = id.into();
-        let t = self.theme;
+        let t = self.env.theme;
         let th = self.by_text(match desc.size {
             ControlSize::Small => 22.0,
             ControlSize::Large => 32.0,
@@ -463,7 +463,7 @@ impl Ui {
         desc: &CheckFieldDesc,
     ) -> SwitchResult {
         let id = id.into();
-        let t = self.theme;
+        let t = self.env.theme;
         let on = checked || desc.mixed;
         let bx = self.by_text(22.0);
         let off_fill = self.role("well");
@@ -711,7 +711,7 @@ impl Ui {
     /// `Radio.card[selected]`. Role radiogroup with radio children. Probe:
     /// `<id>`, `<id>/Options/Option#i`.
     pub fn radio_group(&mut self, id: impl Into<Id>, desc: &RadioGroupDesc) -> ChoiceIndexResult {
-        let t = self.theme;
+        let t = self.env.theme;
         let cards = desc.variant == RadioVariant::Cards;
         let before = desc.selected;
         let mut selected = before;
@@ -911,7 +911,7 @@ impl Ui {
     pub fn segmented(&mut self, id: impl Into<Id>, desc: &SegmentedDesc) -> ChoiceIndexResult {
         let id = id.into();
         let key = id.as_str().to_owned();
-        let t = self.theme;
+        let t = self.env.theme;
         let sizes = self.sizes();
         let touch = self.touch_frame();
         let small = desc.size == ControlSize::Small;

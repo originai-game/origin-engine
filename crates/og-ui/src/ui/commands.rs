@@ -9,7 +9,7 @@ impl Ui {
     /// is drawn, not when its place in the cascade has.
     pub(super) fn apply_stagger(&mut self, order: &[usize]) {
         let now = self.state.tick as f32;
-        let (reduced, distance) = (self.theme.reduced_motion, self.theme.space.lg);
+        let (reduced, distance) = (self.env.theme.reduced_motion, self.env.theme.space.lg);
         for &i in order {
             let Some(st) = self.nodes[i].stagger else {
                 continue;
@@ -41,7 +41,8 @@ impl Ui {
                 }
                 self.nodes[j].fx = Some(crate::motion::fx(
                     st.kind,
-                    self.theme
+                    self.env
+                        .theme
                         .tokens
                         .ease(crate::tokens::EaseRole::WidgetEnter)
                         .apply(p),
@@ -98,7 +99,7 @@ impl Ui {
             (p.plane.as_deref().cloned(), persp)
         };
 
-        let rtl = self.direction == og_i18n::Direction::Rtl;
+        let rtl = self.env.direction == og_i18n::Direction::Rtl;
         let n = &mut self.nodes[i];
         let shown = !n.anchor_placed.hidden;
         n.alpha = alpha * n.sampled.opacity.clamp(0.0, 1.0) * f32::from(u8::from(shown));
@@ -246,8 +247,8 @@ impl Ui {
         if src != NONE && !self.nodes[src].world.is_identity() {
             let w = self.nodes[src].world;
             let mut c = self.nodes[i].laid_clip;
-            if self.direction == og_i18n::Direction::Rtl {
-                c.x = self.viewport.width - c.x - c.width;
+            if self.env.direction == og_i18n::Direction::Rtl {
+                c.x = self.env.viewport.width - c.x - c.width;
             }
             self.nodes[i].clip = w.map_rect(&c);
         }
@@ -293,7 +294,7 @@ impl Ui {
         order: &[usize],
         changed: Option<&[usize]>,
     ) -> Vec<(DrawCmd, Affine)> {
-        let dpr = self.viewport.dpr();
+        let dpr = self.env.viewport.dpr();
         let snap = |v: f32| crate::layout::snap(v, dpr);
         let ends = std::mem::take(&mut self.orders.ends);
         let mut last = std::mem::take(&mut self.paint_cache.last_cmds);
@@ -317,7 +318,7 @@ impl Ui {
         let reuse = self.paint_reuse(order, &ends, changed, &ghosts, &prev_kinds);
         self.paint_cache.repainted = reuse.repainted.clone();
         let mut reused_roots = true;
-        let theme = self.theme;
+        let theme = self.env.theme;
         // An element's draw (crate::paint) in its layout box, at its
         // opacity; its clip is the screen's (bake leaves draw commands be).
         let press_scale = theme.press_scale;
@@ -490,9 +491,9 @@ impl Ui {
                     // CSS accent-color: its controls' primary ink.
                     let accent = self.nearest(i, |n| n.accent);
                     if let Some(a) = accent {
-                        self.theme.palette.primary = a;
-                        self.theme.palette.primary_hover = a;
-                        self.theme.palette.primary_active = a;
+                        self.env.theme.palette.primary = a;
+                        self.env.theme.palette.primary_hover = a;
+                        self.env.theme.palette.primary_active = a;
                     }
                     if world.is_identity() {
                         self.stats.painted += 1;
@@ -511,12 +512,12 @@ impl Ui {
                         self.nodes[i].clip = screen_clip;
                     }
                     if accent.is_some() {
-                        self.theme.palette = theme.palette;
+                        self.env.theme.palette = theme.palette;
                     }
                 }
                 if let Some(d) = &draw {
                     let grid = match &self.nodes[i].content {
-                        Content::Text(t) => t.metrics(&self.fonts).pixel_grid(),
+                        Content::Text(t) => t.metrics(&self.env.fonts).pixel_grid(),
                         _ => 0,
                     };
                     d.style_text(&theme, &mut local, grid);
@@ -627,7 +628,7 @@ impl Ui {
         rings: &mut Vec<(usize, Vec<(DrawCmd, Affine)>)>,
         frozen: &mut IdMap<u64, crate::motion::state::Frozen>,
     ) {
-        let theme = self.theme;
+        let theme = self.env.theme;
         let marked = |n: &crate::layout::Node| {
             n.el.part
                 .is_some_and(|p| p.has("selected") || p.has("focused"))
@@ -753,7 +754,7 @@ impl Ui {
                         key,
                         g * strength,
                         nj.screen.height,
-                        self.ticks_per_second,
+                        self.env.ticks_per_second,
                         nj.rect,
                         nj.clip,
                     );
@@ -1020,7 +1021,7 @@ impl Ui {
             || (node.scrolls() && (node.el.fade > 0.0 || !node.el.hide_bars))
             || node.el.resize != 0;
         let (framed, field_ring) = self.field_rings(i);
-        let outline = self.theme.outline && (node.nav || node.focusable) && framed;
+        let outline = self.env.theme.outline && (node.nav || node.focusable) && framed;
         (
             volatile,
             node.ring || node.pad_rings != 0 || outline || field_ring,
@@ -1138,7 +1139,7 @@ impl Ui {
         use crate::paint::{ColorRef, ElementDraw, Gradient, Paint, Placed, Stop};
         let sn = &self.nodes[s];
         let reach = sn.el.fade;
-        let into = sn.el.fade_into.unwrap_or(self.theme.palette.panel);
+        let into = sn.el.fade_into.unwrap_or(self.env.theme.palette.panel);
         let clip = self.scroll_clip(s);
         let r = sn.rect;
         let max_y = sn.max_scroll();
@@ -1223,14 +1224,14 @@ impl Ui {
                 clip,
                 alpha: sn.alpha * k,
             };
-            cmds.extend(draw.enter(&self.theme, &at));
+            cmds.extend(draw.enter(&self.env.theme, &at));
         }
     }
 
     fn scroll_bar_commands(&self, s: usize, cmds: &mut Vec<DrawCmd>) {
-        let t = &self.theme;
+        let t = &self.env.theme;
         let p = &t.palette;
-        let dpr = self.viewport.dpr();
+        let dpr = self.env.viewport.dpr();
         let sn = &self.nodes[s];
         let clip = self.scroll_clip(s);
         // CSS `scrollbar-width: thin` halves the bar; `scrollbar-color`

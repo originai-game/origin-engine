@@ -149,8 +149,8 @@ impl Ui {
             return None;
         }
         let now = self.state.tick;
-        let tps = self.ticks_per_second;
-        let reduced = self.theme.reduced_motion;
+        let tps = self.env.ticks_per_second;
+        let reduced = self.env.theme.reduced_motion;
         let get = |values: &[(String, String, usize)], name: &str| {
             values
                 .iter()

@@ -294,13 +294,15 @@ impl Ui {
         if pad_used && let Some(family) = input.gamepad.device {
             self.actions.pad = family;
         }
-        let touch = self.viewport.coarse_pointer && (input.pressed || input.pointers.pressed != 0);
+        let touch =
+            self.env.viewport.coarse_pointer && (input.pressed || input.pointers.pressed != 0);
         let keys = !input.keys_held.is_empty()
             && input
                 .keys_held
                 .iter()
                 .any(|k| input.keys_pressed.contains(k));
-        let mouse = !self.viewport.coarse_pointer && (input.pressed || input.wheel.length() > 0.0);
+        let mouse =
+            !self.env.viewport.coarse_pointer && (input.pressed || input.wheel.length() > 0.0);
         if pad_used {
             self.actions.device = self.actions.pad;
         } else if touch {
@@ -309,7 +311,7 @@ impl Ui {
             self.actions.device = Device::KeyboardMouse;
         }
         let now = self.state.tick;
-        let tps = self.ticks_per_second.max(1);
+        let tps = self.env.ticks_per_second.max(1);
         for (k, d) in self.actions.defs.iter().enumerate() {
             if !d.action.is_empty() {
                 // A followed action: its state is og-input's this tick.
@@ -408,10 +410,10 @@ impl Ui {
     pub(crate) fn ui_store_value(&self) -> Value {
         json!({
             "device": self.actions.device.name(),
-            "coarsePointer": self.viewport.coarse_pointer,
+            "coarsePointer": self.env.viewport.coarse_pointer,
             // `<svelte:window>`'s innerWidth and innerHeight, CSS px.
-            "width": self.viewport.width,
-            "height": self.viewport.height,
+            "width": self.env.viewport.width,
+            "height": self.env.viewport.height,
             "actions": self.action_bar().iter().map(ActionHint::to_json).collect::<Vec<_>>(),
         })
     }

@@ -76,7 +76,7 @@ impl Ui {
             self.state.resizing = None;
             return true;
         }
-        let rtl = self.direction == og_i18n::Direction::Rtl;
+        let rtl = self.env.direction == og_i18n::Direction::Rtl;
         let d = p - r.from;
         let mut size = self.state.resized.get(&r.key).copied().unwrap_or([None; 2]);
         if r.axes & RESIZE_X != 0 {
@@ -130,10 +130,10 @@ impl Ui {
     /// corner, the style's strong control ink.
     pub(super) fn resizer_commands(&self, s: usize, cmds: &mut Vec<DrawCmd>) {
         let n = &self.nodes[s];
-        let rtl = self.direction == og_i18n::Direction::Rtl;
+        let rtl = self.env.direction == og_i18n::Direction::Rtl;
         let g = grip_rect(n, rtl);
-        let dpr = self.viewport.dpr();
-        let color = self.theme.palette.control_strong.linear();
+        let dpr = self.env.viewport.dpr();
+        let color = self.env.theme.palette.control_strong.linear();
         let (dot, step) = (2.0, 4.0);
         for row in 0..3 {
             for col in 0..=row {

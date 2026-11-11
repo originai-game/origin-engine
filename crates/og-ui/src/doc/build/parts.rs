@@ -68,7 +68,7 @@ impl Ui {
         let mut props = Self::box_props(&NodeKind::Element("box"), &r);
         // CSS's physical sides map onto the mirrored surface; the widget's
         // own placement below is already in its layout's terms.
-        if self.direction == og_i18n::Direction::Rtl {
+        if self.env.direction == og_i18n::Direction::Rtl {
             crate::layout::flow::mirror_props(&mut props);
         }
         let intrinsic = part.intrinsic_props;
@@ -128,7 +128,9 @@ impl Ui {
         self.nodes[i].props = props;
         let text_style = match &self.nodes[i].content {
             crate::layout::Content::Text(text) => {
-                Some(r.part_text(&self.theme, text.step, &|name| self.family_declared(name)))
+                Some(r.part_text(&self.env.theme, text.step, &|name| {
+                    self.family_declared(name)
+                }))
             }
             _ => None,
         };
@@ -139,7 +141,7 @@ impl Ui {
             text.font = style
                 .family
                 .as_deref()
-                .map_or(role, |names| self.fonts.family_list(names, role));
+                .map_or(role, |names| self.env.fonts.family_list(names, role));
             if let Some(ink) = r.color("color") {
                 text.color = ink;
             }
@@ -152,7 +154,7 @@ impl Ui {
         key: Option<u64>,
         event: crate::tokens::SoundEvent,
     ) -> crate::tokens::Feedback {
-        let fallback = self.theme.tokens.feedback[event.index()];
+        let fallback = self.env.theme.tokens.feedback[event.index()];
         let cascade = key
             .and_then(|k| {
                 self.nodes
@@ -412,8 +414,8 @@ impl Ui {
                 computed: Arc::make_mut(&mut global.computed),
                 reads: &mut global.inherited_reads,
                 diagnostics: &mut global.diagnostics,
-                theme: &self.theme,
-                current: self.theme.palette.ink,
+                theme: &self.env.theme,
+                current: self.env.theme.palette.ink,
                 step: body,
                 declared: &|name| self.family_declared(name),
             });
@@ -481,7 +483,7 @@ impl Ui {
             let flow = cascade::flow(
                 &mut values,
                 &inherited,
-                self.direction == og_i18n::Direction::Rtl,
+                self.env.direction == og_i18n::Direction::Rtl,
                 None,
             );
             cascade::route(&mut values, flow);

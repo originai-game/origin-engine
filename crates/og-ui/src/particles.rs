@@ -270,7 +270,7 @@ impl Ui {
     /// A burst (the preset [`ParticlesDesc::burst`]) on node `i` from tick
     /// `since`, after `delay` ticks.
     pub(crate) fn burst_particles(&mut self, i: usize, desc: &crate::BurstDesc, since: u64) {
-        let t = self.theme;
+        let t = self.env.theme;
         let ms = if desc.duration_ms > 0.0 {
             desc.duration_ms
         } else {
@@ -281,7 +281,7 @@ impl Ui {
             _ => 32.0,
         };
         let color = desc.color.unwrap_or(t.palette.primary);
-        let delay = (desc.delay_ms * self.ticks_per_second as f32 / 1000.0).round() as u64;
+        let delay = (desc.delay_ms * self.env.ticks_per_second as f32 / 1000.0).round() as u64;
         let key = crate::id::child_key(self.nodes[i].key, "burst");
         self.world.emitters.push(EmitterEntry {
             node: i,
@@ -294,9 +294,9 @@ impl Ui {
     /// Spawns this tick's particles and makes each emitter's batch.
     pub(crate) fn world_particles(&mut self, tick: u32) {
         let now = self.state.tick;
-        let reduced = self.theme.reduced_motion;
-        let accent = self.theme.palette.primary;
-        let tps = self.ticks_per_second as f32;
+        let reduced = self.env.theme.reduced_motion;
+        let accent = self.env.theme.palette.primary;
+        let tps = self.env.ticks_per_second as f32;
         let emitters = std::mem::take(&mut self.world.emitters);
         let mut live = Vec::new();
         for e in &emitters {
@@ -421,7 +421,7 @@ impl Ui {
                 layer: 0,
                 clip: None,
             };
-            let vp = self.viewport;
+            let vp = self.env.viewport;
             let clip = if d.clip {
                 clip
             } else {
@@ -441,7 +441,7 @@ impl Ui {
         }
         // Emitters not built this tick keep their particles flying (over
         // the screen, unclipped) until they end.
-        let vp = self.viewport;
+        let vp = self.env.viewport;
         let screen = Rect::new(0.0, 0.0, vp.width, vp.height);
         let mut orphans = Vec::new();
         self.world.state.particles.retain(|k, st| {
