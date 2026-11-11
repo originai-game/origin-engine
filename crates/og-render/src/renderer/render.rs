@@ -150,6 +150,8 @@ mod submit_frame;
 use submit_frame::SubmitFrameInputs;
 mod skinned_pipelines;
 use skinned_pipelines::SkinnedPipelines;
+mod execute;
+use execute::GraphRun;
 mod setup;
 
 impl Renderer {
@@ -1494,61 +1496,23 @@ impl Renderer {
             scene,
             posts: &effects.custom_posts,
         });
-        for &pass in self.graph.order() {
-            // What the pass needs here: its kind's, and what this frame's
-            // instance of it adds (schedule.rs).
-            encoder.expect(
-                self.info.caps,
-                pass.needs()
-                    | plans.needs(pass)
-                    | match pass {
-                        FramePass::Taa | FramePass::TaaSharpen if fsr => Caps::COMPUTE,
-                        _ => Caps::NONE,
-                    },
-            );
-            let t0 = clock.map(|c| c());
-            let q0 = encoder.used();
-            let _span = pass.redrawn().then(FrameSpan::open);
-            match pass {
-                _ if plans.encode(
-                    pass,
-                    &mut EncodeCx {
-                        ctx: &ctx,
-                        encoder: &mut encoder,
-                        stats: &mut stats,
-                        frame_bind_group,
-                        scene_depth,
-                        sky_group,
-                        slot,
-                    },
-                ) => {}
-                post_pass => {
-                    let post_output = match (&self.glass_targets, routed) {
-                        (Some(g), true) => &g.source_view,
-                        _ => output,
-                    };
-                    stats.draw_calls += self.graph.encode_post(
-                        &mut encoder,
-                        &self.post,
-                        &self.persistent,
-                        post_pass,
-                        slot,
-                        post_output,
-                        gtao,
-                    );
-                }
-            }
-            if let (Some(c), Some(t0)) = (clock, t0) {
-                pass_ms.push(PassTiming {
-                    name: pass.name(),
-                    start: t0,
-                    ms: (c() - t0).max(0.0),
-                });
-            }
-            if encoder.timed() {
-                pass_queries.push((pass.name(), q0..encoder.used()));
-            }
-        }
+        // The graph's passes in order (execute.rs).
+        self.execute_graph(GraphRun {
+            ctx: &ctx,
+            plans: &plans,
+            encoder: &mut encoder,
+            stats: &mut stats,
+            frame_bind_group,
+            scene_depth,
+            sky_group,
+            slot,
+            fsr,
+            routed,
+            output,
+            gtao,
+            pass_ms: &mut pass_ms,
+            pass_queries: &mut pass_queries,
+        });
         encoder.expect(self.info.caps, self.info.caps);
         for &(slot, _) in &probe_frame.due {
             self.probes.slots[slot].captured = Some(scene.tick);
