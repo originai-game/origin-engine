@@ -1239,35 +1239,6 @@ impl Renderer {
             shelter: &shelter,
             local_shadows: &local_shadows,
         });
-        // The cache textures this frame's plans copy through, made at their
-        // layer's side on first need.
-        let local_side = self.shadows.local_shadow_size;
-        let copied = cascade_plans
-            .iter()
-            .enumerate()
-            .map(|(i, p)| (i, p, shadow_size, wgpu::TextureFormat::R32Float))
-            .chain(
-                local_plans
-                    .iter()
-                    .enumerate()
-                    .map(|(l, p)| (CASCADES + l, p, local_side, LOCAL_SHADOW_FORMAT)),
-            )
-            .filter(|(_, p, _, _)| p.save || p.restore);
-        for (slot, _, side, format) in copied {
-            if self.shadows.shadow_cache_maps.len() <= slot {
-                self.shadows
-                    .shadow_cache_maps
-                    .resize_with(slot + 1, || None);
-            }
-            if self.shadows.shadow_cache_maps[slot]
-                .as_ref()
-                .is_none_or(|c| c.size != side)
-            {
-                self.shadows.shadow_cache_maps[slot] =
-                    Some(CachedShadow::new(&self.device, side, format));
-            }
-        }
-
         // Upload instances, previous transforms, skinned data, strips and
         // sprites. With GPU culling the sorted instances go to its buffer and
         // this one holds only the transparent draws.
