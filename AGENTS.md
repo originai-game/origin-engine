@@ -229,28 +229,37 @@ status `docs/roadmap.md`. Platform contracts implemented here:
   (cooked bytes, draw items, snapshot bytes). `land.sh`'s quick is the one
   full CPU gate; a head it fails goes back to its branch. GPU work runs in
   stages, not on every edit: at a milestone the author pushes the branch and
-  asks the GPU integrator, the one thread in the `gcp-l4` orb, for its GPU
-  check (the GPU host has one L4, so GPU runs queue there, FIFO, run by the
-  coordinator). A Metal capture is a compatibility check, never evidence for
-  landing.
-- **A refactor that must move no frame** (such as #41) lands on the CPU
-  gate alone (`OG_GATE_SKIP=rust-gpu`, set by the coordinator for that work
-  only) and is verified once on the GPU host after its last stack: the full
-  rust-gpu, the fixtures and the reference suites. A moved frame is bisected
-  across the refactor's commits and its captures go to the coordinator.
-- **Landing.** The GPU integrator lands every head with `scripts/land.sh`
-  in the `gcp-l4` orb, then posts to Slack; a head that moves no reference
-  frame and changes no look needs no review. The command is a merge queue: quick runs first outside it, then a FIFO landing lock is
-  held through rebase, at most one recheck (only for overlap or shared
-  inputs; disjoint changes reuse the pass) and push. Never push main
-  directly. A head that changes what a game's type check or playtest
-  reaches (packages/engine, the IDL, the generated `.d.ts`), and any stack
-  of more than a few commits, also runs `scripts/check.sh full --only
-  fixtures` first: quick runs no fixture, and a broken `og check` fails
-  every game's `og test`. A head that moves frames or changes a look sends its L4
-  captures to the art runner, who reviews the look against commercial games;
-  the integrator lands it once approved. A failure found later goes back to its branch as
-  a fix-forward commit.
+  asks the GPU integrator for its GPU check (the GPU host has one L4, so GPU
+  runs queue there, FIFO). A Metal capture is a compatibility check, never
+  evidence for landing.
+- **Landing** (the owner, 2026-11-11). `scripts/land.sh` is a merge queue:
+  quick runs first outside it, then a FIFO landing lock is held through
+  rebase, at most one recheck (only for overlap or shared inputs; disjoint
+  changes reuse the pass) and push. Never push main directly; a lander on
+  another machine that loses the push race reruns `land.sh`. A head that
+  changes what a game's type check or playtest reaches (packages/engine,
+  the IDL, the generated `.d.ts`), and any stack of more than a few
+  commits, also runs `scripts/check.sh full --only fixtures` first: quick
+  runs no fixture, and a broken `og check` fails every game's `og test`.
+  A head that changes og-runtime's answers or packages/engine also runs
+  `scripts/check.sh full --only bun-test`, which quick does not select.
+  Then, by what the head does to frames:
+  - **A head that moves no reference frame** (no change to a look, a
+    preset, a shader, a pass's output or a reference; a refactor, a speed-up,
+    a fix outside rendering) is landed by the thread that implemented it,
+    from its own checkout (an orb or macrunner), with
+    `OG_GATE_SKIP=rust-gpu scripts/land.sh`. It sets the skip itself and
+    posts to Slack. The GPU integrator, the one thread in the `gcp-l4`
+    orb, runs the full rust-gpu, the fixtures and the reference suites on
+    main afterwards, in batches; a frame that moved is bisected there and
+    goes back to its author as a fix-forward.
+  - **A head that moves frames or changes a look** goes to the GPU
+    integrator, which runs its GPU steps on the L4 and sends its captures
+    to the art runner, who reviews the look against commercial games (new
+    features' captures also need the owner's approval); the integrator
+    lands it with the full quick once approved and posts to Slack.
+  When unsure whether a head moves a frame, send it to the integrator. A
+  failure found later goes back to its branch as a fix-forward commit.
 - A file moves only when the structure it follows has changed; the move is
   its own commit, verbatim (only `mod`, `use` and visibility edits), and is
   reviewed with `git diff --color-moved`.

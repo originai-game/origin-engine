@@ -149,16 +149,22 @@ exclusive orb at a time (14 vCPU, 56 GiB). Pin
 `VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json` so llvmpipe is
 never picked. One thread, the GPU integrator, holds that orb: it runs the
 gate's GPU steps (`rust-gpu`, og-tests, the references) for the heads
-queued by the coordinator, in order, and lands them with `scripts/land.sh`.
+queued to it, in order, lands the heads that move frames or change a look
+with `scripts/land.sh`, and runs the GPU suites on main after the heads
+that landed on the CPU gate.
 Authors do not wait for it on every edit; they queue a milestone. Measured
 there on 2026-11-10: a cold native build 5 min 37 s (8 jobs, no compiler
 cache), an og-ui touch rebuild 23 s, the full `rust-gpu` step about 9 min
 at 4 workers. The VM is started and stopped by the owner; a stopped orb
 keeps its disk, not its processes.
 
-Every head lands from the GPU host (the owner, 2026-11-10): authors on
-macrunner push a branch and hand it to the integrator; no landing runs on
-a Mac. The orb runs on the VM directly, not in a container.
+Who lands what (the owner, 2026-11-11): a head that moves no reference
+frame is landed by the thread that implemented it, from its own checkout
+(an orb or macrunner), on the CPU gate; a head that moves frames or
+changes a look lands from the GPU host. `land.sh`'s landing lock is per
+Git directory, so landers on different machines do not queue behind each
+other: the one whose push loses the race stops with "origin/main moved
+outside scripts/land.sh" and runs it again. The orb runs on the VM directly, not in a container.
 
 macrunner (Metal, Safari, iPhone) and studio-win (DX12, Chrome, Edge,
 Firefox) are development and compatibility hosts. They run the same gate
@@ -221,10 +227,11 @@ wasm products keyed by content. Neither lane partitions tests across machines.
 | `full` | quick plus og-tests, doctests, engine and extension Bun tests, bindgen-only wasm variants, fixtures, the browser tests of packages/engine's `test:browser` |
 
 `OG_GATE_SKIP` (comma-separated step names, e.g. `OG_GATE_SKIP=rust-gpu`)
-drops those steps from a run. It is for a named exception the coordinator
-sets for a stated set of landings, such as #41's CPU-only landings with one
-GPU verification after the last; it is never the default, and nothing
-reads it from a configuration file. An unknown name fails the run. A
+drops those steps from a run. Its one standing use is a head that moves no
+reference frame: the thread that implemented it lands it with
+`OG_GATE_SKIP=rust-gpu scripts/land.sh`, and the GPU host runs the GPU
+suites on main afterwards (`AGENTS.md` Landing). It is never the default,
+and nothing reads it from a configuration file. An unknown name fails the run. A
 skipped step prints `SKIPPED <step> (OG_GATE_SKIP)`, stays in the summary,
 and the final line says `NOT RUN (OG_GATE_SKIP)`, so a skip never reads as
 a pass. Steps that depend on it still run. `land.sh`'s quick runs read it
