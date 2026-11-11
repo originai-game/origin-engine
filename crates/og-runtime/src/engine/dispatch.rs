@@ -15,9 +15,9 @@ pub(crate) struct SystemEntry {
     pub ms: f64,
 }
 
-#[derive(Clone)]
 pub(crate) struct QueryColumn {
-    pub component: String,
+    /// The component's schema id index.
+    pub component: u32,
     pub field: FieldRef,
     pub writable: bool,
 }
@@ -30,20 +30,25 @@ pub(crate) struct ViewRecord {
     /// The columns borrowed so far: a running system's are borrowed when
     /// the view's `column` first asks for them (`lazy`), a world query's
     /// when the view is made.
-    pub columns: Vec<(String, ColumnPtr)>,
-    pub types: Vec<String>,
+    /// by component (schema id index).
+    pub columns: Vec<(u32, ColumnPtr)>,
+    /// The archetype's types as schema id indices: where they start in
+    /// `Handles::view_types` and how many they are.
+    pub types: (u32, u32),
     /// The rows the query's change filters pass; `None`: every row.
     pub rows: Option<Vec<u32>>,
-    /// A running system's view: its archetype's place among the system's
-    /// matched archetypes, and the columns it may borrow from it.
-    pub lazy: Option<(usize, Vec<QueryColumn>)>,
+    /// A running system's view: the system, and its archetype's place
+    /// among the frame's (`Frame::archetypes`), whose declared columns it
+    /// may borrow.
+    pub lazy: Option<(usize, usize)>,
 }
 
 pub(crate) enum QueryRec {
-    /// A running system's archetypes: these view handles.
-    Frame(Vec<u32>),
-    /// `world.query()` outside systems.
-    World(QueryDesc),
+    /// A running system's archetypes: this many view handles from the first.
+    Frame { first: u32, len: u32 },
+    /// `world.query()` outside systems: what it matches, and the views
+    /// its archetypes were last described as (the first handle and how many).
+    World { desc: QueryDesc, views: (u32, u32) },
 }
 
 /// Handles valid from `base` to `base + items.len()`; clearing moves `base`
@@ -291,6 +296,9 @@ pub(crate) struct Frame {
     pub engine: u32,
     pub system: usize,
     pub ctx: *mut (),
+    /// The system's matched archetypes, in its views' order. The lifetime
+    /// is the world's for the system call, as `held`'s.
+    pub archetypes: Vec<og_ecs::ArchetypeView<'static>>,
     /// The column borrows its views took (`view_columns`), held until the
     /// system returns: a column is borrowed only once game code takes a
     /// view of it, so `world.get`/`world.set` reach every column no view
@@ -332,6 +340,7 @@ pub(crate) fn invalidate(moving: bool) {
     HANDLES.with(|t| {
         let mut t = t.borrow_mut();
         t.views.clear();
+        t.view_types.clear();
         t.frame_queries.clear();
         t.spatial.clear();
     });
@@ -354,9 +363,15 @@ pub(crate) fn clear_world_queries() {
 
 // ── game code calls ─────────────────────────────────────────────────────────
 
+/// Where a system call's query description starts in the shared buffer, in
+/// words: after the four doubles of the time scale.
+pub(crate) const FRAME_QUERY_WORD: usize = 8;
+
 /// Runs one registered system: publish its archetypes as views (their
-/// columns are borrowed when game code takes them, `view_columns`), call
-/// the dispatcher, then retire the views and release the borrows.
+/// columns are borrowed when game code takes them, `view_columns`), write
+/// the call's frame description (the time scale and the archetypes) to the
+/// shared buffer, call the dispatcher, then retire the views and release
+/// the borrows.
 pub(super) fn run_system(
     engine_id: u32,
     index: usize,
@@ -364,44 +379,61 @@ pub(super) fn run_system(
 ) -> og_core::Result<()> {
     let fail = |m: String| Error::new(ErrorKind::Invalid, m);
     let eng = engine(engine_id).map_err(fail)?;
-    let (callback, columns) = {
-        let st = eng.state.borrow();
-        let s = &st.systems[index];
-        (s.callback, s.columns.clone())
-    };
+    let callback = eng.state.borrow().systems[index].callback;
     let time = ctx.time();
     let tick = time.tick as u32;
-    let mut records = Vec::new();
-    for (k, a) in ctx.query(0)?.enumerate() {
-        let st = eng.state.borrow();
-        let types = a
-            .types()
-            .iter()
-            .filter_map(|id| st.names_by_id.get(id.index() as usize).cloned())
-            .collect();
-        records.push(ViewRecord {
-            count: a.len() as u32,
-            tick,
-            entities: a.entities().as_ptr(),
-            columns: Vec::new(),
-            types,
-            rows: a.filtered().then(|| a.rows()),
-            lazy: Some((k, columns.clone())),
-        });
-    }
-    let matched: u32 = records.iter().map(|r| r.count).sum();
-    let query = HANDLES.with(|t| {
+    let archetypes: Vec<og_ecs::ArchetypeView<'_>> = ctx.query(0)?.collect();
+    let (query, matched) = HANDLES.with(|t| {
         let mut t = t.borrow_mut();
-        let handles = records
-            .into_iter()
-            .map(|r| t.views.push((engine_id, r)))
-            .collect();
-        t.frame_queries.push((engine_id, QueryRec::Frame(handles)))
+        let t = &mut *t;
+        let first = t.views.base.wrapping_add(t.views.items.len() as u32);
+        let mut matched = 0;
+        for (k, a) in archetypes.iter().enumerate() {
+            let start = t.view_types.len() as u32;
+            t.view_types.extend(a.types().iter().map(|id| id.index()));
+            matched += a.len() as u32;
+            t.views.push((
+                engine_id,
+                ViewRecord {
+                    count: a.len() as u32,
+                    tick,
+                    entities: a.entities().as_ptr(),
+                    columns: Vec::new(),
+                    types: (start, a.types().len() as u32),
+                    rows: a.filtered().then(|| a.rows()),
+                    lazy: Some((index, k)),
+                },
+            ));
+        }
+        let rec = QueryRec::Frame {
+            first,
+            len: archetypes.len() as u32,
+        };
+        (t.frame_queries.push((engine_id, rec)), matched)
     });
+    // What the dispatcher reads first: the time scale, then the archetypes.
+    let scale = ctx.time_scale();
+    crate::shared::with(|b| {
+        super::feel::put_time(
+            b,
+            scale.scale,
+            scale.hit_stop,
+            scale.dt(&time),
+            scale.elapsed,
+        );
+    });
+    api::describe_query(query, 0, FRAME_QUERY_WORD);
     let frame = Frame {
         engine: engine_id,
         system: index,
         ctx: ctx as *mut SystemContext<'_> as *mut (),
+        // SAFETY: the views live in the frame, which this call drops before
+        // the world's borrow for the call ends.
+        archetypes: unsafe {
+            std::mem::transmute::<Vec<og_ecs::ArchetypeView<'_>>, Vec<og_ecs::ArchetypeView<'static>>>(
+                archetypes,
+            )
+        },
         held: RefCell::new(Vec::new()),
     };
     let prev = FRAME.with(|f| f.replace(&frame));
@@ -417,7 +449,7 @@ pub(super) fn run_system(
             tick: tick as f64,
             dt: f64::from(time.dt),
             elapsed: time.elapsed,
-            payload: super::feel::time_payload(ctx),
+            payload: String::new(),
         }),
         None => Err("no dispatcher is installed (og_host_set_dispatcher)".into()),
     };
@@ -459,6 +491,7 @@ fn run_frame(
         engine: engine_id,
         system: index,
         ctx: ctx as *mut SystemContext<'_> as *mut (),
+        archetypes: Vec::new(),
         held: RefCell::new(Vec::new()),
     };
     let prev = FRAME.with(|f| f.replace(&frame));

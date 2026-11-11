@@ -184,7 +184,13 @@ const LIFECYCLE: &[LifecycleMember] = &[
         "og_host_set_dispatcher",
         &[("dispatcher", "Self::Function", "Dispatcher")],
         "()",
-        "Install the function the engine calls for systems, commands and facts: `dispatcher(kind, engine, id, query, tick, dt, elapsed, payload)` (payload: a command's arguments as a JSON list) returns `\"\"` on success, the error otherwise (`kind`: 0 system, 1 command, 2 facts, whose answer is `\"=\"` then JSON).",
+        "Install the function the engine calls for systems, commands and facts: `dispatcher(kind, engine, id, query, tick, dt, elapsed, payload)` (payload: a command's arguments as a JSON list) returns `\"\"` on success, the error otherwise (`kind`: 0 system, 1 command, 2 facts, whose answer is `\"=\"` then JSON). A system's call has an empty payload: its time scale and its query's archetypes are in the shared buffer (og_host_shared) when the dispatcher is entered.",
+    ),
+    (
+        "og_host_shared",
+        &[],
+        "Self::Shared",
+        "The shared buffer: 65536 bytes the engine and the runtime both see, where what crosses on every system call is written as numbers instead of text. Valid until the next engine call. A system's call: four f64 (the time scale, the hit stop's ticks left, the scaled dt and the scaled elapsed time) at bytes 0 to 31, then its query's archetypes from word 8 as og_engine_query_archetypes writes them.",
     ),
     (
         "og_engine_create",
@@ -277,6 +283,27 @@ const LIFECYCLE: &[LifecycleMember] = &[
         "Overwrite a resource with packed bytes followed by the layout epoch they were made with (as og_engine_read_resource answers): how the runtime flushes a handle's field writes, once before the next engine call and at the end of every system. Read-only fields keep their value. A Result; refused for a stale epoch, a wrong size, an invalid value or a resource the running system did not declare among its writes.",
     ),
     (
+        "og_engine_component_id",
+        &[
+            ("world", "u32", "number"),
+            ("component", "String", "string"),
+        ],
+        "u32",
+        "A component's number in this world (its schema id index): what og_engine_query_archetypes lists as an archetype's types and og_engine_view_column takes. 4294967295 for a name this world has not registered as a component. It holds until the layout epoch moves.",
+    ),
+    (
+        "og_engine_query_archetypes",
+        &[("query", "u32", "number"), ("from", "u32", "number")],
+        "u32",
+        "Write a query's archetypes, from its `from`th, to the shared buffer as u32 words from word 0, and answer how many were written: the query's archetype count, how many follow, their tick and the layout epoch; then per archetype its view handle, its entity count, its type count and its types (og_engine_component_id's numbers). What did not fit is asked for with a later `from`. `from` 0 makes a world query's views (Query.archetypes outside systems).",
+    ),
+    (
+        "og_engine_view_column",
+        &[("view", "u32", "number"), ("component", "u32", "number")],
+        "Self::Views",
+        "ArchetypeView.column: the columns of a component (og_engine_component_id's number) in a view, one per field in field order. A running system's view borrows them when first asked and holds them until the system returns. Empty when refused (a stale view, a component the system did not declare or the archetype lacks, a column borrowed otherwise).",
+    ),
+    (
         "og_engine_ui_patch",
         &[
             ("world", "u32", "number"),
@@ -361,6 +388,8 @@ pub fn host_rs(ix: &Index<'_>) -> String {
          \x20   type Function;\n\
          \x20   /// Bytes copied across, either way (a resource's packed record).\n\
          \x20   type Bytes;\n\
+         \x20   /// The shared buffer as the host hands it out (`og_host_shared`).\n\
+         \x20   type Shared;\n\
          }\n\n",
     );
     out.push_str(
@@ -584,10 +613,12 @@ fn glue_type(target: Target, w: &str) -> String {
         (Target::Web, "Self::Views") => "Vec<u32>".into(),
         (Target::Web, "Self::Function") => "js_sys::Function".into(),
         (Target::Web, "Self::Bytes") => "Vec<u8>".into(),
+        (Target::Web, "Self::Shared") => "u32".into(),
         (Target::Node, "Self::Array") => "crate::NodeArray".into(),
         (Target::Node, "Self::Views") => "crate::NodeViews".into(),
         (Target::Node, "Self::Function") => "crate::NodeFunction".into(),
         (Target::Node, "Self::Bytes") => "crate::NodeBytes".into(),
+        (Target::Node, "Self::Shared") => "crate::NodeShared".into(),
         (_, other) => other.into(),
     }
 }
@@ -700,7 +731,8 @@ pub fn abi_ts(ix: &Index<'_>) -> String {
     out.push_str(
         "// The host ABI: every binding symbol with its wire signature. Both hosts\n\
          // export exactly these functions; `A` is how a host hands out typed arrays\n\
-         // and `V` how it hands out a component's column views.\n\n\
+         // and `V` how it hands out a component's column views (the shared buffer\n\
+         // is `unknown`: each loader knows its host's form).\n\n\
          /// The engine's call back into the runtime (`og_host_set_dispatcher`).\n\
          export type Dispatcher = (kind: number, engine: number, id: number, query: number, tick: number, dt: number, elapsed: number, payload: string) => string;\n\n\
          export interface HostAbi<A, V> {\n",
@@ -712,6 +744,9 @@ pub fn abi_ts(ix: &Index<'_>) -> String {
             "()" => "void",
             "bool" => "boolean",
             "Self::Bytes" => "Uint8Array",
+            "Self::Views" => "V",
+            "Self::Shared" => "unknown",
+            "u32" => "number",
             _ => "string",
         };
         out.push_str(&format!("  {name}({}): {r};\n", ps.join(", ")));

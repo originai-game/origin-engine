@@ -18,6 +18,8 @@ impl Wire for WebHost {
     type Function = js_sys::Function;
     /// Copied by wasm-bindgen: a fresh `Uint8Array` out, a copy of one in.
     type Bytes = Vec<u8>;
+    /// The buffer's byte offset in `memory.buffer`.
+    type Shared = u32;
 }
 
 impl HostWire for WebHost {
@@ -35,6 +37,10 @@ impl HostWire for WebHost {
         columns
             .map(|cols| cols.iter().map(|c| c.ptr as usize as u32).collect())
             .unwrap_or_default()
+    }
+    fn shared() -> Self::Shared {
+        // The runtime's own buffer, in the module's memory like the columns.
+        rt::shared::address() as usize as u32
     }
     fn bytes_out(bytes: Vec<u8>) -> Self::Bytes {
         bytes

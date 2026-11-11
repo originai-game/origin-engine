@@ -28,11 +28,12 @@ Query.archetypes(): readonly ArchetypeView[]
 
 **Returns** `readonly ArchetypeView[]`.
 
-Binding symbol `og_query_archetypes` · publish builds: kept
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
 
 ```ogt
 fn archetypes {
   doc "The matched archetypes this tick."
+  host false
   returns List.ArchetypeView
 }
 ```
@@ -60,4 +61,4 @@ fn count {
 }
 ```
 
-<sub>Module `world` line 432</sub>
+<sub>Module `world` line 433</sub>

@@ -1,14 +1,17 @@
 // Generated from crates/og-api/api.ogt by `og api gen`. Do not edit: `og api check` fails on any difference; change api.ogt and regenerate.
 // The host ABI: every binding symbol with its wire signature. Both hosts
 // export exactly these functions; `A` is how a host hands out typed arrays
-// and `V` how it hands out a component's column views.
+// and `V` how it hands out a component's column views (the shared buffer
+// is `unknown`: each loader knows its host's form).
 
 /// The engine's call back into the runtime (`og_host_set_dispatcher`).
 export type Dispatcher = (kind: number, engine: number, id: number, query: number, tick: number, dt: number, elapsed: number, payload: string) => string;
 
 export interface HostAbi<A, V> {
-  /** Install the function the engine calls for systems, commands and facts: `dispatcher(kind, engine, id, query, tick, dt, elapsed, payload)` (payload: a command's arguments as a JSON list) returns `""` on success, the error otherwise (`kind`: 0 system, 1 command, 2 facts, whose answer is `"="` then JSON). */
+  /** Install the function the engine calls for systems, commands and facts: `dispatcher(kind, engine, id, query, tick, dt, elapsed, payload)` (payload: a command's arguments as a JSON list) returns `""` on success, the error otherwise (`kind`: 0 system, 1 command, 2 facts, whose answer is `"="` then JSON). A system's call has an empty payload: its time scale and its query's archetypes are in the shared buffer (og_host_shared) when the dispatcher is entered. */
   og_host_set_dispatcher(dispatcher: Dispatcher): void;
+  /** The shared buffer: 65536 bytes the engine and the runtime both see, where what crosses on every system call is written as numbers instead of text. Valid until the next engine call. A system's call: four f64 (the time scale, the hit stop's ticks left, the scaled dt and the scaled elapsed time) at bytes 0 to 31, then its query's archetypes from word 8 as og_engine_query_archetypes writes them. */
+  og_host_shared(): unknown;
   /** Assemble a world from a declared game (`og.game`) and the declarations made so far. `options` is JSON `{ seed?, root? }`: a replay seed, and the project directory (native) or URL base (web) whose `cooked/` bundle is opened and whose GameDesc.scene is spawned before the first tick. The answer is a Result of the engine id, which is also the world handle. */
   og_engine_create(game: number, options: string): string;
   /** Drop an engine and everything it owns. False for an unknown engine. */
@@ -35,6 +38,12 @@ export interface HostAbi<A, V> {
   og_engine_read_resource(world: number, resource: string): Uint8Array;
   /** Overwrite a resource with packed bytes followed by the layout epoch they were made with (as og_engine_read_resource answers): how the runtime flushes a handle's field writes, once before the next engine call and at the end of every system. Read-only fields keep their value. A Result; refused for a stale epoch, a wrong size, an invalid value or a resource the running system did not declare among its writes. */
   og_engine_write_resource_bytes(world: number, resource: string, bytes: Uint8Array): string;
+  /** A component's number in this world (its schema id index): what og_engine_query_archetypes lists as an archetype's types and og_engine_view_column takes. 4294967295 for a name this world has not registered as a component. It holds until the layout epoch moves. */
+  og_engine_component_id(world: number, component: string): number;
+  /** Write a query's archetypes, from its `from`th, to the shared buffer as u32 words from word 0, and answer how many were written: the query's archetype count, how many follow, their tick and the layout epoch; then per archetype its view handle, its entity count, its type count and its types (og_engine_component_id's numbers). What did not fit is asked for with a later `from`. `from` 0 makes a world query's views (Query.archetypes outside systems). */
+  og_engine_query_archetypes(query: number, from: number): number;
+  /** ArchetypeView.column: the columns of a component (og_engine_component_id's number) in a view, one per field in field order. A running system's view borrows them when first asked and holds them until the system returns. Empty when refused (a stale view, a component the system did not declare or the archetype lacks, a column borrowed otherwise). */
+  og_engine_view_column(view: number, component: number): V;
   /** Apply a binary UI source/computation patch batch. Replies are binary results in request order. Source values and the dependency graph belong to this engine; the TypeScript runtime executes requested computation IDs outside the engine lock. */
   og_engine_ui_patch(world: number, bytes: Uint8Array): Uint8Array;
   /** The platform calls (IDL `platform`) made since the last call, oldest first, as JSON `[{ request, method, args, tick }]`. The host answers each but `telemetry` (one-way) with og_platform_answer. */
@@ -133,8 +142,6 @@ export interface HostAbi<A, V> {
   og_world_open_save(world: number, save: string): string;
   /** `World.restore` */
   og_world_restore(world: number, save: string, desc: string | undefined): string;
-  /** `Query.archetypes` */
-  og_query_archetypes(query: number): string;
   /** `Query.count` */
   og_query_count(query: number): number;
   /** `ArchetypeView.count` */
@@ -147,10 +154,6 @@ export interface HostAbi<A, V> {
   og_archetype_view_get_rows(archetype_view: number): A;
   /** `ArchetypeView.entity` */
   og_archetype_view_entity(archetype_view: number, index: number): number;
-  /** `ArchetypeView.has` */
-  og_archetype_view_has(archetype_view: number, component: string): boolean;
-  /** `ArchetypeView.column` */
-  og_archetype_view_column(archetype_view: number, component: string): V;
   /** `Hook.name` */
   og_hook_get_name(hook: number): string;
   /** `defineHook` */
@@ -1306,15 +1309,12 @@ export const SYMBOLS: readonly string[] = [
   "og_world_snapshot",
   "og_world_open_save",
   "og_world_restore",
-  "og_query_archetypes",
   "og_query_count",
   "og_archetype_view_get_count",
   "og_archetype_view_get_tick",
   "og_archetype_view_get_entities",
   "og_archetype_view_get_rows",
   "og_archetype_view_entity",
-  "og_archetype_view_has",
-  "og_archetype_view_column",
   "og_hook_get_name",
   "og_system_define_hook",
   "og_system_get_name",
@@ -1871,6 +1871,7 @@ export const SYMBOLS: readonly string[] = [
   "og_vfx_spawn",
   "og_vfx_info",
   "og_host_set_dispatcher",
+  "og_host_shared",
   "og_engine_create",
   "og_engine_destroy",
   "og_engine_advance",
@@ -1884,6 +1885,9 @@ export const SYMBOLS: readonly string[] = [
   "og_engine_resource_layout",
   "og_engine_read_resource",
   "og_engine_write_resource_bytes",
+  "og_engine_component_id",
+  "og_engine_query_archetypes",
+  "og_engine_view_column",
   "og_engine_ui_patch",
   "og_platform_take",
   "og_platform_answer",

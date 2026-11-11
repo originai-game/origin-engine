@@ -29,7 +29,9 @@ use crate::{
     anim, api, art, assets, atmosphere, codec, e6, extract, feel, fx, i18n, interpolate, look,
     modules, ok_void, probes, save, stream, terrain, timeline, trace, video, views,
 };
-pub(crate) use resources::{bump_layout_epoch, world_query_views, write_resource_value};
+pub(crate) use resources::{
+    bump_layout_epoch, layout_epoch, world_query_views, write_resource_value,
+};
 pub use resources::{
     read_resource, resource_layout, view_columns, view_entities, write_resource,
     write_resource_bytes,
@@ -230,6 +232,9 @@ pub use super::extract::RenderBackend;
 #[derive(Default)]
 pub(crate) struct Handles {
     pub views: Table<(u32, ViewRecord)>,
+    /// The live views' archetype types (schema id indices), each view's a
+    /// run of it (`ViewRecord::types`); cleared with the views.
+    pub view_types: Vec<u32>,
     pub frame_queries: Table<(u32, QueryRec)>,
     pub world_queries: Table<(u32, QueryRec)>,
     pub streams: Table<(u32, Rng)>,

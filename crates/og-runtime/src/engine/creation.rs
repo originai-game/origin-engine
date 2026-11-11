@@ -447,7 +447,7 @@ pub(crate) fn assemble(
                 let id = world.id_by_name(name).map_err(err)?;
                 for f in layout.fields.iter() {
                     columns.push(QueryColumn {
-                        component: name.clone(),
+                        component: id.index(),
                         field: world.field_by_id(id, &f.name).map_err(err)?,
                         writable,
                     });

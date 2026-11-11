@@ -487,10 +487,17 @@ pub fn og_world_has(world: u32, entity_id: f64, comp: String) -> bool {
     let Ok(eng) = engine(world) else { return false };
     if running(world).is_some() {
         // Inside a system: answered from the system's own views.
+        let st = eng.state.borrow();
+        let Some(id) = st.names_by_id.iter().position(|n| *n == comp) else {
+            return false;
+        };
         return HANDLES.with(|t| {
             let t = t.borrow();
+            let has = |(start, n): (u32, u32)| {
+                t.view_types[start as usize..(start + n) as usize].contains(&(id as u32))
+            };
             t.views.items.iter().any(|(owner, rec)| {
-                *owner == world && rec.types.contains(&comp) && {
+                *owner == world && has(rec.types) && {
                     // SAFETY: the views are live while the system runs.
                     let ents =
                         unsafe { std::slice::from_raw_parts(rec.entities, rec.count as usize) };
@@ -777,9 +784,13 @@ pub fn og_world_query(world: u32, desc: Option<String>) -> Result<serde_json::Va
         // empty list later.
         eng.world()?.query(&q).map_err(err)?;
         let h = HANDLES.with(|t| {
-            t.borrow_mut()
-                .world_queries
-                .push((eng.id, QueryRec::World(q)))
+            t.borrow_mut().world_queries.push((
+                eng.id,
+                QueryRec::World {
+                    desc: q,
+                    views: (0, 0),
+                },
+            ))
         });
         Ok(json!(h))
     })()
@@ -916,49 +927,112 @@ pub fn og_world_instantiate(
 
 // ── query and views ─────────────────────────────────────────────────────────
 
-/// `[{ view, count, tick, types }]` of a query handle.
-pub fn og_query_archetypes(query: u32) -> String {
-    enum Found {
-        Frame(Vec<u32>),
-        World(u32, QueryDesc),
-    }
-    let found = HANDLES.with(|t| {
+/// Writes the archetypes of a query handle, from its `from`th, to the
+/// shared buffer at word `word`, and answers how many it wrote. The words:
+/// how many archetypes the query has, how many follow, their tick and the
+/// layout epoch; then per archetype its view handle, its entity count, how
+/// many types it has and their schema id indices. `from` 0 makes a world
+/// query's views; a later `from` goes on through the views it made.
+pub(crate) fn describe_query(query: u32, from: u32, word: usize) -> u32 {
+    let range = HANDLES.with(|t| {
         let t = t.borrow();
-        if let Some((e, QueryRec::Frame(views))) = t.frame_queries.get(query) {
-            let _ = e;
-            return Some(Found::Frame(views.clone()));
+        if let Some((_, QueryRec::Frame { first, len })) = t.frame_queries.get(query) {
+            return Some(Ok((*first, *len)));
         }
-        if let Some((e, QueryRec::World(q))) = t.world_queries.get(query) {
-            return Some(Found::World(*e, q.clone()));
+        match t.world_queries.get(query) {
+            Some((_, QueryRec::World { views, .. })) if from > 0 => Some(Ok(*views)),
+            Some((e, QueryRec::World { desc, .. })) => Some(Err((*e, desc.clone()))),
+            _ => None,
         }
-        None
     });
-    let views = match found {
-        None => return "[]".into(),
-        Some(Found::Frame(v)) => v,
-        Some(Found::World(e, q)) => match engine(e).and_then(|eng| world_query_views(&eng, &q)) {
-            Ok(v) => v,
-            Err(_) => return "[]".into(),
-        },
+    let (first, len) = match range {
+        None => (0, 0),
+        Some(Ok(views)) => views,
+        Some(Err((e, desc))) => {
+            let made = engine(e)
+                .and_then(|eng| world_query_views(&eng, &desc))
+                .unwrap_or((0, 0));
+            HANDLES.with(|t| {
+                if let Some((_, QueryRec::World { views, .. })) =
+                    t.borrow_mut().world_queries.get_mut(query)
+                {
+                    *views = made;
+                }
+            });
+            made
+        }
     };
     HANDLES.with(|t| {
         let t = t.borrow();
-        let list: Vec<Value> = views
-            .iter()
-            .filter_map(|h| {
-                let (_, r) = t.views.get(*h)?;
-                Some(json!({ "view": h, "count": r.count, "tick": r.tick, "types": r.types }))
-            })
-            .collect();
-        Value::Array(list).to_string()
+        crate::shared::with(|b| {
+            let mut w = crate::shared::Words::at(b, word);
+            let head = w.index();
+            // Retired views (a stale handle) describe as none.
+            let live = t.views.get(first).map(|(_, r)| r.tick);
+            w.put(if live.is_some() { len } else { 0 });
+            w.put(0);
+            w.put(live.unwrap_or(0));
+            w.put(super::engine::layout_epoch());
+            let mut written = 0;
+            for h in (from..len).map(|k| first.wrapping_add(k)) {
+                let Some((_, r)) = t.views.get(h) else { break };
+                let (start, n) = r.types;
+                if !w.fits(3 + n as usize) {
+                    break;
+                }
+                w.put(h);
+                w.put(r.count);
+                w.put(n);
+                for id in &t.view_types[start as usize..(start + n) as usize] {
+                    w.put(*id);
+                }
+                written += 1;
+            }
+            w.set(head + 1, written);
+            written
+        })
     })
 }
 
+/// `og_engine_query_archetypes`.
+pub fn og_engine_query_archetypes(query: u32, from: u32) -> u32 {
+    describe_query(query, from, 0)
+}
+
+/// `og_engine_component_id`: the schema id index of a component this
+/// world has registered, `u32::MAX` for any other name. Asking registers
+/// nothing.
+pub fn og_engine_component_id(world: u32, component: String) -> u32 {
+    engine(world)
+        .ok()
+        .and_then(|eng| {
+            let st = eng.state.borrow();
+            st.layouts
+                .get(&component)
+                .filter(|l| l.kind == RecordKind::Component)?;
+            st.names_by_id.iter().position(|n| *n == component)
+        })
+        .map_or(u32::MAX, |i| i as u32)
+}
+
 pub fn og_query_count(query: u32) -> u32 {
-    let list: Value = serde_json::from_str(&og_query_archetypes(query)).unwrap_or(json!([]));
-    list.as_array()
-        .map(|a| a.iter().filter_map(|v| v["count"].as_u64()).sum::<u64>() as u32)
-        .unwrap_or(0)
+    let world = HANDLES.with(|t| {
+        let t = t.borrow();
+        if let Some((_, QueryRec::Frame { first, len })) = t.frame_queries.get(query) {
+            let counts = (0..*len).filter_map(|k| t.views.get(first.wrapping_add(k)));
+            return Err(counts.map(|(_, r)| r.count).sum());
+        }
+        match t.world_queries.get(query) {
+            Some((e, QueryRec::World { desc, .. })) => Ok((*e, desc.clone())),
+            _ => Err(0),
+        }
+    });
+    match world {
+        Err(count) => count,
+        Ok((e, desc)) => engine(e)
+            .and_then(|eng| Ok(eng.world()?.query(&desc).map_err(err)?.entity_count() as u32))
+            .unwrap_or(0),
+    }
 }
 
 fn view_field<T>(view: u32, f: impl FnOnce(&super::engine::ViewRecord) -> T) -> Option<T> {
@@ -982,10 +1056,6 @@ pub fn og_archetype_view_entity(view: u32, index: u32) -> f64 {
         unsafe { (*r.entities.add(index as usize)).to_bits() as f64 }
     })
     .unwrap_or(0.0)
-}
-
-pub fn og_archetype_view_has(view: u32, comp: String) -> bool {
-    view_field(view, |r| r.types.contains(&comp)).unwrap_or(false)
 }
 
 // ── system and game ─────────────────────────────────────────────────────────

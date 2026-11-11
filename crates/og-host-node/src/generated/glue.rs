@@ -15,6 +15,12 @@ pub fn og_host_set_dispatcher(env: Env, dispatcher: crate::NodeFunction) {
     <Host as Lifecycle>::og_host_set_dispatcher(&Host, dispatcher)
 }
 
+#[napi(js_name = "og_host_shared")]
+pub fn og_host_shared(env: Env) -> crate::NodeShared {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as Lifecycle>::og_host_shared(&Host)
+}
+
 #[napi(js_name = "og_engine_create")]
 pub fn og_engine_create(env: Env, game: u32, options: String) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -91,6 +97,24 @@ pub fn og_engine_read_resource(env: Env, world: u32, resource: String) -> crate:
 pub fn og_engine_write_resource_bytes(env: Env, world: u32, resource: String, bytes: crate::NodeBytes) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as Lifecycle>::og_engine_write_resource_bytes(&Host, world, resource, bytes)
+}
+
+#[napi(js_name = "og_engine_component_id")]
+pub fn og_engine_component_id(env: Env, world: u32, component: String) -> u32 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as Lifecycle>::og_engine_component_id(&Host, world, component)
+}
+
+#[napi(js_name = "og_engine_query_archetypes")]
+pub fn og_engine_query_archetypes(env: Env, query: u32, from: u32) -> u32 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as Lifecycle>::og_engine_query_archetypes(&Host, query, from)
+}
+
+#[napi(js_name = "og_engine_view_column")]
+pub fn og_engine_view_column(env: Env, view: u32, component: u32) -> crate::NodeViews {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as Lifecycle>::og_engine_view_column(&Host, view, component)
 }
 
 #[napi(js_name = "og_engine_ui_patch")]
@@ -387,12 +411,6 @@ pub fn og_world_restore(env: Env, world: u32, save: String, desc: Option<String>
     <Host as WorldApi>::og_world_restore(&Host, world, save, desc)
 }
 
-#[napi(js_name = "og_query_archetypes")]
-pub fn og_query_archetypes(env: Env, query: u32) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as WorldApi>::og_query_archetypes(&Host, query)
-}
-
 #[napi(js_name = "og_query_count")]
 pub fn og_query_count(env: Env, query: u32) -> u32 {
     let _env = crate::EnvScope::enter(&env);
@@ -427,18 +445,6 @@ pub fn og_archetype_view_get_rows(env: Env, archetype_view: u32) -> crate::NodeA
 pub fn og_archetype_view_entity(env: Env, archetype_view: u32, index: u32) -> f64 {
     let _env = crate::EnvScope::enter(&env);
     <Host as WorldApi>::og_archetype_view_entity(&Host, archetype_view, index)
-}
-
-#[napi(js_name = "og_archetype_view_has")]
-pub fn og_archetype_view_has(env: Env, archetype_view: u32, component: String) -> bool {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as WorldApi>::og_archetype_view_has(&Host, archetype_view, component)
-}
-
-#[napi(js_name = "og_archetype_view_column")]
-pub fn og_archetype_view_column(env: Env, archetype_view: u32, component: String) -> crate::NodeViews {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as WorldApi>::og_archetype_view_column(&Host, archetype_view, component)
 }
 
 #[napi(js_name = "og_hook_get_name")]

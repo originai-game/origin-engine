@@ -30,11 +30,17 @@ export interface HostBinding {
   /** The host's name, for messages: `web` or `node`. */
   readonly name: string;
   /**
-   * Typed arrays over what `og_archetype_view_column` answered, one per
+   * Typed arrays over what `og_engine_view_column` answered, one per
    * field: `kinds[i]` is the field's column kind, `count` the entity count.
    * `null` when the host refused.
    */
   columns(raw: unknown, kinds: readonly ColumnSpec[], count: number): ColumnArray[] | null;
+  /**
+   * Where the shared buffer (`og_host_shared`) is now: the buffer holding
+   * it and its byte offset there. Asked again when the views made over it
+   * were detached (a grown wasm memory).
+   */
+  shared(): { readonly buffer: ArrayBufferLike; readonly offset: number };
   /** Whether arrays made earlier still see engine memory (wasm memory growth detaches them). */
   fresh?(array: ColumnArray): boolean;
 }
@@ -101,6 +107,9 @@ export function bindHost(binding: HostBinding): void {
   // naming the call on both hosts alike (generated/abi.ts).
   host = { ...binding, abi: registrationBoundary(checkEntities(binding.abi)) };
   publishBuild = null;
+  // Another host's shared buffer and component numbers are not this one's.
+  sharedWords = new Uint32Array(0);
+  componentIds.clear();
   binding.abi.og_host_set_dispatcher(dispatch);
   for (const declare of queue.splice(0)) declare(binding.abi);
 }
@@ -124,6 +133,53 @@ function abi(): HostAbi<Uint32Array, unknown> {
   if (dirtyRecords.length > 0) flushRecords();
   engineCalls++;
   return host.abi;
+}
+
+// ── the shared buffer ─────────────────────────────────────────────────────
+
+/** The shared buffer's size in bytes (og-runtime's shared.rs). */
+const SHARED_BYTES = 65536;
+/** Where a system call's archetypes start in it, in words: after the time scale's four doubles. */
+const FRAME_QUERY_WORD = 8;
+
+let sharedWords: Uint32Array = new Uint32Array(0);
+let sharedFloats: Float64Array = new Float64Array(0);
+
+/**
+ * Moves on whenever the engine may have written the buffer again (a call
+ * into game code, a query's archetypes asked for), and when a system call
+ * ends: what a system's query finds there is its own only while this holds.
+ */
+let sharedStamp = 0;
+
+/** The buffer as words (and `sharedFloats` with it), made again once a grown wasm memory detached them. */
+function words(): Uint32Array {
+  if (sharedWords.length === 0) {
+    const { buffer, offset } = host!.shared();
+    sharedWords = new Uint32Array(buffer, offset, SHARED_BYTES / 4);
+    sharedFloats = new Float64Array(buffer, offset, SHARED_BYTES / 8);
+  }
+  return sharedWords;
+}
+
+/** What `og_engine_component_id` answers for a name the world has not registered as a component. */
+const NO_COMPONENT = 4294967295;
+
+/** Component numbers by engine and name (`og_engine_component_id`), good for one layout epoch. */
+const componentIds = new Map<number, Map<string, number>>();
+let componentIdsEpoch = 0;
+
+/** A component's number in an engine's world; NO_COMPONENT while the world has not registered it. */
+function componentId(engine: number, name: string): number {
+  let ids = componentIds.get(engine);
+  if (!ids) componentIds.set(engine, (ids = new Map()));
+  let id = ids.get(name);
+  if (id === undefined) {
+    id = abi().og_engine_component_id(engine, name);
+    // An unregistered name is asked for again: a later use may register it.
+    if (id !== NO_COMPONENT) ids.set(name, id);
+  }
+  return id;
 }
 
 /** Run now if a host is bound, else when one is. */
@@ -455,13 +511,6 @@ export function currentCall(): { readonly engine: number; readonly tick: number;
   return calling;
 }
 
-interface ViewInfo {
-  readonly view: number;
-  readonly count: number;
-  readonly tick: number;
-  readonly types: readonly string[];
-}
-
 /** A component token's field names and column kinds, worked out once. */
 const layouts = new WeakMap<Token, { names: string[]; kinds: ColumnSpec[] }>();
 
@@ -505,15 +554,23 @@ function viewOf(component: Token, names: string[], arrays: ColumnArray[]): Recor
 }
 
 class ArchetypeViewImpl {
-  readonly #info: ViewInfo;
+  /** The view's handle. */
+  readonly #view: number;
+  readonly #tick: number;
+  /** The archetype's components, as their numbers in its engine (componentId). */
+  readonly #types: readonly number[];
+  readonly #engine: number;
   readonly #epoch: number;
   readonly #system: SystemEntry | null;
   #entities: Uint32Array | null = null;
-  readonly #columns = new Map<string, object>();
+  #columns: Map<string, object> | null = null;
 
-  constructor(info: ViewInfo, system: SystemEntry | null) {
-    this.count = info.count;
-    this.#info = info;
+  constructor(view: number, count: number, tick: number, types: readonly number[], engine: number, system: SystemEntry | null) {
+    this.count = count;
+    this.#view = view;
+    this.#tick = tick;
+    this.#types = types;
+    this.#engine = engine;
     this.#epoch = epoch;
     this.#system = system;
   }
@@ -521,7 +578,7 @@ class ArchetypeViewImpl {
   #check(): void {
     if (this.#epoch !== epoch) {
       const owner = this.#system ? `system '${this.#system.name}'` : "a call outside systems";
-      throw new Error(`stale ArchetypeView: it belonged to tick ${this.#info.tick}, ${owner}; views last for the system call they were handed to (outside systems, until the next structural change), so take them again from q.archetypes()`);
+      throw new Error(`stale ArchetypeView: it belonged to tick ${this.#tick}, ${owner}; views last for the system call they were handed to (outside systems, until the next structural change), so take them again from q.archetypes()`);
     }
   }
 
@@ -530,12 +587,12 @@ class ArchetypeViewImpl {
 
   get tick(): number {
     this.#check();
-    return this.#info.tick;
+    return this.#tick;
   }
 
   get entities(): Uint32Array {
     this.#check();
-    return (this.#entities ??= abi().og_archetype_view_get_entities(this.#info.view));
+    return (this.#entities ??= abi().og_archetype_view_get_entities(this.#view));
   }
 
   #rows: Uint32Array | null = null;
@@ -543,7 +600,7 @@ class ArchetypeViewImpl {
   /** The rows the query's change filters pass (every row without filters). */
   get rows(): Uint32Array {
     this.#check();
-    return (this.#rows ??= abi().og_archetype_view_get_rows(this.#info.view));
+    return (this.#rows ??= abi().og_archetype_view_get_rows(this.#view));
   }
 
   entity(index: number): number {
@@ -553,29 +610,30 @@ class ArchetypeViewImpl {
 
   has(component: Token): boolean {
     this.#check();
-    return this.#info.types.includes(component.name);
+    return this.#types.includes(componentId(this.#engine, component.name));
   }
 
   column(component: Token): object {
     this.#check();
-    const cached = this.#columns.get(component.name) as Record<string, ColumnArray> | undefined;
+    const cached = this.#columns?.get(component.name) as Record<string, ColumnArray> | undefined;
     // A grown wasm memory detached the arrays: make them again.
     if (cached && !(host!.fresh && Object.values(cached).some((a) => !host!.fresh!(a)))) return cached;
     const s = this.#system;
     if (s && !s.reads.has(component.name) && !s.writes.has(component.name)) {
       throw new Error(`system '${s.name}' did not declare '${component.name}' in its reads or writes; declare it to get its columns`);
     }
-    if (!this.#info.types.includes(component.name)) {
+    const id = componentId(this.#engine, component.name);
+    if (!this.#types.includes(id)) {
       throw new Error(`this archetype has no '${component.name}'; check a.has(${component.name}) first`);
     }
     const { names, kinds } = layoutOf(component);
     const b = host!;
-    const arrays = b.columns(abi().og_archetype_view_column(this.#info.view, component.name), kinds, this.#info.count);
+    const arrays = b.columns(abi().og_engine_view_column(this.#view, id), kinds, this.count);
     if (!arrays || arrays.length !== names.length) {
-      throw new Error(`the ${b.name} host refused the columns of '${component.name}' (tick ${this.#info.tick})`);
+      throw new Error(`the ${b.name} host refused the columns of '${component.name}' (tick ${this.#tick})`);
     }
     const view = viewOf(component, names, arrays);
-    this.#columns.set(component.name, view);
+    (this.#columns ??= new Map()).set(component.name, view);
     return view;
   }
 }
@@ -583,20 +641,61 @@ class ArchetypeViewImpl {
 class QueryImpl {
   readonly #handle: number;
   readonly #system: SystemEntry | null;
+  readonly #engine: number;
+  /** `sharedStamp` while the shared buffer holds this query's archetypes as its system call wrote them; -1 for a world query. */
+  readonly #described: number;
   #cached: ArchetypeViewImpl[] | null = null;
   #cachedEpoch = -1;
 
-  constructor(handle: number, system: SystemEntry | null) {
+  constructor(handle: number, system: SystemEntry | null, engine: number, described: number) {
     this.#handle = handle;
     this.#system = system;
+    this.#engine = engine;
+    this.#described = described;
   }
 
+  /**
+   * The archetypes as the engine describes them in the shared buffer
+   * (`og_engine_query_archetypes`): a system's are there when it is called,
+   * so reading them crosses to the engine only when something wrote the
+   * buffer since, or when they did not all fit.
+   */
   archetypes(): readonly ArchetypeViewImpl[] {
     if (this.#cached && this.#cachedEpoch === epoch) return this.#cached;
-    const list = parse<ViewInfo[]>(abi().og_query_archetypes(this.#handle));
-    this.#cached = list.map((info) => new ArchetypeViewImpl(info, this.#system));
+    const list: ArchetypeViewImpl[] = [];
+    let at = FRAME_QUERY_WORD;
+    if (this.#described !== sharedStamp) {
+      sharedStamp++;
+      abi().og_engine_query_archetypes(this.#handle, 0);
+      at = 0;
+    }
+    for (;;) {
+      const w = words();
+      const total = w[at]!;
+      const written = w[at + 1]!;
+      const tick = w[at + 2]!;
+      if (w[at + 3] !== componentIdsEpoch) {
+        // Layouts were declared again (a new engine, a reload): the numbers may have moved.
+        componentIds.clear();
+        componentIdsEpoch = w[at + 3]!;
+      }
+      let p = at + 4;
+      for (let k = 0; k < written; k++) {
+        const n = w[p + 2]!;
+        const types = new Array<number>(n);
+        for (let i = 0; i < n; i++) types[i] = w[p + 3 + i]!;
+        list.push(new ArchetypeViewImpl(w[p]!, w[p + 1]!, tick, types, this.#engine, this.#system));
+        p += 3 + n;
+      }
+      if (written === 0 || list.length >= total) break;
+      // The rest did not fit: asked for from where this stopped.
+      sharedStamp++;
+      abi().og_engine_query_archetypes(this.#handle, list.length);
+      at = 0;
+    }
+    this.#cached = list;
     this.#cachedEpoch = epoch;
-    return this.#cached;
+    return list;
   }
 
   count(): number {
@@ -1068,7 +1167,7 @@ export class WorldImpl {
     const wire = desc && { with: names(desc.with), without: names(desc.without), changed: names(desc.changed), added: names(desc.added), removed: names(desc.removed) };
     const answer = parse<Result<number>>(abi().og_world_query(this.id, json(wire)));
     if (!answer.ok) return answer;
-    return { ok: true, value: new QueryImpl(answer.value, null) };
+    return { ok: true, value: new QueryImpl(answer.value, null, this.id, -1) };
   }
 
   events(event: Token): readonly unknown[] {
@@ -1255,6 +1354,8 @@ const dispatch: Dispatcher = (kind, engine, id, query, tick, dt, elapsed, payloa
   calling = { engine, tick, world };
   engineCalls++;
   inGame++;
+  // What the shared buffer held for an outer call is gone.
+  const described = ++sharedStamp;
   try {
     if (kind === 6) {
       const errors: string[] = [];
@@ -1270,13 +1371,13 @@ const dispatch: Dispatcher = (kind, engine, id, query, tick, dt, elapsed, payloa
       const system = systems.get(id);
       if (!system || !fn) return `the dispatcher has no system with callback id ${id}: the bundle declared ${systems.size} system(s); was the engine built from another bundle?`;
       running = { system, tick };
-      // The payload carries the time scale: scale,hitStop,scaledDt,scaledElapsed.
-      const ts = (payload || "1,0,0,0").split(",").map(Number);
+      // The shared buffer opens with the time scale: scale, hitStop, scaledDt, scaledElapsed.
+      words();
       const time = Object.freeze({
         tick, dt, elapsed, rate: rates.get(engine) ?? Math.round(1 / dt),
-        scale: ts[0] ?? 1, hitStop: ts[1] ?? 0, scaledDt: ts[2] ?? dt, scaledElapsed: ts[3] ?? elapsed,
+        scale: sharedFloats[0]!, hitStop: sharedFloats[1]!, scaledDt: sharedFloats[2]!, scaledElapsed: sharedFloats[3]!,
       });
-      fn(new QueryImpl(query, system), time, world);
+      fn(new QueryImpl(query, system, engine, described), time, world);
       flushRecords();
       return "";
     }
@@ -1322,6 +1423,8 @@ const dispatch: Dispatcher = (kind, engine, id, query, tick, dt, elapsed, payloa
     calling = outerCall;
     epoch++;
     engineCalls++;
+    // A system's archetypes in the shared buffer are retired with its views.
+    sharedStamp++;
   }
 };
 

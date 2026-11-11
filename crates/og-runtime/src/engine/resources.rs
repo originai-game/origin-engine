@@ -97,7 +97,7 @@ pub(crate) fn bump_layout_epoch() {
     LAYOUT_EPOCH.with(|e| e.set(e.get().wrapping_add(1).max(1)));
 }
 
-fn layout_epoch() -> u32 {
+pub(crate) fn layout_epoch() -> u32 {
     LAYOUT_EPOCH.with(Cell::get)
 }
 
@@ -301,77 +301,76 @@ pub fn write_resource_bytes(world: u32, resource: &str, bytes: &[u8]) -> String 
 
 // ── views ───────────────────────────────────────────────────────────────────
 
-/// The columns of `component` in view `view`, in field order, or why not.
-/// A running system's view borrows them here, the first time they are
+/// The columns of component `component` (its schema id index, what
+/// `og_engine_component_id` answers) in view `view`, in field order, or why
+/// not. A running system's view borrows them here, the first time they are
 /// asked for, and holds them until the system returns.
-pub fn view_columns(view: u32, component: &str) -> Result<Vec<ColumnPtr>, String> {
+pub fn view_columns(view: u32, component: u32) -> Result<Vec<ColumnPtr>, String> {
     HANDLES.with(|t| {
         let mut t = t.borrow_mut();
+        let t = &mut *t;
         let stale = "stale view: views last for the system call (or, outside systems, until the next structural change) they were handed out in";
         let (engine_id, rec) = t.views.get_mut(view).ok_or(stale)?;
         let cols: Vec<ColumnPtr> = rec
             .columns
             .iter()
-            .filter(|(c, _)| c == component)
+            .filter(|(c, _)| *c == component)
             .map(|(_, p)| *p)
             .collect();
         if !cols.is_empty() {
             return Ok(cols);
         }
-        let wanted: Vec<QueryColumn> = rec
-            .lazy
-            .as_ref()
-            .map(|(_, specs)| {
-                specs
-                    .iter()
-                    .filter(|c| c.component == component)
-                    .cloned()
-                    .collect()
-            })
-            .unwrap_or_default();
-        if wanted.is_empty() {
-            return Err(if rec.types.iter().any(|t| t == component) {
-                format!("'{component}' is not among the reads or writes this view was made with")
+        let eng = engine(*engine_id)?;
+        let st = eng.state.borrow();
+        let name = st
+            .names_by_id
+            .get(component as usize)
+            .map_or("an unregistered component", String::as_str);
+        // The columns the view may borrow: its system's declared ones of
+        // this component, from the archetype the frame holds.
+        let lazy = rec.lazy.and_then(|(system, arch)| {
+            let frame = running(*engine_id).filter(|f| f.system == system)?;
+            Some((&st.systems[system].columns, frame, frame.archetypes.get(arch)?))
+        });
+        let wanted = |c: &&QueryColumn| c.component == component;
+        if !lazy.as_ref().is_some_and(|(specs, ..)| specs.iter().any(|c| wanted(&c))) {
+            if rec.lazy.is_some() && lazy.is_none() {
+                return Err(stale.into());
+            }
+            let (start, n) = rec.types;
+            let types = &t.view_types[start as usize..(start + n) as usize];
+            return Err(if types.contains(&component) {
+                format!("'{name}' is not among the reads or writes this view was made with")
             } else {
-                format!("this archetype has no '{component}'")
+                format!("this archetype has no '{name}'")
             });
         }
-        let arch = rec.lazy.as_ref().map_or(0, |(k, _)| *k);
-        let frame = running(*engine_id).ok_or(stale)?;
-        // SAFETY: the frame is published while its system runs; the
-        // archetypes cannot move until it returns (structural changes wait).
-        let ctx = unsafe { frame.ctx() };
-        let a = ctx
-            .query(0)
-            .map_err(err)?
-            .nth(arch)
-            .ok_or(stale)?;
-        let mut out = Vec::with_capacity(wanted.len());
+        let Some((specs, frame, a)) = lazy else {
+            return Err(stale.into());
+        };
+        let mut out = Vec::new();
         let mut held = frame.held.borrow_mut();
-        for c in &wanted {
+        for c in specs.iter().filter(wanted) {
             let (ptr, guard) = if c.writable {
-                let mut b = a.write_bytes(c.field).map_err(|e| taken(e, component))?;
+                let mut b = a.write_bytes(c.field).map_err(|e| taken(e, name))?;
                 let p = ColumnPtr {
                     ptr: b.as_mut_ptr(),
                     len: b.len(),
                     writable: true,
                 };
-                // SAFETY: the borrow lives in the frame, which `run_system`
-                // clears before the world's borrow for the call ends.
-                (p, Held::Write(unsafe { std::mem::transmute::<std::cell::RefMut<'_, [u8]>, std::cell::RefMut<'static, [u8]>>(b) }))
+                (p, Held::Write(b))
             } else {
-                let b = a.read_bytes(c.field).map_err(|e| taken(e, component))?;
+                let b = a.read_bytes(c.field).map_err(|e| taken(e, name))?;
                 let p = ColumnPtr {
                     ptr: b.as_ptr() as *mut u8,
                     len: b.len(),
                     writable: false,
                 };
-                // SAFETY: as above.
-                (p, Held::Read(unsafe { std::mem::transmute::<std::cell::Ref<'_, [u8]>, std::cell::Ref<'static, [u8]>>(b) }))
+                (p, Held::Read(b))
             };
             held.push(guard);
             out.push(ptr);
-            rec.columns.push((component.to_string(), ptr));
+            rec.columns.push((component, ptr));
         }
         Ok(out)
     })
@@ -409,12 +408,13 @@ pub fn view_entities(view: u32) -> Vec<u32> {
     })
 }
 
-/// Builds view records for a world query outside systems.
-pub(crate) fn world_query_views(eng: &Engine, desc: &QueryDesc) -> Result<Vec<u32>, String> {
+/// Builds view records for a world query outside systems: their first
+/// handle and how many they are.
+pub(crate) fn world_query_views(eng: &Engine, desc: &QueryDesc) -> Result<(u32, u32), String> {
     let world = eng.world()?;
     let tick = world.time().tick as u32;
     let st = eng.state.borrow();
-    let mut out = Vec::new();
+    let mut records = Vec::new();
     for a in world.query(desc).map_err(err)? {
         let mut cols = Vec::new();
         for name in desc.write.iter() {
@@ -427,7 +427,7 @@ pub(crate) fn world_query_views(eng: &Engine, desc: &QueryDesc) -> Result<Vec<u3
                 let field = world.field_by_id(id, &f.name).map_err(err)?;
                 let mut b = a.write_bytes(field).map_err(err)?;
                 cols.push((
-                    name.clone(),
+                    id.index(),
                     ColumnPtr {
                         ptr: b.as_mut_ptr(),
                         len: b.len(),
@@ -436,21 +436,30 @@ pub(crate) fn world_query_views(eng: &Engine, desc: &QueryDesc) -> Result<Vec<u3
                 ));
             }
         }
-        let types = a
-            .types()
-            .iter()
-            .filter_map(|id: &SchemaId| st.names_by_id.get(id.index() as usize).cloned())
-            .collect();
-        let rec = ViewRecord {
-            count: a.len() as u32,
-            tick,
-            entities: a.entities().as_ptr(),
-            columns: cols,
-            types,
-            rows: a.filtered().then(|| a.rows()),
-            lazy: None,
-        };
-        out.push(HANDLES.with(|t| t.borrow_mut().views.push((eng.id, rec))));
+        records.push((
+            ViewRecord {
+                count: a.len() as u32,
+                tick,
+                entities: a.entities().as_ptr(),
+                columns: cols,
+                types: (0, 0),
+                rows: a.filtered().then(|| a.rows()),
+                lazy: None,
+            },
+            a.types(),
+        ));
     }
-    Ok(out)
+    Ok(HANDLES.with(|t| {
+        let mut t = t.borrow_mut();
+        let t = &mut *t;
+        let first = t.views.base.wrapping_add(t.views.items.len() as u32);
+        let len = records.len() as u32;
+        for (mut rec, types) in records {
+            rec.types = (t.view_types.len() as u32, types.len() as u32);
+            t.view_types
+                .extend(types.iter().map(|id: &SchemaId| id.index()));
+            t.views.push((eng.id, rec));
+        }
+        (first, len)
+    }))
 }

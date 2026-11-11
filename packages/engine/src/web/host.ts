@@ -136,13 +136,19 @@ export async function loadWebHost(glue: WebGlue, wasm?: unknown, threads?: numbe
   }
   glue.og_web_init();
   const memory = exports.memory;
-  // Arrays by (offset, length, kind) over the current buffer: a system's
-  // views cost no allocation while its columns stay put.
-  let cache = new Map<string, ColumnArray>();
+  const abi = withPublishRefusals(glue) as unknown as HostAbi<Uint32Array, unknown>;
+  // The shared buffer's place in the module's memory: fixed, while the
+  // buffer over the memory is replaced when it grows.
+  const sharedOffset = abi.og_host_shared() as number;
+  // Arrays by offset over the current buffer (a column's offset is one
+  // field's, so its kind; the length is checked): a system's views cost no
+  // allocation while its columns stay put.
+  let cache = new Map<number, ColumnArray>();
   let cachedBuffer: ArrayBufferLike = memory.buffer;
   const binding: HostBinding = {
-    abi: withPublishRefusals(glue) as unknown as HostAbi<Uint32Array, unknown>,
+    abi,
     name: "web",
+    shared: () => ({ buffer: memory.buffer, offset: sharedOffset }),
     columns(raw, kinds, count) {
       const offsets = raw as Uint32Array;
       if (!offsets || offsets.length === 0) return null;
@@ -152,9 +158,11 @@ export async function loadWebHost(glue: WebGlue, wasm?: unknown, threads?: numbe
       }
       return Array.from(offsets, (offset, i) => {
         const kind = kinds[i]!;
-        const key = `${offset}:${count * kind.stride}:${kind.array}`;
-        let a = cache.get(key);
-        if (!a) cache.set(key, (a = new ARRAYS[kind.array](memory.buffer, offset, count * kind.stride) as ColumnArray));
+        const length = count * kind.stride;
+        let a = cache.get(offset);
+        if (!a || a.length !== length || a.constructor !== ARRAYS[kind.array]) {
+          cache.set(offset, (a = new ARRAYS[kind.array](memory.buffer, offset, length) as ColumnArray));
+        }
         return a;
       });
     },

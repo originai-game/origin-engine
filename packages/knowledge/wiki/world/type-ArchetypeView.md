@@ -14,7 +14,7 @@ interface ArchetypeView {
   # members follow, each quoted below
 ```
 
-<sub>Module `world` line 438</sub>
+<sub>Module `world` line 439</sub>
 
 <a id="member-ArchetypeView-count"></a>
 
@@ -32,7 +32,7 @@ Binding symbol `og_archetype_view_get_count` · publish builds: kept
 prop count u32 "The number of entities in the archetype."
 ```
 
-<sub>Module `world` line 440</sub>
+<sub>Module `world` line 441</sub>
 
 <a id="member-ArchetypeView-tick"></a>
 
@@ -50,7 +50,7 @@ Binding symbol `og_archetype_view_get_tick` · publish builds: kept
 prop tick u32 "The tick this view belongs to."
 ```
 
-<sub>Module `world` line 441</sub>
+<sub>Module `world` line 442</sub>
 
 <a id="member-ArchetypeView-entities"></a>
 
@@ -68,7 +68,7 @@ Binding symbol `og_archetype_view_get_entities` · publish builds: kept
 prop entities Uint32Array "The entities as (index, generation) pairs: entity i is at 2i and 2i + 1. These are not handles: for a handle use entity(i) (world.despawn, get, set, insert and remove refuse a bare index, naming the call)."
 ```
 
-<sub>Module `world` line 442</sub>
+<sub>Module `world` line 443</sub>
 
 <a id="member-ArchetypeView-rows"></a>
 
@@ -86,7 +86,7 @@ Binding symbol `og_archetype_view_get_rows` · publish builds: kept
 prop rows Uint32Array "The rows the query's change filters pass (SystemDesc.changed, added, removed; QueryDesc's), in row order; every row, 0 to count - 1, for a query without them. Columns still hold every row: loop over rows and index the columns with them."
 ```
 
-<sub>Module `world` line 443</sub>
+<sub>Module `world` line 444</sub>
 
 <a id="member-ArchetypeView-entity"></a>
 
@@ -114,7 +114,7 @@ fn entity {
 }
 ```
 
-<sub>Module `world` line 444</sub>
+<sub>Module `world` line 445</sub>
 
 <a id="member-ArchetypeView-has"></a>
 
@@ -132,18 +132,19 @@ ArchetypeView.has<C extends AnyComponent>(component: C): boolean
 
 **Returns** `boolean`.
 
-Binding symbol `og_archetype_view_has` · publish builds: kept
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
 
 ```ogt
 fn has {
   doc "Whether the archetype carries a component."
+  host false
   generic C AnyComponent
   param component C "The component token."
   returns bool
 }
 ```
 
-<sub>Module `world` line 449</sub>
+<sub>Module `world` line 450</sub>
 
 <a id="member-ArchetypeView-column"></a>
 
@@ -163,16 +164,17 @@ ArchetypeView.column<C extends AnyComponent>(component: C): View<C>
 
 **Returns** `View<C>`.
 
-Binding symbol `og_archetype_view_column` · publish builds: kept
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
 
 ```ogt
 fn column {
   doc "The typed views of a component's fields: one typed array per field, `count * stride` long."
   doc "Writing requires the component among the system's writes; reading among its reads or writes."
+  host false
   generic C AnyComponent
   param component C "The component token."
   returns View.C
 }
 ```
 
-<sub>Module `world` line 455</sub>
+<sub>Module `world` line 457</sub>

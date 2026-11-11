@@ -97,9 +97,12 @@ export function loadNativeHost(path: string = addonPath()): HostBinding {
   const addon = createRequire(import.meta.url)(path) as HostAbi<Uint32Array, unknown> & NativeExtras;
   extras = addon;
   process.on("exit", () => addon.og_node_resident?.(false));
+  // An ArrayBuffer the addon made and keeps: it never moves.
+  const shared = { buffer: addon.og_host_shared() as ArrayBuffer, offset: 0 };
   const binding: HostBinding = {
     abi: addon,
     name: "node",
+    shared: () => shared,
     columns(raw, kinds, _count) {
       if (!Array.isArray(raw) || raw.length === 0) return null;
       // The host hands out the same buffer while a column stays put: so does this.

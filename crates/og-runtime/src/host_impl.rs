@@ -50,6 +50,9 @@ pub trait HostWire: Wire {
     /// `ArchetypeView.column`: the runtime's column pointers (or its
     /// refusal) as the host's views; a refusal answers empty views.
     fn views(columns: Result<Vec<ColumnPtr>, String>) -> Self::Views;
+    /// `og_host_shared`: the shared buffer (`crate::shared`) as the host
+    /// hands it to its loader, installed first where the host owns it.
+    fn shared() -> Self::Shared;
     /// Bytes the engine hands out (a resource's packed record, UI replies).
     fn bytes_out(bytes: Vec<u8>) -> Self::Bytes;
     /// Bytes handed to the engine by value (`og.load.*Data`).

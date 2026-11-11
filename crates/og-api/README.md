@@ -277,7 +277,8 @@ the validator refuses a declaration that would repeat one.
 (`WorldApi`, `ProbeApi`, ...; `math` and `time` declare data only) plus
 `Lifecycle` (create, destroy, advance, command, frame, write a resource,
 a resource's packed layout and its bytes read and written, set the
-dispatcher), each method named after its binding symbol. `Host` is all of
+dispatcher, the shared buffer, a component's number, a query's archetypes
+and a view's columns), each method named after its binding symbol. `Host` is all of
 them. Every trait is implemented once, in `og_runtime::host_impl`, which
 each host expands for itself in its `src/host.rs` beside its `Wire` types and
 what it does differently (`HostWire`); its generated glue calls each method,
@@ -297,7 +298,22 @@ Every binding crosses in one wire form, identical on both hosts:
 | everything else (structs, lists, maps, options, results, unions, `Value`) | JSON text |
 | `Uint32Array` (`ArchetypeView.entities`) | `Wire::Array`: a copied `Uint32Array` |
 | `Bytes` (`og.load.imageData`'s file), and `Self::Bytes` (the lifecycle's resource bytes, `og_engine_read_resource` and `og_engine_write_resource_bytes`) | a `Uint8Array`, copied: web, wasm-bindgen's `Vec<u8>`; node, a copying `NodeBytes` |
-| `View<C>` (`ArchetypeView.column`) | `Wire::Views`: web, byte offsets into `memory.buffer`; node, one ArrayBuffer per field over the column |
+| `View<C>` (`ArchetypeView.column`, the lifecycle's `og_engine_view_column`) | `Wire::Views`: web, byte offsets into `memory.buffer`; node, one ArrayBuffer per field over the column |
+| `Self::Shared` (the lifecycle's `og_host_shared`) | the shared buffer, 65536 bytes both sides see: web, its byte offset in `memory.buffer`; node, an ArrayBuffer JavaScript owns |
+
+What crosses on every system call is numbers in the shared buffer, never
+text, and is valid until the next engine call. A system's dispatch has an
+empty payload: bytes 0 to 31 hold four `f64` (the time scale, the hit
+stop's ticks left, the scaled dt, the scaled elapsed time), and from word 8
+its query's archetypes as `og_engine_query_archetypes` writes them (at word
+0 when the runtime asks): the archetype count, how many follow, their tick
+and the layout epoch, then per archetype its view handle, entity count,
+type count and types. A type is a component's number in that world
+(`og_engine_component_id`, its schema id index), which is also what
+`og_engine_view_column` takes; the runtime keeps the numbers per engine
+until the layout epoch moves. `Query.archetypes`, `ArchetypeView.has` and
+`ArchetypeView.column` are `host false`: the runtime answers them from the
+description.
 
 Optional parameters are `Option<..>` / `| undefined`. Exports outside
 `publish` builds (the commands module, the probe's non-player members) carry
@@ -369,7 +385,7 @@ view tables. Both hosts depend on it; `og-cli` does not.
   unscaled tick, moves the camera along an og.CameraRail) after it;
   `og.sprite` (afterimage samples, floating text expiry) after physics and
   audio. Each has a state block. A system's `time` carries the time scale
-  (`scale`, `hitStop`, `scaledDt`, `scaledElapsed`) in the dispatch payload;
+  (`scale`, `hitStop`, `scaledDt`, `scaledElapsed`) in the shared buffer;
   `og.Time` reads the same through `og.TimeScale`. Extraction draws og.Sprite
   rows (their flipbook frame, flips, nine-slice pieces, y sort keys, blob
   shadows and afterimages), floating texts and tile layers (chunks cached

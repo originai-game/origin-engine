@@ -427,6 +427,7 @@ module world {
     doc "A set of matched archetypes. Iterate archetypes, never entities one by one."
     fn archetypes {
       doc "The matched archetypes this tick."
+      host false
       returns List.ArchetypeView
     }
     fn count {
@@ -448,6 +449,7 @@ module world {
     }
     fn has {
       doc "Whether the archetype carries a component."
+      host false
       generic C AnyComponent
       param component C "The component token."
       returns bool
@@ -455,6 +457,7 @@ module world {
     fn column {
       doc "The typed views of a component's fields: one typed array per field, `count * stride` long."
       doc "Writing requires the component among the system's writes; reading among its reads or writes."
+      host false
       generic C AnyComponent
       param component C "The component token."
       returns View.C

@@ -208,6 +208,50 @@ impl FromNapiValue for NodeFunction {
     }
 }
 
+/// `og_host_shared`: the shared buffer as an `ArrayBuffer` of JavaScript's
+/// own heap (no runtime refuses that, as some do external memory), made
+/// once per thread, kept by a strong reference and installed as the
+/// runtime's (`og_runtime::shared`).
+pub struct NodeShared;
+
+thread_local! {
+    static SHARED: Cell<sys::napi_ref> = const { Cell::new(ptr::null_mut()) };
+}
+
+impl ToNapiValue for NodeShared {
+    unsafe fn to_napi_value(env: sys::napi_env, _: Self) -> napi::Result<sys::napi_value> {
+        unsafe {
+            let mut buffer = ptr::null_mut();
+            let kept = SHARED.with(Cell::get);
+            if !kept.is_null() {
+                sys::napi_get_reference_value(env, kept, &mut buffer);
+                if !buffer.is_null() {
+                    return Ok(buffer);
+                }
+            }
+            let mut data = ptr::null_mut();
+            let mut kept = ptr::null_mut();
+            if !ok(sys::napi_create_arraybuffer(
+                env,
+                og_runtime::shared::SHARED_BYTES,
+                &mut data,
+                &mut buffer,
+            )) || data.is_null()
+                || !ok(sys::napi_create_reference(env, buffer, 1, &mut kept))
+            {
+                return Err(napi::Error::from_reason(
+                    "cannot allocate the shared buffer",
+                ));
+            }
+            // SAFETY: the reference keeps the buffer, and so its memory, for
+            // the thread's life; only this thread's JavaScript touches it.
+            og_runtime::shared::install(data.cast());
+            SHARED.with(|s| s.set(kept));
+            Ok(buffer)
+        }
+    }
+}
+
 /// One ArrayBuffer over (or copied from) a column, kept while the column
 /// stays where it is, so a system's views cost no allocation tick after tick.
 struct Kept {

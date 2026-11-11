@@ -562,31 +562,56 @@ pub(crate) fn time_scale_json(scale: og_core::TimeScale, time: og_core::Time) ->
     })
 }
 
-/// The dispatch payload of a system call: `scale,hitStop,scaledDt,scaledElapsed`.
-pub(crate) fn time_payload(ctx: &SystemContext<'_>) -> String {
-    let s = ctx.time_scale();
-    let t = ctx.time();
-    time_payload_of(s.scale, s.hit_stop, s.dt(&t), s.elapsed)
+/// A system call's time scale, written to the shared buffer as four
+/// doubles: scale, hitStop, scaledDt, scaledElapsed
+/// ([`crate::shared`]; `dispatch` in runtime.ts reads them).
+pub(crate) fn put_time(shared: &mut [u8], scale: f32, hit_stop: u32, dt: f32, elapsed: f64) {
+    for (i, v) in time_numbers(scale, hit_stop, dt, elapsed)
+        .into_iter()
+        .enumerate()
+    {
+        crate::shared::put_f64(shared, i, v);
+    }
 }
 
-/// [`time_payload`]'s text, `{}`'s numbers: the scaled elapsed time
-/// formatted with zmij, whose shortest round-trip digits are core's (as
-/// JavaScript's `Number` reads them back) where core's `{}` falls back to
-/// Dragon4 for most elapsed times, a fifth of a millisecond of every tick
-/// of the reference scene, measured on the retired WebGL2 tier
-/// (the former test sample
-/// The f32 fields keep `{}`: on an exact tie between two shortest
-/// candidates zmij rounds to even and core up.
-fn time_payload_of(scale: f32, hit_stop: u32, dt: f32, elapsed: f64) -> String {
-    use std::fmt::Write;
-    let mut out = String::with_capacity(48);
-    let _ = write!(out, "{scale},{hit_stop},{dt},");
-    if elapsed.is_finite() {
-        out.push_str(zmij::Buffer::new().format_finite(elapsed));
-    } else {
-        let _ = write!(out, "{elapsed}");
+/// [`put_time`]'s numbers: what JavaScript's `Number` reads from `{}`'s
+/// text of each, which is what a system's `time` has always held (the
+/// call once carried that text). An f32 is therefore the double nearest
+/// its own shortest digits (0.016666668, not the 0.01666666753590107 it
+/// widens to), and what `Number` does not read (`inf`) is NaN.
+fn time_numbers(scale: f32, hit_stop: u32, dt: f32, elapsed: f64) -> [f64; 4] {
+    [
+        f32_as_read(scale, 0),
+        f64::from(hit_stop),
+        f32_as_read(dt, 1),
+        if elapsed.is_finite() {
+            elapsed
+        } else {
+            f64::NAN
+        },
+    ]
+}
+
+/// The double `Number` reads from an f32's `{}` text. The scale and the
+/// scaled step rarely change, so the last answer of each (`slot`) is kept.
+fn f32_as_read(x: f32, slot: usize) -> f64 {
+    thread_local! {
+        static LAST: std::cell::Cell<[(u32, f64); 2]> =
+            const { std::cell::Cell::new([(0, 0.0); 2]) };
     }
-    out
+    let mut last = LAST.with(std::cell::Cell::get);
+    if last[slot].0 != x.to_bits() {
+        // Core's `{}` rather than zmij: on an exact tie between two
+        // shortest candidates zmij rounds to even and core up.
+        let read = if x.is_finite() {
+            x.to_string().parse().unwrap_or(f64::NAN)
+        } else {
+            f64::NAN
+        };
+        last[slot] = (x.to_bits(), read);
+        LAST.with(|l| l.set(last));
+    }
+    last[slot].1
 }
 
 fn with_world<T>(
@@ -1345,31 +1370,37 @@ impl StateBlock for SpriteBlock {
 
 #[cfg(test)]
 mod tests {
-    use super::time_payload_of;
+    use super::time_numbers;
 
     /// What JavaScript's `Number` reads from each field of a payload (a
     /// correctly rounded parse to f64, as Rust's), by bits; NaN for text
-    /// it does not read (`inf`).
+    /// it does not read (`inf` and `-inf`, which Rust's parse accepts).
     fn numbers(payload: &str) -> Vec<u64> {
         payload
             .split(',')
-            .map(|f| f.parse::<f64>().unwrap_or(f64::NAN))
-            .map(|x| {
-                if x.is_nan() {
-                    f64::NAN.to_bits()
-                } else {
-                    x.to_bits()
-                }
+            .map(|f| match f {
+                "inf" | "-inf" => f64::NAN,
+                f => f.parse::<f64>().unwrap_or(f64::NAN),
             })
+            .map(bits)
             .collect()
     }
 
-    /// The payload's numbers are those of `{}`'s text, so the game's
-    /// systems read the same scaled time: an f32 field carries the f32's
-    /// own shortest digits (not the f64 it widens to), over the elapsed
-    /// times of long runs, random bit patterns and the odd values.
+    fn bits(x: f64) -> u64 {
+        if x.is_nan() {
+            f64::NAN.to_bits()
+        } else {
+            x.to_bits()
+        }
+    }
+
+    /// A system's time numbers are those of `{}`'s text, so the game's
+    /// systems read the same scaled time as when the call carried that
+    /// text: an f32 field is its own shortest digits (not the f64 it
+    /// widens to), over the elapsed times of long runs, random bit
+    /// patterns and the odd values.
     #[test]
-    fn the_time_payload_reads_back_as_the_formatted_numbers() {
+    fn the_time_numbers_are_what_number_reads_from_the_formatted_text() {
         let mut seed = 0x2545_f491_4f6c_dd1d_u64;
         let mut next = || {
             seed ^= seed << 13;
@@ -1411,12 +1442,12 @@ mod tests {
         cases.push((1.0, 0, 0.0, f64::MIN_POSITIVE));
         cases.push((1.0, 0, 0.0, f64::MAX));
         for (scale, hit_stop, dt, elapsed) in cases {
-            let ours = time_payload_of(scale, hit_stop, dt, elapsed);
+            let ours = time_numbers(scale, hit_stop, dt, elapsed).map(bits);
             let display = format!("{scale},{hit_stop},{dt},{elapsed}");
             assert_eq!(
-                numbers(&ours),
+                ours.to_vec(),
                 numbers(&display),
-                "{ours} against {display}"
+                "{scale:?},{hit_stop},{dt:?},{elapsed:?} against {display}"
             );
         }
     }

@@ -14,6 +14,11 @@ pub fn og_host_set_dispatcher(dispatcher: js_sys::Function) {
 }
 
 #[wasm_bindgen]
+pub fn og_host_shared() -> u32 {
+    <Host as Lifecycle>::og_host_shared(&Host)
+}
+
+#[wasm_bindgen]
 pub fn og_engine_create(game: u32, options: String) -> String {
     <Host as Lifecycle>::og_engine_create(&Host, game, options)
 }
@@ -76,6 +81,21 @@ pub fn og_engine_read_resource(world: u32, resource: String) -> Vec<u8> {
 #[wasm_bindgen]
 pub fn og_engine_write_resource_bytes(world: u32, resource: String, bytes: Vec<u8>) -> String {
     <Host as Lifecycle>::og_engine_write_resource_bytes(&Host, world, resource, bytes)
+}
+
+#[wasm_bindgen]
+pub fn og_engine_component_id(world: u32, component: String) -> u32 {
+    <Host as Lifecycle>::og_engine_component_id(&Host, world, component)
+}
+
+#[wasm_bindgen]
+pub fn og_engine_query_archetypes(query: u32, from: u32) -> u32 {
+    <Host as Lifecycle>::og_engine_query_archetypes(&Host, query, from)
+}
+
+#[wasm_bindgen]
+pub fn og_engine_view_column(view: u32, component: u32) -> Vec<u32> {
+    <Host as Lifecycle>::og_engine_view_column(&Host, view, component)
 }
 
 #[wasm_bindgen]
@@ -324,11 +344,6 @@ pub fn og_world_restore(world: u32, save: String, desc: Option<String>) -> Strin
 }
 
 #[wasm_bindgen]
-pub fn og_query_archetypes(query: u32) -> String {
-    <Host as WorldApi>::og_query_archetypes(&Host, query)
-}
-
-#[wasm_bindgen]
 pub fn og_query_count(query: u32) -> u32 {
     <Host as WorldApi>::og_query_count(&Host, query)
 }
@@ -356,16 +371,6 @@ pub fn og_archetype_view_get_rows(archetype_view: u32) -> Vec<u32> {
 #[wasm_bindgen]
 pub fn og_archetype_view_entity(archetype_view: u32, index: u32) -> f64 {
     <Host as WorldApi>::og_archetype_view_entity(&Host, archetype_view, index)
-}
-
-#[wasm_bindgen]
-pub fn og_archetype_view_has(archetype_view: u32, component: String) -> bool {
-    <Host as WorldApi>::og_archetype_view_has(&Host, archetype_view, component)
-}
-
-#[wasm_bindgen]
-pub fn og_archetype_view_column(archetype_view: u32, component: String) -> Vec<u32> {
-    <Host as WorldApi>::og_archetype_view_column(&Host, archetype_view, component)
 }
 
 #[wasm_bindgen]

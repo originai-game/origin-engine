@@ -1,0 +1,9 @@
+{
+  "breaking": [
+    {
+      "member": "host ABI (og_host_shared, og_engine_query_archetypes, og_engine_view_column, og_engine_component_id)",
+      "change": "A system's call no longer carries text. Its time scale and its query's archetypes are numbers in a shared buffer (og_host_shared); a column is asked for by the component's number (og_engine_component_id), not its name. og_query_archetypes, og_archetype_view_has and og_archetype_view_column are gone from the addon and the wasm module, and the binding ids after them move down. Game code is unchanged: Query.archetypes, ArchetypeView.has and ArchetypeView.column answer as before, and worlds, snapshots and world hashes are the same bytes.",
+      "fix": "Nothing in a game. A host's native addon or wasm module and the packages/engine runtime that loads it must be the same engine version, as a release always ships them."
+    }
+  ]
+}

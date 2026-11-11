@@ -4,7 +4,7 @@
 //! bindings lack is a build error here. Views, entities and the dispatcher
 //! are where the native host differs.
 
-use crate::{NodeArray, NodeBytes, NodeFunction, NodeHooks, NodeHost, NodeViews};
+use crate::{NodeArray, NodeBytes, NodeFunction, NodeHooks, NodeHost, NodeShared, NodeViews};
 use og_api::host::Wire;
 use og_runtime as rt;
 use og_runtime::host_impl::HostWire;
@@ -16,6 +16,8 @@ impl Wire for NodeHost {
     type Function = NodeFunction;
     /// A `Uint8Array` copied either way.
     type Bytes = NodeBytes;
+    /// An `ArrayBuffer` JavaScript owns, kept for the thread's life.
+    type Shared = NodeShared;
 }
 
 impl HostWire for NodeHost {
@@ -29,6 +31,9 @@ impl HostWire for NodeHost {
         // One ArrayBuffer per field over the column (or a copy of it, see
         // `NodeViews`). Empty is a refusal.
         NodeViews(columns.unwrap_or_default())
+    }
+    fn shared() -> Self::Shared {
+        NodeShared
     }
     fn bytes_out(bytes: Vec<u8>) -> Self::Bytes {
         NodeBytes(bytes)

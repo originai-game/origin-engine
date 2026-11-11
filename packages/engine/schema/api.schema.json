@@ -2683,7 +2683,8 @@
               "doc": "The matched archetypes this tick.",
               "params": [],
               "returns": "List<ArchetypeView>",
-              "publish": true
+              "publish": true,
+              "host": false
             },
             {
               "name": "count",
@@ -2754,7 +2755,8 @@
                 }
               ],
               "returns": "bool",
-              "publish": true
+              "publish": true,
+              "host": false
             },
             {
               "name": "column",
@@ -2774,7 +2776,8 @@
                 }
               ],
               "returns": "View<C>",
-              "publish": true
+              "publish": true,
+              "host": false
             }
           ]
         }

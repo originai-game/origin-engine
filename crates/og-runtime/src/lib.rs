@@ -118,6 +118,7 @@ mod save_migrations;
 #[cfg(not(feature = "publish"))]
 mod scene_save;
 mod seabed;
+pub mod shared;
 #[cfg(feature = "story")]
 mod story;
 // Without the `story` feature og-story is not linked: og.story answers the

@@ -48,6 +48,18 @@ macro_rules! __og_host_bindings_base {
             ) -> String {
                 $crate::og_engine_write_resource_bytes(world, resource, &bytes)
             }
+            fn og_host_shared(&self) -> Self::Shared {
+                <Self as $crate::host_impl::HostWire>::shared()
+            }
+            fn og_engine_component_id(&self, world: u32, component: String) -> u32 {
+                $crate::og_engine_component_id(world, component)
+            }
+            fn og_engine_query_archetypes(&self, query: u32, from: u32) -> u32 {
+                $crate::og_engine_query_archetypes(query, from)
+            }
+            fn og_engine_view_column(&self, view: u32, component: u32) -> Self::Views {
+                <Self as $crate::host_impl::HostWire>::views($crate::view_columns(view, component))
+            }
             fn og_engine_ui_patch(&self, world: u32, bytes: Self::Bytes) -> Self::Bytes {
                 <Self as $crate::host_impl::HostWire>::bytes_out($crate::og_engine_ui_patch(
                     world, &bytes,
@@ -258,9 +270,6 @@ macro_rules! __og_host_bindings_base {
             fn og_save_edit_close(&self, save_edit: u32) {
                 $crate::og_save_edit_close(save_edit)
             }
-            fn og_query_archetypes(&self, query: u32) -> String {
-                $crate::og_query_archetypes(query)
-            }
             fn og_query_count(&self, query: u32) -> u32 {
                 $crate::og_query_count(query)
             }
@@ -278,19 +287,6 @@ macro_rules! __og_host_bindings_base {
             }
             fn og_archetype_view_entity(&self, archetype_view: u32, index: u32) -> f64 {
                 $crate::og_archetype_view_entity(archetype_view, index)
-            }
-            fn og_archetype_view_has(&self, archetype_view: u32, component: String) -> bool {
-                $crate::og_archetype_view_has(archetype_view, component)
-            }
-            fn og_archetype_view_column(
-                &self,
-                archetype_view: u32,
-                component: String,
-            ) -> Self::Views {
-                <Self as $crate::host_impl::HostWire>::views($crate::view_columns(
-                    archetype_view,
-                    &component,
-                ))
             }
         }
 
