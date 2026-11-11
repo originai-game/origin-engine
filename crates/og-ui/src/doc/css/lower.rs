@@ -5,6 +5,27 @@ fn e(key: &str, values: Vec<Value>) -> Part {
     Part::Entry(key.to_string(), values)
 }
 
+/// A part of a joint property: its value, or `bind(…)`.
+fn part(k: &str, t: &Tok) -> Result<Vec<Value>, String> {
+    if let Tok::Func(f, a) = t
+        && f == "bind"
+    {
+        return match a.as_slice() {
+            [v] => match v.as_slice() {
+                [Tok::Ident(p)] => Ok(vec![Value::Word("bind".into()), Value::Word(p.clone())]),
+                [Tok::Str(s)] => Ok(vec![Value::Word("bind".into()), Value::String(s.clone())]),
+                _ => Err("bind(path) or bind(\"expression\")".into()),
+            },
+            _ => Err("bind(path) or bind(\"expression\")".into()),
+        };
+    }
+    if k.starts_with("scale") {
+        want_num(t).map(|v| vec![v])
+    } else {
+        want_len(t).map(|v| vec![v])
+    }
+}
+
 /// The entries one element declaration (or state value when `state`)
 /// sets, in order. Sizes, grid lines and `grid-auto-flow` come back as
 /// parts the block joins ([`Joined`]).
@@ -74,26 +95,6 @@ pub(super) fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Par
         };
         return Ok(vec![e(prop, vec![Value::Word("bind".into()), src])]);
     }
-    // A part of a joint property: its value, or `bind(…)`.
-    let part = |k: &str, t: &Tok| -> Result<Vec<Value>, String> {
-        if let Tok::Func(f, a) = t
-            && f == "bind"
-        {
-            return match a.as_slice() {
-                [v] => match v.as_slice() {
-                    [Tok::Ident(p)] => Ok(vec![Value::Word("bind".into()), Value::Word(p.clone())]),
-                    [Tok::Str(s)] => Ok(vec![Value::Word("bind".into()), Value::String(s.clone())]),
-                    _ => Err("bind(path) or bind(\"expression\")".into()),
-                },
-                _ => Err("bind(path) or bind(\"expression\")".into()),
-            };
-        }
-        if k.starts_with("scale") {
-            want_num(t).map(|v| vec![v])
-        } else {
-            want_len(t).map(|v| vec![v])
-        }
-    };
     match name {
         "translate" => {
             let (x, y) = match t.as_slice() {
