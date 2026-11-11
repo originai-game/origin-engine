@@ -1136,7 +1136,7 @@ impl crate::ui::Paint {
                         && (!matches!(n.content, Content::None)
                             || n.layout.used.background.is_some()
                             || !matches!(n.widget, Widget::None)
-                            || !n.shapes.is_empty())
+                            || n.drawn_shapes().next().is_some())
                 })
                 .collect();
             // The whole cascade takes at most one entrance more.

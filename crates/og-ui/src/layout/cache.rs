@@ -431,6 +431,7 @@ pub(crate) fn draw_eq(a: &Node, b: &Node) -> bool {
         && a.layout.fit_step == b.layout.fit_step
         && a.widget == b.widget
         && a.shapes == b.shapes
+        && a.placed.arrow == b.placed.arrow
         && a.decor == b.decor
         && a.layout.lines == b.layout.lines
         && a.marks.selected == b.marks.selected
@@ -568,6 +569,9 @@ pub(crate) fn input_changes(a: &Node, b: &Node) -> Changed {
         && a.text().map(|t| t.step) == b.text().map(|t| t.step)
         && a.widget == b.widget
         && a.shapes == b.shapes
+        // A popover written again has no arrow until it is placed: one
+        // last drawn with an arrow counts as changed, as before.
+        && a.placed.arrow == b.placed.arrow
         && a.props == b.props
         // What its variants set over them, as it was last laid out and drawn.
         && a.transform() == b.transform()

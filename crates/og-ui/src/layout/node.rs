@@ -560,6 +560,10 @@ pub(crate) struct Placed {
     pub clip_src: usize,
     pub clip: Rect,
     pub rect: Rect,
+    /// A popover's arrow (`::-og-arrow`, [`Node::arrow`]) where placement
+    /// put it this frame, on the side of its box facing its anchor: drawn
+    /// after its shapes ([`Node::drawn_shapes`]). `None`: no side faces it.
+    pub arrow: Option<Shape>,
     /// A styled button part painted under `NARROW_BUTTON` wide since it
     /// was written: its part carries `narrow`
     /// ([`Node::part`]). Paint sets it; a node written again starts
@@ -579,6 +583,7 @@ impl Default for Placed {
             clip_src: NONE,
             clip: Rect::default(),
             rect: Rect::default(),
+            arrow: None,
             narrow: false,
         }
     }
@@ -1009,7 +1014,7 @@ pub(crate) struct Node {
     /// that zero-size point rather than its anchor node.
     pub anchor_point: Option<[f32; 2]>,
     /// A popover's `::-og-arrow`: its side and colour, drawn on the side of
-    /// its box facing its anchor once it is placed.
+    /// its box facing its anchor once it is placed ([`Placed::arrow`]).
     pub arrow: Option<(f32, Srgba)>,
     /// Its floated children (CSS 2 §9.5): out of the flow, in
     /// `ordered_children`, placed by [`crate::layout::float`].
@@ -1091,6 +1096,12 @@ impl Node {
         }
         u.part = self.part();
         u
+    }
+
+    /// The shapes drawn after its background: its own, then the arrow
+    /// placement gave it.
+    pub(crate) fn drawn_shapes(&self) -> impl Iterator<Item = &Shape> {
+        self.shapes.iter().chain(&self.placed.arrow)
     }
 
     /// Its part as styling matches it: its element's, flagged `narrow`

@@ -703,7 +703,7 @@ impl Ui {
         let clip = self.paint_clip(n);
         let alpha = n.placed.alpha;
         let dpr = self.env.viewport.dpr();
-        for shape in &n.shapes {
+        for shape in n.drawn_shapes() {
             match shape {
                 Shape::Part { frame, part, fill } => {
                     let r = self

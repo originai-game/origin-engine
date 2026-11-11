@@ -23,7 +23,7 @@ fn painted(n: &Node) -> bool {
                 n.widget,
                 crate::layout::Widget::None | crate::layout::Widget::Spacer
             )
-            || !n.shapes.is_empty())
+            || n.drawn_shapes().next().is_some())
 }
 
 impl crate::ui::Layout {
