@@ -454,15 +454,18 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
             Image::Texture(t) => t.and_then(|t| scene.texture_size(t)),
             Image::Array(h, _) => arrays.iter().find(|a| a.handle == Some(h)).map(|a| a.size),
         };
-        let pieces = match size_of {
-            Some(tsize) if sx != Vec2::ZERO || sy != Vec2::ZERO => og_render::nine_slice(
+        // Its nine-slice pieces, or itself (no list is made for a sprite
+        // drawn whole, which nearly every one is).
+        let sliced = match size_of {
+            Some(tsize) if sx != Vec2::ZERO || sy != Vec2::ZERO => Some(og_render::nine_slice(
                 &base,
                 [sx.x, sy.x, sx.y, sy.y],
                 tsize,
                 f(&v, &s.slice_scale, 0.0625),
-            ),
-            _ => vec![base],
+            )),
+            _ => None,
         };
+        let pieces = sliced.as_deref().unwrap_or(std::slice::from_ref(&base));
         // Its pixel outline (its own, or the art contract's), on a sprite
         // drawn whole.
         let outline = if pieces.len() == 1 {
@@ -485,7 +488,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
         let drop_shadow_height = f(&v, &s.drop_shadow_height, 0.0);
         // A faced nine-slice turns as one panel about the sprite's anchor.
         let one_panel = facing != og_render::SpriteFacing::None && pieces.len() > 1;
-        for (i, p) in pieces.into_iter().enumerate() {
+        for (i, &p) in pieces.iter().enumerate() {
             drawn.push((scene.sprite.sprites.len() as u32, e));
             push(
                 scene,
