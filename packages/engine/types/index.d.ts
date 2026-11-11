@@ -6156,7 +6156,7 @@ export interface StandardMaterialDesc {
    */
   readonly roughnessMap?: Texture | null;
   /**
-   * A tangent-space normal map in glTF's tangent frame: red tilts towards +u, green up the image.
+   * A tangent-space normal map in glTF's tangent frame: red tilts towards +u, green up the image. Cook it with `texture { kind normal }` in its import settings (linear); a colour texture here is read wrong and is a warning in the log.
    *
    * @default null
    */

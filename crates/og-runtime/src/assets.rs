@@ -1158,6 +1158,9 @@ fn decode(eng: &Engine, id: &str) -> Fetch<(og_render::TextureSource, bool)> {
 pub(crate) struct Decoded {
     /// Each scene texture decoded from a cooked texture, with its asset id.
     pub ids: HashMap<og_render::TextureHandle, String>,
+    /// Colour textures a material was given as a normal map, each warned
+    /// about once (`api::render`).
+    pub color_normals: std::collections::HashSet<og_render::TextureHandle>,
     /// The encodings of the last check.
     formats: Option<og_render::TextureFormats>,
     /// Textures the host is still transcoding for the new device, drawn

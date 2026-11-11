@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "StandardMaterialDesc.normalMap",
+      "summary": "A cooked colour texture given as normalMap or clearcoatNormalMap (a PNG without `texture { kind normal }` in its import settings) is a warning in the engine log, once a texture, naming the texture and the line to write. It was decoded as sRGB and lit the surface wrong with nothing to say why."
+    }
+  ]
+}
