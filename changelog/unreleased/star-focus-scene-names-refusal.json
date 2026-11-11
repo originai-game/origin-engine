@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "World.instantiate",
+      "summary": "The refusal of a scene whose entity name is taken no longer advises \"instantiate the scene under a root\", which does not help: names are unique in the world, under any root. It now names what works: despawn the entity that has the name, rename it in the scene, or make what is placed more than once a prefab (og.load.prefab spawns its entities unnamed). A name used twice inside one scene is reported as that."
+    }
+  ]
+}

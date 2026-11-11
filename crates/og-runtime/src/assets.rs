@@ -1679,13 +1679,17 @@ pub(crate) fn names_free(
         if e.name.is_empty() {
             continue;
         }
-        if st.names.contains_key(&e.name)
-            || st.held_names.contains(&e.name)
-            || e.name == root
-            || !seen.insert(e.name.clone())
-        {
+        if !seen.insert(e.name.clone()) {
             return Err(format!(
-                "{}: an entity named '{}' already exists; instantiate the scene under a root, or rename it in the scene",
+                "{}: two entities are named '{}'; rename one in the scene",
+                scene.id, e.name
+            ));
+        }
+        if st.names.contains_key(&e.name) || st.held_names.contains(&e.name) || e.name == root {
+            // A root does not scope names: world.find has one entity per
+            // name, so a second instance clashes wherever it is placed.
+            return Err(format!(
+                "{}: an entity named '{}' already exists, and names are unique in the world, under any root; despawn the one that has it, rename it in the scene, or make what is placed more than once a prefab (og.load.prefab spawns its entities unnamed)",
                 scene.id, e.name
             ));
         }
