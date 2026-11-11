@@ -720,7 +720,7 @@ pub struct Renderer {
     ribbon_sampler: wgpu::Sampler,
     /// Lines, points and wireframes (`lines.rs`).
     lines: lines::LineRenderer,
-    particles: particles_gpu::ParticleRenderer,
+    particles: renderer::Particles,
     lights_2d: light2d::Light2dRenderer,
     trails: ribbons::Trails,
     /// Trails, ribbons and beams expanded on the GPU, with the trails'
@@ -791,11 +791,6 @@ pub struct Renderer {
     /// What `instance_buffer` holds, so a frame writes only what changed.
     instance_upload: upload::DirtyUpload,
     sprite_buffer: wgpu::Buffer,
-    /// The instances of the sprite-mode particles simulated in compute
-    /// (`particle_sprites.wgsl` writes them; `RunSource::Particles` runs
-    /// draw them), and what each range of this frame draws with.
-    particle_sprite_buffer: wgpu::Buffer,
-    particle_sprite_sources: Vec<RunSource>,
     overlay: overlay::OverlayRenderer,
     /// The UI pass's pipelines, tables and layers (src/ui/pass.rs).
     ui: ui::pass::UiRenderer,
@@ -812,8 +807,6 @@ pub struct Renderer {
     saves: renderer::history::Saves,
     /// Compiled pipelines kept across runs (`pipeline_cache.rs`), when kept.
     pipeline_disk: Option<pipeline_cache::DiskCache>,
-    /// Where particles simulate ([`RenderDesc::particles`]).
-    desc_particles: ParticleSimulation,
     /// Where instances are culled ([`RenderDesc::culling`]), whether the
     /// adapter can on the GPU (compute and indirect draws), and the GPU
     /// path's state once a frame used it.

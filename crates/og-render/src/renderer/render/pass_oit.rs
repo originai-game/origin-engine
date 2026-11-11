@@ -326,9 +326,9 @@ impl Renderer {
                     if strip {
                         rest.push(&self.gpu_trails.as_ref().expect("checked above").draw_layout);
                     } else {
-                        rest.push(&self.particles.effects.empty_layout);
+                        rest.push(&self.particles.gpu.effects.empty_layout);
                     }
-                    rest.push(&self.particles.effects.layout);
+                    rest.push(&self.particles.gpu.effects.layout);
                     let name = if strip { "strip (oit)" } else { "ribbon (oit)" };
                     let layout = self.oit.layout(&device, name, mode, frame, &rest).clone();
                     let shader = self.ribbon_shader.get().clone();
@@ -365,12 +365,12 @@ impl Renderer {
                             frame,
                             &[
                                 &self.sprite_layout,
-                                &self.particles.draw_layout,
-                                &self.particles.effects.layout,
+                                &self.particles.gpu.draw_layout,
+                                &self.particles.gpu.effects.layout,
                             ],
                         )
                         .clone();
-                    let shader = self.particles.draw_module.get().clone();
+                    let shader = self.particles.gpu.draw_module.get().clone();
                     const PARTICLES: &[Option<wgpu::VertexBufferLayout<'static>>] =
                         &[Some(particles_gpu::PARTICLE_LAYOUT)];
                     let job = variant_job(move |_| {

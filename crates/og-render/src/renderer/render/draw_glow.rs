@@ -18,8 +18,8 @@ impl Renderer {
             // own buffer, as its source.
             let (source, instances) = match run.source {
                 RunSource::Particles(k) => (
-                    self.particle_sprite_sources[k as usize],
-                    &self.particle_sprite_buffer,
+                    self.particles.sprite_sources[k as usize],
+                    &self.particles.sprite_buffer,
                 ),
                 source => (source, &self.sprite_buffer),
             };

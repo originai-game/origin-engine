@@ -13,7 +13,7 @@ impl Renderer {
                 .prev_view_proj
                 .map(|m| crate::origin::shift_matrix(m, d));
             self.taa_history = self.taa_history.map(|m| crate::origin::shift_matrix(m, d));
-            self.particles.shift(d);
+            self.particles.gpu.shift(d);
             self.trails.shift(d);
             if let Some(g) = &mut self.gpu_trails {
                 g.shift(d);

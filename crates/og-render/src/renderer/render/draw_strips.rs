@@ -76,7 +76,7 @@ impl Renderer {
         // The effect material it draws with (effect.rs).
         effect: Option<crate::EffectMaterialHandle>,
     ) {
-        let (group, offset) = self.particles.effects.bind(effect);
+        let (group, offset) = self.particles.gpu.effects.bind(effect);
         pass.set_bind_group(3, group, &[offset]);
         let alpha = usize::from(blend != ParticleBlend::Additive as u8);
         let gpu = self.gpu_trails.as_ref().filter(|_| points);
@@ -102,7 +102,7 @@ impl Renderer {
                 pass.draw(first * 6..(first + count) * 6, 0..1);
             }
             None => {
-                pass.set_bind_group(2, &self.particles.effects.empty_group, &[]);
+                pass.set_bind_group(2, &self.particles.gpu.effects.empty_group, &[]);
                 let stride = std::mem::size_of::<ribbons::RibbonVertex>() as u64;
                 let start = first as u64 * stride;
                 pass.set_vertex_buffer(

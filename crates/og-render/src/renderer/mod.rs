@@ -12,6 +12,7 @@ mod pipelines;
 mod presentation;
 mod readback;
 mod render;
+pub(crate) use render::Particles;
 mod resources;
 mod settings;
 mod shader_source;

@@ -213,8 +213,11 @@ impl Renderer {
             cam_up: view_t.y_axis.truncate().extend(0.0).to_array(),
             screen: fxp.screen,
         };
-        self.queue
-            .write_buffer(&self.particles.view_buffer, 0, bytemuck::bytes_of(&pview));
+        self.queue.write_buffer(
+            &self.particles.gpu.view_buffer,
+            0,
+            bytemuck::bytes_of(&pview),
+        );
         self.queue
             .write_buffer(&self.sprite_fx_buffer, 0, bytemuck::bytes_of(&fxp.screen));
     }

@@ -41,11 +41,7 @@ pub(crate) const PASSES: &[PassDesc] = &[
         name: "contact",
         needs: Caps::COMPUTE,
     },
-    PassDesc {
-        pass: FramePass::Particles,
-        name: "particles",
-        needs: Caps::COMPUTE,
-    },
+    ParticlesPass::DESC,
     // Each face's depth prepass: the three targets of the camera's; and
     // the light volumes' grid captures, projected in compute (probe_grid.rs).
     PassDesc {

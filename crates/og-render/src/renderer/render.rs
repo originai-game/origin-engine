@@ -67,6 +67,9 @@ mod pass_metaballs;
 use pass_metaballs::MetaballsPass;
 mod pass_fluid_3d;
 use pass_fluid_3d::Fluid3dPass;
+mod pass_particles;
+pub(crate) use pass_particles::Particles;
+use pass_particles::{ParticlesPass, ParticlesPlan};
 mod setup;
 
 impl Renderer {
@@ -272,12 +275,13 @@ impl Renderer {
 
         // Effects this frame.
         let post_fx = &scene.post;
-        let particle_frame = self.particles.prepare(
+        let particle_frame = self.particles.gpu.prepare(
             &self.device,
             &self.queue,
             scene,
             // Without compute every emitter simulates on the CPU.
-            self.desc_particles == ParticleSimulation::Auto && self.runs(FramePass::Particles),
+            self.particles.simulation == ParticleSimulation::Auto
+                && self.runs(FramePass::Particles),
             self.cache.textures.len(),
             camera.position,
             cam.forward,
@@ -289,7 +293,7 @@ impl Renderer {
         // The effect materials particles and strips draw with (effect.rs).
         {
             let textures = &self.cache.textures;
-            self.particles.effects.prepare(
+            self.particles.gpu.effects.prepare(
                 &self.device,
                 &self.queue,
                 scene.effect_materials(),
@@ -467,7 +471,7 @@ impl Renderer {
             }
         }
         frame_pipelines(|| {
-            self.particles.ensure_pipelines(
+            self.particles.gpu.ensure_pipelines(
                 &self.device,
                 &particle_frame,
                 self.samples,
@@ -2373,16 +2377,8 @@ impl Renderer {
             "sprites",
             bytemuck::cast_slice(&sprite_frame.instances),
         );
-        // The 2D particles simulated in compute: room for their ranges,
-        // what each draws with, and the compute's parameters.
-        let particle_sprites = u64::from(gpu_sprites.total) * SPRITE_STRIDE;
-        if particle_sprites > self.particle_sprite_buffer.size() {
-            self.particle_sprite_buffer =
-                buffers::particle_sprite_buffer(&self.device, particle_sprites.next_power_of_two());
-        }
-        self.particle_sprite_sources = gpu_sprites.ranges.iter().map(|r| r.source).collect();
         self.particles
-            .prepare_sprites(&self.device, &self.queue, &particle_frame, &gpu_sprites);
+            .upload(&self.device, &self.queue, &particle_frame, &gpu_sprites);
         let mut ui_uniform = None;
         if let (Some(of), Some(o)) = (&overlay_frame, &scene.overlay) {
             grow_and_write(
@@ -2929,6 +2925,10 @@ impl Renderer {
         let lens = post_fx.lens_distortion.filter(|l| l.amount != 0.0);
         plans.live_sky = LiveSkyPass::plan(&self.sky_capture);
         plans.gi_probes = GiProbesPass::plan(&self.gi_probes);
+        plans.particles = particle_frame.any_gpu.then_some(ParticlesPlan {
+            frame: &particle_frame,
+            sprites: &gpu_sprites,
+        });
         let passes = schedule::frame_passes(
             &schedule::PassDecisions {
                 live_sky: plans.live_sky.is_some(),
@@ -2939,7 +2939,7 @@ impl Renderer {
                 prepass,
                 ao: gi.map(|g| g.resolution).or(ao.map(|a| a.resolution)),
                 contact,
-                particles: particle_frame.any_gpu,
+                particles: plans.particles.is_some(),
                 light_2d: plans.light_2d.is_some(),
                 metaballs: plans.metaballs.is_some(),
                 fluid_3d: fluids_3d,
@@ -3667,7 +3667,9 @@ impl Renderer {
                 .graph
                 .try_view("scene-copy")
                 .unwrap_or(&self.post.white);
-            self.particles.draw_group(&self.device, scene_depth, copy)
+            self.particles
+                .gpu
+                .draw_group(&self.device, scene_depth, copy)
         });
         let metaball_groups: Vec<wgpu::BindGroup> = post::FIELD_NAMES
             .iter()
@@ -3918,7 +3920,7 @@ impl Renderer {
                     .as_ref()
                     .map_or(&self.post.far_depth, |pre| &pre.lindepth);
                 (!particle_frame.systems.is_empty()).then(|| {
-                    self.particles.draw_group_of(
+                    self.particles.gpu.draw_group_of(
                         &self.device,
                         &slot.particle_buffer,
                         depth,
@@ -3963,6 +3965,7 @@ impl Renderer {
                 (
                     (!particle_frame.systems.is_empty()).then(|| {
                         self.particles
+                            .gpu
                             .draw_group_of(&self.device, &pb, depth, &self.post.white)
                     }),
                     self.lines.view_group(&self.device, &lb),
@@ -4310,22 +4313,6 @@ impl Renderer {
                     cards: camera_cards,
                     grass_frame: &grass_frame,
                 }),
-                FramePass::Particles => {
-                    self.particles.simulate(
-                        &self.device,
-                        &mut encoder,
-                        &particle_frame,
-                        scene_depth,
-                        self.graph.try_view("gbuffer").unwrap_or(&self.post.white),
-                    );
-                    self.particles.expand_sprites(
-                        &self.device,
-                        &mut encoder,
-                        &particle_frame,
-                        &gpu_sprites,
-                        &self.particle_sprite_buffer,
-                    );
-                }
                 FramePass::Probes => self.encode_probes(ProbesPassInputs {
                     ctx: &ctx,
                     meshlet_views: &probe_views,

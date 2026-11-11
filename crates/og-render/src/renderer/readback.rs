@@ -53,7 +53,7 @@ impl Renderer {
             || self.gpu_trails.as_ref().is_some_and(|g| {
                 deferred::warm_one(&[&g.pipeline, &g.pipelines[0], &g.pipelines[1]])
             })
-            || self.particles.warm()
+            || self.particles.gpu.warm()
             || self.lights_2d.warm()
             || self.glass.warm()
             || (WORLD_3D && self.water.warm())
@@ -136,7 +136,7 @@ impl Renderer {
     /// path reads its buffer back): for tests and tools (native only).
     #[cfg(not(target_arch = "wasm32"))]
     pub fn read_particles(&self, id: u64) -> Option<Vec<ParticleState>> {
-        self.particles.read(&self.device, &self.queue, id)
+        self.particles.gpu.read(&self.device, &self.queue, id)
     }
 
     /// Whether `target`, not sRGB itself, has an sRGB view the overlay

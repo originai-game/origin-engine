@@ -935,12 +935,13 @@ impl Renderer {
             ];
             ribbons_gpu::GpuTrails::new(&device, points, pipelines)
         });
-        let particles = particles_gpu::ParticleRenderer::new(
+        let particles = Particles::new(
             &device,
             effects,
             &frame_layout,
             &sprite_layout,
             &off.leave_out(fluid_shared_source()),
+            desc.particles,
         );
         let lights_2d = light2d::Light2dRenderer::new(&device);
         let ribbon_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
@@ -1067,7 +1068,6 @@ impl Renderer {
         let skinned_buffer = vertex_buffer("skinned instances", skin::SKINNED_INSTANCE_STRIDE * 64);
         let ribbon_buffer = vertex_buffer("strips", 48 * 1024);
         let sprite_buffer = vertex_buffer("sprites", SPRITE_STRIDE * 1024);
-        let particle_sprite_buffer = buffers::particle_sprite_buffer(&device, SPRITE_STRIDE * 64);
         let white_sprite_group = sprite_bind_group(
             &device,
             &queue,
@@ -1256,8 +1256,6 @@ impl Renderer {
             instance_buffer,
             instance_upload: upload::DirtyUpload::default(),
             sprite_buffer,
-            particle_sprite_buffer,
-            particle_sprite_sources: Vec::new(),
             overlay,
             ui,
             glass,
@@ -1267,7 +1265,6 @@ impl Renderer {
             phase_base: 0,
             saves: Default::default(),
             pipeline_disk,
-            desc_particles: desc.particles,
             desc_culling: desc.culling,
             indirect,
             crowd_indirect,
