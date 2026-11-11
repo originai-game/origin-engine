@@ -637,7 +637,7 @@ impl Probe {
             reason: String::new(),
         };
         self.evaluate(world, parsed, &mut r);
-        Ok(self.record(r))
+        Ok(self.checks.record(&mut self.out, &mut self.timeline, r))
     }
 
     /// Evaluates `parsed` on the world as it is into `r`, which opens as a
@@ -815,18 +815,27 @@ impl Probe {
             }
         }
     }
+}
 
-    fn record(&mut self, r: ExpectResult) -> ExpectResult {
+impl crate::probe::state::Checks {
+    fn record(
+        &mut self,
+        out: &mut crate::probe::state::Out,
+        timeline: &mut crate::probe::timeline::Recorder,
+        r: ExpectResult,
+    ) -> ExpectResult {
         // An invariant's evaluation, every tick: its result is the caller's alone.
-        if self.checks.quiet {
+        if self.quiet {
             return r;
         }
-        self.out.note(r.tick, r.status == Status::Fail, r.line());
-        self.timeline.expect(&r);
-        self.checks.expectations.push(r.clone());
+        out.note(r.tick, r.status == Status::Fail, r.line());
+        timeline.expect(&r);
+        self.expectations.push(r.clone());
         r
     }
+}
 
+impl Probe {
     /// Every expectation evaluated since the last call, in order.
     pub fn take_expectations(&mut self) -> Vec<ExpectResult> {
         std::mem::take(&mut self.checks.expectations)
