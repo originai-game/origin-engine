@@ -35,8 +35,25 @@ if [[ $(dpkg-query -W -f='${Status}' mesa-vulkan-drivers 2>/dev/null || true) !=
     mesa_suite=(-t bookworm-backports)
   fi
 fi
-if ((${#missing[@]})) || "$mesa_upgrade"; then
+# ffmpeg cooks the video tests' clips (without it og-video.test.ts skips all
+# five). It is pinned: the video fixture's references/vulkan/video-90.png
+# was recorded from a clip this build encoded (6.1.1, libsvtav1 1.7.0), and
+# another encoder moves the frame. A distribution without this build gets
+# none, so the tests skip rather than compare another encoder's clip.
+ffmpeg_pin=7:6.1.1-3ubuntu5
+ffmpeg_install=false
+[[ $(dpkg-query -W -f='${Version}' ffmpeg 2>/dev/null || true) == "$ffmpeg_pin" ]] || ffmpeg_install=true
+if ((${#missing[@]})) || "$mesa_upgrade" || "$ffmpeg_install"; then
   step sudo apt-get update -qq
+fi
+if "$ffmpeg_install"; then
+  if apt-cache madison ffmpeg | grep -q " $ffmpeg_pin "; then
+    step sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --allow-downgrades "ffmpeg=$ffmpeg_pin" "libavcodec60=$ffmpeg_pin"
+    [[ $(ffmpeg -hide_banner -encoders 2>/dev/null) == *libsvtav1* ]] \
+      || { printf 'ffmpeg %s has no libsvtav1: the video fixture cannot be cooked.\n' "$ffmpeg_pin" >&2; exit 1; }
+  else
+    printf 'warning: ffmpeg %s is not available here; the video tests will skip.\n' "$ffmpeg_pin" >&2
+  fi
 fi
 if ((${#missing[@]})); then
   step sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "${missing[@]}"
