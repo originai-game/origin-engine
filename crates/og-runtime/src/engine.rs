@@ -548,60 +548,58 @@ pub(crate) struct Declarations {
     pub commands: BTreeMap<String, CommandDecl>,
 }
 
-fn tokens(v: &Value) -> Vec<Token> {
-    v.as_array()
-        .map(|a| {
-            a.iter()
-                .filter_map(|t| {
-                    Some(Token {
-                        kind: t["kind"].as_str()?.to_string(),
-                        name: t["name"].as_str()?.to_string(),
-                    })
-                })
-                .collect()
-        })
-        .unwrap_or_default()
+/// A component or resource token as the TypeScript runtime sends it
+/// (`{ kind, name }`); the IDL's token types are opaque.
+fn token(v: &Value) -> Option<Token> {
+    Some(Token {
+        kind: v["kind"].as_str()?.to_string(),
+        name: v["name"].as_str()?.to_string(),
+    })
 }
 
-fn strings(v: &Value) -> Vec<String> {
-    v.as_array()
-        .map(|a| {
-            a.iter()
-                .filter_map(|s| s.as_str().map(str::to_string))
-                .collect()
-        })
-        .unwrap_or_default()
+fn tokens(list: &[crate::wire::OneOf<Value, Value>]) -> Vec<Token> {
+    use crate::wire::OneOf;
+    list.iter()
+        .filter_map(|(OneOf::A(v) | OneOf::B(v))| token(v))
+        .collect()
+}
+
+fn names(list: &[Value]) -> Vec<String> {
+    list.iter().filter_map(token).map(|t| t.name).collect()
+}
+
+/// `desc` read as `T`; a refused one refuses the engine
+/// (Declarations.errors) and declares at the defaults, so the handle stays
+/// valid.
+fn declared<T: crate::wire::FromJson + Default>(what: &str, name: &str, desc: &Value) -> T {
+    crate::wire::value(desc, "desc").unwrap_or_else(|e| {
+        DECL.with(|d| d.borrow_mut().errors.push(format!("{what} '{name}': {e}")));
+        T::default()
+    })
 }
 
 pub(crate) fn declare_system(name: String, desc: &Value, run: u32) -> u32 {
+    use crate::wire::StateWhen;
+    let d: crate::wire::SystemDesc = declared("og.system", &name, desc);
     let decl = SystemDecl {
         name,
-        reads: tokens(&desc["reads"]),
-        writes: tokens(&desc["writes"]),
-        without: tokens(&desc["without"])
-            .into_iter()
-            .map(|t| t.name)
-            .collect(),
-        after: strings(&desc["after"]),
-        before: strings(&desc["before"]),
+        reads: tokens(&d.reads),
+        writes: tokens(&d.writes),
+        without: names(&d.without),
+        after: d.after,
+        before: d.before,
         run,
-        changed: tokens(&desc["changed"])
-            .into_iter()
-            .map(|t| t.name)
-            .collect(),
-        added: tokens(&desc["added"]).into_iter().map(|t| t.name).collect(),
-        removed: tokens(&desc["removed"])
-            .into_iter()
-            .map(|t| t.name)
-            .collect(),
-        state: desc["state"].as_str().unwrap_or_default().to_string(),
-        value: desc["value"].as_str().unwrap_or_default().to_string(),
-        when: match desc["when"].as_str() {
-            Some("enter") => og_ecs::StateWhen::Enter,
-            Some("exit") => og_ecs::StateWhen::Exit,
-            _ => og_ecs::StateWhen::During,
+        changed: names(&d.changed),
+        added: names(&d.added),
+        removed: names(&d.removed),
+        state: d.state,
+        value: d.value,
+        when: match d.when {
+            StateWhen::During => og_ecs::StateWhen::During,
+            StateWhen::Enter => og_ecs::StateWhen::Enter,
+            StateWhen::Exit => og_ecs::StateWhen::Exit,
         },
-        condition: desc["runIf"].as_u64().map(|n| n as u32),
+        condition: d.run_if,
     };
     DECL.with(|d| {
         let mut d = d.borrow_mut();
@@ -611,15 +609,17 @@ pub(crate) fn declare_system(name: String, desc: &Value, run: u32) -> u32 {
 }
 
 pub(crate) fn declare_hook(name: String, component: String, desc: &Value, run: u32) -> u32 {
+    use crate::wire::HookEvent;
+    let d: crate::wire::HookDesc = declared("og.hook", &name, desc);
     let decl = HookDecl {
         name,
         component,
-        on: match desc["on"].as_str() {
-            Some("remove") => og_ecs::HookEvent::Remove,
-            _ => og_ecs::HookEvent::Add,
+        on: match d.on {
+            HookEvent::Add => og_ecs::HookEvent::Add,
+            HookEvent::Remove => og_ecs::HookEvent::Remove,
         },
-        reads: tokens(&desc["reads"]),
-        writes: tokens(&desc["writes"]),
+        reads: tokens(&d.reads),
+        writes: tokens(&d.writes),
         run,
     };
     DECL.with(|d| {

@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.system and og.hook descriptions",
+      "summary": "A system's or hook's description is read through the IDL's SystemDesc and HookDesc like every other description: a field of the wrong type, or a `when` or `on` the IDL does not name, refuses the engine at creation with the field's path (`og.system 'late': desc.when: 'after' is not a StateWhen: during, enter, exit`), where it was read as left out and the system ran as `during` (the hook on `add`). A description TypeScript accepts reads as before."
+    }
+  ]
+}
