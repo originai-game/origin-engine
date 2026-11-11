@@ -207,12 +207,6 @@ pub(crate) struct Orders {
     /// Per slot: written this frame where stamped (`written_stamp`).
     pub written_at: Vec<u32>,
     pub written_stamp: u32,
-    /// The nodes drawn again on their own every frame, and those a focus
-    /// ring or outline is drawn over (`Ui::paint_reuse`); and the paint's
-    /// verdicts, kept for their buffers.
-    pub volatile: std::collections::BTreeSet<usize>,
-    pub ringed: std::collections::BTreeSet<usize>,
-    pub reuse: super::commands::Reuse,
 }
 
 /// [`Orders::skip_of`]: skipped by `content-visibility: auto`, or `hidden`.
