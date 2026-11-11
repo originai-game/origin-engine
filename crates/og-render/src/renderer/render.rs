@@ -124,6 +124,8 @@ mod shadow_inputs;
 use shadow_inputs::{PrepareShadowInputsInputs, PrepareShadowInputsOutputs};
 mod culling_plan;
 use culling_plan::{PlanCullingInputs, PlanCullingOutputs};
+mod camera_lists;
+use camera_lists::{PlanCameraListsInputs, PlanCameraListsOutputs};
 mod setup;
 
 impl Renderer {
@@ -593,7 +595,7 @@ impl Renderer {
         // How the frame culls (culling_plan.rs).
         let PlanCullingOutputs {
             max_passes,
-            mut meshlet_taken,
+            meshlet_taken,
             meshlet_max,
             meshlet_items,
             gpu_cull,
@@ -629,83 +631,35 @@ impl Renderer {
                 .filter(|&b| batches[b as usize].layers & mask != 0)
                 .collect()
         };
-        // The GPU cull's passes and the meshlet dispatch's views
-        // (frame_visibility.rs), registered by every view below in order.
-        let mut vis = FrameVisibility::new(scene.camera_layers, (meshlet_items, meshlet_max));
-        // Lent to every CPU cull of this frame, given back after the last.
-        let mut cull_inside = std::mem::take(&mut self.visibility.cull_inside);
-        cull_inside.whole.clear();
-        // Occlusion needs a batch that can occlude and an earlier frame's
-        // camera visibility (its visible occluders); without them the
-        // occluders' depth, the pyramid and the occlusion test are skipped.
-        let occlusion = gpu_cull
-            && self
-                .visibility
-                .gpu_cull
-                .as_ref()
-                .is_some_and(|gc| gc.primed())
-            && batches
-                .iter()
-                .any(|b| self.cache.materials[b.material].occluder);
-        // The main camera's layers (views.rs).
-        let mask = scene.camera_layers;
-        let (main_list, mut culled) = if gpu_cull {
-            let g = vis.gpu_pass(cull_gpu::PassKind::Main, &view_frustum, None, None);
-            if occlusion {
-                vis.gpu_pass(cull_gpu::PassKind::Occluders, &view_frustum, None, None);
-            }
-            let mut list = indirect_list(&batches, cull_n, g, |b| {
-                !b.transparent && b.layers & mask != 0
-            });
-            // The meshlet path draws its batches itself; the camera's
-            // layers still decide (a batch off them draws nothing there).
-            meshlet_taken.retain(|&b| batches[b as usize].layers & mask != 0);
-            list.ranges
-                .retain(|r| meshlet_taken.binary_search(&r.0).is_err());
-            (list, 0)
-        } else {
-            self.cull(
-                &batches,
-                &spheres,
-                &mut transforms,
-                &mut origins,
-                &mut cull_inside,
-                &view_frustum,
-                true,
-                |b| !b.transparent && b.layers & mask != 0,
-            )
-        };
-        // The meshlet dispatch's views: the camera's, then one per
-        // reflection, view, probe face and shadow pass that fits
-        // (`meshlet_view`: its index, 0 none: that pass keeps its list).
-        vis.camera(meshlet_gpu::MeshletView::camera(
-            &scene.camera,
-            view_frustum.planes(),
-            std::mem::take(&mut meshlet_taken),
-            self.height,
-        ));
-        let (mut blended_list, blended_culled) = self.sort_transparent(
-            &batches,
-            &spheres,
-            &submission,
-            &mut transforms,
-            &mut origins,
-            &view_frustum,
-            camera.position,
-            cam.forward,
+        // The main camera's lists (camera_lists.rs).
+        let PlanCameraListsOutputs {
+            mut vis,
+            mut cull_inside,
             mask,
-            &sprites::depths(&sprite_frame.billboards),
-        );
-        culled += blended_culled + skinned_culled;
-        // The OIT pass runs when the main camera draws a blended surface
-        // after culling (`oit_frame` says the frame may).
-        let oit_mode = oit_frame.filter(|_| {
-            blended_list
-                .ranges
-                .iter()
-                .any(|r| batches[r.0 as usize].blend)
-                || skinned_visible.iter().any(|b| b.transparent && b.blend)
-                || oit_candidates
+            oit_mode,
+            main_list,
+            culled,
+            mut blended_list,
+        } = self.plan_camera_lists(PlanCameraListsInputs {
+            scene,
+            camera: &camera,
+            cam: &cam,
+            view_frustum: &view_frustum,
+            batches: &batches,
+            gpu_cull,
+            cull_n,
+            meshlet_items,
+            meshlet_max,
+            meshlet_taken,
+            spheres: &spheres,
+            transforms: &mut transforms,
+            origins: &mut origins,
+            submission: &submission,
+            sprite_frame: &sprite_frame,
+            skinned_visible: &skinned_visible,
+            skinned_culled,
+            oit_frame,
+            oit_candidates,
         });
         // The planar reflections' lists (reflection_lists.rs).
         let PlanReflectionListsOutputs {
