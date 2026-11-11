@@ -46,8 +46,16 @@ pub(crate) const SURFACES: PreGraphDesc = PreGraphDesc {
     needs: Caps::COMPUTE.union(Caps::VERTEX_STORAGE),
 };
 
+/// Every terrain level's corners (terrain/renderer.rs), before every
+/// pass that draws them. Terrain has no path without compute.
+pub(crate) const TERRAIN_CORNERS: PreGraphDesc = PreGraphDesc {
+    name: "terrain corners",
+    needs: Caps::COMPUTE,
+};
+
 /// The passes before the graph, in the frame encoder's order.
-pub(crate) const PRE_GRAPH: &[PreGraphDesc] = &[CROWD_CULL, WIND, VISUAL, SURFACES];
+pub(crate) const PRE_GRAPH: &[PreGraphDesc] =
+    &[CROWD_CULL, WIND, VISUAL, SURFACES, TERRAIN_CORNERS];
 
 /// Encodes the pass `desc` with `encode` where `caps` has its needs, the
 /// encoder checking what it opens against them (`Encoder::expect`), and

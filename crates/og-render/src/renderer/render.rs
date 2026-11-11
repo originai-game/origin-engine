@@ -4064,7 +4064,12 @@ impl Renderer {
             }
         });
         // Every terrain level's corners, before every pass that draws them.
-        terrain::encode_corners(&mut encoder, &terrain_draws);
+        pre_graph(
+            &mut encoder,
+            self.info.caps,
+            pre_graph::TERRAIN_CORNERS,
+            |e| terrain::encode_corners(e, &terrain_draws),
+        );
         // The grass's blades, generated before every pass that draws them.
         self.grass
             .encode(&mut encoder, &grass_frame, &terrain_draws);
