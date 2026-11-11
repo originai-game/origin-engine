@@ -76,7 +76,7 @@ pub(super) fn reload_restored(shared: &mut Shared, handle: u64) -> Result<bool> 
         .map(|(k, b)| (*k, b.as_slice()))
         .collect();
     let mut sim = outside(|| dim3::load(&source.sim, &source.holes, shared))?;
-    sim.ext = dim3::SimExt::from_sections(&sections)?;
+    sim.restore_sections(&sections)?;
     shared.sim3 = Some(Box::new(sim));
     shared.restored = Some(source);
     Ok(true)
@@ -91,14 +91,14 @@ impl StateBlock for PhysicsState {
             #[cfg(feature = "physics3d")]
             _ if shared.sim3.is_some() => {
                 let sim = shared.sim3.as_deref().unwrap();
-                sections = sim.ext.sections();
+                sections = sim.sections();
                 let (holes, bytes) = dim3::save(sim);
                 Some((PROFILE_3D as u8, (pushes, holes, bytes)))
             }
             #[cfg(feature = "physics2d")]
             _ if shared.sim2.is_some() => {
                 let sim = shared.sim2.as_deref().unwrap();
-                sections = sim.ext.sections();
+                sections = sim.sections();
                 let (holes, bytes) = dim2::save(sim);
                 Some((PROFILE_2D as u8, (pushes, holes, bytes)))
             }
@@ -136,7 +136,7 @@ impl StateBlock for PhysicsState {
             #[cfg(feature = "physics3d")]
             PROFILE_3D => {
                 let mut built = outside(|| dim3::load(&sim, &holes, &mut lock(&self.0)))?;
-                built.ext = dim3::SimExt::from_sections(&sections)?;
+                built.restore_sections(&sections)?;
                 let fields = holes
                     .iter()
                     .any(|h| h.key.shape & 0xff == SHAPE_HEIGHTFIELD);
@@ -150,7 +150,7 @@ impl StateBlock for PhysicsState {
             #[cfg(feature = "physics2d")]
             PROFILE_2D => {
                 let mut sim = outside(|| dim2::load(&sim, &holes, &mut lock(&self.0)))?;
-                sim.ext = dim2::SimExt::from_sections(&sections)?;
+                sim.restore_sections(&sections)?;
                 Saved::D2(Box::new(sim), pushes)
             }
             _ => {
