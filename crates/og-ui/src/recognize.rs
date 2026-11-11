@@ -361,20 +361,24 @@ impl crate::ui::Tree {
     }
 }
 
-impl Ui {
+impl crate::ui::Tree {
     /// This tick's taps, double taps and long presses as frame events
     /// (`tap`, `doubleTap`, `longPress`, each naming the element's path).
-    pub(crate) fn note_taps(&mut self) {
+    pub(crate) fn note_taps(
+        &mut self,
+        out: &mut crate::ui::Out,
+        interaction: &crate::ui::Interaction,
+    ) {
         let fired = [
-            ("tap", self.interaction.nav.tapped),
-            ("doubleTap", self.interaction.nav.double_tapped),
-            ("longPress", self.interaction.nav.long_pressed),
+            ("tap", interaction.nav.tapped),
+            ("doubleTap", interaction.nav.double_tapped),
+            ("longPress", interaction.nav.long_pressed),
         ];
         // Keys and pads tap what they activate.
-        let keyed = [self.interaction.nav.activate]
+        let keyed = [interaction.nav.activate]
             .into_iter()
-            .chain(self.interaction.nav.pad_activate)
-            .filter(|&k| self.interaction.tapped_by_keys(k) && k != self.interaction.nav.tapped);
+            .chain(interaction.nav.pad_activate)
+            .filter(|&k| interaction.tapped_by_keys(k) && k != interaction.nav.tapped);
         let keyed: Vec<u64> = keyed.collect();
         for (kind, key) in fired
             .into_iter()
@@ -383,12 +387,12 @@ impl Ui {
             if key == 0 {
                 continue;
             }
-            let Some(i) = self.tree.index.find(key) else {
+            let Some(i) = self.index.find(key) else {
                 continue;
             };
-            self.out.events.push(crate::motion::UiEvent {
+            out.events.push(crate::motion::UiEvent {
                 kind: kind.into(),
-                target: self.tree.path_of(i),
+                target: self.path_of(i),
                 pitch: 1.0,
                 ..crate::motion::UiEvent::default()
             });
@@ -404,42 +408,51 @@ impl Ui {
     pub(crate) fn resolve_cursor(
         &self,
         order: &[usize],
+        env: &crate::ui::Env,
+        paint: &crate::ui::Paint,
+        interaction: &crate::ui::Interaction,
     ) -> (crate::Cursor, Vec<crate::CursorImage>) {
-        let (cursor, at) = self.cursor_at(order);
+        let (cursor, at) = self.cursor_at(order, env, paint, interaction);
         let images = if at == NONE {
             Vec::new()
         } else {
-            self.tree.nodes[at].props.cursor_images.clone()
+            self.nodes[at].props.cursor_images.clone()
         };
         (cursor, images)
     }
 
     /// The resolved keyword and the node that declared it (`NONE`: a
     /// default of the element's kind).
-    fn cursor_at(&self, order: &[usize]) -> (crate::Cursor, usize) {
+    fn cursor_at(
+        &self,
+        order: &[usize],
+        env: &crate::ui::Env,
+        paint: &crate::ui::Paint,
+        interaction: &crate::ui::Interaction,
+    ) -> (crate::Cursor, usize) {
         use crate::Cursor;
-        let mut key = if self.interaction.state.active != 0 {
-            self.interaction.state.active
+        let mut key = if interaction.state.active != 0 {
+            interaction.state.active
         } else {
-            self.interaction.state.hot
+            interaction.state.hot
         };
-        let hovered = if self.interaction.state.active == 0 {
-            let Some(i) = self.cursor_node(order) else {
+        let hovered = if interaction.state.active == 0 {
+            let Some(i) = self.cursor_node(order, paint, interaction) else {
                 return (Cursor::Default, NONE);
             };
             // Keep a control's link, resize handle or native cursor when
             // its noninteractive child is on top, but not through a sibling.
-            let hot = self.tree.index.find(key);
+            let hot = self.index.find(key);
             let mut ancestor = i;
             loop {
                 if Some(ancestor) == hot
-                    || crate::ui::resize::grip_key(self.tree.nodes[ancestor].key) == key
+                    || crate::ui::resize::grip_key(self.nodes[ancestor].key) == key
                 {
                     break;
                 }
-                ancestor = self.tree.nodes[ancestor].parent;
+                ancestor = self.nodes[ancestor].parent;
                 if ancestor == NONE {
-                    key = self.tree.nodes[i].key;
+                    key = self.nodes[i].key;
                     break;
                 }
             }
@@ -449,48 +462,44 @@ impl Ui {
         };
         // Over selectable text (or selecting it): its own cursor where one
         // is set on it or above it, else the I-beam.
-        let selecting = self
-            .interaction
+        let selecting = interaction
             .hit(key)
             .filter(|h| h.has(HIT_SELECT))
             .map(|h| h.key);
         if let Some(t) = selecting.or_else(|| {
             hovered
-                .and_then(|i| self.interaction.hit(self.tree.nodes[i].key))
+                .and_then(|i| interaction.hit(self.nodes[i].key))
                 .filter(|h| h.has(HIT_SELECT))
                 .map(|h| h.key)
-        }) && let Some(i) = self.tree.index.find(t)
+        }) && let Some(i) = self.index.find(t)
         {
-            return match self.tree.declared_cursor(i) {
+            return match self.declared_cursor(i) {
                 (Cursor::Auto, at) => (Cursor::Text, at),
                 c => c,
             };
         }
-        let Some(i) = self.tree.index.find(key) else {
+        let Some(i) = self.index.find(key) else {
             // A resize handle: the resize cursor of its axes.
             return match self
-                .tree
                 .orders
                 .with(crate::ui::visit::feat::RESIZE)
                 .iter()
-                .map(|&i| &self.tree.nodes[i])
+                .map(|&i| &self.nodes[i])
                 .find(|n| crate::ui::resize::grip_key(n.key) == key)
                 .map(|n| n.el.resize)
             {
                 Some(1) => (Cursor::ResizeEw, NONE),
                 Some(2) => (Cursor::ResizeNs, NONE),
-                Some(_) if self.env.direction == og_i18n::Direction::Rtl => {
-                    (Cursor::ResizeNesw, NONE)
-                }
+                Some(_) if env.direction == og_i18n::Direction::Rtl => (Cursor::ResizeNesw, NONE),
                 Some(_) => (Cursor::ResizeNwse, NONE),
                 None => (Cursor::Default, NONE),
             };
         };
-        let (c, at) = self.tree.declared_cursor(hovered.unwrap_or(i));
+        let (c, at) = self.declared_cursor(hovered.unwrap_or(i));
         if c != Cursor::Auto {
             return (c, at);
         }
-        let n = &self.tree.nodes[i];
+        let n = &self.nodes[i];
         if key != n.key {
             // A rich text's link.
             return (Cursor::Pointer, at);
@@ -499,13 +508,12 @@ impl Ui {
             return (Cursor::Text, at);
         }
         if n.props.drag.is_some() {
-            let dragging = self
-                .interaction
+            let dragging = interaction
                 .state
                 .motion
                 .gestures
                 .get(&key)
-                .is_some_and(|g| g.dragging || (g.held && self.interaction.input.down));
+                .is_some_and(|g| g.dragging || (g.held && interaction.input.down));
             return if dragging {
                 (Cursor::Grabbing, at)
             } else {
@@ -516,18 +524,20 @@ impl Ui {
     }
 
     /// Cursor targeting includes plain boxes without giving them input hits.
-    fn cursor_node(&self, order: &[usize]) -> Option<usize> {
+    fn cursor_node(
+        &self,
+        order: &[usize],
+        paint: &crate::ui::Paint,
+        interaction: &crate::ui::Interaction,
+    ) -> Option<usize> {
         use crate::element::{PointerEvents, SvgPointer};
-        let p = self.interaction.state.pointer;
+        let p = interaction.state.pointer;
         order.iter().rev().copied().find(|&i| {
-            let n = &self.tree.nodes[i];
-            let pointer = self.tree.orders.pointer_of[i];
+            let n = &self.nodes[i];
+            let pointer = self.orders.pointer_of[i];
             let svg = match pointer {
                 PointerEvents::Svg(bits)
-                    if self
-                        .paint
-                        .draw_of(i, &self.tree)
-                        .is_some_and(|d| d.view_box.is_some()) =>
+                    if paint.draw_of(i, self).is_some_and(|d| d.view_box.is_some()) =>
                 {
                     Some(bits.0)
                 }
@@ -536,9 +546,8 @@ impl Ui {
             if i == 0
                 || n.inert
                 || pointer == PointerEvents::None
-                || self.tree.orders.skip_of[i] != 0
-                || (self.tree.orders.hidden_of[i]
-                    && !svg.is_some_and(|s| s & SvgPointer::VISIBLE == 0))
+                || self.orders.skip_of[i] != 0
+                || (self.orders.hidden_of[i] && !svg.is_some_and(|s| s & SvgPointer::VISIBLE == 0))
                 || !n.clip.contains(p.x, p.y)
             {
                 return false;
@@ -552,7 +561,7 @@ impl Ui {
             }
             let mut parent = n.parent;
             while parent != NONE {
-                let ancestor = &self.tree.nodes[parent];
+                let ancestor = &self.nodes[parent];
                 if ancestor.decor.as_ref().is_some_and(|d| d.clip) {
                     let Some(inv) = ancestor.world.invert() else {
                         return false;
@@ -566,7 +575,7 @@ impl Ui {
             }
             svg.is_none_or(|bits| {
                 bits & SvgPointer::BOX != 0
-                    || self.paint.draw_of(i, &self.tree).is_some_and(|d| {
+                    || paint.draw_of(i, self).is_some_and(|d| {
                         d.covers(
                             [n.rect.width, n.rect.height],
                             Vec2::new(x - n.rect.x, y - n.rect.y),

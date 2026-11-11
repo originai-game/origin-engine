@@ -799,7 +799,9 @@ impl Ui {
         let (mut seeds, restyle) = match whole {
             true => (None, None),
             false => {
-                let (seeds, restyle) = self.frame_seeds();
+                let (seeds, restyle) =
+                    self.tree
+                        .frame_seeds(&self.style, &self.layout, &self.interaction);
                 (Some(seeds), Some(restyle))
             }
         };
@@ -881,7 +883,12 @@ impl Ui {
         self.layout.plane_quads(&mut self.world, &self.tree);
         self.interaction
             .hud_collect(&custom, &self.tree, &self.front);
-        self.world_finish();
+        self.tree.world_finish(
+            &mut self.world,
+            &self.env,
+            &mut self.paint,
+            &self.interaction,
+        );
         let dnd = self.tree.orders.with(visit::feat::DND).to_vec();
         self.note_drag_and_drop(&dnd);
         (order, mapped)
@@ -1141,14 +1148,15 @@ impl Ui {
         self.interaction.state.nav_off = !self.interaction.nav_on;
         self.interaction.state.hits = hits;
         self.interaction.note_groups();
-        self.note_taps();
+        self.tree.note_taps(&mut self.out, &self.interaction);
         let (cursor, cursor_images) = if self.interaction.state.vcursor.shown
             && self.interaction.state.vcursor.desc.is_some()
         {
             // The pad's cursor is drawn; the system's is hidden.
             (crate::Cursor::None, Vec::new())
         } else {
-            self.resolve_cursor(order)
+            self.tree
+                .resolve_cursor(order, &self.env, &self.paint, &self.interaction)
         };
         let selected = self.interaction.mark_selection(&mut self.tree);
         (cursor, cursor_images, selected)

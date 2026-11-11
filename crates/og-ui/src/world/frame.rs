@@ -158,7 +158,8 @@ impl Ui {
         let mut spawned = std::mem::take(&mut self.world.mass_spawned);
         spawned.retain(|k| self.world.mass_built.contains(k) || self.docs.host.retained.owns(*k));
         self.world.mass_spawned = spawned;
-        self.keep_effects();
+        self.tree
+            .keep_effects(&mut self.world, &self.docs, &mut self.interaction);
     }
 
     /// A document's mass element `key` (owned by the element `owner`):
@@ -354,20 +355,25 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Tree {
     /// Registers the kept effects of the elements that stand this tick.
-    fn keep_effects(&mut self) {
-        let mut kept = std::mem::take(&mut self.world.kept_effects);
+    fn keep_effects(
+        &mut self,
+        world: &mut crate::world::WorldUi,
+        docs: &crate::ui::Docs,
+        interaction: &mut crate::ui::Interaction,
+    ) {
+        let mut kept = std::mem::take(&mut world.kept_effects);
         kept.retain(|key, (emitter, meta)| {
-            let Some(&i) = self.tree.index.by_key.get(key) else {
-                return self.docs.host.retained.owns(*key);
+            let Some(&i) = self.index.by_key.get(key) else {
+                return docs.host.retained.owns(*key);
             };
             if let Some(d) = emitter {
                 // Its burst fires, and its `for` counts, from when it first stands.
                 let owner = *key;
                 let key = crate::id::child_key(*key, "particles");
-                let at = self.interaction.since(owner, key);
-                self.world.emitters.push(crate::particles::EmitterEntry {
+                let at = interaction.since(owner, key);
+                world.emitters.push(crate::particles::EmitterEntry {
                     node: i,
                     key,
                     desc: d.clone(),
@@ -375,8 +381,8 @@ impl Ui {
                 });
             }
             if let Some(m) = meta {
-                let intensity = self.tree.nodes[i].props.opacity.clamp(0.0, 1.0);
-                self.world.metas.push((
+                let intensity = self.nodes[i].props.opacity.clamp(0.0, 1.0);
+                world.metas.push((
                     i,
                     MetaDesc {
                         intensity: m.intensity * intensity,
@@ -386,24 +392,24 @@ impl Ui {
             }
             true
         });
-        self.world.kept_effects = kept;
+        world.kept_effects = kept;
     }
 
     /// Spawns particles where their elements are drawn, ages the pools and
     /// makes the frame's own batches. Called by `end` once transforms are
     /// applied.
-    pub(crate) fn world_finish(&mut self) {
-        let tick = self.interaction.state.tick as u32;
-        self.paint.world_particles(
-            tick,
-            &mut self.world,
-            &self.env,
-            &self.interaction,
-            &self.tree,
-        );
+    pub(crate) fn world_finish(
+        &mut self,
+        world: &mut crate::world::WorldUi,
+        env: &crate::ui::Env,
+        paint: &mut crate::ui::Paint,
+        interaction: &crate::ui::Interaction,
+    ) {
+        let tick = interaction.state.tick as u32;
+        paint.world_particles(tick, world, env, interaction, self);
         // Pools: instances past their life leave.
-        let templates = &self.world.templates;
-        self.world.state.pools.retain(|&k, pool| {
+        let templates = &world.templates;
+        world.state.pools.retain(|&k, pool| {
             let Some((_, t, _)) = templates.get(k as usize) else {
                 return false;
             };
@@ -412,10 +418,10 @@ impl Ui {
         });
         // The frame's own batches: pools, then this tick's instances.
         let mut batches = Vec::new();
-        for (k, (_, t, space)) in self.world.templates.iter().enumerate() {
+        for (k, (_, t, space)) in world.templates.iter().enumerate() {
             let k = k as u32;
-            let mut instances = self.world.state.pools.get(&k).cloned().unwrap_or_default();
-            if let Some(now) = self.world.immediate.get(&k) {
+            let mut instances = world.state.pools.get(&k).cloned().unwrap_or_default();
+            if let Some(now) = world.immediate.get(&k) {
                 instances.extend_from_slice(now);
             }
             if instances.is_empty() {
@@ -429,10 +435,10 @@ impl Ui {
                 clip: None,
             };
             // Drawn in CSS px like the frame's commands (the og-ui unit).
-            crate::draw::zoom_mass(&mut b, self.env.unit);
+            crate::draw::zoom_mass(&mut b, env.unit);
             batches.push(b);
         }
-        self.world.frame = WorldFrame { tick, batches };
+        world.frame = WorldFrame { tick, batches };
     }
 }
 
