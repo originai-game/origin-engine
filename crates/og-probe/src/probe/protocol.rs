@@ -443,7 +443,7 @@ impl Probe {
             .filter_map(|w| w.strip_prefix("event:"))
             .map(|w| w.split(':').next().unwrap_or("").to_owned())
             .collect();
-        self.watch_events(watched.iter().map(String::as_str));
+        self.checks.watch_events(watched.iter().map(String::as_str));
         for (index, operation) in program.iter().enumerate() {
             let op = operation.get("op").and_then(Value::as_str).unwrap_or("");
             let answer: Option<Value> = match op {
