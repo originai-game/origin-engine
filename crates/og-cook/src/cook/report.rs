@@ -119,6 +119,17 @@ pub struct Report {
     /// asset that opted out (docs/art.md §2.3), by asset id.
     pub conform: Vec<conform::ConformEntry>,
     pub elapsed_ms: f64,
+    /// Each stage of the cook in the order it ran, with its time: `index`
+    /// alone when the index found nothing changed.
+    #[serde(default)]
+    pub stages: Vec<StageTime>,
+}
+
+/// One stage of the cook and the milliseconds it took ([`Report::stages`]).
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct StageTime {
+    pub name: String,
+    pub ms: f64,
 }
 
 /// Bytes in and out per asset kind.
@@ -264,6 +275,13 @@ impl Report {
             self.cooked_bytes(),
             pct(self.cooked_bytes(), self.source_bytes())
         ));
+        if !self.stages.is_empty() {
+            s.push_str("## Stages\n\n| stage | ms |\n|---|---:|\n");
+            for st in &self.stages {
+                s.push_str(&format!("| {} | {:.3} |\n", st.name, st.ms));
+            }
+            s.push('\n');
+        }
         s.push_str(
             "## The slowest ten\n\nEach asset's last cook (`cooked/.cook-times.ogt`), its outputs' times summed.\n\n",
         );
@@ -341,6 +359,7 @@ impl Report {
             "elapsed_ms": self.elapsed_ms, "source_bytes": self.source_bytes(), "cooked_bytes": self.cooked_bytes(),
             "by_kind": kinds, "assets": assets, "ignored": self.ignored, "removed": self.removed,
             "warnings": self.warnings,
+            "stages": self.stages.iter().map(|s| json!({"name": s.name, "ms": s.ms})).collect::<Vec<_>>(),
             "conform": self.conform.iter().map(|e| json!({
                 "source": e.source, "action": e.action.name(), "what": e.what
             })).collect::<Vec<_>>(),

@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {"member": "og cook --report", "summary": "The cook times each of its stages (index, project, scan, import, resolve, contract, group, plan, execute, assemble, write, pack, finish, diagnose, save): `og cook --json` gains `stages`, a list of `{ name, ms }`, the Markdown report (`--report out.md`) a stages table, and `--report` prints them on one line. A cook that found nothing changed lists only `index`. Existing fields, cook-report.json and the slowest-assets lists are unchanged, and cooked output is byte-identical."}
+  ]
+}

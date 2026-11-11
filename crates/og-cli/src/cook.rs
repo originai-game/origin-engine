@@ -350,6 +350,14 @@ pub fn slowest_lines(r: &Report) -> Vec<String> {
             }
         ));
     }
+    if !r.stages.is_empty() {
+        let stages: Vec<String> = r
+            .stages
+            .iter()
+            .map(|s| format!("{} {:.1}", s.name, s.ms))
+            .collect();
+        out.push(format!("og cook: stages (ms): {}", stages.join(", ")));
+    }
     out
 }
 

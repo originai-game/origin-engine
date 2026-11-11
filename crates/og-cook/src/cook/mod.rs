@@ -84,7 +84,7 @@ use options::{
     anim_settings, conform_off, font_settings, mesh_for, mesh_texture, model_stream_textures,
     own_conform_off, settings_block, texture_kind, texture_stream,
 };
-pub use report::{AssetReport, COOK_TIMES, CookTimes, KindTotals, OutputReport, Report};
+pub use report::{AssetReport, COOK_TIMES, CookTimes, KindTotals, OutputReport, Report, StageTime};
 use report::{CONFORM_LOG, ConformLog, conform_log_text, conform_note, read_conform_log};
 use scan::{Scan, ext, output_group, plan_groups, scan};
 
@@ -460,12 +460,17 @@ pub fn cook_project_with_texture_cache(
     texture_cache: Option<&Path>,
 ) -> Result<Report, CookError> {
     let started = Instant::now();
+    let mut laps = Laps::new(started);
     let cook_index = index::Index::open(root, options, texture_cache);
-    if let Some(mut report) = cook_index.unchanged() {
+    let unchanged = cook_index.unchanged();
+    laps.lap("index");
+    if let Some(mut report) = unchanged {
         report.elapsed_ms = started.elapsed().as_secs_f64() * 1000.0;
+        report.stages = laps.stages;
         return Ok(report);
     }
     let project = Project::read(root)?;
+    laps.lap("project");
     let assets_dir = &project.assets_dir;
     let cooked_dir = &project.cooked_dir;
     let threads = if options.threads == 0 {
@@ -480,11 +485,14 @@ pub fn cook_project_with_texture_cache(
         mut early_errors,
         mut consumed,
     } = scan_sources(assets_dir, &cook_index)?;
+    laps.lap("scan");
     let imported = import(&mut sources, &mut consumed, texture_cache);
+    laps.lap("import");
     let Resolved {
         known,
         prefab_texts,
     } = resolve(assets_dir, &mut sources, &mut ignored, consumed);
+    laps.lap("resolve");
     let Contracted {
         contract,
         conformed,
@@ -497,6 +505,7 @@ pub fn cook_project_with_texture_cache(
         options,
         &mut early_errors,
     )?;
+    laps.lap("contract");
     let options = &options;
     let sources = sources;
     let Grouped {
@@ -504,6 +513,7 @@ pub fn cook_project_with_texture_cache(
         group_of,
         pack_faces,
     } = group(&sources, &known, &mut early_errors);
+    laps.lap("group");
     let schemas: BTreeMap<String, Schema> = options
         .schemas
         .iter()
@@ -565,6 +575,7 @@ pub fn cook_project_with_texture_cache(
             ..
         },
     ) = plan(&cx, early_errors);
+    laps.lap("plan");
     let project_key = project_key(&cook_index, &sources, texture_cache);
     let results = execute(
         &cx,
@@ -574,6 +585,7 @@ pub fn cook_project_with_texture_cache(
         project_key.as_deref(),
         started,
     );
+    laps.lap("execute");
     let Assembled {
         mut reports,
         new_outputs,
@@ -585,9 +597,13 @@ pub fn cook_project_with_texture_cache(
         early_errors,
         &imported.reused_fractures,
     )?;
+    laps.lap("assemble");
     let mut written = write(&cx, new_outputs, &mut reports, &old)?;
+    laps.lap("write");
     pack(&cx, &groups, &mut written, &mut reports)?;
+    laps.lap("pack");
     let (removed, warnings) = finish(&cx, &old, written, &parsed_refs, &mut reports, &log)?;
+    laps.lap("finish");
     let (conformed, warnings) = diagnose(
         &cx,
         &plan,
@@ -598,7 +614,8 @@ pub fn cook_project_with_texture_cache(
         warnings,
     );
     reports.sort_by(|a, b| a.source.cmp(&b.source));
-    let report = Report {
+    laps.lap("diagnose");
+    let mut report = Report {
         conform: conformed,
         warnings,
         root: root.display().to_string(),
@@ -608,9 +625,36 @@ pub fn cook_project_with_texture_cache(
         ignored,
         removed,
         elapsed_ms: started.elapsed().as_secs_f64() * 1000.0,
+        stages: Vec::new(),
     };
     save(&cook_index, &report, &sources, assets_dir, texture_cache);
+    laps.lap("save");
+    report.stages = laps.stages;
     Ok(report)
+}
+
+/// Times the cook's stages, each from the end of the one before.
+struct Laps {
+    last: Instant,
+    stages: Vec<StageTime>,
+}
+
+impl Laps {
+    fn new(started: Instant) -> Laps {
+        Laps {
+            last: started,
+            stages: Vec::new(),
+        }
+    }
+
+    fn lap(&mut self, name: &str) {
+        let now = Instant::now();
+        self.stages.push(StageTime {
+            name: name.to_string(),
+            ms: now.duration_since(self.last).as_secs_f64() * 1000.0,
+        });
+        self.last = now;
+    }
 }
 
 type OutputBytes = std::sync::Arc<[u8]>;
