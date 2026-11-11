@@ -128,6 +128,7 @@ pub(super) fn expand(sources: &mut Vec<Source>, consumed: &mut BTreeSet<String>)
                     OutKind::Effect => Kind::Effect,
                     OutKind::Model => Kind::Model,
                 },
+                settings_files: Vec::new(),
                 settings: (f.kind == OutKind::Model).then(|| {
                     let d = og_core::ogt::Document::parse(MESH_SETTINGS).expect("settings parse");
                     (MESH_SETTINGS.to_string(), d)

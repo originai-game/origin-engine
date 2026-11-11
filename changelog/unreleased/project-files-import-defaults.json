@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og cook",
+      "summary": "A directory's import settings: assets/<dir>/import.ogt, a type import document of match \"<pattern>\" { … } blocks, gives every file under the directory that a pattern names what a settings file of its own (<file>.ogt) would. A file takes the matching blocks from assets/ down to its own directory, then its own settings file, a later entry replacing an earlier one key by key and two blocks of one key joining. The cooked bytes are those of the same settings written per file; an edit recooks only the files whose settings it changes. Before, a directory of files with the same settings needed one identical settings file each, and an import.ogt was an error."
+    }
+  ]
+}

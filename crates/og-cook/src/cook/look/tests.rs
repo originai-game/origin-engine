@@ -8,6 +8,7 @@ fn source(root: &Path, rel: &str) -> Source {
         kind: super::super::Kind::Look,
         bytes: std::fs::read(root.join(rel)).unwrap(),
         settings: None,
+        settings_files: Vec::new(),
         hash: 0,
         gltf: None,
         error: None,

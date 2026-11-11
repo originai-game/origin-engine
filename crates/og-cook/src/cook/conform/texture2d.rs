@@ -530,6 +530,7 @@ pub(in crate::cook) fn conform(
                 kind,
                 bytes,
                 settings,
+                settings_files: Vec::new(),
                 hash: 0,
                 gltf: None,
                 error: None,

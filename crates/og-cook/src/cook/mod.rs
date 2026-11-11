@@ -34,6 +34,7 @@ mod fracture;
 mod fracture_cache;
 mod fx_field;
 pub mod icons;
+mod import_defaults;
 mod index;
 pub mod ktx2_source;
 mod lightmap;
@@ -212,6 +213,9 @@ struct Source {
     kind: Kind,
     bytes: Vec<u8>,
     settings: Option<(String, Document)>,
+    /// The files `settings` came from, as asset ids: the directories'
+    /// `import.ogt` from `assets/` down, then its own `<file>.ogt`.
+    settings_files: Vec<String>,
     hash: u64,
     gltf: Option<model::GltfSource>,
     error: Option<String>,
@@ -232,6 +236,16 @@ struct Source {
 }
 
 impl Source {
+    /// Whether it has settings of its own (its `<file>.ogt`, or the cook's
+    /// for a source it made), not only its directories'.
+    fn own_settings(&self) -> bool {
+        self.settings.is_some()
+            && self
+                .settings_files
+                .last()
+                .is_none_or(|f| f.strip_suffix(".ogt") == Some(&self.rel))
+    }
+
     fn encoded(&self, per_chunk: Option<u32>) -> Result<std::sync::Arc<audio::Encoded>, CookError> {
         self.encoded
             .get_or_init(|| {

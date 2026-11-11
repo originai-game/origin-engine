@@ -23,6 +23,48 @@ Asset queries, publish pruning and the cook cache are in assets.
   arrays, flipbook sheets and environment maps come back under the same
   handle when their group returns.
 
+### Import settings
+
+A file's import settings are a `type import` document named after it
+(`theme.mp3.ogt` beside `theme.mp3`). When many files in a directory
+take the same settings, the directory's `import.ogt` says them once:
+
+```text
+type import
+version 1
+---
+match "*.png" {
+  texture {
+    kind pixel
+  }
+}
+match "music/*.ogg" "ambience/*.ogg" {
+  sound {
+    stream true
+  }
+}
+```
+
+- A `match` block holds what a file's own settings hold, for every file
+  under the directory that one of its patterns names. A pattern is a
+  path from the directory, read as `project.ogt`'s `conform` patterns
+  are: `*` is any run of characters within a name, `**` any run across
+  directories, a trailing `/` everything under that folder; case counts.
+  `*.png` is the directory's own files, `**.png` those at any depth.
+- A file takes the matching blocks of every `import.ogt` from `assets/`
+  down to its own directory, in that order and in each file's order, then
+  its own `<file>.ogt`. A later entry replaces an earlier one of the same
+  key; two blocks of one key (`texture { … }` twice) join the same way.
+- A file's own settings need only say what differs. Editing a block
+  recooks the files whose settings it changes and no others.
+- An error in a block is reported on each file it reaches, with its line
+  in the `import.ogt`.
+- A texture a model references is cooked with the model. It also cooks
+  on its own only when it has a `<file>.ogt`, never for a directory's
+  block alone.
+- `import.ogt` holds `match` blocks only. The engine's built-in assets
+  (`@…`) do not read it.
+
 <a id="guide-loading-2"></a>
 ### `loading §2` Models
 

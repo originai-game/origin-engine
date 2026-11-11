@@ -223,3 +223,108 @@ fn a_chunked_sound_in_a_stream_group_packs_its_head_and_keeps_its_chunks_apart()
         (22_050, 1, 66_150)
     );
 }
+
+/// A directory's `import.ogt` gives the files its patterns name what a
+/// settings file of their own would, byte for byte; a file's own settings
+/// win over it, and an edit to it recooks what it names and nothing else.
+#[test]
+fn a_directorys_import_settings_cook_as_each_files_own_would() {
+    const OWN: &str = "type import\nversion 1\n---\nsound {\n  stream true\n  chunk 1.5\n}\n";
+    let (each, dir) = (project("defaults-each"), project("defaults-dir"));
+    for root in [&each, &dir] {
+        std::fs::create_dir_all(root.join("assets/audio/music")).unwrap();
+        wav(&root.join("assets/audio/music/a.wav"), 22_050, 1, 6.0);
+        wav(&root.join("assets/audio/music/b.wav"), 22_050, 1, 6.0);
+        wav(&root.join("assets/audio/hit.wav"), 22_050, 1, 6.0);
+    }
+    std::fs::write(each.join("assets/audio/music/a.wav.ogt"), OWN).unwrap();
+    std::fs::write(
+        each.join("assets/audio/music/b.wav.ogt"),
+        OWN.replace("1.5", "3"),
+    )
+    .unwrap();
+    // The nearer directory's `chunk` replaces the farther one's; `stream`
+    // stays; b's own file replaces `chunk` again; hit.wav is not named.
+    std::fs::write(
+        dir.join("assets/audio/import.ogt"),
+        "type import\nversion 1\n---\n# music streams\nmatch \"music/*.wav\" {\n  sound {\n    stream true\n    chunk 9\n  }\n}\n",
+    )
+    .unwrap();
+    std::fs::write(
+        dir.join("assets/audio/music/import.ogt"),
+        "type import\nversion 1\n---\nmatch \"*.wav\" {\n  sound {\n    chunk 1.5\n  }\n}\n",
+    )
+    .unwrap();
+    std::fs::write(
+        dir.join("assets/audio/music/b.wav.ogt"),
+        "type import\nversion 1\n---\nsound {\n  chunk 3\n}\n",
+    )
+    .unwrap();
+    let files = |root: &Path| {
+        let mut out = Vec::new();
+        for d in ["cooked/audio", "cooked/audio/music"] {
+            for e in std::fs::read_dir(root.join(d)).unwrap() {
+                let p = e.unwrap().path();
+                if p.is_file() {
+                    out.push((
+                        p.strip_prefix(root).unwrap().to_path_buf(),
+                        std::fs::read(&p).unwrap(),
+                    ));
+                }
+            }
+        }
+        out.sort();
+        out
+    };
+    for root in [&each, &dir] {
+        let report = cook(root);
+        assert!(report.ok(), "{:?}", report.errors());
+    }
+    let b = Bundle::open(&dir.join("cooked")).unwrap();
+    assert_eq!(
+        ["audio/music/a.wav", "audio/music/b.wav", "audio/hit.wav"].map(|id| b
+            .load_sound(id)
+            .unwrap()
+            .meta
+            .chunk_frames),
+        [7, 13, 0]
+    );
+    let (one, other) = (files(&each), files(&dir));
+    assert_eq!(
+        one.iter().map(|f| &f.0).collect::<Vec<_>>(),
+        other.iter().map(|f| &f.0).collect::<Vec<_>>()
+    );
+    for (a, b) in one.iter().zip(&other) {
+        assert!(a.1 == b.1, "{} differs", a.0.display());
+    }
+
+    // A comment in it changes no file's settings: nothing recooks.
+    let path = dir.join("assets/audio/music/import.ogt");
+    let text = std::fs::read_to_string(&path).unwrap();
+    std::fs::write(&path, format!("# shorter chunks\n{text}")).unwrap();
+    let cooked = |r: &og_cook::Report| -> Vec<String> {
+        r.assets
+            .iter()
+            .filter(|a| a.outputs.iter().any(|o| o.cooked))
+            .map(|a| a.source.clone())
+            .collect()
+    };
+    assert_eq!(cooked(&cook(&dir)), [""; 0]);
+    // A setting in it recooks the file it reaches, not the one whose own
+    // settings replace it, nor the one it does not name.
+    std::fs::write(&path, text.replace("1.5", "2")).unwrap();
+    let edit = cook(&dir);
+    assert!(edit.ok(), "{:?}", edit.errors());
+    assert_eq!(cooked(&edit), ["audio/music/a.wav"]);
+
+    // Anything but a match block is refused, on the file itself.
+    std::fs::write(&path, OWN).unwrap();
+    let bad = cook(&dir);
+    assert!(
+        bad.errors()
+            .iter()
+            .any(|e| e.starts_with("assets/audio/music/import.ogt") && e.contains("match")),
+        "{:?}",
+        bad.errors()
+    );
+}
