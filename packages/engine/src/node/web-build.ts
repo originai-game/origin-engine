@@ -471,39 +471,116 @@ function sha256(data: Uint8Array | string): string {
 
 // Facts that depend only on a file's bytes and are slow to recompute (brotli
 // -q 11 of an engine module takes a core for a minute or more; the host's
-// hello needs a bun process that loads it) are kept by sha256 in dist/.build-cache.json across builds,
+// hello needs a bun process that loads it) are kept by sha256 across builds,
 // so a test that builds four times or a `og build` after an edit to game code
-// pays for the engine once. The cache keeps its newest 2000 entries.
-const CACHE_FILE = join(here, "..", "..", "dist", ".build-cache.json");
-let cache: Record<string, unknown> | null = null;
-function cacheGet(key: string): unknown {
-  if (!cache) {
-    try {
-      cache = JSON.parse(readFileSync(CACHE_FILE, "utf8")) as Record<string, unknown>;
-    } catch {
-      cache = {};
-    }
-  }
-  return cache[key];
+// pays for the engine once. They are kept in two places. The engine's own
+// modules' are written when it is packed (ENGINE_FACTS, by `--engine-facts`),
+// so the first build of a new install does not compute them; an install is
+// never written to. Every other fact goes to the user's cache directory
+// (factsFile), which keeps its newest 2000 entries.
+export const ENGINE_FACTS = join(ENGINE_ROOT, "dist", "build-facts.json");
+
+/**
+ * The file builds keep their facts in: `facts.json` in `OG_BUILD_CACHE`, or
+ * in `~/.cache/origingame/build-v1` (`%LOCALAPPDATA%\origingame\build-v1`
+ * without a home). Null when `OG_BUILD_CACHE` is `off` or empty, or there is
+ * no directory to use: the build then recomputes.
+ */
+export function factsFile(env: Record<string, string | undefined> = process.env): string | null {
+  const given = env.OG_BUILD_CACHE;
+  if (given !== undefined) return given === "" || given === "off" ? null : join(given, "facts.json");
+  if (env.HOME) return join(env.HOME, ".cache", "origingame", "build-v1", "facts.json");
+  if (env.LOCALAPPDATA) return join(env.LOCALAPPDATA, "origingame", "build-v1", "facts.json");
+  return null;
 }
-function cachePut(key: string, value: unknown): void {
-  cache ??= {};
+
+function factsIn(file: string | null): Record<string, unknown> {
+  if (!file) return {};
+  try {
+    return JSON.parse(readFileSync(file, "utf8")) as Record<string, unknown>;
+  } catch {
+    return {};
+  }
+}
+
+let shipped: Record<string, unknown> | null = null;
+let cache: Record<string, unknown> | null = null;
+/** A fact kept by an earlier build or packed with the engine, or undefined. */
+export function factGet(key: string): unknown {
+  cache ??= factsIn(factsFile());
+  if (key in cache) return cache[key];
+  shipped ??= factsIn(ENGINE_FACTS);
+  return shipped[key];
+}
+/** Keeps a fact for later builds. A cache that cannot be written is not an error: the next build recomputes. */
+export function factPut(key: string, value: unknown): void {
+  const file = factsFile();
+  // What another build wrote since this one read the file is kept: builds run side by side.
+  cache = { ...cache, ...factsIn(file) };
   delete cache[key];
   cache[key] = value;
   const keys = Object.keys(cache);
   for (const k of keys.slice(0, Math.max(0, keys.length - 2000))) delete cache[k];
+  if (!file) return;
   try {
-    mkdirSync(dirname(CACHE_FILE), { recursive: true });
-    writeFileSync(CACHE_FILE, JSON.stringify(cache));
+    mkdirSync(dirname(file), { recursive: true });
+    const part = `${file}.${process.pid}.part`;
+    writeFileSync(part, JSON.stringify(cache));
+    renameSync(part, file);
   } catch {
-    // A read-only checkout still builds; it only recomputes.
+    // The build still succeeds; it only recomputes.
   }
+}
+
+/**
+ * The facts of the engine's own modules, as a build of any game asks for
+ * them: each web host file's compressed size and each host's probe. Written
+ * to ENGINE_FACTS when the engine is packed (scripts/pack.sh).
+ */
+export async function engineFacts(): Promise<Record<string, unknown>> {
+  const facts: Record<string, unknown> = {};
+  const hosts: Array<[string, Array<"2d" | "3d">]> = [["web", ["2d", "3d"]], ["web-publish", ["3d"]], ["web-publish-2d", ["2d"]]];
+  for (const [name, profiles] of hosts) {
+    const dir = join(ENGINE_ROOT, "dist", name);
+    if (!existsSync(dir)) continue;
+    const files = walk(dir).filter((path) => !path.endsWith(".d.ts") && !path.endsWith(".map"));
+    const sizes = await sizesOfFiles(files);
+    files.forEach((path, i) => {
+      facts[sizeKey(sizes[i]!.codec, new Uint8Array(readFileSync(path)))] = { size: sizes[i]!.size, codec: sizes[i]!.codec };
+    });
+    const [glue, wasm] = [join(dir, "origin-engine.js"), join(dir, "origin-engine_bg.wasm")];
+    for (const profile of profiles) {
+      const probe = await probeOf(glue, wasm, profile);
+      if (probe) facts[probeKey(glue, wasm, profile)] = probe;
+      else process.stderr.write(`engine facts: dist/${name} did not answer its ${profile} probe; a game's first build reads it instead\n`);
+    }
+  }
+  return facts;
+}
+
+function sizeKey(codec: SizeRow["codec"], bytes: Uint8Array): string {
+  return `size:${codec}:${sha256(bytes)}`;
+}
+
+function probeKey(glue: string, wasm: string, profile: "2d" | "3d"): string {
+  return `probe:${profile}:${sha256(new Uint8Array(readFileSync(glue)))}:${sha256(new Uint8Array(readFileSync(wasm)))}`;
+}
+
+/** Each file compressed as it is served, the files at once, one per core. */
+async function sizesOfFiles(paths: readonly string[]): Promise<Array<{ bytes: number; size: number; codec: SizeRow["codec"] }>> {
+  const sizes = new Array<{ bytes: number; size: number; codec: SizeRow["codec"] }>(paths.length);
+  let next = 0;
+  const worker = async () => {
+    for (let i = next++; i < paths.length; i = next++) sizes[i] = await compressedSize(new Uint8Array(readFileSync(paths[i]!)));
+  };
+  await Promise.all(Array.from({ length: Math.min(paths.length, availableParallelism()) }, worker));
+  return sizes;
 }
 
 async function compressedSize(bytes: Uint8Array): Promise<{ bytes: number; size: number; codec: SizeRow["codec"] }> {
   const brotli = Boolean(Bun.which("brotli"));
-  const key = `size:${brotli ? "brotli-11" : "gzip-9"}:${sha256(bytes)}`;
-  const hit = cacheGet(key) as { size: number; codec: SizeRow["codec"] } | undefined;
+  const key = sizeKey(brotli ? "brotli-11" : "gzip-9", bytes);
+  const hit = factGet(key) as { size: number; codec: SizeRow["codec"] } | undefined;
   if (hit) return { bytes: bytes.length, ...hit };
   let out: { size: number; codec: SizeRow["codec"] } | null = null;
   if (brotli) {
@@ -512,7 +589,7 @@ async function compressedSize(bytes: Uint8Array): Promise<{ bytes: number; size:
     if (code === 0) out = { size: compressed.byteLength, codec: "brotli-11" };
   }
   out ??= { size: Bun.gzipSync(bytes, { level: 9 }).length, codec: "gzip-9" };
-  cachePut(key, out);
+  factPut(key, out);
   return { bytes: bytes.length, ...out };
 }
 
@@ -522,11 +599,11 @@ async function compressedSize(bytes: Uint8Array): Promise<{ bytes: number; size:
  * only that profile's physics).
  */
 async function probeOf(glue: string, wasm: string, profile: "2d" | "3d"): Promise<{ build: string; members: string[] } | null> {
-  const key = `probe:${profile}:${sha256(new Uint8Array(readFileSync(glue)))}:${sha256(new Uint8Array(readFileSync(wasm)))}`;
-  const hit = cacheGet(key) as { build: string; members: string[] } | undefined;
+  const key = probeKey(glue, wasm, profile);
+  const hit = factGet(key) as { build: string; members: string[] } | undefined;
   if (hit) return hit;
   const probe = await probeOfUncached(glue, wasm, profile);
-  if (probe) cachePut(key, probe);
+  if (probe) factPut(key, probe);
   return probe;
 }
 
@@ -1010,15 +1087,8 @@ export interface BuildSizes {
  */
 export async function sizesOf(out: string): Promise<BuildSizes> {
   const paths = walk(out).filter((path) => !path.endsWith(".map"));
-  const files: SizeRow[] = new Array(paths.length);
-  let next = 0;
-  const worker = async () => {
-    for (let i = next++; i < paths.length; i = next++) {
-      const c = await compressedSize(new Uint8Array(readFileSync(paths[i]!)));
-      files[i] = { path: relative(out, paths[i]!), bytes: c.bytes, compressed: c.size, codec: c.codec };
-    }
-  };
-  await Promise.all(Array.from({ length: Math.min(paths.length, availableParallelism()) }, worker));
+  const sizes = await sizesOfFiles(paths);
+  const files: SizeRow[] = paths.map((path, i) => ({ path: relative(out, path), bytes: sizes[i]!.bytes, compressed: sizes[i]!.size, codec: sizes[i]!.codec }));
   const total = files.reduce((t, f) => ({ bytes: t.bytes + f.bytes, compressed: t.compressed + f.compressed }), { bytes: 0, compressed: 0 });
   return { files, total, downloads: downloadsOf(files) };
 }
@@ -1036,6 +1106,12 @@ if (import.meta.main) {
     const i = argv.indexOf(name);
     return i >= 0 ? argv[i + 1] : undefined;
   };
+  if (argv.includes("--engine-facts")) {
+    const facts = await engineFacts();
+    writeFileSync(ENGINE_FACTS, JSON.stringify(facts));
+    process.stdout.write(`${ENGINE_FACTS}: ${Object.keys(facts).length} facts\n`);
+    process.exit(0);
+  }
   const project = opt("--project");
   const entry = opt("--entry");
   const out = opt("--out");

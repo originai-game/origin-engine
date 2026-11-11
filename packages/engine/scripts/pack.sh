@@ -138,6 +138,11 @@ done
 # og.motion's weights (docs/design.md §2.7) ship in motion/, read by og's
 # cook (og-cook's motion.rs). Use the same pin check as development builds.
 bun "$here/scripts/motion-model.ts" ensure
+# What every game's build asks of the engine's own modules (each web host
+# file's brotli size, each host's probe) is computed here once, into
+# dist/build-facts.json, so an install's first og build does not spend a
+# core-minute per module on it (docs/web-export.md §The og commands).
+bun "$here/src/node/web-build.ts" --engine-facts
 # The main package: its files list leaves native/ and the test pages out.
 (cd "$here" && bun pm pack --destination "$out" --quiet --ignore-scripts >/dev/null)
 rm -rf "$out/stage"

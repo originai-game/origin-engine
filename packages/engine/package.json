@@ -49,6 +49,7 @@
     "dist/web",
     "dist/web-publish",
     "dist/web-publish-2d",
+    "dist/build-facts.json",
     "vendor",
     "knowledge",
     "styles",
