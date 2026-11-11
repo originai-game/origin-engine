@@ -560,7 +560,7 @@ impl DebrisLayer {
                 owners.push(s);
             }
         }
-        let colliders: &[SceneCollider] = &scene.colliders;
+        let colliders: &[SceneCollider] = &scene.world.colliders;
         let (words, lists) = crate::scene_colliders::pack(colliders, &bounds);
         let mut by_slot = vec![u32::MAX; self.count as usize];
         for (s, l) in owners.iter().zip(lists) {
@@ -737,7 +737,7 @@ mod tests {
             mapped_at_creation: false,
         });
         let mut scene = RenderScene::default();
-        scene.colliders.push(SceneCollider::Plane {
+        scene.world.colliders.push(SceneCollider::Plane {
             normal: Vec3::Y,
             offset: 0.0,
         });

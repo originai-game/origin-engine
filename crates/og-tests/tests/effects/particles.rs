@@ -84,7 +84,7 @@ fn compute_particles_bounce_off_the_scene_colliders() {
             scene.camera = Camera::orthographic_2d(Vec2::new(0.0, 0.5), 6.0);
         }
         scene.set_emitter(e, emitter);
-        scene.colliders = colliders;
+        scene.world.colliders = colliders;
         let (_, stats, r) = run(&small(), &mut scene, 90, |s, f| fx::tick_all(s, f as u64));
         assert_eq!(stats.particles_cpu, 0, "simulated in compute");
         let live: Vec<_> = r

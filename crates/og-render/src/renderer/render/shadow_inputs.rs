@@ -116,7 +116,7 @@ impl Renderer {
                         .zip(&inside)
                         .filter(|(_, i)| **i)
                         .map(|(s, _)| *s),
-                    scene.terrains.len(),
+                    scene.world.terrains.len(),
                 );
                 Some((
                     view_proj,

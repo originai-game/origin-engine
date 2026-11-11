@@ -110,7 +110,7 @@ impl RenderBackend for Recorder {
                 )
             })
             .collect();
-        self.0.borrow_mut().terrains = scene.terrains.clone();
+        self.0.borrow_mut().terrains = scene.world.terrains.clone();
         self.0.borrow_mut().debug = scene.debug;
         Ok(())
     }

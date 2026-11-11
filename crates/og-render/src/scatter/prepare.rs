@@ -137,6 +137,7 @@ impl ScatterRenderer {
         // How long trampled copies take to stand again: the scene's first
         // grass field's (`trample.rs`), else its default.
         let recovery = scene
+            .world
             .grass
             .first()
             .map_or(crate::Grass::default().recovery, |g| g.grass.recovery);
@@ -150,7 +151,7 @@ impl ScatterRenderer {
                 None => groups.push((d.impostor, vec![i])),
             }
         }
-        let slots = (scene.scatters.len() + groups.len() + card_inputs.len()) as u64;
+        let slots = (scene.world.scatters.len() + groups.len() + card_inputs.len()) as u64;
         if self.slots < slots {
             self.slots = slots.next_power_of_two();
             let (u, g) = Self::slots(
@@ -177,8 +178,14 @@ impl ScatterRenderer {
             impostor_light: [0.0; 4],
             trample: [0.0; 4],
         };
-        let impostors =
-            self.prepare_impostors(device, queue, scene, base, &groups, scene.scatters.len());
+        let impostors = self.prepare_impostors(
+            device,
+            queue,
+            scene,
+            base,
+            &groups,
+            scene.world.scatters.len(),
+        );
         let light = scene
             .lighting
             .light
@@ -191,14 +198,14 @@ impl ScatterRenderer {
             light,
             card_inputs,
             cpu_cards,
-            scene.scatters.len() + groups.len(),
+            scene.world.scatters.len() + groups.len(),
         );
         self.culled_chunks.clear();
         let mut cull_items = Vec::new();
         // Per batch, per chunk, its item among `cull_items`.
         let mut planned: Vec<Vec<Option<usize>>> = Vec::new();
         let view = crate::frame::Frustum::from_view_proj(view_proj);
-        if scene.scatters.is_empty() {
+        if scene.world.scatters.is_empty() {
             if let Some(cull) = &mut self.cull {
                 cull.prepare(device, queue, &[]);
             }
@@ -213,15 +220,16 @@ impl ScatterRenderer {
         let (sources, revisions) = scene.terrain_sources();
         let mut budget = CHUNKS_PER_FRAME;
         let mut gpu_budget = GPU_CHUNKS_PER_FRAME;
-        self.shared.resize(scene.scatters.len(), None);
+        self.shared.resize(scene.world.scatters.len(), None);
         // Each scatter's terrain draw and parameters: what places before it.
         let placing: Vec<(usize, TerrainScatter)> = scene
+            .world
             .scatters
             .iter()
             .map(|d| (d.terrain, d.scatter))
             .collect();
-        for (si, d) in scene.scatters.iter().enumerate() {
-            let Some(t) = scene.terrains.get(d.terrain) else {
+        for (si, d) in scene.world.scatters.iter().enumerate() {
+            let Some(t) = scene.world.terrains.get(d.terrain) else {
                 continue;
             };
             let di = t.terrain.index();
@@ -264,7 +272,7 @@ impl ScatterRenderer {
                 &placing,
                 si,
                 t.layers.len(),
-                scene.water.iter().map(|w| {
+                scene.world.water.iter().map(|w| {
                     let mut m = w.transform;
                     m.w_axis += scene.origin.extend(0.0);
                     (m, w.size, w.endless)
@@ -352,6 +360,7 @@ impl ScatterRenderer {
                 });
             let frame_waters: Vec<(Mat4, Vec2)> = match gpu {
                 Some(_) => scene
+                    .world
                     .water
                     .iter()
                     .map(|w| {

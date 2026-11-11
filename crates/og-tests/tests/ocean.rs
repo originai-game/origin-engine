@@ -69,7 +69,7 @@ fn the_floaters_sit_in_the_drawn_sea() {
             ticks: vec![(tick, hull_cuts(&text, tick))],
             ..Default::default()
         }));
-        scene.water.push(sea_now);
+        scene.world.water.push(sea_now);
         scene.camera = og_render::Camera {
             position: Vec3::new(0.0, 10.0, 0.0),
             target: Vec3::new(-4.0, 0.0, -60.0),
@@ -237,7 +237,7 @@ fn the_sea_moves_between_ticks_in_step_with_the_tick() {
         scene.tick = 300;
         scene.tick_rate = 60.0;
         scene.interpolation = Some(alpha);
-        scene.water.push(og_render::Water {
+        scene.world.water.push(og_render::Water {
             wakes: Some(std::sync::Arc::new(og_render::WaterWakes {
                 epoch: 1,
                 dt: 1.0 / 60.0,

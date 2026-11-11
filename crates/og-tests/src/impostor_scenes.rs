@@ -299,7 +299,7 @@ pub fn impostor_scatter_scene(impostor_distance: f32) -> RenderScene {
     let mut scene = RenderScene::new();
     light(&mut scene);
     let h = scene.add_terrain(flags_terrain());
-    scene.terrains.push(Terrain {
+    scene.world.terrains.push(Terrain {
         layers: vec![TerrainLayer {
             color: Vec3::new(0.35, 0.5, 0.25),
             ..Default::default()
@@ -313,7 +313,7 @@ pub fn impostor_scatter_scene(impostor_distance: f32) -> RenderScene {
         ..Default::default()
     });
     let impostor = ball_impostor(&mut scene);
-    scene.scatters.push(ScatterDraw {
+    scene.world.scatters.push(ScatterDraw {
         terrain: 0,
         mesh: ball,
         material: white,

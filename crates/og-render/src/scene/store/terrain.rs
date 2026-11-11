@@ -113,7 +113,7 @@ impl RenderScene {
         index: usize,
         view: &crate::TerrainView,
     ) -> Option<crate::TerrainClipmap> {
-        let t = self.terrains.get(index)?;
+        let t = self.world.terrains.get(index)?;
         let source = self.terrain_data.get(t.terrain.index())?;
         let layout = source.layout().ok()?;
         let model = t.transform;
@@ -229,7 +229,8 @@ impl RenderScene {
     /// How far from the camera terrain `index` (of [`RenderScene::terrains`])
     /// needs its finest tiles for the copies scattered over it.
     pub fn scatter_detail(&self, index: usize) -> f32 {
-        self.scatters
+        self.world
+            .scatters
             .iter()
             .filter(|s| s.terrain == index)
             .map(|s| s.scatter.distance)

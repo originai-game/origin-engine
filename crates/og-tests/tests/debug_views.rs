@@ -44,10 +44,10 @@ fn scene(name: &str, remove: bool) -> RenderScene {
     }
     if remove {
         match name {
-            "terrain-near" => s.terrains.clear(),
-            "grass-near" => s.grass.clear(),
-            "terrain-grass" => s.scatters.clear(),
-            "water-planar" => s.water.clear(),
+            "terrain-near" => s.world.terrains.clear(),
+            "grass-near" => s.world.grass.clear(),
+            "terrain-grass" => s.world.scatters.clear(),
+            "water-planar" => s.world.water.clear(),
             "particles" => s.particles.clear(),
             "trails-beams" => {
                 s.trails.clear();
@@ -227,7 +227,7 @@ fn terrain_projection_and_vertical_density_use_the_sampled_axes() {
         control: None,
         holes: None,
     });
-    s.terrains.push(Terrain {
+    s.world.terrains.push(Terrain {
         layers: vec![TerrainLayer {
             albedo: Some(texture),
             tile: 2.0,
@@ -247,7 +247,7 @@ fn terrain_projection_and_vertical_density_use_the_sampled_axes() {
     };
     for wall in [false, true] {
         if wall {
-            s.terrains[0].transform = Mat4::from_rotation_x(std::f32::consts::FRAC_PI_2);
+            s.world.terrains[0].transform = Mat4::from_rotation_x(std::f32::consts::FRAC_PI_2);
             s.camera.position = Vec3::new(0.0, 0.0, 10.0);
             s.camera.up = Vec3::Y;
         }

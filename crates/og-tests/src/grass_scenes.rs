@@ -79,7 +79,7 @@ pub fn grass_scene(view: &str) -> RenderScene {
         }
         _ => {}
     }
-    scene.grass.push(GrassDraw {
+    scene.world.grass.push(GrassDraw {
         terrain: 0,
         grass: Grass {
             cast_shadows: true,

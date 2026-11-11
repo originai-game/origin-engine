@@ -468,7 +468,7 @@ pub fn particles_lit_scene() -> RenderScene {
         23,
         0,
     ));
-    scene.colliders.push(og_render::SceneCollider::Plane {
+    scene.world.colliders.push(og_render::SceneCollider::Plane {
         normal: Vec3::Y,
         offset: 0.0,
     });

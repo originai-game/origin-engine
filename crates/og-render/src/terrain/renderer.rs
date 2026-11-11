@@ -36,7 +36,7 @@ impl TerrainRenderer {
     /// after it, from its draws): the frame's longest compiles, on worker
     /// threads while the rest of the frame is prepared (deferred.rs).
     pub(crate) fn start_passes(&self, scene: &crate::RenderScene, prepass: bool) {
-        for t in scene.terrains.iter().filter(|t| t.visible) {
+        for t in scene.world.terrains.iter().filter(|t| t.visible) {
             let holes = self
                 .datas
                 .get(t.terrain.index())
@@ -52,7 +52,7 @@ impl TerrainRenderer {
                     self.features,
                     prepass,
                     t.cast_shadows,
-                    !scene.terrain_stamps.is_empty(),
+                    !scene.world.terrain_stamps.is_empty(),
                 );
             }
         }
@@ -663,7 +663,7 @@ impl TerrainRenderer {
         self.datas.resize_with(sources.len(), || None);
         // Each data's wanted tiles, over every terrain drawing it, best first.
         let mut wanted: og_core::IdMap<usize, (Vec<u32>, u32)> = Default::default();
-        for (ti, t) in scene.terrains.iter().enumerate() {
+        for (ti, t) in scene.world.terrains.iter().enumerate() {
             let i = t.terrain.index();
             let Some(source) = sources.get(i) else {
                 continue;
@@ -819,6 +819,7 @@ impl TerrainRenderer {
                 }
             }
             let fade_in = scene
+                .world
                 .terrains
                 .iter()
                 .filter(|t| t.terrain.index() == i)
@@ -937,7 +938,7 @@ impl TerrainRenderer {
         textures: impl Fn(TextureHandle) -> Option<&'t wgpu::TextureView>,
         arrays: impl Fn(TextureArrayHandle) -> Option<&'t wgpu::Texture>,
     ) -> Result<Vec<TerrainDraw>, crate::RenderError> {
-        if scene.terrains.is_empty() {
+        if scene.world.terrains.is_empty() {
             self.uploads = 0;
             self.resident = 0;
             return Ok(Vec::new());
@@ -951,7 +952,7 @@ impl TerrainRenderer {
         // Each terrain's clipmap from this view, and the ring sizes they draw
         // with in the index buffer (built again, all of them one after
         // another, when a new size is needed: rarely, ring sizes being few).
-        let clipmaps: Vec<Option<TerrainClipmap>> = (0..scene.terrains.len())
+        let clipmaps: Vec<Option<TerrainClipmap>> = (0..scene.world.terrains.len())
             .map(|i| scene.terrain_clipmap(i, &view))
             .collect();
         let missing = |have: &[(u32, RingRanges)]| {
@@ -987,7 +988,7 @@ impl TerrainRenderer {
             );
             self.indices = Some((buffer, have));
         }
-        while self.slots.len() < scene.terrains.len() {
+        while self.slots.len() < scene.world.terrains.len() {
             self.slots.push(Slot {
                 uniform: device.create_buffer(&wgpu::BufferDescriptor {
                     label: Some("terrain"),
@@ -1005,8 +1006,8 @@ impl TerrainRenderer {
                 corners: None,
             });
         }
-        let mut draws = Vec::with_capacity(scene.terrains.len());
-        for (ti, t) in scene.terrains.iter().enumerate() {
+        let mut draws = Vec::with_capacity(scene.world.terrains.len());
+        for (ti, t) in scene.world.terrains.iter().enumerate() {
             if !t.visible {
                 continue;
             }
@@ -1416,7 +1417,7 @@ impl TerrainRenderer {
     ) {
         let mut slots: Vec<StampGpu> = Vec::new();
         let mut placed: Vec<(usize, StampDraw)> = Vec::new();
-        for st in &scene.terrain_stamps {
+        for st in &scene.world.terrain_stamps {
             let Some(k) = draws.iter().position(|d| d.terrain == st.terrain) else {
                 continue;
             };
@@ -1465,7 +1466,7 @@ impl TerrainRenderer {
                 );
             }
             let m = &self.stamp_meshes[&index];
-            let terrain = &scene.terrains[st.terrain];
+            let terrain = &scene.world.terrains[st.terrain];
             let (center, radius) = world_sphere(st.transform, m.bounds.0, m.bounds.1);
             placed.push((
                 k,
@@ -1554,6 +1555,7 @@ impl TerrainRenderer {
     /// for the shadow fit.
     pub(crate) fn bounds(&self, scene: &crate::RenderScene) -> Vec<(Vec3, f32)> {
         scene
+            .world
             .terrains
             .iter()
             .filter_map(|t| {

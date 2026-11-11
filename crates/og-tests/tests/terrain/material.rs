@@ -16,9 +16,9 @@ fn cell_variation_leaves_opaque_normal_maps_unchanged() {
             mips: og_render::Mips::None,
             color_space: og_render::ColorSpace::Linear,
         });
-        scene.terrains[0].layers[0].normal = Some(normal);
+        scene.world.terrains[0].layers[0].normal = Some(normal);
         let (plain, _) = render(&scene);
-        scene.terrains[0].layers[0].cell_variation = 1.0;
+        scene.world.terrains[0].layers[0].cell_variation = 1.0;
         let (varied, _) = render(&scene);
         assert!(plain.pixels == varied.pixels, "anti_tiling {anti_tiling}");
     }

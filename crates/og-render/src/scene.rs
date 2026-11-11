@@ -153,12 +153,9 @@ pub struct RenderScene {
     /// at step as they were. A system absent here steps by the frame's
     /// system alone.
     pub particle_history: og_core::IdMap<u64, std::sync::Arc<crate::ParticleHistory>>,
-    /// The scene's solid shapes ([`crate::SceneCollider`]): what
-    /// CPU-simulated particles with collision bounce off (the CPU path's
-    /// stand-in for the depth buffer the compute path reads) and what
-    /// visual bodies ([`crate::VisualBody`]) meet on the GPU. Empty by
-    /// default.
-    pub colliders: Vec<crate::SceneCollider>,
+    /// The 3D world's ground and waters: water, terrains and their stamps,
+    /// scattered copies, grass, 3D fluids and the colliders they meet.
+    pub world: SceneWorld,
     /// Fine pieces of broken props, simulated and drawn on the GPU only
     /// ([`crate::DebrisPiece`], `debris.rs`): each drawn by instances of
     /// [`RenderScene::instances`] whose transforms the GPU writes. They
@@ -250,20 +247,6 @@ pub struct RenderScene {
     /// What the frame may cost: switches and sizes over what the rest of
     /// the scene asks for (`quality.rs`). The default draws all of it.
     pub quality: crate::RenderQuality,
-    /// Planar 3D water surfaces, drawn after the opaque scene and the sky.
-    pub water: Vec<crate::Water>,
-    /// Terrains drawn this frame (clipmaps of [`RenderScene::add_terrain`] data).
-    pub terrains: Vec<crate::Terrain>,
-    /// Meshes drawn as part of this frame's terrains (cliffs, arches,
-    /// overhangs placed as terrain stamps): shaded with their terrain's
-    /// layers and blended into its ground (`terrain.rs`).
-    pub terrain_stamps: Vec<crate::TerrainStampDraw>,
-    /// Copies scattered over this frame's terrains, placed and drawn by
-    /// the renderer from cached chunks.
-    pub scatters: Vec<crate::ScatterDraw>,
-    /// Fields of grass over this frame's terrains, generated and drawn by
-    /// the renderer on the GPU (`grass.rs`).
-    pub grass: Vec<crate::GrassDraw>,
     /// Models drawn as their impostors this frame (`impostor.rs`): each a
     /// camera-facing card, drawn with the scattered copies' passes.
     pub impostors: Vec<crate::ImpostorDraw>,
@@ -272,9 +255,6 @@ pub struct RenderScene {
     /// 2D fluids drawn as metaballs in the sprite order (the first
     /// [`crate::MAX_FLUIDS`]; fluids of one group are one surface).
     pub metaballs: Vec<crate::Metaballs>,
-    /// 3D particle fluids, drawn as one screen-space surface after the
-    /// opaque scene, the sky and water.
-    pub fluids_3d: Vec<crate::Fluid3d>,
     /// Sort keys of single sprites within their layer (top-down y sorting):
     /// a layer draws its sprites by ascending key, then texture, then
     /// submission order; a sprite without one has key 0.

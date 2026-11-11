@@ -118,7 +118,7 @@ impl Renderer {
         // composite draw samples.
         let fluid_bounds = instances::fold_box(
             None,
-            scene.fluids_3d.iter().flat_map(|f| {
+            scene.world.fluids_3d.iter().flat_map(|f| {
                 // A visual fluid: its spawn box's corners.
                 let corners = f
                     .visual
@@ -136,7 +136,7 @@ impl Renderer {
             Some(views) if fluids_3d => self.world.fluid3d.prepare(
                 &self.device,
                 &self.queue,
-                &scene.fluids_3d,
+                &scene.world.fluids_3d,
                 &fluid3d::Fluid3dCamera {
                     view: cam.view,
                     proj: cam.proj,
@@ -157,7 +157,7 @@ impl Renderer {
                 &self.device,
                 &self.queue,
                 slots,
-                &scene.colliders,
+                &scene.world.colliders,
                 scene.tick,
                 scene.tick_rate,
                 self.world.fluid3d.instances(),
@@ -183,7 +183,7 @@ impl Renderer {
                     self.world.fluid3d.camera_frame(
                         &self.device,
                         &self.queue,
-                        &scene.fluids_3d,
+                        &scene.world.fluids_3d,
                         main,
                         &fluid3d::Fluid3dCamera {
                             view: f.view,

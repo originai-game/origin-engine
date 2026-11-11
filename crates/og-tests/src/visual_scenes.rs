@@ -220,7 +220,7 @@ pub fn visual_bodies_scene(visual: bool) -> RenderScene {
     });
     let ground = scene.add_mesh(shapes::plane(30.0, 10.0));
     scene.add_instance(ground, stone, Mat4::IDENTITY);
-    scene.colliders.push(SceneCollider::Plane {
+    scene.world.colliders.push(SceneCollider::Plane {
         normal: Vec3::Y,
         offset: 0.0,
     });
@@ -228,7 +228,7 @@ pub fn visual_bodies_scene(visual: bool) -> RenderScene {
     let solid_box = |scene: &mut RenderScene, at: Vec3, size: Vec3, material| {
         let transform = Mat4::from_scale_rotation_translation(size, Quat::IDENTITY, at);
         scene.add_instance(cube, material, transform);
-        scene.colliders.push(SceneCollider::Box {
+        scene.world.colliders.push(SceneCollider::Box {
             transform,
             half_extents: Vec3::splat(0.5),
         });
@@ -263,7 +263,7 @@ pub fn visual_bodies_scene(visual: bool) -> RenderScene {
         brass,
         Mat4::from_scale_rotation_translation(Vec3::splat(ball_r * 2.0), Quat::IDENTITY, ball_at),
     );
-    scene.colliders.push(SceneCollider::Sphere {
+    scene.world.colliders.push(SceneCollider::Sphere {
         center: ball_at,
         radius: ball_r,
     });
@@ -448,7 +448,7 @@ pub fn visual_garment_scene(visual: bool) -> RenderScene {
     });
     let ground = scene.add_mesh(shapes::plane(30.0, 10.0));
     scene.add_instance(ground, stone, Mat4::IDENTITY);
-    scene.colliders.push(SceneCollider::Plane {
+    scene.world.colliders.push(SceneCollider::Plane {
         normal: Vec3::Y,
         offset: 0.0,
     });
@@ -469,7 +469,7 @@ pub fn visual_garment_scene(visual: bool) -> RenderScene {
             Vec3::new(x, 0.5, 0.0),
             Vec3::new(0.15, 1.0, 0.15),
         );
-        scene.colliders.push(SceneCollider::Capsule {
+        scene.world.colliders.push(SceneCollider::Capsule {
             a: Vec3::new(x, 0.1, 0.0),
             b: Vec3::new(x, 0.9, 0.0),
             radius: 0.07,
@@ -490,7 +490,7 @@ pub fn visual_garment_scene(visual: bool) -> RenderScene {
         Vec3::new(0.0, 1.82, 0.0),
         Vec3::new(0.2, 0.25, 0.22),
     );
-    scene.colliders.push(SceneCollider::Capsule {
+    scene.world.colliders.push(SceneCollider::Capsule {
         a: Vec3::new(-0.06, 0.98, 0.0),
         b: Vec3::new(0.06, 0.98, 0.0),
         radius: 0.13,
@@ -646,7 +646,7 @@ pub fn visual_fluid_scene(visual: bool) -> RenderScene {
     });
     let ground = scene.add_mesh(shapes::plane(30.0, 10.0));
     scene.add_instance(ground, stone, Mat4::IDENTITY);
-    scene.colliders.push(SceneCollider::Plane {
+    scene.world.colliders.push(SceneCollider::Plane {
         normal: Vec3::Y,
         offset: 0.0,
     });
@@ -678,7 +678,7 @@ pub fn visual_fluid_scene(visual: bool) -> RenderScene {
         };
         let transform = Mat4::from_scale_rotation_translation(size, Quat::IDENTITY, at);
         scene.add_instance(cube, stone, transform);
-        scene.colliders.push(SceneCollider::Box {
+        scene.world.colliders.push(SceneCollider::Box {
             transform,
             half_extents: Vec3::splat(0.5),
         });
@@ -690,7 +690,7 @@ pub fn visual_fluid_scene(visual: bool) -> RenderScene {
         brass,
         Mat4::from_scale_rotation_translation(Vec3::splat(ball_r * 2.0), Quat::IDENTITY, ball_at),
     );
-    scene.colliders.push(SceneCollider::Sphere {
+    scene.world.colliders.push(SceneCollider::Sphere {
         center: ball_at,
         radius: ball_r,
     });
@@ -738,7 +738,7 @@ pub fn visual_fluid_scene(visual: bool) -> RenderScene {
     } else {
         drawn.particles = Arc::from(og_render::visual_fluid_at_rest(&fluid));
     }
-    scene.fluids_3d.push(drawn);
+    scene.world.fluids_3d.push(drawn);
     scene
 }
 
@@ -823,14 +823,14 @@ pub fn visual_particles_scene() -> RenderScene {
         brick,
         Mat4::from_translation(Vec3::new(0.0, 2.5, -2.2)),
     );
-    scene.colliders.push(SceneCollider::Plane {
+    scene.world.colliders.push(SceneCollider::Plane {
         normal: Vec3::Y,
         offset: 0.0,
     });
     let cube = scene.add_mesh(shapes::cuboid(Vec3::ONE));
     let solid = |scene: &mut RenderScene, material, transform: Mat4| {
         scene.add_instance(cube, material, transform);
-        scene.colliders.push(SceneCollider::Box {
+        scene.world.colliders.push(SceneCollider::Box {
             transform,
             half_extents: Vec3::splat(0.5),
         });
@@ -883,7 +883,7 @@ pub fn visual_particles_scene() -> RenderScene {
         brass,
         Mat4::from_scale_rotation_translation(Vec3::splat(ball_r * 2.0), Quat::IDENTITY, ball_at),
     );
-    scene.colliders.push(SceneCollider::Sphere {
+    scene.world.colliders.push(SceneCollider::Sphere {
         center: ball_at,
         radius: ball_r,
     });

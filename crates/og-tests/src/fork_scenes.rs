@@ -97,7 +97,7 @@ pub fn water_mesh_scene(mesh: bool) -> RenderScene {
     sky(&mut scene, Vec3::new(0.3, 0.8, 0.4), 2.5);
     plain_ground(&mut scene, 40.0, Vec3::new(0.7, 0.42, 0.18));
     let stream = mesh.then(|| scene.add_mesh(strip(-12.0, 12.0, -4.0, -1.0, 48)));
-    scene.water.push(Water {
+    scene.world.water.push(Water {
         transform: Mat4::from_translation(Vec3::new(0.0, WATER_LEVEL, 0.0)),
         size: Vec2::splat(24.0),
         segments: 1,
@@ -141,7 +141,7 @@ pub fn water_ripples_scene() -> RenderScene {
     sky(&mut scene, Vec3::new(-0.4, 0.5, -0.6), 2.5);
     plain_ground(&mut scene, 60.0, Vec3::new(0.3, 0.28, 0.22));
     let map = ripple_map(&mut scene);
-    scene.water.push(Water {
+    scene.world.water.push(Water {
         transform: Mat4::from_translation(Vec3::new(0.0, 1.5, 0.0)),
         size: Vec2::splat(40.0),
         segments: 1,
@@ -169,7 +169,7 @@ pub fn water_fresnel_scene() -> RenderScene {
     let mut scene = RenderScene::new();
     sky(&mut scene, Vec3::new(0.3, 0.8, 0.4), 2.5);
     plain_ground(&mut scene, 60.0, Vec3::new(0.2, 0.18, 0.15));
-    scene.water.push(Water {
+    scene.world.water.push(Water {
         transform: Mat4::from_translation(Vec3::new(0.0, 4.0, 0.0)),
         size: Vec2::splat(60.0),
         segments: 1,
@@ -206,7 +206,7 @@ pub fn water_glint_scene() -> RenderScene {
     // light's mirror image, not the disk's reflection.
     scene.lighting.environment.sky.sun_direction = Vec3::new(0.2, 0.8, 0.6);
     plain_ground(&mut scene, 200.0, Vec3::new(0.2, 0.18, 0.15));
-    scene.water.push(Water {
+    scene.world.water.push(Water {
         transform: Mat4::from_translation(Vec3::new(0.0, 1.0, 0.0)),
         size: Vec2::splat(200.0),
         segments: 1,
@@ -402,7 +402,7 @@ pub fn ao_screen_water_scene(water: bool) -> RenderScene {
     scene.add_instance(post, stone, Mat4::from_translation(POOL_POST));
     let block = scene.add_mesh(shapes::cuboid(Vec3::splat(0.5)));
     scene.add_instance(block, stone, Mat4::from_translation(POOL_BLOCK));
-    scene.water.push(Water {
+    scene.world.water.push(Water {
         transform: Mat4::from_translation(Vec3::new(
             0.0,
             if water { POOL_LEVEL } else { -2.0 },
@@ -601,7 +601,7 @@ pub fn hooks_planar_scene(planar: bool) -> RenderScene {
     let mut scene = RenderScene::new();
     sky(&mut scene, Vec3::new(0.3, 0.8, 0.4), 2.0);
     plain_ground(&mut scene, 60.0, Vec3::new(0.3, 0.28, 0.22));
-    scene.water.push(Water {
+    scene.world.water.push(Water {
         transform: Mat4::from_translation(Vec3::new(0.0, 1.0, 0.0)),
         size: Vec2::splat(40.0),
         segments: 1,
@@ -703,7 +703,7 @@ pub fn water_planar_two_scene() -> RenderScene {
     sky(&mut scene, Vec3::new(0.3, 0.8, 0.4), 2.0);
     plain_ground(&mut scene, 60.0, Vec3::new(0.3, 0.28, 0.22));
     for c in [POOL_A, POOL_B] {
-        scene.water.push(Water {
+        scene.world.water.push(Water {
             transform: Mat4::from_translation(c),
             size: Vec2::new(6.0, 8.0),
             segments: 1,
@@ -781,7 +781,7 @@ pub fn terrain_flags_scene(visible: bool, cast_shadows: bool) -> RenderScene {
     sky(&mut scene, Vec3::new(1.0, 0.7, 0.2), 3.0);
     scene.lighting.environment.background = Background::Color(Vec3::new(1.0, 0.0, 1.0));
     let h = scene.add_terrain(flags_terrain());
-    scene.terrains.push(Terrain {
+    scene.world.terrains.push(Terrain {
         layers: vec![TerrainLayer {
             color: Vec3::splat(0.75),
             ..Default::default()
@@ -796,7 +796,7 @@ pub fn terrain_flags_scene(visible: bool, cast_shadows: bool) -> RenderScene {
         roughness: 0.8,
         ..Default::default()
     });
-    scene.scatters.push(ScatterDraw {
+    scene.world.scatters.push(ScatterDraw {
         terrain: 0,
         mesh: cube,
         material: red,

@@ -498,7 +498,7 @@ pub fn sprites_shadow_terrain_scene() -> RenderScene {
     };
     let checker = scene.add_texture(shapes::checker(512, 16));
     let handle = scene.add_terrain(data.clone());
-    scene.terrains.push(Terrain {
+    scene.world.terrains.push(Terrain {
         layers: vec![TerrainLayer {
             albedo: Some(checker),
             color: Vec3::new(0.85, 0.95, 0.75),

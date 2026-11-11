@@ -216,7 +216,7 @@ impl ProbeContent {
             Some(crate::terrain::world_sphere(t.transform, a, b))
         };
         let mut terrains_in = Vec::new();
-        for (i, t) in scene.terrains.iter().enumerate() {
+        for (i, t) in scene.world.terrains.iter().enumerate() {
             let Some((c, r)) = terrain_bounds(t) else {
                 continue;
             };
@@ -235,6 +235,7 @@ impl ProbeContent {
             items.push(h.finish());
         }
         for s in scene
+            .world
             .scatters
             .iter()
             .filter(|s| terrains_in.contains(&s.terrain))

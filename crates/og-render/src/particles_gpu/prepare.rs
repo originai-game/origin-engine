@@ -201,12 +201,12 @@ impl ParticleRenderer {
             // in sprite mode); with none to meet they pass through.
             let colliders: &[crate::particles::SceneCollider] =
                 if e.collision.is_some() && e.space == SimulationSpace::World {
-                    &scene.colliders
+                    &scene.world.colliders
                 } else {
                     &[]
                 };
             let meets_colliders = !gpu || e.collides_with_colliders();
-            if e.collision.is_some() && meets_colliders && scene.colliders.is_empty() {
+            if e.collision.is_some() && meets_colliders && scene.world.colliders.is_empty() {
                 out.collision_skipped += 1;
             }
             // Sprite mode: its layer, and an array emitter's array with its
@@ -576,7 +576,7 @@ impl ParticleRenderer {
         // (`emitter.info.z`), in the buffer the simulation reads.
         if !colliding.is_empty() {
             let bounds: Vec<(Vec3, Vec3)> = colliding.iter().map(|(_, b)| *b).collect();
-            let (words, lists) = crate::scene_colliders::pack(&scene.colliders, &bounds);
+            let (words, lists) = crate::scene_colliders::pack(&scene.world.colliders, &bounds);
             for ((range, _), list) in colliding.iter().zip(lists) {
                 for g in &mut entries[range.start as usize..range.end as usize] {
                     g.collision[3] = 1.0;

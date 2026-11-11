@@ -267,7 +267,7 @@ impl Renderer {
             })
             .collect();
         bounds.extend(garments.iter().map(|&(_, b)| b));
-        let mut lists = pipelines.write_colliders(device, queue, &scene.colliders, &bounds);
+        let mut lists = pipelines.write_colliders(device, queue, &scene.world.colliders, &bounds);
         let garment_lists = lists.split_off(bodies.len());
         pipelines.garment_lists = garments
             .iter()

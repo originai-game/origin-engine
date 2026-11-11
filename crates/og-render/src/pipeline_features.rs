@@ -147,6 +147,7 @@ impl Features {
     /// leave it undrawn).
     pub(crate) fn of(scene: &crate::RenderScene) -> Features {
         let shore = scene
+            .world
             .water
             .iter()
             .any(|w| w.mesh.is_none() && w.shore.is_some());
@@ -160,10 +161,10 @@ impl Features {
             .with(Features::GI, scene.look.post.gi_probes.is_some())
             .with(
                 Features::CAUSTICS,
-                scene.water.iter().any(|w| w.caustics > 0.0),
+                scene.world.water.iter().any(|w| w.caustics > 0.0),
             )
             .with(Features::DEBUG, scene.debug.lit_code() != 0.0)
-            .with(Features::GRASS, !scene.grass.is_empty())
+            .with(Features::GRASS, !scene.world.grass.is_empty())
             .with(
                 Features::SURFACE,
                 scene.look.stylise.material.surface_uniform()[0] > 0.5,
@@ -174,17 +175,21 @@ impl Features {
             )
             .with(
                 Features::SEA,
-                scene.water.iter().any(|w| crate::water::ocean(w).is_some()),
+                scene
+                    .world
+                    .water
+                    .iter()
+                    .any(|w| crate::water::ocean(w).is_some()),
             )
             .with(
                 Features::FLOW,
-                scene.water.iter().any(|w| {
+                scene.world.water.iter().any(|w| {
                     w.flow.length_squared() >= 1e-12 || w.flow_map.is_some() || w.river.is_some()
                 }),
             )
             .with(
                 Features::RIPPLES,
-                scene.water.iter().any(|w| w.heights.is_some()),
+                scene.world.water.iter().any(|w| w.heights.is_some()),
             )
             .with(
                 Features::AREA,

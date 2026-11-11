@@ -1126,7 +1126,7 @@ fn throw_crumb(
 /// and in sprite mode, the depth buffer otherwise; the CPU path always
 /// reads these, so sparks bounce on the ground and on solid shapes.
 fn colliders(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
-    rs.scene.colliders.clear();
+    rs.scene.world.colliders.clear();
     let colliding = !rs.scene.debris.is_empty()
         || rs.scene.has_visual_bodies()
         || rs.scene.particles.iter().any(|s| {
@@ -1179,6 +1179,6 @@ fn colliders(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
             }
             _ => continue,
         };
-        rs.scene.colliders.push(collider);
+        rs.scene.world.colliders.push(collider);
     }
 }

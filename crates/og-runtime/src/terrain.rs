@@ -681,12 +681,13 @@ fn local(size: Vec2, m: Mat4, x: f32, z: f32) -> (Vec2, bool) {
 /// them. Where terrains overlap the highest counts. Runs after the frame's
 /// sprites and terrains are extracted.
 pub(crate) fn ground_drop_shadows(rs: &mut RenderState) {
-    if rs.scene.sprite_shadows.is_empty() || rs.scene.terrains.is_empty() {
+    if rs.scene.sprite_shadows.is_empty() || rs.scene.world.terrains.is_empty() {
         return;
     }
     let loaded = &rs.terrain.loaded;
     let scene = &mut rs.scene;
     let drawn: Vec<(usize, Mat4)> = scene
+        .world
         .terrains
         .iter()
         .filter_map(|t| {
@@ -1205,6 +1206,7 @@ pub(crate) fn id_heights(rs: &RenderState) -> impl Fn(usize, u32, u32) -> Option
     type Sample<'a> = Box<dyn Fn(u32, u32) -> f32 + 'a>;
     let samplers: Vec<Option<Sample>> = rs
         .scene
+        .world
         .terrains
         .iter()
         .map(|d| {
@@ -1217,7 +1219,7 @@ pub(crate) fn id_heights(rs: &RenderState) -> impl Fn(usize, u32, u32) -> Option
 
 pub(crate) fn dump_render(rs: &RenderState, entity: u64) -> Option<Value> {
     let i = rs.ids.terrains.iter().position(|&e| e == entity)?;
-    let t = rs.scene.terrains.get(i)?;
+    let t = rs.scene.world.terrains.get(i)?;
     let layout = rs.scene.terrain_layout(t.terrain)?;
     let height = match rs.backend.as_ref().map(|b| b.size()) {
         Some((_, ht)) if ht > 0 => ht,
@@ -1276,7 +1278,7 @@ pub(crate) fn dump_render(rs: &RenderState, entity: u64) -> Option<Value> {
 /// one host at tick 0 and on the other at tick 1, and auto exposure
 /// started from that frame's metering).
 pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) -> Vec<(u64, u32)> {
-    rs.scene.terrains.clear();
+    rs.scene.world.terrains.clear();
     rs.ids.terrains.clear();
     let layout = rs.draw.terrain.clone();
     let mut settle = std::mem::take(&mut rs.terrain.settle) || rs.terrain.resident;
@@ -1299,7 +1301,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             albedo: array(t.layer_arrays[0]),
             normal: array(t.layer_arrays[1]),
         };
-        rs.scene.terrains.push(og_render::Terrain {
+        rs.scene.world.terrains.push(og_render::Terrain {
             terrain: t.render,
             transform: world,
             layers: t.layers.clone(),
@@ -1323,19 +1325,19 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         });
         rs.ids.terrains.push(e);
         if !t.edited {
-            streamed.push((i, rs.scene.terrains.len() - 1));
+            streamed.push((i, rs.scene.world.terrains.len() - 1));
         }
     }
     if streamed.iter().any(|(i, _)| !rs.terrain.drawn.contains(i)) {
         settle = true;
         for &(i, k) in &streamed {
             rs.terrain.drawn.insert(i);
-            rs.scene.terrains[k].fade_in = false;
+            rs.scene.world.terrains[k].fade_in = false;
         }
     }
     // og.TerrainScatter: copies over the drawn terrain of the same data,
     // placed and drawn by the renderer.
-    rs.scene.scatters.clear();
+    rs.scene.world.scatters.clear();
     rs.terrain.scatter_issues.clear();
     let layout = rs.draw.scatter.clone();
     for (e, v) in kept_rows(world, layout.as_ref()) {
@@ -1348,7 +1350,13 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             ));
             continue;
         };
-        let Some(terrain) = rs.scene.terrains.iter().position(|d| d.terrain == t.render) else {
+        let Some(terrain) = rs
+            .scene
+            .world
+            .terrains
+            .iter()
+            .position(|d| d.terrain == t.render)
+        else {
             continue;
         };
         let index = |key: &str| (v[key].as_f64().unwrap_or(0.0) as u64 & 0xffff_ffff) as usize;
@@ -1384,7 +1392,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
                 continue;
             }
         }
-        rs.scene.scatters.push(og_render::ScatterDraw {
+        rs.scene.world.scatters.push(og_render::ScatterDraw {
             terrain,
             mesh,
             material,
@@ -1413,7 +1421,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
     }
     // og.TerrainStamp: meshes drawn with the drawn terrain of the same
     // data, in its material and blended into its ground.
-    rs.scene.terrain_stamps.clear();
+    rs.scene.world.terrain_stamps.clear();
     rs.ids.stamps.clear();
     let layout = rs.draw.stamp.clone();
     for (e, v) in kept_rows(world, layout.as_ref()) {
@@ -1428,25 +1436,34 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             ));
             continue;
         };
-        let Some(terrain) = rs.scene.terrains.iter().position(|d| d.terrain == t.render) else {
+        let Some(terrain) = rs
+            .scene
+            .world
+            .terrains
+            .iter()
+            .position(|d| d.terrain == t.render)
+        else {
             continue;
         };
         let geometry = (v["geometry"].as_f64().unwrap_or(0.0) as u64 & 0xffff_ffff) as usize;
         let Some(&mesh) = rs.geometries.get(geometry) else {
             continue;
         };
-        rs.scene.terrain_stamps.push(og_render::TerrainStampDraw {
-            terrain,
-            mesh,
-            transform: h.world_of(e),
-            blend: f(&v, "blend", 1.0),
-            cast_shadows: on(&v, "castShadows", true),
-        });
+        rs.scene
+            .world
+            .terrain_stamps
+            .push(og_render::TerrainStampDraw {
+                terrain,
+                mesh,
+                transform: h.world_of(e),
+                blend: f(&v, "blend", 1.0),
+                cast_shadows: on(&v, "castShadows", true),
+            });
         rs.ids.stamps.push(e);
     }
     // og.Grass: fields over the drawn terrain of the same data, generated
     // and drawn by the renderer.
-    rs.scene.grass.clear();
+    rs.scene.world.grass.clear();
     rs.ids.grass.clear();
     let layout = rs.draw.grass.clone();
     // og.GrassType: the kinds of blade fields list in `types`, by entity.
@@ -1476,7 +1493,13 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
                 .push(format!("og.Grass on entity {e} names no loaded terrain"));
             continue;
         };
-        let Some(terrain) = rs.scene.terrains.iter().position(|d| d.terrain == t.render) else {
+        let Some(terrain) = rs
+            .scene
+            .world
+            .terrains
+            .iter()
+            .position(|d| d.terrain == t.render)
+        else {
             continue;
         };
         let d = og_render::Grass::default();
@@ -1490,7 +1513,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             texture(&v["densityMap"]),
             texture(&v["heightMap"]),
         );
-        rs.scene.grass.push(og_render::GrassDraw {
+        rs.scene.world.grass.push(og_render::GrassDraw {
             terrain,
             grass: og_render::Grass {
                 layer: u(&v, "layer", d.layer),
@@ -1550,7 +1573,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             _ => super::fx::viewport(rs).1 as u32,
         };
         let view = og_render::TerrainView::of(&rs.scene.camera, height);
-        let terrains = rs.scene.terrains.clone();
+        let terrains = rs.scene.world.terrains.clone();
         let details: Vec<f32> = (0..terrains.len())
             .map(|k| rs.scene.scatter_detail(k))
             .collect();

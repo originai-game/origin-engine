@@ -143,13 +143,13 @@ impl Renderer {
             .filter(|b| !b.compact)
             .map(|b| b.mesh)
             .chain(scene.skinned_instances.iter().map(|s| s.mesh.index()))
-            .chain(scene.scatters.iter().map(|s| s.mesh.index()))
+            .chain(scene.world.scatters.iter().map(|s| s.mesh.index()))
             .collect();
         for mesh in full {
             self.ensure_full(scene, mesh);
         }
         // Water drawn over a mesh reads its f32 vertices.
-        for m in scene.water.iter().filter_map(|w| w.mesh) {
+        for m in scene.world.water.iter().filter_map(|w| w.mesh) {
             self.ensure_full(scene, m.index());
         }
     }

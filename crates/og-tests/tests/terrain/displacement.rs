@@ -58,7 +58,7 @@ fn displaced_levels_leave_no_cracks() {
 fn each_sett_takes_its_own_tone() {
     let spread = |cells: f32| {
         let mut scene = ts::displaced_scene(ts::DISPLACED_RELIEF);
-        scene.terrains[0].layers[0].cell_variation = cells;
+        scene.world.terrains[0].layers[0].cell_variation = cells;
         let (img, _) = render(&scene);
         let b = 12;
         let mut blocks: Vec<[f32; 3]> = Vec::new();

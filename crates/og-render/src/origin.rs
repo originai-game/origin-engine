@@ -105,7 +105,7 @@ impl RenderScene {
         for p in &mut self.particles {
             moved(&mut p.transform, d);
         }
-        for c in &mut self.colliders {
+        for c in &mut self.world.colliders {
             match c {
                 SceneCollider::Plane { normal, offset } => *offset += normal.dot(d),
                 SceneCollider::Box { transform, .. }
@@ -163,16 +163,16 @@ impl RenderScene {
         if let Some(f) = &mut self.atmosphere.volumetric_fog {
             f.height += d.y;
         }
-        for w in &mut self.water {
+        for w in &mut self.world.water {
             moved(&mut w.transform, d);
             if let Some(s) = &mut w.shore {
                 s.origin += Vec2::new(d.x, d.z);
             }
         }
-        for t in &mut self.terrain_stamps {
+        for t in &mut self.world.terrain_stamps {
             moved(&mut t.transform, d);
         }
-        for t in &mut self.terrains {
+        for t in &mut self.world.terrains {
             moved(&mut t.transform, d);
         }
         for w in &mut self.water_2d {
@@ -181,7 +181,7 @@ impl RenderScene {
         for m in &mut self.metaballs {
             m.particles = m.particles.iter().map(|p| *p + d2).collect();
         }
-        for f in &mut self.fluids_3d {
+        for f in &mut self.world.fluids_3d {
             f.particles = f.particles.iter().map(|p| *p + d).collect();
             if let Some(v) = &mut f.visual {
                 let v = std::sync::Arc::make_mut(v);

@@ -67,7 +67,7 @@ fn diff(a: &RgbaImage, b: &RgbaImage, r: Rect) -> f32 {
 #[ignore = "requires GPU"]
 fn the_pool_tints_shows_through_and_refracts_what_lies_behind_it() {
     let wet = frame(|_| {});
-    let dry = frame(|s| s.fluids_3d.clear());
+    let dry = frame(|s| s.world.fluids_3d.clear());
     let (w, d) = (mean(&wet, POOL), mean(&dry, POOL));
     assert!(
         w[2] - w[0] > d[2] - d[0] + 40.0,
@@ -80,12 +80,12 @@ fn the_pool_tints_shows_through_and_refracts_what_lies_behind_it() {
         "the tiles show through the pool: contrast {shown} of {}",
         contrast(&dry, POOL)
     );
-    let clearer = contrast(&frame(|s| s.fluids_3d[0].opacity = 0.3), POOL);
+    let clearer = contrast(&frame(|s| s.world.fluids_3d[0].opacity = 0.3), POOL);
     assert!(
         clearer > shown * 1.2,
         "a clearer pool shows more: {clearer} vs {shown}"
     );
-    let straight = frame(|s| s.fluids_3d[0].refraction = 0.0);
+    let straight = frame(|s| s.world.fluids_3d[0].refraction = 0.0);
     let bent = diff(&wet, &straight, POOL);
     assert!(bent > 1.5, "refraction bends the tiles: {bent}");
 }
@@ -94,7 +94,7 @@ fn the_pool_tints_shows_through_and_refracts_what_lies_behind_it() {
 #[ignore = "requires GPU"]
 fn the_drop_is_drawn_in_its_particles_colours() {
     let wet = frame(|_| {});
-    let dry = frame(|s| s.fluids_3d.clear());
+    let dry = frame(|s| s.world.fluids_3d.clear());
     let (w, d) = (mean(&wet, DROP), mean(&dry, DROP));
     assert!(
         w[0] > w[2] + 80.0 && (d[0] - d[2]).abs() < 30.0,

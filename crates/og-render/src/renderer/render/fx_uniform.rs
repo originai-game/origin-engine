@@ -109,7 +109,7 @@ impl Renderer {
         // The planar reflection's plane (n, n·at) for the material shaders
         // that read it (pbr.wgsl `planar_reflection`); 0 without one.
         if let Some((i, ..)) = reflection {
-            let w = &scene.water[*i];
+            let w = &scene.world.water[*i];
             let (n, at, ..) = water::surface(w, w.mesh.and_then(|m| scene.mesh(m)));
             fx_uniform.planar = n.extend(n.dot(at)).to_array();
         }

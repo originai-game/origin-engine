@@ -194,7 +194,7 @@ pub fn water_scene() -> RenderScene {
         background: Background::Sky,
         ..Environment::default()
     };
-    scene.water.push(Water {
+    scene.world.water.push(Water {
         transform: Mat4::from_translation(Vec3::new(0.0, 0.0, -6.0)),
         size: Vec2::new(40.0, 90.0),
         segments: 96,

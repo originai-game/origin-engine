@@ -533,7 +533,7 @@ pub fn fluid_3d_scene() -> RenderScene {
         }
     }
     let spacing = 0.1;
-    scene.fluids_3d.push(og_render::Fluid3d {
+    scene.world.fluids_3d.push(og_render::Fluid3d {
         particles: fluid_3d_pool(spacing).into(),
         color: Vec3::new(0.2, 0.55, 0.9),
         opacity: 0.85,
@@ -548,7 +548,7 @@ pub fn fluid_3d_scene() -> RenderScene {
             Vec3::new(0.95, 0.5, 0.08).lerp(Vec3::new(0.85, 0.1, 0.05), (1.25 - p.y) / 0.6 + 0.5)
         })
         .collect();
-    scene.fluids_3d.push(og_render::Fluid3d {
+    scene.world.fluids_3d.push(og_render::Fluid3d {
         particles: drop.into(),
         colors: Some(colors.into()),
         color: Vec3::new(0.95, 0.45, 0.1),

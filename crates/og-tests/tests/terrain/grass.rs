@@ -23,7 +23,7 @@ fn trample_scene() -> RenderScene {
     let data = TerrainData::flat(Vec2::splat(64.0), 129, 129);
     let mut scene = RenderScene::new();
     let h = scene.add_terrain(data);
-    scene.terrains.push(Terrain {
+    scene.world.terrains.push(Terrain {
         layers: vec![TerrainLayer {
             color: Vec3::splat(0.02),
             ..Default::default()
@@ -32,7 +32,7 @@ fn trample_scene() -> RenderScene {
         fade_in: false,
         ..Terrain::new(h)
     });
-    scene.grass.push(og_render::GrassDraw {
+    scene.world.grass.push(og_render::GrassDraw {
         terrain: 0,
         grass: og_render::Grass {
             distance: 2.5,
@@ -141,7 +141,7 @@ fn a_grass_pusher_tramples_the_blades_and_they_recover() {
 #[ignore = "requires GPU"]
 fn a_low_sun_darkens_the_meadow_towards_its_roots() {
     let mut scene = trample_scene();
-    let g = &mut scene.grass[0].grass;
+    let g = &mut scene.world.grass[0].grass;
     g.distance = 30.0;
     g.height = 0.5;
     g.height_variation = 0.0;

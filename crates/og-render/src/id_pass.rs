@@ -339,7 +339,7 @@ pub fn render_ids_from(
     // out for every pass of the frame, and their stamps.
     let main = crate::shaken_camera(&scene.camera, scene.shake);
     let mut tests: Vec<Box<CutTest>> = Vec::new();
-    for (k, t) in scene.terrains.iter().enumerate() {
+    for (k, t) in scene.world.terrains.iter().enumerate() {
         let id = sources.terrains.get(k).copied().unwrap_or(0);
         if id == 0 || !t.visible {
             continue;
@@ -388,9 +388,10 @@ pub fn render_ids_from(
         });
     }
     // Grass fields: their coverage over their terrains (the module's notes).
-    for (i, g) in scene.grass.iter().enumerate() {
+    for (i, g) in scene.world.grass.iter().enumerate() {
         let id = sources.grass.get(i).copied().unwrap_or(0);
         let Some(t) = scene
+            .world
             .terrains
             .get(g.terrain)
             .filter(|t| id != 0 && t.visible)
@@ -453,9 +454,13 @@ pub fn render_ids_from(
             ground: Some((tests.len() - 1, locals)),
         });
     }
-    for (i, st) in scene.terrain_stamps.iter().enumerate() {
+    for (i, st) in scene.world.terrain_stamps.iter().enumerate() {
         let id = sources.stamps.get(i).copied().unwrap_or(0);
-        let drawn = scene.terrains.get(st.terrain).is_some_and(|t| t.visible);
+        let drawn = scene
+            .world
+            .terrains
+            .get(st.terrain)
+            .is_some_and(|t| t.visible);
         let Some(data) = (id != 0 && drawn).then(|| scene.mesh(st.mesh)).flatten() else {
             continue;
         };
@@ -1078,7 +1083,7 @@ mod tests {
         let mut t = crate::Terrain::new(handle);
         t.transform = transform;
         t.lod.ring = 256;
-        scene.terrains.push(t);
+        scene.world.terrains.push(t);
         scene.camera.position = eye;
         scene.camera.target = target;
         scene.camera.far = 500.0;
@@ -1125,7 +1130,7 @@ mod tests {
         assert!(o.visible > 160 * 90 / 3, "{} pixels", o.visible);
         assert!(on_the_surface(&f, &data, Mat4::IDENTITY) == o.visible);
         // Hidden, it is not drawn.
-        scene.terrains[0].visible = false;
+        scene.world.terrains[0].visible = false;
         assert!(
             render_ids(&scene, &ids, &|_, _, _| None, 160, 90)
                 .object(5)
@@ -1149,7 +1154,7 @@ mod tests {
         let eye = Vec3::new(0.3, 3.0, 2.2);
         let (mut scene, ids) =
             terrain_scene(data.clone(), Mat4::IDENTITY, eye, Vec3::new(0.3, 0.0, -1.0));
-        scene.terrains[0].lod.spacing = 0.125;
+        scene.world.terrains[0].lod.spacing = 0.125;
         let f = render_ids(&scene, &ids, &|_, _, _| None, 160, 90);
         let mut near = 0;
         for y in 0..f.height {
@@ -1228,7 +1233,7 @@ mod tests {
             }
         }
         data.holes = Some(holes.into());
-        scene.set_terrain(scene.terrains[0].terrain, data.clone());
+        scene.set_terrain(scene.world.terrains[0].terrain, data.clone());
         let f = render_ids(&scene, &ids, &|_, _, _| None, 160, 90);
         let seen = f.object(9).expect("the box is drawn");
         assert!(seen.visible > 20, "through the hole: {}", seen.visible);
@@ -1256,7 +1261,9 @@ mod tests {
         data.holes = Some(holes.into());
         let eye = Vec3::new(4.0, 18.0, 26.0);
         let (mut scene, ids) = terrain_scene(data.clone(), Mat4::IDENTITY, eye, Vec3::ZERO);
-        let layout = scene.terrain_layout(scene.terrains[0].terrain).unwrap();
+        let layout = scene
+            .terrain_layout(scene.world.terrains[0].terrain)
+            .unwrap();
         assert!(layout.holes);
         // The tiles' samples: the height with the hole flag of the cell at
         // it in its lowest bit.
@@ -1266,7 +1273,7 @@ mod tests {
             Some(f32::from_bits((h.to_bits() & !1) | u32::from(hole)))
         };
         let a = render_ids(&scene, &ids, &|_, _, _| None, 160, 90);
-        scene.terrains[0].terrain = scene.add_terrain_stream(layout, data.range());
+        scene.world.terrains[0].terrain = scene.add_terrain_stream(layout, data.range());
         let b = render_ids(&scene, &ids, &raw, 160, 90);
         let differ = a.ids.iter().zip(&b.ids).filter(|(p, q)| p != q).count();
         assert!(differ <= 2, "{differ} pixels differ");
@@ -1290,7 +1297,7 @@ mod tests {
             Vec3::new(3.3, 70.0, 2.1),
             Vec3::new(3.3, 0.0, 2.0),
         );
-        scene.terrains[0].lod.ring = 16;
+        scene.world.terrains[0].lod.ring = 16;
         let f = render_ids(&scene, &ids, &|_, _, _| None, 160, 160);
         let corner = |x: f32, z: f32| {
             let c = f.view_proj * Vec3::new(x, hill(x, z), z).extend(1.0);
@@ -1384,7 +1391,7 @@ mod tests {
         let (mut scene, mut ids) =
             terrain_scene(data, Mat4::IDENTITY, Vec3::new(0.0, 6.0, 20.0), Vec3::ZERO);
         let rock = scene.add_mesh(shapes::cuboid(Vec3::new(6.0, 8.0, 6.0)));
-        scene.terrain_stamps.push(crate::TerrainStampDraw {
+        scene.world.terrain_stamps.push(crate::TerrainStampDraw {
             terrain: 0,
             mesh: rock,
             transform: Mat4::from_translation(Vec3::new(0.0, 4.0, 0.0)),
@@ -1404,7 +1411,7 @@ mod tests {
             "it hides some ground"
         );
         // Its terrain hidden, it is not drawn either.
-        scene.terrains[0].visible = false;
+        scene.world.terrains[0].visible = false;
         assert!(
             render_ids(&scene, &ids, &|_, _, _| None, 160, 90)
                 .object(8)
@@ -1438,8 +1445,8 @@ mod tests {
             Vec3::new(0.0, 8.0, 18.0),
             Vec3::new(0.0, 0.0, 0.0),
         );
-        scene.terrains[0].layers = vec![crate::TerrainLayer::default(); 2];
-        scene.grass.push(crate::GrassDraw {
+        scene.world.terrains[0].layers = vec![crate::TerrainLayer::default(); 2];
+        scene.world.grass.push(crate::GrassDraw {
             terrain: 0,
             grass: crate::Grass {
                 layer: 1,
@@ -1514,7 +1521,7 @@ mod tests {
             "the post stands above it"
         );
         // Hidden with its terrain.
-        scene.terrains[0].visible = false;
+        scene.world.terrains[0].visible = false;
         assert!(
             render_ids(&scene, &ids, &|_, _, _| None, 160, 90)
                 .object(7)
@@ -1547,9 +1554,9 @@ mod tests {
             color_space: crate::ColorSpace::Linear,
             mips: crate::Mips::None,
         });
-        scene.grass[0].grass.density_map = Some(map);
+        scene.world.grass[0].grass.density_map = Some(map);
         // A hole near the camera, in the meadow.
-        let handle = scene.terrains[0].terrain;
+        let handle = scene.world.terrains[0].terrain;
         let mut data = scene.terrain(handle).unwrap().clone();
         let (cx, cz) = data.cells();
         let mut holes = vec![0u8; (cx * cz) as usize];

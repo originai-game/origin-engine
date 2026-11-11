@@ -131,7 +131,7 @@ pub fn wake_update(scene: &mut RenderScene, frame: u32) {
     let ticks = (frame.saturating_sub(1)..=frame)
         .map(|f| (TICK + u64::from(f), vec![wake_cut(f)]))
         .collect();
-    if let Some(w) = scene.water.first_mut() {
+    if let Some(w) = scene.world.water.first_mut() {
         w.wakes = Some(std::sync::Arc::new(og_render::WaterWakes {
             epoch: 1,
             dt: 1.0 / 60.0,
@@ -153,7 +153,7 @@ fn wake(scene: &mut RenderScene) {
         ..Default::default()
     });
     scene.add_instance(hull, paint, Mat4::IDENTITY);
-    scene.water.push(sea(Vec2::new(-1.2, -2.6), 0.4));
+    scene.world.water.push(sea(Vec2::new(-1.2, -2.6), 0.4));
     sea_haze(scene);
     scene.camera = Camera {
         position: Vec3::new(9.0, 16.0, 22.0),
@@ -268,7 +268,7 @@ fn river(scene: &mut RenderScene) {
     });
     scene.add_instance(ground, earth, Mat4::IDENTITY);
     // A clear upland river: green-brown over its bed, dark where deep.
-    scene.water.push(Water {
+    scene.world.water.push(Water {
         size: Vec2::splat(size),
         shallow: Vec3::new(0.22, 0.32, 0.24),
         deep: Vec3::new(0.03, 0.08, 0.07),
@@ -313,7 +313,7 @@ fn shallows(scene: &mut RenderScene) {
     );
     // A light breeze's sea (4 m/s) over it, not endless: its waves focus
     // the sun into caustics on the slope (the waves' own, og.Water.caustics).
-    scene.water.push(Water {
+    scene.world.water.push(Water {
         size: Vec2::splat(200.0),
         segments: 256,
         wind: Vec2::new(1.5, -3.7),
@@ -348,7 +348,7 @@ pub fn ocean_scene(name: &str) -> RenderScene {
         // afternoon sun behind the right shoulder.
         "water-ocean" => {
             physical_light(&mut scene, 15.0, earth);
-            scene.water.push(sea(Vec2::new(-3.0, -8.5), 0.6));
+            scene.world.water.push(sea(Vec2::new(-3.0, -8.5), 0.6));
             sea_haze(&mut scene);
             scene.camera = Camera {
                 position: Vec3::new(0.0, 4.0, 0.0),
@@ -377,7 +377,7 @@ pub fn ocean_scene(name: &str) -> RenderScene {
             let mut gale = sea(Vec2::new(7.0, -18.7), 1.0);
             // Grey-green deep water under the overcast.
             gale.deep = Vec3::new(0.012, 0.035, 0.035);
-            scene.water.push(gale);
+            scene.world.water.push(gale);
             sea_haze(&mut scene);
             // 96 s in: the swell's crests under the near sea (at 90 s the
             // view's first 50 m lay in one long trough, with no whitecaps).
@@ -394,7 +394,7 @@ pub fn ocean_scene(name: &str) -> RenderScene {
         // glitter path of the sun's highlight on every wave facing it.
         "water-ocean-sunset" => {
             let look = physical_light(&mut scene, 17.85, earth);
-            scene.water.push(sea(Vec2::new(4.0, -4.5), 0.5));
+            scene.world.water.push(sea(Vec2::new(4.0, -4.5), 0.5));
             sea_haze(&mut scene);
             let s = look.sun_direction;
             let bearing = Vec3::new(s.x, 0.0, s.z).normalize_or(Vec3::NEG_Z);
@@ -436,7 +436,7 @@ pub fn ocean_scene(name: &str) -> RenderScene {
             scene.atmosphere.clouds = Some(clouds);
             let mut gale = sea(Vec2::new(5.0, -14.0), 0.85);
             gale.deep = Vec3::new(0.012, 0.035, 0.035);
-            scene.water.push(gale);
+            scene.world.water.push(gale);
             sea_haze(&mut scene);
             scene.camera = metered(Vec3::new(0.0, 6.0, 0.0), -1.0);
         }
@@ -444,7 +444,7 @@ pub fn ocean_scene(name: &str) -> RenderScene {
         // behind the camera: dark water, the moonlight on it faint.
         "water-ocean-night" => {
             physical_light(&mut scene, 22.3, earth);
-            scene.water.push(sea(Vec2::new(-3.0, -8.5), 0.6));
+            scene.world.water.push(sea(Vec2::new(-3.0, -8.5), 0.6));
             sea_haze(&mut scene);
             scene.camera = metered(Vec3::new(0.0, 4.0, 0.0), -2.5);
         }
@@ -589,7 +589,7 @@ pub fn flow_map_scene(scene: &mut RenderScene, mapped: bool) {
             flow_round(size, at, radius, u, v)
         }))
     });
-    scene.water.push(Water {
+    scene.world.water.push(Water {
         transform: Mat4::from_translation(Vec3::new(0.0, 0.9, 0.0)),
         size,
         segments: 32,
@@ -677,7 +677,7 @@ fn beach(scene: &mut RenderScene, mut water: Water, strength: f32) {
         holes: None,
     });
     let layers = crate::terrain_scenes::island_layers(scene);
-    scene.terrains.push(Terrain {
+    scene.world.terrains.push(Terrain {
         layers,
         height_blend: 0.6,
         ..Terrain::new(handle)
@@ -693,5 +693,5 @@ fn beach(scene: &mut RenderScene, mut water: Water, strength: f32) {
     // A shore to foam at, and a bed to colour by.
     water.foam_width = 0.35;
     water.depth_fade = 6.0;
-    scene.water.push(water);
+    scene.world.water.push(water);
 }

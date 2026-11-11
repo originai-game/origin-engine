@@ -228,7 +228,7 @@ pub fn island_scene() -> RenderScene {
     let data = island();
     let handle = scene.add_terrain(data);
     let layers = island_layers(&mut scene);
-    scene.terrains.push(Terrain {
+    scene.world.terrains.push(Terrain {
         layers,
         height_blend: 0.6,
         ..Terrain::new(handle)
@@ -335,7 +335,7 @@ pub fn island_view(distance: &str) -> RenderScene {
         ),
     };
     // The sea around the island (flat, the sky's cubemap reflected).
-    scene.water.push(Water {
+    scene.world.water.push(Water {
         transform: Mat4::from_translation(Vec3::new(0.0, 0.0, 0.0)),
         size: Vec2::splat(24000.0),
         segments: 1,
@@ -349,7 +349,7 @@ pub fn island_view(distance: &str) -> RenderScene {
 
 /// The lake's surface (its own water, above the sea's level).
 fn lake(scene: &mut RenderScene, w: Water) {
-    scene.water.push(Water {
+    scene.world.water.push(Water {
         transform: Mat4::from_translation(Vec3::new(LAKE.x, LAKE_LEVEL, LAKE.y)),
         size: Vec2::splat(360.0),
         segments: 1,
@@ -512,7 +512,7 @@ pub fn grass_scene() -> RenderScene {
         roughness: 0.85,
         ..Default::default()
     });
-    scene.scatters.push(ScatterDraw {
+    scene.world.scatters.push(ScatterDraw {
         terrain: 0,
         mesh: tuft,
         material: grass,
@@ -556,7 +556,7 @@ pub fn stone_scatter() -> TerrainScatter {
 
 /// The island's terrain at the lod a scene asks for (a test helper).
 pub fn with_lod(mut scene: RenderScene, lod: TerrainLod) -> RenderScene {
-    for t in &mut scene.terrains {
+    for t in &mut scene.world.terrains {
         t.lod = lod;
     }
     scene
@@ -569,8 +569,8 @@ pub fn with_lod(mut scene: RenderScene, lod: TerrainLod) -> RenderScene {
 /// on the CPU, a texture's on the GPU).
 pub fn with_layer_arrays(mut scene: RenderScene) -> RenderScene {
     use og_render::{TerrainLayerArrays, TextureArrayData, TextureSource};
-    for ti in 0..scene.terrains.len() {
-        let layers = scene.terrains[ti].layers.clone();
+    for ti in 0..scene.world.terrains.len() {
+        let layers = scene.world.terrains[ti].layers.clone();
         let mut albedos = Vec::new();
         let mut normals = Vec::new();
         let mut picked = Vec::new();
@@ -596,7 +596,7 @@ pub fn with_layer_arrays(mut scene: RenderScene) -> RenderScene {
             albedo: array(albedos),
             normal: array(normals),
         };
-        let t = &mut scene.terrains[ti];
+        let t = &mut scene.world.terrains[ti];
         t.layer_arrays = arrays;
         for (l, (albedo, normal)) in t.layers.iter_mut().zip(picked) {
             l.albedo_layer = albedo;
@@ -650,7 +650,7 @@ pub fn holes_scene() -> RenderScene {
     data.holes = Some(Arc::from(holes));
     let handle = scene.add_terrain(data);
     let layers = island_layers(&mut scene);
-    scene.terrains.push(Terrain {
+    scene.world.terrains.push(Terrain {
         layers,
         height_blend: 0.6,
         ..Terrain::new(handle)
@@ -707,7 +707,7 @@ pub fn layers_scene(painted: bool) -> RenderScene {
     let (x, z) = (-98.0, 114.0);
     let below = Vec3::new(x, island_height(x, z), z);
     scene.camera = camera_at(below + Vec3::new(0.0, 70.0, 26.0), below);
-    let handle = scene.terrains[0].terrain;
+    let handle = scene.world.terrains[0].terrain;
     let mut data = scene.terrain(handle).expect("the island").clone();
     // Both pages at 1024 texels (2 m): the first resampled from the
     // island's. Each disc's layer fades from its full weight at 60 % of
@@ -741,7 +741,7 @@ pub fn layers_scene(painted: bool) -> RenderScene {
         rgba: Arc::from(rgba),
     });
     assert!(scene.set_terrain(handle, data));
-    let t = &mut scene.terrains[0];
+    let t = &mut scene.world.terrains[0];
     let grass = t.layers[0];
     for tint in LAYER_TINTS {
         t.layers.push(TerrainLayer {
@@ -797,7 +797,7 @@ pub fn tiling_scene(anti_tiling: f32) -> RenderScene {
         let g = if n > 0.65 { 40 } else { 215 };
         [g, g, g, 255]
     }));
-    scene.terrains.push(Terrain {
+    scene.world.terrains.push(Terrain {
         layers: vec![TerrainLayer {
             albedo: Some(blobs),
             color: Vec3::ONE,
@@ -859,7 +859,7 @@ pub fn steep_scene(project_slope: f32) -> RenderScene {
         let g = if on { 230 } else { 25 };
         [g, g, g, 255]
     }));
-    scene.terrains.push(Terrain {
+    scene.world.terrains.push(Terrain {
         layers: vec![TerrainLayer {
             albedo: Some(checker),
             color: Vec3::ONE,
@@ -913,7 +913,7 @@ pub fn horizon_scene(horizon: bool) -> RenderScene {
         control: None,
         holes: None,
     });
-    scene.terrains.push(Terrain {
+    scene.world.terrains.push(Terrain {
         layers: vec![TerrainLayer {
             color: Vec3::new(0.32, 0.36, 0.22),
             roughness: 0.95,
@@ -985,7 +985,7 @@ pub fn cliff_scene(blend: f32) -> RenderScene {
         control: None,
         holes: None,
     });
-    scene.terrains.push(Terrain {
+    scene.world.terrains.push(Terrain {
         layers: vec![
             TerrainLayer {
                 color: Vec3::new(0.16, 0.38, 0.08),
@@ -1010,13 +1010,16 @@ pub fn cliff_scene(blend: f32) -> RenderScene {
         CLIFF_HEIGHT + 2.0,
         CLIFF_LENGTH * 2.0,
     )));
-    scene.terrain_stamps.push(og_render::TerrainStampDraw {
-        terrain: 0,
-        mesh: rock,
-        transform: Mat4::from_translation(Vec3::new(0.0, (CLIFF_HEIGHT + 2.0) * 0.5, 0.0)),
-        blend,
-        cast_shadows: true,
-    });
+    scene
+        .world
+        .terrain_stamps
+        .push(og_render::TerrainStampDraw {
+            terrain: 0,
+            mesh: rock,
+            transform: Mat4::from_translation(Vec3::new(0.0, (CLIFF_HEIGHT + 2.0) * 0.5, 0.0)),
+            blend,
+            cast_shadows: true,
+        });
     plain_light(&mut scene);
     // The sun from the valley's side, so the face and the ground are lit alike.
     scene.lighting.light.direction_to_light = Vec3::new(0.7, 0.65, 0.3).normalize();
@@ -1257,7 +1260,7 @@ pub fn displaced_scene(displacement: f32) -> RenderScene {
             (cobble_at(u, v).id * 255.0) as u8,
         ]
     }));
-    scene.terrains.push(Terrain {
+    scene.world.terrains.push(Terrain {
         layers: vec![TerrainLayer {
             albedo: Some(albedo),
             normal: Some(normal),

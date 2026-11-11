@@ -526,6 +526,7 @@ pub(crate) fn far_gpu(scene: &crate::RenderScene, terrain: usize) -> FarGpu {
         wind: WindFieldGpu::default(),
     };
     let Some(d) = scene
+        .world
         .grass
         .iter()
         .find(|d| d.terrain == terrain && d.grass.far_tint && d.grass.usable())
@@ -534,6 +535,7 @@ pub(crate) fn far_gpu(scene: &crate::RenderScene, terrain: usize) -> FarGpu {
     };
     let g = &d.grass;
     let along = scene
+        .world
         .terrains
         .get(terrain)
         .map_or(1.0, |t| horizontal_scale(t.transform));
@@ -1263,7 +1265,7 @@ impl GrassRenderer {
     ) -> GrassFrame {
         let mut frame = GrassFrame::default();
         let previous = self.last_tick.unwrap_or(scene.tick);
-        self.last_tick = (!scene.grass.is_empty()).then_some(scene.tick);
+        self.last_tick = (!scene.world.grass.is_empty()).then_some(scene.tick);
         let wind = crate::wind::field_gpu(
             scene.atmosphere.wind,
             scene.tick,
@@ -1281,9 +1283,9 @@ impl GrassRenderer {
         // Where a blade's shadow lands, per metre of its height.
         let reach = Vec3::new(-l.x, -l.y, -l.z) / l.y.max(0.2);
         let lod_rows = LOD_ROWS;
-        for d in &scene.grass {
+        for d in &scene.world.grass {
             let g = d.grass;
-            let Some(t) = scene.terrains.get(d.terrain) else {
+            let Some(t) = scene.world.terrains.get(d.terrain) else {
                 continue;
             };
             let Some(k) = terrain_draws.iter().position(|td| td.terrain == d.terrain) else {

@@ -7,7 +7,7 @@ use super::*;
 #[test]
 fn scatter_follows_its_layer_distance_and_stays_put() {
     let scene = ts::grass_scene();
-    let terrain = scene.terrains[0].clone();
+    let terrain = scene.world.terrains[0].clone();
     let data = ts::island();
     let eye = scene.camera.position;
     let s = ts::grass_scatter();
@@ -143,7 +143,7 @@ fn strip_scene(transform: Mat4, from_side: bool) -> RenderScene {
         control: None,
         holes: None,
     });
-    scene.terrains.push(Terrain {
+    scene.world.terrains.push(Terrain {
         transform,
         layers: vec![TerrainLayer {
             color: Vec3::new(0.8, 0.05, 0.05),
@@ -285,7 +285,7 @@ fn a_terrain_honours_its_transform() {
         Vec3::new(5.0, 3.0, -4.0),
     );
     let scene = strip_scene(placed_transform, false);
-    let terrain = scene.terrains[0].clone();
+    let terrain = scene.world.terrains[0].clone();
     let data = scene.terrain(terrain.terrain).cloned().expect("data");
     let s = TerrainScatter {
         density: 1.0,

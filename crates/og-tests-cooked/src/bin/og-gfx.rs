@@ -527,7 +527,7 @@ fn effect_table(frames: u32, only: Option<&str>) -> Result<String, String> {
         (
             "water-3d",
             "E5: planar water (refraction, foam, SSR)",
-            |g| g.scene.water.clear(),
+            |g| g.scene.world.water.clear(),
         ),
         ("water-2d", "E5: 2D water line", |g| {
             g.scene.water_2d.clear()
@@ -564,19 +564,19 @@ fn effect_table(frames: u32, only: Option<&str>) -> Result<String, String> {
         (
             "terrain-near",
             "P2: terrain from 1.7 m (2 km, 4 layers, clipmap)",
-            |g| g.scene.terrains.clear(),
+            |g| g.scene.world.terrains.clear(),
         ),
         ("terrain-mid", "P2: terrain from 120 m", |g| {
-            g.scene.terrains.clear()
+            g.scene.world.terrains.clear()
         }),
         ("terrain-far", "P2: terrain from 1.5 km", |g| {
-            g.scene.terrains.clear()
+            g.scene.world.terrains.clear()
         }),
         (
             "terrain-mid",
             "P2: terrain casting shadows (its shadow passes)",
             |g| {
-                for t in &mut g.scene.terrains {
+                for t in &mut g.scene.world.terrains {
                     t.cast_shadows = false;
                 }
             },
@@ -585,35 +585,35 @@ fn effect_table(frames: u32, only: Option<&str>) -> Result<String, String> {
             "water-planar",
             "P2: planar reflection (half resolution)",
             |g| {
-                for w in &mut g.scene.water {
+                for w in &mut g.scene.world.water {
                     w.planar_reflection = 0.0;
                 }
             },
         ),
         ("water-shadows", "P2: shadows received on water", |g| {
-            for w in &mut g.scene.water {
+            for w in &mut g.scene.world.water {
                 w.shadows = 0.0;
             }
         }),
         ("water-underwater", "P2: caustics on the bed", |g| {
-            for w in &mut g.scene.water {
+            for w in &mut g.scene.world.water {
                 w.caustics = 0.0;
             }
         }),
         (
             "water-underwater",
             "P2: underwater view (fog, the surface from below; vs no water)",
-            |g| g.scene.water.clear(),
+            |g| g.scene.world.water.clear(),
         ),
         (
             "terrain-grass",
             "P2: grass scatter (36,000 tufts, shadowed)",
-            |g| g.scene.scatters.clear(),
+            |g| g.scene.world.scatters.clear(),
         ),
         (
             "fluid-3d",
             "P2: 3D fluid surface (2 fluids, 2,534 particles, screen space)",
-            |g| g.scene.fluids_3d.clear(),
+            |g| g.scene.world.fluids_3d.clear(),
         ),
     ];
     for (scene, label, strip) in effect_rows {

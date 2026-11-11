@@ -42,7 +42,7 @@ fn water_and_volumetric_fog_are_not_drawn_in_the_2d_profile() {
         "a GPU adapter: a GPU test, run where there is one (OG_RENDERER=none takes it away)",
     );
     let mut world = scene();
-    world.water.push(Water {
+    world.world.water.push(Water {
         transform: Mat4::IDENTITY,
         size: Vec2::new(40.0, 40.0),
         deep: Vec3::new(0.0, 0.2, 0.9),

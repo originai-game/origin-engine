@@ -139,7 +139,7 @@ fn no_probes(s: &mut RenderScene) {
 }
 
 fn no_caustics(s: &mut RenderScene) {
-    s.water.iter_mut().for_each(|w| w.caustics = 0.0);
+    s.world.water.iter_mut().for_each(|w| w.caustics = 0.0);
 }
 
 /// A registered scene that uses each feature, and what takes it out.

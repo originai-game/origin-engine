@@ -306,7 +306,7 @@ impl Trample {
     ) {
         self.steps = 0;
         let wanted = !scene.atmosphere.grass_pushers.is_empty() || self.last.is_some();
-        let vegetation = !scene.grass.is_empty() || !scene.scatters.is_empty();
+        let vegetation = !scene.world.grass.is_empty() || !scene.world.scatters.is_empty();
         if self.layout.is_none() || !crate::WORLD_3D || !wanted || !vegetation {
             self.grid = [0.0; 4];
             self.last = None;

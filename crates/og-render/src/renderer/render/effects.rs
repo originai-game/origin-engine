@@ -124,6 +124,7 @@ impl Renderer {
         let flare_sources_on = WORLD_3D && !cam.orthographic && lens_flare.is_some();
         let fluids_3d = WORLD_3D
             && scene
+                .world
                 .fluids_3d
                 .iter()
                 .any(|f| !f.particles.is_empty() || f.visual.is_some());

@@ -105,3 +105,32 @@ pub struct SceneLighting {
     /// background by [`Background::Sky`]; `None`: the sky lights it.
     pub environment_map: Option<crate::EnvironmentMap>,
 }
+
+/// The 3D world's ground and waters: water, terrains and their stamps,
+/// scattered copies, grass, 3D fluids and the colliders they meet.
+#[derive(Debug)]
+pub struct SceneWorld {
+    /// Planar 3D water surfaces, drawn after the opaque scene and the sky.
+    pub water: Vec<crate::Water>,
+    /// Terrains drawn this frame (clipmaps of [`RenderScene::add_terrain`] data).
+    pub terrains: Vec<crate::Terrain>,
+    /// Meshes drawn as part of this frame's terrains (cliffs, arches,
+    /// overhangs placed as terrain stamps): shaded with their terrain's
+    /// layers and blended into its ground (`terrain.rs`).
+    pub terrain_stamps: Vec<crate::TerrainStampDraw>,
+    /// Copies scattered over this frame's terrains, placed and drawn by
+    /// the renderer from cached chunks.
+    pub scatters: Vec<crate::ScatterDraw>,
+    /// Fields of grass over this frame's terrains, generated and drawn by
+    /// the renderer on the GPU (`grass.rs`).
+    pub grass: Vec<crate::GrassDraw>,
+    /// 3D particle fluids, drawn as one screen-space surface after the
+    /// opaque scene, the sky and water.
+    pub fluids_3d: Vec<crate::Fluid3d>,
+    /// The scene's solid shapes ([`crate::SceneCollider`]): what
+    /// CPU-simulated particles with collision bounce off (the CPU path's
+    /// stand-in for the depth buffer the compute path reads) and what
+    /// visual bodies ([`crate::VisualBody`]) meet on the GPU. Empty by
+    /// default.
+    pub colliders: Vec<crate::SceneCollider>,
+}

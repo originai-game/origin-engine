@@ -73,7 +73,7 @@ fn meadow() -> RenderScene {
         holes: None,
     });
     let layers = island_layers(&mut scene);
-    scene.terrains.push(Terrain {
+    scene.world.terrains.push(Terrain {
         layers,
         height_blend: 0.6,
         ..Terrain::new(handle)
@@ -84,7 +84,7 @@ fn meadow() -> RenderScene {
         roughness: 0.85,
         ..Default::default()
     });
-    scene.scatters.push(ScatterDraw {
+    scene.world.scatters.push(ScatterDraw {
         terrain: 0,
         mesh: tuft,
         material: grass,
@@ -346,7 +346,7 @@ pub fn ssr_floor_scene(floor: SsrFloor, ssr: bool) -> RenderScene {
                 control: None,
                 holes: None,
             });
-            scene.terrains.push(Terrain {
+            scene.world.terrains.push(Terrain {
                 layers: vec![og_render::TerrainLayer {
                     color: Vec3::splat(0.04),
                     roughness: 0.05,
@@ -462,7 +462,7 @@ pub fn probe_water_scene(on: bool) -> RenderScene {
     });
     if on {
         let p = outdoor_probe();
-        scene.water.push(og_render::Water {
+        scene.world.water.push(og_render::Water {
             transform: Mat4::from_translation(p - Vec3::Y * 0.4),
             size: Vec2::new(6.0, 6.0),
             shallow: Vec3::new(0.9, 0.2, 0.15),
@@ -514,7 +514,7 @@ pub fn probe_floor_scene() -> RenderScene {
 /// its deep colour a dark blue and no foam: seen through, it shows the
 /// floor's yellow; with no depth below, its deep colour.
 pub fn add_floor_water(scene: &mut RenderScene) {
-    scene.water.push(og_render::Water {
+    scene.world.water.push(og_render::Water {
         transform: Mat4::from_translation(Vec3::new(0.0, 0.15, 0.0)),
         size: Vec2::new(6.0, 6.0),
         shallow: Vec3::ONE,
@@ -586,7 +586,7 @@ pub fn add_floor_fluid(scene: &mut RenderScene) {
         .filter(|p| p.length() <= 0.7)
         .map(|p| centre + p)
         .collect();
-    scene.fluids_3d.push(og_render::Fluid3d {
+    scene.world.fluids_3d.push(og_render::Fluid3d {
         particles: particles.into(),
         color: Vec3::new(0.9, 0.08, 0.05),
         opacity: 0.9,

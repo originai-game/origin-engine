@@ -136,14 +136,14 @@ pub fn generated_scene() -> Result<RenderScene, String> {
         })
         .collect();
     // island_layers: grass, rock, sand, snow, the biomes' order.
-    scene.terrains.push(Terrain {
+    scene.world.terrains.push(Terrain {
         layers,
         height_blend: 0.4,
         ..Terrain::new(handle)
     });
     afternoon(&mut scene);
     scene.camera = camera_at(GENERATED_EYE, GENERATED_TARGET);
-    scene.water.push(Water {
+    scene.world.water.push(Water {
         transform: Mat4::from_translation(Vec3::new(0.0, sea, 0.0)),
         size: Vec2::splat(12000.0),
         segments: 1,

@@ -18,7 +18,7 @@ fn scattered_copies_are_drawn_from_chunks_and_shrink_over_the_fade() {
     let size = 1024.0f32;
     let mut scene = RenderScene::new();
     let h = scene.add_terrain(TerrainData::flat(Vec2::splat(size), n, n));
-    scene.terrains.push(Terrain {
+    scene.world.terrains.push(Terrain {
         layers: vec![TerrainLayer {
             color: Vec3::splat(0.05),
             ..Default::default()
@@ -40,7 +40,7 @@ fn scattered_copies_are_drawn_from_chunks_and_shrink_over_the_fade() {
         seed: 5,
         ..TerrainScatter::default()
     };
-    scene.scatters.push(og_render::ScatterDraw {
+    scene.world.scatters.push(og_render::ScatterDraw {
         terrain: 0,
         mesh: cube,
         material: red,
@@ -84,7 +84,7 @@ fn scattered_copies_are_drawn_from_chunks_and_shrink_over_the_fade() {
         let p = px(&img, x as u32, y as u32);
         p[0] > 150.0 && p[1] < 60.0
     };
-    let placed = scene.terrains[0].scatter(
+    let placed = scene.world.terrains[0].scatter(
         &TerrainData::flat(Vec2::splat(size), n, n),
         &s,
         scene.camera.position,
@@ -216,14 +216,14 @@ fn scattered_copies_are_drawn_from_chunks_and_shrink_over_the_fade() {
 fn scatter_chunks_are_built_again_only_when_what_placed_them_changes() {
     let mut scene = RenderScene::new();
     let h = scene.add_terrain(TerrainData::flat(Vec2::splat(1024.0), 257, 257));
-    scene.terrains.push(Terrain {
+    scene.world.terrains.push(Terrain {
         layers: vec![TerrainLayer::default()],
         cast_shadows: false,
         ..Terrain::new(h)
     });
     let cube = scene.add_mesh(shapes::cuboid(Vec3::ONE));
     let material = scene.add_material(Material::default());
-    scene.scatters.push(og_render::ScatterDraw {
+    scene.world.scatters.push(og_render::ScatterDraw {
         terrain: 0,
         mesh: cube,
         material,
@@ -256,19 +256,19 @@ fn scatter_chunks_are_built_again_only_when_what_placed_them_changes() {
     let first = built(&scene);
     assert!(first >= 4, "{first}");
     assert_eq!(built(&scene), 0, "a second frame builds nothing");
-    scene.scatters[0].scatter.seed = 6;
+    scene.world.scatters[0].scatter.seed = 6;
     assert_eq!(
         built(&scene),
         first,
         "another seed builds every chunk again"
     );
-    scene.scatters[0].scatter.seed = 5;
+    scene.world.scatters[0].scatter.seed = 5;
     assert_eq!(
         built(&scene),
         0,
         "back at the first seed its chunks are kept"
     );
-    scene.terrains[0].layers[0].slope = [0.0, 45.0];
+    scene.world.terrains[0].layers[0].slope = [0.0, 45.0];
     assert_eq!(
         built(&scene),
         first,
@@ -283,7 +283,7 @@ fn wind_sways_scattered_copies_downwind() {
     let data = TerrainData::flat(Vec2::splat(256.0), n, n);
     let mut scene = RenderScene::new();
     let h = scene.add_terrain(data.clone());
-    scene.terrains.push(Terrain {
+    scene.world.terrains.push(Terrain {
         layers: vec![TerrainLayer {
             color: Vec3::splat(0.05),
             ..Default::default()
@@ -310,7 +310,7 @@ fn wind_sways_scattered_copies_downwind() {
         seed: 7,
         ..TerrainScatter::default()
     };
-    scene.scatters.push(og_render::ScatterDraw {
+    scene.world.scatters.push(og_render::ScatterDraw {
         terrain: 0,
         mesh: plate,
         material: red,
@@ -336,7 +336,7 @@ fn wind_sways_scattered_copies_downwind() {
     let px_of = |p: Vec2| Vec2::new(640.0 + p.x * 12.0, 360.0 + p.y * 12.0);
     // The roots in view with no other within 5 m, so no other plate comes
     // within 3 m of 1 m downwind of one.
-    let placed: Vec<Vec2> = scene.terrains[0]
+    let placed: Vec<Vec2> = scene.world.terrains[0]
         .scatter(&data, &s, scene.camera.position)
         .iter()
         .map(|(_, m)| Vec2::new(m.w_axis.x, m.w_axis.z))
@@ -414,12 +414,12 @@ fn wind_sways_scattered_copies_downwind() {
         "strength 0 moved a copy"
     );
     scene.atmosphere.wind = Some(steady);
-    scene.scatters[0].scatter.sway = 0.0;
+    scene.world.scatters[0].scatter.sway = 0.0;
     assert!(
         draw(&mut scene, 9).pixels == still.pixels,
         "sway 0 moved a copy"
     );
-    scene.scatters[0].scatter.sway = 1.0;
+    scene.world.scatters[0].scatter.sway = 1.0;
     scene.atmosphere.wind = Some(Wind {
         gust: 1.0,
         direction: Vec3::X,
@@ -466,7 +466,7 @@ fn wind_sways_scattered_copies_downwind() {
         emissive: [0.8, 0.0, 0.0],
         ..Default::default()
     });
-    scene.scatters[0].material = dim;
+    scene.world.scatters[0].material = dim;
     scene.look.post.motion_blur = Some(og_render::MotionBlur {
         shutter: 1.0,
         samples: 16,

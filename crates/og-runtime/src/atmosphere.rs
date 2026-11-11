@@ -327,10 +327,10 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             kind,
         });
     }
-    scene.water.clear();
+    scene.world.water.clear();
     scene.water_2d.clear();
     scene.metaballs.clear();
-    scene.fluids_3d.clear();
+    scene.world.fluids_3d.clear();
     let time = world.time();
     let tick = time.tick;
     let orthographic = matches!(scene.camera.projection, Projection::Orthographic { .. });
@@ -692,7 +692,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             let (_, r, t) = m.to_scale_rotation_translation();
             Mat4::from_rotation_translation(r, t)
         };
-        scene.water.push(Water {
+        scene.world.water.push(Water {
             transform,
             size: vec2(&v["size"], Vec2::splat(16.0)),
             segments: u(&v, "segments", 64),
@@ -863,7 +863,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             // Each particle stands for the spawn box's volume over the
             // count, and is drawn at least as wide as that spacing.
             let volume = (size.x * size.y * size.z).max(1e-6) / count.max(1) as f32;
-            scene.fluids_3d.push(og_render::Fluid3d {
+            scene.world.fluids_3d.push(og_render::Fluid3d {
                 particles: Arc::from(Vec::new()),
                 colors: None,
                 color: fluid_color(v),
@@ -889,7 +889,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
                     })
                     .collect::<Arc<[Vec3]>>()
             });
-        scene.fluids_3d.push(og_render::Fluid3d {
+        scene.world.fluids_3d.push(og_render::Fluid3d {
             particles: Arc::from(particles),
             colors,
             color: fluid_color(v),

@@ -230,7 +230,7 @@ impl Renderer {
         let mut skinned = self.build_skinned(scene, &probe_boxes)?;
         // The planar water this frame draws: none where the 3D world is
         // not built in (WORLD_3D).
-        let scene_water: &[Water] = if WORLD_3D { &scene.water } else { &[] };
+        let scene_water: &[Water] = if WORLD_3D { &scene.world.water } else { &[] };
 
         let (aspect, temporal, camera, cam, view_frustum) = self.prepare_frame_camera(scene);
         let taa = self.info.antialias == Antialias::Taa;

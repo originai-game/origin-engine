@@ -62,7 +62,7 @@ fn decals_project_on_terrain_and_reject_back_faces() {
         control: None,
         holes: None,
     });
-    scene.terrains.push(Terrain::new(terrain));
+    scene.world.terrains.push(Terrain::new(terrain));
     scene.camera = Camera {
         position: Vec3::new(0.0, 10.0, 0.0),
         target: Vec3::ZERO,
@@ -222,7 +222,7 @@ fn layers_follow_slope_altitude_and_the_control_map() {
         roughness: 1.0,
         ..Default::default()
     };
-    scene.terrains.push(Terrain {
+    scene.world.terrains.push(Terrain {
         layers: vec![
             TerrainLayer {
                 slope: [0.0, 20.0],
@@ -320,7 +320,7 @@ fn the_underwater_view_fogs_shows_the_surface_and_caustics() {
             ..Default::default()
         });
         scene.add_instance(bed, sand, Mat4::from_translation(Vec3::new(0.0, -8.5, 0.0)));
-        scene.water.push(Water {
+        scene.world.water.push(Water {
             size: Vec2::splat(150.0),
             segments: 1,
             caustics,

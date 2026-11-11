@@ -94,7 +94,7 @@ impl RenderBackend for Recorder {
         self.0.borrow_mut().depths = [-8.0f32, -64.0, 64.0]
             .iter()
             .map(|&x| {
-                let s = scene.water.first()?.shore.as_ref()?;
+                let s = scene.world.water.first()?.shore.as_ref()?;
                 let p = glam::Vec2::new(x, 0.0) - s.origin + s.field.origin;
                 Some(s.field.sample(p)?.depth)
             })

@@ -35,6 +35,7 @@ impl RenderBackend for Seen {
     }
     fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
         *self.0.borrow_mut() = scene
+            .world
             .scatters
             .iter()
             .map(|draw| (*draw, scene.mesh(draw.mesh).unwrap().bounds().unwrap()))
