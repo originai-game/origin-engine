@@ -111,7 +111,7 @@ impl Ui {
             width: (r.width - inner.left - inner.right).max(0.0),
             height: (r.height - inner.top - inner.bottom).max(0.0),
         };
-        let (styles, bindings) = ui.docs.retained.debug_styles(key).unwrap_or_default();
+        let (styles, bindings) = ui.docs.host.retained.debug_styles(key).unwrap_or_default();
         // The part it is drawn as, beside it in the element list.
         let at = self.elements().iter().position(|e| e.path == path);
         let rules = at

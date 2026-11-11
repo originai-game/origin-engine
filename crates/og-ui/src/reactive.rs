@@ -14,8 +14,8 @@ impl crate::Ui {
     /// A same-process hot reload keeps live subscribers and named callback
     /// registrations. Snapshot restore replaces values, not executable code.
     pub fn inherit_store_registrations(&mut self, previous: &Self) {
-        self.reactive = previous.reactive.clone();
-        self.reactive.graph.clear_bindings();
+        self.docs.reactive = previous.docs.reactive.clone();
+        self.docs.reactive.graph.clear_bindings();
         self.inherit_document_registrations(previous);
     }
 
@@ -35,24 +35,25 @@ impl crate::Ui {
                 }
                 Command::Unmount { mount } => {
                     mount.validate()?;
-                    self.reactive.graph.check_idle(&mount)?;
+                    self.docs.reactive.graph.check_idle(&mount)?;
                     self.unmount_document(&mount);
                 }
                 Command::Registered { sources, mounts } => {
                     self.registered_document_mounts(mounts)?;
-                    self.reactive.execute(Command::Registered {
+                    self.docs.reactive.execute(Command::Registered {
                         sources,
                         mounts: Vec::new(),
                     })?;
                 }
                 Command::Dispose { scope } => {
-                    self.reactive
+                    self.docs
+                        .reactive
                         .graph
                         .check_idle(&SourceId::new(&scope, "dispose"))?;
                     self.unmount_scope(&scope);
-                    return self.reactive.execute(Command::Dispose { scope });
+                    return self.docs.reactive.execute(Command::Dispose { scope });
                 }
-                command => return self.reactive.execute(command),
+                command => return self.docs.reactive.execute(command),
             }
             Ok(Value::Null)
         })

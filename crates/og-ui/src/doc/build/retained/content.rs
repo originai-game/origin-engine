@@ -26,7 +26,7 @@ impl RetainedHost {
     ) -> Result<Child, String> {
         let (doc, index) = source;
         let node = &doc.nodes[index];
-        let instance = ui.docs.docs.get(component).cloned().ok_or_else(|| {
+        let instance = ui.docs.host.docs.get(component).cloned().ok_or_else(|| {
             format!(
                 "{}:{}: no component '{component}' (load its document)",
                 doc.source, node.line
@@ -155,6 +155,7 @@ impl RetainedHost {
             Some(ContentRef::Document(name)) => {
                 let document = ui
                     .docs
+                    .host
                     .docs
                     .get(&name)
                     .cloned()
@@ -258,6 +259,7 @@ pub(super) fn mount_content(
         };
         let doc = ui
             .docs
+            .host
             .docs
             .get(document)
             .cloned()
@@ -365,7 +367,8 @@ mod tests {
             ui.define_document(UiDocument::parse(&format!("{name}.svelte"), text).unwrap());
         }
         let rows = [("a", "Axe", "sharp"), ("b", "Bow", "far")];
-        ui.reactive
+        ui.docs
+            .reactive
             .execute(Command::Collection {
                 source: SourceId::new("test", "items"),
                 key: "id".into(),
@@ -380,7 +383,8 @@ mod tests {
                     .collect(),
             })
             .unwrap();
-        ui.reactive
+        ui.docs
+            .reactive
             .execute(Command::Signal {
                 source: SourceId::new("test", "footer"),
                 initial: json!("Ann"),
@@ -453,7 +457,8 @@ mod tests {
         assert_eq!(of("Note"), ["note Ann"], "{all:?}");
         let idle = step(&mut ui);
         assert_eq!((idle.bindings, idle.reconciled), (0, 0), "{idle:?}");
-        ui.reactive
+        ui.docs
+            .reactive
             .execute(Command::Patch {
                 source: SourceId::new("test", "items"),
                 key: "b".into(),
@@ -469,7 +474,8 @@ mod tests {
             2,
             "{all:?}"
         );
-        ui.reactive
+        ui.docs
+            .reactive
             .execute(Command::Set {
                 source: SourceId::new("test", "footer"),
                 value: json!("Bo"),

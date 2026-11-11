@@ -59,3 +59,11 @@ pub(crate) struct Out {
     /// This frame's counts (into `UiFrame::stats`).
     pub(crate) stats: LayoutStats,
 }
+
+/// Documents: their mounts, the layer stack and the reactive session.
+#[derive(Clone, Debug)]
+pub(crate) struct Docs {
+    /// Documents, their mounts and the layer stack (docs/ui.md §2.1, §2.1).
+    pub(crate) host: crate::doc::build::DocHost,
+    pub(crate) reactive: crate::reactive::session::Session,
+}

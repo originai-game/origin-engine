@@ -20,7 +20,7 @@ impl Ui {
         uses: &[&crate::paint::FilterUse],
         space: ImageSpace,
     ) {
-        if self.docs.element_images >= 4 {
+        if self.docs.host.element_images >= 4 {
             return;
         }
         let doc = b.doc.clone();
@@ -145,9 +145,9 @@ impl Ui {
                     cached: None,
                     recording: Default::default(),
                 };
-                self.docs.element_images += 1;
+                self.docs.host.element_images += 1;
                 self.build_node(&mut ib, target, None);
-                self.docs.element_images -= 1;
+                self.docs.host.element_images -= 1;
                 self.close();
             }
         }

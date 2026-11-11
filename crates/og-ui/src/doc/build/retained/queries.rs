@@ -131,7 +131,7 @@ panel { width: 10px; height: 10px; }
                     .unwrap()
                     .width
             };
-            (width("Badge"), width("A"), ui.docs.retained.resolved)
+            (width("Badge"), width("A"), ui.docs.host.retained.resolved)
         };
         // 500: Shelf 300. The first build cannot know; settlement resolves
         // the one reader before paint.
@@ -191,7 +191,7 @@ panel { width: 10px; height: 10px; }
             };
             (
                 [width("A"), width("Badge"), width("Dot"), width("Unit")],
-                ui.docs.retained.resolved,
+                ui.docs.host.retained.resolved,
             )
         };
         // 500: Shelf 300, warm.
@@ -250,7 +250,7 @@ panel { width: 10px; height: 10px; }
             };
             (
                 [width("Up"), width("Down"), width("Head/Mark")],
-                ui.docs.retained.resolved,
+                ui.docs.host.retained.resolved,
             )
         };
         frame(&mut ui);
@@ -259,7 +259,7 @@ panel { width: 10px; height: 10px; }
         // As a wheel scroll leaves the list (the test does not paint, so
         // the range `scroll_by` clamps to is never recorded); the sticky
         // header, a container that does not scroll, ignores its offset.
-        let keys: Vec<u64> = ui.docs.scroll_states.keys().copied().collect();
+        let keys: Vec<u64> = ui.docs.host.scroll_states.keys().copied().collect();
         for k in keys {
             ui.state.scroll.insert(k, 40.0);
         }

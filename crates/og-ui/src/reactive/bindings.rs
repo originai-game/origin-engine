@@ -857,14 +857,14 @@ mod tests {
             rows: Arc::default(),
         };
         let translated = bindings.insert(
-            &mut ui.reactive,
+            &mut ui.docs.reactive,
             context.clone(),
             Expr::Translate(Box::new(Expr::Lit(json!("greeting"))), Vec::new()),
             &Messages("en"),
             |_, _| false,
         );
         let literal = bindings.insert(
-            &mut ui.reactive,
+            &mut ui.docs.reactive,
             context,
             Expr::Lit(json!("unchanged")),
             &Messages("en"),
@@ -872,7 +872,7 @@ mod tests {
         );
         assert_eq!(bindings.value(translated).unwrap(), &json!("Hello"));
         ui.set_locale("fr");
-        let changed = bindings.refresh(&mut ui.reactive, &Messages("fr"), |_, _| false);
+        let changed = bindings.refresh(&mut ui.docs.reactive, &Messages("fr"), |_, _| false);
         assert_eq!(changed.evaluated, 1);
         assert_eq!(changed.changed, vec![translated]);
         assert_eq!(bindings.value(translated).unwrap(), &json!("Bonjour"));
@@ -880,7 +880,7 @@ mod tests {
         ui.set_locale("fr");
         assert_eq!(
             bindings
-                .refresh(&mut ui.reactive, &Messages("fr"), |_, _| panic!(
+                .refresh(&mut ui.docs.reactive, &Messages("fr"), |_, _| panic!(
                     "locale unchanged"
                 ))
                 .evaluated,

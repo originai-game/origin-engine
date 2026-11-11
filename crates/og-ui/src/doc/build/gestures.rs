@@ -255,7 +255,8 @@ mod tests {
         let mut ui = Ui::new(UiDesc::default());
         ui.define_document(UiDocument::parse("snap.svelte", DOC).unwrap());
         let open = SourceId::new("test", "open");
-        ui.reactive
+        ui.docs
+            .reactive
             .execute(Command::Signal {
                 source: open.clone(),
                 initial: json!(false),
@@ -297,7 +298,8 @@ mod tests {
         let s = ui.scroll_state("test:snap/List").unwrap();
         assert!((s.offset_y - 100.0).abs() < 0.5, "{s:?}");
 
-        ui.reactive
+        ui.docs
+            .reactive
             .execute(Command::Set {
                 source: open.clone(),
                 value: json!(true),
@@ -337,7 +339,11 @@ mod tests {
         for _ in 0..30 {
             tick(&mut ui, Vec2::new(390.0, 10.0), false, false, 0.0);
         }
-        let v = ui.reactive.execute(Command::Read { source: open }).unwrap();
+        let v = ui
+            .docs
+            .reactive
+            .execute(Command::Read { source: open })
+            .unwrap();
         assert_eq!(v["value"], json!(false), "a swipe down closes the sheet");
     }
 
@@ -359,7 +365,8 @@ mod tests {
             }
             ui.define_document(UiDocument::parse("side.svelte", doc).unwrap());
             let open = SourceId::new("test", "open");
-            ui.reactive
+            ui.docs
+                .reactive
                 .execute(Command::Signal {
                     source: open.clone(),
                     initial: json!(true),
@@ -407,7 +414,11 @@ mod tests {
             for _ in 0..30 {
                 tick(&mut ui, idle, false, false, 0.0);
             }
-            let v = ui.reactive.execute(Command::Read { source: open }).unwrap();
+            let v = ui
+                .docs
+                .reactive
+                .execute(Command::Read { source: open })
+                .unwrap();
             assert_eq!(
                 v["value"],
                 json!(false),

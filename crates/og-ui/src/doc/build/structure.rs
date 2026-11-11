@@ -175,28 +175,28 @@ impl Ui {
     /// Starts an element's place among its instantiated siblings; answers
     /// whether it opened the top level (a mount root without a parent level).
     pub(super) fn enter_structure(&mut self, b: &Build<'_>, i: usize) -> bool {
-        if !self.docs.structure.any {
+        if !self.docs.host.structure.any {
             return false;
         }
-        if std::mem::take(&mut self.docs.component_root) {
+        if std::mem::take(&mut self.docs.host.component_root) {
             return false;
         }
-        let root = self.docs.levels.is_empty();
+        let root = self.docs.host.levels.is_empty();
         if root {
             let entry = self.entry(b, &b.doc, i);
-            self.docs.levels.push(Level {
+            self.docs.host.levels.push(Level {
                 entries: vec![entry],
                 ..Default::default()
             });
         }
-        let level = self.docs.levels.last_mut().expect("a structure level");
+        let level = self.docs.host.levels.last_mut().expect("a structure level");
         level.current = Some(level.current.map_or(0, |k| k + 1));
         root
     }
 
     /// The instantiated children of an element, in build order.
     pub(super) fn child_level(&self, b: &mut Build<'_>, n: &DocNode) -> Option<Level> {
-        if !self.docs.structure.any {
+        if !self.docs.host.structure.any {
             return None;
         }
         let mut level = Level::default();
@@ -208,7 +208,7 @@ impl Ui {
 
     /// Positions the next build at a virtual container's row `k`.
     pub(super) fn structure_row(&mut self, k: usize) {
-        if let Some(level) = self.docs.levels.last_mut()
+        if let Some(level) = self.docs.host.levels.last_mut()
             && let Some(&first) = level.items.get(k)
         {
             level.current = first.checked_sub(1);
@@ -217,7 +217,7 @@ impl Ui {
 
     /// Whether the element being built is the subject of `selector`.
     pub(super) fn structure_matches(&self, doc: &UiDocument, selector: &Selector) -> bool {
-        let levels = &self.docs.levels;
+        let levels = &self.docs.host.levels;
         let Some(top) = levels.len().checked_sub(1) else {
             return false;
         };
@@ -235,7 +235,7 @@ impl Ui {
 
     /// The number of the `<li>` being built ([`crate::doc::lists::ordinal`]).
     pub(super) fn structure_ordinal(&self, filter: &[Selector], item_values: bool) -> i64 {
-        let levels = &self.docs.levels;
+        let levels = &self.docs.host.levels;
         match levels
             .len()
             .checked_sub(1)
@@ -254,7 +254,7 @@ impl Ui {
         r: &Resolved,
         count: impl FnOnce(&[Selector], bool) -> i64,
     ) -> Option<i64> {
-        let profile = &self.docs.structure;
+        let profile = &self.docs.host.structure;
         (profile.ordinals
             && n.selector_tag.as_deref() == Some("li")
             && r.str("markerType").is_some_and(crate::doc::lists::numbered))
@@ -296,13 +296,13 @@ impl Ui {
             match &n.kind {
                 NodeKind::Element(_) | NodeKind::Use(_) => {
                     let mut entry = self.entry(b, doc, c);
-                    let structure = &self.docs.structure;
+                    let structure = &self.docs.host.structure;
                     if (structure.empty || structure.has) && matches!(n.kind, NodeKind::Element(_))
                     {
                         let mut inner = Level::default();
                         self.instantiate(b, doc, &n.children, &mut inner, false);
                         entry.children = !inner.entries.is_empty();
-                        if self.docs.structure.has {
+                        if self.docs.host.structure.has {
                             entry.kids = inner.entries;
                         }
                     }

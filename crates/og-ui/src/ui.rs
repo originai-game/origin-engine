@@ -576,9 +576,6 @@ pub struct Ui {
     /// The draws of [`Ui::set_draw_dressable`]: a component's own look for
     /// a part, which a style that dresses the part restyles.
     pub(crate) dressable: std::collections::HashSet<usize>,
-    /// Documents, their mounts and the layer stack (docs/ui.md §2.1, §2.1).
-    pub(crate) docs: crate::doc::build::DocHost,
-    pub(crate) reactive: crate::reactive::session::Session,
     /// Named UI actions and the last device (docs/ui.md §2.1).
     pub(crate) actions: crate::actions::Actions,
     /// World-space UI (`crate::world`): anchors, panels, mass elements,
@@ -588,6 +585,8 @@ pub struct Ui {
     pub(crate) env: Env,
     /// The frame's output: what the host takes after it (the frame, warnings, events, feedback, clipboard) and its counts.
     pub(crate) out: Out,
+    /// Documents: their mounts, the layer stack and the reactive session.
+    pub(crate) docs: Docs,
 }
 
 /// One UI event's feedback as the host plays it ([`Ui::take_feedback`]).

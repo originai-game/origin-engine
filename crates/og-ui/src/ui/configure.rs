@@ -115,8 +115,10 @@ impl Ui {
             drawing: Affine::IDENTITY,
             draws: Default::default(),
             dressable: Default::default(),
-            docs: Default::default(),
-            reactive: Default::default(),
+            docs: Docs {
+                host: Default::default(),
+                reactive: Default::default(),
+            },
             actions: Default::default(),
             world: Default::default(),
         };
@@ -474,7 +476,7 @@ impl Ui {
     pub fn set_locale(&mut self, locale: &str) {
         if self.env.locale != locale {
             self.env.locale = locale.into();
-            self.reactive.graph.locale_changed();
+            self.docs.reactive.graph.locale_changed();
         }
     }
 

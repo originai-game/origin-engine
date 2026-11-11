@@ -1033,7 +1033,7 @@ impl Ui {
             self.state.active = 0;
         }
         let touched = std::mem::take(&mut self.touched);
-        let retained = &self.docs.retained;
+        let retained = &self.docs.host.retained;
         self.state
             .anims
             .retain(|k, _| touched.contains(k) || retained.keeps_memory(*k));
@@ -1042,9 +1042,11 @@ impl Ui {
             .clocks
             .retain(|_, (owner, _)| tree.find(*owner).is_some() || retained.owns(*owner));
         self.docs
+            .host
             .validity
             .retain(|k, _| tree.find(*k).is_some() || retained.keeps_memory(*k));
         self.docs
+            .host
             .media_sent
             .retain(|k, _| tree.find(*k).is_some() || retained.keeps_memory(*k));
         self.touched = touched;
@@ -1108,7 +1110,7 @@ impl Ui {
         // for); a scope that closed gives it back.
         let alive = |k: u64| {
             hits.iter().any(|h: &Hit| h.key == k)
-                || self.docs.retained.deferred_focus_path(k).is_some()
+                || self.docs.host.retained.deferred_focus_path(k).is_some()
         };
         let first_in = |scope: u64| {
             hits.iter()
@@ -1380,7 +1382,7 @@ impl Ui {
                 {
                     focus_paths[slot] = format!("{}/{l}", focus_paths[slot]);
                 }
-            } else if let Some(path) = self.docs.retained.deferred_focus_path(key) {
+            } else if let Some(path) = self.docs.host.retained.deferred_focus_path(key) {
                 focus_paths[slot] = path.to_owned();
             }
         }

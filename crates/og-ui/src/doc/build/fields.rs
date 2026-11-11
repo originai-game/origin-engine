@@ -287,10 +287,14 @@ impl Ui {
             Some(match source {
                 p::ImageSource::Gradient(g) => p::BgImage::Gradient(g.clone()),
                 p::ImageSource::Url(u)
-                    if self.docs.textures.contains_key(u.trim_start_matches('/')) =>
+                    if self
+                        .docs
+                        .host
+                        .textures
+                        .contains_key(u.trim_start_matches('/')) =>
                 {
                     p::BgImage::Texture {
-                        texture: self.docs.textures[u.trim_start_matches('/')],
+                        texture: self.docs.host.textures[u.trim_start_matches('/')],
                         uv: [0.0, 0.0, 1.0, 1.0],
                         density,
                         nearest,
@@ -368,6 +372,7 @@ impl Ui {
                 |doc| crate::doc::at_rules::resolve(&doc.source, href),
             );
             self.docs
+                .host
                 .textures
                 .get(&path)
                 .map(|t| (*t, [0.0, 0.0, 1.0, 1.0]))
@@ -1026,7 +1031,7 @@ impl Ui {
             // screen behind the web's play gate); the motion state then
             // knows it, so a later build does not replay it, and a later
             // entrance (after it left) plays.
-            if self.docs.entered.insert(self.nodes[i].key)
+            if self.docs.host.entered.insert(self.nodes[i].key)
                 && let Some(e) = props.enter.as_mut()
             {
                 e.transition = crate::motion::Transition::Instant;
@@ -1359,6 +1364,7 @@ mod tests {
             // and the existing controls, not a viewmodel or a second build.
             let replacements: Vec<_> = patched
                 .docs
+                .host
                 .built
                 .iter()
                 .map(|node| {
@@ -1385,13 +1391,13 @@ mod tests {
             patched
                 .end_with_layout_queries(|ui, _| {
                     let state = ui.save_state();
-                    let events = ui.docs.queued.clone();
+                    let events = ui.docs.host.queued.clone();
                     let count = ui.nodes.len();
                     for (node, values, fields) in &replacements {
                         ui.apply_document_fields(&target, &target.nodes[*node], values, fields);
                     }
                     assert_eq!(ui.save_state(), state);
-                    assert_eq!(ui.docs.queued, events);
+                    assert_eq!(ui.docs.host.queued, events);
                     assert_eq!(ui.nodes.len(), count);
                     Ok(replacements
                         .iter()
@@ -1436,7 +1442,8 @@ mod tests {
         ui.define_material("fx/burn.ogt", handle, defaults);
         ui.define_document(parsed);
         let burn = SourceId::new("test", "burn");
-        ui.reactive
+        ui.docs
+            .reactive
             .execute(Command::Signal {
                 source: burn.clone(),
                 initial: serde_json::json!(0.2),
@@ -1478,7 +1485,8 @@ mod tests {
             [6.0, 2.0, 3.0, 4.0],
             "written numbers over the defaults"
         );
-        ui.reactive
+        ui.docs
+            .reactive
             .execute(Command::Set {
                 source: burn,
                 value: serde_json::json!(0.8),

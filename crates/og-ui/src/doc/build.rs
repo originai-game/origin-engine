@@ -721,9 +721,9 @@ impl Ui {
                 .find(|(at, _)| *at == s as *const _ as usize)
                 .map_or_else(|| structure(s), |&(_, matched)| matched)
         };
-        let scroll = |key: u64| self.docs.scroll_states.get(&key).map_or(0, |s| s.1);
+        let scroll = |key: u64| self.docs.host.scroll_states.get(&key).map_or(0, |s| s.1);
         let probe = super::container::Probe {
-            sizes: &self.docs.container_sizes,
+            sizes: &self.docs.host.container_sizes,
             scroll: &scroll,
             inherited,
         };
@@ -779,7 +779,7 @@ impl Ui {
                 let s = vp.hud_insets(self.env.hud_max_aspect);
                 [s.top, s.right, s.bottom, s.left]
             },
-            containers: super::container::unit_basis(&chain, &self.docs.container_sizes),
+            containers: super::container::unit_basis(&chain, &self.docs.host.container_sizes),
             vertical: cascade::root_vertical(inherited).unwrap_or(false),
             ..Default::default()
         };
@@ -800,7 +800,7 @@ impl Ui {
             attr: &attr,
             sheet: Some(&b.doc.sheet),
             starting: false,
-            carry: self.docs.wide_keywords,
+            carry: self.docs.host.wide_keywords,
         };
         let mut rule_applies = |rule: &super::StyleRule| {
             applies(&rule.query, &mut media_reads)
@@ -869,7 +869,7 @@ impl Ui {
         // `@starting-style`: the before-change style of an element's first
         // style, for its transitions.
         let key = crate::id::key_of_path(path);
-        let instant = !self.docs.entered.contains(&key)
+        let instant = !self.docs.host.entered.contains(&key)
             && sets
                 .iter()
                 .rev()
@@ -880,7 +880,10 @@ impl Ui {
                         Some(V::Bool(true))
                     )
                 });
-        if !instant && !self.docs.seen.contains(&key) && n.rules.iter().any(|rule| rule.starting) {
+        if !instant
+            && !self.docs.host.seen.contains(&key)
+            && n.rules.iter().any(|rule| rule.starting)
+        {
             let start = cascade::values_with(
                 &rules,
                 &cascade::Options {
@@ -1020,7 +1023,7 @@ impl Ui {
                 r.vals.push((p.spec, v));
             }
         }
-        for e in self.docs.edits.iter().filter(|e| e.path == path) {
+        for e in self.docs.host.edits.iter().filter(|e| e.path == path) {
             if let Some(v) = b.value(self, PROPS[e.spec].ty, &e.value) {
                 r.vals.push((e.spec, v));
                 built.edits.push((e.prop.clone(), e.source.clone()));

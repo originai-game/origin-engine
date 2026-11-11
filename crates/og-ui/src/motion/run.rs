@@ -711,7 +711,7 @@ impl Ui {
             let mut progress: Vec<Option<f32>> = vec![None; animations.len()];
             let mut styled = false;
             for (index, a) in animations.iter().enumerate() {
-                let Some(frames) = self.docs.keyframes.get(&a.name).cloned() else {
+                let Some(frames) = self.docs.host.keyframes.get(&a.name).cloned() else {
                     continue;
                 };
                 if !a.timeline.ticks() {

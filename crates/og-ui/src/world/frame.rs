@@ -109,7 +109,7 @@ impl Ui {
                 return true;
             }
             match self.tree.by_key.get(key) {
-                Some(&node) if self.docs.retained.owns(*owner) => {
+                Some(&node) if self.docs.host.retained.owns(*owner) => {
                     self.world.want(desc.target);
                     self.world.anchors.push(AnchorEntry {
                         node,
@@ -133,7 +133,7 @@ impl Ui {
                 return true;
             }
             match self.tree.by_key.get(key) {
-                Some(&node) if self.docs.retained.owns(*owner) => {
+                Some(&node) if self.docs.host.retained.owns(*owner) => {
                     if let Some((t, ..)) = desc.quad {
                         self.world.want(t);
                     }
@@ -152,7 +152,7 @@ impl Ui {
         // one-shots forgotten once their row leaves.
         let mut kept = std::mem::take(&mut self.world.kept_mass);
         kept.retain(|key, m| {
-            if !self.world.mass_built.contains(key) && !self.docs.retained.owns(m.owner) {
+            if !self.world.mass_built.contains(key) && !self.docs.host.retained.owns(m.owner) {
                 return false;
             }
             self.world.want(m.target);
@@ -168,7 +168,7 @@ impl Ui {
         });
         self.world.kept_mass = kept;
         let mut spawned = std::mem::take(&mut self.world.mass_spawned);
-        spawned.retain(|k| self.world.mass_built.contains(k) || self.docs.retained.owns(*k));
+        spawned.retain(|k| self.world.mass_built.contains(k) || self.docs.host.retained.owns(*k));
         self.world.mass_spawned = spawned;
         self.keep_effects();
     }
@@ -195,7 +195,7 @@ impl Ui {
         let mut kept = std::mem::take(&mut self.world.kept_effects);
         kept.retain(|key, (emitter, meta)| {
             let Some(&i) = self.tree.by_key.get(key) else {
-                return self.docs.retained.owns(*key);
+                return self.docs.host.retained.owns(*key);
             };
             if let Some(d) = emitter {
                 // Its burst fires, and its `for` counts, from when it first stands.
