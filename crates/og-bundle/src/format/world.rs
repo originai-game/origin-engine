@@ -299,7 +299,7 @@ impl BlobKind for Palette {
 row!(
     /// The root of a navmesh blob (an `.ogt` of `type navmesh`): the
     /// heightfield's grid and the agent it was baked for.
-    NavMeshMeta, "og.NavMesh", 1 {
+    NavMeshMeta, "og.NavMesh", 2 {
         cell_size: f32,
         cell_height: f32,
         agent_height: f32,
@@ -318,9 +318,9 @@ row!(
 );
 
 row!(
-    /// One column of the heightfield: its first span and span count.
-    NavColumnRow, "og.NavMesh.column", 1 {
-        first: u32,
+    /// One column of the heightfield (x fastest): how many spans it has.
+    /// Its spans follow the previous column's in `spans`.
+    NavColumnRow, "og.NavMesh.column", 2 {
         count: u32,
     }
 );
@@ -365,9 +365,10 @@ row!(
 );
 
 /// The navmesh blob: `meta`, `columns` and `spans` (the walkable
-/// heightfield, so obstacles can rebuild tiles at runtime), and the tiles
-/// the cook built: `tiles`, `verts`, `polys`, `poly_verts` (u32). Links are
-/// made at load.
+/// heightfield, so obstacles can rebuild tiles at runtime; each a meshopt
+/// vertex stream of its rows, one row a grid column in `columns`, and empty
+/// for no rows), and the tiles the cook built: `tiles`, `verts`, `polys`,
+/// `poly_verts` (u32). Links are made at load.
 pub struct NavMesh;
 impl BlobKind for NavMesh {
     const NAME: &'static str = "og.NavMesh";

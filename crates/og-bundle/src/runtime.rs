@@ -1497,8 +1497,39 @@ impl Bundle {
     ) -> Result<(og_nav::Heightfield, Vec<og_nav::Tile>), LoadError> {
         let blob = self.blob::<format::NavMesh>(id, bytes)?;
         let m = one::<format::NavMeshMeta>(&blob)?;
-        let columns = table::<format::NavColumnRow>(&blob, "columns")?;
-        let spans = table::<format::NavSpanRow>(&blob, "spans")?;
+        // The heightfield's two tables are meshopt vertex streams: `rows`
+        // rows of u32s. A stream too short to hold its rows (256 of them
+        // take a byte or more) is refused before anything is allocated.
+        let stream = |name: &str, rows: usize, stride: usize| -> Result<Vec<u32>, LoadError> {
+            let encoded = blob.raw(name)?;
+            if rows == 0 {
+                return Ok(Vec::new());
+            }
+            if rows > encoded.len().saturating_mul(256) {
+                return Err(invalid(&blob, format!("{name} is cut short")));
+            }
+            let bytes = meshopt_codec::decode_vertex_buffer(encoded, rows, stride)
+                .map_err(|e| invalid(&blob, format!("{name}: {e}")))?;
+            Ok(bytes
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .map(|c| u32::from_le_bytes(*c))
+                .collect())
+        };
+        let cells = (m.width as usize)
+            .checked_mul(m.depth as usize)
+            .ok_or_else(|| invalid(&blob, "the grid is too large"))?;
+        // A column's spans follow the previous column's.
+        let mut first = 0u32;
+        let mut columns = Vec::with_capacity(cells);
+        for count in stream("columns", cells, size_of::<format::NavColumnRow>())? {
+            columns.push([first, count]);
+            first = first
+                .checked_add(count)
+                .ok_or_else(|| invalid(&blob, "the columns hold too many spans"))?;
+        }
+        let spans = stream("spans", first as usize, size_of::<format::NavSpanRow>())?;
         let tiles = table::<format::NavTileRow>(&blob, "tiles")?;
         let verts = table::<format::NavVertRow>(&blob, "verts")?;
         let polys = table::<format::NavPolyRow>(&blob, "polys")?;
@@ -1509,9 +1540,6 @@ impl Bundle {
             .iter()
             .map(|c| u32::from_le_bytes(*c))
             .collect();
-        if columns.len() != (m.width as usize) * (m.depth as usize) {
-            return Err(invalid(&blob, "the columns do not fit the grid"));
-        }
         let params = og_nav::NavParams {
             cell_size: m.cell_size,
             cell_height: m.cell_height,
@@ -1527,22 +1555,14 @@ impl Bundle {
             origin: glam::Vec3::new(m.origin_x, m.origin_y, m.origin_z),
             width: m.width,
             depth: m.depth,
-            columns: columns.iter().map(|c| [c.first, c.count]).collect(),
+            columns,
             spans: spans
+                .as_chunks::<2>()
+                .0
                 .iter()
-                .map(|s| og_nav::Span {
-                    floor: s.floor,
-                    clear: s.clear,
-                })
+                .map(|&[floor, clear]| og_nav::Span { floor, clear })
                 .collect(),
         };
-        if field
-            .columns
-            .iter()
-            .any(|c| (c[0] + c[1]) as usize > field.spans.len())
-        {
-            return Err(invalid(&blob, "a column's spans are out of range"));
-        }
         // G2-4's polygon areas, one byte per row of `polys` (absent before:
         // every polygon is ground).
         let poly_areas = blob.raw_opt("poly_areas").unwrap_or_default();
