@@ -88,7 +88,7 @@ impl Ui {
     /// screen has a view transition, the mount stays until the cover has
     /// closed over it.
     pub fn unmount_document(&mut self, mount: &SourceId) {
-        if let Some(k) = self.mount_layer(mount) {
+        if let Some(k) = self.docs.mount_layer(mount) {
             if self.layer_leaves(k) {
                 return;
             }
@@ -124,7 +124,7 @@ impl Ui {
             {
                 // A mounted screen is a layer: its root is emitted inside the
                 // layer's frame, and released while a layer above hides it.
-                let layer = self.mount_layer(&mount);
+                let layer = self.docs.mount_layer(&mount);
                 let frame = layer.map(|k| {
                     let (frame, lead) = self.open_layer_frame(k);
                     events.extend(lead);

@@ -164,7 +164,15 @@ impl Ui {
             .get(&layout_key)
             .map(|s| s.board.clone());
         match r.str("rive") {
-            Some(board) if playing.as_deref() != Some(board) => self.play_rive(i, board, path),
+            Some(board) if playing.as_deref() != Some(board) => self.docs.play_rive(
+                i,
+                board,
+                path,
+                &self.env,
+                &mut self.out,
+                &mut self.interaction,
+                &mut self.tree,
+            ),
             None if playing.is_some() => {
                 self.interaction.state.rive.remove(&layout_key);
                 if self.tree.draws.get(&i).is_some_and(|d| d.rive.is_some()) {
@@ -178,14 +186,14 @@ impl Ui {
             // parent, and a revealed subtree whose lists were never derived.
             let parent = self.tree.nodes[i].parent;
             if parent != crate::layout::NONE {
-                self.refilter_children(parent);
+                self.tree.refilter_children(parent);
             }
             let mut stack = vec![i];
             while let Some(at) = stack.pop() {
                 if self.tree.nodes[at].hidden {
                     continue;
                 }
-                self.refilter_children(at);
+                self.tree.refilter_children(at);
                 stack.extend(self.tree.nodes[at].ordered_children.iter().copied());
             }
         }
@@ -193,7 +201,7 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Docs {
     /// Remembers an immediate-built element that settlement may restyle.
     pub(super) fn remember_queried(
         &mut self,
@@ -206,7 +214,7 @@ impl Ui {
         let Some(replay) = r.replay.clone() else {
             return;
         };
-        self.docs.host.queried.push(Queried {
+        self.host.queried.push(Queried {
             doc: b.doc.clone(),
             node,
             path: path.to_owned(),
@@ -222,15 +230,19 @@ impl Ui {
     /// whose flags changed restyles its readers (mounted ones through
     /// `scroll_changed`; immediate builds read the new flags as they build).
     /// `scrolled` keeps each axis's most recent direction.
-    pub(super) fn sync_scroll_states(&mut self) {
+    pub(super) fn sync_scroll_states(
+        &mut self,
+        layout: &crate::ui::Layout,
+        interaction: &crate::ui::Interaction,
+        tree: &crate::ui::Tree,
+    ) {
         use crate::doc::media::scroll::*;
-        let mut keys = std::mem::take(&mut self.docs.host.scroll_now);
-        keys.extend(self.docs.host.retained.scroll_reads());
+        let mut keys = std::mem::take(&mut self.host.scroll_now);
+        keys.extend(self.host.retained.scroll_reads());
         let mut states = BTreeMap::new();
         for key in keys {
-            let offset = self.interaction.offset(key);
+            let offset = interaction.offset(key);
             let (old_offset, old) = self
-                .docs
                 .host
                 .scroll_states
                 .get(&key)
@@ -246,35 +258,32 @@ impl Ui {
                 scrolled &= !((LEFT | RIGHT) << 10);
                 scrolled |= if d.x < 0.0 { LEFT } else { RIGHT } << 10;
             }
-            let flags = self
-                .interaction
-                .scroll_flags_now(key, &self.layout, &self.tree)
-                | scrolled;
+            let flags = interaction.scroll_flags_now(key, layout, tree) | scrolled;
             if flags != old {
-                self.docs.host.scroll_changed.insert(key);
+                self.host.scroll_changed.insert(key);
             }
             states.insert(key, (offset, flags));
         }
-        self.docs.host.scroll_states = states;
+        self.host.scroll_states = states;
     }
 }
 
-impl Ui {
+impl crate::ui::Tree {
     /// A node's shown children in built order, split by flow, as `end` does.
     fn refilter_children(&mut self, i: usize) {
-        let kept: Vec<usize> = self.tree.nodes[i]
+        let kept: Vec<usize> = self.nodes[i]
             .built_children
             .iter()
             .copied()
-            .filter(|&c| !self.tree.nodes[c].hidden && self.tree.nodes[c].parent == i)
+            .filter(|&c| !self.nodes[c].hidden && self.nodes[c].parent == i)
             .collect();
         let (out, flow) = kept
             .iter()
-            .partition(|&&c| self.tree.nodes[c].props.out_of_flow());
-        self.tree.nodes[i].ordered_children = kept;
-        self.tree.nodes[i].children = flow;
-        self.tree.nodes[i].out = out;
-        self.tree.index.pending.push(i);
+            .partition(|&&c| self.nodes[c].props.out_of_flow());
+        self.nodes[i].ordered_children = kept;
+        self.nodes[i].children = flow;
+        self.nodes[i].out = out;
+        self.index.pending.push(i);
     }
 }
 

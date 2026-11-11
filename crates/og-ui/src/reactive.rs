@@ -24,7 +24,7 @@ impl crate::Ui {
         use session::Command;
         session::Session::apply_with(bytes, |command| {
             match command {
-                Command::MountInputs => return Ok(self.document_mount_inputs()),
+                Command::MountInputs => return Ok(self.docs.document_mount_inputs()),
                 Command::Mount {
                     mount,
                     document,
@@ -39,7 +39,7 @@ impl crate::Ui {
                     self.unmount_document(&mount);
                 }
                 Command::Registered { sources, mounts } => {
-                    self.registered_document_mounts(mounts)?;
+                    self.docs.registered_document_mounts(mounts)?;
                     self.docs.reactive.execute(Command::Registered {
                         sources,
                         mounts: Vec::new(),

@@ -215,7 +215,7 @@ impl Ui {
         );
         let at = self.tree.last_closed;
         self.tree.nodes[at].props.position = crate::element::Position::Absolute;
-        self.note_built(built);
+        self.docs.note_built(built);
         let t = self.env.theme;
         let content = Self::box_of(
             r,

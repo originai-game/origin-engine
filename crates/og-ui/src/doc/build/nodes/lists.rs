@@ -200,7 +200,7 @@ impl Ui {
             self.tree.nodes[at].props = props;
         }
         for k in range.first..range.last.min(count) {
-            self.structure_row(k as usize);
+            self.docs.structure_row(k as usize);
             let resp = if kind == "list" {
                 self.list_item(k, false)
             } else {
@@ -232,7 +232,7 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Docs {
     pub(super) fn art_spec(&mut self, path: &str, r: &Resolved) {
         let s = crate::slot::SlotSpec::from_props(
             path,

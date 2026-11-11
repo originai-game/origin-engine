@@ -262,7 +262,7 @@ impl Ui {
         if let Some(c) = next
             && to_hex(c) != to_hex(rgb)
         {
-            self.write_back(b, n, "colorValue", json!(to_hex(c)));
+            self.docs.write_back(b, n, "colorValue", json!(to_hex(c)));
             resp.changed = true;
         }
         resp

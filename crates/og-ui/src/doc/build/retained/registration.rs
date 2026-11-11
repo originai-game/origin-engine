@@ -86,7 +86,7 @@ impl Ui {
             .collect();
         // Disposal is immediate: a leaving cover would read removed stores.
         for mount in mounts {
-            if let Some(k) = self.mount_layer(&mount) {
+            if let Some(k) = self.docs.mount_layer(&mount) {
                 self.docs.host.layers.layers.remove(k);
             }
             self.finish_unmount(&mount);
@@ -107,9 +107,9 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Docs {
     pub(crate) fn document_mount_inputs(&self) -> Value {
-        json!(self.docs.host.retained.registrations.iter().map(|(mount, registration)| {
+        json!(self.host.retained.registrations.iter().map(|(mount, registration)| {
             json!({ "mount": mount, "inputs": registration.inputs.values().collect::<Vec<_>>() })
         }).collect::<Vec<_>>())
     }
@@ -118,14 +118,12 @@ impl Ui {
         &mut self,
         mounts: Vec<SourceId>,
     ) -> Result<(), String> {
-        self.docs
-            .reactive
+        self.reactive
             .graph
             .check_idle(&SourceId::new("registration", "complete"))?;
         let mut managed = BTreeMap::new();
         for mount in mounts {
             let declaration = self
-                .docs
                 .host
                 .retained
                 .registrations
@@ -135,14 +133,13 @@ impl Ui {
                 })?;
             managed.insert(mount, declaration.clone());
         }
-        self.docs.host.retained.managed = Some(managed);
+        self.host.retained.managed = Some(managed);
         Ok(())
     }
 
     pub(crate) fn document_registration_state(&self) -> Value {
         json!(
-            self.docs
-                .host
+            self.host
                 .retained
                 .managed
                 .as_ref()
@@ -161,7 +158,7 @@ impl Ui {
         } else {
             Some(RetainedHost::restore(managed)?.registrations)
         };
-        if let Some(current) = &self.docs.host.retained.managed {
+        if let Some(current) = &self.host.retained.managed {
             if let Some(saved) = &saved {
                 for id in saved.keys().filter(|id| !current.contains_key(*id)) {
                     restored.registrations.remove(id);

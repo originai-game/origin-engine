@@ -304,7 +304,7 @@ impl Ui {
         b.push(u8::from(p.moved));
         b.push(u8::from(p.long));
         // The layer stack, its viewmodels and the documents' states.
-        let mut docs = self.docs_state();
+        let mut docs = self.docs.docs_state();
         if !s.clocks.is_empty() {
             docs["ownedClocks"] = serde_json::to_value(&s.clocks).expect("integer clocks");
         }

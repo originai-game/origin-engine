@@ -207,7 +207,8 @@ impl Ui {
             let o = self.orbit_controls(id, r, &out, bound);
             let text = format!("{}deg {}deg {}m", o[0], o[1], o[2]);
             if bound && r.str("cameraOrbit") != Some(text.as_str()) {
-                self.write_back(b, n, "cameraOrbit", serde_json::json!(text));
+                self.docs
+                    .write_back(b, n, "cameraOrbit", serde_json::json!(text));
             }
         }
         let mut p = Self::resolved_props(n, r);
@@ -224,10 +225,10 @@ impl Ui {
             ("clientHeight", out.rect.height),
         ] {
             if super::nodes::bound(n, prop) && r.num(prop) != Some(v) {
-                self.write_back(b, n, prop, serde_json::json!(v));
+                self.docs.write_back(b, n, prop, serde_json::json!(v));
             }
         }
-        self.note_built(built);
+        self.docs.note_built(built);
         let resp = crate::ui::Response {
             hovered: out.hovered,
             pressed: out.pressed,

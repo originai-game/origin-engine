@@ -151,7 +151,15 @@ impl RetainedHost {
                 .get(&ui.tree.nodes[index].key)
                 .is_some_and(|s| s.built == ui.interaction.state.tick);
             if !built && !ui.tree.nodes[index].hidden {
-                ui.play_rive(index, board, &resolved.path);
+                ui.docs.play_rive(
+                    index,
+                    board,
+                    &resolved.path,
+                    &ui.env,
+                    &mut ui.out,
+                    &mut ui.interaction,
+                    &mut ui.tree,
+                );
             }
         }
     }

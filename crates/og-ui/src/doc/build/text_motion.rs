@@ -164,7 +164,7 @@ impl Ui {
         if k == now {
             return false;
         }
-        self.write_back(b, n, "current", json!(values[k]));
+        self.docs.write_back(b, n, "current", json!(values[k]));
         true
     }
 

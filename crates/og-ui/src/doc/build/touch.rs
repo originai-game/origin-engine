@@ -48,7 +48,8 @@ impl Ui {
             (out.up || out.down || out.left || out.right, ZoneKind::Pad)
         };
         let key = self.tree.nodes[self.tree.last_closed].key;
-        self.note_zone(key, r.str("action"), zone, dead_zone, disabled);
+        self.docs
+            .note_zone(key, r.str("action"), zone, dead_zone, disabled);
         crate::ui::Response {
             pressed,
             ..Default::default()
@@ -112,18 +113,18 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Tree {
     /// A touch `<button data-og-touch="jump">`'s zone (any element's).
-    pub(super) fn note_touch_button(&mut self, r: &Resolved) {
-        if self.tree.last_closed != NONE && self.tree.last_closed < self.tree.nodes.len() {
-            let key = self.tree.nodes[self.tree.last_closed].key;
+    pub(super) fn note_touch_button(&mut self, r: &Resolved, docs: &mut crate::ui::Docs) {
+        if self.last_closed != NONE && self.last_closed < self.nodes.len() {
+            let key = self.nodes[self.last_closed].key;
             let action = r.str("dataOgTouch");
-            self.note_zone(key, action, ZoneKind::Button, 0.0, r.flag("disabled"));
+            docs.note_zone(key, action, ZoneKind::Button, 0.0, r.flag("disabled"));
         }
     }
 }
 
-impl Ui {
+impl crate::ui::Docs {
     fn note_zone(
         &mut self,
         key: u64,
@@ -132,7 +133,7 @@ impl Ui {
         dead_zone: f32,
         disabled: bool,
     ) {
-        let zones = &mut self.docs.host.zones;
+        let zones = &mut self.host.zones;
         match action.filter(|a| !a.is_empty() && !disabled) {
             Some(action) => {
                 let next = ControlZone {
@@ -143,12 +144,12 @@ impl Ui {
                 };
                 if zones.get(&key) != Some(&next) {
                     zones.insert(key, next);
-                    self.docs.host.zones_changed = true;
+                    self.host.zones_changed = true;
                 }
             }
             None => {
                 if zones.remove(&key).is_some() {
-                    self.docs.host.zones_changed = true;
+                    self.host.zones_changed = true;
                 }
             }
         }
