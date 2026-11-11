@@ -649,7 +649,7 @@ impl Ui {
         let mut lifetime = 0;
         let mut keys = Vec::new();
         if let Some(a) = r.animations.first()
-            && let Some(frames) = self.docs.keyframes.get(&a.name).cloned()
+            && let Some(frames) = self.docs.host.keyframes.get(&a.name).cloned()
         {
             lifetime =
                 ((a.duration_ms * self.env.ticks_per_second as f32 / 1000.0).round() as u32).max(1);
@@ -848,7 +848,8 @@ mod tests {
                 })
                 .collect()
         };
-        ui.reactive
+        ui.docs
+            .reactive
             .execute(Command::Collection {
                 source: units.clone(),
                 key: "id".into(),
@@ -917,7 +918,8 @@ mod tests {
             "{before:?} → {after:?}"
         );
         // One name: that tag alone.
-        ui.reactive
+        ui.docs
+            .reactive
             .execute(Command::Patch {
                 source: units.clone(),
                 key: "u1".into(),
@@ -940,7 +942,8 @@ mod tests {
         let idle = tick(&mut ui, 1.0);
         assert_eq!((idle.bindings, idle.reconciled), (0, 0), "{idle:?}");
         // A row leaves: its anchor leaves.
-        ui.reactive
+        ui.docs
+            .reactive
             .execute(Command::Remove {
                 source: units,
                 key: "u1".into(),
@@ -1034,7 +1037,8 @@ mod tests {
             (&hits, json!([{"id": "a", "entity": 1, "amount": 12}])),
             (&units, json!([{"id": "u", "entity": 1, "hp": 50}])),
         ] {
-            ui.reactive
+            ui.docs
+                .reactive
                 .execute(Command::Collection {
                     source: source.clone(),
                     key: "id".into(),
@@ -1091,7 +1095,8 @@ mod tests {
         assert_eq!((idle.bindings, idle.reconciled), (0, 0), "{idle:?}");
         assert_eq!(bars(&ui), 1);
         // A second hit spawns one more; the first is not spawned again.
-        ui.reactive
+        ui.docs
+            .reactive
             .execute(Command::Insert {
                 source: hits.clone(),
                 row: json!({"id": "b", "entity": 1, "amount": 30})
@@ -1105,7 +1110,8 @@ mod tests {
         assert_eq!(ui.mass_count(damage), 2);
         assert!(hp != damage);
         // The unit leaves: its bar does.
-        ui.reactive
+        ui.docs
+            .reactive
             .execute(Command::Remove {
                 source: units,
                 key: "u".into(),
@@ -1260,7 +1266,8 @@ mod tests {
         ));
         ui.define_document(parsed);
         let on = SourceId::new("test", "on");
-        ui.reactive
+        ui.docs
+            .reactive
             .execute(Command::Signal {
                 source: on.clone(),
                 initial: json!(true),
@@ -1300,7 +1307,8 @@ mod tests {
         }
         assert!(particles(&ui) > before, "the emitter stopped while idle");
         assert!(ui.world.kept_effects.len() == 2);
-        ui.reactive
+        ui.docs
+            .reactive
             .execute(Command::Set {
                 source: on,
                 value: json!(false),

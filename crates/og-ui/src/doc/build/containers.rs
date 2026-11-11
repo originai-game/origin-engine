@@ -41,7 +41,7 @@ impl Ui {
         let Some(replay) = r.replay.clone() else {
             return;
         };
-        self.docs.queried.push(Queried {
+        self.docs.host.queried.push(Queried {
             doc: b.doc.clone(),
             node,
             path: path.to_owned(),
@@ -56,8 +56,8 @@ impl Ui {
     /// Watches a query container for settlement as it is built: its first
     /// layout publishes even a zero box.
     pub(super) fn build_container(&mut self, key: u64) {
-        self.docs.containers_now.insert(key);
-        if self.docs.containers.insert(key) {
+        self.docs.host.containers_now.insert(key);
+        if self.docs.host.containers.insert(key) {
             self.watch_layout_container(key);
         }
     }
@@ -68,13 +68,14 @@ impl Ui {
     /// `scrolled` keeps each axis's most recent direction.
     pub(super) fn sync_scroll_states(&mut self) {
         use crate::doc::media::scroll::*;
-        let mut keys = std::mem::take(&mut self.docs.scroll_now);
-        keys.extend(self.docs.retained.scroll_reads());
+        let mut keys = std::mem::take(&mut self.docs.host.scroll_now);
+        keys.extend(self.docs.host.retained.scroll_reads());
         let mut states = BTreeMap::new();
         for key in keys {
             let offset = self.offset(key);
             let (old_offset, old) = self
                 .docs
+                .host
                 .scroll_states
                 .get(&key)
                 .copied()
@@ -91,25 +92,34 @@ impl Ui {
             }
             let flags = self.scroll_flags_now(key) | scrolled;
             if flags != old {
-                self.docs.scroll_changed.insert(key);
+                self.docs.host.scroll_changed.insert(key);
             }
             states.insert(key, (offset, flags));
         }
-        self.docs.scroll_states = states;
+        self.docs.host.scroll_states = states;
     }
 
     /// Unwatches and forgets containers no longer built or mounted.
     pub(super) fn watch_document_containers(&mut self, live: BTreeSet<u64>) {
-        let gone: Vec<u64> = self.docs.containers.difference(&live).copied().collect();
+        let gone: Vec<u64> = self
+            .docs
+            .host
+            .containers
+            .difference(&live)
+            .copied()
+            .collect();
         for key in gone {
             self.unwatch_layout_container(key);
-            self.docs.container_sizes.remove(&key);
+            self.docs.host.container_sizes.remove(&key);
         }
-        let new: Vec<u64> = live.difference(&self.docs.containers).copied().collect();
+        let new: Vec<u64> = live
+            .difference(&self.docs.host.containers)
+            .copied()
+            .collect();
         for key in new {
             self.watch_layout_container(key);
         }
-        self.docs.containers = live;
+        self.docs.host.containers = live;
     }
 
     /// The settlement resolver for documents: records the measured boxes and
@@ -121,20 +131,21 @@ impl Ui {
         let mut changed = BTreeSet::new();
         for change in changes {
             self.docs
+                .host
                 .container_sizes
                 .insert(change.key, (change.current.width, change.current.height));
             changed.insert(change.key);
         }
         let mut dirty = self.requery_immediate(&changed);
-        let mut host = std::mem::take(&mut self.docs.retained);
+        let mut host = std::mem::take(&mut self.docs.host.retained);
         let retained = host.requery(self, &changed);
-        self.docs.retained = host;
+        self.docs.host.retained = host;
         dirty.extend(retained.map_err(SettlementError::Resolver)?);
         Ok(dirty)
     }
 
     fn requery_immediate(&mut self, changed: &BTreeSet<u64>) -> Vec<usize> {
-        let mut queried = std::mem::take(&mut self.docs.queried);
+        let mut queried = std::mem::take(&mut self.docs.host.queried);
         // Elements restyled in this pass whose computed values changed, by
         // path: their descendants resolve again under the new values.
         let mut restyled: BTreeMap<String, Arc<crate::doc::variables::Computed>> = BTreeMap::new();
@@ -180,14 +191,14 @@ impl Ui {
                 restyled.insert(q.path.clone(), r.cascade.computed.clone());
                 q.computed = r.cascade.computed.clone();
             }
-            let fields = self.docs.render_fields.get(&q.key).cloned();
+            let fields = self.docs.host.render_fields.get(&q.key).cloned();
             if let Some(index) =
                 self.replace_fields(fields, &q.path, &q.doc, &q.doc.nodes[q.node], &r)
             {
                 dirty.push(index);
             }
         }
-        self.docs.queried = queried;
+        self.docs.host.queried = queried;
         dirty
     }
 

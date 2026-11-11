@@ -261,7 +261,8 @@ mod tests {
         let mut inputs = BTreeMap::new();
         for name in ["w", "h"] {
             let source = SourceId::new("test", name);
-            ui.reactive
+            ui.docs
+                .reactive
                 .execute(Command::Signal {
                     source: source.clone(),
                     initial: json!(0),
@@ -299,7 +300,8 @@ mod tests {
             tick(&mut ui, away, false, false);
         }
         let read = |ui: &mut Ui, n: &str| {
-            ui.reactive
+            ui.docs
+                .reactive
                 .execute(Command::Read {
                     source: SourceId::new("test", n),
                 })
@@ -350,7 +352,8 @@ mod tests {
         let mut ui = Ui::new(UiDesc::default());
         ui.define_document(UiDocument::parse("turntable.svelte", doc).unwrap());
         let orbit = SourceId::new("test", "orbit");
-        ui.reactive
+        ui.docs
+            .reactive
             .execute(Command::Signal {
                 source: orbit.clone(),
                 initial: json!("0deg 75deg 4m"),
@@ -371,6 +374,7 @@ mod tests {
             ui.end();
             let events = ui.take_doc_events();
             let o = ui
+                .docs
                 .reactive
                 .execute(Command::Read {
                     source: orbit.clone(),

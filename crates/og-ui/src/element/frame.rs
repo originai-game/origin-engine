@@ -710,8 +710,8 @@ impl Ui {
         }
         self.out.stats = LayoutStats {
             rebuilt,
-            bindings: self.docs.retained.evaluated as u32,
-            reconciled: self.docs.retained.reconciled as u32,
+            bindings: self.docs.host.retained.evaluated as u32,
+            reconciled: self.docs.host.retained.reconciled as u32,
             ..LayoutStats::default()
         };
     }

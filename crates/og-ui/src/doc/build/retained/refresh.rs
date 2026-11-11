@@ -178,7 +178,7 @@ impl RetainedHost {
                 != enabled
             {
                 self.topology.set_state(identity, state, enabled)?;
-                ui.reactive.graph.interaction_changed(identity, state);
+                ui.docs.reactive.graph.interaction_changed(identity, state);
             }
         }
         Ok(())
@@ -203,7 +203,7 @@ impl RetainedHost {
         {
             self.theme_epoch += 1;
         }
-        let scrolled = std::mem::take(&mut ui.docs.scroll_changed);
+        let scrolled = std::mem::take(&mut ui.docs.host.scroll_changed);
         self.rescroll(&scrolled);
         let viewport = ui.media_context();
         let [small, large] = ui.env.viewport.extremes();
@@ -231,11 +231,13 @@ impl RetainedHost {
         self.css = CssWork::default();
         loop {
             let topology = &self.topology;
-            let changes = self.bindings.refresh(&mut ui.reactive, env, |node, state| {
-                topology
-                    .node(node)
-                    .is_some_and(|n| n.states.contains(&state))
-            });
+            let changes = self
+                .bindings
+                .refresh(&mut ui.docs.reactive, env, |node, state| {
+                    topology
+                        .node(node)
+                        .is_some_and(|n| n.states.contains(&state))
+                });
             self.evaluated += changes.evaluated;
             self.pending_bindings.extend(changes.changed);
             if changes.evaluated == 0 && self.pending_bindings.is_empty() {
@@ -420,7 +422,7 @@ impl RetainedHost {
             for (key, enabled) in off.map(|k| (k, false)).chain(on.map(|k| (k, true))) {
                 if let Some(node) = self.by_key.get(key) {
                     self.topology.set_state(node, state, enabled)?;
-                    ui.reactive.graph.interaction_changed(node, state);
+                    ui.docs.reactive.graph.interaction_changed(node, state);
                 }
             }
         }
@@ -431,7 +433,7 @@ impl RetainedHost {
             .map(|(key, node)| {
                 (
                     node.clone(),
-                    ui.docs.popovers.get(key).is_some_and(|l| l.shown),
+                    ui.docs.host.popovers.get(key).is_some_and(|l| l.shown),
                 )
             })
             .collect();
@@ -447,12 +449,15 @@ impl RetainedHost {
                 != open
             {
                 self.topology.set_state(&node, PopoverOpen, open)?;
-                ui.reactive.graph.interaction_changed(&node, PopoverOpen);
+                ui.docs
+                    .reactive
+                    .graph
+                    .interaction_changed(&node, PopoverOpen);
             }
         }
-        if self.target.0 != ui.docs.target {
+        if self.target.0 != ui.docs.host.target {
             let old = std::mem::take(&mut self.target.1);
-            let id = ui.docs.target.clone();
+            let id = ui.docs.host.target.clone();
             let new: Vec<MountedNode> = match &id {
                 Some(id) => self
                     .elements
@@ -466,7 +471,7 @@ impl RetainedHost {
                 for node in nodes {
                     if self.topology.node(node).is_some() {
                         self.topology.set_state(node, Target, enabled)?;
-                        ui.reactive.graph.interaction_changed(node, Target);
+                        ui.docs.reactive.graph.interaction_changed(node, Target);
                     }
                 }
             }
@@ -479,7 +484,10 @@ impl RetainedHost {
                 let mut ancestor = self.by_key.get(&key).cloned();
                 while let Some(node) = ancestor {
                     self.topology.set_state(&node, FocusWithin, enabled)?;
-                    ui.reactive.graph.interaction_changed(&node, FocusWithin);
+                    ui.docs
+                        .reactive
+                        .graph
+                        .interaction_changed(&node, FocusWithin);
                     ancestor = self.topology.parent(&node).cloned();
                 }
             }
@@ -503,8 +511,8 @@ impl RetainedHost {
         {
             self.resolve(ui, parent, env)?;
         }
-        let structurally_stale =
-            ui.docs.structure.ancestors && self.topology.style_is_stale(identity) == Some(true);
+        let structurally_stale = ui.docs.host.structure.ancestors
+            && self.topology.style_is_stale(identity) == Some(true);
         let inherited = parent.as_ref().map_or_else(Arc::default, |p| {
             self.elements[p]
                 .resolved

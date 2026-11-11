@@ -62,7 +62,7 @@ impl Ui {
             ((elapsed * cps) as usize).min(total)
         };
         if shown == total && a.a < 1.0 {
-            self.docs.happened.push(When::Revealed);
+            self.docs.host.happened.push(When::Revealed);
         }
         a.a = if shown == total { 1.0 } else { 0.0 };
         self.set_anim(memory, a);

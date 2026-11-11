@@ -342,7 +342,7 @@ impl Ui {
                         // `::selection`'s ink, lines and shadows: the line's
                         // selected glyphs drawn again, clipped to their runs.
                         let owner = self.nodes[self.text_owner(i)].key;
-                        let selection = self.docs.selection.get(&owner).filter(|s| {
+                        let selection = self.docs.host.selection.get(&owner).filter(|s| {
                             s.color.is_some() || s.decoration.is_some() || s.shadows.is_some()
                         });
                         let range = match &field {
@@ -1494,6 +1494,7 @@ impl Ui {
             .filter(|_| !own && !plated);
         let selection = self
             .docs
+            .host
             .selection
             .get(&n.key)
             .filter(|s| s.color.is_some() || s.decoration.is_some() || s.shadows.is_some());
@@ -1690,6 +1691,7 @@ impl Ui {
         let (alpha, dpr) = (n.alpha, self.env.viewport.dpr());
         let fill = self
             .docs
+            .host
             .selection
             .get(&n.key)
             .and_then(|s| s.background)

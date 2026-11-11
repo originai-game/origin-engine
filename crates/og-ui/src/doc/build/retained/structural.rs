@@ -84,7 +84,7 @@ impl RetainedHost {
         let identity = context.node.clone();
         let topology = &self.topology;
         let binding = self.bindings.insert(
-            &mut ui.reactive,
+            &mut ui.docs.reactive,
             context.clone(),
             expression.clone(),
             env,
@@ -280,7 +280,7 @@ impl RetainedHost {
             ));
         };
         let source = super::content::collection(&context, path)?;
-        let collection = ui.reactive.sources.keyed(&source)?;
+        let collection = ui.docs.reactive.sources.keyed(&source)?;
         let order = collection.keys().to_vec();
         let revision = collection.revision();
         context.node.key = crate::id::child_key(parent.key, &format!("$each:{id}"));
@@ -340,7 +340,7 @@ impl RetainedHost {
                 },
             );
             let result = SourceEnv {
-                session: &ui.reactive,
+                session: &ui.docs.reactive,
                 inputs: &context.inputs,
                 rows: &context.rows,
                 selector_nodes: &context.selector_nodes,
@@ -467,7 +467,7 @@ impl RetainedHost {
                 for child in branch.children {
                     self.remove_child(ui, child);
                 }
-                self.bindings.remove(&mut ui.reactive, branch.binding);
+                self.bindings.remove(&mut ui.docs.reactive, branch.binding);
                 self.inputs.remove(&branch.binding);
                 self.pending_bindings.remove(&branch.binding);
             }
@@ -489,7 +489,7 @@ impl RetainedHost {
                     self.remove_child(ui, child);
                 }
                 for binding in element.bindings {
-                    self.bindings.remove(&mut ui.reactive, binding);
+                    self.bindings.remove(&mut ui.docs.reactive, binding);
                     self.inputs.remove(&binding);
                     self.pending_bindings.remove(&binding);
                 }
@@ -524,7 +524,7 @@ impl RetainedHost {
 
     pub(super) fn refresh_collections(&mut self, ui: &mut Ui, env: &dyn Env) -> Result<(), String> {
         let mut error = None;
-        for change in ui.reactive.sources.take_changes() {
+        for change in ui.docs.reactive.sources.take_changes() {
             let SourceChange::Collection(edit) = change.change else {
                 continue;
             };
@@ -579,7 +579,13 @@ impl RetainedHost {
         match edit {
             CollectionEdit::Insert { key, before, .. } => {
                 if each.rows.contains_key(key)
-                    || ui.reactive.sources.keyed(&each.source)?.row(key).is_none()
+                    || ui
+                        .docs
+                        .reactive
+                        .sources
+                        .keyed(&each.source)?
+                        .row(key)
+                        .is_none()
                 {
                     return Ok(());
                 }

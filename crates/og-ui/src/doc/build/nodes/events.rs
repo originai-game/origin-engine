@@ -184,14 +184,18 @@ impl Ui {
                 b.event(path, kind, &n.id, Value::Null);
             }
         }
-        let appeared = !self.docs.seen.contains(&key);
+        let appeared = !self.docs.host.seen.contains(&key);
         // `use:` in an immediate build: made the first tick it is built,
         // updated when its params change; gone is found in docs_begin. A
         // mounted element's are sent by the retained host.
         if b.cached.is_none() && !n.uses.is_empty() {
             for (k, (name, params)) in n.uses.iter().enumerate() {
                 let value = params.as_ref().map_or(Value::Null, |p| b.eval(p));
-                let old = self.docs.last.insert((key, usize::MAX - k), value.clone());
+                let old = self
+                    .docs
+                    .host
+                    .last
+                    .insert((key, usize::MAX - k), value.clone());
                 let phase = match old {
                     None => "create",
                     Some(old) if old != value => "update",
@@ -211,9 +215,9 @@ impl Ui {
                 row_key: b.row_key.clone(),
                 ..DocEvent::default()
             };
-            self.docs.uses.insert(key, (event, names));
+            self.docs.host.uses.insert(key, (event, names));
         }
-        let happened = std::mem::take(&mut self.docs.happened);
+        let happened = std::mem::take(&mut self.docs.host.happened);
         let held = n.triggers.iter().any(|t| t.when == When::Hold) && self.held(key, n);
         let context = long || (self.input.secondary_pressed && self.state.hot == key);
         for (k, t) in n.triggers.iter().enumerate() {
@@ -228,7 +232,7 @@ impl Ui {
                 When::ContextMenu => context,
                 When::Toggle | When::Close | When::Revealed => happened.contains(&t.when),
                 When::Action(a) => {
-                    self.docs.accepts
+                    self.docs.host.accepts
                         && self.action_fired(a)
                         // A disabled control's shortcut activates nothing,
                         // as its press does not (a `<fieldset disabled>`'s
@@ -240,7 +244,7 @@ impl Ui {
                 }
                 When::Change(e) => {
                     let v = b.eval(e);
-                    let old = self.docs.last.insert((key, k), v.clone());
+                    let old = self.docs.host.last.insert((key, k), v.clone());
                     old.is_some_and(|o| o != v)
                 }
                 // The input pass fires these ([`super::pointer`]); the
@@ -254,10 +258,13 @@ impl Ui {
                 Act::Play(tl) => {
                     let name = qualify(&b.doc.name, tl);
                     let id = self.play_timeline(path, &name, crate::motion::PlayDesc::default());
-                    self.docs.plays.insert((path.to_string(), tl.clone()), id);
+                    self.docs
+                        .host
+                        .plays
+                        .insert((path.to_string(), tl.clone()), id);
                 }
                 Act::State(g, s) => {
-                    self.docs.states.insert((key, g.clone()), s.clone());
+                    self.docs.host.states.insert((key, g.clone()), s.clone());
                 }
                 Act::Emit(name) => b.event(path, "emit", name, Value::Null),
                 Act::Submit {
@@ -269,6 +276,7 @@ impl Ui {
                     // the focus, and the form is not submitted.
                     let first = self
                         .docs
+                        .host
                         .validity
                         .iter()
                         .filter(|(_, v)| {
@@ -287,11 +295,12 @@ impl Ui {
                 }
                 Act::Push(screen) => self
                     .docs
+                    .host
                     .ops
                     .push(crate::layers::LayerOp::Push(screen.clone(), Value::Null)),
                 Act::Pop => {
-                    let l = self.docs.building;
-                    self.docs.ops.push(crate::layers::LayerOp::Pop(l))
+                    let l = self.docs.host.building;
+                    self.docs.host.ops.push(crate::layers::LayerOp::Pop(l))
                 }
                 Act::Action(a) => {
                     self.fire_action(a);

@@ -12,25 +12,25 @@ impl Ui {
     /// Enters an element in the counter run and applies its counter
     /// properties; nothing unless some document uses generated content.
     pub(super) fn run_enter(&mut self, r: &Resolved) {
-        if !self.docs.uses_run {
+        if !self.docs.host.uses_run {
             return;
         }
         // Style containment scopes its counters and quotes to its subtree.
         if crate::doc::contain_css::contain(|p| r.str(p).map(str::to_owned))
             .has(crate::layout::Contain::STYLE)
         {
-            self.docs.run.enter_contained();
+            self.docs.host.run.enter_contained();
         } else {
-            self.docs.run.enter();
+            self.docs.host.run.enter();
         }
         if let Some(g) = &r.generated {
-            self.docs.run.apply(&g.ops);
+            self.docs.host.run.apply(&g.ops);
         }
     }
 
     pub(super) fn run_exit(&mut self) {
-        if self.docs.uses_run {
-            self.docs.run.exit();
+        if self.docs.host.uses_run {
+            self.docs.host.run.exit();
         }
     }
 
@@ -66,7 +66,7 @@ impl Ui {
                 v => v.to_string(),
             })
         };
-        let run = &mut self.docs.run;
+        let run = &mut self.docs.host.run;
         run.enter();
         run.apply(&which.ops);
         let text = run.evaluate(pieces, &quotes, &b.doc.sheet, &attr, r.ordinal);
@@ -380,13 +380,19 @@ impl Ui {
             .and_then(|body| self.selection_style(body));
         match style {
             Some(s) => {
-                if self.docs.selection.get(&key).is_none_or(|old| **old != s) {
-                    self.docs.selection.insert(key, Arc::new(s));
+                if self
+                    .docs
+                    .host
+                    .selection
+                    .get(&key)
+                    .is_none_or(|old| **old != s)
+                {
+                    self.docs.host.selection.insert(key, Arc::new(s));
                 }
             }
             None => {
-                if !self.docs.selection.is_empty() {
-                    self.docs.selection.remove(&key);
+                if !self.docs.host.selection.is_empty() {
+                    self.docs.host.selection.remove(&key);
                 }
             }
         }
@@ -488,7 +494,7 @@ li::marker { content: "(" counter(list-item) ") "; }
                 .filter(|e| !e.text.is_empty())
                 .map(|e| e.text.clone())
                 .collect();
-            (texts, ui.docs.retained.reconciled)
+            (texts, ui.docs.host.retained.reconciled)
         };
         let (texts, _) = frame(&mut ui);
         assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);

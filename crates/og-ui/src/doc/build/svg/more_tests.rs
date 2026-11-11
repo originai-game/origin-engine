@@ -82,7 +82,8 @@ fn markers_lines_text_paths_and_foreign_objects_draw_in_the_view_box() {
     let mut ui = Ui::new(UiDesc::default());
     ui.define_document(UiDocument::parse("pic.svelte", DOC).unwrap());
     let word = SourceId::new("test", "word");
-    ui.reactive
+    ui.docs
+        .reactive
         .execute(crate::reactive::session::Command::Signal {
             source: word.clone(),
             initial: serde_json::json!("Along"),

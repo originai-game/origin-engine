@@ -285,7 +285,8 @@ mod tests {
         let mut ui = Ui::new(UiDesc::default());
         ui.define_document(UiDocument::parse("board.svelte", BOARD).unwrap());
         let items = SourceId::new("test", "items");
-        ui.reactive
+        ui.docs
+            .reactive
             .execute(Command::Collection {
                 source: items.clone(),
                 key: "id".into(),

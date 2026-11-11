@@ -975,6 +975,7 @@ impl Ui {
             ink: text.color("color").unwrap_or(t.palette.ink),
             placeholder: self
                 .docs
+                .host
                 .placeholder_ink
                 .unwrap_or_else(|| hint.color("color").unwrap_or(t.palette.ink_faint)),
         }
@@ -1089,6 +1090,7 @@ impl Ui {
         if mk.under {
             let selection = self
                 .docs
+                .host
                 .selection
                 .get(&key)
                 .and_then(|s| s.background)

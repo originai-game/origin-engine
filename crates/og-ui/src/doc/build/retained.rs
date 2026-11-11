@@ -301,6 +301,7 @@ impl RetainedHost {
             let registration = self.registrations[&mount].clone();
             let document = ui
                 .docs
+                .host
                 .docs
                 .get(&registration.document)
                 .cloned()
@@ -396,7 +397,7 @@ impl RetainedHost {
         }
         let topology = &self.topology;
         let id = self.bindings.insert_expression(
-            &mut ui.reactive,
+            &mut ui.docs.reactive,
             element.context.clone(),
             expression,
             env,
@@ -431,7 +432,7 @@ impl RetainedHost {
             .map(|(id, _)| *id)
             .collect();
         for id in bindings {
-            self.bindings.remove(&mut ui.reactive, id);
+            self.bindings.remove(&mut ui.docs.reactive, id);
             self.inputs.remove(&id);
             self.pending_bindings.remove(&id);
         }
@@ -586,7 +587,8 @@ mod tests {
             .unwrap(),
         );
         let rows = SourceId::new("test", "rows");
-        ui.reactive
+        ui.docs
+            .reactive
             .execute(Command::Collection {
                 source: rows.clone(),
                 key: "id".into(),
@@ -622,7 +624,8 @@ mod tests {
             texts
         };
         assert_eq!(texts(&mut ui), ["Inner=3", "Outer=3"]);
-        ui.reactive
+        ui.docs
+            .reactive
             .execute(Command::Insert {
                 source: rows.clone(),
                 row: json!({ "id": "d" }).as_object().unwrap().clone(),
@@ -631,7 +634,8 @@ mod tests {
             .unwrap();
         assert_eq!(texts(&mut ui), ["Inner=4", "Outer=4"]);
         for key in ["a", "b", "c", "d"] {
-            ui.reactive
+            ui.docs
+                .reactive
                 .execute(Command::Remove {
                     source: rows.clone(),
                     key: key.into(),
@@ -701,7 +705,7 @@ mod tests {
             error.starts_with("row.svelte:2: <Card> leaves out its prop 'orientation'"),
             "{error}"
         );
-        assert!(ui.docs.retained.registrations.is_empty());
+        assert!(ui.docs.host.retained.registrations.is_empty());
 
         mount(&mut ui, "fixed").unwrap();
         ui.begin(InputFrame::default(), Viewport::new(400.0, 300.0));
@@ -743,7 +747,8 @@ mod tests {
         let mut inputs = BTreeMap::new();
         for (name, key) in [("outer", "group"), ("inner", "entry/#%")] {
             let source = SourceId::new("test", name);
-            ui.reactive
+            ui.docs
+                .reactive
                 .execute(Command::Collection {
                     source: source.clone(),
                     key: "id".into(),
@@ -814,7 +819,8 @@ mod tests {
         let mut inputs = BTreeMap::new();
         for column in 0..4 {
             let source = SourceId::new("test", &format!("c{column}"));
-            ui.reactive
+            ui.docs
+                .reactive
                 .execute(Command::Collection {
                     source: source.clone(),
                     key: "id".into(),
@@ -865,7 +871,8 @@ mod tests {
             (0, 0, 0, 0, 0),
             "{idle:?}"
         );
-        ui.reactive
+        ui.docs
+            .reactive
             .execute(Command::Patch {
                 source: SourceId::new("test", "c2"),
                 key: "r19".into(),
@@ -909,7 +916,8 @@ mod tests {
             </list>
         "#).unwrap());
         let source = SourceId::new("test", "items");
-        ui.reactive
+        ui.docs
+            .reactive
             .execute(Command::Collection {
                 source: source.clone(),
                 key: "id".into(),
@@ -962,25 +970,32 @@ mod tests {
             ui.mounted_topology().node(&far).unwrap().materialization,
             Materialization::Deferred
         );
-        assert!(ui.docs.retained.resolved < 20);
+        assert!(ui.docs.host.retained.resolved < 20);
         tick(&mut ui, 0.0, None);
-        assert_eq!(ui.docs.retained.resolved, 0);
-        assert_eq!(ui.docs.retained.evaluated, 0);
+        assert_eq!(ui.docs.host.retained.resolved, 0);
+        assert_eq!(ui.docs.host.retained.evaluated, 0);
         ui.docs
+            .host
             .retained
             .topology
             .invalidate_styles(Some(&list), 0..1000)
             .unwrap();
         tick(&mut ui, 0.0, None);
-        assert!(ui.docs.retained.resolved < 20);
-        assert_eq!(ui.docs.retained.topology.style_is_stale(&far), Some(true));
+        assert!(ui.docs.host.retained.resolved < 20);
+        assert_eq!(
+            ui.docs.host.retained.topology.style_is_stale(&far),
+            Some(true)
+        );
         tick(&mut ui, 100000.0, None);
         assert!(ui.probe_elements().iter().any(|n| n.text == "Row 999"));
         let path = "test:virtual/Row#r999/Pick#r999";
         tick(&mut ui, 0.0, Some(path));
         assert_eq!(ui.focused_key(), far.key);
         assert_eq!(ui.focus_path(0), path);
-        assert_eq!(ui.docs.retained.topology.style_is_stale(&far), Some(false));
+        assert_eq!(
+            ui.docs.host.retained.topology.style_is_stale(&far),
+            Some(false)
+        );
         tick(&mut ui, -100000.0, None);
         assert!(ui.probe_elements().iter().any(|n| n.text == "Row 0"));
         assert_eq!(ui.mounted_topology().child_at(Some(&list), 999), Some(&far));
@@ -997,7 +1012,8 @@ mod tests {
         assert_eq!(ui.mounted_topology().child_at(Some(&list), 999), Some(&far));
         assert_eq!(ui.focused_key(), far.key);
         assert_eq!(ui.focus_path(0), path);
-        ui.reactive
+        ui.docs
+            .reactive
             .execute(Command::Move {
                 source: source.clone(),
                 key: "r999".into(),
@@ -1010,7 +1026,8 @@ mod tests {
         tick(&mut ui, -100000.0, None);
         assert!(ui.probe_elements().iter().any(|n| n.text == "Row 999"));
         assert_eq!(ui.focus_path(0), path);
-        ui.reactive
+        ui.docs
+            .reactive
             .execute(Command::Remove {
                 source,
                 key: "r999".into(),
@@ -1042,7 +1059,8 @@ mod tests {
             .unwrap(),
         );
         let source = SourceId::new("test", "items");
-        ui.reactive
+        ui.docs
+            .reactive
             .execute(Command::Collection {
                 source: source.clone(),
                 key: "id".into(),
@@ -1086,7 +1104,8 @@ mod tests {
             .child_at(Some(&root), 1)
             .unwrap()
             .clone();
-        ui.reactive
+        ui.docs
+            .reactive
             .execute(Command::Move {
                 source: source.clone(),
                 key: "a".into(),
@@ -1097,10 +1116,11 @@ mod tests {
             tick(&mut ui),
             ["before", "beta", "19", "alpha", "7", "after"]
         );
-        assert_eq!(ui.docs.retained.evaluated, 0);
-        assert_eq!(ui.docs.retained.resolved, 0);
+        assert_eq!(ui.docs.host.retained.evaluated, 0);
+        assert_eq!(ui.docs.host.retained.resolved, 0);
         assert_eq!(ui.mounted_topology().child_at(Some(&root), 3), Some(&alpha));
-        ui.reactive
+        ui.docs
+            .reactive
             .execute(Command::Patch {
                 source: source.clone(),
                 key: "a".into(),
@@ -1111,8 +1131,8 @@ mod tests {
             tick(&mut ui),
             ["before", "beta", "19", "alpha", "23", "extra", "after"]
         );
-        assert_eq!(ui.docs.retained.evaluated, 2);
-        assert_eq!(ui.docs.retained.resolved, 2);
+        assert_eq!(ui.docs.host.retained.evaluated, 2);
+        assert_eq!(ui.docs.host.retained.resolved, 2);
         for (count, expected) in [
             (7, vec!["before", "beta", "19", "alpha", "7", "after"]),
             (
@@ -1120,7 +1140,8 @@ mod tests {
                 vec!["before", "beta", "19", "alpha", "23", "extra", "after"],
             ),
         ] {
-            ui.reactive
+            ui.docs
+                .reactive
                 .execute(Command::Patch {
                     source: source.clone(),
                     key: "a".into(),
@@ -1130,7 +1151,8 @@ mod tests {
             assert_eq!(tick(&mut ui), expected);
             assert_eq!(ui.mounted_topology().child_at(Some(&root), 3), Some(&alpha));
         }
-        ui.reactive
+        ui.docs
+            .reactive
             .execute(Command::Insert {
                 source: source.clone(),
                 row: json!({"id":"c","name":"gamma","count":31})
@@ -1147,7 +1169,8 @@ mod tests {
             ]
         );
         for key in ["b", "a", "c"] {
-            ui.reactive
+            ui.docs
+                .reactive
                 .execute(Command::Remove {
                     source: source.clone(),
                     key: key.into(),
@@ -1157,7 +1180,8 @@ mod tests {
         assert_eq!(tick(&mut ui), ["before", "empty", "after"]);
         assert!(ui.mounted_topology().node(&alpha).is_none());
         ui.unmount_document(&SourceId::new("test", "screen"));
-        ui.reactive
+        ui.docs
+            .reactive
             .execute(Command::Insert {
                 source,
                 row: json!({"id":"d","name":"unmounted","count":44})
@@ -1193,7 +1217,8 @@ mod tests {
             .unwrap(),
         );
         let source = SourceId::new("test", "checked");
-        ui.reactive
+        ui.docs
+            .reactive
             .execute(Command::Signal {
                 source: source.clone(),
                 initial: json!(true),
@@ -1209,7 +1234,8 @@ mod tests {
         )
         .unwrap();
         for (checked, width) in [(true, 140.0), (false, 70.0), (true, 140.0)] {
-            ui.reactive
+            ui.docs
+                .reactive
                 .execute(Command::Set {
                     source: source.clone(),
                     value: json!(checked),
@@ -1268,7 +1294,8 @@ mod tests {
         let wide = SourceId::new("test", "wide");
         let label = SourceId::new("test", "label");
         for (source, value) in [(wide.clone(), json!(false)), (label.clone(), json!("kept"))] {
-            ui.reactive
+            ui.docs
+                .reactive
                 .execute(Command::Signal {
                     source,
                     initial: value,
@@ -1285,7 +1312,8 @@ mod tests {
         )
         .unwrap();
         for (enabled, width) in [(false, 30.0), (true, 120.0), (false, 30.0)] {
-            ui.reactive
+            ui.docs
+                .reactive
                 .execute(Command::Set {
                     source: wide.clone(),
                     value: json!(enabled),
@@ -1317,8 +1345,8 @@ mod tests {
                 json!(if enabled { "wide" } else { "" })
             );
             if ui.tick() > 1 {
-                assert_eq!(ui.docs.retained.evaluated, 2); // Class value and matching predicate.
-                assert_eq!(ui.docs.retained.resolved, 2);
+                assert_eq!(ui.docs.host.retained.evaluated, 2); // Class value and matching predicate.
+                assert_eq!(ui.docs.host.retained.resolved, 2);
             }
         }
     }
@@ -1331,7 +1359,8 @@ mod tests {
             <column id="Root"><text id="Name">{$label}</text><text id="Other">unchanged</text></column>
         "#).unwrap());
         let source = SourceId::new("test", "label");
-        ui.reactive
+        ui.docs
+            .reactive
             .execute(Command::Signal {
                 source: source.clone(),
                 initial: json!("first"),
@@ -1370,12 +1399,13 @@ mod tests {
             ui.mounted_topology().node(&label).unwrap().direct_text,
             "first"
         );
-        ui.docs.retained.topology.take_changes();
+        ui.docs.host.retained.topology.take_changes();
         tick(&mut ui);
-        assert_eq!(ui.docs.retained.evaluated, 0);
-        assert_eq!(ui.docs.retained.resolved, 0);
+        assert_eq!(ui.docs.host.retained.evaluated, 0);
+        assert_eq!(ui.docs.host.retained.resolved, 0);
         let snapshot = ui.save_state();
-        ui.reactive
+        ui.docs
+            .reactive
             .execute(Command::Set {
                 source: source.clone(),
                 value: json!("changed"),
@@ -1383,8 +1413,8 @@ mod tests {
             })
             .unwrap();
         tick(&mut ui);
-        assert_eq!(ui.docs.retained.evaluated, 1);
-        assert_eq!(ui.docs.retained.resolved, 1);
+        assert_eq!(ui.docs.host.retained.evaluated, 1);
+        assert_eq!(ui.docs.host.retained.resolved, 1);
         assert_eq!(
             ui.probe_elements()
                 .iter()
@@ -1394,7 +1424,7 @@ mod tests {
             "changed"
         );
         assert_eq!(ui.mounted_topology().child_at(Some(&root), 0), Some(&label));
-        assert!(ui.docs.retained.topology.take_changes().is_empty());
+        assert!(ui.docs.host.retained.topology.take_changes().is_empty());
         ui.restore_state(&snapshot).unwrap();
         assert_eq!(ui.save_state(), snapshot);
         tick(&mut ui);
@@ -1403,8 +1433,9 @@ mod tests {
             ui.mounted_topology().node(&label).unwrap().direct_text,
             "first"
         );
-        assert!(ui.docs.retained.topology.take_changes().is_empty());
-        ui.reactive
+        assert!(ui.docs.host.retained.topology.take_changes().is_empty());
+        ui.docs
+            .reactive
             .execute(Command::Set {
                 source: source.clone(),
                 value: json!("after restore"),
@@ -1416,8 +1447,8 @@ mod tests {
             ui.mounted_topology().node(&label).unwrap().direct_text,
             "after restore"
         );
-        assert_eq!(ui.docs.retained.evaluated, 1);
-        assert_eq!(ui.docs.retained.resolved, 1);
+        assert_eq!(ui.docs.host.retained.evaluated, 1);
+        assert_eq!(ui.docs.host.retained.resolved, 1);
         ui.define_document(UiDocument::parse("retained.svelte", r#"
             <meta name="component" content="retained">
             <column id="Root"><text id="Name">new {$label}</text><text id="Replacement">added</text></column>
@@ -1430,7 +1461,8 @@ mod tests {
         );
         assert!(ui.probe_elements().iter().any(|n| n.id == "Replacement"));
         assert!(!ui.probe_elements().iter().any(|n| n.id == "Other"));
-        ui.reactive
+        ui.docs
+            .reactive
             .execute(Command::Set {
                 source,
                 value: json!("reloaded"),
@@ -1458,7 +1490,8 @@ mod tests {
             .unwrap(),
         );
         let source = SourceId::new("test", "paint");
-        ui.reactive
+        ui.docs
+            .reactive
             .execute(Command::Signal {
                 source: source.clone(),
                 initial: json!("panel"),
@@ -1482,7 +1515,7 @@ mod tests {
             assert!(ui.frame().items.iter().any(|item| matches!(&item.cmd,
                 crate::DrawCmd::Quad { color: actual, .. } if *actual == color.linear()
             )));
-            assert_eq!(ui.docs.retained.evaluated, 0);
+            assert_eq!(ui.docs.host.retained.evaluated, 0);
         }
     }
 
@@ -1509,7 +1542,8 @@ mod tests {
             ("show", json!(false)),
             ("label", json!("old")),
         ] {
-            ui.reactive
+            ui.docs
+                .reactive
                 .execute(Command::Signal {
                     source: source(name),
                     initial,
@@ -1536,7 +1570,8 @@ mod tests {
         };
         tick(&mut ui).unwrap();
         for (name, value) in [("bad", json!(true)), ("label", json!("new"))] {
-            ui.reactive
+            ui.docs
+                .reactive
                 .execute(Command::Set {
                     source: source(name),
                     value,
@@ -1546,7 +1581,8 @@ mod tests {
         }
         assert!(tick(&mut ui).unwrap_err().contains("missing"));
         assert!(tick(&mut ui).unwrap_err().contains("missing"));
-        ui.reactive
+        ui.docs
+            .reactive
             .execute(Command::Set {
                 source: source("bad"),
                 value: json!(false),
@@ -1559,7 +1595,8 @@ mod tests {
                 .iter()
                 .any(|node| node.id == "Other" && node.text == "new")
         );
-        ui.reactive
+        ui.docs
+            .reactive
             .execute(Command::Set {
                 source: source("show"),
                 value: json!(true),
@@ -1567,7 +1604,8 @@ mod tests {
             })
             .unwrap();
         assert!(tick(&mut ui).unwrap_err().contains("later"));
-        ui.reactive
+        ui.docs
+            .reactive
             .execute(Command::Signal {
                 source: source("later"),
                 initial: json!("recovered"),
@@ -1628,7 +1666,8 @@ mod tests {
             ("load", json!({ "status": "pending" })),
             ("round", json!(1)),
         ] {
-            ui.reactive
+            ui.docs
+                .reactive
                 .execute(Command::Signal {
                     source: store(name),
                     initial: value,
@@ -1649,7 +1688,8 @@ mod tests {
         .unwrap();
         let frame = |ui: &mut Ui, set: Option<(&str, Value)>| {
             if let Some((name, value)) = set {
-                ui.reactive
+                ui.docs
+                    .reactive
                     .execute(Command::Set {
                         source: store(name),
                         value,
@@ -1741,7 +1781,8 @@ mod tests {
             ("w", json!(70)),
             ("level", json!("h2")),
         ] {
-            ui.reactive
+            ui.docs
+                .reactive
                 .execute(Command::Signal {
                     source: store(name),
                     initial: value,
@@ -1762,7 +1803,8 @@ mod tests {
         .unwrap();
         let frame = |ui: &mut Ui, set: Option<(&str, Value)>| {
             if let Some((name, value)) = set {
-                ui.reactive
+                ui.docs
+                    .reactive
                     .execute(Command::Set {
                         source: store(name),
                         value,
@@ -1835,7 +1877,8 @@ mod tests {
             .unwrap(),
         );
         let show = SourceId::new("test", "show");
-        ui.reactive
+        ui.docs
+            .reactive
             .execute(Command::Signal {
                 source: show.clone(),
                 initial: json!(false),
@@ -1875,7 +1918,8 @@ mod tests {
             (blur, dash)
         };
         frame(&mut ui);
-        ui.reactive
+        ui.docs
+            .reactive
             .execute(Command::Set {
                 source: show,
                 value: json!(true),

@@ -1583,6 +1583,7 @@ impl Ui {
         }
         let selection = self
             .docs
+            .host
             .selection
             .get(&n.key)
             .filter(|s| {

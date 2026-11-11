@@ -45,7 +45,7 @@ impl Ui {
         let r = self.part_values(&reference, Some(self.nodes[i].key));
         let document = self
             .part_host(self.nodes[part.owner].key)
-            .and_then(|host| self.docs.docs.get(&host.document))
+            .and_then(|host| self.docs.host.docs.get(&host.document))
             .cloned();
         self.nodes[i].el = part.element;
         self.apply_box_fields(
@@ -308,7 +308,7 @@ impl Ui {
 
     pub(crate) fn part_values(&self, part: &crate::dress::PartRef, key: Option<u64>) -> Resolved {
         let host = key.and_then(|k| self.part_host(k));
-        let document = host.and_then(|h| self.docs.docs.get(&h.document));
+        let document = host.and_then(|h| self.docs.host.docs.get(&h.document));
         let mut rules = std::borrow::Cow::Borrowed(&self.part_rules);
         let mut sheet = std::borrow::Cow::Borrowed(&self.part_sheet);
         if let Some(doc) = document.filter(|d| !d.part_rules.is_empty()) {

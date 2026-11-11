@@ -117,7 +117,7 @@ impl Ui {
                 .iter()
                 .find(|(n, _)| n == name.trim_start_matches('/'))
                 .map(|(_, k)| k),
-            None => self.docs.keyframes.get(name).map(Arc::as_ref),
+            None => self.docs.host.keyframes.get(name).map(Arc::as_ref),
         };
         let has_styles = animations.iter().any(|a| {
             keyframes(&a.name).is_some_and(|k| {

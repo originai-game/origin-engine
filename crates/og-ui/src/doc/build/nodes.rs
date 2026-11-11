@@ -69,7 +69,7 @@ impl Ui {
                 return None;
             }
             NodeKind::Use(comp) => {
-                let Some(cdoc) = self.docs.docs.get(comp).cloned() else {
+                let Some(cdoc) = self.docs.host.docs.get(comp).cloned() else {
                     self.out.warnings.push(format!(
                         "{}:{}: no component '{comp}' (load its document)",
                         doc.source, n.line
@@ -131,7 +131,7 @@ impl Ui {
                 let rp = self.resolve(b, n, &mount, &mut built, &b.inherited, &mut |s| {
                     self.structure_matches(&doc, s)
                 });
-                self.docs.component_root = self.docs.structure.any;
+                self.docs.host.component_root = self.docs.host.structure.any;
                 self.out.warnings.extend(
                     rp.cascade
                         .diagnostics
@@ -140,9 +140,9 @@ impl Ui {
                 );
                 let r =
                     self.mount_doc(cdoc, mount, id, &mut vm, b.env, rp.cascade.computed.clone());
-                self.docs.component_root = false;
+                self.docs.host.component_root = false;
                 if opened {
-                    self.docs.levels.pop();
+                    self.docs.host.levels.pop();
                 }
                 // The instance's own element props apply to its root.
                 if !rp.vals.is_empty()
@@ -214,7 +214,7 @@ impl Ui {
                 .map(|error| format!("{}:{} ({path}): {error}", doc.source, n.line)),
         );
         let structural = children.is_some();
-        self.docs.levels.extend(children);
+        self.docs.host.levels.extend(children);
         self.run_enter(&r);
         let built = self.build_resolved_node(
             b,
@@ -234,10 +234,10 @@ impl Ui {
         );
         self.run_exit();
         if structural {
-            self.docs.levels.pop();
+            self.docs.host.levels.pop();
         }
         if opened {
-            self.docs.levels.pop();
+            self.docs.host.levels.pop();
         }
         built
     }
@@ -264,7 +264,7 @@ impl Ui {
         if let Some(commit) = &r.style {
             self.commit_styles(commit);
         }
-        let keeps = std::mem::take(&mut self.docs.keeps_hidden);
+        let keeps = std::mem::take(&mut self.docs.host.keeps_hidden);
         // A discrete display exit retains the subtree until the sampled
         // display becomes none, then completes its removal lifecycle.
         let exited = r
@@ -282,10 +282,11 @@ impl Ui {
         {
             return None;
         }
-        self.docs.seen_now.insert(key);
+        self.docs.host.seen_now.insert(key);
         self.note_selection(key, &r);
         self.remember_queried(b, i, &path, key, &r);
         self.docs
+            .host
             .scroll_now
             .extend(r.cascade.scroll_reads.iter().copied());
         if let Some(container) = r.container {
@@ -583,9 +584,9 @@ impl Ui {
             }
             if kind == "slot" {
                 let at = self.parent();
-                self.docs.slots.insert(path.clone(), at);
+                self.docs.host.slots.insert(path.clone(), at);
                 let short = format!("{}/{}", b.mount, n.id);
-                self.docs.slots.entry(short).or_insert(at);
+                self.docs.host.slots.entry(short).or_insert(at);
             }
             self.note_built(built);
             if shows_content {
@@ -625,9 +626,9 @@ impl Ui {
                 _ => resp = self.close(),
             }
             if let Some(open) = opened {
-                self.docs.happened.push(When::Toggle);
+                self.docs.host.happened.push(When::Toggle);
                 if kind == "dialog" && !open {
-                    self.docs.happened.push(When::Close);
+                    self.docs.host.happened.push(When::Close);
                 }
                 if !bound(n, "open") {
                     self.remember(
@@ -1079,7 +1080,7 @@ impl Ui {
             "datetime" => {
                 resp = self.datetime_input(b, n, id.as_str(), &r);
                 let barred = r.flag("disabled") || r.flag("readonly");
-                self.docs.validity.insert(
+                self.docs.host.validity.insert(
                     key,
                     super::mount::FieldValidity {
                         mount: b.mount.clone(),
@@ -1207,7 +1208,7 @@ impl Ui {
                     step: r.num("stepBy").map(f64::from),
                 };
                 resp = if r.flag("multiline") {
-                    self.docs.placeholder_ink = self.pseudo_ink(&styled);
+                    self.docs.host.placeholder_ink = self.pseudo_ink(&styled);
                     let out = self.text_area(
                         id.as_str(),
                         &mut s,
@@ -1224,10 +1225,10 @@ impl Ui {
                             constraints: constraints.clone(),
                         },
                     );
-                    self.docs.placeholder_ink = None;
+                    self.docs.host.placeholder_ink = None;
                     out
                 } else {
-                    self.docs.placeholder_ink = self.pseudo_ink(&styled);
+                    self.docs.host.placeholder_ink = self.pseudo_ink(&styled);
                     let out = self.text_field(
                         id.as_str(),
                         &mut s,
@@ -1261,7 +1262,7 @@ impl Ui {
                             }),
                         },
                     );
-                    self.docs.placeholder_ink = None;
+                    self.docs.host.placeholder_ink = None;
                     out
                 };
                 if !r.flag("readonly") {
@@ -1305,7 +1306,7 @@ impl Ui {
                 }
                 // HTML bars disabled and read-only controls from validation.
                 let barred = r.flag("disabled") || r.flag("readonly");
-                self.docs.validity.insert(
+                self.docs.host.validity.insert(
                     key,
                     super::mount::FieldValidity {
                         mount: b.mount.clone(),
@@ -1398,7 +1399,7 @@ impl Ui {
                 None => r.str("href").unwrap_or_default().to_string(),
             };
             if let Some(id) = href.strip_prefix('#') {
-                self.docs.target = (!id.is_empty()).then(|| id.to_string());
+                self.docs.host.target = (!id.is_empty()).then(|| id.to_string());
             }
             b.event(path, "link", &href, Value::Null);
         }

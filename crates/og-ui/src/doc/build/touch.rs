@@ -72,7 +72,7 @@ impl Ui {
         dead_zone: f32,
         disabled: bool,
     ) {
-        let zones = &mut self.docs.zones;
+        let zones = &mut self.docs.host.zones;
         match action.filter(|a| !a.is_empty() && !disabled) {
             Some(action) => {
                 let next = ControlZone {
@@ -83,12 +83,12 @@ impl Ui {
                 };
                 if zones.get(&key) != Some(&next) {
                     zones.insert(key, next);
-                    self.docs.zones_changed = true;
+                    self.docs.host.zones_changed = true;
                 }
             }
             None => {
                 if zones.remove(&key).is_some() {
-                    self.docs.zones_changed = true;
+                    self.docs.host.zones_changed = true;
                 }
             }
         }
@@ -102,29 +102,36 @@ impl Ui {
     /// (HUD edit moves controls without laying anything out); none
     /// without on-screen controls.
     pub fn take_control_zones(&mut self) -> Option<Vec<ControlZone>> {
-        if self.docs.zones.is_empty() && !self.docs.zones_changed {
+        if self.docs.host.zones.is_empty() && !self.docs.host.zones_changed {
             return None;
         }
-        let live = |key: &u64| self.docs.retained.owns(*key);
+        let live = |key: &u64| self.docs.host.retained.owns(*key);
         let gone: Vec<u64> = self
             .docs
+            .host
             .zones
             .keys()
             .copied()
             .filter(|k| !live(k))
             .collect();
-        let mut changed = std::mem::take(&mut self.docs.zones_changed) || !gone.is_empty();
+        let mut changed = std::mem::take(&mut self.docs.host.zones_changed) || !gone.is_empty();
         for key in gone {
-            self.docs.zones.remove(&key);
+            self.docs.host.zones.remove(&key);
         }
         let rects: Vec<(u64, Option<crate::layout::Rect>)> = self
             .docs
+            .host
             .zones
             .keys()
             .map(|&k| (k, self.hit(k).map(|h| h.rect)))
             .collect();
         for (key, rect) in rects {
-            let z = self.docs.zones.get_mut(&key).expect("a zone just listed");
+            let z = self
+                .docs
+                .host
+                .zones
+                .get_mut(&key)
+                .expect("a zone just listed");
             let r = rect.unwrap_or_default();
             let at = [r.x, r.y, r.width, r.height];
             if [z.x, z.y, z.width, z.height] != at {
@@ -134,6 +141,7 @@ impl Ui {
         }
         changed.then(|| {
             self.docs
+                .host
                 .zones
                 .values()
                 .filter(|z| z.width > 0.0 && z.height > 0.0)
