@@ -161,40 +161,6 @@ impl Ui {
         self.keep_effects();
     }
 
-    /// Registers the kept effects of the elements that stand this tick.
-    fn keep_effects(&mut self) {
-        let mut kept = std::mem::take(&mut self.world.kept_effects);
-        kept.retain(|key, (emitter, meta)| {
-            let Some(&i) = self.tree.index.by_key.get(key) else {
-                return self.docs.host.retained.owns(*key);
-            };
-            if let Some(d) = emitter {
-                // Its burst fires, and its `for` counts, from when it first stands.
-                let owner = *key;
-                let key = crate::id::child_key(*key, "particles");
-                let at = self.interaction.since(owner, key);
-                self.world.emitters.push(crate::particles::EmitterEntry {
-                    node: i,
-                    key,
-                    desc: d.clone(),
-                    at: Some(at),
-                });
-            }
-            if let Some(m) = meta {
-                let intensity = self.tree.nodes[i].props.opacity.clamp(0.0, 1.0);
-                self.world.metas.push((
-                    i,
-                    MetaDesc {
-                        intensity: m.intensity * intensity,
-                        ..m.clone()
-                    },
-                ));
-            }
-            true
-        });
-        self.world.kept_effects = kept;
-    }
-
     /// A document's mass element `key` (owned by the element `owner`):
     /// `once`, spawned when its row first builds and left to play its
     /// template's life; else kept and pushed every tick while it stands.
@@ -385,6 +351,42 @@ impl Ui {
         self.layout
             .world_panels(&mut self.world, &self.env, &mut self.tree);
         self.world_metas();
+    }
+}
+
+impl Ui {
+    /// Registers the kept effects of the elements that stand this tick.
+    fn keep_effects(&mut self) {
+        let mut kept = std::mem::take(&mut self.world.kept_effects);
+        kept.retain(|key, (emitter, meta)| {
+            let Some(&i) = self.tree.index.by_key.get(key) else {
+                return self.docs.host.retained.owns(*key);
+            };
+            if let Some(d) = emitter {
+                // Its burst fires, and its `for` counts, from when it first stands.
+                let owner = *key;
+                let key = crate::id::child_key(*key, "particles");
+                let at = self.interaction.since(owner, key);
+                self.world.emitters.push(crate::particles::EmitterEntry {
+                    node: i,
+                    key,
+                    desc: d.clone(),
+                    at: Some(at),
+                });
+            }
+            if let Some(m) = meta {
+                let intensity = self.tree.nodes[i].props.opacity.clamp(0.0, 1.0);
+                self.world.metas.push((
+                    i,
+                    MetaDesc {
+                        intensity: m.intensity * intensity,
+                        ..m.clone()
+                    },
+                ));
+            }
+            true
+        });
+        self.world.kept_effects = kept;
     }
 
     /// Spawns particles where their elements are drawn, ages the pools and
