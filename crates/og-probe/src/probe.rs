@@ -591,7 +591,9 @@ impl Probe {
     pub fn set_input_filter(&mut self, filter: InputFilterFn) {
         self.inject.filter = Some(filter);
     }
+}
 
+impl state::Clock {
     /// Whether the gate holds the next tick. A gate that moved `Time`
     /// restored a peer's snapshot (lockstep's start or a late join): the
     /// world now runs on the room's shared clock, and the scheduled steps
@@ -599,23 +601,25 @@ impl Probe {
     /// script step (a `quit`, an `expect`) on the same tick. A step whose
     /// tick the jump passed runs at the next tick, in order.
     fn held(&mut self, world: &mut World) -> bool {
-        let Some(gate) = self.clock.gate.as_mut() else {
+        let Some(gate) = self.gate.as_mut() else {
             return false;
         };
         let before = world.time().tick;
         let go = gate(world);
         let after = world.time().tick;
         if after < before {
-            self.clock.replay_until = self.clock.replay_until.max(before);
+            self.replay_until = self.replay_until.max(before);
         }
         !go
     }
 
     /// Whether the next tick runs again after a rollback's rewind.
     fn replaying(&self, world: &World) -> bool {
-        world.time().tick < self.clock.replay_until
+        world.time().tick < self.replay_until
     }
+}
 
+impl Probe {
     /// The world's clock jumped from `from` to `to` outside a tick (a game
     /// restored a save, which carries its own `Time`): every scheduled step
     /// moves with it, so each keeps the delay it had left.
@@ -1030,7 +1034,7 @@ impl Probe {
     /// its frame, it takes no tick.
     pub fn step(&mut self, world: &mut World) -> og_core::Result<()> {
         self.pump(world);
-        if self.clock.quit || self.schedule.shot.is_some() || self.held(world) {
+        if self.clock.quit || self.schedule.shot.is_some() || self.clock.held(world) {
             return Ok(());
         }
         self.tick_once(world)
@@ -1045,11 +1049,11 @@ impl Probe {
         while taken < due && !self.clock.paused && !self.clock.quit && self.schedule.shot.is_none()
         {
             self.pump(world);
-            if self.clock.quit || self.schedule.shot.is_some() || self.held(world) {
+            if self.clock.quit || self.schedule.shot.is_some() || self.clock.held(world) {
                 break;
             }
             // A re-simulated tick is the past again, not one of the frame's.
-            let again = self.replaying(world);
+            let again = self.clock.replaying(world);
             self.tick_once(world)?;
             if !again {
                 taken += 1;
@@ -1100,7 +1104,7 @@ impl Probe {
     }
 
     fn tick_once(&mut self, world: &mut World) -> og_core::Result<()> {
-        let replaying = self.replaying(world);
+        let replaying = self.clock.replaying(world);
         if let Some(before) = self.clock.before_tick.as_mut() {
             before(world);
         }
