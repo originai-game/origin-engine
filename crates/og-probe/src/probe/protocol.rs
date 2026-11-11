@@ -658,7 +658,7 @@ impl Probe {
         saved: &Saved,
     ) -> og_core::Result<Option<Value>> {
         let from = (saved.tick, saved.hash);
-        let mut job = match self.sweeping.take() {
+        let mut job = match self.saves.sweeping.take() {
             Some(job) if job.desc == *desc && job.from == from => job,
             _ => SweepJob {
                 desc: desc.clone(),
@@ -701,7 +701,7 @@ impl Probe {
                 }
                 None if job.polls < MAX_CAPTURE_POLLS => {
                     job.polls += 1;
-                    self.sweeping = Some(job);
+                    self.saves.sweeping = Some(job);
                     return Ok(None);
                 }
                 None => return Ok(None),
@@ -856,8 +856,8 @@ impl Probe {
     /// `snapshot`: the whole world, kept in this process.
     pub fn snapshot(&mut self, world: &World) -> Value {
         let saved = self.save(world);
-        let id = format!("s{}", self.next_snapshot);
-        self.next_snapshot += 1;
+        let id = format!("s{}", self.saves.next_snapshot);
+        self.saves.next_snapshot += 1;
         let presentation = self
             .host
             .capture
@@ -871,9 +871,9 @@ impl Probe {
             "bytes": saved.world.len(),
             "presentation": presentation,
         });
-        self.snapshots.push_back((id, saved));
-        while self.snapshots.len() > MAX_SNAPSHOTS {
-            self.snapshots.pop_front();
+        self.saves.snapshots.push_back((id, saved));
+        while self.saves.snapshots.len() > MAX_SNAPSHOTS {
+            self.saves.snapshots.pop_front();
         }
         info
     }
@@ -884,6 +884,7 @@ impl Probe {
     /// before it, and its ticks play again (`og run --forks`).
     pub fn restore(&mut self, world: &mut World, id: &str) -> bool {
         let Some(saved) = self
+            .saves
             .snapshots
             .iter()
             .find(|(sid, _)| sid == id)
