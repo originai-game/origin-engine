@@ -5,11 +5,11 @@ use super::*;
 /// What the host gave the probe: its input sink, renderer, UI and files,
 /// and the hooks its members answer through.
 pub(crate) struct Host {
-    pub(crate) engine: String,
-    pub(crate) input: Box<dyn InputSink>,
+    pub(super) engine: String,
+    pub(super) input: Box<dyn InputSink>,
     pub(crate) capture: Option<Box<dyn Capture>>,
     pub(crate) ui: Option<Box<dyn UiTree>>,
-    pub(crate) reloader: Option<Box<dyn Reloader>>,
+    pub(super) reloader: Option<Box<dyn Reloader>>,
     pub(crate) facts: Option<FactsFn>,
     /// The frame as data and picking ([`Probe::set_scene_view`]).
     pub(crate) scene_view: Option<Box<dyn SceneView>>,
@@ -17,31 +17,31 @@ pub(crate) struct Host {
     pub(crate) scene_writer: Option<Box<dyn SceneWriter>>,
     /// Reference files for `expect:frame` ([`Probe::set_reader`]).
     pub(crate) reader: Option<ReaderFn>,
-    pub(crate) listen: Option<ListenFn>,
-    pub(crate) memory: Option<MemoryFn>,
-    pub(crate) derive: Option<DeriveFn>,
-    pub(crate) register: Option<RegisterFn>,
+    pub(super) listen: Option<ListenFn>,
+    pub(super) memory: Option<MemoryFn>,
+    pub(super) derive: Option<DeriveFn>,
+    pub(super) register: Option<RegisterFn>,
 }
 
 /// Whether the next tick runs: the holds and the host's hooks around a tick.
 pub(crate) struct Clock {
-    pub(crate) paused: bool,
+    pub(super) paused: bool,
     /// The clock was held by a script's `pause`: the script's later steps
     /// run in order on the held world instead of waiting for ticks that
     /// will not come.
-    pub(crate) script_paused: bool,
-    pub(crate) quit: bool,
+    pub(super) script_paused: bool,
+    pub(super) quit: bool,
     /// The host's end-of-tick work ([`Probe::set_after_tick`]).
-    pub(crate) after_tick: Option<AfterTickFn>,
+    pub(super) after_tick: Option<AfterTickFn>,
     /// The host's start-of-tick work ([`Probe::set_before_tick`]).
-    pub(crate) before_tick: Option<AfterTickFn>,
+    pub(super) before_tick: Option<AfterTickFn>,
     /// The host's tick gate ([`Probe::set_gate`]).
-    pub(crate) gate: Option<GateFn>,
+    pub(super) gate: Option<GateFn>,
     /// After a rollback's rewind (the gate moved `Time` back): the tick the
     /// world had reached. The ticks below it run again: they take no share
     /// of a frame's ticks, and the input's edges, which belong to the
     /// present tick, stay for it.
-    pub(crate) replay_until: u64,
+    pub(super) replay_until: u64,
 }
 
 /// The script's steps waiting to run, and the screenshot that holds them.
