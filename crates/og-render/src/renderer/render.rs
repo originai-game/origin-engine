@@ -116,6 +116,8 @@ mod effects;
 use effects::{DecideEffectsInputs, FrameEffects};
 mod water_fluids;
 use water_fluids::{PrepareWaterAndFluidsInputs, PrepareWaterAndFluidsOutputs};
+mod oit_frame;
+use oit_frame::{PlanOitFrameInputs, PlanOitFrameOutputs};
 mod setup;
 
 impl Renderer {
@@ -498,50 +500,18 @@ impl Renderer {
         })?;
         plans.metaballs = (fluids > 0).then_some(());
         let lit = |layer: i32, mask: u32| light_slots.lit(lit_range, layer, mask);
-        // Order-independent transparency (oit.rs): the main camera's
-        // blended meshes, billboards, alpha particles and alpha strips go
-        // to its OIT pass, whose pipelines are made here for every blended
-        // surface of the frame (a debug view keeps the sorted blending:
-        // its channels are not colours to weight).
-        let oit_billboards: Vec<oit::Source> = sprite_frame
-            .billboard_shadows
-            .iter()
-            .chain(sprite_frame.billboards.iter().map(|(_, r)| r))
-            .filter_map(|r| self.oit_billboard(r, scene))
-            .collect();
-        let oit_strips = ribbon_frame
-            .runs
-            .iter()
-            .filter(|r| r.layer.is_none() && r.blend == ParticleBlend::Alpha)
-            .fold((false, false), |(v, p), r| (v || !r.points, p || r.points));
-        let oit_particles = particle_frame.has_oit(scene.camera_layers);
-        // What needs no culling: billboards, particles and strips.
-        let oit_candidates =
-            !oit_billboards.is_empty() || oit_particles || oit_strips.0 || oit_strips.1;
-        // Its targets are three (sorted blending without MRT).
-        let oit_frame = (scene.debug == DebugView::None
-            && self.info.caps.contains(Caps::MRT)
-            && (oit_candidates
-                || batches.iter().any(|b| b.transparent && b.blend)
-                || skinned_batches.iter().any(|b| b.transparent && b.blend)))
-        .then(|| {
-            self.oit
-                .frame_mode(&self.device, &self.queue, self.width, self.height)
+        // Order-independent transparency's frame mode (oit_frame.rs).
+        let PlanOitFrameOutputs {
+            oit_candidates,
+            oit_frame,
+        } = self.plan_oit_frame(PlanOitFrameInputs {
+            scene,
+            batches: &batches,
+            skinned_batches: &skinned_batches,
+            sprite_frame: &sprite_frame,
+            ribbon_frame: &ribbon_frame,
+            particle_frame: &particle_frame,
         });
-        if let Some(mode) = oit_frame {
-            // Fork s60: drawn by the main pass and the resolve, as the
-            // materials' lit pipelines are.
-            frame_pipelines(|| {
-                self.ensure_oit_pipelines(
-                    mode,
-                    &batches,
-                    &skinned_batches,
-                    &oit_billboards,
-                    oit_particles,
-                    oit_strips,
-                )
-            });
-        }
         for run in sprite_frame
             .runs
             .iter()
