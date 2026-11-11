@@ -392,162 +392,6 @@ impl Ui {
         self.fire(b, n, key, path, crate::ui::Response::default());
     }
 
-    /// An `<image href x y width height preserveAspectRatio>`: an atlas
-    /// icon by name, or a render texture by handle, filling its rect.
-    /// An SVG element's `filter` reference: the `<filter>` in its user
-    /// space (`t` takes it into the view box) and its bounding box there:
-    /// a shape's geometry, a group's shapes' (literal ones).
-    #[allow(clippy::too_many_arguments)]
-    fn svg_filter(
-        &self,
-        b: &Build<'_>,
-        n: &DocNode,
-        kind: &str,
-        r: &Resolved,
-        reference: &str,
-        t: &Affine,
-        vb: [f32; 4],
-    ) -> Result<std::sync::Arc<crate::paint::FilterUse>, String> {
-        let image = |href: &str| -> Result<(og_draw::TextureHandle, [f32; 4]), String> {
-            match href.parse::<f64>() {
-                Ok(h) => b
-                    .env
-                    .texture(h)
-                    .map(|t| (t, [0.0, 0.0, 1.0, 1.0]))
-                    .ok_or_else(|| format!("href {h} names no texture")),
-                Err(_) => match self.env.icons.find(href) {
-                    Some(crate::ui::IconCell::Image(texture, uv)) => Ok((texture, uv)),
-                    _ => Err(format!("href \"{href}\" names no atlas image")),
-                },
-            }
-        };
-        let filter = filter_def(&b.doc, reference, [vb[2], vb[3]], &image)?;
-        let union = |a: [f32; 4], b: [f32; 4]| {
-            if a[2] <= 0.0 && a[3] <= 0.0 {
-                return b;
-            }
-            let x = a[0].min(b[0]);
-            let y = a[1].min(b[1]);
-            [
-                x,
-                y,
-                (a[0] + a[2]).max(b[0] + b[2]) - x,
-                (a[1] + a[3]).max(b[1] + b[3]) - y,
-            ]
-        };
-        let mut bbox = [0.0; 4];
-        let tag = n.selector_tag.as_deref().unwrap_or("path");
-        if kind == "svgShape" {
-            let get = |attr: &str| svg_prop(attr).and_then(|p| r.str(p));
-            if tag == "image" {
-                let len =
-                    |a: &str, whole: f32| get(a).map_or(Ok(0.0), |v| crate::svg::length(v, whole));
-                bbox = [
-                    len("x", vb[2])?,
-                    len("y", vb[3])?,
-                    len("width", vb[2])?,
-                    len("height", vb[3])?,
-                ];
-            } else if let Some(local) = shape_path(tag, &get, vb)? {
-                bbox = bounds(&local);
-            }
-        } else {
-            let mut shapes = Vec::new();
-            def_shapes(&b.doc, n, Affine::IDENTITY, &mut shapes)?;
-            for (tag, attrs, own) in &shapes {
-                let get = |a: &str| attrs.iter().find(|(k, _)| k == a).map(|(_, v)| v.as_str());
-                if let Some(local) = shape_path(tag, &get, vb)? {
-                    bbox = union(bbox, bounds(&local.transformed(own)));
-                }
-            }
-        }
-        Ok(std::sync::Arc::new(crate::paint::FilterUse {
-            filter,
-            svg: Some((*t, bbox)),
-        }))
-    }
-
-    fn image_draw(
-        &self,
-        b: &Build<'_>,
-        r: &Resolved,
-        t: &Affine,
-        vb: [f32; 4],
-    ) -> Result<Option<ElementDraw>, String> {
-        let get = |p: &str| r.str(p);
-        let len = |p: &str, whole: f32| -> Result<f32, String> {
-            get(p)
-                .map_or(Ok(0.0), |v| crate::svg::length(v, whole))
-                .map_err(|e| format!("{p}: {e}"))
-        };
-        let (w, h) = (len("svgWidth", vb[2])?, len("svgHeight", vb[3])?);
-        if w <= 0.0 || h <= 0.0 {
-            return Ok(None);
-        }
-        let [_, bb, c, _, ..] = t.0;
-        if bb != 0.0 || c != 0.0 {
-            return Err("an <image> takes no turn or skew".into());
-        }
-        let (x, y) = (len("svgX", vb[2])?, len("svgY", vb[3])?);
-        let p = t.apply(Vec2::new(x, y));
-        let q = t.apply(Vec2::new(x + w, y + h));
-        let rect = [
-            p.x.min(q.x),
-            p.y.min(q.y),
-            (q.x - p.x).abs(),
-            (q.y - p.y).abs(),
-        ];
-        let href = get("svgHref").unwrap_or_default().trim();
-        let (texture, uv) = match href.parse::<f64>() {
-            Ok(h) => (
-                b.env
-                    .texture(h)
-                    .ok_or_else(|| format!("href {h} names no texture"))?,
-                [0.0, 0.0, 1.0, 1.0],
-            ),
-            Err(_) => match self.env.icons.find(href) {
-                Some(crate::ui::IconCell::Image(texture, uv)) => (texture, uv),
-                Some(_) => {
-                    return Err(format!(
-                        "\"{href}\" is a glyph icon, not an image: write <og-icon icon=\"{href}\"> beside the svg"
-                    ));
-                }
-                None => return Err(format!("href \"{href}\" names no atlas image")),
-            },
-        };
-        let fit = match get("svgPreserveAspectRatio").map(str::trim) {
-            Some("none") => og_draw::UiFit::Fill,
-            Some(v) if v.contains("slice") => og_draw::UiFit::Cover,
-            _ => og_draw::UiFit::Contain,
-        };
-        Ok(Some(ElementDraw {
-            shape: ShapeKind::Rect {
-                radii: Some([0.0; 4]),
-                corner: crate::paint::Corner::Round,
-            },
-            fills: vec![Paint::Image(crate::paint::ImagePaint {
-                texture,
-                uv,
-                size: [
-                    (uv[2] - uv[0]).abs() * 1024.0,
-                    (uv[3] - uv[1]).abs() * 1024.0,
-                ],
-                density: 1.0,
-                tint: ColorRef::Literal(Srgba {
-                    rgb: [255; 3],
-                    alpha: 1.0,
-                }),
-                fit,
-                focal: [0.5, 0.5],
-                offset: [0.0; 2],
-                nearest: false,
-            })],
-            view_box: Some(vb),
-            view_rect: Some(rect),
-            ..ElementDraw::default()
-        }))
-    }
-
     /// A `<foreignObject x y width height>`: a column box `width` by
     /// `height` user units laid out at that size, its corner on `(x, y)`
     /// fitted into the `<svg>`'s box and scaled with the view box, its
@@ -915,5 +759,163 @@ impl Ui {
         let resp = self.close();
         self.fire(b, n, key, &path, resp);
         Some(path)
+    }
+}
+
+impl Ui {
+    /// An `<image href x y width height preserveAspectRatio>`: an atlas
+    /// icon by name, or a render texture by handle, filling its rect.
+    /// An SVG element's `filter` reference: the `<filter>` in its user
+    /// space (`t` takes it into the view box) and its bounding box there:
+    /// a shape's geometry, a group's shapes' (literal ones).
+    #[allow(clippy::too_many_arguments)]
+    fn svg_filter(
+        &self,
+        b: &Build<'_>,
+        n: &DocNode,
+        kind: &str,
+        r: &Resolved,
+        reference: &str,
+        t: &Affine,
+        vb: [f32; 4],
+    ) -> Result<std::sync::Arc<crate::paint::FilterUse>, String> {
+        let image = |href: &str| -> Result<(og_draw::TextureHandle, [f32; 4]), String> {
+            match href.parse::<f64>() {
+                Ok(h) => b
+                    .env
+                    .texture(h)
+                    .map(|t| (t, [0.0, 0.0, 1.0, 1.0]))
+                    .ok_or_else(|| format!("href {h} names no texture")),
+                Err(_) => match self.env.icons.find(href) {
+                    Some(crate::ui::IconCell::Image(texture, uv)) => Ok((texture, uv)),
+                    _ => Err(format!("href \"{href}\" names no atlas image")),
+                },
+            }
+        };
+        let filter = filter_def(&b.doc, reference, [vb[2], vb[3]], &image)?;
+        let union = |a: [f32; 4], b: [f32; 4]| {
+            if a[2] <= 0.0 && a[3] <= 0.0 {
+                return b;
+            }
+            let x = a[0].min(b[0]);
+            let y = a[1].min(b[1]);
+            [
+                x,
+                y,
+                (a[0] + a[2]).max(b[0] + b[2]) - x,
+                (a[1] + a[3]).max(b[1] + b[3]) - y,
+            ]
+        };
+        let mut bbox = [0.0; 4];
+        let tag = n.selector_tag.as_deref().unwrap_or("path");
+        if kind == "svgShape" {
+            let get = |attr: &str| svg_prop(attr).and_then(|p| r.str(p));
+            if tag == "image" {
+                let len =
+                    |a: &str, whole: f32| get(a).map_or(Ok(0.0), |v| crate::svg::length(v, whole));
+                bbox = [
+                    len("x", vb[2])?,
+                    len("y", vb[3])?,
+                    len("width", vb[2])?,
+                    len("height", vb[3])?,
+                ];
+            } else if let Some(local) = shape_path(tag, &get, vb)? {
+                bbox = bounds(&local);
+            }
+        } else {
+            let mut shapes = Vec::new();
+            def_shapes(&b.doc, n, Affine::IDENTITY, &mut shapes)?;
+            for (tag, attrs, own) in &shapes {
+                let get = |a: &str| attrs.iter().find(|(k, _)| k == a).map(|(_, v)| v.as_str());
+                if let Some(local) = shape_path(tag, &get, vb)? {
+                    bbox = union(bbox, bounds(&local.transformed(own)));
+                }
+            }
+        }
+        Ok(std::sync::Arc::new(crate::paint::FilterUse {
+            filter,
+            svg: Some((*t, bbox)),
+        }))
+    }
+
+    fn image_draw(
+        &self,
+        b: &Build<'_>,
+        r: &Resolved,
+        t: &Affine,
+        vb: [f32; 4],
+    ) -> Result<Option<ElementDraw>, String> {
+        let get = |p: &str| r.str(p);
+        let len = |p: &str, whole: f32| -> Result<f32, String> {
+            get(p)
+                .map_or(Ok(0.0), |v| crate::svg::length(v, whole))
+                .map_err(|e| format!("{p}: {e}"))
+        };
+        let (w, h) = (len("svgWidth", vb[2])?, len("svgHeight", vb[3])?);
+        if w <= 0.0 || h <= 0.0 {
+            return Ok(None);
+        }
+        let [_, bb, c, _, ..] = t.0;
+        if bb != 0.0 || c != 0.0 {
+            return Err("an <image> takes no turn or skew".into());
+        }
+        let (x, y) = (len("svgX", vb[2])?, len("svgY", vb[3])?);
+        let p = t.apply(Vec2::new(x, y));
+        let q = t.apply(Vec2::new(x + w, y + h));
+        let rect = [
+            p.x.min(q.x),
+            p.y.min(q.y),
+            (q.x - p.x).abs(),
+            (q.y - p.y).abs(),
+        ];
+        let href = get("svgHref").unwrap_or_default().trim();
+        let (texture, uv) = match href.parse::<f64>() {
+            Ok(h) => (
+                b.env
+                    .texture(h)
+                    .ok_or_else(|| format!("href {h} names no texture"))?,
+                [0.0, 0.0, 1.0, 1.0],
+            ),
+            Err(_) => match self.env.icons.find(href) {
+                Some(crate::ui::IconCell::Image(texture, uv)) => (texture, uv),
+                Some(_) => {
+                    return Err(format!(
+                        "\"{href}\" is a glyph icon, not an image: write <og-icon icon=\"{href}\"> beside the svg"
+                    ));
+                }
+                None => return Err(format!("href \"{href}\" names no atlas image")),
+            },
+        };
+        let fit = match get("svgPreserveAspectRatio").map(str::trim) {
+            Some("none") => og_draw::UiFit::Fill,
+            Some(v) if v.contains("slice") => og_draw::UiFit::Cover,
+            _ => og_draw::UiFit::Contain,
+        };
+        Ok(Some(ElementDraw {
+            shape: ShapeKind::Rect {
+                radii: Some([0.0; 4]),
+                corner: crate::paint::Corner::Round,
+            },
+            fills: vec![Paint::Image(crate::paint::ImagePaint {
+                texture,
+                uv,
+                size: [
+                    (uv[2] - uv[0]).abs() * 1024.0,
+                    (uv[3] - uv[1]).abs() * 1024.0,
+                ],
+                density: 1.0,
+                tint: ColorRef::Literal(Srgba {
+                    rgb: [255; 3],
+                    alpha: 1.0,
+                }),
+                fit,
+                focal: [0.5, 0.5],
+                offset: [0.0; 2],
+                nearest: false,
+            })],
+            view_box: Some(vb),
+            view_rect: Some(rect),
+            ..ElementDraw::default()
+        }))
     }
 }

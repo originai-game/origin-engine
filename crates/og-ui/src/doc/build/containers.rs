@@ -29,30 +29,6 @@ pub(crate) struct Queried {
 }
 
 impl Ui {
-    /// Remembers an immediate-built element that settlement may restyle.
-    pub(super) fn remember_queried(
-        &mut self,
-        b: &Build<'_>,
-        node: usize,
-        path: &str,
-        key: u64,
-        r: &Resolved,
-    ) {
-        let Some(replay) = r.replay.clone() else {
-            return;
-        };
-        self.docs.host.queried.push(Queried {
-            doc: b.doc.clone(),
-            node,
-            path: path.to_owned(),
-            key,
-            inherited: b.inherited.clone(),
-            computed: r.cascade.computed.clone(),
-            reads: r.cascade.container_reads.clone(),
-            replay,
-        });
-    }
-
     /// Watches a query container for settlement as it is built: its first
     /// layout publishes even a zero box.
     pub(super) fn build_container(&mut self, key: u64) {
@@ -60,46 +36,6 @@ impl Ui {
         if self.docs.host.containers.insert(key) {
             self.watch_layout_container(key);
         }
-    }
-
-    /// Samples the `scroll-state()` containers read last tick: a container
-    /// whose flags changed restyles its readers (mounted ones through
-    /// `scroll_changed`; immediate builds read the new flags as they build).
-    /// `scrolled` keeps each axis's most recent direction.
-    pub(super) fn sync_scroll_states(&mut self) {
-        use crate::doc::media::scroll::*;
-        let mut keys = std::mem::take(&mut self.docs.host.scroll_now);
-        keys.extend(self.docs.host.retained.scroll_reads());
-        let mut states = BTreeMap::new();
-        for key in keys {
-            let offset = self.interaction.offset(key);
-            let (old_offset, old) = self
-                .docs
-                .host
-                .scroll_states
-                .get(&key)
-                .copied()
-                .unwrap_or((offset, 0));
-            let d = offset - old_offset;
-            let mut scrolled = old & SCROLLED;
-            if d.y != 0.0 {
-                scrolled &= !((TOP | BOTTOM) << 10);
-                scrolled |= if d.y < 0.0 { TOP } else { BOTTOM } << 10;
-            }
-            if d.x != 0.0 {
-                scrolled &= !((LEFT | RIGHT) << 10);
-                scrolled |= if d.x < 0.0 { LEFT } else { RIGHT } << 10;
-            }
-            let flags = self
-                .interaction
-                .scroll_flags_now(key, &self.layout, &self.tree)
-                | scrolled;
-            if flags != old {
-                self.docs.host.scroll_changed.insert(key);
-            }
-            states.insert(key, (offset, flags));
-        }
-        self.docs.host.scroll_states = states;
     }
 
     /// Unwatches and forgets containers no longer built or mounted.
@@ -255,7 +191,75 @@ impl Ui {
         }
         Some(i)
     }
+}
 
+impl Ui {
+    /// Remembers an immediate-built element that settlement may restyle.
+    pub(super) fn remember_queried(
+        &mut self,
+        b: &Build<'_>,
+        node: usize,
+        path: &str,
+        key: u64,
+        r: &Resolved,
+    ) {
+        let Some(replay) = r.replay.clone() else {
+            return;
+        };
+        self.docs.host.queried.push(Queried {
+            doc: b.doc.clone(),
+            node,
+            path: path.to_owned(),
+            key,
+            inherited: b.inherited.clone(),
+            computed: r.cascade.computed.clone(),
+            reads: r.cascade.container_reads.clone(),
+            replay,
+        });
+    }
+
+    /// Samples the `scroll-state()` containers read last tick: a container
+    /// whose flags changed restyles its readers (mounted ones through
+    /// `scroll_changed`; immediate builds read the new flags as they build).
+    /// `scrolled` keeps each axis's most recent direction.
+    pub(super) fn sync_scroll_states(&mut self) {
+        use crate::doc::media::scroll::*;
+        let mut keys = std::mem::take(&mut self.docs.host.scroll_now);
+        keys.extend(self.docs.host.retained.scroll_reads());
+        let mut states = BTreeMap::new();
+        for key in keys {
+            let offset = self.interaction.offset(key);
+            let (old_offset, old) = self
+                .docs
+                .host
+                .scroll_states
+                .get(&key)
+                .copied()
+                .unwrap_or((offset, 0));
+            let d = offset - old_offset;
+            let mut scrolled = old & SCROLLED;
+            if d.y != 0.0 {
+                scrolled &= !((TOP | BOTTOM) << 10);
+                scrolled |= if d.y < 0.0 { TOP } else { BOTTOM } << 10;
+            }
+            if d.x != 0.0 {
+                scrolled &= !((LEFT | RIGHT) << 10);
+                scrolled |= if d.x < 0.0 { LEFT } else { RIGHT } << 10;
+            }
+            let flags = self
+                .interaction
+                .scroll_flags_now(key, &self.layout, &self.tree)
+                | scrolled;
+            if flags != old {
+                self.docs.host.scroll_changed.insert(key);
+            }
+            states.insert(key, (offset, flags));
+        }
+        self.docs.host.scroll_states = states;
+    }
+}
+
+impl Ui {
     /// A node's shown children in built order, split by flow, as `end` does.
     fn refilter_children(&mut self, i: usize) {
         let kept: Vec<usize> = self.tree.nodes[i]

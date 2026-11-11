@@ -55,45 +55,6 @@ impl Ui {
         }
     }
 
-    /// A touch `<button data-og-touch="jump">`'s zone (any element's).
-    pub(super) fn note_touch_button(&mut self, r: &Resolved) {
-        if self.tree.last_closed != NONE && self.tree.last_closed < self.tree.nodes.len() {
-            let key = self.tree.nodes[self.tree.last_closed].key;
-            let action = r.str("dataOgTouch");
-            self.note_zone(key, action, ZoneKind::Button, 0.0, r.flag("disabled"));
-        }
-    }
-
-    fn note_zone(
-        &mut self,
-        key: u64,
-        action: Option<&str>,
-        kind: ZoneKind,
-        dead_zone: f32,
-        disabled: bool,
-    ) {
-        let zones = &mut self.docs.host.zones;
-        match action.filter(|a| !a.is_empty() && !disabled) {
-            Some(action) => {
-                let next = ControlZone {
-                    action: action.to_string(),
-                    kind,
-                    dead_zone,
-                    ..zones.get(&key).cloned().unwrap_or_default()
-                };
-                if zones.get(&key) != Some(&next) {
-                    zones.insert(key, next);
-                    self.docs.host.zones_changed = true;
-                }
-            }
-            None => {
-                if zones.remove(&key).is_some() {
-                    self.docs.host.zones_changed = true;
-                }
-            }
-        }
-    }
-
     /// The on-screen controls documents laid out, for og-input's action
     /// map ([`og_input::ActionMap::set_zones`]), after [`Ui::end`]: `None`
     /// when nothing moved since the last call. Each zone is the rect its
@@ -148,6 +109,49 @@ impl Ui {
                 .cloned()
                 .collect()
         })
+    }
+}
+
+impl Ui {
+    /// A touch `<button data-og-touch="jump">`'s zone (any element's).
+    pub(super) fn note_touch_button(&mut self, r: &Resolved) {
+        if self.tree.last_closed != NONE && self.tree.last_closed < self.tree.nodes.len() {
+            let key = self.tree.nodes[self.tree.last_closed].key;
+            let action = r.str("dataOgTouch");
+            self.note_zone(key, action, ZoneKind::Button, 0.0, r.flag("disabled"));
+        }
+    }
+}
+
+impl Ui {
+    fn note_zone(
+        &mut self,
+        key: u64,
+        action: Option<&str>,
+        kind: ZoneKind,
+        dead_zone: f32,
+        disabled: bool,
+    ) {
+        let zones = &mut self.docs.host.zones;
+        match action.filter(|a| !a.is_empty() && !disabled) {
+            Some(action) => {
+                let next = ControlZone {
+                    action: action.to_string(),
+                    kind,
+                    dead_zone,
+                    ..zones.get(&key).cloned().unwrap_or_default()
+                };
+                if zones.get(&key) != Some(&next) {
+                    zones.insert(key, next);
+                    self.docs.host.zones_changed = true;
+                }
+            }
+            None => {
+                if zones.remove(&key).is_some() {
+                    self.docs.host.zones_changed = true;
+                }
+            }
+        }
     }
 }
 

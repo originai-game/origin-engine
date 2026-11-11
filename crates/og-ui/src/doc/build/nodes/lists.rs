@@ -230,7 +230,9 @@ impl Ui {
         }
         self.close_list();
     }
+}
 
+impl Ui {
     pub(super) fn art_spec(&mut self, path: &str, r: &Resolved) {
         let s = crate::slot::SlotSpec::from_props(
             path,

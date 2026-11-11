@@ -302,106 +302,6 @@ impl Ui {
             .insert(path.to_owned(), (handle, defaults));
     }
 
-    /// A document's `-og-material` as the layer it draws: a built-in's, or
-    /// a defined asset's with its defaults under the numbers written.
-    pub(crate) fn css_material(
-        &self,
-        m: crate::dress::DressMaterial,
-    ) -> Result<crate::paint::Layer, String> {
-        let Some(path) = m.asset else {
-            return Ok(m.layer);
-        };
-        let (handle, mut params) = *self.docs.host.materials.get(&path).ok_or_else(|| {
-            format!("-og-material: \"{path}\" is not a loaded UI material (a `type ui-material` asset under assets/)")
-        })?;
-        for k in 0..m.params {
-            params[k / 4][k % 4] = m.layer.params[k / 4][k % 4];
-        }
-        Ok(crate::paint::Layer {
-            material: crate::paint::Material::Custom(handle),
-            params,
-            filter: None,
-        })
-    }
-
-    /// Plays the Rive artboard `id` in element `node` (its key `key`) this
-    /// tick: the element's player goes on one tick, a restored one is
-    /// rebuilt from its bytes, a new one starts; the element draws it over
-    /// its background ([`crate::paint::ElementDraw::rive`]).
-    pub(crate) fn play_rive(&mut self, node: usize, id: &str, path: &str) {
-        let key = self.tree.nodes[node].key;
-        let Some(board) = self.docs.host.rive.get(id).cloned() else {
-            self.out.warnings.push(format!(
-                "{path}: og-rive src=\"{id}\" names no Rive artboard the UI has; og.load.document loads those its document names"
-            ));
-            return;
-        };
-        let tick = self.interaction.state.tick;
-        let dt = 1.0 / self.env.ticks_per_second.max(1) as f32;
-        let player = match self.interaction.state.rive.remove(&key) {
-            Some(crate::ui::RiveSlot {
-                board: b,
-                player: Some(mut p),
-                ..
-            }) if b == id => {
-                if !Arc::ptr_eq(&p.artboard, &board) {
-                    // A hot reload: on from where it was, when that fits.
-                    let mut q = crate::rive::Player::new(board.clone(), None);
-                    p = if q.restore(&p.save()).is_ok() {
-                        q
-                    } else {
-                        crate::rive::Player::new(board, None)
-                    };
-                }
-                p.advance(dt);
-                p
-            }
-            Some(crate::ui::RiveSlot {
-                board: b,
-                player: None,
-                saved,
-                ..
-            }) if b == id => {
-                let mut p = crate::rive::Player::new(board, None);
-                if let Err(e) = p.restore(&saved) {
-                    self.out.warnings.push(format!(
-                        "{path}: the saved state of Rive artboard {id} does not fit it ({e}); it is kept and not drawn"
-                    ));
-                    self.interaction.state.rive.insert(
-                        key,
-                        crate::ui::RiveSlot {
-                            board: b,
-                            player: None,
-                            saved,
-                            built: tick,
-                        },
-                    );
-                    return;
-                }
-                p.advance(dt);
-                p
-            }
-            _ => crate::rive::Player::new(board, None),
-        };
-        self.tree.draws.insert(
-            node,
-            crate::paint::ElementDraw {
-                rive: Some(crate::paint::RiveDraw(player.clone())),
-                ..crate::paint::ElementDraw::default()
-            },
-        );
-        self.tree.dressable.remove(&node);
-        self.interaction.state.rive.insert(
-            key,
-            crate::ui::RiveSlot {
-                board: id.to_owned(),
-                player: Some(player),
-                saved: Vec::new(),
-                built: tick,
-            },
-        );
-    }
-
     /// A document by name.
     pub fn document(&self, name: &str) -> Option<&UiDocument> {
         self.docs.host.docs.get(name).map(|d| &**d)
@@ -532,81 +432,6 @@ impl Ui {
                 .flat_map(|r| r.arts.iter().cloned()),
         );
         out
-    }
-
-    pub(crate) fn note_built(&mut self, built: Built) {
-        match self.docs.host.capture.last_mut() {
-            Some(record) => record.built.push(built),
-            None => self.docs.host.built.push(built),
-        }
-    }
-
-    pub(crate) fn note_render_fields(&mut self, key: u64, fields: super::fields::RenderFields) {
-        match self.docs.host.capture.last_mut() {
-            Some(record) => record.render_fields.push((key, fields)),
-            None => {
-                self.docs.host.render_fields.insert(key, fields);
-            }
-        }
-    }
-
-    pub(crate) fn note_art(&mut self, path: String, spec: crate::slot::SlotSpec) {
-        match self.docs.host.capture.last_mut() {
-            Some(record) => record.arts.push((path, spec)),
-            None => self.docs.host.arts.push((path, spec)),
-        }
-    }
-
-    /// The art slot registered last.
-    pub(crate) fn last_art(&self) -> &crate::slot::SlotSpec {
-        &self.last_art_entry().1
-    }
-
-    pub(crate) fn last_art_path(&self) -> String {
-        self.last_art_entry().0.clone()
-    }
-
-    fn last_art_entry(&self) -> &(String, crate::slot::SlotSpec) {
-        match self.docs.host.capture.last() {
-            Some(record) => record.arts.last(),
-            None => self.docs.host.arts.last(),
-        }
-        .expect("an art slot was registered")
-    }
-
-    /// The art slot `path`'s spec, where it was registered.
-    pub(crate) fn art_slot_mut(&mut self, path: &str) -> Option<&mut crate::slot::SlotSpec> {
-        let key = crate::id::key_of_path(path);
-        let docs = &mut self.docs.host;
-        if let Some((_, spec)) = docs
-            .capture
-            .iter_mut()
-            .rev()
-            .flat_map(|r| r.arts.iter_mut())
-            .find(|(p, _)| p == path)
-        {
-            return Some(spec);
-        }
-        if let Some((_, spec)) = docs.arts.iter_mut().find(|(p, _)| p == path) {
-            return Some(spec);
-        }
-        docs.retained
-            .record_mut(key)
-            .and_then(|r| r.arts.iter_mut().find(|(p, _)| p == path))
-            .map(|(_, spec)| spec)
-    }
-
-    /// The render fields element `key` was emitted with.
-    #[cfg(test)]
-    pub(crate) fn render_fields(&self, key: u64) -> Option<&super::fields::RenderFields> {
-        self.docs.host.render_fields.get(&key).or_else(|| {
-            self.docs
-                .host
-                .retained
-                .record(key)
-                .and_then(|r| r.render_fields.iter().find(|(k, _)| *k == key))
-                .map(|(_, fields)| fields)
-        })
     }
 
     /// The probe's edits in effect.
@@ -813,5 +638,182 @@ impl Ui {
         live.extend(d.retained.containers());
         self.watch_document_containers(live);
         self.sync_scroll_states();
+    }
+}
+
+impl Ui {
+    /// A document's `-og-material` as the layer it draws: a built-in's, or
+    /// a defined asset's with its defaults under the numbers written.
+    pub(crate) fn css_material(
+        &self,
+        m: crate::dress::DressMaterial,
+    ) -> Result<crate::paint::Layer, String> {
+        let Some(path) = m.asset else {
+            return Ok(m.layer);
+        };
+        let (handle, mut params) = *self.docs.host.materials.get(&path).ok_or_else(|| {
+            format!("-og-material: \"{path}\" is not a loaded UI material (a `type ui-material` asset under assets/)")
+        })?;
+        for k in 0..m.params {
+            params[k / 4][k % 4] = m.layer.params[k / 4][k % 4];
+        }
+        Ok(crate::paint::Layer {
+            material: crate::paint::Material::Custom(handle),
+            params,
+            filter: None,
+        })
+    }
+
+    /// Plays the Rive artboard `id` in element `node` (its key `key`) this
+    /// tick: the element's player goes on one tick, a restored one is
+    /// rebuilt from its bytes, a new one starts; the element draws it over
+    /// its background ([`crate::paint::ElementDraw::rive`]).
+    pub(crate) fn play_rive(&mut self, node: usize, id: &str, path: &str) {
+        let key = self.tree.nodes[node].key;
+        let Some(board) = self.docs.host.rive.get(id).cloned() else {
+            self.out.warnings.push(format!(
+                "{path}: og-rive src=\"{id}\" names no Rive artboard the UI has; og.load.document loads those its document names"
+            ));
+            return;
+        };
+        let tick = self.interaction.state.tick;
+        let dt = 1.0 / self.env.ticks_per_second.max(1) as f32;
+        let player = match self.interaction.state.rive.remove(&key) {
+            Some(crate::ui::RiveSlot {
+                board: b,
+                player: Some(mut p),
+                ..
+            }) if b == id => {
+                if !Arc::ptr_eq(&p.artboard, &board) {
+                    // A hot reload: on from where it was, when that fits.
+                    let mut q = crate::rive::Player::new(board.clone(), None);
+                    p = if q.restore(&p.save()).is_ok() {
+                        q
+                    } else {
+                        crate::rive::Player::new(board, None)
+                    };
+                }
+                p.advance(dt);
+                p
+            }
+            Some(crate::ui::RiveSlot {
+                board: b,
+                player: None,
+                saved,
+                ..
+            }) if b == id => {
+                let mut p = crate::rive::Player::new(board, None);
+                if let Err(e) = p.restore(&saved) {
+                    self.out.warnings.push(format!(
+                        "{path}: the saved state of Rive artboard {id} does not fit it ({e}); it is kept and not drawn"
+                    ));
+                    self.interaction.state.rive.insert(
+                        key,
+                        crate::ui::RiveSlot {
+                            board: b,
+                            player: None,
+                            saved,
+                            built: tick,
+                        },
+                    );
+                    return;
+                }
+                p.advance(dt);
+                p
+            }
+            _ => crate::rive::Player::new(board, None),
+        };
+        self.tree.draws.insert(
+            node,
+            crate::paint::ElementDraw {
+                rive: Some(crate::paint::RiveDraw(player.clone())),
+                ..crate::paint::ElementDraw::default()
+            },
+        );
+        self.tree.dressable.remove(&node);
+        self.interaction.state.rive.insert(
+            key,
+            crate::ui::RiveSlot {
+                board: id.to_owned(),
+                player: Some(player),
+                saved: Vec::new(),
+                built: tick,
+            },
+        );
+    }
+
+    pub(crate) fn note_built(&mut self, built: Built) {
+        match self.docs.host.capture.last_mut() {
+            Some(record) => record.built.push(built),
+            None => self.docs.host.built.push(built),
+        }
+    }
+
+    pub(crate) fn note_render_fields(&mut self, key: u64, fields: super::fields::RenderFields) {
+        match self.docs.host.capture.last_mut() {
+            Some(record) => record.render_fields.push((key, fields)),
+            None => {
+                self.docs.host.render_fields.insert(key, fields);
+            }
+        }
+    }
+
+    pub(crate) fn note_art(&mut self, path: String, spec: crate::slot::SlotSpec) {
+        match self.docs.host.capture.last_mut() {
+            Some(record) => record.arts.push((path, spec)),
+            None => self.docs.host.arts.push((path, spec)),
+        }
+    }
+
+    /// The art slot registered last.
+    pub(crate) fn last_art(&self) -> &crate::slot::SlotSpec {
+        &self.last_art_entry().1
+    }
+
+    pub(crate) fn last_art_path(&self) -> String {
+        self.last_art_entry().0.clone()
+    }
+
+    fn last_art_entry(&self) -> &(String, crate::slot::SlotSpec) {
+        match self.docs.host.capture.last() {
+            Some(record) => record.arts.last(),
+            None => self.docs.host.arts.last(),
+        }
+        .expect("an art slot was registered")
+    }
+
+    /// The art slot `path`'s spec, where it was registered.
+    pub(crate) fn art_slot_mut(&mut self, path: &str) -> Option<&mut crate::slot::SlotSpec> {
+        let key = crate::id::key_of_path(path);
+        let docs = &mut self.docs.host;
+        if let Some((_, spec)) = docs
+            .capture
+            .iter_mut()
+            .rev()
+            .flat_map(|r| r.arts.iter_mut())
+            .find(|(p, _)| p == path)
+        {
+            return Some(spec);
+        }
+        if let Some((_, spec)) = docs.arts.iter_mut().find(|(p, _)| p == path) {
+            return Some(spec);
+        }
+        docs.retained
+            .record_mut(key)
+            .and_then(|r| r.arts.iter_mut().find(|(p, _)| p == path))
+            .map(|(_, spec)| spec)
+    }
+
+    /// The render fields element `key` was emitted with.
+    #[cfg(test)]
+    pub(crate) fn render_fields(&self, key: u64) -> Option<&super::fields::RenderFields> {
+        self.docs.host.render_fields.get(&key).or_else(|| {
+            self.docs
+                .host
+                .retained
+                .record(key)
+                .and_then(|r| r.render_fields.iter().find(|(k, _)| *k == key))
+                .map(|(_, fields)| fields)
+        })
     }
 }

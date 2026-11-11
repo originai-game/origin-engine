@@ -173,7 +173,9 @@ impl Ui {
         self.close();
         resp
     }
+}
 
+impl Ui {
     /// Svelte's read-only media bindings, and `paused` and `currentTime`
     /// as the player moves them.
     fn media_write_backs(

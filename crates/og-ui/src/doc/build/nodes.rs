@@ -1687,7 +1687,9 @@ impl Ui {
             b.event(path, "link", &href, Value::Null);
         }
     }
+}
 
+impl Ui {
     /// A control's two-way prop: its binding's path takes the new value.
     pub(super) fn write_back(&mut self, b: &mut Build<'_>, n: &DocNode, prop: &str, v: Value) {
         let bound = n.props.iter().rev().find(|p| p.name() == prop);

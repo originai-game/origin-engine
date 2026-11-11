@@ -206,61 +206,6 @@ impl Ui {
         Some(level)
     }
 
-    /// Positions the next build at a virtual container's row `k`.
-    pub(super) fn structure_row(&mut self, k: usize) {
-        if let Some(level) = self.docs.host.levels.last_mut()
-            && let Some(&first) = level.items.get(k)
-        {
-            level.current = first.checked_sub(1);
-        }
-    }
-
-    /// Whether the element being built is the subject of `selector`.
-    pub(super) fn structure_matches(&self, doc: &UiDocument, selector: &Selector) -> bool {
-        let levels = &self.docs.host.levels;
-        let Some(top) = levels.len().checked_sub(1) else {
-            return false;
-        };
-        let Some(current) = levels[top].current else {
-            return false;
-        };
-        matching::matches(
-            &Levels(levels),
-            Some(&doc.name),
-            selector,
-            &(top, current, Vec::new()),
-            &mut MatchWork::default(),
-        )
-    }
-
-    /// The number of the `<li>` being built ([`crate::doc::lists::ordinal`]).
-    pub(super) fn structure_ordinal(&self, filter: &[Selector], item_values: bool) -> i64 {
-        let levels = &self.docs.host.levels;
-        match levels
-            .len()
-            .checked_sub(1)
-            .and_then(|top| Some((top, levels[top].current?, Vec::new())))
-        {
-            Some(at) => crate::doc::lists::ordinal(&Levels(levels), &at, filter, item_values),
-            None => 1,
-        }
-    }
-
-    /// A `<li>`'s number when its marker shows one: `count` reads it from
-    /// the tree being built (the retained topology or the sibling levels).
-    pub(super) fn ordinal_of(
-        &self,
-        n: &DocNode,
-        r: &Resolved,
-        count: impl FnOnce(&[Selector], bool) -> i64,
-    ) -> Option<i64> {
-        let profile = &self.docs.host.structure;
-        (profile.ordinals
-            && n.selector_tag.as_deref() == Some("li")
-            && r.str("markerType").is_some_and(crate::doc::lists::numbered))
-        .then(|| count(&crate::doc::lists::items(), profile.item_values))
-    }
-
     fn entry(&self, b: &Build<'_>, doc: &Arc<UiDocument>, i: usize) -> Entry {
         let n = &doc.nodes[i];
         let text = n
@@ -349,5 +294,62 @@ impl Ui {
                 }
             }
         }
+    }
+}
+
+impl Ui {
+    /// Positions the next build at a virtual container's row `k`.
+    pub(super) fn structure_row(&mut self, k: usize) {
+        if let Some(level) = self.docs.host.levels.last_mut()
+            && let Some(&first) = level.items.get(k)
+        {
+            level.current = first.checked_sub(1);
+        }
+    }
+
+    /// Whether the element being built is the subject of `selector`.
+    pub(super) fn structure_matches(&self, doc: &UiDocument, selector: &Selector) -> bool {
+        let levels = &self.docs.host.levels;
+        let Some(top) = levels.len().checked_sub(1) else {
+            return false;
+        };
+        let Some(current) = levels[top].current else {
+            return false;
+        };
+        matching::matches(
+            &Levels(levels),
+            Some(&doc.name),
+            selector,
+            &(top, current, Vec::new()),
+            &mut MatchWork::default(),
+        )
+    }
+
+    /// The number of the `<li>` being built ([`crate::doc::lists::ordinal`]).
+    pub(super) fn structure_ordinal(&self, filter: &[Selector], item_values: bool) -> i64 {
+        let levels = &self.docs.host.levels;
+        match levels
+            .len()
+            .checked_sub(1)
+            .and_then(|top| Some((top, levels[top].current?, Vec::new())))
+        {
+            Some(at) => crate::doc::lists::ordinal(&Levels(levels), &at, filter, item_values),
+            None => 1,
+        }
+    }
+
+    /// A `<li>`'s number when its marker shows one: `count` reads it from
+    /// the tree being built (the retained topology or the sibling levels).
+    pub(super) fn ordinal_of(
+        &self,
+        n: &DocNode,
+        r: &Resolved,
+        count: impl FnOnce(&[Selector], bool) -> i64,
+    ) -> Option<i64> {
+        let profile = &self.docs.host.structure;
+        (profile.ordinals
+            && n.selector_tag.as_deref() == Some("li")
+            && r.str("markerType").is_some_and(crate::doc::lists::numbered))
+        .then(|| count(&crate::doc::lists::items(), profile.item_values))
     }
 }
