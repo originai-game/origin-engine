@@ -120,16 +120,19 @@ fn ticks(engine: u32, n: u32) {
 }
 
 fn spawn(engine: u32, parts: &[(&str, Value)]) -> f64 {
-    let e = value(og_world_spawn(engine, Some("{}".into())))
-        .as_f64()
-        .unwrap();
+    let e = value(og_runtime::host_impl::answer(og_world_spawn(
+        engine,
+        Some("{}".into()),
+    )))
+    .as_f64()
+    .unwrap();
     for (rec, v) in parts {
-        value(og_world_insert(
+        value(og_runtime::host_impl::answer(og_world_insert(
             engine,
             e,
             (*rec).into(),
             Some(v.to_string()),
-        ));
+        )));
     }
     e
 }
@@ -150,7 +153,10 @@ fn shot(engine: u32, x: f64, vcam: Value) -> f64 {
 }
 
 fn camera(engine: u32) -> Value {
-    value(og_world_resource(engine, "og.Camera".into()))
+    value(og_runtime::host_impl::answer(og_world_resource(
+        engine,
+        "og.Camera".into(),
+    )))
 }
 
 fn cam_x(engine: u32) -> f64 {
@@ -158,7 +164,10 @@ fn cam_x(engine: u32) -> f64 {
 }
 
 fn brain(engine: u32) -> Value {
-    value(og_world_resource(engine, "og.CameraBrain".into()))
+    value(og_runtime::host_impl::answer(og_world_resource(
+        engine,
+        "og.CameraBrain".into(),
+    )))
 }
 
 #[test]
@@ -168,16 +177,20 @@ fn a_restore_mid_blend_continues_the_same_blend() {
     ticks(engine, 2);
     shot(engine, 10.0, json!({ "priority": 1, "blendTime": 1 }));
     ticks(engine, 20);
-    let snap = value(og_world_snapshot(engine, None))
-        .as_str()
-        .unwrap()
-        .to_string();
+    let snap = value(og_runtime::host_impl::answer(og_world_snapshot(
+        engine, None,
+    )))
+    .as_str()
+    .unwrap()
+    .to_string();
     let mut first = Vec::new();
     for _ in 0..10 {
         ticks(engine, 1);
         first.push(cam_x(engine));
     }
-    value(og_world_restore(engine, snap, None));
+    value(og_runtime::host_impl::answer(og_world_restore(
+        engine, snap, None,
+    )));
     let mut again = Vec::new();
     for _ in 0..10 {
         ticks(engine, 1);
@@ -228,7 +241,9 @@ fn collision_pulls_in_at_once_and_eases_out() {
         (pulled - 2.7).abs() < 1e-3,
         "pulled in at once to the sphere's stop: {pulled}"
     );
-    value(og_world_despawn(engine, wall));
+    value(og_runtime::host_impl::answer(og_world_despawn(
+        engine, wall,
+    )));
     ticks(engine, 1);
     // Out by damping: the pull shrinks by dt / damping of itself a tick.
     let mut last = z(engine);
@@ -256,24 +271,24 @@ fn collision_pulls_in_at_once_and_eases_out() {
 }
 
 fn named_shot(engine: u32, name: &str, x: f64, vcam: Value) -> f64 {
-    let e = value(og_world_spawn(
+    let e = value(og_runtime::host_impl::answer(og_world_spawn(
         engine,
         Some(json!({ "name": name }).to_string()),
-    ))
+    )))
     .as_f64()
     .unwrap();
-    value(og_world_insert(
+    value(og_runtime::host_impl::answer(og_world_insert(
         engine,
         e,
         "og.Transform".into(),
         Some(at(x, 0.0, 0.0).to_string()),
-    ));
-    value(og_world_insert(
+    )));
+    value(og_runtime::host_impl::answer(og_world_insert(
         engine,
         e,
         "og.VirtualCamera".into(),
         Some(vcam.to_string()),
-    ));
+    )));
     e
 }
 
@@ -322,22 +337,30 @@ fn a_dialogue_takes_the_games_solo_for_its_shots_and_hands_it_back() {
         "og.CameraBrain".into(),
         json!({ "solo": game }).to_string(),
     ));
-    value(og_runtime::og_story_parse(engine, TALK.into()));
-    let conv = value(og_runtime::og_story_start(
+    value(og_runtime::host_impl::answer(og_runtime::og_story_parse(
+        engine,
+        TALK.into(),
+    )));
+    let conv = value(og_runtime::host_impl::answer(og_runtime::og_story_start(
         engine,
         Some(json!({ "dialogue": "talk", "cast": { "smith": smith } }).to_string()),
-    ))
+    )))
     .as_u64()
     .unwrap() as u32;
     ticks(engine, 2);
-    let view: Value = serde_json::from_str(&og_runtime::og_story_view(engine, conv)).unwrap();
+    let view: Value = serde_json::from_str(&og_runtime::host_impl::json(
+        og_runtime::og_story_view(engine, conv),
+    ))
+    .unwrap();
     assert_eq!(
         view["shot"],
         json!("close"),
         "the node's shot covers its line"
     );
     assert_eq!(solo(engine), close, "the line's shot is the solo");
-    value(og_runtime::og_story_advance(engine, conv));
+    value(og_runtime::host_impl::answer(og_runtime::og_story_advance(
+        engine, conv,
+    )));
     ticks(engine, 2);
     assert_eq!(
         solo(engine),
@@ -345,10 +368,14 @@ fn a_dialogue_takes_the_games_solo_for_its_shots_and_hands_it_back() {
         "the cast role's camera: the one that looks at smith"
     );
     assert!((cam_x(engine) - 3.0).abs() < 1e-6, "and it is live");
-    value(og_runtime::og_story_advance(engine, conv));
+    value(og_runtime::host_impl::answer(og_runtime::og_story_advance(
+        engine, conv,
+    )));
     ticks(engine, 2);
     assert_eq!(solo(engine), game, "`shot none`: the game's solo is back");
-    value(og_runtime::og_story_advance(engine, conv));
+    value(og_runtime::host_impl::answer(og_runtime::og_story_advance(
+        engine, conv,
+    )));
     ticks(engine, 2);
     assert_eq!(solo(engine), close, "the node's shot again");
     // The game picks another solo during the talk: that one is what the
@@ -360,7 +387,9 @@ fn a_dialogue_takes_the_games_solo_for_its_shots_and_hands_it_back() {
         json!({ "solo": other }).to_string(),
     ));
     ticks(engine, 2);
-    value(og_runtime::og_story_advance(engine, conv));
+    value(og_runtime::host_impl::answer(og_runtime::og_story_advance(
+        engine, conv,
+    )));
     ticks(engine, 2);
     assert_eq!(
         solo(engine),

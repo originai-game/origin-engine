@@ -4,11 +4,10 @@
 //! og.nav's system and state block are the world's.
 
 use super::engine::{Engine, engine};
-use super::refuse;
 use super::wire::{
     self, FlowDesc, NavAlgorithm, NavAreaDesc, NavBox, NavCell, NavGridDesc, NavLinkDesc,
     NavLinkKind, NavMeshDesc, NavMeshInfo, NavPath, NavRebuild, NavShape, NavShapeKind, PathDesc,
-    TilemapGridDesc, ToJson,
+    TilemapGridDesc,
 };
 use og_core::glam::{Vec2, Vec3};
 use og_ecs::{Entity, World};
@@ -20,13 +19,6 @@ use serde_json::{Value, json};
 
 fn j3(v: Vec3) -> Value {
     json!({ "x": v.x, "y": v.y, "z": v.z })
-}
-
-fn wire<T: ToJson>(r: Result<T, String>) -> String {
-    match r {
-        Ok(v) => wire::ok(&v),
-        Err(e) => refuse(e),
-    }
 }
 
 /// What a navmesh edit rebuilt: its tiles, and the mesh's polygons after.
@@ -102,17 +94,27 @@ fn edit_mesh(
     }
 }
 
-pub fn og_nav_carve(world: u32, mesh: f64, id: u32, desc: Option<String>) -> String {
-    wire((|| {
+pub fn og_nav_carve(
+    world: u32,
+    mesh: f64,
+    id: u32,
+    desc: Option<String>,
+) -> Result<crate::wire::NavRebuild, String> {
+    (|| {
         let s = wire::arg::<Option<NavShape>>(desc.as_deref(), "shape")?
             .map(shape)
             .transpose()?;
         edit_mesh(world, mesh, |m| m.carve(id, s))
-    })())
+    })()
 }
 
-pub fn og_nav_set_area(world: u32, mesh: f64, id: u32, desc: Option<String>) -> String {
-    wire((|| {
+pub fn og_nav_set_area(
+    world: u32,
+    mesh: f64,
+    id: u32,
+    desc: Option<String>,
+) -> Result<crate::wire::NavRebuild, String> {
+    (|| {
         let a = match wire::arg::<Option<NavAreaDesc>>(desc.as_deref(), "desc")? {
             Some(d) => {
                 if d.area > 63 {
@@ -123,7 +125,7 @@ pub fn og_nav_set_area(world: u32, mesh: f64, id: u32, desc: Option<String>) -> 
             None => None,
         };
         edit_mesh(world, mesh, |m| m.set_area(id, a))
-    })())
+    })()
 }
 
 fn plane_of(engine: u32) -> Plane {
@@ -146,8 +148,8 @@ fn lock<T>(m: &std::sync::Mutex<T>) -> std::sync::MutexGuard<'_, T> {
     m.lock().unwrap_or_else(|e| e.into_inner())
 }
 
-pub fn og_nav_grid(world: u32, desc: Option<String>) -> String {
-    wire((|| {
+pub fn og_nav_grid(world: u32, desc: Option<String>) -> Result<serde_json::Value, String> {
+    (|| {
         engine(world)?;
         let d: NavGridDesc = wire::arg(desc.as_deref(), "desc")?;
         let w = d.width.clamp(1, 4096);
@@ -170,11 +172,14 @@ pub fn og_nav_grid(world: u32, desc: Option<String>) -> String {
         let n = navs(world)?;
         let h = lock(&n).insert(Nav::Grid(grid));
         Ok(json!(h))
-    })())
+    })()
 }
 
-pub fn og_nav_grid_from_tilemap(world: u32, desc: Option<String>) -> String {
-    wire(engine(world).and_then(|eng| grid_from_tilemap(&eng, world, desc)))
+pub fn og_nav_grid_from_tilemap(
+    world: u32,
+    desc: Option<String>,
+) -> Result<serde_json::Value, String> {
+    engine(world).and_then(|eng| grid_from_tilemap(&eng, world, desc))
 }
 
 fn grid_from_tilemap(eng: &Engine, world: u32, desc: Option<String>) -> Result<Value, String> {
@@ -279,7 +284,7 @@ fn grid_from_tilemap(eng: &Engine, world: u32, desc: Option<String>) -> Result<V
     Ok(json!(h))
 }
 
-pub fn og_nav_set_cost(world: u32, grid: f64, x: u32, y: u32, cost: u32) -> String {
+pub fn og_nav_set_cost(world: u32, grid: f64, x: u32, y: u32, cost: u32) -> Result<(), String> {
     match (|| -> Result<(), String> {
         let n = navs(world)?;
         let mut n = lock(&n);
@@ -299,12 +304,12 @@ pub fn og_nav_set_cost(world: u32, grid: f64, x: u32, y: u32, cost: u32) -> Stri
             )),
         }
     })() {
-        Ok(()) => super::ok_void(),
-        Err(e) => refuse(e),
+        Ok(()) => Ok(()),
+        Err(e) => Err(e),
     }
 }
 
-pub fn og_nav_cell_at(world: u32, grid: f64, point: String) -> String {
+pub fn og_nav_cell_at(world: u32, grid: f64, point: String) -> crate::wire::NavCell {
     let p: Vec3 = wire::arg(Some(&point), "point").unwrap_or_default();
     let plane = plane_of(world);
     let cell = navs(world)
@@ -313,14 +318,14 @@ pub fn og_nav_cell_at(world: u32, grid: f64, point: String) -> String {
             Some(Nav::Grid(g)) => g.cell_at(plane.to_plane(p)),
             _ => None,
         });
-    wire::text_of(&match cell {
+    match cell {
         Some((x, y)) => NavCell { x, y, inside: true },
         None => NavCell {
             x: 0,
             y: 0,
             inside: false,
         },
-    })
+    }
 }
 
 fn path_value(
@@ -369,8 +374,13 @@ fn links_used(world: u32) -> Result<(), String> {
     )
 }
 
-pub fn og_nav_set_link(world: u32, mesh: f64, id: u32, desc: Option<String>) -> String {
-    wire((|| {
+pub fn og_nav_set_link(
+    world: u32,
+    mesh: f64,
+    id: u32,
+    desc: Option<String>,
+) -> Result<serde_json::Value, String> {
+    (|| {
         let l = wire::arg::<Option<NavLinkDesc>>(desc.as_deref(), "desc")?.map(link_desc);
         if l.is_some() {
             links_used(world)?;
@@ -383,11 +393,16 @@ pub fn og_nav_set_link(world: u32, mesh: f64, id: u32, desc: Option<String>) -> 
                 "{mesh} is not a navmesh (og.nav.load, og.nav.build)"
             )),
         }
-    })())
+    })()
 }
 
-pub fn og_nav_set_link_open(world: u32, mesh: f64, id: u32, open: bool) -> String {
-    wire((|| {
+pub fn og_nav_set_link_open(
+    world: u32,
+    mesh: f64,
+    id: u32,
+    open: bool,
+) -> Result<serde_json::Value, String> {
+    (|| {
         let n = navs(world)?;
         let mut n = lock(&n);
         match n.get_mut(handle(mesh)) {
@@ -402,7 +417,7 @@ pub fn og_nav_set_link_open(world: u32, mesh: f64, id: u32, open: bool) -> Strin
                 "{mesh} is not a navmesh (og.nav.load, og.nav.build)"
             )),
         }
-    })())
+    })()
 }
 
 pub fn og_nav_finish_link(world: u32, entity: f64) -> bool {
@@ -414,8 +429,8 @@ pub fn og_nav_finish_link(world: u32, entity: f64) -> bool {
     .unwrap_or(false)
 }
 
-pub fn og_nav_find_path(world: u32, desc: Option<String>) -> String {
-    wire((|| {
+pub fn og_nav_find_path(world: u32, desc: Option<String>) -> Result<NavPath, String> {
+    (|| {
         let d: PathDesc = wire::arg(desc.as_deref(), "desc")?;
         let plane = plane_of(world);
         let (from, to) = (d.from, d.to);
@@ -489,7 +504,7 @@ pub fn og_nav_find_path(world: u32, desc: Option<String>) -> String {
             }
             None => Err("desc.nav is not a grid or navmesh of this world".into()),
         }
-    })())
+    })()
 }
 
 fn cells_of(g: &Grid, plane: Plane, targets: &[Vec3]) -> Vec<(u32, u32)> {
@@ -499,8 +514,8 @@ fn cells_of(g: &Grid, plane: Plane, targets: &[Vec3]) -> Vec<(u32, u32)> {
         .collect()
 }
 
-pub fn og_nav_flow_field(world: u32, desc: Option<String>) -> String {
-    wire((|| {
+pub fn og_nav_flow_field(world: u32, desc: Option<String>) -> Result<Value, String> {
+    (|| {
         let d: FlowDesc = wire::arg(desc.as_deref(), "desc")?;
         let plane = plane_of(world);
         let n = navs(world)?;
@@ -516,10 +531,10 @@ pub fn og_nav_flow_field(world: u32, desc: Option<String>) -> String {
             targets,
             field
         })))
-    })())
+    })()
 }
 
-pub fn og_nav_set_flow_targets(world: u32, field: f64, targets: String) -> String {
+pub fn og_nav_set_flow_targets(world: u32, field: f64, targets: String) -> Result<(), String> {
     match (|| -> Result<(), String> {
         let plane = plane_of(world);
         let t: Vec<Vec3> = wire::arg(Some(&targets), "targets")?;
@@ -539,12 +554,12 @@ pub fn og_nav_set_flow_targets(world: u32, field: f64, targets: String) -> Strin
         }
         Ok(())
     })() {
-        Ok(()) => super::ok_void(),
-        Err(e) => refuse(e),
+        Ok(()) => Ok(()),
+        Err(e) => Err(e),
     }
 }
 
-pub fn og_nav_flow_at(world: u32, field: f64, point: String) -> String {
+pub fn og_nav_flow_at(world: u32, field: f64, point: String) -> glam::Vec3 {
     let p: Vec3 = wire::arg(Some(&point), "point").unwrap_or_default();
     let plane = plane_of(world);
     let d = navs(world)
@@ -553,7 +568,7 @@ pub fn og_nav_flow_at(world: u32, field: f64, point: String) -> String {
             Some(Nav::Flow { field, .. }) => Some(field.sample(plane.to_plane(p))),
             _ => None,
         });
-    wire::text_of(&d.map_or(Vec3::ZERO, |d| plane.to_world(d, 0.0)))
+    d.map_or(Vec3::ZERO, |d| plane.to_world(d, 0.0))
 }
 
 /// `NavMeshInfo`: the bounds are its polygons' (FINDINGS #9 of
@@ -572,8 +587,12 @@ fn mesh_info(h: u64, m: &NavMesh) -> NavMeshInfo {
     }
 }
 
-pub fn og_nav_load(world: u32, path: String, profile: Option<String>) -> String {
-    wire(engine(world).and_then(|eng| {
+pub fn og_nav_load(
+    world: u32,
+    path: String,
+    profile: Option<String>,
+) -> Result<crate::wire::NavMeshInfo, String> {
+    engine(world).and_then(|eng| {
         let id = og_bundle::runtime::asset_id(&path).to_string();
         let want = profile.unwrap_or_default();
         let (field, tiles, areas, links, profile) = {
@@ -631,11 +650,11 @@ pub fn og_nav_load(world: u32, path: String, profile: Option<String>) -> String 
         info.mesh = n.insert(Nav::Mesh(Box::new(mesh)));
         info.profile = profile;
         Ok(info)
-    }))
+    })
 }
 
-pub fn og_nav_build(world: u32, desc: Option<String>) -> String {
-    wire((|| {
+pub fn og_nav_build(world: u32, desc: Option<String>) -> Result<crate::wire::NavMeshInfo, String> {
+    (|| {
         engine(world)?;
         let d: NavMeshDesc = wire::arg(desc.as_deref(), "desc")?;
         let (min, max) = (d.min, d.max);
@@ -681,11 +700,16 @@ pub fn og_nav_build(world: u32, desc: Option<String>) -> String {
         let mut info = mesh_info(0, &mesh);
         info.mesh = n.insert(Nav::Mesh(Box::new(mesh)));
         Ok(info)
-    })())
+    })()
 }
 
-pub fn og_nav_set_obstacle(world: u32, mesh: f64, id: u32, obstacle: Option<String>) -> String {
-    wire((|| {
+pub fn og_nav_set_obstacle(
+    world: u32,
+    mesh: f64,
+    id: u32,
+    obstacle: Option<String>,
+) -> Result<crate::wire::NavRebuild, String> {
+    (|| {
         let o = wire::arg::<Option<NavBox>>(obstacle.as_deref(), "obstacle")?.map(|b| Obstacle {
             min: b.min,
             max: b.max,
@@ -701,22 +725,27 @@ pub fn og_nav_set_obstacle(world: u32, mesh: f64, id: u32, obstacle: Option<Stri
                 "{mesh} is not a navmesh (og.nav.load, og.nav.build)"
             )),
         }
-    })())
+    })()
 }
 
-pub fn og_nav_nearest(world: u32, mesh: f64, point: String, extent: Option<String>) -> String {
+pub fn og_nav_nearest(
+    world: u32,
+    mesh: f64,
+    point: String,
+    extent: Option<String>,
+) -> Option<glam::Vec3> {
     let p: Vec3 = wire::arg(Some(&point), "point").unwrap_or_default();
     let e = wire::arg::<Vec3>(extent.as_deref(), "extent")
         .ok()
         .filter(|e| *e != Vec3::ZERO)
         .unwrap_or(Vec3::splat(2.0));
-    let hit = navs(world)
+
+    navs(world)
         .ok()
         .and_then(|n| match lock(&n).get(handle(mesh)) {
             Some(Nav::Mesh(m)) => m.nearest(p, e).map(|r| r.1),
             _ => None,
-        });
-    wire::text_of(&hit)
+        })
 }
 
 fn path_of(engine: u32, e: Entity) -> Option<og_nav::system::PathState> {

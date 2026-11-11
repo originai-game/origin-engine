@@ -106,9 +106,12 @@ fn an_entity_anchor_follows_the_ticks_camera_and_mass_elements_age_out() {
     let e = value(og_engine_create(game, "{}".into())).as_u64().unwrap() as u32;
     let at = json!({ "position": { "x": 1.0, "y": 0.5, "z": 0.0 } });
     seen.entity.set(
-        value(og_world_spawn(e, Some(at.to_string())))
-            .as_f64()
-            .unwrap(),
+        value(og_runtime::host_impl::answer(og_world_spawn(
+            e,
+            Some(at.to_string()),
+        )))
+        .as_f64()
+        .unwrap(),
     );
     camera(e, 0.0);
     seen.spawn.set(true);
@@ -117,9 +120,8 @@ fn an_entity_anchor_follows_the_ticks_camera_and_mass_elements_age_out() {
     step();
     // Where og.camera.worldToScreen puts the entity's point.
     let screen = |e: u32| -> (f64, f64) {
-        let s: Value = serde_json::from_str(&og_camera_world_to_screen(
-            e,
-            json!({ "x": 1.0, "y": 0.5, "z": 0.0 }).to_string(),
+        let s: Value = serde_json::from_str(&og_runtime::host_impl::json(
+            og_camera_world_to_screen(e, json!({ "x": 1.0, "y": 0.5, "z": 0.0 }).to_string()),
         ))
         .unwrap();
         (s["x"].as_f64().unwrap(), s["y"].as_f64().unwrap())

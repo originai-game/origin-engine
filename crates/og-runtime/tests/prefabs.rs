@@ -126,8 +126,15 @@ fn engine(root: &Path) -> u32 {
 /// An engine with the yard instantiated.
 pub(crate) fn placed(root: &Path) -> u32 {
     let e = engine(root);
-    let scene = value(og_load_scene(e, "scenes/yard.ogt".into()));
-    value(og_world_instantiate(e, scene.as_f64().unwrap(), None));
+    let scene = value(og_runtime::host_impl::answer(og_load_scene(
+        e,
+        "scenes/yard.ogt".into(),
+    )));
+    value(og_runtime::host_impl::answer(og_world_instantiate(
+        e,
+        scene.as_f64().unwrap(),
+        None,
+    )));
     e
 }
 
@@ -150,7 +157,11 @@ fn find(e: u32, name: &str) -> f64 {
 }
 
 pub(crate) fn hp(e: u32, name: &str) -> f64 {
-    value(og_world_get(e, find(e, name), "Health".into()))["hp"]
+    value(og_runtime::host_impl::answer(og_world_get(
+        e,
+        find(e, name),
+        "Health".into(),
+    )))["hp"]
         .as_f64()
         .unwrap()
 }
@@ -170,7 +181,7 @@ fn a_save_of_an_instanced_world_restores_where_no_prefab_was_placed_and_goes_on_
     assert_eq!(lid["root"].as_f64(), Some(find(a, "crate1")));
     assert_eq!(link(a, "crate1")["root"].as_f64(), Some(find(a, "crate1")));
     step(a, 5);
-    let save = value(og_world_snapshot(a, None))
+    let save = value(og_runtime::host_impl::answer(og_world_snapshot(a, None)))
         .as_str()
         .unwrap()
         .to_string();
@@ -183,7 +194,9 @@ fn a_save_of_an_instanced_world_restores_where_no_prefab_was_placed_and_goes_on_
         "null",
         "no og.PrefabLink before"
     );
-    value(og_world_restore(b, save, None));
+    value(og_runtime::host_impl::answer(og_world_restore(
+        b, save, None,
+    )));
     assert_eq!(hash(b), saved);
     assert_eq!(link(b, "crate1/lid"), lid, "the link came back with it");
     assert_eq!(hp(b, "crate1/lid"), 40.0);
@@ -199,10 +212,10 @@ fn apply_back_and_revert_round_trip_in_the_text() {
     let prefab = |r: &Path| std::fs::read_to_string(r.join("assets/prefabs/crate.ogt")).unwrap();
     let e = placed(&root);
     // A tuned descendant: save_scene writes it as an override of its node.
-    value(og_commands_schedule(
+    value(og_runtime::host_impl::answer(og_commands_schedule(
         e,
         "0:set:crate2/lid.Health.hp=25;0:save_scene".into(),
-    ));
+    )));
     step(e, 2);
     assert_eq!(
         scene(&root),
@@ -233,15 +246,18 @@ fn apply_back_and_revert_round_trip_in_the_text() {
         "{described}"
     );
     // Reverted: the scene's text is as it was, the live value the prefab's.
-    value(og_commands_schedule(e, "0:revert_prefab:crate2/lid".into()));
+    value(og_runtime::host_impl::answer(og_commands_schedule(
+        e,
+        "0:revert_prefab:crate2/lid".into(),
+    )));
     step(e, 2);
     assert_eq!(scene(&root), YARD);
     assert_eq!(hp(e, "crate2/lid"), 10.0);
     // Applied: the prefab's lid takes 40, the instance's override goes.
-    value(og_commands_schedule(
+    value(og_runtime::host_impl::answer(og_commands_schedule(
         e,
         "0:apply_prefab:crate1/lid:Health.hp".into(),
-    ));
+    )));
     step(e, 2);
     assert_eq!(
         prefab(&root),

@@ -79,16 +79,19 @@ fn raw(text: String) -> Value {
 /// Spawns an entity and answers its probe id (`#<index>.<generation>`).
 fn spawn(engine: u32, at: [f32; 3], components: &[(&str, Value)]) -> String {
     let desc = json!({ "position": { "x": at[0], "y": at[1], "z": at[2] } });
-    let e = value(og_world_spawn(engine, Some(desc.to_string())))
-        .as_f64()
-        .unwrap();
+    let e = value(og_runtime::host_impl::answer(og_world_spawn(
+        engine,
+        Some(desc.to_string()),
+    )))
+    .as_f64()
+    .unwrap();
     for (name, v) in components {
-        value(og_world_insert(
+        value(og_runtime::host_impl::answer(og_world_insert(
             engine,
             e,
             name.to_string(),
             Some(v.to_string()),
-        ));
+        )));
     }
     let bits = e as u64;
     format!("#{}.{}", bits & 0xffff_ffff, bits >> 32)
@@ -222,8 +225,8 @@ fn without_a_renderer_the_run_is_the_same_and_its_frames_are_unchecked() {
         "dump_world, dump_entity and dump_ui"
     );
     assert_eq!(
-        og_ui_viewport(without.engine),
-        og_ui_viewport(with.engine),
+        og_runtime::host_impl::json(og_ui_viewport(without.engine)),
+        og_runtime::host_impl::json(og_ui_viewport(with.engine)),
         "the UI lays out on the same play surface"
     );
 

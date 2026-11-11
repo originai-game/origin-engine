@@ -34,7 +34,7 @@ pub use playback::{og_timeline_pause, og_timeline_play, og_timeline_seek, og_tim
 
 use super::codec::{Layout, RecordKind};
 use super::engine::{Engine, engine};
-use super::{ok_void, parse, refuse};
+use super::parse;
 use glam::{Mat3, Quat, Vec3};
 use og_core::IdMap;
 use og_core::{Error, ErrorKind, Reflect, Str64};
@@ -89,20 +89,6 @@ pub struct TimelineEnded {
 
 fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
     m.lock().unwrap_or_else(|e| e.into_inner())
-}
-
-fn wire<T: super::wire::ToJson>(r: Result<T, String>) -> String {
-    match r {
-        Ok(v) => super::wire::ok(&v),
-        Err(e) => refuse(e),
-    }
-}
-
-fn wire_void(r: Result<(), String>) -> String {
-    match r {
-        Ok(()) => ok_void(),
-        Err(e) => refuse(e),
-    }
 }
 
 fn invalid(m: impl Into<String>) -> Error {
@@ -273,17 +259,17 @@ fn curve_desc(v: &Value) -> Result<PathDesc, String> {
     Ok(d)
 }
 
-pub fn og_path_create(world: u32, desc: Option<String>) -> String {
-    wire((|| {
+pub fn og_path_create(world: u32, desc: Option<String>) -> Result<Value, String> {
+    (|| {
         engine(world)?;
         let v = parse(desc.as_deref())?;
         let p = Path::new(curve_desc(&v)?)?;
         Ok(json!(lock(&registry(world)).add_path(p) as f64))
-    })())
+    })()
 }
 
-pub fn og_path_find(world: u32, name: String) -> String {
-    wire((|| {
+pub fn og_path_find(world: u32, name: String) -> Result<serde_json::Value, String> {
+    (|| {
         engine(world)?;
         let reg = registry(world);
         let r = lock(&reg);
@@ -298,7 +284,7 @@ pub fn og_path_find(world: u32, name: String) -> String {
                 )
             }
         })
-    })())
+    })()
 }
 
 fn with_path<T>(world: u32, path: f64, f: impl FnOnce(&Path) -> T) -> Result<T, String> {
@@ -309,34 +295,36 @@ fn with_path<T>(world: u32, path: f64, f: impl FnOnce(&Path) -> T) -> Result<T, 
     Ok(f(&p))
 }
 
-pub fn og_path_sample(world: u32, path: f64, t: f64) -> String {
-    wire(with_path(world, path, |p| {
+pub fn og_path_sample(world: u32, path: f64, t: f64) -> Result<crate::wire::PathSample, String> {
+    with_path(world, path, |p| {
         let s = p.sample(t as f32);
         super::wire::PathSample {
             position: s.position,
             tangent: s.tangent,
             up: s.up,
         }
-    }))
+    })
 }
 
-pub fn og_path_length(world: u32, path: f64) -> String {
-    wire(with_path(world, path, |p| json!(p.length())))
+pub fn og_path_length(world: u32, path: f64) -> Result<serde_json::Value, String> {
+    with_path(world, path, |p| json!(p.length()))
 }
 
-pub fn og_path_nearest(world: u32, path: f64, point: String) -> String {
-    wire(
-        super::wire::arg::<Vec3>(Some(&point), "point").and_then(|q| {
-            with_path(world, path, |p| {
-                let n = p.nearest(q);
-                super::wire::PathNearest {
-                    t: n.t,
-                    position: n.position,
-                    distance: n.distance,
-                }
-            })
-        }),
-    )
+pub fn og_path_nearest(
+    world: u32,
+    path: f64,
+    point: String,
+) -> Result<crate::wire::PathNearest, String> {
+    super::wire::arg::<Vec3>(Some(&point), "point").and_then(|q| {
+        with_path(world, path, |p| {
+            let n = p.nearest(q);
+            super::wire::PathNearest {
+                t: n.t,
+                position: n.position,
+                distance: n.distance,
+            }
+        })
+    })
 }
 
 /// The frame of a path's point: -Z along the tangent, +Y its up.
@@ -605,16 +593,16 @@ fn clip_set(eng: &Engine, model: &str) -> Result<(u64, BTreeMap<String, u64>), S
     Ok((bits(&v["skeleton"]), clips))
 }
 
-pub fn og_load_timeline(world: u32, path: String) -> String {
-    wire(engine(world).and_then(|eng| {
+pub fn og_load_timeline(world: u32, path: String) -> Result<serde_json::Value, String> {
+    engine(world).and_then(|eng| {
         let h = load(&eng, &path)?;
         grant(&eng, h, eng.world().ok())?;
         Ok(json!(h as f64))
-    }))
+    })
 }
 
-pub fn og_timeline_info(world: u32, asset: f64) -> String {
-    wire((|| {
+pub fn og_timeline_info(world: u32, asset: f64) -> Result<crate::wire::TimelineInfo, String> {
+    (|| {
         engine(world)?;
         let t = lock(&registry(world))
             .timeline(asset as u64)
@@ -646,7 +634,7 @@ pub fn og_timeline_info(world: u32, asset: f64) -> String {
             paths: tl.paths.iter().map(|(n, _)| n.clone()).collect(),
             markers: markers.into_iter().map(|m| m.1).collect(),
         })
-    })())
+    })()
 }
 
 // ── the command channel ──────────────────────────────────────────────────────

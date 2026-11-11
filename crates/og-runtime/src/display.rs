@@ -23,8 +23,8 @@
 
 use super::engine::engine;
 use super::extract::RenderState;
+use super::wire;
 use super::wire::ToJson;
-use super::{ok_void, refuse, wire};
 use og_render::{AutoQuality, AutoQualityBounds, FrameSample, QualityPreset};
 use serde_json::{Value, json};
 
@@ -39,7 +39,7 @@ const PRESETS: [(&str, QualityPreset); 3] = [
 ];
 
 /// The IDL `PowerPreference` of a low-power choice.
-fn power(low_power: bool) -> wire::PowerPreference {
+fn power(low_power: bool) -> crate::wire::PowerPreference {
     if low_power {
         wire::PowerPreference::LowPower
     } else {
@@ -162,7 +162,7 @@ impl Settings {
         })
     }
 
-    fn wire(&self) -> wire::DisplaySettings {
+    fn wire(&self) -> crate::wire::DisplaySettings {
         wire::DisplaySettings {
             frame_cap: wire::FrameCap::ALL[self.frame_cap],
             battery_saver: self.battery_saver,
@@ -460,7 +460,7 @@ pub(crate) fn gpu_memory(rs: &RenderState) -> Value {
     gpu(rs).to_json()
 }
 
-fn gpu(rs: &RenderState) -> Option<wire::GpuMemory> {
+fn gpu(rs: &RenderState) -> Option<crate::wire::GpuMemory> {
     let m = rs.backend.as_ref().and_then(|b| b.gpu_memory())?;
     Some(wire::GpuMemory {
         textures: m.textures as f64,
@@ -472,7 +472,7 @@ fn gpu(rs: &RenderState) -> Option<wire::GpuMemory> {
 }
 
 /// `og.render.setDisplay`.
-pub fn og_render_set_display(world: u32, settings: Option<String>) -> String {
+pub fn og_render_set_display(world: u32, settings: Option<String>) -> Result<(), String> {
     let r = (|| -> Result<(), String> {
         let eng = engine(world)?;
         let d = super::parse(settings.as_deref())?;
@@ -485,13 +485,13 @@ pub fn og_render_set_display(world: u32, settings: Option<String>) -> String {
         Ok(())
     })();
     match r {
-        Ok(()) => ok_void(),
-        Err(e) => refuse(e),
+        Ok(()) => Ok(()),
+        Err(e) => Err(e),
     }
 }
 
 /// `og.render.resetDisplay`: every setting back to its default.
-pub fn og_render_reset_display(world: u32) -> String {
+pub fn og_render_reset_display(world: u32) -> Result<(), String> {
     let r = engine(world).and_then(|eng| {
         let mut rs = eng
             .render
@@ -501,8 +501,8 @@ pub fn og_render_reset_display(world: u32) -> String {
         Ok(())
     });
     match r {
-        Ok(()) => ok_void(),
-        Err(e) => refuse(e),
+        Ok(()) => Ok(()),
+        Err(e) => Err(e),
     }
 }
 

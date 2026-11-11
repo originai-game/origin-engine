@@ -215,13 +215,6 @@ fn loaded(engine: u32, asset: f64) -> Result<Arc<Loaded>, String> {
         .ok_or_else(|| format!("{asset} is not a vfx loaded in this world (og.load.vfx)"))
 }
 
-fn wire<T: super::wire::ToJson>(r: Result<T, String>) -> String {
-    match r {
-        Ok(v) => super::wire::ok(&v),
-        Err(e) => super::refuse(e),
-    }
-}
-
 /// A wire answer's value, or its reason.
 fn answer(text: &str) -> Result<Value, String> {
     let v: Value = serde_json::from_str(text).map_err(|e| e.to_string())?;
@@ -232,16 +225,14 @@ fn answer(text: &str) -> Result<Value, String> {
     }
 }
 
-pub fn og_load_vfx(world: u32, path: String) -> String {
-    wire(
-        super::engine::engine(world)
-            .and_then(|eng| load(&eng, &path))
-            .map(|i| json!(handle(i))),
-    )
+pub fn og_load_vfx(world: u32, path: String) -> Result<serde_json::Value, String> {
+    super::engine::engine(world)
+        .and_then(|eng| load(&eng, &path))
+        .map(|i| json!(handle(i)))
 }
 
-pub fn og_vfx_info(world: u32, asset: f64) -> String {
-    wire((|| {
+pub fn og_vfx_info(world: u32, asset: f64) -> Result<crate::wire::VfxInfo, String> {
+    (|| {
         super::engine::engine(world)?;
         let l = loaded(world, asset)?;
         let v = &l.vfx;
@@ -261,11 +252,11 @@ pub fn og_vfx_info(world: u32, asset: f64) -> String {
                 .map(|e| e.kind.name().to_string())
                 .collect(),
         })
-    })())
+    })()
 }
 
-pub fn og_vfx_spawn(world: u32, desc: Option<String>) -> String {
-    wire((|| {
+pub fn og_vfx_spawn(world: u32, desc: Option<String>) -> Result<Value, String> {
+    (|| {
         let raw = super::parse(desc.as_deref())?;
         let d: super::wire::VfxSpawnDesc = super::wire::value(&raw, "desc")?;
         let given = |k: &str| raw.get(k).is_some_and(|v| !v.is_null());
@@ -286,10 +277,10 @@ pub fn og_vfx_spawn(world: u32, desc: Option<String>) -> String {
         if let Some(parent) = d.parent {
             spawn.insert("parent".into(), json!(parent));
         }
-        let e = answer(&super::api::og_world_spawn(
+        let e = answer(&crate::host_impl::answer(super::api::og_world_spawn(
             world,
             Some(Value::Object(spawn).to_string()),
-        ))?;
+        )))?;
         let bits = e.as_u64().ok_or("world.spawn answered no entity")?;
         let seed = match d.seed {
             0 => (splitmix(bits) as u32).max(1),
@@ -307,14 +298,14 @@ pub fn og_vfx_spawn(world: u32, desc: Option<String>) -> String {
             let t = &d.tint;
             v["tint"] = json!({ "r": t.r, "g": t.g, "b": t.b });
         }
-        answer(&super::api::og_world_insert(
+        answer(&crate::host_impl::answer(super::api::og_world_insert(
             world,
             bits as f64,
             COMPONENT.into(),
             Some(v.to_string()),
-        ))?;
+        )))?;
         Ok(e)
-    })())
+    })()
 }
 
 // ── shared arithmetic ───────────────────────────────────────────────────────

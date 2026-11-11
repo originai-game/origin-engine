@@ -137,8 +137,15 @@ fn frames(engine: u32, n: usize) -> Value {
 #[test]
 fn graphics_settings_round_trip_and_apply() {
     let (e, seen) = engine(false);
-    let set = |e, s: Value| answer(og_render_set_display(e, Some(s.to_string())));
-    let game = answer(og_runtime::og_world_resource(e, "og.RenderSettings".into()));
+    let set = |e, s: Value| {
+        answer(og_runtime::host_impl::answer(og_render_set_display(
+            e,
+            Some(s.to_string()),
+        )))
+    };
+    let game = answer(og_runtime::host_impl::answer(
+        og_runtime::og_world_resource(e, "og.RenderSettings".into()),
+    ));
     let chosen = json!({
         "quality": "low", "frameCap": "fps144", "batterySaver": false, "renderScale": 0.8,
         "autoQuality": false, "autoMinScale": 0.6, "autoPresetSteps": 2,
@@ -160,7 +167,9 @@ fn graphics_settings_round_trip_and_apply() {
         seen.borrow().quality,
         Some(RenderQuality::preset(QualityPreset::Low))
     );
-    let settings = answer(og_runtime::og_world_resource(e, "og.RenderSettings".into()));
+    let settings = answer(og_runtime::host_impl::answer(
+        og_runtime::og_world_resource(e, "og.RenderSettings".into()),
+    ));
     assert_eq!(settings, game, "RenderSettings keep the game's quality");
     let saved = answer(og_render_display(e))["settings"].clone();
     for (k, v) in chosen.as_object().unwrap() {
@@ -200,7 +209,10 @@ fn graphics_settings_round_trip_and_apply() {
 
     // resetDisplay is the way back: every field at its default, as on an
     // engine nothing set, and the page told to leave fullscreen.
-    assert_eq!(answer(og_render_reset_display(f))["ok"], json!(true));
+    assert_eq!(
+        answer(og_runtime::host_impl::answer(og_render_reset_display(f)))["ok"],
+        json!(true)
+    );
     let reset = answer(og_render_display(f))["settings"].clone();
     let (g, _) = engine(false);
     assert_eq!(reset, answer(og_render_display(g))["settings"]);
@@ -221,7 +233,10 @@ fn graphics_settings_round_trip_and_apply() {
         )
     );
     assert_eq!(frames(f, 1)["fullscreen"], json!(false));
-    assert_eq!(answer(og_render_reset_display(9999))["ok"], json!(false));
+    assert_eq!(
+        answer(og_runtime::host_impl::answer(og_render_reset_display(9999)))["ok"],
+        json!(false)
+    );
 }
 
 /// What the browser decides comes back from the page: fullscreen follows
@@ -243,10 +258,10 @@ fn the_page_reports_fullscreen_power_and_raw_mouse() {
         (json!(true), json!("highPerformance"), json!(false)),
         "{info}"
     );
-    og_render_set_display(
+    og_runtime::host_impl::answer(og_render_set_display(
         e,
         Some(json!({ "fullscreen": true, "powerPreference": "lowPower" }).to_string()),
-    );
+    ));
     assert_eq!(frames(e, 1)["fullscreen"], json!(true));
     let info = answer(og_render_display(e));
     assert_eq!(
@@ -280,15 +295,14 @@ fn the_page_reports_fullscreen_power_and_raw_mouse() {
     og_runtime::set_power_preference(e, true);
     assert_eq!(answer(og_render_display(e))["restartNeeded"], json!(false));
 
-    let mouse = |e| answer(og_runtime::og_input_mouse(e));
+    let mouse = |e| answer(og_runtime::host_impl::json(og_runtime::og_input_mouse(e)));
     assert_eq!(
         mouse(e),
         json!({ "raw": true, "rawActive": false, "rawUnsupported": false })
     );
     assert_eq!(
-        answer(og_runtime::og_input_set_mouse(
-            e,
-            Some(json!({ "raw": false }).to_string())
+        answer(og_runtime::host_impl::answer(
+            og_runtime::og_input_set_mouse(e, Some(json!({ "raw": false }).to_string()))
         ))["ok"],
         json!(true)
     );

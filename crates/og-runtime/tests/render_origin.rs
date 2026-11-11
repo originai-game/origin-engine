@@ -86,21 +86,40 @@ fn frame_with(eye: Vec3, boxed: Vec3, lit: Vec3, origin: Option<Value>) -> Seen 
     let e = value(og_engine_create(game, "{}".into())).as_u64().unwrap() as u32;
     let seen = Rc::new(RefCell::new(Seen::default()));
     set_render_backend(e, Some(Box::new(Recorder(seen.clone())))).unwrap();
-    let geometry = value(og_render_box_geometry(e, Some("{}".into())));
-    let material = value(og_render_standard_material(e, Some("{}".into())));
+    let geometry = value(og_runtime::host_impl::answer(og_render_box_geometry(
+        e,
+        Some("{}".into()),
+    )));
+    let material = value(og_runtime::host_impl::answer(og_render_standard_material(
+        e,
+        Some("{}".into()),
+    )));
     let place = |p: Vec3| json!({ "position": { "x": p.x, "y": p.y, "z": p.z } }).to_string();
-    let b = value(og_world_spawn(e, Some(place(boxed))))
-        .as_f64()
-        .unwrap();
+    let b = value(og_runtime::host_impl::answer(og_world_spawn(
+        e,
+        Some(place(boxed)),
+    )))
+    .as_f64()
+    .unwrap();
     let mesh = json!({ "geometry": geometry, "material": material }).to_string();
-    value(og_world_insert(e, b, "og.Mesh".into(), Some(mesh)));
-    let l = value(og_world_spawn(e, Some(place(lit)))).as_f64().unwrap();
-    value(og_world_insert(
+    value(og_runtime::host_impl::answer(og_world_insert(
+        e,
+        b,
+        "og.Mesh".into(),
+        Some(mesh),
+    )));
+    let l = value(og_runtime::host_impl::answer(og_world_spawn(
+        e,
+        Some(place(lit)),
+    )))
+    .as_f64()
+    .unwrap();
+    value(og_runtime::host_impl::answer(og_world_insert(
         e,
         l,
         "og.PointLight".into(),
         Some(json!({ "intensity": 5.0, "distance": 30.0 }).to_string()),
-    ));
+    )));
     let q = turn();
     let camera = json!({
         "position": { "x": eye.x, "y": eye.y, "z": eye.z },

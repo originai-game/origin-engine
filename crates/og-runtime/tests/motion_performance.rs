@@ -128,11 +128,22 @@ fn cooked_action_and_look_compose_release_and_replay_on_tick_time() {
     let w = value(og_engine_create(game, json!({"root":root}).to_string()))
         .as_u64()
         .unwrap() as u32;
-    let anim = value(og_load_animation(w, "models/strider.glb".into()));
-    let model = value(og_load_gltf(w, "models/strider.glb".into(), None));
-    let e = value(og_world_instantiate(w, model.as_f64().unwrap(), None))
-        .as_f64()
-        .unwrap();
+    let anim = value(og_runtime::host_impl::answer(og_load_animation(
+        w,
+        "models/strider.glb".into(),
+    )));
+    let model = value(og_runtime::host_impl::answer(og_load_gltf(
+        w,
+        "models/strider.glb".into(),
+        None,
+    )));
+    let e = value(og_runtime::host_impl::answer(og_world_instantiate(
+        w,
+        model.as_f64().unwrap(),
+        None,
+    )))
+    .as_f64()
+    .unwrap();
     for (name, desc) in [
         ("og.Skeleton", json!({"asset":anim["skeleton"]})),
         ("og.MotionAgent", json!({"drive":true})),
@@ -141,7 +152,12 @@ fn cooked_action_and_look_compose_release_and_replay_on_tick_time() {
             json!({"mesh":0,"maxDistance":0,"gravityScale":0}),
         ),
     ] {
-        value(og_world_insert(w, e, name.into(), Some(desc.to_string())));
+        value(og_runtime::host_impl::answer(og_world_insert(
+            w,
+            e,
+            name.into(),
+            Some(desc.to_string()),
+        )));
     }
     value(og_engine_write_resource(
         w,
@@ -153,11 +169,11 @@ fn cooked_action_and_look_compose_release_and_replay_on_tick_time() {
     frames(w, 1);
     let rest = drawn.borrow().clone();
     assert!(!rest.is_empty());
-    value(og_motion_look_at(
+    value(og_runtime::host_impl::answer(og_motion_look_at(
         w,
         e,
         Some(json!({"target":{"x":3,"y":1.6,"z":-1},"duration":2,"blend":0.1}).to_string()),
-    ));
+    )));
     frames(w, 15);
     let looked = drawn.borrow().clone();
     assert_ne!(
@@ -171,13 +187,16 @@ fn cooked_action_and_look_compose_release_and_replay_on_tick_time() {
     for joint in 13..21 {
         assert_eq!(rest[joint], looked[joint], "look moved a leg joint");
     }
-    value(og_motion_react(
+    value(og_runtime::host_impl::answer(og_motion_react(
         w,
         e,
         Some(json!({"action":"action.ogt","direction":{"x":1,"y":0,"z":0},"duration":0.8,"blend":0.1}).to_string()),
-    ));
+    )));
     frames(w, 20);
-    assert_eq!(value(og_motion_status(w, e))["reacting"], true);
+    assert_eq!(
+        value(og_runtime::host_impl::answer(og_motion_status(w, e)))["reacting"],
+        true
+    );
     assert_ne!(
         *drawn.borrow(),
         looked,
@@ -186,7 +205,7 @@ fn cooked_action_and_look_compose_release_and_replay_on_tick_time() {
     // The fixture's bundle declares no model: og.anim's pose is drawn and the
     // agent is never ready (failed with that reason, on the CPU path that
     // needs no GPU to try).
-    let presentation = value(og_motion_presentation(w, e));
+    let presentation = value(og_runtime::host_impl::answer(og_motion_presentation(w, e)));
     assert_ne!(
         presentation["state"], "ready",
         "an authored fallback palette is not generated readiness"
@@ -228,28 +247,44 @@ fn cooked_action_and_look_compose_release_and_replay_on_tick_time() {
         hand.distance(wanted) < 0.025,
         "hood contact: hand {hand}, target {wanted}"
     );
-    let saved = value(og_world_snapshot(w, None))
+    let saved = value(og_runtime::host_impl::answer(og_world_snapshot(w, None)))
         .as_str()
         .unwrap()
         .to_string();
     frames(w, 12);
     let expected = drawn.borrow().clone();
-    let expected_status = value(og_motion_status(w, e));
+    let expected_status = value(og_runtime::host_impl::answer(og_motion_status(w, e)));
     value(og_engine_frame(w, 0.0));
     assert_eq!(
         *drawn.borrow(),
         expected,
         "drawing without a tick advanced the action"
     );
-    assert_eq!(value(og_motion_status(w, e)), expected_status);
-    value(og_world_restore(w, saved, None));
+    assert_eq!(
+        value(og_runtime::host_impl::answer(og_motion_status(w, e))),
+        expected_status
+    );
+    value(og_runtime::host_impl::answer(og_world_restore(
+        w, saved, None,
+    )));
     frames(w, 12);
     assert_eq!(*drawn.borrow(), expected, "restored performance diverged");
-    assert_eq!(value(og_motion_status(w, e)), expected_status);
-    value(og_motion_look_at(w, e, Some("{}".into())));
-    value(og_motion_react(w, e, Some("{}".into())));
+    assert_eq!(
+        value(og_runtime::host_impl::answer(og_motion_status(w, e))),
+        expected_status
+    );
+    value(og_runtime::host_impl::answer(og_motion_look_at(
+        w,
+        e,
+        Some("{}".into()),
+    )));
+    value(og_runtime::host_impl::answer(og_motion_react(
+        w,
+        e,
+        Some("{}".into()),
+    )));
     frames(w, 20);
-    let status = value(og_motion_status(w, e));
+    let status = value(og_runtime::host_impl::answer(og_motion_status(w, e)));
     assert_eq!(status["looking"], false);
     assert_eq!(status["reacting"], false);
     assert_eq!(
@@ -257,15 +292,18 @@ fn cooked_action_and_look_compose_release_and_replay_on_tick_time() {
         rest,
         "release must return to the base animation"
     );
-    let bad: Value = serde_json::from_str(&og_motion_react(
+    let bad: Value = serde_json::from_str(&og_runtime::host_impl::answer(og_motion_react(
         w,
         e,
         Some(json!({"action":"action.ogt","strength":2}).to_string()),
-    ))
+    )))
     .unwrap();
     assert_eq!(bad["ok"], false);
-    assert_eq!(value(og_motion_status(w, e))["reacting"], false);
-    value(og_motion_look_at(
+    assert_eq!(
+        value(og_runtime::host_impl::answer(og_motion_status(w, e)))["reacting"],
+        false
+    );
+    value(og_runtime::host_impl::answer(og_motion_look_at(
         w,
         e,
         Some(
@@ -274,8 +312,8 @@ fn cooked_action_and_look_compose_release_and_replay_on_tick_time() {
             })
             .to_string(),
         ),
-    ));
-    value(og_motion_react(
+    )));
+    value(og_runtime::host_impl::answer(og_motion_react(
         w,
         e,
         Some(
@@ -284,9 +322,9 @@ fn cooked_action_and_look_compose_release_and_replay_on_tick_time() {
             })
             .to_string(),
         ),
-    ));
+    )));
     frames(w, 90);
-    let status = value(og_motion_status(w, e));
+    let status = value(og_runtime::host_impl::answer(og_motion_status(w, e)));
     assert_eq!(status["looking"], false, "look did not expire");
     assert_eq!(
         status["reacting"], false,

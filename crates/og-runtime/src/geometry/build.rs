@@ -28,16 +28,23 @@ fn make(
     Ok(handle)
 }
 
-pub fn og_render_buffer_geometry(world: u32, desc: Option<String>) -> String {
-    wire((|| {
+pub fn og_render_buffer_geometry(
+    world: u32,
+    desc: Option<String>,
+) -> Result<serde_json::Value, String> {
+    (|| {
         let d: wire::BufferGeometryDesc = wire::arg(desc.as_deref(), "desc")?;
         let mesh = mesh_of_desc(&d)?;
         make(world, mesh, d.physics, d.dynamic)
-    })())
+    })()
 }
 
-pub fn og_render_update_geometry(world: u32, geometry: f64, desc: Option<String>) -> String {
-    wire_void((|| {
+pub fn og_render_update_geometry(
+    world: u32,
+    geometry: f64,
+    desc: Option<String>,
+) -> Result<(), String> {
+    (|| {
         let eng = engine(world)?;
         let d: wire::BufferGeometryDesc = wire::arg(desc.as_deref(), "desc")?;
         let index = index_of(geometry).ok_or_else(|| format!("{geometry} is not a geometry"))?;
@@ -64,11 +71,14 @@ pub fn og_render_update_geometry(world: u32, geometry: f64, desc: Option<String>
             super::modules::set_mesh(&eng, assets::handle(index), m)?;
         }
         Ok(())
-    })())
+    })()
 }
 
-pub fn og_render_geometry_info(world: u32, geometry: f64) -> String {
-    wire((|| {
+pub fn og_render_geometry_info(
+    world: u32,
+    geometry: f64,
+) -> Result<crate::wire::GeometryInfo, String> {
+    (|| {
         let eng = engine(world)?;
         let index = index_of(geometry).ok_or_else(|| format!("{geometry} is not a geometry"))?;
         let rs = eng.render.borrow();
@@ -85,7 +95,7 @@ pub fn og_render_geometry_info(world: u32, geometry: f64) -> String {
             max: i.max,
             dynamic: rs.geo.dynamic.contains(&index),
         })
-    })())
+    })()
 }
 
 /// `v` (field `k`), refused unless finite and at least 0.
@@ -139,17 +149,20 @@ fn primitive<D: wire::FromJson + Default + Primitive>(
     world: u32,
     desc: Option<String>,
     build: impl FnOnce(D) -> Result<og_render::MeshData, String>,
-) -> String {
-    wire((|| {
+) -> Result<serde_json::Value, String> {
+    (|| {
         let d: D = wire::arg(desc.as_deref(), "desc")?;
         let repeat = d.uv_repeat();
         let mut mesh = build(d)?;
         uv_repeat(repeat, &mut mesh)?;
         make(world, mesh, true, false)
-    })())
+    })()
 }
 
-pub fn og_render_cylinder_geometry(world: u32, desc: Option<String>) -> String {
+pub fn og_render_cylinder_geometry(
+    world: u32,
+    desc: Option<String>,
+) -> Result<serde_json::Value, String> {
     primitive(world, desc, |d: wire::CylinderGeometryDesc| {
         Ok(geo::primitives::cylinder(&geo::primitives::Cylinder {
             radius_top: size(d.radius_top, "radiusTop")?,
@@ -164,7 +177,10 @@ pub fn og_render_cylinder_geometry(world: u32, desc: Option<String>) -> String {
     })
 }
 
-pub fn og_render_cone_geometry(world: u32, desc: Option<String>) -> String {
+pub fn og_render_cone_geometry(
+    world: u32,
+    desc: Option<String>,
+) -> Result<serde_json::Value, String> {
     primitive(world, desc, |d: wire::ConeGeometryDesc| {
         Ok(geo::primitives::cone(
             size(d.radius, "radius")?,
@@ -176,7 +192,10 @@ pub fn og_render_cone_geometry(world: u32, desc: Option<String>) -> String {
     })
 }
 
-pub fn og_render_capsule_geometry(world: u32, desc: Option<String>) -> String {
+pub fn og_render_capsule_geometry(
+    world: u32,
+    desc: Option<String>,
+) -> Result<serde_json::Value, String> {
     primitive(world, desc, |d: wire::CapsuleGeometryDesc| {
         Ok(geo::primitives::capsule(
             size(d.radius, "radius")?,
@@ -188,7 +207,10 @@ pub fn og_render_capsule_geometry(world: u32, desc: Option<String>) -> String {
     })
 }
 
-pub fn og_render_torus_geometry(world: u32, desc: Option<String>) -> String {
+pub fn og_render_torus_geometry(
+    world: u32,
+    desc: Option<String>,
+) -> Result<serde_json::Value, String> {
     primitive(world, desc, |d: wire::TorusGeometryDesc| {
         Ok(geo::primitives::torus(
             size(d.radius, "radius")?,
@@ -200,7 +222,10 @@ pub fn og_render_torus_geometry(world: u32, desc: Option<String>) -> String {
     })
 }
 
-pub fn og_render_ring_geometry(world: u32, desc: Option<String>) -> String {
+pub fn og_render_ring_geometry(
+    world: u32,
+    desc: Option<String>,
+) -> Result<serde_json::Value, String> {
     primitive(world, desc, |d: wire::RingGeometryDesc| {
         Ok(geo::primitives::ring(
             size(d.inner_radius, "innerRadius")?,
@@ -213,7 +238,10 @@ pub fn og_render_ring_geometry(world: u32, desc: Option<String>) -> String {
     })
 }
 
-pub fn og_render_circle_geometry(world: u32, desc: Option<String>) -> String {
+pub fn og_render_circle_geometry(
+    world: u32,
+    desc: Option<String>,
+) -> Result<serde_json::Value, String> {
     primitive(world, desc, |d: wire::CircleGeometryDesc| {
         Ok(geo::primitives::circle(
             size(d.radius, "radius")?,
@@ -224,7 +252,10 @@ pub fn og_render_circle_geometry(world: u32, desc: Option<String>) -> String {
     })
 }
 
-pub fn og_render_tube_geometry(world: u32, desc: Option<String>) -> String {
+pub fn og_render_tube_geometry(
+    world: u32,
+    desc: Option<String>,
+) -> Result<serde_json::Value, String> {
     primitive(world, desc, |d: wire::TubeGeometryDesc| {
         if d.path != 0 {
             let h = d.path;
@@ -338,8 +369,8 @@ fn generated<D: wire::FromJson + Default + Made>(
     world: u32,
     desc: Option<String>,
     build: impl FnOnce(&D) -> Result<og_geom::Mesh, String>,
-) -> String {
-    wire((|| {
+) -> Result<serde_json::Value, String> {
+    (|| {
         let d: D = wire::arg(desc.as_deref(), "desc")?;
         let mesh = build(&d)?;
         if mesh.indices.is_empty() {
@@ -355,7 +386,7 @@ fn generated<D: wire::FromJson + Default + Made>(
         }
         og_render::shapes::repeat_uv(&mut data, repeat);
         make(world, data, physics, dynamic)
-    })())
+    })()
 }
 
 /// Points as og-geom reads them, refused when one is not finite.
@@ -444,14 +475,20 @@ fn fnum(v: f64, k: &str) -> Result<f64, String> {
     Ok(v)
 }
 
-pub fn og_render_shape_geometry(world: u32, desc: Option<String>) -> String {
+pub fn og_render_shape_geometry(
+    world: u32,
+    desc: Option<String>,
+) -> Result<serde_json::Value, String> {
     generated(world, desc, |d: &wire::ShapeGeometryDesc| {
         let shapes = shapes_of(&d.shapes, &[[0.0, 0.5], [-0.5, -0.5], [0.5, -0.5]])?;
         Ok(og_geom::shape_geometry(&shapes))
     })
 }
 
-pub fn og_render_extrude_geometry(world: u32, desc: Option<String>) -> String {
+pub fn og_render_extrude_geometry(
+    world: u32,
+    desc: Option<String>,
+) -> Result<serde_json::Value, String> {
     generated(world, desc, |d: &wire::ExtrudeGeometryDesc| {
         let shapes = shapes_of(
             &d.shapes,
@@ -477,7 +514,10 @@ pub fn og_render_extrude_geometry(world: u32, desc: Option<String>) -> String {
     })
 }
 
-pub fn og_render_lathe_geometry(world: u32, desc: Option<String>) -> String {
+pub fn og_render_lathe_geometry(
+    world: u32,
+    desc: Option<String>,
+) -> Result<serde_json::Value, String> {
     let given = parse(desc.as_deref()).is_ok_and(|v| !v["points"].is_null());
     generated(world, desc, |d: &wire::LatheGeometryDesc| {
         let mut l = og_geom::Lathe::default();
@@ -502,7 +542,10 @@ pub fn og_render_lathe_geometry(world: u32, desc: Option<String>) -> String {
     })
 }
 
-pub fn og_render_polyhedron_geometry(world: u32, desc: Option<String>) -> String {
+pub fn og_render_polyhedron_geometry(
+    world: u32,
+    desc: Option<String>,
+) -> Result<serde_json::Value, String> {
     generated(world, desc, |d: &wire::PolyhedronGeometryDesc| {
         if d.vertices.iter().any(|v| !v.is_finite()) {
             return Err("vertices holds something that is not a finite number".into());
@@ -519,25 +562,41 @@ pub fn og_render_polyhedron_geometry(world: u32, desc: Option<String>) -> String
     })
 }
 
-fn solid(world: u32, desc: Option<String>, make: fn(f64, u32) -> og_geom::Mesh) -> String {
+fn solid(
+    world: u32,
+    desc: Option<String>,
+    make: fn(f64, u32) -> og_geom::Mesh,
+) -> Result<serde_json::Value, String> {
     generated(world, desc, |d: &wire::SolidGeometryDesc| {
         Ok(make(fsize(d.radius, "radius")?, d.detail.min(64)))
     })
 }
 
-pub fn og_render_icosahedron_geometry(world: u32, desc: Option<String>) -> String {
+pub fn og_render_icosahedron_geometry(
+    world: u32,
+    desc: Option<String>,
+) -> Result<serde_json::Value, String> {
     solid(world, desc, og_geom::icosahedron)
 }
 
-pub fn og_render_dodecahedron_geometry(world: u32, desc: Option<String>) -> String {
+pub fn og_render_dodecahedron_geometry(
+    world: u32,
+    desc: Option<String>,
+) -> Result<serde_json::Value, String> {
     solid(world, desc, og_geom::dodecahedron)
 }
 
-pub fn og_render_octahedron_geometry(world: u32, desc: Option<String>) -> String {
+pub fn og_render_octahedron_geometry(
+    world: u32,
+    desc: Option<String>,
+) -> Result<serde_json::Value, String> {
     solid(world, desc, og_geom::octahedron)
 }
 
-pub fn og_render_tetrahedron_geometry(world: u32, desc: Option<String>) -> String {
+pub fn og_render_tetrahedron_geometry(
+    world: u32,
+    desc: Option<String>,
+) -> Result<serde_json::Value, String> {
     solid(world, desc, og_geom::tetrahedron)
 }
 
@@ -550,7 +609,10 @@ fn keys(list: &[wire::SweepKey]) -> Vec<og_geom::Key> {
         .collect()
 }
 
-pub fn og_render_sweep_geometry(world: u32, desc: Option<String>) -> String {
+pub fn og_render_sweep_geometry(
+    world: u32,
+    desc: Option<String>,
+) -> Result<serde_json::Value, String> {
     generated(world, desc, |d: &wire::SweepGeometryDesc| {
         use wire::OneOf::{A, B};
         let path = path_sampler(world, d.path, "desc.path")?
@@ -621,7 +683,10 @@ fn placed(
     .map_err(|e| e.replacen("part 0", what, 1))
 }
 
-pub fn og_render_csg_geometry(world: u32, desc: Option<String>) -> String {
+pub fn og_render_csg_geometry(
+    world: u32,
+    desc: Option<String>,
+) -> Result<serde_json::Value, String> {
     generated(world, desc, |d: &wire::CsgGeometryDesc| {
         let op = match d.op {
             wire::CsgOp::Union => og_geom::CsgOp::Union,
@@ -635,7 +700,10 @@ pub fn og_render_csg_geometry(world: u32, desc: Option<String>) -> String {
     })
 }
 
-pub fn og_render_merge_geometries(world: u32, desc: Option<String>) -> String {
+pub fn og_render_merge_geometries(
+    world: u32,
+    desc: Option<String>,
+) -> Result<serde_json::Value, String> {
     generated(world, desc, |d: &wire::MergeGeometriesDesc| {
         let list = &d.parts;
         if list.is_empty() {

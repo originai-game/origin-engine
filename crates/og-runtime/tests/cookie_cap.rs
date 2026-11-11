@@ -69,23 +69,23 @@ fn warnings(engine: u32) -> Vec<String> {
 
 /// A point light with its own cookie (a render target's texture), its id.
 fn cookie_point(engine: u32, x: f64) -> f64 {
-    let target = value(og_render_render_target(
+    let target = value(og_runtime::host_impl::answer(og_render_render_target(
         engine,
         Some(json!({ "width": 8, "height": 48 }).to_string()),
-    ));
-    let e = value(og_world_spawn(
+    )));
+    let e = value(og_runtime::host_impl::answer(og_world_spawn(
         engine,
         Some(json!({ "position": { "x": x, "y": 2, "z": 0 } }).to_string()),
-    ))
+    )))
     .as_f64()
     .unwrap();
     let light = json!({ "intensity": 5, "distance": 6, "cookie": target["texture"] });
-    value(og_world_insert(
+    value(og_runtime::host_impl::answer(og_world_insert(
         engine,
         e,
         "og.PointLight".into(),
         Some(light.to_string()),
-    ));
+    )));
     e
 }
 

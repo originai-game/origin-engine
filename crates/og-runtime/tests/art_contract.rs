@@ -83,7 +83,10 @@ impl Hooks for Host {
     fn dispatch(&self, call: &Dispatch) -> Result<String, String> {
         if call.kind == 0 && call.id == self.0.acting.get() {
             self.0.acting.set(0);
-            let a = answer(og_render_apply_look(call.engine, self.0.look.get()));
+            let a = answer(og_runtime::host_impl::answer(og_render_apply_look(
+                call.engine,
+                self.0.look.get(),
+            )));
             self.0.answers.borrow_mut().push(a);
         }
         Ok(String::new())
@@ -102,7 +105,11 @@ fn look_name(e: u32) -> Value {
 }
 
 fn field(e: u32, resource: &str, name: &str) -> Value {
-    value(og_world_resource(e, resource.into()))[name].clone()
+    value(og_runtime::host_impl::answer(og_world_resource(
+        e,
+        resource.into(),
+    )))[name]
+        .clone()
 }
 
 /// An engine over the project, with GameDesc `desc` and the two systems.
@@ -144,9 +151,12 @@ fn the_project_look_applies_and_a_system_writes_only_the_contract_it_declares() 
     assert_eq!(field(e, "og.ArtPalette", "accents"), json!([1, 3]));
     assert_eq!(field(e, "og.ArtLine", "width"), json!(2.0));
 
-    let b = value(og_load_look(e, "looks/b.ogt".into()))
-        .as_f64()
-        .unwrap();
+    let b = value(og_runtime::host_impl::answer(og_load_look(
+        e,
+        "looks/b.ogt".into(),
+    )))
+    .as_f64()
+    .unwrap();
     apply.look.set(b);
     // A system that declares the frame's resources only: the look applies,
     // the contract stays the project's.

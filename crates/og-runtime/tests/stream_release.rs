@@ -266,13 +266,19 @@ impl Game {
     }
 
     fn state(&self) -> String {
-        let v = value(og_stream_status(self.engine, "zone".into()));
+        let v = value(og_runtime::host_impl::answer(og_stream_status(
+            self.engine,
+            "zone".into(),
+        )));
         v["state"].as_str().unwrap_or_default().to_string()
     }
 
     /// Frames until the group is resident (and one more for what it holds).
     fn resident(&self) {
-        value(og_stream_request(self.engine, "zone".into()));
+        value(og_runtime::host_impl::answer(og_stream_request(
+            self.engine,
+            "zone".into(),
+        )));
         for _ in 0..20 {
             self.frame();
             if self.state() == "resident" {
@@ -285,7 +291,10 @@ impl Game {
 
     fn sprite(&self) -> Result<Value, String> {
         let desc = json!({ "array": self.array, "arrayLayer": 1, "width": 2, "height": 2 });
-        answer(og_render_sprite(self.engine, Some(desc.to_string())))
+        answer(og_runtime::host_impl::answer(og_render_sprite(
+            self.engine,
+            Some(desc.to_string()),
+        )))
     }
 
     fn environment(&self, map: f64) {
@@ -307,7 +316,7 @@ impl Game {
     }
 
     fn budget(&self) -> Value {
-        value(og_stream_budget(self.engine))
+        value(og_runtime::host_impl::answer(og_stream_budget(self.engine)))
     }
 
     /// The probe's dump_stream, through the command channel (a script at
@@ -334,7 +343,10 @@ impl Game {
     fn use_all(&self) {
         self.environment(self.env);
         self.grade(self.lut);
-        value(og_render_apply_look(self.engine, self.dusk));
+        value(og_runtime::host_impl::answer(og_render_apply_look(
+            self.engine,
+            self.dusk,
+        )));
         self.sprite().expect("a sprite of the array");
         self.frame();
         self.sprite().expect("a sprite of the array");
@@ -345,7 +357,10 @@ impl Game {
     fn use_none(&self) {
         self.environment(0.0);
         self.grade(0.0);
-        value(og_render_apply_look(self.engine, self.plain));
+        value(og_runtime::host_impl::answer(og_render_apply_look(
+            self.engine,
+            self.plain,
+        )));
         self.frame();
         self.frame();
     }
@@ -382,36 +397,57 @@ fn game() -> Game {
         env: 0.0,
         array: 0.0,
         dusk: 0.0,
-        plain: value(og_load_look(engine, "looks/plain.ogt".into()))
-            .as_f64()
-            .unwrap(),
+        plain: value(og_runtime::host_impl::answer(og_load_look(
+            engine,
+            "looks/plain.ogt".into(),
+        )))
+        .as_f64()
+        .unwrap(),
         lut: 0.0,
     };
     g.frame();
     assert_eq!(g.state(), "unloaded");
-    let e = answer(og_load_environment(engine, "env/studio.ogt".into()));
+    let e = answer(og_runtime::host_impl::answer(og_load_environment(
+        engine,
+        "env/studio.ogt".into(),
+    )));
     let pending = e.expect("a grouped map's handle is pending until resident");
-    let a = answer(og_load_texture_array(engine, "tex/frames.ogt".into()));
+    let a = answer(og_runtime::host_impl::answer(og_load_texture_array(
+        engine,
+        "tex/frames.ogt".into(),
+    )));
     assert!(
         a.as_ref().is_err_and(|e| e.contains("zone")),
         "a grouped array loads once resident: {a:?}"
     );
-    let l = answer(og_load_lut(engine, "grade/swap.cube".into()));
+    let l = answer(og_runtime::host_impl::answer(og_load_lut(
+        engine,
+        "grade/swap.cube".into(),
+    )));
     assert!(
         l.as_ref().is_err_and(|e| e.contains("zone")),
         "a grouped LUT loads once resident: {l:?}"
     );
     g.resident();
     g.env = pending.as_f64().unwrap();
-    g.lut = value(og_load_lut(engine, "grade/swap.cube".into()))
+    g.lut = value(og_runtime::host_impl::answer(og_load_lut(
+        engine,
+        "grade/swap.cube".into(),
+    )))
+    .as_f64()
+    .unwrap();
+    g.array = value(og_runtime::host_impl::answer(og_load_texture_array(
+        engine,
+        "tex/frames.ogt".into(),
+    )))["array"]
         .as_f64()
         .unwrap();
-    g.array = value(og_load_texture_array(engine, "tex/frames.ogt".into()))["array"]
-        .as_f64()
-        .unwrap();
-    g.dusk = value(og_load_look(engine, "looks/dusk.ogt".into()))
-        .as_f64()
-        .unwrap();
+    g.dusk = value(og_runtime::host_impl::answer(og_load_look(
+        engine,
+        "looks/dusk.ogt".into(),
+    )))
+    .as_f64()
+    .unwrap();
     g.warnings();
     g
 }
@@ -429,7 +465,10 @@ fn what_the_frame_keeps_counts_in_the_budget_until_it_is_let_go() {
     let resident = g.budget();
     let memory = resident["groups"][0]["memory"].as_f64().unwrap();
     assert_eq!(resident["used"].as_f64(), Some(memory));
-    value(og_stream_release(g.engine, "zone".into()));
+    value(og_runtime::host_impl::answer(og_stream_release(
+        g.engine,
+        "zone".into(),
+    )));
     g.sprite().expect("queued before the unload");
     g.frame();
     g.sprite().expect("kept");
@@ -494,11 +533,17 @@ fn what_the_frame_keeps_counts_in_the_budget_until_it_is_let_go() {
 #[test]
 fn an_array_flipbook_in_a_group_follows_its_array_out_and_back() {
     let g = game();
-    value(og_stream_release(g.engine, "zone".into()));
+    value(og_runtime::host_impl::answer(og_stream_release(
+        g.engine,
+        "zone".into(),
+    )));
     g.frame();
     g.frame();
     assert_eq!(g.state(), "unloaded");
-    let refused = answer(og_load_flipbook(g.engine, "sprites/run.ogt".into()));
+    let refused = answer(og_runtime::host_impl::answer(og_load_flipbook(
+        g.engine,
+        "sprites/run.ogt".into(),
+    )));
     assert!(
         refused
             .as_ref()
@@ -506,20 +551,31 @@ fn an_array_flipbook_in_a_group_follows_its_array_out_and_back() {
         "a grouped sheet loads once resident: {refused:?}"
     );
     g.resident();
-    let info = value(og_load_flipbook(g.engine, "sprites/run.ogt".into()));
+    let info = value(og_runtime::host_impl::answer(og_load_flipbook(
+        g.engine,
+        "sprites/run.ogt".into(),
+    )));
     assert!(info["array"].as_f64().unwrap() > 0.0, "{info}");
     let sprite = || {
-        let e = value(og_world_spawn(g.engine, Some("{}".into())))
-            .as_f64()
-            .unwrap();
-        value(og_world_insert(
+        let e = value(og_runtime::host_impl::answer(og_world_spawn(
+            g.engine,
+            Some("{}".into()),
+        )))
+        .as_f64()
+        .unwrap();
+        value(og_runtime::host_impl::answer(og_world_insert(
             g.engine,
             e,
             "og.Sprite".into(),
             Some("{}".into()),
-        ));
+        )));
         let fb = json!({ "sheet": info["sheet"] }).to_string();
-        value(og_world_insert(g.engine, e, "og.Flipbook".into(), Some(fb)));
+        value(og_runtime::host_impl::answer(og_world_insert(
+            g.engine,
+            e,
+            "og.Flipbook".into(),
+            Some(fb),
+        )));
         e
     };
     let e = sprite();
@@ -533,7 +589,10 @@ fn an_array_flipbook_in_a_group_follows_its_array_out_and_back() {
     g.warnings();
 
     // Unloaded while the sprite draws: kept, with a warning naming it.
-    value(og_stream_release(g.engine, "zone".into()));
+    value(og_runtime::host_impl::answer(og_stream_release(
+        g.engine,
+        "zone".into(),
+    )));
     g.frame();
     g.frame();
     assert_eq!(g.state(), "unloaded");
@@ -555,7 +614,7 @@ fn an_array_flipbook_in_a_group_follows_its_array_out_and_back() {
         "its layers count"
     );
     // The sprite goes: the array is let go; a new sprite of the sheet draws nothing.
-    value(og_world_despawn(g.engine, e));
+    value(og_runtime::host_impl::answer(og_world_despawn(g.engine, e)));
     g.frame();
     g.frame();
     assert_eq!(g.live()[2], 0, "let go once no sprite draws from it");
@@ -576,5 +635,5 @@ fn an_array_flipbook_in_a_group_follows_its_array_out_and_back() {
     );
     assert_eq!(s.live[2], 1);
     drop(s);
-    value(og_world_despawn(g.engine, e));
+    value(og_runtime::host_impl::answer(og_world_despawn(g.engine, e)));
 }

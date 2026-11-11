@@ -54,58 +54,70 @@ fn world() -> (u32, f64) {
     ))
     .as_u64()
     .unwrap() as u32;
-    let terrain = value(og_world_spawn(e, Some("{}".into())))
-        .as_f64()
-        .unwrap();
+    let terrain = value(og_runtime::host_impl::answer(og_world_spawn(
+        e,
+        Some("{}".into()),
+    )))
+    .as_f64()
+    .unwrap();
     let fields = json!({ "width": 64, "height": 32, "cellSize": 0.25, "chunk": 16, "seed": 3 });
-    value(og_world_insert(
+    value(og_runtime::host_impl::answer(og_world_insert(
         e,
         terrain,
         "og.PixelTerrain".into(),
         Some(fields.to_string()),
-    ));
+    )));
     frame(e);
     (e, terrain)
 }
 
 fn ball(e: u32, x: f32, y: f32) -> f64 {
-    let id = value(og_world_spawn(
+    let id = value(og_runtime::host_impl::answer(og_world_spawn(
         e,
         Some(json!({ "position": { "x": x, "y": y, "z": 0 } }).to_string()),
-    ))
+    )))
     .as_f64()
     .unwrap();
     for (name, v) in [
         ("og.RigidBody", json!({})),
         ("og.Collider", json!({ "shape": 1, "radius": 0.25 })),
     ] {
-        value(og_world_insert(e, id, name.into(), Some(v.to_string())));
+        value(og_runtime::host_impl::answer(og_world_insert(
+            e,
+            id,
+            name.into(),
+            Some(v.to_string()),
+        )));
     }
     id
 }
 
 fn y_of(e: u32, entity: f64) -> f64 {
-    value(og_world_get(e, entity, "og.Transform".into()))["position"]["y"]
+    value(og_runtime::host_impl::answer(og_world_get(
+        e,
+        entity,
+        "og.Transform".into(),
+    )))["position"]["y"]
         .as_f64()
         .unwrap()
 }
 
 fn cell(e: u32, terrain: f64, x: f32, y: f32) -> u64 {
-    value(og_destruction_cell2d(
+    value(og_runtime::host_impl::answer(og_destruction_cell2d(
         e,
         terrain,
         json!({ "x": x, "y": y, "z": 0 }).to_string(),
-    ))
+    )))
     .as_u64()
     .unwrap()
 }
 
 fn carve(e: u32, terrain: f64, x: f32, y: f32, r: f32) {
-    value(og_destruction_carve2d(
+    value(og_runtime::host_impl::answer(og_destruction_carve2d(
         e,
         terrain,
         Some(json!({ "point": { "x": x, "y": y, "z": 0 }, "radius": r }).to_string()),
-    ));
+    )));
 }
 
 #[test]
@@ -136,11 +148,11 @@ fn a_ball_stops_on_the_ground_and_falls_down_a_carved_shaft() {
 
     // Ground filled on the ground stands; ground filled in the air falls.
     for (x, y) in [(2.0, 4.4), (12.0, 9.0)] {
-        value(og_destruction_fill2d(
+        value(og_runtime::host_impl::answer(og_destruction_fill2d(
             e,
             terrain,
             Some(json!({ "point": { "x": x, "y": y, "z": 0 }, "radius": 0.5 }).to_string()),
-        ));
+        )));
     }
     frame(e);
     assert_eq!(cell(e, terrain, 2.0, 4.4), 1);
@@ -173,20 +185,20 @@ fn script(e: u32, terrain: f64, tick: u32) {
     match tick {
         2 => carve(e, terrain, 5.0, 4.0, 1.2),
         5 => {
-            value(og_destruction_fill2d(
+            value(og_runtime::host_impl::answer(og_destruction_fill2d(
                 e,
                 terrain,
                 Some(json!({ "point": { "x": 9, "y": 5, "z": 0 }, "radius": 0.8 }).to_string()),
-            ));
+            )));
         }
         9 => {
-            value(og_destruction_explode2d(
+            value(og_runtime::host_impl::answer(og_destruction_explode2d(
                 e,
                 Some(
                     json!({ "point": { "x": 9, "y": 4, "z": 0 }, "radius": 1, "debris": 0.75 })
                         .to_string(),
                 ),
-            ));
+            )));
         }
         _ => {}
     }
@@ -201,7 +213,7 @@ fn a_carve_sequence_replays_and_restores_to_the_same_hash() {
         for t in 0..60 {
             if Some(t) == save_at {
                 save = Some(
-                    value(og_world_snapshot(e, None))
+                    value(og_runtime::host_impl::answer(og_world_snapshot(e, None)))
                         .as_str()
                         .unwrap()
                         .to_string(),
@@ -218,7 +230,11 @@ fn a_carve_sequence_replays_and_restores_to_the_same_hash() {
     let end = hash(b);
     // Restored to tick 8 (after the carve and the fill, before the blast),
     // the rest of the script gives the same world.
-    value(og_world_restore(b, save.unwrap(), None));
+    value(og_runtime::host_impl::answer(og_world_restore(
+        b,
+        save.unwrap(),
+        None,
+    )));
     for t in 8..60 {
         script(b, terrain, t);
         frame(b);
@@ -249,15 +265,15 @@ impl Hooks for Carver {
         if call.kind == 0 && call.id == 1 && self.answers.borrow().is_empty() {
             let at = |x: f32, y: f32| json!({ "point": { "x": x, "y": y, "z": 0 }, "radius": 1 });
             let mut a = self.answers.borrow_mut();
-            a.push(og_destruction_carve2d(
+            a.push(og_runtime::host_impl::answer(og_destruction_carve2d(
                 call.engine,
                 self.terrain.get(),
                 Some(at(4.0, 4.0).to_string()),
-            ));
-            a.push(og_destruction_explode2d(
+            )));
+            a.push(og_runtime::host_impl::answer(og_destruction_explode2d(
                 call.engine,
                 Some(at(11.0, 4.0).to_string()),
-            ));
+            )));
         }
         Ok(String::new())
     }
@@ -296,16 +312,19 @@ fn a_system_carves_and_blows_up_the_terrain_in_its_tick() {
         ))
         .as_u64()
         .unwrap() as u32;
-        let terrain = value(og_world_spawn(e, Some("{}".into())))
-            .as_f64()
-            .unwrap();
+        let terrain = value(og_runtime::host_impl::answer(og_world_spawn(
+            e,
+            Some("{}".into()),
+        )))
+        .as_f64()
+        .unwrap();
         let fields = json!({ "width": 64, "height": 32, "cellSize": 0.25, "chunk": 16, "seed": 3 });
-        value(og_world_insert(
+        value(og_runtime::host_impl::answer(og_world_insert(
             e,
             terrain,
             "og.PixelTerrain".into(),
             Some(fields.to_string()),
-        ));
+        )));
         hooks.terrain.set(terrain);
         frame(e);
         frame(e);

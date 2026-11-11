@@ -13,20 +13,12 @@
 use super::engine::{Engine, engine};
 use super::extract::{Hierarchy, RenderState};
 use super::feel::{feel_of, set_filter};
-use super::refuse;
-use super::wire::{self, Rig2DClipInfo, Rig2DInfo, Skeleton2DBox, ToJson};
+use super::wire::{Rig2DClipInfo, Rig2DInfo, Skeleton2DBox, ToJson};
 use glam::{Mat4, Vec2, Vec3, Vec4};
 use og_anim::{IkTarget2D, Rig2dAsset, Skeleton2D, Transform};
 use og_core::IdMap;
 use og_ecs::{Entity, QueryDesc, World};
 use serde_json::Value;
-
-fn wire<T: ToJson>(r: Result<T, String>) -> String {
-    match r {
-        Ok(v) => wire::ok(&v),
-        Err(e) => refuse(e),
-    }
-}
 
 /// What og.load.rig2d and og.anim.rig2dInfo answer for a rig.
 fn info(handle: u64, rig: &Rig2dAsset, texture: usize) -> Rig2DInfo {
@@ -88,12 +80,12 @@ fn load_rig2d(eng: &Engine, path: &str) -> Result<Value, String> {
     Ok(answer)
 }
 
-pub fn og_load_rig2d(world: u32, path: String) -> String {
-    wire(engine(world).and_then(|eng| load_rig2d(&eng, &path)))
+pub fn og_load_rig2d(world: u32, path: String) -> Result<serde_json::Value, String> {
+    engine(world).and_then(|eng| load_rig2d(&eng, &path))
 }
 
-pub fn og_anim_rig2d_info(world: u32, rig: f64) -> String {
-    wire(engine(world).and_then(|eng| {
+pub fn og_anim_rig2d_info(world: u32, rig: f64) -> Result<crate::wire::Rig2DInfo, String> {
+    engine(world).and_then(|eng| {
         let st = eng.state.borrow();
         let h = rig as u64;
         match st.feel_assets.rigs.get(&h) {
@@ -102,13 +94,16 @@ pub fn og_anim_rig2d_info(world: u32, rig: f64) -> String {
                 "{rig} is not a rig og.load.rig2d answered on this world"
             )),
         }
-    }))
+    })
 }
 
 /// og.anim.skeleton2dBoxes: what og.skeleton2d kept for the entity at its
 /// last run (it needs no world, so a system may ask).
-pub fn og_anim_skeleton2d_boxes(world: u32, entity: f64) -> String {
-    wire(engine(world).and_then(|eng| {
+pub fn og_anim_skeleton2d_boxes(
+    world: u32,
+    entity: f64,
+) -> Result<Vec<crate::wire::Skeleton2DBox>, String> {
+    engine(world).and_then(|eng| {
         if entity.fract() != 0.0 || !(0.0..9_007_199_254_740_992.0).contains(&entity) {
             return Err(format!("{entity} is not an entity"));
         }
@@ -128,7 +123,7 @@ pub fn og_anim_skeleton2d_boxes(world: u32, entity: f64) -> String {
                 points: b.points,
             })
             .collect::<Vec<_>>())
-    }))
+    })
 }
 
 fn entities_with<T: og_core::Reflect>(world: &World) -> Vec<Entity> {

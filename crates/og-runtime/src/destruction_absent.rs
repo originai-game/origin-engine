@@ -14,7 +14,6 @@
 
 use super::engine::{Engine, Mount};
 use og_ecs::World;
-use serde_json::json;
 
 /// Why destruction answers nothing here.
 pub(crate) const ABSENT: &str = "og.destruction is not built into this engine: og-runtime was built without its `destruction` feature (a default feature; og-host-web and og-host-node pass it through as `destruction`)";
@@ -80,36 +79,41 @@ pub(crate) fn drawn(_engine: u32) -> Vec<Drawn> {
     Vec::new()
 }
 
-fn absent() -> String {
-    super::refuse(ABSENT)
+pub fn og_destruction_damage(
+    _world: u32,
+    _entity: f64,
+    _desc: Option<String>,
+) -> Result<(), String> {
+    Err(ABSENT.into())
 }
 
-pub fn og_destruction_damage(_world: u32, _entity: f64, _desc: Option<String>) -> String {
-    absent()
+pub fn og_destruction_explode(_world: u32, _desc: Option<String>) -> Result<(), String> {
+    Err(ABSENT.into())
 }
 
-pub fn og_destruction_explode(_world: u32, _desc: Option<String>) -> String {
-    absent()
+pub fn og_destruction_fracture(_world: u32, _entity: f64) -> Result<(), String> {
+    Err(ABSENT.into())
 }
 
-pub fn og_destruction_fracture(_world: u32, _entity: f64) -> String {
-    absent()
+pub fn og_destruction_info(
+    _world: u32,
+    _entity: f64,
+) -> Result<crate::wire::DestructibleInfo, String> {
+    Err(ABSENT.into())
 }
 
-pub fn og_destruction_info(_world: u32, _entity: f64) -> String {
-    absent()
-}
-
-pub fn og_destruction_material(_world: u32, _kind: u32) -> String {
-    absent()
+pub fn og_destruction_material(
+    _world: u32,
+    _kind: u32,
+) -> Result<crate::wire::DestructibleMaterial, String> {
+    Err(ABSENT.into())
 }
 
 /// No visual debris: nothing breaks here.
-pub fn og_destruction_capabilities(_world: u32) -> String {
-    json!({
-        "visualDebris": false,
-        "maxVisualDebris": 0,
-        "visualDebrisContacts": "world",
-    })
-    .to_string()
+pub fn og_destruction_capabilities(_world: u32) -> crate::wire::DestructionCapabilities {
+    crate::wire::DestructionCapabilities {
+        visual_debris: false,
+        max_visual_debris: 0,
+        visual_debris_contacts: "world".into(),
+    }
 }

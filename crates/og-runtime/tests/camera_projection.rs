@@ -64,9 +64,8 @@ fn the_camera_projects_and_unprojects_through_og_core_to_the_bit() {
     let (w, h) = (1280.0, 720.0);
 
     let p = [-0.75, 1.25, -3.0];
-    let screen: Value = serde_json::from_str(&og_camera_world_to_screen(
-        e,
-        json!({ "x": p[0], "y": p[1], "z": p[2] }).to_string(),
+    let screen: Value = serde_json::from_str(&og_runtime::host_impl::json(
+        og_camera_world_to_screen(e, json!({ "x": p[0], "y": p[1], "z": p[2] }).to_string()),
     ))
     .unwrap();
     let (rx, ry) = reference(eye, p, 55.0, w, h);
@@ -77,7 +76,10 @@ fn the_camera_projects_and_unprojects_through_og_core_to_the_bit() {
     );
 
     // The ray through that pixel starts on the near plane and points at p.
-    let ray: Value = serde_json::from_str(&og_camera_screen_to_ray(e, sx, sy)).unwrap();
+    let ray: Value = serde_json::from_str(&og_runtime::host_impl::json(og_camera_screen_to_ray(
+        e, sx, sy,
+    )))
+    .unwrap();
     let (o, d) = (&ray["origin"], &ray["direction"]);
     let to = [p[0] - eye[0], p[1] - eye[1], p[2] - eye[2]];
     let len = (to[0] * to[0] + to[1] * to[1] + to[2] * to[2]).sqrt();

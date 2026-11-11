@@ -67,24 +67,27 @@ fn frames(engine: u32, n: u32) {
 /// An entity with og.Transform (and og.TimeGroup when `group` is given),
 /// its position.x tweened linearly from 0 to 60 over one second.
 fn mover(engine: u32, group: Option<u32>, unscaled: bool) -> f64 {
-    let e = value(og_world_spawn(engine, Some("{}".into())))
-        .as_f64()
-        .unwrap();
-    value(og_world_insert(
+    let e = value(og_runtime::host_impl::answer(og_world_spawn(
+        engine,
+        Some("{}".into()),
+    )))
+    .as_f64()
+    .unwrap();
+    value(og_runtime::host_impl::answer(og_world_insert(
         engine,
         e,
         "og.Transform".into(),
         Some("{}".into()),
-    ));
+    )));
     if let Some(g) = group {
-        value(og_world_insert(
+        value(og_runtime::host_impl::answer(og_world_insert(
             engine,
             e,
             "og.TimeGroup".into(),
             Some(json!({ "group": g }).to_string()),
-        ));
+        )));
     }
-    value(og_tween_to(
+    value(og_runtime::host_impl::answer(og_tween_to(
         engine,
         Some(
             json!({
@@ -93,12 +96,16 @@ fn mover(engine: u32, group: Option<u32>, unscaled: bool) -> f64 {
             })
             .to_string(),
         ),
-    ));
+    )));
     e
 }
 
 fn x(engine: u32, e: f64) -> f64 {
-    value(og_world_get(engine, e, "og.Transform".into()))["position"]["x"]
+    value(og_runtime::host_impl::answer(og_world_get(
+        engine,
+        e,
+        "og.Transform".into(),
+    )))["position"]["x"]
         .as_f64()
         .unwrap()
 }
@@ -115,7 +122,9 @@ fn a_group_runs_at_its_scale_times_the_global_one() {
     let other = mover(engine, Some(2), false);
     let slow = mover(engine, Some(1), false);
     let ui = mover(engine, Some(1), true);
-    value(og_time_set_group_scale(engine, 1, 0.25));
+    value(og_runtime::host_impl::answer(og_time_set_group_scale(
+        engine, 1, 0.25,
+    )));
     frames(engine, 30);
     // Half a second: 30 at the global pace, a quarter of it in group 1;
     // group 2 is untouched, an unscaled tween ignores its group.
@@ -132,7 +141,9 @@ fn a_group_runs_at_its_scale_times_the_global_one() {
     assert!(close(og_time_group_dt(engine, slow), dt * 0.25));
     assert!(close(og_time_group_dt(engine, normal), dt));
     // The global scale multiplies with the group's.
-    value(og_time_set_scale(engine, 0.5));
+    value(og_runtime::host_impl::answer(og_time_set_scale(
+        engine, 0.5,
+    )));
     frames(engine, 10);
     assert!(
         close(x(engine, normal), 30.0 + 5.0),
@@ -142,14 +153,22 @@ fn a_group_runs_at_its_scale_times_the_global_one() {
     assert!(close(x(engine, slow), 7.5 + 1.25), "{}", x(engine, slow));
     assert!(close(og_time_group_dt(engine, slow), dt * 0.5 * 0.25));
     // Frozen.
-    value(og_time_set_group_scale(engine, 1, 0.0));
+    value(og_runtime::host_impl::answer(og_time_set_group_scale(
+        engine, 1, 0.0,
+    )));
     let held = x(engine, slow);
     frames(engine, 10);
     assert_eq!(x(engine, slow), held);
     // Refusals.
-    let r: Value = serde_json::from_str(&og_time_set_group_scale(engine, 16, 1.0)).unwrap();
+    let r: Value = serde_json::from_str(&og_runtime::host_impl::answer(og_time_set_group_scale(
+        engine, 16, 1.0,
+    )))
+    .unwrap();
     assert_eq!(r["ok"], false, "{r}");
-    let r: Value = serde_json::from_str(&og_time_set_group_scale(engine, 3, 11.0)).unwrap();
+    let r: Value = serde_json::from_str(&og_runtime::host_impl::answer(og_time_set_group_scale(
+        engine, 3, 11.0,
+    )))
+    .unwrap();
     assert_eq!(r["ok"], false, "{r}");
 }
 
@@ -159,14 +178,20 @@ fn a_grouped_world_restores_its_scales_in_a_fresh_session() {
     let root = project("time-groups-save");
     let a = start(&root);
     let slow = mover(a, Some(4), false);
-    value(og_time_set_group_scale(a, 4, 0.5));
+    value(og_runtime::host_impl::answer(og_time_set_group_scale(
+        a, 4, 0.5,
+    )));
     frames(a, 12);
-    let save = value(og_world_snapshot(a, None));
+    let save = value(og_runtime::host_impl::answer(og_world_snapshot(a, None)));
     frames(a, 20);
     let (end, end_hash) = (x(a, slow), hash(a));
     // A session that never named the time groups.
     let b = start(&root);
-    value(og_world_restore(b, save.as_str().unwrap().into(), None));
+    value(og_runtime::host_impl::answer(og_world_restore(
+        b,
+        save.as_str().unwrap().into(),
+        None,
+    )));
     assert!(close(og_time_group_dt(b, slow), 0.5 / 60.0));
     frames(b, 20);
     assert_eq!(x(b, slow), end);

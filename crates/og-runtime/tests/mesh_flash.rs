@@ -84,11 +84,19 @@ fn frame(engine: u32) {
 }
 
 fn spawn_mesh(engine: u32, mesh: Value) -> f64 {
-    let e = value(og_world_spawn(engine, Some("{}".into())))
-        .as_f64()
-        .unwrap();
+    let e = value(og_runtime::host_impl::answer(og_world_spawn(
+        engine,
+        Some("{}".into()),
+    )))
+    .as_f64()
+    .unwrap();
     for (name, v) in [("og.Transform", json!({})), ("og.Mesh", mesh)] {
-        value(og_world_insert(engine, e, name.into(), Some(v.to_string())));
+        value(og_runtime::host_impl::answer(og_world_insert(
+            engine,
+            e,
+            name.into(),
+            Some(v.to_string()),
+        )));
     }
     e
 }
@@ -96,8 +104,14 @@ fn spawn_mesh(engine: u32, mesh: Value) -> f64 {
 #[test]
 fn a_flashing_mesh_is_one_material_with_its_twins() {
     let (engine, seen) = engine();
-    let material = value(og_render_standard_material(engine, Some("{}".into())));
-    let geometry = value(og_render_box_geometry(engine, Some("{}".into())));
+    let material = value(og_runtime::host_impl::answer(og_render_standard_material(
+        engine,
+        Some("{}".into()),
+    )));
+    let geometry = value(og_runtime::host_impl::answer(og_render_box_geometry(
+        engine,
+        Some("{}".into()),
+    )));
     let red = json!({ "r": 1, "g": 0.1, "b": 0.05 });
     spawn_mesh(
         engine,
@@ -124,7 +138,10 @@ fn a_flashing_mesh_is_one_material_with_its_twins() {
     // og.tween.flash takes an og.Mesh entity as before: full on the tick it
     // starts, then fading, the material never copied.
     let desc = json!({ "entity": plain, "duration": 0.2 }).to_string();
-    value(og_tween_flash(engine, Some(desc)));
+    value(og_runtime::host_impl::answer(og_tween_flash(
+        engine,
+        Some(desc),
+    )));
     frame(engine);
     let first = seen.borrow()[2].1.flash;
     assert_eq!(first, 1.0);

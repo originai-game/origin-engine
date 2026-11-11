@@ -73,33 +73,40 @@ fn reload_preserves_edited_tiles_and_runs_the_new_bundle() {
     let engine = value(og_engine_create(game, json!({ "root": root }).to_string()))
         .as_u64()
         .unwrap() as u32;
-    let map = value(og_load_tilemap(engine, "map.ogt".into()))["map"].clone();
-    let entity = value(og_world_spawn(engine, Some("{}".into())))
-        .as_f64()
-        .unwrap();
+    let map = value(og_runtime::host_impl::answer(og_load_tilemap(
+        engine,
+        "map.ogt".into(),
+    )))["map"]
+        .clone();
+    let entity = value(og_runtime::host_impl::answer(og_world_spawn(
+        engine,
+        Some("{}".into()),
+    )))
+    .as_f64()
+    .unwrap();
     for (name, fields) in [
         ("og.Transform", json!({})),
         ("og.Tilemap", json!({ "map": map, "collision": true })),
     ] {
-        value(og_world_insert(
+        value(og_runtime::host_impl::answer(og_world_insert(
             engine,
             entity,
             name.into(),
             Some(fields.to_string()),
-        ));
+        )));
     }
     value(og_engine_frame(engine, 1000.0 / 60.0));
     assert_eq!(seen.get(), 1);
-    value(og_tilemap_set_tile(
+    value(og_runtime::host_impl::answer(og_tilemap_set_tile(
         engine,
         Some(json!({ "entity": entity, "layer": "floor", "x": 2, "y": 1, "tile": 1 }).to_string()),
-    ));
+    )));
     // A block from (1, 0), 3 wide: its third column is past the map's edge.
     let fill = |tiles: Value| {
-        og_tilemap_fill(
+        og_runtime::host_impl::answer(og_tilemap_fill(
             engine,
             Some(json!({ "entity": entity, "layer": "floor", "x": 1, "y": 0, "width": 3, "tiles": tiles }).to_string()),
-        )
+        ))
     };
     let refused: Value = serde_json::from_str(&fill(json!([0, 0, 0, 0, 5, 0]))).unwrap();
     assert_eq!(refused["ok"], false, "{refused}");
@@ -144,7 +151,13 @@ fn reload_preserves_edited_tiles_and_runs_the_new_bundle() {
             og_tilemap_get_tile(engine, entity, "floor".into(), 1, 0),
             -1
         );
-        assert_eq!(value(og_load_tilemap(engine, "map.ogt".into()))["map"], map);
+        assert_eq!(
+            value(og_runtime::host_impl::answer(og_load_tilemap(
+                engine,
+                "map.ogt".into()
+            )))["map"],
+            map
+        );
     }
     std::fs::remove_dir_all(root).unwrap();
 }

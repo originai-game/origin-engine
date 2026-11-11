@@ -68,7 +68,7 @@ fn merged_ui_desc(last: &Value, given: Value) -> Result<Value, String> {
     Ok(Value::Object(d))
 }
 
-pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
+pub fn og_ui_configure(world: u32, desc: Option<String>) -> Result<(), String> {
     let answer = (|| -> Result<_, String> {
         let eng = engine(world)?;
         let d = merged_ui_desc(&eng.state.borrow().ui_desc, parse(desc.as_deref())?)?;
@@ -323,8 +323,8 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
         Ok(())
     })();
     match answer {
-        Ok(()) => ok_void(),
-        Err(e) => refuse(e),
+        Ok(()) => Ok(()),
+        Err(e) => Err(e),
     }
 }
 
@@ -338,14 +338,14 @@ pub(crate) struct LoadedStyle {
 }
 
 /// `og.load.style`: a cooked UI style, its atlas, fonts, icons and sounds loaded with it.
-pub fn og_load_style(world: u32, path: String) -> String {
+pub fn og_load_style(world: u32, path: String) -> Result<serde_json::Value, String> {
     match engine(world).and_then(|eng| {
         let i = load_style(&eng, &path)?;
         docs::note_styles(&eng);
         Ok(i)
     }) {
-        Ok(i) => ok(json!(super::assets::handle(i) as f64)),
-        Err(e) => refuse(e),
+        Ok(i) => Ok(json!(super::assets::handle(i) as f64)),
+        Err(e) => Err(e),
     }
 }
 

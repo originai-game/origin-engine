@@ -66,7 +66,12 @@ impl Hooks for Mover {
             if let (Value::Object(v), Value::Object(extra)) = (&mut v, extra) {
                 v.extend(extra);
             }
-            value(og_world_set(w, e, "og.Transform".into(), v.to_string()));
+            value(og_runtime::host_impl::answer(og_world_set(
+                w,
+                e,
+                "og.Transform".into(),
+                v.to_string(),
+            )));
         };
         let half = 0.05 * t;
         let turn = json!({
@@ -79,8 +84,8 @@ impl Hooks for Mover {
         set(c, t + if jumped { 50.0 } else { 0.0 }, 20.0, json!({}));
         set(d, t, 30.0, json!({}));
         if t == f64::from(K) {
-            value(og_render_snap(w, b));
-            let dead = og_render_snap(w, 987_654_321.0);
+            value(og_runtime::host_impl::answer(og_render_snap(w, b)));
+            let dead = og_runtime::host_impl::answer(og_render_snap(w, 987_654_321.0));
             assert!(
                 dead.contains("\"ok\":false"),
                 "a dead entity is refused: {dead}"
@@ -171,26 +176,49 @@ fn engine(entities: &Entities) -> (u32, Rc<RefCell<Seen>>) {
     let e = value(og_engine_create(game, "{}".into())).as_u64().unwrap() as u32;
     let seen = Rc::new(RefCell::new(Seen::default()));
     set_render_backend(e, Some(Box::new(Recorder(seen.clone())))).unwrap();
-    let geometry = value(og_render_box_geometry(e, Some("{}".into())));
-    let material = value(og_render_standard_material(e, Some("{}".into())));
+    let geometry = value(og_runtime::host_impl::answer(og_render_box_geometry(
+        e,
+        Some("{}".into()),
+    )));
+    let material = value(og_runtime::host_impl::answer(og_render_standard_material(
+        e,
+        Some("{}".into()),
+    )));
     let mesh = json!({ "geometry": geometry, "material": material }).to_string();
     let spawn = |z: f64| {
         let at = json!({ "position": { "x": 0, "y": 0, "z": z } }).to_string();
-        let id = value(og_world_spawn(e, Some(at))).as_f64().unwrap();
-        value(og_world_insert(e, id, "og.Mesh".into(), Some(mesh.clone())));
+        let id = value(og_runtime::host_impl::answer(og_world_spawn(e, Some(at))))
+            .as_f64()
+            .unwrap();
+        value(og_runtime::host_impl::answer(og_world_insert(
+            e,
+            id,
+            "og.Mesh".into(),
+            Some(mesh.clone()),
+        )));
         id
     };
     let ids = [spawn(0.0), spawn(10.0), spawn(20.0), spawn(30.0)];
     let off = json!({ "off": true }).to_string();
-    value(og_world_insert(
+    value(og_runtime::host_impl::answer(og_world_insert(
         e,
         ids[3],
         "og.Interpolation".into(),
         Some(off),
-    ));
+    )));
     let child = json!({ "position": { "x": 0, "y": 0, "z": 5 }, "parent": ids[3] }).to_string();
-    let f = value(og_world_spawn(e, Some(child))).as_f64().unwrap();
-    value(og_world_insert(e, f, "og.Mesh".into(), Some(mesh)));
+    let f = value(og_runtime::host_impl::answer(og_world_spawn(
+        e,
+        Some(child),
+    )))
+    .as_f64()
+    .unwrap();
+    value(og_runtime::host_impl::answer(og_world_insert(
+        e,
+        f,
+        "og.Mesh".into(),
+        Some(mesh),
+    )));
     entities.borrow_mut().insert(e, ids);
     (e, seen)
 }
@@ -327,7 +355,12 @@ impl Hooks for Tagger {
             let e = self.0.get();
             let t = f64::from(og_world_get_tick(w));
             let at = json!({ "position": { "x": 0.1 * t, "y": 0, "z": 0 } }).to_string();
-            value(og_world_set(w, e, "og.Transform".into(), at));
+            value(og_runtime::host_impl::answer(og_world_set(
+                w,
+                e,
+                "og.Transform".into(),
+                at,
+            )));
             let desc = og_ui::WorldAnchorDesc {
                 target: og_ui::WorldTarget::Entity(e as u64),
                 pivot: og_ui::Anchor::Center,
@@ -399,9 +432,12 @@ fn an_anchored_element_stays_on_its_entity_between_ticks() {
     let seen = Rc::new(RefCell::new(None));
     set_render_backend(e, Some(Box::new(Shapes(seen.clone())))).unwrap();
     entity.set(
-        value(og_world_spawn(e, Some("{}".into())))
-            .as_f64()
-            .unwrap(),
+        value(og_runtime::host_impl::answer(og_world_spawn(
+            e,
+            Some("{}".into()),
+        )))
+        .as_f64()
+        .unwrap(),
     );
     let camera = json!({ "position": { "x": 0, "y": 0, "z": 5 }, "fov": 50.0 }).to_string();
     value(write_resource(e, "og.Camera", &camera));
@@ -416,9 +452,8 @@ fn an_anchored_element_stays_on_its_entity_between_ticks() {
         // The entity's x was 0.1 T on tick T: drawn at the blend of the
         // last two ticks', W - 2 and W - 1.
         let x = 0.1 * (f64::from(w - 2) + alpha);
-        let s: Value = serde_json::from_str(&og_runtime::og_camera_world_to_screen(
-            e,
-            json!({ "x": x, "y": 0, "z": 0 }).to_string(),
+        let s: Value = serde_json::from_str(&og_runtime::host_impl::json(
+            og_runtime::og_camera_world_to_screen(e, json!({ "x": x, "y": 0, "z": 0 }).to_string()),
         ))
         .unwrap();
         let (cx, _) = seen.borrow().expect("the anchored box is drawn");

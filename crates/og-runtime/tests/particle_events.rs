@@ -120,16 +120,19 @@ fn ticks(engine: u32, n: u32) {
 }
 
 fn spawn(engine: u32, parts: &[(&str, Value)]) -> u64 {
-    let e = value(og_world_spawn(engine, Some("{}".into())))
-        .as_f64()
-        .unwrap();
+    let e = value(og_runtime::host_impl::answer(og_world_spawn(
+        engine,
+        Some("{}".into()),
+    )))
+    .as_f64()
+    .unwrap();
     for (rec, v) in parts {
-        value(og_world_insert(
+        value(og_runtime::host_impl::answer(og_world_insert(
             engine,
             e,
             (*rec).into(),
             Some(v.to_string()),
-        ));
+        )));
     }
     e as u64
 }
@@ -152,7 +155,10 @@ fn an_emitter_with_events_sends_them_from_the_tick_and_replays_them() {
     set_render_backend(engine, Some(Box::new(Recorder(drawn.clone())))).unwrap();
     ticks(engine, 1);
 
-    let shards = value(og_load_emitter(engine, "fx/shards.ogt".into()));
+    let shards = value(og_runtime::host_impl::answer(og_load_emitter(
+        engine,
+        "fx/shards.ogt".into(),
+    )));
     let at = |y: f64| json!({ "position": { "x": 0, "y": y, "z": 0 } });
     let system = spawn(
         engine,
@@ -204,15 +210,19 @@ fn an_emitter_with_events_sends_them_from_the_tick_and_replays_them() {
     );
 
     // A restored world sends the same events again.
-    let snap = value(og_world_snapshot(engine, None))
-        .as_str()
-        .unwrap()
-        .to_string();
+    let snap = value(og_runtime::host_impl::answer(og_world_snapshot(
+        engine, None,
+    )))
+    .as_str()
+    .unwrap()
+    .to_string();
     seen.borrow_mut().clear();
     ticks(engine, 40);
     let first = std::mem::take(&mut *seen.borrow_mut());
     assert!(!first.is_empty());
-    value(og_world_restore(engine, snap, None));
+    value(og_runtime::host_impl::answer(og_world_restore(
+        engine, snap, None,
+    )));
     ticks(engine, 40);
     let again = seen.borrow().clone();
     assert_eq!(first, again, "a restore replays the particle events");

@@ -13,7 +13,7 @@
 
 use super::{MAX_VALUE, call, request, valid_key, with};
 use crate::engine::{engine, running};
-use crate::{ok, parse, refuse, wire};
+use crate::{parse, refuse, wire};
 use og_core::Reflect;
 use serde_json::{Value, json};
 
@@ -157,7 +157,7 @@ fn read_grants(world: u32) -> Result<Vec<u32>, String> {
     crate::api::resource_value(&eng, GRANTS).map(|v| grant_ids(&v))
 }
 
-pub fn og_platform_grant(world: u32, purchase: String) -> String {
+pub fn og_platform_grant(world: u32, purchase: String) -> Result<serde_json::Value, String> {
     let granted = (|| -> Result<bool, String> {
         token("a purchase id", &purchase)?;
         let mut ids = read_grants(world)?;
@@ -174,8 +174,8 @@ pub fn og_platform_grant(world: u32, purchase: String) -> String {
         Ok(true)
     })();
     match granted {
-        Ok(new) => ok(json!(new)),
-        Err(e) => refuse(e),
+        Ok(new) => Ok(json!(new)),
+        Err(e) => Err(e),
     }
 }
 

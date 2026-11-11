@@ -8,7 +8,7 @@ use super::engine::{
     engine, queued_structural, running, world_query_views,
 };
 use super::probe::{self as rprobe, NameOp, with_probe};
-use super::{ok, ok_void, parse, refuse, wire};
+use super::{ok, parse, refuse, wire};
 use og_core::reflect::Reflect;
 use og_core::{Rng, Time};
 use og_ecs::{Entity, QueryDesc, World};
@@ -33,28 +33,6 @@ pub use render::*;
 
 fn err(e: og_core::Error) -> String {
     e.reason().to_string()
-}
-
-fn result(r: Result<Value, String>) -> String {
-    match r {
-        Ok(v) => ok(v),
-        Err(e) => refuse(e),
-    }
-}
-
-/// A `Result<T>` answer written through its generated type.
-fn typed<T: wire::ToJson>(r: Result<T, String>) -> String {
-    match r {
-        Ok(v) => wire::ok(&v),
-        Err(e) => refuse(e),
-    }
-}
-
-fn result_void(r: Result<(), String>) -> String {
-    match r {
-        Ok(()) => ok_void(),
-        Err(e) => refuse(e),
-    }
 }
 
 fn entity(n: f64) -> Result<Entity, String> {
@@ -299,7 +277,7 @@ pub(crate) fn spawn_entity(eng: &Engine, call: &str, desc: &Value) -> Result<Ent
 
 /// A SpawnDesc read from `desc` (of `call`): its parent checked first, so a
 /// value that is not an entity is refused as [`spawn_parent`] words it.
-fn spawn_desc(call: &str, desc: &Value) -> Result<wire::SpawnDesc, String> {
+fn spawn_desc(call: &str, desc: &Value) -> Result<crate::wire::SpawnDesc, String> {
     spawn_parent(call, desc)?;
     wire::value(desc, "desc")
 }
@@ -417,19 +395,19 @@ fn spawn_in_system(eng: &Engine, f: &super::engine::Frame, desc: &Value) -> Resu
     Ok(e)
 }
 
-pub fn og_world_spawn(world: u32, desc: Option<String>) -> String {
+pub fn og_world_spawn(world: u32, desc: Option<String>) -> Result<serde_json::Value, String> {
     if let Some(f) = running(world) {
-        return result((|| {
+        return (|| {
             let eng = engine(world)?;
             let desc = parse(desc.as_deref())?;
             spawn_in_system(&eng, f, &desc).map(entity_number)
-        })());
+        })();
     }
-    result((|| {
+    (|| {
         let eng = engine(world)?;
         let desc = parse(desc.as_deref())?;
         spawn(&eng, "world.spawn", &desc).map(entity_number)
-    })())
+    })()
 }
 
 /// `e` and every entity whose og.Parent chain reaches it, children first.
@@ -463,8 +441,8 @@ fn with_descendants(world: &World, root: Entity) -> Result<Vec<Entity>, String> 
     Ok(out)
 }
 
-pub fn og_world_despawn(world: u32, entity_id: f64) -> String {
-    result_void((|| {
+pub fn og_world_despawn(world: u32, entity_id: f64) -> Result<(), String> {
+    (|| {
         let eng = engine(world)?;
         if let Some(f) = running(world) {
             // SAFETY: the frame is published while its system runs.
@@ -486,7 +464,7 @@ pub fn og_world_despawn(world: u32, entity_id: f64) -> String {
             eng.state.borrow_mut().game_spawned.remove(&d.to_bits());
         }
         Ok(())
-    })())
+    })()
 }
 
 pub fn og_world_alive(world: u32, entity_id: f64) -> bool {
@@ -534,9 +512,14 @@ fn in_system(what: &str) -> String {
     )
 }
 
-pub fn og_world_insert(world: u32, entity_id: f64, comp: String, value: Option<String>) -> String {
+pub fn og_world_insert(
+    world: u32,
+    entity_id: f64,
+    comp: String,
+    value: Option<String>,
+) -> Result<(), String> {
     if let Some(f) = running(world) {
-        return result_void((|| {
+        return (|| {
             let eng = engine(world)?;
             // SAFETY: the frame is published while its system runs.
             let e = live(&eng, "world.insert", entity_id, |e| {
@@ -549,9 +532,9 @@ pub fn og_world_insert(world: u32, entity_id: f64, comp: String, value: Option<S
             queued_structural();
             // SAFETY: the frame is published while its system runs.
             unsafe { f.ctx() }.insert_bytes(e, id, &bytes).map_err(err)
-        })());
+        })();
     }
-    result_void((|| {
+    (|| {
         let eng = engine(world)?;
         let e = live(&eng, "world.insert", entity_id, |e| {
             Ok(eng.world()?.is_alive(e))
@@ -562,12 +545,12 @@ pub fn og_world_insert(world: u32, entity_id: f64, comp: String, value: Option<S
         layout.check_ranges(&value)?;
         before_structural(&eng);
         eng.world()?.insert_bytes(e, id, &bytes).map_err(err)
-    })())
+    })()
 }
 
-pub fn og_world_remove(world: u32, entity_id: f64, comp: String) -> String {
+pub fn og_world_remove(world: u32, entity_id: f64, comp: String) -> Result<(), String> {
     if let Some(f) = running(world) {
-        return result_void((|| {
+        return (|| {
             let eng = engine(world)?;
             // SAFETY: the frame is published while its system runs.
             let e = live(&eng, "world.remove", entity_id, |e| {
@@ -577,9 +560,9 @@ pub fn og_world_remove(world: u32, entity_id: f64, comp: String) -> String {
             queued_structural();
             // SAFETY: the frame is published while its system runs.
             unsafe { f.ctx() }.remove_id(e, id).map_err(err)
-        })());
+        })();
     }
-    result_void((|| {
+    (|| {
         let eng = engine(world)?;
         let e = live(&eng, "world.remove", entity_id, |e| {
             Ok(eng.world()?.is_alive(e))
@@ -587,12 +570,12 @@ pub fn og_world_remove(world: u32, entity_id: f64, comp: String) -> String {
         let (_, id) = component(&eng, &comp)?;
         before_structural(&eng);
         eng.world()?.remove_id(e, id).map_err(err)
-    })())
+    })()
 }
 
-pub fn og_world_get(world: u32, entity_id: f64, comp: String) -> String {
+pub fn og_world_get(world: u32, entity_id: f64, comp: String) -> Result<serde_json::Value, String> {
     if let Some(f) = running(world) {
-        return result((|| {
+        return (|| {
             let eng = engine(world)?;
             // SAFETY: the frame is published while its system runs.
             let e = live(&eng, "world.get", entity_id, |e| {
@@ -604,9 +587,9 @@ pub fn og_world_get(world: u32, entity_id: f64, comp: String) -> String {
                 .get_bytes(e, id)
                 .map_err(|e| held_by_view(e, &comp, "world.get"))?;
             Ok(layout.decode(&bytes))
-        })());
+        })();
     }
-    result((|| {
+    (|| {
         let eng = engine(world)?;
         let e = live(&eng, "world.get", entity_id, |e| {
             Ok(eng.world()?.is_alive(e))
@@ -614,7 +597,7 @@ pub fn og_world_get(world: u32, entity_id: f64, comp: String) -> String {
         let (layout, id) = component(&eng, &comp)?;
         let bytes = eng.world()?.get_bytes(e, id).map_err(err)?;
         Ok(layout.decode(&bytes))
-    })())
+    })()
 }
 
 /// `world.get`/`world.set` inside a system on an entity whose column of
@@ -628,9 +611,9 @@ fn held_by_view(e: og_core::Error, comp: &str, call: &str) -> String {
     err(e)
 }
 
-pub fn og_world_set(world: u32, entity_id: f64, comp: String, value: String) -> String {
+pub fn og_world_set(world: u32, entity_id: f64, comp: String, value: String) -> Result<(), String> {
     if let Some(f) = running(world) {
-        return result_void((|| {
+        return (|| {
             let eng = engine(world)?;
             // SAFETY: the frame is published while its system runs.
             let e = live(&eng, "world.set", entity_id, |e| {
@@ -644,9 +627,9 @@ pub fn og_world_set(world: u32, entity_id: f64, comp: String, value: String) -> 
             let current = ctx.get_bytes(e, id).map_err(held)?;
             let bytes = layout.encode(Some(&current), Some(&value))?;
             ctx.set_bytes(e, id, &bytes).map_err(held)
-        })());
+        })();
     }
-    result_void((|| {
+    (|| {
         let eng = engine(world)?;
         let e = live(&eng, "world.set", entity_id, |e| {
             Ok(eng.world()?.is_alive(e))
@@ -660,7 +643,7 @@ pub fn og_world_set(world: u32, entity_id: f64, comp: String, value: String) -> 
         // treats every insert as structural so views never see a half-write.
         before_structural(&eng);
         eng.world()?.insert_bytes(e, id, &bytes).map_err(err)
-    })())
+    })()
 }
 
 fn time_json(t: Time, scale: og_core::TimeScale, rate: u32) -> Value {
@@ -728,8 +711,8 @@ pub(crate) fn resource_value(eng: &Engine, name: &str) -> Result<Value, String> 
     Ok(layout.decode(&bytes))
 }
 
-pub fn og_world_resource(world: u32, res: String) -> String {
-    result(engine(world).and_then(|eng| resource_value(&eng, &res)))
+pub fn og_world_resource(world: u32, res: String) -> Result<serde_json::Value, String> {
+    engine(world).and_then(|eng| resource_value(&eng, &res))
 }
 
 pub fn og_world_find(world: u32, name: String) -> String {
@@ -746,11 +729,11 @@ pub fn og_world_find(world: u32, name: String) -> String {
 /// `world.prefabOf`: the entity's og.PrefabLink, or null (no link, a dead
 /// entity, or a world that never placed a prefab).
 pub fn og_world_prefab_of(world: u32, entity_id: f64) -> String {
-    let r: Value = serde_json::from_str(&og_world_get(
+    let r: Value = serde_json::from_str(&crate::host_impl::answer(og_world_get(
         world,
         entity_id,
         super::prefab::LINK.to_string(),
-    ))
+    )))
     .unwrap_or(Value::Null);
     match (r["ok"].as_bool(), r.get("value")) {
         (Some(true), Some(v)) if !v.is_null() => v.to_string(),
@@ -769,13 +752,11 @@ pub fn og_world_name_of(world: u32, entity_id: f64) -> String {
     }
 }
 
-pub fn og_world_query(world: u32, desc: Option<String>) -> String {
+pub fn og_world_query(world: u32, desc: Option<String>) -> Result<serde_json::Value, String> {
     if running(world).is_some() {
-        return refuse(
-            "a system receives its query as its first argument; world.query is for commands and callbacks",
-        );
+        return Err("a system receives its query as its first argument; world.query is for commands and callbacks".into());
     }
-    result((|| {
+    (|| {
         let eng = engine(world)?;
         let desc: wire::QueryDesc = wire::arg(desc.as_deref(), "desc")?;
         let names = |v: &[Value]| -> Vec<String> {
@@ -810,7 +791,7 @@ pub fn og_world_query(world: u32, desc: Option<String>) -> String {
                 .push((eng.id, QueryRec::World(q)))
         });
         Ok(json!(h))
-    })())
+    })()
 }
 
 fn event_layout(eng: &Engine, name: &str) -> Result<(Layout, og_ecs::SchemaId), String> {
@@ -859,9 +840,9 @@ pub fn og_world_events(world: u32, event: String) -> String {
     Value::Array(list.unwrap_or_default()).to_string()
 }
 
-pub fn og_world_emit(world: u32, event: String, payload: String) -> String {
+pub fn og_world_emit(world: u32, event: String, payload: String) -> Result<(), String> {
     if let Some(f) = running(world) {
-        return result_void((|| {
+        return (|| {
             let eng = engine(world)?;
             let (layout, id) = running_record(&eng, &event, RecordKind::Event)?;
             let declared = eng.state.borrow().systems[f.system].writes.contains(&event);
@@ -873,21 +854,25 @@ pub fn og_world_emit(world: u32, event: String, payload: String) -> String {
             unsafe { f.ctx() }
                 .send_bytes(id, &bytes)
                 .map_err(|_| undeclared(&eng, f.system, "write", &event))
-        })());
+        })();
     }
-    result_void((|| {
+    (|| {
         let eng = engine(world)?;
         let (layout, id) = event_layout(&eng, &event)?;
         let bytes = layout.encode(None, Some(&parse(Some(&payload))?))?;
         eng.world()?.send_bytes(id, &bytes).map_err(err)
-    })())
+    })()
 }
 
-pub fn og_world_instantiate(world: u32, asset: f64, desc: Option<String>) -> String {
+pub fn og_world_instantiate(
+    world: u32,
+    asset: f64,
+    desc: Option<String>,
+) -> Result<serde_json::Value, String> {
     if running(world).is_some() {
-        return refuse(in_system("world.instantiate"));
+        return Err(in_system("world.instantiate"));
     }
-    result((|| {
+    (|| {
         let eng = engine(world)?;
         let desc = parse(desc.as_deref())?;
         let i = index_of(asset).ok_or_else(|| format!("{asset} is not an asset handle"))?;
@@ -935,7 +920,7 @@ pub fn og_world_instantiate(world: u32, asset: f64, desc: Option<String>) -> Str
             }
         }
         Ok(entity_number(root))
-    })())
+    })()
 }
 
 // ── query and views ─────────────────────────────────────────────────────────

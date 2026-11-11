@@ -4,21 +4,22 @@ use super::*;
 
 // ── commands ────────────────────────────────────────────────────────────────
 
-pub fn og_commands_register(name: String, handler: u32, desc: Option<String>) -> String {
+pub fn og_commands_register(
+    name: String,
+    handler: u32,
+    desc: Option<String>,
+) -> Result<(), String> {
     if let Some(why) = rprobe::reserved(&name) {
-        return refuse(why);
+        return Err(why);
     }
     let valid = og_probe::command::parse(&format!("0:{name}"))
         .is_ok_and(|s| s.len() == 1 && s[0].action == name && s[0].args.is_empty());
     if !valid {
-        return refuse(format!(
+        return Err(format!(
             "'{name}' is not an action name (snake_case, such as `spawn_wave`)"
         ));
     }
-    let desc: wire::CommandDesc = match wire::arg(desc.as_deref(), "desc") {
-        Ok(d) => d,
-        Err(e) => return refuse(e),
-    };
+    let desc: wire::CommandDesc = wire::arg(desc.as_deref(), "desc")?;
     let decl = CommandDecl {
         handler,
         usage: desc.usage,
@@ -33,7 +34,7 @@ pub fn og_commands_register(name: String, handler: u32, desc: Option<String>) ->
         false
     });
     if taken {
-        return refuse(format!("'{name}' is already registered"));
+        return Err(format!("'{name}' is already registered"));
     }
     // Engines already running take it too.
     for id in super::engine::engine_ids() {
@@ -50,27 +51,30 @@ pub fn og_commands_register(name: String, handler: u32, desc: Option<String>) ->
             }
         }
     }
-    ok_void()
+    Ok(())
 }
 
-pub fn og_commands_parse(script: String) -> String {
+pub fn og_commands_parse(
+    script: String,
+) -> Result<std::vec::Vec<crate::wire::CommandStep>, String> {
     match og_probe::command::parse(&script) {
-        Ok(steps) => wire::ok(
-            &steps
-                .into_iter()
-                .map(|s| wire::CommandStep {
-                    at: s.at as f32,
-                    action: s.action,
-                    args: s.args,
-                })
-                .collect::<Vec<_>>(),
-        ),
-        Err(e) => refuse(e.to_string()),
+        Ok(steps) => Ok(steps
+            .into_iter()
+            .map(|s| wire::CommandStep {
+                at: s.at as f32,
+                action: s.action,
+                args: s.args,
+            })
+            .collect::<Vec<_>>()),
+        Err(e) => Err(e.to_string()),
     }
 }
 
-pub fn og_commands_schedule(world: u32, script: String) -> String {
-    typed((|| {
+pub fn og_commands_schedule(
+    world: u32,
+    script: String,
+) -> Result<crate::wire::CommandsReport, String> {
+    (|| {
         let eng = engine(world)?;
         with_probe(&eng, false, |p, w| p.schedule(w, &script))?
             .map(|r| wire::CommandsReport {
@@ -79,11 +83,11 @@ pub fn og_commands_schedule(world: u32, script: String) -> String {
                 warnings: r.warnings,
             })
             .map_err(|e| e.to_string())
-    })())
+    })()
 }
 
-pub fn og_commands_help(world: u32) -> String {
-    let list = engine(world)
+pub fn og_commands_help(world: u32) -> Vec<crate::wire::CommandInfo> {
+    engine(world)
         .ok()
         .and_then(|eng| {
             eng.probe.try_borrow().ok().map(|p| {
@@ -108,8 +112,7 @@ pub fn og_commands_help(world: u32) -> String {
                     core: true,
                 })
                 .collect()
-        });
-    wire::text_of(&list)
+        })
 }
 
 // ── probe ───────────────────────────────────────────────────────────────────

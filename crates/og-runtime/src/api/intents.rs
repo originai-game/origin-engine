@@ -38,8 +38,8 @@ pub(crate) fn send_intent(
     Ok(())
 }
 
-pub fn og_input_intent(world: u32, event: String, payload: String) -> String {
-    result_void((|| {
+pub fn og_input_intent(world: u32, event: String, payload: String) -> Result<(), String> {
+    (|| {
         let eng = engine(world)?;
         let frame = running(world);
         let (layout, _) = if frame.is_some() {
@@ -51,7 +51,7 @@ pub fn og_input_intent(world: u32, event: String, payload: String) -> String {
         // SAFETY: the frame's context remains live throughout this host call.
         let ctx = frame.as_ref().map(|frame| unsafe { frame.ctx() });
         send_intent(&eng, ctx.as_deref(), &event, &bytes)
-    })())
+    })()
 }
 
 pub fn og_input_take_intents(world: u32) -> String {
@@ -63,8 +63,8 @@ pub fn og_input_take_intents(world: u32) -> String {
     )
 }
 
-pub fn og_input_replay_intent(world: u32, intent: String) -> String {
-    result_void((|| {
+pub fn og_input_replay_intent(world: u32, intent: String) -> Result<(), String> {
+    (|| {
         let eng = engine(world)?;
         let record: wire::RecordedIntent = wire::arg(Some(&intent), "intent")?;
         if record.tick < 0.0 || record.tick.fract() != 0.0 {
@@ -89,5 +89,5 @@ pub fn og_input_replay_intent(world: u32, intent: String) -> String {
         og_input::InputLayer::new()
             .inject_intent(eng.world()?, &name, layout_hash, &payload)
             .map_err(err)
-    })())
+    })()
 }

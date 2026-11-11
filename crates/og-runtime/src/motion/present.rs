@@ -2705,15 +2705,24 @@ mod tests {
         let game = og_game_game(None);
         let created: Value = serde_json::from_str(&og_engine_create(game, "{}".into())).unwrap();
         let world = created["value"].as_u64().unwrap() as u32;
-        let spawned: Value = serde_json::from_str(&og_world_spawn(world, None)).unwrap();
+        let spawned: Value =
+            serde_json::from_str(&crate::host_impl::answer(og_world_spawn(world, None))).unwrap();
         let entity = spawned["value"].as_f64().unwrap();
-        let inserted: Value =
-            serde_json::from_str(&og_world_insert(world, entity, AGENT.into(), None)).unwrap();
+        let inserted: Value = serde_json::from_str(&crate::host_impl::answer(og_world_insert(
+            world,
+            entity,
+            AGENT.into(),
+            None,
+        )))
+        .unwrap();
         assert_eq!(inserted["ok"], true);
         let eng = crate::engine::engine(world).unwrap();
         eng.render.borrow_mut().motion.model = Model::Failed("weights could not be read".into());
         let expected = json!({"state":"failed", "reason":"weights could not be read"});
-        let answer: Value = serde_json::from_str(&og_motion_presentation(world, entity)).unwrap();
+        let answer: Value = serde_json::from_str(&crate::host_impl::answer(
+            og_motion_presentation(world, entity),
+        ))
+        .unwrap();
         assert_eq!(answer["ok"], true);
         assert_eq!(answer["value"], expected);
         assert_eq!(

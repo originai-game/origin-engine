@@ -3,9 +3,7 @@
 //! `ArchetypeView.rows`) and `og.defineHook`: og-ecs's change detection,
 //! hooks, state machines and spatial hash, as both hosts reach them.
 
-use super::{
-    RecordKind, component, engine, entity, err, parse, result, result_void, running, running_record,
-};
+use super::{RecordKind, component, engine, entity, err, parse, running, running_record};
 use crate::engine::{DECL, HANDLES, declare_hook};
 use crate::wire;
 use og_core::reflect::FieldType;
@@ -55,8 +53,8 @@ pub fn og_world_children(world: u32, entity_id: f64) -> String {
     entity_list(list.unwrap_or_default()).to_string()
 }
 
-pub fn og_world_removed(world: u32, comp: String) -> String {
-    result((|| {
+pub fn og_world_removed(world: u32, comp: String) -> Result<serde_json::Value, String> {
+    (|| {
         let eng = engine(world)?;
         if let Some(f) = running(world) {
             let (_, id) = running_record(&eng, &comp, RecordKind::Component)?;
@@ -74,7 +72,7 @@ pub fn og_world_removed(world: u32, comp: String) -> String {
             ));
         }
         Ok(entity_list(w.removed(id).map_err(err)?))
-    })())
+    })()
 }
 
 fn ids(
@@ -94,8 +92,8 @@ fn ids(
     Ok(out)
 }
 
-pub fn og_world_spatial(world: u32, desc: Option<String>) -> String {
-    result((|| {
+pub fn og_world_spatial(world: u32, desc: Option<String>) -> Result<Value, String> {
+    (|| {
         let eng = engine(world)?;
         let desc: wire::SpatialDesc = wire::arg(desc.as_deref(), "desc")?;
         let in_system = running(world).is_some();
@@ -126,14 +124,14 @@ pub fn og_world_spatial(world: u32, desc: Option<String>) -> String {
         };
         let h = HANDLES.with(|t| t.borrow_mut().spatial.push((world, index)));
         Ok(json!(h))
-    })())
+    })()
 }
 
 fn with_index<T>(h: u32, f: impl FnOnce(&og_ecs::SpatialHash) -> T) -> Option<T> {
     HANDLES.with(|t| t.borrow().spatial.get(h).map(|(_, i)| f(i)))
 }
 
-fn neighbours(list: Vec<og_ecs::Neighbour>) -> String {
+fn neighbours(list: Vec<og_ecs::Neighbour>) -> Vec<crate::wire::Neighbour> {
     let list: Vec<wire::Neighbour> = list
         .into_iter()
         .map(|n| wire::Neighbour {
@@ -141,7 +139,7 @@ fn neighbours(list: Vec<og_ecs::Neighbour>) -> String {
             distance: n.distance,
         })
         .collect();
-    wire::text_of(&list)
+    list
 }
 
 fn center(v: &str) -> [f32; 3] {
@@ -154,12 +152,12 @@ pub fn og_spatial_index_get_count(h: u32) -> u32 {
     with_index(h, |i| i.len() as u32).unwrap_or(0)
 }
 
-pub fn og_spatial_index_within(h: u32, c: String, radius: f64) -> String {
+pub fn og_spatial_index_within(h: u32, c: String, radius: f64) -> Vec<crate::wire::Neighbour> {
     let c = center(&c);
     neighbours(with_index(h, |i| i.within(c, radius as f32)).unwrap_or_default())
 }
 
-pub fn og_spatial_index_nearest(h: u32, c: String, count: u32) -> String {
+pub fn og_spatial_index_nearest(h: u32, c: String, count: u32) -> Vec<crate::wire::Neighbour> {
     let c = center(&c);
     neighbours(with_index(h, |i| i.nearest(c, count as usize)).unwrap_or_default())
 }
@@ -182,15 +180,15 @@ pub fn og_world_state(world: u32, name: String) -> String {
     }
 }
 
-pub fn og_world_set_state(world: u32, name: String, value: String) -> String {
-    result_void((|| {
+pub fn og_world_set_state(world: u32, name: String, value: String) -> Result<(), String> {
+    (|| {
         if let Some(f) = running(world) {
             // SAFETY: the frame is published while its system runs.
             return unsafe { f.ctx() }.set_state(&name, &value).map_err(err);
         }
         let eng = engine(world)?;
         eng.world()?.set_state(&name, &value).map_err(err)
-    })())
+    })()
 }
 
 /// The rows of view `view` its query's change filters pass (every row

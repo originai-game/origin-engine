@@ -10,7 +10,7 @@
 //! tick, where the world is the scheduler's.
 
 use super::super::engine::{Engine, engine};
-use super::super::{ok, ok_void, parse, refuse};
+use super::super::parse;
 use super::{BUILDING, ui_of, with_ui};
 use crate::wire;
 use og_ui::{ActionDesc, ActionTrigger, Device, SharedUi, Ui, UiDocument};
@@ -448,10 +448,10 @@ fn define(ui: &mut og_ui::Ui, doc: UiDocument, faces: Vec<og_ui::FamilyFace>) {
 }
 
 /// `og.load.document`.
-pub fn og_load_document(world: u32, path: String) -> String {
+pub fn og_load_document(world: u32, path: String) -> Result<(), String> {
     match engine(world).and_then(|eng| load_document(&eng, &path)) {
-        Ok(_) => ok_void(),
-        Err(e) => refuse(e),
+        Ok(_) => Ok(()),
+        Err(e) => Err(e),
     }
 }
 
@@ -533,8 +533,11 @@ pub(crate) fn refresh(eng: &Engine) -> Vec<String> {
         }
     }
     if changed || eng.state.borrow().ui_desc["style"].as_f64().is_some() {
-        let r: Value = serde_json::from_str(&super::og_ui_configure(eng.id, Some("{}".into())))
-            .unwrap_or(Value::Null);
+        let r: Value = serde_json::from_str(&crate::host_impl::answer(super::og_ui_configure(
+            eng.id,
+            Some("{}".into()),
+        )))
+        .unwrap_or(Value::Null);
         if r["ok"] == json!(false) {
             failed.push(format!("og dev: the style did not apply: {}", r["error"]));
         }
@@ -572,10 +575,14 @@ fn on_ui<T>(world: u32, f: impl FnOnce(&mut Ui) -> T) -> Result<T, String> {
     Ok(f(&mut g))
 }
 
-pub fn og_ui_push(world: u32, screen: String, vm: Option<String>) -> String {
+pub fn og_ui_push(
+    world: u32,
+    screen: String,
+    vm: Option<String>,
+) -> Result<serde_json::Value, String> {
     match on_ui(world, |ui| ui.push_screen(&screen, vm_of(vm))).and_then(|r| r) {
-        Ok(serial) => ok(json!(serial)),
-        Err(e) => refuse(e),
+        Ok(serial) => Ok(json!(serial)),
+        Err(e) => Err(e),
     }
 }
 
@@ -586,10 +593,14 @@ pub fn og_ui_pop(world: u32) -> String {
         .unwrap_or_default()
 }
 
-pub fn og_ui_replace(world: u32, screen: String, vm: Option<String>) -> String {
+pub fn og_ui_replace(
+    world: u32,
+    screen: String,
+    vm: Option<String>,
+) -> Result<serde_json::Value, String> {
     match on_ui(world, |ui| ui.replace_screen(&screen, vm_of(vm))).and_then(|r| r) {
-        Ok(serial) => ok(json!(serial)),
-        Err(e) => refuse(e),
+        Ok(serial) => Ok(json!(serial)),
+        Err(e) => Err(e),
     }
 }
 
@@ -598,7 +609,7 @@ pub fn og_ui_clear(world: u32) {
 }
 
 /// A layer as og.ui.layers answers it (IDL `ui.UiLayer`).
-fn layer_wire(l: &og_ui::LayerInfo) -> wire::UiLayer {
+fn layer_wire(l: &og_ui::LayerInfo) -> crate::wire::UiLayer {
     let s = &l.spec;
     wire::UiLayer {
         serial: l.serial,
@@ -672,13 +683,10 @@ pub fn og_ui_paused(world: u32) -> bool {
 
 // ── og.ui: actions and glyphs ───────────────────────────────────────────────
 
-pub fn og_ui_define_action(world: u32, desc: String) -> String {
-    let d: crate::wire::UiActionDesc = match crate::wire::arg(Some(&desc), "desc") {
-        Ok(d) => d,
-        Err(e) => return refuse(e),
-    };
+pub fn og_ui_define_action(world: u32, desc: String) -> Result<(), String> {
+    let d: crate::wire::UiActionDesc = crate::wire::arg(Some(&desc), "desc")?;
     if d.name.is_empty() {
-        return refuse("an action has a name");
+        return Err("an action has a name".into());
     }
     let trigger = match d.trigger {
         crate::wire::UiActionTrigger::Release => ActionTrigger::Release,
@@ -698,8 +706,8 @@ pub fn og_ui_define_action(world: u32, desc: String) -> String {
         action: d.action.unwrap_or_default(),
     };
     match on_ui(world, |ui| ui.define_action(desc)) {
-        Ok(()) => ok_void(),
-        Err(e) => refuse(e),
+        Ok(()) => Ok(()),
+        Err(e) => Err(e),
     }
 }
 
@@ -712,7 +720,7 @@ pub fn og_ui_action_held(name: String) -> bool {
 }
 
 /// A UI action's glyph on the UI's device (IDL `ui.UiGlyph`).
-fn glyph_wire(ui: &Ui, action: &str) -> Option<wire::UiGlyph> {
+fn glyph_wire(ui: &Ui, action: &str) -> Option<crate::wire::UiGlyph> {
     let g = ui.glyph(action)?;
     Some(wire::UiGlyph {
         icon: g.icon,
@@ -721,8 +729,8 @@ fn glyph_wire(ui: &Ui, action: &str) -> Option<wire::UiGlyph> {
     })
 }
 
-pub fn og_ui_glyph(world: u32, action: String) -> String {
-    wire::text_of(&on_ui(world, |ui| glyph_wire(ui, &action)).ok().flatten())
+pub fn og_ui_glyph(world: u32, action: String) -> Option<crate::wire::UiGlyph> {
+    on_ui(world, |ui| glyph_wire(ui, &action)).ok().flatten()
 }
 
 pub fn og_ui_frame_glyph(action: String) -> String {
@@ -782,10 +790,10 @@ pub fn og_ui_document_schema() -> String {
 
 // ── live edits (Tune and the probe) ─────────────────────────────────────────
 
-pub fn og_ui_set_prop(world: u32, path: String, prop: String, value: String) -> String {
+pub fn og_ui_set_prop(world: u32, path: String, prop: String, value: String) -> Result<(), String> {
     match on_ui(world, |ui| ui.set_doc_prop(&path, &prop, &value)).and_then(|r| r) {
-        Ok(()) => ok_void(),
-        Err(e) => refuse(e),
+        Ok(()) => Ok(()),
+        Err(e) => Err(e),
     }
 }
 
@@ -810,10 +818,10 @@ pub(crate) fn save_edits(eng: &Engine) -> Result<Vec<String>, String> {
     Ok(files)
 }
 
-pub fn og_ui_save_edits(world: u32) -> String {
+pub fn og_ui_save_edits(world: u32) -> Result<serde_json::Value, String> {
     match engine(world).and_then(|eng| save_edits(&eng)) {
-        Ok(files) => ok(json!(files)),
-        Err(e) => refuse(e),
+        Ok(files) => Ok(json!(files)),
+        Err(e) => Err(e),
     }
 }
 

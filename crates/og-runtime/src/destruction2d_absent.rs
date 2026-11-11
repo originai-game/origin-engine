@@ -28,26 +28,38 @@ pub(crate) struct ModuleState;
 
 pub(crate) fn extract(_world: &World, _rs: &mut RenderState, _h: &mut Hierarchy) {}
 
-fn absent() -> String {
-    super::refuse(super::destruction::ABSENT)
+pub fn og_destruction_carve2d(
+    _world: u32,
+    _entity: f64,
+    _desc: Option<String>,
+) -> Result<(), String> {
+    Err(super::destruction::ABSENT.into())
 }
 
-pub fn og_destruction_carve2d(_world: u32, _entity: f64, _desc: Option<String>) -> String {
-    absent()
+pub fn og_destruction_fill2d(
+    _world: u32,
+    _entity: f64,
+    _desc: Option<String>,
+) -> Result<(), String> {
+    Err(super::destruction::ABSENT.into())
 }
 
-pub fn og_destruction_fill2d(_world: u32, _entity: f64, _desc: Option<String>) -> String {
-    absent()
+pub fn og_destruction_explode2d(_world: u32, _desc: Option<String>) -> Result<(), String> {
+    Err(super::destruction::ABSENT.into())
 }
 
-pub fn og_destruction_explode2d(_world: u32, _desc: Option<String>) -> String {
-    absent()
+pub fn og_destruction_fracture2d(
+    _world: u32,
+    _entity: f64,
+    _desc: Option<String>,
+) -> Result<(), String> {
+    Err(super::destruction::ABSENT.into())
 }
 
-pub fn og_destruction_fracture2d(_world: u32, _entity: f64, _desc: Option<String>) -> String {
-    absent()
-}
-
-pub fn og_destruction_cell2d(_world: u32, _entity: f64, _point: String) -> String {
-    absent()
+pub fn og_destruction_cell2d(
+    _world: u32,
+    _entity: f64,
+    _point: String,
+) -> Result<serde_json::Value, String> {
+    Err(super::destruction::ABSENT.into())
 }

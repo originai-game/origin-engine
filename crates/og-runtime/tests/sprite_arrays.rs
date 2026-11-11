@@ -156,16 +156,19 @@ fn frame(engine: u32) {
 }
 
 fn spawn(engine: u32, components: &[(&str, Value)]) -> f64 {
-    let e = value(og_world_spawn(engine, Some("{}".into())))
-        .as_f64()
-        .unwrap();
+    let e = value(og_runtime::host_impl::answer(og_world_spawn(
+        engine,
+        Some("{}".into()),
+    )))
+    .as_f64()
+    .unwrap();
     for (name, v) in components {
-        value(og_world_insert(
+        value(og_runtime::host_impl::answer(og_world_insert(
             engine,
             e,
             name.to_string(),
             Some(v.to_string()),
-        ));
+        )));
     }
     e
 }
@@ -173,7 +176,10 @@ fn spawn(engine: u32, components: &[(&str, Value)]) -> f64 {
 #[test]
 fn an_array_flipbook_draws_its_frame_as_the_layer() {
     let (engine, seen) = engine();
-    let info = value(og_load_flipbook(engine, "sprites/run.ogt".into()));
+    let info = value(og_runtime::host_impl::answer(og_load_flipbook(
+        engine,
+        "sprites/run.ogt".into(),
+    )));
     assert_eq!(info["texture"].as_f64(), Some(0.0), "no texture: {info}");
     assert!(info["array"].as_f64().unwrap() > 0.0, "{info}");
     assert_eq!(info["frames"], json!(5));
@@ -187,7 +193,11 @@ fn an_array_flipbook_draws_its_frame_as_the_layer() {
     let mut layers = Vec::new();
     for _ in 0..20 {
         frame(engine);
-        let fb = value(og_world_get(engine, e, "og.Flipbook".into()));
+        let fb = value(og_runtime::host_impl::answer(og_world_get(
+            engine,
+            e,
+            "og.Flipbook".into(),
+        )));
         let s = seen.borrow();
         assert_eq!(s.world.len(), 1, "the sprite draws from the sheet's array");
         assert_eq!(
@@ -205,13 +215,22 @@ fn an_array_flipbook_draws_its_frame_as_the_layer() {
 #[test]
 fn screen_sprites_and_emitters_draw_from_arrays() {
     let (engine, seen) = engine();
-    let array = value(og_load_texture_array(engine, "tex/frames.ogt".into()))["array"]
+    let array = value(og_runtime::host_impl::answer(og_load_texture_array(
+        engine,
+        "tex/frames.ogt".into(),
+    )))["array"]
         .as_f64()
         .unwrap();
     let desc =
         json!({ "array": array, "arrayLayer": 1, "screen": true, "width": 64, "height": 64 });
-    value(og_render_sprite(engine, Some(desc.to_string())));
-    let emitter = value(og_load_emitter(engine, "fx/motes.ogt".into()));
+    value(og_runtime::host_impl::answer(og_render_sprite(
+        engine,
+        Some(desc.to_string()),
+    )));
+    let emitter = value(og_runtime::host_impl::answer(og_load_emitter(
+        engine,
+        "fx/motes.ogt".into(),
+    )));
     spawn(
         engine,
         &[("og.ParticleSystem", json!({ "emitter": emitter }))],

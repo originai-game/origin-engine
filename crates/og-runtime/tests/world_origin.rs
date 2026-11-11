@@ -62,17 +62,22 @@ fn engine_at(x: f64, gap: f64, shifts: bool) -> (u32, f64, Vec<f64>) {
     let game = og_game_game(Some(json!({ "seed": 1 }).to_string()));
     let e = value(og_engine_create(game, "{}".into())).as_u64().unwrap() as u32;
     let body = |y: f64, kind: u32, size: Value| {
-        let id = value(og_world_spawn(
+        let id = value(og_runtime::host_impl::answer(og_world_spawn(
             e,
             Some(json!({ "position": { "x": x, "y": y, "z": 0 } }).to_string()),
-        ))
+        )))
         .as_f64()
         .unwrap();
         for (name, v) in [
             ("og.RigidBody", json!({ "kind": kind })),
             ("og.Collider", json!({ "shape": 0, "size": size })),
         ] {
-            value(og_world_insert(e, id, name.into(), Some(v.to_string())));
+            value(og_runtime::host_impl::answer(og_world_insert(
+                e,
+                id,
+                name.into(),
+                Some(v.to_string()),
+            )));
         }
         id
     };
@@ -103,7 +108,11 @@ fn frame(e: u32) {
 }
 
 fn get(e: u32, id: f64, comp: &str) -> Value {
-    value(og_world_get(e, id, comp.into()))
+    value(og_runtime::host_impl::answer(og_world_get(
+        e,
+        id,
+        comp.into(),
+    )))
 }
 
 fn pos(e: u32, id: f64) -> [f64; 3] {
@@ -117,7 +126,8 @@ fn hash(e: u32) -> Value {
 }
 
 fn origin(e: u32) -> Value {
-    let dump = og_runtime::og_world_resource(e, "og.WorldOrigin".into());
+    let dump =
+        og_runtime::host_impl::answer(og_runtime::og_world_resource(e, "og.WorldOrigin".into()));
     value(dump)
 }
 
@@ -205,12 +215,14 @@ fn a_replay_and_a_restore_go_tick_for_tick_across_the_shift() {
     while og_world_get_tick(c) < 40 {
         frame(c);
     }
-    let save = value(og_world_snapshot(c, None))
+    let save = value(og_runtime::host_impl::answer(og_world_snapshot(c, None)))
         .as_str()
         .unwrap()
         .to_string();
     let (d, ..) = engine();
-    value(og_world_restore(d, save, None));
+    value(og_runtime::host_impl::answer(og_world_restore(
+        d, save, None,
+    )));
     let third = script(d, 40);
     assert_eq!(third[1..], first[41..]);
     // And a save taken after it (a rollback to a tick past the shift):
@@ -221,12 +233,14 @@ fn a_replay_and_a_restore_go_tick_for_tick_across_the_shift() {
         }
         frame(c);
     }
-    let save = value(og_world_snapshot(c, None))
+    let save = value(og_runtime::host_impl::answer(og_world_snapshot(c, None)))
         .as_str()
         .unwrap()
         .to_string();
     let (f, ..) = engine();
-    value(og_world_restore(f, save, None));
+    value(og_runtime::host_impl::answer(og_world_restore(
+        f, save, None,
+    )));
     let fourth = script(f, 80);
     assert_eq!(fourth[1..], first[81..]);
     assert_eq!(origin(f)["shifts"].as_f64(), Some(1.0));

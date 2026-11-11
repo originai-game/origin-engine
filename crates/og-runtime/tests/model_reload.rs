@@ -52,9 +52,13 @@ fn value(text: String) -> Value {
 
 /// The loaded model's first geometry's greatest x.
 fn max_x(engine: u32, asset: f64) -> f64 {
-    let info = value(og_load_gltf_info(engine, asset));
+    let info = value(og_runtime::host_impl::answer(og_load_gltf_info(
+        engine, asset,
+    )));
     let g = info["geometries"][0].as_f64().unwrap();
-    value(og_render_geometry_info(engine, g))["max"]["x"]
+    value(og_runtime::host_impl::answer(og_render_geometry_info(
+        engine, g,
+    )))["max"]["x"]
         .as_f64()
         .unwrap()
 }
@@ -70,9 +74,13 @@ fn an_edited_type_model_loads_again_under_its_handle() {
     let game = og_game_game(Some(json!({ "seed": 1 }).to_string()));
     let options = json!({ "root": root.to_str().unwrap() }).to_string();
     let engine = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
-    let asset = value(og_load_gltf(engine, "models/block.ogt".into(), None))
-        .as_f64()
-        .unwrap();
+    let asset = value(og_runtime::host_impl::answer(og_load_gltf(
+        engine,
+        "models/block.ogt".into(),
+        None,
+    )))
+    .as_f64()
+    .unwrap();
     value(og_engine_frame(engine, 1000.0 / 60.0));
     assert!((max_x(engine, asset) - 0.5).abs() < 1e-4);
 
@@ -80,9 +88,13 @@ fn an_edited_type_model_loads_again_under_its_handle() {
     let answer: Value = serde_json::from_str(&og_engine_probe_reload(engine)).unwrap();
     assert!(answer.is_object(), "the reload swapped the world: {answer}");
     // The same handle answers the same path, and holds the edit.
-    let again = value(og_load_gltf(engine, "models/block.ogt".into(), None))
-        .as_f64()
-        .unwrap();
+    let again = value(og_runtime::host_impl::answer(og_load_gltf(
+        engine,
+        "models/block.ogt".into(),
+        None,
+    )))
+    .as_f64()
+    .unwrap();
     assert_eq!(again, asset);
     assert!(
         (max_x(engine, asset) - 1.5).abs() < 1e-4,

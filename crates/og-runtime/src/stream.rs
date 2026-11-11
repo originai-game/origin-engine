@@ -63,8 +63,7 @@ pub(crate) use residency::{
 use residency::{downgrade, release, retry_retained, upgrade};
 
 use super::engine::{Engine, engine, hooks};
-use super::wire::{self, StreamBudget, StreamState, StreamStatus, ToJson};
-use super::{ok_void, refuse};
+use super::wire::{StreamBudget, StreamState, StreamStatus, ToJson};
 use og_bundle::runtime::{CookedSound, ManifestStream, StreamTrigger};
 use og_core::IdMap;
 use og_core::{Reflect, Str64};
@@ -584,54 +583,51 @@ fn with_group<T>(
 }
 
 /// `og.stream.status`.
-pub fn og_stream_status(world: u32, group: String) -> String {
-    match with_group(world, &group, |_, s, i| group_status(s, &s.groups[i])) {
-        Ok(v) => wire::ok(&v),
-        Err(e) => refuse(e),
-    }
+pub fn og_stream_status(world: u32, group: String) -> Result<crate::wire::StreamStatus, String> {
+    with_group(world, &group, |_, s, i| group_status(s, &s.groups[i]))
 }
 
 /// `og.stream.request`: wanted until released (loaded at the next tick
 /// boundary, within the budget).
-pub fn og_stream_request(world: u32, group: String) -> String {
+pub fn og_stream_request(world: u32, group: String) -> Result<(), String> {
     match with_group(world, &group, |_, s, i| s.groups[i].requested = true) {
-        Ok(()) => ok_void(),
-        Err(e) => refuse(e),
+        Ok(()) => Ok(()),
+        Err(e) => Err(e),
     }
 }
 
 /// `og.stream.release`: no longer asked for (its trigger may still want it).
-pub fn og_stream_release(world: u32, group: String) -> String {
+pub fn og_stream_release(world: u32, group: String) -> Result<(), String> {
     match with_group(world, &group, |_, s, i| s.groups[i].requested = false) {
-        Ok(()) => ok_void(),
-        Err(e) => refuse(e),
+        Ok(()) => Ok(()),
+        Err(e) => Err(e),
     }
 }
 
 /// `og.stream.budget`.
-pub fn og_stream_budget(world: u32) -> String {
+pub fn og_stream_budget(world: u32) -> Result<crate::wire::StreamBudget, String> {
     match engine(world) {
         Ok(eng) => {
             open(&eng);
-            wire::ok(&stream_budget(&eng.assets.borrow().stream))
+            Ok(stream_budget(&eng.assets.borrow().stream))
         }
-        Err(e) => refuse(e),
+        Err(e) => Err(e),
     }
 }
 
 /// `og.stream.setBudget`: the memory the resident groups may take, from
 /// the next tick boundary (a lower one evicts the lowest-priority groups).
-pub fn og_stream_set_budget(world: u32, bytes: f64) -> String {
+pub fn og_stream_set_budget(world: u32, bytes: f64) -> Result<(), String> {
     if !(bytes.is_finite() && bytes >= 0.0) {
-        return refuse(format!("budget {bytes}: give a size in bytes, 0 or more"));
+        return Err(format!("budget {bytes}: give a size in bytes, 0 or more"));
     }
     match engine(world) {
         Ok(eng) => {
             let mut a = eng.assets.borrow_mut();
             a.stream.budget = Some(bytes as u64);
-            ok_void()
+            Ok(())
         }
-        Err(e) => refuse(e),
+        Err(e) => Err(e),
     }
 }
 

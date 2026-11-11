@@ -15,8 +15,8 @@ use super::api::{add_geometry, uv_repeat};
 use super::assets::{self, index_of};
 use super::engine::{Engine, engine, running};
 use super::extract::{Hierarchy, RenderState};
+use super::parse;
 use super::wire;
-use super::{ok_void, parse, refuse};
 use glam::{DVec2, DVec3, Mat4, Quat, Vec2, Vec3};
 use og_ecs::World;
 use og_render::geometry::{self as geo, Bvh};
@@ -435,20 +435,6 @@ fn mesh_of_desc(d: &wire::BufferGeometryDesc) -> Result<og_render::MeshData, Str
     })
 }
 
-fn wire<T: wire::ToJson>(r: Result<T, String>) -> String {
-    match r {
-        Ok(v) => wire::ok(&v),
-        Err(e) => refuse(e),
-    }
-}
-
-fn wire_void(r: Result<(), String>) -> String {
-    match r {
-        Ok(()) => ok_void(),
-        Err(e) => refuse(e),
-    }
-}
-
 /// The world's tick, inside a system or between ticks.
 fn tick(eng: &Engine) -> u64 {
     if let Some(fr) = running(eng.id) {
@@ -524,8 +510,8 @@ fn queue(rs: &mut RenderState, tick: u64) -> &mut GeoState {
     g
 }
 
-pub fn og_render_lines(world: u32, desc: Option<String>) -> String {
-    wire_void((|| {
+pub fn og_render_lines(world: u32, desc: Option<String>) -> Result<(), String> {
+    (|| {
         let eng = engine(world)?;
         let d: wire::LinesDesc = wire::arg(desc.as_deref(), "desc")?;
         let points = finite_points(d.points, "points")?;
@@ -564,11 +550,11 @@ pub fn og_render_lines(world: u32, desc: Option<String>) -> String {
         let t = tick(&eng);
         queue(&mut eng.render.borrow_mut(), t).lines.push(lines);
         Ok(())
-    })())
+    })()
 }
 
-pub fn og_render_points(world: u32, desc: Option<String>) -> String {
-    wire_void((|| {
+pub fn og_render_points(world: u32, desc: Option<String>) -> Result<(), String> {
+    (|| {
         let eng = engine(world)?;
         let d: wire::PointsDesc = wire::arg(desc.as_deref(), "desc")?;
         let positions = finite_points(d.points, "points")?;
@@ -593,7 +579,7 @@ pub fn og_render_points(world: u32, desc: Option<String>) -> String {
         let t = tick(&eng);
         queue(&mut eng.render.borrow_mut(), t).points.push(points);
         Ok(())
-    })())
+    })()
 }
 
 // ── raycast ─────────────────────────────────────────────────────────────────
@@ -714,8 +700,12 @@ pub(crate) fn before_tick(eng: &Engine, world: &mut World) {
     rs.geo.record = Some((tick, Record::Drawn(meshes, models)));
 }
 
-pub fn og_render_raycast(world: u32, ray: String, desc: Option<String>) -> String {
-    wire((|| {
+pub fn og_render_raycast(
+    world: u32,
+    ray: String,
+    desc: Option<String>,
+) -> Result<Vec<crate::wire::GeometryHit>, String> {
+    (|| {
         let eng = engine(world)?;
         let r: wire::Ray = wire::arg(Some(&ray), "ray")?;
         let d: wire::RaycastGeometryDesc = wire::arg(desc.as_deref(), "desc")?;
@@ -810,7 +800,7 @@ pub fn og_render_raycast(world: u32, ray: String, desc: Option<String>) -> Strin
             hits.truncate(1);
         }
         Ok(hits.into_iter().map(|(_, v)| v).collect::<Vec<_>>())
-    })())
+    })()
 }
 
 // ── og.debug ────────────────────────────────────────────────────────────────
@@ -1423,16 +1413,34 @@ mod tests {
         og_host_begin_bundle();
         let game = og_game_game(Some(r#"{"seed":1}"#.into()));
         let w = value(og_engine_create(game, "{}".into())).as_u64().unwrap() as u32;
-        let geometry = value(og_render_sphere_geometry(w, Some("{}".into())));
-        let material = value(og_render_standard_material(w, Some("{}".into())));
+        let geometry = value(crate::host_impl::answer(og_render_sphere_geometry(
+            w,
+            Some("{}".into()),
+        )));
+        let material = value(crate::host_impl::answer(og_render_standard_material(
+            w,
+            Some("{}".into()),
+        )));
         let mesh = json!({ "geometry": geometry, "material": material }).to_string();
         let spawn = |x: f64, parent: Option<f64>| {
             let at = json!({ "position": { "x": x, "y": 0.5, "z": -x * 0.5 } }).to_string();
-            let e = value(og_world_spawn(w, Some(at))).as_f64().unwrap();
-            value(og_world_insert(w, e, "og.Mesh".into(), Some(mesh.clone())));
+            let e = value(crate::host_impl::answer(og_world_spawn(w, Some(at))))
+                .as_f64()
+                .unwrap();
+            value(crate::host_impl::answer(og_world_insert(
+                w,
+                e,
+                "og.Mesh".into(),
+                Some(mesh.clone()),
+            )));
             if let Some(p) = parent {
                 let v = json!({ "entity": p }).to_string();
-                value(og_world_insert(w, e, "og.Parent".into(), Some(v)));
+                value(crate::host_impl::answer(og_world_insert(
+                    w,
+                    e,
+                    "og.Parent".into(),
+                    Some(v),
+                )));
             }
             e
         };
@@ -1460,47 +1468,104 @@ mod tests {
         assert_eq!(step("still"), 0, "nothing moved");
         // A leaf root: one matrix.
         let to = |x: f64| json!({ "position": { "x": x, "y": 1, "z": 2 } }).to_string();
-        value(og_world_set(w, roots[1], "og.Transform".into(), to(3.0)));
+        value(crate::host_impl::answer(og_world_set(
+            w,
+            roots[1],
+            "og.Transform".into(),
+            to(3.0),
+        )));
         assert_eq!(step("one root moved"), 1);
         // A root with a child and a grandchild: three.
-        value(og_world_set(w, roots[4], "og.Transform".into(), to(5.0)));
+        value(crate::host_impl::answer(og_world_set(
+            w,
+            roots[4],
+            "og.Transform".into(),
+            to(5.0),
+        )));
         assert_eq!(step("a parent moved"), 3);
         // A child moved: it and its own child.
-        value(og_world_set(w, children[0], "og.Transform".into(), to(0.5)));
+        value(crate::host_impl::answer(og_world_set(
+            w,
+            children[0],
+            "og.Transform".into(),
+            to(0.5),
+        )));
         assert_eq!(step("a child moved"), 2);
         // Reparented: everything again, once.
         let v = json!({ "entity": roots[3] }).to_string();
-        value(og_world_insert(w, children[1], "og.Parent".into(), Some(v)));
+        value(crate::host_impl::answer(og_world_insert(
+            w,
+            children[1],
+            "og.Parent".into(),
+            Some(v),
+        )));
         assert_eq!(step("reparented"), 350);
         assert_eq!(step("still after"), 0);
         // A parent without its transform, then despawned.
-        value(og_world_remove(w, roots[8], "og.Transform".into()));
+        value(crate::host_impl::answer(og_world_remove(
+            w,
+            roots[8],
+            "og.Transform".into(),
+        )));
         step("transform removed");
-        value(og_world_despawn(w, roots[8]));
+        value(crate::host_impl::answer(og_world_despawn(w, roots[8])));
         step("despawned");
         assert_eq!(step("still at the end"), 0);
         // Ticks with no raycast between them: a root moved a tick before
         // one where nothing moves (which alone reads as still), then moved
         // and moved back.
-        value(og_world_set(w, roots[1], "og.Transform".into(), to(9.0)));
+        value(crate::host_impl::answer(og_world_set(
+            w,
+            roots[1],
+            "og.Transform".into(),
+            to(9.0),
+        )));
         frame();
         assert_eq!(step("moved a tick before a still one"), 1);
-        value(og_world_set(w, roots[1], "og.Transform".into(), to(11.0)));
+        value(crate::host_impl::answer(og_world_set(
+            w,
+            roots[1],
+            "og.Transform".into(),
+            to(11.0),
+        )));
         frame();
-        value(og_world_set(w, roots[1], "og.Transform".into(), to(9.0)));
+        value(crate::host_impl::answer(og_world_set(
+            w,
+            roots[1],
+            "og.Transform".into(),
+            to(9.0),
+        )));
         assert_eq!(step("moved and moved back"), 0);
         // Reparented a tick before a still one: everything again.
         let v = json!({ "entity": roots[6] }).to_string();
-        value(og_world_insert(w, children[1], "og.Parent".into(), Some(v)));
+        value(crate::host_impl::answer(og_world_insert(
+            w,
+            children[1],
+            "og.Parent".into(),
+            Some(v),
+        )));
         frame();
         assert_eq!(step("reparented a tick before a still one"), 347);
         // A mesh hidden and one given another geometry: the kept rows are
         // read again (`checked` compares them with the world's).
         let hidden = json!({ "visible": false }).to_string();
-        value(og_world_set(w, roots[2], "og.Mesh".into(), hidden));
-        let other = value(og_render_sphere_geometry(w, Some(r#"{"radius":2}"#.into())));
+        value(crate::host_impl::answer(og_world_set(
+            w,
+            roots[2],
+            "og.Mesh".into(),
+            hidden,
+        )));
+        let other = value(crate::host_impl::answer(og_render_sphere_geometry(
+            w,
+            Some(r#"{"radius":2}"#.into()),
+        )));
         let swapped = json!({ "geometry": other }).to_string();
-        value(og_world_set(w, roots[5], "og.Mesh".into(), swapped));
+        value(crate::host_impl::answer(og_world_set(
+            w,
+            roots[5],
+            "og.Mesh".into(),
+            swapped,
+        )));
         step("a mesh hidden, one swapped");
         let eng = engine(w).unwrap();
         let rs = eng.render.borrow();
@@ -1524,17 +1589,35 @@ mod tests {
         og_host_begin_bundle();
         let game = og_game_game(Some(r#"{"seed":1}"#.into()));
         let w = value(og_engine_create(game, "{}".into())).as_u64().unwrap() as u32;
-        let geometry = value(og_render_sphere_geometry(w, Some("{}".into())));
-        let material = value(og_render_standard_material(w, Some("{}".into())));
+        let geometry = value(crate::host_impl::answer(og_render_sphere_geometry(
+            w,
+            Some("{}".into()),
+        )));
+        let material = value(crate::host_impl::answer(og_render_standard_material(
+            w,
+            Some("{}".into()),
+        )));
         let mesh = json!({ "geometry": geometry, "material": material }).to_string();
         let mut all = Vec::new();
         for i in 0..60 {
             let at = json!({ "position": { "x": i as f64, "y": 0, "z": 0 } }).to_string();
-            let e = value(og_world_spawn(w, Some(at))).as_f64().unwrap();
-            value(og_world_insert(w, e, "og.Mesh".into(), Some(mesh.clone())));
+            let e = value(crate::host_impl::answer(og_world_spawn(w, Some(at))))
+                .as_f64()
+                .unwrap();
+            value(crate::host_impl::answer(og_world_insert(
+                w,
+                e,
+                "og.Mesh".into(),
+                Some(mesh.clone()),
+            )));
             if i % 3 == 2 {
                 let v = json!({ "entity": all[i - 1] }).to_string();
-                value(og_world_insert(w, e, "og.Parent".into(), Some(v)));
+                value(crate::host_impl::answer(og_world_insert(
+                    w,
+                    e,
+                    "og.Parent".into(),
+                    Some(v),
+                )));
             }
             all.push(e);
         }
@@ -1547,18 +1630,32 @@ mod tests {
         assert!(walked("first") >= 60);
         assert_eq!(walked("still"), 0, "nothing moved");
         let to = |x: f64| json!({ "position": { "x": x, "y": 1, "z": 2 } }).to_string();
-        value(og_world_set(w, all[4], "og.Transform".into(), to(3.0)));
+        value(crate::host_impl::answer(og_world_set(
+            w,
+            all[4],
+            "og.Transform".into(),
+            to(3.0),
+        )));
         assert!(walked("one moved") >= 60);
         assert_eq!(walked("still after"), 0);
         // Moved at a tick no raycast read, still at the next.
-        value(og_world_set(w, all[4], "og.Transform".into(), to(5.0)));
+        value(crate::host_impl::answer(og_world_set(
+            w,
+            all[4],
+            "og.Transform".into(),
+            to(5.0),
+        )));
         frame();
         assert!(walked("moved a tick before a still one") >= 60);
         // Every parented mesh loses its transform: their archetype empties
         // and leaves the query, the others' columns and the parents are
         // unchanged, and they are no longer the slots they were.
         for &e in all.iter().skip(2).step_by(3) {
-            value(og_world_remove(w, e, "og.Transform".into()));
+            value(crate::host_impl::answer(og_world_remove(
+                w,
+                e,
+                "og.Transform".into(),
+            )));
         }
         assert!(walked("the last archetype emptied") >= 40);
         assert_eq!(walked("still after it"), 0);
@@ -1566,12 +1663,17 @@ mod tests {
         let ray = json!({ "origin": { "x": 0, "y": 10, "z": 0 }, "direction": { "x": 0, "y": -1, "z": 0 } })
             .to_string();
         let between = || {
-            og_render_raycast(w, ray.clone(), None);
+            crate::host_impl::answer(og_render_raycast(w, ray.clone(), None));
             engine(w).unwrap().render.borrow().geo.now.walked
         };
         assert!(between() >= 40);
         assert_eq!(between(), 0, "nothing moved between the raycasts");
-        value(og_world_set(w, all[7], "og.Transform".into(), to(1.0)));
+        value(crate::host_impl::answer(og_world_set(
+            w,
+            all[7],
+            "og.Transform".into(),
+            to(1.0),
+        )));
         assert!(between() >= 40);
     }
 }

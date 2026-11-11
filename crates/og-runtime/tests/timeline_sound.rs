@@ -104,16 +104,22 @@ fn the_timelines_sound_is_heard_where_its_keys_put_it() {
     let game = og_game_game(Some(r#"{"seed":1}"#.into()));
     let options = json!({ "root": root.to_str().unwrap() }).to_string();
     let engine = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
-    let asset = value(og_load_timeline(engine, "timelines/t.ogt".into()));
-    let timeline = value(og_world_spawn(engine, Some("{}".into())))
-        .as_f64()
-        .unwrap();
-    value(og_world_insert(
+    let asset = value(og_runtime::host_impl::answer(og_load_timeline(
+        engine,
+        "timelines/t.ogt".into(),
+    )));
+    let timeline = value(og_runtime::host_impl::answer(og_world_spawn(
+        engine,
+        Some("{}".into()),
+    )))
+    .as_f64()
+    .unwrap();
+    value(og_runtime::host_impl::answer(og_world_insert(
         engine,
         timeline,
         "og.Timeline".into(),
         Some(json!({ "asset": asset }).to_string()),
-    ));
+    )));
     let link = og_audio::link(engine).expect("the engine's audio link");
     let mut sink = og_audio::HeadlessSink::new(
         &link,
@@ -122,7 +128,9 @@ fn the_timelines_sound_is_heard_where_its_keys_put_it() {
         },
     );
     sink.pump();
-    value(og_timeline_play(engine, timeline));
+    value(og_runtime::host_impl::answer(og_timeline_play(
+        engine, timeline,
+    )));
     for _ in 0..330 {
         value(og_engine_frame(engine, 1000.0 / 60.0));
         sink.pump();

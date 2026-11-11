@@ -123,17 +123,17 @@ fn start(eng: &Engine, node: Node, unscaled: bool, tag: u32) -> Result<Value, St
     Ok(json!(h as f64))
 }
 
-pub fn og_tween_to(world: u32, desc: Option<String>) -> String {
-    wire(engine(world).and_then(|eng| {
+pub fn og_tween_to(world: u32, desc: Option<String>) -> Result<serde_json::Value, String> {
+    engine(world).and_then(|eng| {
         let d: TweenDesc = crate::wire::arg(desc.as_deref(), "desc")?;
         let (unscaled, tag) = (d.unscaled, d.tag);
         let leaf = leaf_of(&eng, d)?;
         start(&eng, Node::Leaf(leaf), unscaled, tag)
-    }))
+    })
 }
 
-pub fn og_tween_from(world: u32, desc: Option<String>) -> String {
-    wire(engine(world).and_then(|eng| {
+pub fn og_tween_from(world: u32, desc: Option<String>) -> Result<serde_json::Value, String> {
+    engine(world).and_then(|eng| {
         let f: TweenFromDesc = crate::wire::arg(desc.as_deref(), "desc")?;
         if f.from.is_none() {
             return Err(required("desc.from"));
@@ -165,11 +165,11 @@ pub fn og_tween_from(world: u32, desc: Option<String>) -> String {
         leaf.to = leaf.target.read(&bytes).ok_or("cannot read tween target")?;
         leaf.relative = false;
         start(&eng, Node::Leaf(leaf), unscaled, tag)
-    }))
+    })
 }
 
-pub fn og_tween_from_to(world: u32, desc: Option<String>) -> String {
-    wire(engine(world).and_then(|eng| {
+pub fn og_tween_from_to(world: u32, desc: Option<String>) -> Result<serde_json::Value, String> {
+    engine(world).and_then(|eng| {
         let d: TweenDesc = crate::wire::arg(desc.as_deref(), "desc")?;
         if d.from.is_none() {
             return Err(required("desc.from"));
@@ -177,11 +177,16 @@ pub fn og_tween_from_to(world: u32, desc: Option<String>) -> String {
         let (unscaled, tag) = (d.unscaled, d.tag);
         let leaf = leaf_of(&eng, d)?;
         start(&eng, Node::Leaf(leaf), unscaled, tag)
-    }))
+    })
 }
 
-fn group(world: u32, kind: GroupKind, list: &str, desc: Option<String>) -> String {
-    wire(engine(world).and_then(|eng| {
+fn group(
+    world: u32,
+    kind: GroupKind,
+    list: &str,
+    desc: Option<String>,
+) -> Result<serde_json::Value, String> {
+    engine(world).and_then(|eng| {
         let list: Vec<TweenDesc> = crate::wire::arg(Some(list), "tweens")?;
         let d: TweenGroupDesc = crate::wire::arg(desc.as_deref(), "desc")?;
         let leaves = list
@@ -191,14 +196,22 @@ fn group(world: u32, kind: GroupKind, list: &str, desc: Option<String>) -> Strin
             .collect::<Result<Vec<_>, _>>()?;
         let node = Node::group(kind, leaves, d.repeat);
         start(&eng, node, d.unscaled, d.tag)
-    }))
+    })
 }
 
-pub fn og_tween_sequence(world: u32, steps: String, desc: Option<String>) -> String {
+pub fn og_tween_sequence(
+    world: u32,
+    steps: String,
+    desc: Option<String>,
+) -> Result<serde_json::Value, String> {
     group(world, GroupKind::Sequence, &steps, desc)
 }
 
-pub fn og_tween_parallel(world: u32, tweens: String, desc: Option<String>) -> String {
+pub fn og_tween_parallel(
+    world: u32,
+    tweens: String,
+    desc: Option<String>,
+) -> Result<serde_json::Value, String> {
     group(world, GroupKind::Parallel, &tweens, desc)
 }
 
@@ -240,8 +253,8 @@ fn hold_first_tick(node: Node, tick: f32) -> Node {
     }
 }
 
-pub fn og_tween_squash(world: u32, desc: Option<String>) -> String {
-    wire(engine(world).and_then(|eng| {
+pub fn og_tween_squash(world: u32, desc: Option<String>) -> Result<serde_json::Value, String> {
+    engine(world).and_then(|eng| {
         let d: SquashDesc = crate::wire::arg(desc.as_deref(), "desc")?;
         let entity = entity_of(d.entity)?;
         let (index, schema) = component_schema(&eng, "og.Transform")?;
@@ -277,11 +290,11 @@ pub fn og_tween_squash(world: u32, desc: Option<String>) -> String {
             .map_err(err)?;
         lock(&feel.shared).squash.insert(entity, h);
         Ok(json!(h as f64))
-    }))
+    })
 }
 
-pub fn og_tween_flash(world: u32, desc: Option<String>) -> String {
-    wire(engine(world).and_then(|eng| {
+pub fn og_tween_flash(world: u32, desc: Option<String>) -> Result<serde_json::Value, String> {
+    engine(world).and_then(|eng| {
         let d: FlashDesc = crate::wire::arg(desc.as_deref(), "desc")?;
         let entity = entity_of(d.entity)?;
         let mut found = None;
@@ -320,5 +333,5 @@ pub fn og_tween_flash(world: u32, desc: Option<String>) -> String {
             .map_err(err)?;
         lock(&feel.shared).flash.insert(entity, h);
         Ok(json!(h as f64))
-    }))
+    })
 }

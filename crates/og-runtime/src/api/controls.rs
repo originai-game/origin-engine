@@ -29,11 +29,11 @@ fn quat_json(q: glam::Quat) -> Value {
     json!({ "x": f64::from(q.x), "y": f64::from(q.y), "z": f64::from(q.z), "w": f64::from(q.w) })
 }
 
-pub fn og_transform_compose(position: String, quaternion: String, scale: String) -> String {
+pub fn og_transform_compose(position: String, quaternion: String, scale: String) -> glam::Mat4 {
     let p: glam::Vec3 = wire::arg(Some(&position), "position").unwrap_or_default();
     let q: glam::Quat = wire::arg(Some(&quaternion), "quaternion").unwrap_or_default();
     let s: glam::Vec3 = wire::arg(Some(&scale), "scale").unwrap_or_default();
-    wire::text_of(&glam::Mat4::from_scale_rotation_translation(s, q, p))
+    glam::Mat4::from_scale_rotation_translation(s, q, p)
 }
 
 pub fn og_transform_decompose(matrix: String) -> String {
@@ -60,16 +60,16 @@ fn look_rotation(eye: glam::Vec3, target: glam::Vec3, up: glam::Vec3) -> glam::Q
     glam::Quat::from_mat3(&glam::Mat3::from_cols(x, y, z))
 }
 
-pub fn og_transform_look_at(eye: String, target: String, up: Option<String>) -> String {
+pub fn og_transform_look_at(eye: String, target: String, up: Option<String>) -> glam::Quat {
     let eye: glam::Vec3 = wire::arg(Some(&eye), "eye").unwrap_or_default();
     let target: glam::Vec3 = wire::arg(Some(&target), "target").unwrap_or_default();
     let up: glam::Vec3 = wire::arg(up.as_deref(), "up").unwrap_or_default();
-    wire::text_of(&look_rotation(eye, target, up))
+    look_rotation(eye, target, up)
 }
 
-pub fn og_transform_from_axis_angle(axis: String, angle: f64) -> String {
+pub fn og_transform_from_axis_angle(axis: String, angle: f64) -> glam::Quat {
     let axis: glam::Vec3 = wire::arg(Some(&axis), "axis").unwrap_or_default();
-    wire::text_of(&og_core::math::quat_from_axis_angle(axis, angle as f32))
+    og_core::math::quat_from_axis_angle(axis, angle as f32)
 }
 
 // ── rng ─────────────────────────────────────────────────────────────────────
@@ -230,8 +230,12 @@ pub fn og_rng_fork(world: u32, label: String) -> u32 {
 
 // ── audio ───────────────────────────────────────────────────────────────────
 
-pub fn og_audio_play_feedback(world: u32, sound: f64, desc: Option<String>) -> String {
-    result((|| {
+pub fn og_audio_play_feedback(
+    world: u32,
+    sound: f64,
+    desc: Option<String>,
+) -> Result<Value, String> {
+    (|| {
         let eng = engine(world)?;
         assets::sound_index(&eng, sound).ok_or("feedback sound is not loaded")?;
         let tick = if let Some(frame) = running(world) {
@@ -244,7 +248,7 @@ pub fn og_audio_play_feedback(world: u32, sound: f64, desc: Option<String>) -> S
         let link = og_audio::link(world).ok_or("world has no audio sink")?;
         link.play_feedback(tick, sound as u64, desc.volume, desc.playback_rate)?;
         Ok(Value::Null)
-    })())
+    })()
 }
 
 /// `og.audio.outputLatency`: og.Audio's `outputLatency`, which the host's
@@ -277,8 +281,11 @@ pub fn og_audio_output_latency(world: u32) -> f64 {
 /// `og.audio.createSound`: PCM from the game, clamped to 16 bits and put in
 /// the bank resident, and listed among the loaded sounds so soundInfo,
 /// timelines and themes find it by handle.
-pub fn og_audio_create_sound(world: u32, desc: Option<String>) -> String {
-    result((|| {
+pub fn og_audio_create_sound(
+    world: u32,
+    desc: Option<String>,
+) -> Result<serde_json::Value, String> {
+    (|| {
         let eng = engine(world)?;
         let d: wire::SoundDesc = wire::arg(desc.as_deref(), "desc")?;
         let (rate, channels) = (d.rate, d.channels);
@@ -323,7 +330,7 @@ pub fn og_audio_create_sound(world: u32, desc: Option<String>) -> String {
         });
         a.sound_handles.push(handle);
         Ok(json!(handle as f64))
-    })())
+    })()
 }
 
 /// The host's sink reports its output latency (seconds from a sample's world
@@ -392,13 +399,18 @@ pub fn og_input_released(world: u32, key: String) -> bool {
 pub fn og_input_axis(world: u32, negative: String, positive: String) -> f64 {
     input(world, |i| f64::from(i.axis(&negative, &positive)), 0.0)
 }
-pub fn og_input_axis2(world: u32, left: String, right: String, down: String, up: String) -> String {
-    let v = input(
+pub fn og_input_axis2(
+    world: u32,
+    left: String,
+    right: String,
+    down: String,
+    up: String,
+) -> glam::Vec2 {
+    input(
         world,
         |i| i.axis2(&left, &right, &down, &up),
         og_core::glam::Vec2::ZERO,
-    );
-    wire::text_of(&v)
+    )
 }
 pub fn og_input_button_down(world: u32, b: String) -> bool {
     input(world, |i| i.button_down(button(&b)), false)
@@ -439,19 +451,19 @@ pub fn og_pointers_pressed(world: u32, id: u32) -> bool {
 pub fn og_pointers_released(world: u32, id: u32) -> bool {
     input_res(world, |p: &og_input::Pointers| p.is_released(id), false)
 }
-pub fn og_pointers_position(world: u32, id: u32) -> String {
-    wire::text_of(&input_res(
+pub fn og_pointers_position(world: u32, id: u32) -> glam::Vec2 {
+    input_res(
         world,
         |p: &og_input::Pointers| p.position(id),
         Default::default(),
-    ))
+    )
 }
-pub fn og_pointers_start(world: u32, id: u32) -> String {
-    wire::text_of(&input_res(
+pub fn og_pointers_start(world: u32, id: u32) -> glam::Vec2 {
+    input_res(
         world,
         |p: &og_input::Pointers| p.start(id),
         Default::default(),
-    ))
+    )
 }
 pub fn og_pointers_count(world: u32) -> u32 {
     input_res(world, |p: &og_input::Pointers| p.count(), 0)
@@ -582,7 +594,7 @@ fn camera_view_proj(cam: &Value, w: f32, h: f32) -> glam::Mat4 {
     proj * view
 }
 
-pub fn og_camera_world_to_screen(world: u32, point: String) -> String {
+pub fn og_camera_world_to_screen(world: u32, point: String) -> Option<glam::Vec2> {
     let answer = (|| -> Result<Option<glam::Vec2>, String> {
         let eng = engine(world)?;
         let (vp, _, w, h) = view_proj(&eng)?;
@@ -596,11 +608,11 @@ pub fn og_camera_world_to_screen(world: u32, point: String) -> String {
             (1.0 - ndc.y) / 2.0 * h,
         )))
     })();
-    wire::text_of(&answer.ok().flatten())
+    answer.ok().flatten()
 }
 
-pub fn og_camera_screen_to_ray(world: u32, x: f64, y: f64) -> String {
-    let answer = (|| -> Result<wire::Ray, String> {
+pub fn og_camera_screen_to_ray(world: u32, x: f64, y: f64) -> crate::wire::Ray {
+    let answer = (|| -> Result<crate::wire::Ray, String> {
         let eng = engine(world)?;
         let (_, inv, w, h) = view_proj(&eng)?;
         let nx = x as f32 / w * 2.0 - 1.0;
@@ -612,8 +624,8 @@ pub fn og_camera_screen_to_ray(world: u32, x: f64, y: f64) -> String {
             direction: (far - near).normalize_or_zero(),
         })
     })();
-    wire::text_of(&answer.unwrap_or(wire::Ray {
+    answer.unwrap_or(wire::Ray {
         origin: glam::Vec3::ZERO,
         direction: glam::Vec3::NEG_Z,
-    }))
+    })
 }

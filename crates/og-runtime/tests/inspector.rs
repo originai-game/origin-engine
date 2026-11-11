@@ -101,8 +101,15 @@ fn engine(root: &Path) -> u32 {
     let game = og_game_game(Some(r#"{"seed":1}"#.into()));
     let options = json!({ "root": root.to_str().unwrap() }).to_string();
     let e = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
-    let scene = value(og_load_scene(e, "scenes/yard.ogt".into()));
-    value(og_world_instantiate(e, scene.as_f64().unwrap(), None));
+    let scene = value(og_runtime::host_impl::answer(og_load_scene(
+        e,
+        "scenes/yard.ogt".into(),
+    )));
+    value(og_runtime::host_impl::answer(og_world_instantiate(
+        e,
+        scene.as_f64().unwrap(),
+        None,
+    )));
     e
 }
 
@@ -129,7 +136,10 @@ fn panel(e: u32) -> Value {
 }
 
 fn commands(e: u32, script: &str, ticks: u32) {
-    value(og_commands_schedule(e, script.into()));
+    value(og_runtime::host_impl::answer(og_commands_schedule(
+        e,
+        script.into(),
+    )));
     step(e, ticks);
 }
 
@@ -326,8 +336,15 @@ fn a_resource_edited_in_its_tab_saves_as_its_one_line() {
     let game = og_game_game(Some(r#"{"seed":1}"#.into()));
     let options = json!({ "root": root.to_str().unwrap() }).to_string();
     let e = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
-    let scene = value(og_load_scene(e, "scenes/board.ogt".into()));
-    value(og_world_instantiate(e, scene.as_f64().unwrap(), None));
+    let scene = value(og_runtime::host_impl::answer(og_load_scene(
+        e,
+        "scenes/board.ogt".into(),
+    )));
+    value(og_runtime::host_impl::answer(og_world_instantiate(
+        e,
+        scene.as_f64().unwrap(),
+        None,
+    )));
     step(e, 2);
     commands(e, "0:inspect:on", 3);
     let p = panel(e);

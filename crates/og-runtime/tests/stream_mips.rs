@@ -131,22 +131,27 @@ impl Game {
         let engine = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
         let seen = Rc::new(RefCell::new(Seen::default()));
         set_render_backend(engine, Some(Box::new(Recorder(seen.clone())))).unwrap();
-        let tex = value(og_load_texture(engine, "tex/big.png".into()));
-        let material = value(og_render_standard_material(
+        let tex = value(og_runtime::host_impl::answer(og_load_texture(
+            engine,
+            "tex/big.png".into(),
+        )));
+        let material = value(og_runtime::host_impl::answer(og_render_standard_material(
             engine,
             Some(json!({ "map": tex }).to_string()),
-        ));
-        let geometry = value(og_render_plane_geometry(
+        )));
+        let geometry = value(og_runtime::host_impl::answer(og_render_plane_geometry(
             engine,
             Some(json!({ "width": 2, "height": 2 }).to_string()),
-        ));
-        let e = value(og_world_spawn(engine, None)).as_f64().unwrap();
-        value(og_world_insert(
+        )));
+        let e = value(og_runtime::host_impl::answer(og_world_spawn(engine, None)))
+            .as_f64()
+            .unwrap();
+        value(og_runtime::host_impl::answer(og_world_insert(
             engine,
             e,
             "og.Mesh".into(),
             Some(json!({ "geometry": geometry, "material": material }).to_string()),
-        ));
+        )));
         let g = Game { engine, seen };
         g.camera(3.0);
         g

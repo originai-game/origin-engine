@@ -153,48 +153,44 @@ pub(crate) mod present {
     }
 }
 
-fn absent() -> String {
-    super::refuse(ABSENT)
+pub fn og_motion_pose(_world: u32, _entity: f64, _desc: Option<String>) -> Result<(), String> {
+    Err(ABSENT.into())
 }
 
-pub fn og_motion_pose(_world: u32, _entity: f64, _desc: Option<String>) -> String {
-    absent()
+pub fn og_motion_place(_world: u32, _entity: f64, _desc: Option<String>) -> Result<(), String> {
+    Err(ABSENT.into())
 }
 
-pub fn og_motion_place(_world: u32, _entity: f64, _desc: Option<String>) -> String {
-    absent()
+pub fn og_motion_face(_world: u32, _entity: f64, _desc: Option<String>) -> Result<(), String> {
+    Err(ABSENT.into())
 }
 
-pub fn og_motion_face(_world: u32, _entity: f64, _desc: Option<String>) -> String {
-    absent()
+pub fn og_motion_walk_to(_world: u32, _entity: f64, _desc: Option<String>) -> Result<(), String> {
+    Err(ABSENT.into())
 }
 
-pub fn og_motion_walk_to(_world: u32, _entity: f64, _desc: Option<String>) -> String {
-    absent()
+pub fn og_motion_jump(_world: u32, _entity: f64, _desc: Option<String>) -> Result<(), String> {
+    Err(ABSENT.into())
 }
 
-pub fn og_motion_jump(_world: u32, _entity: f64, _desc: Option<String>) -> String {
-    absent()
+pub fn og_motion_clear(_world: u32, _entity: f64) -> Result<(), String> {
+    Err(ABSENT.into())
 }
 
-pub fn og_motion_clear(_world: u32, _entity: f64) -> String {
-    absent()
+pub fn og_motion_status(_world: u32, _entity: f64) -> Result<crate::wire::MotionStatus, String> {
+    Err(ABSENT.into())
 }
 
-pub fn og_motion_status(_world: u32, _entity: f64) -> String {
-    absent()
+pub fn og_motion_presentation(_world: u32, _entity: f64) -> Result<serde_json::Value, String> {
+    Err(ABSENT.into())
 }
 
-pub fn og_motion_presentation(_world: u32, _entity: f64) -> String {
-    absent()
+pub fn og_motion_look_at(_world: u32, _entity: f64, _desc: Option<String>) -> Result<(), String> {
+    Err(ABSENT.into())
 }
 
-pub fn og_motion_look_at(_world: u32, _entity: f64, _desc: Option<String>) -> String {
-    absent()
-}
-
-pub fn og_motion_react(_world: u32, _entity: f64, _desc: Option<String>) -> String {
-    absent()
+pub fn og_motion_react(_world: u32, _entity: f64, _desc: Option<String>) -> Result<(), String> {
+    Err(ABSENT.into())
 }
 
 /// No backend, and why (the full module's shape).
@@ -202,8 +198,8 @@ pub fn og_motion_capabilities(_world: u32) -> String {
     json!({ "backend": "none", "reason": ABSENT, "modelBytes": 0 }).to_string()
 }
 
-pub fn og_motion_set_backend(_world: u32, _backend: String) -> String {
-    absent()
+pub fn og_motion_set_backend(_world: u32, _backend: String) -> Result<serde_json::Value, String> {
+    Err(ABSENT.into())
 }
 
 /// No pose library is built in.

@@ -169,7 +169,8 @@ fn warnings(engine: u32) -> Vec<String> {
 
 /// The packs whose faces are in the applied chain, in chain order.
 fn chain(engine: u32) -> Vec<String> {
-    let info: Value = serde_json::from_str(&og_i18n_locale(engine)).unwrap();
+    let info: Value =
+        serde_json::from_str(&og_runtime::host_impl::json(og_i18n_locale(engine))).unwrap();
     let info = if info.get("ok").is_some() {
         info["value"].clone()
     } else {
@@ -206,12 +207,15 @@ fn start_in(root: &Path, locale: &str) -> (u32, impl Fn()) {
     let game = og_game_game(Some(json!({ "seed": 1, "systems": [system] }).to_string()));
     let options = json!({ "root": root.to_str().unwrap() }).to_string();
     let engine = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
-    let face = value(og_load_font(engine, "fonts/Display.ttf".into()));
-    value(og_ui_configure(
+    let face = value(og_runtime::host_impl::answer(og_load_font(
+        engine,
+        "fonts/Display.ttf".into(),
+    )));
+    value(og_runtime::host_impl::answer(og_ui_configure(
         engine,
         Some(json!({ "font": face }).to_string()),
-    ));
-    og_i18n_set_locale(engine, locale.into());
+    )));
+    og_runtime::host_impl::json(og_i18n_set_locale(engine, locale.into()));
     let step = move || {
         value(og_engine_frame(engine, 1000.0 / 60.0));
     };

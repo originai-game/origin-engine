@@ -118,11 +118,14 @@ fn engine() -> u32 {
 }
 
 fn configure(engine: u32, desc: Value) {
-    value(og_ui_configure(engine, Some(desc.to_string())));
+    value(og_runtime::host_impl::answer(og_ui_configure(
+        engine,
+        Some(desc.to_string()),
+    )));
 }
 
 fn theme(engine: u32) -> Value {
-    serde_json::from_str(&og_ui_theme(engine)).unwrap()
+    serde_json::from_str(&og_runtime::host_impl::json(og_ui_theme(engine))).unwrap()
 }
 
 /// The warnings logged since the last call.
@@ -148,7 +151,10 @@ fn configure_keeps_the_fields_a_call_leaves_out() {
             .unwrap()
             .opacity
     };
-    let style = value(og_load_style(e, "styles/mini".into()));
+    let style = value(og_runtime::host_impl::answer(og_load_style(
+        e,
+        "styles/mini".into(),
+    )));
     configure(
         e,
         json!({ "style": style, "contrast": "high", "scheme": "light" }),
@@ -173,7 +179,7 @@ fn configure_keeps_the_fields_a_call_leaves_out() {
     );
     assert_eq!(opacity(), 0.37, "pack CSS survives partial configure");
     // A call with nothing keeps everything.
-    value(og_ui_configure(e, None));
+    value(og_runtime::host_impl::answer(og_ui_configure(e, None)));
     assert_eq!(theme(e)["style"].as_str(), Some("mini"));
     // null clears a field to its default.
     configure(e, json!({ "contrast": null }));
@@ -198,14 +204,21 @@ fn configure_keeps_the_fields_a_call_leaves_out() {
         "{w:?}"
     );
     // A desc that is not an object is refused.
-    let r: Value = serde_json::from_str(&og_ui_configure(e, Some("3".into()))).unwrap();
+    let r: Value = serde_json::from_str(&og_runtime::host_impl::answer(og_ui_configure(
+        e,
+        Some("3".into()),
+    )))
+    .unwrap();
     assert_eq!(r["ok"], json!(false), "{r}");
 }
 
 #[test]
 fn a_style_names_its_assets_relative_to_itself_or_from_assets() {
     let e = engine();
-    let style = value(og_load_style(e, "styles/copied".into()));
+    let style = value(og_runtime::host_impl::answer(og_load_style(
+        e,
+        "styles/copied".into(),
+    )));
     configure(e, json!({ "style": style }));
     assert_eq!(theme(e)["style"].as_str(), Some("copied"));
     let ui = og_runtime::shared_ui(e).unwrap();
@@ -221,10 +234,20 @@ fn a_style_names_its_assets_relative_to_itself_or_from_assets() {
 #[test]
 fn shape_outside_images_take_their_contour_from_cooked_alpha() {
     let e = engine();
-    let style = value(og_load_style(e, "styles/mini".into()));
+    let style = value(og_runtime::host_impl::answer(og_load_style(
+        e,
+        "styles/mini".into(),
+    )));
     configure(e, json!({ "style": style }));
-    value(og_runtime::og_load_document(e, "ui/shape.svelte".into()));
-    value(og_runtime::og_ui_push(e, "Shape".into(), None));
+    value(og_runtime::host_impl::answer(og_runtime::og_load_document(
+        e,
+        "ui/shape.svelte".into(),
+    )));
+    value(og_runtime::host_impl::answer(og_runtime::og_ui_push(
+        e,
+        "Shape".into(),
+        None,
+    )));
     og_runtime::og_engine_frame(e, 1000.0 / 60.0);
     let ui = og_runtime::shared_ui(e).unwrap();
     let ui = ui.lock();
@@ -265,18 +288,26 @@ fn svg_asset_urls_supply_cursor_pixels_and_masks() {
     }
     let e = engine();
     og_runtime::set_render_backend(e, Some(Box::new(Backend))).unwrap();
-    let style = value(og_load_style(e, "styles/mini".into()));
-    configure(e, json!({ "style": style }));
-    value(og_runtime::og_load_document(e, "ui/pointer.svelte".into()));
-    value(og_runtime::og_ui_push(e, "Pointer".into(), None));
-    value(og_runtime::og_commands_schedule(
+    let style = value(og_runtime::host_impl::answer(og_load_style(
         e,
-        "0:touch_move:90,90".into(),
+        "styles/mini".into(),
+    )));
+    configure(e, json!({ "style": style }));
+    value(og_runtime::host_impl::answer(og_runtime::og_load_document(
+        e,
+        "ui/pointer.svelte".into(),
+    )));
+    value(og_runtime::host_impl::answer(og_runtime::og_ui_push(
+        e,
+        "Pointer".into(),
+        None,
+    )));
+    value(og_runtime::host_impl::answer(
+        og_runtime::og_commands_schedule(e, "0:touch_move:90,90".into()),
     ));
     og_runtime::og_engine_frame(e, 1000.0 / 60.0);
-    value(og_runtime::og_commands_schedule(
-        e,
-        "0:touch_move:20,20".into(),
+    value(og_runtime::host_impl::answer(
+        og_runtime::og_commands_schedule(e, "0:touch_move:20,20".into()),
     ));
     let frame: Value =
         serde_json::from_str(&og_runtime::og_engine_frame(e, 1000.0 / 60.0)).unwrap();

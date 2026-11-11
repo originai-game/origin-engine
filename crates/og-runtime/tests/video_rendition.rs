@@ -93,8 +93,11 @@ fn streams_read(root: &Path, decoder: &'static str, clip: &str) -> Vec<String> {
     let created: Value =
         serde_json::from_str(&og_engine_create(og_game_game(Some("{}".into())), options)).unwrap();
     let world = created["value"].as_u64().unwrap() as u32;
-    let loaded: Value =
-        serde_json::from_str(&og_load_video(world, format!("clips/{clip}.ogt"))).unwrap();
+    let loaded: Value = serde_json::from_str(&og_runtime::host_impl::answer(og_load_video(
+        world,
+        format!("clips/{clip}.ogt"),
+    )))
+    .unwrap();
     assert_eq!(loaded["ok"], json!(true), "{loaded}");
     reads
         .borrow()

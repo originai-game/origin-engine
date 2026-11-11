@@ -112,7 +112,10 @@ fn value(text: String) -> Value {
 fn show(engine: u32, font: &Value, text: &str) {
     value(og_engine_frame(engine, 1000.0 / 60.0));
     let desc = json!({ "font": font, "text": text, "screen": true, "size": 24 });
-    value(og_render_text(engine, Some(desc.to_string())));
+    value(og_runtime::host_impl::answer(og_render_text(
+        engine,
+        Some(desc.to_string()),
+    )));
     value(og_engine_frame(engine, 0.0));
 }
 
@@ -139,10 +142,10 @@ fn a_missing_glyph_is_named_once_on_the_tick_it_is_first_drawn() {
     let game = og_game_game(Some(r#"{"seed":1}"#.into()));
     let options = json!({ "root": project().to_str().unwrap() }).to_string();
     let engine = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
-    let font = value(og_load_font(
+    let font = value(og_runtime::host_impl::answer(og_load_font(
         engine,
         "fonts/ChakraPetch-BoldItalic.ttf".into(),
-    ));
+    )));
     value(og_engine_frame(engine, 0.0));
     let _ = warnings(engine);
 
@@ -206,16 +209,19 @@ fn ui_text_warns_per_face_with_no_renderer() {
     let game = og_game_game(Some(json!({ "seed": 1, "systems": [system] }).to_string()));
     let options = json!({ "root": project().to_str().unwrap() }).to_string();
     let engine = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
-    let punct = value(og_load_font(
+    let punct = value(og_runtime::host_impl::answer(og_load_font(
         engine,
         "fonts/ChakraPetch-BoldItalic.ttf".into(),
-    ));
-    let latin = value(og_load_font(engine, "fonts/Latin.ttf".into()));
+    )));
+    let latin = value(og_runtime::host_impl::answer(og_load_font(
+        engine,
+        "fonts/Latin.ttf".into(),
+    )));
     BUILT.with(|b| b.set((engine, 0)));
-    value(og_ui_configure(
+    value(og_runtime::host_impl::answer(og_ui_configure(
         engine,
         Some(json!({ "font": punct }).to_string()),
-    ));
+    )));
     let step = || value(og_engine_frame(engine, 1000.0 / 60.0));
     step();
     let _ = warnings(engine);
@@ -244,7 +250,10 @@ fn ui_text_warns_per_face_with_no_renderer() {
 
     // A floating text in the UI's face: the arrow was named for it already.
     let float = json!({ "text": "↑ 12", "position": { "x": 0, "y": 0, "z": 0 } });
-    value(og_render_floating_text(engine, Some(float.to_string())));
+    value(og_runtime::host_impl::answer(og_render_floating_text(
+        engine,
+        Some(float.to_string()),
+    )));
     step();
     assert_eq!(warnings(engine), vec![], "named for this face already");
 

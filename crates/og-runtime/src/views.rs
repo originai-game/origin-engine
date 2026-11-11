@@ -15,7 +15,6 @@ use super::engine::engine;
 use super::extract::{Hierarchy, RenderState};
 use super::fx::{color, f, on, resource, rows};
 use super::wire::{PostError, RenderTargetInfo};
-use super::{ok, ok_void, refuse};
 use glam::{Mat4, Vec3};
 use og_ecs::{Entity, QueryDesc, World};
 use serde_json::{Value, json};
@@ -56,8 +55,11 @@ pub(crate) struct ViewState {
 
 // ── og.render.renderTarget ──────────────────────────────────────────────────
 
-pub fn og_render_render_target(world: u32, desc: Option<String>) -> String {
-    let r = (|| -> Result<RenderTargetInfo, String> {
+pub fn og_render_render_target(
+    world: u32,
+    desc: Option<String>,
+) -> Result<crate::wire::RenderTargetInfo, String> {
+    (|| -> Result<RenderTargetInfo, String> {
         let eng = engine(world)?;
         let d: super::wire::RenderTargetDesc = super::wire::arg(desc.as_deref(), "desc")?;
         let (width, height) = (d.width.max(1), d.height.max(1));
@@ -97,11 +99,7 @@ pub fn og_render_render_target(world: u32, desc: Option<String>) -> String {
             width,
             height,
         })
-    })();
-    match r {
-        Ok(v) => super::wire::ok(&v),
-        Err(e) => refuse(e),
-    }
+    })()
 }
 
 /// The largest render target side: the device's, or wgpu's default
@@ -148,18 +146,19 @@ pub(crate) fn load_post(eng: &super::engine::Engine, path: &str) -> Result<usize
 }
 
 /// `og.load.post`: a cooked post pass, added to the scene once per path.
-pub fn og_load_post(world: u32, path: String) -> String {
-    let r = (|| -> Result<Value, String> {
+pub fn og_load_post(world: u32, path: String) -> Result<serde_json::Value, String> {
+    (|| -> Result<Value, String> {
         let eng = engine(world)?;
         Ok(json!(handle(load_post(&eng, &path)?)))
-    })();
-    match r {
-        Ok(v) => ok(v),
-        Err(e) => refuse(e),
-    }
+    })()
 }
 
-pub fn og_render_set_post_param(world: u32, post: f64, name: String, value: String) -> String {
+pub fn og_render_set_post_param(
+    world: u32,
+    post: f64,
+    name: String,
+    value: String,
+) -> Result<(), String> {
     let r = (|| -> Result<(), String> {
         let eng = engine(world)?;
         let value: Vec<f32> = match serde_json::from_str::<Value>(&value) {
@@ -178,13 +177,13 @@ pub fn og_render_set_post_param(world: u32, post: f64, name: String, value: Stri
         Ok(())
     })();
     match r {
-        Ok(()) => ok_void(),
-        Err(e) => refuse(e),
+        Ok(()) => Ok(()),
+        Err(e) => Err(e),
     }
 }
 
-pub fn og_render_post_errors(world: u32) -> String {
-    let errors = engine(world).ok().map_or_else(Vec::new, |eng| {
+pub fn og_render_post_errors(world: u32) -> Vec<crate::wire::PostError> {
+    engine(world).ok().map_or_else(Vec::new, |eng| {
         let rs = eng.render.borrow();
         let Some(b) = rs.backend.as_ref() else {
             return Vec::new();
@@ -199,8 +198,7 @@ pub fn og_render_post_errors(world: u32) -> String {
                 })
             })
             .collect()
-    });
-    super::wire::text_of(&errors)
+    })
 }
 
 // ── extraction ──────────────────────────────────────────────────────────────

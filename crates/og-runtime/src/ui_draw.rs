@@ -3,7 +3,6 @@
 
 use super::assets::handle;
 use super::engine::engine;
-use super::{ok, refuse};
 use og_ui::paint::*;
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
@@ -103,15 +102,11 @@ pub(crate) fn tune_material(
 }
 
 /// `og.load.vector`: a cooked vector, added to the scene once per path.
-pub fn og_load_vector(world: u32, path: String) -> String {
-    let r = (|| -> Result<Value, String> {
+pub fn og_load_vector(world: u32, path: String) -> Result<serde_json::Value, String> {
+    (|| -> Result<Value, String> {
         let eng = engine(world)?;
         Ok(json!(handle(load_vector(&eng, &path)?.0)))
-    })();
-    match r {
-        Ok(v) => ok(v),
-        Err(e) => refuse(e),
-    }
+    })()
 }
 
 /// A cooked vector added to the scene once per path: its VectorArt index
@@ -141,15 +136,11 @@ pub(crate) fn load_vector(
 }
 
 /// `og.load.uiMaterial`: a cooked UI material, added to the scene once per path.
-pub fn og_load_ui_material(world: u32, path: String) -> String {
-    let r = (|| -> Result<Value, String> {
+pub fn og_load_ui_material(world: u32, path: String) -> Result<serde_json::Value, String> {
+    (|| -> Result<Value, String> {
         let eng = engine(world)?;
         Ok(json!(handle(load_material(&eng, &path)?)))
-    })();
-    match r {
-        Ok(v) => ok(v),
-        Err(e) => refuse(e),
-    }
+    })()
 }
 
 /// A UI material by its asset path, loaded once: its handle and defaults.

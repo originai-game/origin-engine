@@ -37,13 +37,6 @@ fn entity(e: f64) -> Result<Entity, String> {
     Ok(Entity::from_bits(e as u64))
 }
 
-fn answer<T: ToJson>(r: Result<T, String>) -> String {
-    match r {
-        Ok(v) => wire::ok(&v),
-        Err(e) => refuse(e),
-    }
-}
-
 /// A readout of the last step for `e`, refused with `what` when it has none.
 fn readout<T, W: ToJson>(
     world: u32,
@@ -51,8 +44,8 @@ fn readout<T, W: ToJson>(
     what: &str,
     read: impl FnOnce(&PhysicsSystem, Entity) -> Option<T>,
     wire: impl FnOnce(T) -> W,
-) -> String {
-    answer((|| {
+) -> Result<W, String> {
+    (|| {
         let eng = engine(world)?;
         let p = physics(&eng)?;
         let e = entity(e)?;
@@ -62,7 +55,7 @@ fn readout<T, W: ToJson>(
                 e.to_bits()
             )
         })
-    })())
+    })()
 }
 
 /// A push for `e`'s body, refused for an entity without an og.RigidBody
@@ -143,15 +136,15 @@ pub fn og_physics_apply_torque_impulse(world: u32, e: f64, torque: String) -> St
     })
 }
 
-pub fn og_physics_rope_points(world: u32, e: f64) -> String {
+pub fn og_physics_rope_points(world: u32, e: f64) -> Result<Vec<glam::Vec3>, String> {
     readout(world, e, "og.Rope", |p, e| p.rope_points(e), |pts| pts)
 }
 
-pub fn og_physics_cloth_points(world: u32, e: f64) -> String {
+pub fn og_physics_cloth_points(world: u32, e: f64) -> Result<Vec<glam::Vec3>, String> {
     readout(world, e, "og.Cloth", |p, e| p.cloth_points(e), |c| c.points)
 }
 
-pub fn og_physics_garment_points(world: u32, e: f64) -> String {
+pub fn og_physics_garment_points(world: u32, e: f64) -> Result<Vec<glam::Vec3>, String> {
     readout(
         world,
         e,
@@ -161,7 +154,10 @@ pub fn og_physics_garment_points(world: u32, e: f64) -> String {
     )
 }
 
-pub fn og_physics_soft_body_points(world: u32, e: f64) -> String {
+pub fn og_physics_soft_body_points(
+    world: u32,
+    e: f64,
+) -> Result<crate::wire::SoftBodyPoints, String> {
     readout(
         world,
         e,
@@ -174,7 +170,7 @@ pub fn og_physics_soft_body_points(world: u32, e: f64) -> String {
     )
 }
 
-pub fn og_physics_fluid_particles(world: u32, e: f64) -> String {
+pub fn og_physics_fluid_particles(world: u32, e: f64) -> Result<Vec<glam::Vec2>, String> {
     readout(
         world,
         e,
@@ -184,7 +180,7 @@ pub fn og_physics_fluid_particles(world: u32, e: f64) -> String {
     )
 }
 
-pub fn og_physics_fluid3d_particles(world: u32, e: f64) -> String {
+pub fn og_physics_fluid3d_particles(world: u32, e: f64) -> Result<Vec<glam::Vec3>, String> {
     readout(
         world,
         e,
@@ -194,7 +190,10 @@ pub fn og_physics_fluid3d_particles(world: u32, e: f64) -> String {
     )
 }
 
-pub fn og_physics_vehicle_wheels(world: u32, e: f64) -> String {
+pub fn og_physics_vehicle_wheels(
+    world: u32,
+    e: f64,
+) -> Result<Vec<crate::wire::WheelPose>, String> {
     readout(
         world,
         e,
@@ -216,7 +215,7 @@ pub fn og_physics_vehicle_wheels(world: u32, e: f64) -> String {
     )
 }
 
-pub fn og_physics_ragdoll_pose(world: u32, e: f64) -> String {
+pub fn og_physics_ragdoll_pose(world: u32, e: f64) -> Result<Vec<crate::wire::BonePose>, String> {
     readout(
         world,
         e,
@@ -233,8 +232,8 @@ pub fn og_physics_ragdoll_pose(world: u32, e: f64) -> String {
 
 /// `og.physics.stats`: the last step's phases, their times and whether
 /// each ran on the lanes pool.
-pub fn og_physics_stats(world: u32) -> String {
-    answer((|| {
+pub fn og_physics_stats(world: u32) -> Result<PhysicsStats, String> {
+    (|| {
         let eng = engine(world)?;
         let stats = physics(&eng)?.stats();
         let phases: Vec<PhysicsPhase> = stats
@@ -267,7 +266,7 @@ pub fn og_physics_stats(world: u32) -> String {
             ms: stats.ms,
             phases,
         })
-    })())
+    })()
 }
 
 /// What og.physics.waterHeight and og.Buoyancy read of the world: the
@@ -467,8 +466,13 @@ fn sea_height(
     Ok(Some(water.height(x, z, seconds).unwrap_or(0.0)))
 }
 
-pub fn og_physics_water_height(world: u32, e: f64, x: f64, z: f64) -> String {
-    answer((|| {
+pub fn og_physics_water_height(
+    world: u32,
+    e: f64,
+    x: f64,
+    z: f64,
+) -> Result<serde_json::Value, String> {
+    (|| {
         let eng = engine(world)?;
         let e = entity(e)?;
         let r = Reader::of(&eng, world)?;
@@ -527,7 +531,7 @@ pub fn og_physics_water_height(world: u32, e: f64, x: f64, z: f64) -> String {
             "entity {} has no og.WaterSurface or og.WaterLine (or it has not stepped yet) nor an og.Water with a wind",
             e.to_bits()
         ))
-    })())
+    })()
 }
 
 // ── ragdoll rigs ────────────────────────────────────────────────────────
@@ -580,7 +584,7 @@ fn rig_of(d: RagdollRigDesc) -> Result<KeptRig, String> {
     })
 }
 
-pub fn og_physics_set_ragdoll_rig(world: u32, e: f64, desc: Option<String>) -> String {
+pub fn og_physics_set_ragdoll_rig(world: u32, e: f64, desc: Option<String>) -> Result<(), String> {
     let r = (|| -> Result<(), String> {
         let eng = engine(world)?;
         let p = physics(&eng)?;
@@ -592,8 +596,8 @@ pub fn og_physics_set_ragdoll_rig(world: u32, e: f64, desc: Option<String>) -> S
         Ok(())
     })();
     match r {
-        Ok(()) => ok_void(),
-        Err(e) => refuse(e),
+        Ok(()) => Ok(()),
+        Err(e) => Err(e),
     }
 }
 
@@ -760,8 +764,11 @@ pub(crate) fn schedule_ragdoll_targets(
 /// The name of the ragdoll target system.
 pub(crate) const RAGDOLL_TARGETS: &str = "og.ragdollTargets";
 
-pub fn og_physics_ragdoll_rig_from_skeleton(world: u32, skeleton: f64) -> String {
-    answer((|| {
+pub fn og_physics_ragdoll_rig_from_skeleton(
+    world: u32,
+    skeleton: f64,
+) -> Result<RagdollRigDesc, String> {
+    (|| {
         let eng = engine(world)?;
         let anim = eng
             .state
@@ -775,7 +782,7 @@ pub fn og_physics_ragdoll_rig_from_skeleton(world: u32, skeleton: f64) -> String
         let mut rig = rig_from_skeleton(&s)?;
         rig.skeleton = skeleton as u64;
         Ok(rig)
-    })())
+    })()
 }
 
 /// The ragdolls' drawing: each posed model (palette `palettes[e]`) whose

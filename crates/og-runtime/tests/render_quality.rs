@@ -165,7 +165,10 @@ fn apply_quality_writes_the_presets_row_and_the_renderer_reads_it() {
         ),
     ];
     for (preset, row) in table {
-        let a = answer(og_render_apply_quality(engine, preset.into()));
+        let a = answer(og_runtime::host_impl::answer(og_render_apply_quality(
+            engine,
+            preset.into(),
+        )));
         assert_eq!(a["ok"], json!(true), "{preset}: {a}");
         let (fields, q) = observe(engine, &seen);
         assert_eq!(fields, row, "{preset}: the fields written");
@@ -177,7 +180,10 @@ fn apply_quality_writes_the_presets_row_and_the_renderer_reads_it() {
     }
 
     // A field set after the preset is drawn as set; the record stays.
-    answer(og_render_apply_quality(engine, "low".into()));
+    answer(og_runtime::host_impl::answer(og_render_apply_quality(
+        engine,
+        "low".into(),
+    )));
     let a = answer(og_engine_write_resource(
         engine,
         "og.RenderSettings".into(),
@@ -189,7 +195,10 @@ fn apply_quality_writes_the_presets_row_and_the_renderer_reads_it() {
     assert_eq!(fields["quality"], json!("low"));
     assert_eq!(fields["rectShadows"], json!(true));
 
-    let a = answer(og_render_apply_quality(engine, "ultra".into()));
+    let a = answer(og_runtime::host_impl::answer(og_render_apply_quality(
+        engine,
+        "ultra".into(),
+    )));
     assert_eq!(a["ok"], json!(false), "{a}");
     assert!(
         a["reason"]
@@ -238,12 +247,20 @@ fn a_realtime_light_volume_reaches_the_renderer_with_its_light_volume() {
     set_render_backend(engine, Some(Box::new(VolumeRecorder(seen.clone())))).unwrap();
     let spawn = |x: f32| {
         let desc = json!({ "position": { "x": x, "y": 2, "z": 3 } });
-        answer(og_world_spawn(engine, Some(desc.to_string())))["value"]
+        answer(og_runtime::host_impl::answer(og_world_spawn(
+            engine,
+            Some(desc.to_string()),
+        )))["value"]
             .as_f64()
             .unwrap()
     };
     let insert = |e: f64, name: &str, v: Value| {
-        let a = answer(og_world_insert(engine, e, name.into(), Some(v.to_string())));
+        let a = answer(og_runtime::host_impl::answer(og_world_insert(
+            engine,
+            e,
+            name.into(),
+            Some(v.to_string()),
+        )));
         assert_eq!(a["ok"], json!(true), "{a}");
     };
     let room = spawn(1.0);
@@ -272,7 +289,10 @@ fn a_realtime_light_volume_reaches_the_renderer_with_its_light_volume() {
         )
     );
     assert_eq!((v.spacing, v.updates_per_frame, v.intensity), (0.5, 3, 1.0));
-    answer(og_render_apply_quality(engine, "low".into()));
+    answer(og_runtime::host_impl::answer(og_render_apply_quality(
+        engine,
+        "low".into(),
+    )));
     answer(og_engine_frame(engine, 1000.0 / 60.0));
     let (volumes, gi) = seen.borrow().clone();
     assert_eq!((volumes.len(), gi), (1, false));

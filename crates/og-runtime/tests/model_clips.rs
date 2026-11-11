@@ -198,20 +198,31 @@ fn engine() -> (u32, Rc<RefCell<Seen>>) {
 #[test]
 fn model_skin_issues_are_reported_and_clear_when_the_pair_is_repaired() {
     let (engine, seen) = engine();
-    let rig = value(og_load_animation(engine, "models/walker.glb".into()));
-    let model = value(og_load_gltf(engine, "models/walker-copy.glb".into(), None));
-    let e = value(og_world_instantiate(engine, model.as_f64().unwrap(), None))
-        .as_f64()
-        .unwrap();
+    let rig = value(og_runtime::host_impl::answer(og_load_animation(
+        engine,
+        "models/walker.glb".into(),
+    )));
+    let model = value(og_runtime::host_impl::answer(og_load_gltf(
+        engine,
+        "models/walker-copy.glb".into(),
+        None,
+    )));
+    let e = value(og_runtime::host_impl::answer(og_world_instantiate(
+        engine,
+        model.as_f64().unwrap(),
+        None,
+    )))
+    .as_f64()
+    .unwrap();
     let entity = og_ecs::Entity::from_bits(e as u64);
     let id = format!("#{}.{}", entity.index(), entity.generation());
     let skeleton = |asset: &Value| {
-        value(og_world_insert(
+        value(og_runtime::host_impl::answer(og_world_insert(
             engine,
             e,
             "og.Skeleton".into(),
             Some(json!({"asset": asset}).to_string()),
-        ));
+        )));
         value(og_engine_frame(engine, 1000.0 / 60.0));
     };
     let issue = || {
@@ -238,46 +249,52 @@ fn model_skin_issues_are_reported_and_clear_when_the_pair_is_repaired() {
     );
 
     // Different asset identities with equivalent skins are valid.
-    value(og_load_animation(engine, "models/walker-copy.glb".into()));
+    value(og_runtime::host_impl::answer(og_load_animation(
+        engine,
+        "models/walker-copy.glb".into(),
+    )));
     value(og_engine_frame(engine, 1000.0 / 60.0));
     assert!(issue().is_null());
     assert!(!seen.borrow().skinned.is_empty());
 
-    let other = value(og_load_animation(engine, "models/blob.vox".into()));
-    value(og_runtime::og_world_set(
+    let other = value(og_runtime::host_impl::answer(og_load_animation(
+        engine,
+        "models/blob.vox".into(),
+    )));
+    value(og_runtime::host_impl::answer(og_runtime::og_world_set(
         engine,
         e,
         "og.Skeleton".into(),
         json!({"asset": other["skeleton"]}).to_string(),
-    ));
+    )));
     value(og_engine_frame(engine, 1000.0 / 60.0));
     assert!(
         issue()["reason"].as_str().unwrap().contains("palette"),
         "{}",
         issue()
     );
-    let reordered = value(og_load_animation(
+    let reordered = value(og_runtime::host_impl::answer(og_load_animation(
         engine,
         "models/walker-reordered.glb".into(),
-    ));
-    value(og_runtime::og_world_set(
+    )));
+    value(og_runtime::host_impl::answer(og_runtime::og_world_set(
         engine,
         e,
         "og.Skeleton".into(),
         json!({"asset": reordered["skeleton"]}).to_string(),
-    ));
+    )));
     value(og_engine_frame(engine, 1000.0 / 60.0));
     assert!(
         issue()["reason"].as_str().unwrap().contains("joint order"),
         "{}",
         issue()
     );
-    value(og_runtime::og_world_set(
+    value(og_runtime::host_impl::answer(og_runtime::og_world_set(
         engine,
         e,
         "og.Skeleton".into(),
         json!({"asset": rig["skeleton"]}).to_string(),
-    ));
+    )));
     value(og_engine_frame(engine, 1000.0 / 60.0));
     assert!(
         issue().is_null(),
@@ -288,7 +305,10 @@ fn model_skin_issues_are_reported_and_clear_when_the_pair_is_repaired() {
 #[test]
 fn a_mirrored_clip_is_registered_once_and_plays() {
     let (engine, _) = engine();
-    let anim = value(og_load_animation(engine, "models/walker.glb".into()));
+    let anim = value(og_runtime::host_impl::answer(og_load_animation(
+        engine,
+        "models/walker.glb".into(),
+    )));
     let walk = anim["clips"]
         .as_array()
         .unwrap()
@@ -297,36 +317,54 @@ fn a_mirrored_clip_is_registered_once_and_plays() {
         .expect("the walker walks")
         .clone();
     let desc = json!({ "clip": walk["clip"], "skeleton": anim["skeleton"] }).to_string();
-    let m = value(og_runtime::og_anim_mirror(engine, Some(desc.clone())));
+    let m = value(og_runtime::host_impl::answer(og_runtime::og_anim_mirror(
+        engine,
+        Some(desc.clone()),
+    )));
     assert_ne!(m["clip"], walk["clip"]);
     assert_eq!(
         (&m["name"], &m["duration"], &m["markers"]),
         (&walk["name"], &walk["duration"], &walk["markers"])
     );
-    assert_eq!(value(og_runtime::og_anim_mirror(engine, Some(desc))), m);
-    let asset = value(og_load_gltf(engine, "models/walker.glb".into(), None));
-    let e = value(og_world_instantiate(engine, asset.as_f64().unwrap(), None))
-        .as_f64()
-        .unwrap();
-    value(og_world_insert(
+    assert_eq!(
+        value(og_runtime::host_impl::answer(og_runtime::og_anim_mirror(
+            engine,
+            Some(desc)
+        ))),
+        m
+    );
+    let asset = value(og_runtime::host_impl::answer(og_load_gltf(
+        engine,
+        "models/walker.glb".into(),
+        None,
+    )));
+    let e = value(og_runtime::host_impl::answer(og_world_instantiate(
+        engine,
+        asset.as_f64().unwrap(),
+        None,
+    )))
+    .as_f64()
+    .unwrap();
+    value(og_runtime::host_impl::answer(og_world_insert(
         engine,
         e,
         "og.Skeleton".into(),
         Some(json!({ "asset": anim["skeleton"] }).to_string()),
-    ));
-    value(og_world_insert(
+    )));
+    value(og_runtime::host_impl::answer(og_world_insert(
         engine,
         e,
         "og.AnimationPlayer".into(),
         Some(json!({ "clip": m["clip"] }).to_string()),
-    ));
+    )));
     value(og_engine_frame(engine, 1000.0 / 60.0));
     // An unregistered clip is refused by name.
-    let refused: Value = serde_json::from_str(&og_runtime::og_anim_mirror(
-        engine,
-        Some(json!({ "clip": 12345, "skeleton": anim["skeleton"] }).to_string()),
-    ))
-    .unwrap();
+    let refused: Value =
+        serde_json::from_str(&og_runtime::host_impl::answer(og_runtime::og_anim_mirror(
+            engine,
+            Some(json!({ "clip": 12345, "skeleton": anim["skeleton"] }).to_string()),
+        )))
+        .unwrap();
     assert_eq!(refused["ok"], json!(false));
     assert!(refused.to_string().contains("12345"), "{refused}");
 }

@@ -34,10 +34,10 @@ fn a_publish_build_refuses_inspect() {
     og_host_begin_bundle();
     let game = og_game_game(Some(r#"{"seed":1}"#.into()));
     let e = value(og_engine_create(game, "{}".into())).as_u64().unwrap() as u32;
-    value(og_commands_schedule(
+    value(og_runtime::host_impl::answer(og_commands_schedule(
         e,
         "0:inspect;0:inspect:key:F2;0:dump_inspector".into(),
-    ));
+    )));
     for _ in 0..3 {
         value(og_engine_frame(e, 1000.0 / 60.0));
     }

@@ -187,7 +187,10 @@ impl Game {
     }
 
     fn state(&self, group: &str) -> String {
-        value(og_stream_status(self.engine, group.into()))["state"]
+        value(og_runtime::host_impl::answer(og_stream_status(
+            self.engine,
+            group.into(),
+        )))["state"]
             .as_str()
             .unwrap()
             .to_string()
@@ -224,17 +227,23 @@ fn chunks_nearest_the_playhead_go_first_then_packs_by_priority_four_at_a_time() 
     g.frame();
 
     // A voice 2 s in: it wants chunks 1 (under it) to 5 (four seconds ahead).
-    let sound = value(og_load_sound(engine, "audio/theme.wav".into()));
-    let e = value(og_world_spawn(engine, Some("{}".into())))
-        .as_f64()
-        .unwrap();
+    let sound = value(og_runtime::host_impl::answer(og_load_sound(
+        engine,
+        "audio/theme.wav".into(),
+    )));
+    let e = value(og_runtime::host_impl::answer(og_world_spawn(
+        engine,
+        Some("{}".into()),
+    )))
+    .as_f64()
+    .unwrap();
     let source = json!({ "sound": sound, "startOffset": 2.0 }).to_string();
-    value(og_world_insert(
+    value(og_runtime::host_impl::answer(og_world_insert(
         engine,
         e,
         "og.AudioSource".into(),
         Some(source),
-    ));
+    )));
     g.frame();
     assert_eq!(
         g.gate.borrow().order,
@@ -244,7 +253,10 @@ fn chunks_nearest_the_playhead_go_first_then_packs_by_priority_four_at_a_time() 
 
     // Every group asked for at once: they wait behind the chunks.
     for group in ["low", "high", "mid"] {
-        value(og_stream_request(engine, group.into()));
+        value(og_runtime::host_impl::answer(og_stream_request(
+            engine,
+            group.into(),
+        )));
     }
     g.frame();
     assert_eq!(g.gate.borrow().order.len(), 4, "no slot is free");

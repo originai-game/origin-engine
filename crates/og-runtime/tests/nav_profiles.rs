@@ -85,20 +85,38 @@ fn og_nav_load_takes_an_agent_profile_and_names_the_ones_an_asset_has() {
 
     let through = |mesh: &Value| {
         let desc = json!({ "nav": mesh, "from": { "x": 3, "y": 0, "z": 5 }, "to": { "x": 17, "y": 0, "z": 5 } });
-        wire(og_nav_find_path(e, Some(desc.to_string())))
-            .is_ok_and(|p| p["complete"] == json!(true))
+        wire(og_runtime::host_impl::answer(og_nav_find_path(
+            e,
+            Some(desc.to_string()),
+        )))
+        .is_ok_and(|p| p["complete"] == json!(true))
     };
-    let big = wire(og_nav_load(e, "nav/door.ogt".into(), None)).unwrap();
+    let big = wire(og_runtime::host_impl::answer(og_nav_load(
+        e,
+        "nav/door.ogt".into(),
+        None,
+    )))
+    .unwrap();
     assert_eq!(big["profile"], json!(""));
     assert!(
         !through(&big["mesh"]),
         "the doorway is too narrow for 0.8 m"
     );
-    let small = wire(og_nav_load(e, "nav/door.ogt".into(), Some("small".into()))).unwrap();
+    let small = wire(og_runtime::host_impl::answer(og_nav_load(
+        e,
+        "nav/door.ogt".into(),
+        Some("small".into()),
+    )))
+    .unwrap();
     assert_eq!(small["profile"], json!("small"));
     assert_ne!(small["mesh"], big["mesh"]);
     assert!(through(&small["mesh"]));
-    let err = wire(og_nav_load(e, "nav/door.ogt".into(), Some("ogre".into()))).unwrap_err();
+    let err = wire(og_runtime::host_impl::answer(og_nav_load(
+        e,
+        "nav/door.ogt".into(),
+        Some("ogre".into()),
+    )))
+    .unwrap_err();
     assert!(
         err.contains("no agent profile 'ogre': (unnamed), small"),
         "{err}"

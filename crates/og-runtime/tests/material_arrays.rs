@@ -144,16 +144,19 @@ fn frame(engine: u32) {
 }
 
 fn spawn(engine: u32, components: &[(&str, Value)]) -> f64 {
-    let e = value(og_world_spawn(engine, Some("{}".into())))
-        .as_f64()
-        .unwrap();
+    let e = value(og_runtime::host_impl::answer(og_world_spawn(
+        engine,
+        Some("{}".into()),
+    )))
+    .as_f64()
+    .unwrap();
     for (name, v) in components {
-        value(og_world_insert(
+        value(og_runtime::host_impl::answer(og_world_insert(
             engine,
             e,
             name.to_string(),
             Some(v.to_string()),
-        ));
+        )));
     }
     e
 }
@@ -161,16 +164,28 @@ fn spawn(engine: u32, components: &[(&str, Value)]) -> f64 {
 #[test]
 fn a_material_samples_arrays_and_each_mesh_picks_its_layer() {
     let (engine, seen) = engine();
-    let tiles = value(og_load_texture_array(engine, "tex/tiles.ogt".into()))["array"]
+    let tiles = value(og_runtime::host_impl::answer(og_load_texture_array(
+        engine,
+        "tex/tiles.ogt".into(),
+    )))["array"]
         .as_f64()
         .unwrap();
-    let normals = value(og_load_texture_array(engine, "tex/tiles-n.ogt".into()))["array"]
+    let normals = value(og_runtime::host_impl::answer(og_load_texture_array(
+        engine,
+        "tex/tiles-n.ogt".into(),
+    )))["array"]
         .as_f64()
         .unwrap();
     let desc = json!({ "mapArray": tiles, "mapLayer": 1, "normalMapArray": normals,
         "foliage": { "translucency": 0.7, "domeNormals": 0.35 } });
-    let material = value(og_render_standard_material(engine, Some(desc.to_string())));
-    let geometry = value(og_render_box_geometry(engine, Some("{}".into())));
+    let material = value(og_runtime::host_impl::answer(og_render_standard_material(
+        engine,
+        Some(desc.to_string()),
+    )));
+    let geometry = value(og_runtime::host_impl::answer(og_render_box_geometry(
+        engine,
+        Some("{}".into()),
+    )));
     for layer in [0, -1, 1] {
         let mut mesh = json!({ "geometry": geometry, "material": material });
         if layer >= 0 {
@@ -198,11 +213,11 @@ fn a_material_samples_arrays_and_each_mesh_picks_its_layer() {
     // null clears an array; an unknown handle is refused by name.
     let cleared = json!({ "normalMapArray": null, "normalMapLayer": 1,
         "foliage": { "translucency": 0.0 } });
-    value(og_render_update_material(
+    value(og_runtime::host_impl::answer(og_render_update_material(
         engine,
         material.as_f64().unwrap(),
         Some(cleared.to_string()),
-    ));
+    )));
     frame(engine);
     let m = seen.borrow().instances[0].1;
     assert_eq!((m.normalMapArray, m.normalMapLayer), (0, 1));
@@ -212,8 +227,10 @@ fn a_material_samples_arrays_and_each_mesh_picks_its_layer() {
         "partial foliage update preserves the dome blend"
     );
     let bad = json!({ "mapArray": 77.0 });
-    let refused: Value =
-        serde_json::from_str(&og_render_standard_material(engine, Some(bad.to_string()))).unwrap();
+    let refused: Value = serde_json::from_str(&og_runtime::host_impl::answer(
+        og_render_standard_material(engine, Some(bad.to_string())),
+    ))
+    .unwrap();
     assert_eq!(refused["ok"], json!(false));
     assert!(
         refused
@@ -227,10 +244,10 @@ fn a_material_samples_arrays_and_each_mesh_picks_its_layer() {
 #[cfg(not(feature = "profile2d"))] // the 2D profile has no terrain (tests/profile2d.rs)
 fn a_terrain_samples_its_layer_arrays() {
     let (engine, seen) = engine();
-    let info = value(og_runtime::og_terrain_load(
+    let info = value(og_runtime::host_impl::answer(og_runtime::og_terrain_load(
         engine,
         "terrain/hill.ogt".into(),
-    ));
+    )));
     let entity = spawn(
         engine,
         &[

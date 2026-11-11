@@ -131,16 +131,19 @@ fn frame(engine: u32) {
 
 fn spawn(engine: u32, at: [f32; 3], components: &[(&str, Value)]) {
     let desc = json!({ "position": { "x": at[0], "y": at[1], "z": at[2] } });
-    let e = value(og_world_spawn(engine, Some(desc.to_string())))
-        .as_f64()
-        .unwrap();
+    let e = value(og_runtime::host_impl::answer(og_world_spawn(
+        engine,
+        Some(desc.to_string()),
+    )))
+    .as_f64()
+    .unwrap();
     for (name, v) in components {
-        value(og_world_insert(
+        value(og_runtime::host_impl::answer(og_world_insert(
             engine,
             e,
             name.to_string(),
             Some(v.to_string()),
-        ));
+        )));
     }
 }
 
@@ -155,9 +158,15 @@ fn drop_shadows_lie_on_the_terrain_or_their_height() {
     let seen = Rc::new(RefCell::new(Seen::default()));
     set_render_backend(engine, Some(Box::new(Recorder(seen.clone())))).unwrap();
     frame(engine);
-    let info = value(og_terrain_load(engine, "terrain/ramp.ogt".into()));
+    let info = value(og_runtime::host_impl::answer(og_terrain_load(
+        engine,
+        "terrain/ramp.ogt".into(),
+    )));
     assert_eq!(info["seaLevel"], Value::Null, "a heightmap has no sea");
-    let isle = value(og_terrain_load(engine, "terrain/isle.ogt".into()));
+    let isle = value(og_runtime::host_impl::answer(og_terrain_load(
+        engine,
+        "terrain/isle.ogt".into(),
+    )));
     assert_eq!(isle["seaLevel"], json!(1.5), "{isle}");
     assert_eq!(
         (isle["minHeight"].as_f64(), isle["columns"].as_u64()),
@@ -194,7 +203,10 @@ fn drop_shadows_lie_on_the_terrain_or_their_height() {
     );
     // An immediate sprite over the ramp, its own height below the terrain.
     let desc = json!({ "position": { "x": -4.0, "y": ramp(-4.0), "z": 2.0 }, "width": 1, "height": 2, "dropShadow": 0.4, "dropShadowHeight": 1.0 });
-    value(og_render_sprite(engine, Some(desc.to_string())));
+    value(og_runtime::host_impl::answer(og_render_sprite(
+        engine,
+        Some(desc.to_string()),
+    )));
     frame(engine);
     let s = seen.borrow();
     let ground_at = |x: f32| {

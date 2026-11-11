@@ -363,8 +363,8 @@ fn bounded(v: f32, key: &str, max: f32) -> Result<f32, String> {
     }
 }
 
-pub fn og_motion_look_at(world: u32, entity: f64, desc: Option<String>) -> String {
-    wire_void((|| {
+pub fn og_motion_look_at(world: u32, entity: f64, desc: Option<String>) -> Result<(), String> {
+    (|| {
         let eng = engine(world)?;
         let e = Entity::from_bits(entity as u64);
         let s = agent_of(&eng, e)?;
@@ -399,11 +399,11 @@ pub fn og_motion_look_at(world: u32, entity: f64, desc: Option<String>) -> Strin
         }
         p.look = look;
         Ok(())
-    })())
+    })()
 }
 
-pub fn og_motion_react(world: u32, entity: f64, desc: Option<String>) -> String {
-    wire_void((|| {
+pub fn og_motion_react(world: u32, entity: f64, desc: Option<String>) -> Result<(), String> {
+    (|| {
         let eng = engine(world)?;
         let e = Entity::from_bits(entity as u64);
         let s = agent_of(&eng, e)?;
@@ -495,5 +495,5 @@ pub fn og_motion_react(world: u32, entity: f64, desc: Option<String>) -> String 
         }
         p.reaction = reaction;
         Ok(())
-    })())
+    })()
 }

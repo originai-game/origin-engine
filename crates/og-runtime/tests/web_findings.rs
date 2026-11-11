@@ -121,18 +121,32 @@ fn a_mesh_casts_shadows_only_when_its_flag_says_so() {
     let seen = Rc::new(RefCell::new(Vec::new()));
     set_render_backend(engine, Some(Box::new(Recorder(seen.clone())))).unwrap();
     value(og_engine_frame(engine, 0.0));
-    let geometry = value(og_render_box_geometry(engine, Some("{}".into())));
-    let material = value(og_render_standard_material(engine, Some("{}".into())));
+    let geometry = value(og_runtime::host_impl::answer(og_render_box_geometry(
+        engine,
+        Some("{}".into()),
+    )));
+    let material = value(og_runtime::host_impl::answer(og_render_standard_material(
+        engine,
+        Some("{}".into()),
+    )));
     for cast in [None, Some(true), Some(false)] {
-        let e = value(og_world_spawn(engine, Some("{}".into())))
-            .as_f64()
-            .unwrap();
+        let e = value(og_runtime::host_impl::answer(og_world_spawn(
+            engine,
+            Some("{}".into()),
+        )))
+        .as_f64()
+        .unwrap();
         let mut mesh = json!({ "geometry": geometry, "material": material });
         if let Some(c) = cast {
             mesh["castShadow"] = json!(c);
         }
         for (name, v) in [("og.Transform", json!({})), ("og.Mesh", mesh)] {
-            value(og_world_insert(engine, e, name.into(), Some(v.to_string())));
+            value(og_runtime::host_impl::answer(og_world_insert(
+                engine,
+                e,
+                name.into(),
+                Some(v.to_string()),
+            )));
         }
     }
     value(og_engine_frame(engine, 1000.0 / 60.0));

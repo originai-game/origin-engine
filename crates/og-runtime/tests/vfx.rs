@@ -171,22 +171,30 @@ fn a_spawned_effect_sends_its_events_draws_its_elements_and_ends() {
     .unwrap();
     ticks(engine, 1);
 
-    let hit = value(og_load_vfx(engine, "fx/hit.ogt".into()));
-    let info = value(og_vfx_info(engine, hit.as_f64().unwrap()));
+    let hit = value(og_runtime::host_impl::answer(og_load_vfx(
+        engine,
+        "fx/hit.ogt".into(),
+    )));
+    let info = value(og_runtime::host_impl::answer(og_vfx_info(
+        engine,
+        hit.as_f64().unwrap(),
+    )));
     assert_eq!(info["events"], json!(["impact", "linger"]));
     assert!((info["impact"].as_f64().unwrap() - 0.1).abs() < 1e-6);
 
     let start = og_world_get_tick(engine);
-    let e = value(og_vfx_spawn(
+    let e = value(og_runtime::host_impl::answer(og_vfx_spawn(
         engine,
         Some(json!({ "asset": hit, "position": { "x": 0, "y": 1, "z": 0 } }).to_string()),
-    ))
+    )))
     .as_f64()
     .unwrap();
-    let snap = value(og_world_snapshot(engine, None))
-        .as_str()
-        .unwrap()
-        .to_string();
+    let snap = value(og_runtime::host_impl::answer(og_world_snapshot(
+        engine, None,
+    )))
+    .as_str()
+    .unwrap()
+    .to_string();
     // The render dump reports what the backend says the frame cost (the
     // effect's preview and cost sheets read it): at 0.2 s, its sparks and
     // its ring.
@@ -214,7 +222,11 @@ fn a_spawned_effect_sends_its_events_draws_its_elements_and_ends() {
         ),
         "{dump}"
     );
-    value(og_world_restore(engine, snap.clone(), None));
+    value(og_runtime::host_impl::answer(og_world_restore(
+        engine,
+        snap.clone(),
+        None,
+    )));
     seen.borrow_mut().clear();
     drawn.borrow_mut().clear();
     ticks(engine, 40);
@@ -251,7 +263,9 @@ fn a_spawned_effect_sends_its_events_draws_its_elements_and_ends() {
 
     // A restore to just after the spawn sends the same events again.
     seen.borrow_mut().clear();
-    value(og_world_restore(engine, snap, None));
+    value(og_runtime::host_impl::answer(og_world_restore(
+        engine, snap, None,
+    )));
     ticks(engine, 40);
     let again: Vec<(u32, String)> = seen.borrow().iter().map(|s| (s.0, s.1.clone())).collect();
     let first: Vec<(u32, String)> = first.into_iter().map(|s| (s.0, s.1)).collect();
@@ -285,14 +299,20 @@ fn a_flipbook_element_plays_its_sheet_and_passes_its_impact_on() {
     )
     .unwrap();
     ticks(engine, 1);
-    let fx = value(og_load_vfx(engine, "fx/pixel.ogt".into()));
-    let info = value(og_vfx_info(engine, fx.as_f64().unwrap()));
+    let fx = value(og_runtime::host_impl::answer(og_load_vfx(
+        engine,
+        "fx/pixel.ogt".into(),
+    )));
+    let info = value(og_runtime::host_impl::answer(og_vfx_info(
+        engine,
+        fx.as_f64().unwrap(),
+    )));
     assert_eq!(info["elements"], json!(["flipbook"]));
     let start = og_world_get_tick(engine);
-    value(og_vfx_spawn(
+    value(og_runtime::host_impl::answer(og_vfx_spawn(
         engine,
         Some(json!({ "asset": fx }).to_string()),
-    ));
+    )));
     ticks(engine, 80);
 
     let s = seen.borrow().clone();

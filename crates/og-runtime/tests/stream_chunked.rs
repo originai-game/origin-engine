@@ -122,17 +122,23 @@ fn played(root: &Path) -> Vec<f32> {
         },
     );
     sink.pump();
-    let sound = value(og_load_sound(engine, "audio/theme.wav".into()));
-    let e = value(og_world_spawn(engine, Some("{}".into())))
-        .as_f64()
-        .unwrap();
+    let sound = value(og_runtime::host_impl::answer(og_load_sound(
+        engine,
+        "audio/theme.wav".into(),
+    )));
+    let e = value(og_runtime::host_impl::answer(og_world_spawn(
+        engine,
+        Some("{}".into()),
+    )))
+    .as_f64()
+    .unwrap();
     let source = json!({ "sound": sound, "loop": true }).to_string();
-    value(og_world_insert(
+    value(og_runtime::host_impl::answer(og_world_insert(
         engine,
         e,
         "og.AudioSource".into(),
         Some(source),
-    ));
+    )));
     // 3 s mixed a frame at a time, then 4 s of frames mixed at once (a
     // long advance: the chunks it reaches were never put in the bank ahead
     // of it, so the mixer reads them through the loader), then 3 s more.
@@ -296,7 +302,10 @@ fn a_chunked_sound_in_a_group_reads_no_chunk_until_its_group_is_resident() {
     let engine = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
     let frame = || value(og_engine_frame(engine, 1000.0 / 60.0));
     let state = || {
-        value(og_stream_status(engine, "music".into()))["state"]
+        value(og_runtime::host_impl::answer(og_stream_status(
+            engine,
+            "music".into(),
+        )))["state"]
             .as_str()
             .unwrap()
             .to_string()
@@ -315,17 +324,23 @@ fn a_chunked_sound_in_a_group_reads_no_chunk_until_its_group_is_resident() {
     frame();
 
     // A voice 2 s in on the stand-in: silence of its length, nothing read.
-    let sound = value(og_load_sound(engine, "audio/theme.wav".into()));
-    let e = value(og_world_spawn(engine, Some("{}".into())))
-        .as_f64()
-        .unwrap();
+    let sound = value(og_runtime::host_impl::answer(og_load_sound(
+        engine,
+        "audio/theme.wav".into(),
+    )));
+    let e = value(og_runtime::host_impl::answer(og_world_spawn(
+        engine,
+        Some("{}".into()),
+    )))
+    .as_f64()
+    .unwrap();
     let source = json!({ "sound": sound, "startOffset": 2.0, "loop": true }).to_string();
-    value(og_world_insert(
+    value(og_runtime::host_impl::answer(og_world_insert(
         engine,
         e,
         "og.AudioSource".into(),
         Some(source),
-    ));
+    )));
     for _ in 0..10 {
         frame();
     }
@@ -333,7 +348,10 @@ fn a_chunked_sound_in_a_group_reads_no_chunk_until_its_group_is_resident() {
     assert!(gate.borrow().order.is_empty(), "{:?}", gate.borrow().order);
 
     // The group loads: its pack, then the chunks ahead of the playhead.
-    value(og_stream_request(engine, "music".into()));
+    value(og_runtime::host_impl::answer(og_stream_request(
+        engine,
+        "music".into(),
+    )));
     frame();
     assert_eq!(gate.borrow().order, ["pack music"]);
     land(&["pack music"]);
@@ -353,7 +371,10 @@ fn a_chunked_sound_in_a_group_reads_no_chunk_until_its_group_is_resident() {
     // Let go: silent again, and no chunk is asked for any more.
     let landed: Vec<String> = gate.borrow().outstanding.iter().map(|p| short(p)).collect();
     land(&landed.iter().map(String::as_str).collect::<Vec<_>>());
-    value(og_stream_release(engine, "music".into()));
+    value(og_runtime::host_impl::answer(og_stream_release(
+        engine,
+        "music".into(),
+    )));
     for _ in 0..4 {
         frame();
     }

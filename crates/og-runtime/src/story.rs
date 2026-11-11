@@ -11,12 +11,11 @@
 //! (lazy::before_restore), so the block is there to take its bytes.
 
 use super::engine::engine;
+use super::parse;
 use super::wire::{
     BarkView, CheckView, ChoiceView, ChosenView, DialogueView, MarkerView, ObjectiveView, OneOf,
     QuestView, RewardView, RollView, SpeakerView, StoryAsset, StoryLine, TextSpan, TimerView,
-    ToJson,
 };
-use super::{ok_void, parse, refuse};
 use og_core::Rng;
 use og_ecs::{Entity, QueryDesc, StateBlock, SystemContext, SystemDesc, World};
 use og_story::{Dialogue, Event, Library, Quest, Story, Val, Wait};
@@ -647,20 +646,6 @@ fn story<T>(engine_id: u32, f: impl FnOnce(&Library, &mut Story) -> T) -> Result
     r.ok_or_else(|| "no dialogue or quest is loaded: og.story.load one in setup".to_string())
 }
 
-fn wire<T: ToJson>(r: Result<T, String>) -> String {
-    match r {
-        Ok(v) => super::wire::ok(&v),
-        Err(e) => refuse(e),
-    }
-}
-
-fn wire_void(r: Result<(), String>) -> String {
-    match r {
-        Ok(()) => ok_void(),
-        Err(e) => refuse(e),
-    }
-}
-
 fn val_json(v: &Val) -> Value {
     match v {
         Val::Num(n) => json!(n),
@@ -887,8 +872,8 @@ fn load_voices(eng: &super::engine::Engine, engine_id: u32, d: &Dialogue) {
     }
 }
 
-pub fn og_story_load(world: u32, path: String) -> String {
-    wire((|| {
+pub fn og_story_load(world: u32, path: String) -> Result<crate::wire::StoryAsset, String> {
+    (|| {
         let eng = engine(world)?;
         let id = og_bundle::runtime::asset_id(&path).to_string();
         let text = {
@@ -899,17 +884,17 @@ pub fn og_story_load(world: u32, path: String) -> String {
                 .map_err(|e| e.to_string())?
         };
         insert(world, &text).map_err(|e| format!("{id}: {e}"))
-    })())
+    })()
 }
 
-pub fn og_story_parse(world: u32, text: String) -> String {
-    wire(insert(world, &text))
+pub fn og_story_parse(world: u32, text: String) -> Result<crate::wire::StoryAsset, String> {
+    insert(world, &text)
 }
 
 // ── conversations ───────────────────────────────────────────────────────
 
-pub fn og_story_start(world: u32, desc: Option<String>) -> String {
-    wire((|| {
+pub fn og_story_start(world: u32, desc: Option<String>) -> Result<serde_json::Value, String> {
+    (|| {
         let d: super::wire::StartDesc = super::wire::arg(desc.as_deref(), "desc")?;
         if d.dialogue.is_empty() {
             return Err("StartDesc.dialogue names the dialogue to start".into());
@@ -936,7 +921,7 @@ pub fn og_story_start(world: u32, desc: Option<String>) -> String {
             }
         }
         story(world, |lib, s| s.start(lib, &dialogue, cast, vars, node))?.map(|c| json!(c))
-    })())
+    })()
 }
 
 fn speaker_view(
@@ -996,8 +981,8 @@ fn story_line(engine: u32, d: &Dialogue, c: &og_story::Conv, l: &og_story::Shown
     }
 }
 
-pub fn og_story_view(world: u32, conversation: u32) -> String {
-    let view = story(world, |lib, s| -> Option<DialogueView> {
+pub fn og_story_view(world: u32, conversation: u32) -> Option<crate::wire::DialogueView> {
+    story(world, |lib, s| -> Option<DialogueView> {
         let d = s.resolve(lib, conversation).ok()?;
         let c = s.convs.get(&conversation)?;
         let last = c.history.last();
@@ -1119,12 +1104,11 @@ pub fn og_story_view(world: u32, conversation: u32) -> String {
         })
     })
     .ok()
-    .flatten();
-    super::wire::text_of(&view)
+    .flatten()
 }
 
-pub fn og_story_history(world: u32, conversation: u32) -> String {
-    let lines = story(world, |lib, s| -> Option<Vec<StoryLine>> {
+pub fn og_story_history(world: u32, conversation: u32) -> Vec<crate::wire::StoryLine> {
+    story(world, |lib, s| -> Option<Vec<StoryLine>> {
         let c = s.convs.get(&conversation)?;
         let d = lib.dialogues.get(&c.dialogue)?;
         Some(
@@ -1136,8 +1120,7 @@ pub fn og_story_history(world: u32, conversation: u32) -> String {
     })
     .ok()
     .flatten()
-    .unwrap_or_default();
-    super::wire::text_of(&lines)
+    .unwrap_or_default()
 }
 
 pub fn og_story_conversations(world: u32) -> String {
@@ -1146,12 +1129,12 @@ pub fn og_story_conversations(world: u32) -> String {
         .to_string()
 }
 
-pub fn og_story_advance(world: u32, conversation: u32) -> String {
-    wire_void(story(world, |lib, s| s.advance(lib, conversation)).and_then(|r| r))
+pub fn og_story_advance(world: u32, conversation: u32) -> Result<(), String> {
+    story(world, |lib, s| s.advance(lib, conversation)).and_then(|r| r)
 }
 
-pub fn og_story_choose(world: u32, conversation: u32, index: u32) -> String {
-    wire_void(story(world, |lib, s| s.choose(lib, conversation, index)).and_then(|r| r))
+pub fn og_story_choose(world: u32, conversation: u32, index: u32) -> Result<(), String> {
+    story(world, |lib, s| s.choose(lib, conversation, index)).and_then(|r| r)
 }
 
 pub fn og_story_stop(world: u32, conversation: u32) -> bool {
@@ -1171,16 +1154,16 @@ fn bark_target(entity: u64, topic: &str) -> Result<(), String> {
     Ok(())
 }
 
-pub fn og_story_bark(world: u32, desc: Option<String>) -> String {
-    wire_void((|| {
+pub fn og_story_bark(world: u32, desc: Option<String>) -> Result<(), String> {
+    (|| {
         let d: super::wire::BarkDesc = super::wire::arg(desc.as_deref(), "desc")?;
         bark_target(d.entity, &d.topic)?;
         story(world, |lib, s| s.bark(lib, d.entity, &d.topic, &d.dialogue))?
-    })())
+    })()
 }
 
-pub fn og_story_ambient(world: u32, desc: Option<String>) -> String {
-    wire_void((|| {
+pub fn og_story_ambient(world: u32, desc: Option<String>) -> Result<(), String> {
+    (|| {
         let d: super::wire::AmbientDesc = super::wire::arg(desc.as_deref(), "desc")?;
         bark_target(d.entity, &d.topic)?;
         let (entity, topic, dialogue) = (d.entity, d.topic, d.dialogue);
@@ -1200,7 +1183,7 @@ pub fn og_story_ambient(world: u32, desc: Option<String>) -> String {
             s.ambient(entity, &topic, &dialogue, every, jitter);
             Ok(())
         })?
-    })())
+    })()
 }
 
 fn bark_view(engine: u32, lib: &Library, s: &Story, e: u64, b: &og_story::Said) -> BarkView {
@@ -1232,15 +1215,14 @@ fn bark_view(engine: u32, lib: &Library, s: &Story, e: u64, b: &og_story::Said) 
     }
 }
 
-pub fn og_story_barks(world: u32) -> String {
-    let barks = story(world, |lib, s| {
+pub fn og_story_barks(world: u32) -> Vec<crate::wire::BarkView> {
+    story(world, |lib, s| {
         s.barks
             .iter()
             .map(|(e, b)| bark_view(world, lib, s, *e, b))
             .collect::<Vec<_>>()
     })
-    .unwrap_or_default();
-    super::wire::text_of(&barks)
+    .unwrap_or_default()
 }
 
 /// `dump_story`: the whole story as the probe writes it.
@@ -1308,9 +1290,9 @@ pub(crate) fn dump(engine_id: u32) -> Value {
 
 // ── variables ───────────────────────────────────────────────────────────
 
-pub fn og_story_set_saliency(world: u32, strategy: String) -> String {
+pub fn og_story_set_saliency(world: u32, strategy: String) -> Result<(), String> {
     use og_story::yarn::saliency::Saliency;
-    wire_void((|| {
+    (|| {
         let strategy = match strategy.as_str() {
             "first" => Saliency::First,
             "best" => Saliency::Best,
@@ -1320,7 +1302,7 @@ pub fn og_story_set_saliency(world: u32, strategy: String) -> String {
             _ => return Err(format!("unknown Yarn saliency strategy '{strategy}'")),
         };
         story(world, |_, s| s.saliency = strategy)
-    })())
+    })()
 }
 
 pub fn og_story_get(world: u32, name: String) -> String {
@@ -1331,12 +1313,12 @@ pub fn og_story_get(world: u32, name: String) -> String {
         .to_string()
 }
 
-pub fn og_story_set(world: u32, name: String, value: String) -> String {
-    wire_void((|| {
+pub fn og_story_set(world: u32, name: String, value: String) -> Result<(), String> {
+    (|| {
         let v = parse(Some(&value))?;
         let v = val_of(&v).ok_or("a story variable is a number, a boolean or a string")?;
         story(world, |lib, s| s.set(lib, &name, v))
-    })())
+    })()
 }
 
 pub fn og_story_reset(world: u32) {
@@ -1345,12 +1327,10 @@ pub fn og_story_reset(world: u32) {
 
 // ── quests ──────────────────────────────────────────────────────────────
 
-pub fn og_story_start_quest(world: u32, id: String) -> String {
-    wire(
-        story(world, |lib, s| s.start_quest(lib, &id))
-            .and_then(|r| r)
-            .map(|b| json!(b)),
-    )
+pub fn og_story_start_quest(world: u32, id: String) -> Result<serde_json::Value, String> {
+    story(world, |lib, s| s.start_quest(lib, &id))
+        .and_then(|r| r)
+        .map(|b| json!(b))
 }
 
 pub fn og_story_progress(
@@ -1365,27 +1345,29 @@ pub fn og_story_progress(
     .unwrap_or(false)
 }
 
-fn quest_op(world: u32, op: og_story::QuestOp) -> String {
-    wire(
-        story(world, |lib, s| {
-            let r = s.quest_op(lib, &op);
-            s.settle(lib);
-            r
-        })
-        .and_then(|r| r)
-        .map(|b| json!(b)),
-    )
+fn quest_op(world: u32, op: og_story::QuestOp) -> Result<serde_json::Value, String> {
+    story(world, |lib, s| {
+        let r = s.quest_op(lib, &op);
+        s.settle(lib);
+        r
+    })
+    .and_then(|r| r)
+    .map(|b| json!(b))
 }
 
-pub fn og_story_set_stage(world: u32, quest: String, stage: String) -> String {
+pub fn og_story_set_stage(
+    world: u32,
+    quest: String,
+    stage: String,
+) -> Result<serde_json::Value, String> {
     quest_op(world, og_story::QuestOp::Stage(quest, stage))
 }
 
-pub fn og_story_complete_quest(world: u32, quest: String) -> String {
+pub fn og_story_complete_quest(world: u32, quest: String) -> Result<serde_json::Value, String> {
     quest_op(world, og_story::QuestOp::Complete(quest))
 }
 
-pub fn og_story_fail_quest(world: u32, quest: String) -> String {
+pub fn og_story_fail_quest(world: u32, quest: String) -> Result<serde_json::Value, String> {
     quest_op(world, og_story::QuestOp::Fail(quest))
 }
 
@@ -1461,24 +1443,22 @@ fn quest_view(engine: u32, lib: &Library, s: &Story, q: &og_story::QuestState) -
     }
 }
 
-pub fn og_story_quest(world: u32, id: String) -> String {
-    let quest = story(world, |lib, s| {
+pub fn og_story_quest(world: u32, id: String) -> Option<crate::wire::QuestView> {
+    story(world, |lib, s| {
         s.quest(&id).map(|q| quest_view(world, lib, s, q))
     })
     .ok()
-    .flatten();
-    super::wire::text_of(&quest)
+    .flatten()
 }
 
-pub fn og_story_quests(world: u32) -> String {
-    let quests = story(world, |lib, s| {
+pub fn og_story_quests(world: u32) -> Vec<crate::wire::QuestView> {
+    story(world, |lib, s| {
         s.quests
             .iter()
             .map(|q| quest_view(world, lib, s, q))
             .collect::<Vec<_>>()
     })
-    .unwrap_or_default();
-    super::wire::text_of(&quests)
+    .unwrap_or_default()
 }
 
 fn with_quest(world: u32, id: &str, f: impl FnOnce(&mut og_story::QuestState)) -> bool {

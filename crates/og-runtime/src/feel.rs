@@ -19,7 +19,7 @@
 use super::codec::{Key, Layout, Rec, Row, Slot};
 use super::engine::{Engine, engine, queued_structural, running};
 use super::extract::{Hierarchy, RenderState};
-use super::{ok, ok_void, parse, refuse};
+use super::parse;
 use glam::{Quat, Vec2, Vec3};
 use og_anim::{FlipbookSheet, FlipbookSystem};
 use og_core::IdMap;
@@ -61,20 +61,6 @@ fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
 
 fn err(e: Error) -> String {
     e.reason().to_string()
-}
-
-fn wire(r: Result<Value, String>) -> String {
-    match r {
-        Ok(v) => ok(v),
-        Err(e) => refuse(e),
-    }
-}
-
-fn wire_void(r: Result<(), String>) -> String {
-    match r {
-        Ok(()) => ok_void(),
-        Err(e) => refuse(e),
-    }
 }
 
 fn f<R: Rec + ?Sized, K: Key + ?Sized>(v: &R, key: &K, default: f32) -> f32 {
@@ -616,22 +602,19 @@ fn with_world<T>(
     outside(eng.world()?).map_err(err)
 }
 
-pub fn og_time_set_scale(world: u32, scale: f64) -> String {
-    wire_void(engine(world).and_then(|eng| {
+pub fn og_time_set_scale(world: u32, scale: f64) -> Result<(), String> {
+    engine(world).and_then(|eng| {
         let s = scale as f32;
         with_world(&eng, |c| c.set_time_scale(s), |w| w.set_time_scale(s))
-    }))
+    })
 }
 
-pub fn og_time_hit_stop(world: u32, ticks: u32) -> String {
-    wire_void(
-        engine(world)
-            .and_then(|eng| with_world(&eng, |c| c.hit_stop(ticks), |w| w.hit_stop(ticks))),
-    )
+pub fn og_time_hit_stop(world: u32, ticks: u32) -> Result<(), String> {
+    engine(world).and_then(|eng| with_world(&eng, |c| c.hit_stop(ticks), |w| w.hit_stop(ticks)))
 }
 
-pub fn og_time_set_group_scale(world: u32, group: u32, scale: f64) -> String {
-    wire_void(engine(world).and_then(|eng| {
+pub fn og_time_set_group_scale(world: u32, group: u32, scale: f64) -> Result<(), String> {
+    engine(world).and_then(|eng| {
         let s = scale as f32;
         let name = "og.TimeGroups";
         if running(eng.id).is_none() {
@@ -655,7 +638,7 @@ pub fn og_time_set_group_scale(world: u32, group: u32, scale: f64) -> String {
             },
             |w| w.set_group_scale(group, s),
         )
-    }))
+    })
 }
 
 pub fn og_time_group_dt(world: u32, entity: f64) -> f64 {
@@ -676,35 +659,32 @@ pub fn og_time_group_dt(world: u32, entity: f64) -> f64 {
 
 // ── camera ─────────────────────────────────────────────────────────────────
 
-fn camera_op(world: u32, op: CameraOp) -> String {
-    wire_void(engine(world).and_then(|eng| {
+fn camera_op(world: u32, op: CameraOp) -> Result<(), String> {
+    engine(world).and_then(|eng| {
         let feel = feel_of(&eng)?;
         lock(&feel.shared).camera_ops.push(op);
         Ok(())
-    }))
+    })
 }
 
-pub fn og_camera_shake(world: u32, trauma: f64) -> String {
+pub fn og_camera_shake(world: u32, trauma: f64) -> Result<(), String> {
     if !(trauma.is_finite() && (0.0..=1.0).contains(&trauma)) {
-        return refuse(format!("trauma {trauma} is outside 0..1"));
+        return Err(format!("trauma {trauma} is outside 0..1"));
     }
     camera_op(world, CameraOp::Shake(trauma as f32))
 }
 
-pub fn og_camera_punch(world: u32, amount: f64) -> String {
+pub fn og_camera_punch(world: u32, amount: f64) -> Result<(), String> {
     if !(amount.is_finite() && (-0.9..=4.0).contains(&amount)) {
-        return refuse(format!("punch {amount} is outside -0.9..4"));
+        return Err(format!("punch {amount} is outside -0.9..4"));
     }
     camera_op(world, CameraOp::Punch(amount as f32))
 }
 
-pub fn og_camera_kick(world: u32, direction: String, distance: f64) -> String {
-    let d: Vec3 = match super::wire::arg(Some(&direction), "direction") {
-        Ok(v) => v,
-        Err(e) => return refuse(e),
-    };
+pub fn og_camera_kick(world: u32, direction: String, distance: f64) -> Result<(), String> {
+    let d: Vec3 = super::wire::arg(Some(&direction), "direction")?;
     if !distance.is_finite() || !d.is_finite() {
-        return refuse("kick needs a finite direction and distance");
+        return Err("kick needs a finite direction and distance".into());
     }
     camera_op(
         world,
@@ -1062,8 +1042,8 @@ fn put_bytes(out: &mut Vec<u8>, b: &[u8]) {
 
 // ── floating text ──────────────────────────────────────────────────────────
 
-pub fn og_render_floating_text(world: u32, desc: Option<String>) -> String {
-    wire_void(engine(world).and_then(|eng| {
+pub fn og_render_floating_text(world: u32, desc: Option<String>) -> Result<(), String> {
+    engine(world).and_then(|eng| {
         let d: super::wire::FloatingTextDesc = super::wire::arg(desc.as_deref(), "desc")?;
         let text = d.text;
         let font = match d.font {
@@ -1121,7 +1101,7 @@ pub fn og_render_floating_text(world: u32, desc: Option<String>) -> String {
             facing: facing_named(Some(d.facing.as_str())),
         });
         Ok(())
-    }))
+    })
 }
 
 // ── the og.sprite system ───────────────────────────────────────────────────

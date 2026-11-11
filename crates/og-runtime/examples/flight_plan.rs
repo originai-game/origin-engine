@@ -1409,33 +1409,42 @@ fn hash_replay() -> serde_json::Value {
         ))
         .as_u64()
         .unwrap() as u32;
-        let e = value(og_world_spawn(w, None)).as_f64().unwrap();
+        let e = value(og_runtime::host_impl::answer(og_world_spawn(w, None)))
+            .as_f64()
+            .unwrap();
         for (name, desc) in [
             ("og.Transform", json!({"position":{"x":0,"y":1,"z":0}})),
             ("og.MotionAgent", json!({"drive":true})),
             ("og.Collider", json!({"shape":2,"radius":0.4,"height":1.0})),
             ("og.CharacterController", json!({})),
         ] {
-            value(og_world_insert(w, e, name.into(), Some(desc.to_string())));
+            value(og_runtime::host_impl::answer(og_world_insert(
+                w,
+                e,
+                name.into(),
+                Some(desc.to_string()),
+            )));
         }
-        let ground = value(og_world_spawn(w, None)).as_f64().unwrap();
-        value(og_world_insert(
+        let ground = value(og_runtime::host_impl::answer(og_world_spawn(w, None)))
+            .as_f64()
+            .unwrap();
+        value(og_runtime::host_impl::answer(og_world_insert(
             w,
             ground,
             "og.Transform".into(),
             Some(json!({"position":{"x":0,"y":-0.5,"z":0}}).to_string()),
-        ));
-        value(og_world_insert(
+        )));
+        value(og_runtime::host_impl::answer(og_world_insert(
             w,
             ground,
             "og.Collider".into(),
             Some(json!({"shape":0,"size":{"x":20,"y":1,"z":20}}).to_string()),
-        ));
-        value(og_motion_walk_to(
+        )));
+        value(og_runtime::host_impl::answer(og_motion_walk_to(
             w,
             e,
             Some(json!({"position":{"x":2.8,"y":0,"z":0}}).to_string()),
-        ));
+        )));
         w
     }
     fn hash(w: u32) -> serde_json::Value {
@@ -1447,7 +1456,7 @@ fn hash_replay() -> serde_json::Value {
     // (rollback does not), and nothing else may differ
     // (`restored_event.rs`).
     fn normalized(w: u32) -> (Vec<u8>, bool) {
-        let text = value(og_world_snapshot(w, None));
+        let text = value(og_runtime::host_impl::answer(og_world_snapshot(w, None)));
         let bytes = save_snapshot_bytes(text.as_str().unwrap()).unwrap();
         let mut edit = og_ecs::SnapshotEdit::from_bytes(&bytes).unwrap();
         let restored = edit.has_events("og.WorldRestored");
@@ -1476,15 +1485,23 @@ fn hash_replay() -> serde_json::Value {
         assert_eq!(hash(baseline), hash(drawn));
         expected.push((hash(drawn), normalized(drawn).0));
         if tick == 59 {
-            snapshot = value(og_world_snapshot(drawn, None))
-                .as_str()
-                .unwrap()
-                .into();
+            snapshot = value(og_runtime::host_impl::answer(og_world_snapshot(
+                drawn, None,
+            )))
+            .as_str()
+            .unwrap()
+            .into();
         }
     }
     assert!(calls.get() > 0);
-    value(og_world_restore(baseline, snapshot.clone(), None));
-    value(og_world_restore(drawn, snapshot, None));
+    value(og_runtime::host_impl::answer(og_world_restore(
+        baseline,
+        snapshot.clone(),
+        None,
+    )));
+    value(og_runtime::host_impl::answer(og_world_restore(
+        drawn, snapshot, None,
+    )));
     let immediate_equal = hash(drawn) == expected[59].0;
     let mut replay_mismatch = None;
     let mut mismatch_ticks = Vec::new();

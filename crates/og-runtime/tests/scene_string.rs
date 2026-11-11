@@ -104,15 +104,26 @@ fn a_cooked_scene_with_a_string_field_loads_into_a_live_world_with_the_text_inta
     let options = json!({ "root": root.to_str().unwrap() }).to_string();
     let engine = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
 
-    let scene = value(og_load_scene(engine, "scenes/people.ogt".into()));
-    value(og_world_instantiate(engine, scene.as_f64().unwrap(), None));
+    let scene = value(og_runtime::host_impl::answer(og_load_scene(
+        engine,
+        "scenes/people.ogt".into(),
+    )));
+    value(og_runtime::host_impl::answer(og_world_instantiate(
+        engine,
+        scene.as_f64().unwrap(),
+        None,
+    )));
     for (entity, name, level) in PEOPLE {
         let found =
             serde_json::from_str::<Value>(&og_world_find(engine, (*entity).into())).unwrap();
         let e = found
             .as_f64()
             .unwrap_or_else(|| panic!("no entity '{entity}' after instantiate: {found}"));
-        let got = value(og_world_get(engine, e, "Profile".into()));
+        let got = value(og_runtime::host_impl::answer(og_world_get(
+            engine,
+            e,
+            "Profile".into(),
+        )));
         assert_eq!(got, json!({ "name": name, "level": level }), "{entity}");
     }
 }
