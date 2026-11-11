@@ -318,10 +318,19 @@ impl Index {
 
     pub fn read(&self, path: &Path) -> std::io::Result<Vec<u8>> {
         let before = stat(path)?;
+        // The lock is let go before the content is read: files are read
+        // from many threads at once.
+        let known = self
+            .saved
+            .lock()
+            .expect("index lock")
+            .entries
+            .get(path)
+            .filter(|entry| entry.stat == before)
+            .map(|entry| entry.hash.clone());
         if let Some(store) = &self.store
-            && let Some(entry) = self.saved.lock().expect("index lock").entries.get(path)
-            && entry.stat == before
-            && let Some(bytes) = store.content(&entry.hash)
+            && let Some(hash) = known
+            && let Some(bytes) = store.content(&hash)
         {
             return Ok(bytes);
         }

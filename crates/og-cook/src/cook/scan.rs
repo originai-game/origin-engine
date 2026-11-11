@@ -43,16 +43,66 @@ pub(super) struct Scan {
 }
 
 pub(super) fn scan(assets_dir: &Path) -> Result<Scan, CookError> {
-    scan_with(assets_dir, &|path| std::fs::read(path))
+    scan_with(assets_dir, &|path| std::fs::read(path), 1)
 }
+
+/// The kind of a file whose extension alone says it.
+fn kind_by_extension(ext: &str) -> Option<Kind> {
+    Some(match ext {
+        "glb" | "gltf" | "vox" | "fbx" | "obj" => Kind::Model,
+        "png" | "jpg" | "jpeg" | "ktx2" | "webp" | "tga" | "psd" | "dds" | "svg" => Kind::Texture,
+        e if audio::EXTENSIONS.contains(&e) => Kind::Sound,
+        "ttf" | "otf" => Kind::Font,
+        "riv" => Kind::Rive,
+        "yarn" => Kind::Dialogue,
+        "cube" => Kind::Lut,
+        "tmj" | "ldtk" => Kind::Tilemap,
+        "hex" | "gpl" => Kind::Palette,
+        "efkproj" | "efkefc" => Kind::Vfx,
+        "svelte" => Kind::Document,
+        _ => return None,
+    })
+}
+
+/// The extensions of the texts the scan reads more than once.
+const TEXTS: [&str; 3] = ["ogt", "css", "json"];
 
 pub(super) fn scan_with(
     assets_dir: &Path,
-    read_file: &impl Fn(&Path) -> std::io::Result<Vec<u8>>,
+    read_file: &(impl Fn(&Path) -> std::io::Result<Vec<u8>> + Sync),
+    threads: usize,
 ) -> Result<Scan, CookError> {
     let mut files = Vec::new();
     walk(assets_dir, "", &mut files)
         .map_err(|e| CookError(format!("{}: {e}", assets_dir.display())))?;
+    // Every file the scan reads is read here, all at once. What follows
+    // takes them from `ahead` (a text as often as it is read, any other
+    // file once) and reads for itself what is not there, with its error.
+    let reads: Vec<PathBuf> = files
+        .iter()
+        .filter(|(rel, _)| {
+            let ext = ext(rel);
+            TEXTS.contains(&ext.as_str()) || kind_by_extension(&ext).is_some()
+        })
+        .map(|(_, path)| path.clone())
+        .collect();
+    let bytes = each(&reads, threads, |path| read_file(path));
+    let ahead: std::cell::RefCell<BTreeMap<PathBuf, Vec<u8>>> = std::cell::RefCell::new(
+        reads
+            .into_iter()
+            .zip(bytes)
+            .filter_map(|(path, bytes)| Some((path, bytes.ok()?)))
+            .collect(),
+    );
+    let read_file = |path: &Path| -> std::io::Result<Vec<u8>> {
+        let text = TEXTS.contains(&ext(&path.to_string_lossy()).as_str());
+        let read = if text {
+            ahead.borrow().get(path).cloned()
+        } else {
+            ahead.borrow_mut().remove(path)
+        };
+        read.map_or_else(|| read_file(path), Ok)
+    };
     // The engine's built-in assets the looks name join the bundle under
     // their reserved ids (`@canvas/paper.png`, every file of
     // `@styles/pixel/`), once each, read from the cook itself.
@@ -61,6 +111,9 @@ pub(super) fn scan_with(
         if ext(rel) == "ogt"
             && let Ok(text) =
                 read_file(path).and_then(|b| String::from_utf8(b).map_err(std::io::Error::other))
+            // The header says whether it is a look, before the whole of
+            // every text is parsed for it.
+            && Document::parse_header(&text).is_ok_and(|h| h.ty == crate::look::LOOK_TYPE)
             && Document::parse(&text).is_ok_and(|d| d.ty == crate::look::LOOK_TYPE)
         {
             for (id, bytes) in look::builtin_files(rel, &text, assets_dir) {
@@ -102,22 +155,11 @@ pub(super) fn scan_with(
             ));
             continue;
         }
-        let kind = match ext(rel).as_str() {
-            "glb" | "gltf" | "vox" | "fbx" | "obj" => Kind::Model,
-            "png" | "jpg" | "jpeg" | "ktx2" | "webp" | "tga" | "psd" | "dds" | "svg" => {
-                Kind::Texture
-            }
-            e if audio::EXTENSIONS.contains(&e) => Kind::Sound,
-            "ttf" | "otf" => Kind::Font,
-            "riv" => Kind::Rive,
-            "yarn" => Kind::Dialogue,
-            "cube" => Kind::Lut,
-            "tmj" | "ldtk" => Kind::Tilemap,
-            "hex" | "gpl" => Kind::Palette,
-            "efkproj" | "efkefc" => Kind::Vfx,
-            "svelte" => Kind::Document,
-            "json" if font_pack::is_pack(rel, &read(rel, path)?) => Kind::FontPack,
-            "ogt" => {
+        let extension = ext(rel);
+        let kind = match (kind_by_extension(&extension), extension.as_str()) {
+            (Some(kind), _) => kind,
+            (None, "json") if font_pack::is_pack(rel, &read(rel, path)?) => Kind::FontPack,
+            (None, "ogt") => {
                 let text = String::from_utf8(read(rel, path)?)
                     .map_err(|_| CookError(format!("{}: not UTF-8 text", path.display())))?;
                 // Styles and UI documents have lines of their own (CSS
@@ -322,19 +364,32 @@ pub(super) fn plan_groups(
     sources: &[Source],
     known: &BTreeSet<String>,
     errors: &mut Vec<(String, &'static str, String)>,
+    threads: usize,
 ) -> stream::Groups {
     let mut groups: BTreeMap<String, stream::GroupDecl> = BTreeMap::new();
     let mut group_of: BTreeMap<String, String> = BTreeMap::new();
     // Every scene some scene or prefab places (`scene "<id>"`): only one
     // of them may declare a cell group, since only a cell loads its blob.
-    let placed: BTreeSet<String> = sources
+    let placing: Vec<&Source> = sources
         .iter()
         .filter(|s| matches!(s.kind, Kind::Scene | Kind::Prefab))
-        .flat_map(|s| super::scene::subscenes(&String::from_utf8_lossy(&s.bytes), &|_| None))
         .collect();
-    for s in sources.iter().filter(|s| s.kind == Kind::Scene) {
-        let text = String::from_utf8_lossy(&s.bytes);
-        let decls = match stream::groups_of(&s.rel, &text, &|id| known.contains(id)) {
+    let placed: BTreeSet<String> = each(&placing, threads, |s| {
+        super::scene::subscenes(&String::from_utf8_lossy(&s.bytes), &|_| None)
+    })
+    .into_iter()
+    .flatten()
+    .collect();
+    // Each scene's groups are its own text's: every scene is parsed for
+    // them at once, and they are taken in the scenes' order.
+    let scenes: Vec<&Source> = sources.iter().filter(|s| s.kind == Kind::Scene).collect();
+    let declared = each(&scenes, threads, |s| {
+        stream::groups_of(&s.rel, &String::from_utf8_lossy(&s.bytes), &|id| {
+            known.contains(id)
+        })
+    });
+    for (s, decls) in scenes.into_iter().zip(declared) {
+        let decls = match decls {
             Ok(d) => d,
             Err(e) => {
                 errors.push((s.rel.clone(), "scene", e));

@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og cook",
+      "summary": "A cook that plans again after an asset changed does its per-file work on the cook's threads: reading the sources, hashing them, parsing each scene for its streaming groups and the assets it names, and checking each cooked file against the manifest. On a project of 1350 assets (161 MB of sources) a cook after one scene changed takes 330-380 ms instead of 670-790 ms on 16 cores; the cooked files and the report are the same bytes."
+    }
+  ]
+}

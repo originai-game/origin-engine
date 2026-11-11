@@ -395,6 +395,7 @@ pub(super) fn finish(
     parsed_refs: &BTreeMap<String, BTreeSet<String>>,
     reports: &mut [AssetReport],
     log: &ConformLog,
+    threads: usize,
 ) -> Result<(Vec<String>, Vec<String>, BeforeCode), CookError> {
     let Cx {
         root,
@@ -432,7 +433,7 @@ pub(super) fn finish(
         std::fs::write(&manifest_path, &text)
             .map_err(|e| CookError(format!("{}: {e}", manifest_path.display())))?;
     }
-    let mut index = assets::build(root, &manifest, sources, parsed_refs)?;
+    let mut index = assets::build(root, &manifest, sources, parsed_refs, threads)?;
     let before_code = BeforeCode {
         uses_motion,
         roots: index.roots.clone(),

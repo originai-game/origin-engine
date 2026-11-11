@@ -60,12 +60,13 @@ pub(super) struct Scanned {
 pub(super) fn scan_sources(
     assets_dir: &Path,
     cook_index: &index::Index,
+    threads: usize,
 ) -> Result<Scanned, CookError> {
     let Scan {
         mut sources,
         ignored,
         early_errors,
-    } = scan::scan_with(assets_dir, &|path| cook_index.read(path))?;
+    } = scan::scan_with(assets_dir, &|path| cook_index.read(path), threads)?;
     let mut consumed: BTreeSet<String> = BTreeSet::new();
     // Pixel effects and flipbooks of animated sources become ordinary
     // sheets (`vfx2d.rs`, `animated.rs`).
@@ -96,10 +97,13 @@ pub(super) fn import(
     sources: &mut [Source],
     consumed: &mut BTreeSet<String>,
     texture_cache: Option<&Path>,
+    threads: usize,
 ) -> Imported {
     let mut model_texts: BTreeMap<String, String> = BTreeMap::new();
     let mut reused_fractures = BTreeSet::new();
-    for s in sources.iter_mut() {
+    // The sources that came through whole: hashed below, all at once.
+    let mut whole = Vec::new();
+    for (i, s) in sources.iter_mut().enumerate() {
         // What a model says it is (`conform character`, `conform effect`),
         // read from its text or import settings before a text becomes a glb.
         let role = if s.kind == Kind::Model {
@@ -227,6 +231,12 @@ pub(super) fn import(
                 Err(e) => s.error = Some(e),
             }
         }
+        whole.push(i);
+    }
+    // A source's hash is its own bytes', a byte at a time, over every byte
+    // of the project.
+    let hashes = each(&whole, threads, |&i| {
+        let s = &sources[i];
         let mut h = StableHasher::new();
         h.write(&s.bytes);
         if let Some((text, _)) = &s.settings {
@@ -240,7 +250,10 @@ pub(super) fn import(
                 h.write(b);
             }
         }
-        s.hash = h.finish();
+        h.finish()
+    });
+    for (i, hash) in whole.into_iter().zip(hashes) {
+        sources[i].hash = hash;
     }
     Imported {
         model_texts,
@@ -522,9 +535,10 @@ pub(super) fn group(
     sources: &[Source],
     known: &BTreeSet<String>,
     early_errors: &mut Vec<EarlyError>,
+    threads: usize,
 ) -> Grouped {
     // Streaming groups (phase 3): every scene's, read before anything cooks.
-    let (groups, group_of) = plan_groups(sources, known, early_errors);
+    let (groups, group_of) = plan_groups(sources, known, early_errors, threads);
     // Font packs' faces (docs/ui.md §3.4): cooked as fonts by their own
     // settings, to `<id>.face.ogb`, which the web reads on demand.
     let pack_faces: BTreeSet<String> = sources

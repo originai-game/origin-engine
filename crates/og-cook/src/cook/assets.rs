@@ -1,5 +1,5 @@
 //! Cook-only metadata and reference graph. Never part of a shipped bundle.
-use super::{CookError, Kind, Source, audio};
+use super::{CookError, Kind, Source, audio, each};
 use crate::runtime::{Bundle, Manifest, ManifestOutput, asset_id};
 use og_core::ogt::{Block, Document, Entry, Value};
 use serde::{Deserialize, Serialize};
@@ -524,6 +524,7 @@ pub(super) fn build(
     manifest: &Manifest,
     sources: &[Source],
     parsed_refs: &BTreeMap<String, BTreeSet<String>>,
+    threads: usize,
 ) -> Result<Index, CookError> {
     let known = known(manifest);
     let old = Index::read(root).unwrap_or_default();
@@ -533,8 +534,46 @@ pub(super) fn build(
         .map(|a| (a.hash.clone(), a.perceptual))
         .collect();
     let bundle = Bundle::open(&root.join("cooked")).map_err(|e| CookError(e.to_string()))?;
+    let mut by_rel: BTreeMap<&str, &Source> = BTreeMap::new();
+    for s in sources {
+        by_rel.entry(s.rel.as_str()).or_insert(s);
+    }
+    // What each asset names is in its own text: the scenes it places and
+    // the assets it refers to, read from every text at once.
+    let named = each(&manifest.assets, threads, |source| {
+        let input = by_rel.get(source.source.as_str()).copied();
+        let mut placed = BTreeSet::new();
+        let mut values: Vec<_> = parsed_refs
+            .get(&source.source)
+            .into_iter()
+            .flatten()
+            .cloned()
+            .collect();
+        if let Some(s) = input {
+            if let Ok(text) = std::str::from_utf8(&s.bytes) {
+                if let Ok(doc) = Document::parse(text) {
+                    text_values(&doc.body, &mut values);
+                    if matches!(s.kind, Kind::Scene | Kind::Prefab) {
+                        for scene in super::scene::subscenes(text, &|_| None) {
+                            placed.extend(resolve(&scene, &s.rel, &known));
+                        }
+                    }
+                } else if let Ok(json) = serde_json::from_str(text) {
+                    json_values(&json, &mut values);
+                }
+            }
+            if let Some((_, settings)) = &s.settings {
+                text_values(&settings.body, &mut values);
+            }
+        }
+        let refs: BTreeSet<_> = values
+            .iter()
+            .flat_map(|v| resolve(v, &source.source, &known))
+            .collect();
+        (input, placed, refs)
+    });
     let mut index = Index::default();
-    for source in &manifest.assets {
+    for (source, (input, placed, mut refs)) in manifest.assets.iter().zip(named) {
         if source.kind == super::probes::KIND {
             // Probe ids derive from runtime placement rather than source literals.
             index
@@ -547,34 +586,7 @@ pub(super) fn build(
                 reason: "runtime reflection-probe lookup".into(),
             });
         }
-        let input = sources.iter().find(|s| s.rel == source.source);
-        let mut values: Vec<_> = parsed_refs
-            .get(&source.source)
-            .into_iter()
-            .flatten()
-            .cloned()
-            .collect();
-        if let Some(s) = input {
-            if let Ok(text) = std::str::from_utf8(&s.bytes) {
-                if let Ok(doc) = Document::parse(text) {
-                    text_values(&doc.body, &mut values);
-                    if matches!(s.kind, Kind::Scene | Kind::Prefab) {
-                        for placed in super::scene::subscenes(text, &|_| None) {
-                            index.roots.extend(resolve(&placed, &s.rel, &known));
-                        }
-                    }
-                } else if let Ok(json) = serde_json::from_str(text) {
-                    json_values(&json, &mut values);
-                }
-            }
-            if let Some((_, settings)) = &s.settings {
-                text_values(&settings.body, &mut values);
-            }
-        }
-        let mut refs: BTreeSet<_> = values
-            .iter()
-            .flat_map(|v| resolve(v, &source.source, &known))
-            .collect();
+        index.roots.extend(placed);
         // Loading a model, streamed sound, array or video also loads its sub-assets.
         refs.extend(source.outputs.iter().map(|o| o.id.clone()));
         for output in &source.outputs {
