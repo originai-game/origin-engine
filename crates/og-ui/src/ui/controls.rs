@@ -120,20 +120,21 @@ impl Ui {
     pub(crate) fn open_button(&mut self, id: impl Into<Id>, desc: ButtonDesc) -> Response {
         let i = self.push("button", id.into(), Element::default());
         self.tree.stack.push(i);
-        self.button_ink.push((i, self.env.theme.palette.ink));
+        self.front.button_ink.push((i, self.env.theme.palette.ink));
         self.button_at(i, "", desc)
     }
 
     /// Closes a button opened with [`Ui::open_button`].
     pub(crate) fn close_button(&mut self) {
-        self.button_ink.pop();
+        self.front.button_ink.pop();
         self.close();
     }
 
     /// The ink a text or icon without its own colour takes: its button's
     /// while one holds it, else the palette's.
     pub(crate) fn content_ink(&self) -> Srgba {
-        self.button_ink
+        self.front
+            .button_ink
             .last()
             .map_or(self.env.theme.palette.ink, |&(_, ink)| ink)
     }
@@ -256,7 +257,7 @@ impl Ui {
             .unwrap_or(self.env.theme.palette.ink);
         let mut content = self.role_text(text, crate::tokens::TypeRole::Button, fg);
         content.align = desc.align.unwrap_or(TextAlign::Center);
-        if let Some(top) = self.button_ink.last_mut().filter(|(at, _)| *at == i) {
+        if let Some(top) = self.front.button_ink.last_mut().filter(|(at, _)| *at == i) {
             top.1 = fg;
         }
         let n = &mut self.tree.nodes[i];

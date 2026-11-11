@@ -1146,7 +1146,7 @@ mod tests {
         mount(&mut ui, "pause", "pause");
         step(&mut ui, InputFrame::default());
         step(&mut ui, InputFrame::default());
-        let c = ui.cover.expect("the cover closes");
+        let c = ui.front.cover.expect("the cover closes");
         assert_eq!(c.texture.map(|t| t.0), Some(stars));
         assert_eq!(c.color, crate::Srgba::WHITE);
     }
@@ -1170,7 +1170,7 @@ mod tests {
         for _ in 0..2 * half + 2 {
             step(&mut ui, InputFrame::default());
             let shown = texts(&ui).contains(&"half".to_string());
-            seen.push((shown, ui.cover.map(|c| (c.revealing, c.kind, c.from))));
+            seen.push((shown, ui.front.cover.map(|c| (c.revealing, c.kind, c.from))));
         }
         // Hidden while the cover closes (from nothing, on its first tick).
         let covering = seen.iter().take_while(|(s, _)| !s).count();
@@ -1196,7 +1196,7 @@ mod tests {
             seen.push((
                 texts(&ui).contains(&"half".to_string()),
                 ui.layer_stack().len(),
-                ui.cover.map(|c| c.revealing),
+                ui.front.cover.map(|c| c.revealing),
             ));
         }
         assert!(seen[1].0 && seen[1].2 == Some(false), "{seen:?}");
