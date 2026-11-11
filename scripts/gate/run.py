@@ -59,6 +59,13 @@ def main():
         if expanded == wanted:
             break
         wanted = expanded
+    # OG_GATE_SKIP: steps the coordinator named for an exception (docs/ci.md
+    # §Lanes). A dependent still runs; the skip is printed, never a pass.
+    skip = [s.strip() for s in os.environ.get('OG_GATE_SKIP', '').split(',') if s.strip()]
+    unknown = set(skip) - NEEDS.keys()
+    if unknown:
+        raise ValueError('OG_GATE_SKIP names unknown steps: ' + ', '.join(sorted(unknown)))
+    skipped = [s for s in NEEDS if s in wanted and s in skip]
     jobs = int(os.environ.get('OG_GATE_JOBS', '2'))
     threads = int(os.environ.get('OG_GATE_THREADS', '2'))
     if jobs < 1 or threads < 1:
@@ -75,11 +82,13 @@ def main():
     with (logs / 'cargo.json').open('w') as out:
         subprocess.run(['cargo', 'metadata', '--locked', '--format-version=1'], stdout=out, check=True)
     active = {}
-    completed = {}
+    completed = {s: f'SKIPPED {s} (OG_GATE_SKIP)' for s in skipped}
     started = time.monotonic()
     print(f'gate {lane}: {jobs} steps × {threads} jobs; logs {logs}', flush=True)
+    for s in skipped:
+        print(completed[s], flush=True)
     (logs / 'run.json').write_text(json.dumps({'head': subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip(),
-                                            'tree': env.get('OG_GATE_TREE'), 'steps': sorted(wanted), 'force': force}))
+                                            'tree': env.get('OG_GATE_TREE'), 'steps': sorted(wanted), 'skipped': skipped, 'force': force}))
 
     def interrupt(signum, frame):
         raise KeyboardInterrupt
@@ -116,7 +125,9 @@ def main():
             ):
                 raise RuntimeError('No runnable step in gate DAG')
             time.sleep(0.1)
-        print(f'gate PASSED ({len(completed)}/{len(wanted)} steps, {time.monotonic() - started:.1f}s)', flush=True)
+        ran = len(completed) - len(skipped)
+        note = f'; NOT RUN (OG_GATE_SKIP): {", ".join(skipped)}' if skipped else ''
+        print(f'gate PASSED ({ran}/{len(wanted)} steps, {time.monotonic() - started:.1f}s{note})', flush=True)
         return 0
     finally:
         # Each step has its own process group, including its compiler/test children.

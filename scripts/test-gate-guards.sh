@@ -137,5 +137,20 @@ for reference_only in 0 1; do
 done
 echo 'ok   reference builds omit only the unused 2D publish pair'
 
+# OG_GATE_SKIP drops named steps: an unknown name fails before anything runs,
+# and a skipped step is printed and summarised as not run, never as a pass.
+printf '%s\n' '#!/usr/bin/env bash' '[ "$1" = metadata ] && { echo "{}"; exit 0; }' 'exit 97' > "$scratch/bin/cargo"
+skip_run() (cd "$root" && OG_GATE_SKIP="$1" OG_EVIDENCE_DIR="$scratch/skip" PATH="$scratch/bin:$PATH" python3 scripts/gate/run.py --only "$2" 2>&1)
+out="$(skip_run fmt,no-such-step fmt)" && { echo 'FAIL OG_GATE_SKIP accepted an unknown step'; exit 1; }
+case "$out" in *no-such-step*) ;; *) echo "FAIL OG_GATE_SKIP's refusal does not name the step: $out"; exit 1 ;; esac
+out="$(skip_run ' clippy,fmt' clippy)" || { echo "FAIL OG_GATE_SKIP run: $out"; exit 1; }
+case "$out" in
+  *'SKIPPED fmt (OG_GATE_SKIP)'*'gate PASSED (0/2 steps'*'NOT RUN (OG_GATE_SKIP): fmt, clippy)'*) ;;
+  *) echo "FAIL OG_GATE_SKIP's skips are not printed as not run: $out"; exit 1 ;;
+esac
+[ "$(cat "$scratch/skip/check-summary.txt")" = "$(printf 'SKIPPED fmt (OG_GATE_SKIP)\nSKIPPED clippy (OG_GATE_SKIP)')" ] ||
+  { echo 'FAIL the gate summary does not record the skips'; exit 1; }
+echo 'ok   OG_GATE_SKIP refuses unknown steps and reports skips as not run'
+
 [ "$failures" -eq 0 ] || { echo "$failures case(s) failed"; exit 1; }
 echo "every case failed as it should"

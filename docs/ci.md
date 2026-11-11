@@ -220,6 +220,16 @@ wasm products keyed by content. Neither lane partitions tests across machines.
 | `quick` | fmt, clippy, native test build, CPU tests, GPU tests outside og-tests, generated API drift, non-engine package tests, the lanes wasm type check |
 | `full` | quick plus og-tests, doctests, engine and extension Bun tests, bindgen-only wasm variants, fixtures, the browser tests of packages/engine's `test:browser` |
 
+`OG_GATE_SKIP` (comma-separated step names, e.g. `OG_GATE_SKIP=rust-gpu`)
+drops those steps from a run. It is for a named exception the coordinator
+sets for a stated set of landings, such as #41's CPU-only landings with one
+GPU verification after the last; it is never the default, and nothing
+reads it from a configuration file. An unknown name fails the run. A
+skipped step prints `SKIPPED <step> (OG_GATE_SKIP)`, stays in the summary,
+and the final line says `NOT RUN (OG_GATE_SKIP)`, so a skip never reads as
+a pass. Steps that depend on it still run. `land.sh`'s quick runs read it
+from the environment of the lander that runs them.
+
 `scripts/check.sh` owns admission and checkout ownership.
 `scripts/gate/run.py` schedules the dependency DAG. `step.sh` acquires GPU
 slots only for rendering steps and dispatches commands. Native build and
